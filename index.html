@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>XKDG Date Checker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f0f2f5;color:#1c1e21;padding-bottom:20px}
+.header{background:#2c3e50;color:white;padding:16px;text-align:center;position:sticky;top:0;z-index:10}
+.header h1{font-size:18px;font-weight:600}
+.container{max-width:600px;margin:0 auto;padding:12px}
+.card{background:white;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.12)}
+.input-group{margin-bottom:14px}
+label{display:block;font-size:14px;font-weight:600;margin-bottom:6px;color:#4b4f56}
+input[type="date"],input[type="time"],input[type="text"]{width:100%;padding:12px;border:1px solid #dddfe2;border-radius:6px;font-size:16px}
+button{width:100%;padding:14px;background:#1877f2;color:white;border:none;border-radius:6px;font-size:16px;font-weight:600;cursor:pointer}
+button:active{background:#166fe5}
+.risultato{border-left:6px solid #dddfe2;margin-top:16px;display:none}
+.risultato.oro{border-left-color:#FFD700}
+.risultato.viola{border-left-color:#9B59B6}
+.risultato.lilla{border-left-color:#D7BDE2}
+.risultato.verde{border-left-color:#2ECC71}
+.risultato.grigio{border-left-color:#BDC3C7}
+.badge{display:inline-block;padding:4px 10px;border-radius:4px;color:white;font-weight:600;font-size:13px;margin-right:6px}
+.badge.oro{background:#FFD700;color:#333}
+.badge.viola{background:#9B59B6}
+.badge.lilla{background:#D7BDE2;color:#333}
+.badge.verde{background:#2ECC71}
+.badge.personale{background:#E74C3C}
+.punteggio{font-size:32px;font-weight:700;margin:8px 0}
+.data-occ{font-size:14px;color:#65676b;margin-bottom:4px}
+.pilastri{font-size:12px;color:#8a8d91;margin-bottom:8px;font-family:monospace;text-transform:capitalize}
+.note{font-size:14px;line-height:1.4;margin-top:8px;color:#4b4f56}
+.loader{display:none;text-align:center;padding:20px}
+.error{color:#E74C3C;font-size:14px;margin-top:8px;display:none}
+.small{font-size:12px;color:#8a8d91;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>XKDG Date Checker</h1>
+</div>
+
+<div class="container">
+  <div class="card">
+    <div class="input-group">
+      <label>Date</label>
+      <input type="date" id="data">
+    </div>
+    <div class="input-group">
+      <label>Time</label>
+      <input type="time" id="ora">
+    </div>
+    <div class="input-group">
+      <label>Birth Year for Personal Query (optional)</label>
+      <input type="date" id="nascita" placeholder="YYYY-MM-DD">
+    </div>
+    <button onclick="calcola()">Calculate XKDG</button>
+    <div class="error" id="error"></div>
+    <div class="small">The entered time is Vienna local time. Conversion uses true solar time.</div>
+  </div>
+
+  <div class="loader" id="loader">Calculating...</div>
+  <div class="card risultato" id="risultato"></div>
+</div>
+
+<script>
+// ===== TABELLA MADRE 60 DATA =====
+const DATI = {
+  "genitori_P": {"QK":{"padre":"jia_wu","madre":"jia_zi"},"ZX":{"padre":"ren_zi","madre":"ren_wu"},"KL":{"padre":"geng_shen","madre":"geng_yin"},"JW":{"padre":"jia_yin","madre":"jia_shen"},"GD":{"padre":"bing_xu","madre":"bing_chen"},"PT":{"padre":"geng_xu","madre":"geng_chen"},"SX":{"padre":"ding_mao","madre":"ding_you"},"HY":{"padre":"geng_wu","madre":"geng_zi"}},
+  "coppie_hetu": [[1,6],[2,7],[3,8],[4,9]],
+  "jiazi": {
+    "jia_zi":{"famiglie":[{"codice":"QK","ruolo":"-","tipo":"madre_P"}],"numeri_elemento":[4,1,6,3],"numeri_periodi":[9,3,4,3],"na_yin":"metal of the sea","doppio_esagramma":false},
+    "yi_chou":{"famiglie":[{"codice":"GD","ruolo":"+","tipo":"figlio"},{"codice":"ZX","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[6,4,9,4],"numeri_periodi":[6,3,8,1],"na_yin":"metal of the sea","doppio_esagramma":true},
+    "bing_yin":{"famiglie":[{"codice":"JW","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[8,8,2,6],"numeri_periodi":[8,2,3],"na_yin":"fire in the stove","doppio_esagramma":false},
+    "ding_mao":{"famiglie":[{"codice":"SX","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[1,6,3,1],"numeri_periodi":[1,6,3,1],"na_yin":"fire in the stove","doppio_esagramma":false},
+    "wu_chen":{"famiglie":[{"codice":"ZX","ruolo":"-","tipo":"figlia"},{"codice":"GD","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[2,1,4,2],"numeri_periodi":[2,1,4,2],"na_yin":"wood of the great forest","doppio_esagramma":true},
+    "ji_si":{"famiglie":[{"codice":"PT","ruolo":"+","tipo":"figlio"},{"codice":"HY","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[8,2,9],"numeri_periodi":[2,8,1],"na_yin":"wood of the great forest","doppio_esagramma":true},
+    "geng_wu":{"famiglie":[{"codice":"HY","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[8,2,9],"numeri_periodi":[8,1],"na_yin":"earth by the roadside","doppio_esagramma":false},
+    "xin_wei":{"famiglie":[{"codice":"PT","ruolo":"-","tipo":"figlia"},{"codice":"JW","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[9,7,3],"numeri_periodi":[8,1],"na_yin":"earth by the roadside","doppio_esagramma":true},
+    "ren_shen":{"famiglie":[{"codice":"QK","ruolo":"+","tipo":"figlio"},{"codice":"KL","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[1,7,7],"numeri_periodi":[8,1],"na_yin":"metal of the sword","doppio_esagramma":true},
+    "gui_you":{"famiglie":[{"codice":"GD","ruolo":"-","tipo":"figlia"},{"codice":"ZX","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[2,6,7],"numeri_periodi":[8,1],"na_yin":"metal of the sword","doppio_esagramma":true},
+    "jia_xu":{"famiglie":[{"codice":"SX","ruolo":"+","tipo":"figlio"},{"codice":"JW","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[7,6],"numeri_periodi":[2],"na_yin":"fire on the mountain","doppio_esagramma":true},
+    "yi_hai":{"famiglie":[{"codice":"PT","ruolo":"-","tipo":"figlia"},{"codice":"JW","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[3,1],"numeri_periodi":[3],"na_yin":"fire on the mountain","doppio_esagramma":true},
+    "bing_zi":{"famiglie":[{"codice":"SX","ruolo":"-","tipo":"figlia"},{"codice":"HY","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[6,8],"numeri_periodi":[3],"na_yin":"water of the stream","doppio_esagramma":true},
+    "ding_chou":{"famiglie":[{"codice":"HY","ruolo":"-","tipo":"figlia"},{"codice":"PT","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[4,1,2,1],"numeri_periodi":[6,1,2,1],"na_yin":"water of the stream","doppio_esagramma":true},
+    "wu_yin":{"famiglie":[{"codice":"KL","ruolo":"-","tipo":"figlia"},{"codice":"QK","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[6,6,7,2],"numeri_periodi":[8,7,3,3],"na_yin":"earth on the wall","doppio_esagramma":true},
+    "ji_mao":{"famiglie":[{"codice":"GD","ruolo":"-","tipo":"figlia"},{"codice":"ZX","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[8,4,1,1],"numeri_periodi":[8,4,1,1],"na_yin":"earth on the wall","doppio_esagramma":true},
+    "geng_chen":{"famiglie":[{"codice":"ZX","ruolo":"-","tipo":"figlia"},{"codice":"GD","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[9,2,4,9],"numeri_periodi":[9,2,4,9],"na_yin":"metal of white wax","doppio_esagramma":true},
+    "xin_si":{"famiglie":[{"codice":"GD","ruolo":"+","tipo":"figlio"},{"codice":"ZX","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[8,2,7,2],"numeri_periodi":[8,2,7,2],"na_yin":"metal of white wax","doppio_esagramma":true},
+    "ren_wu":{"famiglie":[{"codice":"ZX","ruolo":"-","tipo":"madre_P"}],"numeri_elemento":[7,3,8,2],"numeri_periodi":[7,3,8,2],"na_yin":"wood of poplar and willow","doppio_esagramma":false},
+    "gui_wei":{"famiglie":[{"codice":"GD","ruolo":"+","tipo":"figlio"},{"codice":"KL","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[4,7],"numeri_periodi":[8],"na_yin":"wood of poplar and willow","doppio_esagramma":true},
+    "jia_shen":{"famiglie":[{"codice":"JW","ruolo":"-","tipo":"madre_P"}],"numeri_elemento":[3,7],"numeri_periodi":[9],"na_yin":"water of the spring","doppio_esagramma":false},
+    "yi_you":{"famiglie":[{"codice":"PT","ruolo":"-","tipo":"figlia"},{"codice":"SX","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[9,6],"numeri_periodi":[4],"na_yin":"water of the spring","doppio_esagramma":true},
+    "bing_xu":{"famiglie":[{"codice":"GD","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[6,6],"numeri_periodi":[1],"na_yin":"earth of the house","doppio_esagramma":false},
+    "ding_hai":{"famiglie":[{"codice":"QK","ruolo":"+","tipo":"figlio"},{"codice":"ZX","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[8,1],"numeri_periodi":[8],"na_yin":"earth of the house","doppio_esagramma":true},
+    "wu_zi":{"famiglie":[{"codice":"JW","ruolo":"-","tipo":"figlia"},{"codice":"HY","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[7],"numeri_periodi":[4],"na_yin":"fire of thunderbolt","doppio_esagramma":true},
+    "ji_chou":{"famiglie":[{"codice":"HY","ruolo":"+","tipo":"figlio"},{"codice":"PT","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[9],"numeri_periodi":[9],"na_yin":"fire of thunderbolt","doppio_esagramma":true},
+    "geng_yin":{"famiglie":[{"codice":"KL","ruolo":"-","tipo":"madre_P"}],"numeri_elemento":[1],"numeri_periodi":[3],"na_yin":"wood of pine","doppio_esagramma":false},
+    "xin_mao":{"famiglie":[{"codice":"SX","ruolo":"-","tipo":"figlia"},{"codice":"HY","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[2],"numeri_periodi":[9],"na_yin":"wood of pine","doppio_esagramma":true},
+    "ren_chen":{"famiglie":[{"codice":"PT","ruolo":"+","tipo":"figlio"},{"codice":"SX","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[3],"numeri_periodi":[4],"na_yin":"water of the long river","doppio_esagramma":true},
+    "gui_si":{"famiglie":[{"codice":"QK","ruolo":"-","tipo":"figlia"},{"codice":"GD","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[4],"numeri_periodi":[6],"na_yin":"water of the long river","doppio_esagramma":true},
+    "jia_wu":{"famiglie":[{"codice":"QK","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[6],"numeri_periodi":[6],"na_yin":"metal in sand","doppio_esagramma":false},
+    "yi_wei":{"famiglie":[{"codice":"ZX","ruolo":"+","tipo":"figlio"},{"codice":"KL","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[8],"numeri_periodi":[1],"na_yin":"metal in sand","doppio_esagramma":true},
+    "bing_shen":{"famiglie":[{"codice":"HY","ruolo":"-","tipo":"figlia"},{"codice":"JW","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[1],"numeri_periodi":[7],"na_yin":"fire on the mountain","doppio_esagramma":true},
+    "ding_you":{"famiglie":[{"codice":"SX","ruolo":"-","tipo":"madre_P"}],"numeri_elemento":[2],"numeri_periodi":[8],"na_yin":"fire on the mountain","doppio_esagramma":false},
+    "wu_xu":{"famiglie":[{"codice":"GD","ruolo":"-","tipo":"figlia"},{"codice":"QK","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[4],"numeri_periodi":[6],"na_yin":"wood of the plain","doppio_esagramma":true},
+    "ji_hai":{"famiglie":[{"codice":"PT","ruolo":"-","tipo":"figlia"},{"codice":"HY","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[6],"numeri_periodi":[4],"na_yin":"wood of the plain","doppio_esagramma":true},
+    "geng_zi":{"famiglie":[{"codice":"HY","ruolo":"-","tipo":"madre_P"}],"numeri_elemento":[2],"numeri_periodi":[9],"na_yin":"earth on the wall","doppio_esagramma":false},
+    "xin_chou":{"famiglie":[{"codice":"JW","ruolo":"-","tipo":"figlia"},{"codice":"PT","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[1],"numeri_periodi":[3],"na_yin":"earth on the wall","doppio_esagramma":true},
+    "ren_yin":{"famiglie":[{"codice":"KL","ruolo":"+","tipo":"figlio"},{"codice":"QK","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[9],"numeri_periodi":[7],"na_yin":"metal of white wax","doppio_esagramma":true},
+    "gui_mao":{"famiglie":[{"codice":"ZX","ruolo":"-","tipo":"figlia"},{"codice":"GD","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[8],"numeri_periodi":[7],"na_yin":"metal of white wax","doppio_esagramma":true},
+    "jia_chen":{"famiglie":[{"codice":"JW","ruolo":"+","tipo":"figlio"},{"codice":"SX","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[3],"numeri_periodi":[2],"na_yin":"fire of the lamp","doppio_esagramma":true},
+    "yi_si":{"famiglie":[{"codice":"PT","ruolo":"+","tipo":"figlio"},{"codice":"JW","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[7],"numeri_periodi":[8],"na_yin":"fire of the lamp","doppio_esagramma":true},
+    "bing_wu":{"famiglie":[{"codice":"SX","ruolo":"+","tipo":"figlio"},{"codice":"HY","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[2],"numeri_periodi":[3],"na_yin":"water of the heavenly river","doppio_esagramma":true},
+    "ding_wei":{"famiglie":[{"codice":"ZX","ruolo":"+","tipo":"figlio"},{"codice":"GD","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[6],"numeri_periodi":[7],"na_yin":"water of the heavenly river","doppio_esagramma":true},
+    "wu_shen":{"famiglie":[{"codice":"ZX","ruolo":"+","tipo":"figlio"},{"codice":"KL","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[2],"numeri_periodi":[6],"na_yin":"earth of the great station","doppio_esagramma":true},
+    "ji_you":{"famiglie":[{"codice":"GD","ruolo":"-","tipo":"figlia"},{"codice":"KL","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[3],"numeri_periodi":[8],"na_yin":"earth of the great station","doppio_esagramma":true},
+    "geng_xu":{"famiglie":[{"codice":"PT","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[9],"numeri_periodi":[9],"na_yin":"metal of jewelry","doppio_esagramma":false},
+    "xin_hai":{"famiglie":[{"codice":"QK","ruolo":"+","tipo":"figlio"},{"codice":"KL","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[7],"numeri_periodi":[4],"na_yin":"metal of jewelry","doppio_esagramma":true},
+    "ren_zi":{"famiglie":[{"codice":"ZX","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[8,8],"numeri_periodi":[1],"na_yin":"wood of mulberry","doppio_esagramma":false},
+    "gui_chou":{"famiglie":[{"codice":"GD","ruolo":"-","tipo":"figlia"},{"codice":"KL","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[6,3,8],"numeri_periodi":[6,3,8],"na_yin":"wood of mulberry","doppio_esagramma":true},
+    "jia_yin":{"famiglie":[{"codice":"JW","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[7],"numeri_periodi":[9],"na_yin":"water of the great stream","doppio_esagramma":false},
+    "yi_mao":{"famiglie":[{"codice":"PT","ruolo":"+","tipo":"figlio"},{"codice":"SX","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[1],"numeri_periodi":[4],"na_yin":"water of the great stream","doppio_esagramma":true},
+    "bing_chen":{"famiglie":[{"codice":"GD","ruolo":"-","tipo":"madre_P"}],"numeri_elemento":[4,4],"numeri_periodi":[1],"na_yin":"earth in sand","doppio_esagramma":false},
+    "ding_si":{"famiglie":[{"codice":"QK","ruolo":"-","tipo":"figlia"},{"codice":"ZX","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[2],"numeri_periodi":[8],"na_yin":"earth in sand","doppio_esagramma":true},
+    "wu_wu":{"famiglie":[{"codice":"HY","ruolo":"-","tipo":"figlia"},{"codice":"JW","ruolo":"+","tipo":"figlio"}],"numeri_elemento":[3],"numeri_periodi":[3],"na_yin":"fire in heaven","doppio_esagramma":true},
+    "ji_wei":{"famiglie":[{"codice":"PT","ruolo":"+","tipo":"figlio"},{"codice":"HY","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[4],"numeri_periodi":[1],"na_yin":"fire in heaven","doppio_esagramma":true},
+    "geng_shen":{"famiglie":[{"codice":"KL","ruolo":"+","tipo":"padre_P"}],"numeri_elemento":[7],"numeri_periodi":[12],"na_yin":"wood of pomegranate","doppio_esagramma":false},
+    "xin_you":{"famiglie":[{"codice":"SX","ruolo":"+","tipo":"figlio"},{"codice":"HY","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[8],"numeri_periodi":[3],"na_yin":"wood of pomegranate","doppio_esagramma":true},
+    "ren_xu":{"famiglie":[{"codice":"SX","ruolo":"+","tipo":"figlio"},{"codice":"PT","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[4],"numeri_periodi":[4],"na_yin":"water of the sea","doppio_esagramma":true},
+    "gui_hai":{"famiglie":[{"codice":"QK","ruolo":"+","tipo":"figlio"},{"codice":"GD","ruolo":"-","tipo":"figlia"}],"numeri_elemento":[6],"numeri_periodi":[1],"na_yin":"water of the sea","doppio_esagramma":true}
+  }
+};
+
+const TIANGAN = ['jia','yi','bing','ding','wu','ji','geng','xin','ren','gui'];
+const DIZHI = ['zi','chou','yin','mao','chen','si','wu','wei','shen','you','xu','hai'];
+const REF_DATETIME = new Date('1984-02-04T23:00:00');
+const JIEQI_GIORNI = [4,6,6,5,6,6,7,8,8,7,7];
+const TAG_MAP = {Oro:'oro', Viola:'viola', Lilla:'lilla', Verde:'verde', Nessuno:'grigio'};
+
+function dataOccidentaleAJiaZi(dataStr, oraStr){
+  let dt = new Date(dataStr + 'T' + oraStr + ':00');
+  let m = dt.getMonth()+1, d = dt.getDate();
+  if((m>3||(m===3&&d>=25)) && (m<10||(m===10&&d<25))) dt.setHours(dt.getHours()-1);
+  dt.setHours(dt.getHours()-1);
+
+  let annoBazi = dt.getFullYear();
+  let lichun = new Date(dt.getFullYear(), 1, 4);
+  if(dt < lichun) annoBazi--;
+  let diffAnni = annoBazi - 1984;
+  let pilastroAnno = TIANGAN[(diffAnni%10+10)%10] + '_' + DIZHI[(diffAnni%12+12)%12];
+
+  let meseSolare = dt.getMonth()-1; if(meseSolare<0) meseSolare=11;
+  if(dt.getDate() < JIEQI_GIORNI[meseSolare]) meseSolare = (meseSolare-1+12)%12;
+  let ganAnnoIdx = (diffAnni%10+10)%10;
+  let ganMeseIdx = (ganAnnoIdx*2 + meseSolare)%10;
+  let zhiMeseIdx = (meseSolare+2)%12;
+  let pilastroMese = TIANGAN[ganMeseIdx] + '_' + DIZHI[zhiMeseIdx];
+
+  let diffGiorni = Math.floor((dt - REF_DATETIME)/86400000);
+  let idxGiorno = diffGiorni%60; if(idxGiorno<0) idxGiorno+=60;
+  let pilastroGiorno = TIANGAN[idxGiorno%10] + '_' + DIZHI[idxGiorno%12];
+
+  let oraDec = dt.getHours() + dt.getMinutes()/60;
+  let zhiOraIdx = 0;
+  if(oraDec<1||oraDec>=23) zhiOraIdx=0; else zhiOraIdx=Math.floor((oraDec+1)/2);
+  let ganGiornoIdx = idxGiorno%10;
+  let ganOraIdx = (ganGiornoIdx*2 + zhiOraIdx)%10;
+  let pilastroOra = TIANGAN[ganOraIdx] + '_' + DIZHI[zhiOraIdx];
+
+  return [pilastroAnno, pilastroMese, pilastroGiorno, pilastroOra];
+}
+
+function risolviFamiglia(jz, pilastri){
+  let famiglie = DATI.jiazi[jz].famiglie;
+  if(famiglie.length===1) return famiglie[0].codice;
+  for(let fam of famiglie){
+    let codice = fam.codice;
+    let pPadre = DATI.genitori_P[codice].padre;
+    let pMadre = DATI.genitori_P[codice].madre;
+    if(pilastri.includes(pPadre) || pilastri.includes(pMadre)) return codice;
+  }
+  return null;
+}
+
+function checkBloodLink(p){
+  let famiglie = p.map(x=>risolviFamiglia(x,p));
+  if(famiglie.includes(null)) return [false,0,"","Ambiguous: double hexagram without P"];
+  if(new Set(famiglie).size===1) return [true,10,"Oro",`Blood Link ${famiglie[0]}`];
+  return [false,0,"",""];
+}
+
+function getNumeri(jz,tipo){return DATI.jiazi[jz]['numeri_'+tipo];}
+function checkPureQi(n){return new Set(n).size===1 && n[0]===1;}
+function checkPuroHeTu(n){for(let c of DATI.coppie_hetu){if(n.every(x=>c.includes(x))) return true;} return false;}
+function checkPureAdd(n){for(let i=0;i<n.length;i++){for(let j=i+1;j<n.length;j++){if([5,10,15].includes(n[i]+n[j])) return true;}} return false;}
+function giornoRiceveShengKeIn(n){let ng=n[2], altri=[n[0],n[1],n[3]];for(let a of altri){if([1,6].includes(ng)&&[4,9].includes(a))return true;if([3,8].includes(ng)&&[1,6,4,9].includes(a))return true;if([2,7].includes(ng)&&[3,8,1,6].includes(a))return true;if([4,9].includes(ng)&&[2,7].includes(a))return true;}return false;}
+function checkHeTuSemplice(n){let count=0;for(let c of DATI.coppie_hetu){if(n.filter(x=>c.includes(x)).length>=2)count++;}return count>=2&&giornoRiceveShengKeIn(n);}
+
+function valutaNumeri(n){
+  if(checkPureQi(n)) return [10,"Oro","Pure Qi"];
+  if(checkPuroHeTu(n)) return [7,"Viola","Pure HeTu"];
+  if(checkHeTuSemplice(n)) return [6,"Lilla","Simple HeTu"];
+  if(checkPureAdd(n)) return [5,"Verde","Pure Add"];
+  return [0,"",""];
+}
+
+function calcola(){
+  document.getElementById('error').style.display='none';
+  let data = document.getElementById('data').value;
+  let ora = document.getElementById('ora').value;
+  let nascita = document.getElementById('nascita').value;
+  if(!data||!ora){document.getElementById('error').textContent='Please enter date and time';document.getElementById('error').style.display='block';return;}
+
+  document.getElementById('loader').style.display='block';
+  document.getElementById('risultato').style.display='none';
+
+  setTimeout(()=>{
+    let [anno,mese,giorno,oraJZ] = dataOccidentaleAJiaZi(data, ora);
+    let pilastri = [anno,mese,giorno,oraJZ];
+
+    let [blAttivo,blPunti,blTag,blNote] = checkBloodLink(pilastri);
+
+    let numElem = [getNumeri(anno,'elemento')[0],getNumeri(mese,'elemento')[0],getNumeri(giorno,'elemento')[0],getNumeri(oraJZ,'elemento')[0]];
+    let [elemPunti,elemTag,elemNote] = valutaNumeri(numElem);
+
+    let numPer = [getNumeri(anno,'periodi')[0],getNumeri(mese,'periodi')[0],getNumeri(giorno,'periodi')[0],getNumeri(oraJZ,'periodi')[0]];
+    let [perPunti,perTag,perNote] = valutaNumeri(numPer);
+
+    let risultati = [[blPunti,blTag,`Blood Link: ${blNote}`],[elemPunti,elemTag,`Element: ${elemNote}`],[perPunti,perTag,`Periods: ${perNote}`]];
+    let [punteggio,tag,_] = risultati.reduce((a,b)=>a[0]>=b[0]?a:b);
+    let noteFinali = risultati.filter(r=>r[2]&&!r[2].includes("Ambiguous")&&!r[2].endsWith(": ")).map(r=>r[2]);
+
+    let massPersonale = false;
+    if(nascita){
+      let [annoN,,,,] = dataOccidentaleAJiaZi(nascita,"12:00");
+      let numAnnoNascita = getNumeri(annoN,'elemento');
+      let numGiornoElem = getNumeri(giorno,'elemento');
+      let combo = numAnnoNascita.concat(numGiornoElem);
+      if(checkPureAdd(combo)||checkPuroHeTu(combo)||checkHeTuSemplice(combo)) massPersonale=true;
+    }
+
+    let colore = TAG_MAP[tag] || 'grigio';
+    let res = document.getElementById('risultato');
+    res.className = `card risultato ${colore}`;
+    res.innerHTML = `
+      <div class="data-occ">${data} ${ora}</div>
+      <div class="pilastri">${pilastri.join(' ').replace(/_/g,' ')}</div>
+      <div class="punteggio">${punteggio}</div>
+      <span class="badge ${colore}">${tag||"None"}</span>
+      ${massPersonale?'<span class="badge personale">PERSONAL MAXIMUM</span>':''}
+      <div class="note">${noteFinali.join(' | ')||'No condition met'}</div>
+    `;
+    document.getElementById('loader').style.display='none';
+    res.style.display='block';
+  },100);
+}
+
+window.onload = ()=>{
+  let oggi = new Date();
+  document.getElementById('data').value = oggi.toISOString().split('T')[0];
+  document.getElementById('ora').value = oggi.toTimeString().slice(0,5);
+};
+</script>
+</body>
+</html>
