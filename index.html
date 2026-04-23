@@ -95,7 +95,66 @@ function getHourGanzhi(hour, dayStem) {
         branch: BRANCHES[branchIndex]
     };
 }
+function getLiChun(year) {
+    const base = new Date(year, 1, 4); // 4 Feb base
+    const dayOffset = Math.floor((year - 2000) * 0.2422) - Math.floor((year - 2000) / 4);
+    base.setDate(base.getDate() + dayOffset);
+    base.setHours(10, 30);
+    return base;
+}
 
+function getYearGanzhi(date) {
+    const year = date.getFullYear();
+    const liChun = getLiChun(year);
+    const effectiveYear = date < liChun? year - 1 : year;
+    const jiaZiYear = 1984;
+    const offset = (effectiveYear - jiaZiYear) % 60;
+    const yearIndex = offset < 0? offset + 60 : offset;
+    return {
+        stem: STEMS[yearIndex % 10],
+        branch: BRANCHES[yearIndex % 12]
+    };
+}
+
+function getJieQiDates(year) {
+    return [
+        new Date(year, 1, 4), // 1. Li Chun, Feb
+        new Date(year, 2, 6), // 2. Jing Zhe, Mar 
+        new Date(year, 3, 5), // 3. Qing Ming, Apr
+        new Date(year, 4, 6), // 4. Li Xia, Mag
+        new Date(year, 5, 6), // 5. Mang Zhong, Giu
+        new Date(year, 6, 7), // 6. Xiao Shu, Lug
+        new Date(year, 7, 8), // 7. Li Qiu, Ago
+        new Date(year, 8, 8), // 8. Bai Lu, Set
+        new Date(year, 9, 8), // 9. Han Lu, Ott
+        new Date(year, 10, 7), // 10. Li Dong, Nov
+        new Date(year, 11, 7), // 11. Da Xue, Dic
+        new Date(year, 0, 6) // 12. Xiao Han, Gen
+    ];
+}
+
+function getMonthGanzhi(date, yearStem) {
+    const year = date.getFullYear();
+    const jieQiDates = getJieQiDates(year);
+    let monthBranchIndex = 2; // Yin
+    
+    for (let i = 0; i < 12; i++) {
+        const nextJieQi = i === 11? getJieQiDates(year + 1)[0] : jieQiDates[i + 1];
+        if (date >= jieQiDates[i] && date < nextJieQi) {
+            monthBranchIndex = (2 + i) % 12;
+            break;
+        }
+    }
+    if (date < jieQiDates[0]) monthBranchIndex = 1; // Chou
+    
+    const yearStemIndex = STEMS.indexOf(yearStem);
+    const monthStemIndex = (yearStemIndex * 2 + monthBranchIndex) % 10;
+    
+    return {
+        stem: STEMS[monthStemIndex],
+        branch: BRANCHES[monthBranchIndex]
+    };
+}
 function calc() {
     const dateInput = document.getElementById('date').value; // YYYY-MM-DD
     const timeInput = document.getElementById('time').value; // HH:MM
@@ -111,8 +170,8 @@ function calc() {
     const yearGZ = {stem: 'Bing', branch: 'Wu'};
     const monthGZ = {stem: 'Ren', branch: 'Chen'};
 
-    const dayGZ = getDayGanzhi(baziDate);
-    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
+    const yearGZ = {stem: 'Bing', branch: 'Wu'};
+    const monthGZ = {stem: 'Ren', branch: 'Chen'};
 
     document.getElementById('h-stem').innerText = hourGZ.stem;
     document.getElementById('h-branch').innerText = hourGZ.branch;
