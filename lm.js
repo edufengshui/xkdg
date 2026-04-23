@@ -1,4 +1,4 @@
-// Bazi XKDG - versione senza dipendenze da classi.Stem
+// Bazi XKDG - Versione universale che non dipende dalla struttura
 const GAN = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
 const ZHI = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
 
@@ -25,7 +25,7 @@ function calculateXKDG() {
   // Mese
   const qingming = new Date(year, 3, 5);
   const monthGanIdx = ((yearGZ - 3) % 10 * 2 + 2 + (inputDate >= qingming? 1 : 0)) % 10;
-  const monthGan = GAN[monthGanIdx], monthZhi = ZHI[3]; // Chen
+  const monthGan = GAN[monthGanIdx], monthZhi = ZHI[3];
 
   // Giorno
   const jd = Math.floor(inputDate.getTime() / 86400000 + 2440587.5);
@@ -37,41 +37,35 @@ function calculateXKDG() {
   const hourGan = GAN[((dayIdx % 10) * 2 + hourZhiIdx) % 10];
   const hourZhi = ZHI[hourZhiIdx];
 
-  // Trova la tabella bazi e aggiorna le celle direttamente
-  const table = document.querySelector('.bazi-table');
-  if (!table) {
-    alert('ERRORE: non trovo la tabella.bazi-table');
-    return;
-  }
+  // STRATEGIA: Trova tutti i div e sovrascrivi per posizione
+  // Nel tuo HTML i risultati sono 8 div in sequenza: Stem-Hour, Branch-Hour, Stem-Day, Branch-Day...
+  const allCells = document.querySelectorAll('.bazi-table div');
   
-  // Prendi tutte le righe della tabella
-  const rows = table.querySelectorAll('tr');
-  if (rows.length < 4) {
-    alert('ERRORE: la tabella non ha 4 righe');
-    return;
-  }
+  // Rimuovi tutti gli undefined prima
+  allCells.forEach(el => {
+    if (el.innerText.trim() === 'undefined') el.innerText = '';
+  });
 
-  // Riga 2 = Stem, Riga 3 = Branch. Colonne: 1=Hour, 2=Day, 3=Month, 4=Year
-  const stemRow = rows[2].querySelectorAll('td'); // riga "Stem"
-  const branchRow = rows[3].querySelectorAll('td'); // riga "Branch"
+  // Trova i div vuoti dopo le etichette e riempili in ordine
+  let risultati = [hourGan, hourZhi, dayGan, dayZhi, monthGan, monthZhi, yearGan, yearZhi];
+  let idx = 0;
+  
+  // Prendi solo i div che sono vuoti o contengono risultati precedenti
+  allCells.forEach(el => {
+    const txt = el.innerText.toLowerCase().trim();
+    // Salta le etichette: Stem, Branch, Pinyin, Year, Month, Day, Hour
+    if (txt === 'stem' || txt === 'branch' || txt === 'pinyin' || 
+        txt === 'year' || txt === 'month' || txt === 'day' || txt === 'hour') {
+      return;
+    }
+    // Se è un div risultato e abbiamo ancora dati, scrivi
+    if (idx < risultati.length) {
+      el.innerText = risultati[idx].toLowerCase();
+      idx++;
+    }
+  });
 
-  if (stemRow.length < 5 || branchRow.length < 5) {
-    alert('ERRORE: righe Stem/Branch non hanno 5 colonne');
-    return;
-  }
-
-  // Ordine colonne: [etichetta, Hour, Day, Month, Year]
-  stemRow[1].innerText = hourGan.toLowerCase();
-  branchRow[1].innerText = hourZhi.toLowerCase();
-  stemRow[2].innerText = dayGan.toLowerCase();
-  branchRow[2].innerText = dayZhi.toLowerCase();
-  stemRow[3].innerText = monthGan.toLowerCase();
-  branchRow[3].innerText = monthZhi.toLowerCase();
-  stemRow[4].innerText = yearGan.toLowerCase();
-  branchRow[4].innerText = yearZhi.toLowerCase();
-
-  // Mostra tabella
-  table.style.display = 'table';
+  document.querySelector('.bazi-table').style.display = 'table';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
