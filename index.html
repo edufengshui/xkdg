@@ -55,7 +55,9 @@ const REF_DATE = new Date('2024-02-22T00:00:00Z');
 const REF_DAY_GZ = 40; // Jia Chen = index 40 nel ciclo 60
 function getDayGanzhi(date) {
     const msPerDay = 86400000;
-    const daysDiff = Math.floor((date - REF_DATE) / msPerDay);
+    // Usiamo mezzogiorno UTC per evitare problemi DST
+    const localNoon = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12);
+    const daysDiff = Math.floor((localNoon - REF_DATE) / msPerDay);
     const index = (REF_DAY_GZ + daysDiff) % 60;
     const corrected = index < 0? index + 60 : index;
     return {
