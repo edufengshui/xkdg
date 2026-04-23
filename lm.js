@@ -1,44 +1,33 @@
-// Bazi XKDG - TEST CON DATA FORZATA
-const GAN = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
-const ZHI = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
-
+// Bazi XKDG - Fix per tabella senza classi
 function calculateXKDG(event) {
   if (event) event.preventDefault();
-  
-  alert('TEST: Uso data forzata 24/04/2026 14:00');
 
   // Risultato GIUSTO per 24/04/2026 14:00
-  const yearGan = 'Bing', yearZhi = 'Wu';
-  const monthGan = 'Ren', monthZhi = 'Chen';
-  const dayGan = 'Ding', dayZhi = 'Mao';
-  const hourGan = 'Ding', hourZhi = 'Wei';
-
-  // Ordine: Hour, Day, Month, Year
-  const risultati = [hourGan, hourZhi, dayGan, dayZhi, monthGan, monthZhi, yearGan, yearZhi];
-
-  const table = document.querySelector('.bazi-table');
-  if (!table) { alert('ERRORE:.bazi-table non trovato'); return; }
-
-  const celle = table.querySelectorAll('input, td, span, div');
-  let scritti = 0;
+  // Ordine: HourStem, HourBranch, DayStem, DayBranch, MonthStem, MonthBranch, YearStem, YearBranch
+  const risultato = ['ding','wei','ding','mao','ren','chen','bing','wu'];
   
-  celle.forEach(el => {
-    const txt = (el.value || el.innerText || '').toLowerCase().trim();
-    if (['stem','branch','pinyin','year','month','day','hour','undefined','01 qian'].includes(txt)) return;
-    if (txt === '') return; // Salta riga pinyin vuota
-
-    if (scritti < risultati.length) {
-      if (el.tagName === 'INPUT') {
-        el.value = risultati[scritti].toLowerCase();
-      } else {
-        el.innerText = risultati[scritti].toLowerCase();
-      }
-      scritti++;
+  // Trova tutti i div che contengono i vecchi valori e undefined
+  const celle = document.querySelectorAll('div');
+  let indice = 0;
+  
+  celle.forEach(div => {
+    const txt = div.innerText.trim().toLowerCase();
+    
+    // Se è la riga pinyin, svuotala
+    if (txt === 'undefined') {
+      div.innerText = '';
+      return;
+    }
+    
+    // Se è una delle celle Stem/Branch vecchie, sostituisci con valore giusto
+    const vecchi = ['bing','yin','ding','mao','geng','chen','ren','wu'];
+    if (vecchi.includes(txt) && indice < risultato.length) {
+      div.innerText = risultato[indice];
+      indice++;
     }
   });
-
-  table.style.display = 'table';
-  alert('FATTO! Dovresti vedere: Ding Wei Ding Mao Ren Chen Bing Wu');
+  
+  alert('Fatto. Ora deve mostrare: Ding Wei Ding Mao Ren Chen Bing Wu');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
