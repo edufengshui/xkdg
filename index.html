@@ -120,7 +120,7 @@ function checkPureNum(n){let s=new Set(n);if(checkPureQi(n))return[true,7,"Viola
 function checkAcquiredConduit(p,n,periodi){if(n.includes(7))return[true,5,"Lilla","Acquired Conduit 7"];if(n.includes(5)&&n.includes(6))return[true,5,"Lilla","Acquired Conduit 5-6"];if(periodi.includes(8)&&periodi.includes(9))return[true,5,"Lilla","Acquired Conduit 8-9"];if(periodi.includes(1)&&periodi.includes(2))return[true,5,"Lilla","Acquired Conduit 1-2"];return[false,0,"",""]}
 function checkGeneticPredisposition(p,n,periodi){if(checkPureQi(periodi)[0])return[true,5,"Verde","Genetic Predisposition"];return[false,0,"",""]}
 function checkPersonalQuery(pilastri,nascita){if(!nascita)return[false,0,"",""];let [yN,mN,gN,oN]=dataOccidentaleAJiaZi(nascita,"12:00");let famQ=risolviFamiglia(gN,pilastri);if(!famQ)return[false,0,"",""];let padre=DATI.genitori_P.padre;let madre=DATI.genitori_P.madre;if(pilastri.includes(padre)||pilastri.includes(madre))return[true,10,"Personale",`Personal Query ${famQ}`];return[false,0,"",""]}
-function renderPillarfunction renderPillar(p,i){
+function renderPillar(p,i){
 let el=PILLAR_ELEMENTS[i];
 let hex=ESAGRAMMI[p]||[1,"Qian"];
 let num=String(hex[0]);
