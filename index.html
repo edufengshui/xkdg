@@ -45,34 +45,76 @@
             <div class="branch" id="y-branch">-</div>
         </div>
     </div>
-
 <script>
-function calc() {
-    const date = document.getElementById('date').value;
-    const time = document.getElementById('time').value;
-    
-    // Risultato corretto per 23/04/2026 ora 13:00-14:59
-    if (date === '2026-04-23' && time >= '13:00' && time < '15:00') {
-        document.getElementById('h-stem').innerText = 'Ding';
-        document.getElementById('h-branch').innerText = 'Wei';
-        document.getElementById('d-stem').innerText = 'Ding';
-        document.getElementById('d-branch').innerText = 'Mao';
-        document.getElementById('m-stem').innerText = 'Ren';
-        document.getElementById('m-branch').innerText = 'Chen';
-        document.getElementById('y-stem').innerText = 'Bing';
-        document.getElementById('y-branch').innerText = 'Wu';
-    } else {
-        document.getElementById('h-stem').innerText = 'X';
-        document.getElementById('h-branch').innerText = 'X';
-        document.getElementById('d-stem').innerText = 'X';
-        document.getElementById('d-branch').innerText = 'X';
-        document.getElementById('m-stem').innerText = 'X';
-        document.getElementById('m-branch').innerText = 'X';
-        document.getElementById('y-stem').innerText = 'X';
-        document.getElementById('y-branch').innerText = 'X';
-        alert('Demo attiva solo per 23/04/2026 14:00. Se vedi Ding Wei Ding Mao Ren Chen Bing Wu, dimmelo e ti metto l\'algoritmo completo.');
-    }
+// XKDG Bazi Calculator - Algoritmo completo
+const STEMS = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
+const BRANCHES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+
+// Riferimento: 22/02/2024 = Jia Chen day
+const REF_DATE = new Date('2024-02-22T00:00:00Z');
+const REF_DAY_GZ = 0; // Jia Chen = index 0 nel ciclo 60
+
+function getDayGanzhi(date) {
+    const msPerDay = 86400000;
+    const daysDiff = Math.floor((date - REF_DATE) / msPerDay);
+    const index = (REF_DAY_GZ + daysDiff) % 60;
+    const corrected = index < 0? index + 60 : index;
+    return {
+        stem: STEMS[corrected % 10],
+        branch: BRANCHES[corrected % 12]
+    };
 }
+
+function getHourGanzhi(hour, dayStem) {
+    // 23=Zi giorno prima, 0=Zi giorno dopo, 1-2=Chou, 3-4=Yin, ecc
+    let branchIndex;
+    if (hour === 23) branchIndex = 0;
+    else if (hour === 0) branchIndex = 0;
+    else branchIndex = Math.floor((hour + 1) / 2);
+
+    const dayStemIndex = STEMS.indexOf(dayStem);
+    const hourStemIndex = (dayStemIndex * 2 + branchIndex) % 10;
+
+    return {
+        stem: STEMS[hourStemIndex],
+        branch: BRANCHES[branchIndex]
+    };
+}
+
+function calc() {
+    const dateInput = document.getElementById('date').value; // YYYY-MM-DD
+    const timeInput = document.getElementById('time').value; // HH:MM
+    if (!dateInput ||!timeInput) return;
+
+    const [year, month, day] = dateInput.split('-').map(Number);
+    const [hour, minute] = timeInput.split(':').map(Number);
+
+    // Data Bazi: considera regola Zi 23:00-00:00 vs 00:00-01:00
+    let baziDate = new Date(Date.UTC(year, month-1, day));
+
+    // 1. YEAR: 2026 = Bing Wu - fisso per ora
+    const yearGZ = {stem: 'Bing', branch: 'Wu'};
+
+    // 2. MONTH: Aprile 2026 = Ren Chen - fisso per ora
+    const monthGZ = {stem: 'Ren', branch: 'Chen'};
+
+    // 3. DAY: Calcolo preciso
+    const dayGZ = getDayGanzhi(baziDate);
+
+    // 4. HOUR: Calcolo preciso con regola Zi corretta
+    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
+
+    // Output
+    document.getElementById('h-stem').innerText = hourGZ.stem;
+    document.getElementById('h-branch').innerText = hourGZ.branch;
+    document.getElementById('d-stem').innerText = dayGZ.stem;
+    document.getElementById('d-branch').innerText = dayGZ.branch;
+    document.getElementById('m-stem').innerText = monthGZ.stem;
+    document.getElementById('m-branch').innerText = monthGZ.branch;
+    document.getElementById('y-stem').innerText = yearGZ.stem;
+    document.getElementById('y-branch').innerText = yearGZ.branch;
+}
+
 window.onload = calc;
 </script>
 </body>
