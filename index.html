@@ -91,7 +91,7 @@ function calc() {
     const [hour, minute] = timeInput.split(':').map(Number);
 
     // Data Bazi: considera regola Zi 23:00-00:00 vs 00:00-01:00
-    let baziDate = new Date(Date.UTC(year, month-1, day));
+    let baziDate = new Date(Date.UTC(year, month-1, day, 12)); // Mezzogiorno UTC
 
     // 1. YEAR: 2026 = Bing Wu - fisso per ora
     const yearGZ = {stem: 'Bing', branch: 'Wu'};
