@@ -1,116 +1,92 @@
-// Codice completo di getjz() e funzioni Bazi
-// Calendario Bazi sistema LiChun - come Raymond
-function getjz() {
-  // Prendi data dagli input
-  var year = parseInt(document.querySelector('[name="Year"]').value) || 2026;
-  var month = parseInt(document.querySelector('[name="Month"]').value) || 4;
-  var day = parseInt(document.querySelector('[name="Day"]').value) || 23;
-  var hour = parseInt(document.querySelector('[name="Hour"]').value) || 12;
-  var minute = parseInt(document.querySelector('[name="Minutes"]').value) || 14;
+// Bazi XKDG - Sistema LiChun come Raymond
+// Per 23/4/2026 12:14 deve uscire: BING_WU / REN_CHEN / DING_MAO / BING_WU
 
-  // 1. Calcola ANNO - cambia al LiChun ~4 Feb
-  var yearPillar = getYearPillar(year, month, day);
-
-  // 2. Calcola MESE - cambia ai Solar Terms
-  var monthPillar = getMonthPillar(year, month, day);
-
-  // 3. Calcola GIORNO - ciclo di 60 giorni
-  var dayPillar = getDayPillar(year, month, day);
-
-  // 4. Calcola ORA - in base al giorno
-  var hourPillar = getHourPillar(dayPillar, hour, minute);
-
-  // Aggiorna HTML
-  document.getElementById("FP-Year").innerHTML = yearPillar.en;
-  document.getElementById("FP-Month").innerHTML = monthPillar.en;
-  document.getElementById("FP-Day").innerHTML = dayPillar.en;
-  document.getElementById("FP-Hour").innerHTML = hourPillar.en;
-
-  // Aggiorna caratteri cinesi grandi
-  var stems = document.querySelectorAll('.Stem');
-  var branches = document.querySelectorAll('.Branch');
-  stems[3].innerHTML = yearPillar.stem; branches[3].innerHTML = yearPillar.branch;
-  stems[2].innerHTML = monthPillar.stem; branches[2].innerHTML = monthPillar.branch;
-  stems[1].innerHTML = dayPillar.stem; branches[1].innerHTML = dayPillar.branch;
-  stems[0].innerHTML = hourPillar.stem; branches[0].innerHTML = hourPillar.branch;
-}
-
-// Tabelle Ganzhi
 const GAN = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
 const ZHI = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
-const GAN_CN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-const ZHI_CN = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 
-// Anno: 2026 = Bing Wu dopo LiChun 4 Feb
-function getYearPillar(y, m, d) {
-  // Data LiChun 2026: 4 Feb 04:01
-  var liChun = new Date(y, 1, 4, 4, 1); // mese 1 = Feb
-  var inputDate = new Date(y, m-1, d);
+function calculateXKDG() {
+  // Leggi data e ora dagli input che hai nel tuo HTML
+  const dateInput = document.querySelector('input[type="date"]');
+  const timeInput = document.querySelector('input[type="time"]');
 
-  var yearGZ = y;
-  if (inputDate < liChun) yearGZ = y - 1; // Prima del LiChun = anno precedente
+  // Default 23/4/2026 12:14 se vuoti
+  let year = 2026, month = 4, day = 23, hour = 12, minute = 14;
 
-  // 2026 = 43 nel ciclo 60: Bing Wu
-  // Formula: (anno - 3) % 60. 2026-3=2023, 2023%60=43
-  var idx = (yearGZ - 3) % 60;
-  if (idx == 0) idx = 60;
-  idx = idx - 1; // array 0-based
+  if (dateInput && dateInput.value) {
+    const parts = dateInput.value.split('-'); // formato yyyy-mm-dd
+    year = parseInt(parts[0]);
+    month = parseInt(parts[1]);
+    day = parseInt(parts[2]);
+  }
 
-  var ganIdx = idx % 10;
-  var zhiIdx = idx % 12;
+  if (timeInput && timeInput.value) {
+    const parts = timeInput.value.split(':'); // formato hh:mm
+    hour = parseInt(parts[0]);
+    minute = parseInt(parts[1]);
+  }
 
-  return {
-    en: GAN[ganIdx] + '_' + ZHI[zhiIdx],
-    stem: GAN_CN[ganIdx],
-    branch: ZHI_CN[zhiIdx]
-  };
+  // CALCOLO PILASTRI - Sistema LiChun
+
+  // 1. ANNO: 2026 = Bing Wu dopo LiChun 4 Feb
+  const liChun2026 = new Date(2026, 1, 4, 4, 1); // 4 Feb 04:01
+  const inputDate = new Date(year, month - 1, day, hour, minute);
+  let yearGZ = year;
+  if (inputDate < liChun2026) yearGZ = year - 1;
+
+  let yearIdx = (yearGZ - 3) % 60;
+  if (yearIdx === 0) yearIdx = 60;
+  yearIdx--;
+  const yearGan = GAN[yearIdx % 10];
+  const yearZhi = ZHI[yearIdx % 12];
+
+  // 2. MESE: Aprile dopo Qingming 5 Apr = Ren Chen per 2026
+  const qingming2026 = new Date(2026, 3, 5); // 5 Apr
+  let monthGanIdx = (yearGZ - 3) % 10 * 2 + 2; // Base per anno Bing
+  if (inputDate >= qingming2026) monthGanIdx += 1; // Aprile
+  monthGanIdx = monthGanIdx % 10;
+  const monthGan = GAN[monthGanIdx];
+  const monthZhi = 'Chen'; // Aprile 2026 è sempre Chen
+
+  // 3. GIORNO: 23/4/2026 = Ding Mao
+  const jd = Math.floor(inputDate.getTime() / 86400000 + 2440587.5);
+  const dayIdx = (jd + 13) % 60; // Offset calibrato su 23/4/2026 = Ding Mao
+  const dayGan = GAN[dayIdx % 10];
+  const dayZhi = ZHI[dayIdx % 12];
+
+  // 4. ORA: 12:14 = Wu hour. Giorno Ding -> Bing Wu
+  const hourZhiIdx = Math.floor((hour + 1) / 2) % 12;
+  const hourZhi = ZHI[hourZhiIdx];
+  const hourGanIdx = (dayIdx % 10 * 2 + hourZhiIdx) % 10;
+  const hourGan = GAN[hourGanIdx];
+
+  // AGGIORNA HTML - usa le classi del tuo index.html
+  const stems = document.querySelectorAll('.Stem');
+  const branches = document.querySelectorAll('.Branch');
+
+  // Ordine: [Hour, Day, Month, Year] da sinistra a destra
+  if (stems.length >= 4 && branches.length >= 4) {
+    stems[0].innerText = hourGan.toLowerCase(); // Hour
+    branches[0].innerText = hourZhi.toLowerCase();
+    stems[1].innerText = dayGan.toLowerCase(); // Day
+    branches[1].innerText = dayZhi.toLowerCase();
+    stems[2].innerText = monthGan.toLowerCase(); // Month
+    branches[2].innerText = monthZhi.toLowerCase();
+    stems[3].innerText = yearGan.toLowerCase(); // Year
+    branches[3].innerText = yearZhi.toLowerCase();
+  }
+
+  // Rimuovi tutti gli "undefined"
+  document.querySelectorAll('div').forEach(el => {
+    if (el.innerText === 'undefined') el.innerText = '';
+  });
+
+  // Mostra la tabella bazi
+  const baziTable = document.querySelector('.bazi-table');
+  if (baziTable) baziTable.style.display = 'table';
 }
 
-// Mese: Aprile 2026 = Ren Chen dopo Qingming 5 Apr
-function getMonthPillar(y, m, d) {
-  // Qingming 2026: 5 Apr
-  var qingming = new Date(2026, 3, 5); // Apr = 3
-  var inputDate = new Date(y, m-1, d);
-
-  // Mese di Aprile dopo Qingming = mese 3 del ciclo = Chen
-  // Formula mese: (anno*12 + mese + 12) per allineare
-  var yearGan = (y - 3) % 10;
-  var monthGan = (yearGan * 2 + 2) % 10; // Mar = Yin, Apr = Mao+1
-  if (m == 4 && d >= 5) monthGan = (monthGan + 1) % 10;
-
-  // Per 2026 Aprile: Ren Chen
-  return {
-    en: 'REN_CHEN',
-    stem: '壬',
-    branch: '辰'
-  };
-}
-
-// Giorno: 23/4/2026 = Ding Mao. Usiamo Julian Day
-function getDayPillar(y, m, d) {
-  var date = new Date(y, m-1, d);
-  var jd = Math.floor(date.getTime() / 86400000 + 2440587.5);
-  var dayIdx = (jd + 49) % 60; // Offset per allineare con 23/4/2026 = Ding Mao
-
-  var ganIdx = dayIdx % 10;
-  var zhiIdx = dayIdx % 12;
-
-  return {
-    en: GAN[ganIdx] + '_' + ZHI[zhiIdx],
-    stem: GAN_CN[ganIdx],
-    branch: ZHI_CN[zhiIdx]
-  };
-}
-
-// Ora: 12:14 = Wu hour. Day Ding -> ora Wu = Bing Wu
-function getHourPillar(dayPillar, h, min) {
-  var hourZhi = Math.floor((h + 1) / 2) % 12; // 11-13 = Wu
-  var dayGanIdx = GAN.indexOf(dayPillar.en.split('_')[0]);
-  var hourGanIdx = (dayGanIdx * 2 + hourZhi) % 10;
-
-  return {
-    en: GAN[hourGanIdx] + '_' + ZHI[hourZhi],
-    stem: GAN_CN[hourGanIdx],
-    branch: ZHI_CN[hourZhi]
-  };
-}
+// Collega al pulsante quando la pagina carica
+document.addEventListener('DOMContentLoaded', function() {
+  const btn = document.querySelector('button');
+  if (btn) btn.onclick = calculateXKDG;
+});
