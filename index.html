@@ -123,7 +123,20 @@ function calc() {
     document.getElementById('y-stem').innerText = yearGZ.stem;
     document.getElementById('y-branch').innerText = yearGZ.branch;
 }
-
+function setNow() {
+    const now = new Date();
+    
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    document.getElementById('date').value = `${year}-${month}-${day}`;
+    
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('time').value = `${hours}:${minutes}`;
+    
+    calc();
+}
 window.onload = calc;
 </script>
     </div>
