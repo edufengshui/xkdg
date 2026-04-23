@@ -170,8 +170,8 @@ function calc() {
     const yearGZ = {stem: 'Bing', branch: 'Wu'};
     const monthGZ = {stem: 'Ren', branch: 'Chen'};
 
-    const yearGZ = {stem: 'Bing', branch: 'Wu'};
-    const monthGZ = {stem: 'Ren', branch: 'Chen'};
+    const yearGZ = getYearGanzhi(baziDate);
+    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
 
     document.getElementById('h-stem').innerText = hourGZ.stem;
     document.getElementById('h-branch').innerText = hourGZ.branch;
