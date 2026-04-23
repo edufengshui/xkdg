@@ -46,31 +46,28 @@
         </div>
     </div>
 <script>
-// XKDG Bazi Calculator - Algoritmo completo
+// XKDG Bazi Calculator - Fix Day Pillar
 const STEMS = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
 const BRANCHES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
 
-// Riferimento: 22/02/2024 = Jia Chen day
-const REF_DATE = new Date('2024-02-22T00:00:00Z');
-const REF_DAY_GZ = 40; // Jia Chen = index 40 nel ciclo 60
+// FIX: Jia Chen è il 40°, non lo 0
+const REF_DATE = new Date('2024-02-22T12:00:00Z');
+const REF_DAY_GZ = 40;
+
 function getDayGanzhi(date) {
     const msPerDay = 86400000;
-    // Usiamo mezzogiorno UTC per evitare problemi DST
-    const localNoon = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12);
-    const daysDiff = Math.floor((localNoon - REF_DATE) / msPerDay);
+    const daysDiff = Math.round((date - REF_DATE) / msPerDay);
     const index = (REF_DAY_GZ + daysDiff) % 60;
-    const corrected = index < 0? index + 60 : index;
     return {
-        stem: STEMS[corrected % 10],
-        branch: BRANCHES[corrected % 12]
+        stem: STEMS[index % 10],
+        branch: BRANCHES[index % 12]
     };
 }
 
 function getHourGanzhi(hour, dayStem) {
-    // 23=Zi giorno prima, 0=Zi giorno dopo, 1-2=Chou, 3-4=Yin, ecc
     let branchIndex;
-    if (hour === 23) branchIndex = 0;
-    else if (hour === 0) branchIndex = 0;
+    if (hour === 23) branchIndex = 0; // Zi giorno prima
+    else if (hour === 0) branchIndex = 0; // Zi giorno dopo
     else branchIndex = Math.floor((hour + 1) / 2);
 
     const dayStemIndex = STEMS.indexOf(dayStem);
@@ -83,29 +80,21 @@ function getHourGanzhi(hour, dayStem) {
 }
 
 function calc() {
-    const dateInput = document.getElementById('date').value; // YYYY-MM-DD
-    const timeInput = document.getElementById('time').value; // HH:MM
+    const dateInput = document.getElementById('date').value;
+    const timeInput = document.getElementById('time').value;
     if (!dateInput ||!timeInput) return;
 
     const [year, month, day] = dateInput.split('-').map(Number);
     const [hour, minute] = timeInput.split(':').map(Number);
 
-    // Data Bazi: considera regola Zi 23:00-00:00 vs 00:00-01:00
-    let baziDate = new Date(Date.UTC(year, month-1, day, 12)); // Mezzogiorno UTC
+    // Uso mezzogiorno per data Bazi, evita problemi fuso
+    let baziDate = new Date(Date.UTC(year, month-1, day, 12));
 
-    // 1. YEAR: 2026 = Bing Wu - fisso per ora
-    const yearGZ = {stem: 'Bing', branch: 'Wu'};
-
-    // 2. MONTH: Aprile 2026 = Ren Chen - fisso per ora
-    const monthGZ = {stem: 'Ren', branch: 'Chen'};
-
-    // 3. DAY: Calcolo preciso
+    const yearGZ = {stem: 'Bing', branch: 'Wu'}; // 2026
+    const monthGZ = {stem: 'Ren', branch: 'Chen'}; // Aprile 2026
     const dayGZ = getDayGanzhi(baziDate);
-
-    // 4. HOUR: Calcolo preciso con regola Zi corretta
     const hourGZ = getHourGanzhi(hour, dayGZ.stem);
 
-    // Output
     document.getElementById('h-stem').innerText = hourGZ.stem;
     document.getElementById('h-branch').innerText = hourGZ.branch;
     document.getElementById('d-stem').innerText = dayGZ.stem;
