@@ -52,8 +52,7 @@ const BRANCHES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','X
 
 // Riferimento: 22/02/2024 = Jia Chen day
 const REF_DATE = new Date('2024-02-22T00:00:00Z');
-const REF_DAY_GZ = 0; // Jia Chen = index 0 nel ciclo 60
-
+const REF_DAY_GZ = 40; // Jia Chen = index 40 nel ciclo 60
 function getDayGanzhi(date) {
     const msPerDay = 86400000;
     const daysDiff = Math.floor((date - REF_DATE) / msPerDay);
