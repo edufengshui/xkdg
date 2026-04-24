@@ -139,30 +139,32 @@ function getMonthGanzhi(date, yearStem) {
 }
 
 // 5. CALC - Usa tutte le funzioni nuove
-function calc() {
-    const dateInput = document.getElementById('date').value;
-    const timeInput = document.getElementById('time').value;
-    if (!dateInput ||!timeInput) return;
-    
-    const [year, month, day] = dateInput.split('-').map(Number);
-    const [hour, minute] = timeInput.split(':').map(Number);
-    const baziDate = new Date(year, month - 1, day);
-    
-    const yearGZ = getYearGanzhi(baziDate);
-    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
-    const dayGZ = getDayGanzhi(baziDate);
-    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
-    
-    document.getElementById('h-stem').innerText = hourGZ.stem;
-    document.getElementById('h-branch').innerText = hourGZ.branch;
-    document.getElementById('d-stem').innerText = dayGZ.stem;
-    document.getElementById('d-branch').innerText = dayGZ.branch;
-    document.getElementById('m-stem').innerText = monthGZ.stem;
-    document.getElementById('m-branch').innerText = monthGZ.branch;
-    document.getElementById('y-stem').innerText = yearGZ.stem;
-    document.getElementById('y-branch').innerText = yearGZ.branch;
-}
-
+138 function calc() {
+139     const dateInput = document.getElementById('date').value; // YYYY-MM-DD
+140     const timeInput = document.getElementById('time').value; // HH:MM
+141     if (!dateInput || !timeInput) return;
+142
+143     const [year, month, day] = dateInput.split('-').map(Number);
+144     const [hour, minute] = timeInput.split(':').map(Number);
+145
+146     // Data locale utente. Nessun UTC, nessun Pechino.
+147     const baziDate = new Date(year, month - 1, day);
+148
+149     // QUI DEVI AGGIUNGERE QUESTE 4 RIGHE
+150     const yearGZ = getYearGanzhi(baziDate);
+151     const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
+152     const dayGZ = getDayGanzhi(baziDate);
+153     const hourGZ = getHourGanzhi(hour, dayGZ.stem);
+154
+155     document.getElementById('h-stem').innerText = hourGZ.stem;
+156     document.getElementById('h-branch').innerText = hourGZ.branch;
+157     document.getElementById('d-stem').innerText = dayGZ.stem;
+158     document.getElementById('d-branch').innerText = dayGZ.branch;
+159     document.getElementById('m-stem').innerText = monthGZ.stem;
+160     document.getElementById('m-branch').innerText = monthGZ.branch;
+161     document.getElementById('y-stem').innerText = yearGZ.stem;
+162     document.getElementById('y-branch').innerText = yearGZ.branch;
+163 }
 function setNow() {
     const now = new Date();
     const year = now.getFullYear();
