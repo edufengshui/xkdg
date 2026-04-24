@@ -411,6 +411,88 @@ window.addEventListener('load', () => {
     document.getElementById('longitude').value = localStorage.getItem('xkdg_lon') || 16.37;
     document.getElementById('dst').value = localStorage.getItem('xkdg_dst') || 0;
 });
+     // === TRUE SOLAR TIME XKDG ===
+function toggleSolarUI() {
+    document.getElementById('solarUI').style.display = 
+        document.getElementById('useTrueSolar').checked ? 'block' : 'none';
+    calc();
+}
+
+function saveSolar() {
+    localStorage.setItem('xkdg_tz', document.getElementById('tzOffset').value);
+    localStorage.setItem('xkdg_lon', document.getElementById('longitude').value);
+    localStorage.setItem('xkdg_dst', document.getElementById('dst').value);
+    calc();
+}
+
+function resetSolar() {
+    document.getElementById('tzOffset').value = 0;
+    document.getElementById('longitude').value = 0;
+    document.getElementById('dst').value = 0;
+    calc();
+}
+
+function autoSolar() {
+    const tz = -new Date().getTimezoneOffset() / 60;
+    document.getElementById('tzOffset').value = tz;
+    const jan = new Date(new Date().getFullYear(), 0, 1);
+    const jul = new Date(new Date().getFullYear(), 6, 1);
+    const isDST = jan.getTimezoneOffset() !== jul.getTimezoneOffset() && 
+                  new Date().getTimezoneOffset() === Math.min(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+    document.getElementById('dst').value = isDST ? 1 : 0;
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            document.getElementById('longitude').value = pos.coords.longitude.toFixed(2);
+            calc();
+        }, () => {
+            alert('GPS negato. Inserisci longitudine manuale.');
+            calc();
+        });
+    }
+}
+
+function getEquationOfTime(date) {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date - start;
+    const dayOfYear = Math.floor(diff / 86400000);
+    const B = 2 * Math.PI * (dayOfYear - 81) / 365;
+    return 9.87 * Math.sin(2*B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+}
+
+function getTrueSolarTime(year, month, day, hour, minute) {
+    if (!document.getElementById('useTrueSolar').checked) return {hour, minute};
+    
+    const tz = parseInt(document.getElementById('tzOffset').value);
+    const lon = parseFloat(document.getElementById('longitude').value);
+    const dst = parseInt(document.getElementById('dst').value);
+    
+    const date = new Date(year, month - 1, day, hour, minute);
+    const standardMinutes = hour * 60 + minute - (dst * 60);
+    const eot = getEquationOfTime(date);
+    const tzMeridian = tz * 15;
+    const lonCorrection = 4 * (lon - tzMeridian);
+    
+    let solarMinutes = standardMinutes + eot + lonCorrection;
+    while (solarMinutes < 0) solarMinutes += 1440;
+    while (solarMinutes >= 1440) solarMinutes -= 1440;
+    
+    const solarHour = Math.floor(solarMinutes / 60);
+    const solarMin = Math.floor(solarMinutes % 60);
+    
+    document.getElementById('solarInfo').innerText = 
+        `Solare vera: ${String(solarHour).padStart(2,'0')}:${String(solarMin).padStart(2,'0')} | EqT: ${eot.toFixed(1)}min | LonCorr: ${lonCorrection.toFixed(1)}min`;
+    
+    return {hour: solarHour, minute: solarMin};
+}
+
+// Carica valori salvati - Vienna default
+window.addEventListener('load', () => {
+    document.getElementById('tzOffset').value = localStorage.getItem('xkdg_tz') || 1;
+    document.getElementById('longitude').value = localStorage.getItem('xkdg_lon') || 16.37;
+    document.getElementById('dst').value = localStorage.getItem('xkdg_dst') || 0;
+});
+// === FINE TRUE SOLAR TIME ===
 function calc() {
     const dateInput = document.getElementById('date').value; // YYYY-MM-DD
     const timeInput = document.getElementById('time').value; // HH:MM
