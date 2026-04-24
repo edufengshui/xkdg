@@ -44,19 +44,16 @@
             <div class="stem" id="y-stem">-</div>
             <div class="branch" id="y-branch">-</div>
         </div>
-    <script>
+ <script>
 // XKDG Bazi - NESSUN FUSO ORARIO. Solo data locale utente.
 const STEMS = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
 const BRANCHES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
 
-// ANCORA: 23/04/2026 è Ding Mao. Vale ovunque nel mondo.
-const REF_DATE = new Date(2026, 3, 23); // Mese 3 = Aprile. Ora 00:00 locale.
-const REF_DAY_GZ = 3; // Ding Mao = 3
-
+// 1. DAY - Ancora XKDG: 23/04/2026 è Ding Mao ovunque
+const REF_DATE = new Date(2026, 3, 23);
+const REF_DAY_GZ = 3;
 function getDayGanzhi(inputDate) {
-    // inputDate è già la data locale dell'utente: new Date(anno, mese, giorno)
     const msPerDay = 86400000;
-    // Tronco a mezzanotte locale per sicurezza
     const dayStart = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
     const daysDiff = Math.round((dayStart - REF_DATE) / msPerDay);
     const index = (REF_DAY_GZ + daysDiff) % 60;
@@ -66,6 +63,8 @@ function getDayGanzhi(inputDate) {
         branch: BRANCHES[corrected % 12]
     };
 }
+
+// 2. HOUR - XKDG 2 ore
 function getHourGanzhi(hour, dayStem) {
     const branchIndex = hour === 23? 0 : Math.floor((hour + 1) / 2);
     const dayStemIndex = STEMS.indexOf(dayStem);
@@ -75,8 +74,10 @@ function getHourGanzhi(hour, dayStem) {
         branch: BRANCHES[branchIndex]
     };
 }
+
+// 3. YEAR - Li Chun
 function getLiChun(year) {
-    const base = new Date(year, 1, 4); // 4 Feb base
+    const base = new Date(year, 1, 4); 
     const dayOffset = Math.floor((year - 2000) * 0.2422) - Math.floor((year - 2000) / 4);
     base.setDate(base.getDate() + dayOffset);
     base.setHours(10, 30);
@@ -96,6 +97,7 @@ function getYearGanzhi(date) {
     };
 }
 
+// 4. MONTH - JieQi
 function getJieQiDates(year) {
     return [
         new Date(year, 1, 4), // 1. Li Chun, Feb
@@ -135,6 +137,46 @@ function getMonthGanzhi(date, yearStem) {
         branch: BRANCHES[monthBranchIndex]
     };
 }
+
+// 5. CALC - Usa tutte le funzioni nuove
+function calc() {
+    const dateInput = document.getElementById('date').value;
+    const timeInput = document.getElementById('time').value;
+    if (!dateInput ||!timeInput) return;
+    
+    const [year, month, day] = dateInput.split('-').map(Number);
+    const [hour, minute] = timeInput.split(':').map(Number);
+    const baziDate = new Date(year, month - 1, day);
+    
+    const yearGZ = getYearGanzhi(baziDate);
+    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
+    const dayGZ = getDayGanzhi(baziDate);
+    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
+    
+    document.getElementById('h-stem').innerText = hourGZ.stem;
+    document.getElementById('h-branch').innerText = hourGZ.branch;
+    document.getElementById('d-stem').innerText = dayGZ.stem;
+    document.getElementById('d-branch').innerText = dayGZ.branch;
+    document.getElementById('m-stem').innerText = monthGZ.stem;
+    document.getElementById('m-branch').innerText = monthGZ.branch;
+    document.getElementById('y-stem').innerText = yearGZ.stem;
+    document.getElementById('y-branch').innerText = yearGZ.branch;
+}
+
+function setNow() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    document.getElementById('date').value = `${year}-${month}-${day}`;
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('time').value = `${hours}:${minutes}`;
+    calc();
+}
+
+window.onload = calc;
+</script>
 function calc() {
     const dateInput = document.getElementById('date').value; // YYYY-MM-DD
     const timeInput = document.getElementById('time').value; // HH:MM
