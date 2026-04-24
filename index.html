@@ -290,17 +290,18 @@ function getTrueSolarTime(year, month, day, hour, minute) {
 function calc() {
     const dateInput = document.getElementById('date').value;
     const timeInput = document.getElementById('time').value;
-    if (!dateInput || !timeInput) return;
-    
+    if (!dateInput ||!timeInput) return;
     const [year, month, day] = dateInput.split('-').map(Number);
     const [hour, minute] = timeInput.split(':').map(Number);
     
-    const baziDate = new Date(year, month - 1, day);
+    // NUOVO: calcola ora solare vera per Hour Branch
+    const solar = getTrueSolarTime(year, month, day, hour, minute);
     
+    const baziDate = new Date(year, month - 1, day);
     const yearGZ = getYearGanzhi(baziDate);
     const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
     const dayGZ = getDayGanzhi(baziDate);
-    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
+    const hourGZ = getHourGanzhi(solar.hour, dayGZ.stem); // USA solar.hour invece di hour
     
     document.getElementById('h-stem').innerText = hourGZ.stem;
     document.getElementById('h-branch').innerText = hourGZ.branch;
