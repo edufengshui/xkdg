@@ -147,9 +147,7 @@ function calc() {
     const baziDate = new Date(year, month - 1, day);
 
     // TODO: Year con Li Chun, Month con JieQi
-    const yearGZ = {stem: 'Bing', branch: 'Wu'};
-    const monthGZ = {stem: 'Ren', branch: 'Chen'};
-
+    
     const yearGZ = getYearGanzhi(baziDate);
     const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
 
