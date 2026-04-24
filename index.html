@@ -67,13 +67,9 @@ function getDayGanzhi(inputDate) {
     };
 }
 function getHourGanzhi(hour, dayStem) {
-    // XKDG: 23-01=Zi, 01-03=Chou, 03-05=Yin, 05-07=Mao, 07-09=Chen, 09-11=Si
-    // 11-13=Wu, 13-15=Wei ← 14:00 è Wei, 15-17=Shen, 17-19=You, 19-21=Xu, 21-23=Hai
     const branchIndex = hour === 23? 0 : Math.floor((hour + 1) / 2);
-    
     const dayStemIndex = STEMS.indexOf(dayStem);
     const hourStemIndex = (dayStemIndex * 2 + branchIndex) % 10;
-    
     return {
         stem: STEMS[hourStemIndex],
         branch: BRANCHES[branchIndex]
