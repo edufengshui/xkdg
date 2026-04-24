@@ -22,7 +22,31 @@
         Time: <input type="time" id="time" value="14:00">
         <button onclick="setNow()">NOW</button> <button onclick="calc()">Calculate XKDG</button>
     </div>
-
+    function calc() {
+    const dateInput = document.getElementById('date').value;
+    const timeInput = document.getElementById('time').value;
+    if (!dateInput ||!timeInput) return;
+    const [year, month, day] = dateInput.split('-').map(Number);
+    const [hour, minute] = timeInput.split(':').map(Number);
+    
+    // NUOVO: calcola ora solare vera per Hour Branch
+    const solar = getTrueSolarTime(year, month, day, hour, minute);
+    
+    const baziDate = new Date(year, month - 1, day);
+    const yearGZ = getYearGanzhi(baziDate);
+    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
+    const dayGZ = getDayGanzhi(baziDate);
+    const hourGZ = getHourGanzhi(solar.hour, dayGZ.stem); // USA solar.hour invece di hour
+    
+    document.getElementById('h-stem').innerText = hourGZ.stem;
+    document.getElementById('h-branch').innerText = hourGZ.branch;
+    document.getElementById('d-stem').innerText = dayGZ.stem;
+    document.getElementById('d-branch').innerText = dayGZ.branch;
+    document.getElementById('m-stem').innerText = monthGZ.stem;
+    document.getElementById('m-branch').innerText = monthGZ.branch;
+    document.getElementById('y-stem').innerText = yearGZ.stem;
+    document.getElementById('y-branch').innerText = yearGZ.branch;
+}
     <div class="chart">
         <div class="pillar">
             <div class="label">Hour</div>
