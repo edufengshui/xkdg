@@ -567,33 +567,6 @@ window.addEventListener('load', () => {
     document.getElementById('dst').value = localStorage.getItem('xkdg_dst') || 0;
 });
 // === FINE TRUE SOLAR TIME ===
-function calc() {
-    const dateInput = document.getElementById('date').value; // YYYY-MM-DD
-    const timeInput = document.getElementById('time').value; // HH:MM
-    if (!dateInput ||!timeInput) return;
-
-    const [year, month, day] = dateInput.split('-').map(Number);
-    const [hour, minute] = timeInput.split(':').map(Number);
-
-    // Data locale utente. Nessun UTC, nessun Pechino.
-    const baziDate = new Date(year, month - 1, day);
-
-    // TODO: Year con Li Chun, Month con JieQi
-
-    const yearGZ = getYearGanzhi(baziDate);
-    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
-    const dayGZ = getDayGanzhi(baziDate);
-    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
-
-    document.getElementById('h-stem').innerText = hourGZ.stem;
-    document.getElementById('h-branch').innerText = hourGZ.branch;
-    document.getElementById('d-stem').innerText = dayGZ.stem;
-    document.getElementById('d-branch').innerText = dayGZ.branch;
-    document.getElementById('m-stem').innerText = monthGZ.stem;
-    document.getElementById('m-branch').innerText = monthGZ.branch;
-    document.getElementById('y-stem').innerText = yearGZ.stem;
-    document.getElementById('y-branch').innerText = yearGZ.branch;
-}
 function setNow() {
     const now = new Date();
     const year = now.getFullYear();
@@ -634,6 +607,34 @@ document.addEventListener('DOMContentLoaded', function() {
     calc();
 });
 </script>
+function calc() {
+    const dateInput = document.getElementById('date').value; // YYYY-MM-DD
+    const timeInput = document.getElementById('time').value; // HH:MM
+    if (!dateInput ||!timeInput) return;
+
+    const [year, month, day] = dateInput.split('-').map(Number);
+    const [hour, minute] = timeInput.split(':').map(Number);
+
+    // Data locale utente. Nessun UTC, nessun Pechino.
+    const baziDate = new Date(year, month - 1, day);
+
+    // TODO: Year con Li Chun, Month con JieQi
+
+    const yearGZ = getYearGanzhi(baziDate);
+    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
+    const dayGZ = getDayGanzhi(baziDate);
+    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
+
+    document.getElementById('h-stem').innerText = hourGZ.stem;
+    document.getElementById('h-branch').innerText = hourGZ.branch;
+    document.getElementById('d-stem').innerText = dayGZ.stem;
+    document.getElementById('d-branch').innerText = dayGZ.branch;
+    document.getElementById('m-stem').innerText = monthGZ.stem;
+    document.getElementById('m-branch').innerText = monthGZ.branch;
+    document.getElementById('y-stem').innerText = yearGZ.stem;
+    document.getElementById('y-branch').innerText = yearGZ.branch;
+}
+    
 </body>
 </html>
     </body>
