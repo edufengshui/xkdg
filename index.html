@@ -50,21 +50,39 @@
 
   <!-- SCRIPT SEMPRE IN FONDO, DOPO L'HTML -->
   <script>
-// XKDG Bazi - Con Ora Solare Locale
+// XKDG Bazi - Con Ora Solare + GPS Auto
 const STEMS = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
 const BRANCHES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
 
-// 1. CALCOLO ORA SOLARE LOCALE
+// 1. GPS - PRENDE LONGITUDINE AUTOMATICA
+function getLocation() {
+    if (navigator.geolocation) {
+        document.getElementById('solar-time').innerText = 'Recupero posizione GPS...';
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lon = position.coords.longitude.toFixed(2);
+                document.getElementById('longitude').value = lon;
+                document.getElementById('solar-time').innerText = `GPS: Long ${lon}° rilevata`;
+                calc(); // ricalcola subito con la long giusta
+            },
+            (error) => {
+                document.getElementById('solar-time').innerText = 'GPS negato. Inserisci long manuale';
+            }
+        );
+    } else {
+        alert('Geolocalizzazione non supportata dal browser');
+    }
+}
+
+// 2. CALCOLO ORA SOLARE LOCALE
 function getSolarTime(hour, minute, longitude, timezoneOffset) {
-    // timezoneOffset = differenza da UTC in ore. Es: Italia invernale = 1, estiva = 2
-    const standardMeridian = timezoneOffset * 15; // Meridiano del fuso
+    const standardMeridian = timezoneOffset * 15;
     const longitudeDiff = longitude - standardMeridian;
-    const timeDiffMinutes = longitudeDiff * 4; // 4 minuti per grado
+    const timeDiffMinutes = longitudeDiff * 4;
 
     let totalMinutes = hour * 60 + minute + timeDiffMinutes;
-
-    // Gestisci cambio giorno se vai sotto 0 o sopra 1440
     let dayOffset = 0;
+
     if (totalMinutes < 0) {
         totalMinutes += 1440;
         dayOffset = -1;
@@ -75,14 +93,12 @@ function getSolarTime(hour, minute, longitude, timezoneOffset) {
 
     const solarHour = Math.floor(totalMinutes / 60);
     const solarMinute = Math.floor(totalMinutes % 60);
-
     return { hour: solarHour, minute: solarMinute, dayOffset: dayOffset };
 }
 
-// 2. DAY - XKDG: 23/04/2026 è Ding Mao
 function getDayGanzhi(date) {
     const refDate = new Date(2026, 3, 23);
-    const refIndex = 3; // Ding=3
+    const refIndex = 3;
     const diffDays = Math.round((date - refDate) / 86400000);
     const stemIndex = (refIndex + diffDays) % 10;
     const branchIndex = (refIndex + diffDays) % 12;
@@ -92,7 +108,6 @@ function getDayGanzhi(date) {
     };
 }
 
-// 3. YEAR
 function getYearGanzhi(date) {
     const year = date.getFullYear();
     const stemIndex = (year - 4) % 10;
@@ -103,17 +118,15 @@ function getYearGanzhi(date) {
     };
 }
 
-// 4. MONTH - Semplificato calendario
 function getMonthGanzhi(date, yearStem) {
     const month = date.getMonth();
     const yearStemIndex = STEMS.indexOf(yearStem);
     const stemStart = [2, 4, 6, 8, 0][yearStemIndex % 5];
     const stemIndex = (stemStart + month) % 10;
-    const branchIndex = (month + 2) % 12; // Yin = Gennaio
+    const branchIndex = (month + 2) % 12;
     return { stem: STEMS[stemIndex], branch: BRANCHES[branchIndex] };
 }
 
-// 5. HOUR - Usa ora solare calcolata
 function getHourGanzhi(hour, dayStem) {
     const branchIndex = Math.floor((hour + 1) / 2) % 12;
     const dayStemIndex = STEMS.indexOf(dayStem);
@@ -122,33 +135,27 @@ function getHourGanzhi(hour, dayStem) {
     return { stem: STEMS[stemIndex], branch: BRANCHES[branchIndex] };
 }
 
-// 6. CALC PRINCIPALE
 function calc() {
     const dateInput = document.getElementById('date').value;
     const timeInput = document.getElementById('time').value;
-    const longitude = parseFloat(document.getElementById('longitude').value) || 9.19; // default Milano
+    const longitude = parseFloat(document.getElementById('longitude').value);
 
-    if (!dateInput ||!timeInput) {
-        alert('Inserisci data e ora');
+    if (!dateInput ||!timeInput || isNaN(longitude)) {
+        alert('Inserisci data, ora e longitudine');
         return;
     }
 
     const [year, month, day] = dateInput.split('-').map(Number);
     const [hour, minute] = timeInput.split(':').map(Number);
-
-    // Calcola offset fuso automatico: getTimezoneOffset ritorna minuti da UTC, invertito
     const timezoneOffset = -new Date(year, month - 1, day).getTimezoneOffset() / 60;
 
-    // ORA SOLARE
     const solar = getSolarTime(hour, minute, longitude, timezoneOffset);
-
-    // Se l'ora solare cambia giorno, aggiusta la data
     const baziDate = new Date(year, month - 1, day + solar.dayOffset);
 
     const yearGZ = getYearGanzhi(baziDate);
     const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
     const dayGZ = getDayGanzhi(baziDate);
-    const hourGZ = getHourGanzhi(solar.hour, dayGZ.stem); // Usa ora solare!
+    const hourGZ = getHourGanzhi(solar.hour, dayGZ.stem);
 
     document.getElementById('h-stem').innerText = hourGZ.stem;
     document.getElementById('h-branch').innerText = hourGZ.branch;
@@ -159,18 +166,16 @@ function calc() {
     document.getElementById('y-stem').innerText = yearGZ.stem;
     document.getElementById('y-branch').innerText = yearGZ.branch;
 
-    // Mostra ora solare calcolata
     document.getElementById('solar-time').innerText =
         `Ora solare: ${String(solar.hour).padStart(2,'0')}:${String(solar.minute).padStart(2,'0')}
-         | Long: ${longitude}° | Correzione: ${(longitude - timezoneOffset*15)*4} min`;
+         | Long: ${longitude}° | Correzione: ${((longitude - timezoneOffset*15)*4).toFixed(1)} min`;
 }
 
 function setNow() {
     const now = new Date();
     document.getElementById('date').value = now.toISOString().split('T')[0];
     document.getElementById('time').value = now.toTimeString().slice(0,5);
-    // Default Milano
-    document.getElementById('longitude').value = 9.19;
+    // NON setto più la longitudine qui. La prende dal GPS o la lasci com'è
 }
 
 function calculate() {
@@ -179,8 +184,8 @@ function calculate() {
 
 window.onload = function() {
     setNow();
-    calc();
+    getLocation(); // Chiede GPS all'avvio e calcola
 };
 </script>
-  </body>
+</body>
 </html>
