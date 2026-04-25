@@ -16,15 +16,16 @@
 <body>
   <h1>XKDG Bazi Calculator</h1>
   
-    <div class="inputs">
+<div class="inputs">
     <input type="date" id="date">
     <input type="time" id="time">
-    <input type="number" id="longitude" step="0.01" placeholder="Longitudine">
+    <input type="number" id="longitude" step="0.01" placeholder="Longitude">
     <button onclick="getLocation()">GPS</button>
     <button onclick="setNow()">NOW</button>
     <button onclick="calculate()">Calculate</button>
     <div id="solar-time" style="margin-top:10px; font-size:14px; color:#666;"></div>
-  </div>  
+</div>
+  
   <!-- QUESTI 4 PILLAR CON GLI 8 ID MANCAVANO NEL MIO CODICE -->
   <div class="chart">
     <div class="pillar">
@@ -50,32 +51,33 @@
   </div>
 
   <!-- SCRIPT SEMPRE IN FONDO, DOPO L'HTML -->
+
   <script>
-// XKDG Bazi - Con Ora Solare + GPS Auto
+// XKDG Bazi - Local Solar Time + GPS Auto - EN Output
 const STEMS = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
 const BRANCHES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
 
-// 1. GPS - PRENDE LONGITUDINE AUTOMATICA
+// 1. GPS - GET AUTOMATIC LONGITUDE
 function getLocation() {
     if (navigator.geolocation) {
-        document.getElementById('solar-time').innerText = 'Recupero posizione GPS...';
+        document.getElementById('solar-time').innerText = 'Getting GPS location...';
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const lon = position.coords.longitude.toFixed(2);
                 document.getElementById('longitude').value = lon;
-                document.getElementById('solar-time').innerText = `GPS: Long ${lon}° rilevata`;
-                calc(); // ricalcola subito con la long giusta
+                document.getElementById('solar-time').innerText = `GPS: Lon ${lon}° detected`;
+                calc(); // recalc immediately with correct longitude
             },
             (error) => {
-                document.getElementById('solar-time').innerText = 'GPS negato. Inserisci long manuale';
+                document.getElementById('solar-time').innerText = 'GPS denied. Enter longitude manually';
             }
         );
     } else {
-        alert('Geolocalizzazione non supportata dal browser');
+        alert('Geolocation not supported by browser');
     }
 }
 
-// 2. CALCOLO ORA SOLARE LOCALE
+// 2. LOCAL SOLAR TIME CALCULATION
 function getSolarTime(hour, minute, longitude, timezoneOffset) {
     const standardMeridian = timezoneOffset * 15;
     const longitudeDiff = longitude - standardMeridian;
@@ -142,7 +144,7 @@ function calc() {
     const longitude = parseFloat(document.getElementById('longitude').value);
 
     if (!dateInput ||!timeInput || isNaN(longitude)) {
-        alert('Inserisci data, ora e longitudine');
+        alert('Please enter date, time and longitude');
         return;
     }
 
@@ -168,15 +170,14 @@ function calc() {
     document.getElementById('y-branch').innerText = yearGZ.branch;
 
     document.getElementById('solar-time').innerText =
-        `Ora solare: ${String(solar.hour).padStart(2,'0')}:${String(solar.minute).padStart(2,'0')}
-         | Long: ${longitude}° | Correzione: ${((longitude - timezoneOffset*15)*4).toFixed(1)} min`;
+        `Solar Time: ${String(solar.hour).padStart(2,'0')}:${String(solar.minute).padStart(2,'0')}
+         | Lon: ${longitude}° | Correction: ${((longitude - timezoneOffset*15)*4).toFixed(1)} min`;
 }
 
 function setNow() {
     const now = new Date();
     document.getElementById('date').value = now.toISOString().split('T')[0];
     document.getElementById('time').value = now.toTimeString().slice(0,5);
-    // NON setto più la longitudine qui. La prende dal GPS o la lasci com'è
 }
 
 function calculate() {
@@ -185,8 +186,8 @@ function calculate() {
 
 window.onload = function() {
     setNow();
-    getLocation(); // Chiede GPS all'avvio e calcola
+    getLocation();
 };
 </script>
-</body>
+  </body>
 </html>
