@@ -257,10 +257,9 @@ function getMonthGanzhi(date, yearStem) {
 // TRUE SOLAR TIME XKDG
 function toggleSolarUI() {
     document.getElementById('solarUI').style.display = 
-        document.getElementById('useTrueSolar').checked ? 'block' : 'none';
+        document.getElementById('useTrueSolar').checked ? 'grid' : 'none';
     calc();
 }
-
 function saveSolar() {
     localStorage.setItem('xkdg_tz', document.getElementById('tzOffset').value);
     localStorage.setItem('xkdg_lon', document.getElementById('longitude').value);
