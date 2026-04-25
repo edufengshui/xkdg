@@ -16,13 +16,14 @@
 <body>
   <h1>XKDG Bazi Calculator</h1>
   
-  <div class="inputs">
+    <div class="inputs">
     <input type="date" id="date">
     <input type="time" id="time">
+    <input type="number" id="longitude" step="0.01" placeholder="Longitudine" value="9.19">
     <button onclick="setNow()">NOW</button>
     <button onclick="calculate()">Calculate</button>
+    <div id="solar-time" style="margin-top:10px; font-size:14px; color:#666;"></div>
   </div>
-
   <!-- QUESTI 4 PILLAR CON GLI 8 ID MANCAVANO NEL MIO CODICE -->
   <div class="chart">
     <div class="pillar">
