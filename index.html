@@ -616,15 +616,23 @@ function setNow() {
     document.getElementById('hour').value = now.getHours();
     document.getElementById('minute').value = now.getMinutes();
 }
-
 function calculate() {
-    const y = document.getElementById('year').value;
-    const m = document.getElementById('month').value;
-    const d = document.getElementById('day').value;
-    const h = document.getElementById('hour').value;
-    const min = document.getElementById('minute').value;
-    alert('Test: ' + y + '-' + m + '-' + d + ' ' + h + ':' + min);
-    // Qui poi mettiamo la logica BaZi vera
+    const year = parseInt(document.getElementById('year').value);
+    const month = parseInt(document.getElementById('month').value);
+    const day = parseInt(document.getElementById('day').value);
+    let hour = parseInt(document.getElementById('hour').value);
+    const minute = parseInt(document.getElementById('minute').value);
+    
+    // True Solar Time se spuntato
+    if(document.getElementById('useTrueSolar') && document.getElementById('useTrueSolar').checked) {
+        const tz = parseInt(document.getElementById('tzOffset').value);
+        const lon = parseFloat(document.getElementById('longitude').value);
+        const dst = parseInt(document.getElementById('dst').value);
+        const solarOffset = (lon - tz * 15) / 15;
+        hour = hour + solarOffset + dst;
+    }
+    
+    calc(year, month, day, Math.floor(hour), minute);
 }
      window.onload = calc;
 </script>
