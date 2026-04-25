@@ -88,28 +88,16 @@
     </style>
 </head>
 <body>
-<!-- CALCOLATORE PRINCIPALE - RIGA 91 -->
+<!-- CALCOLATORE PRINCIPALE - VERSIONE ORIGINALE -->
 <div style="margin:20px 0;">
-    <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-bottom:10px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
         <div>
-            <label style="display:block; font-size:12px; margin-bottom:4px;">Year</label>
-            <input type="number" id="year" value="1985" style="width:100%; padding:6px; box-sizing:border-box;">
+            <label style="display:block; font-size:12px; margin-bottom:4px;">Date</label>
+            <input type="date" id="date" value="1985-07-14" style="width:100%; padding:6px; box-sizing:border-box;">
         </div>
         <div>
-            <label style="display:block; font-size:12px; margin-bottom:4px;">Month</label>
-            <input type="number" id="month" min="1" max="12" value="7" style="width:100%; padding:6px; box-sizing:border-box;">
-        </div>
-        <div>
-            <label style="display:block; font-size:12px; margin-bottom:4px;">Day</label>
-            <input type="number" id="day" min="1" max="31" value="14" style="width:100%; padding:6px; box-sizing:border-box;">
-        </div>
-        <div>
-            <label style="display:block; font-size:12px; margin-bottom:4px;">Hour</label>
-            <input type="number" id="hour" min="0" max="23" value="12" style="width:100%; padding:6px; box-sizing:border-box;">
-        </div>
-        <div>
-            <label style="display:block; font-size:12px; margin-bottom:4px;">Minute</label>
-            <input type="number" id="minute" min="0" max="59" value="0" style="width:100%; padding:6px; box-sizing:border-box;">
+            <label style="display:block; font-size:12px; margin-bottom:4px;">Time</label>
+            <input type="time" id="time" value="12:00" style="width:100%; padding:6px; box-sizing:border-box;">
         </div>
     </div>
     <div style="text-align:center;">
@@ -117,8 +105,7 @@
         <button onclick="calculate()" style="padding:8px 20px; background:#4CAF50; color:white; cursor:pointer;">Calculate</button>
     </div>
 </div>
-<!-- BOX GRIGIO TRUE SOLAR TIME - INIZIA DA RIGA 92 -->
-<div style="margin:15px 0; padding:12px; background:#f0f0f0; border-radius:6px;">
+    <div style="margin:15px 0; padding:12px; background:#f0f0f0; border-radius:6px;">
 <label style="display:block; margin-bottom:8px;">
     <input type="checkbox" id="useTrueSolar" onchange="toggleSolarUI()">
     Usa Ora Solare Vera per Hour Branch
