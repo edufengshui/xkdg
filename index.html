@@ -13,6 +13,50 @@
         .pillar .label { font-weight: bold; color: #555; margin-bottom: 15px; font-size: 18px; }
         .pillar .stem { font-size: 36px; font-weight: bold; text-transform: capitalize; line-height: 1.2; }
         .pillar .branch { font-size: 28px; color: #222; text-transform: capitalize; line-height: 1.2; }
+        /* === TRUE SOLAR TIME CSS FIX === */
+#solarUI {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    align-items: end;
+    margin: 15px 0;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+#solarUI label {
+    font-size: 14px;
+    margin-bottom: 4px;
+    display: block;
+    text-align: center;
+}
+#solarUI select, #solarUI input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+#solarUI .solar-btn {
+    grid-column: span 1;
+    padding: 10px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+#solarUI .solar-btn:hover {
+    background: #1976D2;
+}
+#solarInfo {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 13px;
+    color: #333;
+    margin-top: 8px;
+    font-weight: 500;
+}
     </style>
 </head>
 <body>
