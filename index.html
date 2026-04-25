@@ -597,29 +597,43 @@ function calc() {
 }
 function setNow() {
     const now = new Date();
-    document.getElementById('year').value = now.getFullYear();
-    document.getElementById('month').value = now.getMonth() + 1;
-    document.getElementById('day').value = now.getDate();
-    document.getElementById('hour').value = now.getHours();
-    document.getElementById('minute').value = now.getMinutes();
-}
-function calculate() {
-    const year = parseInt(document.getElementById('year').value);
-    const month = parseInt(document.getElementById('month').value);
-    const day = parseInt(document.getElementById('day').value);
-    let hour = parseInt(document.getElementById('hour').value);
-    const minute = parseInt(document.getElementById('minute').value);
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
     
-    // True Solar Time se spuntato
+    document.getElementById('date').value = year + '-' + month + '-' + day;
+    document.getElementById('time').value = hours + ':' + mins;
+}
+
+function calculate() {
     if(document.getElementById('useTrueSolar') && document.getElementById('useTrueSolar').checked) {
         const tz = parseInt(document.getElementById('tzOffset').value);
         const lon = parseFloat(document.getElementById('longitude').value);
         const dst = parseInt(document.getElementById('dst').value);
+        
+        let timeVal = document.getElementById('time').value.split(':');
+        let h = parseInt(timeVal[0]);
+        let m = parseInt(timeVal[1]);
+        
         const solarOffset = (lon - tz * 15) / 15;
-        hour = hour + solarOffset + dst;
+        let totalMinutes = h * 60 + m + (solarOffset + dst) * 60;
+        
+        let dateObj = new Date(document.getElementById('date').value + 'T00:00:00');
+        dateObj.setMinutes(totalMinutes);
+        
+        const newY = dateObj.getFullYear();
+        const newM = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const newD = String(dateObj.getDate()).padStart(2, '0');
+        const newH = String(dateObj.getHours()).padStart(2, '0');
+        const newMin = String(dateObj.getMinutes()).padStart(2, '0');
+        
+        document.getElementById('date').value = newY + '-' + newM + '-' + newD;
+        document.getElementById('time').value = newH + ':' + newMin;
     }
     
-    calc(year, month, day, Math.floor(hour), minute);
+    calc();
 }
      window.onload = calc;
 </script>
