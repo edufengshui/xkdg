@@ -67,13 +67,14 @@
     </style>
 </head>
 <body>
-    <h1>XKDG Bazi Calculator</h1>
-    <div class="inputs">
-        Date: <input type="date" id="date" value="2026-04-23">
-        Time: <input type="time" id="time" value="14:00">
-        <button onclick="setNow()">NOW</button> <button onclick="calc()">Calculate XKDG</button>
-    </div>
-    <div id="solarUI" style="display:none;">
+    <!-- RIGA 70: INIZIA A INCOLLARE DA QUI -->
+<div style="margin:15px 0; padding:12px; background:#f0f0f0; border-radius:6px;">
+<label style="display:block; margin-bottom:8px;">
+    <input type="checkbox" id="useTrueSolar" onchange="toggleSolarUI()">
+    Usa Ora Solare Vera per Hour Branch
+</label>
+
+<div id="solarUI" style="display:none;">
     <div>
         <label>Time Zone</label>
         <select id="tzOffset">
@@ -122,13 +123,9 @@
     
     <div id="solarInfo"></div>
 </div>
-    <div class="chart">
-        <div class="pillar">
-            <div class="label">Hour</div>
-            <div class="stem" id="h-stem">-</div>
-            <div class="branch" id="h-branch">-</div>
-        </div>
-        <div class="pillar">
+</div>
+<!-- RIGA 130: FINISCE QUI -->
+    <div class="pillar">
             <div class="label">Day</div>
             <div class="stem" id="d-stem">-</div>
             <div class="branch" id="d-branch">-</div>
