@@ -104,9 +104,8 @@
         <button onclick="calculate()" style="padding:8px 16px; background:#4CAF50; color:white; cursor:pointer; height:34px; border:none; border-radius:4px;">Calculate</button>
     </div>
 </div>
-    <div style="text-align:center;">
-        <button onclick="setNow()" style="padding:8px 20px; margin-right:10px; cursor:pointer;">NOW</button>
-        <button onclick="calculate()" style="padding:8px 20px; background:#4CAF50; color:white; cursor:pointer;">Calculate</button>
+   
+    cursor:pointer;">Calculate</button>
     </div>
 </div>
     <div style="margin:15px 0; padding:12px; background:#f0f0f0; border-radius:6px;">
@@ -601,6 +600,7 @@ function calc() {
 }
 <script>
 <script>
+<script>
 function setNow() {
     const now = new Date();
     const year = now.getFullYear();
@@ -629,24 +629,19 @@ function calculate() {
         let dateObj = new Date(document.getElementById('date').value + 'T00:00:00');
         dateObj.setMinutes(totalMinutes);
         
-        const newY = dateObj.getFullYear();
-        const newM = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const newD = String(dateObj.getDate()).padStart(2, '0');
-        const newH = String(dateObj.getHours()).padStart(2, '0');
-        const newMin = String(dateObj.getMinutes()).padStart(2, '0');
-        
-        document.getElementById('date').value = newY + '-' + newM + '-' + newD;
-        document.getElementById('time').value = newH + ':' + newMin;
+        document.getElementById('date').value = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+        document.getElementById('time').value = String(dateObj.getHours()).padStart(2, '0') + ':' + String(dateObj.getMinutes()).padStart(2, '0');
     }
     
     calc();
 }
 
-// All'avvio imposta NOW e calcola
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', function() {
     setNow();
     calc();
-};
-</script>    
+});
+</script>
 </body>
+</html>
+    </body>
 </html>
