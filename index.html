@@ -175,7 +175,38 @@
             <div class="stem" id="y-stem">-</div>
             <div class="branch" id="y-branch">-</div>
         </div>
- <script>
+ 
+function calc() {
+    const dateInput = document.getElementById('date').value; // YYYY-MM-DD
+    const timeInput = document.getElementById('time').value; // HH:MM
+    if (!dateInput ||!timeInput) return;
+
+    const [year, month, day] = dateInput.split('-').map(Number);
+    const [hour, minute] = timeInput.split(':').map(Number);
+
+    // Data locale utente. Nessun UTC, nessun Pechino.
+    const baziDate = new Date(year, month - 1, day);
+
+    // TODO: Year con Li Chun, Month con JieQi
+
+    const yearGZ = getYearGanzhi(baziDate);
+    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
+    const dayGZ = getDayGanzhi(baziDate);
+    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
+
+    document.getElementById('h-stem').innerText = hourGZ.stem;
+    document.getElementById('h-branch').innerText = hourGZ.branch;
+    document.getElementById('d-stem').innerText = dayGZ.stem;
+    document.getElementById('d-branch').innerText = dayGZ.branch;
+    document.getElementById('m-stem').innerText = monthGZ.stem;
+    document.getElementById('m-branch').innerText = monthGZ.branch;
+    document.getElementById('y-stem').innerText = yearGZ.stem;
+    document.getElementById('y-branch').innerText = yearGZ.branch;
+}
+    
+</body>
+</html>
+<script>
 // XKDG Bazi - NESSUN FUSO ORARIO. Solo data locale utente.
 const STEMS = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
 const BRANCHES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
@@ -607,35 +638,5 @@ document.addEventListener('DOMContentLoaded', function() {
     calc();
 });
 </script>
-function calc() {
-    const dateInput = document.getElementById('date').value; // YYYY-MM-DD
-    const timeInput = document.getElementById('time').value; // HH:MM
-    if (!dateInput ||!timeInput) return;
-
-    const [year, month, day] = dateInput.split('-').map(Number);
-    const [hour, minute] = timeInput.split(':').map(Number);
-
-    // Data locale utente. Nessun UTC, nessun Pechino.
-    const baziDate = new Date(year, month - 1, day);
-
-    // TODO: Year con Li Chun, Month con JieQi
-
-    const yearGZ = getYearGanzhi(baziDate);
-    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
-    const dayGZ = getDayGanzhi(baziDate);
-    const hourGZ = getHourGanzhi(hour, dayGZ.stem);
-
-    document.getElementById('h-stem').innerText = hourGZ.stem;
-    document.getElementById('h-branch').innerText = hourGZ.branch;
-    document.getElementById('d-stem').innerText = dayGZ.stem;
-    document.getElementById('d-branch').innerText = dayGZ.branch;
-    document.getElementById('m-stem').innerText = monthGZ.stem;
-    document.getElementById('m-branch').innerText = monthGZ.branch;
-    document.getElementById('y-stem').innerText = yearGZ.stem;
-    document.getElementById('y-branch').innerText = yearGZ.branch;
-}
-    
-</body>
-</html>
     </body>
 </html>
