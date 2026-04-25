@@ -610,19 +610,23 @@ function calc() {
 }
 function setNow() {
     const now = new Date();
-    
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    document.getElementById('date').value = `${year}-${month}-${day}`;
-    
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('time').value = `${hours}:${minutes}`;
-    
-    calc();
+    document.getElementById('year').value = now.getFullYear();
+    document.getElementById('month').value = now.getMonth() + 1;
+    document.getElementById('day').value = now.getDate();
+    document.getElementById('hour').value = now.getHours();
+    document.getElementById('minute').value = now.getMinutes();
 }
-window.onload = calc;
+
+function calculate() {
+    const y = document.getElementById('year').value;
+    const m = document.getElementById('month').value;
+    const d = document.getElementById('day').value;
+    const h = document.getElementById('hour').value;
+    const min = document.getElementById('minute').value;
+    alert('Test: ' + y + '-' + m + '-' + d + ' ' + h + ':' + min);
+    // Qui poi mettiamo la logica BaZi vera
+}
+     window.onload = calc;
 </script>
     </div>
 </body>
