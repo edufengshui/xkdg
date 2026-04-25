@@ -112,24 +112,6 @@ function getDayGanzhi(date) {
     };
 }
 
-function getYearGanzhi(date) {
-    const year = date.getFullYear();
-    const stemIndex = (year - 4) % 10;
-    const branchIndex = (year - 4) % 12;
-    return {
-        stem: STEMS[stemIndex < 0? stemIndex + 10 : stemIndex],
-        branch: BRANCHES[branchIndex < 0? branchIndex + 12 : branchIndex]
-    };
-}
-
-function getMonthGanzhi(date, yearStem) {
-    const month = date.getMonth();
-    const yearStemIndex = STEMS.indexOf(yearStem);
-    const stemStart = [2, 4, 6, 8, 0][yearStemIndex % 5];
-    const stemIndex = (stemStart + month) % 10;
-    const branchIndex = (month + 2) % 12;
-    return { stem: STEMS[stemIndex], branch: BRANCHES[branchIndex] };
-}
 
 function getHourGanzhi(hour, dayStem) {
     const branchIndex = Math.floor((hour + 1) / 2) % 12;
