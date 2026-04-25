@@ -600,6 +600,7 @@ function calc() {
     document.getElementById('y-branch').innerText = yearGZ.branch;
 }
 <script>
+<script>
 function setNow() {
     const now = new Date();
     const year = now.getFullYear();
@@ -641,22 +642,11 @@ function calculate() {
     calc();
 }
 
-window.onload = setNow;
-</script>
-     const newY = dateObj.getFullYear();
-        const newM = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const newD = String(dateObj.getDate()).padStart(2, '0');
-        const newH = String(dateObj.getHours()).padStart(2, '0');
-        const newMin = String(dateObj.getMinutes()).padStart(2, '0');
-        
-        document.getElementById('date').value = newY + '-' + newM + '-' + newD;
-        document.getElementById('time').value = newH + ':' + newMin;
-    }
-    
+// All'avvio imposta NOW e calcola
+window.onload = function() {
+    setNow();
     calc();
-}
-     window.onload = calc;
-</script>
-    </div>
+};
+</script>    
 </body>
 </html>
