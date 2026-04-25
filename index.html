@@ -91,15 +91,15 @@
 <!-- CALCOLATORE PRINCIPALE - VERSIONE ORIGINALE -->
 <div style="margin:20px 0;">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-        <div>
-            <label style="display:block; font-size:12px; margin-bottom:4px;">Date</label>
-            <input type="date" id="date" value="1985-07-14" style="width:100%; padding:6px; box-sizing:border-box;">
-        </div>
-        <div>
-            <label style="display:block; font-size:12px; margin-bottom:4px;">Time</label>
-            <input type="time" id="time" value="12:00" style="width:100%; padding:6px; box-sizing:border-box;">
-        </div>
+    <div>
+        <label style="display:block; font-size:12px; margin-bottom:4px;">Date</label>
+        <input type="date" id="date" value="1985-07-14" style="width:33%; min-width:120px; padding:6px; box-sizing:border-box;">
     </div>
+    <div>
+        <label style="display:block; font-size:12px; margin-bottom:4px;">Time</label>
+        <input type="time" id="time" value="12:00" style="width:33%; min-width:90px; padding:6px; box-sizing:border-box;">
+    </div>
+</div>
     <div style="text-align:center;">
         <button onclick="setNow()" style="padding:8px 20px; margin-right:10px; cursor:pointer;">NOW</button>
         <button onclick="calculate()" style="padding:8px 20px; background:#4CAF50; color:white; cursor:pointer;">Calculate</button>
