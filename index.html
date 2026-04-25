@@ -70,59 +70,56 @@
     <label style="display:block; margin-bottom:8px;">
         <input type="checkbox" id="useTrueSolar" onchange="toggleSolarUI()"> 
         Usa Ora Solare Vera per Hour Branch
+        
     </label>
-    
     <div id="solarUI" style="display:none;">
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <div style="flex:1;">
-                <label>Time Zone</label>
-                <select id="tzOffset" style="width:100%; padding:6px;">
-                    <option value="-12">UTC-12</option>
-                    <option value="-11">UTC-11</option>
-                    <option value="-10">UTC-10</option>
-                    <option value="-9">UTC-9</option>
-                    <option value="-8">UTC-8</option>
-                    <option value="-7">UTC-7</option>
-                    <option value="-6">UTC-6</option>
-                    <option value="-5">UTC-5</option>
-                    <option value="-4">UTC-4</option>
-                    <option value="-3">UTC-3</option>
-                    <option value="-2">UTC-2</option>
-                    <option value="-1">UTC-1</option>
-                    <option value="0" selected>UTC+0</option>
-                    <option value="1">UTC+1</option>
-                    <option value="2">UTC+2</option>
-                    <option value="3">UTC+3</option>
-                    <option value="4">UTC+4</option>
-                    <option value="5">UTC+5</option>
-                    <option value="6">UTC+6</option>
-                    <option value="7">UTC+7</option>
-                    <option value="8">UTC+8</option>
-                    <option value="9">UTC+9</option>
-                    <option value="10">UTC+10</option>
-                    <option value="11">UTC+11</option>
-                    <option value="12">UTC+12</option>
-                </select>
-            </div>
-            <div style="flex:1;">
-                <label>Longitude</label>
-                <input type="number" id="longitude" value="0" step="0.01" style="width:100%; padding:6px;">
-            </div>
-            <div style="flex:1;">
-                <label>DST</label>
-                <select id="dst" style="width:100%; padding:6px;">
-                    <option value="0">No</option>
-                    <option value="1">Yes</option>
-                </select>
-            </div>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <button type="button" onclick="saveSolar()" style="flex:1; background:#007bff; color:white; padding:8px; border:none; border-radius:4px;">Save</button>
-            <button type="button" onclick="resetSolar()" style="flex:1; background:#007bff; color:white; padding:8px; border:none; border-radius:4px;">Reset</button>
-            <button type="button" onclick="autoSolar()" style="flex:1; background:#007bff; color:white; padding:8px; border:none; border-radius:4px;">Auto</button>
-        </div>
-        <div id="solarInfo" style="font-size:12px; margin-top:8px; color:#555;"></div>
+    <div>
+        <label>Time Zone</label>
+        <select id="tzOffset">
+            <option value="-12">UTC-12</option>
+            <option value="-11">UTC-11</option>
+            <option value="-10">UTC-10</option>
+            <option value="-9">UTC-9</option>
+            <option value="-8">UTC-8</option>
+            <option value="-7">UTC-7</option>
+            <option value="-6">UTC-6</option>
+            <option value="-5">UTC-5</option>
+            <option value="-4">UTC-4</option>
+            <option value="-3">UTC-3</option>
+            <option value="-2">UTC-2</option>
+            <option value="-1">UTC-1</option>
+            <option value="0">UTC+0</option>
+            <option value="1" selected>UTC+1</option>
+            <option value="2">UTC+2</option>
+            <option value="3">UTC+3</option>
+            <option value="4">UTC+4</option>
+            <option value="5">UTC+5</option>
+            <option value="6">UTC+6</option>
+            <option value="7">UTC+7</option>
+            <option value="8">UTC+8</option>
+            <option value="9">UTC+9</option>
+            <option value="10">UTC+10</option>
+            <option value="11">UTC+11</option>
+            <option value="12">UTC+12</option>
+        </select>
     </div>
+    <div>
+        <label>Longitude</label>
+        <input type="number" id="longitude" step="0.01" value="16.37">
+    </div>
+    <div>
+        <label>DST</label>
+        <select id="dst">
+            <option value="0">No</option>
+            <option value="1">Yes</option>
+        </select>
+    </div>
+    
+    <button class="solar-btn" onclick="saveSolar()">Save</button>
+    <button class="solar-btn" onclick="resetSolar()">Reset</button>
+    <button class="solar-btn" onclick="autoSolar()">Auto</button>
+    
+    <div id="solarInfo"></div>
 </div>
     <div class="chart">
         <div class="pillar">
