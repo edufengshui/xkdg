@@ -390,7 +390,8 @@ function getTrueSolarTime(year, month, day, hour, minute) {
     
     return {hour: solarHour, minute: solarMin};
 }
-// 5. CALC - Usa tutte le funzioni nuove
+const ById = id => document.getElementById(id);
+    
 function calc() {
     const dateInput = document.getElementById('date').value;
     const timeInput = document.getElementById('time').value;
