@@ -407,7 +407,8 @@ function calc() {
     const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
     const dayGZ = getDayGanzhi(baziDate);
     const hourGZ = getHourGanzhi(solar.hour, dayGZ.stem); // USA solar.hour invece di hour
-    
+    console.log('h-stem esiste?', document.getElementById('h-stem'));
+    document.getElementById('h-stem').innerText = hourGZ.stem;
     document.getElementById('h-stem').innerText = hourGZ.stem;
     document.getElementById('h-branch').innerText = hourGZ.branch;
     document.getElementById('d-stem').innerText = dayGZ.stem;
