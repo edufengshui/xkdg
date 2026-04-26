@@ -72,27 +72,77 @@
 </div>
   
   <!-- QUESTI 4 PILLAR CON GLI 8 ID MANCAVANO NEL MIO CODICE -->
-  <div class="chart">
-    <div class="pillar">
-      <div class="label">Hour</div>
-      <div class="stem" id="h-stem">-</div>
-      <div class="branch" id="h-branch">-</div>
-    </div>
-    <div class="pillar">
-      <div class="label">Day</div>
-      <div class="stem" id="d-stem">-</div>
-      <div class="branch" id="d-branch">-</div>
-    </div>
-    <div class="pillar">
-      <div class="label">Month</div>
-      <div class="stem" id="m-stem">-</div>
-      <div class="branch" id="m-branch">-</div>
-    </div>
-    <div class="pillar">
-      <div class="label">Year</div>
-      <div class="stem" id="y-stem">-</div>
-      <div class="branch" id="y-branch">-</div>
-    </div>
+  <!-- TABELLA XKDG BAZI -->
+<table class="xkdg-table">
+    <thead>
+        <tr>
+            <th>Hour</th><th>Day</th><th>Month</th><th>Year</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr class="pink-row">
+            <td id="h-time">-</td>
+            <td id="d-date">-</td>
+            <td id="m-date">-</td>
+            <td id="y-year">-</td>
+        </tr>
+        <tr>
+            <td>
+                <div class="stem-cn" id="h-stem-cn">-</div>
+                <div class="pinyin" id="h-stem-py">-</div>
+                <div class="element" id="h-stem-el">-</div>
+            </td>
+            <td>
+                <div class="stem-cn" id="d-stem-cn">-</div>
+                <div class="pinyin" id="d-stem-py">-</div>
+                <div class="element" id="d-stem-el">-</div>
+            </td>
+            <td>
+                <div class="stem-cn" id="m-stem-cn">-</div>
+                <div class="pinyin" id="m-stem-py">-</div>
+                <div class="element" id="m-stem-el">-</div>
+            </td>
+            <td>
+                <div class="stem-cn" id="y-stem-cn">-</div>
+                <div class="pinyin" id="y-stem-py">-</div>
+                <div class="element" id="y-stem-el">-</div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div class="branch-cn" id="h-branch-cn">-</div>
+                <div class="pinyin" id="h-branch-py">-</div>
+                <div class="animal" id="h-branch-an">-</div>
+                <div class="element" id="h-branch-el">-</div>
+            </td>
+            <td>
+                <div class="branch-cn" id="d-branch-cn">-</div>
+                <div class="pinyin" id="d-branch-py">-</div>
+                <div class="animal" id="d-branch-an">-</div>
+                <div class="element" id="d-branch-el">-</div>
+            </td>
+            <td>
+                <div class="branch-cn" id="m-branch-cn">-</div>
+                <div class="pinyin" id="m-branch-py">-</div>
+                <div class="animal" id="m-branch-an">-</div>
+                <div class="element" id="m-branch-el">-</div>
+            </td>
+            <td>
+                <div class="branch-cn" id="y-branch-cn">-</div>
+                <div class="pinyin" id="y-branch-py">-</div>
+                <div class="animal" id="y-branch-an">-</div>
+                <div class="element" id="y-branch-el">-</div>
+            </td>
+        </tr>
+        <tr>
+            <td id="h-hex-cell" class="hex-box"></td>
+            <td id="d-hex-cell" class="hex-box"></td>
+            <td id="m-hex-cell" class="hex-box"></td>
+            <td id="y-hex-cell" class="hex-box"></td>
+        </tr>
+    </tbody>
+</table>
+    
   </div>
 <h3 style="margin-top:30px;">XKDG Hexagrams</h3>
 <div class="chart">
