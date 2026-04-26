@@ -203,13 +203,7 @@ function calc() {
     const [hour, minute] = timeInput.split(':').map(Number);
     const timezoneOffset = -new Date(year, month - 1, day).getTimezoneOffset() / 60;
 
-    const solar = getSolarTime(hour, minute, longitude, timezoneOffset);
-    const baziDate = new Date(year, month - 1, day + solar.dayOffset);
-
-    const yearGZ = getYearGanzhi(baziDate);
-    const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
-    const dayGZ = getDayGanzhi(baziDate);
-    const hourGZ = getHourGanzhi(solar.hour, dayGZ.stem);
+    
 
         // Mapping caratteri cinesi + elementi + animali
     const STEM_CN = {Jia:'甲', Yi:'乙', Bing:'丙', Ding:'丁', Wu:'戊', Ji:'己', Geng:'庚', Xin:'辛', Ren:'壬', Gui:'癸'};
