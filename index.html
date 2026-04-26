@@ -293,12 +293,12 @@ function calc() {
         document.getElementById(`${p}-branch-el`).innerText = BRANCH_EL[gz.branch];
     });
 
-    // Riga rosa: solo data/ora
-    document.getElementById('h-time').innerText = `${String(solar.hour).padStart(2,'0')}:${String(solar.minute).padStart(2,'0')}`;
-    document.getElementById('d-date').innerText = `${String(solar.day).padStart(2,'0')} | ${dayGZ.branch}`;
-    document.getElementById('m-date').innerText = `${String(solar.month).padStart(2,'0')} | ${monthGZ.branch}`;
-    document.getElementById('y-year').innerText = solar.year;
-
+    // Riga rosa: solo data/ora - VERSIONE CORRETTA
+document.getElementById('h-time').innerText = `${String(solar.getHour()).padStart(2,'0')}:${String(solar.getMinute()).padStart(2,'0')}`;
+document.getElementById('d-date').innerText = `${String(solar.getDay()).padStart(2,'0')} | ${dayGZ.branch}`;
+document.getElementById('m-date').innerText = `${String(solar.getMonth()).padStart(2,'0')} | ${monthGZ.branch}`;
+document.getElementById('y-year').innerText = solar.getYear();
+  
     // Esagrammi XKDG con linee soggetto/oggetto
     const hourHex = getXKDGHexagram(hourGZ.stem, hourGZ.branch);
     const dayHex = getXKDGHexagram(dayGZ.stem, dayGZ.branch);
@@ -311,8 +311,8 @@ function calc() {
     document.getElementById('y-hex-cell').innerHTML = renderHexagram(yearHex);
     document.getElementById('h-hex-num').innerText = hourHex.num;
     document.getElementById('h-hex-name').innerText = hourHex.name;
+    document.getElementById('h-hex-name').innerText = hourHex.name;
     document.getElementById('d-hex-num').innerText = dayHex.num;
-    document.getElementById('d-hex-name').innerText = dayHex.name;
     document.getElementById('m-hex-num').innerText = monthHex.num;
     document.getElementById('m-hex-name').innerText = monthHex.name;
     document.getElementById('y-hex-num').innerText = yearHex.num;
