@@ -5,54 +5,61 @@
   <title>XKDG Bazi Chart</title>
       <script src="xkdg_hex.js"></script>
     <style>
-        /* CSS NUOVO TABELLA XKDG */
-        .xkdg-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: Arial, sans-serif;
-            margin-top: 20px;
-            table-layout: fixed;
-        }
-        .xkdg-table td,.xkdg-table th {
-            border: 1px solid #666;
-            text-align: center;
-            vertical-align: top;
-            padding: 8px 4px;
-        }
-        .xkdg-table th {
-            background: #d8d8d8;
-            font-weight: 600;
-            font-size: 16px;
-        }
-        .pink-row { background: #ffe6f0; font-size: 14px; }
-        .stem-cn { font-size: 36px; font-weight: bold; line-height: 1.2; }
-        .branch-cn { font-size: 36px; font-weight: bold; line-height: 1.2; }
-        .pinyin { font-size: 15px; font-weight: 600; margin-top: 2px; }
-        .element { font-size: 13px; color: #555; }
-        .animal { font-size: 13px; color: #555; }
-        
-        /* Colori elementi */
-        .wood { color: #2d7a2d; }
-        .fire { color: #c00; }
-        .earth { color: #b8860b; }
-        .metal { color: #666; }
-        .water { color: #1e5aa8; }
-        
-        /* Esagrammi */
-        .hex-box { padding: 6px 2px; }
-        .hex-lines {
-            font-family: monospace;
-            font-size: 20px;
-            line-height: 9px;
-            letter-spacing: 3px;
-            margin: 4px 0;
-        }
-        .line-subject { color: #c00; font-weight: bold; }
-        .line-object { color: #0a0; font-weight: bold; }
-        .line-normal { color: #000; }
-        .hex-num { font-size: 22px; font-weight: bold; margin-top: 4px; }
-        .hex-name { font-size: 12px; margin-top: 2px; }
-        .hex-translate { font-size: 11px; color: #444; }
+      /* TABELLA XKDG COMPATTA */
+.xkdg-table {
+    width: 50%;           /* Dimezza larghezza totale */
+    margin: 20px auto;    /* Centrata */
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    table-layout: fixed;
+}
+.xkdg-table td,.xkdg-table th {
+    border: 1px solid #666;
+    text-align: center;
+    vertical-align: top;
+    padding: 6px 2px;     /* Padding ridotto */
+    width: 25%;           /* 4 colonne uguali = 25% ciascuna */
+}
+.xkdg-table th {
+    background: #d8d8d8;
+    font-weight: 600;
+    font-size: 14px;      /* Titoli più piccoli */
+}
+.pink-row { 
+    background: #ffe6f0; 
+    font-size: 12px; 
+    height: 25px;
+}
+.pink-row td { padding: 4px 2px; }
+
+.stem-cn { font-size: 28px; font-weight: bold; line-height: 1.1; }  /* Era 36px */
+.branch-cn { font-size: 28px; font-weight: bold; line-height: 1.1; } /* Era 36px */
+.pinyin { font-size: 13px; font-weight: 600; margin-top: 1px; }
+.element { font-size: 11px; color: #555; }
+.animal { font-size: 11px; color: #555; }
+
+/* Colori elementi */
+.wood { color: #2d7a2d; }
+.fire { color: #c00; }
+.earth { color: #b8860b; }
+.metal { color: #666; }
+.water { color: #1e5aa8; }
+
+/* Esagrammi PIÙ GRANDI */
+.hex-box { padding: 4px 1px; }
+.hex-lines {
+    font-family: 'Courier New', monospace;
+    font-size: 26px;      /* Era 20px */
+    line-height: 10px;    /* Era 9px */
+    letter-spacing: 4px;  /* Era 3px */
+    margin: 6px 0;
+}
+.line-subject { color: #c00; }  /* Tolto font-weight: bold */
+.line-object { color: #0a0; }   /* Tolto font-weight: bold */
+.line-normal { color: #000; }
+.hex-num { font-size: 18px; font-weight: bold; margin-top: 3px; } /* Era 22px */
+.hex-name { font-size: 11px; margin-top: 1px; }  /* Era 12px */
+.hex-translate { font-size: 10px; color: #444; } /* Era 11px */
     </style>
 </head>
   <script src="jieqi.js"></script>
