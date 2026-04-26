@@ -37,13 +37,15 @@ const HEX_NAMES = {
     57:'Xun', 58:'Dui', 59:'Huan', 60:'Jie', 61:'Zhong Fu', 62:'Xiao Guo', 63:'Ji Ji', 64:'Wei Ji'
 };
 function getXKDGHexagram(stem, branch) {
-    const upperTri = STEM_TO_TRIGRAM[stem];
+    const upperTri = STEM_TO_TRIGRAM[stem]; // ← mancava [stem]
     const lowerTri = BRANCH_TO_TRIGRAM[branch];
     if (!upperTri ||!lowerTri) return { num: 0, name: 'Error' };
+
     const upperBin = TRIGRAM_TO_BINARY[upperTri];
     const lowerBin = TRIGRAM_TO_BINARY[lowerTri];
     const fullBin = upperBin + lowerBin;
     const hexNum = BINARY_TO_HEX[fullBin] || 0;
+
     return {
         num: hexNum,
         name: HEX_NAMES[hexNum] || 'Unknown',
