@@ -309,17 +309,7 @@ document.getElementById('y-year').innerText = solar.getYear();
     document.getElementById('d-hex-cell').innerHTML = renderHexagram(dayHex);
     document.getElementById('m-hex-cell').innerHTML = renderHexagram(monthHex);
     document.getElementById('y-hex-cell').innerHTML = renderHexagram(yearHex);
-    document.getElementById('h-hex-num').innerText = hourHex.num;
-    document.getElementById('h-hex-name').innerText = hourHex.name;
-    document.getElementById('h-hex-name').innerText = hourHex.name;
-    document.getElementById('d-hex-num').innerText = dayHex.num;
-    document.getElementById('m-hex-num').innerText = monthHex.num;
-    document.getElementById('m-hex-name').innerText = monthHex.name;
-    document.getElementById('y-hex-num').innerText = yearHex.num;
-    document.getElementById('y-hex-name').innerText = yearHex.name;
-    document.getElementById('solar-time').innerText =
-        `Solar Time: ${String(solar.hour).padStart(2,'0')}:${String(solar.minute).padStart(2,'0')}
-         | Lon: ${longitude}° | Correction: ${((longitude - timezoneOffset*15)*4).toFixed(1)} min`;
+    
 }
 
 function setNow() {
