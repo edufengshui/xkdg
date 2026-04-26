@@ -54,3 +54,40 @@ function getXKDGHexagram(stem, branch) {
         binary: fullBin
     };
 }
+// Traduzioni nomi esagrammi
+const HEX_TRANSLATE = {
+    1:'Heaven', 2:'Earth', 3:'Difficulty', 4:'Youth', 5:'Waiting', 6:'Conflict',
+    7:'Army', 8:'Union', 9:'Small Restraint', 10:'Treading', 11:'Peace', 12:'Stagnation',
+    13:'Fellowship', 14:'Great Possession', 15:'Modesty', 16:'Enthusiasm', 17:'Following', 18:'Decay',
+    19:'Approach', 20:'Contemplation', 21:'Biting Through', 22:'Grace', 23:'Splitting', 24:'Return',
+    25:'Innocence', 26:'Great Accumulation', 27:'Nourishment', 28:'Great Exceeding', 29:'Abyss', 30:'Clarity',
+    31:'Influence', 32:'Duration', 33:'Retreat', 34:'Great Power', 35:'Progress', 36:'Darkening',
+    37:'Family', 38:'Opposition', 39:'Obstruction', 40:'Deliverance', 41:'Decrease', 42:'Increase',
+    43:'Breakthrough', 44:'Coming to Meet', 45:'Gathering', 46:'Pushing Upward', 47:'Oppression', 48:'Well',
+    49:'Revolution', 50:'Cauldron', 51:'Thunder', 52:'Mountain', 53:'Gradual Progress', 54:'Marrying Maiden',
+    55:'Abundance', 56:'Wanderer', 57:'Gentle', 58:'Joyous', 59:'Dispersion', 60:'Limitation',
+    61:'Inner Truth', 62:'Small Exceeding', 63:'After Completion', 64:'Before Completion'
+};
+
+// XKDG: Linea 5 = Soggetto ROSSO, Linea 2 = Oggetto VERDE
+function renderHexagram(hexData) {
+    const lines = hexData.binary.split('').reverse(); // dal basso all'alto
+    let html = `<div class="hex-lines">`;
+
+    lines.forEach((bit, i) => {
+        const lineNum = i + 1; // 1=basso, 6=alto
+        const symbol = bit === '1'? '━━━' : '━ ━';
+        let cls = 'line-normal';
+
+        if (lineNum === 5) cls = 'line-subject'; // Rosso = Soggetto
+        if (lineNum === 2) cls = 'line-object'; // Verde = Oggetto
+
+        html += `<div class="${cls}">${symbol}</div>`;
+    });
+
+    html += `</div>`;
+    html += `<div class="hex-num">${hexData.num}</div>`;
+    html += `<div class="hex-name">${hexData.name}</div>`;
+    html += `<div class="hex-translate">${HEX_TRANSLATE[hexData.num] || ''}</div>`;
+    return html;
+}
