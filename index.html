@@ -1,222 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>XKDG Bazi Chart</title>
-      
-    <style>
-      /* TABELLA XKDG COMPATTA */
-.xkdg-table {
-    width: 50%;           /* Dimezza larghezza totale */
-    margin: 20px auto;    /* Centrata */
-    border-collapse: collapse;
-    font-family: Arial, sans-serif;
-    table-layout: fixed;
-}
-.xkdg-table td,.xkdg-table th {
-    border: 1px solid #666;
-    text-align: center;
-    vertical-align: top;
-    padding: 6px 2px;     /* Padding ridotto */
-    width: 25%;           /* 4 colonne uguali = 25% ciascuna */
-}
-.xkdg-table th {
-    background: #d8d8d8;
-    font-weight: 600;
-    font-size: 14px;      /* Titoli più piccoli */
-}
-.pink-row { 
-    background: #ffe6f0; 
-    font-size: 12px; 
-    height: 25px;
-}
-.pink-row td { padding: 4px 2px; }
-
-.stem-cn { font-size: 28px; font-weight: bold; line-height: 1.1; }  /* Era 36px */
-.branch-cn { font-size: 28px; font-weight: bold; line-height: 1.1; } /* Era 36px */
-.pinyin { font-size: 13px; font-weight: 600; margin-top: 1px; }
-.element { font-size: 11px; color: #555; }
-.animal { font-size: 11px; color: #555; }
-
-/* Colori elementi */
-.wood { color: #2d7a2d; }
-.fire { color: #c00; }
-.earth { color: #b8860b; }
-.metal { color: #666; }
-.water { color: #1e5aa8; }
-
-/* Esagrammi PIÙ GRANDI */
-.hex-box { padding: 4px 1px; }
-.hex-lines {
-    font-family: 'Courier New', monospace;
-    font-size: 26px;      /* Era 20px */
-    line-height: 10px;    /* Era 9px */
-    letter-spacing: 4px;  /* Era 3px */
-    margin: 6px 0;
-}
-.line-subject { color: #c00; }  /* Tolto font-weight: bold */
-.line-object { color: #0a0; }   /* Tolto font-weight: bold */
-.line-normal { color: #000; }
-.hex-num { font-size: 18px; font-weight: bold; margin-top: 3px; } /* Era 22px */
-.hex-name { font-size: 11px; margin-top: 1px; }  /* Era 12px */
-.hex-translate { font-size: 10px; color: #444; } /* Era 11px */
-    </style>
-</head
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XKDG Bazi Calculator</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+td, th { border: 1px solid #ddd; padding: 8px; text-align: center; }
+.stem-cn,.branch-cn { font-size: 24px; font-weight: bold; }
+.wood { color: #2e8b57; }.fire { color: #dc143c; }.earth { color: #b8860b; }
+.metal { color: #708090; }.water { color: #1e90ff; }
+input { padding: 5px; margin: 5px; }
+button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+</style>
+</head>
 <body>
-  <h1>XKDG Bazi Calculator</h1>
-  
-<div class="inputs">
-    <input type="date" id="date">
-    <input type="time" id="time">
-    <input type="number" id="longitude" step="0.01" placeholder="Longitude">
-    <button onclick="getLocation()">GPS</button>
-    <button onclick="setNow()">NOW</button>
-    <button onclick="calculate()">Calculate</button>
-    <div id="solar-time" style="margin-top:10px; font-size:14px; color:#666;"></div>
+
+<h1>XKDG Bazi Calculator</h1>
+<div>
+  <label>Date: <input type="date" id="date"></label>
+  <label>Time: <input type="time" id="time"></label>
+  <label>Longitude: <input type="number" id="longitude" value="12.4964" step="0.0001"></label>
+  <button onclick="calculate()">Calculate</button>
 </div>
-  
-  <!-- QUESTI 4 PILLAR CON GLI 8 ID MANCAVANO NEL MIO CODICE -->
-  <!-- TABELLA XKDG BAZI -->
-<table class="xkdg-table">
+
+<table>
   <tr>
-    <th>Hour</th><th>Day</th><th>Month</th><th>Year</th>
+    <th></th><th>Hour</th><th>Day</th><th>Month</th><th>Year</th>
   </tr>
-  <!-- RIGA ROSA -->
-  <tr class="pink-row">
-    <td id="h-time">-</td>
-    <td id="d-date">-</td>
-    <td id="m-date">-</td>
-    <td id="y-year">-</td>
-  </tr>
-  <!-- RIGA STEM -->
   <tr>
-    <td><div class="stem-cn wood" id="h-stem-cn"></div><div class="pinyin" id="h-stem-py"></div><div class="element" id="h-stem-el"></div></td>
-    <td><div class="stem-cn metal" id="d-stem-cn"></div><div class="pinyin" id="d-stem-py"></div><div class="element" id="d-stem-el"></div></td>
-    <td><div class="stem-cn wood" id="m-stem-cn"></div><div class="pinyin" id="m-stem-py"></div><div class="element" id="m-stem-el"></div></td>
-    <td><div class="stem-cn fire" id="y-stem-cn"></div><div class="pinyin" id="y-stem-py"></div><div class="element" id="y-stem-el"></div></td>
+    <td>Stem</td>
+    <td><div id="h-stem-cn"></div><div id="h-stem-en"></div><div id="h-stem-el"></div></td>
+    <td><div id="d-stem-cn"></div><div id="d-stem-en"></div><div id="d-stem-el"></div></td>
+    <td><div id="m-stem-cn"></div><div id="m-stem-en"></div><div id="m-stem-el"></div></td>
+    <td><div id="y-stem-cn"></div><div id="y-stem-en"></div><div id="y-stem-el"></div></td>
   </tr>
-  <!-- RIGA BRANCH -->
   <tr>
-    <td><div class="branch-cn fire" id="h-branch-cn"></div><div class="pinyin" id="h-branch-py"></div><div class="animal" id="h-branch-an"></div><div class="element" id="h-branch-el"></div></td>
-    <td><div class="branch-cn fire" id="d-branch-cn"></div><div class="pinyin" id="d-branch-py"></div><div class="animal" id="d-branch-an"></div><div class="element" id="d-branch-el"></div></td>
-    <td><div class="branch-cn fire" id="m-branch-cn"></div><div class="pinyin" id="m-branch-py"></div><div class="animal" id="m-branch-an"></div><div class="element" id="m-branch-el"></div></td>
-    <td><div class="branch-cn fire" id="y-branch-cn"></div><div class="pinyin" id="y-branch-py"></div><div class="animal" id="y-branch-an"></div><div class="element" id="y-branch-el"></div></td>
-  </tr>
-    <tr>
-    <td id="h-hex-cell" class="hex-box"></td>
-    <td id="d-hex-cell" class="hex-box"></td>
-    <td id="m-hex-cell" class="hex-box"></td>
-    <td id="y-hex-cell" class="hex-box"></td>
+    <td>Branch</td>
+    <td><div id="h-branch-cn"></div><div id="h-branch-en"></div><div id="h-branch-el"></div><div id="h-branch-an"></div></td>
+    <td><div id="d-branch-cn"></div><div id="d-branch-en"></div><div id="d-branch-el"></div><div id="d-branch-an"></div></td>
+    <td><div id="m-branch-cn"></div><div id="m-branch-en"></div><div id="m-branch-el"></div><div id="m-branch-an"></div></td>
+    <td><div id="y-branch-cn"></div><div id="y-branch-en"></div><div id="y-branch-el"></div><div id="y-branch-an"></div></td>
   </tr>
 </table>
-  <!-- RIGA ESAGRAMMI - QUESTA TI MANCA -->
-  <tr>
-    <td id="h-hex-cell" class="hex-box"></td>
-    <td id="d-hex-cell" class="hex-box"></td>
-    <td id="m-hex-cell" class="hex-box"></td>
-    <td id="y-hex-cell" class="hex-box"></td>
-  </tr>
-</table>    
-  </div>
-  <!-- SCRIPT SEMPRE IN FONDO, DOPO L'HTML -->
-<script src="https://unpkg.com/lunar-javascript@1.6.12/lunar.min.js"></script>
-<script src="jieqi.js"></script>
-<script src="xkdg_hex.js"></script>
-  <script>
-// XKDG Bazi - Local Solar Time + GPS Auto - EN Output
 
+<script src="lunar.min.js"></script>
 
-// 1. GPS - GET AUTOMATIC LONGITUDE
-function getLocation() {
-    if (navigator.geolocation) {
-        document.getElementById('solar-time').innerText = 'Getting GPS location...';
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lon = position.coords.longitude.toFixed(2);
-                document.getElementById('longitude').value = lon;
-                document.getElementById('solar-time').innerText = `GPS: Lon ${lon}° detected`;
-                calc(); // recalc immediately with correct longitude
-            },
-            (error) => {
-                document.getElementById('solar-time').innerText = 'GPS denied. Enter longitude manually';
-            }
-        );
-    } else {
-        alert('Geolocation not supported by browser');
-    }
-}
-
-// 2. LOCAL SOLAR TIME CALCULATION
+<script>
 function getSolarTime(hour, minute, longitude, timezoneOffset) {
-    const standardMeridian = timezoneOffset * 15;
-    const longitudeDiff = longitude - standardMeridian;
-    const timeDiffMinutes = longitudeDiff * 4;
-
-    let totalMinutes = hour * 60 + minute + timeDiffMinutes;
-    let dayOffset = 0;
-
-    if (totalMinutes < 0) {
-        totalMinutes += 1440;
-        dayOffset = -1;
-    } else if (totalMinutes >= 1440) {
-        totalMinutes -= 1440;
-        dayOffset = 1;
-    }
-
-    const solarHour = Math.floor(totalMinutes / 60);
-    const solarMinute = Math.floor(totalMinutes % 60);
-    return { hour: solarHour, minute: solarMinute, dayOffset: dayOffset };
-}
-
-function getDayGanzhi(date) {
-    const refDate = new Date(2026, 3, 23);
-    const refIndex = 3;
-    const diffDays = Math.round((date - refDate) / 86400000);
-    const stemIndex = (refIndex + diffDays) % 10;
-    const branchIndex = (refIndex + diffDays) % 12;
+    const lstm = 15 * timezoneOffset;
+    const timeOffset = 4 * (longitude - lstm);
+    const totalMinutes = hour * 60 + minute + timeOffset;
+    const dayOffset = Math.floor(totalMinutes / 1440);
+    const solarMinutes = ((totalMinutes % 1440) + 1440) % 1440;
     return {
-        stem: STEMS[stemIndex < 0? stemIndex + 10 : stemIndex],
-        branch: BRANCHES[branchIndex < 0? branchIndex + 12 : branchIndex]
+        hour: Math.floor(solarMinutes / 60),
+        minute: Math.floor(solarMinutes % 60),
+        dayOffset: dayOffset
     };
 }
 
-
-function getHourGanzhi(hour, dayStem) {
-    const branchIndex = Math.floor((hour + 1) / 2) % 12;
-    const dayStemIndex = STEMS.indexOf(dayStem);
-    const stemStart = [0, 2, 4, 6, 8][dayStemIndex % 5];
-    const stemIndex = (stemStart + branchIndex) % 10;
-    return { stem: STEMS[stemIndex], branch: BRANCHES[branchIndex] };
-}
-
-function calc() {
+function calculate() {
     const dateInput = document.getElementById('date').value;
     const timeInput = document.getElementById('time').value;
-    const longitude = parseFloat(document.getElementById('longitude').value);
-
-    if (!dateInput ||!timeInput || isNaN(longitude)) {
-        alert('Please enter date, time and longitude');
-        return;
-    }
+    const longitude = parseFloat(document.getElementById('longitude').value) || 12.4964;
 
     const [year, month, day] = dateInput.split('-').map(Number);
     const [hour, minute] = timeInput.split(':').map(Number);
     const timezoneOffset = -new Date(year, month - 1, day).getTimezoneOffset() / 60;
 
-        // === CALCOLO PILASTRI CON LUNAR-JAVASCRIPT ===
     const solarTime = getSolarTime(hour, minute, longitude, timezoneOffset);
     const baziDate = new Date(year, month - 1, day + solarTime.dayOffset, solarTime.hour, solarTime.minute);
-    
+
     const solar = Solar.fromDate(baziDate);
     const lunar = solar.getLunar();
-    
+
     const yearGZ = { stem: lunar.getYearGan(), branch: lunar.getYearZhi() };
     const monthGZ = { stem: lunar.getMonthGan(), branch: lunar.getMonthZhi() };
     const dayGZ = { stem: lunar.getDayGan(), branch: lunar.getDayZhi() };
     const hourGZ = { stem: lunar.getTimeGan(), branch: lunar.getTimeZhi() };
-    // === FINE CALCOLO PILASTRI ===
 
-        // Mapping caratteri cinesi + elementi + animali
     const STEM_CN = {Jia:'甲', Yi:'乙', Bing:'丙', Ding:'丁', Wu:'戊', Ji:'己', Geng:'庚', Xin:'辛', Ren:'壬', Gui:'癸'};
     const BRANCH_CN = {Zi:'子', Chou:'丑', Yin:'寅', Mao:'卯', Chen:'辰', Si:'巳', Wu:'午', Wei:'未', Shen:'申', You:'酉', Xu:'戌', Hai:'亥'};
     const STEM_EL = {Jia:'+ Wood', Yi:'- Wood', Bing:'+ Fire', Ding:'- Fire', Wu:'+ Earth', Ji:'- Earth', Geng:'+ Metal', Xin:'- Metal', Ren:'+ Water', Gui:'- Water'};
@@ -225,58 +89,27 @@ function calc() {
     const EL_COLOR = {Jia:'wood', Yi:'wood', Bing:'fire', Ding:'fire', Wu:'earth', Ji:'earth', Geng:'metal', Xin:'metal', Ren:'water', Gui:'water'};
     const BR_COLOR = {Zi:'water', Chou:'earth', Yin:'wood', Mao:'wood', Chen:'earth', Si:'fire', Wu:'fire', Wei:'earth', Shen:'metal', You:'metal', Xu:'earth', Hai:'water'};
 
-    // Riempi Stem
-    ['h','d','m','y'].forEach((p,i) => {
-        const gz = [hourGZ, dayGZ, monthGZ, yearGZ][i];
-        document.getElementById(`${p}-stem-cn`).innerText = STEM_CN[gz.stem];
+    const pillars = {h: hourGZ, d: dayGZ, m: monthGZ, y: yearGZ};
+    ['h','d','m','y'].forEach((p) => {
+        const gz = pillars[p];
+        document.getElementById(`${p}-stem-cn`).textContent = STEM_CN[gz.stem];
         document.getElementById(`${p}-stem-cn`).className = `stem-cn ${EL_COLOR[gz.stem]}`;
-        document.getElementById(`${p}-stem-py`).innerText = gz.stem;
-        document.getElementById(`${p}-stem-el`).innerText = STEM_EL[gz.stem];
-    });
-
-    // Riempi Branch
-    ['h','d','m','y'].forEach((p,i) => {
-        const gz = [hourGZ, dayGZ, monthGZ, yearGZ][i];
-        document.getElementById(`${p}-branch-cn`).innerText = BRANCH_CN[gz.branch];
+        document.getElementById(`${p}-stem-en`).textContent = gz.stem;
+        document.getElementById(`${p}-stem-el`).textContent = STEM_EL[gz.stem];
+        document.getElementById(`${p}-branch-cn`).textContent = BRANCH_CN[gz.branch];
         document.getElementById(`${p}-branch-cn`).className = `branch-cn ${BR_COLOR[gz.branch]}`;
-        document.getElementById(`${p}-branch-py`).innerText = gz.branch;
-        document.getElementById(`${p}-branch-an`).innerText = BRANCH_AN[gz.branch];
-        document.getElementById(`${p}-branch-el`).innerText = BRANCH_EL[gz.branch];
+        document.getElementById(`${p}-branch-en`).textContent = gz.branch;
+        document.getElementById(`${p}-branch-el`).textContent = BRANCH_EL[gz.branch];
+        document.getElementById(`${p}-branch-an`).textContent = BRANCH_AN[gz.branch];
     });
-
-    // Riga rosa: solo data/ora - VERSIONE CORRETTA
-document.getElementById('h-time').innerText = `${String(solar.getHour()).padStart(2,'0')}:${String(solar.getMinute()).padStart(2,'0')}`;
-document.getElementById('d-date').innerText = `${String(solar.getDay()).padStart(2,'0')} | ${dayGZ.branch}`;
-document.getElementById('m-date').innerText = `${String(solar.getMonth()).padStart(2,'0')} | ${monthGZ.branch}`;
-document.getElementById('y-year').innerText = solar.getYear();
-  
-    // Esagrammi XKDG con linee soggetto/oggetto
-    const hourHex = getXKDGHexagram(hourGZ.stem, hourGZ.branch);
-    const dayHex = getXKDGHexagram(dayGZ.stem, dayGZ.branch);
-    const monthHex = getXKDGHexagram(monthGZ.stem, monthGZ.branch);
-    const yearHex = getXKDGHexagram(yearGZ.stem, yearGZ.branch);
-
-    document.getElementById('h-hex-cell').innerHTML = renderHexagram(hourHex);
-    document.getElementById('d-hex-cell').innerHTML = renderHexagram(dayHex);
-    document.getElementById('m-hex-cell').innerHTML = renderHexagram(monthHex);
-    document.getElementById('y-hex-cell').innerHTML = renderHexagram(yearHex);
-    
-}
-
-function setNow() {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-}
-
-function calculate() {
-    calc();
 }
 
 window.onload = function() {
-    setNow();
-    getLocation();
+    const now = new Date();
+    document.getElementById('date').value = now.toISOString().split('T')[0];
+    document.getElementById('time').value = now.toTimeString().slice(0,5);
+    calculate();
 };
 </script>
-  </body>
+</body>
 </html>
