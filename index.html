@@ -203,7 +203,18 @@ function calc() {
     const [hour, minute] = timeInput.split(':').map(Number);
     const timezoneOffset = -new Date(year, month - 1, day).getTimezoneOffset() / 60;
 
+        // === CALCOLO PILASTRI CON LUNAR-JAVASCRIPT ===
+    const solarTime = getSolarTime(hour, minute, longitude, timezoneOffset);
+    const baziDate = new Date(year, month - 1, day + solarTime.dayOffset, solarTime.hour, solarTime.minute);
     
+    const solar = Solar.fromDate(baziDate);
+    const lunar = solar.getLunar();
+    
+    const yearGZ = { stem: lunar.getYearGan(), branch: lunar.getYearZhi() };
+    const monthGZ = { stem: lunar.getMonthGan(), branch: lunar.getMonthZhi() };
+    const dayGZ = { stem: lunar.getDayGan(), branch: lunar.getDayZhi() };
+    const hourGZ = { stem: lunar.getTimeGan(), branch: lunar.getTimeZhi() };
+    // === FINE CALCOLO PILASTRI ===
 
         // Mapping caratteri cinesi + elementi + animali
     const STEM_CN = {Jia:'甲', Yi:'乙', Bing:'丙', Ding:'丁', Wu:'戊', Ji:'己', Geng:'庚', Xin:'辛', Ren:'壬', Gui:'癸'};
