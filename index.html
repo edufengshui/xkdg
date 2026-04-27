@@ -4,70 +4,69 @@
     <meta charset="UTF-8">
     <title>XKDG Bazi Calculator Pro</title>
     <style>
-        /* Artistic Calligraphic Font */
         @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
 
         :root {
             --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b;
             --metal: #555; --water: #0000cd;
+            --separator-stroke: 2px; /* Spessore linee divisione */
+            --separator-color: #bbb;
         }
 
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
         .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
         
-        /* Optimized Command Bar */
-        .inputs-row { display: flex; gap: 5px; margin-bottom: 25px; flex-wrap: nowrap; align-items: center; justify-content: space-between; }
-        
-        /* Reduced input widths to fit all buttons */
+        /* Command Bar */
+        .inputs-row { display: flex; gap: 5px; margin-bottom: 25px; align-items: center; justify-content: space-between; }
         #date { width: 120px; }
         #time { width: 80px; }
         #lon { width: 60px; }
-        
         .inputs-row input { padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
-        .inputs-row button { padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 11px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        .inputs-row button { padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 11px; font-weight: bold; text-transform: uppercase; }
         
         .btn-now { background: #6c757d; }
         .btn-gps { background: #007bff; }
         .btn-calc { background: #2d2d2d; }
 
         /* Chart Structure */
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #fff; }
-        .pillar { display: flex; flex-direction: column; border-right: 1px solid #eee; text-align: center; }
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--separator-stroke) solid var(--separator-color); border-radius: 4px; overflow: hidden; background: #fff; }
+        .pillar { display: flex; flex-direction: column; border-right: var(--separator-stroke) solid var(--separator-color); text-align: center; }
         .pillar:last-child { border-right: none; }
         
         .header { background: #f8f9fa; padding: 10px; font-weight: bold; font-size: 11px; color: #666; border-bottom: 1px solid #eee; letter-spacing: 1px; }
-        .cell { padding: 15px 5px; border-bottom: 1px solid #fafafa; }
         
-        /* Artistic Hanzi Style */
+        /* Spaziatura ridotta tra Stelo e Ramo */
+        .stem { padding-top: 15px; margin-bottom: -5px; } 
+        .branch { padding-bottom: 15px; }
+        
+        /* Hanzi ingranditi */
         .hanzi { 
             font-family: 'Ma Shan Zheng', cursive; 
-            font-size: 54px; 
-            line-height: 1.1;
+            font-size: 62px; 
+            line-height: 1;
             display: block;
             filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.12));
         }
-        .eng-name { font-size: 16px; font-weight: bold; margin-top: 4px; display: block; }
+        .eng-name { font-size: 16px; font-weight: bold; margin-top: 2px; display: block; }
         .element-label { font-size: 10px; text-transform: uppercase; opacity: 0.6; font-weight: bold; }
 
-        /* Hexagram & XKDG Section */
-        .hex-section { padding: 15px 5px; border-top: 1px solid #f0f0f0; }
+        /* Hexagram Section con riga più spessa */
+        .hex-section { 
+            padding: 15px 5px; 
+            border-top: var(--separator-stroke) solid var(--separator-color); 
+            background: #fff;
+        }
         .hex-wrapper { display: inline-flex; align-items: center; gap: 8px; }
-        .hex-icon { font-size: 68px; color: #222; line-height: 1; }
+        .hex-icon { font-size: 70px; color: #222; line-height: 1; }
 
         .data-column { 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: space-between; 
-            align-items: center;
-            height: 68px; 
-            font-weight: bold;
+            display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+            height: 70px; font-weight: bold;
         }
-        .num-xkdg { font-size: 17px; color: #000; }
+        .num-xkdg { font-size: 18px; color: #000; }
         .side-pillar-small { font-size: 13px; line-height: 1.1; color: #333; font-family: 'Ma Shan Zheng', cursive; }
+        .hex-info { margin-top: 8px; font-size: 11px; font-weight: bold; color: #444; }
 
-        .hex-info { margin-top: 8px; font-size: 11px; font-weight: bold; color: #444; line-height: 1.2; }
-
-        /* Element Colors */
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
     </style>
