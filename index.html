@@ -24,11 +24,13 @@
         <tr style="background:#e8e8e8; font-weight:bold;">
             <td></td><td>Hour 时</td><td>Day 日</td><td>Month 月</td><td>Year 年</td>
         </tr>
-        <tr style="background:#ffe6e6;">
-            <td>Time</td>
-            <td id="h-time"></td><td id="d-time"></td>
-            <td id="m-time"></td><td id="y-time"></td>
-        </tr>
+    <tr style="background:#ffe6e6;">
+    <td>Time</td>
+    <td><input type="time" id="input-time" style="width:80px;text-align:center;border:none;background:transparent;"></td>
+    <td><input type="number" id="input-day" min="1" max="31" placeholder="DD" style="width:50px;text-align:center;border:none;background:transparent;"></td>
+    <td><input type="number" id="input-month" min="1" max="12" placeholder="MM" style="width:50px;text-align:center;border:none;background:transparent;"></td>
+    <td><input type="number" id="input-year" min="1900" max="2100" placeholder="YYYY" style="width:70px;text-align:center;border:none;background:transparent;"></td>
+</tr>
         <tr>
             <td style="font-weight:bold;">Stem</td>
             <td><div id="h-stem-cn" class="stem-cn"></div><div id="h-stem-en"></div><div id="h-stem-el"></div></td>
