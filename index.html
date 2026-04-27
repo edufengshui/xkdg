@@ -88,11 +88,14 @@ function calculate() {
     const hourGan = GAN_MAP[hourGZ.charAt(0)];
     const hourZhi = ZHI_MAP[hourGZ.charAt(1)];
 
-    document.getElementById('h-time').textContent = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
-    document.getElementById('d-time').textContent = dayGZ;
-    document.getElementById('m-time').textContent = monthGZ;
-    document.getElementById('y-time').textContent = yearGZ;
+    const dateStr = now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear();
+    const timeStr = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
 
+document.getElementById('h-time').textContent = timeStr; // Solo ora solare vera
+document.getElementById('d-time').textContent = dateStr; // 27/4/2026
+document.getElementById('m-time').textContent = ''; // Vuoto, non serve
+document.getElementById('y-time').textContent = ''; // Vuoto, non serve
+    
     const data = [
         {gan: hourGan, zhi: hourZhi, gzCN: hourGZ, prefix: 'h'},
         {gan: dayGan, zhi: dayZhi, gzCN: dayGZ, prefix: 'd'},
