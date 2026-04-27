@@ -2,69 +2,62 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator Pro - Versione Finale</title>
+    <title>XKDG Bazi Calculator Pro</title>
     <style>
-        /* Importazione font calligrafico raffinato */
-        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
-
         :root {
-            --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b;
-            --metal: #555; --water: #0000cd;
+            --wood: #2d7a32; --fire: #c62828; --earth: #8d6e63;
+            --metal: #555; --water: #1565c0;
         }
-
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
+        body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #e9ecef; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
         
-        /* Controlli superiori */
-        .inputs-row { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; justify-content: center; }
-        .inputs-row input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; font-weight: bold; text-transform: uppercase; }
-        .btn-gps { background: #5cace2 !important; }
-        .btn-calc { background: #2d2d2d !important; }
+        /* Barra comandi completa */
+        .inputs-row { display: flex; gap: 8px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; justify-content: center; }
+        .inputs-row input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; width: 130px; }
+        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 13px; font-weight: bold; text-transform: uppercase; }
+        
+        .btn-now { background: #6c757d; }
+        .btn-gps { background: #007bff; }
+        .btn-calc { background: #28a745; }
 
-        /* Struttura Tabella */
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
-        .pillar { display: flex; flex-direction: column; border-right: 1px solid #eee; text-align: center; background: #fff; }
+        /* Struttura Pilastri */
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
+        .pillar { display: flex; flex-direction: column; border-right: 1px solid #dee2e6; background: white; text-align: center; }
         .pillar:last-child { border-right: none; }
         
-        .header { background: #f8f9fa; padding: 12px; font-weight: bold; font-size: 12px; color: #666; border-bottom: 1px solid #eee; letter-spacing: 1px; }
-        .cell { padding: 15px 5px; border-bottom: 1px solid #fafafa; }
+        .header { background: #f8f9fa; padding: 12px; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; letter-spacing: 1px; }
+        .cell { padding: 15px 5px; border-bottom: 1px solid #f8f9fa; }
         
-        /* Caratteri Cinesi Calligrafici con Ombra */
+        /* Carattere Grafico Sans-Serif */
         .hanzi { 
-            font-family: 'Ma Shan Zheng', "Kaiti SC", serif; 
-            font-size: 56px; 
+            font-size: 52px; 
+            display: block; 
+            font-weight: 300; 
             line-height: 1.1;
-            display: block;
-            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.15));
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif; 
         }
-        .eng-name { font-size: 17px; font-weight: bold; margin-top: 5px; display: block; }
+        .eng-name { font-size: 16px; font-weight: bold; margin-top: 4px; display: block; }
         .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: bold; }
 
-        /* Sezione Esagramma con numeri in colonna */
-        .hex-section { padding: 20px 5px; border-top: 1px solid #f0f0f0; }
-        .hex-wrapper { display: inline-flex; align-items: center; gap: 10px; }
-        .hex-icon { font-size: 75px; color: #222; line-height: 1; }
+        /* Esagramma e Numeri XKDG */
+        .hex-section { padding: 20px 5px; }
+        .hex-wrapper { display: inline-flex; align-items: center; gap: 8px; }
+        .hex-icon { font-size: 72px; color: #333; line-height: 1; }
 
         .data-column { 
             display: flex; 
             flex-direction: column; 
             justify-content: space-between; 
             align-items: center;
-            height: 75px; 
+            height: 72px; 
             font-weight: bold;
         }
-        .num-xkdg { font-size: 19px; color: #000; }
-        .side-pillar-small { 
-            font-size: 14px; 
-            line-height: 1.1; 
-            color: #333; 
-            font-family: 'Ma Shan Zheng', serif;
-        }
+        .num-xkdg { font-size: 18px; color: #000; }
+        .side-pillar-small { font-size: 13px; line-height: 1.1; color: #555; }
 
-        .hex-name { margin-top: 10px; font-size: 12px; font-weight: bold; color: #444; line-height: 1.2; }
+        .hex-info { margin-top: 10px; font-size: 11px; font-weight: bold; color: #555; }
 
-        /* Colori */
+        /* Colori Elementi */
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
     </style>
@@ -75,7 +68,8 @@
     <div class="inputs-row">
         <input type="date" id="date">
         <input type="time" id="time">
-        <input type="text" id="lon" placeholder="Longitudine" style="width: 100px;">
+        <input type="number" id="lon" placeholder="Longitudine" step="0.01">
+        <button class="btn-now" onclick="setNow()">NOW</button>
         <button class="btn-gps" onclick="getLocation()">GPS</button>
         <button class="btn-calc" onclick="calculateBazi()">CALCOLA</button>
     </div>
@@ -110,15 +104,12 @@ const REF_DATE = new Date(2026, 3, 27);
 const REF_STEM = 7; 
 const REF_BRANCH = 7; 
 
-// Funzione GPS
 function getLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
             document.getElementById('lon').value = pos.coords.longitude.toFixed(2);
-            setNow();
-        }, () => alert("Errore nel rilevamento posizione. Controlla i permessi."));
-    } else {
-        alert("Geolocalizzazione non supportata dal tuo browser.");
+            calculateBazi();
+        }, () => alert("Permessi GPS negati."));
     }
 }
 
@@ -137,18 +128,18 @@ function fillPillar(id, stemIdx, branchIdx) {
     p.querySelector('.branch').innerHTML = `<span class="hanzi ${b.el}">${b.zh}</span><span class="eng-name">${b.en}</span><span class="element-label">- ${b.el} -</span>`;
 }
 
-function setHex(id, icon, name, numTop, numBot, sideZh) {
+function setHex(id, icon, name, numT, numB, sideZh) {
     const section = document.querySelector(`#${id} .hex-section`);
     section.innerHTML = `
         <div class="hex-wrapper">
             <div class="hex-icon">${icon}</div>
             <div class="data-column">
-                <div class="num-xkdg">${numTop}</div>
+                <div class="num-xkdg">${numT}</div>
                 <div class="side-pillar-small">${sideZh}</div>
-                <div class="num-xkdg">${numBot}</div>
+                <div class="num-xkdg">${numB}</div>
             </div>
         </div>
-        <div class="hex-name">${name}</div>
+        <div class="hex-info">${name}</div>
     `;
 }
 
@@ -157,20 +148,16 @@ function calculateBazi() {
     if(!dVal) return;
     const targetDate = new Date(dVal);
     
-    // Anno
     const yearIdx = (targetDate.getFullYear() - 4) % 60;
     fillPillar('p-year', yearIdx % 10, yearIdx % 12);
     
-    // Giorno
     const diffDays = Math.floor((targetDate.getTime() - REF_DATE.getTime()) / (1000 * 60 * 60 * 24));
     let dS = (REF_STEM + diffDays) % 10; let dB = (REF_BRANCH + diffDays) % 12;
     fillPillar('p-day', dS < 0 ? dS + 10 : dS, dB < 0 ? dB + 12 : dB);
     
-    // Mese e Ora (Esempio statico basato sull'immagine)
     fillPillar('p-month', 8, 4); 
     fillPillar('p-hour', 1, 7);  
 
-    // Esagrammi
     setHex('p-hour', '䷯', '48 Jing<br>Well', '7', '6', '乙<br>未');
     setHex('p-day', '䷅', '06 Song<br>Litigation', '9', '3', '辛<br>未');
     setHex('p-month', '䷙', '26 Da Chu<br>Big Livestock', '6', '4', '壬<br>辰');
