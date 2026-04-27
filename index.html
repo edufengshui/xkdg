@@ -1,61 +1,112 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator - Lunar Integrated</title>
+    <title>XKDG Bazi Calculator - Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
         :root { --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b; --metal: #555; --water: #0000cd; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 850px; }
-        .inputs-row { display: flex; gap: 8px; margin-bottom: 25px; justify-content: center; }
+        .container { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        .inputs-row { display: flex; gap: 10px; margin-bottom: 25px; justify-content: center; align-items: center; flex-wrap: wrap; }
+        input, button { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
+        
+        .btn-calc { background: #2d2d2d; color: white; cursor: pointer; border: none; font-weight: bold; }
+        .btn-calc:hover { background: #000; }
+        .btn-tool { background: #e0e0e0; color: #333; cursor: pointer; border: 1px solid #bbb; }
+        .btn-tool:hover { background: #d0d0d0; }
+
         .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #bbb; background: #fff; }
         .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; }
         .pillar:last-child { border-right: none; }
-        .header { background: #fce4ec; padding: 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; }
+        
+        /* Headers in English */
+        .header { background: #fce4ec; padding: 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1px; }
         .cell { padding: 15px 5px; min-height: 100px; }
         .hanzi { font-family: 'Ma Shan Zheng', cursive; font-size: 64px; line-height: 1.1; display: block; }
-        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: bold; margin-top: 5px; display: block;}
-        .hex-section { padding: 20px 5px; border-top: 2px solid #bbb; display: flex; flex-direction: column; align-items: center; }
-        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-left: 25px; }
-        .hex-icon { font-size: 80px; color: #000; }
-        .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 80px; width: 30px; font-weight: bold; }
-        .hex-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #333; text-align: center; transform: translateX(-12px); }
+        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.7; font-weight: bold; margin-top: 5px; display: block;}
+        
+        .hex-section { padding: 20px 5px; border-top: 2px solid #bbb; display: flex; flex-direction: column; align-items: center; min-height: 150px; }
+        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-left: 20px; }
+        .hex-icon { font-size: 80px; color: #000; line-height: 1; }
+        .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 80px; width: 35px; font-weight: bold; font-size: 16px; }
+        .hex-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #333; text-align: center; }
+        
+        /* Colors */
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
+        #location-status { font-size: 12px; color: #666; width: 100%; text-align: center; margin-top: -15px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
+
 <div class="container">
     <div class="inputs-row">
+        <button class="btn-tool" onclick="setNow()">NOW</button>
+        <button class="btn-tool" onclick="getGPS()">GPS</button>
         <input type="date" id="date">
         <input type="time" id="time">
-        <button onclick="calculateBazi()" style="background:#2d2d2d; color:white; padding:8px 15px; cursor:pointer; border-radius:4px; border:none;">CALCOLA</button>
+        <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
     </div>
+    <div id="location-status"></div>
+
     <div class="chart">
-        <div class="pillar" id="p-hour"><div class="header">ORA</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-day"><div class="header">GIORNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-month"><div class="header">MESE</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">ANNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
 </div>
 
 <script>
-const ELEMENTS = { '甲': 'wood', '乙': 'wood', '丙': 'fire', '丁': 'fire', '戊': 'earth', '己': 'earth', '庚': 'metal', '辛': 'metal', '壬': 'water', '癸': 'water', '子': 'water', '丑': 'earth', '寅': 'wood', '卯': 'wood', '辰': 'earth', '巳': 'fire', '午': 'fire', '未': 'earth', '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water' };
+// Elements translated to English
+const ELEMENTS_EN = { 
+    '甲': 'wood', '乙': 'wood', '丙': 'fire', '丁': 'fire', '戊': 'earth', '己': 'earth', 
+    '庚': 'metal', '辛': 'metal', '壬': 'water', '癸': 'water', 
+    '子': 'water', '丑': 'earth', '寅': 'wood', '卯': 'wood', 
+    '辰': 'earth', '巳': 'fire', '午': 'fire', '未': 'earth', 
+    '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water' 
+};
+
+function setNow() {
+    const now = new Date();
+    document.getElementById('date').value = now.toISOString().split('T')[0];
+    document.getElementById('time').value = now.toTimeString().slice(0,5);
+    calculateBazi();
+}
+
+function getGPS() {
+    const status = document.getElementById('location-status');
+    if (!navigator.geolocation) {
+        status.textContent = "Geolocation not supported by your browser";
+        return;
+    }
+    status.textContent = "Locating...";
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            status.textContent = `Lat: ${pos.coords.latitude.toFixed(2)}, Lon: ${pos.coords.longitude.toFixed(2)}`;
+            calculateBazi();
+        },
+        () => { status.textContent = "Unable to retrieve location"; }
+    );
+}
 
 function updatePillar(id, stem, branch, hexIcon, hexName, n1, n2, sideZh) {
-    const elS = ELEMENTS[stem];
-    const elB = ELEMENTS[branch];
+    const elS = ELEMENTS_EN[stem];
+    const elB = ELEMENTS_EN[branch];
     const p = document.getElementById(id);
+    
     p.querySelector('.stem').innerHTML = `<span class="hanzi ${elS}">${stem}</span><span class="element-label">- ${elS} -</span>`;
     p.querySelector('.branch').innerHTML = `<span class="hanzi ${elB}">${branch}</span><span class="element-label">- ${elB} -</span>`;
+    
     p.querySelector('.hex-section').innerHTML = `
         <div class="hex-wrapper">
             <div class="hex-icon">${hexIcon}</div>
             <div class="data-column">
                 <div>${n1}</div>
-                <div style="font-size:12px; font-family:'Ma+Shan+Zheng'">${sideZh}</div>
+                <div style="font-size:12px;">${sideZh}</div>
                 <div>${n2}</div>
             </div>
         </div>
@@ -72,20 +123,15 @@ function calculateBazi() {
     const lunar = solar.getLunar();
     const eightChar = lunar.getEightChar();
 
-    // Estrazione Pilastri (EightChar della libreria Lunar)
-    updatePillar('p-year', eightChar.getYearGan(), eightChar.getYearZhi(), '䷛', '28 Da Guo<br>Great Exceeding', '4', '3', eightChar.getYear());
-    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), '䷙', '26 Da Chu<br>Big Livestock', '6', '4', eightChar.getMonth());
-    updatePillar('p-day', eightChar.getDayGan(), eightChar.getDayZhi(), '䷅', '06 Song<br>Litigation', '9', '3', eightChar.getDay());
-    updatePillar('p-hour', eightChar.getTimeGan(), eightChar.getTimeZhi(), '䷯', '48 Jing<br>Well', '7', '6', eightChar.getTime());
+    // Mapping pillars with hexagram data (Example placeholders for the logic)
+    updatePillar('p-year', eightChar.getYearGan(), eightChar.getYearZhi(), '䷛', '28 Da Guo<br>Great Exceeding', '4', '3', eightChar.getYearGan() + eightChar.getYearZhi());
+    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), '䷙', '26 Da Chu<br>Big Livestock', '6', '4', eightChar.getMonthGan() + eightChar.getMonthZhi());
+    updatePillar('p-day', eightChar.getDayGan(), eightChar.getDayZhi(), '䷅', '06 Song<br>Litigation', '9', '3', eightChar.getDayGan() + eightChar.getDayZhi());
+    updatePillar('p-hour', eightChar.getTimeGan(), eightChar.getTimeZhi(), '䷯', '48 Jing<br>Well', '7', '6', eightChar.getTimeGan() + eightChar.getTimeZhi());
 }
 
-// Inizializzazione automatica
-window.onload = () => {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-    calculateBazi();
-};
+window.onload = setNow;
 </script>
+
 </body>
 </html>
