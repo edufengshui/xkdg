@@ -70,15 +70,15 @@ function calculate() {
     const solar = Solar.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate(), solarTime.hour, solarTime.minute));
     const lunar = solar.getLunar();
 
-    // Usiamo le funzioni che restituiscono il pinyin, non i caratteri cinesi
-    const yearGan = lunar.getYearGan(); // "Bing"
-    const yearZhi = lunar.getYearZhi(); // "Wu"
-    const monthGan = lunar.getMonthGan(); // "Ren"
-    const monthZhi = lunar.getMonthZhi(); // "Chen"
-    const dayGan = lunar.getDayGan(); // "Xin"
-    const dayZhi = lunar.getDayZhi(); // "Wei"
-    const hourGan = lunar.getTimeGan(); // "Gui"
-    const hourZhi = lunar.getTimeZhi(); // "Si"
+    // QUESTE FUNZIONI RESTITUISCONO BING NON 丙
+    const yearGan = lunar.getYearGanInEnglish(); // "Bing"
+    const yearZhi = lunar.getYearZhiInEnglish(); // "Wu"
+    const monthGan = lunar.getMonthGanInEnglish(); // "Ren"
+    const monthZhi = lunar.getMonthZhiInEnglish(); // "Chen"
+    const dayGan = lunar.getDayGanInEnglish(); // "Xin"
+    const dayZhi = lunar.getDayZhiInEnglish(); // "Wei"
+    const hourGan = lunar.getTimeGanInEnglish(); // "Gui"
+    const hourZhi = lunar.getTimeZhiInEnglish(); // "Si"
 
     document.getElementById('h-time').textContent = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
     document.getElementById('d-time').textContent = dayGan + ' ' + dayZhi;
@@ -97,23 +97,22 @@ function calculate() {
         const branch = item.zhi; // "Wu"
 
         // STEM
-        document.getElementById(item.prefix+'-stem-cn').textContent = stem.charAt(0); // Solo iniziale B
-        document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS[stem];
+        document.getElementById(item.prefix+'-stem-cn').textContent = stem;
+        document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS;
         document.getElementById(item.prefix+'-stem-en').textContent = stem;
-        document.getElementById(item.prefix+'-stem-el').textContent = STEMS[stem];
-        document.getElementById(item.prefix+'-stem-el').className = ELEMENTS[stem];
+        document.getElementById(item.prefix+'-stem-el').textContent = STEMS;
+        document.getElementById(item.prefix+'-stem-el').className = ELEMENTS;
 
         // BRANCH
-        const branchData = BRANCHES[branch].split(' ');
-        document.getElementById(item.prefix+'-branch-cn').textContent = branch.charAt(0); // W
+        const branchData = BRANCHES[branch].split(' '); // BRANCHES['Wu'] ora esiste
+        document.getElementById(item.prefix+'-branch-cn').textContent = branch;
         document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
         document.getElementById(item.prefix+'-branch-en').textContent = branch;
-        document.getElementById(item.prefix+'-branch-an').textContent = branchData[3];
+        document.getElementById(item.prefix+'-branch-an').textContent = branchData[2];
         document.getElementById(item.prefix+'-branch-el').textContent = branchData[0]+' '+branchData[1];
         document.getElementById(item.prefix+'-branch-el').className = ELEMENTS[branch];
     });
 
-    // Esagrammi XKDG
     if (typeof getXKDGHexagram === 'function') {
         document.getElementById('h-hex').innerHTML = getXKDGHexagram(hourGan, hourZhi);
         document.getElementById('d-hex').innerHTML = getXKDGHexagram(dayGan, dayZhi);
@@ -121,7 +120,7 @@ function calculate() {
         document.getElementById('y-hex').innerHTML = getXKDGHexagram(yearGan, yearZhi);
     }
 }
-window.onload = calculate;
+    window.onload = calculate;
 </script>
 </body>
 </html>
