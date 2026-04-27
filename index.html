@@ -9,14 +9,14 @@
     th, td { border: 1px solid #ccc; padding: 8px 16px; min-width: 80px; }
     th { background: #f5f5f5; }
     input { text-align: center; font-size: 14px; }
-   .stem-cn { font-size: 20px; font-weight: bold; }
-   .branch-cn { font-size: 20px; font-weight: bold; }
+  .stem-cn { font-size: 20px; font-weight: bold; }
+  .branch-cn { font-size: 20px; font-weight: bold; }
     /* COLORI 5 ELEMENTI */
-   .wood { color: #2e8b57; }
-   .fire { color: #d32f2f; }
-   .earth { color: #8d6e63; }
-   .metal { color: #757575; }
-   .water { color: #1976d2; }
+  .wood { color: #2e8b57; }
+  .fire { color: #d32f2f; }
+  .earth { color: #8d6e63; }
+  .metal { color: #757575; }
+  .water { color: #1976d2; }
   </style>
 </head>
 <body>
@@ -69,7 +69,6 @@
   </table>
 
 <script>
-// --- COSTANTI BAZI ---
 const STEMS = [
   {en:'Jia', cn:'甲', el:'wood'}, {en:'Yi', cn:'乙', el:'wood'},
   {en:'Bing', cn:'丙', el:'fire'}, {en:'Ding', cn:'丁', el:'fire'},
@@ -87,12 +86,17 @@ const BRANCHES = [
   {en:'Xu', cn:'戌', el:'earth'}, {en:'Hai', cn:'亥', el:'water'}
 ];
 
-// --- FUNZIONE XKDG: RIMETTI LA TUA SE CE L'HAI ---
+// Termini solari Jieqi approssimati per 2000-2100
+// [mese, giorno] di inizio di Yin, Mao, Chen, Si, Wu, Wei, Shen, You, Xu, Hai, Zi, Chou
+const JIEQI = [
+  [2,4], [3,6], [4,5], [5,6], [6,6], [7,7],
+  [8,8], [9,8], [10,8], [11,7], [12,7], [1,6]
+];
+
 function getXKDGHexagram(stem, branch) {
-  return ''; // Sostituisci con la tua funzione
+  return ''; // Rimetti la tua funzione qui
 }
 
-// --- CALCOLO BAZI CORRETTO ---
 function calculate() {
   const year = parseInt(document.getElementById('year').value);
   const month = parseInt(document.getElementById('month').value);
@@ -101,35 +105,42 @@ function calculate() {
   const [hour, minute] = timeStr.split(':').map(Number);
   const lon = parseFloat(document.getElementById('longitude').value) || 120;
 
-  // True Solar Time correction
+  // 1. TRUE SOLAR TIME
   const offsetMinutes = Math.round((lon - 120) * 4);
-  const date = new Date(year, month - 1, day, hour, minute + offsetMinutes);
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute + offsetMinutes));
 
-  // --- YEAR PILLAR ---
-  // Anno inizia a Li Chun ~4 Feb. Semplificato: se prima del 4 Feb usa anno-1
-  let yearStem = (year - 4) % 10;
-  if (month === 1 || (month === 2 && day < 4)) yearStem = (year - 5) % 10;
-  if (yearStem < 0) yearStem += 10;
-  const yearBranch = (year - 4) % 12;
+  // 2. YEAR PILLAR - Inizia a Li Chun ~4 Feb
+  let solarYear = date.getUTCFullYear();
+  const liChun = new Date(Date.UTC(solarYear, 1, 4)); // 4 Feb
+  if (date < liChun) solarYear--;
+  const yearStem = (solarYear - 4) % 10;
+  const yearBranch = (solarYear - 4) % 12;
 
-  // --- DAY PILLAR ---
-  // Algoritmo base giorno giuliano
-  const jd = Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day - 1524.5;
-  const dayCycle = Math.floor(jd + 0.5) % 60;
+  // 3. MONTH PILLAR - Basato sui Jieqi
+  let monthIndex = 0;
+  for (let i = 0; i < 12; i++) {
+    let jieqiMonth = JIEQI[i][0] - 1;
+    let jieqiDay = JIEQI[i][1];
+    let jieqiDate = new Date(Date.UTC(date.getUTCFullYear(), jieqiMonth, jieqiDay));
+    if (date >= jieqiDate) monthIndex = i;
+  }
+  // Stem del mese: formula (yearStem * 2 + monthIndex) % 10
+  const monthStem = (yearStem * 2 + monthIndex + 2) % 10;
+  const monthBranch = (monthIndex + 2) % 12; // Yin=2
+
+  // 4. DAY PILLAR - Giorno giuliano con epoch corretta
+  const JD = Math.floor((date.getTime() / 86400000) + 2440587.5);
+  const dayCycle = (JD + 49) % 60; // 1/1/2000 = Jia Zi
   const dayStem = dayCycle % 10;
   const dayBranch = dayCycle % 12;
 
-  // --- MONTH PILLAR ---
-  // Semplificato: mese parte dal 5-8 del mese solare
-  const monthStem = (yearStem * 2 + month) % 10;
-  const monthBranch = (month + 1) % 12;
-
-  // --- HOUR PILLAR ---
-  const hourIndex = Math.floor((date.getHours() + 1) / 2) % 12;
-  const hourStem = (dayStem * 2 + hourIndex) % 10;
+  // 5. HOUR PILLAR
+  const hourDouble = Math.floor((date.getUTCHours() + 1) / 2) % 12;
+  const hourStem = (dayStem * 2 + hourDouble) % 10;
+  const hourBranch = hourDouble;
 
   const pillars = [
-    {p:'h', s:hourStem, b:hourIndex},
+    {p:'h', s:hourStem, b:hourBranch},
     {p:'d', s:dayStem, b:dayBranch},
     {p:'m', s:monthStem, b:monthBranch},
     {p:'y', s:yearStem, b:yearBranch}
@@ -148,7 +159,6 @@ function calculate() {
   });
 }
 
-// --- TASTO NOW ---
 function setNow() {
   const now = new Date();
   document.getElementById('time').value = now.toTimeString().slice(0,5);
