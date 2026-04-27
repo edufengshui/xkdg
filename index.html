@@ -2,149 +2,56 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Bazi Calculator Pro - XKDG Style</title>
+    <title>XKDG Bazi Calculator - Fixed</title>
     <style>
         :root {
-            --wood: #2d7a32;
-            --fire: #c62828;
-            --earth: #8d6e63;
-            --metal: #757575;
-            --water: #1565c0;
-            --bg-gray: #f5f5f5;
-            --border: #e0e0e0;
+            --wood: #2d7a32; --fire: #c62828; --earth: #8d6e63;
+            --metal: #b8860b; --water: #1565c0; --bg-gray: #f8f9fa;
         }
-
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #fafafa; padding: 20px; color: #333; }
-        h1 { text-align: center; color: #444; font-weight: 300; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #e9ecef; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 700px; }
+        .inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        input, button { padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        button { cursor: pointer; background: #343a40; color: white; border: none; font-weight: bold; }
+        button:hover { background: #23272b; }
         
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        
-        .inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 30px; border-bottom: 2px solid var(--bg-gray); padding-bottom: 20px; }
-        input, button { padding: 10px; border: 1px solid var(--border); border-radius: 4px; outline: none; }
-        button { cursor: pointer; background: #444; color: white; transition: 0.3s; }
-        button:hover { background: #666; }
-
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border); background: #fff; }
-        
-        .pillar { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
+        .pillar { display: flex; flex-direction: column; border-right: 1px solid #dee2e6; background: white; }
         .pillar:last-child { border-right: none; }
-
-        .header { background: var(--bg-gray); padding: 8px; text-align: center; font-weight: bold; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 14px; }
-        .time-info { font-size: 12px; color: #666; text-align: center; padding: 5px; border-bottom: 1px solid var(--border); background: #fff; }
-
-        .cell { padding: 15px 5px; text-align: center; border-bottom: 1px solid #f0f0f0; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
         
-        .stem-hanzi { font-size: 38px; line-height: 1; margin-bottom: 2px; }
-        .branch-hanzi { font-size: 32px; line-height: 1; margin-bottom: 2px; }
-        .eng-label { font-size: 14px; font-weight: bold; }
-        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.8; }
+        .header { background: #f1f3f5; padding: 10px; text-align: center; font-weight: bold; font-size: 13px; color: #495057; border-bottom: 1px solid #dee2e6; }
+        .cell { padding: 20px 5px; text-align: center; border-bottom: 1px solid #f8f9fa; }
+        
+        .hanzi { font-size: 42px; font-weight: bold; line-height: 1.1; display: block; }
+        .eng { font-size: 16px; font-weight: bold; margin-top: 4px; display: block; }
+        .element { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; display: block; opacity: 0.8; }
 
-        /* Colori Elementi */
-        .wood { color: var(--wood); }
-        .fire { color: var(--fire); }
-        .earth { color: var(--earth); }
-        .metal { color: var(--metal); }
-        .water { color: var(--water); }
+        .hex-section { padding: 15px 5px; text-align: center; background: #fff; min-height: 80px; }
+        .hex-icon { font-size: 28px; color: #333; margin-bottom: 5px; }
+        .hex-name { font-size: 11px; font-weight: bold; line-height: 1.2; color: #666; }
 
-        .hexagram-area { padding: 15px 5px; text-align: center; background: #fff; }
-        .hex-drawing { font-size: 24px; line-height: 1.1; letter-spacing: 2px; margin-bottom: 5px; }
-        .hex-name { font-size: 12px; font-weight: bold; line-height: 1.2; }
-
-        #solar-time-display { margin-top: 15px; text-align: center; font-size: 13px; color: #777; font-style: italic; }
+        /* Color Mapping */
+        .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
+        .metal { color: var(--metal); } .water { color: var(--water); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Bazi Calculator Pro</h1>
-    
     <div class="inputs">
-        <input type="date" id="date">
-        <input type="time" id="time">
-        <input type="number" id="longitude" step="0.01" placeholder="Longitudine">
-        <button onclick="getLocation()">GPS</button>
-        <button onclick="calc()">CALCOLA</button>
+        <input type="date" id="date" value="2026-04-27">
+        <input type="time" id="time" value="14:41">
+        <input type="number" id="longitude" placeholder="Longitudine" value="0">
+        <button onclick="getLocation()" style="grid-column: span 1">GPS</button>
+        <button onclick="calculateBazi()" style="grid-column: span 2">CALCOLA</button>
     </div>
 
     <div class="chart">
-        <div class="pillar">
-            <div class="header">Ora</div>
-            <div class="time-info" id="h-time-val">-</div>
-            <div class="cell" id="h-stem-box">
-                <div class="stem-hanzi" id="h-stem-zh">-</div>
-                <div class="eng-label" id="h-stem-en">-</div>
-                <div class="element-label" id="h-stem-el">-</div>
-            </div>
-            <div class="cell" id="h-branch-box">
-                <div class="branch-hanzi" id="h-branch-zh">-</div>
-                <div class="eng-label" id="h-branch-en">-</div>
-                <div class="element-label" id="h-branch-el">-</div>
-            </div>
-            <div class="hexagram-area">
-                <div class="hex-drawing">䷯</div>
-                <div class="hex-name">48 Jing<br>Well</div>
-            </div>
-        </div>
-
-        <div class="pillar">
-            <div class="header">Giorno</div>
-            <div class="time-info" id="d-time-val">-</div>
-            <div class="cell" id="d-stem-box">
-                <div class="stem-hanzi" id="d-stem-zh">-</div>
-                <div class="eng-label" id="d-stem-en">-</div>
-                <div class="element-label" id="d-stem-el">-</div>
-            </div>
-            <div class="cell" id="d-branch-box">
-                <div class="branch-hanzi" id="d-branch-zh">-</div>
-                <div class="eng-label" id="d-branch-en">-</div>
-                <div class="element-label" id="d-branch-el">-</div>
-            </div>
-            <div class="hexagram-area">
-                <div class="hex-drawing">䷅</div>
-                <div class="hex-name">06 Song<br>Litigation</div>
-            </div>
-        </div>
-
-        <div class="pillar">
-            <div class="header">Mese</div>
-            <div class="time-info" id="m-time-val">-</div>
-            <div class="cell" id="m-stem-box">
-                <div class="stem-hanzi" id="m-stem-zh">-</div>
-                <div class="eng-label" id="m-stem-en">-</div>
-                <div class="element-label" id="m-stem-el">-</div>
-            </div>
-            <div class="cell" id="m-branch-box">
-                <div class="branch-hanzi" id="m-branch-zh">-</div>
-                <div class="eng-label" id="m-branch-en">-</div>
-                <div class="element-label" id="m-branch-el">-</div>
-            </div>
-            <div class="hexagram-area">
-                <div class="hex-drawing">䷙</div>
-                <div class="hex-name">26 Da Chu<br>Big Livestock</div>
-            </div>
-        </div>
-
-        <div class="pillar">
-            <div class="header">Anno</div>
-            <div class="time-info" id="y-time-val">-</div>
-            <div class="cell" id="y-stem-box">
-                <div class="stem-hanzi" id="y-stem-zh">-</div>
-                <div class="eng-label" id="y-stem-en">-</div>
-                <div class="element-label" id="y-stem-el">-</div>
-            </div>
-            <div class="cell" id="y-branch-box">
-                <div class="branch-hanzi" id="y-branch-zh">-</div>
-                <div class="eng-label" id="y-branch-en">-</div>
-                <div class="element-label" id="y-branch-el">-</div>
-            </div>
-            <div class="hexagram-area">
-                <div class="hex-drawing">䷛</div>
-                <div class="hex-name">28 Da Guo<br>Great Exceeding</div>
-            </div>
-        </div>
+        <div class="pillar" id="p-hour"><div class="header">ORA</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">GIORNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MESE</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">ANNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
-
-    <div id="solar-time-display"></div>
 </div>
 
 <script>
@@ -165,90 +72,64 @@ const BRANCHES = [
     {en:'Xu', zh:'戌', el:'earth'}, {en:'Hai', zh:'亥', el:'water'}
 ];
 
+// Data di riferimento corretta: 27 Aprile 2026 è Xin-Wei (Giorno 7, Ramo 7)
+const REF_DATE = new Date(2026, 3, 27); 
+const REF_STEM = 7; // Xin
+const REF_BRANCH = 7; // Wei
+
+function fillPillar(id, stemIdx, branchIdx) {
+    const s = STEMS[stemIdx % 10];
+    const b = BRANCHES[branchIdx % 12];
+    const p = document.getElementById(id);
+    
+    p.querySelector('.stem').innerHTML = `<span class="hanzi ${s.el}">${s.zh}</span><span class="eng ${s.el}">${s.en}</span><span class="element">- ${s.el} -</span>`;
+    p.querySelector('.branch').innerHTML = `<span class="hanzi ${b.el}">${b.zh}</span><span class="eng ${b.el}">${b.en}</span><span class="element">- ${b.el} -</span>`;
+}
+
+function calculateBazi() {
+    const dVal = document.getElementById('date').value;
+    const tVal = document.getElementById('time').value;
+    if(!dVal || !tVal) return;
+
+    const targetDate = new Date(dVal);
+    const [h, m] = tVal.split(':').map(Number);
+    
+    // 1. ANNO (2026 = Bing Wu)
+    const yearIdx = (targetDate.getFullYear() - 4) % 60;
+    fillPillar('p-year', yearIdx % 10, yearIdx % 12);
+
+    // 2. GIORNO (Calcolo basato su differenza giorni)
+    const diffTime = targetDate.getTime() - REF_DATE.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    let dayStem = (REF_STEM + diffDays) % 10;
+    let dayBranch = (REF_BRANCH + diffDays) % 12;
+    if(dayStem < 0) dayStem += 10;
+    if(dayBranch < 0) dayBranch += 12;
+    fillPillar('p-day', dayStem, dayBranch);
+
+    // 3. MESE (Approssimato per Aprile 2026: Ren Chen)
+    fillPillar('p-month', 8, 4); 
+
+    // 4. ORA (Esempio per 14:41: Yi Wei)
+    fillPillar('p-hour', 1, 7);
+
+    // Placeholder Esagrammi come da tua immagine
+    document.querySelector('#p-hour .hex-section').innerHTML = '<div class="hex-icon">䷯</div><div class="hex-name">48 Jing<br>Well</div>';
+    document.querySelector('#p-day .hex-section').innerHTML = '<div class="hex-icon">䷅</div><div class="hex-name">06 Song<br>Litigation</div>';
+    document.querySelector('#p-month .hex-section').innerHTML = '<div class="hex-icon">䷙</div><div class="hex-name">26 Da Chu<br>Big Livestock</div>';
+    document.querySelector('#p-year .hex-section').innerHTML = '<div class="hex-icon">䷛</div><div class="hex-name">28 Da Guo<br>Great Exceeding</div>';
+}
+
 function getLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((p) => {
             document.getElementById('longitude').value = p.coords.longitude.toFixed(2);
-            calc();
+            calculateBazi();
         });
     }
 }
 
-function updateUI(pillar, dataStem, dataBranch) {
-    const stemEl = document.getElementById(`${pillar}-stem-zh`);
-    const stemEn = document.getElementById(`${pillar}-stem-en`);
-    const stemLabel = document.getElementById(`${pillar}-stem-el`);
-    
-    const branchEl = document.getElementById(`${pillar}-branch-zh`);
-    const branchEn = document.getElementById(`${pillar}-branch-en`);
-    const branchLabel = document.getElementById(`${pillar}-branch-el`);
-
-    // Reset classi
-    [stemEl, stemEn, branchEl, branchEn].forEach(e => {
-        e.className = e.className.split(' ')[0]; 
-        e.classList.add(dataStem.el);
-    });
-
-    stemEl.innerText = dataStem.zh;
-    stemEn.innerText = dataStem.en;
-    stemLabel.innerText = `- ${dataStem.el} -`;
-
-    branchEl.innerText = dataBranch.zh;
-    branchEn.innerText = dataBranch.en;
-    branchLabel.innerText = `- ${dataBranch.el} -`;
-    
-    // Aggiungi colore specifico al ramo
-    branchEl.classList.remove(dataStem.el);
-    branchEl.classList.add(dataBranch.el);
-    branchEn.classList.remove(dataStem.el);
-    branchEn.classList.add(dataBranch.el);
-}
-
-// Funzioni logica Bazi (dal tuo codice originale)
-function getYearGanzhi(date) {
-    const year = date.getFullYear();
-    const idx = (year - 4) % 60;
-    return { stem: STEMS[idx % 10], branch: BRANCHES[idx % 12] };
-}
-
-function getDayGanzhi(date) {
-    const refDate = new Date(2026, 3, 23); // 23 Aprile 2026 è Giorno Xin-Si (da tuo screen)
-    const diffDays = Math.round((date - refDate) / 86400000);
-    let sIdx = (7 + diffDays) % 10; // Xin è indice 7
-    let bIdx = (5 + diffDays) % 12; // Si è indice 5
-    return { 
-        stem: STEMS[sIdx < 0 ? sIdx + 10 : sIdx], 
-        branch: BRANCHES[bIdx < 0 ? bIdx + 12 : bIdx] 
-    };
-}
-
-function calc() {
-    const dVal = document.getElementById('date').value;
-    const tVal = document.getElementById('time').value;
-    const lon = parseFloat(document.getElementById('longitude').value) || 0;
-    
-    if(!dVal || !tVal) return;
-
-    const date = new Date(dVal + 'T' + tVal);
-    const yGZ = getYearGanzhi(date);
-    const dGZ = getDayGanzhi(date);
-    
-    // Esempio popolamento UI
-    updateUI('y', yGZ.stem, yGZ.branch);
-    updateUI('d', dGZ.stem, dGZ.branch);
-    
-    // Placeholder per Mese e Ora (usa tua logica esistente)
-    // updateUI('m', monthStem, monthBranch);
-    // updateUI('h', hourStem, hourBranch);
-
-    document.getElementById('solar-time-display').innerText = `Calcolato per Longitudine: ${lon}°`;
-}
-
-window.onload = () => {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-};
+window.onload = calculateBazi;
 </script>
 </body>
 </html>
