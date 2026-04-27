@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <title>XKDG Bazi Calculator - STABLE v1</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
+    body { font-family: Arial; padding: 20px; text-align: center; }
   .inputs { margin: 20px 0; }
     input, button { margin: 5px; padding: 8px; }
-  .chart { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 600px; }
+  .chart { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 600px; margin: 0 auto; }
   .pillar { border: 1px solid #ccc; padding: 10px; text-align: center; }
   .stem { font-size: 24px; font-weight: bold; }
   .branch { font-size: 20px; }
@@ -89,7 +89,7 @@ function getLocation() {
         const lon = position.coords.longitude.toFixed(2);
         document.getElementById('longitude').value = lon;
         document.getElementById('solar-time').innerText = `GPS: Lon ${lon}° detected`;
-        calc();
+        calculate(); // FIX: era calc() - ora è corretto
       },
       (error) => {
         document.getElementById('solar-time').innerText = 'GPS denied. Enter longitude manually';
@@ -141,37 +141,66 @@ function getYearGanzhi(date) {
 }
 
 function getMonthGanzhi(date, yearStem) {
-  // JIEQI 2026 - [mese, giorno, ora, minuto] UTC
-  const JIEQI = [
-    [2,4,8,51], // LiChun - Yin
-    [3,5,20,45], // JingZhe - Mao
-    [4,5,1,34], // QingMing - Chen
-    [5,5,18,48], // LiXia - Si
-    [6,5,23,4], // MangZhong - Wu
-    [7,7,9,5], // XiaoShu - Wei
-    [8,7,18,43], // LiQiu - Shen
-    [9,7,21,37], // BaiLu - You
-    [10,8,12,42],// HanLu - Xu
-    [11,7,15,47],// LiDong - Hai
-    [12,7,8,47], // DaXue - Zi
-    [1,5,21,5] // XiaoHan - Chou
-  ];
-
-  const year = date.getUTCFullYear();
-  let monthIndex = 0; // 0=Yin, 1=Mao, 2=Chen...
-
-  for(let i = 0; i < 12; i++){
-    const jqDate = new Date(Date.UTC(year, JIEQI[i][0]-1, JIEQI[i][1], JIEQI[i][2], JIEQI[i][3]));
-    if(date >= jqDate) monthIndex = i;
-  }
-
+  const month = date.getMonth();
   const yearStemIndex = STEMS.findIndex(s => s.en === yearStem.en);
   const stemStart = [2, 4, 6, 8, 0][yearStemIndex % 5];
-  const stemIndex = (stemStart + monthIndex) % 10;
-  const branchIndex = (monthIndex + 2) % 12; // Yin=2
-
+  const stemIndex = (stemStart + month) % 10;
+  const branchIndex = (month + 2) % 12;
   return { stem: STEMS[stemIndex], branch: BRANCHES[branchIndex] };
 }
+
+function getHourGanzhi(hour, dayStem) {
+  const branchIndex = Math.floor((hour + 1) / 2) % 12;
+  const dayStemIndex = STEMS.findIndex(s => s.en === dayStem.en);
+  const stemStart = [0, 2, 4, 6, 8][dayStemIndex % 5];
+  const stemIndex = (stemStart + branchIndex) % 10;
+  return { stem: STEMS[stemIndex], branch: BRANCHES[branchIndex] };
+}
+
+function calc() {
+  const dateInput = document.getElementById('date').value;
+  const timeInput = document.getElementById('time').value;
+  const longitude = parseFloat(document.getElementById('longitude').value);
+  if (!dateInput ||!timeInput || isNaN(longitude)) {
+    alert('Please enter date, time and longitude');
+    return;
+  }
+  const [year, month, day] = dateInput.split('-').map(Number);
+  const [hour, minute] = timeInput.split(':').map(Number);
+  const timezoneOffset = -new Date(year, month - 1, day).getTimezoneOffset() / 60;
+  const solar = getSolarTime(hour, minute, longitude, timezoneOffset);
+  const baziDate = new Date(year, month - 1, day + solar.dayOffset);
+  const yearGZ = getYearGanzhi(baziDate);
+  const monthGZ = getMonthGanzhi(baziDate, yearGZ.stem);
+  const dayGZ = getDayGanzhi(baziDate);
+  const hourGZ = getHourGanzhi(solar.hour, dayGZ.stem);
+
+  const pillars = [
+    {prefix: 'h', data: hourGZ},
+    {prefix: 'd', data: dayGZ},
+    {prefix: 'm', data: monthGZ},
+    {prefix: 'y', data: yearGZ}
+  ];
+
+  pillars.forEach(p => {
+    const stemEl = document.getElementById(p.prefix + '-stem');
+    const branchEl = document.getElementById(p.prefix + '-branch');
+    const hexEl = document.getElementById(p.prefix + '-hex');
+
+    stemEl.innerText = p.data.stem.cn;
+    stemEl.className = 'stem ' + p.data.stem.el;
+    stemEl.title = p.data.stem.en;
+
+    branchEl.innerText = p.data.branch.cn;
+    branchEl.className = 'branch ' + p.data.branch.el;
+    branchEl.title = p.data.branch.en;
+
+    hexEl.innerText = getXKDGHexagram(p.data.stem, p.data.branch);
+  });
+
+  document.getElementById('solar-time').innerText = `Solar Time: ${String(solar.hour).padStart(2,'0')}:${String(solar.minute).padStart(2,'0')} | Lon: ${longitude}° | Correction: ${((longitude - timezoneOffset*15)*4).toFixed(1)} min`;
+}
+
 function setNow() {
   const now = new Date();
   document.getElementById('date').value = now.toISOString().split('T')[0];
