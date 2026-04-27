@@ -140,13 +140,14 @@ function calculate() {
 }
     
     function setNow() {
-     const now = new Date();
-     document.getElementById('input-time').value = now.toTimeString().slice(0,5);
-     document.getElementById('input-day').value = now.getDate();
-     document.getElementById('input-month').value = now.getMonth() + 1;
-     document.getElementById('input-year').value = now.getFullYear();
-     calculate();
-
+    const now = new Date();
+    document.getElementById('time').value = now.toTimeString().slice(0,5);
+    document.getElementById('day').value = now.getDate();
+    document.getElementById('month').value = now.getMonth() + 1;
+    document.getElementById('year').value = now.getFullYear();
+    document.getElementById('longitude').value = document.getElementById('longitude').value || '16.37'; // default Vienna
+    calculate();
+}
 
  // Al caricamento pagina, popola gli input con oggi e calcola
  window.onload = function() {
