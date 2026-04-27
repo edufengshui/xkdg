@@ -138,21 +138,20 @@ function calculate() {
         document.getElementById('y-hex').innerHTML = getXKDGHexagram(yearGan, yearZhi);
     }
 }
-140 }
-141 
-142 function setNow() {
-143     const now = new Date();
-144     document.getElementById('input-time').value = now.toTimeString().slice(0,5);
-145     document.getElementById('input-day').value = now.getDate();
-146     document.getElementById('input-month').value = now.getMonth() + 1;
-147     document.getElementById('input-year').value = now.getFullYear();
-148     calculate();
-149 }
-150
-151 // Al caricamento pagina, popola gli input con oggi e calcola
-152 window.onload = function() {
-153     calculate();
-154 }
+    
+    function setNow() {
+     const now = new Date();
+     document.getElementById('input-time').value = now.toTimeString().slice(0,5);
+     document.getElementById('input-day').value = now.getDate();
+     document.getElementById('input-month').value = now.getMonth() + 1;
+     document.getElementById('input-year').value = now.getFullYear();
+     calculate();
+
+
+ // Al caricamento pagina, popola gli input con oggi e calcola
+ window.onload = function() {
+     calculate();
+ }
 // Al caricamento pagina, popola gli input con oggi e calcola
 window.onload = function() {
     calculate();
