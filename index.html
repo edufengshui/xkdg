@@ -9,35 +9,25 @@
     th, td { border: 1px solid #ccc; padding: 8px 16px; min-width: 80px; }
     th { background: #f5f5f5; }
     input { text-align: center; font-size: 14px; }
-  .stem-cn { font-size: 20px; font-weight: bold; }
-  .branch-cn { font-size: 20px; font-weight: bold; }
-    /* COLORI 5 ELEMENTI */
-  .wood { color: #2e8b57; }
-  .fire { color: #d32f2f; }
-  .earth { color: #8d6e63; }
-  .metal { color: #757575; }
-  .water { color: #1976d2; }
+ .stem-cn { font-size: 20px; font-weight: bold; }
+ .branch-cn { font-size: 20px; font-weight: bold; }
+ .wood { color: #2e8b57; }
+ .fire { color: #d32f2f; }
+ .earth { color: #8d6e63; }
+ .metal { color: #757575; }
+ .water { color: #1976d2; }
   </style>
 </head>
 <body>
-
   <h1>Four Pillars + XKDG</h1>
-
   <div style="display: flex; gap: 8px; justify-content: center; margin: 10px 0;">
     <button onclick="calculate()" style="padding: 4px 12px; font-size: 14px;">Calculate</button>
     <button onclick="setNow()" style="padding: 4px 12px; font-size: 14px;">NOW</button>
     <input id="longitude" type="number" step="0.01" placeholder="Long: 16.37"
            style="width: 110px; padding: 4px 12px; font-size: 14px; text-align: center;">
   </div>
-
   <table>
-    <tr>
-      <th>Time</th>
-      <th>Hour 时</th>
-      <th>Day 日</th>
-      <th>Month 月</th>
-      <th>Year 年</th>
-    </tr>
+    <tr><th>Time</th><th>Hour 时</th><th>Day 日</th><th>Month 月</th><th>Year 年</th></tr>
     <tr>
       <td>Input</td>
       <td><input id="time" type="time" value="12:00"></td>
@@ -61,10 +51,7 @@
     </tr>
     <tr>
       <td>Hex</td>
-      <td id="h-hex"></td>
-      <td id="d-hex"></td>
-      <td id="m-hex"></td>
-      <td id="y-hex"></td>
+      <td id="h-hex"></td><td id="d-hex"></td><td id="m-hex"></td><td id="y-hex"></td>
     </tr>
   </table>
 
@@ -76,7 +63,6 @@ const STEMS = [
   {en:'Geng', cn:'庚', el:'metal'}, {en:'Xin', cn:'辛', el:'metal'},
   {en:'Ren', cn:'壬', el:'water'}, {en:'Gui', cn:'癸', el:'water'}
 ];
-
 const BRANCHES = [
   {en:'Zi', cn:'子', el:'water'}, {en:'Chou', cn:'丑', el:'earth'},
   {en:'Yin', cn:'寅', el:'wood'}, {en:'Mao', cn:'卯', el:'wood'},
@@ -86,16 +72,14 @@ const BRANCHES = [
   {en:'Xu', cn:'戌', el:'earth'}, {en:'Hai', cn:'亥', el:'water'}
 ];
 
-// Termini solari Jieqi approssimati per 2000-2100
-// [mese, giorno] di inizio di Yin, Mao, Chen, Si, Wu, Wei, Shen, You, Xu, Hai, Zi, Chou
-const JIEQI = [
-  [2,4], [3,6], [4,5], [5,6], [6,6], [7,7],
-  [8,8], [9,8], [10,8], [11,7], [12,7], [1,6]
+// Jieqi date 2026 UTC. Fonte: Purple Mountain Observatory
+const JIEQI_2026 = [
+  [1,5,21,5], [2,4,8,51], [3,5,20,45], [4,5,1,34], // Xiaohan-Lichun-Jingzhe-Qingming
+  [5,5,18,48], [6,5,23,4], [7,7,9,5], [8,7,18,43], // Lixia-Mangzhong-Xiaoshu-Liqiu
+  [9,7,21,37], [10,8,12,42], [11,7,15,47], [12,7,8,47] // Bailu-Hanlu-Lidong-Daxue
 ];
 
-function getXKDGHexagram(stem, branch) {
-  return ''; // Rimetti la tua funzione qui
-}
+function getXKDGHexagram(stem, branch) { return ''; }
 
 function calculate() {
   const year = parseInt(document.getElementById('year').value);
@@ -106,44 +90,42 @@ function calculate() {
   const lon = parseFloat(document.getElementById('longitude').value) || 120;
 
   // 1. TRUE SOLAR TIME
-  const offsetMinutes = Math.round((lon - 120) * 4);
-  const date = new Date(Date.UTC(year, month - 1, day, hour, minute + offsetMinutes));
+  const offsetMin = Math.round((lon - 120) * 4);
+  const dt = new Date(Date.UTC(year, month - 1, day, hour, minute + offsetMin));
 
-  // 2. YEAR PILLAR - Inizia a Li Chun ~4 Feb
-  let solarYear = date.getUTCFullYear();
-  const liChun = new Date(Date.UTC(solarYear, 1, 4)); // 4 Feb
-  if (date < liChun) solarYear--;
-  const yearStem = (solarYear - 4) % 10;
-  const yearBranch = (solarYear - 4) % 12;
+  // 2. YEAR PILLAR - LiChun ~4 Feb
+  let solarYear = dt.getUTCFullYear();
+  const liChun = new Date(Date.UTC(solarYear, 1, 4, 8, 51)); // 2026 LiChun
+  if (dt < liChun) solarYear--;
+  const yStem = (solarYear - 4) % 10;
+  const yBranch = (solarYear - 4) % 12;
 
-  // 3. MONTH PILLAR - Basato sui Jieqi
-  let monthIndex = 0;
-  for (let i = 0; i < 12; i++) {
-    let jieqiMonth = JIEQI[i][0] - 1;
-    let jieqiDay = JIEQI[i][1];
-    let jieqiDate = new Date(Date.UTC(date.getUTCFullYear(), jieqiMonth, jieqiDay));
-    if (date >= jieqiDate) monthIndex = i;
+  // 3. MONTH PILLAR - Jieqi precisi 2026
+  let mIndex = 0;
+  for(let i=0; i<12; i++){
+    const jqDate = new Date(Date.UTC(dt.getUTCFullYear(), JIEQI_2026[i][0]-1, JIEQI_2026[i][1], JIEQI_2026[i][2], JIEQI_2026[i][3]));
+    if(dt >= jqDate) mIndex = i;
   }
-  // Stem del mese: formula (yearStem * 2 + monthIndex) % 10
-  const monthStem = (yearStem * 2 + monthIndex + 2) % 10;
-  const monthBranch = (monthIndex + 2) % 12; // Yin=2
+  const mStem = (yStem * 2 + mIndex + 2) % 10;
+  const mBranch = (mIndex + 2) % 12; // Yin=2
 
-  // 4. DAY PILLAR - Giorno giuliano con epoch corretta
-  const JD = Math.floor((date.getTime() / 86400000) + 2440587.5);
-  const dayCycle = (JD + 49) % 60; // 1/1/2000 = Jia Zi
-  const dayStem = dayCycle % 10;
-  const dayBranch = dayCycle % 12;
+  // 4. DAY PILLAR - Epoch: 1900-01-31 = Geng Chen = 16
+  const epoch = Date.UTC(1900,0,31);
+  const days = Math.floor((dt.getTime() - epoch) / 86400000);
+  const dCycle = (days + 16) % 60;
+  const dStem = dCycle % 10;
+  const dBranch = dCycle % 12;
 
-  // 5. HOUR PILLAR
-  const hourDouble = Math.floor((date.getUTCHours() + 1) / 2) % 12;
-  const hourStem = (dayStem * 2 + hourDouble) % 10;
-  const hourBranch = hourDouble;
+  // 5. HOUR PILLAR - 23:00-00:59 = Zi hour
+  const h = dt.getUTCHours();
+  const hIndex = Math.floor((h + 1) / 2) % 12;
+  const hStem = (dStem * 2 + hIndex) % 10;
 
   const pillars = [
-    {p:'h', s:hourStem, b:hourBranch},
-    {p:'d', s:dayStem, b:dayBranch},
-    {p:'m', s:monthStem, b:monthBranch},
-    {p:'y', s:yearStem, b:yearBranch}
+    {p:'h', s:hStem, b:hIndex},
+    {p:'d', s:dStem, b:dBranch},
+    {p:'m', s:mStem, b:mBranch},
+    {p:'y', s:yStem, b:yBranch}
   ];
 
   pillars.forEach(({p, s, b}) => {
@@ -155,7 +137,6 @@ function calculate() {
     document.getElementById(p+'-branch-cn').textContent = branch.cn;
     document.getElementById(p+'-branch-en').textContent = branch.en;
     document.getElementById(p+'-branch-cn').className = 'branch-cn ' + branch.el;
-    document.getElementById(p+'-hex').innerHTML = getXKDGHexagram(stem.en, branch.en);
   });
 }
 
@@ -171,6 +152,5 @@ function setNow() {
 
 window.onload = calculate;
 </script>
-
 </body>
 </html>
