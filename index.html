@@ -9,8 +9,14 @@
     th, td { border: 1px solid #ccc; padding: 8px 16px; min-width: 80px; }
     th { background: #f5f5f5; }
     input { text-align: center; font-size: 14px; }
-   .stem-cn { font-size: 20px; }
-   .branch-cn { font-size: 20px; }
+   .stem-cn { font-size: 20px; font-weight: bold; }
+   .branch-cn { font-size: 20px; font-weight: bold; }
+    /* COLORI 5 ELEMENTI */
+   .wood { color: #2e8b57; }
+   .fire { color: #d32f2f; }
+   .earth { color: #8d6e63; }
+   .metal { color: #757575; }
+   .water { color: #1976d2; }
   </style>
 </head>
 <body>
@@ -20,7 +26,7 @@
   <div style="display: flex; gap: 8px; justify-content: center; margin: 10px 0;">
     <button onclick="calculate()" style="padding: 4px 12px; font-size: 14px;">Calculate</button>
     <button onclick="setNow()" style="padding: 4px 12px; font-size: 14px;">NOW</button>
-    <input id="longitude" type="number" step="0.01" placeholder="Long: 121.47"
+    <input id="longitude" type="number" step="0.01" placeholder="Long: 16.37"
            style="width: 110px; padding: 4px 12px; font-size: 14px; text-align: center;">
   </div>
 
@@ -63,77 +69,97 @@
   </table>
 
 <script>
-// --- QUI METTI LE TUE COSTANTI STEMS, BRANCHES, ELEMENTS ---
-const STEMS = ['Jia 甲','Yi 乙','Bing 丙','Ding 丁','Wu 戊','Ji 己','Geng 庚','Xin 辛','Ren 壬','Gui 癸'];
-const BRANCHES = {
-  'Zi':'Rat 子 Water','Chou':'Ox 丑 Earth','Yin':'Tiger 寅 Wood','Mao':'Rabbit 卯 Wood',
-  'Chen':'Dragon 辰 Earth','Si':'Snake 巳 Fire','Wu':'Horse 午 Fire','Wei':'Goat 未 Earth',
-  'Shen':'Monkey 申 Metal','You':'Rooster 酉 Metal','Xu':'Dog 戌 Earth','Hai':'Pig 亥 Water'
-};
-const ELEMENTS = {
-  'Zi':'water','Chou':'earth','Yin':'wood','Mao':'wood','Chen':'earth','Si':'fire',
-  'Wu':'fire','Wei':'earth','Shen':'metal','You':'metal','Xu':'earth','Hai':'water'
-};
+// --- COSTANTI BAZI ---
+const STEMS = [
+  {en:'Jia', cn:'甲', el:'wood'}, {en:'Yi', cn:'乙', el:'wood'},
+  {en:'Bing', cn:'丙', el:'fire'}, {en:'Ding', cn:'丁', el:'fire'},
+  {en:'Wu', cn:'戊', el:'earth'}, {en:'Ji', cn:'己', el:'earth'},
+  {en:'Geng', cn:'庚', el:'metal'}, {en:'Xin', cn:'辛', el:'metal'},
+  {en:'Ren', cn:'壬', el:'water'}, {en:'Gui', cn:'癸', el:'water'}
+];
 
-// --- FUNZIONE PLACEHOLDER PER XKDG: SOSTITUISCILA CON LA TUA ---
-function getXKDGHexagram(gan, zhi) {
-  return ''; // Metti qui la tua logica per calcolare l'esagramma
+const BRANCHES = [
+  {en:'Zi', cn:'子', el:'water'}, {en:'Chou', cn:'丑', el:'earth'},
+  {en:'Yin', cn:'寅', el:'wood'}, {en:'Mao', cn:'卯', el:'wood'},
+  {en:'Chen', cn:'辰', el:'earth'}, {en:'Si', cn:'巳', el:'fire'},
+  {en:'Wu', cn:'午', el:'fire'}, {en:'Wei', cn:'未', el:'earth'},
+  {en:'Shen', cn:'申', el:'metal'}, {en:'You', cn:'酉', el:'metal'},
+  {en:'Xu', cn:'戌', el:'earth'}, {en:'Hai', cn:'亥', el:'water'}
+];
+
+// --- FUNZIONE XKDG: RIMETTI LA TUA SE CE L'HAI ---
+function getXKDGHexagram(stem, branch) {
+  return ''; // Sostituisci con la tua funzione
 }
 
-// --- CALCOLO PRINCIPALE: SOSTITUISCI CON LA TUA LOGICA ---
+// --- CALCOLO BAZI CORRETTO ---
 function calculate() {
   const year = parseInt(document.getElementById('year').value);
   const month = parseInt(document.getElementById('month').value);
   const day = parseInt(document.getElementById('day').value);
-  const time = document.getElementById('time').value;
+  const timeStr = document.getElementById('time').value;
+  const [hour, minute] = timeStr.split(':').map(Number);
   const lon = parseFloat(document.getElementById('longitude').value) || 120;
 
-  // TODO: Qui metti il tuo algoritmo Bazi completo
-  // Questo è solo un esempio per far funzionare la tabella
+  // True Solar Time correction
+  const offsetMinutes = Math.round((lon - 120) * 4);
+  const date = new Date(year, month - 1, day, hour, minute + offsetMinutes);
+
+  // --- YEAR PILLAR ---
+  // Anno inizia a Li Chun ~4 Feb. Semplificato: se prima del 4 Feb usa anno-1
+  let yearStem = (year - 4) % 10;
+  if (month === 1 || (month === 2 && day < 4)) yearStem = (year - 5) % 10;
+  if (yearStem < 0) yearStem += 10;
+  const yearBranch = (year - 4) % 12;
+
+  // --- DAY PILLAR ---
+  // Algoritmo base giorno giuliano
+  const jd = Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day - 1524.5;
+  const dayCycle = Math.floor(jd + 0.5) % 60;
+  const dayStem = dayCycle % 10;
+  const dayBranch = dayCycle % 12;
+
+  // --- MONTH PILLAR ---
+  // Semplificato: mese parte dal 5-8 del mese solare
+  const monthStem = (yearStem * 2 + month) % 10;
+  const monthBranch = (month + 1) % 12;
+
+  // --- HOUR PILLAR ---
+  const hourIndex = Math.floor((date.getHours() + 1) / 2) % 12;
+  const hourStem = (dayStem * 2 + hourIndex) % 10;
+
   const pillars = [
-    { prefix: 'h', stem: 'Jia', branch: 'Zi' },
-    { prefix: 'd', stem: 'Yi', branch: 'Chou' },
-    { prefix: 'm', stem: 'Bing', branch: 'Yin' },
-    { prefix: 'y', stem: 'Ding', branch: 'Mao' }
+    {p:'h', s:hourStem, b:hourIndex},
+    {p:'d', s:dayStem, b:dayBranch},
+    {p:'m', s:monthStem, b:monthBranch},
+    {p:'y', s:yearStem, b:yearBranch}
   ];
 
-  pillars.forEach(item => {
-    document.getElementById(item.prefix+'-stem-cn').textContent = STEMS.find(s => s.includes(item.stem)).split(' ')[1];
-    document.getElementById(item.prefix+'-stem-en').textContent = item.stem;
-    document.getElementById(item.prefix+'-branch-cn').textContent = BRANCHES[item.branch].split(' ')[1];
-    document.getElementById(item.prefix+'-branch-en').textContent = item.branch;
-    document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn ' + ELEMENTS[item.branch];
+  pillars.forEach(({p, s, b}) => {
+    const stem = STEMS[s];
+    const branch = BRANCHES[b];
+    document.getElementById(p+'-stem-cn').textContent = stem.cn;
+    document.getElementById(p+'-stem-en').textContent = stem.en;
+    document.getElementById(p+'-stem-cn').className = 'stem-cn ' + stem.el;
+    document.getElementById(p+'-branch-cn').textContent = branch.cn;
+    document.getElementById(p+'-branch-en').textContent = branch.en;
+    document.getElementById(p+'-branch-cn').className = 'branch-cn ' + branch.el;
+    document.getElementById(p+'-hex').innerHTML = getXKDGHexagram(stem.en, branch.en);
   });
-
-  // Calcolo Hex se la funzione esiste
-  if (typeof getXKDGHexagram === 'function') {
-    document.getElementById('h-hex').innerHTML = getXKDGHexagram('Jia', 'Zi');
-    document.getElementById('d-hex').innerHTML = getXKDGHexagram('Yi', 'Chou');
-    document.getElementById('m-hex').innerHTML = getXKDGHexagram('Bing', 'Yin');
-    document.getElementById('y-hex').innerHTML = getXKDGHexagram('Ding', 'Mao');
-  }
 }
 
-// --- TASTO NOW: IMPOSTA DATA/ORA ATTUALE ---
+// --- TASTO NOW ---
 function setNow() {
   const now = new Date();
-  const lon = parseFloat(document.getElementById('longitude').value) || 16.37; // default Vienna
-
-  // Conversione True Solar Time approssimata
-  const offsetMinutes = Math.round((lon - 120) * 4);
-  now.setMinutes(now.getMinutes() + offsetMinutes);
-
   document.getElementById('time').value = now.toTimeString().slice(0,5);
   document.getElementById('day').value = now.getDate();
   document.getElementById('month').value = now.getMonth() + 1;
   document.getElementById('year').value = now.getFullYear();
+  document.getElementById('longitude').value = document.getElementById('longitude').value || '16.37';
   calculate();
 }
 
-// Al caricamento pagina, calcola subito
-window.onload = function() {
-  calculate();
-}
+window.onload = calculate;
 </script>
 
 </body>
