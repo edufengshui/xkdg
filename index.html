@@ -1,158 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Four Pillars + XKDG</title>
-    <style>
-        body { font-family: Arial; text-align: center; }
-        table { border-collapse: collapse; margin: 20px auto; }
-        td, th { border: 1px solid #ccc; padding: 12px 8px; vertical-align: top; min-width: 100px; }
-      .wood { color: #2e8b57; font-weight: bold; }
-      .fire { color: #dc143c; font-weight: bold; }
-      .earth { color: #b8860b; font-weight: bold; }
-      .metal { color: #708090; font-weight: bold; }
-      .water { color: #1e90ff; font-weight: bold; }
-      .stem-cn,.branch-cn { font-size: 32px; font-weight: bold; }
-      .hex { font-size: 14px; line-height: 1.2; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Four Pillars + XKDG</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin: 20px; }
+    table { margin: 20px auto; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 8px 16px; min-width: 80px; }
+    th { background: #f5f5f5; }
+    input { text-align: center; font-size: 14px; }
+   .stem-cn { font-size: 20px; }
+   .branch-cn { font-size: 20px; }
+  </style>
 </head>
 <body>
-    <h1>Four Pillars + XKDG</h1>
-    <div style="display: flex; gap: 8px; justify-content: center; margin: 10px 0;">
-  <button onclick="calculate()" style="padding: 4px 12px; font-size: 14px;">Calculate</button>
-  <button onclick="setNow()" style="padding: 4px 12px; font-size: 14px;">NOW</button>
-    <input id="longitude" type="number" step="0.01" placeholder="Long: 121.47" 
-         style="width: 110px; padding: 4px 12px; font-size: 14px; text-align: center;">      
+
+  <h1>Four Pillars + XKDG</h1>
+
+  <div style="display: flex; gap: 8px; justify-content: center; margin: 10px 0;">
+    <button onclick="calculate()" style="padding: 4px 12px; font-size: 14px;">Calculate</button>
+    <button onclick="setNow()" style="padding: 4px 12px; font-size: 14px;">NOW</button>
+    <input id="longitude" type="number" step="0.01" placeholder="Long: 121.47"
+           style="width: 110px; padding: 4px 12px; font-size: 14px; text-align: center;">
   </div>
 
-    <table>
-        <tr style="background:#e8e8e8; font-weight:bold;">
-            <td></td><td>Hour 时</td><td>Day 日</td><td>Month 月</td><td>Year 年</td>
-        </tr>
-    <tr style="background:#ffe6e6;">
-    <td>Time</td>
-    <td><input type="time" id="input-time" style="width:80px;text-align:center;border:none;background:transparent;"></td>
-    <td><input type="number" id="input-day" min="1" max="31" placeholder="DD" style="width:50px;text-align:center;border:none;background:transparent;"></td>
-    <td><input type="number" id="input-month" min="1" max="12" placeholder="MM" style="width:50px;text-align:center;border:none;background:transparent;"></td>
-    <td><input type="number" id="input-year" min="1900" max="2100" placeholder="YYYY" style="width:70px;text-align:center;border:none;background:transparent;"></td>
-</tr>
-        <tr>
-            <td style="font-weight:bold;">Stem</td>
-            <td><div id="h-stem-cn" class="stem-cn"></div><div id="h-stem-en"></div><div id="h-stem-el"></div></td>
-            <td><div id="d-stem-cn" class="stem-cn"></div><div id="d-stem-en"></div><div id="d-stem-el"></div></td>
-            <td><div id="m-stem-cn" class="stem-cn"></div><div id="m-stem-en"></div><div id="m-stem-el"></div></td>
-            <td><div id="y-stem-cn" class="stem-cn"></div><div id="y-stem-en"></div><div id="y-stem-el"></div></td>
-        </tr>
-        <tr>
-            <td style="font-weight:bold;">Branch</td>
-            <td><div id="h-branch-cn" class="branch-cn"></div><div id="h-branch-en"></div><div id="h-branch-an"></div><div id="h-branch-el"></div></td>
-            <td><div id="d-branch-cn" class="branch-cn"></div><div id="d-branch-en"></div><div id="d-branch-an"></div><div id="d-branch-el"></div></td>
-            <td><div id="m-branch-cn" class="branch-cn"></div><div id="m-branch-en"></div><div id="m-branch-an"></div><div id="m-branch-el"></div></td>
-            <td><div id="y-branch-cn" class="branch-cn"></div><div id="y-branch-en"></div><div id="y-branch-an"></div><div id="y-branch-el"></div></td>
-        </tr>
-        <tr>
-            <td style="font-weight:bold;">Hex</td>
-            <td id="h-hex" class="hex"></td><td id="d-hex" class="hex"></td>
-            <td id="m-hex" class="hex"></td><td id="y-hex" class="hex"></td>
-        </tr>
-    </table>
+  <table>
+    <tr>
+      <th>Time</th>
+      <th>Hour 时</th>
+      <th>Day 日</th>
+      <th>Month 月</th>
+      <th>Year 年</th>
+    </tr>
+    <tr>
+      <td>Input</td>
+      <td><input id="time" type="time" value="12:00"></td>
+      <td><input id="day" type="number" min="1" max="31" value="1" style="width: 50px;"></td>
+      <td><input id="month" type="number" min="1" max="12" value="1" style="width: 50px;"></td>
+      <td><input id="year" type="number" min="1900" max="2100" value="2000" style="width: 70px;"></td>
+    </tr>
+    <tr>
+      <td>Stem</td>
+      <td><span id="h-stem-cn" class="stem-cn"></span><br><span id="h-stem-en"></span></td>
+      <td><span id="d-stem-cn" class="stem-cn"></span><br><span id="d-stem-en"></span></td>
+      <td><span id="m-stem-cn" class="stem-cn"></span><br><span id="m-stem-en"></span></td>
+      <td><span id="y-stem-cn" class="stem-cn"></span><br><span id="y-stem-en"></span></td>
+    </tr>
+    <tr>
+      <td>Branch</td>
+      <td><span id="h-branch-cn" class="branch-cn"></span><br><span id="h-branch-en"></span></td>
+      <td><span id="d-branch-cn" class="branch-cn"></span><br><span id="d-branch-en"></span></td>
+      <td><span id="m-branch-cn" class="branch-cn"></span><br><span id="m-branch-en"></span></td>
+      <td><span id="y-branch-cn" class="branch-cn"></span><br><span id="y-branch-en"></span></td>
+    </tr>
+    <tr>
+      <td>Hex</td>
+      <td id="h-hex"></td>
+      <td id="d-hex"></td>
+      <td id="m-hex"></td>
+      <td id="y-hex"></td>
+    </tr>
+  </table>
 
-<script src="lunar.min.js"></script>
-<script src="xkdg_hex.js"></script>
 <script>
-// MAPPATURA CINESE -> PINYIN. QUESTA È LA CHIAVE.
-const GAN_MAP = {'甲':'Jia','乙':'Yi','丙':'Bing','丁':'Ding','戊':'Wu','己':'Ji','庚':'Geng','辛':'Xin','壬':'Ren','癸':'Gui'};
-const ZHI_MAP = {'子':'Zi','丑':'Chou','寅':'Yin','卯':'Mao','辰':'Chen','巳':'Si','午':'Wu','未':'Wei','申':'Shen','酉':'You','戌':'Xu','亥':'Hai'};
-const STEMS = { 'Jia':'Yang Wood','Yi':'Yin Wood','Bing':'Yang Fire','Ding':'Yin Fire','Wu':'Yang Earth','Ji':'Yin Earth','Geng':'Yang Metal','Xin':'Yin Metal','Ren':'Yang Water','Gui':'Yin Water' };
-const BRANCHES = { 'Zi':'Yang Water Rat','Chou':'Yin Earth Ox','Yin':'Yang Wood Tiger','Mao':'Yin Wood Rabbit','Chen':'Yang Earth Dragon','Si':'Yin Fire Snake','Wu':'Yang Fire Horse','Wei':'Yin Earth Goat','Shen':'Yang Metal Monkey','You':'Yin Metal Rooster','Xu':'Yang Earth Dog','Hai':'Yin Water Pig' };
-const ELEMENTS = { 'Jia':'wood','Yi':'wood','Bing':'fire','Ding':'fire','Wu':'earth','Ji':'earth','Geng':'metal','Xin':'metal','Ren':'water','Gui':'water','Zi':'water','Chou':'earth','Yin':'wood','Mao':'wood','Chen':'earth','Si':'fire','Wu':'fire','Wei':'earth','Shen':'metal','You':'metal','Xu':'earth','Hai':'water' };
+// --- QUI METTI LE TUE COSTANTI STEMS, BRANCHES, ELEMENTS ---
+const STEMS = ['Jia 甲','Yi 乙','Bing 丙','Ding 丁','Wu 戊','Ji 己','Geng 庚','Xin 辛','Ren 壬','Gui 癸'];
+const BRANCHES = {
+  'Zi':'Rat 子 Water','Chou':'Ox 丑 Earth','Yin':'Tiger 寅 Wood','Mao':'Rabbit 卯 Wood',
+  'Chen':'Dragon 辰 Earth','Si':'Snake 巳 Fire','Wu':'Horse 午 Fire','Wei':'Goat 未 Earth',
+  'Shen':'Monkey 申 Metal','You':'Rooster 酉 Metal','Xu':'Dog 戌 Earth','Hai':'Pig 亥 Water'
+};
+const ELEMENTS = {
+  'Zi':'water','Chou':'earth','Yin':'wood','Mao':'wood','Chen':'earth','Si':'fire',
+  'Wu':'fire','Wei':'earth','Shen':'metal','You':'metal','Xu':'earth','Hai':'water'
+};
 
-function getSolarTime(date, lng=12.4964) {
-    const utc = date.getTime() + date.getTimezoneOffset()*60000;
-    const solar = new Date(utc + lng*3600000/15);
-    return {hour: solar.getHours(), minute: solar.getMinutes()};
+// --- FUNZIONE PLACEHOLDER PER XKDG: SOSTITUISCILA CON LA TUA ---
+function getXKDGHexagram(gan, zhi) {
+  return ''; // Metti qui la tua logica per calcolare l'esagramma
 }
+
+// --- CALCOLO PRINCIPALE: SOSTITUISCI CON LA TUA LOGICA ---
 function calculate() {
-    // Leggo data/ora dagli input, se vuoti uso oggi
-    const now = new Date();
-    const inputTime = document.getElementById('input-time').value || String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-    const inputDay = parseInt(document.getElementById('input-day').value) || now.getDate();
-    const inputMonth = parseInt(document.getElementById('input-month').value) || (now.getMonth()+1);
-    const inputYear = parseInt(document.getElementById('input-year').value) || now.getFullYear();
+  const year = parseInt(document.getElementById('year').value);
+  const month = parseInt(document.getElementById('month').value);
+  const day = parseInt(document.getElementById('day').value);
+  const time = document.getElementById('time').value;
+  const lon = parseFloat(document.getElementById('longitude').value) || 120;
 
-    const [hour, minute] = inputTime.split(':').map(Number);
-    const targetDate = new Date(inputYear, inputMonth-1, inputDay, hour, minute);
+  // TODO: Qui metti il tuo algoritmo Bazi completo
+  // Questo è solo un esempio per far funzionare la tabella
+  const pillars = [
+    { prefix: 'h', stem: 'Jia', branch: 'Zi' },
+    { prefix: 'd', stem: 'Yi', branch: 'Chou' },
+    { prefix: 'm', stem: 'Bing', branch: 'Yin' },
+    { prefix: 'y', stem: 'Ding', branch: 'Mao' }
+  ];
 
-    const solarTime = getSolarTime(targetDate);
-    const solar = Solar.fromDate(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), solarTime.hour, solarTime.minute));
-    const lunar = solar.getLunar();
+  pillars.forEach(item => {
+    document.getElementById(item.prefix+'-stem-cn').textContent = STEMS.find(s => s.includes(item.stem)).split(' ')[1];
+    document.getElementById(item.prefix+'-stem-en').textContent = item.stem;
+    document.getElementById(item.prefix+'-branch-cn').textContent = BRANCHES[item.branch].split(' ')[1];
+    document.getElementById(item.prefix+'-branch-en').textContent = item.branch;
+    document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn ' + ELEMENTS[item.branch];
+  });
 
-    const yearGZ = lunar.getYearInGanZhi();
-    const monthGZ = lunar.getMonthInGanZhi();
-    const dayGZ = lunar.getDayInGanZhi();
-    const hourGZ = lunar.getTimeInGanZhi();
-
-    const yearGan = GAN_MAP[yearGZ.charAt(0)];
-    const yearZhi = ZHI_MAP[yearGZ.charAt(1)];
-    const monthGan = GAN_MAP[monthGZ.charAt(0)];
-    const monthZhi = ZHI_MAP[monthGZ.charAt(1)];
-    const dayGan = GAN_MAP[dayGZ.charAt(0)];
-    const dayZhi = ZHI_MAP[dayGZ.charAt(1)];
-    const hourGan = GAN_MAP[hourGZ.charAt(0)];
-    const hourZhi = ZHI_MAP[hourGZ.charAt(1)];
-
-    // Riempio gli input con i valori usati, così vedi cosa stai calcolando
-    document.getElementById('input-time').value = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
-    document.getElementById('input-day').value = targetDate.getDate();
-    document.getElementById('input-month').value = targetDate.getMonth()+1;
-    document.getElementById('input-year').value = targetDate.getFullYear();
-
-    const data = [
-        {gan: hourGan, zhi: hourZhi, gzCN: hourGZ, prefix: 'h'},
-        {gan: dayGan, zhi: dayZhi, gzCN: dayGZ, prefix: 'd'},
-        {gan: monthGan, zhi: monthZhi, gzCN: monthGZ, prefix: 'm'},
-        {gan: yearGan, zhi: yearZhi, gzCN: yearGZ, prefix: 'y'}
-    ];
-
-    data.forEach(item => {
-        const stem = item.gan;
-        const branch = item.zhi;
-        const stemCN = item.gzCN.charAt(0);
-        const branchCN = item.gzCN.charAt(1);
-
-        document.getElementById(item.prefix+'-stem-cn').textContent = stemCN;
-        document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn';
-        document.getElementById(item.prefix+'-stem-en').textContent = stem;
-              
-        const branchData = BRANCHES[branch].split(' ');
-        document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
-        document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
-        document.getElementById(item.prefix+'-branch-en').textContent = branch;
-        
-    });
-
-    if (typeof getXKDGHexagram === 'function') {
-        document.getElementById('h-hex').innerHTML = getXKDGHexagram(hourGan, hourZhi);
-        document.getElementById('d-hex').innerHTML = getXKDGHexagram(dayGan, dayZhi);
-        document.getElementById('m-hex').innerHTML = getXKDGHexagram(monthGan, monthZhi);
-        document.getElementById('y-hex').innerHTML = getXKDGHexagram(yearGan, yearZhi);
-    }
-}
-    
-    function setNow() {
-    const now = new Date();
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-    document.getElementById('day').value = now.getDate();
-    document.getElementById('month').value = now.getMonth() + 1;
-    document.getElementById('year').value = now.getFullYear();
-    document.getElementById('longitude').value = document.getElementById('longitude').value || '16.37'; // default Vienna
-    calculate();
+  // Calcolo Hex se la funzione esiste
+  if (typeof getXKDGHexagram === 'function') {
+    document.getElementById('h-hex').innerHTML = getXKDGHexagram('Jia', 'Zi');
+    document.getElementById('d-hex').innerHTML = getXKDGHexagram('Yi', 'Chou');
+    document.getElementById('m-hex').innerHTML = getXKDGHexagram('Bing', 'Yin');
+    document.getElementById('y-hex').innerHTML = getXKDGHexagram('Ding', 'Mao');
+  }
 }
 
- // Al caricamento pagina, popola gli input con oggi e calcola
- window.onload = function() {
-     calculate();
- }
+// --- TASTO NOW: IMPOSTA DATA/ORA ATTUALE ---
+function setNow() {
+  const now = new Date();
+  const lon = parseFloat(document.getElementById('longitude').value) || 16.37; // default Vienna
 
-        
+  // Conversione True Solar Time approssimata
+  const offsetMinutes = Math.round((lon - 120) * 4);
+  now.setMinutes(now.getMinutes() + offsetMinutes);
+
+  document.getElementById('time').value = now.toTimeString().slice(0,5);
+  document.getElementById('day').value = now.getDate();
+  document.getElementById('month').value = now.getMonth() + 1;
+  document.getElementById('year').value = now.getFullYear();
+  calculate();
+}
+
+// Al caricamento pagina, calcola subito
+window.onload = function() {
+  calculate();
+}
+</script>
+
+</body>
 </html>
