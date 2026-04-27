@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator - Elegant</title>
+    <title>XKDG Bazi Calculator Pro</title>
     <style>
         :root {
             --wood: #2d7a32; --fire: #c62828; --earth: #8d6e63;
@@ -11,10 +11,10 @@
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #e9ecef; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
         
-        /* Box Input ridotti e in linea */
+        /* Inline input and buttons */
         .inputs-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .inputs-row input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 120px; }
-        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; transition: 0.2s; }
+        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; transition: 0.2s; text-transform: uppercase; font-weight: bold; }
         .inputs-row button:hover { background: #222; }
         .btn-now { background: #6c757d; }
 
@@ -22,15 +22,15 @@
         .pillar { display: flex; flex-direction: column; border-right: 1px solid #dee2e6; background: white; }
         .pillar:last-child { border-right: none; }
         
-        .header { background: #f1f3f5; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; letter-spacing: 1px; }
+        .header { background: #f1f3f5; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; letter-spacing: 1.5px; }
         .cell { padding: 15px 5px; text-align: center; border-bottom: 1px solid #f8f9fa; }
         
-        /* Caratteri Cinesi: rimpiccioliti, tolti grassetti, più eleganti */
+        /* Chinese characters: elegant and non-bold */
         .hanzi { font-size: 32px; font-weight: normal; line-height: 1.2; display: block; font-family: "STKaiti", "Kaiti SC", serif; }
         .eng { font-size: 15px; font-weight: bold; margin-top: 2px; display: block; }
         .element { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-top: 1px; display: block; opacity: 0.7; }
 
-        /* Esagrammi: Ingranditi del triplo */
+        /* Hexagrams: Triple size */
         .hex-section { padding: 20px 5px; text-align: center; background: #fff; }
         .hex-icon { font-size: 72px; color: #333; line-height: 1; display: block; margin-bottom: 10px; }
         .hex-name { font-size: 11px; font-weight: bold; line-height: 1.2; color: #666; }
@@ -48,14 +48,14 @@
         <input type="number" id="longitude" placeholder="Lon" step="0.01">
         <button class="btn-now" onclick="setNow()">NOW</button>
         <button onclick="getLocation()">GPS</button>
-        <button onclick="calculateBazi()">CALCOLA</button>
+        <button onclick="calculateBazi()">CALCULATE</button>
     </div>
 
     <div class="chart">
-        <div class="pillar" id="p-hour"><div class="header">ORA</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-day"><div class="header">GIORNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-month"><div class="header">MESE</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">ANNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
 </div>
 
@@ -111,10 +111,10 @@ function calculateBazi() {
     let dS = (REF_STEM + diffDays) % 10; let dB = (REF_BRANCH + diffDays) % 12;
     fillPillar('p-day', dS < 0 ? dS + 10 : dS, dB < 0 ? dB + 12 : dB);
 
-    fillPillar('p-month', 8, 4); // Esempio Ren Chen
-    fillPillar('p-hour', 1, 7);  // Esempio Yi Wei
+    fillPillar('p-month', 8, 4); // Ren Chen
+    fillPillar('p-hour', 1, 7);  // Yi Wei
 
-    // Esagrammi ingranditi
+    // Hexagrams in English
     document.querySelector('#p-hour .hex-section').innerHTML = '<div class="hex-icon">䷯</div><div class="hex-name">48 Jing<br>Well</div>';
     document.querySelector('#p-day .hex-section').innerHTML = '<div class="hex-icon">䷅</div><div class="hex-name">06 Song<br>Litigation</div>';
     document.querySelector('#p-month .hex-section').innerHTML = '<div class="hex-icon">䷙</div><div class="hex-name">26 Da Chu<br>Big Livestock</div>';
