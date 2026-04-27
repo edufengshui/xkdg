@@ -7,13 +7,13 @@
         body { font-family: Arial; text-align: center; }
         table { border-collapse: collapse; margin: 20px auto; }
         td, th { border: 1px solid #ccc; padding: 12px 8px; vertical-align: top; min-width: 100px; }
-     .wood { color: #2e8b57; font-weight: bold; }
-     .fire { color: #dc143c; font-weight: bold; }
-     .earth { color: #b8860b; font-weight: bold; }
-     .metal { color: #708090; font-weight: bold; }
-     .water { color: #1e90ff; font-weight: bold; }
-     .stem-cn,.branch-cn { font-size: 32px; font-weight: bold; }
-     .hex { font-size: 14px; line-height: 1.2; }
+      .wood { color: #2e8b57; font-weight: bold; }
+      .fire { color: #dc143c; font-weight: bold; }
+      .earth { color: #b8860b; font-weight: bold; }
+      .metal { color: #708090; font-weight: bold; }
+      .water { color: #1e90ff; font-weight: bold; }
+      .stem-cn,.branch-cn { font-size: 32px; font-weight: bold; }
+      .hex { font-size: 14px; line-height: 1.2; }
     </style>
 </head>
 <body>
@@ -53,6 +53,9 @@
 <script src="lunar.min.js"></script>
 <script src="xkdg_hex.js"></script>
 <script>
+// MAPPATURA CINESE -> PINYIN. QUESTA È LA CHIAVE.
+const GAN_MAP = {'甲':'Jia','乙':'Yi','丙':'Bing','丁':'Ding','戊':'Wu','己':'Ji','庚':'Geng','辛':'Xin','壬':'Ren','癸':'Gui'};
+const ZHI_MAP = {'子':'Zi','丑':'Chou','寅':'Yin','卯':'Mao','辰':'Chen','巳':'Si','午':'Wu','未':'Wei','申':'Shen','酉':'You','戌':'Xu','亥':'Hai'};
 const STEMS = { 'Jia':'Yang Wood','Yi':'Yin Wood','Bing':'Yang Fire','Ding':'Yin Fire','Wu':'Yang Earth','Ji':'Yin Earth','Geng':'Yang Metal','Xin':'Yin Metal','Ren':'Yang Water','Gui':'Yin Water' };
 const BRANCHES = { 'Zi':'Yang Water Rat','Chou':'Yin Earth Ox','Yin':'Yang Wood Tiger','Mao':'Yin Wood Rabbit','Chen':'Yang Earth Dragon','Si':'Yin Fire Snake','Wu':'Yang Fire Horse','Wei':'Yin Earth Goat','Shen':'Yang Metal Monkey','You':'Yin Metal Rooster','Xu':'Yang Earth Dog','Hai':'Yin Water Pig' };
 const ELEMENTS = { 'Jia':'wood','Yi':'wood','Bing':'fire','Ding':'fire','Wu':'earth','Ji':'earth','Geng':'metal','Xin':'metal','Ren':'water','Gui':'water','Zi':'water','Chou':'earth','Yin':'wood','Mao':'wood','Chen':'earth','Si':'fire','Wu':'fire','Wei':'earth','Shen':'metal','You':'metal','Xu':'earth','Hai':'water' };
@@ -70,42 +73,49 @@ function calculate() {
     const solar = Solar.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate(), solarTime.hour, solarTime.minute));
     const lunar = solar.getLunar();
 
-    // QUESTE FUNZIONI RESTITUISCONO BING NON 丙
-    const yearGan = lunar.getYearGanInEnglish(); // "Bing"
-    const yearZhi = lunar.getYearZhiInEnglish(); // "Wu"
-    const monthGan = lunar.getMonthGanInEnglish(); // "Ren"
-    const monthZhi = lunar.getMonthZhiInEnglish(); // "Chen"
-    const dayGan = lunar.getDayGanInEnglish(); // "Xin"
-    const dayZhi = lunar.getDayZhiInEnglish(); // "Wei"
-    const hourGan = lunar.getTimeGanInEnglish(); // "Gui"
-    const hourZhi = lunar.getTimeZhiInEnglish(); // "Si"
+    // Prendo i caratteri cinesi e li converto in pinyin
+    const yearGZ = lunar.getYearInGanZhi(); // "丙午"
+    const monthGZ = lunar.getMonthInGanZhi(); // "壬辰"
+    const dayGZ = lunar.getDayInGanZhi(); // "辛未"
+    const hourGZ = lunar.getTimeInGanZhi(); // "癸巳"
+
+    const yearGan = GAN_MAP[yearGZ.charAt(0)]; // "丙" -> "Bing"
+    const yearZhi = ZHI_MAP[yearGZ.charAt(1)]; // "午" -> "Wu"
+    const monthGan = GAN_MAP[monthGZ.charAt(0)];
+    const monthZhi = ZHI_MAP[monthGZ.charAt(1)];
+    const dayGan = GAN_MAP[dayGZ.charAt(0)];
+    const dayZhi = ZHI_MAP[dayGZ.charAt(1)];
+    const hourGan = GAN_MAP[hourGZ.charAt(0)];
+    const hourZhi = ZHI_MAP[hourGZ.charAt(1)];
 
     document.getElementById('h-time').textContent = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
-    document.getElementById('d-time').textContent = dayGan + ' ' + dayZhi;
-    document.getElementById('m-time').textContent = monthGan + ' ' + monthZhi;
-    document.getElementById('y-time').textContent = yearGan + ' ' + yearZhi;
+    document.getElementById('d-time').textContent = dayGZ;
+    document.getElementById('m-time').textContent = monthGZ;
+    document.getElementById('y-time').textContent = yearGZ;
 
     const data = [
-        {gan: hourGan, zhi: hourZhi, prefix: 'h'},
-        {gan: dayGan, zhi: dayZhi, prefix: 'd'},
-        {gan: monthGan, zhi: monthZhi, prefix: 'm'},
-        {gan: yearGan, zhi: yearZhi, prefix: 'y'}
+        {gan: hourGan, zhi: hourZhi, gzCN: hourGZ, prefix: 'h'},
+        {gan: dayGan, zhi: dayZhi, gzCN: dayGZ, prefix: 'd'},
+        {gan: monthGan, zhi: monthZhi, gzCN: monthGZ, prefix: 'm'},
+        {gan: yearGan, zhi: yearZhi, gzCN: yearGZ, prefix: 'y'}
     ];
 
     data.forEach(item => {
         const stem = item.gan; // "Bing"
         const branch = item.zhi; // "Wu"
+        const stemCN = item.gzCN.charAt(0); // "丙"
+        const branchCN = item.gzCN.charAt(1); // "午"
 
         // STEM
-        document.getElementById(item.prefix+'-stem-cn').textContent = stem;
+        document.getElementById(item.prefix+'-stem-cn').textContent = stemCN;
         document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS;
         document.getElementById(item.prefix+'-stem-en').textContent = stem;
         document.getElementById(item.prefix+'-stem-el').textContent = STEMS;
         document.getElementById(item.prefix+'-stem-el').className = ELEMENTS;
 
         // BRANCH
-        const branchData = BRANCHES[branch].split(' '); // BRANCHES['Wu'] ora esiste
-        document.getElementById(item.prefix+'-branch-cn').textContent = branch;
+        const branchData = BRANCHES[branch].split(' ');
+        document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
         document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
         document.getElementById(item.prefix+'-branch-en').textContent = branch;
         document.getElementById(item.prefix+'-branch-an').textContent = branchData[2];
@@ -120,7 +130,8 @@ function calculate() {
         document.getElementById('y-hex').innerHTML = getXKDGHexagram(yearGan, yearZhi);
     }
 }
-    window.onload = calculate;
+
+window.onload = calculate;
 </script>
 </body>
 </html>
