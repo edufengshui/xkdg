@@ -1,115 +1,121 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XKDG Bazi Calculator</title>
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-td, th { border: 1px solid #ddd; padding: 8px; text-align: center; }
-.stem-cn,.branch-cn { font-size: 24px; font-weight: bold; }
-.wood { color: #2e8b57; }.fire { color: #dc143c; }.earth { color: #b8860b; }
-.metal { color: #708090; }.water { color: #1e90ff; }
-input { padding: 5px; margin: 5px; }
-button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-</style>
+    <meta charset="UTF-8">
+    <title>Bazi XKDG</title>
+    <style>
+        body { font-family: Arial; text-align: center; }
+        table { border-collapse: collapse; margin: 20px auto; }
+        td, th { border: 1px solid #ccc; padding: 12px 8px; vertical-align: top; min-width: 100px; }
+       .wood { color: #2e8b57; font-weight: bold; }
+       .fire { color: #dc143c; font-weight: bold; }
+       .earth { color: #b8860b; font-weight: bold; }
+       .metal { color: #708090; font-weight: bold; }
+       .water { color: #1e90ff; font-weight: bold; }
+       .stem-cn,.branch-cn { font-size: 32px; font-weight: bold; }
+       .hex { font-size: 14px; line-height: 1.2; }
+    </style>
 </head>
 <body>
+    <h1>Four Pillars + XKDG</h1>
+    <button onclick="calculate()">Calculate Now</button>
 
-<h1>XKDG Bazi Calculator</h1>
-<div>
-  <label>Date: <input type="date" id="date"></label>
-  <label>Time: <input type="time" id="time"></label>
-  <label>Longitude: <input type="number" id="longitude" value="12.4964" step="0.0001"></label>
-  <button onclick="calculate()">Calculate</button>
-</div>
-
-<table>
-  <tr>
-    <th></th><th>Hour</th><th>Day</th><th>Month</th><th>Year</th>
-  </tr>
-  <tr>
-    <td>Stem</td>
-    <td><div id="h-stem-cn"></div><div id="h-stem-en"></div><div id="h-stem-el"></div></td>
-    <td><div id="d-stem-cn"></div><div id="d-stem-en"></div><div id="d-stem-el"></div></td>
-    <td><div id="m-stem-cn"></div><div id="m-stem-en"></div><div id="m-stem-el"></div></td>
-    <td><div id="y-stem-cn"></div><div id="y-stem-en"></div><div id="y-stem-el"></div></td>
-  </tr>
-  <tr>
-    <td>Branch</td>
-    <td><div id="h-branch-cn"></div><div id="h-branch-en"></div><div id="h-branch-el"></div><div id="h-branch-an"></div></td>
-    <td><div id="d-branch-cn"></div><div id="d-branch-en"></div><div id="d-branch-el"></div><div id="d-branch-an"></div></td>
-    <td><div id="m-branch-cn"></div><div id="m-branch-en"></div><div id="m-branch-el"></div><div id="m-branch-an"></div></td>
-    <td><div id="y-branch-cn"></div><div id="y-branch-en"></div><div id="y-branch-el"></div><div id="y-branch-an"></div></td>
-  </tr>
-</table>
+    <table>
+        <tr style="background:#e8e8e8; font-weight:bold;">
+            <td></td><td>Hour 时</td><td>Day 日</td><td>Month 月</td><td>Year 年</td>
+        </tr>
+        <tr style="background:#ffe6e6;">
+            <td>Time</td>
+            <td id="h-time"></td><td id="d-time"></td>
+            <td id="m-time"></td><td id="y-time"></td>
+        </tr>
+        <tr>
+            <td style="font-weight:bold;">Stem</td>
+            <td><div id="h-stem-cn" class="stem-cn"></div><div id="h-stem-en"></div><div id="h-stem-el"></div></td>
+            <td><div id="d-stem-cn" class="stem-cn"></div><div id="d-stem-en"></div><div id="d-stem-el"></div></td>
+            <td><div id="m-stem-cn" class="stem-cn"></div><div id="m-stem-en"></div><div id="m-stem-el"></div></td>
+            <td><div id="y-stem-cn" class="stem-cn"></div><div id="y-stem-en"></div><div id="y-stem-el"></div></td>
+        </tr>
+        <tr>
+            <td style="font-weight:bold;">Branch</td>
+            <td><div id="h-branch-cn" class="branch-cn"></div><div id="h-branch-en"></div><div id="h-branch-an"></div><div id="h-branch-el"></div></td>
+            <td><div id="d-branch-cn" class="branch-cn"></div><div id="d-branch-en"></div><div id="d-branch-an"></div><div id="d-branch-el"></div></td>
+            <td><div id="m-branch-cn" class="branch-cn"></div><div id="m-branch-en"></div><div id="m-branch-an"></div><div id="m-branch-el"></div></td>
+            <td><div id="y-branch-cn" class="branch-cn"></div><div id="y-branch-en"></div><div id="y-branch-an"></div><div id="y-branch-el"></div></td>
+        </tr>
+        <tr>
+            <td style="font-weight:bold;">Hex</td>
+            <td id="h-hex" class="hex"></td><td id="d-hex" class="hex"></td>
+            <td id="m-hex" class="hex"></td><td id="y-hex" class="hex"></td>
+        </tr>
+    </table>
 
 <script src="lunar.min.js"></script>
-
+<script src="xkdg_hex.js"></script>
 <script>
-function getSolarTime(hour, minute, longitude, timezoneOffset) {
-    const lstm = 15 * timezoneOffset;
-    const timeOffset = 4 * (longitude - lstm);
-    const totalMinutes = hour * 60 + minute + timeOffset;
-    const dayOffset = Math.floor(totalMinutes / 1440);
-    const solarMinutes = ((totalMinutes % 1440) + 1440) % 1440;
-    return {
-        hour: Math.floor(solarMinutes / 60),
-        minute: Math.floor(solarMinutes % 60),
-        dayOffset: dayOffset
-    };
+const STEMS = { 'Jia':'Yang Wood','Yi':'Yin Wood','Bing':'Yang Fire','Ding':'Yin Fire','Wu':'Yang Earth','Ji':'Yin Earth','Geng':'Yang Metal','Xin':'Yin Metal','Ren':'Yang Water','Gui':'Yin Water' };
+const BRANCHES = { 'Zi':'Yang Water Rat','Chou':'Yin Earth Ox','Yin':'Yang Wood Tiger','Mao':'Yin Wood Rabbit','Chen':'Yang Earth Dragon','Si':'Yin Fire Snake','Wu':'Yang Fire Horse','Wei':'Yin Earth Goat','Shen':'Yang Metal Monkey','You':'Yin Metal Rooster','Xu':'Yang Earth Dog','Hai':'Yin Water Pig' };
+const ELEMENTS = { 'Jia':'wood','Yi':'wood','Bing':'fire','Ding':'fire','Wu':'earth','Ji':'earth','Geng':'metal','Xin':'metal','Ren':'water','Gui':'water','Zi':'water','Chou':'earth','Yin':'wood','Mao':'wood','Chen':'earth','Si':'fire','Wu':'fire','Wei':'earth','Shen':'metal','You':'metal','Xu':'earth','Hai':'water' };
+
+function getSolarTime(date, lng=12.4964) {
+    const utc = date.getTime() + date.getTimezoneOffset()*60000;
+    const solar = new Date(utc + lng*3600000/15);
+    return {hour: solar.getHours(), minute: solar.getMinutes()};
 }
 
 function calculate() {
-    const dateInput = document.getElementById('date').value;
-    const timeInput = document.getElementById('time').value;
-    const longitude = parseFloat(document.getElementById('longitude').value) || 12.4964;
+    const now = new Date();
+    const hour = now.getHours(), minute = now.getMinutes();
+    const solarTime = getSolarTime(now);
 
-    const [year, month, day] = dateInput.split('-').map(Number);
-    const [hour, minute] = timeInput.split(':').map(Number);
-    const timezoneOffset = -new Date(year, month - 1, day).getTimezoneOffset() / 60;
-
-    const solarTime = getSolarTime(hour, minute, longitude, timezoneOffset);
-    const baziDate = new Date(year, month - 1, day + solarTime.dayOffset, solarTime.hour, solarTime.minute);
-
-    const solar = Solar.fromDate(baziDate);
+    const solar = Solar.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate(), solarTime.hour, solarTime.minute));
     const lunar = solar.getLunar();
 
-    const yearGZ = { stem: lunar.getYearGan(), branch: lunar.getYearZhi() };
-    const monthGZ = { stem: lunar.getMonthGan(), branch: lunar.getMonthZhi() };
-    const dayGZ = { stem: lunar.getDayGan(), branch: lunar.getDayZhi() };
-    const hourGZ = { stem: lunar.getTimeGan(), branch: lunar.getTimeZhi() };
+    const yearGZ = lunar.getYearInGanZhi();
+    const monthGZ = lunar.getMonthInGanZhi();
+    const dayGZ = lunar.getDayInGanZhi();
+    const hourGZ = lunar.getTimeInGanZhi();
 
-    const STEM_CN = {Jia:'甲', Yi:'乙', Bing:'丙', Ding:'丁', Wu:'戊', Ji:'己', Geng:'庚', Xin:'辛', Ren:'壬', Gui:'癸'};
-    const BRANCH_CN = {Zi:'子', Chou:'丑', Yin:'寅', Mao:'卯', Chen:'辰', Si:'巳', Wu:'午', Wei:'未', Shen:'申', You:'酉', Xu:'戌', Hai:'亥'};
-    const STEM_EL = {Jia:'+ Wood', Yi:'- Wood', Bing:'+ Fire', Ding:'- Fire', Wu:'+ Earth', Ji:'- Earth', Geng:'+ Metal', Xin:'- Metal', Ren:'+ Water', Gui:'- Water'};
-    const BRANCH_EL = {Zi:'+ Water', Chou:'- Earth', Yin:'+ Wood', Mao:'- Wood', Chen:'+ Earth', Si:'- Fire', Wu:'+ Fire', Wei:'- Earth', Shen:'+ Metal', You:'- Metal', Xu:'+ Earth', Hai:'- Water'};
-    const BRANCH_AN = {Zi:'Rat', Chou:'Ox', Yin:'Tiger', Mao:'Rabbit', Chen:'Dragon', Si:'Snake', Wu:'Horse', Wei:'Goat', Shen:'Monkey', You:'Rooster', Xu:'Dog', Hai:'Pig'};
-    const EL_COLOR = {Jia:'wood', Yi:'wood', Bing:'fire', Ding:'fire', Wu:'earth', Ji:'earth', Geng:'metal', Xin:'metal', Ren:'water', Gui:'water'};
-    const BR_COLOR = {Zi:'water', Chou:'earth', Yin:'wood', Mao:'wood', Chen:'earth', Si:'fire', Wu:'fire', Wei:'earth', Shen:'metal', You:'metal', Xu:'earth', Hai:'water'};
+    // Riga rosa Time
+    document.getElementById('h-time').textContent = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
+    document.getElementById('d-time').textContent = dayGZ.substring(0,1) + ' ' + dayGZ.substring(1);
+    document.getElementById('m-time').textContent = monthGZ.substring(0,1) + ' ' + monthGZ.substring(1);
+    document.getElementById('y-time').textContent = yearGZ.substring(0,1) + ' ' + yearGZ.substring(1);
 
-    const pillars = {h: hourGZ, d: dayGZ, m: monthGZ, y: yearGZ};
-    ['h','d','m','y'].forEach((p) => {
-        const gz = pillars[p];
-        document.getElementById(`${p}-stem-cn`).textContent = STEM_CN[gz.stem];
-        document.getElementById(`${p}-stem-cn`).className = `stem-cn ${EL_COLOR[gz.stem]}`;
-        document.getElementById(`${p}-stem-en`).textContent = gz.stem;
-        document.getElementById(`${p}-stem-el`).textContent = STEM_EL[gz.stem];
-        document.getElementById(`${p}-branch-cn`).textContent = BRANCH_CN[gz.branch];
-        document.getElementById(`${p}-branch-cn`).className = `branch-cn ${BR_COLOR[gz.branch]}`;
-        document.getElementById(`${p}-branch-en`).textContent = gz.branch;
-        document.getElementById(`${p}-branch-el`).textContent = BRANCH_EL[gz.branch];
-        document.getElementById(`${p}-branch-an`).textContent = BRANCH_AN[gz.branch];
+    // Bazi
+    const data = [
+        {gz: hourGZ, prefix: 'h'}, {gz: dayGZ, prefix: 'd'},
+        {gz: monthGZ, prefix: 'm'}, {gz: yearGZ, prefix: 'y'}
+    ];
+
+    data.forEach(item => {
+        const stem = item.gz.substring(0,1), branch = item.gz.substring(1);
+        const stemEn = STEMS[stem].split(' '), branchEn = BRANCHES[branch].split(' ');
+
+        document.getElementById(item.prefix+'-stem-cn').textContent = stem;
+        document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS[stem];
+        document.getElementById(item.prefix+'-stem-en').textContent = STEMS[stem].split(' ')[0];
+        document.getElementById(item.prefix+'-stem-el').textContent = stemEn[0]+' '+stemEn[1];
+        document.getElementById(item.prefix+'-stem-el').className = ELEMENTS[stem];
+
+        document.getElementById(item.prefix+'-branch-cn').textContent = branch;
+        document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
+        document.getElementById(item.prefix+'-branch-en').textContent = BRANCHES[branch].split(' ')[0];
+        document.getElementById(item.prefix+'-branch-an').textContent = branchEn[3];
+        document.getElementById(item.prefix+'-branch-el').textContent = branchEn[0]+' '+branchEn[1];
+        document.getElementById(item.prefix+'-branch-el').className = ELEMENTS[branch];
     });
+
+    // Esagrammi XKDG
+    if (typeof getXKDGHexagram === 'function') {
+        document.getElementById('h-hex').innerHTML = getXKDGHexagram(hourGZ.substring(0,1), hourGZ.substring(1));
+        document.getElementById('d-hex').innerHTML = getXKDGHexagram(dayGZ.substring(0,1), dayGZ.substring(1));
+        document.getElementById('m-hex').innerHTML = getXKDGHexagram(monthGZ.substring(0,1), monthGZ.substring(1));
+        document.getElementById('y-hex').innerHTML = getXKDGHexagram(yearGZ.substring(0,1), yearGZ.substring(1));
+    }
 }
 
-window.onload = function() {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-    calculate();
-};
+window.onload = calculate;
 </script>
 </body>
 </html>
