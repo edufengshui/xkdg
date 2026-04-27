@@ -67,22 +67,28 @@ function getSolarTime(date, lng=12.4964) {
     const solar = new Date(utc + lng*3600000/15);
     return {hour: solar.getHours(), minute: solar.getMinutes()};
 }
-
 function calculate() {
+    // Leggo data/ora dagli input, se vuoti uso oggi
     const now = new Date();
-    const solarTime = getSolarTime(now);
+    const inputTime = document.getElementById('input-time').value || String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const inputDay = parseInt(document.getElementById('input-day').value) || now.getDate();
+    const inputMonth = parseInt(document.getElementById('input-month').value) || (now.getMonth()+1);
+    const inputYear = parseInt(document.getElementById('input-year').value) || now.getFullYear();
 
-    const solar = Solar.fromDate(new Date(now.getFullYear(), now.getMonth(), now.getDate(), solarTime.hour, solarTime.minute));
+    const [hour, minute] = inputTime.split(':').map(Number);
+    const targetDate = new Date(inputYear, inputMonth-1, inputDay, hour, minute);
+
+    const solarTime = getSolarTime(targetDate);
+    const solar = Solar.fromDate(new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), solarTime.hour, solarTime.minute));
     const lunar = solar.getLunar();
 
-    // Prendo i caratteri cinesi e li converto in pinyin
-    const yearGZ = lunar.getYearInGanZhi(); // "丙午"
-    const monthGZ = lunar.getMonthInGanZhi(); // "壬辰"
-    const dayGZ = lunar.getDayInGanZhi(); // "辛未"
-    const hourGZ = lunar.getTimeInGanZhi(); // "癸巳"
+    const yearGZ = lunar.getYearInGanZhi();
+    const monthGZ = lunar.getMonthInGanZhi();
+    const dayGZ = lunar.getDayInGanZhi();
+    const hourGZ = lunar.getTimeInGanZhi();
 
-    const yearGan = GAN_MAP[yearGZ.charAt(0)]; // "丙" -> "Bing"
-    const yearZhi = ZHI_MAP[yearGZ.charAt(1)]; // "午" -> "Wu"
+    const yearGan = GAN_MAP[yearGZ.charAt(0)];
+    const yearZhi = ZHI_MAP[yearGZ.charAt(1)];
     const monthGan = GAN_MAP[monthGZ.charAt(0)];
     const monthZhi = ZHI_MAP[monthGZ.charAt(1)];
     const dayGan = GAN_MAP[dayGZ.charAt(0)];
@@ -90,14 +96,12 @@ function calculate() {
     const hourGan = GAN_MAP[hourGZ.charAt(0)];
     const hourZhi = ZHI_MAP[hourGZ.charAt(1)];
 
-    const dateStr = now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear();
-    const timeStr = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
+    // Riempio gli input con i valori usati, così vedi cosa stai calcolando
+    document.getElementById('input-time').value = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0');
+    document.getElementById('input-day').value = targetDate.getDate();
+    document.getElementById('input-month').value = targetDate.getMonth()+1;
+    document.getElementById('input-year').value = targetDate.getFullYear();
 
-document.getElementById('h-time').textContent = String(solarTime.hour).padStart(2,'0')+':'+String(solarTime.minute).padStart(2,'0'); // 11:03
-document.getElementById('d-time').textContent = String(now.getDate()).padStart(2,'0'); // 27
-document.getElementById('m-time').textContent = String(now.getMonth()+1).padStart(2,'0'); // 04
-document.getElementById('y-time').textContent = String(now.getFullYear()); // 2026    
-    
     const data = [
         {gan: hourGan, zhi: hourZhi, gzCN: hourGZ, prefix: 'h'},
         {gan: dayGan, zhi: dayZhi, gzCN: dayGZ, prefix: 'd'},
@@ -106,33 +110,37 @@ document.getElementById('y-time').textContent = String(now.getFullYear()); // 20
     ];
 
     data.forEach(item => {
-    const stem = item.gan; // "Bing"
-    const branch = item.zhi; // "Wu"
-    const stemCN = item.gzCN.charAt(0); // "丙"
-    const branchCN = item.gzCN.charAt(1); // "午"
+        const stem = item.gan;
+        const branch = item.zhi;
+        const stemCN = item.gzCN.charAt(0);
+        const branchCN = item.gzCN.charAt(1);
 
-    // STEM
-    document.getElementById(item.prefix+'-stem-cn').textContent = stemCN;
-    document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS[stem];
-    document.getElementById(item.prefix+'-stem-en').textContent = stem;
-    document.getElementById(item.prefix+'-stem-el').textContent = STEMS[stem];
-    document.getElementById(item.prefix+'-stem-el').className = ELEMENTS[stem];
+        document.getElementById(item.prefix+'-stem-cn').textContent = stemCN;
+        document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS;
+        document.getElementById(item.prefix+'-stem-en').textContent = stem;
+        document.getElementById(item.prefix+'-stem-el').textContent = STEMS;
+        document.getElementById(item.prefix+'-stem-el').className = ELEMENTS;
 
-    // BRANCH
-    const branchData = BRANCHES[branch].split(' ');
-    document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
-    document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
-    document.getElementById(item.prefix+'-branch-en').textContent = branch;
-    document.getElementById(item.prefix+'-branch-an').textContent = branchData[2];
-    document.getElementById(item.prefix+'-branch-el').textContent = branchData[0]+' '+branchData[1];
-    document.getElementById(item.prefix+'-branch-el').className = ELEMENTS[branch];
-});
+        const branchData = BRANCHES[branch].split(' ');
+        document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
+        document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
+        document.getElementById(item.prefix+'-branch-en').textContent = branch;
+        document.getElementById(item.prefix+'-branch-an').textContent = branchData[2];
+        document.getElementById(item.prefix+'-branch-el').textContent = branchData[0]+' '+branchData[1];
+        document.getElementById(item.prefix+'-branch-el').className = ELEMENTS[branch];
+    });
+
     if (typeof getXKDGHexagram === 'function') {
         document.getElementById('h-hex').innerHTML = getXKDGHexagram(hourGan, hourZhi);
         document.getElementById('d-hex').innerHTML = getXKDGHexagram(dayGan, dayZhi);
         document.getElementById('m-hex').innerHTML = getXKDGHexagram(monthGan, monthZhi);
         document.getElementById('y-hex').innerHTML = getXKDGHexagram(yearGan, yearZhi);
     }
+}
+
+// Al caricamento pagina, popola gli input con oggi e calcola
+window.onload = function() {
+    calculate();
 }
 
 window.onload = calculate;
