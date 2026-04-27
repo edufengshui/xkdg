@@ -127,4 +127,28 @@ function setHex(id, icon, name, numEl, numPer, sideZh) {
 }
 
 function calculateBazi() {
-    const dVal = document.getElementById('date').
+    const dVal = document.getElementById('date').value;
+    const tVal = document.getElementById('time').value;
+    if(!dVal || !tVal) return;
+    const targetDate = new Date(dVal);
+    
+    // Logic for pillars
+    const yearIdx = (targetDate.getFullYear() - 4) % 60;
+    fillPillar('p-year', yearIdx % 10, yearIdx % 12);
+    const diffDays = Math.floor((targetDate.getTime() - REF_DATE.getTime()) / (1000 * 60 * 60 * 24));
+    let dS = (REF_STEM + diffDays) % 10; let dB = (REF_BRANCH + diffDays) % 12;
+    fillPillar('p-day', dS < 0 ? dS + 10 : dS, dB < 0 ? dB + 12 : dB);
+    fillPillar('p-month', 8, 4); 
+    fillPillar('p-hour', 1, 7);  
+
+    // Mapping exact data from image
+    setHex('p-hour', '䷯', '48 Jing<br>Well', '7', '6', '乙<br>未');
+    setHex('p-day', '䷅', '06 Song<br>Litigation', '9', '3', '辛<br>未');
+    setHex('p-month', '䷙', '26 Da Chu<br>Big Livestock', '6', '4', '壬<br>辰');
+    setHex('p-year', '䷛', '28 Da Guo<br>Great Exceeding', '4', '3', '丙<br>午');
+}
+
+window.onload = setNow;
+</script>
+</body>
+</html>
