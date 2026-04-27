@@ -117,9 +117,10 @@ function calculate() {
 
         document.getElementById(item.prefix+'-stem-cn').textContent = stemCN;
         document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS;
-document.getElementById(item.prefix+'-stem-en').textContent = stem;
-document.getElementById(item.prefix+'-stem-el').textContent = ELEMENTS;
-document.getElementById(item.prefix+'-stem-el').className = ELEMENTS;
+        document.getElementById(item.prefix+'-stem-en').textContent = stem;
+        document.getElementById(item.prefix+'-stem-el').textContent = ELEMENTS;
+        document.getElementById(item.prefix+'-stem-el').className = ELEMENTS;
+        
         const branchData = BRANCHES[branch].split(' ');
         document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
         document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
