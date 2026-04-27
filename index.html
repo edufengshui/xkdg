@@ -123,9 +123,7 @@ function calculate() {
         document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
         document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
         document.getElementById(item.prefix+'-branch-en').textContent = branch;
-        document.getElementById(item.prefix+'-branch-an').textContent = branchData[2];
-        document.getElementById(item.prefix+'-branch-el').textContent = branchData[0]+' '+branchData[1];
-        document.getElementById(item.prefix+'-branch-el').className = ELEMENTS[branch];
+        
     });
 
     if (typeof getXKDGHexagram === 'function') {
