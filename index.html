@@ -101,28 +101,27 @@ function calculate() {
     ];
 
     data.forEach(item => {
-        const stem = item.gan; // "Bing"
-        const branch = item.zhi; // "Wu"
-        const stemCN = item.gzCN.charAt(0); // "丙"
-        const branchCN = item.gzCN.charAt(1); // "午"
+    const stem = item.gan; // "Bing"
+    const branch = item.zhi; // "Wu"
+    const stemCN = item.gzCN.charAt(0); // "丙"
+    const branchCN = item.gzCN.charAt(1); // "午"
 
-        // STEM
-        document.getElementById(item.prefix+'-stem-cn').textContent = stemCN;
-        document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS;
-        document.getElementById(item.prefix+'-stem-en').textContent = stem;
-        document.getElementById(item.prefix+'-stem-el').textContent = STEMS;
-        document.getElementById(item.prefix+'-stem-el').className = ELEMENTS;
+    // STEM
+    document.getElementById(item.prefix+'-stem-cn').textContent = stemCN;
+    document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS[stem];
+    document.getElementById(item.prefix+'-stem-en').textContent = stem;
+    document.getElementById(item.prefix+'-stem-el').textContent = STEMS[stem];
+    document.getElementById(item.prefix+'-stem-el').className = ELEMENTS[stem];
 
-        // BRANCH
-        const branchData = BRANCHES[branch].split(' ');
-        document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
-        document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
-        document.getElementById(item.prefix+'-branch-en').textContent = branch;
-        document.getElementById(item.prefix+'-branch-an').textContent = branchData[2];
-        document.getElementById(item.prefix+'-branch-el').textContent = branchData[0]+' '+branchData[1];
-        document.getElementById(item.prefix+'-branch-el').className = ELEMENTS[branch];
-    });
-
+    // BRANCH
+    const branchData = BRANCHES[branch].split(' ');
+    document.getElementById(item.prefix+'-branch-cn').textContent = branchCN;
+    document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
+    document.getElementById(item.prefix+'-branch-en').textContent = branch;
+    document.getElementById(item.prefix+'-branch-an').textContent = branchData[2];
+    document.getElementById(item.prefix+'-branch-el').textContent = branchData[0]+' '+branchData[1];
+    document.getElementById(item.prefix+'-branch-el').className = ELEMENTS[branch];
+});
     if (typeof getXKDGHexagram === 'function') {
         document.getElementById('h-hex').innerHTML = getXKDGHexagram(hourGan, hourZhi);
         document.getElementById('d-hex').innerHTML = getXKDGHexagram(dayGan, dayZhi);
