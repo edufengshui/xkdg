@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator Pro - Full Data</title>
+    <title>XKDG Bazi Calculator Pro - Advanced Layout</title>
     <style>
         :root {
             --wood: #2d7a32; --fire: #c62828; --earth: #8d6e63;
@@ -14,32 +14,44 @@
         .inputs-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .inputs-row input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 120px; }
         .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; transition: 0.2s; text-transform: uppercase; font-weight: bold; }
-        .inputs-row button:hover { background: #222; }
-        .btn-now { background: #6c757d; }
-
+        
         .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
         .pillar { display: flex; flex-direction: column; border-right: 1px solid #dee2e6; background: white; }
         .pillar:last-child { border-right: none; }
         
-        .header { background: #f1f3f5; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; letter-spacing: 1.5px; }
+        .header { background: #f1f3f5; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; }
         .cell { padding: 15px 5px; text-align: center; border-bottom: 1px solid #f8f9fa; }
         
         .hanzi { font-size: 32px; font-weight: normal; line-height: 1.2; display: block; font-family: "STKaiti", "Kaiti SC", serif; }
         .eng { font-size: 15px; font-weight: bold; margin-top: 2px; display: block; }
-        .element-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-top: 1px; display: block; opacity: 0.7; }
+        .element-label { font-size: 10px; text-transform: uppercase; opacity: 0.7; }
 
-        /* Hexagram Section with XKDG Numbers */
-        .hex-section { padding: 20px 10px; text-align: center; background: #fff; position: relative; }
-        .hex-container { display: inline-block; position: relative; }
-        .hex-icon { font-size: 72px; color: #333; line-height: 1; display: block; }
+        /* Hexagram Section with Precise Offsets */
+        .hex-section { padding: 25px 10px; text-align: center; background: #fff; }
+        .hex-container { display: inline-block; position: relative; padding-right: 35px; }
         
-        /* XKDG Numbers Styling */
-        .xkdg-num { position: absolute; font-size: 16px; font-weight: bold; color: #333; }
-        .num-top { top: 5px; right: -15px; }    /* Element Number */
-        .num-bottom { bottom: 5px; right: -15px; } /* Period Number */
-        .side-label { position: absolute; right: -35px; top: 25px; font-size: 12px; font-weight: bold; line-height: 1.1; }
+        /* The Hexagram Symbol */
+        .hex-icon { font-size: 72px; color: #333; line-height: 1; display: block; }
 
-        .hex-info { margin-top: 10px; font-size: 11px; font-weight: bold; line-height: 1.2; color: #555; }
+        /* XKDG Numbers - Re-positioned */
+        .xkdg-num { position: absolute; font-size: 18px; font-weight: bold; color: #000; right: 0; }
+        .num-top { top: -10px; }    /* Moved higher up */
+        .num-bottom { bottom: -5px; } 
+
+        /* Side Stem-Branch Pillar */
+        .side-pillar { 
+            position: absolute; 
+            right: 5px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            font-size: 14px; 
+            font-weight: bold; 
+            line-height: 1.1; 
+            color: #333;
+            text-align: center;
+        }
+
+        .hex-info { margin-top: 10px; font-size: 11px; font-weight: bold; color: #555; }
 
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
@@ -52,8 +64,7 @@
         <input type="date" id="date">
         <input type="time" id="time">
         <input type="number" id="longitude" placeholder="Lon" step="0.01">
-        <button class="btn-now" onclick="setNow()">NOW</button>
-        <button onclick="getLocation()">GPS</button>
+        <button onclick="setNow()">NOW</button>
         <button onclick="calculateBazi()">CALCULATE</button>
     </div>
 
@@ -83,10 +94,9 @@ const BRANCHES = [
     {en:'Xu', zh:'戌', el:'earth'}, {en:'Hai', zh:'亥', el:'water'}
 ];
 
-// Reference for April 27, 2026
 const REF_DATE = new Date(2026, 3, 27); 
-const REF_STEM = 7; // Xin
-const REF_BRANCH = 7; // Wei
+const REF_STEM = 7; 
+const REF_BRANCH = 7; 
 
 function setNow() {
     const now = new Date();
@@ -99,7 +109,6 @@ function fillPillar(id, stemIdx, branchIdx) {
     const s = STEMS[stemIdx % 10];
     const b = BRANCHES[branchIdx % 12];
     const p = document.getElementById(id);
-    
     p.querySelector('.stem').innerHTML = `<span class="hanzi ${s.el}">${s.zh}</span><span class="eng ${s.el}">${s.en}</span><span class="element-label">- ${s.el} -</span>`;
     p.querySelector('.branch').innerHTML = `<span class="hanzi ${b.el}">${b.zh}</span><span class="eng ${b.el}">${b.en}</span><span class="element-label">- ${b.el} -</span>`;
 }
@@ -111,48 +120,11 @@ function setHex(id, icon, name, numEl, numPer, sideZh) {
             <div class="hex-icon">${icon}</div>
             <div class="xkdg-num num-top">${numEl}</div>
             <div class="xkdg-num num-bottom">${numPer}</div>
-            <div class="side-label">${sideZh}</div>
+            <div class="side-pillar">${sideZh}</div>
         </div>
         <div class="hex-info">${name}</div>
     `;
 }
 
 function calculateBazi() {
-    const dVal = document.getElementById('date').value;
-    const tVal = document.getElementById('time').value;
-    if(!dVal || !tVal) return;
-
-    const targetDate = new Date(dVal);
-    
-    // Year Calculation
-    const yearIdx = (targetDate.getFullYear() - 4) % 60;
-    fillPillar('p-year', yearIdx % 10, yearIdx % 12);
-
-    // Day Calculation
-    const diffDays = Math.floor((targetDate.getTime() - REF_DATE.getTime()) / (1000 * 60 * 60 * 24));
-    let dS = (REF_STEM + diffDays) % 10; let dB = (REF_BRANCH + diffDays) % 12;
-    fillPillar('p-day', dS < 0 ? dS + 10 : dS, dB < 0 ? dB + 12 : dB);
-
-    fillPillar('p-month', 8, 4); // Ren Chen
-    fillPillar('p-hour', 1, 7);  // Yi Wei
-
-    // Apply XKDG Data from your image
-    setHex('p-hour', '䷯', '48 Jing<br>Well', '7', '6', '乙<br>未');
-    setHex('p-day', '䷅', '06 Song<br>Litigation', '9', '3', '辛<br>未');
-    setHex('p-month', '䷙', '26 Da Chu<br>Big Livestock', '6', '4', '壬<br>辰');
-    setHex('p-year', '䷛', '28 Da Guo<br>Great Exceeding', '4', '3', '丙<br>午');
-}
-
-function getLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((p) => {
-            document.getElementById('longitude').value = p.coords.longitude.toFixed(2);
-            calculateBazi();
-        });
-    }
-}
-
-window.onload = setNow;
-</script>
-</body>
-</html>
+    const dVal = document.getElementById('date').
