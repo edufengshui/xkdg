@@ -1,63 +1,73 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>XKDG Bazi Calculator Pro</title>
     <style>
+        /* Artistic Calligraphic Font */
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+
         :root {
-            --wood: #2d7a32; --fire: #c62828; --earth: #8d6e63;
-            --metal: #555; --water: #1565c0;
+            --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b;
+            --metal: #555; --water: #0000cd;
         }
-        body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #e9ecef; padding: 20px; display: flex; justify-content: center; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
+
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
         
-        /* Barra comandi completa */
-        .inputs-row { display: flex; gap: 8px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; justify-content: center; }
-        .inputs-row input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; width: 130px; }
-        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 13px; font-weight: bold; text-transform: uppercase; }
+        /* Optimized Command Bar */
+        .inputs-row { display: flex; gap: 5px; margin-bottom: 25px; flex-wrap: nowrap; align-items: center; justify-content: space-between; }
+        
+        /* Reduced input widths to fit all buttons */
+        #date { width: 120px; }
+        #time { width: 80px; }
+        #lon { width: 60px; }
+        
+        .inputs-row input { padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+        .inputs-row button { padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 11px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
         
         .btn-now { background: #6c757d; }
         .btn-gps { background: #007bff; }
-        .btn-calc { background: #28a745; }
+        .btn-calc { background: #2d2d2d; }
 
-        /* Struttura Pilastri */
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
-        .pillar { display: flex; flex-direction: column; border-right: 1px solid #dee2e6; background: white; text-align: center; }
+        /* Chart Structure */
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #fff; }
+        .pillar { display: flex; flex-direction: column; border-right: 1px solid #eee; text-align: center; }
         .pillar:last-child { border-right: none; }
         
-        .header { background: #f8f9fa; padding: 12px; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; letter-spacing: 1px; }
-        .cell { padding: 15px 5px; border-bottom: 1px solid #f8f9fa; }
+        .header { background: #f8f9fa; padding: 10px; font-weight: bold; font-size: 11px; color: #666; border-bottom: 1px solid #eee; letter-spacing: 1px; }
+        .cell { padding: 15px 5px; border-bottom: 1px solid #fafafa; }
         
-        /* Carattere Grafico Sans-Serif */
+        /* Artistic Hanzi Style */
         .hanzi { 
-            font-size: 52px; 
-            display: block; 
-            font-weight: 300; 
+            font-family: 'Ma Shan Zheng', cursive; 
+            font-size: 54px; 
             line-height: 1.1;
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif; 
+            display: block;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.12));
         }
         .eng-name { font-size: 16px; font-weight: bold; margin-top: 4px; display: block; }
-        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: bold; }
+        .element-label { font-size: 10px; text-transform: uppercase; opacity: 0.6; font-weight: bold; }
 
-        /* Esagramma e Numeri XKDG */
-        .hex-section { padding: 20px 5px; }
+        /* Hexagram & XKDG Section */
+        .hex-section { padding: 15px 5px; border-top: 1px solid #f0f0f0; }
         .hex-wrapper { display: inline-flex; align-items: center; gap: 8px; }
-        .hex-icon { font-size: 72px; color: #333; line-height: 1; }
+        .hex-icon { font-size: 68px; color: #222; line-height: 1; }
 
         .data-column { 
             display: flex; 
             flex-direction: column; 
             justify-content: space-between; 
             align-items: center;
-            height: 72px; 
+            height: 68px; 
             font-weight: bold;
         }
-        .num-xkdg { font-size: 18px; color: #000; }
-        .side-pillar-small { font-size: 13px; line-height: 1.1; color: #555; }
+        .num-xkdg { font-size: 17px; color: #000; }
+        .side-pillar-small { font-size: 13px; line-height: 1.1; color: #333; font-family: 'Ma Shan Zheng', cursive; }
 
-        .hex-info { margin-top: 10px; font-size: 11px; font-weight: bold; color: #555; }
+        .hex-info { margin-top: 8px; font-size: 11px; font-weight: bold; color: #444; line-height: 1.2; }
 
-        /* Colori Elementi */
+        /* Element Colors */
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
     </style>
@@ -68,17 +78,17 @@
     <div class="inputs-row">
         <input type="date" id="date">
         <input type="time" id="time">
-        <input type="number" id="lon" placeholder="Longitudine" step="0.01">
+        <input type="number" id="lon" placeholder="Lon" step="0.01">
         <button class="btn-now" onclick="setNow()">NOW</button>
         <button class="btn-gps" onclick="getLocation()">GPS</button>
-        <button class="btn-calc" onclick="calculateBazi()">CALCOLA</button>
+        <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
     </div>
 
     <div class="chart">
-        <div class="pillar" id="p-hour"><div class="header">ORA</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-day"><div class="header">GIORNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-month"><div class="header">MESE</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">ANNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
 </div>
 
@@ -109,7 +119,7 @@ function getLocation() {
         navigator.geolocation.getCurrentPosition((pos) => {
             document.getElementById('lon').value = pos.coords.longitude.toFixed(2);
             calculateBazi();
-        }, () => alert("Permessi GPS negati."));
+        }, () => alert("GPS not available."));
     }
 }
 
