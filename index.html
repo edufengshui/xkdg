@@ -2,82 +2,70 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator Pro - Enhanced</title>
+    <title>XKDG Bazi Calculator Pro</title>
     <style>
+        /* Artistic Calligraphic Font */
         @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
 
         :root {
             --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b;
             --metal: #555; --water: #0000cd;
-            --separator-stroke: 2px;
-            --separator-color: #bbb;
-            --header-pink: #fce4ec; /* Rosa per l'intestazione */
         }
 
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); width: 100%; max-width: 900px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
         
-        /* Command Bar */
-        .inputs-row { display: flex; gap: 8px; margin-bottom: 30px; align-items: center; justify-content: center; }
-        .inputs-row input { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-        .inputs-row button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 12px; font-weight: bold; text-transform: uppercase; transition: opacity 0.2s; }
+        /* Optimized Command Bar */
+        .inputs-row { display: flex; gap: 5px; margin-bottom: 25px; flex-wrap: nowrap; align-items: center; justify-content: space-between; }
+        
+        /* Reduced input widths to fit all buttons */
+        #date { width: 120px; }
+        #time { width: 80px; }
+        #lon { width: 60px; }
+        
+        .inputs-row input { padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+        .inputs-row button { padding: 8px 10px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 11px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        
         .btn-now { background: #6c757d; }
         .btn-gps { background: #007bff; }
         .btn-calc { background: #2d2d2d; }
-        .btn-calc:hover { background: #000; }
 
         /* Chart Structure */
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--separator-stroke) solid var(--separator-color); border-radius: 8px; overflow: hidden; background: #fff; }
-        .pillar { display: flex; flex-direction: column; border-right: var(--separator-stroke) solid var(--separator-color); text-align: center; }
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #fff; }
+        .pillar { display: flex; flex-direction: column; border-right: 1px solid #eee; text-align: center; }
         .pillar:last-child { border-right: none; }
         
-        /* 1. Riga in alto Rosa */
-        .header { 
-            background: var(--header-pink); 
-            padding: 12px; 
-            font-weight: 800; 
-            font-size: 13px; 
-            color: #880e4f; 
-            border-bottom: var(--separator-stroke) solid var(--separator-color); 
-            letter-spacing: 1.5px; 
-        }
+        .header { background: #f8f9fa; padding: 10px; font-weight: bold; font-size: 11px; color: #666; border-bottom: 1px solid #eee; letter-spacing: 1px; }
+        .cell { padding: 15px 5px; border-bottom: 1px solid #fafafa; }
         
-        /* Stelo e Ramo */
-        .stem { padding-top: 20px; margin-bottom: -8px; } 
-        .branch { padding-bottom: 20px; }
-        
+        /* Artistic Hanzi Style */
         .hanzi { 
             font-family: 'Ma Shan Zheng', cursive; 
-            font-size: 64px; 
-            line-height: 1;
+            font-size: 54px; 
+            line-height: 1.1;
             display: block;
-            filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.1));
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.12));
         }
-        .eng-name { font-size: 17px; font-weight: bold; margin-top: 4px; display: block; }
-        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: bold; margin-bottom: 5px; display: block; }
+        .eng-name { font-size: 16px; font-weight: bold; margin-top: 4px; display: block; }
+        .element-label { font-size: 10px; text-transform: uppercase; opacity: 0.6; font-weight: bold; }
 
-        /* 2. Box Esagramma Ingrandito */
-        .hex-section { 
-            padding: 25px 10px; 
-            border-top: var(--separator-stroke) solid var(--separator-color); 
-            background: #fff;
-            min-height: 140px; /* Più spazio verticale */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .hex-wrapper { display: inline-flex; align-items: center; gap: 15px; }
-        .hex-icon { font-size: 82px; color: #111; line-height: 1; } /* Esagramma più grande */
+        /* Hexagram & XKDG Section - Center Alignment and Space-around Dats Column */
+        .hex-section { padding: 15px 5px; border-top: 1px solid #f0f0f0; text-align: center;}
+        .hex-wrapper { display: inline-flex; align-items: center; gap: 8px; justify-content: center;}
+        .hex-icon { font-size: 68px; color: #222; line-height: 1; }
 
         .data-column { 
-            display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-            height: 85px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-around; 
+            align-items: center;
+            height: 68px; 
+            font-weight: bold;
         }
-        .num-xkdg { font-size: 22px; color: #000; font-weight: 900; } /* Numeri a fianco più grandi */
-        .side-pillar-small { font-size: 15px; line-height: 1.1; color: #444; font-family: 'Ma Shan Zheng', cursive; font-weight: bold; }
-        
-        .hex-info { margin-top: 12px; font-size: 13px; font-weight: bold; color: #333; line-height: 1.2; }
+        .num-xkdg { font-size: 17px; color: #000; }
+        .side-pillar-small { font-size: 13px; line-height: 1.1; color: #333; font-family: 'Ma Shan Zheng', cursive; }
+
+        .hex-info { margin-top: 8px; font-size: 11px; font-weight: bold; color: #444; line-height: 1.2; text-align: center;}
 
         /* Element Colors */
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
@@ -105,7 +93,6 @@
 </div>
 
 <script>
-// Logica di base per visualizzazione (Stessi dati dell'esempio precedente)
 const STEMS = [
     {en:'Jia', zh:'甲', el:'wood'}, {en:'Yi', zh:'乙', el:'wood'},
     {en:'Bing', zh:'丙', el:'fire'}, {en:'Ding', zh:'丁', el:'fire'},
@@ -123,8 +110,29 @@ const BRANCHES = [
     {en:'Xu', zh:'戌', el:'earth'}, {en:'Hai', zh:'亥', el:'water'}
 ];
 
-function fillPillar(id, sIdx, bIdx) {
-    const s = STEMS[sIdx % 10]; const b = BRANCHES[bIdx % 12];
+const REF_DATE = new Date(2026, 3, 27); 
+const REF_STEM = 7; 
+const REF_BRANCH = 7; 
+
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            document.getElementById('lon').value = pos.coords.longitude.toFixed(2);
+            calculateBazi();
+        }, () => alert("GPS not available."));
+    }
+}
+
+function setNow() {
+    const now = new Date();
+    document.getElementById('date').value = now.toISOString().split('T')[0];
+    document.getElementById('time').value = now.toTimeString().slice(0,5);
+    calculateBazi();
+}
+
+function fillPillar(id, stemIdx, branchIdx) {
+    const s = STEMS[stemIdx % 10];
+    const b = BRANCHES[branchIdx % 12];
     const p = document.getElementById(id);
     p.querySelector('.stem').innerHTML = `<span class="hanzi ${s.el}">${s.zh}</span><span class="eng-name">${s.en}</span><span class="element-label">- ${s.el} -</span>`;
     p.querySelector('.branch').innerHTML = `<span class="hanzi ${b.el}">${b.zh}</span><span class="eng-name">${b.en}</span><span class="element-label">- ${b.el} -</span>`;
@@ -146,23 +154,24 @@ function setHex(id, icon, name, numT, numB, sideZh) {
 }
 
 function calculateBazi() {
-    // Esempio statico basato sulla tua immagine del 27/04/2026
-    fillPillar('p-year', 2, 6);   // Bing Wu
-    fillPillar('p-month', 8, 4);  // Ren Chen
-    fillPillar('p-day', 7, 7);    // Xin Wei
-    fillPillar('p-hour', 1, 7);   // Yi Wei
+    const dVal = document.getElementById('date').value;
+    if(!dVal) return;
+    const targetDate = new Date(dVal);
+    
+    const yearIdx = (targetDate.getFullYear() - 4) % 60;
+    fillPillar('p-year', yearIdx % 10, yearIdx % 12);
+    
+    const diffDays = Math.floor((targetDate.getTime() - REF_DATE.getTime()) / (1000 * 60 * 60 * 24));
+    let dS = (REF_STEM + diffDays) % 10; let dB = (REF_BRANCH + diffDays) % 12;
+    fillPillar('p-day', dS < 0 ? dS + 10 : dS, dB < 0 ? dB + 12 : dB);
+    
+    fillPillar('p-month', 8, 4); 
+    fillPillar('p-hour', 1, 7);  
 
     setHex('p-hour', '䷯', '48 Jing<br>Well', '7', '6', '乙<br>未');
     setHex('p-day', '䷅', '06 Song<br>Litigation', '9', '3', '辛<br>未');
     setHex('p-month', '䷙', '26 Da Chu<br>Big Livestock', '6', '4', '壬<br>辰');
     setHex('p-year', '䷛', '28 Da Guo<br>Great Exceeding', '4', '3', '丙<br>午');
-}
-
-function setNow() {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-    calculateBazi();
 }
 
 window.onload = setNow;
