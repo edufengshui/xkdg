@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator Pro - Advanced Layout</title>
+    <title>XKDG Bazi Calculator Pro - Single Column Layout</title>
     <style>
         :root {
             --wood: #2d7a32; --fire: #c62828; --earth: #8d6e63;
-            --metal: #b8860b; --water: #1565c0; --bg-gray: #f8f9fa;
+            --metal: #b8860b; --water: #1565c0;
         }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #e9ecef; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
         
         .inputs-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .inputs-row input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 120px; }
-        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; transition: 0.2s; text-transform: uppercase; font-weight: bold; }
+        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; text-transform: uppercase; font-weight: bold; }
         
         .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
         .pillar { display: flex; flex-direction: column; border-right: 1px solid #dee2e6; background: white; }
@@ -22,34 +22,29 @@
         .header { background: #f1f3f5; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; }
         .cell { padding: 15px 5px; text-align: center; border-bottom: 1px solid #f8f9fa; }
         
-        .hanzi { font-size: 32px; font-weight: normal; line-height: 1.2; display: block; font-family: "STKaiti", "Kaiti SC", serif; }
+        .hanzi { font-size: 32px; display: block; font-family: "STKaiti", "Kaiti SC", serif; }
         .eng { font-size: 15px; font-weight: bold; margin-top: 2px; display: block; }
         .element-label { font-size: 10px; text-transform: uppercase; opacity: 0.7; }
 
-        /* Hexagram Section with Precise Offsets */
-        .hex-section { padding: 25px 10px; text-align: center; background: #fff; }
-        .hex-container { display: inline-block; position: relative; padding-right: 35px; }
+        /* Hexagram Section - Single Column Alignment */
+        .hex-section { padding: 25px 5px; text-align: center; background: #fff; }
+        .hex-wrapper { display: inline-flex; align-items: center; gap: 5px; }
         
-        /* The Hexagram Symbol */
-        .hex-icon { font-size: 72px; color: #333; line-height: 1; display: block; }
+        .hex-icon { font-size: 72px; color: #333; line-height: 1; }
 
-        /* XKDG Numbers - Re-positioned */
-        .xkdg-num { position: absolute; font-size: 18px; font-weight: bold; color: #000; right: 0; }
-        .num-top { top: -10px; }    /* Moved higher up */
-        .num-bottom { bottom: -5px; } 
-
-        /* Side Stem-Branch Pillar */
-        .side-pillar { 
-            position: absolute; 
-            right: 5px; 
-            top: 50%; 
-            transform: translateY(-50%); 
-            font-size: 14px; 
-            font-weight: bold; 
-            line-height: 1.1; 
-            color: #333;
-            text-align: center;
+        /* Right Data Column */
+        .data-column { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            align-items: center;
+            height: 72px; /* Matches hex-icon height */
+            font-weight: bold;
+            color: #000;
         }
+
+        .num-xkdg { font-size: 18px; line-height: 1; }
+        .side-pillar-small { font-size: 13px; line-height: 1.1; color: #333; }
 
         .hex-info { margin-top: 10px; font-size: 11px; font-weight: bold; color: #555; }
 
@@ -95,8 +90,8 @@ const BRANCHES = [
 ];
 
 const REF_DATE = new Date(2026, 3, 27); 
-const REF_STEM = 7; 
-const REF_BRANCH = 7; 
+const REF_STEM = 7; // Xin
+const REF_BRANCH = 7; // Wei
 
 function setNow() {
     const now = new Date();
@@ -116,11 +111,13 @@ function fillPillar(id, stemIdx, branchIdx) {
 function setHex(id, icon, name, numEl, numPer, sideZh) {
     const section = document.querySelector(`#${id} .hex-section`);
     section.innerHTML = `
-        <div class="hex-container">
+        <div class="hex-wrapper">
             <div class="hex-icon">${icon}</div>
-            <div class="xkdg-num num-top">${numEl}</div>
-            <div class="xkdg-num num-bottom">${numPer}</div>
-            <div class="side-pillar">${sideZh}</div>
+            <div class="data-column">
+                <div class="num-xkdg">${numEl}</div>
+                <div class="side-pillar-small">${sideZh}</div>
+                <div class="num-xkdg">${numPer}</div>
+            </div>
         </div>
         <div class="hex-info">${name}</div>
     `;
@@ -132,7 +129,6 @@ function calculateBazi() {
     if(!dVal || !tVal) return;
     const targetDate = new Date(dVal);
     
-    // Logic for pillars
     const yearIdx = (targetDate.getFullYear() - 4) % 60;
     fillPillar('p-year', yearIdx % 10, yearIdx % 12);
     const diffDays = Math.floor((targetDate.getTime() - REF_DATE.getTime()) / (1000 * 60 * 60 * 24));
@@ -141,7 +137,6 @@ function calculateBazi() {
     fillPillar('p-month', 8, 4); 
     fillPillar('p-hour', 1, 7);  
 
-    // Mapping exact data from image
     setHex('p-hour', '䷯', '48 Jing<br>Well', '7', '6', '乙<br>未');
     setHex('p-day', '䷅', '06 Song<br>Litigation', '9', '3', '辛<br>未');
     setHex('p-month', '䷙', '26 Da Chu<br>Big Livestock', '6', '4', '壬<br>辰');
