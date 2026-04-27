@@ -1,153 +1,91 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator Pro</title>
+    <title>XKDG Bazi Calculator - Lunar Integrated</title>
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
-
-        :root {
-            --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b;
-            --metal: #555; --water: #0000cd;
-            --header-pink: #fce4ec;
-        }
-
+        :root { --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b; --metal: #555; --water: #0000cd; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
-        
-        .inputs-row { display: flex; gap: 8px; margin-bottom: 25px; align-items: center; justify-content: center; }
-        .inputs-row input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        .inputs-row button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        
-        .btn-now { background: #6c757d; }
-        .btn-calc { background: #2d2d2d; }
-
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #bbb; border-radius: 4px; overflow: hidden; background: #fff; }
+        .container { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 850px; }
+        .inputs-row { display: flex; gap: 8px; margin-bottom: 25px; justify-content: center; }
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #bbb; background: #fff; }
         .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; }
         .pillar:last-child { border-right: none; }
-        
-        .header { background: var(--header-pink); padding: 12px; font-weight: bold; font-size: 13px; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1.5px; }
-        .cell { padding: 15px 5px; }
-        
+        .header { background: #fce4ec; padding: 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; }
+        .cell { padding: 15px 5px; min-height: 100px; }
         .hanzi { font-family: 'Ma Shan Zheng', cursive; font-size: 64px; line-height: 1.1; display: block; }
-        .eng-name { font-size: 17px; font-weight: bold; margin-top: 4px; display: block; }
-        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: bold; }
-
+        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: bold; margin-top: 5px; display: block;}
         .hex-section { padding: 20px 5px; border-top: 2px solid #bbb; display: flex; flex-direction: column; align-items: center; }
-        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; left: 15px; } 
-        .hex-icon { font-size: 80px; color: #000; line-height: 1; }
-
-        .data-column { display: flex; flex-direction: column; justify-content: space-around; align-items: center; height: 80px; width: 30px; }
-        .num-xkdg { font-size: 20px; color: #000; font-weight: bold; }
-        .side-pillar-small { font-size: 14px; line-height: 1.1; color: #333; font-family: 'Ma Shan Zheng', cursive; }
-
-        /* Didascalia centrata esattamente sotto le linee dell'esagramma */
-        .hex-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #333; line-height: 1.2; text-align: center; position: relative; left: -15px; }
-
+        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-left: 25px; }
+        .hex-icon { font-size: 80px; color: #000; }
+        .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 80px; width: 30px; font-weight: bold; }
+        .hex-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #333; text-align: center; transform: translateX(-12px); }
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="inputs-row">
         <input type="date" id="date">
         <input type="time" id="time">
-        <button class="btn-now" onclick="setNow()">NOW</button>
-        <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
+        <button onclick="calculateBazi()" style="background:#2d2d2d; color:white; padding:8px 15px; cursor:pointer; border-radius:4px; border:none;">CALCOLA</button>
     </div>
-
     <div class="chart">
-        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-hour"><div class="header">ORA</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">GIORNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MESE</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">ANNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
 </div>
 
 <script>
-const STEMS = [
-    {en:'Jia', zh:'甲', el:'wood'}, {en:'Yi', zh:'乙', el:'wood'},
-    {en:'Bing', zh:'丙', el:'fire'}, {en:'Ding', zh:'丁', el:'fire'},
-    {en:'Wu', zh:'戊', el:'earth'}, {en:'Ji', zh:'己', el:'earth'},
-    {en:'Geng', zh:'庚', el:'metal'}, {en:'Xin', zh:'辛', el:'metal'},
-    {en:'Ren', zh:'壬', el:'water'}, {en:'Gui', zh:'癸', el:'water'}
-];
+const ELEMENTS = { '甲': 'wood', '乙': 'wood', '丙': 'fire', '丁': 'fire', '戊': 'earth', '己': 'earth', '庚': 'metal', '辛': 'metal', '壬': 'water', '癸': 'water', '子': 'water', '丑': 'earth', '寅': 'wood', '卯': 'wood', '辰': 'earth', '巳': 'fire', '午': 'fire', '未': 'earth', '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water' };
 
-const BRANCHES = [
-    {en:'Zi', zh:'子', el:'water'}, {en:'Chou', zh:'丑', el:'earth'},
-    {en:'Yin', zh:'寅', el:'wood'}, {en:'Mao', zh:'卯', el:'wood'},
-    {en:'Chen', zh:'辰', el:'earth'}, {en:'Si', zh:'巳', el:'fire'},
-    {en:'Wu', zh:'午', el:'fire'}, {en:'Wei', zh:'未', el:'earth'},
-    {en:'Shen', zh:'申', el:'metal'}, {en:'You', zh:'酉', el:'metal'},
-    {en:'Xu', zh:'戌', el:'earth'}, {en:'Hai', zh:'亥', el:'water'}
-];
-
-// Dati di riferimento per calcolo dinamico
-const REF_DATE = new Date(2024, 1, 10); // Capodanno cinese 2024 (Jia Chen)
-const REF_YEAR_STEM = 0; // Jia
-const REF_YEAR_BRANCH = 4; // Chen
-
-function setNow() {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-    calculateBazi();
-}
-
-function fillPillar(id, sIdx, bIdx) {
-    const s = STEMS[((sIdx % 10) + 10) % 10];
-    const b = BRANCHES[((bIdx % 12) + 12) % 12];
+function updatePillar(id, stem, branch, hexIcon, hexName, n1, n2, sideZh) {
+    const elS = ELEMENTS[stem];
+    const elB = ELEMENTS[branch];
     const p = document.getElementById(id);
-    p.querySelector('.stem').innerHTML = `<span class="hanzi ${s.el}">${s.zh}</span><span class="eng-name">${s.en}</span><span class="element-label">- ${s.el} -</span>`;
-    p.querySelector('.branch').innerHTML = `<span class="hanzi ${b.el}">${b.zh}</span><span class="eng-name">${b.en}</span><span class="element-label">- ${b.el} -</span>`;
-}
-
-function setHex(id, icon, name, numT, numB, sideZh) {
-    const section = document.querySelector(`#${id} .hex-section`);
-    section.innerHTML = `
+    p.querySelector('.stem').innerHTML = `<span class="hanzi ${elS}">${stem}</span><span class="element-label">- ${elS} -</span>`;
+    p.querySelector('.branch').innerHTML = `<span class="hanzi ${elB}">${branch}</span><span class="element-label">- ${elB} -</span>`;
+    p.querySelector('.hex-section').innerHTML = `
         <div class="hex-wrapper">
-            <div class="hex-icon">${icon}</div>
+            <div class="hex-icon">${hexIcon}</div>
             <div class="data-column">
-                <div class="num-xkdg">${numT}</div>
-                <div class="side-pillar-small">${sideZh}</div>
-                <div class="num-xkdg">${numB}</div>
+                <div>${n1}</div>
+                <div style="font-size:12px; font-family:'Ma+Shan+Zheng'">${sideZh}</div>
+                <div>${n2}</div>
             </div>
         </div>
-        <div class="hex-info">${name}</div>
-    `;
+        <div class="hex-info">${hexName}</div>`;
 }
 
 function calculateBazi() {
     const dVal = document.getElementById('date').value;
-    if(!dVal) return;
-    const target = new Date(dVal);
-    
-    // Calcolo Anno
-    let yIdx = (target.getFullYear() - 4) % 60;
-    fillPillar('p-year', yIdx % 10, yIdx % 12);
-    
-    // Calcolo Giorno (Ciclo di 60 giorni)
-    const baseDay = new Date(2024, 0, 1); // 1 Gen 2024 era Geng Zi (6,0)
-    const diffDays = Math.floor((target - baseDay) / (1000 * 60 * 60 * 24));
-    let dS = (6 + diffDays) % 10;
-    let dB = (0 + diffDays) % 12;
-    fillPillar('p-day', dS, dB);
+    const tVal = document.getElementById('time').value || "00:00";
+    if (!dVal) return;
 
-    // Mese e Ora (Esempi dinamici semplificati)
-    fillPillar('p-month', (yIdx * 2 + 2 + target.getMonth()) % 10, (target.getMonth() + 2) % 12);
-    const hour = parseInt(document.getElementById('time').value.split(':')[0] || 0);
-    fillPillar('p-hour', (dS * 2 + Math.floor((hour + 1) / 2)) % 10, Math.floor((hour + 1) / 2) % 12);
+    const date = new Date(`${dVal}T${tVal}`);
+    const solar = Solar.fromDate(date);
+    const lunar = solar.getLunar();
+    const eightChar = lunar.getEightChar();
 
-    // Placeholder per Esagrammi (Sostituire con logica XKDG reale se disponibile)
-    setHex('p-year', '䷛', '28 Da Guo', '4', '3', '丙午');
-    setHex('p-month', '䷙', '26 Da Chu', '6', '4', '壬辰');
-    setHex('p-day', '䷅', '06 Song', '9', '3', '辛未');
-    setHex('p-hour', '䷯', '48 Jing', '7', '6', '乙未');
+    // Estrazione Pilastri (EightChar della libreria Lunar)
+    updatePillar('p-year', eightChar.getYearGan(), eightChar.getYearZhi(), '䷛', '28 Da Guo<br>Great Exceeding', '4', '3', eightChar.getYear());
+    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), '䷙', '26 Da Chu<br>Big Livestock', '6', '4', eightChar.getMonth());
+    updatePillar('p-day', eightChar.getDayGan(), eightChar.getDayZhi(), '䷅', '06 Song<br>Litigation', '9', '3', eightChar.getDay());
+    updatePillar('p-hour', eightChar.getTimeGan(), eightChar.getTimeZhi(), '䷯', '48 Jing<br>Well', '7', '6', eightChar.getTime());
 }
 
-window.onload = setNow;
+// Inizializzazione automatica
+window.onload = () => {
+    const now = new Date();
+    document.getElementById('date').value = now.toISOString().split('T')[0];
+    document.getElementById('time').value = now.toTimeString().slice(0,5);
+    calculateBazi();
+};
 </script>
 </body>
 </html>
