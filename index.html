@@ -7,13 +7,13 @@
         body { font-family: Arial; text-align: center; }
         table { border-collapse: collapse; margin: 20px auto; }
         td, th { border: 1px solid #ccc; padding: 12px 8px; vertical-align: top; min-width: 100px; }
-      .wood { color: #2e8b57; font-weight: bold; }
-      .fire { color: #dc143c; font-weight: bold; }
-      .earth { color: #b8860b; font-weight: bold; }
-      .metal { color: #708090; font-weight: bold; }
-      .water { color: #1e90ff; font-weight: bold; }
-      .stem-cn,.branch-cn { font-size: 32px; font-weight: bold; }
-      .hex { font-size: 14px; line-height: 1.2; }
+     .wood { color: #2e8b57; font-weight: bold; }
+     .fire { color: #dc143c; font-weight: bold; }
+     .earth { color: #b8860b; font-weight: bold; }
+     .metal { color: #708090; font-weight: bold; }
+     .water { color: #1e90ff; font-weight: bold; }
+     .stem-cn,.branch-cn { font-size: 32px; font-weight: bold; }
+     .hex { font-size: 14px; line-height: 1.2; }
     </style>
 </head>
 <body>
@@ -86,16 +86,16 @@ function calculate() {
     ];
 
     data.forEach(item => {
-        const stem = item.gz.substring(0,1), branch = item.gz.substring(1);
-        const stemEn = STEMS[stem].split(' ');
-        const branchData = BRANCHES[branch].split(' ');
+        const stem = item.gz.substring(0,1);
+        const branch = item.gz.substring(1);
 
         document.getElementById(item.prefix+'-stem-cn').textContent = stem;
         document.getElementById(item.prefix+'-stem-cn').className = 'stem-cn '+ELEMENTS[stem];
-        document.getElementById(item.prefix+'-stem-en').textContent = stemEn[1];
-        document.getElementById(item.prefix+'-stem-el').textContent = stemEn[0]+' '+stemEn[1];
+        document.getElementById(item.prefix+'-stem-en').textContent = stem;
+        document.getElementById(item.prefix+'-stem-el').textContent = STEMS[stem];
         document.getElementById(item.prefix+'-stem-el').className = ELEMENTS[stem];
 
+        const branchData = BRANCHES[branch].split(' ');
         document.getElementById(item.prefix+'-branch-cn').textContent = branch;
         document.getElementById(item.prefix+'-branch-cn').className = 'branch-cn '+ELEMENTS[branch];
         document.getElementById(item.prefix+'-branch-en').textContent = branchData[2];
