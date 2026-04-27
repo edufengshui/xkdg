@@ -1,53 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator Pro - Single Column Layout</title>
+    <title>XKDG Bazi Calculator Pro - Versione Finale</title>
     <style>
+        /* Importazione font calligrafico raffinato */
+        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+
         :root {
-            --wood: #2d7a32; --fire: #c62828; --earth: #8d6e63;
-            --metal: #b8860b; --water: #1565c0;
+            --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b;
+            --metal: #555; --water: #0000cd;
         }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #e9ecef; padding: 20px; display: flex; justify-content: center; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 850px; }
+
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 900px; }
         
-        .inputs-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        .inputs-row input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-width: 120px; }
-        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; text-transform: uppercase; font-weight: bold; }
-        
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
-        .pillar { display: flex; flex-direction: column; border-right: 1px solid #dee2e6; background: white; }
+        /* Controlli superiori */
+        .inputs-row { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; justify-content: center; }
+        .inputs-row input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .inputs-row button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; background: #444; color: white; font-size: 13px; font-weight: bold; text-transform: uppercase; }
+        .btn-gps { background: #5cace2 !important; }
+        .btn-calc { background: #2d2d2d !important; }
+
+        /* Struttura Tabella */
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
+        .pillar { display: flex; flex-direction: column; border-right: 1px solid #eee; text-align: center; background: #fff; }
         .pillar:last-child { border-right: none; }
         
-        .header { background: #f1f3f5; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; color: #495057; border-bottom: 1px solid #dee2e6; }
-        .cell { padding: 15px 5px; text-align: center; border-bottom: 1px solid #f8f9fa; }
+        .header { background: #f8f9fa; padding: 12px; font-weight: bold; font-size: 12px; color: #666; border-bottom: 1px solid #eee; letter-spacing: 1px; }
+        .cell { padding: 15px 5px; border-bottom: 1px solid #fafafa; }
         
-        .hanzi { font-size: 32px; display: block; font-family: "STKaiti", "Kaiti SC", serif; }
-        .eng { font-size: 15px; font-weight: bold; margin-top: 2px; display: block; }
-        .element-label { font-size: 10px; text-transform: uppercase; opacity: 0.7; }
+        /* Caratteri Cinesi Calligrafici con Ombra */
+        .hanzi { 
+            font-family: 'Ma Shan Zheng', "Kaiti SC", serif; 
+            font-size: 56px; 
+            line-height: 1.1;
+            display: block;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.15));
+        }
+        .eng-name { font-size: 17px; font-weight: bold; margin-top: 5px; display: block; }
+        .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: bold; }
 
-        /* Hexagram Section - Single Column Alignment */
-        .hex-section { padding: 25px 5px; text-align: center; background: #fff; }
-        .hex-wrapper { display: inline-flex; align-items: center; gap: 5px; }
-        
-        .hex-icon { font-size: 72px; color: #333; line-height: 1; }
+        /* Sezione Esagramma con numeri in colonna */
+        .hex-section { padding: 20px 5px; border-top: 1px solid #f0f0f0; }
+        .hex-wrapper { display: inline-flex; align-items: center; gap: 10px; }
+        .hex-icon { font-size: 75px; color: #222; line-height: 1; }
 
-        /* Right Data Column */
         .data-column { 
             display: flex; 
             flex-direction: column; 
             justify-content: space-between; 
             align-items: center;
-            height: 72px; /* Matches hex-icon height */
+            height: 75px; 
             font-weight: bold;
-            color: #000;
+        }
+        .num-xkdg { font-size: 19px; color: #000; }
+        .side-pillar-small { 
+            font-size: 14px; 
+            line-height: 1.1; 
+            color: #333; 
+            font-family: 'Ma Shan Zheng', serif;
         }
 
-        .num-xkdg { font-size: 18px; line-height: 1; }
-        .side-pillar-small { font-size: 13px; line-height: 1.1; color: #333; }
+        .hex-name { margin-top: 10px; font-size: 12px; font-weight: bold; color: #444; line-height: 1.2; }
 
-        .hex-info { margin-top: 10px; font-size: 11px; font-weight: bold; color: #555; }
-
+        /* Colori */
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
     </style>
@@ -58,16 +75,16 @@
     <div class="inputs-row">
         <input type="date" id="date">
         <input type="time" id="time">
-        <input type="number" id="longitude" placeholder="Lon" step="0.01">
-        <button onclick="setNow()">NOW</button>
-        <button onclick="calculateBazi()">CALCULATE</button>
+        <input type="text" id="lon" placeholder="Longitudine" style="width: 100px;">
+        <button class="btn-gps" onclick="getLocation()">GPS</button>
+        <button class="btn-calc" onclick="calculateBazi()">CALCOLA</button>
     </div>
 
     <div class="chart">
-        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-hour"><div class="header">ORA</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">GIORNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MESE</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">ANNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
 </div>
 
@@ -90,8 +107,20 @@ const BRANCHES = [
 ];
 
 const REF_DATE = new Date(2026, 3, 27); 
-const REF_STEM = 7; // Xin
-const REF_BRANCH = 7; // Wei
+const REF_STEM = 7; 
+const REF_BRANCH = 7; 
+
+// Funzione GPS
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            document.getElementById('lon').value = pos.coords.longitude.toFixed(2);
+            setNow();
+        }, () => alert("Errore nel rilevamento posizione. Controlla i permessi."));
+    } else {
+        alert("Geolocalizzazione non supportata dal tuo browser.");
+    }
+}
 
 function setNow() {
     const now = new Date();
@@ -104,39 +133,44 @@ function fillPillar(id, stemIdx, branchIdx) {
     const s = STEMS[stemIdx % 10];
     const b = BRANCHES[branchIdx % 12];
     const p = document.getElementById(id);
-    p.querySelector('.stem').innerHTML = `<span class="hanzi ${s.el}">${s.zh}</span><span class="eng ${s.el}">${s.en}</span><span class="element-label">- ${s.el} -</span>`;
-    p.querySelector('.branch').innerHTML = `<span class="hanzi ${b.el}">${b.zh}</span><span class="eng ${b.el}">${b.en}</span><span class="element-label">- ${b.el} -</span>`;
+    p.querySelector('.stem').innerHTML = `<span class="hanzi ${s.el}">${s.zh}</span><span class="eng-name">${s.en}</span><span class="element-label">- ${s.el} -</span>`;
+    p.querySelector('.branch').innerHTML = `<span class="hanzi ${b.el}">${b.zh}</span><span class="eng-name">${b.en}</span><span class="element-label">- ${b.el} -</span>`;
 }
 
-function setHex(id, icon, name, numEl, numPer, sideZh) {
+function setHex(id, icon, name, numTop, numBot, sideZh) {
     const section = document.querySelector(`#${id} .hex-section`);
     section.innerHTML = `
         <div class="hex-wrapper">
             <div class="hex-icon">${icon}</div>
             <div class="data-column">
-                <div class="num-xkdg">${numEl}</div>
+                <div class="num-xkdg">${numTop}</div>
                 <div class="side-pillar-small">${sideZh}</div>
-                <div class="num-xkdg">${numPer}</div>
+                <div class="num-xkdg">${numBot}</div>
             </div>
         </div>
-        <div class="hex-info">${name}</div>
+        <div class="hex-name">${name}</div>
     `;
 }
 
 function calculateBazi() {
     const dVal = document.getElementById('date').value;
-    const tVal = document.getElementById('time').value;
-    if(!dVal || !tVal) return;
+    if(!dVal) return;
     const targetDate = new Date(dVal);
     
+    // Anno
     const yearIdx = (targetDate.getFullYear() - 4) % 60;
     fillPillar('p-year', yearIdx % 10, yearIdx % 12);
+    
+    // Giorno
     const diffDays = Math.floor((targetDate.getTime() - REF_DATE.getTime()) / (1000 * 60 * 60 * 24));
     let dS = (REF_STEM + diffDays) % 10; let dB = (REF_BRANCH + diffDays) % 12;
     fillPillar('p-day', dS < 0 ? dS + 10 : dS, dB < 0 ? dB + 12 : dB);
+    
+    // Mese e Ora (Esempio statico basato sull'immagine)
     fillPillar('p-month', 8, 4); 
     fillPillar('p-hour', 1, 7);  
 
+    // Esagrammi
     setHex('p-hour', '䷯', '48 Jing<br>Well', '7', '6', '乙<br>未');
     setHex('p-day', '䷅', '06 Song<br>Litigation', '9', '3', '辛<br>未');
     setHex('p-month', '䷙', '26 Da Chu<br>Big Livestock', '6', '4', '壬<br>辰');
