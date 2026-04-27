@@ -18,7 +18,12 @@
 </head>
 <body>
     <h1>Four Pillars + XKDG</h1>
-    <button onclick="calculate()">Calculate Now</button>
+    <div style="display: flex; gap: 8px; justify-content: center; margin: 10px 0;">
+  <button onclick="calculate()" style="padding: 4px 12px; font-size: 14px;">Calculate</button>
+  <button onclick="setNow()" style="padding: 4px 12px; font-size: 14px;">NOW</button>
+    <input id="longitude" type="number" step="0.01" placeholder="Long: 121.47" 
+         style="width: 110px; padding: 4px 12px; font-size: 14px; text-align: center;">      
+  </div>
 
     <table>
         <tr style="background:#e8e8e8; font-weight:bold;">
@@ -133,7 +138,21 @@ function calculate() {
         document.getElementById('y-hex').innerHTML = getXKDGHexagram(yearGan, yearZhi);
     }
 }
-
+140 }
+141 
+142 function setNow() {
+143     const now = new Date();
+144     document.getElementById('input-time').value = now.toTimeString().slice(0,5);
+145     document.getElementById('input-day').value = now.getDate();
+146     document.getElementById('input-month').value = now.getMonth() + 1;
+147     document.getElementById('input-year').value = now.getFullYear();
+148     calculate();
+149 }
+150
+151 // Al caricamento pagina, popola gli input con oggi e calcola
+152 window.onload = function() {
+153     calculate();
+154 }
 // Al caricamento pagina, popola gli input con oggi e calcola
 window.onload = function() {
     calculate();
