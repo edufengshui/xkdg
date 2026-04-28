@@ -1,4 +1,5 @@
-<!DOCTYPE html> 
+<!-- Generated: 2026-04-28 18:41 -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -70,6 +71,23 @@
         .favourable-col { display: flex; flex-direction: column; align-items: center; min-width: 110px; }
         .favourable-bar { background: #2e7d32; color: white; font-weight: bold; font-size: 14px; text-align: center; padding: 10px 8px; border-radius: 6px; letter-spacing: 2px; writing-mode: horizontal-tb; }
         .match-detail { font-size: 10px; color: #555; text-align: center; margin-top: 4px; }
+
+        /* Scanner section */
+        .scanner-section { margin-top: 20px; border: 2px solid #1565c0; border-radius: 8px; overflow: hidden; }
+        .scanner-header { background: #e3f2fd; padding: 12px 15px; font-weight: bold; color: #0d47a1; font-size: 14px; letter-spacing: 1px; border-bottom: 2px solid #1565c0; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .scanner-header label { font-size: 12px; color: #555; }
+        .scanner-header input { padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+        .btn-scan { background: #1565c0; color: white; cursor: pointer; border: none; font-weight: bold; padding: 7px 18px; border-radius: 4px; font-size: 13px; }
+        .btn-scan:hover { background: #0d47a1; }
+        .scan-results { padding: 12px; }
+        .scan-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin-bottom: 6px; border-radius: 5px; border-left: 5px solid #2e7d32; background: #f1f8e9; }
+        .scan-item.rank-1 { border-left-color: #1b5e20; background: #c8e6c9; }
+        .scan-item.rank-2 { border-left-color: #2e7d32; background: #dcedc8; }
+        .scan-item.rank-3 { border-left-color: #558b2f; background: #f1f8e9; }
+        .scan-score { font-size: 18px; font-weight: bold; color: #1b5e20; min-width: 35px; text-align: center; }
+        .scan-date { font-size: 14px; font-weight: bold; color: #333; min-width: 170px; }
+        .scan-tags { font-size: 12px; color: #555; flex: 1; }
+        .scan-empty { padding: 15px; text-align: center; color: #888; font-style: italic; }
         .tag-blue  { color: #0044cc; font-weight: bold; }
         .tag-green { color: #1a7a1a; font-weight: bold; }
         .tag-gold  { color: #b8860b; font-weight: bold; }
@@ -148,6 +166,17 @@
             <div class="pillar" id="pp-year"><div class="header" style="background:#e8f5e9;color:#1b5e20;">YEAR ★</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
         </div>
         <div id="favourable-result" style="padding:10px;display:none;"></div>
+    </div>
+
+    <!-- Date Scanner Section -->
+    <div class="scanner-section">
+        <div class="scanner-header">
+            🔍 BEST DATES FOR ME
+            <div><label>FROM:</label> <input type="date" id="scan-start"></div>
+            <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
+            <button class="btn-scan" onclick="runScanner()">SCAN</button>
+        </div>
+        <div class="scan-results" id="scan-results" style="display:none;"></div>
     </div>
 
 <script>
@@ -471,6 +500,27 @@ const ELEMENTS_EN = {
     '戌':'earth','亥':'water'
 };
 
+// ── Global: Jieqi season detector ─────────────────────────────
+function getJieqiSeason(solarDate) {
+    const LI_TERMS  = { '立春':'Wood', '立夏':'Fire', '立秋':'Metal', '立冬':'Water' };
+    const NEXT_ELEM = { Water:'Wood', Wood:'Fire', Fire:'Metal', Metal:'Water' };
+    const y = solarDate.getFullYear();
+    const currentMs = solarDate.getTime();
+    let lastLiDate = null, lastLiElem = null;
+    for (const yr of [y - 1, y]) {
+        const table = Lunar.fromYmd(yr, 1, 1).getJieQiTable();
+        for (const [name, s] of Object.entries(table)) {
+            if (!LI_TERMS[name]) continue;
+            const termMs = new Date(s.getYear(), s.getMonth() - 1, s.getDay()).getTime();
+            if (termMs <= currentMs && (!lastLiDate || termMs > lastLiDate)) {
+                lastLiDate = termMs; lastLiElem = LI_TERMS[name];
+            }
+        }
+    }
+    if (!lastLiElem) return { strong: null, growing: null };
+    return { strong: lastLiElem, growing: NEXT_ELEM[lastLiElem] };
+}
+
 function setNow() {
     const now = new Date();
     document.getElementById('date').value = now.toISOString().split('T')[0];
@@ -540,39 +590,6 @@ function calculateBazi() {
     updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
     updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
     updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
-
-    // 6. XKDG Analysis — determine season via precise Jieqi table
-    function getJieqiSeason(solarDate) {
-        const LI_TERMS = {
-            '立春': 'Wood', '立夏': 'Fire', '立秋': 'Metal', '立冬': 'Water'
-        };
-        const NEXT_ELEM = { Water:'Wood', Wood:'Fire', Fire:'Metal', Metal:'Water' };
-
-        // Get Jieqi table for current year and adjacent years to handle year boundaries
-        const y = solarDate.getFullYear();
-        const currentMs = solarDate.getTime();
-
-        // Collect all Li term dates from this year and last year
-        let lastLiDate = null;
-        let lastLiElem = null;
-
-        for (const yr of [y - 1, y]) {
-            const table = Lunar.fromYmd(yr, 1, 1).getJieQiTable();
-            for (const [name, s] of Object.entries(table)) {
-                if (!LI_TERMS[name]) continue;
-                const termMs = new Date(s.getYear(), s.getMonth() - 1, s.getDay()).getTime();
-                if (termMs <= currentMs) {
-                    if (!lastLiDate || termMs > lastLiDate) {
-                        lastLiDate = termMs;
-                        lastLiElem = LI_TERMS[name];
-                    }
-                }
-            }
-        }
-
-        if (!lastLiElem) return { strong: null, growing: null };
-        return { strong: lastLiElem, growing: NEXT_ELEM[lastLiElem] };
-    }
 
     const { strong: seasonStrong, growing: seasonGrowing } = getJieqiSeason(solarDate);
 
@@ -741,6 +758,191 @@ function checkFavourable(personYear, pStem, pBranch) {
 
     col.style.display = 'flex';
     detail.textContent = matches.join(' · ');
+}
+
+// ─────────────────────────────────────────────
+//  DATE SCANNER
+// ─────────────────────────────────────────────
+
+// Chinese hour start times (local solar time, hour index 0-11)
+const HOUR_STARTS = [23,1,3,5,7,9,11,13,15,17,19,21]; // 子丑寅卯辰巳午未申酉戌亥
+const HOUR_NAMES  = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const HOUR_ROMAN  = ['Zi(23-01)','Chou(01-03)','Yin(03-05)','Mao(05-07)','Chen(07-09)',
+                     'Si(09-11)','Wu(11-13)','Wei(13-15)','Shen(15-17)','You(17-19)',
+                     'Xu(19-21)','Hai(21-23)'];
+
+// Store person year xkdg for scanner
+let _personYearXkdg = null;
+let _personYearStem = null;
+let _personYearBranch = null;
+
+function getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch) {
+    if (!personYear || !dayXkdg) return 0;
+    let matchScore = 0;
+    // Family (highest)
+    const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
+    if (sharedFams.length > 0) matchScore = 4;
+    // Pure Hetu / Pure Adding
+    else if ((isHetuPair(personYear.qi, dayXkdg.qi) && personYear.qi === dayXkdg.qi) ||
+             ([5,10,15].includes(personYear.qi + dayXkdg.qi) && personYear.qi + dayXkdg.qi === personYear.yun + dayXkdg.yun)) matchScore = 3;
+    // Hetu / Adding
+    else if (isHetuPair(personYear.qi, dayXkdg.qi) || [5,10,15].includes(personYear.qi + dayXkdg.qi) ||
+             isHetuPair(personYear.yun, dayXkdg.yun) || [5,10,15].includes(personYear.yun + dayXkdg.yun)) matchScore = 2;
+    // Pure Qi
+    else if (personYear.qi === dayXkdg.qi || personYear.yun === dayXkdg.yun) matchScore = 1;
+    return matchScore;
+}
+
+function getDateQualityScore(analysisItems) {
+    let strength = 0, timely = 0;
+    analysisItems.forEach(item => {
+        const t = item.text;
+        if (t === 'Strong')          strength = 4;
+        else if (t === 'Energetic')  strength = 3;
+        else if (t === 'Medium')     strength = 2;
+        else if (t === 'Weak')       strength = 1;
+        if (t === 'Very Timely')     timely = 2;
+        else if (t === 'Timely')     timely = 1;
+    });
+    return strength + timely;
+}
+
+function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch) {
+    const labels = [];
+    const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
+    if (sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
+    if (isHetuPair(personYear.qi, dayXkdg.qi))  labels.push('Hetu El.');
+    if (isHetuPair(personYear.yun, dayXkdg.yun)) labels.push('Hetu Per.');
+    const sq = personYear.qi + dayXkdg.qi, sy = personYear.yun + dayXkdg.yun;
+    if ([5,10,15].includes(sq))  labels.push(`Add El.(${sq})`);
+    if ([5,10,15].includes(sy))  labels.push(`Add Per.(${sy})`);
+    if (personYear.qi === dayXkdg.qi)   labels.push('Pure Qi El.');
+    if (personYear.yun === dayXkdg.yun) labels.push('Pure Qi Per.');
+    return labels;
+}
+
+function runScanner() {
+    const birthDate = document.getElementById('person-date').value;
+    const startDate = document.getElementById('scan-start').value;
+    const days      = parseInt(document.getElementById('scan-days').value) || 30;
+    const lon       = parseFloat(document.getElementById('longitude').value);
+    const utc       = parseFloat(document.getElementById('utc-offset').value);
+
+    if (!birthDate) { alert('Please enter your birth date first.'); return; }
+    if (!startDate) { alert('Please enter a start date.'); return; }
+
+    // Get person year xkdg
+    const bSolar = Solar.fromDate(new Date(birthDate + 'T12:00'));
+    const bEC    = bSolar.getLunar().getEightChar();
+    const pYStem = bEC.getYearGan(), pYBranch = bEC.getYearZhi();
+    const pYData = getXkdgData(pYStem, pYBranch);
+    if (!pYData) { alert('No XKDG data for birth year.'); return; }
+    const personYear = { ...pYData, stem: pYStem, branch: pYBranch };
+
+    // Get season function
+    const stdMeridian = utc * 15;
+    const offsetMin   = (lon - stdMeridian) * 4;
+
+    const results = [];
+    const start = new Date(startDate + 'T00:00:00');
+
+    for (let d = 0; d < days; d++) {
+        const dayDate = new Date(start.getTime() + d * 86400000);
+
+        for (let h = 0; h < 12; h++) {
+            // Solar time for this hour slot
+            const hourLocal = HOUR_STARTS[h];
+            let baseDate = new Date(dayDate);
+            if (hourLocal === 23) baseDate = new Date(dayDate.getTime() - 86400000);
+            baseDate.setHours(hourLocal, 30, 0, 0); // midpoint of hour
+            const solarDate = new Date(baseDate.getTime() + offsetMin * 60000);
+
+            const solar     = Solar.fromDate(solarDate);
+            const lunar     = solar.getLunar();
+            const eightChar = lunar.getEightChar();
+
+            // Get day xkdg (handle 23:00 edge case)
+            let dGan = eightChar.getDayGan(), dZhi = eightChar.getDayZhi();
+            if (solarDate.getHours() === 23) {
+                const yest = Solar.fromDate(new Date(solarDate.getTime() - 3600000));
+                dGan = yest.getLunar().getEightChar().getDayGan();
+                dZhi = yest.getLunar().getEightChar().getDayZhi();
+            }
+            const dayData = getXkdgData(dGan, dZhi);
+            if (!dayData) continue;
+            const dayXkdg = { ...dayData, stem: dGan, branch: dZhi };
+
+            // Get hour xkdg
+            const hGan = eightChar.getTimeGan(), hZhi = eightChar.getTimeZhi();
+            const hourData = getXkdgData(hGan, hZhi);
+            if (!hourData) continue;
+
+            // Build all 4 pillars for analysis
+            const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
+            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
+            const pillars = {
+                year:  { ...(getXkdgData(yGan,yZhi)||{}), stem:yGan, branch:yZhi },
+                month: { ...(getXkdgData(mGan,mZhi)||{}), stem:mGan, branch:mZhi },
+                day:   dayXkdg,
+                hour:  { ...hourData, stem:hGan, branch:hZhi }
+            };
+            if (!pillars.year.hex || !pillars.month.hex) continue;
+
+            // Get season
+            const seasonInfo = getJieqiSeason(solarDate);
+            const { strong: sStrong, growing: sGrowing } = seasonInfo;
+
+            // Run analysis
+            const { items: analysisItems } = analyzeXkdg(pillars, sStrong, sGrowing);
+
+            // Date must have positive relations
+            if (analysisItems.length === 0) continue;
+
+            // Check person match
+            const matchScore = getMatchScore(personYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+            if (matchScore === 0) continue;
+
+            const qualityScore = getDateQualityScore(analysisItems);
+            const totalScore   = matchScore * (qualityScore || 1);
+
+            const matchLabels  = getMatchLabels(personYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+            const qualLabels   = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
+
+            // Format date string
+            const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+
+            results.push({
+                score: totalScore,
+                matchScore,
+                qualityScore,
+                date: dd,
+                hour: HOUR_ROMAN[h],
+                matchLabels,
+                qualLabels
+            });
+        }
+    }
+
+    // Sort by score descending
+    results.sort((a,b) => b.score - a.score);
+
+    const container = document.getElementById('scan-results');
+    container.style.display = 'block';
+
+    if (results.length === 0) {
+        container.innerHTML = '<div class="scan-empty">No favourable dates found in this period.</div>';
+        return;
+    }
+
+    const maxScore = results[0].score;
+    container.innerHTML = results.map((r, i) => {
+        const rankClass = i === 0 ? 'rank-1' : r.score >= maxScore * 0.7 ? 'rank-2' : 'rank-3';
+        return `<div class="scan-item ${rankClass}">
+            <div class="scan-score">${r.score}</div>
+            <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
+            <div class="scan-tags">${[...r.matchLabels, ...r.qualLabels].join(' · ')}</div>
+        </div>`;
+    }).join('');
 }
 
 window.onload = setNow;
