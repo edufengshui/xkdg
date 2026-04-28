@@ -151,62 +151,120 @@ const XKDG_TABLE = {
 
 // Family map: Jia Zi → array of family names (built with _addFamily to handle multiple families)
 const JIAZI_FAMILY_DATA = {};
+const JIAZI_ROLE_DATA = {}; // Jia Zi → role: 'father','mother','daughter','son'
+
 function _addFamily(jz, family) {
     if (!JIAZI_FAMILY_DATA[jz]) JIAZI_FAMILY_DATA[jz] = [];
     if (!JIAZI_FAMILY_DATA[jz].includes(family)) JIAZI_FAMILY_DATA[jz].push(family);
 }
+function _setRole(jz, role) {
+    // Only set if not already set (first family defines the role)
+    if (!JIAZI_ROLE_DATA[jz]) JIAZI_ROLE_DATA[jz] = role;
+}
+
 // ── Qian-Kun ──
-_addFamily('甲午','Qian-Kun'); _addFamily('甲子','Qian-Kun');
+_addFamily('甲午','Qian-Kun'); _setRole('甲午','father');
+_addFamily('甲子','Qian-Kun'); _setRole('甲子','mother');
 _addFamily('壬寅','Qian-Kun'); _addFamily('戊辰','Qian-Kun'); _addFamily('丁巳','Qian-Kun');
 _addFamily('辛巳','Qian-Kun'); _addFamily('癸巳','Qian-Kun');
+_setRole('壬寅','daughter'); _setRole('戊辰','daughter'); _setRole('丁巳','daughter');
+_setRole('辛巳','daughter'); _setRole('癸巳','daughter');
 _addFamily('壬申','Qian-Kun'); _addFamily('戊戌','Qian-Kun'); _addFamily('丁亥','Qian-Kun');
 _addFamily('辛亥','Qian-Kun'); _addFamily('癸亥','Qian-Kun');
+_setRole('壬申','son'); _setRole('戊戌','son'); _setRole('丁亥','son');
+_setRole('辛亥','son'); _setRole('癸亥','son');
 // ── Kan-Li ──
-_addFamily('庚申','Kan-Li'); _addFamily('庚寅','Kan-Li');
+_addFamily('庚申','Kan-Li'); _setRole('庚申','father');
+_addFamily('庚寅','Kan-Li'); _setRole('庚寅','mother');
 _addFamily('己卯','Kan-Li'); _addFamily('辛亥','Kan-Li'); _addFamily('乙未','Kan-Li');
 _addFamily('癸未','Kan-Li'); _addFamily('壬申','Kan-Li'); _addFamily('戊申','Kan-Li');
+_setRole('己卯','daughter'); _setRole('辛亥','daughter'); _setRole('乙未','daughter');
+_setRole('癸未','daughter'); _setRole('壬申','daughter'); _setRole('戊申','daughter');
 _addFamily('己酉','Kan-Li'); _addFamily('辛巳','Kan-Li'); _addFamily('乙丑','Kan-Li');
 _addFamily('癸丑','Kan-Li'); _addFamily('壬寅','Kan-Li'); _addFamily('戊寅','Kan-Li');
+_setRole('己酉','son'); _setRole('辛巳','son'); _setRole('乙丑','son');
+_setRole('癸丑','son'); _setRole('壬寅','son'); _setRole('戊寅','son');
 // ── Zhen-Xun ──
-_addFamily('壬子','Zhen-Xun'); _addFamily('壬午','Zhen-Xun');
+_addFamily('壬子','Zhen-Xun'); _setRole('壬子','father');
+_addFamily('壬午','Zhen-Xun'); _setRole('壬午','mother');
 _addFamily('丁亥','Zhen-Xun'); _addFamily('癸卯','Zhen-Xun'); _addFamily('戊寅','Zhen-Xun');
 _addFamily('甲子','Zhen-Xun'); _addFamily('丁丑','Zhen-Xun'); _addFamily('乙丑','Zhen-Xun');
+_setRole('丁亥','daughter'); _setRole('癸卯','daughter'); _setRole('戊寅','daughter');
+_setRole('甲子','daughter'); _setRole('丁丑','daughter'); _setRole('乙丑','daughter');
 _addFamily('丁巳','Zhen-Xun'); _addFamily('癸酉','Zhen-Xun'); _addFamily('戊申','Zhen-Xun');
 _addFamily('甲午','Zhen-Xun'); _addFamily('丁未','Zhen-Xun'); _addFamily('乙未','Zhen-Xun');
+_setRole('丁巳','son'); _setRole('癸酉','son'); _setRole('戊申','son');
+_setRole('甲午','son'); _setRole('丁未','son'); _setRole('乙未','son');
 // ── Gen-Dui ──
-_addFamily('丙戌','Gen-Dui'); _addFamily('丙辰','Gen-Dui');
+_addFamily('丙戌','Gen-Dui'); _setRole('丙戌','father');
+_addFamily('丙辰','Gen-Dui'); _setRole('丙辰','mother');
 _addFamily('癸丑','Gen-Dui'); _addFamily('丁未','Gen-Dui'); _addFamily('癸亥','Gen-Dui');
 _addFamily('己酉','Gen-Dui'); _addFamily('癸酉','Gen-Dui'); _addFamily('戊戌','Gen-Dui');
+_setRole('癸丑','daughter'); _setRole('丁未','daughter'); _setRole('癸亥','daughter');
+_setRole('己酉','daughter'); _setRole('癸酉','daughter'); _setRole('戊戌','daughter');
 _addFamily('癸未','Gen-Dui'); _addFamily('丁丑','Gen-Dui'); _addFamily('癸巳','Gen-Dui');
 _addFamily('己卯','Gen-Dui'); _addFamily('癸卯','Gen-Dui'); _addFamily('戊辰','Gen-Dui');
+_setRole('癸未','son'); _setRole('丁丑','son'); _setRole('癸巳','son');
+_setRole('己卯','son'); _setRole('癸卯','son'); _setRole('戊辰','son');
 // ── Pi-Tai ──
-_addFamily('庚戌','Pi-Tai'); _addFamily('庚辰','Pi-Tai');
+_addFamily('庚戌','Pi-Tai'); _setRole('庚戌','father');
+_addFamily('庚辰','Pi-Tai'); _setRole('庚辰','mother');
 _addFamily('己丑','Pi-Tai'); _addFamily('辛未','Pi-Tai'); _addFamily('乙酉','Pi-Tai');
 _addFamily('己亥','Pi-Tai'); _addFamily('乙亥','Pi-Tai'); _addFamily('壬戌','Pi-Tai');
+_setRole('己丑','daughter'); _setRole('辛未','daughter'); _setRole('乙酉','daughter');
+_setRole('己亥','daughter'); _setRole('乙亥','daughter'); _setRole('壬戌','daughter');
 _addFamily('己未','Pi-Tai'); _addFamily('辛丑','Pi-Tai'); _addFamily('乙卯','Pi-Tai');
 _addFamily('己巳','Pi-Tai'); _addFamily('乙巳','Pi-Tai'); _addFamily('壬辰','Pi-Tai');
+_setRole('己未','son'); _setRole('辛丑','son'); _setRole('乙卯','son');
+_setRole('己巳','son'); _setRole('乙巳','son'); _setRole('壬辰','son');
 // ── JiJi-WeiJi ──
-_addFamily('甲寅','JiJi-WeiJi'); _addFamily('甲申','JiJi-WeiJi');
+_addFamily('甲寅','JiJi-WeiJi'); _setRole('甲寅','father');
+_addFamily('甲申','JiJi-WeiJi'); _setRole('甲申','mother');
 _addFamily('甲戌','JiJi-WeiJi'); _addFamily('乙巳','JiJi-WeiJi'); _addFamily('戊子','JiJi-WeiJi');
 _addFamily('庚寅','JiJi-WeiJi'); _addFamily('辛丑','JiJi-WeiJi'); _addFamily('丙寅','JiJi-WeiJi');
+_setRole('甲戌','daughter'); _setRole('乙巳','daughter'); _setRole('戊子','daughter');
+_setRole('庚寅','daughter'); _setRole('辛丑','daughter'); _setRole('丙寅','daughter');
 _addFamily('甲辰','JiJi-WeiJi'); _addFamily('乙亥','JiJi-WeiJi'); _addFamily('戊午','JiJi-WeiJi');
 _addFamily('庚申','JiJi-WeiJi'); _addFamily('辛未','JiJi-WeiJi'); _addFamily('丙申','JiJi-WeiJi');
+_setRole('甲辰','son'); _setRole('乙亥','son'); _setRole('戊午','son');
+_setRole('庚申','son'); _setRole('辛未','son'); _setRole('丙申','son');
 // ── Heng-Yi ──
-_addFamily('庚午','Heng-Yi'); _addFamily('庚子','Heng-Yi');
+_addFamily('庚午','Heng-Yi'); _setRole('庚午','father');
+_addFamily('庚子','Heng-Yi'); _setRole('庚子','mother');
 _addFamily('己巳','Heng-Yi'); _addFamily('辛酉','Heng-Yi'); _addFamily('丙申','Heng-Yi');
 _addFamily('己未','Heng-Yi'); _addFamily('丙午','Heng-Yi'); _addFamily('戊午','Heng-Yi');
+_setRole('己巳','daughter'); _setRole('辛酉','daughter'); _setRole('丙申','daughter');
+_setRole('己未','daughter'); _setRole('丙午','daughter'); _setRole('戊午','daughter');
 _addFamily('己亥','Heng-Yi'); _addFamily('辛卯','Heng-Yi'); _addFamily('丙寅','Heng-Yi');
 _addFamily('己丑','Heng-Yi'); _addFamily('丙子','Heng-Yi'); _addFamily('戊子','Heng-Yi');
+_setRole('己亥','son'); _setRole('辛卯','son'); _setRole('丙寅','son');
+_setRole('己丑','son'); _setRole('丙子','son'); _setRole('戊子','son');
 // ── Sun-Xian ──
-_addFamily('丁卯','Sun-Xian'); _addFamily('丁酉','Sun-Xian');
+_addFamily('丁卯','Sun-Xian'); _setRole('丁卯','father');
+_addFamily('丁酉','Sun-Xian'); _setRole('丁酉','mother');
 _addFamily('庚申','Sun-Xian'); _addFamily('丙巳','Sun-Xian'); _addFamily('壬辰','Sun-Xian');
 _addFamily('甲辰','Sun-Xian'); _addFamily('辛卯','Sun-Xian'); _addFamily('乙卯','Sun-Xian');
+_setRole('庚申','daughter'); _setRole('丙巳','daughter'); _setRole('壬辰','daughter');
+_setRole('甲辰','daughter'); _setRole('辛卯','daughter'); _setRole('乙卯','daughter');
 _addFamily('庚寅','Sun-Xian'); _addFamily('丙午','Sun-Xian'); _addFamily('壬戌','Sun-Xian');
 _addFamily('甲戌','Sun-Xian'); _addFamily('辛酉','Sun-Xian'); _addFamily('乙酉','Sun-Xian');
+_setRole('庚寅','son'); _setRole('丙午','son'); _setRole('壬戌','son');
+_setRole('甲戌','son'); _setRole('辛酉','son'); _setRole('乙酉','son');
 
 // Get family label string for display
 function getHexFamilyLabel(stem, branch) {
     return (JIAZI_FAMILY_DATA[stem + branch] || []).join('<br>');
+}
+
+// Get role label for display
+function getRoleLabel(stem, branch) {
+    const role = JIAZI_ROLE_DATA[stem + branch];
+    if (!role) return '';
+    if (role === 'father')   return '<span style="color:#d40000;font-size:11px;font-weight:bold;">P♂</span>';
+    if (role === 'mother')   return '<span style="color:#d40000;font-size:11px;font-weight:bold;">P♀</span>';
+    if (role === 'daughter') return '<span style="color:#0044cc;font-size:11px;font-weight:bold;">C♀</span>';
+    if (role === 'son')      return '<span style="color:#0044cc;font-size:11px;font-weight:bold;">C♂</span>';
+    return '';
 }
 
 // Get family array for analysis
@@ -558,6 +616,7 @@ function updatePillar(id, stem, branch, xkdg, nayin) {
         const icon       = getHexIcon(xkdg.hex);
         const hexName    = `${xkdg.hex} ${HEX_NAMES[xkdg.hex] || ''}`;
         const familyLabel = getHexFamilyLabel(stem, branch);
+        const roleLabel   = getRoleLabel(stem, branch);
         hexHTML =
             `<div class="hex-wrapper">` +
                 `<div class="hex-icon">${icon}</div>` +
@@ -568,7 +627,8 @@ function updatePillar(id, stem, branch, xkdg, nayin) {
                 `</div>` +
             `</div>` +
             `<div class="hex-info">${hexName}</div>` +
-            `<div class="hex-family-label">${familyLabel}</div>`;
+            `<div class="hex-family-label">${familyLabel}</div>` +
+            (roleLabel ? `<div style="margin-top:3px;">${roleLabel}</div>` : '');
     } else {
         hexHTML = `<div class="hex-missing">No XKDG data<br>${stem}${branch}</div>`;
     }
