@@ -1041,8 +1041,9 @@ function runScanner() {
             // Run analysis
             const { items: analysisItems } = analyzeXkdg(pillars, sStrong, sGrowing);
 
-            // Date must have positive relations
-            if (analysisItems.length === 0) continue;
+            // Step 1: Hour must be intrinsically good — must have blue relations (Adding/Hetu/Pure Qi/Family)
+            const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+            if (blueItems.length === 0) continue;
 
             // Score Person A
             const scoreA = getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
@@ -1054,7 +1055,7 @@ function runScanner() {
             if (scoreA === 0) continue;
 
             const qualityScore = getDateQualityScore(analysisItems);
-            const totalScore   = scoreA * (qualityScore || 1);
+            const totalScore   = scoreA * Math.max(qualityScore, 1);
 
             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
