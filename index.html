@@ -38,7 +38,7 @@
         .pillar:last-child { border-right: none; }
         
         .header { background: #fce4ec; padding: 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1px; }
-        .cell { padding: 15px 5px; min-height: 100px; }
+        .cell { padding: 10px 5px; min-height: 80px; }
         .hanzi { font-family: 'Ma Shan Zheng', cursive; font-size: 64px; line-height: 1.1; display: block; }
         .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.7; font-weight: bold; margin-top: 5px; display: block;}
         
@@ -46,7 +46,9 @@
         .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-left: 20px; }
         .hex-icon { font-size: 80px; color: #000; line-height: 1; }
         .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 80px; width: 35px; font-weight: bold; font-size: 16px; }
-        .hex-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #333; text-align: center; }
+        .hex-info { margin-top: 8px; font-size: 13px; font-weight: bold; color: #333; text-align: center; }
+        .nayin-label { font-size: 13px; font-weight: bold; color: #444; text-align: center; padding: 6px 4px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .hex-family-label { font-size: 13px; font-weight: bold; color: #666; text-align: center; padding: 6px 2px 4px; letter-spacing: 0.5px; }
 
         /* Analysis section */
         .analysis-section {
@@ -63,6 +65,8 @@
         .analysis-item:last-child { border-bottom: none; }
         .tag-blue  { color: #0044cc; font-weight: bold; }
         .tag-green { color: #1a7a1a; font-weight: bold; }
+        .tag-gold  { color: #b8860b; font-weight: bold; }
+        .tag-family{ color: #b8860b; font-weight: bold; font-size: 15px; }
         
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
@@ -96,10 +100,10 @@
     </div>
 
     <div class="chart">
-        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
     </div>
 
     <div class="analysis-section" id="analysis-section">
@@ -145,7 +149,104 @@ const XKDG_TABLE = {
     '壬戌': { hex: 45, qi: 4, yun: 4 }, '癸亥': { hex: 23, qi: 6, yun: 6 }
 };
 
-// I Ching hexagram names (1-64)
+// Family map: Jia Zi → array of family names (built with _addFamily to handle multiple families)
+const JIAZI_FAMILY_DATA = {};
+function _addFamily(jz, family) {
+    if (!JIAZI_FAMILY_DATA[jz]) JIAZI_FAMILY_DATA[jz] = [];
+    if (!JIAZI_FAMILY_DATA[jz].includes(family)) JIAZI_FAMILY_DATA[jz].push(family);
+}
+// ── Qian-Kun ──
+_addFamily('甲午','Qian-Kun'); _addFamily('甲子','Qian-Kun');
+_addFamily('壬寅','Qian-Kun'); _addFamily('戊辰','Qian-Kun'); _addFamily('丁巳','Qian-Kun');
+_addFamily('辛巳','Qian-Kun'); _addFamily('癸巳','Qian-Kun');
+_addFamily('壬申','Qian-Kun'); _addFamily('戊戌','Qian-Kun'); _addFamily('丁亥','Qian-Kun');
+_addFamily('辛亥','Qian-Kun'); _addFamily('癸亥','Qian-Kun');
+// ── Kan-Li ──
+_addFamily('庚申','Kan-Li'); _addFamily('庚寅','Kan-Li');
+_addFamily('己卯','Kan-Li'); _addFamily('辛亥','Kan-Li'); _addFamily('乙未','Kan-Li');
+_addFamily('癸未','Kan-Li'); _addFamily('壬申','Kan-Li'); _addFamily('戊申','Kan-Li');
+_addFamily('己酉','Kan-Li'); _addFamily('辛巳','Kan-Li'); _addFamily('乙丑','Kan-Li');
+_addFamily('癸丑','Kan-Li'); _addFamily('壬寅','Kan-Li'); _addFamily('戊寅','Kan-Li');
+// ── Zhen-Xun ──
+_addFamily('壬子','Zhen-Xun'); _addFamily('壬午','Zhen-Xun');
+_addFamily('丁亥','Zhen-Xun'); _addFamily('癸卯','Zhen-Xun'); _addFamily('戊寅','Zhen-Xun');
+_addFamily('甲子','Zhen-Xun'); _addFamily('丁丑','Zhen-Xun'); _addFamily('乙丑','Zhen-Xun');
+_addFamily('丁巳','Zhen-Xun'); _addFamily('癸酉','Zhen-Xun'); _addFamily('戊申','Zhen-Xun');
+_addFamily('甲午','Zhen-Xun'); _addFamily('丁未','Zhen-Xun'); _addFamily('乙未','Zhen-Xun');
+// ── Gen-Dui ──
+_addFamily('丙戌','Gen-Dui'); _addFamily('丙辰','Gen-Dui');
+_addFamily('癸丑','Gen-Dui'); _addFamily('丁未','Gen-Dui'); _addFamily('癸亥','Gen-Dui');
+_addFamily('己酉','Gen-Dui'); _addFamily('癸酉','Gen-Dui'); _addFamily('戊戌','Gen-Dui');
+_addFamily('癸未','Gen-Dui'); _addFamily('丁丑','Gen-Dui'); _addFamily('癸巳','Gen-Dui');
+_addFamily('己卯','Gen-Dui'); _addFamily('癸卯','Gen-Dui'); _addFamily('戊辰','Gen-Dui');
+// ── Pi-Tai ──
+_addFamily('庚戌','Pi-Tai'); _addFamily('庚辰','Pi-Tai');
+_addFamily('己丑','Pi-Tai'); _addFamily('辛未','Pi-Tai'); _addFamily('乙酉','Pi-Tai');
+_addFamily('己亥','Pi-Tai'); _addFamily('乙亥','Pi-Tai'); _addFamily('壬戌','Pi-Tai');
+_addFamily('己未','Pi-Tai'); _addFamily('辛丑','Pi-Tai'); _addFamily('乙卯','Pi-Tai');
+_addFamily('己巳','Pi-Tai'); _addFamily('乙巳','Pi-Tai'); _addFamily('壬辰','Pi-Tai');
+// ── JiJi-WeiJi ──
+_addFamily('甲寅','JiJi-WeiJi'); _addFamily('甲申','JiJi-WeiJi');
+_addFamily('甲戌','JiJi-WeiJi'); _addFamily('乙巳','JiJi-WeiJi'); _addFamily('戊子','JiJi-WeiJi');
+_addFamily('庚寅','JiJi-WeiJi'); _addFamily('辛丑','JiJi-WeiJi'); _addFamily('丙寅','JiJi-WeiJi');
+_addFamily('甲辰','JiJi-WeiJi'); _addFamily('乙亥','JiJi-WeiJi'); _addFamily('戊午','JiJi-WeiJi');
+_addFamily('庚申','JiJi-WeiJi'); _addFamily('辛未','JiJi-WeiJi'); _addFamily('丙申','JiJi-WeiJi');
+// ── Heng-Yi ──
+_addFamily('庚午','Heng-Yi'); _addFamily('庚子','Heng-Yi');
+_addFamily('己巳','Heng-Yi'); _addFamily('辛酉','Heng-Yi'); _addFamily('丙申','Heng-Yi');
+_addFamily('己未','Heng-Yi'); _addFamily('丙午','Heng-Yi'); _addFamily('戊午','Heng-Yi');
+_addFamily('己亥','Heng-Yi'); _addFamily('辛卯','Heng-Yi'); _addFamily('丙寅','Heng-Yi');
+_addFamily('己丑','Heng-Yi'); _addFamily('丙子','Heng-Yi'); _addFamily('戊子','Heng-Yi');
+// ── Sun-Xian ──
+_addFamily('丁卯','Sun-Xian'); _addFamily('丁酉','Sun-Xian');
+_addFamily('庚申','Sun-Xian'); _addFamily('丙巳','Sun-Xian'); _addFamily('壬辰','Sun-Xian');
+_addFamily('甲辰','Sun-Xian'); _addFamily('辛卯','Sun-Xian'); _addFamily('乙卯','Sun-Xian');
+_addFamily('庚寅','Sun-Xian'); _addFamily('丙午','Sun-Xian'); _addFamily('壬戌','Sun-Xian');
+_addFamily('甲戌','Sun-Xian'); _addFamily('辛酉','Sun-Xian'); _addFamily('乙酉','Sun-Xian');
+
+// Get family label string for display
+function getHexFamilyLabel(stem, branch) {
+    return (JIAZI_FAMILY_DATA[stem + branch] || []).join('<br>');
+}
+
+// Get family array for analysis
+function getJiaZiFamilies(stem, branch) {
+    return JIAZI_FAMILY_DATA[stem + branch] || [];
+}
+// Full Nayin (Melodic Element) map — 60 Jia Zi → English
+const NAYIN = {
+    '甲子':'Metal in the Sea',    '乙丑':'Metal in the Sea',
+    '丙寅':'Fire in Furnace',     '丁卯':'Fire in Furnace',
+    '戊辰':'Wood in Forest',      '己巳':'Wood in Forest',
+    '庚午':'Road Side Earth',     '辛未':'Road Side Earth',
+    '壬申':'Metal in Sword',      '癸酉':'Metal in Sword',
+    '甲戌':'Fire on Mountain',    '乙亥':'Fire on Mountain',
+    '丙子':'Water in Stream',     '丁丑':'Water in Stream',
+    '戊寅':'Earth on Fortress',   '己卯':'Earth on Fortress',
+    '庚辰':'Metal in Jewelry',    '辛巳':'Metal in Jewelry',
+    '壬午':'Wood of Willow',      '癸未':'Wood of Willow',
+    '甲申':'Water in Spring',     '乙酉':'Water in Spring',
+    '丙戌':'Earth on House',      '丁亥':'Earth on House',
+    '戊子':'Fire in Heaven',      '己丑':'Fire in Heaven',
+    '庚寅':'Wood of Pine Tree',   '辛卯':'Wood of Pine Tree',
+    '壬辰':'Water in River',      '癸巳':'Water in River',
+    '甲午':'Metal in Sand',       '乙未':'Metal in Sand',
+    '丙申':'Fire on Slope',       '丁酉':'Fire on Slope',
+    '戊戌':'Wood on Plain',       '己亥':'Wood on Plain',
+    '庚子':'Earth on Wall',       '辛丑':'Earth on Wall',
+    '壬寅':'Gold Foil Metal',     '癸卯':'Gold Foil Metal',
+    '甲辰':'Fire of Lamp',        '乙巳':'Fire of Lamp',
+    '丙午':'Water in Milky Way',  '丁未':'Water in Milky Way',
+    '戊申':'Earth on Highway',    '己酉':'Earth on Highway',
+    '庚戌':'Gold in Jewelry',     '辛亥':'Gold in Jewelry',
+    '壬子':'Mulberry Wood',       '癸丑':'Mulberry Wood',
+    '甲寅':'Water in River',      '乙卯':'Water in River',
+    '丙辰':'Earth in Sand',       '丁巳':'Earth in Sand',
+    '戊午':'Fire in Heaven',      '己未':'Fire in Heaven',
+    '庚申':'Guava Wood',          '辛酉':'Guava Wood',
+    '壬戌':'Ocean Water',         '癸亥':'Ocean Water'
+};
+
 const HEX_NAMES = {
     1:'Qian',2:'Kun',3:'Zhun',4:'Meng',5:'Xu',6:'Song',7:'Shi',8:'Bi',
     9:'Xiao Chu',10:'Lü',11:'Tai',12:'Pi',13:'Tong Ren',14:'Da You',15:'Qian',16:'Yu',
@@ -176,7 +277,7 @@ const QI_ELEMENT = {
     3:'Wood',8:'Wood',   4:'Metal',9:'Metal'
 };
 
-function analyzeXkdg(pillars) {
+function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     const items = [];
     const keys = ['year','month','day','hour'];
     if (!keys.every(k => pillars[k])) return items;
@@ -194,41 +295,39 @@ function analyzeXkdg(pillars) {
         return CLASHES.some(([a,b]) => (b1===a && b2===b) || (b1===b && b2===a));
     }
 
-    // Returns 'Pure Hetu', 'Hetu', or null — skips clashing pairs
+    // Returns 'Pure Hetu', 'Hetu', or null — all 4 pillars must be covered (overlapping allowed)
     function checkHetu(valFn) {
-        const pairs = [];
+        const validPairs = [];
         for (let i = 0; i < keys.length; i++)
             for (let j = i+1; j < keys.length; j++)
                 if (!isClashing(keys[i], keys[j]) && isHetuPair(valFn(keys[i]), valFn(keys[j])))
-                    pairs.push([keys[i], keys[j]]);
-        for (let i = 0; i < pairs.length; i++) {
-            for (let j = i+1; j < pairs.length; j++) {
-                const [a1,b1] = pairs[i], [a2,b2] = pairs[j];
-                if (new Set([a1,b1,a2,b2]).size === 4) {
-                    const sameElem = QI_ELEMENT[valFn(a1)] && QI_ELEMENT[valFn(a1)] === QI_ELEMENT[valFn(a2)];
-                    return sameElem ? 'Pure Hetu' : 'Hetu';
-                }
-            }
-        }
-        return null;
+                    validPairs.push([keys[i], keys[j]]);
+        if (validPairs.length === 0) return null;
+        // All 4 pillars must appear in at least one valid pair
+        const covered = new Set(validPairs.flat());
+        if (covered.size < 4) return null;
+        // Pure Hetu: all pairs share the same element family
+        const allSameElem = validPairs.every(([a,b]) =>
+            QI_ELEMENT[valFn(a)] && QI_ELEMENT[valFn(a)] === QI_ELEMENT[valFn(b)]);
+        return allSameElem ? 'Pure Hetu' : 'Hetu';
     }
 
-    // Returns 'Pure Adding', 'Adding', or null — skips clashing pairs
+    // Returns 'Pure Adding', 'Adding', or null — all 4 pillars must be covered (overlapping allowed)
     function checkAdd(valFn) {
-        const valid = [];
+        const validPairs = [];
         for (let i = 0; i < keys.length; i++)
             for (let j = i+1; j < keys.length; j++) {
                 if (isClashing(keys[i], keys[j])) continue;
                 const s = valFn(keys[i]) + valFn(keys[j]);
-                if ([5,10,15].includes(s)) valid.push({ a: keys[i], b: keys[j], sum: s });
+                if ([5,10,15].includes(s)) validPairs.push({ a: keys[i], b: keys[j], sum: s });
             }
-        for (let i = 0; i < valid.length; i++) {
-            for (let j = i+1; j < valid.length; j++) {
-                if (new Set([valid[i].a, valid[i].b, valid[j].a, valid[j].b]).size === 4)
-                    return valid[i].sum === valid[j].sum ? 'Pure Adding' : 'Adding';
-            }
-        }
-        return null;
+        if (validPairs.length === 0) return null;
+        // All 4 pillars must appear in at least one valid pair
+        const covered = new Set(validPairs.flatMap(p => [p.a, p.b]));
+        if (covered.size < 4) return null;
+        // Pure Adding: all valid pairs hit the same target
+        const allSame = validPairs.every(p => p.sum === validPairs[0].sum);
+        return allSame ? 'Pure Adding' : 'Adding';
     }
 
     // ── Pure Qi ──────────────────────────────────────────────────────
@@ -287,9 +386,25 @@ function analyzeXkdg(pillars) {
         else if (score === 1) strength = 'Weak';
 
         if (strength) items.push({ text: strength, tag: 'green' });
+
+        // ── Seasonal Timely ───────────────────────────────────────────
+        if (score >= 3) {
+            if      (dayElem === seasonStrong)  items.push({ text: 'Very Timely', tag: 'gold' });
+            else if (dayElem === seasonGrowing) items.push({ text: 'Timely',      tag: 'gold' });
+        }
     }
 
-    return items;
+    // ── Family Check ─────────────────────────────────────────────────
+    const pillarFamilies = keys.map(k => getJiaZiFamilies(pillars[k].stem, pillars[k].branch));
+    const sharedFamilies = pillarFamilies[0].filter(f =>
+        pillarFamilies.every(fams => fams.includes(f))
+    );
+    const allSameFamily = sharedFamilies.length > 0;
+    if (allSameFamily) {
+        sharedFamilies.forEach(f => items.push({ text: `${f} Family`, tag: 'family' }));
+    }
+
+    return { items, sameFamily: allSameFamily };
 }
 // ─────────────────────────────────────────────
 const ELEMENTS_EN = {
@@ -361,21 +476,64 @@ function calculateBazi() {
     Object.keys(pillarKeys).forEach(k => {
         const { stem, branch } = pillarKeys[k];
         const data = getXkdgData(stem, branch);
-        if (data) xkdgData[k] = { ...data, branch };
+        if (data) xkdgData[k] = { ...data, branch, stem };
     });
 
-    // 5. Render pillars
-    updatePillar('p-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year);
-    updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month);
-    updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day);
-    updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour);
+    // 5. Render pillars — include Nayin (melodic element)
+    updatePillar('p-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
+    updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
+    updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
+    updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
 
-    // 6. XKDG Analysis
-    const analysis = analyzeXkdg(xkdgData);
+    // 6. XKDG Analysis — determine season via precise Jieqi table
+    function getJieqiSeason(solarDate) {
+        const LI_TERMS = {
+            '立春': 'Wood', '立夏': 'Fire', '立秋': 'Metal', '立冬': 'Water'
+        };
+        const NEXT_ELEM = { Water:'Wood', Wood:'Fire', Fire:'Metal', Metal:'Water' };
+
+        // Get Jieqi table for current year and adjacent years to handle year boundaries
+        const y = solarDate.getFullYear();
+        const currentMs = solarDate.getTime();
+
+        // Collect all Li term dates from this year and last year
+        let lastLiDate = null;
+        let lastLiElem = null;
+
+        for (const yr of [y - 1, y]) {
+            const table = Lunar.fromYmd(yr, 1, 1).getJieQiTable();
+            for (const [name, s] of Object.entries(table)) {
+                if (!LI_TERMS[name]) continue;
+                const termMs = new Date(s.getYear(), s.getMonth() - 1, s.getDay()).getTime();
+                if (termMs <= currentMs) {
+                    if (!lastLiDate || termMs > lastLiDate) {
+                        lastLiDate = termMs;
+                        lastLiElem = LI_TERMS[name];
+                    }
+                }
+            }
+        }
+
+        if (!lastLiElem) return { strong: null, growing: null };
+        return { strong: lastLiElem, growing: NEXT_ELEM[lastLiElem] };
+    }
+
+    const { strong: seasonStrong, growing: seasonGrowing } = getJieqiSeason(solarDate);
+
+    const { items: analysis, sameFamily } = analyzeXkdg(xkdgData, seasonStrong, seasonGrowing);
     renderAnalysis(analysis);
+
+    // Highlight all hexagram boxes bright yellow if same family
+    ['p-hour','p-day','p-month','p-year'].forEach(id => {
+        const hexSection = document.querySelector(`#${id} .hex-section`);
+        if (hexSection) {
+            hexSection.style.background = sameFamily ? '#fffb00' : '';
+            hexSection.style.boxShadow  = sameFamily ? '0 0 12px 3px #fffb00' : '';
+        }
+    });
 }
 
-function updatePillar(id, stem, branch, xkdg) {
+function updatePillar(id, stem, branch, xkdg, nayin) {
     const elS = ELEMENTS_EN[stem];
     const elB = ELEMENTS_EN[branch];
     const p   = document.getElementById(id);
@@ -389,11 +547,17 @@ function updatePillar(id, stem, branch, xkdg) {
         `<span class="hanzi ${elB}">${branch}</span>` +
         `<span class="element-label">- ${elB} -</span>`;
 
+    // Nayin — use English map, fall back to library string
+    const nayinEn = NAYIN[stem + branch] || nayin || '';
+    p.querySelector('.nayin').innerHTML =
+        `<div class="nayin-label">${nayinEn}</div>`;
+
     // Build hex section from XKDG data
     let hexHTML = '';
     if (xkdg) {
-        const icon    = getHexIcon(xkdg.hex);
-        const hexName = `${xkdg.hex} ${HEX_NAMES[xkdg.hex] || ''}`;
+        const icon       = getHexIcon(xkdg.hex);
+        const hexName    = `${xkdg.hex} ${HEX_NAMES[xkdg.hex] || ''}`;
+        const familyLabel = getHexFamilyLabel(stem, branch);
         hexHTML =
             `<div class="hex-wrapper">` +
                 `<div class="hex-icon">${icon}</div>` +
@@ -403,7 +567,8 @@ function updatePillar(id, stem, branch, xkdg) {
                     `<div style="color:#0044cc;font-weight:bold;font-size:20px;" title="Gua Yun">${xkdg.yun}</div>` +
                 `</div>` +
             `</div>` +
-            `<div class="hex-info">${hexName}</div>`;
+            `<div class="hex-info">${hexName}</div>` +
+            `<div class="hex-family-label">${familyLabel}</div>`;
     } else {
         hexHTML = `<div class="hex-missing">No XKDG data<br>${stem}${branch}</div>`;
     }
@@ -420,8 +585,10 @@ function renderAnalysis(items) {
     }
     section.style.display = 'block';
     container.innerHTML = items.map(item => {
-        const content = item.tag === 'blue'  ? `<span class="tag-blue">${item.text}</span>`
-                      : item.tag === 'green' ? `<span class="tag-green">${item.text}</span>`
+        const content = item.tag === 'blue'   ? `<span class="tag-blue">${item.text}</span>`
+                      : item.tag === 'green'  ? `<span class="tag-green">${item.text}</span>`
+                      : item.tag === 'gold'   ? `<span class="tag-gold">${item.text}</span>`
+                      : item.tag === 'family' ? `<span class="tag-family">⬡ ${item.text}</span>`
                       : item.text;
         return `<div class="analysis-item">⬡ ${content}</div>`;
     }).join('');
