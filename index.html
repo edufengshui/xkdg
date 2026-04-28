@@ -43,12 +43,12 @@
         .hanzi { font-family: 'Ma Shan Zheng', cursive; font-size: 64px; line-height: 1.1; display: block; }
         .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.7; font-weight: bold; margin-top: 5px; display: block;}
         
-        .hex-section { padding: 20px 5px; border-top: 2px solid #bbb; display: flex; flex-direction: column; align-items: center; min-height: 150px; }
-        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-left: 20px; }
-        .hex-icon { font-size: 80px; color: #000; line-height: 1; }
+        .hex-section { padding: 20px 5px; border-top: none; display: flex; flex-direction: column; align-items: center; min-height: 150px; }
+        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .hex-icon { font-size: 96px; color: #000; line-height: 1; display: block; }
         .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 80px; width: 35px; font-weight: bold; font-size: 16px; }
         .hex-info { margin-top: 8px; font-size: 13px; font-weight: bold; color: #333; text-align: center; }
-        .nayin-label { font-size: 13px; font-weight: bold; color: #444; text-align: center; padding: 4px 4px 4px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .nayin-label { font-size: 13px; font-weight: bold; color: #444; text-align: center; padding: 2px 4px 3px; border-top: none; border-bottom: 1px solid #bbb; margin-bottom: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; }
         .hex-family-label { font-size: 13px; font-weight: bold; color: #666; text-align: center; padding: 6px 2px 4px; letter-spacing: 0.5px; }
 
         /* Analysis section */
@@ -135,6 +135,9 @@
             <input type="number" id="longitude" value="12.49" step="0.01" style="width: 85px;">
         </div>
         <div id="solar-time-display" class="solar-badge">True Solar: --:--</div>
+        <div>
+            <button id="dst-btn" onclick="toggleDST()" style="padding:4px 10px; border-radius:15px; border:1px solid #bbb; font-size:13px; font-weight:bold; background:#fff; cursor:pointer;">DST: OFF</button>
+        </div>
     </div>
 
     <div class="chart">
@@ -198,7 +201,7 @@
     <div class="scanner-section">
         <div class="scanner-header">
             🔍 BEST DATES
-            <div><label>FROM:</label> <input type="date" id="scan-start"></div>
+            <div><label>FROM:</label> <input type="date" id="scan-start"> <button class="btn-scan" onclick="setScanNow()" style="padding:6px 10px;font-size:12px;">NOW</button></div>
             <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
             <button class="btn-scan" onclick="runScanner()">SCAN</button>
             <button class="btn-scan" id="sort-score" onclick="sortResults('score')" style="background:#1b5e20;display:none;">★ BEST FIRST</button>
@@ -550,6 +553,17 @@ function getJieqiSeason(solarDate) {
     return { strong: lastLiElem, growing: NEXT_ELEM[lastLiElem] };
 }
 
+let _dstOn = false;
+function toggleDST() {
+    _dstOn = !_dstOn;
+    const btn = document.getElementById('dst-btn');
+    btn.textContent  = `DST: ${_dstOn ? 'ON' : 'OFF'}`;
+    btn.style.background = _dstOn ? '#fff3e0' : '#fff';
+    btn.style.borderColor = _dstOn ? '#e65100' : '#bbb';
+    btn.style.color = _dstOn ? '#e65100' : '#333';
+    calculateBazi();
+}
+
 function setNow() {
     const now = new Date();
     document.getElementById('date').value = now.toISOString().split('T')[0];
@@ -577,8 +591,9 @@ function calculateBazi() {
     // 1. True Solar Time
     const standardMeridian = utc * 15;
     const offsetMinutes = (lon - standardMeridian) * 4;
+    const dstOffset = _dstOn ? 60 : 0;
     let baseDate  = new Date(`${dVal}T${tVal}`);
-    let solarDate = new Date(baseDate.getTime() + offsetMinutes * 60000);
+    let solarDate = new Date(baseDate.getTime() + offsetMinutes * 60000 - dstOffset * 60000);
     
     document.getElementById('solar-time-display').textContent =
         "True Solar: " + solarDate.toTimeString().slice(0,5);
@@ -682,13 +697,10 @@ function updatePillar(id, stem, branch, xkdg, nayin) {
         const familyLabel = getHexFamilyLabel(stem, branch);
         const roleLabel   = getRoleLabel(stem, branch);
         hexHTML =
-            `<div class="hex-wrapper">` +
-                `<div class="hex-icon">${icon}</div>` +
-                `<div class="data-column">` +
-                    `<div style="color:#d40000;font-weight:bold;font-size:20px;" title="Gua Qi">${xkdg.qi}</div>` +
-                    `<div style="font-size:11px;color:#999;" title="Jia Zi">${stem}${branch}</div>` +
-                    `<div style="color:#0044cc;font-weight:bold;font-size:20px;" title="Gua Yun">${xkdg.yun}</div>` +
-                `</div>` +
+            `<div style="display:flex;flex-direction:column;align-items:center;width:100%;">` +
+                `<div style="color:#d40000;font-weight:bold;font-size:20px;margin-bottom:4px;">${xkdg.qi}</div>` +
+                `<div class="hex-icon" style="line-height:1;">${icon}</div>` +
+                `<div style="color:#0044cc;font-weight:bold;font-size:20px;margin-top:-12px;">${xkdg.yun}</div>` +
             `</div>` +
             `<div class="hex-info">${hexName}</div>` +
             `<div class="hex-family-label">${familyLabel}</div>` +
@@ -797,7 +809,7 @@ function calculatePerson(person) {
 
     const lon = parseFloat(document.getElementById('longitude').value);
     const utc = parseFloat(document.getElementById('utc-offset').value);
-    const offsetMin = ((lon - utc * 15) * 4);
+    const offsetMin = ((lon - utc * 15) * 4) - (_dstOn ? 60 : 0);
 
     const baseDate  = new Date(`${dVal}T${tVal}`);
     const solarDate = new Date(baseDate.getTime() + offsetMin * 60000);
@@ -952,6 +964,10 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch)
     return labels;
 }
 
+function setScanNow() {
+    document.getElementById('scan-start').value = new Date().toISOString().split('T')[0];
+}
+
 function runScanner() {
     const birthDate  = document.getElementById('person-date').value;
     const birthTime  = document.getElementById('person-time').value || '12:00';
@@ -967,7 +983,7 @@ function runScanner() {
 
     // Get season function
     const stdMeridian = utc * 15;
-    const offsetMin   = (lon - stdMeridian) * 4;
+    const offsetMin   = (lon - stdMeridian) * 4 - (_dstOn ? 60 : 0);
 
     // Person A year xkdg
     const bBase   = new Date(`${birthDate}T${birthTime}`);
@@ -1041,17 +1057,50 @@ function runScanner() {
             // Run analysis
             const { items: analysisItems } = analyzeXkdg(pillars, sStrong, sGrowing);
 
-            // Step 1: Hour must be intrinsically good — must have blue relations (Adding/Hetu/Pure Qi/Family)
+            // Step 1: Hour must have blue relations among 4 hexagrams
             const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
             if (blueItems.length === 0) continue;
 
-            // Score Person A
-            const scoreA = getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+            // Detect which dimensions are active in the 4-hexagram relations
+            const hasElementRelation = blueItems.some(i => i.text.includes('Element') || i.text.includes('Family') ||
+                i.text === 'Hetu' || i.text === 'Pure Hetu' || i.text === 'Adding' || i.text === 'Pure Adding' || i.text === 'Pure Qi');
+            const hasPeriodRelation  = blueItems.some(i => i.text.includes('Period') ||
+                i.text === 'Hetu' || i.text === 'Pure Hetu' || i.text === 'Adding' || i.text === 'Pure Adding' || i.text === 'Pure Qi');
 
-            // Score Person B (if provided)
-            const scoreB = personBYear ? getMatchScore(personBYear, pBYStem, pBYBranch, dayXkdg, dGan, dZhi) : 0;
+            // Step 2: Person year must connect with day hexagram in the SAME active dimension
+            const personMatchEl  = hasElementRelation && (
+                personAYear.qi === dayXkdg.qi ||
+                isHetuPair(personAYear.qi, dayXkdg.qi) ||
+                [5,10,15].includes(personAYear.qi + dayXkdg.qi) ||
+                getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f))
+            );
+            const personMatchPer = hasPeriodRelation && (
+                personAYear.yun === dayXkdg.yun ||
+                isHetuPair(personAYear.yun, dayXkdg.yun) ||
+                [5,10,15].includes(personAYear.yun + dayXkdg.yun)
+            );
 
-            // At least Person A must match
+            const scoreA = (personMatchEl || personMatchPer) ?
+                getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi) : 0;
+
+            // Person B
+            let scoreB = 0;
+            if (personBYear) {
+                const bMatchEl = hasElementRelation && (
+                    personBYear.qi === dayXkdg.qi ||
+                    isHetuPair(personBYear.qi, dayXkdg.qi) ||
+                    [5,10,15].includes(personBYear.qi + dayXkdg.qi) ||
+                    getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f))
+                );
+                const bMatchPer = hasPeriodRelation && (
+                    personBYear.yun === dayXkdg.yun ||
+                    isHetuPair(personBYear.yun, dayXkdg.yun) ||
+                    [5,10,15].includes(personBYear.yun + dayXkdg.yun)
+                );
+                scoreB = (bMatchEl || bMatchPer) ?
+                    getMatchScore(personBYear, pBYStem, pBYBranch, dayXkdg, dGan, dZhi) : 0;
+            }
+
             if (scoreA === 0) continue;
 
             const qualityScore = getDateQualityScore(analysisItems);
