@@ -82,7 +82,7 @@
         <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
         <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
         <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
 </div>
 
@@ -124,7 +124,6 @@ function calculateBazi() {
     const lunar = solar.getLunar();
     const eightChar = lunar.getEightChar();
 
-    // Gestione Cambio Giorno a Mezzanotte
     let dG = eightChar.getDayGan(), dZ = eightChar.getDayZhi();
     if (solarDate.getHours() === 23) {
         const yesterday = new Date(solarDate.getTime() - 3600000);
@@ -132,27 +131,44 @@ function calculateBazi() {
         dG = oldEc.getDayGan(); dZ = oldEc.getDayZhi();
     }
 
-    // Mappatura dinamica usando window.getXkdgData definita nel tuo file esterno
-    const yData = window.getXkdgData(eightChar.getYearGan(), eightChar.getYearZhi());
-    const mData = window.getXkdgData(eightChar.getMonthGan(), eightChar.getMonthZhi());
-    const dData = window.getXkdgData(dG, dZ);
-    const hData = window.getXkdgData(eightChar.getTimeGan(), eightChar.getTimeZhi());
+    // UPDATE: Controllo robusto sui dati XKDG
+    const getSafeData = (g, z) => {
+        const d = (window.getXkdgData && typeof window.getXkdgData === 'function') ? window.getXkdgData(g, z) : null;
+        return d || { hex: '--', name: 'Unknown', qi: '-', yun: '-', icon: '?' };
+    };
 
-    // Update Pillars con i dati reali dal file xkdg_hex.js
-    updatePillar('p-year', eightChar.getYearGan(), eightChar.getYearZhi(), yData.icon, yData.name, yData.qi, yData.yun, eightChar.getYearGan()+eightChar.getYearZhi());
-    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), mData.icon, mData.name, mData.qi, mData.yun, eightChar.getMonthGan()+eightChar.getMonthZhi());
-    updatePillar('p-day', dG, dZ, dData.icon, dData.name, dData.qi, dData.yun, dG+dZ);
-    updatePillar('p-hour', eightChar.getTimeGan(), eightChar.getTimeZhi(), hData.icon, hData.name, hData.qi, hData.yun, eightChar.getTimeGan()+eightChar.getTimeZhi());
+    const yD = getSafeData(eightChar.getYearGan(), eightChar.getYearZhi());
+    const mD = getSafeData(eightChar.getMonthGan(), eightChar.getMonthZhi());
+    const dD = getSafeData(dG, dZ);
+    const hD = getSafeData(eightChar.getTimeGan(), eightChar.getTimeZhi());
+
+    updatePillar('p-year',  eightChar.getYearGan(),  eightChar.getYearZhi(),  yD, eightChar.getYearGan()+eightChar.getYearZhi());
+    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), mD, eightChar.getMonthGan()+eightChar.getMonthZhi());
+    updatePillar('p-day',   dG, dZ, dD, dG+dZ);
+    updatePillar('p-hour',  eightChar.getTimeGan(),  eightChar.getTimeZhi(),  hD, eightChar.getTimeGan()+eightChar.getTimeZhi());
 }
 
-function updatePillar(id, stem, branch, hexIcon, hexName, n1, n2, sideZh) {
+function updatePillar(id, stem, branch, xData, sideZh) {
     const elS = ELEMENTS_EN[stem];
     const elB = ELEMENTS_EN[branch];
     const p = document.getElementById(id);
     if(!p) return;
+
     p.querySelector('.stem').innerHTML = `<span class="hanzi ${elS}">${stem}</span><span class="element-label">- ${elS} -</span>`;
     p.querySelector('.branch').innerHTML = `<span class="hanzi ${elB}">${branch}</span><span class="element-label">- ${elB} -</span>`;
-    p.querySelector('.hex-section').innerHTML = `<div class="hex-wrapper"><div class="hex-icon">${hexIcon}</div><div class="data-column"><div>${n1}</div><div style="font-size:12px; color:#999;">${sideZh}</div><div>${n2}</div></div></div><div class="hex-info">${hexName}</div>`;
+    
+    // Assicurati che le chiavi qui corrispondano a quelle nel tuo file xkdg_hex.js
+    // Se nel file usi nomi diversi (es. .period invece di .yun), cambiali qui.
+    p.querySelector('.hex-section').innerHTML = `
+        <div class="hex-wrapper">
+            <div class="hex-icon">${xData.icon || xData.hex || '?'}</div>
+            <div class="data-column">
+                <div>${xData.qi || '-'}</div>
+                <div style="font-size:12px; color:#999;">${sideZh}</div>
+                <div>${xData.yun || xData.period || '-'}</div>
+            </div>
+        </div>
+        <div class="hex-info">${xData.name || 'Unknown'}</div>`;
 }
 
 window.onload = setNow;
