@@ -107,6 +107,9 @@
         .person-header input { padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
         .btn-person { background: #2e7d32; color: white; cursor: pointer; border: none; font-weight: bold; padding: 7px 18px; border-radius: 4px; font-size: 13px; }
         .btn-person:hover { background: #1b5e20; }
+        .archive-btn { background: #fff; border: 1px solid #558b2f; color: #1b5e20; border-radius: 12px; padding: 3px 10px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .archive-btn:hover { background: #e8f5e9; }
+        .archive-del { color: #c62828; margin-left: 4px; cursor: pointer; font-weight: bold; }
         .favourable-bar { background: #2e7d32; color: white; font-weight: bold; font-size: 15px; text-align: center; padding: 8px; margin-top: 10px; border-radius: 4px; letter-spacing: 2px; }
         .match-detail { font-size: 12px; color: #555; text-align: center; margin-top: 4px; }
     </style>
@@ -152,13 +155,17 @@
         </div>
     </div>
 
-    <!-- Person Birth Date Section -->
+    <!-- Person 1 -->
     <div class="person-section">
-        <div class="person-header">
-            ☯ PERSON
+        <div class="person-header" style="background:#e8f5e9; color:#1b5e20;">
+            ☯ PERSON A
+            <div><label>NAME:</label><input type="text" id="person-name" placeholder="Name..." style="width:100px;"></div>
             <div><label>BIRTH DATE:</label> <input type="date" id="person-date"></div>
-            <button class="btn-person" onclick="calculatePerson()">CALCULATE</button>
+            <div><label>HOUR:</label> <input type="time" id="person-time" value="12:00" style="width:85px;"></div>
+            <button class="btn-person" onclick="calculatePerson('A')">CALCULATE</button>
+            <button class="btn-person" onclick="savePerson('A')" style="background:#558b2f;">SAVE</button>
         </div>
+        <div id="person-archive" style="padding:8px 15px; background:#f9fbe7; border-bottom:1px solid #c5e1a5; display:none; flex-wrap:wrap; gap:6px;"></div>
         <div class="chart" id="person-chart" style="display:none;">
             <div class="pillar" id="pp-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
             <div class="pillar" id="pp-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
@@ -168,13 +175,35 @@
         <div id="favourable-result" style="padding:10px;display:none;"></div>
     </div>
 
+    <!-- Person B -->
+    <div class="person-section" style="border-color:#7b1fa2;">
+        <div class="person-header" style="background:#f3e5f5; color:#4a148c; border-bottom-color:#7b1fa2;">
+            ☯ PERSON B
+            <div><label>NAME:</label><input type="text" id="person-name-b" placeholder="Name..." style="width:100px;"></div>
+            <div><label>BIRTH DATE:</label> <input type="date" id="person-date-b"></div>
+            <div><label>HOUR:</label> <input type="time" id="person-time-b" value="12:00" style="width:85px;"></div>
+            <button class="btn-person" onclick="calculatePerson('B')" style="background:#7b1fa2;">CALCULATE</button>
+            <button class="btn-person" onclick="savePerson('B')" style="background:#4a148c;">SAVE</button>
+        </div>
+        <div id="person-archive-b" style="padding:8px 15px; background:#fce4ec; border-bottom:1px solid #ce93d8; display:none; flex-wrap:wrap; gap:6px;"></div>
+        <div class="chart" id="person-chart-b" style="display:none;">
+            <div class="pillar" id="pb-hour"><div class="header" style="background:#f3e5f5;color:#4a148c;">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+            <div class="pillar" id="pb-day"><div class="header" style="background:#f3e5f5;color:#4a148c;">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+            <div class="pillar" id="pb-month"><div class="header" style="background:#f3e5f5;color:#4a148c;">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+            <div class="pillar" id="pb-year"><div class="header" style="background:#e1bee7;color:#4a148c;">YEAR ★</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+        </div>
+    </div>
+
     <!-- Date Scanner Section -->
     <div class="scanner-section">
         <div class="scanner-header">
-            🔍 BEST DATES FOR ME
+            🔍 BEST DATES
             <div><label>FROM:</label> <input type="date" id="scan-start"></div>
             <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
             <button class="btn-scan" onclick="runScanner()">SCAN</button>
+            <button class="btn-scan" id="sort-score" onclick="sortResults('score')" style="background:#1b5e20;display:none;">★ BEST FIRST</button>
+            <button class="btn-scan" id="sort-date"  onclick="sortResults('date')"  style="background:#0d47a1;display:none;">📅 BY DATE</button>
+            <button class="btn-scan" id="sort-both"  onclick="sortResults('both')"  style="background:#7b1fa2;display:none;">👫 BOTH</button>
         </div>
         <div class="scan-results" id="scan-results" style="display:none;"></div>
     </div>
@@ -690,25 +719,103 @@ function renderAnalysis(items) {
 }
 
 // ─────────────────────────────────────────────
-//  PERSON BIRTH CHART
+//  PERSON BIRTH CHART + ARCHIVE (A & B)
 // ─────────────────────────────────────────────
 
-// Store current date's day xkdg data and analysis for favourable check
 let _currentDayXkdg = null;
 let _currentDayAnalysis = null;
+let _scanResults = [];
+let _personAYear = null, _personAStem = null, _personABranch = null;
+let _personBYear = null, _personBStem = null, _personBBranch = null;
 
-function calculatePerson() {
-    const dVal = document.getElementById('person-date').value;
+// ── Archive ──────────────────────────────────
+function loadArchive(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) { return {}; }
+}
+function saveArchiveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+
+function renderArchive(person) {
+    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
+    const divId   = person === 'B' ? 'person-archive-b' : 'person-archive';
+    const archive = loadArchive(key);
+    const keys    = Object.keys(archive);
+    const div     = document.getElementById(divId);
+    if (keys.length === 0) { div.style.display = 'none'; return; }
+    div.style.display = 'flex';
+    div.innerHTML = keys.map(name =>
+        `<span class="archive-btn" onclick="loadPerson('${person}','${name}')">${name}<span class="archive-del" onclick="deletePerson(event,'${person}','${name}')">×</span></span>`
+    ).join('');
+}
+
+function savePerson(person) {
+    const nameId = person === 'B' ? 'person-name-b' : 'person-name';
+    const dateId = person === 'B' ? 'person-date-b' : 'person-date';
+    const timeId = person === 'B' ? 'person-time-b' : 'person-time';
+    const name   = document.getElementById(nameId).value.trim();
+    const date   = document.getElementById(dateId).value;
+    const time   = document.getElementById(timeId).value || '12:00';
+    if (!name) { alert('Please enter a name.'); return; }
+    if (!date) { alert('Please enter a birth date.'); return; }
+    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
+    const archive = loadArchive(key);
+    archive[name] = { date, time };
+    saveArchiveData(key, archive);
+    renderArchive(person);
+}
+
+function loadPerson(person, name) {
+    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
+    const archive = loadArchive(key);
+    const p       = archive[name];
+    if (!p) return;
+    const nameId = person === 'B' ? 'person-name-b' : 'person-name';
+    const dateId = person === 'B' ? 'person-date-b' : 'person-date';
+    const timeId = person === 'B' ? 'person-time-b' : 'person-time';
+    document.getElementById(nameId).value = name;
+    document.getElementById(dateId).value = p.date;
+    document.getElementById(timeId).value = p.time || '12:00';
+    calculatePerson(person);
+}
+
+function deletePerson(e, person, name) {
+    e.stopPropagation();
+    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
+    const archive = loadArchive(key);
+    delete archive[name];
+    saveArchiveData(key, archive);
+    renderArchive(person);
+}
+
+// ── Calculate Person ─────────────────────────
+function calculatePerson(person) {
+    const isB    = person === 'B';
+    const dateId = isB ? 'person-date-b' : 'person-date';
+    const timeId = isB ? 'person-time-b' : 'person-time';
+    const dVal   = document.getElementById(dateId).value;
+    const tVal   = document.getElementById(timeId).value || '12:00';
     if (!dVal) return;
 
-    const solar     = Solar.fromDate(new Date(dVal + 'T12:00'));
+    const lon = parseFloat(document.getElementById('longitude').value);
+    const utc = parseFloat(document.getElementById('utc-offset').value);
+    const offsetMin = ((lon - utc * 15) * 4);
+
+    const baseDate  = new Date(`${dVal}T${tVal}`);
+    const solarDate = new Date(baseDate.getTime() + offsetMin * 60000);
+    const solar     = Solar.fromDate(solarDate);
     const lunar     = solar.getLunar();
     const eightChar = lunar.getEightChar();
+
+    let dGan = eightChar.getDayGan(), dZhi = eightChar.getDayZhi();
+    if (solarDate.getHours() === 23) {
+        const yest = Solar.fromDate(new Date(solarDate.getTime() - 3600000));
+        dGan = yest.getLunar().getEightChar().getDayGan();
+        dZhi = yest.getLunar().getEightChar().getDayZhi();
+    }
 
     const pillarKeys = {
         year:  { stem: eightChar.getYearGan(),  branch: eightChar.getYearZhi()  },
         month: { stem: eightChar.getMonthGan(), branch: eightChar.getMonthZhi() },
-        day:   { stem: eightChar.getDayGan(),   branch: eightChar.getDayZhi()   },
+        day:   { stem: dGan, branch: dZhi },
         hour:  { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  }
     };
 
@@ -719,45 +826,69 @@ function calculatePerson() {
         if (data) xkdgData[k] = { ...data, branch, stem };
     });
 
-    document.getElementById('person-chart').style.display = 'grid';
+    const chartId = isB ? 'person-chart-b' : 'person-chart';
+    document.getElementById(chartId).style.display = 'grid';
 
-    updatePillar('pp-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
-    updatePillar('pp-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
-    updatePillar('pp-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
-    updatePillar('pp-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
+    const prefix = isB ? 'pb' : 'pp';
+    updatePillar(`${prefix}-year`,  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
+    updatePillar(`${prefix}-month`, pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
+    updatePillar(`${prefix}-day`,   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
+    updatePillar(`${prefix}-hour`,  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
 
-    // Check favourable: compare person's YEAR hexagram with current date's DAY hexagram
-    checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch);
+    // Store year hexagram for scanner
+    if (isB) {
+        _personBYear   = xkdgData.year;
+        _personBStem   = pillarKeys.year.stem;
+        _personBBranch = pillarKeys.year.branch;
+    } else {
+        _personAYear   = xkdgData.year;
+        _personAStem   = pillarKeys.year.stem;
+        _personABranch = pillarKeys.year.branch;
+        checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch);
+    }
 }
 
 function checkFavourable(personYear, pStem, pBranch) {
     const col    = document.getElementById('favourable-col');
     const detail = document.getElementById('favourable-detail');
     col.style.display = 'none';
-
     if (!personYear || !_currentDayXkdg || !_currentDayAnalysis) return;
     if (_currentDayAnalysis.items.length === 0) return;
-
-    const dayXkdg   = _currentDayXkdg;
-    const dayStem   = dayXkdg.stem;
-    const dayBranch = dayXkdg.branch;
-    const matches   = [];
-
-    if (personYear.qi  === dayXkdg.qi)  matches.push('Pure Qi Elements');
-    if (personYear.yun === dayXkdg.yun) matches.push('Pure Qi Periods');
-    if (isHetuPair(personYear.qi,  dayXkdg.qi))  matches.push('Hetu Elements');
-    if (isHetuPair(personYear.yun, dayXkdg.yun)) matches.push('Hetu Periods');
-    const sumQi  = personYear.qi  + dayXkdg.qi;
-    const sumYun = personYear.yun + dayXkdg.yun;
-    if ([5,10,15].includes(sumQi))  matches.push(`Adding Elements (${sumQi})`);
-    if ([5,10,15].includes(sumYun)) matches.push(`Adding Periods (${sumYun})`);
-    const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
-    if (sharedFams.length > 0) matches.push(`Family: ${sharedFams.join(', ')}`);
-
+    const dayXkdg = _currentDayXkdg;
+    const matches = getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayXkdg.stem, dayXkdg.branch);
     if (matches.length === 0) return;
-
     col.style.display = 'flex';
     detail.textContent = matches.join(' · ');
+}
+
+// ── Sort / render results ─────────────────────
+function sortResults(mode) {
+    if (_scanResults.length === 0) return;
+    let filtered = [..._scanResults];
+    if (mode === 'both') filtered = filtered.filter(r => r.scoreA > 0 && r.scoreB > 0).sort((a,b) => (b.scoreA+b.scoreB) - (a.scoreA+a.scoreB));
+    else if (mode === 'score') filtered.sort((a,b) => b.score - a.score);
+    else filtered.sort((a,b) => a.rawDate - b.rawDate);
+    renderScanResults(filtered, mode);
+}
+
+function renderScanResults(results, mode) {
+    const container = document.getElementById('scan-results');
+    if (results.length === 0) {
+        container.innerHTML = '<div class="scan-empty">No matching dates found.</div>';
+        return;
+    }
+    const maxScore = Math.max(...results.map(r => mode === 'both' ? r.scoreA + r.scoreB : r.score));
+    container.innerHTML = results.map(r => {
+        const s = mode === 'both' ? r.scoreA + r.scoreB : r.score;
+        const rankClass = s >= maxScore ? 'rank-1' : s >= maxScore * 0.7 ? 'rank-2' : 'rank-3';
+        const bTag = r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;">B✓</span>` : '';
+        const aTag = r.scoreA > 0 ? ` <span style="color:#1b5e20;font-weight:bold;">A✓</span>` : '';
+        return `<div class="scan-item ${rankClass}">
+            <div class="scan-score">${s}${aTag}${bTag}</div>
+            <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
+            <div class="scan-tags">${[...r.matchLabels, ...r.qualLabels].join(' · ')}</div>
+        </div>`;
+    }).join('');
 }
 
 // ─────────────────────────────────────────────
@@ -822,26 +953,41 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch)
 }
 
 function runScanner() {
-    const birthDate = document.getElementById('person-date').value;
+    const birthDate  = document.getElementById('person-date').value;
+    const birthTime  = document.getElementById('person-time').value || '12:00';
+    const birthDateB = document.getElementById('person-date-b').value;
+    const birthTimeB = document.getElementById('person-time-b').value || '12:00';
     const startDate = document.getElementById('scan-start').value;
     const days      = parseInt(document.getElementById('scan-days').value) || 30;
     const lon       = parseFloat(document.getElementById('longitude').value);
     const utc       = parseFloat(document.getElementById('utc-offset').value);
 
-    if (!birthDate) { alert('Please enter your birth date first.'); return; }
+    if (!birthDate) { alert('Please enter birth date for Person A first.'); return; }
     if (!startDate) { alert('Please enter a start date.'); return; }
-
-    // Get person year xkdg
-    const bSolar = Solar.fromDate(new Date(birthDate + 'T12:00'));
-    const bEC    = bSolar.getLunar().getEightChar();
-    const pYStem = bEC.getYearGan(), pYBranch = bEC.getYearZhi();
-    const pYData = getXkdgData(pYStem, pYBranch);
-    if (!pYData) { alert('No XKDG data for birth year.'); return; }
-    const personYear = { ...pYData, stem: pYStem, branch: pYBranch };
 
     // Get season function
     const stdMeridian = utc * 15;
     const offsetMin   = (lon - stdMeridian) * 4;
+
+    // Person A year xkdg
+    const bBase   = new Date(`${birthDate}T${birthTime}`);
+    const bSolar  = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
+    const bEC     = bSolar.getLunar().getEightChar();
+    const pYStem  = bEC.getYearGan(), pYBranch = bEC.getYearZhi();
+    const pYData  = getXkdgData(pYStem, pYBranch);
+    if (!pYData) { alert('No XKDG data for Person A birth year.'); return; }
+    const personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
+
+    // Person B (optional)
+    let personBYear = null, pBYStem = null, pBYBranch = null;
+    if (birthDateB) {
+        const bBaseB  = new Date(`${birthDateB}T${birthTimeB}`);
+        const bSolarB = Solar.fromDate(new Date(bBaseB.getTime() + offsetMin * 60000));
+        const bECB    = bSolarB.getLunar().getEightChar();
+        pBYStem = bECB.getYearGan(); pBYBranch = bECB.getYearZhi();
+        const pBYData = getXkdgData(pBYStem, pBYBranch);
+        if (pBYData) personBYear = { ...pBYData, stem: pBYStem, branch: pBYBranch };
+    }
 
     const results = [];
     const start = new Date(startDate + 'T00:00:00');
@@ -898,23 +1044,28 @@ function runScanner() {
             // Date must have positive relations
             if (analysisItems.length === 0) continue;
 
-            // Check person match
-            const matchScore = getMatchScore(personYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
-            if (matchScore === 0) continue;
+            // Score Person A
+            const scoreA = getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+
+            // Score Person B (if provided)
+            const scoreB = personBYear ? getMatchScore(personBYear, pBYStem, pBYBranch, dayXkdg, dGan, dZhi) : 0;
+
+            // At least Person A must match
+            if (scoreA === 0) continue;
 
             const qualityScore = getDateQualityScore(analysisItems);
-            const totalScore   = matchScore * (qualityScore || 1);
+            const totalScore   = scoreA * (qualityScore || 1);
 
-            const matchLabels  = getMatchLabels(personYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
-            const qualLabels   = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
-
-            // Format date string
+            const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+            const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
             results.push({
                 score: totalScore,
-                matchScore,
+                scoreA,
+                scoreB,
                 qualityScore,
+                rawDate: dayDate.getTime() + h * 7200000,
                 date: dd,
                 hour: HOUR_ROMAN[h],
                 matchLabels,
@@ -923,29 +1074,20 @@ function runScanner() {
         }
     }
 
-    // Sort by score descending
+    // Sort by score descending by default
     results.sort((a,b) => b.score - a.score);
+    _scanResults = results;
 
     const container = document.getElementById('scan-results');
     container.style.display = 'block';
+    document.getElementById('sort-score').style.display = 'inline-block';
+    document.getElementById('sort-date').style.display  = 'inline-block';
+    document.getElementById('sort-both').style.display  = personBYear ? 'inline-block' : 'none';
 
-    if (results.length === 0) {
-        container.innerHTML = '<div class="scan-empty">No favourable dates found in this period.</div>';
-        return;
-    }
-
-    const maxScore = results[0].score;
-    container.innerHTML = results.map((r, i) => {
-        const rankClass = i === 0 ? 'rank-1' : r.score >= maxScore * 0.7 ? 'rank-2' : 'rank-3';
-        return `<div class="scan-item ${rankClass}">
-            <div class="scan-score">${r.score}</div>
-            <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
-            <div class="scan-tags">${[...r.matchLabels, ...r.qualLabels].join(' · ')}</div>
-        </div>`;
-    }).join('');
+    renderScanResults(results);
 }
 
-window.onload = setNow;
+window.onload = () => { setNow(); renderArchive('A'); renderArchive('B'); };
 </script>
 <div id="version-tag" style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;"></div>
 <script>
