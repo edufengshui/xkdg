@@ -107,7 +107,7 @@
     </div>
 
     <div class="analysis-section" id="analysis-section">
-        <h3>⬡ XKDG RELATIONS (DAY MASTER)</h3>
+        <h3>⬡ XKDG RELATIONS</h3>
         <div id="analysis-items"></div>
     </div>
 </div>
@@ -149,128 +149,88 @@ const XKDG_TABLE = {
     '壬戌': { hex: 45, qi: 4, yun: 4 }, '癸亥': { hex: 23, qi: 6, yun: 6 }
 };
 
-// Family map: Jia Zi → array of family names (built with _addFamily to handle multiple families)
+// Family map: Jia Zi → array of {family, role} objects
 const JIAZI_FAMILY_DATA = {};
-const JIAZI_ROLE_DATA = {}; // Jia Zi → role: 'father','mother','daughter','son'
 
-function _addFamily(jz, family) {
+function _add(jz, family, role) {
     if (!JIAZI_FAMILY_DATA[jz]) JIAZI_FAMILY_DATA[jz] = [];
-    if (!JIAZI_FAMILY_DATA[jz].includes(family)) JIAZI_FAMILY_DATA[jz].push(family);
-}
-function _setRole(jz, role) {
-    // Only set if not already set (first family defines the role)
-    if (!JIAZI_ROLE_DATA[jz]) JIAZI_ROLE_DATA[jz] = role;
+    JIAZI_FAMILY_DATA[jz].push({ family, role });
 }
 
 // ── Qian-Kun ──
-_addFamily('甲午','Qian-Kun'); _setRole('甲午','father');
-_addFamily('甲子','Qian-Kun'); _setRole('甲子','mother');
-_addFamily('壬寅','Qian-Kun'); _addFamily('戊辰','Qian-Kun'); _addFamily('丁巳','Qian-Kun');
-_addFamily('辛巳','Qian-Kun'); _addFamily('癸巳','Qian-Kun');
-_setRole('壬寅','daughter'); _setRole('戊辰','daughter'); _setRole('丁巳','daughter');
-_setRole('辛巳','daughter'); _setRole('癸巳','daughter');
-_addFamily('壬申','Qian-Kun'); _addFamily('戊戌','Qian-Kun'); _addFamily('丁亥','Qian-Kun');
-_addFamily('辛亥','Qian-Kun'); _addFamily('癸亥','Qian-Kun');
-_setRole('壬申','son'); _setRole('戊戌','son'); _setRole('丁亥','son');
-_setRole('辛亥','son'); _setRole('癸亥','son');
+_add('甲午','Qian-Kun','father'); _add('甲子','Qian-Kun','mother');
+_add('壬寅','Qian-Kun','daughter'); _add('戊辰','Qian-Kun','daughter');
+_add('丁巳','Qian-Kun','daughter'); _add('辛巳','Qian-Kun','daughter'); _add('癸巳','Qian-Kun','daughter');
+_add('壬申','Qian-Kun','son'); _add('戊戌','Qian-Kun','son');
+_add('丁亥','Qian-Kun','son'); _add('辛亥','Qian-Kun','son'); _add('癸亥','Qian-Kun','son');
 // ── Kan-Li ──
-_addFamily('庚申','Kan-Li'); _setRole('庚申','father');
-_addFamily('庚寅','Kan-Li'); _setRole('庚寅','mother');
-_addFamily('己卯','Kan-Li'); _addFamily('辛亥','Kan-Li'); _addFamily('乙未','Kan-Li');
-_addFamily('癸未','Kan-Li'); _addFamily('壬申','Kan-Li'); _addFamily('戊申','Kan-Li');
-_setRole('己卯','daughter'); _setRole('辛亥','daughter'); _setRole('乙未','daughter');
-_setRole('癸未','daughter'); _setRole('壬申','daughter'); _setRole('戊申','daughter');
-_addFamily('己酉','Kan-Li'); _addFamily('辛巳','Kan-Li'); _addFamily('乙丑','Kan-Li');
-_addFamily('癸丑','Kan-Li'); _addFamily('壬寅','Kan-Li'); _addFamily('戊寅','Kan-Li');
-_setRole('己酉','son'); _setRole('辛巳','son'); _setRole('乙丑','son');
-_setRole('癸丑','son'); _setRole('壬寅','son'); _setRole('戊寅','son');
+_add('庚申','Kan-Li','father'); _add('庚寅','Kan-Li','mother');
+_add('己卯','Kan-Li','daughter'); _add('辛亥','Kan-Li','daughter'); _add('乙未','Kan-Li','daughter');
+_add('癸未','Kan-Li','daughter'); _add('壬申','Kan-Li','daughter'); _add('戊申','Kan-Li','daughter');
+_add('己酉','Kan-Li','son'); _add('辛巳','Kan-Li','son'); _add('乙丑','Kan-Li','son');
+_add('癸丑','Kan-Li','son'); _add('壬寅','Kan-Li','son'); _add('戊寅','Kan-Li','son');
 // ── Zhen-Xun ──
-_addFamily('壬子','Zhen-Xun'); _setRole('壬子','father');
-_addFamily('壬午','Zhen-Xun'); _setRole('壬午','mother');
-_addFamily('丁亥','Zhen-Xun'); _addFamily('癸卯','Zhen-Xun'); _addFamily('戊寅','Zhen-Xun');
-_addFamily('甲子','Zhen-Xun'); _addFamily('丁丑','Zhen-Xun'); _addFamily('乙丑','Zhen-Xun');
-_setRole('丁亥','daughter'); _setRole('癸卯','daughter'); _setRole('戊寅','daughter');
-_setRole('甲子','daughter'); _setRole('丁丑','daughter'); _setRole('乙丑','daughter');
-_addFamily('丁巳','Zhen-Xun'); _addFamily('癸酉','Zhen-Xun'); _addFamily('戊申','Zhen-Xun');
-_addFamily('甲午','Zhen-Xun'); _addFamily('丁未','Zhen-Xun'); _addFamily('乙未','Zhen-Xun');
-_setRole('丁巳','son'); _setRole('癸酉','son'); _setRole('戊申','son');
-_setRole('甲午','son'); _setRole('丁未','son'); _setRole('乙未','son');
+_add('壬子','Zhen-Xun','father'); _add('壬午','Zhen-Xun','mother');
+_add('丁亥','Zhen-Xun','daughter'); _add('癸卯','Zhen-Xun','daughter'); _add('戊寅','Zhen-Xun','daughter');
+_add('甲子','Zhen-Xun','daughter'); _add('丁丑','Zhen-Xun','daughter'); _add('乙丑','Zhen-Xun','daughter');
+_add('丁巳','Zhen-Xun','son'); _add('癸酉','Zhen-Xun','son'); _add('戊申','Zhen-Xun','son');
+_add('甲午','Zhen-Xun','son'); _add('丁未','Zhen-Xun','son'); _add('乙未','Zhen-Xun','son');
 // ── Gen-Dui ──
-_addFamily('丙戌','Gen-Dui'); _setRole('丙戌','father');
-_addFamily('丙辰','Gen-Dui'); _setRole('丙辰','mother');
-_addFamily('癸丑','Gen-Dui'); _addFamily('丁未','Gen-Dui'); _addFamily('癸亥','Gen-Dui');
-_addFamily('己酉','Gen-Dui'); _addFamily('癸酉','Gen-Dui'); _addFamily('戊戌','Gen-Dui');
-_setRole('癸丑','daughter'); _setRole('丁未','daughter'); _setRole('癸亥','daughter');
-_setRole('己酉','daughter'); _setRole('癸酉','daughter'); _setRole('戊戌','daughter');
-_addFamily('癸未','Gen-Dui'); _addFamily('丁丑','Gen-Dui'); _addFamily('癸巳','Gen-Dui');
-_addFamily('己卯','Gen-Dui'); _addFamily('癸卯','Gen-Dui'); _addFamily('戊辰','Gen-Dui');
-_setRole('癸未','son'); _setRole('丁丑','son'); _setRole('癸巳','son');
-_setRole('己卯','son'); _setRole('癸卯','son'); _setRole('戊辰','son');
+_add('丙戌','Gen-Dui','father'); _add('丙辰','Gen-Dui','mother');
+_add('癸丑','Gen-Dui','daughter'); _add('丁未','Gen-Dui','daughter'); _add('癸亥','Gen-Dui','daughter');
+_add('己酉','Gen-Dui','daughter'); _add('癸酉','Gen-Dui','daughter'); _add('戊戌','Gen-Dui','daughter');
+_add('癸未','Gen-Dui','son'); _add('丁丑','Gen-Dui','son'); _add('癸巳','Gen-Dui','son');
+_add('己卯','Gen-Dui','son'); _add('癸卯','Gen-Dui','son'); _add('戊辰','Gen-Dui','son');
 // ── Pi-Tai ──
-_addFamily('庚戌','Pi-Tai'); _setRole('庚戌','father');
-_addFamily('庚辰','Pi-Tai'); _setRole('庚辰','mother');
-_addFamily('己丑','Pi-Tai'); _addFamily('辛未','Pi-Tai'); _addFamily('乙酉','Pi-Tai');
-_addFamily('己亥','Pi-Tai'); _addFamily('乙亥','Pi-Tai'); _addFamily('壬戌','Pi-Tai');
-_setRole('己丑','daughter'); _setRole('辛未','daughter'); _setRole('乙酉','daughter');
-_setRole('己亥','daughter'); _setRole('乙亥','daughter'); _setRole('壬戌','daughter');
-_addFamily('己未','Pi-Tai'); _addFamily('辛丑','Pi-Tai'); _addFamily('乙卯','Pi-Tai');
-_addFamily('己巳','Pi-Tai'); _addFamily('乙巳','Pi-Tai'); _addFamily('壬辰','Pi-Tai');
-_setRole('己未','son'); _setRole('辛丑','son'); _setRole('乙卯','son');
-_setRole('己巳','son'); _setRole('乙巳','son'); _setRole('壬辰','son');
+_add('庚戌','Pi-Tai','father'); _add('庚辰','Pi-Tai','mother');
+_add('己丑','Pi-Tai','daughter'); _add('辛未','Pi-Tai','daughter'); _add('乙酉','Pi-Tai','daughter');
+_add('己亥','Pi-Tai','daughter'); _add('乙亥','Pi-Tai','daughter'); _add('壬戌','Pi-Tai','daughter');
+_add('己未','Pi-Tai','son'); _add('辛丑','Pi-Tai','son'); _add('乙卯','Pi-Tai','son');
+_add('己巳','Pi-Tai','son'); _add('乙巳','Pi-Tai','son'); _add('壬辰','Pi-Tai','son');
 // ── JiJi-WeiJi ──
-_addFamily('甲寅','JiJi-WeiJi'); _setRole('甲寅','father');
-_addFamily('甲申','JiJi-WeiJi'); _setRole('甲申','mother');
-_addFamily('甲戌','JiJi-WeiJi'); _addFamily('乙巳','JiJi-WeiJi'); _addFamily('戊子','JiJi-WeiJi');
-_addFamily('庚寅','JiJi-WeiJi'); _addFamily('辛丑','JiJi-WeiJi'); _addFamily('丙寅','JiJi-WeiJi');
-_setRole('甲戌','daughter'); _setRole('乙巳','daughter'); _setRole('戊子','daughter');
-_setRole('庚寅','daughter'); _setRole('辛丑','daughter'); _setRole('丙寅','daughter');
-_addFamily('甲辰','JiJi-WeiJi'); _addFamily('乙亥','JiJi-WeiJi'); _addFamily('戊午','JiJi-WeiJi');
-_addFamily('庚申','JiJi-WeiJi'); _addFamily('辛未','JiJi-WeiJi'); _addFamily('丙申','JiJi-WeiJi');
-_setRole('甲辰','son'); _setRole('乙亥','son'); _setRole('戊午','son');
-_setRole('庚申','son'); _setRole('辛未','son'); _setRole('丙申','son');
+_add('甲寅','JiJi-WeiJi','father'); _add('甲申','JiJi-WeiJi','mother');
+_add('甲戌','JiJi-WeiJi','daughter'); _add('乙巳','JiJi-WeiJi','daughter'); _add('戊子','JiJi-WeiJi','daughter');
+_add('庚寅','JiJi-WeiJi','daughter'); _add('辛丑','JiJi-WeiJi','daughter'); _add('丙寅','JiJi-WeiJi','daughter');
+_add('甲辰','JiJi-WeiJi','son'); _add('乙亥','JiJi-WeiJi','son'); _add('戊午','JiJi-WeiJi','son');
+_add('庚申','JiJi-WeiJi','son'); _add('辛未','JiJi-WeiJi','son'); _add('丙申','JiJi-WeiJi','son');
 // ── Heng-Yi ──
-_addFamily('庚午','Heng-Yi'); _setRole('庚午','father');
-_addFamily('庚子','Heng-Yi'); _setRole('庚子','mother');
-_addFamily('己巳','Heng-Yi'); _addFamily('辛酉','Heng-Yi'); _addFamily('丙申','Heng-Yi');
-_addFamily('己未','Heng-Yi'); _addFamily('丙午','Heng-Yi'); _addFamily('戊午','Heng-Yi');
-_setRole('己巳','daughter'); _setRole('辛酉','daughter'); _setRole('丙申','daughter');
-_setRole('己未','daughter'); _setRole('丙午','daughter'); _setRole('戊午','daughter');
-_addFamily('己亥','Heng-Yi'); _addFamily('辛卯','Heng-Yi'); _addFamily('丙寅','Heng-Yi');
-_addFamily('己丑','Heng-Yi'); _addFamily('丙子','Heng-Yi'); _addFamily('戊子','Heng-Yi');
-_setRole('己亥','son'); _setRole('辛卯','son'); _setRole('丙寅','son');
-_setRole('己丑','son'); _setRole('丙子','son'); _setRole('戊子','son');
+_add('庚午','Heng-Yi','father'); _add('庚子','Heng-Yi','mother');
+_add('己巳','Heng-Yi','daughter'); _add('辛酉','Heng-Yi','daughter'); _add('丙申','Heng-Yi','daughter');
+_add('己未','Heng-Yi','daughter'); _add('丙午','Heng-Yi','daughter'); _add('戊午','Heng-Yi','daughter');
+_add('己亥','Heng-Yi','son'); _add('辛卯','Heng-Yi','son'); _add('丙寅','Heng-Yi','son');
+_add('己丑','Heng-Yi','son'); _add('丙子','Heng-Yi','son'); _add('戊子','Heng-Yi','son');
 // ── Sun-Xian ──
-_addFamily('丁卯','Sun-Xian'); _setRole('丁卯','father');
-_addFamily('丁酉','Sun-Xian'); _setRole('丁酉','mother');
-_addFamily('庚申','Sun-Xian'); _addFamily('丙巳','Sun-Xian'); _addFamily('壬辰','Sun-Xian');
-_addFamily('甲辰','Sun-Xian'); _addFamily('辛卯','Sun-Xian'); _addFamily('乙卯','Sun-Xian');
-_setRole('庚申','daughter'); _setRole('丙巳','daughter'); _setRole('壬辰','daughter');
-_setRole('甲辰','daughter'); _setRole('辛卯','daughter'); _setRole('乙卯','daughter');
-_addFamily('庚寅','Sun-Xian'); _addFamily('丙午','Sun-Xian'); _addFamily('壬戌','Sun-Xian');
-_addFamily('甲戌','Sun-Xian'); _addFamily('辛酉','Sun-Xian'); _addFamily('乙酉','Sun-Xian');
-_setRole('庚寅','son'); _setRole('丙午','son'); _setRole('壬戌','son');
-_setRole('甲戌','son'); _setRole('辛酉','son'); _setRole('乙酉','son');
+_add('丁卯','Sun-Xian','father'); _add('丁酉','Sun-Xian','mother');
+_add('庚申','Sun-Xian','daughter'); _add('丙巳','Sun-Xian','daughter'); _add('壬辰','Sun-Xian','daughter');
+_add('甲辰','Sun-Xian','daughter'); _add('辛卯','Sun-Xian','daughter'); _add('乙卯','Sun-Xian','daughter');
+_add('庚寅','Sun-Xian','son'); _add('丙午','Sun-Xian','son'); _add('壬戌','Sun-Xian','son');
+_add('甲戌','Sun-Xian','son'); _add('辛酉','Sun-Xian','son'); _add('乙酉','Sun-Xian','son');
 
-// Get family label string for display
+// Get family label with per-family role sign for children, plain for parents
 function getHexFamilyLabel(stem, branch) {
-    return (JIAZI_FAMILY_DATA[stem + branch] || []).join('<br>');
+    const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
+    return entries.map(e => {
+        if (e.role === 'father' || e.role === 'mother') return e.family;
+        const sign = (e.role === 'son') ? '+' : '-';
+        return `${e.family} ${sign}`;
+    }).join('<br>');
 }
 
-// Get role label for display
+// Get role label (P or C only, no gender mark)
 function getRoleLabel(stem, branch) {
-    const role = JIAZI_ROLE_DATA[stem + branch];
-    if (!role) return '';
-    if (role === 'father')   return '<span style="color:#d40000;font-size:11px;font-weight:bold;">P♂</span>';
-    if (role === 'mother')   return '<span style="color:#d40000;font-size:11px;font-weight:bold;">P♀</span>';
-    if (role === 'daughter') return '<span style="color:#0044cc;font-size:11px;font-weight:bold;">C♀</span>';
-    if (role === 'son')      return '<span style="color:#0044cc;font-size:11px;font-weight:bold;">C♂</span>';
-    return '';
+    const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
+    if (entries.length === 0) return '';
+    const role = entries[0].role;
+    if (role === 'father' || role === 'mother')
+        return '<span style="color:#d40000;font-size:15px;font-weight:bold;">P</span>';
+    return '<span style="color:#0044cc;font-size:15px;font-weight:bold;">C</span>';
 }
 
 // Get family array for analysis
 function getJiaZiFamilies(stem, branch) {
-    return JIAZI_FAMILY_DATA[stem + branch] || [];
+    return (JIAZI_FAMILY_DATA[stem + branch] || []).map(e => e.family);
 }
+
 // Full Nayin (Melodic Element) map — 60 Jia Zi → English
 const NAYIN = {
     '甲子':'Metal in the Sea',    '乙丑':'Metal in the Sea',
