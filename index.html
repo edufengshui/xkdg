@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>XKDG Bazi Calculator - True Solar Time</title>
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
+    <script src="xkdg_hex.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
         :root { --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b; --metal: #555; --water: #0000cd; }
@@ -112,7 +113,6 @@ function calculateBazi() {
     
     if (!dVal) return;
 
-    // 1. True Solar Time Calculation
     const standardMeridian = utc * 15;
     const offsetMinutes = (lon - standardMeridian) * 4;
     let baseDate = new Date(`${dVal}T${tVal}`);
@@ -120,34 +120,36 @@ function calculateBazi() {
     
     document.getElementById('solar-time-display').textContent = "True Solar: " + solarDate.toTimeString().slice(0,5);
 
-    // 2. Init Bazi Logic
     const solar = Solar.fromDate(solarDate);
     const lunar = solar.getLunar();
-    
-    // Using 0 to force day change at midnight 00:00 (standard in some Bazi versions)
-    // and using EightChar directly from lunar object.
     const eightChar = lunar.getEightChar();
 
-    // Year
-    updatePillar('p-year', eightChar.getYearGan(), eightChar.getYearZhi(), '䷛', '28 Da Guo', '4', '3', eightChar.getYearGan()+eightChar.getYearZhi());
-    // Month
-    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), '䷙', '26 Da Chu', '6', '4', eightChar.getMonthGan()+eightChar.getMonthZhi());
-    
-    // DAY & HOUR Logic: manually handle the 23:00 - 00:00 window to ensure day only changes at midnight
-    let dayGan = eightChar.getDayGan();
-    let dayZhi = eightChar.getDayZhi();
-    
-    // If it's between 23:00 and 00:00 solar time, the library naturally shifts the day.
-    // To keep the day of "today" until midnight:
+    // Funzione interna per recuperare i dati XKDG dal file esterno in modo sicuro
+    const getXData = (g, z) => {
+        if (window.getXkdgData) return window.getXkdgData(g, z);
+        return { icon: '?', name: 'Loading...', qi: '-', yun: '-' };
+    };
+
+    // Gestione Giorno e Ora
+    let dG = eightChar.getDayGan();
+    let dZ = eightChar.getDayZhi();
     if (solarDate.getHours() === 23) {
-        const yesterday = new Date(solarDate.getTime() - 3600000); // go back 1 hour to get "today" pillar
-        const oldLunar = Solar.fromDate(yesterday).getLunar();
-        dayGan = oldLunar.getEightChar().getDayGan();
-        dayZhi = oldLunar.getEightChar().getDayZhi();
+        const yesterday = new Date(solarDate.getTime() - 3600000);
+        const oldEc = Solar.fromDate(yesterday).getLunar().getEightChar();
+        dG = oldEc.getDayGan(); dZ = oldEc.getDayZhi();
     }
 
-    updatePillar('p-day', dayGan, dayZhi, '䷅', '06 Song', '9', '3', dayGan+dayZhi);
-    updatePillar('p-hour', eightChar.getTimeGan(), eightChar.getTimeZhi(), '䷯', '48 Jing', '7', '6', eightChar.getTimeGan()+eightChar.getTimeZhi());
+    // Recupero dati XKDG per ogni pilastro
+    const yD = getXData(eightChar.getYearGan(), eightChar.getYearZhi());
+    const mD = getXData(eightChar.getMonthGan(), eightChar.getMonthZhi());
+    const dD = getXData(dG, dZ);
+    const hD = getXData(eightChar.getTimeGan(), eightChar.getTimeZhi());
+
+    // Update Pillars con i dati estratti
+    updatePillar('p-year',  eightChar.getYearGan(),  eightChar.getYearZhi(),  yD.icon, yD.name, yD.qi, yD.yun, eightChar.getYearGan()+eightChar.getYearZhi());
+    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), mD.icon, mD.name, mD.qi, mD.yun, eightChar.getMonthGan()+eightChar.getMonthZhi());
+    updatePillar('p-day',   dG, dZ, dD.icon, dD.name, dD.qi, dD.yun, dG+dZ);
+    updatePillar('p-hour',  eightChar.getTimeGan(),  eightChar.getTimeZhi(),  hD.icon, hD.name, hD.qi, hD.yun, eightChar.getTimeGan()+eightChar.getTimeZhi());
 }
 
 function updatePillar(id, stem, branch, hexIcon, hexName, n1, n2, sideZh) {
