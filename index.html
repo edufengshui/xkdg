@@ -44,16 +44,15 @@
         .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.7; font-weight: bold; margin-top: 5px; display: block;}
         
         .hex-section { padding: 20px 5px; border-top: 2px solid #bbb; display: flex; flex-direction: column; align-items: center; min-height: 150px; }
-        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .hex-icon { font-size: 70px; color: #000; line-height: 1; }
-        .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 70px; width: 35px; font-weight: bold; font-size: 18px; }
+        .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-left: 20px; }
+        .hex-icon { font-size: 80px; color: #000; line-height: 1; }
+        .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 80px; width: 35px; font-weight: bold; font-size: 16px; }
         .hex-info { margin-top: 10px; font-size: 13px; font-weight: bold; color: #333; text-align: center; }
         
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
         
         .solar-badge { background: #fff1f0; color: #d40000; padding: 4px 10px; border-radius: 15px; border: 1px solid #ffa39e; font-size: 13px; font-weight: bold; }
-        #analysis-output { margin-top: 20px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; color: #444; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -85,12 +84,10 @@
         <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
         <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
-
-    <div id="analysis-output">Relationships analysis will appear here...</div>
 </div>
 
 <script>
-const ELEMENTS_MAP = { '甲': 'wood', '乙': 'wood', '丙': 'fire', '丁': 'fire', '戊': 'earth', '己': 'earth', '庚': 'metal', '辛': 'metal', '壬': 'water', '癸': 'water', '子': 'water', '丑': 'earth', '寅': 'wood', '卯': 'wood', '辰': 'earth', '巳': 'fire', '午': 'fire', '未': 'earth', '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water' };
+const ELEMENTS_EN = { '甲': 'wood', '乙': 'wood', '丙': 'fire', '丁': 'fire', '戊': 'earth', '己': 'earth', '庚': 'metal', '辛': 'metal', '壬': 'water', '癸': 'water', '子': 'water', '丑': 'earth', '寅': 'wood', '卯': 'wood', '辰': 'earth', '巳': 'fire', '午': 'fire', '未': 'earth', '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water' };
 
 function setNow() {
     const now = new Date();
@@ -116,68 +113,46 @@ function calculateBazi() {
     
     if (!dVal) return;
 
-    // 1. Calcolo Ora Solare Vera (LMT)
     const standardMeridian = utc * 15;
     const offsetMinutes = (lon - standardMeridian) * 4;
     let baseDate = new Date(`${dVal}T${tVal}`);
     let solarDate = new Date(baseDate.getTime() + offsetMinutes * 60000);
+    
     document.getElementById('solar-time-display').textContent = "True Solar: " + solarDate.toTimeString().slice(0,5);
 
-    // 2. Init Libreria
     const solar = Solar.fromDate(solarDate);
     const lunar = solar.getLunar();
-    const ec = lunar.getEightChar();
+    const eightChar = lunar.getEightChar();
 
-    // 3. Gestione Cambio Giorno a Mezzanotte (00:00)
-    let dG = ec.getDayGan(), dZ = ec.getDayZhi();
+    // Gestione Cambio Giorno a Mezzanotte
+    let dG = eightChar.getDayGan(), dZ = eightChar.getDayZhi();
     if (solarDate.getHours() === 23) {
         const yesterday = new Date(solarDate.getTime() - 3600000);
         const oldEc = Solar.fromDate(yesterday).getLunar().getEightChar();
         dG = oldEc.getDayGan(); dZ = oldEc.getDayZhi();
     }
 
-    // 4. Recupero Dati XKDG dal file esterno xkdg_hex.js
-    const pillars = {
-        year:  window.getXkdgData(ec.getYearGan(), ec.getYearZhi()),
-        month: window.getXkdgData(ec.getMonthGan(), ec.getMonthZhi()),
-        day:   window.getXkdgData(dG, dZ),
-        hour:  window.getXkdgData(ec.getTimeGan(), ec.getTimeZhi())
-    };
+    // Mappatura dinamica usando window.getXkdgData definita nel tuo file esterno
+    const yData = window.getXkdgData(eightChar.getYearGan(), eightChar.getYearZhi());
+    const mData = window.getXkdgData(eightChar.getMonthGan(), eightChar.getMonthZhi());
+    const dData = window.getXkdgData(dG, dZ);
+    const hData = window.getXkdgData(eightChar.getTimeGan(), eightChar.getTimeZhi());
 
-    // 5. Analisi Relazioni (HeTu, Sums, Pure Qi)
-    const analysis = window.analyzeXkdg(pillars);
-    document.getElementById('analysis-output').innerHTML = analysis.length > 0 
-        ? "<strong>XKDG Analysis:</strong><br>• " + analysis.join("<br>• ") 
-        : "No specific XKDG structures detected.";
-
-    // 6. Update UI
-    updatePillar('p-year',  ec.getYearGan(),  ec.getYearZhi(), pillars.year);
-    updatePillar('p-month', ec.getMonthGan(), ec.getMonthZhi(), pillars.month);
-    updatePillar('p-day',   dG, dZ, pillars.day);
-    updatePillar('p-hour',  ec.getTimeGan(),  ec.getTimeZhi(), pillars.hour);
+    // Update Pillars con i dati reali dal file xkdg_hex.js
+    updatePillar('p-year', eightChar.getYearGan(), eightChar.getYearZhi(), yData.icon, yData.name, yData.qi, yData.yun, eightChar.getYearGan()+eightChar.getYearZhi());
+    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), mData.icon, mData.name, mData.qi, mData.yun, eightChar.getMonthGan()+eightChar.getMonthZhi());
+    updatePillar('p-day', dG, dZ, dData.icon, dData.name, dData.qi, dData.yun, dG+dZ);
+    updatePillar('p-hour', eightChar.getTimeGan(), eightChar.getTimeZhi(), hData.icon, hData.name, hData.qi, hData.yun, eightChar.getTimeGan()+eightChar.getTimeZhi());
 }
 
-function updatePillar(id, stem, branch, xkdg) {
-    const elS = ELEMENTS_MAP[stem];
-    const elB = ELEMENTS_MAP[branch];
+function updatePillar(id, stem, branch, hexIcon, hexName, n1, n2, sideZh) {
+    const elS = ELEMENTS_EN[stem];
+    const elB = ELEMENTS_EN[branch];
     const p = document.getElementById(id);
-    
-    p.querySelector('.stem').innerHTML = `<span class="hanzi ${elS}">${stem}</span><span class="element-label">${elS}</span>`;
-    p.querySelector('.branch').innerHTML = `<span class="hanzi ${elB}">${branch}</span><span class="element-label">${elB}</span>`;
-    
-    if (xkdg && window.getHexIcon) {
-        p.querySelector('.hex-section').innerHTML = `
-            <div class="hex-wrapper">
-                <div class="hex-icon">${window.getHexIcon(xkdg.hex)}</div>
-                <div class="data-column">
-                    <div title="Gua Qi (Element)">${xkdg.qi}</div>
-                    <div style="font-size:11px; color:#999;">${stem}${branch}</div>
-                    <div title="Gua Yun (Period)">${xkdg.yun}</div>
-                </div>
-            </div>
-            <div class="hex-info">Hex ${xkdg.hex}</div>
-        `;
-    }
+    if(!p) return;
+    p.querySelector('.stem').innerHTML = `<span class="hanzi ${elS}">${stem}</span><span class="element-label">- ${elS} -</span>`;
+    p.querySelector('.branch').innerHTML = `<span class="hanzi ${elB}">${branch}</span><span class="element-label">- ${elB} -</span>`;
+    p.querySelector('.hex-section').innerHTML = `<div class="hex-wrapper"><div class="hex-icon">${hexIcon}</div><div class="data-column"><div>${n1}</div><div style="font-size:12px; color:#999;">${sideZh}</div><div>${n2}</div></div></div><div class="hex-info">${hexName}</div>`;
 }
 
 window.onload = setNow;
