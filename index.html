@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <title>XKDG Bazi Calculator - True Solar Time</title>
@@ -10,10 +10,8 @@
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
         .container { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
         
-        /* Riga 1: Controlli principali */
         .inputs-row { display: flex; gap: 10px; margin-bottom: 15px; justify-content: center; align-items: center; flex-wrap: wrap; }
         
-        /* Riga 2: Parametri Geografici - Ora forzata sotto */
         .geo-row { 
             display: flex; 
             gap: 20px; 
@@ -60,11 +58,11 @@
 
 <div class="container">
     <div class="inputs-row">
-        <button class="btn-tool" onclick="setNow()">NOW</button>
+        <button class="btn-tool" onclick="setNow()">AD ESSO</button>
         <button class="btn-tool" onclick="getGPS()">GPS</button>
         <input type="date" id="date">
         <input type="time" id="time">
-        <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
+        <button class="btn-calc" onclick="calculateBazi()">CALCOLA</button>
     </div>
 
     <div class="geo-row">
@@ -73,17 +71,17 @@
             <input type="number" id="utc-offset" value="1" step="1" style="width: 55px;">
         </div>
         <div>
-            <label>LONGITUDE:</label>
+            <label>LONGITUDINE:</label>
             <input type="number" id="longitude" value="12.49" step="0.01" style="width: 85px;">
         </div>
-        <div id="solar-time-display" class="solar-badge">True Solar: --:--</div>
+        <div id="solar-time-display" class="solar-badge">Ora Solare: --:--</div>
     </div>
 
     <div class="chart">
-        <div class="pillar" id="p-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
-        <div class="pillar" id="p-year"><div class="header">YEAR</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-hour"><div class="header">ORA</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-day"><div class="header">GIORNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-month"><div class="header">MESE</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
+        <div class="pillar" id="p-year"><div class="header">ANNO</div><div class="cell stem"></div><div class="cell branch"></div><div class="hex-section"></div></div>
     </div>
 </div>
 
@@ -114,33 +112,67 @@ function calculateBazi() {
     
     if (!dVal) return;
 
-    // Calcolo Ora Solare Vera
+    // 1. Calcolo Ora Solare Vera (LMT)
     const standardMeridian = utc * 15;
     const offsetMinutes = (lon - standardMeridian) * 4;
     let baseDate = new Date(`${dVal}T${tVal}`);
     let solarDate = new Date(baseDate.getTime() + offsetMinutes * 60000);
     
-    document.getElementById('solar-time-display').textContent = "True Solar: " + solarDate.toTimeString().slice(0,5);
+    document.getElementById('solar-time-display').textContent = "Ora Solare Vera: " + solarDate.toTimeString().slice(0,5);
 
+    // 2. Inizializzazione Lunar-Javascript
     const solar = Solar.fromDate(solarDate);
     const lunar = solar.getLunar();
     const eightChar = lunar.getEightChar();
+    
+    // 3. REGOLA MEZZANOTTE: Il giorno cambia alle 00:00 solari (setDayCycle a 2)
+    eightChar.setDayCycle(2); 
 
-    updatePillar('p-year', eightChar.getYearGan(), eightChar.getYearZhi(), '䷛', '28 Da Guo', '4', '3', eightChar.getYearGan()+eightChar.getYearZhi());
-    updatePillar('p-month', eightChar.getMonthGan(), eightChar.getMonthZhi(), '䷙', '26 Da Chu', '6', '4', eightChar.getMonthGan()+eightChar.getMonthZhi());
-    updatePillar('p-day', eightChar.getDayGan(), eightChar.getDayZhi(), '䷅', '06 Song', '9', '3', eightChar.getDayGan()+eightChar.getDayZhi());
-    updatePillar('p-hour', eightChar.getTimeGan(), eightChar.getTimeZhi(), '䷯', '48 Jing', '7', '6', eightChar.getTimeGan()+eightChar.getTimeZhi());
+    // Estrazione binomi (Tronco + Ramo)
+    const y = eightChar.getYear();
+    const m = eightChar.getMonth();
+    const d = eightChar.getDay();
+    const h = eightChar.getTime();
+
+    // 4. Update UI - I valori esagramma sono placeholder statici da mappare in futuro
+    updatePillar('p-year', y[0], y[1], '䷛', '28 Da Guo', '4', '3', y);
+    updatePillar('p-month', m[0], m[1], '䷙', '26 Da Chu', '6', '4', m);
+    updatePillar('p-day', d[0], d[1], '䷅', '06 Song', '9', '3', d);
+    updatePillar('p-hour', h[0], h[1], '䷯', '48 Jing', '7', '6', h);
 }
 
 function updatePillar(id, stem, branch, hexIcon, hexName, n1, n2, sideZh) {
     const elS = ELEMENTS_EN[stem];
     const elB = ELEMENTS_EN[branch];
     const p = document.getElementById(id);
-    p.querySelector('.stem').innerHTML = `<span class="hanzi ${elS}">${stem}</span><span class="element-label">- ${elS} -</span>`;
-    p.querySelector('.branch').innerHTML = `<span class="hanzi ${elB}">${branch}</span><span class="element-label">- ${elB} -</span>`;
-    p.querySelector('.hex-section').innerHTML = `<div class="hex-wrapper"><div class="hex-icon">${hexIcon}</div><div class="data-column"><div>${n1}</div><div style="font-size:12px;">${sideZh}</div><div>${n2}</div></div></div><div class="hex-info">${hexName}</div>`;
+    
+    // Tronco Celeste
+    p.querySelector('.stem').innerHTML = `
+        <span class="hanzi ${elS}">${stem}</span>
+        <span class="element-label">- ${elS} -</span>
+    `;
+    
+    // Ramo Terrestre
+    p.querySelector('.branch').innerHTML = `
+        <span class="hanzi ${elB}">${branch}</span>
+        <span class="element-label">- ${elB} -</span>
+    `;
+    
+    // Sezione Esagramma XKDG
+    p.querySelector('.hex-section').innerHTML = `
+        <div class="hex-wrapper">
+            <div class="hex-icon">${hexIcon}</div>
+            <div class="data-column">
+                <div>${n1}</div>
+                <div style="font-size:12px; color:#999;">${sideZh}</div>
+                <div>${n2}</div>
+            </div>
+        </div>
+        <div class="hex-info">${hexName}</div>
+    `;
 }
 
+// Avvio automatico al caricamento
 window.onload = setNow;
 </script>
 </body>
