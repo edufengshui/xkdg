@@ -226,19 +226,22 @@ function analyzeXkdg(pillars) {
         }
     }
 
-    // ── Helper: Add / Pure Add for a given value fn ──────────────────
+    // ── Helper: Add / Pure Add — all 6 pairs among 4 pillars ────────
     function checkAdd(valFn, label) {
-        const dayVal = valFn('day');
-        const others = ['year','month','hour'];
-        const sums   = others.map(k => ({ key: k, val: valFn(k), sum: dayVal + valFn(k) }));
-        if (!sums.every(r => [5,10,15].includes(r.sum))) return;
-        const allSame = sums.every(r => r.sum === sums[0].sum);
+        // Collect all 6 pairs
+        const pairs = [];
+        for (let i = 0; i < keys.length; i++) {
+            for (let j = i+1; j < keys.length; j++) {
+                pairs.push({ a: keys[i], b: keys[j], sum: valFn(keys[i]) + valFn(keys[j]) });
+            }
+        }
+        // All 6 pairs must produce a valid sum
+        if (!pairs.every(p => [5,10,15].includes(p.sum))) return;
+        const allSame = pairs.every(p => p.sum === pairs[0].sum);
         if (allSame) {
-            const target = sums[0].sum;
-            const detail = sums.map(r => `${pName[r.key]}(${r.val})`).join(' + ');
-            items.push({ text: `Pure Add (${target}) [${label}] — Day(${dayVal}) with ${detail}`, tag: 'blue' });
+            items.push({ text: `Pure Add (${pairs[0].sum}) [${label}] — all pairs sum to ${pairs[0].sum}`, tag: 'blue' });
         } else {
-            const detail = sums.map(r => `${pName[r.key]}: ${dayVal}+${r.val}=${r.sum}`).join(' · ');
+            const detail = pairs.map(p => `${pName[p.a]}+${pName[p.b]}=${p.sum}`).join(' · ');
             items.push({ text: `Add [${label}] — ${detail}`, tag: 'blue' });
         }
     }
