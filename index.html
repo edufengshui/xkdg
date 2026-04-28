@@ -61,6 +61,7 @@
         .analysis-section h3 { margin: 0 0 10px; color: #8b5a2b; font-size: 14px; letter-spacing: 1px; }
         .analysis-item { padding: 4px 0; color: #333; border-bottom: 1px solid #f0e0c0; }
         .analysis-item:last-child { border-bottom: none; }
+        .tag-blue { color: #0044cc; font-weight: bold; }
         
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
@@ -101,7 +102,7 @@
     </div>
 
     <div class="analysis-section" id="analysis-section">
-        <h3>⬡ XKDG RELAZIONI (DAY MASTER)</h3>
+        <h3>⬡ XKDG RELATIONS (DAY MASTER)</h3>
         <div id="analysis-items"></div>
     </div>
 </div>
@@ -163,46 +164,108 @@ function getXkdgData(stem, branch) {
     return XKDG_TABLE[stem + branch] || null;
 }
 
-function analyzeXkdg(pillars) {
-    if (!pillars.day) return [];
-    const dayQi = pillars.day.qi;
-    const dayYun = pillars.day.yun;
-    const analysis = [];
-
-    const qiElementMap = {
-        1: 'Acqua', 6: 'Acqua',
-        2: 'Fuoco', 7: 'Fuoco',
-        3: 'Legno', 8: 'Legno',
-        4: 'Metallo', 9: 'Metallo'
-    };
-
-    Object.keys(pillars).forEach(key => {
-        if (key === 'day') return;
-        const p = pillars[key];
-        if (!p) return;
-        const pName = { year: 'Anno', month: 'Mese', hour: 'Ora' }[key];
-        
-        // Blood Links (HeTu Pairs: 1-6, 2-7, 3-8, 4-9)
-        const pair = [dayQi, p.qi].sort().join('-');
-        if (['1-6', '2-7', '3-8', '4-9'].includes(pair)) {
-            const elem = qiElementMap[dayQi] || qiElementMap[p.qi] || '?';
-            analysis.push(`[${pName}] HeTu Blood Link — Elemento: ${elem}`);
-        }
-
-        // Somme Gua Qi
-        const sum = dayQi + p.qi;
-        if ([5, 10, 15].includes(sum)) {
-            analysis.push(`[${pName}] Somma XKDG: ${sum} (Qi ${dayQi} + ${p.qi})`);
-        }
-
-        // Pure Qi (Gua Yun)
-        if (dayYun === p.yun) {
-            analysis.push(`[${pName}] Pure Qi — Periodo Yun: ${dayYun}`);
-        }
-    });
-
-    return analysis;
+// HeTu pair check: 1↔6, 2↔7, 3↔8, 4↔9
+function isHetuPair(a, b) {
+    const sorted = [a, b].sort((x,y) => x-y).join('-');
+    return ['1-6','2-7','3-8','4-9'].includes(sorted);
 }
+
+const QI_ELEMENT = {
+    1:'Water',6:'Water', 2:'Fire',7:'Fire',
+    3:'Wood',8:'Wood',   4:'Metal',9:'Metal'
+};
+
+function analyzeXkdg(pillars) {
+    const items = [];
+    const keys  = ['year','month','day','hour'];
+    const pName = { year:'Year', month:'Month', day:'Day', hour:'Hour' };
+
+    // All four pillars must have data — no partials
+    if (!keys.every(k => pillars[k])) return items;
+
+    const qi  = k => pillars[k].qi;
+    const yun = k => pillars[k].yun;
+
+    // ── RULE 3: Pure Qi ─────────────────────────────────────────────
+    // All four qi values equal → Pure Qi (Elements)
+    if (keys.every(k => qi(k) === qi('year'))) {
+        items.push({ text: `Pure Qi — All Elements: ${qi('year')}`, tag: 'blue' });
+    }
+    // All four yun values equal → Pure Qi (Periods)
+    if (keys.every(k => yun(k) === yun('year'))) {
+        items.push({ text: `Pure Qi — All Periods: ${yun('year')}`, tag: 'blue' });
+    }
+
+    // ── RULE 4/5: Hetu / Pure Hetu ──────────────────────────────────
+    // All 4 pillars must be covered by HeTu pairs (2 non-overlapping pairs)
+    // Find all valid HeTu pairs among the 4 pillars
+    const allPairs = [];
+    for (let i = 0; i < keys.length; i++) {
+        for (let j = i+1; j < keys.length; j++) {
+            if (isHetuPair(qi(keys[i]), qi(keys[j]))) {
+                allPairs.push([keys[i], keys[j]]);
+            }
+        }
+    }
+
+    // Check if all 4 pillars are covered by exactly 2 non-overlapping HeTu pairs
+    const coveringPairs = [];
+    for (let i = 0; i < allPairs.length; i++) {
+        for (let j = i+1; j < allPairs.length; j++) {
+            const [a1,b1] = allPairs[i];
+            const [a2,b2] = allPairs[j];
+            const covered = new Set([a1,b1,a2,b2]);
+            if (covered.size === 4) {
+                coveringPairs.push([allPairs[i], allPairs[j]]);
+            }
+        }
+    }
+
+    if (coveringPairs.length > 0) {
+        // Deduplicate: collect unique pair-sets
+        const seen = new Set();
+        coveringPairs.forEach(([p1, p2]) => {
+            const sig = [p1,p2].map(p => p.slice().sort().join('&')).sort().join('|');
+            if (seen.has(sig)) return;
+            seen.add(sig);
+
+            const desc1 = `${pName[p1[0]]}&${pName[p1[1]]} (${QI_ELEMENT[qi(p1[0])] || ''})`;
+            const desc2 = `${pName[p2[0]]}&${pName[p2[1]]} (${QI_ELEMENT[qi(p2[0])] || ''})`;
+
+            // Pure Hetu: both pairs share the same element family
+            const sameElement = QI_ELEMENT[qi(p1[0])] === QI_ELEMENT[qi(p2[0])];
+            if (sameElement) {
+                items.push({ text: `Pure Hetu — ${desc1} · ${desc2}`, tag: 'blue' });
+            } else {
+                items.push({ text: `Hetu — ${desc1} · ${desc2}`, tag: 'blue' });
+            }
+        });
+    }
+
+    // ── RULE 2: Add / Pure Add (Day as reference) ───────────────────
+    // All three other pillars must form a valid sum (5, 10, or 15) with Day
+    const dayQi  = qi('day');
+    const others = ['year','month','hour'];
+    const sums   = others.map(k => ({ key: k, sum: dayQi + qi(k) }));
+    const allValid = sums.every(r => [5,10,15].includes(r.sum));
+
+    if (allValid) {
+        const allSameTarget = sums.every(r => r.sum === sums[0].sum);
+        if (allSameTarget) {
+            // Pure Add: all three sum to the same value
+            const target = sums[0].sum;
+            const detail = sums.map(r => `${pName[r.key]}(${qi(r.key)})`).join(' + ');
+            items.push({ text: `Pure Add (${target}) — Day(${dayQi}) with ${detail}`, tag: 'blue' });
+        } else {
+            // Add: all three sum to valid but different targets
+            const detail = sums.map(r => `${pName[r.key]}: ${dayQi}+${qi(r.key)}=${r.sum}`).join(' · ');
+            items.push({ text: `Add — ${detail}`, tag: 'blue' });
+        }
+    }
+
+    return items;
+}
+
 
 // ─────────────────────────────────────────────
 //  BAZI CORE
@@ -326,16 +389,19 @@ function updatePillar(id, stem, branch, xkdg) {
 }
 
 function renderAnalysis(items) {
-    const section = document.getElementById('analysis-section');
+    const section   = document.getElementById('analysis-section');
     const container = document.getElementById('analysis-items');
     if (!items || items.length === 0) {
         section.style.display = 'none';
         return;
     }
     section.style.display = 'block';
-    container.innerHTML = items
-        .map(i => `<div class="analysis-item">⬡ ${i}</div>`)
-        .join('');
+    container.innerHTML = items.map(item => {
+        const content = item.tag === 'blue'
+            ? `<span class="tag-blue">${item.text}</span>`
+            : item.text;
+        return `<div class="analysis-item">⬡ ${content}</div>`;
+    }).join('');
 }
 
 window.onload = setNow;
