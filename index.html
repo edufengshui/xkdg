@@ -61,7 +61,8 @@
         .analysis-section h3 { margin: 0 0 10px; color: #8b5a2b; font-size: 14px; letter-spacing: 1px; }
         .analysis-item { padding: 4px 0; color: #333; border-bottom: 1px solid #f0e0c0; }
         .analysis-item:last-child { border-bottom: none; }
-        .tag-blue { color: #0044cc; font-weight: bold; }
+        .tag-blue  { color: #0044cc; font-weight: bold; }
+        .tag-green { color: #1a7a1a; font-weight: bold; }
         
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
@@ -177,89 +178,119 @@ const QI_ELEMENT = {
 
 function analyzeXkdg(pillars) {
     const items = [];
-    const keys  = ['year','month','day','hour'];
-    const pName = { year:'Year', month:'Month', day:'Day', hour:'Hour' };
-
-    // All four pillars must have data — no partials
+    const keys = ['year','month','day','hour'];
     if (!keys.every(k => pillars[k])) return items;
 
-    const qi  = k => pillars[k].qi;
-    const yun = k => pillars[k].yun;
+    const qi     = k => pillars[k].qi;
+    const yun    = k => pillars[k].yun;
+    const branch = k => pillars[k].branch;
 
-    // ── RULE 3: Pure Qi ─────────────────────────────────────────────
-    // All four qi values equal → Pure Qi (Elements)
-    if (keys.every(k => qi(k) === qi('year'))) {
-        items.push({ text: `Pure Qi — All Elements: ${qi('year')}`, tag: 'blue' });
-    }
-    // All four yun values equal → Pure Qi (Periods)
-    if (keys.every(k => yun(k) === yun('year'))) {
-        items.push({ text: `Pure Qi — All Periods: ${yun('year')}`, tag: 'blue' });
+    // 6 classical branch clashes
+    const CLASHES = [
+        ['子','午'],['丑','未'],['寅','申'],['卯','酉'],['辰','戌'],['巳','亥']
+    ];
+    function isClashing(k1, k2) {
+        const b1 = branch(k1), b2 = branch(k2);
+        return CLASHES.some(([a,b]) => (b1===a && b2===b) || (b1===b && b2===a));
     }
 
-    // ── Helper: find covering HeTu pairs across all 4 pillars for a given value fn ──
-    function checkHetu(valFn, label) {
+    // Returns 'Pure Hetu', 'Hetu', or null — skips clashing pairs
+    function checkHetu(valFn) {
         const pairs = [];
-        for (let i = 0; i < keys.length; i++) {
-            for (let j = i+1; j < keys.length; j++) {
-                if (isHetuPair(valFn(keys[i]), valFn(keys[j]))) {
+        for (let i = 0; i < keys.length; i++)
+            for (let j = i+1; j < keys.length; j++)
+                if (!isClashing(keys[i], keys[j]) && isHetuPair(valFn(keys[i]), valFn(keys[j])))
                     pairs.push([keys[i], keys[j]]);
-                }
-            }
-        }
-        // Need exactly 2 non-overlapping pairs that cover all 4 pillars
-        const seen = new Set();
         for (let i = 0; i < pairs.length; i++) {
             for (let j = i+1; j < pairs.length; j++) {
-                const [a1,b1] = pairs[i];
-                const [a2,b2] = pairs[j];
+                const [a1,b1] = pairs[i], [a2,b2] = pairs[j];
                 if (new Set([a1,b1,a2,b2]).size === 4) {
-                    const sig = [pairs[i],pairs[j]].map(p=>p.slice().sort().join('&')).sort().join('|');
-                    if (seen.has(sig)) continue;
-                    seen.add(sig);
-                    const desc1 = `${pName[a1]}&${pName[b1]} (${QI_ELEMENT[valFn(a1)]||valFn(a1)})`;
-                    const desc2 = `${pName[a2]}&${pName[b2]} (${QI_ELEMENT[valFn(a2)]||valFn(a2)})`;
                     const sameElem = QI_ELEMENT[valFn(a1)] && QI_ELEMENT[valFn(a1)] === QI_ELEMENT[valFn(a2)];
-                    const tag = sameElem ? 'Pure Hetu' : 'Hetu';
-                    items.push({ text: `${tag} [${label}] — ${desc1} · ${desc2}`, tag: 'blue' });
+                    return sameElem ? 'Pure Hetu' : 'Hetu';
                 }
             }
         }
+        return null;
     }
 
-    // ── Helper: Add / Pure Add — all 6 pairs among 4 pillars ────────
-    function checkAdd(valFn, label) {
-        // Collect all 6 pairs
-        const pairs = [];
-        for (let i = 0; i < keys.length; i++) {
+    // Returns 'Pure Adding', 'Adding', or null — skips clashing pairs
+    function checkAdd(valFn) {
+        const valid = [];
+        for (let i = 0; i < keys.length; i++)
             for (let j = i+1; j < keys.length; j++) {
-                pairs.push({ a: keys[i], b: keys[j], sum: valFn(keys[i]) + valFn(keys[j]) });
+                if (isClashing(keys[i], keys[j])) continue;
+                const s = valFn(keys[i]) + valFn(keys[j]);
+                if ([5,10,15].includes(s)) valid.push({ a: keys[i], b: keys[j], sum: s });
+            }
+        for (let i = 0; i < valid.length; i++) {
+            for (let j = i+1; j < valid.length; j++) {
+                if (new Set([valid[i].a, valid[i].b, valid[j].a, valid[j].b]).size === 4)
+                    return valid[i].sum === valid[j].sum ? 'Pure Adding' : 'Adding';
             }
         }
-        // All 6 pairs must produce a valid sum
-        if (!pairs.every(p => [5,10,15].includes(p.sum))) return;
-        const allSame = pairs.every(p => p.sum === pairs[0].sum);
-        if (allSame) {
-            items.push({ text: `Pure Add (${pairs[0].sum}) [${label}] — all pairs sum to ${pairs[0].sum}`, tag: 'blue' });
-        } else {
-            const detail = pairs.map(p => `${pName[p.a]}+${pName[p.b]}=${p.sum}`).join(' · ');
-            items.push({ text: `Add [${label}] — ${detail}`, tag: 'blue' });
-        }
+        return null;
     }
 
-    // ── RULE 4/5: Hetu / Pure Hetu — on Qi AND on Yun ───────────────
-    checkHetu(qi,  'Elements');
-    checkHetu(yun, 'Periods');
+    // ── Pure Qi ──────────────────────────────────────────────────────
+    const qiSame  = keys.every(k => qi(k)  === qi('year'));
+    const yunSame = keys.every(k => yun(k) === yun('year'));
+    if (qiSame && yunSame)   items.push({ text: 'Pure Qi', tag: 'blue' });
+    else if (qiSame)         items.push({ text: 'Pure Qi Elements', tag: 'blue' });
+    else if (yunSame)        items.push({ text: 'Pure Qi Periods',  tag: 'blue' });
 
-    // ── RULE 2: Add / Pure Add — on Qi AND on Yun ───────────────────
-    checkAdd(qi,  'Elements');
-    checkAdd(yun, 'Periods');
+    // ── Hetu / Pure Hetu ─────────────────────────────────────────────
+    const hQi  = checkHetu(qi);
+    const hYun = checkHetu(yun);
+    if (hQi && hYun && hQi === hYun)   items.push({ text: hQi, tag: 'blue' });
+    else {
+        if (hQi)  items.push({ text: `${hQi} Elements`,  tag: 'blue' });
+        if (hYun) items.push({ text: `${hYun} Periods`,  tag: 'blue' });
+    }
+
+    // ── Adding / Pure Adding ──────────────────────────────────────────
+    const aQi  = checkAdd(qi);
+    const aYun = checkAdd(yun);
+    if (aQi && aYun && aQi === aYun)   items.push({ text: aQi, tag: 'blue' });
+    else {
+        if (aQi)  items.push({ text: `${aQi} Elements`,  tag: 'blue' });
+        if (aYun) items.push({ text: `${aYun} Periods`,  tag: 'blue' });
+    }
+
+    // ── Sheng In / Ke In ─────────────────────────────────────────────
+    // Map qi number → element family (no Earth in XKDG)
+    const QI_TO_ELEM = {
+        1:'Water', 6:'Water',
+        2:'Fire',  7:'Fire',
+        3:'Wood',  8:'Wood',
+        4:'Metal', 9:'Metal'
+    };
+    // Sheng (generates): key generates value
+    const SHENG = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
+    // Ke (controls): key controls value
+    const KE    = { Wood:'Earth', Earth:'Water', Water:'Fire', Fire:'Metal', Metal:'Wood' };
+
+    const dayElem = QI_TO_ELEM[qi('day')];
+    if (dayElem) {
+        const guests = ['year','month','hour'];
+        let score = 0;
+        guests.forEach(k => {
+            const gElem = QI_TO_ELEM[qi(k)];
+            if (!gElem) return;
+            const qualifies = gElem === dayElem || SHENG[gElem] === dayElem || KE[gElem] === dayElem;
+            if (qualifies) score += (k === 'hour') ? 2 : 1;
+        });
+
+        let strength = null;
+        if      (score >= 4) strength = 'Strong';
+        else if (score === 3) strength = 'Energetic';
+        else if (score === 2) strength = 'Medium';
+        else if (score === 1) strength = 'Weak';
+
+        if (strength) items.push({ text: strength, tag: 'green' });
+    }
 
     return items;
 }
-
-
-// ─────────────────────────────────────────────
-//  BAZI CORE
 // ─────────────────────────────────────────────
 const ELEMENTS_EN = {
     '甲':'wood','乙':'wood','丙':'fire','丁':'fire','戊':'earth',
@@ -325,11 +356,12 @@ function calculateBazi() {
         hour:  { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  }
     };
 
-    // 4. Get XKDG data for each pillar
+    // 4. Get XKDG data for each pillar (include branch for clash checking)
     const xkdgData = {};
     Object.keys(pillarKeys).forEach(k => {
         const { stem, branch } = pillarKeys[k];
-        xkdgData[k] = getXkdgData(stem, branch);
+        const data = getXkdgData(stem, branch);
+        if (data) xkdgData[k] = { ...data, branch };
     });
 
     // 5. Render pillars
@@ -338,7 +370,7 @@ function calculateBazi() {
     updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day);
     updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour);
 
-    // 6. XKDG Analysis (Day as reference)
+    // 6. XKDG Analysis
     const analysis = analyzeXkdg(xkdgData);
     renderAnalysis(analysis);
 }
@@ -366,9 +398,9 @@ function updatePillar(id, stem, branch, xkdg) {
             `<div class="hex-wrapper">` +
                 `<div class="hex-icon">${icon}</div>` +
                 `<div class="data-column">` +
-                    `<div title="Gua Qi">${xkdg.qi}</div>` +
+                    `<div style="color:#d40000;font-weight:bold;font-size:20px;" title="Gua Qi">${xkdg.qi}</div>` +
                     `<div style="font-size:11px;color:#999;" title="Jia Zi">${stem}${branch}</div>` +
-                    `<div title="Gua Yun">${xkdg.yun}</div>` +
+                    `<div style="color:#0044cc;font-weight:bold;font-size:20px;" title="Gua Yun">${xkdg.yun}</div>` +
                 `</div>` +
             `</div>` +
             `<div class="hex-info">${hexName}</div>`;
@@ -388,17 +420,21 @@ function renderAnalysis(items) {
     }
     section.style.display = 'block';
     container.innerHTML = items.map(item => {
-        const content = item.tag === 'blue'
-            ? `<span class="tag-blue">${item.text}</span>`
-            : item.text;
+        const content = item.tag === 'blue'  ? `<span class="tag-blue">${item.text}</span>`
+                      : item.tag === 'green' ? `<span class="tag-green">${item.text}</span>`
+                      : item.text;
         return `<div class="analysis-item">⬡ ${content}</div>`;
     }).join('');
 }
 
 window.onload = setNow;
 </script>
-<div style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;">
-    ✦ Claude Edition — v2.0 (2026-04-28) ✦
-</div>
+<div id="version-tag" style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;"></div>
+<script>
+    const _now = new Date();
+    const _pad = n => String(n).padStart(2,'0');
+    document.getElementById('version-tag').textContent =
+        `✦ Claude Edition — v2.0 (${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())} ${_pad(_now.getHours())}:${_pad(_now.getMinutes())}) ✦`;
+</script>
 </body>
 </html>
