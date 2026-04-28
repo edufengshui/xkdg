@@ -74,6 +74,16 @@
         .solar-badge { background: #fff1f0; color: #d40000; padding: 4px 10px; border-radius: 15px; border: 1px solid #ffa39e; font-size: 13px; font-weight: bold; }
 
         .hex-missing { font-size: 12px; color: #aaa; margin-top: 20px; }
+
+        /* Person section */
+        .person-section { margin-top: 30px; border: 2px solid #bbb; border-radius: 8px; overflow: hidden; }
+        .person-header { background: #e8f5e9; padding: 12px 15px; font-weight: bold; color: #1b5e20; font-size: 14px; letter-spacing: 1px; border-bottom: 2px solid #bbb; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .person-header label { font-size: 12px; color: #555; }
+        .person-header input { padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+        .btn-person { background: #2e7d32; color: white; cursor: pointer; border: none; font-weight: bold; padding: 7px 18px; border-radius: 4px; font-size: 13px; }
+        .btn-person:hover { background: #1b5e20; }
+        .favourable-bar { background: #2e7d32; color: white; font-weight: bold; font-size: 15px; text-align: center; padding: 8px; margin-top: 10px; border-radius: 4px; letter-spacing: 2px; }
+        .match-detail { font-size: 12px; color: #555; text-align: center; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -110,7 +120,22 @@
         <h3>⬡ XKDG RELATIONS</h3>
         <div id="analysis-items"></div>
     </div>
-</div>
+
+    <!-- Person Birth Date Section -->
+    <div class="person-section">
+        <div class="person-header">
+            ☯ PERSON
+            <div><label>BIRTH DATE:</label> <input type="date" id="person-date"></div>
+            <button class="btn-person" onclick="calculatePerson()">CALCULATE</button>
+        </div>
+        <div class="chart" id="person-chart" style="display:none;">
+            <div class="pillar" id="pp-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+            <div class="pillar" id="pp-day"><div class="header">DAY</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+            <div class="pillar" id="pp-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+            <div class="pillar" id="pp-year"><div class="header" style="background:#e8f5e9;color:#1b5e20;">YEAR ★</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
+        </div>
+        <div id="favourable-result" style="padding:10px;display:none;"></div>
+    </div>
 
 <script>
 // ─────────────────────────────────────────────
@@ -541,6 +566,26 @@ function calculateBazi() {
     const { items: analysis, sameFamily } = analyzeXkdg(xkdgData, seasonStrong, seasonGrowing);
     renderAnalysis(analysis);
 
+    // Store for person favourable check
+    _currentDayXkdg     = xkdgData.day;
+    _currentDayAnalysis = { items: analysis, sameFamily };
+
+    // Re-run favourable check if person date already entered
+    if (document.getElementById('person-date').value) {
+        checkFavourable(
+            (() => { const d = document.getElementById('person-date').value;
+                     const s = Solar.fromDate(new Date(d+'T12:00')).getLunar().getEightChar();
+                     const data = getXkdgData(s.getYearGan(), s.getYearZhi());
+                     return data ? { ...data, stem: s.getYearGan(), branch: s.getYearZhi() } : null; })(),
+            (() => { const d = document.getElementById('person-date').value;
+                     const s = Solar.fromDate(new Date(d+'T12:00')).getLunar().getEightChar();
+                     return s.getYearGan(); })(),
+            (() => { const d = document.getElementById('person-date').value;
+                     const s = Solar.fromDate(new Date(d+'T12:00')).getLunar().getEightChar();
+                     return s.getYearZhi(); })()
+        );
+    }
+
     // Highlight all hexagram boxes bright yellow if same family
     ['p-hour','p-day','p-month','p-year'].forEach(id => {
         const hexSection = document.querySelector(`#${id} .hex-section`);
@@ -612,6 +657,90 @@ function renderAnalysis(items) {
                       : item.text;
         return `<div class="analysis-item">⬡ ${content}</div>`;
     }).join('');
+}
+
+// ─────────────────────────────────────────────
+//  PERSON BIRTH CHART
+// ─────────────────────────────────────────────
+
+// Store current date's day xkdg data and analysis for favourable check
+let _currentDayXkdg = null;
+let _currentDayAnalysis = null;
+
+function calculatePerson() {
+    const dVal = document.getElementById('person-date').value;
+    if (!dVal) return;
+
+    const solar     = Solar.fromDate(new Date(dVal + 'T12:00'));
+    const lunar     = solar.getLunar();
+    const eightChar = lunar.getEightChar();
+
+    const pillarKeys = {
+        year:  { stem: eightChar.getYearGan(),  branch: eightChar.getYearZhi()  },
+        month: { stem: eightChar.getMonthGan(), branch: eightChar.getMonthZhi() },
+        day:   { stem: eightChar.getDayGan(),   branch: eightChar.getDayZhi()   },
+        hour:  { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  }
+    };
+
+    const xkdgData = {};
+    Object.keys(pillarKeys).forEach(k => {
+        const { stem, branch } = pillarKeys[k];
+        const data = getXkdgData(stem, branch);
+        if (data) xkdgData[k] = { ...data, branch, stem };
+    });
+
+    document.getElementById('person-chart').style.display = 'grid';
+
+    updatePillar('pp-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
+    updatePillar('pp-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
+    updatePillar('pp-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
+    updatePillar('pp-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
+
+    // Check favourable: compare person's YEAR hexagram with current date's DAY hexagram
+    checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch);
+}
+
+function checkFavourable(personYear, pStem, pBranch) {
+    const result = document.getElementById('favourable-result');
+    result.style.display = 'none';
+
+    if (!personYear || !_currentDayXkdg || !_currentDayAnalysis) return;
+
+    // Date must already be positive (has any analysis items)
+    if (_currentDayAnalysis.items.length === 0) return;
+
+    const dayXkdg   = _currentDayXkdg;
+    const dayStem   = dayXkdg.stem;
+    const dayBranch = dayXkdg.branch;
+
+    const matches = [];
+
+    // 1. Pure Qi — all qi equal (person year qi == day qi)
+    if (personYear.qi === dayXkdg.qi) matches.push('Pure Qi Elements');
+    if (personYear.yun === dayXkdg.yun) matches.push('Pure Qi Periods');
+
+    // 2. Hetu
+    if (isHetuPair(personYear.qi, dayXkdg.qi)) matches.push('Hetu Elements');
+    if (isHetuPair(personYear.yun, dayXkdg.yun)) matches.push('Hetu Periods');
+
+    // 3. Adding (5-10-15)
+    const sumQi  = personYear.qi  + dayXkdg.qi;
+    const sumYun = personYear.yun + dayXkdg.yun;
+    if ([5,10,15].includes(sumQi))  matches.push(`Adding Elements (${sumQi})`);
+    if ([5,10,15].includes(sumYun)) matches.push(`Adding Periods (${sumYun})`);
+
+    // 4. Blood Link Family — person year and day share a family
+    const personFamilies = getJiaZiFamilies(pStem, pBranch);
+    const dayFamilies    = getJiaZiFamilies(dayStem, dayBranch);
+    const sharedFamilies = personFamilies.filter(f => dayFamilies.includes(f));
+    if (sharedFamilies.length > 0) matches.push(`Family: ${sharedFamilies.join(', ')}`);
+
+    if (matches.length === 0) return;
+
+    result.style.display = 'block';
+    result.innerHTML =
+        `<div class="favourable-bar">✦ FAVOURABLE ✦</div>` +
+        `<div class="match-detail">${matches.join(' · ')}</div>`;
 }
 
 window.onload = setNow;
