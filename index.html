@@ -90,6 +90,13 @@
         .scan-tags { font-size: 12px; color: #555; flex: 1; }
         .scan-empty { padding: 15px; text-align: center; color: #888; font-style: italic; }
 
+        /* Filter panel */
+        .filter-panel { padding: 8px 10px; background: #f5f5f5; border-bottom: 1px solid #ddd; display:none; flex-wrap:wrap; gap:6px; }
+        .filter-chip { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:12px; border:1px solid #bbb; font-size:11px; font-weight:bold; cursor:pointer; user-select:none; background:#fff; }
+        .filter-chip.active { background:#1565c0; color:#fff; border-color:#1565c0; }
+        .filter-chip.active.green { background:#1a7a1a; border-color:#1a7a1a; }
+        .filter-chip.active.gold  { background:#b8860b; border-color:#b8860b; }
+
         /* Calendar view */
         .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
         .cal-header-cell { background: #795548; color: white; text-align: center; padding: 5px 2px; font-size: 12px; font-weight: bold; border-radius: 3px; }
@@ -114,10 +121,25 @@
         .cell-yun { color: #0044cc; font-weight: bold; font-size: 12px; }
         .cell-positive  { background: #e3f2fd; }
         .cell-favourable { background: #fce4ec; }
-        .tag-blue  { color: #0044cc; font-weight: bold; }
+        .tag-blue  { color: #1a7a1a; font-weight: bold; }
         .tag-green { color: #1a7a1a; font-weight: bold; }
         .tag-gold  { color: #b8860b; font-weight: bold; }
         .tag-family{ color: #b8860b; font-weight: bold; font-size: 15px; }
+        .tag-noble { color: #1a7a1a; font-weight: bold; border: 1px solid #1a7a1a; border-radius: 4px; padding: 1px 6px; }
+        .tag-noble-both { color: #1a7a1a; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; }
+        .tag-lu { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e1f5fe; }
+        .tag-lu-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e1f5fe; }
+        .tag-hv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e3f2fd; }
+        .tag-hv-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e3f2fd; }
+        .tag-bv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e8eaf6; }
+        .tag-bv-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e8eaf6; }
+        .tag-mv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #f3e5f5; }
+        .tag-mv-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #f3e5f5; }
+        .tag-spirit-good { color: #0044cc; font-weight: bold; }
+        .tag-spirit-bad  { color: #d40000; font-weight: bold; }
+        .tag-clash-year         { color: #d40000; font-weight: bold; font-size: 14px; }
+        .tag-clash-month-stem   { color: #d40000; font-weight: bold; }
+        .tag-clash-month-branch { color: #d40000; font-weight: bold; }
         
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
@@ -179,8 +201,12 @@
             <div id="analysis-items"></div>
         </div>
         <div class="favourable-col" id="favourable-col" style="display:none;">
-            <div class="favourable-bar">✦ FAVOURABLE ✦</div>
+            <div class="favourable-bar">✦ A ✦</div>
             <div class="match-detail" id="favourable-detail"></div>
+        </div>
+        <div class="favourable-col" id="favourable-col-b" style="display:none;">
+            <div class="favourable-bar" style="background:#7b1fa2;">✦ B ✦</div>
+            <div class="match-detail" id="favourable-detail-b"></div>
         </div>
     </div>
 
@@ -229,6 +255,7 @@
             <button class="btn-scan" id="mode-dates" onclick="setMode('dates')" style="background:#1565c0;">📅 BEST</button>
             <button class="btn-scan" id="mode-month" onclick="setMode('month')" style="background:#555;">☰ LIST</button>
             <button class="btn-scan" id="mode-cal"   onclick="setMode('cal')"   style="background:#555;">🗓 CAL</button>
+            <button class="btn-scan" id="btn-filter" onclick="toggleFilter()" style="background:#555;">⚙ FILTER</button>
             <div><label>FROM:</label> <input type="date" id="scan-start"> <button class="btn-scan" onclick="setScanNow()" style="padding:6px 10px;font-size:12px;">NOW</button></div>
             <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
             <button class="btn-scan" onclick="runAll()">SCAN</button>
@@ -236,7 +263,18 @@
             <button class="btn-scan" id="sort-date"  onclick="sortResults('date')"  style="background:#0d47a1;display:none;">📅 BY DATE</button>
             <button class="btn-scan" id="sort-both"  onclick="sortResults('both')"  style="background:#7b1fa2;display:none;">👫 BOTH</button>
         </div>
-        <div class="scan-results" id="scan-results" style="display:none;"></div>
+        <div class="filter-panel" id="filter-panel">
+            <span style="font-size:11px;color:#555;font-weight:bold;width:100%;">Show only:</span>
+            <span class="filter-chip active green" data-filter="adding-el"    onclick="toggleChip(this)">Adding Elements</span>
+            <span class="filter-chip active green" data-filter="adding-per"   onclick="toggleChip(this)">Adding Periods</span>
+            <span class="filter-chip active green" data-filter="pure-adding"  onclick="toggleChip(this)">Pure Adding</span>
+            <span class="filter-chip active green" data-filter="hetu-el"      onclick="toggleChip(this)">Hetu Elements</span>
+            <span class="filter-chip active green" data-filter="hetu-per"     onclick="toggleChip(this)">Hetu Periods</span>
+            <span class="filter-chip active green" data-filter="pure-hetu"    onclick="toggleChip(this)">Pure Hetu</span>
+            <span class="filter-chip active green" data-filter="pure-qi-el"   onclick="toggleChip(this)">Pure Qi Elements</span>
+            <span class="filter-chip active green" data-filter="pure-qi-per"  onclick="toggleChip(this)">Pure Qi Periods</span>
+            <span class="filter-chip active gold"  data-filter="family"       onclick="toggleChip(this)">Family Blood Link</span>
+        </div>
         <div id="month-view" style="display:none;overflow-x:auto;"></div>
         <div id="cal-view" style="display:none;padding:10px;"></div>
     </div>
@@ -414,6 +452,159 @@ function getXkdgData(stem, branch) {
 }
 
 // HeTu pair check: 1↔6, 2↔7, 3↔8, 4↔9
+// ── 12 Spirits (十二神) ──────────────────────────────────────
+const SPIRIT_NAMES = [
+    { en: 'Cerulean Dragon', zh: '青龙', auspicious: true  },
+    { en: 'Bright Hall',     zh: '明堂', auspicious: true  },
+    { en: 'Heaven Penalty',  zh: '天刑', auspicious: false },
+    { en: 'Red Bird',        zh: '朱雀', auspicious: false },
+    { en: 'Golden Box',      zh: '金柜', auspicious: true  },
+    { en: 'Heaven Virtue',   zh: '天德', auspicious: true  },
+    { en: 'White Tiger',     zh: '白虎', auspicious: false },
+    { en: 'Jade Hall',       zh: '玉堂', auspicious: true  },
+    { en: 'Heaven Prison',   zh: '天牢', auspicious: false },
+    { en: 'Black Tortoise',  zh: '玄武', auspicious: false },
+    { en: 'Fate Master',     zh: '司命', auspicious: true  },
+    { en: 'Gou Chen',        zh: '勾陈', auspicious: false }
+];
+
+// Day branch → starting branch index for Cerulean Dragon
+const DRAGON_START = {
+    '子':'申', '午':'申',
+    '丑':'戌', '未':'戌',
+    '寅':'子', '申':'子',
+    '卯':'寅', '酉':'寅',
+    '辰':'辰', '戌':'辰',
+    '巳':'午', '亥':'午'
+};
+
+const BRANCH_ORDER = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+
+function getSpiritForHour(dayBranch, hourBranch) {
+    const startBranch = DRAGON_START[dayBranch];
+    if (!startBranch) return null;
+    const startIdx = BRANCH_ORDER.indexOf(startBranch);
+    const hourIdx  = BRANCH_ORDER.indexOf(hourBranch);
+    if (startIdx === -1 || hourIdx === -1) return null;
+    const spiritIdx = ((hourIdx - startIdx) + 12) % 12;
+    return SPIRIT_NAMES[spiritIdx];
+}
+// ── Clashes ──────────────────────────────────────────────────
+const BRANCH_CLASHES = {
+    '子':'午','午':'子','丑':'未','未':'丑',
+    '寅':'申','申':'寅','卯':'酉','酉':'卯',
+    '辰':'戌','戌':'辰','巳':'亥','亥':'巳'
+};
+const STEM_CLASHES = {
+    '甲':'庚','庚':'甲','乙':'辛','辛':'乙',
+    '丙':'壬','壬':'丙','丁':'癸','癸':'丁'
+};
+
+function getClashType(dayGan, dayZhi, yearZhi, monthGan, monthZhi) {
+    if (BRANCH_CLASHES[dayZhi] === yearZhi)  return 'clash-year';
+    if (STEM_CLASHES[dayGan]   === monthGan) return 'clash-month-stem';
+    if (BRANCH_CLASHES[dayZhi] === monthZhi) return 'clash-month-branch';
+    return null;
+}
+
+const NOBLE_BRANCHES = {
+    '甲': ['丑','未'], '乙': ['子','申'],
+    '丙': ['亥','酉'], '丁': ['亥','酉'],
+    '戊': ['丑','未'], '己': ['子','申'],
+    '庚': ['丑','未'], '辛': ['寅','午'],
+    '壬': ['卯','巳'], '癸': ['卯','巳']
+};
+
+// Lu (禄) — one branch per stem
+const LU_BRANCH = {
+    '甲':'寅', '乙':'卯', '丙':'巳', '丁':'午',
+    '戊':'巳', '己':'午', '庚':'申', '辛':'酉',
+    '壬':'亥', '癸':'子'
+};
+
+// ── Heaven Virtue (天德) ─────────────────────────────────────
+const HEAVEN_VIRTUE = {
+    '寅':'未', '卯':'申', '辰':'亥', '巳':'戌',
+    '午':'亥', '未':'寅', '申':'丑', '酉':'寅',
+    '戌':'巳', '亥':'辰', '子':'巳', '丑':'申'
+};
+
+// ── Branch Virtue (支德) ─────────────────────────────────────
+const BRANCH_VIRTUE = {
+    '子':'巳', '丑':'午', '寅':'未', '卯':'申',
+    '辰':'酉', '巳':'戌', '午':'亥', '未':'子',
+    '申':'丑', '酉':'寅', '戌':'卯', '亥':'辰'
+};
+
+// ── Month Virtue (月德) ──────────────────────────────────────
+const MONTH_VIRTUE = {
+    '亥':{ stem:'甲', branch:'寅' }, '卯':{ stem:'甲', branch:'寅' }, '未':{ stem:'甲', branch:'寅' },
+    '寅':{ stem:'丙', branch:'巳' }, '午':{ stem:'丙', branch:'巳' }, '戌':{ stem:'丙', branch:'巳' },
+    '巳':{ stem:'庚', branch:'申' }, '酉':{ stem:'庚', branch:'申' }, '丑':{ stem:'庚', branch:'申' },
+    '申':{ stem:'壬', branch:'亥' }, '子':{ stem:'壬', branch:'亥' }, '辰':{ stem:'壬', branch:'亥' }
+};
+
+function getPersonMonthBranch(birthDate, birthTime, offsetMin) {
+    if (!birthDate) return null;
+    const base  = new Date(`${birthDate}T${birthTime}`);
+    const solar = new Date(base.getTime() + offsetMin * 60000);
+    return Solar.fromDate(solar).getLunar().getEightChar().getMonthZhi();
+}
+
+// Returns: 'date', 'person', 'both', or null
+function getLuType(branch, dateDayStem, personDayStem) {
+    const isDate   = LU_BRANCH[dateDayStem]   === branch;
+    const isPerson = personDayStem ? LU_BRANCH[personDayStem] === branch : false;
+    if (isDate && isPerson) return 'both';
+    if (isDate)   return 'date';
+    if (isPerson) return 'person';
+    return null;
+}
+
+// Returns: 'date' (date noble), 'person' (person noble), 'both', or null
+function getNobleType(hourBranch, dateDayStem, personDayStem) {
+    const dateNobles   = NOBLE_BRANCHES[dateDayStem]   || [];
+    const personNobles = personDayStem ? (NOBLE_BRANCHES[personDayStem] || []) : [];
+    const isDate   = dateNobles.includes(hourBranch);
+    const isPerson = personNobles.includes(hourBranch);
+    if (isDate && isPerson) return 'both';
+    if (isDate)   return 'date';
+    if (isPerson) return 'person';
+    return null;
+}
+
+// Get person A's day stem from their birth date
+function getPersonDayStem() {
+    const dVal = document.getElementById('person-date').value;
+    const tVal = document.getElementById('person-time').value || '12:00';
+    if (!dVal) return null;
+    const lon = parseFloat(document.getElementById('longitude').value);
+    const utc = parseFloat(document.getElementById('utc-offset').value);
+    const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+    const base   = new Date(`${dVal}T${tVal}`);
+    const solar  = new Date(base.getTime() + offsetMin * 60000);
+    const ec     = Solar.fromDate(solar).getLunar().getEightChar();
+    let dGan = ec.getDayGan();
+    if (solar.getHours() === 23) {
+        const yest = Solar.fromDate(new Date(solar.getTime() - 3600000));
+        dGan = yest.getLunar().getEightChar().getDayGan();
+    }
+    return dGan;
+}
+
+function getPersonDayStemFromBirth(birthDate, birthTime, offsetMin) {
+    if (!birthDate) return null;
+    const base  = new Date(`${birthDate}T${birthTime}`);
+    const solar = new Date(base.getTime() + offsetMin * 60000);
+    const ec    = Solar.fromDate(solar).getLunar().getEightChar();
+    let dGan = ec.getDayGan();
+    if (solar.getHours() === 23) {
+        const yest = Solar.fromDate(new Date(solar.getTime() - 3600000));
+        dGan = yest.getLunar().getEightChar().getDayGan();
+    }
+    return dGan;
+}
+
 function isHetuPair(a, b) {
     const sorted = [a, b].sort((x,y) => x-y).join('-');
     return ['1-6','2-7','3-8','4-9'].includes(sorted);
@@ -595,10 +786,14 @@ function toggleDST() {
 }
 
 function setNow() {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-    calculateBazi();
+    try {
+        const now = new Date();
+        document.getElementById('date').value = now.toISOString().split('T')[0];
+        document.getElementById('time').value = now.toTimeString().slice(0,5);
+        calculateBazi();
+    } catch(e) {
+        console.error('setNow error:', e.message, e.stack);
+    }
 }
 
 function getGPS() {
@@ -666,10 +861,17 @@ function calculateBazi() {
     const dayLabel   = solarDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
     const hourLabel  = solarDate.toTimeString().slice(0,5);
 
-    document.querySelector('#p-year .header').innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
-    document.querySelector('#p-month .header').innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
-    document.querySelector('#p-day .header').innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
-    document.querySelector('#p-hour .header').innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
+    const hYear  = document.querySelector('#p-year .header');
+    const hMonth = document.querySelector('#p-month .header');
+    const hDay   = document.querySelector('#p-day .header');
+    const hHour  = document.querySelector('#p-hour .header');
+    if (hYear)  hYear.innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
+    if (hMonth) hMonth.innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
+    if (hDay)   hDay.innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
+    if (hHour)  hHour.innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
+
+    // Store day stem for Noble calculations
+    window._currentDayGan = dayGan;
 
     updatePillar('p-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
     updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
@@ -679,27 +881,117 @@ function calculateBazi() {
     const { strong: seasonStrong, growing: seasonGrowing } = getJieqiSeason(solarDate);
 
     const { items: analysis, sameFamily } = analyzeXkdg(xkdgData, seasonStrong, seasonGrowing);
+
+    // Hour branch by slot for reliable Noble/Lu (not library-dependent)
+    const HOUR_BRANCHES_MAP = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+    const hourZhiDirect = pillarKeys.hour.branch; // already correct from eightChar
+
+    // Noble check:
+    const personDayStem = getPersonDayStem();
+    const dateNobles   = NOBLE_BRANCHES[dayGan] || [];
+    const personNobles = personDayStem ? (NOBLE_BRANCHES[personDayStem] || []) : [];
+    const isDateNoble   = dateNobles.includes(pillarKeys.hour.branch);
+    const isPersonNoble = personNobles.includes(dayZhi);
+
+    if (isDateNoble || isPersonNoble) {
+        let label, tag;
+        if (isDateNoble && isPersonNoble) { label = 'Noble ★ (Date + Person)'; tag = 'noble-both'; }
+        else if (isDateNoble)              { label = 'Noble (Date)';   tag = 'noble'; }
+        else                               { label = 'Noble (Person)'; tag = 'noble'; }
+        analysis.push({ text: label, tag });
+    }
+
+    // Lu check: date lu = hour branch, person lu = day branch
+    const isDateLu   = LU_BRANCH[dayGan]         === pillarKeys.hour.branch;
+    const isPersonLu = personDayStem ? LU_BRANCH[personDayStem] === dayZhi : false;
+    if (isDateLu || isPersonLu) {
+        let label, tag;
+        if (isDateLu && isPersonLu) { label = 'Lu ★ (Date + Person)'; tag = 'lu-both'; }
+        else if (isDateLu)           { label = 'Lu (Date)';   tag = 'lu'; }
+        else                         { label = 'Lu (Person)'; tag = 'lu'; }
+        analysis.push({ text: label, tag });
+    }
+
+    // Heaven Virtue check
+    const hvBranchDate   = HEAVEN_VIRTUE[pillarKeys.month.branch] || null;
+    const personMthBranch = getPersonMonthBranch(
+        document.getElementById('person-date').value,
+        document.getElementById('person-time').value || '12:00',
+        (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0)
+    );
+    const hvBranchPerson = personMthBranch ? (HEAVEN_VIRTUE[personMthBranch] || null) : null;
+    const isDateHV   = hvBranchDate   === pillarKeys.hour.branch;
+    const isPersonHV = hvBranchPerson === dayZhi;
+    if (isDateHV || isPersonHV) {
+        let label, tag;
+        if (isDateHV && isPersonHV) { label = 'Heaven Virtue ★ (Date + Person)'; tag = 'hv-both'; }
+        else if (isDateHV)           { label = 'Heaven Virtue (Date)';   tag = 'hv'; }
+        else                         { label = 'Heaven Virtue (Person)'; tag = 'hv'; }
+        analysis.push({ text: label, tag });
+    }
+    const currentSpirit = getSpiritForHour(dayZhi, pillarKeys.hour.branch);
+    if (currentSpirit) {
+        analysis.push({ text: `${currentSpirit.en} ${currentSpirit.zh}`, tag: currentSpirit.auspicious ? 'spirit-good' : 'spirit-bad' });
+    }
+
+    // Clash detection
+    const clashType = getClashType(dayGan, dayZhi, pillarKeys.year.branch, pillarKeys.month.stem, pillarKeys.month.branch);
+    if (clashType === 'clash-year') {
+        analysis.push({ text: 'Day-Year Branch Clash', tag: 'clash-year' });
+    } else if (clashType === 'clash-month-stem') {
+        analysis.push({ text: 'Day-Month Stem Clash (−2)', tag: 'clash-month-stem' });
+    } else if (clashType === 'clash-month-branch') {
+        analysis.push({ text: 'Day-Month Branch Clash (−2)', tag: 'clash-month-branch' });
+    }
+    const mvDate = MONTH_VIRTUE[pillarKeys.month.branch] || null;
+    const personMthBranchMV2 = getPersonMonthBranch(
+        document.getElementById('person-date').value,
+        document.getElementById('person-time').value || '12:00',
+        (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0)
+    );
+    const mvPerson = personMthBranchMV2 ? (MONTH_VIRTUE[personMthBranchMV2] || null) : null;
+    const isDateMVStem   = mvDate   ? mvDate.stem   === pillarKeys.hour.stem   : false;
+    const isDateMVBranch = mvDate   ? mvDate.branch === dayZhi                  : false;
+    const isPersonMVStem   = mvPerson ? mvPerson.stem   === pillarKeys.hour.stem : false;
+    const isPersonMVBranch = mvPerson ? mvPerson.branch === dayZhi               : false;
+    const isDateMV   = isDateMVStem   || isDateMVBranch;
+    const isPersonMV = isPersonMVStem || isPersonMVBranch;
+    if (isDateMV || isPersonMV) {
+        let label, tag;
+        if (isDateMV && isPersonMV) { label = 'Month Virtue ★ (Date + Person)'; tag = 'mv-both'; }
+        else if (isDateMV)           { label = 'Month Virtue (Date)';   tag = 'mv'; }
+        else                         { label = 'Month Virtue (Person)'; tag = 'mv'; }
+        analysis.push({ text: label, tag });
+    }
+    const bvDateBranch = BRANCH_VIRTUE[dayZhi] || null;
+    const isDateBV = bvDateBranch === pillarKeys.hour.branch;
+    const personDayZhiMain = (() => {
+        const dv = document.getElementById('person-date').value;
+        const tv = document.getElementById('person-time').value || '12:00';
+        if (!dv) return null;
+        const off = (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0);
+        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + off * 60000));
+        return s.getLunar().getEightChar().getDayZhi();
+    })();
+    const isPersonBV = personDayZhiMain ? BRANCH_VIRTUE[personDayZhiMain] === dayZhi : false;
+    if (isDateBV || isPersonBV) {
+        let label, tag;
+        if (isDateBV && isPersonBV) { label = 'Branch Virtue ★ (Date + Person)'; tag = 'bv-both'; }
+        else if (isDateBV)           { label = 'Branch Virtue (Date)';   tag = 'bv'; }
+        else                         { label = 'Branch Virtue (Person)'; tag = 'bv'; }
+        analysis.push({ text: label, tag });
+    }
+
     renderAnalysis(analysis);
 
-    // Store for person favourable check
     _currentDayXkdg     = xkdgData.day;
     _currentDayAnalysis = { items: analysis, sameFamily };
 
-    // Re-run favourable check if person date already entered
-    if (document.getElementById('person-date').value) {
-        checkFavourable(
-            (() => { const d = document.getElementById('person-date').value;
-                     const s = Solar.fromDate(new Date(d+'T12:00')).getLunar().getEightChar();
-                     const data = getXkdgData(s.getYearGan(), s.getYearZhi());
-                     return data ? { ...data, stem: s.getYearGan(), branch: s.getYearZhi() } : null; })(),
-            (() => { const d = document.getElementById('person-date').value;
-                     const s = Solar.fromDate(new Date(d+'T12:00')).getLunar().getEightChar();
-                     return s.getYearGan(); })(),
-            (() => { const d = document.getElementById('person-date').value;
-                     const s = Solar.fromDate(new Date(d+'T12:00')).getLunar().getEightChar();
-                     return s.getYearZhi(); })()
-        );
-    }
+    // Re-run favourable check for both persons if data entered
+    if (_personAYear) checkFavourable(_personAYear, _personAStem, _personABranch, 'A');
+    else { const el = document.getElementById('favourable-col'); if(el) el.style.display = 'none'; }
+    if (_personBYear) checkFavourable(_personBYear, _personBStem, _personBBranch, 'B');
+    else { const el = document.getElementById('favourable-col-b'); if(el) el.style.display = 'none'; }
 
     // Highlight all hexagram boxes bright yellow if same family
     ['p-hour','p-day','p-month','p-year'].forEach(id => {
@@ -762,10 +1054,25 @@ function renderAnalysis(items) {
     }
     section.style.display = 'flex';
     container.innerHTML = items.map(item => {
-        const content = item.tag === 'blue'   ? `<span class="tag-blue">${item.text}</span>`
-                      : item.tag === 'green'  ? `<span class="tag-green">${item.text}</span>`
-                      : item.tag === 'gold'   ? `<span class="tag-gold">${item.text}</span>`
-                      : item.tag === 'family' ? `<span class="tag-family">⬡ ${item.text}</span>`
+        const content = item.tag === 'blue'         ? `<span class="tag-blue">${item.text}</span>`
+                      : item.tag === 'green'        ? `<span class="tag-green">${item.text}</span>`
+                      : item.tag === 'gold'         ? `<span class="tag-gold">${item.text}</span>`
+                      : item.tag === 'family'       ? `<span class="tag-family">⬡ ${item.text}</span>`
+                      : item.tag === 'noble-both'   ? `<span class="tag-noble-both">☯ ${item.text}</span>`
+                      : item.tag === 'noble'        ? `<span class="tag-noble">☯ ${item.text}</span>`
+                      : item.tag === 'lu-both'      ? `<span class="tag-lu-both">禄 ${item.text}</span>`
+                      : item.tag === 'lu'           ? `<span class="tag-lu">禄 ${item.text}</span>`
+                      : item.tag === 'hv-both'      ? `<span class="tag-hv-both">天德 ${item.text}</span>`
+                      : item.tag === 'hv'           ? `<span class="tag-hv">天德 ${item.text}</span>`
+                      : item.tag === 'bv-both'      ? `<span class="tag-bv-both">支德 ${item.text}</span>`
+                      : item.tag === 'bv'           ? `<span class="tag-bv">支德 ${item.text}</span>`
+                      : item.tag === 'mv-both'      ? `<span class="tag-mv-both">月德 ${item.text}</span>`
+                      : item.tag === 'mv'           ? `<span class="tag-mv">月德 ${item.text}</span>`
+                      : item.tag === 'spirit-good'       ? `<span class="tag-spirit-good">★ ${item.text}</span>`
+                      : item.tag === 'spirit-bad'        ? `<span class="tag-spirit-bad">✕ ${item.text}</span>`
+                      : item.tag === 'clash-year'        ? `<span class="tag-clash-year">⚡ ${item.text}</span>`
+                      : item.tag === 'clash-month-stem'  ? `<span class="tag-clash-month-stem">⚡ ${item.text}</span>`
+                      : item.tag === 'clash-month-branch'? `<span class="tag-clash-month-branch">⚡ ${item.text}</span>`
                       : item.text;
         return `<div class="analysis-item">⬡ ${content}</div>`;
     }).join('');
@@ -893,17 +1200,20 @@ function calculatePerson(person) {
         _personBYear   = xkdgData.year;
         _personBStem   = pillarKeys.year.stem;
         _personBBranch = pillarKeys.year.branch;
+        checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'B');
     } else {
         _personAYear   = xkdgData.year;
         _personAStem   = pillarKeys.year.stem;
         _personABranch = pillarKeys.year.branch;
-        checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch);
+        checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'A');
     }
 }
 
-function checkFavourable(personYear, pStem, pBranch) {
-    const col    = document.getElementById('favourable-col');
-    const detail = document.getElementById('favourable-detail');
+function checkFavourable(personYear, pStem, pBranch, person) {
+    const colId    = person === 'B' ? 'favourable-col-b' : 'favourable-col';
+    const detailId = person === 'B' ? 'favourable-detail-b' : 'favourable-detail';
+    const col    = document.getElementById(colId);
+    const detail = document.getElementById(detailId);
     col.style.display = 'none';
     if (!personYear || !_currentDayXkdg || !_currentDayAnalysis) return;
     if (_currentDayAnalysis.items.length === 0) return;
@@ -955,10 +1265,11 @@ function renderScanResults(results, mode) {
         const rankClass = s >= maxScore ? 'rank-1' : s >= maxScore * 0.7 ? 'rank-2' : 'rank-3';
         const bTag = r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;">B✓</span>` : '';
         const aTag = r.scoreA > 0 ? ` <span style="color:#1b5e20;font-weight:bold;">A✓</span>` : '';
+        const spiritStr = r.spiritLabel ? `<span style="font-size:10px;font-weight:bold;color:${r.spiritAuspicious ? '#0044cc' : '#d40000'};">${r.spiritLabel}</span>` : '';
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score">${s}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
-            <div class="scan-tags">${[...r.matchLabels, ...r.qualLabels].join(' · ')}</div>
+            <div class="scan-tags">${[...r.matchLabels, ...r.qualLabels].join(' · ')} ${spiritStr}</div>
         </div>`;
     }).join('');
 }
@@ -1050,12 +1361,18 @@ let _currentMode = 'dates';
 
 function setMode(mode) {
     _currentMode = mode;
-    document.getElementById('mode-dates').style.background = mode === 'dates' ? '#1565c0' : '#555';
-    document.getElementById('mode-month').style.background = mode === 'month' ? '#1565c0' : '#555';
-    document.getElementById('mode-cal').style.background   = mode === 'cal'   ? '#1565c0' : '#555';
-    document.getElementById('scan-results').style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
-    document.getElementById('month-view').style.display   = mode === 'month' ? 'block' : 'none';
-    document.getElementById('cal-view').style.display     = mode === 'cal'   ? 'block' : 'none';
+    const mDates = document.getElementById('mode-dates');
+    const mMonth = document.getElementById('mode-month');
+    const mCal   = document.getElementById('mode-cal');
+    if (mDates) mDates.style.background = mode === 'dates' ? '#1565c0' : '#555';
+    if (mMonth) mMonth.style.background = mode === 'month' ? '#1565c0' : '#555';
+    if (mCal)   mCal.style.background   = mode === 'cal'   ? '#1565c0' : '#555';
+    const sr = document.getElementById('scan-results');
+    const mv = document.getElementById('month-view');
+    const cv = document.getElementById('cal-view');
+    if (sr) sr.style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
+    if (mv) mv.style.display = mode === 'month' ? 'block' : 'none';
+    if (cv) cv.style.display = mode === 'cal'   ? 'block' : 'none';
     ['sort-score','sort-date','sort-both'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = (mode === 'dates' && _scanResults.length) ? 'inline-block' : 'none';
@@ -1090,10 +1407,27 @@ function buildCalView() {
         if (pYData) personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
     }
 
-    const today    = new Date().toISOString().split('T')[0];
+    const personDayStemCAL = getPersonDayStemFromBirth(
+        document.getElementById('person-date').value,
+        document.getElementById('person-time').value || '12:00',
+        offsetMin
+    );
+    const personMthBranchCAL = getPersonMonthBranch(
+        document.getElementById('person-date').value,
+        document.getElementById('person-time').value || '12:00',
+        offsetMin
+    );
+    const personDayZhiCAL = (() => {
+        const dv = document.getElementById('person-date').value;
+        const tv = document.getElementById('person-time').value || '12:00';
+        if (!dv) return null;
+        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + offsetMin * 60000));
+        return s.getLunar().getEightChar().getDayZhi();
+    })();
     const start    = new Date(startDate + 'T00:00:00');
     const endDate  = new Date(start.getTime() + days * 86400000);
     const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endDate.getFullYear() + 1, offsetMin);
+    const today    = new Date().toISOString().split('T')[0];
     const DOW      = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
     // Group days by month
@@ -1168,7 +1502,7 @@ function buildCalView() {
                 const { strong: sS, growing: sG } = getJieqiSeason(sd);
                 const { items } = analyzeXkdg(pillars, sS, sG);
                 const blues = items.filter(i => i.tag === 'blue' || i.tag === 'family');
-                if (blues.length > 0) {
+                if (blues.length > 0 && blueItemsPassFilter(blues, getActiveFilters())) {
                     dayIsPositive = true;
                     if (blues.some(i => i.tag === 'family')) dayIsFamily = true;
                     if (personAYear) {
@@ -1181,11 +1515,41 @@ function buildCalView() {
                 }
             }
 
+            // Noble: check if day BRANCH is person's Noble branch
+            const personNobles = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
+            const dayBranchIsNoble = personNobles.includes(dZhi);
+
+            // Lu: check if day BRANCH is person's Lu branch
+            const dayBranchIsLu = personDayStemCAL ? LU_BRANCH[personDayStemCAL] === dZhi : false;
+            // Heaven Virtue: check if day BRANCH is person's HV branch
+            const dayBranchIsHV = personMthBranchCAL ? HEAVEN_VIRTUE[personMthBranchCAL] === dZhi : false;
+            // Branch Virtue: check if day BRANCH is person's BV branch
+            const dayBranchIsBV = personDayZhiCAL ? BRANCH_VIRTUE[personDayZhiCAL] === dZhi : false;
+            // Month Virtue: check if day BRANCH is person's MV branch
+            const mvCAL = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
+            const dayBranchIsMV = mvCAL ? mvCAL.branch === dZhi : false;
+
             const cellClass = `cal-cell${isToday?' today':''}${dayIsFamily?' family':dayIsFavourable?' favourable':dayIsPositive?' positive':''}`;
             const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
 
-            const jieqi = jieqiMap[isoDate] || [];
+            const jieqi    = jieqiMap[isoDate] || [];
             const jieqiHTML = jieqi.map(j => `<div style="font-size:9px;color:#e65100;font-weight:bold;">${j.name} ${j.time}</div>`).join('');
+            const nobleIndicator = dayBranchIsNoble
+                ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;">N</div>`
+                : '';
+            const luIndicator = dayBranchIsLu
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e1f5fe;">L</div>`
+                : '';
+            const hvIndicator = dayBranchIsHV
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e3f2fd;">HV</div>`
+                : '';
+            const bvIndicator = dayBranchIsBV
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8eaf6;">BV</div>`
+                : '';
+
+            const mvIndicator = dayBranchIsMV
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#f3e5f5;">MV</div>`
+                : '';
 
             html += `<div class="${cellClass}" onclick="loadDateIntoMain('${isoDate}', 5)">
                 <div style="display:flex;justify-content:space-between;align-items:top;">
@@ -1193,6 +1557,7 @@ function buildCalView() {
                     <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
                 </div>
                 ${jieqiHTML}
+                ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}
             </div>`;
         }
 
@@ -1236,6 +1601,14 @@ function buildMonthView() {
     const endMV    = new Date(start.getTime() + days * 86400000);
     const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endMV.getFullYear() + 1, offsetMin);
 
+    const personDayStemMV = getPersonDayStemFromBirth(birthDate, birthTime, offsetMin);
+    const personMthBranchMV = getPersonMonthBranch(birthDate, birthTime, offsetMin);
+    const personDayZhiMV = (() => {
+        if (!birthDate) return null;
+        const base  = new Date(`${birthDate}T${birthTime}`);
+        const solar = new Date(base.getTime() + offsetMin * 60000);
+        return Solar.fromDate(solar).getLunar().getEightChar().getDayZhi();
+    })();
     let html = '';
     let lastDay = '';
 
@@ -1256,18 +1629,39 @@ function buildMonthView() {
         const jieqiDay = jieqiMap[dayDate.toISOString().split('T')[0]] || [];
         const jieqiDayHTML = jieqiDay.map(j => `<span style="font-size:10px;color:#e65100;font-weight:bold;"> ⟐ ${j.name} ${j.time}</span>`).join('');
 
-        html += `<div style="background:#fce4ec;padding:6px 10px;font-weight:bold;font-size:12px;color:#880e4f;border-top:2px solid #bbb;display:flex;justify-content:space-between;align-items:center;">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div style="min-width:80px;"></div>
-                <div style="display:flex;gap:16px;">
-                    <div style="text-align:center;min-width:24px;font-size:12px;"></div>
-                    <div style="text-align:center;min-width:24px;font-size:12px;">${dGanDay}${dZhiDay}</div>
-                    <div style="text-align:center;min-width:24px;font-size:12px;">${mGanDay}${mZhiDay}</div>
-                    <div style="text-align:center;min-width:24px;font-size:12px;">${yGanDay}${yZhiDay}</div>
-                </div>
-                ${jieqiDayHTML}
+        // Clash for this day
+        const dayClashType = getClashType(dGanDay, dZhiDay, midEC.getYearZhi(), mGanDay, mZhiDay);
+        const dayClashHTML = dayClashType === 'clash-year'
+            ? `<span style="color:#d40000;font-weight:bold;font-size:11px;margin-left:4px;">⚡⚡⚡</span>`
+            : dayClashType === 'clash-month-stem'
+            ? `<span style="color:#d40000;font-weight:bold;font-size:11px;margin-left:4px;">⚡⚡</span>`
+            : dayClashType === 'clash-month-branch'
+            ? `<span style="color:#d40000;font-weight:bold;font-size:11px;margin-left:4px;">⚡</span>`
+            : '';
+
+        // Person Noble/Lu on the day branch
+        const personNoblesDay = personDayStemMV ? (NOBLE_BRANCHES[personDayStemMV] || []) : [];
+        const dayIsPersonNoble = personNoblesDay.includes(dZhiDay);
+        const dayIsPersonLu    = personDayStemMV ? LU_BRANCH[personDayStemMV] === dZhiDay : false;
+        const dayIsPersonHV    = personMthBranchMV ? HEAVEN_VIRTUE[personMthBranchMV] === dZhiDay : false;
+        const dayIsPersonBV    = personDayZhiMV ? BRANCH_VIRTUE[personDayZhiMV] === dZhiDay : false;
+        const mvPersonData     = personMthBranchMV ? (MONTH_VIRTUE[personMthBranchMV] || null) : null;
+        const dayIsPersonMV    = mvPersonData ? mvPersonData.branch === dZhiDay : false;
+        const headerNL = (dayIsPersonNoble ? `<span style="color:#1a7a1a;font-weight:bold;font-size:11px;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-left:3px;">N</span>` : '')
+                       + (dayIsPersonLu    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e1f5fe;">L</span>` : '')
+                       + (dayIsPersonHV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e3f2fd;">HV</span>` : '')
+                       + (dayIsPersonBV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8eaf6;">BV</span>` : '')
+                       + (dayIsPersonMV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#f3e5f5;">MV</span>` : '');
+
+        html += `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
+            <div style="width:80px;flex-shrink:0;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
+            <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
+                <div style="text-align:center;font-size:11px;color:#880e4f;">—</div>
+                <div style="text-align:center;font-size:12px;writing-mode:vertical-rl;letter-spacing:1px;">${dGanDay}${dZhiDay}</div>
+                <div style="text-align:center;font-size:12px;writing-mode:vertical-rl;letter-spacing:1px;">${mGanDay}${mZhiDay}</div>
+                <div style="text-align:center;font-size:12px;writing-mode:vertical-rl;letter-spacing:1px;">${yGanDay}${yZhiDay}</div>
             </div>
-            <span style="font-size:11px;font-weight:normal;">${dateLabel}</span>
+            <div style="margin-left:auto;font-size:11px;font-weight:normal;text-align:right;">${dateLabel}${jieqiDayHTML}</div>
         </div>`;
 
         for (let h = 0; h < 12; h++) {
@@ -1281,7 +1675,13 @@ function buildMonthView() {
             const eightChar = solar.getLunar().getEightChar();
 
             let dGan = eightChar.getDayGan(), dZhi = eightChar.getDayZhi();
-            if (solarDate.getHours() === 23) {
+            // For Zi(23): baseDate is yesterday, so eightChar gives yesterday stem.
+            // Use today's midday solar date to get today's correct day stem.
+            if (hourStart === 23) {
+                const todaySolar = Solar.fromDate(new Date(dayDate.getTime() + 12 * 3600000 + offsetMin * 60000));
+                dGan = todaySolar.getLunar().getEightChar().getDayGan();
+                dZhi = todaySolar.getLunar().getEightChar().getDayZhi();
+            } else if (solarDate.getHours() === 23) {
                 const yest = Solar.fromDate(new Date(solarDate.getTime() - 3600000));
                 dGan = yest.getLunar().getEightChar().getDayGan();
                 dZhi = yest.getLunar().getEightChar().getDayZhi();
@@ -1309,6 +1709,9 @@ function buildMonthView() {
             const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
             const isPositive = blueItems.length > 0;
 
+            // Apply filter — skip row if no blue items pass filter
+            if (isPositive && !blueItemsPassFilter(blueItems, getActiveFilters())) continue;
+
             let isFavourable = false;
             if (isPositive && personAYear) {
                 const hasElRel  = blueItems.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
@@ -1322,41 +1725,73 @@ function buildMonthView() {
             const perNotes = blueItems.filter(i => i.text.includes('Period')).map(i => i.text);
             const famNotes = blueItems.filter(i => i.tag === 'family').map(i => i.text);
             const hasFamily = famNotes.length > 0;
+            const hasFamilyLV = hasFamily;
 
             const bg      = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
-            const rowStyle = hasFamily ? `background:#fffb00;border-left:4px solid #f9a825;` : `background:${bg};`;
+            const rowStyle = hasFamily ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;` : `background:${bg};`;
             const isoDate = dayDate.toISOString().split('T')[0];
 
+            // Noble: date only (hour branch vs date day stem)
+            const HOUR_BRANCHES_LV = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+            const hZhiDirect = HOUR_BRANCHES_LV[h];
+            const dateNoblesLV = NOBLE_BRANCHES[dGan] || [];
+            const isDateNobleLV = dateNoblesLV.includes(hZhiDirect);
+            const nobleLabelLV = isDateNobleLV ? 'N' : '';
+            const nobleHTMLMV = nobleLabelLV ? `<span style="color:#1a7a1a;font-weight:bold;font-size:11px;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;">${nobleLabelLV}</span>` : '';
+
+            // Lu: date only (hour branch vs date day stem)
+            const isDateLuLV = LU_BRANCH[dGan] === hZhiDirect;
+            const luLabelLV = isDateLuLV ? 'L' : '';
+            const luHTMLMV = luLabelLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e1f5fe;">${luLabelLV}</span>` : '';
+
+            // Branch Virtue: date only (hour branch vs date day branch BV)
+            const dateMthZhi = eightChar.getMonthZhi();
+            const isDateBVLV = BRANCH_VIRTUE[dZhi] === hZhiDirect;
+            const bvHTMLMV   = isDateBVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e8eaf6;">BV</span>` : '';
+            const hvBranchLV = HEAVEN_VIRTUE[dateMthZhi] || null;
+            const isDateHVLV = hvBranchLV === hZhiDirect;
+            const hvHTMLMV   = isDateHVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e3f2fd;">HV</span>` : '';
+
+            // Month Virtue: hour stem matches MV stem OR day branch matches MV branch
+            const mvLV = MONTH_VIRTUE[dateMthZhi] || null;
+            const isDateMVLV = mvLV ? (mvLV.stem === hGan || mvLV.branch === dZhi) : false;
+            const mvHTMLMV   = isDateMVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;">MV</span>` : '';
+
+            // 12 Spirits
+            const spirit = getSpiritForHour(dZhi, hZhiDirect);
+            const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};">${spirit.en} ${spirit.zh}</span>` : '';
+
             html += `<div onclick="loadDateIntoMain('${isoDate}',${h})"
-                style="display:flex;align-items:center;gap:8px;padding:4px 10px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
-                <div style="min-width:80px;font-size:11px;color:#333;">
-                    <span style="color:#999;">${HOUR_SHORT[h]}</span><br>
-                    <span style="font-size:14px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
+                style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
+                <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
+                    <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span>
+                    ${nobleHTMLMV}${luHTMLMV}${hvHTMLMV}${bvHTMLMV}${mvHTMLMV}<br>
+                    <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                 </div>
-                <div style="display:flex;gap:16px;">
-                    <div style="text-align:center;min-width:24px;">
+                <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
+                    <div style="text-align:center;">
                         <div style="color:#d40000;font-weight:bold;font-size:13px;">${hData.qi}</div>
                         <div style="color:#0044cc;font-weight:bold;font-size:13px;">${hData.yun}</div>
                     </div>
-                    <div style="text-align:center;min-width:24px;">
+                    <div style="text-align:center;">
                         <div style="color:#d40000;font-weight:bold;font-size:13px;">${dData.qi}</div>
                         <div style="color:#0044cc;font-weight:bold;font-size:13px;">${dData.yun}</div>
                     </div>
-                    <div style="text-align:center;min-width:24px;">
+                    <div style="text-align:center;">
                         <div style="color:#d40000;font-weight:bold;font-size:13px;">${mData.qi}</div>
                         <div style="color:#0044cc;font-weight:bold;font-size:13px;">${mData.yun}</div>
                     </div>
-                    <div style="text-align:center;min-width:24px;">
+                    <div style="text-align:center;">
                         <div style="color:#d40000;font-weight:bold;font-size:13px;">${yData.qi}</div>
                         <div style="color:#0044cc;font-weight:bold;font-size:13px;">${yData.yun}</div>
                     </div>
                 </div>
-                ${isPositive ? `
-                <div style="display:flex;flex-direction:column;justify-content:center;font-size:10px;gap:1px;margin-left:6px;">
-                    <div style="color:#d40000;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
-                    <div style="color:#0044cc;font-weight:bold;">${perNotes.join(' · ')}</div>
-                    ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.join(' · ')}</div>` : ''}
-                </div>` : ''}
+                <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
+                    ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
+                    <div style="color:#1a7a1a;font-weight:bold;">${perNotes.join(' · ')}</div>
+                    ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.join(' · ')}</div>` : ''}` : ''}
+                    ${spiritHTML}
+                </div>
             </div>`;
         }
     }
@@ -1365,6 +1800,49 @@ function buildMonthView() {
     mv.innerHTML = html || '<div class="scan-empty">No data.</div>';
     mv.style.display = 'block';
     document.getElementById('scan-results').style.display = 'none';
+}
+
+// ── Filter ────────────────────────────────────────────────────
+function toggleFilter() {
+    const panel = document.getElementById('filter-panel');
+    const btn   = document.getElementById('btn-filter');
+    const open  = panel.style.display === 'flex';
+    panel.style.display = open ? 'none' : 'flex';
+    btn.style.background = open ? '#555' : '#1565c0';
+}
+
+function toggleChip(el) {
+    el.classList.toggle('active');
+}
+
+function getActiveFilters() {
+    const chips = document.querySelectorAll('.filter-chip');
+    const active = new Set();
+    chips.forEach(c => { if (c.classList.contains('active')) active.add(c.dataset.filter); });
+    return active;
+}
+
+function itemMatchesFilter(text, tag, filters) {
+    if (tag === 'family')                               return filters.has('family');
+    if (text.includes('Pure Adding'))                   return filters.has('pure-adding');
+    if (text.includes('Pure Hetu'))                     return filters.has('pure-hetu');
+    if (text.includes('Pure Qi') && text.includes('Element')) return filters.has('pure-qi-el');
+    if (text.includes('Pure Qi') && text.includes('Period'))  return filters.has('pure-qi-per');
+    if (text.includes('Adding') && text.includes('Element'))  return filters.has('adding-el');
+    if (text.includes('Adding') && text.includes('Period'))   return filters.has('adding-per');
+    if (text.includes('Hetu') && text.includes('Element'))    return filters.has('hetu-el');
+    if (text.includes('Hetu') && text.includes('Period'))     return filters.has('hetu-per');
+    return true; // non-relation items pass through
+}
+
+function blueItemsPassFilter(blueItems, filters) {
+    // At least one blue item must match the active filters
+    const relationItems = blueItems.filter(i =>
+        i.text.includes('Adding') || i.text.includes('Hetu') ||
+        i.text.includes('Pure Qi') || i.tag === 'family'
+    );
+    if (relationItems.length === 0) return true; // no relation items, pass through
+    return relationItems.some(i => itemMatchesFilter(i.text, i.tag, filters));
 }
 
 function setScanNow() {
@@ -1464,6 +1942,10 @@ function runScanner() {
             const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
             if (blueItems.length === 0) continue;
 
+            // Apply filter
+            const activeFilters = getActiveFilters();
+            if (!blueItemsPassFilter(blueItems, activeFilters)) continue;
+
             // Detect which dimensions are active in the 4-hexagram relations
             const hasElementRelation = blueItems.some(i => i.text.includes('Element') || i.text.includes('Family') ||
                 i.text === 'Hetu' || i.text === 'Pure Hetu' || i.text === 'Adding' || i.text === 'Pure Adding' || i.text === 'Pure Qi');
@@ -1507,10 +1989,44 @@ function runScanner() {
             if (scoreA === 0) continue;
 
             const qualityScore = getDateQualityScore(analysisItems);
-            const totalScore   = scoreA * Math.max(qualityScore, 1);
+
+            // Spirit penalty: bad spirit reduces score by one step if relation is Adding/Hetu only
+            // (exempt: Pure Qi and Family matches)
+            const HOUR_BRANCHES_SC = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+            const hZhiSC = HOUR_BRANCHES_SC[h];
+            const hourSpirit = getSpiritForHour(dZhi, hZhiSC);
+            const hasPureQiOrFamily = blueItems.some(i =>
+                i.text.includes('Pure Qi') || i.tag === 'family'
+            );
+            const hasAddingOrHetu = blueItems.some(i =>
+                i.text.includes('Adding') || i.text.includes('Hetu')
+            );
+            const spiritPenalty = (!hasPureQiOrFamily && hasAddingOrHetu && hourSpirit && !hourSpirit.auspicious) ? -1 : 0;
+            const spiritBonus   = (hourSpirit && hourSpirit.auspicious) ? 1 : 0;
+
+            // Noble bonus: hour branch is Noble for day stem
+            const nobleBonus = (NOBLE_BRANCHES[dGan] || []).includes(hZhiSC) ? 1 : 0;
+            // Lu bonus: hour branch is Lu for day stem
+            const luBonus = LU_BRANCH[dGan] === hZhiSC ? 1 : 0;
+            // Heaven Virtue bonus: hour branch matches HV for month branch
+            const hvSC = HEAVEN_VIRTUE[mZhi] || null;
+            const hvBonus = hvSC === hZhiSC ? 1 : 0;
+            // Branch Virtue bonus: hour branch matches BV for day branch
+            const bvBonus = BRANCH_VIRTUE[dZhi] === hZhiSC ? 1 : 0;
+            // Month Virtue bonus: hour stem matches MV stem
+            const mvSC = MONTH_VIRTUE[mZhi] || null;
+            const mvBonus = mvSC && mvSC.stem === hGan ? 1 : 0;
+
+            // Clash penalty
+            const clashTypeSC = getClashType(dGan, dZhi, pillars.year.branch, mGan, mZhi);
+            const clashPenalty = clashTypeSC === 'clash-year' ? -2 :
+                                 (clashTypeSC === 'clash-month-stem' || clashTypeSC === 'clash-month-branch') ? -2 : 0;
+
+            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + clashPenalty);
 
             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
+            const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
             results.push({
@@ -1518,6 +2034,8 @@ function runScanner() {
                 scoreA,
                 scoreB,
                 qualityScore,
+                spiritAuspicious: hourSpirit ? hourSpirit.auspicious : null,
+                spiritLabel,
                 rawDate: dayDate.getTime() + h * 7200000,
                 isoDate: dayDate.toISOString().split('T')[0],
                 hourIndex: h,
@@ -1542,7 +2060,11 @@ function runScanner() {
     renderScanResults(results);
 }
 
-window.onload = () => { setNow(); renderArchive('A'); renderArchive('B'); };
+window.onload = () => { 
+    try { setNow(); } catch(e) { console.error('setNow:', e.message); }
+    try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
+    try { renderArchive('B'); } catch(e) { console.error('archiveB:', e.message); }
+};
 </script>
 <div id="version-tag" style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;"></div>
 <script>
