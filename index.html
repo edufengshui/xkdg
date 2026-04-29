@@ -2052,10 +2052,13 @@ function runScanner() {
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
-    container.style.display = 'block';
-    document.getElementById('sort-score').style.display = 'inline-block';
-    document.getElementById('sort-date').style.display  = 'inline-block';
-    document.getElementById('sort-both').style.display  = personBYear ? 'inline-block' : 'none';
+    if (container) container.style.display = 'block';
+    const ss = document.getElementById('sort-score');
+    const sd = document.getElementById('sort-date');
+    const sb = document.getElementById('sort-both');
+    if (ss) ss.style.display = 'inline-block';
+    if (sd) sd.style.display = 'inline-block';
+    if (sb) sb.style.display = personBYear ? 'inline-block' : 'none';
 
     renderScanResults(results);
 }
