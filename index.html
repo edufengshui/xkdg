@@ -38,12 +38,12 @@
         .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; }
         .pillar:last-child { border-right: none; }
         
-        .header { background: #fce4ec; padding: 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1px; }
+        .header { background: #fce4ec; padding: 6px 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1px; font-size: 13px; }
         .cell { padding: 6px 5px; min-height: 70px; }
         .hanzi { font-family: 'Ma Shan Zheng', cursive; font-size: 64px; line-height: 1.1; display: block; }
         .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.7; font-weight: bold; margin-top: 5px; display: block;}
         
-        .hex-section { padding: 20px 5px; border-top: none; display: flex; flex-direction: column; align-items: center; min-height: 150px; }
+        .hex-section { padding: 20px 5px 10px; border-top: none; display: flex; flex-direction: column; align-items: center; min-height: 240px; justify-content: space-between; }
         .hex-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; }
         .hex-icon { font-size: 96px; color: #000; line-height: 1; display: block; }
         .data-column { display: flex; flex-direction: column; justify-content: space-around; height: 80px; width: 35px; font-weight: bold; font-size: 16px; }
@@ -80,7 +80,8 @@
         .btn-scan { background: #1565c0; color: white; cursor: pointer; border: none; font-weight: bold; padding: 7px 18px; border-radius: 4px; font-size: 13px; }
         .btn-scan:hover { background: #0d47a1; }
         .scan-results { padding: 12px; }
-        .scan-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin-bottom: 6px; border-radius: 5px; border-left: 5px solid #2e7d32; background: #f1f8e9; }
+        .scan-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin-bottom: 6px; border-radius: 5px; border-left: 5px solid #2e7d32; background: #f1f8e9; cursor: pointer; transition: filter 0.15s; }
+        .scan-item:hover { filter: brightness(0.93); }
         .scan-item.rank-1 { border-left-color: #1b5e20; background: #c8e6c9; }
         .scan-item.rank-2 { border-left-color: #2e7d32; background: #dcedc8; }
         .scan-item.rank-3 { border-left-color: #558b2f; background: #f1f8e9; }
@@ -88,6 +89,31 @@
         .scan-date { font-size: 14px; font-weight: bold; color: #333; min-width: 170px; }
         .scan-tags { font-size: 12px; color: #555; flex: 1; }
         .scan-empty { padding: 15px; text-align: center; color: #888; font-style: italic; }
+
+        /* Calendar view */
+        .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+        .cal-header-cell { background: #795548; color: white; text-align: center; padding: 5px 2px; font-size: 12px; font-weight: bold; border-radius: 3px; }
+        .cal-cell { min-height: 70px; border: 1px solid #ddd; border-radius: 4px; padding: 4px; cursor: pointer; position: relative; background: #fff; }
+        .cal-cell:hover { filter: brightness(0.93); }
+        .cal-cell.empty { background: #f5f5f5; cursor: default; }
+        .cal-cell.today { border: 2px solid #1565c0; }
+        .cal-cell.positive { background: #e8f5e9; }
+        .cal-cell.favourable { background: #fce4ec; }
+        .cal-cell.family { background: #fffde7; border-color: #f9a825; }
+        .cal-day-num { font-size: 12px; font-weight: bold; color: #333; }
+        .cal-stem { font-size: 16px; font-weight: bold; text-align: right; line-height: 1.1; }
+        .cal-dots { margin-top: 4px; display: flex; gap: 2px; flex-wrap: wrap; }
+
+        /* Month view table */
+        .month-table { border-collapse: collapse; font-size: 11px; min-width: 100%; }
+        .month-table th { background: #e3f2fd; color: #0d47a1; padding: 4px 3px; border: 1px solid #bbb; text-align: center; font-size: 10px; position: sticky; top: 0; white-space: nowrap; }
+        .month-table td { border: 1px solid #ddd; padding: 3px 2px; text-align: center; cursor: pointer; min-width: 38px; }
+        .month-table td:first-child { background: #f5f5f5; font-weight: bold; font-size: 10px; white-space: nowrap; position: sticky; left: 0; min-width: 55px; cursor: default; }
+        .month-table td:hover:not(:first-child) { filter: brightness(0.9); }
+        .cell-qi  { color: #d40000; font-weight: bold; font-size: 12px; }
+        .cell-yun { color: #0044cc; font-weight: bold; font-size: 12px; }
+        .cell-positive  { background: #e3f2fd; }
+        .cell-favourable { background: #fce4ec; }
         .tag-blue  { color: #0044cc; font-weight: bold; }
         .tag-green { color: #1a7a1a; font-weight: bold; }
         .tag-gold  { color: #b8860b; font-weight: bold; }
@@ -200,15 +226,19 @@
     <!-- Date Scanner Section -->
     <div class="scanner-section">
         <div class="scanner-header">
-            🔍 BEST DATES
+            <button class="btn-scan" id="mode-dates" onclick="setMode('dates')" style="background:#1565c0;">📅 BEST</button>
+            <button class="btn-scan" id="mode-month" onclick="setMode('month')" style="background:#555;">☰ LIST</button>
+            <button class="btn-scan" id="mode-cal"   onclick="setMode('cal')"   style="background:#555;">🗓 CAL</button>
             <div><label>FROM:</label> <input type="date" id="scan-start"> <button class="btn-scan" onclick="setScanNow()" style="padding:6px 10px;font-size:12px;">NOW</button></div>
             <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
-            <button class="btn-scan" onclick="runScanner()">SCAN</button>
+            <button class="btn-scan" onclick="runAll()">SCAN</button>
             <button class="btn-scan" id="sort-score" onclick="sortResults('score')" style="background:#1b5e20;display:none;">★ BEST FIRST</button>
             <button class="btn-scan" id="sort-date"  onclick="sortResults('date')"  style="background:#0d47a1;display:none;">📅 BY DATE</button>
             <button class="btn-scan" id="sort-both"  onclick="sortResults('both')"  style="background:#7b1fa2;display:none;">👫 BOTH</button>
         </div>
         <div class="scan-results" id="scan-results" style="display:none;"></div>
+        <div id="month-view" style="display:none;overflow-x:auto;"></div>
+        <div id="cal-view" style="display:none;padding:10px;"></div>
     </div>
 
 <script>
@@ -630,6 +660,17 @@ function calculateBazi() {
     });
 
     // 5. Render pillars — include Nayin (melodic element)
+    // Format date labels for headers
+    const yearLabel  = solarDate.getFullYear();
+    const monthLabel = solarDate.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+    const dayLabel   = solarDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    const hourLabel  = solarDate.toTimeString().slice(0,5);
+
+    document.querySelector('#p-year .header').innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
+    document.querySelector('#p-month .header').innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
+    document.querySelector('#p-day .header').innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
+    document.querySelector('#p-hour .header').innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
+
     updatePillar('p-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
     updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
     updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
@@ -698,13 +739,13 @@ function updatePillar(id, stem, branch, xkdg, nayin) {
         const roleLabel   = getRoleLabel(stem, branch);
         hexHTML =
             `<div style="display:flex;flex-direction:column;align-items:center;width:100%;">` +
-                `<div style="color:#d40000;font-weight:bold;font-size:20px;margin-bottom:4px;">${xkdg.qi}</div>` +
-                `<div class="hex-icon" style="line-height:1;">${icon}</div>` +
-                `<div style="color:#0044cc;font-weight:bold;font-size:20px;margin-top:-12px;">${xkdg.yun}</div>` +
+                `<div style="color:#d40000;font-weight:bold;font-size:20px;">${xkdg.qi}</div>` +
+                `<div class="hex-icon" style="line-height:1;padding-top:6px;padding-bottom:0px;">${icon}</div>` +
+                `<div style="color:#0044cc;font-weight:bold;font-size:20px;margin-top:-8px;">${xkdg.yun}</div>` +
             `</div>` +
             `<div class="hex-info">${hexName}</div>` +
             `<div class="hex-family-label">${familyLabel}</div>` +
-            (roleLabel ? `<div style="margin-top:3px;">${roleLabel}</div>` : '');
+            (roleLabel ? `<div style="margin-top:3px;text-align:center;width:100%;">${roleLabel}</div>` : '');
     } else {
         hexHTML = `<div class="hex-missing">No XKDG data<br>${stem}${branch}</div>`;
     }
@@ -883,6 +924,25 @@ function sortResults(mode) {
     renderScanResults(filtered, mode);
 }
 
+function loadDateIntoMain(isoDate, hourIndex) {
+    const lon = parseFloat(document.getElementById('longitude').value);
+    const utc = parseFloat(document.getElementById('utc-offset').value);
+    const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+
+    // Set the hour midpoint
+    const hourStart = HOUR_STARTS[hourIndex];
+    const h = hourStart === 23 ? 23 : hourStart;
+    const timeStr = String(h).padStart(2,'0') + ':30';
+
+    document.getElementById('date').value = isoDate;
+    document.getElementById('time').value = timeStr;
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    calculateBazi();
+}
+
 function renderScanResults(results, mode) {
     const container = document.getElementById('scan-results');
     if (results.length === 0) {
@@ -895,7 +955,7 @@ function renderScanResults(results, mode) {
         const rankClass = s >= maxScore ? 'rank-1' : s >= maxScore * 0.7 ? 'rank-2' : 'rank-3';
         const bTag = r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;">B✓</span>` : '';
         const aTag = r.scoreA > 0 ? ` <span style="color:#1b5e20;font-weight:bold;">A✓</span>` : '';
-        return `<div class="scan-item ${rankClass}">
+        return `<div class="scan-item ${rankClass}" style="cursor:pointer;" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score">${s}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
             <div class="scan-tags">${[...r.matchLabels, ...r.qualLabels].join(' · ')}</div>
@@ -962,6 +1022,315 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch)
     if (personYear.qi === dayXkdg.qi)   labels.push('Pure Qi El.');
     if (personYear.yun === dayXkdg.yun) labels.push('Pure Qi Per.');
     return labels;
+}
+
+let _currentMode = 'dates';
+
+function setMode(mode) {
+    _currentMode = mode;
+    document.getElementById('mode-dates').style.background = mode === 'dates' ? '#1565c0' : '#555';
+    document.getElementById('mode-month').style.background = mode === 'month' ? '#1565c0' : '#555';
+    document.getElementById('mode-cal').style.background   = mode === 'cal'   ? '#1565c0' : '#555';
+    document.getElementById('scan-results').style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
+    document.getElementById('month-view').style.display   = mode === 'month' ? 'block' : 'none';
+    document.getElementById('cal-view').style.display     = mode === 'cal'   ? 'block' : 'none';
+    ['sort-score','sort-date','sort-both'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (mode === 'dates' && _scanResults.length) ? 'inline-block' : 'none';
+    });
+}
+
+function runAll() {
+    if (_currentMode === 'dates') runScanner();
+    else if (_currentMode === 'month') buildMonthView();
+    else buildCalView();
+}
+
+function buildCalView() {
+    const startDate = document.getElementById('scan-start').value;
+    const days      = parseInt(document.getElementById('scan-days').value) || 30;
+    const lon       = parseFloat(document.getElementById('longitude').value);
+    const utc       = parseFloat(document.getElementById('utc-offset').value);
+    if (!startDate) { alert('Please enter a start date.'); return; }
+
+    const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+
+    // Person A year for favourable check
+    const birthDate = document.getElementById('person-date').value;
+    const birthTime = document.getElementById('person-time').value || '12:00';
+    let personAYear = null, pYStem = null, pYBranch = null;
+    if (birthDate) {
+        const bBase  = new Date(`${birthDate}T${birthTime}`);
+        const bSolar = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
+        const bEC    = bSolar.getLunar().getEightChar();
+        pYStem = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
+        const pYData = getXkdgData(pYStem, pYBranch);
+        if (pYData) personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
+    }
+
+    const today    = new Date().toISOString().split('T')[0];
+    const start    = new Date(startDate + 'T00:00:00');
+    const DOW      = ['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+    // Group days by month
+    const months = {};
+    for (let d = 0; d < days; d++) {
+        const dayDate   = new Date(start.getTime() + d * 86400000);
+        const monthKey  = dayDate.getFullYear() + '-' + String(dayDate.getMonth()+1).padStart(2,'0');
+        if (!months[monthKey]) months[monthKey] = [];
+        months[monthKey].push(dayDate);
+    }
+
+    let html = '';
+
+    for (const [monthKey, dayDates] of Object.entries(months)) {
+        const [yr, mo] = monthKey.split('-').map(Number);
+        const monthName = new Date(yr, mo-1, 1).toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+
+        html += `<div style="font-weight:bold;font-size:14px;color:#795548;margin:10px 0 5px;">${monthName}</div>`;
+        html += `<div class="cal-grid">`;
+        DOW.forEach(d => html += `<div class="cal-header-cell">${d}</div>`);
+
+        // Blank cells before first day
+        const firstDay = dayDates[0];
+        let dow = firstDay.getDay(); // 0=Sun
+        dow = dow === 0 ? 6 : dow - 1; // Mon=0
+        // But only blank up to the start of our range
+        const monthStart = new Date(yr, mo-1, 1);
+        let startDow = monthStart.getDay();
+        startDow = startDow === 0 ? 6 : startDow - 1;
+
+        // Fill blanks for days before our range in this month
+        const firstDateInMonth = dayDates[0].getDate();
+        for (let b = startDow; b < startDow + firstDateInMonth - 1; b++) {
+            html += `<div class="cal-cell empty"></div>`;
+        }
+
+        for (const dayDate of dayDates) {
+            const isoDate = dayDate.toISOString().split('T')[0];
+            const isToday = isoDate === today;
+
+            // Get day pillar using midday
+            const midDay    = new Date(dayDate);
+            midDay.setHours(12, 0, 0, 0);
+            const solarDate = new Date(midDay.getTime() + offsetMin * 60000);
+            const eightChar = Solar.fromDate(solarDate).getLunar().getEightChar();
+            let dGan = eightChar.getDayGan(), dZhi = eightChar.getDayZhi();
+            const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
+            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
+            const hGan = eightChar.getTimeGan(), hZhi = eightChar.getTimeZhi();
+
+            const dData = getXkdgData(dGan, dZhi);
+            if (!dData) { html += `<div class="cal-cell">${dayDate.getDate()}</div>`; continue; }
+
+            // Check best hour of the day for positive/favourable status
+            let dayIsPositive = false, dayIsFavourable = false, dayIsFamily = false;
+            for (let h = 0; h < 12; h++) {
+                const hs = HOUR_STARTS[h];
+                let bd = new Date(dayDate);
+                if (hs === 23) bd = new Date(dayDate.getTime() - 86400000);
+                bd.setHours(hs, 30, 0, 0);
+                const sd = new Date(bd.getTime() + offsetMin * 60000);
+                const ec = Solar.fromDate(sd).getLunar().getEightChar();
+                let hG = ec.getTimeGan(), hZ = ec.getTimeZhi();
+                const hD = getXkdgData(hG, hZ);
+                if (!hD) continue;
+                const pillars = {
+                    year:  { ...(getXkdgData(ec.getYearGan(),ec.getYearZhi())||{}),   stem:ec.getYearGan(),  branch:ec.getYearZhi()  },
+                    month: { ...(getXkdgData(ec.getMonthGan(),ec.getMonthZhi())||{}), stem:ec.getMonthGan(), branch:ec.getMonthZhi() },
+                    day:   { ...dData, stem:dGan, branch:dZhi },
+                    hour:  { ...hD,    stem:hG,   branch:hZ   }
+                };
+                const { strong: sS, growing: sG } = getJieqiSeason(sd);
+                const { items } = analyzeXkdg(pillars, sS, sG);
+                const blues = items.filter(i => i.tag === 'blue' || i.tag === 'family');
+                if (blues.length > 0) {
+                    dayIsPositive = true;
+                    if (blues.some(i => i.tag === 'family')) dayIsFamily = true;
+                    if (personAYear) {
+                        const hasEl  = blues.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
+                        const hasPer = blues.some(i => i.text.includes('Period')  || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
+                        const mEl = hasEl  && (personAYear.qi  === dData.qi  || isHetuPair(personAYear.qi,  dData.qi)  || [5,10,15].includes(personAYear.qi  + dData.qi));
+                        const mPer= hasPer && (personAYear.yun === dData.yun || isHetuPair(personAYear.yun, dData.yun) || [5,10,15].includes(personAYear.yun + dData.yun));
+                        if (mEl || mPer) dayIsFavourable = true;
+                    }
+                }
+            }
+
+            const cellClass = `cal-cell${isToday?' today':''}${dayIsFamily?' family':dayIsFavourable?' favourable':dayIsPositive?' positive':''}`;
+            const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
+
+            html += `<div class="${cellClass}" onclick="loadDateIntoMain('${isoDate}', 5)">
+                <div style="display:flex;justify-content:space-between;align-items:top;">
+                    <span class="cal-day-num">${dayDate.getDate()}</span>
+                    <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
+                </div>
+            </div>`;
+        }
+
+        // Fill trailing blanks to complete the grid row
+        const lastDow = (dayDates[dayDates.length-1].getDay() + 6) % 7;
+        for (let b = lastDow + 1; b < 7; b++) html += `<div class="cal-cell empty"></div>`;
+
+        html += `</div>`;
+    }
+
+    document.getElementById('cal-view').innerHTML = html;
+    document.getElementById('cal-view').style.display = 'block';
+    document.getElementById('scan-results').style.display = 'none';
+    document.getElementById('month-view').style.display   = 'none';
+}
+
+function buildMonthView() {
+    const startDate = document.getElementById('scan-start').value;
+    const days      = parseInt(document.getElementById('scan-days').value) || 30;
+    const lon       = parseFloat(document.getElementById('longitude').value);
+    const utc       = parseFloat(document.getElementById('utc-offset').value);
+    if (!startDate) { alert('Please enter a start date.'); return; }
+
+    const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+
+    // Person A year
+    const birthDate = document.getElementById('person-date').value;
+    const birthTime = document.getElementById('person-time').value || '12:00';
+    let personAYear = null, pYStem = null, pYBranch = null;
+    if (birthDate) {
+        const bBase  = new Date(`${birthDate}T${birthTime}`);
+        const bSolar = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
+        const bEC    = bSolar.getLunar().getEightChar();
+        pYStem = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
+        const pYData = getXkdgData(pYStem, pYBranch);
+        if (pYData) personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
+    }
+
+    const HOUR_SHORT = ['子(23)','丑(01)','寅(03)','卯(05)','辰(07)','巳(09)','午(11)','未(13)','申(15)','酉(17)','戌(19)','亥(21)'];
+    const start = new Date(startDate + 'T00:00:00');
+
+    let html = '';
+    let lastDay = '';
+
+    for (let d = 0; d < days; d++) {
+        const dayDate = new Date(start.getTime() + d * 86400000);
+        const dateLabel = dayDate.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+
+        // Day separator
+        // Get Y M D stems for this day (use midday hour)
+        const midDay = new Date(dayDate);
+        midDay.setHours(12, 0, 0, 0);
+        const midSolar  = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000));
+        const midEC     = midSolar.getLunar().getEightChar();
+        let dGanDay = midEC.getDayGan(), dZhiDay = midEC.getDayZhi();
+        const yGanDay = midEC.getYearGan(),  yZhiDay = midEC.getYearZhi();
+        const mGanDay = midEC.getMonthGan(), mZhiDay = midEC.getMonthZhi();
+
+        html += `<div style="background:#fce4ec;padding:6px 10px;font-weight:bold;font-size:12px;color:#880e4f;border-top:2px solid #bbb;display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="min-width:80px;"></div>
+                <div style="display:flex;gap:16px;">
+                    <div style="text-align:center;min-width:24px;font-size:12px;"></div>
+                    <div style="text-align:center;min-width:24px;font-size:12px;">${dGanDay}${dZhiDay}</div>
+                    <div style="text-align:center;min-width:24px;font-size:12px;">${mGanDay}${mZhiDay}</div>
+                    <div style="text-align:center;min-width:24px;font-size:12px;">${yGanDay}${yZhiDay}</div>
+                </div>
+            </div>
+            <span style="font-size:11px;font-weight:normal;">${dateLabel}</span>
+        </div>`;
+
+        for (let h = 0; h < 12; h++) {
+            const hourStart = HOUR_STARTS[h];
+            let baseDate = new Date(dayDate);
+            if (hourStart === 23) baseDate = new Date(dayDate.getTime() - 86400000);
+            baseDate.setHours(hourStart, 30, 0, 0);
+            const solarDate = new Date(baseDate.getTime() + offsetMin * 60000);
+
+            const solar     = Solar.fromDate(solarDate);
+            const eightChar = solar.getLunar().getEightChar();
+
+            let dGan = eightChar.getDayGan(), dZhi = eightChar.getDayZhi();
+            if (solarDate.getHours() === 23) {
+                const yest = Solar.fromDate(new Date(solarDate.getTime() - 3600000));
+                dGan = yest.getLunar().getEightChar().getDayGan();
+                dZhi = yest.getLunar().getEightChar().getDayZhi();
+            }
+
+            const yGan = eightChar.getYearGan(),  yZhi = eightChar.getYearZhi();
+            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
+            const hGan = eightChar.getTimeGan(),  hZhi = eightChar.getTimeZhi();
+
+            const yData = getXkdgData(yGan, yZhi);
+            const mData = getXkdgData(mGan, mZhi);
+            const dData = getXkdgData(dGan, dZhi);
+            const hData = getXkdgData(hGan, hZhi);
+            if (!yData || !mData || !dData || !hData) continue;
+
+            const pillars = {
+                year:  { ...yData, stem:yGan, branch:yZhi },
+                month: { ...mData, stem:mGan, branch:mZhi },
+                day:   { ...dData, stem:dGan, branch:dZhi },
+                hour:  { ...hData, stem:hGan, branch:hZhi }
+            };
+
+            const { strong: sS, growing: sG } = getJieqiSeason(solarDate);
+            const { items: analysisItems } = analyzeXkdg(pillars, sS, sG);
+            const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+            const isPositive = blueItems.length > 0;
+
+            let isFavourable = false;
+            if (isPositive && personAYear) {
+                const hasElRel  = blueItems.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
+                const hasPerRel = blueItems.some(i => i.text.includes('Period')  || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
+                const matchEl  = hasElRel  && (personAYear.qi  === dData.qi  || isHetuPair(personAYear.qi,  dData.qi)  || [5,10,15].includes(personAYear.qi  + dData.qi)  || getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
+                const matchPer = hasPerRel && (personAYear.yun === dData.yun || isHetuPair(personAYear.yun, dData.yun) || [5,10,15].includes(personAYear.yun + dData.yun));
+                isFavourable = matchEl || matchPer;
+            }
+
+            const elNotes  = blueItems.filter(i => i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family').map(i => i.text);
+            const perNotes = blueItems.filter(i => i.text.includes('Period')).map(i => i.text);
+            const famNotes = blueItems.filter(i => i.tag === 'family').map(i => i.text);
+            const hasFamily = famNotes.length > 0;
+
+            const bg      = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
+            const rowStyle = hasFamily ? `background:#fffb00;border-left:4px solid #f9a825;` : `background:${bg};`;
+            const isoDate = dayDate.toISOString().split('T')[0];
+
+            html += `<div onclick="loadDateIntoMain('${isoDate}',${h})"
+                style="display:flex;align-items:center;gap:8px;padding:4px 10px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
+                <div style="min-width:80px;font-size:11px;color:#333;">
+                    <span style="color:#999;">${HOUR_SHORT[h]}</span><br>
+                    <span style="font-size:14px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
+                </div>
+                <div style="display:flex;gap:16px;">
+                    <div style="text-align:center;min-width:24px;">
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${hData.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${hData.yun}</div>
+                    </div>
+                    <div style="text-align:center;min-width:24px;">
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${dData.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${dData.yun}</div>
+                    </div>
+                    <div style="text-align:center;min-width:24px;">
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${mData.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${mData.yun}</div>
+                    </div>
+                    <div style="text-align:center;min-width:24px;">
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${yData.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${yData.yun}</div>
+                    </div>
+                </div>
+                ${isPositive ? `
+                <div style="display:flex;flex-direction:column;justify-content:center;font-size:10px;gap:1px;margin-left:6px;">
+                    <div style="color:#d40000;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
+                    <div style="color:#0044cc;font-weight:bold;">${perNotes.join(' · ')}</div>
+                    ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.join(' · ')}</div>` : ''}
+                </div>` : ''}
+            </div>`;
+        }
+    }
+
+    const mv = document.getElementById('month-view');
+    mv.innerHTML = html || '<div class="scan-empty">No data.</div>';
+    mv.style.display = 'block';
+    document.getElementById('scan-results').style.display = 'none';
 }
 
 function setScanNow() {
@@ -1116,6 +1485,8 @@ function runScanner() {
                 scoreB,
                 qualityScore,
                 rawDate: dayDate.getTime() + h * 7200000,
+                isoDate: dayDate.toISOString().split('T')[0],
+                hourIndex: h,
                 date: dd,
                 hour: HOUR_ROMAN[h],
                 matchLabels,
