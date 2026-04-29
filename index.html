@@ -786,14 +786,10 @@ function toggleDST() {
 }
 
 function setNow() {
-    try {
-        const now = new Date();
-        document.getElementById('date').value = now.toISOString().split('T')[0];
-        document.getElementById('time').value = now.toTimeString().slice(0,5);
-        calculateBazi();
-    } catch(e) {
-        console.error('setNow error:', e.message, e.stack);
-    }
+    const now = new Date();
+    document.getElementById('date').value = now.toISOString().split('T')[0];
+    document.getElementById('time').value = now.toTimeString().slice(0,5);
+    calculateBazi();
 }
 
 function getGPS() {
@@ -861,14 +857,10 @@ function calculateBazi() {
     const dayLabel   = solarDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
     const hourLabel  = solarDate.toTimeString().slice(0,5);
 
-    const hYear  = document.querySelector('#p-year .header');
-    const hMonth = document.querySelector('#p-month .header');
-    const hDay   = document.querySelector('#p-day .header');
-    const hHour  = document.querySelector('#p-hour .header');
-    if (hYear)  hYear.innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
-    if (hMonth) hMonth.innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
-    if (hDay)   hDay.innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
-    if (hHour)  hHour.innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
+    document.querySelector('#p-year .header').innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
+    document.querySelector('#p-month .header').innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
+    document.querySelector('#p-day .header').innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
+    document.querySelector('#p-hour .header').innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
 
     // Store day stem for Noble calculations
     window._currentDayGan = dayGan;
@@ -989,9 +981,9 @@ function calculateBazi() {
 
     // Re-run favourable check for both persons if data entered
     if (_personAYear) checkFavourable(_personAYear, _personAStem, _personABranch, 'A');
-    else { const el = document.getElementById('favourable-col'); if(el) el.style.display = 'none'; }
+    else document.getElementById('favourable-col').style.display = 'none';
     if (_personBYear) checkFavourable(_personBYear, _personBStem, _personBBranch, 'B');
-    else { const el = document.getElementById('favourable-col-b'); if(el) el.style.display = 'none'; }
+    else document.getElementById('favourable-col-b').style.display = 'none';
 
     // Highlight all hexagram boxes bright yellow if same family
     ['p-hour','p-day','p-month','p-year'].forEach(id => {
@@ -1255,8 +1247,6 @@ function loadDateIntoMain(isoDate, hourIndex) {
 
 function renderScanResults(results, mode) {
     const container = document.getElementById('scan-results');
-    if (!container) return;
-    container.style.display = 'block';
     if (results.length === 0) {
         container.innerHTML = '<div class="scan-empty">No matching dates found.</div>';
         return;
@@ -1363,18 +1353,12 @@ let _currentMode = 'dates';
 
 function setMode(mode) {
     _currentMode = mode;
-    const mDates = document.getElementById('mode-dates');
-    const mMonth = document.getElementById('mode-month');
-    const mCal   = document.getElementById('mode-cal');
-    if (mDates) mDates.style.background = mode === 'dates' ? '#1565c0' : '#555';
-    if (mMonth) mMonth.style.background = mode === 'month' ? '#1565c0' : '#555';
-    if (mCal)   mCal.style.background   = mode === 'cal'   ? '#1565c0' : '#555';
-    const sr = document.getElementById('scan-results');
-    const mv = document.getElementById('month-view');
-    const cv = document.getElementById('cal-view');
-    if (sr) sr.style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
-    if (mv) mv.style.display = mode === 'month' ? 'block' : 'none';
-    if (cv) cv.style.display = mode === 'cal'   ? 'block' : 'none';
+    document.getElementById('mode-dates').style.background = mode === 'dates' ? '#1565c0' : '#555';
+    document.getElementById('mode-month').style.background = mode === 'month' ? '#1565c0' : '#555';
+    document.getElementById('mode-cal').style.background   = mode === 'cal'   ? '#1565c0' : '#555';
+    document.getElementById('scan-results').style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
+    document.getElementById('month-view').style.display   = mode === 'month' ? 'block' : 'none';
+    document.getElementById('cal-view').style.display     = mode === 'cal'   ? 'block' : 'none';
     ['sort-score','sort-date','sort-both'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = (mode === 'dates' && _scanResults.length) ? 'inline-block' : 'none';
@@ -2054,22 +2038,15 @@ function runScanner() {
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
-    if (container) container.style.display = 'block';
-    const ss = document.getElementById('sort-score');
-    const sd = document.getElementById('sort-date');
-    const sb = document.getElementById('sort-both');
-    if (ss) ss.style.display = 'inline-block';
-    if (sd) sd.style.display = 'inline-block';
-    if (sb) sb.style.display = personBYear ? 'inline-block' : 'none';
+    container.style.display = 'block';
+    document.getElementById('sort-score').style.display = 'inline-block';
+    document.getElementById('sort-date').style.display  = 'inline-block';
+    document.getElementById('sort-both').style.display  = personBYear ? 'inline-block' : 'none';
 
     renderScanResults(results);
 }
 
-window.onload = () => { 
-    try { setNow(); } catch(e) { console.error('setNow:', e.message); }
-    try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
-    try { renderArchive('B'); } catch(e) { console.error('archiveB:', e.message); }
-};
+window.onload = () => { setNow(); renderArchive('A'); renderArchive('B'); };
 </script>
 <div id="version-tag" style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;"></div>
 <script>
