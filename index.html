@@ -57,8 +57,11 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
         :root { --wood: #1a8a1a; --fire: #d40000; --earth: #8b5a2b; --metal: #555; --water: #0000cd; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 8px; width: 100%; max-width: 850px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        html, body { margin: 0; padding: 0; width: 100%; background: white; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; display: flex; justify-content: center; overflow-x: hidden; }
+        * { scrollbar-width: none; box-sizing: border-box; }
+        *::-webkit-scrollbar { display: none; }
+        .container { background: white; padding: 10px; width: 100%; max-width: 850px; display: flex; flex-direction: column; }
         
         .inputs-row { display: flex; gap: 10px; margin-bottom: 15px; justify-content: center; align-items: center; flex-wrap: wrap; }
         
@@ -83,8 +86,8 @@
         .btn-calc:hover { background: #000; }
         .btn-tool { background: #f0f0f0; color: #333; cursor: pointer; border: 1px solid #bbb; font-weight: 600; }
 
-        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #bbb; background: #fff; }
-        .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; }
+        .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #bbb; background: #fff; width: 100%; min-width: 0; }
+        .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; min-width: 0; overflow: hidden; }
         .pillar:last-child { border-right: none; }
         
         .header { background: #fce4ec; padding: 6px 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1px; font-size: 13px; }
@@ -228,7 +231,6 @@
     </div>
 
     <!-- License Info Bar -->
-    <div id="license-bar" style="display:none;background:#e8f5e9;border-bottom:1px solid #a5d6a7;padding:4px 12px;font-size:11px;color:#2e7d32;text-align:center;"></div>
 
 
 <div class="container">
@@ -1776,11 +1778,11 @@ function buildMonthView() {
         let dayRowsHtml = '';
         const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
             <div style="width:80px;flex-shrink:0;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
-            <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
-                <div style="text-align:center;font-size:11px;color:#880e4f;">—</div>
-                <div style="text-align:center;font-size:12px;writing-mode:vertical-rl;letter-spacing:1px;">${dGanDay}${dZhiDay}</div>
-                <div style="text-align:center;font-size:12px;writing-mode:vertical-rl;letter-spacing:1px;">${mGanDay}${mZhiDay}</div>
-                <div style="text-align:center;font-size:12px;writing-mode:vertical-rl;letter-spacing:1px;">${yGanDay}${yZhiDay}</div>
+            <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;align-items:center;">
+                <div style="width:25px;"></div>
+                <div style="text-align:center;font-size:10px;line-height:1.1;">${dGanDay}<br>${dZhiDay}</div>
+                <div style="text-align:center;font-size:10px;line-height:1.1;">${mGanDay}<br>${mZhiDay}</div>
+                <div style="text-align:center;font-size:10px;line-height:1.1;">${yGanDay}<br>${yZhiDay}</div>
             </div>
             <div style="margin-left:auto;font-size:11px;font-weight:normal;text-align:right;">${dateLabel}${jieqiDayHTML}</div>
         </div>`;
@@ -2346,6 +2348,8 @@ function showLicenseBar(msg, bg, color) {
         bar.style.background = bg;
         bar.style.color = color;
         bar.textContent = msg;
+        const mc = document.getElementById('main-container');
+        if (mc) mc.style.marginTop = '26px';
     }
 }
 
