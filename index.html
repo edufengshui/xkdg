@@ -264,16 +264,16 @@
             <button class="btn-scan" id="sort-both"  onclick="sortResults('both')"  style="background:#7b1fa2;display:none;">👫 BOTH</button>
         </div>
         <div class="filter-panel" id="filter-panel">
-            <span style="font-size:11px;color:#555;font-weight:bold;width:100%;">Show only:</span>
-            <span class="filter-chip active green" data-filter="adding-el"    onclick="toggleChip(this)">Adding Elements</span>
-            <span class="filter-chip active green" data-filter="adding-per"   onclick="toggleChip(this)">Adding Periods</span>
-            <span class="filter-chip active green" data-filter="pure-adding"  onclick="toggleChip(this)">Pure Adding</span>
-            <span class="filter-chip active green" data-filter="hetu-el"      onclick="toggleChip(this)">Hetu Elements</span>
-            <span class="filter-chip active green" data-filter="hetu-per"     onclick="toggleChip(this)">Hetu Periods</span>
-            <span class="filter-chip active green" data-filter="pure-hetu"    onclick="toggleChip(this)">Pure Hetu</span>
-            <span class="filter-chip active green" data-filter="pure-qi-el"   onclick="toggleChip(this)">Pure Qi Elements</span>
-            <span class="filter-chip active green" data-filter="pure-qi-per"  onclick="toggleChip(this)">Pure Qi Periods</span>
-            <span class="filter-chip active gold"  data-filter="family"       onclick="toggleChip(this)">Family Blood Link</span>
+            <span style="font-size:11px;color:#555;font-weight:bold;width:100%;">Show only (select to filter):</span>
+            <span class="filter-chip green" data-filter="adding-el"    onclick="toggleChip(this)">Adding Elements</span>
+            <span class="filter-chip green" data-filter="adding-per"   onclick="toggleChip(this)">Adding Periods</span>
+            <span class="filter-chip green" data-filter="pure-adding"  onclick="toggleChip(this)">Pure Adding</span>
+            <span class="filter-chip green" data-filter="hetu-el"      onclick="toggleChip(this)">Hetu Elements</span>
+            <span class="filter-chip green" data-filter="hetu-per"     onclick="toggleChip(this)">Hetu Periods</span>
+            <span class="filter-chip green" data-filter="pure-hetu"    onclick="toggleChip(this)">Pure Hetu</span>
+            <span class="filter-chip green" data-filter="pure-qi-el"   onclick="toggleChip(this)">Pure Qi Elements</span>
+            <span class="filter-chip green" data-filter="pure-qi-per"  onclick="toggleChip(this)">Pure Qi Periods</span>
+            <span class="filter-chip gold"  data-filter="family"       onclick="toggleChip(this)">Family Blood Link</span>
         </div>
         <div id="month-view" style="display:none;overflow-x:auto;"></div>
         <div id="cal-view" style="display:none;padding:10px;"></div>
@@ -786,10 +786,14 @@ function toggleDST() {
 }
 
 function setNow() {
-    const now = new Date();
-    document.getElementById('date').value = now.toISOString().split('T')[0];
-    document.getElementById('time').value = now.toTimeString().slice(0,5);
-    calculateBazi();
+    try {
+        const now = new Date();
+        document.getElementById('date').value = now.toISOString().split('T')[0];
+        document.getElementById('time').value = now.toTimeString().slice(0,5);
+        calculateBazi();
+    } catch(e) {
+        console.error('setNow error:', e.message, e.stack);
+    }
 }
 
 function getGPS() {
@@ -857,10 +861,14 @@ function calculateBazi() {
     const dayLabel   = solarDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
     const hourLabel  = solarDate.toTimeString().slice(0,5);
 
-    document.querySelector('#p-year .header').innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
-    document.querySelector('#p-month .header').innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
-    document.querySelector('#p-day .header').innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
-    document.querySelector('#p-hour .header').innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
+    const hYear  = document.querySelector('#p-year .header');
+    const hMonth = document.querySelector('#p-month .header');
+    const hDay   = document.querySelector('#p-day .header');
+    const hHour  = document.querySelector('#p-hour .header');
+    if (hYear)  hYear.innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
+    if (hMonth) hMonth.innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
+    if (hDay)   hDay.innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
+    if (hHour)  hHour.innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
 
     // Store day stem for Noble calculations
     window._currentDayGan = dayGan;
@@ -981,9 +989,9 @@ function calculateBazi() {
 
     // Re-run favourable check for both persons if data entered
     if (_personAYear) checkFavourable(_personAYear, _personAStem, _personABranch, 'A');
-    else document.getElementById('favourable-col').style.display = 'none';
+    else { const el = document.getElementById('favourable-col'); if(el) el.style.display = 'none'; }
     if (_personBYear) checkFavourable(_personBYear, _personBStem, _personBBranch, 'B');
-    else document.getElementById('favourable-col-b').style.display = 'none';
+    else { const el = document.getElementById('favourable-col-b'); if(el) el.style.display = 'none'; }
 
     // Highlight all hexagram boxes bright yellow if same family
     ['p-hour','p-day','p-month','p-year'].forEach(id => {
@@ -1247,6 +1255,8 @@ function loadDateIntoMain(isoDate, hourIndex) {
 
 function renderScanResults(results, mode) {
     const container = document.getElementById('scan-results');
+    if (!container) return;
+    container.style.display = 'block';
     if (results.length === 0) {
         container.innerHTML = '<div class="scan-empty">No matching dates found.</div>';
         return;
@@ -1353,12 +1363,18 @@ let _currentMode = 'dates';
 
 function setMode(mode) {
     _currentMode = mode;
-    document.getElementById('mode-dates').style.background = mode === 'dates' ? '#1565c0' : '#555';
-    document.getElementById('mode-month').style.background = mode === 'month' ? '#1565c0' : '#555';
-    document.getElementById('mode-cal').style.background   = mode === 'cal'   ? '#1565c0' : '#555';
-    document.getElementById('scan-results').style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
-    document.getElementById('month-view').style.display   = mode === 'month' ? 'block' : 'none';
-    document.getElementById('cal-view').style.display     = mode === 'cal'   ? 'block' : 'none';
+    const mDates = document.getElementById('mode-dates');
+    const mMonth = document.getElementById('mode-month');
+    const mCal   = document.getElementById('mode-cal');
+    if (mDates) mDates.style.background = mode === 'dates' ? '#1565c0' : '#555';
+    if (mMonth) mMonth.style.background = mode === 'month' ? '#1565c0' : '#555';
+    if (mCal)   mCal.style.background   = mode === 'cal'   ? '#1565c0' : '#555';
+    const sr = document.getElementById('scan-results');
+    const mv = document.getElementById('month-view');
+    const cv = document.getElementById('cal-view');
+    if (sr) sr.style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
+    if (mv) mv.style.display = mode === 'month' ? 'block' : 'none';
+    if (cv) cv.style.display = mode === 'cal'   ? 'block' : 'none';
     ['sort-score','sort-date','sort-both'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = (mode === 'dates' && _scanResults.length) ? 'inline-block' : 'none';
@@ -1809,25 +1825,30 @@ function getActiveFilters() {
 }
 
 function itemMatchesFilter(text, tag, filters) {
-    if (tag === 'family')                               return filters.has('family');
-    if (text.includes('Pure Adding'))                   return filters.has('pure-adding');
-    if (text.includes('Pure Hetu'))                     return filters.has('pure-hetu');
-    if (text.includes('Pure Qi') && text.includes('Element')) return filters.has('pure-qi-el');
-    if (text.includes('Pure Qi') && text.includes('Period'))  return filters.has('pure-qi-per');
-    if (text.includes('Adding') && text.includes('Element'))  return filters.has('adding-el');
-    if (text.includes('Adding') && text.includes('Period'))   return filters.has('adding-per');
-    if (text.includes('Hetu') && text.includes('Element'))    return filters.has('hetu-el');
-    if (text.includes('Hetu') && text.includes('Period'))     return filters.has('hetu-per');
-    return true; // non-relation items pass through
+    if (tag === 'family')                                        return filters.has('family');
+    if (text === 'Pure Qi')                                      return filters.has('pure-qi-el') || filters.has('pure-qi-per');
+    if (text === 'Pure Qi Elements')                             return filters.has('pure-qi-el');
+    if (text === 'Pure Qi Periods')                              return filters.has('pure-qi-per');
+    if (text === 'Pure Adding' || text === 'Pure Adding Elements' || text === 'Pure Adding Periods') return filters.has('pure-adding');
+    if (text === 'Pure Hetu'  || text === 'Pure Hetu Elements'  || text === 'Pure Hetu Periods')    return filters.has('pure-hetu');
+    if (text.startsWith('Hetu') && text.includes('Element'))    return filters.has('hetu-el');
+    if (text.startsWith('Hetu') && text.includes('Period'))     return filters.has('hetu-per');
+    if (text === 'Hetu')                                         return filters.has('hetu-el') || filters.has('hetu-per');
+    if (text.startsWith('Adding') && text.includes('Element'))  return filters.has('adding-el');
+    if (text.startsWith('Adding') && text.includes('Period'))   return filters.has('adding-per');
+    if (text === 'Adding')                                       return filters.has('adding-el') || filters.has('adding-per');
+    return true;
 }
 
 function blueItemsPassFilter(blueItems, filters) {
-    // At least one blue item must match the active filters
+    // No filters selected = show everything
+    if (filters.size === 0) return true;
     const relationItems = blueItems.filter(i =>
+        i.tag === 'family' ||
         i.text.includes('Adding') || i.text.includes('Hetu') ||
-        i.text.includes('Pure Qi') || i.tag === 'family'
+        i.text.includes('Pure Qi') || i.text === 'Pure Qi'
     );
-    if (relationItems.length === 0) return true; // no relation items, pass through
+    if (relationItems.length === 0) return true;
     return relationItems.some(i => itemMatchesFilter(i.text, i.tag, filters));
 }
 
@@ -1952,7 +1973,7 @@ function runScanner() {
             );
 
             const scoreA = (personMatchEl || personMatchPer) ?
-                getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi) : 0;
+                getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi) : 1;
 
             // Person B
             let scoreB = 0;
@@ -1969,10 +1990,8 @@ function runScanner() {
                     [5,10,15].includes(personBYear.yun + dayXkdg.yun)
                 );
                 scoreB = (bMatchEl || bMatchPer) ?
-                    getMatchScore(personBYear, pBYStem, pBYBranch, dayXkdg, dGan, dZhi) : 0;
+                    getMatchScore(personBYear, pBYStem, pBYBranch, dayXkdg, dGan, dZhi) : 1;
             }
-
-            if (scoreA === 0) continue;
 
             const qualityScore = getDateQualityScore(analysisItems);
 
@@ -2038,15 +2057,22 @@ function runScanner() {
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
-    container.style.display = 'block';
-    document.getElementById('sort-score').style.display = 'inline-block';
-    document.getElementById('sort-date').style.display  = 'inline-block';
-    document.getElementById('sort-both').style.display  = personBYear ? 'inline-block' : 'none';
+    if (container) container.style.display = 'block';
+    const ss = document.getElementById('sort-score');
+    const sd = document.getElementById('sort-date');
+    const sb = document.getElementById('sort-both');
+    if (ss) ss.style.display = 'inline-block';
+    if (sd) sd.style.display = 'inline-block';
+    if (sb) sb.style.display = personBYear ? 'inline-block' : 'none';
 
     renderScanResults(results);
 }
 
-window.onload = () => { setNow(); renderArchive('A'); renderArchive('B'); };
+window.onload = () => { 
+    try { setNow(); } catch(e) { console.error('setNow:', e.message); }
+    try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
+    try { renderArchive('B'); } catch(e) { console.error('archiveB:', e.message); }
+};
 </script>
 <div id="version-tag" style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;"></div>
 <script>
