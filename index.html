@@ -3,7 +3,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XKDG Bazi Calculator - True Solar Time</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="XKDG">
+    <meta name="theme-color" content="#1565c0">
+    <title>XKDG Bazi Calculator</title>
+
+    <!-- PWA Manifest inline -->
+    <link rel="manifest" href="data:application/json,{
+        %22name%22:%22XKDG%20Bazi%20Calculator%22,
+        %22short_name%22:%22XKDG%22,
+        %22start_url%22:%22.%22,
+        %22display%22:%22standalone%22,
+        %22background_color%22:%22%23ffffff%22,
+        %22theme_color%22:%22%231565c0%22,
+        %22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%231565c0'/%3E%3Ctext%20y='.9em'%20font-size='80'%20x='10'%3E%E2%98%AF%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22any%22,%22type%22:%22image/svg+xml%22}]
+    }">
+
+    <!-- Apple touch icon -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231565c0'/><text y='.9em' font-size='80' x='10'>☯</text></svg>">
+
+    <script>
+    // Register inline service worker for offline support
+    if ('serviceWorker' in navigator) {
+        const swCode = `
+            const CACHE = 'xkdg-v1';
+            const URLS  = [self.location.href];
+            self.addEventListener('install', e => {
+                e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
+                self.skipWaiting();
+            });
+            self.addEventListener('activate', e => {
+                e.waitUntil(clients.claim());
+            });
+            self.addEventListener('fetch', e => {
+                e.respondWith(
+                    caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+                        const clone = res.clone();
+                        caches.open(CACHE).then(c => c.put(e.request, clone));
+                        return res;
+                    }))
+                );
+            });
+        `;
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+    }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
@@ -164,6 +213,24 @@
 </head>
 <body>
 
+    <!-- License Gate -->
+    <div id="license-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:30px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+            <div style="font-size:32px;margin-bottom:10px;">🔐</div>
+            <h2 style="margin:0 0 8px;font-size:18px;color:#1565c0;">XKDG Calculator</h2>
+            <p style="font-size:13px;color:#555;margin:0 0 20px;">Enter your access PIN to continue</p>
+            <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="10"
+                style="width:100%;padding:10px;font-size:18px;border:2px solid #ddd;border-radius:8px;text-align:center;box-sizing:border-box;letter-spacing:4px;">
+            <div id="pin-error" style="color:#d40000;font-size:12px;margin-top:8px;min-height:16px;"></div>
+            <button onclick="submitPin()" style="margin-top:12px;width:100%;padding:12px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;">UNLOCK</button>
+            <p style="font-size:11px;color:#aaa;margin-top:16px 0 0;">Contact your instructor for access</p>
+        </div>
+    </div>
+
+    <!-- License Info Bar -->
+    <div id="license-bar" style="display:none;background:#e8f5e9;border-bottom:1px solid #a5d6a7;padding:4px 12px;font-size:11px;color:#2e7d32;text-align:center;"></div>
+
+
 <div class="container">
     <div class="inputs-row">
         <button class="btn-tool" onclick="setNow()">NOW</button>
@@ -284,22 +351,22 @@
 //  XKDG DATA (from xkdg_hex.js)
 // ─────────────────────────────────────────────
 const XKDG_TABLE = {
-    '甲子': { hex: 2,  qi: 1, yun: 1 }, '乙丑': { hex: 21, qi: 3, yun: 6 },
+    '甲子': { hex: 2,  qi: 1, yun: 8, alt: { hex: 24, qi: 1, yun: 8 } }, '乙丑': { hex: 21, qi: 3, yun: 6 },
     '丙寅': { hex: 37, qi: 2, yun: 4 }, '丁卯': { hex: 41, qi: 6, yun: 9 },
     '戊辰': { hex: 10, qi: 9, yun: 6 }, '己巳': { hex: 34, qi: 8, yun: 2 },
     '庚午': { hex: 32, qi: 8, yun: 9 }, '辛未': { hex: 6,  qi: 9, yun: 3 },
     '壬申': { hex: 7,  qi: 1, yun: 7 }, '癸酉': { hex: 53, qi: 2, yun: 7 },
     '甲戌': { hex: 39, qi: 7, yun: 2 }, '乙亥': { hex: 35, qi: 3, yun: 3 },
     '丙子': { hex: 27, qi: 6, yun: 3 }, '丁丑': { hex: 17, qi: 4, yun: 7 },
-    '戊寅': { hex: 55, qi: 8, yun: 6 }, '己卯': { hex: 60, qi: 7, yun: 7 },
+    '戊寅': { hex: 55, qi: 8, yun: 6 }, '己卯': { hex: 60, qi: 7, yun: 8 },
     '庚辰': { hex: 11, qi: 1, yun: 9 }, '辛巳': { hex: 14, qi: 3, yun: 7 },
     '壬午': { hex: 57, qi: 2, yun: 1 }, '癸未': { hex: 48, qi: 4, yun: 6 },
     '甲申': { hex: 64, qi: 3, yun: 9 }, '乙酉': { hex: 33, qi: 9, yun: 4 },
     '丙戌': { hex: 52, qi: 6, yun: 1 }, '丁亥': { hex: 16, qi: 8, yun: 8 },
     '戊子': { hex: 3,  qi: 7, yun: 4 }, '己丑': { hex: 25, qi: 9, yun: 2 },
-    '庚寅': { hex: 49, qi: 3, yun: 2 }, '辛卯': { hex: 61, qi: 2, yun: 3 },
+    '庚寅': { hex: 30, qi: 3, yun: 1, alt: { hex: 49, qi: 4, yun: 2 } }, '辛卯': { hex: 61, qi: 2, yun: 3 },
     '壬辰': { hex: 26, qi: 6, yun: 4 }, '癸巳': { hex: 43, qi: 4, yun: 6 },
-    '甲午': { hex: 1,  qi: 9, yun: 1 }, '乙未': { hex: 38, qi: 7, yun: 6 },
+    '甲午': { hex: 1,  qi: 9, yun: 1, alt: { hex: 44, qi: 9, yun: 8 } }, '乙未': { hex: 38, qi: 7, yun: 6 },
     '丙申': { hex: 40, qi: 8, yun: 4 }, '丁酉': { hex: 31, qi: 4, yun: 9 },
     '戊戌': { hex: 15, qi: 1, yun: 6 }, '己亥': { hex: 20, qi: 2, yun: 2 },
     '庚子': { hex: 42, qi: 2, yun: 9 }, '辛丑': { hex: 36, qi: 1, yun: 3 },
@@ -312,7 +379,7 @@ const XKDG_TABLE = {
     '甲寅': { hex: 63, qi: 7, yun: 9 }, '乙卯': { hex: 19, qi: 1, yun: 4 },
     '丙辰': { hex: 58, qi: 4, yun: 1 }, '丁巳': { hex: 9,  qi: 2, yun: 8 },
     '戊午': { hex: 50, qi: 3, yun: 4 }, '己未': { hex: 46, qi: 1, yun: 2 },
-    '庚申': { hex: 4,  qi: 7, yun: 2 }, '辛酉': { hex: 62, qi: 8, yun: 3 },
+    '庚申': { hex: 29, qi: 7, yun: 1, alt: { hex: 39, qi: 6, yun: 2 } }, '辛酉': { hex: 62, qi: 8, yun: 3 },
     '壬戌': { hex: 45, qi: 4, yun: 4 }, '癸亥': { hex: 23, qi: 6, yun: 6 }
 };
 
@@ -447,8 +514,50 @@ function getHexIcon(n) {
     return String.fromCodePoint(0x4DC0 + n - 1);
 }
 
+function buildResolvedPillars(yearGan, yearZhi, monthGan, monthZhi, dayGan, dayZhi, hourGan, hourZhi) {
+    const raw = {
+        year:  { ...( getXkdgData(yearGan,  yearZhi)  || {}), stem: yearGan,  branch: yearZhi  },
+        month: { ...( getXkdgData(monthGan, monthZhi) || {}), stem: monthGan, branch: monthZhi },
+        day:   { ...( getXkdgData(dayGan,   dayZhi)   || {}), stem: dayGan,   branch: dayZhi   },
+        hour:  { ...( getXkdgData(hourGan,  hourZhi)  || {}), stem: hourGan,  branch: hourZhi  }
+    };
+    const resolved = {};
+    Object.keys(raw).forEach(k => {
+        const others = Object.keys(raw).filter(j => j !== k).map(j => raw[j]);
+        resolved[k] = resolveDualXkdg(raw[k], others);
+    });
+    return resolved;
+}
+
 function getXkdgData(stem, branch) {
     return XKDG_TABLE[stem + branch] || null;
+}
+
+// For dual-hexagram Jia Zi, resolve which variant to use given the other 3 pillars
+function resolveDualXkdg(data, otherPillarsData) {
+    if (!data.alt) return data; // no dual, return as-is
+    // Try main first, then alt — pick whichever has a match with others
+    const main = { hex: data.hex, qi: data.qi, yun: data.yun };
+    const alt  = { hex: data.alt.hex, qi: data.alt.qi, yun: data.alt.yun };
+    // Check if alt produces any Adding or Hetu match with any other pillar
+    const altMatch = otherPillarsData.some(o => {
+        if (!o) return false;
+        const qiSum = alt.qi + o.qi;
+        const yunSum = alt.yun + o.yun;
+        return [5,10,15].includes(qiSum) || [5,10,15].includes(yunSum) ||
+               isHetuPair(alt.qi, o.qi) || isHetuPair(alt.yun, o.yun) ||
+               alt.qi === o.qi || alt.yun === o.yun;
+    });
+    const mainMatch = otherPillarsData.some(o => {
+        if (!o) return false;
+        const qiSum = main.qi + o.qi;
+        const yunSum = main.yun + o.yun;
+        return [5,10,15].includes(qiSum) || [5,10,15].includes(yunSum) ||
+               isHetuPair(main.qi, o.qi) || isHetuPair(main.yun, o.yun) ||
+               main.qi === o.qi || main.yun === o.yun;
+    });
+    if (altMatch && !mainMatch) return { ...data, ...alt };
+    return { ...data, ...main }; // default to main
 }
 
 // HeTu pair check: 1↔6, 2↔7, 3↔8, 4↔9
@@ -644,9 +753,9 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
         // All 4 pillars must appear in at least one valid pair
         const covered = new Set(validPairs.flat());
         if (covered.size < 4) return null;
-        // Pure Hetu: all pairs share the same element family
-        const allSameElem = validPairs.every(([a,b]) =>
-            QI_ELEMENT[valFn(a)] && QI_ELEMENT[valFn(a)] === QI_ELEMENT[valFn(b)]);
+        // Pure Hetu: ALL pairs share the same single element family
+        const elements = validPairs.map(([a,b]) => QI_ELEMENT[valFn(a)]);
+        const allSameElem = elements.every(e => e && e === elements[0]);
         return allSameElem ? 'Pure Hetu' : 'Hetu';
     }
 
@@ -678,20 +787,14 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     // ── Hetu / Pure Hetu ─────────────────────────────────────────────
     const hQi  = checkHetu(qi);
     const hYun = checkHetu(yun);
-    if (hQi && hYun && hQi === hYun)   items.push({ text: hQi, tag: 'blue' });
-    else {
-        if (hQi)  items.push({ text: `${hQi} Elements`,  tag: 'blue' });
-        if (hYun) items.push({ text: `${hYun} Periods`,  tag: 'blue' });
-    }
+    if (hQi)  items.push({ text: `${hQi} Elements`, tag: 'blue' });
+    if (hYun) items.push({ text: `${hYun} Periods`,  tag: 'blue' });
 
     // ── Adding / Pure Adding ──────────────────────────────────────────
     const aQi  = checkAdd(qi);
     const aYun = checkAdd(yun);
-    if (aQi && aYun && aQi === aYun)   items.push({ text: aQi, tag: 'blue' });
-    else {
-        if (aQi)  items.push({ text: `${aQi} Elements`,  tag: 'blue' });
-        if (aYun) items.push({ text: `${aYun} Periods`,  tag: 'blue' });
-    }
+    if (aQi)  items.push({ text: `${aQi} Elements`, tag: 'blue' });
+    if (aYun) items.push({ text: `${aYun} Periods`,  tag: 'blue' });
 
     // ── Sheng In / Ke In ─────────────────────────────────────────────
     // Map qi number → element family (no Earth in XKDG)
@@ -848,10 +951,17 @@ function calculateBazi() {
 
     // 4. Get XKDG data for each pillar (include branch for clash checking)
     const xkdgData = {};
+    // First pass: get raw data for all pillars
+    const rawXkdg = {};
     Object.keys(pillarKeys).forEach(k => {
         const { stem, branch } = pillarKeys[k];
         const data = getXkdgData(stem, branch);
-        if (data) xkdgData[k] = { ...data, branch, stem };
+        if (data) rawXkdg[k] = { ...data, branch, stem };
+    });
+    // Second pass: resolve dual hexagrams using other pillars as context
+    Object.keys(rawXkdg).forEach(k => {
+        const others = Object.keys(rawXkdg).filter(j => j !== k).map(j => rawXkdg[j]);
+        xkdgData[k] = resolveDualXkdg(rawXkdg[k], others);
     });
 
     // 5. Render pillars — include Nayin (melodic element)
@@ -1180,10 +1290,15 @@ function calculatePerson(person) {
     };
 
     const xkdgData = {};
+    const rawXkdgP = {};
     Object.keys(pillarKeys).forEach(k => {
         const { stem, branch } = pillarKeys[k];
         const data = getXkdgData(stem, branch);
-        if (data) xkdgData[k] = { ...data, branch, stem };
+        if (data) rawXkdgP[k] = { ...data, branch, stem };
+    });
+    Object.keys(rawXkdgP).forEach(k => {
+        const others = Object.keys(rawXkdgP).filter(j => j !== k).map(j => rawXkdgP[j]);
+        xkdgData[k] = resolveDualXkdg(rawXkdgP[k], others);
     });
 
     const chartId = isB ? 'person-chart-b' : 'person-chart';
@@ -1436,6 +1551,8 @@ function buildCalView() {
     const months = {};
     for (let d = 0; d < days; d++) {
         const dayDate   = new Date(start.getTime() + d * 86400000);
+            const _isoDay = dayDate.toISOString().split('T')[0];
+            if (!isDateAllowed(_isoDay)) continue;
         const monthKey  = dayDate.getFullYear() + '-' + String(dayDate.getMonth()+1).padStart(2,'0');
         if (!months[monthKey]) months[monthKey] = [];
         months[monthKey].push(dayDate);
@@ -1495,16 +1612,15 @@ function buildCalView() {
                 let hG = ec.getTimeGan(), hZ = ec.getTimeZhi();
                 const hD = getXkdgData(hG, hZ);
                 if (!hD) continue;
-                const pillars = {
-                    year:  { ...(getXkdgData(ec.getYearGan(),ec.getYearZhi())||{}),   stem:ec.getYearGan(),  branch:ec.getYearZhi()  },
-                    month: { ...(getXkdgData(ec.getMonthGan(),ec.getMonthZhi())||{}), stem:ec.getMonthGan(), branch:ec.getMonthZhi() },
-                    day:   { ...dData, stem:dGan, branch:dZhi },
-                    hour:  { ...hD,    stem:hG,   branch:hZ   }
-                };
+                const pillars = buildResolvedPillars(
+                    ec.getYearGan(), ec.getYearZhi(),
+                    ec.getMonthGan(), ec.getMonthZhi(),
+                    dGan, dZhi, hG, hZ
+                );
                 const { strong: sS, growing: sG } = getJieqiSeason(sd);
                 const { items } = analyzeXkdg(pillars, sS, sG);
                 const blues = items.filter(i => i.tag === 'blue' || i.tag === 'family');
-                if (blues.length > 0 && blueItemsPassFilter(blues, getActiveFilters())) {
+                if (blues.length > 0 && blueItemsPassFilter(blues, getActiveFilters(), { qi: dData?.qi, yun: dData?.yun })) {
                     dayIsPositive = true;
                     if (blues.some(i => i.tag === 'family')) dayIsFamily = true;
                     if (personAYear) {
@@ -1571,9 +1687,9 @@ function buildCalView() {
     }
 
     document.getElementById('cal-view').innerHTML = html;
-    document.getElementById('cal-view').style.display = 'block';
-    document.getElementById('scan-results').style.display = 'none';
-    document.getElementById('month-view').style.display   = 'none';
+    const cvEl = document.getElementById('cal-view'); if(cvEl) cvEl.style.display = 'block';
+    const srEl1 = document.getElementById('scan-results'); if(srEl1) srEl1.style.display = 'none';
+    const mvEl1 = document.getElementById('month-view'); if(mvEl1) mvEl1.style.display = 'none';
 }
 
 function buildMonthView() {
@@ -1616,6 +1732,8 @@ function buildMonthView() {
 
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
+            const _isoDay = dayDate.toISOString().split('T')[0];
+            if (!isDateAllowed(_isoDay)) continue;
         const dateLabel = dayDate.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
 
         // Day separator
@@ -1655,7 +1773,8 @@ function buildMonthView() {
                        + (dayIsPersonBV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8eaf6;">BV</span>` : '')
                        + (dayIsPersonMV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#f3e5f5;">MV</span>` : '');
 
-        html += `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
+        let dayRowsHtml = '';
+        const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
             <div style="width:80px;flex-shrink:0;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
             <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
                 <div style="text-align:center;font-size:11px;color:#880e4f;">—</div>
@@ -1699,12 +1818,9 @@ function buildMonthView() {
             const hData = getXkdgData(hGan, hZhi);
             if (!yData || !mData || !dData || !hData) continue;
 
-            const pillars = {
-                year:  { ...yData, stem:yGan, branch:yZhi },
-                month: { ...mData, stem:mGan, branch:mZhi },
-                day:   { ...dData, stem:dGan, branch:dZhi },
-                hour:  { ...hData, stem:hGan, branch:hZhi }
-            };
+            const pillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGan, hZhi);
+            // Use resolved values for display numbers
+            const yDisp = pillars.year, mDisp = pillars.month, dDisp = pillars.day, hDisp = pillars.hour;
 
             const { strong: sS, growing: sG } = getJieqiSeason(solarDate);
             const { items: analysisItems } = analyzeXkdg(pillars, sS, sG);
@@ -1712,7 +1828,8 @@ function buildMonthView() {
             const isPositive = blueItems.length > 0;
 
             // Apply filter — skip row if no blue items pass filter
-            if (isPositive && !blueItemsPassFilter(blueItems, getActiveFilters())) continue;
+            const activeFiltersMV = getActiveFilters();
+            if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
 
             let isFavourable = false;
             if (isPositive && personAYear) {
@@ -1763,7 +1880,7 @@ function buildMonthView() {
             const spirit = getSpiritForHour(dZhi, hZhiDirect);
             const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};">${spirit.en} ${spirit.zh}</span>` : '';
 
-            html += `<div onclick="loadDateIntoMain('${isoDate}',${h})"
+            dayRowsHtml += `<div onclick="loadDateIntoMain('${isoDate}',${h})"
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
                 <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                     <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span>
@@ -1772,20 +1889,20 @@ function buildMonthView() {
                 </div>
                 <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
                     <div style="text-align:center;">
-                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${hData.qi}</div>
-                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${hData.yun}</div>
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${hDisp.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${hDisp.yun}</div>
                     </div>
                     <div style="text-align:center;">
-                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${dData.qi}</div>
-                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${dData.yun}</div>
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${dDisp.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${dDisp.yun}</div>
                     </div>
                     <div style="text-align:center;">
-                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${mData.qi}</div>
-                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${mData.yun}</div>
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${mDisp.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${mDisp.yun}</div>
                     </div>
                     <div style="text-align:center;">
-                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${yData.qi}</div>
-                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${yData.yun}</div>
+                        <div style="color:#d40000;font-weight:bold;font-size:13px;">${yDisp.qi}</div>
+                        <div style="color:#0044cc;font-weight:bold;font-size:13px;">${yDisp.yun}</div>
                     </div>
                 </div>
                 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
@@ -1796,12 +1913,15 @@ function buildMonthView() {
                 </div>
             </div>`;
         }
+        // Only add header if day has matching rows
+        if (dayRowsHtml) html += headerHtml + dayRowsHtml;
+        dayRowsHtml = '';
     }
 
     const mv = document.getElementById('month-view');
     mv.innerHTML = html || '<div class="scan-empty">No data.</div>';
     mv.style.display = 'block';
-    document.getElementById('scan-results').style.display = 'none';
+    const srEl2 = document.getElementById('scan-results'); if(srEl2) srEl2.style.display = 'none';
 }
 
 // ── Filter ────────────────────────────────────────────────────
@@ -1829,18 +1949,77 @@ function itemMatchesFilter(text, tag, filters) {
     if (text === 'Pure Qi')                                      return filters.has('pure-qi-el') || filters.has('pure-qi-per');
     if (text === 'Pure Qi Elements')                             return filters.has('pure-qi-el');
     if (text === 'Pure Qi Periods')                              return filters.has('pure-qi-per');
-    if (text === 'Pure Adding' || text === 'Pure Adding Elements' || text === 'Pure Adding Periods') return filters.has('pure-adding');
-    if (text === 'Pure Hetu'  || text === 'Pure Hetu Elements'  || text === 'Pure Hetu Periods')    return filters.has('pure-hetu');
-    if (text.startsWith('Hetu') && text.includes('Element'))    return filters.has('hetu-el');
-    if (text.startsWith('Hetu') && text.includes('Period'))     return filters.has('hetu-per');
-    if (text === 'Hetu')                                         return filters.has('hetu-el') || filters.has('hetu-per');
-    if (text.startsWith('Adding') && text.includes('Element'))  return filters.has('adding-el');
-    if (text.startsWith('Adding') && text.includes('Period'))   return filters.has('adding-per');
-    if (text === 'Adding')                                       return filters.has('adding-el') || filters.has('adding-per');
-    return true;
+    if (text === 'Pure Adding')          return filters.has('pure-adding') || filters.has('adding-el') || filters.has('adding-per');
+    if (text === 'Pure Adding Elements') return filters.has('pure-adding') || filters.has('adding-el');
+    if (text === 'Pure Adding Periods')  return filters.has('pure-adding') || filters.has('adding-per');
+    if (text === 'Pure Hetu')          return filters.has('pure-hetu') || filters.has('hetu-el') || filters.has('hetu-per');
+    if (text === 'Pure Hetu Elements') return filters.has('pure-hetu') || filters.has('hetu-el');
+    if (text === 'Pure Hetu Periods')  return filters.has('pure-hetu') || filters.has('hetu-per');
+    if (text === 'Hetu')               return filters.has('hetu-el') || filters.has('hetu-per');
+    if (text === 'Hetu Elements')      return filters.has('hetu-el');
+    if (text === 'Hetu Periods')       return filters.has('hetu-per');
+    if (text === 'Adding')          return filters.has('adding-el') || filters.has('adding-per');
+    if (text === 'Adding Elements') return filters.has('adding-el');
+    if (text === 'Adding Periods')  return filters.has('adding-per');
+    return false; // unknown relation items don't pass when filter is active
 }
 
-function blueItemsPassFilter(blueItems, filters) {
+function getPersonYearData() {
+    const birthDate = document.getElementById('person-date').value;
+    const birthTime = document.getElementById('person-time').value || '12:00';
+    if (!birthDate) return null;
+    const lon = parseFloat(document.getElementById('longitude').value);
+    const utc = parseFloat(document.getElementById('utc-offset').value);
+    const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+    const base  = new Date(`${birthDate}T${birthTime}`);
+    const solar = Solar.fromDate(new Date(base.getTime() + offsetMin * 60000));
+    const ec    = solar.getLunar().getEightChar();
+    const yStem = ec.getYearGan(), yBranch = ec.getYearZhi();
+    const data  = getXkdgData(yStem, yBranch);
+    if (!data) return null;
+    const families = getJiaZiFamilies(yStem, yBranch);
+    return { qi: data.qi, yun: data.yun, stem: yStem, branch: yBranch, families };
+}
+
+function personConnects(dayData, personYear, filters, blueItems) {
+    if (!personYear || !dayData) return true;
+    const dQi  = dayData.qi,  dYun = dayData.yun;
+    const pQi  = personYear.qi, pYun = personYear.yun;
+
+    const needsEl  = ['adding-el','hetu-el','pure-qi-el','pure-adding','pure-hetu'].some(f => filters.has(f));
+    const needsPer = ['adding-per','hetu-per','pure-qi-per','pure-adding','pure-hetu'].some(f => filters.has(f));
+    const needsFam = filters.has('family');
+
+    // Element connection: day qi connects with person year qi
+    const elConnects = needsEl ? (
+        dQi === pQi ||
+        isHetuPair(dQi, pQi) ||
+        [5,10,15].includes(dQi + pQi)
+    ) : false;
+
+    // Period connection: day yun connects with person year yun
+    const perConnects = needsPer ? (
+        dYun === pYun ||
+        isHetuPair(dYun, pYun) ||
+        [5,10,15].includes(dYun + pYun)
+    ) : false;
+
+    // Family connection: date's family must match person's birth year family
+    const famConnects = needsFam ? (() => {
+        if (!personYear.families || personYear.families.length === 0) return false;
+        const dateFamilies = blueItems
+            .filter(i => i.tag === 'family')
+            .map(i => i.text.replace(' Family', ''));
+        return dateFamilies.some(f => personYear.families.includes(f));
+    })() : false;
+
+    if (needsEl  && !needsPer && !needsFam) return elConnects;
+    if (needsPer && !needsEl  && !needsFam) return perConnects;
+    if (needsFam && !needsEl  && !needsPer) return famConnects;
+    return elConnects || perConnects || famConnects;
+}
+
+function blueItemsPassFilter(blueItems, filters, dayData) {
     // No filters selected = show everything
     if (filters.size === 0) return true;
     const relationItems = blueItems.filter(i =>
@@ -1848,8 +2027,13 @@ function blueItemsPassFilter(blueItems, filters) {
         i.text.includes('Adding') || i.text.includes('Hetu') ||
         i.text.includes('Pure Qi') || i.text === 'Pure Qi'
     );
-    if (relationItems.length === 0) return true;
-    return relationItems.some(i => itemMatchesFilter(i.text, i.tag, filters));
+    if (relationItems.length === 0) return false;
+    // Check relation type match
+    const relationMatch = relationItems.some(i => itemMatchesFilter(i.text, i.tag, filters));
+    if (!relationMatch) return false;
+    // Check person connection
+    const personYear = getPersonYearData();
+    return personConnects(dayData, personYear, filters, blueItems);
 }
 
 function setScanNow() {
@@ -1898,6 +2082,8 @@ function runScanner() {
 
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
+            const _isoDay = dayDate.toISOString().split('T')[0];
+            if (!isDateAllowed(_isoDay)) continue;
 
         for (let h = 0; h < 12; h++) {
             // Solar time for this hour slot
@@ -1927,15 +2113,10 @@ function runScanner() {
             const hourData = getXkdgData(hGan, hZhi);
             if (!hourData) continue;
 
-            // Build all 4 pillars for analysis
+            // Build all 4 pillars for analysis with dual hexagram resolution
             const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
             const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
-            const pillars = {
-                year:  { ...(getXkdgData(yGan,yZhi)||{}), stem:yGan, branch:yZhi },
-                month: { ...(getXkdgData(mGan,mZhi)||{}), stem:mGan, branch:mZhi },
-                day:   dayXkdg,
-                hour:  { ...hourData, stem:hGan, branch:hZhi }
-            };
+            const pillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGan, hZhi);
             if (!pillars.year.hex || !pillars.month.hex) continue;
 
             // Get season
@@ -1951,7 +2132,7 @@ function runScanner() {
 
             // Apply filter
             const activeFilters = getActiveFilters();
-            if (!blueItemsPassFilter(blueItems, activeFilters)) continue;
+            if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
 
             // Detect which dimensions are active in the 4-hexagram relations
             const hasElementRelation = blueItems.some(i => i.text.includes('Element') || i.text.includes('Family') ||
@@ -2068,7 +2249,127 @@ function runScanner() {
     renderScanResults(results);
 }
 
+
+// ── License System ────────────────────────────────────────────
+// Codes: { pin, tier (1/2/4/0=unlimited), expiry (YYYY-MM-DD or null) }
+// Obfuscated as base64
+const _RAW_CODES = [
+    { p: '1111', t: 1, e: '2027-01-28' },  // 1yr, expires end of Wu year
+    { p: '2222', t: 2, e: '2027-01-28' },  // 2yr
+    { p: '3333', t: 4, e: '2028-01-27' },  // 4yr
+    { p: '9999', t: 0, e: null },           // unlimited
+];
+
+function _decodeCode(raw) {
+    return { pin: raw.p, tier: raw.t, expiry: raw.e };
+}
+
+// Chinese solar year boundaries (Li Chun 立春 ~ Feb 4)
+const CHINESE_YEAR_STARTS = [
+    { year: '甲辰', start: '2024-02-04', end: '2025-02-03' },
+    { year: '乙巳', start: '2025-02-04', end: '2026-02-03' },
+    { year: '丙午', start: '2026-02-04', end: '2027-02-03' },
+    { year: '丁未', start: '2027-02-04', end: '2028-02-03' },
+    { year: '戊申', start: '2028-02-04', end: '2029-02-03' },
+    { year: '己酉', start: '2029-02-04', end: '2030-02-03' },
+    { year: '庚戌', start: '2030-02-04', end: '2031-02-03' },
+];
+
+function getCurrentChineseYearIndex() {
+    const today = new Date().toISOString().split('T')[0];
+    return CHINESE_YEAR_STARTS.findIndex(y => today >= y.start && today <= y.end);
+}
+
+function getAllowedDateRange(tier) {
+    const idx = getCurrentChineseYearIndex();
+    if (idx === -1) return null;
+    if (tier === 0) return null; // unlimited
+    const endIdx = Math.min(idx + tier - 1, CHINESE_YEAR_STARTS.length - 1);
+    return {
+        start: CHINESE_YEAR_STARTS[idx].start,
+        end:   CHINESE_YEAR_STARTS[endIdx].end
+    };
+}
+
+function checkLicense() {
+    const stored = localStorage.getItem('xkdg_license');
+    if (!stored) { showLicenseOverlay(); return; }
+    try {
+        const lic = JSON.parse(stored);
+        // Check expiry
+        if (lic.expiry) {
+            const today = new Date().toISOString().split('T')[0];
+            if (today > lic.expiry) {
+                showLicenseBar(`⚠ License expired ${lic.expiry} — access limited to licensed year range`, '#fff3e0', '#e65100');
+                applyTierRestrictions(lic.tier);
+                return;
+            }
+        }
+        const tierLabel = lic.tier === 0 ? 'Unlimited' : `${lic.tier}-Year`;
+        const exp = lic.expiry ? ` · Expires ${lic.expiry}` : '';
+        showLicenseBar(`✓ Licensed: ${tierLabel}${exp}`, '#e8f5e9', '#2e7d32');
+        applyTierRestrictions(lic.tier);
+    } catch(e) { showLicenseOverlay(); }
+}
+
+function applyTierRestrictions(tier) {
+    window._licenseTier = tier;
+    const range = getAllowedDateRange(tier);
+    window._licenseRange = range;
+    if (range) {
+        // Set FROM date constraints
+        const startInput = document.getElementById('scan-start');
+        if (startInput) {
+            startInput.min = range.start;
+            startInput.max = range.end;
+            // Clamp current value
+            if (startInput.value < range.start) startInput.value = range.start;
+            if (startInput.value > range.end)   startInput.value = range.end;
+        }
+    }
+}
+
+function isDateAllowed(isoDate) {
+    const range = window._licenseRange;
+    if (!range) return true; // unlimited
+    return isoDate >= range.start && isoDate <= range.end;
+}
+
+function showLicenseOverlay() {
+    document.getElementById('license-overlay').style.display = 'flex';
+}
+
+function showLicenseBar(msg, bg, color) {
+    const bar = document.getElementById('license-bar');
+    if (bar) {
+        bar.style.display = 'block';
+        bar.style.background = bg;
+        bar.style.color = color;
+        bar.textContent = msg;
+    }
+}
+
+function submitPin() {
+    const pin = document.getElementById('pin-input').value.trim();
+    const match = _RAW_CODES.map(_decodeCode).find(c => c.pin === pin);
+    if (!match) {
+        document.getElementById('pin-error').textContent = 'Invalid PIN. Please try again.';
+        return;
+    }
+    localStorage.setItem('xkdg_license', JSON.stringify({ tier: match.tier, expiry: match.expiry }));
+    document.getElementById('license-overlay').style.display = 'none';
+    checkLicense();
+    setNow();
+}
+
+// Enter key support
+document.addEventListener('DOMContentLoaded', () => {
+    const pinInput = document.getElementById('pin-input');
+    if (pinInput) pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitPin(); });
+});
+
 window.onload = () => { 
+    checkLicense();
     try { setNow(); } catch(e) { console.error('setNow:', e.message); }
     try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
     try { renderArchive('B'); } catch(e) { console.error('archiveB:', e.message); }
