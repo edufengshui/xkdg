@@ -1255,6 +1255,8 @@ function loadDateIntoMain(isoDate, hourIndex) {
 
 function renderScanResults(results, mode) {
     const container = document.getElementById('scan-results');
+    if (!container) return;
+    container.style.display = 'block';
     if (results.length === 0) {
         container.innerHTML = '<div class="scan-empty">No matching dates found.</div>';
         return;
