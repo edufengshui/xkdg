@@ -1024,6 +1024,28 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch)
     return labels;
 }
 
+// Build a map of isoDate+time → jieqi name for a given year range, adjusted to true solar time
+function buildJieqiMap(startYear, endYear, offsetMin) {
+    const map = {}; // key: 'YYYY-MM-DD', value: { name, time }
+    for (let yr = startYear; yr <= endYear; yr++) {
+        const table = Lunar.fromYmd(yr, 1, 1).getJieQiTable();
+        for (const [name, s] of Object.entries(table)) {
+            // s is a Solar object — get its datetime
+            const rawDate = new Date(s.getYear(), s.getMonth()-1, s.getDay(),
+                                     s.getHour ? s.getHour() : 0,
+                                     s.getMinute ? s.getMinute() : 0);
+            // Adjust to true solar time
+            const solarMs   = rawDate.getTime() + offsetMin * 60000;
+            const solarDate = new Date(solarMs);
+            const iso       = solarDate.toISOString().split('T')[0];
+            const timeStr   = String(solarDate.getHours()).padStart(2,'0') + ':' + String(solarDate.getMinutes()).padStart(2,'0');
+            if (!map[iso]) map[iso] = [];
+            map[iso].push({ name, time: timeStr });
+        }
+    }
+    return map;
+}
+
 let _currentMode = 'dates';
 
 function setMode(mode) {
@@ -1070,6 +1092,8 @@ function buildCalView() {
 
     const today    = new Date().toISOString().split('T')[0];
     const start    = new Date(startDate + 'T00:00:00');
+    const endDate  = new Date(start.getTime() + days * 86400000);
+    const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endDate.getFullYear() + 1, offsetMin);
     const DOW      = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
     // Group days by month
@@ -1160,11 +1184,15 @@ function buildCalView() {
             const cellClass = `cal-cell${isToday?' today':''}${dayIsFamily?' family':dayIsFavourable?' favourable':dayIsPositive?' positive':''}`;
             const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
 
+            const jieqi = jieqiMap[isoDate] || [];
+            const jieqiHTML = jieqi.map(j => `<div style="font-size:9px;color:#e65100;font-weight:bold;">${j.name} ${j.time}</div>`).join('');
+
             html += `<div class="${cellClass}" onclick="loadDateIntoMain('${isoDate}', 5)">
                 <div style="display:flex;justify-content:space-between;align-items:top;">
                     <span class="cal-day-num">${dayDate.getDate()}</span>
                     <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
                 </div>
+                ${jieqiHTML}
             </div>`;
         }
 
@@ -1204,7 +1232,9 @@ function buildMonthView() {
     }
 
     const HOUR_SHORT = ['子(23)','丑(01)','寅(03)','卯(05)','辰(07)','巳(09)','午(11)','未(13)','申(15)','酉(17)','戌(19)','亥(21)'];
-    const start = new Date(startDate + 'T00:00:00');
+    const start    = new Date(startDate + 'T00:00:00');
+    const endMV    = new Date(start.getTime() + days * 86400000);
+    const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endMV.getFullYear() + 1, offsetMin);
 
     let html = '';
     let lastDay = '';
@@ -1223,6 +1253,9 @@ function buildMonthView() {
         const yGanDay = midEC.getYearGan(),  yZhiDay = midEC.getYearZhi();
         const mGanDay = midEC.getMonthGan(), mZhiDay = midEC.getMonthZhi();
 
+        const jieqiDay = jieqiMap[dayDate.toISOString().split('T')[0]] || [];
+        const jieqiDayHTML = jieqiDay.map(j => `<span style="font-size:10px;color:#e65100;font-weight:bold;"> ⟐ ${j.name} ${j.time}</span>`).join('');
+
         html += `<div style="background:#fce4ec;padding:6px 10px;font-weight:bold;font-size:12px;color:#880e4f;border-top:2px solid #bbb;display:flex;justify-content:space-between;align-items:center;">
             <div style="display:flex;align-items:center;gap:8px;">
                 <div style="min-width:80px;"></div>
@@ -1232,6 +1265,7 @@ function buildMonthView() {
                     <div style="text-align:center;min-width:24px;font-size:12px;">${mGanDay}${mZhiDay}</div>
                     <div style="text-align:center;min-width:24px;font-size:12px;">${yGanDay}${yZhiDay}</div>
                 </div>
+                ${jieqiDayHTML}
             </div>
             <span style="font-size:11px;font-weight:normal;">${dateLabel}</span>
         </div>`;
