@@ -735,6 +735,17 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     }
 
     // Returns 'Pure Hetu', 'Hetu', or null — all 4 pillars must be covered (overlapping allowed)
+    // XKDG element relationships (no Earth)
+    const XKDG_SHENG = { 'Water':'Wood', 'Wood':'Fire', 'Metal':'Water' };
+    const XKDG_KE    = { 'Fire':'Metal', 'Water':'Fire', 'Metal':'Wood' };
+
+    function hetuElem(val) { return QI_ELEMENT[val] || null; }
+
+    function pairBActsOnPairA(elemA, elemB) {
+        // Pair B (elemB) must Sheng or Ke Pair A (elemA)
+        return XKDG_SHENG[elemB] === elemA || XKDG_KE[elemB] === elemA;
+    }
+
     function checkHetu(valFn) {
         const validPairs = [];
         for (let i = 0; i < keys.length; i++)
@@ -746,9 +757,22 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
         const covered = new Set(validPairs.flat());
         if (covered.size < 4) return null;
         // Pure Hetu: ALL pairs share the same single element family
-        const elements = validPairs.map(([a,b]) => QI_ELEMENT[valFn(a)]);
+        const elements = validPairs.map(([a,b]) => hetuElem(valFn(a)));
         const allSameElem = elements.every(e => e && e === elements[0]);
-        return allSameElem ? 'Pure Hetu' : 'Hetu';
+        if (allSameElem) return 'Pure Hetu';
+
+        // Mixed Hetu: find which pair contains the day pillar
+        const dayPairIdx = validPairs.findIndex(p => p.includes('day'));
+        if (dayPairIdx === -1) return null; // day not in any pair → discard
+        const elemDay   = hetuElem(valFn(validPairs[dayPairIdx][0]));
+        // Other pair(s) must Sheng or Ke the day pair
+        const otherPairs = validPairs.filter((_, i) => i !== dayPairIdx);
+        const hasRelation = otherPairs.some(p => {
+            const elemOther = hetuElem(valFn(p[0]));
+            return pairBActsOnPairA(elemDay, elemOther);
+        });
+        if (!hasRelation) return null; // no Sheng/Ke → discard
+        return 'Hetu';
     }
 
     // Returns 'Pure Adding', 'Adding', or null — all 4 pillars must be covered (overlapping allowed)
@@ -832,9 +856,33 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     const sharedFamilies = pillarFamilies[0].filter(f =>
         pillarFamilies.every(fams => fams.includes(f))
     );
-    const allSameFamily = sharedFamilies.length > 0;
+
+    const validFamilies = sharedFamilies.filter(f => {
+        // Get role of each pillar in this family
+        const roles = keys.map(k => {
+            const entry = (JIAZI_FAMILY_DATA[pillars[k].stem + pillars[k].branch] || [])
+                .find(e => e.family === f);
+            return entry ? entry.role : null;
+        });
+
+        // Count males (+) and females (-)
+        // father = male, mother = female, son = male, daughter = female
+        const males   = roles.filter(r => r === 'father' || r === 'son').length;
+        const females = roles.filter(r => r === 'mother' || r === 'daughter').length;
+
+        // Rule 1: discard if all same gender (all male or all female, including parent)
+        if (males === 0 || females === 0) return false;
+
+        // Rule 2: minimum balance — at least 1 of each gender (+++- or ---+)
+        // i.e. at least 1 male AND at least 1 female among the 4 pillars
+        if (males < 1 || females < 1) return false;
+
+        return true;
+    });
+
+    const allSameFamily = validFamilies.length > 0;
     if (allSameFamily) {
-        sharedFamilies.forEach(f => items.push({ text: `${f} Family`, tag: 'family' }));
+        validFamilies.forEach(f => items.push({ text: `${f} Family`, tag: 'family' }));
     }
 
     return { items, sameFamily: allSameFamily };
@@ -1996,13 +2044,21 @@ function personConnects(dayData, personYear, filters, blueItems) {
         [5,10,15].includes(dYun + pYun)
     ) : false;
 
-    // Family connection: date's family must match person's birth year family
+    // Family connection: full BL (same family) OR partial BL (person year connects with day qi/yun)
     const famConnects = needsFam ? (() => {
-        if (!personYear.families || personYear.families.length === 0) return false;
+        if (!personYear) return false;
         const dateFamilies = blueItems
             .filter(i => i.tag === 'family')
             .map(i => i.text.replace(' Family', ''));
-        return dateFamilies.some(f => personYear.families.includes(f));
+        // Full BL: person's year belongs to same family
+        const fullBL = personYear.families && dateFamilies.some(f => personYear.families.includes(f));
+        if (fullBL) return true;
+        // Partial BL: person's year qi/yun connects with day qi/yun
+        const partialBL = (
+            dQi === pQi || isHetuPair(dQi, pQi) || [5,10,15].includes(dQi + pQi) ||
+            dYun === pYun || isHetuPair(dYun, pYun) || [5,10,15].includes(dYun + pYun)
+        );
+        return partialBL;
     })() : false;
 
     if (needsEl  && !needsPer && !needsFam) return elConnects;
@@ -2200,7 +2256,19 @@ function runScanner() {
             const clashPenalty = clashTypeSC === 'clash-year' ? -2 :
                                  (clashTypeSC === 'clash-month-stem' || clashTypeSC === 'clash-month-branch') ? -2 : 0;
 
-            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + clashPenalty);
+            // Blood Link bonus: +2 if person's year belongs to same family (full BL)
+            const personYearSC = getPersonYearData();
+            const fullBLBonus = (() => {
+                if (!personYearSC || !personYearSC.families) return 0;
+                const hasFamily = blueItems.some(i => i.tag === 'family');
+                if (!hasFamily) return 0;
+                const dateFamilies = blueItems
+                    .filter(i => i.tag === 'family')
+                    .map(i => i.text.replace(' Family', ''));
+                return dateFamilies.some(f => personYearSC.families.includes(f)) ? 2 : 0;
+            })();
+
+            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + clashPenalty + fullBLBonus);
 
             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
