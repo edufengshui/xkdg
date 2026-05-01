@@ -676,7 +676,7 @@ function isKongWangVoid(hourBranch, dayGan, dayZhi, seasonStrong, seasonGrowing)
     const GENERATES = { 'Water':'Wood', 'Wood':'Fire', 'Fire':'Earth', 'Earth':'Metal', 'Metal':'Water' };
     const generator = Object.keys(GENERATES).find(k => GENERATES[k] === elem);
     const isTimely = elem === seasonStrong || elem === seasonGrowing ||
-                     generator === seasonStrong || generator === seasonGrowing;
+                     generator === seasonStrong; // only strong generator counts
     return !isTimely; // void AND untimely → discard
 }
 
@@ -714,14 +714,13 @@ const STEM_ELEMENT = {
 
 function isTombSha(hourBranch, dayStem, seasonStrong, seasonGrowing) {
     const tomb = TOMB_SHA[dayStem];
-    console.log(`isTombSha: hourBranch=${hourBranch} dayStem=${dayStem} tomb=${tomb} strong=${seasonStrong} growing=${seasonGrowing}`);
     if (!tomb || tomb !== hourBranch) return false;
     const elem = STEM_ELEMENT[dayStem];
     // Generate cycle: Water→Wood, Wood→Fire, Fire→Earth, Earth→Metal, Metal→Water
     const GENERATES = { 'Water':'Wood','Wood':'Fire','Fire':'Earth','Earth':'Metal','Metal':'Water' };
     const generator = Object.keys(GENERATES).find(k => GENERATES[k] === elem);
     const isTimely = elem === seasonStrong || elem === seasonGrowing ||
-                     generator === seasonStrong || generator === seasonGrowing;
+                     generator === seasonStrong; // only strong generator counts
     return !isTimely; // only flag when untimely
 }
 
@@ -1025,7 +1024,7 @@ const ELEMENTS_EN = {
 // ── Global: Jieqi season detector ─────────────────────────────
 function getJieqiSeason(solarDate) {
     const LI_TERMS  = { '立春':'Wood', '立夏':'Fire', '立秋':'Metal', '立冬':'Water' };
-    const NEXT_ELEM = { Water:'Wood', Wood:'Fire', Fire:'Metal', Metal:'Water' };
+    const NEXT_ELEM = { Water:'Wood', Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water' };
     const y = solarDate.getFullYear();
     const currentMs = solarDate.getTime();
     let lastLiDate = null, lastLiElem = null;
@@ -2859,7 +2858,8 @@ const _RAW_CODES = [
     { p: '1111', t: 1, e: '2027-01-28' },  // 1yr, expires end of Wu year
     { p: '2222', t: 2, e: '2027-01-28' },  // 2yr
     { p: '3333', t: 4, e: '2028-01-27' },  // 4yr
-    { p: '9999', t: 0, e: null },           // unlimited
+    { p: '9999', t: 0, e: null },           // unlimited (admin)
+    { p: '3827', t: 0, e: null },           // unlimited — Nicholas & Claire
 ];
 
 function _decodeCode(raw) {
