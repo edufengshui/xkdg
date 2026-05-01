@@ -1535,19 +1535,26 @@ let _personYearBranch = null;
 
 function getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch) {
     if (!personYear || !dayXkdg) return 0;
-    let matchScore = 0;
-    // Family (highest)
+    const pQi = personYear.qi, pYun = personYear.yun;
+    const dQi = dayXkdg.qi,   dYun = dayXkdg.yun;
+
+    // Family (highest = 4)
     const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
-    if (sharedFams.length > 0) matchScore = 4;
-    // Pure Qi (second highest — exact same qi or yun)
-    else if (personYear.qi === dayXkdg.qi || personYear.yun === dayXkdg.yun) matchScore = 3;
-    // Pure Hetu / Pure Adding
-    else if ((isHetuPair(personYear.qi, dayXkdg.qi) && personYear.qi === dayXkdg.qi) ||
-             ([5,10,15].includes(personYear.qi + dayXkdg.qi) && personYear.qi + dayXkdg.qi === personYear.yun + dayXkdg.yun)) matchScore = 2;
-    // Hetu / Adding
-    else if (isHetuPair(personYear.qi, dayXkdg.qi) || [5,10,15].includes(personYear.qi + dayXkdg.qi) ||
-             isHetuPair(personYear.yun, dayXkdg.yun) || [5,10,15].includes(personYear.yun + dayXkdg.yun)) matchScore = 1;
-    return matchScore;
+    if (sharedFams.length > 0) return 4;
+
+    // Pure Qi (= 3): exact same qi OR same yun
+    if (pQi === dQi || pYun === dYun) return 3;
+
+    // Pure Hetu / Pure Adding (= 2): both qi AND yun connect the same way
+    const bothHetu   = isHetuPair(pQi, dQi) && isHetuPair(pYun, dYun);
+    const bothAdding = [5,10,15].includes(pQi + dQi) && [5,10,15].includes(pYun + dYun);
+    if (bothHetu || bothAdding) return 2;
+
+    // Hetu / Adding (= 1): at least one dimension connects
+    if (isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
+        isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun)) return 1;
+
+    return 0;
 }
 
 function getDateQualityScore(analysisItems) {
@@ -2216,12 +2223,8 @@ function blueItemsPassFilter(blueItems, filters, dayData) {
         i.text.includes('Pure Qi') || i.text === 'Pure Qi'
     );
     if (relationItems.length === 0) return false;
-    // Check relation type match
-    const relationMatch = relationItems.some(i => itemMatchesFilter(i.text, i.tag, filters));
-    if (!relationMatch) return false;
-    // Check person connection
-    const personYear = getPersonYearData();
-    return personConnects(dayData, personYear, filters, blueItems);
+    // Only check relation type match — person connection affects score, not visibility
+    return relationItems.some(i => itemMatchesFilter(i.text, i.tag, filters));
 }
 
 function setScanNow() {
@@ -2453,6 +2456,11 @@ function runScanner() {
 
     } catch(scanErr) {
         alert('Scanner error: ' + scanErr.message + '\n' + scanErr.stack);
+        return;
+    }
+
+    if (results.length === 0) {
+        alert('No results found. Try removing filter chips or extending the scan range.');
         return;
     }
 
