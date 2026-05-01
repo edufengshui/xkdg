@@ -188,7 +188,7 @@
         .wood { color: var(--wood); } .fire { color: var(--fire); } .earth { color: var(--earth); }
         .metal { color: var(--metal); } .water { color: var(--water); }
         
-        .solar-badge { background: #fff1f0; color: #d40000; padding: 4px 10px; border-radius: 15px; border: 1px solid #ffa39e; font-size: 13px; font-weight: bold; }
+        .solar-badge { background: #fff1f0; color: #d40000; padding: 4px 10px; border-radius: 15px; border: 1px solid #ffa39e; font-size: 13px; font-weight: bold; text-align: center; }
 
         .hex-missing { font-size: 12px; color: #aaa; margin-top: 20px; }
 
@@ -209,12 +209,12 @@
 <body>
 
     <!-- License Gate -->
-    <div id="license-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
+    <div id="license-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#fff;border-radius:12px;padding:30px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
             <div style="font-size:32px;margin-bottom:10px;">🔐</div>
             <h2 style="margin:0 0 8px;font-size:18px;color:#1565c0;">XKDG Calculator</h2>
             <p style="font-size:13px;color:#555;margin:0 0 20px;">Enter your access PIN to continue</p>
-            <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="10"
+            <input type="password" inputmode="numeric" id="pin-input" placeholder="Enter PIN" maxlength="10" autocomplete="off"
                 style="width:100%;padding:10px;font-size:18px;border:2px solid #ddd;border-radius:8px;text-align:center;box-sizing:border-box;letter-spacing:4px;">
             <div id="pin-error" style="color:#d40000;font-size:12px;margin-top:8px;min-height:16px;"></div>
             <button onclick="submitPin()" style="margin-top:12px;width:100%;padding:12px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;">UNLOCK</button>
@@ -362,7 +362,7 @@
             <span class="filter-chip green" data-filter="pure-qi-per"  onclick="toggleChip(this)">Pure Qi Periods</span>
             <span class="filter-chip gold"  data-filter="family"       onclick="toggleChip(this)">Family Blood Link</span>
         </div>
-        <div id="month-view" style="display:none;overflow-x:auto;"></div>
+        <div id="month-view" style="display:none;overflow-x:auto;max-width:600px;margin:0 auto;width:100%;"></div>
         <div id="cal-view" style="display:none;padding:10px;"></div>
     </div>
 
@@ -1108,10 +1108,10 @@ function calculateBazi() {
     const hMonth = document.querySelector('#p-month .header');
     const hDay   = document.querySelector('#p-day .header');
     const hHour  = document.querySelector('#p-hour .header');
-    if (hYear)  hYear.innerHTML  = `YEAR<br><span style="font-size:13px;">${pillarKeys.year.stem}${pillarKeys.year.branch}</span><br><span style="font-size:10px;font-weight:normal;">${yearLabel}</span>`;
-    if (hMonth) hMonth.innerHTML = `MONTH<br><span style="font-size:13px;">${pillarKeys.month.stem}${pillarKeys.month.branch}</span><br><span style="font-size:10px;font-weight:normal;">${monthLabel}</span>`;
-    if (hDay)   hDay.innerHTML   = `DAY<br><span style="font-size:13px;">${dayGan}${dayZhi}</span><br><span style="font-size:10px;font-weight:normal;">${dayLabel}</span>`;
-    if (hHour)  hHour.innerHTML  = `HOUR<br><span style="font-size:13px;">${pillarKeys.hour.stem}${pillarKeys.hour.branch}</span><br><span style="font-size:10px;font-weight:normal;">${hourLabel}</span>`;
+    if (hYear)  hYear.innerHTML  = `YEAR`;
+    if (hMonth) hMonth.innerHTML = `MONTH`;
+    if (hDay)   hDay.innerHTML   = `DAY`;
+    if (hHour)  hHour.innerHTML  = `HOUR`;
 
     // Store day stem for Noble calculations
     window._currentDayGan = dayGan;
@@ -2240,13 +2240,7 @@ function buildMonthView() {
 
         let dayRowsHtml = '';
         const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
-            <div style="width:80px;flex-shrink:0;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
-            <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;align-items:center;">
-                <div style="width:25px;"></div>
-                <div style="text-align:center;font-size:10px;line-height:1.1;">${dGanDay}<br>${dZhiDay}</div>
-                <div style="text-align:center;font-size:10px;line-height:1.1;">${mGanDay}<br>${mZhiDay}</div>
-                <div style="text-align:center;font-size:10px;line-height:1.1;">${yGanDay}<br>${yZhiDay}</div>
-            </div>
+            <div style="flex-shrink:0;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
             <div style="margin-left:auto;font-size:11px;font-weight:normal;text-align:right;">${dateLabel}${jieqiDayHTML}</div>
         </div>`;
 
@@ -2358,11 +2352,14 @@ function buildMonthView() {
             dayRowsHtml += `<div onclick="loadDateIntoMain('${isoDate}',${h})"
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
                 <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
-                    <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span>
-                    ${nobleHTMLMV}${luHTMLMV}${hvHTMLMV}${bvHTMLMV}${mvHTMLMV}${tyHTMLMV}<br>
+                    <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
                     <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                 </div>
-                <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
+                <div style="width:30px;flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:2px;">
+                    ${nobleHTMLMV}${luHTMLMV}${hvHTMLMV}${bvHTMLMV}${mvHTMLMV}${tyHTMLMV}
+                </div>
+                <div style="flex:1;display:flex;justify-content:flex-end;padding-right:20px;">
+                <div style="display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
                     <div style="text-align:center;">
                         <div style="color:#d40000;font-weight:bold;font-size:13px;">${hDisp.qi}</div>
                         <div style="color:#0044cc;font-weight:bold;font-size:13px;">${hDisp.yun}</div>
@@ -2379,6 +2376,7 @@ function buildMonthView() {
                         <div style="color:#d40000;font-weight:bold;font-size:13px;">${yDisp.qi}</div>
                         <div style="color:#0044cc;font-weight:bold;font-size:13px;">${yDisp.yun}</div>
                     </div>
+                </div>
                 </div>
                 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
