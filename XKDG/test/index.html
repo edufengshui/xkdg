@@ -80,7 +80,7 @@
         .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; min-width: 0; overflow: hidden; }
         .pillar:last-child { border-right: none; }
         
-        .header { background: #fce4ec; padding: 6px 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1px; font-size: 13px; }
+        .header { background: #fce4ec; padding: 6px 12px; font-weight: bold; color: #880e4f; border-bottom: 2px solid #bbb; letter-spacing: 1px; font-size: 13px; min-height: 32px; display: flex; align-items: center; justify-content: center; }
         .cell { padding: 6px 5px; min-height: 70px; }
         .hanzi { font-family: 'Ma Shan Zheng', cursive; font-size: 64px; line-height: 1.1; display: block; }
         .element-label { font-size: 11px; text-transform: uppercase; opacity: 0.7; font-weight: bold; margin-top: 5px; display: block;}
@@ -288,6 +288,18 @@
             <div class="pillar" id="pp-month"><div class="header">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
             <div class="pillar" id="pp-year"><div class="header" style="background:#e8f5e9;color:#1b5e20;">YEAR ★</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
         </div>
+        <div class="analysis-section" id="person-analysis-a" style="display:none;">
+            <div class="analysis-items-col">
+                <h3 style="display:flex;align-items:center;justify-content:space-between;">
+                    ⬡ XKDG RELATIONS
+                    <button onclick="togglePersonStars('a')" id="toggle-stars-a"
+                        style="font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid #bbb;background:#f5f5f5;color:#555;cursor:pointer;">
+                        ☆ Stars OFF
+                    </button>
+                </h3>
+                <div id="person-analysis-items-a"></div>
+            </div>
+        </div>
         <div id="favourable-result" style="padding:10px;display:none;"></div>
     </div>
 
@@ -300,6 +312,7 @@
             <div><label>HOUR:</label> <input type="time" id="person-time-b" value="12:00" style="width:85px;"></div>
             <button class="btn-person" onclick="calculatePerson('B')" style="background:#7b1fa2;">CALCULATE</button>
             <button class="btn-person" onclick="savePerson('B')" style="background:#4a148c;">SAVE</button>
+            <button class="btn-person" onclick="checkCompatibility()" style="background:#ad1457;" title="Check compatibility between A and B">♡ COMPAT</button>
         </div>
         <div id="person-archive-b" style="padding:8px 15px; background:#fce4ec; border-bottom:1px solid #ce93d8; display:none; flex-wrap:wrap; gap:6px;"></div>
         <div class="chart" id="person-chart-b" style="display:none;">
@@ -308,6 +321,19 @@
             <div class="pillar" id="pb-month"><div class="header" style="background:#f3e5f5;color:#4a148c;">MONTH</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
             <div class="pillar" id="pb-year"><div class="header" style="background:#e1bee7;color:#4a148c;">YEAR ★</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
         </div>
+        <div class="analysis-section" id="person-analysis-b" style="display:none;">
+            <div class="analysis-items-col">
+                <h3 style="display:flex;align-items:center;justify-content:space-between;">
+                    ⬡ XKDG RELATIONS
+                    <button onclick="togglePersonStars('b')" id="toggle-stars-b"
+                        style="font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid #bbb;background:#f5f5f5;color:#555;cursor:pointer;">
+                        ☆ Stars OFF
+                    </button>
+                </h3>
+                <div id="person-analysis-items-b"></div>
+            </div>
+        </div>
+        <div id="compatibility-result" style="display:none;padding:12px 15px;background:#fce4ec;border-top:2px solid #7b1fa2;"></div>
     </div>
 
     <!-- Date Scanner Section -->
@@ -1311,11 +1337,27 @@ function renderAnalysis(items) {
 //  PERSON BIRTH CHART + ARCHIVE (A & B)
 // ─────────────────────────────────────────────
 
-let _currentDayXkdg = null;
+let _showPersonStars = { a: false, b: false };
+
+function togglePersonStars(person) {
+    _showPersonStars[person] = !_showPersonStars[person];
+    const btn = document.getElementById(`toggle-stars-${person}`);
+    if (btn) {
+        btn.textContent = _showPersonStars[person] ? '★ Stars ON' : '☆ Stars OFF';
+        btn.style.background = _showPersonStars[person] ? '#fff9c4' : '#f5f5f5';
+        btn.style.color = _showPersonStars[person] ? '#b8860b' : '#555';
+    }
+    // Re-render by recalculating
+    calculatePerson(person === 'a' ? 'A' : 'B');
+}
 let _currentDayAnalysis = null;
 let _scanResults = [];
 let _personAYear = null, _personAStem = null, _personABranch = null;
+let _personADay  = null, _personADayStem = null, _personADayBranch = null;
+let _personARelations = null; // active blue items from A's chart
 let _personBYear = null, _personBStem = null, _personBBranch = null;
+let _personBDay  = null, _personBDayStem = null, _personBDayBranch = null;
+let _personBRelations = null; // active blue items from B's chart
 
 // ── Archive ──────────────────────────────────
 function loadArchive(key) {
@@ -1429,18 +1471,264 @@ function calculatePerson(person) {
     updatePillar(`${prefix}-day`,   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
     updatePillar(`${prefix}-hour`,  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
 
-    // Store year hexagram for scanner
+    // Store year + day hexagram and active relations for compatibility
     if (isB) {
-        _personBYear   = xkdgData.year;
-        _personBStem   = pillarKeys.year.stem;
-        _personBBranch = pillarKeys.year.branch;
+        _personBYear      = xkdgData.year;
+        _personBStem      = pillarKeys.year.stem;
+        _personBBranch    = pillarKeys.year.branch;
+        _personBDay       = xkdgData.day;
+        _personBDayStem   = pillarKeys.day.stem;
+        _personBDayBranch = pillarKeys.day.branch;
         checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'B');
     } else {
-        _personAYear   = xkdgData.year;
-        _personAStem   = pillarKeys.year.stem;
-        _personABranch = pillarKeys.year.branch;
+        _personAYear      = xkdgData.year;
+        _personAStem      = pillarKeys.year.stem;
+        _personABranch    = pillarKeys.year.branch;
+        _personADay       = xkdgData.day;
+        _personADayStem   = pillarKeys.day.stem;
+        _personADayBranch = pillarKeys.day.branch;
         checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'A');
     }
+
+    // Store active relations (blue items) for compatibility analysis
+    const { strong: pStrong, growing: pGrowing } = getJieqiSeason(solarDate);
+    const { items: personAnalysis } = analyzeXkdg(xkdgData, pStrong, pGrowing);
+    const activeRelations = personAnalysis.filter(i => i.tag === 'blue' || i.tag === 'family');
+    if (isB) _personBRelations = activeRelations;
+    else      _personARelations = activeRelations;
+
+    // Add auspicious stars using person's own pillars (day stem vs hour branch)
+    const showStars = _showPersonStars[isB ? 'b' : 'a'];
+    if (showStars) {
+    const pDayGan  = pillarKeys.day.stem;
+    const pDayZhi  = pillarKeys.day.branch;
+    const pHourZhi = pillarKeys.hour.branch;
+    const pHourGan = pillarKeys.hour.stem;
+    const pMthZhi  = pillarKeys.month.branch;
+
+    // Noble: hour branch is Noble for day stem
+    const pNobles = NOBLE_BRANCHES[pDayGan] || [];
+    if (pNobles.includes(pHourZhi)) personAnalysis.push({ text: 'Noble (Date)', tag: 'noble' });
+
+    // Lu: hour branch is Lu for day stem
+    if (LU_BRANCH[pDayGan] === pHourZhi) personAnalysis.push({ text: 'Lu (Date)', tag: 'lu' });
+
+    // Tian Yi: hour branch matches day stem TY
+    if (TIAN_YI[pDayGan] === pHourZhi) personAnalysis.push({ text: 'Tian Yi (Date)', tag: 'ty' });
+
+    // Heaven Virtue: hour branch matches month branch HV
+    const pHV = HEAVEN_VIRTUE[pMthZhi] || null;
+    if (pHV === pHourZhi) personAnalysis.push({ text: 'Heaven Virtue (Date)', tag: 'hv' });
+
+    // Branch Virtue: hour branch matches day branch BV
+    const pBV = BRANCH_VIRTUE[pDayZhi] || null;
+    if (pBV === pHourZhi) personAnalysis.push({ text: 'Branch Virtue (Date)', tag: 'bv' });
+
+    // Month Virtue: hour stem or day branch matches month branch MV
+    const pMV = MONTH_VIRTUE[pMthZhi] || null;
+    if (pMV && (pMV.stem === pHourGan || pMV.branch === pDayZhi)) personAnalysis.push({ text: 'Month Virtue (Date)', tag: 'mv' });
+
+    // 12 Spirits: hour branch vs day branch
+    const pSpirit = getSpiritForHour(pDayZhi, pHourZhi);
+    if (pSpirit) personAnalysis.push({ text: `${pSpirit.en} ${pSpirit.zh}`, tag: pSpirit.auspicious ? 'spirit-good' : 'spirit-bad' });
+
+    // Clashes
+    const pClash = getClashType(pDayGan, pDayZhi, pillarKeys.year.branch, pillarKeys.month.stem, pMthZhi);
+    if (pClash === 'clash-year')              personAnalysis.push({ text: 'Day-Year Branch Clash', tag: 'clash-year' });
+    else if (pClash === 'clash-month-stem')   personAnalysis.push({ text: 'Day-Month Stem Clash', tag: 'clash-month-stem' });
+    else if (pClash === 'clash-month-branch') personAnalysis.push({ text: 'Day-Month Branch Clash', tag: 'clash-month-branch' });
+
+    } // end if (showStars)
+    const analysisContainerId = isB ? 'person-analysis-b' : 'person-analysis-a';
+    const analysisItemsId     = isB ? 'person-analysis-items-b' : 'person-analysis-items-a';
+    const analysisSection = document.getElementById(analysisContainerId);
+    const analysisItems   = document.getElementById(analysisItemsId);
+    if (personAnalysis && personAnalysis.length > 0) {
+        analysisSection.style.display = 'flex';
+        analysisItems.innerHTML = personAnalysis.map(item => {
+            const content = item.tag === 'blue'   ? `<span class="tag-blue">${item.text}</span>`
+                          : item.tag === 'green'  ? `<span class="tag-green">${item.text}</span>`
+                          : item.tag === 'gold'   ? `<span class="tag-gold">${item.text}</span>`
+                          : item.tag === 'family' ? `<span class="tag-family">⬡ ${item.text}</span>`
+                          : item.tag === 'noble'  ? `<span class="tag-noble">☯ ${item.text}</span>`
+                          : item.tag === 'lu'     ? `<span class="tag-lu">禄 ${item.text}</span>`
+                          : item.tag === 'hv'     ? `<span class="tag-hv">天德 ${item.text}</span>`
+                          : item.tag === 'bv'     ? `<span class="tag-bv">支德 ${item.text}</span>`
+                          : item.tag === 'mv'     ? `<span class="tag-mv">月德 ${item.text}</span>`
+                          : item.tag === 'ty'     ? `<span class="tag-ty">天医 ${item.text}</span>`
+                          : item.tag === 'spirit-good' ? `<span class="tag-spirit-good">★ ${item.text}</span>`
+                          : item.tag === 'spirit-bad'  ? `<span class="tag-spirit-bad">✕ ${item.text}</span>`
+                          : item.tag === 'clash-year'         ? `<span class="tag-clash-year">⚡ ${item.text}</span>`
+                          : item.tag === 'clash-month-stem'   ? `<span class="tag-clash-month-stem">⚡ ${item.text}</span>`
+                          : item.tag === 'clash-month-branch' ? `<span class="tag-clash-month-branch">⚡ ${item.text}</span>`
+                          : item.text;
+            return `<div class="analysis-item">⬡ ${content}</div>`;
+        }).join('');
+        // Restore toggle button state
+        const btnKey = isB ? 'b' : 'a';
+        const btn = document.getElementById(`toggle-stars-${btnKey}`);
+        if (btn) {
+            btn.textContent = _showPersonStars[btnKey] ? '★ Stars ON' : '☆ Stars OFF';
+            btn.style.background = _showPersonStars[btnKey] ? '#fff9c4' : '#f5f5f5';
+            btn.style.color = _showPersonStars[btnKey] ? '#b8860b' : '#555';
+        }
+    } else {
+        analysisSection.style.display = 'none';
+    }
+}
+
+function checkCompatibility() {
+    const div = document.getElementById('compatibility-result');
+    if (!div) return;
+
+    if (!_personAYear || !_personADay) { alert('Please calculate Person A first.'); return; }
+    if (!_personBYear || !_personBDay) { alert('Please calculate Person B first.'); return; }
+
+    const matches = [];
+
+    // Helper: check if two hexagrams connect via a given relation type
+    const connects = (xA, xB, type) => {
+        const results = [];
+        const sameQi   = xA.qi === xB.qi;
+        const addingQi = [5,10,15].includes(xA.qi + xB.qi);
+        const hetuQi   = isHetuPair(xA.qi, xB.qi);
+        const sameYun  = xA.yun === xB.yun;
+        const addingYun= [5,10,15].includes(xA.yun + xB.yun);
+        const hetuYun  = isHetuPair(xA.yun, xB.yun);
+
+        if (type.includes('Adding') || type === 'Adding' || type === 'Pure Adding') {
+            if (addingQi)  results.push({ rel: 'Adding Elements', condA: type === 'Adding Elements' || type === 'Pure Adding' });
+            if (addingYun) results.push({ rel: 'Adding Periods',  condA: type === 'Adding Periods'  || type === 'Pure Adding' });
+        }
+        if (type.includes('Hetu') || type === 'Hetu' || type === 'Pure Hetu') {
+            if (hetuQi)   results.push({ rel: 'Hetu Elements', condA: type === 'Hetu Elements' || type === 'Pure Hetu' });
+            if (hetuYun)  results.push({ rel: 'Hetu Periods',  condA: type === 'Hetu Periods'  || type === 'Pure Hetu' });
+        }
+        if (type.includes('Pure Qi') || type === 'Pure Qi') {
+            if (sameQi)  results.push({ rel: 'Pure Qi Elements', condA: true });
+            if (sameYun) results.push({ rel: 'Pure Qi Periods',  condA: true });
+        }
+        return results;
+    };
+
+    // Helper: label for hexagram pair
+    const pairLabel = (keyA, keyB) => `A.${keyA === 'year' ? 'Year' : 'Day'} ↔ B.${keyB === 'year' ? 'Year' : 'Day'}`;
+
+    const hexA = { year: { xkdg: _personAYear, stem: _personAStem, branch: _personABranch },
+                   day:  { xkdg: _personADay,  stem: _personADayStem, branch: _personADayBranch } };
+    const hexB = { year: { xkdg: _personBYear, stem: _personBStem, branch: _personBBranch },
+                   day:  { xkdg: _personBDay,  stem: _personBDayStem, branch: _personBDayBranch } };
+
+    // Pass 1: active relations from A's chart → check B's year + day
+    for (const rel of (_personARelations || [])) {
+        for (const keyA of ['year','day']) {
+            for (const keyB of ['year','day']) {
+                // Family: share same family
+                if (rel.tag === 'family') {
+                    const famA = getJiaZiFamilies(hexA[keyA].stem, hexA[keyA].branch);
+                    const famB = getJiaZiFamilies(hexB[keyB].stem, hexB[keyB].branch);
+                    const shared = famA.filter(f => famB.includes(f));
+                    if (shared.length) matches.push({ label: pairLabel(keyA, keyB), rel: `Family: ${shared.join(', ')}`, condA: true, source: 'A' });
+                } else {
+                    const found = connects(hexA[keyA].xkdg, hexB[keyB].xkdg, rel.text);
+                    found.forEach(f => matches.push({ label: pairLabel(keyA, keyB), rel: f.rel, condA: f.condA, source: 'A' }));
+                }
+            }
+        }
+    }
+
+    // Pass 2: active relations from B's chart → check A's year + day
+    for (const rel of (_personBRelations || [])) {
+        for (const keyB of ['year','day']) {
+            for (const keyA of ['year','day']) {
+                if (rel.tag === 'family') {
+                    const famB = getJiaZiFamilies(hexB[keyB].stem, hexB[keyB].branch);
+                    const famA = getJiaZiFamilies(hexA[keyA].stem, hexA[keyA].branch);
+                    const shared = famB.filter(f => famA.includes(f));
+                    if (shared.length) {
+                        const lbl = `B.${keyB === 'year' ? 'Year' : 'Day'} ↔ A.${keyA === 'year' ? 'Year' : 'Day'}`;
+                        matches.push({ label: lbl, rel: `Family: ${shared.join(', ')}`, condA: true, source: 'B' });
+                    }
+                } else {
+                    const found = connects(hexB[keyB].xkdg, hexA[keyA].xkdg, rel.text);
+                    found.forEach(f => {
+                        const lbl = `B.${keyB === 'year' ? 'Year' : 'Day'} ↔ A.${keyA === 'year' ? 'Year' : 'Day'}`;
+                        matches.push({ label: lbl, rel: f.rel, condA: f.condA, source: 'B' });
+                    });
+                }
+            }
+        }
+    }
+
+    // Deduplicate
+    const seen = new Set();
+    const unique = matches.filter(m => {
+        const key = `${m.label}|${m.rel}`;
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+    });
+
+    // Integration check
+    const integrationNotes = [];
+    const checkIntegration = (sourceRels, sourceName, targetName, targetRels) => {
+        const activeTypes = [...new Set(sourceRels.map(r => r.text))];
+        for (const relType of activeTypes) {
+            const relBase = relType.replace(' Elements','').replace(' Periods','').replace('Pure ','').toLowerCase();
+
+            const targetYearConnects = unique.some(m =>
+                m.label.includes(`${targetName}.Year`) &&
+                m.rel.toLowerCase().includes(relBase) &&
+                m.source === sourceName
+            );
+            const targetDayConnects = unique.some(m =>
+                m.label.includes(`${targetName}.Day`) &&
+                m.rel.toLowerCase().includes(relBase) &&
+                m.source === sourceName
+            );
+            const targetHasSameSetting = (targetRels || []).some(r =>
+                r.text.toLowerCase().includes(relBase)
+            );
+
+            if (!targetYearConnects && !targetDayConnects) continue; // no connection at all, skip
+
+            if (targetYearConnects && targetDayConnects && targetHasSameSetting) {
+                // Full integration — no note needed
+            } else if (targetYearConnects && targetDayConnects && !targetHasSameSetting) {
+                integrationNotes.push(`${targetName} failed to integrate into ${sourceName}'s ${relType} setting — both Year and Day connect but ${targetName}'s own chart lacks that setting`);
+            } else {
+                const which = targetYearConnects ? 'Year connects, Day does not' : 'Day connects, Year does not';
+                integrationNotes.push(`${targetName} failed to integrate into ${sourceName}'s ${relType} setting — partial connection only (${which})`);
+            }
+        }
+    };
+
+    if (_personARelations && _personARelations.length > 0)
+        checkIntegration(_personARelations, 'A', 'B', _personBRelations);
+    if (_personBRelations && _personBRelations.length > 0)
+        checkIntegration(_personBRelations, 'B', 'A', _personARelations);
+
+    div.style.display = 'block';
+    if (unique.length === 0) {
+        div.innerHTML = `<div style="color:#880e4f;font-weight:bold;font-size:13px;">♡ COMPATIBILITY</div>
+            <div style="color:#555;font-size:12px;margin-top:6px;">No direct XKDG connection found between A and B.</div>`;
+        return;
+    }
+
+    const score = unique.reduce((s, m) => s + (m.condA ? 2 : 1), 0);
+    const scoreLabel = score >= 6 ? '★★★ Excellent' : score >= 4 ? '★★ Good' : score >= 2 ? '★ Moderate' : '~ Weak';
+
+    div.innerHTML = `<div style="color:#880e4f;font-weight:bold;font-size:13px;margin-bottom:8px;">♡ COMPATIBILITY — ${scoreLabel} (${score}pts)</div>` +
+        unique.map(m => {
+            const condLabel = m.condA
+                ? `<span style="color:#ad1457;font-weight:bold;">●</span>`
+                : `<span style="color:#888;">○</span>`;
+            const srcLabel = `<span style="font-size:10px;color:#888;">[from ${m.source}]</span>`;
+            return `<div style="font-size:12px;padding:2px 0;">${condLabel} <b>${m.label}</b>: ${m.rel} ${srcLabel}</div>`;
+        }).join('') +
+        (integrationNotes.length ? `<div style="margin-top:8px;border-top:1px solid #e0a0b0;padding-top:6px;">` +
+            integrationNotes.map(n => `<div style="font-size:11px;color:#b71c1c;font-style:italic;">⚠ ${n}</div>`).join('') +
+            `</div>` : '') +
+        `<div style="font-size:10px;color:#888;margin-top:6px;">● Same-type (stronger) &nbsp; ○ Cross-type (valid)</div>`;
 }
 
 function checkFavourable(personYear, pStem, pBranch, person) {
@@ -2096,6 +2384,21 @@ function buildMonthView() {
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
                     <div style="color:#1a7a1a;font-weight:bold;">${perNotes.join(' · ')}</div>
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.join(' · ')}</div>` : ''}` : ''}
+                    ${[
+                        isDateNobleLV ? 'Noble' : '',
+                        isDateLuLV    ? 'Lu' : '',
+                        isDateHVLV    ? 'HV' : '',
+                        isDateBVLV    ? 'BV' : '',
+                        isDateMVLV    ? 'MV' : '',
+                        isDateTYLV    ? 'TY' : ''
+                    ].filter(Boolean).length ? `<div style="color:#0277bd;font-weight:bold;">${[
+                        isDateNobleLV ? 'Noble' : '',
+                        isDateLuLV    ? 'Lu' : '',
+                        isDateHVLV    ? 'HV' : '',
+                        isDateBVLV    ? 'BV' : '',
+                        isDateMVLV    ? 'MV' : '',
+                        isDateTYLV    ? 'TY' : ''
+                    ].filter(Boolean).join(' · ')}</div>` : ''}
                     ${spiritHTML}
                 </div>
             </div>`;
