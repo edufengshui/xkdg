@@ -173,6 +173,8 @@
         .tag-lu-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e1f5fe; }
         .tag-hv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e3f2fd; }
         .tag-hv-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e3f2fd; }
+        .tag-ty { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e0f7fa; }
+        .tag-ty-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e0f7fa; }
         .tag-bv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e8eaf6; }
         .tag-bv-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e8eaf6; }
         .tag-mv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #f3e5f5; }
@@ -591,6 +593,63 @@ function getSpiritForHour(dayBranch, hourBranch) {
     return SPIRIT_NAMES[spiritIdx];
 }
 // ── Clashes ──────────────────────────────────────────────────
+// ── Kong Wang 空亡 (Void/Empty) ──────────────────────────────
+// Maps day stem to the two void branches for its Xun group
+// Determined by which Jia Zi the day belongs to
+const KONG_WANG = {
+    // 甲子旬 (甲子→癸酉) → 戌亥 void
+    '甲':'戌亥', '乙':'戌亥', '丙':'戌亥', '丁':'戌亥', '戊':'戌亥',
+    '己':'戌亥', '庚':'戌亥', '辛':'戌亥', '壬':'戌亥', '癸':'戌亥'
+};
+// Full lookup by Jia Zi stem+branch
+const KONG_WANG_MAP = {
+    // 甲子旬
+    '甲子':['戌','亥'], '乙丑':['戌','亥'], '丙寅':['戌','亥'], '丁卯':['戌','亥'],
+    '戊辰':['戌','亥'], '己巳':['戌','亥'], '庚午':['戌','亥'], '辛未':['戌','亥'],
+    '壬申':['戌','亥'], '癸酉':['戌','亥'],
+    // 甲戌旬
+    '甲戌':['申','酉'], '乙亥':['申','酉'], '丙子':['申','酉'], '丁丑':['申','酉'],
+    '戊寅':['申','酉'], '己卯':['申','酉'], '庚辰':['申','酉'], '辛巳':['申','酉'],
+    '壬午':['申','酉'], '癸未':['申','酉'],
+    // 甲申旬
+    '甲申':['午','未'], '乙酉':['午','未'], '丙戌':['午','未'], '丁亥':['午','未'],
+    '戊子':['午','未'], '己丑':['午','未'], '庚寅':['午','未'], '辛卯':['午','未'],
+    '壬辰':['午','未'], '癸巳':['午','未'],
+    // 甲午旬
+    '甲午':['辰','巳'], '乙未':['辰','巳'], '丙申':['辰','巳'], '丁酉':['辰','巳'],
+    '戊戌':['辰','巳'], '己亥':['辰','巳'], '庚子':['辰','巳'], '辛丑':['辰','巳'],
+    '壬寅':['辰','巳'], '癸卯':['辰','巳'],
+    // 甲辰旬
+    '甲辰':['寅','卯'], '乙巳':['寅','卯'], '丙午':['寅','卯'], '丁未':['寅','卯'],
+    '戊申':['寅','卯'], '己酉':['寅','卯'], '庚戌':['寅','卯'], '辛亥':['寅','卯'],
+    '壬子':['寅','卯'], '癸丑':['寅','卯'],
+    // 甲寅旬
+    '甲寅':['子','丑'], '乙卯':['子','丑'], '丙辰':['子','丑'], '丁巳':['子','丑'],
+    '戊午':['子','丑'], '己未':['子','丑'], '庚申':['子','丑'], '辛酉':['子','丑'],
+    '壬戌':['子','丑'], '癸亥':['子','丑'],
+};
+
+// Branch → element mapping for Kong Wang check
+const BRANCH_ELEMENT = {
+    '子':'Water','丑':'Earth','寅':'Wood','卯':'Wood',
+    '辰':'Earth','巳':'Fire', '午':'Fire', '未':'Earth',
+    '申':'Metal','酉':'Metal','戌':'Earth','亥':'Water'
+};
+
+function getKongWang(dayGan, dayZhi) {
+    return KONG_WANG_MAP[dayGan + dayZhi] || [];
+}
+
+function isKongWangVoid(hourBranch, dayGan, dayZhi, seasonStrong, seasonGrowing) {
+    const voids = getKongWang(dayGan, dayZhi);
+    if (!voids.includes(hourBranch)) return false;
+    // Check if the void branch element is Untimely
+    const elem = BRANCH_ELEMENT[hourBranch];
+    if (!elem) return false;
+    const isTimely = (elem === seasonStrong || elem === seasonGrowing);
+    return !isTimely; // void AND untimely → discard
+}
+
 const BRANCH_CLASHES = {
     '子':'午','午':'子','丑':'未','未':'丑',
     '寅':'申','申':'寅','卯':'酉','酉':'卯',
@@ -621,6 +680,14 @@ const LU_BRANCH = {
     '甲':'寅', '乙':'卯', '丙':'巳', '丁':'午',
     '戊':'巳', '己':'午', '庚':'申', '辛':'酉',
     '壬':'亥', '癸':'子'
+};
+
+// ── Tian Yi 天医 (Heavenly Doctor) ──────────────────────────
+// Day Stem → Tian Yi branch (DLR lodging +2 clockwise)
+const TIAN_YI = {
+    '甲':'辰', '乙':'午', '丙':'未', '丁':'酉',
+    '戊':'未', '己':'酉', '庚':'戌', '辛':'子',
+    '壬':'丑', '癸':'卯'
 };
 
 // ── Heaven Virtue (天德) ─────────────────────────────────────
@@ -1062,7 +1129,17 @@ function calculateBazi() {
         analysis.push({ text: label, tag });
     }
 
-    // Heaven Virtue check
+    // Tian Yi check: date = hour branch matches day stem TY; person = day branch matches person day stem TY
+    const tyBranchDate = TIAN_YI[dayGan] || null;
+    const isDateTY     = tyBranchDate === pillarKeys.hour.branch;
+    const isPersonTY   = personDayStem ? TIAN_YI[personDayStem] === dayZhi : false;
+    if (isDateTY || isPersonTY) {
+        let label, tag;
+        if (isDateTY && isPersonTY) { label = 'Tian Yi ★ (Date + Person)'; tag = 'ty-both'; }
+        else if (isDateTY)           { label = 'Tian Yi (Date)';   tag = 'ty'; }
+        else                         { label = 'Tian Yi (Person)'; tag = 'ty'; }
+        analysis.push({ text: label, tag });
+    }
     const hvBranchDate   = HEAVEN_VIRTUE[pillarKeys.month.branch] || null;
     const personMthBranch = getPersonMonthBranch(
         document.getElementById('person-date').value,
@@ -1214,6 +1291,8 @@ function renderAnalysis(items) {
                       : item.tag === 'lu'           ? `<span class="tag-lu">禄 ${item.text}</span>`
                       : item.tag === 'hv-both'      ? `<span class="tag-hv-both">天德 ${item.text}</span>`
                       : item.tag === 'hv'           ? `<span class="tag-hv">天德 ${item.text}</span>`
+                      : item.tag === 'ty-both'      ? `<span class="tag-ty-both">天医 ${item.text}</span>`
+                      : item.tag === 'ty'           ? `<span class="tag-ty">天医 ${item.text}</span>`
                       : item.tag === 'bv-both'      ? `<span class="tag-bv-both">支德 ${item.text}</span>`
                       : item.tag === 'bv'           ? `<span class="tag-bv">支德 ${item.text}</span>`
                       : item.tag === 'mv-both'      ? `<span class="tag-mv-both">月德 ${item.text}</span>`
@@ -1387,6 +1466,13 @@ function sortResults(mode) {
     else if (mode === 'score') filtered.sort((a,b) => b.score - a.score);
     else filtered.sort((a,b) => a.rawDate - b.rawDate);
     renderScanResults(filtered, mode);
+}
+
+function localISODate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const d = String(date.getDate()).padStart(2,'0');
+    return `${y}-${m}-${d}`;
 }
 
 function loadDateIntoMain(isoDate, hourIndex) {
@@ -1591,7 +1677,7 @@ function buildCalView() {
     const months = {};
     for (let d = 0; d < days; d++) {
         const dayDate   = new Date(start.getTime() + d * 86400000);
-            const _isoDay = dayDate.toISOString().split('T')[0];
+            const _isoDay = localISODate(dayDate);
             if (!isDateAllowed(_isoDay)) continue;
         const monthKey  = dayDate.getFullYear() + '-' + String(dayDate.getMonth()+1).padStart(2,'0');
         if (!months[monthKey]) months[monthKey] = [];
@@ -1624,7 +1710,7 @@ function buildCalView() {
         }
 
         for (const dayDate of dayDates) {
-            const isoDate = dayDate.toISOString().split('T')[0];
+            const isoDate = localISODate(dayDate);
             const isToday = isoDate === today;
 
             // Get day pillar using midday
@@ -1681,8 +1767,8 @@ function buildCalView() {
             const dayBranchIsLu = personDayStemCAL ? LU_BRANCH[personDayStemCAL] === dZhi : false;
             // Heaven Virtue: check if day BRANCH is person's HV branch
             const dayBranchIsHV = personMthBranchCAL ? HEAVEN_VIRTUE[personMthBranchCAL] === dZhi : false;
-            // Branch Virtue: check if day BRANCH is person's BV branch
-            const dayBranchIsBV = personDayZhiCAL ? BRANCH_VIRTUE[personDayZhiCAL] === dZhi : false;
+            // Tian Yi: check if day BRANCH is person's TY branch
+            const dayBranchIsTY = personDayStemCAL ? TIAN_YI[personDayStemCAL] === dZhi : false;
             // Month Virtue: check if day BRANCH is person's MV branch
             const mvCAL = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
             const dayBranchIsMV = mvCAL ? mvCAL.branch === dZhi : false;
@@ -1708,6 +1794,9 @@ function buildCalView() {
             const mvIndicator = dayBranchIsMV
                 ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#f3e5f5;">MV</div>`
                 : '';
+            const tyIndicator = dayBranchIsTY
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e0f7fa;">TY</div>`
+                : '';
 
             html += `<div class="${cellClass}" onclick="loadDateIntoMain('${isoDate}', 5)">
                 <div style="display:flex;justify-content:space-between;align-items:top;">
@@ -1715,7 +1804,7 @@ function buildCalView() {
                     <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
                 </div>
                 ${jieqiHTML}
-                ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}
+                ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
             </div>`;
         }
 
@@ -1772,7 +1861,7 @@ function buildMonthView() {
 
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
-            const _isoDay = dayDate.toISOString().split('T')[0];
+            const _isoDay = localISODate(dayDate);
             if (!isDateAllowed(_isoDay)) continue;
         const dateLabel = dayDate.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
 
@@ -1786,7 +1875,7 @@ function buildMonthView() {
         const yGanDay = midEC.getYearGan(),  yZhiDay = midEC.getYearZhi();
         const mGanDay = midEC.getMonthGan(), mZhiDay = midEC.getMonthZhi();
 
-        const jieqiDay = jieqiMap[dayDate.toISOString().split('T')[0]] || [];
+        const jieqiDay = jieqiMap[localISODate(dayDate)] || [];
         const jieqiDayHTML = jieqiDay.map(j => `<span style="font-size:10px;color:#e65100;font-weight:bold;"> ⟐ ${j.name} ${j.time}</span>`).join('');
 
         // Clash for this day
@@ -1807,11 +1896,13 @@ function buildMonthView() {
         const dayIsPersonBV    = personDayZhiMV ? BRANCH_VIRTUE[personDayZhiMV] === dZhiDay : false;
         const mvPersonData     = personMthBranchMV ? (MONTH_VIRTUE[personMthBranchMV] || null) : null;
         const dayIsPersonMV    = mvPersonData ? mvPersonData.branch === dZhiDay : false;
+        const dayIsPersonTY    = personDayStemMV ? TIAN_YI[personDayStemMV] === dZhiDay : false;
         const headerNL = (dayIsPersonNoble ? `<span style="color:#1a7a1a;font-weight:bold;font-size:11px;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-left:3px;">N</span>` : '')
                        + (dayIsPersonLu    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e1f5fe;">L</span>` : '')
                        + (dayIsPersonHV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e3f2fd;">HV</span>` : '')
                        + (dayIsPersonBV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8eaf6;">BV</span>` : '')
-                       + (dayIsPersonMV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#f3e5f5;">MV</span>` : '');
+                       + (dayIsPersonMV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#f3e5f5;">MV</span>` : '')
+                       + (dayIsPersonTY    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e0f7fa;">TY</span>` : '');
 
         let dayRowsHtml = '';
         const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
@@ -1871,6 +1962,10 @@ function buildMonthView() {
             const activeFiltersMV = getActiveFilters();
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
 
+            // Kong Wang check: skip if void and untimely (Pure Qi and Family exempt)
+            const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
+            if (!hasPureQiOrFamilyLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG)) continue;
+
             let isFavourable = false;
             if (isPositive && personAYear) {
                 const hasElRel  = blueItems.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
@@ -1888,7 +1983,7 @@ function buildMonthView() {
 
             const bg      = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
             const rowStyle = hasFamily ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;` : `background:${bg};`;
-            const isoDate = dayDate.toISOString().split('T')[0];
+            const isoDate = localISODate(dayDate);
 
             // Noble: date only (hour branch vs date day stem)
             const HOUR_BRANCHES_LV = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
@@ -1911,6 +2006,10 @@ function buildMonthView() {
             const isDateHVLV = hvBranchLV === hZhiDirect;
             const hvHTMLMV   = isDateHVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e3f2fd;">HV</span>` : '';
 
+            // Tian Yi: date only (hour branch vs date day stem TY)
+            const isDateTYLV = TIAN_YI[dGan] === hZhiDirect;
+            const tyHTMLMV   = isDateTYLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e0f7fa;">TY</span>` : '';
+
             // Month Virtue: hour stem matches MV stem OR day branch matches MV branch
             const mvLV = MONTH_VIRTUE[dateMthZhi] || null;
             const isDateMVLV = mvLV ? (mvLV.stem === hGan || mvLV.branch === dZhi) : false;
@@ -1924,7 +2023,7 @@ function buildMonthView() {
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
                 <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                     <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span>
-                    ${nobleHTMLMV}${luHTMLMV}${hvHTMLMV}${bvHTMLMV}${mvHTMLMV}<br>
+                    ${nobleHTMLMV}${luHTMLMV}${hvHTMLMV}${bvHTMLMV}${mvHTMLMV}${tyHTMLMV}<br>
                     <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                 </div>
                 <div style="width:100px;flex-shrink:0;display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
@@ -2130,7 +2229,7 @@ function runScanner() {
 
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
-            const _isoDay = dayDate.toISOString().split('T')[0];
+            const _isoDay = localISODate(dayDate);
             if (!isDateAllowed(_isoDay)) continue;
 
         for (let h = 0; h < 12; h++) {
@@ -2235,6 +2334,9 @@ function runScanner() {
             const hasAddingOrHetu = blueItems.some(i =>
                 i.text.includes('Adding') || i.text.includes('Hetu')
             );
+
+            // Kong Wang check: skip hour if void branch and untimely (Pure Qi and Family exempt)
+            if (!hasPureQiOrFamily && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
             const spiritPenalty = (!hasPureQiOrFamily && hasAddingOrHetu && hourSpirit && !hourSpirit.auspicious) ? -1 : 0;
             const spiritBonus   = (hourSpirit && hourSpirit.auspicious) ? 1 : 0;
 
@@ -2250,6 +2352,8 @@ function runScanner() {
             // Month Virtue bonus: hour stem matches MV stem
             const mvSC = MONTH_VIRTUE[mZhi] || null;
             const mvBonus = mvSC && mvSC.stem === hGan ? 1 : 0;
+            // Tian Yi bonus: hour branch matches day stem TY
+            const tyBonus = TIAN_YI[dGan] === hZhiSC ? 1 : 0;
 
             // Clash penalty
             const clashTypeSC = getClashType(dGan, dZhi, pillars.year.branch, mGan, mZhi);
@@ -2268,7 +2372,7 @@ function runScanner() {
                 return dateFamilies.some(f => personYearSC.families.includes(f)) ? 2 : 0;
             })();
 
-            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + clashPenalty + fullBLBonus);
+            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus);
 
             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
@@ -2283,7 +2387,7 @@ function runScanner() {
                 spiritAuspicious: hourSpirit ? hourSpirit.auspicious : null,
                 spiritLabel,
                 rawDate: dayDate.getTime() + h * 7200000,
-                isoDate: dayDate.toISOString().split('T')[0],
+                isoDate: localISODate(dayDate),
                 hourIndex: h,
                 date: dd,
                 hour: HOUR_ROMAN[h],
@@ -2356,12 +2460,12 @@ function checkLicense() {
     if (!stored) { showLicenseOverlay(); return; }
     try {
         const lic = JSON.parse(stored);
-        // Check expiry
         if (lic.expiry) {
             const today = new Date().toISOString().split('T')[0];
             if (today > lic.expiry) {
                 showLicenseBar(`⚠ License expired ${lic.expiry} — access limited to licensed year range`, '#fff3e0', '#e65100');
                 applyTierRestrictions(lic.tier);
+                setNow();
                 return;
             }
         }
@@ -2369,6 +2473,7 @@ function checkLicense() {
         const exp = lic.expiry ? ` · Expires ${lic.expiry}` : '';
         showLicenseBar(`✓ Licensed: ${tierLabel}${exp}`, '#e8f5e9', '#2e7d32');
         applyTierRestrictions(lic.tier);
+        setNow();
     } catch(e) { showLicenseOverlay(); }
 }
 
@@ -2430,11 +2535,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pinInput) pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitPin(); });
 });
 
-window.onload = () => { 
-    checkLicense();
-    try { setNow(); } catch(e) { console.error('setNow:', e.message); }
+window.onload = () => {
     try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
     try { renderArchive('B'); } catch(e) { console.error('archiveB:', e.message); }
+    checkLicense();
 };
 </script>
 <div id="version-tag" style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;"></div>
