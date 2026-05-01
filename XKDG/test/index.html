@@ -124,9 +124,11 @@
         .scan-results { padding: 12px; }
         .scan-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin-bottom: 6px; border-radius: 5px; border-left: 5px solid #2e7d32; background: #f1f8e9; cursor: pointer; transition: filter 0.15s; }
         .scan-item:hover { filter: brightness(0.93); }
-        .scan-item.rank-1 { border-left-color: #1b5e20; background: #c8e6c9; }
-        .scan-item.rank-2 { border-left-color: #2e7d32; background: #dcedc8; }
-        .scan-item.rank-3 { border-left-color: #558b2f; background: #f1f8e9; }
+        .scan-item.rank-1 { border-left-color: #1b5e20; background: #a5d6a7; } /* top — strong green */
+        .scan-item.rank-2 { border-left-color: #2e7d32; background: #c8e6c9; } /* high */
+        .scan-item.rank-3 { border-left-color: #388e3c; background: #dcedc8; } /* medium */
+        .scan-item.rank-4 { border-left-color: #558b2f; background: #f1f8e9; } /* low */
+        .scan-item.rank-5 { border-left-color: #aaa;    background: #ffffff; } /* lowest — white */
         .scan-score { font-size: 18px; font-weight: bold; color: #1b5e20; min-width: 35px; text-align: center; }
         .scan-date { font-size: 14px; font-weight: bold; color: #333; min-width: 170px; }
         .scan-tags { font-size: 12px; color: #555; flex: 1; }
@@ -364,6 +366,7 @@
         </div>
         <div id="month-view" style="display:none;overflow-x:auto;max-width:600px;margin:0 auto;width:100%;"></div>
         <div id="cal-view" style="display:none;padding:10px;"></div>
+        <div id="scan-results" class="scan-results" style="display:none;"></div>
     </div>
 
 <script>
@@ -1829,9 +1832,14 @@ function renderScanResults(results, mode) {
     const maxScore = Math.max(...results.map(r => mode === 'both' ? r.scoreA + r.scoreB : r.score));
     container.innerHTML = results.map(r => {
         const s = mode === 'both' ? r.scoreA + r.scoreB : r.score;
-        const rankClass = s >= maxScore ? 'rank-1' : s >= maxScore * 0.7 ? 'rank-2' : 'rank-3';
-        const bTag = r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;">B✓</span>` : '';
-        const aTag = r.scoreA > 0 ? ` <span style="color:#1b5e20;font-weight:bold;">A✓</span>` : '';
+        const rankClass = s >= maxScore * 0.9 ? 'rank-1'
+                        : s >= maxScore * 0.75 ? 'rank-2'
+                        : s >= maxScore * 0.55 ? 'rank-3'
+                        : s >= maxScore * 0.35 ? 'rank-4'
+                        : 'rank-5';
+        const hasBothPersons = results.some(r => r.scoreB > 0);
+        const bTag = hasBothPersons && r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>` : '';
+        const aTag = hasBothPersons && r.scoreA > 0 ? ` <span style="color:#2e7d32;font-weight:bold;font-size:14px;">A</span>` : '';
         const spiritStr = r.spiritLabel ? `<span style="font-size:10px;font-weight:bold;color:${r.spiritAuspicious ? '#0044cc' : '#d40000'};">${r.spiritLabel}</span>` : '';
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score">${s}${aTag}${bTag}</div>
@@ -2137,6 +2145,9 @@ function buildCalView() {
             const dayBranchIsLu = personDayStemCAL ? LU_BRANCH[personDayStemCAL] === dZhi : false;
             // Heaven Virtue: check if day BRANCH is person's HV branch
             const dayBranchIsHV = personMthBranchCAL ? HEAVEN_VIRTUE[personMthBranchCAL] === dZhi : false;
+            // Branch Virtue: check if day BRANCH is person's BV branch
+            const personDayZhiCAL = (() => { if (!personDayStemCAL) return null; try { const b = new Date(`${document.getElementById('person-date').value}T${document.getElementById('person-time').value||'12:00'}`); return Solar.fromDate(new Date(b.getTime()+(parseFloat(document.getElementById('longitude').value)-parseFloat(document.getElementById('utc-offset').value)*15)*4*60000)).getLunar().getEightChar().getDayZhi(); } catch(e) { return null; } })();
+            const dayBranchIsBV = personDayZhiCAL ? BRANCH_VIRTUE[personDayZhiCAL] === dZhi : false;
             // Tian Yi: check if day BRANCH is person's TY branch
             const dayBranchIsTY = personDayStemCAL ? TIAN_YI[personDayStemCAL] === dZhi : false;
             // Month Virtue: check if day BRANCH is person's MV branch
@@ -2343,9 +2354,53 @@ function buildMonthView() {
             const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
             const isPositive = blueItems.length > 0;
 
-            // Apply filter — skip row if no blue items pass filter
+            // Apply filter chips
             const activeFiltersMV = getActiveFilters();
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
+
+            // Personal connection gate
+            if (personAYear && dData) {
+                const pQiLV = personAYear.qi, pYunLV = personAYear.yun;
+                const dQiLV = dData.qi, dYunLV = dData.yun;
+
+                const matchElLV =
+                    pQiLV === dQiLV ||
+                    isHetuPair(pQiLV, dQiLV) ||
+                    [5,10,15].includes(pQiLV + dQiLV) ||
+                    getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                const matchPerLV =
+                    pYunLV === dYunLV ||
+                    isHetuPair(pYunLV, dYunLV) ||
+                    [5,10,15].includes(pYunLV + dYunLV);
+
+                // No filters: show all dates where person connects
+                // With filters: also require person connects via that specific type
+                if (!(matchElLV || matchPerLV)) continue;
+
+                if (activeFiltersMV.size > 0) {
+                    // Check if person connects via the active filter relation type
+                    const hasAddingFilter = activeFiltersMV.has('adding-el') || activeFiltersMV.has('adding-per') || activeFiltersMV.has('pure-adding');
+                    const hasHetuFilter   = activeFiltersMV.has('hetu-el')   || activeFiltersMV.has('hetu-per')   || activeFiltersMV.has('pure-hetu');
+                    const hasPureQiFilter = activeFiltersMV.has('pure-qi-el') || activeFiltersMV.has('pure-qi-per');
+                    const hasFamilyFilter = activeFiltersMV.has('family');
+
+                    const personAddingEl  = [5,10,15].includes(pQiLV + dQiLV);
+                    const personAddingPer = [5,10,15].includes(pYunLV + dYunLV);
+                    const personHetuEl    = isHetuPair(pQiLV, dQiLV);
+                    const personHetuPer   = isHetuPair(pYunLV, dYunLV);
+                    const personPureQiEl  = pQiLV === dQiLV;
+                    const personPureQiPer = pYunLV === dYunLV;
+                    const personFamily    = getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+
+                    const personMatchesFilter =
+                        (hasAddingFilter && (personAddingEl || personAddingPer)) ||
+                        (hasHetuFilter   && (personHetuEl   || personHetuPer))   ||
+                        (hasPureQiFilter && (personPureQiEl || personPureQiPer)) ||
+                        (hasFamilyFilter && personFamily);
+
+                    if (!personMatchesFilter) continue;
+                }
+            }
 
             // Kong Wang check: mark void+untimely with red V (Pure Qi and Family exempt)
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
@@ -2377,10 +2432,14 @@ function buildMonthView() {
             const perNotes = blueItems.filter(i => i.text.includes('Period')).map(i => i.text);
             const famNotes = blueItems.filter(i => i.tag === 'family').map(i => i.text);
             const hasFamily = famNotes.length > 0;
-            const hasFamilyLV = hasFamily;
+
+            // Check if person shares family with the day
+            const personSharesFamily = personAYear && pYStem && pYBranch &&
+                getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+            const hasFamilyLV = hasFamily || personSharesFamily;
 
             const bg      = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
-            const rowStyle = hasFamily ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;` : `background:${bg};`;
+            const rowStyle = hasFamilyLV ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;` : `background:${bg};`;
             const isoDate = localISODate(dayDate);
 
             // Noble: date only (hour branch vs date day stem)
@@ -2702,18 +2761,26 @@ function runScanner() {
             const hasPeriodRelation  = blueItems.some(i => i.text.includes('Period') ||
                 i.text === 'Hetu' || i.text === 'Pure Hetu' || i.text === 'Adding' || i.text === 'Pure Adding' || i.text === 'Pure Qi');
 
-            // Step 2: Person year must connect with day hexagram in the SAME active dimension
-            const personMatchEl  = hasElementRelation && (
-                personAYear.qi === dayXkdg.qi ||
-                isHetuPair(personAYear.qi, dayXkdg.qi) ||
-                [5,10,15].includes(personAYear.qi + dayXkdg.qi) ||
-                getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f))
-            );
-            const personMatchPer = hasPeriodRelation && (
-                personAYear.yun === dayXkdg.yun ||
-                isHetuPair(personAYear.yun, dayXkdg.yun) ||
-                [5,10,15].includes(personAYear.yun + dayXkdg.yun)
-            );
+            // Step 2: Person must connect with day hexagram
+            const pQi = personAYear.qi, pYun = personAYear.yun;
+            const dQi = dayXkdg.qi,    dYun = dayXkdg.yun;
+
+            const personMatchEl =
+                pQi === dQi ||
+                isHetuPair(pQi, dQi) ||
+                [5,10,15].includes(pQi + dQi) ||
+                getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+
+            const personMatchPer =
+                pYun === dYun ||
+                isHetuPair(pYun, dYun) ||
+                [5,10,15].includes(pYun + dYun);
+
+            // No filters: show all dates where person connects (any type)
+            // With filters: blueItemsPassFilter already ensures only matching relation types show
+            // Either way, always require personal connection
+            if (personAYear && !(personMatchEl || personMatchPer)) continue;
+
 
             const scoreA = (personMatchEl || personMatchPer) ?
                 getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi) : 1;
@@ -2829,13 +2896,18 @@ function runScanner() {
         return;
     }
 
+
     if (results.length === 0) {
         alert('No results found. Try removing filter chips or extending the scan range.');
         return;
     }
 
-    // Sort by score descending by default
-    results.sort((a,b) => b.score - a.score);
+    // Sort by date when Person A is entered, by score otherwise
+    if (birthDate) {
+        results.sort((a,b) => a.rawDate - b.rawDate);
+    } else {
+        results.sort((a,b) => b.score - a.score);
+    }
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
