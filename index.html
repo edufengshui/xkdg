@@ -2001,6 +2001,10 @@ function buildMonthView() {
             const activeFiltersMV = getActiveFilters();
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
 
+            // Hour branch for this slot
+            const HOUR_BRANCHES_LV = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+            const hZhiDirect = HOUR_BRANCHES_LV[h];
+
             // Kong Wang check: skip if void and untimely (Pure Qi and Family exempt)
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
             if (!hasPureQiOrFamilyLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG)) continue;
@@ -2025,8 +2029,6 @@ function buildMonthView() {
             const isoDate = localISODate(dayDate);
 
             // Noble: date only (hour branch vs date day stem)
-            const HOUR_BRANCHES_LV = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-            const hZhiDirect = HOUR_BRANCHES_LV[h];
             const dateNoblesLV = NOBLE_BRANCHES[dGan] || [];
             const isDateNobleLV = dateNoblesLV.includes(hZhiDirect);
             const nobleLabelLV = isDateNobleLV ? 'N' : '';
@@ -2266,6 +2268,7 @@ function runScanner() {
     const results = [];
     const start = new Date(startDate + 'T00:00:00');
 
+    try {
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
             const _isoDay = localISODate(dayDate);
@@ -2446,6 +2449,11 @@ function runScanner() {
                 qualLabels
             });
         }
+    }
+
+    } catch(scanErr) {
+        alert('Scanner error: ' + scanErr.message + '\n' + scanErr.stack);
+        return;
     }
 
     // Sort by score descending by default
