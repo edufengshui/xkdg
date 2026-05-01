@@ -1,4 +1,4 @@
-<!-- Generated: 2026-04-28 18:41 -->
+<!-- Generated: 2026-05-01 — PWA20: Condition A same-type person bonus (+2) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1539,14 +1539,14 @@ function getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch) 
     // Family (highest)
     const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
     if (sharedFams.length > 0) matchScore = 4;
+    // Pure Qi (second highest — exact same qi or yun)
+    else if (personYear.qi === dayXkdg.qi || personYear.yun === dayXkdg.yun) matchScore = 3;
     // Pure Hetu / Pure Adding
     else if ((isHetuPair(personYear.qi, dayXkdg.qi) && personYear.qi === dayXkdg.qi) ||
-             ([5,10,15].includes(personYear.qi + dayXkdg.qi) && personYear.qi + dayXkdg.qi === personYear.yun + dayXkdg.yun)) matchScore = 3;
+             ([5,10,15].includes(personYear.qi + dayXkdg.qi) && personYear.qi + dayXkdg.qi === personYear.yun + dayXkdg.yun)) matchScore = 2;
     // Hetu / Adding
     else if (isHetuPair(personYear.qi, dayXkdg.qi) || [5,10,15].includes(personYear.qi + dayXkdg.qi) ||
-             isHetuPair(personYear.yun, dayXkdg.yun) || [5,10,15].includes(personYear.yun + dayXkdg.yun)) matchScore = 2;
-    // Pure Qi
-    else if (personYear.qi === dayXkdg.qi || personYear.yun === dayXkdg.yun) matchScore = 1;
+             isHetuPair(personYear.yun, dayXkdg.yun) || [5,10,15].includes(personYear.yun + dayXkdg.yun)) matchScore = 1;
     return matchScore;
 }
 
@@ -1576,6 +1576,45 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch)
     if (personYear.qi === dayXkdg.qi)   labels.push('Pure Qi El.');
     if (personYear.yun === dayXkdg.yun) labels.push('Pure Qi Per.');
     return labels;
+}
+
+// ── Person Same-Type Bonus ────────────────────────────────────
+// Condition A: person's birthday connects with the day in the SAME relation type
+// that is active among the 4 pillars → +2 bonus.
+// Condition B: connects in a different way → no extra bonus (score unchanged).
+function getPersonSameTypeBonus(blueItems, personYear, dayXkdg, pStem, pBranch, dayStem, dayBranch) {
+    if (!personYear || !dayXkdg) return 0;
+
+    const pQi  = personYear.qi,  pYun = personYear.yun;
+    const dQi  = dayXkdg.qi,     dYun = dayXkdg.yun;
+
+    // Detect relation types active among the 4 pillars
+    const hasDateFamily    = blueItems.some(i => i.tag === 'family');
+    const hasDatePureQi    = blueItems.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Elements' || i.text === 'Pure Qi Periods');
+    const hasDatePureAdding= blueItems.some(i => i.text === 'Pure Adding' || i.text === 'Pure Adding Elements' || i.text === 'Pure Adding Periods');
+    const hasDatePureHetu  = blueItems.some(i => i.text === 'Pure Hetu'   || i.text === 'Pure Hetu Elements'   || i.text === 'Pure Hetu Periods');
+    const hasDateAdding    = blueItems.some(i => i.text === 'Adding Elements' || i.text === 'Adding Periods' || i.text === 'Adding');
+    const hasDateHetu      = blueItems.some(i => i.text === 'Hetu Elements'   || i.text === 'Hetu Periods'   || i.text === 'Hetu');
+
+    // Person connection types with the day
+    const personIsFamily    = getJiaZiFamilies(pStem, pBranch).some(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
+    const personIsPureQiEl  = pQi  === dQi;
+    const personIsPureQiPer = pYun === dYun;
+    const personIsAddingEl  = [5,10,15].includes(pQi  + dQi);
+    const personIsAddingPer = [5,10,15].includes(pYun + dYun);
+    const personIsHetuEl    = isHetuPair(pQi,  dQi);
+    const personIsHetuPer   = isHetuPair(pYun, dYun);
+
+    // Condition A: same-type match
+    if (hasDateFamily    && personIsFamily)                                  return 2;
+    if (hasDatePureAdding && (personIsAddingEl || personIsAddingPer))        return 2;
+    if (hasDatePureHetu   && (personIsHetuEl   || personIsHetuPer))          return 2;
+    if (hasDatePureQi     && (personIsPureQiEl || personIsPureQiPer))        return 2;
+    if (hasDateAdding     && (personIsAddingEl || personIsAddingPer))        return 2;
+    if (hasDateHetu       && (personIsHetuEl   || personIsHetuPer))          return 2;
+
+    // Condition B: connects but different type → no extra bonus
+    return 0;
 }
 
 // Build a map of isoDate+time → jieqi name for a given year range, adjusted to true solar time
@@ -2303,8 +2342,14 @@ function runScanner() {
             const scoreA = (personMatchEl || personMatchPer) ?
                 getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi) : 1;
 
+            // Condition A bonus: +2 if person's birthday connects via SAME relation type as the date
+            const sameTypeBonusA = (personMatchEl || personMatchPer)
+                ? getPersonSameTypeBonus(blueItems, personAYear, dayXkdg, pYStem, pYBranch, dGan, dZhi)
+                : 0;
+
             // Person B
             let scoreB = 0;
+            let sameTypeBonusB = 0;
             if (personBYear) {
                 const bMatchEl = hasElementRelation && (
                     personBYear.qi === dayXkdg.qi ||
@@ -2319,6 +2364,9 @@ function runScanner() {
                 );
                 scoreB = (bMatchEl || bMatchPer) ?
                     getMatchScore(personBYear, pBYStem, pBYBranch, dayXkdg, dGan, dZhi) : 1;
+                sameTypeBonusB = (bMatchEl || bMatchPer)
+                    ? getPersonSameTypeBonus(blueItems, personBYear, dayXkdg, pBYStem, pBYBranch, dGan, dZhi)
+                    : 0;
             }
 
             const qualityScore = getDateQualityScore(analysisItems);
@@ -2372,9 +2420,10 @@ function runScanner() {
                 return dateFamilies.some(f => personYearSC.families.includes(f)) ? 2 : 0;
             })();
 
-            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus);
+            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + sameTypeBonusA + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus);
 
             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+            if (sameTypeBonusA > 0) matchLabels.push('★ Same-Type +2');
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
@@ -2383,6 +2432,8 @@ function runScanner() {
                 score: totalScore,
                 scoreA,
                 scoreB,
+                sameTypeBonusA,
+                sameTypeBonusB,
                 qualityScore,
                 spiritAuspicious: hourSpirit ? hourSpirit.auspicious : null,
                 spiritLabel,
