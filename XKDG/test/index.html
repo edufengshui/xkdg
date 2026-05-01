@@ -173,8 +173,8 @@
         .tag-lu-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e1f5fe; }
         .tag-hv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e3f2fd; }
         .tag-hv-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e3f2fd; }
-        .tag-ty { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e0f7fa; }
-        .tag-ty-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e0f7fa; }
+        .tag-ty { color: #1b5e20; font-weight: bold; border: 1px solid #1b5e20; border-radius: 4px; padding: 1px 6px; background: #e8f5e9; }
+        .tag-ty-both { color: #1b5e20; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e8f5e9; }
         .tag-bv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e8eaf6; }
         .tag-bv-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e8eaf6; }
         .tag-mv { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #f3e5f5; }
@@ -669,10 +669,14 @@ function getKongWang(dayGan, dayZhi) {
 function isKongWangVoid(hourBranch, dayGan, dayZhi, seasonStrong, seasonGrowing) {
     const voids = getKongWang(dayGan, dayZhi);
     if (!voids.includes(hourBranch)) return false;
-    // Check if the void branch element is Untimely
     const elem = BRANCH_ELEMENT[hourBranch];
     if (!elem) return false;
-    const isTimely = (elem === seasonStrong || elem === seasonGrowing);
+    // Element is timely if it IS the season element, or if its generator is the season element
+    // XKDG generating cycle: Water→Wood, Wood→Fire, Fire→Earth, Earth→Metal, Metal→Water
+    const GENERATES = { 'Water':'Wood', 'Wood':'Fire', 'Fire':'Earth', 'Earth':'Metal', 'Metal':'Water' };
+    const generator = Object.keys(GENERATES).find(k => GENERATES[k] === elem);
+    const isTimely = elem === seasonStrong || elem === seasonGrowing ||
+                     generator === seasonStrong || generator === seasonGrowing;
     return !isTimely; // void AND untimely → discard
 }
 
@@ -692,6 +696,35 @@ function getClashType(dayGan, dayZhi, yearZhi, monthGan, monthZhi) {
     if (BRANCH_CLASHES[dayZhi] === monthZhi) return 'clash-month-branch';
     return null;
 }
+
+const TOMB_SHA = {
+    '甲':'未', '乙':'戌',
+    '丙':'戌', '丁':'丑',
+    '戊':'戌', '己':'丑',
+    '庚':'丑', '辛':'辰',
+    '壬':'辰', '癸':'未'
+};
+
+// Stem → element for timeliness check
+const STEM_ELEMENT = {
+    '甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire',
+    '戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal',
+    '壬':'Water','癸':'Water'
+};
+
+function isTombSha(hourBranch, dayStem, seasonStrong, seasonGrowing) {
+    const tomb = TOMB_SHA[dayStem];
+    console.log(`isTombSha: hourBranch=${hourBranch} dayStem=${dayStem} tomb=${tomb} strong=${seasonStrong} growing=${seasonGrowing}`);
+    if (!tomb || tomb !== hourBranch) return false;
+    const elem = STEM_ELEMENT[dayStem];
+    // Generate cycle: Water→Wood, Wood→Fire, Fire→Earth, Earth→Metal, Metal→Water
+    const GENERATES = { 'Water':'Wood','Wood':'Fire','Fire':'Earth','Earth':'Metal','Metal':'Water' };
+    const generator = Object.keys(GENERATES).find(k => GENERATES[k] === elem);
+    const isTimely = elem === seasonStrong || elem === seasonGrowing ||
+                     generator === seasonStrong || generator === seasonGrowing;
+    return !isTimely; // only flag when untimely
+}
+
 
 const NOBLE_BRANCHES = {
     '甲': ['丑','未'], '乙': ['子','申'],
@@ -1195,6 +1228,10 @@ function calculateBazi() {
         analysis.push({ text: 'Day-Month Stem Clash (−2)', tag: 'clash-month-stem' });
     } else if (clashType === 'clash-month-branch') {
         analysis.push({ text: 'Day-Month Branch Clash (−2)', tag: 'clash-month-branch' });
+    }
+    // Tomb Sha: hour branch = tomb of day stem, only when element untimely
+    if (isTombSha(pillarKeys.hour.branch, dayGan, seasonStrong, seasonGrowing)) {
+        analysis.push({ text: `Tomb Sha 墓煞 (${dayGan}→${TOMB_SHA[dayGan]})`, tag: 'clash-year' });
     }
     const mvDate = MONTH_VIRTUE[pillarKeys.month.branch] || null;
     const personMthBranchMV2 = getPersonMonthBranch(
@@ -2129,7 +2166,7 @@ function buildCalView() {
                 ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#f3e5f5;">MV</div>`
                 : '';
             const tyIndicator = dayBranchIsTY
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e0f7fa;">TY</div>`
+                ? `<div style="font-size:10px;color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8f5e9;">TY</div>`
                 : '';
 
             html += `<div class="${cellClass}" onclick="loadDateIntoMain('${isoDate}', 5)">
@@ -2236,7 +2273,7 @@ function buildMonthView() {
                        + (dayIsPersonHV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e3f2fd;">HV</span>` : '')
                        + (dayIsPersonBV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8eaf6;">BV</span>` : '')
                        + (dayIsPersonMV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#f3e5f5;">MV</span>` : '')
-                       + (dayIsPersonTY    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e0f7fa;">TY</span>` : '');
+                       + (dayIsPersonTY    ? `<span style="color:#1b5e20;font-weight:bold;font-size:11px;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8f5e9;">TY</span>` : '');
 
         let dayRowsHtml = '';
         const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
@@ -2275,13 +2312,34 @@ function buildMonthView() {
             const mData = getXkdgData(mGan, mZhi);
             const dData = getXkdgData(dGan, dZhi);
             const hData = getXkdgData(hGan, hZhi);
-            if (!yData || !mData || !dData || !hData) continue;
+            if (!yData || !mData || !dData) continue;
 
             const pillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGan, hZhi);
-            // Use resolved values for display numbers
             const yDisp = pillars.year, mDisp = pillars.month, dDisp = pillars.day, hDisp = pillars.hour;
 
             const { strong: sS, growing: sG } = getJieqiSeason(solarDate);
+
+            // Check Tomb Sha before skipping non-XKDG hours
+            const HOUR_BRANCHES_LV = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+            const hZhiDirect = HOUR_BRANCHES_LV[h];
+            const isTombShaLV = isTombSha(hZhi, dGan, sS, sG);
+
+            // If no hData and no Tomb Sha, skip
+            if (!hData && !isTombShaLV) continue;
+
+            // If Tomb Sha but no XKDG data for hour, show warning row
+            if (!hData && isTombShaLV) {                dayRowsHtml += `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;">
+                    <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
+                        <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
+                        <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
+                    </div>
+                    <div style="flex:1;display:flex;align-items:center;gap:6px;">
+                        <span style="color:#d40000;font-weight:bold;font-size:14px;">墓煞</span>
+                        <span style="color:#d40000;font-size:10px;">Tomb Sha — ${dGan} stem, ${hZhi} hour</span>
+                    </div>
+                </div>`;
+                continue;
+            }
             const { items: analysisItems } = analyzeXkdg(pillars, sS, sG);
             const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
             const isPositive = blueItems.length > 0;
@@ -2290,13 +2348,22 @@ function buildMonthView() {
             const activeFiltersMV = getActiveFilters();
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
 
-            // Hour branch for this slot
-            const HOUR_BRANCHES_LV = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-            const hZhiDirect = HOUR_BRANCHES_LV[h];
-
-            // Kong Wang check: skip if void and untimely (Pure Qi and Family exempt)
+            // Kong Wang check: mark void+untimely with red V (Pure Qi and Family exempt)
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
-            if (!hasPureQiOrFamilyLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG)) continue;
+            const isVoidLV = !hasPureQiOrFamilyLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
+            if (isVoidLV) {
+                dayRowsHtml += `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;opacity:0.6;">
+                    <div style="min-width:60px;max-width:90px;flex-shrink:0;font-size:11px;color:#333;">
+                        <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
+                        <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
+                    </div>
+                    <div style="flex:1;display:flex;align-items:center;gap:6px;">
+                        <span style="color:#d40000;font-weight:bold;font-size:14px;border:1px solid #d40000;border-radius:3px;padding:0 4px;">V</span>
+                        <span style="color:#d40000;font-size:10px;">Void (空亡) — Untimely</span>
+                    </div>
+                </div>`;
+                continue;
+            }
 
             let isFavourable = false;
             if (isPositive && personAYear) {
@@ -2338,12 +2405,14 @@ function buildMonthView() {
 
             // Tian Yi: date only (hour branch vs date day stem TY)
             const isDateTYLV = TIAN_YI[dGan] === hZhiDirect;
-            const tyHTMLMV   = isDateTYLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e0f7fa;">TY</span>` : '';
+            const tyHTMLMV   = isDateTYLV ? `<span style="color:#1b5e20;font-weight:bold;font-size:11px;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;background:#e8f5e9;">TY</span>` : '';
 
             // Month Virtue: hour stem matches MV stem OR day branch matches MV branch
             const mvLV = MONTH_VIRTUE[dateMthZhi] || null;
             const isDateMVLV = mvLV ? (mvLV.stem === hGan || mvLV.branch === dZhi) : false;
             const mvHTMLMV   = isDateMVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;">MV</span>` : '';
+
+            const tombShaHTML = isTombShaLV ? `<span style="color:#d40000;font-weight:bold;font-size:10px;">墓煞</span>` : '';
 
             // 12 Spirits
             const spirit = getSpiritForHour(dZhi, hZhiDirect);
@@ -2398,6 +2467,7 @@ function buildMonthView() {
                         isDateTYLV    ? 'TY' : ''
                     ].filter(Boolean).join(' · ')}</div>` : ''}
                     ${spiritHTML}
+                    ${tombShaHTML}
                 </div>
             </div>`;
         }
