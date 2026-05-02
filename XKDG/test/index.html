@@ -19,14 +19,16 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v1';
+            const CACHE = 'xkdg-v102';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
                 self.skipWaiting();
             });
             self.addEventListener('activate', e => {
-                e.waitUntil(clients.claim());
+                e.waitUntil(caches.keys().then(keys => Promise.all(
+                    keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+                )).then(() => clients.claim()));
             });
             self.addEventListener('fetch', e => {
                 e.respondWith(
@@ -277,9 +279,14 @@
 
     <!-- Person 1 -->
     <div class="person-section">
-        <div class="person-header" style="background:#e8f5e9; color:#1b5e20;">
+        <div class="person-header" style="background:#e8f5e9; color:#1b5e20; cursor:pointer;" onclick="togglePersonPanel('a')">
             ☯ PERSON A
-            <div><label>NAME:</label><input type="text" id="person-name" placeholder="Name..." style="width:100px;"></div>
+            <span id="person-name-display-a" style="font-size:12px;color:#558b2f;margin-left:4px;"></span>
+            <span id="toggle-panel-a" style="margin-left:auto;font-size:18px;">▾</span>
+        </div>
+        <div id="person-panel-a" style="display:block;">
+        <div class="person-header" style="background:#e8f5e9; color:#1b5e20; border-top:none; padding-top:4px;">
+            <div><label>NAME:</label><input type="text" id="person-name" placeholder="Name..." style="width:100px;" oninput="document.getElementById('person-name-display-a').textContent=this.value"></div>
             <div><label>BIRTH DATE:</label> <input type="date" id="person-date"></div>
             <div><label>HOUR:</label> <input type="time" id="person-time" value="12:00" style="width:85px;"></div>
             <button class="btn-person" onclick="calculatePerson('A')">CALCULATE</button>
@@ -305,13 +312,19 @@
             </div>
         </div>
         <div id="favourable-result" style="padding:10px;display:none;"></div>
+        </div>
     </div>
 
     <!-- Person B -->
     <div class="person-section" style="border-color:#7b1fa2;">
-        <div class="person-header" style="background:#f3e5f5; color:#4a148c; border-bottom-color:#7b1fa2;">
+        <div class="person-header" style="background:#f3e5f5; color:#4a148c; border-bottom-color:#7b1fa2; cursor:pointer;" onclick="togglePersonPanel('b')">
             ☯ PERSON B
-            <div><label>NAME:</label><input type="text" id="person-name-b" placeholder="Name..." style="width:100px;"></div>
+            <span id="person-name-display-b" style="font-size:12px;color:#7b1fa2;margin-left:4px;"></span>
+            <span id="toggle-panel-b" style="margin-left:auto;font-size:18px;">▾</span>
+        </div>
+        <div id="person-panel-b" style="display:block;">
+        <div class="person-header" style="background:#f3e5f5; color:#4a148c; border-bottom-color:#7b1fa2; border-top:none; padding-top:4px;">
+            <div><label>NAME:</label><input type="text" id="person-name-b" placeholder="Name..." style="width:100px;" oninput="document.getElementById('person-name-display-b').textContent=this.value"></div>
             <div><label>BIRTH DATE:</label> <input type="date" id="person-date-b"></div>
             <div><label>HOUR:</label> <input type="time" id="person-time-b" value="12:00" style="width:85px;"></div>
             <button class="btn-person" onclick="calculatePerson('B')" style="background:#7b1fa2;">CALCULATE</button>
@@ -338,6 +351,7 @@
             </div>
         </div>
         <div id="compatibility-result" style="display:none;padding:12px 15px;background:#fce4ec;border-top:2px solid #7b1fa2;"></div>
+        </div>
     </div>
 
     <!-- Date Scanner Section -->
@@ -1378,7 +1392,26 @@ function renderAnalysis(items) {
 //  PERSON BIRTH CHART + ARCHIVE (A & B)
 // ─────────────────────────────────────────────
 
+let _personPanelOpen = { a: true, b: true };
 let _showPersonStars = { a: false, b: false };
+
+function togglePersonPanel(person) {
+    _personPanelOpen[person] = !_personPanelOpen[person];
+    const panel  = document.getElementById(`person-panel-${person}`);
+    const arrow  = document.getElementById(`toggle-panel-${person}`);
+    if (panel)  panel.style.display  = _personPanelOpen[person] ? 'block' : 'none';
+    if (arrow)  arrow.textContent    = _personPanelOpen[person] ? '▾ ON' : '▸ OFF';
+    // Clear current results so user knows to rescan
+    const mv = document.getElementById('month-view');
+    const sr = document.getElementById('scan-results');
+    const cv = document.getElementById('cal-view');
+    if (mv) mv.innerHTML = `<div class="scan-empty">Person ${person.toUpperCase()} is now ${_personPanelOpen[person] ? 'ON' : 'OFF'} — tap SCAN.</div>`;
+    if (sr) sr.innerHTML = '';
+    if (cv) cv.innerHTML = '';
+    _scanResults = [];
+}
+
+
 
 function togglePersonStars(person) {
     _showPersonStars[person] = !_showPersonStars[person];
@@ -1937,13 +1970,10 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch)
     const labels = [];
     const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
     if (sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
-    if (isHetuPair(personYear.qi, dayXkdg.qi))  labels.push('Hetu El.');
-    if (isHetuPair(personYear.yun, dayXkdg.yun)) labels.push('Hetu Per.');
+    if (isHetuPair(personYear.qi, dayXkdg.qi) || isHetuPair(personYear.yun, dayXkdg.yun)) labels.push('Hetu');
     const sq = personYear.qi + dayXkdg.qi, sy = personYear.yun + dayXkdg.yun;
-    if ([5,10,15].includes(sq))  labels.push(`Add El.(${sq})`);
-    if ([5,10,15].includes(sy))  labels.push(`Add Per.(${sy})`);
-    if (personYear.qi === dayXkdg.qi)   labels.push('Pure Qi El.');
-    if (personYear.yun === dayXkdg.yun) labels.push('Pure Qi Per.');
+    if ([5,10,15].includes(sq) || [5,10,15].includes(sy)) labels.push(`Adding(${[5,10,15].includes(sq) ? sq : sy})`);
+    if (personYear.qi === dayXkdg.qi || personYear.yun === dayXkdg.yun) labels.push('Pure Qi');
     return labels;
 }
 
@@ -2012,6 +2042,7 @@ let _currentMode = 'dates';
 
 function setMode(mode) {
     _currentMode = mode;
+    try { localStorage.setItem('xkdg_mode', mode); } catch(e) {}
     const mDates = document.getElementById('mode-dates');
     const mMonth = document.getElementById('mode-month');
     const mCal   = document.getElementById('mode-cal');
@@ -2031,10 +2062,13 @@ function setMode(mode) {
 }
 
 function runAll() {
-    if (_currentMode === 'dates') runScanner();
-    else if (_currentMode === 'month') buildMonthView();
-    else buildCalView();
+    // Restore mode from localStorage in case it was reset
+    try { const m = localStorage.getItem('xkdg_mode'); if (m) _currentMode = m; } catch(e) {}
+    if (_currentMode === 'month') buildMonthView();
+    else if (_currentMode === 'cal') buildCalView();
+    else runScanner();
 }
+
 
 function buildCalView() {
     const startDate = document.getElementById('scan-start').value;
@@ -2046,7 +2080,7 @@ function buildCalView() {
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
 
     // Person A year for favourable check
-    const birthDate = document.getElementById('person-date').value;
+    const birthDate = (document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none') ? document.getElementById('person-date').value : '';
     const birthTime = document.getElementById('person-time').value || '12:00';
     let personAYear = null, pYStem = null, pYBranch = null;
     if (birthDate) {
@@ -2240,8 +2274,9 @@ function buildMonthView() {
 
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
 
-    // Person A year
-    const birthDate = document.getElementById('person-date').value;
+    // Check person panel visibility
+    const birthDateRaw = document.getElementById('person-date').value;
+    const birthDate = _personPanelOpen['a'] ? birthDateRaw : '';
     const birthTime = document.getElementById('person-time').value || '12:00';
     let personAYear = null, pYStem = null, pYBranch = null;
     if (birthDate) {
@@ -2391,14 +2426,18 @@ function buildMonthView() {
             const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
             const isPositive = blueItems.length > 0;
 
+            // Skip hours with no XKDG relations
+            if (!isPositive) continue;
+
             // Apply filter chips
             const activeFiltersMV = getActiveFilters();
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
 
             // Personal connection gate
-            if (personAYear && dData) {
+            const dayXkdgLV = dData || pillars.day;
+            if (personAYear && dayXkdgLV) {
                 const pQiLV = personAYear.qi, pYunLV = personAYear.yun;
-                const dQiLV = dData.qi, dYunLV = dData.yun;
+                const dQiLV = dayXkdgLV.qi, dYunLV = dayXkdgLV.yun;
 
                 const matchElLV =
                     pQiLV === dQiLV ||
@@ -2558,7 +2597,6 @@ function buildMonthView() {
                 </div>
                 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
-                    <div style="color:#1a7a1a;font-weight:bold;">${perNotes.join(' · ')}</div>
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.join(' · ')}</div>` : ''}` : ''}
                     ${[
                         isDateNobleLV ? 'Noble' : '',
@@ -2632,7 +2670,7 @@ function itemMatchesFilter(text, tag, filters) {
 }
 
 function getPersonYearData() {
-    const birthDate = document.getElementById('person-date').value;
+    const birthDate = (document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none') ? document.getElementById('person-date').value : '';
     const birthTime = document.getElementById('person-time').value || '12:00';
     if (!birthDate) return null;
     const lon = parseFloat(document.getElementById('longitude').value);
@@ -2712,41 +2750,44 @@ function setScanNow() {
 }
 
 function runScanner() {
-    const birthDate  = document.getElementById('person-date').value;
+    const birthDate  = (document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none') ? document.getElementById('person-date').value : '';
     const birthTime  = document.getElementById('person-time').value || '12:00';
-    const birthDateB = document.getElementById('person-date-b').value;
+    const birthDateB = (document.getElementById('person-panel-b') && document.getElementById('person-panel-b').style.display !== 'none') ? document.getElementById('person-date-b').value : '';
     const birthTimeB = document.getElementById('person-time-b').value || '12:00';
     const startDate = document.getElementById('scan-start').value;
     const days      = parseInt(document.getElementById('scan-days').value) || 30;
     const lon       = parseFloat(document.getElementById('longitude').value);
     const utc       = parseFloat(document.getElementById('utc-offset').value);
 
-    if (!birthDate) { alert('Please enter birth date for Person A first.'); return; }
     if (!startDate) { alert('Please enter a start date.'); return; }
 
     // Get season function
     const stdMeridian = utc * 15;
     const offsetMin   = (lon - stdMeridian) * 4 - (_dstOn ? 60 : 0);
 
-    // Person A year xkdg
+    // Person A year xkdg (optional)
+    let pYStem = null, pYBranch = null, personAYear = null;
+    let pDayStemA = null, pDayBranchA = null, pMthBranchA = null;
+    let pNobleA = [], pLuA = null, pHVA = null, pBVA = null, pMVA = null, pTYA = null;
+    if (birthDate) {
     const bBase   = new Date(`${birthDate}T${birthTime}`);
     const bSolar  = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
     const bEC     = bSolar.getLunar().getEightChar();
-    const pYStem  = bEC.getYearGan(), pYBranch = bEC.getYearZhi();
+    pYStem  = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
     const pYData  = getXkdgData(pYStem, pYBranch);
-    if (!pYData) { alert('No XKDG data for Person A birth year.'); return; }
-    const personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
+    if (pYData) personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
 
     // Person A day stem/branch and month branch for personal star calculations
-    const pDayStemA   = bEC.getDayGan();
-    const pDayBranchA = bEC.getDayZhi();
-    const pMthBranchA = bEC.getMonthZhi();
-    const pNobleA     = NOBLE_BRANCHES[pDayStemA] || [];
-    const pLuA        = LU_BRANCH[pDayStemA] || null;
-    const pHVA        = HEAVEN_VIRTUE[pMthBranchA] || null;
-    const pBVA        = BRANCH_VIRTUE[pDayBranchA] || null;
-    const pMVA        = MONTH_VIRTUE[pMthBranchA] || null;
-    const pTYA        = TIAN_YI[pDayStemA] || null;
+    pDayStemA   = bEC.getDayGan();
+    pDayBranchA = bEC.getDayZhi();
+    pMthBranchA = bEC.getMonthZhi();
+    pNobleA     = NOBLE_BRANCHES[pDayStemA] || [];
+    pLuA        = LU_BRANCH[pDayStemA] || null;
+    pHVA        = HEAVEN_VIRTUE[pMthBranchA] || null;
+    pBVA        = BRANCH_VIRTUE[pDayBranchA] || null;
+    pMVA        = MONTH_VIRTUE[pMthBranchA] || null;
+    pTYA        = TIAN_YI[pDayStemA] || null;
+    }
 
     // Person B (optional)
     let personBYear = null, pBYStem = null, pBYBranch = null;
@@ -2928,7 +2969,6 @@ function runScanner() {
             const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + sameTypeBonusA + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus);
 
             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
-            if (sameTypeBonusA > 0) matchLabels.push('★ Same-Type +2');
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
@@ -3118,7 +3158,7 @@ window.onload = () => {
     const _now = new Date();
     const _pad = n => String(n).padStart(2,'0');
     document.getElementById('version-tag').textContent =
-        `✦ Claude Edition — v2.0 (${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())} ${_pad(_now.getHours())}:${_pad(_now.getMinutes())}) ✦`;
+        `✦ Claude Edition — v2.0 PWA102 (${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())} ${_pad(_now.getHours())}:${_pad(_now.getMinutes())}) ✦`;
 </script>
 </body>
 </html>
