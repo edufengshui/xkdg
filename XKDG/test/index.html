@@ -169,7 +169,8 @@
         .tag-green { color: #1a7a1a; font-weight: bold; }
         .tag-gold  { color: #b8860b; font-weight: bold; }
         .tag-family{ color: #b8860b; font-weight: bold; font-size: 15px; }
-        .tag-noble { color: #1a7a1a; font-weight: bold; border: 1px solid #1a7a1a; border-radius: 4px; padding: 1px 6px; }
+        /* Badge tooltips */
+        .badge-tip { position:fixed; background:#333; color:#fff; font-size:12px; padding:6px 10px; border-radius:8px; z-index:9999; pointer-events:none; max-width:220px; text-align:center; line-height:1.4; display:none; box-shadow:0 2px 8px rgba(0,0,0,0.4); } font-weight: bold; border: 1px solid #1a7a1a; border-radius: 4px; padding: 1px 6px; }
         .tag-noble-both { color: #1a7a1a; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; }
         .tag-lu { color: #0277bd; font-weight: bold; border: 1px solid #0277bd; border-radius: 4px; padding: 1px 6px; background: #e1f5fe; }
         .tag-lu-both { color: #0277bd; font-weight: bold; border: 2px solid #b8860b; border-radius: 4px; padding: 1px 6px; background: #e1f5fe; }
@@ -211,6 +212,7 @@
 <body>
 
     <!-- License Gate -->
+    <div class="badge-tip" id="badge-tip"></div>
     <div id="license-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#fff;border-radius:12px;padding:30px;max-width:320px;width:90%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);">
             <div style="font-size:32px;margin-bottom:10px;">🔐</div>
@@ -1770,6 +1772,34 @@ function checkCompatibility() {
         `<div style="font-size:10px;color:#888;margin-top:6px;">● Same-type (stronger) &nbsp; ○ Cross-type (valid)</div>`;
 }
 
+const BADGE_INFO = {
+    'N':   { full: 'Noble 天乙贵人', desc: 'Heavenly Noble — most powerful auspicious star' },
+    'L':   { full: 'Lu 禄神', desc: 'Prosperity Star — wealth and career luck' },
+    'HV':  { full: 'Heaven Virtue 天德', desc: 'Heavenly Virtue — protection and blessings' },
+    'BV':  { full: 'Branch Virtue 支德', desc: 'Branch Virtue — earthly support and stability' },
+    'MV':  { full: 'Month Virtue 月德', desc: 'Monthly Virtue — timely assistance and help' },
+    'TY':  { full: 'Tian Yi 天医', desc: 'Heavenly Doctor — healing and recovery' },
+    'V':   { full: 'Void 空亡 — Untimely', desc: 'Kong Wang: this hour branch is empty and the element is untimely — hour discarded' },
+    '墓煞': { full: 'Tomb Sha 墓煞', desc: 'Tomb of the day stem falls on the hour branch — inauspicious when element is untimely' },
+};
+
+function showBadgeTip(el, code) {
+    const info = BADGE_INFO[code];
+    if (!info) return;
+    const tip = document.getElementById('badge-tip');
+    tip.innerHTML = `<strong>${info.full}</strong><br><span style="font-size:11px;opacity:0.85;">${info.desc}</span>`;
+    tip.style.display = 'block';
+    const r = el.getBoundingClientRect();
+    tip.style.left = Math.min(r.left, window.innerWidth - 230) + 'px';
+    tip.style.top  = (r.bottom + 6) + 'px';
+
+}
+
+document.addEventListener('click', e => {
+    const tip = document.getElementById('badge-tip');
+    if (tip && e.target !== tip && !tip.contains(e.target)) tip.style.display = 'none';
+});
+
 function checkFavourable(personYear, pStem, pBranch, person) {
     const colId    = person === 'B' ? 'favourable-col-b' : 'favourable-col';
     const detailId = person === 'B' ? 'favourable-detail-b' : 'favourable-detail';
@@ -2160,23 +2190,22 @@ function buildCalView() {
             const jieqi    = jieqiMap[isoDate] || [];
             const jieqiHTML = jieqi.map(j => `<div style="font-size:9px;color:#e65100;font-weight:bold;">${j.name} ${j.time}</div>`).join('');
             const nobleIndicator = dayBranchIsNoble
-                ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;">N</div>`
+                ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'N')">N</div>`
                 : '';
             const luIndicator = dayBranchIsLu
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e1f5fe;">L</div>`
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e1f5fe;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'L')">L</div>`
                 : '';
             const hvIndicator = dayBranchIsHV
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e3f2fd;">HV</div>`
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e3f2fd;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'HV')">HV</div>`
                 : '';
             const bvIndicator = dayBranchIsBV
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8eaf6;">BV</div>`
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8eaf6;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'BV')">BV</div>`
                 : '';
-
             const mvIndicator = dayBranchIsMV
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#f3e5f5;">MV</div>`
+                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#f3e5f5;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'MV')">MV</div>`
                 : '';
             const tyIndicator = dayBranchIsTY
-                ? `<div style="font-size:10px;color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8f5e9;">TY</div>`
+                ? `<div style="font-size:10px;color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8f5e9;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'TY')">TY</div>`
                 : '';
 
             html += `<div class="${cellClass}" onclick="loadDateIntoMain('${isoDate}', 5)">
@@ -2237,6 +2266,14 @@ function buildMonthView() {
         const solar = new Date(base.getTime() + offsetMin * 60000);
         return Solar.fromDate(solar).getLunar().getEightChar().getDayZhi();
     })();
+
+    // Person A personal star data for score calculation
+    const pNobleA = personDayStemMV ? (NOBLE_BRANCHES[personDayStemMV] || []) : null;
+    const pLuA    = personDayStemMV ? (LU_BRANCH[personDayStemMV] || null) : null;
+    const pHVA    = personMthBranchMV ? (HEAVEN_VIRTUE[personMthBranchMV] || null) : null;
+    const pBVA    = personDayZhiMV ? (BRANCH_VIRTUE[personDayZhiMV] || null) : null;
+    const pMVA    = personMthBranchMV ? (MONTH_VIRTUE[personMthBranchMV] || null) : null;
+    const pTYA    = personDayStemMV ? (TIAN_YI[personDayStemMV] || null) : null;
     let html = '';
     let lastDay = '';
 
@@ -2278,12 +2315,12 @@ function buildMonthView() {
         const mvPersonData     = personMthBranchMV ? (MONTH_VIRTUE[personMthBranchMV] || null) : null;
         const dayIsPersonMV    = mvPersonData ? mvPersonData.branch === dZhiDay : false;
         const dayIsPersonTY    = personDayStemMV ? TIAN_YI[personDayStemMV] === dZhiDay : false;
-        const headerNL = (dayIsPersonNoble ? `<span style="color:#1a7a1a;font-weight:bold;font-size:11px;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-left:3px;">N</span>` : '')
-                       + (dayIsPersonLu    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e1f5fe;">L</span>` : '')
-                       + (dayIsPersonHV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e3f2fd;">HV</span>` : '')
-                       + (dayIsPersonBV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8eaf6;">BV</span>` : '')
-                       + (dayIsPersonMV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#f3e5f5;">MV</span>` : '')
-                       + (dayIsPersonTY    ? `<span style="color:#1b5e20;font-weight:bold;font-size:11px;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8f5e9;">TY</span>` : '');
+        const headerNL = (dayIsPersonNoble ? `<span style="color:#1a7a1a;font-weight:bold;font-size:11px;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-left:3px;cursor:pointer; onclick="event.stopPropagation();showBadgeTip(this,'N')">N</span>` : '')
+                       + (dayIsPersonLu    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e1f5fe;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'L')">L</span>` : '')
+                       + (dayIsPersonHV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e3f2fd;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'HV')">HV</span>` : '')
+                       + (dayIsPersonBV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8eaf6;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'BV')">BV</span>` : '')
+                       + (dayIsPersonMV    ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-left:2px;background:#f3e5f5;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'MV')">MV</span>` : '')
+                       + (dayIsPersonTY    ? `<span style="color:#1b5e20;font-weight:bold;font-size:11px;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-left:2px;background:#e8f5e9;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'TY')">TY</span>` : '');
 
         let dayRowsHtml = '';
         const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
@@ -2344,7 +2381,7 @@ function buildMonthView() {
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                     </div>
                     <div style="flex:1;display:flex;align-items:center;gap:6px;">
-                        <span style="color:#d40000;font-weight:bold;font-size:14px;">墓煞</span>
+                        <span style="color:#d40000;font-weight:bold;font-size:14px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'墓煞')">墓煞</span>
                         <span style="color:#d40000;font-size:10px;">Tomb Sha — ${dGan} stem, ${hZhi} hour</span>
                     </div>
                 </div>`;
@@ -2407,13 +2444,13 @@ function buildMonthView() {
             const isVoidLV = !hasPureQiOrFamilyLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
             if (isVoidLV) {
                 dayRowsHtml += `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;opacity:0.6;">
-                    <div style="min-width:60px;max-width:90px;flex-shrink:0;font-size:11px;color:#333;">
+                    <div style="width:28px;flex-shrink:0;"></div>
+                    <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                         <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                     </div>
-                    <div style="flex:1;display:flex;align-items:center;gap:6px;">
-                        <span style="color:#d40000;font-weight:bold;font-size:14px;border:1px solid #d40000;border-radius:3px;padding:0 4px;">V</span>
-                        <span style="color:#d40000;font-size:10px;">Void (空亡) — Untimely</span>
+                    <div style="width:30px;flex-shrink:0;display:flex;align-items:center;">
+                        <span style="color:#d40000;font-weight:bold;font-size:11px;border:1px solid #d40000;border-radius:3px;padding:0 3px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'V')">V</span>
                     </div>
                 </div>`;
                 continue;
@@ -2436,48 +2473,62 @@ function buildMonthView() {
             // Check if person shares family with the day
             const personSharesFamily = personAYear && pYStem && pYBranch &&
                 getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
-            const hasFamilyLV = hasFamily || personSharesFamily;
+            const hasFamilyLV = hasFamily; // BL only when all 4 pillars share a family
 
             const bg      = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
             const rowStyle = hasFamilyLV ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;` : `background:${bg};`;
             const isoDate = localISODate(dayDate);
 
-            // Noble: date only (hour branch vs date day stem)
-            const dateNoblesLV = NOBLE_BRANCHES[dGan] || [];
-            const isDateNobleLV = dateNoblesLV.includes(hZhiDirect);
-            const nobleLabelLV = isDateNobleLV ? 'N' : '';
-            const nobleHTMLMV = nobleLabelLV ? `<span style="color:#1a7a1a;font-weight:bold;font-size:11px;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;">${nobleLabelLV}</span>` : '';
-
-            // Lu: date only (hour branch vs date day stem)
-            const isDateLuLV = LU_BRANCH[dGan] === hZhiDirect;
-            const luLabelLV = isDateLuLV ? 'L' : '';
-            const luHTMLMV = luLabelLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e1f5fe;">${luLabelLV}</span>` : '';
-
-            // Branch Virtue: date only (hour branch vs date day branch BV)
-            const dateMthZhi = eightChar.getMonthZhi();
-            const isDateBVLV = BRANCH_VIRTUE[dZhi] === hZhiDirect;
-            const bvHTMLMV   = isDateBVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e8eaf6;">BV</span>` : '';
-            const hvBranchLV = HEAVEN_VIRTUE[dateMthZhi] || null;
-            const isDateHVLV = hvBranchLV === hZhiDirect;
-            const hvHTMLMV   = isDateHVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e3f2fd;">HV</span>` : '';
-
-            // Tian Yi: date only (hour branch vs date day stem TY)
-            const isDateTYLV = TIAN_YI[dGan] === hZhiDirect;
-            const tyHTMLMV   = isDateTYLV ? `<span style="color:#1b5e20;font-weight:bold;font-size:11px;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;background:#e8f5e9;">TY</span>` : '';
-
-            // Month Virtue: hour stem matches MV stem OR day branch matches MV branch
-            const mvLV = MONTH_VIRTUE[dateMthZhi] || null;
-            const isDateMVLV = mvLV ? (mvLV.stem === hGan || mvLV.branch === dZhi) : false;
-            const mvHTMLMV   = isDateMVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;">MV</span>` : '';
-
-            const tombShaHTML = isTombShaLV ? `<span style="color:#d40000;font-weight:bold;font-size:10px;">墓煞</span>` : '';
-
             // 12 Spirits
             const spirit = getSpiritForHour(dZhi, hZhiDirect);
             const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};">${spirit.en} ${spirit.zh}</span>` : '';
 
+            // Score calculation for LIST view
+            const qualityScoreLV = getDateQualityScore(analysisItems);
+            const scoreALV = personAYear ? getMatchScore(personAYear, pYStem, pYBranch, dData, dGan, dZhi) : 1;
+            const sameTypeBonusLV = personAYear ? getPersonSameTypeBonus(blueItems, personAYear, dData, pYStem, pYBranch, dGan, dZhi) : 0;
+            const spiritPenaltyLV = (!hasFamily && !blueItems.some(i=>i.text.includes('Pure Qi')) && spirit && !spirit.auspicious) ? -1 : 0;
+            const spiritBonusLV   = (spirit && spirit.auspicious) ? 1 : 0;
+            const nobleBonusLV = pNobleA ? (pNobleA.includes(hZhi) ? 1 : 0) : ((NOBLE_BRANCHES[dGan]||[]).includes(hZhi) ? 1 : 0);
+            const luBonusLV    = pLuA ? (pLuA === hZhi ? 1 : 0) : (LU_BRANCH[dGan] === hZhi ? 1 : 0);
+            const hvBonusLV    = pHVA ? (pHVA === hZhi ? 1 : 0) : 0;
+            const bvBonusLV    = pBVA ? (pBVA === hZhi ? 1 : 0) : 0;
+            const mvBonusLV    = pMVA ? (pMVA.stem === hGan ? 1 : 0) : 0;
+            const tyBonusLV    = pTYA ? (pTYA === hZhi ? 1 : 0) : 0;
+            const clashPenaltyLV = getClashType(dGan, dZhi, eightChar.getYearZhi(), mGan, mZhi) ? -2 : 0;
+            const listScore = Math.max(1, scoreALV * Math.max(qualityScoreLV, 1) + sameTypeBonusLV + spiritPenaltyLV + spiritBonusLV + nobleBonusLV + luBonusLV + hvBonusLV + bvBonusLV + mvBonusLV + tyBonusLV + clashPenaltyLV);
+            const dateNoblesLV = NOBLE_BRANCHES[dGan] || [];
+            const isDateNobleLV = dateNoblesLV.includes(hZhiDirect);
+            const nobleLabelLV = isDateNobleLV ? 'N' : '';
+            const nobleHTMLMV = nobleLabelLV ? `<span style="color:#1a7a1a;font-weight:bold;font-size:11px;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'N')">${nobleLabelLV}</span>` : '';
+
+            // Lu: date only (hour branch vs date day stem)
+            const isDateLuLV = LU_BRANCH[dGan] === hZhiDirect;
+            const luLabelLV = isDateLuLV ? 'L' : '';
+            const luHTMLMV = luLabelLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e1f5fe;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'L')">${luLabelLV}</span>` : '';
+
+            // Branch Virtue: date only (hour branch vs date day branch BV)
+            const dateMthZhi = eightChar.getMonthZhi();
+            const isDateBVLV = BRANCH_VIRTUE[dZhi] === hZhiDirect;
+            const bvHTMLMV   = isDateBVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e8eaf6;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'BV')">BV</span>` : '';
+            const hvBranchLV = HEAVEN_VIRTUE[dateMthZhi] || null;
+            const isDateHVLV = hvBranchLV === hZhiDirect;
+            const hvHTMLMV   = isDateHVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e3f2fd;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'HV')">HV</span>` : '';
+
+            // Tian Yi: date only (hour branch vs date day stem TY)
+            const isDateTYLV = TIAN_YI[dGan] === hZhiDirect;
+            const tyHTMLMV   = isDateTYLV ? `<span style="color:#1b5e20;font-weight:bold;font-size:11px;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;background:#e8f5e9;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'TY')">TY</span>` : '';
+
+            // Month Virtue: hour stem matches MV stem OR day branch matches MV branch
+            const mvLV = MONTH_VIRTUE[dateMthZhi] || null;
+            const isDateMVLV = mvLV ? (mvLV.stem === hGan || mvLV.branch === dZhi) : false;
+            const mvHTMLMV   = isDateMVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'MV')">MV</span>` : '';
+
+            const tombShaHTML = isTombShaLV ? `<span style="color:#d40000;font-weight:bold;font-size:10px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'墓煞')">墓煞</span>` : '';
+
             dayRowsHtml += `<div onclick="loadDateIntoMain('${isoDate}',${h})"
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
+                <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${listScore}</div>
                 <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                     <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
                     <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
@@ -2686,6 +2737,17 @@ function runScanner() {
     if (!pYData) { alert('No XKDG data for Person A birth year.'); return; }
     const personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
 
+    // Person A day stem/branch and month branch for personal star calculations
+    const pDayStemA   = bEC.getDayGan();
+    const pDayBranchA = bEC.getDayZhi();
+    const pMthBranchA = bEC.getMonthZhi();
+    const pNobleA     = NOBLE_BRANCHES[pDayStemA] || [];
+    const pLuA        = LU_BRANCH[pDayStemA] || null;
+    const pHVA        = HEAVEN_VIRTUE[pMthBranchA] || null;
+    const pBVA        = BRANCH_VIRTUE[pDayBranchA] || null;
+    const pMVA        = MONTH_VIRTUE[pMthBranchA] || null;
+    const pTYA        = TIAN_YI[pDayStemA] || null;
+
     // Person B (optional)
     let personBYear = null, pBYStem = null, pBYBranch = null;
     if (birthDateB) {
@@ -2828,23 +2890,23 @@ function runScanner() {
 
             // Kong Wang check: skip hour if void branch and untimely (Pure Qi and Family exempt)
             if (!hasPureQiOrFamily && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
-            const spiritPenalty = (!hasPureQiOrFamily && hasAddingOrHetu && hourSpirit && !hourSpirit.auspicious) ? -1 : 0;
+            const hasFullBL  = blueItems.some(i => i.tag === 'family');
+            const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
+            const spiritPenalty = (!hasFullBL && !hasPureQi && hourSpirit && !hourSpirit.auspicious) ? -1 : 0;
             const spiritBonus   = (hourSpirit && hourSpirit.auspicious) ? 1 : 0;
 
-            // Noble bonus: hour branch is Noble for day stem
-            const nobleBonus = (NOBLE_BRANCHES[dGan] || []).includes(hZhiSC) ? 1 : 0;
-            // Lu bonus: hour branch is Lu for day stem
-            const luBonus = LU_BRANCH[dGan] === hZhiSC ? 1 : 0;
-            // Heaven Virtue bonus: hour branch matches HV for month branch
-            const hvSC = HEAVEN_VIRTUE[mZhi] || null;
-            const hvBonus = hvSC === hZhiSC ? 1 : 0;
-            // Branch Virtue bonus: hour branch matches BV for day branch
-            const bvBonus = BRANCH_VIRTUE[dZhi] === hZhiSC ? 1 : 0;
-            // Month Virtue bonus: hour stem matches MV stem
-            const mvSC = MONTH_VIRTUE[mZhi] || null;
-            const mvBonus = mvSC && mvSC.stem === hGan ? 1 : 0;
-            // Tian Yi bonus: hour branch matches day stem TY
-            const tyBonus = TIAN_YI[dGan] === hZhiSC ? 1 : 0;
+            // Noble bonus: hour branch is Noble for PERSON A's day stem
+            const nobleBonus = pNobleA.includes(hZhiSC) ? 1 : 0;
+            // Lu bonus: hour branch is Lu for PERSON A's day stem
+            const luBonus = pLuA === hZhiSC ? 1 : 0;
+            // Heaven Virtue bonus: hour branch matches PERSON A's HV (based on person's month branch)
+            const hvBonus = pHVA === hZhiSC ? 1 : 0;
+            // Branch Virtue bonus: hour branch matches PERSON A's BV (based on person's day branch)
+            const bvBonus = pBVA === hZhiSC ? 1 : 0;
+            // Month Virtue bonus: hour stem matches PERSON A's MV stem
+            const mvBonus = pMVA && pMVA.stem === hGan ? 1 : 0;
+            // Tian Yi bonus: hour branch matches PERSON A's TY (based on person's day stem)
+            const tyBonus = pTYA === hZhiSC ? 1 : 0;
 
             // Clash penalty
             const clashTypeSC = getClashType(dGan, dZhi, pillars.year.branch, mGan, mZhi);
