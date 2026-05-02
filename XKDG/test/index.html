@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v102';
+            const CACHE = 'xkdg-v104';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -1397,15 +1397,42 @@ let _showPersonStars = { a: false, b: false };
 
 function togglePersonPanel(person) {
     _personPanelOpen[person] = !_personPanelOpen[person];
-    const panel  = document.getElementById(`person-panel-${person}`);
-    const arrow  = document.getElementById(`toggle-panel-${person}`);
-    if (panel)  panel.style.display  = _personPanelOpen[person] ? 'block' : 'none';
-    if (arrow)  arrow.textContent    = _personPanelOpen[person] ? '▾ ON' : '▸ OFF';
-    // Clear current results so user knows to rescan
+    const arrow = document.getElementById(`toggle-panel-${person}`);
+    const isOn  = _personPanelOpen[person];
+
+    if (isOn) {
+        // Restore from archive if available
+        if (arrow) arrow.textContent = '▾ ON';
+    } else {
+        // Clear active fields but keep archive
+        const suffix = person === 'b' ? '-b' : '';
+        document.getElementById(`person-name${suffix}`).value  = '';
+        document.getElementById(`person-date${suffix}`).value  = '';
+        document.getElementById(`person-time${suffix}`).value  = '12:00';
+        // Clear calculated chart and relations
+        const chartId = person === 'b' ? 'person-chart-b' : 'person-chart';
+        const chartEl = document.getElementById(chartId);
+        if (chartEl) chartEl.style.display = 'none';
+        const analysisId = person === 'b' ? 'person-analysis-b' : 'person-analysis-a';
+        const analysisEl = document.getElementById(analysisId);
+        if (analysisEl) analysisEl.style.display = 'none';
+        // Clear global person data
+        if (person === 'a') {
+            _personAYear = null; _personAStem = null; _personABranch = null;
+            _personADay  = null; _personARelations = null;
+            console.log('Cleared _personAYear:', _personAYear);
+        } else {
+            _personBYear = null; _personBStem = null; _personBBranch = null;
+            _personBDay  = null; _personBRelations = null;
+        }
+        if (arrow) arrow.textContent = '▸ OFF';
+    }
+
+    // Clear results and prompt rescan
     const mv = document.getElementById('month-view');
     const sr = document.getElementById('scan-results');
     const cv = document.getElementById('cal-view');
-    if (mv) mv.innerHTML = `<div class="scan-empty">Person ${person.toUpperCase()} is now ${_personPanelOpen[person] ? 'ON' : 'OFF'} — tap SCAN.</div>`;
+    if (mv) mv.innerHTML = `<div class="scan-empty">Person ${person.toUpperCase()} is ${isOn ? 'ON' : 'OFF'} — tap SCAN to refresh.</div>`;
     if (sr) sr.innerHTML = '';
     if (cv) cv.innerHTML = '';
     _scanResults = [];
@@ -2274,27 +2301,21 @@ function buildMonthView() {
 
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
 
-    // Check person panel visibility
-    const birthDateRaw = document.getElementById('person-date').value;
-    const birthDate = _personPanelOpen['a'] ? birthDateRaw : '';
+    // Person A year - use global if available (cleared when toggled off)
     const birthTime = document.getElementById('person-time').value || '12:00';
-    let personAYear = null, pYStem = null, pYBranch = null;
-    if (birthDate) {
-        const bBase  = new Date(`${birthDate}T${birthTime}`);
-        const bSolar = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
-        const bEC    = bSolar.getLunar().getEightChar();
-        pYStem = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
-        const pYData = getXkdgData(pYStem, pYBranch);
-        if (pYData) personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
-    }
+    const personAYear = _personAYear || null;
+    const pYStem      = _personAStem  || null;
+    const pYBranch    = _personABranch || null;
+
+    // Person A personal star data
+    const birthDate = personAYear ? document.getElementById('person-date').value : '';
+    const personDayStemMV   = birthDate ? getPersonDayStemFromBirth(birthDate, birthTime, offsetMin) : null;
+    const personMthBranchMV = birthDate ? getPersonMonthBranch(birthDate, birthTime, offsetMin) : null;
 
     const HOUR_SHORT = ['子(23)','丑(01)','寅(03)','卯(05)','辰(07)','巳(09)','午(11)','未(13)','申(15)','酉(17)','戌(19)','亥(21)'];
     const start    = new Date(startDate + 'T00:00:00');
     const endMV    = new Date(start.getTime() + days * 86400000);
     const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endMV.getFullYear() + 1, offsetMin);
-
-    const personDayStemMV = getPersonDayStemFromBirth(birthDate, birthTime, offsetMin);
-    const personMthBranchMV = getPersonMonthBranch(birthDate, birthTime, offsetMin);
     const personDayZhiMV = (() => {
         if (!birthDate) return null;
         const base  = new Date(`${birthDate}T${birthTime}`);
