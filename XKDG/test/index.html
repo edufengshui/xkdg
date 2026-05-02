@@ -474,7 +474,7 @@ _add('己亥','Heng-Yi','son'); _add('辛卯','Heng-Yi','son'); _add('丙寅','H
 _add('己丑','Heng-Yi','son'); _add('丙子','Heng-Yi','son'); _add('戊子','Heng-Yi','son');
 // ── Sun-Xian ──
 _add('丁卯','Sun-Xian','father'); _add('丁酉','Sun-Xian','mother');
-_add('庚申','Sun-Xian','daughter'); _add('丙巳','Sun-Xian','daughter'); _add('壬辰','Sun-Xian','daughter');
+_add('庚申','Sun-Xian','daughter'); _add('壬辰','Sun-Xian','daughter'); _add('丙子','Sun-Xian','daughter');
 _add('甲辰','Sun-Xian','daughter'); _add('辛卯','Sun-Xian','daughter'); _add('乙卯','Sun-Xian','daughter');
 _add('庚寅','Sun-Xian','son'); _add('丙午','Sun-Xian','son'); _add('壬戌','Sun-Xian','son');
 _add('甲戌','Sun-Xian','son'); _add('辛酉','Sun-Xian','son'); _add('乙酉','Sun-Xian','son');
@@ -2171,9 +2171,10 @@ function buildCalView() {
         let startDow = monthStart.getDay();
         startDow = startDow === 0 ? 6 : startDow - 1;
 
-        // Fill blanks for days before our range in this month
+        // Fill blanks for days before first date in month
         const firstDateInMonth = dayDates[0].getDate();
-        for (let b = startDow; b < startDow + firstDateInMonth - 1; b++) {
+        const totalBlanks = startDow + firstDateInMonth - 1;
+        for (let b = 0; b < totalBlanks; b++) {
             html += `<div class="cal-cell empty"></div>`;
         }
 
@@ -2458,9 +2459,10 @@ function buildMonthView() {
             const activeFiltersMV = getActiveFilters();
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun })) continue;
 
-            // Personal connection gate
+            // Personal connection gate — skip if only BL filter active (BL is self-sufficient)
+            const onlyBLFilter = activeFiltersMV.size > 0 && activeFiltersMV.has('family') && activeFiltersMV.size === 1;
             const dayXkdgLV = dData || pillars.day;
-            if (personAYear || personBYear) {
+            if (!onlyBLFilter && (personAYear || personBYear)) {
                 const connectsA = personAYear ? (() => {
                     const pQi = personAYear.qi, pYun = personAYear.yun;
                     const dQi = dayXkdgLV.qi,  dYun = dayXkdgLV.yun;
