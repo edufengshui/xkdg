@@ -1832,14 +1832,14 @@ function checkCompatibility() {
 }
 
 const BADGE_INFO = {
-    'N':   { full: 'Noble 天乙贵人', desc: 'Heavenly Noble — most powerful auspicious star' },
-    'L':   { full: 'Lu 禄神', desc: 'Prosperity Star — wealth and career luck' },
-    'HV':  { full: 'Heaven Virtue 天德', desc: 'Heavenly Virtue — protection and blessings' },
-    'BV':  { full: 'Branch Virtue 支德', desc: 'Branch Virtue — earthly support and stability' },
-    'MV':  { full: 'Month Virtue 月德', desc: 'Monthly Virtue — timely assistance and help' },
-    'TY':  { full: 'Tian Yi 天医', desc: 'Heavenly Doctor — healing and recovery' },
-    'V':   { full: 'Void 空亡 — Untimely', desc: 'Kong Wang: this hour branch is empty and the element is untimely — hour discarded' },
-    '墓煞': { full: 'Tomb Sha 墓煞', desc: 'Tomb of the day stem falls on the hour branch — inauspicious when element is untimely' },
+    'N':   { full: 'Noble 天乙贵人', desc: 'The ultimate protector and catalyst for success. Most auspicious spirit, capable of overriding many negative influences. Resolves conflicts and dissolves negativity. Brings Noble help — mentors, experts, or helpful strangers who intervene at the right moment.' },
+    'L':   { full: 'Lu 禄神 — Prosperity Star', desc: 'Good for job interviews, business openings, contract signing. Enhances authority and financial outcome.' },
+    'HV':  { full: 'Heaven Virtue 天德', desc: 'Rescue star. Even if problems arise, a way out or external help exists to mitigate damage. Neutralizes Penalties (Xing) and Clashes (Chong).' },
+    'BV':  { full: 'Branch Virtue 支德', desc: 'Practical support and operational efficiency. Ensures resources needed are available. Excellent for manual labor, renovations, logistics, and moving house.' },
+    'MV':  { full: 'Month Virtue 月德', desc: 'Power of Relationships. Attracts external support and social harmony. Magnet for influential mentors. Grants immunity against gossip or social malice. Good for negotiations, interviews, or public speaking.' },
+    'TY':  { full: 'Tian Yi 天医 — Heavenly Doctor', desc: 'A cleansing and healing star. Removes obstructions and restores balance. Good for starting new medical treatments, scheduling surgeries (if day is not clashed), beginning a detox, fast, or new health regimen.' },
+    'V':   { full: 'Void 空亡 — Kong Wang', desc: 'State of non-existence or unreliability. Energy is neutralized. Actions taken do not produce lasting results. Contracts may become empty. Buying items may lead to hidden defects or loss. Wasted trips.' },
+    '墓煞': { full: 'Tomb Sha 墓煞', desc: 'Stagnation, confinement, and locking up of energy. Present but trapped. Causes confusion, stubbornness, or being in the dark. Decisions made are often narrow-minded. Not ideal for moving house, traveling, or launching a product.' },
 };
 
 function showBadgeTip(el, code) {
@@ -2306,6 +2306,11 @@ function buildMonthView() {
     const pYStem      = _personAStem  || null;
     const pYBranch    = _personABranch || null;
 
+    // Person B year
+    const personBYear = _personBYear || null;
+    const pBYStem     = _personBStem  || null;
+    const pBYBranch   = _personBBranch || null;
+
     // Person A personal star data
     const birthDate = personAYear ? document.getElementById('person-date').value : '';
     const personDayStemMV   = birthDate ? getPersonDayStemFromBirth(birthDate, birthTime, offsetMin) : null;
@@ -2455,46 +2460,30 @@ function buildMonthView() {
 
             // Personal connection gate
             const dayXkdgLV = dData || pillars.day;
-            if (personAYear && dayXkdgLV) {
-                const pQiLV = personAYear.qi, pYunLV = personAYear.yun;
-                const dQiLV = dayXkdgLV.qi, dYunLV = dayXkdgLV.yun;
+            if (personAYear || personBYear) {
+                const connectsA = personAYear ? (() => {
+                    const pQi = personAYear.qi, pYun = personAYear.yun;
+                    const dQi = dayXkdgLV.qi,  dYun = dayXkdgLV.yun;
+                    return pQi === dQi || isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
+                           pYun === dYun || isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
+                           getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                })() : false;
 
-                const matchElLV =
-                    pQiLV === dQiLV ||
-                    isHetuPair(pQiLV, dQiLV) ||
-                    [5,10,15].includes(pQiLV + dQiLV) ||
-                    getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
-                const matchPerLV =
-                    pYunLV === dYunLV ||
-                    isHetuPair(pYunLV, dYunLV) ||
-                    [5,10,15].includes(pYunLV + dYunLV);
+                const connectsB = personBYear ? (() => {
+                    const pQi = personBYear.qi, pYun = personBYear.yun;
+                    const dQi = dayXkdgLV.qi,  dYun = dayXkdgLV.yun;
+                    return pQi === dQi || isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
+                           pYun === dYun || isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
+                           getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                })() : false;
 
-                // No filters: show all dates where person connects
-                // With filters: also require person connects via that specific type
-                if (!(matchElLV || matchPerLV)) continue;
-
-                if (activeFiltersMV.size > 0) {
-                    // Check if person connects via the active filter relation type
-                    const hasAddingFilter = activeFiltersMV.has('adding-el') || activeFiltersMV.has('adding-per') || activeFiltersMV.has('pure-adding');
-                    const hasHetuFilter   = activeFiltersMV.has('hetu-el')   || activeFiltersMV.has('hetu-per')   || activeFiltersMV.has('pure-hetu');
-                    const hasPureQiFilter = activeFiltersMV.has('pure-qi-el') || activeFiltersMV.has('pure-qi-per');
-                    const hasFamilyFilter = activeFiltersMV.has('family');
-
-                    const personAddingEl  = [5,10,15].includes(pQiLV + dQiLV);
-                    const personAddingPer = [5,10,15].includes(pYunLV + dYunLV);
-                    const personHetuEl    = isHetuPair(pQiLV, dQiLV);
-                    const personHetuPer   = isHetuPair(pYunLV, dYunLV);
-                    const personPureQiEl  = pQiLV === dQiLV;
-                    const personPureQiPer = pYunLV === dYunLV;
-                    const personFamily    = getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
-
-                    const personMatchesFilter =
-                        (hasAddingFilter && (personAddingEl || personAddingPer)) ||
-                        (hasHetuFilter   && (personHetuEl   || personHetuPer))   ||
-                        (hasPureQiFilter && (personPureQiEl || personPureQiPer)) ||
-                        (hasFamilyFilter && personFamily);
-
-                    if (!personMatchesFilter) continue;
+                // Both active → require both connect; one active → require that one
+                if (personAYear && personBYear) {
+                    if (!(connectsA && connectsB)) continue;
+                } else if (personAYear) {
+                    if (!connectsA) continue;
+                } else {
+                    if (!connectsB) continue;
                 }
             }
 
