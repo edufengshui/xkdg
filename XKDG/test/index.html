@@ -2162,23 +2162,36 @@ function buildCalView() {
         html += `<div class="cal-grid">`;
         DOW.forEach(d => html += `<div class="cal-header-cell">${d}</div>`);
 
-        // Blank cells before first day
-        const firstDay = dayDates[0];
-        let dow = firstDay.getDay(); // 0=Sun
-        dow = dow === 0 ? 6 : dow - 1; // Mon=0
-        // But only blank up to the start of our range
+        // Fill blanks from Monday to first day of month
         const monthStart = new Date(yr, mo-1, 1);
         let startDow = monthStart.getDay();
-        startDow = startDow === 0 ? 6 : startDow - 1;
+        startDow = startDow === 0 ? 6 : startDow - 1; // Mon=0
 
-        // Fill blanks for days before first date in month
-        const firstDateInMonth = dayDates[0].getDate();
-        const totalBlanks = startDow + firstDateInMonth - 1;
-        for (let b = 0; b < totalBlanks; b++) {
+        // Track current cell position (0=Mon ... 6=Sun)
+        let currentCol = startDow;
+
+        // Add initial blank cells for days before 1st
+        for (let b = 0; b < startDow; b++) {
             html += `<div class="cal-cell empty"></div>`;
         }
 
+        // Add blank cells for days 1..firstDate-1 that aren't in our scan range
+        const firstDateInMonth = dayDates[0].getDate();
+        for (let d = 1; d < firstDateInMonth; d++) {
+            html += `<div class="cal-cell empty"></div>`;
+            currentCol = (currentCol + 1) % 7;
+        }
+        currentCol = (startDow + firstDateInMonth - 1) % 7;
+
+        let prevDate = firstDateInMonth - 1;
         for (const dayDate of dayDates) {
+            const thisDate = dayDate.getDate();
+            // Add blank cells for skipped days
+            for (let d = prevDate + 1; d < thisDate; d++) {
+                html += `<div class="cal-cell empty"></div>`;
+                currentCol = (currentCol + 1) % 7;
+            }
+            prevDate = thisDate;
             const isoDate = localISODate(dayDate);
             const isToday = isoDate === today;
 
@@ -2277,11 +2290,11 @@ function buildCalView() {
                 ${jieqiHTML}
                 ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
             </div>`;
+            currentCol = (currentCol + 1) % 7;
         }
 
         // Fill trailing blanks to complete the grid row
-        const lastDow = (dayDates[dayDates.length-1].getDay() + 6) % 7;
-        for (let b = lastDow + 1; b < 7; b++) html += `<div class="cal-cell empty"></div>`;
+        for (let b = currentCol; b < 7 && b > 0; b++) html += `<div class="cal-cell empty"></div>`;
 
         html += `</div>`;
     }
