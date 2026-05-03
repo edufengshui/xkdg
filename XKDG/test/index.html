@@ -1078,6 +1078,9 @@ function setNow() {
         const localDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         document.getElementById('date').value = localDate;
         document.getElementById('time').value = now.toTimeString().slice(0,5);
+        // Auto-set UTC offset from device timezone
+        const offsetHours = -now.getTimezoneOffset() / 60;
+        document.getElementById('utc-offset').value = offsetHours;
         calculateBazi();
     } catch(e) {
         console.error('setNow error:', e.message, e.stack);
