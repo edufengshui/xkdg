@@ -363,7 +363,16 @@
             <button class="btn-scan" id="mode-month" onclick="setMode('month')" style="background:#555;">☰ LIST</button>
             <button class="btn-scan" id="mode-cal"   onclick="setMode('cal')"   style="background:#555;">🗓 CAL</button>
             <button class="btn-scan" id="btn-filter" onclick="toggleFilter()" style="background:#555;">⚙ FILTER</button>
-            <div><label>FROM:</label> <input type="date" id="scan-start"> <button class="btn-scan" onclick="setScanNow()" style="padding:6px 10px;font-size:12px;">NOW</button></div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <label>FROM:</label>
+              <input type="date" id="scan-start">
+              <button class="btn-scan" onclick="setScanNow()" style="padding:6px 10px;font-size:12px;">NOW</button>
+              <button class="btn-scan" onclick="setScanOffset(-7)" style="padding:6px 8px;font-size:11px;">-7d</button>
+              <button class="btn-scan" onclick="setScanOffset(-30)" style="padding:6px 8px;font-size:11px;">-1m</button>
+              <button class="btn-scan" onclick="setScanOffset(7)" style="padding:6px 8px;font-size:11px;">+7d</button>
+              <button class="btn-scan" onclick="setScanOffset(30)" style="padding:6px 8px;font-size:11px;">+1m</button>
+              <button class="btn-scan" onclick="setScanOffset(90)" style="padding:6px 8px;font-size:11px;">+3m</button>
+            </div>
             <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
             <button class="btn-scan" onclick="runAll()">SCAN</button>
             <button class="btn-scan" id="sort-score" onclick="sortResults('score')" style="background:#1b5e20;display:none;">★ BEST FIRST</button>
@@ -2562,12 +2571,27 @@ function buildMonthView() {
             }
 
             let isFavourable = false;
+            const hasElRel  = blueItems.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
+            const hasPerRel = blueItems.some(i => i.text.includes('Period')  || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
+
             if (isPositive && personAYear) {
-                const hasElRel  = blueItems.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
-                const hasPerRel = blueItems.some(i => i.text.includes('Period')  || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
-                const matchEl  = hasElRel  && (personAYear.qi  === dData.qi  || isHetuPair(personAYear.qi,  dData.qi)  || [5,10,15].includes(personAYear.qi  + dData.qi)  || getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
-                const matchPer = hasPerRel && (personAYear.yun === dData.yun || isHetuPair(personAYear.yun, dData.yun) || [5,10,15].includes(personAYear.yun + dData.yun));
-                isFavourable = matchEl || matchPer;
+                const matchElA  = hasElRel  && (personAYear.qi  === dData.qi  || isHetuPair(personAYear.qi,  dData.qi)  || [5,10,15].includes(personAYear.qi  + dData.qi)  || getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
+                const matchPerA = hasPerRel && (personAYear.yun === dData.yun || isHetuPair(personAYear.yun, dData.yun) || [5,10,15].includes(personAYear.yun + dData.yun));
+                const favA = matchElA || matchPerA;
+
+                if (personBYear) {
+                    // Both persons active — must match both
+                    const matchElB  = hasElRel  && (personBYear.qi  === dData.qi  || isHetuPair(personBYear.qi,  dData.qi)  || [5,10,15].includes(personBYear.qi  + dData.qi)  || getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
+                    const matchPerB = hasPerRel && (personBYear.yun === dData.yun || isHetuPair(personBYear.yun, dData.yun) || [5,10,15].includes(personBYear.yun + dData.yun));
+                    const favB = matchElB || matchPerB;
+                    isFavourable = favA && favB;
+                } else {
+                    isFavourable = favA;
+                }
+            } else if (isPositive && personBYear) {
+                const matchElB  = hasElRel  && (personBYear.qi  === dData.qi  || isHetuPair(personBYear.qi,  dData.qi)  || [5,10,15].includes(personBYear.qi  + dData.qi)  || getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
+                const matchPerB = hasPerRel && (personBYear.yun === dData.yun || isHetuPair(personBYear.yun, dData.yun) || [5,10,15].includes(personBYear.yun + dData.yun));
+                isFavourable = matchElB || matchPerB;
             }
 
             const elNotes  = blueItems.filter(i => i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family').map(i => i.text);
@@ -2581,6 +2605,8 @@ function buildMonthView() {
             const hasFamilyLV = hasFamily; // BL only when all 4 pillars share a family
 
             const bg      = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
+            // When person is active, skip rows that don't personally match
+            if ((personAYear || personBYear) && !isFavourable) continue;
             const rowStyle = hasFamilyLV ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;` : `background:${bg};`;
             const isoDate = localISODate(dayDate);
 
@@ -2812,7 +2838,17 @@ function blueItemsPassFilter(blueItems, filters, dayData) {
 }
 
 function setScanNow() {
-    document.getElementById('scan-start').value = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    document.getElementById('scan-start').value = localDate;
+}
+
+function setScanOffset(days) {
+    const current = document.getElementById('scan-start').value;
+    const base = current ? new Date(current + 'T12:00:00') : new Date();
+    base.setDate(base.getDate() + days);
+    const d = `${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}-${String(base.getDate()).padStart(2,'0')}`;
+    document.getElementById('scan-start').value = d;
 }
 
 function runScanner() {
@@ -3094,16 +3130,21 @@ function runScanner() {
 // ── License System ────────────────────────────────────────────
 // Codes: { pin, tier (1/2/4/0=unlimited), expiry (YYYY-MM-DD or null) }
 // Obfuscated as base64
-const _RAW_CODES = [
-    { p: '1111', t: 1, e: '2027-01-28' },  // 1yr, expires end of Wu year
-    { p: '2222', t: 2, e: '2027-01-28' },  // 2yr
-    { p: '3333', t: 4, e: '2028-01-27' },  // 4yr
-    { p: '9999', t: 0, e: null },           // unlimited (admin)
-    { p: '3827', t: 0, e: null },           // unlimited — Nicholas & Claire
+// SHA-256 hashed PINs — original PINs are NOT stored in source code
+const _HASHED_CODES = [
+    { h: '0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5a150c', t: 1, e: '2027-01-28' },
+    { h: 'edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9', t: 2, e: '2027-01-28' },
+    { h: '318aee3fed8c9d040d35a7fc1fa776fb31303833aa2de885354ddf3d44d8fb69', t: 4, e: '2028-01-27' },
+    { h: '888df25ae35772424a560c7152a1de794440e0ea5cfee62828333a456a506e05', t: 0, e: null },
+    { h: 'bf1889006d18a1b40d0791c50436d7eaa119bb3456e3f6300c17127ae10e7715', t: 0, e: null },
 ];
 
-function _decodeCode(raw) {
-    return { pin: raw.p, tier: raw.t, expiry: raw.e };
+async function hashPin(pin) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pin);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // Chinese solar year boundaries (Li Chun 立春 ~ Feb 4)
@@ -3194,14 +3235,16 @@ function showLicenseBar(msg, bg, color) {
     }
 }
 
-function submitPin() {
+async function submitPin() {
     const pin = document.getElementById('pin-input').value.trim();
-    const match = _RAW_CODES.map(_decodeCode).find(c => c.pin === pin);
+    if (!pin) return;
+    const hashed = await hashPin(pin);
+    const match = _HASHED_CODES.find(c => c.h === hashed);
     if (!match) {
         document.getElementById('pin-error').textContent = 'Invalid PIN. Please try again.';
         return;
     }
-    localStorage.setItem('xkdg_license', JSON.stringify({ tier: match.tier, expiry: match.expiry }));
+    localStorage.setItem('xkdg_license', JSON.stringify({ tier: match.t, expiry: match.e }));
     document.getElementById('license-overlay').style.display = 'none';
     checkLicense();
     setNow();
