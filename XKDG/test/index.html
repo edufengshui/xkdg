@@ -267,12 +267,12 @@
             <h3>⬡ XKDG RELATIONS</h3>
             <div id="analysis-items"></div>
         </div>
-        <div class="favourable-col" id="favourable-col" style="display:none;">
-            <div class="favourable-bar">✦ A ✦</div>
+        <div class="favourable-col" id="favourable-col" style="display:none;cursor:pointer;" onclick="showMatchTip(this,'A')">
+            <div class="favourable-bar" style="font-size:20px;"><span style="color:#FFD700;">★ A ★</span></div>
             <div class="match-detail" id="favourable-detail"></div>
         </div>
-        <div class="favourable-col" id="favourable-col-b" style="display:none;">
-            <div class="favourable-bar" style="background:#7b1fa2;">✦ B ✦</div>
+        <div class="favourable-col" id="favourable-col-b" style="display:none;cursor:pointer;" onclick="showMatchTip(this,'B')">
+            <div class="favourable-bar" style="background:#7b1fa2;font-size:20px;"><span style="color:#FFD700;">★ B ★</span></div>
             <div class="match-detail" id="favourable-detail-b"></div>
         </div>
     </div>
@@ -289,6 +289,7 @@
             <div><label>NAME:</label><input type="text" id="person-name" placeholder="Name..." style="width:100px;" oninput="document.getElementById('person-name-display-a').textContent=this.value"></div>
             <div><label>BIRTH DATE:</label> <input type="date" id="person-date"></div>
             <div><label>HOUR:</label> <input type="time" id="person-time" value="12:00" style="width:85px;"></div>
+            <button id="dst-btn-a" onclick="toggleDSTperson('A')" style="padding:4px 10px; border-radius:15px; border:1px solid #bbb; font-size:12px; font-weight:bold; background:#fff; cursor:pointer; color:#333;">DST: OFF</button>
             <button class="btn-person" onclick="calculatePerson('A')">CALCULATE</button>
             <button class="btn-person" onclick="savePerson('A')" style="background:#558b2f;">SAVE</button>
         </div>
@@ -327,6 +328,7 @@
             <div><label>NAME:</label><input type="text" id="person-name-b" placeholder="Name..." style="width:100px;" oninput="document.getElementById('person-name-display-b').textContent=this.value"></div>
             <div><label>BIRTH DATE:</label> <input type="date" id="person-date-b"></div>
             <div><label>HOUR:</label> <input type="time" id="person-time-b" value="12:00" style="width:85px;"></div>
+            <button id="dst-btn-b" onclick="toggleDSTperson('B')" style="padding:4px 10px; border-radius:15px; border:1px solid #bbb; font-size:12px; font-weight:bold; background:#fff; cursor:pointer; color:#333;">DST: OFF</button>
             <button class="btn-person" onclick="calculatePerson('B')" style="background:#7b1fa2;">CALCULATE</button>
             <button class="btn-person" onclick="savePerson('B')" style="background:#4a148c;">SAVE</button>
             <button class="btn-person" onclick="checkCompatibility()" style="background:#ad1457;" title="Check compatibility between A and B">♡ COMPAT</button>
@@ -1062,6 +1064,27 @@ function getJieqiSeason(solarDate) {
 }
 
 let _dstOn = false;
+let _dstOnA = false;
+let _dstOnB = false;
+
+function toggleDSTperson(person) {
+    const isB = person === 'B';
+    if (isB) {
+        _dstOnB = !_dstOnB;
+        const btn = document.getElementById('dst-btn-b');
+        btn.textContent = `DST: ${_dstOnB ? 'ON' : 'OFF'}`;
+        btn.style.background = _dstOnB ? '#f3e5f5' : '#fff';
+        btn.style.borderColor = _dstOnB ? '#7b1fa2' : '#bbb';
+        btn.style.color = _dstOnB ? '#7b1fa2' : '#333';
+    } else {
+        _dstOnA = !_dstOnA;
+        const btn = document.getElementById('dst-btn-a');
+        btn.textContent = `DST: ${_dstOnA ? 'ON' : 'OFF'}`;
+        btn.style.background = _dstOnA ? '#e8f5e9' : '#fff';
+        btn.style.borderColor = _dstOnA ? '#2e7d32' : '#bbb';
+        btn.style.color = _dstOnA ? '#2e7d32' : '#333';
+    }
+}
 function toggleDST() {
     _dstOn = !_dstOn;
     const btn = document.getElementById('dst-btn');
@@ -1532,7 +1555,8 @@ function calculatePerson(person) {
 
     const lon = parseFloat(document.getElementById('longitude').value);
     const utc = parseFloat(document.getElementById('utc-offset').value);
-    const offsetMin = ((lon - utc * 15) * 4) - (_dstOn ? 60 : 0);
+    const personDst = isB ? _dstOnB : _dstOnA;
+    const offsetMin = ((lon - utc * 15) * 4) - (personDst ? 60 : 0);
 
     const baseDate  = new Date(`${dVal}T${tVal}`);
     const solarDate = new Date(baseDate.getTime() + offsetMin * 60000);
@@ -1878,7 +1902,21 @@ function checkFavourable(personYear, pStem, pBranch, person) {
     detail.textContent = matches.join(' · ');
 }
 
-// ── Sort / render results ─────────────────────
+function showMatchTip(el, person) {
+    event.stopPropagation();
+    const isB = person === 'B';
+    const detail = document.getElementById(isB ? 'favourable-detail-b' : 'favourable-detail').textContent;
+    const tip = document.getElementById('badge-tip');
+    tip.innerHTML = `<strong>Perfect match between person and date</strong><br><span style="font-size:15px;font-weight:bold;color:#FFD700;">${detail}</span>`;
+    tip.style.display = 'block';
+    tip.style.pointerEvents = 'auto';
+    const r = el.getBoundingClientRect();
+    const left = Math.max(10, Math.min(r.left, window.innerWidth - 240));
+    tip.style.left = left + 'px';
+    tip.style.top  = (r.bottom + 8) + 'px';
+}
+
+
 function sortResults(mode) {
     if (_scanResults.length === 0) return;
     let filtered = [..._scanResults];
