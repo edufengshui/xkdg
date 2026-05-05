@@ -372,6 +372,10 @@
                 <option value="wealth">💰 Wealth</option>
                 <option value="relationship">❤️ Relationship</option>
               </select>
+              <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#555;cursor:pointer;">
+                <input type="checkbox" id="purpose-no-person" style="cursor:pointer;">
+                Test mode
+              </label>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <label>FROM:</label>
@@ -502,19 +506,49 @@ _add('庚寅','Sun-Xian','son'); _add('丙午','Sun-Xian','son'); _add('壬戌',
 _add('甲戌','Sun-Xian','son'); _add('辛酉','Sun-Xian','son'); _add('乙酉','Sun-Xian','son');
 
 // Get family label with per-family role sign for children, plain for parents
-function getHexFamilyLabel(stem, branch) {
+function getHexFamilyLabel(stem, branch, hexNum) {
     const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
-    return entries.map(e => {
+    if (!hexNum || entries.length <= 1) {
+        return entries.map(e => {
+            if (e.role === 'father' || e.role === 'mother') return e.family;
+            return `${e.family} ${e.role === 'son' ? '+' : '-'}`;
+        }).join('<br>');
+    }
+    // Dual entry: find which hex is primary and which is alt
+    const jz = stem + branch;
+    const raw = XKDG_TABLE[jz];
+    if (!raw || !raw.alt) {
+        return entries.map(e => {
+            if (e.role === 'father' || e.role === 'mother') return e.family;
+            return `${e.family} ${e.role === 'son' ? '+' : '-'}`;
+        }).join('<br>');
+    }
+    const isPrimary = raw.hex === hexNum;
+    // Primary hex: show parent family only (no children families)
+    // Alt hex: show children families only (no parent family)
+    const filtered = entries.filter(e => {
+        if (e.role === 'father' || e.role === 'mother') return isPrimary;
+        return !isPrimary; // children only for alt hex
+    });
+    return filtered.map(e => {
         if (e.role === 'father' || e.role === 'mother') return e.family;
-        const sign = (e.role === 'son') ? '+' : '-';
-        return `${e.family} ${sign}`;
+        return `${e.family} ${e.role === 'son' ? '+' : '-'}`;
     }).join('<br>');
 }
 
 // Get role label (P or C only, no gender mark)
-function getRoleLabel(stem, branch) {
+function getRoleLabel(stem, branch, hexNum) {
     const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
     if (entries.length === 0) return '';
+    // For dual entries, check if this hex is the primary (parent) one
+    if (hexNum && entries.length > 1) {
+        const jz = stem + branch;
+        const raw = XKDG_TABLE[jz];
+        if (raw && raw.hex !== hexNum) {
+            // This is the alt hex — role is child
+            return '<span style="color:#0044cc;font-size:15px;font-weight:bold;">C</span>';
+        }
+    }
     const role = entries[0].role;
     if (role === 'father' || role === 'mother')
         return '<span style="color:#d40000;font-size:15px;font-weight:bold;">P</span>';
@@ -524,6 +558,27 @@ function getRoleLabel(stem, branch) {
 // Get family array for analysis
 function getJiaZiFamilies(stem, branch) {
     return (JIAZI_FAMILY_DATA[stem + branch] || []).map(e => e.family);
+}
+
+// Hex-aware version: for dual entries (庚申/庚寅/甲子/甲午), filter by resolved hex number
+function getJiaZiFamiliesByHex(stem, branch, hexNum) {
+    const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
+    if (!hexNum || entries.length <= 1) return entries.map(e => e.family);
+    // Check XKDG_TABLE to find which alt hex corresponds to which family
+    const jz = stem + branch;
+    const raw = XKDG_TABLE[jz];
+    if (!raw) return entries.map(e => e.family);
+    // If hexNum matches primary hex, return primary role's family
+    // If hexNum matches alt hex, return the other entries' families
+    const isPrimary = raw.hex === hexNum;
+    const isAlt     = raw.alt && raw.alt.hex === hexNum;
+    if (!isPrimary && !isAlt) return entries.map(e => e.family);
+    // Parent (father/mother) always belongs to the primary hex
+    // Children belong to both
+    return entries.filter(e => {
+        if (e.role === 'father' || e.role === 'mother') return isPrimary;
+        return true; // children shown for both
+    }).map(e => e.family);
 }
 
 // Full Nayin (Melodic Element) map — 60 Jia Zi → English
@@ -1423,8 +1478,8 @@ function updatePillar(id, stem, branch, xkdg, nayin) {
     if (xkdg) {
         const icon       = getHexIcon(xkdg.hex);
         const hexName    = `${xkdg.hex} ${HEX_NAMES[xkdg.hex] || ''}`;
-        const familyLabel = getHexFamilyLabel(stem, branch);
-        const roleLabel   = getRoleLabel(stem, branch);
+        const familyLabel = getHexFamilyLabel(stem, branch, xkdg.hex);
+        const roleLabel   = getRoleLabel(stem, branch, xkdg.hex);
         hexHTML =
             `<div style="display:flex;flex-direction:column;align-items:center;width:100%;">` +
                 `<div style="color:#d40000;font-weight:bold;font-size:20px;">${xkdg.qi}</div>` +
@@ -2368,7 +2423,8 @@ var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relatio
 
 function onPurposeChange() {
     var sel = document.getElementById('purpose-select');
-    if (sel.value && !_personAYear && !_personBYear) {
+    var testMode = document.getElementById('purpose-no-person');
+    if (sel.value && !_personAYear && !_personBYear && !(testMode && testMode.checked)) {
         setTimeout(function() {
             document.getElementById('purpose-select').value = '';
             // Show toast
@@ -2379,7 +2435,7 @@ function onPurposeChange() {
                 toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:12px 20px;border-radius:10px;font-size:13px;z-index:9999;max-width:280px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
                 document.body.appendChild(toast);
             }
-            toast.textContent = '💡 Please input Person A or B birth data first before using the Purpose filter.';
+            toast.textContent = '💡 Please input Person A or B data first, or enable Test Mode.';
             toast.style.display = 'block';
             setTimeout(function(){ toast.style.display = 'none'; }, 3000);
         }, 50);
@@ -2414,18 +2470,33 @@ function hasParentInScanPillars(pillarsObj, fullBLFamily) {
     });
 }
 
-function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj) {
+function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, allItems) {
     if (!purpose) return true;
-    if (totalScore < 4) return false;
+    // In test mode (no person data), lower the score threshold
+    var testMode = document.getElementById('purpose-no-person');
+    var minScore = (testMode && testMode.checked) ? 1 : 4;
+    if (totalScore < minScore) return false;
     var dayRole = getDayRole(dGan, dZhi);
-    var hasNoble = blueItems.some(function(i){ return i.tag==='noble'||i.tag==='noble-both'; });
-    var hasTY    = blueItems.some(function(i){ return i.tag==='ty'||i.tag==='ty-both'; });
+    // allItems includes TY, Noble etc. — fall back to blueItems if not provided
+    var items = allItems || blueItems;
+    var hasNoble = items.some(function(i){ return i.tag==='noble'||i.tag==='noble-both'; });
+    var hasTY    = items.some(function(i){ return i.tag==='ty'||i.tag==='ty-both'; });
     var hasAddOrHetu = blueItems.some(function(i){
         return i.tag==='blue' && (i.text.indexOf('Adding')>=0 || i.text.indexOf('Hetu')>=0);
     });
     var famItems = blueItems.filter(function(i){ return i.tag==='family'; });
     var fullBLFamily = famItems.length ? famItems[0].text.replace(' Family','') : null;
-    if (purpose === 'health')       return dayRole === 'parent' && hasTY;
+    if (purpose === 'health') {
+        // Condition 1: Day hex is Parent + hour has Tian Yi
+        const cond1 = dayRole === 'parent' && hasTY;
+        // Condition 2: Day branch IS the Tian Yi of person's day stem + good score
+        var personDayStemA = _personADayStem || null;
+        var personDayStemB = _personBDayStem || null;
+        var isDayTYforPerson = (personDayStemA && TIAN_YI[personDayStemA] === dZhi) ||
+                               (personDayStemB && TIAN_YI[personDayStemB] === dZhi);
+        var cond2 = isDayTYforPerson;
+        return cond1 || cond2;
+    }
     if (purpose === 'career')       return dayRole === 'parent' && hasNoble;
     if (purpose === 'wealth')       return dayRole === 'child'  && pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
     if (purpose === 'relationship') return dayRole === 'child'  && (
@@ -2440,14 +2511,17 @@ function updatePurposeIcon(person) {
     var purpose = getPurpose();
     if (!purpose || !window._currentDayGan || !_currentDayAnalysis) { iconEl.textContent = ''; return; }
     var ok = checkPurpose(purpose, window._currentDayGan, window._currentDayZhi || '',
-        _currentDayAnalysis.items, 4, _currentDayAnalysis.pillars);
+        _currentDayAnalysis.items.filter(function(i){return i.tag==='blue'||i.tag==='family';}),
+        4, _currentDayAnalysis.pillars, _currentDayAnalysis.items);
     iconEl.textContent = ok ? (PURPOSE_ICONS[purpose] || '') : '';
 }
 
 function runAll() {
     try { const m = localStorage.getItem('xkdg_mode'); if (m) _currentMode = m; } catch(e) {}
-    if (getPurpose() && !_personAYear && !_personBYear) {
-        alert('💡 Please input Person A or B birth data first before using the Purpose filter.');
+    const testModeEl = document.getElementById('purpose-no-person');
+    const testModeOn = testModeEl && testModeEl.checked;
+    if (getPurpose() && !_personAYear && !_personBYear && !testModeOn) {
+        alert('💡 Please input Person A or B birth data first, or enable Test Mode.');
         document.getElementById('purpose-select').value = '';
         return;
     }
@@ -2691,7 +2765,16 @@ function buildMonthView() {
     const personDayStemMV   = birthDate ? getPersonDayStemFromBirth(birthDate, birthTime, offsetMin) : null;
     const personMthBranchMV = birthDate ? getPersonMonthBranch(birthDate, birthTime, offsetMin) : null;
 
-    const HOUR_SHORT = ['子(23)','丑(01)','寅(03)','卯(05)','辰(07)','巳(09)','午(11)','未(13)','申(15)','酉(17)','戌(19)','亥(21)'];
+    const _dst1 = _dstOn ? 1 : 0;
+    const HOUR_SHORT = ['23:00-01:00','01:00-03:00','03:00-05:00','05:00-07:00','07:00-09:00','09:00-11:00','11:00-13:00','13:00-15:00','15:00-17:00','17:00-19:00','19:00-21:00','21:00-23:00'];
+    const HOUR_SHORT_BY_BRANCH = {'子':'23:00-01:00','丑':'01:00-03:00','寅':'03:00-05:00','卯':'05:00-07:00','辰':'07:00-09:00','巳':'09:00-11:00','午':'11:00-13:00','未':'13:00-15:00','申':'15:00-17:00','酉':'17:00-19:00','戌':'19:00-21:00','亥':'21:00-23:00'};
+    function getHourTimeStr(branch) {
+        const base = HOUR_SHORT_BY_BRANCH[branch] || '';
+        if (!base) return '';
+        const parts = base.split('-');
+        if (_dst1 === 0) return base;
+        return parts.map(t => { const h = (parseInt(t)+_dst1)%24; return String(h).padStart(2,'0')+':00'; }).join('-');
+    }
     const start    = new Date(startDate + 'T00:00:00');
     const endMV    = new Date(start.getTime() + days * 86400000);
     const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endMV.getFullYear() + 1, offsetMin);
@@ -2812,7 +2895,7 @@ function buildMonthView() {
             // If Tomb Sha but no XKDG data for hour, show warning row
             if (!hData && isTombShaLV) {                dayRowsHtml += `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;">
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
-                        <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
+                        <span style="color:#999;font-size:10px;">${getHourTimeStr(hZhi)}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                     </div>
                     <div style="flex:1;display:flex;align-items:center;gap:6px;">
@@ -2824,10 +2907,16 @@ function buildMonthView() {
             }
             const { items: analysisItems } = analyzeXkdg(pillars, sS, sG);
             const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+
+            // Add TY and Noble to analysisItems for Purpose filter
+            const tyBranch = TIAN_YI[dGan];
+            if (tyBranch === hZhi) analysisItems.push({ text: 'Tian Yi (Date)', tag: 'ty' });
+            const nobleBranches = NOBLE_BRANCHES[dGan] || [];
+            if (nobleBranches.includes(hZhi)) analysisItems.push({ text: 'Noble (Date)', tag: 'noble' });
             const isPositive = blueItems.length > 0;
 
-            // Skip hours with no XKDG relations
-            if (!isPositive) continue;
+            // Skip hours with no XKDG relations — unless purpose filter is active
+            if (!isPositive && !getPurpose()) continue;
 
             // Apply filter chips
             const activeFiltersMV = getActiveFilters();
@@ -2871,7 +2960,7 @@ function buildMonthView() {
                 dayRowsHtml += `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;opacity:0.6;">
                     <div style="width:28px;flex-shrink:0;"></div>
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
-                        <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
+                        <span style="color:#999;font-size:10px;">${getHourTimeStr(hZhi)}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                     </div>
                     <div style="width:30px;flex-shrink:0;display:flex;align-items:center;">
@@ -2970,7 +3059,7 @@ function buildMonthView() {
 
             // Purpose filter for LIST view
             const purposeLV = getPurpose();
-            const purposeIconLV = purposeLV && checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars)
+            const purposeIconLV = purposeLV && checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems)
                 ? PURPOSE_ICONS[purposeLV] : '';
             if (purposeLV && !purposeIconLV) continue;
 
@@ -2978,7 +3067,7 @@ function buildMonthView() {
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
                 <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${listScore}${purposeIconLV ? `<div style="font-size:14px;line-height:1;">${purposeIconLV}</div>` : ''}</div>
                 <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
-                    <span style="color:#999;font-size:10px;">${HOUR_SHORT[h]}</span><br>
+                    <span style="color:#999;font-size:10px;">${getHourTimeStr(hZhi)}</span><br>
                     <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
                 </div>
                 <div style="width:30px;flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:2px;">
@@ -3271,7 +3360,13 @@ function runScanner() {
 
             // Step 1: Hour must have blue relations among 4 hexagrams
             const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
-            if (blueItems.length === 0) continue;
+
+            // Add TY and Noble to analysisItems for Purpose filter
+            const tyBranch = TIAN_YI[dGan];
+            if (tyBranch === hZhi) analysisItems.push({ text: 'Tian Yi (Date)', tag: 'ty' });
+            const nobleBranches = NOBLE_BRANCHES[dGan] || [];
+            if (nobleBranches.includes(hZhi)) analysisItems.push({ text: 'Noble (Date)', tag: 'noble' });
+            if (blueItems.length === 0 && !getPurpose()) continue;
 
             // Apply filter
             const activeFilters = getActiveFilters();
@@ -3394,7 +3489,7 @@ function runScanner() {
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
-            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars)) continue;
+            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems)) continue;
 
             results.push({
                 score: totalScore,
