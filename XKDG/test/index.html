@@ -1335,7 +1335,9 @@ function calculateBazi() {
 
     _currentDayXkdg     = xkdgData.day;
     _currentDayAnalysis = { items: analysis, sameFamily,
-        pillars: { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year } };
+        pillars: { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year },
+        branches: { hour: pillarKeys.hour.branch, day: pillarKeys.day.branch, month: pillarKeys.month.branch, year: pillarKeys.year.branch },
+        stems:    { hour: pillarKeys.hour.stem,   day: pillarKeys.day.stem,   month: pillarKeys.month.stem,   year: pillarKeys.year.stem } };
 
     // Re-run favourable check for both persons if data entered
     if (_personAYear) checkFavourable(_personAYear, _personAStem, _personABranch, 'A');
@@ -1496,9 +1498,13 @@ let _currentDayAnalysis = null;
 let _scanResults = [];
 let _personAYear = null, _personAStem = null, _personABranch = null;
 let _personADay  = null, _personADayStem = null, _personADayBranch = null;
+let _personAMonth = null, _personAHour = null;
+let _personAPillars = null; // all 4: {hour,day,month,year} with qi,yun
 let _personARelations = null; // active blue items from A's chart
 let _personBYear = null, _personBStem = null, _personBBranch = null;
 let _personBDay  = null, _personBDayStem = null, _personBDayBranch = null;
+let _personBMonth = null, _personBHour = null;
+let _personBPillars = null;
 let _personBRelations = null; // active blue items from B's chart
 
 // ── Archive ──────────────────────────────────
@@ -1617,6 +1623,10 @@ function calculatePerson(person) {
     // Store year + day hexagram and active relations for compatibility
     if (isB) {
         _personBYear      = xkdgData.year;
+        _personBMonth     = xkdgData.month;
+        _personBDay       = xkdgData.day;
+        _personBHour      = xkdgData.hour;
+        _personBPillars   = { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year };
         _personBStem      = pillarKeys.year.stem;
         _personBBranch    = pillarKeys.year.branch;
         _personBDay       = xkdgData.day;
@@ -1625,6 +1635,10 @@ function calculatePerson(person) {
         checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'B');
     } else {
         _personAYear      = xkdgData.year;
+        _personAMonth     = xkdgData.month;
+        _personADay       = xkdgData.day;
+        _personAHour      = xkdgData.hour;
+        _personAPillars   = { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year };
         _personAStem      = pillarKeys.year.stem;
         _personABranch    = pillarKeys.year.branch;
         _personADay       = xkdgData.day;
@@ -1911,7 +1925,10 @@ function checkFavourable(personYear, pStem, pBranch, person) {
     if (!personYear || !_currentDayXkdg || !_currentDayAnalysis) return;
     if (_currentDayAnalysis.items.length === 0) return;
     const dayXkdg = _currentDayXkdg;
-    const matches = getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayXkdg.stem, dayXkdg.branch);
+    const personPillars = person === 'B' ? _personBPillars : _personAPillars;
+    const personDayStem   = person === 'B' ? _personBDayStem   : _personADayStem;
+    const personDayBranch = person === 'B' ? _personBDayBranch : _personADayBranch;
+    const matches = getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayXkdg.stem, dayXkdg.branch, personPillars, personDayStem, personDayBranch);
     if (matches.length === 0) return;
     col.style.display = 'flex';
     detail.textContent = matches.join(' · ');
@@ -2049,7 +2066,7 @@ function getDateQualityScore(analysisItems) {
     return strength + timely;
 }
 
-function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch) {
+function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch) {
     const labels = [];
     if (!_currentDayAnalysis) return labels;
     const items    = _currentDayAnalysis.items;
@@ -2057,52 +2074,124 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch)
     const pQi = personYear.qi, pYun = personYear.yun;
 
     // Helper: check if 4 pillars form a full He Tu setting on qi or yun line
-    function pillarsHaveHetuQi() {
-        const qs = [pillars.hour.qi, pillars.day.qi, pillars.month.qi, pillars.year.qi];
-        // Full He Tu: all 4 form exactly two He Tu pairs
-        return qs.length === 4 &&
-            ['1-6','2-7','3-8','4-9'].includes([qs[0],qs[1]].sort((a,b)=>a-b).join('-')) &&
-            ['1-6','2-7','3-8','4-9'].includes([qs[2],qs[3]].sort((a,b)=>a-b).join('-')) ||
-            ['1-6','2-7','3-8','4-9'].includes([qs[0],qs[2]].sort((a,b)=>a-b).join('-')) &&
-            ['1-6','2-7','3-8','4-9'].includes([qs[1],qs[3]].sort((a,b)=>a-b).join('-')) ||
-            ['1-6','2-7','3-8','4-9'].includes([qs[0],qs[3]].sort((a,b)=>a-b).join('-')) &&
-            ['1-6','2-7','3-8','4-9'].includes([qs[1],qs[2]].sort((a,b)=>a-b).join('-'));
-    }
-    function pillarsHaveHetuYun() {
-        const ys = [pillars.hour.yun, pillars.day.yun, pillars.month.yun, pillars.year.yun];
-        return ys.length === 4 &&
-            ['1-6','2-7','3-8','4-9'].includes([ys[0],ys[1]].sort((a,b)=>a-b).join('-')) &&
-            ['1-6','2-7','3-8','4-9'].includes([ys[2],ys[3]].sort((a,b)=>a-b).join('-')) ||
-            ['1-6','2-7','3-8','4-9'].includes([ys[0],ys[2]].sort((a,b)=>a-b).join('-')) &&
-            ['1-6','2-7','3-8','4-9'].includes([ys[1],ys[3]].sort((a,b)=>a-b).join('-')) ||
-            ['1-6','2-7','3-8','4-9'].includes([ys[0],ys[3]].sort((a,b)=>a-b).join('-')) &&
-            ['1-6','2-7','3-8','4-9'].includes([ys[1],ys[2]].sort((a,b)=>a-b).join('-'));
+    function hasFullHetu(p) {
+        const qs = [p.hour.qi, p.day.qi, p.month.qi, p.year.qi];
+        const ys = [p.hour.yun, p.day.yun, p.month.yun, p.year.yun];
+        function twoHPairs(arr) {
+            const pairs = [[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
+            return pairs.some(([a,b]) =>
+                ['1-6','2-7','3-8','4-9'].includes([arr[a[0]],arr[a[1]]].sort((x,y)=>x-y).join('-')) &&
+                ['1-6','2-7','3-8','4-9'].includes([arr[b[0]],arr[b[1]]].sort((x,y)=>x-y).join('-')));
+        }
+        return { qi: twoHPairs(qs), yun: twoHPairs(ys) };
     }
 
-    // He Tu: pillars must form full He Tu on qi OR yun line, then person connects
-    const groupHetuQi  = pillarsHaveHetuQi();
-    const groupHetuYun = pillarsHaveHetuYun();
-    if ((groupHetuQi  && isHetuPair(pQi,  dayXkdg.qi))  ||
-        (groupHetuYun && isHetuPair(pYun, dayXkdg.yun))) labels.push('Hetu');
+    // Helper: check if 4 pillars form Adding setting (pairs summing to 5/10/15)
+    function hasAdding(p) {
+        const qs = [p.hour.qi, p.day.qi, p.month.qi, p.year.qi];
+        const ys = [p.hour.yun, p.day.yun, p.month.yun, p.year.yun];
+        function twoAPairs(arr) {
+            const pairs = [[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
+            return pairs.some(([a,b]) =>
+                [5,10,15].includes(arr[a[0]]+arr[a[1]]) &&
+                [5,10,15].includes(arr[b[0]]+arr[b[1]]));
+        }
+        return { qi: twoAPairs(qs), yun: twoAPairs(ys) };
+    }
 
-    // Adding: group must have Adding setting active, then person adds up
+    // Helper: check if 4 pillars have Pure Qi (all same)
+    function hasPureQi(p) {
+        const qs = [p.hour.qi, p.day.qi, p.month.qi, p.year.qi];
+        const ys = [p.hour.yun, p.day.yun, p.month.yun, p.year.yun];
+        return { qi: qs.every(v=>v===qs[0]), yun: ys.every(v=>v===ys[0]) };
+    }
+
+    const dateHetu   = hasFullHetu(pillars);
+    const dateAdding = hasAdding(pillars);
+    const datePureQi = hasPureQi(pillars);
+
+    // ── Standard direct connection checks ────────────────────────
+    if ((dateHetu.qi   && isHetuPair(pQi,  dayXkdg.qi))  ||
+        (dateHetu.yun  && isHetuPair(pYun, dayXkdg.yun))) labels.push('Hetu');
+
     const hasGroupAdding = items.some(i => i.text.includes('Adding'));
     const sq = pQi + dayXkdg.qi, sy = pYun + dayXkdg.yun;
     if (hasGroupAdding && ([5,10,15].includes(sq) || [5,10,15].includes(sy)))
         labels.push(`Adding(${[5,10,15].includes(sq) ? sq : sy})`);
 
-    // Pure Qi: group must have Pure Qi setting active, then person matches
     const hasGroupPureQi = items.some(i => i.text.includes('Pure Qi'));
     if (hasGroupPureQi && (pQi === dayXkdg.qi || pYun === dayXkdg.yun)) labels.push('Pure Qi');
 
-    // Family: group must have Family setting, then person shares family
     const hasGroupFamily = items.some(i => i.tag === 'family');
     const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
     if (hasGroupFamily && sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
 
+    // ── New Rule: Same Setting Resonance ─────────────────────────
+    // Both date AND person birth chart have same group setting type,
+    // AND person's YEAR or DAY pillar shares family with date pillars
+    if (labels.length === 0 && personPillars) {
+        const personHetu   = hasFullHetu(personPillars);
+        const personAdding = hasAdding(personPillars);
+        const personPureQi = hasPureQi(personPillars);
+
+        const sameHetu   = (dateHetu.qi   && personHetu.qi)   || (dateHetu.yun   && personHetu.yun);
+        const sameAdding = (dateAdding.qi  && personAdding.qi) || (dateAdding.yun  && personAdding.yun);
+        const samePureQi = (datePureQi.qi  && personPureQi.qi) || (datePureQi.yun  && personPureQi.yun);
+
+        if (sameHetu || sameAdding || samePureQi) {
+            // Family bridge: person's YEAR or DAY must share family with date
+            const yearFams = getJiaZiFamilies(pStem, pBranch);
+            const dayFams  = personDayStem ? getJiaZiFamilies(personDayStem, personDayBranch) : [];
+            const dateFams = getJiaZiFamilies(dayStem, dayBranch);
+            const yearBridge = yearFams.some(f => dateFams.includes(f));
+            const dayBridge  = dayFams.some(f => dateFams.includes(f));
+            if (yearBridge || dayBridge) {
+                const settingType = sameAdding ? 'Adding' : sameHetu ? 'Hetu' : 'Pure Qi';
+                labels.push(`Resonance(${settingType})`);
+            }
+        }
+    }
+
+
+    // ── Partial Blood Link ────────────────────────────────────────
+    // 3 pillars share same family, 4th connects via Adding/HeTu/PureQi
+    // AND lonely pillar branch doesn't clash with any of the 3 family pillars
+    if (labels.length === 0) {
+        const pKeys = ['hour','day','month','year'];
+        const allFams = ['Qian-Kun','Kan-Li','Zhen-Xun','Gen-Dui','Pi-Tai','JiJi-WeiJi','Heng-Yi','Sun-Xian'];
+        const branches = _currentDayAnalysis.branches;
+
+        for (const fam of allFams) {
+            const stems   = _currentDayAnalysis.stems;
+            const inFam  = pKeys.filter(k => getJiaZiFamilies(stems[k] || '', branches[k] || '').includes(fam));
+            const outFam = pKeys.filter(k => !inFam.includes(k));
+
+            if (inFam.length === 3 && outFam.length === 1) {
+                const lonely = outFam[0];
+                const lp = pillars[lonely];
+                const lb = branches[lonely];
+
+                // Lonely connects to at least one family pillar
+                const connects = inFam.some(k => {
+                    const fp = pillars[k];
+                    return isHetuPair(lp.qi, fp.qi) || isHetuPair(lp.yun, fp.yun) ||
+                           [5,10,15].includes(lp.qi + fp.qi) || [5,10,15].includes(lp.yun + fp.yun) ||
+                           lp.qi === fp.qi || lp.yun === fp.yun;
+                });
+                if (!connects) continue;
+
+                // No branch clash between lonely and the 3 family pillars
+                const noClash = inFam.every(k => BRANCH_CLASHES[lb] !== branches[k] && BRANCH_CLASHES[branches[k]] !== lb);
+                if (noClash) {
+                    labels.push('Partial BL(' + fam + ')');
+                    break;
+                }
+            }
+        }
+    }
+
     return labels;
 }
-
 // ── Person Same-Type Bonus ────────────────────────────────────
 // Condition A: person's birthday connects with the day in the SAME relation type
 // that is active among the 4 pillars → +2 bonus.
@@ -3117,9 +3206,11 @@ function runScanner() {
                 return dateFamilies.some(f => personYearSC.families.includes(f)) ? 2 : 0;
             })();
 
-            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + sameTypeBonusA + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus);
+            // Partial BL bonus: +1 (slightly below full BL)
 
-            const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+            const matchLabels  = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
+            const partialBLBonus = fullBLBonus === 0 && matchLabels.some(l => l.startsWith('Partial BL')) ? 1 : 0;
+            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + sameTypeBonusA + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus + partialBLBonus);
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
