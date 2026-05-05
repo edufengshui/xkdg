@@ -1329,7 +1329,8 @@ function calculateBazi() {
     renderAnalysis(analysis);
 
     _currentDayXkdg     = xkdgData.day;
-    _currentDayAnalysis = { items: analysis, sameFamily };
+    _currentDayAnalysis = { items: analysis, sameFamily,
+        pillars: { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year } };
 
     // Re-run favourable check for both persons if data entered
     if (_personAYear) checkFavourable(_personAYear, _personAStem, _personABranch, 'A');
@@ -2045,12 +2046,55 @@ function getDateQualityScore(analysisItems) {
 
 function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch) {
     const labels = [];
+    if (!_currentDayAnalysis) return labels;
+    const items    = _currentDayAnalysis.items;
+    const pillars  = _currentDayAnalysis.pillars;
+    const pQi = personYear.qi, pYun = personYear.yun;
+
+    // Helper: check if 4 pillars form a full He Tu setting on qi or yun line
+    function pillarsHaveHetuQi() {
+        const qs = [pillars.hour.qi, pillars.day.qi, pillars.month.qi, pillars.year.qi];
+        // Full He Tu: all 4 form exactly two He Tu pairs
+        return qs.length === 4 &&
+            ['1-6','2-7','3-8','4-9'].includes([qs[0],qs[1]].sort((a,b)=>a-b).join('-')) &&
+            ['1-6','2-7','3-8','4-9'].includes([qs[2],qs[3]].sort((a,b)=>a-b).join('-')) ||
+            ['1-6','2-7','3-8','4-9'].includes([qs[0],qs[2]].sort((a,b)=>a-b).join('-')) &&
+            ['1-6','2-7','3-8','4-9'].includes([qs[1],qs[3]].sort((a,b)=>a-b).join('-')) ||
+            ['1-6','2-7','3-8','4-9'].includes([qs[0],qs[3]].sort((a,b)=>a-b).join('-')) &&
+            ['1-6','2-7','3-8','4-9'].includes([qs[1],qs[2]].sort((a,b)=>a-b).join('-'));
+    }
+    function pillarsHaveHetuYun() {
+        const ys = [pillars.hour.yun, pillars.day.yun, pillars.month.yun, pillars.year.yun];
+        return ys.length === 4 &&
+            ['1-6','2-7','3-8','4-9'].includes([ys[0],ys[1]].sort((a,b)=>a-b).join('-')) &&
+            ['1-6','2-7','3-8','4-9'].includes([ys[2],ys[3]].sort((a,b)=>a-b).join('-')) ||
+            ['1-6','2-7','3-8','4-9'].includes([ys[0],ys[2]].sort((a,b)=>a-b).join('-')) &&
+            ['1-6','2-7','3-8','4-9'].includes([ys[1],ys[3]].sort((a,b)=>a-b).join('-')) ||
+            ['1-6','2-7','3-8','4-9'].includes([ys[0],ys[3]].sort((a,b)=>a-b).join('-')) &&
+            ['1-6','2-7','3-8','4-9'].includes([ys[1],ys[2]].sort((a,b)=>a-b).join('-'));
+    }
+
+    // He Tu: pillars must form full He Tu on qi OR yun line, then person connects
+    const groupHetuQi  = pillarsHaveHetuQi();
+    const groupHetuYun = pillarsHaveHetuYun();
+    if ((groupHetuQi  && isHetuPair(pQi,  dayXkdg.qi))  ||
+        (groupHetuYun && isHetuPair(pYun, dayXkdg.yun))) labels.push('Hetu');
+
+    // Adding: group must have Adding setting active, then person adds up
+    const hasGroupAdding = items.some(i => i.text.includes('Adding'));
+    const sq = pQi + dayXkdg.qi, sy = pYun + dayXkdg.yun;
+    if (hasGroupAdding && ([5,10,15].includes(sq) || [5,10,15].includes(sy)))
+        labels.push(`Adding(${[5,10,15].includes(sq) ? sq : sy})`);
+
+    // Pure Qi: group must have Pure Qi setting active, then person matches
+    const hasGroupPureQi = items.some(i => i.text.includes('Pure Qi'));
+    if (hasGroupPureQi && (pQi === dayXkdg.qi || pYun === dayXkdg.yun)) labels.push('Pure Qi');
+
+    // Family: group must have Family setting, then person shares family
+    const hasGroupFamily = items.some(i => i.tag === 'family');
     const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
-    if (sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
-    if (isHetuPair(personYear.qi, dayXkdg.qi) || isHetuPair(personYear.yun, dayXkdg.yun)) labels.push('Hetu');
-    const sq = personYear.qi + dayXkdg.qi, sy = personYear.yun + dayXkdg.yun;
-    if ([5,10,15].includes(sq) || [5,10,15].includes(sy)) labels.push(`Adding(${[5,10,15].includes(sq) ? sq : sy})`);
-    if (personYear.qi === dayXkdg.qi || personYear.yun === dayXkdg.yun) labels.push('Pure Qi');
+    if (hasGroupFamily && sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
+
     return labels;
 }
 
