@@ -1110,9 +1110,14 @@ function setNow() {
         const localDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         document.getElementById('date').value = localDate;
         document.getElementById('time').value = now.toTimeString().slice(0,5);
-        // Auto-set UTC offset from device timezone
-        const offsetHours = -now.getTimezoneOffset() / 60;
-        document.getElementById('utc-offset').value = offsetHours;
+        // Set standard UTC offset (subtract 1 if DST is active on device)
+        const deviceOffset = -now.getTimezoneOffset() / 60; // e.g. +2 in Vienna summer
+        const isDSTActive = deviceOffset !== (-(new Date(now.getFullYear(), 0, 1).getTimezoneOffset()) / 60);
+        const standardOffset = isDSTActive ? deviceOffset - 1 : deviceOffset;
+        document.getElementById('utc-offset').value = standardOffset;
+        // Auto-set DST toggle to match device
+        if (isDSTActive && !_dstOn) toggleDST();
+        else if (!isDSTActive && _dstOn) toggleDST();
         calculateBazi();
     } catch(e) {
         console.error('setNow error:', e.message, e.stack);
