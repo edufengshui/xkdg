@@ -1553,6 +1553,8 @@ function loadPerson(person, name) {
     document.getElementById(nameId).value = name;
     document.getElementById(dateId).value = p.date;
     document.getElementById(timeId).value = p.time || '12:00';
+    // Ensure main chart is calculated first so checkFavourable has data
+    if (!_currentDayXkdg) calculateBazi();
     calculatePerson(person);
 }
 
