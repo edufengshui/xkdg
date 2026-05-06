@@ -371,6 +371,7 @@
                 <option value="career">💼 Career</option>
                 <option value="wealth">💰 Wealth</option>
                 <option value="relationship">❤️ Relationship</option>
+                <option value="journey">✈️ Journey</option>
               </select>
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#555;cursor:pointer;">
                 <input type="checkbox" id="purpose-no-person" style="cursor:pointer;">
@@ -2417,9 +2418,27 @@ function setMode(mode) {
 }
 
 
+
+// ── Journey: Post Horse and Ding Spirit ──────────────────────
+const POST_HORSE = {
+    '寅':'申','午':'申','戌':'申',  // Fire group → Monkey
+    '巳':'亥','酉':'亥','丑':'亥',  // Metal group → Pig
+    '申':'寅','子':'寅','辰':'寅',  // Water group → Tiger
+    '亥':'巳','卯':'巳','未':'巳'   // Wood group → Snake
+};
+
+const DING_SPIRIT_MAP = {
+    '甲子':'卯','乙丑':'卯','丙寅':'卯','丁卯':'卯','戊辰':'卯','己巳':'卯','庚午':'卯','辛未':'卯','壬申':'卯','癸酉':'卯',
+    '甲戌':'丑','乙亥':'丑','丙子':'丑','丁丑':'丑','戊寅':'丑','己卯':'丑','庚辰':'丑','辛巳':'丑','壬午':'丑','癸未':'丑',
+    '甲申':'亥','乙酉':'亥','丙戌':'亥','丁亥':'亥','戊子':'亥','己丑':'亥','庚寅':'亥','辛卯':'亥','壬辰':'亥','癸巳':'亥',
+    '甲午':'酉','乙未':'酉','丙申':'酉','丁酉':'酉','戊戌':'酉','己亥':'酉','庚子':'酉','辛丑':'酉','壬寅':'酉','癸卯':'酉',
+    '甲辰':'未','乙巳':'未','丙午':'未','丁未':'未','戊申':'未','己酉':'未','庚戌':'未','辛亥':'未','壬子':'未','癸丑':'未',
+    '甲寅':'巳','乙卯':'巳','丙辰':'巳','丁巳':'巳','戊午':'巳','己未':'巳','庚申':'巳','辛酉':'巳','壬戌':'巳','癸亥':'巳'
+};
+
 // ── Purpose Filter ────────────────────────────────────────────
-var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️' };
-var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship' };
+var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️' };
+var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey' };
 
 function onPurposeChange() {
     var sel = document.getElementById('purpose-select');
@@ -2470,12 +2489,37 @@ function hasParentInScanPillars(pillarsObj, fullBLFamily) {
     });
 }
 
-function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, allItems) {
+function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, allItems, hourSpirit) {
     if (!purpose) return true;
     // In test mode (no person data), lower the score threshold
     var testMode = document.getElementById('purpose-no-person');
     var minScore = (testMode && testMode.checked) ? 1 : 4;
-    if (totalScore < minScore) return false;
+
+    // Spirit bonus: +2 each for qualifying spirits (all optional except TY for health)
+    var spiritBonus = 0;
+    if (hourSpirit) {
+        if (hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2;
+        if (hourSpirit.en === 'Golden Box')      spiritBonus += 2;
+        if (hourSpirit.en === 'Tian De' || (hourSpirit.zh && hourSpirit.zh.indexOf('天德') >= 0)) spiritBonus += 2;
+        if (hourSpirit.en === 'Fate Master' || (hourSpirit.zh && hourSpirit.zh.indexOf('司命') >= 0)) spiritBonus += 2;
+        if (hourSpirit.en === 'Lu' || (hourSpirit.zh && hourSpirit.zh.indexOf('禄') >= 0)) spiritBonus += 2;
+    }
+    // Also check allItems for spirits (scan loop adds them to analysisItems)
+    var hasQingLong = items.some(function(i){ return i.text && i.text.indexOf('Cerulean Dragon') >= 0; });
+    var hasJinKui   = items.some(function(i){ return i.text && i.text.indexOf('Golden Box') >= 0; });
+    var hasTianDe   = items.some(function(i){ return i.text && i.text.indexOf('Tian De') >= 0 || (i.text && i.text.indexOf('天德') >= 0); });
+    var hasSiMing   = items.some(function(i){ return i.text && (i.text.indexOf('Fate Master') >= 0 || i.text.indexOf('司命') >= 0); });
+    var hasLu       = items.some(function(i){ return i.tag==='lu'||i.tag==='lu-both'; });
+    if (!hourSpirit) {
+        if (hasQingLong) spiritBonus += 2;
+        if (hasJinKui)   spiritBonus += 2;
+        if (hasTianDe)   spiritBonus += 2;
+        if (hasSiMing)   spiritBonus += 2;
+        if (hasLu)       spiritBonus += 2;
+    }
+    var adjustedScore = totalScore + spiritBonus;
+
+    if (adjustedScore < minScore) return false;
     var dayRole = getDayRole(dGan, dZhi);
     // allItems includes TY, Noble etc. — fall back to blueItems if not provided
     var items = allItems || blueItems;
@@ -2486,21 +2530,93 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
     });
     var famItems = blueItems.filter(function(i){ return i.tag==='family'; });
     var fullBLFamily = famItems.length ? famItems[0].text.replace(' Family','') : null;
+    var hasQingLong = items.some(function(i){ return i.text && i.text.indexOf('Cerulean Dragon') >= 0; });
+    var hasJinKui   = items.some(function(i){ return i.text && i.text.indexOf('Golden Box') >= 0; });
+    var hasTianDe   = items.some(function(i){ return i.text && i.text.indexOf('Tian De') >= 0; });
+    var hasSiMing   = items.some(function(i){ return i.text && i.text.indexOf('Fate Master') >= 0; });
+
+    // Person data required for all purposes (unless test mode)
+    var testMode2 = document.getElementById('purpose-no-person');
+    var isTestMode = testMode2 && testMode2.checked;
+    if (!isTestMode && !_personAYear && !_personBYear) return false;
+
+    // Base XKDG condition: must have at least one relation (Adding, Hetu, Pure Qi, Family, Inverse Hex)
+    var hasXkdgRelation = blueItems.length > 0 ||
+        (allItems && allItems.some(function(i){ return i.text && i.text.startsWith('Inverse Hex'); }));
+    if (!hasXkdgRelation) return false;
+
+    // Negative spirits that disqualify per purpose
+    var spiritName = items.filter(function(i){ return i.tag==='spirit-bad'; }).map(function(i){ return i.text; });
+    function hasBadSpirit(name) {
+        return spiritName.some(function(t){ return t.indexOf(name) >= 0; });
+    }
+
     if (purpose === 'health') {
-        // Condition 1: Day hex is Parent + hour has Tian Yi
-        const cond1 = dayRole === 'parent' && hasTY;
-        // Condition 2: Day branch IS the Tian Yi of person's day stem + good score
+        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('White Tiger')) return false;
+        var cond1 = dayRole === 'parent' && hasTY;
         var personDayStemA = _personADayStem || null;
         var personDayStemB = _personBDayStem || null;
         var isDayTYforPerson = (personDayStemA && TIAN_YI[personDayStemA] === dZhi) ||
                                (personDayStemB && TIAN_YI[personDayStemB] === dZhi);
-        var cond2 = isDayTYforPerson;
-        return cond1 || cond2;
+        return cond1 || isDayTYforPerson;
     }
-    if (purpose === 'career')       return dayRole === 'parent' && hasNoble;
-    if (purpose === 'wealth')       return dayRole === 'child'  && pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
-    if (purpose === 'relationship') return dayRole === 'child'  && (
-        (pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily)) || hasAddOrHetu);
+    if (purpose === 'career') {
+        if (hasBadSpirit('Red Bird') || hasBadSpirit('Heaven Prison') || hasBadSpirit('Gou Chen')) return false;
+        return dayRole === 'parent' && hasNoble;
+    }
+    if (purpose === 'wealth') {
+        if (hasBadSpirit('Black Tortoise')) return false;
+        return dayRole === 'child' && pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
+    }
+    if (purpose === 'relationship') {
+        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Red Bird') || hasBadSpirit('Black Tortoise')) return false;
+        return dayRole === 'child' && (
+            (pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily)) || hasAddOrHetu);
+    }
+    if (purpose === 'journey') {
+        if (hasBadSpirit('White Tiger') || hasBadSpirit('Heaven Prison') || hasBadSpirit('Gou Chen')) return false;
+
+        // Condition 1: at least one Parent anywhere in the 4 pillars
+        var hasAnyParent = pillarsObj && ['hour','day','month','year'].some(function(k) {
+            var stems2 = (_currentDayAnalysis && _currentDayAnalysis.stems) || {};
+            var branches2 = (_currentDayAnalysis && _currentDayAnalysis.branches) || {};
+            var s = (pillarsObj[k] && pillarsObj[k].stem) || stems2[k] || '';
+            var b = (pillarsObj[k] && pillarsObj[k].branch) || branches2[k] || '';
+            if (!s) return false;
+            var entries = JIAZI_FAMILY_DATA[s + b] || [];
+            return entries.some(function(e){ return e.role === 'father' || e.role === 'mother'; });
+        });
+        if (!hasAnyParent) return false;
+
+        // Condition 2: Post Horse and/or Ding Spirit of PERSON's day branch in the date pillars
+        var personDayBranchA = _personADayBranch || null;
+        var personDayBranchB = _personBDayBranch || null;
+        var personDayJiaZiA  = (_personADayStem || '') + (personDayBranchA || '');
+        var personDayJiaZiB  = (_personBDayStem || '') + (personDayBranchB || '');
+
+        var phA = personDayBranchA ? POST_HORSE[personDayBranchA] : null;
+        var phB = personDayBranchB ? POST_HORSE[personDayBranchB] : null;
+        var dsA = DING_SPIRIT_MAP[personDayJiaZiA] || null;
+        var dsB = DING_SPIRIT_MAP[personDayJiaZiB] || null;
+
+        // Check if Post Horse or Ding Spirit of person appears in date branches
+        var dateBranches2 = _currentDayAnalysis ? Object.values(_currentDayAnalysis.branches) : [];
+        var personPHorDS = dateBranches2.some(function(b) {
+            return (phA && b === phA) || (phB && b === phB) ||
+                   (dsA && b === dsA) || (dsB && b === dsB);
+        });
+        if (!personPHorDS) return false;
+
+        // Condition 3 (optional bonus): hour branch = Post Horse or Ding Spirit of the DAY branch
+        var dayBranchCurrent = (_currentDayAnalysis && _currentDayAnalysis.branches) ? _currentDayAnalysis.branches.day : null;
+        var dayStemCurrent   = (_currentDayAnalysis && _currentDayAnalysis.stems)    ? _currentDayAnalysis.stems.day    : null;
+        var dayPH = dayBranchCurrent ? POST_HORSE[dayBranchCurrent] : null;
+        var dayDS = dayStemCurrent && dayBranchCurrent ? (DING_SPIRIT_MAP[dayStemCurrent + dayBranchCurrent] || null) : null;
+        var hourIsOptional = dZhi && ((dayPH && dZhi === dayPH) || (dayDS && dZhi === dayDS));
+        if (hourIsOptional) spiritBonus += 2;
+
+        return true;
+    }
     return true;
 }
 
@@ -2512,7 +2628,7 @@ function updatePurposeIcon(person) {
     if (!purpose || !window._currentDayGan || !_currentDayAnalysis) { iconEl.textContent = ''; return; }
     var ok = checkPurpose(purpose, window._currentDayGan, window._currentDayZhi || '',
         _currentDayAnalysis.items.filter(function(i){return i.tag==='blue'||i.tag==='family';}),
-        4, _currentDayAnalysis.pillars, _currentDayAnalysis.items);
+        4, _currentDayAnalysis.pillars, _currentDayAnalysis.items, null);
     iconEl.textContent = ok ? (PURPOSE_ICONS[purpose] || '') : '';
 }
 
@@ -3046,7 +3162,7 @@ function buildMonthView() {
 
             // Purpose filter for LIST view
             const purposeLV = getPurpose();
-            const purposeIconLV = purposeLV && checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems)
+            const purposeIconLV = purposeLV && checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems, spirit)
                 ? PURPOSE_ICONS[purposeLV] : '';
             if (purposeLV && !purposeIconLV) continue;
 
@@ -3476,7 +3592,7 @@ function runScanner() {
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
-            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems)) continue;
+            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) continue;
 
             results.push({
                 score: totalScore,
