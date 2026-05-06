@@ -2955,20 +2955,7 @@ function buildMonthView() {
             // Kong Wang check: mark void+untimely with red V (Pure Qi and Family exempt)
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
             const isVoidLV = !hasPureQiOrFamilyLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
-            if (isVoidLV) {
-                if (getPurpose() || activeFiltersMV.size > 0) continue; // hide void when filter/purpose active
-                dayRowsHtml += `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;opacity:0.6;">
-                    <div style="width:28px;flex-shrink:0;"></div>
-                    <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
-                        <span style="color:#999;font-size:10px;">${getHourTimeStr(hZhi)}</span><br>
-                        <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
-                    </div>
-                    <div style="width:30px;flex-shrink:0;display:flex;align-items:center;">
-                        <span style="color:#d40000;font-weight:bold;font-size:11px;border:1px solid #d40000;border-radius:3px;padding:0 3px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'V')">V</span>
-                    </div>
-                </div>`;
-                continue;
-            }
+            if (isVoidLV) continue; // always hide void rows
 
             let isFavourable = false;
             const hasElRel  = blueItems.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
@@ -3553,6 +3540,7 @@ const _HASHED_CODES = [
     { h: '318aee3fed8c9d040d35a7fc1fa776fb31303833aa2de885354ddf3d44d8fb69', t: 4, e: '2028-01-27' },
     { h: '888df25ae35772424a560c7152a1de794440e0ea5cfee62828333a456a506e05', t: 0, e: null },
     { h: 'bf1889006d18a1b40d0791c50436d7eaa119bb3456e3f6300c17127ae10e7715', t: 0, e: null },
+    { h: 'b0ff7bdc481ed43adf5168e51d73264887136b603fd0fb372530a689e15a29e7', t: 0, e: null }, // Chee
 ];
 
 async function hashPin(pin) {
@@ -3654,16 +3642,64 @@ function showLicenseBar(msg, bg, color) {
 async function submitPin() {
     const pin = document.getElementById('pin-input').value.trim();
     if (!pin) return;
-    const hashed = await hashPin(pin);
-    const match = _HASHED_CODES.find(c => c.h === hashed);
-    if (!match) {
-        document.getElementById('pin-error').textContent = 'Invalid PIN. Please try again.';
-        return;
+
+    const btn = document.querySelector('#license-overlay button');
+    const errorEl = document.getElementById('pin-error');
+    btn.textContent = 'Checking...';
+    btn.disabled = true;
+    errorEl.textContent = '';
+
+    let validated = false;
+    let tier = 0;
+    let expiry = null;
+
+    // Try Netlify server validation first
+    try {
+        const response = await fetch('/.netlify/functions/validate-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin })
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.valid) {
+                validated = true;
+                tier = data.tier;
+                expiry = data.expiry;
+            } else {
+                errorEl.textContent = data.error || 'Invalid PIN. Please try again.';
+                btn.textContent = 'UNLOCK';
+                btn.disabled = false;
+                return;
+            }
+        }
+    } catch (err) {
+        // Netlify not available — fall back to local SHA-256
+        console.log('Server unavailable, using local validation');
     }
-    localStorage.setItem('xkdg_license', JSON.stringify({ tier: match.t, expiry: match.e }));
-    document.getElementById('license-overlay').style.display = 'none';
-    checkLicense();
-    setNow();
+
+    // Fallback: SHA-256 local check
+    if (!validated) {
+        const hashed = await hashPin(pin);
+        const match = _HASHED_CODES.find(c => c.h === hashed);
+        if (match) {
+            validated = true;
+            tier = match.t;
+            expiry = match.e;
+        }
+    }
+
+    if (validated) {
+        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry }));
+        document.getElementById('license-overlay').style.display = 'none';
+        checkLicense();
+        setNow();
+    } else {
+        errorEl.textContent = 'Invalid PIN. Please try again.';
+    }
+
+    btn.textContent = 'UNLOCK';
+    btn.disabled = false;
 }
 
 // Enter key support
