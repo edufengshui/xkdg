@@ -2099,17 +2099,31 @@ function loadDateIntoMain(isoDate, hourIndex) {
     const utc = parseFloat(document.getElementById('utc-offset').value);
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
 
-    // Set the hour midpoint
+    // Convert True Solar hour midpoint back to local clock time
     const hourStart = HOUR_STARTS[hourIndex];
-    const h = hourStart === 23 ? 23 : hourStart;
-    const timeStr = String(h).padStart(2,'0') + ':30';
+    const solarMinutes = hourStart * 60 + 30;
+    const localMinutes = solarMinutes - offsetMin;
 
-    document.getElementById('date').value = isoDate;
+    // Handle day crossing
+    let dateStr = isoDate;
+    let dayOffset = 0;
+    if (localMinutes < 0) dayOffset = -1;
+    else if (localMinutes >= 1440) dayOffset = 1;
+
+    if (dayOffset !== 0) {
+        const d = new Date(isoDate + 'T12:00:00');
+        d.setDate(d.getDate() + dayOffset);
+        dateStr = d.toISOString().split('T')[0];
+    }
+
+    const totalMins = ((localMinutes % 1440) + 1440) % 1440;
+    const hh = Math.floor(totalMins / 60);
+    const mm = Math.floor(totalMins % 60);
+    const timeStr = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+
+    document.getElementById('date').value = dateStr;
     document.getElementById('time').value = timeStr;
-
-    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
     calculateBazi();
 }
 
@@ -3485,16 +3499,19 @@ function runScanner() {
             const pQi = personAYear.qi, pYun = personAYear.yun;
             const dQi = dayXkdg.qi,    dYun = dayXkdg.yun;
 
-            const personMatchEl =
-                pQi === dQi ||
-                isHetuPair(pQi, dQi) ||
-                [5,10,15].includes(pQi + dQi) ||
-                getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+            // Personal connection: group setting must exist FIRST, then person connects into it
+            const personMatchEl = hasElementRelation && (
+                isHetuPair(pQi, dQi)          ||
+                [5,10,15].includes(pQi + dQi)  ||
+                getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)) ||
+                (blueItems.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Elements') && pQi === dQi)
+            );
 
-            const personMatchPer =
-                pYun === dYun ||
-                isHetuPair(pYun, dYun) ||
-                [5,10,15].includes(pYun + dYun);
+            const personMatchPer = hasPeriodRelation && (
+                isHetuPair(pYun, dYun)          ||
+                [5,10,15].includes(pYun + dYun)  ||
+                (blueItems.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Periods') && pYun === dYun)
+            );
 
             // No filters: show all dates where person connects (any type)
             // With filters: blueItemsPassFilter already ensures only matching relation types show
