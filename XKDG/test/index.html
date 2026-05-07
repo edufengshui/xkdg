@@ -389,10 +389,8 @@
               <button class="btn-scan" onclick="setScanOffset(90)" style="padding:6px 8px;font-size:11px;">+3m</button>
             </div>
             <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
-            <button class="btn-scan" onclick="runAll()">SCAN</button>
-            <button class="btn-scan" id="sort-score" onclick="sortResults('score')" style="background:#1b5e20;display:none;">★ BEST FIRST</button>
+            <button onclick="runAll()" style="background:linear-gradient(135deg,#2e7d32,#43a047);color:white;font-weight:700;font-size:14px;padding:8px 22px;border:2px solid #1b5e20;border-radius:8px;cursor:pointer;letter-spacing:1px;box-shadow:0 3px 10px rgba(46,125,50,0.4);">SCAN</button>
             <button class="btn-scan" id="sort-date"  onclick="sortResults('date')"  style="background:#0d47a1;display:none;">📅 BY DATE</button>
-            <button class="btn-scan" id="sort-both"  onclick="sortResults('both')"  style="background:#7b1fa2;display:none;">👫 BOTH</button>
         </div>
         <div class="filter-panel" id="filter-panel">
             <span style="font-size:11px;color:#555;font-weight:bold;width:100%;">Show only (select to filter):</span>
@@ -2079,7 +2077,7 @@ function showMatchTip(el, person) {
 
 
 function sortResults(mode) {
-    if (_scanResults.length === 0) return;
+    if (!mode) mode = personBYear ? 'both' : 'score';
     let filtered = [..._scanResults];
     if (mode === 'both') filtered = filtered.filter(r => r.scoreA > 0 && r.scoreB > 0).sort((a,b) => (b.scoreA+b.scoreB) - (a.scoreA+a.scoreB));
     else if (mode === 'score') filtered.sort((a,b) => b.score - a.score);
@@ -2425,7 +2423,7 @@ function setMode(mode) {
     if (sr) sr.style.display = (mode === 'dates' && _scanResults.length) ? 'block' : 'none';
     if (mv) mv.style.display = mode === 'month' ? 'block' : 'none';
     if (cv) cv.style.display = mode === 'cal'   ? 'block' : 'none';
-    ['sort-score','sort-date','sort-both'].forEach(id => {
+    ['sort-date'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = (mode === 'dates' && _scanResults.length) ? 'inline-block' : 'none';
     });
@@ -2647,7 +2645,6 @@ function updatePurposeIcon(person) {
 }
 
 function runAll() {
-    try { const m = localStorage.getItem('xkdg_mode'); if (m) _currentMode = m; } catch(e) {}
     const testModeEl = document.getElementById('purpose-no-person');
     const testModeOn = testModeEl && testModeEl.checked;
     if (getPurpose() && !_personAYear && !_personBYear && !testModeOn) {
@@ -2775,6 +2772,7 @@ function buildCalView() {
 
             // Check best hour of the day for positive/favourable status
             let dayIsPositive = false, dayIsFavourable = false, dayIsFamily = false;
+            let dayBestScore = 0;
             for (let h = 0; h < 12; h++) {
                 const hs = HOUR_STARTS[h];
                 let bd = new Date(dayDate);
@@ -2796,15 +2794,42 @@ function buildCalView() {
                 if (blues.length > 0 && blueItemsPassFilter(blues, getActiveFilters(), { qi: dData?.qi, yun: dData?.yun })) {
                     dayIsPositive = true;
                     if (blues.some(i => i.tag === 'family')) dayIsFamily = true;
+                    // Use getMatchLabels via temp _currentDayAnalysis for consistency
+                    const _saved = _currentDayAnalysis;
+                    _currentDayAnalysis = { items, pillars,
+                        stems: { hour: hG, day: dGan, month: ec.getMonthGan(), year: ec.getYearGan() },
+                        branches: { hour: hZ, day: dZhi, month: ec.getMonthZhi(), year: ec.getYearZhi() }
+                    };
                     if (personAYear) {
-                        const hasEl  = blues.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
-                        const hasPer = blues.some(i => i.text.includes('Period')  || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
-                        const mEl = hasEl  && (personAYear.qi  === dData.qi  || isHetuPair(personAYear.qi,  dData.qi)  || [5,10,15].includes(personAYear.qi  + dData.qi));
-                        const mPer= hasPer && (personAYear.yun === dData.yun || isHetuPair(personAYear.yun, dData.yun) || [5,10,15].includes(personAYear.yun + dData.yun));
-                        if (mEl || mPer) dayIsFavourable = true;
+                        const labelsA = getMatchLabels(personAYear, pYStem, pYBranch, pillars.day, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
+                        if (labelsA.length > 0) {
+                            dayIsFavourable = true;
+                            const qualScore = getDateQualityScore(items);
+                            const hourScore = getMatchScore(personAYear, pYStem, pYBranch, pillars.day, dGan, dZhi);
+                            const score = Math.max(1, hourScore * Math.max(qualScore, 1));
+                            if (score > dayBestScore) dayBestScore = score;
+                        }
+                    } else {
+                        const qualScore = getDateQualityScore(items);
+                        if (qualScore > dayBestScore) dayBestScore = qualScore;
                     }
+                    _currentDayAnalysis = _saved;
                 }
             }
+
+            // Green gradient based on best score
+            const calGreenBg = dayIsFamily ? '#fffde7'
+                             : !dayIsPositive ? ''
+                             : dayBestScore >= 12 ? '#a5d6a7'
+                             : dayBestScore >= 9  ? '#c8e6c9'
+                             : dayBestScore >= 6  ? '#dcedc8'
+                             : dayBestScore >= 1  ? '#f1f8e9'
+                             : '#f1f8e9';
+            const calBorder = dayIsFamily ? '#f9a825'
+                            : dayBestScore >= 12 ? '#1b5e20'
+                            : dayBestScore >= 9  ? '#2e7d32'
+                            : dayBestScore >= 6  ? '#388e3c'
+                            : '#558b2f';
 
             // Noble: check if day BRANCH is person's Noble branch
             const personNobles = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
@@ -2823,7 +2848,8 @@ function buildCalView() {
             const mvCAL = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
             const dayBranchIsMV = mvCAL ? mvCAL.branch === dZhi : false;
 
-            const cellClass = `cal-cell${isToday?' today':''}${dayIsFamily?' family':dayIsFavourable?' favourable':dayIsPositive?' positive':''}`;
+            const cellClass = `cal-cell${isToday?' today':''}${dayIsFamily?' family':''}`;
+            const cellStyle = calGreenBg ? `background:${calGreenBg};border-color:${calBorder};` : '';
             const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
 
             const jieqi    = jieqiMap[isoDate] || [];
@@ -2847,7 +2873,7 @@ function buildCalView() {
                 ? `<div style="font-size:10px;color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8f5e9;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'TY')">TY</div>`
                 : '';
 
-            html += `<div class="${cellClass}" onclick="loadDateIntoMain('${isoDate}', 5)">
+            html += `<div class="${cellClass}" style="${cellStyle}" onclick="loadDateIntoMain('${isoDate}', 5)">
                 <div style="display:flex;justify-content:space-between;align-items:top;">
                     <span class="cal-day-num">${dayDate.getDate()}</span>
                     <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
@@ -3088,27 +3114,29 @@ function buildMonthView() {
             if (isVoidLV) continue; // always hide void rows
 
             let isFavourable = false;
-            const hasElRel  = blueItems.some(i => i.text.includes('Element') || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
-            const hasPerRel = blueItems.some(i => i.text.includes('Period')  || ['Hetu','Pure Hetu','Adding','Pure Adding','Pure Qi'].includes(i.text));
-
-            if (isPositive && personAYear) {
-                const matchElA  = hasElRel  && (personAYear.qi  === dData.qi  || isHetuPair(personAYear.qi,  dData.qi)  || [5,10,15].includes(personAYear.qi  + dData.qi)  || getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
-                const matchPerA = hasPerRel && (personAYear.yun === dData.yun || isHetuPair(personAYear.yun, dData.yun) || [5,10,15].includes(personAYear.yun + dData.yun));
-                const favA = matchElA || matchPerA;
-
-                if (personBYear) {
-                    // Both persons active — must match both
-                    const matchElB  = hasElRel  && (personBYear.qi  === dData.qi  || isHetuPair(personBYear.qi,  dData.qi)  || [5,10,15].includes(personBYear.qi  + dData.qi)  || getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
-                    const matchPerB = hasPerRel && (personBYear.yun === dData.yun || isHetuPair(personBYear.yun, dData.yun) || [5,10,15].includes(personBYear.yun + dData.yun));
-                    const favB = matchElB || matchPerB;
-                    isFavourable = favA && favB;
-                } else {
-                    isFavourable = favA;
+            if (isPositive && (personAYear || personBYear)) {
+                // Temporarily set _currentDayAnalysis to scan hour's data for getMatchLabels
+                const _savedAnalysis = _currentDayAnalysis;
+                _currentDayAnalysis = {
+                    items: analysisItems,
+                    pillars: { hour: pillars.hour, day: pillars.day, month: pillars.month, year: pillars.year },
+                    stems: { hour: hGan, day: dGan, month: mGan, year: yGan },
+                    branches: { hour: hZhiDirect, day: dZhi, month: mZhi, year: yZhi }
+                };
+                if (personAYear) {
+                    const labelsA = getMatchLabels(personAYear, pYStem, pYBranch, pillars.day, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
+                    const favA = labelsA.length > 0;
+                    if (personBYear) {
+                        const labelsB = getMatchLabels(personBYear, pBYStem, pBYBranch, pillars.day, dGan, dZhi, _personBPillars, _personBDayStem, _personBDayBranch);
+                        isFavourable = favA && labelsB.length > 0;
+                    } else {
+                        isFavourable = favA;
+                    }
+                } else if (personBYear) {
+                    const labelsB = getMatchLabels(personBYear, pBYStem, pBYBranch, pillars.day, dGan, dZhi, _personBPillars, _personBDayStem, _personBDayBranch);
+                    isFavourable = labelsB.length > 0;
                 }
-            } else if (isPositive && personBYear) {
-                const matchElB  = hasElRel  && (personBYear.qi  === dData.qi  || isHetuPair(personBYear.qi,  dData.qi)  || [5,10,15].includes(personBYear.qi  + dData.qi)  || getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)));
-                const matchPerB = hasPerRel && (personBYear.yun === dData.yun || isHetuPair(personBYear.yun, dData.yun) || [5,10,15].includes(personBYear.yun + dData.yun));
-                isFavourable = matchElB || matchPerB;
+                _currentDayAnalysis = _savedAnalysis;
             }
 
             const elNotes  = blueItems.filter(i => i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family').map(i => i.text);
@@ -3124,7 +3152,7 @@ function buildMonthView() {
             const bg      = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
             // When person is active, skip rows that don't personally match
             if ((personAYear || personBYear) && !isFavourable) continue;
-            const rowStyle = hasFamilyLV ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;` : `background:${bg};`;
+            // Green gradient based on score (same tiers as BEST scanner)
             const isoDate = localISODate(dayDate);
 
             // 12 Spirits
@@ -3145,6 +3173,19 @@ function buildMonthView() {
             const tyBonusLV    = pTYA ? (pTYA === hZhi ? 1 : 0) : 0;
             const clashPenaltyLV = getClashType(dGan, dZhi, eightChar.getYearZhi(), mGan, mZhi) ? -2 : 0;
             const listScore = Math.max(1, scoreALV * Math.max(qualityScoreLV, 1) + sameTypeBonusLV + spiritPenaltyLV + spiritBonusLV + nobleBonusLV + luBonusLV + hvBonusLV + bvBonusLV + mvBonusLV + tyBonusLV + clashPenaltyLV);
+            const lvGreenBg = listScore >= 12 ? '#a5d6a7'   // rank-1 strong green
+                            : listScore >= 9  ? '#c8e6c9'   // rank-2 high
+                            : listScore >= 6  ? '#dcedc8'   // rank-3 medium
+                            : listScore >= 4  ? '#f1f8e9'   // rank-4 low
+                            : '#ffffff';                    // rank-5 lowest
+            const lvGreenBorder = listScore >= 12 ? '#1b5e20'
+                                : listScore >= 9  ? '#2e7d32'
+                                : listScore >= 6  ? '#388e3c'
+                                : listScore >= 4  ? '#558b2f'
+                                : '#aaa';
+            const rowStyle = hasFamilyLV
+                ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;border-left:4px solid #f9a825;`
+                : `background:${lvGreenBg};border-left:4px solid ${lvGreenBorder};`;
             const dateNoblesLV = NOBLE_BRANCHES[dGan] || [];
             const isDateNobleLV = dateNoblesLV.includes(hZhiDirect);
             const nobleLabelLV = isDateNobleLV ? 'N' : '';
@@ -3568,6 +3609,7 @@ function runScanner() {
             const hasFullBL  = blueItems.some(i => i.tag === 'family');
             const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
             const spiritPenalty = (!hasFullBL && !hasPureQi && hourSpirit && !hourSpirit.auspicious) ? -1 : 0;
+            const tombShaPenalty = isTombSha(hZhiSC, dGan, sStrong, sGrowing) ? -3 : 0;
             const spiritBonus   = (hourSpirit && hourSpirit.auspicious) ? 1 : 0;
 
             // Noble bonus: hour branch is Noble for PERSON A's day stem
@@ -3604,7 +3646,7 @@ function runScanner() {
 
             const matchLabels  = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
             const partialBLBonus = fullBLBonus === 0 && matchLabels.some(l => l.startsWith('Partial BL')) ? 1 : 0;
-            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + sameTypeBonusA + spiritPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus + partialBLBonus);
+            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + sameTypeBonusA + spiritPenalty + tombShaPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus + partialBLBonus);
             const qualLabels  = analysisItems.filter(i => ['Strong','Energetic','Medium','Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
@@ -3642,24 +3684,18 @@ function runScanner() {
         return;
     }
 
-    // Sort by date when Person A is entered, by score otherwise
-    if (birthDate) {
-        results.sort((a,b) => a.rawDate - b.rawDate);
-    } else {
-        results.sort((a,b) => b.score - a.score);
-    }
+    // Always sort by score (highest first) by default
+    results.sort((a,b) => b.score - a.score);
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
     if (container) container.style.display = 'block';
-    const ss = document.getElementById('sort-score');
     const sd = document.getElementById('sort-date');
-    const sb = document.getElementById('sort-both');
-    if (ss) ss.style.display = 'inline-block';
     if (sd) sd.style.display = 'inline-block';
-    if (sb) sb.style.display = personBYear ? 'inline-block' : 'none';
 
-    renderScanResults(results);
+    // Auto-apply BOTH mode when Person B is active
+    const mode = personBYear ? 'both' : 'score';
+    renderScanResults(results, mode);
 }
 
 
