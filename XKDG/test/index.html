@@ -385,9 +385,8 @@
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <label>DAYS:</label>
-              <input type="number" id="scan-days" value="30" min="1" max="365" style="width:60px;">
-              <button class="btn-scan" onclick="setScanDays(30)"  style="padding:6px 8px;font-size:11px;">30d</button>
-              <button class="btn-scan" onclick="setScanDays(60)"  style="padding:6px 8px;font-size:11px;">+1m</button>
+              <input type="number" id="scan-days" value="30" min="1" max="9999" style="width:60px;">
+              <button class="btn-scan" onclick="setScanDays(30)"  style="padding:6px 8px;font-size:11px;">+1m</button>
               <button class="btn-scan" onclick="setScanDays(90)"  style="padding:6px 8px;font-size:11px;">+3m</button>
               <button class="btn-scan" onclick="setScanDays(180)" style="padding:6px 8px;font-size:11px;">+6m</button>
             </div>
@@ -2151,10 +2150,20 @@ function renderScanResults(results, mode) {
         const bTag = hasBothPersons && r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>` : '';
         const aTag = hasBothPersons && r.scoreA > 0 ? ` <span style="color:#2e7d32;font-weight:bold;font-size:14px;">A</span>` : '';
         const spiritStr = r.spiritLabel ? `<span style="font-size:10px;font-weight:bold;color:${r.spiritAuspicious ? '#0044cc' : '#d40000'};">${r.spiritLabel}</span>` : '';
+        // Purpose condition label
+        const purpose = getPurpose();
+        const purposeCondLabel = purpose ? (() => {
+            if (purpose === 'health')       return r.hasTY     ? '<span style="color:#2e7d32;font-weight:bold;">Parent+TY</span>' : (r.isDayTY ? '<span style="color:#2e7d32;font-weight:bold;">TY Day</span>' : '');
+            if (purpose === 'career')       return r.hasNoble  ? '<span style="color:#2e7d32;font-weight:bold;">Parent+Noble</span>' : '';
+            if (purpose === 'wealth')       return '<span style="color:#2e7d32;font-weight:bold;">Child+Parent</span>';
+            if (purpose === 'relationship') return '<span style="color:#2e7d32;font-weight:bold;">Child+Parent/Adding</span>';
+            if (purpose === 'journey')      return '<span style="color:#2e7d32;font-weight:bold;">Journey</span>';
+            return '';
+        })() : '';
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score">${s}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
-            <div class="scan-tags">${[...r.blueLabels, ...r.matchLabels, ...r.qualLabels].join(' · ')} ${spiritStr}</div>
+            <div class="scan-tags">${[purposeCondLabel, ...r.blueLabels, ...r.matchLabels, ...r.qualLabels].filter(Boolean).join(' · ')} ${spiritStr}</div>
         </div>`;
     }).join('');
 }
@@ -3429,7 +3438,8 @@ function setScanNow() {
 }
 
 function setScanDays(n) {
-    document.getElementById('scan-days').value = n;
+    const el = document.getElementById('scan-days');
+    el.value = parseInt(el.value || 0) + n;
 }
 
 function setScanOffset(days) {
@@ -3699,7 +3709,10 @@ function runScanner() {
                 hour: HOUR_ROMAN[h],
                 matchLabels,
                 qualLabels,
-                blueLabels
+                blueLabels,
+                hasTY:    analysisItems.some(i => i.tag==='ty'||i.tag==='ty-both'),
+                isDayTY:  (() => { const pA = _personADayStem, pB = _personBDayStem; return (pA && TIAN_YI[pA]===dZhi)||(pB && TIAN_YI[pB]===dZhi); })(),
+                hasNoble: analysisItems.some(i => i.tag==='noble'||i.tag==='noble-both')
             });
         }
     }
