@@ -1408,8 +1408,8 @@ function calculateBazi() {
     if (isDateMV || isPersonMV) {
         let label, tag;
         if (isDateMV && isPersonMV) { label = 'Month Virtue ★ (Date + Person)'; tag = 'mv-both'; }
-        else if (isDateMV)           { label = 'Month Virtue (Date)';   tag = 'mv'; }
-        else                         { label = 'Month Virtue (Person)'; tag = 'mv'; }
+        else if (isDateMV)           { label = 'Month Virtue';   tag = 'mv'; }
+        else                         { label = 'Month Virtue'; tag = 'mv'; }
         analysis.push({ text: label, tag });
     }
     const bvDateBranch = BRANCH_VIRTUE[dayZhi] || null;
@@ -1809,7 +1809,7 @@ function calculatePerson(person) {
 
     // Month Virtue: hour stem or day branch matches month branch MV
     const pMV = MONTH_VIRTUE[pMthZhi] || null;
-    if (pMV && (pMV.stem === pHourGan || pMV.branch === pDayZhi)) personAnalysis.push({ text: 'Month Virtue (Date)', tag: 'mv' });
+    if (pMV && (pMV.stem === pHourGan || pMV.branch === pDayZhi)) personAnalysis.push({ text: 'Month Virtue', tag: 'mv' });
 
     // 12 Spirits: hour branch vs day branch
     const pSpirit = getSpiritForHour(pDayZhi, pHourZhi);
@@ -3316,23 +3316,23 @@ function getActiveFilters() {
 }
 
 function itemMatchesFilter(text, tag, filters) {
-    if (tag === 'family')                                        return filters.has('family');
-    if (text === 'Pure Qi')                                      return filters.has('pure-qi-el') || filters.has('pure-qi-per');
-    if (text === 'Pure Qi Elements')                             return filters.has('pure-qi-el');
-    if (text === 'Pure Qi Periods')                              return filters.has('pure-qi-per');
-    if (text === 'Pure Adding')          return filters.has('pure-adding') || filters.has('adding-el') || filters.has('adding-per');
-    if (text === 'Pure Adding Elements') return filters.has('pure-adding') || filters.has('adding-el');
-    if (text === 'Pure Adding Periods')  return filters.has('pure-adding') || filters.has('adding-per');
-    if (text === 'Pure Hetu')          return filters.has('pure-hetu') || filters.has('hetu-el') || filters.has('hetu-per');
-    if (text === 'Pure Hetu Elements') return filters.has('pure-hetu') || filters.has('hetu-el');
-    if (text === 'Pure Hetu Periods')  return filters.has('pure-hetu') || filters.has('hetu-per');
-    if (text === 'Hetu')               return filters.has('hetu-el') || filters.has('hetu-per');
-    if (text === 'Hetu Elements')      return filters.has('hetu-el');
-    if (text === 'Hetu Periods')       return filters.has('hetu-per');
-    if (text === 'Adding')          return filters.has('adding-el') || filters.has('adding-per');
-    if (text === 'Adding Elements') return filters.has('adding-el');
-    if (text === 'Adding Periods')  return filters.has('adding-per');
-    if (text.startsWith('Inverse Hex')) return filters.has('inverse-hex');
+    if (tag === 'family')                   return filters.has('family');
+    if (text === 'Pure Qi')                 return filters.has('pure-qi-el') && filters.has('pure-qi-per');
+    if (text === 'Pure Qi Elements')        return filters.has('pure-qi-el');
+    if (text === 'Pure Qi Periods')         return filters.has('pure-qi-per');
+    if (text === 'Pure Adding')             return filters.has('pure-adding');
+    if (text === 'Pure Adding Elements')    return filters.has('pure-adding') || filters.has('adding-el');
+    if (text === 'Pure Adding Periods')     return filters.has('pure-adding') || filters.has('adding-per');
+    if (text === 'Pure Hetu')               return filters.has('pure-hetu');
+    if (text === 'Pure Hetu Elements')      return filters.has('pure-hetu') || filters.has('hetu-el');
+    if (text === 'Pure Hetu Periods')       return filters.has('pure-hetu') || filters.has('hetu-per');
+    if (text === 'Hetu')                    return filters.has('hetu-el') && filters.has('hetu-per');
+    if (text === 'Hetu Elements')           return filters.has('hetu-el');
+    if (text === 'Hetu Periods')            return filters.has('hetu-per');
+    if (text === 'Adding')                  return filters.has('adding-el') && filters.has('adding-per');
+    if (text === 'Adding Elements')         return filters.has('adding-el');
+    if (text === 'Adding Periods')          return filters.has('adding-per');
+    if (text.startsWith('Inverse Hex'))     return filters.has('inverse-hex');
     return false;
 }
 
@@ -3408,7 +3408,10 @@ function blueItemsPassFilter(blueItems, filters, dayData) {
         i.text.startsWith('Inverse Hex')
     );
     if (relationItems.length === 0) return false;
-    return relationItems.some(i => itemMatchesFilter(i.text, i.tag, filters));
+    // AND logic: every active filter must be matched by at least one item
+    return [...filters].every(f =>
+        relationItems.some(i => itemMatchesFilter(i.text, i.tag, new Set([f])))
+    );
 }
 
 function setScanNow() {
