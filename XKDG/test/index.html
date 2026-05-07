@@ -946,7 +946,7 @@ function getInverseHex(hexNum) {
 function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     const items = [];
     const keys = ['year','month','day','hour'];
-    if (!keys.every(k => pillars[k])) return items;
+    if (!keys.every(k => pillars[k])) return { items, sameFamily: false };
 
     const qi     = k => pillars[k].qi;
     const yun    = k => pillars[k].yun;
@@ -1106,7 +1106,7 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     // ── Family Check ─────────────────────────────────────────────────
     const pillarFamilies = keys.map(k => getJiaZiFamilies(pillars[k].stem, pillars[k].branch));
     const sharedFamilies = pillarFamilies[0].filter(f =>
-        pillarFamilies.every(fams => fams.includes(f))
+        f !== undefined && f !== null && pillarFamilies.every(fams => fams.includes(f))
     );
 
     const validFamilies = sharedFamilies.filter(f => {
@@ -2152,7 +2152,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score">${s}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
-            <div class="scan-tags">${[...r.matchLabels, ...r.qualLabels].join(' · ')} ${spiritStr}</div>
+            <div class="scan-tags">${[...r.blueLabels, ...r.matchLabels, ...r.qualLabels].join(' · ')} ${spiritStr}</div>
         </div>`;
     }).join('');
 }
@@ -3296,6 +3296,10 @@ function toggleFilter() {
 
 function toggleChip(el) {
     el.classList.toggle('active');
+    // Re-run scan automatically if results exist
+    if (_scanResults.length > 0 || document.getElementById('scan-results').style.display === 'block') {
+        runAll();
+    }
 }
 
 function getActiveFilters() {
@@ -3653,6 +3657,7 @@ function runScanner() {
 
             if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) continue;
 
+            const blueLabels = blueItems.map(i => i.text).filter(t => t && !t.includes('undefined'));
             results.push({
                 score: totalScore,
                 scoreA,
@@ -3668,7 +3673,8 @@ function runScanner() {
                 date: dd,
                 hour: HOUR_ROMAN[h],
                 matchLabels,
-                qualLabels
+                qualLabels,
+                blueLabels
             });
         }
     }
