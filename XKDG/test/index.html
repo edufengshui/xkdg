@@ -3167,7 +3167,7 @@ function buildMonthView() {
             const qualityScoreLV = getDateQualityScore(analysisItems);
             const scoreALV = personAYear ? getMatchScore(personAYear, pYStem, pYBranch, dData, dGan, dZhi) : 1;
             const sameTypeBonusLV = personAYear ? getPersonSameTypeBonus(blueItems, personAYear, dData, pYStem, pYBranch, dGan, dZhi) : 0;
-            const spiritPenaltyLV = (!hasFamily && !blueItems.some(i=>i.text.includes('Pure Qi')) && spirit && !spirit.auspicious) ? -1 : 0;
+            const spiritPenaltyLV = (!hasFamily && !blueItems.some(i=>i.text.includes('Pure Qi')) && spirit && !spirit.auspicious) ? -4 : 0;
             const spiritBonusLV   = (spirit && spirit.auspicious) ? 1 : 0;
             const nobleBonusLV = pNobleA ? (pNobleA.includes(hZhi) ? 1 : 0) : ((NOBLE_BRANCHES[dGan]||[]).includes(hZhi) ? 1 : 0);
             const luBonusLV    = pLuA ? (pLuA === hZhi ? 1 : 0) : (LU_BRANCH[dGan] === hZhi ? 1 : 0);
@@ -3616,7 +3616,7 @@ function runScanner() {
             if (!hasPureQiOrFamily && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
             const hasFullBL  = blueItems.some(i => i.tag === 'family');
             const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
-            const spiritPenalty = (!hasFullBL && !hasPureQi && hourSpirit && !hourSpirit.auspicious) ? -1 : 0;
+            const spiritPenalty = (!hasFullBL && !hasPureQi && hourSpirit && !hourSpirit.auspicious) ? -4 : 0;
             const tombShaPenalty = isTombSha(hZhiSC, dGan, sStrong, sGrowing) ? -3 : 0;
             const spiritBonus   = (hourSpirit && hourSpirit.auspicious) ? 1 : 0;
 
