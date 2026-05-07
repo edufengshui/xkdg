@@ -3085,16 +3085,20 @@ function buildMonthView() {
                 const connectsA = personAYear ? (() => {
                     const pQi = personAYear.qi, pYun = personAYear.yun;
                     const dQi = dayXkdgLV.qi,  dYun = dayXkdgLV.yun;
-                    return pQi === dQi || isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
-                           pYun === dYun || isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
+                    return isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
+                           isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
+                           (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pQi === dQi) ||
+                           (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods') && pYun === dYun) ||
                            getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
                 })() : false;
 
                 const connectsB = personBYear ? (() => {
                     const pQi = personBYear.qi, pYun = personBYear.yun;
                     const dQi = dayXkdgLV.qi,  dYun = dayXkdgLV.yun;
-                    return pQi === dQi || isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
-                           pYun === dYun || isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
+                    return isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
+                           isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
+                           (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pQi === dQi) ||
+                           (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods') && pYun === dYun) ||
                            getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
                 })() : false;
 
@@ -3139,7 +3143,7 @@ function buildMonthView() {
                 _currentDayAnalysis = _savedAnalysis;
             }
 
-            const elNotes  = blueItems.filter(i => i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family').map(i => i.text);
+            const elNotes  = blueItems.filter(i => i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family' || i.text.startsWith('Inverse Hex')).map(i => i.text);
             const perNotes = blueItems.filter(i => i.text.includes('Period')).map(i => i.text);
             const famNotes = blueItems.filter(i => i.tag === 'family').map(i => i.text);
             const hasFamily = famNotes.length > 0;
