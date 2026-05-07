@@ -3145,8 +3145,14 @@ function buildMonthView() {
                 _currentDayAnalysis = _savedAnalysis;
             }
 
-            const elNotes  = blueItems.filter(i => i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family' || i.text.startsWith('Inverse Hex')).map(i => i.text);
-            const perNotes = blueItems.filter(i => i.text.includes('Period')).map(i => i.text);
+            const elNotes  = blueItems.filter(i => {
+                if (activeFiltersMV.size > 0) return itemMatchesFilter(i.text, i.tag, activeFiltersMV);
+                return i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family' || i.text.startsWith('Inverse Hex');
+            }).map(i => i.text);
+            const perNotes = blueItems.filter(i => {
+                if (activeFiltersMV.size > 0) return false; // already shown in elNotes when filter active
+                return i.text.includes('Period');
+            }).map(i => i.text);
             const famNotes = blueItems.filter(i => i.tag === 'family').map(i => i.text);
             const hasFamily = famNotes.length > 0;
 
@@ -3317,19 +3323,21 @@ function getActiveFilters() {
 
 function itemMatchesFilter(text, tag, filters) {
     if (tag === 'family')                   return filters.has('family');
-    if (text === 'Pure Qi')                 return filters.has('pure-qi-el') && filters.has('pure-qi-per');
+    // Pure variants ONLY match their own chip
+    if (text === 'Pure Qi')                 return filters.has('pure-qi-el') || filters.has('pure-qi-per');
     if (text === 'Pure Qi Elements')        return filters.has('pure-qi-el');
     if (text === 'Pure Qi Periods')         return filters.has('pure-qi-per');
     if (text === 'Pure Adding')             return filters.has('pure-adding');
-    if (text === 'Pure Adding Elements')    return filters.has('pure-adding') || filters.has('adding-el');
-    if (text === 'Pure Adding Periods')     return filters.has('pure-adding') || filters.has('adding-per');
+    if (text === 'Pure Adding Elements')    return filters.has('pure-adding');
+    if (text === 'Pure Adding Periods')     return filters.has('pure-adding');
     if (text === 'Pure Hetu')               return filters.has('pure-hetu');
-    if (text === 'Pure Hetu Elements')      return filters.has('pure-hetu') || filters.has('hetu-el');
-    if (text === 'Pure Hetu Periods')       return filters.has('pure-hetu') || filters.has('hetu-per');
-    if (text === 'Hetu')                    return filters.has('hetu-el') && filters.has('hetu-per');
+    if (text === 'Pure Hetu Elements')      return filters.has('pure-hetu');
+    if (text === 'Pure Hetu Periods')       return filters.has('pure-hetu');
+    // Plain variants ONLY match their own chip
+    if (text === 'Hetu')                    return filters.has('hetu-el') || filters.has('hetu-per');
     if (text === 'Hetu Elements')           return filters.has('hetu-el');
     if (text === 'Hetu Periods')            return filters.has('hetu-per');
-    if (text === 'Adding')                  return filters.has('adding-el') && filters.has('adding-per');
+    if (text === 'Adding')                  return filters.has('adding-el') || filters.has('adding-per');
     if (text === 'Adding Elements')         return filters.has('adding-el');
     if (text === 'Adding Periods')          return filters.has('adding-per');
     if (text.startsWith('Inverse Hex'))     return filters.has('inverse-hex');
@@ -3670,7 +3678,11 @@ function runScanner() {
 
             if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) continue;
 
-            const blueLabels = blueItems.map(i => i.text).filter(t => t && !t.includes('undefined'));
+            const activeFiltersBS = getActiveFilters();
+            const blueLabels = blueItems
+                .filter(i => activeFiltersBS.size === 0 || itemMatchesFilter(i.text, i.tag, activeFiltersBS))
+                .map(i => i.text)
+                .filter(t => t && !t.includes('undefined'));
             results.push({
                 score: totalScore,
                 scoreA,
