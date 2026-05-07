@@ -382,13 +382,15 @@
               <label>FROM:</label>
               <input type="date" id="scan-start">
               <button class="btn-scan" onclick="setScanNow()" style="padding:6px 10px;font-size:12px;">NOW</button>
-              <button class="btn-scan" onclick="setScanOffset(-7)" style="padding:6px 8px;font-size:11px;">-7d</button>
-              <button class="btn-scan" onclick="setScanOffset(-30)" style="padding:6px 8px;font-size:11px;">-1m</button>
-              <button class="btn-scan" onclick="setScanOffset(7)" style="padding:6px 8px;font-size:11px;">+7d</button>
-              <button class="btn-scan" onclick="setScanOffset(30)" style="padding:6px 8px;font-size:11px;">+1m</button>
-              <button class="btn-scan" onclick="setScanOffset(90)" style="padding:6px 8px;font-size:11px;">+3m</button>
             </div>
-            <div><label>DAYS:</label> <input type="number" id="scan-days" value="30" min="1" max="90" style="width:60px;"></div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <label>DAYS:</label>
+              <input type="number" id="scan-days" value="30" min="1" max="365" style="width:60px;">
+              <button class="btn-scan" onclick="setScanDays(30)"  style="padding:6px 8px;font-size:11px;">30d</button>
+              <button class="btn-scan" onclick="setScanDays(60)"  style="padding:6px 8px;font-size:11px;">+1m</button>
+              <button class="btn-scan" onclick="setScanDays(90)"  style="padding:6px 8px;font-size:11px;">+3m</button>
+              <button class="btn-scan" onclick="setScanDays(180)" style="padding:6px 8px;font-size:11px;">+6m</button>
+            </div>
             <button onclick="runAll()" style="background:linear-gradient(135deg,#2e7d32,#43a047);color:white;font-weight:700;font-size:14px;padding:8px 22px;border:2px solid #1b5e20;border-radius:8px;cursor:pointer;letter-spacing:1px;box-shadow:0 3px 10px rgba(46,125,50,0.4);">SCAN</button>
             <button class="btn-scan" id="sort-date"  onclick="sortResults('date')"  style="background:#0d47a1;display:none;">📅 BY DATE</button>
         </div>
@@ -3413,6 +3415,10 @@ function setScanNow() {
     const now = new Date();
     const localDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     document.getElementById('scan-start').value = localDate;
+}
+
+function setScanDays(n) {
+    document.getElementById('scan-days').value = n;
 }
 
 function setScanOffset(days) {
