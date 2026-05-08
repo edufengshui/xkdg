@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-08 — PWA257: 🎤 Speak purpose; Wen Chang table; Nayin person pushed to analysisItems -->
+<!-- Generated: 2026-05-08 — PWA258: Person toggle clears all globals; active person fallback A→B in BEST/LIST -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1794,9 +1794,17 @@ function togglePersonPanel(person) {
         if (person === 'a') {
             _personAYear = null; _personAStem = null; _personABranch = null;
             _personADay  = null; _personARelations = null;
+            _personADayStem = null; _personADayBranch = null;
+            _personAMonth = null; _personAHour = null;
+            _personAMonthBranch = null; _personADayBranchXkdg = null;
+            _personAPillars = null;
         } else {
             _personBYear = null; _personBStem = null; _personBBranch = null;
             _personBDay  = null; _personBRelations = null;
+            _personBDayStem = null; _personBDayBranch = null;
+            _personBMonth = null; _personBHour = null;
+            _personBMonthBranch = null; _personBDayBranchXkdg = null;
+            _personBPillars = null;
         }
         if (arrow) arrow.textContent = '▸ OFF';
     }
@@ -3572,10 +3580,19 @@ function buildMonthView() {
     const pBYStem     = _personBStem  || null;
     const pBYBranch   = _personBBranch || null;
 
-    // Person A personal star data
-    const birthDate = personAYear ? document.getElementById('person-date').value : '';
-    const personDayStemMV   = birthDate ? getPersonDayStemFromBirth(birthDate, birthTime, offsetMin) : null;
-    const personMthBranchMV = birthDate ? getPersonMonthBranch(birthDate, birthTime, offsetMin) : null;
+    // Use Person A if active, else fall back to Person B for scoring
+    const activePersonYear   = personAYear || personBYear || null;
+    const activePersonStem   = pYStem   || pBYStem   || null;
+    const activePersonBranch = pYBranch || pBYBranch || null;
+    const activePersonDayStem   = _personADayStem   || _personBDayStem   || null;
+    const activePersonMthBranch = _personAMonthBranch || _personBMonthBranch || null;
+    const activePersonDayBranch = _personADayBranchXkdg || _personBDayBranchXkdg || null;
+
+    // Personal star data — use active person
+    const birthDate = activePersonYear ? (personAYear ? document.getElementById('person-date').value : document.getElementById('person-date-b').value) : '';
+    const birthTime2 = activePersonYear ? (personAYear ? (document.getElementById('person-time').value || '12:00') : (document.getElementById('person-time-b').value || '12:00')) : '12:00';
+    const personDayStemMV   = activePersonDayStem;
+    const personMthBranchMV = activePersonMthBranch;
 
     const _dst1 = _dstOn ? 1 : 0;
     const HOUR_SHORT = ['23:00-01:00','01:00-03:00','03:00-05:00','05:00-07:00','07:00-09:00','09:00-11:00','11:00-13:00','13:00-15:00','15:00-17:00','17:00-19:00','19:00-21:00','21:00-23:00'];
@@ -3590,15 +3607,10 @@ function buildMonthView() {
     const start    = new Date(startDate + 'T00:00:00');
     const endMV    = new Date(start.getTime() + days * 86400000);
     const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endMV.getFullYear() + 1, offsetMin);
-    const personDayZhiMV = (() => {
-        if (!birthDate) return null;
-        const base  = new Date(`${birthDate}T${birthTime}`);
-        const solar = new Date(base.getTime() + offsetMin * 60000);
-        return Solar.fromDate(solar).getLunar().getEightChar().getDayZhi();
-    })();
+    const personDayZhiMV = activePersonDayBranch || null;
 
-    // Person A personal star data for score calculation
-    const pNobleA = personDayStemMV ? (NOBLE_BRANCHES[personDayStemMV] || []) : null;
+    // Personal star data for score calculation — use active person
+    const pNobleA = personDayStemMV ? (NOBLE_BRANCHES[personDayStemMV] || []) : [];
     const pLuA    = personDayStemMV ? (LU_BRANCH[personDayStemMV] || null) : null;
     const pHVA    = personMthBranchMV ? (HEAVEN_VIRTUE[personMthBranchMV] || null) : null;
     const pBVA    = personDayZhiMV ? (BRANCH_VIRTUE[personDayZhiMV] || null) : null;
@@ -3731,7 +3743,7 @@ function buildMonthView() {
             const nobleBranches = NOBLE_BRANCHES[dGan] || [];
             if (nobleBranches.includes(hZhi)) analysisItems.push({ text: 'Noble (Date)', tag: 'noble' });
             // Add Nayin to analysisItems for filter
-            const nayinResLV = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
+            const nayinResLV = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, yZhi, activePersonStem, activePersonBranch);
             if (nayinResLV.label) analysisItems.push({ text: nayinResLV.label, tag: nayinResLV.label === 'Nayin Power' ? 'nayin-power' : nayinResLV.label === 'Nayin Weak' ? 'nayin-weak' : 'nayin' });
             if (nayinResLV.personLabel) analysisItems.push({ text: nayinResLV.personLabel, tag: nayinResLV.personScore > 0 ? 'nayin-person-good' : 'nayin-person-bad' });
             const isPositive = blueItems.length > 0;
@@ -3746,37 +3758,38 @@ function buildMonthView() {
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
             const filtersActiveMV = activeFiltersMV.size > 0;
             const dayXkdgLV = dData || pillars.day;
+            // Use active person (A if active, else B)
+            const activePersonYearLV = activePersonYear;
+            const activePYStemLV     = activePersonStem;
+            const activePYBranchLV   = activePersonBranch;
             // Personal connection gate: only applies when person is loaded
-            if (personAYear || personBYear) {
-                const connectsA = personAYear ? (() => {
-                    const pQi = personAYear.qi, pYun = personAYear.yun;
-                    const dQi = dayXkdgLV.qi,  dYun = dayXkdgLV.yun;
+            if (activePersonYearLV) {
+                const connects = (() => {
+                    const pQi = activePersonYearLV.qi, pYun = activePersonYearLV.yun;
+                    const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
                     return isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
                            isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
                            (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pQi === dQi) ||
                            (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods') && pYun === dYun) ||
-                           getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
-                })() : false;
-
-                const connectsB = personBYear ? (() => {
-                    const pQi = personBYear.qi, pYun = personBYear.yun;
-                    const dQi = dayXkdgLV.qi,  dYun = dayXkdgLV.yun;
-                    return isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
-                           isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
-                           (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pQi === dQi) ||
-                           (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods') && pYun === dYun) ||
-                           getJiaZiFamilies(pBYStem, pBYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
-                })() : false;
-
+                           getJiaZiFamilies(activePYStemLV, activePYBranchLV).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                })();
+                // If BOTH persons active, require both connect
                 if (personAYear && personBYear) {
+                    const connectsA = (() => {
+                        const pQi = personAYear.qi, pYun = personAYear.yun;
+                        const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
+                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(pYStem,pYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                    })();
+                    const connectsB = (() => {
+                        const pQi = personBYear.qi, pYun = personBYear.yun;
+                        const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
+                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                    })();
                     if (!(connectsA && connectsB)) continue;
-                } else if (personAYear) {
-                    if (!connectsA) continue;
                 } else {
-                    if (!connectsB) continue;
+                    if (!connects) continue;
                 }
             }
-            // No person, no filters → still show XKDG positive hours (isPositive check already handled above)
 
             // Kong Wang check: mark void+untimely with red V (Pure Qi, Family, and Nayin Weak exempt)
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
@@ -3837,7 +3850,7 @@ function buildMonthView() {
             const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};">${spirit.en} ${spirit.zh}</span>` : '';
 
             // Score via unified calcHourScore
-            const listScore = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personAYear, pYStem, pYBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
+            const listScore = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
             const nayinHTMLLV = nayinResLV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</div>`
@@ -4177,6 +4190,7 @@ function runScanner() {
 
     // Person B (optional)
     let personBYear = null, pBYStem = null, pBYBranch = null;
+    let pDayStemB = null, pDayBranchB = null, pMthBranchB = null;
     if (birthDateB) {
         const bBaseB  = new Date(`${birthDateB}T${birthTimeB}`);
         const bSolarB = Solar.fromDate(new Date(bBaseB.getTime() + offsetMin * 60000));
@@ -4184,7 +4198,24 @@ function runScanner() {
         pBYStem = bECB.getYearGan(); pBYBranch = bECB.getYearZhi();
         const pBYData = getXkdgData(pBYStem, pBYBranch);
         if (pBYData) personBYear = { ...pBYData, stem: pBYStem, branch: pBYBranch };
+        pDayStemB   = bECB.getDayGan();
+        pDayBranchB = bECB.getDayZhi();
+        pMthBranchB = bECB.getMonthZhi();
     }
+
+    // Active person for scoring: A if present, else B
+    const activeYear   = personAYear   || personBYear   || null;
+    const activeYStem  = pYStem        || pBYStem       || null;
+    const activeYBranch= pYBranch      || pBYBranch     || null;
+    const activeDayStem  = pDayStemA   || pDayStemB     || null;
+    const activeMthBranch= pMthBranchA || pMthBranchB   || null;
+    const activeDayBranch= pDayBranchA || pDayBranchB   || null;
+    const activeNoble  = activeDayStem ? (NOBLE_BRANCHES[activeDayStem] || []) : [];
+    const activeLu     = activeDayStem ? (LU_BRANCH[activeDayStem] || null) : null;
+    const activeHV     = activeMthBranch ? (HEAVEN_VIRTUE[activeMthBranch] || null) : null;
+    const activeBV     = activeDayBranch ? (BRANCH_VIRTUE[activeDayBranch] || null) : null;
+    const activeMV     = activeMthBranch ? (MONTH_VIRTUE[activeMthBranch] || null) : null;
+    const activeTY     = activeDayStem ? (TIAN_YI[activeDayStem] || null) : null;
 
     const results = [];
     const start = new Date(startDate + 'T00:00:00');
@@ -4270,7 +4301,7 @@ function runScanner() {
             const nobleBranches = NOBLE_BRANCHES[dGan] || [];
             if (nobleBranches.includes(hZhi)) analysisItems.push({ text: 'Noble (Date)', tag: 'noble' });
             // Add Nayin to analysisItems for filter
-            const nayinResBST = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, pillars.year.branch, pYStem, pYBranch);
+            const nayinResBST = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, pillars.year.branch, activeYStem, activeYBranch);
             if (nayinResBST.label) analysisItems.push({ text: nayinResBST.label, tag: nayinResBST.label === 'Nayin Power' ? 'nayin-power' : nayinResBST.label === 'Nayin Weak' ? 'nayin-weak' : 'nayin' });
             if (nayinResBST.personLabel) analysisItems.push({ text: nayinResBST.personLabel, tag: nayinResBST.personScore > 0 ? 'nayin-person-good' : 'nayin-person-bad' });
 
@@ -4289,28 +4320,36 @@ function runScanner() {
                 i.text === 'Hetu' || i.text === 'Pure Hetu' || i.text === 'Adding' || i.text === 'Pure Adding' || i.text === 'Pure Qi');
 
             // Step 2: Person must connect with day hexagram (skip if no person)
-            const pQi = personAYear ? personAYear.qi : null;
-            const pYun = personAYear ? personAYear.yun : null;
+            const pQi = activeYear ? activeYear.qi : null;
+            const pYun = activeYear ? activeYear.yun : null;
             const dQi = dayXkdg.qi,    dYun = dayXkdg.yun;
 
             // Personal connection: group setting must exist FIRST, then person connects into it
-            const personMatchEl = personAYear && hasElementRelation && (
+            const personMatchEl = activeYear && hasElementRelation && (
                 isHetuPair(pQi, dQi)          ||
                 [5,10,15].includes(pQi + dQi)  ||
-                getJiaZiFamilies(pYStem, pYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)) ||
+                getJiaZiFamilies(activeYStem, activeYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)) ||
                 (blueItems.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Elements') && pQi === dQi)
             );
 
-            const personMatchPer = personAYear && hasPeriodRelation && (
+            const personMatchPer = activeYear && hasPeriodRelation && (
                 isHetuPair(pYun, dYun)          ||
                 [5,10,15].includes(pYun + dYun)  ||
                 (blueItems.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Periods') && pYun === dYun)
             );
 
-            // Personal connection: required only when person is loaded
-            // Without person: show all XKDG positive hours (filters further restrict)
+            // Personal connection: required only when person is loaded, uses active person
             const filtersActiveBST = activeFilters.size > 0;
-            if (personAYear && !(personMatchEl || personMatchPer)) continue;
+            // If both persons active, require both connect; else require active person
+            if (personAYear && personBYear) {
+                if (!(personMatchEl || personMatchPer)) continue; // A must connect (A data used)
+                // Also check B connects
+                const pQiB = personBYear.qi, pYunB = personBYear.yun;
+                const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                if (!connectsB2) continue;
+            } else if (activeYear && !(personMatchEl || personMatchPer)) {
+                continue;
+            }
 
 
             const scoreA = (personMatchEl || personMatchPer) ?
@@ -4356,8 +4395,8 @@ function runScanner() {
             if (!hasPureQiOrFamily && !isNayinWeakBST && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
 
             // Score via unified calcHourScore
-            const totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, personAYear, pYStem, pYBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
-            const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
+            const totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, activeYear, activeYStem, activeYBranch, activeNoble, activeLu, activeHV, activeBV, activeMV, activeTY, pillars);
+            const matchLabels = getMatchLabels(activeYear, activeYStem, activeYBranch, dayXkdg, dGan, dZhi, _personAPillars || _personBPillars, activeDayStem, activeDayBranch);
             const qualLabels  = analysisItems.filter(i => ['Powerful','Energetic','Very Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const nayinLabel  = nayinResBST.label || '';
