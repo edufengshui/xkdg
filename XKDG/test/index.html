@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-08 — PWA255: Scan works without person; filters restrict when person active -->
+<!-- Generated: 2026-05-08 — PWA255: Fix getMatchLabels null crash; fix NAYIN_ELEMENT duplicates; filters work without person -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -642,8 +642,8 @@ const NAYIN = {
 
 // Extract base element from Nayin name
 const NAYIN_ELEMENT = {
-    'Metal': ['Metal in the Sea','Metal in Sword','Metal in Jewelry','Metal in Sand','Gold Foil Metal','Gold in Jewelry','Guava Wood'],
-    'Fire':  ['Fire in Furnace','Fire on Mountain','Fire in Heaven','Fire of Lamp','Fire on Slope','Fire in Heaven'],
+    'Metal': ['Metal in the Sea','Metal in Sword','Metal in Jewelry','Metal in Sand','Gold Foil Metal','Gold in Jewelry'],
+    'Fire':  ['Fire in Furnace','Fire on Mountain','Fire in Heaven','Fire of Lamp','Fire on Slope'],
     'Wood':  ['Wood in Forest','Wood of Willow','Wood of Pine Tree','Wood on Plain','Mulberry Wood','Guava Wood'],
     'Earth': ['Road Side Earth','Earth on Fortress','Earth on House','Earth on Highway','Earth on Wall','Earth in Sand'],
     'Water': ['Water in Stream','Water in Spring','Water in River','Water in Milky Way','Water in River','Ocean Water']
@@ -2444,6 +2444,7 @@ function getDateQualityScore(analysisItems) {
 function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch) {
     const labels = [];
     if (!_currentDayAnalysis) return labels;
+    if (!personYear) return labels;
     const items    = _currentDayAnalysis.items;
     const pillars  = _currentDayAnalysis.pillars;
     const pQi = personYear.qi, pYun = personYear.yun;
