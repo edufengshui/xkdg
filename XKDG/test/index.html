@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-08 — PWA243: Fix Ke In counted as positive support; clash items bold with bigger lightning icon -->
+<!-- Generated: 2026-05-08 — PWA247: Relation base scores (Family+6, PureQi+5, PureAdd/Hetu+4, Add/Hetu+2); He confirmed in seasonal logic -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -364,7 +364,7 @@
             <button class="btn-scan" id="mode-dates" onclick="setMode('dates')" style="background:#1565c0;">📅 BEST</button>
             <button class="btn-scan" id="mode-month" onclick="setMode('month')" style="background:#555;">☰ LIST</button>
             <button class="btn-scan" id="mode-cal"   onclick="setMode('cal')"   style="background:#555;">🗓 CAL</button>
-            <button class="btn-scan" id="mode-table" onclick="setMode('table')" style="background:#555;">📋 TABLE</button>
+            <button class="btn-scan" id="mode-table" onclick="setMode('table')" style="background:#555;">📋 TABLES</button>
             <button class="btn-scan" id="btn-filter" onclick="toggleFilter()" style="background:#555;">⚙ FILTER</button>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <label>PURPOSE:</label>
@@ -1423,8 +1423,8 @@ function calculateBazi() {
     if (isDateMV || isPersonMV) {
         let label, tag;
         if (isDateMV && isPersonMV) { label = 'Month Virtue ★ (Date + Person)'; tag = 'mv-both'; }
-        else if (isDateMV)           { label = 'Month Virtue';   tag = 'mv'; }
-        else                         { label = 'Month Virtue'; tag = 'mv'; }
+        else if (isDateMV)           { label = 'Month Virtue (Date)';   tag = 'mv'; }
+        else                         { label = 'Month Virtue (Person)'; tag = 'mv'; }
         analysis.push({ text: label, tag });
     }
     const bvDateBranch = BRANCH_VIRTUE[dayZhi] || null;
@@ -1518,7 +1518,41 @@ const ANALYSIS_TIPS = {
     'Timely at Birth': 'Day Element reaches its Chang Sheng (長生) Birth stage in the current month.',
     'Powerful':        'Day Element is strong in the season AND fully supported by Sheng In / Ke In from the other three hexagrams.',
     'Energetic':       'Day Element is either seasonally strong with partial support, or not in season but fully supported by the other hexagrams.',
-    'Very Weak':       'Day Element is Dead or Weak in the current season AND receives no Sheng In / Ke In support from the other hexagrams.'
+    'Very Weak':       'Day Element is Dead or Weak in the current season AND receives no Sheng In / Ke In support from the other hexagrams.',
+    'Noble (Date)':         'Noble Star 贵人 — Hour branch is a Noble branch of the Day stem. Attracts helpful people and smooth outcomes.',
+    'Noble (Person)':       'Noble Star 贵人 — Day branch matches the Person\'s Noble branch. Personal support and assistance.',
+    'Noble ★ (Date + Person)': 'Noble Star 贵人 — Both Date and Person Noble align. Double noble power — exceptional support.',
+    'Lu (Date)':            'Lu Star 禄 — Hour branch is the Lu (Prosperity) branch of the Day stem. Wealth and career luck.',
+    'Lu (Person)':          'Lu Star 禄 — Day branch is the Lu branch of the Person\'s Day stem. Personal prosperity.',
+    'Lu ★ (Date + Person)': 'Lu Star 禄 — Both Date and Person Lu align. Double prosperity — strong wealth and career indication.',
+    'Tian Yi (Date)':            'Tian Yi 天医 — Heavenly Doctor. Hour branch matches the Day stem\'s healing branch. Excellent for health matters.',
+    'Tian Yi (Person)':          'Tian Yi 天医 — Day branch matches the Person\'s Heavenly Doctor branch. Personal healing energy.',
+    'Tian Yi ★ (Date + Person)': 'Tian Yi 天医 — Both Date and Person Tian Yi align. Strongest healing star — ideal for health decisions.',
+    'Heaven Virtue (Date)':            'Heaven Virtue 天德 — Protective heavenly star. Hour branch matches the Month branch\'s Heaven Virtue. Dissolves misfortune.',
+    'Heaven Virtue (Person)':          'Heaven Virtue 天德 — Day branch matches the Person\'s Heaven Virtue. Personal divine protection.',
+    'Heaven Virtue ★ (Date + Person)': 'Heaven Virtue 天德 — Both Date and Person Heaven Virtue align. Double protection — dissolves obstacles and bad luck.',
+    'Branch Virtue (Date)':            'Branch Virtue 支德 — Supportive earth energy. Hour branch matches the Day branch\'s virtue pair. Stability and support.',
+    'Branch Virtue (Person)':          'Branch Virtue 支德 — Day branch matches the Person\'s Branch Virtue. Personal grounding energy.',
+    'Branch Virtue ★ (Date + Person)': 'Branch Virtue 支德 — Both Date and Person Branch Virtue align. Double grounding — strong stability.',
+    'Month Virtue (Date)':             'Month Virtue 月德 — Monthly benevolent star. Hour stem/branch matches the Month branch\'s virtue. Smooth progress.',
+    'Month Virtue (Person)':           'Month Virtue 月德 — Day branch matches the Person\'s Month Virtue. Personal monthly blessing and smooth flow.',
+    'Month Virtue ★ (Date + Person)':  'Month Virtue 月德 — Both Date and Person Month virtue align. Double monthly blessing.',
+    'Cerulean Dragon 青龙': 'Cerulean Dragon 青龙 — Most auspicious of the 12 spirits. Brings wealth, joy, and celebration. Excellent for all matters.',
+    'Bright Hall 明堂':     'Bright Hall 明堂 — Auspicious spirit of clarity and opportunity. Good for meetings, signings, and new ventures.',
+    'Golden Box 金柜':      'Golden Box 金柜 — Auspicious spirit associated with wealth and treasure. Good for financial matters.',
+    'Jade Hall 玉堂':       'Jade Hall 玉堂 — Auspicious spirit of nobility and refinement. Good for career advancement and important events.',
+    'Heaven Virtue 天德':   'Heaven Virtue Spirit 天德 — Divine protective spirit. Dissolves disasters and bad luck. Very auspicious.',
+    'Fate Master 司命':     'Fate Master 司命 — Auspicious spirit overseeing life matters. Good for prayers, blessings, and life decisions.',
+    'Heaven Penalty 天刑':  'Heaven Penalty 天刑 — Inauspicious spirit of lawsuits and conflict. Avoid legal matters and confrontations.',
+    'Red Bird 朱雀':        'Red Bird 朱雀 — Inauspicious spirit causing disputes and arguments. Avoid signing contracts or important talks.',
+    'White Tiger 白虎':     'White Tiger 白虎 — Inauspicious spirit of injury and accidents. Avoid surgery, travel, and risky activities.',
+    'Black Tortoise 玄武':  'Black Tortoise 玄武 — Inauspicious spirit of theft and deception. Avoid financial transactions and trusting strangers.',
+    'Heaven Prison 天牢':   'Heaven Prison 天牢 — Inauspicious spirit of obstruction and imprisonment. Avoid major decisions and new starts.',
+    'Gou Chen 勾陈':        'Gou Chen 勾陈 — Inauspicious spirit of entanglement and delays. Avoid litigation and complex negotiations.',
+    'Day-Year Branch Clash':       'Branch Clash ⚡ — Day branch directly clashes with Year branch. Turbulent energy — avoid major commitments.',
+    'Day-Month Stem Clash (−2)':   'Stem Clash ⚡ — Day stem clashes with Month stem. Reduces date quality score by 2.',
+    'Day-Month Branch Clash (−2)': 'Branch Clash ⚡ — Day branch clashes with Month branch. Reduces date quality score by 2.',
+    'Tomb Sha 墓煞': 'Tomb Sha 墓煞 — The hour branch falls on the Tomb (墓) of the Day stem\'s element, and the element is untimely. Suppresses the day energy — avoid major actions.',
 };
 function showAnalysisTip(el, text) {
     event.stopPropagation();
@@ -1565,8 +1599,14 @@ function renderAnalysis(items) {
                       : item.tag === 'clash-month-stem'  ? `<span class="tag-clash-month-stem"><span style="font-size:20px;">⚡</span> <strong>${item.text}</strong></span>`
                       : item.tag === 'clash-month-branch'? `<span class="tag-clash-month-branch"><span style="font-size:20px;">⚡</span> <strong>${item.text}</strong></span>`
                       : item.text;
-        var tippable = ['Very Timely','Timely','Timely at Birth','Powerful','Energetic','Very Weak'];
-        var tipAttr = tippable.indexOf(item.text) >= 0 ? ' onclick="showAnalysisTip(this,\'' + item.text + '\')" style="cursor:pointer;"' : '';
+        // Make any item tappable if ANALYSIS_TIPS has an entry for it
+        var tipKey = null;
+        if (item.text) {
+            tipKey = Object.keys(ANALYSIS_TIPS).find(k => item.text === k);
+            if (!tipKey) tipKey = Object.keys(ANALYSIS_TIPS).find(k => item.text.startsWith(k));
+            if (!tipKey && item.text.startsWith('Tomb Sha')) tipKey = 'Tomb Sha 墓煞';
+        }
+        var tipAttr = tipKey ? ' onclick="showAnalysisTip(this,\'' + tipKey.replace(/'/g,"\\'") + '\')" style="cursor:pointer;"' : '';
         return '<div class="analysis-item"' + tipAttr + '>⬡ ' + content + '</div>';
     }).join('');
 }
@@ -2400,15 +2440,108 @@ function getPersonSameTypeBonus(blueItems, personYear, dayXkdg, pStem, pBranch, 
     const personIsHetuPer   = isHetuPair(pYun, dYun);
 
     // Condition A: same-type match
-    if (hasDateFamily    && personIsFamily)                                  return 2;
-    if (hasDatePureAdding && (personIsAddingEl || personIsAddingPer))        return 2;
-    if (hasDatePureHetu   && (personIsHetuEl   || personIsHetuPer))          return 2;
-    if (hasDatePureQi     && (personIsPureQiEl || personIsPureQiPer))        return 2;
-    if (hasDateAdding     && (personIsAddingEl || personIsAddingPer))        return 2;
-    if (hasDateHetu       && (personIsHetuEl   || personIsHetuPer))          return 2;
+    if (hasDateFamily    && personIsFamily)                                  return 4;
+    if (hasDatePureAdding && (personIsAddingEl || personIsAddingPer))        return 4;
+    if (hasDatePureHetu   && (personIsHetuEl   || personIsHetuPer))          return 4;
+    if (hasDatePureQi     && (personIsPureQiEl || personIsPureQiPer))        return 4;
+    if (hasDateAdding     && (personIsAddingEl || personIsAddingPer))        return 4;
+    if (hasDateHetu       && (personIsHetuEl   || personIsHetuPer))          return 4;
 
     // Condition B: connects but different type → no extra bonus
     return 0;
+}
+
+/**
+ * UNIFIED HOUR SCORE — single source of truth used by BEST, LIST, TABLES views.
+ * @param {string} dGan      Day stem
+ * @param {string} dZhi      Day branch
+ * @param {string} hGan      Hour stem
+ * @param {string} hZhi      Hour branch (direct, not from eightChar)
+ * @param {string} mGan      Month stem
+ * @param {string} mZhi      Month branch
+ * @param {string} yZhi      Year branch
+ * @param {Array}  analysisItems  Output of analyzeXkdg()
+ * @param {object} hourSpirit     Output of getSpiritForHour() or null
+ * @param {boolean} sStrong       Season strong element
+ * @param {boolean} sGrowing      Season growing element
+ * @param {object|null} personAYear   Person A year xkdg data (or null)
+ * @param {string|null} pYStem        Person A year stem
+ * @param {string|null} pYBranch      Person A year branch
+ * @param {Array}  pNobleA            Person A noble branches
+ * @param {string|null} pLuA          Person A Lu branch
+ * @param {string|null} pHVA          Person A Heaven Virtue branch
+ * @param {string|null} pBVA          Person A Branch Virtue branch
+ * @param {object|null} pMVA          Person A Month Virtue {stem,branch}
+ * @param {string|null} pTYA          Person A Tian Yi branch
+ * @param {object|null} pillars       Resolved pillars object
+ */
+function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yZhi,
+                       analysisItems, hourSpirit, sStrong, sGrowing,
+                       personAYear, pYStem, pYBranch,
+                       pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA,
+                       pillars) {
+    const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+    const hasFullBL  = blueItems.some(i => i.tag === 'family');
+    const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
+
+    // Quality score from season
+    const qualityScore = getDateQualityScore(analysisItems);
+
+    // Match score from person A (multiplier + base relation score)
+    const dayXkdg = getXkdgData(dGan, dZhi);
+    let scoreA = 1;
+    let sameTypeBonusA = 0;
+    let fullBLBonus = 0;
+    let partialBLBonus = 0;
+    let relationBaseScore = 0;
+    if (personAYear && dayXkdg) {
+        scoreA = getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
+        sameTypeBonusA = getPersonSameTypeBonus(blueItems, personAYear, dayXkdg, pYStem, pYBranch, dGan, dZhi);
+        // Base score guaranteed per relation type (so strong relations always rank above no-relation hours)
+        if      (scoreA >= 4) relationBaseScore = 6; // Family
+        else if (scoreA >= 3) relationBaseScore = 5; // Pure Qi
+        else if (scoreA >= 2) relationBaseScore = 4; // Pure Adding / Pure Hetu
+        else if (scoreA >= 1) relationBaseScore = 2; // Adding / Hetu
+        // Full BL bonus
+        if (hasFullBL) {
+            const personFams = getJiaZiFamilies(pYStem, pYBranch);
+            const dateFams = blueItems.filter(i => i.tag === 'family').map(i => i.text.replace(' Family',''));
+            if (dateFams.some(f => personFams.includes(f))) fullBLBonus = 4;
+        }
+        // Partial BL bonus
+        if (fullBLBonus === 0) {
+            const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
+            if (matchLabels.some(l => l.startsWith('Partial BL'))) partialBLBonus = 1;
+        }
+    }
+
+    // Spirit bonuses/penalties
+    const spiritPenalty = (!hasFullBL && !hasPureQi && hourSpirit && !hourSpirit.auspicious) ? -2 : 0;
+    const spiritBonus   = (hourSpirit && hourSpirit.auspicious) ? 1 : 0;
+
+    // Tomb Sha penalty
+    const tombShaPenalty = isTombSha(hZhi, dGan, sStrong, sGrowing) ? -2 : 0;
+
+    // Clash penalty
+    const clashPenalty = getClashType(dGan, dZhi, yZhi, mGan, mZhi) ? -4 : 0;
+
+    // Personal star bonuses (person A)
+    const nobleBonus = (pNobleA && pNobleA.includes(hZhi)) ? 1 : 0;
+    const luBonus    = (pLuA && pLuA === hZhi) ? 1 : 0;
+    const hvBonus    = (pHVA && pHVA === hZhi) ? 1 : 0;
+    const bvBonus    = (pBVA && pBVA === hZhi) ? 1 : 0;
+    const mvBonus    = (pMVA && pMVA.stem === hGan) ? 1 : 0;
+    const tyBonus    = (pTYA && pTYA === hZhi) ? 1 : 0;
+
+    return Math.max(1,
+        scoreA * Math.max(qualityScore, 1)
+        + relationBaseScore
+        + sameTypeBonusA
+        + spiritPenalty + spiritBonus
+        + tombShaPenalty + clashPenalty
+        + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus
+        + fullBLBonus + partialBLBonus
+    );
 }
 
 // Build a map of isoDate+time → jieqi name for a given year range, adjusted to true solar time
@@ -2538,6 +2671,9 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
     var testMode = document.getElementById('purpose-no-person');
     var minScore = (testMode && testMode.checked) ? 1 : 4;
 
+    // allItems includes TY, Noble etc. — fall back to blueItems if not provided
+    var items = allItems || blueItems;
+
     // Spirit bonus: +2 each for qualifying spirits (all optional except TY for health)
     var spiritBonus = 0;
     if (hourSpirit) {
@@ -2561,11 +2697,8 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         if (hasLu)       spiritBonus += 2;
     }
     var adjustedScore = totalScore + spiritBonus;
-
     if (adjustedScore < minScore) return false;
     var dayRole = getDayRole(dGan, dZhi);
-    // allItems includes TY, Noble etc. — fall back to blueItems if not provided
-    var items = allItems || blueItems;
     var hasNoble = items.some(function(i){ return i.tag==='noble'||i.tag==='noble-both'; });
     var hasTY    = items.some(function(i){ return i.tag==='ty'||i.tag==='ty-both'; });
     var hasAddOrHetu = blueItems.some(function(i){
@@ -2573,10 +2706,6 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
     });
     var famItems = blueItems.filter(function(i){ return i.tag==='family'; });
     var fullBLFamily = famItems.length ? famItems[0].text.replace(' Family','') : null;
-    var hasQingLong = items.some(function(i){ return i.text && i.text.indexOf('Cerulean Dragon') >= 0; });
-    var hasJinKui   = items.some(function(i){ return i.text && i.text.indexOf('Golden Box') >= 0; });
-    var hasTianDe   = items.some(function(i){ return i.text && i.text.indexOf('Tian De') >= 0; });
-    var hasSiMing   = items.some(function(i){ return i.text && i.text.indexOf('Fate Master') >= 0; });
 
     // Person data required for all purposes (unless test mode)
     var testMode2 = document.getElementById('purpose-no-person');
@@ -2632,6 +2761,7 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         if (!hasAnyParent) return false;
 
         // Condition 2: Post Horse and/or Ding Spirit of PERSON's day branch in the date pillars
+        // Skip this check in Test Mode when no person data is available
         var personDayBranchA = _personADayBranch || null;
         var personDayBranchB = _personBDayBranch || null;
         var personDayJiaZiA  = (_personADayStem || '') + (personDayBranchA || '');
@@ -2642,13 +2772,16 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         var dsA = DING_SPIRIT_MAP[personDayJiaZiA] || null;
         var dsB = DING_SPIRIT_MAP[personDayJiaZiB] || null;
 
-        // Check if Post Horse or Ding Spirit of person appears in date branches
-        var dateBranches2 = _currentDayAnalysis ? Object.values(_currentDayAnalysis.branches) : [];
-        var personPHorDS = dateBranches2.some(function(b) {
-            return (phA && b === phA) || (phB && b === phB) ||
-                   (dsA && b === dsA) || (dsB && b === dsB);
-        });
-        if (!personPHorDS) return false;
+        // Only enforce Post Horse / Ding Spirit check if we have person data
+        var hasPersonData = personDayBranchA || personDayBranchB;
+        if (hasPersonData) {
+            var dateBranches2 = _currentDayAnalysis ? Object.values(_currentDayAnalysis.branches) : [];
+            var personPHorDS = dateBranches2.some(function(b) {
+                return (phA && b === phA) || (phB && b === phB) ||
+                       (dsA && b === dsA) || (dsB && b === dsB);
+            });
+            if (!personPHorDS) return false;
+        }
 
         // Condition 3 (optional bonus): hour branch = Post Horse or Ding Spirit of the DAY branch
         var dayBranchCurrent = (_currentDayAnalysis && _currentDayAnalysis.branches) ? _currentDayAnalysis.branches.day : null;
@@ -2796,7 +2929,17 @@ function buildTableView() {
 
             const hasFamily = items.some(i => i.tag === 'family');
             const hasBlue   = items.some(i => i.tag === 'blue');
-            const rowBg = hasFamily ? '#fffde7' : hasBlue ? '#e8f5e9' : (h % 2 === 0 ? '#f8f9fa' : '#fff');
+
+            // Score via unified calcHourScore
+            const tvScore = calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yZhi, items, hourSpirit, tSS, tSG, _personAYear ? { qi: _personAYear.qi, yun: _personAYear.yun } : null, _personAStem, _personABranch, NOBLE_BRANCHES[_personADayStem] || [], LU_BRANCH[_personADayStem] || null, _personAMonth ? (HEAVEN_VIRTUE[_personAMonth.branch] || null) : null, _personADay ? (BRANCH_VIRTUE[_personADay.branch] || null) : null, _personAMonth ? (MONTH_VIRTUE[_personAMonth.branch] || null) : null, _personADayStem ? (TIAN_YI[_personADayStem] || null) : null, pillars);
+            const tvScoreColor = tvScore >= 12 ? '#1b5e20' : tvScore >= 9 ? '#2e7d32' : tvScore >= 6 ? '#388e3c' : tvScore >= 4 ? '#558b2f' : '#888';
+
+            const rowBg = hasFamily ? '#fffde7'
+                        : tvScore >= 12 ? '#a5d6a7'
+                        : tvScore >= 9  ? '#c8e6c9'
+                        : tvScore >= 6  ? '#dcedc8'
+                        : tvScore >= 4  ? '#f1f8e9'
+                        : (h % 2 === 0 ? '#f8f9fa' : '#fff');
 
             // Relations text
             const blueTexts = items.filter(i => i.tag === 'blue' || i.tag === 'family').map(i => i.text);
@@ -2816,7 +2959,12 @@ function buildTableView() {
             </td>`;
 
             // Day + Month + Year all in one cell
-            const bgDMY = hasFamily ? '#fffde7' : hasBlue ? '#e8f5e9' : (h%2===0?'#f5f5f5':'#fafafa');
+            const bgDMY = hasFamily ? '#fffde7'
+                        : tvScore >= 12 ? '#a5d6a7'
+                        : tvScore >= 9  ? '#c8e6c9'
+                        : tvScore >= 6  ? '#dcedc8'
+                        : tvScore >= 4  ? '#f1f8e9'
+                        : (h%2===0?'#f5f5f5':'#fafafa');
             html += `<td style="border:1px solid #ddd;background:${bgDMY};padding:3px 2px;text-align:center;vertical-align:middle;">
                 <div style="display:flex;justify-content:center;gap:6px;">
                     <div style="text-align:center;">
@@ -2841,7 +2989,12 @@ function buildTableView() {
             </td>`;
 
             // Relations column - full info including badges and spirits
-            const relBg = hasFamily ? '#fffde7' : hasBlue ? '#f1f8e9' : (h%2===0?'#fafafa':'#fff');
+            const relBg = hasFamily ? '#fffde7'
+                        : tvScore >= 12 ? '#a5d6a7'
+                        : tvScore >= 9  ? '#c8e6c9'
+                        : tvScore >= 6  ? '#dcedc8'
+                        : tvScore >= 4  ? '#f1f8e9'
+                        : (h%2===0?'#fafafa':'#fff');
 
             // Badges (Noble, TY, HV, BV, MV, Lu)
             const badgeItems = items.filter(i => ['noble','noble-both','ty','ty-both','hv','bv','mv','lu','lu-both'].includes(i.tag));
@@ -2873,7 +3026,8 @@ function buildTableView() {
             const tombHtml = isTombSha(hZhi, dGan, tSS, tSG)
                 ? `<div style="font-size:9px;font-weight:bold;color:#d40000;">⚡ Tomb Sha 墓煞</div>` : '';
 
-            html += `<td style="border:1px solid #ddd;background:${relBg};padding:4px 5px;vertical-align:middle;text-align:right;">
+            html += `<td style="border:1px solid #ddd;background:${relBg};padding:4px 5px;vertical-align:middle;text-align:right;position:relative;">
+                <div style="position:absolute;top:2px;right:4px;font-size:13px;font-weight:bold;color:${tvScoreColor};">${tvScore}</div>
                 ${relHtml}
                 ${badgeHtml ? `<div style="margin:2px 0;text-align:right;">${badgeHtml}</div>` : ''}
                 ${qualHtml}
@@ -3401,20 +3555,8 @@ function buildMonthView() {
             const spirit = getSpiritForHour(dZhi, hZhiDirect);
             const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};">${spirit.en} ${spirit.zh}</span>` : '';
 
-            // Score calculation for LIST view
-            const qualityScoreLV = getDateQualityScore(analysisItems);
-            const scoreALV = personAYear ? getMatchScore(personAYear, pYStem, pYBranch, dData, dGan, dZhi) : 1;
-            const sameTypeBonusLV = personAYear ? getPersonSameTypeBonus(blueItems, personAYear, dData, pYStem, pYBranch, dGan, dZhi) : 0;
-            const spiritPenaltyLV = (!hasFamily && !blueItems.some(i=>i.text.includes('Pure Qi')) && spirit && !spirit.auspicious) ? -4 : 0;
-            const spiritBonusLV   = (spirit && spirit.auspicious) ? 1 : 0;
-            const nobleBonusLV = pNobleA ? (pNobleA.includes(hZhi) ? 1 : 0) : ((NOBLE_BRANCHES[dGan]||[]).includes(hZhi) ? 1 : 0);
-            const luBonusLV    = pLuA ? (pLuA === hZhi ? 1 : 0) : (LU_BRANCH[dGan] === hZhi ? 1 : 0);
-            const hvBonusLV    = pHVA ? (pHVA === hZhi ? 1 : 0) : 0;
-            const bvBonusLV    = pBVA ? (pBVA === hZhi ? 1 : 0) : 0;
-            const mvBonusLV    = pMVA ? (pMVA.stem === hGan ? 1 : 0) : 0;
-            const tyBonusLV    = pTYA ? (pTYA === hZhi ? 1 : 0) : 0;
-            const clashPenaltyLV = getClashType(dGan, dZhi, eightChar.getYearZhi(), mGan, mZhi) ? -2 : 0;
-            const listScore = Math.max(1, scoreALV * Math.max(qualityScoreLV, 1) + sameTypeBonusLV + spiritPenaltyLV + spiritBonusLV + nobleBonusLV + luBonusLV + hvBonusLV + bvBonusLV + mvBonusLV + tyBonusLV + clashPenaltyLV);
+            // Score via unified calcHourScore
+            const listScore = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personAYear, pYStem, pYBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
             const lvGreenBg = listScore >= 12 ? '#a5d6a7'   // rank-1 strong green
                             : listScore >= 9  ? '#c8e6c9'   // rank-2 high
                             : listScore >= 6  ? '#dcedc8'   // rank-3 medium
@@ -3457,10 +3599,21 @@ function buildMonthView() {
 
             const tombShaHTML = isTombShaLV ? `<span style="color:#d40000;font-weight:bold;font-size:10px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'墓煞')">墓煞</span>` : '';
 
-            // Purpose filter for LIST view
+            // Purpose filter for LIST view — needs current hour's _currentDayAnalysis
             const purposeLV = getPurpose();
-            const purposeIconLV = purposeLV && checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems, spirit)
-                ? PURPOSE_ICONS[purposeLV] : '';
+            let purposeIconLV = '';
+            if (purposeLV) {
+                const _savedForPurpose = _currentDayAnalysis;
+                _currentDayAnalysis = {
+                    items: analysisItems,
+                    pillars: { hour: pillars.hour, day: pillars.day, month: pillars.month, year: pillars.year },
+                    stems: { hour: hGan, day: dGan, month: mGan, year: yGan },
+                    branches: { hour: hZhiDirect, day: dZhi, month: mZhi, year: yZhi }
+                };
+                purposeIconLV = checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems, spirit)
+                    ? PURPOSE_ICONS[purposeLV] : '';
+                _currentDayAnalysis = _savedForPurpose;
+            }
             if (purposeLV && !purposeIconLV) continue;
 
             dayRowsHtml += `<div onclick="loadDateIntoMain('${isoDate}',${h})"
@@ -3494,6 +3647,7 @@ function buildMonthView() {
                 </div>
                 </div>
                 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
+                    <div style="font-size:11px;font-weight:bold;color:#fff;background:#1565c0;border-radius:8px;padding:0px 5px;display:inline-block;margin-bottom:2px;">${listScore}</div>
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.join(' · ')}</div>` : ''}` : ''}
                     ${[
@@ -3853,56 +4007,14 @@ function runScanner() {
             const HOUR_BRANCHES_SC = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
             const hZhiSC = HOUR_BRANCHES_SC[h];
             const hourSpirit = getSpiritForHour(dZhi, hZhiSC);
-            const hasPureQiOrFamily = blueItems.some(i =>
-                i.text.includes('Pure Qi') || i.tag === 'family'
-            );
-            const hasAddingOrHetu = blueItems.some(i =>
-                i.text.includes('Adding') || i.text.includes('Hetu')
-            );
+            const hasPureQiOrFamily = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
 
             // Kong Wang check: skip hour if void branch and untimely (Pure Qi and Family exempt)
             if (!hasPureQiOrFamily && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
-            const hasFullBL  = blueItems.some(i => i.tag === 'family');
-            const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
-            const spiritPenalty = (!hasFullBL && !hasPureQi && hourSpirit && !hourSpirit.auspicious) ? -4 : 0;
-            const tombShaPenalty = isTombSha(hZhiSC, dGan, sStrong, sGrowing) ? -3 : 0;
-            const spiritBonus   = (hourSpirit && hourSpirit.auspicious) ? 1 : 0;
 
-            // Noble bonus: hour branch is Noble for PERSON A's day stem
-            const nobleBonus = pNobleA.includes(hZhiSC) ? 1 : 0;
-            // Lu bonus: hour branch is Lu for PERSON A's day stem
-            const luBonus = pLuA === hZhiSC ? 1 : 0;
-            // Heaven Virtue bonus: hour branch matches PERSON A's HV (based on person's month branch)
-            const hvBonus = pHVA === hZhiSC ? 1 : 0;
-            // Branch Virtue bonus: hour branch matches PERSON A's BV (based on person's day branch)
-            const bvBonus = pBVA === hZhiSC ? 1 : 0;
-            // Month Virtue bonus: hour stem matches PERSON A's MV stem
-            const mvBonus = pMVA && pMVA.stem === hGan ? 1 : 0;
-            // Tian Yi bonus: hour branch matches PERSON A's TY (based on person's day stem)
-            const tyBonus = pTYA === hZhiSC ? 1 : 0;
-
-            // Clash penalty
-            const clashTypeSC = getClashType(dGan, dZhi, pillars.year.branch, mGan, mZhi);
-            const clashPenalty = clashTypeSC === 'clash-year' ? -2 :
-                                 (clashTypeSC === 'clash-month-stem' || clashTypeSC === 'clash-month-branch') ? -2 : 0;
-
-            // Blood Link bonus: +2 if person's year belongs to same family (full BL)
-            const personYearSC = getPersonYearData();
-            const fullBLBonus = (() => {
-                if (!personYearSC || !personYearSC.families) return 0;
-                const hasFamily = blueItems.some(i => i.tag === 'family');
-                if (!hasFamily) return 0;
-                const dateFamilies = blueItems
-                    .filter(i => i.tag === 'family')
-                    .map(i => i.text.replace(' Family', ''));
-                return dateFamilies.some(f => personYearSC.families.includes(f)) ? 2 : 0;
-            })();
-
-            // Partial BL bonus: +1 (slightly below full BL)
-
-            const matchLabels  = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
-            const partialBLBonus = fullBLBonus === 0 && matchLabels.some(l => l.startsWith('Partial BL')) ? 1 : 0;
-            const totalScore = Math.max(1, scoreA * Math.max(qualityScore, 1) + sameTypeBonusA + spiritPenalty + tombShaPenalty + spiritBonus + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus + clashPenalty + fullBLBonus + partialBLBonus);
+            // Score via unified calcHourScore
+            const totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, personAYear, pYStem, pYBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
+            const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
             const qualLabels  = analysisItems.filter(i => ['Powerful','Energetic','Very Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
