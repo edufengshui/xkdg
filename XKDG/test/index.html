@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-08 — PWA255: Fix getMatchLabels null crash; fix NAYIN_ELEMENT duplicates; filters work without person -->
+<!-- Generated: 2026-05-08 — PWA257: 🎤 Speak purpose; Wen Chang table; Nayin person pushed to analysisItems -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -377,6 +377,7 @@
                 <option value="wealth">💰 Wealth</option>
                 <option value="relationship">❤️ Relationship</option>
                 <option value="journey">✈️ Journey</option>
+                <option value="speak" title="Speaking, Teaching, Presenting, Performing — requires good Nayin for person">🎤 Speak</option>
               </select>
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#555;cursor:pointer;">
                 <input type="checkbox" id="purpose-no-person" style="cursor:pointer;">
@@ -706,7 +707,7 @@ function analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pGan, pZhi
     let label = null, score = 0;
     if (positives === 3) {
         label = 'Nayin Power';
-        score = 3;
+        score = 5;
     } else if (positives === 2) {
         label = 'Nayin';
         score = 1;
@@ -2370,6 +2371,7 @@ function renderScanResults(results, mode) {
             if (purpose === 'wealth')       return '<span style="color:#2e7d32;font-weight:bold;">Child+Parent</span>';
             if (purpose === 'relationship') return '<span style="color:#2e7d32;font-weight:bold;">Child+Parent/Adding</span>';
             if (purpose === 'journey')      return '<span style="color:#2e7d32;font-weight:bold;">Journey</span>';
+            if (purpose === 'speak')        return '<span style="color:#2e7d32;font-weight:bold;">🎤 Speak</span>';
             return '';
         })() : '';
         const nayinStr = r.nayinLabel === 'Nayin Power' ? `<span style="font-size:10px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</span>`
@@ -2699,26 +2701,29 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     const tyBonus    = (pTYA && pTYA === hZhi) ? 1 : 0;
 
     // Minimum floor: penalties can never push a relation below its floor
+    const nayinRes = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
+    const nayinScore = nayinRes.score + nayinRes.personScore;
+
+    // Nayin Power gets its own floor (+5 base means min 6 before other bonuses)
+    const nayinFloor = nayinRes.label === 'Nayin Power' ? 6 : nayinRes.label === 'Nayin' ? 2 : null;
+
     const relationFloor = blueItems.some(i => i.tag === 'family')                                                  ? 8
                         : blueItems.some(i => i.text.includes('Pure Qi'))                                          ? 6
                         : blueItems.some(i => i.text.includes('Pure Adding') || i.text.includes('Pure Hetu'))      ? 5
                         : blueItems.some(i => i.text.includes('Adding') || i.text.includes('Hetu') || i.text.startsWith('Inverse Hex')) ? 3
                         : 1;
 
-    // Nayin analysis bonus/penalty
-    const nayinRes = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
-    const nayinScore = nayinRes.score + nayinRes.personScore;
+    // For Nayin Weak, allow score to go negative (don't apply floor)
+    const effectiveFloor = nayinRes.label === 'Nayin Weak' ? -2
+                         : nayinFloor !== null ? Math.max(relationFloor, nayinFloor)
+                         : relationFloor;
 
-    return Math.max(relationFloor,
-        scoreA * Math.max(qualityScore, 1)
+    const rawScore = scoreA * Math.max(qualityScore, 1)
         + relationBaseScore
         + sameTypeBonusA
         + spiritPenalty + spiritBonus
         + tombShaPenalty + clashPenalty
-        + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus
-        + fullBLBonus + partialBLBonus
-        + nayinScore
-    );
+    return Math.max(effectiveFloor, rawScore);
 }
 
 // Build a map of isoDate+time → jieqi name for a given year range, adjusted to true solar time
@@ -2780,6 +2785,13 @@ const POST_HORSE = {
     '亥':'巳','卯':'巳','未':'巳'   // Wood group → Snake
 };
 
+// Wen Chang: Day/Person Stem → Branch
+const WEN_CHANG = {
+    '甲':'巳', '乙':'午', '丙':'申', '丁':'酉',
+    '戊':'申', '己':'酉', '庚':'亥', '辛':'子',
+    '壬':'寅', '癸':'卯'
+};
+
 const DING_SPIRIT_MAP = {
     '甲子':'卯','乙丑':'卯','丙寅':'卯','丁卯':'卯','戊辰':'卯','己巳':'卯','庚午':'卯','辛未':'卯','壬申':'卯','癸酉':'卯',
     '甲戌':'丑','乙亥':'丑','丙子':'丑','丁丑':'丑','戊寅':'丑','己卯':'丑','庚辰':'丑','辛巳':'丑','壬午':'丑','癸未':'丑',
@@ -2790,8 +2802,8 @@ const DING_SPIRIT_MAP = {
 };
 
 // ── Purpose Filter ────────────────────────────────────────────
-var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️' };
-var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey' };
+var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤' };
+var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak' };
 
 function onPurposeChange() {
     var sel = document.getElementById('purpose-select');
@@ -2967,6 +2979,39 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         var dayDS = dayStemCurrent && dayBranchCurrent ? (DING_SPIRIT_MAP[dayStemCurrent + dayBranchCurrent] || null) : null;
         var hourIsOptional = dZhi && ((dayPH && dZhi === dayPH) || (dayDS && dZhi === dayDS));
         if (hourIsOptional) spiritBonus += 2;
+
+        return true;
+    }
+    if (purpose === 'speak') {
+        // Disqualify: Heaven Penalty, Gou Chen
+        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Gou Chen')) return false;
+
+        // Required: Good Nayin for person (Nayin ✦ Person)
+        var hasGoodNayin = items.some(function(i){ return i.tag === 'nayin-person-good' || i.text === 'Nayin ✦ Person'; });
+        if (!hasGoodNayin) {
+            // Also check via allItems
+            var allItemsSpeak = allItems || blueItems;
+            hasGoodNayin = allItemsSpeak.some(function(i){ return i.tag === 'nayin-person-good' || i.text === 'Nayin ✦ Person'; });
+        }
+        if (!hasGoodNayin) return false;
+
+        // Optional +2: Yu Tang (Jade Hall)
+        var hasYuTang = hourSpirit && (hourSpirit.en === 'Jade Hall');
+        if (hasYuTang) spiritBonus += 2;
+
+        // Optional +2: Qing Long (Cerulean Dragon)
+        var hasQingLong2 = hourSpirit && (hourSpirit.en === 'Cerulean Dragon');
+        if (hasQingLong2) spiritBonus += 2;
+
+        // Optional +2: Date Wen Chang (hour branch = WC of day stem)
+        var wcDate = WEN_CHANG[dGan] || null;
+        if (wcDate && dZhi === wcDate) spiritBonus += 2;
+
+        // Optional +2: Person Wen Chang (day branch of date = WC of person's day stem)
+        var personDayStemSp = _personADayStem || _personBDayStem || null;
+        var wcPerson = personDayStemSp ? (WEN_CHANG[personDayStemSp] || null) : null;
+        var dateDayBranchSp = (_currentDayAnalysis && _currentDayAnalysis.branches) ? _currentDayAnalysis.branches.day : dZhi;
+        if (wcPerson && dateDayBranchSp === wcPerson) spiritBonus += 2;
 
         return true;
     }
@@ -3656,9 +3701,13 @@ function buildMonthView() {
             const hZhiDirect = HOUR_BRANCHES_LV[h];
             const isTombShaLV = isTombSha(hZhi, dGan, sS, sG);
 
-            // If no hData and no Tomb Sha, skip — unless NaYin filter active
-            const activeFiltersPre = getActiveFilters();
-            if (!hData && !isTombShaLV && !activeFiltersPre.has('nayin')) continue;
+            // If no hData and no Tomb Sha — check Nayin before deciding to skip
+            if (!hData && !isTombShaLV) {
+                if (!activeFiltersPre.has('nayin')) continue;
+                // NaYin filter active: check if this hour has a Nayin label
+                const nayinCheck = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
+                if (!nayinCheck.label) continue;
+            }
 
             // If Tomb Sha but no XKDG data for hour, show warning row
             if (!hData && isTombShaLV) {                dayRowsHtml += `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;">
@@ -3684,12 +3733,14 @@ function buildMonthView() {
             // Add Nayin to analysisItems for filter
             const nayinResLV = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
             if (nayinResLV.label) analysisItems.push({ text: nayinResLV.label, tag: nayinResLV.label === 'Nayin Power' ? 'nayin-power' : nayinResLV.label === 'Nayin Weak' ? 'nayin-weak' : 'nayin' });
+            if (nayinResLV.personLabel) analysisItems.push({ text: nayinResLV.personLabel, tag: nayinResLV.personScore > 0 ? 'nayin-person-good' : 'nayin-person-bad' });
             const isPositive = blueItems.length > 0;
+            const isNayinPositiveOrWeak = nayinResLV.label !== null;
 
-            // Skip hours with no XKDG relations — unless purpose filter or nayin filter is active
+            // Skip hours with no XKDG relations — unless purpose/nayin filter or Nayin label exists
             const activeFiltersMV = getActiveFilters();
             const hasNayinFilter = activeFiltersMV.has('nayin');
-            if (!isPositive && !getPurpose() && !hasNayinFilter) continue;
+            if (!isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter) continue;
 
             // Apply filter chips
             if (activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
@@ -3727,10 +3778,11 @@ function buildMonthView() {
             }
             // No person, no filters → still show XKDG positive hours (isPositive check already handled above)
 
-            // Kong Wang check: mark void+untimely with red V (Pure Qi and Family exempt)
+            // Kong Wang check: mark void+untimely with red V (Pure Qi, Family, and Nayin Weak exempt)
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
-            const isVoidLV = !hasPureQiOrFamilyLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
-            if (isVoidLV) continue; // always hide void rows
+            const isNayinWeakLV = nayinResLV.label === 'Nayin Weak';
+            const isVoidLV = !hasPureQiOrFamilyLV && !isNayinWeakLV && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
+            if (isVoidLV) continue;
 
             let isFavourable = false;
             if (isPositive && (personAYear || personBYear)) {
@@ -3787,14 +3839,13 @@ function buildMonthView() {
             // Score via unified calcHourScore
             const listScore = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personAYear, pYStem, pYBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
 
-            // Nayin label for LIST view
-            const nayinLV = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), pYStem, pYBranch);
-            const nayinHTMLLV = nayinLV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</div>`
-                              : nayinLV.label === 'Nayin'       ? `<div style="font-size:9px;font-weight:bold;color:#2e7d32;">Nayin</div>`
-                              : nayinLV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;">✕ Nayin Weak</div>`
+            // Nayin label for LIST view — reuse nayinResLV from filter step
+            const nayinHTMLLV = nayinResLV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</div>`
+                              : nayinResLV.label === 'Nayin'       ? `<div style="font-size:9px;font-weight:bold;color:#2e7d32;">Nayin</div>`
+                              : nayinResLV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;">✕ Nayin Weak</div>`
                               : '';
-            const nayinPersonHTMLLV = nayinLV.personLabel === 'Nayin ✦ Person' ? `<div style="font-size:9px;font-weight:bold;color:#0d47a1;">✦ Nayin Person</div>`
-                                    : nayinLV.personLabel === 'Nayin ✗ Person' ? `<div style="font-size:9px;font-weight:bold;color:#e65100;">✗ Nayin Person</div>`
+            const nayinPersonHTMLLV = nayinResLV.personLabel === 'Nayin ✦ Person' ? `<div style="font-size:9px;font-weight:bold;color:#0d47a1;">✦ Nayin Person</div>`
+                                    : nayinResLV.personLabel === 'Nayin ✗ Person' ? `<div style="font-size:9px;font-weight:bold;color:#e65100;">✗ Nayin Person</div>`
                                     : '';
             const lvGreenBg = listScore >= 12 ? '#a5d6a7'   // rank-1 strong green
                             : listScore >= 9  ? '#c8e6c9'   // rank-2 high
@@ -4170,13 +4221,38 @@ function runScanner() {
             // Get hour xkdg
             const hGan = eightChar.getTimeGan(), hZhi = eightChar.getTimeZhi();
             const hourData = getXkdgData(hGan, hZhi);
-            if (!hourData && !getActiveFilters().has('nayin')) continue;
+            if (!hourData) {
+                if (!getActiveFilters().has('nayin')) continue;
+                // NaYin filter: check if hour has Nayin label before proceeding
+                const yGanPre = eightChar.getYearGan(), yZhiPre = eightChar.getYearZhi();
+                const mGanPre = eightChar.getMonthGan(), mZhiPre = eightChar.getMonthZhi();
+                const nayinPre = analyzeNayin(dGan, dZhi, hGan, hZhi, mGanPre, mZhiPre, yGanPre, yZhiPre, null, null);
+                if (!nayinPre.label) continue;
+            }
 
             // Build all 4 pillars for analysis with dual hexagram resolution
             const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
             const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
             const pillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGan, hZhi);
-            if (!pillars.year.hex || !pillars.month.hex) continue;
+            if (!pillars.year.hex || !pillars.month.hex) {
+                // No XKDG data — only show if Nayin Weak filter active and this hour is Nayin Weak
+                if (!getActiveFilters().has('nayin')) continue;
+                const nayinWkChk = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
+                if (nayinWkChk.label !== 'Nayin Weak') continue;
+                // Push a minimal result for this Nayin Weak hour
+                const dd2 = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+                results.push({
+                    score: -2, scoreA: 0, scoreB: 0, sameTypeBonusA: 0, sameTypeBonusB: 0, qualityScore: 0,
+                    spiritAuspicious: null, spiritLabel: '',
+                    rawDate: dayDate.getTime() + h * 7200000,
+                    isoDate: localISODate(dayDate), hourIndex: h,
+                    date: dd2, hour: HOUR_ROMAN[h],
+                    matchLabels: [], qualLabels: [], blueLabels: [],
+                    hasTY: false, isDayTY: false, hasNoble: false,
+                    nayinLabel: 'Nayin Weak', nayinPersonLabel: ''
+                });
+                continue;
+            }
 
             // Get season
             const seasonInfo = getJieqiSeason(solarDate);
@@ -4196,10 +4272,12 @@ function runScanner() {
             // Add Nayin to analysisItems for filter
             const nayinResBST = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, pillars.year.branch, pYStem, pYBranch);
             if (nayinResBST.label) analysisItems.push({ text: nayinResBST.label, tag: nayinResBST.label === 'Nayin Power' ? 'nayin-power' : nayinResBST.label === 'Nayin Weak' ? 'nayin-weak' : 'nayin' });
+            if (nayinResBST.personLabel) analysisItems.push({ text: nayinResBST.personLabel, tag: nayinResBST.personScore > 0 ? 'nayin-person-good' : 'nayin-person-bad' });
 
             const activeFilters = getActiveFilters();
             const hasNayinFilterBST = activeFilters.has('nayin');
-            if (blueItems.length === 0 && !getPurpose() && !hasNayinFilterBST) continue;
+            const isNayinWeakBST = nayinResBST.label === 'Nayin Weak';
+            if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST) continue;
 
             // Apply filter
             if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
@@ -4274,17 +4352,16 @@ function runScanner() {
             const hourSpirit = getSpiritForHour(dZhi, hZhiSC);
             const hasPureQiOrFamily = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
 
-            // Kong Wang check: skip hour if void branch and untimely (Pure Qi and Family exempt)
-            if (!hasPureQiOrFamily && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
+            // Kong Wang check: skip void unless Pure Qi, Family, or Nayin Weak
+            if (!hasPureQiOrFamily && !isNayinWeakBST && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
 
             // Score via unified calcHourScore
             const totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, personAYear, pYStem, pYBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
             const qualLabels  = analysisItems.filter(i => ['Powerful','Energetic','Very Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
-            const nayinBest   = analyzeNayin(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, pYStem, pYBranch);
-            const nayinLabel  = nayinBest.label || '';
-            const nayinPersonLabel = nayinBest.personLabel || '';
+            const nayinLabel  = nayinResBST.label || '';
+            const nayinPersonLabel = nayinResBST.personLabel || '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
             if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) continue;
