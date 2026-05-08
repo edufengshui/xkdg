@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-08 — PWA247: Relation floor scores so penalties never crush Pure Adding/Qi/Family hours -->
+<!-- Generated: 2026-05-08 — PWA250: DAYS layout 2-row with tall SCAN; unified score; A/B markers in TABLES -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -386,15 +386,33 @@
               <input type="date" id="scan-start">
               <button class="btn-scan" onclick="setScanNow()" style="padding:6px 10px;font-size:12px;">NOW</button>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <label>DAYS:</label>
-              <input type="number" id="scan-days" value="30" min="1" max="9999" style="width:60px;">
-              <button class="btn-scan" onclick="setScanDays(30)"  style="padding:6px 8px;font-size:11px;">+1m</button>
-              <button class="btn-scan" onclick="setScanDays(90)"  style="padding:6px 8px;font-size:11px;">+3m</button>
-              <button class="btn-scan" onclick="setScanDays(180)" style="padding:6px 8px;font-size:11px;">+6m</button>
+            <div style="display:flex;align-items:stretch;gap:6px;width:100%;">
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <label style="flex-shrink:0;">DAYS:</label>
+                  <input type="number" id="scan-days" value="30" min="1" max="9999" style="width:55px;flex-shrink:0;">
+                  <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;">
+                    <button onclick="setScanOffset(-30)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
+                    <span style="padding:0 5px;font-size:11px;font-weight:bold;color:#333;">1m</span>
+                    <button onclick="setScanOffset(30)"   style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
+                  </span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;padding-left:46px;">
+                  <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;">
+                    <button onclick="setScanOffset(-90)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
+                    <span style="padding:0 5px;font-size:11px;font-weight:bold;color:#333;">3m</span>
+                    <button onclick="setScanOffset(90)"   style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
+                  </span>
+                  <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;">
+                    <button onclick="setScanOffset(-180)" style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
+                    <span style="padding:0 5px;font-size:11px;font-weight:bold;color:#333;">6m</span>
+                    <button onclick="setScanOffset(180)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
+                  </span>
+                </div>
+              </div>
+              <button onclick="runAll()" style="margin-left:auto;background:linear-gradient(135deg,#2e7d32,#43a047);color:white;font-weight:700;font-size:14px;padding:8px 22px;border:2px solid #1b5e20;border-radius:8px;cursor:pointer;letter-spacing:1px;box-shadow:0 3px 10px rgba(46,125,50,0.4);align-self:stretch;">SCAN</button>
             </div>
-            <button onclick="runAll()" style="background:linear-gradient(135deg,#2e7d32,#43a047);color:white;font-weight:700;font-size:14px;padding:8px 22px;border:2px solid #1b5e20;border-radius:8px;cursor:pointer;letter-spacing:1px;box-shadow:0 3px 10px rgba(46,125,50,0.4);">SCAN</button>
-            <button class="btn-scan" id="sort-date"  onclick="sortResults('date')"  style="background:#0d47a1;display:none;">📅 BY DATE</button>
+            <button class="btn-scan" id="sort-date" onclick="sortResults('date')" style="background:#0d47a1;display:none;">📅 BY DATE</button>
         </div>
         <div class="filter-panel" id="filter-panel">
             <span style="font-size:11px;color:#555;font-weight:bold;width:100%;">Show only (select to filter):</span>
@@ -1678,13 +1696,15 @@ let _scanResults = [];
 let _personAYear = null, _personAStem = null, _personABranch = null;
 let _personADay  = null, _personADayStem = null, _personADayBranch = null;
 let _personAMonth = null, _personAHour = null;
-let _personAPillars = null; // all 4: {hour,day,month,year} with qi,yun
-let _personARelations = null; // active blue items from A's chart
+let _personAMonthBranch = null, _personADayBranchXkdg = null;
+let _personAPillars = null;
+let _personARelations = null;
 let _personBYear = null, _personBStem = null, _personBBranch = null;
 let _personBDay  = null, _personBDayStem = null, _personBDayBranch = null;
 let _personBMonth = null, _personBHour = null;
+let _personBMonthBranch = null, _personBDayBranchXkdg = null;
 let _personBPillars = null;
-let _personBRelations = null; // active blue items from B's chart
+let _personBRelations = null;
 
 // ── Archive ──────────────────────────────────
 function loadArchive(key) {
@@ -1813,6 +1833,8 @@ function calculatePerson(person) {
         _personBDay       = xkdgData.day;
         _personBDayStem   = pillarKeys.day.stem;
         _personBDayBranch = pillarKeys.day.branch;
+        _personBMonthBranch   = pillarKeys.month.branch;
+        _personBDayBranchXkdg = pillarKeys.day.branch;
         checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'B');
     } else {
         _personAYear      = xkdgData.year;
@@ -1825,6 +1847,8 @@ function calculatePerson(person) {
         _personADay       = xkdgData.day;
         _personADayStem   = pillarKeys.day.stem;
         _personADayBranch = pillarKeys.day.branch;
+        _personAMonthBranch   = pillarKeys.month.branch;
+        _personADayBranchXkdg = pillarKeys.day.branch;
         checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'A');
     }
 
@@ -2938,9 +2962,44 @@ function buildTableView() {
             const hasFamily = items.some(i => i.tag === 'family');
             const hasBlue   = items.some(i => i.tag === 'blue');
 
+            // Person A connection check
+            const tvDayXkdg = getXkdgData(dGan, dZhi);
+            const tvConnectsA = _personAYear && tvDayXkdg && (() => {
+                const pQi = _personAYear.qi, pYun = _personAYear.yun;
+                const dQi = tvDayXkdg.qi,   dYun = tvDayXkdg.yun;
+                return isHetuPair(pQi,dQi) || [5,10,15].includes(pQi+dQi) ||
+                       isHetuPair(pYun,dYun) || [5,10,15].includes(pYun+dYun) ||
+                       getJiaZiFamilies(_personAStem,_personABranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+            })();
+            const tvConnectsB = _personBYear && tvDayXkdg && (() => {
+                const pQi = _personBYear.qi, pYun = _personBYear.yun;
+                const dQi = tvDayXkdg.qi,   dYun = tvDayXkdg.yun;
+                return isHetuPair(pQi,dQi) || [5,10,15].includes(pQi+dQi) ||
+                       isHetuPair(pYun,dYun) || [5,10,15].includes(pYun+dYun) ||
+                       getJiaZiFamilies(_personBStem,_personBBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+            })();
+
+            // Score: use best person (A if connects, B if connects, neither if none)
+            const tvPersonYear  = tvConnectsA ? { qi: _personAYear.qi, yun: _personAYear.yun } : (tvConnectsB ? { qi: _personBYear.qi, yun: _personBYear.yun } : null);
+            const tvPStem       = tvConnectsA ? _personAStem   : (tvConnectsB ? _personBStem   : null);
+            const tvPBranch     = tvConnectsA ? _personABranch : (tvConnectsB ? _personBBranch : null);
+            const tvDayStem     = tvConnectsA ? _personADayStem  : (tvConnectsB ? _personBDayStem  : null);
+            const tvNobles      = tvDayStem ? (NOBLE_BRANCHES[tvDayStem] || []) : [];
+            const tvLu          = tvDayStem ? (LU_BRANCH[tvDayStem] || null) : null;
+            const tvMthBranch   = tvConnectsA ? _personAMonthBranch : (tvConnectsB ? _personBMonthBranch : null);
+            const tvDayBranchPer= tvConnectsA ? _personADayBranchXkdg : (tvConnectsB ? _personBDayBranchXkdg : null);
+            const tvHV          = tvMthBranch ? (HEAVEN_VIRTUE[tvMthBranch] || null) : null;
+            const tvBV          = tvDayBranchPer ? (BRANCH_VIRTUE[tvDayBranchPer] || null) : null;
+            const tvMV          = tvMthBranch ? (MONTH_VIRTUE[tvMthBranch]  || null) : null;
+            const tvTY          = tvDayStem   ? (TIAN_YI[tvDayStem] || null) : null;
+
             // Score via unified calcHourScore
-            const tvScore = calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yZhi, items, hourSpirit, tSS, tSG, _personAYear ? { qi: _personAYear.qi, yun: _personAYear.yun } : null, _personAStem, _personABranch, NOBLE_BRANCHES[_personADayStem] || [], LU_BRANCH[_personADayStem] || null, _personAMonth ? (HEAVEN_VIRTUE[_personAMonth.branch] || null) : null, _personADay ? (BRANCH_VIRTUE[_personADay.branch] || null) : null, _personAMonth ? (MONTH_VIRTUE[_personAMonth.branch] || null) : null, _personADayStem ? (TIAN_YI[_personADayStem] || null) : null, pillars);
+            const tvScore = calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yZhi, items, hourSpirit, tSS, tSG, tvPersonYear, tvPStem, tvPBranch, tvNobles, tvLu, tvHV, tvBV, tvMV, tvTY, pillars);
             const tvScoreColor = tvScore >= 12 ? '#1b5e20' : tvScore >= 9 ? '#2e7d32' : tvScore >= 6 ? '#388e3c' : tvScore >= 4 ? '#558b2f' : '#888';
+
+            // A/B markers
+            const tvAmarker = tvConnectsA ? `<span style="font-size:10px;font-weight:bold;color:#7b1fa2;">A</span>` : '';
+            const tvBmarker = tvConnectsB ? `<span style="font-size:10px;font-weight:bold;color:#6a1b9a;">B</span>` : '';
 
             const rowBg = hasFamily ? '#fffde7'
                         : tvScore >= 12 ? '#a5d6a7'
@@ -3035,7 +3094,10 @@ function buildTableView() {
                 ? `<div style="font-size:9px;font-weight:bold;color:#d40000;">⚡ Tomb Sha 墓煞</div>` : '';
 
             html += `<td style="border:1px solid #ddd;background:${relBg};padding:4px 5px;vertical-align:middle;text-align:right;position:relative;">
-                <div style="position:absolute;top:2px;right:4px;font-size:13px;font-weight:bold;color:${tvScoreColor};">${tvScore}</div>
+                <div style="position:absolute;top:2px;right:4px;display:flex;align-items:center;gap:2px;">
+                    <span style="font-size:13px;font-weight:bold;color:${tvScoreColor};">${tvScore}</span>
+                    ${tvAmarker}${tvBmarker}
+                </div>
                 ${relHtml}
                 ${badgeHtml ? `<div style="margin:2px 0;text-align:right;">${badgeHtml}</div>` : ''}
                 ${qualHtml}
