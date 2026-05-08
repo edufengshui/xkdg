@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-08 — PWA247: Relation base scores (Family+6, PureQi+5, PureAdd/Hetu+4, Add/Hetu+2); He confirmed in seasonal logic -->
+<!-- Generated: 2026-05-08 — PWA247: Relation floor scores so penalties never crush Pure Adding/Qi/Family hours -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2487,21 +2487,22 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yZhi,
     // Quality score from season
     const qualityScore = getDateQualityScore(analysisItems);
 
-    // Match score from person A (multiplier + base relation score)
+    // Base score from the date's own XKDG relations (guaranteed floor regardless of person/season)
+    let relationBaseScore = 0;
+    if (blueItems.some(i => i.tag === 'family'))                                                  relationBaseScore = 6;
+    else if (blueItems.some(i => i.text.includes('Pure Qi')))                                     relationBaseScore = 5;
+    else if (blueItems.some(i => i.text.includes('Pure Adding') || i.text.includes('Pure Hetu'))) relationBaseScore = 4;
+    else if (blueItems.some(i => i.text.includes('Adding') || i.text.includes('Hetu') || i.text.startsWith('Inverse Hex'))) relationBaseScore = 2;
+
+    // Match score from person A (multiplier)
     const dayXkdg = getXkdgData(dGan, dZhi);
     let scoreA = 1;
     let sameTypeBonusA = 0;
     let fullBLBonus = 0;
     let partialBLBonus = 0;
-    let relationBaseScore = 0;
     if (personAYear && dayXkdg) {
         scoreA = getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi);
         sameTypeBonusA = getPersonSameTypeBonus(blueItems, personAYear, dayXkdg, pYStem, pYBranch, dGan, dZhi);
-        // Base score guaranteed per relation type (so strong relations always rank above no-relation hours)
-        if      (scoreA >= 4) relationBaseScore = 6; // Family
-        else if (scoreA >= 3) relationBaseScore = 5; // Pure Qi
-        else if (scoreA >= 2) relationBaseScore = 4; // Pure Adding / Pure Hetu
-        else if (scoreA >= 1) relationBaseScore = 2; // Adding / Hetu
         // Full BL bonus
         if (hasFullBL) {
             const personFams = getJiaZiFamilies(pYStem, pYBranch);
@@ -2533,7 +2534,14 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yZhi,
     const mvBonus    = (pMVA && pMVA.stem === hGan) ? 1 : 0;
     const tyBonus    = (pTYA && pTYA === hZhi) ? 1 : 0;
 
-    return Math.max(1,
+    // Minimum floor: penalties can never push a relation below its floor
+    const relationFloor = blueItems.some(i => i.tag === 'family')                                                  ? 8
+                        : blueItems.some(i => i.text.includes('Pure Qi'))                                          ? 6
+                        : blueItems.some(i => i.text.includes('Pure Adding') || i.text.includes('Pure Hetu'))      ? 5
+                        : blueItems.some(i => i.text.includes('Adding') || i.text.includes('Hetu') || i.text.startsWith('Inverse Hex')) ? 3
+                        : 1;
+
+    return Math.max(relationFloor,
         scoreA * Math.max(qualityScore, 1)
         + relationBaseScore
         + sameTypeBonusA
