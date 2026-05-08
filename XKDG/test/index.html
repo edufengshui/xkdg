@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-08 — PWA258: Person toggle clears all globals; active person fallback A→B in BEST/LIST -->
+<!-- Generated: 2026-05-08 — PWA259: Score mode toggle A Priority / Balanced for two-person scan -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -383,6 +383,7 @@
                 <input type="checkbox" id="purpose-no-person" style="cursor:pointer;">
                 Test mode
               </label>
+              <button id="score-mode-btn" onclick="toggleScoreMode()" style="display:none;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid #7b1fa2;background:#f3e5f5;color:#4a148c;cursor:pointer;">⚖ A Priority</button>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <label>FROM:</label>
@@ -1817,6 +1818,7 @@ function togglePersonPanel(person) {
     if (sr) sr.innerHTML = '';
     if (cv) cv.innerHTML = '';
     _scanResults = [];
+    updateScoreModeBtn();
 }
 
 
@@ -2080,6 +2082,7 @@ function calculatePerson(person) {
     } else {
         analysisSection.style.display = 'none';
     }
+    updateScoreModeBtn();
 }
 
 function checkCompatibility() {
@@ -2812,6 +2815,25 @@ const DING_SPIRIT_MAP = {
 // ── Purpose Filter ────────────────────────────────────────────
 var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤' };
 var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak' };
+var _scoreModeBalanced = false; // false = A Priority, true = Balanced (min of A and B)
+
+function toggleScoreMode() {
+    _scoreModeBalanced = !_scoreModeBalanced;
+    const btn = document.getElementById('score-mode-btn');
+    if (btn) {
+        btn.textContent = _scoreModeBalanced ? '⚖ Balanced' : '⚖ A Priority';
+        btn.style.background = _scoreModeBalanced ? '#4a148c' : '#f3e5f5';
+        btn.style.color = _scoreModeBalanced ? '#fff' : '#4a148c';
+    }
+}
+
+function updateScoreModeBtn() {
+    const btn = document.getElementById('score-mode-btn');
+    if (!btn) return;
+    const bothActive = _personAYear && _personBYear;
+    btn.style.display = bothActive ? 'inline-block' : 'none';
+    if (!bothActive) _scoreModeBalanced = false; // reset when not both active
+}
 
 function onPurposeChange() {
     var sel = document.getElementById('purpose-select');
@@ -3850,7 +3872,28 @@ function buildMonthView() {
             const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};">${spirit.en} ${spirit.zh}</span>` : '';
 
             // Score via unified calcHourScore
-            const listScore = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
+            let listScore;
+            if (personAYear && personBYear && _scoreModeBalanced) {
+                const nobleA2 = _personADayStem ? (NOBLE_BRANCHES[_personADayStem] || []) : [];
+                const luA2    = _personADayStem ? (LU_BRANCH[_personADayStem] || null) : null;
+                const hvA2    = _personAMonthBranch ? (HEAVEN_VIRTUE[_personAMonthBranch] || null) : null;
+                const bvA2    = _personADayBranchXkdg ? (BRANCH_VIRTUE[_personADayBranchXkdg] || null) : null;
+                const mvA2    = _personAMonthBranch ? (MONTH_VIRTUE[_personAMonthBranch] || null) : null;
+                const tyA2    = _personADayStem ? (TIAN_YI[_personADayStem] || null) : null;
+                const sA = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personAYear, pYStem, pYBranch, nobleA2, luA2, hvA2, bvA2, mvA2, tyA2, pillars);
+
+                const nobleB2 = _personBDayStem ? (NOBLE_BRANCHES[_personBDayStem] || []) : [];
+                const luB2    = _personBDayStem ? (LU_BRANCH[_personBDayStem] || null) : null;
+                const hvB2    = _personBMonthBranch ? (HEAVEN_VIRTUE[_personBMonthBranch] || null) : null;
+                const bvB2    = _personBDayBranchXkdg ? (BRANCH_VIRTUE[_personBDayBranchXkdg] || null) : null;
+                const mvB2    = _personBMonthBranch ? (MONTH_VIRTUE[_personBMonthBranch] || null) : null;
+                const tyB2    = _personBDayStem ? (TIAN_YI[_personBDayStem] || null) : null;
+                const sB = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personBYear, pBYStem, pBYBranch, nobleB2, luB2, hvB2, bvB2, mvB2, tyB2, pillars);
+
+                listScore = Math.min(sA, sB);
+            } else {
+                listScore = calcHourScore(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
+            }
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
             const nayinHTMLLV = nayinResLV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</div>`
@@ -4394,8 +4437,29 @@ function runScanner() {
             // Kong Wang check: skip void unless Pure Qi, Family, or Nayin Weak
             if (!hasPureQiOrFamily && !isNayinWeakBST && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
 
-            // Score via unified calcHourScore
-            const totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, activeYear, activeYStem, activeYBranch, activeNoble, activeLu, activeHV, activeBV, activeMV, activeTY, pillars);
+            // Score: when both active use A Priority or Balanced based on toggle
+            let totalScore;
+            if (personAYear && personBYear && _scoreModeBalanced) {
+                const nobleA = pDayStemA ? (NOBLE_BRANCHES[pDayStemA] || []) : [];
+                const luA    = pDayStemA ? (LU_BRANCH[pDayStemA] || null) : null;
+                const hvA    = pMthBranchA ? (HEAVEN_VIRTUE[pMthBranchA] || null) : null;
+                const bvA    = pDayBranchA ? (BRANCH_VIRTUE[pDayBranchA] || null) : null;
+                const mvA    = pMthBranchA ? (MONTH_VIRTUE[pMthBranchA] || null) : null;
+                const tyA    = pDayStemA ? (TIAN_YI[pDayStemA] || null) : null;
+                const scoreForA = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, personAYear, pYStem, pYBranch, nobleA, luA, hvA, bvA, mvA, tyA, pillars);
+
+                const nobleB = pDayStemB ? (NOBLE_BRANCHES[pDayStemB] || []) : [];
+                const luB    = pDayStemB ? (LU_BRANCH[pDayStemB] || null) : null;
+                const hvB    = pMthBranchB ? (HEAVEN_VIRTUE[pMthBranchB] || null) : null;
+                const bvB    = pDayBranchB ? (BRANCH_VIRTUE[pDayBranchB] || null) : null;
+                const mvB    = pMthBranchB ? (MONTH_VIRTUE[pMthBranchB] || null) : null;
+                const tyB    = pDayStemB ? (TIAN_YI[pDayStemB] || null) : null;
+                const scoreForB = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, personBYear, pBYStem, pBYBranch, nobleB, luB, hvB, bvB, mvB, tyB, pillars);
+
+                totalScore = Math.min(scoreForA, scoreForB);
+            } else {
+                totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, activeYear, activeYStem, activeYBranch, activeNoble, activeLu, activeHV, activeBV, activeMV, activeTY, pillars);
+            }
             const matchLabels = getMatchLabels(activeYear, activeYStem, activeYBranch, dayXkdg, dGan, dZhi, _personAPillars || _personBPillars, activeDayStem, activeDayBranch);
             const qualLabels  = analysisItems.filter(i => ['Powerful','Energetic','Very Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
