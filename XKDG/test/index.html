@@ -395,21 +395,21 @@
                   <label style="flex-shrink:0;">DAYS:</label>
                   <input type="number" id="scan-days" value="30" min="1" max="9999" style="width:55px;flex-shrink:0;">
                   <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;">
-                    <button onclick="setScanOffset(-30)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
+                    <button onclick="setScanDays(-30)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
                     <span style="padding:0 5px;font-size:11px;font-weight:bold;color:#333;">1m</span>
-                    <button onclick="setScanOffset(30)"   style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
+                    <button onclick="setScanDays(30)"   style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
                   </span>
                 </div>
                 <div style="display:flex;align-items:center;gap:4px;padding-left:46px;">
                   <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;">
-                    <button onclick="setScanOffset(-90)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
+                    <button onclick="setScanDays(-90)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
                     <span style="padding:0 5px;font-size:11px;font-weight:bold;color:#333;">3m</span>
-                    <button onclick="setScanOffset(90)"   style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
+                    <button onclick="setScanDays(90)"   style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
                   </span>
                   <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;">
-                    <button onclick="setScanOffset(-180)" style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
+                    <button onclick="setScanDays(-180)" style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
                     <span style="padding:0 5px;font-size:11px;font-weight:bold;color:#333;">6m</span>
-                    <button onclick="setScanOffset(180)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
+                    <button onclick="setScanDays(180)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
                   </span>
                 </div>
               </div>
@@ -4124,7 +4124,7 @@ function setScanNow() {
 
 function setScanDays(n) {
     const el = document.getElementById('scan-days');
-    el.value = parseInt(el.value || 0) + n;
+    el.value = Math.max(1, parseInt(el.value || 30) + n);
 }
 
 function setScanOffset(days) {
