@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-10 — PWA333: Label × hides only; DB × permanently deletes; Show button to restore -->
+<!-- Generated: 2026-05-10 — PWA334: Add unlimited PIN 050779 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v333';
+            const CACHE = 'xkdg-v334';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -5249,6 +5249,7 @@ const _HASHED_CODES = [
     { h: '888df25ae35772424a560c7152a1de794440e0ea5cfee62828333a456a506e05', t: 0, e: null },
     { h: 'bf1889006d18a1b40d0791c50436d7eaa119bb3456e3f6300c17127ae10e7715', t: 0, e: null },
     { h: 'b0ff7bdc481ed43adf5168e51d73264887136b603fd0fb372530a689e15a29e7', t: 0, e: null }, // Chee
+    { h: '1b8c0f70737fd82ae7f9a852851003ce7a567ed20cf8674d1781c22bb5d8523d', t: 0, e: null },
 ];
 
 async function hashPin(pin) {
