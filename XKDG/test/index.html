@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-10 — PWA335: Remove score reduction notes from clash labels everywhere -->
+<!-- Generated: 2026-05-10 — PWA336: DB pin ★ button to push person to top of list -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v335';
+            const CACHE = 'xkdg-v336';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -2014,12 +2014,22 @@ function renderDB() {
     const archiveB = loadArchive('xkdg_persons_b');
     const notes    = loadArchive('xkdg_persons_notes') || {};
     const hidden   = loadArchive('xkdg_persons_hidden') || {};
+    const pinned   = loadArchive('xkdg_persons_pinned') || {};
     const entries  = [];
     Object.entries(archiveA).forEach(([name, data]) => entries.push({ name, data, panel: 'A', savedAt: data.savedAt || 0 }));
     Object.entries(archiveB).forEach(([name, data]) => entries.push({ name, data, panel: 'B', savedAt: data.savedAt || 0 }));
 
-    if (_dbSort === 'alpha') entries.sort((a,b) => a.name.localeCompare(b.name));
-    else entries.sort((a,b) => (b.savedAt||0) - (a.savedAt||0));
+    // Pinned always first, then apply sort
+    if (_dbSort === 'alpha') entries.sort((a,b) => {
+        const pa = pinned[a.name] ? 1 : 0, pb = pinned[b.name] ? 1 : 0;
+        if (pb !== pa) return pb - pa;
+        return a.name.localeCompare(b.name);
+    });
+    else entries.sort((a,b) => {
+        const pa = pinned[a.name] ? 1 : 0, pb = pinned[b.name] ? 1 : 0;
+        if (pb !== pa) return pb - pa;
+        return (b.savedAt||0) - (a.savedAt||0);
+    });
 
     if (entries.length === 0) {
         document.getElementById('db-list').innerHTML = '<div style="padding:20px;text-align:center;color:#888;">No persons saved yet.</div>';
@@ -2030,14 +2040,18 @@ function renderDB() {
         const note = notes[name] || '';
         const dateStr = data.date ? data.date : '';
         const isHidden = !!hidden[name];
+        const isPinned = !!pinned[name];
         const panelColor = panel === 'A' ? '#1b5e20' : '#6a1b9a';
         const panelBg    = panel === 'A' ? '#e8f5e9' : '#f3e5f5';
         const hiddenTag  = isHidden
             ? `<span style="font-size:10px;color:#888;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;padding:1px 6px;">hidden</span>
                <button onclick="showPersonInLabels('${panel}','${name}')" style="font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid #388e3c;background:#e8f5e9;color:#1b5e20;cursor:pointer;">Show</button>`
             : '';
-        return `<div style="border:1px solid #e0e0e0;border-radius:8px;margin:6px 0;padding:10px 12px;background:${isHidden?'#fafafa':'#fff'};">
+        const pinBtn = `<span onclick="togglePinPerson('${name}')" title="${isPinned?'Unpin':'Pin to top'}"
+            style="cursor:pointer;font-size:15px;color:${isPinned?'#f9a825':'#ccc'};padding:0 2px;">★</span>`;
+        return `<div style="border:1px solid ${isPinned?'#f9a825':'#e0e0e0'};border-radius:8px;margin:6px 0;padding:10px 12px;background:${isPinned?'#fffde7':isHidden?'#fafafa':'#fff'};">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                ${pinBtn}
                 <span style="font-size:10px;font-weight:bold;color:${panelColor};background:${panelBg};border-radius:10px;padding:1px 7px;">${panel}</span>
                 <span style="font-weight:bold;font-size:14px;flex:1;${isHidden?'opacity:0.5;':''}">${name}</span>
                 <span style="font-size:11px;color:#888;">${dateStr}</span>
@@ -2050,6 +2064,14 @@ function renderDB() {
                 style="width:100%;box-sizing:border-box;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333;">
         </div>`;
     }).join('');
+}
+
+function togglePinPerson(name) {
+    const pinned = loadArchive('xkdg_persons_pinned') || {};
+    if (pinned[name]) delete pinned[name];
+    else pinned[name] = true;
+    localStorage.setItem('xkdg_persons_pinned', JSON.stringify(pinned));
+    renderDB();
 }
 
 function showPersonInLabels(panel, name) {
@@ -2077,13 +2099,16 @@ function deleteFromDB(panel, name) {
     const archive = loadArchive(key);
     delete archive[name];
     saveArchiveData(key, archive);
-    // Also remove note and hidden flag
+    // Also remove note, hidden and pin flags
     const notes = loadArchive('xkdg_persons_notes') || {};
     delete notes[name];
     localStorage.setItem('xkdg_persons_notes', JSON.stringify(notes));
-    const hidden = loadArchive('xkdg_persons_hidden') || {};
-    delete hidden[name];
-    localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
+    const hidden2 = loadArchive('xkdg_persons_hidden') || {};
+    delete hidden2[name];
+    localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden2));
+    const pinned2 = loadArchive('xkdg_persons_pinned') || {};
+    delete pinned2[name];
+    localStorage.setItem('xkdg_persons_pinned', JSON.stringify(pinned2));
     renderArchive(panel);
     renderDB();
 }
