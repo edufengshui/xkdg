@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-10 — PWA334: Add unlimited PIN 050779 -->
+<!-- Generated: 2026-05-10 — PWA335: Remove score reduction notes from clash labels everywhere -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v334';
+            const CACHE = 'xkdg-v335';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -1556,9 +1556,9 @@ function calculateBazi() {
     if (clashType === 'clash-year') {
         analysis.push({ text: 'Day-Year Branch Clash', tag: 'clash-year' });
     } else if (clashType === 'clash-month-stem') {
-        analysis.push({ text: 'Day-Month Stem Clash (−2)', tag: 'clash-month-stem' });
+        analysis.push({ text: 'Day-Month Stem Clash', tag: 'clash-month-stem' });
     } else if (clashType === 'clash-month-branch') {
-        analysis.push({ text: 'Day-Month Branch Clash (−2)', tag: 'clash-month-branch' });
+        analysis.push({ text: 'Day-Month Branch Clash', tag: 'clash-month-branch' });
     }
     // Tomb Sha: hour branch = tomb of day stem, only when element untimely
     if (isTombSha(pillarKeys.hour.branch, dayGan, seasonStrong, seasonGrowing)) {
@@ -1728,13 +1728,11 @@ const ANALYSIS_TIPS = {
     'Black Tortoise 玄武':  'Black Tortoise 玄武 — Inauspicious spirit of theft and deception. Avoid financial transactions and trusting strangers.',
     'Heaven Prison 天牢':   'Heaven Prison 天牢 — Inauspicious spirit of obstruction and imprisonment. Avoid major decisions and new starts.',
     'Gou Chen 勾陈':        'Gou Chen 勾陈 — Inauspicious spirit of entanglement and delays. Avoid litigation and complex negotiations.',
-    'Day-Year Branch Clash':       'Branch Clash ⚡ — Day branch directly clashes with Year branch. Turbulent energy — avoid major commitments.',
-    'Day-Month Stem Clash (−2)':   'Stem Clash ⚡ — Day stem clashes with Month stem. Reduces date quality score by 2.',
-    'Day-Month Branch Clash (−2)': 'Branch Clash ⚡ — Day branch clashes with Month branch. Reduces date quality score by 2.',
+    'Day-Year Branch Clash':   'Branch Clash ⚡ — Day branch directly clashes with Year branch. Turbulent energy — avoid major commitments.',
+    'Day-Month Stem Clash':    'Stem Clash ⚡ — Day stem clashes with Month stem.',
+    'Day-Month Branch Clash':  'Branch Clash ⚡ — Day branch clashes with Month branch.',
     'Adding Elements':  'Two or more pillars sum to 5, 10 or 15 in Qi.',
-    'Month Virtue':                'Month Virtue 月德 — Monthly benevolent star. Attracts external support and social harmony.',
-    'Day-Month Stem Clash':        'Stem Clash ⚡ — Day stem clashes with Month stem.',
-    'Day-Month Branch Clash':      'Branch Clash ⚡ — Day branch clashes with Month branch.',
+    'Month Virtue':     'Month Virtue 月德 — Monthly benevolent star. Attracts external support and social harmony.',
     'Adding Periods':   'Two or more pillars sum to 5, 10 or 15 in Yun in the period cycle.',
     'Hetu Elements':    'Two or more pillars form a He Tu pairing in Qi — numbers differing by 5.',
     'Hetu Periods':     'Two or more pillars form a He Tu pairing in Yun — numbers differing by 5.',
