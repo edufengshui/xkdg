@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-09 — PWA296: Fix floating point in TABLES Zi time label -->
+<!-- Generated: 2026-05-10 — PWA332: Blood Link and Pure Qi exempt from year clash gate -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v296';
+            const CACHE = 'xkdg-v332';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -237,6 +237,21 @@
     <!-- License Info Bar -->
 
 
+    <!-- DB Modal -->
+    <div id="db-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;overflow-y:auto;" onclick="if(event.target===this)closeDB()">
+        <div style="background:#fff;margin:20px auto;max-width:600px;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+            <div style="background:#1565c0;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-weight:bold;font-size:15px;">📋 Person Database</span>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button onclick="setDBSort('alpha')" id="db-sort-alpha" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #fff;background:#1976d2;color:#fff;cursor:pointer;">A→Z</button>
+                    <button onclick="setDBSort('recent')" id="db-sort-recent" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #90caf9;background:transparent;color:#fff;cursor:pointer;">Recent</button>
+                    <button onclick="closeDB()" style="font-size:18px;background:none;border:none;color:#fff;cursor:pointer;">✕</button>
+                </div>
+            </div>
+            <div id="db-list" style="padding:8px;"></div>
+        </div>
+    </div>
+
 <div class="container">
     <div class="inputs-row">
         <button class="btn-tool" onclick="setNow()">NOW</button>
@@ -299,7 +314,9 @@
             <button class="btn-person" onclick="calculateBazi();calculatePerson('A')">CALCULATE</button>
             <button class="btn-person" onclick="savePerson('A')" style="background:#558b2f;">SAVE</button>
         </div>
-        <div id="person-archive" style="padding:8px 15px; background:#f9fbe7; border-bottom:1px solid #c5e1a5; display:none; flex-wrap:wrap; gap:6px;"></div>
+        <div id="person-archive" style="padding:8px 15px; background:#f9fbe7; border-bottom:1px solid #c5e1a5; display:none; flex-wrap:wrap; gap:6px; align-items:center;">
+            <button onclick="openDB()" style="margin-left:auto;padding:2px 10px;font-size:11px;border-radius:8px;border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;cursor:pointer;font-weight:bold;">📋 DB</button>
+        </div>
         <div style="position:relative;">
         <div class="chart" id="person-chart" style="display:none;">
             <div class="pillar" id="pp-hour"><div class="header">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
@@ -344,7 +361,9 @@
             <button class="btn-person" onclick="savePerson('B')" style="background:#4a148c;">SAVE</button>
             <button class="btn-person" onclick="checkCompatibility()" style="background:#ad1457;" title="Check compatibility between A and B">♡ COMPAT</button>
         </div>
-        <div id="person-archive-b" style="padding:8px 15px; background:#fce4ec; border-bottom:1px solid #ce93d8; display:none; flex-wrap:wrap; gap:6px;"></div>
+        <div id="person-archive-b" style="padding:8px 15px; background:#fce4ec; border-bottom:1px solid #ce93d8; display:none; flex-wrap:wrap; gap:6px; align-items:center;">
+            <button onclick="openDB()" style="margin-left:auto;padding:2px 10px;font-size:11px;border-radius:8px;border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;cursor:pointer;font-weight:bold;">📋 DB</button>
+        </div>
         <div style="position:relative;">
         <div class="chart" id="person-chart-b" style="display:none;">
             <div class="pillar" id="pb-hour"><div class="header" style="background:#f3e5f5;color:#4a148c;">HOUR</div><div class="cell stem"></div><div class="cell branch"></div><div class="cell nayin"></div><div class="hex-section"></div></div>
@@ -390,6 +409,7 @@
                 <option value="relationship">❤️ Relationship</option>
                 <option value="journey">✈️ Journey</option>
                 <option value="speak" title="Speaking, Teaching, Presenting, Performing — requires good Nayin for person">🎤 Speak</option>
+                <option value="legal">⚖️ Legal</option>
               </select>
               <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#555;cursor:pointer;">
                 <input type="checkbox" id="purpose-no-person" style="cursor:pointer;">
@@ -689,7 +709,7 @@ const NAYIN_KE    = { Wood:'Earth', Earth:'Water', Water:'Fire', Fire:'Metal', M
  * @param {string|null} pGan  Person year stem (optional)
  * @param {string|null} pZhi  Person year branch (optional)
  */
-function analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pGan, pZhi) {
+function analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pGan, pZhi, pDayGan, pDayZhi) {
     const dayNayin  = NAYIN[dGan + dZhi] || null;
     const hourNayin = NAYIN[hGan + hZhi] || null;
     const mthNayin  = NAYIN[mGan + mZhi] || null;
@@ -700,17 +720,15 @@ function analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pGan, pZhi
     if (!dayElem) return { label: null, score: 0, personLabel: null, personScore: 0 };
 
     // Check each pillar's relationship to Day Nayin
-    // Positive: other generates Day (Sheng In), Day controls other (Ke Out), same
-    // Negative: Day generates other (Sheng Out), other controls Day (Ke In)
     function pillarRelation(otherNayin) {
         if (!otherNayin) return 0;
         const otherElem = NAYIN_TO_ELEM[otherNayin] || null;
         if (!otherElem) return 0;
-        if (otherElem === dayElem) return 1;                        // He (same) ✓
-        if (NAYIN_SHENG[otherElem] === dayElem) return 1;          // Other generates Day ✓
-        if (NAYIN_KE[dayElem] === otherElem) return 1;             // Day controls Other ✓
-        if (NAYIN_SHENG[dayElem] === otherElem) return -1;         // Day generates Other ✗
-        if (NAYIN_KE[otherElem] === dayElem) return -1;            // Other controls Day ✗
+        if (otherElem === dayElem) return 1;
+        if (NAYIN_SHENG[otherElem] === dayElem) return 1;
+        if (NAYIN_KE[dayElem] === otherElem) return 1;
+        if (NAYIN_SHENG[dayElem] === otherElem) return -1;
+        if (NAYIN_KE[otherElem] === dayElem) return -1;
         return 0;
     }
 
@@ -719,38 +737,37 @@ function analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pGan, pZhi
     const negatives = relations.filter(r => r === -1).length;
 
     let label = null, score = 0;
-    if (positives === 3) {
-        label = 'Nayin Power';
-        score = 5;
-    } else if (positives === 2) {
-        label = 'Nayin';
-        score = 1;
-    } else if (negatives === 3) {
-        label = 'Nayin Weak';
-        score = -2;
-    }
+    if (positives === 3) { label = 'Nayin Power'; score = 5; }
+    else if (positives === 2) { label = 'Nayin'; score = 1; }
+    else if (negatives === 3) { label = 'Nayin Weak'; score = -2; }
 
-    // Step 2: Person Year Nayin vs Day Nayin
+    // Step 2: Person Year AND Day Nayin vs DATE DAY Nayin (not hour)
     let personLabel = null, personScore = 0;
     if (pGan && pZhi && (label === 'Nayin Power' || label === 'Nayin')) {
-        const personNayin = NAYIN[pGan + pZhi] || null;
-        const personElem  = personNayin ? (NAYIN_TO_ELEM[personNayin] || null) : null;
-        if (personElem) {
-            // Positive: Day generates Person (Day Sheng Out to person) ✓
-            //           Same ✓
-            //           Person controls Day (Ke In from person) ✓
-            // Negative: Person generates Day (drains person) ✗
-            //           Day controls Person ✗
-            if (personElem === dayElem ||
-                NAYIN_SHENG[dayElem] === personElem ||
-                NAYIN_KE[personElem] === dayElem) {
-                personLabel = 'Nayin ✦ Person';
-                personScore = 3;
-            } else if (NAYIN_SHENG[personElem] === dayElem ||
-                       NAYIN_KE[dayElem] === personElem) {
-                personLabel = 'Nayin ✗ Person';
-                personScore = -2;
-            }
+        function personNayinRelation(pG, pZ) {
+            if (!pG || !pZ) return 0;
+            const pNayin = NAYIN[pG + pZ] || null;
+            const pElem  = pNayin ? (NAYIN_TO_ELEM[pNayin] || null) : null;
+            if (!pElem) return 0;
+            if (pElem === dayElem || NAYIN_SHENG[dayElem] === pElem || NAYIN_KE[pElem] === dayElem) return 1;
+            if (NAYIN_SHENG[pElem] === dayElem || NAYIN_KE[dayElem] === pElem) return -1;
+            return 0;
+        }
+
+        const yearRel = personNayinRelation(pGan, pZhi);
+        const dayRel  = personNayinRelation(pDayGan, pDayZhi);
+
+        const yearGood = yearRel === 1, dayGood = dayRel === 1;
+        const yearBad  = yearRel === -1, dayBad  = dayRel === -1;
+
+        if (yearGood || dayGood) {
+            const tag = (yearGood && dayGood) ? ' DY' : yearGood ? ' Y' : ' D';
+            personLabel = 'Nayin ✦ Person' + tag;
+            personScore = 3;
+        } else if (yearBad || dayBad) {
+            const tag = (yearBad && dayBad) ? ' DY' : yearBad ? ' Y' : ' D';
+            personLabel = 'Nayin ✗ Person' + tag;
+            personScore = -2;
         }
     }
 
@@ -1587,14 +1604,17 @@ function calculateBazi() {
     }
 
     // Nayin (Melodic Element) analysis
-    const personYearStemNY  = _personAStem   || null;
-    const personYearBranchNY = _personABranch || null;
+    const personYearStemNY   = _personAStem      || null;
+    const personYearBranchNY = _personABranch    || null;
+    const personDayStemNY    = _personADayStem   || null;
+    const personDayBranchNY  = _personADayBranch || null;
     const nayinResult = analyzeNayin(
         dayGan, dayZhi,
         pillarKeys.hour.stem, pillarKeys.hour.branch,
         pillarKeys.month.stem, pillarKeys.month.branch,
         pillarKeys.year.stem, pillarKeys.year.branch,
-        personYearStemNY, personYearBranchNY
+        personYearStemNY, personYearBranchNY,
+        personDayStemNY, personDayBranchNY
     );
     if (nayinResult.label) {
         const tag = nayinResult.label === 'Nayin Power' ? 'nayin-power' : nayinResult.label === 'Nayin Weak' ? 'nayin-weak' : 'nayin';
@@ -1711,18 +1731,65 @@ const ANALYSIS_TIPS = {
     'Day-Year Branch Clash':       'Branch Clash ⚡ — Day branch directly clashes with Year branch. Turbulent energy — avoid major commitments.',
     'Day-Month Stem Clash (−2)':   'Stem Clash ⚡ — Day stem clashes with Month stem. Reduces date quality score by 2.',
     'Day-Month Branch Clash (−2)': 'Branch Clash ⚡ — Day branch clashes with Month branch. Reduces date quality score by 2.',
+    'Adding Elements':  'Two or more pillars sum to 5, 10 or 15 in Qi.',
+    'Month Virtue':                'Month Virtue 月德 — Monthly benevolent star. Attracts external support and social harmony.',
+    'Day-Month Stem Clash':        'Stem Clash ⚡ — Day stem clashes with Month stem.',
+    'Day-Month Branch Clash':      'Branch Clash ⚡ — Day branch clashes with Month branch.',
+    'Adding Periods':   'Two or more pillars sum to 5, 10 or 15 in Yun in the period cycle.',
+    'Hetu Elements':    'Two or more pillars form a He Tu pairing in Qi — numbers differing by 5.',
+    'Hetu Periods':     'Two or more pillars form a He Tu pairing in Yun — numbers differing by 5.',
+    'Pure Qi Elements': 'All four pillars share the same Qi number.',
+    'Pure Qi Periods':  'All four pillars share the same Yun number.',
+    'Inverse Hex':      'Hexagrams communicate well with their inverted counterparts, making the date usable.',
+    'Family':           'Hexagrams belong to the same Blood Link family — a powerful and cohesive energy setting.',
     'Nayin Power': 'Nayin Power — All 3 other pillars support the Day Melodic Element (generated, in command, or matched). The day carries maximum Nayin energy.',
     'Nayin':       'Nayin — 2 of the 3 other pillars support the Day Melodic Element. Good Nayin setting, but not at full power.',
     'Nayin Weak':  'Nayin Weak — All 3 other pillars drain or suppress the Day Melodic Element. Avoid important actions on this day.',
-    'Nayin ✦ Person': 'Nayin ✦ Person — The strong Day Nayin is favourable for the person: it generates, matches, or is commanded by the person\'s Year Nayin.',
-    'Nayin ✗ Person': 'Nayin ✗ Person — The Day Nayin drains or dominates the person\'s Year Nayin. Despite the day being strong, it is unfavourable for this person.',
+    'Nayin ✦ Person': 'The Date Day Nayin has a positive relationship with the person\'s Nayin (Year or Day pillar). Y = Year, D = Day, DY = both.',
+    'Nayin ✗ Person': 'The Date Day Nayin has a negative relationship with the person\'s Nayin (Year or Day pillar). Y = Year, D = Day, DY = both.',
 };
+
+// Technical-only descriptions for Person birth chart profile labels
+const PROFILE_TIPS = {
+    'Adding Elements':   'Two or more pillars sum to 5, 10 or 15 in Qi .',
+    'Adding Periods':    'Two or more pillars sum to 5, 10 or 15 in Yun in the period cycle.',
+    'Pure Adding':       'All four pillars form Adding relationships across both Qi and Yun.',
+    'Hetu Elements':     'Two or more pillars form a He Tu pairing in Qi — numbers differing by 5.',
+    'Hetu Periods':      'Two or more pillars form a He Tu pairing in Yun — numbers differing by 5.',
+    'Pure Hetu':         'All four pillars form He Tu pairings across both Qi and Yun.',
+    'Pure Qi':           'Three or more pillars share the same Qi number.',
+    'Pure Qi Elements':  'All four pillars share the same Qi number.',
+    'Pure Qi Periods':   'All four pillars share the same Yun number.',
+    'Inverse Hex':       'Two or more pillars are inverted (mirror) versions of each other — all six lines flipped.',
+    'Family':            'Two or more pillars belong to the same Blood Link family of eight hexagrams.',
+};
+function showProfileTip(el, text, dict) {
+    event.stopPropagation();
+    var desc = dict === 'profile' ? PROFILE_TIPS[text]
+             : dict === 'analysis' ? ANALYSIS_TIPS[text]
+             : (BADGE_INFO[text] ? BADGE_INFO[text].desc : null);
+    var full = dict === 'badge' && BADGE_INFO[text] ? BADGE_INFO[text].full : text;
+    if (!desc) return;
+    var tip = document.getElementById('badge-tip');
+    tip.innerHTML = '<strong>' + full + '</strong><br><span style="font-size:11px;opacity:0.85;">' + desc + '</span>';
+    tip.style.display = 'block';
+    tip.style.pointerEvents = 'auto';
+    var r = el.getBoundingClientRect();
+    tip.style.left = Math.max(10, Math.min(r.left, window.innerWidth - 240)) + 'px';
+    tip.style.top  = (r.bottom + 8) + 'px';
+}
+
 function showAnalysisTip(el, text) {
     event.stopPropagation();
     var desc = ANALYSIS_TIPS[text];
+    var full = text;
+    if (!desc) {
+        var info = BADGE_INFO[text];
+        if (info) { desc = info.desc; full = info.full; }
+    }
     if (!desc) return;
     var tip = document.getElementById('badge-tip');
-    tip.innerHTML = '<strong>' + text + '</strong><br><span style="font-size:11px;opacity:0.85;">' + desc + '</span>';
+    tip.innerHTML = '<strong>' + full + '</strong><br><span style="font-size:11px;opacity:0.85;">' + desc + '</span>';
     tip.style.display = 'block';
     tip.style.pointerEvents = 'auto';
     var r = el.getBoundingClientRect();
@@ -1767,12 +1834,14 @@ function renderAnalysis(items) {
                       : item.tag === 'nayin-person-good' ? `<span style="color:#0d47a1;font-weight:bold;border:1px solid #0d47a1;border-radius:4px;padding:1px 6px;background:#e3f2fd;">✦ ${item.text}</span>`
                       : item.tag === 'nayin-person-bad'  ? `<span style="color:#e65100;font-weight:bold;border:1px solid #e65100;border-radius:4px;padding:1px 6px;background:#fff3e0;">✕ ${item.text}</span>`
                       : item.text;
-        // Make any item tappable if ANALYSIS_TIPS has an entry for it
+        // Make any item tappable if ANALYSIS_TIPS or BADGE_INFO has an entry
         var tipKey = null;
         if (item.text) {
             tipKey = Object.keys(ANALYSIS_TIPS).find(k => item.text === k);
             if (!tipKey) tipKey = Object.keys(ANALYSIS_TIPS).find(k => item.text.startsWith(k));
-            if (!tipKey && item.text.startsWith('Tomb Sha')) tipKey = 'Tomb Sha 墓煞';
+            if (!tipKey) tipKey = Object.keys(BADGE_INFO).find(k => item.text === k);
+            if (!tipKey) tipKey = Object.keys(BADGE_INFO).find(k => item.text.startsWith(k));
+            if (!tipKey && item.text.startsWith('Tomb Sha')) tipKey = '墓煞';
         }
         var tipAttr = tipKey ? ' onclick="showAnalysisTip(this,\'' + tipKey.replace(/'/g,"\\'") + '\')" style="cursor:pointer;"' : '';
         return '<div class="analysis-item"' + tipAttr + '>⬡ ' + content + '</div>';
@@ -1911,8 +1980,95 @@ function renderArchive(person) {
     if (keys.length === 0) { div.style.display = 'none'; return; }
     div.style.display = 'flex';
     div.innerHTML = keys.map(name =>
-        `<span class="archive-btn" onclick="loadPerson('${person}','${name}')">${name}<span class="archive-del" onclick="deletePerson(event,'${person}','${name}')">×</span></span>`
-    ).join('');
+        `<span style="display:inline-flex;align-items:center;gap:3px;margin:2px;">
+            <span class="archive-btn" onclick="loadPerson('${person}','${name}')">${name}</span>
+            <span class="archive-del" onclick="deletePerson(event,'${person}','${name}')" title="Delete ${name}" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
+         </span>`
+    ).join('') + `<button onclick="openDB()" style="margin-left:auto;padding:2px 10px;font-size:11px;border-radius:8px;border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;cursor:pointer;font-weight:bold;">📋 DB</button>`;
+}
+
+// ── Person Database ──────────────────────────────────────────
+let _dbSort = 'alpha';
+
+function openDB() {
+    document.getElementById('db-modal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    renderDB();
+}
+
+function closeDB() {
+    document.getElementById('db-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function setDBSort(mode) {
+    _dbSort = mode;
+    document.getElementById('db-sort-alpha').style.background  = mode === 'alpha'  ? '#1976d2' : 'transparent';
+    document.getElementById('db-sort-recent').style.background = mode === 'recent' ? '#1976d2' : 'transparent';
+    document.getElementById('db-sort-alpha').style.border  = mode === 'alpha'  ? '1px solid #fff' : '1px solid #90caf9';
+    document.getElementById('db-sort-recent').style.border = mode === 'recent' ? '1px solid #fff' : '1px solid #90caf9';
+    renderDB();
+}
+
+function renderDB() {
+    const archiveA = loadArchive('xkdg_persons_a');
+    const archiveB = loadArchive('xkdg_persons_b');
+    const notes    = loadArchive('xkdg_persons_notes') || {};
+    const entries  = [];
+    Object.entries(archiveA).forEach(([name, data]) => entries.push({ name, data, panel: 'A', savedAt: data.savedAt || 0 }));
+    Object.entries(archiveB).forEach(([name, data]) => entries.push({ name, data, panel: 'B', savedAt: data.savedAt || 0 }));
+
+    if (_dbSort === 'alpha') entries.sort((a,b) => a.name.localeCompare(b.name));
+    else entries.sort((a,b) => (b.savedAt||0) - (a.savedAt||0));
+
+    if (entries.length === 0) {
+        document.getElementById('db-list').innerHTML = '<div style="padding:20px;text-align:center;color:#888;">No persons saved yet.</div>';
+        return;
+    }
+
+    document.getElementById('db-list').innerHTML = entries.map(({ name, data, panel }) => {
+        const note = notes[name] || '';
+        const dateStr = data.date ? data.date : '';
+        const panelColor = panel === 'A' ? '#1b5e20' : '#6a1b9a';
+        const panelBg    = panel === 'A' ? '#e8f5e9' : '#f3e5f5';
+        return `<div style="border:1px solid #e0e0e0;border-radius:8px;margin:6px 0;padding:10px 12px;background:#fafafa;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="font-size:10px;font-weight:bold;color:${panelColor};background:${panelBg};border-radius:10px;padding:1px 7px;">${panel}</span>
+                <span style="font-weight:bold;font-size:14px;flex:1;">${name}</span>
+                <span style="font-size:11px;color:#888;">${dateStr}</span>
+                <button onclick="loadPersonFromDB('${panel}','${name}')" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;cursor:pointer;">Load</button>
+                <span style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;" onclick="deleteFromDB('${panel}','${name}')">×</span>
+            </div>
+            <input type="text" placeholder="Note about this person…" value="${note.replace(/"/g,'&quot;')}"
+                onchange="saveDBNote('${name}', this.value)"
+                style="width:100%;box-sizing:border-box;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333;">
+        </div>`;
+    }).join('');
+}
+
+function loadPersonFromDB(panel, name) {
+    closeDB();
+    loadPerson(panel, name);
+}
+
+function saveDBNote(name, note) {
+    const notes = loadArchive('xkdg_persons_notes') || {};
+    notes[name] = note;
+    localStorage.setItem('xkdg_persons_notes', JSON.stringify(notes));
+}
+
+function deleteFromDB(panel, name) {
+    if (!confirm(`Delete "${name}"?`)) return;
+    const key = panel === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
+    const archive = loadArchive(key);
+    delete archive[name];
+    saveArchiveData(key, archive);
+    // Also remove note
+    const notes = loadArchive('xkdg_persons_notes') || {};
+    delete notes[name];
+    localStorage.setItem('xkdg_persons_notes', JSON.stringify(notes));
+    renderArchive(panel);
+    renderDB();
 }
 
 function savePerson(person) {
@@ -1926,7 +2082,7 @@ function savePerson(person) {
     if (!date) { alert('Please enter a birth date.'); return; }
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const archive = loadArchive(key);
-    archive[name] = { date, time };
+    archive[name] = { date, time, savedAt: Date.now() };
     saveArchiveData(key, archive);
     renderArchive(person);
 }
@@ -1949,6 +2105,7 @@ function loadPerson(person, name) {
 
 function deletePerson(e, person, name) {
     e.stopPropagation();
+    if (!confirm(`Delete "${name}"?`)) return;
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const archive = loadArchive(key);
     delete archive[name];
@@ -2117,9 +2274,13 @@ function calculatePerson(person) {
                           : item.tag === 'clash-month-stem'   ? `<span class="tag-clash-month-stem">⚡ ${item.text}</span>`
                           : item.tag === 'clash-month-branch' ? `<span class="tag-clash-month-branch">⚡ ${item.text}</span>`
                           : item.text;
-            var tippable = ['Very Timely','Timely','Timely at Birth','Powerful','Energetic','Very Weak'];
-        var tipAttr = tippable.indexOf(item.text) >= 0 ? ' onclick="showAnalysisTip(this,\'' + item.text + '\')" style="cursor:pointer;"' : '';
-        return '<div class="analysis-item"' + tipAttr + '>⬡ ' + content + '</div>';
+            // Make any item tappable — use PROFILE_TIPS for technical definitions, fall back to ANALYSIS_TIPS/BADGE_INFO
+            var tipKey = Object.keys(PROFILE_TIPS).find(k => item.text === k || item.text.startsWith(k));
+            var tipDict = 'profile';
+            if (!tipKey) { tipKey = Object.keys(ANALYSIS_TIPS).find(k => item.text === k || item.text.startsWith(k)); tipDict = 'analysis'; }
+            if (!tipKey) { tipKey = Object.keys(BADGE_INFO).find(k => item.text === k || item.text.startsWith(k)); tipDict = 'badge'; }
+            var tipAttr = tipKey ? ' onclick="showProfileTip(this,\'' + tipKey.replace(/'/g,"\\'") + '\',\'' + tipDict + '\')" style="cursor:pointer;"' : '';
+            return '<div class="analysis-item"' + tipAttr + '>⬡ ' + content + '</div>';
         }).join('');
         // Restore toggle button state
         const btnKey = isB ? 'b' : 'a';
@@ -2290,6 +2451,7 @@ function checkCompatibility() {
 }
 
 const BADGE_INFO = {
+    // Person star badges
     'N':   { full: 'Noble 天乙贵人', desc: 'The ultimate protector and catalyst for success. Most auspicious spirit, capable of overriding many negative influences. Resolves conflicts and dissolves negativity. Brings Noble help — mentors, experts, or helpful strangers who intervene at the right moment.' },
     'L':   { full: 'Lu 禄神 — Prosperity Star', desc: 'Good for job interviews, business openings, contract signing. Enhances authority and financial outcome.' },
     'HV':  { full: 'Heaven Virtue 天德', desc: 'Rescue star. Even if problems arise, a way out or external help exists to mitigate damage. Neutralizes Penalties (Xing) and Clashes (Chong).' },
@@ -2298,18 +2460,53 @@ const BADGE_INFO = {
     'TY':  { full: 'Tian Yi 天医 — Heavenly Doctor', desc: 'A cleansing and healing star. Removes obstructions and restores balance. Good for starting new medical treatments, scheduling surgeries (if day is not clashed), beginning a detox, fast, or new health regimen.' },
     'V':   { full: 'Void 空亡 — Kong Wang', desc: 'State of non-existence or unreliability. Energy is neutralized. Actions taken do not produce lasting results. Contracts may become empty. Buying items may lead to hidden defects or loss. Wasted trips.' },
     '墓煞': { full: 'Tomb Sha 墓煞', desc: 'Stagnation, confinement, and locking up of energy. Present but trapped. Causes confusion, stubbornness, or being in the dark. Decisions made are often narrow-minded. Not ideal for moving house, traveling, or launching a product.' },
+    // 12 Spirits
+    'Bright Hall 明堂':      { full: 'Bright Hall 明堂', desc: 'Most auspicious of the 12 spirits. Clarity, visibility, and recognition. Excellent for signings, public launches, presentations, and receiving awards. What you do is seen and rewarded.' },
+    'Cerulean Dragon 青龙':  { full: 'Cerulean Dragon 青龙', desc: 'Auspicious. Abundance, vitality, and noble energy. Good for starting ventures, wealth accumulation, and activities requiring creative or life force. Associated with growth and prosperity.' },
+    'Heaven Virtue 天德':    { full: 'Heaven Virtue 天德 (Spirit)', desc: 'Auspicious. Moral authority and divine protection. Supports activities involving ethics, leadership, and matters of the heart. Protects against slander and hidden enemies.' },
+    'Jade Hall 玉堂':        { full: 'Jade Hall 玉堂', desc: 'Auspicious. Wealth, comfort, and material accumulation. Good for financial planning, luxury purchases, real estate, and moving into a new home.' },
+    'Golden Box 金柜':       { full: 'Golden Box 金柜', desc: 'Auspicious. Wealth storage and asset protection. Good for saving, investing, banking activities, and securing valuables. Supports financial contracts and long-term wealth preservation.' },
+    'Heaven Prison 天牢':    { full: 'Heaven Prison 天牢', desc: 'Inauspicious. Obstruction, confinement, and blockage. Things get stuck or imprisoned. Avoid major decisions, new starts, or travel. Energy is locked and unable to move forward.' },
+    'Fate Master 司命':      { full: 'Fate Master 司命', desc: 'Auspicious. Authority over destiny and karma. Good for prayers, rituals, ancestral offerings, making important decisions, and applying for official positions or permits.' },
+    'Heaven Penalty 天刑':   { full: 'Heaven Penalty 天刑', desc: 'Inauspicious. Legal trouble, disputes, and punishments. Avoid lawsuits, contracts, travel, and major actions. Can indicate conflicts with authority figures or bureaucratic obstacles.' },
+    'White Tiger 白虎':      { full: 'White Tiger 白虎', desc: 'Inauspicious. Accidents, injuries, and aggression. Avoid surgery, dangerous activities, or confrontational situations. Can bring sudden loss, bleeding, or violent events.' },
+    'Black Tortoise 玄武':   { full: 'Black Tortoise 玄武', desc: 'Inauspicious. Deception, theft, and hidden enemies. Avoid trusting strangers, signing contracts, or leaving valuables unattended. Information may be concealed or distorted.' },
+    'Gou Chen 勾陈':         { full: 'Gou Chen 勾陈', desc: 'Inauspicious. Entanglement, delays, and obstruction. Things get stuck or complicated. Legal disputes, emotional entanglements, and bureaucratic delays are likely. Avoid starting new ventures.' },
+    'Red Bird 朱雀':         { full: 'Red Bird 朱雀', desc: 'Inauspicious. Arguments, disputes, and bad news. Avoid heated discussions, signing important documents, or making public announcements. Communication breakdowns and quarrels are likely.' },
+    // XKDG Relations
+    'Pure Qi Elements':      { full: 'Pure Qi Elements', desc: 'All four pillars share the same Qi number.' },
+    'Pure Qi':               { full: 'Pure Qi', desc: 'Three pillars share the same Qi number.' },
+    'Pure Adding Elements':  { full: 'Pure Adding Elements', desc: 'All pillars form Adding relationships across both Qi and Yun.' },
+    'Pure Adding Periods':   { full: 'Pure Adding Periods', desc: 'All pillars form Adding relationships in Yun.' },
+    'Adding Elements':       { full: 'Adding Elements', desc: 'Two or more pillars sum to 5, 10 or 15 in Qi .' },
+    'Adding Periods':        { full: 'Adding Periods', desc: 'Two or more pillars sum to 5, 10 or 15 in Yun in the period cycle.' },
+    'Pure Hetu Elements':    { full: 'Pure Hetu Elements', desc: 'All pillars form He Tu pairings across both Qi and Yun.' },
+    'Pure Hetu Periods':     { full: 'Pure Hetu Periods', desc: 'All pillars form He Tu pairings in Yun.' },
+    'Hetu Elements':         { full: 'Hetu Elements 河图', desc: 'Two or more pillars form a He Tu pairing in Qi — numbers differing by 5.' },
+    'Hetu Periods':          { full: 'Hetu Periods 河图', desc: 'Two or more pillars form a He Tu pairing in Yun — numbers differing by 5.' },
+    // Nayin
+    'Inverse Hex':           { full: 'Inverse Hexagram', desc: 'Hexagrams communicate well with their inverted counterparts, making the date usable.' },
+    'Family':                { full: 'Blood Link Family', desc: 'Hexagrams belong to the same Blood Link family — a powerful and cohesive energy setting.' },
+    'Nayin Power':           { full: 'Nayin Power ☯', desc: 'All three pillars (Hour, Month, Year) have positive Nayin relationships with the Day Nayin. Maximum melodic element harmony. Strong amplification of the day\'s energy.' },
+    'Nayin':                 { full: 'Nayin 纳音', desc: 'Two pillars have positive Nayin relationships with the Day Nayin. Melodic element harmony — the day\'s energy is supported and amplified.' },
+    'Nayin Weak':            { full: 'Nayin Weak ✕', desc: 'All three pillars have negative Nayin relationships with the Day Nayin. The day\'s melodic energy is drained or opposed. Reduces overall effectiveness.' },
+    '✦ Nayin Person':        { full: 'Nayin Person ✦', desc: 'The Date Day Nayin has a positive relationship with the person\'s Nayin. Y = via person\'s Year pillar, D = via person\'s Day pillar, DY = both.' },
+    '✗ Nayin Person':        { full: 'Nayin Person ✗', desc: 'The Date Day Nayin has a negative relationship with the person\'s Nayin. Y = via person\'s Year pillar, D = via person\'s Day pillar, DY = both.' },
+    // Ke Wealth
+    'Ke':                    { full: 'Ke Wealth 克财', desc: 'Wealth activation conditions are met. The day or hour stems/elements create a Ke (controlling) relationship that activates wealth energy. More conditions = stronger wealth potential.' },
 };
 
 function showBadgeTip(el, code) {
     const info = BADGE_INFO[code];
-    if (!info) return;
+    const desc = info ? info.desc : ANALYSIS_TIPS[code];
+    const full = info ? info.full : code;
+    if (!desc) return;
     const tip = document.getElementById('badge-tip');
-    tip.innerHTML = `<strong>${info.full}</strong><br><span style="font-size:11px;opacity:0.85;">${info.desc}</span>`;
+    tip.innerHTML = `<strong>${full}</strong><br><span style="font-size:11px;opacity:0.85;">${desc}</span>`;
     tip.style.display = 'block';
     const r = el.getBoundingClientRect();
     tip.style.left = Math.min(r.left, window.innerWidth - 230) + 'px';
     tip.style.top  = (r.bottom + 6) + 'px';
-
 }
 
 document.addEventListener('click', e => {
@@ -2435,7 +2632,7 @@ function renderScanResults(results, mode) {
         const hasBothPersons = results.some(r => r.scoreB > 0);
         const bTag = hasBothPersons && r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>` : '';
         const aTag = hasBothPersons && r.scoreA > 0 ? ` <span style="color:#2e7d32;font-weight:bold;font-size:14px;">A</span>` : '';
-        const spiritStr = r.spiritLabel ? `<span style="font-size:10px;font-weight:bold;color:${r.spiritAuspicious ? '#0044cc' : '#d40000'};">${r.spiritLabel}</span>` : '';
+        const spiritStr = r.spiritLabel ? `<span style="font-size:10px;font-weight:bold;color:${r.spiritAuspicious ? '#0044cc' : '#d40000'};cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${r.spiritLabel}')">${r.spiritLabel}</span>` : '';
         // Purpose condition label
         const purpose = getPurpose();
         const purposeCondLabel = purpose ? (() => {
@@ -2447,18 +2644,22 @@ function renderScanResults(results, mode) {
             if (purpose === 'speak')        return '<span style="color:#2e7d32;font-weight:bold;">🎤 Speak</span>';
             return '';
         })() : '';
-        const nayinStr = r.nayinLabel === 'Nayin Power' ? `<span style="font-size:10px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</span>`
-                       : r.nayinLabel === 'Nayin'       ? `<span style="font-size:10px;font-weight:bold;color:#2e7d32;">Nayin</span>`
-                       : r.nayinLabel === 'Nayin Weak'  ? `<span style="font-size:10px;font-weight:bold;color:#b71c1c;">✕ Nayin Weak</span>`
+        const nayinStr = r.nayinLabel === 'Nayin Power' ? `<span style="font-size:10px;font-weight:bold;color:#1b5e20;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Power')">☯ Nayin Power</span>`
+                       : r.nayinLabel === 'Nayin'       ? `<span style="font-size:10px;font-weight:bold;color:#2e7d32;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin')">Nayin</span>`
+                       : r.nayinLabel === 'Nayin Weak'  ? `<span style="font-size:10px;font-weight:bold;color:#b71c1c;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Weak')">✕ Nayin Weak</span>`
                        : '';
-        const nayinPersonStr = r.nayinPersonLabel === 'Nayin ✦ Person' ? `<span style="font-size:10px;font-weight:bold;color:#0d47a1;">✦ Nayin Person</span>`
-                             : r.nayinPersonLabel === 'Nayin ✗ Person' ? `<span style="font-size:10px;font-weight:bold;color:#e65100;">✗ Nayin Person</span>`
+        const nayinPersonStr = r.nayinPersonLabel && r.nayinPersonLabel.startsWith('Nayin ✦ Person')
+                             ? `<span style="font-size:10px;font-weight:bold;color:#0d47a1;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'✦ Nayin Person')">${r.nayinPersonLabel.replace('Nayin ✦ Person','✦ Nayin Person')}</span>`
+                             : r.nayinPersonLabel && r.nayinPersonLabel.startsWith('Nayin ✗ Person')
+                             ? `<span style="font-size:10px;font-weight:bold;color:#e65100;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'✗ Nayin Person')">${r.nayinPersonLabel.replace('Nayin ✗ Person','✗ Nayin Person')}</span>`
                              : '';
-        const keStr = r.keScore > 0 ? `<span style="font-size:10px;font-weight:bold;color:#b8860b;">Ke+${r.keScore}</span>` : '';
+        const keStr = r.keScore > 0 ? `<span style="font-size:10px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${r.keScore}</span>` : '';
+        const blueTagsHtml = [...r.blueLabels, ...r.matchLabels, ...r.qualLabels].filter(Boolean)
+            .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score">${s}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, ...r.blueLabels, ...r.matchLabels, ...r.qualLabels].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
         </div>`;
     }).join('');
 }
@@ -2775,7 +2976,7 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     const tyBonus    = (pTYA && pTYA === hZhi) ? 1 : 0;
 
     // Minimum floor: penalties can never push a relation below its floor
-    const nayinRes = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
+    const nayinRes = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
     const nayinScore = nayinRes.score + nayinRes.personScore;
 
     // Nayin Power gets its own floor (+5 base means min 6 before other bonuses)
@@ -2826,6 +3027,7 @@ let _currentMode = 'dates';
 
 function setMode(mode) {
     _currentMode = mode;
+    if (mode === 'month') window._calBackDate = null; // clear back button when LIST opened manually
     try { localStorage.setItem('xkdg_mode', mode); } catch(e) {}
     const mDates = document.getElementById('mode-dates');
     const mMonth = document.getElementById('mode-month');
@@ -2904,8 +3106,8 @@ const DING_SPIRIT_MAP = {
 };
 
 // ── Purpose Filter ────────────────────────────────────────────
-var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤' };
-var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak' };
+var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤', legal:'⚖️' };
+var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak', legal:'Legal' };
 var _scoreModeBalanced = false; // false = A Priority, true = Balanced (min of A and B)
 var _listSortByScore   = false; // false = chronological, true = best hour first per day
 
@@ -3028,6 +3230,19 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         (allItems && allItems.some(function(i){ return i.text && i.text.startsWith('Inverse Hex'); }));
     if (!hasXkdgRelation) return false;
 
+    // Date quality gate: Very Weak dates are fundamentally bad — excluded from all purposes
+    var isVeryWeak = items.some(function(i){ return i.text === 'Very Weak'; });
+    if (isVeryWeak) return false;
+
+    // Clash gate: year branch clash is too turbulent for any purpose
+    // Exception: Blood Link family or Pure Qi are powerful enough to override
+    var hasYearClash = items.some(function(i){ return i.tag === 'clash-year'; });
+    if (hasYearClash) {
+        var hasFamily  = blueItems.some(function(i){ return i.tag === 'family'; });
+        var hasPureQi  = blueItems.some(function(i){ return i.text && i.text.indexOf('Pure Qi') >= 0; });
+        if (!hasFamily && !hasPureQi) return false;
+    }
+
     // Negative spirits that disqualify per purpose
     var spiritName = items.filter(function(i){ return i.tag==='spirit-bad'; }).map(function(i){ return i.text; });
     function hasBadSpirit(name) {
@@ -3035,7 +3250,10 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
     }
 
     if (purpose === 'health') {
-        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('White Tiger')) return false;
+        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('White Tiger') || hasBadSpirit('Gou Chen')) return false;
+        // Positive bonuses
+        if (hourSpirit && hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2; // vitality
+        if (hourSpirit && hourSpirit.en === 'Jade Hall')       spiritBonus += 2; // comfort/healing
         var cond1 = dayRole === 'parent' && hasTY;
         var personDayStemA = _personADayStem || null;
         var personDayStemB = _personBDayStem || null;
@@ -3044,44 +3262,40 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         return cond1 || isDayTYforPerson;
     }
     if (purpose === 'career') {
-        if (hasBadSpirit('Red Bird') || hasBadSpirit('Heaven Prison') || hasBadSpirit('Gou Chen')) return false;
+        if (hasBadSpirit('Red Bird') || hasBadSpirit('Heaven Prison') || hasBadSpirit('Gou Chen') || hasBadSpirit('Heaven Penalty')) return false;
+        // Positive bonuses
+        if (hourSpirit && hourSpirit.en === 'Bright Hall')  spiritBonus += 2; // visibility/recognition
+        if (hourSpirit && hourSpirit.en === 'Fate Master')  spiritBonus += 2; // official positions
         return dayRole === 'parent' && hasNoble;
     }
     if (purpose === 'wealth') {
-        if (hasBadSpirit('Black Tortoise')) return false;
+        if (hasBadSpirit('Black Tortoise') || hasBadSpirit('Heaven Prison')) return false;
+        // Positive bonuses
+        if (hourSpirit && hourSpirit.en === 'Golden Box')      spiritBonus += 2;
+        if (hourSpirit && hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2;
+        if (hourSpirit && hourSpirit.en === 'Jade Hall')       spiritBonus += 2;
         var wealthPass = dayRole === 'child' && pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
         if (!wealthPass) return false;
 
-        // Wealth conditions — cumulative bonus scoring
-        // Get stems and qi from _currentDayAnalysis
         var dayStems    = (_currentDayAnalysis && _currentDayAnalysis.stems)   || {};
         var dayPillarsX = (_currentDayAnalysis && _currentDayAnalysis.pillars) || pillarsObj || {};
-
         var hGanW  = dayStems.hour  || (dayPillarsX.hour  && dayPillarsX.hour.stem)  || '';
         var mGanW  = dayStems.month || (dayPillarsX.month && dayPillarsX.month.stem)  || '';
         var yGanW  = dayStems.year  || (dayPillarsX.year  && dayPillarsX.year.stem)   || '';
-
         var hQiW   = dayPillarsX.hour  && dayPillarsX.hour.qi  != null ? dayPillarsX.hour.qi  : null;
         var mQiW   = dayPillarsX.month && dayPillarsX.month.qi != null ? dayPillarsX.month.qi : null;
         var yQiW   = dayPillarsX.year  && dayPillarsX.year.qi  != null ? dayPillarsX.year.qi  : null;
         var dQiW   = dayPillarsX.day   && dayPillarsX.day.qi   != null ? dayPillarsX.day.qi   : null;
-
-        // Active person day stem and qi
         var personDayStemW = _personADayStem || _personBDayStem || null;
         var personDayQiW   = null;
         if (_personAPillars && _personAPillars.day) personDayQiW = _personAPillars.day.qi;
         else if (_personBPillars && _personBPillars.day) personDayQiW = _personBPillars.day.qi;
-
         var wealthBonus = 0;
-
-        // Cond 1 (Bazi): Person Day Stem Ke → Date Day Stem
         if (personDayStemW && dGan) {
             var pElem = STEM_ELEMENT[personDayStemW];
             var dElem = STEM_ELEMENT[dGan];
             if (pElem && dElem && STEM_KE[pElem] === dElem) wealthBonus += 1;
         }
-
-        // Cond 2 (Bazi): Date Day Stem Ke → Hour/Month/Year Stems
         if (dGan) {
             var dElemW = STEM_ELEMENT[dGan];
             if (dElemW) {
@@ -3090,15 +3304,11 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
                 });
             }
         }
-
-        // Cond 3 (XKDG qi): Person Day qi element Ke → Date Day qi element
         if (personDayQiW != null && dQiW != null) {
             var pQiElem = QI_ELEMENT[personDayQiW];
             var dQiElem = QI_ELEMENT[dQiW];
             if (pQiElem && dQiElem && NAYIN_KE[pQiElem] === dQiElem) wealthBonus += 1;
         }
-
-        // Cond 4 (XKDG qi): Date Day qi element Ke → Hour/Month/Year qi elements
         if (dQiW != null) {
             var dQiElemW = QI_ELEMENT[dQiW];
             if (dQiElemW) {
@@ -3110,21 +3320,23 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
                 });
             }
         }
-
-        // Store bonus for score boosting (add to spiritBonus-equivalent)
         spiritBonus += wealthBonus;
         window._lastWealthBonus = wealthBonus;
         return true;
     }
     if (purpose === 'relationship') {
-        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Red Bird') || hasBadSpirit('Black Tortoise')) return false;
+        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Red Bird') || hasBadSpirit('Black Tortoise') || hasBadSpirit('Gou Chen')) return false;
+        // Positive bonuses
+        if (hourSpirit && hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2;
         return dayRole === 'child' && (
             (pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily)) || hasAddOrHetu);
     }
     if (purpose === 'journey') {
-        if (hasBadSpirit('White Tiger') || hasBadSpirit('Heaven Prison') || hasBadSpirit('Gou Chen')) return false;
+        if (hasBadSpirit('White Tiger') || hasBadSpirit('Heaven Prison') || hasBadSpirit('Gou Chen') || hasBadSpirit('Heaven Penalty')) return false;
+        // Positive bonuses
+        if (hourSpirit && hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2;
+        if (hourSpirit && hourSpirit.en === 'Jade Hall')       spiritBonus += 2; // moving house
 
-        // Condition 1: at least one Parent anywhere in the 4 pillars
         var hasAnyParent = pillarsObj && ['hour','day','month','year'].some(function(k) {
             var stems2 = (_currentDayAnalysis && _currentDayAnalysis.stems) || {};
             var branches2 = (_currentDayAnalysis && _currentDayAnalysis.branches) || {};
@@ -3136,19 +3348,14 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         });
         if (!hasAnyParent) return false;
 
-        // Condition 2: Post Horse and/or Ding Spirit of PERSON's day branch in the date pillars
-        // Skip this check in Test Mode when no person data is available
         var personDayBranchA = _personADayBranch || null;
         var personDayBranchB = _personBDayBranch || null;
         var personDayJiaZiA  = (_personADayStem || '') + (personDayBranchA || '');
         var personDayJiaZiB  = (_personBDayStem || '') + (personDayBranchB || '');
-
         var phA = personDayBranchA ? POST_HORSE[personDayBranchA] : null;
         var phB = personDayBranchB ? POST_HORSE[personDayBranchB] : null;
         var dsA = DING_SPIRIT_MAP[personDayJiaZiA] || null;
         var dsB = DING_SPIRIT_MAP[personDayJiaZiB] || null;
-
-        // Only enforce Post Horse / Ding Spirit check if we have person data
         var hasPersonData = personDayBranchA || personDayBranchB;
         if (hasPersonData) {
             var dateBranches2 = _currentDayAnalysis ? Object.values(_currentDayAnalysis.branches) : [];
@@ -3158,48 +3365,39 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
             });
             if (!personPHorDS) return false;
         }
-
-        // Condition 3 (optional bonus): hour branch = Post Horse or Ding Spirit of the DAY branch
         var dayBranchCurrent = (_currentDayAnalysis && _currentDayAnalysis.branches) ? _currentDayAnalysis.branches.day : null;
         var dayStemCurrent   = (_currentDayAnalysis && _currentDayAnalysis.stems)    ? _currentDayAnalysis.stems.day    : null;
         var dayPH = dayBranchCurrent ? POST_HORSE[dayBranchCurrent] : null;
         var dayDS = dayStemCurrent && dayBranchCurrent ? (DING_SPIRIT_MAP[dayStemCurrent + dayBranchCurrent] || null) : null;
         var hourIsOptional = dZhi && ((dayPH && dZhi === dayPH) || (dayDS && dZhi === dayDS));
         if (hourIsOptional) spiritBonus += 2;
-
         return true;
     }
     if (purpose === 'speak') {
-        // Disqualify: Heaven Penalty, Gou Chen
-        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Gou Chen')) return false;
-
-        // Required: Good Nayin for person (Nayin ✦ Person)
+        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Gou Chen') || hasBadSpirit('Red Bird')) return false;
         var hasGoodNayin = items.some(function(i){ return i.tag === 'nayin-person-good' || i.text === 'Nayin ✦ Person'; });
         if (!hasGoodNayin) {
-            // Also check via allItems
             var allItemsSpeak = allItems || blueItems;
             hasGoodNayin = allItemsSpeak.some(function(i){ return i.tag === 'nayin-person-good' || i.text === 'Nayin ✦ Person'; });
         }
         if (!hasGoodNayin) return false;
-
-        // Optional +2: Yu Tang (Jade Hall)
-        var hasYuTang = hourSpirit && (hourSpirit.en === 'Jade Hall');
-        if (hasYuTang) spiritBonus += 2;
-
-        // Optional +2: Qing Long (Cerulean Dragon)
-        var hasQingLong2 = hourSpirit && (hourSpirit.en === 'Cerulean Dragon');
-        if (hasQingLong2) spiritBonus += 2;
-
-        // Optional +2: Date Wen Chang (hour branch = WC of day stem)
+        if (hourSpirit && hourSpirit.en === 'Jade Hall')       spiritBonus += 2;
+        if (hourSpirit && hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2;
         var wcDate = WEN_CHANG[dGan] || null;
         if (wcDate && dZhi === wcDate) spiritBonus += 2;
-
-        // Optional +2: Person Wen Chang (day branch of date = WC of person's day stem)
         var personDayStemSp = _personADayStem || _personBDayStem || null;
         var wcPerson = personDayStemSp ? (WEN_CHANG[personDayStemSp] || null) : null;
         var dateDayBranchSp = (_currentDayAnalysis && _currentDayAnalysis.branches) ? _currentDayAnalysis.branches.day : dZhi;
         if (wcPerson && dateDayBranchSp === wcPerson) spiritBonus += 2;
-
+        return true;
+    }
+    if (purpose === 'legal') {
+        if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Red Bird') || hasBadSpirit('Gou Chen') || hasBadSpirit('Black Tortoise')) return false;
+        // Positive bonuses
+        if (hourSpirit && hourSpirit.en === 'Bright Hall')  spiritBonus += 2; // signings
+        if (hourSpirit && hourSpirit.en === 'Fate Master')  spiritBonus += 2; // authority
+        if (hourSpirit && hourSpirit.en === 'Heaven Virtue') spiritBonus += 2; // protection
+        // Base XKDG condition already checked above
         return true;
     }
     return true;
@@ -3551,13 +3749,15 @@ function buildTableView() {
                 ? `<div style="font-size:9px;font-weight:bold;color:#d40000;">⚡ Tomb Sha 墓煞</div>` : '';
 
             // Nayin for TABLE view
-            const nayinTV = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, tvConnectsA ? _personAStem : (tvConnectsB ? _personBStem : null), tvConnectsA ? _personABranch : (tvConnectsB ? _personBBranch : null));
+            const nayinTV = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, tvConnectsA ? _personAStem : (tvConnectsB ? _personBStem : null), tvConnectsA ? _personABranch : (tvConnectsB ? _personBBranch : null), tvConnectsA ? _personADayStem : (tvConnectsB ? _personBDayStem : null), tvConnectsA ? _personADayBranch : (tvConnectsB ? _personBDayBranch : null));
             const nayinHtmlTV = nayinTV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</div>`
                               : nayinTV.label === 'Nayin'       ? `<div style="font-size:9px;font-weight:bold;color:#2e7d32;">Nayin</div>`
                               : nayinTV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;">✕ Nayin Weak</div>`
                               : '';
-            const nayinPersonHtmlTV = nayinTV.personLabel === 'Nayin ✦ Person' ? `<div style="font-size:9px;font-weight:bold;color:#0d47a1;">✦ Nayin Person</div>`
-                                    : nayinTV.personLabel === 'Nayin ✗ Person' ? `<div style="font-size:9px;font-weight:bold;color:#e65100;">✗ Nayin Person</div>`
+            const nayinPersonHtmlTV = nayinTV.personLabel && nayinTV.personLabel.startsWith('Nayin ✦ Person')
+                                    ? `<div style="font-size:9px;font-weight:bold;color:#0d47a1;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'✦ Nayin Person')">${nayinTV.personLabel.replace('Nayin ✦ Person','✦ Nayin Person')}</div>`
+                                    : nayinTV.personLabel && nayinTV.personLabel.startsWith('Nayin ✗ Person')
+                                    ? `<div style="font-size:9px;font-weight:bold;color:#e65100;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'✗ Nayin Person')">${nayinTV.personLabel.replace('Nayin ✗ Person','✗ Nayin Person')}</div>`
                                     : '';
             html += `<td style="border:1px solid #ddd;background:${relBg};padding:4px 5px;vertical-align:middle;text-align:right;position:relative;">
                 <div style="position:absolute;top:2px;right:4px;display:flex;align-items:center;gap:2px;">
@@ -3621,18 +3821,35 @@ function buildCalView() {
         return s.getLunar().getEightChar().getDayZhi();
     })();
     const start    = new Date(startDate + 'T00:00:00');
+    // Always start from day 1 of the start month for full calendar view
+    const calMonthStart = new Date(start.getFullYear(), start.getMonth(), 1);
     const endDate  = new Date(start.getTime() + days * 86400000);
-    const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endDate.getFullYear() + 1, offsetMin);
+    // Extend end to last day of the end month
+    const calMonthEnd = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
+    const jieqiMap = buildJieqiMap(calMonthStart.getFullYear() - 1, calMonthEnd.getFullYear() + 1, offsetMin);
     const today    = new Date().toISOString().split('T')[0];
     const DOW      = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
-    // Group days by month
+    // Build set of Jieqi dates for quick lookup
+    const jieqiDates = {}; // isoDate → {name, isMajor}
+    // Major Jieqi (节 — month starters): odd indices 0,2,4...
+    // Mid-month (中气): even indices 1,3,5...
+    if (jieqiMap) {
+        Object.entries(jieqiMap).forEach(([isoDate, jq]) => {
+            // jq is the jieqi name
+            const MAJOR_JIEQI = ['小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种','夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪','冬至'];
+            const MONTH_START = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'];
+            const isMajor = MONTH_START.includes(jq);
+            jieqiDates[isoDate] = { name: jq, isMajor };
+        });
+    }
+
+    // Group days by month — use full month range
     const months = {};
-    for (let d = 0; d < days; d++) {
-        const dayDate   = new Date(start.getTime() + d * 86400000);
-            const _isoDay = localISODate(dayDate);
-            if (!isDateAllowed(_isoDay)) continue;
-        const monthKey  = dayDate.getFullYear() + '-' + String(dayDate.getMonth()+1).padStart(2,'0');
+    const totalDays = Math.round((calMonthEnd - calMonthStart) / 86400000) + 1;
+    for (let d = 0; d < totalDays; d++) {
+        const dayDate  = new Date(calMonthStart.getTime() + d * 86400000);
+        const monthKey = dayDate.getFullYear() + '-' + String(dayDate.getMonth()+1).padStart(2,'0');
         if (!months[monthKey]) months[monthKey] = [];
         months[monthKey].push(dayDate);
     }
@@ -3649,51 +3866,47 @@ function buildCalView() {
 
         // Fill blanks from Monday to first day of month
         const monthStart = new Date(yr, mo-1, 1);
+        const monthEnd   = new Date(yr, mo, 0); // last day of month
         let startDow = monthStart.getDay();
         startDow = startDow === 0 ? 6 : startDow - 1; // Mon=0
 
-        // Track current cell position (0=Mon ... 6=Sun)
-        let currentCol = startDow;
+        // Add initial blank cells
+        for (let b = 0; b < startDow; b++) html += `<div class="cal-cell empty"></div>`;
 
-        // Add initial blank cells for days before 1st
-        for (let b = 0; b < startDow; b++) {
-            html += `<div class="cal-cell empty"></div>`;
-        }
-
-        // Add blank cells for days 1..firstDate-1 that aren't in our scan range
-        const firstDateInMonth = dayDates[0].getDate();
-        for (let d = 1; d < firstDateInMonth; d++) {
-            html += `<div class="cal-cell empty"></div>`;
-            currentCol = (currentCol + 1) % 7;
-        }
-        currentCol = (startDow + firstDateInMonth - 1) % 7;
-
-        let prevDate = firstDateInMonth - 1;
-        for (const dayDate of dayDates) {
-            const thisDate = dayDate.getDate();
-            // Add blank cells for skipped days
-            for (let d = prevDate + 1; d < thisDate; d++) {
-                html += `<div class="cal-cell empty"></div>`;
-                currentCol = (currentCol + 1) % 7;
-            }
-            prevDate = thisDate;
+        // Iterate ALL days of the month
+        for (let dd = 1; dd <= monthEnd.getDate(); dd++) {
+            const dayDate = new Date(yr, mo-1, dd);
             const isoDate = localISODate(dayDate);
             const isToday = isoDate === today;
+            const isInRange = dayDate >= calMonthStart && dayDate <= calMonthEnd;
 
             // Get day pillar using midday
-            const midDay    = new Date(dayDate);
-            midDay.setHours(12, 0, 0, 0);
+            const midDay    = new Date(dayDate); midDay.setHours(12, 0, 0, 0);
             const solarDate = new Date(midDay.getTime() + offsetMin * 60000);
             const eightChar = Solar.fromDate(solarDate).getLunar().getEightChar();
             let dGan = eightChar.getDayGan(), dZhi = eightChar.getDayZhi();
-            const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
-            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
-            const hGan = eightChar.getTimeGan(), hZhi = eightChar.getTimeZhi();
 
             const dData = getXkdgData(dGan, dZhi);
-            if (!dData) { html += `<div class="cal-cell">${dayDate.getDate()}</div>`; continue; }
+            if (!dData || !isInRange) {
+                // Show day number only for out-of-range or no-data days
+                const stemColor2 = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
+                const jqEntry = jieqiMap[isoDate] || [];
+                const jqHtmlSimple = jqEntry.map(j => {
+                    const isJie = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'].includes(j.name);
+                    return `<div style="font-size:9px;font-weight:bold;color:#000;margin-top:2px;">${isJie?'节':'气'} ${j.name}</div>`;
+                }).join('');
+                html += `<div class="cal-cell${isToday?' today':''}" style="opacity:${isInRange?1:0.4};" onclick="showDayInList('${isoDate}')">
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="cal-day-num">${dd}</span>
+                        <span class="cal-stem" style="color:${stemColor2};font-size:9px;">${dGan}<br>${dZhi}</span>
+                    </div>${jqHtmlSimple}</div>`;
+                continue;
+            }
 
-            // Check best hour of the day for positive/favourable status
+            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
+            const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
+
+            // Check best hour of the day
             let dayIsPositive = false, dayIsFavourable = false, dayIsFamily = false;
             let dayBestScore = 0;
             for (let h = 0; h < 12; h++) {
@@ -3702,7 +3915,6 @@ function buildCalView() {
                 if (hs === 23) bd = new Date(dayDate.getTime() - 86400000);
                 bd.setHours(hs, 30, 0, 0);
                 const sd = new Date(bd.getTime() + offsetMin * 60000);
-                // Hour pillar: always use dayDate at this hour (continuous cycle)
                 let bdForHourCAL = new Date(dayDate);
                 bdForHourCAL.setHours(hs, 30, 0, 0);
                 const ec = Solar.fromDate(bdForHourCAL).getLunar().getEightChar();
@@ -3710,41 +3922,25 @@ function buildCalView() {
                 const hZ = ec.getTimeZhi();
                 const hD = getXkdgData(hG, hZ);
                 if (!hD) continue;
-                const pillars = buildResolvedPillars(
-                    ec.getYearGan(), ec.getYearZhi(),
-                    ec.getMonthGan(), ec.getMonthZhi(),
-                    dGan, dZhi, hG, hZ
-                );
-                const { strong: sS, growing: sG } = getJieqiSeason(sd);
-                const { items } = analyzeXkdg(pillars, sS, sG);
-                const blues = items.filter(i => i.tag === 'blue' || i.tag === 'family');
-                if (blues.length > 0 && blueItemsPassFilter(blues, getActiveFilters(), { qi: dData?.qi, yun: dData?.yun })) {
+                const { strong: hSS, growing: hSG } = getJieqiSeason(sd);
+                const hPillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hG, hZ);
+                const { items: hItems } = analyzeXkdg(hPillars, hSS, hSG);
+                const hBlue = hItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+                if (hBlue.length > 0) {
                     dayIsPositive = true;
-                    if (blues.some(i => i.tag === 'family')) dayIsFamily = true;
-                    // Use getMatchLabels via temp _currentDayAnalysis for consistency
-                    const _saved = _currentDayAnalysis;
-                    _currentDayAnalysis = { items, pillars,
-                        stems: { hour: hG, day: dGan, month: ec.getMonthGan(), year: ec.getYearGan() },
-                        branches: { hour: hZ, day: dZhi, month: ec.getMonthZhi(), year: ec.getYearZhi() }
-                    };
+                    if (hBlue.some(i => i.tag === 'family')) dayIsFamily = true;
+                    const hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, getSpiritForHour(dZhi, hZ), hSS, hSG, personAYear, pYStem, pYBranch, [], null, null, null, null, null, hPillars);
+                    if (hScore > dayBestScore) dayBestScore = hScore;
                     if (personAYear) {
-                        const labelsA = getMatchLabels(personAYear, pYStem, pYBranch, pillars.day, dGan, dZhi, _personAPillars, _personADayStem, _personADayBranch);
-                        if (labelsA.length > 0) {
-                            dayIsFavourable = true;
-                            const qualScore = getDateQualityScore(items);
-                            const hourScore = getMatchScore(personAYear, pYStem, pYBranch, pillars.day, dGan, dZhi);
-                            const score = Math.max(1, hourScore * Math.max(qualScore, 1));
-                            if (score > dayBestScore) dayBestScore = score;
+                        const dDataCAL = getXkdgData(dGan, dZhi);
+                        if (dDataCAL) {
+                            const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dDataCAL, dGan, dZhi, null, null, null);
+                            if (matchLabels.length > 0) dayIsFavourable = true;
                         }
-                    } else {
-                        const qualScore = getDateQualityScore(items);
-                        if (qualScore > dayBestScore) dayBestScore = qualScore;
                     }
-                    _currentDayAnalysis = _saved;
                 }
             }
 
-            // Green gradient based on best score
             const calGreenBg = dayIsFamily ? '#fffde7'
                              : !dayIsPositive ? ''
                              : dayBestScore >= 12 ? '#a5d6a7'
@@ -3758,66 +3954,65 @@ function buildCalView() {
                             : dayBestScore >= 6  ? '#388e3c'
                             : '#558b2f';
 
-            // Noble: check if day BRANCH is person's Noble branch
-            const personNobles = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
+            const personNobles   = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
             const dayBranchIsNoble = personNobles.includes(dZhi);
-
-            // Lu: check if day BRANCH is person's Lu branch
-            const dayBranchIsLu = personDayStemCAL ? LU_BRANCH[personDayStemCAL] === dZhi : false;
-            // Heaven Virtue: check if day BRANCH is person's HV branch
-            const dayBranchIsHV = personMthBranchCAL ? HEAVEN_VIRTUE[personMthBranchCAL] === dZhi : false;
-            // Branch Virtue: check if day BRANCH is person's BV branch
-            const personDayZhiCAL = (() => { if (!personDayStemCAL) return null; try { const b = new Date(`${document.getElementById('person-date').value}T${document.getElementById('person-time').value||'12:00'}`); return Solar.fromDate(new Date(b.getTime()+(parseFloat(document.getElementById('longitude').value)-parseFloat(document.getElementById('utc-offset').value)*15)*4*60000)).getLunar().getEightChar().getDayZhi(); } catch(e) { return null; } })();
-            const dayBranchIsBV = personDayZhiCAL ? BRANCH_VIRTUE[personDayZhiCAL] === dZhi : false;
-            // Tian Yi: check if day BRANCH is person's TY branch
-            const dayBranchIsTY = personDayStemCAL ? TIAN_YI[personDayStemCAL] === dZhi : false;
-            // Month Virtue: check if day BRANCH is person's MV branch
+            const dayBranchIsLu  = personDayStemCAL ? LU_BRANCH[personDayStemCAL] === dZhi : false;
+            const dayBranchIsHV  = personMthBranchCAL ? HEAVEN_VIRTUE[personMthBranchCAL] === dZhi : false;
+            const personDayZhiCAL2 = (() => { if (!personDayStemCAL) return null; try { const b = new Date(`${document.getElementById('person-date').value}T${document.getElementById('person-time').value||'12:00'}`); return Solar.fromDate(new Date(b.getTime()+(parseFloat(document.getElementById('longitude').value)-parseFloat(document.getElementById('utc-offset').value)*15)*4*60000)).getLunar().getEightChar().getDayZhi(); } catch(e) { return null; } })();
+            const dayBranchIsBV  = personDayZhiCAL2 ? BRANCH_VIRTUE[personDayZhiCAL2] === dZhi : false;
+            const dayBranchIsTY  = personDayStemCAL ? TIAN_YI[personDayStemCAL] === dZhi : false;
             const mvCAL = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
-            const dayBranchIsMV = mvCAL ? mvCAL.branch === dZhi : false;
+            const dayBranchIsMV  = mvCAL ? mvCAL.branch === dZhi : false;
 
             const cellClass = `cal-cell${isToday?' today':''}${dayIsFamily?' family':''}`;
             const cellStyle = calGreenBg ? `background:${calGreenBg};border-color:${calBorder};` : '';
             const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
 
-            const jieqi    = jieqiMap[isoDate] || [];
-            const jieqiHTML = jieqi.map(j => `<div style="font-size:9px;color:#e65100;font-weight:bold;">${j.name} ${j.time}</div>`).join('');
-            const nobleIndicator = dayBranchIsNoble
-                ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'N')">N</div>`
-                : '';
-            const luIndicator = dayBranchIsLu
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e1f5fe;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'L')">L</div>`
-                : '';
-            const hvIndicator = dayBranchIsHV
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e3f2fd;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'HV')">HV</div>`
-                : '';
-            const bvIndicator = dayBranchIsBV
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8eaf6;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'BV')">BV</div>`
-                : '';
-            const mvIndicator = dayBranchIsMV
-                ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#f3e5f5;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'MV')">MV</div>`
-                : '';
-            const tyIndicator = dayBranchIsTY
-                ? `<div style="font-size:10px;color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8f5e9;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'TY')">TY</div>`
-                : '';
+            // Jieqi markers — 节 (month start) in red, 气 (mid-month) in orange
+            const MONTH_START_JQ = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'];
+            const jqEntry = jieqiMap[isoDate] || [];
+            const jieqiHTML = jqEntry.map(j => {
+                const isJie = MONTH_START_JQ.includes(j.name);
+                return `<div style="font-size:9px;font-weight:bold;color:#000;margin-top:2px;">${isJie?'节':'气'} ${j.name}</div>`;
+            }).join('');
 
-            html += `<div class="${cellClass}" style="${cellStyle}" onclick="loadDateIntoMain('${isoDate}', 5)">
-                <div style="display:flex;justify-content:space-between;align-items:top;">
-                    <span class="cal-day-num">${dayDate.getDate()}</span>
-                    <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
+            const nobleIndicator = dayBranchIsNoble ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'N')">N</div>` : '';
+            const luIndicator    = dayBranchIsLu    ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e1f5fe;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'L')">L</div>` : '';
+            const hvIndicator    = dayBranchIsHV    ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e3f2fd;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'HV')">HV</div>` : '';
+            const bvIndicator    = dayBranchIsBV    ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8eaf6;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'BV')">BV</div>` : '';
+            const mvIndicator    = dayBranchIsMV    ? `<div style="font-size:10px;color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#f3e5f5;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'MV')">MV</div>` : '';
+            const tyIndicator    = dayBranchIsTY    ? `<div style="font-size:10px;color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;background:#e8f5e9;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'TY')">TY</div>` : '';
+
+            html += `<div class="${cellClass}" style="${cellStyle}display:flex;flex-direction:column;justify-content:space-between;" onclick="showDayInList('${isoDate}')">
+                <div>
+                    <div style="display:flex;justify-content:space-between;align-items:top;">
+                        <span class="cal-day-num">${dd}</span>
+                        <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
+                    </div>
+                    ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
                 </div>
-                ${jieqiHTML}
-                ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
+                ${jieqiHTML ? `<div style="border-top:1px solid #ddd;margin-top:2px;padding-top:1px;">${jieqiHTML}</div>` : ''}
             </div>`;
-            currentCol = (currentCol + 1) % 7;
         }
-
         // Fill trailing blanks to complete the grid row
-        for (let b = currentCol; b < 7 && b > 0; b++) html += `<div class="cal-cell empty"></div>`;
+        const totalCells = startDow + monthEnd.getDate();
+        const trailingBlanks = (7 - (totalCells % 7)) % 7;
+        for (let b = 0; b < trailingBlanks; b++) html += `<div class="cal-cell empty"></div>`;
 
         html += `</div>`;
     }
 
-    document.getElementById('cal-view').innerHTML = html;
+    // Month navigation bar
+    const calNavHtml = `<div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px;">
+        <button onclick="shiftCalMonth(-6)" style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">−6m</button>
+        <button onclick="shiftCalMonth(-2)" style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">−2m</button>
+        <button onclick="shiftCalMonth(-1)" style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">−1m</button>
+        <button onclick="shiftCalMonth(1)"  style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">+1m</button>
+        <button onclick="shiftCalMonth(2)"  style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">+2m</button>
+        <button onclick="shiftCalMonth(6)"  style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">+6m</button>
+    </div>`;
+
+    document.getElementById('cal-view').innerHTML = calNavHtml + html;
     const cvEl = document.getElementById('cal-view'); if(cvEl) cvEl.style.display = 'block';
     const srEl1 = document.getElementById('scan-results'); if(srEl1) srEl1.style.display = 'none';
     const mvEl1 = document.getElementById('month-view'); if(mvEl1) mvEl1.style.display = 'none';
@@ -3990,7 +4185,7 @@ function buildMonthView() {
                 const ziIsPos2 = ziBlue2.length > 0;
                 const ziSpirit2 = getSpiritForHour(ziDZhi2, '子');
                 const ziScore2  = calcHourScore(ziDGan2, ziDZhi2, ziHGan2, '子', ziMGan2, ziMZhi2, ziYGan2, ziYZhi2, ziItems2, ziSpirit2, ziSS2, ziSG2, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, ziP2);
-                const ziNayin2  = analyzeNayin(ziDGan2, ziDZhi2, ziHGan2, '子', ziMGan2, ziMZhi2, ziYGan2, ziYZhi2, activePersonStem, activePersonBranch);
+                const ziNayin2  = analyzeNayin(ziDGan2, ziDZhi2, ziHGan2, '子', ziMGan2, ziMZhi2, ziYGan2, ziYZhi2, activePersonStem, activePersonBranch, activePersonDayStem, activePersonDayBranch);
                 const ziAF2 = getActiveFilters();
                 const ziPassF2 = ziAF2.size === 0 || blueItemsPassFilter(ziBlue2, ziAF2, {}, ziItems2);
                 if (ziPassF2) {
@@ -4017,7 +4212,6 @@ function buildMonthView() {
                             </div>
                         </div>
                         <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
-                            <div style="font-size:11px;font-weight:bold;color:#fff;background:#1565c0;border-radius:8px;padding:0px 5px;display:inline-block;margin-bottom:2px;">${ziScore2}</div>
                             ${ziElN2.length?`<div style="color:#1a7a1a;font-weight:bold;">${ziElN2.join(' · ')}</div>`:''}
                             ${ziPerN2.length?`<div style="color:#1565c0;">${ziPerN2.join(' · ')}</div>`:''}
                             ${ziSp2H}${ziNy2H}
@@ -4089,29 +4283,29 @@ function buildMonthView() {
                 const ziBlueF   = ziItemsF.filter(i => i.tag==='blue'||i.tag==='family');
                 const ziSpiritF = getSpiritForHour(ziDZhi, ziHZhiF);
                 const ziScoreF  = calcHourScore(ziDGan, ziDZhi, ziHGanF, ziHZhiF, ziMGan, ziMZhi, ziYGan, ziYZhi, ziItemsF, ziSpiritF, ziSS, ziSG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, ziPillars);
-                const ziNayinF  = analyzeNayin(ziDGan, ziDZhi, ziHGanF, ziHZhiF, ziMGan, ziMZhi, ziYGan, ziYZhi, activePersonStem, activePersonBranch);
+                const ziNayinF  = analyzeNayin(ziDGan, ziDZhi, ziHGanF, ziHZhiF, ziMGan, ziMZhi, ziYGan, ziYZhi, activePersonStem, activePersonBranch, activePersonDayStem, activePersonDayBranch);
                 const ziBgF  = ziScoreF>=12?'#a5d6a7':ziScoreF>=9?'#c8e6c9':ziScoreF>=6?'#dcedc8':ziScoreF>=4?'#f1f8e9':'#ffffff';
                 const ziBrdF = ziScoreF>=12?'#1b5e20':ziScoreF>=9?'#2e7d32':ziScoreF>=6?'#388e3c':ziScoreF>=4?'#558b2f':'#aaa';
                 const ziElNF = ziBlueF.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
                 const ziSpHF = ziSpiritF?`<div style="font-size:9px;font-weight:bold;color:${ziSpiritF.auspicious?'#0044cc':'#d40000'};">${ziSpiritF.en} ${ziSpiritF.zh}</div>`:'';
                 const ziNyFH = ziNayinF.label?`<div style="font-size:9px;font-weight:bold;color:${ziNayinF.label==='Nayin Power'?'#1b5e20':ziNayinF.label==='Nayin Weak'?'#b71c1c':'#2e7d32'};">${ziNayinF.label}</div>`:'';
                 const ziYD = ziPillars.year||{}, ziMD = ziPillars.month||{}, ziDD = ziPillars.day||{}, ziHD = ziPillars.hour||{};
-                dayRows.push({ score: ziScoreF, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:stretch;border-bottom:1px solid #e0e0e0;cursor:pointer;background:${ziBgF};border-left:4px solid ${ziBrdF};">
-                    <div style="width:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;color:#1b5e20;">${ziScoreF}</div>
-                    <div style="width:80px;flex-shrink:0;font-size:11px;padding:4px 2px;">
-                        <span style="color:#999;font-size:9px;">${ziStart}-${ziMid}${tstMark}</span><br>
+                dayRows.push({ score: ziScoreF, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBgF?`background:${ziBgF};`:''}border-left:4px solid ${ziBrdF};cursor:pointer;">
+                    <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${ziScoreF}</div>
+                    <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
+                        <span style="color:#999;font-size:10px;">${ziStart}-${ziMid}${tstMark}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGanF}${ziHZhiF}</span>
                     </div>
-                    <div style="flex:1;display:flex;justify-content:flex-end;padding-right:8px;">
-                        <div style="display:grid;grid-template-columns:25px 25px 25px 25px;gap:0;text-align:center;align-items:center;">
-                            <div><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziHD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziHD.yun||''}</div></div>
-                            <div><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziDD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziDD.yun||''}</div></div>
-                            <div><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziMD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziMD.yun||''}</div></div>
-                            <div><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziYD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziYD.yun||''}</div></div>
+                    <div style="width:30px;flex-shrink:0;"></div>
+                    <div style="flex:1;display:flex;justify-content:flex-end;padding-right:20px;">
+                        <div style="display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
+                            <div style="text-align:center;"><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziHD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziHD.yun||''}</div></div>
+                            <div style="text-align:center;"><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziDD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziDD.yun||''}</div></div>
+                            <div style="text-align:center;"><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziMD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziMD.yun||''}</div></div>
+                            <div style="text-align:center;"><div style="color:#d40000;font-weight:bold;font-size:13px;">${ziYD.qi||''}</div><div style="color:#0044cc;font-weight:bold;font-size:13px;">${ziYD.yun||''}</div></div>
                         </div>
                     </div>
-                    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;padding-right:4px;">
-                        <div style="font-size:11px;font-weight:bold;color:#fff;background:#1565c0;border-radius:8px;padding:0 5px;display:inline-block;">${ziScoreF}</div>
+                    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
                         ${ziElNF.length?`<div style="color:#1a7a1a;font-weight:bold;">${ziElNF.join(' · ')}</div>`:''}
                         ${ziSpHF}${ziNyFH}
                     </div>
@@ -4134,7 +4328,7 @@ function buildMonthView() {
             // If no hData and no Tomb Sha — check Nayin before deciding to skip (Zi first half always passes)
             if (!isZiFirst && !hData && !isTombShaLV) {
                 if (!activeFiltersPre.has('nayin')) continue;
-                const nayinCheck = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
+                const nayinCheck = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
                 if (!nayinCheck.label) continue;
             }
 
@@ -4161,7 +4355,7 @@ function buildMonthView() {
             const nobleBranches = NOBLE_BRANCHES[dGan] || [];
             if (nobleBranches.includes(hZhi)) analysisItems.push({ text: 'Noble (Date)', tag: 'noble' });
             // Add Nayin to analysisItems for filter
-            const nayinResLV = analyzeNayin(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, yZhi, activePersonStem, activePersonBranch);
+            const nayinResLV = analyzeNayin(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, yZhi, activePersonStem, activePersonBranch, activePersonDayStem, activePersonDayBranch);
             if (nayinResLV.label) analysisItems.push({ text: nayinResLV.label, tag: nayinResLV.label === 'Nayin Power' ? 'nayin-power' : nayinResLV.label === 'Nayin Weak' ? 'nayin-weak' : 'nayin' });
             if (nayinResLV.personLabel) analysisItems.push({ text: nayinResLV.personLabel, tag: nayinResLV.personScore > 0 ? 'nayin-person-good' : 'nayin-person-bad' });
             // Ke Wealth filter
@@ -4249,7 +4443,7 @@ function buildMonthView() {
 
             const elNotes  = blueItems.filter(i => {
                 if (activeFiltersMV.size > 0) return itemMatchesFilter(i.text, i.tag, activeFiltersMV);
-                return i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family' || i.text.startsWith('Inverse Hex');
+                return i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family' || i.text.startsWith('Inverse Hex') || i.text.includes('Period');
             }).map(i => i.text);
             const perNotes = blueItems.filter(i => {
                 if (activeFiltersMV.size > 0) return false; // already shown in elNotes when filter active
@@ -4271,7 +4465,7 @@ function buildMonthView() {
 
             // 12 Spirits
             const spirit = getSpiritForHour(dZhi, hZhiDirect);
-            const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};">${spirit.en} ${spirit.zh}</span>` : '';
+            const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${spirit.en} ${spirit.zh}')">${spirit.en} ${spirit.zh}</span>` : '';
 
             // Score via unified calcHourScore
             let listScore;
@@ -4298,14 +4492,18 @@ function buildMonthView() {
             }
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
-            const nayinHTMLLV = nayinResLV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</div>`
-                              : nayinResLV.label === 'Nayin'       ? `<div style="font-size:9px;font-weight:bold;color:#2e7d32;">Nayin</div>`
-                              : nayinResLV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;">✕ Nayin Weak</div>`
-                              : '';
-            const nayinPersonHTMLLV = nayinResLV.personLabel === 'Nayin ✦ Person' ? `<div style="font-size:9px;font-weight:bold;color:#0d47a1;">✦ Nayin Person</div>`
-                                    : nayinResLV.personLabel === 'Nayin ✗ Person' ? `<div style="font-size:9px;font-weight:bold;color:#e65100;">✗ Nayin Person</div>`
+            const nayinPersonHTMLLV = nayinResLV.personLabel && nayinResLV.personLabel.startsWith('Nayin ✦ Person')
+                                    ? `<div style="font-size:9px;font-weight:bold;color:#0d47a1;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'✦ Nayin Person')">${nayinResLV.personLabel.replace('Nayin ✦ Person','✦ Nayin Person')}</div>`
+                                    : nayinResLV.personLabel && nayinResLV.personLabel.startsWith('Nayin ✗ Person')
+                                    ? `<div style="font-size:9px;font-weight:bold;color:#e65100;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'✗ Nayin Person')">${nayinResLV.personLabel.replace('Nayin ✗ Person','✗ Nayin Person')}</div>`
                                     : '';
-            const keHTMLLV = keScoreLV > 0 ? `<div style="font-size:9px;font-weight:bold;color:#b8860b;">Ke+${keScoreLV}</div>` : '';
+            // Only show general Nayin if no Nayin Person label (avoid redundancy)
+            const nayinHTMLLV = nayinPersonHTMLLV ? ''
+                              : nayinResLV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Power')">☯ Nayin Power</div>`
+                              : nayinResLV.label === 'Nayin'       ? `<div style="font-size:9px;font-weight:bold;color:#2e7d32;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin')">Nayin</div>`
+                              : nayinResLV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Weak')">✕ Nayin Weak</div>`
+                              : '';
+            const keHTMLLV = keScoreLV > 0 ? `<div style="font-size:9px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${keScoreLV}</div>` : '';
             const lvGreenBg = listScore >= 12 ? '#a5d6a7'   // rank-1 strong green
                             : listScore >= 9  ? '#c8e6c9'   // rank-2 high
                             : listScore >= 6  ? '#dcedc8'   // rank-3 medium
@@ -4396,22 +4594,19 @@ function buildMonthView() {
                 </div>
                 </div>
                 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
-                    <div style="font-size:11px;font-weight:bold;color:#fff;background:#1565c0;border-radius:8px;padding:0px 5px;display:inline-block;margin-bottom:2px;">${listScore}</div>
-                    ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).join(' · ')}</div>
-                    ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.join(' · ')}</div>` : ''}` : ''}
+                    ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>
+                    ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
                     ${[
                         isDateNobleLV ? 'Noble' : '',
                         isDateLuLV    ? 'Lu' : '',
                         isDateHVLV    ? 'HV' : '',
                         isDateBVLV    ? 'BV' : '',
-                        isDateMVLV    ? 'MV' : '',
                         isDateTYLV    ? 'TY' : ''
                     ].filter(Boolean).length ? `<div style="color:#0277bd;font-weight:bold;">${[
                         isDateNobleLV ? 'Noble' : '',
                         isDateLuLV    ? 'Lu' : '',
                         isDateHVLV    ? 'HV' : '',
                         isDateBVLV    ? 'BV' : '',
-                        isDateMVLV    ? 'MV' : '',
                         isDateTYLV    ? 'TY' : ''
                     ].filter(Boolean).join(' · ')}</div>` : ''}
                     ${spiritHTML}
@@ -4430,18 +4625,56 @@ function buildMonthView() {
         dayRowsHtml = '';
     }
 
+    const backBtn = window._calBackDate
+        ? `<div style="margin-bottom:6px;padding:0 4px;">
+            <button onclick="
+                const s=document.getElementById('start-date');
+                const d=document.getElementById('scan-days');
+                if(s&&window._calBackFrom) s.value=window._calBackFrom;
+                if(d&&window._calBackDays) d.value=window._calBackDays;
+                window._calBackDate=null;
+                setMode('cal');buildCalView();
+            " style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #555;background:#fff;color:#555;cursor:pointer;">← Back to Calendar</button>
+           </div>`
+        : '';
     const sortToggleLV = `<div style="text-align:right;margin-bottom:4px;padding:0 4px;">
         <button onclick="toggleListSort()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #1565c0;background:${_listSortByScore?'#1565c0':'#fff'};color:${_listSortByScore?'#fff':'#1565c0'};cursor:pointer;">
             ${_listSortByScore ? '⇅ Best First' : '⇅ Chronological'}
         </button>
     </div>`;
     const mv = document.getElementById('month-view');
-    mv.innerHTML = (html ? sortToggleLV + html : '') || '<div class="scan-empty">No data.</div>';
+    mv.innerHTML = (html ? backBtn + sortToggleLV + html : '') || '<div class="scan-empty">No data.</div>';
     mv.style.display = 'block';
     const srEl2 = document.getElementById('scan-results'); if(srEl2) srEl2.style.display = 'none';
 }
 
 // ── Filter ────────────────────────────────────────────────────
+function shiftCalMonth(n) {
+    const startSel = document.getElementById('scan-start');
+    if (!startSel || !startSel.value) return;
+    const d = new Date(startSel.value + 'T00:00:00');
+    d.setMonth(d.getMonth() + n);
+    // Format as YYYY-MM-DD
+    const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    startSel.value = iso;
+    buildCalView();
+}
+
+function showDayInList(isoDate) {
+    // Save current FROM/DAYS to restore when going back
+    const startSel = document.getElementById('start-date');
+    const daysSel  = document.getElementById('scan-days');
+    window._calBackDate   = isoDate;
+    window._calBackFrom   = startSel ? startSel.value : null;
+    window._calBackDays   = daysSel  ? daysSel.value  : null;
+    // Switch to LIST mode showing only that single day
+    setMode('list');
+    if (startSel) startSel.value = isoDate;
+    if (daysSel)  daysSel.value  = 1;
+    buildMonthView();
+    window.scrollTo({ top: document.getElementById('month-view').offsetTop - 60, behavior: 'smooth' });
+}
+
 function toggleListSort() {
     _listSortByScore = !_listSortByScore;
     buildMonthView();
@@ -4745,7 +4978,7 @@ function runScanner() {
             if (!pillars.year.hex || !pillars.month.hex) {
                 // No XKDG data — only show if Nayin Weak filter active and this hour is Nayin Weak
                 if (!getActiveFilters().has('nayin')) continue;
-                const nayinWkChk = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch);
+                const nayinWkChk = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
                 if (nayinWkChk.label !== 'Nayin Weak') continue;
                 // Push a minimal result for this Nayin Weak hour
                 const dd2 = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
@@ -4778,7 +5011,7 @@ function runScanner() {
             const nobleBranches = NOBLE_BRANCHES[dGan] || [];
             if (nobleBranches.includes(hZhi)) analysisItems.push({ text: 'Noble (Date)', tag: 'noble' });
             // Add Nayin to analysisItems for filter
-            const nayinResBST = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, pillars.year.branch, activeYStem, activeYBranch);
+            const nayinResBST = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, pillars.year.branch, activeYStem, activeYBranch, activeDayStem, activeDayBranch);
             if (nayinResBST.label) analysisItems.push({ text: nayinResBST.label, tag: nayinResBST.label === 'Nayin Power' ? 'nayin-power' : nayinResBST.label === 'Nayin Weak' ? 'nayin-weak' : 'nayin' });
             if (nayinResBST.personLabel) analysisItems.push({ text: nayinResBST.personLabel, tag: nayinResBST.personScore > 0 ? 'nayin-person-good' : 'nayin-person-bad' });
             // Ke Wealth filter
