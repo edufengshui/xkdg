@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-10 — PWA343: Fix null pillar crash in hasFullHetu/hasAdding/hasPureQi -->
+<!-- Generated: 2026-05-10 — PWA345: GPS forces fresh position (maximumAge:0), auto-sets UTC offset -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v343';
+            const CACHE = 'xkdg-v345';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -1424,9 +1424,22 @@ function setNow() {
 function getGPS() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
-            document.getElementById('longitude').value = pos.coords.longitude.toFixed(2);
+            const lon = pos.coords.longitude;
+            document.getElementById('longitude').value = lon.toFixed(2);
+            // Auto-set UTC offset from longitude (approximate: every 15° = 1 hour)
+            const utcGuess = Math.round(lon / 15);
+            const utcClamped = Math.max(-12, Math.min(14, utcGuess));
+            document.getElementById('utc-offset').value = utcClamped;
             calculateBazi();
+        }, (err) => {
+            alert('GPS error: ' + err.message);
+        }, {
+            enableHighAccuracy: true,
+            maximumAge: 0,        // always fresh — never use cached position
+            timeout: 10000
         });
+    } else {
+        alert('Geolocation not supported by this browser.');
     }
 }
 
@@ -5057,7 +5070,17 @@ function runScanner() {
     // Person B (optional)
     let personBYear = null, pBYStem = null, pBYBranch = null;
     let pDayStemB = null, pDayBranchB = null, pMthBranchB = null;
-    if (birthDateB) {
+    const depthB = parseInt(document.getElementById('person-pillars-b')?.value || '4');
+    const panelBVisible = document.getElementById('person-panel-b') && document.getElementById('person-panel-b').style.display !== 'none';
+    if (depthB === 1 && panelBVisible) {
+        // Year-only: read directly from JiaZi dropdown
+        const jzB = document.getElementById('person-year-b')?.value?.trim() || '';
+        if (jzB.length >= 2) {
+            pBYStem = jzB[0]; pBYBranch = jzB[1];
+            const pBYData = getXkdgData(pBYStem, pBYBranch);
+            if (pBYData) personBYear = { ...pBYData, stem: pBYStem, branch: pBYBranch };
+        }
+    } else if (birthDateB) {
         const bBaseB  = new Date(`${birthDateB}T${birthTimeB}`);
         const bSolarB = Solar.fromDate(new Date(bBaseB.getTime() + offsetMin * 60000));
         const bECB    = bSolarB.getLunar().getEightChar();
