@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-10 — PWA332: Blood Link and Pure Qi exempt from year clash gate -->
+<!-- Generated: 2026-05-10 — PWA333: Label × hides only; DB × permanently deletes; Show button to restore -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v332';
+            const CACHE = 'xkdg-v333';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -1975,14 +1975,15 @@ function renderArchive(person) {
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const divId   = person === 'B' ? 'person-archive-b' : 'person-archive';
     const archive = loadArchive(key);
-    const keys    = Object.keys(archive);
+    const hidden  = loadArchive('xkdg_persons_hidden') || {};
+    const keys    = Object.keys(archive).filter(name => !hidden[name]);
     const div     = document.getElementById(divId);
     if (keys.length === 0) { div.style.display = 'none'; return; }
     div.style.display = 'flex';
     div.innerHTML = keys.map(name =>
         `<span style="display:inline-flex;align-items:center;gap:3px;margin:2px;">
             <span class="archive-btn" onclick="loadPerson('${person}','${name}')">${name}</span>
-            <span class="archive-del" onclick="deletePerson(event,'${person}','${name}')" title="Delete ${name}" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
+            <span class="archive-del" onclick="hidePerson(event,'${person}','${name}')" title="Hide from label row" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
          </span>`
     ).join('') + `<button onclick="openDB()" style="margin-left:auto;padding:2px 10px;font-size:11px;border-radius:8px;border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;cursor:pointer;font-weight:bold;">📋 DB</button>`;
 }
@@ -2014,6 +2015,7 @@ function renderDB() {
     const archiveA = loadArchive('xkdg_persons_a');
     const archiveB = loadArchive('xkdg_persons_b');
     const notes    = loadArchive('xkdg_persons_notes') || {};
+    const hidden   = loadArchive('xkdg_persons_hidden') || {};
     const entries  = [];
     Object.entries(archiveA).forEach(([name, data]) => entries.push({ name, data, panel: 'A', savedAt: data.savedAt || 0 }));
     Object.entries(archiveB).forEach(([name, data]) => entries.push({ name, data, panel: 'B', savedAt: data.savedAt || 0 }));
@@ -2029,13 +2031,19 @@ function renderDB() {
     document.getElementById('db-list').innerHTML = entries.map(({ name, data, panel }) => {
         const note = notes[name] || '';
         const dateStr = data.date ? data.date : '';
+        const isHidden = !!hidden[name];
         const panelColor = panel === 'A' ? '#1b5e20' : '#6a1b9a';
         const panelBg    = panel === 'A' ? '#e8f5e9' : '#f3e5f5';
-        return `<div style="border:1px solid #e0e0e0;border-radius:8px;margin:6px 0;padding:10px 12px;background:#fafafa;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        const hiddenTag  = isHidden
+            ? `<span style="font-size:10px;color:#888;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;padding:1px 6px;">hidden</span>
+               <button onclick="showPersonInLabels('${panel}','${name}')" style="font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid #388e3c;background:#e8f5e9;color:#1b5e20;cursor:pointer;">Show</button>`
+            : '';
+        return `<div style="border:1px solid #e0e0e0;border-radius:8px;margin:6px 0;padding:10px 12px;background:${isHidden?'#fafafa':'#fff'};">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                 <span style="font-size:10px;font-weight:bold;color:${panelColor};background:${panelBg};border-radius:10px;padding:1px 7px;">${panel}</span>
-                <span style="font-weight:bold;font-size:14px;flex:1;">${name}</span>
+                <span style="font-weight:bold;font-size:14px;flex:1;${isHidden?'opacity:0.5;':''}">${name}</span>
                 <span style="font-size:11px;color:#888;">${dateStr}</span>
+                ${hiddenTag}
                 <button onclick="loadPersonFromDB('${panel}','${name}')" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;cursor:pointer;">Load</button>
                 <span style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;" onclick="deleteFromDB('${panel}','${name}')">×</span>
             </div>
@@ -2044,6 +2052,14 @@ function renderDB() {
                 style="width:100%;box-sizing:border-box;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333;">
         </div>`;
     }).join('');
+}
+
+function showPersonInLabels(panel, name) {
+    const hidden = loadArchive('xkdg_persons_hidden') || {};
+    delete hidden[name];
+    localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
+    renderArchive(panel);
+    renderDB();
 }
 
 function loadPersonFromDB(panel, name) {
@@ -2058,15 +2074,18 @@ function saveDBNote(name, note) {
 }
 
 function deleteFromDB(panel, name) {
-    if (!confirm(`Delete "${name}"?`)) return;
+    if (!confirm(`Permanently delete "${name}"?`)) return;
     const key = panel === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const archive = loadArchive(key);
     delete archive[name];
     saveArchiveData(key, archive);
-    // Also remove note
+    // Also remove note and hidden flag
     const notes = loadArchive('xkdg_persons_notes') || {};
     delete notes[name];
     localStorage.setItem('xkdg_persons_notes', JSON.stringify(notes));
+    const hidden = loadArchive('xkdg_persons_hidden') || {};
+    delete hidden[name];
+    localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
     renderArchive(panel);
     renderDB();
 }
@@ -2103,14 +2122,17 @@ function loadPerson(person, name) {
     calculatePerson(person);
 }
 
+function hidePerson(e, person, name) {
+    e.stopPropagation();
+    const hidden = loadArchive('xkdg_persons_hidden') || {};
+    hidden[name] = true;
+    localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
+    renderArchive(person);
+}
+
 function deletePerson(e, person, name) {
     e.stopPropagation();
-    if (!confirm(`Delete "${name}"?`)) return;
-    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
-    const archive = loadArchive(key);
-    delete archive[name];
-    saveArchiveData(key, archive);
-    renderArchive(person);
+    hidePerson(e, person, name);
 }
 
 // ── Calculate Person ─────────────────────────
