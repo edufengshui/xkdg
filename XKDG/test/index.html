@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-10 — PWA336: DB pin ★ button to push person to top of list -->
+<!-- Generated: 2026-05-10 — PWA343: Fix null pillar crash in hasFullHetu/hasAdding/hasPureQi -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +19,7 @@
     // Register inline service worker for offline support
     if ('serviceWorker' in navigator) {
         const swCode = `
-            const CACHE = 'xkdg-v336';
+            const CACHE = 'xkdg-v343';
             const URLS  = [self.location.href];
             self.addEventListener('install', e => {
                 e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
@@ -354,8 +354,34 @@
         <div id="person-panel-b" style="display:block;">
         <div class="person-header" style="background:#f3e5f5; color:#4a148c; border-bottom-color:#7b1fa2; border-top:none; padding-top:4px;">
             <div><label>NAME:</label><input type="text" id="person-name-b" placeholder="Name..." style="width:100px;" oninput="document.getElementById('person-name-display-b').textContent=this.value"></div>
-            <div><label>BIRTH DATE:</label> <input type="date" id="person-date-b"></div>
-            <div><label>HOUR:</label> <input type="time" id="person-time-b" value="12:00" style="width:85px;"></div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <label>PILLARS:</label>
+                <select id="person-pillars-b" onchange="onPersonBPillarsChange()" style="padding:3px 6px;border-radius:6px;border:1px solid #ce93d8;font-size:12px;color:#4a148c;background:#fdf6ff;">
+                    <option value="4">4 — Year·Month·Day·Hour</option>
+                    <option value="3">3 — Year·Month·Day</option>
+                    <option value="2">2 — Year·Month</option>
+                    <option value="1">1 — Year only</option>
+                </select>
+            </div>
+            <div id="person-b-date-row"><label>BIRTH DATE:</label> <input type="date" id="person-date-b"></div>
+            <div id="person-b-year-row" style="display:none;"><label>YEAR PILLAR:</label>
+                <select id="person-year-b" style="padding:3px 6px;border-radius:6px;border:1px solid #ce93d8;font-size:13px;color:#4a148c;background:#fdf6ff;">
+                    <option value="">— select —</option>
+                    <option value="甲子">甲子 Jiǎ Zǐ</option><option value="乙丑">乙丑 Yǐ Chǒu</option><option value="丙寅">丙寅 Bǐng Yín</option><option value="丁卯">丁卯 Dīng Mǎo</option><option value="戊辰">戊辰 Wù Chén</option>
+                    <option value="己巳">己巳 Jǐ Sì</option><option value="庚午">庚午 Gēng Wǔ</option><option value="辛未">辛未 Xīn Wèi</option><option value="壬申">壬申 Rén Shēn</option><option value="癸酉">癸酉 Guǐ Yǒu</option>
+                    <option value="甲戌">甲戌 Jiǎ Xū</option><option value="乙亥">乙亥 Yǐ Hài</option><option value="丙子">丙子 Bǐng Zǐ</option><option value="丁丑">丁丑 Dīng Chǒu</option><option value="戊寅">戊寅 Wù Yín</option>
+                    <option value="己卯">己卯 Jǐ Mǎo</option><option value="庚辰">庚辰 Gēng Chén</option><option value="辛巳">辛巳 Xīn Sì</option><option value="壬午">壬午 Rén Wǔ</option><option value="癸未">癸未 Guǐ Wèi</option>
+                    <option value="甲申">甲申 Jiǎ Shēn</option><option value="乙酉">乙酉 Yǐ Yǒu</option><option value="丙戌">丙戌 Bǐng Xū</option><option value="丁亥">丁亥 Dīng Hài</option><option value="戊子">戊子 Wù Zǐ</option>
+                    <option value="己丑">己丑 Jǐ Chǒu</option><option value="庚寅">庚寅 Gēng Yín</option><option value="辛卯">辛卯 Xīn Mǎo</option><option value="壬辰">壬辰 Rén Chén</option><option value="癸巳">癸巳 Guǐ Sì</option>
+                    <option value="甲午">甲午 Jiǎ Wǔ</option><option value="乙未">乙未 Yǐ Wèi</option><option value="丙申">丙申 Bǐng Shēn</option><option value="丁酉">丁酉 Dīng Yǒu</option><option value="戊戌">戊戌 Wù Xū</option>
+                    <option value="己亥">己亥 Jǐ Hài</option><option value="庚子">庚子 Gēng Zǐ</option><option value="辛丑">辛丑 Xīn Chǒu</option><option value="壬寅">壬寅 Rén Yín</option><option value="癸卯">癸卯 Guǐ Mǎo</option>
+                    <option value="甲辰">甲辰 Jiǎ Chén</option><option value="乙巳">乙巳 Yǐ Sì</option><option value="丙午">丙午 Bǐng Wǔ</option><option value="丁未">丁未 Dīng Wèi</option><option value="戊申">戊申 Wù Shēn</option>
+                    <option value="己酉">己酉 Jǐ Yǒu</option><option value="庚戌">庚戌 Gēng Xū</option><option value="辛亥">辛亥 Xīn Hài</option><option value="壬子">壬子 Rén Zǐ</option><option value="癸丑">癸丑 Guǐ Chǒu</option>
+                    <option value="甲寅">甲寅 Jiǎ Yín</option><option value="乙卯">乙卯 Yǐ Mǎo</option><option value="丙辰">丙辰 Bǐng Chén</option><option value="丁巳">丁巳 Dīng Sì</option><option value="戊午">戊午 Wù Wǔ</option>
+                    <option value="己未">己未 Jǐ Wèi</option><option value="庚申">庚申 Gēng Shēn</option><option value="辛酉">辛酉 Xīn Yǒu</option><option value="壬戌">壬戌 Rén Xū</option><option value="癸亥">癸亥 Guǐ Hài</option>
+                </select>
+            </div>
+            <div id="person-b-time-row"><label>HOUR:</label> <input type="time" id="person-time-b" value="12:00" style="width:85px;"></div>
             <button id="dst-btn-b" onclick="toggleDSTperson('B')" style="padding:4px 10px; border-radius:15px; border:1px solid #bbb; font-size:12px; font-weight:bold; background:#fff; cursor:pointer; color:#333;">DST: OFF</button>
             <button class="btn-person" onclick="calculateBazi();calculatePerson('B')" style="background:#7b1fa2;">CALCULATE</button>
             <button class="btn-person" onclick="savePerson('B')" style="background:#4a148c;">SAVE</button>
@@ -2045,9 +2071,9 @@ function renderDB() {
         const panelBg    = panel === 'A' ? '#e8f5e9' : '#f3e5f5';
         const hiddenTag  = isHidden
             ? `<span style="font-size:10px;color:#888;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;padding:1px 6px;">hidden</span>
-               <button onclick="showPersonInLabels('${panel}','${name}')" style="font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid #388e3c;background:#e8f5e9;color:#1b5e20;cursor:pointer;">Show</button>`
+               <button onclick="showPersonInLabels(this.dataset.panel, this.dataset.name)" data-panel="${panel}" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid #388e3c;background:#e8f5e9;color:#1b5e20;cursor:pointer;">Show</button>`
             : '';
-        const pinBtn = `<span onclick="togglePinPerson('${name}')" title="${isPinned?'Unpin':'Pin to top'}"
+        const pinBtn = `<span onclick="togglePinPerson(this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" title="${isPinned?'Unpin':'Pin to top'}"
             style="cursor:pointer;font-size:15px;color:${isPinned?'#f9a825':'#ccc'};padding:0 2px;">★</span>`;
         return `<div style="border:1px solid ${isPinned?'#f9a825':'#e0e0e0'};border-radius:8px;margin:6px 0;padding:10px 12px;background:${isPinned?'#fffde7':isHidden?'#fafafa':'#fff'};">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
@@ -2056,20 +2082,22 @@ function renderDB() {
                 <span style="font-weight:bold;font-size:14px;flex:1;${isHidden?'opacity:0.5;':''}">${name}</span>
                 <span style="font-size:11px;color:#888;">${dateStr}</span>
                 ${hiddenTag}
-                <button onclick="loadPersonFromDB('${panel}','${name}')" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;cursor:pointer;">Load</button>
-                <span style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;" onclick="deleteFromDB('${panel}','${name}')">×</span>
+                <button onclick="loadPersonFromDB('A', this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #1b5e20;background:#e8f5e9;color:#1b5e20;cursor:pointer;">→ A</button>
+                <button onclick="loadPersonFromDB('B', this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #6a1b9a;background:#f3e5f5;color:#6a1b9a;cursor:pointer;">→ B</button>
+                <span onclick="deleteFromDB(this.dataset.panel, this.dataset.name)" data-panel="${panel}" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
             </div>
             <input type="text" placeholder="Note about this person…" value="${note.replace(/"/g,'&quot;')}"
-                onchange="saveDBNote('${name}', this.value)"
+                onchange="saveDBNote(this.dataset.name, this.value)" data-name="${name.replace(/"/g,'&quot;')}"
                 style="width:100%;box-sizing:border-box;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333;">
         </div>`;
     }).join('');
 }
 
 function togglePinPerson(name) {
+    const n = (typeof name === 'string') ? name : name;
     const pinned = loadArchive('xkdg_persons_pinned') || {};
-    if (pinned[name]) delete pinned[name];
-    else pinned[name] = true;
+    if (pinned[n]) delete pinned[n];
+    else pinned[n] = true;
     localStorage.setItem('xkdg_persons_pinned', JSON.stringify(pinned));
     renderDB();
 }
@@ -2082,9 +2110,41 @@ function showPersonInLabels(panel, name) {
     renderDB();
 }
 
-function loadPersonFromDB(panel, name) {
+function loadPersonFromDB(targetPanel, name) {
     closeDB();
-    loadPerson(panel, name);
+    // Find which archive actually has this person
+    const archiveA = loadArchive('xkdg_persons_a');
+    const archiveB = loadArchive('xkdg_persons_b');
+    const sourceKey = archiveA[name] ? 'xkdg_persons_a' : 'xkdg_persons_b';
+    const p = archiveA[name] || archiveB[name];
+    if (!p) return;
+
+    const panelKey = targetPanel.toLowerCase();
+    if (!_personPanelOpen[panelKey]) togglePersonPanel(panelKey);
+    if (panelKey === 'b') {
+        const panelEl = document.getElementById('person-panel-b');
+        if (panelEl && panelEl.style.display === 'none') panelEl.style.display = 'block';
+    }
+
+    setTimeout(() => {
+        const nameId = targetPanel === 'B' ? 'person-name-b' : 'person-name';
+        const dateId = targetPanel === 'B' ? 'person-date-b' : 'person-date';
+        const timeId = targetPanel === 'B' ? 'person-time-b' : 'person-time';
+        document.getElementById(nameId).value = name;
+        document.getElementById(dateId).value = p.date;
+        document.getElementById(timeId).value = p.time || '12:00';
+        // Restore pillar depth for Person B
+        if (targetPanel === 'B') {
+            const sel = document.getElementById('person-pillars-b');
+            if (sel) { sel.value = p.depth || 4; onPersonBPillarsChange(); }
+            if (p.depth === 1 && p.jiaZiYear) {
+                const yr = document.getElementById('person-year-b');
+                if (yr) yr.value = p.jiaZiYear;
+            }
+        }
+        calculateBazi();
+        calculatePerson(targetPanel);
+    }, 80);
 }
 
 function saveDBNote(name, note) {
@@ -2124,7 +2184,9 @@ function savePerson(person) {
     if (!date) { alert('Please enter a birth date.'); return; }
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const archive = loadArchive(key);
-    archive[name] = { date, time, savedAt: Date.now() };
+    const depth = isB ? (parseInt(document.getElementById('person-pillars-b')?.value) || 4) : 4;
+    const jiaZiYear = (isB && depth === 1) ? (document.getElementById('person-year-b')?.value || '') : '';
+    archive[name] = { date, time, savedAt: Date.now(), depth, jiaZiYear };
     saveArchiveData(key, archive);
     renderArchive(person);
 }
@@ -2158,13 +2220,56 @@ function deletePerson(e, person, name) {
     hidePerson(e, person, name);
 }
 
+function onPersonBPillarsChange() {
+    const depth = parseInt(document.getElementById('person-pillars-b').value);
+    const dateRow = document.getElementById('person-b-date-row');
+    const yearRow = document.getElementById('person-b-year-row');
+    const timeRow = document.getElementById('person-b-time-row');
+    const dstBtn  = document.getElementById('dst-btn-b');
+    dateRow.style.display = depth >= 2 ? '' : 'none';
+    yearRow.style.display = depth === 1 ? '' : 'none';
+    timeRow.style.display = depth >= 4 ? '' : 'none';
+    if (dstBtn) dstBtn.style.display = depth >= 4 ? '' : 'none';
+}
+
 // ── Calculate Person ─────────────────────────
 function calculatePerson(person) {
     const isB    = person === 'B';
+    const depth  = isB ? (parseInt(document.getElementById('person-pillars-b')?.value) || 4) : 4;
     const dateId = isB ? 'person-date-b' : 'person-date';
     const timeId = isB ? 'person-time-b' : 'person-time';
-    const dVal   = document.getElementById(dateId).value;
-    const tVal   = document.getElementById(timeId).value || '12:00';
+
+    // For depth 1 (year only), use JiaZi dropdown directly — no date calculation needed
+    let dVal = document.getElementById(dateId).value;
+    const tVal = depth >= 4 ? (document.getElementById(timeId).value || '12:00') : '12:00';
+
+    if (isB && depth === 1) {
+        const sel = document.getElementById('person-year-b');
+        const jz  = sel ? sel.value.trim() : '';
+        if (!jz || jz.length < 2) return;
+        const yStem   = jz[0];
+        const yBranch = jz[1];
+        const yData   = getXkdgData(yStem, yBranch);
+        // Set globals for year pillar only
+        _personBYear = yData || null; _personBMonth = null; _personBDay = null; _personBHour = null;
+        _personBPillars = { hour: null, day: null, month: null, year: yData || null };
+        _personBStem = yStem; _personBBranch = yBranch;
+        _personBDayStem = null; _personBDayBranch = null;
+        _personBMonthBranch = null; _personBDayBranchXkdg = null; _personBRelations = [];
+        // Show chart, fade unused pillars
+        const chartEl = document.getElementById('person-chart-b');
+        if (chartEl) chartEl.style.display = 'grid';
+        const wrapEl = document.getElementById('pillar-toggle-b-wrap');
+        if (wrapEl) wrapEl.style.display = 'block';
+        ['pb-hour','pb-day','pb-month'].forEach(id => { const el = document.getElementById(id); if (el) el.style.opacity = '0.15'; });
+        const yrEl = document.getElementById('pb-year'); if (yrEl) yrEl.style.opacity = '1';
+        updatePillar('pb-year', yStem, yBranch, yData, NAYIN[yStem + yBranch] || '');
+        checkFavourable(yData, yStem, yBranch, 'B');
+        const aSection = document.getElementById('person-analysis-container-b');
+        if (aSection) aSection.style.display = 'none';
+        updateScoreModeBtn();
+        return;
+    }
     if (!dVal) return;
 
     const lon = parseFloat(document.getElementById('longitude').value);
@@ -2187,14 +2292,23 @@ function calculatePerson(person) {
 
     const pillarKeys = {
         year:  { stem: eightChar.getYearGan(),  branch: eightChar.getYearZhi()  },
-        month: { stem: eightChar.getMonthGan(), branch: eightChar.getMonthZhi() },
-        day:   { stem: dGan, branch: dZhi },
-        hour:  { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  }
+        month: depth >= 2 ? { stem: eightChar.getMonthGan(), branch: eightChar.getMonthZhi() } : null,
+        day:   depth >= 3 ? { stem: dGan, branch: dZhi } : null,
+        hour:  depth >= 4 ? { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  } : null
     };
+
+    // Hide/show chart pillar columns based on depth (Person B only)
+    if (isB) {
+        ['pb-hour','pb-day','pb-month'].forEach((id, i) => {
+            const el = document.getElementById(id);
+            if (el) el.style.opacity = (depth >= 4-i) ? '1' : '0.15';
+        });
+    }
 
     const xkdgData = {};
     const rawXkdgP = {};
     Object.keys(pillarKeys).forEach(k => {
+        if (!pillarKeys[k]) return; // skip null pillars
         const { stem, branch } = pillarKeys[k];
         const data = getXkdgData(stem, branch);
         if (data) rawXkdgP[k] = { ...data, branch, stem };
@@ -2212,24 +2326,23 @@ function calculatePerson(person) {
 
     const prefix = isB ? 'pb' : 'pp';
     updatePillar(`${prefix}-year`,  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
-    updatePillar(`${prefix}-month`, pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
-    updatePillar(`${prefix}-day`,   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
-    updatePillar(`${prefix}-hour`,  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
+    if (pillarKeys.month) updatePillar(`${prefix}-month`, pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
+    if (pillarKeys.day)   updatePillar(`${prefix}-day`,   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
+    if (pillarKeys.hour)  updatePillar(`${prefix}-hour`,  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
 
     // Store year + day hexagram and active relations for compatibility
     if (isB) {
         _personBYear      = xkdgData.year;
-        _personBMonth     = xkdgData.month;
-        _personBDay       = xkdgData.day;
-        _personBHour      = xkdgData.hour;
-        _personBPillars   = { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year };
+        _personBMonth     = xkdgData.month || null;
+        _personBDay       = xkdgData.day   || null;
+        _personBHour      = xkdgData.hour  || null;
+        _personBPillars   = { hour: xkdgData.hour||null, day: xkdgData.day||null, month: xkdgData.month||null, year: xkdgData.year };
         _personBStem      = pillarKeys.year.stem;
         _personBBranch    = pillarKeys.year.branch;
-        _personBDay       = xkdgData.day;
-        _personBDayStem   = pillarKeys.day.stem;
-        _personBDayBranch = pillarKeys.day.branch;
-        _personBMonthBranch   = pillarKeys.month.branch;
-        _personBDayBranchXkdg = pillarKeys.day.branch;
+        _personBDayStem   = pillarKeys.day   ? pillarKeys.day.stem   : null;
+        _personBDayBranch = pillarKeys.day   ? pillarKeys.day.branch : null;
+        _personBMonthBranch   = pillarKeys.month ? pillarKeys.month.branch : null;
+        _personBDayBranchXkdg = pillarKeys.day   ? pillarKeys.day.branch  : null;
         checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'B');
     } else {
         _personAYear      = xkdgData.year;
@@ -2256,12 +2369,12 @@ function calculatePerson(person) {
 
     // Add auspicious stars using person's own pillars (day stem vs hour branch)
     const showStars = _showPersonStars[isB ? 'b' : 'a'];
-    if (showStars) {
+    if (showStars && pillarKeys.day && pillarKeys.hour) {
     const pDayGan  = pillarKeys.day.stem;
     const pDayZhi  = pillarKeys.day.branch;
     const pHourZhi = pillarKeys.hour.branch;
     const pHourGan = pillarKeys.hour.stem;
-    const pMthZhi  = pillarKeys.month.branch;
+    const pMthZhi  = pillarKeys.month ? pillarKeys.month.branch : null;
 
     // Noble: hour branch is Noble for day stem
     const pNobles = NOBLE_BRANCHES[pDayGan] || [];
@@ -2773,8 +2886,9 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
 
     // Helper: check if 4 pillars form a full He Tu setting on qi or yun line
     function hasFullHetu(p) {
-        const qs = [p.hour.qi, p.day.qi, p.month.qi, p.year.qi];
-        const ys = [p.hour.yun, p.day.yun, p.month.yun, p.year.yun];
+        const qs = [p.hour?.qi, p.day?.qi, p.month?.qi, p.year?.qi].filter(v => v != null);
+        const ys = [p.hour?.yun, p.day?.yun, p.month?.yun, p.year?.yun].filter(v => v != null);
+        if (qs.length < 4 || ys.length < 4) return { qi: false, yun: false };
         function twoHPairs(arr) {
             const pairs = [[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
             return pairs.some(([a,b]) =>
@@ -2786,8 +2900,9 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
 
     // Helper: check if 4 pillars form Adding setting (pairs summing to 5/10/15)
     function hasAdding(p) {
-        const qs = [p.hour.qi, p.day.qi, p.month.qi, p.year.qi];
-        const ys = [p.hour.yun, p.day.yun, p.month.yun, p.year.yun];
+        const qs = [p.hour?.qi, p.day?.qi, p.month?.qi, p.year?.qi].filter(v => v != null);
+        const ys = [p.hour?.yun, p.day?.yun, p.month?.yun, p.year?.yun].filter(v => v != null);
+        if (qs.length < 4 || ys.length < 4) return { qi: false, yun: false };
         function twoAPairs(arr) {
             const pairs = [[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
             return pairs.some(([a,b]) =>
@@ -2799,8 +2914,9 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
 
     // Helper: check if 4 pillars have Pure Qi (all same)
     function hasPureQi(p) {
-        const qs = [p.hour.qi, p.day.qi, p.month.qi, p.year.qi];
-        const ys = [p.hour.yun, p.day.yun, p.month.yun, p.year.yun];
+        const qs = [p.hour?.qi, p.day?.qi, p.month?.qi, p.year?.qi].filter(v => v != null);
+        const ys = [p.hour?.yun, p.day?.yun, p.month?.yun, p.year?.yun].filter(v => v != null);
+        if (qs.length < 4 || ys.length < 4) return { qi: false, yun: false };
         return { qi: qs.every(v=>v===qs[0]), yun: ys.every(v=>v===ys[0]) };
     }
 
