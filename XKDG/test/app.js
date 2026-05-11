@@ -5799,6 +5799,297 @@ function fsFindDates(){
   setMode('dates');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  PURE YIN / PURE YANG + LUOPAN ZOOM — extension v4 (additive)
+//
+//  Pure Yin / Pure Yang is defined as:
+//    - Facing read on the Di Pan classic (fsMountainYangDi)
+//    - Water  read on the Tien Pan       (fsMountainYangTien)
+//    - Both having the same polarity → Pure Yang or Pure Yin
+//
+//  Already implemented in the original software at line 5307
+//  (fsYinYangMatch) with a +3 score bonus at line 5278.
+//
+//  This extension adds:
+//   - Two toggle buttons (☀ Yang / ☾ Yin) in the PERIOD toolbar
+//     that draw a colored ring inside the hexagram ring, showing
+//     the polarity of the (simulated) Di Pan.
+//   - Visual distinction in the pairs table: the existing ☯ marker
+//     becomes ☀ red (Pure Yang) or ☾ blue (Pure Yin).
+//   - Pinch-to-zoom on the luopan canvas (mobile): two-finger pinch
+//     to zoom, one-finger drag to pan, double-tap to reset.
+//     On desktop: mouse wheel to zoom, double-click to reset.
+//
+//  No XKDG / feng shui calculation is modified. Wrappers ensure the
+//  original code runs unchanged.
+// ═══════════════════════════════════════════════════════════════════
+
+// ── State ────────────────────────────────────────────────────────────
+let FS_SHOW_YANG = false;
+let FS_SHOW_YIN  = false;
+
+// Zoom state
+let _fsZoomScale = 1;
+let _fsZoomTx = 0, _fsZoomTy = 0;
+let _fsPinchInitDist = 0, _fsPinchInitScale = 1;
+let _fsPinchInitTx = 0, _fsPinchInitTy = 0;
+let _fsPinchInitCx = 0, _fsPinchInitCy = 0;
+let _fsPanLastX = 0, _fsPanLastY = 0, _fsPanning = false;
+let _fsLastTapTime = 0;
+
+// ── Polarity helpers ─────────────────────────────────────────────────
+function fsSlotPolarity(slot){
+  return fsMountainYangDi(slot.startDeg + 2.8125); // true = Yang
+}
+
+function fsPureYinYangType(facingDeg, waterDeg){
+  const fYang = fsMountainYangDi(facingDeg);    // Di Pan for facing
+  const wYang = fsMountainYangTien(waterDeg);   // Tien Pan for water
+  if (fYang && wYang)   return 'yang';  // Pure Yang
+  if (!fYang && !wYang) return 'yin';   // Pure Yin
+  return null;
+}
+
+// ── Toggle button handlers ───────────────────────────────────────────
+function fsToggleYang(){
+  FS_SHOW_YANG = !FS_SHOW_YANG;
+  const btn = document.getElementById('fs-yang-btn');
+  if (btn) btn.style.background = FS_SHOW_YANG ? '#d32f2f' : '#aaa';
+  fsRedraw();
+}
+function fsToggleYin(){
+  FS_SHOW_YIN = !FS_SHOW_YIN;
+  const btn = document.getElementById('fs-yin-btn');
+  if (btn) btn.style.background = FS_SHOW_YIN ? '#1976d2' : '#aaa';
+  fsRedraw();
+}
+
+// ── Overlay ring (Di Pan polarity inside the hexagram ring) ──────────
+function fsDrawYinYangOverlay(){
+  if (!FS_SHOW_YANG && !FS_SHOW_YIN) return;
+  const canvas = document.getElementById('fs-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const PAD = 100;
+  const cx = PAD + 450, cy = PAD + 464;
+  const rYYIn = 268, rYYOut = 290;
+  FS_SLOTS.forEach(s => {
+    const isYang = fsSlotPolarity(s);
+    let color = null;
+    if (isYang && FS_SHOW_YANG)      color = 'rgba(211,47,47,0.80)';
+    else if (!isYang && FS_SHOW_YIN) color = 'rgba(25,118,210,0.80)';
+    if (!color) return;
+    const aS = (s.startDeg - 270) * Math.PI/180;
+    const aE = (s.endDeg   - 270) * Math.PI/180;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, rYYOut, aS, aE);
+    ctx.arc(cx, cy, rYYIn,  aE, aS, true);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+// ── Inject the toggle buttons into the PERIOD toolbar ────────────────
+function fsInjectYinYangButtons(){
+  if (document.getElementById('fs-yang-btn')) return;
+  const periodLbl = document.getElementById('fs-period-lbl');
+  if (!periodLbl) return;
+  const html =
+    '<span style="margin-left:8px;color:#666;">|</span>' +
+    '<button id="fs-yang-btn" onclick="fsToggleYang()" ' +
+    'style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:bold;" ' +
+    'title="Show Pure Yang slots on Di Pan (simulated)">☀ Yang</button>' +
+    '<button id="fs-yin-btn" onclick="fsToggleYin()" ' +
+    'style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:bold;" ' +
+    'title="Show Pure Yin slots on Di Pan (simulated)">☾ Yin</button>';
+  periodLbl.insertAdjacentHTML('afterend', html);
+}
+
+// ── Replace ☯ with ☀ Pure Yang / ☾ Pure Yin in pair table rows ───────
+function fsDecoratePairsWithPureYY(){
+  const box = document.getElementById('fs-pairs-table');
+  if (!box) return;
+  const rows = box.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const onclick = row.getAttribute('onclick') || '';
+    const m = onclick.match(/fsSelectPair\(([\d.\-]+),([\d.\-]+)\)/);
+    if (!m) return;
+    const fDeg = parseFloat(m[1]);
+    const wDeg = parseFloat(m[2]);
+    const pureType = fsPureYinYangType(fDeg, wDeg);
+    if (!pureType) return;
+    const yyOkSpan = row.querySelector('span[title="Yin/Yang mountain match"]');
+    if (!yyOkSpan) return;
+    if (pureType === 'yang'){
+      yyOkSpan.textContent = '☀';
+      yyOkSpan.style.color = '#d32f2f';
+      yyOkSpan.title = 'Pure Yang (Di Pan facing ↔ Tien Pan water, both Yang)';
+    } else {
+      yyOkSpan.textContent = '☾';
+      yyOkSpan.style.color = '#1976d2';
+      yyOkSpan.title = 'Pure Yin (Di Pan facing ↔ Tien Pan water, both Yin)';
+    }
+  });
+}
+
+// ── Pinch-to-zoom / pan / mouse wheel zoom on the luopan canvas ──────
+function _fsApplyTransform(){
+  const canvas = document.getElementById('fs-canvas');
+  if (!canvas) return;
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.transform =
+    'translate(' + _fsZoomTx + 'px, ' + _fsZoomTy + 'px) ' +
+    'scale(' + _fsZoomScale + ')';
+}
+
+function _fsResetZoom(){
+  _fsZoomScale = 1;
+  _fsZoomTx = 0;
+  _fsZoomTy = 0;
+  _fsApplyTransform();
+}
+
+function _fsAttachZoomHandlers(){
+  const canvas = document.getElementById('fs-canvas');
+  if (!canvas || canvas.dataset.zoomAttached === '1') return;
+  canvas.dataset.zoomAttached = '1';
+
+  // Clip the zoom overflow at the parent level
+  if (canvas.parentNode){
+    canvas.parentNode.style.overflow = 'hidden';
+    if (!canvas.parentNode.style.position){
+      canvas.parentNode.style.position = 'relative';
+    }
+  }
+
+  // Disable native gestures on the canvas so we get clean touch events
+  canvas.style.touchAction = 'none';
+  canvas.title = 'Pinch to zoom · drag to pan · double-tap to reset';
+
+  // ── Touch (mobile) ──
+  canvas.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2){
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dx = t0.clientX - t1.clientX;
+      const dy = t0.clientY - t1.clientY;
+      _fsPinchInitDist  = Math.sqrt(dx*dx + dy*dy);
+      _fsPinchInitScale = _fsZoomScale;
+      _fsPinchInitTx    = _fsZoomTx;
+      _fsPinchInitTy    = _fsZoomTy;
+      const rect = canvas.getBoundingClientRect();
+      _fsPinchInitCx = (t0.clientX + t1.clientX) / 2 - rect.left;
+      _fsPinchInitCy = (t0.clientY + t1.clientY) / 2 - rect.top;
+      _fsPanning = false;
+      e.preventDefault();
+    } else if (e.touches.length === 1){
+      // Double-tap detection (reset)
+      const now = Date.now();
+      if (now - _fsLastTapTime < 300){
+        _fsResetZoom();
+        _fsLastTapTime = 0;
+        e.preventDefault();
+        return;
+      }
+      _fsLastTapTime = now;
+      // One-finger pan (only meaningful when zoomed in)
+      if (_fsZoomScale > 1.01){
+        _fsPanning = true;
+        _fsPanLastX = e.touches[0].clientX;
+        _fsPanLastY = e.touches[0].clientY;
+        e.preventDefault();
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', function(e){
+    if (e.touches.length === 2 && _fsPinchInitDist > 0){
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dx = t0.clientX - t1.clientX;
+      const dy = t0.clientY - t1.clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const newScale = Math.max(1, Math.min(5, _fsPinchInitScale * (dist / _fsPinchInitDist)));
+      // Keep the pinch centroid stable under the fingers
+      const k = newScale / _fsPinchInitScale;
+      _fsZoomTx = _fsPinchInitCx - (_fsPinchInitCx - _fsPinchInitTx) * k;
+      _fsZoomTy = _fsPinchInitCy - (_fsPinchInitCy - _fsPinchInitTy) * k;
+      _fsZoomScale = newScale;
+      _fsApplyTransform();
+      e.preventDefault();
+    } else if (e.touches.length === 1 && _fsPanning){
+      const dx = e.touches[0].clientX - _fsPanLastX;
+      const dy = e.touches[0].clientY - _fsPanLastY;
+      _fsZoomTx += dx;
+      _fsZoomTy += dy;
+      _fsPanLastX = e.touches[0].clientX;
+      _fsPanLastY = e.touches[0].clientY;
+      _fsApplyTransform();
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', function(e){
+    _fsPanning = false;
+    _fsPinchInitDist = 0;
+    // Snap-back to 1.0 if user zoomed below it (just in case)
+    if (_fsZoomScale < 1){
+      _fsResetZoom();
+    }
+  });
+
+  // ── Mouse wheel (desktop) ──
+  canvas.addEventListener('wheel', function(e){
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const delta = -e.deltaY * 0.002;
+    const newScale = Math.max(1, Math.min(5, _fsZoomScale * (1 + delta)));
+    if (Math.abs(newScale - _fsZoomScale) < 0.001) return;
+    const k = newScale / _fsZoomScale;
+    _fsZoomTx = cx - (cx - _fsZoomTx) * k;
+    _fsZoomTy = cy - (cy - _fsZoomTy) * k;
+    _fsZoomScale = newScale;
+    _fsApplyTransform();
+  }, { passive: false });
+
+  // ── Double-click reset (desktop) ──
+  canvas.addEventListener('dblclick', function(e){
+    e.preventDefault();
+    _fsResetZoom();
+  });
+}
+
+// ── Monkey-patches (wrap, don't replace) ─────────────────────────────
+const _fsRedrawOrig = fsRedraw;
+fsRedraw = function(){
+  _fsRedrawOrig();
+  fsDrawYinYangOverlay();
+};
+
+const _buildFengShuiViewOrig = buildFengShuiView;
+buildFengShuiView = function(){
+  _buildFengShuiViewOrig();
+  fsInjectYinYangButtons();
+  _fsAttachZoomHandlers();
+};
+
+const _fsRenderPairsTableOrig = fsRenderPairsTable;
+fsRenderPairsTable = function(){
+  _fsRenderPairsTableOrig();
+  fsDecoratePairsWithPureYY();
+};
+
+// If the view was already built before this extension loaded, set up now
+(function(){
+  const v = document.getElementById('fengshui-view');
+  if (v && v.dataset.built === '1'){
+    fsInjectYinYangButtons();
+    _fsAttachZoomHandlers();
+  }
+})();
 
 
 window.onload = () => {
