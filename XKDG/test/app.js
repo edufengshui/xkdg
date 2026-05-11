@@ -5280,17 +5280,19 @@ function fsWaterScore(facing, water){
 }
 
 // ── 24-Mountains Yin/Yang (Pure Yin / Pure Yang 净阴净阳) ──────────
-// Sampled from this luopan's Di Pan ring (red = Yang). Convention:
-//   YANG (12): 4 trigrams 乾坤艮巽 + 4 Yang stems 甲丙庚壬
-//              + 4 Long-Life branches 寅巳申亥
-//   YIN  (12): 4 cardinal branches 子卯午酉 + 4 Earth branches 丑辰未戌
-//              + 4 Yin stems 乙丁辛癸
+// San He convention: Hetu pairings of trigrams with stems/branches.
+//   YANG (12): 乾甲 Qian-Jia · 坤乙 Kun-Yi
+//              · 离(午)壬寅戌 Li-Ren-Yin-Xu
+//              · 坎(子)癸申辰 Kan-Gui-Shen-Chen
+//   YIN  (12): 艮丙 Gen-Bing · 巽辛 Xun-Xin
+//              · 震(卯)庚亥未 Zhen-Geng-Hai-Wei
+//              · 兑(酉)丁巳丑 Dui-Ding-Si-Chou
 // Order matches MTN_24 (compass clockwise from Ren centered at 345°).
 const FS_MTN_YANG = [
-  true,  false, false, false, true,  true,    // Ren Zi Gui Chou Gen Yin
-  true,  false, false, false, true,  true,    // Jia Mao Yi Chen Xun Si
-  true,  false, false, false, true,  true,    // Bing Wu Ding Wei Kun Shen
-  true,  false, false, false, true,  true     // Geng You Xin Xu Qian Hai
+  true,  true,  true,  false, false, true,    // Ren Zi Gui Chou Gen Yin
+  true,  false, true,  true,  false, false,   // Jia Mao Yi Chen Xun Si
+  false, true,  false, false, true,  true,    // Bing Wu Ding Wei Kun Shen
+  false, false, false, true,  true,  false    // Geng You Xin Xu Qian Hai
 ];
 
 // Di Pan: mountain i centered at compass (i*15 − 15)°. Wu at 180°, Zi at 0°.
