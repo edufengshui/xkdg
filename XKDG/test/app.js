@@ -5799,6 +5799,72 @@ function fsFindDates(){
   setMode('dates');
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  PURE YIN/YANG FILTER — extension v5 (additive, non-invasive)
+//
+//  Adds:
+//   - "Solo Pure YY" toggle button in the toolbar (default ON):
+//     when on, the pairs table shows only pairs that are Pure Yin or
+//     Pure Yang (i.e. ☯ rosso). When off, all pairs are visible.
+//   - Subtle pink background on Pure Yin/Yang rows so they stand out
+//     even when the filter is off.
+//
+//  No XKDG / feng shui calculation is modified. The pairs table is
+//  rendered normally by the original code, then rows that are not
+//  Pure Yin/Yang are hidden via CSS display:none.
+// ═══════════════════════════════════════════════════════════════════
+
+let FS_FILTER_PURE_YY = true; // default: only Pure YY visible
+
+function fsToggleFilterPureYY(){
+  FS_FILTER_PURE_YY = !FS_FILTER_PURE_YY;
+  const btn = document.getElementById('fs-filter-pyy-btn');
+  if (btn){
+    btn.style.background = FS_FILTER_PURE_YY ? '#c0392b' : '#aaa';
+    btn.textContent = FS_FILTER_PURE_YY ? '✓ Solo Pure YY' : 'Solo Pure YY';
+  }
+  fsApplyPureYYFilter();
+}
+
+function fsApplyPureYYFilter(){
+  const box = document.getElementById('fs-pairs-table');
+  if (!box) return;
+  const rows = box.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const isPureYY = !!row.querySelector('span[title="Yin/Yang mountain match"]');
+    row.style.display = (FS_FILTER_PURE_YY && !isPureYY) ? 'none' : '';
+    row.style.backgroundColor = isPureYY ? 'rgba(192, 57, 43, 0.08)' : '';
+  });
+}
+
+function fsInjectPureYYFilterButton(){
+  if (document.getElementById('fs-filter-pyy-btn')) return;
+  const periodLbl = document.getElementById('fs-period-lbl');
+  if (!periodLbl) return;
+  const html =
+    '<span style="margin-left:8px;color:#666;">|</span>' +
+    '<button id="fs-filter-pyy-btn" onclick="fsToggleFilterPureYY()" ' +
+    'style="background:#c0392b;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:bold;" ' +
+    'title="Show only Pure Yin/Yang pairs (☯)">✓ Solo Pure YY</button>';
+  periodLbl.insertAdjacentHTML('afterend', html);
+}
+
+const _fsRenderPairsTableOrig = fsRenderPairsTable;
+fsRenderPairsTable = function(){
+  _fsRenderPairsTableOrig();
+  fsApplyPureYYFilter();
+};
+
+const _buildFengShuiViewOrig = buildFengShuiView;
+buildFengShuiView = function(){
+  _buildFengShuiViewOrig();
+  fsInjectPureYYFilterButton();
+};
+
+(function(){
+  const v = document.getElementById('fengshui-view');
+  if (v && v.dataset.built === '1') fsInjectPureYYFilterButton();
+})();
 
 
 window.onload = () => {
