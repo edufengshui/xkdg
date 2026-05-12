@@ -4049,10 +4049,28 @@ function buildMonthView() {
             const activeFiltersMV = getActiveFilters();
             const hasNayinFilter = activeFiltersMV.has('nayin');
             const hasKeFilterMV  = activeFiltersMV.has('ke-wealth');
-            if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV) continue;
+            const hasNegativesFilterMV = activeFiltersMV.has('negatives');
 
-            // Apply filter chips (Zi first half always passes)
-            if (!isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
+            // Compute negativity score (used when Negatives filter is active)
+            const _clashTypeForNeg = dayClashType; // already computed earlier per day
+            const _hourSpiritForNeg = getSpiritForHour(dZhi, hZhi);
+            const _badSpiritNeg = _hourSpiritForNeg && !_hourSpiritForNeg.auspicious;
+            const negativeScore = (
+              (!isPositive ? 1 : 0) +
+              (_clashTypeForNeg === 'clash-year' ? 3 : _clashTypeForNeg === 'clash-month-stem' ? 2 : _clashTypeForNeg === 'clash-month-branch' ? 1 : 0) +
+              (_badSpiritNeg ? 1 : 0) +
+              (isTombShaLV ? 2 : 0)
+            );
+            const isNegativeHour = negativeScore > 0;
+
+            // Skip-gate (modified to allow negatives through when filter active)
+            if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
+
+            // When Negatives is active: only show hours with at least one negative indicator
+            if (hasNegativesFilterMV && !isNegativeHour) continue;
+
+            // Apply filter chips — but skip when Negatives is on (it has its own logic)
+            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
             const filtersActiveMV = activeFiltersMV.size > 0;
             const dayXkdgLV = dData || pillars.day;
             // Use active person (A if active, else B)
@@ -4092,7 +4110,7 @@ function buildMonthView() {
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
             const isNayinWeakLV = nayinResLV.label === 'Nayin Weak';
             const isVoidLV = !hasPureQiOrFamilyLV && !isNayinWeakLV && !isZiFirst && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
-            if (isVoidLV) continue;
+            if (isVoidLV && !hasNegativesFilterMV) continue;
 
             let isFavourable = false;
             if (isPositive && (personAYear || personBYear)) {
@@ -4138,7 +4156,7 @@ function buildMonthView() {
 
             const bg = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
             // Only restrict to personal matches when person active AND no filters (not for Zi first half)
-            if (!isZiFirst && !filtersActiveMV && (personAYear || personBYear) && !isFavourable) continue;
+            if (!isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable) continue;
             // Green gradient based on score (same tiers as BEST scanner)
             const isoDate = localISODate(dayDate);
 
@@ -4193,7 +4211,9 @@ function buildMonthView() {
                                 : listScore >= 6  ? '#388e3c'
                                 : listScore >= 4  ? '#558b2f'
                                 : '#aaa';
-            const rowStyle = hasFamilyLV
+            const rowStyle = hasNegativesFilterMV
+                ? `background:#ffcdd2;outline:2px solid #c62828;outline-offset:-2px;border-left:4px solid #c62828;`
+                : hasFamilyLV
                 ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;border-left:4px solid #f9a825;`
                 : `background:${lvGreenBg};border-left:4px solid ${lvGreenBorder};`;
             const dateNoblesLV = NOBLE_BRANCHES[dGan] || [];
@@ -4293,10 +4313,12 @@ function buildMonthView() {
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}
                 </div>
             </div>`;
-            dayRows.push({ score: listScore, html: rowHtml });
+            dayRows.push({ score: hasNegativesFilterMV ? negativeScore : listScore, html: rowHtml });
         }
         // Sort rows by score if toggle active, else keep chronological
-        if (_listSortByScore) dayRows.sort((a,b) => b.score - a.score);
+        // When Negatives filter is active, force sort by score descending (worst first)
+        const _negSortForce = (typeof getActiveFilters === 'function') && getActiveFilters().has('negatives');
+        if (_listSortByScore || _negSortForce) dayRows.sort((a,b) => b.score - a.score);
         dayRowsHtml = dayRows.map(r => r.html).join('');
         dayRows = [];
         // Only add header if day has matching rows
