@@ -6522,25 +6522,22 @@ fsRenderPairsTable = function(){
       const fPol = fY === true ? 'Yang' : (fY === false ? 'Yin' : '');
       const wPol = wY === true ? 'Yang' : (wY === false ? 'Yin' : '');
 
-      // XKDG Relations: ONLY Facing↔Water (waterLabels), not Facing↔Day (facingLabels)
-      // Order: element (qi) relations first, then period (yun) relations,
-      // then Sheng/Ke (only if no qi Adding/Hetu, to avoid redundancy).
+      // XKDG Relations: split into element (red, top) and period (blue, bottom) sections
       const qiHetu  = _fsIsHetuPair(f.qi, w.qi);
       const qiSum   = f.qi + w.qi;
       const qiAdd   = [5,10,15].includes(qiSum);
       const yunLbls = Array.isArray(p.waterLabels) ? p.waterLabels : [];
-      const relLines = [];
-      // 1) Element-level (qi) relations first
-      if (qiHetu)          relLines.push('Hetu (qi)');
-      if (qiAdd)           relLines.push('Adding qi=' + qiSum);
-      // 2) Sheng In / Ke In / He are also element-level — show next, only if no qi Adding/Hetu
+      const elemRels = []; // red, top row
+      const yunRels = [];  // blue, bottom row
+      // Element-level relations (qi)
+      if (qiHetu)          elemRels.push('Hetu (qi)');
+      if (qiAdd)           elemRels.push('Adding qi=' + qiSum);
       if (!qiHetu && !qiAdd) {
         const er = fsElementRelation(f.qi, w.qi);
-        if (er) relLines.push(er);
+        if (er) elemRels.push(er);
       }
-      // 3) Period-level (yun) relations last
-      yunLbls.forEach(l => relLines.push(l));
-      const relText = relLines.length ? relLines.join('<br>') : '—';
+      // Period-level relations (yun)
+      yunLbls.forEach(l => yunRels.push(l));
 
       html += '<tr onclick="fsSelectPair(' + fc + ',' + wc + ')" style="background:' + bg + ';border-bottom:1px solid #eee;cursor:pointer;">';
 
@@ -6562,8 +6559,19 @@ fsRenderPairsTable = function(){
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
 
-      // XKDG Relations
-      html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;">' + relText + '</td>';
+      // XKDG Relations: two-row structure matching Facing/Water vertical rhythm
+      html += '<td style="padding:6px 8px;vertical-align:middle;">';
+      // Top row: element relations (red), aligned with qi numbers
+      html += '<div style="font-size:14px;font-weight:bold;color:#c0392b;line-height:1.2;min-height:20px;">';
+      html += elemRels.length ? elemRels.join(' · ') : '';
+      html += '</div>';
+      // Spacer to match glyph height
+      html += '<div style="height:32px;"></div>';
+      // Bottom row: period relations (blue), aligned with yun numbers
+      html += '<div style="font-size:14px;font-weight:bold;color:#1565c0;line-height:1.2;min-height:20px;">';
+      html += yunRels.length ? yunRels.join(' · ') : '';
+      html += '</div>';
+      html += '</td>';
 
       // Pure YY (empty for now, wider space)
       html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;"></td>';
