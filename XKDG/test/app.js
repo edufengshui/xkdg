@@ -3963,13 +3963,34 @@ function buildMonthView() {
                 const ziSpiritF = getSpiritForHour(ziDZhi, ziHZhiF);
                 const ziScoreF  = calcHourScore(ziDGan, ziDZhi, ziHGanF, ziHZhiF, ziMGan, ziMZhi, ziYGan, ziYZhi, ziItemsF, ziSpiritF, ziSS, ziSG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, ziPillars);
                 const ziNayinF  = analyzeNayin(ziDGan, ziDZhi, ziHGanF, ziHZhiF, ziMGan, ziMZhi, ziYGan, ziYZhi, activePersonStem, activePersonBranch, activePersonDayStem, activePersonDayBranch);
+
+                // ── Negatives / Strict gate for Zi first half ──
+                const _ziAF = getActiveFilters();
+                const _ziHasNeg = _ziAF.has('negatives');
+                const _ziHasStrict = _ziAF.has('strict');
+                if (_ziHasNeg) {
+                    const _ziIsPos = ziBlueF.length > 0;
+                    const _ziBadSpirit = ziSpiritF && !ziSpiritF.auspicious;
+                    const _ziGoodSpirit = ziSpiritF && ziSpiritF.auspicious;
+                    const _ziGoodNayin = ziNayinF.label === 'Nayin Power' || ziNayinF.label === 'Nayin';
+                    const _ziIsTombSha = isTombSha(ziHZhiF, ziDGan, ziSS, ziSG);
+                    const _ziNegScore = (!_ziIsPos ? 1 : 0) +
+                                        (dayClashType === 'clash-year' ? 3 : dayClashType === 'clash-month-stem' ? 2 : dayClashType === 'clash-month-branch' ? 1 : 0) +
+                                        (_ziBadSpirit ? 1 : 0) +
+                                        (_ziIsTombSha ? 2 : 0);
+                    if (_ziNegScore === 0) continue; // not negative, skip
+                    if (_ziHasStrict && (_ziGoodSpirit || _ziGoodNayin)) continue; // Strict mode kill
+                }
                 const ziBgF  = ziScoreF>=12?'#a5d6a7':ziScoreF>=9?'#c8e6c9':ziScoreF>=6?'#dcedc8':ziScoreF>=4?'#f1f8e9':'#ffffff';
                 const ziBrdF = ziScoreF>=12?'#1b5e20':ziScoreF>=9?'#2e7d32':ziScoreF>=6?'#388e3c':ziScoreF>=4?'#558b2f':'#aaa';
                 const ziElNF = ziBlueF.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
                 const ziSpHF = ziSpiritF?`<div style="font-size:9px;font-weight:bold;color:${ziSpiritF.auspicious?'#0044cc':'#d40000'};">${ziSpiritF.en} ${ziSpiritF.zh}</div>`:'';
                 const ziNyFH = ziNayinF.label?`<div style="font-size:9px;font-weight:bold;color:${ziNayinF.label==='Nayin Power'?'#1b5e20':ziNayinF.label==='Nayin Weak'?'#b71c1c':'#2e7d32'};">${ziNayinF.label}</div>`:'';
                 const ziYD = ziPillars.year||{}, ziMD = ziPillars.month||{}, ziDD = ziPillars.day||{}, ziHD = ziPillars.hour||{};
-                dayRows.push({ score: ziScoreF, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBgF?`background:${ziBgF};`:''}border-left:4px solid ${ziBrdF};cursor:pointer;">
+                const _ziRowBg = _ziHasNeg ? '#ffcdd2' : ziBgF;
+                const _ziRowBrd = _ziHasNeg ? '#c62828' : ziBrdF;
+                const _ziScoreForSort = _ziHasNeg ? ((!_ziIsPos? 1:0) + (dayClashType==='clash-year'?3:dayClashType==='clash-month-stem'?2:dayClashType==='clash-month-branch'?1:0) + ((ziSpiritF && !ziSpiritF.auspicious)?1:0) + (isTombSha(ziHZhiF, ziDGan, ziSS, ziSG)?2:0)) : ziScoreF;
+                dayRows.push({ score: _ziScoreForSort, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${_ziRowBg?`background:${_ziRowBg};`:''}border-left:4px solid ${_ziRowBrd};${_ziHasNeg?'outline:2px solid #c62828;outline-offset:-2px;':''}cursor:pointer;">
                     <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${ziScoreF}</div>
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                         <span style="color:#999;font-size:10px;">${ziStart}-${ziMid}${tstMark}</span><br>
