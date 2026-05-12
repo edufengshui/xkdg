@@ -3964,20 +3964,31 @@ function buildMonthView() {
                 const ziScoreF  = calcHourScore(ziDGan, ziDZhi, ziHGanF, ziHZhiF, ziMGan, ziMZhi, ziYGan, ziYZhi, ziItemsF, ziSpiritF, ziSS, ziSG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, ziPillars);
                 const ziNayinF  = analyzeNayin(ziDGan, ziDZhi, ziHGanF, ziHZhiF, ziMGan, ziMZhi, ziYGan, ziYZhi, activePersonStem, activePersonBranch, activePersonDayStem, activePersonDayBranch);
 
-                // ── Negatives / Strict gate for Zi first half ──
+                // ── Apply chip filters (Adding Elements, Hetu Periods, etc.) for Zi first half ──
                 const _ziAF = getActiveFilters();
                 const _ziHasNeg = _ziAF.has('negatives');
                 const _ziHasStrict = _ziAF.has('strict');
+                // Pre-compute negativity vars (used below for both gate and scoring)
+                const _ziIsPos = ziBlueF.length > 0;
+                const _ziBadSpirit = ziSpiritF && !ziSpiritF.auspicious;
+                const _ziGoodSpirit = ziSpiritF && ziSpiritF.auspicious;
+                const _ziGoodNayin = ziNayinF.label === 'Nayin Power' || ziNayinF.label === 'Nayin';
+                const _ziIsTombSha = isTombSha(ziHZhiF, ziDGan, ziSS, ziSG);
+                const _ziNegScore = (!_ziIsPos ? 1 : 0) +
+                                    (dayClashType === 'clash-year' ? 3 : dayClashType === 'clash-month-stem' ? 2 : dayClashType === 'clash-month-branch' ? 1 : 0) +
+                                    (_ziBadSpirit ? 1 : 0) +
+                                    (_ziIsTombSha ? 2 : 0);
+
+                // Chip filters: bypass when Negatives is on (it has its own logic)
+                if (!_ziHasNeg) {
+                    const _ziRealFilters = new Set(_ziAF);
+                    _ziRealFilters.delete('negatives');
+                    _ziRealFilters.delete('strict');
+                    if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun}, ziItemsF)) continue;
+                }
+
+                // ── Negatives / Strict gate for Zi first half ──
                 if (_ziHasNeg) {
-                    const _ziIsPos = ziBlueF.length > 0;
-                    const _ziBadSpirit = ziSpiritF && !ziSpiritF.auspicious;
-                    const _ziGoodSpirit = ziSpiritF && ziSpiritF.auspicious;
-                    const _ziGoodNayin = ziNayinF.label === 'Nayin Power' || ziNayinF.label === 'Nayin';
-                    const _ziIsTombSha = isTombSha(ziHZhiF, ziDGan, ziSS, ziSG);
-                    const _ziNegScore = (!_ziIsPos ? 1 : 0) +
-                                        (dayClashType === 'clash-year' ? 3 : dayClashType === 'clash-month-stem' ? 2 : dayClashType === 'clash-month-branch' ? 1 : 0) +
-                                        (_ziBadSpirit ? 1 : 0) +
-                                        (_ziIsTombSha ? 2 : 0);
                     if (_ziNegScore === 0) continue; // not negative, skip
                     if (_ziHasStrict && (_ziGoodSpirit || _ziGoodNayin)) continue; // Strict mode kill
                 }
@@ -3989,7 +4000,7 @@ function buildMonthView() {
                 const ziYD = ziPillars.year||{}, ziMD = ziPillars.month||{}, ziDD = ziPillars.day||{}, ziHD = ziPillars.hour||{};
                 const _ziRowBg = _ziHasNeg ? '#ffcdd2' : ziBgF;
                 const _ziRowBrd = _ziHasNeg ? '#c62828' : ziBrdF;
-                const _ziScoreForSort = _ziHasNeg ? ((!_ziIsPos? 1:0) + (dayClashType==='clash-year'?3:dayClashType==='clash-month-stem'?2:dayClashType==='clash-month-branch'?1:0) + ((ziSpiritF && !ziSpiritF.auspicious)?1:0) + (isTombSha(ziHZhiF, ziDGan, ziSS, ziSG)?2:0)) : ziScoreF;
+                const _ziScoreForSort = _ziHasNeg ? _ziNegScore : ziScoreF;
                 dayRows.push({ score: _ziScoreForSort, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${_ziRowBg?`background:${_ziRowBg};`:''}border-left:4px solid ${_ziRowBrd};${_ziHasNeg?'outline:2px solid #c62828;outline-offset:-2px;':''}cursor:pointer;">
                     <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${ziScoreF}</div>
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
@@ -4527,11 +4538,15 @@ function personConnects(dayData, personYear, filters, blueItems) {
 function blueItemsPassFilter(blueItems, filters, dayData, analysisItems) {
     if (filters.size === 0) return true;
 
-    const nayinOnly = filters.size === 1 && filters.has('nayin');
-    const keOnly    = filters.size === 1 && filters.has('ke-wealth');
+    // Strip negatives/strict for "only" checks so they don't break the existing logic
+    const _baseFilters = new Set([...filters].filter(f => f !== 'negatives' && f !== 'strict'));
+    const nayinOnly = _baseFilters.size === 1 && _baseFilters.has('nayin');
+    const keOnly    = _baseFilters.size === 1 && _baseFilters.has('ke-wealth');
+    // If only negatives/strict remained after stripping nayin/ke, treat as no filter (let other gates handle it)
+    if (_baseFilters.size === 0) return true;
     const hasNayinFilter = filters.has('nayin');
     const hasKeFilter    = filters.has('ke-wealth');
-    const xkdgFilters = new Set([...filters].filter(f => f !== 'nayin' && f !== 'ke-wealth'));
+    const xkdgFilters = new Set([...filters].filter(f => f !== 'nayin' && f !== 'ke-wealth' && f !== 'negatives' && f !== 'strict'));
 
     // Check Nayin filter — matches any Nayin label (Power, plain, Weak)
     if (hasNayinFilter) {
