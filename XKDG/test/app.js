@@ -6594,6 +6594,88 @@ fsRenderPairsTable = function(){
 };
 
 
+// ═══════════════════════════════════════════════════════════════════
+//  BL YELLOW HIGHLIGHT — extension v12
+//
+//  Restores the yellow background that distinguishes Family Blood Link
+//  dates in all views. The CSS rank classes (.scan-item.rank-1, etc.)
+//  apply green tier colours that override any inline yellow, so we
+//  post-process the DOM after each render and force yellow on rows whose
+//  content matches the Full BL pattern (e.g. "Sun-Xian Family").
+//
+//  Applies to: scanner view, month/list view, calendar view.
+// ═══════════════════════════════════════════════════════════════════
+
+const _BL_YELLOW = '#fffb00';
+const _BL_BORDER = '#f9a825';
+
+// Match the analyzeXkdg full-BL label format: "<family-name> Family"
+// (e.g. "Sun-Xian Family", "Heng-Yi Family"). Excludes "Partial BL(...)".
+const _BL_FAMILY_RE = /\b[A-Z][a-z]+-[A-Z][a-z]+\s+Family\b/;
+
+function _hasFullBLText(el){
+  if (!el) return false;
+  const t = el.textContent || '';
+  return _BL_FAMILY_RE.test(t);
+}
+
+function _forceYellowBg(el){
+  if (!el) return;
+  el.style.setProperty('background', _BL_YELLOW, 'important');
+  el.style.setProperty('background-color', _BL_YELLOW, 'important');
+  el.style.setProperty('border-left', '4px solid ' + _BL_BORDER, 'important');
+}
+
+function fsApplyBLHighlights(){
+  try {
+    // 1) Scanner view items
+    document.querySelectorAll('#scan-results .scan-item').forEach(el => {
+      if (_hasFullBLText(el)) _forceYellowBg(el);
+    });
+    // 2) List view (month-view) — rows are direct children with onclick="loadDateIntoMain(...)"
+    const mv = document.getElementById('month-view');
+    if (mv) {
+      mv.querySelectorAll('div[onclick*="loadDateIntoMain"]').forEach(el => {
+        if (_hasFullBLText(el)) _forceYellowBg(el);
+      });
+    }
+    // 3) Calendar view cells
+    document.querySelectorAll('.cal-cell').forEach(el => {
+      if (_hasFullBLText(el)) _forceYellowBg(el);
+    });
+  } catch (err) {
+    console.error('fsApplyBLHighlights error:', err);
+  }
+}
+
+// Hook renderScanResults
+if (typeof renderScanResults === 'function') {
+  const _renderScanResultsOrig_v12 = renderScanResults;
+  renderScanResults = function(results, mode){
+    _renderScanResultsOrig_v12(results, mode);
+    setTimeout(fsApplyBLHighlights, 0);
+  };
+}
+
+// Hook buildMonthView
+if (typeof buildMonthView === 'function') {
+  const _buildMonthViewOrig_v12 = buildMonthView;
+  buildMonthView = function(){
+    _buildMonthViewOrig_v12();
+    setTimeout(fsApplyBLHighlights, 0);
+  };
+}
+
+// Hook buildCalView
+if (typeof buildCalView === 'function') {
+  const _buildCalViewOrig_v12 = buildCalView;
+  buildCalView = function(){
+    _buildCalViewOrig_v12();
+    setTimeout(fsApplyBLHighlights, 0);
+  };
+}
+
+
 window.onload = () => {
     try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
     try { renderArchive('B'); } catch(e) { console.error('archiveB:', e.message); }
