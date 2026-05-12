@@ -6559,14 +6559,16 @@ fsRenderPairsTable = function(){
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
 
-      // XKDG Relations: red + blue lines stacked tight, centered vertically in the cell
-      // (which makes them land near the middle of the glyph row in Facing/Water).
+      // XKDG Relations: red + blue lines stacked tight, pulled UP to align with glyph center
       html += '<td style="padding:6px 8px;vertical-align:middle;">';
+      // Wrapper with negative margin-top to lift the whole block up
+      html += '<div style="margin-top:-22px;">';
       html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.3;">';
       html += elemRels.length ? elemRels.join(' · ') : '\u00A0';
       html += '</div>';
       html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.3;">';
       html += yunRels.length ? yunRels.join(' · ') : '\u00A0';
+      html += '</div>';
       html += '</div>';
       html += '</td>';
 
