@@ -6199,6 +6199,91 @@ buildFengShuiView = function(){
   }
 })();
 
+// ═══════════════════════════════════════════════════════════════════
+//  ADJACENT-HEX FILTER — extension v9 (additive)
+//
+//  Adds a second filter toggle in the FS toolbar, next to "Pure YY":
+//  "No Adj" — when ON (default), hides pairs where the water hex is
+//  in the slot immediately before or after the facing hex on the
+//  compass (slot index difference == 1, with wrap-around).
+//
+//  Combines cleanly with the Pure YY filter: a row is hidden if
+//  EITHER filter rejects it. The existing fsApplyPureYYFilter is
+//  replaced with a combined version that respects both flags.
+// ═══════════════════════════════════════════════════════════════════
+
+let FS_FILTER_NO_ADJ = true; // default: hide pairs with adjacent hexes
+
+// Check whether the slots that contain fDeg and wDeg are immediate neighbors
+function fsAreHexesAdjacent(fDeg, wDeg){
+  if (typeof fsSlotForDeg !== 'function' || !Array.isArray(FS_SLOTS)) return false;
+  const fSlot = fsSlotForDeg(fDeg);
+  const wSlot = fsSlotForDeg(wDeg);
+  if (!fSlot || !wSlot) return false;
+  const fIdx = FS_SLOTS.indexOf(fSlot);
+  const wIdx = FS_SLOTS.indexOf(wSlot);
+  if (fIdx < 0 || wIdx < 0) return false;
+  const diff = Math.abs(fIdx - wIdx);
+  return diff === 1 || diff === 63; // wrap-around for 64 slots
+}
+
+function fsToggleFilterNoAdj(){
+  FS_FILTER_NO_ADJ = !FS_FILTER_NO_ADJ;
+  const btn = document.getElementById('fs-filter-adj-btn');
+  if (btn){
+    btn.style.background = FS_FILTER_NO_ADJ ? '#8e44ad' : '#aaa';
+    btn.textContent = FS_FILTER_NO_ADJ ? '✓ No Adj' : 'No Adj';
+  }
+  fsApplyPureYYFilter(); // calls the combined filter below
+}
+
+// Replace fsApplyPureYYFilter with a combined version that honors both flags
+fsApplyPureYYFilter = function(){
+  const box = document.getElementById('fs-pairs-table');
+  if (!box) return;
+  const rows = box.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const isPureYY = !!row.querySelector('span[title="Yin/Yang mountain match"]');
+    let isAdj = false;
+    if (FS_FILTER_NO_ADJ){
+      const onclick = row.getAttribute('onclick') || '';
+      const m = onclick.match(/fsSelectPair\(([\d.\-]+),([\d.\-]+)\)/);
+      if (m){
+        const fDeg = parseFloat(m[1]);
+        const wDeg = parseFloat(m[2]);
+        isAdj = fsAreHexesAdjacent(fDeg, wDeg);
+      }
+    }
+    const hide = (FS_FILTER_PURE_YY && !isPureYY) || (FS_FILTER_NO_ADJ && isAdj);
+    row.style.display = hide ? 'none' : '';
+    row.style.backgroundColor = isPureYY ? 'rgba(192, 57, 43, 0.08)' : '';
+  });
+};
+
+function fsInjectNoAdjFilterButton(){
+  if (document.getElementById('fs-filter-adj-btn')) return;
+  const pureYYBtn = document.getElementById('fs-filter-pyy-btn');
+  if (!pureYYBtn) return;
+  const html =
+    '<button id="fs-filter-adj-btn" onclick="fsToggleFilterNoAdj()" ' +
+    'style="background:#8e44ad;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:4px;" ' +
+    'title="Hide pairs where the water hex is immediately adjacent to the facing hex on the compass">✓ No Adj</button>';
+  pureYYBtn.insertAdjacentHTML('afterend', html);
+}
+
+// Wrap buildFengShuiView to inject the new button after the view is built
+const _buildFengShuiViewOrig_v9 = buildFengShuiView;
+buildFengShuiView = function(){
+  _buildFengShuiViewOrig_v9();
+  fsInjectNoAdjFilterButton();
+};
+
+// If view already built when this script loads, inject now
+(function(){
+  const v = document.getElementById('fengshui-view');
+  if (v && v.dataset.built === '1') fsInjectNoAdjFilterButton();
+})();
+
 
 window.onload = () => {
     try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
