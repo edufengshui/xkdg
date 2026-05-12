@@ -5821,7 +5821,7 @@ function fsToggleFilterPureYY(){
   const btn = document.getElementById('fs-filter-pyy-btn');
   if (btn){
     btn.style.background = FS_FILTER_PURE_YY ? '#c0392b' : '#aaa';
-    btn.textContent = FS_FILTER_PURE_YY ? '✓ Solo Pure YY' : 'Solo Pure YY';
+    btn.textContent = FS_FILTER_PURE_YY ? '✓ Pure YY' : 'Pure YY';
   }
   fsApplyPureYYFilter();
 }
@@ -5845,7 +5845,7 @@ function fsInjectPureYYFilterButton(){
     '<span style="margin-left:8px;color:#666;">|</span>' +
     '<button id="fs-filter-pyy-btn" onclick="fsToggleFilterPureYY()" ' +
     'style="background:#c0392b;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer;font-weight:bold;" ' +
-    'title="Show only Pure Yin/Yang pairs (☯)">✓ Solo Pure YY</button>';
+    'title="Show only Pure Yin/Yang pairs (☯)">✓ Pure YY</button>';
   periodLbl.insertAdjacentHTML('afterend', html);
 }
 
@@ -6030,6 +6030,174 @@ getGPS = function(){
     timeout: 10000
   });
 };
+
+// ═══════════════════════════════════════════════════════════════════
+//  FS LAYOUT EXPAND + LUOPAN ZOOM — extension v8 (additive)
+//
+//  - Makes the luopan canvas use the full viewport width (escapes
+//    the container's max-width and padding via the negative-margin
+//    "full-bleed" trick), so on mobile the luopan is as large as
+//    the screen allows.
+//  - Adds pinch-to-zoom (1x..5x), one-finger pan when zoomed,
+//    and double-tap to reset on mobile.
+//  - On desktop: mouse wheel zoom + double-click reset.
+//
+//  Wraps buildFengShuiView so the existing code is untouched.
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Layout expansion ────────────────────────────────────────────────
+function fsExpandLayout(){
+  const view = document.getElementById('fengshui-view');
+  if (!view) return;
+  const inner = view.firstElementChild;
+  if (inner){
+    inner.style.maxWidth = 'none';
+  }
+  const cwrap = document.getElementById('fs-canvas-wrap');
+  if (cwrap){
+    cwrap.style.maxWidth   = 'none';
+    cwrap.style.width      = '100vw';
+    cwrap.style.marginLeft  = 'calc(50% - 50vw)';
+    cwrap.style.marginRight = 'calc(50% - 50vw)';
+    cwrap.style.background = '#fff';
+    cwrap.style.overflow   = 'hidden'; // clip zoom transform
+  }
+}
+
+// ── Pinch/wheel zoom state ─────────────────────────────────────────
+let _fsZoomScale = 1;
+let _fsZoomTx = 0, _fsZoomTy = 0;
+let _fsPinchInitDist = 0, _fsPinchInitScale = 1;
+let _fsPinchInitTx = 0,   _fsPinchInitTy = 0;
+let _fsPinchInitCx = 0,   _fsPinchInitCy = 0;
+let _fsPanLastX = 0, _fsPanLastY = 0, _fsPanning = false;
+let _fsLastTapTime = 0;
+
+function _fsApplyTransform(){
+  const canvas = document.getElementById('fs-canvas');
+  if (!canvas) return;
+  canvas.style.transformOrigin = '0 0';
+  canvas.style.transform =
+    'translate(' + _fsZoomTx + 'px, ' + _fsZoomTy + 'px) ' +
+    'scale('     + _fsZoomScale + ')';
+}
+
+function _fsResetZoom(){
+  _fsZoomScale = 1;
+  _fsZoomTx = 0;
+  _fsZoomTy = 0;
+  _fsApplyTransform();
+}
+
+function _fsAttachZoomHandlers(){
+  const canvas = document.getElementById('fs-canvas');
+  if (!canvas || canvas.dataset.zoomAttached === '1') return;
+  canvas.dataset.zoomAttached = '1';
+  canvas.style.touchAction = 'none';
+  canvas.title = 'Pinch to zoom · drag to pan · double-tap to reset';
+
+  // Mobile: touch
+  canvas.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2){
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dx = t0.clientX - t1.clientX;
+      const dy = t0.clientY - t1.clientY;
+      _fsPinchInitDist  = Math.sqrt(dx*dx + dy*dy);
+      _fsPinchInitScale = _fsZoomScale;
+      _fsPinchInitTx    = _fsZoomTx;
+      _fsPinchInitTy    = _fsZoomTy;
+      const rect = canvas.getBoundingClientRect();
+      _fsPinchInitCx = (t0.clientX + t1.clientX) / 2 - rect.left;
+      _fsPinchInitCy = (t0.clientY + t1.clientY) / 2 - rect.top;
+      _fsPanning = false;
+      e.preventDefault();
+    } else if (e.touches.length === 1){
+      const now = Date.now();
+      if (now - _fsLastTapTime < 300){
+        _fsResetZoom();
+        _fsLastTapTime = 0;
+        e.preventDefault();
+        return;
+      }
+      _fsLastTapTime = now;
+      if (_fsZoomScale > 1.01){
+        _fsPanning = true;
+        _fsPanLastX = e.touches[0].clientX;
+        _fsPanLastY = e.touches[0].clientY;
+        e.preventDefault();
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', function(e){
+    if (e.touches.length === 2 && _fsPinchInitDist > 0){
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dx = t0.clientX - t1.clientX;
+      const dy = t0.clientY - t1.clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const newScale = Math.max(1, Math.min(5, _fsPinchInitScale * (dist / _fsPinchInitDist)));
+      const k = newScale / _fsPinchInitScale;
+      _fsZoomTx = _fsPinchInitCx - (_fsPinchInitCx - _fsPinchInitTx) * k;
+      _fsZoomTy = _fsPinchInitCy - (_fsPinchInitCy - _fsPinchInitTy) * k;
+      _fsZoomScale = newScale;
+      _fsApplyTransform();
+      e.preventDefault();
+    } else if (e.touches.length === 1 && _fsPanning){
+      const dx = e.touches[0].clientX - _fsPanLastX;
+      const dy = e.touches[0].clientY - _fsPanLastY;
+      _fsZoomTx += dx;
+      _fsZoomTy += dy;
+      _fsPanLastX = e.touches[0].clientX;
+      _fsPanLastY = e.touches[0].clientY;
+      _fsApplyTransform();
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', function(){
+    _fsPanning = false;
+    _fsPinchInitDist = 0;
+    if (_fsZoomScale < 1) _fsResetZoom();
+  });
+
+  // Desktop: wheel + dblclick
+  canvas.addEventListener('wheel', function(e){
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const delta = -e.deltaY * 0.002;
+    const newScale = Math.max(1, Math.min(5, _fsZoomScale * (1 + delta)));
+    if (Math.abs(newScale - _fsZoomScale) < 0.001) return;
+    const k = newScale / _fsZoomScale;
+    _fsZoomTx = cx - (cx - _fsZoomTx) * k;
+    _fsZoomTy = cy - (cy - _fsZoomTy) * k;
+    _fsZoomScale = newScale;
+    _fsApplyTransform();
+  }, { passive: false });
+
+  canvas.addEventListener('dblclick', function(e){
+    e.preventDefault();
+    _fsResetZoom();
+  });
+}
+
+// ── Wrap buildFengShuiView ─────────────────────────────────────────
+const _buildFengShuiViewOrig_v8 = buildFengShuiView;
+buildFengShuiView = function(){
+  _buildFengShuiViewOrig_v8();
+  fsExpandLayout();
+  _fsAttachZoomHandlers();
+};
+
+// If view already built when this script loads, apply now
+(function(){
+  const v = document.getElementById('fengshui-view');
+  if (v && v.dataset.built === '1'){
+    fsExpandLayout();
+    _fsAttachZoomHandlers();
+  }
+})();
 
 
 window.onload = () => {
