@@ -6477,39 +6477,41 @@ function fsElementRelation(qi1, qi2){
   return '';
 }
 
-// Replace fsRenderPairsTable entirely
+// Replace fsRenderPairsTable entirely (with defensive error handling)
 fsRenderPairsTable = function(){
-  const box = document.getElementById('fs-pairs-table');
-  if (!box) return;
-  
-  const pairs = FS_PAIRS || [];
-  if (pairs.length === 0){
-    box.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No pairs to display.</p>';
-    return;
-  }
-  
-  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead>';
-  html += '<tr style="background:#f0f0f0;border-bottom:2px solid #c9a84c;">';
-  html += '<th style="padding:8px;text-align:left;width:22%;">Facing</th>';
-  html += '<th style="padding:8px;text-align:left;width:22%;">Water</th>';
-  html += '<th style="padding:8px;text-align:left;width:30%;">XKDG Relations</th>';
-  html += '<th style="padding:8px;text-align:left;width:18%;">Pure YY</th>';
-  html += '<th style="padding:8px;text-align:center;width:8%;">Score</th>';
-  html += '</tr></thead><tbody>';
-  
-  pairs.forEach(p => {
-    const f = p.facing;
-    const w = p.water;
+  try {
+    const box = document.getElementById('fs-pairs-table');
+    if (!box) return;
+    
+    const pairs = FS_PAIRS || [];
+    if (pairs.length === 0){
+      box.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No pairs to display.</p>';
+      return;
+    }
+    
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead>';
+    html += '<tr style="background:#f0f0f0;border-bottom:2px solid #c9a84c;">';
+    html += '<th style="padding:8px;text-align:left;width:22%;">Facing</th>';
+    html += '<th style="padding:8px;text-align:left;width:22%;">Water</th>';
+    html += '<th style="padding:8px;text-align:left;width:30%;">XKDG Relations</th>';
+    html += '<th style="padding:8px;text-align:left;width:18%;">Pure YY</th>';
+    html += '<th style="padding:8px;text-align:center;width:8%;">Score</th>';
+    html += '</tr></thead><tbody>';
+    
+    pairs.forEach(p => {
+      if (!p || !p.facing || !p.water) return; // skip invalid pairs
+      const f = p.facing;
+      const w = p.water;
     
     // Hexagram glyphs
     const fGlyph = fsHexGlyph(f.hexNum);
     const wGlyph = fsHexGlyph(w.hexNum);
     
-    // Yin/Yang polarity
-    const fYY = typeof fsMountainYang === 'function' ? fsMountainYang(f.startDeg + 2.8125) : '?';
-    const wYY = typeof fsMountainYangTien === 'function' ? fsMountainYangTien(w.centerDeg) : '?';
-    const fPol = fYY === true ? 'Yang' : (fYY === false ? 'Yin' : '?');
-    const wPol = wYY === true ? 'Yang' : (wYY === false ? 'Yin' : '?');
+      // Yin/Yang polarity (with safety checks)
+      const fYY = (typeof fsMountainYang === 'function' && f.startDeg != null) ? fsMountainYang(f.startDeg + 2.8125) : null;
+      const wYY = (typeof fsMountainYangTien === 'function' && w.centerDeg != null) ? fsMountainYangTien(w.centerDeg) : null;
+      const fPol = fYY === true ? 'Yang' : (fYY === false ? 'Yin' : '?');
+      const wPol = wYY === true ? 'Yang' : (wYY === false ? 'Yin' : '?');
     
     // XKDG relations
     const xkdgRels = fsCheckXKDGRelations(f, w);
@@ -6519,7 +6521,11 @@ fsRenderPairsTable = function(){
     else if (elemRel) relsText = elemRel;
     if (!relsText) relsText = '—';
     
-    // Pure YY (empty for now)
+    // Check if Pure YY (both same polarity)
+    const isPureYY = (fPol === 'Yang' && wPol === 'Yang') || (fPol === 'Yin' && wPol === 'Yin');
+    const pureYYMarker = isPureYY ? '<span title="Yin/Yang mountain match" style="display:none;"></span>' : '';
+    
+    // Pure YY column (empty for now)
     const pureYYText = '';
     
     // Row click handler
@@ -6530,6 +6536,7 @@ fsRenderPairsTable = function(){
     
     // Facing column
     html += '<td style="padding:6px;">';
+    html += pureYYMarker;  // Hidden marker for filter detection
     html += '<span style="font-size:20px;display:inline-block;margin-right:6px;">' + fGlyph + '</span>';
     html += '<span style="font-size:10px;color:#666;">qi' + f.qi + ' yun' + f.yun + '</span><br>';
     html += '<span style="font-size:11px;">' + f.centerDeg.toFixed(1) + '° <i>' + fPol + '</i></span>';
@@ -6554,11 +6561,16 @@ fsRenderPairsTable = function(){
     html += '</tr>';
   });
   
-  html += '</tbody></table>';
-  box.innerHTML = html;
-  
-  // Apply filters (Pure YY and No Adj)
-  if (typeof fsApplyPureYYFilter === 'function') fsApplyPureYYFilter();
+    html += '</tbody></table>';
+    box.innerHTML = html;
+    
+    // Apply filters (Pure YY and No Adj)
+    if (typeof fsApplyPureYYFilter === 'function') fsApplyPureYYFilter();
+  } catch (err) {
+    console.error('fsRenderPairsTable error:', err);
+    const box = document.getElementById('fs-pairs-table');
+    if (box) box.innerHTML = '<p style="color:#c0392b;padding:20px;">Error rendering table: ' + err.message + '</p>';
+  }
 };
 
 
