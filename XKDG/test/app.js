@@ -6405,6 +6405,162 @@ buildFengShuiView = function(){
   }
 })();
 
+// ═══════════════════════════════════════════════════════════════════
+//  PAIRS TABLE REDESIGN — extension v11 (replaces fsRenderPairsTable)
+//
+//  New table structure:
+//   - Facing: hexagram glyph + qi/yun + degrees + Yin/Yang
+//   - Water: same
+//   - XKDG Relations: which rules apply (Hetu, Adding, etc.) + element Sheng/Ke
+//   - Pure YY: (empty for now, user will populate later)
+//   - Score: just the numeric value
+//
+//  Hexagram glyphs use Unicode characters U+4DC0–U+4DFF (䷀䷁䷂...).
+// ═══════════════════════════════════════════════════════════════════
+
+// Helper: get hexagram Unicode character from King Wen sequence number
+function fsHexGlyph(hexNum){
+  if (hexNum < 1 || hexNum > 64) return '?';
+  return String.fromCodePoint(0x4DC0 + hexNum - 1);
+}
+
+// Helper: check XKDG relationships between two hex slots
+function fsCheckXKDGRelations(fSlot, wSlot){
+  const relations = [];
+  
+  // Hetu: yuns add to 10
+  if (fSlot.yun + wSlot.yun === 10){
+    relations.push('Hetu');
+  }
+  
+  // Pure Qi: same qi and yun
+  if (fSlot.qi === wSlot.qi && fSlot.yun === wSlot.yun){
+    relations.push('Pure Qi');
+  }
+  
+  // Family: qi difference is 3
+  if (Math.abs(fSlot.qi - wSlot.qi) === 3){
+    relations.push('Family');
+  }
+  
+  // Inverse: qi + yun add to 10 for both
+  if ((fSlot.qi + fSlot.yun === 10) && (wSlot.qi + wSlot.yun === 10)){
+    relations.push('Inverse');
+  }
+  
+  // Adding: (for this we'd need day pillar info; skipping for now as it's complex)
+  
+  return relations;
+}
+
+// Helper: get element Sheng/Ke relationship
+function fsElementRelation(qi1, qi2){
+  // Map qi (1-9) to Wu Xing (simplified mapping)
+  const qiToElem = {
+    1: 'Water', 2: 'Earth', 3: 'Wood', 4: 'Wood',
+    5: 'Earth', 6: 'Metal', 7: 'Metal', 8: 'Earth', 9: 'Fire'
+  };
+  const e1 = qiToElem[qi1] || '?';
+  const e2 = qiToElem[qi2] || '?';
+  
+  const sheng = {
+    'Wood':'Fire', 'Fire':'Earth', 'Earth':'Metal', 'Metal':'Water', 'Water':'Wood'
+  };
+  const ke = {
+    'Wood':'Earth', 'Earth':'Water', 'Water':'Fire', 'Fire':'Metal', 'Metal':'Wood'
+  };
+  
+  if (sheng[e1] === e2) return e1 + '→' + e2 + ' (Sheng)';
+  if (ke[e1] === e2) return e1 + '⊗' + e2 + ' (Ke)';
+  if (sheng[e2] === e1) return e2 + '→' + e1 + ' (Sheng)';
+  if (ke[e2] === e1) return e2 + '⊗' + e1 + ' (Ke)';
+  return '';
+}
+
+// Replace fsRenderPairsTable entirely
+fsRenderPairsTable = function(){
+  const box = document.getElementById('fs-pairs-table');
+  if (!box) return;
+  
+  const pairs = FS_PAIRS || [];
+  if (pairs.length === 0){
+    box.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No pairs to display.</p>';
+    return;
+  }
+  
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead>';
+  html += '<tr style="background:#f0f0f0;border-bottom:2px solid #c9a84c;">';
+  html += '<th style="padding:8px;text-align:left;width:22%;">Facing</th>';
+  html += '<th style="padding:8px;text-align:left;width:22%;">Water</th>';
+  html += '<th style="padding:8px;text-align:left;width:30%;">XKDG Relations</th>';
+  html += '<th style="padding:8px;text-align:left;width:18%;">Pure YY</th>';
+  html += '<th style="padding:8px;text-align:center;width:8%;">Score</th>';
+  html += '</tr></thead><tbody>';
+  
+  pairs.forEach(p => {
+    const f = p.facing;
+    const w = p.water;
+    
+    // Hexagram glyphs
+    const fGlyph = fsHexGlyph(f.hexNum);
+    const wGlyph = fsHexGlyph(w.hexNum);
+    
+    // Yin/Yang polarity
+    const fYY = typeof fsMountainYang === 'function' ? fsMountainYang(f.startDeg + 2.8125) : '?';
+    const wYY = typeof fsMountainYangTien === 'function' ? fsMountainYangTien(w.centerDeg) : '?';
+    const fPol = fYY === true ? 'Yang' : (fYY === false ? 'Yin' : '?');
+    const wPol = wYY === true ? 'Yang' : (wYY === false ? 'Yin' : '?');
+    
+    // XKDG relations
+    const xkdgRels = fsCheckXKDGRelations(f, w);
+    const elemRel = fsElementRelation(f.qi, w.qi);
+    let relsText = xkdgRels.join(', ');
+    if (elemRel && relsText) relsText += '<br>' + elemRel;
+    else if (elemRel) relsText = elemRel;
+    if (!relsText) relsText = '—';
+    
+    // Pure YY (empty for now)
+    const pureYYText = '';
+    
+    // Row click handler
+    const onclick = 'fsSelectPair(' + f.centerDeg + ',' + w.centerDeg + ')';
+    
+    html += '<tr onclick="' + onclick + '" style="border-bottom:1px solid #e0e0e0;cursor:pointer;" ' +
+            'onmouseover="this.style.background=\'#f9f9f9\';" onmouseout="this.style.background=\'\';"> ';
+    
+    // Facing column
+    html += '<td style="padding:6px;">';
+    html += '<span style="font-size:20px;display:inline-block;margin-right:6px;">' + fGlyph + '</span>';
+    html += '<span style="font-size:10px;color:#666;">qi' + f.qi + ' yun' + f.yun + '</span><br>';
+    html += '<span style="font-size:11px;">' + f.centerDeg.toFixed(1) + '° <i>' + fPol + '</i></span>';
+    html += '</td>';
+    
+    // Water column
+    html += '<td style="padding:6px;">';
+    html += '<span style="font-size:20px;display:inline-block;margin-right:6px;">' + wGlyph + '</span>';
+    html += '<span style="font-size:10px;color:#666;">qi' + w.qi + ' yun' + w.yun + '</span><br>';
+    html += '<span style="font-size:11px;">' + w.centerDeg.toFixed(1) + '° <i>' + wPol + '</i></span>';
+    html += '</td>';
+    
+    // XKDG Relations column
+    html += '<td style="padding:6px;font-size:11px;line-height:1.4;">' + relsText + '</td>';
+    
+    // Pure YY column (empty)
+    html += '<td style="padding:6px;font-size:11px;">' + pureYYText + '</td>';
+    
+    // Score column
+    html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:13px;">' + p.score + '</td>';
+    
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table>';
+  box.innerHTML = html;
+  
+  // Apply filters (Pure YY and No Adj)
+  if (typeof fsApplyPureYYFilter === 'function') fsApplyPureYYFilter();
+};
+
 
 window.onload = () => {
     try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
