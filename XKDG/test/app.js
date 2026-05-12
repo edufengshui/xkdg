@@ -6405,171 +6405,135 @@ buildFengShuiView = function(){
   }
 })();
 
+
 // ═══════════════════════════════════════════════════════════════════
 //  PAIRS TABLE REDESIGN — extension v11 (replaces fsRenderPairsTable)
 //
-//  New table structure:
-//   - Facing: hexagram glyph + qi/yun + degrees + Yin/Yang
-//   - Water: same
-//   - XKDG Relations: which rules apply (Hetu, Adding, etc.) + element Sheng/Ke
-//   - Pure YY: (empty for now, user will populate later)
-//   - Score: just the numeric value
+//  Calls fsComputePairs() internally (the original way). Uses each
+//  pair's facingLabels and waterLabels (arrays of XKDG rule strings
+//  like 'Hetu (yun)', 'Adding yun=10', 'Family: ...') for the new
+//  "XKDG Relations" column.
 //
-//  Hexagram glyphs use Unicode characters U+4DC0–U+4DFF (䷀䷁䷂...).
+//  Layout:
+//   Facing | Water | XKDG Relations | Pure YY | Score
+//   - Facing/Water: hexagram glyph + qi/yun + degree + Yin/Yang
+//   - XKDG Relations: facing rules + water rules + element Sheng/Ke
+//   - Pure YY: empty (user will populate later)
+//   - Score: numeric only
 // ═══════════════════════════════════════════════════════════════════
 
-// Helper: get hexagram Unicode character from King Wen sequence number
-function fsHexGlyph(hexNum){
-  if (hexNum < 1 || hexNum > 64) return '?';
-  return String.fromCodePoint(0x4DC0 + hexNum - 1);
+function fsHexGlyph(n){
+  if (typeof n !== 'number' || n < 1 || n > 64) return '?';
+  return String.fromCodePoint(0x4DC0 + n - 1);
 }
 
-// Helper: check XKDG relationships between two hex slots
-function fsCheckXKDGRelations(fSlot, wSlot){
-  const relations = [];
-  
-  // Hetu: yuns add to 10
-  if (fSlot.yun + wSlot.yun === 10){
-    relations.push('Hetu');
-  }
-  
-  // Pure Qi: same qi and yun
-  if (fSlot.qi === wSlot.qi && fSlot.yun === wSlot.yun){
-    relations.push('Pure Qi');
-  }
-  
-  // Family: qi difference is 3
-  if (Math.abs(fSlot.qi - wSlot.qi) === 3){
-    relations.push('Family');
-  }
-  
-  // Inverse: qi + yun add to 10 for both
-  if ((fSlot.qi + fSlot.yun === 10) && (wSlot.qi + wSlot.yun === 10)){
-    relations.push('Inverse');
-  }
-  
-  // Adding: (for this we'd need day pillar info; skipping for now as it's complex)
-  
-  return relations;
-}
-
-// Helper: get element Sheng/Ke relationship
 function fsElementRelation(qi1, qi2){
-  // Map qi (1-9) to Wu Xing (simplified mapping)
-  const qiToElem = {
-    1: 'Water', 2: 'Earth', 3: 'Wood', 4: 'Wood',
-    5: 'Earth', 6: 'Metal', 7: 'Metal', 8: 'Earth', 9: 'Fire'
-  };
-  const e1 = qiToElem[qi1] || '?';
-  const e2 = qiToElem[qi2] || '?';
-  
-  const sheng = {
-    'Wood':'Fire', 'Fire':'Earth', 'Earth':'Metal', 'Metal':'Water', 'Water':'Wood'
-  };
-  const ke = {
-    'Wood':'Earth', 'Earth':'Water', 'Water':'Fire', 'Fire':'Metal', 'Metal':'Wood'
-  };
-  
-  if (sheng[e1] === e2) return e1 + '→' + e2 + ' (Sheng)';
-  if (ke[e1] === e2) return e1 + '⊗' + e2 + ' (Ke)';
-  if (sheng[e2] === e1) return e2 + '→' + e1 + ' (Sheng)';
-  if (ke[e2] === e1) return e2 + '⊗' + e1 + ' (Ke)';
+  const qiToElem = {1:'Water',2:'Earth',3:'Wood',4:'Wood',5:'Earth',6:'Metal',7:'Metal',8:'Earth',9:'Fire'};
+  const e1 = qiToElem[qi1]; const e2 = qiToElem[qi2];
+  if (!e1 || !e2) return '';
+  const sheng = {'Wood':'Fire','Fire':'Earth','Earth':'Metal','Metal':'Water','Water':'Wood'};
+  const ke    = {'Wood':'Earth','Earth':'Water','Water':'Fire','Fire':'Metal','Metal':'Wood'};
+  if (e1 === e2)         return e1 + ' = ' + e2;
+  if (sheng[e1] === e2)  return e1 + ' → ' + e2 + ' (Sheng)';
+  if (sheng[e2] === e1)  return e2 + ' → ' + e1 + ' (Sheng)';
+  if (ke[e1] === e2)     return e1 + ' ⊗ ' + e2 + ' (Ke)';
+  if (ke[e2] === e1)     return e2 + ' ⊗ ' + e1 + ' (Ke)';
   return '';
 }
 
-// Replace fsRenderPairsTable entirely (with defensive error handling)
 fsRenderPairsTable = function(){
   try {
     const box = document.getElementById('fs-pairs-table');
     if (!box) return;
-    
-    const pairs = (typeof window.FS_PAIRS !== 'undefined') ? window.FS_PAIRS : [];
-    if (pairs.length === 0){
-      box.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No pairs to display.</p>';
+    const pairs = (typeof fsComputePairs === 'function') ? fsComputePairs() : [];
+    if (!pairs.length){
+      const c = (typeof fsGetCurrentContext === 'function') ? fsGetCurrentContext() : {};
+      box.innerHTML = c.dayHex
+        ? '<div style="text-align:center;color:#888;padding:10px;font-size:12px;">No facing/water combinations available for this date.</div>'
+        : '';
       return;
     }
-    
-    let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;"><thead>';
-    html += '<tr style="background:#f0f0f0;border-bottom:2px solid #c9a84c;">';
-    html += '<th style="padding:8px;text-align:left;width:22%;">Facing</th>';
-    html += '<th style="padding:8px;text-align:left;width:22%;">Water</th>';
-    html += '<th style="padding:8px;text-align:left;width:30%;">XKDG Relations</th>';
-    html += '<th style="padding:8px;text-align:left;width:18%;">Pure YY</th>';
-    html += '<th style="padding:8px;text-align:center;width:8%;">Score</th>';
+    const fIn = parseFloat(document.getElementById('fs-facing').value);
+    const wIn = parseFloat(document.getElementById('fs-water').value);
+    const activeFIdx = !isNaN(fIn) && typeof fsSlotForDeg === 'function' ? fsSlotForDeg(fIn).idx : -1;
+    const activeWIdx = !isNaN(wIn) && typeof fsSlotForDeg === 'function' ? fsSlotForDeg(wIn).idx : -1;
+
+    let html = '<div style="font-size:12px;font-weight:bold;margin:10px 0 4px;color:#1a1008;">Compatible facing / water pairs (' + pairs.length + '):</div>';
+    html += '<div style="overflow-x:auto;border:1px solid #c9a84c;border-radius:6px;">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    html += '<thead><tr style="background:#fff8e1;">';
+    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#c0392b;">Facing 正神</th>';
+    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#1565c0;">Water 零神</th>';
+    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;">XKDG Relations</th>';
+    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#666;">Pure YY</th>';
+    html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;">Score</th>';
     html += '</tr></thead><tbody>';
-    
+
     pairs.forEach(p => {
-      if (!p || !p.facing || !p.water) return; // skip invalid pairs
-      const f = p.facing;
-      const w = p.water;
-    
-    // Hexagram glyphs
-    const fGlyph = fsHexGlyph(f.hexNum);
-    const wGlyph = fsHexGlyph(w.hexNum);
-    
-      // Yin/Yang polarity (with safety checks)
-      const fYY = (typeof fsMountainYang === 'function' && f.startDeg != null) ? fsMountainYang(f.startDeg + 2.8125) : null;
-      const wYY = (typeof fsMountainYangTien === 'function' && w.centerDeg != null) ? fsMountainYangTien(w.centerDeg) : null;
-      const fPol = fYY === true ? 'Yang' : (fYY === false ? 'Yin' : '?');
-      const wPol = wYY === true ? 'Yang' : (wYY === false ? 'Yin' : '?');
-    
-    // XKDG relations
-    const xkdgRels = fsCheckXKDGRelations(f, w);
-    const elemRel = fsElementRelation(f.qi, w.qi);
-    let relsText = xkdgRels.join(', ');
-    if (elemRel && relsText) relsText += '<br>' + elemRel;
-    else if (elemRel) relsText = elemRel;
-    if (!relsText) relsText = '—';
-    
-    // Check if Pure YY (both same polarity)
-    const isPureYY = (fPol === 'Yang' && wPol === 'Yang') || (fPol === 'Yin' && wPol === 'Yin');
-    const pureYYMarker = isPureYY ? '<span title="Yin/Yang mountain match" style="display:none;"></span>' : '';
-    
-    // Pure YY column (empty for now)
-    const pureYYText = '';
-    
-    // Row click handler
-    const onclick = 'fsSelectPair(' + f.centerDeg + ',' + w.centerDeg + ')';
-    
-    html += '<tr onclick="' + onclick + '" style="border-bottom:1px solid #e0e0e0;cursor:pointer;" ' +
-            'onmouseover="this.style.background=\'#f9f9f9\';" onmouseout="this.style.background=\'\';"> ';
-    
-    // Facing column
-    html += '<td style="padding:6px;">';
-    html += pureYYMarker;  // Hidden marker for filter detection
-    html += '<span style="font-size:20px;display:inline-block;margin-right:6px;">' + fGlyph + '</span>';
-    html += '<span style="font-size:10px;color:#666;">qi' + f.qi + ' yun' + f.yun + '</span><br>';
-    html += '<span style="font-size:11px;">' + f.centerDeg.toFixed(1) + '° <i>' + fPol + '</i></span>';
-    html += '</td>';
-    
-    // Water column
-    html += '<td style="padding:6px;">';
-    html += '<span style="font-size:20px;display:inline-block;margin-right:6px;">' + wGlyph + '</span>';
-    html += '<span style="font-size:10px;color:#666;">qi' + w.qi + ' yun' + w.yun + '</span><br>';
-    html += '<span style="font-size:11px;">' + w.centerDeg.toFixed(1) + '° <i>' + wPol + '</i></span>';
-    html += '</td>';
-    
-    // XKDG Relations column
-    html += '<td style="padding:6px;font-size:11px;line-height:1.4;">' + relsText + '</td>';
-    
-    // Pure YY column (empty)
-    html += '<td style="padding:6px;font-size:11px;">' + pureYYText + '</td>';
-    
-    // Score column
-    html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:13px;">' + p.score + '</td>';
-    
-    html += '</tr>';
-  });
-  
-    html += '</tbody></table>';
+      if (!p || !p.facing || !p.water) return;
+      const f = p.facing, w = p.water;
+      const fc = f.startDeg + 2.8125;
+      const wc = w.centerDeg;
+      const isActive = (f.idx === activeFIdx && w.idx === activeWIdx);
+      const bg = isActive ? '#fff3a8' : '#fff';
+
+      // Pure YY check (used as hidden marker for filter)
+      const yyOk = (typeof fsYinYangMatch === 'function') ? fsYinYangMatch(fc, wc) : false;
+      const yyMarker = yyOk ? '<span title="Yin/Yang mountain match" style="display:none;"></span>' : '';
+
+      // Yin/Yang polarities
+      const fY = (typeof fsMountainYang === 'function') ? fsMountainYang(fc) : null;
+      const wY = (typeof fsMountainYangTien === 'function') ? fsMountainYangTien(wc) : null;
+      const fPol = fY === true ? 'Yang' : (fY === false ? 'Yin' : '');
+      const wPol = wY === true ? 'Yang' : (wY === false ? 'Yin' : '');
+
+      // XKDG Relations: facing labels + water labels + element relation
+      const fLbls = Array.isArray(p.facingLabels) ? p.facingLabels : [];
+      const wLbls = Array.isArray(p.waterLabels)  ? p.waterLabels  : [];
+      const elemRel = fsElementRelation(f.qi, w.qi);
+      let relParts = [];
+      if (fLbls.length) relParts.push('<b style="color:#c0392b;">F:</b> ' + fLbls.join(', '));
+      if (wLbls.length) relParts.push('<b style="color:#1565c0;">W:</b> ' + wLbls.join(', '));
+      if (elemRel)      relParts.push('<span style="color:#555;">' + elemRel + '</span>');
+      const relText = relParts.length ? relParts.join('<br>') : '—';
+
+      html += '<tr onclick="fsSelectPair(' + fc + ',' + wc + ')" style="background:' + bg + ';border-bottom:1px solid #eee;cursor:pointer;">';
+
+      // Facing
+      html += '<td style="padding:6px;">' + yyMarker;
+      html += '<span style="font-size:22px;display:inline-block;vertical-align:middle;margin-right:4px;">' + fsHexGlyph(f.hexNum) + '</span>';
+      html += '<span style="font-size:10px;color:#666;">Hex ' + f.hexNum + ' · qi' + f.qi + ' yun' + f.yun + '</span><br>';
+      html += '<span style="font-size:10px;color:#999;">' + fc.toFixed(1) + '° · <i>' + fPol + '</i></span>';
+      html += '</td>';
+
+      // Water
+      html += '<td style="padding:6px;">';
+      html += '<span style="font-size:22px;display:inline-block;vertical-align:middle;margin-right:4px;">' + fsHexGlyph(w.hexNum) + '</span>';
+      html += '<span style="font-size:10px;color:#666;">Hex ' + w.hexNum + ' · qi' + w.qi + ' yun' + w.yun + '</span><br>';
+      html += '<span style="font-size:10px;color:#999;">' + wc.toFixed(1) + '° · <i>' + wPol + '</i></span>';
+      html += '</td>';
+
+      // XKDG Relations
+      html += '<td style="padding:6px;font-size:10px;line-height:1.4;">' + relText + '</td>';
+
+      // Pure YY (empty for now)
+      html += '<td style="padding:6px;"></td>';
+
+      // Score (number only)
+      html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:13px;color:#8a6a1f;">' + p.score + '</td>';
+
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
     box.innerHTML = html;
-    
-    // Apply filters (Pure YY and No Adj)
+
+    // Apply filters
     if (typeof fsApplyPureYYFilter === 'function') fsApplyPureYYFilter();
   } catch (err) {
     console.error('fsRenderPairsTable error:', err);
     const box = document.getElementById('fs-pairs-table');
-    if (box) box.innerHTML = '<p style="color:#c0392b;padding:20px;">Error rendering table: ' + err.message + '</p>';
+    if (box) box.innerHTML = '<p style="color:#c0392b;padding:20px;">Error: ' + err.message + '</p>';
   }
 };
 
