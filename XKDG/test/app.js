@@ -6284,6 +6284,126 @@ buildFengShuiView = function(){
   if (v && v.dataset.built === '1') fsInjectNoAdjFilterButton();
 })();
 
+// ═══════════════════════════════════════════════════════════════════
+//  FS LAYOUT FIX (tablet/desktop) + MOUSE-DRAG PAN — extension v10
+//
+//  Two fixes:
+//   1. v8 made the canvas 100vw with negative margins. On phones this
+//      gives a nicely full-bleed luopan; on tablets/desktops the canvas
+//      becomes too large (aspect-ratio keeps it ≈ square, so a 1500px
+//      wide viewport produces a 1500×1540 canvas — bigger than the
+//      window). Now: a CSS media query gives full-bleed up to 600px
+//      and a capped 600px centered layout above that.
+//
+//   2. v8 attached only TOUCH handlers, so on desktop you couldn't
+//      pan the luopan when zoomed in. Now mouse drag works too:
+//      grab with the cursor and move when scale > 1.
+// ═══════════════════════════════════════════════════════════════════
+
+function fsInjectExpansionCSS(){
+  if (document.getElementById('fs-layout-style-v10')) return;
+  const style = document.createElement('style');
+  style.id = 'fs-layout-style-v10';
+  style.textContent = [
+    '#fengshui-view > div { max-width: none !important; }',
+    '#fs-canvas-wrap {',
+    '  max-width: none !important;',
+    '  background: #fff;',
+    '  overflow: hidden;',
+    '}',
+    '@media (max-width: 600px) {',
+    '  #fs-canvas-wrap {',
+    '    width: 100vw !important;',
+    '    margin-left: calc(50% - 50vw) !important;',
+    '    margin-right: calc(50% - 50vw) !important;',
+    '  }',
+    '}',
+    '@media (min-width: 601px) {',
+    '  #fs-canvas-wrap {',
+    '    width: 100% !important;',
+    '    max-width: 600px !important;',
+    '    margin: 0 auto !important;',
+    '  }',
+    '}'
+  ].join('\n');
+  document.head.appendChild(style);
+}
+
+// Replace v8's fsExpandLayout: drop the inline approach in favor of
+// media-query CSS, and clear any inline styles v8 may have left on cwrap.
+fsExpandLayout = function(){
+  fsInjectExpansionCSS();
+  const cwrap = document.getElementById('fs-canvas-wrap');
+  if (cwrap){
+    cwrap.style.width        = '';
+    cwrap.style.marginLeft   = '';
+    cwrap.style.marginRight  = '';
+    cwrap.style.maxWidth     = '';
+    cwrap.style.background   = '';
+    cwrap.style.overflow     = '';
+  }
+};
+
+// Add mouse-drag pan for desktop (v8 only attached touch events)
+function _fsAttachMouseDragHandlers(){
+  const canvas = document.getElementById('fs-canvas');
+  if (!canvas || canvas.dataset.mouseDragAttached === '1') return;
+  canvas.dataset.mouseDragAttached = '1';
+  let dragging = false, lastX = 0, lastY = 0;
+
+  canvas.addEventListener('mousedown', function(e){
+    if (_fsZoomScale > 1.01){
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      canvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    }
+  });
+
+  canvas.addEventListener('mousemove', function(e){
+    if (dragging){
+      _fsZoomTx += e.clientX - lastX;
+      _fsZoomTy += e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      _fsApplyTransform();
+    } else {
+      canvas.style.cursor = _fsZoomScale > 1.01 ? 'grab' : '';
+    }
+  });
+
+  const endDrag = function(){
+    dragging = false;
+    canvas.style.cursor = _fsZoomScale > 1.01 ? 'grab' : '';
+  };
+  canvas.addEventListener('mouseup',    endDrag);
+  canvas.addEventListener('mouseleave', endDrag);
+}
+
+// Wrap buildFengShuiView to attach mouse-drag handlers after build
+const _buildFengShuiViewOrig_v10 = buildFengShuiView;
+buildFengShuiView = function(){
+  _buildFengShuiViewOrig_v10();
+  _fsAttachMouseDragHandlers();
+};
+
+// Apply now if view is already built - force handler re-attach
+(function(){
+  const v = document.getElementById('fengshui-view');
+  if (v && v.dataset.built === '1'){
+    fsExpandLayout();
+    const canvas = document.getElementById('fs-canvas');
+    if (canvas){
+      // Reset flags to force fresh attachment of ALL handlers
+      canvas.dataset.zoomAttached = '0';
+      canvas.dataset.mouseDragAttached = '0';
+    }
+    if (typeof _fsAttachZoomHandlers === 'function') _fsAttachZoomHandlers();
+    _fsAttachMouseDragHandlers();
+  }
+})();
+
 
 window.onload = () => {
     try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
