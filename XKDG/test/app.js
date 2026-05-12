@@ -5866,6 +5866,171 @@ buildFengShuiView = function(){
   if (v && v.dataset.built === '1') fsInjectPureYYFilterButton();
 })();
 
+// ═══════════════════════════════════════════════════════════════════
+//  SAVED LOCATION — extension v6 (additive, non-invasive)
+//
+//  Adds a SAVE button (in index.html, next to NOW and GPS) that
+//  persists the current longitude, UTC offset, and DST state to
+//  localStorage. On the next app launch, these values are restored
+//  automatically into the inputs instead of the CET defaults.
+//
+//  No existing logic is touched. If the user clicks GPS, the inputs
+//  get overwritten as usual — only the saved values are reapplied
+//  at startup.
+// ═══════════════════════════════════════════════════════════════════
+
+const XKDG_LOC_KEY = 'xkdg_saved_location';
+
+function saveLocation(){
+  try {
+    const lon = document.getElementById('longitude');
+    const utc = document.getElementById('utc-offset');
+    const dst = document.getElementById('dst-btn');
+    const data = {
+      longitude: lon ? lon.value : null,
+      utcOffset: utc ? utc.value : null,
+      dstOn:     dst ? dst.textContent.includes('ON') : false
+    };
+    localStorage.setItem(XKDG_LOC_KEY, JSON.stringify(data));
+    // Visual feedback on the button
+    const btn = document.getElementById('btn-save-loc');
+    if (btn){
+      const origText = btn.textContent;
+      const origBg   = btn.style.background;
+      btn.textContent  = '✓';
+      btn.style.background = '#27ae60';
+      btn.style.color = '#fff';
+      setTimeout(() => {
+        btn.textContent     = origText;
+        btn.style.background = origBg;
+        btn.style.color = '';
+      }, 1200);
+    }
+  } catch (e) {
+    console.error('saveLocation failed:', e);
+  }
+}
+
+function loadSavedLocation(){
+  try {
+    const raw = localStorage.getItem(XKDG_LOC_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const lon = document.getElementById('longitude');
+    const utc = document.getElementById('utc-offset');
+    const dst = document.getElementById('dst-btn');
+    if (lon && data.longitude != null) lon.value = data.longitude;
+    if (utc && data.utcOffset != null) utc.value = data.utcOffset;
+    if (dst){
+      const currentlyOn = dst.textContent.includes('ON');
+      const savedOn     = !!data.dstOn;
+      if (currentlyOn !== savedOn && typeof toggleDST === 'function'){
+        toggleDST();
+      }
+    }
+  } catch (e) {
+    console.error('loadSavedLocation failed:', e);
+  }
+}
+
+// Run as early as possible — if DOM is ready use it now; else wait
+if (document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', loadSavedLocation);
+} else {
+  loadSavedLocation();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GPS HALF-HOUR TIMEZONE WARNING — extension v7 (additive)
+//
+//  Wraps getGPS() to warn the user when the detected coordinates
+//  fall in a region with non-standard (half-hour or quarter-hour)
+//  time zones. Helps avoid silently using a wrong UTC offset, which
+//  the GPS auto-set (round longitude/15) cannot detect.
+//
+//  Regions covered:
+//   - Indian subcontinent + neighbors
+//     (India +5:30, Sri Lanka +5:30, Nepal +5:45, Myanmar +6:30,
+//      Iran +3:30, Afghanistan +4:30)
+//   - Central Australia (Adelaide / Darwin, UTC+9:30, +10:30 DST)
+//   - Newfoundland, Canada (UTC-3:30)
+//
+//  The original GPS behavior (longitude, UTC offset, true solar)
+//  is preserved. Only an extra alert is shown when applicable.
+// ═══════════════════════════════════════════════════════════════════
+
+function _xkdgInBBox(lat, lon, latMin, latMax, lonMin, lonMax){
+  return lat >= latMin && lat <= latMax && lon >= lonMin && lon <= lonMax;
+}
+
+function checkHalfHourTimezone(lat, lon){
+  // Indian subcontinent + adjacent half-hour / quarter-hour zones
+  if (_xkdgInBBox(lat, lon, 5, 37, 60, 100)){
+    alert(
+      'GPS detected your location in the Indian / South Asian region.\n\n' +
+      'Several countries here use NON-STANDARD (half-hour or ' +
+      'quarter-hour) UTC offsets that the GPS button cannot detect ' +
+      'automatically:\n\n' +
+      '  • India        UTC+5:30\n' +
+      '  • Sri Lanka    UTC+5:30\n' +
+      '  • Nepal        UTC+5:45\n' +
+      '  • Myanmar      UTC+6:30\n' +
+      '  • Iran         UTC+3:30\n' +
+      '  • Afghanistan  UTC+4:30\n\n' +
+      'Please verify and correct the UTC OFFSET field manually ' +
+      'before calculating.'
+    );
+    return;
+  }
+  // Central Australia (Adelaide, Darwin)
+  if (_xkdgInBBox(lat, lon, -38, -10, 129, 141)){
+    alert(
+      'GPS detected your location in CENTRAL AUSTRALIA.\n\n' +
+      'This region uses non-standard UTC offsets:\n' +
+      '  • UTC+9:30  (standard time)\n' +
+      '  • UTC+10:30 (with DST)\n\n' +
+      'Please verify and correct the UTC OFFSET field manually ' +
+      'before calculating.'
+    );
+    return;
+  }
+  // Newfoundland and Labrador, Canada
+  if (_xkdgInBBox(lat, lon, 46, 52, -60, -52)){
+    alert(
+      'GPS detected your location in NEWFOUNDLAND, Canada.\n\n' +
+      'This region uses UTC-3:30 (standard time).\n\n' +
+      'Please verify and correct the UTC OFFSET field manually ' +
+      'before calculating.'
+    );
+    return;
+  }
+}
+
+// Wrap the original getGPS to inject the half-hour-timezone check
+const _getGPSOrig = getGPS;
+getGPS = function(){
+  if (!navigator.geolocation){
+    alert('Geolocation not supported by this browser.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    document.getElementById('longitude').value = lon.toFixed(2);
+    const utcGuess   = Math.round(lon / 15);
+    const utcClamped = Math.max(-12, Math.min(14, utcGuess));
+    document.getElementById('utc-offset').value = utcClamped;
+    checkHalfHourTimezone(lat, lon);
+    if (typeof calculateBazi === 'function') calculateBazi();
+  }, (err) => {
+    alert('GPS error: ' + err.message);
+  }, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 10000
+  });
+};
+
 
 window.onload = () => {
     try { renderArchive('A'); } catch(e) { console.error('archiveA:', e.message); }
