@@ -177,13 +177,13 @@ const NAYIN = {
     '甲戌':'Fire on Mountain',    '乙亥':'Fire on Mountain',
     '丙子':'Water in Stream',     '丁丑':'Water in Stream',
     '戊寅':'Earth on Fortress',   '己卯':'Earth on Fortress',
-    '庚辰':'Metal in Jewelry',    '辛巳':'Metal in Jewelry',
+    '庚辰':'White Molten Metal', '辛巳':'White Molten Metal',
     '壬午':'Wood of Willow',      '癸未':'Wood of Willow',
     '甲申':'Water in Spring',     '乙酉':'Water in Spring',
     '丙戌':'Earth on House',      '丁亥':'Earth on House',
-    '戊子':'Fire in Heaven',      '己丑':'Fire in Heaven',
+    '戊子':'Lightning Fire',     '己丑':'Lightning Fire',
     '庚寅':'Wood of Pine Tree',   '辛卯':'Wood of Pine Tree',
-    '壬辰':'Water in River',      '癸巳':'Water in River',
+    '壬辰':'Forever Running Water','癸巳':'Forever Running Water',
     '甲午':'Metal in Sand',       '乙未':'Metal in Sand',
     '丙申':'Fire on Slope',       '丁酉':'Fire on Slope',
     '戊戌':'Wood on Plain',       '己亥':'Wood on Plain',
@@ -203,11 +203,11 @@ const NAYIN = {
 
 // Extract base element from Nayin name
 const NAYIN_ELEMENT = {
-    'Metal': ['Metal in the Sea','Metal in Sword','Metal in Jewelry','Metal in Sand','Gold Foil Metal','Gold in Jewelry'],
-    'Fire':  ['Fire in Furnace','Fire on Mountain','Fire in Heaven','Fire of Lamp','Fire on Slope'],
+    'Metal': ['Metal in the Sea','Metal in Sword','White Molten Metal','Metal in Sand','Gold Foil Metal','Gold in Jewelry'],
+    'Fire':  ['Fire in Furnace','Fire on Mountain','Fire in Heaven','Fire of Lamp','Fire on Slope','Lightning Fire'],
     'Wood':  ['Wood in Forest','Wood of Willow','Wood of Pine Tree','Wood on Plain','Mulberry Wood','Guava Wood'],
     'Earth': ['Road Side Earth','Earth on Fortress','Earth on House','Earth on Highway','Earth on Wall','Earth in Sand'],
-    'Water': ['Water in Stream','Water in Spring','Water in River','Water in Milky Way','Water in River','Ocean Water']
+    'Water': ['Water in Stream','Water in Spring','Water in River','Water in Milky Way','Forever Running Water','Ocean Water']
 };
 
 // Build reverse lookup: nayin name → element
