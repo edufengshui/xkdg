@@ -6559,18 +6559,23 @@ fsRenderPairsTable = function(){
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
 
-      // XKDG Relations: two-row structure matching Facing/Water vertical rhythm
+      // XKDG Relations: mirror EXACT vertical structure of Facing/Water for true alignment.
+      // Each "slot" matches the corresponding slot in F/W cells (qi → red, glyph → invisible spacer,
+      // yun → blue, degrees + hex → invisible spacers).
       html += '<td style="padding:6px 8px;vertical-align:middle;">';
-      // Top row: element relations (red), pushed down slightly
-      html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.2;min-height:18px;margin-top:3px;">';
-      html += elemRels.length ? elemRels.join(' · ') : '';
+      // Slot 1: element relations (red) — same line-height as qi numbers
+      html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.1;min-height:18px;">';
+      html += elemRels.length ? elemRels.join(' · ') : '\u00A0';
       html += '</div>';
-      // Spacer to match glyph height (now 38px)
-      html += '<div style="height:38px;"></div>';
-      // Bottom row: period relations (blue), pulled up significantly
-      html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.2;min-height:18px;margin-top:-10px;">';
-      html += yunRels.length ? yunRels.join(' · ') : '';
+      // Slot 2: invisible spacer matching glyph (font-size:38px, line-height:1, margin:1px 0)
+      html += '<div style="font-size:38px;line-height:1;margin:1px 0;visibility:hidden;">\u00A0</div>';
+      // Slot 3: period relations (blue) — same line-height as yun numbers
+      html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.1;min-height:18px;">';
+      html += yunRels.length ? yunRels.join(' · ') : '\u00A0';
       html += '</div>';
+      // Slot 4 & 5: invisible spacers matching degrees + hex (so vertical-align:middle behaves the same as F/W)
+      html += '<div style="font-size:11px;margin-top:3px;visibility:hidden;">\u00A0</div>';
+      html += '<div style="font-size:10px;visibility:hidden;">\u00A0</div>';
       html += '</td>';
 
       // Pure YY (empty for now, wider space)
