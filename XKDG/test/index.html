@@ -36,6 +36,17 @@
         color: #fff !important;
         border: 1px solid #b71c1c !important;
       }
+      /* Strict chip — same look as negatives, slightly darker */
+      .filter-chip.strict-chip {
+        background: #fff !important;
+        color: #4a148c !important;
+        border: 1px solid #4a148c !important;
+      }
+      .filter-chip.strict-chip.active {
+        background: #4a148c !important;
+        color: #fff !important;
+        border: 1px solid #311b92 !important;
+      }
     </style>
 </head>
 <body>
@@ -314,6 +325,7 @@
             <span class="filter-chip nayin-chip" data-filter="nayin" onclick="toggleChip(this)">NaYin</span>
             <span class="filter-chip ke-chip" data-filter="ke-wealth" onclick="toggleChip(this)">Ke</span>
             <span class="filter-chip negatives-chip" data-filter="negatives" onclick="toggleChip(this)">⚠ Negatives</span>
+            <span class="filter-chip strict-chip" data-filter="strict" onclick="toggleChip(this)" title="Also exclude positive 12 Spirits and positive Nayin">🚫 Strict</span>
         </div>
         <div id="month-view" style="display:none;overflow-x:auto;max-width:600px;margin:0 auto;width:100%;"></div>
         <div id="cal-view" style="display:none;padding:10px;"></div>

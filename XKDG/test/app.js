@@ -4050,11 +4050,14 @@ function buildMonthView() {
             const hasNayinFilter = activeFiltersMV.has('nayin');
             const hasKeFilterMV  = activeFiltersMV.has('ke-wealth');
             const hasNegativesFilterMV = activeFiltersMV.has('negatives');
+            const hasStrictFilterMV    = activeFiltersMV.has('strict');
 
             // Compute negativity score (used when Negatives filter is active)
             const _clashTypeForNeg = dayClashType; // already computed earlier per day
             const _hourSpiritForNeg = getSpiritForHour(dZhi, hZhi);
             const _badSpiritNeg = _hourSpiritForNeg && !_hourSpiritForNeg.auspicious;
+            const _goodSpiritNeg = _hourSpiritForNeg && _hourSpiritForNeg.auspicious;
+            const _goodNayinNeg = nayinResLV.label === 'Nayin Power' || nayinResLV.label === 'Nayin';
             const negativeScore = (
               (!isPositive ? 1 : 0) +
               (_clashTypeForNeg === 'clash-year' ? 3 : _clashTypeForNeg === 'clash-month-stem' ? 2 : _clashTypeForNeg === 'clash-month-branch' ? 1 : 0) +
@@ -4062,12 +4065,16 @@ function buildMonthView() {
               (isTombShaLV ? 2 : 0)
             );
             const isNegativeHour = negativeScore > 0;
+            // Strict mode: in addition to Negatives, also exclude hours that have ANY positive marker (auspicious spirit or positive Nayin)
+            const _strictKill = hasStrictFilterMV && (_goodSpiritNeg || _goodNayinNeg);
 
             // Skip-gate (modified to allow negatives through when filter active)
             if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
 
             // When Negatives is active: only show hours with at least one negative indicator
             if (hasNegativesFilterMV && !isNegativeHour) continue;
+            // Strict mode: drop any remaining hour that has a positive marker
+            if (hasNegativesFilterMV && _strictKill) continue;
 
             // Apply filter chips — but skip when Negatives is on (it has its own logic)
             if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
