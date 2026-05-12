@@ -6544,7 +6544,7 @@ fsRenderPairsTable = function(){
       // Facing (vertical layout: qi-red, glyph, yun-blue, deg, hexN)
       html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">' + yyMarker;
       html += '<div style="font-size:16px;color:#c0392b;font-weight:bold;line-height:1.1;">' + f.qi + '</div>';
-      html += '<div style="font-size:30px;line-height:1;margin:1px 0;font-weight:' + (p._famF ? 'bold' : 'normal') + ';">' + fsHexGlyph(f.hexNum) + '</div>';
+      html += '<div style="font-size:38px;line-height:1;margin:1px 0;font-weight:' + (p._famF ? 'bold' : 'normal') + ';">' + fsHexGlyph(f.hexNum) + '</div>';
       html += '<div style="font-size:16px;color:#1565c0;font-weight:bold;line-height:1.1;">' + f.yun + '</div>';
       html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + fc.toFixed(1) + '° <i>' + fPol + '</i></div>';
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + f.hexNum + '</div>';
@@ -6553,7 +6553,7 @@ fsRenderPairsTable = function(){
       // Water (vertical layout: qi-red, glyph, yun-blue, deg, hexN)
       html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">';
       html += '<div style="font-size:16px;color:#c0392b;font-weight:bold;line-height:1.1;">' + w.qi + '</div>';
-      html += '<div style="font-size:30px;line-height:1;margin:1px 0;font-weight:' + (p._famW ? 'bold' : 'normal') + ';">' + fsHexGlyph(w.hexNum) + '</div>';
+      html += '<div style="font-size:38px;line-height:1;margin:1px 0;font-weight:' + (p._famW ? 'bold' : 'normal') + ';">' + fsHexGlyph(w.hexNum) + '</div>';
       html += '<div style="font-size:16px;color:#1565c0;font-weight:bold;line-height:1.1;">' + w.yun + '</div>';
       html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + wc.toFixed(1) + '° <i>' + wPol + '</i></div>';
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
@@ -6561,14 +6561,14 @@ fsRenderPairsTable = function(){
 
       // XKDG Relations: two-row structure matching Facing/Water vertical rhythm
       html += '<td style="padding:6px 8px;vertical-align:middle;">';
-      // Top row: element relations (red), aligned with qi numbers
-      html += '<div style="font-size:14px;font-weight:bold;color:#c0392b;line-height:1.2;min-height:20px;">';
+      // Top row: element relations (red), aligned with qi numbers, nudged up slightly
+      html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.2;min-height:18px;margin-top:-3px;">';
       html += elemRels.length ? elemRels.join(' · ') : '';
       html += '</div>';
-      // Spacer to match glyph height
-      html += '<div style="height:32px;"></div>';
+      // Spacer to match glyph height (now 38px)
+      html += '<div style="height:38px;"></div>';
       // Bottom row: period relations (blue), aligned with yun numbers
-      html += '<div style="font-size:14px;font-weight:bold;color:#1565c0;line-height:1.2;min-height:20px;">';
+      html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.2;min-height:18px;">';
       html += yunRels.length ? yunRels.join(' · ') : '';
       html += '</div>';
       html += '</td>';
