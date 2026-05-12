@@ -6427,17 +6427,16 @@ function fsHexGlyph(n){
   return String.fromCodePoint(0x4DC0 + n - 1);
 }
 
-function fsElementRelation(qi1, qi2){
+function fsElementRelation(qiF, qiW){
   const qiToElem = {1:'Water',2:'Earth',3:'Wood',4:'Wood',5:'Earth',6:'Metal',7:'Metal',8:'Earth',9:'Fire'};
-  const e1 = qiToElem[qi1]; const e2 = qiToElem[qi2];
-  if (!e1 || !e2) return '';
+  const eF = qiToElem[qiF]; const eW = qiToElem[qiW];
+  if (!eF || !eW) return '';
   const sheng = {'Wood':'Fire','Fire':'Earth','Earth':'Metal','Metal':'Water','Water':'Wood'};
   const ke    = {'Wood':'Earth','Earth':'Water','Water':'Fire','Fire':'Metal','Metal':'Wood'};
-  if (e1 === e2)         return e1 + ' = ' + e2;
-  if (sheng[e1] === e2)  return e1 + ' → ' + e2 + ' (Sheng)';
-  if (sheng[e2] === e1)  return e2 + ' → ' + e1 + ' (Sheng)';
-  if (ke[e1] === e2)     return e1 + ' ⊗ ' + e2 + ' (Ke)';
-  if (ke[e2] === e1)     return e2 + ' ⊗ ' + e1 + ' (Ke)';
+  if (eF === eW)           return 'He';
+  if (sheng[eW] === eF)    return 'Sheng In';   // water feeds facing
+  if (ke[eW] === eF)       return 'Ke In';      // water controls facing
+  // Sheng Out / Ke Out: not shown (per user request)
   return '';
 }
 
@@ -6462,11 +6461,11 @@ fsRenderPairsTable = function(){
     html += '<div style="overflow-x:auto;border:1px solid #c9a84c;border-radius:6px;">';
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
     html += '<thead><tr style="background:#fff8e1;">';
-    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#c0392b;">Facing 正神</th>';
-    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#1565c0;">Water 零神</th>';
-    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;">XKDG Relations</th>';
-    html += '<th style="text-align:left;padding:6px;border-bottom:1px solid #c9a84c;color:#666;">Pure YY</th>';
-    html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;">Score</th>';
+    html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#c0392b;width:15%;">Facing 正神</th>';
+    html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:15%;">Water 零神</th>';
+    html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:33%;">XKDG Relations</th>';
+    html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#666;width:29%;">Pure YY</th>';
+    html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:8%;">Score</th>';
     html += '</tr></thead><tbody>';
 
     pairs.forEach(p => {
@@ -6487,40 +6486,43 @@ fsRenderPairsTable = function(){
       const fPol = fY === true ? 'Yang' : (fY === false ? 'Yin' : '');
       const wPol = wY === true ? 'Yang' : (wY === false ? 'Yin' : '');
 
-      // XKDG Relations: facing labels + water labels + element relation
+      // XKDG Relations: merge & dedupe facing/water labels, add element relation
       const fLbls = Array.isArray(p.facingLabels) ? p.facingLabels : [];
       const wLbls = Array.isArray(p.waterLabels)  ? p.waterLabels  : [];
+      const merged = [];
+      [...fLbls, ...wLbls].forEach(lbl => { if (!merged.includes(lbl)) merged.push(lbl); });
       const elemRel = fsElementRelation(f.qi, w.qi);
-      let relParts = [];
-      if (fLbls.length) relParts.push('<b style="color:#c0392b;">F:</b> ' + fLbls.join(', '));
-      if (wLbls.length) relParts.push('<b style="color:#1565c0;">W:</b> ' + wLbls.join(', '));
-      if (elemRel)      relParts.push('<span style="color:#555;">' + elemRel + '</span>');
-      const relText = relParts.length ? relParts.join('<br>') : '—';
+      if (elemRel) merged.push(elemRel);
+      const relText = merged.length ? merged.join('<br>') : '—';
 
       html += '<tr onclick="fsSelectPair(' + fc + ',' + wc + ')" style="background:' + bg + ';border-bottom:1px solid #eee;cursor:pointer;">';
 
-      // Facing
-      html += '<td style="padding:6px;">' + yyMarker;
-      html += '<span style="font-size:22px;display:inline-block;vertical-align:middle;margin-right:4px;">' + fsHexGlyph(f.hexNum) + '</span>';
-      html += '<span style="font-size:10px;color:#666;">Hex ' + f.hexNum + ' · qi' + f.qi + ' yun' + f.yun + '</span><br>';
-      html += '<span style="font-size:10px;color:#999;">' + fc.toFixed(1) + '° · <i>' + fPol + '</i></span>';
+      // Facing (vertical layout)
+      html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">' + yyMarker;
+      html += '<div style="font-size:12px;color:#8a6a1f;font-weight:bold;">qi ' + f.qi + '</div>';
+      html += '<div style="font-size:30px;line-height:1;margin:2px 0;">' + fsHexGlyph(f.hexNum) + '</div>';
+      html += '<div style="font-size:12px;color:#8a6a1f;font-weight:bold;">yun ' + f.yun + '</div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + fc.toFixed(1) + '° <i>' + fPol + '</i></div>';
+      html += '<div style="font-size:10px;color:#aaa;">Hex ' + f.hexNum + '</div>';
       html += '</td>';
 
-      // Water
-      html += '<td style="padding:6px;">';
-      html += '<span style="font-size:22px;display:inline-block;vertical-align:middle;margin-right:4px;">' + fsHexGlyph(w.hexNum) + '</span>';
-      html += '<span style="font-size:10px;color:#666;">Hex ' + w.hexNum + ' · qi' + w.qi + ' yun' + w.yun + '</span><br>';
-      html += '<span style="font-size:10px;color:#999;">' + wc.toFixed(1) + '° · <i>' + wPol + '</i></span>';
+      // Water (vertical layout)
+      html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">';
+      html += '<div style="font-size:12px;color:#1565c0;font-weight:bold;">qi ' + w.qi + '</div>';
+      html += '<div style="font-size:30px;line-height:1;margin:2px 0;">' + fsHexGlyph(w.hexNum) + '</div>';
+      html += '<div style="font-size:12px;color:#1565c0;font-weight:bold;">yun ' + w.yun + '</div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + wc.toFixed(1) + '° <i>' + wPol + '</i></div>';
+      html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
 
       // XKDG Relations
-      html += '<td style="padding:6px;font-size:10px;line-height:1.4;">' + relText + '</td>';
+      html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;">' + relText + '</td>';
 
-      // Pure YY (empty for now)
-      html += '<td style="padding:6px;"></td>';
+      // Pure YY (empty for now, wider space)
+      html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;"></td>';
 
       // Score (number only)
-      html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:13px;color:#8a6a1f;">' + p.score + '</td>';
+      html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:15px;color:#8a6a1f;vertical-align:middle;">' + p.score + '</td>';
 
       html += '</tr>';
     });
