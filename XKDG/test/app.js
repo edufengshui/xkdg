@@ -4391,8 +4391,12 @@ function toggleFilter() {
 
 function toggleChip(el) {
     el.classList.toggle('active');
-    // Re-run scan automatically if results exist
-    if (_scanResults.length > 0 || document.getElementById('scan-results').style.display === 'block') {
+    // Re-run automatically if any view is visible
+    const mvVis = document.getElementById('month-view') && document.getElementById('month-view').style.display !== 'none';
+    const calVis = document.getElementById('cal-view') && document.getElementById('cal-view').style.display !== 'none';
+    const tblVis = document.getElementById('table-view') && document.getElementById('table-view').style.display !== 'none';
+    const srVis  = document.getElementById('scan-results') && document.getElementById('scan-results').style.display === 'block';
+    if (_scanResults.length > 0 || srVis || mvVis || calVis || tblVis) {
         runAll();
     }
 }
