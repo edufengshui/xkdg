@@ -6220,8 +6220,9 @@ function fsAreHexesAdjacent(fDeg, wDeg){
   const fSlot = fsSlotForDeg(fDeg);
   const wSlot = fsSlotForDeg(wDeg);
   if (!fSlot || !wSlot) return false;
-  const fIdx = FS_SLOTS.indexOf(fSlot);
-  const wIdx = FS_SLOTS.indexOf(wSlot);
+  // Use findIndex with property comparison instead of indexOf (object reference)
+  const fIdx = FS_SLOTS.findIndex(s => s.hexNum === fSlot.hexNum);
+  const wIdx = FS_SLOTS.findIndex(s => s.hexNum === wSlot.hexNum);
   if (fIdx < 0 || wIdx < 0) return false;
   const diff = Math.abs(fIdx - wIdx);
   return diff === 1 || diff === 63; // wrap-around for 64 slots
