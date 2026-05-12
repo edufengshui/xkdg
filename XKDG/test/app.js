@@ -495,6 +495,33 @@ const STEM_ELEMENT = {
 // Ke cycle for stems: key controls value
 const STEM_KE = { 'Wood':'Earth','Earth':'Water','Water':'Fire','Fire':'Metal','Metal':'Wood' };
 
+// ── Wu Ji Du Tian 戊己都天 ────────────────────────────────────────
+// Sha calculated from YEAR STEM. Active when BOTH day branch and hour branch
+// are among the WJDT branches for that year stem.
+// Each stem pair (甲己, 乙庚, 丙辛, 丁壬, 戊癸) shares the same branches.
+const WJDT_BRANCHES = {
+  '甲': ['辰', '巳'],
+  '己': ['辰', '巳'],
+  '乙': ['子', '寅', '丑', '卯'],
+  '庚': ['子', '寅', '丑', '卯'],
+  '丙': ['戌', '亥'],
+  '辛': ['戌', '亥'],
+  '丁': ['申', '酉'],
+  '壬': ['申', '酉'],
+  '戊': ['午', '未'],
+  '癸': ['午', '未']
+};
+
+function getWJDTBranches(yearStem) {
+    return WJDT_BRANCHES[yearStem] || [];
+}
+
+function isWJDT(yearStem, dayBranch, hourBranch) {
+    const branches = WJDT_BRANCHES[yearStem];
+    if (!branches) return false;
+    return branches.includes(dayBranch) && branches.includes(hourBranch);
+}
+
 function isTombSha(hourBranch, dayStem, seasonStrong, seasonGrowing) {
     const tomb = TOMB_SHA[dayStem];
     if (!tomb || tomb !== hourBranch) return false;
@@ -3866,16 +3893,45 @@ function buildMonthView() {
                 const ziScore2  = calcHourScore(ziDGan2, ziDZhi2, ziHGan2, '子', ziMGan2, ziMZhi2, ziYGan2, ziYZhi2, ziItems2, ziSpirit2, ziSS2, ziSG2, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, ziP2);
                 const ziNayin2  = analyzeNayin(ziDGan2, ziDZhi2, ziHGan2, '子', ziMGan2, ziMZhi2, ziYGan2, ziYZhi2, activePersonStem, activePersonBranch, activePersonDayStem, activePersonDayBranch);
                 const ziAF2 = getActiveFilters();
-                const ziPassF2 = ziAF2.size === 0 || blueItemsPassFilter(ziBlue2, ziAF2, {}, ziItems2);
+                const ziHasNeg2 = ziAF2.has('negatives');
+                const ziHasStrict2 = ziAF2.has('strict');
+
+                // Pre-compute negativity vars (used by both gate and red styling)
+                const ziBadSpirit2 = ziSpirit2 && !ziSpirit2.auspicious;
+                const ziGoodSpirit2 = ziSpirit2 && ziSpirit2.auspicious;
+                const ziGoodNayin2 = ziNayin2.label === 'Nayin Power' || ziNayin2.label === 'Nayin';
+                const ziIsTombSha2 = isTombSha(ziHZhi2, ziDGan2, ziSS2, ziSG2);
+                const ziIsWJDT2 = isWJDT(ziYGan2, ziDZhi2, ziHZhi2);
+                const ziNegScore2 = (!ziIsPos2 ? 1 : 0) +
+                                    (dayClashType === 'clash-year' ? 3 : dayClashType === 'clash-month-stem' ? 2 : dayClashType === 'clash-month-branch' ? 1 : 0) +
+                                    (ziBadSpirit2 ? 1 : 0) +
+                                    (ziIsTombSha2 ? 2 : 0) +
+                                    (ziIsWJDT2 ? 2 : 0);
+
+                // Pass-filter for Zi second half
+                let ziPassF2;
+                if (ziHasNeg2) {
+                    // Negatives mode: require negative score, optional Strict kill
+                    if (ziNegScore2 === 0) ziPassF2 = false;
+                    else if (ziHasStrict2 && (ziGoodSpirit2 || ziGoodNayin2)) ziPassF2 = false;
+                    else ziPassF2 = true;
+                } else {
+                    // Normal mode: use chip filter logic (negatives/strict stripped automatically inside)
+                    const ziRealFilters2 = new Set(ziAF2);
+                    ziRealFilters2.delete('negatives');
+                    ziRealFilters2.delete('strict');
+                    ziPassF2 = ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {}, ziItems2);
+                }
                 if (ziPassF2) {
-                    const ziBg2 = ziScore2>=12?'#a5d6a7':ziScore2>=9?'#c8e6c9':ziScore2>=6?'#dcedc8':ziScore2>=4?'#f1f8e9':'#ffffff';
-                    const ziBrd2 = ziScore2>=12?'#1b5e20':ziScore2>=9?'#2e7d32':ziScore2>=6?'#388e3c':ziScore2>=4?'#558b2f':'#aaa';
+                    const ziBg2 = ziHasNeg2 ? '#ffcdd2' : (ziScore2>=12?'#a5d6a7':ziScore2>=9?'#c8e6c9':ziScore2>=6?'#dcedc8':ziScore2>=4?'#f1f8e9':'#ffffff');
+                    const ziBrd2 = ziHasNeg2 ? '#c62828' : (ziScore2>=12?'#1b5e20':ziScore2>=9?'#2e7d32':ziScore2>=6?'#388e3c':ziScore2>=4?'#558b2f':'#aaa');
                     const ziElN2 = ziBlue2.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
                     const ziSp2H = ziSpirit2?`<div style="font-size:9px;font-weight:bold;color:${ziSpirit2.auspicious?'#0044cc':'#d40000'};">${ziSpirit2.en} ${ziSpirit2.zh}</div>`:'';
                     const ziNy2H = ziNayin2.label?`<div style="font-size:9px;font-weight:bold;color:${ziNayin2.label==='Nayin Power'?'#1b5e20':ziNayin2.label==='Nayin Weak'?'#b71c1c':'#2e7d32'};">${ziNayin2.label}</div>`:'';
                     const ziYD2 = ziP2.year||{}, ziMD2 = ziP2.month||{}, ziDD2 = ziP2.day||{}, ziHD2 = ziP2.hour||{};
                     const ziPerN2 = ziBlue2.filter(i=>i.text.includes('Period')).map(i=>i.text);
-                    dayRows.push({ score: ziScore2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};cursor:pointer;">
+                    const ziScoreForSort2 = ziHasNeg2 ? ziNegScore2 : ziScore2;
+                    dayRows.push({ score: ziScoreForSort2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};${ziHasNeg2?'outline:2px solid #c62828;outline-offset:-2px;':''}cursor:pointer;">
                         <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${ziScore2}</div>
                         <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                             <span style="color:#999;font-size:10px;">${ziMid}-${ziEnd}${tstMark}</span><br>
@@ -3974,10 +4030,12 @@ function buildMonthView() {
                 const _ziGoodSpirit = ziSpiritF && ziSpiritF.auspicious;
                 const _ziGoodNayin = ziNayinF.label === 'Nayin Power' || ziNayinF.label === 'Nayin';
                 const _ziIsTombSha = isTombSha(ziHZhiF, ziDGan, ziSS, ziSG);
+                const _ziIsWJDT = isWJDT(ziYGan, ziDZhi, ziHZhiF);
                 const _ziNegScore = (!_ziIsPos ? 1 : 0) +
                                     (dayClashType === 'clash-year' ? 3 : dayClashType === 'clash-month-stem' ? 2 : dayClashType === 'clash-month-branch' ? 1 : 0) +
                                     (_ziBadSpirit ? 1 : 0) +
-                                    (_ziIsTombSha ? 2 : 0);
+                                    (_ziIsTombSha ? 2 : 0) +
+                                    (_ziIsWJDT ? 2 : 0);
 
                 // Chip filters: bypass when Negatives is on (it has its own logic)
                 if (!_ziHasNeg) {
@@ -3997,6 +4055,7 @@ function buildMonthView() {
                 const ziElNF = ziBlueF.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
                 const ziSpHF = ziSpiritF?`<div style="font-size:9px;font-weight:bold;color:${ziSpiritF.auspicious?'#0044cc':'#d40000'};">${ziSpiritF.en} ${ziSpiritF.zh}</div>`:'';
                 const ziNyFH = ziNayinF.label?`<div style="font-size:9px;font-weight:bold;color:${ziNayinF.label==='Nayin Power'?'#1b5e20':ziNayinF.label==='Nayin Weak'?'#b71c1c':'#2e7d32'};">${ziNayinF.label}</div>`:'';
+                const ziWjdtH = _ziIsWJDT?`<div style="font-size:9px;font-weight:bold;color:#6a1b9a;">⚡ 戊己都天 WJDT</div>`:'';
                 const ziYD = ziPillars.year||{}, ziMD = ziPillars.month||{}, ziDD = ziPillars.day||{}, ziHD = ziPillars.hour||{};
                 const _ziRowBg = _ziHasNeg ? '#ffcdd2' : ziBgF;
                 const _ziRowBrd = _ziHasNeg ? '#c62828' : ziBrdF;
@@ -4018,7 +4077,7 @@ function buildMonthView() {
                     </div>
                     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
                         ${ziElNF.length?`<div style="color:#1a7a1a;font-weight:bold;">${ziElNF.join(' · ')}</div>`:''}
-                        ${ziSpHF}${ziNyFH}
+                        ${ziSpHF}${ziNyFH}${ziWjdtH}
                     </div>
                 </div>` });
                 continue;
@@ -4090,11 +4149,13 @@ function buildMonthView() {
             const _badSpiritNeg = _hourSpiritForNeg && !_hourSpiritForNeg.auspicious;
             const _goodSpiritNeg = _hourSpiritForNeg && _hourSpiritForNeg.auspicious;
             const _goodNayinNeg = nayinResLV.label === 'Nayin Power' || nayinResLV.label === 'Nayin';
+            const isWJDTLV = isWJDT(yGan, dZhi, hZhi);
             const negativeScore = (
               (!isPositive ? 1 : 0) +
               (_clashTypeForNeg === 'clash-year' ? 3 : _clashTypeForNeg === 'clash-month-stem' ? 2 : _clashTypeForNeg === 'clash-month-branch' ? 1 : 0) +
               (_badSpiritNeg ? 1 : 0) +
-              (isTombShaLV ? 2 : 0)
+              (isTombShaLV ? 2 : 0) +
+              (isWJDTLV ? 2 : 0)
             );
             const isNegativeHour = negativeScore > 0;
             // Strict mode: in addition to Negatives, also exclude hours that have ANY positive marker (auspicious spirit or positive Nayin)
@@ -4283,6 +4344,7 @@ function buildMonthView() {
             const mvHTMLMV   = isDateMVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'MV')">MV</span>` : '';
 
             const tombShaHTML = isTombShaLV ? `<span style="color:#d40000;font-weight:bold;font-size:10px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'墓煞')">墓煞</span>` : '';
+            const wjdtHTML = isWJDTLV ? `<span style="color:#6a1b9a;font-weight:bold;font-size:10px;cursor:pointer;margin-left:3px;" onclick="event.stopPropagation();showBadgeTip(this,'戊己都天')" title="Wu Ji Du Tian Sha">戊己都天</span>` : '';
 
             // Purpose filter for LIST view — needs current hour's _currentDayAnalysis
             const purposeLV = getPurpose();
@@ -4348,7 +4410,7 @@ function buildMonthView() {
                         isDateTYLV    ? 'TY' : ''
                     ].filter(Boolean).join(' · ')}</div>` : ''}
                     ${spiritHTML}
-                    ${tombShaHTML}
+                    ${tombShaHTML}${wjdtHTML}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}
                 </div>
             </div>`;
