@@ -6559,23 +6559,15 @@ fsRenderPairsTable = function(){
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
 
-      // XKDG Relations: mirror EXACT vertical structure of Facing/Water for true alignment.
-      // Each "slot" matches the corresponding slot in F/W cells (qi → red, glyph → invisible spacer,
-      // yun → blue, degrees + hex → invisible spacers).
+      // XKDG Relations: red + blue lines stacked tight, centered vertically in the cell
+      // (which makes them land near the middle of the glyph row in Facing/Water).
       html += '<td style="padding:6px 8px;vertical-align:middle;">';
-      // Slot 1: element relations (red) — same line-height as qi numbers
-      html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.1;min-height:18px;">';
+      html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.3;">';
       html += elemRels.length ? elemRels.join(' · ') : '\u00A0';
       html += '</div>';
-      // Slot 2: invisible spacer matching glyph (font-size:38px, line-height:1, margin:1px 0)
-      html += '<div style="font-size:38px;line-height:1;margin:1px 0;visibility:hidden;">\u00A0</div>';
-      // Slot 3: period relations (blue) — same line-height as yun numbers
-      html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.1;min-height:18px;">';
+      html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.3;">';
       html += yunRels.length ? yunRels.join(' · ') : '\u00A0';
       html += '</div>';
-      // Slot 4 & 5: invisible spacers matching degrees + hex (so vertical-align:middle behaves the same as F/W)
-      html += '<div style="font-size:11px;margin-top:3px;visibility:hidden;">\u00A0</div>';
-      html += '<div style="font-size:10px;visibility:hidden;">\u00A0</div>';
       html += '</td>';
 
       // Pure YY (empty for now, wider space)
