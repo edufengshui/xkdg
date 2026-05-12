@@ -6562,7 +6562,7 @@ fsRenderPairsTable = function(){
       // XKDG Relations: red + blue lines stacked tight, pulled UP to align with glyph center
       html += '<td style="padding:6px 8px;vertical-align:middle;">';
       // Wrapper with negative margin-top to lift the whole block up
-      html += '<div style="margin-top:-22px;">';
+      html += '<div style="margin-top:-32px;">';
       html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.3;">';
       html += elemRels.length ? elemRels.join(' · ') : '\u00A0';
       html += '</div>';
