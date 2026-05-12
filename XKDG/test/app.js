@@ -6436,8 +6436,14 @@ function fsElementRelation(qiF, qiW){
   if (eF === eW)           return 'He';
   if (sheng[eW] === eF)    return 'Sheng In';   // water feeds facing
   if (ke[eW] === eF)       return 'Ke In';      // water controls facing
-  // Sheng Out / Ke Out: not shown (per user request)
+  // Sheng Out / Ke Out: not shown
   return '';
+}
+
+// Local Hetu check (1-6, 2-7, 3-8, 4-9, 5-10)
+function _fsIsHetuPair(a, b){
+  const pairs = [[1,6],[2,7],[3,8],[4,9],[5,10]];
+  return pairs.some(p => (p[0]===a && p[1]===b) || (p[0]===b && p[1]===a));
 }
 
 fsRenderPairsTable = function(){
@@ -6457,6 +6463,35 @@ fsRenderPairsTable = function(){
     const activeFIdx = !isNaN(fIn) && typeof fsSlotForDeg === 'function' ? fsSlotForDeg(fIn).idx : -1;
     const activeWIdx = !isNaN(wIn) && typeof fsSlotForDeg === 'function' ? fsSlotForDeg(wIn).idx : -1;
 
+    // Family / Blood Link bonuses (added at display time)
+    // Day hex's families: ALWAYS used for the +3 family-match bonus, on any date
+    const _ctxFs = (typeof fsGetCurrentContext === 'function') ? fsGetCurrentContext() : {};
+    const dayHex = _ctxFs.dayHex;
+    const dayFams = (dayHex && typeof getHexFamilies === 'function') ? (getHexFamilies(dayHex) || []) : [];
+    // Full Blood Link: only true when the WHOLE date pillars share a family
+    const dateFams = (typeof fsGetDateFamilies === 'function') ? fsGetDateFamilies() : [];
+    const isFullBL = dateFams.length > 0;
+    function _famMatch(hexNum){
+      if (!dayFams.length || typeof getHexFamilies !== 'function') return false;
+      const hFams = getHexFamilies(hexNum) || [];
+      return hFams.some(f => dayFams.includes(f));
+    }
+    // Compute display score with bonuses, then re-sort pairs by display score (desc)
+    pairs.forEach(p => {
+      if (!p || !p.facing || !p.water) { p._displayScore = (p && p.score) || 0; return; }
+      const fMatch = _famMatch(p.facing.hexNum);
+      const wMatch = _famMatch(p.water.hexNum);
+      let bonus = 0;
+      if (fMatch) bonus += 3;
+      if (wMatch) bonus += 3;
+      if (isFullBL && (fMatch || wMatch)) bonus += 10;
+      p._famF = fMatch;
+      p._famW = wMatch;
+      p._blRow = isFullBL && (fMatch || wMatch);
+      p._displayScore = p.score + bonus;
+    });
+    pairs.sort((a,b) => (b._displayScore||0) - (a._displayScore||0));
+
     let html = '<div style="font-size:12px;font-weight:bold;margin:10px 0 4px;color:#1a1008;">Compatible facing / water pairs (' + pairs.length + '):</div>';
     html += '<div style="overflow-x:auto;border:1px solid #c9a84c;border-radius:6px;">';
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
@@ -6474,7 +6509,8 @@ fsRenderPairsTable = function(){
       const fc = f.startDeg + 2.8125;
       const wc = w.centerDeg;
       const isActive = (f.idx === activeFIdx && w.idx === activeWIdx);
-      const bg = isActive ? '#fff3a8' : '#fff';
+      // Yellow row when Full BL + family match (replaces the active highlight color appropriately)
+      const bg = p._blRow ? '#fff8b0' : (isActive ? '#fff3a8' : '#fff');
 
       // Pure YY check (used as hidden marker for filter)
       const yyOk = (typeof fsYinYangMatch === 'function') ? fsYinYangMatch(fc, wc) : false;
@@ -6486,31 +6522,42 @@ fsRenderPairsTable = function(){
       const fPol = fY === true ? 'Yang' : (fY === false ? 'Yin' : '');
       const wPol = wY === true ? 'Yang' : (wY === false ? 'Yin' : '');
 
-      // XKDG Relations: merge & dedupe facing/water labels, add element relation
-      const fLbls = Array.isArray(p.facingLabels) ? p.facingLabels : [];
-      const wLbls = Array.isArray(p.waterLabels)  ? p.waterLabels  : [];
-      const merged = [];
-      [...fLbls, ...wLbls].forEach(lbl => { if (!merged.includes(lbl)) merged.push(lbl); });
-      const elemRel = fsElementRelation(f.qi, w.qi);
-      if (elemRel) merged.push(elemRel);
-      const relText = merged.length ? merged.join('<br>') : '—';
+      // XKDG Relations: ONLY Facing↔Water (waterLabels), not Facing↔Day (facingLabels)
+      // Order: element (qi) relations first, then period (yun) relations,
+      // then Sheng/Ke (only if no qi Adding/Hetu, to avoid redundancy).
+      const qiHetu  = _fsIsHetuPair(f.qi, w.qi);
+      const qiSum   = f.qi + w.qi;
+      const qiAdd   = [5,10,15].includes(qiSum);
+      const yunLbls = Array.isArray(p.waterLabels) ? p.waterLabels : [];
+      const relLines = [];
+      // 1) Element-level (qi) relations first
+      if (qiHetu)          relLines.push('Hetu (qi)');
+      if (qiAdd)           relLines.push('Adding qi=' + qiSum);
+      // 2) Sheng In / Ke In / He are also element-level — show next, only if no qi Adding/Hetu
+      if (!qiHetu && !qiAdd) {
+        const er = fsElementRelation(f.qi, w.qi);
+        if (er) relLines.push(er);
+      }
+      // 3) Period-level (yun) relations last
+      yunLbls.forEach(l => relLines.push(l));
+      const relText = relLines.length ? relLines.join('<br>') : '—';
 
       html += '<tr onclick="fsSelectPair(' + fc + ',' + wc + ')" style="background:' + bg + ';border-bottom:1px solid #eee;cursor:pointer;">';
 
-      // Facing (vertical layout)
+      // Facing (vertical layout: qi-red, glyph, yun-blue, deg, hexN)
       html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">' + yyMarker;
-      html += '<div style="font-size:12px;color:#8a6a1f;font-weight:bold;">qi ' + f.qi + '</div>';
-      html += '<div style="font-size:30px;line-height:1;margin:2px 0;">' + fsHexGlyph(f.hexNum) + '</div>';
-      html += '<div style="font-size:12px;color:#8a6a1f;font-weight:bold;">yun ' + f.yun + '</div>';
+      html += '<div style="font-size:16px;color:#c0392b;font-weight:bold;line-height:1.1;">' + f.qi + '</div>';
+      html += '<div style="font-size:30px;line-height:1;margin:1px 0;font-weight:' + (p._famF ? 'bold' : 'normal') + ';">' + fsHexGlyph(f.hexNum) + '</div>';
+      html += '<div style="font-size:16px;color:#1565c0;font-weight:bold;line-height:1.1;">' + f.yun + '</div>';
       html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + fc.toFixed(1) + '° <i>' + fPol + '</i></div>';
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + f.hexNum + '</div>';
       html += '</td>';
 
-      // Water (vertical layout)
+      // Water (vertical layout: qi-red, glyph, yun-blue, deg, hexN)
       html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">';
-      html += '<div style="font-size:12px;color:#1565c0;font-weight:bold;">qi ' + w.qi + '</div>';
-      html += '<div style="font-size:30px;line-height:1;margin:2px 0;">' + fsHexGlyph(w.hexNum) + '</div>';
-      html += '<div style="font-size:12px;color:#1565c0;font-weight:bold;">yun ' + w.yun + '</div>';
+      html += '<div style="font-size:16px;color:#c0392b;font-weight:bold;line-height:1.1;">' + w.qi + '</div>';
+      html += '<div style="font-size:30px;line-height:1;margin:1px 0;font-weight:' + (p._famW ? 'bold' : 'normal') + ';">' + fsHexGlyph(w.hexNum) + '</div>';
+      html += '<div style="font-size:16px;color:#1565c0;font-weight:bold;line-height:1.1;">' + w.yun + '</div>';
       html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + wc.toFixed(1) + '° <i>' + wPol + '</i></div>';
       html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
@@ -6521,8 +6568,8 @@ fsRenderPairsTable = function(){
       // Pure YY (empty for now, wider space)
       html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;"></td>';
 
-      // Score (number only)
-      html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:15px;color:#8a6a1f;vertical-align:middle;">' + p.score + '</td>';
+      // Score (number only) — uses display score that includes family/BL bonuses
+      html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:15px;color:#8a6a1f;vertical-align:middle;">' + (p._displayScore != null ? p._displayScore : p.score) + '</td>';
 
       html += '</tr>';
     });
