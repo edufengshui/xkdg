@@ -6483,7 +6483,7 @@ fsRenderPairsTable = function(){
     const box = document.getElementById('fs-pairs-table');
     if (!box) return;
     
-    const pairs = FS_PAIRS || [];
+    const pairs = (typeof window.FS_PAIRS !== 'undefined') ? window.FS_PAIRS : [];
     if (pairs.length === 0){
       box.innerHTML = '<p style="color:#999;text-align:center;padding:20px;">No pairs to display.</p>';
       return;
