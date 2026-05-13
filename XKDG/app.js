@@ -534,6 +534,46 @@ function isTombSha(hourBranch, dayStem, seasonStrong, seasonGrowing) {
     return !isTimely; // only flag when untimely
 }
 
+// ── Unified "negative score" for Negatives filter ──────────────────────
+// Higher = worse. Score > 0 means hour is meaningfully negative.
+// Used by LIST, BEST, CAL views when Negatives chip is active.
+function calcNegativeScore(opts) {
+    const { dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
+            analysisItems, dayClashType,
+            seasonStrong, seasonGrowing,
+            nayinLabel, nayinPersonScore } = opts;
+    let score = 0;
+    // ── Negative factors (push score UP) ──
+    const spirit = getSpiritForHour(dZhi, hZhi);
+    if (spirit && !spirit.auspicious) score += 3;
+    if (dayClashType === 'clash-year')              score += 3;
+    else if (dayClashType === 'clash-month-stem')   score += 2;
+    else if (dayClashType === 'clash-month-branch') score += 1;
+    if (isTombSha(hZhi, dGan, seasonStrong, seasonGrowing)) score += 3;
+    if (isWJDT(yGan, dZhi, hZhi)) score += 3;
+    if (nayinLabel === 'Nayin Weak') score += 2;
+    if (nayinPersonScore < 0) score += 1;
+    const hasBlueItems = analysisItems && analysisItems.some(i => i.tag === 'blue' || i.tag === 'family');
+    if (!hasBlueItems) score += 1;
+    // ── Positive factors (push score DOWN) ──
+    if (spirit && spirit.auspicious) score -= 3;
+    if (nayinLabel === 'Nayin Power') score -= 2;
+    else if (nayinLabel === 'Nayin')  score -= 1;
+    if (nayinPersonScore > 0) score -= 2;
+    if (hasBlueItems) score -= 1;
+    if (analysisItems) {
+        if (analysisItems.some(i => i.tag === 'ke-wealth')) score -= 1;
+        if (analysisItems.some(i => i.tag === 'ty'    || i.tag === 'ty-both'))    score -= 1;
+        if (analysisItems.some(i => i.tag === 'noble' || i.tag === 'noble-both')) score -= 1;
+    }
+    if (LU_BRANCH[dGan]      === hZhi) score -= 1;
+    if (HEAVEN_VIRTUE[mZhi]  === hZhi) score -= 1;
+    if (BRANCH_VIRTUE[dZhi]  === hZhi) score -= 1;
+    const mv = MONTH_VIRTUE[mZhi];
+    if (mv && (mv.stem === hGan || mv.branch === hZhi)) score -= 1;
+    return score;
+}
+
 
 const NOBLE_BRANCHES = {
     '甲': ['丑','未'], '乙': ['子','申'],
@@ -3894,29 +3934,28 @@ function buildMonthView() {
                 const ziNayin2  = analyzeNayin(ziDGan2, ziDZhi2, ziHGan2, '子', ziMGan2, ziMZhi2, ziYGan2, ziYZhi2, activePersonStem, activePersonBranch, activePersonDayStem, activePersonDayBranch);
                 const ziAF2 = getActiveFilters();
                 const ziHasNeg2 = ziAF2.has('negatives');
-                const ziHasStrict2 = ziAF2.has('strict');
 
                 // Pre-compute negativity vars (used by both gate and red styling)
                 const ziBadSpirit2 = ziSpirit2 && !ziSpirit2.auspicious;
-                const ziGoodSpirit2 = ziSpirit2 && ziSpirit2.auspicious;
-                const ziGoodNayin2 = ziNayin2.label === 'Nayin Power' || ziNayin2.label === 'Nayin';
                 const ziIsTombSha2 = isTombSha(ziHZhi2, ziDGan2, ziSS2, ziSG2);
                 const ziIsWJDT2 = isWJDT(ziYGan2, ziDZhi2, ziHZhi2);
-                const ziNegScore2 = (!ziIsPos2 ? 1 : 0) +
-                                    (dayClashType === 'clash-year' ? 3 : dayClashType === 'clash-month-stem' ? 2 : dayClashType === 'clash-month-branch' ? 1 : 0) +
-                                    (ziBadSpirit2 ? 1 : 0) +
-                                    (ziIsTombSha2 ? 2 : 0) +
-                                    (ziIsWJDT2 ? 2 : 0);
+                // Use unified scoring for Negatives filter
+                const ziNegScore2 = calcNegativeScore({
+                    dGan: ziDGan2, dZhi: ziDZhi2, hGan: ziHGan2, hZhi: ziHZhi2,
+                    mGan: ziMGan2, mZhi: ziMZhi2, yGan: ziYGan2, yZhi: ziYZhi2,
+                    analysisItems: ziItems2, dayClashType,
+                    seasonStrong: ziSS2, seasonGrowing: ziSG2,
+                    nayinLabel: ziNayin2.label,
+                    nayinPersonScore: ziNayin2.personScore || 0
+                });
 
                 // Pass-filter for Zi second half
                 let ziPassF2;
                 if (ziHasNeg2) {
-                    // Negatives mode: require negative score, optional Strict kill
-                    if (ziNegScore2 === 0) ziPassF2 = false;
-                    else if (ziHasStrict2 && (ziIsPos2 || ziGoodSpirit2 || ziGoodNayin2)) ziPassF2 = false;
-                    else ziPassF2 = true;
+                    // Negatives mode: require score > 0
+                    ziPassF2 = ziNegScore2 > 0;
                 } else {
-                    // Normal mode: use chip filter logic (negatives/strict stripped automatically inside)
+                    // Normal mode: use chip filter logic
                     const ziRealFilters2 = new Set(ziAF2);
                     ziRealFilters2.delete('negatives');
                     ziRealFilters2.delete('strict');
@@ -4023,19 +4062,20 @@ function buildMonthView() {
                 // ── Apply chip filters (Adding Elements, Hetu Periods, etc.) for Zi first half ──
                 const _ziAF = getActiveFilters();
                 const _ziHasNeg = _ziAF.has('negatives');
-                const _ziHasStrict = _ziAF.has('strict');
                 // Pre-compute negativity vars (used below for both gate and scoring)
                 const _ziIsPos = ziBlueF.length > 0;
                 const _ziBadSpirit = ziSpiritF && !ziSpiritF.auspicious;
-                const _ziGoodSpirit = ziSpiritF && ziSpiritF.auspicious;
-                const _ziGoodNayin = ziNayinF.label === 'Nayin Power' || ziNayinF.label === 'Nayin';
                 const _ziIsTombSha = isTombSha(ziHZhiF, ziDGan, ziSS, ziSG);
                 const _ziIsWJDT = isWJDT(ziYGan, ziDZhi, ziHZhiF);
-                const _ziNegScore = (!_ziIsPos ? 1 : 0) +
-                                    (dayClashType === 'clash-year' ? 3 : dayClashType === 'clash-month-stem' ? 2 : dayClashType === 'clash-month-branch' ? 1 : 0) +
-                                    (_ziBadSpirit ? 1 : 0) +
-                                    (_ziIsTombSha ? 2 : 0) +
-                                    (_ziIsWJDT ? 2 : 0);
+                // Use unified scoring for Negatives filter
+                const _ziNegScore = calcNegativeScore({
+                    dGan: ziDGan, dZhi: ziDZhi, hGan: ziHGanF, hZhi: ziHZhiF,
+                    mGan: ziMGan, mZhi: ziMZhi, yGan: ziYGan, yZhi: ziYZhi,
+                    analysisItems: ziItemsF, dayClashType,
+                    seasonStrong: ziSS, seasonGrowing: ziSG,
+                    nayinLabel: ziNayinF.label,
+                    nayinPersonScore: ziNayinF.personScore || 0
+                });
 
                 // Chip filters: bypass when Negatives is on (it has its own logic)
                 if (!_ziHasNeg) {
@@ -4045,11 +4085,8 @@ function buildMonthView() {
                     if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun}, ziItemsF)) continue;
                 }
 
-                // ── Negatives / Strict gate for Zi first half ──
-                if (_ziHasNeg) {
-                    if (_ziNegScore === 0) continue; // not negative, skip
-                    if (_ziHasStrict && (_ziIsPos || _ziGoodSpirit || _ziGoodNayin)) continue; // Strict mode kill
-                }
+                // ── Negatives gate for Zi first half ──
+                if (_ziHasNeg && _ziNegScore <= 0) continue;
                 const ziBgF  = ziScoreF>=12?'#a5d6a7':ziScoreF>=9?'#c8e6c9':ziScoreF>=6?'#dcedc8':ziScoreF>=4?'#f1f8e9':'#ffffff';
                 const ziBrdF = ziScoreF>=12?'#1b5e20':ziScoreF>=9?'#2e7d32':ziScoreF>=6?'#388e3c':ziScoreF>=4?'#558b2f':'#aaa';
                 const ziElNF = ziBlueF.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
@@ -4141,34 +4178,25 @@ function buildMonthView() {
             const hasNayinFilter = activeFiltersMV.has('nayin');
             const hasKeFilterMV  = activeFiltersMV.has('ke-wealth');
             const hasNegativesFilterMV = activeFiltersMV.has('negatives');
-            const hasStrictFilterMV    = activeFiltersMV.has('strict');
 
-            // Compute negativity score (used when Negatives filter is active)
-            const _clashTypeForNeg = dayClashType; // already computed earlier per day
-            const _hourSpiritForNeg = getSpiritForHour(dZhi, hZhiDirect);
-            const _badSpiritNeg = _hourSpiritForNeg && !_hourSpiritForNeg.auspicious;
-            const _goodSpiritNeg = _hourSpiritForNeg && _hourSpiritForNeg.auspicious;
-            const _goodNayinNeg = nayinResLV.label === 'Nayin Power' || nayinResLV.label === 'Nayin';
-            const isWJDTLV = isWJDT(yGan, dZhi, hZhiDirect);
-            const negativeScore = (
-              (!isPositive ? 1 : 0) +
-              (_clashTypeForNeg === 'clash-year' ? 3 : _clashTypeForNeg === 'clash-month-stem' ? 2 : _clashTypeForNeg === 'clash-month-branch' ? 1 : 0) +
-              (_badSpiritNeg ? 1 : 0) +
-              (isTombShaLV ? 2 : 0) +
-              (isWJDTLV ? 2 : 0)
-            );
+            // Compute unified negativity score (used when Negatives filter is active)
+            const negativeScore = calcNegativeScore({
+                dGan, dZhi, hGan: hGanDirect, hZhi: hZhiDirect,
+                mGan, mZhi, yGan, yZhi,
+                analysisItems, dayClashType,
+                seasonStrong: sS, seasonGrowing: sG,
+                nayinLabel: nayinResLV.label,
+                nayinPersonScore: nayinResLV.personScore || 0
+            });
             const isNegativeHour = negativeScore > 0;
-            // Strict mode: in addition to Negatives, also exclude hours that have ANY positive marker
-            const _hasOtherPositive = analysisItems.some(i => ['ty','noble','ke-wealth','nayin-person-good','blue','family'].includes(i.tag));
-            const _strictKill = hasStrictFilterMV && (_goodSpiritNeg || _goodNayinNeg || _hasOtherPositive);
+            // Kept for backward compatibility with row styling below
+            const isWJDTLV = isWJDT(yGan, dZhi, hZhiDirect);
 
             // Skip-gate (modified to allow negatives through when filter active)
             if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
 
-            // When Negatives is active: only show hours with at least one negative indicator
+            // When Negatives is active: only show hours with score > 0 (meaningfully negative)
             if (hasNegativesFilterMV && !isNegativeHour) continue;
-            // Strict mode: drop any remaining hour that has a positive marker
-            if (hasNegativesFilterMV && _strictKill) continue;
 
             // Apply filter chips — but skip when Negatives is on (it has its own logic)
             if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
@@ -4844,11 +4872,27 @@ function runScanner() {
             const activeFilters = getActiveFilters();
             const hasNayinFilterBST = activeFilters.has('nayin');
             const hasKeFilterBST    = activeFilters.has('ke-wealth');
+            const hasNegativesBST   = activeFilters.has('negatives');
             const isNayinWeakBST = nayinResBST.label === 'Nayin Weak';
-            if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST && !hasKeFilterBST) continue;
 
-            // Apply filter
-            if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
+            // ── Negatives mode: compute score, skip non-negative hours, bypass positive-relation gates ──
+            let negativeScoreBST = 0;
+            if (hasNegativesBST) {
+                const dayClashTypeBST = getClashType(dGan, dZhi, yZhi, mGan, mZhi);
+                negativeScoreBST = calcNegativeScore({
+                    dGan, dZhi, hGan, hZhi,
+                    mGan, mZhi, yGan, yZhi,
+                    analysisItems, dayClashType: dayClashTypeBST,
+                    seasonStrong: sStrong, seasonGrowing: sGrowing,
+                    nayinLabel: nayinResBST.label,
+                    nayinPersonScore: nayinResBST.personScore || 0
+                });
+                if (negativeScoreBST <= 0) continue; // only show meaningfully negative hours
+            } else {
+                if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST && !hasKeFilterBST) continue;
+                // Apply filter (only when Negatives is OFF)
+                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
+            }
 
             // Detect which dimensions are active in the 4-hexagram relations
             const hasElementRelation = blueItems.some(i => i.text.includes('Element') || i.text.includes('Family') ||
@@ -4875,17 +4919,19 @@ function runScanner() {
                 (blueItems.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Periods') && pYun === dYun)
             );
 
-            // Personal connection: required only when person is loaded, uses active person
+            // Personal connection: required only when person is loaded, uses active person (skip when Negatives is ON)
             const filtersActiveBST = activeFilters.size > 0;
-            // If both persons active, require both connect; else require active person
-            if (personAYear && personBYear) {
-                if (!(personMatchEl || personMatchPer)) continue; // A must connect (A data used)
-                // Also check B connects
-                const pQiB = personBYear.qi, pYunB = personBYear.yun;
-                const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
-                if (!connectsB2) continue;
-            } else if (activeYear && !(personMatchEl || personMatchPer)) {
-                continue;
+            if (!hasNegativesBST) {
+                // If both persons active, require both connect; else require active person
+                if (personAYear && personBYear) {
+                    if (!(personMatchEl || personMatchPer)) continue; // A must connect (A data used)
+                    // Also check B connects
+                    const pQiB = personBYear.qi, pYunB = personBYear.yun;
+                    const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                    if (!connectsB2) continue;
+                } else if (activeYear && !(personMatchEl || personMatchPer)) {
+                    continue;
+                }
             }
 
 
@@ -4970,6 +5016,7 @@ function runScanner() {
                 .filter(t => t && !t.includes('undefined'));
             results.push({
                 score: totalScore,
+                negativeScore: negativeScoreBST,
                 scoreA,
                 scoreB,
                 sameTypeBonusA,
@@ -5011,7 +5058,10 @@ function runScanner() {
     function sortResults_chip(res) {
         const af = getActiveFilters();
         const nayinOrder = { 'Nayin Power': 3, 'Nayin': 2, 'Nayin Weak': 1 };
-        if (af.has('ke-wealth')) {
+        if (af.has('negatives')) {
+            // Negatives mode: worst first (highest negativeScore first)
+            res.sort((a,b) => (b.negativeScore||0) - (a.negativeScore||0));
+        } else if (af.has('ke-wealth')) {
             res.sort((a,b) => (b.keScore||0) - (a.keScore||0) || b.score - a.score);
         } else if (af.has('nayin')) {
             res.sort((a,b) => (nayinOrder[b.nayinLabel]||0) - (nayinOrder[a.nayinLabel]||0) || b.score - a.score);
