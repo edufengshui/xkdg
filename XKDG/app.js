@@ -3913,7 +3913,7 @@ function buildMonthView() {
                 if (ziHasNeg2) {
                     // Negatives mode: require negative score, optional Strict kill
                     if (ziNegScore2 === 0) ziPassF2 = false;
-                    else if (ziHasStrict2 && (ziGoodSpirit2 || ziGoodNayin2)) ziPassF2 = false;
+                    else if (ziHasStrict2 && (ziIsPos2 || ziGoodSpirit2 || ziGoodNayin2)) ziPassF2 = false;
                     else ziPassF2 = true;
                 } else {
                     // Normal mode: use chip filter logic (negatives/strict stripped automatically inside)
@@ -4048,7 +4048,7 @@ function buildMonthView() {
                 // ── Negatives / Strict gate for Zi first half ──
                 if (_ziHasNeg) {
                     if (_ziNegScore === 0) continue; // not negative, skip
-                    if (_ziHasStrict && (_ziGoodSpirit || _ziGoodNayin)) continue; // Strict mode kill
+                    if (_ziHasStrict && (_ziIsPos || _ziGoodSpirit || _ziGoodNayin)) continue; // Strict mode kill
                 }
                 const ziBgF  = ziScoreF>=12?'#a5d6a7':ziScoreF>=9?'#c8e6c9':ziScoreF>=6?'#dcedc8':ziScoreF>=4?'#f1f8e9':'#ffffff';
                 const ziBrdF = ziScoreF>=12?'#1b5e20':ziScoreF>=9?'#2e7d32':ziScoreF>=6?'#388e3c':ziScoreF>=4?'#558b2f':'#aaa';
@@ -4145,11 +4145,11 @@ function buildMonthView() {
 
             // Compute negativity score (used when Negatives filter is active)
             const _clashTypeForNeg = dayClashType; // already computed earlier per day
-            const _hourSpiritForNeg = getSpiritForHour(dZhi, hZhi);
+            const _hourSpiritForNeg = getSpiritForHour(dZhi, hZhiDirect);
             const _badSpiritNeg = _hourSpiritForNeg && !_hourSpiritForNeg.auspicious;
             const _goodSpiritNeg = _hourSpiritForNeg && _hourSpiritForNeg.auspicious;
             const _goodNayinNeg = nayinResLV.label === 'Nayin Power' || nayinResLV.label === 'Nayin';
-            const isWJDTLV = isWJDT(yGan, dZhi, hZhi);
+            const isWJDTLV = isWJDT(yGan, dZhi, hZhiDirect);
             const negativeScore = (
               (!isPositive ? 1 : 0) +
               (_clashTypeForNeg === 'clash-year' ? 3 : _clashTypeForNeg === 'clash-month-stem' ? 2 : _clashTypeForNeg === 'clash-month-branch' ? 1 : 0) +
