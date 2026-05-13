@@ -4158,8 +4158,9 @@ function buildMonthView() {
               (isWJDTLV ? 2 : 0)
             );
             const isNegativeHour = negativeScore > 0;
-            // Strict mode: in addition to Negatives, also exclude hours that have ANY positive marker (auspicious spirit or positive Nayin)
-            const _strictKill = hasStrictFilterMV && (isPositive || _goodNayinNeg);
+            // Strict mode: in addition to Negatives, also exclude hours that have ANY positive marker
+            const _hasOtherPositive = analysisItems.some(i => ['ty','noble','ke-wealth','nayin-person-good','blue','family'].includes(i.tag));
+            const _strictKill = hasStrictFilterMV && (_goodSpiritNeg || _goodNayinNeg || _hasOtherPositive);
 
             // Skip-gate (modified to allow negatives through when filter active)
             if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
