@@ -4159,7 +4159,7 @@ function buildMonthView() {
             );
             const isNegativeHour = negativeScore > 0;
             // Strict mode: in addition to Negatives, also exclude hours that have ANY positive marker (auspicious spirit or positive Nayin)
-            const _strictKill = hasStrictFilterMV && (_goodSpiritNeg || _goodNayinNeg);
+            const _strictKill = hasStrictFilterMV && (isPositive || _goodNayinNeg);
 
             // Skip-gate (modified to allow negatives through when filter active)
             if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
