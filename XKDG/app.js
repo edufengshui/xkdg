@@ -988,14 +988,64 @@ function setNow() {
     }
 }
 
+// ── Smart UTC offset lookup by GPS coordinates ──────────────────────
+// Many countries use a UTC offset that does NOT match their geographic longitude.
+// This function maps (lat, lon) → real UTC offset for the most common "anomalies".
+// For everything else, falls back to lon/15 rounded.
+function getRealUtcOffset(lat, lon) {
+    // ── Asia ──
+    // China (all uses +8 despite spanning 5 geographic timezones)
+    if (lat >= 18 && lat <= 54 && lon >= 73  && lon <= 135) return 8;
+    // Malaysia + Singapore + Brunei (geographically +7, actually +8)
+    if (lat >= 0.5 && lat <= 8 && lon >= 99  && lon <= 120) return 8;
+    // Philippines (+8)
+    if (lat >= 4.5 && lat <= 21 && lon >= 116 && lon <= 127) return 8;
+    // Taiwan + Hong Kong + Macau (+8)
+    if (lat >= 18 && lat <= 26 && lon >= 113 && lon <= 123) return 8;
+    // Indonesia East (Papua, +9)
+    if (lat >= -11 && lat <= 1 && lon >= 130 && lon <= 141) return 9;
+    // Indonesia Central (Sulawesi, Bali, +8)
+    if (lat >= -11 && lat <= 5 && lon >= 115 && lon <= 130) return 8;
+    // Indonesia West (Java, Sumatra, +7)
+    if (lat >= -11 && lat <= 6 && lon >= 95 && lon <= 115) return 7;
+    // India + Sri Lanka (+5:30)
+    if (lat >= 5 && lat <= 36 && lon >= 68 && lon <= 92) return 5.5;
+    // Nepal (+5:45)
+    if (lat >= 26 && lat <= 31 && lon >= 80 && lon <= 89) return 5.75;
+    // Myanmar (+6:30)
+    if (lat >= 9 && lat <= 28 && lon >= 92 && lon <= 102) return 6.5;
+    // Iran (+3:30)
+    if (lat >= 25 && lat <= 40 && lon >= 44 && lon <= 64) return 3.5;
+    // Afghanistan (+4:30)
+    if (lat >= 29 && lat <= 39 && lon >= 60 && lon <= 75) return 4.5;
+    // ── Europe ──
+    // Spain + France + Italy + Germany + Benelux + Czechia + Poland (+1)
+    if (lat >= 36 && lat <= 56 && lon >= -10 && lon <= 24) return 1;
+    // UK + Ireland + Portugal (+0)
+    if (lat >= 35 && lat <= 60 && lon >= -10 && lon <= 2) return 0;
+    // ── Africa ──
+    // Morocco + Western Sahara (+1)
+    if (lat >= 21 && lat <= 36 && lon >= -17 && lon <= -1) return 1;
+    // ── Oceania ──
+    // Australia East (NSW, VIC, QLD, TAS, +10)
+    if (lat >= -44 && lat <= -10 && lon >= 141 && lon <= 154) return 10;
+    // Australia Central (NT, SA, +9:30)
+    if (lat >= -39 && lat <= -10 && lon >= 129 && lon <= 141) return 9.5;
+    // Australia West (WA, +8)
+    if (lat >= -36 && lat <= -13 && lon >= 113 && lon <= 129) return 8;
+    // ── Fallback: pure longitude estimate ──
+    return Math.round(lon / 15);
+}
+
 function getGPS() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
+            const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
             document.getElementById('longitude').value = lon.toFixed(2);
-            // Auto-set UTC offset from longitude (approximate: every 15° = 1 hour)
-            const utcGuess = Math.round(lon / 15);
-            const utcClamped = Math.max(-12, Math.min(14, utcGuess));
+            // Smart UTC offset detection: handles countries with non-geographic timezones
+            const utcReal = getRealUtcOffset(lat, lon);
+            const utcClamped = Math.max(-12, Math.min(14, utcReal));
             document.getElementById('utc-offset').value = utcClamped;
             calculateBazi();
         }, (err) => {
