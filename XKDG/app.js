@@ -4166,6 +4166,22 @@ function buildMonthView() {
                     ziRealFilters2.delete('strict');
                     ziPassF2 = (ziScore2 >= 1) && (ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {}, ziItems2));
                 }
+                // Purpose filter for Zi second half: same gate as regular hours.
+                // Without this, Zi-second rows would bypass the chosen purpose
+                // and appear even when they don't match.
+                let _zi2PurposeIcon = '';
+                const _zi2Purpose = getPurpose();
+                if (_zi2Purpose && ziPassF2) {
+                    const _zi2DGan = (ziP2.day && ziP2.day.stem)   || dGan;
+                    const _zi2DZhi = (ziP2.day && ziP2.day.branch) || dZhi;
+                    const _zi2Passes = checkPurpose(_zi2Purpose, _zi2DGan, _zi2DZhi, ziBlue2, ziScore2, ziP2, ziItems2, ziSpirit2);
+                    if (_zi2Passes) {
+                        _zi2PurposeIcon = PURPOSE_ICONS[_zi2Purpose] || '';
+                    } else if (!_calShowAllForThisDay) {
+                        ziPassF2 = false;
+                    }
+                }
+
                 if (ziPassF2) {
                     const ziBg2 = ziHasNeg2
                         ? (ziNegScore2>=10?'#ffcdd2':ziNegScore2>=8?'#ffd6da':ziNegScore2>=6?'#ffe0e3':ziNegScore2>=4?'#ffebed':'#fff5f6')
@@ -4178,7 +4194,7 @@ function buildMonthView() {
                     const ziPerN2 = ziBlue2.filter(i=>i.text.includes('Period')).map(i=>i.text);
                     const ziScoreForSort2 = ziHasNeg2 ? ziNegScore2 : ziScore2;
                     dayRows.push({ score: ziScoreForSort2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};cursor:pointer;">
-                        <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${ziHasNeg2?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${ziHasNeg2?'-'+ziNegScore2:ziScore2}</div>
+                        <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${ziHasNeg2?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${ziHasNeg2?'-'+ziNegScore2:ziScore2}${_zi2PurposeIcon ? `<div style="font-size:14px;line-height:1;">${_zi2PurposeIcon}</div>` : ''}</div>
                         <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                             <span style="color:#999;font-size:10px;">${ziMid}-${ziEnd}${tstMark}</span><br>
                             <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGan2}${ziHZhi2}</span>${personTagsLV}
@@ -4292,6 +4308,27 @@ function buildMonthView() {
                     if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun}, ziItemsF)) continue;
                 }
 
+                // ── Purpose filter for Zi first half ──
+                // The regular-hours block has its own purpose gate at the bottom
+                // of the inner loop. Zi first half was previously rendered without
+                // any purpose filter — so rows that don't match the chosen purpose
+                // (e.g. Journey + Heaven Penalty hour) slipped through and made
+                // the filtered list inconsistent. Apply checkPurpose here too,
+                // and surface the purpose icon when the Zi-first row passes.
+                let _ziPurposeIcon = '';
+                const _ziPurpose = getPurpose();
+                if (_ziPurpose) {
+                    // Pass Zi-first's effective day stem/branch (the NEXT calendar
+                    // day's day pillar, since Zi first half = 23:00-00:00 belongs
+                    // to the next day in the early-Zi convention). ziPillars.day
+                    // already carries those values.
+                    const _ziDGan = (ziPillars.day && ziPillars.day.stem)   || dGan;
+                    const _ziDZhi = (ziPillars.day && ziPillars.day.branch) || dZhi;
+                    const _ziPasses = checkPurpose(_ziPurpose, _ziDGan, _ziDZhi, ziBlueF, ziScoreF, ziPillars, ziItemsF, ziSpiritF);
+                    if (!_ziPasses && !_calShowAllForThisDay) continue;
+                    if (_ziPasses) _ziPurposeIcon = PURPOSE_ICONS[_ziPurpose] || '';
+                }
+
                 // ── Score-based filter for Zi first half ──
                 // Default: hide ziScoreF < 1. With NEGATIVES on: show ONLY ziScoreF < 1.
                 // BYPASS when the user drilled in from CAL (show every hour of the day).
@@ -4310,7 +4347,7 @@ function buildMonthView() {
                 const _ziRowBrd = _ziHasNeg ? '#c62828' : ziBrdF;
                 const _ziScoreForSort = _ziHasNeg ? _ziNegScore : ziScoreF;
                 dayRows.push({ score: _ziScoreForSort, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${_ziRowBg?`background:${_ziRowBg};`:''}border-left:4px solid ${_ziRowBrd};cursor:pointer;">
-                    <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${_ziHasNeg?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${_ziHasNeg?'-'+_ziNegScore:ziScoreF}</div>
+                    <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${_ziHasNeg?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${_ziHasNeg?'-'+_ziNegScore:ziScoreF}${_ziPurposeIcon ? `<div style="font-size:14px;line-height:1;">${_ziPurposeIcon}</div>` : ''}</div>
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                         <span style="color:#999;font-size:10px;">${ziStart}-${ziMid}${tstMark}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGanF}${ziHZhiF}</span>${personTagsLV}
