@@ -2869,6 +2869,10 @@ let _currentMode = 'dates';
 function setMode(mode) {
     _currentMode = mode;
     if (mode === 'month') window._calBackDate = null; // clear back button when LIST opened manually
+    // Reset the FS "matching dates" flag when leaving the FS view, so the
+    // next time the user enters FS they see the live auto-rendered analysis
+    // (date → facing/water) rather than a stale matching-dates list.
+    if (mode !== 'fengshui') window._fsShowingMatching = false;
     try { localStorage.setItem('xkdg_mode', mode); } catch(e) {}
     const mDates = document.getElementById('mode-dates');
     const mMonth = document.getElementById('mode-month');
@@ -6190,21 +6194,15 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
   const box = document.getElementById('fs-detail');
   if (!box) return;
   let html = '';
-  if (dctx.dayHex){
-    html += `<div style="background:#f0f0f0;padding:8px;border-radius:4px;margin-bottom:6px;">`;
-    html += `<strong>Compatible facings for this date:</strong> ${facings.size} of 64 hex slots`;
-    html += `</div>`;
-  }
+  // NOTE: Lines that referenced the "current date" (Compatible facings for this date,
+  // vs Day, Compatible waters for this facing) have been removed — this page's task is
+  // now facing/water → matching dates, so date-dependent reverse-logic info is moved
+  // out of the input-validation panel.
   if (fInput){
-    const settings = fsGetDateSettings();
-    const lbls = dctx.dayHex
-      ? hexDateConnectionLabels(fInput.hexNum, fInput.qi, fInput.yun, dctx.dayHex, dctx.dayQi, dctx.dayYun, settings)
-      : [];
     const isZS = fsIsZhengShen(fInput.yun);
     html += `<div style="background:#fff8e1;border:1px solid #c9a84c;padding:8px;border-radius:4px;margin-bottom:6px;">`;
     html += `<strong>Facing:</strong> hex ${fInput.hexNum}, qi ${fInput.qi}, yun ${fInput.yun} `;
     html += isZS ? '<span style="color:#c0392b;font-weight:bold;">[正神 ✓]</span>' : '<span style="color:#888;">[NOT Zheng Shen ✗]</span>';
-    html += `<br>vs Day: ${lbls.length ? lbls.join(' · ') : '<span style="color:#888;">no connection</span>'}`;
     if (dctx.pAHex){
       const lA = hexConnectionLabels(fInput.hexNum, fInput.qi, fInput.yun, dctx.pAHex, dctx.pAQi, dctx.pAYun);
       html += `<br>vs Person A: ${lA.length ? lA.join(' · ') : '<span style="color:#888;">no direct connection</span>'}`;
@@ -6214,7 +6212,6 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
       html += `<br>vs Person B: ${lB.length ? lB.join(' · ') : '<span style="color:#888;">no direct connection</span>'}`;
     }
     html += `</div>`;
-    html += `<div style="font-size:11px;color:#666;margin-bottom:6px;">Compatible waters for this facing: ${waters.size} of 64</div>`;
   }
   if (wInput){
     const fSlot = facingSlot;
@@ -6247,8 +6244,9 @@ function fsFindDates(){
   if (!fsIsZhengShen(fSlot.yun)){
     alert('Facing hex (yun '+fSlot.yun+') is NOT Zheng Shen. Pick a Zheng Shen facing first.'); return;
   }
+  let wSlot = null;
   if (!isNaN(wDeg)){
-    const wSlot = fsSlotForDeg(wDeg);
+    wSlot = fsSlotForDeg(wDeg);
     if (!fsIsLingShen(wSlot.yun)){
       alert('Water hex (yun '+wSlot.yun+') is NOT Ling Shen. Pick a Ling Shen water.'); return;
     }
@@ -6262,10 +6260,204 @@ function fsFindDates(){
       alert('Water hex does not communicate with facing hex via any rule. Pick a compatible water.'); return;
     }
   }
-  // Stash the facing for the date scanner to filter on
-  window._fsFilterFacing = { hex: fSlot.hexNum, qi: fSlot.qi, yun: fSlot.yun };
-  alert('Facing filter active. Switching to BEST mode — re-run your date scan.\\n\\nFiltering for dates whose day pillar connects to facing hex '+fSlot.hexNum+' (qi '+fSlot.qi+', yun '+fSlot.yun+').');
-  setMode('dates');
+  // Compute and render matching dates for this Facing (+Water) setup.
+  // Uses the FROM/DAYS range from the main scan inputs.
+  const matches = fsFindMatchingDatesForSetup(fSlot, wSlot);
+  if (matches === null) return; // alert already shown
+  window._fsShowingMatching = true; // suppress auto reverse-logic render
+  fsRenderMatchingDatesTable(fSlot, wSlot, matches);
+  // Scroll to results so the user sees them immediately
+  const box = document.getElementById('fs-pairs-table');
+  if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Scan the FROM/DAYS range and return all dates whose Day pillar connects
+//    to the given Facing (and Water if provided). The connection rule is the
+//    same one used elsewhere in the FS module: yun-line Hetu, Adding=5/10/15,
+//    or shared Family. Returns an array sorted best-first.
+function fsFindMatchingDatesForSetup(fSlot, wSlot){
+  const startDate = (document.getElementById('scan-start') && document.getElementById('scan-start').value)
+                 || (document.getElementById('start-date') && document.getElementById('start-date').value);
+  if (!startDate){
+    alert('Set a FROM date and DAYS in the toolbar first (the matching scan uses the same range).'); return null;
+  }
+  const days = parseInt((document.getElementById('scan-days') || {}).value) || 60;
+  const lon  = parseFloat(document.getElementById('longitude').value);
+  const utc  = parseFloat(document.getElementById('utc-offset').value);
+  if (isNaN(lon) || isNaN(utc)){
+    alert('Longitude / UTC offset not set.'); return null;
+  }
+  const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+  const start = new Date(startDate + 'T00:00:00');
+
+  // Person A star data (optional, used to enrich + boost scoring)
+  const pDayStem   = _personADayStem   || null;
+  const pDayBranch = _personADayBranchXkdg || _personADayBranch || null;
+  const pMthBranch = _personAMonthBranch || null;
+  const pNoble = pDayStem   ? (NOBLE_BRANCHES[pDayStem]   || []) : [];
+  const pLu    = pDayStem   ? (LU_BRANCH[pDayStem]        || null) : null;
+  const pHV    = pMthBranch ? (HEAVEN_VIRTUE[pMthBranch]  || null) : null;
+  const pBV    = pDayBranch ? (BRANCH_VIRTUE[pDayBranch]  || null) : null;
+  const pMV    = pMthBranch ? (MONTH_VIRTUE[pMthBranch]   || null) : null;
+  const pTY    = pDayStem   ? (TIAN_YI[pDayStem]          || null) : null;
+
+  const matches = [];
+  for (let d = 0; d < days; d++){
+    const dayDate = new Date(start.getTime() + d * 86400000);
+    const midDay  = new Date(dayDate); midDay.setHours(12, 0, 0, 0);
+    const ec      = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000)).getLunar().getEightChar();
+    const dGan = ec.getDayGan(),  dZhi = ec.getDayZhi();
+    const dData = getXkdgData(dGan, dZhi);
+    if (!dData) continue;
+    const yGan = ec.getYearGan(),  yZhi = ec.getYearZhi();
+    const mGan = ec.getMonthGan(), mZhi = ec.getMonthZhi();
+    const hGan = ec.getTimeGan(),  hZhi = ec.getTimeZhi();
+
+    // Family detection for this day (uses noon hour pillar — neutral choice)
+    let dayFamilies = [];
+    try {
+      const pillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGan, hZhi);
+      const { strong: ss, growing: sg } = getJieqiSeason(midDay);
+      const analysisRes = analyzeXkdg(pillars, ss, sg);
+      dayFamilies = (analysisRes.items || [])
+        .filter(i => i.tag === 'family' && i.text)
+        .map(i => i.text.replace(/\s+Family$/, '').trim());
+    } catch (e) { /* fall through with empty families */ }
+
+    // Facing ↔ Day connection
+    const fLbls = fsConnectionLabelsForDay(fSlot.hexNum, fSlot.yun, dData.hexNum, dData.yun, dayFamilies);
+    if (fLbls.length === 0) continue;
+
+    // Water ↔ Day connection (only if Water entered)
+    let wLbls = [];
+    if (wSlot){
+      wLbls = fsConnectionLabelsForDay(wSlot.hexNum, wSlot.yun, dData.hexNum, dData.yun, dayFamilies);
+      if (wLbls.length === 0) continue;
+    }
+
+    // Person stars on this day (when Person A loaded)
+    const isNoble = pNoble.length && pNoble.includes(dZhi);
+    const isLu    = pLu && pLu === dZhi;
+    const isHV    = pHV && pHV === dZhi;
+    const isBV    = pBV && pBV === dZhi;
+    const isMV    = pMV && (pMV.stem === dGan || pMV.branch === dZhi);
+    const isTY    = pTY && pTY === dZhi;
+    const personStarCount = (isNoble?1:0)+(isLu?1:0)+(isHV?1:0)+(isBV?1:0)+(isMV?1:0)+(isTY?1:0);
+
+    // Composite score: connection-label hits + a bonus per person star
+    const score = fLbls.length + wLbls.length + personStarCount * 2;
+
+    matches.push({
+      date: dayDate,
+      isoDate: localISODate(dayDate),
+      dGan, dZhi, mGan, mZhi, yGan, yZhi,
+      dayHex: dData.hexNum, dayQi: dData.qi, dayYun: dData.yun,
+      facingLabels: fLbls,
+      waterLabels: wLbls,
+      isNoble, isLu, isHV, isBV, isMV, isTY,
+      personStarCount,
+      score
+    });
+  }
+
+  matches.sort((a, b) => b.score - a.score || a.date - b.date);
+  return matches;
+}
+
+// Internal helper: standalone version of hexDateConnectionLabels that takes
+// the day's family list directly rather than reading global state. Lets the
+// scan stay correct across many days without mutating _currentDayAnalysis.
+function fsConnectionLabelsForDay(srcHex, srcYun, dayHex, dayYun, dayFamilies){
+  const out = [];
+  if (isHetuPair(srcYun, dayYun))      out.push('Hetu (yun)');
+  const ys = srcYun + dayYun;
+  if ([5,10,15].includes(ys))          out.push('Adding yun=' + ys);
+  if (dayFamilies && dayFamilies.length){
+    const srcFams = getHexFamilies(srcHex);
+    const shared = srcFams.filter(f => dayFamilies.includes(f));
+    if (shared.length) out.push('Family: ' + shared.join(','));
+  }
+  return out;
+}
+
+// Render the matching-dates list into the FS results panel. When Person A
+// is NOT loaded, surface a prominent CTA tag that scrolls the user back to
+// the Person A input box so they can complete the setup.
+function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
+  const box = document.getElementById('fs-pairs-table');
+  if (!box) return;
+
+  const personLoaded = !!_personAYear;
+  const personCTA = personLoaded ? '' : `
+    <div style="margin:8px 0 12px;padding:10px 12px;background:#fff3e0;border:1px solid #ff9800;border-radius:6px;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <span style="color:#5d4037;">💡 No Person A loaded — adding birth data will surface personal stars (Noble · Lu · HV · BV · MV · TY) on each matching date and refine the ranking.</span>
+      <button onclick="fsScrollToPerson()" style="background:#ff9800;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-weight:bold;font-size:12px;cursor:pointer;white-space:nowrap;">+ Add Person A</button>
+    </div>`;
+
+  const fSummary = `Facing hex ${fSlot.hexNum} (qi ${fSlot.qi}, yun ${fSlot.yun})`
+                 + (wSlot ? ` · Water hex ${wSlot.hexNum} (qi ${wSlot.qi}, yun ${wSlot.yun})` : ' · no water set');
+
+  if (!matches.length){
+    box.innerHTML = `
+      <div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">Matching dates for this setup</div>
+      <div style="font-size:11px;color:#666;margin-bottom:8px;">${fSummary}</div>
+      ${personCTA}
+      <div style="text-align:center;color:#888;padding:15px;font-size:12px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;">No dates in the scan range connect to this Facing${wSlot?'+Water':''} setup. Try a wider range or a different Facing.</div>`;
+    return;
+  }
+
+  let html = `<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">
+    Matching dates for this setup: <span style="color:#1b5e20;">${matches.length} found</span>
+  </div>`;
+  html += `<div style="font-size:11px;color:#666;margin-bottom:8px;">${fSummary}</div>`;
+  html += personCTA;
+
+  html += '<div style="border:1px solid #c9a84c;border-radius:6px;overflow:hidden;background:#fff;">';
+  matches.forEach((m, i) => {
+    const dateLabel = m.date.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+    const starBadges = [
+      m.isNoble ? '<span style="color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;font-size:10px;">N</span>' : '',
+      m.isLu    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e1f5fe;font-size:10px;">L</span>' : '',
+      m.isHV    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e3f2fd;font-size:10px;">HV</span>' : '',
+      m.isBV    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e8eaf6;font-size:10px;">BV</span>' : '',
+      m.isMV    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;font-size:10px;">MV</span>' : '',
+      m.isTY    ? '<span style="color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;background:#e8f5e9;font-size:10px;">TY</span>' : ''
+    ].filter(Boolean).join(' ');
+
+    const rowBg = i % 2 === 0 ? '#fffaf0' : '#fff';
+    html += `<div onclick="loadDateIntoMain('${m.isoDate}', 6)" title="Click to load this date into the main calculator"
+        style="padding:8px 10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;cursor:pointer;background:${rowBg};flex-wrap:wrap;">
+      <div style="font-weight:bold;font-size:13px;color:#1565c0;min-width:140px;">${dateLabel}</div>
+      <div style="font-size:15px;font-weight:bold;color:#880e4f;min-width:42px;line-height:1.1;text-align:center;">
+        <div>${m.dGan}</div><div>${m.dZhi}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:120px;">
+        ${m.facingLabels.length ? `<div style="font-size:11px;color:#c0392b;font-weight:bold;">F → ${m.facingLabels.join(' · ')}</div>` : ''}
+        ${wSlot && m.waterLabels.length ? `<div style="font-size:11px;color:#1565c0;font-weight:bold;">W → ${m.waterLabels.join(' · ')}</div>` : ''}
+      </div>
+      ${starBadges ? `<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">${starBadges}</div>` : ''}
+      <div style="margin-left:auto;font-weight:bold;font-size:16px;color:#8a6a1f;min-width:30px;text-align:right;">${m.score}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  box.innerHTML = html;
+}
+
+// Scroll the user back to the Person A input panel and focus the date field
+// so they can complete the setup. Used by the CTA tag in the matching-dates
+// table when no person is currently loaded.
+function fsScrollToPerson(){
+  const panel = document.getElementById('person-panel-a');
+  if (panel) {
+    if (panel.style.display === 'none') panel.style.display = '';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const dateInput = document.getElementById('person-date');
+    if (dateInput) setTimeout(() => dateInput.focus(), 400);
+  } else {
+    // Fallback: scroll to top of page if panel id changed
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -6918,8 +7110,32 @@ function _fsIsHetuPair(a, b){
 
 fsRenderPairsTable = function(){
   try {
+    // When the user has clicked "FIND MATCHING DATES", the panel is showing the
+    // facing+water → dates view. Skip the auto-render so it doesn't get clobbered
+    // by the date → facing/water reverse-logic table. The flag is cleared either
+    // when the user navigates away and back, or when they explicitly reset it.
+    if (window._fsShowingMatching) return;
     const box = document.getElementById('fs-pairs-table');
     if (!box) return;
+    // The auto-rendered "Compatible facing/water pairs for the current date" table
+    // is the OPPOSITE task of what this page is for, so we show a placeholder
+    // instead and let fsFindDates() populate this slot with matching dates on
+    // demand. The legacy renderer is preserved below (in case it's needed later
+    // via a settings toggle), but it never runs in the default flow.
+    const fIn = parseFloat(document.getElementById('fs-facing').value);
+    const wIn = parseFloat(document.getElementById('fs-water').value);
+    const hasFacing = !isNaN(fIn);
+    if (hasFacing){
+      box.innerHTML = `<div style="text-align:center;color:#555;padding:14px 12px;font-size:12px;background:#fafafa;border:1px dashed #c9a84c;border-radius:6px;">
+        Facing entered${!isNaN(wIn) ? ' (and Water)' : ''}. Click <strong>🔎 FIND MATCHING DATES</strong> above to scan the FROM/DAYS range for compatible dates.
+      </div>`;
+    } else {
+      box.innerHTML = `<div style="text-align:center;color:#888;padding:14px 12px;font-size:12px;background:#fafafa;border:1px dashed #ddd;border-radius:6px;">
+        Enter a <strong>Facing</strong> degree above (and optionally a <strong>Water</strong>), then click <strong>🔎 FIND MATCHING DATES</strong> to see all dates in the FROM/DAYS range that connect to this setup.
+      </div>`;
+    }
+    return;
+    // ── Legacy reverse-logic renderer below — unreachable in the current flow ──
     const pairs = (typeof fsComputePairs === 'function') ? fsComputePairs() : [];
     if (!pairs.length){
       const c = (typeof fsGetCurrentContext === 'function') ? fsGetCurrentContext() : {};
@@ -6928,8 +7144,6 @@ fsRenderPairsTable = function(){
         : '';
       return;
     }
-    const fIn = parseFloat(document.getElementById('fs-facing').value);
-    const wIn = parseFloat(document.getElementById('fs-water').value);
     const activeFIdx = !isNaN(fIn) && typeof fsSlotForDeg === 'function' ? fsSlotForDeg(fIn).idx : -1;
     const activeWIdx = !isNaN(wIn) && typeof fsSlotForDeg === 'function' ? fsSlotForDeg(wIn).idx : -1;
 
