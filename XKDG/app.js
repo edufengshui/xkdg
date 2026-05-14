@@ -6885,34 +6885,38 @@ fsRenderPairsTable = function(){
 
       html += '<tr onclick="fsSelectPair(' + fc + ',' + wc + ')" style="background:' + bg + ';border-bottom:1px solid #eee;cursor:pointer;">';
 
-      // Facing (vertical layout: qi-red, glyph, yun-blue, deg, hexN)
+      // Facing (vertical layout: qi-red, glyph, yun-blue, deg, pol, hexN)
+      // Degree and polarity are kept on SEPARATE lines (polarity always present, nbsp when empty)
+      // so the cell always has the same number of lines as the Water cell — keeps hex glyphs aligned.
       html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">' + yyMarker;
       html += '<div style="font-size:16px;color:#c0392b;font-weight:bold;line-height:1.1;">' + f.qi + '</div>';
       html += '<div style="font-size:38px;line-height:1;margin:1px 0;font-weight:' + (p._famF ? 'bold' : 'normal') + ';">' + fsHexGlyph(f.hexNum) + '</div>';
       html += '<div style="font-size:16px;color:#1565c0;font-weight:bold;line-height:1.1;">' + f.yun + '</div>';
-      html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + fc.toFixed(1) + '° <i>' + fPol + '</i></div>';
-      html += '<div style="font-size:10px;color:#aaa;">Hex ' + f.hexNum + '</div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:3px;line-height:1.2;">' + fc.toFixed(1) + '°</div>';
+      html += '<div style="font-size:11px;color:#666;font-style:italic;line-height:1.2;">' + (fPol || '\u00A0') + '</div>';
+      html += '<div style="font-size:10px;color:#aaa;line-height:1.2;">Hex ' + f.hexNum + '</div>';
       html += '</td>';
 
-      // Water (vertical layout: qi-red, glyph, yun-blue, deg, hexN)
+      // Water (vertical layout: qi-red, glyph, yun-blue, deg, pol, hexN)
+      // Same line structure as Facing cell — ensures the hex glyphs are vertically aligned across columns.
       html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;">';
       html += '<div style="font-size:16px;color:#c0392b;font-weight:bold;line-height:1.1;">' + w.qi + '</div>';
       html += '<div style="font-size:38px;line-height:1;margin:1px 0;font-weight:' + (p._famW ? 'bold' : 'normal') + ';">' + fsHexGlyph(w.hexNum) + '</div>';
       html += '<div style="font-size:16px;color:#1565c0;font-weight:bold;line-height:1.1;">' + w.yun + '</div>';
-      html += '<div style="font-size:11px;color:#666;margin-top:3px;">' + wc.toFixed(1) + '° <i>' + wPol + '</i></div>';
-      html += '<div style="font-size:10px;color:#aaa;">Hex ' + w.hexNum + '</div>';
+      html += '<div style="font-size:11px;color:#666;margin-top:3px;line-height:1.2;">' + wc.toFixed(1) + '°</div>';
+      html += '<div style="font-size:11px;color:#666;font-style:italic;line-height:1.2;">' + (wPol || '\u00A0') + '</div>';
+      html += '<div style="font-size:10px;color:#aaa;line-height:1.2;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
 
-      // XKDG Relations: red + blue lines stacked tight, pulled UP to align with glyph center
-      html += '<td style="padding:6px 8px;vertical-align:middle;">';
-      // Wrapper with negative margin-top to lift the whole block up
-      html += '<div style="margin-top:-32px;">';
+      // XKDG Relations: red + blue lines stacked tight, centered both horizontally and vertically.
+      // No more margin-top hack — vertical-align:middle on the TD handles the centering naturally
+      // now that Facing/Water cells have a consistent row height.
+      html += '<td style="padding:6px 8px;vertical-align:middle;text-align:center;">';
       html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.3;">';
       html += elemRels.length ? elemRels.join(' · ') : '\u00A0';
       html += '</div>';
       html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.3;">';
       html += yunRels.length ? yunRels.join(' · ') : '\u00A0';
-      html += '</div>';
       html += '</div>';
       html += '</td>';
 
