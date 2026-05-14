@@ -5568,6 +5568,51 @@ const FS_TRIGRAM_ZH = {
   'Qian': '乾', 'Kun':  '坤', 'Li':   '离', 'Kan':  '坎',
   'Gen':  '艮', 'Xun':  '巽', 'Zhen': '震', 'Dui':  '兑'
 };
+// Pure YY trigram numbers (Lo Shu without center 5)
+const FS_TRIGRAM_NUM = {
+  'Kun':  1, 'Xun': 2, 'Li':   3, 'Dui':  4,
+  'Gen':  6, 'Kan': 7, 'Zhen': 8, 'Qian': 9
+};
+// Trigram lines [bottom, middle, top] — 1=Yang, 0=Yin
+const FS_TRIGRAM_LINES = {
+  'Qian': [1,1,1], 'Kun':  [0,0,0],
+  'Zhen': [1,0,0], 'Gen':  [0,0,1],
+  'Li':   [1,0,1], 'Kan':  [0,1,0],
+  'Dui':  [1,1,0], 'Xun':  [0,1,1]
+};
+// Compare two trigrams: returns array of indices (0=bottom, 1=middle, 2=top) where they differ
+function fsTrigramLineDiff(t1, t2) {
+  const l1 = FS_TRIGRAM_LINES[t1], l2 = FS_TRIGRAM_LINES[t2];
+  if (!l1 || !l2) return [];
+  const diffs = [];
+  for (let i = 0; i < 3; i++) if (l1[i] !== l2[i]) diffs.push(i);
+  return diffs;
+}
+// Compute Pure YY star name for facing/water trigram pair.
+// Based on which lines differ between F and W trigrams.
+// Lines: 0 = bottom (prima), 1 = middle (seconda), 2 = top (terza)
+function fsPureYYStar(fTri, wTri) {
+  return fsPureYYStarInfo(fTri, wTri).name;
+}
+// Same as fsPureYYStar but returns {name, auspicious} object.
+// Auspicious stars: Fu Bi, Wu Qu, Tan Lang, Ju Men — these are also Pure YY matches.
+// Inauspicious: Lian Zhen, Wen Qu, Po Jun, Lu Cun — these are NOT Pure YY matches.
+function fsPureYYStarInfo(fTri, wTri) {
+  if (!fTri || !wTri) return { name: '', auspicious: null };
+  const diffs   = fsTrigramLineDiff(fTri, wTri);
+  const diffKey = diffs.join(',');
+  switch (diffKey) {
+    case '':      return { name: 'Fu Bi',                       auspicious: true  }; // 0 changes
+    case '0':     return { name: 'Lian Zhen',                   auspicious: false }; // only 1st
+    case '1':     return { name: 'Wu Qu',                       auspicious: true  }; // only 2nd
+    case '2':     return { name: 'Wen Qu',                      auspicious: false }; // only 3rd
+    case '0,1':   return { name: 'Po Jun',                      auspicious: false }; // 1st + 2nd
+    case '0,2':   return { name: 'Tan Lang',                    auspicious: true  }; // 1st + 3rd
+    case '1,2':   return { name: 'Lu Cun',                      auspicious: false }; // 2nd + 3rd
+    case '0,1,2': return { name: 'perfect match - Ju Men',      auspicious: true  }; // all three
+    default:      return { name: '', auspicious: null };
+  }
+}
 
 // Di Pan: mountain i centered at compass (i*15 − 15)°. Wu at 180°, Zi at 0°.
 function fsMountainYangDi(deg){
@@ -6785,13 +6830,22 @@ fsRenderPairsTable = function(){
     let html = '<div style="font-size:12px;font-weight:bold;margin:10px 0 4px;color:#1a1008;">Compatible facing / water pairs (' + pairs.length + '):</div>';
     html += '<div style="overflow-x:auto;border:1px solid #c9a84c;border-radius:6px;">';
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-    html += '<thead><tr style="background:#fff8e1;">';
-    html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#c0392b;width:15%;">Facing 正神</th>';
-    html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:15%;">Water 零神</th>';
-    html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:33%;">XKDG Relations</th>';
-    html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#666;width:29%;">Pure YY</th>';
-    html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:8%;">Score</th>';
-    html += '</tr></thead><tbody>';
+    html += '<thead>';
+    // Row 1 — top headers (rowspan=2 for simple cols, colspan=3 for Pure YY)
+    html += '<tr style="background:#fff8e1;">';
+    html += '<th rowspan="2" style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#c0392b;width:15%;">Facing 正神</th>';
+    html += '<th rowspan="2" style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:15%;">Water 零神</th>';
+    html += '<th rowspan="2" style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:33%;">XKDG Relations</th>';
+    html += '<th colspan="3" style="text-align:center;padding:4px;border-bottom:1px solid #e0c87a;color:#666;width:29%;">Pure YY</th>';
+    html += '<th rowspan="2" style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:8%;">Score</th>';
+    html += '</tr>';
+    // Row 2 — Pure YY sub-headers (F, W, Star)
+    html += '<tr style="background:#fff8e1;">';
+    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#c0392b;font-size:11px;width:10%;">F</th>';
+    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#1565c0;font-size:11px;width:10%;">W</th>';
+    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;font-size:11px;width:9%;">Star</th>';
+    html += '</tr>';
+    html += '</thead><tbody>';
 
     pairs.forEach(p => {
       if (!p || !p.facing || !p.water) return;
@@ -6862,17 +6916,30 @@ fsRenderPairsTable = function(){
       html += '</div>';
       html += '</td>';
 
-      // Pure YY — corresponding trigrams for Facing and Water
+      // Pure YY — split into 3 sub-cells: F (facing trigram), W (water trigram), Star (empty for later)
       const fTri = (typeof fsMountainTrigramDi === 'function')   ? fsMountainTrigramDi(fc)   : null;
       const wTri = (typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(wc) : null;
       const fSym = fTri && FS_TRIGRAM_SYM[fTri] || '';
       const fZh  = fTri && FS_TRIGRAM_ZH[fTri]  || '';
       const wSym = wTri && FS_TRIGRAM_SYM[wTri] || '';
       const wZh  = wTri && FS_TRIGRAM_ZH[wTri]  || '';
-      html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;">';
-      if (fTri) html += '<div style="color:#c0392b;font-weight:bold;"><span style="font-size:18px;">' + fSym + '</span> ' + fZh + ' <span style="color:#888;font-weight:normal;">(' + fTri + ')</span></div>';
-      if (wTri) html += '<div style="color:#1565c0;font-weight:bold;"><span style="font-size:18px;">' + wSym + '</span> ' + wZh + ' <span style="color:#888;font-weight:normal;">(' + wTri + ')</span></div>';
+      // F sub-cell — facing trigram (red)
+      html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;border-right:1px solid #e0c87a;">';
+      if (fTri) html += '<div style="color:#c0392b;font-weight:bold;line-height:1.2;"><div style="font-size:22px;">' + fSym + '</div><div style="font-size:13px;">' + fZh + '</div><div style="font-size:10px;color:#888;font-weight:normal;">' + fTri + '</div></div>';
       html += '</td>';
+      // W sub-cell — water trigram (blue)
+      html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;border-right:1px solid #e0c87a;">';
+      if (wTri) html += '<div style="color:#1565c0;font-weight:bold;line-height:1.2;"><div style="font-size:22px;">' + wSym + '</div><div style="font-size:13px;">' + wZh + '</div><div style="font-size:10px;color:#888;font-weight:normal;">' + wTri + '</div></div>';
+      html += '</td>';
+      // Star sub-cell — Pure YY star name + auspicious/inauspicious marker
+      const starInfo  = (typeof fsPureYYStarInfo === 'function') ? fsPureYYStarInfo(fTri, wTri) : { name: '', auspicious: null };
+      const starColor = starInfo.auspicious === true  ? '#1b5e20'
+                      : starInfo.auspicious === false ? '#c0392b'
+                      : '#8a6a1f';
+      const starIcon  = starInfo.auspicious === true  ? '✓ '
+                      : starInfo.auspicious === false ? '✗ '
+                      : '';
+      html += '<td style="padding:6px 4px;text-align:center;vertical-align:middle;font-size:11px;color:' + starColor + ';font-weight:bold;">' + starIcon + starInfo.name + '</td>';
 
       // Score (number only) — uses display score that includes family/BL bonuses
       html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:15px;color:#8a6a1f;vertical-align:middle;">' + (p._displayScore != null ? p._displayScore : p.score) + '</td>';
