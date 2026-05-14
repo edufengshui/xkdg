@@ -2371,15 +2371,15 @@ function renderScanResults(results, mode) {
                         : s >= maxScore * 0.55 ? 'rank-3'
                         : s >= maxScore * 0.35 ? 'rank-4'
                         : 'rank-5';
-        // Negatives mode: red gradient + negative sign
+        // Negatives mode: soft red gradient (readable) + negative sign
         const negBg = hasNegSort
-            ? (s >= maxScore * 0.9  ? '#b71c1c'
-              : s >= maxScore * 0.75 ? '#c62828'
-              : s >= maxScore * 0.55 ? '#e53935'
-              : s >= maxScore * 0.35 ? '#ef5350'
-              : '#ef9a9a')
+            ? (s >= maxScore * 0.9  ? '#ffcdd2'
+              : s >= maxScore * 0.75 ? '#ffd6da'
+              : s >= maxScore * 0.55 ? '#ffe0e3'
+              : s >= maxScore * 0.35 ? '#ffebed'
+              : '#fff5f6')
             : null;
-        const negTextColor = hasNegSort && s >= maxScore * 0.35 ? '#fff' : (hasNegSort ? '#000' : null);
+        const negTextColor = hasNegSort ? '#b71c1c' : null;
         const displayScore = hasNegSort ? `-${s}` : `${s}`;
         const hasBothPersons = results.some(r => r.scoreB > 0);
         const bTag = hasBothPersons && r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>` : '';
@@ -2408,8 +2408,8 @@ function renderScanResults(results, mode) {
         const keStr = r.keScore > 0 ? `<span style="font-size:10px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${r.keScore}</span>` : '';
         const blueTagsHtml = [...r.blueLabels, ...r.matchLabels, ...r.qualLabels].filter(Boolean)
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
-        return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;color:'+negTextColor+' !important;border-left:6px solid #b71c1c !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
-            <div class="scan-score"${negBg?' style="color:'+negTextColor+';"':''}>${displayScore}${aTag}${bTag}</div>
+        return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
+            <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
             <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
         </div>`;
@@ -5113,6 +5113,7 @@ const _HASHED_CODES = [
     { h: 'bf1889006d18a1b40d0791c50436d7eaa119bb3456e3f6300c17127ae10e7715', t: 0, e: null },
     { h: 'b0ff7bdc481ed43adf5168e51d73264887136b603fd0fb372530a689e15a29e7', t: 0, e: null }, // Chee
     { h: '1b8c0f70737fd82ae7f9a852851003ce7a567ed20cf8674d1781c22bb5d8523d', t: 0, e: null },
+    { h: '38a8a3d7680c6ee9b31c99bca343c76cbb47d912b1e683d229fd629f9b28684f', t: 1, e: '2027-02-03' }, // Student 9316 — Wei year
 ];
 
 async function hashPin(pin) {
