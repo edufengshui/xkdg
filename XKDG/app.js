@@ -3983,23 +3983,34 @@ function buildMonthView() {
         let dayRowsHtml = '';
         let dayRows = []; // collect {score, html} for optional sort
 
-        // Year / Month / Day pillars in pinyin — shown in the header centre so
-        // students can quickly read the day's Bazi context (chars + pinyin).
-        const yPillarPY = (GAN_PINYIN[yGanDay]||'?') + ' ' + (ZHI_PINYIN[yZhiDay]||'?');
-        const mPillarPY = (GAN_PINYIN[mGanDay]||'?') + ' ' + (ZHI_PINYIN[mZhiDay]||'?');
-        const dPillarPY = (GAN_PINYIN[dGanDay]||'?') + ' ' + (ZHI_PINYIN[dZhiDay]||'?');
-        const pillarsHtml = `<div style="flex:1;min-width:0;font-size:11px;font-weight:normal;color:#880e4f;text-align:center;line-height:1.3;">
-            <span style="font-weight:bold;">Y</span> ${yGanDay}${yZhiDay} <span style="opacity:0.7;">${yPillarPY}</span>
-            &nbsp;·&nbsp;
-            <span style="font-weight:bold;">M</span> ${mGanDay}${mZhiDay} <span style="opacity:0.7;">${mPillarPY}</span>
-            &nbsp;·&nbsp;
-            <span style="font-weight:bold;">D</span> ${dGanDay}${dZhiDay} <span style="opacity:0.7;">${dPillarPY}</span>
-        </div>`;
-
-        const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;gap:8px;">
-            <div style="flex:0 0 auto;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
-            ${pillarsHtml}
-            <div style="flex:0 0 auto;font-size:11px;font-weight:normal;text-align:right;">${dateLabel}${jieqiDayHTML}</div>
+        // Header row: Day / Month / Year pillars in Chinese characters, vertically stacked
+        // (gan on top, zhi on bottom), aligned directly above their corresponding number
+        // columns in each hour row below. Reading right-to-left gives Year · Month · Day,
+        // the standard Bazi convention. The Hour column has no header — the hour pillar
+        // is shown per-row alongside its time range.
+        //
+        // The grid structure (138px left block + flex:1 with right-aligned 25×4 grid
+        // + flex:1 label area) mirrors the row HTML exactly so the columns line up.
+        const headerHtml = `<div style="background:#fce4ec;padding:3px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
+            <div style="width:138px;flex-shrink:0;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
+            <div style="flex:1;display:flex;justify-content:flex-end;padding-right:20px;">
+                <div style="display:grid;grid-template-columns:25px 25px 25px 25px;gap:0px;">
+                    <div></div>
+                    <div style="text-align:center;line-height:1.1;color:#880e4f;font-weight:bold;">
+                        <div style="font-size:13px;">${dGanDay}</div>
+                        <div style="font-size:13px;">${dZhiDay}</div>
+                    </div>
+                    <div style="text-align:center;line-height:1.1;color:#880e4f;font-weight:bold;">
+                        <div style="font-size:13px;">${mGanDay}</div>
+                        <div style="font-size:13px;">${mZhiDay}</div>
+                    </div>
+                    <div style="text-align:center;line-height:1.1;color:#880e4f;font-weight:bold;">
+                        <div style="font-size:13px;">${yGanDay}</div>
+                        <div style="font-size:13px;">${yZhiDay}</div>
+                    </div>
+                </div>
+            </div>
+            <div style="flex:1;font-size:11px;font-weight:normal;text-align:right;">${dateLabel}${jieqiDayHTML}</div>
         </div>`;
 
         // Zi hour (子, 23:00-01:00) straddles midnight:
