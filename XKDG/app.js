@@ -915,6 +915,18 @@ const ELEMENTS_EN = {
     '戌':'earth','亥':'water'
 };
 
+// ── Pinyin maps for the 10 Heavenly Stems (天干) and 12 Earthly Branches (地支) ──
+//    Used to display pillar names alongside their Chinese characters
+//    (e.g., 甲寅 → "Jia Yin"). Tone marks omitted for readability.
+const GAN_PINYIN = {
+    '甲':'Jia','乙':'Yi','丙':'Bing','丁':'Ding','戊':'Wu',
+    '己':'Ji','庚':'Geng','辛':'Xin','壬':'Ren','癸':'Gui'
+};
+const ZHI_PINYIN = {
+    '子':'Zi','丑':'Chou','寅':'Yin','卯':'Mao','辰':'Chen','巳':'Si',
+    '午':'Wu','未':'Wei','申':'Shen','酉':'You','戌':'Xu','亥':'Hai'
+};
+
 // ── Global: Jieqi season detector ─────────────────────────────
 function getJieqiSeason(solarDate) {
     const LI_TERMS  = { '立春':'Wood', '立夏':'Fire', '立秋':'Metal', '立冬':'Water' };
@@ -2411,6 +2423,19 @@ function renderScanResults(results, mode) {
         return;
     }
     const hasNegSort = af.has('negatives');
+    // BEST view: hide score < 1 by default; with NEGATIVES chip ON, show ONLY score < 1.
+    // (TABLES is the only view that shows everything regardless of score.)
+    results = results.filter(r => {
+        const s = (mode === 'both' ? r.scoreA + r.scoreB : r.score);
+        return hasNegSort ? (s < 1) : (s >= 1);
+    });
+    if (results.length === 0) {
+        const emptyMsg = hasNegSort
+            ? 'No negative dates (score &lt; +1) in this range.'
+            : 'No favourable dates (score &ge; +1) in this range. Toggle the NEGATIVES filter to see negative dates instead.';
+        container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">' + emptyMsg + '</div>';
+        return;
+    }
     const maxScore = hasNegSort
         ? Math.max(...results.map(r => r.negativeScore || 0))
         : Math.max(...results.map(r => mode === 'both' ? r.scoreA + r.scoreB : r.score));
@@ -3957,9 +3982,24 @@ function buildMonthView() {
 
         let dayRowsHtml = '';
         let dayRows = []; // collect {score, html} for optional sort
-        const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;">
-            <div style="flex-shrink:0;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
-            <div style="margin-left:auto;font-size:11px;font-weight:normal;text-align:right;">${dateLabel}${jieqiDayHTML}</div>
+
+        // Year / Month / Day pillars in pinyin — shown in the header centre so
+        // students can quickly read the day's Bazi context (chars + pinyin).
+        const yPillarPY = (GAN_PINYIN[yGanDay]||'?') + ' ' + (ZHI_PINYIN[yZhiDay]||'?');
+        const mPillarPY = (GAN_PINYIN[mGanDay]||'?') + ' ' + (ZHI_PINYIN[mZhiDay]||'?');
+        const dPillarPY = (GAN_PINYIN[dGanDay]||'?') + ' ' + (ZHI_PINYIN[dZhiDay]||'?');
+        const pillarsHtml = `<div style="flex:1;min-width:0;font-size:11px;font-weight:normal;color:#880e4f;text-align:center;line-height:1.3;">
+            <span style="font-weight:bold;">Y</span> ${yGanDay}${yZhiDay} <span style="opacity:0.7;">${yPillarPY}</span>
+            &nbsp;·&nbsp;
+            <span style="font-weight:bold;">M</span> ${mGanDay}${mZhiDay} <span style="opacity:0.7;">${mPillarPY}</span>
+            &nbsp;·&nbsp;
+            <span style="font-weight:bold;">D</span> ${dGanDay}${dZhiDay} <span style="opacity:0.7;">${dPillarPY}</span>
+        </div>`;
+
+        const headerHtml = `<div style="background:#fce4ec;padding:4px 8px;font-weight:bold;font-size:11px;color:#880e4f;border-top:3px solid #1565c0;display:flex;align-items:center;gap:8px;">
+            <div style="flex:0 0 auto;display:flex;gap:2px;align-items:center;">${headerNL}${dayClashHTML}</div>
+            ${pillarsHtml}
+            <div style="flex:0 0 auto;font-size:11px;font-weight:normal;text-align:right;">${dateLabel}${jieqiDayHTML}</div>
         </div>`;
 
         // Zi hour (子, 23:00-01:00) straddles midnight:
@@ -4013,17 +4053,16 @@ function buildMonthView() {
                     nayinPersonScore: ziNayin2.personScore || 0
                 });
 
-                // Pass-filter for Zi second half
+                // Pass-filter for Zi second half — now uses score-based check consistent
+                // with regular hours: default keeps ziScore2 >= 1; NEGATIVES keeps ziScore2 < 1.
                 let ziPassF2;
                 if (ziHasNeg2) {
-                    // Negatives mode: require score > 0
-                    ziPassF2 = ziNegScore2 > 0;
+                    ziPassF2 = (ziScore2 < 1);
                 } else {
-                    // Normal mode: use chip filter logic
                     const ziRealFilters2 = new Set(ziAF2);
                     ziRealFilters2.delete('negatives');
                     ziRealFilters2.delete('strict');
-                    ziPassF2 = ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {}, ziItems2);
+                    ziPassF2 = (ziScore2 >= 1) && (ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {}, ziItems2));
                 }
                 if (ziPassF2) {
                     const ziBg2 = ziHasNeg2
@@ -4151,8 +4190,10 @@ function buildMonthView() {
                     if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun}, ziItemsF)) continue;
                 }
 
-                // ── Negatives gate for Zi first half ──
-                if (_ziHasNeg && _ziNegScore <= 0) continue;
+                // ── Score-based filter for Zi first half ──
+                // Default: hide ziScoreF < 1. With NEGATIVES on: show ONLY ziScoreF < 1.
+                // (Consistent with the rule applied to regular hours.)
+                if (_ziHasNeg ? (ziScoreF >= 1) : (ziScoreF < 1)) continue;
                 const ziBgF  = ziScoreF>=12?'#a5d6a7':ziScoreF>=9?'#c8e6c9':ziScoreF>=6?'#dcedc8':ziScoreF>=4?'#f1f8e9':'#ffffff';
                 const ziBrdF = ziScoreF>=12?'#1b5e20':ziScoreF>=9?'#2e7d32':ziScoreF>=6?'#388e3c':ziScoreF>=4?'#558b2f':'#aaa';
                 const ziElNF = ziBlueF.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
@@ -4263,8 +4304,8 @@ function buildMonthView() {
             // Skip-gate (modified to allow negatives through when filter active)
             if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
 
-            // When Negatives is active: only show hours with score > 0 (meaningfully negative)
-            if (hasNegativesFilterMV && !isNegativeHour) continue;
+            // (Old isNegativeHour gate removed — superseded by the listScore-based filter
+            //  applied further down once listScore has been computed.)
 
             // Apply filter chips — but skip when Negatives is on (it has its own logic)
             if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
@@ -4384,6 +4425,11 @@ function buildMonthView() {
             } else {
                 listScore = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
             }
+
+            // Score-based filter (matches the user's mental model: "negative = score < +1").
+            // Default: hide rows with listScore < 1. With NEGATIVES chip ON: show ONLY listScore < 1.
+            // (TABLES is the only view that shows everything regardless of score.)
+            if (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1)) continue;
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
             const nayinPersonHTMLLV = nayinResLV.personLabel && nayinResLV.personLabel.startsWith('Nayin ✦ Person')
@@ -6912,7 +6958,7 @@ fsRenderPairsTable = function(){
       // and pulled UP with negative margin-top to visually align with the hex glyph
       // (which sits near the top of the Facing/Water cells, not at their vertical center).
       html += '<td style="padding:6px 8px;vertical-align:middle;text-align:center;">';
-      html += '<div style="margin-top:-22px;">';
+      html += '<div style="margin-top:-40px;">';
       html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.3;">';
       html += elemRels.length ? elemRels.join(' · ') : '\u00A0';
       html += '</div>';
