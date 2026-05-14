@@ -2360,14 +2360,27 @@ function renderScanResults(results, mode) {
         container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">No matching dates found.</div>';
         return;
     }
-    const maxScore = Math.max(...results.map(r => mode === 'both' ? r.scoreA + r.scoreB : r.score));
+    const hasNegSort = af.has('negatives');
+    const maxScore = hasNegSort
+        ? Math.max(...results.map(r => r.negativeScore || 0))
+        : Math.max(...results.map(r => mode === 'both' ? r.scoreA + r.scoreB : r.score));
     container.innerHTML = purposeHeader + sortToggleHTML + results.map(r => {
-        const s = mode === 'both' ? r.scoreA + r.scoreB : r.score;
+        const s = hasNegSort ? (r.negativeScore || 0) : (mode === 'both' ? r.scoreA + r.scoreB : r.score);
         const rankClass = s >= maxScore * 0.9 ? 'rank-1'
                         : s >= maxScore * 0.75 ? 'rank-2'
                         : s >= maxScore * 0.55 ? 'rank-3'
                         : s >= maxScore * 0.35 ? 'rank-4'
                         : 'rank-5';
+        // Negatives mode: red gradient + negative sign
+        const negBg = hasNegSort
+            ? (s >= maxScore * 0.9  ? '#b71c1c'
+              : s >= maxScore * 0.75 ? '#c62828'
+              : s >= maxScore * 0.55 ? '#e53935'
+              : s >= maxScore * 0.35 ? '#ef5350'
+              : '#ef9a9a')
+            : null;
+        const negTextColor = hasNegSort && s >= maxScore * 0.35 ? '#fff' : (hasNegSort ? '#000' : null);
+        const displayScore = hasNegSort ? `-${s}` : `${s}`;
         const hasBothPersons = results.some(r => r.scoreB > 0);
         const bTag = hasBothPersons && r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>` : '';
         const aTag = hasBothPersons && r.scoreA > 0 ? ` <span style="color:#2e7d32;font-weight:bold;font-size:14px;">A</span>` : '';
@@ -2395,8 +2408,8 @@ function renderScanResults(results, mode) {
         const keStr = r.keScore > 0 ? `<span style="font-size:10px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${r.keScore}</span>` : '';
         const blueTagsHtml = [...r.blueLabels, ...r.matchLabels, ...r.qualLabels].filter(Boolean)
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
-        return `<div class="scan-item ${rankClass}" style="cursor:pointer;" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
-            <div class="scan-score">${s}${aTag}${bTag}</div>
+        return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;color:'+negTextColor+' !important;border-left:6px solid #b71c1c !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
+            <div class="scan-score"${negBg?' style="color:'+negTextColor+';"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
             <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
         </div>`;
