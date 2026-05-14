@@ -3013,12 +3013,14 @@ function getDayRole(stem, branch) {
 }
 
 function hasParentInScanPillars(pillarsObj, fullBLFamily) {
-    // pillarsObj may be from _currentDayAnalysis which stores stems/branches separately
-    var stems    = (_currentDayAnalysis && _currentDayAnalysis.stems)    || {};
-    var branches = (_currentDayAnalysis && _currentDayAnalysis.branches) || {};
+    // IMPORTANT: do NOT fall back to _currentDayAnalysis here. That global is set
+    // for the date loaded in MAIN — during a scan loop it refers to the WRONG
+    // date and would silently make every scanned date inherit MAIN's stems.
+    // The pillarsObj passed in IS the date being checked.
+    if (!pillarsObj) return false;
     return ['hour','day','month','year'].some(function(k) {
-        var stem   = (pillarsObj[k] && pillarsObj[k].stem)   || stems[k]    || '';
-        var branch = (pillarsObj[k] && pillarsObj[k].branch) || branches[k] || '';
+        var stem   = (pillarsObj[k] && pillarsObj[k].stem)   || '';
+        var branch = (pillarsObj[k] && pillarsObj[k].branch) || '';
         if (!stem) return false;
         var entries = JIAZI_FAMILY_DATA[stem + branch] || [];
         return entries.some(function(e) {
@@ -3127,15 +3129,16 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         var wealthPass = dayRole === 'child' && pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
         if (!wealthPass) return false;
 
-        var dayStems    = (_currentDayAnalysis && _currentDayAnalysis.stems)   || {};
-        var dayPillarsX = (_currentDayAnalysis && _currentDayAnalysis.pillars) || pillarsObj || {};
-        var hGanW  = dayStems.hour  || (dayPillarsX.hour  && dayPillarsX.hour.stem)  || '';
-        var mGanW  = dayStems.month || (dayPillarsX.month && dayPillarsX.month.stem)  || '';
-        var yGanW  = dayStems.year  || (dayPillarsX.year  && dayPillarsX.year.stem)   || '';
-        var hQiW   = dayPillarsX.hour  && dayPillarsX.hour.qi  != null ? dayPillarsX.hour.qi  : null;
-        var mQiW   = dayPillarsX.month && dayPillarsX.month.qi != null ? dayPillarsX.month.qi : null;
-        var yQiW   = dayPillarsX.year  && dayPillarsX.year.qi  != null ? dayPillarsX.year.qi  : null;
-        var dQiW   = dayPillarsX.day   && dayPillarsX.day.qi   != null ? dayPillarsX.day.qi   : null;
+        // Read pillar data from pillarsObj (the scan date) — NOT _currentDayAnalysis
+        // which would point to MAIN's loaded date during a scan loop.
+        var dayPillarsX = pillarsObj || {};
+        var hGanW  = (dayPillarsX.hour  && dayPillarsX.hour.stem)  || '';
+        var mGanW  = (dayPillarsX.month && dayPillarsX.month.stem) || '';
+        var yGanW  = (dayPillarsX.year  && dayPillarsX.year.stem)  || '';
+        var hQiW   = (dayPillarsX.hour  && dayPillarsX.hour.qi  != null) ? dayPillarsX.hour.qi  : null;
+        var mQiW   = (dayPillarsX.month && dayPillarsX.month.qi != null) ? dayPillarsX.month.qi : null;
+        var yQiW   = (dayPillarsX.year  && dayPillarsX.year.qi  != null) ? dayPillarsX.year.qi  : null;
+        var dQiW   = (dayPillarsX.day   && dayPillarsX.day.qi   != null) ? dayPillarsX.day.qi   : null;
         var personDayStemW = _personADayStem || _personBDayStem || null;
         var personDayQiW   = null;
         if (_personAPillars && _personAPillars.day) personDayQiW = _personAPillars.day.qi;
@@ -3188,10 +3191,9 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         if (hourSpirit && hourSpirit.en === 'Jade Hall')       spiritBonus += 2; // moving house
 
         var hasAnyParent = pillarsObj && ['hour','day','month','year'].some(function(k) {
-            var stems2 = (_currentDayAnalysis && _currentDayAnalysis.stems) || {};
-            var branches2 = (_currentDayAnalysis && _currentDayAnalysis.branches) || {};
-            var s = (pillarsObj[k] && pillarsObj[k].stem) || stems2[k] || '';
-            var b = (pillarsObj[k] && pillarsObj[k].branch) || branches2[k] || '';
+            // No _currentDayAnalysis fallback — that would inherit MAIN's date during scan
+            var s = (pillarsObj[k] && pillarsObj[k].stem)   || '';
+            var b = (pillarsObj[k] && pillarsObj[k].branch) || '';
             if (!s) return false;
             var entries = JIAZI_FAMILY_DATA[s + b] || [];
             return entries.some(function(e){ return e.role === 'father' || e.role === 'mother'; });
@@ -3208,15 +3210,21 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         var dsB = DING_SPIRIT_MAP[personDayJiaZiB] || null;
         var hasPersonData = personDayBranchA || personDayBranchB;
         if (hasPersonData) {
-            var dateBranches2 = _currentDayAnalysis ? Object.values(_currentDayAnalysis.branches) : [];
+            // Branches of the SCAN date (not the MAIN-loaded date)
+            var dateBranches2 = pillarsObj
+              ? ['hour','day','month','year']
+                  .map(function(k){ return (pillarsObj[k] && pillarsObj[k].branch) || ''; })
+                  .filter(function(b){ return !!b; })
+              : [];
             var personPHorDS = dateBranches2.some(function(b) {
                 return (phA && b === phA) || (phB && b === phB) ||
                        (dsA && b === dsA) || (dsB && b === dsB);
             });
             if (!personPHorDS) return false;
         }
-        var dayBranchCurrent = (_currentDayAnalysis && _currentDayAnalysis.branches) ? _currentDayAnalysis.branches.day : null;
-        var dayStemCurrent   = (_currentDayAnalysis && _currentDayAnalysis.stems)    ? _currentDayAnalysis.stems.day    : null;
+        // The day stem/branch ARE dGan/dZhi (the scan date's day pillar)
+        var dayBranchCurrent = dZhi || (pillarsObj && pillarsObj.day && pillarsObj.day.branch) || null;
+        var dayStemCurrent   = dGan || (pillarsObj && pillarsObj.day && pillarsObj.day.stem)   || null;
         var dayPH = dayBranchCurrent ? POST_HORSE[dayBranchCurrent] : null;
         var dayDS = dayStemCurrent && dayBranchCurrent ? (DING_SPIRIT_MAP[dayStemCurrent + dayBranchCurrent] || null) : null;
         var hourIsOptional = dZhi && ((dayPH && dZhi === dayPH) || (dayDS && dZhi === dayDS));
@@ -3237,7 +3245,7 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         if (wcDate && dZhi === wcDate) spiritBonus += 2;
         var personDayStemSp = _personADayStem || _personBDayStem || null;
         var wcPerson = personDayStemSp ? (WEN_CHANG[personDayStemSp] || null) : null;
-        var dateDayBranchSp = (_currentDayAnalysis && _currentDayAnalysis.branches) ? _currentDayAnalysis.branches.day : dZhi;
+        var dateDayBranchSp = dZhi || (pillarsObj && pillarsObj.day && pillarsObj.day.branch) || '';
         if (wcPerson && dateDayBranchSp === wcPerson) spiritBonus += 2;
         return true;
     }
