@@ -1764,6 +1764,7 @@ function savePerson(person) {
     if (!date) { alert('Please enter a birth date.'); return; }
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const archive = loadArchive(key);
+    const isB     = person === 'B';
     const depth = isB ? (parseInt(document.getElementById('person-pillars-b')?.value) || 4) : 4;
     const jiaZiYear = (isB && depth === 1) ? (document.getElementById('person-year-b')?.value || '') : '';
     archive[name] = { date, time, savedAt: Date.now(), depth, jiaZiYear };
