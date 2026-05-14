@@ -6833,17 +6833,17 @@ fsRenderPairsTable = function(){
     html += '<thead>';
     // Row 1 — top headers (rowspan=2 for simple cols, colspan=3 for Pure YY)
     html += '<tr style="background:#fff8e1;">';
-    html += '<th rowspan="2" style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#c0392b;width:15%;">Facing 正神</th>';
-    html += '<th rowspan="2" style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:15%;">Water 零神</th>';
-    html += '<th rowspan="2" style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:33%;">XKDG Relations</th>';
-    html += '<th colspan="3" style="text-align:center;padding:4px;border-bottom:1px solid #e0c87a;color:#666;width:29%;">Pure YY</th>';
+    html += '<th rowspan="2" style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#c0392b;width:12%;">Facing 正神</th>';
+    html += '<th rowspan="2" style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:12%;">Water 零神</th>';
+    html += '<th rowspan="2" style="text-align:center;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:36%;">XKDG Relations</th>';
+    html += '<th colspan="3" style="text-align:center;padding:4px;border-bottom:1px solid #e0c87a;color:#666;width:32%;">Pure YY</th>';
     html += '<th rowspan="2" style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:8%;">Score</th>';
     html += '</tr>';
     // Row 2 — Pure YY sub-headers (F, W, Star)
     html += '<tr style="background:#fff8e1;">';
-    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#c0392b;font-size:11px;width:10%;">F</th>';
-    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#1565c0;font-size:11px;width:10%;">W</th>';
-    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;font-size:11px;width:9%;">Star</th>';
+    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#c0392b;font-size:11px;width:11%;">F</th>';
+    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#1565c0;font-size:11px;width:11%;">W</th>';
+    html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;font-size:11px;width:10%;">Star</th>';
     html += '</tr>';
     html += '</thead><tbody>';
 
@@ -6908,15 +6908,17 @@ fsRenderPairsTable = function(){
       html += '<div style="font-size:10px;color:#aaa;line-height:1.2;">Hex ' + w.hexNum + '</div>';
       html += '</td>';
 
-      // XKDG Relations: red + blue lines stacked tight, centered both horizontally and vertically.
-      // No more margin-top hack — vertical-align:middle on the TD handles the centering naturally
-      // now that Facing/Water cells have a consistent row height.
+      // XKDG Relations: red + blue lines stacked tight, centered horizontally,
+      // and pulled UP with negative margin-top to visually align with the hex glyph
+      // (which sits near the top of the Facing/Water cells, not at their vertical center).
       html += '<td style="padding:6px 8px;vertical-align:middle;text-align:center;">';
+      html += '<div style="margin-top:-22px;">';
       html += '<div style="font-size:13px;font-weight:bold;color:#c0392b;line-height:1.3;">';
       html += elemRels.length ? elemRels.join(' · ') : '\u00A0';
       html += '</div>';
       html += '<div style="font-size:13px;font-weight:bold;color:#1565c0;line-height:1.3;">';
       html += yunRels.length ? yunRels.join(' · ') : '\u00A0';
+      html += '</div>';
       html += '</div>';
       html += '</td>';
 
