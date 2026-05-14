@@ -5572,15 +5572,20 @@ function fsSlotForDeg(deg){
   if (idx > 63) idx = 63;
   const hexNum = FS_SEQ[idx];
   const startDeg = (180 + idx*5.625) % 360;
-  return {idx, hexNum, startDeg, endDeg: (startDeg + 5.625) % 360, ...fsQiYun(hexNum)};
+  return {idx, hexNum, startDeg,
+          endDeg:    (startDeg + 5.625) % 360,
+          centerDeg: (startDeg + 2.8125) % 360,
+          ...fsQiYun(hexNum)};
 }
 
-// Build all 64 slots once
+// Build all 64 slots once (degrees normalized to 0-360 range)
 const FS_SLOTS = FS_SEQ.map((h, i) => {
   const qy = fsQiYun(h);
+  const startDeg = (180 + i*5.625) % 360;
   return {idx: i, hexNum: h, qi: qy.qi, yun: qy.yun,
-          startDeg: 180 + i*5.625, endDeg: 180 + (i+1)*5.625,
-          centerDeg: 180 + i*5.625 + 2.8125};
+          startDeg,
+          endDeg:    (startDeg + 5.625) % 360,
+          centerDeg: (startDeg + 2.8125) % 360};
 });
 
 // Water max angular distance from facing (strict directional constraint)
@@ -5804,7 +5809,7 @@ function fsRenderPairsTable(){
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;">Score</th>';
   html += '</tr></thead><tbody>';
   pairs.forEach(p => {
-    const fc = (p.facing.startDeg + 2.8125);
+    const fc = (p.facing.startDeg + 2.8125) % 360;
     const wc = p.water.centerDeg;
     const isActive = (p.facing.idx === activeFIdx && p.water.idx === activeWIdx);
     const bg = isActive ? '#fff3a8' : '#fff';
