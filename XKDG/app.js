@@ -3095,9 +3095,13 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         if (!hasFamily && !hasPureQi) return false;
     }
 
-    // Negative spirits that disqualify per purpose
+    // Negative spirits that disqualify per purpose.
+    // CRITICAL: the scan's analysisItems does NOT contain spirit-bad entries
+    // (analyzeXkdg doesn't add the hour spirit) — so checking only `items` would
+    // let every bad spirit slip through. We check `hourSpirit` directly first.
     var spiritName = items.filter(function(i){ return i.tag==='spirit-bad'; }).map(function(i){ return i.text; });
     function hasBadSpirit(name) {
+        if (hourSpirit && !hourSpirit.auspicious && hourSpirit.en && hourSpirit.en.indexOf(name) >= 0) return true;
         return spiritName.some(function(t){ return t.indexOf(name) >= 0; });
     }
 
