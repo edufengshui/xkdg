@@ -4026,7 +4026,9 @@ function buildMonthView() {
                     ziPassF2 = ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {}, ziItems2);
                 }
                 if (ziPassF2) {
-                    const ziBg2 = ziHasNeg2 ? '#ffcdd2' : (ziScore2>=12?'#a5d6a7':ziScore2>=9?'#c8e6c9':ziScore2>=6?'#dcedc8':ziScore2>=4?'#f1f8e9':'#ffffff');
+                    const ziBg2 = ziHasNeg2
+                        ? (ziNegScore2>=10?'#ffcdd2':ziNegScore2>=8?'#ffd6da':ziNegScore2>=6?'#ffe0e3':ziNegScore2>=4?'#ffebed':'#fff5f6')
+                        : (ziScore2>=12?'#a5d6a7':ziScore2>=9?'#c8e6c9':ziScore2>=6?'#dcedc8':ziScore2>=4?'#f1f8e9':'#ffffff');
                     const ziBrd2 = ziHasNeg2 ? '#c62828' : (ziScore2>=12?'#1b5e20':ziScore2>=9?'#2e7d32':ziScore2>=6?'#388e3c':ziScore2>=4?'#558b2f':'#aaa');
                     const ziElN2 = ziBlue2.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
                     const ziSp2H = ziSpirit2?`<div style="font-size:9px;font-weight:bold;color:${ziSpirit2.auspicious?'#0044cc':'#d40000'};">${ziSpirit2.en} ${ziSpirit2.zh}</div>`:'';
@@ -4034,8 +4036,8 @@ function buildMonthView() {
                     const ziYD2 = ziP2.year||{}, ziMD2 = ziP2.month||{}, ziDD2 = ziP2.day||{}, ziHD2 = ziP2.hour||{};
                     const ziPerN2 = ziBlue2.filter(i=>i.text.includes('Period')).map(i=>i.text);
                     const ziScoreForSort2 = ziHasNeg2 ? ziNegScore2 : ziScore2;
-                    dayRows.push({ score: ziScoreForSort2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};${ziHasNeg2?'outline:2px solid #c62828;outline-offset:-2px;':''}cursor:pointer;">
-                        <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${ziScore2}</div>
+                    dayRows.push({ score: ziScoreForSort2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};cursor:pointer;">
+                        <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${ziHasNeg2?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${ziHasNeg2?'-'+ziNegScore2:ziScore2}</div>
                         <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                             <span style="color:#999;font-size:10px;">${ziMid}-${ziEnd}${tstMark}</span><br>
                             <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGan2}${ziHZhi2}</span>
@@ -4158,11 +4160,13 @@ function buildMonthView() {
                 const ziNyFH = ziNayinF.label?`<div style="font-size:9px;font-weight:bold;color:${ziNayinF.label==='Nayin Power'?'#1b5e20':ziNayinF.label==='Nayin Weak'?'#b71c1c':'#2e7d32'};">${ziNayinF.label}</div>`:'';
                 const ziWjdtH = _ziIsWJDT?`<div style="font-size:9px;font-weight:bold;color:#6a1b9a;">⚡ 戊己都天 WJDT</div>`:'';
                 const ziYD = ziPillars.year||{}, ziMD = ziPillars.month||{}, ziDD = ziPillars.day||{}, ziHD = ziPillars.hour||{};
-                const _ziRowBg = _ziHasNeg ? '#ffcdd2' : ziBgF;
+                const _ziRowBg = _ziHasNeg
+                    ? (_ziNegScore>=10?'#ffcdd2':_ziNegScore>=8?'#ffd6da':_ziNegScore>=6?'#ffe0e3':_ziNegScore>=4?'#ffebed':'#fff5f6')
+                    : ziBgF;
                 const _ziRowBrd = _ziHasNeg ? '#c62828' : ziBrdF;
                 const _ziScoreForSort = _ziHasNeg ? _ziNegScore : ziScoreF;
-                dayRows.push({ score: _ziScoreForSort, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${_ziRowBg?`background:${_ziRowBg};`:''}border-left:4px solid ${_ziRowBrd};${_ziHasNeg?'outline:2px solid #c62828;outline-offset:-2px;':''}cursor:pointer;">
-                    <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${ziScoreF}</div>
+                dayRows.push({ score: _ziScoreForSort, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${_ziRowBg?`background:${_ziRowBg};`:''}border-left:4px solid ${_ziRowBrd};cursor:pointer;">
+                    <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${_ziHasNeg?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${_ziHasNeg?'-'+_ziNegScore:ziScoreF}</div>
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                         <span style="color:#999;font-size:10px;">${ziStart}-${ziMid}${tstMark}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGanF}${ziHZhiF}</span>
