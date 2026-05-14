@@ -5548,6 +5548,23 @@ const FS_MTN_YANG = [
   false, false, false, true,  true,  false    // Geng You Xin Xu Qian Hai
 ];
 
+// ── 24-Mountains → corresponding trigram (San He grouping) ────────
+// Each mountain belongs to one of the 8 trigrams via the Hetu pairings above.
+const FS_MTN_TRIGRAM = [
+  'Li',   'Kan',  'Kan',  'Dui',  'Gen',  'Li',    // Ren Zi Gui Chou Gen Yin
+  'Qian', 'Zhen', 'Kun',  'Kan',  'Xun',  'Dui',   // Jia Mao Yi Chen Xun Si
+  'Gen',  'Li',   'Dui',  'Zhen', 'Kun',  'Kan',   // Bing Wu Ding Wei Kun Shen
+  'Zhen', 'Dui',  'Xun',  'Li',   'Qian', 'Zhen'   // Geng You Xin Xu Qian Hai
+];
+const FS_TRIGRAM_SYM = {
+  'Qian': '☰', 'Kun':  '☷', 'Li':   '☲', 'Kan':  '☵',
+  'Gen':  '☶', 'Xun':  '☴', 'Zhen': '☳', 'Dui':  '☱'
+};
+const FS_TRIGRAM_ZH = {
+  'Qian': '乾', 'Kun':  '坤', 'Li':   '离', 'Kan':  '坎',
+  'Gen':  '艮', 'Xun':  '巽', 'Zhen': '震', 'Dui':  '兑'
+};
+
 // Di Pan: mountain i centered at compass (i*15 − 15)°. Wu at 180°, Zi at 0°.
 function fsMountainYangDi(deg){
   const d = ((deg % 360) + 360) % 360;
@@ -5558,6 +5575,16 @@ function fsMountainYangDi(deg){
 // equals Di Pan at (deg − 7.5°).
 function fsMountainYangTien(deg){
   return fsMountainYangDi(deg - 7.5);
+}
+// Trigram for a Di Pan mountain (used for Facing)
+function fsMountainTrigramDi(deg){
+  const d = ((deg % 360) + 360) % 360;
+  const idx = Math.floor((d + 22.5) / 15) % 24;
+  return FS_MTN_TRIGRAM[idx];
+}
+// Trigram for a Tien Pan mountain (used for Water): same shift as Yang lookup
+function fsMountainTrigramTien(deg){
+  return fsMountainTrigramDi(deg - 7.5);
 }
 function fsYinYangMatch(facingDeg, waterDeg){
   return fsMountainYangDi(facingDeg) === fsMountainYangTien(waterDeg);
@@ -6830,8 +6857,17 @@ fsRenderPairsTable = function(){
       html += '</div>';
       html += '</td>';
 
-      // Pure YY (empty for now, wider space)
-      html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;"></td>';
+      // Pure YY — corresponding trigrams for Facing and Water
+      const fTri = (typeof fsMountainTrigramDi === 'function')   ? fsMountainTrigramDi(fc)   : null;
+      const wTri = (typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(wc) : null;
+      const fSym = fTri && FS_TRIGRAM_SYM[fTri] || '';
+      const fZh  = fTri && FS_TRIGRAM_ZH[fTri]  || '';
+      const wSym = wTri && FS_TRIGRAM_SYM[wTri] || '';
+      const wZh  = wTri && FS_TRIGRAM_ZH[wTri]  || '';
+      html += '<td style="padding:8px;font-size:12px;line-height:1.5;vertical-align:middle;">';
+      if (fTri) html += '<div style="color:#c0392b;font-weight:bold;"><span style="font-size:18px;">' + fSym + '</span> ' + fZh + ' <span style="color:#888;font-weight:normal;">(' + fTri + ')</span></div>';
+      if (wTri) html += '<div style="color:#1565c0;font-weight:bold;"><span style="font-size:18px;">' + wSym + '</span> ' + wZh + ' <span style="color:#888;font-weight:normal;">(' + wTri + ')</span></div>';
+      html += '</td>';
 
       // Score (number only) — uses display score that includes family/BL bonuses
       html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:15px;color:#8a6a1f;vertical-align:middle;">' + (p._displayScore != null ? p._displayScore : p.score) + '</td>';
