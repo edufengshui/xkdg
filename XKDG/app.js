@@ -6306,8 +6306,9 @@ getGPS = function(){
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
     document.getElementById('longitude').value = lon.toFixed(2);
-    const utcGuess   = Math.round(lon / 15);
-    const utcClamped = Math.max(-12, Math.min(14, utcGuess));
+    // Use smart lookup (handles Malaysia, China, India, Spain, etc.)
+    const utcReal    = (typeof getRealUtcOffset === 'function') ? getRealUtcOffset(lat, lon) : Math.round(lon / 15);
+    const utcClamped = Math.max(-12, Math.min(14, utcReal));
     document.getElementById('utc-offset').value = utcClamped;
     checkHalfHourTimezone(lat, lon);
     if (typeof calculateBazi === 'function') calculateBazi();
