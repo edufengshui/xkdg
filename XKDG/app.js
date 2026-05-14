@@ -4354,8 +4354,14 @@ function buildMonthView() {
                                 : listScore >= 6  ? '#388e3c'
                                 : listScore >= 4  ? '#558b2f'
                                 : '#aaa';
+            // Negatives mode: soft red gradient based on negativeScore
+            const negBgLV = negativeScore >= 10 ? '#ffcdd2'   // worst
+                          : negativeScore >= 8  ? '#ffd6da'
+                          : negativeScore >= 6  ? '#ffe0e3'
+                          : negativeScore >= 4  ? '#ffebed'
+                          : '#fff5f6';                       // mildly negative
             const rowStyle = hasNegativesFilterMV
-                ? `background:#ffcdd2;outline:2px solid #c62828;outline-offset:-2px;border-left:4px solid #c62828;`
+                ? `background:${negBgLV};border-left:4px solid #c62828;`
                 : hasFamilyLV
                 ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;border-left:4px solid #f9a825;`
                 : `background:${lvGreenBg};border-left:4px solid ${lvGreenBorder};`;
@@ -4408,7 +4414,7 @@ function buildMonthView() {
 
             const rowHtml = `<div onclick="loadDateIntoMain('${isoDate}',${h})"
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
-                <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:#1b5e20;text-align:left;padding-left:2px;">${listScore}${purposeIconLV ? `<div style="font-size:14px;line-height:1;">${purposeIconLV}</div>` : ''}</div>
+                <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${hasNegativesFilterMV?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${hasNegativesFilterMV?'-'+negativeScore:listScore}${purposeIconLV ? `<div style="font-size:14px;line-height:1;">${purposeIconLV}</div>` : ''}</div>
                 <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                     <span style="color:#999;font-size:10px;">${hourTimeLabel}</span><br>
                     <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGanDirect}${hZhiDirect}</span>
