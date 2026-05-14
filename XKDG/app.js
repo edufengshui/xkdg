@@ -2456,9 +2456,20 @@ function renderScanResults(results, mode) {
             : null;
         const negTextColor = hasNegSort ? '#b71c1c' : null;
         const displayScore = hasNegSort ? `-${s}` : `${s}`;
-        const hasBothPersons = results.some(r => r.scoreB > 0);
-        const bTag = hasBothPersons && r.scoreB > 0 ? ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>` : '';
-        const aTag = hasBothPersons && r.scoreA > 0 ? ` <span style="color:#2e7d32;font-weight:bold;font-size:14px;">A</span>` : '';
+        // A/B markers — appear whenever a person is loaded.
+        // Both loaded: per-row scoreA/scoreB decides which tag(s) to show.
+        // Only A loaded: every row shows A. Only B loaded: every row shows B.
+        const _bestALoaded = !!_personAYear;
+        const _bestBLoaded = !!_personBYear;
+        let aTag = '', bTag = '';
+        if (_bestALoaded && _bestBLoaded) {
+            if (r.scoreA > 0) aTag = ` <span style="color:#2e7d32;font-weight:bold;font-size:14px;">A</span>`;
+            if (r.scoreB > 0) bTag = ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>`;
+        } else if (_bestALoaded) {
+            aTag = ` <span style="color:#2e7d32;font-weight:bold;font-size:14px;">A</span>`;
+        } else if (_bestBLoaded) {
+            bTag = ` <span style="color:#7b1fa2;font-weight:bold;font-size:14px;">B</span>`;
+        }
         const spiritStr = r.spiritLabel ? `<span style="font-size:10px;font-weight:bold;color:${r.spiritAuspicious ? '#0044cc' : '#d40000'};cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${r.spiritLabel}')">${r.spiritLabel}</span>` : '';
         // Purpose condition label
         const purpose = getPurpose();
@@ -3655,6 +3666,13 @@ function buildCalView() {
         const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + offsetMin * 60000));
         return s.getLunar().getEightChar().getDayZhi();
     })();
+
+    // A/B person markers for CAL view — always visible when a person is loaded
+    // (matches LIST/BEST behaviour; only TABLES has its own per-date connection logic).
+    const _aLoadedCAL = !!_personAYear;
+    const _bLoadedCAL = !!_personBYear;
+    const personTagsCAL = (_aLoadedCAL ? '<span style="font-size:11px;font-weight:bold;color:#2e7d32;margin-left:3px;">A</span>' : '')
+                       + (_bLoadedCAL ? '<span style="font-size:11px;font-weight:bold;color:#7b1fa2;margin-left:1px;">B</span>' : '');
     const start    = new Date(startDate + 'T00:00:00');
     // Always start from day 1 of the start month for full calendar view
     const calMonthStart = new Date(start.getFullYear(), start.getMonth(), 1);
@@ -3695,7 +3713,28 @@ function buildCalView() {
         const [yr, mo] = monthKey.split('-').map(Number);
         const monthName = new Date(yr, mo-1, 1).toLocaleDateString('en-GB', { month:'long', year:'numeric' });
 
-        html += `<div style="font-weight:bold;font-size:14px;color:#795548;margin:10px 0 5px;">${monthName}</div>`;
+        // Compute Y and M pillars for day 1 of this calendar month (using midday
+        // to avoid hour-boundary edge cases). Shown in the header in Chinese chars.
+        const _calHdrFirst = new Date(yr, mo-1, 1, 12, 0, 0);
+        const _calHdrEC = Solar.fromDate(new Date(_calHdrFirst.getTime() + offsetMin * 60000)).getLunar().getEightChar();
+        const _yGanMo = _calHdrEC.getYearGan(),  _yZhiMo = _calHdrEC.getYearZhi();
+        const _mGanMo = _calHdrEC.getMonthGan(), _mZhiMo = _calHdrEC.getMonthZhi();
+
+        html += `<div style="display:flex;align-items:center;gap:14px;margin:10px 0 5px;flex-wrap:wrap;">
+            <div style="display:flex;gap:14px;">
+                <div style="text-align:center;line-height:1.1;">
+                    <div style="font-size:9px;color:#888;font-weight:normal;">M</div>
+                    <div style="color:#880e4f;font-weight:bold;font-size:15px;">${_mGanMo}</div>
+                    <div style="color:#880e4f;font-weight:bold;font-size:15px;">${_mZhiMo}</div>
+                </div>
+                <div style="text-align:center;line-height:1.1;">
+                    <div style="font-size:9px;color:#888;font-weight:normal;">Y</div>
+                    <div style="color:#880e4f;font-weight:bold;font-size:15px;">${_yGanMo}</div>
+                    <div style="color:#880e4f;font-weight:bold;font-size:15px;">${_yZhiMo}</div>
+                </div>
+            </div>
+            <div style="font-weight:bold;font-size:14px;color:#795548;">${monthName}</div>
+        </div>`;
         html += `<div class="cal-grid">`;
         DOW.forEach(d => html += `<div class="cal-header-cell">${d}</div>`);
 
@@ -3728,11 +3767,12 @@ function buildCalView() {
                 const jqEntry = jieqiMap[isoDate] || [];
                 const jqHtmlSimple = jqEntry.map(j => {
                     const isJie = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'].includes(j.name);
-                    return `<div style="font-size:9px;font-weight:bold;color:#000;margin-top:2px;">${isJie?'节':'气'} ${j.name}</div>`;
+                    const jqBg = isJie ? '#d40000' : '#ff9800';
+                    return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}</div>`;
                 }).join('');
                 html += `<div class="cal-cell${isToday?' today':''}" style="opacity:${isInRange?1:0.4};" onclick="showDayInList('${isoDate}')">
                     <div style="display:flex;justify-content:space-between;">
-                        <span class="cal-day-num">${dd}</span>
+                        <span class="cal-day-num">${dd}${personTagsCAL}</span>
                         <span class="cal-stem" style="color:${stemColor2};font-size:9px;">${dGan}<br>${dZhi}</span>
                     </div>${jqHtmlSimple}</div>`;
                 continue;
@@ -3800,15 +3840,31 @@ function buildCalView() {
             const dayBranchIsMV  = mvCAL ? mvCAL.branch === dZhi : false;
 
             const cellClass = `cal-cell${isToday?' today':''}${dayIsFamily?' family':''}`;
-            const cellStyle = calGreenBg ? `background:${calGreenBg};border-color:${calBorder};` : '';
+            // Day-level clash (against year/month pillars) — produces a prominent
+            // red marker + red border so clash days never go unnoticed in CAL view.
+            const _dayClashType = getClashType(dGan, dZhi, yZhi, mGan, mZhi);
+            const _clashIcon = _dayClashType === 'clash-year'
+                ? `<span style="color:#d40000;font-weight:bold;font-size:14px;margin-left:3px;" title="Day-Year Branch Clash ⚡⚡⚡">⚡⚡⚡</span>`
+                : _dayClashType === 'clash-month-stem'
+                ? `<span style="color:#d40000;font-weight:bold;font-size:13px;margin-left:3px;" title="Day-Month Stem Clash ⚡⚡">⚡⚡</span>`
+                : _dayClashType === 'clash-month-branch'
+                ? `<span style="color:#d40000;font-weight:bold;font-size:12px;margin-left:3px;" title="Day-Month Branch Clash ⚡">⚡</span>`
+                : '';
+            const _clashBorder = _dayClashType === 'clash-year'         ? 'border:3px solid #c62828 !important;'
+                               : _dayClashType === 'clash-month-stem'   ? 'border:2px solid #ef5350 !important;'
+                               : _dayClashType === 'clash-month-branch' ? 'border:1px dashed #ef5350 !important;'
+                               : '';
+            const cellStyle = (calGreenBg ? `background:${calGreenBg};border-color:${calBorder};` : '') + _clashBorder;
             const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
 
-            // Jieqi markers — 节 (month start) in red, 气 (mid-month) in orange
+            // Jieqi markers — 节 (month start, major) shown as red badge; 气 (mid-month) as orange badge.
+            // Bigger and more saturated than before so both are clearly visible in the cell.
             const MONTH_START_JQ = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'];
             const jqEntry = jieqiMap[isoDate] || [];
             const jieqiHTML = jqEntry.map(j => {
                 const isJie = MONTH_START_JQ.includes(j.name);
-                return `<div style="font-size:9px;font-weight:bold;color:#000;margin-top:2px;">${isJie?'节':'气'} ${j.name}</div>`;
+                const jqBg = isJie ? '#d40000' : '#ff9800';
+                return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}</div>`;
             }).join('');
 
             const nobleIndicator = dayBranchIsNoble ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'N')">N</div>` : '';
@@ -3821,7 +3877,7 @@ function buildCalView() {
             html += `<div class="${cellClass}" style="${cellStyle}display:flex;flex-direction:column;justify-content:space-between;" onclick="showDayInList('${isoDate}')">
                 <div>
                     <div style="display:flex;justify-content:space-between;align-items:top;">
-                        <span class="cal-day-num">${dd}</span>
+                        <span class="cal-day-num">${dd}${_clashIcon}${personTagsCAL}</span>
                         <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
                     </div>
                     ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
@@ -3881,6 +3937,14 @@ function buildMonthView() {
     const activePersonMthBranch = _personAMonthBranch || _personBMonthBranch || null;
     const activePersonDayBranch = _personADayBranchXkdg || _personBDayBranchXkdg || null;
 
+    // A/B person markers for LIST view — always visible when a person is loaded.
+    // Placed next to the hour pillar (inside the 80px hour column) — that area has
+    // enough room to render them at full readable size (13px) without overflow.
+    const _aLoadedLV = !!personAYear;
+    const _bLoadedLV = !!personBYear;
+    const personTagsLV = (_aLoadedLV ? '<span style="color:#2e7d32;font-weight:bold;font-size:13px;margin-left:6px;">A</span>' : '')
+                       + (_bLoadedLV ? '<span style="color:#7b1fa2;font-weight:bold;font-size:13px;margin-left:3px;">B</span>' : '');
+
     // Personal star data — use active person
     const birthDate = activePersonYear ? (personAYear ? document.getElementById('person-date').value : document.getElementById('person-date-b').value) : '';
     const birthTime2 = activePersonYear ? (personAYear ? (document.getElementById('person-time').value || '12:00') : (document.getElementById('person-time-b').value || '12:00')) : '12:00';
@@ -3939,6 +4003,10 @@ function buildMonthView() {
         const dayDate = new Date(start.getTime() + d * 86400000);
             const _isoDay = localISODate(dayDate);
             if (!isDateAllowed(_isoDay)) continue;
+        // Show-all bypass: when the user clicks a day in CAL, drill-down should
+        // display every hour of that day (positive AND negative), so we skip the
+        // skip-gate and the listScore filter for that specific iso date only.
+        const _calShowAllForThisDay = !!(window._calShowAllForDate && window._calShowAllForDate === _isoDay);
         const dateLabel = dayDate.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
 
         // Day separator
@@ -4066,8 +4134,11 @@ function buildMonthView() {
 
                 // Pass-filter for Zi second half — now uses score-based check consistent
                 // with regular hours: default keeps ziScore2 >= 1; NEGATIVES keeps ziScore2 < 1.
+                // BYPASS when user drilled in from CAL — show every Zi hour of that day.
                 let ziPassF2;
-                if (ziHasNeg2) {
+                if (_calShowAllForThisDay) {
+                    ziPassF2 = true;
+                } else if (ziHasNeg2) {
                     ziPassF2 = (ziScore2 < 1);
                 } else {
                     const ziRealFilters2 = new Set(ziAF2);
@@ -4090,7 +4161,7 @@ function buildMonthView() {
                         <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${ziHasNeg2?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${ziHasNeg2?'-'+ziNegScore2:ziScore2}</div>
                         <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                             <span style="color:#999;font-size:10px;">${ziMid}-${ziEnd}${tstMark}</span><br>
-                            <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGan2}${ziHZhi2}</span>
+                            <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGan2}${ziHZhi2}</span>${personTagsLV}
                         </div>
                         <div style="width:30px;flex-shrink:0;"></div>
                         <div style="flex:1;display:flex;justify-content:flex-end;padding-right:20px;">
@@ -4203,8 +4274,9 @@ function buildMonthView() {
 
                 // ── Score-based filter for Zi first half ──
                 // Default: hide ziScoreF < 1. With NEGATIVES on: show ONLY ziScoreF < 1.
+                // BYPASS when the user drilled in from CAL (show every hour of the day).
                 // (Consistent with the rule applied to regular hours.)
-                if (_ziHasNeg ? (ziScoreF >= 1) : (ziScoreF < 1)) continue;
+                if (!_calShowAllForThisDay && (_ziHasNeg ? (ziScoreF >= 1) : (ziScoreF < 1))) continue;
                 const ziBgF  = ziScoreF>=12?'#a5d6a7':ziScoreF>=9?'#c8e6c9':ziScoreF>=6?'#dcedc8':ziScoreF>=4?'#f1f8e9':'#ffffff';
                 const ziBrdF = ziScoreF>=12?'#1b5e20':ziScoreF>=9?'#2e7d32':ziScoreF>=6?'#388e3c':ziScoreF>=4?'#558b2f':'#aaa';
                 const ziElNF = ziBlueF.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
@@ -4221,7 +4293,7 @@ function buildMonthView() {
                     <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${_ziHasNeg?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${_ziHasNeg?'-'+_ziNegScore:ziScoreF}</div>
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                         <span style="color:#999;font-size:10px;">${ziStart}-${ziMid}${tstMark}</span><br>
-                        <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGanF}${ziHZhiF}</span>
+                        <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGanF}${ziHZhiF}</span>${personTagsLV}
                     </div>
                     <div style="width:30px;flex-shrink:0;"></div>
                     <div style="flex:1;display:flex;justify-content:flex-end;padding-right:20px;">
@@ -4312,8 +4384,9 @@ function buildMonthView() {
             // Kept for backward compatibility with row styling below
             const isWJDTLV = isWJDT(yGan, dZhi, hZhiDirect);
 
-            // Skip-gate (modified to allow negatives through when filter active)
-            if (!isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
+            // Skip-gate (modified to allow negatives through when filter active,
+            // and fully bypassed when the row belongs to a day the user clicked from CAL)
+            if (!_calShowAllForThisDay && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
 
             // (Old isNegativeHour gate removed — superseded by the listScore-based filter
             //  applied further down once listScore has been computed.)
@@ -4359,7 +4432,7 @@ function buildMonthView() {
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
             const isNayinWeakLV = nayinResLV.label === 'Nayin Weak';
             const isVoidLV = !hasPureQiOrFamilyLV && !isNayinWeakLV && !isZiFirst && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
-            if (isVoidLV && !hasNegativesFilterMV) continue;
+            if (isVoidLV && !hasNegativesFilterMV && !_calShowAllForThisDay) continue;
 
             let isFavourable = false;
             if (isPositive && (personAYear || personBYear)) {
@@ -4405,7 +4478,7 @@ function buildMonthView() {
 
             const bg = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
             // Only restrict to personal matches when person active AND no filters (not for Zi first half)
-            if (!isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable) continue;
+            if (!_calShowAllForThisDay && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable) continue;
             // Green gradient based on score (same tiers as BEST scanner)
             const isoDate = localISODate(dayDate);
 
@@ -4439,8 +4512,9 @@ function buildMonthView() {
 
             // Score-based filter (matches the user's mental model: "negative = score < +1").
             // Default: hide rows with listScore < 1. With NEGATIVES chip ON: show ONLY listScore < 1.
+            // BYPASS when the user drilled in from CAL — every hour of that day must appear.
             // (TABLES is the only view that shows everything regardless of score.)
-            if (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1)) continue;
+            if (!_calShowAllForThisDay && (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1))) continue;
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
             const nayinPersonHTMLLV = nayinResLV.personLabel && nayinResLV.personLabel.startsWith('Nayin ✦ Person')
@@ -4521,14 +4595,14 @@ function buildMonthView() {
                     ? PURPOSE_ICONS[purposeLV] : '';
                 _currentDayAnalysis = _savedForPurpose;
             }
-            if (purposeLV && !purposeIconLV && !isZiFirst) continue;
+            if (purposeLV && !purposeIconLV && !isZiFirst && !_calShowAllForThisDay) continue;
 
             const rowHtml = `<div onclick="loadDateIntoMain('${isoDate}',${h})"
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
                 <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${hasNegativesFilterMV?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${hasNegativesFilterMV?'-'+negativeScore:listScore}${purposeIconLV ? `<div style="font-size:14px;line-height:1;">${purposeIconLV}</div>` : ''}</div>
                 <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                     <span style="color:#999;font-size:10px;">${hourTimeLabel}</span><br>
-                    <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGanDirect}${hZhiDirect}</span>
+                    <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGanDirect}${hZhiDirect}</span>${personTagsLV}
                 </div>
                 <div style="width:30px;flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:2px;">
                     ${nobleHTMLMV}${luHTMLMV}${hvHTMLMV}${bvHTMLMV}${mvHTMLMV}${tyHTMLMV}
@@ -4629,6 +4703,10 @@ function showDayInList(isoDate) {
     window._calBackDate   = isoDate;
     window._calBackFrom   = startSel ? startSel.value : null;
     window._calBackDays   = daysSel  ? daysSel.value  : null;
+    // Flag: when LIST renders this specific date, bypass the score filter and the
+    // skip-gate so ALL hours appear (positive AND negative) — user's expectation
+    // when drilling into a single day from the calendar.
+    window._calShowAllForDate = isoDate;
     // Switch to LIST mode showing only that single day
     setMode('list');
     if (startSel) startSel.value = isoDate;
