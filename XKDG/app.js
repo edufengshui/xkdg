@@ -6198,10 +6198,13 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
   const box = document.getElementById('fs-detail');
   if (!box) return;
   let html = '';
-  // FS page is the FORWARD-workflow page (Facing+Water → matching dates).
-  // Reverse-direction analysis (Compatible facings for this date, vs Day,
-  // vs Person A/B, Compatible waters for this facing) belongs to a different
-  // workflow and is suppressed here — this section only validates the inputs.
+  // FS page now supports BOTH flows:
+  //   1. Default (entered from MAIN): date → compatible facing/water pairs
+  //      (rendered by fsRenderPairsTable below — the big table).
+  //   2. On-demand (FIND MATCHING DATES): facing/water → matching dates
+  //      (rendered by fsRenderMatchingDatesTable when the user clicks).
+  // This detail panel validates whatever the user has entered (Facing/Water
+  // degrees) and shows compatibility with the loaded date if present.
   if (fInput){
     const isZS = fsIsZhengShen(fInput.yun);
     html += `<div style="background:#fff8e1;border:1px solid #c9a84c;padding:8px;border-radius:4px;margin-bottom:6px;font-size:12px;">`;
@@ -6336,46 +6339,14 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
         .map(i => i.text.replace(/\s+Family$/, '').trim());
     } catch (e) { /* fall through with empty families */ }
 
-    // ── Full BL hourly scan in target families ───────────────────────────
-    // Cheap pre-filter: Y, M, D pillars must all share at least one target
-    // family — only then is it worth running the 12-hour analyzeXkdg loop.
-    // This skips ~99% of days in practice.
-    let blInfo = null;
-    if (targetFams.size > 0) {
-      const yFams = (typeof getJiaZiFamilies === 'function') ? (getJiaZiFamilies(yGan, yZhi) || []) : [];
-      const mFams = (typeof getJiaZiFamilies === 'function') ? (getJiaZiFamilies(mGan, mZhi) || []) : [];
-      const dFams = (typeof getJiaZiFamilies === 'function') ? (getJiaZiFamilies(dGan, dZhi) || []) : [];
-      const ymdShared = [...targetFams].filter(f => yFams.includes(f) && mFams.includes(f) && dFams.includes(f));
-      if (ymdShared.length > 0) {
-        for (let h = 0; h < 12; h++) {
-          const hs = HOUR_STARTS[h];
-          let bd = new Date(dayDate);
-          if (hs === 23) bd = new Date(dayDate.getTime() - 86400000);
-          bd.setHours(hs, 30, 0, 0);
-          const ecH = Solar.fromDate(new Date(bd.getTime() + offsetMin * 60000)).getLunar().getEightChar();
-          const hGanH = ecH.getTimeGan(), hZhiH = ecH.getTimeZhi();
-          const hFams = (typeof getJiaZiFamilies === 'function') ? (getJiaZiFamilies(hGanH, hZhiH) || []) : [];
-          // Quick check: does this hour share family with Y∩M∩D∩target?
-          const hourShared = ymdShared.filter(f => hFams.includes(f));
-          if (hourShared.length === 0) continue;
-          // Confirm via analyzeXkdg (also enforces gender-balance rule for Family)
-          try {
-            const hPillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGanH, hZhiH);
-            const analysisH = analyzeXkdg(hPillars, ss, sg);
-            const hourBLFams = (analysisH.items || [])
-              .filter(i => i.tag === 'family' && i.text)
-              .map(i => i.text.replace(/\s+Family$/, '').trim());
-            const blFam = hourBLFams.find(f => targetFams.has(f));
-            if (blFam) {
-              blInfo = { hourIndex: h, hourStart: hs, family: blFam, hGan: hGanH, hZhi: hZhiH };
-              break; // first qualifying hour wins
-            }
-          } catch (e) { /* ignore */ }
-        }
-      }
-    }
+    // Person A year stem/branch — needed by calcHourScore for the match
+    // multiplier (when Person A's year connects to the day pillar, scoreA
+    // jumps from 1 to 4, multiplying the score significantly).
+    const pYStem = (typeof _personAStem !== 'undefined') ? _personAStem : null;
+    const pYBranch = (typeof _personABranch !== 'undefined') ? _personABranch : null;
 
-    // Normal connection check: Facing ↔ Day (and Water ↔ Day if entered)
+    // Normal FS connection check (date → Facing/Water via Hetu/Adding/Family)
+    // — kept as the primary FILTER for "is this date a match at all".
     const fLbls = fsConnectionLabelsForDay(fSlot.hexNum, fSlot.yun, dData.hexNum, dData.yun, dayFamilies);
     let wLbls = [];
     if (wSlot){
@@ -6383,21 +6354,80 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
     }
     const hasNormalMatch = fLbls.length > 0 && (!wSlot || wLbls.length > 0);
 
-    // Skip days with NEITHER a normal connection NOR a BL match in target family.
-    if (!hasNormalMatch && !blInfo) continue;
+    // Cheap BL pre-filter: do Y, M, D pillars share any target family?
+    // (If not, no hour can produce a target-family Full BL.)
+    let couldBeBL = false;
+    if (targetFams.size > 0) {
+      const yFams = (typeof getJiaZiFamilies === 'function') ? (getJiaZiFamilies(yGan, yZhi) || []) : [];
+      const mFams = (typeof getJiaZiFamilies === 'function') ? (getJiaZiFamilies(mGan, mZhi) || []) : [];
+      const dFams = (typeof getJiaZiFamilies === 'function') ? (getJiaZiFamilies(dGan, dZhi) || []) : [];
+      couldBeBL = [...targetFams].some(f => yFams.includes(f) && mFams.includes(f) && dFams.includes(f));
+    }
 
-    // Person stars on this day (when Person A loaded)
-    const isNoble = pNoble.length && pNoble.includes(dZhi);
-    const isLu    = pLu && pLu === dZhi;
-    const isHV    = pHV && pHV === dZhi;
-    const isBV    = pBV && pBV === dZhi;
-    const isMV    = pMV && (pMV.stem === dGan || pMV.branch === dZhi);
-    const isTY    = pTY && pTY === dZhi;
-    const personStarCount = (isNoble?1:0)+(isLu?1:0)+(isHV?1:0)+(isBV?1:0)+(isMV?1:0)+(isTY?1:0);
+    // Skip days that have neither a FS connection nor BL potential.
+    if (!hasNormalMatch && !couldBeBL) continue;
 
-    // Composite score: connection-label hits + person-star bonus + huge BL bonus
-    let score = fLbls.length + wLbls.length + personStarCount * 2;
-    if (blInfo) score += 20; // Full BL is the #1 combination — eclipses all else
+    // ── Unified hourly scan ──────────────────────────────────────────
+    // Compute calcHourScore for each of the 12 hour pillars (SAME formula
+    // as BEST/LIST views) and track the best-scoring hour. Detect target-
+    // family Full BL in the same pass. Person ↔ date match is folded into
+    // calcHourScore as a multiplier on qualityScore.
+    let bestHourScore = -999;
+    let bestHGan = '', bestHZhi = '', bestHourIdx = -1;
+    let blInfo = null;
+
+    for (let h = 0; h < 12; h++) {
+      const hs = HOUR_STARTS[h];
+      let bd = new Date(dayDate);
+      if (hs === 23) bd = new Date(dayDate.getTime() - 86400000);
+      bd.setHours(hs, 30, 0, 0);
+      const ecH = Solar.fromDate(new Date(bd.getTime() + offsetMin * 60000)).getLunar().getEightChar();
+      const hGanH = ecH.getTimeGan(), hZhiH = ecH.getTimeZhi();
+
+      let scoreH = 0;
+      try {
+        const hPillarsH = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGanH, hZhiH);
+        const { items: itemsH } = analyzeXkdg(hPillarsH, ss, sg);
+        const hourSpiritH = (typeof getSpiritForHour === 'function') ? getSpiritForHour(dZhi, hZhiH) : null;
+        scoreH = calcHourScore(
+          dGan, dZhi, hGanH, hZhiH, mGan, mZhi, yGan, yZhi,
+          itemsH, hourSpiritH, ss, sg,
+          (typeof _personAYear !== 'undefined' ? _personAYear : null), pYStem, pYBranch,
+          pNoble, pLu, pHV, pBV, pMV, pTY,
+          hPillarsH
+        );
+        // Target-family Full BL detection (reuses the items[] we just computed)
+        if (!blInfo && couldBeBL) {
+          const blFams = itemsH.filter(i => i.tag === 'family' && i.text)
+                                .map(i => i.text.replace(/\s+Family$/, '').trim());
+          const blFam = blFams.find(f => targetFams.has(f));
+          if (blFam) {
+            blInfo = { hourIndex: h, hourStart: hs, family: blFam, hGan: hGanH, hZhi: hZhiH };
+          }
+        }
+      } catch (e) { scoreH = 0; }
+
+      if (scoreH > bestHourScore) {
+        bestHourScore = scoreH;
+        bestHourIdx = h;
+        bestHGan = hGanH;
+        bestHZhi = hZhiH;
+      }
+    }
+
+    // Person ↔ Day match level — captured for the tooltip so the user can
+    // see WHY a score is high (e.g. "Family match ×4 multiplier").
+    let personMatchLvl = 0;
+    if (typeof _personAYear !== 'undefined' && _personAYear && dData) {
+      try { personMatchLvl = getMatchScore(_personAYear, pYStem, pYBranch, dData, dGan, dZhi); } catch (e) {}
+    }
+
+    // Final date score: best-hour calcHourScore. Target-family Full BL adds a
+    // small +5 nudge on top (calcHourScore already gives Full BL a floor of 8
+    // via relationFloor, so generic BL dates already rank high; +5 keeps
+    // *target-family* BL above other Full BL dates).
+    let score = Math.max(bestHourScore, 0);
+    if (blInfo) score += 5;
 
     matches.push({
       date: dayDate,
@@ -6406,9 +6436,9 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
       dayHex: dData.hexNum, dayQi: dData.qi, dayYun: dData.yun,
       facingLabels: fLbls,
       waterLabels: wLbls,
-      isNoble, isLu, isHV, isBV, isMV, isTY,
-      personStarCount,
       score,
+      bestHour: bestHourIdx >= 0 ? { idx: bestHourIdx, hGan: bestHGan, hZhi: bestHZhi } : null,
+      personMatchLvl,
       isBL: !!blInfo,
       blInfo
     });
@@ -6542,16 +6572,17 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += personCTA;
 
   html += '<div style="border:1px solid #c9a84c;border-radius:6px;overflow:hidden;background:#fff;">';
+  const _matchLabels = ['', 'Hetu/Adding', 'Pure Hetu/Adding', 'Pure Qi', 'Family'];
+  const _matchColors = ['', '#0277bd', '#0277bd', '#1565c0', '#1b5e20'];
   sorted.forEach((m, i) => {
     const dateLabel = m.date.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
-    const starBadges = [
-      m.isNoble ? '<span style="color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;font-size:10px;">N</span>' : '',
-      m.isLu    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e1f5fe;font-size:10px;">L</span>' : '',
-      m.isHV    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e3f2fd;font-size:10px;">HV</span>' : '',
-      m.isBV    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#e8eaf6;font-size:10px;">BV</span>' : '',
-      m.isMV    ? '<span style="color:#0277bd;font-weight:bold;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;font-size:10px;">MV</span>' : '',
-      m.isTY    ? '<span style="color:#1b5e20;font-weight:bold;border:1px solid #1b5e20;border-radius:3px;padding:0 3px;background:#e8f5e9;font-size:10px;">TY</span>' : ''
-    ].filter(Boolean).join(' ');
+
+    // Person ↔ Date match badge (replaces the old star list). Shows WHY the
+    // score jumped — calcHourScore uses this as a multiplier on qualityScore,
+    // so a Family match (×4) is dramatically higher than no match (×1).
+    const personBadge = (m.personMatchLvl > 0)
+      ? `<span style="color:#fff;background:${_matchColors[m.personMatchLvl]};font-weight:bold;border-radius:3px;padding:1px 5px;font-size:10px;">A: ${_matchLabels[m.personMatchLvl]} ×${m.personMatchLvl}</span>`
+      : '';
 
     // BL row: yellow background + left border + family/hour badge
     const rowBg = m.isBL ? '#fff8b0' : (i % 2 === 0 ? '#fffaf0' : '#fff');
@@ -6562,6 +6593,17 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     const blOnlyNote = (m.isBL && !m.facingLabels.length && (!wSlot || !m.waterLabels.length))
       ? '<div style="font-size:11px;color:#7a5d10;font-style:italic;">(BL-only — no direct Facing/Water connection at noon)</div>'
       : '';
+
+    // Tooltip on the score — explains where the number came from. The score
+    // itself is calcHourScore (same formula as BEST/LIST), so the breakdown
+    // surfaces the inputs: best hour, person match multiplier, BL, F/W rules.
+    const ttParts = [];
+    if (m.bestHour) ttParts.push('Best hour: ' + m.bestHour.hGan + m.bestHour.hZhi);
+    if (m.personMatchLvl > 0) ttParts.push('Person A ' + _matchLabels[m.personMatchLvl] + ' match (×' + m.personMatchLvl + ' multiplier)');
+    if (m.isBL) ttParts.push('Full BL ' + m.blInfo.family + ' Family @ ' + m.blInfo.hGan + m.blInfo.hZhi + ' (+5)');
+    m.facingLabels.forEach(l => ttParts.push('F: ' + l));
+    m.waterLabels.forEach(l => ttParts.push('W: ' + l));
+    const scoreTooltip = ttParts.join(' · ').replace(/"/g, '&quot;');
 
     html += `<div onclick="loadDateIntoMain('${m.isoDate}', 6)" title="Click to load this date into the main calculator"
         style="padding:8px 10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;cursor:pointer;background:${rowBg};${rowBorder}flex-wrap:wrap;">
@@ -6575,8 +6617,8 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         ${blOnlyNote}
         ${blBadge}
       </div>
-      ${starBadges ? `<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">${starBadges}</div>` : ''}
-      <div style="margin-left:auto;font-weight:bold;font-size:16px;color:${m.isBL ? '#b8860b' : '#8a6a1f'};min-width:30px;text-align:right;">${m.score}</div>
+      ${personBadge ? `<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">${personBadge}</div>` : ''}
+      <div title="${scoreTooltip}" style="margin-left:auto;font-weight:bold;font-size:16px;color:${m.isBL ? '#b8860b' : '#8a6a1f'};min-width:30px;text-align:right;cursor:help;">${m.score}</div>
     </div>`;
   });
   html += '</div>';
@@ -7271,31 +7313,18 @@ function _fsIsHetuPair(a, b){
 fsRenderPairsTable = function(){
   try {
     // When the user has clicked "FIND MATCHING DATES", the panel is showing the
-    // facing+water → dates view. Skip the auto-render so it doesn't get clobbered
-    // by the date → facing/water reverse-logic table. The flag is cleared either
-    // when the user navigates away and back, or when they explicitly reset it.
+    // facing+water → dates view (forward logic). Skip this auto-render so it
+    // doesn't clobber that table with the reverse-logic one. The flag clears
+    // when the user navigates away from FS and back (see setMode), restoring
+    // the default reverse-logic view on next entry from MAIN.
     if (window._fsShowingMatching) return;
     const box = document.getElementById('fs-pairs-table');
     if (!box) return;
-    // The auto-rendered "Compatible facing/water pairs for the current date" table
-    // is the OPPOSITE task of what this page is for, so we show a placeholder
-    // instead and let fsFindDates() populate this slot with matching dates on
-    // demand. The legacy renderer is preserved below (in case it's needed later
-    // via a settings toggle), but it never runs in the default flow.
+    // Default flow when entering FS from MAIN: render the date → compatible
+    // facing/water pairs table (reverse logic). The legacy renderer below
+    // computes all 64 yun slots vs the current date's pillars.
     const fIn = parseFloat(document.getElementById('fs-facing').value);
     const wIn = parseFloat(document.getElementById('fs-water').value);
-    const hasFacing = !isNaN(fIn);
-    if (hasFacing){
-      box.innerHTML = `<div style="text-align:center;color:#555;padding:14px 12px;font-size:12px;background:#fafafa;border:1px dashed #c9a84c;border-radius:6px;">
-        Facing entered${!isNaN(wIn) ? ' (and Water)' : ''}. Click <strong>🔎 FIND MATCHING DATES</strong> above to scan the FROM/DAYS range for compatible dates.
-      </div>`;
-    } else {
-      box.innerHTML = `<div style="text-align:center;color:#888;padding:14px 12px;font-size:12px;background:#fafafa;border:1px dashed #ddd;border-radius:6px;">
-        Enter a <strong>Facing</strong> degree above (and optionally a <strong>Water</strong>), then click <strong>🔎 FIND MATCHING DATES</strong> to see all dates in the FROM/DAYS range that connect to this setup.
-      </div>`;
-    }
-    return;
-    // ── Legacy reverse-logic renderer below — unreachable in the current flow ──
     const pairs = (typeof fsComputePairs === 'function') ? fsComputePairs() : [];
     if (!pairs.length){
       const c = (typeof fsGetCurrentContext === 'function') ? fsGetCurrentContext() : {};
