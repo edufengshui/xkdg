@@ -5952,11 +5952,14 @@ function buildFengShuiView(){
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
       <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button onclick="fsFindDirections()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING FACING/WATER DIRECTIONS</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
         <button onclick="fsFindDates()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DATES</button>
       </div>
 
-      <div id="fs-detail" style="font-size:12px;color:#333;"></div>
-      <div id="fs-pairs-table" style="margin-top:8px;"></div>
+      <div id="fs-results-area"></div>
     </div>`;
 
   // Inject legend
@@ -6331,6 +6334,20 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
   box.innerHTML = html;
 }
 
+// ── Flow A button: Find matching facing/water directions for the loaded date ──
+function fsFindDirections(){
+  const area = document.getElementById('fs-results-area');
+  if (!area) return;
+  // Create the result containers
+  area.innerHTML = '<div id="fs-detail" style="font-size:12px;color:#333;"></div>' +
+                   '<div id="fs-pairs-table" style="margin-top:8px;"></div>';
+  window._fsShowingMatching = false;
+  // Trigger a full redraw which will populate fs-detail and fs-pairs-table
+  fsRedraw();
+  // Scroll to results
+  area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ── Flow B: Find matching dates given facing/water ────────────────
 function fsFindDates(){
   const fDeg = parseFloat(document.getElementById('fs-facing').value);
@@ -6356,6 +6373,10 @@ function fsFindDates(){
       alert('Water hex does not communicate with facing hex via any rule. Pick a compatible water.'); return;
     }
   }
+  // Set up result containers in the results area
+  const area = document.getElementById('fs-results-area');
+  if (area) area.innerHTML = '<div id="fs-detail" style="font-size:12px;color:#333;"></div>' +
+                             '<div id="fs-pairs-table" style="margin-top:8px;"></div>';
   // Compute and render matching dates for this Facing (+Water) setup.
   // Uses the FROM/DAYS range from the main scan inputs.
   const matches = fsFindMatchingDatesForSetup(fSlot, wSlot);
