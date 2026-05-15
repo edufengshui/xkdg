@@ -1519,6 +1519,10 @@ function renderAnalysis(items) {
 // ─────────────────────────────────────────────
 
 let _personPanelOpen = { a: true, b: true };
+// In-memory backup of inputs for the ON/OFF toggle. Distinct from the
+// localStorage archive (which is for named/saved profiles): this is JUST
+// to keep the currently-typed values across a single OFF→ON cycle.
+let _personPanelBackup = { a: null, b: null };
 let _showPersonStars = { a: false, b: false };
 
 function togglePersonPanel(person) {
@@ -1527,14 +1531,56 @@ function togglePersonPanel(person) {
     const isOn  = _personPanelOpen[person];
 
     if (isOn) {
-        // Restore from archive if available
+        // ── Restore from the in-memory backup taken on the previous OFF ──
+        // Without this, OFF wiped the input fields AND the globals and
+        // there was nothing to come back to — so BEST/LIST/CAL ran without
+        // the toggled person even after the user flipped it back to ON.
+        const suffix = person === 'b' ? '-b' : '';
+        const backup = _personPanelBackup[person];
+        if (backup) {
+            const nameEl = document.getElementById(`person-name${suffix}`);
+            const dateEl = document.getElementById(`person-date${suffix}`);
+            const timeEl = document.getElementById(`person-time${suffix}`);
+            if (nameEl) nameEl.value = backup.name || '';
+            if (dateEl) dateEl.value = backup.date || '';
+            if (timeEl) timeEl.value = backup.time || '12:00';
+            // For Person B with year-only depth, also restore the JiaZi dropdown
+            if (person === 'b' && backup.yearJiaZi) {
+                const yEl = document.getElementById('person-year-b');
+                if (yEl) yEl.value = backup.yearJiaZi;
+                const depthEl = document.getElementById('person-pillars-b');
+                if (depthEl && backup.depth) depthEl.value = backup.depth;
+            }
+            // Re-run the calculation: this re-fills globals, shows the chart,
+            // analysis section, pillar toggle wrapper, etc.
+            if (typeof calculatePerson === 'function' && (backup.date || backup.yearJiaZi)) {
+                try { calculatePerson(person); } catch (e) {}
+            }
+            _personPanelBackup[person] = null; // backup consumed
+        }
         if (arrow) arrow.textContent = '▾ ON';
     } else {
-        // Clear active fields but keep archive
+        // ── Snapshot current inputs into the backup BEFORE clearing ──
+        // This is what makes the next ON restore work. We capture the raw
+        // values (not the globals), so the recalc on ON gets exactly what
+        // a user-typed sequence would produce.
         const suffix = person === 'b' ? '-b' : '';
-        document.getElementById(`person-name${suffix}`).value  = '';
-        document.getElementById(`person-date${suffix}`).value  = '';
-        document.getElementById(`person-time${suffix}`).value  = '12:00';
+        const nameEl = document.getElementById(`person-name${suffix}`);
+        const dateEl = document.getElementById(`person-date${suffix}`);
+        const timeEl = document.getElementById(`person-time${suffix}`);
+        const yEl    = (person === 'b') ? document.getElementById('person-year-b') : null;
+        const depthEl= (person === 'b') ? document.getElementById('person-pillars-b') : null;
+        _personPanelBackup[person] = {
+            name: nameEl ? nameEl.value : '',
+            date: dateEl ? dateEl.value : '',
+            time: timeEl ? timeEl.value : '12:00',
+            yearJiaZi: yEl ? yEl.value : '',
+            depth: depthEl ? depthEl.value : ''
+        };
+        // Clear active fields but keep archive
+        if (nameEl) nameEl.value = '';
+        if (dateEl) dateEl.value = '';
+        if (timeEl) timeEl.value = '12:00';
         // Clear calculated chart and relations
         const chartId = person === 'b' ? 'person-chart-b' : 'person-chart';
         const chartEl = document.getElementById(chartId);
