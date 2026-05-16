@@ -23,7 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css?v=390">
+    <link rel="stylesheet" href="styles.css?v=422">
     <style>
       /* Negatives chip — white by default, red when active */
       .filter-chip.negatives-chip {
@@ -75,21 +75,25 @@
 
 <div class="container">
     <div class="inputs-row">
-        <button class="btn-tool" onclick="setNow()">NOW</button>
-        <button class="btn-tool" onclick="getGPS()">GPS</button>
-        <input type="date" id="date">
-        <input type="time" id="time">
-        <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
-        <button class="btn-calc" onclick="openFengShuiFromTop()" style="background:#8a6a1f;" title="Open Feng Shui luopan for the date above">🧭 FS</button>
+        <div class="datetime-group">
+            <input type="date" id="date">
+            <input type="time" id="time">
+        </div>
+        <div class="action-group">
+            <button class="btn-tool" onclick="setNow()">NOW</button>
+            <button class="btn-tool" onclick="getGPS()">GPS</button>
+            <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
+            <button class="btn-calc btn-fs" onclick="openFengShuiFromTop()" title="Open Feng Shui luopan for the date above">🧭 FS</button>
+        </div>
     </div>
 
     <div class="geo-row">
-        <div>
-            <label>UTC OFFSET:</label>
+        <div class="geo-item">
+            <label>UTC:</label>
             <input type="number" id="utc-offset" value="1" step="0.25" style="width: 55px;">
         </div>
-        <div>
-            <label>LONGITUDE:</label>
+        <div class="geo-item">
+            <label>LONG:</label>
             <input type="number" id="longitude" value="12.49" step="0.01" style="width: 85px;">
         </div>
         <div id="solar-time-display" class="solar-badge">True Solar: --:--</div>
