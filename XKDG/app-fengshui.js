@@ -2148,7 +2148,7 @@ if (typeof buildCalView === 'function') {
         }).join('');
         wrap.innerHTML =
             '<label for="city-picker" style="font-size:12px;color:#666;cursor:pointer;" title="Pick a city to fill in LONGITUDE and UTC OFFSET">📍</label>' +
-            '<select id="city-picker" style="font-size:12px;padding:3px 4px;border:1px solid #bbb;border-radius:4px;background:#fff;max-width:150px;" title="Pick a city — sets LONGITUDE + UTC OFFSET">' +
+            '<select id="city-picker" style="font-size:16px;padding:6px 8px;border:1px solid #bbb;border-radius:4px;background:#fff;max-width:200px;" title="Pick a city — sets LONGITUDE + UTC OFFSET">' +
                 '<option value="">— City —</option>' +
                 groupsHtml +
             '</select>';
