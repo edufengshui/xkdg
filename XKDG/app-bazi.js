@@ -2542,7 +2542,7 @@ function renderScanResults(results, mode) {
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
-            <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
+            <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
             <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
         </div>`;
     }).join('');
@@ -2558,38 +2558,6 @@ const HOUR_NAMES  = ['子','丑','寅','卯','辰','巳','午','未','申','酉'
 const HOUR_ROMAN  = ['Zi(23-01)','Chou(01-03)','Yin(03-05)','Mao(05-07)','Chen(07-09)',
                      'Si(09-11)','Wu(11-13)','Wei(13-15)','Shen(15-17)','You(17-19)',
                      'Xu(19-21)','Hai(21-23)'];
-const HOUR_ROMAN_NAMES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
-
-// ── TST-adjusted hour-range label, shared by BEST / TABLES (and re-implements
-// what buildMonthView()'s getHourTimeStr() already does for LIST).
-// Reads location/UTC from the form; DST is intentionally NOT added because the
-// hour labels represent standard wall-clock at the location's longitude, which
-// is what LIST already shows. The ✦ marker signals a non-zero longitude shift.
-// h: 0..11 (子=0, 丑=1, ..., 亥=11)
-function getTSTHourLabel(h) {
-    const HOUR_SHORT = ['23:00-01:00','01:00-03:00','03:00-05:00','05:00-07:00',
-                        '07:00-09:00','09:00-11:00','11:00-13:00','13:00-15:00',
-                        '15:00-17:00','17:00-19:00','19:00-21:00','21:00-23:00'];
-    const base = HOUR_SHORT[h] || '';
-    if (!base) return '';
-    const lonEl = document.getElementById('longitude');
-    const utcEl = document.getElementById('utc-offset');
-    const lon = lonEl ? parseFloat(lonEl.value) : NaN;
-    const utc = utcEl ? parseFloat(utcEl.value) : NaN;
-    if (!isFinite(lon) || !isFinite(utc)) return base;
-    const tstMins = (lon - utc * 15) * 4;
-    if (tstMins === 0) return base;
-    const parts = base.split('-');
-    const adjusted = parts.map(t => {
-        const [hStr, mStr] = t.split(':');
-        const totalMins = parseInt(hStr) * 60 + (parseInt(mStr) || 0) + tstMins;
-        const norm = ((totalMins % 1440) + 1440) % 1440;
-        const hh = Math.floor(norm / 60);
-        const mm = Math.floor(norm % 60);
-        return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
-    });
-    return adjusted.join('-') + ' ✦';
-}
 
 // Store person year xkdg for scanner
 let _personYearXkdg = null;
@@ -3621,7 +3589,7 @@ function buildTableView() {
             const hourBg = rowBg;
             html += `<tr style="cursor:pointer;" onclick="loadDateIntoMain('${isoDate}',${h});window.scrollTo({top:0,behavior:'smooth'});" onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">`;
             html += `<td style="border:1px solid #ddd;background:${hourBg};padding:3px 2px;text-align:center;vertical-align:middle;">
-                <div style="font-size:8px;color:#888;">${getTSTHourLabel(h)}</div>
+                <div style="font-size:8px;color:#888;">${HOUR_LABELS[h].split(' ')[1]||''}</div>
                 <div style="font-size:10px;color:#880e4f;font-weight:bold;">${hGan}${hZhi}</div>
                 <div style="color:#c62828;font-size:11px;font-weight:bold;line-height:1;">${pillars.hour.qi}</div>
                 ${drawHex(pillars.hour.hex, 26)}
@@ -3899,6 +3867,16 @@ function buildCalView() {
             let dayIsPositive = false, dayIsFavourable = false, dayIsFamily = false;
             let dayBestScore = 0;
 
+            // ── Daily average score (positive hours add, negative hours subtract) ──
+            // Each hour contributes either +calcHourScore (when not flagged as
+            // negative) or −calcNegativeScore (when calcNegativeScore > 0, i.e.
+            // the hour would appear under the NEGATIVES chip). Averaged across
+            // all 12 hours (+ Zi second half) at the end of the loops to decide
+            // the cell's background color.
+            let dayScoreSum = 0;
+            let dayScoreCount = 0;
+            const _dayClashTypeForScore = getClashType(dGan, dZhi, yZhi, mGan, mZhi);
+
             // ── ZI SECOND HALF (00:00-01:00) ──
             // Il ciclo standard sotto controlla hs=23 (23:30, prima metà dell'ora 子
             // del GIORNO CN SUCCESSIVO) ma NON controlla la seconda metà dell'ora 子
@@ -3917,10 +3895,23 @@ function buildCalView() {
                     const ziPillarsCAL = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGZi2, hZZi2);
                     const { items: ziItemsCAL } = analyzeXkdg(ziPillarsCAL, ziSS, ziSG);
                     const ziBlueCAL = ziItemsCAL.filter(i => i.tag === 'blue' || i.tag === 'family');
+                    const ziSpiritCAL = getSpiritForHour(dZhi, hZZi2);
+                    const ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
+                    const ziNayinCAL = analyzeNayin(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
+                    const ziNegScoreCAL = calcNegativeScore({
+                        dGan, dZhi, hGan: hGZi2, hZhi: hZZi2,
+                        mGan, mZhi, yGan, yZhi,
+                        analysisItems: ziItemsCAL, dayClashType: _dayClashTypeForScore,
+                        seasonStrong: ziSS, seasonGrowing: ziSG,
+                        nayinLabel: ziNayinCAL.label,
+                        nayinPersonScore: ziNayinCAL.personScore || 0
+                    });
+                    // Signed contribution to day average
+                    dayScoreSum += (ziNegScoreCAL > 0 ? -ziNegScoreCAL : ziScoreCAL);
+                    dayScoreCount++;
                     if (ziBlueCAL.length > 0) {
                         dayIsPositive = true;
                         if (ziBlueCAL.some(i => i.tag === 'family')) dayIsFamily = true;
-                        const ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, getSpiritForHour(dZhi, hZZi2), ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
                         if (ziScoreCAL > dayBestScore) dayBestScore = ziScoreCAL;
                         if (personAYear) {
                             const dDataZi = getXkdgData(dGan, dZhi);
@@ -3950,10 +3941,27 @@ function buildCalView() {
                 const hPillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hG, hZ);
                 const { items: hItems } = analyzeXkdg(hPillars, hSS, hSG);
                 const hBlue = hItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+                const hSpirit = getSpiritForHour(dZhi, hZ);
+
+                // Score the hour every time (positive side via calcHourScore)
+                const hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
+                // Negative score (higher = worse, > 0 means NEGATIVES chip would catch it)
+                const hNayin = analyzeNayin(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
+                const hNegScore = calcNegativeScore({
+                    dGan, dZhi, hGan: hG, hZhi: hZ,
+                    mGan, mZhi, yGan, yZhi,
+                    analysisItems: hItems, dayClashType: _dayClashTypeForScore,
+                    seasonStrong: hSS, seasonGrowing: hSG,
+                    nayinLabel: hNayin.label,
+                    nayinPersonScore: hNayin.personScore || 0
+                });
+                // Signed contribution: −negScore if meaningfully negative, +hScore otherwise
+                dayScoreSum += (hNegScore > 0 ? -hNegScore : hScore);
+                dayScoreCount++;
+
                 if (hBlue.length > 0) {
                     dayIsPositive = true;
                     if (hBlue.some(i => i.tag === 'family')) dayIsFamily = true;
-                    const hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, getSpiritForHour(dZhi, hZ), hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
                     if (hScore > dayBestScore) dayBestScore = hScore;
                     if (personAYear) {
                         const dDataCAL = getXkdgData(dGan, dZhi);
@@ -3965,18 +3973,33 @@ function buildCalView() {
                 }
             }
 
-            const calGreenBg = dayIsFamily ? '#fffde7'
-                             : !dayIsPositive ? ''
-                             : dayBestScore >= 12 ? '#a5d6a7'
-                             : dayBestScore >= 9  ? '#c8e6c9'
-                             : dayBestScore >= 6  ? '#dcedc8'
-                             : dayBestScore >= 1  ? '#f1f8e9'
-                             : '#f1f8e9';
-            const calBorder = dayIsFamily ? '#f9a825'
-                            : dayBestScore >= 12 ? '#1b5e20'
-                            : dayBestScore >= 9  ? '#2e7d32'
-                            : dayBestScore >= 6  ? '#388e3c'
-                            : '#558b2f';
+            // ── Background color based on DAILY AVERAGE score ──
+            // Family pillars always win (yellow). Otherwise:
+            //   avg > 6   → progressive green (lighter to darker as score rises)
+            //   avg 0..6  → white (neutral)
+            //   avg < 0   → progressive red (lighter to darker as score drops)
+            const dayAvgScore = dayScoreCount > 0 ? dayScoreSum / dayScoreCount : 0;
+            let calGreenBg, calBorder;
+            if (dayIsFamily) {
+                calGreenBg = '#fffde7';
+                calBorder  = '#f9a825';
+            } else if (dayAvgScore > 10) {
+                calGreenBg = '#a5d6a7'; calBorder = '#1b5e20';
+            } else if (dayAvgScore > 8) {
+                calGreenBg = '#c8e6c9'; calBorder = '#2e7d32';
+            } else if (dayAvgScore > 6) {
+                calGreenBg = '#dcedc8'; calBorder = '#558b2f';
+            } else if (dayAvgScore >= 0) {
+                calGreenBg = '';        calBorder = '';        // white / neutral
+            } else if (dayAvgScore > -2) {
+                calGreenBg = '#ffebee'; calBorder = '#ef9a9a';
+            } else if (dayAvgScore > -4) {
+                calGreenBg = '#ffcdd2'; calBorder = '#ef5350';
+            } else if (dayAvgScore > -6) {
+                calGreenBg = '#ef9a9a'; calBorder = '#d32f2f';
+            } else {
+                calGreenBg = '#e57373'; calBorder = '#c62828';
+            }
 
             const personNobles   = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
             const dayBranchIsNoble = personNobles.includes(dZhi);
