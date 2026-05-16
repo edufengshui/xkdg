@@ -9,19 +9,19 @@
         .inputs-row { display: flex; gap: 10px; margin-bottom: 15px; justify-content: center; align-items: center; flex-wrap: wrap; }
         
         .geo-row { 
-    display: flex; 
-    gap: 10px; 
-    margin-bottom: 25px; 
-    justify-content: center; 
-    align-items: center; 
-    background: #fdfdfd; 
-    padding: 12px; 
-    border-radius: 4px; 
-    border: 1px solid #eee;
-    width: auto;
-    align-self: center;
-    flex-wrap: wrap;
-}
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 25px; 
+            justify-content: center; 
+            align-items: center; 
+            background: #fdfdfd; 
+            padding: 12px; 
+            border-radius: 4px; 
+            border: 1px solid #eee;
+            width: auto;
+            align-self: center;
+            flex-wrap: wrap;
+        }
         
         input, button { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
         label { font-size: 12px; font-weight: bold; color: #666; margin-right: 5px; }
@@ -100,7 +100,7 @@
         .filter-chip.active.ke-chip   { background:#b8860b; color:#fff; border-color:#b8860b; }
 
         /* Calendar view */
-        .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 2px; max-width: 100%; overflow: hidden; }
         .cal-header-cell { background: #795548; color: white; text-align: center; padding: 5px 2px; font-size: 12px; font-weight: bold; border-radius: 3px; }
         .cal-cell { min-height: 70px; border: 1px solid #ddd; border-radius: 4px; padding: 4px; cursor: pointer; position: relative; background: #fff; }
         .cal-cell:hover { filter: brightness(0.93); }
@@ -110,7 +110,7 @@
         .cal-cell.favourable { background: #fce4ec; }
         .cal-cell.family { background: #fffde7; border-color: #f9a825; }
         .cal-day-num { font-size: 12px; font-weight: bold; color: #333; }
-        .cal-stem { font-size: 16px; font-weight: bold; text-align: right; line-height: 1.1; }
+        .cal-stem { font-size: 14px; font-weight: bold; text-align: right; line-height: 1.1; }
         .cal-dots { margin-top: 4px; display: flex; gap: 2px; flex-wrap: wrap; }
 
         /* Month view table */
