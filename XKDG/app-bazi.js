@@ -4776,7 +4776,7 @@ function buildMonthView() {
     const backBtn = window._calBackDate
         ? `<div style="margin-bottom:6px;padding:0 4px;">
             <button onclick="
-                const s=document.getElementById('start-date');
+                const s=document.getElementById('scan-start');
                 const d=document.getElementById('scan-days');
                 if(s&&window._calBackFrom) s.value=window._calBackFrom;
                 if(d&&window._calBackDays) d.value=window._calBackDays;
@@ -4810,7 +4810,7 @@ function shiftCalMonth(n) {
 
 function showDayInList(isoDate) {
     // Save current FROM/DAYS to restore when going back
-    const startSel = document.getElementById('start-date');
+    const startSel = document.getElementById('scan-start');
     const daysSel  = document.getElementById('scan-days');
     window._calBackDate   = isoDate;
     window._calBackFrom   = startSel ? startSel.value : null;
