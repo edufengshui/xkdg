@@ -287,11 +287,11 @@ function analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pGan, pZhi
         const yearBad  = yearRel === -1, dayBad  = dayRel === -1;
 
         if (yearGood || dayGood) {
-            const tag = (yearGood && dayGood) ? ' DY' : yearGood ? ' Y' : ' D';
+            const tag = (yearGood && dayGood) ? ' Day+Year' : yearGood ? ' Year' : ' Day';
             personLabel = 'Nayin ✦ Person' + tag;
             personScore = 3;
         } else if (yearBad || dayBad) {
-            const tag = (yearBad && dayBad) ? ' DY' : yearBad ? ' Y' : ' D';
+            const tag = (yearBad && dayBad) ? ' Day+Year' : yearBad ? ' Year' : ' Day';
             personLabel = 'Nayin ✗ Person' + tag;
             personScore = -2;
         }
