@@ -75,16 +75,12 @@
 
 <div class="container">
     <div class="inputs-row">
-        <div class="datetime-group">
-            <input type="date" id="date">
-            <input type="time" id="time">
-        </div>
-        <div class="action-group">
-            <button class="btn-tool" onclick="setNow()">NOW</button>
-            <button class="btn-tool" onclick="getGPS()">GPS</button>
-            <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
-            <button class="btn-calc btn-fs" onclick="openFengShuiFromTop()" title="Open Feng Shui luopan for the date above">🧭 FS</button>
-        </div>
+        <button class="btn-tool" onclick="setNow()">NOW</button>
+        <button class="btn-tool" onclick="getGPS()">GPS</button>
+        <input type="date" id="date">
+        <input type="time" id="time">
+        <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
+        <button class="btn-calc btn-fs" onclick="openFengShuiFromTop()" title="Open Feng Shui luopan for the date above">🧭 FS</button>
     </div>
 
     <div class="geo-row">

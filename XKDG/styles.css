@@ -6,38 +6,29 @@
         *::-webkit-scrollbar { display: none; }
         .container { background: white; padding: 10px; width: 100%; max-width: 850px; display: flex; flex-direction: column; }
         
-        .inputs-row { display: flex; gap: 10px; margin-bottom: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
-        .datetime-group { display: flex; gap: 8px; align-items: center; }
-        .datetime-group input[type="date"],
-        .datetime-group input[type="time"] { font-size: 15px; padding: 8px 10px; }
-        .action-group { display: flex; gap: 6px; align-items: center; }
+        .inputs-row { display: flex; gap: 8px; margin-bottom: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
         .btn-fs { background: #8a6a1f; }
 
         @media (max-width: 600px) {
             .inputs-row {
-                flex-direction: column;
-                gap: 8px;
-                margin-bottom: 8px;
+                display: grid;
+                grid-template-columns: auto auto 1fr 1fr;
+                gap: 5px;
+                margin-bottom: 6px;
             }
-            .datetime-group {
-                width: 100%;
-                gap: 6px;
-            }
-            .datetime-group input[type="date"],
-            .datetime-group input[type="time"] {
-                flex: 1;
+            .inputs-row input[type="date"],
+            .inputs-row input[type="time"] {
                 min-width: 0;
-                font-size: 15px;
+                font-size: 14px;
+                padding: 7px 4px;
             }
-            .action-group {
-                width: 100%;
-                justify-content: center;
-                gap: 6px;
+            .inputs-row .btn-tool {
+                padding: 7px 10px;
+                font-size: 13px;
             }
-            .action-group .btn-tool,
-            .action-group .btn-calc {
-                flex: 1;
-                padding: 10px 6px;
+            .inputs-row .btn-calc {
+                grid-column: span 2;
+                padding: 9px 6px;
                 font-size: 14px;
             }
         }
@@ -45,11 +36,11 @@
         .geo-row { 
             display: flex; 
             gap: 10px; 
-            margin-bottom: 15px; 
+            margin-bottom: 12px; 
             justify-content: center; 
             align-items: center; 
             background: #f8f9fa; 
-            padding: 10px; 
+            padding: 8px 10px; 
             border-radius: 6px; 
             border: 1px solid #e0e0e0;
             width: auto;
@@ -60,22 +51,17 @@
 
         @media (max-width: 600px) {
             .geo-row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-                padding: 10px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                padding: 8px;
                 width: 100%;
-                background: #f8f9fa;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                justify-content: center;
+                align-items: center;
             }
-            .geo-row > .geo-item { justify-content: center; }
-            .geo-row > #solar-time-display { justify-self: center; }
-            .geo-row > div:last-child { justify-self: center; }
-            .geo-row > #city-picker-wrap {
-                grid-column: 1 / -1;
-                justify-self: center;
-            }
+            .geo-row label { font-size: 11px; margin-right: 2px; }
+            .geo-row input[type="number"] { padding: 5px 4px; font-size: 13px; }
+            .geo-row > #city-picker-wrap { flex-basis: 100%; display: flex; justify-content: center; }
         }
         
         input, button { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
