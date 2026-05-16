@@ -886,6 +886,12 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
     if (wSlot){
       wLbls = fsConnectionLabelsForDay(wSlot.hexNum, wSlot.yun, dData.hexNum, dData.yun, dayFamilies);
     }
+    
+    // Calculate Pure YY star for this facing/water pair
+    const fTri = (typeof fsMountainTrigramDi === 'function') ? fsMountainTrigramDi(fSlot.startDeg + 2.8125) : null;
+    const wTri = (typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(wSlot.centerDeg) : null;
+    const pureYYStarInfo = (typeof fsPureYYStarInfo === 'function') ? fsPureYYStarInfo(fTri, wTri) : { name: '', auspicious: null };
+    
     const hasNormalMatch = fLbls.length > 0 && (!wSlot || wLbls.length > 0);
 
     // Cheap BL pre-filter: do Y, M, D pillars share any target family?
@@ -970,6 +976,7 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
       dayHex: dData.hexNum, dayQi: dData.qi, dayYun: dData.yun,
       facingLabels: fLbls,
       waterLabels: wLbls,
+      pureYYStarInfo,
       score,
       bestHour: bestHourIdx >= 0 ? { idx: bestHourIdx, hGan: bestHGan, hZhi: bestHZhi } : null,
       personMatchLvl,
@@ -1148,6 +1155,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:120px;">
         ${m.facingLabels.length ? `<div style="font-size:11px;color:#c0392b;font-weight:bold;">F → ${m.facingLabels.join(' · ')}</div>` : ''}
         ${wSlot && m.waterLabels.length ? `<div style="font-size:11px;color:#1565c0;font-weight:bold;">W → ${m.waterLabels.join(' · ')}</div>` : ''}
+        ${m.pureYYStarInfo && m.pureYYStarInfo.name ? `<div style="font-size:11px;color:${m.pureYYStarInfo.auspicious === true ? '#1b5e20' : m.pureYYStarInfo.auspicious === false ? '#c0392b' : '#8a6a1f'};font-weight:bold;">★ Pure YY: ${m.pureYYStarInfo.auspicious === true ? '✓ ' : m.pureYYStarInfo.auspicious === false ? '✗ ' : ''}${m.pureYYStarInfo.name}</div>` : ''}
         ${blOnlyNote}
         ${blBadge}
       </div>
