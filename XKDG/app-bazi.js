@@ -3156,19 +3156,27 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         // Positive bonuses
         if (hourSpirit && hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2; // vitality
         if (hourSpirit && hourSpirit.en === 'Jade Hall')       spiritBonus += 2; // comfort/healing
-        var cond1 = dayRole === 'parent' && hasTY;
+        // Parent must be somewhere in the date; +2 bonus if it's specifically the day pillar
+        var hasAnyParentH = pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
+        if (!hasAnyParentH) return false;
+        if (dayRole === 'parent') spiritBonus += 2;
         var personDayStemA = _personADayStem || null;
         var personDayStemB = _personBDayStem || null;
         var isDayTYforPerson = (personDayStemA && TIAN_YI[personDayStemA] === dZhi) ||
                                (personDayStemB && TIAN_YI[personDayStemB] === dZhi);
-        return cond1 || isDayTYforPerson;
+        return hasTY || isDayTYforPerson;
     }
     if (purpose === 'career') {
         if (hasBadSpirit('Red Bird') || hasBadSpirit('Heaven Prison') || hasBadSpirit('Gou Chen') || hasBadSpirit('Heaven Penalty')) return false;
         // Positive bonuses
         if (hourSpirit && hourSpirit.en === 'Bright Hall')  spiritBonus += 2; // visibility/recognition
         if (hourSpirit && hourSpirit.en === 'Fate Master')  spiritBonus += 2; // official positions
-        return dayRole === 'parent' && hasNoble;
+        if (hasLu) spiritBonus += 2; // prosperity
+        // Parent must be somewhere in the date; +2 bonus if it's specifically the day pillar
+        var hasAnyParentC = pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
+        if (!hasAnyParentC) return false;
+        if (dayRole === 'parent') spiritBonus += 2;
+        return hasNoble;
     }
     if (purpose === 'wealth') {
         if (hasBadSpirit('Black Tortoise') || hasBadSpirit('Heaven Prison')) return false;
