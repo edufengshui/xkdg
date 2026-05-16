@@ -4007,31 +4007,36 @@ function buildCalView() {
             }
 
             // ── Background color based on DAILY AVERAGE score ──
-            // Family pillars always win (yellow). Otherwise:
-            //   avg > 6   → progressive green (lighter to darker as score rises)
-            //   avg 0..6  → white (neutral)
-            //   avg < 0   → progressive red (lighter to darker as score drops)
-            const dayAvgScore = dayScoreCount > 0 ? dayScoreSum / dayScoreCount : 0;
+            // Somma di tutti gli score orari (ore positive + ZI second half,
+            // contate positive; ore negative — quelle che apparirebbero sotto il
+            // chip NEGATIVES — contate come -negScore). Divisione sempre per 12
+            // (le 12 ore cinesi tradizionali) indipendentemente da quante ore
+            // hanno effettivamente dati validi. Family pillars vincono sempre
+            // (giallo). Altrimenti:
+            //   avg > 5   → progressive green (chiaro → scuro al crescere)
+            //   avg 0..5  → bianco (neutro)
+            //   avg < 0   → progressive red (chiaro → scuro al decrescere)
+            const dayAvgScore = dayScoreSum / 12;
             let calGreenBg, calBorder;
             if (dayIsFamily) {
                 calGreenBg = '#fffde7';
                 calBorder  = '#f9a825';
-            } else if (dayAvgScore > 10) {
-                calGreenBg = '#a5d6a7'; calBorder = '#1b5e20';
-            } else if (dayAvgScore > 8) {
-                calGreenBg = '#c8e6c9'; calBorder = '#2e7d32';
-            } else if (dayAvgScore > 6) {
-                calGreenBg = '#dcedc8'; calBorder = '#558b2f';
+            } else if (dayAvgScore > 9) {
+                calGreenBg = '#a5d6a7'; calBorder = '#1b5e20';   // verde scuro
+            } else if (dayAvgScore > 7) {
+                calGreenBg = '#c8e6c9'; calBorder = '#2e7d32';   // verde medio
+            } else if (dayAvgScore > 5) {
+                calGreenBg = '#dcedc8'; calBorder = '#558b2f';   // verde chiaro
             } else if (dayAvgScore >= 0) {
-                calGreenBg = '';        calBorder = '';        // white / neutral
+                calGreenBg = '';        calBorder = '';          // bianco (0..5)
             } else if (dayAvgScore > -2) {
-                calGreenBg = '#ffebee'; calBorder = '#ef9a9a';
+                calGreenBg = '#ffebee'; calBorder = '#ef9a9a';   // rosso chiarissimo
             } else if (dayAvgScore > -4) {
-                calGreenBg = '#ffcdd2'; calBorder = '#ef5350';
+                calGreenBg = '#ffcdd2'; calBorder = '#ef5350';   // rosso chiaro
             } else if (dayAvgScore > -6) {
-                calGreenBg = '#ef9a9a'; calBorder = '#d32f2f';
+                calGreenBg = '#ef9a9a'; calBorder = '#d32f2f';   // rosso medio
             } else {
-                calGreenBg = '#e57373'; calBorder = '#c62828';
+                calGreenBg = '#e57373'; calBorder = '#c62828';   // rosso scuro
             }
 
             const personNobles   = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
