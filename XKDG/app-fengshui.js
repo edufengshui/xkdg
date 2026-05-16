@@ -2129,51 +2129,50 @@ if (typeof buildCalView === 'function') {
 (function setupCityPicker(){
     function inject(){
         if (!window.CITY_LIST || !Array.isArray(window.CITY_LIST)) return;
-        if (document.getElementById('city-picker')) return; // already injected
+        if (document.getElementById('city-picker')) return;
         const lngInput = document.getElementById('longitude');
         if (!lngInput) return;
         const lngContainer = lngInput.parentElement;
         if (!lngContainer || !lngContainer.parentElement) return;
 
-        // Build the select (uses native <optgroup>; on mobile this opens the
-        // OS picker, on desktop it's a regular dropdown with type-to-jump).
-        const wrap = document.createElement('div');
+        var options = [];
+        window.CITY_LIST.forEach(function(group){
+            group.cities.forEach(function(c){
+                options.push({name: c.name, lng: c.lng, utc: c.utc});
+            });
+        });
+
+        var datalistHtml = options.map(function(c){
+            return '<option value="' + c.name + '" data-lng="' + c.lng + '" data-utc="' + c.utc + '">';
+        }).join('');
+
+        var wrap = document.createElement('div');
         wrap.id = 'city-picker-wrap';
         wrap.style.cssText = 'display:flex;align-items:center;gap:4px;';
-        const groupsHtml = window.CITY_LIST.map(function(group){
-            const opts = group.cities.map(function(c){
-                return '<option value="' + c.lng + '|' + c.utc + '">' + c.name + '</option>';
-            }).join('');
-            return '<optgroup label="' + group.region + '">' + opts + '</optgroup>';
-        }).join('');
         wrap.innerHTML =
-            '<label for="city-picker" style="font-size:12px;color:#666;cursor:pointer;" title="Pick a city to fill in LONGITUDE and UTC OFFSET">📍</label>' +
-            '<select id="city-picker" style="font-size:16px;padding:6px 8px;border:1px solid #bbb;border-radius:4px;background:#fff;max-width:200px;" title="Pick a city — sets LONGITUDE + UTC OFFSET">' +
-                '<option value="">— City —</option>' +
-                groupsHtml +
-            '</select>';
+            '<label for="city-picker" style="font-size:12px;color:#666;">📍</label>' +
+            '<input id="city-picker" list="city-list" placeholder="City..." ' +
+            'style="font-size:16px;padding:6px 8px;border:1px solid #bbb;border-radius:4px;background:#fff;width:150px;" ' +
+            'autocomplete="off">' +
+            '<datalist id="city-list">' + datalistHtml + '</datalist>';
+
         lngContainer.parentElement.insertBefore(wrap, lngContainer.nextSibling);
 
-        // Selection handler
+        var cityData = {};
+        options.forEach(function(c){ cityData[c.name] = c; });
+
         document.getElementById('city-picker').addEventListener('change', function(e){
-            const v = e.target.value;
-            if (!v) return;
-            const parts = v.split('|');
-            const lng = parseFloat(parts[0]);
-            const utc = parseFloat(parts[1]);
-            if (!isNaN(lng)) {
-                lngInput.value = lng.toFixed(2);
-                lngInput.dispatchEvent(new Event('input',  { bubbles: true }));
-                lngInput.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            const utcInput = document.getElementById('utc-offset');
-            if (utcInput && !isNaN(utc)) {
-                utcInput.value = utc;
+            var picked = cityData[e.target.value];
+            if (!picked) return;
+            lngInput.value = picked.lng.toFixed(2);
+            lngInput.dispatchEvent(new Event('input',  { bubbles: true }));
+            lngInput.dispatchEvent(new Event('change', { bubbles: true }));
+            var utcInput = document.getElementById('utc-offset');
+            if (utcInput) {
+                utcInput.value = picked.utc;
                 utcInput.dispatchEvent(new Event('input',  { bubbles: true }));
                 utcInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
-            // Reset to placeholder — keeps the visible state neutral and
-            // lets the user re-pick the same city after a manual edit.
             e.target.value = '';
         });
     }
