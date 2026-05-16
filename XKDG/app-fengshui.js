@@ -891,8 +891,7 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
     const fTri = (typeof fsMountainTrigramDi === 'function') ? fsMountainTrigramDi(fSlot.startDeg + 2.8125) : null;
     const wTri = (typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(wSlot.centerDeg) : null;
     const pureYYStarInfo = (typeof fsPureYYStarInfo === 'function') ? fsPureYYStarInfo(fTri, wTri) : { name: '', auspicious: null };
-    
-    const hasNormalMatch = fLbls.length > 0 && (!wSlot || wLbls.length > 0);
+        const hasNormalMatch = fLbls.length > 0 && (!wSlot || wLbls.length > 0);
 
     // Cheap BL pre-filter: do Y, M, D pillars share any target family?
     // (If not, no hour can produce a target-family Full BL.)
@@ -976,6 +975,8 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
       dayHex: dData.hexNum, dayQi: dData.qi, dayYun: dData.yun,
       facingLabels: fLbls,
       waterLabels: wLbls,
+      facingTri: fTri,
+      waterTri: wTri,
       pureYYStarInfo,
       score,
       bestHour: bestHourIdx >= 0 ? { idx: bestHourIdx, hGan: bestHGan, hZhi: bestHZhi } : null,
@@ -1112,58 +1113,76 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += toolbar;
   html += personCTA;
 
-  html += '<div style="border:1px solid #c9a84c;border-radius:6px;overflow:hidden;background:#fff;">';
+  html += '<div style="border:1px solid #c9a84c;border-radius:6px;overflow-x:auto;background:#fff;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+  
+  // Table header
+  html += '<thead>';
+  html += '<tr style="background:#fff8e1;">';
+  html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:13%;">Date</th>';
+  html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:8%;">Day</th>';
+  html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#c0392b;width:14%;">Facing 正神</th>';
+  if (wSlot) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:14%;">Water 零神</th>';
+  html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:auto;">XKDG Relations</th>';
+  html += '<th colspan="3" style="text-align:center;padding:4px;border-bottom:1px solid #e0c87a;color:#666;width:18%;">Pure YY</th>';
+  html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:8%;">Score</th>';
+  html += '</tr>';
+  // Pure YY subheaders
+  html += '<tr style="background:#fff8e1;">';
+  html += '<th colspan="' + (wSlot ? '4' : '3') + '" style="border-bottom:none;"></th>';
+  html += '<th style="border-bottom:none;"></th>';
+  html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#c0392b;font-size:10px;width:6%;">F</th>';
+  html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;border-right:1px solid #e0c87a;color:#1565c0;font-size:10px;width:6%;">W</th>';
+  html += '<th style="text-align:center;padding:4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;font-size:10px;width:6%;">Star</th>';
+  html += '<th style="border-bottom:none;"></th>';
+  html += '</tr>';
+  html += '</thead>';
+  
+  html += '<tbody>';
   const _matchLabels = ['', 'Hetu/Adding', 'Pure Hetu/Adding', 'Pure Qi', 'Family'];
   const _matchColors = ['', '#0277bd', '#0277bd', '#1565c0', '#1b5e20'];
+  
   sorted.forEach((m, i) => {
     const dateLabel = m.date.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
-
-    // Person ↔ Date match badge (replaces the old star list). Shows WHY the
-    // score jumped — calcHourScore uses this as a multiplier on qualityScore,
-    // so a Family match (×4) is dramatically higher than no match (×1).
-    const personBadge = (m.personMatchLvl > 0)
-      ? `<span style="color:#fff;background:${_matchColors[m.personMatchLvl]};font-weight:bold;border-radius:3px;padding:1px 5px;font-size:10px;">A: ${_matchLabels[m.personMatchLvl]} ×${m.personMatchLvl}</span>`
-      : '';
-
-    // BL row: yellow background + left border + family/hour badge
+    const dayLabel = m.dGan + m.dZhi;
+    
+    // Pure YY trigram symbols and names
+    const fSym = m.facingTri && FS_TRIGRAM_SYM ? (FS_TRIGRAM_SYM[m.facingTri] || '') : '';
+    const fZh = m.facingTri && FS_TRIGRAM_ZH ? (FS_TRIGRAM_ZH[m.facingTri] || '') : '';
+    const wSym = m.waterTri && FS_TRIGRAM_SYM ? (FS_TRIGRAM_SYM[m.waterTri] || '') : '';
+    const wZh = m.waterTri && FS_TRIGRAM_ZH ? (FS_TRIGRAM_ZH[m.waterTri] || '') : '';
+    
+    // Star styling
+    const starColor = m.pureYYStarInfo && m.pureYYStarInfo.auspicious === true  ? '#1b5e20'
+                    : m.pureYYStarInfo && m.pureYYStarInfo.auspicious === false ? '#c0392b'
+                    : '#8a6a1f';
+    const starIcon  = m.pureYYStarInfo && m.pureYYStarInfo.auspicious === true  ? '✓ '
+                    : m.pureYYStarInfo && m.pureYYStarInfo.auspicious === false ? '✗ '
+                    : '';
+    
+    // XKDG Relations
+    const xkdgHtml = '<div style="font-size:11px;color:#c0392b;font-weight:bold;">' + (m.facingLabels.length ? m.facingLabels.join(' · ') : '—') + '</div>'
+                   + (wSlot ? '<div style="font-size:11px;color:#1565c0;font-weight:bold;">' + (m.waterLabels.length ? m.waterLabels.join(' · ') : '—') + '</div>' : '');
+    
+    // Row background
     const rowBg = m.isBL ? '#fff8b0' : (i % 2 === 0 ? '#fffaf0' : '#fff');
     const rowBorder = m.isBL ? 'border-left:4px solid #b8860b;' : '';
-    const blBadge = m.isBL
-      ? `<div style="font-size:10px;color:#7a5d10;font-weight:bold;background:#fff3a8;border:1px solid #b8860b;border-radius:4px;padding:2px 5px;margin-top:2px;display:inline-block;">🔗 Full BL — ${m.blInfo.family} Family · hour ${m.blInfo.hGan}${m.blInfo.hZhi}</div>`
-      : '';
-    const blOnlyNote = (m.isBL && !m.facingLabels.length && (!wSlot || !m.waterLabels.length))
-      ? '<div style="font-size:11px;color:#7a5d10;font-style:italic;">(BL-only — no direct Facing/Water connection at noon)</div>'
-      : '';
-
-    // Tooltip on the score — explains where the number came from. The score
-    // itself is calcHourScore (same formula as BEST/LIST), so the breakdown
-    // surfaces the inputs: best hour, person match multiplier, BL, F/W rules.
-    const ttParts = [];
-    if (m.bestHour) ttParts.push('Best hour: ' + m.bestHour.hGan + m.bestHour.hZhi);
-    if (m.personMatchLvl > 0) ttParts.push('Person A ' + _matchLabels[m.personMatchLvl] + ' match (×' + m.personMatchLvl + ' multiplier)');
-    if (m.isBL) ttParts.push('Full BL ' + m.blInfo.family + ' Family @ ' + m.blInfo.hGan + m.blInfo.hZhi + ' (+5)');
-    m.facingLabels.forEach(l => ttParts.push('F: ' + l));
-    m.waterLabels.forEach(l => ttParts.push('W: ' + l));
-    const scoreTooltip = ttParts.join(' · ').replace(/"/g, '&quot;');
-
-    html += `<div onclick="loadDateIntoMain('${m.isoDate}', 6)" title="Click to load this date into the main calculator"
-        style="padding:8px 10px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px;cursor:pointer;background:${rowBg};${rowBorder}flex-wrap:wrap;">
-      <div style="font-weight:bold;font-size:13px;color:#1565c0;min-width:140px;">${dateLabel}</div>
-      <div style="font-size:15px;font-weight:bold;color:#880e4f;min-width:42px;line-height:1.1;text-align:center;">
-        <div>${m.dGan}</div><div>${m.dZhi}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:120px;">
-        ${m.facingLabels.length ? `<div style="font-size:11px;color:#c0392b;font-weight:bold;">F → ${m.facingLabels.join(' · ')}</div>` : ''}
-        ${wSlot && m.waterLabels.length ? `<div style="font-size:11px;color:#1565c0;font-weight:bold;">W → ${m.waterLabels.join(' · ')}</div>` : ''}
-        ${m.pureYYStarInfo && m.pureYYStarInfo.name ? `<div style="font-size:11px;color:${m.pureYYStarInfo.auspicious === true ? '#1b5e20' : m.pureYYStarInfo.auspicious === false ? '#c0392b' : '#8a6a1f'};font-weight:bold;">★ Pure YY: ${m.pureYYStarInfo.auspicious === true ? '✓ ' : m.pureYYStarInfo.auspicious === false ? '✗ ' : ''}${m.pureYYStarInfo.name}</div>` : ''}
-        ${blOnlyNote}
-        ${blBadge}
-      </div>
-      ${personBadge ? `<div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap;">${personBadge}</div>` : ''}
-      <div title="${scoreTooltip}" style="margin-left:auto;font-weight:bold;font-size:16px;color:${m.isBL ? '#b8860b' : '#8a6a1f'};min-width:30px;text-align:right;cursor:help;">${m.score}</div>
-    </div>`;
+    
+    html += '<tr style="background:' + rowBg + ';' + rowBorder + 'cursor:pointer;" onclick="loadDateIntoMain(\'' + m.isoDate + '\', 6)">';
+    html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + dateLabel + '</td>';
+    html += '<td style="padding:6px 4px;text-align:center;color:#880e4f;font-weight:bold;font-size:12px;line-height:1.1;border-bottom:1px solid #eee;">' + m.dGan + '<br>' + m.dZhi + '</td>';
+    html += '<td style="padding:6px 4px;text-align:center;color:#c0392b;border-bottom:1px solid #eee;"><div style="font-size:16px;font-weight:bold;">' + (fSym || '—') + '</div>' + (fZh ? '<div style="font-size:10px;color:#888;">' + fZh + '</div>' : '') + '</td>';
+    if (wSlot) html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;border-bottom:1px solid #eee;"><div style="font-size:16px;font-weight:bold;">' + (wSym || '—') + '</div>' + (wZh ? '<div style="font-size:10px;color:#888;">' + wZh + '</div>' : '') + '</td>';
+    html += '<td style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee;border-right:1px solid #e0c87a;">' + xkdgHtml + '</td>';
+    html += '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;border-right:1px solid #e0c87a;"><div style="font-size:12px;color:#c0392b;font-weight:bold;">' + (fSym || '') + '</div></td>';
+    html += '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;border-right:1px solid #e0c87a;"><div style="font-size:12px;color:#1565c0;font-weight:bold;">' + (wSym || '') + '</div></td>';
+    html += '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:' + starColor + ';font-weight:bold;">' + (m.pureYYStarInfo && m.pureYYStarInfo.name ? starIcon + m.pureYYStarInfo.name : '—') + '</td>';
+    html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:14px;color:' + (m.isBL ? '#b8860b' : '#8a6a1f') + ';border-bottom:1px solid #eee;">' + m.score + '</td>';
+    html += '</tr>';
   });
-  html += '</div>';
+  
+  html += '</tbody>';
+  html += '</table></div>';
 
   box.innerHTML = html;
 }
