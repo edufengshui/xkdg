@@ -7,7 +7,6 @@
         .container { background: white; padding: 10px; width: 100%; max-width: 850px; display: flex; flex-direction: column; }
         
         .inputs-row { display: flex; gap: 8px; margin-bottom: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
-        .btn-fs { background: #8a6a1f; }
 
         @media (max-width: 600px) {
             .inputs-row {
@@ -67,9 +66,12 @@
         input, button { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
         label { font-size: 12px; font-weight: bold; color: #666; margin-right: 5px; }
         
-        .btn-calc { background: #2d2d2d; color: white; cursor: pointer; border: none; font-weight: bold; padding: 8px 25px; }
-        .btn-calc:hover { background: #000; }
+        .btn-calc { background: linear-gradient(135deg, #b71c1c, #d32f2f); color: white; cursor: pointer; border: none; font-weight: bold; padding: 8px 25px; }
+        .btn-calc:hover { background: linear-gradient(135deg, #a01515, #c62828); }
+        .btn-calc.btn-fs { background: linear-gradient(135deg, #7a5a1a, #a07a28); }
+        .btn-calc.btn-fs:hover { background: linear-gradient(135deg, #6a4a10, #8a6a1f); }
         .btn-tool { background: #f0f0f0; color: #333; cursor: pointer; border: 1px solid #bbb; font-weight: 600; }
+        .geo-row button:not(#dst-btn) { background: #f0f0f0 !important; color: #333 !important; cursor: pointer; border: 1px solid #bbb !important; font-weight: 600; font-size: 13px; }
 
         .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #bbb; background: #fff; width: 100%; min-width: 0; }
         .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; min-width: 0; overflow: hidden; }
