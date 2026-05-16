@@ -3866,6 +3866,41 @@ function buildCalView() {
             // Check best hour of the day
             let dayIsPositive = false, dayIsFavourable = false, dayIsFamily = false;
             let dayBestScore = 0;
+
+            // ── ZI SECOND HALF (00:00-01:00) ──
+            // Il ciclo standard sotto controlla hs=23 (23:30, prima metà dell'ora 子
+            // del GIORNO CN SUCCESSIVO) ma NON controlla la seconda metà dell'ora 子
+            // di QUESTO giorno (00:00-01:00). LIST mostra invece questa fascia in una
+            // riga separata all'inizio di ogni giornata: senza questo controllo, i
+            // giorni le cui uniche relazioni positive cadono in 00:00-01:00 restano
+            // bianchi in CAL. Vedi righe ~3424-3488 (zi second half in LIST).
+            {
+                const bdZi2 = new Date(dayDate); bdZi2.setHours(0, 30, 0, 0);
+                const sdZi2 = new Date(bdZi2.getTime() + offsetMin * 60000);
+                const ecZi2 = Solar.fromDate(bdZi2).getLunar().getEightChar();
+                const hGZi2 = ecZi2.getTimeGan(), hZZi2 = ecZi2.getTimeZhi();
+                const hDZi2 = getXkdgData(hGZi2, hZZi2);
+                if (hDZi2) {
+                    const { strong: ziSS, growing: ziSG } = getJieqiSeason(sdZi2);
+                    const ziPillarsCAL = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGZi2, hZZi2);
+                    const { items: ziItemsCAL } = analyzeXkdg(ziPillarsCAL, ziSS, ziSG);
+                    const ziBlueCAL = ziItemsCAL.filter(i => i.tag === 'blue' || i.tag === 'family');
+                    if (ziBlueCAL.length > 0) {
+                        dayIsPositive = true;
+                        if (ziBlueCAL.some(i => i.tag === 'family')) dayIsFamily = true;
+                        const ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, getSpiritForHour(dZhi, hZZi2), ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
+                        if (ziScoreCAL > dayBestScore) dayBestScore = ziScoreCAL;
+                        if (personAYear) {
+                            const dDataZi = getXkdgData(dGan, dZhi);
+                            if (dDataZi) {
+                                const mLabelsZi = getMatchLabels(personAYear, pYStem, pYBranch, dDataZi, dGan, dZhi, null, null, null);
+                                if (mLabelsZi.length > 0) dayIsFavourable = true;
+                            }
+                        }
+                    }
+                }
+            }
+
             for (let h = 0; h < 12; h++) {
                 const hs = HOUR_STARTS[h];
                 let bd = new Date(dayDate);
