@@ -3918,11 +3918,11 @@ function buildCalView() {
             // red marker + red border so clash days never go unnoticed in CAL view.
             const _dayClashType = getClashType(dGan, dZhi, yZhi, mGan, mZhi);
             const _clashIcon = _dayClashType === 'clash-year'
-                ? `<span style="color:#d40000;font-weight:bold;font-size:14px;margin-left:3px;" title="Day-Year Branch Clash ⚡⚡⚡">⚡⚡⚡</span>`
+                ? `<div style="color:#d40000;font-weight:bold;font-size:12px;text-align:center;" title="Day-Year Branch Clash ⚡⚡⚡">⚡⚡⚡</div>`
                 : _dayClashType === 'clash-month-stem'
-                ? `<span style="color:#d40000;font-weight:bold;font-size:13px;margin-left:3px;" title="Day-Month Stem Clash ⚡⚡">⚡⚡</span>`
+                ? `<div style="color:#d40000;font-weight:bold;font-size:11px;text-align:center;" title="Day-Month Stem Clash ⚡⚡">⚡⚡</div>`
                 : _dayClashType === 'clash-month-branch'
-                ? `<span style="color:#d40000;font-weight:bold;font-size:12px;margin-left:3px;" title="Day-Month Branch Clash ⚡">⚡</span>`
+                ? `<div style="color:#d40000;font-weight:bold;font-size:10px;text-align:center;" title="Day-Month Branch Clash ⚡">⚡</div>`
                 : '';
             const _clashBorder = _dayClashType === 'clash-year'         ? 'border:3px solid #c62828 !important;'
                                : _dayClashType === 'clash-month-stem'   ? 'border:2px solid #ef5350 !important;'
@@ -3951,9 +3951,10 @@ function buildCalView() {
             html += `<div class="${cellClass}" style="${cellStyle}display:flex;flex-direction:column;justify-content:space-between;" onclick="showDayInList('${isoDate}')">
                 <div>
                     <div style="display:flex;justify-content:space-between;align-items:top;">
-                        <span class="cal-day-num">${dd}${_clashIcon}${personTagsCAL}</span>
+                        <span class="cal-day-num">${dd}${personTagsCAL}</span>
                         <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
                     </div>
+                    ${_clashIcon}
                     ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
                 </div>
                 ${jieqiHTML ? `<div style="border-top:1px solid #ddd;margin-top:2px;padding-top:1px;">${jieqiHTML}</div>` : ''}
