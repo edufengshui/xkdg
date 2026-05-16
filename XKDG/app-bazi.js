@@ -2542,7 +2542,7 @@ function renderScanResults(results, mode) {
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
-            <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
+            <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
             <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
         </div>`;
     }).join('');
@@ -2558,6 +2558,38 @@ const HOUR_NAMES  = ['子','丑','寅','卯','辰','巳','午','未','申','酉'
 const HOUR_ROMAN  = ['Zi(23-01)','Chou(01-03)','Yin(03-05)','Mao(05-07)','Chen(07-09)',
                      'Si(09-11)','Wu(11-13)','Wei(13-15)','Shen(15-17)','You(17-19)',
                      'Xu(19-21)','Hai(21-23)'];
+const HOUR_ROMAN_NAMES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+
+// ── TST-adjusted hour-range label, shared by BEST / TABLES (and re-implements
+// what buildMonthView()'s getHourTimeStr() already does for LIST).
+// Reads location/UTC from the form; DST is intentionally NOT added because the
+// hour labels represent standard wall-clock at the location's longitude, which
+// is what LIST already shows. The ✦ marker signals a non-zero longitude shift.
+// h: 0..11 (子=0, 丑=1, ..., 亥=11)
+function getTSTHourLabel(h) {
+    const HOUR_SHORT = ['23:00-01:00','01:00-03:00','03:00-05:00','05:00-07:00',
+                        '07:00-09:00','09:00-11:00','11:00-13:00','13:00-15:00',
+                        '15:00-17:00','17:00-19:00','19:00-21:00','21:00-23:00'];
+    const base = HOUR_SHORT[h] || '';
+    if (!base) return '';
+    const lonEl = document.getElementById('longitude');
+    const utcEl = document.getElementById('utc-offset');
+    const lon = lonEl ? parseFloat(lonEl.value) : NaN;
+    const utc = utcEl ? parseFloat(utcEl.value) : NaN;
+    if (!isFinite(lon) || !isFinite(utc)) return base;
+    const tstMins = (lon - utc * 15) * 4;
+    if (tstMins === 0) return base;
+    const parts = base.split('-');
+    const adjusted = parts.map(t => {
+        const [hStr, mStr] = t.split(':');
+        const totalMins = parseInt(hStr) * 60 + (parseInt(mStr) || 0) + tstMins;
+        const norm = ((totalMins % 1440) + 1440) % 1440;
+        const hh = Math.floor(norm / 60);
+        const mm = Math.floor(norm % 60);
+        return String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    });
+    return adjusted.join('-') + ' ✦';
+}
 
 // Store person year xkdg for scanner
 let _personYearXkdg = null;
@@ -3589,7 +3621,7 @@ function buildTableView() {
             const hourBg = rowBg;
             html += `<tr style="cursor:pointer;" onclick="loadDateIntoMain('${isoDate}',${h});window.scrollTo({top:0,behavior:'smooth'});" onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">`;
             html += `<td style="border:1px solid #ddd;background:${hourBg};padding:3px 2px;text-align:center;vertical-align:middle;">
-                <div style="font-size:8px;color:#888;">${HOUR_LABELS[h].split(' ')[1]||''}</div>
+                <div style="font-size:8px;color:#888;">${getTSTHourLabel(h)}</div>
                 <div style="font-size:10px;color:#880e4f;font-weight:bold;">${hGan}${hZhi}</div>
                 <div style="color:#c62828;font-size:11px;font-weight:bold;line-height:1;">${pillars.hour.qi}</div>
                 ${drawHex(pillars.hour.hex, 26)}

@@ -237,7 +237,7 @@ window.CITY_LIST = [
     { name: 'Medan, Indonesia',       lng:  98.67, utc:  7 },
     { name: 'Semarang, Indonesia',    lng: 110.42, utc:  7 },
     { name: 'Kuala Lumpur, Malaysia', lng: 101.69, utc:  8 },
-    { name: 'George Town, Malaysia',  lng: 100.34, utc:  8 },
+    { name: 'George Town (Penang), Malaysia', lng: 100.34, utc:  8 },
     { name: 'Manila, Philippines',    lng: 120.98, utc:  8 },
     { name: 'Quezon City, Philippines',lng:121.04, utc:  8 },
     { name: 'Davao, Philippines',     lng: 125.61, utc:  8 },
