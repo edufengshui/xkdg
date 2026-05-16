@@ -363,7 +363,7 @@ function buildFengShuiView(){
         </div>
       </div>
 
-      <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:480px;margin:0 auto 10px;">
+      <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
       </div>
 
@@ -587,7 +587,7 @@ function fsRedraw(){
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle = '#f5ead8'; ctx.fillRect(0,0,W,H);
+  // Transparent background — the page/wrap background shows through (no more beige frame around the luopan).
 
   const PAD = 100, IMG_W = 900, IMG_H = 930;
   const cx = PAD + 450, cy = PAD + 464;
@@ -686,7 +686,7 @@ function fsRedraw(){
     ctx.closePath(); ctx.fillStyle = color; ctx.fill();
     ctx.restore();
     if (label){
-      const labelR = tipR + 30;
+      const labelR = tipR + 22;
       ctx.save();
       ctx.font = 'bold 16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillStyle = color;
@@ -1337,6 +1337,35 @@ if (document.readyState === 'loading'){
   loadSavedLocation();
 }
 
+// ── Inject SAVE button next to the longitude input (additive, idempotent) ──
+// The saveLocation() function above expects an element with id="btn-save-loc".
+// Since the button may be missing from index.html, we create it dynamically
+// here, mirroring the city-picker injection pattern at the bottom of this file.
+(function setupSaveLocButton(){
+  function inject(){
+    if (document.getElementById('btn-save-loc')) return;
+    const lon = document.getElementById('longitude');
+    if (!lon || !lon.parentElement) return;
+    const btn = document.createElement('button');
+    btn.id = 'btn-save-loc';
+    btn.type = 'button';
+    btn.textContent = '💾 SAVE';
+    btn.title = 'Save longitude, UTC offset and DST as default for next launch';
+    btn.style.cssText =
+      'margin-left:6px;padding:6px 10px;border:1px solid #1565c0;' +
+      'background:#1565c0;color:#fff;border-radius:4px;cursor:pointer;' +
+      'font-size:13px;font-weight:bold;';
+    btn.addEventListener('click', saveLocation);
+    // Place it right after the longitude input
+    lon.parentElement.insertBefore(btn, lon.nextSibling);
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', inject);
+  } else {
+    inject();
+  }
+})();
+
 // ═══════════════════════════════════════════════════════════════════
 //  GPS HALF-HOUR TIMEZONE WARNING — extension v7 (additive)
 //
@@ -1720,7 +1749,7 @@ function fsInjectExpansionCSS(){
     '@media (min-width: 601px) {',
     '  #fs-canvas-wrap {',
     '    width: 100% !important;',
-    '    max-width: 600px !important;',
+    '    max-width: 760px !important;',
     '    margin: 0 auto !important;',
     '  }',
     '}'
