@@ -3737,6 +3737,14 @@ function buildCalView() {
         return s.getLunar().getEightChar().getDayZhi();
     })();
 
+    // Person star data for CAL scoring — matches LIST view
+    const pNobleCAL = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
+    const pLuCAL    = personDayStemCAL ? (LU_BRANCH[personDayStemCAL] || null) : null;
+    const pHVCAL    = personMthBranchCAL ? (HEAVEN_VIRTUE[personMthBranchCAL] || null) : null;
+    const pBVCAL    = personDayZhiCAL ? (BRANCH_VIRTUE[personDayZhiCAL] || null) : null;
+    const pMVCAL    = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
+    const pTYCAL    = personDayStemCAL ? (TIAN_YI[personDayStemCAL] || null) : null;
+
     // A/B person markers for CAL view — always visible when a person is loaded
     // (matches LIST/BEST behaviour; only TABLES has its own per-date connection logic).
     const _aLoadedCAL = !!_personAYear;
@@ -3878,7 +3886,7 @@ function buildCalView() {
                 if (hBlue.length > 0) {
                     dayIsPositive = true;
                     if (hBlue.some(i => i.tag === 'family')) dayIsFamily = true;
-                    const hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, getSpiritForHour(dZhi, hZ), hSS, hSG, personAYear, pYStem, pYBranch, [], null, null, null, null, null, hPillars);
+                    const hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, getSpiritForHour(dZhi, hZ), hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
                     if (hScore > dayBestScore) dayBestScore = hScore;
                     if (personAYear) {
                         const dDataCAL = getXkdgData(dGan, dZhi);
