@@ -2542,7 +2542,7 @@ function renderScanResults(results, mode) {
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
-            <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
+            <div class="scan-date">📅 ${r.date}<br><small>${r.hour}</small></div>
             <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
         </div>`;
     }).join('');
@@ -2558,44 +2558,6 @@ const HOUR_NAMES  = ['子','丑','寅','卯','辰','巳','午','未','申','酉'
 const HOUR_ROMAN  = ['Zi(23-01)','Chou(01-03)','Yin(03-05)','Mao(05-07)','Chen(07-09)',
                      'Si(09-11)','Wu(11-13)','Wei(13-15)','Shen(15-17)','You(17-19)',
                      'Xu(19-21)','Hai(21-23)'];
-const HOUR_ROMAN_NAMES = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
-const HOUR_RANGE_STARTS = ['23:00','01:00','03:00','05:00','07:00','09:00','11:00','13:00','15:00','17:00','19:00','21:00'];
-const HOUR_RANGE_ENDS   = ['01:00','03:00','05:00','07:00','09:00','11:00','13:00','15:00','17:00','19:00','21:00','23:00'];
-
-// ── Central TST label formatter (used by BEST / LIST / TABLES). ─────────
-// Returns the hour-range label with wall-clock first (DST included when active)
-// and TST (longitude-only, no DST) reported in parens when it differs.
-// Format examples (Rome, lon=12.49, utc=1):
-//   winter (DST off):  "22:50-00:50 ✦"
-//   summer (DST on):   "21:50-23:50 (TST 22:50-00:50) ✦"
-//   no shift anywhere: "23:00-01:00"
-function formatTSTRange(baseStart, baseEnd) {
-    const lonEl = document.getElementById('longitude');
-    const utcEl = document.getElementById('utc-offset');
-    const lon = lonEl ? parseFloat(lonEl.value) : NaN;
-    const utc = utcEl ? parseFloat(utcEl.value) : NaN;
-    if (!isFinite(lon) || !isFinite(utc)) return baseStart + '-' + baseEnd;
-    const tstMins  = (lon - utc * 15) * 4;                   // pure longitude (no DST)
-    const wallMins = tstMins - (_dstOn ? 60 : 0);            // longitude + DST (real watch)
-    if (wallMins === 0 && tstMins === 0) return baseStart + '-' + baseEnd;
-    function shift(t, mins) {
-        const [hs, ms] = t.split(':');
-        const total = parseInt(hs) * 60 + (parseInt(ms) || 0) + mins;
-        const norm  = ((total % 1440) + 1440) % 1440;
-        return String(Math.floor(norm / 60)).padStart(2, '0') + ':' +
-               String(Math.floor(norm % 60)).padStart(2, '0');
-    }
-    const wallStr = shift(baseStart, wallMins) + '-' + shift(baseEnd, wallMins);
-    const tstStr  = shift(baseStart, tstMins)  + '-' + shift(baseEnd, tstMins);
-    if (wallStr === tstStr) return wallStr + ' ✦';
-    return wallStr + ' (TST ' + tstStr + ') ✦';
-}
-
-// Convenience wrapper: returns TST-adjusted label for hour index 0..11 (子=0 .. 亥=11).
-function getTSTHourLabel(h) {
-    if (h < 0 || h > 11) return '';
-    return formatTSTRange(HOUR_RANGE_STARTS[h], HOUR_RANGE_ENDS[h]);
-}
 
 // Store person year xkdg for scanner
 let _personYearXkdg = null;
@@ -3462,8 +3424,12 @@ function buildTableView() {
         if (d > 0) {
             const ziBD2 = new Date(dayDate); ziBD2.setHours(0, 30, 0, 0);
             const ziSD2 = new Date(ziBD2.getTime() + offsetMin * 60000);
-            // Zi second half range label (wall-clock + TST annotation when they differ).
-            const ziTimeLabel2 = formatTSTRange('00:00', '01:00');
+            // Compute TST-adjusted Zi boundary times for display
+            const tvTSTMins = offsetMin;
+            function tvTSTTime(h,m) { const t=((h*60+m+tvTSTMins)%1440+1440)%1440; return String(Math.floor(t/60)).padStart(2,'0')+':'+String(Math.round(t%60)).padStart(2,'0'); }
+            const tvZiMid = tvTSTTime(0,0);
+            const tvZiEnd = tvTSTTime(1,0);
+            const tvTstMark = tvTSTMins !== 0 ? ' ✦' : '';
             const ziEC2 = Solar.fromDate(ziBD2).getLunar().getEightChar(); // standard time for hour
             const ziHGan2 = ziEC2.getTimeGan(), ziHZhi2 = ziEC2.getTimeZhi();
             // Day stem from midday of THIS day
@@ -3484,6 +3450,7 @@ function buildTableView() {
             const ziRelHtml2 = ziBlueTexts2.length>0?`<div style="font-size:9px;color:#1a7a1a;font-weight:bold;line-height:1.4;text-align:right;">${ziBlueTexts2.join('<br>')}</div>`:'';
             const ziQualHtml2 = ziQualTexts2.length>0?`<div style="font-size:9px;color:#555;text-align:right;">${ziQualTexts2.join(' · ')}</div>`:'';
             const ziSpHtml2 = ziSpirit2?`<div style="font-size:9px;font-weight:bold;color:${ziSpirit2.auspicious?'#0044cc':'#d40000'};">${ziSpirit2.en} ${ziSpirit2.zh}</div>`:'';
+            const ziTimeLabel2 = `${tvZiMid}-${tvZiEnd}${tvTstMark}`;
             html += `<tr style="cursor:pointer;" onclick="loadDateIntoMain('${localISODate(dayDate)}',0);window.scrollTo({top:0,behavior:'smooth'});" onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">`;
             html += `<td style="border:1px solid #ddd;background:${ziRowBg2};padding:3px 2px;text-align:center;vertical-align:middle;">
                 <div style="font-size:8px;color:#888;">${ziTimeLabel2}</div>
@@ -3622,7 +3589,7 @@ function buildTableView() {
             const hourBg = rowBg;
             html += `<tr style="cursor:pointer;" onclick="loadDateIntoMain('${isoDate}',${h});window.scrollTo({top:0,behavior:'smooth'});" onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">`;
             html += `<td style="border:1px solid #ddd;background:${hourBg};padding:3px 2px;text-align:center;vertical-align:middle;">
-                <div style="font-size:8px;color:#888;">${getTSTHourLabel(h)}</div>
+                <div style="font-size:8px;color:#888;">${HOUR_LABELS[h].split(' ')[1]||''}</div>
                 <div style="font-size:10px;color:#880e4f;font-weight:bold;">${hGan}${hZhi}</div>
                 <div style="color:#c62828;font-size:11px;font-weight:bold;line-height:1;">${pillars.hour.qi}</div>
                 ${drawHex(pillars.hour.hex, 26)}
@@ -4007,36 +3974,31 @@ function buildCalView() {
             }
 
             // ── Background color based on DAILY AVERAGE score ──
-            // Somma di tutti gli score orari (ore positive + ZI second half,
-            // contate positive; ore negative — quelle che apparirebbero sotto il
-            // chip NEGATIVES — contate come -negScore). Divisione sempre per 12
-            // (le 12 ore cinesi tradizionali) indipendentemente da quante ore
-            // hanno effettivamente dati validi. Family pillars vincono sempre
-            // (giallo). Altrimenti:
-            //   avg > 5   → progressive green (chiaro → scuro al crescere)
-            //   avg 0..5  → bianco (neutro)
-            //   avg < 0   → progressive red (chiaro → scuro al decrescere)
-            const dayAvgScore = dayScoreSum / 12;
+            // Family pillars always win (yellow). Otherwise:
+            //   avg > 6   → progressive green (lighter to darker as score rises)
+            //   avg 0..6  → white (neutral)
+            //   avg < 0   → progressive red (lighter to darker as score drops)
+            const dayAvgScore = dayScoreCount > 0 ? dayScoreSum / dayScoreCount : 0;
             let calGreenBg, calBorder;
             if (dayIsFamily) {
                 calGreenBg = '#fffde7';
                 calBorder  = '#f9a825';
-            } else if (dayAvgScore > 9) {
-                calGreenBg = '#a5d6a7'; calBorder = '#1b5e20';   // verde scuro
-            } else if (dayAvgScore > 7) {
-                calGreenBg = '#c8e6c9'; calBorder = '#2e7d32';   // verde medio
-            } else if (dayAvgScore > 5) {
-                calGreenBg = '#dcedc8'; calBorder = '#558b2f';   // verde chiaro
+            } else if (dayAvgScore > 10) {
+                calGreenBg = '#a5d6a7'; calBorder = '#1b5e20';
+            } else if (dayAvgScore > 8) {
+                calGreenBg = '#c8e6c9'; calBorder = '#2e7d32';
+            } else if (dayAvgScore > 6) {
+                calGreenBg = '#dcedc8'; calBorder = '#558b2f';
             } else if (dayAvgScore >= 0) {
-                calGreenBg = '';        calBorder = '';          // bianco (0..5)
+                calGreenBg = '';        calBorder = '';        // white / neutral
             } else if (dayAvgScore > -2) {
-                calGreenBg = '#ffebee'; calBorder = '#ef9a9a';   // rosso chiarissimo
+                calGreenBg = '#ffebee'; calBorder = '#ef9a9a';
             } else if (dayAvgScore > -4) {
-                calGreenBg = '#ffcdd2'; calBorder = '#ef5350';   // rosso chiaro
+                calGreenBg = '#ffcdd2'; calBorder = '#ef5350';
             } else if (dayAvgScore > -6) {
-                calGreenBg = '#ef9a9a'; calBorder = '#d32f2f';   // rosso medio
+                calGreenBg = '#ef9a9a'; calBorder = '#d32f2f';
             } else {
-                calGreenBg = '#e57373'; calBorder = '#c62828';   // rosso scuro
+                calGreenBg = '#e57373'; calBorder = '#c62828';
             }
 
             const personNobles   = personDayStemCAL ? (NOBLE_BRANCHES[personDayStemCAL] || []) : [];
@@ -4168,12 +4130,32 @@ function buildMonthView() {
     function getHourTimeStr(branch) {
         const base = HOUR_SHORT_BY_BRANCH[branch] || '';
         if (!base) return '';
-        const [start, end] = base.split('-');
-        return formatTSTRange(start, end);
+        // Apply TST offset (offsetMin already includes DST)
+        const tstMins = offsetMin + (_dst1 * 60);
+        if (tstMins === 0) return base;
+        const parts = base.split('-');
+        const adjusted = parts.map(t => {
+            const [hStr, mStr] = t.split(':');
+            const totalMins = parseInt(hStr) * 60 + (parseInt(mStr)||0) + tstMins;
+            const h = Math.floor(((totalMins % 1440) + 1440) % 1440 / 60);
+            const m = Math.floor(((totalMins % 1440) + 1440) % 1440 % 60);
+            return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+        });
+        return adjusted.join('-') + ' ✦';
     }
-    // Zi-half range labels (wall-clock with DST + TST annotation when they differ).
-    const ziFirstHalfLabel  = formatTSTRange('23:00', '00:00');
-    const ziSecondHalfLabel = formatTSTRange('00:00', '01:00');
+    // Pre-compute TST-adjusted Zi boundary times for display
+    function getTSTTimeStr(stdHour, stdMin) {
+        const tstMins = offsetMin + (_dst1 * 60);
+        const totalMins = stdHour * 60 + (stdMin||0) + tstMins;
+        const h = Math.floor(((totalMins % 1440) + 1440) % 1440 / 60);
+        const m = Math.floor(((totalMins % 1440) + 1440) % 1440 % 60);
+        return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    }
+    const ziStart = getTSTTimeStr(23, 0);  // TST-adjusted 23:00
+    const ziMid   = getTSTTimeStr(0, 0);   // TST-adjusted 00:00
+    const ziEnd   = getTSTTimeStr(1, 0);   // TST-adjusted 01:00
+    const hasTST  = (offsetMin + _dst1 * 60) !== 0;
+    const tstMark = hasTST ? ' ✦' : '';
     const start    = new Date(startDate + 'T00:00:00');
     const endMV    = new Date(start.getTime() + days * 86400000);
     const jieqiMap = buildJieqiMap(start.getFullYear() - 1, endMV.getFullYear() + 1, offsetMin);
@@ -4367,7 +4349,7 @@ function buildMonthView() {
                     dayRows.push({ score: ziScoreForSort2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};cursor:pointer;">
                         <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${ziHasNeg2?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${ziHasNeg2?'-'+ziNegScore2:ziScore2}${_zi2PurposeIcon ? `<div style="font-size:14px;line-height:1;">${_zi2PurposeIcon}</div>` : ''}</div>
                         <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
-                            <span style="color:#999;font-size:10px;">${ziSecondHalfLabel}</span><br>
+                            <span style="color:#999;font-size:10px;">${ziMid}-${ziEnd}${tstMark}</span><br>
                             <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGan2}${ziHZhi2}</span>${personTagsLV}
                         </div>
                         <div style="width:30px;flex-shrink:0;"></div>
@@ -4520,7 +4502,7 @@ function buildMonthView() {
                 dayRows.push({ score: _ziScoreForSort, isZiFirst: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${_ziRowBg?`background:${_ziRowBg};`:''}border-left:4px solid ${_ziRowBrd};cursor:pointer;">
                     <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${_ziHasNeg?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${_ziHasNeg?'-'+_ziNegScore:ziScoreF}${_ziPurposeIcon ? `<div style="font-size:14px;line-height:1;">${_ziPurposeIcon}</div>` : ''}</div>
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
-                        <span style="color:#999;font-size:10px;">${ziFirstHalfLabel}</span><br>
+                        <span style="color:#999;font-size:10px;">${ziStart}-${ziMid}${tstMark}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${ziHGanF}${ziHZhiF}</span>${personTagsLV}
                     </div>
                     <div style="width:30px;flex-shrink:0;"></div>
@@ -4705,14 +4687,11 @@ function buildMonthView() {
             const hasFamilyLV = hasFamily; // BL only when all 4 pillars share a family
 
             const bg = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
-            // Only restrict to personal matches when person active AND no filters (not for Zi first half)
-            if (!_calShowAllForThisDay && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable) continue;
-            // Green gradient based on score (same tiers as BEST scanner)
-            const isoDate = localISODate(dayDate);
 
-            // 12 Spirits
+            // ── Compute spirit + listScore EARLY so we can use them in the
+            // favourable gate below (Option A: high-score hours bypass the
+            // "must be favourable" requirement). ──
             const spirit = getSpiritForHour(dZhi, hZhiDirect);
-            const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${spirit.en} ${spirit.zh}')">${spirit.en} ${spirit.zh}</span>` : '';
 
             // Score via unified calcHourScore
             let listScore;
@@ -4737,6 +4716,23 @@ function buildMonthView() {
             } else {
                 listScore = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
             }
+
+            // LIST_HIGH_SCORE_THRESHOLD: hours with listScore >= this value bypass
+            // the "must be favourable" gate even when a person is loaded — covers
+            // cases where an hour has no XKDG blue items but is strong via Nayin
+            // Power, personal stars, auspicious spirit, etc. (e.g. score 13 from
+            // Noble + Energetic + Cerulean Dragon + Nayin Power floor).
+            // Adjust to taste — currently 8.
+            const LIST_HIGH_SCORE_THRESHOLD = 8;
+
+            // Only restrict to personal matches when person active AND no filters (not for Zi first half),
+            // BUT allow high-score hours through even when not isFavourable.
+            if (!_calShowAllForThisDay && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) continue;
+            // Green gradient based on score (same tiers as BEST scanner)
+            const isoDate = localISODate(dayDate);
+
+            // 12 Spirits
+            const spiritHTML = spirit ? `<span style="font-size:10px;font-weight:bold;color:${spirit.auspicious ? '#0044cc' : '#d40000'};cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${spirit.en} ${spirit.zh}')">${spirit.en} ${spirit.zh}</span>` : '';
 
             // Score-based filter (matches the user's mental model: "negative = score < +1").
             // Default: hide rows with listScore < 1. With NEGATIVES chip ON: show ONLY listScore < 1.
