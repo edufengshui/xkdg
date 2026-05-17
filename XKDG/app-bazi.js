@@ -3055,6 +3055,7 @@ var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:
 var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak', legal:'Legal' };
 var _scoreModeBalanced = false; // false = A Priority, true = Balanced (min of A and B)
 var _listSortByScore   = false; // false = chronological, true = best hour first per day
+var _listShowAll       = false; // false = positive only, true = show all hours (positive + negative)
 
 function toggleScoreMode() {
     _scoreModeBalanced = !_scoreModeBalanced;
@@ -4333,7 +4334,7 @@ function buildMonthView() {
                 // with regular hours: default keeps ziScore2 >= 1; NEGATIVES keeps ziScore2 < 1.
                 // BYPASS when user drilled in from CAL — show every Zi hour of that day.
                 let ziPassF2;
-                if (_calShowAllForThisDay) {
+                if (_calShowAllForThisDay || _listShowAll) {
                     ziPassF2 = true;
                 } else if (ziHasNeg2) {
                     ziPassF2 = (ziScore2 < 1);
@@ -4362,8 +4363,8 @@ function buildMonthView() {
                 if (ziPassF2) {
                     const ziBg2 = ziHasNeg2
                         ? (ziNegScore2>=10?'#ffcdd2':ziNegScore2>=8?'#ffd6da':ziNegScore2>=6?'#ffe0e3':ziNegScore2>=4?'#ffebed':'#fff5f6')
-                        : (ziScore2>=12?'#a5d6a7':ziScore2>=9?'#c8e6c9':ziScore2>=6?'#dcedc8':ziScore2>=4?'#f1f8e9':'#ffffff');
-                    const ziBrd2 = ziHasNeg2 ? '#c62828' : (ziScore2>=12?'#1b5e20':ziScore2>=9?'#2e7d32':ziScore2>=6?'#388e3c':ziScore2>=4?'#558b2f':'#aaa');
+                        : (ziScore2>=10?'#a5d6a7':ziScore2>=8?'#c8e6c9':ziScore2>=5?'#dcedc8':ziScore2>=1?'#f1f8e9':ziScore2>=0?'#ffffff':ziScore2>=-3?'#ffebee':ziScore2>=-6?'#ffcdd2':'#ef9a9a');
+                    const ziBrd2 = ziHasNeg2 ? '#c62828' : (ziScore2>=10?'#1b5e20':ziScore2>=8?'#2e7d32':ziScore2>=5?'#388e3c':ziScore2>=1?'#558b2f':ziScore2>=0?'#aaa':ziScore2>=-3?'#e57373':ziScore2>=-6?'#ef5350':'#c62828');
                     const ziElN2 = ziBlue2.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
                     const ziSp2H = ziSpirit2?`<div style="font-size:9px;font-weight:bold;color:${ziSpirit2.auspicious?'#0044cc':'#d40000'};">${ziSpirit2.en} ${ziSpirit2.zh}</div>`:'';
                     const ziNy2H = ziNayin2.label?`<div style="font-size:9px;font-weight:bold;color:${ziNayin2.label==='Nayin Power'?'#1b5e20':ziNayin2.label==='Nayin Weak'?'#b71c1c':'#2e7d32'};">${ziNayin2.label}</div>`:'';
@@ -4502,7 +4503,7 @@ function buildMonthView() {
                     const _ziDGan = (ziPillars.day && ziPillars.day.stem)   || dGan;
                     const _ziDZhi = (ziPillars.day && ziPillars.day.branch) || dZhi;
                     const _ziPasses = checkPurpose(_ziPurpose, _ziDGan, _ziDZhi, ziBlueF, ziScoreF, ziPillars, ziItemsF, ziSpiritF);
-                    if (!_ziPasses && !_calShowAllForThisDay) continue;
+                    if (!_ziPasses && !_calShowAllForThisDay && !_listShowAll) continue;
                     if (_ziPasses) _ziPurposeIcon = PURPOSE_ICONS[_ziPurpose] || '';
                 }
 
@@ -4510,9 +4511,9 @@ function buildMonthView() {
                 // Default: hide ziScoreF < 1. With NEGATIVES on: show ONLY ziScoreF < 1.
                 // BYPASS when the user drilled in from CAL (show every hour of the day).
                 // (Consistent with the rule applied to regular hours.)
-                if (!_calShowAllForThisDay && (_ziHasNeg ? (ziScoreF >= 1) : (ziScoreF < 1))) continue;
-                const ziBgF  = ziScoreF>=12?'#a5d6a7':ziScoreF>=9?'#c8e6c9':ziScoreF>=6?'#dcedc8':ziScoreF>=4?'#f1f8e9':'#ffffff';
-                const ziBrdF = ziScoreF>=12?'#1b5e20':ziScoreF>=9?'#2e7d32':ziScoreF>=6?'#388e3c':ziScoreF>=4?'#558b2f':'#aaa';
+                if (!_calShowAllForThisDay && !_listShowAll && (_ziHasNeg ? (ziScoreF >= 1) : (ziScoreF < 1))) continue;
+                const ziBgF  = ziScoreF>=10?'#a5d6a7':ziScoreF>=8?'#c8e6c9':ziScoreF>=5?'#dcedc8':ziScoreF>=1?'#f1f8e9':ziScoreF>=0?'#ffffff':ziScoreF>=-3?'#ffebee':ziScoreF>=-6?'#ffcdd2':'#ef9a9a';
+                const ziBrdF = ziScoreF>=10?'#1b5e20':ziScoreF>=8?'#2e7d32':ziScoreF>=5?'#388e3c':ziScoreF>=1?'#558b2f':ziScoreF>=0?'#aaa':ziScoreF>=-3?'#e57373':ziScoreF>=-6?'#ef5350':'#c62828';
                 const ziElNF = ziBlueF.filter(i=>i.text.includes('Element')||i.text==='Pure Qi'||i.tag==='family'||i.text.startsWith('Inverse')).map(i=>i.text);
                 const ziSpHF = ziSpiritF?`<div style="font-size:9px;font-weight:bold;color:${ziSpiritF.auspicious?'#0044cc':'#d40000'};">${ziSpiritF.en} ${ziSpiritF.zh}</div>`:'';
                 const ziNyFH = ziNayinF.label?`<div style="font-size:9px;font-weight:bold;color:${ziNayinF.label==='Nayin Power'?'#1b5e20':ziNayinF.label==='Nayin Weak'?'#b71c1c':'#2e7d32'};">${ziNayinF.label}</div>`:'';
@@ -4620,7 +4621,7 @@ function buildMonthView() {
 
             // Skip-gate (modified to allow negatives through when filter active,
             // and fully bypassed when the row belongs to a day the user clicked from CAL)
-            if (!_calShowAllForThisDay && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
 
             // (Old isNegativeHour gate removed — superseded by the listScore-based filter
             //  applied further down once listScore has been computed.)
@@ -4666,7 +4667,7 @@ function buildMonthView() {
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
             const isNayinWeakLV = nayinResLV.label === 'Nayin Weak';
             const isVoidLV = !hasPureQiOrFamilyLV && !isNayinWeakLV && !isZiFirst && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
-            if (isVoidLV && !hasNegativesFilterMV && !_calShowAllForThisDay) continue;
+            if (isVoidLV && !hasNegativesFilterMV && !_calShowAllForThisDay && !_listShowAll) continue;
 
             let isFavourable = false;
             if (isPositive && (personAYear || personBYear)) {
@@ -4751,7 +4752,7 @@ function buildMonthView() {
 
             // Only restrict to personal matches when person active AND no filters (not for Zi first half),
             // BUT allow high-score hours through even when not isFavourable.
-            if (!_calShowAllForThisDay && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) continue;
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) continue;
             // Green gradient based on score (same tiers as BEST scanner)
             const isoDate = localISODate(dayDate);
 
@@ -4762,7 +4763,7 @@ function buildMonthView() {
             // Default: hide rows with listScore < 1. With NEGATIVES chip ON: show ONLY listScore < 1.
             // BYPASS when the user drilled in from CAL — every hour of that day must appear.
             // (TABLES is the only view that shows everything regardless of score.)
-            if (!_calShowAllForThisDay && (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1))) continue;
+            if (!_calShowAllForThisDay && !_listShowAll && (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1))) continue;
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
             const nayinPersonHTMLLV = nayinResLV.personLabel && nayinResLV.personLabel.startsWith('Nayin ✦ Person')
@@ -4777,27 +4778,34 @@ function buildMonthView() {
                               : nayinResLV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Weak')">✕ Nayin Weak</div>`
                               : '';
             const keHTMLLV = keScoreLV > 0 ? `<div style="font-size:9px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${keScoreLV}</div>` : '';
-            const lvGreenBg = listScore >= 12 ? '#a5d6a7'   // rank-1 strong green
-                            : listScore >= 9  ? '#c8e6c9'   // rank-2 high
-                            : listScore >= 6  ? '#dcedc8'   // rank-3 medium
-                            : listScore >= 4  ? '#f1f8e9'   // rank-4 low
-                            : '#ffffff';                    // rank-5 lowest
-            const lvGreenBorder = listScore >= 12 ? '#1b5e20'
-                                : listScore >= 9  ? '#2e7d32'
-                                : listScore >= 6  ? '#388e3c'
-                                : listScore >= 4  ? '#558b2f'
-                                : '#aaa';
-            // Negatives mode: soft red gradient based on negativeScore
-            const negBgLV = negativeScore >= 10 ? '#ffcdd2'   // worst
+            // Unified score-based row coloring: green for positive, red for negative
+            const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
+                            : listScore >= 8  ? '#c8e6c9'   // medium green
+                            : listScore >= 5  ? '#dcedc8'   // light green
+                            : listScore >= 1  ? '#f1f8e9'   // pale green
+                            : listScore >= 0  ? '#ffffff'   // neutral white
+                            : listScore >= -3 ? '#ffebee'   // pale red
+                            : listScore >= -6 ? '#ffcdd2'   // medium red
+                            : '#ef9a9a';                    // deep red
+            const lvScoreBorder = listScore >= 10 ? '#1b5e20'
+                                : listScore >= 8  ? '#2e7d32'
+                                : listScore >= 5  ? '#388e3c'
+                                : listScore >= 1  ? '#558b2f'
+                                : listScore >= 0  ? '#aaa'
+                                : listScore >= -3 ? '#e57373'
+                                : listScore >= -6 ? '#ef5350'
+                                : '#c62828';
+            // Negatives mode: soft red gradient based on negativeScore (legacy)
+            const negBgLV = negativeScore >= 10 ? '#ffcdd2'
                           : negativeScore >= 8  ? '#ffd6da'
                           : negativeScore >= 6  ? '#ffe0e3'
                           : negativeScore >= 4  ? '#ffebed'
-                          : '#fff5f6';                       // mildly negative
+                          : '#fff5f6';
             const rowStyle = hasNegativesFilterMV
                 ? `background:${negBgLV};border-left:4px solid #c62828;`
                 : hasFamilyLV
                 ? `background:#fffb00;outline:3px solid #f9a825;outline-offset:-3px;border-left:4px solid #f9a825;`
-                : `background:${lvGreenBg};border-left:4px solid ${lvGreenBorder};`;
+                : `background:${lvScoreBg};border-left:4px solid ${lvScoreBorder};`;
             const dateNoblesLV = NOBLE_BRANCHES[dGan] || [];
             const isDateNobleLV = dateNoblesLV.includes(hZhiDirect);
             const nobleLabelLV = isDateNobleLV ? 'N' : '';
@@ -4921,7 +4929,10 @@ function buildMonthView() {
             " style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #555;background:#fff;color:#555;cursor:pointer;">← Back to Calendar</button>
            </div>`
         : '';
-    const sortToggleLV = `<div style="text-align:right;margin-bottom:4px;padding:0 4px;">
+    const sortToggleLV = `<div style="text-align:right;margin-bottom:4px;padding:0 4px;display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;">
+        <button onclick="toggleListAll()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid ${_listShowAll?'#c62828':'#888'};background:${_listShowAll?'#c62828':'#fff'};color:${_listShowAll?'#fff':'#888'};cursor:pointer;">
+            ${_listShowAll ? '👁 ALL Hours' : '✓ Positive Only'}
+        </button>
         <button onclick="toggleListSort()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #1565c0;background:${_listSortByScore?'#1565c0':'#fff'};color:${_listSortByScore?'#fff':'#1565c0'};cursor:pointer;">
             ${_listSortByScore ? '⇅ Best First' : '⇅ Chronological'}
         </button>
@@ -4965,6 +4976,11 @@ function showDayInList(isoDate) {
 
 function toggleListSort() {
     _listSortByScore = !_listSortByScore;
+    buildMonthView();
+}
+
+function toggleListAll() {
+    _listShowAll = !_listShowAll;
     buildMonthView();
 }
 
