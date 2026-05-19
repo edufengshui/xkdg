@@ -381,9 +381,12 @@
     }, 50);
   }
 
+  var PAL_TRIG = {1:"☵",2:"☷",3:"☳",4:"☴",6:"☰",7:"☱",8:"☶",9:"☲"};
+
   function renderResults(results, dir, startStr, days, container){
     var palace = DIR_TO_PALACE[dir];
     var palLabel = PALACE_NAME[palace] || palace;
+    var trig = PAL_TRIG[palace] || '';
     var byDate = {}, dateOrder = [];
     for(var i=0; i<results.length; i++){
       var r = results[i];
@@ -407,13 +410,13 @@
         for(var s=0; s<Math.min(r.score,5); s++) stars += '★';
         var tianEl = stemElement(r.cell.tianPin);
         var diEl   = stemElement(r.cell.diPin);
-        var cellHtml = '<div class="ws-cell">' +
-          '<div class="ws-cell-row"><span class="ws-cell-label">Spirito</span><span class="ws-cell-val">' + r.cell.deityHan + ' ' + r.cell.deityName + '</span></div>' +
-          '<div class="ws-cell-row"><span class="ws-cell-label">Stella</span><span class="ws-cell-val">' + r.cell.starHan + ' ' + r.cell.starName + '</span></div>' +
-          '<div class="ws-cell-row"><span class="ws-cell-label">Tian 天</span><span class="ws-cell-val elem-' + tianEl + '"><span class="ws-cell-han">' + r.cell.tianHan + '</span>' + r.cell.tianPin + '</span></div>' +
-          '<div class="ws-cell-row"><span class="ws-cell-label">Porta</span><span class="ws-cell-val">' + r.cell.doorHan + ' ' + r.cell.doorName + '</span></div>' +
-          '<div class="ws-cell-row"><span class="ws-cell-label">Di 地</span><span class="ws-cell-val elem-' + diEl + '"><span class="ws-cell-han">' + r.cell.diHan + '</span>' + r.cell.diPin + '</span></div>' +
-          '<div></div>' +
+        var miniCell = '<div class="ws-mini-cell">' +
+          '<span class="mc-deity">' + r.cell.deityName + '</span>' +
+          '<span class="mc-tian elem-' + tianEl + '">' + r.cell.tianHan + '</span>' +
+          '<span class="mc-star">' + r.cell.starName + '</span>' +
+          '<span class="mc-door">' + r.cell.doorName + '</span>' +
+          '<span class="mc-di elem-' + diEl + '">' + r.cell.diHan + '</span>' +
+          '<span class="mc-palnum"><span class="mc-trig">' + trig + '</span>' + palace + '</span>' +
           '</div>';
         var tagsHtml = '';
         for(var hi=0; hi<r.hits.length; hi++){
@@ -421,17 +424,20 @@
           tagsHtml += '<span class="ws-tag ws-tag-' + h.cat + '">' + h.label + '</span>';
         }
         html += '<div class="ws-result-card">' +
+          '<div class="ws-result-main">' +
           '<div class="ws-result-top">' +
           '<span class="ws-result-hour">' + r.hourHan + ' <span style="color:#888;">(' + r.hourTime + ')</span></span>' +
           '<span class="ws-result-score">' + stars + ' (' + r.score + ')</span>' +
           '</div>' +
-          cellHtml +
           '<div class="ws-result-hits">' + tagsHtml + '</div>' +
+          '</div>' +
+          miniCell +
           '</div>';
       }
     }
     container.innerHTML = html;
   }
+
 
   // ============================================================
   // EMBEDDED FULL CHART DATA (~475 KB → ~140 KB gzipped)
