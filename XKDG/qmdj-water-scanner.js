@@ -130,19 +130,46 @@
     'Ding':'Gui', 'Gui':'Ding'
   };
 
+  // Penalties — only on Tian Pan stem in the listed palace (each = -1 to score)
+  const TIAN_PENALTIES = {
+    'Wu':   [3],   // Wu in Zhen
+    'Ji':   [2],   // Ji in Kun
+    'Geng': [8],   // Geng in Gen (rare since Geng is mostly excluded)
+    'Xin':  [9],   // Xin in Li
+    'Ren':  [4],   // Ren in Xun
+    'Gui':  [4]    // Gui in Xun
+  };
+
   function extractHits(chart, targetPalace){
     var cell = chart.c[targetPalace];
     if(!cell) return [];
     var di = cell[0], ti = cell[1], door = cell[4];
+    var leadStem = chart.ld;       // Commander stem of the current xun
+    var commanderPal = chart.zfp;  // Zhi Fu palace = where Commander lives
 
-    // FILTER 1 — exclude Tian/Di stem clash
+    // FILTER 1 — Tian/Di stem clash → exclude
     if(STEM_CLASHES[ti] === di) return [];
 
-    // FILTER 2 — must have favorable door
+    // FILTER 2 — Geng restrictions
+    var gengInPalace = (ti === 'Geng' || di === 'Geng');
+    if(gengInPalace){
+      // 2a — Geng in Commander palace → always excluded
+      if(targetPalace === commanderPal) return [];
+      // 2b — Geng without Ding in the palace → excluded
+      var dingInPalace = (ti === 'Ding' || di === 'Ding');
+      if(!dingInPalace) return [];
+    }
+
+    // FILTER 3 — duplicate Xin/Ren/Gui (Tian == Di), allowed only if that stem is Commander
+    if(ti === di && (ti === 'Xin' || ti === 'Ren' || ti === 'Gui')){
+      if(leadStem !== ti) return [];
+    }
+
+    // FILTER 4 — must have favorable door
     var hasFavDoor = door && FAV_DOORS.indexOf(door) !== -1;
     if(!hasFavDoor) return [];
 
-    // FILTER 3 — must have at least one of: San Qi on Tian, Zhi Fu at palace, Zhi Shi at palace
+    // FILTER 5 — must have at least one of: San Qi on Tian, Zhi Fu at palace, Zhi Shi at palace
     var hasSanQi  = SAN_QI.indexOf(ti) !== -1;
     var hasZhiFu  = chart.zfp === targetPalace;
     var hasZhiShi = chart.zsp === targetPalace;
@@ -155,7 +182,7 @@
     if(hasZhiFu)  hits.push({cat:'zhi', label:'Zhi Fu 直符'});
     if(hasZhiShi) hits.push({cat:'zhi', label:'Zhi Shi 直使'});
 
-    // BONUS COMBOS — amplifiers
+    // BONUS COMBOS — amplifiers (positive)
     if(ti === 'Bing' && di === 'Wu')   hits.push({cat:'combo', label:'丙↑戊'});
     if(ti === 'Wu'   && di === 'Bing') hits.push({cat:'combo', label:'戊↑丙'});
     if(hasZhiFu  && hasSanQi)          hits.push({cat:'combo', label:'SanQi+ZhiFu'});
@@ -164,6 +191,12 @@
     if(ti === 'Yi'   && targetPalace === 3) hits.push({cat:'combo', label:'乙@震'});
     if(ti === 'Bing' && (targetPalace === 9 || targetPalace === 4)) hits.push({cat:'combo', label:'丙@離/巽'});
     if(ti === 'Ding' && (targetPalace === 7 || targetPalace === 9)) hits.push({cat:'combo', label:'丁@兌/離'});
+
+    // PENALTIES — Tian Pan stem in disadvantageous palace (each -1)
+    var penPalaces = TIAN_PENALTIES[ti];
+    if(penPalaces && penPalaces.indexOf(targetPalace) !== -1){
+      hits.push({cat:'pen', label:'⚠ ' + STEM_HAN[ti] + ' @ ' + targetPalace});
+    }
 
     return hits;
   }
@@ -208,7 +241,8 @@
             hourHan: STEM_HAN[hp.stem] + BR_HAN[hp.branch],
             hourTime: hp.time,
             dun: info.dun, ju: info.ju, jieQi: info.jqPy,
-            score: hits.length, hits: hits, cell: cellInfo
+            score: (function(){var p=0,n=0;for(var k=0;k<hits.length;k++){if(hits[k].cat==='pen')n++;else p++;}return p-n;})(),
+            hits: hits, cell: cellInfo
           });
         }
       }
@@ -278,6 +312,7 @@
       '#qmdj-ws-panel .ws-tag-qi{background:#e3f2fd;color:#1565c0;}' +
       '#qmdj-ws-panel .ws-tag-zhi{background:#fff3e0;color:#e65100;}' +
       '#qmdj-ws-panel .ws-tag-combo{background:#fce4ec;color:#c62828;}' +
+      '#qmdj-ws-panel .ws-tag-pen{background:#fff3cd;color:#856404;border:1px solid #ffd966;}' +
       '#qmdj-ws-panel .ws-day-header{font-size:14px;font-weight:600;color:#333;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #eee;}' +
       '#qmdj-ws-panel .ws-summary{font-size:13px;color:#666;margin-top:12px;padding:12px;background:#f8f8f8;border-radius:8px;}' +
       // ============ Mini quadrant cell (chart-cell style) ============
