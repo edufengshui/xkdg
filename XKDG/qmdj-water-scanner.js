@@ -122,23 +122,49 @@
     return hours;
   }
 
+  // Tian-Di stem clashes (天干相沖): 甲-庚, 乙-辛, 丙-壬, 丁-癸
+  const STEM_CLASHES = {
+    'Jia':'Geng', 'Geng':'Jia',
+    'Yi':'Xin',   'Xin':'Yi',
+    'Bing':'Ren', 'Ren':'Bing',
+    'Ding':'Gui', 'Gui':'Ding'
+  };
+
   function extractHits(chart, targetPalace){
     var cell = chart.c[targetPalace];
     if(!cell) return [];
     var di = cell[0], ti = cell[1], door = cell[4];
+
+    // FILTER 1 — exclude Tian/Di stem clash
+    if(STEM_CLASHES[ti] === di) return [];
+
+    // FILTER 2 — must have favorable door
+    var hasFavDoor = door && FAV_DOORS.indexOf(door) !== -1;
+    if(!hasFavDoor) return [];
+
+    // FILTER 3 — must have at least one of: San Qi on Tian, Zhi Fu at palace, Zhi Shi at palace
+    var hasSanQi  = SAN_QI.indexOf(ti) !== -1;
+    var hasZhiFu  = chart.zfp === targetPalace;
+    var hasZhiShi = chart.zsp === targetPalace;
+    if(!hasSanQi && !hasZhiFu && !hasZhiShi) return [];
+
+    // PASSED ALL FILTERS — build hit list
     var hits = [];
-    if(door && FAV_DOORS.indexOf(door) !== -1) hits.push({cat:'door', label:DOOR_TAG_LABELS[door]});
-    if(SAN_QI.indexOf(ti) !== -1) hits.push({cat:'qi', label:QI_TAG_LABELS[ti]});
-    if(chart.zfp === targetPalace) hits.push({cat:'zhi', label:'Zhi Fu 直符'});
-    if(chart.zsp === targetPalace) hits.push({cat:'zhi', label:'Zhi Shi 直使'});
-    if(ti === 'Bing' && di === 'Wu') hits.push({cat:'combo', label:'丙↑戊'});
-    if(ti === 'Wu' && di === 'Bing') hits.push({cat:'combo', label:'戊↑丙'});
-    if(targetPalace === chart.zfp && SAN_QI.indexOf(ti) !== -1) hits.push({cat:'combo', label:'SanQi+ZhiFu'});
-    if(targetPalace === chart.zsp && SAN_QI.indexOf(ti) !== -1) hits.push({cat:'combo', label:'SanQi+ZhiShi'});
-    if(targetPalace === chart.zsp && di === 'Ding') hits.push({cat:'combo', label:'丁Di+ZhiShi'});
-    if(ti === 'Yi' && targetPalace === 3) hits.push({cat:'combo', label:'乙@震'});
+    hits.push({cat:'door', label:DOOR_TAG_LABELS[door]});
+    if(hasSanQi)  hits.push({cat:'qi',  label:QI_TAG_LABELS[ti]});
+    if(hasZhiFu)  hits.push({cat:'zhi', label:'Zhi Fu 直符'});
+    if(hasZhiShi) hits.push({cat:'zhi', label:'Zhi Shi 直使'});
+
+    // BONUS COMBOS — amplifiers
+    if(ti === 'Bing' && di === 'Wu')   hits.push({cat:'combo', label:'丙↑戊'});
+    if(ti === 'Wu'   && di === 'Bing') hits.push({cat:'combo', label:'戊↑丙'});
+    if(hasZhiFu  && hasSanQi)          hits.push({cat:'combo', label:'SanQi+ZhiFu'});
+    if(hasZhiShi && hasSanQi)          hits.push({cat:'combo', label:'SanQi+ZhiShi'});
+    if(hasZhiShi && di === 'Ding')     hits.push({cat:'combo', label:'丁Di+ZhiShi'});
+    if(ti === 'Yi'   && targetPalace === 3) hits.push({cat:'combo', label:'乙@震'});
     if(ti === 'Bing' && (targetPalace === 9 || targetPalace === 4)) hits.push({cat:'combo', label:'丙@離/巽'});
     if(ti === 'Ding' && (targetPalace === 7 || targetPalace === 9)) hits.push({cat:'combo', label:'丁@兌/離'});
+
     return hits;
   }
 
