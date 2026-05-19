@@ -1,2 +1,2 @@
-    const _ver = (typeof APP_VERSION !== 'undefined') ? APP_VERSION : '?';
-    document.getElementById('version-tag').textContent = 'v' + _ver;
+    const APP_VERSION = 430;
+    document.getElementById('version-tag').textContent = 'v' + APP_VERSION;
