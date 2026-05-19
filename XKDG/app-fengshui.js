@@ -1379,8 +1379,14 @@ if (document.readyState === 'loading'){
       'background:#1565c0;color:#fff;border-radius:4px;cursor:pointer;' +
       'font-size:13px;font-weight:bold;';
     btn.addEventListener('click', saveLocation);
-    // Place it right after the longitude input
-    lon.parentElement.insertBefore(btn, lon.nextSibling);
+    // Place it in the geo-row-top container (new layout v428+)
+    const geoTop = document.getElementById('geo-row-top');
+    if (geoTop) {
+      geoTop.appendChild(btn);
+    } else {
+      // Fallback for older HTML without geo-row-top
+      lon.parentElement.insertBefore(btn, lon.nextSibling);
+    }
   }
   if (document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', inject);
@@ -2208,7 +2214,17 @@ if (typeof buildCalView === 'function') {
             'autocomplete="off">' +
             '<datalist id="city-list">' + datalistHtml + '</datalist>';
 
-        lngContainer.parentElement.insertBefore(wrap, lngContainer.nextSibling);
+        // Place in geo-row-top, before the SAVE button (new layout v428+)
+        const geoTop = document.getElementById('geo-row-top');
+        const saveBtn = document.getElementById('btn-save-loc');
+        if (geoTop && saveBtn) {
+            geoTop.insertBefore(wrap, saveBtn);
+        } else if (geoTop) {
+            geoTop.appendChild(wrap);
+        } else {
+            // Fallback for older HTML without geo-row-top
+            lngContainer.parentElement.insertBefore(wrap, lngContainer.nextSibling);
+        }
 
         var cityData = {};
         options.forEach(function(c){ cityData[c.name] = c; });

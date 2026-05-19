@@ -23,7 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css?v=424">
+    <link rel="stylesheet" href="styles.css?v=425">
     <style>
       /* Negatives chip — white by default, red when active */
       .filter-chip.negatives-chip {
@@ -79,22 +79,26 @@
         <button class="btn-tool" onclick="getGPS()">GPS</button>
         <input type="date" id="date">
         <input type="time" id="time">
-        <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
-        <button class="btn-calc btn-fs" onclick="openFengShuiFromTop()" title="Open Feng Shui luopan for the date above">🧭 FS</button>
     </div>
 
     <div class="geo-row">
-        <div class="geo-item">
-            <label>UTC:</label>
-            <input type="number" id="utc-offset" value="1" step="0.25" style="width: 55px;">
+        <div class="geo-row-top" id="geo-row-top">
+            <div class="geo-item">
+                <label>UTC:</label>
+                <input type="number" id="utc-offset" value="1" step="0.25" style="width: 55px;">
+            </div>
+            <div class="geo-item">
+                <label>LONG:</label>
+                <input type="number" id="longitude" value="12.49" step="0.01" style="width: 85px;">
+            </div>
+            <!-- City picker and SAVE button injected here by app-fengshui.js -->
         </div>
-        <div class="geo-item">
-            <label>LONG:</label>
-            <input type="number" id="longitude" value="12.49" step="0.01" style="width: 85px;">
-        </div>
-        <div id="solar-time-display" class="solar-badge">True Solar: --:--</div>
-        <div>
-            <button id="dst-btn" onclick="toggleDST()" style="padding:4px 10px; border-radius:15px; border:1px solid #bbb; font-size:13px; font-weight:bold; background:#fff; cursor:pointer;">DST: OFF</button>
+        <div class="geo-row-bottom" id="geo-row-bottom">
+            <div id="solar-time-display" class="solar-badge">True Solar: --:--</div>
+            <div>
+                <button id="dst-btn" onclick="toggleDST()" style="padding:4px 10px; border-radius:15px; border:1px solid #bbb; font-size:13px; font-weight:bold; background:#fff; cursor:pointer;">DST: OFF</button>
+            </div>
+            <button class="btn-calc" onclick="calculateBazi()">CALCULATE</button>
         </div>
     </div>
 
@@ -324,7 +328,7 @@
 
 <script src="cities.js?v=413"></script>
 <script src="app-bazi.js?v=428"></script>
-<script src="app-fengshui.js?v=413"></script>
+<script src="app-fengshui.js?v=414"></script>
 <div id="version-tag" style="text-align:center; margin-top:10px; font-size:11px; color:#aaa; letter-spacing:1px;"></div>
 <script src="version.js?v=412"></script>
 </body>

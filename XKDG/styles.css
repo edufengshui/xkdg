@@ -25,22 +25,12 @@
                 padding: 7px 10px;
                 font-size: 13px;
             }
-            .inputs-row .btn-calc:not(.btn-fs) {
-                grid-column: span 2;
-                padding: 9px 6px;
-                font-size: 14px;
-            }
-            .inputs-row .btn-calc.btn-fs {
-                grid-column: span 1;
-                padding: 9px 6px;
-                font-size: 13px;
-                white-space: nowrap;
-            }
         }
         
         .geo-row { 
             display: flex; 
-            gap: 10px; 
+            flex-direction: column;
+            gap: 6px;
             margin-bottom: 12px; 
             justify-content: center; 
             align-items: center; 
@@ -50,23 +40,28 @@
             border: 1px solid #e0e0e0;
             width: auto;
             align-self: center;
+        }
+        .geo-row-top, .geo-row-bottom {
+            display: flex;
             flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
         }
         .geo-item { display: flex; align-items: center; gap: 4px; }
 
         @media (max-width: 600px) {
             .geo-row {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 6px;
                 padding: 8px;
                 width: 100%;
-                justify-content: center;
-                align-items: center;
             }
             .geo-row label { font-size: 11px; margin-right: 2px; }
             .geo-row input[type="number"] { padding: 5px 4px; font-size: 13px; }
-            .geo-row > #city-picker-wrap { flex-basis: 100%; display: flex; justify-content: center; }
+            .geo-row-bottom .btn-calc {
+                padding: 8px 20px;
+                font-size: 14px;
+            }
         }
         
         input, button { padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
@@ -74,10 +69,8 @@
         
         .btn-calc { background: linear-gradient(135deg, #b71c1c, #d32f2f); color: white; cursor: pointer; border: none; font-weight: bold; padding: 8px 25px; }
         .btn-calc:hover { background: linear-gradient(135deg, #a01515, #c62828); }
-        .btn-calc.btn-fs { background: linear-gradient(135deg, #7a5a1a, #a07a28); }
-        .btn-calc.btn-fs:hover { background: linear-gradient(135deg, #6a4a10, #8a6a1f); }
         .btn-tool { background: #f0f0f0; color: #333; cursor: pointer; border: 1px solid #bbb; font-weight: 600; }
-        .geo-row button:not(#dst-btn) { background: #f0f0f0 !important; color: #333 !important; cursor: pointer; border: 1px solid #bbb !important; font-weight: 600; font-size: 13px; }
+        .geo-row button:not(#dst-btn):not(.btn-calc) { background: #f0f0f0 !important; color: #333 !important; cursor: pointer; border: 1px solid #bbb !important; font-weight: 600; font-size: 13px; }
 
         .chart { display: grid; grid-template-columns: repeat(4, 1fr); border: 2px solid #bbb; background: #fff; width: 100%; min-width: 0; }
         .pillar { display: flex; flex-direction: column; border-right: 2px solid #bbb; text-align: center; min-width: 0; overflow: hidden; }
