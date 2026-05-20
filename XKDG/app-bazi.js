@@ -3433,6 +3433,10 @@ function buildTableView() {
     const utc       = parseFloat(document.getElementById('utc-offset').value);
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
 
+    const startDateObj = new Date(startDate + 'T12:00:00');
+    const jieqiMapTV = buildJieqiMap(startDateObj.getFullYear() - 1, startDateObj.getFullYear() + 1, offsetMin);
+    const MONTH_START_JQ_TV = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'];
+
     // Draw a mini hexagram (6 lines, solid or broken)
     function drawHex(hexNum, size) {
         size = size || 28;
@@ -3757,6 +3761,20 @@ function buildTableView() {
                 ${spiritsHtml}
                 ${tombHtml}
                 ${nayinHtmlTV}${nayinPersonHtmlTV}
+                ${(() => {
+                    const jqTV = jieqiMapTV[isoDate] || [];
+                    const hStartMin = HOUR_STARTS[h] * 60;
+                    return jqTV.filter(j => {
+                        if (!j.time) return false;
+                        const [jh,jm] = j.time.split(':').map(Number);
+                        const jMin = jh*60+jm;
+                        if (h === 0) return jMin >= 23*60 || jMin < 60;
+                        return jMin >= hStartMin && jMin < hStartMin + 120;
+                    }).map(j => {
+                        const isJ = MONTH_START_JQ_TV.includes(j.name);
+                        return `<div style="display:inline-block;background:${isJ?'#1565c0':'#ff9800'};color:#fff;font-weight:bold;font-size:8px;padding:1px 4px;border-radius:3px;margin-top:2px;">${isJ?'节':'气'} ${j.name} ${j.time}</div>`;
+                    }).join('');
+                })()}
             </td>`;
 
 
@@ -3945,8 +3963,8 @@ function buildCalView() {
                 const jqEntry = jieqiMap[isoDate] || [];
                 const jqHtmlSimple = jqEntry.map(j => {
                     const isJie = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'].includes(j.name);
-                    const jqBg = isJie ? '#d40000' : '#ff9800';
-                    return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}</div>`;
+                    const jqBg = isJie ? '#1565c0' : '#ff9800';
+                    return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}${j.time ? ' '+j.time : ''}</div>`;
                 }).join('');
                 html += `<div class="cal-cell${isToday?' today':''}" style="opacity:${isInRange?1:0.4};" onclick="showDayInList('${isoDate}')">
                     <div style="display:flex;justify-content:space-between;">
@@ -4139,14 +4157,14 @@ function buildCalView() {
             const cellStyle = (calGreenBg ? `background:${calGreenBg};border-color:${calBorder};` : '') + _clashBorder;
             const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
 
-            // Jieqi markers — 节 (month start, major) shown as red badge; 气 (mid-month) as orange badge.
+            // Jieqi markers — 节 (month start, major) shown as blue badge; 气 (mid-month) as orange badge.
             // Bigger and more saturated than before so both are clearly visible in the cell.
             const MONTH_START_JQ = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'];
             const jqEntry = jieqiMap[isoDate] || [];
             const jieqiHTML = jqEntry.map(j => {
                 const isJie = MONTH_START_JQ.includes(j.name);
-                const jqBg = isJie ? '#d40000' : '#ff9800';
-                return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}</div>`;
+                const jqBg = isJie ? '#1565c0' : '#ff9800';
+                return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}${j.time ? ' '+j.time : ''}</div>`;
             }).join('');
 
             const nobleIndicator = dayBranchIsNoble ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'N')">N</div>` : '';
@@ -4901,6 +4919,25 @@ function buildMonthView() {
             const tombShaHTML = isTombShaLV ? `<span style="color:#d40000;font-weight:bold;font-size:10px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'墓煞')">墓煞</span>` : '';
             const wjdtHTML = isWJDTLV ? `<span style="color:#6a1b9a;font-weight:bold;font-size:10px;cursor:pointer;margin-left:3px;" onclick="event.stopPropagation();showBadgeTip(this,'戊己都天')" title="Wu Ji Du Tian Sha">戊己都天</span>` : '';
 
+            // Jieqi badge: check if any jieqi on this day falls within this hour's range
+            const MONTH_START_JQ_LV = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'];
+            const jqDayLV = jieqiMap[isoDate] || [];
+            const hourStartMin = HOUR_STARTS[hIdx] * 60;
+            const hourEndMin   = hourStartMin + 120; // 2-hour span
+            const jqInHourLV = jqDayLV.filter(j => {
+                if (!j.time) return false;
+                const [jh, jm] = j.time.split(':').map(Number);
+                let jMin = jh * 60 + jm;
+                // Zi hour (23:00-01:00) wraps midnight
+                if (hIdx === 0) return jMin >= 23 * 60 || jMin < 60;
+                return jMin >= hourStartMin && jMin < hourEndMin;
+            });
+            const jqHourHTMLLV = jqInHourLV.map(j => {
+                const isJie = MONTH_START_JQ_LV.includes(j.name);
+                const jqBg = isJie ? '#1565c0' : '#ff9800';
+                return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:9px;padding:1px 5px;border-radius:4px;margin-top:1px;">${isJie?'节':'气'} ${j.name} ${j.time}</div>`;
+            }).join('');
+
             // Purpose filter for LIST view — needs current hour's _currentDayAnalysis
             const purposeLV = getPurpose();
             let purposeIconLV = '';
@@ -4967,6 +5004,7 @@ function buildMonthView() {
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}
+                    ${jqHourHTMLLV}
                 </div>
             </div>`;
             dayRows.push({ score: hasNegativesFilterMV ? negativeScore : listScore, html: rowHtml });
