@@ -1172,6 +1172,14 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   
   // Qimen column only when scanner is loaded
   const _qimenAvail = (typeof window.QMDJWaterScanner !== 'undefined');
+  let _fPalace = null, _wPalace = null;
+  if (_qimenAvail) {
+    const scanner = window.QMDJWaterScanner;
+    const _fDeg = fSlot ? (fSlot.startDeg + 2.8125) : null;
+    const _wDeg = wSlot ? wSlot.centerDeg : null;
+    _fPalace = (_fDeg != null) ? scanner.degToPalace(_fDeg) : null;
+    _wPalace = (_wDeg != null) ? scanner.degToPalace(_wDeg) : null;
+  }
 
   // Table header
   html += '<thead>';
@@ -1179,7 +1187,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:18%;">Date</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:10%;">Day</th>';
   html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:auto;">XKDG Relations</th>';
-  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;width:20%;">☆ Qimen</th>';
+  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;min-width:160px;">☆ Qimen</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:14%;">Pure YY Star</th>';
   html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:10%;">Score</th>';
   html += '</tr>';
@@ -1213,9 +1221,15 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     const xkdgHtml = '<div style="font-size:11px;color:#c0392b;font-weight:bold;">' + (m.facingLabels.length ? m.facingLabels.join(' · ') : '—') + '</div>'
                    + (wSlot ? '<div style="font-size:11px;color:#1565c0;font-weight:bold;">' + (m.waterLabels.length ? m.waterLabels.join(' · ') : '—') + '</div>' : '');
     
-    // Qimen badge + hit details
+    // Qimen palace cards
     let qimenCell = '';
     if (_qimenAvail) {
+      const _PALACE_INFO = {
+        1:{tri:'Kan',han:'坎',dir:'N'},  2:{tri:'Kun',han:'坤',dir:'SW'},
+        3:{tri:'Zhen',han:'震',dir:'E'}, 4:{tri:'Xun',han:'巽',dir:'SE'},
+        6:{tri:'Qian',han:'乾',dir:'NW'},7:{tri:'Dui',han:'兌',dir:'W'},
+        8:{tri:'Gen',han:'艮',dir:'NE'}, 9:{tri:'Li',han:'離',dir:'S'}
+      };
       const _qTagColors = {
         door:  { bg:'#e8f5e9', fg:'#2e7d32' },
         qi:    { bg:'#e3f2fd', fg:'#1565c0' },
@@ -1227,34 +1241,80 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         pen:   { bg:'#fff3cd', fg:'#856404' }
       };
       const _qSymbol = { dun:'☆', zha:'✦', jia:'◆', pen:'⚠' };
-      function renderQHits(hits, prefix, prefixColor) {
-        if (!hits || !hits.length) return '';
-        let h = '<div style="margin-top:3px;text-align:left;">';
-        h += '<span style="font-size:9px;font-weight:bold;color:' + prefixColor + ';">' + prefix + ':</span> ';
-        hits.forEach(function(hit) {
-          const c = _qTagColors[hit.cat] || { bg:'#f5f5f5', fg:'#333' };
-          const sym = _qSymbol[hit.cat] || '';
-          h += '<span style="display:inline-block;background:' + c.bg + ';color:' + c.fg + ';padding:1px 4px;border-radius:6px;font-size:9px;margin:1px 1px;white-space:nowrap;">' + sym + (sym?' ':'') + hit.label + '</span>';
+
+      function renderPalaceCard(result, palaceNum, label, accentColor) {
+        if (!result || !result.hits || !result.hits.length) return '';
+        const pi = _PALACE_INFO[palaceNum] || {};
+        // Separate hits by role
+        var doorHit = null, qiHits = [], zhiHits = [], specialHits = [], penHits = [], comboHits = [];
+        result.hits.forEach(function(hit){
+          if (hit.cat === 'door')  doorHit = hit;
+          else if (hit.cat === 'qi')    qiHits.push(hit);
+          else if (hit.cat === 'zhi')   zhiHits.push(hit);
+          else if (hit.cat === 'dun' || hit.cat === 'zha' || hit.cat === 'jia') specialHits.push(hit);
+          else if (hit.cat === 'pen')   penHits.push(hit);
+          else if (hit.cat === 'combo') comboHits.push(hit);
         });
+
+        var h = '<div style="border:1px solid ' + accentColor + ';border-radius:6px;padding:4px 6px;margin:2px 0;background:#fff;text-align:left;">';
+        // Header: label + palace + direction
+        h += '<div style="font-size:9px;font-weight:bold;color:' + accentColor + ';margin-bottom:2px;border-bottom:1px solid #eee;padding-bottom:2px;">'
+           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' <span style="color:#666;">(' + pi.dir + ')</span></div>';
+        // Door (prominent)
+        if (doorHit) {
+          var dc = _qTagColors.door;
+          h += '<div style="margin:2px 0;"><span style="display:inline-block;background:' + dc.bg + ';color:' + dc.fg + ';padding:2px 6px;border-radius:8px;font-size:10px;font-weight:bold;">' + (doorHit.label||'') + '</span>';
+          // San Qi next to door
+          qiHits.forEach(function(qi){
+            var qc = _qTagColors.qi;
+            h += ' <span style="display:inline-block;background:' + qc.bg + ';color:' + qc.fg + ';padding:2px 5px;border-radius:8px;font-size:10px;font-weight:bold;">' + (qi.label||'') + '</span>';
+          });
+          // Zhi Fu / Zhi Shi
+          zhiHits.forEach(function(z){
+            var zc = _qTagColors.zhi;
+            h += ' <span style="display:inline-block;background:' + zc.bg + ';color:' + zc.fg + ';padding:2px 5px;border-radius:8px;font-size:9px;">' + (z.label||'') + '</span>';
+          });
+          h += '</div>';
+        }
+        // Special configurations (Dun/Zha/Jia) — highlighted
+        if (specialHits.length) {
+          h += '<div style="margin:2px 0;">';
+          specialHits.forEach(function(sp){
+            var sc = _qTagColors[sp.cat] || {bg:'#f5f5f5',fg:'#333'};
+            var sym = _qSymbol[sp.cat] || '';
+            h += '<span style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:2px 6px;border-radius:8px;font-size:10px;font-weight:bold;border:1px solid ' + sc.fg + '40;">' + sym + ' ' + (sp.label||'') + '</span> ';
+          });
+          h += '</div>';
+        }
+        // Combos (smaller)
+        if (comboHits.length) {
+          h += '<div style="margin:1px 0;">';
+          comboHits.forEach(function(cb){
+            var cc = _qTagColors.combo;
+            h += '<span style="display:inline-block;background:' + cc.bg + ';color:' + cc.fg + ';padding:1px 4px;border-radius:6px;font-size:9px;">' + (cb.label||'') + '</span> ';
+          });
+          h += '</div>';
+        }
+        // Penalties (negative)
+        if (penHits.length) {
+          h += '<div style="margin:1px 0;">';
+          penHits.forEach(function(pn){
+            var pc = _qTagColors.pen;
+            h += '<span style="display:inline-block;background:' + pc.bg + ';color:' + pc.fg + ';padding:1px 4px;border-radius:6px;font-size:9px;">⚠ ' + (pn.label||'') + '</span> ';
+          });
+          h += '</div>';
+        }
         h += '</div>';
         return h;
       }
+
       let qContent = '—';
       if (m._qimenF || m._qimenW) {
         qContent = '';
-        // Main badge
-        if (m._qimenFW) {
-          qContent += '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;">☆ F+W</span>';
-        } else if (m._qimenF) {
-          qContent += '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;">☆ F</span>';
-        } else {
-          qContent += '<span style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;">☆ W</span>';
-        }
-        // Hit detail tags
-        if (m._qimenF) qContent += renderQHits(m._qimenF.hits, 'F', '#00695c');
-        if (m._qimenW) qContent += renderQHits(m._qimenW.hits, 'W', '#1565c0');
+        if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c');
+        if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0');
       }
-      qimenCell = '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;">' + qContent + '</td>';
+      qimenCell = '<td style="padding:4px 3px;text-align:center;border-bottom:1px solid #eee;vertical-align:top;">' + qContent + '</td>';
     }
 
     // Row background: Qimen-matched rows get teal tint in QIMEN mode, BL stays yellow
@@ -1337,9 +1397,6 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
   const fPalace = (fDeg != null) ? scanner.degToPalace(fDeg) : null;
   const wPalace = (wDeg != null) ? scanner.degToPalace(wDeg) : null;
 
-  // DEBUG — remove after verification
-  console.log('[QMDJ-DEBUG] fDeg='+fDeg, 'wDeg='+wDeg, '→ fPalace='+fPalace, 'wPalace='+wPalace);
-
   if (!fPalace && !wPalace) return; // nothing to test
 
   matches.forEach(function(m){
@@ -1353,22 +1410,13 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
     const hGan = m.bestHour.hGan;   // Chinese character (甲)
     const hZhi = m.bestHour.hZhi;   // Chinese character (子)
 
-    // DEBUG — remove after verification
-    console.log('[QMDJ-DEBUG]', Y+'/'+M+'/'+D, hGan+hZhi, 'fP='+fPalace, 'wP='+wPalace, 'isoDate='+m.isoDate);
-
     if (fPalace) {
       const res = scanner.checkHourAtPalace(Y, M, D, hGan, hZhi, fPalace);
-      if (res && res.matched) {
-        console.log('[QMDJ-DEBUG]   F hit:', JSON.stringify(res.hits.map(h=>h.label)));
-        m._qimenF = res;
-      }
+      if (res && res.matched) m._qimenF = res;
     }
     if (wPalace) {
       const res = scanner.checkHourAtPalace(Y, M, D, hGan, hZhi, wPalace);
-      if (res && res.matched) {
-        console.log('[QMDJ-DEBUG]   W hit:', JSON.stringify(res.hits.map(h=>h.label)));
-        m._qimenW = res;
-      }
+      if (res && res.matched) m._qimenW = res;
     }
     if (m._qimenF && m._qimenW) m._qimenFW = true;
   });

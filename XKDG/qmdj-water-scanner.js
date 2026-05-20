@@ -78,7 +78,7 @@
 
   const FAV_DOORS = ['Kai','Xiu','Sheng','JingS'];
   const SAN_QI    = ['Yi','Bing','Ding'];
-  const DOOR_TAG_LABELS = {Kai:'Open 開', Xiu:'Rest 休', Sheng:'Birth 生', JingS:'View 景'};
+  const DOOR_TAG_LABELS = {Kai:'Open 開', Xiu:'Rest 休', Sheng:'Birth 生', JingS:'View 景', Du:'Delusion 杜', Shang:'Injury 傷', Si:'Death 死', JingF:'Shocking 驚'};
   const QI_TAG_LABELS   = {Yi:'乙 Yi', Bing:'丙 Bing', Ding:'丁 Ding'};
 
   function jiaZiIdx(stem, branch){
