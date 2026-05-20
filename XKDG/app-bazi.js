@@ -3816,6 +3816,31 @@ function buildCalView() {
     const pMVCAL    = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
     const pTYCAL    = personDayStemCAL ? (TIAN_YI[personDayStemCAL] || null) : null;
 
+    // Person B year for CAL scoring
+    const personBYear_CAL = _personBYear || null;
+    const pBYStem_CAL     = _personBStem  || null;
+    const pBYBranch_CAL   = _personBBranch || null;
+    const personBDayStemCAL   = _personBDayStem || null;
+    const personBMthBranchCAL = _personBMonthBranch || null;
+    const personBDayZhiCAL    = _personBDayBranchXkdg || null;
+    const pNobleBCAL = personBDayStemCAL ? (NOBLE_BRANCHES[personBDayStemCAL] || []) : [];
+    const pLuBCAL    = personBDayStemCAL ? (LU_BRANCH[personBDayStemCAL] || null) : null;
+    const pHVBCAL    = personBMthBranchCAL ? (HEAVEN_VIRTUE[personBMthBranchCAL] || null) : null;
+    const pBVBCAL    = personBDayZhiCAL ? (BRANCH_VIRTUE[personBDayZhiCAL] || null) : null;
+    const pMVBCAL    = personBMthBranchCAL ? (MONTH_VIRTUE[personBMthBranchCAL] || null) : null;
+    const pTYBCAL    = personBDayStemCAL ? (TIAN_YI[personBDayStemCAL] || null) : null;
+
+    // Active person fallback (A if loaded, else B) — mirrors LIST logic
+    const activeYearCAL   = personAYear || personBYear_CAL || null;
+    const activeStemCAL   = pYStem   || pBYStem_CAL   || null;
+    const activeBranchCAL = pYBranch || pBYBranch_CAL || null;
+    const activeNobleCAL  = personAYear ? pNobleCAL : pNobleBCAL;
+    const activeLuCAL     = personAYear ? pLuCAL    : pLuBCAL;
+    const activeHVCAL     = personAYear ? pHVCAL    : pHVBCAL;
+    const activeBVCAL     = personAYear ? pBVCAL    : pBVBCAL;
+    const activeMVCAL     = personAYear ? pMVCAL    : pMVBCAL;
+    const activeTYCAL     = personAYear ? pTYCAL    : pTYBCAL;
+
     // A/B person markers for CAL view — always visible when a person is loaded
     // (matches LIST/BEST behaviour; only TABLES has its own per-date connection logic).
     const _aLoadedCAL = !!_personAYear;
@@ -3967,7 +3992,14 @@ function buildCalView() {
                     const { items: ziItemsCAL } = analyzeXkdg(ziPillarsCAL, ziSS, ziSG);
                     const ziBlueCAL = ziItemsCAL.filter(i => i.tag === 'blue' || i.tag === 'family');
                     const ziSpiritCAL = getSpiritForHour(dZhi, hZZi2);
-                    const ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
+                    let ziScoreCAL;
+                    if (personAYear && personBYear_CAL && _scoreModeBalanced) {
+                        const sA_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
+                        const sB_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, ziPillarsCAL);
+                        ziScoreCAL = Math.min(sA_zi, sB_zi);
+                    } else {
+                        ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, ziPillarsCAL);
+                    }
                     const ziNayinCAL = analyzeNayin(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
                     const ziNegScoreCAL = calcNegativeScore({
                         dGan, dZhi, hGan: hGZi2, hZhi: hZZi2,
@@ -3978,7 +4010,7 @@ function buildCalView() {
                         nayinPersonScore: ziNayinCAL.personScore || 0
                     });
                     // Signed contribution to day average
-                    dayScoreSum += (ziNegScoreCAL > 0 ? -ziNegScoreCAL : ziScoreCAL);
+                    dayScoreSum += ziScoreCAL;
                     dayScoreCount++;
                     if (ziBlueCAL.length > 0) {
                         dayIsPositive = true;
@@ -4014,8 +4046,15 @@ function buildCalView() {
                 const hBlue = hItems.filter(i => i.tag === 'blue' || i.tag === 'family');
                 const hSpirit = getSpiritForHour(dZhi, hZ);
 
-                // Score the hour every time (positive side via calcHourScore)
-                const hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
+                // Score the hour — balanced mode uses Math.min(A,B), else active person
+                let hScore;
+                if (personAYear && personBYear_CAL && _scoreModeBalanced) {
+                    const sA_h = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
+                    const sB_h = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, hPillars);
+                    hScore = Math.min(sA_h, sB_h);
+                } else {
+                    hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, hPillars);
+                }
                 // Negative score (higher = worse, > 0 means NEGATIVES chip would catch it)
                 const hNayin = analyzeNayin(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
                 const hNegScore = calcNegativeScore({
@@ -4027,7 +4066,7 @@ function buildCalView() {
                     nayinPersonScore: hNayin.personScore || 0
                 });
                 // Signed contribution: −negScore if meaningfully negative, +hScore otherwise
-                dayScoreSum += (hNegScore > 0 ? -hNegScore : hScore);
+                dayScoreSum += hScore;
                 dayScoreCount++;
 
                 if (hBlue.length > 0) {
