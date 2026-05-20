@@ -8,36 +8,25 @@
         
         .inputs-row { display: flex; gap: 8px; margin-bottom: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
 
-        .btn-arrow { background: none; border: 1px solid #bbb; color: #555; cursor: pointer; font-size: 16px; padding: 6px 8px; border-radius: 6px; line-height: 1; }
+        .btn-arrow { background: none; border: 1px solid #bbb; color: #555; cursor: pointer; font-size: 20px; padding: 8px 12px; border-radius: 8px; line-height: 1; }
         .btn-arrow:hover { background: #e0e0e0; }
         .btn-arrow:active { background: #ccc; }
 
         @media (max-width: 600px) {
             .inputs-row {
-                display: flex;
-                gap: 4px;
+                display: grid;
+                grid-template-columns: auto auto 1fr 1fr;
+                gap: 5px;
                 margin-bottom: 6px;
-                align-items: center;
-                justify-content: center;
             }
-            .inputs-row input[type="date"] {
-                min-width: 0;
-                flex: 1;
-                font-size: 13px;
-                padding: 7px 2px;
-            }
+            .inputs-row input[type="date"],
             .inputs-row input[type="time"] {
                 min-width: 0;
-                width: 72px;
-                font-size: 13px;
-                padding: 7px 2px;
+                font-size: 14px;
+                padding: 7px 4px;
             }
             .inputs-row .btn-tool {
-                padding: 7px 8px;
-                font-size: 12px;
-            }
-            .inputs-row .btn-arrow {
-                padding: 6px 5px;
+                padding: 7px 10px;
                 font-size: 13px;
             }
         }
