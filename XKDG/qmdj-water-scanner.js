@@ -620,12 +620,19 @@
 
     // Raw cell data for display (always returned, even when no match)
     var STEM_P2H = {Jia:'甲',Yi:'乙',Bing:'丙',Ding:'丁',Wu:'戊',Ji:'己',Geng:'庚',Xin:'辛',Ren:'壬',Gui:'癸'};
+    // Six Jia hiding (六甲遁): lead stem → full Jia designation
+    var JIA_HIDE = {Wu:'甲子戊',Ji:'甲戌己',Geng:'甲申庚',Xin:'甲午辛',Ren:'甲辰壬',Gui:'甲寅癸'};
+    var isZhiFu  = (chart.zfp === palace);
+    var isZhiShi = (chart.zsp === palace);
     var cellInfo = {
       ti:    cell[1],  tiH: STEM_P2H[cell[1]]||cell[1],
       di:    cell[0],  diH: STEM_P2H[cell[0]]||cell[0],
       star:  STAR_NAME[cell[2]]||cell[2],
       deity: cell[3],
-      door:  DOOR_NAME[cell[4]]||cell[4]
+      door:  DOOR_NAME[cell[4]]||cell[4],
+      zhiFu:  isZhiFu,
+      zhiShi: isZhiShi,
+      jiaName: isZhiFu ? (JIA_HIDE[chart.ld]||'') : ''
     };
 
     if(hits.length === 0) return { matched: false, hits: [], score: 0, cell: cellInfo };

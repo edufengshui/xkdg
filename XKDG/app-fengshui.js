@@ -1254,46 +1254,57 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
           else if (hit.cat === 'pen') penHits.push(hit);
         });
 
-        var h = '<div style="border:2px solid ' + accentColor + ';border-radius:6px;margin:2px 0;background:#fff;overflow:hidden;">';
-
-        // Header bar (colored)
-        h += '<div style="background:' + accentColor + ';color:#fff;padding:2px 6px;font-size:9px;font-weight:bold;">'
-           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' (' + pi.dir + ')'
-           + (hourLabel ? ' <span style="opacity:0.8;">@ ' + hourLabel + '</span>' : '')
-           + '</div>';
-
-        // Mini Luo Shu cell layout
-        h += '<div style="padding:3px 6px;font-size:11px;line-height:1.4;">';
-        // Deity (gray, centered)
-        h += '<div style="text-align:center;color:#888;font-size:10px;">' + (cl.deity||'') + '</div>';
-        // Tian stem (red) + Star name (center)
-        h += '<div style="display:flex;align-items:center;">'
-           + '<span style="color:#c62828;font-weight:bold;font-size:14px;width:20px;">' + (cl.tiH||'') + '</span>'
-           + '<span style="flex:1;text-align:center;color:#555;">' + (cl.star||'') + '</span>'
-           + '</div>';
-        // Door name (bold, centered, green=favorable / red=unfavorable)
         var doorColor = ['Open','Rest','Birth','View'].indexOf(cl.door)!==-1 ? '#2e7d32' : '#c62828';
-        h += '<div style="text-align:center;font-weight:bold;color:' + doorColor + ';font-size:13px;">' + (cl.door||'') + '</div>';
-        // Di stem (brown) + palace number (right)
-        h += '<div style="display:flex;align-items:center;">'
-           + '<span style="color:#bf6c00;font-weight:bold;font-size:14px;width:20px;">' + (cl.diH||'') + '</span>'
-           + '<span style="flex:1;text-align:right;color:#aaa;font-size:10px;">' + palaceNum + '</span>'
+
+        var h = '<div style="border:2px solid ' + accentColor + ';border-radius:6px;margin:3px 0;background:#fff;overflow:hidden;min-width:120px;">';
+
+        // Header bar
+        h += '<div style="background:' + accentColor + ';color:#fff;padding:2px 6px;font-size:9px;font-weight:bold;text-align:center;">'
+           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' (' + pi.dir + ')'
+           + (hourLabel ? ' @ ' + hourLabel : '')
            + '</div>';
-        h += '</div>';
+
+        // Square cell — 3 rows × 2 columns grid
+        h += '<div style="display:grid;grid-template-columns:28px 1fr;grid-template-rows:auto auto auto;padding:6px 8px;gap:1px 4px;align-items:center;">';
+
+        // Row 1: Deity (spans full width, centered)
+        h += '<div style="grid-column:1/3;text-align:center;color:#666;font-size:12px;font-weight:bold;padding:2px 0;">' + (cl.deity||'') + '</div>';
+
+        // Row 2: Tian stem (left) + Star (right)
+        h += '<div style="color:#c62828;font-weight:bold;font-size:18px;text-align:left;">' + (cl.tiH||'') + '</div>';
+        h += '<div style="text-align:right;color:#555;font-size:12px;">' + (cl.star||'') + '</div>';
+
+        // Row 3: Door (spans full width, large centered)
+        h += '<div style="grid-column:1/3;text-align:center;font-weight:bold;color:' + doorColor + ';font-size:16px;padding:4px 0;">' + (cl.door||'') + '</div>';
+
+        h += '</div>'; // end grid
+
+        // Bottom row: Di stem (left) + Jia designation if Zhi Fu + Palace number (right)
+        var diLabel = '<span style="color:#bf6c00;font-weight:bold;font-size:18px;">' + (cl.diH||'') + '</span>';
+        if (cl.zhiFu && cl.jiaName) {
+          diLabel += ' <span style="color:#e65100;font-size:11px;font-weight:bold;">' + cl.jiaName + '</span>';
+        }
+        var zhiLabel = '';
+        if (cl.zhiFu)  zhiLabel += '<div style="font-size:9px;color:#e65100;font-weight:bold;">直符 Zhi Fu</div>';
+        if (cl.zhiShi) zhiLabel += '<div style="font-size:9px;color:#e65100;font-weight:bold;">直使 Zhi Shi</div>';
+        h += '<div style="display:flex;justify-content:space-between;align-items:flex-end;padding:2px 8px 6px;">'
+           + '<div>' + diLabel + zhiLabel + '</div>'
+           + '<span style="color:#999;font-weight:bold;font-size:14px;">' + palaceNum + '</span>'
+           + '</div>';
 
         // Configuration names (prominent section below cell)
         if (specialHits.length) {
-          h += '<div style="border-top:1px solid #ddd;padding:3px 6px;background:#f8fffe;">';
+          h += '<div style="border-top:2px solid ' + accentColor + '40;padding:4px 6px;background:#f8fffe;text-align:center;">';
           specialHits.forEach(function(sp){
             var sc = _qTagColors[sp.cat] || {bg:'#f5f5f5',fg:'#333'};
             var sym = _qSymbol[sp.cat] || '';
-            h += '<div style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:2px 8px;border-radius:8px;font-size:11px;font-weight:bold;border:1px solid ' + sc.fg + '40;margin:1px;">' + sym + ' ' + (sp.label||'') + '</div>';
+            h += '<div style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:3px 10px;border-radius:8px;font-size:12px;font-weight:bold;border:1px solid ' + sc.fg + '40;margin:1px;">' + sym + ' ' + (sp.label||'') + '</div>';
           });
           h += '</div>';
         }
         // Penalties
         if (penHits.length) {
-          h += '<div style="border-top:1px solid #eee;padding:2px 6px;">';
+          h += '<div style="border-top:1px solid #eee;padding:2px 6px;text-align:center;">';
           penHits.forEach(function(pn){
             h += '<span style="display:inline-block;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:6px;font-size:9px;">⚠ ' + (pn.label||'') + '</span> ';
           });
