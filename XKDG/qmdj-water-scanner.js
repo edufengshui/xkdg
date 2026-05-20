@@ -614,14 +614,27 @@
     var chart = charts[info.dun] && charts[info.dun][info.ju] && charts[info.dun][info.ju][idx60];
     if(!chart) return null;
 
+    var cell = chart.c[palace];
+    if(!cell) return null;
     var hits = extractHits(chart, palace);
-    if(hits.length === 0) return { matched: false, hits: [], score: 0 };
+
+    // Raw cell data for display (always returned, even when no match)
+    var STEM_P2H = {Jia:'甲',Yi:'乙',Bing:'丙',Ding:'丁',Wu:'戊',Ji:'己',Geng:'庚',Xin:'辛',Ren:'壬',Gui:'癸'};
+    var cellInfo = {
+      ti:    cell[1],  tiH: STEM_P2H[cell[1]]||cell[1],
+      di:    cell[0],  diH: STEM_P2H[cell[0]]||cell[0],
+      star:  STAR_NAME[cell[2]]||cell[2],
+      deity: cell[3],
+      door:  DOOR_NAME[cell[4]]||cell[4]
+    };
+
+    if(hits.length === 0) return { matched: false, hits: [], score: 0, cell: cellInfo };
 
     var pos = 0, neg = 0;
     for(var i = 0; i < hits.length; i++){
       if(hits[i].cat === 'pen') neg++; else pos++;
     }
-    return { matched: true, hits: hits, score: pos - neg };
+    return { matched: true, hits: hits, score: pos - neg, cell: cellInfo };
   }
 
   function mount(root){

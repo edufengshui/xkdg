@@ -1245,67 +1245,61 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       function renderPalaceCard(result, palaceNum, label, accentColor, hourLabel) {
         if (!result || !result.hits || !result.hits.length) return '';
         const pi = _PALACE_INFO[palaceNum] || {};
-        // Separate hits by role
-        var doorHit = null, qiHits = [], zhiHits = [], specialHits = [], penHits = [], comboHits = [];
+        const cl = result.cell || {};
+
+        // Separate special configs for prominent display
+        var specialHits = [], penHits = [];
         result.hits.forEach(function(hit){
-          if (hit.cat === 'door')  doorHit = hit;
-          else if (hit.cat === 'qi')    qiHits.push(hit);
-          else if (hit.cat === 'zhi')   zhiHits.push(hit);
-          else if (hit.cat === 'dun' || hit.cat === 'zha' || hit.cat === 'jia') specialHits.push(hit);
-          else if (hit.cat === 'pen')   penHits.push(hit);
-          else if (hit.cat === 'combo') comboHits.push(hit);
+          if (hit.cat === 'dun' || hit.cat === 'zha' || hit.cat === 'jia') specialHits.push(hit);
+          else if (hit.cat === 'pen') penHits.push(hit);
         });
 
-        var h = '<div style="border:1px solid ' + accentColor + ';border-radius:6px;padding:4px 6px;margin:2px 0;background:#fff;text-align:left;">';
-        // Header: label + palace + direction + hour
-        h += '<div style="font-size:9px;font-weight:bold;color:' + accentColor + ';margin-bottom:2px;border-bottom:1px solid #eee;padding-bottom:2px;">'
-           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' <span style="color:#666;">(' + pi.dir + ')</span>'
-           + (hourLabel ? ' <span style="color:#880e4f;font-weight:normal;">@ ' + hourLabel + '</span>' : '')
+        var h = '<div style="border:2px solid ' + accentColor + ';border-radius:6px;margin:2px 0;background:#fff;overflow:hidden;">';
+
+        // Header bar (colored)
+        h += '<div style="background:' + accentColor + ';color:#fff;padding:2px 6px;font-size:9px;font-weight:bold;">'
+           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' (' + pi.dir + ')'
+           + (hourLabel ? ' <span style="opacity:0.8;">@ ' + hourLabel + '</span>' : '')
            + '</div>';
-        // Door (prominent)
-        if (doorHit) {
-          var dc = _qTagColors.door;
-          h += '<div style="margin:2px 0;"><span style="display:inline-block;background:' + dc.bg + ';color:' + dc.fg + ';padding:2px 6px;border-radius:8px;font-size:10px;font-weight:bold;">' + (doorHit.label||'') + '</span>';
-          // San Qi next to door
-          qiHits.forEach(function(qi){
-            var qc = _qTagColors.qi;
-            h += ' <span style="display:inline-block;background:' + qc.bg + ';color:' + qc.fg + ';padding:2px 5px;border-radius:8px;font-size:10px;font-weight:bold;">' + (qi.label||'') + '</span>';
-          });
-          // Zhi Fu / Zhi Shi
-          zhiHits.forEach(function(z){
-            var zc = _qTagColors.zhi;
-            h += ' <span style="display:inline-block;background:' + zc.bg + ';color:' + zc.fg + ';padding:2px 5px;border-radius:8px;font-size:9px;">' + (z.label||'') + '</span>';
-          });
-          h += '</div>';
-        }
-        // Special configurations (Dun/Zha/Jia) — highlighted
+
+        // Mini Luo Shu cell layout
+        h += '<div style="padding:3px 6px;font-size:11px;line-height:1.4;">';
+        // Deity (gray, centered)
+        h += '<div style="text-align:center;color:#888;font-size:10px;">' + (cl.deity||'') + '</div>';
+        // Tian stem (red) + Star name (center)
+        h += '<div style="display:flex;align-items:center;">'
+           + '<span style="color:#c62828;font-weight:bold;font-size:14px;width:20px;">' + (cl.tiH||'') + '</span>'
+           + '<span style="flex:1;text-align:center;color:#555;">' + (cl.star||'') + '</span>'
+           + '</div>';
+        // Door name (bold, centered, green=favorable / red=unfavorable)
+        var doorColor = ['Open','Rest','Birth','View'].indexOf(cl.door)!==-1 ? '#2e7d32' : '#c62828';
+        h += '<div style="text-align:center;font-weight:bold;color:' + doorColor + ';font-size:13px;">' + (cl.door||'') + '</div>';
+        // Di stem (brown) + palace number (right)
+        h += '<div style="display:flex;align-items:center;">'
+           + '<span style="color:#bf6c00;font-weight:bold;font-size:14px;width:20px;">' + (cl.diH||'') + '</span>'
+           + '<span style="flex:1;text-align:right;color:#aaa;font-size:10px;">' + palaceNum + '</span>'
+           + '</div>';
+        h += '</div>';
+
+        // Configuration names (prominent section below cell)
         if (specialHits.length) {
-          h += '<div style="margin:2px 0;">';
+          h += '<div style="border-top:1px solid #ddd;padding:3px 6px;background:#f8fffe;">';
           specialHits.forEach(function(sp){
             var sc = _qTagColors[sp.cat] || {bg:'#f5f5f5',fg:'#333'};
             var sym = _qSymbol[sp.cat] || '';
-            h += '<span style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:2px 6px;border-radius:8px;font-size:10px;font-weight:bold;border:1px solid ' + sc.fg + '40;">' + sym + ' ' + (sp.label||'') + '</span> ';
+            h += '<div style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:2px 8px;border-radius:8px;font-size:11px;font-weight:bold;border:1px solid ' + sc.fg + '40;margin:1px;">' + sym + ' ' + (sp.label||'') + '</div>';
           });
           h += '</div>';
         }
-        // Combos (smaller)
-        if (comboHits.length) {
-          h += '<div style="margin:1px 0;">';
-          comboHits.forEach(function(cb){
-            var cc = _qTagColors.combo;
-            h += '<span style="display:inline-block;background:' + cc.bg + ';color:' + cc.fg + ';padding:1px 4px;border-radius:6px;font-size:9px;">' + (cb.label||'') + '</span> ';
-          });
-          h += '</div>';
-        }
-        // Penalties (negative)
+        // Penalties
         if (penHits.length) {
-          h += '<div style="margin:1px 0;">';
+          h += '<div style="border-top:1px solid #eee;padding:2px 6px;">';
           penHits.forEach(function(pn){
-            var pc = _qTagColors.pen;
-            h += '<span style="display:inline-block;background:' + pc.bg + ';color:' + pc.fg + ';padding:1px 4px;border-radius:6px;font-size:9px;">⚠ ' + (pn.label||'') + '</span> ';
+            h += '<span style="display:inline-block;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:6px;font-size:9px;">⚠ ' + (pn.label||'') + '</span> ';
           });
           h += '</div>';
         }
+
         h += '</div>';
         return h;
       }
