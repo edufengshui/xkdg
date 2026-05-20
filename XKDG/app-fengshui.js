@@ -1337,6 +1337,9 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
   const fPalace = (fDeg != null) ? scanner.degToPalace(fDeg) : null;
   const wPalace = (wDeg != null) ? scanner.degToPalace(wDeg) : null;
 
+  // DEBUG — remove after verification
+  console.log('[QMDJ-DEBUG] fDeg='+fDeg, 'wDeg='+wDeg, '→ fPalace='+fPalace, 'wPalace='+wPalace);
+
   if (!fPalace && !wPalace) return; // nothing to test
 
   matches.forEach(function(m){
@@ -1350,13 +1353,22 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
     const hGan = m.bestHour.hGan;   // Chinese character (甲)
     const hZhi = m.bestHour.hZhi;   // Chinese character (子)
 
+    // DEBUG — remove after verification
+    console.log('[QMDJ-DEBUG]', Y+'/'+M+'/'+D, hGan+hZhi, 'fP='+fPalace, 'wP='+wPalace, 'isoDate='+m.isoDate);
+
     if (fPalace) {
       const res = scanner.checkHourAtPalace(Y, M, D, hGan, hZhi, fPalace);
-      if (res && res.matched) m._qimenF = res;
+      if (res && res.matched) {
+        console.log('[QMDJ-DEBUG]   F hit:', JSON.stringify(res.hits.map(h=>h.label)));
+        m._qimenF = res;
+      }
     }
     if (wPalace) {
       const res = scanner.checkHourAtPalace(Y, M, D, hGan, hZhi, wPalace);
-      if (res && res.matched) m._qimenW = res;
+      if (res && res.matched) {
+        console.log('[QMDJ-DEBUG]   W hit:', JSON.stringify(res.hits.map(h=>h.label)));
+        m._qimenW = res;
+      }
     }
     if (m._qimenF && m._qimenW) m._qimenFW = true;
   });
