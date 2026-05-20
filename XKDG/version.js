@@ -1,2 +1,2 @@
-    const APP_VERSION = 433;
+    const APP_VERSION = 434;
     document.getElementById('version-tag').textContent = 'v' + APP_VERSION;
