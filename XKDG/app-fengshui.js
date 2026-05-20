@@ -1187,7 +1187,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:18%;">Date</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:10%;">Hour</th>';
   html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:auto;">XKDG Relations</th>';
-  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;min-width:160px;">☆ Qimen</th>';
+  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;min-width:110px;">☆ Qimen</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:14%;">Pure YY Star</th>';
   html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:10%;">Score</th>';
   html += '</tr>';
@@ -1247,7 +1247,6 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         const pi = _PALACE_INFO[palaceNum] || {};
         const cl = result.cell || {};
 
-        // Separate special configs for prominent display
         var specialHits = [], penHits = [];
         result.hits.forEach(function(hit){
           if (hit.cat === 'dun' || hit.cat === 'zha' || hit.cat === 'jia') specialHits.push(hit);
@@ -1256,57 +1255,50 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
 
         var doorColor = ['Open','Rest','Birth','View'].indexOf(cl.door)!==-1 ? '#2e7d32' : '#c62828';
 
-        var h = '<div style="border:2px solid ' + accentColor + ';border-radius:6px;margin:3px 0;background:#fff;overflow:hidden;min-width:120px;">';
+        var h = '<div style="border:1px solid ' + accentColor + ';border-radius:4px;margin:2px 0;background:#fff;overflow:hidden;">';
 
-        // Header bar
-        h += '<div style="background:' + accentColor + ';color:#fff;padding:2px 6px;font-size:9px;font-weight:bold;text-align:center;">'
-           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' (' + pi.dir + ')'
-           + (hourLabel ? ' @ ' + hourLabel : '')
+        // Header bar (compact)
+        h += '<div style="background:' + accentColor + ';color:#fff;padding:1px 4px;font-size:8px;font-weight:bold;text-align:center;line-height:1.3;">'
+           + label + ' P' + palaceNum + ' ' + pi.han + ' ' + pi.dir
+           + (hourLabel ? ' @' + hourLabel : '')
            + '</div>';
 
-        // Square cell — 3 rows × 2 columns grid
-        h += '<div style="display:grid;grid-template-columns:28px 1fr;grid-template-rows:auto auto auto;padding:6px 8px;gap:1px 4px;align-items:center;">';
+        // Compact square cell
+        h += '<div style="display:grid;grid-template-columns:16px 1fr;grid-template-rows:auto auto auto;padding:2px 4px;gap:0 2px;align-items:center;">';
+        // Deity (centered, full width)
+        h += '<div style="grid-column:1/3;text-align:center;color:#666;font-size:9px;font-weight:bold;">' + (cl.deity||'') + '</div>';
+        // Tian stem + Star
+        h += '<div style="color:#c62828;font-weight:bold;font-size:12px;">' + (cl.tiH||'') + '</div>';
+        h += '<div style="text-align:right;color:#555;font-size:9px;">' + (cl.star||'') + '</div>';
+        // Door (centered, bold)
+        h += '<div style="grid-column:1/3;text-align:center;font-weight:bold;color:' + doorColor + ';font-size:11px;padding:1px 0;">' + (cl.door||'') + '</div>';
+        h += '</div>';
 
-        // Row 1: Deity (spans full width, centered)
-        h += '<div style="grid-column:1/3;text-align:center;color:#666;font-size:12px;font-weight:bold;padding:2px 0;">' + (cl.deity||'') + '</div>';
-
-        // Row 2: Tian stem (left) + Star (right)
-        h += '<div style="color:#c62828;font-weight:bold;font-size:18px;text-align:left;">' + (cl.tiH||'') + '</div>';
-        h += '<div style="text-align:right;color:#555;font-size:12px;">' + (cl.star||'') + '</div>';
-
-        // Row 3: Door (spans full width, large centered)
-        h += '<div style="grid-column:1/3;text-align:center;font-weight:bold;color:' + doorColor + ';font-size:16px;padding:4px 0;">' + (cl.door||'') + '</div>';
-
-        h += '</div>'; // end grid
-
-        // Bottom row: Di stem (left) + Jia designation if Zhi Fu + Palace number (right)
-        var diLabel = '<span style="color:#bf6c00;font-weight:bold;font-size:18px;">' + (cl.diH||'') + '</span>';
-        if (cl.zhiFu && cl.jiaName) {
-          diLabel += ' <span style="color:#e65100;font-size:11px;font-weight:bold;">' + cl.jiaName + '</span>';
-        }
-        var zhiLabel = '';
-        if (cl.zhiFu)  zhiLabel += '<div style="font-size:9px;color:#e65100;font-weight:bold;">直符 Zhi Fu</div>';
-        if (cl.zhiShi) zhiLabel += '<div style="font-size:9px;color:#e65100;font-weight:bold;">直使 Zhi Shi</div>';
-        h += '<div style="display:flex;justify-content:space-between;align-items:flex-end;padding:2px 8px 6px;">'
-           + '<div>' + diLabel + zhiLabel + '</div>'
-           + '<span style="color:#999;font-weight:bold;font-size:14px;">' + palaceNum + '</span>'
+        // Di stem + Jia + palace number
+        var diHtml = '<span style="color:#bf6c00;font-weight:bold;font-size:12px;">' + (cl.diH||'') + '</span>';
+        if (cl.zhiFu && cl.jiaName) diHtml += '<span style="color:#e65100;font-size:8px;font-weight:bold;"> ' + cl.jiaName + '</span>';
+        var zhiHtml = '';
+        if (cl.zhiFu)  zhiHtml += '<span style="font-size:7px;color:#e65100;font-weight:bold;">直符</span> ';
+        if (cl.zhiShi) zhiHtml += '<span style="font-size:7px;color:#e65100;font-weight:bold;">直使</span>';
+        h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px 2px;">'
+           + '<div>' + diHtml + (zhiHtml ? '<br>' + zhiHtml : '') + '</div>'
+           + '<span style="color:#999;font-weight:bold;font-size:11px;">' + palaceNum + '</span>'
            + '</div>';
 
-        // Configuration names (prominent section below cell)
+        // Config names (compact)
         if (specialHits.length) {
-          h += '<div style="border-top:2px solid ' + accentColor + '40;padding:4px 6px;background:#f8fffe;text-align:center;">';
+          h += '<div style="border-top:1px solid ' + accentColor + '40;padding:2px 4px;background:#f8fffe;text-align:center;">';
           specialHits.forEach(function(sp){
             var sc = _qTagColors[sp.cat] || {bg:'#f5f5f5',fg:'#333'};
             var sym = _qSymbol[sp.cat] || '';
-            h += '<div style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:3px 10px;border-radius:8px;font-size:12px;font-weight:bold;border:1px solid ' + sc.fg + '40;margin:1px;">' + sym + ' ' + (sp.label||'') + '</div>';
+            h += '<span style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:1px 5px;border-radius:6px;font-size:9px;font-weight:bold;border:1px solid ' + sc.fg + '40;margin:1px;">' + sym + ' ' + (sp.label||'') + '</span>';
           });
           h += '</div>';
         }
-        // Penalties
         if (penHits.length) {
-          h += '<div style="border-top:1px solid #eee;padding:2px 6px;text-align:center;">';
+          h += '<div style="border-top:1px solid #eee;padding:1px 4px;text-align:center;">';
           penHits.forEach(function(pn){
-            h += '<span style="display:inline-block;background:#fff3cd;color:#856404;padding:1px 5px;border-radius:6px;font-size:9px;">⚠ ' + (pn.label||'') + '</span> ';
+            h += '<span style="font-size:8px;color:#856404;">⚠' + (pn.label||'') + '</span> ';
           });
           h += '</div>';
         }
