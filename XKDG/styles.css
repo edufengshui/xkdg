@@ -15,23 +15,28 @@
         @media (max-width: 600px) {
             .inputs-row {
                 display: grid;
-                grid-template-columns: auto auto auto 1fr 1fr auto;
-                gap: 5px;
+                grid-template-columns: auto auto auto 1fr auto auto;
+                gap: 4px;
                 margin-bottom: 6px;
             }
-            .inputs-row input[type="date"],
+            .inputs-row input[type="date"] {
+                min-width: 0;
+                font-size: 13px;
+                padding: 7px 2px;
+            }
             .inputs-row input[type="time"] {
                 min-width: 0;
-                font-size: 14px;
-                padding: 7px 4px;
+                width: 58px;
+                font-size: 13px;
+                padding: 7px 2px;
             }
             .inputs-row .btn-tool {
-                padding: 7px 10px;
-                font-size: 13px;
+                padding: 7px 8px;
+                font-size: 12px;
             }
             .inputs-row .btn-arrow {
-                padding: 6px 6px;
-                font-size: 14px;
+                padding: 6px 5px;
+                font-size: 13px;
             }
         }
         
