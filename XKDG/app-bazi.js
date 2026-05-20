@@ -1894,6 +1894,12 @@ function savePerson(person) {
     const jiaZiYear = (isB && depth === 1) ? (document.getElementById('person-year-b')?.value || '') : '';
     archive[name] = { date, time, savedAt: Date.now(), depth, jiaZiYear };
     saveArchiveData(key, archive);
+    // Un-hide if re-saving a previously hidden person
+    const hidden = loadArchive('xkdg_persons_hidden') || {};
+    if (hidden[name]) {
+        delete hidden[name];
+        localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
+    }
     renderArchive(person);
 }
 
@@ -2415,7 +2421,7 @@ function showMatchTip(el, person) {
 function sortResults(mode) {
     if (!mode) mode = personBYear ? 'both' : 'score';
     let filtered = [..._scanResults];
-    if (mode === 'both') filtered = filtered.filter(r => r.scoreA > 0 && r.scoreB > 0).sort((a,b) => (b.scoreA+b.scoreB) - (a.scoreA+a.scoreB));
+    if (mode === 'both') filtered = filtered.filter(r => r.scoreA > 0 && r.scoreB > 0).sort((a,b) => b.score - a.score);
     else if (mode === 'score') filtered.sort((a,b) => b.score - a.score);
     else filtered.sort((a,b) => a.rawDate - b.rawDate);
     renderScanResults(filtered, mode);
@@ -2489,7 +2495,7 @@ function renderScanResults(results, mode) {
     // BEST view: hide score < 1 by default; with NEGATIVES chip ON, show ONLY score < 1.
     // (TABLES is the only view that shows everything regardless of score.)
     results = results.filter(r => {
-        const s = (mode === 'both' ? r.scoreA + r.scoreB : r.score);
+        const s = r.score;
         return hasNegSort ? (s < 1) : (s >= 1);
     });
     if (results.length === 0) {
@@ -2501,9 +2507,9 @@ function renderScanResults(results, mode) {
     }
     const maxScore = hasNegSort
         ? Math.max(...results.map(r => r.negativeScore || 0))
-        : Math.max(...results.map(r => mode === 'both' ? r.scoreA + r.scoreB : r.score));
+        : Math.max(...results.map(r => r.score));
     container.innerHTML = purposeHeader + sortToggleHTML + results.map(r => {
-        const s = hasNegSort ? (r.negativeScore || 0) : (mode === 'both' ? r.scoreA + r.scoreB : r.score);
+        const s = hasNegSort ? (r.negativeScore || 0) : r.score;
         const rankClass = s >= maxScore * 0.9 ? 'rank-1'
                         : s >= maxScore * 0.75 ? 'rank-2'
                         : s >= maxScore * 0.55 ? 'rank-3'
@@ -2951,6 +2957,9 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
         + sameTypeBonusA
         + spiritPenalty + spiritBonus
         + tombShaPenalty + clashPenalty
+        + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus
+        + fullBLBonus + partialBLBonus
+        + nayinScore;
     return Math.max(effectiveFloor, rawScore);
 }
 
@@ -5460,7 +5469,7 @@ function runScanner() {
             // Spirit penalty: bad spirit reduces score by one step if relation is Adding/Hetu only
             // (exempt: Pure Qi and Family matches)
             const HOUR_BRANCHES_SC = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-            const hZhiSC = HOUR_BRANCHES_SC[h];
+            const hZhiSC = hZhi; // use library value for consistency with LIST view
             const hourSpirit = getSpiritForHour(dZhi, hZhiSC);
             const hasPureQiOrFamily = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
 
