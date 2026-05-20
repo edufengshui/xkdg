@@ -1179,7 +1179,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:18%;">Date</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:10%;">Day</th>';
   html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:auto;">XKDG Relations</th>';
-  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;width:12%;">☆ Qimen</th>';
+  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;width:20%;">☆ Qimen</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:14%;">Pure YY Star</th>';
   html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:10%;">Score</th>';
   html += '</tr>';
@@ -1213,21 +1213,48 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     const xkdgHtml = '<div style="font-size:11px;color:#c0392b;font-weight:bold;">' + (m.facingLabels.length ? m.facingLabels.join(' · ') : '—') + '</div>'
                    + (wSlot ? '<div style="font-size:11px;color:#1565c0;font-weight:bold;">' + (m.waterLabels.length ? m.waterLabels.join(' · ') : '—') + '</div>' : '');
     
-    // Qimen badge
+    // Qimen badge + hit details
     let qimenCell = '';
     if (_qimenAvail) {
-      let qBadge = '—';
-      if (m._qimenFW) {
-        qBadge = '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ F+W</span>';
-      } else if (m._qimenF && m._qimenW) {
-        qBadge = '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ F</span>'
-               + ' <span style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ W</span>';
-      } else if (m._qimenF) {
-        qBadge = '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ F</span>';
-      } else if (m._qimenW) {
-        qBadge = '<span style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ W</span>';
+      const _qTagColors = {
+        door:  { bg:'#e8f5e9', fg:'#2e7d32' },
+        qi:    { bg:'#e3f2fd', fg:'#1565c0' },
+        zhi:   { bg:'#fff3e0', fg:'#e65100' },
+        combo: { bg:'#fce4ec', fg:'#c62828' },
+        dun:   { bg:'#e0f2f1', fg:'#00695c' },
+        zha:   { bg:'#f3e5f5', fg:'#6a1b9a' },
+        jia:   { bg:'#efebe9', fg:'#5d4037' },
+        pen:   { bg:'#fff3cd', fg:'#856404' }
+      };
+      const _qSymbol = { dun:'☆', zha:'✦', jia:'◆', pen:'⚠' };
+      function renderQHits(hits, prefix, prefixColor) {
+        if (!hits || !hits.length) return '';
+        let h = '<div style="margin-top:3px;text-align:left;">';
+        h += '<span style="font-size:9px;font-weight:bold;color:' + prefixColor + ';">' + prefix + ':</span> ';
+        hits.forEach(function(hit) {
+          const c = _qTagColors[hit.cat] || { bg:'#f5f5f5', fg:'#333' };
+          const sym = _qSymbol[hit.cat] || '';
+          h += '<span style="display:inline-block;background:' + c.bg + ';color:' + c.fg + ';padding:1px 4px;border-radius:6px;font-size:9px;margin:1px 1px;white-space:nowrap;">' + sym + (sym?' ':'') + hit.label + '</span>';
+        });
+        h += '</div>';
+        return h;
       }
-      qimenCell = '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;">' + qBadge + '</td>';
+      let qContent = '—';
+      if (m._qimenF || m._qimenW) {
+        qContent = '';
+        // Main badge
+        if (m._qimenFW) {
+          qContent += '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;">☆ F+W</span>';
+        } else if (m._qimenF) {
+          qContent += '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;">☆ F</span>';
+        } else {
+          qContent += '<span style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;">☆ W</span>';
+        }
+        // Hit detail tags
+        if (m._qimenF) qContent += renderQHits(m._qimenF.hits, 'F', '#00695c');
+        if (m._qimenW) qContent += renderQHits(m._qimenW.hits, 'W', '#1565c0');
+      }
+      qimenCell = '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;">' + qContent + '</td>';
     }
 
     // Row background: Qimen-matched rows get teal tint in QIMEN mode, BL stays yellow
