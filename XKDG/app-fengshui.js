@@ -1019,11 +1019,36 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   window._fsLastMatches = matches;
   window._fsLastFSlot = fSlot;
   window._fsLastWSlot = wSlot;
+  window._fsQimenAnnotated = false; // reset on new scan
   const sortMode = window._fsSortMode || 'best';
 
+  // If already in qimen mode, auto-annotate the new matches
+  if (sortMode === 'qimen' && typeof window.QMDJWaterScanner !== 'undefined') {
+    fsAnnotateQimenHits(matches, fSlot, wSlot);
+    window._fsQimenAnnotated = true;
+  }
+
   // Sort: BEST → BL first, then by score desc; LIST → chronological
-  const sorted = matches.slice();
-  if (sortMode === 'best') {
+  // QIMEN → promote Qimen-matched dates to top (starred), rest below
+  let sorted = matches.slice();
+  if (sortMode === 'qimen') {
+    sorted.sort((a, b) => {
+      // First tier: Qimen-matched dates float to top
+      const aHasQ = (a._qimenF || a._qimenW) ? 1 : 0;
+      const bHasQ = (b._qimenF || b._qimenW) ? 1 : 0;
+      if (aHasQ !== bHasQ) return bHasQ - aHasQ;
+      // Within Qimen group: FW > single F or W
+      if (aHasQ && bHasQ) {
+        const aq = a._qimenFW ? 2 : 1;
+        const bq = b._qimenFW ? 2 : 1;
+        if (aq !== bq) return bq - aq;
+      }
+      // Then BL first, then by XKDG score
+      if (a.isBL !== b.isBL) return a.isBL ? -1 : 1;
+      if (b.score !== a.score) return b.score - a.score;
+      return a.date - b.date;
+    });
+  } else if (sortMode === 'best') {
     sorted.sort((a, b) => {
       if (a.isBL !== b.isBL) return a.isBL ? -1 : 1;
       if (b.score !== a.score) return b.score - a.score;
@@ -1079,6 +1104,13 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         <span style="font-size:11px;color:#666;font-weight:bold;">Sort:</span>
         ${sortBtn('BEST', 'best')}
         ${sortBtn('LIST', 'list')}
+        ${typeof window.QMDJWaterScanner !== 'undefined' ? (() => {
+          const active = (sortMode === 'qimen');
+          const bg = active ? '#00695c' : '#fff';
+          const fg = active ? '#fff'    : '#00695c';
+          const bd = active ? '#00695c' : '#80cbc4';
+          return '<span style="margin-left:6px;border-left:1px solid #ccc;padding-left:8px;"><button onclick="fsSetSortMode(\'qimen\')" style="background:' + bg + ';color:' + fg + ';border:1px solid ' + bd + ';padding:5px 12px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">☆ QIMEN</button></span>';
+        })() : ''}
       </div>
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
         <span style="font-size:11px;color:#666;font-weight:bold;">Range:</span>
@@ -1124,8 +1156,12 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     return;
   }
 
+  const qimenCount = (sortMode === 'qimen') ? sorted.filter(m => m._qimenF || m._qimenW).length : 0;
+  const qimenNote = (sortMode === 'qimen')
+    ? ` · <span style="color:#00695c;">☆ ${qimenCount} with Qimen</span>`
+    : '';
   let html = `<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">
-    Matching dates for this setup: <span style="color:#1b5e20;">${sorted.length} found</span>${blCount ? ` · <span style="color:#b8860b;">🔗 ${blCount} Full BL</span>` : ''}
+    Matching dates for this setup: <span style="color:#1b5e20;">${sorted.length} found</span>${blCount ? ` · <span style="color:#b8860b;">🔗 ${blCount} Full BL</span>` : ''}${qimenNote}
   </div>`;
   html += `<div style="font-size:11px;color:#666;margin-bottom:8px;">${fSummary} · range ${currentRange} days</div>`;
   html += toolbar;
@@ -1134,13 +1170,17 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += '<div style="border:1px solid #c9a84c;border-radius:6px;overflow-x:auto;background:#fff;">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
   
+  // Qimen column only when scanner is loaded
+  const _qimenAvail = (typeof window.QMDJWaterScanner !== 'undefined');
+
   // Table header
   html += '<thead>';
   html += '<tr style="background:#fff8e1;">';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:18%;">Date</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:10%;">Day</th>';
   html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:auto;">XKDG Relations</th>';
-  html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:16%;">Pure YY Star</th>';
+  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;width:12%;">☆ Qimen</th>';
+  html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:14%;">Pure YY Star</th>';
   html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:10%;">Score</th>';
   html += '</tr>';
   html += '</thead>';
@@ -1148,9 +1188,18 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += '<tbody>';
   const _matchLabels = ['', 'Hetu/Adding', 'Pure Hetu/Adding', 'Pure Qi', 'Family'];
   const _matchColors = ['', '#0277bd', '#0277bd', '#1565c0', '#1b5e20'];
+  const _colSpan = _qimenAvail ? 6 : 5;
+  let _qimenSepInserted = false;
   
   sorted.forEach((m, i) => {
     const dateLabel = m.date.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+    const hasQimen = !!(m._qimenF || m._qimenW);
+
+    // In QIMEN mode: insert separator row between Qimen and non-Qimen dates
+    if (sortMode === 'qimen' && !hasQimen && !_qimenSepInserted) {
+      _qimenSepInserted = true;
+      html += '<tr><td colspan="' + _colSpan + '" style="padding:6px 12px;background:#f5f5f5;border-top:2px solid #80cbc4;border-bottom:1px solid #ddd;font-size:11px;color:#666;font-weight:bold;">── Other XKDG dates (no Qimen match) ──</td></tr>';
+    }
     
     // Star styling
     const starColor = m.pureYYStarInfo && m.pureYYStarInfo.auspicious === true  ? '#1b5e20'
@@ -1164,14 +1213,44 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     const xkdgHtml = '<div style="font-size:11px;color:#c0392b;font-weight:bold;">' + (m.facingLabels.length ? m.facingLabels.join(' · ') : '—') + '</div>'
                    + (wSlot ? '<div style="font-size:11px;color:#1565c0;font-weight:bold;">' + (m.waterLabels.length ? m.waterLabels.join(' · ') : '—') + '</div>' : '');
     
-    // Row background
-    const rowBg = m.isBL ? '#fff8b0' : (i % 2 === 0 ? '#fffaf0' : '#fff');
-    const rowBorder = m.isBL ? 'border-left:4px solid #b8860b;' : '';
+    // Qimen badge
+    let qimenCell = '';
+    if (_qimenAvail) {
+      let qBadge = '—';
+      if (m._qimenFW) {
+        qBadge = '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ F+W</span>';
+      } else if (m._qimenF && m._qimenW) {
+        qBadge = '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ F</span>'
+               + ' <span style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ W</span>';
+      } else if (m._qimenF) {
+        qBadge = '<span style="background:#e0f2f1;color:#00695c;border:1px solid #80cbc4;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ F</span>';
+      } else if (m._qimenW) {
+        qBadge = '<span style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:bold;white-space:nowrap;">☆ W</span>';
+      }
+      qimenCell = '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;">' + qBadge + '</td>';
+    }
+
+    // Row background: Qimen-matched rows get teal tint in QIMEN mode, BL stays yellow
+    let rowBg, rowBorder;
+    if (m.isBL) {
+      rowBg = '#fff8b0';
+      rowBorder = 'border-left:4px solid #b8860b;';
+    } else if (sortMode === 'qimen' && hasQimen) {
+      rowBg = (i % 2 === 0) ? '#e0f2f1' : '#ecf7f6';
+      rowBorder = 'border-left:4px solid #00695c;';
+    } else {
+      rowBg = (i % 2 === 0) ? '#fffaf0' : '#fff';
+      rowBorder = '';
+    }
+
+    // Date label: add ☆ prefix for Qimen-matched dates in QIMEN mode
+    const datePrefix = (sortMode === 'qimen' && hasQimen) ? '☆ ' : '';
     
     html += '<tr style="background:' + rowBg + ';' + rowBorder + 'cursor:pointer;" onclick="loadDateIntoMain(\'' + m.isoDate + '\', 6)">';
-    html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + dateLabel + '</td>';
+    html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + datePrefix + dateLabel + '</td>';
     html += '<td style="padding:6px 4px;text-align:center;color:#880e4f;font-weight:bold;font-size:12px;line-height:1.1;border-bottom:1px solid #eee;">' + m.dGan + '<br>' + m.dZhi + '</td>';
     html += '<td style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee;">' + xkdgHtml + '</td>';
+    html += qimenCell;
     html += '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:' + starColor + ';font-weight:bold;">' + (m.pureYYStarInfo && m.pureYYStarInfo.name ? starIcon + m.pureYYStarInfo.name : '—') + '</td>';
     html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:14px;color:' + (m.isBL ? '#b8860b' : '#8a6a1f') + ';border-bottom:1px solid #eee;">' + m.score + '</td>';
     html += '</tr>';
@@ -1191,13 +1270,69 @@ function fsSetRange(days){
   fsFindDates();
 }
 
-// Sort toggle. Switches between BEST (BL first, then by score desc) and
-// LIST (chronological). Re-renders the LAST matches without rescanning.
+// Sort toggle. Switches between BEST / LIST / QIMEN.
+// QIMEN mode triggers lazy annotation on first click.
 function fsSetSortMode(mode){
-  window._fsSortMode = (mode === 'list') ? 'list' : 'best';
+  window._fsSortMode = (mode === 'list') ? 'list' : (mode === 'qimen') ? 'qimen' : 'best';
   if (window._fsLastMatches && window._fsLastFSlot) {
+    // Lazy Qimen annotation: run once on first QIMEN click
+    if (mode === 'qimen' && !window._fsQimenAnnotated) {
+      fsAnnotateQimenHits(window._fsLastMatches, window._fsLastFSlot, window._fsLastWSlot);
+      window._fsQimenAnnotated = true;
+    }
     fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  QIMEN DUNJIA ANNOTATION — extension for QMDJ Water Scanner
+//
+//  Annotates matching dates with QMDJ Water activation hits for the
+//  Facing and Water palaces. Each match's bestHour is tested against
+//  both palaces via QMDJWaterScanner.checkHourAtPalace().
+//
+//  Sets on each match object:
+//    _qimenF   : {matched, hits, score} for Facing palace
+//    _qimenW   : {matched, hits, score} for Water palace
+//    _qimenFW  : true when BOTH palaces matched (convenience flag)
+//
+//  Called lazily on first QIMEN tab click, or auto when sort is
+//  already 'qimen' and new matches arrive.
+// ═══════════════════════════════════════════════════════════════════
+
+function fsAnnotateQimenHits(matches, fSlot, wSlot){
+  if (typeof window.QMDJWaterScanner === 'undefined') return;
+  const scanner = window.QMDJWaterScanner;
+
+  // Degrees → palace
+  const fDeg = fSlot ? (fSlot.startDeg + 2.8125) : null;
+  const wDeg = wSlot ? wSlot.centerDeg : null;
+  const fPalace = (fDeg != null) ? scanner.degToPalace(fDeg) : null;
+  const wPalace = (wDeg != null) ? scanner.degToPalace(wDeg) : null;
+
+  if (!fPalace && !wPalace) return; // nothing to test
+
+  matches.forEach(function(m){
+    m._qimenF  = null;
+    m._qimenW  = null;
+    m._qimenFW = false;
+    if (!m.bestHour) return;
+
+    // Extract solar date from the Date object stored in m.date
+    const Y = m.date.getFullYear(), M = m.date.getMonth() + 1, D = m.date.getDate();
+    const hGan = m.bestHour.hGan;   // Chinese character (甲)
+    const hZhi = m.bestHour.hZhi;   // Chinese character (子)
+
+    if (fPalace) {
+      const res = scanner.checkHourAtPalace(Y, M, D, hGan, hZhi, fPalace);
+      if (res && res.matched) m._qimenF = res;
+    }
+    if (wPalace) {
+      const res = scanner.checkHourAtPalace(Y, M, D, hGan, hZhi, wPalace);
+      if (res && res.matched) m._qimenW = res;
+    }
+    if (m._qimenF && m._qimenW) m._qimenFW = true;
+  });
 }
 
 // Scroll the user back to the Person A (or B) input panel and focus its date
