@@ -2496,12 +2496,12 @@ function renderScanResults(results, mode) {
     // (TABLES is the only view that shows everything regardless of score.)
     results = results.filter(r => {
         const s = r.score;
-        return hasNegSort ? (s < 1) : (s >= 1);
+        return hasNegSort ? (s < 1) : (s >= 6);
     });
     if (results.length === 0) {
         const emptyMsg = hasNegSort
             ? 'No negative dates (score &lt; +1) in this range.'
-            : 'No favourable dates (score &ge; +1) in this range. Toggle the NEGATIVES filter to see negative dates instead.';
+            : 'No favourable dates (score &ge; +6) in this range. Toggle the NEGATIVES filter to see negative dates instead.';
         container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">' + emptyMsg + '</div>';
         return;
     }
