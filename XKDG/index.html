@@ -23,7 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css?v=425">
+    <link rel="stylesheet" href="styles.css?v=432">
     <style>
       /* Negatives chip — white by default, red when active */
       .filter-chip.negatives-chip {
@@ -75,10 +75,12 @@
 
 <div class="container">
     <div class="inputs-row">
+        <button class="btn-arrow" onclick="shiftHour(-1)" title="Previous hour">◀</button>
         <button class="btn-tool" onclick="setNow()">NOW</button>
         <button class="btn-tool" onclick="getGPS()">GPS</button>
         <input type="date" id="date">
         <input type="time" id="time">
+        <button class="btn-arrow" onclick="shiftHour(1)" title="Next hour">▶</button>
     </div>
 
     <div class="geo-row">
@@ -327,9 +329,9 @@
     </div>
 
 <script src="cities.js?v=413"></script>
-<script src="app-bazi.js?v=428"></script>
+<script src="app-bazi.js?v=432"></script>
 <script src="app-fengshui.js?v=414"></script>
-<div id="version-tag" style="text-align:center;margin:20px 0 10px;font-size:15px;font-weight:bold;color:#888;letter-spacing:1px;">v431</div>
+<div id="version-tag" style="text-align:center;margin:20px 0 10px;font-size:15px;font-weight:bold;color:#888;letter-spacing:1px;">v432</div>
 <script src="version.js?v=414"></script>
 </body>
 </html>

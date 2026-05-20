@@ -1000,6 +1000,23 @@ function setNow() {
     }
 }
 
+// ── Shift date/time by ±1 hour and recalculate ──────────────────────
+function shiftHour(delta) {
+    try {
+        const dateEl = document.getElementById('date');
+        const timeEl = document.getElementById('time');
+        if (!dateEl.value || !timeEl.value) return;
+        const [y, m, d] = dateEl.value.split('-').map(Number);
+        const [hh, mm] = timeEl.value.split(':').map(Number);
+        const dt = new Date(y, m - 1, d, hh + delta, mm);
+        dateEl.value = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+        timeEl.value = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        calculateBazi();
+    } catch(e) {
+        console.error('shiftHour error:', e);
+    }
+}
+
 // ── Smart UTC offset lookup by GPS coordinates ──────────────────────
 // Many countries use a UTC offset that does NOT match their geographic longitude.
 // This function maps (lat, lon) → real UTC offset for the most common "anomalies".
