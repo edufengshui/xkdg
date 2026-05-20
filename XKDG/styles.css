@@ -8,7 +8,7 @@
         
         .inputs-row { display: flex; gap: 8px; margin-bottom: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
 
-        .btn-arrow { background: none; border: 1px solid #bbb; color: #555; cursor: pointer; font-size: 20px; padding: 8px 12px; border-radius: 8px; line-height: 1; }
+        .btn-arrow { background: none; border: 1px solid #bbb; color: #555; cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 6px; line-height: 1; }
         .btn-arrow:hover { background: #e0e0e0; }
         .btn-arrow:active { background: #ccc; }
 
@@ -29,12 +29,16 @@
                 padding: 7px 10px;
                 font-size: 13px;
             }
+            .btn-arrow {
+                font-size: 20px;
+                padding: 8px 12px;
+                border-radius: 8px;
+            }
         }
         
         .geo-row { 
             display: flex; 
-            flex-direction: column;
-            gap: 6px;
+            gap: 10px; 
             margin-bottom: 12px; 
             justify-content: center; 
             align-items: center; 
@@ -44,6 +48,7 @@
             border: 1px solid #e0e0e0;
             width: auto;
             align-self: center;
+            flex-wrap: wrap;
         }
         .geo-row-top, .geo-row-bottom {
             display: flex;
@@ -51,13 +56,17 @@
             gap: 6px;
             justify-content: center;
             align-items: center;
-            width: 100%;
         }
         .geo-item { display: flex; align-items: center; gap: 4px; }
 
         @media (max-width: 600px) {
             .geo-row {
+                flex-direction: column;
+                gap: 6px;
                 padding: 8px;
+                width: 100%;
+            }
+            .geo-row-top, .geo-row-bottom {
                 width: 100%;
             }
             .geo-row label { font-size: 11px; margin-right: 2px; }
