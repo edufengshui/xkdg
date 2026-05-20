@@ -1187,7 +1187,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:18%;">Date</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:10%;">Hour</th>';
   html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:auto;">XKDG Relations</th>';
-  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;min-width:110px;">☆ Qimen</th>';
+  if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;">☆ Qimen</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:14%;">Pure YY Star</th>';
   html += '<th style="text-align:center;padding:6px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:10%;">Score</th>';
   html += '</tr>';
@@ -1254,52 +1254,48 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         });
 
         var doorColor = ['Open','Rest','Birth','View'].indexOf(cl.door)!==-1 ? '#2e7d32' : '#c62828';
+        var lbl = label === 'Facing' ? 'F' : 'W';
 
-        var h = '<div style="border:1px solid ' + accentColor + ';border-radius:4px;margin:2px 0;background:#fff;overflow:hidden;">';
+        var h = '<div style="border:1px solid ' + accentColor + ';border-radius:4px;margin:2px auto;background:#fff;overflow:hidden;width:88px;display:inline-block;vertical-align:top;">';
 
-        // Header bar (compact)
-        h += '<div style="background:' + accentColor + ';color:#fff;padding:1px 4px;font-size:8px;font-weight:bold;text-align:center;line-height:1.3;">'
-           + label + ' P' + palaceNum + ' ' + pi.han + ' ' + pi.dir
+        // Header (1 line, compact)
+        h += '<div style="background:' + accentColor + ';color:#fff;padding:1px 3px;font-size:7px;font-weight:bold;text-align:center;white-space:nowrap;">'
+           + lbl + ' P' + palaceNum + ' ' + pi.han + ' ' + pi.dir
            + (hourLabel ? ' @' + hourLabel : '')
            + '</div>';
 
-        // Compact square cell
-        h += '<div style="display:grid;grid-template-columns:16px 1fr;grid-template-rows:auto auto auto;padding:2px 4px;gap:0 2px;align-items:center;">';
-        // Deity (centered, full width)
-        h += '<div style="grid-column:1/3;text-align:center;color:#666;font-size:9px;font-weight:bold;">' + (cl.deity||'') + '</div>';
-        // Tian stem + Star
-        h += '<div style="color:#c62828;font-weight:bold;font-size:12px;">' + (cl.tiH||'') + '</div>';
-        h += '<div style="text-align:right;color:#555;font-size:9px;">' + (cl.star||'') + '</div>';
-        // Door (centered, bold)
-        h += '<div style="grid-column:1/3;text-align:center;font-weight:bold;color:' + doorColor + ';font-size:11px;padding:1px 0;">' + (cl.door||'') + '</div>';
+        // Square cell body
+        h += '<div style="padding:2px 4px;">';
+        // Deity
+        h += '<div style="text-align:center;color:#666;font-size:9px;font-weight:bold;line-height:1.2;">' + (cl.deity||'') + '</div>';
+        // Tian stem (left) + Star (right)
+        h += '<div style="display:flex;justify-content:space-between;align-items:center;">'
+           + '<span style="color:#c62828;font-weight:bold;font-size:13px;">' + (cl.tiH||'') + '</span>'
+           + '<span style="color:#555;font-size:8px;">' + (cl.star||'') + '</span>'
+           + '</div>';
+        // Door (center, bold)
+        h += '<div style="text-align:center;font-weight:bold;color:' + doorColor + ';font-size:11px;line-height:1.3;">' + (cl.door||'') + '</div>';
+        // Di stem + palace number
+        var diExtra = (cl.zhiFu && cl.jiaName) ? '<div style="font-size:7px;color:#e65100;font-weight:bold;line-height:1;">' + cl.jiaName + '</div>' : '';
+        h += '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
+           + '<div><span style="color:#bf6c00;font-weight:bold;font-size:13px;">' + (cl.diH||'') + '</span>' + diExtra + '</div>'
+           + '<span style="color:#999;font-weight:bold;font-size:10px;">' + palaceNum + '</span>'
+           + '</div>';
         h += '</div>';
 
-        // Di stem + Jia + palace number
-        var diHtml = '<span style="color:#bf6c00;font-weight:bold;font-size:12px;">' + (cl.diH||'') + '</span>';
-        if (cl.zhiFu && cl.jiaName) diHtml += '<span style="color:#e65100;font-size:8px;font-weight:bold;"> ' + cl.jiaName + '</span>';
-        var zhiHtml = '';
-        if (cl.zhiFu)  zhiHtml += '<span style="font-size:7px;color:#e65100;font-weight:bold;">直符</span> ';
-        if (cl.zhiShi) zhiHtml += '<span style="font-size:7px;color:#e65100;font-weight:bold;">直使</span>';
-        h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px 2px;">'
-           + '<div>' + diHtml + (zhiHtml ? '<br>' + zhiHtml : '') + '</div>'
-           + '<span style="color:#999;font-weight:bold;font-size:11px;">' + palaceNum + '</span>'
-           + '</div>';
-
-        // Config names (compact)
+        // Config name (below cell)
         if (specialHits.length) {
-          h += '<div style="border-top:1px solid ' + accentColor + '40;padding:2px 4px;background:#f8fffe;text-align:center;">';
+          h += '<div style="border-top:1px solid ' + accentColor + '40;padding:1px 2px;background:#f8fffe;text-align:center;">';
           specialHits.forEach(function(sp){
             var sc = _qTagColors[sp.cat] || {bg:'#f5f5f5',fg:'#333'};
             var sym = _qSymbol[sp.cat] || '';
-            h += '<span style="display:inline-block;background:' + sc.bg + ';color:' + sc.fg + ';padding:1px 5px;border-radius:6px;font-size:9px;font-weight:bold;border:1px solid ' + sc.fg + '40;margin:1px;">' + sym + ' ' + (sp.label||'') + '</span>';
+            h += '<div style="background:' + sc.bg + ';color:' + sc.fg + ';padding:1px 3px;border-radius:4px;font-size:8px;font-weight:bold;margin:1px 0;">' + sym + ' ' + (sp.label||'') + '</div>';
           });
           h += '</div>';
         }
         if (penHits.length) {
-          h += '<div style="border-top:1px solid #eee;padding:1px 4px;text-align:center;">';
-          penHits.forEach(function(pn){
-            h += '<span style="font-size:8px;color:#856404;">⚠' + (pn.label||'') + '</span> ';
-          });
+          h += '<div style="text-align:center;padding:1px 2px;">';
+          penHits.forEach(function(pn){ h += '<span style="font-size:7px;color:#856404;">⚠' + (pn.label||'') + '</span>'; });
           h += '</div>';
         }
 
