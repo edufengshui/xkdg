@@ -1185,7 +1185,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   html += '<thead>';
   html += '<tr style="background:#fff8e1;">';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#1565c0;width:18%;">Date</th>';
-  html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:10%;">Day</th>';
+  html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#880e4f;width:10%;">Hour</th>';
   html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:auto;">XKDG Relations</th>';
   if (_qimenAvail) html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#00695c;min-width:160px;">☆ Qimen</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;width:14%;">Pure YY Star</th>';
@@ -1242,7 +1242,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       };
       const _qSymbol = { dun:'☆', zha:'✦', jia:'◆', pen:'⚠' };
 
-      function renderPalaceCard(result, palaceNum, label, accentColor) {
+      function renderPalaceCard(result, palaceNum, label, accentColor, hourLabel) {
         if (!result || !result.hits || !result.hits.length) return '';
         const pi = _PALACE_INFO[palaceNum] || {};
         // Separate hits by role
@@ -1257,9 +1257,11 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         });
 
         var h = '<div style="border:1px solid ' + accentColor + ';border-radius:6px;padding:4px 6px;margin:2px 0;background:#fff;text-align:left;">';
-        // Header: label + palace + direction
+        // Header: label + palace + direction + hour
         h += '<div style="font-size:9px;font-weight:bold;color:' + accentColor + ';margin-bottom:2px;border-bottom:1px solid #eee;padding-bottom:2px;">'
-           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' <span style="color:#666;">(' + pi.dir + ')</span></div>';
+           + label + ' · P' + palaceNum + ' ' + pi.tri + ' ' + pi.han + ' <span style="color:#666;">(' + pi.dir + ')</span>'
+           + (hourLabel ? ' <span style="color:#880e4f;font-weight:normal;">@ ' + hourLabel + '</span>' : '')
+           + '</div>';
         // Door (prominent)
         if (doorHit) {
           var dc = _qTagColors.door;
@@ -1311,8 +1313,9 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       let qContent = '—';
       if (m._qimenF || m._qimenW) {
         qContent = '';
-        if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c');
-        if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0');
+        const _hourLabel = m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi) : '';
+        if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c', _hourLabel);
+        if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0', _hourLabel);
       }
       qimenCell = '<td style="padding:4px 3px;text-align:center;border-bottom:1px solid #eee;vertical-align:top;">' + qContent + '</td>';
     }
@@ -1335,7 +1338,11 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     
     html += '<tr style="background:' + rowBg + ';' + rowBorder + 'cursor:pointer;" onclick="loadDateIntoMain(\'' + m.isoDate + '\', 6)">';
     html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + datePrefix + dateLabel + '</td>';
-    html += '<td style="padding:6px 4px;text-align:center;color:#880e4f;font-weight:bold;font-size:12px;line-height:1.1;border-bottom:1px solid #eee;">' + m.dGan + '<br>' + m.dZhi + '</td>';
+    // Hour cell: bestHour pillar + time range
+    const _hourTimes = {'子':'23-01','丑':'01-03','寅':'03-05','卯':'05-07','辰':'07-09','巳':'09-11','午':'11-13','未':'13-15','申':'15-17','酉':'17-19','戌':'19-21','亥':'21-23'};
+    const hLabel = m.bestHour ? (m.bestHour.hGan + '<br>' + m.bestHour.hZhi) : (m.dGan + '<br>' + m.dZhi);
+    const hTime = (m.bestHour && _hourTimes[m.bestHour.hZhi]) ? '<div style="font-size:9px;color:#666;margin-top:1px;">' + _hourTimes[m.bestHour.hZhi] + '</div>' : '';
+    html += '<td style="padding:6px 4px;text-align:center;color:#880e4f;font-weight:bold;font-size:12px;line-height:1.1;border-bottom:1px solid #eee;">' + hLabel + hTime + '</td>';
     html += '<td style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee;">' + xkdgHtml + '</td>';
     html += qimenCell;
     html += '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:' + starColor + ';font-weight:bold;">' + (m.pureYYStarInfo && m.pureYYStarInfo.name ? starIcon + m.pureYYStarInfo.name : '—') + '</td>';
