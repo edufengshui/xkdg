@@ -11,8 +11,11 @@
         .btn-arrow { background: none; border: 1px solid #bbb; color: #555; cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 6px; line-height: 1; }
         .btn-arrow:hover { background: #e0e0e0; }
         .btn-arrow:active { background: #ccc; }
+        .arrow-mobile { display: none; }
 
         @media (max-width: 600px) {
+            .arrow-desktop { display: none; }
+            .arrow-mobile { display: inline-flex; font-size: 20px; padding: 8px 12px; border-radius: 8px; }
             .inputs-row {
                 display: grid;
                 grid-template-columns: auto auto 1fr 1fr;
@@ -28,11 +31,6 @@
             .inputs-row .btn-tool {
                 padding: 7px 10px;
                 font-size: 13px;
-            }
-            .btn-arrow {
-                font-size: 20px;
-                padding: 8px 12px;
-                border-radius: 8px;
             }
         }
         
@@ -51,11 +49,7 @@
             flex-wrap: wrap;
         }
         .geo-row-top, .geo-row-bottom {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            justify-content: center;
-            align-items: center;
+            display: contents;
         }
         .geo-item { display: flex; align-items: center; gap: 4px; }
 
@@ -67,6 +61,11 @@
                 width: 100%;
             }
             .geo-row-top, .geo-row-bottom {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                justify-content: center;
+                align-items: center;
                 width: 100%;
             }
             .geo-row label { font-size: 11px; margin-right: 2px; }
