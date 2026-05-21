@@ -1,13 +1,14 @@
 // XKDG Bazi Calculator — Service Worker
 // Cache-first strategy with runtime caching of new requests.
 
-const CACHE = 'xkdg-v472';
+const CACHE = 'xkdg-v473';
 const URLS = [
     './',
     './index.html',
     './styles.css',
     './app-bazi.js',
     './app-fengshui.js',
+    './flying-stars.js',
     './qmdj-water-scanner.js',
     './cities.js',
     './version.js',

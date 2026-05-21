@@ -413,18 +413,45 @@ const FlyingStars = (() => {
         const opt = Object.assign({
             radiusOffset:     55,        // distanza dal bordo Luopan al centro del blocco stelle
             blockSize:        80,        // dimensione del blocco 3-stelle
-            baseStarColor:    '#1a1008', // 運星 (centro blocco, grande)
-            facingStarColor:  '#cc0000', // 向星 (in alto a destra, rosso)
-            sittingStarColor: '#0a6e1f', // 山星 (in alto a sinistra, verde)
+            baseStarColor:    '#1a1008', // 運星 (piccolo, sotto)
+            facingStarColor:  '#cc0000', // 向星 (grande, alto-dx, rosso)
+            sittingStarColor: '#0a6e1f', // 山星 (grande, alto-sx, verde)
             bgColor:          'rgba(255,248,225,0.92)', // sfondo blocco
             borderColor:      '#8a6a1f',
-            fontFamily:       'serif'
+            dividerColor:     'rgba(138,106,31,0.65)',  // raggi di separazione fra palazzi
+            dividerWidth:     1.5,
+            fontFamily:       'serif',
+            showDividers:     true
         }, options || {});
 
         const blockR = opt.blockSize / 2;
         const centerR = rOuter + opt.radiusOffset;
 
-        // Per ognuno degli 8 palazzi esterni
+        // ───── Raggi di separazione fra gli 8 palazzi ─────
+        // Confini palazzi a 22.5°, 67.5°, 112.5°, 157.5°, 202.5°, 247.5°, 292.5°, 337.5°.
+        // Vengono disegnati PRIMA dei blocchi così rimangono "sotto" i riquadri.
+        if (opt.showDividers) {
+            ctx.save();
+            ctx.strokeStyle = opt.dividerColor;
+            ctx.lineWidth = opt.dividerWidth;
+            const rInner = rOuter;                          // partenza dal bordo del Luopan
+            const rOuterRay = centerR + blockR + 8;         // arriva ~8px oltre il bordo esterno dei blocchi
+            for (let i = 0; i < 8; i++) {
+                const compassDeg = 22.5 + i * 45;           // confini fra palazzi
+                const a = (compassDeg - 270) * Math.PI / 180;
+                const x1 = cx + Math.cos(a) * rInner;
+                const y1 = cy + Math.sin(a) * rInner;
+                const x2 = cx + Math.cos(a) * rOuterRay;
+                const y2 = cy + Math.sin(a) * rOuterRay;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // ───── Blocco 3-stelle per ognuno degli 8 palazzi esterni ─────
         for (let gridIdx = 0; gridIdx < 9; gridIdx++) {
             if (gridIdx === 4) continue;  // salta il centro
 
@@ -444,26 +471,26 @@ const FlyingStars = (() => {
             ctx.stroke();
             ctx.restore();
 
-            // Stella base / 運星 — al centro, grande
-            ctx.fillStyle = opt.baseStarColor;
-            ctx.font = 'bold ' + (opt.blockSize * 0.42) + 'px ' + opt.fontFamily;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(chartData.baseStars[gridIdx], bx, by + opt.blockSize * 0.08);
-
-            // Stella seduta / 山星 — in alto a sinistra
+            // Stella seduta / 山星 — GRANDE, in alto a sinistra (protagonista)
             ctx.fillStyle = opt.sittingStarColor;
-            ctx.font = 'bold ' + (opt.blockSize * 0.28) + 'px ' + opt.fontFamily;
+            ctx.font = 'bold ' + (opt.blockSize * 0.45) + 'px ' + opt.fontFamily;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             ctx.fillText(chartData.sittingStars[gridIdx],
-                         bx - blockR + 4, by - blockR + 2);
+                         bx - blockR + 6, by - blockR + 4);
 
-            // Stella verso / 向星 — in alto a destra
+            // Stella verso / 向星 — GRANDE, in alto a destra (protagonista)
             ctx.fillStyle = opt.facingStarColor;
             ctx.textAlign = 'right';
             ctx.fillText(chartData.facingStars[gridIdx],
-                         bx + blockR - 4, by - blockR + 2);
+                         bx + blockR - 6, by - blockR + 4);
+
+            // Stella base / 運星 — PICCOLA, in basso al centro (indicatore di periodo)
+            ctx.fillStyle = opt.baseStarColor;
+            ctx.font = 'bold ' + (opt.blockSize * 0.26) + 'px ' + opt.fontFamily;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(chartData.baseStars[gridIdx], bx, by + blockR - 4);
         }
     }
 
@@ -476,9 +503,9 @@ const FlyingStars = (() => {
         const sit  = chartData.sittingStars[4];
         const base = chartData.baseStars[4];
         const fac  = chartData.facingStars[4];
-        return '<span style="color:#0a6e1f;font-weight:bold;">山 ' + sit + '</span>' +
-               ' · <span style="color:#1a1008;font-weight:bold;">運 ' + base + '</span>' +
-               ' · <span style="color:#cc0000;font-weight:bold;">向 ' + fac + '</span>';
+        return '<span style="color:#0a6e1f;font-weight:bold;font-size:16px;">山 ' + sit + '</span>' +
+               ' · <span style="color:#1a1008;font-weight:bold;font-size:12px;">運 ' + base + '</span>' +
+               ' · <span style="color:#cc0000;font-weight:bold;font-size:16px;">向 ' + fac + '</span>';
     }
 
     // ----------------------------------------------------------
