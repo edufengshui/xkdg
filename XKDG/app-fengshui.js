@@ -1313,10 +1313,12 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       let qContent = '—';
       const _hourLabel = m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi) : '';
       if (m._qimenF || m._qimenW) {
-        const _chartClick = m.bestHour ? "event.stopPropagation();showQimenChart('" + m.isoDate + "','" + m.bestHour.hGan + "','" + m.bestHour.hZhi + "')" : '';
+        const _hourBase = m.bestHour ? "'" + m.isoDate + "','" + m.bestHour.hGan + "','" + m.bestHour.hZhi + "'" : null;
+        const _clickF = _hourBase ? "event.stopPropagation();showQimenChart(" + _hourBase + "," + _fPalace + ")" : '';
+        const _clickW = _hourBase ? "event.stopPropagation();showQimenChart(" + _hourBase + "," + _wPalace + ")" : '';
         qContent = '';
-        if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c', _hourLabel, _chartClick);
-        if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0', _hourLabel, _chartClick);
+        if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c', _hourLabel, _clickF);
+        if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0', _hourLabel, _clickW);
       }
       qimenCell = '<td style="padding:4px 3px;text-align:center;border-bottom:1px solid #eee;vertical-align:top;">' + qContent + '</td>';
     }
@@ -1499,7 +1501,7 @@ function showQimenPopup(label){
 // ── Full Qimen Hour Chart display ──
 // Called when user taps a Qimen card. Renders the complete 9-palace
 // flying chart at the bottom of the results area.
-function showQimenChart(isoDate, hGan, hZhi){
+function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
   if (!isoDate || !hGan || !hZhi) return;
   if (typeof window.QMDJWaterScanner === 'undefined') return;
   var parts = isoDate.split('-');
@@ -1507,54 +1509,130 @@ function showQimenChart(isoDate, hGan, hZhi){
   var chart = window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi);
   if (!chart) { alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
 
-  var DIR_INFO = {
-    4:{dir:'SE',han:'巽'},9:{dir:'S',han:'離'},2:{dir:'SW',han:'坤'},
-    3:{dir:'E',han:'震'}, 5:{dir:'',han:''}, 7:{dir:'W',han:'兌'},
-    8:{dir:'NE',han:'艮'},1:{dir:'N',han:'坎'},6:{dir:'NW',han:'乾'}
+  // Direction info (label, hanzi, di-pan trigram)
+  var DIR = {
+    4:{dir:'SE',han:'巽',tri:'☴'}, 9:{dir:'S',han:'離',tri:'☲'}, 2:{dir:'SW',han:'坤',tri:'☷'},
+    3:{dir:'E',han:'震',tri:'☳'},  5:{dir:'C',han:'',tri:''},     7:{dir:'W',han:'兌',tri:'☱'},
+    8:{dir:'NE',han:'艮',tri:'☶'}, 1:{dir:'N',han:'坎',tri:'☵'},  6:{dir:'NW',han:'乾',tri:'☰'}
   };
+  // Traditional QMDJ stem colors
+  function stemColor(stem){
+    if(!stem) return '#333';
+    if(stem==='甲'||stem==='乙') return '#2e7d32'; // wood: green
+    if(stem==='丙'||stem==='丁') return '#c62828'; // fire: red
+    if(stem==='戊'||stem==='己') return '#bf6c00'; // earth: brown
+    if(stem==='庚'||stem==='辛') return '#424242'; // metal: dark gray
+    if(stem==='壬'||stem==='癸') return '#1565c0'; // water: blue
+    return '#333';
+  }
   var FAV = ['Open','Rest','Birth','View'];
+  var GREEN = '#0d5e2c';  // dark forest green like the reference
   var gridOrder = [4,9,2, 3,5,7, 8,1,6]; // SE,S,SW, E,C,W, NE,N,NW
 
   function cellHtml(p){
     var d = chart.palaces[p];
-    if(!d) return '<td style="border:1px solid #ccc;padding:4px;background:#f5f5f5;text-align:center;color:#aaa;">—</td>';
-    var di = DIR_INFO[p];
-    var doorColor = FAV.indexOf(d.door)!==-1 ? '#2e7d32' : '#c62828';
-    var bg = d.zhiFu ? '#fffff0' : d.zhiShi ? '#f0ffff' : '#fff';
+    var di = DIR[p];
+    if(!d){
+      return '<td style="background:#fff;padding:6px;text-align:center;color:#aaa;border:1px solid '+GREEN+';">—</td>';
+    }
+    var doorColor = FAV.indexOf(d.door)!==-1 ? '#1b5e20' : '#c62828';
+    // Background: highlight if matches target palace
+    var isHighlight = (highlightPalace && p === highlightPalace);
+    var bg = isHighlight ? '#fff3b0' : '#fff';
+    var border = isHighlight ? '3px solid #f9a825' : '1px solid ' + GREEN;
+    var jia = (d.jiaName) ? '<div style="font-size:8px;color:#e65100;font-weight:bold;line-height:1;">' + d.jiaName + '</div>' : '';
     var zMark = '';
-    if(d.zhiFu) zMark = '<div style="font-size:7px;color:#e65100;font-weight:bold;">直符</div>';
-    if(d.zhiShi) zMark = '<div style="font-size:7px;color:#e65100;font-weight:bold;">直使</div>';
-    var jia = (d.jiaName) ? '<div style="font-size:7px;color:#e65100;">' + d.jiaName + '</div>' : '';
-    return '<td style="border:1px solid #aaa;padding:4px 5px;background:' + bg + ';vertical-align:top;width:33%;">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">'
-      + '<span style="font-size:8px;color:#00695c;font-weight:bold;">' + di.dir + '</span>'
-      + '<span style="font-size:8px;color:#666;">' + di.han + '</span></div>'
-      + '<div style="text-align:center;color:#666;font-size:9px;">' + (d.deity||'') + '</div>'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;">'
-      + '<span style="color:#c62828;font-weight:bold;font-size:14px;">' + (d.tiH||'') + '</span>'
-      + '<span style="color:#555;font-size:8px;">' + (d.star||'') + '</span></div>'
-      + '<div style="text-align:center;font-weight:bold;color:' + doorColor + ';font-size:12px;">' + (d.door||'') + '</div>'
+    if(d.zhiFu)  zMark = '<div style="font-size:8px;color:#e65100;font-weight:bold;line-height:1;">直符</div>';
+    if(d.zhiShi) zMark = '<div style="font-size:8px;color:#e65100;font-weight:bold;line-height:1;">直使</div>';
+
+    return '<td style="background:'+bg+';padding:6px 7px;vertical-align:top;border:'+border+';width:33%;">'
+      // Deity at top center
+      + '<div style="text-align:center;color:#222;font-size:11px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
+      // Row 2: Tian stem (left) + Star (right)
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">'
+      +   '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:16px;">' + (d.tiH||'') + '</span>'
+      +   '<span style="color:#444;font-size:10px;">' + (d.star||'') + '</span>'
+      + '</div>'
+      // Door center (large bold)
+      + '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:14px;margin:3px 0;">' + (d.door||'') + '</div>'
+      // Row 4: Di stem (left) + Palace number (right)
       + '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
-      + '<div><span style="color:#bf6c00;font-weight:bold;font-size:14px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
-      + '<span style="color:#aaa;font-size:10px;font-weight:bold;">' + p + '</span></div>'
+      +   '<div><span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:16px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
+      +   '<span style="color:#999;font-size:13px;font-weight:bold;">' + p + '</span>'
+      + '</div>'
       + '</td>';
   }
 
-  var html = '<div id="qimen-full-chart" style="margin:12px 0;border:2px solid #00695c;border-radius:8px;overflow:hidden;max-width:400px;">';
-  html += '<div style="background:#00695c;color:#fff;padding:6px 10px;font-weight:bold;font-size:13px;text-align:center;">'
-       + '🏯 QMDJ Hour Chart · ' + isoDate + ' · ' + hGan + hZhi
-       + ' <span style="opacity:0.7;">(' + chart.dun + ' dun, ju ' + chart.ju + ')</span>'
-       + '<span onclick="document.getElementById(\'qimen-full-chart\').remove()" style="float:right;cursor:pointer;font-size:16px;">✕</span>'
+  // Branch labels around the perimeter (each side has 3 cells)
+  // Top row of branches:    SE→巳  S→午  SW→未
+  // Right col of branches:  SW→申  W→酉  NW→戌
+  // Bottom row of branches: NW→亥  N→子  NE→丑
+  // Left col of branches:   NE→寅  E→卯  SE→辰
+  var labelStyle = 'color:#fff;font-weight:bold;font-size:14px;text-align:center;background:'+GREEN+';';
+  var triStyle   = 'color:#cfe8d4;font-size:12px;text-align:center;background:'+GREEN+';width:18px;';
+  var brStyle    = 'color:#fff;font-size:13px;text-align:center;background:'+GREEN+';width:18px;';
+  var cornerStyle= 'color:#fff;font-weight:bold;font-size:10px;text-align:center;background:'+GREEN+';width:18px;';
+
+  // Build the full table layout (5 rows × 5 cols)
+  var html = '<div id="qimen-full-chart" style="margin:16px auto;max-width:480px;border-radius:8px;overflow:hidden;background:'+GREEN+';">';
+
+  // Title bar
+  html += '<div style="background:#fff;color:'+GREEN+';padding:8px 12px;font-weight:bold;font-size:14px;text-align:center;border-bottom:2px solid '+GREEN+';">'
+       + '📅 QMDJ • Hour Flying Chart'
+       + '<span onclick="document.getElementById(\'qimen-full-chart\').remove()" style="float:right;cursor:pointer;font-size:18px;color:#666;">✕</span>'
        + '</div>';
-  html += '<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
-  for(var r = 0; r < 3; r++){
-    html += '<tr>';
-    html += cellHtml(gridOrder[r*3]);
-    html += cellHtml(gridOrder[r*3+1]);
-    html += cellHtml(gridOrder[r*3+2]);
-    html += '</tr>';
-  }
-  html += '</table></div>';
+
+  // Main table
+  html += '<table style="width:100%;border-collapse:collapse;background:'+GREEN+';">';
+
+  // Row 1: corner | SE label+branch | S label+branch | SW label+branch | corner
+  html += '<tr>'
+       + '<td style="'+cornerStyle+'padding:4px;">SE</td>'
+       + '<td style="'+labelStyle+'padding:4px;">'+DIR[4].tri+' 巳</td>'
+       + '<td style="'+labelStyle+'padding:4px;">'+DIR[9].tri+' S 午</td>'
+       + '<td style="'+labelStyle+'padding:4px;">未 '+DIR[2].tri+'</td>'
+       + '<td style="'+cornerStyle+'padding:4px;">SW</td>'
+       + '</tr>';
+
+  // Row 2: 辰 | P4 | P9 | P2 | 申
+  html += '<tr>'
+       + '<td style="'+brStyle+'padding:6px 2px;">辰</td>'
+       + cellHtml(4) + cellHtml(9) + cellHtml(2)
+       + '<td style="'+brStyle+'padding:6px 2px;">申</td>'
+       + '</tr>';
+
+  // Row 3: E+卯 | P3 | P5 | P7 | 酉+W
+  html += '<tr>'
+       + '<td style="'+labelStyle+'padding:6px 2px;line-height:1.3;">E<br>'+DIR[3].tri+'<br>卯</td>'
+       + cellHtml(3) + cellHtml(5) + cellHtml(7)
+       + '<td style="'+labelStyle+'padding:6px 2px;line-height:1.3;">W<br>'+DIR[7].tri+'<br>酉</td>'
+       + '</tr>';
+
+  // Row 4: 寅 | P8 | P1 | P6 | 戌
+  html += '<tr>'
+       + '<td style="'+brStyle+'padding:6px 2px;">寅</td>'
+       + cellHtml(8) + cellHtml(1) + cellHtml(6)
+       + '<td style="'+brStyle+'padding:6px 2px;">戌</td>'
+       + '</tr>';
+
+  // Row 5: NE | NE-丑 | N-子 | 亥-NW | NW
+  html += '<tr>'
+       + '<td style="'+cornerStyle+'padding:4px;">NE</td>'
+       + '<td style="'+labelStyle+'padding:4px;">'+DIR[8].tri+' 丑</td>'
+       + '<td style="'+labelStyle+'padding:4px;">'+DIR[1].tri+' N 子</td>'
+       + '<td style="'+labelStyle+'padding:4px;">亥 '+DIR[6].tri+'</td>'
+       + '<td style="'+cornerStyle+'padding:4px;">NW</td>'
+       + '</tr>';
+
+  html += '</table>';
+
+  // Footer with date/hour
+  html += '<div style="background:#fff;color:#444;padding:6px 12px;text-align:center;font-size:12px;border-top:2px solid '+GREEN+';">'
+       + isoDate + ' · ' + hGan + hZhi
+       + ' <span style="color:#888;">(' + chart.dun + ' dun, ju ' + chart.ju + ')</span>'
+       + '</div>';
+
+  html += '</div>';
 
   // Remove previous chart if any
   var old = document.getElementById('qimen-full-chart');
