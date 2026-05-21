@@ -17,7 +17,21 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.svg">
 
     <!-- Service worker registration -->
-    <script src="register-sw.js"></script>
+    <!-- updateViaCache:'none' forces the browser to always fetch sw.js from
+         the network (bypassing HTTP cache), so version bumps take effect
+         immediately without requiring manual cache clearing. -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+          .then(reg => {
+            // Check for updates every time the page is focused
+            reg.update();
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') reg.update();
+            });
+          });
+      }
+    </script>
 
     <!-- External library -->
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
@@ -331,11 +345,11 @@
     </div>
 
 <script src="cities.js?v=413"></script>
-<script src="app-bazi.js?v=474"></script>
-<script src="qmdj-water-scanner.js?v=474"></script>
-<script src="app-fengshui.js?v=474"></script>
-<script src="flying-stars.js?v=474"></script>
-<div id="version-tag" style="text-align:center;margin:20px 0 10px;font-size:15px;font-weight:bold;color:#888;letter-spacing:1px;">v474</div>
-<script src="version.js?v=474"></script>
+<script src="app-bazi.js?v=475"></script>
+<script src="qmdj-water-scanner.js?v=475"></script>
+<script src="app-fengshui.js?v=475"></script>
+<script src="flying-stars.js?v=475"></script>
+<div id="version-tag" style="text-align:center;margin:20px 0 10px;font-size:15px;font-weight:bold;color:#888;letter-spacing:1px;">v475</div>
+<script src="version.js?v=475"></script>
 </body>
 </html>
