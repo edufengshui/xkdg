@@ -1041,7 +1041,9 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   function primaryCmp(a, b){
     if (primaryAsc) return a.date - b.date;
     if (a.isBL !== b.isBL) return a.isBL ? -1 : 1;
-    if (b.score !== a.score) return b.score - a.score;
+    const aScore = a.score + (a._qimenBonus || 0);
+    const bScore = b.score + (b._qimenBonus || 0);
+    if (bScore !== aScore) return bScore - aScore;
     return a.date - b.date;
   }
 
@@ -1346,7 +1348,11 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     html += '<td style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee;">' + xkdgHtml + '</td>';
     html += qimenCell;
     html += '<td style="padding:6px 4px;text-align:center;border-bottom:1px solid #eee;font-size:11px;color:' + starColor + ';font-weight:bold;">' + (m.pureYYStarInfo && m.pureYYStarInfo.name ? starIcon + m.pureYYStarInfo.name : '—') + '</td>';
-    html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:14px;color:' + (m.isBL ? '#b8860b' : '#8a6a1f') + ';border-bottom:1px solid #eee;">' + m.score + '</td>';
+    const combinedScore = m.score + (m._qimenBonus || 0);
+    const scoreLabel = (m._qimenBonus > 0)
+      ? combinedScore + '<div style="font-size:8px;color:#00695c;font-weight:normal;">(+' + m._qimenBonus + ' ☆)</div>'
+      : '' + combinedScore;
+    html += '<td style="padding:6px;text-align:center;font-weight:bold;font-size:14px;color:' + (m.isBL ? '#b8860b' : '#8a6a1f') + ';border-bottom:1px solid #eee;">' + scoreLabel + '</td>';
     html += '</tr>';
   });
   
@@ -1420,6 +1426,7 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
     m._qimenF  = null;
     m._qimenW  = null;
     m._qimenFW = false;
+    m._qimenBonus = 0;
     if (!m.bestHour) return;
 
     // Extract solar date from the Date object stored in m.date
@@ -1436,6 +1443,16 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
       if (res && res.matched) m._qimenW = res;
     }
     if (m._qimenF && m._qimenW) m._qimenFW = true;
+
+    // Compute Qimen score bonus:
+    //   +15 per sector matched (F or W)
+    //   +5 extra if BOTH sectors matched (F+W)
+    //   + raw Qimen hit score (typically 2-5 pts per sector)
+    var bonus = 0;
+    if (m._qimenF) bonus += 15 + (m._qimenF.score || 0);
+    if (m._qimenW) bonus += 15 + (m._qimenW.score || 0);
+    if (m._qimenFW) bonus += 5;
+    m._qimenBonus = bonus;
   });
 }
 
