@@ -373,6 +373,115 @@ const FlyingStars = (() => {
     }
 
     // ----------------------------------------------------------
+    // DISEGNO SOVRAPPOSTO AL LUOPAN
+    // ----------------------------------------------------------
+    //
+    // Disegna le 3 stelle (山 / 運 / 向) di ogni palazzo ESTERNO
+    // attorno a un Luopan circolare già esistente. Le stelle del
+    // palazzo CENTRALE non vengono disegnate (non c'è spazio fisico
+    // al centro del Luopan) ma vengono restituite come stringa
+    // formattata, da mostrare separatamente sotto il Luopan.
+    //
+    // Convenzione angoli: 0°=Nord bussola, +clockwise (come
+    // l'app XKDG). In coordinate canvas si usa θ = (deg − 270°).
+
+    // Mappa palazzo (indice griglia 3×3) → grado bussola del CENTRO del palazzo
+    // Ogni palazzo copre 45°: N va da -22.5° a +22.5°, NE da 22.5° a 67.5°, ecc.
+    const PALACE_COMPASS_DEG = {
+        0: 135,   // SE
+        1: 180,   // S
+        2: 225,   // SW
+        3: 90,    // E
+        // 4 = centro, non si disegna sul Luopan
+        5: 270,   // W
+        6: 45,    // NE
+        7: 0,     // N
+        8: 315    // NW
+    };
+
+    /**
+     * Disegna le stelle volanti dei 8 palazzi esterni attorno a un Luopan.
+     *
+     * @param {CanvasRenderingContext2D} ctx - Contesto canvas del Luopan
+     * @param {object} chartData - Risultato di calculate()
+     * @param {number} cx - Coordinata X del centro Luopan
+     * @param {number} cy - Coordinata Y del centro Luopan
+     * @param {number} rOuter - Raggio esterno del Luopan
+     * @param {object} [options]
+     */
+    function drawOnLuopan(ctx, chartData, cx, cy, rOuter, options) {
+        const opt = Object.assign({
+            radiusOffset:     55,        // distanza dal bordo Luopan al centro del blocco stelle
+            blockSize:        80,        // dimensione del blocco 3-stelle
+            baseStarColor:    '#1a1008', // 運星 (centro blocco, grande)
+            facingStarColor:  '#cc0000', // 向星 (in alto a destra, rosso)
+            sittingStarColor: '#0a6e1f', // 山星 (in alto a sinistra, verde)
+            bgColor:          'rgba(255,248,225,0.92)', // sfondo blocco
+            borderColor:      '#8a6a1f',
+            fontFamily:       'serif'
+        }, options || {});
+
+        const blockR = opt.blockSize / 2;
+        const centerR = rOuter + opt.radiusOffset;
+
+        // Per ognuno degli 8 palazzi esterni
+        for (let gridIdx = 0; gridIdx < 9; gridIdx++) {
+            if (gridIdx === 4) continue;  // salta il centro
+
+            const compassDeg = PALACE_COMPASS_DEG[gridIdx];
+            const a = (compassDeg - 270) * Math.PI / 180;
+            const bx = cx + Math.cos(a) * centerR;
+            const by = cy + Math.sin(a) * centerR;
+
+            // Sfondo del blocco
+            ctx.save();
+            ctx.fillStyle = opt.bgColor;
+            ctx.strokeStyle = opt.borderColor;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.rect(bx - blockR, by - blockR, opt.blockSize, opt.blockSize);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // Stella base / 運星 — al centro, grande
+            ctx.fillStyle = opt.baseStarColor;
+            ctx.font = 'bold ' + (opt.blockSize * 0.42) + 'px ' + opt.fontFamily;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(chartData.baseStars[gridIdx], bx, by + opt.blockSize * 0.08);
+
+            // Stella seduta / 山星 — in alto a sinistra
+            ctx.fillStyle = opt.sittingStarColor;
+            ctx.font = 'bold ' + (opt.blockSize * 0.28) + 'px ' + opt.fontFamily;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(chartData.sittingStars[gridIdx],
+                         bx - blockR + 4, by - blockR + 2);
+
+            // Stella verso / 向星 — in alto a destra
+            ctx.fillStyle = opt.facingStarColor;
+            ctx.textAlign = 'right';
+            ctx.fillText(chartData.facingStars[gridIdx],
+                         bx + blockR - 4, by - blockR + 2);
+        }
+    }
+
+    /**
+     * Restituisce una stringa formattata HTML con le stelle del palazzo centrale.
+     * @param {object} chartData
+     * @returns {string} HTML
+     */
+    function getCenterStarsHTML(chartData) {
+        const sit  = chartData.sittingStars[4];
+        const base = chartData.baseStars[4];
+        const fac  = chartData.facingStars[4];
+        return '<span style="color:#0a6e1f;font-weight:bold;">山 ' + sit + '</span>' +
+               ' · <span style="color:#1a1008;font-weight:bold;">運 ' + base + '</span>' +
+               ' · <span style="color:#cc0000;font-weight:bold;">向 ' + fac + '</span>';
+    }
+
+    // ----------------------------------------------------------
     // API PUBBLICA
     // ----------------------------------------------------------
 
@@ -387,6 +496,8 @@ const FlyingStars = (() => {
 
         // Disegno
         draw:                 draw,
+        drawOnLuopan:         drawOnLuopan,
+        getCenterStarsHTML:   getCenterStarsHTML,
 
         // Costanti (sola lettura)
         MOUNTAINS_24:         MOUNTAINS_24,

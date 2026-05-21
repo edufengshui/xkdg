@@ -216,6 +216,22 @@ const FS_MTN_TRIGRAM = [
   'Gen',  'Li',   'Dui',  'Zhen', 'Kun',  'Kan',   // Bing Wu Ding Wei Kun Shen
   'Zhen', 'Dui',  'Xun',  'Li',   'Qian', 'Zhen'   // Geng You Xin Xu Qian Hai
 ];
+// ── 24-Mountains → Chinese characters (for Flying Stars module) ───
+// Same order as FS_MTN_TRIGRAM. Index 0 = Ren centered at 345°.
+const FS_MTN_CHAR = [
+  '壬', '子', '癸', '丑', '艮', '寅',  // Ren Zi Gui Chou Gen Yin
+  '甲', '卯', '乙', '辰', '巽', '巳',  // Jia Mao Yi Chen Xun Si
+  '丙', '午', '丁', '未', '坤', '申',  // Bing Wu Ding Wei Kun Shen
+  '庚', '酉', '辛', '戌', '乾', '亥'   // Geng You Xin Xu Qian Hai
+];
+// Convert compass degrees → Chinese mountain character (one of 24).
+// Each mountain occupies 15°. Ren (壬) is centered at 345°, so the index 0
+// covers 337.5°-352.5°. Formula matches fsMountainTrigramDi.
+function fsMountainCharFromDeg(deg){
+  const d = ((deg % 360) + 360) % 360;
+  const idx = Math.floor((d + 22.5) / 15) % 24;
+  return FS_MTN_CHAR[idx];
+}
 const FS_TRIGRAM_SYM = {
   'Qian': '☰', 'Kun':  '☷', 'Li':   '☲', 'Kan':  '☵',
   'Gen':  '☶', 'Xun':  '☴', 'Zhen': '☳', 'Dui':  '☱'
@@ -366,6 +382,27 @@ function buildFengShuiView(){
         </div>
       </div>
 
+      <!-- ═══ FLYING STARS (玄空飛星) controls ═══ -->
+      <div style="background:#fff8e1;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
+        <div style="font-size:11px;color:#8a6a1f;font-weight:bold;margin-bottom:6px;">⭐ FLYING STARS (玄空飛星)</div>
+        <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:110px;">
+            <label style="font-size:11px;color:#666;display:block;">House Facing (°)</label>
+            <input type="number" id="fs-house-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
+                   style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
+                   oninput="fsRedraw()">
+          </div>
+          <div style="min-width:90px;">
+            <label style="font-size:11px;color:#666;display:block;">Period (1-9)</label>
+            <input type="number" id="fs-period" min="1" max="9" step="1" placeholder="8"
+                   style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
+                   oninput="fsRedraw()">
+          </div>
+          <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ OFF</button>
+        </div>
+        <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
+      </div>
+
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
       </div>
@@ -405,6 +442,18 @@ function fsTogglePeriod(){
   FS_POST_2044 = !FS_POST_2044;
   document.getElementById('fs-period-btn').textContent = FS_POST_2044 ? 'POST 2044' : 'NOW → 2044';
   document.getElementById('fs-period-lbl').textContent = FS_POST_2044 ? 'Zheng Shen = 1-4' : 'Zheng Shen = 6-9';
+  fsRedraw();
+}
+
+// ── Flying Stars (玄空飛星) toggle state ───────────────────────────
+let FS_STARS_ON = false;
+function fsToggleStars(){
+  FS_STARS_ON = !FS_STARS_ON;
+  const btn = document.getElementById('fs-stars-toggle');
+  if (btn){
+    btn.textContent = FS_STARS_ON ? '⭐ ON' : '⭐ OFF';
+    btn.style.background = FS_STARS_ON ? '#8a6a1f' : '#aaa';
+  }
   fsRedraw();
 }
 
@@ -708,9 +757,59 @@ function fsRedraw(){
   ctx.beginPath(); ctx.arc(cx,cy,3.5,0,Math.PI*2); ctx.fillStyle='#ffd24a'; ctx.fill();
   ctx.restore();
 
+  // ═══ FLYING STARS (玄空飛星) overlay ═══
+  fsDrawFlyingStars(ctx, cx, cy, outerR);
+
   // Render detail panel
   fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx);
   fsRenderPairsTable();
+}
+
+// Draws Flying Stars on the Luopan if toggle is ON and inputs are valid.
+// Also updates the text under the canvas with the center stars.
+function fsDrawFlyingStars(ctx, cx, cy, outerR){
+  const centerBox = document.getElementById('fs-stars-center');
+  if (!FS_STARS_ON){
+    if (centerBox) centerBox.innerHTML = '';
+    return;
+  }
+  const hfInput = document.getElementById('fs-house-facing');
+  const pInput  = document.getElementById('fs-period');
+  if (!hfInput || !pInput) return;
+  const hfDeg = parseFloat(hfInput.value);
+  const period = parseInt(pInput.value, 10);
+  if (isNaN(hfDeg) || isNaN(period) || period < 1 || period > 9){
+    if (centerBox) centerBox.innerHTML =
+      '<span style="color:#aaa;">Enter House Facing (°) and Period (1-9) to display Flying Stars</span>';
+    return;
+  }
+  if (typeof FlyingStars === 'undefined'){
+    if (centerBox) centerBox.innerHTML =
+      '<span style="color:#c00;">⚠ flying-stars.js not loaded</span>';
+    return;
+  }
+
+  const mountainChar = fsMountainCharFromDeg(hfDeg);
+  let chart;
+  try {
+    chart = FlyingStars.calculate(period, mountainChar);
+  } catch (err){
+    if (centerBox) centerBox.innerHTML =
+      '<span style="color:#c00;">⚠ ' + err.message + '</span>';
+    return;
+  }
+
+  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR);
+
+  // Update center stars line below the canvas
+  if (centerBox){
+    const dirZh = { N:'坎', NE:'艮', E:'震', SE:'巽',
+                    S:'離', SW:'坤', W:'兌', NW:'乾' };
+    centerBox.innerHTML =
+      '<span style="color:#8a6a1f;font-weight:bold;">第' + period + '運 · ' +
+      chart.facingMountain + '山' + chart.sittingMountain + '向</span>' +
+      ' &nbsp;|&nbsp; Center: ' + FlyingStars.getCenterStarsHTML(chart);
+  }
 }
 
 function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
