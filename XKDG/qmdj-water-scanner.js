@@ -645,6 +645,55 @@
     return { matched: true, hits: hits, score: pos - neg, cell: cellInfo };
   }
 
+  // ── getHourChart: returns full 9-palace chart data for rendering ──
+  // Returns { palaces: {1:{ti,tiH,di,diH,star,deity,door,zhiFu,zhiShi,jiaName}, ...}, dun, ju }
+  // or null if chart not found.
+  function getHourChart(year, month, day, hourStem, hourBranch){
+    var charts = _charts || EMBEDDED_CHARTS;
+    if(!charts) return null;
+    var info = getDunJuForDate(year, month, day);
+    if(!info) return null;
+    var hs = hourStem, hb = hourBranch;
+    if(STEM_H2P[hs]) hs = STEM_H2P[hs];
+    if(BR_H2P[hb])   hb = BR_H2P[hb];
+    var idx60 = jiaZiIdx(hs, hb);
+    if(idx60 < 0) return null;
+    var chart = charts[info.dun] && charts[info.dun][info.ju] && charts[info.dun][info.ju][idx60];
+    if(!chart) return null;
+    var STEM_P2H = {Jia:'甲',Yi:'乙',Bing:'丙',Ding:'丁',Wu:'戊',Ji:'己',Geng:'庚',Xin:'辛',Ren:'壬',Gui:'癸'};
+    var JIA_HIDE = {Wu:'甲子戊',Ji:'甲戌己',Geng:'甲申庚',Xin:'甲午辛',Ren:'甲辰壬',Gui:'甲寅癸'};
+    var palaces = {};
+    for(var p = 1; p <= 9; p++){
+      if(p === 5){
+        palaces[5] = { ti:'', tiH:'', di:'', diH:'', star:'Pillar', deity:'', door:'', zhiFu:false, zhiShi:false, jiaName:'' };
+        // Center uses the chart's center data if available
+        if(chart.c[5]){
+          var c5 = chart.c[5];
+          palaces[5].ti = c5[1]; palaces[5].tiH = STEM_P2H[c5[1]]||c5[1];
+          palaces[5].di = c5[0]; palaces[5].diH = STEM_P2H[c5[0]]||c5[0];
+          palaces[5].star = STAR_NAME[c5[2]]||c5[2];
+          palaces[5].deity = c5[3]||'';
+          palaces[5].door = DOOR_NAME[c5[4]]||c5[4]||'';
+        }
+        continue;
+      }
+      var cell = chart.c[p];
+      if(!cell){ palaces[p] = null; continue; }
+      var isZF = (chart.zfp === p);
+      palaces[p] = {
+        ti: cell[1], tiH: STEM_P2H[cell[1]]||cell[1],
+        di: cell[0], diH: STEM_P2H[cell[0]]||cell[0],
+        star: STAR_NAME[cell[2]]||cell[2],
+        deity: cell[3],
+        door: DOOR_NAME[cell[4]]||cell[4],
+        zhiFu: isZF,
+        zhiShi: (chart.zsp === p),
+        jiaName: isZF ? (JIA_HIDE[chart.ld]||'') : ''
+      };
+    }
+    return { palaces: palaces, dun: info.dun, ju: info.ju };
+  }
+
   function mount(root){
     if(_mounted) unmount();
     _root = root;
@@ -674,6 +723,9 @@
     degToPalace: degToPalace,
     checkHourAtPalace: function(year, month, day, hourStem, hourBranch, palace){
       return checkHourAtPalace(year, month, day, hourStem, hourBranch, palace);
+    },
+    getHourChart: function(year, month, day, hourStem, hourBranch){
+      return getHourChart(year, month, day, hourStem, hourBranch);
     }
   };
 })();

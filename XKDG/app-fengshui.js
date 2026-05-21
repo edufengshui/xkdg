@@ -1267,11 +1267,9 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
 
         var h = '<div style="border:1px solid ' + accentColor + ';border-radius:4px;margin:2px auto;background:#fff;overflow:hidden;width:88px;display:inline-block;vertical-align:top;">';
 
-        // Header (1 line, compact)
-        h += '<div style="background:' + accentColor + ';color:#fff;padding:1px 3px;font-size:7px;font-weight:bold;text-align:center;white-space:nowrap;">'
-           + lbl + ' P' + palaceNum + ' ' + pi.han + ' ' + pi.dir
-           + (hourLabel ? ' @' + hourLabel : '')
-           + '</div>';
+        // Header — just Facing or Water
+        h += '<div style="background:' + accentColor + ';color:#fff;padding:2px 4px;font-size:9px;font-weight:bold;text-align:center;">'
+           + label + '</div>';
 
         // Square cell body
         h += '<div style="padding:2px 4px;">';
@@ -1313,11 +1311,13 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       }
 
       let qContent = '—';
+      const _hourLabel = m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi) : '';
       if (m._qimenF || m._qimenW) {
-        qContent = '';
-        const _hourLabel = m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi) : '';
+        const _chartClick = m.bestHour ? "showQimenChart('" + m.isoDate + "','" + m.bestHour.hGan + "','" + m.bestHour.hZhi + "')" : '';
+        qContent = '<div' + (_chartClick ? ' onclick="' + _chartClick + '" style="cursor:pointer;" title="Tap to view full Qimen chart"' : '') + '>';
         if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c', _hourLabel);
         if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0', _hourLabel);
+        qContent += '</div>';
       }
       qimenCell = '<td style="padding:4px 3px;text-align:center;border-bottom:1px solid #eee;vertical-align:top;">' + qContent + '</td>';
     }
@@ -1495,6 +1495,78 @@ function showQimenPopup(label){
   overlay.onclick = function(){ div.remove(); overlay.remove(); };
   document.body.appendChild(overlay);
   document.body.appendChild(div);
+}
+
+// ── Full Qimen Hour Chart display ──
+// Called when user taps a Qimen card. Renders the complete 9-palace
+// flying chart at the bottom of the results area.
+function showQimenChart(isoDate, hGan, hZhi){
+  if (!isoDate || !hGan || !hZhi) return;
+  if (typeof window.QMDJWaterScanner === 'undefined') return;
+  var parts = isoDate.split('-');
+  var Y = parseInt(parts[0]), M = parseInt(parts[1]), D = parseInt(parts[2]);
+  var chart = window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi);
+  if (!chart) { alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
+
+  var DIR_INFO = {
+    4:{dir:'SE',han:'巽'},9:{dir:'S',han:'離'},2:{dir:'SW',han:'坤'},
+    3:{dir:'E',han:'震'}, 5:{dir:'',han:''}, 7:{dir:'W',han:'兌'},
+    8:{dir:'NE',han:'艮'},1:{dir:'N',han:'坎'},6:{dir:'NW',han:'乾'}
+  };
+  var FAV = ['Open','Rest','Birth','View'];
+  var gridOrder = [4,9,2, 3,5,7, 8,1,6]; // SE,S,SW, E,C,W, NE,N,NW
+
+  function cellHtml(p){
+    var d = chart.palaces[p];
+    if(!d) return '<td style="border:1px solid #ccc;padding:4px;background:#f5f5f5;text-align:center;color:#aaa;">—</td>';
+    var di = DIR_INFO[p];
+    var doorColor = FAV.indexOf(d.door)!==-1 ? '#2e7d32' : '#c62828';
+    var bg = d.zhiFu ? '#fffff0' : d.zhiShi ? '#f0ffff' : '#fff';
+    var zMark = '';
+    if(d.zhiFu) zMark = '<div style="font-size:7px;color:#e65100;font-weight:bold;">直符</div>';
+    if(d.zhiShi) zMark = '<div style="font-size:7px;color:#e65100;font-weight:bold;">直使</div>';
+    var jia = (d.jiaName) ? '<div style="font-size:7px;color:#e65100;">' + d.jiaName + '</div>' : '';
+    return '<td style="border:1px solid #aaa;padding:4px 5px;background:' + bg + ';vertical-align:top;width:33%;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">'
+      + '<span style="font-size:8px;color:#00695c;font-weight:bold;">' + di.dir + '</span>'
+      + '<span style="font-size:8px;color:#666;">' + di.han + '</span></div>'
+      + '<div style="text-align:center;color:#666;font-size:9px;">' + (d.deity||'') + '</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+      + '<span style="color:#c62828;font-weight:bold;font-size:14px;">' + (d.tiH||'') + '</span>'
+      + '<span style="color:#555;font-size:8px;">' + (d.star||'') + '</span></div>'
+      + '<div style="text-align:center;font-weight:bold;color:' + doorColor + ';font-size:12px;">' + (d.door||'') + '</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
+      + '<div><span style="color:#bf6c00;font-weight:bold;font-size:14px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
+      + '<span style="color:#aaa;font-size:10px;font-weight:bold;">' + p + '</span></div>'
+      + '</td>';
+  }
+
+  var html = '<div id="qimen-full-chart" style="margin:12px 0;border:2px solid #00695c;border-radius:8px;overflow:hidden;max-width:400px;">';
+  html += '<div style="background:#00695c;color:#fff;padding:6px 10px;font-weight:bold;font-size:13px;text-align:center;">'
+       + '🏯 QMDJ Hour Chart · ' + isoDate + ' · ' + hGan + hZhi
+       + ' <span style="opacity:0.7;">(' + chart.dun + ' dun, ju ' + chart.ju + ')</span>'
+       + '<span onclick="document.getElementById(\'qimen-full-chart\').remove()" style="float:right;cursor:pointer;font-size:16px;">✕</span>'
+       + '</div>';
+  html += '<table style="width:100%;border-collapse:collapse;table-layout:fixed;">';
+  for(var r = 0; r < 3; r++){
+    html += '<tr>';
+    html += cellHtml(gridOrder[r*3]);
+    html += cellHtml(gridOrder[r*3+1]);
+    html += cellHtml(gridOrder[r*3+2]);
+    html += '</tr>';
+  }
+  html += '</table></div>';
+
+  // Remove previous chart if any
+  var old = document.getElementById('qimen-full-chart');
+  if(old) old.remove();
+
+  // Insert at the bottom of the results area
+  var area = document.getElementById('fs-results-area');
+  if(area) area.insertAdjacentHTML('beforeend', html);
+  // Scroll to it
+  var el = document.getElementById('qimen-full-chart');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 // ── Suggest closest favorable Water position ──
