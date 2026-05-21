@@ -1,7 +1,7 @@
 // XKDG Bazi Calculator — Service Worker
 // Cache-first strategy with runtime caching of new requests.
 
-const CACHE = 'xkdg-v471';
+const CACHE = 'xkdg-v472';
 const URLS = [
     './',
     './index.html',
@@ -14,7 +14,8 @@ const URLS = [
     './manifest.webmanifest',
     './icons/icon-192.svg',
     './icons/icon-512.svg',
-    './icons/apple-touch-icon.svg'
+    './icons/apple-touch-icon.svg',
+    './icons/luopan.jpg'
 ];
 
 self.addEventListener('install', e => {
