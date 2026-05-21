@@ -185,12 +185,13 @@
     var isAnyBorrow = isTianJia || isDiJia || isRenJia || isShenJia || isGuiJia;
     if(!hasFavDoor && !isGhostDun && !isAnyBorrow) return [];
 
-    // FILTER 5 — must have at least one of: San Qi on Tian, Zhi Fu at palace, Zhi Shi at palace
-    // EXCEPTION: Five Borrows are recognized auspicious configurations, bypass this filter
+    // FILTER 5 — must have San Qi on Tian (Yi/Bing/Ding).
+    // EXCEPTION: Five Borrows bypass this filter (they are recognized configurations).
+    // NOTE: Zhi Fu / Zhi Shi are BONUSES (add to score), not qualifiers.
     var hasSanQi  = SAN_QI.indexOf(ti) !== -1;
     var hasZhiFu  = chart.zfp === targetPalace;
     var hasZhiShi = chart.zsp === targetPalace;
-    if(!hasSanQi && !hasZhiFu && !hasZhiShi && !isAnyBorrow) return [];
+    if(!hasSanQi && !isAnyBorrow) return [];
 
     // PASSED ALL FILTERS — build hit list
     var hits = [];
@@ -246,20 +247,20 @@
     var isXSK = (door==='Xiu' || door==='Sheng' || door==='Kai');
     if(isSanQiOnTian && isXSK){
       // Real Pretense 真詐 — Tai Yin (Yin) — spiritual/religious/charity
-      if(deity==='Yin')       hits.push({cat:'zha', label:'Real Zha 真詐'});
+      if(deity==='Yin')       hits.push({cat:'zha', label:'Real Pretenses 真詐'});
       // Rest Pretense 休詐 — Six Harmonies — medicine/religious activities
-      if(deity==='Harmonies') hits.push({cat:'zha', label:'Rest Zha 休詐'});
+      if(deity==='Harmonies') hits.push({cat:'zha', label:'Rest Pretenses 休詐'});
       // Multiple Pretense 重詐 — Nine Earth — fame/fortune/attracting people
-      if(deity==='Earth')     hits.push({cat:'zha', label:'Multiple Zha 重詐'});
+      if(deity==='Earth')     hits.push({cat:'zha', label:'Multiple Pretenses 重詐'});
     }
 
     // FIVE BORROWS 五假 (Wu Jia) — auspicious configurations for specific tactical uses
     // (use unfavorable doors but recognized as positive in their domain)
-    if(isTianJia) hits.push({cat:'jia', label:'Heaven Jia 天假'});  // war, litigation, important post
-    if(isDiJia)   hits.push({cat:'jia', label:'Earth Jia 地假'});   // hiding, preparations, secret affairs
-    if(isRenJia)  hits.push({cat:'jia', label:'Human Jia 人假'});   // pursuing fugitives
-    if(isShenJia) hits.push({cat:'jia', label:'Deity Jia 神假'});   // hiding things, seeking compensation
-    if(isGuiJia)  hits.push({cat:'jia', label:'Ghost Jia 鬼假'});   // burial, hunting, pacifying people
+    if(isTianJia) hits.push({cat:'jia', label:'Heaven Borrows 天假'});  // war, litigation, important post
+    if(isDiJia)   hits.push({cat:'jia', label:'Earth Borrows 地假'});   // hiding, preparations, secret affairs
+    if(isRenJia)  hits.push({cat:'jia', label:'Human Borrows 人假'});   // pursuing fugitives
+    if(isShenJia) hits.push({cat:'jia', label:'Deity Borrows 神假'});   // hiding things, seeking compensation
+    if(isGuiJia)  hits.push({cat:'jia', label:'Ghost Borrows 鬼假'});   // burial, hunting, pacifying people
 
     // PENALTIES — Tian Pan stem in disadvantageous palace (each -1)
     var penPalaces = TIAN_PENALTIES[ti];

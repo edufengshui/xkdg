@@ -357,9 +357,12 @@ function buildFengShuiView(){
         </div>
         <div style="flex:1;min-width:120px;">
           <label style="font-size:11px;color:#666;display:block;">Water (°)</label>
-          <input type="number" id="fs-water" min="0" max="360" step="0.1" placeholder="optional"
-                 style="width:100%;padding:6px;border:1px solid #4a9ead;border-radius:4px;font-size:14px;"
-                 oninput="fsRedraw()">
+          <div style="display:flex;gap:4px;">
+            <input type="number" id="fs-water" min="0" max="360" step="0.1" placeholder="optional"
+                   style="flex:1;padding:6px;border:1px solid #4a9ead;border-radius:4px;font-size:14px;"
+                   oninput="fsRedraw()">
+            <button onclick="fsSuggestWater()" title="Suggest closest favorable Water position" style="background:#4a9ead;color:#fff;border:none;border-radius:4px;padding:0 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">💡 Suggest</button>
+          </div>
         </div>
       </div>
 
@@ -1023,39 +1026,42 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
   const sortMode = window._fsSortMode || 'best';
 
   // If already in qimen mode, auto-annotate the new matches
-  if (sortMode === 'qimen' && typeof window.QMDJWaterScanner !== 'undefined') {
+  if (window._fsQimenActive && typeof window.QMDJWaterScanner !== 'undefined') {
     fsAnnotateQimenHits(matches, fSlot, wSlot);
     window._fsQimenAnnotated = true;
   }
 
-  // Sort: BEST → BL first, then by score desc; LIST → chronological
-  // QIMEN → promote Qimen-matched dates to top (starred), rest below
+  // Sort logic — combines two independent controls:
+  //   _fsSortMode  ('best' or 'list')  — primary sort within tier
+  //   _fsQimenActive (boolean)         — when true, Qimen-matched dates float to top
   let sorted = matches.slice();
-  if (sortMode === 'qimen') {
+  const qimenActive = !!window._fsQimenActive;
+  const primaryAsc  = (sortMode === 'list'); // chronological
+
+  function primaryCmp(a, b){
+    if (primaryAsc) return a.date - b.date;
+    if (a.isBL !== b.isBL) return a.isBL ? -1 : 1;
+    if (b.score !== a.score) return b.score - a.score;
+    return a.date - b.date;
+  }
+
+  if (qimenActive) {
     sorted.sort((a, b) => {
-      // First tier: Qimen-matched dates float to top
+      // Tier 1: Qimen-matched dates first
       const aHasQ = (a._qimenF || a._qimenW) ? 1 : 0;
       const bHasQ = (b._qimenF || b._qimenW) ? 1 : 0;
       if (aHasQ !== bHasQ) return bHasQ - aHasQ;
-      // Within Qimen group: FW > single F or W
+      // Tier 2 (within Qimen group): FW > single F or W
       if (aHasQ && bHasQ) {
         const aq = a._qimenFW ? 2 : 1;
         const bq = b._qimenFW ? 2 : 1;
         if (aq !== bq) return bq - aq;
       }
-      // Then BL first, then by XKDG score
-      if (a.isBL !== b.isBL) return a.isBL ? -1 : 1;
-      if (b.score !== a.score) return b.score - a.score;
-      return a.date - b.date;
-    });
-  } else if (sortMode === 'best') {
-    sorted.sort((a, b) => {
-      if (a.isBL !== b.isBL) return a.isBL ? -1 : 1;
-      if (b.score !== a.score) return b.score - a.score;
-      return a.date - b.date;
+      // Tier 3: primary sort (BEST or chronological)
+      return primaryCmp(a, b);
     });
   } else {
-    sorted.sort((a, b) => a.date - b.date);
+    sorted.sort(primaryCmp);
   }
 
   const aLoaded = !!_personAYear;
@@ -1105,11 +1111,12 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         ${sortBtn('BEST', 'best')}
         ${sortBtn('LIST', 'list')}
         ${typeof window.QMDJWaterScanner !== 'undefined' ? (() => {
-          const active = (sortMode === 'qimen');
+          const active = !!window._fsQimenActive;
           const bg = active ? '#00695c' : '#fff';
           const fg = active ? '#fff'    : '#00695c';
           const bd = active ? '#00695c' : '#80cbc4';
-          return '<span style="margin-left:6px;border-left:1px solid #ccc;padding-left:8px;"><button onclick="fsSetSortMode(\'qimen\')" style="background:' + bg + ';color:' + fg + ';border:1px solid ' + bd + ';padding:5px 12px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">☆ QIMEN</button></span>';
+          const sym = active ? '★ ON' : '☆ OFF';
+          return '<span style="margin-left:6px;border-left:1px solid #ccc;padding-left:8px;"><button onclick="fsToggleQimen()" style="background:' + bg + ';color:' + fg + ';border:1px solid ' + bd + ';padding:5px 12px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">☆ QIMEN ' + sym + '</button></span>';
         })() : ''}
       </div>
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
@@ -1156,8 +1163,8 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     return;
   }
 
-  const qimenCount = (sortMode === 'qimen') ? sorted.filter(m => m._qimenF || m._qimenW).length : 0;
-  const qimenNote = (sortMode === 'qimen')
+  const qimenCount = (qimenActive) ? sorted.filter(m => m._qimenF || m._qimenW).length : 0;
+  const qimenNote = (qimenActive)
     ? ` · <span style="color:#00695c;">☆ ${qimenCount} with Qimen</span>`
     : '';
   let html = `<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">
@@ -1204,7 +1211,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     const hasQimen = !!(m._qimenF || m._qimenW);
 
     // In QIMEN mode: insert separator row between Qimen and non-Qimen dates
-    if (sortMode === 'qimen' && !hasQimen && !_qimenSepInserted) {
+    if (qimenActive && !hasQimen && !_qimenSepInserted) {
       _qimenSepInserted = true;
       html += '<tr><td colspan="' + _colSpan + '" style="padding:6px 12px;background:#f5f5f5;border-top:2px solid #80cbc4;border-bottom:1px solid #ddd;font-size:11px;color:#666;font-weight:bold;">── Other XKDG dates (no Qimen match) ──</td></tr>';
     }
@@ -1318,7 +1325,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     if (m.isBL) {
       rowBg = '#fff8b0';
       rowBorder = 'border-left:4px solid #b8860b;';
-    } else if (sortMode === 'qimen' && hasQimen) {
+    } else if (qimenActive && hasQimen) {
       rowBg = (i % 2 === 0) ? '#e0f2f1' : '#ecf7f6';
       rowBorder = 'border-left:4px solid #00695c;';
     } else {
@@ -1327,7 +1334,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     }
 
     // Date label: add ☆ prefix for Qimen-matched dates in QIMEN mode
-    const datePrefix = (sortMode === 'qimen' && hasQimen) ? '☆ ' : '';
+    const datePrefix = (qimenActive && hasQimen) ? '☆ ' : '';
     
     html += '<tr style="background:' + rowBg + ';' + rowBorder + 'cursor:pointer;" onclick="loadDateIntoMain(\'' + m.isoDate + '\', 6)">';
     html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + datePrefix + dateLabel + '</td>';
@@ -1357,13 +1364,23 @@ function fsSetRange(days){
   fsFindDates();
 }
 
-// Sort toggle. Switches between BEST / LIST / QIMEN.
-// QIMEN mode triggers lazy annotation on first click.
+// BEST/LIST toggle — primary sort within tier (score-priority or chronological).
+// Does NOT affect QIMEN toggle.
 function fsSetSortMode(mode){
-  window._fsSortMode = (mode === 'list') ? 'list' : (mode === 'qimen') ? 'qimen' : 'best';
+  window._fsSortMode = (mode === 'list') ? 'list' : 'best';
   if (window._fsLastMatches && window._fsLastFSlot) {
-    // Lazy Qimen annotation: run once on first QIMEN click
-    if (mode === 'qimen' && !window._fsQimenAnnotated) {
+    fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches);
+  }
+}
+
+// QIMEN toggle — independent of BEST/LIST.
+// When ON: Qimen-matched dates float to top (within tier, BEST/LIST applies).
+// When OFF: all dates sorted purely by BEST/LIST.
+function fsToggleQimen(){
+  window._fsQimenActive = !window._fsQimenActive;
+  if (window._fsLastMatches && window._fsLastFSlot) {
+    // Lazy annotation: run once on first activation per dataset
+    if (window._fsQimenActive && !window._fsQimenAnnotated) {
       fsAnnotateQimenHits(window._fsLastMatches, window._fsLastFSlot, window._fsLastWSlot);
       window._fsQimenAnnotated = true;
     }
@@ -1433,14 +1450,14 @@ var _qimenDescriptions = {
   'Cloud Dun 云遁':    'Yi on Tian + Xin on Di + favorable door.\nConcealment, mystery, hidden support.',
   'Dragon Dun 龍遁':   'Yi on Tian + favorable door + Kan palace.\nWater activities, aquatic energy.',
   'Tiger Dun 虎遁':    'Yi on Tian + Xin on Di + Rest/Birth door + Gen palace.\nMountain energy, stability.',
-  'Real Zha 真詐':     'San Qi on Tian + favorable door + Yin deity.\nSpiritual and charitable activities.',
-  'Rest Zha 休詐':     'San Qi on Tian + favorable door + Harmonies deity.\nMedicine, healing, religious activities.',
-  'Multiple Zha 重詐': 'San Qi on Tian + favorable door + Earth deity.\nFame, fortune, attracting people.',
-  'Heaven Jia 天假':   'Earth deity + San Qi + View door.\nWar, litigation, important positions.',
-  'Earth Jia 地假':    'Earth/Yin/Harmonies + Ding/Ji/Gui + Delusion door.\nHiding, preparations, secret affairs.',
-  'Human Jia 人假':    'Heaven deity + Ren + Shocking door.\nPursuing fugitives, tracking.',
-  'Deity Jia 神假':    'Earth/Harmonies + Ding/Ji/Gui + Injury door.\nHiding valuables, seeking compensation.',
-  'Ghost Jia 鬼假':    'Earth deity + Ding/Ji/Gui + Death door.\nBurial rites, hunting, pacifying.'
+  'Real Pretenses 真詐':     'San Qi on Tian + favorable door + Yin deity.\nSpiritual and charitable activities.',
+  'Rest Pretenses 休詐':     'San Qi on Tian + favorable door + Harmonies deity.\nMedicine, healing, religious activities.',
+  'Multiple Pretenses 重詐': 'San Qi on Tian + favorable door + Earth deity.\nFame, fortune, attracting people.',
+  'Heaven Borrows 天假':   'Earth deity + San Qi + View door.\nWar, litigation, important positions.',
+  'Earth Borrows 地假':    'Earth/Yin/Harmonies + Ding/Ji/Gui + Delusion door.\nHiding, preparations, secret affairs.',
+  'Human Borrows 人假':    'Heaven deity + Ren + Shocking door.\nPursuing fugitives, tracking.',
+  'Deity Borrows 神假':    'Earth/Harmonies + Ding/Ji/Gui + Injury door.\nHiding valuables, seeking compensation.',
+  'Ghost Borrows 鬼假':    'Earth deity + Ding/Ji/Gui + Death door.\nBurial rites, hunting, pacifying.'
 };
 function showQimenPopup(label){
   var old = document.getElementById('qimen-popup-overlay');
@@ -1458,6 +1475,98 @@ function showQimenPopup(label){
   div.innerHTML = '<div style="font-weight:bold;color:#00695c;font-size:14px;margin-bottom:6px;">' + label + '</div>'
     + '<div style="color:#333;font-size:12px;line-height:1.5;white-space:pre-line;">' + desc + '</div>'
     + '<div style="text-align:right;margin-top:10px;"><button onclick="document.getElementById(\'qimen-popup\').remove();document.getElementById(\'qimen-popup-overlay\').remove()" style="background:#00695c;color:#fff;border:none;padding:5px 16px;border-radius:6px;font-size:11px;cursor:pointer;">OK</button></div>';
+  overlay.onclick = function(){ div.remove(); overlay.remove(); };
+  document.body.appendChild(overlay);
+  document.body.appendChild(div);
+}
+
+// ── Suggest closest favorable Water position ──
+// Searches all 64 hex slots for Water positions that:
+//   (1) are Ling Shen (valid),
+//   (2) are within FS_WATER_MAX_DEG of facing,
+//   (3) have at least one XKDG connection with facing (Hetu/Adding/Pure Qi/Family/Inverse),
+//   (4) have an auspicious Pure YY star (Fu Bi, Wu Qu, Tan Lang, or Ju Men).
+// Among valid candidates, picks the one closest to the current Water (or facing if none).
+function fsSuggestWater(){
+  const fIn = parseFloat(document.getElementById('fs-facing').value);
+  if (!isFinite(fIn)) { alert('Please set Facing first.'); return; }
+  const fSlot = fsSlotForDeg(fIn);
+  const fCenter = fSlot.centerDeg;
+  const fTri = (typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(fCenter) : null;
+  if (!fTri) { alert('Cannot compute Facing trigram.'); return; }
+
+  const curWaterIn = parseFloat(document.getElementById('fs-water').value);
+  const refDeg = isFinite(curWaterIn) ? curWaterIn : fCenter; // distance reference
+
+  // Scan all 64 slots
+  const candidates = [];
+  for (let i = 0; i < FS_SLOTS.length; i++){
+    const s = FS_SLOTS[i];
+    if (s.hexNum === fSlot.hexNum) continue;
+    if (!fsIsLingShen(s.yun)) continue;
+    const distFromFacing = fsAngularDist(fCenter, s.centerDeg);
+    if (distFromFacing > FS_WATER_MAX_DEG) continue;
+    const lbls = hexConnectionLabels(s.hexNum, s.qi, s.yun, fSlot.hexNum, fSlot.qi, fSlot.yun);
+    if (!lbls.length) continue;
+    const wTri = fsMountainTrigramTien(s.centerDeg);
+    const pyy  = fsPureYYStarInfo(fTri, wTri);
+    if (pyy.auspicious !== true) continue;
+    candidates.push({
+      slot: s,
+      distFromCurrent: fsAngularDist(refDeg, s.centerDeg),
+      labels: lbls,
+      pyy: pyy
+    });
+  }
+
+  if (!candidates.length){
+    alert('No favorable Water position found for this Facing.\n\nTry a different Facing or check Ling Shen rules.');
+    return;
+  }
+
+  // Sort by distance from current water (ascending)
+  candidates.sort((a, b) => a.distFromCurrent - b.distFromCurrent);
+  const best = candidates[0];
+
+  // Build popup
+  var old = document.getElementById('suggest-water-popup');
+  if (old) old.remove();
+  old = document.getElementById('suggest-water-overlay');
+  if (old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'suggest-water-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:9998;';
+
+  const div = document.createElement('div');
+  div.id = 'suggest-water-popup';
+  div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #4a9ead;border-radius:10px;padding:16px 20px;max-width:360px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:13px;';
+
+  const altCount = Math.min(3, candidates.length);
+  let altHtml = '';
+  if (candidates.length > 1){
+    altHtml = '<div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px;font-size:11px;color:#666;"><b>Other options (closest after best):</b><br>';
+    for (let i = 1; i < altCount; i++){
+      const c = candidates[i];
+      altHtml += '<div style="margin:3px 0;">• <b>' + c.slot.centerDeg.toFixed(1) + '°</b> · hex ' + c.slot.hexNum
+              + ' · ' + c.pyy.name + ' · ' + c.labels[0]
+              + ' · dist ' + c.distFromCurrent.toFixed(1) + '°</div>';
+    }
+    altHtml += '</div>';
+  }
+
+  div.innerHTML =
+    '<div style="font-weight:bold;color:#4a9ead;font-size:15px;margin-bottom:10px;">💡 Suggested Water</div>'
+    + '<div style="margin-bottom:6px;"><b>Position:</b> <span style="color:#4a9ead;font-size:16px;font-weight:bold;">' + best.slot.centerDeg.toFixed(2) + '°</span> (hex ' + best.slot.hexNum + ', qi ' + best.slot.qi + ', yun ' + best.slot.yun + ')</div>'
+    + '<div style="margin-bottom:4px;"><b>XKDG:</b> <span style="color:#c0392b;">' + best.labels.join(' · ') + '</span></div>'
+    + '<div style="margin-bottom:4px;"><b>Pure YY:</b> <span style="color:#1b5e20;">✓ ' + best.pyy.name + '</span></div>'
+    + '<div style="margin-bottom:8px;"><b>Distance from current Water:</b> ' + best.distFromCurrent.toFixed(1) + '°</div>'
+    + altHtml
+    + '<div style="text-align:right;margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">'
+    + '<button onclick="document.getElementById(\'suggest-water-popup\').remove();document.getElementById(\'suggest-water-overlay\').remove();" style="background:#999;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;">Cancel</button>'
+    + '<button onclick="document.getElementById(\'fs-water\').value=' + best.slot.centerDeg.toFixed(3) + ';fsRedraw();document.getElementById(\'suggest-water-popup\').remove();document.getElementById(\'suggest-water-overlay\').remove();" style="background:#4a9ead;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;">Apply</button>'
+    + '</div>';
+
   overlay.onclick = function(){ div.remove(); overlay.remove(); };
   document.body.appendChild(overlay);
   document.body.appendChild(div);
