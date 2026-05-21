@@ -722,9 +722,20 @@ function fsRedraw(){
   ctx.restore();
 
   // Arrows
+  // When Flying Stars are ON, shorten the arrow so its tip stops at the
+  // INNER edge of the star box (and push the label OUTSIDE the box).
+  // When OFF, use the original layout.
   function drawArrow(deg, color, label){
     const a = (deg - 270) * Math.PI/180;
-    const tipR = outerR + 75;
+    let tipR, labelR;
+    if (FS_STARS_ON){
+      // Box centred at outerR + 55, half-size 40 → inner edge at +15, outer at +95
+      tipR   = outerR + 15;
+      labelR = outerR + 110;
+    } else {
+      tipR   = outerR + 75;
+      labelR = tipR + 22;
+    }
     const tipX = cx + Math.cos(a)*tipR;
     const tipY = cy + Math.sin(a)*tipR;
     ctx.save();
@@ -738,13 +749,19 @@ function fsRedraw(){
     ctx.closePath(); ctx.fillStyle = color; ctx.fill();
     ctx.restore();
     if (label){
-      const labelR = tipR + 22;
       ctx.save();
       ctx.font = 'bold 16px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillStyle = color;
       ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 4;
-      ctx.strokeText(label, cx+Math.cos(a)*labelR, cy+Math.sin(a)*labelR);
-      ctx.fillText(label,   cx+Math.cos(a)*labelR, cy+Math.sin(a)*labelR);
+      // Compute label position and clamp inside canvas (avoid overflow on E/W/N/S extremes)
+      let lx = cx + Math.cos(a) * labelR;
+      let ly = cy + Math.sin(a) * labelR;
+      const pad = 35;     // half label width + small margin
+      const padV = 14;    // half label height + small margin
+      lx = Math.max(pad, Math.min(W - pad, lx));
+      ly = Math.max(padV, Math.min(H - padV, ly));
+      ctx.strokeText(label, lx, ly);
+      ctx.fillText(label,   lx, ly);
       ctx.restore();
     }
   }
