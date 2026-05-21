@@ -1581,15 +1581,10 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
     var bg = isHighlight ? '#fff3b0' : '#fff';
     var border = isHighlight ? '3px solid #f9a825' : '1px solid ' + GREEN;
 
-    // Jia designation (六甲遁) — clickable for explanation
-    var jia = '';
-    if(d.jiaName){
-      jia = '<div onclick="event.stopPropagation();showJiaPopup(\''+d.jiaName+'\')" style="display:inline-block;font-size:11px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">' + d.jiaName + ' ℹ</div>';
-    }
-    // Zhi Fu / Zhi Shi marker — clickable
+    // Mark Zhi Shi only (Zhi Fu is visible via Commander deity already)
     var zMark = '';
-    if(d.zhiFu)  zMark = '<div onclick="event.stopPropagation();showZhiPopup(\'zhiFu\')" style="display:inline-block;font-size:11px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">直符 ℹ</div>';
-    if(d.zhiShi) zMark = '<div onclick="event.stopPropagation();showZhiPopup(\'zhiShi\')" style="display:inline-block;font-size:11px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">直使 ℹ</div>';
+    if(d.zhiShi) zMark = '<div onclick="event.stopPropagation();showZhiPopup(\'zhiShi\')" style="display:inline-block;font-size:10px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">Zhi Shi ℹ</div>';
+    var jia = ''; // Jia hiding name removed per user request
 
     // Center palace gets a special layout with vertical spacing between the two stems
     if(p === 5){

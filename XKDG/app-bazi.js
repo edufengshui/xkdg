@@ -1849,6 +1849,16 @@ function loadPersonFromDB(targetPanel, name) {
         }
         calculateBazi();
         calculatePerson(targetPanel);
+        // Saved person → always hide Bazi/XKDG details by default.
+        // User can expand via the toggle button.
+        setTimeout(function(){
+            try {
+                var k = (targetPanel === 'B' || targetPanel === 'b') ? 'b' : 'a';
+                if (!window._personDetailsVisible) window._personDetailsVisible = { a: true, b: true };
+                window._personDetailsVisible[k] = false;
+                if (typeof setPersonDetailsVisibility === 'function') setPersonDetailsVisibility(k, false);
+            } catch(e) {}
+        }, 100);
     }, 80);
 }
 
@@ -1980,6 +1990,7 @@ function calculatePerson(person) {
         const aSection = document.getElementById('person-analysis-container-b');
         if (aSection) aSection.style.display = 'none';
         updateScoreModeBtn();
+        try { applyPersonDetailsVisibility(person); } catch(e) {}
         return;
     }
     if (!dVal) return;
@@ -2209,19 +2220,18 @@ function applyPersonDetailsVisibility(person){
 function setPersonDetailsVisibility(key, visible){
     var chartId    = key === 'b' ? 'person-chart-b' : 'person-chart';
     var analysisId = key === 'b' ? 'person-analysis-container-b' : 'person-analysis-container-a';
-    var pillarWrapId = key === 'b' ? 'pillar-toggle-b-wrap' : null;
+    var pillarWrapId = key === 'b' ? 'pillar-toggle-b-wrap' : 'pillar-toggle-a-wrap';
 
     var chart = document.getElementById(chartId);
     var analysis = document.getElementById(analysisId);
     if (chart) chart.style.display = visible ? 'grid' : 'none';
     if (analysis) analysis.style.display = visible ? 'flex' : 'none';
-    if (pillarWrapId) {
-        var pw = document.getElementById(pillarWrapId);
-        if (pw) pw.style.display = visible ? 'block' : 'none';
-    }
-    // Update button text
+    // Hide the existing "Show Pillars" toggle wrapper too — avoid duplicate buttons
+    var pw = document.getElementById(pillarWrapId);
+    if (pw) pw.style.display = visible ? 'block' : 'none';
+    // Update my toggle button text
     var btn = document.getElementById('toggle-bazi-' + key);
-    if (btn) btn.textContent = visible ? '▾ Hide Bazi/XKDG details' : '▸ Show Bazi/XKDG details';
+    if (btn) btn.textContent = visible ? '▾ Hide 4P + XKDG details' : '▸ Show 4P + XKDG details';
 }
 
 function togglePersonDetails(key){
@@ -2238,7 +2248,7 @@ function addPersonDetailsToggleBtn(key){
     var visible = window._personDetailsVisible && window._personDetailsVisible[key];
     var btn = document.createElement('button');
     btn.id = 'toggle-bazi-' + key;
-    btn.textContent = visible ? '▾ Hide Bazi/XKDG details' : '▸ Show Bazi/XKDG details';
+    btn.textContent = visible ? '▾ Hide 4P + XKDG details' : '▸ Show 4P + XKDG details';
     btn.style.cssText = 'background:#fff;color:#666;border:1px solid #ccc;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;margin:6px 0;display:block;';
     btn.onclick = function(){ togglePersonDetails(key); };
     chart.parentElement.insertBefore(btn, chart);
