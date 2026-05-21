@@ -1498,6 +1498,47 @@ function showQimenPopup(label){
   document.body.appendChild(div);
 }
 
+// ── Jia hiding (六甲遁) and Zhi Fu/Zhi Shi popups ──
+function showJiaPopup(jiaName){
+  var explanations = {
+    '甲子戊': 'Jia Zi hiding as Wu (戊). The Commander 甲 conceals himself in the Wu stem.',
+    '甲戌己': 'Jia Xu hiding as Ji (己). The Commander 甲 conceals himself in the Ji stem.',
+    '甲申庚': 'Jia Shen hiding as Geng (庚). The Commander 甲 conceals himself in the Geng stem.',
+    '甲午辛': 'Jia Wu hiding as Xin (辛). The Commander 甲 conceals himself in the Xin stem.',
+    '甲辰壬': 'Jia Chen hiding as Ren (壬). The Commander 甲 conceals himself in the Ren stem.',
+    '甲寅癸': 'Jia Yin hiding as Gui (癸). The Commander 甲 conceals himself in the Gui stem.'
+  };
+  var desc = explanations[jiaName] || 'The Six Jia (六甲) are the leaders of the 60 Jia Zi cycle, each hiding under a different stem during their Xun (10-day cycle).';
+  _showInfoPopup('六甲遁 · ' + jiaName, desc);
+}
+function showZhiPopup(which){
+  if(which === 'zhiFu'){
+    _showInfoPopup('直符 Zhi Fu (Commander)',
+      'The Zhi Fu (直符) is the palace where the active Commander stem 甲 is hidden. It carries the highest authority and is the most auspicious palace for matters of leadership, official affairs, and important decisions.');
+  } else {
+    _showInfoPopup('直使 Zhi Shi (Door of the Commander)',
+      'The Zhi Shi (直使) is the palace where the active Door of the Commander resides. It represents the active force and is auspicious for taking action, movement, and decisive deeds.');
+  }
+}
+function _showInfoPopup(title, desc){
+  var old = document.getElementById('info-popup-overlay');
+  if(old) old.remove();
+  old = document.getElementById('info-popup');
+  if(old) old.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'info-popup-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:9998;';
+  var div = document.createElement('div');
+  div.id = 'info-popup';
+  div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #e65100;border-radius:10px;padding:14px 18px;max-width:320px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+  div.innerHTML = '<div style="font-weight:bold;color:#e65100;font-size:14px;margin-bottom:6px;">' + title + '</div>'
+    + '<div style="color:#333;font-size:12px;line-height:1.5;">' + desc + '</div>'
+    + '<div style="text-align:right;margin-top:10px;"><button onclick="document.getElementById(\'info-popup\').remove();document.getElementById(\'info-popup-overlay\').remove()" style="background:#e65100;color:#fff;border:none;padding:5px 16px;border-radius:6px;font-size:11px;cursor:pointer;">OK</button></div>';
+  overlay.onclick = function(){ div.remove(); overlay.remove(); };
+  document.body.appendChild(overlay);
+  document.body.appendChild(div);
+}
+
 // ── Full Qimen Hour Chart display ──
 // Called when user taps a Qimen card. Renders the complete 9-palace
 // flying chart at the bottom of the results area.
@@ -1536,28 +1577,40 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
       return '<td style="background:#fff;padding:6px;text-align:center;color:#aaa;border:1px solid '+GREEN+';">—</td>';
     }
     var doorColor = FAV.indexOf(d.door)!==-1 ? '#1b5e20' : '#c62828';
-    // Background: highlight if matches target palace
     var isHighlight = (highlightPalace && p === highlightPalace);
     var bg = isHighlight ? '#fff3b0' : '#fff';
     var border = isHighlight ? '3px solid #f9a825' : '1px solid ' + GREEN;
-    var jia = (d.jiaName) ? '<div style="font-size:8px;color:#e65100;font-weight:bold;line-height:1;">' + d.jiaName + '</div>' : '';
+
+    // Jia designation (六甲遁) — clickable for explanation
+    var jia = '';
+    if(d.jiaName){
+      jia = '<div onclick="event.stopPropagation();showJiaPopup(\''+d.jiaName+'\')" style="display:inline-block;font-size:11px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">' + d.jiaName + ' ℹ</div>';
+    }
+    // Zhi Fu / Zhi Shi marker — clickable
     var zMark = '';
-    if(d.zhiFu)  zMark = '<div style="font-size:8px;color:#e65100;font-weight:bold;line-height:1;">直符</div>';
-    if(d.zhiShi) zMark = '<div style="font-size:8px;color:#e65100;font-weight:bold;line-height:1;">直使</div>';
+    if(d.zhiFu)  zMark = '<div onclick="event.stopPropagation();showZhiPopup(\'zhiFu\')" style="display:inline-block;font-size:11px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">直符 ℹ</div>';
+    if(d.zhiShi) zMark = '<div onclick="event.stopPropagation();showZhiPopup(\'zhiShi\')" style="display:inline-block;font-size:11px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">直使 ℹ</div>';
+
+    // Center palace gets a special layout with vertical spacing between the two stems
+    if(p === 5){
+      return '<td style="background:'+bg+';padding:8px 7px;vertical-align:middle;text-align:center;border:'+border+';width:33%;">'
+        + '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;">' + (d.deity||'Center') + '</div>'
+        + '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;margin:8px 0 2px;">' + (d.tiH||'') + '</div>'
+        + '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
+        + '<div style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:18px;margin:8px 0 2px;">' + (d.diH||'') + '</div>'
+        + '<div style="color:#999;font-size:13px;font-weight:bold;margin-top:4px;">' + p + '</div>'
+        + '</td>';
+    }
 
     return '<td style="background:'+bg+';padding:6px 7px;vertical-align:top;border:'+border+';width:33%;">'
-      // Deity at top center
-      + '<div style="text-align:center;color:#222;font-size:11px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
-      // Row 2: Tian stem (left) + Star (right)
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">'
-      +   '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:16px;">' + (d.tiH||'') + '</span>'
-      +   '<span style="color:#444;font-size:10px;">' + (d.star||'') + '</span>'
+      + '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
+      +   '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
+      +   '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
       + '</div>'
-      // Door center (large bold)
-      + '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:14px;margin:3px 0;">' + (d.door||'') + '</div>'
-      // Row 4: Di stem (left) + Palace number (right)
+      + '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + (d.door||'') + '</div>'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
-      +   '<div><span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:16px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
+      +   '<div><span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
       +   '<span style="color:#999;font-size:13px;font-weight:bold;">' + p + '</span>'
       + '</div>'
       + '</td>';

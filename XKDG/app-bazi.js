@@ -2164,6 +2164,84 @@ function calculatePerson(person) {
         analysisSection.style.display = 'none';
     }
     updateScoreModeBtn();
+    // Apply "seen before" collapse behavior for Bazi/XKDG details
+    try { applyPersonDetailsVisibility(person); } catch(e) {}
+}
+
+// ── Person Bazi/XKDG details collapse behavior ──
+// First time loading a specific named person: show full Bazi + XKDG.
+// Subsequent loads of the same name: hide by default, show "Show" button.
+// State persists across sessions via localStorage.
+function applyPersonDetailsVisibility(person){
+    var isB = (person === 'B' || person === 'b');
+    var key = isB ? 'b' : 'a';
+    var nameId = isB ? 'person-name-b' : 'person-name';
+    var nameEl = document.getElementById(nameId);
+    var personName = nameEl ? (nameEl.value || '').trim() : '';
+
+    // No name → always show (can't track)
+    if (!personName) {
+        if (!window._personDetailsVisible) window._personDetailsVisible = { a: true, b: true };
+        window._personDetailsVisible[key] = true;
+        setPersonDetailsVisibility(key, true);
+        addPersonDetailsToggleBtn(key);
+        return;
+    }
+
+    // Load seen list
+    var seenList;
+    try { seenList = JSON.parse(localStorage.getItem('xkdg_person_bazi_seen') || '[]'); }
+    catch(e) { seenList = []; }
+    var seenBefore = seenList.indexOf(personName) !== -1;
+
+    // Mark as seen for next time
+    if (!seenBefore) {
+        seenList.push(personName);
+        try { localStorage.setItem('xkdg_person_bazi_seen', JSON.stringify(seenList)); } catch(e) {}
+    }
+
+    if (!window._personDetailsVisible) window._personDetailsVisible = { a: true, b: true };
+    window._personDetailsVisible[key] = !seenBefore;
+    setPersonDetailsVisibility(key, !seenBefore);
+    addPersonDetailsToggleBtn(key);
+}
+
+function setPersonDetailsVisibility(key, visible){
+    var chartId    = key === 'b' ? 'person-chart-b' : 'person-chart';
+    var analysisId = key === 'b' ? 'person-analysis-container-b' : 'person-analysis-container-a';
+    var pillarWrapId = key === 'b' ? 'pillar-toggle-b-wrap' : null;
+
+    var chart = document.getElementById(chartId);
+    var analysis = document.getElementById(analysisId);
+    if (chart) chart.style.display = visible ? 'grid' : 'none';
+    if (analysis) analysis.style.display = visible ? 'flex' : 'none';
+    if (pillarWrapId) {
+        var pw = document.getElementById(pillarWrapId);
+        if (pw) pw.style.display = visible ? 'block' : 'none';
+    }
+    // Update button text
+    var btn = document.getElementById('toggle-bazi-' + key);
+    if (btn) btn.textContent = visible ? '▾ Hide Bazi/XKDG details' : '▸ Show Bazi/XKDG details';
+}
+
+function togglePersonDetails(key){
+    if (!window._personDetailsVisible) window._personDetailsVisible = { a: true, b: true };
+    window._personDetailsVisible[key] = !window._personDetailsVisible[key];
+    setPersonDetailsVisibility(key, window._personDetailsVisible[key]);
+}
+
+function addPersonDetailsToggleBtn(key){
+    if (document.getElementById('toggle-bazi-' + key)) return; // already exists
+    var chartId = key === 'b' ? 'person-chart-b' : 'person-chart';
+    var chart = document.getElementById(chartId);
+    if (!chart || !chart.parentElement) return;
+    var visible = window._personDetailsVisible && window._personDetailsVisible[key];
+    var btn = document.createElement('button');
+    btn.id = 'toggle-bazi-' + key;
+    btn.textContent = visible ? '▾ Hide Bazi/XKDG details' : '▸ Show Bazi/XKDG details';
+    btn.style.cssText = 'background:#fff;color:#666;border:1px solid #ccc;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;margin:6px 0;display:block;';
+    btn.onclick = function(){ togglePersonDetails(key); };
+    chart.parentElement.insertBefore(btn, chart);
 }
 
 function checkCompatibility() {
