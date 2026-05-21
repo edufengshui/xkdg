@@ -1,85 +1,103 @@
+// ============================================================
 // XKDG Bazi Calculator — Service Worker
-// Strategy:
-//   - index.html + root: Network-first (always check for updates, fallback to cache)
-//   - JS/CSS with ?v= query: Cache-first (version bump guarantees new URL = new fetch)
-//   - Static assets (icons, images): Cache-first
-//   - On activate: notify all open tabs to reload so users always see latest version
+// Strategia "set and forget": NETWORK FIRST
+// ============================================================
+//
+// COSA FA:
+//   • HTML / JS / CSS / manifest / JSON  → NETWORK FIRST
+//       Il browser prova sempre prima la rete; usa la cache
+//       SOLO se è offline. Quindi ogni volta che apri l'app
+//       online, vedi l'ULTIMA versione pubblicata, qualsiasi
+//       file sia cambiato.
+//
+//   • Immagini (svg/png/jpg/webp/ico)   → CACHE FIRST
+//       Servite dalla cache se ci sono (veloce); altrimenti
+//       scaricate e cacheate. Cambiano raramente.
+//
+//   • Offline → tutti i file usati almeno una volta restano
+//       in cache, quindi l'app continua a funzionare senza rete.
+//
+//   • Aggiornamento → automatico al prossimo caricamento online.
+//
+// MANUTENZIONE: zero.
+//   • Niente liste URLS da aggiornare quando aggiungi/togli file.
+//   • Niente "?v=475" da bumpare nell'index.html.
+//   • Niente "CACHE = 'xkdg-vXXX'" da incrementare qui sotto.
+//   • Quando aggiungi/modifichi un file, fai push e basta.
+//
+// Se in futuro vuoi forzare TUTTI i dispositivi a buttare via
+// la cache (es. dopo un bug grave), cambia il valore di CACHE
+// sotto (qualsiasi stringa va bene). Al successivo accesso
+// online di ogni studente, il vecchio cache viene cancellato
+// e la tab viene ricaricata automaticamente.
+//
+// ============================================================
 
-const CACHE = 'xkdg-v475';
-const URLS = [
-    './',
-    './index.html',
-    './styles.css',
-    './app-bazi.js',
-    './app-fengshui.js',
-    './flying-stars.js',
-    './qmdj-water-scanner.js',
-    './cities.js',
-    './version.js',
-    './manifest.webmanifest',
-    './icons/icon-192.svg',
-    './icons/icon-512.svg',
-    './icons/apple-touch-icon.svg',
-    './icons/luopan.jpg'
-];
+const CACHE = 'xkdg-app';
 
-// Files that should always be fetched from network first
-function isNetworkFirst(url) {
-    const u = new URL(url);
-    return u.pathname.endsWith('/') ||
-           u.pathname.endsWith('/index.html') ||
-           u.pathname === '/';
-}
-
-self.addEventListener('install', e => {
-    e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
+// ── Install: niente precache, take over immediatamente ──────────
+self.addEventListener('install', () => {
     self.skipWaiting();
 });
 
+// ── Activate: pulisce cache vecchie, claim, ricarica tab ───────
 self.addEventListener('activate', e => {
     e.waitUntil(
         caches.keys()
             .then(keys => Promise.all(
                 keys.filter(k => k !== CACHE).map(k => caches.delete(k))
             ))
-            .then(() => clients.claim())
+            .then(() => self.clients.claim())
             .then(() => {
-                // Tell all open tabs to reload so they get the new version immediately
-                return clients.matchAll({ type: 'window' }).then(tabs => {
-                    tabs.forEach(tab => tab.navigate(tab.url));
+                // Avvisa le tab aperte: nuovo SW attivo, ricaricati
+                return self.clients.matchAll({ type: 'window' }).then(tabs => {
+                    tabs.forEach(tab => {
+                        try { tab.navigate(tab.url); } catch(_){}
+                    });
                 });
             })
     );
 });
 
+// ── Fetch handler ───────────────────────────────────────────────
 self.addEventListener('fetch', e => {
     const req = e.request;
-
-    // Only handle GET requests
     if (req.method !== 'GET') return;
 
-    if (isNetworkFirst(req.url)) {
-        // Network-first: try network, fall back to cache
+    let url;
+    try { url = new URL(req.url); } catch(_){ return; }
+
+    // Salta richieste cross-origin (es. lunar-javascript da CDN)
+    if (url.origin !== self.location.origin) return;
+
+    const isImage = /\.(svg|png|jpe?g|webp|gif|ico)$/i.test(url.pathname);
+
+    if (isImage) {
+        // ── CACHE FIRST per immagini ──
         e.respondWith(
-            fetch(req)
-                .then(res => {
-                    const clone = res.clone();
-                    caches.open(CACHE).then(c => c.put(req, clone));
-                    return res;
-                })
-                .catch(() => caches.match(req))
-        );
-    } else {
-        // Cache-first: serve from cache; if not found fetch and cache it
-        e.respondWith(
-            caches.match(req).then(cached => {
-                if (cached) return cached;
+            caches.match(req).then(hit => {
+                if (hit) return hit;
                 return fetch(req).then(res => {
-                    const clone = res.clone();
-                    caches.open(CACHE).then(c => c.put(req, clone));
+                    if (res && res.ok){
+                        const clone = res.clone();
+                        caches.open(CACHE).then(c => c.put(req, clone)).catch(()=>{});
+                    }
                     return res;
                 });
             })
+        );
+    } else {
+        // ── NETWORK FIRST per HTML/JS/CSS/manifest/ecc. ──
+        e.respondWith(
+            fetch(req)
+                .then(res => {
+                    if (res && res.ok){
+                        const clone = res.clone();
+                        caches.open(CACHE).then(c => c.put(req, clone)).catch(()=>{});
+                    }
+                    return res;
+                })
+                .catch(() => caches.match(req))
         );
     }
 });
