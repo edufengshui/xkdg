@@ -1251,7 +1251,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       };
       const _qSymbol = { dun:'☆', zha:'✦', jia:'◆', pen:'⚠' };
 
-      function renderPalaceCard(result, palaceNum, label, accentColor, hourLabel) {
+      function renderPalaceCard(result, palaceNum, label, accentColor, hourLabel, onClickStr) {
         if (!result || !result.hits || !result.hits.length) return '';
         const pi = _PALACE_INFO[palaceNum] || {};
         const cl = result.cell || {};
@@ -1263,9 +1263,9 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
         });
 
         var doorColor = ['Open','Rest','Birth','View'].indexOf(cl.door)!==-1 ? '#2e7d32' : '#c62828';
-        var lbl = label === 'Facing' ? 'F' : 'W';
+        var clickAttr = onClickStr ? ' onclick="' + onClickStr + '" title="Tap to view full Qimen chart"' : '';
 
-        var h = '<div style="border:1px solid ' + accentColor + ';border-radius:4px;margin:2px auto;background:#fff;overflow:hidden;width:88px;display:inline-block;vertical-align:top;">';
+        var h = '<div style="border:1px solid ' + accentColor + ';border-radius:4px;margin:2px auto;background:#fff;overflow:hidden;width:88px;display:inline-block;vertical-align:top;cursor:' + (onClickStr ? 'pointer' : 'default') + ';"' + clickAttr + '>';
 
         // Header — just Facing or Water
         h += '<div style="background:' + accentColor + ';color:#fff;padding:2px 4px;font-size:9px;font-weight:bold;text-align:center;">'
@@ -1314,10 +1314,9 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       const _hourLabel = m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi) : '';
       if (m._qimenF || m._qimenW) {
         const _chartClick = m.bestHour ? "showQimenChart('" + m.isoDate + "','" + m.bestHour.hGan + "','" + m.bestHour.hZhi + "')" : '';
-        qContent = '<div' + (_chartClick ? ' onclick="' + _chartClick + '" style="cursor:pointer;" title="Tap to view full Qimen chart"' : '') + '>';
-        if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c', _hourLabel);
-        if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0', _hourLabel);
-        qContent += '</div>';
+        qContent = '';
+        if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c', _hourLabel, _chartClick);
+        if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0', _hourLabel, _chartClick);
       }
       qimenCell = '<td style="padding:4px 3px;text-align:center;border-bottom:1px solid #eee;vertical-align:top;">' + qContent + '</td>';
     }
