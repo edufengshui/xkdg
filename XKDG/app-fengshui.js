@@ -417,6 +417,10 @@ function buildFengShuiView(){
         <button onclick="fsFindDates()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DATES</button>
       </div>
 
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" style="flex:1;background:#00695c;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🌀 FIND QIMEN HOURS FOR FLYING STARS</button>
+      </div>
+
       <div id="fs-results-area"></div>
     </div>`;
 
