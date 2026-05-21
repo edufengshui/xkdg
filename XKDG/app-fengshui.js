@@ -1289,7 +1289,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
           specialHits.forEach(function(sp){
             var sc = _qTagColors[sp.cat] || {bg:'#f5f5f5',fg:'#333'};
             var sym = _qSymbol[sp.cat] || '';
-            h += '<div style="background:' + sc.bg + ';color:' + sc.fg + ';padding:1px 3px;border-radius:4px;font-size:8px;font-weight:bold;margin:1px 0;">' + sym + ' ' + (sp.label||'') + '</div>';
+            h += '<div style="background:' + sc.bg + ';color:' + sc.fg + ';padding:1px 3px;border-radius:4px;font-size:8px;font-weight:bold;margin:1px 0;cursor:pointer;border:1px solid ' + sc.fg + '40;" onclick="event.stopPropagation();showQimenPopup(\'' + (sp.label||'').replace(/'/g,"\\'") + '\')">' + sym + ' ' + (sp.label||'') + '</div>';
           });
           h += '</div>';
         }
@@ -1420,6 +1420,47 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
     }
     if (m._qimenF && m._qimenW) m._qimenFW = true;
   });
+}
+
+// ── Qimen configuration popup ──
+var _qimenDescriptions = {
+  'Heaven Dun 天遁':   'Bing on Tian + Ding or Wu on Di + Birth door.\nPrayers, petitions to heaven, auspicious requests.',
+  'Earth Dun 地遁':    'Yi on Tian + Ji on Di + Open door.\nEarth-related work, hiding, concealment.',
+  'Human Dun 人遁':    'Ding on Tian + Rest door + Yin deity.\nSocial matters, human relationships.',
+  'Deity Dun 神遁':    'Yi on Tian + Birth door + Heaven deity.\nSpiritual activities, divine support.',
+  'Ghost Dun 鬼遁':    'Ding on Tian + Delusion door + Earth deity.\nCommunicating with spirits, rituals.',
+  'Wind Dun 風遁':     'Yi on Tian + favorable door + Xun palace.\nQuick movement, travel, wind energy.',
+  'Cloud Dun 云遁':    'Yi on Tian + Xin on Di + favorable door.\nConcealment, mystery, hidden support.',
+  'Dragon Dun 龍遁':   'Yi on Tian + favorable door + Kan palace.\nWater activities, aquatic energy.',
+  'Tiger Dun 虎遁':    'Yi on Tian + Xin on Di + Rest/Birth door + Gen palace.\nMountain energy, stability.',
+  'Real Zha 真詐':     'San Qi on Tian + favorable door + Yin deity.\nSpiritual and charitable activities.',
+  'Rest Zha 休詐':     'San Qi on Tian + favorable door + Harmonies deity.\nMedicine, healing, religious activities.',
+  'Multiple Zha 重詐': 'San Qi on Tian + favorable door + Earth deity.\nFame, fortune, attracting people.',
+  'Heaven Jia 天假':   'Earth deity + San Qi + View door.\nWar, litigation, important positions.',
+  'Earth Jia 地假':    'Earth/Yin/Harmonies + Ding/Ji/Gui + Delusion door.\nHiding, preparations, secret affairs.',
+  'Human Jia 人假':    'Heaven deity + Ren + Shocking door.\nPursuing fugitives, tracking.',
+  'Deity Jia 神假':    'Earth/Harmonies + Ding/Ji/Gui + Injury door.\nHiding valuables, seeking compensation.',
+  'Ghost Jia 鬼假':    'Earth deity + Ding/Ji/Gui + Death door.\nBurial rites, hunting, pacifying.'
+};
+function showQimenPopup(label){
+  var old = document.getElementById('qimen-popup-overlay');
+  if(old) old.remove();
+  old = document.getElementById('qimen-popup');
+  if(old) old.remove();
+  var desc = _qimenDescriptions[label] || '';
+  if(!desc) return;
+  var overlay = document.createElement('div');
+  overlay.id = 'qimen-popup-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:9998;';
+  var div = document.createElement('div');
+  div.id = 'qimen-popup';
+  div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #00695c;border-radius:10px;padding:14px 18px;max-width:300px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+  div.innerHTML = '<div style="font-weight:bold;color:#00695c;font-size:14px;margin-bottom:6px;">' + label + '</div>'
+    + '<div style="color:#333;font-size:12px;line-height:1.5;white-space:pre-line;">' + desc + '</div>'
+    + '<div style="text-align:right;margin-top:10px;"><button onclick="document.getElementById(\'qimen-popup\').remove();document.getElementById(\'qimen-popup-overlay\').remove()" style="background:#00695c;color:#fff;border:none;padding:5px 16px;border-radius:6px;font-size:11px;cursor:pointer;">OK</button></div>';
+  overlay.onclick = function(){ div.remove(); overlay.remove(); };
+  document.body.appendChild(overlay);
+  document.body.appendChild(div);
 }
 
 // Scroll the user back to the Person A (or B) input panel and focus its date

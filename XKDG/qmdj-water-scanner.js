@@ -213,32 +213,32 @@
     var doorsFav3 = ['Kai','Xiu','Sheng'];
     // 1. Heaven Dun 天遁: Bing/Tian + (Ding|Wu)/Di + Sheng/Door
     if(ti==='Bing' && (di==='Ding'||di==='Wu') && door==='Sheng')
-      hits.push({cat:'dun', label:'☆ Heaven 天遁'});
+      hits.push({cat:'dun', label:'Heaven Dun 天遁'});
     // 2. Earth Dun 地遁: Yi/Tian + Ji/Di + Kai/Door
     if(ti==='Yi' && di==='Ji' && door==='Kai')
-      hits.push({cat:'dun', label:'☆ Earth 地遁'});
+      hits.push({cat:'dun', label:'Earth Dun 地遁'});
     // 3. Human Dun 人遁: Ding/Tian + Xiu/Door + Yin/Deity (Tai Yin 太陰)
     if(ti==='Ding' && door==='Xiu' && deity==='Yin')
-      hits.push({cat:'dun', label:'☆ Human 人遁'});
+      hits.push({cat:'dun', label:'Human Dun 人遁'});
     // 4. Deity Dun 神遁: Yi/Tian + Sheng/Door + Heaven/Deity (九天)
     if(ti==='Yi' && door==='Sheng' && deity==='Heaven')
-      hits.push({cat:'dun', label:'☆ Deity 神遁'});
+      hits.push({cat:'dun', label:'Deity Dun 神遁'});
     // 5. Ghost Dun 鬼遁: Ding/Tian + Du/Door + Earth/Deity (九地)
     //    NB: requires Du door which fails the basic filter — included for completeness
     if(ti==='Ding' && door==='Du' && deity==='Earth')
-      hits.push({cat:'dun', label:'☆ Ghost 鬼遁'});
+      hits.push({cat:'dun', label:'Ghost Dun 鬼遁'});
     // 6. Wind Dun 風遁: Yi/Tian + fav door (Xiu|Sheng|Kai) + Xun/Palace (4)
     if(ti==='Yi' && doorsFav3.indexOf(door)!==-1 && targetPalace===4)
-      hits.push({cat:'dun', label:'☆ Wind 風遁'});
+      hits.push({cat:'dun', label:'Wind Dun 風遁'});
     // 7. Cloud Dun 云遁: Yi/Tian + Xin/Di + fav door (Xiu|Sheng|Kai)
     if(ti==='Yi' && di==='Xin' && doorsFav3.indexOf(door)!==-1)
-      hits.push({cat:'dun', label:'☆ Cloud 云遁'});
+      hits.push({cat:'dun', label:'Cloud Dun 云遁'});
     // 8. Dragon Dun 龍遁: Yi/Tian + fav door (Xiu|Sheng|Kai) + Kan/Palace (1)
     if(ti==='Yi' && doorsFav3.indexOf(door)!==-1 && targetPalace===1)
-      hits.push({cat:'dun', label:'☆ Dragon 龍遁'});
+      hits.push({cat:'dun', label:'Dragon Dun 龍遁'});
     // 9. Tiger Dun 虎遁: Yi/Tian + Xin/Di + (Xiu|Sheng) door + Gen/Palace (8)
     if(ti==='Yi' && di==='Xin' && (door==='Xiu'||door==='Sheng') && targetPalace===8)
-      hits.push({cat:'dun', label:'☆ Tiger 虎遁'});
+      hits.push({cat:'dun', label:'Tiger Dun 虎遁'});
 
     // THREE PRETENSES 三詐 (San Zha) — favorable for specific activities
     // Common pattern: San Qi (Yi/Bing/Ding) on Tian + Rest/Birth/Open door + specific Spirit
@@ -246,20 +246,20 @@
     var isXSK = (door==='Xiu' || door==='Sheng' || door==='Kai');
     if(isSanQiOnTian && isXSK){
       // Real Pretense 真詐 — Tai Yin (Yin) — spiritual/religious/charity
-      if(deity==='Yin')       hits.push({cat:'zha', label:'✦ Real 真詐'});
+      if(deity==='Yin')       hits.push({cat:'zha', label:'Real Zha 真詐'});
       // Rest Pretense 休詐 — Six Harmonies — medicine/religious activities
-      if(deity==='Harmonies') hits.push({cat:'zha', label:'✦ Rest 休詐'});
+      if(deity==='Harmonies') hits.push({cat:'zha', label:'Rest Zha 休詐'});
       // Multiple Pretense 重詐 — Nine Earth — fame/fortune/attracting people
-      if(deity==='Earth')     hits.push({cat:'zha', label:'✦ Multiple 重詐'});
+      if(deity==='Earth')     hits.push({cat:'zha', label:'Multiple Zha 重詐'});
     }
 
     // FIVE BORROWS 五假 (Wu Jia) — auspicious configurations for specific tactical uses
     // (use unfavorable doors but recognized as positive in their domain)
-    if(isTianJia) hits.push({cat:'jia', label:'◆ Heaven 天假'});  // war, litigation, important post
-    if(isDiJia)   hits.push({cat:'jia', label:'◆ Earth 地假'});   // hiding, preparations, secret affairs
-    if(isRenJia)  hits.push({cat:'jia', label:'◆ Human 人假'});   // pursuing fugitives
-    if(isShenJia) hits.push({cat:'jia', label:'◆ Deity 神假'});   // hiding things, seeking compensation
-    if(isGuiJia)  hits.push({cat:'jia', label:'◆ Ghost 鬼假'});   // burial, hunting, pacifying people
+    if(isTianJia) hits.push({cat:'jia', label:'Heaven Jia 天假'});  // war, litigation, important post
+    if(isDiJia)   hits.push({cat:'jia', label:'Earth Jia 地假'});   // hiding, preparations, secret affairs
+    if(isRenJia)  hits.push({cat:'jia', label:'Human Jia 人假'});   // pursuing fugitives
+    if(isShenJia) hits.push({cat:'jia', label:'Deity Jia 神假'});   // hiding things, seeking compensation
+    if(isGuiJia)  hits.push({cat:'jia', label:'Ghost Jia 鬼假'});   // burial, hunting, pacifying people
 
     // PENALTIES — Tian Pan stem in disadvantageous palace (each -1)
     var penPalaces = TIAN_PENALTIES[ti];
