@@ -1313,7 +1313,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
       let qContent = '—';
       const _hourLabel = m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi) : '';
       if (m._qimenF || m._qimenW) {
-        const _chartClick = m.bestHour ? "showQimenChart('" + m.isoDate + "','" + m.bestHour.hGan + "','" + m.bestHour.hZhi + "')" : '';
+        const _chartClick = m.bestHour ? "event.stopPropagation();showQimenChart('" + m.isoDate + "','" + m.bestHour.hGan + "','" + m.bestHour.hZhi + "')" : '';
         qContent = '';
         if (m._qimenF) qContent += renderPalaceCard(m._qimenF, _fPalace, 'Facing', '#00695c', _hourLabel, _chartClick);
         if (m._qimenW) qContent += renderPalaceCard(m._qimenW, _wPalace, 'Water', '#1565c0', _hourLabel, _chartClick);
