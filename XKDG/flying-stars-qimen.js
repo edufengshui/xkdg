@@ -14,9 +14,9 @@
 // COSA FA:
 //   Per la carta Flying Stars corrente (basata su House Facing e
 //   Period), trova le ORE in cui certe entità del Qi Men Dun Jia
-//   (steli 三奇 乙/丙/丁, porte 吉門 開/休/生/景, 9 stelle celesti)
-//   cadono nel palazzo dove si trova una Water Star (向星) o
-//   Mountain Star (山星) specifica della carta nativa.
+//   (steli 三奇 乙/丙/丁, porte 吉門 開/休/生/景, 9 stelle celesti,
+//   8 spiriti 八神) cadono nel palazzo dove si trova una Water Star
+//   (向星) o Mountain Star (山星) specifica della carta nativa.
 //
 // DIPENDENZE:
 //   • flying-stars.js   (window.FlyingStars)
@@ -44,24 +44,24 @@
   //   0=SE  1=S   2=SW                  4   9   2
   //   3=E   4=Ctr 5=W                   3   5   7
   //   6=NE  7=N   8=NW                  8   1   6
-  const FS_GRID_TO_QMDJ_PALACE = {
+  var FS_GRID_TO_QMDJ_PALACE = {
     0:4, 1:9, 2:2,
     3:3, 4:5, 5:7,
     6:8, 7:1, 8:6
   };
-  const FS_GRID_TO_LABEL = {
+  var FS_GRID_TO_LABEL = {
     0:'SE 巽', 1:'S 離', 2:'SW 坤',
     3:'E 震',  4:'C 中', 5:'W 兌',
     6:'NE 艮', 7:'N 坎', 8:'NW 乾'
   };
-  const QMDJ_PALACE_TO_LABEL = {
+  var QMDJ_PALACE_TO_LABEL = {
     4:'SE 巽', 9:'S 離',  2:'SW 坤',
     3:'E 震',  5:'C 中',  7:'W 兌',
     8:'NE 艮', 1:'N 坎',  6:'NW 乾'
   };
 
   // 9 stelle celesti — il QMDJ scanner ritorna i nomi inglesi tradotti
-  const QM_STARS = [
+  var QM_STARS = [
     {key:'Peng',  en:'Grass',     han:'天蓬', label:'天蓬 Peng (Grass)'},
     {key:'Rui',   en:'Rice',      han:'天芮', label:'天芮 Rui (Rice)'},
     {key:'Chong', en:'Aggressor', han:'天沖', label:'天沖 Chong (Aggressor)'},
@@ -73,37 +73,55 @@
     {key:'Ying',  en:'Hero',      han:'天英', label:'天英 Ying (Hero)'}
   ];
   // Mappa nome inglese (come restituito da getHourChart) → chiave pinyin
-  const STAR_EN_TO_KEY = {};
+  var STAR_EN_TO_KEY = {};
   QM_STARS.forEach(function(s){ STAR_EN_TO_KEY[s.en] = s.key; });
 
   // 3 stelle Qi (San Qi)
-  const QM_STEMS = [
+  var QM_STEMS = [
     {key:'Yi',   han:'乙', label:'乙 Yi'},
     {key:'Bing', han:'丙', label:'丙 Bing'},
     {key:'Ding', han:'丁', label:'丁 Ding'}
   ];
 
   // 4 porte favorevoli — il QMDJ scanner ritorna i nomi inglesi
-  const QM_DOORS = [
+  var QM_DOORS = [
     {key:'Open',  han:'開', label:'開 Open'},
     {key:'Rest',  han:'休', label:'休 Rest'},
     {key:'Birth', han:'生', label:'生 Birth'},
     {key:'View',  han:'景', label:'景 View'}
   ];
 
+  // 8(+2) spiriti 八神 — cell[3] del chart QMDJ, stringa inglese
+  // In Yang Dun si vedono Norm/Bird; in Yin Dun Tiger/Warrior
+  // (o viceversa a seconda della tradizione).
+  // Li includiamo tutti: quelli non presenti nei dati semplicemente
+  // non produrranno mai match.
+  var QM_SPIRITS = [
+    {key:'Commander', han:'值符', label:'值符 Commander'},
+    {key:'Snake',     han:'螣蛇', label:'螣蛇 Snake'},
+    {key:'Yin',       han:'太陰', label:'太陰 Yin'},
+    {key:'Harmonies', han:'六合', label:'六合 Harmonies'},
+    {key:'Tiger',     han:'白虎', label:'白虎 Tiger'},
+    {key:'Warrior',   han:'玄武', label:'玄武 Warrior'},
+    {key:'Earth',     han:'九地', label:'九地 Earth'},
+    {key:'Heaven',    han:'九天', label:'九天 Heaven'},
+    {key:'Norm',      han:'勾陳', label:'勾陳 Norm'},
+    {key:'Bird',      han:'朱雀', label:'朱雀 Bird'}
+  ];
+
   // Steli/rami per il calcolo dei pilastri orari
-  const STEM_SEQ = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
-  const BR_SEQ   = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
-  const STEM_HAN = {Jia:'甲',Yi:'乙',Bing:'丙',Ding:'丁',Wu:'戊',Ji:'己',Geng:'庚',Xin:'辛',Ren:'壬',Gui:'癸'};
-  const BR_HAN   = {Zi:'子',Chou:'丑',Yin:'寅',Mao:'卯',Chen:'辰',Si:'巳',Wu:'午',Wei:'未',Shen:'申',You:'酉',Xu:'戌',Hai:'亥'};
-  const STEM_HAN_TO_EN = {};
+  var STEM_SEQ = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
+  var BR_SEQ   = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+  var STEM_HAN = {Jia:'甲',Yi:'乙',Bing:'丙',Ding:'丁',Wu:'戊',Ji:'己',Geng:'庚',Xin:'辛',Ren:'壬',Gui:'癸'};
+  var BR_HAN   = {Zi:'子',Chou:'丑',Yin:'寅',Mao:'卯',Chen:'辰',Si:'巳',Wu:'午',Wei:'未',Shen:'申',You:'酉',Xu:'戌',Hai:'亥'};
+  var STEM_HAN_TO_EN = {};
   Object.keys(STEM_HAN).forEach(function(k){ STEM_HAN_TO_EN[STEM_HAN[k]] = k; });
-  const HOUR_TIMES = {
+  var HOUR_TIMES = {
     Zi:'23–01', Chou:'01–03', Yin:'03–05', Mao:'05–07',
     Chen:'07–09', Si:'09–11', Wu:'11–13', Wei:'13–15',
     Shen:'15–17', You:'17–19', Xu:'19–21', Hai:'21–23'
   };
-  const WEEKDAYS_IT = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+  var WEEKDAYS_IT = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 
   // ---------------------------------------------------------------
   // HELPER
@@ -165,6 +183,24 @@
   }
 
   // ---------------------------------------------------------------
+  // TOGGLE REQUIRED / OPTIONAL
+  // ---------------------------------------------------------------
+  function toggleCat(el){
+    var state = el.getAttribute('data-state');
+    if(state === 'optional'){
+      el.setAttribute('data-state', 'required');
+      el.textContent = 'REQ';
+      el.style.background = '#00695c';
+      el.style.color = '#fff';
+    } else {
+      el.setAttribute('data-state', 'optional');
+      el.textContent = 'OPT';
+      el.style.background = '#cfd8dc';
+      el.style.color = '#555';
+    }
+  }
+
+  // ---------------------------------------------------------------
   // COSTRUZIONE PANNELLO DI CONFIGURAZIONE
   // ---------------------------------------------------------------
   function buildPanel(area){
@@ -183,11 +219,25 @@
            +   '<input type="checkbox" class="qfs-ent" data-cat="star" data-key="'+s.key+'"> '+s.label
            + '</label>';
     }).join('');
+    var spiritHtml = QM_SPIRITS.map(function(sp){
+      return '<label style="white-space:nowrap;font-size:11px;">'
+           +   '<input type="checkbox" class="qfs-ent" data-cat="spirit" data-key="'+sp.key+'"> '+sp.label
+           + '</label>';
+    }).join('');
 
     var starOptions = '';
     for(var n = 1; n <= 9; n++){
       starOptions += '<option value="'+n+'"'+(n === 8 ? ' selected' : '')+'>Star '+n+'</option>';
     }
+
+    // Toggle button template — default OPT (optional)
+    var toggleBtn = function(cat){
+      return ' <span class="qfs-cat-toggle" data-cat="'+cat+'" data-state="optional" '
+           + 'onclick="QFS.toggleCat(this)" '
+           + 'style="display:inline-block;padding:1px 7px;border-radius:3px;font-size:9px;font-weight:bold;'
+           + 'cursor:pointer;vertical-align:middle;margin-left:6px;'
+           + 'background:#cfd8dc;color:#555;user-select:none;">OPT</span>';
+    };
 
     var html =
       '<div id="qfs-panel" style="border:2px solid #00695c;border-radius:8px;background:#e0f2f1;padding:12px;margin-top:10px;font-size:12px;color:#1a1008;">'
@@ -209,19 +259,41 @@
     +     '<div id="qfs-palace-info" style="font-size:11px;color:#00695c;margin-top:4px;font-style:italic;min-height:16px;"></div>'
     +   '</div>'
 
-      // STEP 2 — entità Qimen
+      // STEP 2 — entità Qimen con toggle Required/Optional per categoria
     +   '<div style="margin-bottom:10px;">'
     +     '<div style="font-weight:bold;color:#004d40;margin-bottom:4px;">'
     +       '2. Which Qimen entities to look for in that palace?'
     +       ' <button onclick="QFS.selectAll(true)" style="background:#00695c;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px;font-weight:bold;">All</button>'
     +       ' <button onclick="QFS.selectAll(false)" style="background:#999;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:bold;">None</button>'
     +     '</div>'
-    +     '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:4px;">San Qi 三奇 · stems</div>'
+    +     '<div style="font-size:10px;color:#666;margin-bottom:6px;font-style:italic;">'
+    +       'REQ = the palace MUST contain an entity from that category. OPT = bonus only.'
+    +     '</div>'
+
+    // San Qi
+    +     '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:4px;">'
+    +       'San Qi 三奇 · stems' + toggleBtn('stem')
+    +     '</div>'
     +     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;">'+stemHtml+'</div>'
-    +     '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:6px;">Favorable Doors 吉門</div>'
+
+    // Doors
+    +     '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:6px;">'
+    +       'Favorable Doors 吉門' + toggleBtn('door')
+    +     '</div>'
     +     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;">'+doorHtml+'</div>'
-    +     '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:6px;">Celestial Stars 九星 <span style="font-weight:normal;color:#888;">(optional)</span></div>'
+
+    // Stars
+    +     '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:6px;">'
+    +       'Celestial Stars 九星' + toggleBtn('star')
+    +     '</div>'
     +     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;">'+starHtml+'</div>'
+
+    // Spirits (NUOVA SEZIONE)
+    +     '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:6px;">'
+    +       'Spirits 八神' + toggleBtn('spirit')
+    +     '</div>'
+    +     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;">'+spiritHtml+'</div>'
+
     +   '</div>'
 
       // STEP 3 — scan + range info
@@ -287,18 +359,25 @@
   function matchPalace(palaceData, wanted){
     if(!palaceData) return [];
     var hits = [];
+    // Stems (San Qi)
     if(palaceData.ti && wanted.stems.has(palaceData.ti)){
       hits.push({cat:'stem', label:(palaceData.tiH || palaceData.ti) + ' (天/Tian)'});
     }
     if(palaceData.di && wanted.stems.has(palaceData.di)){
       hits.push({cat:'stem', label:(palaceData.diH || palaceData.di) + ' (地/Di)'});
     }
+    // Doors
     if(palaceData.door && wanted.doors.has(palaceData.door)){
       hits.push({cat:'door', label:palaceData.door + ' Door'});
     }
+    // Stars
     var starKey = STAR_EN_TO_KEY[palaceData.star];
     if(starKey && wanted.stars.has(starKey)){
       hits.push({cat:'star', label:palaceData.star + ' Star'});
+    }
+    // Spirits (八神)
+    if(palaceData.deity && wanted.spirits.has(palaceData.deity)){
+      hits.push({cat:'spirit', label:palaceData.deity + ' 神'});
     }
     return hits;
   }
@@ -340,20 +419,37 @@
       return;
     }
 
-    // Raccoglie le entità Qimen selezionate
-    var wanted = { stems:new Set(), doors:new Set(), stars:new Set() };
+    // Raccoglie le entità Qimen selezionate (4 categorie)
+    var wanted = { stems:new Set(), doors:new Set(), stars:new Set(), spirits:new Set() };
     var boxes = document.querySelectorAll('input.qfs-ent');
     for(var b = 0; b < boxes.length; b++){
       if(!boxes[b].checked) continue;
       var cat = boxes[b].getAttribute('data-cat');
       var key = boxes[b].getAttribute('data-key');
-      if(cat === 'stem')  wanted.stems.add(key);
-      if(cat === 'door')  wanted.doors.add(key);
-      if(cat === 'star')  wanted.stars.add(key);
+      if(cat === 'stem')   wanted.stems.add(key);
+      if(cat === 'door')   wanted.doors.add(key);
+      if(cat === 'star')   wanted.stars.add(key);
+      if(cat === 'spirit') wanted.spirits.add(key);
     }
-    if(wanted.stems.size + wanted.doors.size + wanted.stars.size === 0){
+    var totalSelected = wanted.stems.size + wanted.doors.size + wanted.stars.size + wanted.spirits.size;
+    if(totalSelected === 0){
       resultsBox.innerHTML = '<div style="color:#c62828;padding:10px;">⚠ Select at least one Qimen entity.</div>';
       return;
+    }
+
+    // Raccoglie lo stato Required/Optional per ogni categoria
+    // Una categoria è "required" solo se è togglata REQ E ha almeno
+    // un'entità selezionata (altrimenti sarebbe impossibile matchare).
+    var required = new Set();
+    var toggles = document.querySelectorAll('.qfs-cat-toggle');
+    for(var t = 0; t < toggles.length; t++){
+      if(toggles[t].getAttribute('data-state') === 'required'){
+        var tCat = toggles[t].getAttribute('data-cat');
+        if(tCat === 'stem'   && wanted.stems.size   > 0) required.add('stem');
+        if(tCat === 'door'   && wanted.doors.size   > 0) required.add('door');
+        if(tCat === 'star'   && wanted.stars.size   > 0) required.add('star');
+        if(tCat === 'spirit' && wanted.spirits.size > 0) required.add('spirit');
+      }
     }
 
     var range = getRange();
@@ -408,7 +504,26 @@
             var pdata  = hourChart.palaces[palace];
             if(!pdata) continue;
             var hits = matchPalace(pdata, wanted);
-            if(hits.length === 0) continue;
+
+            // --- LOGICA REQUIRED/OPTIONAL ---
+            // Se ci sono categorie REQUIRED, il palazzo DEVE avere
+            // almeno un hit da CIASCUNA categoria required.
+            // Le categorie OPTIONAL contribuiscono hits bonus.
+            if(required.size > 0){
+              var passRequired = true;
+              required.forEach(function(reqCat){
+                var hasCat = false;
+                for(var hi = 0; hi < hits.length; hi++){
+                  if(hits[hi].cat === reqCat){ hasCat = true; break; }
+                }
+                if(!hasCat) passRequired = false;
+              });
+              if(!passRequired) continue;
+            } else {
+              // Nessuna categoria required → comportamento originale:
+              // qualsiasi hit basta per includere l'ora.
+              if(hits.length === 0) continue;
+            }
 
             var dateKey = Y + '-' + String(M).padStart(2,'0') + '-' + String(D).padStart(2,'0');
             if(!byDate[dateKey]){ byDate[dateKey] = []; dateOrder.push(dateKey); }
@@ -430,14 +545,14 @@
         }
       }
 
-      renderResults(resultsBox, byDate, dateOrder, totalHits, type, starN, fsPalaces, range);
+      renderResults(resultsBox, byDate, dateOrder, totalHits, type, starN, fsPalaces, range, required);
     }, 30);
   }
 
   // ---------------------------------------------------------------
   // RENDER RISULTATI
   // ---------------------------------------------------------------
-  function renderResults(box, byDate, dateOrder, total, type, starNum, fsPalaces, range){
+  function renderResults(box, byDate, dateOrder, total, type, starNum, fsPalaces, range, required){
     if(total === 0){
       box.innerHTML =
         '<div style="padding:16px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;'
@@ -451,6 +566,17 @@
     var typeLabel = (type === 'water') ? '向星 Water' : '山星 Mountain';
     var palaceList = fsPalaces.map(function(p){ return QMDJ_PALACE_TO_LABEL[p] || ('P'+p); }).join(', ');
 
+    // Info sulla modalità Required attiva
+    var reqInfo = '';
+    if(required && required.size > 0){
+      var reqNames = [];
+      required.forEach(function(c){
+        var names = {stem:'San Qi', door:'Doors', star:'Stars', spirit:'Spirits'};
+        reqNames.push(names[c] || c);
+      });
+      reqInfo = ' · <span style="color:#004d40;font-weight:bold;">REQ: ' + reqNames.join(', ') + '</span>';
+    }
+
     var html =
       '<div style="font-weight:bold;color:#00695c;font-size:16px;margin:10px 0 4px;">'
     +   '🌀 ' + total + ' hour' + (total > 1 ? 's' : '') + ' found · '
@@ -459,6 +585,7 @@
     + '<div style="font-size:13px;color:#666;margin-bottom:10px;">'
     +   'from ' + range.startStr + ' · ' + range.days + ' days · '
     +   dateOrder.length + ' distinct day' + (dateOrder.length > 1 ? 's' : '')
+    +   reqInfo
     + '</div>';
 
     dateOrder.sort();
@@ -483,8 +610,9 @@
         seq++;
         var it = items[j];
         var hitsHtml = it.hits.map(function(h){
-          var bg = (h.cat === 'door') ? '#1b5e20'
-                 : (h.cat === 'stem') ? '#bf6c00'
+          var bg = (h.cat === 'door')   ? '#1b5e20'
+                 : (h.cat === 'stem')   ? '#bf6c00'
+                 : (h.cat === 'spirit') ? '#6a1b9a'
                  : '#283593';
           return '<span style="background:'+bg+';color:#fff;padding:3px 9px;border-radius:4px;margin:2px 4px 2px 0;font-size:13px;display:inline-block;font-weight:bold;">'
                + h.label + '</span>';
@@ -569,7 +697,8 @@
     open:      open,
     close:     close,
     selectAll: selectAll,
-    showChart: showChart
+    showChart: showChart,
+    toggleCat: toggleCat
   };
   // Alias più "verboso" per chi cerca un nome esplicito
   window.fsFindQimenForFlyingStars = open;
