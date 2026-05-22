@@ -3035,9 +3035,9 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     // Nayin Power gets its own floor (+5 base means min 6 before other bonuses)
     const nayinFloor = nayinRes.label === 'Nayin Power' ? 6 : nayinRes.label === 'Nayin' ? 2 : null;
 
-    const relationFloor = blueItems.some(i => i.tag === 'family')                                                  ? 8
-                        : blueItems.some(i => i.text.includes('Pure Qi'))                                          ? 6
-                        : blueItems.some(i => i.text.includes('Pure Adding') || i.text.includes('Pure Hetu'))      ? 5
+    const relationFloor = blueItems.some(i => i.tag === 'family')                                                  ? 12
+                        : blueItems.some(i => i.text.includes('Pure Qi'))                                          ? 10
+                        : blueItems.some(i => i.text.includes('Pure Adding') || i.text.includes('Pure Hetu'))      ? 7
                         : blueItems.some(i => i.text.includes('Adding') || i.text.includes('Hetu') || i.text.startsWith('Inverse Hex')) ? 3
                         : 1;
 
@@ -5193,19 +5193,6 @@ function buildMonthView() {
                 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
-                    ${[
-                        isDateNobleLV ? 'Noble' : '',
-                        isDateLuLV    ? 'Lu' : '',
-                        isDateHVLV    ? 'HV' : '',
-                        isDateBVLV    ? 'BV' : '',
-                        isDateTYLV    ? 'TY' : ''
-                    ].filter(Boolean).length ? `<div style="color:#0277bd;font-weight:bold;">${[
-                        isDateNobleLV ? 'Noble' : '',
-                        isDateLuLV    ? 'Lu' : '',
-                        isDateHVLV    ? 'HV' : '',
-                        isDateBVLV    ? 'BV' : '',
-                        isDateTYLV    ? 'TY' : ''
-                    ].filter(Boolean).join(' · ')}</div>` : ''}
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}
