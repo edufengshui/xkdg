@@ -3011,8 +3011,14 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     // Tomb Sha penalty
     const tombShaPenalty = isTombSha(hZhi, dGan, sStrong, sGrowing) ? -2 : 0;
 
-    // Clash penalty
-    const clashPenalty = getClashType(dGan, dZhi, yZhi, mGan, mZhi) ? -4 : 0;
+    // Clash penalty — graduated by clash type.
+    // Day-month STEM clash is a MINOR clash: it does not disturb hexagram
+    // communication (XKDG relations stay valid), so it is only -1.
+    // Branch clashes (year, month) remain the serious -4.
+    const _clashTypeCHS = getClashType(dGan, dZhi, yZhi, mGan, mZhi);
+    const clashPenalty = _clashTypeCHS === 'clash-month-stem' ? -1
+                       : _clashTypeCHS                        ? -4
+                       : 0;
 
     // Personal star bonuses (person A)
     const nobleBonus = (pNobleA && pNobleA.includes(hZhi)) ? 1 : 0;
