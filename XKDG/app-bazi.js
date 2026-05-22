@@ -3030,7 +3030,7 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
 
     // Minimum floor: penalties can never push a relation below its floor
     const nayinRes = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
-    const nayinScore = nayinRes.score + nayinRes.personScore;
+    let nayinScore = nayinRes.score + nayinRes.personScore;
 
     // Nayin Power gets its own floor (+5 base means min 6 before other bonuses)
     const nayinFloor = nayinRes.label === 'Nayin Power' ? 6 : nayinRes.label === 'Nayin' ? 2 : null;
@@ -3041,8 +3041,19 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
                         : blueItems.some(i => i.text.includes('Adding') || i.text.includes('Hetu') || i.text.startsWith('Inverse Hex')) ? 3
                         : 1;
 
-    // For Nayin Weak, allow score to go negative (don't apply floor)
-    const effectiveFloor = nayinRes.label === 'Nayin Weak' ? -2
+    // Option 1 — a genuine hexagram relation OUTRANKS element-level Nayin Weak.
+    // Nayin Weak is an element-level weakness: it must not drag down, nor remove
+    // the floor of, an hour that has real hexagram communication (Pure Qi, Pure
+    // Hetu, Adding, Family, Inverse Hex). When such a relation is present we
+    // neutralise the Nayin Weak penalty AND keep the relation floor.
+    const hasHexagramRelation = relationFloor > 1;
+    if (nayinRes.label === 'Nayin Weak' && hasHexagramRelation) {
+        nayinScore = Math.max(0, nayinScore); // strong relation wins → no Nayin Weak penalty
+    }
+
+    // Nayin Weak removes the floor (lets the score go negative) ONLY when there is
+    // no hexagram relation to protect. With a relation, the relation floor stands.
+    const effectiveFloor = (nayinRes.label === 'Nayin Weak' && !hasHexagramRelation) ? -2
                          : nayinFloor !== null ? Math.max(relationFloor, nayinFloor)
                          : relationFloor;
 
