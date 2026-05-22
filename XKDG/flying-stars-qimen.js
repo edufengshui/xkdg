@@ -440,8 +440,8 @@
   function renderResults(box, byDate, dateOrder, total, type, starNum, fsPalaces, range){
     if(total === 0){
       box.innerHTML =
-        '<div style="padding:14px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;'
-      + 'color:#888;font-size:12px;text-align:center;">'
+        '<div style="padding:16px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;'
+      + 'color:#888;font-size:14px;text-align:center;">'
       +   'No matching hours in ' + range.days + ' days from ' + range.startStr + '. '
       +   'Try a wider range, more entities, or a different star.'
       + '</div>';
@@ -452,16 +452,17 @@
     var palaceList = fsPalaces.map(function(p){ return QMDJ_PALACE_TO_LABEL[p] || ('P'+p); }).join(', ');
 
     var html =
-      '<div style="font-weight:bold;color:#00695c;font-size:13px;margin:10px 0 4px;">'
+      '<div style="font-weight:bold;color:#00695c;font-size:16px;margin:10px 0 4px;">'
     +   '🌀 ' + total + ' hour' + (total > 1 ? 's' : '') + ' found · '
     +   typeLabel + ' Star ' + starNum + ' in palace ' + palaceList
     + '</div>'
-    + '<div style="font-size:11px;color:#666;margin-bottom:8px;">'
+    + '<div style="font-size:13px;color:#666;margin-bottom:10px;">'
     +   'from ' + range.startStr + ' · ' + range.days + ' days · '
     +   dateOrder.length + ' distinct day' + (dateOrder.length > 1 ? 's' : '')
     + '</div>';
 
     dateOrder.sort();
+    var seq = 0;
 
     for(var i = 0; i < dateOrder.length; i++){
       var dk = dateOrder[i];
@@ -472,19 +473,20 @@
       });
       var weekday = items[0].weekday;
       html +=
-        '<div style="margin-bottom:10px;border:1px solid #b2dfdb;border-radius:6px;overflow:hidden;background:#fff;">'
-      +   '<div style="background:#00695c;color:#fff;padding:5px 10px;font-weight:bold;font-size:12px;">'
+        '<div style="margin-bottom:12px;border:1px solid #b2dfdb;border-radius:8px;overflow:hidden;background:#fff;">'
+      +   '<div style="background:#00695c;color:#fff;padding:8px 12px;font-weight:bold;font-size:15px;">'
       +     dk + ' · ' + weekday + ' · ' + items.length + ' hour' + (items.length > 1 ? 's' : '')
       +   '</div>'
-      +   '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+      +   '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
 
       for(var j = 0; j < items.length; j++){
+        seq++;
         var it = items[j];
         var hitsHtml = it.hits.map(function(h){
           var bg = (h.cat === 'door') ? '#1b5e20'
                  : (h.cat === 'stem') ? '#bf6c00'
                  : '#283593';
-          return '<span style="background:'+bg+';color:#fff;padding:1px 6px;border-radius:3px;margin:1px 3px 1px 0;font-size:10px;display:inline-block;">'
+          return '<span style="background:'+bg+';color:#fff;padding:3px 9px;border-radius:4px;margin:2px 4px 2px 0;font-size:13px;display:inline-block;font-weight:bold;">'
                + h.label + '</span>';
         }).join('');
 
@@ -499,17 +501,18 @@
 
         html +=
           '<tr style="border-top:1px solid #e0e0e0;">'
-        +   '<td style="padding:6px 8px;width:130px;vertical-align:top;background:#f5fafa;">'
-        +     '<div style="font-weight:bold;color:#00695c;font-size:13px;">' + it.hourHan + '</div>'
-        +     '<div style="color:#666;font-size:10px;">' + it.hourTime + '</div>'
-        +     '<div style="color:#888;font-size:10px;margin-top:2px;">P' + it.palace + ' · ' + it.palaceLbl + '</div>'
+        +   '<td style="padding:10px;vertical-align:top;background:#f5fafa;">'
+        +     '<div style="color:#999;font-size:11px;font-weight:bold;">#' + seq + '</div>'
+        +     '<div style="font-weight:bold;color:#00695c;font-size:22px;line-height:1.2;">' + it.hourHan + '</div>'
+        +     '<div style="color:#555;font-size:14px;margin-top:2px;">' + it.hourTime + '</div>'
+        +     '<div style="color:#777;font-size:13px;margin-top:3px;">P' + it.palace + ' · ' + it.palaceLbl + '</div>'
         +   '</td>'
-        +   '<td style="padding:6px 8px;vertical-align:top;">'
-        +     '<div style="margin-bottom:4px;">' + hitsHtml + '</div>'
-        +     '<div style="color:#666;font-size:10px;">' + cellSummary + '</div>'
-        +     '<div style="margin-top:4px;">'
+        +   '<td style="padding:10px;vertical-align:top;">'
+        +     '<div style="margin-bottom:6px;line-height:1.6;">' + hitsHtml + '</div>'
+        +     '<div style="color:#555;font-size:13px;margin-bottom:6px;">' + cellSummary + '</div>'
+        +     '<div>'
         +       '<button onclick="QFS.showChart(\''+it.date+'\',\''+it.hourStem+'\',\''+it.hourBranch+'\','+it.palace+')" '
-        +              'style="background:#fff;color:#00695c;border:1px solid #00695c;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:bold;">View full chart</button>'
+        +              'style="background:#fff;color:#00695c;border:1.5px solid #00695c;border-radius:5px;padding:5px 14px;font-size:13px;cursor:pointer;font-weight:bold;">View full chart</button>'
         +     '</div>'
         +   '</td>'
         + '</tr>';
