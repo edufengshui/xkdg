@@ -4368,6 +4368,79 @@ function buildMonthView() {
     const pBVA    = personDayZhiMV ? (BRANCH_VIRTUE[personDayZhiMV] || null) : null;
     const pMVA    = personMthBranchMV ? (MONTH_VIRTUE[personMthBranchMV] || null) : null;
     const pTYA    = personDayStemMV ? (TIAN_YI[personDayStemMV] || null) : null;
+
+    // ── Shared gate check for the two special Zi-half rows (early-Zi / late-Zi). ──
+    // Historically the Zi blocks applied only chip/purpose/score filters and
+    // skipped three gates that regular hours enforce:
+    //   (1) personal connection gate  (2) Kong Wang void  (3) favourable/high-score.
+    // That let Zi hours appear in LIST when an equivalent regular hour would be
+    // dropped. This helper ports those three gates so Zi rows filter consistently.
+    // Returns true = keep the row, false = drop it. On a drop it also logs the
+    // reason to the browser console (diagnostic — safe to leave on).
+    function ziRowPassesGates(o) {
+        const dbg = function(reason){
+            try { console.log('[LIST Zi drop] ' + o.tag + ' @ ' + o.isoDate +
+                              ' score=' + o.score + ' → ' + reason); } catch(e){}
+        };
+        // GATE 1 — personal connection gate (mirror of regular-hours logic)
+        if (activePersonYear) {
+            const dQi  = o.dayXkdg ? o.dayXkdg.qi  : null;
+            const dYun = o.dayXkdg ? o.dayXkdg.yun : null;
+            const connectsTo = function(pYr, pStem, pBranch){
+                if (!pYr) return false;
+                if (isHetuPair(pYr.qi, dQi)   || [5,10,15].includes(pYr.qi + dQi))   return true;
+                if (isHetuPair(pYr.yun, dYun) || [5,10,15].includes(pYr.yun + dYun)) return true;
+                if (o.blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pYr.qi  === dQi)  return true;
+                if (o.blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods')  && pYr.yun === dYun) return true;
+                if (getJiaZiFamilies(pStem, pBranch).some(f => getJiaZiFamilies(o.dGan, o.dZhi).includes(f))) return true;
+                return false;
+            };
+            if (personAYear && personBYear) {
+                if (!(connectsTo(personAYear, pYStem, pYBranch) &&
+                      connectsTo(personBYear, pBYStem, pBYBranch))) { dbg('no personal connection (A&B)'); return false; }
+            } else {
+                if (!connectsTo(activePersonYear, activePersonStem, activePersonBranch)) { dbg('no personal connection'); return false; }
+            }
+        }
+        // GATE 2 — Kong Wang void (Pure Qi / Family / Nayin Weak exempt)
+        const hasPureQiOrFamily = o.blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
+        const isNayinWeak = o.nayinLabel === 'Nayin Weak';
+        const isVoid = !hasPureQiOrFamily && !isNayinWeak &&
+                       isKongWangVoid(o.hZhi, o.dGan, o.dZhi, o.seasonStrong, o.seasonGrowing);
+        if (isVoid && !o.hasNeg && !o.calShowAll && !o.listShowAll) { dbg('Kong Wang void'); return false; }
+        // GATE 3 — favourable / high-score gate
+        let isFavourable = false;
+        const isPositive = o.blueItems.length > 0;
+        if (isPositive && (personAYear || personBYear)) {
+            const _saved = _currentDayAnalysis;
+            _currentDayAnalysis = {
+                items: o.analysisItems,
+                pillars: { hour: o.pillars.hour, day: o.pillars.day, month: o.pillars.month, year: o.pillars.year },
+                stems:  { hour: o.hGan, day: o.dGan, month: o.mGan, year: o.yGan },
+                branches:{ hour: o.hZhi, day: o.dZhi, month: o.mZhi, year: o.yZhi }
+            };
+            if (personAYear) {
+                const labelsA = getMatchLabels(personAYear, pYStem, pYBranch, o.pillars.day, o.dGan, o.dZhi, _personAPillars, _personADayStem, _personADayBranch);
+                const favA = labelsA.length > 0;
+                if (personBYear) {
+                    const labelsB = getMatchLabels(personBYear, pBYStem, pBYBranch, o.pillars.day, o.dGan, o.dZhi, _personBPillars, _personBDayStem, _personBDayBranch);
+                    isFavourable = favA && labelsB.length > 0;
+                } else {
+                    isFavourable = favA;
+                }
+            } else if (personBYear) {
+                const labelsB = getMatchLabels(personBYear, pBYStem, pBYBranch, o.pillars.day, o.dGan, o.dZhi, _personBPillars, _personBDayStem, _personBDayBranch);
+                isFavourable = labelsB.length > 0;
+            }
+            _currentDayAnalysis = _saved;
+        }
+        if (!o.calShowAll && !o.listShowAll && !o.filtersActive && !o.hasNeg &&
+            (personAYear || personBYear) && !isFavourable && o.score < 8) {
+            dbg('not favourable & score < 8'); return false;
+        }
+        return true;
+    }
+
     let html = '';
     let lastDay = '';
     let pendingZiRows = []; // Zi hour rows held to append to PREVIOUS day
@@ -4535,6 +4608,18 @@ function buildMonthView() {
                     }
                 }
 
+                // ── Three gates ported from regular hours (connection / Kong Wang / favourable). ──
+                if (ziPassF2 && !ziRowPassesGates({
+                    tag: 'late-Zi', isoDate: localISODate(dayDate),
+                    dGan: ziDGan2, dZhi: ziDZhi2, hGan: ziHGan2, hZhi: ziHZhi2,
+                    mGan: ziMGan2, mZhi: ziMZhi2, yGan: ziYGan2, yZhi: ziYZhi2,
+                    dayXkdg: ziP2.day, blueItems: ziBlue2, analysisItems: ziItems2,
+                    pillars: ziP2, seasonStrong: ziSS2, seasonGrowing: ziSG2,
+                    nayinLabel: ziNayin2.label, score: ziScore2,
+                    hasNeg: ziHasNeg2, filtersActive: getActiveFilters().size > 0,
+                    calShowAll: _calShowAllForThisDay, listShowAll: _listShowAll
+                })) ziPassF2 = false;
+
                 if (ziPassF2) {
                     const ziBg2 = ziHasNeg2
                         ? (ziNegScore2>=10?'#ffcdd2':ziNegScore2>=8?'#ffd6da':ziNegScore2>=6?'#ffe0e3':ziNegScore2>=4?'#ffebed':'#fff5f6')
@@ -4681,6 +4766,18 @@ function buildMonthView() {
                     if (!_ziPasses && !_calShowAllForThisDay && !_listShowAll) continue;
                     if (_ziPasses) _ziPurposeIcon = PURPOSE_ICONS[_ziPurpose] || '';
                 }
+
+                // ── Three gates ported from regular hours (connection / Kong Wang / favourable). ──
+                if (!ziRowPassesGates({
+                    tag: 'early-Zi', isoDate: localISODate(dayDate),
+                    dGan: ziDGan, dZhi: ziDZhi, hGan: ziHGanF, hZhi: ziHZhiF,
+                    mGan: ziMGan, mZhi: ziMZhi, yGan: ziYGan, yZhi: ziYZhi,
+                    dayXkdg: ziPillars.day, blueItems: ziBlueF, analysisItems: ziItemsF,
+                    pillars: ziPillars, seasonStrong: ziSS, seasonGrowing: ziSG,
+                    nayinLabel: ziNayinF.label, score: ziScoreF,
+                    hasNeg: _ziHasNeg, filtersActive: getActiveFilters().size > 0,
+                    calShowAll: _calShowAllForThisDay, listShowAll: _listShowAll
+                })) continue;
 
                 // ── Score-based filter for Zi first half ──
                 // Default: hide ziScoreF < 1. With NEGATIVES on: show ONLY ziScoreF < 1.
