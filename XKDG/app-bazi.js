@@ -4873,6 +4873,36 @@ function buildMonthView() {
             const isPositive = blueItems.length > 0;
             const isNayinPositiveOrWeak = nayinResLV.label !== null;
 
+            // ── Compute spirit + listScore EARLY (moved above the skip-gate) so the
+            // skip-gate can let high-score hours through even with no XKDG relation. ──
+            const spirit = getSpiritForHour(dZhi, hZhiDirect);
+            let listScore;
+            if (personAYear && personBYear && _scoreModeBalanced) {
+                const nobleA2 = _personADayStem ? (NOBLE_BRANCHES[_personADayStem] || []) : [];
+                const luA2    = _personADayStem ? (LU_BRANCH[_personADayStem] || null) : null;
+                const hvA2    = _personAMonthBranch ? (HEAVEN_VIRTUE[_personAMonthBranch] || null) : null;
+                const bvA2    = _personADayBranchXkdg ? (BRANCH_VIRTUE[_personADayBranchXkdg] || null) : null;
+                const mvA2    = _personAMonthBranch ? (MONTH_VIRTUE[_personAMonthBranch] || null) : null;
+                const tyA2    = _personADayStem ? (TIAN_YI[_personADayStem] || null) : null;
+                const sA = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personAYear, pYStem, pYBranch, nobleA2, luA2, hvA2, bvA2, mvA2, tyA2, pillars);
+
+                const nobleB2 = _personBDayStem ? (NOBLE_BRANCHES[_personBDayStem] || []) : [];
+                const luB2    = _personBDayStem ? (LU_BRANCH[_personBDayStem] || null) : null;
+                const hvB2    = _personBMonthBranch ? (HEAVEN_VIRTUE[_personBMonthBranch] || null) : null;
+                const bvB2    = _personBDayBranchXkdg ? (BRANCH_VIRTUE[_personBDayBranchXkdg] || null) : null;
+                const mvB2    = _personBMonthBranch ? (MONTH_VIRTUE[_personBMonthBranch] || null) : null;
+                const tyB2    = _personBDayStem ? (TIAN_YI[_personBDayStem] || null) : null;
+                const sB = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personBYear, pBYStem, pBYBranch, nobleB2, luB2, hvB2, bvB2, mvB2, tyB2, pillars);
+
+                listScore = Math.min(sA, sB);
+            } else {
+                listScore = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
+            }
+            // Hours scoring >= this value bypass the "no XKDG relation" skip-gate and
+            // the "must be favourable" gate — strong via Nayin Power, personal stars,
+            // auspicious spirit, etc. (e.g. score 13 from Noble + Energetic + Nayin Power).
+            const LIST_HIGH_SCORE_THRESHOLD = 8;
+
             // Skip hours with no XKDG relations — unless purpose/nayin filter or Nayin label exists or Zi first half
             const activeFiltersMV = getActiveFilters();
             const hasNayinFilter = activeFiltersMV.has('nayin');
@@ -4894,7 +4924,7 @@ function buildMonthView() {
 
             // Skip-gate (modified to allow negatives through when filter active,
             // and fully bypassed when the row belongs to a day the user clicked from CAL)
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → no XKDG relation');}catch(e){} continue; }
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV && listScore < LIST_HIGH_SCORE_THRESHOLD) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' score='+listScore+' → no XKDG relation (and score < '+LIST_HIGH_SCORE_THRESHOLD+')');}catch(e){} continue; }
 
             // (Old isNegativeHour gate removed — superseded by the listScore-based filter
             //  applied further down once listScore has been computed.)
@@ -4986,42 +5016,8 @@ function buildMonthView() {
 
             const bg = isFavourable ? '#fce4ec' : isPositive ? '#e3f2fd' : '#fff';
 
-            // ── Compute spirit + listScore EARLY so we can use them in the
-            // favourable gate below (Option A: high-score hours bypass the
-            // "must be favourable" requirement). ──
-            const spirit = getSpiritForHour(dZhi, hZhiDirect);
-
-            // Score via unified calcHourScore
-            let listScore;
-            if (personAYear && personBYear && _scoreModeBalanced) {
-                const nobleA2 = _personADayStem ? (NOBLE_BRANCHES[_personADayStem] || []) : [];
-                const luA2    = _personADayStem ? (LU_BRANCH[_personADayStem] || null) : null;
-                const hvA2    = _personAMonthBranch ? (HEAVEN_VIRTUE[_personAMonthBranch] || null) : null;
-                const bvA2    = _personADayBranchXkdg ? (BRANCH_VIRTUE[_personADayBranchXkdg] || null) : null;
-                const mvA2    = _personAMonthBranch ? (MONTH_VIRTUE[_personAMonthBranch] || null) : null;
-                const tyA2    = _personADayStem ? (TIAN_YI[_personADayStem] || null) : null;
-                const sA = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personAYear, pYStem, pYBranch, nobleA2, luA2, hvA2, bvA2, mvA2, tyA2, pillars);
-
-                const nobleB2 = _personBDayStem ? (NOBLE_BRANCHES[_personBDayStem] || []) : [];
-                const luB2    = _personBDayStem ? (LU_BRANCH[_personBDayStem] || null) : null;
-                const hvB2    = _personBMonthBranch ? (HEAVEN_VIRTUE[_personBMonthBranch] || null) : null;
-                const bvB2    = _personBDayBranchXkdg ? (BRANCH_VIRTUE[_personBDayBranchXkdg] || null) : null;
-                const mvB2    = _personBMonthBranch ? (MONTH_VIRTUE[_personBMonthBranch] || null) : null;
-                const tyB2    = _personBDayStem ? (TIAN_YI[_personBDayStem] || null) : null;
-                const sB = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personBYear, pBYStem, pBYBranch, nobleB2, luB2, hvB2, bvB2, mvB2, tyB2, pillars);
-
-                listScore = Math.min(sA, sB);
-            } else {
-                listScore = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
-            }
-
-            // LIST_HIGH_SCORE_THRESHOLD: hours with listScore >= this value bypass
-            // the "must be favourable" gate even when a person is loaded — covers
-            // cases where an hour has no XKDG blue items but is strong via Nayin
-            // Power, personal stars, auspicious spirit, etc. (e.g. score 13 from
-            // Noble + Energetic + Cerulean Dragon + Nayin Power floor).
-            // Adjust to taste — currently 8.
-            const LIST_HIGH_SCORE_THRESHOLD = 8;
+            // (spirit + listScore + LIST_HIGH_SCORE_THRESHOLD are computed earlier,
+            //  above the skip-gate, so high-score hours bypass the no-XKDG skip too.)
 
             // Only restrict to personal matches when person active AND no filters (not for Zi first half),
             // BUT allow high-score hours through even when not isFavourable.
@@ -5106,7 +5102,9 @@ function buildMonthView() {
             const isDateMVLV = mvLV ? (mvLV.stem === hGan || mvLV.branch === dZhi) : false;
             const mvHTMLMV   = isDateMVLV ? `<span style="color:#0277bd;font-weight:bold;font-size:11px;border:1px solid #0277bd;border-radius:3px;padding:0 3px;background:#f3e5f5;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'MV')">MV</span>` : '';
 
-            const tombShaHTML = isTombShaLV ? `<span style="color:#d40000;font-weight:bold;font-size:10px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'墓煞')">墓煞</span>` : '';
+            // Tomb Sha badge: show whenever the hour branch IS the day stem's Tomb Sha
+            // branch (structural check, correct hour slot, independent of season).
+            const tombShaHTML = (TOMB_SHA[dGan] === hZhiDirect) ? `<span style="color:#d40000;font-weight:bold;font-size:10px;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'墓煞')">墓煞</span>` : '';
             const wjdtHTML = isWJDTLV ? `<span style="color:#6a1b9a;font-weight:bold;font-size:10px;cursor:pointer;margin-left:3px;" onclick="event.stopPropagation();showBadgeTip(this,'戊己都天')" title="Wu Ji Du Tian Sha">戊己都天</span>` : '';
 
             // Jieqi banner: full-width row inserted BEFORE this hour if jieqi falls in it
