@@ -4893,13 +4893,13 @@ function buildMonthView() {
 
             // Skip-gate (modified to allow negatives through when filter active,
             // and fully bypassed when the row belongs to a day the user clicked from CAL)
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) continue;
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV) { try{console.log('[LIST hour drop] '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no XKDG relation');}catch(e){} continue; }
 
             // (Old isNegativeHour gate removed — superseded by the listScore-based filter
             //  applied further down once listScore has been computed.)
 
             // Apply filter chips — but skip when Negatives is on (it has its own logic)
-            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
+            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { try{console.log('[LIST hour drop] '+hGan+hZhi+' @ '+localISODate(dayDate)+' → chip filter');}catch(e){} continue; }
             const filtersActiveMV = activeFiltersMV.size > 0;
             const dayXkdgLV = dData || pillars.day;
             // Use active person (A if active, else B)
@@ -4929,9 +4929,9 @@ function buildMonthView() {
                         const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
                         return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
                     })();
-                    if (!(connectsA && connectsB)) continue;
+                    if (!(connectsA && connectsB)) { try{console.log('[LIST hour drop] '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection (A&B)');}catch(e){} continue; }
                 } else {
-                    if (!connects) continue;
+                    if (!connects) { try{console.log('[LIST hour drop] '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection');}catch(e){} continue; }
                 }
             }
 
@@ -4939,7 +4939,7 @@ function buildMonthView() {
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
             const isNayinWeakLV = nayinResLV.label === 'Nayin Weak';
             const isVoidLV = !hasPureQiOrFamilyLV && !isNayinWeakLV && !isZiFirst && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
-            if (isVoidLV && !hasNegativesFilterMV && !_calShowAllForThisDay && !_listShowAll) continue;
+            if (isVoidLV && !hasNegativesFilterMV && !_calShowAllForThisDay && !_listShowAll) { try{console.log('[LIST hour drop] '+hGan+hZhi+' @ '+localISODate(dayDate)+' → Kong Wang void');}catch(e){} continue; }
 
             let isFavourable = false;
             if (isPositive && (personAYear || personBYear)) {
@@ -5024,7 +5024,7 @@ function buildMonthView() {
 
             // Only restrict to personal matches when person active AND no filters (not for Zi first half),
             // BUT allow high-score hours through even when not isFavourable.
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) continue;
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) { try{console.log('[LIST hour drop] '+hGan+hZhi+' @ '+localISODate(dayDate)+' score='+listScore+' → not favourable & score < '+LIST_HIGH_SCORE_THRESHOLD);}catch(e){} continue; }
             // Green gradient based on score (same tiers as BEST scanner)
             const isoDate = localISODate(dayDate);
 
@@ -5035,7 +5035,7 @@ function buildMonthView() {
             // Default: hide rows with listScore < 1. With NEGATIVES chip ON: show ONLY listScore < 1.
             // BYPASS when the user drilled in from CAL — every hour of that day must appear.
             // (TABLES is the only view that shows everything regardless of score.)
-            if (!_calShowAllForThisDay && !_listShowAll && (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1))) continue;
+            if (!_calShowAllForThisDay && !_listShowAll && (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1))) { try{console.log('[LIST hour drop] '+hGan+hZhi+' @ '+localISODate(dayDate)+' score='+listScore+' → score gate (negatives='+hasNegativesFilterMV+')');}catch(e){} continue; }
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
             const nayinPersonHTMLLV = nayinResLV.personLabel && nayinResLV.personLabel.startsWith('Nayin ✦ Person')
