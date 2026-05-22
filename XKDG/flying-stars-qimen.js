@@ -296,6 +296,14 @@
 
     +   '</div>'
 
+      // Filtro Fu Yin 伏吟
+    +   '<div style="margin-top:8px;padding:6px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;font-size:12px;">'
+    +     '<label style="cursor:pointer;">'
+    +       '<input type="checkbox" id="qfs-no-fuyin" checked> '
+    +       '<strong>Exclude Fu Yin 伏吟</strong> <span style="color:#888;">(skip hours where Tian Pan stem = Di Pan stem in the target palace)</span>'
+    +     '</label>'
+    +   '</div>'
+
       // STEP 3 — scan + range info
     +   '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid #b2dfdb;">'
     +     '<button id="qfs-scan-btn" style="background:#00695c;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:bold;cursor:pointer;">🔎 SCAN HOURS</button>'
@@ -458,6 +466,10 @@
       return;
     }
 
+    var excludeFuYin = false;
+    var fuyinBox = document.getElementById('qfs-no-fuyin');
+    if(fuyinBox) excludeFuYin = fuyinBox.checked;
+
     // Esegue lo scan in modo deferito così il messaggio "Scanning…" viene
     // mostrato prima che il loop blocchi il thread.
     setTimeout(function(){
@@ -503,6 +515,10 @@
             var palace = fsPalaces[pi];
             var pdata  = hourChart.palaces[palace];
             if(!pdata) continue;
+
+            // Filtro Fu Yin 伏吟: stelo Tian Pan = stelo Di Pan
+            if(excludeFuYin && pdata.ti && pdata.ti === pdata.di) continue;
+
             var hits = matchPalace(pdata, wanted);
 
             // --- LOGICA REQUIRED/OPTIONAL ---
