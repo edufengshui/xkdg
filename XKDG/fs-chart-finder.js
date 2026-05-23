@@ -294,24 +294,30 @@
   }
 
   // ---------------------------------------------------------------
-  // LOAD CHART — imposta i valori negli input FS e ricalcola
+  // LOAD CHART — imposta i valori negli input FS e ridisegna il Luopan
   // ---------------------------------------------------------------
   function loadChart(period, deg){
     var hfInput = document.getElementById('fs-house-facing');
     var ppInput = document.getElementById('fs-period');
     if(hfInput) hfInput.value = deg;
     if(ppInput) ppInput.value = period;
-    // Triggera il ricalcolo se esiste la funzione
-    if(typeof fsBuildChart === 'function'){
-      fsBuildChart();
+
+    // La carta Flying Stars si disegna sul Luopan SOLO quando la
+    // visualizzazione stelle (toggle ⭐) è attiva. Se è spenta, la accendiamo.
+    var starsBtn = document.getElementById('fs-stars-toggle');
+    if(starsBtn && /OFF/i.test(starsBtn.textContent) && typeof fsToggleStars === 'function'){
+      fsToggleStars();          // accende le stelle E ridisegna
+    } else if(typeof fsRedraw === 'function'){
+      fsRedraw();               // già accese — ridisegna con i nuovi valori
     } else {
-      // Fallback: trigger change event
-      if(hfInput) hfInput.dispatchEvent(new Event('change'));
-      if(ppInput) ppInput.dispatchEvent(new Event('change'));
+      // Fallback: lancia lo stesso evento a cui reagiscono gli input
+      if(hfInput) hfInput.dispatchEvent(new Event('input'));
+      if(ppInput) ppInput.dispatchEvent(new Event('input'));
     }
-    // Scrolla verso l'alto dove c'è il chart
-    var fsBlock = document.getElementById('fs-grid') || document.getElementById('fs-house-facing');
-    if(fsBlock) fsBlock.scrollIntoView({behavior:'smooth', block:'start'});
+
+    // Scorre in alto verso il Luopan così la carta caricata è visibile
+    var fsBlock = document.getElementById('fs-house-facing');
+    if(fsBlock) fsBlock.scrollIntoView({behavior:'smooth', block:'center'});
   }
 
   // ---------------------------------------------------------------
