@@ -1668,6 +1668,13 @@ function toggleScanSortMode() {
     renderScanResults(_scanResults, mode);
 }
 
+function toggleBestOnlyXKDG() {
+    _bestOnlyXKDG = !_bestOnlyXKDG;
+    // Re-render only (no re-scan): the filtering happens inside renderScanResults.
+    const mode = _personBYear ? 'both' : 'score';
+    renderScanResults(_scanResults, mode);
+}
+
 function togglePersonStars(person) {
     _showPersonStars[person] = !_showPersonStars[person];
     const btn = document.getElementById(`toggle-stars-${person}`);
@@ -2568,13 +2575,12 @@ function renderScanResults(results, mode) {
     const af = getActiveFilters();
     const hasChipSort = af.size > 0;
     const chipSortLabel = af.has('ke-wealth') ? 'Ke Sort' : af.has('nayin') ? 'NaYin Sort' : 'Chip Sort';
-    const sortToggleHTML = hasChipSort
-        ? `<div style="text-align:right;margin-bottom:6px;">
-            <button onclick="toggleScanSortMode()" id="chip-sort-btn" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #1565c0;background:${window._chipSortMode?'#1565c0':'#fff'};color:${window._chipSortMode?'#fff':'#1565c0'};cursor:pointer;">
-              ${window._chipSortMode ? '⇅ '+chipSortLabel : '⇅ Score Sort'}
+    const sortToggleHTML = `<div style="text-align:right;margin-bottom:6px;display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;">
+            ${hasChipSort ? `<button onclick="toggleScanSortMode()" id="chip-sort-btn" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #1565c0;background:${window._chipSortMode?'#1565c0':'#fff'};color:${window._chipSortMode?'#fff':'#1565c0'};cursor:pointer;">${window._chipSortMode ? '⇅ '+chipSortLabel : '⇅ Score Sort'}</button>` : ''}
+            <button onclick="toggleBestOnlyXKDG()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${_bestOnlyXKDG?'#6a1b9a':'#fff'};color:${_bestOnlyXKDG?'#fff':'#6a1b9a'};cursor:pointer;">
+              ${_bestOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
             </button>
-           </div>`
-        : '';
+           </div>`;
     if (results.length === 0) {
         container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">No matching dates found.</div>';
         return;
@@ -2584,6 +2590,10 @@ function renderScanResults(results, mode) {
     // (TABLES is the only view that shows everything regardless of score.)
     results = results.filter(r => {
         const s = r.score;
+        // "Only with XKDG" (BEST): a date kept ONLY via Nayin Power (no hexagram
+        // relation / no XKDG connection) is dropped when the toggle is ON, and
+        // otherwise kept only if its score reaches the high-score threshold (8).
+        if (r.rescuedByNayin && (_bestOnlyXKDG || s < 8)) return false;
         return hasNegSort ? (s < 1) : (s >= 6);
     });
     if (results.length === 0) {
@@ -3187,6 +3197,12 @@ var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relatio
 var _scoreModeBalanced = false; // false = A Priority, true = Balanced (min of A and B)
 var _listSortByScore   = false; // false = chronological, true = best hour first per day
 var _listShowAll       = false; // false = positive only, true = show all hours (positive + negative)
+// "Only with XKDG" toggles — independent for LIST and BEST.
+// false (default) = permissive: an hour with NO XKDG relation is still shown
+//   if it has Nayin Power AND score >= 8 (LIST_HIGH_SCORE_THRESHOLD).
+// true  = strict: only hours with a real hexagram (XKDG) relation are shown.
+var _listOnlyXKDG      = false;
+var _bestOnlyXKDG      = false;
 
 function toggleScoreMode() {
     _scoreModeBalanced = !_scoreModeBalanced;
@@ -4941,7 +4957,12 @@ function buildMonthView() {
 
             // Skip-gate (modified to allow negatives through when filter active,
             // and fully bypassed when the row belongs to a day the user clicked from CAL)
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !isNayinPositiveOrWeak && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV && listScore < LIST_HIGH_SCORE_THRESHOLD) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' score='+listScore+' → no XKDG relation (and score < '+LIST_HIGH_SCORE_THRESHOLD+')');}catch(e){} continue; }
+            // "Only with XKDG" rule. Permissive (toggle OFF): an hour with NO
+            // hexagram relation is still shown if it has Nayin Power AND score
+            // >= threshold. Strict (toggle ON): no rescue — only real hexagram
+            // relations pass.
+            const _savedByNayinLV = !_listOnlyXKDG && (nayinResLV.label === 'Nayin Power') && (listScore >= LIST_HIGH_SCORE_THRESHOLD);
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV && !_savedByNayinLV) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' score='+listScore+' → no XKDG relation (onlyXKDG='+_listOnlyXKDG+')');}catch(e){} continue; }
 
             // (Old isNegativeHour gate removed — superseded by the listScore-based filter
             //  applied further down once listScore has been computed.)
@@ -5230,6 +5251,9 @@ function buildMonthView() {
         <button onclick="toggleListSort()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #1565c0;background:${_listSortByScore?'#1565c0':'#fff'};color:${_listSortByScore?'#fff':'#1565c0'};cursor:pointer;">
             ${_listSortByScore ? '⇅ Best First' : '⇅ Chronological'}
         </button>
+        <button onclick="toggleListOnlyXKDG()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${_listOnlyXKDG?'#6a1b9a':'#fff'};color:${_listOnlyXKDG?'#fff':'#6a1b9a'};cursor:pointer;">
+            ${_listOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
+        </button>
     </div>`;
     const mv = document.getElementById('month-view');
     mv.innerHTML = (html ? backBtn + sortToggleLV + html : '') || '<div class="scan-empty">No data.</div>';
@@ -5270,6 +5294,11 @@ function showDayInList(isoDate) {
 
 function toggleListSort() {
     _listSortByScore = !_listSortByScore;
+    buildMonthView();
+}
+
+function toggleListOnlyXKDG() {
+    _listOnlyXKDG = !_listOnlyXKDG;
     buildMonthView();
 }
 
@@ -5641,6 +5670,11 @@ function runScanner() {
             const hasKeFilterBST    = activeFilters.has('ke-wealth');
             const hasNegativesBST   = activeFilters.has('negatives');
             const isNayinWeakBST = nayinResBST.label === 'Nayin Weak';
+            const isNayinPowerBST = nayinResBST.label === 'Nayin Power';
+            // Set true when an hour with NO XKDG relation / NO connection is let
+            // through because it has Nayin Power. renderScanResults then keeps it
+            // only if score >= 8 and the "Only with XKDG" toggle is OFF.
+            let bestRescuedByNayin = false;
 
             // ── Negatives mode: compute score, skip non-negative hours, bypass positive-relation gates ──
             let negativeScoreBST = 0;
@@ -5656,7 +5690,10 @@ function runScanner() {
                 });
                 if (negativeScoreBST <= 0) continue; // only show meaningfully negative hours
             } else {
-                if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST && !hasKeFilterBST) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no XKDG relation');}catch(e){} continue; }
+                if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST && !hasKeFilterBST) {
+                    if (isNayinPowerBST) { bestRescuedByNayin = true; }
+                    else { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no XKDG relation');}catch(e){} continue; }
+                }
                 // Apply filter (only when Negatives is OFF)
                 if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → chip filter');}catch(e){} continue; }
             }
@@ -5697,7 +5734,7 @@ function runScanner() {
                     const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
                     if (!connectsB2) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection (B)');}catch(e){} continue; }
                 } else if (activeYear && !(personMatchEl || personMatchPer)) {
-                    { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection');}catch(e){} continue; }
+                    { if (isNayinPowerBST) { bestRescuedByNayin = true; } else { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection');}catch(e){} continue; } }
                 }
             }
 
@@ -5784,6 +5821,7 @@ function runScanner() {
             results.push({
                 score: totalScore,
                 negativeScore: negativeScoreBST,
+                rescuedByNayin: bestRescuedByNayin,
                 scoreA,
                 scoreB,
                 sameTypeBonusA,
