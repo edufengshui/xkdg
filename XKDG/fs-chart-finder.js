@@ -317,8 +317,7 @@
 
     // Scorre in alto verso il Luopan così la carta caricata è visibile
     try{console.log('[loadChart] scrolling to luopan…');}catch(e){}
-    var fsBlock = document.getElementById('fs-house-facing');
-    if(fsBlock) fsBlock.scrollIntoView({behavior:'smooth', block:'center'});
+    window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
   // ---------------------------------------------------------------
