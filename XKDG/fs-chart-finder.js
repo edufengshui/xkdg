@@ -302,13 +302,11 @@
     if(hfInput) hfInput.value = deg;
     if(ppInput) ppInput.value = period;
 
-    // La carta Flying Stars si disegna sul Luopan SOLO quando la
-    // visualizzazione stelle (toggle ⭐) è attiva. Se è spenta, la accendiamo.
-    var starsBtn = document.getElementById('fs-stars-toggle');
-    if(starsBtn && /OFF/i.test(starsBtn.textContent) && typeof fsToggleStars === 'function'){
-      fsToggleStars();          // accende le stelle E ridisegna
-    } else if(typeof fsRedraw === 'function'){
-      fsRedraw();               // già accese — ridisegna con i nuovi valori
+    // Ridisegna il Luopan con i nuovi valori. fsRedraw() ridisegna l'intero
+    // compasso e, se le stelle FS sono attive, le ricalcola con i nuovi input.
+    // NON tocchiamo il toggle stelle: se erano accese restano accese.
+    if(typeof fsRedraw === 'function'){
+      fsRedraw();
     } else {
       // Fallback: lancia lo stesso evento a cui reagiscono gli input
       if(hfInput) hfInput.dispatchEvent(new Event('input'));
