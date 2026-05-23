@@ -297,6 +297,7 @@
   // LOAD CHART — imposta i valori negli input FS e ridisegna il Luopan
   // ---------------------------------------------------------------
   function loadChart(period, deg){
+    try{console.log('[loadChart] period='+period+' deg='+deg);}catch(e){}
     var hfInput = document.getElementById('fs-house-facing');
     var ppInput = document.getElementById('fs-period');
     if(hfInput) hfInput.value = deg;
@@ -307,6 +308,7 @@
     // NON tocchiamo il toggle stelle: se erano accese restano accese.
     if(typeof fsRedraw === 'function'){
       fsRedraw();
+      try{console.log('[loadChart] fsRedraw() called, hf='+hfInput.value+' period='+ppInput.value);}catch(e){}
     } else {
       // Fallback: lancia lo stesso evento a cui reagiscono gli input
       if(hfInput) hfInput.dispatchEvent(new Event('input'));
@@ -314,6 +316,7 @@
     }
 
     // Scorre in alto verso il Luopan così la carta caricata è visibile
+    try{console.log('[loadChart] scrolling to luopan…');}catch(e){}
     var fsBlock = document.getElementById('fs-house-facing');
     if(fsBlock) fsBlock.scrollIntoView({behavior:'smooth', block:'center'});
   }
