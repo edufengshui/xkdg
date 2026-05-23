@@ -5656,9 +5656,9 @@ function runScanner() {
                 });
                 if (negativeScoreBST <= 0) continue; // only show meaningfully negative hours
             } else {
-                if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST && !hasKeFilterBST) continue;
+                if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST && !hasKeFilterBST) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no XKDG relation');}catch(e){} continue; }
                 // Apply filter (only when Negatives is OFF)
-                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) continue;
+                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → chip filter');}catch(e){} continue; }
             }
 
             // Detect which dimensions are active in the 4-hexagram relations
@@ -5691,13 +5691,13 @@ function runScanner() {
             if (!hasNegativesBST) {
                 // If both persons active, require both connect; else require active person
                 if (personAYear && personBYear) {
-                    if (!(personMatchEl || personMatchPer)) continue; // A must connect (A data used)
+                    if (!(personMatchEl || personMatchPer)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection (A)');}catch(e){} continue; }
                     // Also check B connects
                     const pQiB = personBYear.qi, pYunB = personBYear.yun;
                     const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
-                    if (!connectsB2) continue;
+                    if (!connectsB2) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection (B)');}catch(e){} continue; }
                 } else if (activeYear && !(personMatchEl || personMatchPer)) {
-                    continue;
+                    { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection');}catch(e){} continue; }
                 }
             }
 
@@ -5742,7 +5742,7 @@ function runScanner() {
             const hasPureQiOrFamily = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
 
             // Kong Wang check: skip void unless Pure Qi, Family, or Nayin Weak
-            if (!hasPureQiOrFamily && !isNayinWeakBST && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) continue;
+            if (!hasPureQiOrFamily && !isNayinWeakBST && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → Kong Wang void');}catch(e){} continue; }
 
             // Score: when both active use A Priority or Balanced based on toggle
             let totalScore;
@@ -5774,7 +5774,7 @@ function runScanner() {
             const nayinPersonLabel = nayinResBST.personLabel || '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
-            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) continue;
+            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → checkPurpose');}catch(e){} continue; }
 
             const activeFiltersBS = getActiveFilters();
             const blueLabels = blueItems
