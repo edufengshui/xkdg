@@ -296,9 +296,7 @@
   // ---------------------------------------------------------------
   // LOAD CHART — imposta i valori negli input FS e ridisegna il Luopan
   // ---------------------------------------------------------------
-  function loadChart(period, deg){
-    try{console.log('[loadChart] period='+period+' deg='+deg);}catch(e){}
-    var hfInput = document.getElementById('fs-house-facing');
+  function loadChart(period, deg){ var hfInput = document.getElementById('fs-house-facing');
     var ppInput = document.getElementById('fs-period');
     if(hfInput) hfInput.value = deg;
     if(ppInput) ppInput.value = period;
@@ -316,10 +314,7 @@
     } catch(e){
       // FS_STARS_ON non accessibile — ridisegna e basta
       if(typeof fsRedraw === 'function') fsRedraw();
-    }
-    try{console.log('[loadChart] done, hf='+hfInput.value+' period='+ppInput.value);}catch(e){}
-
-    // Scorre al canvas del luopan — non all'input (troppo basso)
+    } // Scorre al canvas del luopan — non all'input (troppo basso)
     // e non alla cima della pagina (troppo alto, mostra il bazi).
     var canvasWrap = document.getElementById('fs-canvas-wrap');
     if(canvasWrap) canvasWrap.scrollIntoView({behavior:'smooth', block:'start'});

@@ -4411,10 +4411,7 @@ function buildMonthView() {
     // Returns true = keep the row, false = drop it. On a drop it also logs the
     // reason to the browser console (diagnostic — safe to leave on).
     function ziRowPassesGates(o) {
-        const dbg = function(reason){
-            try { console.log('[LIST Zi drop] ' + o.tag + ' @ ' + o.isoDate +
-                              ' score=' + o.score + ' → ' + reason); } catch(e){}
-        };
+        const dbg = function(reason){ };
         // GATE 1 — personal connection gate (mirror of regular-hours logic)
         if (activePersonYear) {
             const dQi  = o.dayXkdg ? o.dayXkdg.qi  : null;
@@ -4866,15 +4863,13 @@ function buildMonthView() {
 
             // If no hData and no Tomb Sha — check Nayin before deciding to skip (Zi first half always passes)
             if (!isZiFirst && !hData && !isTombShaLV) {
-                if (!activeFiltersPre.has('nayin')) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → pre-gate: no hData (hour pillar has no XKDG data)');}catch(e){} continue; }
+                if (!activeFiltersPre.has('nayin')) { continue; }
                 const nayinCheck = analyzeNayin(dGan, dZhi, hGan, hZhiDirect, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
-                if (!nayinCheck.label) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → pre-gate: no hData + no Nayin label');}catch(e){} continue; }
+                if (!nayinCheck.label) { continue; }
             }
 
             // If Tomb Sha but no XKDG data for hour, show warning row
-            if (!hData && isTombShaLV) {
-                try{console.log('[LIST Tomb Sha row] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → shown as red 墓煞 row');}catch(e){}
-                dayRows.push({ score: -99, html: `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;">
+            if (!hData && isTombShaLV) { dayRows.push({ score: -99, html: `<div style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;background:#fff5f5;">
                     <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                         <span style="color:#999;font-size:10px;">${getHourTimeStr(hZhi)}</span><br>
                         <span style="font-size:13px;font-weight:bold;color:#880e4f;">${hGan}${hZhi}</span>
@@ -4962,13 +4957,13 @@ function buildMonthView() {
             // >= threshold. Strict (toggle ON): no rescue — only real hexagram
             // relations pass.
             const _savedByNayinLV = !_listOnlyXKDG && (nayinResLV.label === 'Nayin Power') && (listScore >= LIST_HIGH_SCORE_THRESHOLD);
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV && !_savedByNayinLV) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' score='+listScore+' → no XKDG relation (onlyXKDG='+_listOnlyXKDG+')');}catch(e){} continue; }
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV && !_savedByNayinLV) { continue; }
 
             // (Old isNegativeHour gate removed — superseded by the listScore-based filter
             //  applied further down once listScore has been computed.)
 
             // Apply filter chips — but skip when Negatives is on (it has its own logic)
-            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → chip filter');}catch(e){} continue; }
+            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { continue; }
             const filtersActiveMV = activeFiltersMV.size > 0;
             const dayXkdgLV = dData || pillars.day;
             // Use active person (A if active, else B)
@@ -4998,9 +4993,9 @@ function buildMonthView() {
                         const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
                         return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
                     })();
-                    if (!(connectsA && connectsB)) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → no personal connection (A&B)');}catch(e){} continue; }
+                    if (!(connectsA && connectsB)) { continue; }
                 } else {
-                    if (!connects) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → no personal connection');}catch(e){} continue; }
+                    if (!connects) { continue; }
                 }
             }
 
@@ -5008,7 +5003,7 @@ function buildMonthView() {
             const hasPureQiOrFamilyLV = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
             const isNayinWeakLV = nayinResLV.label === 'Nayin Weak';
             const isVoidLV = !hasPureQiOrFamilyLV && !isNayinWeakLV && !isZiFirst && isKongWangVoid(hZhiDirect, dGan, dZhi, sS, sG);
-            if (isVoidLV && !hasNegativesFilterMV && !_calShowAllForThisDay && !_listShowAll) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' → Kong Wang void');}catch(e){} continue; }
+            if (isVoidLV && !hasNegativesFilterMV && !_calShowAllForThisDay && !_listShowAll) { continue; }
 
             let isFavourable = false;
             if (isPositive && (personAYear || personBYear)) {
@@ -5059,7 +5054,7 @@ function buildMonthView() {
 
             // Only restrict to personal matches when person active AND no filters (not for Zi first half),
             // BUT allow high-score hours through even when not isFavourable.
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' score='+listScore+' → not favourable & score < '+LIST_HIGH_SCORE_THRESHOLD);}catch(e){} continue; }
+            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) { continue; }
             // Green gradient based on score (same tiers as BEST scanner)
             const isoDate = localISODate(dayDate);
 
@@ -5070,7 +5065,7 @@ function buildMonthView() {
             // Default: hide rows with listScore < 1. With NEGATIVES chip ON: show ONLY listScore < 1.
             // BYPASS when the user drilled in from CAL — every hour of that day must appear.
             // (TABLES is the only view that shows everything regardless of score.)
-            if (!_calShowAllForThisDay && !_listShowAll && (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1))) { try{console.log('[LIST hour drop] '+hGanDirect+hZhiDirect+' '+getHourTimeStr(hZhiDirect)+' @ '+localISODate(dayDate)+' score='+listScore+' → score gate (negatives='+hasNegativesFilterMV+')');}catch(e){} continue; }
+            if (!_calShowAllForThisDay && !_listShowAll && (hasNegativesFilterMV ? (listScore >= 1) : (listScore < 1))) { continue; }
 
             // Nayin label for LIST view — reuse nayinResLV from filter step
             const nayinPersonHTMLLV = nayinResLV.personLabel && nayinResLV.personLabel.startsWith('Nayin ✦ Person')
@@ -5692,10 +5687,10 @@ function runScanner() {
             } else {
                 if (blueItems.length === 0 && !isNayinWeakBST && !getPurpose() && !hasNayinFilterBST && !hasKeFilterBST) {
                     if (isNayinPowerBST) { bestRescuedByNayin = true; }
-                    else { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no XKDG relation');}catch(e){} continue; }
+                    else { continue; }
                 }
                 // Apply filter (only when Negatives is OFF)
-                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → chip filter');}catch(e){} continue; }
+                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { continue; }
             }
 
             // Detect which dimensions are active in the 4-hexagram relations
@@ -5728,13 +5723,13 @@ function runScanner() {
             if (!hasNegativesBST) {
                 // If both persons active, require both connect; else require active person
                 if (personAYear && personBYear) {
-                    if (!(personMatchEl || personMatchPer)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection (A)');}catch(e){} continue; }
+                    if (!(personMatchEl || personMatchPer)) { continue; }
                     // Also check B connects
                     const pQiB = personBYear.qi, pYunB = personBYear.yun;
                     const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
-                    if (!connectsB2) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection (B)');}catch(e){} continue; }
+                    if (!connectsB2) { continue; }
                 } else if (activeYear && !(personMatchEl || personMatchPer)) {
-                    { if (isNayinPowerBST) { bestRescuedByNayin = true; } else { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → no personal connection');}catch(e){} continue; } }
+                    { if (isNayinPowerBST) { bestRescuedByNayin = true; } else { continue; } }
                 }
             }
 
@@ -5779,7 +5774,7 @@ function runScanner() {
             const hasPureQiOrFamily = blueItems.some(i => i.text.includes('Pure Qi') || i.tag === 'family');
 
             // Kong Wang check: skip void unless Pure Qi, Family, or Nayin Weak
-            if (!hasPureQiOrFamily && !isNayinWeakBST && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → Kong Wang void');}catch(e){} continue; }
+            if (!hasPureQiOrFamily && !isNayinWeakBST && isKongWangVoid(hZhiSC, dGan, dZhi, sStrong, sGrowing)) { continue; }
 
             // Score: when both active use A Priority or Balanced based on toggle
             let totalScore;
@@ -5811,7 +5806,7 @@ function runScanner() {
             const nayinPersonLabel = nayinResBST.personLabel || '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
-            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) { try{console.log('[BEST drop] '+HOUR_ROMAN[h]+' '+hGan+hZhi+' @ '+localISODate(dayDate)+' → checkPurpose');}catch(e){} continue; }
+            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) { continue; }
 
             const activeFiltersBS = getActiveFilters();
             const blueLabels = blueItems
