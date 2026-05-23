@@ -303,21 +303,26 @@
     if(hfInput) hfInput.value = deg;
     if(ppInput) ppInput.value = period;
 
-    // Ridisegna il Luopan con i nuovi valori. fsRedraw() ridisegna l'intero
-    // compasso e, se le stelle FS sono attive, le ricalcola con i nuovi input.
-    // NON tocchiamo il toggle stelle: se erano accese restano accese.
-    if(typeof fsRedraw === 'function'){
-      fsRedraw();
-      try{console.log('[loadChart] fsRedraw() called, hf='+hfInput.value+' period='+ppInput.value);}catch(e){}
-    } else {
-      // Fallback: lancia lo stesso evento a cui reagiscono gli input
-      if(hfInput) hfInput.dispatchEvent(new Event('input'));
-      if(ppInput) ppInput.dispatchEvent(new Event('input'));
+    // Se le stelle FS sono spente, le accendiamo (fsToggleStars le accende
+    // E ridisegna). Se sono già accese, ridisegniamo solo con fsRedraw().
+    // FS_STARS_ON è un let globale di app-fengshui.js — lo leggiamo con
+    // try-catch nel caso non sia raggiungibile.
+    try {
+      if(!FS_STARS_ON && typeof fsToggleStars === 'function'){
+        fsToggleStars();   // accende le stelle E ridisegna
+      } else if(typeof fsRedraw === 'function'){
+        fsRedraw();        // già accese — ridisegna con i nuovi valori
+      }
+    } catch(e){
+      // FS_STARS_ON non accessibile — ridisegna e basta
+      if(typeof fsRedraw === 'function') fsRedraw();
     }
+    try{console.log('[loadChart] done, hf='+hfInput.value+' period='+ppInput.value);}catch(e){}
 
-    // Scorre in alto verso il Luopan così la carta caricata è visibile
-    try{console.log('[loadChart] scrolling to luopan…');}catch(e){}
-    window.scrollTo({top: 0, behavior: 'smooth'});
+    // Scorre al canvas del luopan — non all'input (troppo basso)
+    // e non alla cima della pagina (troppo alto, mostra il bazi).
+    var canvasWrap = document.getElementById('fs-canvas-wrap');
+    if(canvasWrap) canvasWrap.scrollIntoView({behavior:'smooth', block:'start'});
   }
 
   // ---------------------------------------------------------------
