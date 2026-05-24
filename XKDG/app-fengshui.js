@@ -403,6 +403,16 @@ function buildFengShuiView(){
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
       </div>
 
+      <!-- ═══ HOUSE PROFILES (🏠) ═══ -->
+      <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
+          <button onclick="fsSaveHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer;">💾 Save House</button>
+        </div>
+        <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
+        <div id="fs-house-list" style="font-size:12px;"></div>
+      </div>
+
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
       </div>
@@ -509,6 +519,7 @@ function fsRenderContext(){
 function openFengShui(){
   buildFengShuiView();
   fsRenderContext();
+  fsRenderHouseProfiles();
   fsRedraw();
 }
 
@@ -1989,7 +2000,194 @@ const _buildFengShuiViewOrig = buildFengShuiView;
 buildFengShuiView = function(){
   _buildFengShuiViewOrig();
   fsInjectPureYYFilterButton();
+  fsRenderHouseProfiles();
 };
+
+// ═══════════════════════════════════════════════════════════════════
+//  HOUSE PROFILES — save/load FS chart per person (multi-house,
+//  multi-water).  localStorage key: xkdg_houses
+//  Structure: { "PersonName": [ { name, facing, houseFacing, period,
+//               waters: [{ name, deg }] } ] }
+// ═══════════════════════════════════════════════════════════════════
+
+function _fsHousesLoad(){
+  try { return JSON.parse(localStorage.getItem('xkdg_houses') || '{}'); } catch(e){ return {}; }
+}
+function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
+
+/** Return { name, who } for the currently loaded person (A preferred, else B). */
+function fsGetActivePersonForHouse(){
+  const nA = (document.getElementById('person-name') || {}).value || '';
+  const nB = (document.getElementById('person-name-b') || {}).value || '';
+  if (nA.trim()) return { name: nA.trim(), who: 'A' };
+  if (nB.trim()) return { name: nB.trim(), who: 'B' };
+  return null;
+}
+
+function fsRenderHouseProfiles(){
+  const label = document.getElementById('fs-house-person-label');
+  const list  = document.getElementById('fs-house-list');
+  if (!label || !list) return;
+
+  const person = fsGetActivePersonForHouse();
+  if (!person){
+    label.innerHTML = '<span style="color:#999;">Load a person (A or B) to manage house profiles.</span>';
+    list.innerHTML = '';
+    return;
+  }
+  label.innerHTML = 'Person: <strong>' + person.name + '</strong> (' + person.who + ')';
+
+  const all = _fsHousesLoad();
+  const houses = all[person.name] || [];
+
+  if (!houses.length){
+    list.innerHTML = '<div style="color:#999;font-style:italic;padding:4px 0;">No saved houses. Enter Facing / House Facing / Period / Water above, then press 💾 Save House.</div>';
+    return;
+  }
+
+  let html = '';
+  houses.forEach(function(h, hi){
+    const escHtml = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
+    const escJs   = function(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); };
+    html += '<div style="background:#fff;border:1px solid #a5d6a7;border-radius:6px;padding:8px;margin-bottom:6px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
+    html += '<strong style="color:#2e7d32;">' + escHtml(h.name) + '</strong>';
+    html += '<span>';
+    html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:4px;" title="Load into FS inputs">📂 Load</button>';
+    html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
+    html += '</span></div>';
+
+    // House info
+    html += '<div style="font-size:11px;color:#555;">';
+    if (h.facing != null) html += 'Facing: ' + h.facing + '° &nbsp;';
+    if (h.houseFacing != null) html += 'House Facing: ' + h.houseFacing + '° &nbsp;';
+    if (h.period != null) html += 'Period: ' + h.period;
+    html += '</div>';
+
+    // Waters
+    if (h.waters && h.waters.length){
+      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #4db6ac;">';
+      h.waters.forEach(function(w, wi){
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+        html += '<span style="font-size:11px;">💧 <strong>' + escHtml(w.name) + '</strong> — ' + w.deg + '°</span>';
+        html += '<button onclick="fsUseWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#00838f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Load this water into Water input">Use</button>';
+        html += '<button onclick="fsRemoveWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove this water">✕</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    // Add water button
+    html += '<div style="margin-top:4px;">';
+    html += '<button onclick="fsAddWaterToHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">+ Add Water position</button>';
+    html += '</div>';
+
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+function fsSaveHouse(){
+  const person = fsGetActivePersonForHouse();
+  if (!person){ alert('Load a person (A or B) first.'); return; }
+
+  const facingVal = document.getElementById('fs-facing').value;
+  const hfVal     = document.getElementById('fs-house-facing').value;
+  const perVal    = document.getElementById('fs-period').value;
+  const waterVal  = document.getElementById('fs-water').value;
+
+  if (!hfVal && !facingVal){ alert('Enter at least a Facing or House Facing.'); return; }
+
+  const name = prompt('House name (e.g. "Casa Milano"):');
+  if (!name || !name.trim()) return;
+
+  const house = {
+    name: name.trim(),
+    facing:      facingVal ? parseFloat(facingVal) : null,
+    houseFacing: hfVal     ? parseFloat(hfVal)     : null,
+    period:      perVal    ? parseInt(perVal)       : null,
+    waters:      []
+  };
+  // If water is entered, save it as first water
+  if (waterVal){
+    const wName = prompt('Name for this water position (e.g. "Acquario salotto"):') || 'Water 1';
+    house.waters.push({ name: wName.trim(), deg: parseFloat(waterVal) });
+  }
+
+  const all = _fsHousesLoad();
+  if (!all[person.name]) all[person.name] = [];
+  all[person.name].push(house);
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
+}
+
+function fsLoadHouse(personName, houseIdx){
+  const all = _fsHousesLoad();
+  const houses = all[personName] || [];
+  const h = houses[houseIdx];
+  if (!h) return;
+
+  if (h.facing != null){
+    const el = document.getElementById('fs-facing');
+    if (el){ el.value = h.facing; }
+  }
+  if (h.houseFacing != null){
+    const el = document.getElementById('fs-house-facing');
+    if (el){ el.value = h.houseFacing; }
+  }
+  if (h.period != null){
+    const el = document.getElementById('fs-period');
+    if (el){ el.value = h.period; }
+  }
+  // Load first water if available
+  if (h.waters && h.waters.length){
+    const el = document.getElementById('fs-water');
+    if (el){ el.value = h.waters[0].deg; }
+  }
+  // Turn on Flying Stars if house data is loaded
+  if (h.houseFacing != null && h.period != null && !FS_STARS_ON){
+    fsToggleStars();
+  }
+  fsRedraw();
+}
+
+function fsDeleteHouse(personName, houseIdx){
+  if (!confirm('Delete this house profile?')) return;
+  const all = _fsHousesLoad();
+  if (!all[personName]) return;
+  all[personName].splice(houseIdx, 1);
+  if (!all[personName].length) delete all[personName];
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
+}
+
+function fsAddWaterToHouse(personName, houseIdx){
+  const waterVal = document.getElementById('fs-water').value;
+  if (!waterVal){ alert('Enter a Water position (°) in the input above first.'); return; }
+  const wName = prompt('Name for this water position:') || ('Water ' + (new Date()).getTime());
+  const all = _fsHousesLoad();
+  if (!all[personName] || !all[personName][houseIdx]) return;
+  all[personName][houseIdx].waters.push({ name: wName.trim(), deg: parseFloat(waterVal) });
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
+}
+
+function fsUseWater(personName, houseIdx, waterIdx){
+  const all = _fsHousesLoad();
+  const h = (all[personName] || [])[houseIdx];
+  if (!h || !h.waters || !h.waters[waterIdx]) return;
+  const el = document.getElementById('fs-water');
+  if (el){ el.value = h.waters[waterIdx].deg; }
+  fsRedraw();
+}
+
+function fsRemoveWater(personName, houseIdx, waterIdx){
+  if (!confirm('Remove this water position?')) return;
+  const all = _fsHousesLoad();
+  if (!all[personName] || !all[personName][houseIdx]) return;
+  all[personName][houseIdx].waters.splice(waterIdx, 1);
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
+}
 
 (function(){
   const v = document.getElementById('fengshui-view');
