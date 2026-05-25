@@ -2022,7 +2022,7 @@ buildFengShuiView = function(){
 function _fsHouseMigrate(h){
   if (h.doors) return h;                       // already v2
   var door0 = {
-    name: 'Porta principale',
+    name: 'Main door',
     facing: h.facing != null ? h.facing : null,
     water:  h.xkdgWater != null ? h.xkdgWater : null
   };
@@ -2155,14 +2155,14 @@ function fsSaveHouse(){
 
   if (!hfVal && !facingVal){ alert('Enter at least a House Facing or Facing.'); return; }
 
-  const name = prompt('House name (e.g. "Casa Milano"):');
+  const name = prompt('House name (e.g. "My House"):');
   if (!name || !name.trim()) return;
 
   // Auto-create first door from current Facing + Water inputs
   var doors = [];
   if (facingVal){
     doors.push({
-      name: 'Porta principale',
+      name: 'Main door',
       facing: parseFloat(facingVal),
       water:  xkdgWVal ? parseFloat(xkdgWVal) : null
     });
@@ -2231,7 +2231,7 @@ function fsDeleteHouse(personName, houseIdx){
 // ── DOOR CRUD ───────────────────────────────────────────────────
 
 function fsAddDoor(personName, houseIdx){
-  var dName = prompt('Name for this door / facade\n(e.g. "Porta garage", "Facciata sud"):');
+  var dName = prompt('Name for this door / facade\n(e.g. "Garage door", "South facade"):');
   if (!dName || !dName.trim()) return;
   var facingStr = prompt('XKDG Facing degree (°) for this door:');
   if (!facingStr) return;
@@ -2292,7 +2292,7 @@ var _fsDirToPalace = { 'S':9, 'SW':2, 'W':7, 'NW':6, 'N':1, 'NE':8, 'E':3, 'SE':
 var _fsPalaceToDir = { 9:'S', 2:'SW', 7:'W', 6:'NW', 1:'N', 8:'NE', 3:'E', 4:'SE' };
 
 function fsAddWaterToHouse(personName, houseIdx){
-  const wName = prompt('Name for this aquarium / water feature\n(e.g. "Acquario salotto"):');
+  const wName = prompt('Name for this aquarium / water feature\n(e.g. "Living room aquarium"):');
   if (!wName || !wName.trim()) return;
   const dirStr = prompt('Direction of the aquarium:\nN, NE, E, SE, S, SW, W, NW');
   if (!dirStr) return;
