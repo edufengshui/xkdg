@@ -2580,6 +2580,9 @@ function renderScanResults(results, mode) {
             <button onclick="toggleBestOnlyXKDG()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${_bestOnlyXKDG?'#6a1b9a':'#fff'};color:${_bestOnlyXKDG?'#fff':'#6a1b9a'};cursor:pointer;">
               ${_bestOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
             </button>
+            <button onclick="toggleFsHouse();runScanner();" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2e7d32;background:${_fsHouseActive?'#2e7d32':'#fff'};color:${_fsHouseActive?'#fff':'#2e7d32'};cursor:pointer;">
+              ${_fsHouseActive ? '🏠 ' + (_fsActiveHouseData?_fsActiveHouseData.name:'House') : '🏠 House'}
+            </button>
            </div>`;
     if (results.length === 0) {
         container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">No matching dates found.</div>';
@@ -2664,7 +2667,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${fsBuildHouseBadgeHtml(r.fsBadge)}</div>
         </div>`;
     }).join('');
 }
@@ -2684,23 +2687,20 @@ const HOUR_RANGE_STARTS = ['23:00','01:00','03:00','05:00','07:00','09:00','11:0
 const HOUR_RANGE_ENDS   = ['01:00','03:00','05:00','07:00','09:00','11:00','13:00','15:00','17:00','19:00','21:00','23:00'];
 
 // ── Central TST label formatter (used by BEST / LIST / TABLES). ─────────
-// Returns the hour-range label with wall-clock first (DST included when active)
-// and TST (longitude-only, no DST) reported in parens when it differs.
+// Returns the hour-range label with wall-clock first and TST in parens.
 //
 // CONVENTIONS:
-//   - baseStart / baseEnd are Chinese astronomical hour boundaries in STANDARD
-//     ZONE TIME (e.g. '01:00'-'03:00' for Chou).
-//   - Wall clock = standard zone time + DST offset.
-//     Longitude does NOT shift the wall clock (everyone in CET shows the same time).
-//   - TST (True Solar Time) = standard zone time + longitude correction.
-//     East of zone meridian → sun ahead of standard (positive correction).
-//     West of zone meridian → sun behind standard (negative correction).
-//     DST does NOT affect TST (DST is a civil convention; sun ignores it).
+//   - baseStart / baseEnd are Chinese astronomical hour boundaries in TST
+//     (True Solar Time). E.g. '09:00'-'11:00' for Si.
+//   - Wall clock = TST − longitude correction + DST offset.
+//     Formula: wallShift = −tstMins + wallMins.
+//   - TST is always baseStart-baseEnd as-is (Chinese hours ARE solar hours).
 //
-// Format examples (Rome, lon=12.49, utc=1, so TST = standard − 10 min):
-//   winter (DST off):  "01:00-03:00 (TST 00:50-02:50) ✦"
-//   summer (DST on):   "02:00-04:00 (TST 00:50-02:50) ✦"
-//   if both are zero:  "01:00-03:00"
+// Format examples (Paris, lon=2.35, utc=1, DST on → wallShift ≈ +111 min):
+//   "10:51-12:51 (TST 09:00-11:00) ✦"
+// Rome, lon=12.49, utc=1, DST on → wallShift ≈ +70 min:
+//   "10:10-12:10 (TST 09:00-11:00) ✦"
+// If wallShift ≈ 0:  "09:00-11:00"
 function formatTSTRange(baseStart, baseEnd) {
     const lonEl = document.getElementById('longitude');
     const utcEl = document.getElementById('utc-offset');
@@ -2708,8 +2708,10 @@ function formatTSTRange(baseStart, baseEnd) {
     const utc = utcEl ? parseFloat(utcEl.value) : NaN;
     if (!isFinite(lon) || !isFinite(utc)) return baseStart + '-' + baseEnd;
     const tstMins  = (lon - utc * 15) * 4;       // longitude correction (TST vs standard)
-    const wallMins = (_dstOn ? 60 : 0);          // DST only — wall clock follows standard zone + DST
-    if (wallMins === 0 && tstMins === 0) return baseStart + '-' + baseEnd;
+    const wallMins = (_dstOn ? 60 : 0);           // DST offset (civil convention)
+    // Wall clock = TST → standard (−tstMins) → wall (+wallMins)
+    const wallShift = Math.round(-tstMins + wallMins);
+    if (wallShift === 0) return baseStart + '-' + baseEnd;
     function shift(t, mins) {
         const [hs, ms] = t.split(':');
         const total = parseInt(hs) * 60 + (parseInt(ms) || 0) + mins;
@@ -2717,9 +2719,8 @@ function formatTSTRange(baseStart, baseEnd) {
         return String(Math.floor(norm / 60)).padStart(2, '0') + ':' +
                String(Math.floor(norm % 60)).padStart(2, '0');
     }
-    const wallStr = shift(baseStart, wallMins) + '-' + shift(baseEnd, wallMins);
-    const tstStr  = shift(baseStart, tstMins)  + '-' + shift(baseEnd, tstMins);
-    if (wallStr === tstStr) return wallStr + ' ✦';
+    const wallStr = shift(baseStart, wallShift) + '-' + shift(baseEnd, wallShift);
+    const tstStr  = baseStart + '-' + baseEnd;
     return wallStr + ' (TST ' + tstStr + ') ✦';
 }
 
@@ -3203,6 +3204,143 @@ var _listShowAll       = false; // false = positive only, true = show all hours 
 // true  = strict: only hours with a real hexagram (XKDG) relation are shown.
 var _listOnlyXKDG      = false;
 var _bestOnlyXKDG      = false;
+
+// ── 🏠 FS House Profile toggle (BEST + LIST) ──────────────────────
+// When active, each date row shows a badge if the day hexagram connects
+// with the saved house facing direction (Hetu, Adding, Family).
+// Cycles: OFF → house 1 → house 2 → ... → OFF
+var _fsHouseActive       = false;
+var _fsActiveHouseData   = null;   // { name, facing, houseFacing, period, waters:[] }
+var _fsActiveHouseIdx    = 0;
+var _fsActiveHousePersonName = null;
+
+function _fsLoadActiveHouse(){
+  const person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+  if (!person) return null;
+  try {
+    const all = JSON.parse(localStorage.getItem('xkdg_houses') || '{}');
+    const houses = all[person.name] || [];
+    if (!houses.length) return null;
+    _fsActiveHousePersonName = person.name;
+    return houses[0];
+  } catch(e) { return null; }
+}
+
+function _fsGetAllHouses(){
+  const person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+  if (!person) return [];
+  try {
+    const all = JSON.parse(localStorage.getItem('xkdg_houses') || '{}');
+    return all[person.name] || [];
+  } catch(e) { return []; }
+}
+
+function toggleFsHouse(){
+  const houses = _fsGetAllHouses();
+  if (!houses.length) {
+    _fsHouseActive = false;
+    _fsActiveHouseData = null;
+    alert('No house profile saved for the active person.\nGo to the FS view → 🏠 HOUSE PROFILES → Save House.');
+    return;
+  }
+  const person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+  if (person) _fsActiveHousePersonName = person.name;
+
+  if (!_fsHouseActive) {
+    // First activation → load first house
+    _fsActiveHouseIdx = 0;
+    _fsActiveHouseData = houses[0];
+    _fsHouseActive = true;
+  } else {
+    // Cycle to next house; after last → turn off
+    _fsActiveHouseIdx = (_fsActiveHouseIdx || 0) + 1;
+    if (_fsActiveHouseIdx >= houses.length) {
+      _fsHouseActive = false;
+      _fsActiveHouseData = null;
+      _fsActiveHouseIdx = 0;
+    } else {
+      _fsActiveHouseData = houses[_fsActiveHouseIdx];
+    }
+  }
+}
+
+function fsSelectHouseForBadge(personName, houseIdx){
+  try {
+    const all = JSON.parse(localStorage.getItem('xkdg_houses') || '{}');
+    const houses = all[personName] || [];
+    if (houses[houseIdx]) {
+      _fsActiveHouseData = houses[houseIdx];
+      _fsActiveHouseIdx = houseIdx;
+      _fsActiveHousePersonName = personName;
+      _fsHouseActive = true;
+    }
+  } catch(e) {}
+}
+
+/** Check FS connections between a day hexagram and the active house facing.
+ *  Optionally checks Qimen for each water palace.
+ *  qmParams: { Y, M, D, hGan, hZhi } — pass to enable Qimen check.
+ *  Returns { labels:[], color:'', icon:'', qimenHits:[] } or null. */
+function fsComputeHouseBadge(dayHex, dayQi, dayYun, qmParams){
+  if (!_fsHouseActive || !_fsActiveHouseData) return null;
+  if (typeof fsSlotForDeg !== 'function') return null;
+  const facingDeg = _fsActiveHouseData.facing != null ? _fsActiveHouseData.facing
+                  : _fsActiveHouseData.houseFacing;
+  if (facingDeg == null) return null;
+
+  const fSlot = fsSlotForDeg(facingDeg);
+  if (!fSlot || !fSlot.hexNum) return null;
+
+  // Check connections facing hex ↔ day hex
+  const labels = (typeof hexConnectionLabels === 'function')
+    ? hexConnectionLabels(fSlot.hexNum, fSlot.qi, fSlot.yun, dayHex, dayQi, dayYun)
+    : [];
+
+  // Qimen check for each water position
+  var qimenHits = [];
+  var waters = _fsActiveHouseData.waters || [];
+  if (qmParams && waters.length > 0 && typeof QMDJWaterScanner !== 'undefined') {
+    var scanner = QMDJWaterScanner;
+    waters.forEach(function(w){
+      var palace = scanner.degToPalace(w.deg);
+      if (!palace) return;
+      var res = scanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
+                                           qmParams.hGan, qmParams.hZhi, palace);
+      if (res && res.matched) {
+        qimenHits.push({ name: w.name, deg: w.deg, palace: palace, hits: res.hits || [], score: res.score || 0 });
+      }
+    });
+  }
+
+  // Build result
+  var color, icon;
+  if (labels.length > 0 && qimenHits.length > 0) {
+    color = '#00695c'; icon = '🏠✓🌀';  // FS + Qimen both good
+  } else if (labels.length > 0) {
+    color = '#2e7d32'; icon = '🏠✓';     // FS good
+  } else if (qimenHits.length > 0) {
+    color = '#1565c0'; icon = '🏠🌀';    // Qimen good
+  } else {
+    color = '#999'; icon = '🏠';
+  }
+  return { labels: labels, color: color, icon: icon, qimenHits: qimenHits };
+}
+
+function fsBuildHouseBadgeHtml(badge){
+  if (!badge) return '';
+  var parts = [];
+  var name = (_fsActiveHouseData && _fsActiveHouseData.name) ? _fsActiveHouseData.name : '';
+  if (badge.labels.length) parts.push(badge.labels.join(', '));
+  if (badge.qimenHits.length) {
+    badge.qimenHits.forEach(function(qh){
+      parts.push('🌀 ' + qh.name + ' (' + qh.hits.join(', ') + ')');
+    });
+  }
+  if (!parts.length) parts.push('No connection');
+  var tipFull = (name ? name + ': ' : '') + parts.join(' · ');
+  tipFull = tipFull.replace(/'/g, "\\'");
+  return '<span style="font-size:10px;font-weight:bold;color:' + badge.color + ';cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,\'' + tipFull + '\')">' + badge.icon + '</span>';
+}
 
 function toggleScoreMode() {
     _scoreModeBalanced = !_scoreModeBalanced;
@@ -5080,6 +5218,9 @@ function buildMonthView() {
                               : nayinResLV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Weak')">✕ Nayin Weak</div>`
                               : '';
             const keHTMLLV = keScoreLV > 0 ? `<div style="font-size:9px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${keScoreLV}</div>` : '';
+            const fsBadgeLV = fsComputeHouseBadge(dayXkdgLV.hex, dayXkdgLV.qi, dayXkdgLV.yun,
+                { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect });
+            const fsHTMLLV = fsBuildHouseBadgeHtml(fsBadgeLV);
             // Unified score-based row coloring: green for positive, red for negative
             const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
                             : listScore >= 8  ? '#c8e6c9'   // medium green
@@ -5211,7 +5352,7 @@ function buildMonthView() {
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
-                    ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}
+                    ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${fsHTMLLV}
                 </div>
             </div>`;
             dayRows.push({ score: hasNegativesFilterMV ? negativeScore : listScore, html: rowHtml });
@@ -5248,6 +5389,9 @@ function buildMonthView() {
         </button>
         <button onclick="toggleListOnlyXKDG()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${_listOnlyXKDG?'#6a1b9a':'#fff'};color:${_listOnlyXKDG?'#fff':'#6a1b9a'};cursor:pointer;">
             ${_listOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
+        </button>
+        <button onclick="toggleFsHouse();buildMonthView();" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2e7d32;background:${_fsHouseActive?'#2e7d32':'#fff'};color:${_fsHouseActive?'#fff':'#2e7d32'};cursor:pointer;">
+            ${_fsHouseActive ? '🏠 ' + (_fsActiveHouseData?_fsActiveHouseData.name:'House') : '🏠 House'}
         </button>
     </div>`;
     const mv = document.getElementById('month-view');
@@ -5838,7 +5982,9 @@ function runScanner() {
                 nayinLabel,
                 nayinPersonLabel,
                 wealthBonus: window._lastWealthBonus || 0,
-                keScore: keScoreBST
+                keScore: keScoreBST,
+                fsBadge: fsComputeHouseBadge(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
+                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi })
             });
         }
     }
