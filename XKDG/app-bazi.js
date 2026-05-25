@@ -2560,6 +2560,12 @@ function loadDateIntoMain(isoDate, hourIndex) {
     document.getElementById('time').value = timeStr;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     calculateBazi();
+    // Show FS detail popup if house profiles are active
+    if (_fsHouseActive && _fsBadgeCache) {
+      var key = isoDate + '-' + hourIndex;
+      _fsLastClickBadges = _fsBadgeCache[key] || null;
+      if (_fsLastClickBadges) setTimeout(fsShowDetailPopup, 400);
+    }
 }
 
 function renderScanResults(results, mode) {
@@ -2581,7 +2587,7 @@ function renderScanResults(results, mode) {
               ${_bestOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
             </button>
             <button onclick="toggleFsHouse();runScanner();" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2e7d32;background:${_fsHouseActive?'#2e7d32':'#fff'};color:${_fsHouseActive?'#fff':'#2e7d32'};cursor:pointer;">
-              ${_fsHouseActive ? '🏠 ' + (_fsActiveHouseData?_fsActiveHouseData.name:'House') : '🏠 House'}
+              ${_fsHouseActive ? '🏠 Houses ON' : '🏠 Houses'}
             </button>
            </div>`;
     if (results.length === 0) {
@@ -3206,25 +3212,12 @@ var _listOnlyXKDG      = false;
 var _bestOnlyXKDG      = false;
 
 // ── 🏠 FS House Profile toggle (BEST + LIST) ──────────────────────
-// When active, each date row shows a badge if the day hexagram connects
-// with the saved house facing direction (Hetu, Adding, Family).
-// Cycles: OFF → house 1 → house 2 → ... → OFF
-var _fsHouseActive       = false;
-var _fsActiveHouseData   = null;   // { name, facing, houseFacing, period, waters:[] }
-var _fsActiveHouseIdx    = 0;
-var _fsActiveHousePersonName = null;
-
-function _fsLoadActiveHouse(){
-  const person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
-  if (!person) return null;
-  try {
-    const all = JSON.parse(localStorage.getItem('xkdg_houses') || '{}');
-    const houses = all[person.name] || [];
-    if (!houses.length) return null;
-    _fsActiveHousePersonName = person.name;
-    return houses[0];
-  } catch(e) { return null; }
-}
+// When active, checks ALL houses of the active person simultaneously.
+// Each date row shows badges for every house that has a connection.
+var _fsHouseActive = false;
+var _fsAllHouses   = [];       // cached array of all houses for active person
+var _fsHousePersonName = null;
+var _fsBadgeCache  = {};       // { "2026-05-25-5": [{...badges...}] } — for popup on click
 
 function _fsGetAllHouses(){
   const person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
@@ -3236,126 +3229,121 @@ function _fsGetAllHouses(){
 }
 
 function toggleFsHouse(){
+  if (_fsHouseActive) {
+    _fsHouseActive = false;
+    _fsAllHouses = [];
+    return;
+  }
   const houses = _fsGetAllHouses();
   if (!houses.length) {
-    _fsHouseActive = false;
-    _fsActiveHouseData = null;
     alert('No house profile saved for the active person.\nGo to the FS view → 🏠 HOUSE PROFILES → Save House.');
     return;
   }
   const person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
-  if (person) _fsActiveHousePersonName = person.name;
-
-  if (!_fsHouseActive) {
-    // First activation → load first house
-    _fsActiveHouseIdx = 0;
-    _fsActiveHouseData = houses[0];
-    _fsHouseActive = true;
-  } else {
-    // Cycle to next house; after last → turn off
-    _fsActiveHouseIdx = (_fsActiveHouseIdx || 0) + 1;
-    if (_fsActiveHouseIdx >= houses.length) {
-      _fsHouseActive = false;
-      _fsActiveHouseData = null;
-      _fsActiveHouseIdx = 0;
-    } else {
-      _fsActiveHouseData = houses[_fsActiveHouseIdx];
-    }
-  }
+  if (person) _fsHousePersonName = person.name;
+  _fsAllHouses = houses;
+  _fsHouseActive = true;
 }
 
-function fsSelectHouseForBadge(personName, houseIdx){
-  try {
-    const all = JSON.parse(localStorage.getItem('xkdg_houses') || '{}');
-    const houses = all[personName] || [];
-    if (houses[houseIdx]) {
-      _fsActiveHouseData = houses[houseIdx];
-      _fsActiveHouseIdx = houseIdx;
-      _fsActiveHousePersonName = personName;
-      _fsHouseActive = true;
-    }
-  } catch(e) {}
-}
-
-/** Check FS connections between a day hexagram and the active house facing.
- *  Optionally checks Qimen for each water palace.
- *  qmParams: { Y, M, D, hGan, hZhi } — pass to enable Qimen check.
- *  Returns { labels:[], color:'', icon:'', qimenHits:[] } or null. */
-function fsComputeHouseBadge(dayHex, dayQi, dayYun, qmParams){
-  if (!_fsHouseActive || !_fsActiveHouseData) return null;
+/** Check ALL houses against a day hexagram + optional Qimen params.
+ *  Returns array of { houseName, facingLabels, xkdgWaterLabels, qimenHits, hasFS, hasQimen } */
+function fsComputeAllHousesBadges(dayHex, dayQi, dayYun, qmParams){
+  if (!_fsHouseActive || !_fsAllHouses.length) return null;
   if (typeof fsSlotForDeg !== 'function') return null;
-  const facingDeg = _fsActiveHouseData.facing != null ? _fsActiveHouseData.facing
-                  : _fsActiveHouseData.houseFacing;
-  if (facingDeg == null) return null;
 
-  const fSlot = fsSlotForDeg(facingDeg);
-  if (!fSlot || !fSlot.hexNum) return null;
+  var results = [];
+  _fsAllHouses.forEach(function(house){
+    var facingDeg = house.facing != null ? house.facing : house.houseFacing;
+    if (facingDeg == null) return;
+    var fSlot = fsSlotForDeg(facingDeg);
+    if (!fSlot || !fSlot.hexNum) return;
 
-  // 1) Facing hex ↔ day hex connections
-  var facingLabels = (typeof hexConnectionLabels === 'function')
-    ? hexConnectionLabels(fSlot.hexNum, fSlot.qi, fSlot.yun, dayHex, dayQi, dayYun)
-    : [];
+    // 1) Facing hex ↔ day hex
+    var facingLabels = (typeof hexConnectionLabels === 'function')
+      ? hexConnectionLabels(fSlot.hexNum, fSlot.qi, fSlot.yun, dayHex, dayQi, dayYun) : [];
 
-  // 2) XKDG Water hex ↔ day hex connections (narrow 5.625° slot)
-  var xkdgWaterLabels = [];
-  if (_fsActiveHouseData.xkdgWater != null) {
-    var wSlot = fsSlotForDeg(_fsActiveHouseData.xkdgWater);
-    if (wSlot && wSlot.hexNum && typeof hexConnectionLabels === 'function') {
-      xkdgWaterLabels = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, dayHex, dayQi, dayYun);
+    // 2) XKDG Water hex ↔ day hex
+    var xkdgWaterLabels = [];
+    if (house.xkdgWater != null) {
+      var wSlot = fsSlotForDeg(house.xkdgWater);
+      if (wSlot && wSlot.hexNum && typeof hexConnectionLabels === 'function')
+        xkdgWaterLabels = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, dayHex, dayQi, dayYun);
     }
-  }
 
-  // 3) Star Waters — Qimen palace check (permanent aquariums, ~45°)
-  var qimenHits = [];
-  var waters = _fsActiveHouseData.waters || [];
-  if (qmParams && waters.length > 0 && typeof QMDJWaterScanner !== 'undefined') {
-    var scanner = QMDJWaterScanner;
-    waters.forEach(function(w){
-      // Use stored palace directly; fall back to degToPalace for old data with degrees
-      var palace = w.palace || (w.deg != null ? scanner.degToPalace(w.deg) : null);
-      if (!palace) return;
-      var res = scanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
-                                           qmParams.hGan, qmParams.hZhi, palace);
-      if (res && res.matched) {
-        qimenHits.push({ name: w.name, dir: w.dir || '', palace: palace, hits: res.hits || [], score: res.score || 0 });
-      }
-    });
-  }
+    // 3) Star Waters — Qimen palace check
+    var qimenHits = [];
+    var waters = house.waters || [];
+    if (qmParams && waters.length > 0 && typeof QMDJWaterScanner !== 'undefined') {
+      var scanner = QMDJWaterScanner;
+      waters.forEach(function(w){
+        var palace = w.palace || (w.deg != null ? scanner.degToPalace(w.deg) : null);
+        if (!palace) return;
+        var res = scanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
+                                             qmParams.hGan, qmParams.hZhi, palace);
+        if (res && res.matched)
+          qimenHits.push({ name: w.name, dir: w.dir || '', palace: palace, hits: res.hits || [], score: res.score || 0 });
+      });
+    }
 
-  // Build result — combine all checks
-  var hasFS    = facingLabels.length > 0 || xkdgWaterLabels.length > 0;
-  var hasQimen = qimenHits.length > 0;
-  var color, icon;
-  if (hasFS && hasQimen) {
-    color = '#00695c'; icon = '🏠✓🌀';
-  } else if (hasFS) {
-    color = '#2e7d32'; icon = '🏠✓';
-  } else if (hasQimen) {
-    color = '#1565c0'; icon = '🏠🌀';
-  } else {
-    color = '#999'; icon = '🏠';
-  }
-  return { facingLabels: facingLabels, xkdgWaterLabels: xkdgWaterLabels,
-           qimenHits: qimenHits, color: color, icon: icon };
+    var hasFS    = facingLabels.length > 0 || xkdgWaterLabels.length > 0;
+    var hasQimen = qimenHits.length > 0;
+    if (hasFS || hasQimen) {
+      results.push({
+        houseName: house.name, facingLabels: facingLabels,
+        xkdgWaterLabels: xkdgWaterLabels, qimenHits: qimenHits,
+        hasFS: hasFS, hasQimen: hasQimen
+      });
+    }
+  });
+  return results.length ? results : null;
 }
 
-function fsBuildHouseBadgeHtml(badge){
-  if (!badge) return '';
-  var parts = [];
-  var name = (_fsActiveHouseData && _fsActiveHouseData.name) ? _fsActiveHouseData.name : '';
-  if (badge.facingLabels && badge.facingLabels.length)
-    parts.push('Facing: ' + badge.facingLabels.join(', '));
-  if (badge.xkdgWaterLabels && badge.xkdgWaterLabels.length)
-    parts.push('🌊 XKDG: ' + badge.xkdgWaterLabels.join(', '));
-  if (badge.qimenHits && badge.qimenHits.length) {
-    badge.qimenHits.forEach(function(qh){
-      parts.push('🐟 ' + qh.name + ': ' + (qh.hits || []).join(', '));
+function fsBuildHouseBadgeHtml(badges){
+  if (!badges || !badges.length) return '';
+  return badges.map(function(b){
+    var icon, color;
+    if (b.hasFS && b.hasQimen) { icon = '🏠✓🌀'; color = '#00695c'; }
+    else if (b.hasFS) { icon = '🏠✓'; color = '#2e7d32'; }
+    else { icon = '🏠🌀'; color = '#1565c0'; }
+
+    var parts = [];
+    if (b.facingLabels.length) parts.push('Facing: ' + b.facingLabels.join(', '));
+    if (b.xkdgWaterLabels.length) parts.push('🌊 XKDG: ' + b.xkdgWaterLabels.join(', '));
+    b.qimenHits.forEach(function(qh){
+      parts.push('🐟 ' + qh.name + ' ' + (qh.dir||'') + ': ' + (qh.hits||[]).join(', '));
     });
-  }
-  if (!parts.length) parts.push('No connection');
-  var tipFull = (name ? name + ': ' : '') + parts.join(' · ');
-  tipFull = tipFull.replace(/'/g, "\\'");
-  return '<span style="font-size:10px;font-weight:bold;color:' + badge.color + ';cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,\'' + tipFull + '\')">' + badge.icon + '</span>';
+    var tip = (b.houseName + ': ' + parts.join(' · ')).replace(/'/g, "\\'");
+    return '<span style="font-size:13px;font-weight:bold;color:' + color +
+           ';cursor:pointer;white-space:nowrap;" onclick="event.stopPropagation();showBadgeTip(this,\'' +
+           tip + '\')">' + icon + ' <span style="font-size:10px;">' + b.houseName.replace(/</g,'&lt;') + '</span></span>';
+  }).join(' ');
+}
+
+/** Show FS detail popup when user clicks a date from BEST/LIST.
+ *  Called after loadDateIntoMain with the stored badge data. */
+var _fsLastClickBadges = null;
+function fsShowDetailPopup(){
+  if (!_fsLastClickBadges || !_fsLastClickBadges.length) return;
+  var html = '<div style="font-weight:bold;font-size:14px;margin-bottom:8px;">🏠 Feng Shui — this hour</div>';
+  _fsLastClickBadges.forEach(function(b){
+    var icon = (b.hasFS && b.hasQimen) ? '✓🌀' : b.hasFS ? '✓' : '🌀';
+    html += '<div style="background:#f1f8e9;border:1px solid #a5d6a7;border-radius:6px;padding:8px;margin-bottom:6px;">';
+    html += '<div style="font-weight:bold;color:#2e7d32;font-size:13px;">🏠 ' + b.houseName + ' ' + icon + '</div>';
+    if (b.facingLabels.length)
+      html += '<div style="font-size:12px;margin-top:4px;">Facing ↔ Day: <strong>' + b.facingLabels.join(', ') + '</strong></div>';
+    if (b.xkdgWaterLabels.length)
+      html += '<div style="font-size:12px;margin-top:2px;">🌊 XKDG Water ↔ Day: <strong>' + b.xkdgWaterLabels.join(', ') + '</strong></div>';
+    b.qimenHits.forEach(function(qh){
+      html += '<div style="font-size:12px;margin-top:2px;">🐟 ' + qh.name + ' (' + (qh.dir||'Palace '+qh.palace) + '): <strong>' + (qh.hits||[]).join(', ') + '</strong></div>';
+    });
+    html += '</div>';
+  });
+  html += '<div style="text-align:right;margin-top:6px;"><button onclick="this.parentElement.parentElement.remove()" style="background:#888;color:#fff;border:none;border-radius:4px;padding:6px 16px;font-size:12px;cursor:pointer;">Close</button></div>';
+  var popup = document.createElement('div');
+  popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #2e7d32;border-radius:12px;padding:16px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);z-index:9999;max-height:80vh;overflow-y:auto;';
+  popup.innerHTML = html;
+  document.body.appendChild(popup);
+  _fsLastClickBadges = null;
 }
 
 function toggleScoreMode() {
@@ -4490,6 +4478,7 @@ function buildCalView() {
 }
 
 function buildMonthView() {
+    _fsBadgeCache = {}; // clear FS badge cache for new view
     const startDate = document.getElementById('scan-start').value;
     const days      = parseInt(document.getElementById('scan-days').value) || 30;
     const lon       = parseFloat(document.getElementById('longitude').value);
@@ -5234,8 +5223,9 @@ function buildMonthView() {
                               : nayinResLV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Weak')">✕ Nayin Weak</div>`
                               : '';
             const keHTMLLV = keScoreLV > 0 ? `<div style="font-size:9px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${keScoreLV}</div>` : '';
-            const fsBadgeLV = fsComputeHouseBadge(dayXkdgLV.hex, dayXkdgLV.qi, dayXkdgLV.yun,
+            const fsBadgeLV = fsComputeAllHousesBadges(dayXkdgLV.hex, dayXkdgLV.qi, dayXkdgLV.yun,
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect });
+            if (fsBadgeLV) _fsBadgeCache[localISODate(dayDate) + '-' + hIdx] = fsBadgeLV;
             const fsHTMLLV = fsBuildHouseBadgeHtml(fsBadgeLV);
             // Unified score-based row coloring: green for positive, red for negative
             const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
@@ -5407,7 +5397,7 @@ function buildMonthView() {
             ${_listOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
         </button>
         <button onclick="toggleFsHouse();buildMonthView();" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2e7d32;background:${_fsHouseActive?'#2e7d32':'#fff'};color:${_fsHouseActive?'#fff':'#2e7d32'};cursor:pointer;">
-            ${_fsHouseActive ? '🏠 ' + (_fsActiveHouseData?_fsActiveHouseData.name:'House') : '🏠 House'}
+            ${_fsHouseActive ? '🏠 Houses ON' : '🏠 Houses'}
         </button>
     </div>`;
     const mv = document.getElementById('month-view');
@@ -5644,6 +5634,7 @@ function setScanOffset(days) {
 }
 
 function runScanner() {
+    _fsBadgeCache = {}; // clear FS badge cache for new scan
     const birthDate  = (document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none') ? document.getElementById('person-date').value : '';
     const birthTime  = document.getElementById('person-time').value || '12:00';
     const birthDateB = (document.getElementById('person-panel-b') && document.getElementById('person-panel-b').style.display !== 'none') ? document.getElementById('person-date-b').value : '';
@@ -6007,8 +5998,12 @@ function runScanner() {
                 nayinPersonLabel,
                 wealthBonus: window._lastWealthBonus || 0,
                 keScore: keScoreBST,
-                fsBadge: fsComputeHouseBadge(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
-                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi })
+                fsBadge: (() => {
+                    var _fb = fsComputeAllHousesBadges(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
+                        { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi });
+                    if (_fb) _fsBadgeCache[localISODate(dayDate) + '-' + h] = _fb;
+                    return _fb;
+                })()
             });
         }
     }
