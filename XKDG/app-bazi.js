@@ -3195,7 +3195,7 @@ const DING_SPIRIT_MAP = {
 // ── Purpose Filter ────────────────────────────────────────────
 var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤', legal:'⚖️' };
 var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak', legal:'Legal' };
-var _scoreModeBalanced = false; // false = A Priority, true = Balanced (min of A and B)
+var _scoreModeBalanced = false; // false = A Priority, true = Balanced (average of A and B)
 var _listSortByScore   = false; // false = chronological, true = best hour first per day
 var _listShowAll       = false; // false = positive only, true = show all hours (positive + negative)
 // "Only with XKDG" toggles — independent for LIST and BEST.
@@ -4293,7 +4293,7 @@ function buildCalView() {
                     if (personAYear && personBYear_CAL && _scoreModeBalanced) {
                         const sA_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
                         const sB_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, ziPillarsCAL);
-                        ziScoreCAL = Math.min(sA_zi, sB_zi);
+                        ziScoreCAL = Math.round((sA_zi + sB_zi) / 2);
                     } else {
                         ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, ziPillarsCAL);
                     }
@@ -4343,12 +4343,12 @@ function buildCalView() {
                 const hBlue = hItems.filter(i => i.tag === 'blue' || i.tag === 'family');
                 const hSpirit = getSpiritForHour(dZhi, hZ);
 
-                // Score the hour — balanced mode uses Math.min(A,B), else active person
+                // Score the hour — balanced mode uses average(A,B), else active person
                 let hScore;
                 if (personAYear && personBYear_CAL && _scoreModeBalanced) {
                     const sA_h = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
                     const sB_h = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, hPillars);
-                    hScore = Math.min(sA_h, sB_h);
+                    hScore = Math.round((sA_h + sB_h) / 2);
                 } else {
                     hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, hPillars);
                 }
@@ -5076,7 +5076,7 @@ function buildMonthView() {
                 const tyB2    = _personBDayStem ? (TIAN_YI[_personBDayStem] || null) : null;
                 const sB = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, personBYear, pBYStem, pBYBranch, nobleB2, luB2, hvB2, bvB2, mvB2, tyB2, pillars);
 
-                listScore = Math.min(sA, sB);
+                listScore = Math.round((sA + sB) / 2);
             } else {
                 listScore = calcHourScore(dGan, dZhi, hGanDirect, hZhiDirect, mGan, mZhi, yGan, eightChar.getYearZhi(), analysisItems, spirit, sS, sG, activePersonYear, activePersonStem, activePersonBranch, pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA, pillars);
             }
@@ -5881,15 +5881,23 @@ function runScanner() {
             // Personal connection: required only when person is loaded, uses active person (skip when Negatives is ON)
             const filtersActiveBST = activeFilters.size > 0;
             if (!hasNegativesBST) {
-                // If both persons active, require both connect; else require active person
+                // If both persons active, require both connect using symmetric broad check
                 if (personAYear && personBYear) {
-                    if (!(personMatchEl || personMatchPer)) { continue; }
-                    // Also check B connects
+                    const connectsA2 = isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(activeYStem,activeYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
                     const pQiB = personBYear.qi, pYunB = personBYear.yun;
                     const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
-                    if (!connectsB2) { continue; }
+                    if (!connectsA2 || !connectsB2) { continue; }
                 } else if (activeYear && !(personMatchEl || personMatchPer)) {
-                    { if (isNayinPowerBST) { bestRescuedByNayin = true; } else { continue; } }
+                    // Dimension-specific check failed, but person might still connect
+                    // via a different dimension (like LIST view does). Use broad check:
+                    const broadConnects = isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
+                        isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
+                        getJiaZiFamilies(activeYStem, activeYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                    if (!broadConnects) {
+                        // No connection at all — rescue by Nayin or skip
+                        if (isNayinPowerBST) { bestRescuedByNayin = true; } else { continue; }
+                    }
+                    // else: person connects broadly — let it through (score will use dimension match)
                 }
             }
 
@@ -5955,7 +5963,7 @@ function runScanner() {
                 const tyB    = pDayStemB ? (TIAN_YI[pDayStemB] || null) : null;
                 const scoreForB = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, personBYear, pBYStem, pBYBranch, nobleB, luB, hvB, bvB, mvB, tyB, pillars);
 
-                totalScore = Math.min(scoreForA, scoreForB);
+                totalScore = Math.round((scoreForA + scoreForB) / 2);
             } else {
                 totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, activeYear, activeYStem, activeYBranch, activeNoble, activeLu, activeHV, activeBV, activeMV, activeTY, pillars);
             }
