@@ -420,14 +420,14 @@ function buildFengShuiView(){
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-        <button onclick="fsSaveHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">💾 Save House</button>
+        <button onclick="fsSaveHouse()" style="background:#558b2f;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">💾 SAVE HOUSE</button>
       </div>
 
       <!-- ═══ ⭐ STARS buttons ═══ -->
       <div style="font-size:11px;font-weight:bold;color:#00695c;margin-bottom:4px;">⭐ Stars</div>
 
       <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" style="flex:1;background:#00695c;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🌀 FIND QIMEN HOURS FOR FLYING STARS</button>
+        <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" style="flex:1;background:#8a6a1f;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🌀 FIND QIMEN HOURS FOR FLYING STARS</button>
       </div>
 
       <div style="display:flex;gap:8px;margin-bottom:10px;">
