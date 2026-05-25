@@ -856,13 +856,16 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     }
 
     // ── Inverse Hexagram ─────────────────────────────────────────────
-    // Day is always the original; Hour/Month/Year can be its inverse
+    // Day is always the original; Hour/Month/Year can be its inverse.
+    // Exclude pillars that clash with Day (same rule as Hetu/Adding).
     const dayHex = pillars.day.hex;
     if (dayHex) {
         const invHex = getInverseHex(dayHex);
         if (invHex) {
             const PILLAR_LABELS = { hour: 'Hour', month: 'Month', year: 'Year' };
-            const inverseMatches = ['hour','month','year'].filter(k => pillars[k].hex === invHex);
+            const inverseMatches = ['hour','month','year'].filter(k =>
+                pillars[k].hex === invHex && !isClashing('day', k)
+            );
             if (inverseMatches.length > 0) {
                 const matchStr = inverseMatches.map(k => PILLAR_LABELS[k]).join('·');
                 items.push({ text: `Inverse Hex (${matchStr})`, tag: 'blue' });
@@ -5092,7 +5095,9 @@ function buildMonthView() {
             // >= threshold. Strict (toggle ON): no rescue — only real hexagram
             // relations pass.
             const _savedByNayinLV = !_listOnlyXKDG && (nayinResLV.label === 'Nayin Power') && (listScore >= LIST_HIGH_SCORE_THRESHOLD);
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !isPositive && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV && !_savedByNayinLV) { continue; }
+            // When "Only with XKDG" is ON, also filter Zi first-half if it has no XKDG relations
+            const _ziBypassOK = isZiFirst && (!_listOnlyXKDG || isPositive);
+            if (!_calShowAllForThisDay && !_listShowAll && !_ziBypassOK && !isPositive && !getPurpose() && !hasNayinFilter && !hasKeFilterMV && !hasNegativesFilterMV && !_savedByNayinLV) { continue; }
 
             // (Old isNegativeHour gate removed — superseded by the listScore-based filter
             //  applied further down once listScore has been computed.)
@@ -5189,7 +5194,9 @@ function buildMonthView() {
 
             // Only restrict to personal matches when person active AND no filters (not for Zi first half),
             // BUT allow high-score hours through even when not isFavourable.
-            if (!_calShowAllForThisDay && !_listShowAll && !isZiFirst && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) { continue; }
+            if (!_calShowAllForThisDay && !_listShowAll && !_ziBypassOK && !filtersActiveMV && !hasNegativesFilterMV && (personAYear || personBYear) && !isFavourable && listScore < LIST_HIGH_SCORE_THRESHOLD) { continue; }
+            // "Only with XKDG" strict gate: even high-score hours need real XKDG relations
+            if (_listOnlyXKDG && !isPositive && !_calShowAllForThisDay && !_listShowAll) { continue; }
             // Green gradient based on score (same tiers as BEST scanner)
             const isoDate = localISODate(dayDate);
 
