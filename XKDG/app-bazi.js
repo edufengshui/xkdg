@@ -3254,7 +3254,7 @@ function fsComputeAllHousesBadges(dayHex, dayQi, dayYun, qmParams){
     var doors = house.doors || [];
     // Migrate on-the-fly if old format still in memory
     if (!doors.length && house.facing != null){
-      doors = [{ name: 'Porta principale', facing: house.facing, water: house.xkdgWater || null }];
+      doors = [{ name: 'Main door', facing: house.facing, water: house.xkdgWater || null }];
     }
 
     var doorResults = [];
@@ -3362,7 +3362,7 @@ function fsShowHousePopup(cacheKey){
       html += '<div style="margin-top:4px;padding-left:6px;border-left:2px solid #c9a84c;">';
       html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;">🚪 ' + dr.doorName + '</div>';
       if (dr.facingLabels && dr.facingLabels.length)
-        html += '<div style="font-size:12px;margin-top:2px;">Facing ↔ Day: <strong>' + dr.facingLabels.join(', ') + '</strong></div>';
+        html += '<div style="font-size:12px;margin-top:2px;">Door ↔ Day: <strong>' + dr.facingLabels.join(', ') + '</strong></div>';
       if (dr.waterLabels && dr.waterLabels.length)
         html += '<div style="font-size:12px;margin-top:2px;">🌊 Water ↔ Day: <strong>' + dr.waterLabels.join(', ') + '</strong></div>';
       (dr.waterQimenHits || []).forEach(function(qh){

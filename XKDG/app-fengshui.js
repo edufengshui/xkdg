@@ -358,31 +358,7 @@ function buildFengShuiView(){
     <div style="max-width:480px;margin:0 auto;font-family:serif;color:#1a1008;">
       <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.5;"></div>
 
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px;">
-        <span style="color:#666;">PERIOD:</span>
-        <button id="fs-period-btn" onclick="fsTogglePeriod()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">NOW → 2044</button>
-        <span id="fs-period-lbl" style="font-style:italic;color:#8a6a1f;">Zheng Shen = 6-9</span>
-      </div>
-
-      <div style="display:flex;gap:8px;align-items:end;margin-bottom:8px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:120px;">
-          <label style="font-size:11px;color:#666;display:block;">Facing (°)</label>
-          <input type="number" id="fs-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
-                 style="width:100%;padding:6px;border:1px solid #c9a84c;border-radius:4px;font-size:14px;"
-                 oninput="fsRedraw()">
-        </div>
-        <div style="flex:1;min-width:120px;">
-          <label style="font-size:11px;color:#666;display:block;">Water (°)</label>
-          <div style="display:flex;gap:4px;">
-            <input type="number" id="fs-water" min="0" max="360" step="0.1" placeholder="optional"
-                   style="flex:1;padding:6px;border:1px solid #4a9ead;border-radius:4px;font-size:14px;"
-                   oninput="fsRedraw()">
-            <button onclick="fsSuggestWater()" title="Suggest closest favorable Water position" style="background:#4a9ead;color:#fff;border:none;border-radius:4px;padding:0 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">💡 Suggest</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ═══ FLYING STARS (玄空飛星) controls ═══ -->
+      <!-- ═══ FLYING STARS (玄空飛星) — FIRST ═══ -->
       <div style="background:#fff8e1;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
         <div style="font-size:11px;color:#8a6a1f;font-weight:bold;margin-bottom:6px;">⭐ FLYING STARS (玄空飛星)</div>
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
@@ -403,14 +379,38 @@ function buildFengShuiView(){
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
       </div>
 
-      <!-- ═══ HOUSE PROFILES (🏠) ═══ -->
-      <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
-          <button onclick="fsSaveHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer;">💾 Save House</button>
+      <!-- ═══ XKDG DOOR (🚪) — SECOND ═══ -->
+      <div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px;">
+          <span style="font-size:11px;color:#c9a84c;font-weight:bold;">🚪 XKDG DOOR</span>
+          <span style="color:#666;font-size:11px;">PERIOD:</span>
+          <button id="fs-period-btn" onclick="fsTogglePeriod()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">NOW → 2044</button>
+          <span id="fs-period-lbl" style="font-style:italic;color:#8a6a1f;font-size:11px;">Zheng Shen = 6-9</span>
         </div>
-        <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
-        <div id="fs-house-list" style="font-size:12px;"></div>
+        <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:11px;color:#666;display:block;">Door Facing (°)</label>
+            <input type="number" id="fs-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
+                   style="width:100%;padding:6px;border:1px solid #c9a84c;border-radius:4px;font-size:14px;"
+                   oninput="fsRedraw()">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:11px;color:#666;display:block;">Water (°)</label>
+            <div style="display:flex;gap:4px;">
+              <input type="number" id="fs-water" min="0" max="360" step="0.1" placeholder="optional"
+                     style="flex:1;padding:6px;border:1px solid #4a9ead;border-radius:4px;font-size:14px;"
+                     oninput="fsRedraw()">
+              <button onclick="fsSuggestWater()" title="Suggest closest favorable Water position" style="background:#4a9ead;color:#fff;border:none;border-radius:4px;padding:0 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">💡 Suggest</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ LUOPAN MODE TOGGLE ═══ -->
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;">
+        <button id="fs-mode-fs" onclick="fsSetLuopanMode('fs')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐ FS only</button>
+        <button id="fs-mode-xkdg" onclick="fsSetLuopanMode('xkdg')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🚪 XKDG only</button>
+        <button id="fs-mode-both" onclick="fsSetLuopanMode('both')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐🚪 Both</button>
       </div>
 
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
@@ -419,23 +419,39 @@ function buildFengShuiView(){
 
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button onclick="fsFindDirections()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING FACING/WATER DIRECTIONS</button>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button onclick="fsFindDates()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DATES</button>
-      </div>
+      <!-- ═══ ⭐ STARS buttons ═══ -->
+      <div style="font-size:11px;font-weight:bold;color:#00695c;margin-bottom:4px;">⭐ Stars</div>
 
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" style="flex:1;background:#00695c;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🌀 FIND QIMEN HOURS FOR FLYING STARS</button>
       </div>
 
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button onclick="(typeof FSChartFinder!=='undefined') ? FSChartFinder.open() : alert('fs-chart-finder.js not loaded')" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔍 FIND CHARTS BY STAR POSITION</button>
       </div>
 
+      <!-- ═══ 🚪 XKDG buttons ═══ -->
+      <div style="font-size:11px;font-weight:bold;color:#c9a84c;margin-bottom:4px;">🚪 XKDG</div>
+
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button onclick="fsFindDirections()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DOOR FACING/WATER DIRECTIONS</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button onclick="fsFindDates()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DATES</button>
+      </div>
+
       <div id="fs-results-area"></div>
+
+      <!-- ═══ HOUSE PROFILES (🏠) — at the end ═══ -->
+      <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-top:16px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
+          <button onclick="fsSaveHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer;">💾 Save House</button>
+        </div>
+        <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
+        <div id="fs-house-list" style="font-size:12px;"></div>
+      </div>
     </div>`;
 
   // Inject legend
@@ -443,7 +459,7 @@ function buildFengShuiView(){
   lg.innerHTML = `
     <span><span style="display:inline-block;width:12px;height:12px;background:rgba(180,40,40,0.25);border:1px solid #c9a84c;vertical-align:middle;"></span> 正神</span>
     <span><span style="display:inline-block;width:12px;height:12px;background:rgba(40,80,180,0.25);border:1px solid #c9a84c;vertical-align:middle;"></span> 零神</span>
-    <span><span style="display:inline-block;width:12px;height:12px;background:rgba(0,220,80,0.6);vertical-align:middle;"></span> ✓ Facing for date</span>
+    <span><span style="display:inline-block;width:12px;height:12px;background:rgba(0,220,80,0.6);vertical-align:middle;"></span> ✓ Door Facing for date</span>
     <span><span style="display:inline-block;width:12px;height:12px;background:rgba(0,200,255,0.6);vertical-align:middle;"></span> Water for facing</span>
     <span><span style="display:inline-block;width:12px;height:12px;background:rgba(255,200,0,0.8);vertical-align:middle;"></span> Selected facing</span>
     <span><span style="display:inline-block;width:12px;height:12px;background:rgba(0,200,255,0.45);border:1px solid rgba(0,100,180,0.7);vertical-align:middle;"></span> Water ±70° zone</span>
@@ -465,6 +481,18 @@ function fsTogglePeriod(){
 
 // ── Flying Stars (玄空飛星) toggle state ───────────────────────────
 let FS_STARS_ON = false;
+// Luopan display mode: 'fs' = Flying Stars only, 'xkdg' = XKDG Door only, 'both' = combined
+var _fsLuopanMode = 'xkdg';
+function fsSetLuopanMode(mode){
+  _fsLuopanMode = mode;
+  ['fs','xkdg','both'].forEach(function(m){
+    var btn = document.getElementById('fs-mode-' + m);
+    if (btn){
+      btn.style.background = (m === mode) ? (m === 'fs' ? '#8a6a1f' : m === 'xkdg' ? '#c9a84c' : '#00695c') : '#aaa';
+    }
+  });
+  fsRedraw();
+}
 function fsToggleStars(){
   FS_STARS_ON = !FS_STARS_ON;
   const btn = document.getElementById('fs-stars-toggle');
@@ -610,7 +638,7 @@ function fsRenderPairsTable(){
   html += '<div style="overflow-x:auto;border:1px solid #c9a84c;border-radius:6px;">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
   html += '<thead><tr style="background:#fff8e1;">';
-  html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#c0392b;">Facing 正神</th>';
+  html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#c0392b;">Door Facing 正神</th>';
   html += '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #c9a84c;color:#1565c0;">Water 零神</th>';
   html += '<th style="text-align:center;padding:6px 4px;border-bottom:1px solid #c9a84c;color:#8a6a1f;">Score</th>';
   html += '</tr></thead><tbody>';
@@ -672,6 +700,13 @@ function fsRedraw(){
   const fd = isNaN(fDeg) ? null : fDeg;
   const wd = isNaN(wDeg) ? null : wDeg;
 
+  // House Facing for FS arrow
+  const hfDeg = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+  const hfd = isNaN(hfDeg) ? null : hfDeg;
+
+  const showXKDG = (_fsLuopanMode === 'xkdg' || _fsLuopanMode === 'both');
+  const showFS   = (_fsLuopanMode === 'fs'   || _fsLuopanMode === 'both');
+
   const { facings, waters, facingSlot, ctx: dctx } = fsComputeValid();
   const fInput = fd !== null ? fsSlotForDeg(fd) : null;
   const wInput = wd !== null ? fsSlotForDeg(wd) : null;
@@ -689,7 +724,8 @@ function fsRedraw(){
     ctx.restore();
   }
 
-  // Pass 1: Zheng/Ling tint (always)
+  // Pass 1: Zheng/Ling tint (only in XKDG or Both mode)
+  if (showXKDG) {
   FS_SLOTS.forEach(s => {
     paintCell(s, fsIsZhengShen(s.yun) ? 'rgba(180,40,40,0.18)' : 'rgba(40,80,180,0.18)');
   });
@@ -726,6 +762,7 @@ function fsRedraw(){
     const ok = facingSlot && waters.has(wInput.idx);
     paintCell(wInput, ok ? 'rgba(0,255,200,0.85)' : 'rgba(255,30,30,0.85)');
   }
+  } // end if (showXKDG)
 
   // Cell boundaries
   ctx.save();
@@ -784,8 +821,10 @@ function fsRedraw(){
       ctx.restore();
     }
   }
-  if (fd !== null) drawArrow(fd, '#cc0000', 'Facing');
-  if (wd !== null) drawArrow(wd, '#0a8c2c', 'Water');
+  // Arrows — mode-aware
+  if (showFS && hfd !== null)  drawArrow(hfd, '#8B0000', 'House');
+  if (showXKDG && fd !== null) drawArrow(fd,  _fsLuopanMode === 'both' ? '#cc6600' : '#cc0000', 'Door');
+  if (showXKDG && wd !== null) drawArrow(wd,  '#0a8c2c', 'Water');
 
   // Center pin
   ctx.save();
@@ -862,7 +901,7 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
   if (fInput){
     const isZS = fsIsZhengShen(fInput.yun);
     html += `<div style="background:#fff8e1;border:1px solid #c9a84c;padding:8px;border-radius:4px;margin-bottom:6px;font-size:12px;">`;
-    html += `<strong>Facing:</strong> hex ${fInput.hexNum}, qi ${fInput.qi}, yun ${fInput.yun} `;
+    html += `<strong>Door Facing:</strong> hex ${fInput.hexNum}, qi ${fInput.qi}, yun ${fInput.yun} `;
     html += isZS ? '<span style="color:#c0392b;font-weight:bold;">[正神 ✓]</span>'
                  : '<span style="color:#c0392b;font-weight:bold;">[NOT Zheng Shen ✗ — pick a Zheng Shen facing]</span>';
     html += `</div>`;
