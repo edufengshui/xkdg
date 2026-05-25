@@ -374,7 +374,7 @@ function buildFengShuiView(){
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()">
           </div>
-          <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ OFF</button>
+          <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ ON</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
       </div>
@@ -408,8 +408,8 @@ function buildFengShuiView(){
 
       <!-- ═══ LUOPAN MODE TOGGLE ═══ -->
       <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;">
-        <button id="fs-mode-fs" onclick="fsSetLuopanMode('fs')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐ FS only</button>
-        <button id="fs-mode-xkdg" onclick="fsSetLuopanMode('xkdg')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🚪 XKDG only</button>
+        <button id="fs-mode-fs" onclick="fsSetLuopanMode('fs')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐ FS only</button>
+        <button id="fs-mode-xkdg" onclick="fsSetLuopanMode('xkdg')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🚪 XKDG only</button>
         <button id="fs-mode-both" onclick="fsSetLuopanMode('both')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐🚪 Both</button>
       </div>
 
@@ -433,9 +433,7 @@ function buildFengShuiView(){
       <!-- ═══ 🚪 XKDG buttons ═══ -->
       <div style="font-size:11px;font-weight:bold;color:#c9a84c;margin-bottom:4px;">🚪 XKDG</div>
 
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button onclick="fsFindDirections()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DOOR FACING/WATER DIRECTIONS</button>
-      </div>
+      <div id="fs-xkdg-detail" style="font-size:12px;margin-bottom:8px;"></div>
 
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button onclick="fsFindDates()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DATES</button>
@@ -480,9 +478,9 @@ function fsTogglePeriod(){
 }
 
 // ── Flying Stars (玄空飛星) toggle state ───────────────────────────
-let FS_STARS_ON = false;
+let FS_STARS_ON = true;
 // Luopan display mode: 'fs' = Flying Stars only, 'xkdg' = XKDG Door only, 'both' = combined
-var _fsLuopanMode = 'xkdg';
+var _fsLuopanMode = 'fs';
 function fsSetLuopanMode(mode){
   _fsLuopanMode = mode;
   ['fs','xkdg','both'].forEach(function(m){
@@ -781,11 +779,10 @@ function fsRedraw(){
   // When Flying Stars are ON, shorten the arrow so its tip stops at the
   // INNER edge of the star box (and push the label OUTSIDE the box).
   // When OFF, use the original layout.
-  function drawArrow(deg, color, label){
+  function drawArrow(deg, color, label, dashed){
     const a = (deg - 270) * Math.PI/180;
     let tipR, labelR;
     if (FS_STARS_ON){
-      // Box centred at outerR + 55, half-size 40 → inner edge at +15, outer at +95
       tipR   = outerR + 15;
       labelR = outerR + 110;
     } else {
@@ -796,8 +793,10 @@ function fsRedraw(){
     const tipY = cy + Math.sin(a)*tipR;
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 4;
+    if (dashed) ctx.setLineDash([14, 8]);
     ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(tipX,tipY);
     ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.setLineDash([]);
     const perpX = Math.cos(a+Math.PI/2)*18, perpY = Math.sin(a+Math.PI/2)*18;
     const bx = tipX - Math.cos(a)*36, by = tipY - Math.sin(a)*36;
     ctx.beginPath(); ctx.moveTo(tipX,tipY);
@@ -824,7 +823,7 @@ function fsRedraw(){
   // Arrows — mode-aware
   if (showFS && hfd !== null)  drawArrow(hfd, '#8B0000', 'House');
   if (showXKDG && fd !== null) drawArrow(fd,  _fsLuopanMode === 'both' ? '#cc6600' : '#cc0000', 'Door');
-  if (showXKDG && wd !== null) drawArrow(wd,  '#0a8c2c', 'Water');
+  if (showXKDG && wd !== null) drawArrow(wd,  '#0a8c2c', 'Water', true);
 
   // Center pin
   ctx.save();
@@ -837,6 +836,8 @@ function fsRedraw(){
 
   // Render detail panel
   fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx);
+  // Live XKDG detail panel — always visible when facing/water entered
+  fsRenderXkdgDetail(fInput, wInput, facingSlot);
   fsRenderPairsTable();
 }
 
@@ -929,7 +930,67 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
   box.innerHTML = html;
 }
 
-// ── Flow A button: Find matching facing/water directions for the loaded date ──
+// ── Live XKDG detail — shows hex/qi/yun/ZS/LS/PureYY for entered facing+water ──
+function fsRenderXkdgDetail(fInput, wInput, facingSlot){
+  var box = document.getElementById('fs-xkdg-detail');
+  if (!box) return;
+  if (!fInput && !wInput){ box.innerHTML = ''; return; }
+
+  var html = '';
+
+  // Door Facing info
+  if (fInput){
+    var isZS = fsIsZhengShen(fInput.yun);
+    var zsHtml = isZS
+      ? '<span style="color:#2e7d32;font-weight:bold;">[正神 Zheng Shen ✓]</span>'
+      : '<span style="color:#c0392b;font-weight:bold;">[NOT Zheng Shen ✗]</span>';
+    html += '<div style="background:#fff8e1;border:1px solid #c9a84c;padding:6px 8px;border-radius:4px;margin-bottom:4px;">';
+    html += '<strong>🚪 Door Facing:</strong> Hex ' + fInput.hexNum + ', qi ' + fInput.qi + ', yun ' + fInput.yun + ' ' + zsHtml;
+    html += '</div>';
+  }
+
+  // Water info
+  if (wInput){
+    var isLS = fsIsLingShen(wInput.yun);
+    var lsHtml = isLS
+      ? '<span style="color:#1565c0;font-weight:bold;">[零神 Ling Shen ✓]</span>'
+      : '<span style="color:#c0392b;font-weight:bold;">[NOT Ling Shen ✗]</span>';
+    html += '<div style="background:#e3f2fd;border:1px solid #4a9ead;padding:6px 8px;border-radius:4px;margin-bottom:4px;">';
+    html += '<strong>🌊 Water:</strong> Hex ' + wInput.hexNum + ', qi ' + wInput.qi + ', yun ' + wInput.yun + ' ' + lsHtml;
+
+    // Distance + connection labels vs facing
+    if (facingSlot){
+      var dist = fsAngularDist(facingSlot.startDeg + 2.8125, wInput.centerDeg);
+      var distOk = dist <= FS_WATER_MAX_DEG;
+      html += '<br>Distance: ' + dist.toFixed(1) + '° ';
+      html += distOk
+        ? '<span style="color:#2e7d32;">[±' + FS_WATER_MAX_DEG + '° ✓]</span>'
+        : '<span style="color:#c0392b;">[exceeds ±' + FS_WATER_MAX_DEG + '° ✗]</span>';
+      var lbls = hexConnectionLabels(wInput.hexNum, wInput.qi, wInput.yun, facingSlot.hexNum, facingSlot.qi, facingSlot.yun);
+      html += '<br>vs Door: ' + (lbls.length ? '<strong>' + lbls.join(' · ') + '</strong>' : '<span style="color:#888;">no connection</span>');
+    }
+    html += '</div>';
+  }
+
+  // Pure Yin/Yang analysis (needs both facing and water)
+  if (fInput && wInput){
+    var fDeg = fInput.startDeg + 2.8125;
+    var fTri = (typeof fsMountainTrigramDi === 'function') ? fsMountainTrigramDi(fDeg) : null;
+    var wTri = (typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(wInput.centerDeg) : null;
+    if (fTri && wTri){
+      var starInfo = fsPureYYStarInfo(fTri, wTri);
+      var yyMatch = (typeof fsYinYangMatch === 'function') ? fsYinYangMatch(fDeg, wInput.centerDeg) : false;
+      var starColor = starInfo.auspicious ? '#2e7d32' : '#c0392b';
+      var starIcon  = starInfo.auspicious ? '✓' : '✗';
+      html += '<div style="background:#f3e5f5;border:1px solid #9c27b0;padding:6px 8px;border-radius:4px;">';
+      html += '<strong>☯ Pure YY:</strong> <span style="color:' + starColor + ';font-weight:bold;">' + starInfo.name + ' ' + starIcon + '</span>';
+      html += ' &nbsp;|&nbsp; Yin/Yang match: ' + (yyMatch ? '<span style="color:#2e7d32;font-weight:bold;">✓</span>' : '<span style="color:#c0392b;">✗</span>');
+      html += '</div>';
+    }
+  }
+
+  box.innerHTML = html;
+}
 function fsFindDirections(){
   const area = document.getElementById('fs-results-area');
   if (!area) return;
@@ -2255,6 +2316,28 @@ function fsLoadHouse(personName, houseIdx){
     fsToggleStars();
   }
   fsRedraw();
+}
+
+/** Auto-load first house profile for the given person name.
+ *  Called when a person is loaded or toggled ON. */
+function fsAutoLoadHouse(personName){
+  if (!personName) return;
+  var all = _fsHousesLoad();
+  var houses = all[personName] || [];
+  if (houses.length > 0){
+    fsLoadHouse(personName, 0);
+  }
+  if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+}
+
+/** Clear Luopan FS inputs (called when a person is toggled OFF). */
+function fsClearHouseInputs(){
+  var ids = ['fs-house-facing', 'fs-period', 'fs-facing', 'fs-water'];
+  ids.forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  if (typeof fsRedraw === 'function') fsRedraw();
 }
 
 function fsDeleteHouse(personName, houseIdx){

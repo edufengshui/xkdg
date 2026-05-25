@@ -1577,6 +1577,8 @@ function togglePersonPanel(person) {
                 try { calculatePerson(person); } catch (e) {}
             }
             _personPanelBackup[person] = null; // backup consumed
+            // Auto-load house profile for restored person
+            if (backup && backup.name && typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(backup.name);
         }
         if (arrow) arrow.textContent = '▾ ON';
     } else {
@@ -1627,6 +1629,8 @@ function togglePersonPanel(person) {
             _personBMonthBranch = null; _personBDayBranchXkdg = null;
             _personBPillars = null;
         }
+        // Clear Luopan FS inputs when person is toggled OFF
+        if (typeof fsClearHouseInputs === 'function') fsClearHouseInputs();
         if (arrow) arrow.textContent = '▸ OFF';
     }
 
@@ -1859,6 +1863,8 @@ function loadPersonFromDB(targetPanel, name) {
         }
         calculateBazi();
         calculatePerson(targetPanel);
+        // Auto-load house profile for this person
+        if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(name);
         // Saved person → always hide Bazi/XKDG details by default.
         // User can expand via the toggle button.
         setTimeout(function(){
@@ -1937,6 +1943,8 @@ function loadPerson(person, name) {
     // Always recalculate main chart first to ensure fresh connection check
     calculateBazi();
     calculatePerson(person);
+    // Auto-load house profile for this person
+    if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(name);
 }
 
 function hidePerson(e, person, name) {
