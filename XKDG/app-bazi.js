@@ -3243,31 +3243,64 @@ function toggleFsHouse(){
 }
 
 /** Check ALL houses against a day hexagram + optional Qimen params.
- *  Returns array of { houseName, facingLabels, xkdgWaterLabels, qimenHits, hasFS, hasQimen } */
+ *  v2: iterates over doors[] instead of single facing/xkdgWater.
+ *  Returns array of { houseName, doorResults, qimenHits, hasFS, hasQimen } */
 function fsComputeAllHousesBadges(dayHex, dayQi, dayYun, qmParams){
   if (!_fsHouseActive || !_fsAllHouses.length) return null;
   if (typeof fsSlotForDeg !== 'function') return null;
 
   var results = [];
   _fsAllHouses.forEach(function(house){
-    var facingDeg = house.facing != null ? house.facing : house.houseFacing;
-    if (facingDeg == null) return;
-    var fSlot = fsSlotForDeg(facingDeg);
-    if (!fSlot || !fSlot.hexNum) return;
-
-    // 1) Facing hex ↔ day hex
-    var facingLabels = (typeof hexConnectionLabels === 'function')
-      ? hexConnectionLabels(fSlot.hexNum, fSlot.qi, fSlot.yun, dayHex, dayQi, dayYun) : [];
-
-    // 2) XKDG Water hex ↔ day hex
-    var xkdgWaterLabels = [];
-    if (house.xkdgWater != null) {
-      var wSlot = fsSlotForDeg(house.xkdgWater);
-      if (wSlot && wSlot.hexNum && typeof hexConnectionLabels === 'function')
-        xkdgWaterLabels = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, dayHex, dayQi, dayYun);
+    var doors = house.doors || [];
+    // Migrate on-the-fly if old format still in memory
+    if (!doors.length && house.facing != null){
+      doors = [{ name: 'Porta principale', facing: house.facing, water: house.xkdgWater || null }];
     }
 
-    // 3) Star Waters — Qimen palace check
+    var doorResults = [];
+    doors.forEach(function(door){
+      if (door.facing == null) return;
+      var fSlot = fsSlotForDeg(door.facing);
+      if (!fSlot || !fSlot.hexNum) return;
+
+      // Facing hex ↔ day hex
+      var facingLabels = (typeof hexConnectionLabels === 'function')
+        ? hexConnectionLabels(fSlot.hexNum, fSlot.qi, fSlot.yun, dayHex, dayQi, dayYun) : [];
+
+      // Water hex ↔ day hex
+      var waterLabels = [];
+      var waterQimenHits = [];
+      if (door.water != null) {
+        var wSlot = fsSlotForDeg(door.water);
+        if (wSlot && wSlot.hexNum && typeof hexConnectionLabels === 'function')
+          waterLabels = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, dayHex, dayQi, dayYun);
+
+        // NEW: Qimen palace check for XKDG Water degree
+        if (qmParams && typeof QMDJWaterScanner !== 'undefined') {
+          var scanner = QMDJWaterScanner;
+          var wPalace = scanner.degToPalace(door.water);
+          if (wPalace) {
+            var res = scanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
+                                                 qmParams.hGan, qmParams.hZhi, wPalace);
+            if (res && res.matched) {
+              var hitLabels = (res.hits || []).map(function(h){ return h.label || h.cat || String(h); });
+              waterQimenHits.push({ name: door.name, dir: '', palace: wPalace, hits: hitLabels, score: res.score || 0, isXkdgWater: true });
+            }
+          }
+        }
+      }
+
+      if (facingLabels.length || waterLabels.length || waterQimenHits.length) {
+        doorResults.push({
+          doorName: door.name,
+          facingLabels: facingLabels,
+          waterLabels: waterLabels,
+          waterQimenHits: waterQimenHits
+        });
+      }
+    });
+
+    // Star Waters — Qimen palace check (unchanged)
     var qimenHits = [];
     var waters = house.waters || [];
     if (qmParams && waters.length > 0 && typeof QMDJWaterScanner !== 'undefined') {
@@ -3284,12 +3317,12 @@ function fsComputeAllHousesBadges(dayHex, dayQi, dayYun, qmParams){
       });
     }
 
-    var hasFS    = facingLabels.length > 0 || xkdgWaterLabels.length > 0;
-    var hasQimen = qimenHits.length > 0;
+    var hasFS    = doorResults.length > 0;
+    var hasQimen = qimenHits.length > 0 || doorResults.some(function(dr){ return dr.waterQimenHits.length > 0; });
     if (hasFS || hasQimen) {
       results.push({
-        houseName: house.name, facingLabels: facingLabels,
-        xkdgWaterLabels: xkdgWaterLabels, qimenHits: qimenHits,
+        houseName: house.name, doorResults: doorResults,
+        qimenHits: qimenHits,
         hasFS: hasFS, hasQimen: hasQimen
       });
     }
@@ -3316,7 +3349,6 @@ function fsBuildHouseBadgeHtml(badges, cacheKey){
 function fsShowHousePopup(cacheKey){
   var badges = _fsBadgeCache[cacheKey];
   if (!badges || !badges.length) return;
-  // Remove existing popup if any
   var old = document.getElementById('fs-house-popup');
   if (old) old.remove();
   var html = '<div style="font-weight:bold;font-size:14px;margin-bottom:8px;">🏠 Feng Shui — this hour</div>';
@@ -3324,13 +3356,26 @@ function fsShowHousePopup(cacheKey){
     var icon = (b.hasFS && b.hasQimen) ? '✓🌀' : b.hasFS ? '✓' : '🌀';
     html += '<div style="background:#f1f8e9;border:1px solid #a5d6a7;border-radius:6px;padding:8px;margin-bottom:6px;">';
     html += '<div style="font-weight:bold;color:#2e7d32;font-size:13px;">🏠 ' + b.houseName + ' ' + icon + '</div>';
-    if (b.facingLabels.length)
-      html += '<div style="font-size:12px;margin-top:4px;">Facing ↔ Day: <strong>' + b.facingLabels.join(', ') + '</strong></div>';
-    if (b.xkdgWaterLabels.length)
-      html += '<div style="font-size:12px;margin-top:2px;">🌊 XKDG Water ↔ Day: <strong>' + b.xkdgWaterLabels.join(', ') + '</strong></div>';
-    b.qimenHits.forEach(function(qh){
+
+    // Door results
+    (b.doorResults || []).forEach(function(dr){
+      html += '<div style="margin-top:4px;padding-left:6px;border-left:2px solid #c9a84c;">';
+      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;">🚪 ' + dr.doorName + '</div>';
+      if (dr.facingLabels && dr.facingLabels.length)
+        html += '<div style="font-size:12px;margin-top:2px;">Facing ↔ Day: <strong>' + dr.facingLabels.join(', ') + '</strong></div>';
+      if (dr.waterLabels && dr.waterLabels.length)
+        html += '<div style="font-size:12px;margin-top:2px;">🌊 Water ↔ Day: <strong>' + dr.waterLabels.join(', ') + '</strong></div>';
+      (dr.waterQimenHits || []).forEach(function(qh){
+        html += '<div style="font-size:12px;margin-top:2px;">🌊🌀 Water Qimen (Palace ' + qh.palace + '): <strong>' + (qh.hits||[]).join(', ') + '</strong></div>';
+      });
+      html += '</div>';
+    });
+
+    // Star Water Qimen hits
+    (b.qimenHits || []).forEach(function(qh){
       html += '<div style="font-size:12px;margin-top:2px;">🐟 ' + qh.name + ' (' + (qh.dir||'Palace '+qh.palace) + '): <strong>' + (qh.hits||[]).join(', ') + '</strong></div>';
     });
+
     html += '</div>';
   });
   html += '<div style="text-align:right;margin-top:6px;"><button onclick="document.getElementById(\'fs-house-popup\').remove()" style="background:#888;color:#fff;border:none;border-radius:4px;padding:6px 16px;font-size:12px;cursor:pointer;">Close</button></div>';
@@ -3340,6 +3385,7 @@ function fsShowHousePopup(cacheKey){
   popup.innerHTML = html;
   document.body.appendChild(popup);
 }
+
 
 function toggleScoreMode() {
     _scoreModeBalanced = !_scoreModeBalanced;
