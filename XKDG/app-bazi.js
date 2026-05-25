@@ -2560,12 +2560,6 @@ function loadDateIntoMain(isoDate, hourIndex) {
     document.getElementById('time').value = timeStr;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     calculateBazi();
-    // Show FS detail popup if house profiles are active
-    if (_fsHouseActive && _fsBadgeCache) {
-      var key = isoDate + '-' + hourIndex;
-      _fsLastClickBadges = _fsBadgeCache[key] || null;
-      if (_fsLastClickBadges) setTimeout(fsShowDetailPopup, 400);
-    }
 }
 
 function renderScanResults(results, mode) {
@@ -2673,7 +2667,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${fsBuildHouseBadgeHtml(r.fsBadge)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -3298,34 +3292,30 @@ function fsComputeAllHousesBadges(dayHex, dayQi, dayYun, qmParams){
   return results.length ? results : null;
 }
 
-function fsBuildHouseBadgeHtml(badges){
+function fsBuildHouseBadgeHtml(badges, cacheKey){
   if (!badges || !badges.length) return '';
+  if (cacheKey) _fsBadgeCache[cacheKey] = badges;
   return badges.map(function(b){
     var icon, color;
     if (b.hasFS && b.hasQimen) { icon = '🏠✓🌀'; color = '#00695c'; }
     else if (b.hasFS) { icon = '🏠✓'; color = '#2e7d32'; }
     else { icon = '🏠🌀'; color = '#1565c0'; }
-
-    var parts = [];
-    if (b.facingLabels.length) parts.push('Facing: ' + b.facingLabels.join(', '));
-    if (b.xkdgWaterLabels.length) parts.push('🌊 XKDG: ' + b.xkdgWaterLabels.join(', '));
-    b.qimenHits.forEach(function(qh){
-      parts.push('🐟 ' + qh.name + ' ' + (qh.dir||'') + ': ' + (qh.hits||[]).join(', '));
-    });
-    var tip = (b.houseName + ': ' + parts.join(' · ')).replace(/'/g, "\\'");
+    var ck = (cacheKey || '').replace(/'/g, "\\'");
     return '<span style="font-size:13px;font-weight:bold;color:' + color +
-           ';cursor:pointer;white-space:nowrap;" onclick="event.stopPropagation();showBadgeTip(this,\'' +
-           tip + '\')">' + icon + ' <span style="font-size:10px;">' + b.houseName.replace(/</g,'&lt;') + '</span></span>';
+           ';cursor:pointer;white-space:nowrap;" onclick="event.stopPropagation();fsShowHousePopup(\'' +
+           ck + '\')">' + icon + ' <span style="font-size:10px;">' + b.houseName.replace(/</g,'&lt;') + '</span></span>';
   }).join(' ');
 }
 
-/** Show FS detail popup when user clicks a date from BEST/LIST.
- *  Called after loadDateIntoMain with the stored badge data. */
-var _fsLastClickBadges = null;
-function fsShowDetailPopup(){
-  if (!_fsLastClickBadges || !_fsLastClickBadges.length) return;
+/** Show FS detail popup for a cached badge key */
+function fsShowHousePopup(cacheKey){
+  var badges = _fsBadgeCache[cacheKey];
+  if (!badges || !badges.length) return;
+  // Remove existing popup if any
+  var old = document.getElementById('fs-house-popup');
+  if (old) old.remove();
   var html = '<div style="font-weight:bold;font-size:14px;margin-bottom:8px;">🏠 Feng Shui — this hour</div>';
-  _fsLastClickBadges.forEach(function(b){
+  badges.forEach(function(b){
     var icon = (b.hasFS && b.hasQimen) ? '✓🌀' : b.hasFS ? '✓' : '🌀';
     html += '<div style="background:#f1f8e9;border:1px solid #a5d6a7;border-radius:6px;padding:8px;margin-bottom:6px;">';
     html += '<div style="font-weight:bold;color:#2e7d32;font-size:13px;">🏠 ' + b.houseName + ' ' + icon + '</div>';
@@ -3338,12 +3328,12 @@ function fsShowDetailPopup(){
     });
     html += '</div>';
   });
-  html += '<div style="text-align:right;margin-top:6px;"><button onclick="this.parentElement.parentElement.remove()" style="background:#888;color:#fff;border:none;border-radius:4px;padding:6px 16px;font-size:12px;cursor:pointer;">Close</button></div>';
+  html += '<div style="text-align:right;margin-top:6px;"><button onclick="document.getElementById(\'fs-house-popup\').remove()" style="background:#888;color:#fff;border:none;border-radius:4px;padding:6px 16px;font-size:12px;cursor:pointer;">Close</button></div>';
   var popup = document.createElement('div');
+  popup.id = 'fs-house-popup';
   popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #2e7d32;border-radius:12px;padding:16px;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);z-index:9999;max-height:80vh;overflow-y:auto;';
   popup.innerHTML = html;
   document.body.appendChild(popup);
-  _fsLastClickBadges = null;
 }
 
 function toggleScoreMode() {
@@ -5225,8 +5215,7 @@ function buildMonthView() {
             const keHTMLLV = keScoreLV > 0 ? `<div style="font-size:9px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${keScoreLV}</div>` : '';
             const fsBadgeLV = fsComputeAllHousesBadges(dayXkdgLV.hex, dayXkdgLV.qi, dayXkdgLV.yun,
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect });
-            if (fsBadgeLV) _fsBadgeCache[localISODate(dayDate) + '-' + hIdx] = fsBadgeLV;
-            const fsHTMLLV = fsBuildHouseBadgeHtml(fsBadgeLV);
+            const fsHTMLLV = fsBuildHouseBadgeHtml(fsBadgeLV, localISODate(dayDate)+'-'+hIdx);
             // Unified score-based row coloring: green for positive, red for negative
             const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
                             : listScore >= 8  ? '#c8e6c9'   // medium green
@@ -5998,12 +5987,8 @@ function runScanner() {
                 nayinPersonLabel,
                 wealthBonus: window._lastWealthBonus || 0,
                 keScore: keScoreBST,
-                fsBadge: (() => {
-                    var _fb = fsComputeAllHousesBadges(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
-                        { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi });
-                    if (_fb) _fsBadgeCache[localISODate(dayDate) + '-' + h] = _fb;
-                    return _fb;
-                })()
+                fsBadge: fsComputeAllHousesBadges(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
+                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi })
             });
         }
     }
