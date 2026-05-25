@@ -2152,6 +2152,19 @@ function _fsHousesLoad(){
 }
 function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
 
+// Active house index per person — stored separately to avoid migration issues
+function _fsActiveHouseGet(personName){
+  try { var m = JSON.parse(localStorage.getItem('xkdg_active_house') || '{}'); return m[personName] || 0; } catch(e){ return 0; }
+}
+function _fsActiveHouseSet(personName, idx){
+  try { var m = JSON.parse(localStorage.getItem('xkdg_active_house') || '{}'); m[personName] = idx; localStorage.setItem('xkdg_active_house', JSON.stringify(m)); } catch(e){}
+}
+function fsSetActiveHouse(personName, idx){
+  _fsActiveHouseSet(personName, idx);
+  fsLoadHouse(personName, idx);
+  fsRenderHouseProfiles();
+}
+
 /** Return { name, who } for the currently loaded person (A preferred, else B). */
 function fsGetActivePersonForHouse(){
   const nA = (document.getElementById('person-name') || {}).value || '';
@@ -2185,13 +2198,28 @@ function fsRenderHouseProfiles(){
   var escHtml = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
   var escJs   = function(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); };
 
+  var activeIdx = _fsActiveHouseGet(person.name);
+  if (activeIdx >= houses.length) activeIdx = 0;
+
   var html = '';
   houses.forEach(function(h, hi){
-    html += '<div style="background:#fff;border:1px solid #a5d6a7;border-radius:6px;padding:8px;margin-bottom:6px;">';
+    var isActive = (hi === activeIdx);
+    var borderColor = isActive ? '#2e7d32' : '#a5d6a7';
+    var bgColor = isActive ? '#f1f8e9' : '#fff';
+    html += '<div style="background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:6px;padding:8px;margin-bottom:6px;">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
-    html += '<strong style="color:#2e7d32;">' + escHtml(h.name) + '</strong>';
+    // Active selector + name
+    html += '<div style="display:flex;align-items:center;gap:6px;">';
+    if (isActive) {
+      html += '<span style="color:#2e7d32;font-size:16px;cursor:default;" title="Active house">●</span>';
+    } else {
+      html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#aaa;font-size:16px;cursor:pointer;" title="Set as active house">○</span>';
+    }
+    html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
+    if (isActive) html += '<span style="font-size:9px;color:#2e7d32;font-weight:bold;"> ACTIVE</span>';
+    html += '</div>';
     html += '<span>';
-    html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:4px;" title="Load into FS inputs">📂 Load</button>';
+    html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:4px;" title="Load into FS inputs to edit">📂 Load</button>';
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
     html += '</span></div>';
 
@@ -2278,8 +2306,11 @@ function fsSaveHouse(){
 
   const all = _fsHousesLoad();
   if (!all[person.name]) all[person.name] = [];
+  var newIdx = all[person.name].length;
   all[person.name].push(house);
   _fsHousesSave(all);
+  // First house → auto-set as active; otherwise keep current active
+  if (newIdx === 0) _fsActiveHouseSet(person.name, 0);
   fsRenderHouseProfiles();
 }
 
@@ -2318,14 +2349,16 @@ function fsLoadHouse(personName, houseIdx){
   fsRedraw();
 }
 
-/** Auto-load first house profile for the given person name.
+/** Auto-load active house profile for the given person name.
  *  Called when a person is loaded or toggled ON. */
 function fsAutoLoadHouse(personName){
   if (!personName) return;
   var all = _fsHousesLoad();
   var houses = all[personName] || [];
   if (houses.length > 0){
-    fsLoadHouse(personName, 0);
+    var activeIdx = _fsActiveHouseGet(personName);
+    if (activeIdx >= houses.length) activeIdx = 0;
+    fsLoadHouse(personName, activeIdx);
   }
   if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
 }
@@ -2347,6 +2380,12 @@ function fsDeleteHouse(personName, houseIdx){
   all[personName].splice(houseIdx, 1);
   if (!all[personName].length) delete all[personName];
   _fsHousesSave(all);
+  // Adjust active index
+  var activeIdx = _fsActiveHouseGet(personName);
+  var remaining = (all[personName] || []).length;
+  if (remaining === 0) { _fsActiveHouseSet(personName, 0); fsClearHouseInputs(); }
+  else if (houseIdx === activeIdx) { _fsActiveHouseSet(personName, 0); fsLoadHouse(personName, 0); }
+  else if (houseIdx < activeIdx) { _fsActiveHouseSet(personName, activeIdx - 1); }
   fsRenderHouseProfiles();
 }
 
