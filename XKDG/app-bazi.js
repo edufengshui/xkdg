@@ -5869,6 +5869,7 @@ function runScanner() {
 
             // Personal connection: required only when person is loaded, uses active person (skip when Negatives is ON)
             const filtersActiveBST = activeFilters.size > 0;
+            let _personConnectsBroadly = personMatchEl || personMatchPer; // true if dimension-specific OR broad
             if (!hasNegativesBST) {
                 // If both persons active, require both connect using symmetric broad check
                 if (personAYear && personBYear) {
@@ -5876,26 +5877,26 @@ function runScanner() {
                     const pQiB = personBYear.qi, pYunB = personBYear.yun;
                     const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
                     if (!connectsA2 || !connectsB2) { continue; }
+                    _personConnectsBroadly = true;
                 } else if (activeYear && !(personMatchEl || personMatchPer)) {
-                    // Dimension-specific check failed, but person might still connect
-                    // via a different dimension (like LIST view does). Use broad check:
+                    // Dimension-specific check failed — use broad check (like LIST view)
                     const broadConnects = isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
                         isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
                         getJiaZiFamilies(activeYStem, activeYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
                     if (!broadConnects) {
-                        // No connection at all — rescue by Nayin or skip
                         if (isNayinPowerBST) { bestRescuedByNayin = true; } else { continue; }
+                    } else {
+                        _personConnectsBroadly = true;
                     }
-                    // else: person connects broadly — let it through (score will use dimension match)
                 }
             }
 
 
-            const scoreA = (personMatchEl || personMatchPer) ?
+            const scoreA = _personConnectsBroadly ?
                 getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi) : 1;
 
             // Condition A bonus: +2 if person's birthday connects via SAME relation type as the date
-            const sameTypeBonusA = (personMatchEl || personMatchPer)
+            const sameTypeBonusA = _personConnectsBroadly
                 ? getPersonSameTypeBonus(blueItems, personAYear, dayXkdg, pYStem, pYBranch, dGan, dZhi)
                 : 0;
 
