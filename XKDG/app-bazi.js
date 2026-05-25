@@ -3274,8 +3274,10 @@ function fsComputeAllHousesBadges(dayHex, dayQi, dayYun, qmParams){
         if (!palace) return;
         var res = scanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
                                              qmParams.hGan, qmParams.hZhi, palace);
-        if (res && res.matched)
-          qimenHits.push({ name: w.name, dir: w.dir || '', palace: palace, hits: res.hits || [], score: res.score || 0 });
+        if (res && res.matched) {
+          var hitLabels = (res.hits || []).map(function(h){ return h.label || h.cat || String(h); });
+          qimenHits.push({ name: w.name, dir: w.dir || '', palace: palace, hits: hitLabels, score: res.score || 0 });
+        }
       });
     }
 
