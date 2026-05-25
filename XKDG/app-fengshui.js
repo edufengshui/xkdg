@@ -546,7 +546,10 @@ function openFengShui(){
   buildFengShuiView();
   fsRenderContext();
   fsRenderHouseProfiles();
-  fsRedraw();
+  // Auto-load active house for current person (covers app startup / view switch)
+  var person = fsGetActivePersonForHouse();
+  if (person) fsAutoLoadHouse(person.name);
+  else fsRedraw();
 }
 
 // Called from the 🧭 FS button next to CALCULATE — switches mode + scrolls.
