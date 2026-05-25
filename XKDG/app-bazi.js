@@ -2677,7 +2677,7 @@ function renderScanResults(results, mode) {
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
-            <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''}<br>${getTSTHourLabel(r.hourIndex)}</small></div>
+            <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
             <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
@@ -2732,7 +2732,7 @@ function formatTSTRange(baseStart, baseEnd) {
     }
     const wallStr = shift(baseStart, wallShift) + '-' + shift(baseEnd, wallShift);
     const tstStr  = baseStart + '-' + baseEnd;
-    return wallStr + ' (TST ' + tstStr + ') ✦';
+    return wallStr + '<br>(TST ' + tstStr + ') ✦';
 }
 
 // Convenience wrapper: returns TST-adjusted label for hour index 0..11 (子=0 .. 亥=11).
@@ -4604,6 +4604,11 @@ function buildMonthView() {
     // reason to the browser console (diagnostic — safe to leave on).
     function ziRowPassesGates(o) {
         const dbg = function(reason){ };
+        // GATE 0 — "Only with XKDG" strict: Zi rows need a real XKDG hexagram
+        // relation (blue/family item). No Nayin/spirit rescue when toggle is ON.
+        if (_listOnlyXKDG && !o.calShowAll && !o.listShowAll && o.blueItems.length === 0) {
+            dbg('Only with XKDG: no XKDG relation'); return false;
+        }
         // GATE 1 — personal connection gate (mirror of regular-hours logic)
         if (activePersonYear) {
             const dQi  = o.dayXkdg ? o.dayXkdg.qi  : null;
