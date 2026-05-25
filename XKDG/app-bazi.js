@@ -3291,49 +3291,65 @@ function fsComputeHouseBadge(dayHex, dayQi, dayYun, qmParams){
   const fSlot = fsSlotForDeg(facingDeg);
   if (!fSlot || !fSlot.hexNum) return null;
 
-  // Check connections facing hex ↔ day hex
-  const labels = (typeof hexConnectionLabels === 'function')
+  // 1) Facing hex ↔ day hex connections
+  var facingLabels = (typeof hexConnectionLabels === 'function')
     ? hexConnectionLabels(fSlot.hexNum, fSlot.qi, fSlot.yun, dayHex, dayQi, dayYun)
     : [];
 
-  // Qimen check for each water position
+  // 2) XKDG Water hex ↔ day hex connections (narrow 5.625° slot)
+  var xkdgWaterLabels = [];
+  if (_fsActiveHouseData.xkdgWater != null) {
+    var wSlot = fsSlotForDeg(_fsActiveHouseData.xkdgWater);
+    if (wSlot && wSlot.hexNum && typeof hexConnectionLabels === 'function') {
+      xkdgWaterLabels = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, dayHex, dayQi, dayYun);
+    }
+  }
+
+  // 3) Star Waters — Qimen palace check (permanent aquariums, ~45°)
   var qimenHits = [];
   var waters = _fsActiveHouseData.waters || [];
   if (qmParams && waters.length > 0 && typeof QMDJWaterScanner !== 'undefined') {
     var scanner = QMDJWaterScanner;
     waters.forEach(function(w){
-      var palace = scanner.degToPalace(w.deg);
+      // Use stored palace directly; fall back to degToPalace for old data with degrees
+      var palace = w.palace || (w.deg != null ? scanner.degToPalace(w.deg) : null);
       if (!palace) return;
       var res = scanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
                                            qmParams.hGan, qmParams.hZhi, palace);
       if (res && res.matched) {
-        qimenHits.push({ name: w.name, deg: w.deg, palace: palace, hits: res.hits || [], score: res.score || 0 });
+        qimenHits.push({ name: w.name, dir: w.dir || '', palace: palace, hits: res.hits || [], score: res.score || 0 });
       }
     });
   }
 
-  // Build result
+  // Build result — combine all checks
+  var hasFS    = facingLabels.length > 0 || xkdgWaterLabels.length > 0;
+  var hasQimen = qimenHits.length > 0;
   var color, icon;
-  if (labels.length > 0 && qimenHits.length > 0) {
-    color = '#00695c'; icon = '🏠✓🌀';  // FS + Qimen both good
-  } else if (labels.length > 0) {
-    color = '#2e7d32'; icon = '🏠✓';     // FS good
-  } else if (qimenHits.length > 0) {
-    color = '#1565c0'; icon = '🏠🌀';    // Qimen good
+  if (hasFS && hasQimen) {
+    color = '#00695c'; icon = '🏠✓🌀';
+  } else if (hasFS) {
+    color = '#2e7d32'; icon = '🏠✓';
+  } else if (hasQimen) {
+    color = '#1565c0'; icon = '🏠🌀';
   } else {
     color = '#999'; icon = '🏠';
   }
-  return { labels: labels, color: color, icon: icon, qimenHits: qimenHits };
+  return { facingLabels: facingLabels, xkdgWaterLabels: xkdgWaterLabels,
+           qimenHits: qimenHits, color: color, icon: icon };
 }
 
 function fsBuildHouseBadgeHtml(badge){
   if (!badge) return '';
   var parts = [];
   var name = (_fsActiveHouseData && _fsActiveHouseData.name) ? _fsActiveHouseData.name : '';
-  if (badge.labels.length) parts.push(badge.labels.join(', '));
-  if (badge.qimenHits.length) {
+  if (badge.facingLabels && badge.facingLabels.length)
+    parts.push('Facing: ' + badge.facingLabels.join(', '));
+  if (badge.xkdgWaterLabels && badge.xkdgWaterLabels.length)
+    parts.push('🌊 XKDG: ' + badge.xkdgWaterLabels.join(', '));
+  if (badge.qimenHits && badge.qimenHits.length) {
     badge.qimenHits.forEach(function(qh){
-      parts.push('🌀 ' + qh.name + ' (' + qh.hits.join(', ') + ')');
+      parts.push('🐟 ' + qh.name + ': ' + (qh.hits || []).join(', '));
     });
   }
   if (!parts.length) parts.push('No connection');

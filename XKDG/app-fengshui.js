@@ -2064,21 +2064,37 @@ function fsRenderHouseProfiles(){
     if (h.period != null) html += 'Period: ' + h.period;
     html += '</div>';
 
-    // Waters
-    if (h.waters && h.waters.length){
-      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #4db6ac;">';
-      h.waters.forEach(function(w, wi){
-        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">💧 <strong>' + escHtml(w.name) + '</strong> — ' + w.deg + '°</span>';
-        html += '<button onclick="fsUseWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#00838f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Load this water into Water input">Use</button>';
-        html += '<button onclick="fsRemoveWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove this water">✕</button>';
-        html += '</div>';
-      });
+    // XKDG Water (single, from Luopan analysis — 5.625° hexagram slot)
+    html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #c9a84c;">';
+    if (h.xkdgWater != null) {
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+      html += '<span style="font-size:11px;">🌊 <strong>XKDG Water</strong> — ' + h.xkdgWater + '°</span>';
+      html += '<button onclick="fsSetXkdgWater(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Update from Water (°) input">Update</button>';
+      html += '<button onclick="fsClearXkdgWater(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove XKDG water">✕</button>';
+      html += '</div>';
+    } else {
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+      html += '<span style="font-size:11px;color:#999;">🌊 XKDG Water: not set</span>';
+      html += '<button onclick="fsSetXkdgWater(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Set from Water (°) input">Set</button>';
       html += '</div>';
     }
-    // Add water button
-    html += '<div style="margin-top:4px;">';
-    html += '<button onclick="fsAddWaterToHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">+ Add Water position</button>';
+    html += '</div>';
+
+    // Star Waters (permanent aquariums — Flying Stars palace level, ~45°)
+    html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #4db6ac;">';
+    if (h.waters && h.waters.length){
+      h.waters.forEach(function(w, wi){
+        var dirLabel = w.dir ? w.dir : (w.deg != null ? w.deg + '°' : '?');
+        var palaceLabel = w.palace ? ' (Palace ' + w.palace + ')' : '';
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+        html += '<span style="font-size:11px;">🐟 <strong>' + escHtml(w.name) + '</strong> — ' + dirLabel + palaceLabel + '</span>';
+        html += '<button onclick="fsRemoveWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove this aquarium">✕</button>';
+        html += '</div>';
+      });
+    } else {
+      html += '<div style="font-size:11px;color:#999;padding:2px 0;">🐟 Star Water: none</div>';
+    }
+    html += '<button onclick="fsAddWaterToHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Aquarium</button>';
     html += '</div>';
 
     html += '</div>';
@@ -2093,7 +2109,7 @@ function fsSaveHouse(){
   const facingVal = document.getElementById('fs-facing').value;
   const hfVal     = document.getElementById('fs-house-facing').value;
   const perVal    = document.getElementById('fs-period').value;
-  const waterVal  = document.getElementById('fs-water').value;
+  const xkdgWVal  = document.getElementById('fs-water').value;
 
   if (!hfVal && !facingVal){ alert('Enter at least a Facing or House Facing.'); return; }
 
@@ -2105,13 +2121,10 @@ function fsSaveHouse(){
     facing:      facingVal ? parseFloat(facingVal) : null,
     houseFacing: hfVal     ? parseFloat(hfVal)     : null,
     period:      perVal    ? parseInt(perVal)       : null,
+    xkdgWater:   xkdgWVal  ? parseFloat(xkdgWVal)  : null,
     waters:      []
   };
-  // If water is entered, save it as first water
-  if (waterVal){
-    const wName = prompt('Name for this water position (e.g. "Acquario salotto"):') || 'Water 1';
-    house.waters.push({ name: wName.trim(), deg: parseFloat(waterVal) });
-  }
+  // Star Waters (permanent aquariums) are added separately via "+ Add Aquarium"
 
   const all = _fsHousesLoad();
   if (!all[person.name]) all[person.name] = [];
@@ -2138,10 +2151,10 @@ function fsLoadHouse(personName, houseIdx){
     const el = document.getElementById('fs-period');
     if (el){ el.value = h.period; }
   }
-  // Load first water if available
-  if (h.waters && h.waters.length){
+  // Load XKDG Water into the Water (°) field
+  if (h.xkdgWater != null){
     const el = document.getElementById('fs-water');
-    if (el){ el.value = h.waters[0].deg; }
+    if (el){ el.value = h.xkdgWater; }
   }
   // Turn on Flying Stars if house data is loaded
   if (h.houseFacing != null && h.period != null && !FS_STARS_ON){
@@ -2160,28 +2173,46 @@ function fsDeleteHouse(personName, houseIdx){
   fsRenderHouseProfiles();
 }
 
+// Direction → Flying Stars palace mapping
+var _fsDirToPalace = { 'S':9, 'SW':2, 'W':7, 'NW':6, 'N':1, 'NE':8, 'E':3, 'SE':4 };
+var _fsPalaceToDir = { 9:'S', 2:'SW', 7:'W', 6:'NW', 1:'N', 8:'NE', 3:'E', 4:'SE' };
+
 function fsAddWaterToHouse(personName, houseIdx){
-  const waterVal = document.getElementById('fs-water').value;
-  if (!waterVal){ alert('Enter a Water position (°) in the input above first.'); return; }
-  const wName = prompt('Name for this water position:') || ('Water ' + (new Date()).getTime());
+  const wName = prompt('Name for this aquarium / water feature\n(e.g. "Acquario salotto"):');
+  if (!wName || !wName.trim()) return;
+  const dirStr = prompt('Direction of the aquarium:\nN, NE, E, SE, S, SW, W, NW');
+  if (!dirStr) return;
+  const dir = dirStr.trim().toUpperCase();
+  const palace = _fsDirToPalace[dir];
+  if (!palace) { alert('Invalid direction. Use: N, NE, E, SE, S, SW, W, NW'); return; }
   const all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  all[personName][houseIdx].waters.push({ name: wName.trim(), deg: parseFloat(waterVal) });
+  all[personName][houseIdx].waters.push({ name: wName.trim(), dir: dir, palace: palace });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
 
-function fsUseWater(personName, houseIdx, waterIdx){
+function fsSetXkdgWater(personName, houseIdx){
+  const waterVal = document.getElementById('fs-water').value;
+  if (!waterVal){ alert('Enter an XKDG Water position (°) in the Water field above first.'); return; }
   const all = _fsHousesLoad();
-  const h = (all[personName] || [])[houseIdx];
-  if (!h || !h.waters || !h.waters[waterIdx]) return;
-  const el = document.getElementById('fs-water');
-  if (el){ el.value = h.waters[waterIdx].deg; }
-  fsRedraw();
+  if (!all[personName] || !all[personName][houseIdx]) return;
+  all[personName][houseIdx].xkdgWater = parseFloat(waterVal);
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
+}
+
+function fsClearXkdgWater(personName, houseIdx){
+  if (!confirm('Remove XKDG Water from this house?')) return;
+  const all = _fsHousesLoad();
+  if (!all[personName] || !all[personName][houseIdx]) return;
+  all[personName][houseIdx].xkdgWater = null;
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
 }
 
 function fsRemoveWater(personName, houseIdx, waterIdx){
-  if (!confirm('Remove this water position?')) return;
+  if (!confirm('Remove this aquarium?')) return;
   const all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
   all[personName][houseIdx].waters.splice(waterIdx, 1);
