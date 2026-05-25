@@ -419,6 +419,10 @@ function buildFengShuiView(){
 
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+        <button onclick="fsSaveHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">💾 Save House</button>
+      </div>
+
       <!-- ═══ ⭐ STARS buttons ═══ -->
       <div style="font-size:11px;font-weight:bold;color:#00695c;margin-bottom:4px;">⭐ Stars</div>
 
@@ -445,7 +449,6 @@ function buildFengShuiView(){
       <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-top:16px;margin-bottom:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
-          <button onclick="fsSaveHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer;">💾 Save House</button>
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
         <div id="fs-house-list" style="font-size:12px;"></div>
