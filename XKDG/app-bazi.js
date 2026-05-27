@@ -2540,13 +2540,14 @@ function localISODate(date) {
     return `${y}-${m}-${d}`;
 }
 
-function loadDateIntoMain(isoDate, hourIndex) {
+function loadDateIntoMain(isoDate, hourIndex, isZiSecondHalf) {
     const lon = parseFloat(document.getElementById('longitude').value);
     const utc = parseFloat(document.getElementById('utc-offset').value);
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
 
     // Convert True Solar hour midpoint back to local clock time
-    const hourStart = HOUR_STARTS[hourIndex];
+    // For Zi second half (00:00-01:00), use hour 0 instead of 23
+    const hourStart = (hourIndex === 0 && isZiSecondHalf) ? 0 : HOUR_STARTS[hourIndex];
     const solarMinutes = hourStart * 60 + 30;
     const localMinutes = solarMinutes - offsetMin;
 
@@ -3904,7 +3905,7 @@ function buildTableView() {
             const ziRelHtml2 = ziBlueTexts2.length>0?`<div style="font-size:9px;color:#1a7a1a;font-weight:bold;line-height:1.4;text-align:right;">${ziBlueTexts2.join('<br>')}</div>`:'';
             const ziQualHtml2 = ziQualTexts2.length>0?`<div style="font-size:9px;color:#555;text-align:right;">${ziQualTexts2.join(' · ')}</div>`:'';
             const ziSpHtml2 = ziSpirit2?`<div style="font-size:9px;font-weight:bold;color:${ziSpirit2.auspicious?'#0044cc':'#d40000'};">${ziSpirit2.en} ${ziSpirit2.zh}</div>`:'';
-            html += `<tr style="cursor:pointer;" onclick="loadDateIntoMain('${localISODate(dayDate)}',0);window.scrollTo({top:0,behavior:'smooth'});" onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">`;
+            html += `<tr style="cursor:pointer;" onclick="loadDateIntoMain('${localISODate(dayDate)}',0,true);window.scrollTo({top:0,behavior:'smooth'});" onmouseover="this.style.filter='brightness(0.92)'" onmouseout="this.style.filter=''">`;
             html += `<td style="border:1px solid #ddd;background:${ziRowBg2};padding:3px 2px;text-align:center;vertical-align:middle;">
                 <div style="font-size:8px;color:#888;">${ziTimeLabel2}</div>
                 <div style="font-size:10px;color:#880e4f;font-weight:bold;">${ziHGan2}${ziHZhi2}</div>
@@ -4924,7 +4925,7 @@ function buildMonthView() {
                     const ziYD2 = ziP2.year||{}, ziMD2 = ziP2.month||{}, ziDD2 = ziP2.day||{}, ziHD2 = ziP2.hour||{};
                     const ziPerN2 = ziBlue2.filter(i=>i.text.includes('Period')).map(i=>i.text);
                     const ziScoreForSort2 = ziHasNeg2 ? ziNegScore2 : ziScore2;
-                    dayRows.push({ score: ziScoreForSort2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};cursor:pointer;">
+                    dayRows.push({ score: ziScoreForSort2, isZiSecond: true, html: `<div onclick="loadDateIntoMain('${localISODate(dayDate)}',0,true)" style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${ziBg2?`background:${ziBg2};`:''}border-left:4px solid ${ziBrd2};cursor:pointer;">
                         <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${ziHasNeg2?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${ziHasNeg2?'-'+ziNegScore2:ziScore2}${_zi2PurposeIcon ? `<div style="font-size:14px;line-height:1;">${_zi2PurposeIcon}</div>` : ''}</div>
                         <div style="width:80px;flex-shrink:0;font-size:11px;color:#333;">
                             <span style="color:#999;font-size:10px;">${ziSecondHalfLabel}</span><br>

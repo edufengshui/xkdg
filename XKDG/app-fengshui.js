@@ -374,7 +374,7 @@ function buildFengShuiView(){
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()">
           </div>
-          <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ ON</button>
+          <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Hide Stars</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
       </div>
@@ -498,7 +498,7 @@ function fsToggleStars(){
   FS_STARS_ON = !FS_STARS_ON;
   const btn = document.getElementById('fs-stars-toggle');
   if (btn){
-    btn.textContent = FS_STARS_ON ? '⭐ ON' : '⭐ OFF';
+    btn.textContent = FS_STARS_ON ? '⭐ Hide Stars' : '⭐ Show Stars';
     btn.style.background = FS_STARS_ON ? '#8a6a1f' : '#aaa';
   }
   fsRedraw();
