@@ -2273,6 +2273,25 @@ function fsRenderHouseProfiles(){
     html += '<button onclick="fsAddWaterToHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Aquarium</button>';
     html += '</div>';
 
+    // ── QFS ZONES (🌀 Qimen × Flying Stars) ──
+    html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #7b1fa2;">';
+    html += '<div style="font-size:11px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones (Qimen × Flying Stars)</div>';
+    var zones = h.zones || [];
+    if (zones.length){
+      var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
+      zones.forEach(function(z, zi){
+        var targetLabel = z.target === 'water' ? 'Water ★' : 'Mountain ★';
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+        html += '<span style="font-size:11px;">🌀 <strong>' + escHtml(z.name) + '</strong> — Palace ' + z.palace + ' (' + (_palDir[z.palace]||'?') + ') · ' + targetLabel + '</span>';
+        html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">✕</button>';
+        html += '</div>';
+      });
+    } else {
+      html += '<div style="font-size:11px;color:#999;padding:2px 0;">No zones yet</div>';
+    }
+    html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Zone</button>';
+    html += '</div>';
+
     html += '</div>';
   });
   list.innerHTML = html;
@@ -2478,6 +2497,38 @@ function fsRemoveWater(personName, houseIdx, waterIdx){
   const all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
   all[personName][houseIdx].waters.splice(waterIdx, 1);
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
+}
+
+// ── QFS ZONE CRUD ───────────────────────────────────────────────
+
+function fsAddZone(personName, houseIdx){
+  var zName = prompt('Zone name\n(e.g. "Aquarium SE", "Bedroom NW", "Study E"):');
+  if (!zName || !zName.trim()) return;
+  var palaceStr = prompt('Palace number (1-9):\n1=N, 2=SW, 3=E, 4=SE, 5=Center, 6=NW, 7=W, 8=NE, 9=S');
+  if (!palaceStr) return;
+  var palace = parseInt(palaceStr);
+  if (isNaN(palace) || palace < 1 || palace > 9){ alert('Invalid palace (1-9).'); return; }
+  var targetStr = prompt('Target FS star type:\nType "water" for Water Star (向星) or "mountain" for Mountain Star (山星)');
+  if (!targetStr) return;
+  var target = targetStr.trim().toLowerCase();
+  if (target !== 'water' && target !== 'mountain'){ alert('Invalid: must be "water" or "mountain".'); return; }
+
+  var all = _fsHousesLoad();
+  if (!all[personName] || !all[personName][houseIdx]) return;
+  if (!all[personName][houseIdx].zones) all[personName][houseIdx].zones = [];
+  all[personName][houseIdx].zones.push({ name: zName.trim(), palace: palace, target: target });
+  _fsHousesSave(all);
+  fsRenderHouseProfiles();
+}
+
+function fsRemoveZone(personName, houseIdx, zoneIdx){
+  if (!confirm('Remove this QFS zone?')) return;
+  var all = _fsHousesLoad();
+  if (!all[personName] || !all[personName][houseIdx]) return;
+  var zones = all[personName][houseIdx].zones || [];
+  zones.splice(zoneIdx, 1);
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }

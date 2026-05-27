@@ -3325,13 +3325,69 @@ function fsComputeAllHousesBadges(dayHex, dayQi, dayYun, qmParams){
       });
     }
 
+    // ── QFS Zones — Qimen Star ↔ Flying Star match + 2-of-3 conditions ──
+    var zoneHits = [];
+    var zones = house.zones || [];
+    if (qmParams && zones.length > 0 &&
+        house.houseFacing != null && house.period != null &&
+        typeof QMDJWaterScanner !== 'undefined' && typeof FlyingStars !== 'undefined' &&
+        typeof fsMountainCharFromDeg === 'function') {
+      // Compute FS chart once per house
+      var _fsMtn = fsMountainCharFromDeg(house.houseFacing);
+      var _fsChart;
+      try { _fsChart = FlyingStars.calculate(house.period, _fsMtn); } catch(e){ _fsChart = null; }
+      if (_fsChart) {
+        // Palace → grid index for FS chart arrays
+        var _P2I = {4:0, 9:1, 2:2, 3:3, 5:4, 7:5, 8:6, 1:7, 6:8};
+        // Qimen star English name → Luo Shu number
+        var _QS2N = {'Grass':1,'Rice':2,'Aggressor':3,'Assistant':4,'Fowl':5,'Heart':6,'Pillar':7,'Official':8,'Hero':9};
+        var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
+        // Get Qimen chart for this hour
+        var _qmChart = QMDJWaterScanner.getHourChart(qmParams.Y, qmParams.M, qmParams.D,
+                                                      qmParams.hGan, qmParams.hZhi);
+        if (_qmChart) {
+          zones.forEach(function(z){
+            var gIdx = _P2I[z.palace];
+            if (gIdx === undefined) return;
+            // Target FS star in this palace
+            var fsStar = (z.target === 'water') ? _fsChart.facingStars[gIdx] : _fsChart.sittingStars[gIdx];
+            // Qimen palace data
+            var pd = _qmChart.palaces[z.palace];
+            if (!pd || !pd.star) return;
+            var qmStarNum = _QS2N[pd.star];
+            if (!qmStarNum || qmStarNum !== fsStar) return;  // star mismatch
+            // Check 2-of-3 conditions
+            var conds = [];
+            if (pd.deity === 'Commander') conds.push('值符 Zhi Fu');
+            if (pd.tiH && ['乙','丙','丁'].indexOf(pd.tiH) !== -1)
+              conds.push('三奇 ' + pd.tiH);
+            if (pd.door && ['Open','Rest','Birth','View'].indexOf(pd.door) !== -1)
+              conds.push('吉門 ' + pd.door);
+            if (conds.length < 2) return;  // need at least 2 of 3
+            // Match!
+            var targetLabel = (z.target === 'water' ? 'Water' : 'Mountain') + ' ★' + fsStar;
+            zoneHits.push({
+              name: z.name,
+              palace: z.palace,
+              dir: _palDir[z.palace] || '',
+              targetLabel: targetLabel,
+              qmStar: pd.star + ' ★' + qmStarNum,
+              conditions: conds,
+              score: conds.length
+            });
+          });
+        }
+      }
+    }
+
     var hasFS    = doorResults.length > 0;
     var hasQimen = qimenHits.length > 0 || doorResults.some(function(dr){ return dr.waterQimenHits.length > 0; });
-    if (hasFS || hasQimen) {
+    var hasQFS   = zoneHits.length > 0;
+    if (hasFS || hasQimen || hasQFS) {
       results.push({
         houseName: house.name, doorResults: doorResults,
-        qimenHits: qimenHits,
-        hasFS: hasFS, hasQimen: hasQimen
+        qimenHits: qimenHits, zoneHits: zoneHits,
+        hasFS: hasFS, hasQimen: hasQimen, hasQFS: hasQFS
       });
     }
   });
@@ -3343,7 +3399,8 @@ function fsBuildHouseBadgeHtml(badges, cacheKey){
   if (cacheKey) _fsBadgeCache[cacheKey] = badges;
   return badges.map(function(b){
     var icon, color;
-    if (b.hasFS && b.hasQimen) { icon = '🏠✓🌀'; color = '#00695c'; }
+    if (b.hasQFS) { icon = '🏠🌀★'; color = '#7b1fa2'; }
+    else if (b.hasFS && b.hasQimen) { icon = '🏠✓🌀'; color = '#00695c'; }
     else if (b.hasFS) { icon = '🏠✓'; color = '#2e7d32'; }
     else { icon = '🏠🌀'; color = '#1565c0'; }
     var ck = (cacheKey || '').replace(/'/g, "\\'");
@@ -3382,6 +3439,15 @@ function fsShowHousePopup(cacheKey){
     // Star Water Qimen hits
     (b.qimenHits || []).forEach(function(qh){
       html += '<div style="font-size:12px;margin-top:2px;">🐟 ' + qh.name + ' (' + (qh.dir||'Palace '+qh.palace) + '): <strong>' + (qh.hits||[]).join(', ') + '</strong></div>';
+    });
+
+    // QFS Zone hits
+    (b.zoneHits || []).forEach(function(zh){
+      html += '<div style="margin-top:4px;padding-left:6px;border-left:2px solid #7b1fa2;">';
+      html += '<div style="font-size:11px;font-weight:bold;color:#7b1fa2;">🌀 ' + zh.name + ' (Palace ' + zh.palace + ' ' + zh.dir + ')</div>';
+      html += '<div style="font-size:12px;">Target: <strong>' + zh.targetLabel + '</strong> = Qimen: <strong>' + zh.qmStar + '</strong> ✓</div>';
+      html += '<div style="font-size:11px;color:#4a148c;">Conditions (' + zh.conditions.length + '/3): ' + zh.conditions.join(' · ') + '</div>';
+      html += '</div>';
     });
 
     html += '</div>';
