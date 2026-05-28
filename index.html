@@ -17,13 +17,27 @@
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.svg">
 
     <!-- Service worker registration -->
-    <script src="register-sw.js"></script>
+    <!-- updateViaCache:'none' forces the browser to always fetch sw.js from
+         the network (bypassing HTTP cache), so version bumps take effect
+         immediately without requiring manual cache clearing. -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+          .then(reg => {
+            // Check for updates every time the page is focused
+            reg.update();
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') reg.update();
+            });
+          });
+      }
+    </script>
 
     <!-- External library -->
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="styles.css?v=439">
+    <link rel="stylesheet" href="styles.css">
     <style>
       /* Negatives chip — white by default, red when active */
       .filter-chip.negatives-chip {
@@ -330,11 +344,15 @@
         <div id="scan-results" class="scan-results" style="display:none;"></div>
     </div>
 
-<script src="cities.js?v=413"></script>
-<script src="app-bazi.js?v=446"></script>
-<script src="qmdj-water-scanner.js?v=469"></script>
-<script src="app-fengshui.js?v=469"></script>
-<div id="version-tag" style="text-align:center;margin:20px 0 10px;font-size:15px;font-weight:bold;color:#888;letter-spacing:1px;">v469</div>
-<script src="version.js?v=469"></script>
+<script src="cities.js"></script>
+<script src="app-bazi.js"></script>
+<script src="qmdj-water-scanner-data.js"></script>
+<script src="qmdj-water-scanner.js"></script>
+<script src="app-fengshui.js"></script>
+<script src="flying-stars.js"></script>
+<script src="flying-stars-qimen.js"></script>
+<script src="fs-chart-finder.js"></script>
+<div id="version-tag" style="text-align:center;margin:20px 0 10px;font-size:15px;font-weight:bold;color:#888;letter-spacing:1px;">v476</div>
+<script src="version.js"></script>
 </body>
 </html>
