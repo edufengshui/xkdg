@@ -1700,23 +1700,59 @@ function fsAnnotateQimenHits(matches, fSlot, wSlot){
 
 // ── Qimen configuration popup ──
 var _qimenDescriptions = {
-  'Heaven Dun 天遁':   'Bing on Tian + Ding or Wu on Di + Birth door.\nPrayers, petitions to heaven, auspicious requests.',
-  'Earth Dun 地遁':    'Yi on Tian + Ji on Di + Open door.\nEarth-related work, hiding, concealment.',
-  'Human Dun 人遁':    'Ding on Tian + Rest door + Yin deity.\nSocial matters, human relationships.',
-  'Deity Dun 神遁':    'Yi on Tian + Birth door + Heaven deity.\nSpiritual activities, divine support.',
-  'Ghost Dun 鬼遁':    'Ding on Tian + Delusion door + Earth deity.\nCommunicating with spirits, rituals.',
-  'Wind Dun 風遁':     'Yi on Tian + favorable door + Xun palace.\nQuick movement, travel, wind energy.',
-  'Cloud Dun 云遁':    'Yi on Tian + Xin on Di + favorable door.\nConcealment, mystery, hidden support.',
-  'Dragon Dun 龍遁':   'Yi on Tian + favorable door + Kan palace.\nWater activities, aquatic energy.',
-  'Tiger Dun 虎遁':    'Yi on Tian + Xin on Di + Rest/Birth door + Gen palace.\nMountain energy, stability.',
-  'Real Pretenses 真詐':     'San Qi on Tian + favorable door + Yin deity.\nSpiritual and charitable activities.',
-  'Rest Pretenses 休詐':     'San Qi on Tian + favorable door + Harmonies deity.\nMedicine, healing, religious activities.',
-  'Multiple Pretenses 重詐': 'San Qi on Tian + favorable door + Earth deity.\nFame, fortune, attracting people.',
-  'Heaven Borrows 天假':   'Earth deity + San Qi + View door.\nWar, litigation, important positions.',
-  'Earth Borrows 地假':    'Earth/Yin/Harmonies + Ding/Ji/Gui + Delusion door.\nHiding, preparations, secret affairs.',
-  'Human Borrows 人假':    'Heaven deity + Ren + Shocking door.\nPursuing fugitives, tracking.',
-  'Deity Borrows 神假':    'Earth/Harmonies + Ding/Ji/Gui + Injury door.\nHiding valuables, seeking compensation.',
-  'Ghost Borrows 鬼假':    'Earth deity + Ding/Ji/Gui + Death door.\nBurial rites, hunting, pacifying.'
+  // ═══ NINE DUN (九遁 Escapes) ═══
+  'Heaven Dun 天遁':
+    'Configuration: The Marvel Bing (丙) on the Heavenly Plate meets the Sheng Gate (生 Life) and the Spirit Zhi Fu (值符 Commander) or the Earth element.\n\nMeaning: The highest energy of visibility and heavenly protection. Excellent for launching new businesses, making proposals, expanding, or seeking support from mentors and authority figures.',
+
+  'Earth Dun 地遁':
+    'Configuration: The Marvel Yi (乙) on the Heavenly Plate meets the Kai Gate (开 Open) and the Spirit Jiu Di (九地 Nine Earths).\n\nMeaning: Offers stability, protection, and grounding. Ideal for accumulating wealth, purchasing real estate, signing long-term contracts, or hiding/keeping a low profile.',
+
+  'Human Dun 人遁':
+    'Configuration: The Marvel Ding (丁) on the Heavenly Plate meets the Xiu Gate (休 Rest) and the Spirit Tai Yin (太阴 Great Shadow).\n\nMeaning: Governs human relationships and harmony. Perfect for negotiating, finding allies, resolving conflicts, taking exams, or meeting business and romantic partners.',
+
+  'Deity Dun 神遁':
+    'Configuration: The Marvel Bing (丙) meets the Sheng Gate (生 Life) and the Spirit Jiu Tian (九天 Nine Heavens).\n\nMeaning: Connects to higher forces. The best structure for spiritual development, meditation, visualization and manifestation, or for actions requiring strong inspiration and intuition.',
+
+  'Ghost Dun 鬼遁':
+    'Configuration: The Stem Ding (丁) meets the Du Gate (杜 Delusion/Closed) and the Spirit Jiu Di (九地 Nine Earths) (or variants with the Death Gate Si Mian).\n\nMeaning: Linked to total concealment and indirect strategies. Excellent for industrial espionage, secret market research, catching adversaries by surprise, or acting behind the scenes unnoticed.',
+
+  'Wind Dun 風遁':
+    'Configuration: The Stem Yi (乙) meets a specific combination of Gates (often Kai or Jing of Fire) in the Wind Palace (Xun 4).\n\nMeaning: Harnesses speed and information diffusion. Useful for viral marketing campaigns, impactful public speaking, or making your ideas spread rapidly.',
+
+  'Cloud Dun 云遁':
+    'Configuration: The Stem Yi (乙) meets the Kai Gate (Open) and the Spirit Liu He (六合 Six Harmonies) or configurations with the Water element.\n\nMeaning: Represents fluidity and adaptability. Excellent for blending into ambiguous situations, waiting for the right moment, and accumulating resources before a decisive move.',
+
+  'Dragon Dun 龍遁':
+    'Configuration: The Marvel Yi (乙) or Gui (癸) combined with the Xiu Gate (Rest) or Sheng Gate (Life) in Palace Kan 1 (Water) or Zhen 3 (Wood/Dragon).\n\nMeaning: Represents the power of the dragon rising from the waters. Excellent for gaining leadership, winning legal contests, dominating a market, or launching technological or maritime projects.',
+
+  'Tiger Dun 虎遁':
+    'Configuration: The Stem Xin (辛) or Geng (庚) with the Sheng Gate (Life) or Shang Gate (Injury) in Palace Gen 8 or Dui 7 (Metal/Tiger).\n\nMeaning: Martial, aggressive, and defensive energy. Excellent for overcoming difficult obstacles, winning disputes, intimidating competitors, or protecting your business/personal boundaries with determination.',
+
+  // ═══ THREE PRETENSES (三诈) ═══
+  'Real Pretenses 真詐':
+    'TRUE PRETENSE (Zhen Zha 真诈)\nConfiguration: A Lucky Door (Sheng, Kai, or Xiu) + One of the Three Marvels (Yi, Bing, or Ding) + the Spirit Tai Yin (太阴 Grand Shade).\n\nTai Yin provides deep shade, secrecy, and hidden assistance. The ultimate "stealth" structure.\n\nBest for: Designing secret strategies, planning behind closed doors, corporate planning, or actions where you do not want competitors to see you coming. Allows flawless execution because the opposition remains completely in the dark.',
+
+  'Rest Pretenses 休詐':
+    'EARTH PRETENSE (Di Zha 地诈)\nConfiguration: A Lucky Door (Sheng, Kai, or Xiu) + One of the Three Marvels (Yi, Bing, or Ding) + the Spirit Jiu Di (九地 Nine Earths).\n\nJiu Di represents Earth, stability, hiding, and low-profile growth.\n\nBest for: Concealing assets, burying a situation, defensive strategies, or setting up traps/ambushes (metaphorically in business or negotiations). Highly effective for quietly acquiring real estate, signing long-term confidentiality agreements, or waiting out a storm in complete safety.',
+
+  'Multiple Pretenses 重詐':
+    'DIVINE PRETENSE (Shen Zha 神诈)\nConfiguration: A Lucky Door (Sheng, Kai, or Xiu) + One of the Three Marvels (Yi, Bing, or Ding) + the Spirit Liu He (六合 Six Harmonies).\n\nLiu He represents partnerships, public relations, and universal connection. In a Pretense structure, it means using optics, alignment, and social leverage to your advantage.\n\nBest for: Psychological warfare, blending in with a crowd, using a "front" or proxy to achieve a goal, negotiation, and making peace offerings that secretly benefit your position. Excellent for "pretending" to align with someone while quietly maintaining your own agenda.',
+
+  // ═══ FIVE BORROWS (五假) ═══
+  'Heaven Borrows 天假':
+    'HEAVEN BORROW (Tian Jia 天假)\nConfiguration: The Marvel Ding (丁) + the Jing Gate (景 Scenery) + the Spirit Jiu Tian (九天 Nine Heavens).\n\nYou are borrowing the majestic, high-profile power of the Heavens to project absolute authority.\n\nBest for: Submitting proposals to high-level executives, publishing manifestos, public speaking, issuing corporate decrees, or making demands. Even if you lack real power, you will appear immensely authoritative, and others will comply out of respect or awe.',
+
+  'Earth Borrows 地假':
+    'EARTH BORROW (Di Jia 地假)\nConfiguration: The Marvel Gui (癸) + the Du Gate (杜 Hidden) + the Spirit Jiu Di (九地 Nine Earths).\n\nYou are borrowing the secretive, sheltering power of the Earth to disappear or build up resources.\n\nBest for: Finding a safe haven during a crisis, quietly moving assets, corporate restructuring behind the scenes, or escaping an unfavorable contract. Allows you to use the environment to shield you from harm when you are too weak to fight.',
+
+  'Human Borrows 人假':
+    'MAN BORROW (Ren Jia 人假)\nConfiguration: The Stem Ren (壬) + the Spirit Jiu Di (九地 Nine Earths) + the Jing Gate (景 Scenery).\n\nYou are borrowing human compliance, public sentiment, or the cooperation of the masses.\n\nBest for: Catching fugitives, recruiting talent when your company is unknown, winning over a hostile audience, or negotiating with people who initially don\'t trust you. Temporarily creates a bridge of human connection and compliance that you didn\'t previously possess.',
+
+  'Deity Borrows 神假':
+    'DEITY BORROW (Shen Jia 神假)\nConfiguration: The Marvel Bing (丙) + the Jing Gate (景 Scenery) + the Spirit Zhi Fu (值符 Chief).\n\nYou are borrowing divine authority, spiritual luck, or upper-class elite status.\n\nBest for: Suppressing evil, handling corrupt situations, managing highly toxic disputes, or dealing with lawsuits where you are the underdog. Wraps you in an aura of untouchable righteousness, forcing the opposition to back down.',
+
+  'Ghost Borrows 鬼假':
+    'GHOST BORROW (Gui Jia 鬼假)\nConfiguration: The Marvel Ding (丁) + the Du Gate (杜 Hidden) + the Spirit Jiu Di (九地 Nine Earths). Often forming when the Palace interacts with specific Grave/Tomb branches.\n\nYou are borrowing the hidden, unseen, or "spectral" forces of the shadow world.\n\nBest for: Stealth maneuvers, psychological warfare, planting rumors to confuse an opponent, conducting secret audits, or executing a strategy where you want competitors to chase ghosts while you take the prize.'
 };
 function showQimenPopup(label){
   var old = document.getElementById('qimen-popup-overlay');
