@@ -2679,7 +2679,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — activate stimulator at '+pq.dir+'" onclick="event.stopPropagation();showQimenPopup(\''+pq.label.replace(/'/g,'').replace(/'/g,'')+'\')"'+'>🌀⭐'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — activate stimulator at '+pq.dir+'" onclick="event.stopPropagation();showQimenPopup(\''+pq.label.replace(/'/g,'').replace(/'/g,'')+'\')"'+'>🌀⭐'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${(r.purposeQimenR||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — act towards '+pq.dir+' direction" onclick="event.stopPropagation();showQimenPopup(\''+pq.label.replace(/'/g,'').replace(/'/g,'')+'\')">→'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -3238,7 +3238,31 @@ function fsScanPurposeQimen(qmParams, purpose){
     if (!res || !res.hits) continue;
     res.hits.forEach(function(h){
       if (validLabels.indexOf(h.label) !== -1){
-        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?' });
+        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?', method: 'flying' });
+      }
+    });
+  }
+  return results;
+}
+
+/** Scan rotating chart for Purpose-relevant Qimen configs (directional only, no FS stimulator).
+ *  Returns [{label, palace, dir}] or empty array. */
+function fsScanPurposeQimenRotating(qmParams, purpose){
+  if (!qmParams || !purpose) return [];
+  var validLabels = PURPOSE_QIMEN_MAP[purpose];
+  if (!validLabels || !validLabels.length) return [];
+  if (typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getRotatingHourChart !== 'function') return [];
+  var chart = QMDJWaterScanner.getRotatingHourChart(qmParams.Y, qmParams.M, qmParams.D,
+                                                     qmParams.hGan, qmParams.hZhi);
+  if (!chart) return [];
+  var results = [];
+  for (var p = 1; p <= 9; p++){
+    if (p === 5) continue;
+    var hits = QMDJWaterScanner.checkRotatingPalace(chart, p);
+    if (!hits || !hits.length) continue;
+    hits.forEach(function(h){
+      if (validLabels.indexOf(h.label) !== -1){
+        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?', method: 'rotating' });
       }
     });
   }
@@ -5392,6 +5416,10 @@ function buildMonthView() {
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
                 getPurpose());
             const pqHTMLLV = pqHitsLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — activate stimulator at ' + pq.dir + '" onclick="event.stopPropagation();showQimenPopup(\'' + pq.label.replace(/'/g,'') + '\')"' + '>🌀⭐' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
+            const pqRotLV = fsScanPurposeQimenRotating(
+                { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
+                getPurpose());
+            const pqRotHTMLLV = pqRotLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — act towards ' + pq.dir + ' direction" onclick="event.stopPropagation();showQimenPopup(\'' + pq.label.replace(/'/g,'') + '\')"' + '>→' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
             // Unified score-based row coloring: green for positive, red for negative
             const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
                             : listScore >= 8  ? '#c8e6c9'   // medium green
@@ -5523,7 +5551,7 @@ function buildMonthView() {
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
-                    ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${fsHTMLLV}
+                    ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${pqRotHTMLLV} ${fsHTMLLV}
                 </div>
             </div>`;
             dayRows.push({ score: hasNegativesFilterMV ? negativeScore : listScore, html: rowHtml });
@@ -6167,6 +6195,9 @@ function runScanner() {
                 fsBadge: fsComputeAllHousesBadges(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
                     { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi }),
                 purposeQimen: fsScanPurposeQimen(
+                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi },
+                    getPurpose()),
+                purposeQimenR: fsScanPurposeQimenRotating(
                     { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi },
                     getPurpose())
             });

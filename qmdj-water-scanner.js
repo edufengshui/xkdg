@@ -177,11 +177,11 @@
     var deity = cell[3];
     var isGhostDun = (ti==='Ding' && door==='Du' && deity==='Earth');
     // Five Borrows (五假 Wu Jia) — named auspicious configurations with unfavorable doors
-    var isTianJia = (deity==='Earth' && (ti==='Yi'||ti==='Bing'||ti==='Ding') && door==='JingS');
-    var isDiJia   = ((deity==='Earth'||deity==='Yin'||deity==='Harmonies') && (ti==='Ding'||ti==='Ji'||ti==='Gui') && door==='Du');
-    var isRenJia  = (deity==='Heaven' && ti==='Ren' && door==='JingF');
-    var isShenJia = ((deity==='Earth'||deity==='Harmonies') && (ti==='Ding'||ti==='Ji'||ti==='Gui') && door==='Shang');
-    var isGuiJia  = (deity==='Earth' && (ti==='Ding'||ti==='Ji'||ti==='Gui') && door==='Si');
+    var isTianJia = (ti==='Ding' && door==='JingS' && deity==='Heaven');
+    var isDiJia   = (ti==='Gui' && door==='Du' && deity==='Earth');
+    var isRenJia  = (ti==='Ren' && door==='JingS' && deity==='Earth');
+    var isShenJia = (ti==='Bing' && door==='JingS' && deity==='Commander');
+    var isGuiJia  = (ti==='Ding' && door==='Du' && deity==='Earth');
     var isAnyBorrow = isTianJia || isDiJia || isRenJia || isShenJia || isGuiJia;
     if(!hasFavDoor && !isGhostDun && !isAnyBorrow) return [];
 
@@ -213,32 +213,32 @@
     // NINE GLIMPSES 九遁 (Jiu Dun) — high-value auspicious configurations
     var doorsFav3 = ['Kai','Xiu','Sheng'];
     // 1. Heaven Dun 天遁: Bing/Tian + (Ding|Wu)/Di + Sheng/Door
-    if(ti==='Bing' && (di==='Ding'||di==='Wu') && door==='Sheng')
+    if(ti==='Bing' && door==='Sheng' && ((di==='Ding'||di==='Wu') || deity==='Commander'))
       hits.push({cat:'dun', label:'Heaven Dun 天遁'});
     // 2. Earth Dun 地遁: Yi/Tian + Ji/Di + Kai/Door
-    if(ti==='Yi' && di==='Ji' && door==='Kai')
+    if(ti==='Yi' && door==='Kai' && (di==='Ji' || deity==='Earth'))
       hits.push({cat:'dun', label:'Earth Dun 地遁'});
     // 3. Human Dun 人遁: Ding/Tian + Xiu/Door + Yin/Deity (Tai Yin 太陰)
     if(ti==='Ding' && door==='Xiu' && deity==='Yin')
       hits.push({cat:'dun', label:'Human Dun 人遁'});
     // 4. Deity Dun 神遁: Yi/Tian + Sheng/Door + Heaven/Deity (九天)
-    if(ti==='Yi' && door==='Sheng' && deity==='Heaven')
+    if((ti==='Yi'||ti==='Bing') && door==='Sheng' && deity==='Heaven')
       hits.push({cat:'dun', label:'Deity Dun 神遁'});
     // 5. Ghost Dun 鬼遁: Ding/Tian + Du/Door + Earth/Deity (九地)
     //    NB: requires Du door which fails the basic filter — included for completeness
     if(ti==='Ding' && door==='Du' && deity==='Earth')
       hits.push({cat:'dun', label:'Ghost Dun 鬼遁'});
     // 6. Wind Dun 風遁: Yi/Tian + fav door (Xiu|Sheng|Kai) + Xun/Palace (4)
-    if(ti==='Yi' && doorsFav3.indexOf(door)!==-1 && targetPalace===4)
+    if(ti==='Yi' && (door==='Kai'||door==='JingS') && targetPalace===4)
       hits.push({cat:'dun', label:'Wind Dun 風遁'});
     // 7. Cloud Dun 云遁: Yi/Tian + Xin/Di + fav door (Xiu|Sheng|Kai)
-    if(ti==='Yi' && di==='Xin' && doorsFav3.indexOf(door)!==-1)
+    if(ti==='Yi' && door==='Kai' && deity==='Harmonies')
       hits.push({cat:'dun', label:'Cloud Dun 云遁'});
     // 8. Dragon Dun 龍遁: Yi/Tian + fav door (Xiu|Sheng|Kai) + Kan/Palace (1)
-    if(ti==='Yi' && doorsFav3.indexOf(door)!==-1 && targetPalace===1)
+    if((ti==='Yi'||ti==='Gui') && (door==='Xiu'||door==='Sheng') && (targetPalace===1||targetPalace===3))
       hits.push({cat:'dun', label:'Dragon Dun 龍遁'});
     // 9. Tiger Dun 虎遁: Yi/Tian + Xin/Di + (Xiu|Sheng) door + Gen/Palace (8)
-    if(ti==='Yi' && di==='Xin' && (door==='Xiu'||door==='Sheng') && targetPalace===8)
+    if((ti==='Xin'||ti==='Geng') && (door==='Sheng'||door==='Shang') && (targetPalace===8||targetPalace===7))
       hits.push({cat:'dun', label:'Tiger Dun 虎遁'});
 
     // THREE PRETENSES 三詐 (San Zha) — favorable for specific activities
@@ -249,9 +249,9 @@
       // Real Pretense 真詐 — Tai Yin (Yin) — spiritual/religious/charity
       if(deity==='Yin')       hits.push({cat:'zha', label:'Real Pretenses 真詐'});
       // Rest Pretense 休詐 — Six Harmonies — medicine/religious activities
-      if(deity==='Harmonies') hits.push({cat:'zha', label:'Rest Pretenses 休詐'});
+      if(deity==='Earth') hits.push({cat:'zha', label:'Rest Pretenses 休詐'});
       // Multiple Pretense 重詐 — Nine Earth — fame/fortune/attracting people
-      if(deity==='Earth')     hits.push({cat:'zha', label:'Multiple Pretenses 重詐'});
+      if(deity==='Harmonies') hits.push({cat:'zha', label:'Multiple Pretenses 重詐'});
     }
 
     // FIVE BORROWS 五假 (Wu Jia) — auspicious configurations for specific tactical uses
@@ -713,7 +713,178 @@
     _root = null;
   }
 
-  window.QMDJWaterScanner = {
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  ROTATING PAN (轉盤) — hourly chart generator
+  //  Adapted from the yearly 轉盤 algorithm. Uses rigid compass rotation
+  //  instead of Luo-Shu flying for stars, gates, and deities.
+  // ══════════════════════════════════════════════════════════════════════
+
+  var R_COMP = [1,8,3,4,9,2,7,6];  // compass wheel (clockwise)
+  var R_STEM_ORDER = ['Wu','Ji','Geng','Xin','Ren','Gui','Ding','Bing','Yi'];
+  var R_STAR_EN = {1:'Grass',2:'Rice',3:'Aggressor',4:'Assistant',5:'Fowl',6:'Heart',7:'Pillar',8:'Official',9:'Hero'};
+  var R_DEITY_EN = ['Commander','Snake','Yin','Harmonies','Tiger','Warrior','Earth','Heaven'];
+  // Palace home gate → scanner door key
+  var R_GATE_KEY = {1:'Xiu',2:'Si',3:'Shang',4:'Du',6:'Kai',7:'JingF',8:'Sheng',9:'JingS'};
+
+  function genRotatingDipan(ju, dun){
+    var dp = {}; var p = ju;
+    for(var i=0; i<R_STEM_ORDER.length; i++){
+      dp[p] = R_STEM_ORDER[i];
+      p = dun==='yang' ? (p%9+1) : ((p-2+9)%9+1);
+    }
+    return dp;
+  }
+
+  function getRotatingHourChart(year, month, day, hourStem, hourBranch){
+    var info = getDunJuForDate(year, month, day);
+    if(!info) return null;
+    var hs = STEM_H2P[hourStem] || hourStem;
+    var hb = BR_H2P[hourBranch] || hourBranch;
+    var idx60 = jiaZiIdx(hs, hb);
+    if(idx60 < 0) return null;
+
+    var ju = info.ju, dun = info.dun;
+    var dp = genRotatingDipan(ju, dun);
+
+    // 旬首: hiding stem + position within decade
+    var hd = idx60 - (idx60 % 10);
+    var xstem = ['Wu','Ji','Geng','Xin','Ren','Gui'][Math.floor(hd/10)];
+    var k = idx60 % 10;
+
+    // Find 旬首 palace on Di Pan
+    var xpal = null;
+    for(var pp=1; pp<=9; pp++) if(dp[pp]===xstem) xpal=pp;
+    if(xpal===null) return null;
+
+    // Effective stem (甲 uses hiding stem)
+    var eff = (hs==='Jia') ? xstem : hs;
+
+    // Target palace (where effective stem sits on Di Pan)
+    var tgt = null;
+    for(var pp=1; pp<=9; pp++) if(dp[pp]===eff) tgt=pp;
+    if(tgt===null) return null;
+    if(tgt===5) tgt=2;  // center lodges to Kun
+
+    // Stars — rigid compass rotation from xpal to tgt
+    var sS = R_COMP.indexOf(tgt) - R_COMP.indexOf(xpal);
+    var starAt = {};
+    for(var i=0; i<8; i++) starAt[R_COMP[((i+sS)%8+8)%8]] = R_COMP[i];
+    starAt[5] = 5;
+
+    // Deities — from 值符 (at tgt), cw (Yang) / ccw (Yin)
+    var deityMap = {};
+    var iF = R_COMP.indexOf(tgt);
+    for(var dd=0; dd<8; dd++){
+      deityMap[dun==='yang' ? R_COMP[(iF+dd)%8] : R_COMP[((iF-dd)%8+8)%8]] = dd;
+    }
+
+    // Gates — 值使 advances from xpal by k steps; rigid rotation; 杜↔景 swap
+    var g = xpal;
+    for(var s=0; s<k; s++) g = dun==='yang' ? (g%9+1) : ((g-2+9)%9+1);
+    if(g===5) g=2;
+    var gS = R_COMP.indexOf(g) - R_COMP.indexOf(xpal);
+    var gateHome = {};
+    for(var i=0; i<8; i++) gateHome[R_COMP[((i+gS)%8+8)%8]] = R_COMP[i];
+    // 杜↔景 swap (palace 4 ↔ palace 9 gate identities)
+    for(var q in gateHome){
+      if(gateHome[q]===4) gateHome[q]=9;
+      else if(gateHome[q]===9) gateHome[q]=4;
+    }
+
+    // Build palaces in same format as getHourChart
+    var STEM_P2H_R = {Jia:'甲',Yi:'乙',Bing:'丙',Ding:'丁',Wu:'戊',Ji:'己',Geng:'庚',Xin:'辛',Ren:'壬',Gui:'癸'};
+    var palaces = {};
+    var isZhiFu = tgt;
+    // Zhi Shi palace = where gate g is
+    var zhiShi = null;
+    for(var q in gateHome) if(+q===g) zhiShi=+q;
+    if(!zhiShi) zhiShi = g;
+
+    for(var pn=1; pn<=9; pn++){
+      if(pn===5){
+        palaces[5] = { ti:dp[5]||'', tiH:STEM_P2H_R[dp[5]]||'', di:dp[5]||'', diH:STEM_P2H_R[dp[5]]||'',
+                       star:'Fowl', deity:'', door:'', zhiFu:false, zhiShi:false, jiaName:'' };
+        continue;
+      }
+      var star = starAt[pn];
+      var hStem = dp[star];  // heaven plate stem = di pan stem of the star's home palace
+      var eStem = dp[pn];    // earth plate stem
+      var deityIdx = deityMap[pn];
+      var gHome = gateHome[pn];
+      var doorKey = gHome ? R_GATE_KEY[gHome] : '';
+      var doorName = doorKey ? (DOOR_NAME[doorKey]||doorKey) : '';
+
+      palaces[pn] = {
+        ti: hStem, tiH: STEM_P2H_R[hStem]||hStem,
+        di: eStem, diH: STEM_P2H_R[eStem]||eStem,
+        star: R_STAR_EN[star]||'',
+        deity: deityIdx!==undefined ? R_DEITY_EN[deityIdx] : '',
+        door: doorKey,  // use scanner key (Kai/Xiu/Sheng/etc.) for hit detection
+        doorName: doorName, // English name for display
+        zhiFu: (pn===isZhiFu),
+        zhiShi: (pn===zhiShi),
+        jiaName: ''
+      };
+    }
+    return { palaces: palaces, dun: dun, ju: ju, method: 'rotating' };
+  }
+
+  // Check a rotating chart palace for Dun/Pretense/Borrow hits
+  // Uses the same conditions as extractHits but simplified for the rotating chart
+  function checkRotatingPalace(chart, palace){
+    if(!chart || palace===5 || palace<1 || palace>9) return [];
+    var pd = chart.palaces[palace];
+    if(!pd) return [];
+    var ti = pd.ti, di = pd.di, door = pd.door, deity = pd.deity;
+    var hits = [];
+
+    // NINE DUN
+    if(ti==='Bing' && door==='Sheng' && ((di==='Ding'||di==='Wu') || deity==='Commander'))
+      hits.push({cat:'dun', label:'Heaven Dun 天遁'});
+    if(ti==='Yi' && door==='Kai' && (di==='Ji' || deity==='Earth'))
+      hits.push({cat:'dun', label:'Earth Dun 地遁'});
+    if(ti==='Ding' && door==='Xiu' && deity==='Yin')
+      hits.push({cat:'dun', label:'Human Dun 人遁'});
+    if((ti==='Yi'||ti==='Bing') && door==='Sheng' && deity==='Heaven')
+      hits.push({cat:'dun', label:'Deity Dun 神遁'});
+    if(ti==='Ding' && door==='Du' && deity==='Earth')
+      hits.push({cat:'dun', label:'Ghost Dun 鬼遁'});
+    if(ti==='Yi' && (door==='Kai'||door==='JingS') && palace===4)
+      hits.push({cat:'dun', label:'Wind Dun 風遁'});
+    if(ti==='Yi' && door==='Kai' && deity==='Harmonies')
+      hits.push({cat:'dun', label:'Cloud Dun 云遁'});
+    if((ti==='Yi'||ti==='Gui') && (door==='Xiu'||door==='Sheng') && (palace===1||palace===3))
+      hits.push({cat:'dun', label:'Dragon Dun 龍遁'});
+    if((ti==='Xin'||ti==='Geng') && (door==='Sheng'||door==='Shang') && (palace===8||palace===7))
+      hits.push({cat:'dun', label:'Tiger Dun 虎遁'});
+
+    // THREE PRETENSES
+    var isSanQi = (ti==='Yi' || ti==='Bing' || ti==='Ding');
+    var isXSK = (door==='Xiu' || door==='Sheng' || door==='Kai');
+    if(isSanQi && isXSK){
+      if(deity==='Yin')       hits.push({cat:'zha', label:'Real Pretenses 真詐'});
+      if(deity==='Earth')     hits.push({cat:'zha', label:'Rest Pretenses 休詐'});
+      if(deity==='Harmonies') hits.push({cat:'zha', label:'Multiple Pretenses 重詐'});
+    }
+
+    // FIVE BORROWS
+    if(ti==='Ding' && door==='JingS' && deity==='Heaven')
+      hits.push({cat:'jia', label:'Heaven Borrows 天假'});
+    if(ti==='Gui' && door==='Du' && deity==='Earth')
+      hits.push({cat:'jia', label:'Earth Borrows 地假'});
+    if(ti==='Ren' && door==='JingS' && deity==='Earth')
+      hits.push({cat:'jia', label:'Human Borrows 人假'});
+    if(ti==='Bing' && door==='JingS' && deity==='Commander')
+      hits.push({cat:'jia', label:'Deity Borrows 神假'});
+    if(ti==='Ding' && door==='Du' && deity==='Earth')
+      hits.push({cat:'jia', label:'Ghost Borrows 鬼假'});
+
+    return hits;
+  }
+
+
+    window.QMDJWaterScanner = {
     mount: mount,
     unmount: unmount,
     scanDates: function(dir, start, days){
@@ -726,6 +897,12 @@
     },
     getHourChart: function(year, month, day, hourStem, hourBranch){
       return getHourChart(year, month, day, hourStem, hourBranch);
+    },
+    getRotatingHourChart: function(year, month, day, hourStem, hourBranch){
+      return getRotatingHourChart(year, month, day, hourStem, hourBranch);
+    },
+    checkRotatingPalace: function(chart, palace){
+      return checkRotatingPalace(chart, palace);
     }
   };
 })();
