@@ -421,6 +421,7 @@ function buildFengShuiView(){
 
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
         <button onclick="fsSaveHouse()" style="background:#558b2f;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">💾 SAVE HOUSE</button>
+        <button onclick="fsOpenDirectionCalc()" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">🧭 DIRECTION</button>
       </div>
 
       <!-- ═══ ⭐ STARS buttons ═══ -->
@@ -1777,6 +1778,152 @@ function showQimenPopup(label){
 }
 
 // ── Jia hiding (六甲遁) and Zhi Fu/Zhi Shi popups ──
+// ── DIRECTION CALCULATOR (🧭) ─────────────────────────────────────
+// Computes compass direction from origin to destination.
+// Uses Nominatim (OpenStreetMap) for geocoding — no API key needed.
+
+function _fsBearing(lat1, lng1, lat2, lng2){
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var r1 = lat1 * Math.PI / 180, r2 = lat2 * Math.PI / 180;
+  var y = Math.sin(dLng) * Math.cos(r2);
+  var x = Math.cos(r1) * Math.sin(r2) - Math.sin(r1) * Math.cos(r2) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+function _fsBearingToDir8(deg){
+  var dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+var _fsDirectionArrows = {N:'↑',NE:'↗',E:'→',SE:'↘',S:'↓',SW:'↙',W:'←',NW:'↖'};
+
+function fsOpenDirectionCalc(){
+  var old = document.getElementById('dir-calc-overlay');
+  if(old) old.remove();
+  old = document.getElementById('dir-calc-popup');
+  if(old) old.remove();
+
+  // Try to get origin from app's GPS/longitude inputs
+  var defLat = '', defLng = '';
+  var lonEl = document.getElementById('longitude');
+  if(lonEl && lonEl.value) defLng = lonEl.value;
+  // Try GPS-stored lat
+  if(window._lastGpsLat) defLat = String(window._lastGpsLat);
+  if(window._lastGpsLng) defLng = String(window._lastGpsLng);
+
+  var overlay = document.createElement('div');
+  overlay.id = 'dir-calc-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:9998;';
+
+  var popup = document.createElement('div');
+  popup.id = 'dir-calc-popup';
+  popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #1565c0;border-radius:12px;padding:18px;max-width:400px;width:92%;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;';
+
+  popup.innerHTML = ''
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+    + '<span style="font-weight:bold;color:#1565c0;font-size:16px;">🧭 Direction Calculator</span>'
+    + '<button onclick="document.getElementById(\'dir-calc-popup\').remove();document.getElementById(\'dir-calc-overlay\').remove()" style="background:#888;color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:12px;cursor:pointer;">✕</button>'
+    + '</div>'
+
+    // ORIGIN
+    + '<div style="background:#e3f2fd;border-radius:6px;padding:10px;margin-bottom:10px;">'
+    + '<div style="font-size:12px;font-weight:bold;color:#1565c0;margin-bottom:6px;">📍 ORIGIN (your location)</div>'
+    + '<div style="display:flex;gap:6px;align-items:end;flex-wrap:wrap;">'
+    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Latitude</label>'
+    + '<input type="number" id="dir-orig-lat" step="any" placeholder="e.g. 48.2082" value="' + defLat + '" style="width:100%;padding:5px;border:1px solid #90caf9;border-radius:4px;font-size:13px;"></div>'
+    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Longitude</label>'
+    + '<input type="number" id="dir-orig-lng" step="any" placeholder="e.g. 16.3738" value="' + defLng + '" style="width:100%;padding:5px;border:1px solid #90caf9;border-radius:4px;font-size:13px;"></div>'
+    + '<button onclick="fsDirectionGPS()" style="background:#1565c0;color:#fff;border:none;border-radius:4px;padding:6px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">📡 GPS</button>'
+    + '</div></div>'
+
+    // DESTINATION
+    + '<div style="background:#fff3e0;border-radius:6px;padding:10px;margin-bottom:10px;">'
+    + '<div style="font-size:12px;font-weight:bold;color:#e65100;margin-bottom:6px;">🎯 DESTINATION</div>'
+    + '<div style="margin-bottom:6px;"><label style="font-size:10px;color:#666;">Address or City</label>'
+    + '<div style="display:flex;gap:4px;">'
+    + '<input type="text" id="dir-dest-addr" placeholder="e.g. Milano, Italy" style="flex:1;padding:5px;border:1px solid #ffcc80;border-radius:4px;font-size:13px;">'
+    + '<button onclick="fsDirectionGeocode()" style="background:#e65100;color:#fff;border:none;border-radius:4px;padding:6px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">🔍 Find</button>'
+    + '</div></div>'
+    + '<div style="display:flex;gap:6px;align-items:end;">'
+    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Latitude</label>'
+    + '<input type="number" id="dir-dest-lat" step="any" placeholder="—" style="width:100%;padding:5px;border:1px solid #ffcc80;border-radius:4px;font-size:13px;"></div>'
+    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Longitude</label>'
+    + '<input type="number" id="dir-dest-lng" step="any" placeholder="—" style="width:100%;padding:5px;border:1px solid #ffcc80;border-radius:4px;font-size:13px;"></div>'
+    + '</div>'
+    + '<div id="dir-geocode-status" style="font-size:10px;color:#888;margin-top:4px;"></div>'
+    + '</div>'
+
+    // CALCULATE BUTTON
+    + '<button onclick="fsDirectionCalc()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🧭 CALCULATE DIRECTION</button>'
+
+    // RESULT
+    + '<div id="dir-calc-result" style="text-align:center;min-height:40px;"></div>';
+
+  overlay.onclick = function(e){ if(e.target === overlay){ popup.remove(); overlay.remove(); } };
+  document.body.appendChild(overlay);
+  document.body.appendChild(popup);
+}
+
+function fsDirectionGPS(){
+  if(!navigator.geolocation){ alert('GPS not available'); return; }
+  var status = document.getElementById('dir-geocode-status');
+  if(status) status.textContent = 'Getting GPS position...';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    document.getElementById('dir-orig-lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('dir-orig-lng').value = pos.coords.longitude.toFixed(6);
+    window._lastGpsLat = pos.coords.latitude;
+    window._lastGpsLng = pos.coords.longitude;
+    if(status) status.textContent = 'GPS position acquired.';
+  }, function(err){
+    if(status) status.textContent = 'GPS error: ' + err.message;
+  }, {enableHighAccuracy: true, timeout: 10000});
+}
+
+function fsDirectionGeocode(){
+  var addr = document.getElementById('dir-dest-addr').value.trim();
+  if(!addr){ alert('Enter an address or city name.'); return; }
+  var status = document.getElementById('dir-geocode-status');
+  if(status) status.textContent = 'Searching...';
+  fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(addr) + '&format=json&limit=1', {
+    headers: {'Accept-Language': 'en'}
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(!data || !data.length){
+      if(status) status.textContent = 'Address not found. Try a different query.';
+      return;
+    }
+    var place = data[0];
+    document.getElementById('dir-dest-lat').value = parseFloat(place.lat).toFixed(6);
+    document.getElementById('dir-dest-lng').value = parseFloat(place.lon).toFixed(6);
+    if(status) status.textContent = '✓ Found: ' + place.display_name.substring(0, 80);
+  })
+  .catch(function(err){
+    if(status) status.textContent = 'Geocoding error: ' + err.message;
+  });
+}
+
+function fsDirectionCalc(){
+  var lat1 = parseFloat(document.getElementById('dir-orig-lat').value);
+  var lng1 = parseFloat(document.getElementById('dir-orig-lng').value);
+  var lat2 = parseFloat(document.getElementById('dir-dest-lat').value);
+  var lng2 = parseFloat(document.getElementById('dir-dest-lng').value);
+  if(isNaN(lat1)||isNaN(lng1)){ alert('Enter Origin coordinates or use GPS.'); return; }
+  if(isNaN(lat2)||isNaN(lng2)){ alert('Enter Destination address and click Find.'); return; }
+
+  var deg = _fsBearing(lat1, lng1, lat2, lng2);
+  var dir = _fsBearingToDir8(deg);
+  var arrow = _fsDirectionArrows[dir] || '→';
+
+  var box = document.getElementById('dir-calc-result');
+  if(!box) return;
+  box.innerHTML = ''
+    + '<div style="font-size:48px;line-height:1;">' + arrow + '</div>'
+    + '<div style="font-size:28px;font-weight:bold;color:#1565c0;margin:6px 0;">Direction: ' + dir + '</div>'
+    + '<div style="font-size:13px;color:#666;">Bearing: ' + deg.toFixed(1) + '°</div>'
+    + '<div style="margin-top:10px;padding:8px;background:#e8f5e9;border-radius:6px;font-size:12px;color:#2e7d32;">'
+    + '✓ Look for <strong>→' + dir + '</strong> badges in your Purpose scan results to find the best hours for this action.'
+    + '</div>';
+}
+
 function showJiaPopup(jiaName){
   var explanations = {
     '甲子戊': 'Jia Zi hiding as Wu (戊). The Commander 甲 conceals himself in the Wu stem.',
