@@ -5517,12 +5517,12 @@ function buildMonthView() {
                 purposeIconLV = checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems, spirit)
                     ? PURPOSE_ICONS[purposeLV] : '';
                 _currentDayAnalysis = _savedForPurpose;
-                // Direction filter: when set, purpose only passes if rotating chart matches at target palace
+                // Direction filter: when set, the purpose passes if EITHER the Flying-Stars config
+                // (🌀⭐ — needs the activator) OR the directional/rotating config (→) matches at the target palace.
                 if (purposeIconLV && _fsActionPalace && purposeLV) {
-                    var _rotCheckLV = fsScanPurposeQimenRotating(
-                        { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
-                        purposeLV);
-                    if (!_rotCheckLV.some(function(h){ return h.palace === _fsActionPalace; })) purposeIconLV = '';
+                    var _dirMatchLV = pqRotLV.some(function(h){ return h.palace === _fsActionPalace; })
+                                   || pqHitsLV.some(function(h){ return h.palace === _fsActionPalace; });
+                    if (!_dirMatchLV) purposeIconLV = '';
                 }
             }
             if (purposeLV && !purposeIconLV && !isZiFirst && !_calShowAllForThisDay) continue;
@@ -6171,12 +6171,16 @@ function runScanner() {
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
             if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) { continue; }
-            // Direction filter: when _fsActionPalace is set, require a matching rotating-chart config at that palace
+            // Purpose-Qimen scans — computed once, reused for the direction filter AND the badges below.
+            var _qmParamsBST = { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi };
+            var _pqFsBST  = fsScanPurposeQimen(_qmParamsBST, getPurpose());        // 🌀⭐ Flying Stars (needs activator at palace)
+            var _pqRotBST = fsScanPurposeQimenRotating(_qmParamsBST, getPurpose()); // → directional only (no activator)
+            // Direction filter: when a direction is set, keep the hour if EITHER the Flying-Stars
+            // config (🌀⭐) OR the directional/rotating config (→) matches at the target palace.
             if (_fsActionPalace && getPurpose()) {
-                var _rotCheck = fsScanPurposeQimenRotating(
-                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi },
-                    getPurpose());
-                if (!_rotCheck.some(function(h){ return h.palace === _fsActionPalace; })) continue;
+                var _dirMatchBST = _pqRotBST.some(function(h){ return h.palace === _fsActionPalace; })
+                                || _pqFsBST.some(function(h){ return h.palace === _fsActionPalace; });
+                if (!_dirMatchBST) continue;
             }
 
             const activeFiltersBS = getActiveFilters();
@@ -6212,12 +6216,8 @@ function runScanner() {
                 keScore: keScoreBST,
                 fsBadge: fsComputeAllHousesBadges(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
                     { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi }),
-                purposeQimen: fsScanPurposeQimen(
-                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi },
-                    getPurpose()),
-                purposeQimenR: fsScanPurposeQimenRotating(
-                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi },
-                    getPurpose())
+                purposeQimen: _pqFsBST,
+                purposeQimenR: _pqRotBST
             });
         }
     }
@@ -6253,6 +6253,9 @@ function runScanner() {
 
     window._chipSortMode = true; // default: chip sort
     sortResults_chip(results);
+    // With a DIRECTION filter active you are scheduling a one-off action (e.g. sending the letter),
+    // so show the qualifying hours in chronological order — the next available window first.
+    if (_fsActionPalace && getPurpose()) results.sort((a,b) => a.rawDate - b.rawDate);
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
