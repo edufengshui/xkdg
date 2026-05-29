@@ -419,13 +419,9 @@ function buildFengShuiView(){
 
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
-      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-        <button onclick="fsSaveHouse()" style="background:#558b2f;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">💾 SAVE HOUSE</button>
-        <button onclick="fsOpenDirectionCalc()" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">🧭 DIRECTION</button>
-      </div>
-
       <!-- ═══ PURPOSE + SCAN (clone) ═══ -->
       <div id="fs-direction-filter-bar" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+        <button onclick="fsOpenDirectionCalc()" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:bold;cursor:pointer;">🧭 DIRECTION</button>
         <span id="fs-dir-active" style="font-size:11px;color:#1565c0;font-weight:bold;display:none;">🧭 →NW</span>
         <select id="fs-purpose-clone" onchange="fsSyncPurpose(this.value)" style="padding:6px 10px;border-radius:6px;border:2px solid #1565c0;font-size:13px;font-weight:bold;color:#1565c0;cursor:pointer;">
           <option value="">— Purpose —</option>
@@ -466,6 +462,7 @@ function buildFengShuiView(){
       <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-top:16px;margin-bottom:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
+          <button onclick="fsSaveHouse()" style="background:#558b2f;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;">💾 SAVE HOUSE</button>
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
         <div id="fs-house-list" style="font-size:12px;"></div>
