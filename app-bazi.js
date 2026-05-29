@@ -3560,6 +3560,8 @@ function onPurposeChange() {
             setTimeout(function(){ toast.style.display = 'none'; }, 3000);
         }, 50);
     }
+    // Sync the FS-view clone Purpose selector
+    if(typeof fsUpdatePurposeClone === 'function') fsUpdatePurposeClone();
 }
 
 function getPurpose() {
@@ -5513,6 +5515,13 @@ function buildMonthView() {
                 purposeIconLV = checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems, spirit)
                     ? PURPOSE_ICONS[purposeLV] : '';
                 _currentDayAnalysis = _savedForPurpose;
+                // Direction filter: when set, purpose only passes if rotating chart matches at target palace
+                if (purposeIconLV && _fsActionPalace && purposeLV) {
+                    var _rotCheckLV = fsScanPurposeQimenRotating(
+                        { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
+                        purposeLV);
+                    if (!_rotCheckLV.some(function(h){ return h.palace === _fsActionPalace; })) purposeIconLV = '';
+                }
             }
             if (purposeLV && !purposeIconLV && !isZiFirst && !_calShowAllForThisDay) continue;
 
@@ -6160,6 +6169,13 @@ function runScanner() {
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
             if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) { continue; }
+            // Direction filter: when _fsActionPalace is set, require a matching rotating-chart config at that palace
+            if (_fsActionPalace && getPurpose()) {
+                var _rotCheck = fsScanPurposeQimenRotating(
+                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi },
+                    getPurpose());
+                if (!_rotCheck.some(function(h){ return h.palace === _fsActionPalace; })) continue;
+            }
 
             const activeFiltersBS = getActiveFilters();
             const blueLabels = blueItems

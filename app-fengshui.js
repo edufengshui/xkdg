@@ -424,6 +424,22 @@ function buildFengShuiView(){
         <button onclick="fsOpenDirectionCalc()" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">🧭 DIRECTION</button>
       </div>
 
+      <!-- ═══ PURPOSE + SCAN (clone) ═══ -->
+      <div id="fs-direction-filter-bar" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+        <span id="fs-dir-active" style="font-size:11px;color:#1565c0;font-weight:bold;display:none;">🧭 →NW</span>
+        <select id="fs-purpose-clone" onchange="fsSyncPurpose(this.value)" style="padding:6px 10px;border-radius:6px;border:2px solid #1565c0;font-size:13px;font-weight:bold;color:#1565c0;cursor:pointer;">
+          <option value="">— Purpose —</option>
+          <option value="health">🏥 Health</option>
+          <option value="career">💼 Career</option>
+          <option value="wealth">💰 Wealth</option>
+          <option value="relationship">❤️ Relationship</option>
+          <option value="journey">✈️ Journey</option>
+          <option value="speak">🎤 Speak</option>
+          <option value="legal">⚖️ Legal</option>
+        </select>
+        <button onclick="fsSyncPurposeAndScan()" style="background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;font-weight:bold;font-size:14px;padding:8px 22px;border:2px solid #1b5e20;border-radius:8px;cursor:pointer;box-shadow:0 3px 10px rgba(46,125,50,0.4);">🔎 SCAN</button>
+      </div>
+
       <!-- ═══ ⭐ STARS buttons ═══ -->
       <div style="font-size:11px;font-weight:bold;color:#00695c;margin-bottom:4px;">⭐ Stars</div>
 
@@ -1780,7 +1796,39 @@ function showQimenPopup(label){
 // ── Jia hiding (六甲遁) and Zhi Fu/Zhi Shi popups ──
 // ── DIRECTION CALCULATOR (🧭) ─────────────────────────────────────
 // Computes compass direction from origin to destination.
-// Uses Nominatim (OpenStreetMap) for geocoding — no API key needed.
+// When set, acts as a FILTER in Purpose scans: only hours with a
+// matching rotating-chart config at the target palace are shown.
+
+var _fsActionPalace = null;   // target palace (1-9) for directional filter
+var _fsActionDir    = null;   // direction label (N, NE, etc.)
+var _DIR_TO_PALACE  = {N:1,NE:8,E:3,SE:4,S:9,SW:2,W:7,NW:6};
+
+// Sync clone Purpose select with main one (bidirectional)
+function fsSyncPurpose(val){
+  var main = document.getElementById('purpose-select');
+  if(main && main.value !== val){ main.value = val; if(typeof onPurposeChange === 'function') onPurposeChange(); }
+}
+function fsSyncPurposeAndScan(){
+  var clone = document.getElementById('fs-purpose-clone');
+  if(clone) fsSyncPurpose(clone.value);
+  if(typeof runAll === 'function') runAll();
+}
+// Update clone when main changes (called from onPurposeChange hook)
+function fsUpdatePurposeClone(){
+  var main = document.getElementById('purpose-select');
+  var clone = document.getElementById('fs-purpose-clone');
+  if(main && clone && clone.value !== main.value) clone.value = main.value;
+  // Update direction filter indicator
+  var indicator = document.getElementById('fs-dir-active');
+  if(indicator){
+    if(_fsActionDir){
+      indicator.textContent = '🧭 →' + _fsActionDir + ' (Palace ' + _fsActionPalace + ')';
+      indicator.style.display = 'inline';
+    } else {
+      indicator.style.display = 'none';
+    }
+  }
+}
 
 function _fsBearing(lat1, lng1, lat2, lng2){
   var dLng = (lng2 - lng1) * Math.PI / 180;
@@ -1915,13 +1963,30 @@ function fsDirectionCalc(){
 
   var box = document.getElementById('dir-calc-result');
   if(!box) return;
+
+  // Set global filter
+  _fsActionDir = dir;
+  _fsActionPalace = _DIR_TO_PALACE[dir] || null;
+
   box.innerHTML = ''
     + '<div style="font-size:48px;line-height:1;">' + arrow + '</div>'
-    + '<div style="font-size:28px;font-weight:bold;color:#1565c0;margin:6px 0;">Direction: ' + dir + '</div>'
+    + '<div style="font-size:28px;font-weight:bold;color:#1565c0;margin:6px 0;">Direction: ' + dir + ' (Palace ' + _fsActionPalace + ')</div>'
     + '<div style="font-size:13px;color:#666;">Bearing: ' + deg.toFixed(1) + '°</div>'
     + '<div style="margin-top:10px;padding:8px;background:#e8f5e9;border-radius:6px;font-size:12px;color:#2e7d32;">'
-    + '✓ Look for <strong>→' + dir + '</strong> badges in your Purpose scan results to find the best hours for this action.'
+    + '✓ <strong>Direction filter active!</strong> Purpose scans will now show ONLY hours with a matching Qimen configuration towards ' + dir + '.'
+    + '</div>'
+    + '<div style="margin-top:8px;text-align:center;">'
+    + '<button onclick="fsClearDirectionFilter()" style="background:#c62828;color:#fff;border:none;border-radius:4px;padding:6px 16px;font-size:12px;cursor:pointer;">✕ Clear Direction Filter</button>'
     + '</div>';
+  fsUpdatePurposeClone();
+}
+
+function fsClearDirectionFilter(){
+  _fsActionPalace = null;
+  _fsActionDir = null;
+  var box = document.getElementById('dir-calc-result');
+  if(box) box.innerHTML = '<div style="color:#888;font-size:12px;">Direction filter cleared. Purpose scans will show all qualifying hours.</div>';
+  fsUpdatePurposeClone();
 }
 
 function showJiaPopup(jiaName){
