@@ -1580,7 +1580,7 @@ function togglePersonPanel(person) {
             // Auto-load house profile for restored person
             if (backup && backup.name && typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(backup.name);
         }
-        if (arrow) arrow.textContent = '▾ ON';
+        if (arrow) arrow.textContent = '▾ Hide';
     } else {
         // ── Snapshot current inputs into the backup BEFORE clearing ──
         // This is what makes the next ON restore work. We capture the raw
@@ -1631,14 +1631,14 @@ function togglePersonPanel(person) {
         }
         // Clear Luopan FS inputs when person is toggled OFF
         if (typeof fsClearHouseInputs === 'function') fsClearHouseInputs();
-        if (arrow) arrow.textContent = '▸ OFF';
+        if (arrow) arrow.textContent = '▸ Show';
     }
 
     // Clear results and prompt rescan
     const mv = document.getElementById('month-view');
     const sr = document.getElementById('scan-results');
     const cv = document.getElementById('cal-view');
-    if (mv) mv.innerHTML = `<div class="scan-empty">Person ${person.toUpperCase()} is ${isOn ? 'ON' : 'OFF'} — tap SCAN to refresh.</div>`;
+    if (mv) mv.innerHTML = `<div class="scan-empty">Person ${person.toUpperCase()} is ${isOn ? 'active' : 'hidden'} — tap SCAN to refresh.</div>`;
     if (sr) sr.innerHTML = '';
     if (cv) cv.innerHTML = '';
     _scanResults = [];
@@ -1686,7 +1686,7 @@ function togglePersonStars(person) {
     _showPersonStars[person] = !_showPersonStars[person];
     const btn = document.getElementById(`toggle-stars-${person}`);
     if (btn) {
-        btn.textContent = _showPersonStars[person] ? '★ Stars ON' : '☆ Stars OFF';
+        btn.textContent = _showPersonStars[person] ? '★ Hide Stars' : '☆ Show Stars';
         btn.style.background = _showPersonStars[person] ? '#fff9c4' : '#f5f5f5';
         btn.style.color = _showPersonStars[person] ? '#b8860b' : '#555';
     }
@@ -2185,7 +2185,7 @@ function calculatePerson(person) {
         const btnKey = isB ? 'b' : 'a';
         const btn = document.getElementById(`toggle-stars-${btnKey}`);
         if (btn) {
-            btn.textContent = _showPersonStars[btnKey] ? '★ Stars ON' : '☆ Stars OFF';
+            btn.textContent = _showPersonStars[btnKey] ? '★ Hide Stars' : '☆ Show Stars';
             btn.style.background = _showPersonStars[btnKey] ? '#fff9c4' : '#f5f5f5';
             btn.style.color = _showPersonStars[btnKey] ? '#b8860b' : '#555';
         }
@@ -2593,7 +2593,7 @@ function renderScanResults(results, mode) {
               ${_bestOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
             </button>
             <button onclick="toggleFsHouse();runScanner();" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2e7d32;background:${_fsHouseActive?'#2e7d32':'#fff'};color:${_fsHouseActive?'#fff':'#2e7d32'};cursor:pointer;">
-              ${_fsHouseActive ? '🏠 Houses ON' : '🏠 Houses'}
+              ${_fsHouseActive ? '🏠 Hide Houses' : '🏠 Show Houses'}
             </button>
            </div>`;
     if (results.length === 0) {
@@ -5521,7 +5521,7 @@ function buildMonthView() {
             ${_listOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
         </button>
         <button onclick="toggleFsHouse();buildMonthView();" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2e7d32;background:${_fsHouseActive?'#2e7d32':'#fff'};color:${_fsHouseActive?'#fff':'#2e7d32'};cursor:pointer;">
-            ${_fsHouseActive ? '🏠 Houses ON' : '🏠 Houses'}
+            ${_fsHouseActive ? '🏠 Hide Houses' : '🏠 Show Houses'}
         </button>
     </div>`;
     const mv = document.getElementById('month-view');
