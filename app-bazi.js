@@ -1074,6 +1074,8 @@ function getGPS() {
         navigator.geolocation.getCurrentPosition((pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
+            window._lastGpsLat = lat;
+            window._lastGpsLng = lon;
             document.getElementById('longitude').value = lon.toFixed(2);
             // Smart UTC offset detection: handles countries with non-geographic timezones
             const utcReal = getRealUtcOffset(lat, lon);
