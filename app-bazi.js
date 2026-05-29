@@ -2679,7 +2679,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — activate stimulator at '+pq.dir+'" onclick="event.stopPropagation();showQimenPopup(\''+pq.label.replace(/'/g,'').replace(/'/g,'')+'\')"'+'>🌀⭐'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -3207,6 +3207,43 @@ const DING_SPIRIT_MAP = {
 // ── Purpose Filter ────────────────────────────────────────────
 var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤', legal:'⚖️' };
 var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak', legal:'Legal' };
+
+// ── PURPOSE ↔ QIMEN CONFIG MAP ──────────────────────────────────
+// Maps each Purpose to the Qimen configurations (Dun/Pretense/Borrow) that amplify it.
+// Labels must match exactly what qmdj-water-scanner.js produces in hits[].label.
+var PURPOSE_QIMEN_MAP = {
+  health:       ['Deity Dun 神遁', 'Human Dun 人遁'],
+  career:       ['Heaven Dun 天遁', 'Wind Dun 風遁', 'Dragon Dun 龍遁', 'Cloud Dun 云遁'],
+  wealth:       ['Earth Dun 地遁', 'Cloud Dun 云遁', 'Rest Pretenses 休詐', 'Earth Borrows 地假'],
+  relationship: ['Human Dun 人遁', 'Multiple Pretenses 重詐', 'Human Borrows 人假'],
+  journey:      ['Wind Dun 風遁', 'Dragon Dun 龍遁'],
+  speak:        ['Wind Dun 風遁', 'Heaven Borrows 天假', 'Tiger Dun 虎遁'],
+  legal:        ['Tiger Dun 虎遁', 'Dragon Dun 龍遁', 'Ghost Dun 鬼遁', 'Real Pretenses 真詐',
+                 'Deity Borrows 神假', 'Ghost Borrows 鬼假', 'Heaven Borrows 天假']
+};
+var _PALACE_DIR = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
+
+/** Scan all 8 outer palaces for Qimen configs that match a Purpose.
+ *  Returns [{label, palace, dir}] or empty array. */
+function fsScanPurposeQimen(qmParams, purpose){
+  if (!qmParams || !purpose) return [];
+  var validLabels = PURPOSE_QIMEN_MAP[purpose];
+  if (!validLabels || !validLabels.length) return [];
+  if (typeof QMDJWaterScanner === 'undefined') return [];
+  var results = [];
+  for (var p = 1; p <= 9; p++){
+    if (p === 5) continue; // skip center
+    var res = QMDJWaterScanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
+                                                  qmParams.hGan, qmParams.hZhi, p);
+    if (!res || !res.hits) continue;
+    res.hits.forEach(function(h){
+      if (validLabels.indexOf(h.label) !== -1){
+        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?' });
+      }
+    });
+  }
+  return results;
+}
 var _scoreModeBalanced = false; // false = A Priority, true = Balanced (average of A and B)
 var _listSortByScore   = false; // false = chronological, true = best hour first per day
 var _listShowAll       = false; // false = positive only, true = show all hours (positive + negative)
@@ -5351,6 +5388,10 @@ function buildMonthView() {
             const fsBadgeLV = fsComputeAllHousesBadges(dayXkdgLV.hex, dayXkdgLV.qi, dayXkdgLV.yun,
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect });
             const fsHTMLLV = fsBuildHouseBadgeHtml(fsBadgeLV, localISODate(dayDate)+'-'+hIdx);
+            const pqHitsLV = fsScanPurposeQimen(
+                { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
+                getPurpose());
+            const pqHTMLLV = pqHitsLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — activate stimulator at ' + pq.dir + '" onclick="event.stopPropagation();showQimenPopup(\'' + pq.label.replace(/'/g,'') + '\')"' + '>🌀⭐' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
             // Unified score-based row coloring: green for positive, red for negative
             const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
                             : listScore >= 8  ? '#c8e6c9'   // medium green
@@ -5482,7 +5523,7 @@ function buildMonthView() {
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
-                    ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${fsHTMLLV}
+                    ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${fsHTMLLV}
                 </div>
             </div>`;
             dayRows.push({ score: hasNegativesFilterMV ? negativeScore : listScore, html: rowHtml });
@@ -6124,7 +6165,10 @@ function runScanner() {
                 wealthBonus: window._lastWealthBonus || 0,
                 keScore: keScoreBST,
                 fsBadge: fsComputeAllHousesBadges(dayXkdg.hex, dayXkdg.qi, dayXkdg.yun,
-                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi })
+                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi }),
+                purposeQimen: fsScanPurposeQimen(
+                    { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi },
+                    getPurpose())
             });
         }
     }
