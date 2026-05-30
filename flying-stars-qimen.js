@@ -131,6 +131,8 @@
   var BR_HAN   = {Zi:'子',Chou:'丑',Yin:'寅',Mao:'卯',Chen:'辰',Si:'巳',Wu:'午',Wei:'未',Shen:'申',You:'酉',Xu:'戌',Hai:'亥'};
   var STEM_HAN_TO_EN = {};
   Object.keys(STEM_HAN).forEach(function(k){ STEM_HAN_TO_EN[STEM_HAN[k]] = k; });
+  var BR_HAN_TO_EN = {};
+  Object.keys(BR_HAN).forEach(function(k){ BR_HAN_TO_EN[BR_HAN[k]] = k; });
   var HOUR_TIMES = {
     Zi:'23–01', Chou:'01–03', Yin:'03–05', Mao:'05–07',
     Chen:'07–09', Si:'09–11', Wu:'11–13', Wei:'13–15',
@@ -242,12 +244,24 @@
 
     // Sezione 17 profili Qimen — ciascuno con info (ⓘ) → descrizione + warning
     var profGroup = function(arr){
+      // Palazzo di manifestazione di ciascun profilo, secondo la detection dello scanner.
+      // Solo Wind/Dragon/Tiger Dun sono vincolati a palazzi fissi; tutti gli altri 14
+      // dipendono solo da stelo+porta+spirito → possono apparire in qualsiasi palazzo.
+      var PALACE_HINT = {
+        'Wind Dun 風遁':   'SE (4) only',
+        'Dragon Dun 龍遁': 'N (1) / E (3) only',
+        'Tiger Dun 虎遁':  'NE (8) / W (7) only'
+      };
       return '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;">'
         + arr.map(function(label){
             var esc = label.replace(/'/g, "\\'");
+            var hintTxt   = PALACE_HINT[label] || 'any palace';
+            var isLocked  = / only$/.test(hintTxt);
+            var hintColor = isLocked ? '#b71c1c' : '#777';
+            var hint = ' <span style="color:'+hintColor+';font-size:9px;font-weight:bold;">('+hintTxt+')</span>';
             return '<span style="white-space:nowrap;font-size:11px;display:inline-flex;align-items:center;gap:4px;">'
                  +   '<label style="white-space:nowrap;cursor:pointer;">'
-                 +     '<input type="checkbox" class="qfs-prof" data-key="'+label+'"> '+label
+                 +     '<input type="checkbox" class="qfs-prof" data-key="'+label+'"> '+label+hint
                  +   '</label>'
                  +   '<span onclick="event.stopPropagation();QFS.profInfo(\''+esc+'\')" title="Description + warning" '
                  +         'style="cursor:pointer;color:#fff;background:#00695c;border-radius:50%;width:16px;height:16px;'
@@ -563,9 +577,14 @@
 
         // Ottiene lo stelo del giorno (carattere cinese) e lo converte in pinyin
         var dayStemEn = null;
+        var dayPillarHan = '', dayPillarPy = '';
         try {
           var ec = Solar.fromYmd(Y, M, D).getLunar().getEightChar();
-          dayStemEn = STEM_HAN_TO_EN[ec.getDayGan()];
+          var dGanHan = ec.getDayGan(), dZhiHan = ec.getDayZhi();
+          dayStemEn = STEM_HAN_TO_EN[dGanHan];
+          var dBranchEn = BR_HAN_TO_EN[dZhiHan] || '';
+          dayPillarHan = dGanHan + dZhiHan;
+          dayPillarPy  = (dayStemEn || '') + ' ' + dBranchEn;
         } catch(e){ continue; }
         if(!dayStemEn) continue;
 
@@ -644,6 +663,8 @@
             byDate[dateKey].push({
               date:       dateKey,
               weekday:    WEEKDAYS_IT[dt.getDay()],
+              dayPillarHan: dayPillarHan,
+              dayPillarPy:  dayPillarPy,
               palace:     palace,
               palaceLbl:  QMDJ_PALACE_TO_LABEL[palace] || ('P'+palace),
               hourStem:   hp.stem,
@@ -713,10 +734,13 @@
         return a.hourTime.localeCompare(b.hourTime);
       });
       var weekday = items[0].weekday;
+      var dayPil = items[0].dayPillarHan
+                 ? items[0].dayPillarHan + ' ' + items[0].dayPillarPy + ' · '
+                 : '';
       html +=
         '<div style="margin-bottom:12px;border:1px solid #b2dfdb;border-radius:8px;overflow:hidden;background:#fff;">'
       +   '<div style="background:#00695c;color:#fff;padding:8px 12px;font-weight:bold;font-size:15px;">'
-      +     dk + ' · ' + weekday + ' · ' + items.length + ' hour' + (items.length > 1 ? 's' : '')
+      +     dk + ' · ' + weekday + ' · ' + dayPil + items.length + ' hour' + (items.length > 1 ? 's' : '')
       +   '</div>'
       +   '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
 
