@@ -5921,6 +5921,10 @@ function runScanner() {
     const results = [];
     const start = new Date(startDate + 'T00:00:00');
 
+    // ─── TRAVEL PLANNER hook ─── reset the hour-score cache for this scan.
+    // Each scanned hour will be stored below (additive; see hook near totalScore).
+    window._tpHourCache = {};
+
     try {
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
@@ -6164,6 +6168,19 @@ function runScanner() {
             } else {
                 totalScore = calcHourScore(dGan, dZhi, hGan, hZhiSC, mGan, mZhi, yGan, pillars.year.branch, analysisItems, hourSpirit, sStrong, sGrowing, activeYear, activeYStem, activeYBranch, activeNoble, activeLu, activeHV, activeBV, activeMV, activeTY, pillars);
             }
+
+            // ─── TRAVEL PLANNER hook (additive) ───────────────────────────────
+            // Cache this hour's native positivity score, UNFILTERED (before the
+            // purpose / direction filters below), keyed by ISO date + hour branch.
+            // Read by travel-planner.js. Does NOT change BEST/LIST behaviour.
+            if (window._tpHourCache) {
+                window._tpHourCache[_isoDay + '#' + hZhi] = {
+                    score: totalScore, iso: _isoDay,
+                    hGan: hGan, hZhi: hZhi, dGan: dGan, dZhi: dZhi, hourIndex: h
+                };
+            }
+            // ──────────────────────────────────────────────────────────────────
+
             const matchLabels = getMatchLabels(activeYear, activeYStem, activeYBranch, dayXkdg, dGan, dZhi, _personAPillars || _personBPillars, activeDayStem, activeDayBranch);
             const qualLabels  = analysisItems.filter(i => ['Powerful','Energetic','Very Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const spiritLabel = hourSpirit ? `${hourSpirit.en}` : '';
