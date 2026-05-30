@@ -33,7 +33,7 @@
 //
 // ============================================================
 
-const CACHE = 'xkdg-app';
+const CACHE = 'xkdg-app-v2';
 
 // ── Install: niente precache, take over immediatamente ──────────
 self.addEventListener('install', () => {
@@ -88,8 +88,12 @@ self.addEventListener('fetch', e => {
         );
     } else {
         // ── NETWORK FIRST per HTML/JS/CSS/manifest/ecc. ──
+        // cache:'no-store' obbliga il fetch a colpire SEMPRE la rete reale,
+        // saltando anche la cache HTTP interna del browser: così, quando sei
+        // online, è impossibile ricevere byte vecchi. Se offline, fetch fallisce
+        // e si ricade sulla cache nostra (caches.match) per far funzionare l'app.
         e.respondWith(
-            fetch(req)
+            fetch(req, { cache: 'no-store' })
                 .then(res => {
                     if (res && res.ok){
                         const clone = res.clone();

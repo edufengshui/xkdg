@@ -1850,7 +1850,12 @@ function fsOpenDirectionCalc(){
   var defLat = '', defLng = '';
   var lonEl = document.getElementById('longitude');
   if(lonEl && lonEl.value) defLng = lonEl.value;
-  // Try GPS-stored lat
+  // GPS saved in a previous session (persisted in localStorage) — fills BOTH lat and lng
+  try {
+    var _savedGps = JSON.parse(localStorage.getItem('xkdg_gps') || 'null');
+    if(_savedGps && _savedGps.lat != null){ defLat = String(_savedGps.lat); defLng = String(_savedGps.lng); }
+  } catch(e){}
+  // GPS used in THIS session wins (freshest)
   if(window._lastGpsLat) defLat = String(window._lastGpsLat);
   if(window._lastGpsLng) defLng = String(window._lastGpsLng);
 
@@ -1916,6 +1921,7 @@ function fsDirectionGPS(){
     document.getElementById('dir-orig-lng').value = pos.coords.longitude.toFixed(6);
     window._lastGpsLat = pos.coords.latitude;
     window._lastGpsLng = pos.coords.longitude;
+    try { localStorage.setItem('xkdg_gps', JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })); } catch(e){}
     if(status) status.textContent = 'GPS position acquired.';
   }, function(err){
     if(status) status.textContent = 'GPS error: ' + err.message;

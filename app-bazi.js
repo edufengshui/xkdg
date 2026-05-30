@@ -1076,6 +1076,7 @@ function getGPS() {
             const lon = pos.coords.longitude;
             window._lastGpsLat = lat;
             window._lastGpsLng = lon;
+            try { localStorage.setItem('xkdg_gps', JSON.stringify({ lat: lat, lng: lon })); } catch(e){}
             document.getElementById('longitude').value = lon.toFixed(2);
             // Smart UTC offset detection: handles countries with non-geographic timezones
             const utcReal = getRealUtcOffset(lat, lon);
