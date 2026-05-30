@@ -502,10 +502,15 @@
     b.addEventListener('click', tpOpen);
     document.body.appendChild(b);
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tpInjectLauncher);
-  } else {
-    tpInjectLauncher();
+  // The TRAVEL PLANNER tab button (in index.html) calls tpOpen() directly.
+  // The floating 🚗 launcher is now opt-in only: set window.TP_FLOATING_BUTTON
+  // = true before this script loads if you ever want it back.
+  if (window.TP_FLOATING_BUTTON === true) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', tpInjectLauncher);
+    } else {
+      tpInjectLauncher();
+    }
   }
 
   // Public API
