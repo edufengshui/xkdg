@@ -242,14 +242,17 @@
 
     // Sezione 17 profili Qimen — ciascuno con info (ⓘ) → descrizione + warning
     var profGroup = function(arr){
-      return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;">'
+      return '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:2px;">'
         + arr.map(function(label){
             var esc = label.replace(/'/g, "\\'");
-            return '<label style="white-space:nowrap;font-size:11px;">'
-                 +   '<input type="checkbox" class="qfs-prof" data-key="'+label+'"> '+label+' '
-                 +   '<span onclick="QFS.profInfo(\''+esc+'\')" title="Description + warning" '
-                 +         'style="cursor:pointer;color:#00695c;font-weight:bold;">ⓘ</span>'
-                 + '</label>';
+            return '<span style="white-space:nowrap;font-size:11px;display:inline-flex;align-items:center;gap:4px;">'
+                 +   '<label style="white-space:nowrap;cursor:pointer;">'
+                 +     '<input type="checkbox" class="qfs-prof" data-key="'+label+'"> '+label
+                 +   '</label>'
+                 +   '<span onclick="event.stopPropagation();QFS.profInfo(\''+esc+'\')" title="Description + warning" '
+                 +         'style="cursor:pointer;color:#fff;background:#00695c;border-radius:50%;width:16px;height:16px;'
+                 +         'line-height:16px;text-align:center;font-weight:bold;font-size:11px;flex:0 0 auto;">i</span>'
+                 + '</span>';
           }).join('')
         + '</div>';
     };
@@ -316,6 +319,7 @@
     +       '2. Which Qimen entities to look for in that palace?'
     +       ' <button onclick="QFS.selectAll(true)" style="background:#00695c;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px;font-weight:bold;">All</button>'
     +       ' <button onclick="QFS.selectAll(false)" style="background:#999;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:bold;">None</button>'
+    +       ' <button onclick="QFS.clearAllQimen()" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px;font-weight:bold;">✗ Clear ALL (entities + profiles)</button>'
     +     '</div>'
     +     '<div style="font-size:10px;color:#666;margin-bottom:6px;font-style:italic;">'
     +       'REQ = the palace MUST contain an entity from that category. OPT = bonus only.'
@@ -806,6 +810,14 @@
     for(var i = 0; i < boxes.length; i++) boxes[i].checked = state;
   }
 
+  // Deseleziona TUTTE le scelte della sezione Qimen (entità + profili) in un colpo solo
+  function clearAllQimen(){
+    var ent  = document.querySelectorAll('input.qfs-ent');
+    for(var i = 0; i < ent.length; i++)  ent[i].checked  = false;
+    var prof = document.querySelectorAll('input.qfs-prof');
+    for(var j = 0; j < prof.length; j++) prof[j].checked = false;
+  }
+
   // Mostra descrizione + warning di un profilo (riusa showQimenPopup di app-fengshui.js)
   function profInfo(label){
     if(typeof showQimenPopup === 'function') showQimenPopup(label);
@@ -826,6 +838,7 @@
     close:     close,
     selectAll: selectAll,
     selectAllProfiles: selectAllProfiles,
+    clearAllQimen: clearAllQimen,
     profInfo:  profInfo,
     showChart: showChart,
     toggleCat: toggleCat
