@@ -734,13 +734,15 @@
         return a.hourTime.localeCompare(b.hourTime);
       });
       var weekday = items[0].weekday;
-      var dayPil = items[0].dayPillarHan
-                 ? items[0].dayPillarHan + ' ' + items[0].dayPillarPy + ' · '
-                 : '';
+      var dParts = dk.split('-');
+      var dkDisplay = (dParts.length === 3) ? (dParts[2] + '/' + dParts[1] + '/' + dParts[0]) : dk;
+      var dayPilTxt = items[0].dayPillarHan
+                    ? (' · ' + items[0].dayPillarHan + ' ' + items[0].dayPillarPy)
+                    : '';
       html +=
         '<div style="margin-bottom:12px;border:1px solid #b2dfdb;border-radius:8px;overflow:hidden;background:#fff;">'
       +   '<div style="background:#00695c;color:#fff;padding:8px 12px;font-weight:bold;font-size:15px;">'
-      +     dk + ' · ' + weekday + ' · ' + dayPil + items.length + ' hour' + (items.length > 1 ? 's' : '')
+      +     dkDisplay + ' · ' + weekday + dayPilTxt
       +   '</div>'
       +   '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
 
@@ -784,7 +786,7 @@
         +     '<div style="margin-bottom:6px;line-height:1.6;">' + hitsHtml + '</div>'
         +     '<div style="color:#555;font-size:13px;margin-bottom:6px;">' + cellSummary + '</div>'
         +     '<div>'
-        +       '<button onclick="QFS.showChart(\''+it.date+'\',\''+it.hourStem+'\',\''+it.hourBranch+'\','+it.palace+')" '
+        +       '<button onclick="QFS.showChart(this,\''+it.date+'\',\''+it.hourStem+'\',\''+it.hourBranch+'\','+it.palace+')" '
         +              'style="background:#fff;color:#00695c;border:1.5px solid #00695c;border-radius:5px;padding:5px 14px;font-size:13px;cursor:pointer;font-weight:bold;">View full chart</button>'
         +     '</div>'
         +   '</td>'
@@ -848,12 +850,47 @@
     else alert(label);
   }
 
-  function showChart(isoDate, hStemKey, hBranchKey, palace){
-    if(typeof showQimenChart === 'function'){
-      // showQimenChart è definita in app-fengshui.js e accetta caratteri cinesi
-      showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace);
-    } else {
+  // Bottone attualmente in stato "Hide chart" (uno solo per volta)
+  var _openChartBtn = null;
+  function setChartBtnLabel(btn, isOpen){
+    if(btn) btn.textContent = isOpen ? 'Hide chart' : 'View full chart';
+  }
+
+  function showChart(btn, isoDate, hStemKey, hBranchKey, palace){
+    var existing = document.getElementById('qimen-full-chart');
+
+    // Se QUESTO bottone ha già aperto la carta → nascondila (toggle)
+    if(btn && _openChartBtn === btn && existing){
+      existing.remove();
+      setChartBtnLabel(btn, false);
+      _openChartBtn = null;
+      return;
+    }
+
+    if(typeof showQimenChart !== 'function'){
       alert('showQimenChart not available (defined in app-fengshui.js).');
+      return;
+    }
+    // showQimenChart è definita in app-fengshui.js e accetta caratteri cinesi
+    showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace);
+
+    // Riporta l'eventuale bottone precedentemente aperto a "View full chart"
+    if(_openChartBtn && _openChartBtn !== btn) setChartBtnLabel(_openChartBtn, false);
+
+    // Questo bottone ora mostra la carta
+    setChartBtnLabel(btn, true);
+    _openChartBtn = btn;
+
+    // Se l'utente chiude la carta con la ✕ propria, riallinea l'etichetta del bottone
+    var chartEl = document.getElementById('qimen-full-chart');
+    if(chartEl){
+      var closeX = chartEl.querySelector('[onclick*="qimen-full-chart"]');
+      if(closeX){
+        closeX.addEventListener('click', function(){
+          setChartBtnLabel(btn, false);
+          if(_openChartBtn === btn) _openChartBtn = null;
+        });
+      }
     }
   }
 
