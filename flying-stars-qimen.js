@@ -109,6 +109,21 @@
     {key:'Bird',      han:'朱雀', label:'朱雀 Bird'}
   ];
 
+  // 17 configurazioni Qimen (profili). Le etichette DEVONO coincidere
+  // esattamente con gli hit di QMDJWaterScanner.checkHourAtPalace e con
+  // le chiavi di _qimenDescriptions (app-fengshui.js), così sia il match
+  // sia il popup descrizione+warning (showQimenPopup) funzionano.
+  var QM_PROFILES = {
+    dun: [
+      'Heaven Dun 天遁','Earth Dun 地遁','Human Dun 人遁','Deity Dun 神遁','Ghost Dun 鬼遁',
+      'Wind Dun 風遁','Cloud Dun 云遁','Dragon Dun 龍遁','Tiger Dun 虎遁'
+    ],
+    zha: ['Real Pretenses 真詐','Rest Pretenses 休詐','Multiple Pretenses 重詐'],
+    jia: ['Heaven Borrows 天假','Earth Borrows 地假','Human Borrows 人假','Deity Borrows 神假','Ghost Borrows 鬼假']
+  };
+  var QM_PROFILE_SET = {};
+  ['dun','zha','jia'].forEach(function(g){ QM_PROFILES[g].forEach(function(l){ QM_PROFILE_SET[l] = true; }); });
+
   // Steli/rami per il calcolo dei pilastri orari
   var STEM_SEQ = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
   var BR_SEQ   = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
@@ -225,6 +240,42 @@
            + '</label>';
     }).join('');
 
+    // Sezione 17 profili Qimen — ciascuno con info (ⓘ) → descrizione + warning
+    var profGroup = function(arr){
+      return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:2px;">'
+        + arr.map(function(label){
+            var esc = label.replace(/'/g, "\\'");
+            return '<label style="white-space:nowrap;font-size:11px;">'
+                 +   '<input type="checkbox" class="qfs-prof" data-key="'+label+'"> '+label+' '
+                 +   '<span onclick="QFS.profInfo(\''+esc+'\')" title="Description + warning" '
+                 +         'style="cursor:pointer;color:#00695c;font-weight:bold;">ⓘ</span>'
+                 + '</label>';
+          }).join('')
+        + '</div>';
+    };
+    var profHtml =
+        '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #80cbc4;">'
+      +   '<div style="font-weight:bold;color:#004d40;margin-bottom:2px;">'
+      +     '3. Qimen profiles 奇門格局 (17)'
+      +     ' <button onclick="QFS.selectAllProfiles(true)" style="background:#00695c;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px;font-weight:bold;">All</button>'
+      +     ' <button onclick="QFS.selectAllProfiles(false)" style="background:#999;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:bold;">None</button>'
+      +   '</div>'
+      +   '<div style="font-size:10px;color:#666;margin-bottom:6px;font-style:italic;">'
+      +     'Many profiles already include San Qi / Doors / Spirits internally. Tap ⓘ for description + ⚠️ warning.'
+      +   '</div>'
+      +   '<div style="font-size:11px;color:#004d40;font-weight:bold;margin-top:4px;">九遁 Nine Dun (auspicious)</div>'
+      +   profGroup(QM_PROFILES.dun)
+      +   '<div style="font-size:11px;color:#b71c1c;font-weight:bold;margin-top:6px;">三詐 Three Pretenses ⚠️</div>'
+      +   profGroup(QM_PROFILES.zha)
+      +   '<div style="font-size:11px;color:#b71c1c;font-weight:bold;margin-top:6px;">五假 Five Borrows ⚠️</div>'
+      +   profGroup(QM_PROFILES.jia)
+      +   '<div style="margin-top:8px;font-size:11px;line-height:1.8;">'
+      +     '<span style="color:#004d40;font-weight:bold;">If profiles are selected, match:</span><br>'
+      +     '<label style="white-space:nowrap;margin-right:12px;"><input type="radio" name="qfs-profmode" value="with" checked> <strong>With positives</strong> (profile <em>and</em> the entities above)</label>'
+      +     '<label style="white-space:nowrap;"><input type="radio" name="qfs-profmode" value="alone"> <strong>Alone</strong> (profile only)</label>'
+      +   '</div>'
+      + '</div>';
+
     var starOptions = '';
     for(var n = 1; n <= 9; n++){
       starOptions += '<option value="'+n+'"'+(n === 8 ? ' selected' : '')+'>Star '+n+'</option>';
@@ -295,6 +346,9 @@
     +     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;">'+spiritHtml+'</div>'
 
     +   '</div>'
+
+    // STEP 3 — profili Qimen (17 configurazioni)
+    +   profHtml
 
       // Filtro Fu Yin 伏吟
     +   '<div style="margin-top:8px;padding:6px 10px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;font-size:12px;">'
@@ -440,8 +494,18 @@
       if(cat === 'spirit') wanted.spirits.add(key);
     }
     var totalSelected = wanted.stems.size + wanted.doors.size + wanted.stars.size + wanted.spirits.size;
-    if(totalSelected === 0){
-      resultsBox.innerHTML = '<div style="color:#c62828;padding:10px;">⚠ Select at least one Qimen entity.</div>';
+
+    // Profili Qimen selezionati (17 configurazioni) + modalità
+    var selProfiles = new Set();
+    var profBoxes = document.querySelectorAll('input.qfs-prof');
+    for(var pb = 0; pb < profBoxes.length; pb++){
+      if(profBoxes[pb].checked) selProfiles.add(profBoxes[pb].getAttribute('data-key'));
+    }
+    var profModeEl = document.querySelector('input[name="qfs-profmode"]:checked');
+    var profMode = profModeEl ? profModeEl.value : 'with';
+
+    if(totalSelected === 0 && selProfiles.size === 0){
+      resultsBox.innerHTML = '<div style="color:#c62828;padding:10px;">⚠ Select at least one Qimen entity or profile.</div>';
       return;
     }
 
@@ -519,26 +583,56 @@
             // Filtro Fu Yin 伏吟: stelo Tian Pan = stelo Di Pan
             if(excludeFuYin && pdata.ti && pdata.ti === pdata.di) continue;
 
-            var hits = matchPalace(pdata, wanted);
+            var entityHits = matchPalace(pdata, wanted);
 
-            // --- LOGICA REQUIRED/OPTIONAL ---
-            // Se ci sono categorie REQUIRED, il palazzo DEVE avere
-            // almeno un hit da CIASCUNA categoria required.
-            // Le categorie OPTIONAL contribuiscono hits bonus.
-            if(required.size > 0){
-              var passRequired = true;
+            // Hit dei profili (17 config) a questo palazzo, limitati a quelli selezionati
+            var profileHits = [];
+            if(selProfiles.size > 0){
+              try {
+                var chk = QMDJWaterScanner.checkHourAtPalace(Y, M, D, hp.stem, hp.branch, palace);
+                if(chk && chk.hits){
+                  for(var ph = 0; ph < chk.hits.length; ph++){
+                    var hcat = chk.hits[ph].cat;
+                    if((hcat === 'dun' || hcat === 'zha' || hcat === 'jia') && selProfiles.has(chk.hits[ph].label)){
+                      profileHits.push({ cat:'profile', label: chk.hits[ph].label });
+                    }
+                  }
+                }
+              } catch(e){}
+            }
+
+            // Il palazzo soddisfa i criteri sulle ENTITÀ?
+            var passEnt;
+            if(totalSelected === 0){
+              passEnt = true; // nessun vincolo di entità
+            } else if(required.size > 0){
+              passEnt = true;
               required.forEach(function(reqCat){
                 var hasCat = false;
-                for(var hi = 0; hi < hits.length; hi++){
-                  if(hits[hi].cat === reqCat){ hasCat = true; break; }
+                for(var hi = 0; hi < entityHits.length; hi++){
+                  if(entityHits[hi].cat === reqCat){ hasCat = true; break; }
                 }
-                if(!hasCat) passRequired = false;
+                if(!hasCat) passEnt = false;
               });
-              if(!passRequired) continue;
             } else {
-              // Nessuna categoria required → comportamento originale:
-              // qualsiasi hit basta per includere l'ora.
-              if(hits.length === 0) continue;
+              passEnt = entityHits.length > 0;
+            }
+
+            // --- DECISIONE DI INCLUSIONE ---
+            var finalHits;
+            if(selProfiles.size === 0){
+              // Solo entità (comportamento originale)
+              if(!passEnt) continue;
+              finalHits = entityHits;
+            } else if(profMode === 'alone'){
+              // Solo profilo — le entità vengono ignorate
+              if(profileHits.length === 0) continue;
+              finalHits = profileHits;
+            } else {
+              // "With positives" — serve il profilo E le entità
+              if(profileHits.length === 0) continue;
+              if(!passEnt) continue;
+              finalHits = entityHits.concat(profileHits);
             }
 
             var dateKey = Y + '-' + String(M).padStart(2,'0') + '-' + String(D).padStart(2,'0');
@@ -553,8 +647,8 @@
               hourHan:    hp.han,
               hourTime:   hp.time,
               cell:       pdata,
-              hits:       hits,
-              score:      hits.length
+              hits:       finalHits,
+              score:      finalHits.length
             });
             totalHits++;
           }
@@ -626,6 +720,13 @@
         seq++;
         var it = items[j];
         var hitsHtml = it.hits.map(function(h){
+          if(h.cat === 'profile'){
+            var esc = (h.label || '').replace(/'/g, "\\'");
+            return '<span onclick="QFS.profInfo(\''+esc+'\')" title="Description + warning" '
+                 + 'style="background:#00695c;color:#fff;padding:3px 9px;border-radius:4px;margin:2px 4px 2px 0;'
+                 + 'font-size:13px;display:inline-block;font-weight:bold;cursor:pointer;border:1px solid #b2dfdb;">'
+                 + '🌀 ' + h.label + ' ⓘ</span>';
+          }
           var bg = (h.cat === 'door')   ? '#1b5e20'
                  : (h.cat === 'stem')   ? '#bf6c00'
                  : (h.cat === 'spirit') ? '#6a1b9a'
@@ -700,6 +801,17 @@
     for(var i = 0; i < boxes.length; i++) boxes[i].checked = state;
   }
 
+  function selectAllProfiles(state){
+    var boxes = document.querySelectorAll('input.qfs-prof');
+    for(var i = 0; i < boxes.length; i++) boxes[i].checked = state;
+  }
+
+  // Mostra descrizione + warning di un profilo (riusa showQimenPopup di app-fengshui.js)
+  function profInfo(label){
+    if(typeof showQimenPopup === 'function') showQimenPopup(label);
+    else alert(label);
+  }
+
   function showChart(isoDate, hStemKey, hBranchKey, palace){
     if(typeof showQimenChart === 'function'){
       // showQimenChart è definita in app-fengshui.js e accetta caratteri cinesi
@@ -713,6 +825,8 @@
     open:      open,
     close:     close,
     selectAll: selectAll,
+    selectAllProfiles: selectAllProfiles,
+    profInfo:  profInfo,
     showChart: showChart,
     toggleCat: toggleCat
   };
