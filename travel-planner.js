@@ -299,7 +299,176 @@
       });
     });
 
-    return { bearing: bearing, snapDir: snapDir, origin: O, dest: Dst, slots: slots, hasHourData: anyHour };
+    // ---- Stop plan: auto suggester, or the user's own charging stops -------
+    var plan = (opts.stopMode === 'mine')
+      ? tpPlanWithStops(slots, opts.charges || [])
+      : tpSuggestStops(slots, opts.maxLegHours || 4);
+
+    return { bearing: bearing, snapDir: snapDir, origin: O, dest: Dst, slots: slots,
+             hasHourData: anyHour, plan: plan, stopMode: opts.stopMode || 'auto',
+             maxLegHours: opts.maxLegHours || 4 };
+  }
+
+  /* ---- pick the best gated direction in a slot ---------------------------- *
+   * Prefers directions heading toward the destination; ranks by combined score.
+   * ----------------------------------------------------------------------- */
+  function tpBestDir(slot, preferToward) {
+    var gated = slot.dirs.filter(function (d) { return d.eval && d.eval.ok; });
+    if (!gated.length) return null;
+    var toward = gated.filter(function (d) { return d.towardDest; });
+    var pool = (preferToward && toward.length) ? toward : gated;
+    pool = pool.slice().sort(function (a, b) { return (b.combined || 0) - (a.combined || 0); });
+    return pool[0];
+  }
+
+  /* ---- STOP SUGGESTER ----------------------------------------------------- *
+   * Builds the leg/stop itinerary from the slots. Faithful to the model:
+   *   - You lock a direction only when setting off (departure or restart).
+   *   - While driving you are immune to the hour change, so a stop is only
+   *     worth it when the NEW double-hour gives you something better.
+   * Rule for stopping at a slot boundary:
+   *   a) the new hour is positive AND offers a toward-destination direction
+   *      (re-locking captures the synergy and keeps you progressing), OR
+   *   b) you are currently NOT heading toward the destination and the new
+   *      slot offers one (course correction), OR
+   *   c) you have driven >= maxLegHours without a stop (rest needed).
+   * Otherwise: keep driving (immune to the change).
+   * Returns an ordered timeline of {type:'leg'|'stop', ...}.
+   * ----------------------------------------------------------------------- */
+  function tpSuggestStops(slots, maxLegHours) {
+    maxLegHours = maxLegHours || 4;
+    var timeline = [];
+    if (!slots.length) return timeline;
+
+    var legStart = slots[0].wallStart;
+    var legStartSlot = 0;
+    var curHead = tpBestDir(slots[0], true);
+
+    function pushLeg(endWall, endSlotIdx, note) {
+      timeline.push({
+        type: 'leg', startWall: legStart, endWall: endWall,
+        heading: curHead, startSlotIdx: legStartSlot, endSlotIdx: endSlotIdx,
+        durationH: (endWall - legStart) / 3600000, note: note || ''
+      });
+    }
+
+    for (var i = 1; i < slots.length; i++) {
+      var slot = slots[i];
+      var bi = tpBestDir(slot, true);
+      var elapsedH = (slot.wallStart - legStart) / 3600000;
+      var forcedRest = elapsedH >= maxLegHours;
+      var curTowards = !!(curHead && curHead.towardDest);
+      var biTowards = !!(bi && bi.towardDest);
+
+      var doStop = false, reason = '';
+      if (bi && biTowards && slot.hourPositive) { doStop = true; reason = 'ora positiva + direzione verso la meta (sinergia)'; }
+      else if (!curTowards && biTowards) { doStop = true; reason = 'correzione rotta verso la meta'; }
+      else if (forcedRest && bi) { doStop = true; reason = 'sosta di riposo (≥' + maxLegHours + 'h di marcia)'; }
+
+      if (doStop) {
+        pushLeg(slot.wallStart, i - 1);
+        timeline.push({ type: 'stop', atWall: slot.wallStart, slotIdx: i, reason: reason, newHeading: bi });
+        legStart = slot.wallStart; legStartSlot = i; curHead = bi;
+      }
+    }
+    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrivo');
+    return timeline;
+  }
+
+  /* ---- parse charging-stop times from the text field --------------------- *
+   * Accepts "HH:MM" entries separated by commas, optional duration after
+   * × or x or * (minutes), e.g. "15:30×45, 19:30". Times are taken on the
+   * departure date; if a time is earlier than departure it rolls to next day.
+   * Returns [{ start: Date, durationMin: Number }] sorted by time.
+   * ----------------------------------------------------------------------- */
+  function tpParseCharges(text, depDate) {
+    if (!text) return [];
+    var out = [];
+    text.split(',').forEach(function (raw) {
+      var s = raw.trim(); if (!s) return;
+      var m = s.match(/^(\d{1,2}):(\d{2})\s*[×x*]?\s*(\d+)?$/);
+      if (!m) return;
+      var hh = parseInt(m[1], 10), mm = parseInt(m[2], 10);
+      var dur = m[3] ? parseInt(m[3], 10) : 30;
+      var d = new Date(depDate.getFullYear(), depDate.getMonth(), depDate.getDate(), hh, mm, 0);
+      if (d.getTime() < depDate.getTime()) d = new Date(d.getTime() + 86400000); // next day
+      out.push({ start: d, durationMin: dur });
+    });
+    out.sort(function (a, b) { return a.start - b.start; });
+    return out;
+  }
+
+  // Which slot index contains a wall-clock moment (by wall range)
+  function tpSlotIndexAt(slots, wallDate) {
+    var t = wallDate.getTime();
+    for (var i = 0; i < slots.length; i++) {
+      if (t >= slots[i].wallStart.getTime() && t < slots[i].wallEnd.getTime()) return i;
+    }
+    if (slots.length && t >= slots[slots.length - 1].wallEnd.getTime()) return slots.length - 1;
+    return 0;
+  }
+
+  // Hint: would an adjacent double-hour give a better toward-destination option?
+  function tpNeighborHint(slots, i) {
+    function towardScore(s) { var b = tpBestDir(s, true); return (b && b.towardDest) ? b.combined : null; }
+    var here = towardScore(slots[i]);
+    var cand = null;
+    [i - 1, i + 1].forEach(function (j) {
+      if (j < 0 || j >= slots.length) return;
+      var sc = towardScore(slots[j]);
+      if (sc == null) return;
+      if ((here == null) || (sc > here)) {
+        if (!cand || sc > cand.score) cand = { idx: j, score: sc, slot: slots[j], earlier: (j < i) };
+      }
+    });
+    return cand; // null if no better neighbor
+  }
+
+  /* ---- USER-SUPPLIED CHARGING STOPS -------------------------------------- *
+   * The user lists when they'll charge (each a >=20 min reset). For each, we
+   * report the restart double-hour + best toward-destination direction, and
+   * hint if shifting the charge by one double-hour would land a better one.
+   * ----------------------------------------------------------------------- */
+  function tpPlanWithStops(slots, charges) {
+    var timeline = [];
+    if (!slots.length) return timeline;
+    var legStart = slots[0].wallStart, legStartSlot = 0;
+    var curHead = tpBestDir(slots[0], true);
+    function pushLeg(endWall, endSlotIdx, note) {
+      timeline.push({ type: 'leg', startWall: legStart, endWall: endWall, heading: curHead,
+        startSlotIdx: legStartSlot, endSlotIdx: endSlotIdx,
+        durationH: (endWall - legStart) / 3600000, note: note || '' });
+    }
+    var tripStart = slots[0].wallStart.getTime();
+    var tripEnd = slots[slots.length - 1].wallEnd.getTime();
+
+    charges.forEach(function (ch) {
+      if (ch.start.getTime() <= tripStart || ch.start.getTime() >= tripEnd) return; // outside trip
+      // close current leg at the charge start
+      var atSlot = tpSlotIndexAt(slots, ch.start);
+      pushLeg(ch.start, atSlot);
+      // restart moment = charge start + duration
+      var restart = new Date(ch.start.getTime() + ch.durationMin * 60000);
+      if (restart.getTime() >= tripEnd) restart = new Date(tripEnd - 1);
+      var rSlotIdx = tpSlotIndexAt(slots, restart);
+      var rSlot = slots[rSlotIdx];
+      var newHead = tpBestDir(rSlot, true);
+      var hint = tpNeighborHint(slots, rSlotIdx);
+      timeline.push({
+        type: 'stop', charge: true, atWall: ch.start, durationMin: ch.durationMin,
+        restartWall: restart, restartSlotIdx: rSlotIdx, slotIdx: rSlotIdx,
+        reason: 'ricarica (' + ch.durationMin + ' min) — reset',
+        newHeading: newHead,
+        restartSlotLabel: rSlot.gZhiHan + ' (TST ' + rSlot.tstStart + '–' + rSlot.tstEnd + ')',
+        chargeHint: hint ? {
+          dir: tpBestDir(hint.slot, true), label: hint.slot.gZhiHan, earlier: hint.earlier,
+          wall: fmtHMonly(hint.slot.wallStart) + '–' + fmtHMonly(hint.slot.wallEnd), score: hint.score
+        } : null
+      });
+      legStart = restart; legStartSlot = rSlotIdx; curHead = newHead;
+    });
+    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrivo');
+    return timeline;
   }
 
   /* ======================================================================= *
@@ -317,6 +486,58 @@
            String(d.getHours()).padStart(2, '0') + ':' +
            String(d.getMinutes()).padStart(2, '0');
   }
+  function fmtHMonly(d) {
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function tpHeadLabel(h, destName) {
+    if (!h) return '<span style="color:#b00;">nessuna direzione favorevole</span>';
+    return '<b>' + h.dir + '</b>' + (h.towardDest ? ' →' + destName : '') +
+           ' <span style="color:#1b8a3f;">(' + (h.combined > 0 ? '+' : '') + h.combined + ')</span>';
+  }
+
+  function tpRenderPlan(result, container) {
+    var plan = result.plan || [];
+    var nStops = plan.filter(function (x) { return x.type === 'stop'; }).length;
+
+    var wrap = el('div', { style: 'border:2px solid #1b8a3f;border-radius:10px;padding:10px 12px;margin:6px 0 4px;background:#f3fbf5;' });
+    wrap.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1b8a3f;margin-bottom:8px;' },
+      '🗺️ Piano consigliato — ' + nStops + ' sosta' + (nStops === 1 ? '' : 'e') + ' (≥20 min)'));
+
+    plan.forEach(function (item) {
+      if (item.type === 'leg') {
+        var row = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;margin:4px 0;font-size:13px;' });
+        row.appendChild(el('span', { style: 'font-size:15px;' }, '🚗'));
+        var dur = item.durationH;
+        var durTxt = (dur >= 1 ? dur.toFixed(dur % 1 ? 1 : 0) + 'h' : Math.round(dur * 60) + 'm');
+        row.appendChild(el('div', null,
+          'Guida <b>' + fmtHMonly(item.startWall) + '→' + fmtHMonly(item.endWall) + '</b> (' + durTxt + ') verso ' +
+          tpHeadLabel(item.heading, result.dest.name) +
+          (item.note === 'arrivo' ? ' &nbsp;🏁 <b>arrivo a ' + result.dest.name + '</b>' : '')));
+        wrap.appendChild(row);
+      } else { // stop
+        var srow = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;margin:4px 0 4px 4px;font-size:13px;color:#8a4b00;' });
+        srow.appendChild(el('span', { style: 'font-size:15px;' }, item.charge ? '🔌' : '🛑'));
+        var body = item.charge
+          ? '<b>Ricarica ' + item.durationMin + ' min</b> alle <b>' + fmtHMonly(item.atWall) + '</b> (reset)' +
+            '<br>riparti alle <b>' + fmtHMonly(item.restartWall) + '</b> in ' + item.restartSlotLabel +
+            ' verso ' + tpHeadLabel(item.newHeading, result.dest.name) +
+            (item.chargeHint && item.chargeHint.dir
+              ? '<br><span style="color:#1565c0;">💡 ' + (item.chargeHint.earlier ? 'anticipando' : 'ritardando') +
+                ' la ricarica alla finestra ' + item.chargeHint.wall + ' (' + item.chargeHint.label +
+                ') ripartiresti verso ' + tpHeadLabel(item.chargeHint.dir, result.dest.name) + '</span>'
+              : '')
+          : '<b>Sosta ≥20 min</b> alle <b>' + fmtHMonly(item.atWall) + '</b> — ' + item.reason +
+            '<br>poi riparti verso ' + tpHeadLabel(item.newHeading, result.dest.name);
+        srow.appendChild(el('div', null, body));
+        wrap.appendChild(srow);
+      }
+    });
+
+    if (!plan.length) {
+      wrap.appendChild(el('div', { style: 'color:#b00;font-size:13px;' }, 'Nessun piano: nessuna direzione favorevole nel periodo.'));
+    }
+    container.appendChild(wrap);
+  }
 
   function tpRender(result, container) {
     container.innerHTML = '';
@@ -332,6 +553,12 @@
       }, '⚠️ Punteggio dell\'ora non disponibile: esegui prima un <b>scan BEST</b> sulle date del viaggio (con la persona giusta attiva). ' +
          'Poi riapri il pianificatore. Per ora vedi solo il punteggio di direzione.'));
     }
+
+    // ---- Recommended plan (stop suggester) ----
+    tpRenderPlan(result, container);
+
+    // ---- Detailed slot grid (reference) ----
+    container.appendChild(el('div', { style: 'margin:14px 0 4px;font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;' }, 'Dettaglio per doppia-ora'));
 
     result.slots.forEach(function (slot) {
       var card = el('div', { style: 'border:1px solid #d9d9e3;border-radius:8px;padding:8px 10px;margin:8px 0;background:#fafaff;' });
@@ -438,6 +665,7 @@
     form.appendChild(field('Partenza (data)', 'tp-date', '2026-06-03', 'date'));
     form.appendChild(field('Partenza (ora)', 'tp-time', '12:00', 'time'));
     form.appendChild(field('Durata viaggio (ore)', 'tp-dur', '12', 'number'));
+    form.appendChild(field('Ore max marcia/sosta', 'tp-maxleg', '4', 'number'));
     form.appendChild(field('UTC offset (base)', 'tp-utc', String(nowUtc), 'number'));
     form.appendChild(field('Origine lon (Vienna)', 'tp-olon', String(TP_DEFAULT.origin.lon), 'number'));
     form.appendChild(field('Origine lat', 'tp-olat', String(TP_DEFAULT.origin.lat), 'number'));
@@ -450,6 +678,23 @@
     dstWrap.appendChild(dstChk);
     dstWrap.appendChild(el('span', null, 'Ora legale (DST) attiva'));
     form.appendChild(dstWrap);
+
+    // Stop mode: auto suggester vs user-supplied charging stops
+    var modeWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;grid-column:1 / span 2;' }, 'Soste');
+    var modeSel = el('select', { id: 'tp-stopmode',
+      style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
+    modeSel.appendChild(el('option', { value: 'auto' }, 'Automatiche (le sceglie il pianificatore)'));
+    modeSel.appendChild(el('option', { value: 'mine' }, 'Le mie ricariche (le inserisco io)'));
+    modeWrap.appendChild(modeSel);
+    form.appendChild(modeWrap);
+
+    var chWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;grid-column:1 / span 2;' },
+      'Orari di ricarica (HH:MM, separati da virgola; durata opzionale con ×min, es. 15:30×45)');
+    chWrap.appendChild(el('input', { id: 'tp-charges', type: 'text', value: '',
+      placeholder: 'es. 15:30×45, 19:30×30',
+      style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+    form.appendChild(chWrap);
+
     panel.appendChild(form);
 
     var btn = el('button', {
@@ -475,12 +720,15 @@
         var opts = {
           depDate: dep,
           durationH: parseFloat(document.getElementById('tp-dur').value) || 12,
+          maxLegHours: parseFloat(document.getElementById('tp-maxleg').value) || 4,
           utc: parseFloat(document.getElementById('tp-utc').value) || 0,
           dstOn: document.getElementById('tp-dst').checked,
           origin: { lat: parseFloat(document.getElementById('tp-olat').value), lon: parseFloat(document.getElementById('tp-olon').value) },
           dest: { lat: parseFloat(document.getElementById('tp-dlat').value), lon: parseFloat(document.getElementById('tp-dlon').value), name: 'Roma' }
         };
         opts.origin.name = 'Vienna';
+        opts.stopMode = document.getElementById('tp-stopmode').value;
+        opts.charges = tpParseCharges(document.getElementById('tp-charges').value, dep);
         var res = tpPlan(opts);
         tpRender(res, results);
       } catch (err) {
