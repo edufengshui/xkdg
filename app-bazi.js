@@ -5642,6 +5642,50 @@ function showDayInList(isoDate) {
     window.scrollTo({ top: document.getElementById('month-view').offsetTop - 60, behavior: 'smooth' });
 }
 
+// ── TRAVEL PLANNER helper (additive) ─────────────────────────────────────────
+// Returns the LIST row HTML for a single hour, so the travel planner can paste
+// the exact LIST setting (incl. score) next to its Qimen chart — no navigation.
+// Renders that day's LIST off-screen (show-all so every hour appears), extracts
+// the row whose onclick targets this hour, neutralises its onclick, and restores
+// the previous LIST state and #month-view content. Never throws.
+window.tpGetListRowHtml = function (isoDate, hourIndex) {
+    var mv = document.getElementById('month-view');
+    if (!mv || typeof buildMonthView !== 'function') return '';
+    var startSel = document.getElementById('scan-start');
+    var daysSel  = document.getElementById('scan-days');
+    var prevStart = startSel ? startSel.value : null;
+    var prevDays  = daysSel  ? daysSel.value  : null;
+    var prevHtml  = mv.innerHTML;
+    var prevShowAll = window._calShowAllForDate;
+    var out = '';
+    try {
+        if (startSel) startSel.value = isoDate;
+        if (daysSel)  daysSel.value  = 1;
+        window._calShowAllForDate = isoDate;
+        buildMonthView();
+        var want = "loadDateIntoMain('" + isoDate + "'," + hourIndex + ")";
+        var nodes = mv.querySelectorAll('[onclick]');
+        for (var i = 0; i < nodes.length; i++) {
+            var oc = nodes[i].getAttribute('onclick') || '';
+            if (oc.indexOf(want) !== -1) {
+                var clone = nodes[i].cloneNode(true);
+                clone.removeAttribute('onclick');
+                clone.style.cursor = 'default';
+                out = clone.outerHTML;
+                break;
+            }
+        }
+    } catch (e) { out = ''; }
+    finally {
+        if (startSel && prevStart != null) startSel.value = prevStart;
+        if (daysSel && prevDays != null) daysSel.value = prevDays;
+        window._calShowAllForDate = prevShowAll;
+        mv.innerHTML = prevHtml;
+    }
+    return out;
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 function toggleListSort() {
     _listSortByScore = !_listSortByScore;
     buildMonthView();
