@@ -738,6 +738,42 @@
     }
   }
 
+  function tpShowGuide() {
+    var prev = document.getElementById('tp-guide-ov');
+    if (prev) prev.parentNode.removeChild(prev);
+    var ov = el('div', { id: 'tp-guide-ov',
+      style: 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;' });
+    var box = el('div', { style: 'background:#fff;border-radius:12px;max-width:580px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:system-ui,Arial,sans-serif;' });
+    var steps = [
+      ['Load the traveller', 'In the main view enter the person whose trip this is. The hour score (XKDG, spirits, Nayin) is computed for this person — without it you only get the direction score.'],
+      ['Set the trip', 'Open TRAVEL PLANNER and set departure date & time, trip duration, and origin/destination (Vienna→Rome by default), plus UTC offset and DST.'],
+      ['Press SCAN TRIP', 'The app automatically scans the trip dates (BEST) to compute each hour\u2019s score, then builds the plan. If an hour shows \u201chour n/a\u201d, make sure the person is loaded and scan again.'],
+      ['Read the plan', '\uD83D\uDE97 legs show where to drive and toward which direction (\u2192Rome = toward the destination). \uD83D\uDED1/\uD83D\uDD0C mark stops/charges and the direction to set off afterwards. The number is the combined score (direction + hour synergy).'],
+      ['Inspect any step', 'Tap a leg or a stop (\uD83D\uDD0D) to open its Rotating-Pan Qimen chart (chosen direction highlighted) and a button to open the full XKDG for that day in LIST.'],
+      ['Your charging stops', 'Switch \u201cStops\u201d to \u201cMy charging stops\u201d and type your charge times (e.g. 15:30\u00d745). Each charge is treated as a reset; the planner judges it and may suggest shifting it by one double-hour.']
+    ];
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+      '<h3 style="margin:0;font-size:17px;">\uD83D\uDE97 Travel Planner — How to use</h3>' +
+      '<span id="tp-guide-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">\u2715</span></div>';
+    html += '<ol style="margin:0;padding-left:22px;font-size:13px;line-height:1.5;color:#333;">';
+    steps.forEach(function (s) {
+      html += '<li style="margin-bottom:9px;"><b>' + s[0] + '.</b> ' + s[1] + '</li>';
+    });
+    html += '</ol>';
+    html += '<div style="margin-top:12px;padding:9px 11px;background:#f3f7fb;border-radius:8px;font-size:12px;color:#444;">' +
+      '<b>How scoring works.</b> A direction must pass the Qimen gate (one San Qi + a favourable door) to be eligible. ' +
+      'The hour adds a synergy bonus when its score is \u2265 8 — strong at departure and arrival (+8), lighter on the way (+3).</div>';
+    box.innerHTML = html;
+    var done = el('button', { style: 'margin-top:14px;width:100%;padding:10px;border:0;border-radius:8px;background:#1b8a3f;color:#fff;font-size:14px;font-weight:600;cursor:pointer;' }, 'Got it');
+    box.appendChild(done);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    ov.querySelector('#tp-guide-close').addEventListener('click', close);
+    done.addEventListener('click', close);
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+  }
+
   function tpOpen() {
     var existing = document.getElementById('tp-overlay');
     if (existing) { existing.style.display = 'flex'; return; }
@@ -754,7 +790,8 @@
 
     panel.appendChild(el('div', { style: 'display:flex;justify-content:space-between;align-items:center;' },
       '<h3 style="margin:0;font-size:17px;">🚗 Travel Direction Planner</h3>' +
-      '<span id="tp-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">✕</span>'));
+      '<span><span id="tp-guide" style="cursor:pointer;font-size:13px;color:#1565c0;margin-right:14px;font-weight:600;">❔ Guide</span>' +
+      '<span id="tp-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">✕</span></span>'));
 
     var nowUtc = (function () {
       var v = document.getElementById('utc-offset');
@@ -818,6 +855,9 @@
     document.body.appendChild(ov);
 
     ov.querySelector('#tp-close').addEventListener('click', function () { ov.style.display = 'none'; });
+    ov.querySelector('#tp-guide').addEventListener('click', tpShowGuide);
+    // Show the guide automatically the first time the planner is opened this session.
+    if (!window._tpGuideShown) { window._tpGuideShown = true; tpShowGuide(); }
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.style.display = 'none'; });
 
     btn.addEventListener('click', function () {
@@ -837,6 +877,24 @@
         opts.origin.name = 'Vienna';
         opts.stopMode = document.getElementById('tp-stopmode').value;
         opts.charges = tpParseCharges(document.getElementById('tp-charges').value, dep);
+
+        // Auto-scan BEST over the trip dates to fill the hour-score cache, so the
+        // user doesn't have to do it manually. Defensive: if anything fails we
+        // fall back to whatever cache exists (and the "hour n/a" banner).
+        try {
+          if (typeof runScanner === 'function') {
+            var ss = document.getElementById('scan-start');
+            var sd = document.getElementById('scan-days');
+            var prevStart = ss ? ss.value : null;
+            var prevDays = sd ? sd.value : null;
+            if (ss) ss.value = dStr;
+            if (sd) sd.value = String(Math.ceil((opts.durationH || 12) / 24) + 1);
+            runScanner();
+            if (ss && prevStart != null) ss.value = prevStart;
+            if (sd && prevDays != null) sd.value = prevDays;
+          }
+        } catch (autoErr) { /* keep going; manual scan / banner is the fallback */ }
+
         var res = tpPlan(opts);
         tpRender(res, results);
       } catch (err) {
