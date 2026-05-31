@@ -16,8 +16,11 @@
  *
  * Solar time: same convention as the rest of the app
  *   offsetMin = (lon - utc*15)*4 - (DST?60:0);  solarDate = wallClock + offsetMin
- * but the longitude is INTERPOLATED along the route (Vienna -> Rome), so the
- * double-hour (時辰) boundaries shift west as you drive, exactly as in reality.
+ * The longitude follows the REAL ROAD when a route is available from the
+ * Worker (Phase C): position along the polyline at constant average speed
+ * (distance fraction == elapsed fraction of the trip). If no route is fetched,
+ * it falls back to a straight line Vienna -> Rome. Either way the double-hour
+ * (時辰) boundaries shift west as you drive, exactly as in reality.
  *
  * Depends on: lunar-javascript (global `Solar`) and QMDJWaterScanner
  * (getRotatingHourChart). Load this script AFTER app-fengshui.js.
@@ -191,6 +194,118 @@
   }
   function tpAngDiff(a, b) { return Math.abs(((a - b + 540) % 360) - 180); }
 
+  /* ---- REAL-ROUTE geometry (Phase C) ------------------------------------- *
+   * Great-circle distance between two points, in metres. Used only to build a
+   * cumulative-distance index along the route polyline.
+   * ----------------------------------------------------------------------- */
+  function tpHaversine(lat1, lon1, lat2, lon2) {
+    var R = 6371000, toR = Math.PI / 180;
+    var dphi = (lat2 - lat1) * toR, dl = (lon2 - lon1) * toR;
+    var a = Math.sin(dphi / 2) * Math.sin(dphi / 2) +
+            Math.cos(lat1 * toR) * Math.cos(lat2 * toR) * Math.sin(dl / 2) * Math.sin(dl / 2);
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  /* Build a distance-indexed view of a fetched route.
+   * route = { coords:[[lon,lat],...], distanceMeters, durationSec, ... }
+   * Returns { coords, cum[], total, distanceMeters, durationSec, posAt(f) } or
+   * null if the route is missing/degenerate. posAt(f) maps a fraction 0..1 of
+   * the TOTAL ROAD DISTANCE to a {lat,lon} point on the polyline (constant
+   * average speed — the V2a simplification, since the service gives no per-point
+   * timestamps). */
+  function tpBuildRouteIndex(route) {
+    if (!route || !route.coords || route.coords.length < 2) return null;
+    var coords = route.coords;            // [[lon,lat], ...]
+    var cum = [0];
+    for (var i = 1; i < coords.length; i++) {
+      var d = tpHaversine(coords[i - 1][1], coords[i - 1][0], coords[i][1], coords[i][0]);
+      cum.push(cum[i - 1] + d);
+    }
+    var total = cum[cum.length - 1] || 0;
+    if (total <= 0) return null;
+    return {
+      coords: coords, cum: cum, total: total,
+      distanceMeters: route.distanceMeters || total,
+      durationSec: route.durationSec || 0,
+      posAt: function (f) {
+        if (f <= 0) return { lat: coords[0][1], lon: coords[0][0] };
+        if (f >= 1) { var L = coords.length - 1; return { lat: coords[L][1], lon: coords[L][0] }; }
+        var target = f * total;
+        var lo = 0, hi = cum.length - 1;
+        while (lo < hi - 1) { var mid = (lo + hi) >> 1; if (cum[mid] <= target) lo = mid; else hi = mid; }
+        var segLen = (cum[hi] - cum[lo]) || 1;
+        var t = (target - cum[lo]) / segLen;
+        var a = coords[lo], b = coords[hi];
+        return { lat: a[1] + (b[1] - a[1]) * t, lon: a[0] + (b[0] - a[0]) * t };
+      }
+    };
+  }
+
+  /* Does a previously fetched route match the current origin/dest endpoints?
+   * (so SCAN TRIP can reuse a route already fetched by the test button). */
+  function tpRouteMatches(route, O, D) {
+    if (!route || !route.origin || !route.dest) return false;
+    function near(a, b) { return (a != null && b != null) && Math.abs(a - b) < 1e-4; }
+    return near(route.origin.lat, O.lat) && near(route.origin.lng, O.lng) &&
+           near(route.dest.lat, D.lat) && near(route.dest.lng, D.lng);
+  }
+
+  /* Best gated direction in a slot toward an ARBITRARY target bearing (not just
+   * the final destination). Reuses each direction's precomputed `combined`
+   * score; only the "toward" test changes (within 67.5° of the target). Returns
+   * a fresh object so the slot's stored dirs are never mutated. */
+  function tpBestDirToward(slot, targetBearing) {
+    var gated = slot.dirs.filter(function (d) { return d.eval && d.eval.ok; });
+    if (!gated.length) return null;
+    var toward = gated.filter(function (d) { return tpAngDiff(TP_DIR_DEG[d.dir], targetBearing) <= 67.5; });
+    var pool = (toward.length ? toward : gated).slice()
+      .sort(function (a, b) { return (b.combined || 0) - (a.combined || 0); });
+    var best = pool[0];
+    return { dir: best.dir, palace: best.palace, eval: best.eval, combined: best.combined, towardDest: true };
+  }
+
+  /* ---- PHASE C re-aim: nudge a leg's heading toward the upcoming stop ----- *
+   * Implements the confirmed rule for INTERMEDIATE decision moments:
+   *   point at the next stop instead of the final destination WHEN
+   *     (a) the stop is functional to approaching the destination
+   *         (heading-to-stop within 67.5° of heading-to-destination), AND
+   *     (b) it yields better positivity (a higher-scored gated direction), AND
+   *     (c) the stop is reached within the SAME double-hour window in which the
+   *         locked positive configuration persists (so the heading governs the
+   *         whole leg to that stop).
+   * Otherwise the leg keeps pointing at the final destination. Defensive: only
+   * ever IMPROVES a leg; never blanks an existing heading.
+   * ----------------------------------------------------------------------- */
+  function tpReaimLegsAtStops(plan, slots, posAt, Dst) {
+    if (!plan || !plan.length) return;
+    for (var k = 0; k < plan.length - 1; k++) {
+      var leg = plan[k], nxt = plan[k + 1];
+      if (leg.type !== 'leg' || nxt.type !== 'stop') continue;
+      var slot = slots[leg.startSlotIdx];
+      if (!slot || !slot.posStart || !slot.wallEnd) continue;
+      var stopWall = nxt.atWall;
+      if (!stopWall) continue;
+      // (c) within the same double-hour window as the decision moment
+      if (stopWall.getTime() >= slot.wallEnd.getTime()) continue;
+      // candidate target = real position at the stop
+      var sp = posAt(stopWall.getTime());
+      var bearStop = tpBearing(slot.posStart.lat, slot.posStart.lon, sp.lat, sp.lon);
+      // (a) functional to approaching the destination
+      if (tpAngDiff(bearStop, slot.bearingDest) > 67.5) continue;
+      // (b) better positivity than aiming straight at the destination
+      var towardStop = tpBestDirToward(slot, bearStop);
+      var towardDest = tpBestDirToward(slot, slot.bearingDest);
+      if (!towardStop) continue;
+      var scStop = (towardStop.combined != null) ? towardStop.combined : -Infinity;
+      var scDest = (towardDest && towardDest.combined != null) ? towardDest.combined : -Infinity;
+      if (scStop > scDest && (!leg.heading || towardStop.dir !== leg.heading.dir)) {
+        leg.heading = towardStop;
+        leg.aimedAtStop = true;
+        leg.aimNote = 'aimed at next stop (better config, within the double-hour)';
+      }
+    }
+  }
+
   /* ---- evaluate one rotating-chart palace ---------------------------------
    * Returns { ok, score, ... } where:
    *   ok    = meets the FIXED condition (San Qi + favourable door) and is not
@@ -286,6 +401,7 @@
     if (!dep || isNaN(dep.getTime())) throw new Error('Invalid departure date');
     if (typeof Solar === 'undefined') throw new Error('lunar-javascript (Solar) not loaded');
 
+    // Overall headline bearing (origin -> dest), shown in the result header.
     var bearing = tpBearing(O.lat, O.lon, Dst.lat, Dst.lon);
     var snapDir = tpSnapDir(bearing);
 
@@ -293,15 +409,23 @@
     var endMs = startMs + durH * 3600000;
     var spanMs = Math.max(endMs - startMs, 1);
 
-    function lonAt(ms) {
+    // ---- Real route geometry (Phase C) — falls back to a straight line ------
+    var routeIdx = tpBuildRouteIndex(opts.route);   // null if no/invalid route
+    var usedRealRoute = !!routeIdx;
+
+    // Position {lat,lon} at a wall-clock moment. Constant average speed (V2a):
+    // the distance fraction along the road equals the elapsed fraction of the
+    // trip span. With no route, this degrades to the old straight-line interp.
+    function posAt(ms) {
       var f = (ms - startMs) / spanMs;
       if (f < 0) f = 0; if (f > 1) f = 1;
-      return O.lon + (Dst.lon - O.lon) * f;
+      if (routeIdx) return routeIdx.posAt(f);
+      return { lat: O.lat + (Dst.lat - O.lat) * f, lon: O.lon + (Dst.lon - O.lon) * f };
     }
     function solarAt(ms) {
-      var lon = lonAt(ms);
-      var off = tpOffsetMin(lon, utc, dstOn);
-      return { lon: lon, date: new Date(ms + off * 60000) };
+      var p = posAt(ms);
+      var off = tpOffsetMin(p.lon, utc, dstOn);
+      return { lat: p.lat, lon: p.lon, date: new Date(ms + off * 60000) };
     }
     function fmtHM(d) {
       return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -322,12 +446,19 @@
         }
         // open new slot — lock evaluation at this restart moment
         var gHan = ec.getTimeGan();
+        // Per-slot bearing: rhumb from the REAL position at this decision moment
+        // to the final destination. This makes "toward destination" reflect the
+        // actual road position, not a single trip-wide straight line.
+        var bearHere = tpBearing(s.lat, s.lon, Dst.lat, Dst.lon);
         cur = {
           wallStart: new Date(ms),
           wallEnd: null,
           tstStart: fmtHM(s.date),
           tstEnd: null,
           lonUsed: s.lon,
+          latUsed: s.lat,
+          posStart: { lat: s.lat, lon: s.lon },
+          bearingDest: bearHere,
           brHan: brHan,
           brPy: BR_PY[brHan] || brHan,
           gZhiHan: gHan + brHan,
@@ -338,7 +469,7 @@
           iso: s.date.getFullYear() + '-' + String(s.date.getMonth() + 1).padStart(2, '0') + '-' + String(s.date.getDate()).padStart(2, '0'),
           hGanHan: gHan, hZhiHan: brHan,
           dirs: tpScanDirs(s.date.getFullYear(), s.date.getMonth() + 1, s.date.getDate(),
-                           gHan, brHan, bearing)
+                           gHan, brHan, bearHere)
         };
       }
     }
@@ -372,9 +503,18 @@
       ? tpPlanWithStops(slots, opts.charges || [])
       : tpSuggestStops(slots, opts.maxLegHours || 4);
 
+    // ---- PHASE C: re-aim intermediate legs at the next stop when warranted --
+    try { tpReaimLegsAtStops(plan, slots, posAt, Dst); } catch (e) { /* keep base plan */ }
+
     return { bearing: bearing, snapDir: snapDir, origin: O, dest: Dst, slots: slots,
              hasHourData: anyHour, plan: plan, stopMode: opts.stopMode || 'auto',
-             maxLegHours: opts.maxLegHours || 4 };
+             maxLegHours: opts.maxLegHours || 4,
+             usedRealRoute: usedRealRoute,
+             routeMeta: routeIdx ? {
+               km: routeIdx.distanceMeters / 1000,
+               durationSec: routeIdx.durationSec,
+               points: routeIdx.coords.length
+             } : null };
   }
 
   /* ---- pick the best gated direction in a slot ---------------------------- *
@@ -727,7 +867,8 @@
           'Drive <b>' + fmtHMonly(item.startWall) + '→' + fmtHMonly(item.endWall) + '</b> (' + durTxt + ') toward ' +
           tpHeadLabel(item.heading, result.dest.name) +
           (item.note === 'arrival' ? ' &nbsp;🏁 <b>arrive at ' + result.dest.name + '</b>' : '') +
-          ' <span style="color:#1565c0;font-size:11px;">🔍</span>'));
+          ' <span style="color:#1565c0;font-size:11px;">🔍</span>' +
+          (item.aimedAtStop ? '<br><span style="color:#7b1fa2;font-size:11px;">↪ ' + (item.aimNote || 'aimed at next stop') + '</span>' : '')));
         (function (it) {
           row.addEventListener('click', function (e) {
             if (e) e.stopPropagation();
@@ -779,6 +920,30 @@
       '° (≈ <b>' + result.snapDir + '</b>). Directions marked <b>→' + result.dest.name +
       '</b> head toward the destination. Chips show the <b>combined</b> score (direction + hour synergy).');
     container.appendChild(head);
+
+    // ---- Real-route vs straight-line banner (Phase C) ----
+    if (result.usedRealRoute) {
+      var rm = result.routeMeta || {};
+      var rmTxt = '';
+      if (rm.km) {
+        rmTxt = ' (' + Math.round(rm.km) + ' km';
+        if (rm.durationSec) {
+          var rh = Math.floor(rm.durationSec / 3600), rmn = Math.round((rm.durationSec % 3600) / 60);
+          rmTxt += ' · ' + rh + 'h' + String(rmn).padStart(2, '0') + ' driving';
+        }
+        rmTxt += ' · ' + (rm.points || 0) + ' path points)';
+      }
+      container.appendChild(el('div', {
+        style: 'margin:6px 0 10px;padding:8px 10px;border-radius:8px;background:#f3fbf5;color:#1b5e20;font-size:12px;border:1px solid #1b8a3f;'
+      }, '📍 Directions follow the <b>real road</b> from the route service' + rmTxt +
+         '. Each decision moment\u2019s bearing and solar time use its true position along the polyline ' +
+         '(constant average speed — V2a).'));
+    } else {
+      container.appendChild(el('div', {
+        style: 'margin:6px 0 10px;padding:8px 10px;border-radius:8px;background:#fff4e5;color:#8a4b00;font-size:12px;'
+      }, '➖ Using a <b>straight line</b> ' + result.origin.name + '→' + result.dest.name +
+         ' (no live route fetched). Set the Worker URL and press SCAN TRIP to follow the real road.'));
+    }
 
     if (!result.hasHourData) {
       container.appendChild(el('div', {
@@ -1039,8 +1204,44 @@
           }
         } catch (autoErr) { /* keep going; manual scan / banner is the fallback */ }
 
-        var res = tpPlan(opts);
-        tpRender(res, results);
+        // ---- Build + render. The route may be supplied (real road) or null. --
+        function buildAndRender(route, fetchNote) {
+          try {
+            opts.route = route || null;
+            var res = tpPlan(opts);
+            tpRender(res, results);
+            if (fetchNote) {
+              var n = el('div', { style: 'margin-top:6px;font-size:11px;color:#b58900;' }, fetchNote);
+              results.appendChild(n);
+            }
+          } catch (err) {
+            results.innerHTML = '<div style="color:#b00;font-size:13px;">Error: ' + err.message + '</div>';
+          }
+        }
+
+        // ---- PHASE C: fetch the real route from the Worker, then build. ------
+        // Reuse a route already fetched (e.g. via the test button) if the
+        // endpoints match. Defensive: any failure -> straight-line fallback.
+        var url = (document.getElementById('tp-worker').value || '').trim();
+        var O = { lat: opts.origin.lat, lng: opts.origin.lon };
+        var D = { lat: opts.dest.lat, lng: opts.dest.lon };
+        var haveMatch = TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, O, D);
+
+        if (haveMatch) {
+          buildAndRender(TP_LAST_ROUTE);
+        } else if (url) {
+          tpSetWorkerUrl(url);
+          results.innerHTML = '<div style="font-size:13px;color:#666;">Fetching real route from the Worker…</div>';
+          tpFetchRoute(url, O, D).then(function (r) {
+            TP_LAST_ROUTE = r;
+            buildAndRender(r);
+          }).catch(function (e) {
+            buildAndRender(null, 'Route fetch failed (' + e.message + ') — used the straight-line fallback. ' +
+              'You can retry with 🛰️ Fetch route to see the error in detail.');
+          });
+        } else {
+          buildAndRender(null);
+        }
       } catch (err) {
         results.innerHTML = '<div style="color:#b00;font-size:13px;">Error: ' + err.message + '</div>';
       }
