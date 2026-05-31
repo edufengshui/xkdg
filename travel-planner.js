@@ -94,7 +94,7 @@
   // Han -> pinyin for display
   var STEM_PY = { '甲': 'Jia', '乙': 'Yi', '丙': 'Bing', '丁': 'Ding', '戊': 'Wu', '己': 'Ji', '庚': 'Geng', '辛': 'Xin', '壬': 'Ren', '癸': 'Gui' };
   var BR_PY = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
-  var WD_IT = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+  var WD_IT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   // Default endpoints
   var TP_DEFAULT = {
@@ -274,6 +274,10 @@
           gZhiHan: gHan + brHan,
           gZhiPy: (STEM_PY[gHan] || gHan) + ' ' + (BR_PY[brHan] || brHan),
           weekday: WD_IT[s.date.getDay()],
+          // solar date parts + hour pillar, for reopening the rotating chart / LIST
+          qmY: s.date.getFullYear(), qmM: s.date.getMonth() + 1, qmD: s.date.getDate(),
+          iso: s.date.getFullYear() + '-' + String(s.date.getMonth() + 1).padStart(2, '0') + '-' + String(s.date.getDate()).padStart(2, '0'),
+          hGanHan: gHan, hZhiHan: brHan,
           dirs: tpScanDirs(s.date.getFullYear(), s.date.getMonth() + 1, s.date.getDate(),
                            gHan, brHan, bearing)
         };
@@ -500,6 +504,87 @@
            ' <span style="color:#1b8a3f;">(' + (h.combined > 0 ? '+' : '') + h.combined + ')</span>';
   }
 
+  /* ---- ROTATING-pan chart (the directional Qimen the planner evaluates) --- */
+  function tpRotChartHtml(slot, highlightPalace) {
+    if (typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getRotatingHourChart !== 'function')
+      return '<div style="color:#b00;">Scanner not loaded.</div>';
+    var chart = QMDJWaterScanner.getRotatingHourChart(slot.qmY, slot.qmM, slot.qmD, slot.hGanHan, slot.hZhiHan);
+    if (!chart || !chart.palaces) return '<div style="color:#b00;">No chart.</div>';
+    var DIRH = { 4: 'SE', 9: 'S', 2: 'SW', 3: 'E', 5: 'C', 7: 'W', 8: 'NE', 1: 'N', 6: 'NW' };
+    var order = [4, 9, 2, 3, 5, 7, 8, 1, 6];
+    var GREEN = '#0d5e2c';
+    function cell(p) {
+      if (p === 5) return '<td style="border:1px solid ' + GREEN + ';background:#f3f7f3;text-align:center;color:#999;font-size:11px;padding:6px;">C</td>';
+      var pd = chart.palaces[p];
+      if (!pd) return '<td style="border:1px solid ' + GREEN + ';text-align:center;color:#aaa;">—</td>';
+      var configs = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
+        ? (QMDJWaterScanner.checkRotatingPalace(chart, p) || []) : [];
+      var ev = tpPalaceOK(pd, configs.length);
+      var hi = (highlightPalace && p === highlightPalace);
+      var bg = hi ? '#fff3b0' : (ev && ev.ok ? '#eaf6ee' : '#fff');
+      var bd = hi ? '3px solid #f9a825' : '1px solid ' + GREEN;
+      var flags = [];
+      if (ev.hasSanQi) flags.push('<span style="color:#1b5e20;">SanQi</span>');
+      if (ev.favDoor) flags.push('<span style="color:#1b5e20;">Door\u2713</span>');
+      if (ev.zhiFu) flags.push('\u76f4\u7b26');
+      if (ev.zhiShi) flags.push('\u76f4\u4f7f');
+      if (ev.clash) flags.push('<span style="color:#c62828;">clash</span>');
+      if (ev.isWarrior) flags.push('<span style="color:#c62828;">\u7384\u6b66</span>');
+      if (ev.isTiger) flags.push('\u767d\u864e');
+      configs.forEach(function (c) { flags.push('<span style="color:#7b1fa2;">' + c.label + '</span>'); });
+      return '<td style="border:' + bd + ';background:' + bg + ';vertical-align:top;padding:5px;font-size:11px;min-width:96px;">' +
+        '<div style="font-weight:700;color:#1565c0;">' + DIRH[p] + ' \u00b7 ' + p + (ev.ok ? ' <span style="color:#1b8a3f;">\u2713' + (ev.score ? ' +' + ev.score : '') + '</span>' : '') + '</div>' +
+        '<div style="font-size:14px;color:#333;">' + (pd.tiH || pd.ti || '') + ' / ' + (pd.diH || pd.di || '') + '</div>' +
+        '<div style="color:#555;">' + (pd.doorName || pd.door || '') + ' \u00b7 ' + (pd.deity || '') + '</div>' +
+        '<div style="margin-top:2px;line-height:1.4;">' + flags.join(' ') + '</div>' +
+        '</td>';
+    }
+    var rows = '';
+    for (var r = 0; r < 3; r++) {
+      rows += '<tr>' + cell(order[r * 3]) + cell(order[r * 3 + 1]) + cell(order[r * 3 + 2]) + '</tr>';
+    }
+    return '<table style="border-collapse:collapse;width:100%;">' + rows + '</table>';
+  }
+
+  /* ---- leg detail: rotating Qimen config + link to full XKDG (LIST) ------- */
+  function tpShowLegDetail(slot, highlightPalace, title) {
+    if (!slot) return;
+    var prev = document.getElementById('tp-leg-detail');
+    if (prev) prev.parentNode.removeChild(prev);
+    var ov = el('div', { id: 'tp-leg-detail',
+      style: 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;' });
+    var box = el('div', { style: 'background:#fff;border-radius:12px;max-width:560px;width:100%;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:system-ui,Arial,sans-serif;' });
+    box.appendChild(el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;' },
+      '<h3 style="margin:0;font-size:16px;">' + (title || 'Leg detail') + '</h3>' +
+      '<span id="tp-ld-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">\u2715</span>'));
+    box.appendChild(el('div', { style: 'font-size:12px;color:#555;margin-bottom:8px;' },
+      slot.weekday + ' ' + slot.iso + ' \u00b7 ' + slot.gZhiHan + ' ' + slot.gZhiPy +
+      ' \u00b7 TST ' + slot.tstStart + '\u2013' + slot.tstEnd +
+      (slot.hourScore != null ? ' \u00b7 hour score ' + slot.hourScore + (slot.hourPositive ? ' \u2713' : '') : '')));
+
+    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:6px 0 4px;' }, 'Directional Qimen \u2014 Rotating Pan'));
+    box.appendChild(el('div', null, tpRotChartHtml(slot, highlightPalace)));
+
+    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#7b1fa2;margin:12px 0 4px;' }, 'XKDG configuration'));
+    box.appendChild(el('div', { style: 'font-size:12px;color:#555;margin-bottom:6px;' },
+      'Opens this day in the LIST view (full XKDG: hexagram relations, spirits, Nayin, score) for every hour.'));
+    var xkdgBtn = el('button', {
+      style: 'padding:8px 12px;border:0;border-radius:8px;background:#7b1fa2;color:#fff;font-size:13px;font-weight:600;cursor:pointer;'
+    }, 'Open full XKDG in LIST \u2192');
+    box.appendChild(xkdgBtn);
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    ov.querySelector('#tp-ld-close').addEventListener('click', function () { ov.parentNode.removeChild(ov); });
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.parentNode.removeChild(ov); });
+    xkdgBtn.addEventListener('click', function () {
+      if (typeof showDayInList !== 'function') { alert('LIST view not available.'); return; }
+      ov.parentNode.removeChild(ov);
+      var main = document.getElementById('tp-overlay'); if (main) main.style.display = 'none';
+      showDayInList(slot.iso);
+    });
+  }
+
   function tpRenderPlan(result, container) {
     var plan = result.plan || [];
     var nStops = plan.filter(function (x) { return x.type === 'stop'; }).length;
@@ -510,17 +595,27 @@
 
     plan.forEach(function (item) {
       if (item.type === 'leg') {
-        var row = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;margin:4px 0;font-size:13px;' });
+        var row = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;margin:4px 0;font-size:13px;cursor:pointer;border-radius:6px;padding:2px 4px;' });
+        row.title = 'tap to inspect this leg';
         row.appendChild(el('span', { style: 'font-size:15px;' }, '🚗'));
         var dur = item.durationH;
         var durTxt = (dur >= 1 ? dur.toFixed(dur % 1 ? 1 : 0) + 'h' : Math.round(dur * 60) + 'm');
         row.appendChild(el('div', null,
           'Drive <b>' + fmtHMonly(item.startWall) + '→' + fmtHMonly(item.endWall) + '</b> (' + durTxt + ') toward ' +
           tpHeadLabel(item.heading, result.dest.name) +
-          (item.note === 'arrival' ? ' &nbsp;🏁 <b>arrive at ' + result.dest.name + '</b>' : '')));
+          (item.note === 'arrival' ? ' &nbsp;🏁 <b>arrive at ' + result.dest.name + '</b>' : '') +
+          ' <span style="color:#1565c0;font-size:11px;">🔍</span>'));
+        (function (it) {
+          row.addEventListener('click', function () {
+            var s = result.slots[it.startSlotIdx];
+            tpShowLegDetail(s, it.heading ? it.heading.palace : null,
+              (s ? s.legType : 'Leg') + ' — ' + (it.heading ? it.heading.dir : ''));
+          });
+        })(item);
         wrap.appendChild(row);
       } else { // stop
-        var srow = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;margin:4px 0 4px 4px;font-size:13px;color:#8a4b00;' });
+        var srow = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;margin:4px 0 4px 4px;font-size:13px;color:#8a4b00;cursor:pointer;border-radius:6px;padding:2px 4px;' });
+        srow.title = 'tap to inspect the restart';
         srow.appendChild(el('span', { style: 'font-size:15px;' }, item.charge ? '🔌' : '🛑'));
         var body = item.charge
           ? '<b>Charge ' + item.durationMin + ' min</b> at <b>' + fmtHMonly(item.atWall) + '</b> (reset)' +
@@ -533,7 +628,15 @@
               : '')
           : '<b>Stop ≥20 min</b> at <b>' + fmtHMonly(item.atWall) + '</b> — ' + item.reason +
             '<br>then set off toward ' + tpHeadLabel(item.newHeading, result.dest.name);
-        srow.appendChild(el('div', null, body));
+        srow.appendChild(el('div', null, body + ' <span style="color:#1565c0;font-size:11px;">🔍</span>'));
+        (function (it) {
+          srow.addEventListener('click', function () {
+            var idx = (it.restartSlotIdx != null) ? it.restartSlotIdx : it.slotIdx;
+            var s = result.slots[idx];
+            tpShowLegDetail(s, it.newHeading ? it.newHeading.palace : null,
+              'Restart — ' + (it.newHeading ? it.newHeading.dir : ''));
+          });
+        })(item);
         wrap.appendChild(srow);
       }
     });
