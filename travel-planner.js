@@ -812,30 +812,10 @@
             'background:' + bg + ';color:' + fg + ';' + ring,
           title: 'tap for details'
         }, label);
-        chip.addEventListener('click', function () {
-          var e = d.eval || {};
-          alert(
-            d.dir + ' (palace ' + d.palace + ') — ' + (e.ok ? 'FAVOURABLE ✓' : 'not favourable ✗') +
-            (e.ok ? '  score ' + (e.score > 0 ? '+' : '') + e.score : '') + '\n\n' +
-            'Tian/Di: ' + (e.ti || '?') + ' / ' + (e.di || '?') + '\n' +
-            'Door: ' + (e.door || '?') + '\n' +
-            'Spirit: ' + (e.deity || '?') + '\n\n' +
-            '— Fixed condition —\n' +
-            'San Qi (乙丙丁): ' + (e.hasSanQi ? 'yes ✓' : 'no ✗') + '\n' +
-            'Favourable door: ' + (e.favDoor ? 'yes ✓' : 'no ✗') + '\n\n' +
-            '— Bonus / penalty —\n' +
-            'Zhi Fu 直符: ' + (e.zhiFu ? '+' + 1 : '—') + '\n' +
-            'Zhi Shi 直使: ' + (e.zhiShi ? '+' + 1 : '—') + '\n' +
-            'Configurations: ' + (e.configs && e.configs.length ? e.configs.join(', ') : '—') + '\n' +
-            'Internal clash: ' + (e.clash ? 'yes (' + TP_CLASH_MODE + ')' : 'no') + '\n' +
-            'Warrior 玄武: ' + (e.isWarrior ? 'yes' + (TP_EXCLUDE_WARRIOR ? ' → excluded' : '') : 'no') + '\n' +
-            'Tiger 白虎: ' + (e.isTiger ? 'yes (accepted)' : 'no') + '\n\n' +
-            '— Hour (' + slot.legType + ') —\n' +
-            'Hour score (app): ' + (slot.hourScore == null ? 'n/a (BEST scan)' : slot.hourScore) + '\n' +
-            'Positive hour (≥8): ' + (slot.hourPositive ? 'yes → synergy +' + slot.synergyApplied : 'no') + '\n' +
-            (e.ok ? 'COMBINED: ' + (d.combined > 0 ? '+' : '') + d.combined + '\n' : '') +
-            (d.towardDest ? '\n→ Direction toward ' + result.dest.name : '')
-          );
+        chip.addEventListener('click', function (ev) {
+          if (ev) ev.stopPropagation();
+          tpShowLegDetail(slot, d.palace, slot.legType + ' — ' + d.dir +
+            (d.towardDest ? ' →' + result.dest.name : ''));
         });
         grid.appendChild(chip);
       });
