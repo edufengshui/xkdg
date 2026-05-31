@@ -102,6 +102,51 @@
     dest: { name: 'Rome', lat: 41.9028, lon: 12.4964 }
   };
 
+  // Cloudflare Worker proxy (Routes API). Editable in the panel; persisted in localStorage.
+  var TP_DEFAULT_WORKER = 'https://xkdg-proxy.decumano16.workers.dev/';
+  function tpGetWorkerUrl() {
+    try { return localStorage.getItem('xkdg_worker_url') || TP_DEFAULT_WORKER; } catch (e) { return TP_DEFAULT_WORKER; }
+  }
+  function tpSetWorkerUrl(u) { try { localStorage.setItem('xkdg_worker_url', u); } catch (e) {} }
+
+  // Last route fetched from the Worker (used later by the bearing phase)
+  // shape: { origin, dest, distanceMeters, durationSec, coords: [[lon,lat],...] }
+  var TP_LAST_ROUTE = null;
+
+  /* ---- fetch the real route from the Cloudflare Worker (Google Routes API) -
+   * Returns a Promise resolving to
+   *   { origin, dest, distanceMeters, durationSec, coords:[[lon,lat],...] }
+   * Throws with a readable message on any failure.
+   * ----------------------------------------------------------------------- */
+  function tpFetchRoute(workerUrl, origin, dest) {
+    return fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin: origin, destination: dest })
+    }).then(function (resp) {
+      return resp.text().then(function (txt) {
+        var data;
+        try { data = JSON.parse(txt); } catch (e) { throw new Error('Worker did not return JSON: ' + txt.slice(0, 120)); }
+        if (!resp.ok) {
+          var msg = (data && data.error && (data.error.message || data.error)) || txt.slice(0, 160);
+          throw new Error('Route service error (' + resp.status + '): ' + msg);
+        }
+        var route = data.routes && data.routes[0];
+        if (!route) throw new Error('No route in response (check origin/destination).');
+        var line = route.polyline && route.polyline.geoJsonLinestring;
+        var coords = line && line.coordinates;
+        if (!coords || !coords.length) throw new Error('Route has no geometry (polyline missing).');
+        var durSec = parseInt(String(route.duration || '0').replace(/[^0-9]/g, ''), 10) || 0;
+        return {
+          origin: origin, dest: dest,
+          distanceMeters: route.distanceMeters || 0,
+          durationSec: durSec,
+          coords: coords
+        };
+      });
+    });
+  }
+
   /* ---- solar-time offset (minutes), matching app convention -------------- */
   function tpOffsetMin(lon, utc, dstOn) {
     return (lon - utc * 15) * 4 - (dstOn ? 60 : 0);
@@ -840,6 +885,14 @@
       style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
     form.appendChild(chWrap);
 
+    // Worker URL (Cloudflare proxy to Google Routes API)
+    var wkWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;grid-column:1 / span 2;' },
+      'Worker URL (route proxy)');
+    wkWrap.appendChild(el('input', { id: 'tp-worker', type: 'text', value: tpGetWorkerUrl(),
+      placeholder: 'https://xkdg-proxy.<name>.workers.dev/',
+      style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+    form.appendChild(wkWrap);
+
     panel.appendChild(form);
 
     var btn = el('button', {
@@ -847,6 +900,37 @@
         'font-size:14px;font-weight:600;cursor:pointer;'
     }, 'SCAN TRIP');
     panel.appendChild(btn);
+
+    // Fetch route (test the app <-> Worker dialogue, without touching the plan yet)
+    var routeBtn = el('button', {
+      style: 'width:100%;margin-top:8px;padding:9px;border:1px solid #1565c0;border-radius:8px;background:#fff;color:#1565c0;' +
+        'font-size:13px;font-weight:600;cursor:pointer;'
+    }, '🛰️ Fetch route (test Worker)');
+    panel.appendChild(routeBtn);
+    var routeInfo = el('div', { id: 'tp-route-info', style: 'margin-top:8px;font-size:12px;' });
+    panel.appendChild(routeInfo);
+
+    routeBtn.addEventListener('click', function () {
+      var url = (document.getElementById('tp-worker').value || '').trim();
+      if (!url) { routeInfo.innerHTML = '<span style="color:#b00;">Enter the Worker URL first.</span>'; return; }
+      tpSetWorkerUrl(url);
+      var O = { lat: parseFloat(document.getElementById('tp-olat').value), lng: parseFloat(document.getElementById('tp-olon').value) };
+      var D = { lat: parseFloat(document.getElementById('tp-dlat').value), lng: parseFloat(document.getElementById('tp-dlon').value) };
+      routeInfo.innerHTML = '<span style="color:#666;">Contacting Worker…</span>';
+      tpFetchRoute(url, O, D).then(function (r) {
+        TP_LAST_ROUTE = r;
+        var km = (r.distanceMeters / 1000).toFixed(0);
+        var h = Math.floor(r.durationSec / 3600), m = Math.round((r.durationSec % 3600) / 60);
+        routeInfo.innerHTML =
+          '<div style="border:1px solid #1b8a3f;border-radius:8px;padding:8px 10px;background:#f3fbf5;color:#1b5e20;">' +
+          '✓ Route received — <b>' + km + ' km</b>, driving time <b>' + h + 'h' + String(m).padStart(2, '0') + '</b>, ' +
+          '<b>' + r.coords.length + '</b> path points.<br>' +
+          '<span style="color:#666;font-size:11px;">First point ' + r.coords[0][1].toFixed(4) + ', ' + r.coords[0][0].toFixed(4) +
+          ' · last ' + r.coords[r.coords.length - 1][1].toFixed(4) + ', ' + r.coords[r.coords.length - 1][0].toFixed(4) + '</span></div>';
+      }).catch(function (e) {
+        routeInfo.innerHTML = '<div style="border:1px solid #b00;border-radius:8px;padding:8px 10px;background:#fff4f4;color:#b00;">✗ ' + e.message + '</div>';
+      });
+    });
 
     var results = el('div', { id: 'tp-results', style: 'margin-top:12px;' });
     panel.appendChild(results);
