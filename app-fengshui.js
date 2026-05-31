@@ -2035,13 +2035,17 @@ function _showInfoPopup(title, desc){
 // ── Full Qimen Hour Chart display ──
 // Called when user taps a Qimen card. Renders the complete 9-palace
 // flying chart at the bottom of the results area.
-function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
+function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   if (!isoDate || !hGan || !hZhi) return;
   if (typeof window.QMDJWaterScanner === 'undefined') return;
+  opts = opts || {};
+  var isRot = (opts.mode === 'rotating' && typeof window.QMDJWaterScanner.getRotatingHourChart === 'function');
   var parts = isoDate.split('-');
   var Y = parseInt(parts[0]), M = parseInt(parts[1]), D = parseInt(parts[2]);
-  var chart = window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi);
-  if (!chart) { alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
+  var chart = isRot
+    ? window.QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi)
+    : window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi);
+  if (!chart) { if (opts.returnHtml) return ''; alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
 
   // Direction info (label, hanzi, di-pan trigram)
   var DIR = {
@@ -2069,7 +2073,8 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
     if(!d){
       return '<td style="background:#fff;padding:6px;text-align:center;color:#aaa;border:1px solid '+GREEN+';">—</td>';
     }
-    var doorColor = FAV.indexOf(d.door)!==-1 ? '#1b5e20' : '#c62828';
+    var doorTxt = d.doorName || d.door || '';
+    var doorColor = FAV.indexOf(doorTxt)!==-1 ? '#1b5e20' : '#c62828';
     var isHighlight = (highlightPalace && p === highlightPalace);
     var bg = isHighlight ? '#fff3b0' : '#fff';
     var border = isHighlight ? '3px solid #f9a825' : '1px solid ' + GREEN;
@@ -2096,7 +2101,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
       +   '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
       +   '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
       + '</div>'
-      + '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + (d.door||'') + '</div>'
+      + '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
       +   '<div><span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
       +   '<span style="color:#999;font-size:13px;font-weight:bold;">' + p + '</span>'
@@ -2119,7 +2124,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
 
   // Title bar
   html += '<div style="background:#fff;color:'+GREEN+';padding:8px 12px;font-weight:bold;font-size:14px;text-align:center;border-bottom:2px solid '+GREEN+';">'
-       + '📅 QMDJ • Hour Flying Chart'
+       + '📅 QMDJ • Hour ' + (isRot ? 'Rotating' : 'Flying') + ' Chart'
        + '<span onclick="document.getElementById(\'qimen-full-chart\').remove()" style="float:right;cursor:pointer;font-size:18px;color:#666;">✕</span>'
        + '</div>';
 
@@ -2174,6 +2179,9 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace){
        + '</div>';
 
   html += '</div>';
+
+  // Allow callers (e.g. travel planner) to embed the chart wherever they want
+  if (opts.returnHtml) return html;
 
   // Remove previous chart if any
   var old = document.getElementById('qimen-full-chart');

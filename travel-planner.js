@@ -76,6 +76,13 @@
   function tpLocalISO(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  // TST double-hour branch -> hour index, matching the app's HOUR_STARTS
+  // [23,1,3,5,7,9,11,13,15,17,19,21] = 子丑寅卯辰巳午未申酉戌亥. Used to open the
+  // exact hour in the Main view via loadDateIntoMain(iso, hourIndex).
+  var TP_BRANCH_TO_HINDEX = {
+    '子': 0, '丑': 1, '寅': 2, '卯': 3, '辰': 4, '巳': 5,
+    '午': 6, '未': 7, '申': 8, '酉': 9, '戌': 10, '亥': 11
+  };
   // Look up the cached hour score for a wall-clock moment (civil branch + civil day)
   function tpHourScoreAt(wallDate) {
     var cache = (typeof window !== 'undefined') ? window._tpHourCache : null;
@@ -661,36 +668,42 @@
       ' \u00b7 TST ' + slot.tstStart + '\u2013' + slot.tstEnd +
       (slot.hourScore != null ? ' \u00b7 hour score ' + slot.hourScore + (slot.hourPositive ? ' \u2713' : '') : '')));
 
-    // 1) The single chosen palace (the positive directional setting), prominent
-    if (highlightPalace) {
-      box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:6px 0 4px;' }, 'Chosen direction \u2014 palace'));
+    // 1) The ORIGINAL rotating Qimen chart, native app style (showQimenChart),
+    //    with the chosen direction's palace highlighted.
+    var rotHtml = '';
+    if (typeof showQimenChart === 'function') {
+      try {
+        rotHtml = showQimenChart(slot.iso, slot.hGanHan, slot.hZhiHan, highlightPalace || null,
+          { mode: 'rotating', returnHtml: true }) || '';
+      } catch (e) { rotHtml = '<div style="color:#b00;font-size:12px;">Chart error: ' + e.message + '</div>'; }
+    }
+    if (rotHtml) {
+      box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:6px 0 2px;' }, 'Rotating Qimen chart'));
+      box.appendChild(el('div', null, rotHtml));
+    } else if (highlightPalace) {
+      // fallback if the chart can't be drawn
       box.appendChild(el('div', null, tpSinglePalaceHtml(slot, highlightPalace)));
     }
 
-    // 2) Inline XKDG extract for this hour (from the BEST cache)
-    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#7b1fa2;margin:12px 0 4px;' }, 'XKDG setting (this hour)'));
-    box.appendChild(el('div', null, tpXkdgExtractHtml(tpHourRecordAt(slot.wallStart))));
-
-    // 3) Full rotating chart for context
-    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:12px 0 4px;' }, 'Full chart \u2014 Rotating Pan'));
-    box.appendChild(el('div', null, tpRotChartHtml(slot, highlightPalace)));
-
-    // 4) Full XKDG in the LIST view
-    var xkdgBtn = el('button', {
-      style: 'margin-top:12px;padding:8px 12px;border:0;border-radius:8px;background:#7b1fa2;color:#fff;font-size:13px;font-weight:600;cursor:pointer;'
-    }, 'Open full XKDG in LIST \u2192');
-    box.appendChild(xkdgBtn);
+    // 2) Open the real, native setting (chart + XKDG) in the Main view
+    box.appendChild(el('div', { style: 'font-size:12px;color:#555;margin:12px 0 6px;' },
+      'For the full XKDG setting of this hour, open it in the Main view:'));
+    var mainBtn = el('button', {
+      style: 'padding:9px 13px;border:0;border-radius:8px;background:#7b1fa2;color:#fff;font-size:13px;font-weight:600;cursor:pointer;'
+    }, 'Open this hour in Main \u2192');
+    box.appendChild(mainBtn);
 
     ov.appendChild(box);
     document.body.appendChild(ov);
     ov.querySelector('#tp-ld-close').addEventListener('click', function () { if (ov.parentNode) ov.parentNode.removeChild(ov); });
     // NOTE: no background-click-to-close here — on touch the opening tap can
     // reach the new full-screen overlay and dismiss it instantly. Close via ✕ only.
-    xkdgBtn.addEventListener('click', function () {
-      if (typeof showDayInList !== 'function') { alert('LIST view not available.'); return; }
-      ov.parentNode.removeChild(ov);
+    mainBtn.addEventListener('click', function () {
+      if (typeof loadDateIntoMain !== 'function') { alert('Main view not available.'); return; }
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
       var main = document.getElementById('tp-overlay'); if (main) main.style.display = 'none';
-      showDayInList(slot.iso);
+      var hIdx = TP_BRANCH_TO_HINDEX[slot.brHan];
+      loadDateIntoMain(slot.iso, (hIdx != null ? hIdx : 0));
     });
   }
 
