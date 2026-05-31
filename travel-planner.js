@@ -99,7 +99,7 @@
   // Default endpoints
   var TP_DEFAULT = {
     origin: { name: 'Vienna', lat: 48.2082, lon: 16.3738 },
-    dest: { name: 'Roma', lat: 41.9028, lon: 12.4964 }
+    dest: { name: 'Rome', lat: 41.9028, lon: 12.4964 }
   };
 
   /* ---- solar-time offset (minutes), matching app convention -------------- */
@@ -291,7 +291,7 @@
     slots.forEach(function (slot, idx) {
       var isDep = (idx === 0);
       var isArr = (idx === slots.length - 1);
-      slot.legType = isDep ? 'Partenza' : (isArr ? 'Arrivo' : 'Tappa');
+      slot.legType = isDep ? 'Departure' : (isArr ? 'Arrival' : 'Leg');
       slot.hourScore = tpHourScoreAt(slot.wallStart);   // null if cache miss
       if (slot.hourScore != null) anyHour = true;
       slot.hourPositive = (slot.hourScore != null && slot.hourScore >= TP_HOUR_THRESHOLD);
@@ -366,9 +366,9 @@
       var biTowards = !!(bi && bi.towardDest);
 
       var doStop = false, reason = '';
-      if (bi && biTowards && slot.hourPositive) { doStop = true; reason = 'ora positiva + direzione verso la meta (sinergia)'; }
-      else if (!curTowards && biTowards) { doStop = true; reason = 'correzione rotta verso la meta'; }
-      else if (forcedRest && bi) { doStop = true; reason = 'sosta di riposo (≥' + maxLegHours + 'h di marcia)'; }
+      if (bi && biTowards && slot.hourPositive) { doStop = true; reason = 'positive hour + direction toward destination (synergy)'; }
+      else if (!curTowards && biTowards) { doStop = true; reason = 'course correction toward destination'; }
+      else if (forcedRest && bi) { doStop = true; reason = 'rest stop (≥' + maxLegHours + 'h driving)'; }
 
       if (doStop) {
         pushLeg(slot.wallStart, i - 1);
@@ -376,7 +376,7 @@
         legStart = slot.wallStart; legStartSlot = i; curHead = bi;
       }
     }
-    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrivo');
+    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrival');
     return timeline;
   }
 
@@ -462,7 +462,7 @@
       timeline.push({
         type: 'stop', charge: true, atWall: ch.start, durationMin: ch.durationMin,
         restartWall: restart, restartSlotIdx: rSlotIdx, slotIdx: rSlotIdx,
-        reason: 'ricarica (' + ch.durationMin + ' min) — reset',
+        reason: 'charge (' + ch.durationMin + ' min) — reset',
         newHeading: newHead,
         restartSlotLabel: rSlot.gZhiHan + ' (TST ' + rSlot.tstStart + '–' + rSlot.tstEnd + ')',
         chargeHint: hint ? {
@@ -472,7 +472,7 @@
       });
       legStart = restart; legStartSlot = rSlotIdx; curHead = newHead;
     });
-    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrivo');
+    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrival');
     return timeline;
   }
 
@@ -495,7 +495,7 @@
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
   function tpHeadLabel(h, destName) {
-    if (!h) return '<span style="color:#b00;">nessuna direzione favorevole</span>';
+    if (!h) return '<span style="color:#b00;">no favourable direction</span>';
     return '<b>' + h.dir + '</b>' + (h.towardDest ? ' →' + destName : '') +
            ' <span style="color:#1b8a3f;">(' + (h.combined > 0 ? '+' : '') + h.combined + ')</span>';
   }
@@ -506,7 +506,7 @@
 
     var wrap = el('div', { style: 'border:2px solid #1b8a3f;border-radius:10px;padding:10px 12px;margin:6px 0 4px;background:#f3fbf5;' });
     wrap.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1b8a3f;margin-bottom:8px;' },
-      '🗺️ Piano consigliato — ' + nStops + ' sosta' + (nStops === 1 ? '' : 'e') + ' (≥20 min)'));
+      '🗺️ Suggested plan — ' + nStops + ' stop' + (nStops === 1 ? '' : 's') + ' (≥20 min)'));
 
     plan.forEach(function (item) {
       if (item.type === 'leg') {
@@ -515,31 +515,31 @@
         var dur = item.durationH;
         var durTxt = (dur >= 1 ? dur.toFixed(dur % 1 ? 1 : 0) + 'h' : Math.round(dur * 60) + 'm');
         row.appendChild(el('div', null,
-          'Guida <b>' + fmtHMonly(item.startWall) + '→' + fmtHMonly(item.endWall) + '</b> (' + durTxt + ') verso ' +
+          'Drive <b>' + fmtHMonly(item.startWall) + '→' + fmtHMonly(item.endWall) + '</b> (' + durTxt + ') toward ' +
           tpHeadLabel(item.heading, result.dest.name) +
-          (item.note === 'arrivo' ? ' &nbsp;🏁 <b>arrivo a ' + result.dest.name + '</b>' : '')));
+          (item.note === 'arrival' ? ' &nbsp;🏁 <b>arrive at ' + result.dest.name + '</b>' : '')));
         wrap.appendChild(row);
       } else { // stop
         var srow = el('div', { style: 'display:flex;gap:8px;align-items:flex-start;margin:4px 0 4px 4px;font-size:13px;color:#8a4b00;' });
         srow.appendChild(el('span', { style: 'font-size:15px;' }, item.charge ? '🔌' : '🛑'));
         var body = item.charge
-          ? '<b>Ricarica ' + item.durationMin + ' min</b> alle <b>' + fmtHMonly(item.atWall) + '</b> (reset)' +
-            '<br>riparti alle <b>' + fmtHMonly(item.restartWall) + '</b> in ' + item.restartSlotLabel +
-            ' verso ' + tpHeadLabel(item.newHeading, result.dest.name) +
+          ? '<b>Charge ' + item.durationMin + ' min</b> at <b>' + fmtHMonly(item.atWall) + '</b> (reset)' +
+            '<br>set off at <b>' + fmtHMonly(item.restartWall) + '</b> in ' + item.restartSlotLabel +
+            ' toward ' + tpHeadLabel(item.newHeading, result.dest.name) +
             (item.chargeHint && item.chargeHint.dir
-              ? '<br><span style="color:#1565c0;">💡 ' + (item.chargeHint.earlier ? 'anticipando' : 'ritardando') +
-                ' la ricarica alla finestra ' + item.chargeHint.wall + ' (' + item.chargeHint.label +
-                ') ripartiresti verso ' + tpHeadLabel(item.chargeHint.dir, result.dest.name) + '</span>'
+              ? '<br><span style="color:#1565c0;">💡 charging ' + (item.chargeHint.earlier ? 'earlier' : 'later') +
+                ' (window ' + item.chargeHint.wall + ', ' + item.chargeHint.label +
+                ') you would set off toward ' + tpHeadLabel(item.chargeHint.dir, result.dest.name) + '</span>'
               : '')
-          : '<b>Sosta ≥20 min</b> alle <b>' + fmtHMonly(item.atWall) + '</b> — ' + item.reason +
-            '<br>poi riparti verso ' + tpHeadLabel(item.newHeading, result.dest.name);
+          : '<b>Stop ≥20 min</b> at <b>' + fmtHMonly(item.atWall) + '</b> — ' + item.reason +
+            '<br>then set off toward ' + tpHeadLabel(item.newHeading, result.dest.name);
         srow.appendChild(el('div', null, body));
         wrap.appendChild(srow);
       }
     });
 
     if (!plan.length) {
-      wrap.appendChild(el('div', { style: 'color:#b00;font-size:13px;' }, 'Nessun piano: nessuna direzione favorevole nel periodo.'));
+      wrap.appendChild(el('div', { style: 'color:#b00;font-size:13px;' }, 'No plan: no favourable direction in the period.'));
     }
     container.appendChild(wrap);
   }
@@ -548,32 +548,32 @@
     container.innerHTML = '';
     var head = el('div', { style: 'margin:6px 0 10px;font-size:13px;color:#333;' },
       '🧭 Bearing to <b>' + result.dest.name + '</b>: ' + Math.round(result.bearing) +
-      '° (≈ <b>' + result.snapDir + '</b>). Le direzioni con <b>→' + result.dest.name +
-      '</b> ti fanno avanzare verso la meta. Le chip mostrano il punteggio <b>combinato</b> (direzione + sinergia ora).');
+      '° (≈ <b>' + result.snapDir + '</b>). Directions marked <b>→' + result.dest.name +
+      '</b> head toward the destination. Chips show the <b>combined</b> score (direction + hour synergy).');
     container.appendChild(head);
 
     if (!result.hasHourData) {
       container.appendChild(el('div', {
         style: 'margin:6px 0 10px;padding:8px 10px;border-radius:8px;background:#fff4e5;color:#8a4b00;font-size:12px;'
-      }, '⚠️ Punteggio dell\'ora non disponibile: esegui prima un <b>scan BEST</b> sulle date del viaggio (con la persona giusta attiva). ' +
-         'Poi riapri il pianificatore. Per ora vedi solo il punteggio di direzione.'));
+      }, '⚠️ Hour score unavailable: run a <b>BEST scan</b> over the trip dates first (with the right person active). ' +
+         'Then reopen the planner. For now you only see the direction score.'));
     }
 
     // ---- Recommended plan (stop suggester) ----
     tpRenderPlan(result, container);
 
     // ---- Detailed slot grid (reference) ----
-    container.appendChild(el('div', { style: 'margin:14px 0 4px;font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;' }, 'Dettaglio per doppia-ora'));
+    container.appendChild(el('div', { style: 'margin:14px 0 4px;font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;' }, 'Detail by double-hour'));
 
     result.slots.forEach(function (slot) {
       var card = el('div', { style: 'border:1px solid #d9d9e3;border-radius:8px;padding:8px 10px;margin:8px 0;background:#fafaff;' });
 
       // Hour-score badge
       var hb;
-      if (slot.hourScore == null) hb = '<span style="color:#b58900;">ora n.d.</span>';
-      else if (slot.hourPositive) hb = '<span style="color:#1b8a3f;font-weight:700;">ora ✓ ' + slot.hourScore + ' (+' + slot.synergyApplied + ')</span>';
-      else hb = '<span style="color:#999;">ora ' + slot.hourScore + ' &lt;8</span>';
-      var legColor = slot.legType === 'Partenza' ? '#c77800' : (slot.legType === 'Arrivo' ? '#7b1fa2' : '#888');
+      if (slot.hourScore == null) hb = '<span style="color:#b58900;">hour n/a</span>';
+      else if (slot.hourPositive) hb = '<span style="color:#1b8a3f;font-weight:700;">hour ✓ ' + slot.hourScore + ' (+' + slot.synergyApplied + ')</span>';
+      else hb = '<span style="color:#999;">hour ' + slot.hourScore + ' &lt;8</span>';
+      var legColor = slot.legType === 'Departure' ? '#c77800' : (slot.legType === 'Arrival' ? '#7b1fa2' : '#888');
 
       var title = el('div', { style: 'font-size:13px;font-weight:600;color:#1565c0;margin-bottom:6px;' },
         '<span style="color:' + legColor + ';">' + slot.legType + '</span> · ' +
@@ -596,31 +596,31 @@
         var chip = el('span', {
           style: 'cursor:pointer;user-select:none;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;' +
             'background:' + bg + ';color:' + fg + ';' + ring,
-          title: 'tap per dettagli'
+          title: 'tap for details'
         }, label);
         chip.addEventListener('click', function () {
           var e = d.eval || {};
           alert(
-            d.dir + ' (palazzo ' + d.palace + ') — ' + (e.ok ? 'FAVOREVOLE ✓' : 'non favorevole ✗') +
+            d.dir + ' (palace ' + d.palace + ') — ' + (e.ok ? 'FAVOURABLE ✓' : 'not favourable ✗') +
             (e.ok ? '  score ' + (e.score > 0 ? '+' : '') + e.score : '') + '\n\n' +
             'Tian/Di: ' + (e.ti || '?') + ' / ' + (e.di || '?') + '\n' +
-            'Porta: ' + (e.door || '?') + '\n' +
-            'Spirito: ' + (e.deity || '?') + '\n\n' +
-            '— Condizione fissa —\n' +
-            'San Qi (乙丙丁): ' + (e.hasSanQi ? 'sì ✓' : 'no ✗') + '\n' +
-            'Porta favorevole: ' + (e.favDoor ? 'sì ✓' : 'no ✗') + '\n\n' +
-            '— Bonus/penalità —\n' +
+            'Door: ' + (e.door || '?') + '\n' +
+            'Spirit: ' + (e.deity || '?') + '\n\n' +
+            '— Fixed condition —\n' +
+            'San Qi (乙丙丁): ' + (e.hasSanQi ? 'yes ✓' : 'no ✗') + '\n' +
+            'Favourable door: ' + (e.favDoor ? 'yes ✓' : 'no ✗') + '\n\n' +
+            '— Bonus / penalty —\n' +
             'Zhi Fu 直符: ' + (e.zhiFu ? '+' + 1 : '—') + '\n' +
             'Zhi Shi 直使: ' + (e.zhiShi ? '+' + 1 : '—') + '\n' +
-            'Configurazioni: ' + (e.configs && e.configs.length ? e.configs.join(', ') : '—') + '\n' +
-            'Clash interno: ' + (e.clash ? 'sì (' + TP_CLASH_MODE + ')' : 'no') + '\n' +
-            'Warrior 玄武: ' + (e.isWarrior ? 'sì' + (TP_EXCLUDE_WARRIOR ? ' → escluso' : '') : 'no') + '\n' +
-            'Tiger 白虎: ' + (e.isTiger ? 'sì (accettato)' : 'no') + '\n\n' +
-            '— Ora (' + slot.legType + ') —\n' +
-            'Punteggio ora (app): ' + (slot.hourScore == null ? 'n.d. (scan BEST)' : slot.hourScore) + '\n' +
-            'Ora positiva (≥8): ' + (slot.hourPositive ? 'sì → sinergia +' + slot.synergyApplied : 'no') + '\n' +
-            (e.ok ? 'COMBINATO: ' + (d.combined > 0 ? '+' : '') + d.combined + '\n' : '') +
-            (d.towardDest ? '\n→ Direzione verso ' + result.dest.name : '')
+            'Configurations: ' + (e.configs && e.configs.length ? e.configs.join(', ') : '—') + '\n' +
+            'Internal clash: ' + (e.clash ? 'yes (' + TP_CLASH_MODE + ')' : 'no') + '\n' +
+            'Warrior 玄武: ' + (e.isWarrior ? 'yes' + (TP_EXCLUDE_WARRIOR ? ' → excluded' : '') : 'no') + '\n' +
+            'Tiger 白虎: ' + (e.isTiger ? 'yes (accepted)' : 'no') + '\n\n' +
+            '— Hour (' + slot.legType + ') —\n' +
+            'Hour score (app): ' + (slot.hourScore == null ? 'n/a (BEST scan)' : slot.hourScore) + '\n' +
+            'Positive hour (≥8): ' + (slot.hourPositive ? 'yes → synergy +' + slot.synergyApplied : 'no') + '\n' +
+            (e.ok ? 'COMBINED: ' + (d.combined > 0 ? '+' : '') + d.combined + '\n' : '') +
+            (d.towardDest ? '\n→ Direction toward ' + result.dest.name : '')
           );
         });
         grid.appendChild(chip);
@@ -631,7 +631,7 @@
 
     if (!result.slots.length) {
       container.appendChild(el('div', { style: 'color:#b00;font-size:13px;' },
-        'Nessuno slot calcolato — controlla data/ora e che le librerie siano caricate.'));
+        'No slots computed — check date/time and that the libraries are loaded.'));
     }
   }
 
@@ -667,36 +667,36 @@
       w.appendChild(inp);
       return w;
     }
-    form.appendChild(field('Partenza (data)', 'tp-date', '2026-06-03', 'date'));
-    form.appendChild(field('Partenza (ora)', 'tp-time', '12:00', 'time'));
-    form.appendChild(field('Durata viaggio (ore)', 'tp-dur', '12', 'number'));
-    form.appendChild(field('Ore max marcia/sosta', 'tp-maxleg', '4', 'number'));
+    form.appendChild(field('Departure (date)', 'tp-date', '2026-06-03', 'date'));
+    form.appendChild(field('Departure (time)', 'tp-time', '12:00', 'time'));
+    form.appendChild(field('Trip duration (hours)', 'tp-dur', '12', 'number'));
+    form.appendChild(field('Max drive hours per leg', 'tp-maxleg', '4', 'number'));
     form.appendChild(field('UTC offset (base)', 'tp-utc', String(nowUtc), 'number'));
-    form.appendChild(field('Origine lon (Vienna)', 'tp-olon', String(TP_DEFAULT.origin.lon), 'number'));
-    form.appendChild(field('Origine lat', 'tp-olat', String(TP_DEFAULT.origin.lat), 'number'));
-    form.appendChild(field('Dest lon (Roma)', 'tp-dlon', String(TP_DEFAULT.dest.lon), 'number'));
+    form.appendChild(field('Origin lon (Vienna)', 'tp-olon', String(TP_DEFAULT.origin.lon), 'number'));
+    form.appendChild(field('Origin lat', 'tp-olat', String(TP_DEFAULT.origin.lat), 'number'));
+    form.appendChild(field('Dest lon (Rome)', 'tp-dlon', String(TP_DEFAULT.dest.lon), 'number'));
     form.appendChild(field('Dest lat', 'tp-dlat', String(TP_DEFAULT.dest.lat), 'number'));
 
     var dstWrap = el('label', { style: 'display:flex;align-items:center;gap:6px;color:#444;grid-column:1 / span 2;' });
     var dstChk = el('input', { id: 'tp-dst', type: 'checkbox' });
     if (nowDst) dstChk.checked = true;
     dstWrap.appendChild(dstChk);
-    dstWrap.appendChild(el('span', null, 'Ora legale (DST) attiva'));
+    dstWrap.appendChild(el('span', null, 'Daylight saving (DST) on'));
     form.appendChild(dstWrap);
 
     // Stop mode: auto suggester vs user-supplied charging stops
-    var modeWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;grid-column:1 / span 2;' }, 'Soste');
+    var modeWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;grid-column:1 / span 2;' }, 'Stops');
     var modeSel = el('select', { id: 'tp-stopmode',
       style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
-    modeSel.appendChild(el('option', { value: 'auto' }, 'Automatiche (le sceglie il pianificatore)'));
-    modeSel.appendChild(el('option', { value: 'mine' }, 'Le mie ricariche (le inserisco io)'));
+    modeSel.appendChild(el('option', { value: 'auto' }, 'Automatic (planner chooses)'));
+    modeSel.appendChild(el('option', { value: 'mine' }, 'My charging stops (I enter them)'));
     modeWrap.appendChild(modeSel);
     form.appendChild(modeWrap);
 
     var chWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;grid-column:1 / span 2;' },
-      'Orari di ricarica (HH:MM, separati da virgola; durata opzionale con ×min, es. 15:30×45)');
+      'Charging times (HH:MM, comma-separated; optional duration with ×min, e.g. 15:30×45)');
     chWrap.appendChild(el('input', { id: 'tp-charges', type: 'text', value: '',
-      placeholder: 'es. 15:30×45, 19:30×30',
+      placeholder: 'e.g. 15:30×45, 19:30×30',
       style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
     form.appendChild(chWrap);
 
@@ -705,7 +705,7 @@
     var btn = el('button', {
       style: 'width:100%;padding:10px;border:0;border-radius:8px;background:#1565c0;color:#fff;' +
         'font-size:14px;font-weight:600;cursor:pointer;'
-    }, 'SCAN VIAGGIO');
+    }, 'SCAN TRIP');
     panel.appendChild(btn);
 
     var results = el('div', { id: 'tp-results', style: 'margin-top:12px;' });
@@ -729,7 +729,7 @@
           utc: parseFloat(document.getElementById('tp-utc').value) || 0,
           dstOn: document.getElementById('tp-dst').checked,
           origin: { lat: parseFloat(document.getElementById('tp-olat').value), lon: parseFloat(document.getElementById('tp-olon').value) },
-          dest: { lat: parseFloat(document.getElementById('tp-dlat').value), lon: parseFloat(document.getElementById('tp-dlon').value), name: 'Roma' }
+          dest: { lat: parseFloat(document.getElementById('tp-dlat').value), lon: parseFloat(document.getElementById('tp-dlon').value), name: 'Rome' }
         };
         opts.origin.name = 'Vienna';
         opts.stopMode = document.getElementById('tp-stopmode').value;
@@ -737,7 +737,7 @@
         var res = tpPlan(opts);
         tpRender(res, results);
       } catch (err) {
-        results.innerHTML = '<div style="color:#b00;font-size:13px;">Errore: ' + err.message + '</div>';
+        results.innerHTML = '<div style="color:#b00;font-size:13px;">Error: ' + err.message + '</div>';
       }
     });
   }
