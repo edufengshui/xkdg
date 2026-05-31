@@ -6170,14 +6170,25 @@ function runScanner() {
             }
 
             // ─── TRAVEL PLANNER hook (additive) ───────────────────────────────
-            // Cache this hour's native positivity score, UNFILTERED (before the
-            // purpose / direction filters below), keyed by ISO date + hour branch.
-            // Read by travel-planner.js. Does NOT change BEST/LIST behaviour.
+            // Cache this hour's native positivity score + a compact XKDG extract,
+            // UNFILTERED (before the purpose / direction filters below), keyed by
+            // ISO date + hour branch. Read by travel-planner.js. Wrapped in try so
+            // it can never affect BEST/LIST behaviour.
             if (window._tpHourCache) {
-                window._tpHourCache[_isoDay + '#' + hZhi] = {
-                    score: totalScore, iso: _isoDay,
-                    hGan: hGan, hZhi: hZhi, dGan: dGan, dZhi: dZhi, hourIndex: h
-                };
+                try {
+                    var _tpXkdgTags = analysisItems
+                        .filter(function (i) { return i.tag === 'blue' || i.tag === 'family'; })
+                        .map(function (i) { return i.text; });
+                    window._tpHourCache[_isoDay + '#' + hZhi] = {
+                        score: totalScore, iso: _isoDay,
+                        hGan: hGan, hZhi: hZhi, dGan: dGan, dZhi: dZhi, hourIndex: h,
+                        spiritEn: hourSpirit ? hourSpirit.en : '',
+                        spiritAusp: hourSpirit ? hourSpirit.auspicious : null,
+                        nayin: (nayinResBST && nayinResBST.label) ? nayinResBST.label : '',
+                        ke: (typeof keScoreBST === 'number') ? keScoreBST : 0,
+                        xkdgTags: _tpXkdgTags
+                    };
+                } catch (_tpErr) { /* never break the scan */ }
             }
             // ──────────────────────────────────────────────────────────────────
 

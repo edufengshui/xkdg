@@ -84,6 +84,13 @@
     var rec = cache[tpLocalISO(wallDate) + '#' + br];
     return rec ? rec.score : null;
   }
+  // Full cached record (score + XKDG extract) for a wall-clock moment
+  function tpHourRecordAt(wallDate) {
+    var cache = (typeof window !== 'undefined') ? window._tpHourCache : null;
+    if (!cache) return null;
+    var br = TP_CIVIL_BRANCH[wallDate.getHours()];
+    return cache[tpLocalISO(wallDate) + '#' + br] || null;
+  }
 
   // Palace <-> 8 directions (palace 5 = centre, skipped)
   var TP_PALACE_DIR = { 1: 'N', 2: 'SW', 3: 'E', 4: 'SE', 6: 'NW', 7: 'W', 8: 'NE', 9: 'S' };
@@ -592,6 +599,49 @@
   }
 
   /* ---- leg detail: rotating Qimen config + link to full XKDG (LIST) ------- */
+  /* ---- prominent card for the single chosen palace ----------------------- */
+  function tpSinglePalaceHtml(slot, palace) {
+    if (!palace || typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getRotatingHourChart !== 'function') return '';
+    var chart = QMDJWaterScanner.getRotatingHourChart(slot.qmY, slot.qmM, slot.qmD, slot.hGanHan, slot.hZhiHan);
+    if (!chart || !chart.palaces || !chart.palaces[palace]) return '';
+    var pd = chart.palaces[palace];
+    var configs = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
+      ? (QMDJWaterScanner.checkRotatingPalace(chart, palace) || []) : [];
+    var ev = tpPalaceOK(pd, configs.length);
+    var DIRH = { 4: 'SE', 9: 'S', 2: 'SW', 3: 'E', 7: 'W', 8: 'NE', 1: 'N', 6: 'NW' };
+    function yn(b, good) { return b ? '<span style="color:#1b8a3f;">yes \u2713</span>' : '<span style="color:' + (good ? '#c62828' : '#999') + ';">no</span>'; }
+    var rows =
+      '<div style="display:flex;align-items:baseline;gap:10px;">' +
+        '<div style="font-size:26px;font-weight:800;color:#0d5e2c;">' + (DIRH[palace] || '') + '</div>' +
+        '<div style="font-size:12px;color:#666;">Palace ' + palace + (ev.ok ? ' \u00b7 <b style="color:#1b8a3f;">favourable</b> (score ' + (ev.score >= 0 ? '+' : '') + ev.score + ')' : ' \u00b7 not favourable') + '</div>' +
+      '</div>' +
+      '<div style="font-size:20px;color:#333;margin:4px 0;">' + (pd.tiH || pd.ti || '') + ' <span style="color:#aaa;">/</span> ' + (pd.diH || pd.di || '') +
+        ' &nbsp;<span style="font-size:13px;color:#555;">' + (pd.doorName || pd.door || '') + ' \u00b7 ' + (pd.deity || '') + '</span></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:12px;color:#444;margin-top:4px;">' +
+        '<div>San Qi (\u4e59\u4e19\u4e01): ' + yn(ev.hasSanQi, true) + '</div>' +
+        '<div>Favourable door: ' + yn(ev.favDoor, true) + '</div>' +
+        '<div>Zhi Fu \u76f4\u7b26: ' + yn(ev.zhiFu) + '</div>' +
+        '<div>Zhi Shi \u76f4\u4f7f: ' + yn(ev.zhiShi) + '</div>' +
+        '<div>Internal clash: ' + (ev.clash ? '<span style="color:#c62828;">yes</span>' : 'no') + '</div>' +
+        '<div>Warrior/Tiger: ' + (ev.isWarrior ? '<span style="color:#c62828;">\u7384\u6b66</span>' : (ev.isTiger ? '\u767d\u864e' : 'no')) + '</div>' +
+      '</div>' +
+      (configs.length ? '<div style="font-size:12px;color:#7b1fa2;margin-top:4px;">Configs: ' + configs.map(function (c) { return c.label; }).join(', ') + '</div>' : '');
+    return '<div style="border:2px solid #f9a825;border-radius:10px;padding:10px 12px;background:#fffdf5;">' + rows + '</div>';
+  }
+
+  /* ---- inline XKDG extract (from the BEST cache record) ------------------- */
+  function tpXkdgExtractHtml(rec) {
+    if (!rec) return '<div style="font-size:12px;color:#b58900;">No XKDG data yet — press SCAN TRIP (with the person loaded).</div>';
+    var parts = [];
+    parts.push('<b>Score ' + rec.score + '</b>' + (rec.score >= 8 ? ' <span style="color:#1b8a3f;">(positive \u2265 8)</span>' : ''));
+    if (rec.spiritEn) parts.push('Spirit: <span style="color:' + (rec.spiritAusp ? '#0044cc' : '#d40000') + ';font-weight:600;">' + rec.spiritEn + '</span>');
+    if (rec.nayin) parts.push('Nayin: <b>' + rec.nayin + '</b>');
+    if (rec.ke) parts.push('Ke +' + rec.ke);
+    var tags = (rec.xkdgTags && rec.xkdgTags.length) ? rec.xkdgTags.join(' \u00b7 ') : '\u2014';
+    return '<div style="font-size:12px;color:#444;line-height:1.6;">' + parts.join(' &nbsp;\u00b7&nbsp; ') +
+      '<div style="margin-top:3px;">Hexagram relations: <span style="color:#1565c0;">' + tags + '</span></div></div>';
+  }
+
   function tpShowLegDetail(slot, highlightPalace, title) {
     if (!slot) return;
     var prev = document.getElementById('tp-leg-detail');
@@ -607,14 +657,23 @@
       ' \u00b7 TST ' + slot.tstStart + '\u2013' + slot.tstEnd +
       (slot.hourScore != null ? ' \u00b7 hour score ' + slot.hourScore + (slot.hourPositive ? ' \u2713' : '') : '')));
 
-    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:6px 0 4px;' }, 'Directional Qimen \u2014 Rotating Pan'));
+    // 1) The single chosen palace (the positive directional setting), prominent
+    if (highlightPalace) {
+      box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:6px 0 4px;' }, 'Chosen direction \u2014 palace'));
+      box.appendChild(el('div', null, tpSinglePalaceHtml(slot, highlightPalace)));
+    }
+
+    // 2) Inline XKDG extract for this hour (from the BEST cache)
+    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#7b1fa2;margin:12px 0 4px;' }, 'XKDG setting (this hour)'));
+    box.appendChild(el('div', null, tpXkdgExtractHtml(tpHourRecordAt(slot.wallStart))));
+
+    // 3) Full rotating chart for context
+    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:12px 0 4px;' }, 'Full chart \u2014 Rotating Pan'));
     box.appendChild(el('div', null, tpRotChartHtml(slot, highlightPalace)));
 
-    box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#7b1fa2;margin:12px 0 4px;' }, 'XKDG configuration'));
-    box.appendChild(el('div', { style: 'font-size:12px;color:#555;margin-bottom:6px;' },
-      'Opens this day in the LIST view (full XKDG: hexagram relations, spirits, Nayin, score) for every hour.'));
+    // 4) Full XKDG in the LIST view
     var xkdgBtn = el('button', {
-      style: 'padding:8px 12px;border:0;border-radius:8px;background:#7b1fa2;color:#fff;font-size:13px;font-weight:600;cursor:pointer;'
+      style: 'margin-top:12px;padding:8px 12px;border:0;border-radius:8px;background:#7b1fa2;color:#fff;font-size:13px;font-weight:600;cursor:pointer;'
     }, 'Open full XKDG in LIST \u2192');
     box.appendChild(xkdgBtn);
 
