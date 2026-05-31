@@ -107,13 +107,18 @@
     return (lon - utc * 15) * 4 - (dstOn ? 60 : 0);
   }
 
-  /* ---- initial great-circle bearing origin -> dest (degrees 0..360) ------ */
+  /* ---- loxodromic (rhumb-line) bearing A -> B, degrees 0..360 ------------- *
+   * Constant-heading bearing: how B sits relative to A, regardless of any
+   * turns/curves in between. This is the "direction of march" of a leg, snapped
+   * to a 45° palace. (Not great-circle — that would change heading along the path.)
+   * ----------------------------------------------------------------------- */
   function tpBearing(lat1, lon1, lat2, lon2) {
     var toR = Math.PI / 180;
-    var p1 = lat1 * toR, p2 = lat2 * toR, dl = (lon2 - lon1) * toR;
-    var y = Math.sin(dl) * Math.cos(p2);
-    var x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
-    var b = Math.atan2(y, x) / toR;
+    var p1 = lat1 * toR, p2 = lat2 * toR;
+    var dpsi = Math.log(Math.tan(Math.PI / 4 + p2 / 2) / Math.tan(Math.PI / 4 + p1 / 2));
+    var dl = (lon2 - lon1) * toR;
+    if (Math.abs(dl) > Math.PI) dl = dl > 0 ? -(2 * Math.PI - dl) : (2 * Math.PI + dl);
+    var b = Math.atan2(dl, dpsi) / toR;
     return (b + 360) % 360;
   }
   function tpSnapDir(deg) {
@@ -768,4 +773,6 @@
     evalPalace: tpPalaceOK,
     config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); }
   };
+  // Expose tpOpen as a global so the TRAVEL PLANNER tab button (onclick="tpOpen()") works.
+  window.tpOpen = tpOpen;
 })();
