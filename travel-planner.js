@@ -558,6 +558,7 @@
 
   /* ---- ROTATING-pan chart (the directional Qimen the planner evaluates) --- */
   function tpRotChartHtml(slot, highlightPalace) {
+    try {
     if (typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getRotatingHourChart !== 'function')
       return '<div style="color:#b00;">Scanner not loaded.</div>';
     var chart = QMDJWaterScanner.getRotatingHourChart(slot.qmY, slot.qmM, slot.qmD, slot.hGanHan, slot.hZhiHan);
@@ -596,11 +597,13 @@
       rows += '<tr>' + cell(order[r * 3]) + cell(order[r * 3 + 1]) + cell(order[r * 3 + 2]) + '</tr>';
     }
     return '<table style="border-collapse:collapse;width:100%;">' + rows + '</table>';
+    } catch (e) { return '<div style="color:#b00;font-size:12px;">Chart error: ' + e.message + '</div>'; }
   }
 
   /* ---- leg detail: rotating Qimen config + link to full XKDG (LIST) ------- */
   /* ---- prominent card for the single chosen palace ----------------------- */
   function tpSinglePalaceHtml(slot, palace) {
+    try {
     if (!palace || typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getRotatingHourChart !== 'function') return '';
     var chart = QMDJWaterScanner.getRotatingHourChart(slot.qmY, slot.qmM, slot.qmD, slot.hGanHan, slot.hZhiHan);
     if (!chart || !chart.palaces || !chart.palaces[palace]) return '';
@@ -627,6 +630,7 @@
       '</div>' +
       (configs.length ? '<div style="font-size:12px;color:#7b1fa2;margin-top:4px;">Configs: ' + configs.map(function (c) { return c.label; }).join(', ') + '</div>' : '');
     return '<div style="border:2px solid #f9a825;border-radius:10px;padding:10px 12px;background:#fffdf5;">' + rows + '</div>';
+    } catch (e) { return '<div style="color:#b00;font-size:12px;">Palace error: ' + e.message + '</div>'; }
   }
 
   /* ---- inline XKDG extract (from the BEST cache record) ------------------- */
@@ -679,8 +683,9 @@
 
     ov.appendChild(box);
     document.body.appendChild(ov);
-    ov.querySelector('#tp-ld-close').addEventListener('click', function () { ov.parentNode.removeChild(ov); });
-    ov.addEventListener('click', function (e) { if (e.target === ov) ov.parentNode.removeChild(ov); });
+    ov.querySelector('#tp-ld-close').addEventListener('click', function () { if (ov.parentNode) ov.parentNode.removeChild(ov); });
+    // NOTE: no background-click-to-close here — on touch the opening tap can
+    // reach the new full-screen overlay and dismiss it instantly. Close via ✕ only.
     xkdgBtn.addEventListener('click', function () {
       if (typeof showDayInList !== 'function') { alert('LIST view not available.'); return; }
       ov.parentNode.removeChild(ov);
@@ -710,7 +715,8 @@
           (item.note === 'arrival' ? ' &nbsp;🏁 <b>arrive at ' + result.dest.name + '</b>' : '') +
           ' <span style="color:#1565c0;font-size:11px;">🔍</span>'));
         (function (it) {
-          row.addEventListener('click', function () {
+          row.addEventListener('click', function (e) {
+            if (e) e.stopPropagation();
             var s = result.slots[it.startSlotIdx];
             tpShowLegDetail(s, it.heading ? it.heading.palace : null,
               (s ? s.legType : 'Leg') + ' — ' + (it.heading ? it.heading.dir : ''));
@@ -734,7 +740,8 @@
             '<br>then set off toward ' + tpHeadLabel(item.newHeading, result.dest.name);
         srow.appendChild(el('div', null, body + ' <span style="color:#1565c0;font-size:11px;">🔍</span>'));
         (function (it) {
-          srow.addEventListener('click', function () {
+          srow.addEventListener('click', function (e) {
+            if (e) e.stopPropagation();
             var idx = (it.restartSlotIdx != null) ? it.restartSlotIdx : it.slotIdx;
             var s = result.slots[idx];
             tpShowLegDetail(s, it.newHeading ? it.newHeading.palace : null,
