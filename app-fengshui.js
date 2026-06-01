@@ -1910,7 +1910,10 @@ function fsOpenDirectionCalc(){
     + '</div>'
 
     // CALCULATE BUTTON
-    + '<button onclick="fsDirectionCalc()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🧭 CALCULATE DIRECTION</button>'
+    + '<button onclick="fsDirectionCalc()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">🧭 CALCULATE DIRECTION</button>'
+
+    // ONE-TAP: calculate direction + set Journey + 7-day window + run BEST scan
+    + '<button onclick="fsDirectionScanFlights()" style="width:100%;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🔭 SCAN flight dates</button>'
 
     // RESULT
     + '<div id="dir-calc-result" style="text-align:center;min-height:40px;"></div>';
@@ -2022,6 +2025,49 @@ function fsClearDirectionFilter(){
   var box = document.getElementById('dir-calc-result');
   if(box) box.innerHTML = '<div style="color:#888;font-size:12px;">Direction filter cleared. Purpose scans will show all qualifying hours.</div>';
   fsUpdatePurposeClone();
+}
+
+// One-tap flight scan: validate inputs, compute the (loxodromic) direction and
+// activate the filter, force Purpose = Journey, ensure a scan window (today + 7
+// days if none set), close the popup, and run the BEST scan. The BEST scan then
+// lists the day/hours whose score >= 8 AND whose Qimen direction gate (San Qi +
+// favourable door) passes toward the flight direction — best first.
+function fsDirectionScanFlights(){
+  var lat1 = parseFloat(document.getElementById('dir-orig-lat').value);
+  var lng1 = parseFloat(document.getElementById('dir-orig-lng').value);
+  var lat2 = parseFloat(document.getElementById('dir-dest-lat').value);
+  var lng2 = parseFloat(document.getElementById('dir-dest-lng').value);
+  if(isNaN(lat1)||isNaN(lng1)){ alert('Enter the ORIGIN city (🔍 Find) or use GPS.'); return; }
+  if(isNaN(lat2)||isNaN(lng2)){ alert('Enter the DESTINATION city and click 🔍 Find.'); return; }
+
+  // 1) Compute the direction + activate the filter.
+  fsDirectionCalc();
+  if(!_fsActionPalace){ return; }
+
+  // 2) Force Purpose = Journey.
+  var psel = document.getElementById('purpose-select');
+  if(psel){ psel.value = 'journey'; if(typeof onPurposeChange === 'function') onPurposeChange(); }
+  if(typeof getPurpose === 'function' && getPurpose() !== 'journey'){
+    alert('Load Person A/B (or enable Test Mode) first — a person is needed to score the dates.');
+    return;
+  }
+
+  // 3) Ensure a scan window (default: today + 7 days; expandable by the user).
+  var ss = document.getElementById('scan-start');
+  if(ss && !ss.value){
+    var t = new Date();
+    ss.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+  }
+  var sd = document.getElementById('scan-days');
+  if(sd && (!sd.value || parseInt(sd.value) < 1)){ sd.value = '7'; }
+
+  // 4) Close the popup.
+  var p = document.getElementById('dir-calc-popup'); if(p) p.remove();
+  var o = document.getElementById('dir-calc-overlay'); if(o) o.remove();
+
+  // 5) Run the BEST scan (filtered to the flight direction).
+  if(typeof runScanner === 'function'){ runScanner(); }
+  else { alert('Scanner not available on this page.'); }
 }
 
 function showJiaPopup(jiaName){

@@ -3219,7 +3219,7 @@ var PURPOSE_QIMEN_MAP = {
   career:       ['Heaven Dun 天遁', 'Wind Dun 風遁', 'Dragon Dun 龍遁', 'Cloud Dun 云遁'],
   wealth:       ['Earth Dun 地遁', 'Cloud Dun 云遁', 'Rest Pretenses 休詐', 'Earth Borrows 地假'],
   relationship: ['Human Dun 人遁', 'Multiple Pretenses 重詐', 'Human Borrows 人假'],
-  journey:      ['Wind Dun 風遁', 'Dragon Dun 龍遁'],
+  journey:      ['Dragon Dun 龍遁'],
   speak:        ['Wind Dun 風遁', 'Heaven Borrows 天假', 'Tiger Dun 虎遁'],
   legal:        ['Tiger Dun 虎遁', 'Dragon Dun 龍遁', 'Ghost Dun 鬼遁', 'Real Pretenses 真詐',
                  'Deity Borrows 神假', 'Ghost Borrows 鬼假', 'Heaven Borrows 天假']
@@ -5508,22 +5508,47 @@ function buildMonthView() {
             const purposeLV = getPurpose();
             let purposeIconLV = '';
             if (purposeLV) {
-                const _savedForPurpose = _currentDayAnalysis;
-                _currentDayAnalysis = {
-                    items: analysisItems,
-                    pillars: { hour: pillars.hour, day: pillars.day, month: pillars.month, year: pillars.year },
-                    stems: { hour: hGan, day: dGan, month: mGan, year: yGan },
-                    branches: { hour: hZhiDirect, day: dZhi, month: mZhi, year: yZhi }
-                };
-                purposeIconLV = checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems, spirit)
-                    ? PURPOSE_ICONS[purposeLV] : '';
-                _currentDayAnalysis = _savedForPurpose;
-                // Direction filter: when set, the purpose passes if EITHER the Flying-Stars config
-                // (🌀⭐ — needs the activator) OR the directional/rotating config (→) matches at the target palace.
-                if (purposeIconLV && _fsActionPalace && purposeLV) {
-                    var _dirMatchLV = pqRotLV.some(function(h){ return h.palace === _fsActionPalace; })
-                                   || pqHitsLV.some(function(h){ return h.palace === _fsActionPalace; });
-                    if (!_dirMatchLV) purposeIconLV = '';
+                if (_fsActionPalace) {
+                    // DIRECTION mode (same rule as BEST): XKDG is only a floor —
+                    // keep the hour if score >= 8 — then the QMDJ direction gate
+                    // (San Qi 乙丙丁 on Heaven + favourable Door, Warrior excluded)
+                    // at the flight palace decides. Reuses the Travel Planner gate
+                    // so LIST and BEST agree.
+                    var _passLV = (listScore >= 8);
+                    if (_passLV) {
+                        var _dirOKLV = false;
+                        try {
+                            if (typeof QMDJWaterScanner !== 'undefined'
+                                && typeof QMDJWaterScanner.getRotatingHourChart === 'function'
+                                && window.TravelPlanner && typeof window.TravelPlanner.evalPalace === 'function') {
+                                var _rotLV = QMDJWaterScanner.getRotatingHourChart(
+                                    solarDate.getFullYear(), solarDate.getMonth()+1, solarDate.getDate(), hGanDirect, hZhiDirect);
+                                var _pdLV = (_rotLV && _rotLV.palaces) ? _rotLV.palaces[_fsActionPalace] : null;
+                                if (_pdLV) {
+                                    var _cfgLV = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
+                                        ? (QMDJWaterScanner.checkRotatingPalace(_rotLV, _fsActionPalace) || []).length : 0;
+                                    var _evLV = window.TravelPlanner.evalPalace(_pdLV, _cfgLV);
+                                    _dirOKLV = !!(_evLV && _evLV.ok);
+                                }
+                            } else {
+                                _dirOKLV = pqRotLV.some(function(h){ return h.palace === _fsActionPalace; })
+                                        || pqHitsLV.some(function(h){ return h.palace === _fsActionPalace; });
+                            }
+                        } catch (e) { _dirOKLV = false; }
+                        _passLV = _dirOKLV;
+                    }
+                    purposeIconLV = _passLV ? PURPOSE_ICONS[purposeLV] : '';
+                } else {
+                    const _savedForPurpose = _currentDayAnalysis;
+                    _currentDayAnalysis = {
+                        items: analysisItems,
+                        pillars: { hour: pillars.hour, day: pillars.day, month: pillars.month, year: pillars.year },
+                        stems: { hour: hGan, day: dGan, month: mGan, year: yGan },
+                        branches: { hour: hZhiDirect, day: dZhi, month: mZhi, year: yZhi }
+                    };
+                    purposeIconLV = checkPurpose(purposeLV, dGan, dZhi, blueItems, listScore, pillars, analysisItems, spirit)
+                        ? PURPOSE_ICONS[purposeLV] : '';
+                    _currentDayAnalysis = _savedForPurpose;
                 }
             }
             if (purposeLV && !purposeIconLV && !isZiFirst && !_calShowAllForThisDay) continue;
@@ -6256,12 +6281,35 @@ function runScanner() {
             var _qmParamsBST = { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi };
             var _pqFsBST  = fsScanPurposeQimen(_qmParamsBST, getPurpose());        // 🌀⭐ Flying Stars (needs activator at palace)
             var _pqRotBST = fsScanPurposeQimenRotating(_qmParamsBST, getPurpose()); // → directional only (no activator)
-            // Direction filter: when a direction is set, keep the hour if EITHER the Flying-Stars
-            // config (🌀⭐) OR the directional/rotating config (→) matches at the target palace.
+            // Direction gate (QMDJ-dominant). A flight/journey direction is
+            // POSITIVE when its palace on the ROTATING chart passes the same gate
+            // used by the Travel Planner: a San Qi (乙丙丁) on the Heaven plate +
+            // a favourable Door (Kai/Xiu/Sheng/JingS), Warrior 玄武 excluded.
+            // (Previously this required a rare Wind/Dragon Dun config exactly at
+            // the palace, which almost never occurs in a short window.)
             if (_fsActionPalace && getPurpose()) {
-                var _dirMatchBST = _pqRotBST.some(function(h){ return h.palace === _fsActionPalace; })
-                                || _pqFsBST.some(function(h){ return h.palace === _fsActionPalace; });
-                if (!_dirMatchBST) continue;
+                var _dirOK = false;
+                try {
+                    if (typeof QMDJWaterScanner !== 'undefined'
+                        && typeof QMDJWaterScanner.getRotatingHourChart === 'function'
+                        && window.TravelPlanner && typeof window.TravelPlanner.evalPalace === 'function') {
+                        var _rotChartBST = QMDJWaterScanner.getRotatingHourChart(
+                            solarDate.getFullYear(), solarDate.getMonth()+1, solarDate.getDate(), hGan, hZhi);
+                        var _pdBST = (_rotChartBST && _rotChartBST.palaces) ? _rotChartBST.palaces[_fsActionPalace] : null;
+                        if (_pdBST) {
+                            var _cfgCountBST = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
+                                ? (QMDJWaterScanner.checkRotatingPalace(_rotChartBST, _fsActionPalace) || []).length : 0;
+                            var _evalBST = window.TravelPlanner.evalPalace(_pdBST, _cfgCountBST);
+                            _dirOK = !!(_evalBST && _evalBST.ok);
+                        }
+                    } else {
+                        // Fallback if the Travel Planner gate isn't available: keep the
+                        // original Purpose-Qimen (rotating/flying) match at the palace.
+                        _dirOK = _pqRotBST.some(function(h){ return h.palace === _fsActionPalace; })
+                              || _pqFsBST.some(function(h){ return h.palace === _fsActionPalace; });
+                    }
+                } catch (_dirErr) { _dirOK = false; }
+                if (!_dirOK) continue;
             }
 
             const activeFiltersBS = getActiveFilters();
