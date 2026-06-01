@@ -187,6 +187,101 @@
     }
   }
 
+  // ---- Saved itineraries (Phase G1) ---------------------------------------
+  // Save the "shape" of a trip (endpoints, stops, duration, params) under a
+  // name, on this device. Reload to refill the form, then SCAN. The departure
+  // date/time is saved too but is what "When to depart" will search over.
+  function tpGetItineraries() {
+    try { var a = JSON.parse(localStorage.getItem('xkdg_tp_itineraries') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function tpSaveItineraries(list) { try { localStorage.setItem('xkdg_tp_itineraries', JSON.stringify(list.slice(0, 40))); } catch (e) {} }
+  function tpFindItinerary(name) {
+    var n = (name || '').trim().toLowerCase();
+    return tpGetItineraries().filter(function (it) { return it.name.toLowerCase() === n; })[0] || null;
+  }
+  function tpSaveItinerary(name, fields) {
+    if (!name) return;
+    var list = tpGetItineraries().filter(function (it) { return it.name.toLowerCase() !== name.toLowerCase(); });
+    list.unshift({ name: name, fields: fields, savedAt: Date.now() });
+    tpSaveItineraries(list);
+  }
+  function tpDeleteItinerary(name) {
+    tpSaveItineraries(tpGetItineraries().filter(function (it) { return it.name.toLowerCase() !== (name || '').toLowerCase(); }));
+  }
+  // Read/write the whole planner form as a plain object.
+  function tpCollectFields() {
+    function v(id) { var e = document.getElementById(id); return e ? e.value : ''; }
+    function chk(id) { var e = document.getElementById(id); return !!(e && e.checked); }
+    var nets = {}; TP_NETWORKS.forEach(function (n) { nets[n.id] = chk('tp-net-' + n.id); });
+    return {
+      ocity: v('tp-ocity'), olat: v('tp-olat'), olon: v('tp-olon'),
+      dcity: v('tp-dcity'), dlat: v('tp-dlat'), dlon: v('tp-dlon'),
+      date: v('tp-date'), time: v('tp-time'), dur: v('tp-dur'), maxleg: v('tp-maxleg'),
+      utc: v('tp-utc'), dst: chk('tp-dst'), stopmode: v('tp-stopmode'), charges: v('tp-charges'),
+      worker: v('tp-worker'), range: v('tp-range'), reserve: v('tp-reserve'), nets: nets
+    };
+  }
+  function tpApplyFields(f) {
+    if (!f) return;
+    function set(id, val) { var e = document.getElementById(id); if (e && val != null) e.value = val; }
+    set('tp-ocity', f.ocity); set('tp-olat', f.olat); set('tp-olon', f.olon);
+    set('tp-dcity', f.dcity); set('tp-dlat', f.dlat); set('tp-dlon', f.dlon);
+    set('tp-date', f.date); set('tp-time', f.time); set('tp-dur', f.dur); set('tp-maxleg', f.maxleg);
+    set('tp-utc', f.utc); set('tp-stopmode', f.stopmode); set('tp-charges', f.charges);
+    set('tp-worker', f.worker); set('tp-range', f.range); set('tp-reserve', f.reserve);
+    var dstEl = document.getElementById('tp-dst'); if (dstEl) dstEl.checked = !!f.dst;
+    if (f.nets) TP_NETWORKS.forEach(function (n) { var c = document.getElementById('tp-net-' + n.id); if (c && f.nets[n.id] != null) c.checked = !!f.nets[n.id]; });
+    var ms = document.getElementById('tp-stopmode'); if (ms) { try { ms.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} }
+  }
+  // The "📁 Itinerary" bar (name + Save, plus a Load/Delete picker).
+  function tpBuildItineraryBar() {
+    var bar = el('div', { style: 'grid-column:1 / span 2;border:1px solid #d0d7de;border-radius:8px;padding:8px 10px;background:#fafbfc;' });
+    bar.appendChild(el('div', { style: 'font-weight:600;color:#333;margin-bottom:5px;' }, '📁 Itinerary'));
+    var row1 = el('div', { style: 'display:flex;gap:6px;align-items:center;margin-bottom:6px;' });
+    var nameInp = el('input', { id: 'tp-itin-name', type: 'text', placeholder: 'name (e.g. Home → Tuoro)',
+      style: 'flex:1;min-width:0;padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
+    var saveBtn = el('button', { type: 'button', style: 'padding:6px 10px;border:0;border-radius:6px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '💾 Save');
+    row1.appendChild(nameInp); row1.appendChild(saveBtn);
+    bar.appendChild(row1);
+    var row2 = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
+    var sel = el('select', { id: 'tp-itin-select', style: 'flex:1;min-width:0;padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
+    var loadBtn = el('button', { type: 'button', style: 'padding:6px 10px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;' }, '📂 Load');
+    var delBtn = el('button', { type: 'button', title: 'Delete', style: 'padding:6px 9px;border:1px solid #b00;border-radius:6px;background:#fff;color:#b00;font-size:13px;cursor:pointer;' }, '🗑');
+    row2.appendChild(sel); row2.appendChild(loadBtn); row2.appendChild(delBtn);
+    bar.appendChild(row2);
+    var status = el('div', { style: 'font-size:11px;color:#888;margin-top:4px;min-height:13px;' }, '');
+    bar.appendChild(status);
+
+    function refresh() {
+      var its = tpGetItineraries();
+      sel.innerHTML = '';
+      if (!its.length) {
+        var o0 = document.createElement('option'); o0.value = ''; o0.textContent = '— no saved itineraries —'; sel.appendChild(o0);
+      } else its.forEach(function (it) {
+        var o = document.createElement('option'); o.value = it.name; o.textContent = it.name; sel.appendChild(o);
+      });
+    }
+    saveBtn.addEventListener('click', function () {
+      var nm = (nameInp.value || '').trim();
+      if (!nm) { status.style.color = '#b58900'; status.textContent = 'Type a name first.'; return; }
+      tpSaveItinerary(nm, tpCollectFields()); refresh(); sel.value = nm;
+      status.style.color = '#1b8a3f'; status.textContent = '✓ Saved “' + nm + '”.';
+    });
+    loadBtn.addEventListener('click', function () {
+      var it = tpFindItinerary(sel.value);
+      if (!it) { status.style.color = '#b58900'; status.textContent = 'Pick a saved itinerary.'; return; }
+      tpApplyFields(it.fields); nameInp.value = it.name;
+      status.style.color = '#1b8a3f'; status.textContent = '✓ Loaded “' + it.name + '”. Press SCAN TRIP.';
+    });
+    delBtn.addEventListener('click', function () {
+      var nm = sel.value; if (!nm) return;
+      tpDeleteItinerary(nm); refresh();
+      status.style.color = '#666'; status.textContent = 'Deleted “' + nm + '”.';
+    });
+    refresh();
+    return bar;
+  }
+
   // Last route fetched from the Worker (used later by the bearing phase)
   // shape: { origin, dest, distanceMeters, durationSec, coords: [[lon,lat],...] }
   var TP_LAST_ROUTE = null;
@@ -1540,6 +1635,7 @@
       w.appendChild(inp);
       return w;
     }
+    form.appendChild(tpBuildItineraryBar());
     form.appendChild(field('Departure (date)', 'tp-date', '2026-06-03', 'date'));
     form.appendChild(field('Departure (time)', 'tp-time', '12:00', 'time'));
     form.appendChild(field('Trip duration (hours)', 'tp-dur', '12', 'number'));
