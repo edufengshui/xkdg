@@ -68,6 +68,11 @@
   var TP_SYNERGY_ENDS = 8;  // at departure and at arrival
   var TP_SYNERGY_MID = 3;   // at intermediate legs
 
+  // ---- Google Maps export (Phase D) ---------------------------------------
+  // Consumer Google Maps keeps a limited number of intermediate stops in a
+  // shared "directions" link. Beyond this we warn (Maps may drop the extras).
+  var TP_MAPS_MAX_WAYPOINTS = 9;
+
   // Local civil clock hour -> hour branch (han). Matches BEST, where the hour
   // branch follows the LOCAL clock (the day pillar is solar-corrected, the hour
   // branch is not). Used only to look up the cached hour score by the app's key.
@@ -262,6 +267,54 @@
       .sort(function (a, b) { return (b.combined || 0) - (a.combined || 0); });
     var best = pool[0];
     return { dir: best.dir, palace: best.palace, eval: best.eval, combined: best.combined, towardDest: true };
+  }
+
+  /* ---- PHASE D: Google Maps export helpers -------------------------------- *
+   * Build a Google Maps "Directions" deep link (Maps URL API) with the chosen
+   * stops as waypoints. Opening it on the phone hands navigation to Maps; on a
+   * car with Google built-in (e.g. Polestar) signed into the same account the
+   * route can be picked up there. A PWA cannot draw on the car screen itself.
+   * ----------------------------------------------------------------------- */
+  function tpLatLng(p) {
+    return Number(p.lat).toFixed(5) + ',' + Number(p.lon).toFixed(5);
+  }
+  // A Maps point is either {lat,lon} (-> "lat,lng") or a plain string (a place
+  // name typed by the user). Empty/invalid -> ''.
+  function tpMapsPoint(p) {
+    if (p == null) return '';
+    if (typeof p === 'string') return p.trim();
+    if (p.lat != null && p.lon != null && isFinite(p.lat) && isFinite(p.lon)) return tpLatLng(p);
+    return '';
+  }
+  function tpBuildMapsUrl(origin, dest, waypoints) {
+    var parts = ['https://www.google.com/maps/dir/?api=1'];
+    var o = tpMapsPoint(origin), d = tpMapsPoint(dest);
+    if (o) parts.push('origin=' + encodeURIComponent(o));
+    if (d) parts.push('destination=' + encodeURIComponent(d));
+    var wps = (waypoints || []).map(tpMapsPoint).filter(Boolean);
+    if (wps.length) parts.push('waypoints=' + wps.map(encodeURIComponent).join('%7C'));
+    parts.push('travelmode=driving');
+    return parts.join('&');
+  }
+  // Clipboard with a graceful fallback for browsers without the async API.
+  function tpCopyToClipboard(text, btn, doneLabel, restoreLabel) {
+    function ok() { if (btn) { btn.textContent = doneLabel; setTimeout(function () { btn.textContent = restoreLabel; }, 1500); } }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, function () { tpCopyFallback(text, ok); });
+        return;
+      }
+    } catch (e) { /* fall through */ }
+    tpCopyFallback(text, ok);
+  }
+  function tpCopyFallback(text, ok) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      ok();
+    } catch (e) { try { window.prompt('Copy this link:', text); } catch (_) {} }
   }
 
   /* ---- PHASE C re-aim: nudge a leg's heading toward the upcoming stop ----- *
@@ -505,6 +558,16 @@
 
     // ---- PHASE C: re-aim intermediate legs at the next stop when warranted --
     try { tpReaimLegsAtStops(plan, slots, posAt, Dst); } catch (e) { /* keep base plan */ }
+
+    // ---- PHASE D: attach the real road position to each stop (Maps export) --
+    try {
+      (plan || []).forEach(function (item) {
+        if (item.type === 'stop' && item.atWall) {
+          var p = posAt(item.atWall.getTime());
+          item.pos = { lat: p.lat, lon: p.lon };
+        }
+      });
+    } catch (e) { /* stops without pos are simply skipped in the export */ }
 
     return { bearing: bearing, snapDir: snapDir, origin: O, dest: Dst, slots: slots,
              hasHourData: anyHour, plan: plan, stopMode: opts.stopMode || 'auto',
@@ -913,6 +976,95 @@
     container.appendChild(wrap);
   }
 
+  /* ---- PHASE D: Google Maps export panel --------------------------------- *
+   * Lets the user choose which planned stops become waypoints, and add their
+   * own (place names or lat,lng) for real-world changes. Builds a live Maps
+   * deep link with Open / Copy actions.
+   * ----------------------------------------------------------------------- */
+  function tpRenderMapsExport(result, container) {
+    var O = result.origin, Dst = result.dest;
+    if (!O || !Dst || O.lat == null || Dst.lat == null) return;
+    var stops = (result.plan || []).filter(function (x) { return x.type === 'stop' && x.pos; });
+
+    var wrap = el('div', { style: 'border:2px solid #1565c0;border-radius:10px;padding:10px 12px;margin:14px 0 4px;background:#f4f8ff;' });
+    wrap.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1565c0;margin-bottom:6px;' }, '🗺️ Send to Google Maps'));
+    wrap.appendChild(el('div', { style: 'font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;' },
+      'Pick which planned stops to include as waypoints. Each is a point <i>on the road</i> matching the planned time — ' +
+      'open the link and adjust it to the nearest charger/town if needed. Add your own stops below for real-world changes ' +
+      '(separate with “;”).'));
+
+    // From (fixed)
+    wrap.appendChild(el('div', { style: 'font-size:12px;color:#333;margin:2px 0;' },
+      '<b>From:</b> ' + (O.name || 'Origin') + ' <span style="color:#999;">(' + tpLatLng({ lat: O.lat, lon: O.lon }) + ')</span>'));
+
+    // Stops checklist
+    var checks = [];
+    if (stops.length) {
+      var listWrap = el('div', { style: 'margin:6px 0 6px 4px;' });
+      stops.forEach(function (st) {
+        var row = el('label', { style: 'display:flex;align-items:center;gap:7px;font-size:12px;color:#333;margin:3px 0;cursor:pointer;' });
+        var cb = el('input', { type: 'checkbox' });
+        cb.checked = true;
+        var icon = st.charge ? '🔌' : '🛑';
+        var when = fmtHMonly(st.atWall);
+        var dur = st.charge && st.durationMin ? ' (' + st.durationMin + ' min)' : '';
+        row.appendChild(cb);
+        row.appendChild(el('span', null, icon + ' <b>' + when + '</b>' + dur +
+          ' <span style="color:#999;">· road point ' + tpLatLng(st.pos) + '</span>'));
+        listWrap.appendChild(row);
+        checks.push({ cb: cb, pos: st.pos });
+      });
+      wrap.appendChild(listWrap);
+    } else {
+      wrap.appendChild(el('div', { style: 'font-size:12px;color:#888;margin:4px 0 4px 4px;' }, 'No planned stops — the link will be a direct route (you can still add your own below).'));
+    }
+
+    // Extra (free-text) waypoints
+    var extraWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;font-size:12px;color:#444;margin:6px 0;' },
+      'Add your own stops (place names or lat,lng, separated by “;”)');
+    var extraInp = el('input', { type: 'text', placeholder: 'e.g. Firenze; 43.7696,11.2558; Autogrill Secchia',
+      style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:12px;' });
+    extraWrap.appendChild(extraInp);
+    wrap.appendChild(extraWrap);
+
+    // To (fixed)
+    wrap.appendChild(el('div', { style: 'font-size:12px;color:#333;margin:2px 0;' },
+      '<b>To:</b> ' + (Dst.name || 'Destination') + ' <span style="color:#999;">(' + tpLatLng({ lat: Dst.lat, lon: Dst.lon }) + ')</span>'));
+
+    var status = el('div', { style: 'font-size:11px;margin:8px 0 6px;color:#666;' });
+    wrap.appendChild(status);
+
+    var btnRow = el('div', { style: 'display:flex;gap:8px;' });
+    var openBtn = el('button', { style: 'flex:1;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '📍 Open in Google Maps');
+    var copyBtn = el('button', { style: 'flex:1;padding:9px;border:1px solid #1565c0;border-radius:8px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;' }, '🔗 Copy link');
+    btnRow.appendChild(openBtn); btnRow.appendChild(copyBtn);
+    wrap.appendChild(btnRow);
+
+    function collectWaypoints() {
+      var wps = checks.filter(function (c) { return c.cb.checked; }).map(function (c) { return tpLatLng(c.pos); });
+      var extra = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
+      return wps.concat(extra);
+    }
+    function update() {
+      var wps = collectWaypoints();
+      var n = wps.length;
+      var url = tpBuildMapsUrl({ lat: O.lat, lon: O.lon }, { lat: Dst.lat, lon: Dst.lon }, wps);
+      openBtn._url = url; copyBtn._url = url;
+      var warn = (n > TP_MAPS_MAX_WAYPOINTS)
+        ? ' <span style="color:#b00;">⚠️ ' + n + ' waypoints — Maps may keep only the first ' + TP_MAPS_MAX_WAYPOINTS + '. Deselect a few.</span>'
+        : '';
+      status.innerHTML = '<b>' + n + '</b> waypoint' + (n === 1 ? '' : 's') + ' selected (added after the planned stops, in order). ' +
+        'You can drag to reorder once Maps opens.' + warn;
+    }
+    checks.forEach(function (c) { c.cb.addEventListener('change', update); });
+    extraInp.addEventListener('input', update);
+    openBtn.addEventListener('click', function () { try { window.open(openBtn._url, '_blank'); } catch (e) {} });
+    copyBtn.addEventListener('click', function () { tpCopyToClipboard(copyBtn._url, copyBtn, '✓ Copied', '🔗 Copy link'); });
+    update();
+
+    container.appendChild(wrap);
+  }
+
   function tpRender(result, container) {
     container.innerHTML = '';
     var head = el('div', { style: 'margin:6px 0 10px;font-size:13px;color:#333;' },
@@ -954,6 +1106,9 @@
 
     // ---- Recommended plan (stop suggester) ----
     tpRenderPlan(result, container);
+
+    // ---- Google Maps export (Phase D) ----
+    tpRenderMapsExport(result, container);
 
     // ---- Detailed slot grid (reference) ----
     container.appendChild(el('div', { style: 'margin:14px 0 4px;font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;' }, 'Detail by double-hour'));
