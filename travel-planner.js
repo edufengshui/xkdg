@@ -1366,11 +1366,13 @@
 
       var row = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
       var cityInp = el('input', { id: cityId, list: 'tp-city-list', autocomplete: 'off',
-        placeholder: 'Type a city… (default ' + defName + ')',
+        placeholder: 'Type any place… (default ' + defName + ')',
         style: 'flex:1;min-width:0;padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
+      var findBtn = el('button', { type: 'button', title: 'Find this place (any town/village)',
+        style: 'padding:6px 10px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '🔍 Find');
       var gpsBtn = el('button', { type: 'button',
         style: 'padding:6px 10px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '📍 GPS');
-      row.appendChild(cityInp); row.appendChild(gpsBtn);
+      row.appendChild(cityInp); row.appendChild(findBtn); row.appendChild(gpsBtn);
       block.appendChild(row);
 
       var status = el('div', { style: 'font-size:11px;color:#888;margin:4px 0 6px;min-height:14px;' }, '');
@@ -1387,10 +1389,14 @@
       manual.appendChild(num('lat (manual)', latId, defLat));
       block.appendChild(manual);
 
-      // City picked / typed: set lon(+utc) from curated data, geocode for lat.
-      cityInp.addEventListener('change', function () {
+      // Resolve a typed/picked place name: use curated lon/UTC when the name is
+      // a known CITY_LIST entry, and geocode (Nominatim) to fill latitude — or
+      // to fill BOTH lat & lon for any place not in the list (e.g. a small town
+      // like Tuoro sul Trasimeno). Robust on mobile because it's an explicit
+      // action (button) and not only the flaky datalist 'change' event.
+      function resolveTyped() {
         var name = (cityInp.value || '').trim();
-        if (!name) return;
+        if (!name) { status.style.color = '#b58900'; status.textContent = 'Type a place first, then 🔍 Find.'; return; }
         var known = tpCityData[name];
         if (known) {
           document.getElementById(lonId).value = Number(known.lng).toFixed(2);
@@ -1402,14 +1408,17 @@
           document.getElementById(latId).value = g.lat.toFixed(6);
           if (!known) document.getElementById(lonId).value = g.lon.toFixed(6);
           status.style.color = '#1b8a3f';
-          status.textContent = '✓ ' + String(g.display || name).substring(0, 70);
+          status.textContent = '✓ ' + String(g.display || name).substring(0, 75);
         }).catch(function (err) {
           status.style.color = '#b58900';
           status.textContent = known
             ? 'Longitude/UTC set, but latitude lookup failed — tap 📍 GPS or type lat. (' + err.message + ')'
-            : 'Place not found — be more specific or use 📍 GPS. (' + err.message + ')';
+            : 'Place not found — try a more specific name, or 📍 GPS. (' + err.message + ')';
         });
-      });
+      }
+      cityInp.addEventListener('change', resolveTyped);
+      cityInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); resolveTyped(); } });
+      findBtn.addEventListener('click', resolveTyped);
 
       // GPS: fill lat+lon directly; for origin, estimate UTC from longitude.
       gpsBtn.addEventListener('click', function () {
