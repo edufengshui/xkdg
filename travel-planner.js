@@ -139,6 +139,18 @@
   }
   function tpSetWorkerUrl(u) { try { localStorage.setItem('xkdg_worker_url', u); } catch (e) {} }
 
+  // ---- Open Charge Map (Phase F): real charging stations -------------------
+  // The OCM key runs client-side (OCM designed it that way); kept in the panel
+  // and persisted, never hard-coded here. Networks are matched against each
+  // station's operator name (case-insensitive substring) — easily extensible.
+  function tpGetOcmKey() { try { return localStorage.getItem('xkdg_ocm_key') || ''; } catch (e) { return ''; } }
+  function tpSetOcmKey(k) { try { localStorage.setItem('xkdg_ocm_key', k); } catch (e) {} }
+  var TP_NETWORKS = [
+    { id: 'tesla', label: 'Tesla Supercharger', match: ['tesla'] },
+    { id: 'electra', label: 'Electra', match: ['electra'] }
+    // future: { id:'ionity', label:'Ionity', match:['ionity'] }, etc.
+  ];
+
   // Last route fetched from the Worker (used later by the bearing phase)
   // shape: { origin, dest, distanceMeters, durationSec, coords: [[lon,lat],...] }
   var TP_LAST_ROUTE = null;
@@ -340,6 +352,46 @@
         var p = data[0];
         return { lat: parseFloat(p.lat), lon: parseFloat(p.lon), display: p.display_name || query };
       });
+  }
+
+  /* ---- Charging stations (Phase F, Open Charge Map) ----------------------- */
+  function tpHaversineKm(lat1, lon1, lat2, lon2) { return tpHaversine(lat1, lon1, lat2, lon2) / 1000; }
+
+  // Query OCM around a point. Returns a Promise of normalized stations:
+  // { lat, lon, title, operator, maxKW, distanceKm }. Defensive: rejects with a
+  // clear message on missing key / network / empty results.
+  function tpFetchChargers(opts) {
+    var key = (opts.key || '').trim();
+    if (!key) return Promise.reject(new Error('no Open Charge Map key'));
+    var url = 'https://api.openchargemap.io/v3/poi/?output=json&compact=true&verbose=false' +
+      '&latitude=' + opts.lat + '&longitude=' + opts.lon +
+      '&distance=' + (opts.radiusKm || 100) + '&distanceunit=KM' +
+      '&maxresults=' + (opts.maxResults || 80) +
+      '&key=' + encodeURIComponent(key);
+    return fetch(url, { headers: { 'X-API-Key': key } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!Array.isArray(data)) throw new Error('unexpected OCM response');
+        return data.map(function (poi) {
+          var a = poi.AddressInfo || {};
+          var op = (poi.OperatorInfo && poi.OperatorInfo.Title) || '';
+          var maxKW = 0;
+          (poi.Connections || []).forEach(function (c) { if (c && c.PowerKW && c.PowerKW > maxKW) maxKW = c.PowerKW; });
+          return { lat: a.Latitude, lon: a.Longitude, title: a.Title || op || 'Charger',
+                   operator: op, maxKW: maxKW, distanceKm: a.Distance || null };
+        }).filter(function (s) { return isFinite(s.lat) && isFinite(s.lon); });
+      });
+  }
+
+  // Keep only stations whose operator matches one of the selected networks.
+  function tpFilterChargersByNetwork(stations, networkIds) {
+    var keys = [];
+    TP_NETWORKS.forEach(function (n) { if (networkIds.indexOf(n.id) >= 0) keys = keys.concat(n.match); });
+    if (!keys.length) return stations;
+    return stations.filter(function (s) {
+      var hay = ((s.operator || '') + ' ' + (s.title || '')).toLowerCase();
+      return keys.some(function (k) { return hay.indexOf(k) >= 0; });
+    });
   }
 
   /* ---- PHASE C re-aim: nudge a leg's heading toward the upcoming stop ----- *
@@ -1001,6 +1053,125 @@
     container.appendChild(wrap);
   }
 
+  /* ---- PHASE F: charging stops along the route --------------------------- *
+   * Finds real Tesla/Electra stations from Open Charge Map that are reachable
+   * (a) within the remaining range entered by the user (minus a safety reserve)
+   * and (b) before the current 2-hour window falls. Reachable stations can be
+   * added to the Google Maps export with one tap. All distances along the real
+   * route; constant-average-speed ETA (V2a). Live OCM call is defensive.
+   * ----------------------------------------------------------------------- */
+  function tpNearestRoutePoint(lat, lon, idx) {
+    // approximate: nearest polyline vertex; returns {alongKm, offKm}
+    var best = { off: Infinity, alongM: 0 };
+    for (var i = 0; i < idx.coords.length; i++) {
+      var c = idx.coords[i];
+      var d = tpHaversineKm(lat, lon, c[1], c[0]);
+      if (d < best.off) { best.off = d; best.alongM = idx.cum[i]; }
+    }
+    return { alongKm: best.alongM / 1000, offKm: best.off };
+  }
+
+  function tpRenderChargers(result, container) {
+    var block = el('div', { style: 'border:2px solid #1b6e2f;border-radius:10px;padding:10px 12px;margin:14px 0 4px;background:#f6fbf6;' });
+    block.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1b6e2f;margin-bottom:6px;' }, '🔌 Charging stops along the route'));
+    var note = el('div', { style: 'font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;' },
+      'Finds Tesla/Electra stations from Open Charge Map reachable within your range (minus reserve) and before the 2-hour window. Reachable ones can be added to the Maps export.');
+    block.appendChild(note);
+
+    var findBtn = el('button', { type: 'button',
+      style: 'width:100%;padding:9px;border:0;border-radius:8px;background:#1b6e2f;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' },
+      '🔌 Find charging stops');
+    block.appendChild(findBtn);
+    var status = el('div', { style: 'font-size:11px;color:#888;margin:6px 0;min-height:14px;' }, '');
+    block.appendChild(status);
+    var listWrap = el('div', {});
+    block.appendChild(listWrap);
+
+    findBtn.addEventListener('click', function () {
+      listWrap.innerHTML = '';
+      var key = (document.getElementById('tp-ocm-key') && document.getElementById('tp-ocm-key').value || '').trim();
+      var range = parseFloat(document.getElementById('tp-range') && document.getElementById('tp-range').value) || 0;
+      var reserve = parseFloat(document.getElementById('tp-reserve') && document.getElementById('tp-reserve').value) || 0;
+      var nets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; });
+
+      if (!key) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key in 🔋 Range & charging first.'; return; }
+      if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; return; }
+      var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
+      if (!idx) { status.style.color = '#b58900'; status.textContent = 'No real route yet — set the Worker URL and press SCAN TRIP first.'; return; }
+      tpSetOcmKey(key);
+
+      var usableKm = range * (1 - reserve / 100);
+      var totalKm = idx.total / 1000;
+      var O = result.origin;
+      // departure + span for ETA (constant average speed)
+      var dStr = document.getElementById('tp-date').value, tStr = document.getElementById('tp-time').value || '12:00';
+      var depMs = new Date(dStr + 'T' + tStr).getTime();
+      var durH = parseFloat(document.getElementById('tp-dur').value) || 12;
+      var spanMs = durH * 3600000;
+      var winEnd = (result.slots && result.slots[0] && result.slots[0].wallEnd) ? result.slots[0].wallEnd.getTime() : null;
+      var corridorKm = 15;
+
+      status.style.color = '#888';
+      status.textContent = 'Searching Open Charge Map (≤ ' + Math.round(usableKm) + ' km usable)…';
+      tpFetchChargers({ key: key, lat: O.lat, lon: O.lon, radiusKm: Math.min(Math.ceil(usableKm) + corridorKm, 250), maxResults: 100 })
+        .then(function (stations) {
+          stations = tpFilterChargersByNetwork(stations, nets);
+          var rows = [];
+          stations.forEach(function (s) {
+            var np = tpNearestRoutePoint(s.lat, s.lon, idx);
+            if (np.offKm > corridorKm) return;          // not along the route
+            if (np.alongKm > usableKm) return;          // beyond usable range
+            var etaMs = depMs + (totalKm > 0 ? (np.alongKm / totalKm) : 0) * spanMs;
+            var withinWindow = (winEnd == null) ? true : (etaMs <= winEnd);
+            rows.push({ s: s, alongKm: np.alongKm, offKm: np.offKm, etaMs: etaMs, withinWindow: withinWindow });
+          });
+          // best first: within window, then farthest reachable (charge as late as possible)
+          rows.sort(function (a, b) {
+            if (a.withinWindow !== b.withinWindow) return a.withinWindow ? -1 : 1;
+            return b.alongKm - a.alongKm;
+          });
+          if (!rows.length) {
+            status.style.color = '#b58900';
+            status.textContent = 'No ' + nets.join('/') + ' stations found along the route within ' + Math.round(usableKm) + ' km.';
+            return;
+          }
+          status.style.color = '#1b6e2f';
+          status.textContent = '✓ ' + rows.length + ' reachable station' + (rows.length === 1 ? '' : 's') + ' (within usable range).';
+          rows.forEach(function (r) {
+            var s = r.s;
+            var when = new Date(r.etaMs);
+            var hm = String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0');
+            var row = el('div', { style: 'display:flex;align-items:center;gap:8px;border-top:1px solid #e0eee0;padding:6px 0;font-size:12px;' });
+            var info = el('div', { style: 'flex:1;min-width:0;' });
+            info.appendChild(el('div', { style: 'font-weight:600;color:#333;' },
+              (r.withinWindow ? '✓ ' : '⚠ ') + (s.title || s.operator || 'Charger')));
+            info.appendChild(el('div', { style: 'color:#888;' },
+              (s.operator ? s.operator + ' · ' : '') + (s.maxKW ? Math.round(s.maxKW) + ' kW · ' : '') +
+              Math.round(r.alongKm) + ' km along · ' + r.offKm.toFixed(1) + ' km off route · ETA ' + hm +
+              (r.withinWindow ? '' : ' (after the 2-hour window)')));
+            var addBtn = el('button', { type: 'button',
+              style: 'padding:6px 9px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '+ Maps');
+            addBtn.addEventListener('click', function () {
+              var ex = document.getElementById('tp-extra-wp');
+              if (!ex) return;
+              var token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+              ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
+              ex.dispatchEvent(new Event('input', { bubbles: true }));
+              addBtn.textContent = '✓ added'; setTimeout(function () { addBtn.textContent = '+ Maps'; }, 1500);
+            });
+            row.appendChild(info); row.appendChild(addBtn);
+            listWrap.appendChild(row);
+          });
+        })
+        .catch(function (err) {
+          status.style.color = '#b00';
+          status.textContent = 'Charging lookup failed: ' + err.message + '. Check the OCM key / connection.';
+        });
+    });
+
+    container.appendChild(block);
+  }
+
   /* ---- PHASE D: Google Maps export panel --------------------------------- *
    * Lets the user choose which planned stops become waypoints, and add their
    * own (place names or lat,lng) for real-world changes. Builds a live Maps
@@ -1047,7 +1218,7 @@
     // Extra (free-text) waypoints
     var extraWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;font-size:12px;color:#444;margin:6px 0;' },
       'Add your own stops (place names or lat,lng, separated by “;”)');
-    var extraInp = el('input', { type: 'text', placeholder: 'e.g. Firenze; 43.7696,11.2558; Autogrill Secchia',
+    var extraInp = el('input', { id: 'tp-extra-wp', type: 'text', placeholder: 'e.g. Firenze; 43.7696,11.2558; Autogrill Secchia',
       style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:12px;' });
     extraWrap.appendChild(extraInp);
     wrap.appendChild(extraWrap);
@@ -1131,6 +1302,9 @@
 
     // ---- Recommended plan (stop suggester) ----
     tpRenderPlan(result, container);
+
+    // ---- Charging stops along the route (Phase F) ----
+    tpRenderChargers(result, container);
 
     // ---- Google Maps export (Phase D) ----
     tpRenderMapsExport(result, container);
@@ -1474,6 +1648,40 @@
       placeholder: 'https://xkdg-proxy.<name>.workers.dev/',
       style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
     form.appendChild(wkWrap);
+
+    // ---- 🔋 Range & charging (Phase F) ------------------------------------
+    var rcBlock = el('div', { style: 'grid-column:1 / span 2;border:1px solid #cfe3cf;border-radius:8px;padding:8px 10px;background:#f6fbf6;' });
+    rcBlock.appendChild(el('div', { style: 'font-weight:600;color:#1b6e2f;margin-bottom:6px;' }, '🔋 Range & charging'));
+
+    var rcRow = el('div', { style: 'display:flex;gap:8px;' });
+    function rcNum(lbl, id, val, ph) {
+      var w = el('label', { style: 'flex:1;display:flex;flex-direction:column;gap:2px;color:#555;font-size:11px;' }, lbl);
+      w.appendChild(el('input', { id: id, type: 'number', step: 'any', value: String(val), placeholder: ph || '',
+        style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+      return w;
+    }
+    rcRow.appendChild(rcNum('Remaining range (km)', 'tp-range', 200));
+    rcRow.appendChild(rcNum('Safety reserve (%)', 'tp-reserve', 15));
+    rcBlock.appendChild(rcRow);
+
+    var netWrap = el('div', { style: 'display:flex;flex-wrap:wrap;gap:12px;margin:6px 0;font-size:12px;color:#444;' });
+    TP_NETWORKS.forEach(function (n) {
+      var lab = el('label', { style: 'display:flex;align-items:center;gap:5px;cursor:pointer;' });
+      var cb = el('input', { type: 'checkbox', id: 'tp-net-' + n.id });
+      cb.checked = true;
+      lab.appendChild(cb); lab.appendChild(el('span', null, n.label));
+      netWrap.appendChild(lab);
+    });
+    rcBlock.appendChild(netWrap);
+
+    var ocmWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#555;font-size:11px;' }, 'Open Charge Map API key');
+    ocmWrap.appendChild(el('input', { id: 'tp-ocm-key', type: 'text', value: tpGetOcmKey(),
+      placeholder: 'paste your OCM key', autocomplete: 'off',
+      style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+    rcBlock.appendChild(ocmWrap);
+    rcBlock.appendChild(el('div', { style: 'font-size:10px;color:#888;margin-top:3px;' },
+      'Used to find Tesla/Electra stations reachable within your range AND before the 2-hour window. After SCAN TRIP, use “🔌 Find charging stops”.'));
+    form.appendChild(rcBlock);
 
     panel.appendChild(form);
 
