@@ -73,6 +73,14 @@
   // shared "directions" link. Beyond this we warn (Maps may drop the extras).
   var TP_MAPS_MAX_WAYPOINTS = 9;
 
+  // ---- Access lock (preview gate) -----------------------------------------
+  // The Travel Planner is gated behind a code while the feature is in
+  // development. Set TP_LOCK_ENABLED = false to remove the gate when it's
+  // ready for everyone. The code is asked once per session (page load).
+  var TP_LOCK_ENABLED = true;
+  var TP_LOCK_CODE = '9861';
+  var tpUnlocked = false;
+
   // Local civil clock hour -> hour branch (han). Matches BEST, where the hour
   // branch follows the LOCAL clock (the day pillar is solar-corrected, the hour
   // branch is not). Used only to look up the cached hour score by the app's key.
@@ -315,6 +323,23 @@
       document.execCommand('copy'); document.body.removeChild(ta);
       ok();
     } catch (e) { try { window.prompt('Copy this link:', text); } catch (_) {} }
+  }
+
+  /* ---- Geocoding (city/place name -> lat/lon) ----------------------------- *
+   * Same free OpenStreetMap (Nominatim) geocoder already used by the Direction
+   * Calculator, so behaviour matches the rest of the app. Returns a Promise of
+   * { lat, lon, display }. We use it only to fill the LATITUDE that CITY_LIST
+   * doesn't carry — longitude/UTC still come from the curated CITY_LIST data.
+   * ----------------------------------------------------------------------- */
+  function tpGeocode(query) {
+    return fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=1',
+        { headers: { 'Accept-Language': 'en' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.length) throw new Error('not found');
+        var p = data[0];
+        return { lat: parseFloat(p.lat), lon: parseFloat(p.lon), display: p.display_name || query };
+      });
   }
 
   /* ---- PHASE C re-aim: nudge a leg's heading toward the upcoming stop ----- *
@@ -1199,7 +1224,75 @@
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
   }
 
+  /* ---- Access gate: ask for the preview code before opening -------------- *
+   * Note: this is a soft client-side lock to keep students out while the
+   * feature is unfinished — not real security (the code lives in this file).
+   * Asked once per page load; after a correct code the planner opens freely
+   * until the page is reloaded.
+   * ----------------------------------------------------------------------- */
+  function tpRequestCode(onSuccess) {
+    var existing = document.getElementById('tp-lock-overlay');
+    if (existing) existing.parentNode.removeChild(existing);
+
+    var ov = el('div', {
+      id: 'tp-lock-overlay',
+      style: 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.5);display:flex;' +
+        'align-items:center;justify-content:center;padding:16px;'
+    });
+    var card = el('div', {
+      style: 'background:#fff;border-radius:14px;max-width:340px;width:100%;padding:20px;' +
+        'box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:inherit;'
+    });
+    card.appendChild(el('div', { style: 'font-size:17px;font-weight:700;color:#1565c0;margin-bottom:6px;' }, '🔒 Travel Planner (preview)'));
+    card.appendChild(el('div', { style: 'font-size:13px;color:#555;line-height:1.5;margin-bottom:14px;' },
+      'This feature is still in development. Enter the access code to continue.'));
+
+    var inp = el('input', {
+      type: 'password', inputmode: 'numeric', autocomplete: 'off', placeholder: 'Access code',
+      style: 'width:100%;box-sizing:border-box;padding:11px;border:1px solid #ccc;border-radius:8px;' +
+        'font-size:16px;text-align:center;letter-spacing:3px;'
+    });
+    card.appendChild(inp);
+
+    var err = el('div', { style: 'font-size:12px;color:#b00;margin:8px 2px 0;min-height:15px;' }, '');
+    card.appendChild(err);
+
+    var btnRow = el('div', { style: 'display:flex;gap:8px;margin-top:14px;' });
+    var cancel = el('button', { style: 'flex:1;padding:10px;border:1px solid #bbb;border-radius:8px;background:#fff;color:#555;font-size:14px;cursor:pointer;' }, 'Cancel');
+    var unlock = el('button', { style: 'flex:1;padding:10px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:14px;font-weight:600;cursor:pointer;' }, 'Unlock');
+    btnRow.appendChild(cancel); btnRow.appendChild(unlock);
+    card.appendChild(btnRow);
+    ov.appendChild(card);
+
+    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    function submit() {
+      if ((inp.value || '').trim() === TP_LOCK_CODE) {
+        tpUnlocked = true;
+        close();
+        try { onSuccess(); } catch (e) {}
+      } else {
+        err.textContent = 'Wrong code. Try again.';
+        inp.value = '';
+        inp.focus();
+      }
+    }
+    cancel.addEventListener('click', close);
+    unlock.addEventListener('click', submit);
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    // close on backdrop tap (but not when tapping the card)
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+
+    document.body.appendChild(ov);
+    setTimeout(function () { try { inp.focus(); } catch (e) {} }, 50);
+  }
+
+  // Gate every entry point: ask for the code (once per session), then open.
   function tpOpen() {
+    if (!TP_LOCK_ENABLED || tpUnlocked) { tpOpenReal(); return; }
+    tpRequestCode(tpOpenReal);
+  }
+
+  function tpOpenReal() {
     var existing = document.getElementById('tp-overlay');
     if (existing) { existing.style.display = 'flex'; return; }
 
@@ -1237,10 +1330,110 @@
     form.appendChild(field('Trip duration (hours)', 'tp-dur', '12', 'number'));
     form.appendChild(field('Max drive hours per leg', 'tp-maxleg', '4', 'number'));
     form.appendChild(field('UTC offset (base)', 'tp-utc', String(nowUtc), 'number'));
-    form.appendChild(field('Origin lon (Vienna)', 'tp-olon', String(TP_DEFAULT.origin.lon), 'number'));
-    form.appendChild(field('Origin lat', 'tp-olat', String(TP_DEFAULT.origin.lat), 'number'));
-    form.appendChild(field('Dest lon (Rome)', 'tp-dlon', String(TP_DEFAULT.dest.lon), 'number'));
-    form.appendChild(field('Dest lat', 'tp-dlat', String(TP_DEFAULT.dest.lat), 'number'));
+
+    // ---- Location pickers: city dropdown + GPS (same system as Main) -------
+    // A shared <datalist> of CITY_LIST names. Picking a city sets longitude+UTC
+    // from the curated data and geocodes the name to fill latitude (which the
+    // city data doesn't carry). GPS sets lat+lon directly. The manual lon/lat
+    // number inputs are kept (the scanner reads tp-olon/olat/dlon/dlat).
+    var tpCityData = {};
+    var tpCityOptionsHtml = '';
+    try {
+      if (window.CITY_LIST && Array.isArray(window.CITY_LIST)) {
+        window.CITY_LIST.forEach(function (group) {
+          (group.cities || []).forEach(function (c) {
+            tpCityData[c.name] = { lng: c.lng, utc: c.utc };
+            tpCityOptionsHtml += '<option value="' + c.name + '"></option>';
+          });
+        });
+      }
+    } catch (e) {}
+    var dataListHolder = el('div', { style: 'grid-column:1 / span 2;height:0;overflow:hidden;' });
+    dataListHolder.innerHTML = '<datalist id="tp-city-list">' + tpCityOptionsHtml + '</datalist>';
+    form.appendChild(dataListHolder);
+
+    function tpBuildLocationPicker(kind) {
+      var isOrigin = (kind === 'origin');
+      var lonId = isOrigin ? 'tp-olon' : 'tp-dlon';
+      var latId = isOrigin ? 'tp-olat' : 'tp-dlat';
+      var cityId = isOrigin ? 'tp-ocity' : 'tp-dcity';
+      var defLon = isOrigin ? TP_DEFAULT.origin.lon : TP_DEFAULT.dest.lon;
+      var defLat = isOrigin ? TP_DEFAULT.origin.lat : TP_DEFAULT.dest.lat;
+      var defName = isOrigin ? TP_DEFAULT.origin.name : TP_DEFAULT.dest.name;
+
+      var block = el('div', { style: 'grid-column:1 / span 2;border:1px solid #e0e0e0;border-radius:8px;padding:8px 10px;background:#fafafa;' });
+      block.appendChild(el('div', { style: 'font-weight:600;color:#333;margin-bottom:5px;' }, '📍 ' + (isOrigin ? 'Origin' : 'Destination')));
+
+      var row = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
+      var cityInp = el('input', { id: cityId, list: 'tp-city-list', autocomplete: 'off',
+        placeholder: 'Type a city… (default ' + defName + ')',
+        style: 'flex:1;min-width:0;padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
+      var gpsBtn = el('button', { type: 'button',
+        style: 'padding:6px 10px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '📍 GPS');
+      row.appendChild(cityInp); row.appendChild(gpsBtn);
+      block.appendChild(row);
+
+      var status = el('div', { style: 'font-size:11px;color:#888;margin:4px 0 6px;min-height:14px;' }, '');
+      block.appendChild(status);
+
+      var manual = el('div', { style: 'display:flex;gap:8px;' });
+      function num(lbl, id, val) {
+        var w = el('label', { style: 'flex:1;display:flex;flex-direction:column;gap:2px;color:#777;font-size:11px;' }, lbl);
+        w.appendChild(el('input', { id: id, type: 'number', step: 'any', value: String(val),
+          style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+        return w;
+      }
+      manual.appendChild(num('lon (manual)', lonId, defLon));
+      manual.appendChild(num('lat (manual)', latId, defLat));
+      block.appendChild(manual);
+
+      // City picked / typed: set lon(+utc) from curated data, geocode for lat.
+      cityInp.addEventListener('change', function () {
+        var name = (cityInp.value || '').trim();
+        if (!name) return;
+        var known = tpCityData[name];
+        if (known) {
+          document.getElementById(lonId).value = Number(known.lng).toFixed(2);
+          if (isOrigin) { var u = document.getElementById('tp-utc'); if (u) u.value = known.utc; }
+        }
+        status.style.color = '#888';
+        status.textContent = 'Locating ' + name + '…';
+        tpGeocode(name).then(function (g) {
+          document.getElementById(latId).value = g.lat.toFixed(6);
+          if (!known) document.getElementById(lonId).value = g.lon.toFixed(6);
+          status.style.color = '#1b8a3f';
+          status.textContent = '✓ ' + String(g.display || name).substring(0, 70);
+        }).catch(function (err) {
+          status.style.color = '#b58900';
+          status.textContent = known
+            ? 'Longitude/UTC set, but latitude lookup failed — tap 📍 GPS or type lat. (' + err.message + ')'
+            : 'Place not found — be more specific or use 📍 GPS. (' + err.message + ')';
+        });
+      });
+
+      // GPS: fill lat+lon directly; for origin, estimate UTC from longitude.
+      gpsBtn.addEventListener('click', function () {
+        if (!navigator.geolocation) { status.style.color = '#b00'; status.textContent = 'GPS not available on this device/browser.'; return; }
+        status.style.color = '#888'; status.textContent = 'Getting GPS position…';
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          var la = pos.coords.latitude, lo = pos.coords.longitude;
+          document.getElementById(latId).value = la.toFixed(6);
+          document.getElementById(lonId).value = lo.toFixed(6);
+          if (isOrigin) { var u = document.getElementById('tp-utc'); if (u) u.value = Math.round(lo / 15); }
+          cityInp.value = 'Current location';
+          try { window._lastGpsLat = la; window._lastGpsLng = lo; localStorage.setItem('xkdg_gps', JSON.stringify({ lat: la, lng: lo })); } catch (e) {}
+          status.style.color = '#1b8a3f';
+          status.textContent = '✓ GPS ' + la.toFixed(4) + ', ' + lo.toFixed(4) + (isOrigin ? ' · UTC≈' + Math.round(lo / 15) + ' (edit if needed)' : '');
+        }, function (err) {
+          status.style.color = '#b00'; status.textContent = 'GPS error: ' + err.message;
+        }, { enableHighAccuracy: true, timeout: 10000 });
+      });
+
+      return block;
+    }
+
+    form.appendChild(tpBuildLocationPicker('origin'));
+    form.appendChild(tpBuildLocationPicker('dest'));
 
     var dstWrap = el('label', { style: 'display:flex;align-items:center;gap:6px;color:#444;grid-column:1 / span 2;' });
     var dstChk = el('input', { id: 'tp-dst', type: 'checkbox' });
@@ -1280,6 +1473,36 @@
         'font-size:14px;font-weight:600;cursor:pointer;'
     }, 'SCAN TRIP');
     panel.appendChild(btn);
+
+    // ---- "I'm here now": reset origin to current GPS and replan ------------
+    // For stopping mid-trip (e.g. in the countryside) and restarting the route
+    // from the exact point you are. Sets origin = GPS, clears the cached route
+    // so it is re-fetched from here, then runs SCAN TRIP.
+    var resetBtn = el('button', { type: 'button',
+      style: 'width:100%;padding:9px;margin-top:8px;border:1px solid #b58900;border-radius:8px;' +
+        'background:#fff8e1;color:#8a4b00;font-size:13px;font-weight:600;cursor:pointer;' },
+      '🔄 I\u2019m here now — reset origin to my GPS & replan');
+    panel.appendChild(resetBtn);
+    var resetStatus = el('div', { style: 'font-size:11px;color:#888;margin-top:4px;text-align:center;min-height:14px;' }, '');
+    panel.appendChild(resetStatus);
+    resetBtn.addEventListener('click', function () {
+      if (!navigator.geolocation) { resetStatus.style.color = '#b00'; resetStatus.textContent = 'GPS not available on this device/browser.'; return; }
+      resetStatus.style.color = '#888'; resetStatus.textContent = 'Getting your position…';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var la = pos.coords.latitude, lo = pos.coords.longitude;
+        document.getElementById('tp-olat').value = la.toFixed(6);
+        document.getElementById('tp-olon').value = lo.toFixed(6);
+        var u = document.getElementById('tp-utc'); if (u) u.value = Math.round(lo / 15);
+        var oc = document.getElementById('tp-ocity'); if (oc) oc.value = 'Current location';
+        try { window._lastGpsLat = la; window._lastGpsLng = lo; localStorage.setItem('xkdg_gps', JSON.stringify({ lat: la, lng: lo })); } catch (e) {}
+        TP_LAST_ROUTE = null;   // force a fresh route fetch from the new origin
+        resetStatus.style.color = '#1b8a3f';
+        resetStatus.textContent = '✓ Origin set to your position (' + la.toFixed(4) + ', ' + lo.toFixed(4) + ') — replanning…';
+        try { btn.click(); } catch (e) { resetStatus.style.color = '#b00'; resetStatus.textContent = 'Replan error: ' + e.message; }
+      }, function (err) {
+        resetStatus.style.color = '#b00'; resetStatus.textContent = 'GPS error: ' + err.message;
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    });
 
     // Fetch route (test the app <-> Worker dialogue, without touching the plan yet)
     var routeBtn = el('button', {
