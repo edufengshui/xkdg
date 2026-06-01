@@ -2573,8 +2573,32 @@ function loadDateIntoMain(isoDate, hourIndex, isZiSecondHalf) {
 
     document.getElementById('date').value = dateStr;
     document.getElementById('time').value = timeStr;
+    try { window._preLoadScrollY = window.scrollY || window.pageYOffset || 0; _showBackToResults(); } catch (e) {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
     calculateBazi();
+}
+
+// Toggle chronological vs best-first ordering for a DIRECTION (flight) scan.
+function toggleDirChrono() { window._dirChrono = !window._dirChrono; runScanner(); }
+
+// Floating "back to results" button: returns to the scan list after a result
+// was opened in Main. The list itself is never destroyed, so this just scrolls
+// back to where the user clicked from.
+function _showBackToResults() {
+    var b = document.getElementById('back-to-results');
+    if (!b) {
+        b = document.createElement('button');
+        b.id = 'back-to-results';
+        b.textContent = '↩ Back to results';
+        b.setAttribute('style', 'position:fixed;left:16px;bottom:16px;z-index:99997;padding:10px 14px;border:0;border-radius:22px;background:#6a1b9a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.3);');
+        b.addEventListener('click', function () {
+            var y = window._preLoadScrollY || 0;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+            b.style.display = 'none';
+        });
+        document.body.appendChild(b);
+    }
+    b.style.display = 'block';
 }
 
 function renderScanResults(results, mode) {
@@ -2591,6 +2615,7 @@ function renderScanResults(results, mode) {
     const hasChipSort = af.size > 0;
     const chipSortLabel = af.has('ke-wealth') ? 'Ke Sort' : af.has('nayin') ? 'NaYin Sort' : 'Chip Sort';
     const sortToggleHTML = `<div style="text-align:right;margin-bottom:6px;display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;">
+            ${(_fsActionPalace && getPurpose()) ? `<button onclick="toggleDirChrono()" id="dir-chrono-btn" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${window._dirChrono?'#6a1b9a':'#fff'};color:${window._dirChrono?'#fff':'#6a1b9a'};cursor:pointer;">${window._dirChrono ? '📅 Date order' : '🏆 Best first'}</button>` : ''}
             ${hasChipSort ? `<button onclick="toggleScanSortMode()" id="chip-sort-btn" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #1565c0;background:${window._chipSortMode?'#1565c0':'#fff'};color:${window._chipSortMode?'#fff':'#1565c0'};cursor:pointer;">${window._chipSortMode ? '⇅ '+chipSortLabel : '⇅ Score Sort'}</button>` : ''}
             <button onclick="toggleBestOnlyXKDG()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${_bestOnlyXKDG?'#6a1b9a':'#fff'};color:${_bestOnlyXKDG?'#fff':'#6a1b9a'};cursor:pointer;">
               ${_bestOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
@@ -6382,9 +6407,12 @@ function runScanner() {
 
     window._chipSortMode = true; // default: chip sort
     sortResults_chip(results);
-    // With a DIRECTION filter active you want the BEST departure first: rank the
-    // qualifying day/hours from best to worst score (tie-break by soonest date).
-    if (_fsActionPalace && getPurpose()) results.sort((a,b) => b.score - a.score || a.rawDate - b.rawDate);
+    // With a DIRECTION filter active: best score first by default, or strict
+    // chronological order when the user toggles "📅 Date order".
+    if (_fsActionPalace && getPurpose()) {
+        if (window._dirChrono) results.sort((a,b) => a.rawDate - b.rawDate);
+        else results.sort((a,b) => b.score - a.score || a.rawDate - b.rawDate);
+    }
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
