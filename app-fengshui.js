@@ -1828,11 +1828,14 @@ function fsUpdatePurposeClone(){
 }
 
 function _fsBearing(lat1, lng1, lat2, lng2){
-  var dLng = (lng2 - lng1) * Math.PI / 180;
-  var r1 = lat1 * Math.PI / 180, r2 = lat2 * Math.PI / 180;
-  var y = Math.sin(dLng) * Math.cos(r2);
-  var x = Math.cos(r1) * Math.sin(r2) - Math.sin(r1) * Math.cos(r2) * Math.cos(dLng);
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  // Loxodromic (rhumb-line) bearing: constant heading A->B, regardless of the
+  // curvature in between — consistent with the Travel Planner's direction model.
+  // (Previously great-circle initial bearing; changed for consistency.)
+  var toR = Math.PI / 180;
+  var dpsi = Math.log(Math.tan(Math.PI/4 + lat2*toR/2) / Math.tan(Math.PI/4 + lat1*toR/2));
+  var dl = (lng2 - lng1) * toR;
+  if (Math.abs(dl) > Math.PI) dl = dl > 0 ? -(2*Math.PI - dl) : (2*Math.PI + dl);
+  return (Math.atan2(dl, dpsi) * 180 / Math.PI + 360) % 360;
 }
 function _fsBearingToDir8(deg){
   var dirs = ['N','NE','E','SE','S','SW','W','NW'];
@@ -1876,6 +1879,11 @@ function fsOpenDirectionCalc(){
     // ORIGIN
     + '<div style="background:#e3f2fd;border-radius:6px;padding:10px;margin-bottom:10px;">'
     + '<div style="font-size:12px;font-weight:bold;color:#1565c0;margin-bottom:6px;">📍 ORIGIN (your location)</div>'
+    + '<div style="margin-bottom:6px;"><label style="font-size:10px;color:#666;">Address or City</label>'
+    + '<div style="display:flex;gap:4px;">'
+    + '<input type="text" id="dir-orig-addr" placeholder="e.g. Dubai, UAE" style="flex:1;padding:5px;border:1px solid #90caf9;border-radius:4px;font-size:13px;">'
+    + '<button onclick="fsDirectionGeocodeOrigin()" style="background:#1565c0;color:#fff;border:none;border-radius:4px;padding:6px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">🔍 Find</button>'
+    + '</div></div>'
     + '<div style="display:flex;gap:6px;align-items:end;flex-wrap:wrap;">'
     + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Latitude</label>'
     + '<input type="number" id="dir-orig-lat" step="any" placeholder="e.g. 48.2082" value="' + defLat + '" style="width:100%;padding:5px;border:1px solid #90caf9;border-radius:4px;font-size:13px;"></div>'
@@ -1926,6 +1934,30 @@ function fsDirectionGPS(){
   }, function(err){
     if(status) status.textContent = 'GPS error: ' + err.message;
   }, {enableHighAccuracy: true, timeout: 10000});
+}
+
+function fsDirectionGeocodeOrigin(){
+  var addr = document.getElementById('dir-orig-addr').value.trim();
+  if(!addr){ alert('Enter an origin address or city name.'); return; }
+  var status = document.getElementById('dir-geocode-status');
+  if(status) status.textContent = 'Searching origin...';
+  fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(addr) + '&format=json&limit=1', {
+    headers: {'Accept-Language': 'en'}
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(!data || !data.length){
+      if(status) status.textContent = 'Origin not found. Try a different query.';
+      return;
+    }
+    var place = data[0];
+    document.getElementById('dir-orig-lat').value = parseFloat(place.lat).toFixed(6);
+    document.getElementById('dir-orig-lng').value = parseFloat(place.lon).toFixed(6);
+    if(status) status.textContent = '✓ Origin: ' + place.display_name.substring(0, 80);
+  })
+  .catch(function(err){
+    if(status) status.textContent = 'Origin geocoding error: ' + err.message;
+  });
 }
 
 function fsDirectionGeocode(){

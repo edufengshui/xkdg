@@ -6243,7 +6243,15 @@ function runScanner() {
             const nayinPersonLabel = nayinResBST.personLabel || '';
             const dd = dayDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
-            if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) { continue; }
+            // Purpose gate. In DIRECTION mode (a flight/journey direction is set)
+            // QMDJ is dominant and XKDG is only a floor: keep the hour if its
+            // score is >= 8, then let the Qimen direction match (below) decide.
+            // Otherwise apply the normal, stricter purpose check.
+            if (_fsActionPalace && getPurpose()) {
+                if (totalScore < 8) { continue; }
+            } else {
+                if (!checkPurpose(getPurpose(), dGan, dZhi, blueItems, totalScore, pillars, analysisItems, hourSpirit)) { continue; }
+            }
             // Purpose-Qimen scans — computed once, reused for the direction filter AND the badges below.
             var _qmParamsBST = { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGan, hZhi: hZhi };
             var _pqFsBST  = fsScanPurposeQimen(_qmParamsBST, getPurpose());        // 🌀⭐ Flying Stars (needs activator at palace)
@@ -6326,9 +6334,9 @@ function runScanner() {
 
     window._chipSortMode = true; // default: chip sort
     sortResults_chip(results);
-    // With a DIRECTION filter active you are scheduling a one-off action (e.g. sending the letter),
-    // so show the qualifying hours in chronological order — the next available window first.
-    if (_fsActionPalace && getPurpose()) results.sort((a,b) => a.rawDate - b.rawDate);
+    // With a DIRECTION filter active you want the BEST departure first: rank the
+    // qualifying day/hours from best to worst score (tie-break by soonest date).
+    if (_fsActionPalace && getPurpose()) results.sort((a,b) => b.score - a.score || a.rawDate - b.rawDate);
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
