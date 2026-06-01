@@ -151,6 +151,42 @@
     // future: { id:'ionity', label:'Ionity', match:['ionity'] }, etc.
   ];
 
+  // ---- Recent places (auto-saved origins/destinations) --------------------
+  // Saved on this device only. Each: { name, lat, lon, utc|null }. Most recent
+  // first, de-duplicated by name, capped at 20.
+  function tpGetRecents() {
+    try { var a = JSON.parse(localStorage.getItem('xkdg_tp_recents') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function tpSaveRecents(list) { try { localStorage.setItem('xkdg_tp_recents', JSON.stringify(list.slice(0, 20))); } catch (e) {} }
+  function tpAddRecent(place) {
+    if (!place || !place.name || !isFinite(place.lat) || !isFinite(place.lon)) return;
+    var nm = String(place.name).trim();
+    var list = tpGetRecents().filter(function (r) { return r.name.toLowerCase() !== nm.toLowerCase(); });
+    list.unshift({ name: nm, lat: place.lat, lon: place.lon, utc: (place.utc != null ? place.utc : null) });
+    tpSaveRecents(list);
+  }
+  function tpFindRecent(name) {
+    var n = (name || '').trim().toLowerCase();
+    if (!n) return null;
+    return tpGetRecents().filter(function (r) { return r.name.toLowerCase() === n; })[0] || null;
+  }
+  function tpRemoveRecent(name) {
+    var n = (name || '').trim().toLowerCase();
+    tpSaveRecents(tpGetRecents().filter(function (r) { return r.name.toLowerCase() !== n; }));
+  }
+  // Keep the shared city datalist's "recent" options in sync (so typing the
+  // first letters of a recent place suggests it).
+  function tpSyncRecentDatalist() {
+    var dl = document.getElementById('tp-city-list'); if (!dl) return;
+    [].slice.call(dl.querySelectorAll('option[data-recent="1"]')).forEach(function (o) { o.parentNode.removeChild(o); });
+    var recs = tpGetRecents();
+    for (var i = recs.length - 1; i >= 0; i--) {
+      var o = document.createElement('option');
+      o.value = recs[i].name; o.setAttribute('data-recent', '1');
+      dl.insertBefore(o, dl.firstChild);
+    }
+  }
+
   // Last route fetched from the Worker (used later by the bearing phase)
   // shape: { origin, dest, distanceMeters, durationSec, coords: [[lon,lat],...] }
   var TP_LAST_ROUTE = null;
@@ -1089,7 +1125,12 @@
 
     findBtn.addEventListener('click', function () {
       listWrap.innerHTML = '';
-      var key = (document.getElementById('tp-ocm-key') && document.getElementById('tp-ocm-key').value || '').trim();
+      var ocmRealEl = document.getElementById('tp-ocm-key');
+      var ocmEditEl = document.getElementById('tp-ocm-key-edit');
+      var key = (ocmEditEl && ocmEditEl.style.display !== 'none' && (ocmEditEl.value || '').trim())
+        ? ocmEditEl.value.trim()
+        : ((ocmRealEl && ocmRealEl.value) || '').trim();
+      if (ocmRealEl) ocmRealEl.value = key;
       var range = parseFloat(document.getElementById('tp-range') && document.getElementById('tp-range').value) || 0;
       var reserve = parseFloat(document.getElementById('tp-reserve') && document.getElementById('tp-reserve').value) || 0;
       var nets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; });
@@ -1546,8 +1587,14 @@
         style: 'padding:6px 10px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '🔍 Find');
       var gpsBtn = el('button', { type: 'button',
         style: 'padding:6px 10px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '📍 GPS');
-      row.appendChild(cityInp); row.appendChild(findBtn); row.appendChild(gpsBtn);
+      var recBtn = el('button', { type: 'button', title: 'Recent places',
+        style: 'padding:6px 9px;border:1px solid #888;border-radius:6px;background:#fff;font-size:13px;cursor:pointer;white-space:nowrap;' }, '🕘');
+      row.appendChild(cityInp); row.appendChild(findBtn); row.appendChild(gpsBtn); row.appendChild(recBtn);
       block.appendChild(row);
+
+      // Recents dropdown (populated when opened)
+      var recPanel = el('div', { style: 'display:none;border:1px solid #ccc;border-radius:6px;margin-top:4px;max-height:170px;overflow:auto;background:#fff;' });
+      block.appendChild(recPanel);
 
       var status = el('div', { style: 'font-size:11px;color:#888;margin:4px 0 6px;min-height:14px;' }, '');
       block.appendChild(status);
@@ -1563,14 +1610,48 @@
       manual.appendChild(num('lat (manual)', latId, defLat));
       block.appendChild(manual);
 
-      // Resolve a typed/picked place name: use curated lon/UTC when the name is
-      // a known CITY_LIST entry, and geocode (Nominatim) to fill latitude — or
-      // to fill BOTH lat & lon for any place not in the list (e.g. a small town
-      // like Tuoro sul Trasimeno). Robust on mobile because it's an explicit
-      // action (button) and not only the flaky datalist 'change' event.
+      // Fill the fields from a place we already have coordinates for (recent or
+      // a station), without geocoding.
+      function fillPlace(p, label) {
+        document.getElementById(latId).value = Number(p.lat).toFixed(6);
+        document.getElementById(lonId).value = Number(p.lon).toFixed(6);
+        if (isOrigin) { var u = document.getElementById('tp-utc'); if (u) u.value = (p.utc != null ? p.utc : Math.round(p.lon / 15)); }
+        cityInp.value = p.name;
+        status.style.color = '#1b8a3f';
+        status.textContent = '✓ ' + (label || p.name);
+      }
+
+      function populateRecents() {
+        recPanel.innerHTML = '';
+        var recs = tpGetRecents();
+        if (!recs.length) {
+          recPanel.appendChild(el('div', { style: 'padding:8px;font-size:12px;color:#888;' }, 'No recent places yet — they appear here after you Find or pick a place.'));
+          return;
+        }
+        recs.forEach(function (r) {
+          var item = el('div', { style: 'display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #eee;font-size:13px;' });
+          var pick = el('div', { style: 'flex:1;min-width:0;cursor:pointer;color:#1565c0;' }, r.name);
+          pick.addEventListener('click', function () { fillPlace(r, 'recent: ' + r.name); tpAddRecent(r); tpSyncRecentDatalist(); recPanel.style.display = 'none'; });
+          var del = el('span', { title: 'Remove', style: 'cursor:pointer;color:#b00;font-size:14px;padding:0 4px;' }, '✕');
+          del.addEventListener('click', function (e) { e.stopPropagation(); tpRemoveRecent(r.name); tpSyncRecentDatalist(); populateRecents(); });
+          item.appendChild(pick); item.appendChild(del);
+          recPanel.appendChild(item);
+        });
+      }
+      recBtn.addEventListener('click', function () {
+        if (recPanel.style.display === 'none') { populateRecents(); recPanel.style.display = ''; }
+        else { recPanel.style.display = 'none'; }
+      });
+
+      // Resolve a typed/picked place name. Order: a previously-saved recent
+      // (instant, works offline) → a curated CITY_LIST city (lon/UTC + geocode
+      // for lat) → any other place via geocoding (Nominatim). Successful
+      // resolutions are auto-saved to recents.
       function resolveTyped() {
         var name = (cityInp.value || '').trim();
         if (!name) { status.style.color = '#b58900'; status.textContent = 'Type a place first, then 🔍 Find.'; return; }
+        var rec = tpFindRecent(name);
+        if (rec) { fillPlace(rec, 'recent: ' + rec.name); tpAddRecent(rec); tpSyncRecentDatalist(); return; }
         var known = tpCityData[name];
         if (known) {
           document.getElementById(lonId).value = Number(known.lng).toFixed(2);
@@ -1581,6 +1662,8 @@
         tpGeocode(name).then(function (g) {
           document.getElementById(latId).value = g.lat.toFixed(6);
           if (!known) document.getElementById(lonId).value = g.lon.toFixed(6);
+          tpAddRecent({ name: name, lat: g.lat, lon: (known ? known.lng : g.lon), utc: (known ? known.utc : null) });
+          tpSyncRecentDatalist();
           status.style.color = '#1b8a3f';
           status.textContent = '✓ ' + String(g.display || name).substring(0, 75);
         }).catch(function (err) {
@@ -1617,6 +1700,7 @@
 
     form.appendChild(tpBuildLocationPicker('origin'));
     form.appendChild(tpBuildLocationPicker('dest'));
+    try { tpSyncRecentDatalist(); } catch (e) {}
 
     var dstWrap = el('label', { style: 'display:flex;align-items:center;gap:6px;color:#444;grid-column:1 / span 2;' });
     var dstChk = el('input', { id: 'tp-dst', type: 'checkbox' });
@@ -1674,13 +1758,53 @@
     });
     rcBlock.appendChild(netWrap);
 
-    var ocmWrap = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#555;font-size:11px;' }, 'Open Charge Map API key');
-    ocmWrap.appendChild(el('input', { id: 'tp-ocm-key', type: 'text', value: tpGetOcmKey(),
-      placeholder: 'paste your OCM key', autocomplete: 'off',
-      style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+    // OCM key: hidden input holds the real key (read by Find); the visible UI
+    // shows it masked once saved, with reveal (👁) and change (✏️) actions.
+    var ocmWrap = el('div', { style: 'display:flex;flex-direction:column;gap:3px;color:#555;font-size:11px;' });
+    ocmWrap.appendChild(el('span', null, 'Open Charge Map API key'));
+    var ocmReal = el('input', { id: 'tp-ocm-key', type: 'hidden', value: tpGetOcmKey() });
+    ocmWrap.appendChild(ocmReal);
+    var ocmRow = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
+    var ocmEdit = el('input', { id: 'tp-ocm-key-edit', type: 'text', placeholder: 'paste your OCM key', autocomplete: 'off',
+      style: 'flex:1;min-width:0;padding:5px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
+    var ocmMask = el('div', { style: 'flex:1;min-width:0;padding:5px;border:1px solid #ccc;border-radius:6px;font-size:13px;background:#f3f3f3;color:#555;font-family:monospace;' }, '');
+    var ocmSave = el('button', { type: 'button', style: 'padding:5px 10px;border:1px solid #1b6e2f;border-radius:6px;background:#1b6e2f;color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '💾 Save');
+    var ocmEye = el('button', { type: 'button', title: 'Show / hide', style: 'padding:5px 9px;border:1px solid #888;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;' }, '👁');
+    var ocmChange = el('button', { type: 'button', title: 'Change key', style: 'padding:5px 9px;border:1px solid #888;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;' }, '✏️');
+    ocmRow.appendChild(ocmEdit); ocmRow.appendChild(ocmMask);
+    ocmRow.appendChild(ocmSave); ocmRow.appendChild(ocmEye); ocmRow.appendChild(ocmChange);
+    ocmWrap.appendChild(ocmRow);
+
+    function ocmMaskStr(k) { return k.length <= 4 ? '•'.repeat(k.length) : '••••••••' + k.slice(-4); }
+    var ocmRevealed = false;
+    function ocmShowSaved() {
+      ocmRevealed = false;
+      ocmEdit.style.display = 'none'; ocmSave.style.display = 'none';
+      ocmMask.style.display = ''; ocmEye.style.display = ''; ocmChange.style.display = '';
+      ocmMask.textContent = ocmMaskStr(ocmReal.value || '');
+    }
+    function ocmShowEdit(prefill) {
+      ocmEdit.value = prefill || '';
+      ocmEdit.style.display = ''; ocmSave.style.display = '';
+      ocmMask.style.display = 'none'; ocmEye.style.display = 'none'; ocmChange.style.display = 'none';
+      ocmEdit.focus();
+    }
+    ocmSave.addEventListener('click', function () {
+      var k = (ocmEdit.value || '').trim();
+      ocmReal.value = k; tpSetOcmKey(k);
+      if (k) ocmShowSaved(); else ocmShowEdit('');
+    });
+    ocmEdit.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ocmSave.click(); } });
+    ocmEye.addEventListener('click', function () {
+      ocmRevealed = !ocmRevealed;
+      ocmMask.textContent = ocmRevealed ? (ocmReal.value || '') : ocmMaskStr(ocmReal.value || '');
+    });
+    ocmChange.addEventListener('click', function () { ocmShowEdit(ocmReal.value || ''); });
+    if (ocmReal.value) ocmShowSaved(); else ocmShowEdit('');
+
     rcBlock.appendChild(ocmWrap);
     rcBlock.appendChild(el('div', { style: 'font-size:10px;color:#888;margin-top:3px;' },
-      'Used to find Tesla/Electra stations reachable within your range AND before the 2-hour window. After SCAN TRIP, use “🔌 Find charging stops”.'));
+      'Saved on this device only. Used to find Tesla/Electra stations reachable within your range AND before the 2-hour window. After SCAN TRIP, use “🔌 Find charging stops”.'));
     form.appendChild(rcBlock);
 
     panel.appendChild(form);
