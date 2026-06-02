@@ -4104,8 +4104,8 @@ function _fsBuildZoneGate(){
     tools.appendChild(banner);
 
     // Stays in the always-visible base: Current context + Flying Stars inputs
-    // + the LUOPAN (mode toggle + canvas + legend). So entering House Facing
-    // and Period shows the chart right away, before choosing a zone.
+    // + the LUOPAN (canvas + legend), in default 'fs' mode. So entering House
+    // Facing and Period shows the chart right away, before choosing a zone.
 
     // Gate the XKDG Door block (contains #fs-facing) — a zone tool that sits
     // above the luopan; move it into tools first to preserve relative order.
@@ -4113,6 +4113,13 @@ function _fsBuildZoneGate(){
     var doorBlock = doorEl;
     while (doorBlock && doorBlock.parentNode !== fsRoot) doorBlock = doorBlock.parentNode;
     if (doorBlock) tools.appendChild(doorBlock);
+
+    // The luopan mode toggle (FS only / XKDG only / Both) is a section control,
+    // not part of the shared base — gate it too.
+    var modeEl = document.getElementById('fs-mode-fs');
+    var modeToggle = modeEl;
+    while (modeToggle && modeToggle.parentNode !== fsRoot) modeToggle = modeToggle.parentNode;
+    if (modeToggle) tools.appendChild(modeToggle);
 
     // Gate everything AFTER the legend (direction filter, scan, star/XKDG
     // buttons, results, house profiles). The luopan above the legend stays.
