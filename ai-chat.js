@@ -31,8 +31,10 @@
     '- A Feng Shui house, if set, follows the loaded person automatically — you do not set it.\n' +
     '- Keep answers concise: summarise the top few results with their date, time and score, and offer to open one ' +
     'in the main view. If a tool returns an error, relay it briefly and suggest the fix.\n' +
-    '- Some capabilities (sector Qimen activation, car/flight travel timing) may not be wired yet; if so, the tool ' +
-    'will say so — tell the user that feature is coming and which screen to use meanwhile.\n' +
+    '- For travel timing/direction ("when/where should I go to X") use plan_travel — you supply the destination ' +
+    'latitude/longitude from your own knowledge of the city. For the detailed road route + Google Maps export, use ' +
+    'open_travel_planner. For sending a Qimen configuration to a flying-star sector, use open_qimen_for_flying_stars ' +
+    '(it opens the panel for the user to pick the target and scan).\n' +
     '- For "when can I move the bed" use find_bed_dates; for "when to set up my desk / where to place a water feature" ' +
     'use find_desk_dates. These read the Bed/Desk section inputs (sitting / facing). If the degree is missing the tool ' +
     'will say so — ask the user for the bed Sitting or desk Facing in degrees (0-360), then call the tool with it.';
@@ -93,6 +95,39 @@
         },
         required: []
       }
+    },
+    {
+      name: 'plan_travel',
+      description: 'Plan a journey: give the favorable direction toward a destination and the favorable time windows ' +
+        '(true-solar-time) to be travelling toward it. Use for "when should I leave for X", "good time/direction to ' +
+        'go to X". You must supply the destination latitude/longitude (use your knowledge of the city, e.g. Milan ≈ ' +
+        '45.46, 9.19). Origin defaults to the saved GPS if any.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          dest_lat: { type: 'number', description: 'Destination latitude.' },
+          dest_lon: { type: 'number', description: 'Destination longitude.' },
+          origin_lat: { type: 'number', description: 'Optional origin latitude (defaults to saved GPS).' },
+          origin_lon: { type: 'number', description: 'Optional origin longitude.' },
+          depart_date: { type: 'string', description: 'Departure date YYYY-MM-DD (default today).' },
+          depart_hour: { type: 'integer', description: 'Wall-clock start hour 0-23 (default 8).' },
+          duration_h: { type: 'integer', description: 'Trip length in hours (default 12).' }
+        },
+        required: ['dest_lat', 'dest_lon']
+      }
+    },
+    {
+      name: 'open_travel_planner',
+      description: 'Open the full Travel Planner UI (real road route, per-leg directions, Google Maps export). Use when ' +
+        'the user wants the detailed planner or the Maps export rather than a quick timing answer.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'open_qimen_for_flying_stars',
+      description: 'Open the "Qimen hours for Flying Stars" (QFS) panel, where the user selects a target (profiles / ' +
+        'entities) and scans for the hours that send a Qimen configuration to a flying-star palace. Use for requests ' +
+        'about activating a sector / flying star with Qimen timing.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
     }
   ];
 
@@ -102,6 +137,9 @@
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
       if (name === 'find_bed_dates') return toolFindBedDates(input || {});
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
+      if (name === 'plan_travel') return toolPlanTravel(input || {});
+      if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
+      if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
@@ -236,6 +274,60 @@
         };
       })
     };
+  }
+
+  // ── Travel + Qimen-for-flying-stars tools ──
+  function toolPlanTravel(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.plan !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+    if (input.dest_lat == null || input.dest_lon == null)
+      return { error: 'I need the destination coordinates (dest_lat, dest_lon). Provide them from the city the user named.' };
+    var dest = { lat: +input.dest_lat, lon: +input.dest_lon };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    var dateStr = input.depart_date || todayIso();
+    var hour = (input.depart_hour != null) ? parseInt(input.depart_hour, 10) : 8;
+    var dep = new Date(dateStr + 'T' + String(hour).padStart(2, '0') + ':00:00');
+    if (isNaN(dep.getTime())) return { error: 'Invalid departure date/time.' };
+    var durH = parseInt(input.duration_h, 10) || 12;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
+    if (isNaN(utc)) utc = 1;
+    var dstOn = false;
+    try { dstOn = (typeof _dstOn !== 'undefined') ? _dstOn : !!window._dstOn; } catch (e) { dstOn = !!window._dstOn; }
+    var opts = { depDate: dep, durationH: durH, dest: dest, utc: utc, dstOn: dstOn, stepMin: 30 };
+    if (origin) opts.origin = origin;
+    var plan;
+    try { plan = window.TravelPlanner.plan(opts); }
+    catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
+    var windows = [];
+    (plan.slots || []).forEach(function (s) {
+      var good = (s.dirs || []).filter(function (d) { return d.towardDest && d.eval && d.eval.ok; });
+      if (good.length) {
+        windows.push({
+          from: s.tstStart, to: s.tstEnd, ganzhi: s.gZhiPy || s.gZhiHan, weekday: s.weekday,
+          directions: good.map(function (d) { return { dir: d.dir, score: d.eval.score, door: d.eval.door }; })
+        });
+      }
+    });
+    return {
+      direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
+      departure_planned: dateStr + ' ' + String(hour).padStart(2, '0') + ':00',
+      duration_hours: durH,
+      favorable_windows_count: windows.length,
+      favorable_windows: windows.slice(0, 12),
+      note: 'Straight-line estimate. For the real road route + per-leg directions + Google Maps export, open the full Travel Planner.'
+    };
+  }
+  function toolOpenTravelPlanner() {
+    if (typeof window.tpOpen !== 'function') return { error: 'Travel Planner not available on this page.' };
+    window.tpOpen();
+    return { opened: 'travel_planner' };
+  }
+  function toolOpenQimenFS() {
+    if (!window.QFS || typeof window.QFS.open !== 'function') return { error: 'Qimen-for-flying-stars (QFS) not available on this page.' };
+    window.QFS.open();
+    return { opened: 'qimen_flying_stars', note: 'Panel opened — the user selects the target profiles/entities, then runs the scan.' };
   }
 
   var history = [];   // [{role:'user'|'assistant', content:'...'}]
