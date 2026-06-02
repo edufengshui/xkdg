@@ -32,7 +32,10 @@
     '- Keep answers concise: summarise the top few results with their date, time and score, and offer to open one ' +
     'in the main view. If a tool returns an error, relay it briefly and suggest the fix.\n' +
     '- Some capabilities (sector Qimen activation, car/flight travel timing) may not be wired yet; if so, the tool ' +
-    'will say so — tell the user that feature is coming and which screen to use meanwhile.';
+    'will say so — tell the user that feature is coming and which screen to use meanwhile.\n' +
+    '- For "when can I move the bed" use find_bed_dates; for "when to set up my desk / where to place a water feature" ' +
+    'use find_desk_dates. These read the Bed/Desk section inputs (sitting / facing). If the degree is missing the tool ' +
+    'will say so — ask the user for the bed Sitting or desk Facing in degrees (0-360), then call the tool with it.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
   var TOOLS = [
@@ -61,6 +64,35 @@
         properties: { rank: { type: 'integer', description: '1-based position in the last results list.' } },
         required: ['rank']
       }
+    },
+    {
+      name: 'find_bed_dates',
+      description: 'Find lucky dates to MOVE THE BED for the loaded person(s), using the Feng Shui Bed section: the ' +
+        'bed Sitting direction must be Zheng Shen and the date must close the compatibility loop (period & element) ' +
+        'for every loaded person. Uses the bed sitting already entered in the Bed section unless you pass one.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          sitting: { type: 'number', description: 'Optional bed Sitting in degrees (0-360). If omitted, uses what is on screen.' },
+          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'find_desk_dates',
+      description: 'Find lucky dates to SET UP THE WORK DESK (orient the desk and place a moving-water element) for the ' +
+        'active person, using the Feng Shui Desk section: the desk Facing must be Zheng Shen and compatible with the ' +
+        'person, and the date must close the loop. Also returns propitious water positions. Uses the desk facing on ' +
+        'screen unless you pass one.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          facing: { type: 'number', description: 'Optional desk Facing in degrees (0-360). If omitted, uses what is on screen.' },
+          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' }
+        },
+        required: []
+      }
     }
   ];
 
@@ -68,6 +100,8 @@
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
+      if (name === 'find_bed_dates') return toolFindBedDates(input || {});
+      if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
@@ -128,6 +162,80 @@
     if (typeof window.loadDateIntoMain !== 'function') return { error: 'Cannot open the date on this page.' };
     window.loadDateIntoMain(res[i].isoDate, res[i].hourIndex);
     return { opened: { date: res[i].isoDate, time: res[i].time } };
+  }
+
+  // ── Feng Shui Bed / Desk lucky-date tools (wired to app-fengshui.js) ──
+  function _fsResultsCommon(matches, mapper) {
+    return matches.slice(0, 15).map(mapper);
+  }
+  function toolFindBedDates(input) {
+    if (typeof window._fsScanLuckyDates !== 'function' || typeof window._fsBedPersons !== 'function')
+      return { error: 'The Feng Shui Bed scan is not available on this page.' };
+    var persons = window._fsBedPersons();
+    if (!persons.length) return { error: 'No person is loaded. Ask the user to load Person A or B first.' };
+    var sitEl = document.getElementById('fs-bed-sitting');
+    if (input.sitting != null && sitEl) sitEl.value = String(input.sitting);
+    var sitDeg = parseFloat(sitEl ? sitEl.value : NaN);
+    if (isNaN(sitDeg)) return { error: 'No bed Sitting set. Ask the user for the bed Sitting in degrees (0-360), or to fill the Bed section.' };
+    var slot = window.fsSlotForDeg(sitDeg);
+    if (typeof window.fsIsZhengShen === 'function' && !window.fsIsZhengShen(slot.yun)) {
+      var nz = (typeof window._fsBedNearestZS === 'function') ? window._fsBedNearestZS(sitDeg) : null;
+      return { error: 'The bed Sitting is not Zheng Shen (required for the bed).', suggested_sitting: nz ? +nz.centerDeg.toFixed(1) : null };
+    }
+    var days = parseInt(input.days, 10) || 7;
+    var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days');
+    if (ss) ss.value = todayIso();
+    if (sd) sd.value = String(days);
+    var matches = window._fsScanLuckyDates(persons, slot, 30);
+    return {
+      section: 'bed', sitting: sitDeg, persons_loaded: persons.map(function (p) { return p.who; }).join('+'),
+      days: days, count: matches.length,
+      results: _fsResultsCommon(matches, function (m) {
+        return {
+          date: m.iso, ganzhi: m.dGan + m.dZhi,
+          per: (m.eval.perPerson || []).map(function (pp) {
+            return {
+              who: pp.who,
+              period_via: pp.ps.periodLink ? 'sitting' : (pp.pd.periodLink ? 'date' : '-'),
+              element_via: pp.ps.elementLink ? 'sitting' : (pp.pd.elementLink ? 'date' : '-')
+            };
+          })
+        };
+      })
+    };
+  }
+  function toolFindDeskDates(input) {
+    if (typeof window._fsScanLuckyDates !== 'function' || typeof window._fsDeskPerson !== 'function')
+      return { error: 'The Feng Shui Desk scan is not available on this page.' };
+    var person = window._fsDeskPerson();
+    if (!person) return { error: 'No person is loaded. Ask the user to load the person who sits at the desk.' };
+    var fEl = document.getElementById('fs-desk-facing');
+    if (input.facing != null && fEl) fEl.value = String(input.facing);
+    var fDeg = parseFloat(fEl ? fEl.value : NaN);
+    if (isNaN(fDeg)) return { error: 'No desk Facing set. Ask the user for the desk Facing in degrees (0-360).' };
+    var slot = window.fsSlotForDeg(fDeg);
+    if (typeof window.fsIsZhengShen === 'function' && !window.fsIsZhengShen(slot.yun)) {
+      var nz = (typeof window._fsDeskNearestGoodFacing === 'function') ? window._fsDeskNearestGoodFacing(fDeg, person) : null;
+      return { error: 'The desk Facing is not Zheng Shen (required).', suggested_facing: nz ? +nz.centerDeg.toFixed(1) : null };
+    }
+    var days = parseInt(input.days, 10) || 7;
+    var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days');
+    if (ss) ss.value = todayIso();
+    if (sd) sd.value = String(days);
+    var matches = window._fsScanLuckyDates([person], slot, 30);
+    var waters = (typeof window._fsDeskWaterList === 'function') ? window._fsDeskWaterList(slot, person) : [];
+    return {
+      section: 'desk', facing: fDeg, person: person.who, days: days, count: matches.length,
+      water_positions: waters.slice(0, 8).map(function (w) { return { deg: +w.slot.centerDeg.toFixed(1), hex: w.slot.hexNum, yun: w.slot.yun }; }),
+      results: _fsResultsCommon(matches, function (m) {
+        var pp = (m.eval.perPerson || [])[0] || {};
+        return {
+          date: m.iso, ganzhi: m.dGan + m.dZhi,
+          period_via: (pp.ps && pp.ps.periodLink) ? 'facing' : ((pp.pd && pp.pd.periodLink) ? 'date' : '-'),
+          element_via: (pp.ps && pp.ps.elementLink) ? 'facing' : ((pp.pd && pp.pd.elementLink) ? 'date' : '-')
+        };
+      })
+    };
   }
 
   var history = [];   // [{role:'user'|'assistant', content:'...'}]
