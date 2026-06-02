@@ -13,6 +13,7 @@
   'use strict';
 
   var URL_KEY = 'xkdg_ai_url';
+  var DEFAULT_URL = 'https://xkdg-ai.decumano16.workers.dev'; // baked-in default; ⚙ can override
   var MODEL = 'claude-haiku-4-5-20251001'; // change here if you prefer another model
   var MAX_TOKENS = 1024;
 
@@ -132,7 +133,7 @@
   var history = [];   // [{role:'user'|'assistant', content:'...'}]
   var sending = false;
 
-  function getUrl() { try { return localStorage.getItem(URL_KEY) || ''; } catch (e) { return ''; } }
+  function getUrl() { try { return (localStorage.getItem(URL_KEY) || '').trim() || DEFAULT_URL; } catch (e) { return DEFAULT_URL; } }
   function setUrl(u) { try { localStorage.setItem(URL_KEY, (u || '').trim()); } catch (e) {} }
 
   function elc(tag, attrs, text) {

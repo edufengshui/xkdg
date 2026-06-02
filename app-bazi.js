@@ -2,7 +2,7 @@
 //  XKDG DATA (from xkdg_hex.js)
 // ─────────────────────────────────────────────
 const XKDG_TABLE = {
-    '甲子': { hex: 2,  qi: 1, yun: 8, alt: { hex: 24, qi: 1, yun: 8 } }, '乙丑': { hex: 21, qi: 3, yun: 6 },
+    '甲子': { hex: 2,  qi: 1, yun: 8, alt: { hex: 24, qi: 1, yun: 1 } }, '乙丑': { hex: 21, qi: 3, yun: 6 },
     '丙寅': { hex: 37, qi: 2, yun: 4 }, '丁卯': { hex: 41, qi: 6, yun: 9 },
     '戊辰': { hex: 10, qi: 9, yun: 6 }, '己巳': { hex: 34, qi: 8, yun: 2 },
     '庚午': { hex: 32, qi: 8, yun: 9 }, '辛未': { hex: 6,  qi: 9, yun: 3 },
@@ -11,18 +11,18 @@ const XKDG_TABLE = {
     '丙子': { hex: 27, qi: 6, yun: 3 }, '丁丑': { hex: 17, qi: 4, yun: 7 },
     '戊寅': { hex: 55, qi: 8, yun: 6 }, '己卯': { hex: 60, qi: 7, yun: 8 },
     '庚辰': { hex: 11, qi: 1, yun: 9 }, '辛巳': { hex: 14, qi: 3, yun: 7 },
-    '壬午': { hex: 57, qi: 2, yun: 1 }, '癸未': { hex: 48, qi: 4, yun: 6 },
+    '壬午': { hex: 57, qi: 2, yun: 1 }, '癸未': { hex: 47, qi: 4, yun: 8 },
     '甲申': { hex: 64, qi: 3, yun: 9 }, '乙酉': { hex: 33, qi: 9, yun: 4 },
     '丙戌': { hex: 52, qi: 6, yun: 1 }, '丁亥': { hex: 16, qi: 8, yun: 8 },
     '戊子': { hex: 3,  qi: 7, yun: 4 }, '己丑': { hex: 25, qi: 9, yun: 2 },
     '庚寅': { hex: 30, qi: 3, yun: 1, alt: { hex: 49, qi: 4, yun: 2 } }, '辛卯': { hex: 61, qi: 2, yun: 3 },
     '壬辰': { hex: 26, qi: 6, yun: 4 }, '癸巳': { hex: 43, qi: 4, yun: 6 },
-    '甲午': { hex: 1,  qi: 9, yun: 1, alt: { hex: 44, qi: 9, yun: 8 } }, '乙未': { hex: 38, qi: 7, yun: 6 },
+    '甲午': { hex: 1,  qi: 9, yun: 1, alt: { hex: 44, qi: 9, yun: 8 } }, '乙未': { hex: 48, qi: 7, yun: 6 },
     '丙申': { hex: 40, qi: 8, yun: 4 }, '丁酉': { hex: 31, qi: 4, yun: 9 },
     '戊戌': { hex: 15, qi: 1, yun: 6 }, '己亥': { hex: 20, qi: 2, yun: 2 },
     '庚子': { hex: 42, qi: 2, yun: 9 }, '辛丑': { hex: 36, qi: 1, yun: 3 },
     '壬寅': { hex: 13, qi: 9, yun: 7 }, '癸卯': { hex: 54, qi: 8, yun: 7 },
-    '甲辰': { hex: 38, qi: 3, yun: 6 }, '乙巳': { hex: 5,  qi: 7, yun: 3 },
+    '甲辰': { hex: 38, qi: 3, yun: 2 }, '乙巳': { hex: 5,  qi: 7, yun: 3 },
     '丙午': { hex: 28, qi: 4, yun: 3 }, '丁未': { hex: 18, qi: 6, yun: 7 },
     '戊申': { hex: 59, qi: 2, yun: 6 }, '己酉': { hex: 56, qi: 3, yun: 8 },
     '庚戌': { hex: 12, qi: 9, yun: 9 }, '辛亥': { hex: 8,  qi: 7, yun: 7 },
@@ -30,7 +30,7 @@ const XKDG_TABLE = {
     '甲寅': { hex: 63, qi: 7, yun: 9 }, '乙卯': { hex: 19, qi: 1, yun: 4 },
     '丙辰': { hex: 58, qi: 4, yun: 1 }, '丁巳': { hex: 9,  qi: 2, yun: 8 },
     '戊午': { hex: 50, qi: 3, yun: 4 }, '己未': { hex: 46, qi: 1, yun: 2 },
-    '庚申': { hex: 29, qi: 7, yun: 1, alt: { hex: 39, qi: 6, yun: 2 } }, '辛酉': { hex: 62, qi: 8, yun: 3 },
+    '庚申': { hex: 29, qi: 7, yun: 1, alt: { hex: 4, qi: 6, yun: 2 } }, '辛酉': { hex: 62, qi: 8, yun: 3 },
     '壬戌': { hex: 45, qi: 4, yun: 4 }, '癸亥': { hex: 23, qi: 6, yun: 6 }
 };
 
