@@ -49,7 +49,10 @@
     'knowledge); for the road route + Google Maps export use open_travel_planner.\n' +
     '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
     'user for it (0-360) and call the tool with it.\n' +
-    '- If a capability has no tool yet (e.g. QMDJ water scanner), say so briefly and point to the screen to use.';
+    '- Two different "water" questions: find_water_dates picks Feng Shui DATES for a water feature given a ' +
+    'Facing/water setup; find_water_hours (QMDJ Water Scanner) picks the HOURS when a favorable Qimen ' +
+    'configuration faces a compass DIRECTION (N/NE/E/SE/S/SW/W/NW). Pick the one that matches the question.\n' +
+    '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
   var TOOLS = [
@@ -223,6 +226,22 @@
         },
         required: ['house_index', 'section', 'placement_index']
       }
+    },
+    {
+      name: 'find_water_hours',
+      description: 'QMDJ Water Scanner: find the hours when a favorable Qimen Dun Jia configuration faces a given ' +
+        'compass direction (for activating / placing moving water in that direction). Returns the matching hours ' +
+        'with their Dun/Ju, ganzhi and a score (higher = stronger). This is a Qimen hour scan, separate from the ' +
+        'Feng Shui Water date scan (find_water_dates).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'Compass direction the water faces.' },
+          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
+          start: { type: 'string', description: 'Optional start date YYYY-MM-DD (defaults to the toolbar value or today).' }
+        },
+        required: ['direction']
+      }
     }
   ];
 
@@ -245,6 +264,7 @@
       if (name === 'set_active_house') return toolSetActiveHouse(input || {});
       if (name === 'load_house') return toolLoadHouse(input || {});
       if (name === 'load_placement') return toolLoadPlacement(input || {});
+      if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
@@ -572,6 +592,31 @@
       return { error: 'Provide house_index, section (water/bed/desk) and placement_index (from list_houses).' };
     window.fsLoadPlacement(person.name, hi, zone, pi);
     return { loaded_placement: { house_index: hi, section: zone, placement_index: pi } };
+  }
+
+  function toolFindWaterHours(input) {
+    if (!window.QMDJWaterScanner || typeof window.QMDJWaterScanner.scan !== 'function')
+      return { error: 'The QMDJ water scanner is not available on this page.' };
+    var dir = (input.direction || '').toUpperCase();
+    var valid = (typeof window.QMDJWaterScanner.validDirections === 'function')
+      ? window.QMDJWaterScanner.validDirections() : ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    if (valid.indexOf(dir) < 0) return { error: 'direction must be one of: ' + valid.join(', ') + '.' };
+    var days = parseInt(input.days, 10) || 7;
+    var start = input.start;
+    if (!start) { var s = document.getElementById('scan-start'); start = (s && s.value) || todayIso(); }
+    var results;
+    try { results = window.QMDJWaterScanner.scan(dir, start, days); }
+    catch (e) { return { error: 'QMDJ water scan failed: ' + ((e && e.message) || e) }; }
+    return {
+      scanner: 'qmdj_water', direction: dir, start: start, days: days, count: results.length,
+      results: results.slice(0, 15).map(function (r) {
+        return {
+          date: r.date, weekday: r.weekday, hour: r.hourTime, ganzhi: r.hourHan,
+          dun: r.dun, ju: r.ju, score: r.score,
+          hits: (r.hits || []).map(function (h) { return { label: h.label, kind: h.cat }; })
+        };
+      })
+    };
   }
 
   var history = [];   // [{role:'user'|'assistant', content:'...'}]

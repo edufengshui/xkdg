@@ -891,6 +891,14 @@
       if(!_charts) throw new Error('Charts not loaded. Call mount() first.');
       return scanDates(dir, start, days);
     },
+    // Headless scan: loads the embedded charts itself (no UI mount needed) so the
+    // AI assistant / other code can run a water scan and read the results directly.
+    scan: function(dir, start, days){
+      if(!_charts) _charts = EMBEDDED_CHARTS;
+      if(!_charts) throw new Error('Embedded charts not loaded (qmdj-water-scanner-data.js missing?).');
+      return scanDates(dir, start, days);
+    },
+    validDirections: function(){ return Object.keys(DIR_TO_PALACE); },
     degToPalace: degToPalace,
     checkHourAtPalace: function(year, month, day, hourStem, hourBranch, palace){
       return checkHourAtPalace(year, month, day, hourStem, hourBranch, palace);
