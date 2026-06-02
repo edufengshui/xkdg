@@ -4369,6 +4369,8 @@ function fsBuildBedPanel(){
       + '</div>'
     + '</div>'
     + '<div id="fs-bed-readout" style="margin-top:10px;font-size:13px;line-height:1.5;"></div>'
+    + '<div style="margin-top:10px;"><button onclick="fsBedScan()" style="width:100%;background:linear-gradient(135deg,#6a1b9a,#9c27b0);color:#fff;font-weight:bold;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN lucky dates to move the bed</button></div>'
+    + '<div id="fs-bed-results" style="margin-top:10px;"></div>'
     + '</div>';
 }
 
@@ -4507,5 +4509,122 @@ function _fsBedCompatHTML(slot){
     html += '<div style="margin-top:4px;font-size:11px;color:#888;">Two people: the combined verdict and the lucky dates (including the crossed period/element rule) come from SCAN — next piece.</div>';
   }
   html += '</div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SHARED SCAN ENGINE — piece 3: lucky dates (person ↔ date ↔ placement)
+//  Confirmed rule — a date passes when the "loop" closes:
+//    • date ↔ placement (facing/sitting): at least one link (period or element);
+//    • for every involved person p:
+//        - date ↔ p: at least one link;
+//        - period covered: (p↔placement period) OR (p↔date period);
+//        - element covered: (p↔placement element) OR (p↔date element).
+//  Two people (Bed) → both must pass: the date fills each one's missing
+//  channel. One person (Desk) → that person must pass.
+//  Reuses getXkdgData (day hexagram), the toolbar date range, and the
+//  longitude/UTC/DST offset, exactly like the existing FS scans.
+// ═══════════════════════════════════════════════════════════════
+function _fsIsoLocal(dt){
+  var y = dt.getFullYear();
+  var m = ('0' + (dt.getMonth() + 1)).slice(-2);
+  var d = ('0' + dt.getDate()).slice(-2);
+  return y + '-' + m + '-' + d;
+}
+
+// One date evaluation against a placement (facing/sitting) slot for a set of
+// persons. Returns { pass, dateLink, perPerson:[{who,label,ps,pd,periodCov,elemCov,dateOk,ok}] }.
+function _fsEvalDateForPlacement(persons, slot, dayQi, dayYun){
+  var dl = _fsHexConnect(slot.qi, slot.yun, dayQi, dayYun);   // date ↔ placement
+  var res = { pass: false, dateLink: dl, perPerson: [] };
+  if (!(dl.periodLink || dl.elementLink)) return res;          // date must touch the placement
+  var allOk = (persons.length > 0);
+  persons.forEach(function(p){
+    var ps = _fsHexConnect(p.qi, p.yun, slot.qi, slot.yun);    // person ↔ placement
+    var pd = _fsHexConnect(p.qi, p.yun, dayQi, dayYun);        // person ↔ date
+    var dateOk = pd.periodLink || pd.elementLink;
+    var periodCov = ps.periodLink || pd.periodLink;
+    var elemCov   = ps.elementLink || pd.elementLink;
+    var ok = dateOk && periodCov && elemCov;
+    if (!ok) allOk = false;
+    res.perPerson.push({ who: p.who, label: p.label, ps: ps, pd: pd, periodCov: periodCov, elemCov: elemCov, dateOk: dateOk, ok: ok });
+  });
+  res.pass = allOk;
+  return res;
+}
+
+// Scans the toolbar date range and returns the passing dates (max `maxResults`).
+function _fsScanLuckyDates(persons, slot, maxResults){
+  var out = [];
+  if (typeof Solar === 'undefined' || typeof getXkdgData !== 'function') return out;
+  var startVal = (document.getElementById('scan-start') || {}).value;
+  if (!startVal) return out;
+  var days = (typeof window._fsRangeDays === 'number' && window._fsRangeDays > 0)
+           ? window._fsRangeDays
+           : (parseInt((document.getElementById('scan-days') || {}).value) || 60);
+  var lon = parseFloat((document.getElementById('longitude') || {}).value);
+  var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
+  if (isNaN(lon) || isNaN(utc)) return out;
+  var dstOn = (typeof _dstOn !== 'undefined') ? _dstOn : false;
+  var offsetMin = (lon - utc * 15) * 4 - (dstOn ? 60 : 0);
+  var start = new Date(startVal + 'T00:00:00');
+  var cap = (typeof maxResults === 'number') ? maxResults : 120;
+
+  for (var d = 0; d < days; d++){
+    var dayDate = new Date(start.getTime() + d * 86400000);
+    var iso = _fsIsoLocal(dayDate);
+    if (typeof isDateAllowed === 'function' && !isDateAllowed(iso)) continue; // honor license cap
+    var midDay = new Date(dayDate); midDay.setHours(12, 0, 0, 0);
+    var dGan, dZhi, dData;
+    try {
+      var ec = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000)).getLunar().getEightChar();
+      dGan = ec.getDayGan(); dZhi = ec.getDayZhi();
+      dData = getXkdgData(dGan, dZhi);
+    } catch(e){ continue; }
+    if (!dData) continue;
+    var ev = _fsEvalDateForPlacement(persons, slot, dData.qi, dData.yun);
+    if (ev.pass){
+      out.push({ iso: iso, dGan: dGan, dZhi: dZhi, dData: dData, eval: ev });
+      if (out.length >= cap) break;
+    }
+  }
+  return out;
+}
+
+// ── Bed SCAN (piece 3) — two-person aware ──
+function fsBedScan(){
+  try {
+    var box = document.getElementById('fs-bed-results');
+    if (!box) return;
+    var persons = _fsBedPersons();
+    if (!persons.length){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Load a person (A or B) first.</div>'; return; }
+    var sitDeg = parseFloat((document.getElementById('fs-bed-sitting') || {}).value);
+    if (isNaN(sitDeg)){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Enter the Bed Sitting degree first.</div>'; return; }
+    var slot = fsSlotForDeg(sitDeg);
+    if (!fsIsZhengShen(slot.yun)){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">The sitting hexagram must be Zheng Shen before scanning.</div>'; return; }
+    if (!(document.getElementById('scan-start') || {}).value){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Set a FROM date and DAYS in the toolbar first.</div>'; return; }
+    box.innerHTML = '<div style="color:#888;font-size:12px;">Scanning…</div>';
+    var matches = _fsScanLuckyDates(persons, slot, 120);
+    box.innerHTML = _fsBedScanHTML(persons, slot, matches);
+  } catch(err){ console.warn('fsBedScan', err); }
+}
+
+function _fsBedScanHTML(persons, slot, matches){
+  if (!matches.length){
+    return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a different sitting (compatibility may not close the loop here).</div>';
+  }
+  var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to move the bed — ' + matches.length + ' found</div>';
+  matches.forEach(function(m){
+    var per = m.eval.perPerson.map(function(pp){
+      var pCh = pp.ps.periodLink ? 'sitting' : (pp.pd.periodLink ? 'date' : '–');
+      var eCh = pp.ps.elementLink ? 'sitting' : (pp.pd.elementLink ? 'date' : '–');
+      return '<span style="color:#6a1b9a;font-weight:bold;">' + pp.who + '</span>: period via ' + pCh + ' · element via ' + eCh;
+    }).join(' &nbsp;|&nbsp; ');
+    html += '<div style="border-top:1px solid #eee;padding:5px 0;font-size:12px;">'
+      + '<strong>' + m.iso + '</strong> · ' + m.dGan + m.dZhi
+      + ' <span style="color:#888;">(hex ' + m.dData.hex + ', qi ' + m.dData.qi + ', yun ' + m.dData.yun + ')</span>'
+      + '<div style="font-size:11px;color:#555;margin-top:2px;">' + per + '</div>'
+      + '</div>';
+  });
   return html;
 }
