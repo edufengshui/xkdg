@@ -374,7 +374,7 @@ function buildFengShuiView(){
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()">
           </div>
-          <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Hide Stars</button>
+          <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Show Stars</button>
           <button id="fs-manual-toggle" onclick="fsOpenManualStars()" title="Compile the flying stars chart by hand" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Manual</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
@@ -511,14 +511,20 @@ function fsSetLuopanMode(mode){
   });
   fsRedraw();
 }
-function fsToggleStars(){
-  FS_STARS_ON = !FS_STARS_ON;
+window._fsStarsVisible = false;
+function _fsSyncStarsToggleLabel(visible){
+  window._fsStarsVisible = !!visible;
   const btn = document.getElementById('fs-stars-toggle');
-  if (btn){
-    btn.textContent = FS_STARS_ON ? '⭐ Hide Stars' : '⭐ Show Stars';
-    btn.style.background = FS_STARS_ON ? '#8a6a1f' : '#aaa';
-  }
-  fsRedraw();
+  if (!btn) return;
+  btn.textContent = visible ? '⭐ Hide Stars' : '⭐ Show Stars';
+  btn.style.background = visible ? '#8a6a1f' : '#aaa';
+}
+function fsToggleStars(){
+  // A button must always show the available ACTION, not the state.
+  // If stars are currently visible, the action is Hide; otherwise Show.
+  if (window._fsStarsVisible) FS_STARS_ON = false;
+  else FS_STARS_ON = true;
+  fsRedraw(); // fsDrawFlyingStars() refreshes the label via _fsSyncStarsToggleLabel
 }
 
 // ── Get current date day pillar + person year hex from calendar state ──
@@ -870,6 +876,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
   const centerBox = document.getElementById('fs-stars-center');
   if (!FS_STARS_ON){
     if (centerBox) centerBox.innerHTML = '';
+    _fsSyncStarsToggleLabel(false);
     return;
   }
   // Manual override takes precedence over the auto calculation
@@ -879,24 +886,28 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
       if (centerBox) centerBox.innerHTML =
         '<span style="color:#8a6a1f;font-weight:bold;">⭐ Manual</span> &nbsp;|&nbsp; Center: ' +
         FlyingStars.getCenterStarsHTML(window._fsManualChart);
+      _fsSyncStarsToggleLabel(true);
     } catch(e){
       if (centerBox) centerBox.innerHTML = '<span style="color:#c00;">⚠ ' + e.message + '</span>';
+      _fsSyncStarsToggleLabel(false);
     }
     return;
   }
   const hfInput = document.getElementById('fs-house-facing');
   const pInput  = document.getElementById('fs-period');
-  if (!hfInput || !pInput) return;
+  if (!hfInput || !pInput){ _fsSyncStarsToggleLabel(false); return; }
   const hfDeg = parseFloat(hfInput.value);
   const period = parseInt(pInput.value, 10);
   if (isNaN(hfDeg) || isNaN(period) || period < 1 || period > 9){
     if (centerBox) centerBox.innerHTML =
       '<span style="color:#aaa;">Enter House Facing (°) and Period (1-9) to display Flying Stars</span>';
+    _fsSyncStarsToggleLabel(false);
     return;
   }
   if (typeof FlyingStars === 'undefined'){
     if (centerBox) centerBox.innerHTML =
       '<span style="color:#c00;">⚠ flying-stars.js not loaded</span>';
+    _fsSyncStarsToggleLabel(false);
     return;
   }
 
@@ -907,6 +918,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
   } catch (err){
     if (centerBox) centerBox.innerHTML =
       '<span style="color:#c00;">⚠ ' + err.message + '</span>';
+    _fsSyncStarsToggleLabel(false);
     return;
   }
 
@@ -914,13 +926,12 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
 
   // Update center stars line below the canvas
   if (centerBox){
-    const dirZh = { N:'坎', NE:'艮', E:'震', SE:'巽',
-                    S:'離', SW:'坤', W:'兌', NW:'乾' };
     centerBox.innerHTML =
       '<span style="color:#8a6a1f;font-weight:bold;">第' + period + '運 · ' +
       chart.facingMountain + '山' + chart.sittingMountain + '向</span>' +
       ' &nbsp;|&nbsp; Center: ' + FlyingStars.getCenterStarsHTML(chart);
   }
+  _fsSyncStarsToggleLabel(true);
 }
 
 function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
@@ -4070,7 +4081,8 @@ function fsSelectZone(zone){
   } catch(err){ console.warn('fsSelectZone', err); }
 }
 
-// Reorganise the FS view into: gate + shared base + gated tools (runs once).
+// Reorganise the FS view into: gate + shared base (incl. luopan) + gated tools.
+// Runs once. Anchors on stable IDs so it survives the earlier wrappers.
 function _fsBuildZoneGate(){
   try {
     var view = document.getElementById('fengshui-view');
@@ -4078,10 +4090,6 @@ function _fsBuildZoneGate(){
     if (document.getElementById('fs-zone-gate')) return; // already reorganised
     var fsRoot = view.firstElementChild;
     if (!fsRoot) return;
-    var sc = document.getElementById('fs-stars-center');
-    var fsBase = sc;
-    while (fsBase && fsBase.parentNode !== fsRoot) fsBase = fsBase.parentNode;
-    if (!fsBase) return;
 
     var gate = document.createElement('div');
     gate.id = 'fs-zone-gate';
@@ -4095,11 +4103,23 @@ function _fsBuildZoneGate(){
     banner.style.cssText = 'margin-bottom:10px;text-align:center;';
     tools.appendChild(banner);
 
-    var node = fsBase.nextSibling;
-    while (node){
-      var next = node.nextSibling;
-      tools.appendChild(node);
-      node = next;
+    // Stays in the always-visible base: Current context + Flying Stars inputs
+    // + the LUOPAN (mode toggle + canvas + legend). So entering House Facing
+    // and Period shows the chart right away, before choosing a zone.
+
+    // Gate the XKDG Door block (contains #fs-facing) — a zone tool that sits
+    // above the luopan; move it into tools first to preserve relative order.
+    var doorEl = document.getElementById('fs-facing');
+    var doorBlock = doorEl;
+    while (doorBlock && doorBlock.parentNode !== fsRoot) doorBlock = doorBlock.parentNode;
+    if (doorBlock) tools.appendChild(doorBlock);
+
+    // Gate everything AFTER the legend (direction filter, scan, star/XKDG
+    // buttons, results, house profiles). The luopan above the legend stays.
+    var legend = document.getElementById('fs-legend');
+    if (legend){
+      var node = legend.nextSibling;
+      while (node){ var next = node.nextSibling; tools.appendChild(node); node = next; }
     }
     fsRoot.appendChild(tools);
 
