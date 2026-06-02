@@ -76,9 +76,25 @@
     return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
   }
 
+  // app-bazi declares _personAYear/_personBYear and app-fengshui _fsActionPalace
+  // with `let` at top level. Those are GLOBAL LEXICAL bindings shared across all
+  // classic scripts (so a bare reference resolves) but they are NOT properties of
+  // `window`. Read them via a bare reference (guarded by typeof), falling back to
+  // window for safety.
+  function personLoaded() {
+    var a, b;
+    try { a = (typeof _personAYear !== 'undefined') ? _personAYear : window._personAYear; } catch (e) { a = window._personAYear; }
+    try { b = (typeof _personBYear !== 'undefined') ? _personBYear : window._personBYear; } catch (e) { b = window._personBYear; }
+    return { a: !!a, b: !!b, any: !!(a || b) };
+  }
+  function fsPalaceActive() {
+    try { return (typeof _fsActionPalace !== 'undefined') ? _fsActionPalace : window._fsActionPalace; } catch (e) { return window._fsActionPalace; }
+  }
+
   function toolFindGoodDates(input) {
     if (typeof window.runScanner !== 'function') return { error: 'The scanner is not available on this page.' };
-    if (!window._personAYear && !window._personBYear) return { error: 'No person is loaded. Ask the user to load Person A or B first.' };
+    var pl = personLoaded();
+    if (!pl.any) return { error: 'No person is loaded. Ask the user to load Person A or B first.' };
     var purpose = input.purpose || '';
     var days = parseInt(input.days, 10) || 7;
     var ps = document.getElementById('purpose-select');
@@ -87,14 +103,14 @@
     if (ss) ss.value = todayIso();
     if (sd) sd.value = String(days);
     // This is a date scan, not a flight: make sure no direction filter is active.
-    try { if (window._fsActionPalace && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
+    try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
     window.runScanner();
     var res = window._lastScanResults || [];
-    var both = !!window._personAYear && !!window._personBYear;
+    var both = pl.a && pl.b;
     return {
       purpose: purpose || '(general)',
       days: days,
-      persons_loaded: both ? 'A+B' : (window._personAYear ? 'A' : 'B'),
+      persons_loaded: both ? 'A+B' : (pl.a ? 'A' : 'B'),
       count: res.length,
       results: res.slice(0, 15).map(function (r, i) {
         var o = { rank: i + 1, date: r.isoDate, time: r.time, score: r.score };
