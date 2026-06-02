@@ -375,8 +375,11 @@ function buildFengShuiView(){
                    oninput="fsRedraw()">
           </div>
           <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Hide Stars</button>
+          <button id="fs-manual-toggle" onclick="fsOpenManualStars()" title="Compile the flying stars chart by hand" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Manual</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
+        <div id="fs-manual-badge" style="display:none;margin-top:6px;text-align:center;"></div>
+        <div id="fs-manual-editor" style="display:none;margin-top:8px;"></div>
       </div>
 
       <!-- ═══ XKDG DOOR (🚪) — SECOND ═══ -->
@@ -867,6 +870,18 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
   const centerBox = document.getElementById('fs-stars-center');
   if (!FS_STARS_ON){
     if (centerBox) centerBox.innerHTML = '';
+    return;
+  }
+  // Manual override takes precedence over the auto calculation
+  if (window._fsManualChart && typeof FlyingStars !== 'undefined'){
+    try {
+      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR);
+      if (centerBox) centerBox.innerHTML =
+        '<span style="color:#8a6a1f;font-weight:bold;">⭐ Manual</span> &nbsp;|&nbsp; Center: ' +
+        FlyingStars.getCenterStarsHTML(window._fsManualChart);
+    } catch(e){
+      if (centerBox) centerBox.innerHTML = '<span style="color:#c00;">⚠ ' + e.message + '</span>';
+    }
     return;
   }
   const hfInput = document.getElementById('fs-house-facing');
@@ -3847,3 +3862,150 @@ window.onload = () => {
     try { renderArchive('B'); } catch(e) { console.error('archiveB:', e.message); }
     checkLicense();
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  MANUAL FLYING STARS EDITOR (⭐ Manual)
+//  Lets the user hand-compile the flying stars chart for the rare
+//  case where the auto chart must be overridden.
+//  South-at-top 3×3 — indices match flying-stars.js grid exactly:
+//    [0 SE][1 S ][2 SW]
+//    [3 E ][4 C ][5 W ]
+//    [6 NE][7 N ][8 NW]
+//  Each palace holds 3 stars: 山 Sitting · 向 Facing · 運 Base.
+// ═══════════════════════════════════════════════════════════════
+window._fsManualChart = window._fsManualChart || null;
+var FSM_LABELS = ['SE 巽','S 離','SW 坤','E 震','Center','W 兌','NE 艮','N 坎','NW 乾'];
+
+function fsCloseManualStars(){
+  var ed = document.getElementById('fs-manual-editor');
+  if (ed) ed.style.display = 'none';
+}
+
+function fsOpenManualStars(){
+  try {
+    var ed = document.getElementById('fs-manual-editor');
+    if (!ed) return;
+    if (ed.style.display !== 'none'){ ed.style.display = 'none'; return; }
+
+    var seedSit  = new Array(9).fill('');
+    var seedBase = new Array(9).fill('');
+    var seedFac  = new Array(9).fill('');
+
+    if (window._fsManualChart){
+      seedSit  = window._fsManualChart.sittingStars.slice();
+      seedBase = window._fsManualChart.baseStars.slice();
+      seedFac  = window._fsManualChart.facingStars.slice();
+    } else if (typeof FlyingStars !== 'undefined'){
+      var hf = parseFloat((document.getElementById('fs-house-facing')||{}).value);
+      var pd = parseInt((document.getElementById('fs-period')||{}).value, 10);
+      if (!isNaN(hf) && !isNaN(pd) && pd >= 1 && pd <= 9){
+        try {
+          var c = FlyingStars.calculate(pd, fsMountainCharFromDeg(hf));
+          seedSit  = c.sittingStars.slice();
+          seedBase = c.baseStars.slice();
+          seedFac  = c.facingStars.slice();
+        } catch(e){
+          if (!isNaN(pd)) seedBase = FlyingStars.flyStars(pd, true);
+        }
+      } else if (!isNaN(pd) && pd >= 1 && pd <= 9){
+        seedBase = FlyingStars.flyStars(pd, true);
+      }
+    }
+
+    var cells = '';
+    for (var i = 0; i < 9; i++){
+      var isCenter = (i === 4);
+      cells +=
+        '<div style="border:1px solid #c9a84c;border-radius:6px;padding:4px;' + (isCenter ? 'background:rgba(201,168,76,0.12);' : 'background:#fff;') + '">' +
+          '<div style="font-size:9px;color:#999;text-align:center;margin-bottom:2px;">' + FSM_LABELS[i] + '</div>' +
+          '<div style="display:flex;justify-content:space-between;gap:2px;">' +
+            '<input type="number" min="1" max="9" id="fsm-sit-' + i + '" value="' + (seedSit[i] || '') + '" title="Sitting 山" style="width:30px;padding:2px;border:1px solid #0a6e1f;border-radius:3px;color:#0a6e1f;font-weight:bold;text-align:center;font-size:13px;">' +
+            '<input type="number" min="1" max="9" id="fsm-fac-' + i + '" value="' + (seedFac[i] || '') + '" title="Facing 向" style="width:30px;padding:2px;border:1px solid #cc0000;border-radius:3px;color:#cc0000;font-weight:bold;text-align:center;font-size:13px;">' +
+          '</div>' +
+          '<div style="text-align:center;margin-top:2px;">' +
+            '<input type="number" min="1" max="9" id="fsm-base-' + i + '" value="' + (seedBase[i] || '') + '" title="Base 運" style="width:30px;padding:2px;border:1px solid #1a1008;border-radius:3px;color:#1a1008;text-align:center;font-size:12px;">' +
+          '</div>' +
+        '</div>';
+    }
+
+    ed.innerHTML =
+      '<div style="background:#fffdf5;border:1px solid #c9a84c;border-radius:6px;padding:8px;">' +
+        '<div style="font-size:11px;color:#8a6a1f;font-weight:bold;margin-bottom:4px;">⭐ Manual flying stars — South at top</div>' +
+        '<div style="font-size:10px;color:#999;margin-bottom:6px;">Per palace: <span style="color:#0a6e1f;font-weight:bold;">山 Sitting</span> · <span style="color:#cc0000;font-weight:bold;">向 Facing</span> · <span style="color:#1a1008;font-weight:bold;">運 Base</span>. Values 1–9.</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px;">' + cells + '</div>' +
+        '<div style="display:flex;gap:6px;justify-content:flex-end;">' +
+          '<button onclick="fsCloseManualStars()" style="background:#eee;color:#555;border:none;border-radius:5px;padding:6px 12px;font-size:12px;cursor:pointer;">Cancel</button>' +
+          '<button onclick="fsApplyManualStars()" style="background:#8a6a1f;color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:12px;font-weight:bold;cursor:pointer;">Apply</button>' +
+        '</div>' +
+      '</div>';
+    ed.style.display = 'block';
+  } catch(err){ console.warn('fsOpenManualStars', err); }
+}
+
+function fsApplyManualStars(){
+  try {
+    var sit = [], fac = [], base = [];
+    for (var i = 0; i < 9; i++){
+      var s = parseInt((document.getElementById('fsm-sit-' + i) || {}).value, 10);
+      var f = parseInt((document.getElementById('fsm-fac-' + i) || {}).value, 10);
+      var b = parseInt((document.getElementById('fsm-base-' + i) || {}).value, 10);
+      var trio = [[s, 'Sitting 山'], [f, 'Facing 向'], [b, 'Base 運']];
+      for (var k = 0; k < trio.length; k++){
+        var v = trio[k][0];
+        if (isNaN(v) || v < 1 || v > 9){
+          alert('Every star must be a number 1–9. Check the ' + trio[k][1] + ' value in palace ' + FSM_LABELS[i] + '.');
+          return;
+        }
+      }
+      sit[i] = s; fac[i] = f; base[i] = b;
+    }
+    var period = parseInt((document.getElementById('fs-period') || {}).value, 10);
+    if (isNaN(period)) period = '?';
+    var facingMountain = '—', sittingMountain = '—';
+    if (typeof FlyingStars !== 'undefined'){
+      var hf = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+      if (!isNaN(hf)){
+        try {
+          var mc = fsMountainCharFromDeg(hf);
+          facingMountain = mc;
+          sittingMountain = FlyingStars.getSittingMountain(mc) || '—';
+        } catch(e){}
+      }
+    }
+    window._fsManualChart = {
+      period: period,
+      facingMountain: facingMountain,
+      sittingMountain: sittingMountain,
+      facingForward: true,
+      sittingForward: true,
+      sittingStars: sit,
+      facingStars: fac,
+      baseStars: base,
+      _manual: true
+    };
+    fsCloseManualStars();
+    fsUpdateManualBadge();
+    if (typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON){ fsToggleStars(); }
+    else if (typeof fsRedraw === 'function'){ fsRedraw(); }
+  } catch(err){ console.warn('fsApplyManualStars', err); }
+}
+
+function fsResetManualStars(){
+  window._fsManualChart = null;
+  fsUpdateManualBadge();
+  if (typeof fsRedraw === 'function') fsRedraw();
+}
+
+function fsUpdateManualBadge(){
+  var b = document.getElementById('fs-manual-badge');
+  if (!b) return;
+  if (window._fsManualChart){
+    b.style.display = 'block';
+    b.innerHTML =
+      '<span style="background:#8a6a1f;color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:bold;">⭐ Manual ON</span>' +
+      '<button onclick="fsResetManualStars()" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:6px;">↺ Reset to auto</button>';
+  } else {
+    b.style.display = 'none';
+    b.innerHTML = '';
+  }
+}
