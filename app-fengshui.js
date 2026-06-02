@@ -4009,3 +4009,113 @@ function fsUpdateManualBadge(){
     b.innerHTML = '';
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  THREE-ZONE GATE — Phase A (additive, extension v11)
+//  Clicking FENG SHUI now shows a zone chooser FIRST:
+//    🌊 Setting up the Water · 🛏 Setting up the Bed · 🪑 Setting up the Desk
+//  The shared base (Current context + Flying Stars block, incl. ⭐ Manual)
+//  stays visible on top. The rest of the module (the "tools") is revealed
+//  only after a zone is chosen.
+//    Water = current module, unchanged.
+//    Bed / Desk = clones of the same engine for now; section-specific
+//                 rules arrive in later phases.
+//  The reorganisation runs once and anchors on #fs-stars-center, so it is
+//  robust to the buttons injected by the earlier wrappers.
+// ═══════════════════════════════════════════════════════════════
+window._fsActiveZone = window._fsActiveZone || null;
+
+var FS_ZONES = {
+  water: { label: '🌊 Setting up the Water', clone: false },
+  bed:   { label: '🛏 Setting up the Bed',   clone: true  },
+  desk:  { label: '🪑 Setting up the Desk',  clone: true  }
+};
+
+function _fsZoneBtnStyle(active){
+  return 'flex:1;min-width:130px;border-radius:8px;padding:12px 10px;font-size:13px;font-weight:bold;cursor:pointer;white-space:nowrap;border:2px solid #8a6a1f;'
+    + (active ? 'background:#8a6a1f;color:#fff;' : 'background:#fff8e1;color:#8a6a1f;');
+}
+
+function fsRenderZoneGate(){
+  var gate = document.getElementById('fs-zone-gate');
+  if (!gate) return;
+  var z = window._fsActiveZone;
+  gate.innerHTML =
+    '<div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;">'
+    + '<div style="font-size:12px;color:#8a6a1f;font-weight:bold;margin-bottom:8px;text-align:center;">Choose a Feng Shui section</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      + '<button onclick="fsSelectZone(\'water\')" style="' + _fsZoneBtnStyle(z === 'water') + '">' + FS_ZONES.water.label + '</button>'
+      + '<button onclick="fsSelectZone(\'bed\')"   style="' + _fsZoneBtnStyle(z === 'bed')   + '">' + FS_ZONES.bed.label   + '</button>'
+      + '<button onclick="fsSelectZone(\'desk\')"  style="' + _fsZoneBtnStyle(z === 'desk')  + '">' + FS_ZONES.desk.label  + '</button>'
+    + '</div>'
+    + (z ? '' : '<div style="font-size:11px;color:#999;margin-top:8px;text-align:center;">Pick a section to reveal its tools. The shared base (facing · sitting · flying stars) stays available above.</div>')
+    + '</div>';
+}
+
+function fsSelectZone(zone){
+  try {
+    if (!FS_ZONES[zone]) return;
+    window._fsActiveZone = zone;
+    var tools = document.getElementById('fs-zone-tools');
+    if (tools) tools.style.display = 'block';
+    fsRenderZoneGate();
+    var banner = document.getElementById('fs-zone-banner');
+    if (banner){
+      var z = FS_ZONES[zone];
+      banner.innerHTML =
+        '<span style="background:#8a6a1f;color:#fff;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:bold;">' + z.label + '</span>'
+        + (z.clone ? '<span style="font-size:11px;color:#999;margin-left:8px;">clone — section-specific rules coming in a later phase</span>' : '');
+    }
+    if (typeof fsRedraw === 'function') fsRedraw();
+  } catch(err){ console.warn('fsSelectZone', err); }
+}
+
+// Reorganise the FS view into: gate + shared base + gated tools (runs once).
+function _fsBuildZoneGate(){
+  try {
+    var view = document.getElementById('fengshui-view');
+    if (!view) return;
+    if (document.getElementById('fs-zone-gate')) return; // already reorganised
+    var fsRoot = view.firstElementChild;
+    if (!fsRoot) return;
+    var sc = document.getElementById('fs-stars-center');
+    var fsBase = sc;
+    while (fsBase && fsBase.parentNode !== fsRoot) fsBase = fsBase.parentNode;
+    if (!fsBase) return;
+
+    var gate = document.createElement('div');
+    gate.id = 'fs-zone-gate';
+    fsRoot.insertBefore(gate, fsRoot.firstChild);
+
+    var tools = document.createElement('div');
+    tools.id = 'fs-zone-tools';
+    tools.style.display = 'none';
+    var banner = document.createElement('div');
+    banner.id = 'fs-zone-banner';
+    banner.style.cssText = 'margin-bottom:10px;text-align:center;';
+    tools.appendChild(banner);
+
+    var node = fsBase.nextSibling;
+    while (node){
+      var next = node.nextSibling;
+      tools.appendChild(node);
+      node = next;
+    }
+    fsRoot.appendChild(tools);
+
+    fsRenderZoneGate();
+    if (window._fsActiveZone) fsSelectZone(window._fsActiveZone);
+  } catch(err){ console.warn('_fsBuildZoneGate', err); }
+}
+
+const _buildFengShuiViewOrig_v11 = buildFengShuiView;
+buildFengShuiView = function(){
+  _buildFengShuiViewOrig_v11();
+  _fsBuildZoneGate();
+};
+
+// If the view is already built when this script loads, reorganise now
+(function(){
+  var v = document.getElementById('fengshui-view');
+  if (v && v.dataset.built === '1') _fsBuildZoneGate();
+})();
