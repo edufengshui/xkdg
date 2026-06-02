@@ -436,8 +436,9 @@ function buildFengShuiView(){
 
       <div id="fs-xkdg-detail" style="font-size:12px;margin-bottom:8px;"></div>
 
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button onclick="fsFindDates()" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔎 FIND MATCHING DATES</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px;justify-content:center;flex-wrap:wrap;">
+        <button onclick="fsFindDates()" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:bold;font-size:12px;cursor:pointer;">🔎 Find matching dates</button>
+        <button class="fs-recall-fs-btn" onclick="fsRecallFlyingStars()" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:6px;padding:6px 14px;font-weight:bold;font-size:12px;cursor:pointer;">⭐ Recall Flying Stars</button>
       </div>
 
       <div id="fs-results-area"></div>
@@ -692,6 +693,12 @@ function fsSelectPair(facingDeg, waterDeg){
 function fsRedraw(){
   const canvas = document.getElementById('fs-canvas');
   if (!canvas) return;
+  // Bed/Desk sections draw their OWN luopan (their data, not the Water flow).
+  if (window._fsActiveZone === 'bed' || window._fsActiveZone === 'desk'){
+    if (typeof fsDrawSectionLuopan === 'function') fsDrawSectionLuopan();
+    if (typeof _fsUpdateLuopanVis === 'function') _fsUpdateLuopanVis();
+    return;
+  }
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0,0,W,H);
@@ -4051,8 +4058,7 @@ function fsSelectZone(zone){
     if (!FS_ZONES[zone]) return;
     window._fsActiveZone = zone;
     window._fsFSRecalled = false;
-    var _rb = document.getElementById('fs-recall-fs');
-    if (_rb){ _rb.style.background = '#fff'; _rb.style.color = '#8a6a1f'; _rb.textContent = '⭐ Recall Flying Stars chart'; }
+    if (typeof _fsSyncRecallButtons === 'function') _fsSyncRecallButtons();
     var tools = document.getElementById('fs-zone-tools');
     if (tools) tools.style.display = 'block';
     fsRenderZoneGate();
@@ -4108,56 +4114,58 @@ function _fsBuildZoneGate(){
     banner.id = 'fs-zone-banner';
     banner.style.cssText = 'margin-bottom:10px;text-align:center;';
     tools.appendChild(banner);
-    // "Recall Flying Stars" — each section uses the luopan for its own data; the
-    // house flying-stars chart is shown only on demand via this button.
-    var recall = document.createElement('div');
-    recall.style.cssText = 'text-align:center;margin-bottom:8px;';
-    recall.innerHTML = '<button id="fs-recall-fs" onclick="fsRecallFlyingStars()" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:bold;cursor:pointer;">⭐ Recall Flying Stars chart</button>';
-    tools.appendChild(recall);
-    // Per-zone, per-person settings panel (Phase B) — sits right under the banner.
+    // Per-zone, per-person settings panel (Phase B) — appended LAST so it sits
+    // under the section content (the XKDG Door block must be first).
     var zoneSettings = document.createElement('div');
     zoneSettings.id = 'fs-zone-settings';
-    tools.appendChild(zoneSettings);
 
-    // Bed-specific panel (Phase D, piece 1) — shown only for the Bed zone.
+    // Bed-specific panel — shown only for the Bed zone.
     var bedPanel = document.createElement('div');
     bedPanel.id = 'fs-bed-panel';
     bedPanel.style.display = 'none';
-    tools.appendChild(bedPanel);
 
     // Desk-specific panel — shown only for the Desk zone.
     var deskPanel = document.createElement('div');
     deskPanel.id = 'fs-desk-panel';
     deskPanel.style.display = 'none';
-    tools.appendChild(deskPanel);
 
-    // The generic (Water/Desk) tools live in their own wrapper so the Bed zone
-    // can hide them and show the Bed panel instead.
+    // Generic (Water) tools wrapper — the XKDG Door block is the FIRST thing in
+    // the section (it's what you fill to make the luopan appear).
     var generic = document.createElement('div');
     generic.id = 'fs-generic-tools';
 
-    // Gate the XKDG Door block (contains #fs-facing) — a zone tool that sits
-    // above the luopan; move it into the generic wrapper first to preserve order.
     var doorEl = document.getElementById('fs-facing');
     var doorBlock = doorEl;
     while (doorBlock && doorBlock.parentNode !== fsRoot) doorBlock = doorBlock.parentNode;
     if (doorBlock) generic.appendChild(doorBlock);
 
-    // The luopan mode toggle (FS only / XKDG only / Both) is a section control,
-    // not part of the shared base — gate it too.
     var modeEl = document.getElementById('fs-mode-fs');
     var modeToggle = modeEl;
     while (modeToggle && modeToggle.parentNode !== fsRoot) modeToggle = modeToggle.parentNode;
     if (modeToggle) generic.appendChild(modeToggle);
 
-    // Gate everything AFTER the legend (direction filter, scan, star/XKDG
-    // buttons, results, house profiles). The luopan above the legend stays.
+    // Capture House Profiles BEFORE the sweep (the sweep moves it into the
+    // detached generic wrapper, after which getElementById can't find it).
+    var hp = document.getElementById('fs-house-profiles');
+
     var legend = document.getElementById('fs-legend');
     if (legend){
       var node = legend.nextSibling;
       while (node){ var next = node.nextSibling; generic.appendChild(node); node = next; }
     }
+
+    // House Profiles belong to the MAIN sector — put them back in the base, at
+    // the bottom of the flying-stars area (right after the legend).
+    if (hp && legend && legend.parentNode){
+      if (legend.nextSibling) legend.parentNode.insertBefore(hp, legend.nextSibling);
+      else legend.parentNode.appendChild(hp);
+    }
+
+    // Section content order: banner, [Door-first generic], bed, desk, settings.
     tools.appendChild(generic);
+    tools.appendChild(bedPanel);
+    tools.appendChild(deskPanel);
+    tools.appendChild(zoneSettings);
     fsRoot.appendChild(tools);
 
     if (typeof fsBuildBedPanel === 'function') fsBuildBedPanel();
@@ -4375,7 +4383,7 @@ function fsBuildBedPanel(){
       + '</div>'
     + '</div>'
     + '<div id="fs-bed-readout" style="margin-top:10px;font-size:13px;line-height:1.5;"></div>'
-    + '<div style="margin-top:10px;"><button onclick="fsBedScan()" style="width:100%;background:linear-gradient(135deg,#6a1b9a,#9c27b0);color:#fff;font-weight:bold;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN lucky dates to move the bed</button></div>'
+    + '<div style="margin-top:10px;display:flex;gap:8px;align-items:stretch;"><button onclick="fsBedScan()" style="flex:1;background:linear-gradient(135deg,#6a1b9a,#9c27b0);color:#fff;font-weight:bold;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN lucky dates to move the bed</button><button class="fs-recall-fs-btn" onclick="fsRecallFlyingStars()" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Recall Flying Stars</button></div>'
     + '<div id="fs-bed-results" style="margin-top:10px;"></div>'
     + '</div>';
 }
@@ -4434,6 +4442,7 @@ function fsBedReadChart(){
     }
 
     box.innerHTML = parts.join('');
+    if (typeof fsRedraw === 'function') fsRedraw();
   } catch(err){ console.warn('fsBedReadChart', err); }
 }
 
@@ -4661,7 +4670,7 @@ function fsBuildDeskPanel(){
     + '<input id="fs-desk-facing" type="number" step="0.1" min="0" max="360" placeholder="e.g. 175.5" '
     + 'oninput="fsDeskReadChart()" style="width:100%;padding:8px;margin:4px 0 8px;border:1px solid #ce93d8;border-radius:6px;font-size:14px;box-sizing:border-box;" />'
     + '<div id="fs-desk-readout" style="font-size:13px;line-height:1.5;"></div>'
-    + '<div style="margin-top:10px;"><button onclick="fsDeskScan()" style="width:100%;background:linear-gradient(135deg,#6a1b9a,#9c27b0);color:#fff;font-weight:bold;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN lucky dates to set up the desk &amp; water</button></div>'
+    + '<div style="margin-top:10px;display:flex;gap:8px;align-items:stretch;"><button onclick="fsDeskScan()" style="flex:1;background:linear-gradient(135deg,#6a1b9a,#9c27b0);color:#fff;font-weight:bold;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN lucky dates to set up the desk &amp; water</button><button class="fs-recall-fs-btn" onclick="fsRecallFlyingStars()" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Recall Flying Stars</button></div>'
     + '<div id="fs-desk-results" style="margin-top:10px;"></div>'
     + '</div>';
 }
@@ -4781,6 +4790,7 @@ function fsDeskReadChart(){
       parts.push('</div>');
     }
     box.innerHTML = parts.join('');
+    if (typeof fsRedraw === 'function') fsRedraw();
   } catch(err){ console.warn('fsDeskReadChart', err); }
 }
 
@@ -4839,14 +4849,26 @@ function _fsUpdateLuopanVis(){
 
     // Flying-stars input block: main sector only.
     if (fsBlock) fsBlock.style.display = inSection ? 'none' : '';
+    // House Profiles also belong to the main sector only.
+    var hp = document.getElementById('fs-house-profiles');
+    if (hp) hp.style.display = inSection ? 'none' : '';
 
     var showLuopan;
     if (!inSection){
       showLuopan = true;                         // main: flying stars luopan
     } else {
-      var f = (document.getElementById('fs-facing') || {}).value;
-      var hasFacing = !!(f && String(f).trim() !== '');
-      showLuopan = hasFacing || !!window._fsFSRecalled; // section's own data, or recalled
+      var hasData;
+      if (window._fsActiveZone === 'bed'){
+        var bs = (document.getElementById('fs-bed-sitting') || {}).value;
+        hasData = !!(bs && String(bs).trim() !== '');
+      } else if (window._fsActiveZone === 'desk'){
+        var df = (document.getElementById('fs-desk-facing') || {}).value;
+        hasData = !!(df && String(df).trim() !== '');
+      } else {
+        var f = (document.getElementById('fs-facing') || {}).value;
+        hasData = !!(f && String(f).trim() !== '');
+      }
+      showLuopan = hasData || !!window._fsFSRecalled; // section's own data, or recalled
     }
     if (wrap)       wrap.style.display       = showLuopan ? '' : 'none';
     if (legend)     legend.style.display     = showLuopan ? '' : 'none';
@@ -4859,12 +4881,132 @@ function _fsUpdateLuopanVis(){
 function fsRecallFlyingStars(){
   try {
     window._fsFSRecalled = !window._fsFSRecalled;
-    var btn = document.getElementById('fs-recall-fs');
-    if (btn){
-      btn.style.background = window._fsFSRecalled ? '#8a6a1f' : '#fff';
-      btn.style.color      = window._fsFSRecalled ? '#fff' : '#8a6a1f';
-      btn.textContent      = window._fsFSRecalled ? '⭐ Hide Flying Stars chart' : '⭐ Recall Flying Stars chart';
-    }
+    _fsSyncRecallButtons();
     if (typeof fsRedraw === 'function') fsRedraw();
   } catch(err){ console.warn('fsRecallFlyingStars', err); }
+}
+function _fsSyncRecallButtons(){
+  try {
+    var on = !!window._fsFSRecalled;
+    var btns = document.querySelectorAll('.fs-recall-fs-btn');
+    for (var i = 0; i < btns.length; i++){
+      btns[i].style.background = on ? '#8a6a1f' : '#fff';
+      btns[i].style.color      = on ? '#fff' : '#8a6a1f';
+      btns[i].textContent      = on ? '⭐ Hide Flying Stars' : '⭐ Recall Flying Stars';
+    }
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SECTION LUOPAN — Bed & Desk draw their own data on the compass
+//  Bed: Zheng/Ling tint + the Sitting arrow (gold slot). Desk: tint +
+//  Facing arrow (gold slot) + ±FS_WATER_MAX_DEG band + propitious water
+//  slots (cyan). If flying stars are recalled (window._fsFSRecalled) the
+//  house FS chart is overlaid on top. Same geometry as fsRedraw.
+// ═══════════════════════════════════════════════════════════════
+function fsDrawSectionLuopan(){
+  try {
+    var zone = window._fsActiveZone;
+    if (zone !== 'bed' && zone !== 'desk') return;
+    var canvas = document.getElementById('fs-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    var PAD = 100, IMG_W = 900, IMG_H = 930;
+    var cx = PAD + 450, cy = PAD + 464;
+    var outerR = 447, rHexOut = 360, rHexIn = 295;
+
+    if (typeof FS_LUOPAN_IMG !== 'undefined' && FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth > 0)
+      ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+
+    function paintCell(slot, color){
+      var aS = (slot.startDeg - 270) * Math.PI / 180;
+      var aE = (slot.endDeg   - 270) * Math.PI / 180;
+      ctx.save(); ctx.beginPath();
+      ctx.arc(cx, cy, rHexOut, aS, aE);
+      ctx.arc(cx, cy, rHexIn,  aE, aS, true);
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill(); ctx.restore();
+    }
+    function drawArrow(deg, color, label, dashed){
+      var a = (deg - 270) * Math.PI / 180;
+      var tipR = outerR + 30, labelR = outerR + 72;
+      var tipX = cx + Math.cos(a) * tipR, tipY = cy + Math.sin(a) * tipR;
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 4;
+      if (dashed) ctx.setLineDash([14, 8]);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tipX, tipY);
+      ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.setLineDash([]);
+      var perpX = Math.cos(a + Math.PI / 2) * 18, perpY = Math.sin(a + Math.PI / 2) * 18;
+      var bx = tipX - Math.cos(a) * 36, by = tipY - Math.sin(a) * 36;
+      ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(bx + perpX, by + perpY); ctx.lineTo(bx - perpX, by - perpY);
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill(); ctx.restore();
+      if (label){
+        ctx.save();
+        ctx.font = 'bold 16px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = color; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 4;
+        var lx = cx + Math.cos(a) * labelR, ly = cy + Math.sin(a) * labelR;
+        lx = Math.max(35, Math.min(W - 35, lx)); ly = Math.max(14, Math.min(H - 14, ly));
+        ctx.strokeText(label, lx, ly); ctx.fillText(label, lx, ly); ctx.restore();
+      }
+    }
+
+    // Zheng/Ling tint (sections care about Zheng Shen / Ling Shen zones)
+    if (Array.isArray(FS_SLOTS)) FS_SLOTS.forEach(function(s){
+      paintCell(s, fsIsZhengShen(s.yun) ? 'rgba(180,40,40,0.18)' : 'rgba(40,80,180,0.18)');
+    });
+
+    if (zone === 'bed'){
+      var sd = parseFloat((document.getElementById('fs-bed-sitting') || {}).value);
+      if (!isNaN(sd)){
+        var ss = fsSlotForDeg(sd);
+        paintCell(ss, 'rgba(255,200,0,0.80)');
+        drawArrow(sd, '#cc0000', 'Sitting');
+      }
+    } else { // desk
+      var fdg = parseFloat((document.getElementById('fs-desk-facing') || {}).value);
+      if (!isNaN(fdg)){
+        var fsl = fsSlotForDeg(fdg);
+        // ±70° water band just outside the hex ring
+        var aMid = (fsl.startDeg + 2.8125 - 270) * Math.PI / 180;
+        var halfW = FS_WATER_MAX_DEG * Math.PI / 180;
+        var rZoneIn = rHexOut + 4, rZoneOut = rHexOut + 16;
+        ctx.save(); ctx.beginPath();
+        ctx.arc(cx, cy, rZoneOut, aMid - halfW, aMid + halfW);
+        ctx.arc(cx, cy, rZoneIn,  aMid + halfW, aMid - halfW, true);
+        ctx.closePath(); ctx.fillStyle = 'rgba(0,200,255,0.45)';
+        ctx.fill(); ctx.strokeStyle = 'rgba(0,100,180,0.7)'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
+        // propitious water positions (Ling Shen + in-range + matches facing + suits person)
+        var person = (typeof _fsDeskPerson === 'function') ? _fsDeskPerson() : null;
+        if (fsIsZhengShen(fsl.yun) && typeof _fsDeskWaterList === 'function'){
+          _fsDeskWaterList(fsl, person).forEach(function(w){ paintCell(w.slot, 'rgba(0,200,255,0.55)'); });
+        }
+        paintCell(fsl, 'rgba(255,200,0,0.80)');
+        drawArrow(fdg, '#cc6600', 'Facing');
+      }
+    }
+
+    // Cell boundaries
+    ctx.save(); ctx.strokeStyle = 'rgba(180,140,40,0.35)'; ctx.lineWidth = 0.6;
+    if (Array.isArray(FS_SLOTS)) FS_SLOTS.forEach(function(s){
+      var aS = (s.startDeg - 270) * Math.PI / 180;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(aS) * rHexIn,  cy + Math.sin(aS) * rHexIn);
+      ctx.lineTo(cx + Math.cos(aS) * rHexOut, cy + Math.sin(aS) * rHexOut);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // Center pin
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fillStyle = '#1a1008'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI * 2); ctx.fillStyle = '#ffd24a'; ctx.fill();
+    ctx.restore();
+
+    // Deliberately recalled house flying-stars overlay
+    if (window._fsFSRecalled && typeof fsDrawFlyingStars === 'function'){
+      fsDrawFlyingStars(ctx, cx, cy, outerR);
+    }
+  } catch(err){ console.warn('fsDrawSectionLuopan', err); }
 }
