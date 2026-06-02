@@ -359,7 +359,7 @@ function buildFengShuiView(){
       <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.5;"></div>
 
       <!-- ═══ FLYING STARS (玄空飛星) — FIRST ═══ -->
-      <div style="background:#fff8e1;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
+      <div id="fs-flying-stars-block" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
         <div style="font-size:11px;color:#8a6a1f;font-weight:bold;margin-bottom:6px;">⭐ FLYING STARS (玄空飛星)</div>
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
           <div style="flex:1;min-width:110px;">
@@ -376,6 +376,8 @@ function buildFengShuiView(){
           </div>
           <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Show Stars</button>
           <button id="fs-manual-toggle" onclick="fsOpenManualStars()" title="Compile the flying stars chart by hand" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Manual</button>
+          <button onclick="(typeof FSChartFinder!=='undefined') ? FSChartFinder.open() : alert('fs-chart-finder.js not loaded')" title="Find charts by star position" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🔍 Charts</button>
+          <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" title="Find Qimen hours for flying stars" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🌀 Qimen</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
         <div id="fs-manual-badge" style="display:none;margin-top:6px;text-align:center;"></div>
@@ -426,16 +428,8 @@ function buildFengShuiView(){
            the Feng Shui setup must not mix the date-selection wing. Dates appear only
            as answers to a query (e.g. the Bed / Desk SCAN buttons). -->
 
-      <!-- ═══ ⭐ STARS buttons ═══ -->
-      <div style="font-size:11px;font-weight:bold;color:#00695c;margin-bottom:4px;">⭐ Stars</div>
-
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" style="flex:1;background:#8a6a1f;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🌀 FIND QIMEN HOURS FOR FLYING STARS</button>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button onclick="(typeof FSChartFinder!=='undefined') ? FSChartFinder.open() : alert('fs-chart-finder.js not loaded')" style="flex:1;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:10px;font-weight:bold;font-size:13px;cursor:pointer;">🔍 FIND CHARTS BY STAR POSITION</button>
-      </div>
+      <!-- Qimen-hours & Find-charts buttons relocated next to ⭐ Manual in the
+           Flying Stars block (main sector). -->
 
       <!-- ═══ 🚪 XKDG buttons ═══ -->
       <div style="font-size:11px;font-weight:bold;color:#c9a84c;margin-bottom:4px;">🚪 XKDG</div>
@@ -720,7 +714,7 @@ function fsRedraw(){
   const hfd = isNaN(hfDeg) ? null : hfDeg;
 
   const showXKDG = (_fsLuopanMode === 'xkdg' || _fsLuopanMode === 'both');
-  const showFS   = (_fsLuopanMode === 'fs'   || _fsLuopanMode === 'both');
+  const showFS   = (_fsLuopanMode === 'fs'   || _fsLuopanMode === 'both') || (!!window._fsActiveZone && !!window._fsFSRecalled);
 
   const { facings, waters, facingSlot, ctx: dctx } = fsComputeValid();
   const fInput = fd !== null ? fsSlotForDeg(fd) : null;
@@ -856,6 +850,7 @@ function fsRedraw(){
   // Live XKDG detail panel — always visible when facing/water entered
   fsRenderXkdgDetail(fInput, wInput, facingSlot);
   fsRenderPairsTable();
+  if (typeof _fsUpdateLuopanVis === 'function') _fsUpdateLuopanVis();
 }
 
 // Draws Flying Stars on the Luopan if toggle is ON and inputs are valid.
@@ -4055,6 +4050,9 @@ function fsSelectZone(zone){
   try {
     if (!FS_ZONES[zone]) return;
     window._fsActiveZone = zone;
+    window._fsFSRecalled = false;
+    var _rb = document.getElementById('fs-recall-fs');
+    if (_rb){ _rb.style.background = '#fff'; _rb.style.color = '#8a6a1f'; _rb.textContent = '⭐ Recall Flying Stars chart'; }
     var tools = document.getElementById('fs-zone-tools');
     if (tools) tools.style.display = 'block';
     fsRenderZoneGate();
@@ -4110,6 +4108,12 @@ function _fsBuildZoneGate(){
     banner.id = 'fs-zone-banner';
     banner.style.cssText = 'margin-bottom:10px;text-align:center;';
     tools.appendChild(banner);
+    // "Recall Flying Stars" — each section uses the luopan for its own data; the
+    // house flying-stars chart is shown only on demand via this button.
+    var recall = document.createElement('div');
+    recall.style.cssText = 'text-align:center;margin-bottom:8px;';
+    recall.innerHTML = '<button id="fs-recall-fs" onclick="fsRecallFlyingStars()" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:bold;cursor:pointer;">⭐ Recall Flying Stars chart</button>';
+    tools.appendChild(recall);
     // Per-zone, per-person settings panel (Phase B) — sits right under the banner.
     var zoneSettings = document.createElement('div');
     zoneSettings.id = 'fs-zone-settings';
@@ -4813,4 +4817,54 @@ function _fsDeskScanHTML(person, slot, matches){
       + '</div>';
   });
   return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LUOPAN VISIBILITY — flying-stars domain belongs to the MAIN sector
+//  Main (no section chosen): the Flying Stars block + the luopan (showing the
+//  flying stars) are visible. Inside a section (Water/Bed/Desk): the flying
+//  stars are NOT repeated — the block is hidden and the luopan shows the
+//  section's own data once filled (e.g. Water shows it after a Door Facing is
+//  entered). The house flying-stars chart can still be recalled on demand with
+//  the "Recall Flying Stars" button (window._fsFSRecalled).
+// ═══════════════════════════════════════════════════════════════
+function _fsUpdateLuopanVis(){
+  try {
+    var fsBlock = document.getElementById('fs-flying-stars-block');
+    var wrap    = document.getElementById('fs-canvas-wrap');
+    var legend  = document.getElementById('fs-legend');
+    var modeBtn = document.getElementById('fs-mode-fs');
+    var modeToggle = modeBtn ? modeBtn.parentNode : null;
+    var inSection = !!window._fsActiveZone;
+
+    // Flying-stars input block: main sector only.
+    if (fsBlock) fsBlock.style.display = inSection ? 'none' : '';
+
+    var showLuopan;
+    if (!inSection){
+      showLuopan = true;                         // main: flying stars luopan
+    } else {
+      var f = (document.getElementById('fs-facing') || {}).value;
+      var hasFacing = !!(f && String(f).trim() !== '');
+      showLuopan = hasFacing || !!window._fsFSRecalled; // section's own data, or recalled
+    }
+    if (wrap)       wrap.style.display       = showLuopan ? '' : 'none';
+    if (legend)     legend.style.display     = showLuopan ? '' : 'none';
+    if (modeToggle) modeToggle.style.display = showLuopan ? '' : 'none';
+  } catch(err){ console.warn('_fsUpdateLuopanVis', err); }
+}
+
+// Toggle: deliberately recall (or hide again) the house flying-stars chart on
+// the section's luopan. Works in any of the three sections.
+function fsRecallFlyingStars(){
+  try {
+    window._fsFSRecalled = !window._fsFSRecalled;
+    var btn = document.getElementById('fs-recall-fs');
+    if (btn){
+      btn.style.background = window._fsFSRecalled ? '#8a6a1f' : '#fff';
+      btn.style.color      = window._fsFSRecalled ? '#fff' : '#8a6a1f';
+      btn.textContent      = window._fsFSRecalled ? '⭐ Hide Flying Stars chart' : '⭐ Recall Flying Stars chart';
+    }
+    if (typeof fsRedraw === 'function') fsRedraw();
+  } catch(err){ console.warn('fsRecallFlyingStars', err); }
 }
