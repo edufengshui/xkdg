@@ -17,27 +17,39 @@
   var MODEL = 'claude-haiku-4-5-20251001'; // change here if you prefer another model
   var MAX_TOKENS = 1024;
 
-  // System prompt: app-wide assistant that USES tools to operate the app.
+  // System prompt: app-wide assistant that ANSWERS about and OPERATES the whole app.
   var SYSTEM_PROMPT =
     'You are the assistant built into the "XKDG Bazi Calculator", a PWA for Bazi, Feng Shui and ' +
-    'Qimen Dun Jia date/direction selection. You operate the app on the user\'s behalf by calling the ' +
-    'provided tools, then explain the results in plain language. Always answer in the language the user writes in.\n\n' +
-    'Rules:\n' +
-    '- For any request about finding good dates/hours, running a scan, a purpose (Health, Career, Wealth, ' +
-    'Relationship, Journey, Speak, Legal), a sector activation, or travel timing: CALL A TOOL. Never invent dates ' +
-    'or scores yourself — only report what a tool returns.\n' +
-    '- The scans use whichever person(s) are loaded in the app (A, B, or both); the user loads the person by hand. ' +
-    'If a tool reports that no person is loaded, ask the user to load Person A or B first.\n' +
-    '- A Feng Shui house, if set, follows the loaded person automatically — you do not set it.\n' +
-    '- Keep answers concise: summarise the top few results with their date, time and score, and offer to open one ' +
-    'in the main view. If a tool returns an error, relay it briefly and suggest the fix.\n' +
-    '- For travel timing/direction ("when/where should I go to X") use plan_travel — you supply the destination ' +
-    'latitude/longitude from your own knowledge of the city. For the detailed road route + Google Maps export, use ' +
-    'open_travel_planner. For sending a Qimen configuration to a flying-star sector, use open_qimen_for_flying_stars ' +
-    '(it opens the panel for the user to pick the target and scan).\n' +
-    '- For "when can I move the bed" use find_bed_dates; for "when to set up my desk / where to place a water feature" ' +
-    'use find_desk_dates. These read the Bed/Desk section inputs (sitting / facing). If the degree is missing the tool ' +
-    'will say so — ask the user for the bed Sitting or desk Facing in degrees (0-360), then call the tool with it.';
+    'Qimen Dun Jia date/direction selection. You can both ANSWER questions about any part of the app ' +
+    'and OPERATE it via the provided tools, then explain results in plain language. Always answer in the ' +
+    'language the user writes in.\n\n' +
+    'MAP OF THE APP (use it to guide on anything):\n' +
+    '- Two wings: (1) Date selection (Bazi) and (2) Feng Shui. They are kept separate in setup and only ' +
+    'meet as the ANSWER to a query.\n' +
+    '- Date selection scans days/hours for the loaded person(s), optionally filtered by a Purpose ' +
+    '(Health, Career, Wealth, Relationship, Journey, Speak, Legal). Tools: find_good_dates, open_scan_result.\n' +
+    '- Feng Shui has three sections, each using its own data: WATER (door/house Facing + a moving-water ' +
+    'position), BED (bed Sitting, must be Zheng Shen), DESK (desk Facing must be Zheng Shen + a Ling Shen ' +
+    'water within +/-70 deg). Tools: find_water_dates, find_bed_dates, find_desk_dates; open_section to navigate.\n' +
+    '- Flying stars live in the main Feng Shui sector; inside a section they are not repeated but can be ' +
+    'recalled (recall_flying_stars).\n' +
+    '- Houses store Facing/Period + doors + aquariums + saved section settings ("placements"). Tools: ' +
+    'list_houses, set_active_house, load_house, load_placement. The active house follows the loaded person.\n' +
+    '- Other panels: Qimen x Flying-Stars (open_qimen_for_flying_stars), Chart finder (open_chart_finder), ' +
+    'Direction calculator (open_direction_calculator), Travel planner (plan_travel + open_travel_planner).\n' +
+    '- get_app_state tells you what the user currently has loaded/typed.\n\n' +
+    'RULES:\n' +
+    '- For anything that finds dates/hours or runs a scan: CALL A TOOL. Never invent dates or scores yourself ' +
+    '- only report what a tool returns.\n' +
+    '- Scans use whichever person(s) are loaded (A, B, or both); the user loads them by hand. If a tool says ' +
+    'no person is loaded, ask the user to load Person A or B first.\n' +
+    '- Keep answers concise: summarise the top few results (date, time/ganzhi, score) and offer to open one. ' +
+    'If a tool returns an error, relay it briefly and suggest the fix.\n' +
+    '- For travel timing/direction use plan_travel (you supply the destination lat/lon from your own ' +
+    'knowledge); for the road route + Google Maps export use open_travel_planner.\n' +
+    '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
+    'user for it (0-360) and call the tool with it.\n' +
+    '- If a capability has no tool yet (e.g. QMDJ water scanner), say so briefly and point to the screen to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
   var TOOLS = [
@@ -128,6 +140,89 @@
         'entities) and scans for the hours that send a Qimen configuration to a flying-star palace. Use for requests ' +
         'about activating a sector / flying star with Qimen timing.',
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'get_app_state',
+      description: 'Read what the user currently has loaded/typed: people loaded, selected date, scan range, ' +
+        'purpose, active Feng Shui section, and the section inputs (house/door facing, period, water, bed sitting, desk facing). ' +
+        'Call this when you need context before answering or before another tool.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'find_water_dates',
+      description: 'Feng Shui WATER section: find the dates that suit placing a moving-water feature for the given ' +
+        'door/house Facing (Zheng Shen) and optional water position (Ling Shen, within +/-70 deg). Returns the best dates.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          door_facing: { type: 'number', description: 'Door/house facing in degrees (0-360). Required.' },
+          water: { type: 'number', description: 'Optional water position in degrees.' },
+          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' }
+        },
+        required: ['door_facing']
+      }
+    },
+    {
+      name: 'open_section',
+      description: 'Navigate to a Feng Shui section so the user can see/fill it: water, bed or desk.',
+      input_schema: {
+        type: 'object',
+        properties: { section: { type: 'string', enum: ['water', 'bed', 'desk'] } },
+        required: ['section']
+      }
+    },
+    {
+      name: 'recall_flying_stars',
+      description: 'Toggle the house flying-stars chart overlay on the current Feng Shui section luopan.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'open_direction_calculator',
+      description: 'Open the Direction calculator panel (compute a bearing/direction to a place).',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'open_chart_finder',
+      description: 'Open the "Find charts by star position" panel.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'list_houses',
+      description: 'List the saved houses for the loaded person, with index, name, facing/period, counts of doors/' +
+        'aquariums/placements, and which one is active. Use before set_active_house / load_house / load_placement.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
+      name: 'set_active_house',
+      description: 'Set which saved house is active for the loaded person (the active house follows the person).',
+      input_schema: {
+        type: 'object',
+        properties: { index: { type: 'integer', description: 'House index from list_houses.' } },
+        required: ['index']
+      }
+    },
+    {
+      name: 'load_house',
+      description: 'Load a saved house (its facing/period) into the Feng Shui inputs so the user can review/edit it.',
+      input_schema: {
+        type: 'object',
+        properties: { index: { type: 'integer', description: 'House index from list_houses.' } },
+        required: ['index']
+      }
+    },
+    {
+      name: 'load_placement',
+      description: 'Re-apply a saved Water/Bed/Desk placement from a house into its section (restores the inputs and ' +
+        'opens that section).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          house_index: { type: 'integer' },
+          section: { type: 'string', enum: ['water', 'bed', 'desk'] },
+          placement_index: { type: 'integer' }
+        },
+        required: ['house_index', 'section', 'placement_index']
+      }
     }
   ];
 
@@ -140,6 +235,16 @@
       if (name === 'plan_travel') return toolPlanTravel(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
+      if (name === 'get_app_state') return toolGetAppState();
+      if (name === 'find_water_dates') return toolFindWaterDates(input || {});
+      if (name === 'open_section') return toolOpenSection(input || {});
+      if (name === 'recall_flying_stars') return toolRecallFlyingStars();
+      if (name === 'open_direction_calculator') return toolOpenDirectionCalc();
+      if (name === 'open_chart_finder') return toolOpenChartFinder();
+      if (name === 'list_houses') return toolListHouses();
+      if (name === 'set_active_house') return toolSetActiveHouse(input || {});
+      if (name === 'load_house') return toolLoadHouse(input || {});
+      if (name === 'load_placement') return toolLoadPlacement(input || {});
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
@@ -328,6 +433,145 @@
     if (!window.QFS || typeof window.QFS.open !== 'function') return { error: 'Qimen-for-flying-stars (QFS) not available on this page.' };
     window.QFS.open();
     return { opened: 'qimen_flying_stars', note: 'Panel opened — the user selects the target profiles/entities, then runs the scan.' };
+  }
+
+  // ── Whole-app tools (state, Water, navigation, houses/placements) ──
+  function toolGetAppState() {
+    var v = function (id) { var e = document.getElementById(id); return e ? (e.value || null) : null; };
+    var pl = personLoaded();
+    var sect = 'main';
+    try { sect = window._fsActiveZone || 'main'; } catch (e) {}
+    return {
+      persons_loaded: (pl.a && pl.b) ? 'A+B' : (pl.a ? 'A' : (pl.b ? 'B' : 'none')),
+      personA: v('person-name'), personB: v('person-name-b'),
+      selectedDate: v('date'), scanStart: v('scan-start'), scanDays: v('scan-days'),
+      purpose: v('purpose-select'),
+      fengShui: {
+        activeSection: sect,
+        houseFacing: v('fs-house-facing'), period: v('fs-period'),
+        doorFacing: v('fs-facing'), water: v('fs-water'),
+        bedPalace: v('fs-bed-palace'), bedSitting: v('fs-bed-sitting'),
+        deskFacing: v('fs-desk-facing')
+      }
+    };
+  }
+
+  function toolFindWaterDates(input) {
+    if (typeof window.fsFindMatchingDatesForSetup !== 'function' || typeof window.fsSlotForDeg !== 'function')
+      return { error: 'The Feng Shui Water date scan is not available on this page.' };
+    if (input.door_facing == null) return { error: 'I need the door/house Facing in degrees (door_facing).' };
+    var fSlot = window.fsSlotForDeg(+input.door_facing);
+    if (typeof window.fsIsZhengShen === 'function' && !window.fsIsZhengShen(fSlot.yun))
+      return { error: 'The Facing is not Zheng Shen (required for Water).' };
+    var wSlot = null;
+    if (input.water != null) {
+      wSlot = window.fsSlotForDeg(+input.water);
+      if (typeof window.fsIsLingShen === 'function' && !window.fsIsLingShen(wSlot.yun))
+        return { error: 'The water position is not Ling Shen (required).' };
+    }
+    var f = document.getElementById('fs-facing'); if (f) f.value = String(input.door_facing);
+    if (input.water != null) { var w = document.getElementById('fs-water'); if (w) w.value = String(input.water); }
+    var days = parseInt(input.days, 10) || 7;
+    var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days');
+    if (ss && !ss.value) ss.value = todayIso();
+    if (sd) sd.value = String(days);
+    var matches;
+    try { matches = window.fsFindMatchingDatesForSetup(fSlot, wSlot); }
+    catch (e) { return { error: 'Water scan failed: ' + ((e && e.message) || e) }; }
+    if (!matches) return { error: 'Set a FROM date and DAYS first (the Water scan uses the toolbar range).' };
+    return {
+      section: 'water', facing: +input.door_facing, water: (input.water != null ? +input.water : null),
+      days: days, count: matches.length,
+      results: matches.slice(0, 15).map(function (m) {
+        return { date: m.isoDate, ganzhi: (m.dGan || '') + (m.dZhi || ''), score: m.score };
+      })
+    };
+  }
+
+  function toolOpenSection(input) {
+    var z = (input.section || '').toLowerCase();
+    if (['water', 'bed', 'desk'].indexOf(z) < 0) return { error: 'section must be water, bed or desk.' };
+    if (typeof window.openFengShui === 'function') { try { window.openFengShui(); } catch (e) {} }
+    if (typeof window.fsSelectZone !== 'function') return { error: 'Cannot navigate sections on this page.' };
+    window.fsSelectZone(z);
+    return { opened_section: z };
+  }
+
+  function toolRecallFlyingStars() {
+    if (typeof window.fsRecallFlyingStars !== 'function') return { error: 'Open a Feng Shui section first.' };
+    window.fsRecallFlyingStars();
+    return { toggled: 'flying_stars_overlay' };
+  }
+
+  function toolOpenDirectionCalc() {
+    if (typeof window.fsOpenDirectionCalc !== 'function') return { error: 'Direction calculator not available on this page.' };
+    window.fsOpenDirectionCalc();
+    return { opened: 'direction_calculator' };
+  }
+
+  function toolOpenChartFinder() {
+    if (!window.FSChartFinder || typeof window.FSChartFinder.open !== 'function') return { error: 'Chart finder not available on this page.' };
+    window.FSChartFinder.open();
+    return { opened: 'chart_finder' };
+  }
+
+  function _activeHousePerson() {
+    if (typeof window.fsGetActivePersonForHouse !== 'function') return null;
+    return window.fsGetActivePersonForHouse();
+  }
+
+  function toolListHouses() {
+    if (typeof window._fsHousesLoad !== 'function') return { error: 'House profiles not available on this page.' };
+    var person = _activeHousePerson();
+    if (!person) return { error: 'No person loaded. Ask the user to load Person A or B.' };
+    var all = window._fsHousesLoad();
+    var houses = all[person.name] || [];
+    var activeIdx = (typeof window._fsActiveHouseGet === 'function') ? window._fsActiveHouseGet(person.name) : 0;
+    return {
+      person: person.name, active_index: activeIdx, count: houses.length,
+      houses: houses.map(function (h, i) {
+        var pl = h.placements || {};
+        return {
+          index: i, name: h.name, houseFacing: h.houseFacing, period: h.period,
+          doors: (h.doors || []).length, aquariums: (h.waters || []).length,
+          placements: { water: (pl.water || []).length, bed: (pl.bed || []).length, desk: (pl.desk || []).length },
+          active: i === activeIdx
+        };
+      })
+    };
+  }
+
+  function toolSetActiveHouse(input) {
+    if (typeof window.fsSetActiveHouse !== 'function') return { error: 'House profiles not available.' };
+    var person = _activeHousePerson();
+    if (!person) return { error: 'No person loaded.' };
+    var idx = parseInt(input.index, 10);
+    if (isNaN(idx)) return { error: 'Provide the house index (from list_houses).' };
+    window.fsSetActiveHouse(person.name, idx);
+    return { active_house_index: idx };
+  }
+
+  function toolLoadHouse(input) {
+    if (typeof window.fsLoadHouse !== 'function') return { error: 'House profiles not available.' };
+    var person = _activeHousePerson();
+    if (!person) return { error: 'No person loaded.' };
+    var idx = parseInt(input.index, 10);
+    if (isNaN(idx)) return { error: 'Provide the house index (from list_houses).' };
+    window.fsLoadHouse(person.name, idx);
+    return { loaded_house_index: idx };
+  }
+
+  function toolLoadPlacement(input) {
+    if (typeof window.fsLoadPlacement !== 'function') return { error: 'Placements not available.' };
+    var person = _activeHousePerson();
+    if (!person) return { error: 'No person loaded.' };
+    var hi = parseInt(input.house_index, 10);
+    var zone = (input.section || '').toLowerCase();
+    var pi = parseInt(input.placement_index, 10);
+    if (isNaN(hi) || ['water', 'bed', 'desk'].indexOf(zone) < 0 || isNaN(pi))
+      return { error: 'Provide house_index, section (water/bed/desk) and placement_index (from list_houses).' };
+    window.fsLoadPlacement(person.name, hi, zone, pi);
+    return { loaded_placement: { house_index: hi, section: zone, placement_index: pi } };
   }
 
   var history = [];   // [{role:'user'|'assistant', content:'...'}]
