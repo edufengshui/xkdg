@@ -422,22 +422,9 @@ function buildFengShuiView(){
 
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
-      <!-- ═══ PURPOSE + SCAN (clone) ═══ -->
-      <div id="fs-direction-filter-bar" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
-        <button onclick="fsOpenDirectionCalc()" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:bold;cursor:pointer;">🧭 DIRECTION</button>
-        <span id="fs-dir-active" style="font-size:11px;color:#1565c0;font-weight:bold;display:none;">🧭 →NW</span>
-        <select id="fs-purpose-clone" onchange="fsSyncPurpose(this.value)" style="padding:6px 10px;border-radius:6px;border:2px solid #1565c0;font-size:13px;font-weight:bold;color:#1565c0;cursor:pointer;">
-          <option value="">— Purpose —</option>
-          <option value="health">🏥 Health</option>
-          <option value="career">💼 Career</option>
-          <option value="wealth">💰 Wealth</option>
-          <option value="relationship">❤️ Relationship</option>
-          <option value="journey">✈️ Journey</option>
-          <option value="speak">🎤 Speak</option>
-          <option value="legal">⚖️ Legal</option>
-        </select>
-        <button onclick="fsSyncPurposeAndScan()" style="background:linear-gradient(135deg,#2e7d32,#43a047);color:#fff;font-weight:bold;font-size:14px;padding:8px 22px;border:2px solid #1b5e20;border-radius:8px;cursor:pointer;box-shadow:0 3px 10px rgba(46,125,50,0.4);">🔎 SCAN</button>
-      </div>
+      <!-- Date-selection controls (DIRECTION / Purpose / SCAN) intentionally removed:
+           the Feng Shui setup must not mix the date-selection wing. Dates appear only
+           as answers to a query (e.g. the Bed / Desk SCAN buttons). -->
 
       <!-- ═══ ⭐ STARS buttons ═══ -->
       <div style="font-size:11px;font-weight:bold;color:#00695c;margin-bottom:4px;">⭐ Stars</div>
@@ -4039,8 +4026,8 @@ window._fsActiveZone = window._fsActiveZone || null;
 
 var FS_ZONES = {
   water: { label: '🌊 Setting up the Water', clone: false },
-  bed:   { label: '🛏 Setting up the Bed',   clone: true  },
-  desk:  { label: '🪑 Setting up the Desk',  clone: true  }
+  bed:   { label: '🛏 Setting up the Bed',   clone: false },
+  desk:  { label: '🪑 Setting up the Desk',  clone: false }
 };
 
 function _fsZoneBtnStyle(active){
@@ -4079,15 +4066,23 @@ function fsSelectZone(zone){
         + (z.clone ? '<span style="font-size:11px;color:#999;margin-left:8px;">clone — section-specific rules coming in a later phase</span>' : '');
     }
     if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
-    // Bed zone shows its dedicated panel; the other zones show the generic tools.
+    // Bed and Desk zones show their dedicated panels; Water shows the generic tools.
     var bedPanel = document.getElementById('fs-bed-panel');
+    var deskPanel = document.getElementById('fs-desk-panel');
     var generic = document.getElementById('fs-generic-tools');
     if (zone === 'bed'){
       if (bedPanel) bedPanel.style.display = 'block';
+      if (deskPanel) deskPanel.style.display = 'none';
       if (generic) generic.style.display = 'none';
       if (typeof fsBedReadChart === 'function') fsBedReadChart();
+    } else if (zone === 'desk'){
+      if (bedPanel) bedPanel.style.display = 'none';
+      if (deskPanel) deskPanel.style.display = 'block';
+      if (generic) generic.style.display = 'none';
+      if (typeof fsDeskReadChart === 'function') fsDeskReadChart();
     } else {
       if (bedPanel) bedPanel.style.display = 'none';
+      if (deskPanel) deskPanel.style.display = 'none';
       if (generic) generic.style.display = 'block';
     }
     if (typeof fsRedraw === 'function') fsRedraw();
@@ -4126,6 +4121,12 @@ function _fsBuildZoneGate(){
     bedPanel.style.display = 'none';
     tools.appendChild(bedPanel);
 
+    // Desk-specific panel — shown only for the Desk zone.
+    var deskPanel = document.createElement('div');
+    deskPanel.id = 'fs-desk-panel';
+    deskPanel.style.display = 'none';
+    tools.appendChild(deskPanel);
+
     // The generic (Water/Desk) tools live in their own wrapper so the Bed zone
     // can hide them and show the Bed panel instead.
     var generic = document.createElement('div');
@@ -4156,6 +4157,7 @@ function _fsBuildZoneGate(){
     fsRoot.appendChild(tools);
 
     if (typeof fsBuildBedPanel === 'function') fsBuildBedPanel();
+    if (typeof fsBuildDeskPanel === 'function') fsBuildDeskPanel();
     fsRenderZoneGate();
     if (window._fsActiveZone) fsSelectZone(window._fsActiveZone);
   } catch(err){ console.warn('_fsBuildZoneGate', err); }
@@ -4624,6 +4626,190 @@ function _fsBedScanHTML(persons, slot, matches){
       + '<strong>' + m.iso + '</strong> · ' + m.dGan + m.dZhi
       + ' <span style="color:#888;">(hex ' + m.dData.hex + ', qi ' + m.dData.qi + ', yun ' + m.dData.yun + ')</span>'
       + '<div style="font-size:11px;color:#555;margin-top:2px;">' + per + '</div>'
+      + '</div>';
+  });
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DESK SECTION — dedicated panel (single active person)
+//  Flow (almost the facing/water flow, but compatibility is vs the PERSON):
+//   • Desk Facing must be Zheng Shen AND compatible with the person who sits
+//     (period/element). If not, suggest the nearest Zheng Shen facing that
+//     suits the person.
+//   • Propitious Water positions: Ling Shen (1-4), within ±FS_WATER_MAX_DEG of
+//     the facing, matching the facing (fsWaterMatchVsFacing) AND suiting the
+//     person.
+//   • SCAN: shared engine with ONE person, placement = the desk facing —
+//     lucky dates to orient the desk and place the moving water.
+//  The person who sits is the active one; switching means loading another
+//  person. When both A and B are loaded, a small selector picks who sits.
+// ═══════════════════════════════════════════════════════════════
+function fsBuildDeskPanel(){
+  var panel = document.getElementById('fs-desk-panel');
+  if (!panel || panel.dataset.built === '1') return;
+  panel.dataset.built = '1';
+  panel.innerHTML =
+    '<div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:10px;padding:12px;">'
+    + '<div style="font-weight:bold;color:#6a1b9a;font-size:15px;margin-bottom:8px;">🪑 Desk — facing &amp; water for the person who sits</div>'
+    + '<div id="fs-desk-person" style="margin-bottom:8px;"></div>'
+    + '<label style="font-size:12px;color:#555;">Desk Facing (°)</label>'
+    + '<input id="fs-desk-facing" type="number" step="0.1" min="0" max="360" placeholder="e.g. 175.5" '
+    + 'oninput="fsDeskReadChart()" style="width:100%;padding:8px;margin:4px 0 8px;border:1px solid #ce93d8;border-radius:6px;font-size:14px;box-sizing:border-box;" />'
+    + '<div id="fs-desk-readout" style="font-size:13px;line-height:1.5;"></div>'
+    + '<div style="margin-top:10px;"><button onclick="fsDeskScan()" style="width:100%;background:linear-gradient(135deg,#6a1b9a,#9c27b0);color:#fff;font-weight:bold;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN lucky dates to set up the desk &amp; water</button></div>'
+    + '<div id="fs-desk-results" style="margin-top:10px;"></div>'
+    + '</div>';
+}
+
+function _fsDeskPerson(){
+  var persons = _fsBedPersons();
+  if (!persons.length) return null;
+  if (persons.length === 1) return persons[0];
+  var who = window._fsDeskWho || 'A';
+  return persons.filter(function(p){ return p.who === who; })[0] || persons[0];
+}
+
+function _fsDeskPersonSelectorHTML(){
+  var persons = _fsBedPersons();
+  if (!persons.length) return '<div style="font-size:12px;color:#c0392b;">No person loaded — load the person who sits at the desk.</div>';
+  if (persons.length === 1){
+    return '<div style="font-size:12px;color:#555;">Person who sits: <strong>' + persons[0].who + '</strong>' + (persons[0].label ? ' <span style="color:#888;">' + persons[0].label + '</span>' : '') + '</div>';
+  }
+  var who = window._fsDeskWho || 'A';
+  return '<div style="font-size:12px;color:#555;margin-bottom:4px;">Person who sits:</div>'
+    + persons.map(function(p){
+        var on = (p.who === who);
+        return '<button onclick="window._fsDeskWho=\'' + p.who + '\';fsDeskReadChart();" style="background:' + (on ? '#9c27b0' : '#eee') + ';color:' + (on ? '#fff' : '#555') + ';border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;margin-right:6px;">' + p.who + (p.label ? ' · ' + p.label : '') + '</button>';
+      }).join('');
+}
+
+function _fsDeskNearestGoodFacing(deg, person){
+  if (!Array.isArray(FS_SLOTS) || !person) return null;
+  var d0 = ((deg % 360) + 360) % 360;
+  var best = null, bestD = Infinity;
+  FS_SLOTS.forEach(function(s){
+    if (!fsIsZhengShen(s.yun)) return;
+    var l = _fsHexConnect(person.qi, person.yun, s.qi, s.yun);
+    if (!(l.periodLink || l.elementLink)) return;
+    var d = fsAngularDist(s.centerDeg, d0);
+    if (d < bestD){ bestD = d; best = s; }
+  });
+  return best;
+}
+
+function _fsDeskWaterList(facingSlot, person){
+  var out = [];
+  if (!Array.isArray(FS_SLOTS)) return out;
+  FS_SLOTS.forEach(function(s){
+    if (s.hexNum === facingSlot.hexNum) return;
+    if (!fsIsLingShen(s.yun)) return;
+    var dist = fsAngularDist(facingSlot.centerDeg, s.centerDeg);
+    if (dist > FS_WATER_MAX_DEG) return;
+    var mLabels = fsWaterMatchVsFacing(facingSlot, s);
+    if (!mLabels.length) return;
+    var pl = person ? _fsHexConnect(person.qi, person.yun, s.qi, s.yun) : null;
+    if (person && !(pl.periodLink || pl.elementLink)) return; // must suit the person
+    out.push({ slot: s, matchLabels: mLabels, link: pl, dist: dist });
+  });
+  out.sort(function(a, b){ return a.dist - b.dist; });
+  return out;
+}
+
+function fsDeskReadChart(){
+  try {
+    var sel = document.getElementById('fs-desk-person');
+    if (sel) sel.innerHTML = _fsDeskPersonSelectorHTML();
+    var box = document.getElementById('fs-desk-readout');
+    if (!box) return;
+    var person = _fsDeskPerson();
+    var fDeg = parseFloat((document.getElementById('fs-desk-facing') || {}).value);
+    if (isNaN(fDeg)){
+      box.innerHTML = '<div style="color:#888;font-size:12px;">Enter the Desk Facing degree to begin.</div>';
+      return;
+    }
+    var slot = fsSlotForDeg(fDeg);
+    var glyph = (typeof fsHexGlyph === 'function') ? fsHexGlyph(slot.hexNum) : ('#' + slot.hexNum);
+    var parts = [];
+    parts.push('<div style="font-size:12px;">Desk Facing hexagram: <strong>' + glyph + '</strong> (hex ' + slot.hexNum + ', qi ' + slot.qi + ', yun ' + slot.yun + ')</div>');
+    var isZS = fsIsZhengShen(slot.yun);
+    parts.push('<div style="font-size:12px;margin-top:2px;">Zheng Shen: ' + (isZS ? '<span style="color:#2e7d32;font-weight:bold;">yes ✓</span>' : '<span style="color:#c0392b;font-weight:bold;">no — the desk facing must be Zheng Shen</span>') + '</div>');
+
+    var compatOk = false;
+    if (!person){
+      parts.push('<div style="font-size:12px;color:#999;margin-top:4px;">Load a person to check compatibility and water positions.</div>');
+    } else {
+      var l = _fsHexConnect(person.qi, person.yun, slot.qi, slot.yun);
+      compatOk = l.periodLink || l.elementLink;
+      var mark = function(b){ return b ? '<span style="color:#2e7d32;font-weight:bold;">✓</span>' : '<span style="color:#bbb;">–</span>'; };
+      parts.push('<div style="font-size:12px;margin-top:4px;"><strong>' + person.who + '</strong> ' + (person.label ? '<span style="color:#888;">' + person.label + '</span> ' : '')
+        + '— period ' + mark(l.periodLink) + ' · element ' + mark(l.elementLink) + ' &nbsp;→ '
+        + (compatOk ? '<span style="color:#2e7d32;font-weight:bold;">compatible</span>' : '<span style="color:#c0392b;font-weight:bold;">not compatible</span>') + '</div>');
+    }
+
+    if (person && (!isZS || !compatOk)){
+      var sug = _fsDeskNearestGoodFacing(fDeg, person);
+      if (sug){
+        parts.push('<div style="margin-top:4px;font-size:12px;color:#6a1b9a;">Nearest Zheng Shen facing that suits the person: <strong>' + sug.centerDeg.toFixed(1) + '°</strong> (hex ' + sug.hexNum + ', yun ' + sug.yun + ') '
+          + '<button onclick="document.getElementById(\'fs-desk-facing\').value=' + sug.centerDeg.toFixed(1) + ';fsDeskReadChart();" style="background:#9c27b0;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:6px;">Use</button></div>');
+      } else {
+        parts.push('<div style="margin-top:4px;font-size:12px;color:#c0392b;">No nearby Zheng Shen facing suits the person.</div>');
+      }
+    }
+
+    if (isZS){
+      var waters = _fsDeskWaterList(slot, person);
+      parts.push('<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e1bee7;"><div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:4px;">Propitious water positions (Ling Shen, within ±' + FS_WATER_MAX_DEG + '°, matching the facing' + (person ? ' &amp; the person' : '') + ')</div>');
+      if (!waters.length){
+        parts.push('<div style="font-size:12px;color:#c0392b;">None found for this facing' + (person ? ' / person' : '') + '.</div>');
+      } else {
+        waters.slice(0, 8).forEach(function(w){
+          var pTxt = '';
+          if (w.link){
+            var bits = [];
+            if (w.link.periodLink) bits.push('period');
+            if (w.link.elementLink) bits.push('element');
+            pTxt = ' · person: ' + bits.join('+');
+          }
+          parts.push('<div style="font-size:12px;margin:2px 0;">💧 <strong>' + w.slot.centerDeg.toFixed(1) + '°</strong> (hex ' + w.slot.hexNum + ', yun ' + w.slot.yun + ') <span style="color:#888;">— ' + w.matchLabels.join(', ') + pTxt + '</span></div>');
+        });
+      }
+      parts.push('</div>');
+    }
+    box.innerHTML = parts.join('');
+  } catch(err){ console.warn('fsDeskReadChart', err); }
+}
+
+function fsDeskScan(){
+  try {
+    var box = document.getElementById('fs-desk-results');
+    if (!box) return;
+    var person = _fsDeskPerson();
+    if (!person){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Load the person who sits first.</div>'; return; }
+    var fDeg = parseFloat((document.getElementById('fs-desk-facing') || {}).value);
+    if (isNaN(fDeg)){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Enter the Desk Facing degree first.</div>'; return; }
+    var slot = fsSlotForDeg(fDeg);
+    if (!fsIsZhengShen(slot.yun)){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">The desk facing must be Zheng Shen before scanning.</div>'; return; }
+    if (!(document.getElementById('scan-start') || {}).value){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Set a FROM date and DAYS in the toolbar first.</div>'; return; }
+    box.innerHTML = '<div style="color:#888;font-size:12px;">Scanning…</div>';
+    var matches = _fsScanLuckyDates([person], slot, 120);
+    box.innerHTML = _fsDeskScanHTML(person, slot, matches);
+  } catch(err){ console.warn('fsDeskScan', err); }
+}
+
+function _fsDeskScanHTML(person, slot, matches){
+  if (!matches.length){
+    return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a facing that better suits the person.</div>';
+  }
+  var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to set up the desk &amp; place the moving water — ' + matches.length + ' found</div>';
+  matches.forEach(function(m){
+    var pp = m.eval.perPerson[0];
+    var pCh = pp.ps.periodLink ? 'facing' : (pp.pd.periodLink ? 'date' : '–');
+    var eCh = pp.ps.elementLink ? 'facing' : (pp.pd.elementLink ? 'date' : '–');
+    html += '<div style="border-top:1px solid #eee;padding:5px 0;font-size:12px;">'
+      + '<strong>' + m.iso + '</strong> · ' + m.dGan + m.dZhi
+      + ' <span style="color:#888;">(hex ' + m.dData.hex + ', qi ' + m.dData.qi + ', yun ' + m.dData.yun + ')</span>'
+      + '<div style="font-size:11px;color:#555;margin-top:2px;"><span style="color:#6a1b9a;font-weight:bold;">' + pp.who + '</span>: period via ' + pCh + ' · element via ' + eCh + '</div>'
       + '</div>';
   });
   return html;
