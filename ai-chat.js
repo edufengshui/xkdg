@@ -35,8 +35,9 @@
     'recalled (recall_flying_stars).\n' +
     '- Houses store Facing/Period + doors + aquariums + saved section settings ("placements"). Tools: ' +
     'list_houses, set_active_house, load_house, load_placement. The active house follows the loaded person.\n' +
-    '- Other panels: Qimen x Flying-Stars (open_qimen_for_flying_stars), Chart finder (open_chart_finder), ' +
-    'Direction calculator (open_direction_calculator), Travel planner (plan_travel + open_travel_planner).\n' +
+    '- Other panels: Qimen x Flying-Stars (open_qimen_for_flying_stars to pick a custom target; or ' +
+    'find_qimen_hours_for_star to scan with a fixed favourable preset for one flying star), Chart finder ' +
+    '(open_chart_finder), Direction calculator (open_direction_calculator), Travel planner (plan_travel + open_travel_planner).\n' +
     '- get_app_state tells you what the user currently has loaded/typed.\n\n' +
     'RULES:\n' +
     '- For anything that finds dates/hours or runs a scan: CALL A TOOL. Never invent dates or scores yourself ' +
@@ -242,6 +243,24 @@
         },
         required: ['direction']
       }
+    },
+    {
+      name: 'find_qimen_hours_for_star',
+      description: 'Qimen x Flying Stars (fixed preset): given a flying star (type water = facing star, or mountain = ' +
+        'sitting star; number 1-9), find the hours that send a FIXED favourable preset to that star\'s palace(s) in ' +
+        'the current house chart: the 4 favourable doors (Open/Rest/Birth/View) and the 3 noble Qi (Yi/Bing/Ding). ' +
+        'A palace matches if it carries at least one of those. Requires House Facing + Period to be set. Returns the ' +
+        'matching hours with palace, Dun/Ju and score. For a custom target selection use open_qimen_for_flying_stars.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          star_type: { type: 'string', enum: ['water', 'mountain'], description: 'water = facing star, mountain = sitting star.' },
+          star_num: { type: 'integer', description: 'Flying star number 1-9.' },
+          days: { type: 'integer', description: 'How many days ahead to scan (default = toolbar range or 7).' },
+          exclude_fuyin: { type: 'boolean', description: 'Optionally skip Fu Yin hours (heaven stem = earth stem).' }
+        },
+        required: ['star_type', 'star_num']
+      }
     }
   ];
 
@@ -265,6 +284,7 @@
       if (name === 'load_house') return toolLoadHouse(input || {});
       if (name === 'load_placement') return toolLoadPlacement(input || {});
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
+      if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
@@ -614,6 +634,34 @@
           date: r.date, weekday: r.weekday, hour: r.hourTime, ganzhi: r.hourHan,
           dun: r.dun, ju: r.ju, score: r.score,
           hits: (r.hits || []).map(function (h) { return { label: h.label, kind: h.cat }; })
+        };
+      })
+    };
+  }
+
+  function toolFindQimenHoursForStar(input) {
+    if (!window.QFS || typeof window.QFS.scanStarPreset !== 'function')
+      return { error: 'The Qimen-for-flying-stars scan is not available on this page.' };
+    var type = (input.star_type || '').toLowerCase();
+    if (type !== 'water' && type !== 'mountain')
+      return { error: "star_type must be 'water' (facing star) or 'mountain' (sitting star)." };
+    var num = parseInt(input.star_num, 10);
+    if (isNaN(num) || num < 1 || num > 9) return { error: 'star_num must be 1-9.' };
+    var opts = {};
+    if (input.days != null) opts.days = parseInt(input.days, 10);
+    if (input.exclude_fuyin) opts.excludeFuYin = true;
+    var r;
+    try { r = window.QFS.scanStarPreset(type, num, opts); }
+    catch (e) { return { error: 'Qimen scan failed: ' + ((e && e.message) || e) }; }
+    if (r && r.error) return { error: r.error, target_palaces: r.palaces };
+    return {
+      scanner: 'qimen_for_flying_stars', star: type + ' ' + num,
+      target_palaces: r.palaces, preset: r.preset, count: r.count,
+      results: (r.results || []).slice(0, 15).map(function (x) {
+        return {
+          date: x.date, weekday: x.weekday, hour: x.hourTime, ganzhi: x.hourHan,
+          palace: x.palaceLbl, dun: x.dun, ju: x.ju, score: x.score,
+          hits: (x.hits || []).map(function (h) { return h.label; })
         };
       })
     };

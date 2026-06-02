@@ -894,8 +894,101 @@
     }
   }
 
+  // ---------------------------------------------------------------
+  // HEADLESS SCAN (for the AI assistant): given a flying star
+  // (type 'water'|'mountain', number 1-9), find the hours that send a
+  // FIXED favourable preset to that star's palace(s):
+  //   • the 4 favourable doors: Open 開 / Rest 休 / Birth 生 / View 景
+  //   • the 3 noble Qi (San Qi): Yi 乙 / Bing 丙 / Ding 丁
+  // A palace matches if it carries AT LEAST ONE of those entities.
+  // Returns data (no DOM), so it can be called programmatically.
+  // ---------------------------------------------------------------
+  function scanStarPreset(type, starN, opts){
+    opts = opts || {};
+    if(typeof Solar === 'undefined') return { error:'lunar-javascript not loaded.' };
+    if(typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getHourChart !== 'function')
+      return { error:'qmdj-water-scanner.js not loaded.' };
+    var chart = getCurrentFSChart();
+    if(!chart) return { error:'Set House Facing and Period first.' };
+    if(type !== 'water' && type !== 'mountain') return { error:"star_type must be 'water' (facing star) or 'mountain' (sitting star)." };
+    starN = parseInt(starN, 10);
+    if(isNaN(starN) || starN < 1 || starN > 9) return { error:'star_num must be 1-9.' };
+
+    var gridIndices = findStarPalaces(chart, type, starN);
+    var fsPalaces = gridIndices
+      .filter(function(g){ return g !== 4; })
+      .map(function(g){ return FS_GRID_TO_QMDJ_PALACE[g]; });
+    if(!fsPalaces.length)
+      return { error:'Star '+starN+' ('+type+') does not appear in any outer palace of this chart.', palaces:[], count:0, results:[] };
+
+    // FIXED favourable preset
+    var wanted = {
+      stems:   new Set(['Yi','Bing','Ding']),
+      doors:   new Set(['Open','Rest','Birth','View']),
+      stars:   new Set(),
+      spirits: new Set()
+    };
+    var excludeFuYin = !!opts.excludeFuYin;
+
+    var range = getRange();
+    var startStr = opts.startStr || range.startStr;
+    var days = parseInt(opts.days, 10) || range.days || 7;
+    if(!startStr) return { error:'Set the FROM date in the toolbar first (or pass a start date).' };
+    var parts = String(startStr).split('-');
+    var startDate = new Date(+parts[0], (+parts[1]) - 1, +parts[2]);
+    if(isNaN(startDate.getTime())) return { error:'Invalid start date.' };
+
+    var out = [];
+    for(var d = 0; d < days; d++){
+      var dt = new Date(startDate.getTime() + d * 86400000);
+      var Y = dt.getFullYear(), M = dt.getMonth() + 1, D = dt.getDate();
+      var dayStemEn = null, dayPillarHan = '';
+      try {
+        var ec = Solar.fromYmd(Y, M, D).getLunar().getEightChar();
+        var dG = ec.getDayGan(), dZ = ec.getDayZhi();
+        dayStemEn = STEM_HAN_TO_EN[dG]; dayPillarHan = dG + dZ;
+      } catch(e){ continue; }
+      if(!dayStemEn) continue;
+      var hours = hourPillarsForDay(dayStemEn);
+      for(var h = 0; h < hours.length; h++){
+        var hp = hours[h], hourChart;
+        try { hourChart = QMDJWaterScanner.getHourChart(Y, M, D, hp.stem, hp.branch); } catch(e){ continue; }
+        if(!hourChart || !hourChart.palaces) continue;
+        for(var pi = 0; pi < fsPalaces.length; pi++){
+          var palace = fsPalaces[pi];
+          var pdata = hourChart.palaces[palace];
+          if(!pdata) continue;
+          if(excludeFuYin && pdata.ti && pdata.ti === pdata.di) continue;
+          var hits = matchPalace(pdata, wanted);
+          if(!hits.length) continue;
+          out.push({
+            date:      Y + '-' + String(M).padStart(2,'0') + '-' + String(D).padStart(2,'0'),
+            weekday:   WEEKDAYS_IT[dt.getDay()],
+            dayPillar: dayPillarHan,
+            palace:    palace,
+            palaceLbl: QMDJ_PALACE_TO_LABEL[palace] || ('P' + palace),
+            hourHan:   hp.han,
+            hourTime:  hp.time,
+            dun:       hourChart.dun,
+            ju:        hourChart.ju,
+            hits:      hits,
+            score:     hits.length
+          });
+        }
+      }
+    }
+    out.sort(function(a, b){ if(a.date !== b.date) return a.date < b.date ? -1 : 1; return b.score - a.score; });
+    return {
+      starType: type, starNum: starN,
+      palaces: fsPalaces.map(function(p){ return QMDJ_PALACE_TO_LABEL[p] || ('P' + p); }),
+      preset: 'Open/Rest/Birth/View doors + Yi/Bing/Ding (San Qi)',
+      count: out.length, results: out
+    };
+  }
+
   window.QFS = {
     open:      open,
+    scanStarPreset: scanStarPreset,
     close:     close,
     selectAll: selectAll,
     selectAllProfiles: selectAllProfiles,
