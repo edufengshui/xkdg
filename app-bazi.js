@@ -2604,6 +2604,20 @@ function _showBackToResults() {
 function renderScanResults(results, mode) {
     const container = document.getElementById('scan-results');
     if (!container) return;
+    // --- AI bridge: expose the rendered list as structured data (Phase E2) ---
+    try {
+        var _blon = parseFloat(document.getElementById('longitude').value);
+        var _butc = parseFloat(document.getElementById('utc-offset').value);
+        var _boff = (_blon - _butc * 15) * 4 - (_dstOn ? 60 : 0);
+        window._lastScanResults = (results || []).map(function (r) {
+            var _hs = HOUR_STARTS[r.hourIndex]; var _lm = (_hs * 60 + 30) - _boff;
+            var _t = ((_lm % 1440) + 1440) % 1440;
+            var _ts = String(Math.floor(_t / 60)).padStart(2, '0') + ':' + String(Math.floor(_t % 60)).padStart(2, '0');
+            return { isoDate: r.isoDate, hourIndex: r.hourIndex, time: _ts, score: r.score, scoreA: r.scoreA, scoreB: r.scoreB };
+        });
+        window._lastScanMode = mode;
+        window._lastScanPurpose = (typeof getPurpose === 'function') ? getPurpose() : '';
+    } catch (e) {}
     container.style.display = 'block';
     var activePurpose = getPurpose();
     var purposeHeader = activePurpose
