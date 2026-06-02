@@ -572,6 +572,7 @@ function openFengShui(){
   buildFengShuiView();
   fsRenderContext();
   fsRenderHouseProfiles();
+  if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
   // Auto-load active house for current person (covers app startup / view switch)
   var person = fsGetActivePersonForHouse();
   if (person) fsAutoLoadHouse(person.name);
@@ -4077,6 +4078,18 @@ function fsSelectZone(zone){
         '<span style="background:#8a6a1f;color:#fff;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:bold;">' + z.label + '</span>'
         + (z.clone ? '<span style="font-size:11px;color:#999;margin-left:8px;">clone — section-specific rules coming in a later phase</span>' : '');
     }
+    if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+    // Bed zone shows its dedicated panel; the other zones show the generic tools.
+    var bedPanel = document.getElementById('fs-bed-panel');
+    var generic = document.getElementById('fs-generic-tools');
+    if (zone === 'bed'){
+      if (bedPanel) bedPanel.style.display = 'block';
+      if (generic) generic.style.display = 'none';
+      if (typeof fsBedReadChart === 'function') fsBedReadChart();
+    } else {
+      if (bedPanel) bedPanel.style.display = 'none';
+      if (generic) generic.style.display = 'block';
+    }
     if (typeof fsRedraw === 'function') fsRedraw();
   } catch(err){ console.warn('fsSelectZone', err); }
 }
@@ -4102,34 +4115,47 @@ function _fsBuildZoneGate(){
     banner.id = 'fs-zone-banner';
     banner.style.cssText = 'margin-bottom:10px;text-align:center;';
     tools.appendChild(banner);
+    // Per-zone, per-person settings panel (Phase B) — sits right under the banner.
+    var zoneSettings = document.createElement('div');
+    zoneSettings.id = 'fs-zone-settings';
+    tools.appendChild(zoneSettings);
 
-    // Stays in the always-visible base: Current context + Flying Stars inputs
-    // + the LUOPAN (canvas + legend), in default 'fs' mode. So entering House
-    // Facing and Period shows the chart right away, before choosing a zone.
+    // Bed-specific panel (Phase D, piece 1) — shown only for the Bed zone.
+    var bedPanel = document.createElement('div');
+    bedPanel.id = 'fs-bed-panel';
+    bedPanel.style.display = 'none';
+    tools.appendChild(bedPanel);
+
+    // The generic (Water/Desk) tools live in their own wrapper so the Bed zone
+    // can hide them and show the Bed panel instead.
+    var generic = document.createElement('div');
+    generic.id = 'fs-generic-tools';
 
     // Gate the XKDG Door block (contains #fs-facing) — a zone tool that sits
-    // above the luopan; move it into tools first to preserve relative order.
+    // above the luopan; move it into the generic wrapper first to preserve order.
     var doorEl = document.getElementById('fs-facing');
     var doorBlock = doorEl;
     while (doorBlock && doorBlock.parentNode !== fsRoot) doorBlock = doorBlock.parentNode;
-    if (doorBlock) tools.appendChild(doorBlock);
+    if (doorBlock) generic.appendChild(doorBlock);
 
     // The luopan mode toggle (FS only / XKDG only / Both) is a section control,
     // not part of the shared base — gate it too.
     var modeEl = document.getElementById('fs-mode-fs');
     var modeToggle = modeEl;
     while (modeToggle && modeToggle.parentNode !== fsRoot) modeToggle = modeToggle.parentNode;
-    if (modeToggle) tools.appendChild(modeToggle);
+    if (modeToggle) generic.appendChild(modeToggle);
 
     // Gate everything AFTER the legend (direction filter, scan, star/XKDG
     // buttons, results, house profiles). The luopan above the legend stays.
     var legend = document.getElementById('fs-legend');
     if (legend){
       var node = legend.nextSibling;
-      while (node){ var next = node.nextSibling; tools.appendChild(node); node = next; }
+      while (node){ var next = node.nextSibling; generic.appendChild(node); node = next; }
     }
+    tools.appendChild(generic);
     fsRoot.appendChild(tools);
 
+    if (typeof fsBuildBedPanel === 'function') fsBuildBedPanel();
     fsRenderZoneGate();
     if (window._fsActiveZone) fsSelectZone(window._fsActiveZone);
   } catch(err){ console.warn('_fsBuildZoneGate', err); }
@@ -4146,3 +4172,256 @@ buildFengShuiView = function(){
   var v = document.getElementById('fengshui-view');
   if (v && v.dataset.built === '1') _fsBuildZoneGate();
 })();
+
+// ═══════════════════════════════════════════════════════════════
+//  PER-ZONE SETTINGS — Phase B (additive)
+//  Each section (water / bed / desk) keeps its OWN list of saved
+//  settings, ISOLATED from the others, and the list FOLLOWS THE
+//  PERSON. Settings are provisional snapshots of the current FS
+//  inputs (House Facing, Period, Door Facing, Water, + optional
+//  manual chart). Adding them to a "house" comes in Phase C.
+//
+//  Store (separate from xkdg_houses):
+//    xkdg_fs_settings = {
+//      "<PersonName>": { water:[s], bed:[s], desk:[s] }
+//    }
+//    s = { name, ts, houseFacing, period, doorFacing, water, manualChart }
+// ═══════════════════════════════════════════════════════════════
+function _fsZsLoad(){
+  try { return JSON.parse(localStorage.getItem('xkdg_fs_settings') || '{}'); }
+  catch(e){ return {}; }
+}
+function _fsZsSave(data){
+  try { localStorage.setItem('xkdg_fs_settings', JSON.stringify(data)); } catch(e){}
+}
+function _fsEsc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function _fsSetVal(id, v){
+  var el = document.getElementById(id);
+  if (el) el.value = (v == null ? '' : v);
+}
+
+function fsSaveZoneSetting(){
+  try {
+    var zone = window._fsActiveZone;
+    if (!FS_ZONES[zone]) return;
+    var person = fsGetActivePersonForHouse();
+    if (!person){ alert('Load a person (A or B) first.'); return; }
+    var hf = (document.getElementById('fs-house-facing') || {}).value || '';
+    var pd = (document.getElementById('fs-period') || {}).value || '';
+    var df = (document.getElementById('fs-facing') || {}).value || '';
+    var wt = (document.getElementById('fs-water') || {}).value || '';
+    if (!hf && !df && !window._fsManualChart){
+      alert('Nothing to save yet — set House Facing / Period (and optionally Door Facing) first.');
+      return;
+    }
+    var name = prompt('Setting name (e.g. "Aquarium SE"):');
+    if (!name || !name.trim()) return;
+    var s = {
+      name: name.trim(),
+      ts: Date.now(),
+      houseFacing: hf,
+      period: pd,
+      doorFacing: df,
+      water: wt,
+      manualChart: window._fsManualChart ? JSON.parse(JSON.stringify(window._fsManualChart)) : null
+    };
+    var all = _fsZsLoad();
+    if (!all[person.name]) all[person.name] = { water: [], bed: [], desk: [] };
+    if (!all[person.name][zone]) all[person.name][zone] = [];
+    all[person.name][zone].push(s);
+    _fsZsSave(all);
+    fsRenderZoneSettings();
+  } catch(err){ console.warn('fsSaveZoneSetting', err); }
+}
+
+function fsLoadZoneSetting(idx){
+  try {
+    var zone = window._fsActiveZone;
+    var person = fsGetActivePersonForHouse();
+    if (!FS_ZONES[zone] || !person) return;
+    var all = _fsZsLoad();
+    var list = ((all[person.name] || {})[zone]) || [];
+    var s = list[idx];
+    if (!s) return;
+    _fsSetVal('fs-house-facing', s.houseFacing);
+    _fsSetVal('fs-period', s.period);
+    _fsSetVal('fs-facing', s.doorFacing);
+    _fsSetVal('fs-water', s.water);
+    window._fsManualChart = s.manualChart ? JSON.parse(JSON.stringify(s.manualChart)) : null;
+    if (typeof fsUpdateManualBadge === 'function') fsUpdateManualBadge();
+    if (typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON){ fsToggleStars(); }
+    else if (typeof fsRedraw === 'function'){ fsRedraw(); }
+  } catch(err){ console.warn('fsLoadZoneSetting', err); }
+}
+
+function fsDeleteZoneSetting(idx){
+  try {
+    var zone = window._fsActiveZone;
+    var person = fsGetActivePersonForHouse();
+    if (!FS_ZONES[zone] || !person) return;
+    var all = _fsZsLoad();
+    var list = (all[person.name] || {})[zone];
+    if (!list || !list[idx]) return;
+    if (!confirm('Delete setting "' + list[idx].name + '"?')) return;
+    list.splice(idx, 1);
+    _fsZsSave(all);
+    fsRenderZoneSettings();
+  } catch(err){ console.warn('fsDeleteZoneSetting', err); }
+}
+
+function fsRenderZoneSettings(){
+  var box = document.getElementById('fs-zone-settings');
+  if (!box) return;
+  var zone = window._fsActiveZone;
+  if (!FS_ZONES[zone]){ box.innerHTML = ''; return; }
+  var person = fsGetActivePersonForHouse();
+  var zoneLabel = FS_ZONES[zone].label;
+
+  var html = '<div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">'
+      + '<span style="font-size:12px;font-weight:bold;color:#8a6a1f;">💾 ' + zoneLabel + ' — settings</span>';
+  if (person){
+    html += '<button onclick="fsSaveZoneSetting()" style="background:#8a6a1f;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">💾 Save current</button>';
+  }
+  html += '</div>';
+
+  if (!person){
+    html += '<div style="font-size:11px;color:#999;">Load a person (A or B) to save and recall this section\'s settings.</div></div>';
+    box.innerHTML = html;
+    return;
+  }
+
+  html += '<div style="font-size:11px;color:#666;margin-bottom:4px;">Person: <strong>' + _fsEsc(person.name) + '</strong> — provisional, isolated to this section.</div>';
+
+  var all = _fsZsLoad();
+  var list = ((all[person.name] || {})[zone]) || [];
+  if (!list.length){
+    html += '<div style="font-size:12px;color:#999;padding:4px 0;">No settings saved yet for this section.</div>';
+  } else {
+    list.forEach(function(s, i){
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-top:1px solid #e6d8a8;">'
+        + '<span style="flex:1;font-size:12px;color:#5a4410;">' + _fsEsc(s.name)
+        + (s.manualChart ? ' <span title="manual chart" style="color:#8a6a1f;">⭐</span>' : '')
+        + '</span>'
+        + '<button onclick="fsLoadZoneSetting(' + i + ')" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;">Load</button>'
+        + '<button onclick="fsDeleteZoneSetting(' + i + ')" title="Delete" style="background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:bold;cursor:pointer;">✕</button>'
+        + '</div>';
+    });
+  }
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BED SECTION — piece 1 (additive): inputs + read chart + ZS gate
+//  Inputs: Bed palace (one of 8 directions) + Bed Sitting (°).
+//  Outputs: the 3 flying stars of the bed's palace (Mountain 山
+//  highlighted), and the sitting hexagram (from the 64-hex ring at
+//  the Bed Sitting degree). The sitting hexagram MUST be Zheng Shen
+//  (yun 6–9, or 1–4 post-2044); if not, suggest the nearest ZS sitting.
+//  Person compatibility (period/element) + SCAN come in pieces 2–3.
+// ═══════════════════════════════════════════════════════════════
+function _fsGetActiveChart(){
+  if (window._fsManualChart) return window._fsManualChart;
+  if (typeof FlyingStars === 'undefined') return null;
+  var hf = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+  var pd = parseInt((document.getElementById('fs-period') || {}).value, 10);
+  if (isNaN(hf) || isNaN(pd) || pd < 1 || pd > 9) return null;
+  try { return FlyingStars.calculate(pd, fsMountainCharFromDeg(hf)); }
+  catch(e){ return null; }
+}
+
+function _fsBedNearestZS(deg){
+  if (!Array.isArray(FS_SLOTS)) return null;
+  var d0 = ((deg % 360) + 360) % 360;
+  var best = null, bestD = Infinity;
+  FS_SLOTS.forEach(function(s){
+    if (!fsIsZhengShen(s.yun)) return;
+    var d = fsAngularDist(s.centerDeg, d0);
+    if (d < bestD){ bestD = d; best = s; }
+  });
+  return best;
+}
+
+function fsBuildBedPanel(){
+  var panel = document.getElementById('fs-bed-panel');
+  if (!panel || panel.dataset.built === '1') return;
+  panel.dataset.built = '1';
+  panel.innerHTML =
+    '<div style="background:#f3e5f5;border:1px solid #9c27b0;border-radius:8px;padding:10px;margin-bottom:10px;">'
+    + '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:8px;">🛏 Bed setup</div>'
+    + '<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">'
+      + '<div style="flex:1;min-width:130px;">'
+        + '<label style="font-size:11px;color:#666;display:block;">Bed palace (where the bed is)</label>'
+        + '<select id="fs-bed-palace" onchange="fsBedReadChart()" style="width:100%;padding:6px;border:1px solid #9c27b0;border-radius:4px;font-size:14px;">'
+          + '<option value="">— select —</option>'
+          + '<option value="N">N 坎</option><option value="NE">NE 艮</option><option value="E">E 震</option><option value="SE">SE 巽</option>'
+          + '<option value="S">S 離</option><option value="SW">SW 坤</option><option value="W">W 兌</option><option value="NW">NW 乾</option>'
+        + '</select>'
+      + '</div>'
+      + '<div style="flex:1;min-width:130px;">'
+        + '<label style="font-size:11px;color:#666;display:block;">Bed Sitting (°) — headboard</label>'
+        + '<input type="number" id="fs-bed-sitting" min="0" max="360" step="0.1" placeholder="e.g. 0" oninput="fsBedReadChart()" style="width:100%;padding:6px;border:1px solid #9c27b0;border-radius:4px;font-size:14px;">'
+      + '</div>'
+    + '</div>'
+    + '<div id="fs-bed-readout" style="margin-top:10px;font-size:13px;line-height:1.5;"></div>'
+    + '</div>';
+}
+
+function fsBedReadChart(){
+  try {
+    var box = document.getElementById('fs-bed-readout');
+    if (!box) return;
+    var dir = (document.getElementById('fs-bed-palace') || {}).value || '';
+    var sitDeg = parseFloat((document.getElementById('fs-bed-sitting') || {}).value);
+    var parts = [];
+
+    // ── Palace 3 stars (Mountain highlighted) ──
+    if (!dir){
+      parts.push('<div style="color:#999;">Select the bed palace.</div>');
+    } else {
+      var chart = _fsGetActiveChart();
+      if (!chart){
+        parts.push('<div style="color:#c0392b;">Enter House Facing + Period (or set a ⭐ Manual chart) in the base above to read the palace stars.</div>');
+      } else {
+        var di = (typeof FlyingStars !== 'undefined' && FlyingStars.DIR_TO_INDEX) ? FlyingStars.DIR_TO_INDEX[dir] : null;
+        if (di == null){
+          parts.push('<div style="color:#c0392b;">Unknown palace.</div>');
+        } else {
+          var mt = chart.sittingStars[di], bs = chart.baseStars[di], fc = chart.facingStars[di];
+          parts.push('<div style="margin-bottom:6px;">Palace <strong>' + dir + '</strong>: '
+            + '<span style="color:#0a6e1f;font-weight:bold;">山 ' + mt + '</span> · '
+            + '<span style="color:#1a1008;">運 ' + bs + '</span> · '
+            + '<span style="color:#cc0000;">向 ' + fc + '</span> '
+            + '<span style="background:#0a6e1f;color:#fff;border-radius:6px;padding:1px 8px;font-size:11px;margin-left:4px;">Mountain ★ ' + mt + '</span></div>');
+        }
+      }
+    }
+
+    // ── Sitting hexagram + Zheng Shen gate ──
+    if (isNaN(sitDeg)){
+      parts.push('<div style="color:#999;">Enter the Bed Sitting degree.</div>');
+    } else {
+      var slot = fsSlotForDeg(sitDeg);
+      var glyph = (typeof fsHexGlyph === 'function') ? fsHexGlyph(slot.hexNum) : ('#' + slot.hexNum);
+      parts.push('<div style="margin-bottom:4px;">Sitting hexagram: <strong>' + glyph + ' hex ' + slot.hexNum + '</strong> · qi ' + slot.qi + ' · yun ' + slot.yun + '</div>');
+      var zsRange = (typeof FS_POST_2044 !== 'undefined' && FS_POST_2044) ? '1–4' : '6–9';
+      if (fsIsZhengShen(slot.yun)){
+        parts.push('<div style="color:#2e7d32;font-weight:bold;">正神 Zheng Shen ✓ (yun ' + slot.yun + ')</div>');
+      } else {
+        parts.push('<div style="color:#c0392b;font-weight:bold;">NOT Zheng Shen ✗ (yun ' + slot.yun + ') — the sitting hexagram must be yun ' + zsRange + '.</div>');
+        var sug = _fsBedNearestZS(sitDeg);
+        if (sug){
+          parts.push('<div style="margin-top:4px;color:#6a1b9a;">Nearest Zheng Shen sitting: <strong>' + sug.centerDeg.toFixed(1) + '°</strong> (hex ' + sug.hexNum + ', yun ' + sug.yun + ') '
+            + '<button onclick="document.getElementById(\'fs-bed-sitting\').value=' + sug.centerDeg.toFixed(1) + ';fsBedReadChart();" style="background:#9c27b0;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:6px;">Use</button></div>');
+        }
+      }
+    }
+
+    box.innerHTML = parts.join('');
+  } catch(err){ console.warn('fsBedReadChart', err); }
+}
