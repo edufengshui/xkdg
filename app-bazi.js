@@ -6453,6 +6453,7 @@ const _HASHED_CODES = [
     { h: 'b0ff7bdc481ed43adf5168e51d73264887136b603fd0fb372530a689e15a29e7', t: 0, e: null }, // Chee
     { h: '1b8c0f70737fd82ae7f9a852851003ce7a567ed20cf8674d1781c22bb5d8523d', t: 0, e: null },
     { h: '38a8a3d7680c6ee9b31c99bca343c76cbb47d912b1e683d229fd629f9b28684f', t: 1, e: '2027-02-03' }, // Student 9316 — Wei year
+    { h: '29e3ab78dfb38ec35c420a18e3cf5ee8b69de22b308545738c64982c980eccd1', t: 2, e: '2027-02-04', dmax: '2027-02-04' }, // Student 020620 — capped to 4 Feb 2027 (inclusive)
 ];
 
 async function hashPin(pin) {
@@ -6499,7 +6500,7 @@ function checkLicense() {
             const today = new Date().toISOString().split('T')[0];
             if (today > lic.expiry) {
                 showLicenseBar(`⚠ License expired ${lic.expiry} — access limited to licensed year range`, '#fff3e0', '#e65100');
-                applyTierRestrictions(lic.tier);
+                applyTierRestrictions(lic.tier, lic.maxDate);
                 setNow();
                 return;
             }
@@ -6507,14 +6508,31 @@ function checkLicense() {
         const tierLabel = lic.tier === 0 ? 'Unlimited' : `${lic.tier}-Year`;
         const exp = lic.expiry ? ` · Expires ${lic.expiry}` : '';
         showLicenseBar(`✓ Licensed: ${tierLabel}${exp}`, '#e8f5e9', '#2e7d32');
-        applyTierRestrictions(lic.tier);
+        applyTierRestrictions(lic.tier, lic.maxDate);
         setNow();
     } catch(e) { showLicenseOverlay(); }
 }
 
-function applyTierRestrictions(tier) {
+function applyTierRestrictions(tier, maxDate) {
     window._licenseTier = tier;
-    const range = getAllowedDateRange(tier);
+    let range = getAllowedDateRange(tier);
+
+    // Per-student hard cap (e.g. "no dates beyond 4 Feb 2027"): caps the END
+    // of whatever the tier allows. Applies ONLY when the student's code carries
+    // a `dmax`, so other students keep their normal tier behavior.
+    if (maxDate) {
+        if (range) {
+            if (range.end > maxDate) range.end = maxDate;
+        } else {
+            const idx = getCurrentChineseYearIndex();
+            const start = (idx >= 0) ? CHINESE_YEAR_STARTS[idx].start : '1900-01-01';
+            range = { start: start, end: maxDate };
+        }
+        window._licenseMaxDate = maxDate;
+    } else {
+        window._licenseMaxDate = null;
+    }
+
     window._licenseRange = range;
     if (range) {
         // Set FROM date constraints
@@ -6527,6 +6545,51 @@ function applyTierRestrictions(tier) {
             if (startInput.value > range.end)   startInput.value = range.end;
         }
     }
+
+    // Message-on-attempt + main date picker bounds — ONLY for an explicit cap.
+    if (maxDate && range) {
+        const dateInput = document.getElementById('date');
+        if (dateInput) { dateInput.min = range.start; dateInput.max = range.end; }
+        _xkdgAttachCapGuards();
+    }
+}
+
+// Shows a transient message when a capped student tries to go past the limit.
+function _xkdgCapMessage() {
+    const cap = window._licenseMaxDate;
+    if (!cap) return;
+    let label = cap;
+    try {
+        label = new Date(cap + 'T00:00:00').toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
+    } catch(e){}
+    let toast = document.getElementById('xkdg-cap-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'xkdg-cap-toast';
+        toast.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#c62828;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:bold;box-shadow:0 3px 12px rgba(0,0,0,0.3);z-index:99999;max-width:90%;text-align:center;';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = 'Access is limited to dates up to ' + label + '.';
+    toast.style.display = 'block';
+    clearTimeout(window._xkdgCapToastT);
+    window._xkdgCapToastT = setTimeout(function(){ if (toast) toast.style.display = 'none'; }, 3500);
+}
+
+// Attaches once: clamps #date and #scan-start to the allowed range and warns.
+function _xkdgAttachCapGuards() {
+    if (window._xkdgCapGuardsOn) return;
+    window._xkdgCapGuardsOn = true;
+    function guard(el) {
+        if (!el) return;
+        el.addEventListener('change', function(){
+            const r = window._licenseRange;
+            if (!r || !window._licenseMaxDate || !el.value) return;
+            if (el.value > r.end) { el.value = r.end; _xkdgCapMessage(); }
+            else if (el.value < r.start) { el.value = r.start; }
+        });
+    }
+    guard(document.getElementById('date'));
+    guard(document.getElementById('scan-start'));
 }
 
 function isDateAllowed(isoDate) {
@@ -6564,45 +6627,21 @@ async function submitPin() {
     let validated = false;
     let tier = 0;
     let expiry = null;
+    let maxDate = null;
 
-    // Try Netlify server validation first
-    try {
-        const response = await fetch('/.netlify/functions/validate-pin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin })
-        });
-        if (response.ok) {
-            const data = await response.json();
-            if (data.valid) {
-                validated = true;
-                tier = data.tier;
-                expiry = data.expiry;
-            } else {
-                errorEl.textContent = data.error || 'Invalid PIN. Please try again.';
-                btn.textContent = 'UNLOCK';
-                btn.disabled = false;
-                return;
-            }
-        }
-    } catch (err) {
-        // Netlify not available — fall back to local SHA-256
-        console.log('Server unavailable, using local validation');
-    }
-
-    // Fallback: SHA-256 local check
-    if (!validated) {
-        const hashed = await hashPin(pin);
-        const match = _HASHED_CODES.find(c => c.h === hashed);
-        if (match) {
-            validated = true;
-            tier = match.t;
-            expiry = match.e;
-        }
+    // Validation is LOCAL (SHA-256). The old Netlify server endpoint is no
+    // longer used — the site is served directly from GitHub Pages.
+    const hashed = await hashPin(pin);
+    const match = _HASHED_CODES.find(c => c.h === hashed);
+    if (match) {
+        validated = true;
+        tier = match.t;
+        expiry = match.e;
+        maxDate = match.dmax || null;
     }
 
     if (validated) {
-        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry }));
+        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate }));
         document.getElementById('license-overlay').style.display = 'none';
         checkLicense();
         setNow();

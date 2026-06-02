@@ -4420,8 +4420,92 @@ function fsBedReadChart(){
             + '<button onclick="document.getElementById(\'fs-bed-sitting\').value=' + sug.centerDeg.toFixed(1) + ';fsBedReadChart();" style="background:#9c27b0;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:6px;">Use</button></div>');
         }
       }
+
+      // ── Person compatibility (Piece 2): period / element links ──
+      parts.push(_fsBedCompatHTML(slot));
     }
 
     box.innerHTML = parts.join('');
   } catch(err){ console.warn('fsBedReadChart', err); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BED SECTION — piece 2 (additive): person ↔ sitting compatibility
+//  Rules (same as Main): a hexagram connects via PERIOD when the two
+//  yun form a Hetu pair (1-6,2-7,3-8,4-9) or an Adding pair (sum
+//  5/10/15); via ELEMENT when the two qi do the same. A person is
+//  compatible with the sitting hexagram if at least one link holds.
+//  If incompatible, suggest the nearest Zheng Shen sitting that is
+//  compatible with every loaded person. (The two-person combined
+//  verdict + lucky dates, incl. the crossed rule, are SCAN / piece 3.)
+// ═══════════════════════════════════════════════════════════════
+function _fsHexConnect(qi1, yun1, qi2, yun2){
+  var add = function(a, b){ var s = a + b; return s === 5 || s === 10 || s === 15; };
+  return {
+    periodLink:  (typeof isHetuPair === 'function' && isHetuPair(yun1, yun2)) || add(yun1, yun2),
+    elementLink: (typeof isHetuPair === 'function' && isHetuPair(qi1, qi2))  || add(qi1, qi2)
+  };
+}
+
+function _fsBedPersons(){
+  var c = (typeof fsGetCurrentContext === 'function') ? fsGetCurrentContext() : {};
+  var arr = [];
+  if (c.pAHex != null) arr.push({ who: 'A', label: c.pALabel || '', qi: c.pAQi, yun: c.pAYun });
+  if (c.pBHex != null) arr.push({ who: 'B', label: c.pBLabel || '', qi: c.pBQi, yun: c.pBYun });
+  return arr;
+}
+
+function _fsBedNearestCompatibleZS(deg, persons){
+  if (!Array.isArray(FS_SLOTS) || !persons.length) return null;
+  var d0 = ((deg % 360) + 360) % 360;
+  var best = null, bestD = Infinity;
+  FS_SLOTS.forEach(function(s){
+    if (!fsIsZhengShen(s.yun)) return;
+    var allOk = persons.every(function(p){
+      var l = _fsHexConnect(p.qi, p.yun, s.qi, s.yun);
+      return l.periodLink || l.elementLink;
+    });
+    if (!allOk) return;
+    var d = fsAngularDist(s.centerDeg, d0);
+    if (d < bestD){ bestD = d; best = s; }
+  });
+  return best;
+}
+
+function _fsBedCompatHTML(slot){
+  var persons = _fsBedPersons();
+  if (!persons.length){
+    return '<div style="margin-top:8px;font-size:12px;color:#999;">Load a person (A or B) to check compatibility with this sitting.</div>';
+  }
+  var mark = function(b){ return b ? '<span style="color:#2e7d32;font-weight:bold;">✓</span>' : '<span style="color:#bbb;">–</span>'; };
+  var html = '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e1bee7;">'
+    + '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:4px;">Compatibility with the sitting hexagram</div>';
+  var anyIncompat = false;
+  persons.forEach(function(p){
+    var l = _fsHexConnect(p.qi, p.yun, slot.qi, slot.yun);
+    var ok = l.periodLink || l.elementLink;
+    if (!ok) anyIncompat = true;
+    html += '<div style="font-size:12px;margin:2px 0;">'
+      + '<strong>' + p.who + '</strong> ' + (p.label ? '<span style="color:#888;">' + p.label + '</span> ' : '')
+      + '— period ' + mark(l.periodLink) + ' · element ' + mark(l.elementLink) + ' &nbsp;→ '
+      + (ok ? '<span style="color:#2e7d32;font-weight:bold;">compatible</span>'
+            : '<span style="color:#c0392b;font-weight:bold;">not compatible</span>')
+      + '</div>';
+  });
+  if (anyIncompat){
+    var sit = parseFloat((document.getElementById('fs-bed-sitting') || {}).value);
+    var sug = isNaN(sit) ? null : _fsBedNearestCompatibleZS(sit, persons);
+    if (sug){
+      html += '<div style="margin-top:4px;font-size:12px;color:#6a1b9a;">Suggested sitting compatible with '
+        + (persons.length > 1 ? 'both' : 'the person') + ': <strong>' + sug.centerDeg.toFixed(1) + '°</strong> (hex ' + sug.hexNum + ', yun ' + sug.yun + ') '
+        + '<button onclick="document.getElementById(\'fs-bed-sitting\').value=' + sug.centerDeg.toFixed(1) + ';fsBedReadChart();" style="background:#9c27b0;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:6px;">Use</button></div>';
+    } else {
+      html += '<div style="margin-top:4px;font-size:12px;color:#c0392b;">No nearby Zheng Shen sitting is compatible with ' + (persons.length > 1 ? 'both persons' : 'the person') + '.</div>';
+    }
+  }
+  if (persons.length > 1){
+    html += '<div style="margin-top:4px;font-size:11px;color:#888;">Two people: the combined verdict and the lucky dates (including the crossed period/element rule) come from SCAN — next piece.</div>';
+  }
+  html += '</div>';
+  return html;
 }
