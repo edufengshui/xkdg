@@ -1220,7 +1220,7 @@
     var listWrap = el('div', {});
     block.appendChild(listWrap);
 
-    findBtn.addEventListener('click', function () {
+    function runChargerSearch(auto) {
       listWrap.innerHTML = '';
       var ocmRealEl = document.getElementById('tp-ocm-key');
       var ocmEditEl = document.getElementById('tp-ocm-key-edit');
@@ -1300,14 +1300,29 @@
             row.appendChild(info); row.appendChild(addBtn);
             listWrap.appendChild(row);
           });
+          if (auto) {
+            var best = rows[0];
+            var ex = document.getElementById('tp-extra-wp');
+            if (best && ex) {
+              var token = best.s.lat.toFixed(5) + ',' + best.s.lon.toFixed(5);
+              if ((ex.value || '').indexOf(token) < 0) {
+                ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
+                ex.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+              status.textContent += ' · best stop added to the Maps export.';
+            }
+          }
         })
         .catch(function (err) {
           status.style.color = '#b00';
           status.textContent = 'Charging lookup failed: ' + err.message + '. Check the OCM key / connection.';
         });
-    });
+    }
+    findBtn.addEventListener('click', function () { runChargerSearch(false); });
 
     container.appendChild(block);
+    // When opened by the AI, run the charger search automatically (one-shot) and add the best stop to the Maps export.
+    if (window._tpAutoChargers) { window._tpAutoChargers = false; setTimeout(function () { try { runChargerSearch(true); } catch (e) {} }, 60); }
   }
 
   /* ---- PHASE D: Google Maps export panel --------------------------------- *
@@ -2100,6 +2115,8 @@
   // durationH, utc, rangeKm, reserveKm, charges, worker, run (default true).
   function tpOpenPrefilled(params) {
     params = params || {};
+    window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
+    window._tpAutoChargers = (params.autoChargers !== false);  // auto-run "Find charging stops" after the plan
     tpOpen();
     window._tpNames = {
       origin: params.originName || (window._tpNames && window._tpNames.origin) || 'Origin',

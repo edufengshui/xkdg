@@ -71,6 +71,9 @@
     'says they want maximum luck regardless of time.\n' +
     '- For an electric car, if the user stated the autonomy/range, pass it as range_km - do NOT ask again. ' +
     'reserve_km is optional: if not given, omit it or assume ~20 km (say so briefly), never block to ask for it. ' +
+    'When range_km is passed, the planner finds the charging stops automatically (Tesla + Electra) and adds the ' +
+    'best to the Maps export - never tell the user to tap "Find charging stops". The only manual thing ever needed ' +
+    'is saving their Open Charge Map key once; if it is missing the charging panel says so. ' +
     'For a quick direction + time-window answer without opening the panel, use plan_travel. Call ' +
     'open_travel_planner with no arguments only to show a blank planner.\n' +
     '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
@@ -161,8 +164,9 @@
       name: 'open_travel_planner',
       description: 'Open the full Travel Planner. If you pass the route (origin_lat/lon + dest_lat/lon, ideally with ' +
         'names and depart_date/depart_hour), it opens PRE-FILLED and immediately RUNS the real road plan. For an ' +
-        'electric-car trip, also pass range_km (autonomy) and reserve_km (safety margin) so Range & charging is ' +
-        'set up (the user then taps "Find charging stops", which needs their Open Charge Map key). Call with NO ' +
+        'electric-car trip, also pass range_km (autonomy) and reserve_km (safety margin): the planner then ' +
+        'automatically finds the charging stops (Tesla + Electra) and adds the best one to the Maps export - no ' +
+        'manual button. This needs the user\'s Open Charge Map key saved once in the planner. Call with NO ' +
         'arguments to just show a blank planner. To get a quick direction/time answer without opening the panel, ' +
         'use plan_travel instead.',
       input_schema: {
@@ -539,8 +543,11 @@
           range_km: (input.range_km != null) ? +input.range_km : null,
           reserve_km: (input.reserve_km != null) ? +input.reserve_km : null
         },
-        note: 'The planner is open and computing the real road route. If range_km/reserve_km were given they are ' +
-          'filled in Range & charging; the user can then tap "Find charging stops" (that needs their Open Charge Map key).'
+        note: 'The planner is open and computing the real road route. If range_km/reserve_km were given, it also ' +
+          'runs the charging-stop search automatically (Tesla + Electra) and adds the best stop to the Google Maps ' +
+          'export - no button to tap. This needs the user\'s Open Charge Map key to have been saved once in the ' +
+          'planner; if it is missing, the charging panel will say so and they just paste the key there one time. ' +
+          'Do NOT tell the user to press "Find charging stops" - it is automatic.'
       };
     }
     if (typeof window.tpOpen === 'function') { window.tpOpen(); return { opened: 'travel_planner_blank' }; }
