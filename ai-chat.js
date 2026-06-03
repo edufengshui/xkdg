@@ -21,8 +21,9 @@
   var SYSTEM_PROMPT =
     'You are the assistant built into the "XKDG Bazi Calculator", a PWA for Bazi, Feng Shui and ' +
     'Qimen Dun Jia date/direction selection. You can both ANSWER questions about any part of the app ' +
-    'and OPERATE it via the provided tools, then explain results in plain language. Always answer in the ' +
-    'language the user writes in.\n\n' +
+    'and OPERATE it via the provided tools, then explain results in plain language. You support Italian, English ' +
+    'and French: detect the language of each user message (typed or spoken) and ALWAYS reply in that same ' +
+    'language, switching if the user switches.\n\n' +
     'MAP OF THE APP (use it to guide on anything):\n' +
     '- Two wings: (1) Date selection (Bazi) and (2) Feng Shui. They are kept separate in setup and only ' +
     'meet as the ANSWER to a query.\n' +
@@ -773,13 +774,24 @@
 
     var header = elc('div', { style: 'display:flex;align-items:center;gap:8px;padding:10px 12px;background:#6a1b9a;color:#fff;' });
     header.appendChild(elc('div', { style: 'flex:1;font-weight:700;font-size:15px;' }, '💬 XKDG Assistant'));
+    var langSel = elc('select', { id: 'xkdg-ai-lang', title: 'Voice language',
+      style: 'border:0;border-radius:6px;background:rgba(255,255,255,.18);color:#fff;font-size:12px;padding:2px 4px;cursor:pointer;' });
+    [['auto', '🌐'], ['it', 'IT'], ['en', 'EN'], ['fr', 'FR']].forEach(function (o) {
+      var op = document.createElement('option');
+      op.value = o[0]; op.textContent = o[1]; op.style.color = '#222';
+      langSel.appendChild(op);
+    });
     var gear = elc('button', { id: 'xkdg-ai-gear', title: 'Set AI worker URL',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '⚙');
     var clearBtn = elc('button', { id: 'xkdg-ai-clear', title: 'Clear conversation',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🗑');
+    var speakerBtn = elc('button', { id: 'xkdg-ai-speak', title: 'Read replies aloud',
+      style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🔇');
+    var hfBtn = elc('button', { id: 'xkdg-ai-hf', title: 'Hands-free driving mode (wake word)',
+      style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🚗');
     var closeBtn = elc('button', { id: 'xkdg-ai-close', title: 'Close',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '✕');
-    header.appendChild(gear); header.appendChild(clearBtn); header.appendChild(closeBtn);
+    header.appendChild(langSel); header.appendChild(gear); header.appendChild(speakerBtn); header.appendChild(hfBtn); header.appendChild(clearBtn); header.appendChild(closeBtn);
     panel.appendChild(header);
 
     var msgs = elc('div', { id: 'xkdg-ai-msgs',
@@ -792,19 +804,221 @@
     var inputRow = elc('div', { style: 'display:flex;gap:6px;padding:10px 12px;border-top:1px solid #eee;' });
     var input = elc('textarea', { id: 'xkdg-ai-input', rows: '1', placeholder: 'Ask something…',
       style: 'flex:1;resize:none;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;max-height:90px;' });
+    var mic = elc('button', { id: 'xkdg-ai-mic', title: 'Speak your message',
+      style: 'border:0;border-radius:8px;background:#ede7f3;color:#6a1b9a;font-size:18px;padding:8px 12px;cursor:pointer;' }, '🎤');
     var send = elc('button', { id: 'xkdg-ai-send',
       style: 'border:0;border-radius:8px;background:#6a1b9a;color:#fff;font-size:14px;font-weight:600;padding:8px 14px;cursor:pointer;' }, 'Send');
-    inputRow.appendChild(input); inputRow.appendChild(send);
+    inputRow.appendChild(input); inputRow.appendChild(mic); inputRow.appendChild(send);
     panel.appendChild(inputRow);
 
     document.body.appendChild(panel);
+
+    // ── Voice: dictation (Speech-to-Text) + spoken replies (Text-to-Speech) ──
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var synth = window.speechSynthesis;
+    var LANG_BCP = { it: 'it-IT', en: 'en-US', fr: 'fr-FR' };
+    var selectedLang = 'auto';
+    try { selectedLang = localStorage.getItem('xkdg_ai_lang') || 'auto'; } catch (e) {}
+    // Language the mic listens in (recognition can't auto-detect, so the selector decides).
+    function recogLang() {
+      if (selectedLang !== 'auto' && LANG_BCP[selectedLang]) return LANG_BCP[selectedLang];
+      return navigator.language || 'it-IT';
+    }
+    // Rough it/en/fr detection so spoken replies use the language of the REPLY.
+    function detectLang(text) {
+      var t = ' ' + String(text || '').toLowerCase().replace(/[^a-zàâäéèêëïîôöùûüç\s]/g, ' ') + ' ';
+      var sets = {
+        it: [' il ', ' lo ', ' gli ', ' che ', ' è ', ' sei ', ' oggi ', ' viaggio ', ' ore ', ' partenza ', ' buongiorno ', ' grazie ', ' direzione ', ' fortunato ', ' della '],
+        en: [' the ', ' is ', ' you ', ' today ', ' travel ', ' hours ', ' leave ', ' hello ', ' thanks ', ' yes ', ' direction ', ' lucky ', ' route ', ' your '],
+        fr: [' le ', ' la ', ' les ', ' est ', ' vous ', ' aujourd ', ' voyage ', ' heures ', ' partir ', ' bonjour ', ' merci ', ' oui ', ' direction ', ' chance ', ' votre ']
+      };
+      var best = null, bestN = 0;
+      Object.keys(sets).forEach(function (k) {
+        var n = 0; sets[k].forEach(function (w) { if (t.indexOf(w) >= 0) n++; });
+        if (n > bestN) { bestN = n; best = k; }
+      });
+      return bestN >= 2 ? best : null;
+    }
+    function pickVoice(bcp) {
+      try {
+        var vs = (synth && synth.getVoices) ? synth.getVoices() : [];
+        var two = bcp.slice(0, 2).toLowerCase();
+        for (var i = 0; i < vs.length; i++) if ((vs[i].lang || '').toLowerCase().indexOf(two) === 0) return vs[i];
+      } catch (e) {}
+      return null;
+    }
+    try { if (synth && synth.getVoices) { synth.getVoices(); synth.onvoiceschanged = function () { try { synth.getVoices(); } catch (e) {} }; } } catch (e) {}
+    var listening = false, recog = null, ttsOn = false;
+    try { ttsOn = localStorage.getItem('xkdg_ai_tts') === '1'; } catch (e) {}
+
+    // Voice-language selector (filled/handled here; the <select> was created in the header).
+    if (typeof langSel !== 'undefined' && langSel) {
+      langSel.value = selectedLang;
+      langSel.addEventListener('change', function () {
+        selectedLang = langSel.value || 'auto';
+        try { localStorage.setItem('xkdg_ai_lang', selectedLang); } catch (e) {}
+        setStatus('Voice language: ' + (selectedLang === 'auto' ? 'Auto' : selectedLang.toUpperCase()));
+      });
+    }
+
+    function refreshSpeakerBtn() {
+      speakerBtn.textContent = ttsOn ? '🔊' : '🔇';
+      speakerBtn.title = ttsOn ? 'Replies read aloud (tap to mute)' : 'Read replies aloud';
+    }
+    refreshSpeakerBtn();
+    if (!synth) speakerBtn.style.display = 'none';
+
+    function speak(text) {
+      if (!ttsOn || !synth || !text) return;
+      try {
+        var clean = String(text).replace(/[\u2600-\u27BF\uE000-\uF8FF\uD83C-\uDBFF\uDC00-\uDFFF✓✗•·→]/g, '').trim();
+        if (!clean) return;
+        synth.cancel();
+        var u = new SpeechSynthesisUtterance(clean);
+        // Speak in the language of the reply; fall back to the selected/auto language.
+        var lc = detectLang(clean) || (selectedLang !== 'auto' ? selectedLang : ((navigator.language || 'en').slice(0, 2)));
+        var bcp = LANG_BCP[lc] || navigator.language || 'en-US';
+        u.lang = bcp;
+        var v = pickVoice(bcp); if (v) u.voice = v;
+        synth.speak(u);
+      } catch (e) {}
+    }
+    function stopSpeaking() { try { if (synth) synth.cancel(); } catch (e) {} }
+
+    speakerBtn.addEventListener('click', function () {
+      ttsOn = !ttsOn;
+      try { localStorage.setItem('xkdg_ai_tts', ttsOn ? '1' : '0'); } catch (e) {}
+      if (!ttsOn) stopSpeaking();
+      refreshSpeakerBtn();
+      setStatus(ttsOn ? 'Replies will be read aloud.' : 'Voice replies off.');
+    });
+
+    if (!SR) {
+      mic.style.display = 'none'; // dictation not supported in this browser
+    } else {
+      mic.addEventListener('click', function () {
+        if (handsFree) { setStatus('Hands-free is on — just say your wake word.'); return; }
+        if (listening) { try { recog && recog.stop(); } catch (e) {} return; }
+        try {
+          recog = new SR();
+          recog.lang = recogLang();
+          recog.interimResults = false;
+          recog.maxAlternatives = 1;
+          recog.onstart = function () { listening = true; mic.textContent = '🔴'; mic.style.background = '#ffd6d6'; setStatus('Listening…'); };
+          recog.onerror = function (ev) { setStatus('Mic: ' + (ev && ev.error ? ev.error : 'error'), '#b00'); };
+          recog.onend = function () { listening = false; mic.textContent = '🎤'; mic.style.background = '#ede7f3'; if (status.textContent === 'Listening…') setStatus(''); };
+          recog.onresult = function (ev) {
+            var t = '';
+            for (var i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+            t = (t || '').trim();
+            if (t) { input.value = t; doSend(); }
+          };
+          stopSpeaking();
+          recog.start();
+        } catch (e) { setStatus('Mic not available: ' + e.message, '#b00'); }
+      });
+    }
+
+    // ── Hands-free wake-word mode ("Hey Claude") for driving ──
+    var handsFree = false, awaitingCmd = false, recogHF = null, hfStopping = false;
+    var DEFAULT_WAKE = ['hey claude', 'hey cloud', 'hey clod', 'ehi claude', 'ehi cloud', 'ok claude', 'okay claude', 'ciao claude', 'a claude'];
+    var customWake = null;
+    try { customWake = (localStorage.getItem('xkdg_ai_wake') || '').trim().toLowerCase() || null; } catch (e) {}
+    function wakeList() { return customWake ? [customWake] : DEFAULT_WAKE; }
+    function wakeLabel() { return customWake || 'Hey Claude'; }
+    function hfParse(transcript) {
+      var t = (transcript || '').toLowerCase();
+      var list = wakeList();
+      for (var i = 0; i < list.length; i++) {
+        var idx = t.indexOf(list[i]);
+        if (idx >= 0) {
+          var after = transcript.slice(idx + list[i].length).replace(/^[\s,.:;!?-]+/, '').trim();
+          return { wake: true, command: after || null };
+        }
+      }
+      return { wake: false, command: null };
+    }
+    function setWakeWord() {
+      var cur = customWake || 'Hey Claude';
+      var v = window.prompt('Wake word to activate hands-free (e.g. "Hey Claude"):', cur);
+      if (v == null) return;
+      v = v.trim();
+      try {
+        if (v) { customWake = v.toLowerCase(); localStorage.setItem('xkdg_ai_wake', v); }
+        else { customWake = null; localStorage.removeItem('xkdg_ai_wake'); }
+      } catch (e) {}
+      setStatus('Wake word: "' + wakeLabel() + '"');
+    }
+    function refreshHfBtn() {
+      hfBtn.textContent = handsFree ? '🟢' : '🚗';
+      hfBtn.title = handsFree ? 'Hands-free ON — say your wake word (tap to stop; hold to change it)' : 'Hands-free driving mode (tap to start; hold to set the wake word)';
+    }
+    function startHF() {
+      if (handsFree) return;
+      handsFree = true; awaitingCmd = false; hfStopping = false;
+      if (!ttsOn) { ttsOn = true; try { localStorage.setItem('xkdg_ai_tts', '1'); } catch (e) {} refreshSpeakerBtn(); }
+      if (panel.style.display !== 'flex') panel.style.display = 'flex';
+      refreshHfBtn();
+      try {
+        recogHF = new SR();
+        recogHF.lang = recogLang();
+        recogHF.continuous = true;
+        recogHF.interimResults = false;
+        recogHF.onresult = function (ev) {
+          if (synth && synth.speaking) return;   // don't react to our own spoken reply
+          if (sending) return;
+          var last = ev.results[ev.results.length - 1];
+          if (!last || !last.isFinal) return;
+          var phrase = ((last[0] && last[0].transcript) || '').trim();
+          if (!phrase) return;
+          if (!awaitingCmd) {
+            var p = hfParse(phrase);
+            if (p.wake) {
+              if (p.command) { input.value = p.command; doSend(); }
+              else { awaitingCmd = true; setStatus('Listening for your command…'); speak('Sì?'); }
+            }
+          } else {
+            awaitingCmd = false;
+            input.value = phrase; doSend();
+          }
+        };
+        recogHF.onerror = function (ev) {
+          var e = ev && ev.error;
+          if (e === 'not-allowed' || e === 'service-not-allowed') { setStatus('Microphone blocked.', '#b00'); stopHF(); }
+        };
+        recogHF.onend = function () {
+          if (handsFree && !hfStopping) {
+            try { recogHF.start(); }
+            catch (e) { setTimeout(function () { try { if (handsFree) recogHF.start(); } catch (_) {} }, 400); }
+          }
+        };
+        recogHF.start();
+        setStatus('Hands-free on — say "'+wakeLabel()+'".');
+        speak('Hands-free attivo. Di "' + wakeLabel() + '" quando vuoi.');
+      } catch (e) { handsFree = false; refreshHfBtn(); setStatus('Hands-free not available: ' + e.message, '#b00'); }
+    }
+    function stopHF() {
+      hfStopping = true; handsFree = false; awaitingCmd = false;
+      try { if (recogHF) recogHF.stop(); } catch (e) {}
+      recogHF = null; refreshHfBtn(); setStatus('Hands-free off.');
+    }
+    if (!SR) { hfBtn.style.display = 'none'; }
+    else {
+      refreshHfBtn();
+      var hfHold = null, hfHeld = false;
+      hfBtn.addEventListener('click', function () { if (hfHeld) { hfHeld = false; return; } handsFree ? stopHF() : startHF(); });
+      hfBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); setWakeWord(); });
+      hfBtn.addEventListener('touchstart', function () { hfHeld = false; hfHold = setTimeout(function () { hfHeld = true; setWakeWord(); }, 600); }, { passive: true });
+      hfBtn.addEventListener('touchend', function () { if (hfHold) { clearTimeout(hfHold); hfHold = null; } });
+      hfBtn.addEventListener('touchmove', function () { if (hfHold) { clearTimeout(hfHold); hfHold = null; } });
+    }
 
     function openPanel() {
       panel.style.display = 'flex';
       if (!getUrl()) promptUrl();
       input.focus();
     }
-    function closePanel() { panel.style.display = 'none'; }
+    function closePanel() { stopSpeaking(); if (handsFree) stopHF(); panel.style.display = 'none'; }
 
     btn.addEventListener('click', function () { panel.style.display === 'flex' ? closePanel() : openPanel(); });
     closeBtn.addEventListener('click', closePanel);
@@ -826,6 +1040,7 @@
               : 'align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;border-bottom-left-radius:3px;') }, text);
       msgs.appendChild(b);
       msgs.scrollTop = msgs.scrollHeight;
+      if (!mine) speak(text);
       return b;
     }
 
@@ -875,6 +1090,7 @@
 
     function doSend() {
       if (sending) return;
+      stopSpeaking();
       var text = (input.value || '').trim();
       if (!text) return;
       var url = getUrl();
