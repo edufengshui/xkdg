@@ -31,6 +31,23 @@
     '(Health, Career, Wealth, Relationship, Journey, Speak, Legal). Tools: find_good_dates, open_scan_result, ' +
     'explain_purpose (read-only: tells how a purpose is coded - its required conditions, disqualifying spirits, ' +
     'bonuses, and the shared gates - when the user asks how Legal/Career/etc. is defined).\n' +
+    '- FLIGHT / TRIP DATE QUERIES (e.g. "good dates to fly from Vienna to Sydney in July and August, flights only ' +
+    'on Sun/Tue/Thu/Sat, departure 10:25"): answer with ONE find_good_dates call set up like this:\n' +
+    '   • purpose = "journey" (it is travel).\n' +
+    '   • The named month(s) -> set start_date to the first day of the first month (or today if that month is ' +
+    'already running) and days to reach the end of the last month (about 31 per month; e.g. July+August from ' +
+    '2026-07-01 -> days 62). start_date cannot be in the past.\n' +
+    '   • The allowed flight days -> weekdays (e.g. ["sun","tue","thu","sat"]).\n' +
+    '   • Then present the returned dates (best score first), each with its date and weekday. Map the stated ' +
+    'departure clock time to its Chinese double-hour and say it, e.g. 10:25 -> Si hour (09:00-11:00); 23:00-01:00 ' +
+    'Zi, 01-03 Chou, 03-05 Yin, 05-07 Mao, 07-09 Chen, 09-11 Si, 11-13 Wu, 13-15 Wei, 15-17 Shen, 17-19 You, ' +
+    '19-21 Xu, 21-23 Hai. If the user fixed a departure time, note that the date is favourable and offer to open a ' +
+    'specific date (open_scan_result) to check that exact hour. You may also mention the favourable DIRECTION ' +
+    'toward the destination as a note, but for a FLIGHT do NOT open the driving Travel Planner (plan_travel opens ' +
+    'the road planner - use it only for actual road trips).\n' +
+    '   • If too few dates come back, offer the soft search (strictness:"soft").\n' +
+    '- TRIPS ON CERTAIN DAYS: in general, pass weekdays to find_good_dates to keep only those days; a clock time ' +
+    'maps to the double-hour above.\n' +
     '- SOFTENING A PURPOSE SCAN: after a purpose date scan (e.g. Legal/Career for signing a contract), if the ' +
     'soonest good date is far away (roughly >2 weeks), there are very few results, or the user says the dates are ' +
     'not practical, OFFER a softer search - e.g. "The strongest dates fully suited for this are a bit far; want me ' +
@@ -113,9 +130,12 @@
         properties: {
           purpose: { type: 'string', enum: ['', 'health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'],
             description: 'Optional purpose; empty string for a general scan.' },
-          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
+          days: { type: 'integer', description: 'How many days to scan from the start (default 7; use ~31 for a month, ~62 for two).' },
+          start_date: { type: 'string', description: 'Optional first day to scan, YYYY-MM-DD (default today; cannot be past). e.g. 2026-07-01 with days 62 covers July+August.' },
           strictness: { type: 'string', enum: ['strict', 'soft'],
-            description: 'strict (default) = only dates that fully meet the purpose. soft = strict matches on top, then nearer still-positive dates that only partly fit. Use soft only after the user agrees to a softer search.' }
+            description: 'strict (default) = only dates that fully meet the purpose. soft = strict matches on top, then nearer still-positive dates that only partly fit. Use soft only after the user agrees to a softer search.' },
+          weekdays: { type: 'array', items: { type: 'string', enum: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] },
+            description: 'Optional: keep only these weekdays. Use for trips limited to certain flight/travel days (e.g. ["sun","tue","thu","sat"] for Scoot flights).' }
         },
         required: []
       }
@@ -470,10 +490,29 @@
     if (!pl.any) return { error: 'No person is loaded. Ask the user to load Person A or B first.' };
     var purpose = input.purpose || '';
     var days = parseInt(input.days, 10) || 7;
+    var today = todayIso();
+    var start = today;
+    if (input.start_date && /^\d{4}-\d{2}-\d{2}$/.test(input.start_date) && input.start_date >= today) start = input.start_date;
     var soft = (input.strictness === 'soft') && !!purpose;   // soft only makes sense with a purpose
+    // Optional weekday restriction (e.g. flights only on Sun/Tue/Thu/Sat). Accepts names or numbers 0..6 (Sun=0).
+    var WK = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+    var wkSet = null;
+    if (Array.isArray(input.weekdays) && input.weekdays.length) {
+      wkSet = {};
+      input.weekdays.forEach(function (w) {
+        if (typeof w === 'number') { if (w >= 0 && w <= 6) wkSet[w] = 1; }
+        else { var key = String(w).trim().slice(0, 3).toLowerCase(); if (WK[key] != null) wkSet[WK[key]] = 1; }
+      });
+      if (!Object.keys(wkSet).length) wkSet = null;
+    }
+    function wkOk(iso) {
+      if (!wkSet) return true;
+      var p = String(iso).split('-'); if (p.length < 3) return true;
+      return !!wkSet[new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
+    }
     var ps = document.getElementById('purpose-select');
     var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days');
-    if (ss) ss.value = todayIso();
+    if (ss) ss.value = start;
     if (sd) sd.value = String(days);
     // This is a date scan, not a flight: make sure no direction filter is active.
     try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
@@ -492,10 +531,11 @@
     }
 
     if (!soft) {
-      var res = runWith(purpose);
+      var res = runWith(purpose).filter(function (r) { return wkOk(r.isoDate); });
       return {
         strictness: purpose ? 'strict' : 'general',
-        purpose: purpose || '(general)', days: days,
+        purpose: purpose || '(general)', days: days, from: start,
+        weekday_filtered: !!wkSet,
         persons_loaded: both ? 'A+B' : (pl.a ? 'A' : 'B'),
         count: res.length,
         results: res.slice(0, 15).map(function (r, i) { return row(r, i); })
@@ -504,9 +544,9 @@
 
     // SOFT scan: keep the strict purpose matches on top (their own score), then add the nearer
     // dates that are still positive (>=1, no bad spirit) but only partly fit the purpose.
-    var strictRes = runWith(purpose);
+    var strictRes = runWith(purpose).filter(function (r) { return wkOk(r.isoDate); });
     var strictScore = {}; strictRes.forEach(function (r) { strictScore[keyOf(r)] = r.score; });
-    var generalRes = runWith('');                         // leaves the on-screen list on the broader positive set
+    var generalRes = runWith('').filter(function (r) { return wkOk(r.isoDate); });  // leaves the on-screen list on the broader positive set
     var seen = {};
     var merged = generalRes.map(function (r) {
       var k = keyOf(r); seen[k] = true;
@@ -521,7 +561,8 @@
       return a.isoDate < b.isoDate ? -1 : (a.isoDate > b.isoDate ? 1 : 0);       // then sooner
     });
     return {
-      strictness: 'soft', purpose: purpose, days: days,
+      strictness: 'soft', purpose: purpose, days: days, from: start,
+      weekday_filtered: !!wkSet,
       persons_loaded: both ? 'A+B' : (pl.a ? 'A' : 'B'),
       strict_count: strictRes.length, total_count: merged.length,
       note: 'Sorted list: the dates that FULLY meet the ' + purpose + ' purpose come first (meets_purpose=true, ' +
