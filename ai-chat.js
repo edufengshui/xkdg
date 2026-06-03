@@ -57,6 +57,14 @@
     'and runs the real road route - you do NOT need a second call, and do NOT call open_travel_planner as well. ' +
     '(open_travel_planner is only for showing a blank planner.) Report the favorable window in chat and tell the ' +
     'user the planner is open and computing.\n' +
+    '- AFTER plan_travel opens the planner: the full computed itinerary (origin→destination, distance, driving ' +
+    'time, each leg and the stops/charging) appears in THIS chat automatically a few seconds later, as its own ' +
+    'message with a "📍 Open in Google Maps" button the user taps to send it to Maps (charging stop included). So ' +
+    'you only give a SHORT one-line intro (which departure time you used and that the itinerary is loading below). ' +
+    'Do NOT paste the itinerary yourself, do NOT ask the user to fill anything, and do NOT call ' +
+    'open_itinerary_in_maps - the button does that on tap. Hands-free is ON by default: a few seconds after each ' +
+    'plan the app opens Google Maps by itself (they only tap "send to car" in Maps). If the user prefers to keep ' +
+    'the planner open instead, tell them to untick "🚗 Hands-free" in the planner\'s "Send to Google Maps" section.\n' +
     '- DEPARTURE TIME - read the phrasing to tell FIXED from FLEXIBLE:\n' +
     '   • FIXED ("I leave at 11", "exactly/sharp", "tassativamente"): pass that exact depart_hour.\n' +
     '   • FLEXIBLE ("around 11", "11 or 12", "I have some margin", "whenever is best"): you may first call ' +
@@ -195,6 +203,13 @@
       }
     },
     {
+      name: 'open_itinerary_in_maps',
+      description: 'Open the most recently computed itinerary in Google Maps (origin → planned stops/charger → ' +
+        'destination). Call this ONLY after the user has confirmed they accept the itinerary. It uses the route ' +
+        'currently shown in the Travel Planner, including the auto-added charging stop.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
       name: 'open_qimen_for_flying_stars',
       description: 'Open the "Qimen hours for Flying Stars" (QFS) panel, where the user selects a target (profiles / ' +
         'entities) and scans for the hours that send a Qimen configuration to a flying-star palace. Use for requests ' +
@@ -328,6 +343,7 @@
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
       if (name === 'plan_travel') return toolPlanTravel(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
+      if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
@@ -516,7 +532,13 @@
     // For a real A→B itinerary, also open the planner already filled and run the road plan
     // (one reliable call instead of depending on a separate open_travel_planner call).
     var openPlanner = (input.open_planner != null) ? !!input.open_planner : (input.origin_lat != null && input.dest_lat != null);
-    var plannerOpened = false;
+    var baseOut = {
+      direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
+      departure_planned: dateStr + ' ' + String(hour).padStart(2, '0') + ':00',
+      duration_hours: durH,
+      favorable_windows_count: windows.length,
+      favorable_windows: windows.slice(0, 12)
+    };
     if (openPlanner && origin && window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
       try {
         window.TravelPlanner.openPrefilled({
@@ -528,22 +550,19 @@
           reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
           run: true
         });
-        plannerOpened = true;
       } catch (e) {}
+      baseOut.planner_opened = true;
+      baseOut.note = 'The planner is open and computing the real road route' +
+        ((input.range_km != null) ? ' and the Tesla/Electra charging stops' : '') +
+        '. The full itinerary will appear in THIS chat by itself in a few seconds, with an "Open in Google Maps" ' +
+        'button the user can tap. So give only a SHORT one-line intro now (e.g. which departure you used and that ' +
+        'the itinerary is loading below) - do NOT paste the itinerary yourself, do NOT tell the user to fill ' +
+        'anything, and do NOT call open_itinerary_in_maps (the button handles it).';
+      return baseOut;
     }
-    return {
-      direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
-      departure_planned: dateStr + ' ' + String(hour).padStart(2, '0') + ':00',
-      duration_hours: durH,
-      favorable_windows_count: windows.length,
-      favorable_windows: windows.slice(0, 12),
-      planner_opened: plannerOpened,
-      note: plannerOpened
-        ? 'The full Travel Planner is open, already filled with this route, computing the real road route' +
-          ((input.range_km != null) ? ' and the Tesla/Electra charging stops automatically' : '') +
-          '. No form to fill in by hand.'
-        : 'Straight-line estimate. For the real road route + Google Maps export, open the Travel Planner.'
-    };
+    baseOut.planner_opened = false;
+    baseOut.note = 'Straight-line estimate. For the real road route + Google Maps export, open the Travel Planner.';
+    return baseOut;
   }
   function toolOpenTravelPlanner(input) {
     input = input || {};
@@ -585,6 +604,12 @@
     }
     if (typeof window.tpOpen === 'function') { window.tpOpen(); return { opened: 'travel_planner_blank' }; }
     return { error: 'Travel Planner not available on this page.' };
+  }
+  function toolOpenItineraryInMaps() {
+    if (window.TravelPlanner && typeof window.TravelPlanner.openInMaps === 'function') {
+      return window.TravelPlanner.openInMaps();
+    }
+    return { ok: false, reason: 'planner_unavailable', note: 'Travel Planner not available on this page.' };
   }
   function toolOpenQimenFS() {
     if (!window.QFS || typeof window.QFS.open !== 'function') return { error: 'Qimen-for-flying-stars (QFS) not available on this page.' };
@@ -1083,6 +1108,32 @@
       if (!mine) speak(text);
       return b;
     }
+    // Injected by the Travel Planner when it finishes computing an AI-opened trip:
+    // shows the itinerary in the chat plus a one-tap "Open in Google Maps" button
+    // (a real user tap, so the browser will not block the pop-up).
+    function addItineraryBubble(payload) {
+      payload = payload || {};
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:14px;line-height:1.45;' +
+        'white-space:pre-wrap;word-wrap:break-word;' });
+      if (payload.text) wrap.appendChild(elc('div', null, payload.text));
+      var mapsBtn = elc('button', { style:
+        'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;' +
+        'font-size:13px;font-weight:600;cursor:pointer;' }, '📍 Open in Google Maps');
+      mapsBtn.addEventListener('click', function () {
+        var r = null;
+        try { if (window.TravelPlanner && window.TravelPlanner.openInMaps) r = window.TravelPlanner.openInMaps(); } catch (e) {}
+        if (r && r.opened === false) mapsBtn.textContent = '⚠ Pop-up blocked — use “Open in Google Maps” in the planner';
+        else if (r && r.ok === false) mapsBtn.textContent = '⚠ No itinerary yet';
+        else mapsBtn.textContent = '✓ Opened in Google Maps';
+      });
+      wrap.appendChild(mapsBtn);
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      if (payload.text) speak(payload.text);
+      return wrap;
+    }
 
     function extractText(data) {
       if (!data) return '';
@@ -1112,15 +1163,17 @@
 
           if (data.stop_reason === 'tool_use') {
             var toolUses = (data.content || []).filter(function (c) { return c.type === 'tool_use'; });
-            var toolResults = toolUses.map(function (tu) {
+            var resultPromises = toolUses.map(function (tu) {
               setStatus('Running: ' + tu.name + '…');
-              var out = execTool(tu.name, tu.input);
-              return { type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out) };
+              return Promise.resolve().then(function () { return execTool(tu.name, tu.input); })
+                .then(function (out) { return { type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out) }; })
+                .catch(function (e) { return { type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ error: String((e && e.message) || e) }) }; });
             });
-            history.push({ role: 'user', content: toolResults });
-            if (guard++ < 6) return step();   // let Claude read the results and continue
-            addBubble('assistant', '(stopped after several tool steps)');
-            return;
+            return Promise.all(resultPromises).then(function (toolResults) {
+              history.push({ role: 'user', content: toolResults });
+              if (guard++ < 6) return step();   // let Claude read the results and continue
+              addBubble('assistant', '(stopped after several tool steps)');
+            });
           }
           setStatus('');
         });
@@ -1158,6 +1211,7 @@
     // Public handle (used by tests / other code)
     window.XKDGChat = {
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
+      addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
       _send: doSend, _history: function () { return history; }
     };
   }

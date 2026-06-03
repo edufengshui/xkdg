@@ -147,6 +147,22 @@
   // station's operator name (case-insensitive substring) — easily extensible.
   function tpGetOcmKey() { try { return localStorage.getItem('xkdg_ocm_key') || ''; } catch (e) { return ''; } }
   function tpSetOcmKey(k) { try { localStorage.setItem('xkdg_ocm_key', k); } catch (e) {} }
+  // Hands-free: ON by default, so the whole flow is automatic. After the AI computes an itinerary the app
+  // navigates itself to Google Maps (no tap). Turns off only if the user unticks it (stored '0').
+  function tpAutoMapsOn() { try { return localStorage.getItem('xkdg_tp_automaps') !== '0'; } catch (e) { return true; } }
+  function tpSetAutoMaps(on) { try { localStorage.setItem('xkdg_tp_automaps', on ? '1' : '0'); } catch (e) {} }
+  // Open the current itinerary in Google Maps. navigate=true changes the current tab (NOT blocked by pop-up
+  // blockers, works with no tap) - used hands-free. Otherwise open a new tab (keeps the app), falling back to
+  // navigation if the pop-up is blocked.
+  function tpOpenInMaps(navigate) {
+    var b = document.getElementById('tp-maps-open');
+    var url = b && b._url;
+    if (!url) return { ok: false, reason: 'no_itinerary', note: 'No computed itinerary yet — plan a trip first.' };
+    if (navigate) { try { window.location.href = url; } catch (e) {} return { ok: true, navigated: true, url: url }; }
+    var w = null; try { w = window.open(url, '_blank'); } catch (e) {}
+    if (!w) { try { window.location.href = url; } catch (e) {} return { ok: true, navigated: true, url: url }; }
+    return { ok: true, opened: true, url: url };
+  }
   var TP_NETWORKS = [
     { id: 'tesla', label: 'Tesla Supercharger', match: ['tesla'] },
     { id: 'electra', label: 'Electra', match: ['electra'] }
@@ -1389,6 +1405,16 @@
     btnRow.appendChild(openBtn); btnRow.appendChild(copyBtn);
     wrap.appendChild(btnRow);
 
+    // Hands-free toggle: when ON, an AI-planned itinerary opens Google Maps by itself (no tap), by navigating
+    // this tab to Maps. Meant for driving: wake the phone, give the voice command, then just tap "send to car".
+    var hfLab = el('label', { style: 'display:flex;align-items:center;gap:7px;margin:8px 0 0;font-size:12px;color:#444;cursor:pointer;' });
+    var hfCb = el('input', { type: 'checkbox', id: 'tp-automaps' });
+    hfCb.checked = tpAutoMapsOn();
+    hfCb.addEventListener('change', function () { tpSetAutoMaps(hfCb.checked); });
+    hfLab.appendChild(hfCb);
+    hfLab.appendChild(el('span', null, '🚗 Hands-free (default ON): when the AI plans a trip, open Google Maps automatically (no tap). The app switches to Maps. Untick to keep the planner open instead.'));
+    wrap.appendChild(hfLab);
+
     function collectWaypoints() {
       var wps = checks.filter(function (c) { return c.cb.checked; }).map(function (c) { return tpLatLng(c.pos); });
       var extra = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
@@ -1407,7 +1433,7 @@
     }
     checks.forEach(function (c) { c.cb.addEventListener('change', update); });
     extraInp.addEventListener('input', update);
-    openBtn.addEventListener('click', function () { try { window.open(openBtn._url, '_blank'); } catch (e) {} });
+    openBtn.addEventListener('click', function () { tpOpenInMaps(false); });
     copyBtn.addEventListener('click', function () { tpCopyToClipboard(copyBtn._url, copyBtn, '✓ Copied', '🔗 Copy link'); });
     update();
 
@@ -1451,6 +1477,16 @@
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
         text: lines.join('\n')
       };
+      // If the AI opened this planner, push the finished itinerary into the chat (with an Open-in-Maps button).
+      var fromAI = !!window._tpFromAI;
+      if (fromAI) window._tpFromAI = false;
+      if (fromAI && window.XKDGChat && typeof window.XKDGChat.addItinerary === 'function') {
+        try { window.XKDGChat.addItinerary({ text: window._tpLastResult.text }); } catch (e) {}
+      }
+      // Hands-free: switch to Google Maps by itself (no tap). Wait a moment so the auto-charger stop is in the link.
+      if (fromAI && tpAutoMapsOn()) {
+        setTimeout(function () { try { tpOpenInMaps(true); } catch (e) {} }, 3200);
+      }
     } catch (e) {}
   }
   function tpRender(result, container) {
@@ -2209,6 +2245,7 @@
     params = params || {};
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
     window._tpAutoChargers = (params.autoChargers !== false);  // auto-run "Find charging stops" after the plan
+    window._tpFromAI = true;                            // push the computed itinerary into the AI chat when done
     tpOpen();
     window._tpNames = {
       origin: params.originName || (window._tpNames && window._tpNames.origin) || 'Origin',
@@ -2244,14 +2281,9 @@
     openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
     getLastResult: function () { return window._tpLastResult || null; },
-    openInMaps: function () {
-      var b = document.getElementById('tp-maps-open');
-      var url = b && b._url;
-      if (!url) return { ok: false, reason: 'no_itinerary', note: 'No computed itinerary yet — plan a trip first.' };
-      var w = null; try { w = window.open(url, '_blank'); } catch (e) {}
-      return { ok: true, opened: !!w, url: url,
-        note: w ? null : 'The browser may have blocked the pop-up - the user can tap "📍 Open in Google Maps" in the planner.' };
-    },
+    openInMaps: function (navigate) { return tpOpenInMaps(!!navigate); },
+    getAutoMaps: tpAutoMapsOn,
+    setAutoMaps: tpSetAutoMaps,
     config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); }
   };
   // Expose tpOpen as a global so the TRAVEL PLANNER tab button (onclick="tpOpen()") works.
