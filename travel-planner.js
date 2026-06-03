@@ -1654,7 +1654,8 @@
       return w;
     }
     form.appendChild(tpBuildItineraryBar());
-    form.appendChild(field('Departure (date)', 'tp-date', '2026-06-03', 'date'));
+    var _tpToday = (function () { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+    form.appendChild(field('Departure (date)', 'tp-date', _tpToday, 'date'));
     form.appendChild(field('Departure (time)', 'tp-time', '12:00', 'time'));
     form.appendChild(field('Trip duration (hours)', 'tp-dur', '12', 'number'));
     form.appendChild(field('Max drive hours per leg', 'tp-maxleg', '4', 'number'));
@@ -1924,6 +1925,7 @@
     panel.appendChild(form);
 
     var btn = el('button', {
+      id: 'tp-scan',
       style: 'width:100%;padding:10px;border:0;border-radius:8px;background:#1565c0;color:#fff;' +
         'font-size:14px;font-weight:600;cursor:pointer;'
     }, 'SCAN TRIP');
@@ -2140,7 +2142,7 @@
       var canRun = params.run !== false &&
         params.originLat != null && params.destLat != null &&
         document.getElementById('tp-date').value && document.getElementById('tp-time').value;
-      if (canRun) { var b = document.getElementById('tp-launch'); if (b) b.click(); }
+      if (canRun) { var b = document.getElementById('tp-scan'); if (b) b.click(); }
     }
     fill();
     return true;

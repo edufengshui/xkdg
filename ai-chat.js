@@ -51,18 +51,18 @@
     'no person is loaded, ask the user to load Person A or B first.\n' +
     '- Keep answers concise: summarise the top few results (date, time/ganzhi, score) and offer to open one. ' +
     'If a tool returns an error, relay it briefly and suggest the fix.\n' +
-    '- TRAVEL / ITINERARY from A to B: to actually plan the journey, call open_travel_planner WITH the route - ' +
-    'origin_lat/lon (+origin_name), dest_lat/lon (+dest_name) from your knowledge of the places, plus depart_date ' +
-    'and depart_hour. It opens the planner already filled and RUNS the real road plan.\n' +
+    '- TRAVEL / ITINERARY from A to B: use ONE tool, plan_travel, passing dest_lat/lon (+dest_name), origin_lat/lon ' +
+    '(+origin_name) from your knowledge of the places, and depart_hour. It returns the favorable direction + time ' +
+    'windows AND, when both origin and destination are given, automatically opens the Travel Planner already filled ' +
+    'and runs the real road route - you do NOT need a second call, and do NOT call open_travel_planner as well. ' +
+    '(open_travel_planner is only for showing a blank planner.) Report the favorable window in chat and tell the ' +
+    'user the planner is open and computing.\n' +
     '- DEPARTURE TIME - read the phrasing to tell FIXED from FLEXIBLE:\n' +
-    '   • FIXED ("I leave at 11", "exactly/sharp", "tassativamente", "must leave at 11"): use that exact ' +
-    'depart_hour and just plan.\n' +
-    '   • FLEXIBLE ("around 11", "11 or 12", "between X and Y", "I have some margin", "whenever is best", "the best ' +
-    'lucky time"): the user can shift to get the best result. FIRST call plan_travel (same origin/dest/date, ' +
-    'depart_hour = earliest hour they allow, duration covering their window) to see the favorable time windows ' +
-    'toward the destination; choose the departure hour whose window falls inside their allowed range and has the ' +
-    'best score; tell the user which time you picked and why; THEN call open_travel_planner with that depart_hour ' +
-    'to open the planner filled and run the road plan. If they gave no time at all, treat it as flexible for the day.\n' +
+    '   • FIXED ("I leave at 11", "exactly/sharp", "tassativamente"): pass that exact depart_hour.\n' +
+    '   • FLEXIBLE ("around 11", "11 or 12", "I have some margin", "whenever is best"): you may first call ' +
+    'plan_travel with open_planner:false to read the favorable windows, pick the best depart_hour inside the ' +
+    'allowed range, tell the user why, THEN call plan_travel again with that depart_hour (open_planner defaults on) ' +
+    'to open the filled planner. If no time given, treat as flexible for the day.\n' +
     '- WHAT "BEST ITINERARY" MEANS: the most favorable configurations WITH the shortest practical travel time. ' +
     'The best itineraries are normally also the shortest - do NOT trade a lot of extra time for a small luck gain ' +
     '(e.g. never turn a ~10h trip into 16h just to catch a better window). Shifting departure inside the allowed ' +
@@ -73,9 +73,7 @@
     'reserve_km is optional: if not given, omit it or assume ~20 km (say so briefly), never block to ask for it. ' +
     'When range_km is passed, the planner finds the charging stops automatically (Tesla + Electra) and adds the ' +
     'best to the Maps export - never tell the user to tap "Find charging stops". The only manual thing ever needed ' +
-    'is saving their Open Charge Map key once; if it is missing the charging panel says so. ' +
-    'For a quick direction + time-window answer without opening the panel, use plan_travel. Call ' +
-    'open_travel_planner with no arguments only to show a blank planner.\n' +
+    'is saving their Open Charge Map key once; if it is missing the charging panel says so.\n' +
     '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
     'user for it (0-360) and call the tool with it.\n' +
     '- Two different "water" questions: find_water_dates picks Feng Shui DATES for a water feature given a ' +
@@ -142,20 +140,28 @@
     },
     {
       name: 'plan_travel',
-      description: 'Plan a journey: give the favorable direction toward a destination and the favorable time windows ' +
-        '(true-solar-time) to be travelling toward it. Use for "when should I leave for X", "good time/direction to ' +
-        'go to X". You must supply the destination latitude/longitude (use your knowledge of the city, e.g. Milan ≈ ' +
-        '45.46, 9.19). Origin defaults to the saved GPS if any.',
+      description: 'Plan a journey from A to B: returns the favorable direction toward the destination and the ' +
+        'favorable time windows (true-solar-time) to be travelling. Use for "plan an itinerary/route from A to B" ' +
+        'and "good time/direction to go to X". Supply destination lat/lon and, if the user named a starting city, ' +
+        'origin lat/lon (from your knowledge), plus names and depart_hour. When BOTH origin and destination are ' +
+        'given it ALSO opens the full Travel Planner already filled and runs the real road route (set ' +
+        'open_planner:false to only answer in chat without opening it). For an electric car pass range_km (and ' +
+        'reserve_km) and it auto-finds Tesla/Electra charging stops in the planner.',
       input_schema: {
         type: 'object',
         properties: {
           dest_lat: { type: 'number', description: 'Destination latitude.' },
           dest_lon: { type: 'number', description: 'Destination longitude.' },
-          origin_lat: { type: 'number', description: 'Optional origin latitude (defaults to saved GPS).' },
-          origin_lon: { type: 'number', description: 'Optional origin longitude.' },
+          dest_name: { type: 'string', description: 'Destination place name (for labels).' },
+          origin_lat: { type: 'number', description: 'Origin latitude (defaults to saved GPS if omitted).' },
+          origin_lon: { type: 'number', description: 'Origin longitude.' },
+          origin_name: { type: 'string', description: 'Origin place name (for labels).' },
           depart_date: { type: 'string', description: 'Departure date YYYY-MM-DD (default today).' },
           depart_hour: { type: 'integer', description: 'Wall-clock start hour 0-23 (default 8).' },
-          duration_h: { type: 'integer', description: 'Trip length in hours (default 12).' }
+          duration_h: { type: 'integer', description: 'Trip length in hours (default 12).' },
+          range_km: { type: 'number', description: 'EV autonomy in km (enables auto charging-stop search in the planner).' },
+          reserve_km: { type: 'number', description: 'EV safety reserve in km.' },
+          open_planner: { type: 'boolean', description: 'Open + run the filled Travel Planner. Defaults true when both origin and destination are given.' }
         },
         required: ['dest_lat', 'dest_lon']
       }
@@ -481,7 +487,9 @@
     var origin = null;
     if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
     else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
-    var dateStr = input.depart_date || todayIso();
+    var today = todayIso();
+    var dateStr = input.depart_date || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today; // ignore a hallucinated past/invalid date
     var hour = (input.depart_hour != null) ? parseInt(input.depart_hour, 10) : 8;
     var dep = new Date(dateStr + 'T' + String(hour).padStart(2, '0') + ':00:00');
     if (isNaN(dep.getTime())) return { error: 'Invalid departure date/time.' };
@@ -505,13 +513,36 @@
         });
       }
     });
+    // For a real A→B itinerary, also open the planner already filled and run the road plan
+    // (one reliable call instead of depending on a separate open_travel_planner call).
+    var openPlanner = (input.open_planner != null) ? !!input.open_planner : (input.origin_lat != null && input.dest_lat != null);
+    var plannerOpened = false;
+    if (openPlanner && origin && window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
+      try {
+        window.TravelPlanner.openPrefilled({
+          originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
+          destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
+          departDate: dateStr, departTime: String(hour).padStart(2, '0') + ':00',
+          durationH: durH, utc: utc,
+          rangeKm: (input.range_km != null) ? +input.range_km : null,
+          reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
+          run: true
+        });
+        plannerOpened = true;
+      } catch (e) {}
+    }
     return {
       direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
       departure_planned: dateStr + ' ' + String(hour).padStart(2, '0') + ':00',
       duration_hours: durH,
       favorable_windows_count: windows.length,
       favorable_windows: windows.slice(0, 12),
-      note: 'Straight-line estimate. For the real road route + per-leg directions + Google Maps export, open the full Travel Planner.'
+      planner_opened: plannerOpened,
+      note: plannerOpened
+        ? 'The full Travel Planner is open, already filled with this route, computing the real road route' +
+          ((input.range_km != null) ? ' and the Tesla/Electra charging stops automatically' : '') +
+          '. No form to fill in by hand.'
+        : 'Straight-line estimate. For the real road route + Google Maps export, open the Travel Planner.'
     };
   }
   function toolOpenTravelPlanner(input) {
@@ -519,7 +550,9 @@
     var hasRoute = input.origin_lat != null && input.origin_lon != null &&
                    input.dest_lat != null && input.dest_lon != null;
     if (hasRoute && window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
-      var dateStr = input.depart_date || todayIso();
+      var today = todayIso();
+      var dateStr = input.depart_date || today;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today;
       var hour = (input.depart_hour != null) ? parseInt(input.depart_hour, 10) : 8;
       var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
       if (isNaN(utc)) utc = 1;
@@ -1062,7 +1095,7 @@
       return fetch(getUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT, tools: TOOLS, messages: history })
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.', tools: TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
 
