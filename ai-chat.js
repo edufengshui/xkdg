@@ -28,7 +28,9 @@
     '- Two wings: (1) Date selection (Bazi) and (2) Feng Shui. They are kept separate in setup and only ' +
     'meet as the ANSWER to a query.\n' +
     '- Date selection scans days/hours for the loaded person(s), optionally filtered by a Purpose ' +
-    '(Health, Career, Wealth, Relationship, Journey, Speak, Legal). Tools: find_good_dates, open_scan_result.\n' +
+    '(Health, Career, Wealth, Relationship, Journey, Speak, Legal). Tools: find_good_dates, open_scan_result, ' +
+    'explain_purpose (read-only: tells how a purpose is coded - its required conditions, disqualifying spirits, ' +
+    'bonuses, and the shared gates - when the user asks how Legal/Career/etc. is defined).\n' +
     '- SOFTENING A PURPOSE SCAN: after a purpose date scan (e.g. Legal/Career for signing a contract), if the ' +
     'soonest good date is far away (roughly >2 weeks), there are very few results, or the user says the dates are ' +
     'not practical, OFFER a softer search - e.g. "The strongest dates fully suited for this are a bit far; want me ' +
@@ -114,6 +116,21 @@
           days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
           strictness: { type: 'string', enum: ['strict', 'soft'],
             description: 'strict (default) = only dates that fully meet the purpose. soft = strict matches on top, then nearer still-positive dates that only partly fit. Use soft only after the user agrees to a softer search.' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'explain_purpose',
+      description: 'Explain how a date-selection Purpose is CODED in the app (its required conditions, the bad ' +
+        'spirits that disqualify it, the scoring bonuses, and the shared gates common to all purposes). Read-only ' +
+        'reference - use when the user asks "what are the conditions for Legal/Career/etc." or wants to recall how ' +
+        'a purpose is defined. Omit purpose to get all of them.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          purpose: { type: 'string', enum: ['', 'health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'],
+            description: 'Which purpose to explain; empty/omitted returns all.' }
         },
         required: []
       }
@@ -349,6 +366,7 @@
   function execTool(name, input) {
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
+      if (name === 'explain_purpose') return toolExplainPurpose(input || {});
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
       if (name === 'find_bed_dates') return toolFindBedDates(input || {});
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
@@ -375,6 +393,60 @@
   function todayIso() {
     var t = new Date();
     return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+  }
+
+  // Read-only reference of how each Purpose is coded in checkPurpose() (kept in sync with app-bazi.js).
+  var PURPOSE_SHARED_GATES = [
+    'Score (after spirit bonuses) must be >= 4 (>= 1 only in test mode with no person loaded).',
+    'A person (A or B) must be loaded.',
+    'At least one XKDG relation must connect: Adding, Hetu, Pure Qi, Family, or Inverse Hexagram ("the loop closes").',
+    '"Very Weak" dates are excluded from every purpose.',
+    'A year-branch clash excludes the date, UNLESS Blood Link Family or Pure Qi is present (these override the clash).',
+    'Auspicious spirits each add +2 to the score: Cerulean Dragon, Golden Box, Tian De, Fate Master, Lu.'
+  ];
+  var PURPOSE_RULES = {
+    health: { name: 'Health',
+      blocked_by: ['Heaven Penalty', 'White Tiger', 'Gou Chen'],
+      requires: ['A Parent must be present somewhere in the date pillars.',
+        'AND Tian Yi present, OR the date\'s day branch is the loaded person\'s Tian Yi (for their day stem).'],
+      bonuses: ['+2 Cerulean Dragon (vitality)', '+2 Jade Hall (healing/comfort)', '+2 if the day pillar role is Parent'] },
+    career: { name: 'Career',
+      blocked_by: ['Red Bird', 'Heaven Prison', 'Gou Chen', 'Heaven Penalty'],
+      requires: ['A Parent must be present in the date pillars.', 'AND Noble (Tian Yi / 天乙) must be present.'],
+      bonuses: ['+2 Bright Hall (recognition)', '+2 Fate Master (official positions)', '+2 Lu (prosperity)', '+2 if the day pillar role is Parent'] },
+    wealth: { name: 'Wealth',
+      blocked_by: ['Black Tortoise', 'Heaven Prison'],
+      requires: ['The date\'s day role must be Child.', 'AND a Parent must be present in the date pillars.'],
+      bonuses: ['+2 Golden Box', '+2 Cerulean Dragon', '+2 Jade Hall',
+        '+1 "wealth bonus" for each controlling (Ke) relationship: person day-stem controlling the date stem; the date stem controlling the hour/month/year stems; and the same on the qi/Nayin layer.'] },
+    relationship: { name: 'Relationship',
+      blocked_by: ['Heaven Penalty', 'Red Bird', 'Black Tortoise', 'Gou Chen'],
+      requires: ['The date\'s day role must be Child.', 'AND (a Parent in the date pillars OR an Adding/Hetu relation).'],
+      bonuses: ['+2 Cerulean Dragon'] },
+    journey: { name: 'Journey',
+      blocked_by: ['White Tiger', 'Heaven Prison', 'Gou Chen', 'Heaven Penalty'],
+      requires: ['A Parent (father/mother role) must be present in the date pillars.',
+        'AND, if a person is loaded, at least one date branch must be the person\'s Post Horse or Ding Spirit (travel stars).'],
+      bonuses: ['+2 Cerulean Dragon', '+2 Jade Hall (moving house)', '+2 if the hour branch is the date\'s own Post Horse or Ding Spirit'] },
+    speak: { name: 'Speak (public speaking / persuasion)',
+      blocked_by: ['Heaven Penalty', 'Gou Chen', 'Red Bird'],
+      requires: ['A good Person-Nayin link must be present (Nayin \u2726 Person).'],
+      bonuses: ['+2 Jade Hall', '+2 Cerulean Dragon', '+2 if the date is its own Wen Chang (academic star)', '+2 if the date\'s day branch is the person\'s Wen Chang'] },
+    legal: { name: 'Legal (signings, contracts, court)',
+      blocked_by: ['Heaven Penalty', 'Red Bird', 'Gou Chen', 'Black Tortoise'],
+      requires: ['Only the shared base (the loop closes + the common gates). No extra Parent/Noble requirement - so Legal is broader/softer than Career.'],
+      bonuses: ['+2 Bright Hall (signings)', '+2 Fate Master (authority)', '+2 Heaven Virtue (protection)'] }
+  };
+  function toolExplainPurpose(input) {
+    input = input || {};
+    var p = (input.purpose || '').toLowerCase();
+    if (p && PURPOSE_RULES[p]) {
+      return { purpose: p, name: PURPOSE_RULES[p].name, conditions: PURPOSE_RULES[p],
+        shared_gates: PURPOSE_SHARED_GATES,
+        note: 'These are the coded conditions in checkPurpose. A date qualifies for this purpose only if it passes ALL the shared gates, is not blocked by the listed bad spirits, and meets the "requires" items. Explain them to the user in their language.' };
+    }
+    return { all_purposes: PURPOSE_RULES, shared_gates: PURPOSE_SHARED_GATES,
+      note: 'Full reference of every purpose\'s coded conditions. If the user asked about one purpose, summarise just that one.' };
   }
 
   // app-bazi declares _personAYear/_personBYear and app-fengshui _fsActionPalace
