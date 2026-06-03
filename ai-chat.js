@@ -968,7 +968,7 @@
       op.value = o[0]; op.textContent = o[1]; op.style.color = '#222';
       langSel.appendChild(op);
     });
-    var gear = elc('button', { id: 'xkdg-ai-gear', title: 'Set AI worker URL',
+    var gear = elc('button', { id: 'xkdg-ai-gear', title: 'Settings & backup',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '⚙');
     var clearBtn = elc('button', { id: 'xkdg-ai-clear', title: 'Clear conversation',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🗑');
@@ -1209,13 +1209,91 @@
 
     btn.addEventListener('click', function () { panel.style.display === 'flex' ? closePanel() : openPanel(); });
     closeBtn.addEventListener('click', closePanel);
-    gear.addEventListener('click', promptUrl);
+    gear.addEventListener('click', openSettings);
     clearBtn.addEventListener('click', function () { history = []; msgs.innerHTML = ''; setStatus(''); });
 
     function promptUrl() {
       var cur = getUrl();
       var u = window.prompt('Paste your AI worker URL (e.g. https://xkdg-ai.you.workers.dev):', cur || 'https://');
       if (u != null) { setUrl(u); setStatus(getUrl() ? 'AI worker URL saved.' : 'No URL set.'); }
+    }
+    // ---- Backup / Restore: copy every per-device setting (localStorage) to another device ----
+    function lsExportText() {
+      var o = {};
+      try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); o[k] = localStorage.getItem(k); } } catch (e) {}
+      return JSON.stringify({ _xkdg_backup: 1, v: 1, ts: Date.now(), data: o });
+    }
+    function lsImportText(text) {
+      var parsed = JSON.parse(text);
+      var data = (parsed && parsed.data) ? parsed.data : parsed;
+      if (!data || typeof data !== 'object') throw new Error('not a backup');
+      var n = 0;
+      Object.keys(data).forEach(function (k) { try { localStorage.setItem(k, data[k]); n++; } catch (e) {} });
+      return n;
+    }
+    function openSettings() {
+      if (document.getElementById('xkdg-ai-settings')) return;
+      var ov = elc('div', { id: 'xkdg-ai-settings', style: 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;' });
+      var card = elc('div', { style: 'background:#fff;border-radius:12px;max-width:520px;width:100%;padding:16px 18px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3);' });
+      var hd = elc('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;' });
+      hd.appendChild(elc('h3', { style: 'margin:0;font-size:16px;color:#4a148c;' }, '\u2699 Settings & backup'));
+      var x = elc('button', { style: 'border:0;background:transparent;font-size:20px;cursor:pointer;color:#888;' }, '\u2715');
+      x.addEventListener('click', function () { ov.remove(); });
+      hd.appendChild(x); card.appendChild(hd);
+
+      // AI worker URL
+      card.appendChild(elc('div', { style: 'font-size:12px;font-weight:700;color:#555;margin:6px 0 3px;' }, 'AI worker URL'));
+      var urlRow = elc('div', { style: 'display:flex;gap:6px;' });
+      var urlInp = elc('input', { type: 'text', value: getUrl(), style: 'flex:1;min-width:0;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:13px;' });
+      var urlSave = elc('button', { style: 'padding:7px 12px;border:0;border-radius:6px;background:#6a1b9a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, 'Save');
+      urlSave.addEventListener('click', function () { setUrl(urlInp.value); urlSave.textContent = '\u2713'; setTimeout(function () { urlSave.textContent = 'Save'; }, 1200); });
+      urlRow.appendChild(urlInp); urlRow.appendChild(urlSave); card.appendChild(urlRow);
+
+      card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
+
+      // BACKUP (this device -> text)
+      card.appendChild(elc('div', { style: 'font-size:13px;font-weight:700;color:#1565c0;margin:0 0 3px;' }, '\u2b06\ufe0f Copy all settings to another device'));
+      card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:6px;line-height:1.5;' },
+        'This text holds every setting saved on THIS device (OCM key, worker URL, saved houses, FS settings, preferences, planner unlock, etc.). Copy it and paste it into the Restore box on your other device. Keep it private - it contains your keys.'));
+      var exp = elc('textarea', { readonly: 'readonly', style: 'width:100%;height:64px;box-sizing:border-box;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:11px;font-family:monospace;' });
+      exp.value = lsExportText();
+      card.appendChild(exp);
+      var expRow = elc('div', { style: 'display:flex;gap:6px;margin-top:6px;' });
+      var copyB = elc('button', { style: 'flex:1;padding:8px;border:0;border-radius:6px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '\ud83d\udccb Copy');
+      var dlB = elc('button', { style: 'flex:1;padding:8px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;' }, '\u2b07 Download');
+      copyB.addEventListener('click', function () {
+        try { exp.focus(); exp.select(); } catch (e) {}
+        var done = function () { copyB.textContent = '\u2713 Copied'; setTimeout(function () { copyB.textContent = '\ud83d\udccb Copy'; }, 1200); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(exp.value).then(done, function () { try { document.execCommand('copy'); done(); } catch (e) {} });
+        else { try { document.execCommand('copy'); done(); } catch (e) {} }
+      });
+      dlB.addEventListener('click', function () {
+        try { var blob = new Blob([exp.value], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'xkdg-settings-backup.json'; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {}
+      });
+      expRow.appendChild(copyB); expRow.appendChild(dlB); card.appendChild(expRow);
+
+      card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
+
+      // RESTORE (paste text -> this device)
+      card.appendChild(elc('div', { style: 'font-size:13px;font-weight:700;color:#2e7d32;margin:0 0 3px;' }, '\u267b\ufe0f Restore on this device'));
+      card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:6px;line-height:1.5;' },
+        'Paste the backup text from your other device, then Restore. The app reloads with all those settings. Current settings on THIS device are overwritten.'));
+      var imp = elc('textarea', { placeholder: 'Paste the backup text here\u2026', style: 'width:100%;height:64px;box-sizing:border-box;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:11px;font-family:monospace;' });
+      card.appendChild(imp);
+      var impStatus = elc('div', { style: 'font-size:11px;margin-top:4px;min-height:14px;' }, '');
+      card.appendChild(impStatus);
+      var restoreB = elc('button', { style: 'width:100%;margin-top:6px;padding:9px;border:0;border-radius:6px;background:#2e7d32;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '\u267b\ufe0f Restore & reload');
+      restoreB.addEventListener('click', function () {
+        var t = (imp.value || '').trim();
+        if (!t) { impStatus.style.color = '#b58900'; impStatus.textContent = 'Paste the backup text first.'; return; }
+        var n;
+        try { n = lsImportText(t); } catch (e) { impStatus.style.color = '#b00'; impStatus.textContent = 'That text is not a valid backup.'; return; }
+        if (!window.confirm('Restore ' + n + ' settings and reload the app? Settings on THIS device will be overwritten.')) return;
+        try { location.reload(); } catch (e) {}
+      });
+      card.appendChild(restoreB);
+
+      ov.appendChild(card); document.body.appendChild(ov);
     }
     function setStatus(t, color) { status.textContent = t || ''; status.style.color = color || '#888'; }
 
