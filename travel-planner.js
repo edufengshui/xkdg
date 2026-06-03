@@ -79,7 +79,9 @@
   // ready for everyone. The code is asked once per session (page load).
   var TP_LOCK_ENABLED = true;
   var TP_LOCK_CODE = '9861';
-  var tpUnlocked = false;
+  // Persist the unlock across reloads: once the correct code is entered, the
+  // planner stays unlocked (so the AI flow is never interrupted by the prompt).
+  var tpUnlocked = (function () { try { return localStorage.getItem('xkdg_tp_unlocked') === '1'; } catch (e) { return false; } })();
 
   // Local civil clock hour -> hour branch (han). Matches BEST, where the hour
   // branch follows the LOCAL clock (the day pillar is solar-corrected, the hour
@@ -1578,6 +1580,7 @@
     function submit() {
       if ((inp.value || '').trim() === TP_LOCK_CODE) {
         tpUnlocked = true;
+        try { localStorage.setItem('xkdg_tp_unlocked', '1'); } catch (e) {}
         close();
         try { onSuccess(); } catch (e) {}
       } else {
@@ -1996,9 +1999,9 @@
           utc: parseFloat(document.getElementById('tp-utc').value) || 0,
           dstOn: document.getElementById('tp-dst').checked,
           origin: { lat: parseFloat(document.getElementById('tp-olat').value), lon: parseFloat(document.getElementById('tp-olon').value) },
-          dest: { lat: parseFloat(document.getElementById('tp-dlat').value), lon: parseFloat(document.getElementById('tp-dlon').value), name: 'Rome' }
+          dest: { lat: parseFloat(document.getElementById('tp-dlat').value), lon: parseFloat(document.getElementById('tp-dlon').value), name: (window._tpNames && window._tpNames.dest) || 'Destination' }
         };
-        opts.origin.name = 'Vienna';
+        opts.origin.name = (window._tpNames && window._tpNames.origin) || 'Origin';
         opts.stopMode = document.getElementById('tp-stopmode').value;
         opts.charges = tpParseCharges(document.getElementById('tp-charges').value, dep);
 
@@ -2088,12 +2091,52 @@
   }
 
   // Public API
+  // Open the planner with the fields PRE-FILLED (and optionally run the plan).
+  // Used by the AI assistant so "plan an itinerary from A to B" actually fills
+  // origin/destination/departure (+ EV range/reserve) and launches the road plan,
+  // instead of opening a blank panel. Waits for the panel to exist (handles the
+  // unlock-code case) before filling. params keys: originLat/originLon/originName,
+  // destLat/destLon/destName, departDate ('YYYY-MM-DD'), departTime ('HH:MM'),
+  // durationH, utc, rangeKm, reserveKm, charges, worker, run (default true).
+  function tpOpenPrefilled(params) {
+    params = params || {};
+    tpOpen();
+    window._tpNames = {
+      origin: params.originName || (window._tpNames && window._tpNames.origin) || 'Origin',
+      dest:   params.destName   || (window._tpNames && window._tpNames.dest)   || 'Destination'
+    };
+    var tries = 0;
+    function fill() {
+      var dateEl = document.getElementById('tp-date');
+      if (!dateEl) { if (tries++ < 40) { setTimeout(fill, 100); } return; } // wait for panel (unlock / async build)
+      function set(id, val) {
+        if (val === undefined || val === null || val === '') return;
+        var e = document.getElementById(id);
+        if (e) e.value = String(val);
+      }
+      set('tp-olat', params.originLat); set('tp-olon', params.originLon);
+      set('tp-dlat', params.destLat);   set('tp-dlon', params.destLon);
+      set('tp-date', params.departDate); set('tp-time', params.departTime);
+      set('tp-dur', params.durationH);   set('tp-utc', params.utc);
+      set('tp-range', params.rangeKm);   set('tp-reserve', params.reserveKm);
+      set('tp-charges', params.charges); set('tp-worker', params.worker);
+      var canRun = params.run !== false &&
+        params.originLat != null && params.destLat != null &&
+        document.getElementById('tp-date').value && document.getElementById('tp-time').value;
+      if (canRun) { var b = document.getElementById('tp-launch'); if (b) b.click(); }
+    }
+    fill();
+    return true;
+  }
+
   window.TravelPlanner = {
     plan: tpPlan,
     open: tpOpen,
+    openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
     config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); }
   };
   // Expose tpOpen as a global so the TRAVEL PLANNER tab button (onclick="tpOpen()") works.
   window.tpOpen = tpOpen;
+  window.tpOpenPrefilled = tpOpenPrefilled;
 })();

@@ -37,7 +37,8 @@
     'list_houses, set_active_house, load_house, load_placement. The active house follows the loaded person.\n' +
     '- Other panels: Qimen x Flying-Stars (open_qimen_for_flying_stars to pick a custom target; or ' +
     'find_qimen_hours_for_star to scan with a fixed favourable preset for one flying star), Chart finder ' +
-    '(open_chart_finder), Direction calculator (open_direction_calculator), Travel planner (plan_travel + open_travel_planner).\n' +
+    '(open_chart_finder), Direction calculator (open_direction_calculator), Travel planner (plan_travel computes ' +
+    'direction + time windows for a journey; open_travel_planner only opens the blank road-route UI).\n' +
     '- get_app_state tells you what the user currently has loaded/typed.\n\n' +
     'RULES:\n' +
     '- For anything that finds dates/hours or runs a scan: CALL A TOOL. Never invent dates or scores yourself ' +
@@ -46,8 +47,13 @@
     'no person is loaded, ask the user to load Person A or B first.\n' +
     '- Keep answers concise: summarise the top few results (date, time/ganzhi, score) and offer to open one. ' +
     'If a tool returns an error, relay it briefly and suggest the fix.\n' +
-    '- For travel timing/direction use plan_travel (you supply the destination lat/lon from your own ' +
-    'knowledge); for the road route + Google Maps export use open_travel_planner.\n' +
+    '- TRAVEL / ITINERARY from A to B: to actually plan the journey, call open_travel_planner WITH the route - ' +
+    'origin_lat/lon (+origin_name), dest_lat/lon (+dest_name) from your knowledge of the places, plus depart_date ' +
+    'and depart_hour from the request. It opens the planner already filled and RUNS the real road plan. If the trip ' +
+    'is by electric car or charging matters, FIRST ask one short question for the car autonomy in km (range_km) and ' +
+    'a safety reserve in km (reserve_km), then include them - the planner fills Range & charging so the user can tap ' +
+    '"Find charging stops" (that needs their Open Charge Map key). For a quick direction + time-window answer WITHOUT ' +
+    'opening the panel, use plan_travel. Call open_travel_planner with no arguments only to show a blank planner.\n' +
     '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
     'user for it (0-360) and call the tool with it.\n' +
     '- Two different "water" questions: find_water_dates picks Feng Shui DATES for a water feature given a ' +
@@ -134,9 +140,30 @@
     },
     {
       name: 'open_travel_planner',
-      description: 'Open the full Travel Planner UI (real road route, per-leg directions, Google Maps export). Use when ' +
-        'the user wants the detailed planner or the Maps export rather than a quick timing answer.',
-      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+      description: 'Open the full Travel Planner. If you pass the route (origin_lat/lon + dest_lat/lon, ideally with ' +
+        'names and depart_date/depart_hour), it opens PRE-FILLED and immediately RUNS the real road plan. For an ' +
+        'electric-car trip, also pass range_km (autonomy) and reserve_km (safety margin) so Range & charging is ' +
+        'set up (the user then taps "Find charging stops", which needs their Open Charge Map key). Call with NO ' +
+        'arguments to just show a blank planner. To get a quick direction/time answer without opening the panel, ' +
+        'use plan_travel instead.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_lat: { type: 'number', description: 'Origin latitude (e.g. the starting city).' },
+          origin_lon: { type: 'number', description: 'Origin longitude.' },
+          origin_name: { type: 'string', description: 'Origin place name (for the result labels).' },
+          dest_lat: { type: 'number', description: 'Destination latitude.' },
+          dest_lon: { type: 'number', description: 'Destination longitude.' },
+          dest_name: { type: 'string', description: 'Destination place name.' },
+          depart_date: { type: 'string', description: 'Departure date YYYY-MM-DD (default today).' },
+          depart_hour: { type: 'integer', description: 'Departure hour 0-23 (default 8).' },
+          duration_h: { type: 'integer', description: 'Trip length in hours.' },
+          range_km: { type: 'number', description: 'EV autonomy in km (for charging-stop search).' },
+          reserve_km: { type: 'number', description: 'EV safety reserve in km kept before recharging.' },
+          charges: { type: 'string', description: 'Optional manual charge times, comma-separated HH:MM (e.g. "14:30, 17:00x45").' }
+        },
+        additionalProperties: false
+      }
     },
     {
       name: 'open_qimen_for_flying_stars',
@@ -464,10 +491,41 @@
       note: 'Straight-line estimate. For the real road route + per-leg directions + Google Maps export, open the full Travel Planner.'
     };
   }
-  function toolOpenTravelPlanner() {
-    if (typeof window.tpOpen !== 'function') return { error: 'Travel Planner not available on this page.' };
-    window.tpOpen();
-    return { opened: 'travel_planner' };
+  function toolOpenTravelPlanner(input) {
+    input = input || {};
+    var hasRoute = input.origin_lat != null && input.origin_lon != null &&
+                   input.dest_lat != null && input.dest_lon != null;
+    if (hasRoute && window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
+      var dateStr = input.depart_date || todayIso();
+      var hour = (input.depart_hour != null) ? parseInt(input.depart_hour, 10) : 8;
+      var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
+      if (isNaN(utc)) utc = 1;
+      window.TravelPlanner.openPrefilled({
+        originLat: +input.origin_lat, originLon: +input.origin_lon, originName: input.origin_name || null,
+        destLat: +input.dest_lat, destLon: +input.dest_lon, destName: input.dest_name || null,
+        departDate: dateStr, departTime: String(hour).padStart(2, '0') + ':00',
+        durationH: (input.duration_h != null) ? parseInt(input.duration_h, 10) : null,
+        utc: utc,
+        rangeKm: (input.range_km != null) ? +input.range_km : null,
+        reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
+        charges: input.charges || null,
+        run: true
+      });
+      return {
+        opened: 'travel_planner_prefilled',
+        filled: {
+          origin: input.origin_name || (input.origin_lat + ',' + input.origin_lon),
+          dest: input.dest_name || (input.dest_lat + ',' + input.dest_lon),
+          depart: dateStr + ' ' + String(hour).padStart(2, '0') + ':00',
+          range_km: (input.range_km != null) ? +input.range_km : null,
+          reserve_km: (input.reserve_km != null) ? +input.reserve_km : null
+        },
+        note: 'The planner is open and computing the real road route. If range_km/reserve_km were given they are ' +
+          'filled in Range & charging; the user can then tap "Find charging stops" (that needs their Open Charge Map key).'
+      };
+    }
+    if (typeof window.tpOpen === 'function') { window.tpOpen(); return { opened: 'travel_planner_blank' }; }
+    return { error: 'Travel Planner not available on this page.' };
   }
   function toolOpenQimenFS() {
     if (!window.QFS || typeof window.QFS.open !== 'function') return { error: 'Qimen-for-flying-stars (QFS) not available on this page.' };
