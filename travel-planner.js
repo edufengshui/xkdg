@@ -1384,7 +1384,7 @@
     wrap.appendChild(status);
 
     var btnRow = el('div', { style: 'display:flex;gap:8px;' });
-    var openBtn = el('button', { style: 'flex:1;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '📍 Open in Google Maps');
+    var openBtn = el('button', { id: 'tp-maps-open', style: 'flex:1;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '📍 Open in Google Maps');
     var copyBtn = el('button', { style: 'flex:1;padding:9px;border:1px solid #1565c0;border-radius:8px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;' }, '🔗 Copy link');
     btnRow.appendChild(openBtn); btnRow.appendChild(copyBtn);
     wrap.appendChild(btnRow);
@@ -1414,6 +1414,45 @@
     container.appendChild(wrap);
   }
 
+  function tpHeadDirOnly(h) { return (h && h.dir) ? h.dir : '?'; }
+  function tpStoreLastResult(result) {
+    try {
+      var rm = result.routeMeta || {};
+      var drive = null;
+      if (rm.durationSec) { var h = Math.floor(rm.durationSec / 3600), m = Math.round((rm.durationSec % 3600) / 60); drive = h + 'h' + String(m).padStart(2, '0'); }
+      var plan = result.plan || [];
+      var nStops = plan.filter(function (x) { return x.type === 'stop'; }).length;
+      var legs = plan.map(function (it) {
+        if (it.type === 'leg') {
+          return { kind: 'drive', from: fmtHMonly(it.startWall), to: fmtHMonly(it.endWall),
+            hours: Math.round(it.durationH * 10) / 10, toward: tpHeadDirOnly(it.heading), arrival: it.note === 'arrival' };
+        }
+        return { kind: it.charge ? 'charge' : 'stop', at: fmtHMonly(it.atWall),
+          duration_min: it.charge ? it.durationMin : 20,
+          restart: it.charge ? fmtHMonly(it.restartWall) : fmtHMonly(it.atWall),
+          toward: tpHeadDirOnly(it.newHeading) };
+      });
+      var lines = [];
+      lines.push((result.origin.name || 'Origin') + ' → ' + (result.dest.name || 'Destination') +
+        ' · bearing ' + Math.round(result.bearing) + '° (' + result.snapDir + ')' +
+        (result.usedRealRoute && rm.km ? ' · real road ' + Math.round(rm.km) + ' km' + (drive ? ' · ' + drive + ' driving' : '') : ' · straight-line estimate'));
+      plan.forEach(function (it) {
+        if (it.type === 'leg') {
+          lines.push('Drive ' + fmtHMonly(it.startWall) + '→' + fmtHMonly(it.endWall) + ' (' + (Math.round(it.durationH * 10) / 10) + 'h) toward ' + tpHeadDirOnly(it.heading) + (it.note === 'arrival' ? ' — arrive at ' + result.dest.name : ''));
+        } else {
+          lines.push((it.charge ? 'Charge ' + it.durationMin + ' min' : 'Stop ' + (20) + ' min') + ' at ' + fmtHMonly(it.atWall) + ', then set off toward ' + tpHeadDirOnly(it.newHeading));
+        }
+      });
+      window._tpLastResult = {
+        stamp: Date.now(),
+        origin: result.origin.name || null, dest: result.dest.name || null,
+        bearing: Math.round(result.bearing), snapped: result.snapDir,
+        real_route: !!result.usedRealRoute, km: rm.km ? Math.round(rm.km) : null, driving_time: drive,
+        stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
+        text: lines.join('\n')
+      };
+    } catch (e) {}
+  }
   function tpRender(result, container) {
     container.innerHTML = '';
     var head = el('div', { style: 'margin:6px 0 10px;font-size:13px;color:#333;' },
@@ -1461,6 +1500,9 @@
 
     // ---- Google Maps export (Phase D) ----
     tpRenderMapsExport(result, container);
+
+    // Make the computed itinerary available to the AI chat (text + structured).
+    tpStoreLastResult(result);
 
     // ---- Detailed slot grid (reference) ----
     container.appendChild(el('div', { style: 'margin:14px 0 4px;font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;' }, 'Detail by double-hour'));
@@ -1620,24 +1662,70 @@
     tpRequestCode(tpOpenReal);
   }
 
+  function tpMakePanelMovable(panel) {
+    var hdr = panel.querySelector('#tp-header');
+    var minBtn = panel.querySelector('#tp-min');
+    if (!hdr) return;
+    var ox = 0, oy = 0, sx = 0, sy = 0, dragging = false;
+    function pt(e) { return (e.touches && e.touches[0]) || e; }
+    function onMove(e) {
+      if (!dragging) return;
+      var p = pt(e);
+      panel.style.transform = 'translate(' + (ox + (p.clientX - sx)) + 'px,' + (oy + (p.clientY - sy)) + 'px)';
+      if (e.cancelable) e.preventDefault();
+    }
+    function onUp(e) {
+      if (!dragging) return;
+      var p = pt(e);
+      ox += (p.clientX - sx); oy += (p.clientY - sy);
+      dragging = false;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+    }
+    hdr.addEventListener('pointerdown', function (e) {
+      if (e.target.closest && e.target.closest('#tp-min,#tp-close,#tp-guide')) return; // keep the buttons clickable
+      dragging = true;
+      var p = pt(e); sx = p.clientX; sy = p.clientY;
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      if (e.cancelable) e.preventDefault();
+    });
+    if (minBtn) {
+      var minimized = false;
+      minBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        minimized = !minimized;
+        for (var i = 1; i < panel.children.length; i++) panel.children[i].style.display = minimized ? 'none' : '';
+        minBtn.textContent = minimized ? '+' : '–';
+        panel.style.width = minimized ? 'auto' : '';
+        panel.style.maxHeight = minimized ? 'none' : '92vh';
+      });
+    }
+  }
   function tpOpenReal() {
     var existing = document.getElementById('tp-overlay');
     if (existing) { existing.style.display = 'flex'; return; }
 
     var ov = el('div', {
       id: 'tp-overlay',
-      style: 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);display:flex;' +
-        'align-items:flex-start;justify-content:center;overflow:auto;padding:16px;'
+      style: 'position:fixed;inset:0;z-index:99990;background:transparent;display:flex;' +
+        'align-items:flex-start;justify-content:center;overflow:visible;padding:16px;pointer-events:none;'
     });
     var panel = el('div', {
       style: 'background:#fff;border-radius:12px;max-width:680px;width:100%;padding:16px 18px;' +
-        'box-shadow:0 10px 40px rgba(0,0,0,.3);font-family:system-ui,Arial,sans-serif;'
+        'box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:system-ui,Arial,sans-serif;' +
+        'pointer-events:auto;max-height:92vh;overflow:auto;will-change:transform;'
     });
 
-    panel.appendChild(el('div', { style: 'display:flex;justify-content:space-between;align-items:center;' },
-      '<h3 style="margin:0;font-size:17px;">🚗 Travel Direction Planner</h3>' +
-      '<span><span id="tp-guide" style="cursor:pointer;font-size:13px;color:#1565c0;margin-right:14px;font-weight:600;">❔ Guide</span>' +
-      '<span id="tp-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">✕</span></span>'));
+    var header = el('div', { id: 'tp-header',
+      style: 'display:flex;justify-content:space-between;align-items:center;cursor:move;touch-action:none;' +
+        'user-select:none;position:sticky;top:0;background:#fff;padding:2px 0 6px;z-index:1;' });
+    header.innerHTML = '<h3 style="margin:0;font-size:17px;">🚗 Travel Direction Planner</h3>' +
+      '<span style="display:flex;align-items:center;gap:14px;">' +
+      '<span id="tp-guide" style="cursor:pointer;font-size:13px;color:#1565c0;font-weight:600;">❔ Guide</span>' +
+      '<span id="tp-min" title="Minimize / expand (drag the bar to move)" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">–</span>' +
+      '<span id="tp-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">✕</span></span>';
+    panel.appendChild(header);
 
     var nowUtc = (function () {
       var v = document.getElementById('utc-offset');
@@ -2002,7 +2090,9 @@
     ov.querySelector('#tp-guide').addEventListener('click', tpShowGuide);
     // Show the guide automatically the first time the planner is opened this session.
     if (!window._tpGuideShown) { window._tpGuideShown = true; tpShowGuide(); }
-    ov.addEventListener('click', function (e) { if (e.target === ov) ov.style.display = 'none'; });
+
+    // Draggable (finger/mouse) + minimizable so the panel never blocks the AI chat.
+    tpMakePanelMovable(panel);
 
     btn.addEventListener('click', function () {
       try {
@@ -2153,6 +2243,15 @@
     open: tpOpen,
     openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
+    getLastResult: function () { return window._tpLastResult || null; },
+    openInMaps: function () {
+      var b = document.getElementById('tp-maps-open');
+      var url = b && b._url;
+      if (!url) return { ok: false, reason: 'no_itinerary', note: 'No computed itinerary yet — plan a trip first.' };
+      var w = null; try { w = window.open(url, '_blank'); } catch (e) {}
+      return { ok: true, opened: !!w, url: url,
+        note: w ? null : 'The browser may have blocked the pop-up - the user can tap "📍 Open in Google Maps" in the planner.' };
+    },
     config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); }
   };
   // Expose tpOpen as a global so the TRAVEL PLANNER tab button (onclick="tpOpen()") works.
