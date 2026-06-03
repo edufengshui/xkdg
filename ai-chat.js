@@ -29,6 +29,13 @@
     'meet as the ANSWER to a query.\n' +
     '- Date selection scans days/hours for the loaded person(s), optionally filtered by a Purpose ' +
     '(Health, Career, Wealth, Relationship, Journey, Speak, Legal). Tools: find_good_dates, open_scan_result.\n' +
+    '- SOFTENING A PURPOSE SCAN: after a purpose date scan (e.g. Legal/Career for signing a contract), if the ' +
+    'soonest good date is far away (roughly >2 weeks), there are very few results, or the user says the dates are ' +
+    'not practical, OFFER a softer search - e.g. "The strongest dates fully suited for this are a bit far; want me ' +
+    'to also include nearer dates that are still positive but a little less specialised?". Only if the user agrees, ' +
+    'call find_good_dates again with strictness="soft": present ONE list with the best strict matches on top ' +
+    '(mark them as fully suited) and the nearer still-positive dates below (note they only partly fit the ' +
+    'purpose). Never present softer dates as equal to the strict best, and never include non-positive dates.\n' +
     '- Feng Shui has three sections, each using its own data: WATER (door/house Facing + a moving-water ' +
     'position), BED (bed Sitting, must be Zheng Shen), DESK (desk Facing must be Zheng Shen + a Ling Shen ' +
     'water within +/-70 deg). Tools: find_water_dates, find_bed_dates, find_desk_dates; open_section to navigate.\n' +
@@ -96,13 +103,17 @@
       description: 'Run the app\'s date scan for the currently loaded person(s) and return the best day/hours, ' +
         'best score first. Use for "what is a good date in the next days" or "list positive dates for ' +
         'Legal/Speak/Health/Wealth/Career/Relationship/Journey in the next N days". Honors whichever person(s) ' +
-        'are loaded (A, B, or both). Omit purpose for a general scan.',
+        'are loaded (A, B, or both). Omit purpose for a general scan. With a purpose, strictness="soft" returns ' +
+        'the strict purpose matches on top (best/highest score) PLUS nearer dates that are still positive but only ' +
+        'partly fit the purpose - use it only after the user accepts a softer search.',
       input_schema: {
         type: 'object',
         properties: {
           purpose: { type: 'string', enum: ['', 'health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'],
             description: 'Optional purpose; empty string for a general scan.' },
-          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' }
+          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
+          strictness: { type: 'string', enum: ['strict', 'soft'],
+            description: 'strict (default) = only dates that fully meet the purpose. soft = strict matches on top, then nearer still-positive dates that only partly fit. Use soft only after the user agrees to a softer search.' }
         },
         required: []
       }
@@ -387,26 +398,65 @@
     if (!pl.any) return { error: 'No person is loaded. Ask the user to load Person A or B first.' };
     var purpose = input.purpose || '';
     var days = parseInt(input.days, 10) || 7;
+    var soft = (input.strictness === 'soft') && !!purpose;   // soft only makes sense with a purpose
     var ps = document.getElementById('purpose-select');
-    if (ps) { ps.value = purpose; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
     var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days');
     if (ss) ss.value = todayIso();
     if (sd) sd.value = String(days);
     // This is a date scan, not a flight: make sure no direction filter is active.
     try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
-    window.runScanner();
-    var res = window._lastScanResults || [];
     var both = pl.a && pl.b;
+    function runWith(pv) {
+      if (ps) { ps.value = pv; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
+      window.runScanner();
+      return (window._lastScanResults || []).slice();
+    }
+    function keyOf(r) { return r.isoDate + '#' + r.hourIndex; }
+    function row(r, i, score, meets) {
+      var o = { rank: i + 1, date: r.isoDate, time: r.time, score: (score != null ? score : r.score) };
+      if (meets != null) o.meets_purpose = meets;
+      if (both) { o.forA = r.scoreA > 0; o.forB = r.scoreB > 0; }
+      return o;
+    }
+
+    if (!soft) {
+      var res = runWith(purpose);
+      return {
+        strictness: purpose ? 'strict' : 'general',
+        purpose: purpose || '(general)', days: days,
+        persons_loaded: both ? 'A+B' : (pl.a ? 'A' : 'B'),
+        count: res.length,
+        results: res.slice(0, 15).map(function (r, i) { return row(r, i); })
+      };
+    }
+
+    // SOFT scan: keep the strict purpose matches on top (their own score), then add the nearer
+    // dates that are still positive (>=1, no bad spirit) but only partly fit the purpose.
+    var strictRes = runWith(purpose);
+    var strictScore = {}; strictRes.forEach(function (r) { strictScore[keyOf(r)] = r.score; });
+    var generalRes = runWith('');                         // leaves the on-screen list on the broader positive set
+    var seen = {};
+    var merged = generalRes.map(function (r) {
+      var k = keyOf(r); seen[k] = true;
+      var meets = Object.prototype.hasOwnProperty.call(strictScore, k);
+      return { isoDate: r.isoDate, time: r.time, scoreA: r.scoreA, scoreB: r.scoreB,
+        score: meets ? strictScore[k] : r.score, meets_purpose: meets };
+    });
+    strictRes.forEach(function (r) { var k = keyOf(r); if (!seen[k]) merged.push({ isoDate: r.isoDate, time: r.time, scoreA: r.scoreA, scoreB: r.scoreB, score: r.score, meets_purpose: true }); });
+    merged.sort(function (a, b) {
+      if (a.meets_purpose !== b.meets_purpose) return a.meets_purpose ? -1 : 1; // strict/best first
+      if (b.score !== a.score) return b.score - a.score;                         // then higher score
+      return a.isoDate < b.isoDate ? -1 : (a.isoDate > b.isoDate ? 1 : 0);       // then sooner
+    });
     return {
-      purpose: purpose || '(general)',
-      days: days,
+      strictness: 'soft', purpose: purpose, days: days,
       persons_loaded: both ? 'A+B' : (pl.a ? 'A' : 'B'),
-      count: res.length,
-      results: res.slice(0, 15).map(function (r, i) {
-        var o = { rank: i + 1, date: r.isoDate, time: r.time, score: r.score };
-        if (both) { o.forA = r.scoreA > 0; o.forB = r.scoreB > 0; }
-        return o;
-      })
+      strict_count: strictRes.length, total_count: merged.length,
+      note: 'Sorted list: the dates that FULLY meet the ' + purpose + ' purpose come first (meets_purpose=true, ' +
+        'their own higher scores), then nearer dates that are still positive (score>=1, no bad spirit) but only ' +
+        'partly fit the purpose (meets_purpose=false). All are auspicious - the softer ones are simply less ' +
+        'specialised for ' + purpose + '.',
+      results: merged.slice(0, 20).map(function (r, i) { return row(r, i, r.score, r.meets_purpose); })
     };
   }
 
