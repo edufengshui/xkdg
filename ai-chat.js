@@ -1367,7 +1367,7 @@
       it: { drive: 'Guida', stop: 'Sosta', charge: 'Ricarica', min: 'min', toward: 'verso', then: 'poi verso', arrive: 'arrivo a',
         realRoad: 'strada reale', driving: 'di guida', estimate: 'stima in linea retta',
         chPending: '\ud83d\udd0c Ricarica: ricerca in corso\u2026', ch: '\ud83d\udd0c Ricarica', addedMaps: 'aggiunta al percorso Maps',
-        otherNet: 'altri operatori', lowPow: 'solo \u226580 kW \u2014 nessuna \u2265150 kW',
+        moreStops: 'altre soste', otherNet: 'altri operatori', lowPow: 'solo \u226580 kW \u2014 nessuna \u2265150 kW',
         noKey: '\ud83d\udd0c Ricarica: manca la chiave Open Charge Map \u2014 aggiungila nel pannello (\ud83d\udd0b Range & charging)',
         none: '\ud83d\udd0c Ricarica: nessuna stazione Tesla/Electra raggiungibile sul percorso',
         noRange: '\ud83d\udd0c Ricarica: inserisci l\u2019autonomia residua (km) nel pannello',
@@ -1377,7 +1377,7 @@
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
         realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
         chPending: '\ud83d\udd0c Charging: searching\u2026', ch: '\ud83d\udd0c Charging', addedMaps: 'added to the Maps route',
-        otherNet: 'other networks', lowPow: 'only \u226580 kW \u2014 no \u2265150 kW',
+        moreStops: 'more stops', otherNet: 'other networks', lowPow: 'only \u226580 kW \u2014 no \u2265150 kW',
         noKey: '\ud83d\udd0c Charging: no Open Charge Map key \u2014 add it in the planner (\ud83d\udd0b Range & charging)',
         none: '\ud83d\udd0c Charging: no reachable Tesla/Electra station on the route',
         noRange: '\ud83d\udd0c Charging: enter your remaining range (km) in the planner',
@@ -1387,7 +1387,7 @@
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
         realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
         chPending: '\ud83d\udd0c Recharge : recherche\u2026', ch: '\ud83d\udd0c Recharge', addedMaps: 'ajout\u00e9e \u00e0 l\u2019itin\u00e9raire Maps',
-        otherNet: 'autres r\u00e9seaux', lowPow: '\u226580 kW seulement \u2014 aucune \u2265150 kW',
+        moreStops: 'autres arr\u00eats', otherNet: 'autres r\u00e9seaux', lowPow: '\u226580 kW seulement \u2014 aucune \u2265150 kW',
         noKey: '\ud83d\udd0c Recharge : pas de cl\u00e9 Open Charge Map \u2014 ajoutez-la dans le panneau (\ud83d\udd0b Range & charging)',
         none: '\ud83d\udd0c Recharge : aucune station Tesla/Electra accessible sur la route',
         noRange: '\ud83d\udd0c Recharge : indiquez votre autonomie restante (km) dans le panneau',
@@ -1413,6 +1413,7 @@
       var tail = [L.addedMaps];
       if (info.lowPower) tail.push(L.lowPow);
       if (info.fallback) tail.push(L.otherNet);
+      if (info.count && info.count > 1) tail.push('+' + (info.count - 1) + ' ' + L.moreStops);
       return L.ch + ': ' + (info.name || 'station') + extra + ' (' + tail.join(' \u00b7 ') + ')';
     }
     function addItineraryBubble(payload) {

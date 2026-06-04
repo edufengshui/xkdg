@@ -1385,86 +1385,108 @@
       status.textContent = 'Searching Open Charge Map (≤ ' + Math.round(usableKm) + ' km usable)…';
       tpFetchChargers({ key: key, lat: O.lat, lon: O.lon, radiusKm: Math.min(Math.ceil(usableKm) + corridorKm, 250), maxResults: 100 })
         .then(function (stations) {
-          var minKW = TP_MIN_KW;
-          function fastEnough(s) { return (s.maxKW || 0) >= minKW; }
-          function buildRows(list) {
-            var out = [];
-            list.forEach(function (s) {
-              var np = tpNearestRoutePoint(s.lat, s.lon, idx);
-              if (np.offKm > corridorKm) return;          // not along the route
-              if (np.alongKm > usableKm) return;          // beyond usable range
-              var etaMs = depMs + (totalKm > 0 ? (np.alongKm / totalKm) : 0) * spanMs;
-              var withinWindow = (winEnd == null) ? true : (etaMs <= winEnd);
-              out.push({ s: s, alongKm: np.alongKm, offKm: np.offKm, etaMs: etaMs, withinWindow: withinWindow });
-            });
-            out.sort(function (a, b) {
-              if (a.withinWindow !== b.withinWindow) return a.withinWindow ? -1 : 1; // within the 2h window first
-              if ((b.s.maxKW || 0) !== (a.s.maxKW || 0)) return (b.s.maxKW || 0) - (a.s.maxKW || 0); // then higher power
-              return b.alongKm - a.alongKm;                  // then charge as late as possible
-            });
-            return out;
+          // Enrich every station with along-route distance + ETA; keep only those near the corridor.
+          function tpEnrich(s) {
+            var np = tpNearestRoutePoint(s.lat, s.lon, idx);
+            return { s: s, alongKm: np.alongKm, offKm: np.offKm,
+              etaMs: depMs + (totalKm > 0 ? (np.alongKm / totalKm) : 0) * spanMs };
           }
-          // Power tiers: aim for >=150 kW (real fast charging); only if nothing is reachable there, accept >=80 kW.
-          // Anything slower (e.g. 11 kW Destination Chargers) is always skipped. Within a tier, prefer Tesla/Electra.
-          var usedFallback = false;   // a non-Tesla/Electra operator was used
-          var usedLowPower = false;   // had to drop from the 150 kW tier to the 80 kW tier
-          function pickTier(kw) {
-            var pool = stations.filter(function (s) { return (s.maxKW || 0) >= kw; });
-            var r = buildRows(tpFilterChargersByNetwork(pool, nets));   // Tesla/Electra first
-            var fb = false;
-            if (!r.length) { r = buildRows(pool); fb = r.length > 0; }  // else any operator, still this fast
-            return { rows: r, fb: fb };
+          var enriched = stations.map(tpEnrich).filter(function (r) { return r.offKm <= corridorKm && isFinite(r.alongKm); });
+          function isTE(s) { return tpFilterChargersByNetwork([s], nets).length > 0; }
+
+          // Cash-stop boundaries: along-route km of each 20-min stop (the 2-hour-window edges), in order.
+          var bounds = (result.plan || []).filter(function (x) { return x.type === 'stop' && x.pos; })
+            .map(function (st) { var np = tpNearestRoutePoint(st.pos.lat, st.pos.lon, idx); return { atWall: st.atWall, alongKm: np.alongKm }; })
+            .filter(function (b) { return isFinite(b.alongKm); })
+            .sort(function (a, b) { return a.alongKm - b.alongKm; });
+
+          var PRE_KM = 30;   // look this far before each boundary ("a bit before the edge of the two hours")
+          // Best charger inside [lo,hi] reachable from prevAlong; tiers: >=150 Tesla/Electra, >=150 other, >=80 T/E, >=80 other.
+          function pickForWindow(lo, hi, prevAlong) {
+            function pool(kw) {
+              return enriched.filter(function (r) {
+                return r.alongKm >= lo && r.alongKm <= hi && (r.s.maxKW || 0) >= kw &&
+                       (r.alongKm - prevAlong) >= 0 && (r.alongKm - prevAlong) <= usableKm;
+              });
+            }
+            function closest(list) {
+              return list.slice().sort(function (a, b) {
+                if (b.alongKm !== a.alongKm) return b.alongKm - a.alongKm;   // as close to the boundary as possible, but before it
+                return (b.s.maxKW || 0) - (a.s.maxKW || 0);                  // then higher power
+              })[0] || null;
+            }
+            function te(list) { return list.filter(function (r) { return isTE(r.s); }); }
+            var p1 = pool(TP_MIN_KW), t1 = te(p1);
+            if (t1.length) return { row: closest(t1), lowPower: false, fallback: false };
+            if (p1.length) return { row: closest(p1), lowPower: false, fallback: true };
+            var p2 = pool(TP_MIN_KW2), t2 = te(p2);
+            if (t2.length) return { row: closest(t2), lowPower: true, fallback: false };
+            if (p2.length) return { row: closest(p2), lowPower: true, fallback: true };
+            return null;
           }
-          var sel = pickTier(minKW);                                   // >=150 kW
-          if (!sel.rows.length) { sel = pickTier(TP_MIN_KW2); usedLowPower = sel.rows.length > 0; }  // else >=80 kW
-          var rows = sel.rows; usedFallback = sel.fb;
-          if (!rows.length) {
+
+          var chosen = [], anyLow = false, anyFb = false, prevAlong = 0;
+          if (bounds.length) {
+            bounds.forEach(function (b) {
+              var hi = b.alongKm, lo = Math.max(0, hi - PRE_KM);
+              var pk = pickForWindow(lo, hi, prevAlong);
+              if (pk && pk.row) {
+                var dup = chosen.some(function (c) { return c.row.s.lat === pk.row.s.lat && c.row.s.lon === pk.row.s.lon; });
+                if (!dup) { chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true; prevAlong = pk.row.alongKm; }
+              }
+            });
+          }
+          // Fallback: no cash stops (or none found at them) -> single best fast charger along the whole reachable route.
+          if (!chosen.length) {
+            var pkG = pickForWindow(0, usableKm, 0);
+            if (pkG && pkG.row) { chosen.push(pkG); anyLow = pkG.lowPower; anyFb = pkG.fallback; }
+          }
+
+          if (!chosen.length) {
             status.style.color = '#b58900';
-            status.textContent = 'No charging station \u2265 ' + TP_MIN_KW2 + ' kW along the route within ' + Math.round(usableKm) + ' km.';
+            status.textContent = 'No charging station \u2265 ' + TP_MIN_KW2 + ' kW near the stops within ' + Math.round(usableKm) + ' km.';
             if (auto) tpReportCharger({ error: 'none' });
             return;
           }
+
           status.style.color = '#1b6e2f';
-          status.textContent = '\u2713 ' + rows.length + ' reachable station' + (rows.length === 1 ? '' : 's') +
-            (usedLowPower ? ' (\u2265' + TP_MIN_KW2 + ' kW - no \u2265' + minKW + ' kW found)' : '') +
-            (usedFallback ? ' (other networks)' : '') + '.';
-          rows.forEach(function (r) {
-            var s = r.s;
-            var when = new Date(r.etaMs);
+          status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' near the 2-hour boundaries' +
+            (anyLow ? ' (\u2265' + TP_MIN_KW2 + ' kW - no \u2265' + TP_MIN_KW + ' kW found)' : '') +
+            (anyFb ? ' (other networks)' : '') + '.';
+
+          chosen.forEach(function (c) {
+            var r = c.row, s = r.s, when = new Date(r.etaMs);
             var hm = String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0');
             var row = el('div', { style: 'display:flex;align-items:center;gap:8px;border-top:1px solid #e0eee0;padding:6px 0;font-size:12px;' });
             var info = el('div', { style: 'flex:1;min-width:0;' });
-            info.appendChild(el('div', { style: 'font-weight:600;color:#333;' },
-              (r.withinWindow ? '✓ ' : '⚠ ') + (s.title || s.operator || 'Charger')));
+            info.appendChild(el('div', { style: 'font-weight:600;color:#333;' }, (s.title || s.operator || 'Charger')));
             info.appendChild(el('div', { style: 'color:#888;' },
-              (s.operator ? s.operator + ' · ' : '') + (s.maxKW ? Math.round(s.maxKW) + ' kW · ' : '') +
-              Math.round(r.alongKm) + ' km along · ' + r.offKm.toFixed(1) + ' km off route · ETA ' + hm +
-              (r.withinWindow ? '' : ' (after the 2-hour window)')));
+              (s.operator ? s.operator + ' \u00b7 ' : '') + (s.maxKW ? Math.round(s.maxKW) + ' kW \u00b7 ' : '') +
+              Math.round(r.alongKm) + ' km along \u00b7 ' + r.offKm.toFixed(1) + ' km off route \u00b7 ETA ' + hm));
             var addBtn = el('button', { type: 'button',
               style: 'padding:6px 9px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '+ Maps');
             addBtn.addEventListener('click', function () {
-              var ex = document.getElementById('tp-extra-wp');
-              if (!ex) return;
+              var ex = document.getElementById('tp-extra-wp'); if (!ex) return;
               var token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
-              ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
-              ex.dispatchEvent(new Event('input', { bubbles: true }));
-              addBtn.textContent = '✓ added'; setTimeout(function () { addBtn.textContent = '+ Maps'; }, 1500);
+              if ((ex.value || '').indexOf(token) < 0) { ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token; ex.dispatchEvent(new Event('input', { bubbles: true })); }
+              addBtn.textContent = '\u2713 added'; setTimeout(function () { addBtn.textContent = '+ Maps'; }, 1500);
             });
-            row.appendChild(info); row.appendChild(addBtn);
-            listWrap.appendChild(row);
+            row.appendChild(info); row.appendChild(addBtn); listWrap.appendChild(row);
           });
+
           if (auto) {
-            var best = rows[0];
             var ex = document.getElementById('tp-extra-wp');
-            if (best && ex) {
-              var token = best.s.lat.toFixed(5) + ',' + best.s.lon.toFixed(5);
-              if ((ex.value || '').indexOf(token) < 0) {
-                ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
-                ex.dispatchEvent(new Event('input', { bubbles: true }));
-              }
-              status.textContent += ' · best stop added to the Maps export.';
-              tpReportCharger({ name: best.s.title || best.s.operator || 'Charger', km: Math.round(best.alongKm), kw: best.s.maxKW, fallback: usedFallback, lowPower: usedLowPower });
+            if (ex) {
+              chosen.forEach(function (c) {
+                var s = c.row.s, token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+                if ((ex.value || '').indexOf(token) < 0) { ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token; }
+              });
+              ex.dispatchEvent(new Event('input', { bubbles: true }));
+              status.textContent += ' \u00b7 added to the Maps export.';
             }
+            var first = chosen[0].row;
+            tpReportCharger({ name: first.s.title || first.s.operator || 'Charger', km: Math.round(first.alongKm), kw: first.s.maxKW,
+              fallback: anyFb, lowPower: anyLow, count: chosen.length });
           }
         })
         .catch(function (err) {
