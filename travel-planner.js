@@ -799,13 +799,15 @@
       });
     });
 
-    // ---- Stop plan: auto suggester, or the user's own charging stops -------
+    // ---- Stop plan: net-direction cashing (auto), or the user's own stops --
     var plan = (opts.stopMode === 'mine')
       ? tpPlanWithStops(slots, opts.charges || [])
-      : tpSuggestStops(slots, opts.maxLegHours || 4);
+      : tpSuggestStopsNetDir(slots, posAt, O, Dst, bearing, opts.maxLegHours || 4);
 
-    // ---- PHASE C: re-aim intermediate legs at the next stop when warranted --
-    try { tpReaimLegsAtStops(plan, slots, posAt, Dst); } catch (e) { /* keep base plan */ }
+    // ---- PHASE C re-aim only applies to the user-charges timeline ----------
+    if (opts.stopMode === 'mine') {
+      try { tpReaimLegsAtStops(plan, slots, posAt, Dst); } catch (e) { /* keep base plan */ }
+    }
 
     // ---- PHASE D: attach the real road position to each stop (Maps export) --
     try {
@@ -889,6 +891,98 @@
         timeline.push({ type: 'stop', atWall: slot.wallStart, slotIdx: i, reason: reason, newHeading: bi });
         legStart = slot.wallStart; legStartSlot = i; curHead = bi;
       }
+    }
+    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrival');
+    return timeline;
+  }
+
+  /* ---- NET-DIRECTION CASHING engine (the user's model) -------------------- *
+   * In each positive double-hour we want the NET displacement from the current
+   * reference point P0 (origin, or the last stop) to enter the auspicious
+   * direction's 45° sector (±22.5°). We follow the REAL road and find the point
+   * - as late as possible inside that double-hour - where the net bearing from
+   * P0 is already inside the sector (e.g. an initial stretch driven W is
+   * "turned into" a net S trip once enough south has accumulated). We stop 20
+   * min there: that portion of the drive has cashed the direction's positive
+   * energy. The stop becomes the new P0 for the next double-hour.
+   * Among several positive directions in a slot we pick the one closest to the
+   * overall origin->dest bearing; we skip cashing a direction that points
+   * essentially backward (> 90° from the overall route).
+   * ----------------------------------------------------------------------- */
+  function tpSuggestStopsNetDir(slots, posAt, O, Dst, overallBearing, maxLegHours) {
+    maxLegHours = maxLegHours || 4;
+    var timeline = [];
+    if (!slots.length) return timeline;
+
+    function slotTarget(slot) {
+      var posd = slot.dirs.filter(function (d) { return d.eval && d.eval.ok; });
+      if (!posd.length) return null;
+      var best = null, bestDiff = 999;
+      posd.forEach(function (d) {
+        var diff = tpAngDiff(TP_DIR_DEG[d.dir], overallBearing);
+        if (diff < bestDiff) { bestDiff = diff; best = d; }
+      });
+      // skip a positive direction that points essentially backward vs the route
+      if (best && tpAngDiff(TP_DIR_DEG[best.dir], overallBearing) > 90) return null;
+      return best;
+    }
+    // latest in-window point where the NET bearing from P0 is inside the target sector
+    function cashPoint(P0, slot, targetDeg) {
+      var step = 2 * 60000, last = null;
+      for (var t = slot.wallStart.getTime(); t <= slot.wallEnd.getTime(); t += step) {
+        var p = posAt(t);
+        if (tpHaversineKm(P0.lat, P0.lon, p.lat, p.lon) < 1) continue; // too close: bearing is noise
+        var nb = tpBearing(P0.lat, P0.lon, p.lat, p.lon);
+        if (tpAngDiff(nb, targetDeg) <= 22.5) last = { t: t, pos: { lat: p.lat, lon: p.lon }, netBearing: nb };
+      }
+      return last;
+    }
+    function nextTargetFrom(i) {
+      for (var j = i; j < slots.length; j++) { var tg = slotTarget(slots[j]); if (tg) return tg; }
+      return null;
+    }
+
+    var P0 = { lat: O.lat, lon: O.lon };
+    var legStartMs = slots[0].wallStart.getTime();
+    var curHead = nextTargetFrom(0) || tpBestDir(slots[0], true);
+
+    function pushLeg(endWall, endSlotIdx, note) {
+      timeline.push({
+        type: 'leg', startWall: new Date(legStartMs), endWall: endWall, heading: curHead,
+        startSlotIdx: tpSlotIndexAt(slots, new Date(legStartMs)), endSlotIdx: endSlotIdx,
+        durationH: (endWall.getTime() - legStartMs) / 3600000, note: note || ''
+      });
+    }
+
+    for (var i = 0; i < slots.length; i++) {
+      var slot = slots[i];
+      var target = slotTarget(slot);
+      if (!target) {
+        // no usable positive direction this double-hour; only a forced rest if we've driven long
+        var elapsedH = (slot.wallEnd.getTime() - legStartMs) / 3600000;
+        if (elapsedH >= maxLegHours && i < slots.length - 1) {
+          var rp = posAt(slot.wallEnd.getTime());
+          pushLeg(slot.wallEnd, i, '');
+          var nh = nextTargetFrom(i + 1) || curHead;
+          timeline.push({ type: 'stop', atWall: slot.wallEnd, slotIdx: i,
+            reason: 'rest stop (\u2265' + maxLegHours + 'h driving)', newHeading: nh,
+            pos: { lat: rp.lat, lon: rp.lon } });
+          P0 = { lat: rp.lat, lon: rp.lon }; legStartMs = slot.wallEnd.getTime(); curHead = nh;
+        }
+        continue;
+      }
+      curHead = target;   // the leg into this cash aims at the net target direction
+      var cp = cashPoint(P0, slot, TP_DIR_DEG[target.dir]);
+      if (cp) {
+        var endWall = new Date(cp.t);
+        pushLeg(endWall, i, '');
+        var nh2 = nextTargetFrom(i + 1) || target;
+        timeline.push({ type: 'stop', atWall: endWall, slotIdx: i,
+          reason: 'cashed a net ' + target.dir + ' trip from the start point (positive ' + slot.brPy + ' hour)',
+          newHeading: nh2, pos: cp.pos });
+        P0 = cp.pos; legStartMs = cp.t; curHead = nh2;
+      }
+      // if no cash point this slot: keep driving (P0 unchanged), the direction was not achievable here
     }
     pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrival');
     return timeline;
