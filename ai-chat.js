@@ -414,6 +414,15 @@
     var t = new Date();
     return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
   }
+  // Is daylight saving in effect on date d (per the device timezone)? Standard time has the larger UTC offset;
+  // a smaller offset on d means DST is active. Works for northern and southern hemispheres.
+  function dstActiveOn(d) {
+    try {
+      var y = d.getFullYear();
+      var std = Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset());
+      return d.getTimezoneOffset() < std;
+    } catch (e) { return false; }
+  }
 
   // Read-only reference of how each Purpose is coded in checkPurpose() (kept in sync with app-bazi.js).
   var PURPOSE_SHARED_GATES = [
@@ -675,8 +684,7 @@
     var durH = parseInt(input.duration_h, 10) || 12;
     var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
     if (isNaN(utc)) utc = 1;
-    var dstOn = false;
-    try { dstOn = (typeof _dstOn !== 'undefined') ? _dstOn : !!window._dstOn; } catch (e) { dstOn = !!window._dstOn; }
+    var dstOn = dstActiveOn(dep);   // auto-detect daylight saving for the departure date (device timezone)
     var opts = { depDate: dep, durationH: durH, dest: dest, utc: utc, dstOn: dstOn, stepMin: 30 };
     if (origin) opts.origin = origin;
     var plan;
@@ -708,7 +716,7 @@
           originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
           destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
           departDate: dateStr, departTime: String(hour).padStart(2, '0') + ':00',
-          durationH: durH, utc: utc,
+          durationH: durH, utc: utc, dst: dstOn,
           rangeKm: (input.range_km != null) ? +input.range_km : null,
           reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
           run: true
@@ -743,7 +751,7 @@
         destLat: +input.dest_lat, destLon: +input.dest_lon, destName: input.dest_name || null,
         departDate: dateStr, departTime: String(hour).padStart(2, '0') + ':00',
         durationH: (input.duration_h != null) ? parseInt(input.duration_h, 10) : null,
-        utc: utc,
+        utc: utc, dst: dstActiveOn(new Date(dateStr + 'T' + String(hour).padStart(2, '0') + ':00:00')),
         rangeKm: (input.range_km != null) ? +input.range_km : null,
         reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
         charges: input.charges || null,
@@ -1352,28 +1360,102 @@
     // Injected by the Travel Planner when it finishes computing an AI-opened trip:
     // shows the itinerary in the chat plus a one-tap "Open in Google Maps" button
     // (a real user tap, so the browser will not block the pop-up).
+    var ITIN_LBL = {
+      it: { drive: 'Guida', stop: 'Sosta', charge: 'Ricarica', min: 'min', toward: 'verso', then: 'poi verso', arrive: 'arrivo a',
+        realRoad: 'strada reale', driving: 'di guida', estimate: 'stima in linea retta',
+        chPending: '\ud83d\udd0c Ricarica: ricerca in corso\u2026', ch: '\ud83d\udd0c Ricarica', addedMaps: 'aggiunta al percorso Maps',
+        otherNet: 'altri operatori', lowPow: 'solo \u226580 kW \u2014 nessuna \u2265150 kW',
+        noKey: '\ud83d\udd0c Ricarica: manca la chiave Open Charge Map \u2014 aggiungila nel pannello (\ud83d\udd0b Range & charging)',
+        none: '\ud83d\udd0c Ricarica: nessuna stazione Tesla/Electra raggiungibile sul percorso',
+        noRange: '\ud83d\udd0c Ricarica: inserisci l\u2019autonomia residua (km) nel pannello',
+        noRoute: '\ud83d\udd0c Ricarica: rotta reale non disponibile (imposta il Worker e rifai lo SCAN)',
+        failed: '\ud83d\udd0c Ricarica: ricerca non riuscita (controlla chiave/connessione)',
+        openMaps: '\ud83d\udccd Apri in Google Maps', opened: '\u2713 Aperto in Google Maps', blocked: '\u26a0 Pop-up bloccato \u2014 usa \u201cApri in Google Maps\u201d nel pannello' },
+      en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
+        realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
+        chPending: '\ud83d\udd0c Charging: searching\u2026', ch: '\ud83d\udd0c Charging', addedMaps: 'added to the Maps route',
+        otherNet: 'other networks', lowPow: 'only \u226580 kW \u2014 no \u2265150 kW',
+        noKey: '\ud83d\udd0c Charging: no Open Charge Map key \u2014 add it in the planner (\ud83d\udd0b Range & charging)',
+        none: '\ud83d\udd0c Charging: no reachable Tesla/Electra station on the route',
+        noRange: '\ud83d\udd0c Charging: enter your remaining range (km) in the planner',
+        noRoute: '\ud83d\udd0c Charging: no real route yet (set the Worker and run SCAN again)',
+        failed: '\ud83d\udd0c Charging: lookup failed (check key/connection)',
+        openMaps: '\ud83d\udccd Open in Google Maps', opened: '\u2713 Opened in Google Maps', blocked: '\u26a0 Pop-up blocked \u2014 use \u201cOpen in Google Maps\u201d in the planner' },
+      fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
+        realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
+        chPending: '\ud83d\udd0c Recharge : recherche\u2026', ch: '\ud83d\udd0c Recharge', addedMaps: 'ajout\u00e9e \u00e0 l\u2019itin\u00e9raire Maps',
+        otherNet: 'autres r\u00e9seaux', lowPow: '\u226580 kW seulement \u2014 aucune \u2265150 kW',
+        noKey: '\ud83d\udd0c Recharge : pas de cl\u00e9 Open Charge Map \u2014 ajoutez-la dans le panneau (\ud83d\udd0b Range & charging)',
+        none: '\ud83d\udd0c Recharge : aucune station Tesla/Electra accessible sur la route',
+        noRange: '\ud83d\udd0c Recharge : indiquez votre autonomie restante (km) dans le panneau',
+        noRoute: '\ud83d\udd0c Recharge : pas d\u2019itin\u00e9raire r\u00e9el (r\u00e9glez le Worker et relancez SCAN)',
+        failed: '\ud83d\udd0c Recharge : \u00e9chec (v\u00e9rifiez la cl\u00e9/connexion)',
+        openMaps: '\ud83d\udccd Ouvrir dans Google Maps', opened: '\u2713 Ouvert dans Google Maps', blocked: '\u26a0 Pop-up bloqu\u00e9 \u2014 utilisez \u00ab Ouvrir dans Google Maps \u00bb dans le panneau' }
+    };
+    function chatLang() {
+      var s = null; try { s = localStorage.getItem('xkdg_ai_lang'); } catch (e) {}
+      if (s && s !== 'auto' && ITIN_LBL[s]) return s;
+      try { for (var i = history.length - 1; i >= 0; i--) { if (history[i] && history[i].role === 'user' && typeof history[i].content === 'string') { var d = detectLang(history[i].content); return ITIN_LBL[d] ? d : 'en'; } } } catch (e) {}
+      return 'en';
+    }
+    var _itinChargeEl = null;   // charging line of the latest itinerary bubble (updated in place)
+    function chargingText(L, info) {
+      if (!info) return L.chPending;
+      if (info.error === 'no_key') return L.noKey;
+      if (info.error === 'no_range') return L.noRange;
+      if (info.error === 'no_route') return L.noRoute;
+      if (info.error === 'none') return L.none;
+      if (info.error) return L.failed;
+      var extra = (info.kw ? ' \u00b7 ' + Math.round(info.kw) + ' kW' : '') + (info.km != null ? ' \u00b7 ~' + info.km + ' km' : '');
+      var tail = [L.addedMaps];
+      if (info.lowPower) tail.push(L.lowPow);
+      if (info.fallback) tail.push(L.otherNet);
+      return L.ch + ': ' + (info.name || 'station') + extra + ' (' + tail.join(' \u00b7 ') + ')';
+    }
     function addItineraryBubble(payload) {
       payload = payload || {};
+      var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
       var wrap = elc('div', { style:
         'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
-        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:14px;line-height:1.45;' +
-        'white-space:pre-wrap;word-wrap:break-word;' });
-      if (payload.text) wrap.appendChild(elc('div', null, payload.text));
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:14px;line-height:1.5;word-wrap:break-word;' });
+      var distline = payload.real_route
+        ? (L.realRoad + (payload.km != null ? ' ' + payload.km + ' km' : '') + (payload.driving_time ? ' \u00b7 ' + payload.driving_time + ' ' + L.driving : ''))
+        : L.estimate;
+      var title = (payload.origin || 'Origin') + ' \u2192 ' + (payload.dest || 'Destination') +
+        (payload.snapped ? ' \u00b7 ' + payload.snapped + (payload.bearing != null ? ' ' + payload.bearing + '\u00b0' : '') : '') +
+        ' \u00b7 ' + distline;
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:4px;' }, title));
+      var ol = elc('ol', { style: 'margin:0;padding-left:20px;' });
+      (payload.legs || []).forEach(function (it) {
+        var t;
+        if (it.kind === 'drive') {
+          t = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + (it.arrival ? ' \u2014 ' + L.arrive + ' ' + (payload.dest || '') : '');
+        } else {
+          var what = (it.kind === 'charge') ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min) : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
+          t = what + ' @ ' + it.at + ', ' + L.then + ' ' + it.toward;
+        }
+        ol.appendChild(elc('li', { style: 'margin:2px 0;' }, t));
+      });
+      wrap.appendChild(ol);
+      if (payload.charging_pending || payload.charging) {
+        _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
+        wrap.appendChild(_itinChargeEl);
+      } else { _itinChargeEl = null; }
       var mapsBtn = elc('button', { style:
-        'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;' +
-        'font-size:13px;font-weight:600;cursor:pointer;' }, '📍 Open in Google Maps');
+        'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, L.openMaps);
       mapsBtn.addEventListener('click', function () {
         var r = null;
         try { if (window.TravelPlanner && window.TravelPlanner.openInMaps) r = window.TravelPlanner.openInMaps(); } catch (e) {}
-        if (r && r.opened === false) mapsBtn.textContent = '⚠ Pop-up blocked — use “Open in Google Maps” in the planner';
-        else if (r && r.ok === false) mapsBtn.textContent = '⚠ No itinerary yet';
-        else mapsBtn.textContent = '✓ Opened in Google Maps';
+        if (r && r.opened === false) mapsBtn.textContent = L.blocked;
+        else mapsBtn.textContent = L.opened;
       });
       wrap.appendChild(mapsBtn);
       msgs.appendChild(wrap);
       msgs.scrollTop = msgs.scrollHeight;
-      if (payload.text) speak(payload.text);
       return wrap;
+    }
+    function updateItineraryCharging(info) {
+      try { if (_itinChargeEl) { var L = ITIN_LBL[chatLang()] || ITIN_LBL.en; _itinChargeEl.textContent = chargingText(L, info); msgs.scrollTop = msgs.scrollHeight; } } catch (e) {}
     }
 
     function extractText(data) {
@@ -1453,6 +1535,7 @@
     window.XKDGChat = {
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
+      updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
       _send: doSend, _history: function () { return history; }
     };
   }

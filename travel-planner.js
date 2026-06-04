@@ -175,6 +175,8 @@
   // skipped; real fast DC is >= 150 kW. If no Tesla/Electra fast station is reachable, we fall back to ANY operator
   // that is still fast (>= this threshold).
   var TP_MIN_KW = 150;
+  // Secondary floor: if nothing >=150 kW is reachable, accept >=80 kW rather than nothing (still usable; ~30-45 min).
+  var TP_MIN_KW2 = 80;
 
   // ---- Recent places (auto-saved origins/destinations) --------------------
   // Saved on this device only. Each: { name, lat, lon, utc|null }. Most recent
@@ -1244,7 +1246,7 @@
     var block = el('div', { style: 'border:2px solid #1b6e2f;border-radius:10px;padding:10px 12px;margin:14px 0 4px;background:#f6fbf6;' });
     block.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1b6e2f;margin-bottom:6px;' }, '🔌 Charging stops along the route'));
     var note = el('div', { style: 'font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;' },
-      'Finds FAST charging (\u2265150 kW) from Open Charge Map reachable within your range (minus reserve) and before the 2-hour window. Prefers Tesla Supercharger/Electra; if none are fast, uses other fast operators. Slow chargers (e.g. 11 kW Destination Chargers) are skipped. Reachable ones can be added to the Maps export.');
+      'Finds FAST charging (\u2265150 kW) from Open Charge Map reachable within your range (minus reserve) and before the 2-hour window. Prefers Tesla Supercharger/Electra, then other fast operators; if nothing is reachable at that power it falls back to 80 kW. Slow chargers (e.g. 11 kW Destination Chargers) are always skipped. Reachable ones can be added to the Maps export.');
     block.appendChild(note);
 
     var findBtn = el('button', { type: 'button',
@@ -1308,19 +1310,30 @@
             });
             return out;
           }
-          var fast = stations.filter(fastEnough);            // drop slow (e.g. 11 kW Destination Chargers)
-          var rows = buildRows(tpFilterChargersByNetwork(fast, nets));   // Tesla/Electra, fast only
-          var usedFallback = false;
-          if (!rows.length) { rows = buildRows(fast); usedFallback = rows.length > 0; }  // any operator, still fast
+          // Power tiers: aim for >=150 kW (real fast charging); only if nothing is reachable there, accept >=80 kW.
+          // Anything slower (e.g. 11 kW Destination Chargers) is always skipped. Within a tier, prefer Tesla/Electra.
+          var usedFallback = false;   // a non-Tesla/Electra operator was used
+          var usedLowPower = false;   // had to drop from the 150 kW tier to the 80 kW tier
+          function pickTier(kw) {
+            var pool = stations.filter(function (s) { return (s.maxKW || 0) >= kw; });
+            var r = buildRows(tpFilterChargersByNetwork(pool, nets));   // Tesla/Electra first
+            var fb = false;
+            if (!r.length) { r = buildRows(pool); fb = r.length > 0; }  // else any operator, still this fast
+            return { rows: r, fb: fb };
+          }
+          var sel = pickTier(minKW);                                   // >=150 kW
+          if (!sel.rows.length) { sel = pickTier(TP_MIN_KW2); usedLowPower = sel.rows.length > 0; }  // else >=80 kW
+          var rows = sel.rows; usedFallback = sel.fb;
           if (!rows.length) {
             status.style.color = '#b58900';
-            status.textContent = 'No fast (\u2265 ' + minKW + ' kW) charging station along the route within ' + Math.round(usableKm) + ' km.';
+            status.textContent = 'No charging station \u2265 ' + TP_MIN_KW2 + ' kW along the route within ' + Math.round(usableKm) + ' km.';
             if (auto) tpReportCharger({ error: 'none' });
             return;
           }
           status.style.color = '#1b6e2f';
-          status.textContent = '\u2713 ' + rows.length + ' reachable fast station' + (rows.length === 1 ? '' : 's') +
-            (usedFallback ? ' (other networks - no Tesla/Electra fast found)' : '') + '.';
+          status.textContent = '\u2713 ' + rows.length + ' reachable station' + (rows.length === 1 ? '' : 's') +
+            (usedLowPower ? ' (\u2265' + TP_MIN_KW2 + ' kW - no \u2265' + minKW + ' kW found)' : '') +
+            (usedFallback ? ' (other networks)' : '') + '.';
           rows.forEach(function (r) {
             var s = r.s;
             var when = new Date(r.etaMs);
@@ -1356,7 +1369,7 @@
                 ex.dispatchEvent(new Event('input', { bubbles: true }));
               }
               status.textContent += ' · best stop added to the Maps export.';
-              tpReportCharger({ name: best.s.title || best.s.operator || 'Charger', km: Math.round(best.alongKm), kw: best.s.maxKW, fallback: usedFallback });
+              tpReportCharger({ name: best.s.title || best.s.operator || 'Charger', km: Math.round(best.alongKm), kw: best.s.maxKW, fallback: usedFallback, lowPower: usedLowPower });
             }
           }
         })
