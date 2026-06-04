@@ -92,11 +92,13 @@
     'plan the app opens Google Maps by itself (they only tap "send to car" in Maps). If the user prefers to keep ' +
     'the planner open instead, tell them to untick "🚗 Hands-free" in the planner\'s "Send to Google Maps" section.\n' +
     '- DEPARTURE TIME - read the phrasing to tell FIXED from FLEXIBLE:\n' +
-    '   • FIXED ("I leave at 11", "exactly/sharp", "tassativamente"): pass that exact depart_hour.\n' +
-    '   • FLEXIBLE ("around 11", "11 or 12", "I have some margin", "whenever is best"): you may first call ' +
-    'plan_travel with open_planner:false to read the favorable windows, pick the best depart_hour inside the ' +
-    'allowed range, tell the user why, THEN call plan_travel again with that depart_hour (open_planner defaults on) ' +
-    'to open the filled planner. If no time given, treat as flexible for the day.\n' +
+    '   • FLEXIBLE / best time (default - "around 11", "whenever is best", or no time): just call plan_travel; it ' +
+    'auto-snaps the departure to the START of the soonest favourable double-hour so the traveller gets the full two ' +
+    'hours to cash that direction. Announce the time it returns in departure_planned (do not round it).\n' +
+    '   • FIXED ("I leave at 11 exactly/sharp", "tassativamente"): pass depart_time "HH:MM" (or depart_hour) AND ' +
+    'fixed_time:true so it is NOT snapped.\n' +
+    '   Never round the favourable start to a whole hour yourself - depart_planned already gives the exact minute ' +
+    '(e.g. 08:12), which is the real beginning of the double-hour in clock time.\n' +
     '- WHAT "BEST ITINERARY" MEANS: the most favorable configurations WITH the shortest practical travel time. ' +
     'The best itineraries are normally also the shortest - do NOT trade a lot of extra time for a small luck gain ' +
     '(e.g. never turn a ~10h trip into 16h just to catch a better window). Shifting departure inside the allowed ' +
@@ -213,7 +215,9 @@
           origin_lon: { type: 'number', description: 'Origin longitude.' },
           origin_name: { type: 'string', description: 'Origin place name (for labels).' },
           depart_date: { type: 'string', description: 'Departure date YYYY-MM-DD (default today).' },
-          depart_hour: { type: 'integer', description: 'Wall-clock start hour 0-23 (default 8).' },
+          depart_hour: { type: 'integer', description: 'Wall-clock start hour 0-23 (default 8). Ignored if depart_time is given.' },
+          depart_time: { type: 'string', description: 'Wall-clock start time HH:MM (overrides depart_hour). Use the favourable window start.' },
+          fixed_time: { type: 'boolean', description: 'TRUE only if the user fixed an exact time ("exactly/sharp"). When false (default) the departure is auto-snapped to the START of the soonest favourable double-hour.' },
           duration_h: { type: 'integer', description: 'Trip length in hours (default 12).' },
           range_km: { type: 'number', description: 'EV autonomy in km (enables auto charging-stop search in the planner).' },
           reserve_km: { type: 'number', description: 'EV safety reserve in km.' },
@@ -423,6 +427,21 @@
       return d.getTimezoneOffset() < std;
     } catch (e) { return false; }
   }
+  // True wall-clock start of the Chinese double-hour that contains wall time `d`, at longitude `lon`.
+  // Double-hours start at solar 23,1,3,...,21. solar = wall + offsetMin; offsetMin matches the planner.
+  function branchStartWall(d, lon, utc, dstOn) {
+    try {
+      if (lon == null || isNaN(lon)) return null;
+      var off = (lon - utc * 15) * 4 - (dstOn ? 60 : 0);            // minutes
+      var solar = new Date(d.getTime() + off * 60000);
+      var h = solar.getHours();
+      var startH = (h < 1) ? 23 : (h - ((h - 1) % 2));              // largest odd hour <= h (Zi wraps at 23)
+      var bs = new Date(solar.getFullYear(), solar.getMonth(), solar.getDate(), startH, 0, 0);
+      if (startH === 23 && h < 1) bs = new Date(bs.getTime() - 86400000);
+      return new Date(bs.getTime() - off * 60000);                  // back to wall clock
+    } catch (e) { return null; }
+  }
+  function startOfTodayMs() { var t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime(); }
 
   // Read-only reference of how each Purpose is coded in checkPurpose() (kept in sync with app-bazi.js).
   var PURPOSE_SHARED_GATES = [
@@ -679,19 +698,47 @@
     var dateStr = input.depart_date || today;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today; // ignore a hallucinated past/invalid date
     var hour = (input.depart_hour != null) ? parseInt(input.depart_hour, 10) : 8;
-    var dep = new Date(dateStr + 'T' + String(hour).padStart(2, '0') + ':00:00');
+    var timeStr = (typeof input.depart_time === 'string' && /^\d{1,2}:\d{2}$/.test(input.depart_time))
+      ? (String(parseInt(input.depart_time.split(':')[0], 10)).padStart(2, '0') + ':' + input.depart_time.split(':')[1])
+      : (String(hour).padStart(2, '0') + ':00');
+    var dep = new Date(dateStr + 'T' + timeStr + ':00');
     if (isNaN(dep.getTime())) return { error: 'Invalid departure date/time.' };
     var durH = parseInt(input.duration_h, 10) || 12;
     var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
     if (isNaN(utc)) utc = 1;
     var dstOn = dstActiveOn(dep);   // auto-detect daylight saving for the departure date (device timezone)
-    var opts = { depDate: dep, durationH: durH, dest: dest, utc: utc, dstOn: dstOn, stepMin: 30 };
-    if (origin) opts.origin = origin;
-    var plan;
-    try { plan = window.TravelPlanner.plan(opts); }
-    catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
-    var windows = [];
     function hm(d) { return (d && d.getHours) ? (String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')) : null; }
+    function runPlan(d) {
+      var o = { depDate: d, durationH: durH, dest: dest, utc: utc, dstOn: dstActiveOn(d), stepMin: 30 };
+      if (origin) o.origin = origin;
+      return window.TravelPlanner.plan(o);
+    }
+    var plan;
+    try { plan = runPlan(dep); }
+    catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
+    // Snap the departure to the START of the soonest favourable double-hour, so the traveller gets the full two
+    // hours to cash that direction (e.g. the true start of Chen ~08:12, not mid-hour at 09:00). The first slot's
+    // wallStart is artificially the departure instant, so for that case we compute the real branch start from
+    // solar time at the origin. Skipped when the user fixed the time (fixed_time:true).
+    if (!input.fixed_time) {
+      try {
+        var fi = -1;
+        (plan.slots || []).some(function (s, ix) {
+          if ((s.dirs || []).some(function (d) { return d.towardDest && d.eval && d.eval.ok; })) { fi = ix; return true; }
+          return false;
+        });
+        if (fi >= 0) {
+          var trueStart = (fi > 0)
+            ? plan.slots[fi].wallStart
+            : branchStartWall(dep, origin ? origin.lon : (plan.slots[0] && plan.slots[0].lonUsed), utc, dstActiveOn(dep));
+          if (trueStart && trueStart.getTime() !== dep.getTime() && trueStart.getTime() >= Date.now() - 300000) {
+            dep = trueStart; plan = runPlan(dep);
+          }
+        }
+      } catch (e) { /* keep the original departure */ }
+    }
+    dstOn = dstActiveOn(dep);
+    var windows = [];
     (plan.slots || []).forEach(function (s) {
       var good = (s.dirs || []).filter(function (d) { return d.towardDest && d.eval && d.eval.ok; });
       if (good.length) {
@@ -704,9 +751,11 @@
     // For a real A→B itinerary, also open the planner already filled and run the road plan
     // (one reliable call instead of depending on a separate open_travel_planner call).
     var openPlanner = (input.open_planner != null) ? !!input.open_planner : (input.origin_lat != null && input.dest_lat != null);
+    var snapStart = hm(dep);
     var baseOut = {
       direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
-      departure_planned: dateStr + ' ' + String(hour).padStart(2, '0') + ':00',
+      departure_planned: dateStr + ' ' + snapStart,
+      departure_note: 'Departure is snapped to the START of the favourable double-hour so the traveller gets the full two hours to cash that direction. Announce THIS time.',
       duration_hours: durH,
       window_times: 'LOCAL CLOCK time, already adjusted for daylight saving (DST ' + (dstOn ? 'on' : 'off') + '). Present these times as-is; do NOT add or subtract an hour.',
       favorable_windows_count: windows.length,
@@ -717,7 +766,7 @@
         window.TravelPlanner.openPrefilled({
           originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
           destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
-          departDate: dateStr, departTime: String(hour).padStart(2, '0') + ':00',
+          departDate: dateStr, departTime: snapStart,
           durationH: durH, utc: utc, dst: dstOn,
           rangeKm: (input.range_km != null) ? +input.range_km : null,
           reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
@@ -729,9 +778,9 @@
         ((input.range_km != null) ? ' and the charging stops' : '') +
         '. The full itinerary will post itself into THIS chat as a separate card (numbered steps + charging + an ' +
         '"Open in Google Maps" button) within a few seconds - you do NOT render it. Reply with ONE short sentence ' +
-        'only: which departure clock time you used (already DST-adjusted) and the optimal direction. Do NOT paste ' +
-        'the itinerary, do NOT say "below"/"above" or "I am calculating", do NOT tell the user to fill anything, ' +
-        'and do NOT call open_itinerary_in_maps.';
+        'only: the departure clock time from departure_planned (it is the START of the favourable double-hour, ' +
+        'already DST-adjusted) and the optimal direction. Do NOT paste the itinerary, do NOT say "below"/"above" or ' +
+        '"I am calculating", do NOT tell the user to fill anything, and do NOT call open_itinerary_in_maps.';
       return baseOut;
     }
     baseOut.planner_opened = false;
