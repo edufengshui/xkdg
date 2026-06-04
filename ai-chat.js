@@ -77,28 +77,32 @@
     'no person is loaded, ask the user to load Person A or B first.\n' +
     '- Keep answers concise: summarise the top few results (date, time/ganzhi, score) and offer to open one. ' +
     'If a tool returns an error, relay it briefly and suggest the fix.\n' +
-    '- TRAVEL / ITINERARY from A to B: use ONE tool, plan_travel, passing dest_lat/lon (+dest_name), origin_lat/lon ' +
-    '(+origin_name) from your knowledge of the places, and depart_hour. It returns the favorable direction + time ' +
-    'windows AND, when both origin and destination are given, automatically opens the Travel Planner already filled ' +
-    'and runs the real road route - you do NOT need a second call, and do NOT call open_travel_planner as well. ' +
-    '(open_travel_planner is only for showing a blank planner.) Report the favorable window in chat and tell the ' +
-    'user the planner is open and computing.\n' +
+    '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
+    '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
+    'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
+    'ganzhi (e.g. Geng Chen), and the good directions. Do NOT guess the clock time of a double-hour yourself - ' +
+    'solar time differs from the clock by up to ~1.5h, so always read from/to from favorable_windows.\n' +
+    '- BEST-TIME trip (default, no exact time fixed): make TWO calls.\n' +
+    '   1) First call plan_travel with open_planner:false and depart_hour:6, duration_h covering the day (e.g. 14), ' +
+    'to READ the favorable_windows.\n' +
+    '   2) Choose the window heading toward the destination during reasonable DAYTIME hours (from is between about ' +
+    '06:00 and 21:00) with the best direction score; among ties prefer the soonest. Do NOT pick pre-dawn windows ' +
+    '(before 06:00) unless the user explicitly wants the best time at any hour.\n' +
+    '   3) Then call plan_travel again with depart_time set to that window\'s `from`, fixed_time:true, the real ' +
+    'duration_h, range_km/reserve_km if given, and open_planner:true. This opens + runs the filled planner exactly ' +
+    'at the start of that double-hour, so the traveller gets the full two hours.\n' +
+    '   Announce the chosen double-hour by name and its clock start (from departure_planned) and the direction.\n' +
+    '- FIXED time ("I leave at 11 exactly/sharp", "tassativamente"): one call with depart_time "HH:MM" + ' +
+    'fixed_time:true + open_planner:true.\n' +
+    '- open_travel_planner is only for showing a blank planner. Do not call open_itinerary_in_maps.\n' +
     '- AFTER plan_travel opens the planner: the full computed itinerary (origin→destination, distance, driving ' +
     'time, each leg and the stops/charging) appears in THIS chat automatically a few seconds later, as its own ' +
     'message with a "📍 Open in Google Maps" button the user taps to send it to Maps (charging stop included). So ' +
-    'you only give a SHORT one-line intro (which departure time you used and that the itinerary is loading below). ' +
+    'you only give a SHORT one-line intro (the chosen double-hour + clock start time + direction). ' +
     'Do NOT paste the itinerary yourself, do NOT ask the user to fill anything, and do NOT call ' +
     'open_itinerary_in_maps - the button does that on tap. Hands-free is ON by default: a few seconds after each ' +
     'plan the app opens Google Maps by itself (they only tap "send to car" in Maps). If the user prefers to keep ' +
     'the planner open instead, tell them to untick "🚗 Hands-free" in the planner\'s "Send to Google Maps" section.\n' +
-    '- DEPARTURE TIME - read the phrasing to tell FIXED from FLEXIBLE:\n' +
-    '   • FLEXIBLE / best time (default - "around 11", "whenever is best", or no time): just call plan_travel; it ' +
-    'auto-snaps the departure to the START of the soonest favourable double-hour so the traveller gets the full two ' +
-    'hours to cash that direction. Announce the time it returns in departure_planned (do not round it).\n' +
-    '   • FIXED ("I leave at 11 exactly/sharp", "tassativamente"): pass depart_time "HH:MM" (or depart_hour) AND ' +
-    'fixed_time:true so it is NOT snapped.\n' +
-    '   Never round the favourable start to a whole hour yourself - depart_planned already gives the exact minute ' +
-    '(e.g. 08:12), which is the real beginning of the double-hour in clock time.\n' +
     '- WHAT "BEST ITINERARY" MEANS: the most favorable configurations WITH the shortest practical travel time. ' +
     'The best itineraries are normally also the shortest - do NOT trade a lot of extra time for a small luck gain ' +
     '(e.g. never turn a ~10h trip into 16h just to catch a better window). Shifting departure inside the allowed ' +
@@ -708,36 +712,11 @@
     if (isNaN(utc)) utc = 1;
     var dstOn = dstActiveOn(dep);   // auto-detect daylight saving for the departure date (device timezone)
     function hm(d) { return (d && d.getHours) ? (String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')) : null; }
-    function runPlan(d) {
-      var o = { depDate: d, durationH: durH, dest: dest, utc: utc, dstOn: dstActiveOn(d), stepMin: 30 };
-      if (origin) o.origin = origin;
-      return window.TravelPlanner.plan(o);
-    }
+    var opts = { depDate: dep, durationH: durH, dest: dest, utc: utc, dstOn: dstOn, stepMin: 30 };
+    if (origin) opts.origin = origin;
     var plan;
-    try { plan = runPlan(dep); }
+    try { plan = window.TravelPlanner.plan(opts); }
     catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
-    // Snap the departure to the START of the soonest favourable double-hour, so the traveller gets the full two
-    // hours to cash that direction (e.g. the true start of Chen ~08:12, not mid-hour at 09:00). The first slot's
-    // wallStart is artificially the departure instant, so for that case we compute the real branch start from
-    // solar time at the origin. Skipped when the user fixed the time (fixed_time:true).
-    if (!input.fixed_time) {
-      try {
-        var fi = -1;
-        (plan.slots || []).some(function (s, ix) {
-          if ((s.dirs || []).some(function (d) { return d.towardDest && d.eval && d.eval.ok; })) { fi = ix; return true; }
-          return false;
-        });
-        if (fi >= 0) {
-          var trueStart = (fi > 0)
-            ? plan.slots[fi].wallStart
-            : branchStartWall(dep, origin ? origin.lon : (plan.slots[0] && plan.slots[0].lonUsed), utc, dstActiveOn(dep));
-          if (trueStart && trueStart.getTime() !== dep.getTime() && trueStart.getTime() >= Date.now() - 300000) {
-            dep = trueStart; plan = runPlan(dep);
-          }
-        }
-      } catch (e) { /* keep the original departure */ }
-    }
-    dstOn = dstActiveOn(dep);
     var windows = [];
     (plan.slots || []).forEach(function (s) {
       var good = (s.dirs || []).filter(function (d) { return d.towardDest && d.eval && d.eval.ok; });
@@ -755,7 +734,7 @@
     var baseOut = {
       direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
       departure_planned: dateStr + ' ' + snapStart,
-      departure_note: 'Departure is snapped to the START of the favourable double-hour so the traveller gets the full two hours to cash that direction. Announce THIS time.',
+      departure_note: 'departure_planned is the exact clock time the planner used. For a best-time trip this should be the START (the favorable window\'s `from`) of the favourable daytime double-hour you chose. Announce THIS time and name the double-hour.',
       duration_hours: durH,
       window_times: 'LOCAL CLOCK time, already adjusted for daylight saving (DST ' + (dstOn ? 'on' : 'off') + '). Present these times as-is; do NOT add or subtract an hour.',
       favorable_windows_count: windows.length,
