@@ -149,6 +149,9 @@
   function tpSetOcmKey(k) { try { localStorage.setItem('xkdg_ocm_key', k); } catch (e) {} }
   // Hands-free: ON by default, so the whole flow is automatic. After the AI computes an itinerary the app
   // navigates itself to Google Maps (no tap). Turns off only if the user unticks it (stored '0').
+  function tpReportCharger(info) {
+    try { if (window.XKDGChat && typeof window.XKDGChat.updateItineraryCharging === 'function') window.XKDGChat.updateItineraryCharging(info); } catch (e) {}
+  }
   function tpAutoMapsOn() { try { return localStorage.getItem('xkdg_tp_automaps') !== '0'; } catch (e) { return true; } }
   function tpSetAutoMaps(on) { try { localStorage.setItem('xkdg_tp_automaps', on ? '1' : '0'); } catch (e) {} }
   // Open the current itinerary in Google Maps. navigate=true changes the current tab (NOT blocked by pop-up
@@ -168,6 +171,10 @@
     { id: 'electra', label: 'Electra', match: ['electra'] }
     // future: { id:'ionity', label:'Ionity', match:['ionity'] }, etc.
   ];
+  // Only consider FAST charging by default. A Tesla "Destination Charger" is ~11 kW (hours to charge) and must be
+  // skipped; real fast DC is >= 150 kW. If no Tesla/Electra fast station is reachable, we fall back to ANY operator
+  // that is still fast (>= this threshold).
+  var TP_MIN_KW = 150;
 
   // ---- Recent places (auto-saved origins/destinations) --------------------
   // Saved on this device only. Each: { name, lat, lon, utc|null }. Most recent
@@ -341,6 +348,19 @@
   /* ---- solar-time offset (minutes), matching app convention -------------- */
   function tpOffsetMin(lon, utc, dstOn) {
     return (lon - utc * 15) * 4 - (dstOn ? 60 : 0);
+  }
+  // Is daylight saving in effect on date d (per the device timezone)? Standard time has the larger offset;
+  // a smaller offset on d means DST is active. Works in both hemispheres.
+  function tpDstActiveOn(d) {
+    try {
+      var y = d.getFullYear();
+      var std = Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset());
+      return d.getTimezoneOffset() < std;
+    } catch (e) { return false; }
+  }
+  function tpDstFromIso(iso) {
+    var p = String(iso || '').split('-');
+    return (p.length === 3) ? tpDstActiveOn(new Date(+p[0], +p[1] - 1, +p[2])) : false;
   }
 
   /* ---- loxodromic (rhumb-line) bearing A -> B, degrees 0..360 ------------- *
@@ -1224,7 +1244,7 @@
     var block = el('div', { style: 'border:2px solid #1b6e2f;border-radius:10px;padding:10px 12px;margin:14px 0 4px;background:#f6fbf6;' });
     block.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1b6e2f;margin-bottom:6px;' }, '🔌 Charging stops along the route'));
     var note = el('div', { style: 'font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;' },
-      'Finds Tesla/Electra stations from Open Charge Map reachable within your range (minus reserve) and before the 2-hour window. Reachable ones can be added to the Maps export.');
+      'Finds FAST charging (\u2265150 kW) from Open Charge Map reachable within your range (minus reserve) and before the 2-hour window. Prefers Tesla Supercharger/Electra; if none are fast, uses other fast operators. Slow chargers (e.g. 11 kW Destination Chargers) are skipped. Reachable ones can be added to the Maps export.');
     block.appendChild(note);
 
     var findBtn = el('button', { type: 'button',
@@ -1248,10 +1268,10 @@
       var reserve = parseFloat(document.getElementById('tp-reserve') && document.getElementById('tp-reserve').value) || 0;
       var nets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; });
 
-      if (!key) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key in 🔋 Range & charging first.'; return; }
-      if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; return; }
+      if (!key) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key in 🔋 Range & charging first.'; if (auto) tpReportCharger({ error: 'no_key' }); return; }
+      if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; if (auto) tpReportCharger({ error: 'no_range' }); return; }
       var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
-      if (!idx) { status.style.color = '#b58900'; status.textContent = 'No real route yet — set the Worker URL and press SCAN TRIP first.'; return; }
+      if (!idx) { status.style.color = '#b58900'; status.textContent = 'No real route yet — set the Worker URL and press SCAN TRIP first.'; if (auto) tpReportCharger({ error: 'no_route' }); return; }
       tpSetOcmKey(key);
 
       var usableKm = range * (1 - reserve / 100);
@@ -1269,28 +1289,38 @@
       status.textContent = 'Searching Open Charge Map (≤ ' + Math.round(usableKm) + ' km usable)…';
       tpFetchChargers({ key: key, lat: O.lat, lon: O.lon, radiusKm: Math.min(Math.ceil(usableKm) + corridorKm, 250), maxResults: 100 })
         .then(function (stations) {
-          stations = tpFilterChargersByNetwork(stations, nets);
-          var rows = [];
-          stations.forEach(function (s) {
-            var np = tpNearestRoutePoint(s.lat, s.lon, idx);
-            if (np.offKm > corridorKm) return;          // not along the route
-            if (np.alongKm > usableKm) return;          // beyond usable range
-            var etaMs = depMs + (totalKm > 0 ? (np.alongKm / totalKm) : 0) * spanMs;
-            var withinWindow = (winEnd == null) ? true : (etaMs <= winEnd);
-            rows.push({ s: s, alongKm: np.alongKm, offKm: np.offKm, etaMs: etaMs, withinWindow: withinWindow });
-          });
-          // best first: within window, then farthest reachable (charge as late as possible)
-          rows.sort(function (a, b) {
-            if (a.withinWindow !== b.withinWindow) return a.withinWindow ? -1 : 1;
-            return b.alongKm - a.alongKm;
-          });
+          var minKW = TP_MIN_KW;
+          function fastEnough(s) { return (s.maxKW || 0) >= minKW; }
+          function buildRows(list) {
+            var out = [];
+            list.forEach(function (s) {
+              var np = tpNearestRoutePoint(s.lat, s.lon, idx);
+              if (np.offKm > corridorKm) return;          // not along the route
+              if (np.alongKm > usableKm) return;          // beyond usable range
+              var etaMs = depMs + (totalKm > 0 ? (np.alongKm / totalKm) : 0) * spanMs;
+              var withinWindow = (winEnd == null) ? true : (etaMs <= winEnd);
+              out.push({ s: s, alongKm: np.alongKm, offKm: np.offKm, etaMs: etaMs, withinWindow: withinWindow });
+            });
+            out.sort(function (a, b) {
+              if (a.withinWindow !== b.withinWindow) return a.withinWindow ? -1 : 1; // within the 2h window first
+              if ((b.s.maxKW || 0) !== (a.s.maxKW || 0)) return (b.s.maxKW || 0) - (a.s.maxKW || 0); // then higher power
+              return b.alongKm - a.alongKm;                  // then charge as late as possible
+            });
+            return out;
+          }
+          var fast = stations.filter(fastEnough);            // drop slow (e.g. 11 kW Destination Chargers)
+          var rows = buildRows(tpFilterChargersByNetwork(fast, nets));   // Tesla/Electra, fast only
+          var usedFallback = false;
+          if (!rows.length) { rows = buildRows(fast); usedFallback = rows.length > 0; }  // any operator, still fast
           if (!rows.length) {
             status.style.color = '#b58900';
-            status.textContent = 'No ' + nets.join('/') + ' stations found along the route within ' + Math.round(usableKm) + ' km.';
+            status.textContent = 'No fast (\u2265 ' + minKW + ' kW) charging station along the route within ' + Math.round(usableKm) + ' km.';
+            if (auto) tpReportCharger({ error: 'none' });
             return;
           }
           status.style.color = '#1b6e2f';
-          status.textContent = '✓ ' + rows.length + ' reachable station' + (rows.length === 1 ? '' : 's') + ' (within usable range).';
+          status.textContent = '\u2713 ' + rows.length + ' reachable fast station' + (rows.length === 1 ? '' : 's') +
+            (usedFallback ? ' (other networks - no Tesla/Electra fast found)' : '') + '.';
           rows.forEach(function (r) {
             var s = r.s;
             var when = new Date(r.etaMs);
@@ -1326,12 +1356,14 @@
                 ex.dispatchEvent(new Event('input', { bubbles: true }));
               }
               status.textContent += ' · best stop added to the Maps export.';
+              tpReportCharger({ name: best.s.title || best.s.operator || 'Charger', km: Math.round(best.alongKm), kw: best.s.maxKW, fallback: usedFallback });
             }
           }
         })
         .catch(function (err) {
           status.style.color = '#b00';
           status.textContent = 'Charging lookup failed: ' + err.message + '. Check the OCM key / connection.';
+          if (auto) tpReportCharger({ error: 'failed' });
         });
     }
     findBtn.addEventListener('click', function () { runChargerSearch(false); });
@@ -1481,7 +1513,9 @@
       var fromAI = !!window._tpFromAI;
       if (fromAI) window._tpFromAI = false;
       if (fromAI && window.XKDGChat && typeof window.XKDGChat.addItinerary === 'function') {
-        try { window.XKDGChat.addItinerary({ text: window._tpLastResult.text }); } catch (e) {}
+        var payload = {}; for (var kk in window._tpLastResult) { if (window._tpLastResult.hasOwnProperty(kk)) payload[kk] = window._tpLastResult[kk]; }
+        payload.charging_pending = true;   // a charger search runs right after; the line updates in place
+        try { window.XKDGChat.addItinerary(payload); } catch (e) {}
       }
       // Hands-free: switch to Google Maps by itself (no tap). Wait a moment so the auto-charger stop is in the link.
       if (fromAI && tpAutoMapsOn()) {
@@ -1943,9 +1977,11 @@
 
     var dstWrap = el('label', { style: 'display:flex;align-items:center;gap:6px;color:#444;grid-column:1 / span 2;' });
     var dstChk = el('input', { id: 'tp-dst', type: 'checkbox' });
-    if (nowDst) dstChk.checked = true;
+    dstChk.checked = tpDstFromIso((document.getElementById('tp-date') || {}).value || _tpToday); // auto from the departure date
+    var _dstDateEl = document.getElementById('tp-date');
+    if (_dstDateEl) _dstDateEl.addEventListener('change', function () { dstChk.checked = tpDstFromIso(_dstDateEl.value); });
     dstWrap.appendChild(dstChk);
-    dstWrap.appendChild(el('span', null, 'Daylight saving (DST) on'));
+    dstWrap.appendChild(el('span', null, 'Daylight saving (DST) - auto from date'));
     form.appendChild(dstWrap);
 
     // Stop mode: auto suggester vs user-supplied charging stops
@@ -2135,6 +2171,7 @@
         var dStr = document.getElementById('tp-date').value;
         var tStr = document.getElementById('tp-time').value || '12:00';
         var dep = new Date(dStr + 'T' + tStr);
+        var dstAuto = document.getElementById('tp-dst'); if (dstAuto) dstAuto.checked = tpDstActiveOn(dep); // auto DST from the date
         var opts = {
           depDate: dep,
           durationH: parseFloat(document.getElementById('tp-dur').value) || 12,
@@ -2264,6 +2301,7 @@
       set('tp-dlat', params.destLat);   set('tp-dlon', params.destLon);
       set('tp-date', params.departDate); set('tp-time', params.departTime);
       set('tp-dur', params.durationH);   set('tp-utc', params.utc);
+      var dstEl = document.getElementById('tp-dst'); if (dstEl && params.dst != null) dstEl.checked = !!params.dst;
       set('tp-range', params.rangeKm);   set('tp-reserve', params.reserveKm);
       set('tp-charges', params.charges); set('tp-worker', params.worker);
       var canRun = params.run !== false &&
