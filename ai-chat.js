@@ -691,11 +691,12 @@
     try { plan = window.TravelPlanner.plan(opts); }
     catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
     var windows = [];
+    function hm(d) { return (d && d.getHours) ? (String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')) : null; }
     (plan.slots || []).forEach(function (s) {
       var good = (s.dirs || []).filter(function (d) { return d.towardDest && d.eval && d.eval.ok; });
       if (good.length) {
         windows.push({
-          from: s.tstStart, to: s.tstEnd, ganzhi: s.gZhiPy || s.gZhiHan, weekday: s.weekday,
+          from: hm(s.wallStart), to: hm(s.wallEnd), ganzhi: s.gZhiPy || s.gZhiHan, weekday: s.weekday,
           directions: good.map(function (d) { return { dir: d.dir, score: d.eval.score, door: d.eval.door }; })
         });
       }
@@ -707,6 +708,7 @@
       direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
       departure_planned: dateStr + ' ' + String(hour).padStart(2, '0') + ':00',
       duration_hours: durH,
+      window_times: 'LOCAL CLOCK time, already adjusted for daylight saving (DST ' + (dstOn ? 'on' : 'off') + '). Present these times as-is; do NOT add or subtract an hour.',
       favorable_windows_count: windows.length,
       favorable_windows: windows.slice(0, 12)
     };
@@ -724,11 +726,12 @@
       } catch (e) {}
       baseOut.planner_opened = true;
       baseOut.note = 'The planner is open and computing the real road route' +
-        ((input.range_km != null) ? ' and the Tesla/Electra charging stops' : '') +
-        '. The full itinerary will appear in THIS chat by itself in a few seconds, with an "Open in Google Maps" ' +
-        'button the user can tap. So give only a SHORT one-line intro now (e.g. which departure you used and that ' +
-        'the itinerary is loading below) - do NOT paste the itinerary yourself, do NOT tell the user to fill ' +
-        'anything, and do NOT call open_itinerary_in_maps (the button handles it).';
+        ((input.range_km != null) ? ' and the charging stops' : '') +
+        '. The full itinerary will post itself into THIS chat as a separate card (numbered steps + charging + an ' +
+        '"Open in Google Maps" button) within a few seconds - you do NOT render it. Reply with ONE short sentence ' +
+        'only: which departure clock time you used (already DST-adjusted) and the optimal direction. Do NOT paste ' +
+        'the itinerary, do NOT say "below"/"above" or "I am calculating", do NOT tell the user to fill anything, ' +
+        'and do NOT call open_itinerary_in_maps.';
       return baseOut;
     }
     baseOut.planner_opened = false;
