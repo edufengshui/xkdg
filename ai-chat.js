@@ -1401,7 +1401,8 @@
         noRange: '\ud83d\udd0c Ricarica: inserisci l\u2019autonomia residua (km) nel pannello',
         noRoute: '\ud83d\udd0c Ricarica: rotta reale non disponibile (imposta il Worker e rifai lo SCAN)',
         failed: '\ud83d\udd0c Ricarica: ricerca non riuscita (controlla chiave/connessione)',
-        openMaps: '\ud83d\udccd Apri in Google Maps', opened: '\u2713 Aperto in Google Maps', blocked: '\u26a0 Pop-up bloccato \u2014 usa \u201cApri in Google Maps\u201d nel pannello' },
+        openMaps: '\ud83d\udccd Apri in Google Maps', opened: '\u2713 Aperto in Google Maps', blocked: '\u26a0 Pop-up bloccato \u2014 usa \u201cApri in Google Maps\u201d nel pannello',
+        exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a' },
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
         realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
         chPending: '\ud83d\udd0c Charging: searching\u2026', ch: '\ud83d\udd0c Charging', addedMaps: 'added to the Maps route',
@@ -1411,7 +1412,8 @@
         noRange: '\ud83d\udd0c Charging: enter your remaining range (km) in the planner',
         noRoute: '\ud83d\udd0c Charging: no real route yet (set the Worker and run SCAN again)',
         failed: '\ud83d\udd0c Charging: lookup failed (check key/connection)',
-        openMaps: '\ud83d\udccd Open in Google Maps', opened: '\u2713 Opened in Google Maps', blocked: '\u26a0 Pop-up blocked \u2014 use \u201cOpen in Google Maps\u201d in the planner' },
+        openMaps: '\ud83d\udccd Open in Google Maps', opened: '\u2713 Opened in Google Maps', blocked: '\u26a0 Pop-up blocked \u2014 use \u201cOpen in Google Maps\u201d in the planner',
+        exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near' },
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
         realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
         chPending: '\ud83d\udd0c Recharge : recherche\u2026', ch: '\ud83d\udd0c Recharge', addedMaps: 'ajout\u00e9e \u00e0 l\u2019itin\u00e9raire Maps',
@@ -1421,7 +1423,8 @@
         noRange: '\ud83d\udd0c Recharge : indiquez votre autonomie restante (km) dans le panneau',
         noRoute: '\ud83d\udd0c Recharge : pas d\u2019itin\u00e9raire r\u00e9el (r\u00e9glez le Worker et relancez SCAN)',
         failed: '\ud83d\udd0c Recharge : \u00e9chec (v\u00e9rifiez la cl\u00e9/connexion)',
-        openMaps: '\ud83d\udccd Ouvrir dans Google Maps', opened: '\u2713 Ouvert dans Google Maps', blocked: '\u26a0 Pop-up bloqu\u00e9 \u2014 utilisez \u00ab Ouvrir dans Google Maps \u00bb dans le panneau' }
+        openMaps: '\ud83d\udccd Ouvrir dans Google Maps', opened: '\u2713 Ouvert dans Google Maps', blocked: '\u26a0 Pop-up bloqu\u00e9 \u2014 utilisez \u00ab Ouvrir dans Google Maps \u00bb dans le panneau',
+        exit: 'Sortie', quad: 'quadrant', limit: 'limite', near: 'pr\u00e8s de' }
     };
     function chatLang() {
       var s = null; try { s = localStorage.getItem('xkdg_ai_lang'); } catch (e) {}
@@ -1430,6 +1433,12 @@
       return 'en';
     }
     var _itinChargeEl = null;   // charging line of the latest itinerary bubble (updated in place)
+    var _itinExitEls = [];      // exit lines of the latest itinerary bubble (place names filled async)
+    function exitLineText(L, ex) {
+      return '\ud83d\udea9 ' + L.exit + ' ' + ex.dir + ' \u00b7 ~' + ex.at +
+        (ex.place ? ' \u00b7 ' + L.near + ' ' + ex.place : '') +
+        (ex.limitDeg != null ? ' (' + L.limit + ' ' + ex.limitDeg + '\u00b0)' : '');
+    }
     function chargingText(L, info) {
       if (!info) return L.chPending;
       if (info.error === 'no_key') return L.noKey;
@@ -1469,6 +1478,16 @@
         ol.appendChild(elc('li', { style: 'margin:2px 0;' }, t));
       });
       wrap.appendChild(ol);
+      _itinExitEls = [];
+      if (payload.exits && payload.exits.length) {
+        var exWrap = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' });
+        payload.exits.forEach(function (ex) {
+          var line = elc('div', { style: 'margin:1px 0;' }, exitLineText(L, ex));
+          exWrap.appendChild(line);
+          _itinExitEls.push({ el: line, ex: ex });
+        });
+        wrap.appendChild(exWrap);
+      }
       if (payload.charging_pending || payload.charging) {
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
         wrap.appendChild(_itinChargeEl);
@@ -1488,6 +1507,14 @@
     }
     function updateItineraryCharging(info) {
       try { if (_itinChargeEl) { var L = ITIN_LBL[chatLang()] || ITIN_LBL.en; _itinChargeEl.textContent = chargingText(L, info); msgs.scrollTop = msgs.scrollHeight; } } catch (e) {}
+    }
+    function updateItineraryExits(exits) {
+      try {
+        var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+        (exits || []).forEach(function (ex, i) {
+          if (_itinExitEls[i] && _itinExitEls[i].el) { _itinExitEls[i].ex = ex; _itinExitEls[i].el.textContent = exitLineText(L, ex); }
+        });
+      } catch (e) {}
     }
 
     function extractText(data) {
@@ -1568,6 +1595,7 @@
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
+      updateItineraryExits: function (exits) { try { updateItineraryExits(exits); } catch (e) {} },
       _send: doSend, _history: function () { return history; }
     };
   }

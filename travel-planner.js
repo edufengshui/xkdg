@@ -525,6 +525,53 @@
       });
   }
 
+  // Resolve a place to {lat,lon}. Prefers geocoding the NAME (reliable) over  // caller-supplied coordinates, which the AI generates "from its knowledge" and
+  // can get badly wrong for small towns. Falls back to the supplied lat/lon if
+  // the name is missing or geocoding fails/times out. Always resolves (never rejects).
+  function _tpResolvePlace(name, lat, lon) {
+    var nLat = parseFloat(lat), nLon = parseFloat(lon);
+    var fallback = (isFinite(nLat) && isFinite(nLon)) ? { lat: nLat, lon: nLon } : null;
+    if (!name || typeof name !== 'string' || !name.trim()) return Promise.resolve(fallback);
+    var timeout = new Promise(function (res) { setTimeout(function () { res(null); }, 6000); });
+    var geo = tpGeocode(name.trim())
+      .then(function (g) { return (g && isFinite(g.lat) && isFinite(g.lon)) ? { lat: g.lat, lon: g.lon } : null; })
+      .catch(function () { return null; });
+    return Promise.race([geo, timeout]).then(function (r) { return r || fallback; });
+  }
+
+  // Open a SINGLE point in Google Maps (a pin you can save / mark yourself).
+  function tpMapsPointUrl(lat, lon) {
+    return 'https://www.google.com/maps/search/?api=1&query=' +
+      encodeURIComponent(Number(lat).toFixed(6) + ',' + Number(lon).toFixed(6));
+  }
+  function tpOpenPoint(lat, lon) {
+    var url = tpMapsPointUrl(lat, lon), w = null;
+    try { w = window.open(url, '_blank'); } catch (e) {}
+    if (!w) { try { window.location.href = url; } catch (e) {} }
+  }
+  // Reverse geocode lat/lon -> a short place name (town/city/…); null on failure.
+  function tpReverseGeocode(lat, lon) {
+    return fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&addressdetails=1&lat=' +
+        encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon), { headers: { 'Accept-Language': 'it' } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var a = (d && d.address) || {};
+        return a.town || a.village || a.city || a.municipality || a.suburb || a.county || a.state || (d && d.name) || null;
+      });
+  }
+  // Reverse geocode several points SEQUENTIALLY (gentle on the free geocoder).
+  // Each has a 5s timeout; resolves to an array of names (null where it failed).
+  function tpReverseGeocodeMany(points) {
+    var out = [];
+    return (points || []).reduce(function (chain, p) {
+      return chain.then(function () {
+        var to = new Promise(function (res) { setTimeout(function () { res(null); }, 5000); });
+        return Promise.race([tpReverseGeocode(p.lat, p.lon).catch(function () { return null; }), to])
+          .then(function (name) { out.push(name); });
+      });
+    }, Promise.resolve()).then(function () { return out; });
+  }
+
   /* ---- Charging stations (Phase F, Open Charge Map) ----------------------- */
   function tpHaversineKm(lat1, lon1, lat2, lon2) { return tpHaversine(lat1, lon1, lat2, lon2) / 1000; }
 
@@ -947,6 +994,11 @@
         if (tpAngDiff(nb, targetDeg) <= 22.5) { last = { t: t, pos: { lat: p.lat, lon: p.lon }, netBearing: nb }; entered = true; }
         else if (entered) break; // net has just LEFT the sector -> stop at the last in-sector point (cash before exiting)
       }
+      if (last) {
+        // which sector edge it is about to cross (target ± 22.5°), for display
+        var loB = (((targetDeg - 22.5) % 360) + 360) % 360, hiB = (((targetDeg + 22.5) % 360) + 360) % 360;
+        last.limitDeg = (tpAngDiff(last.netBearing, loB) <= tpAngDiff(last.netBearing, hiB)) ? loB : hiB;
+      }
       return last;
     }
     function nextTargetFrom(i) {
@@ -991,7 +1043,7 @@
         var nh2 = nextTargetFrom(i + 1) || target;
         timeline.push({ type: 'stop', atWall: endWall, slotIdx: i,
           reason: 'cashed a net ' + target.dir + ' trip from the start point (positive ' + slot.brPy + ' hour)',
-          newHeading: nh2, pos: cp.pos });
+          newHeading: nh2, pos: cp.pos, cashDir: target.dir, limitDeg: cp.limitDeg });
         P0 = cp.pos; legStartMs = cp.t; curHead = nh2;
       }
       // if no cash point this slot: keep driving (P0 unchanged), the direction was not achievable here
@@ -1492,6 +1544,10 @@
               (s.operator ? s.operator + ' \u00b7 ' : '') + (s.maxKW ? Math.round(s.maxKW) + ' kW \u00b7 ' : '') +
               Math.round(r.alongKm) + ' km along \u00b7 ' + r.offKm.toFixed(1) + ' km off route \u00b7 ETA ' + hm));
             row.appendChild(info);
+            var seeBtn = el('button', { type: 'button', title: 'See this charger in Google Maps',
+              style: 'padding:5px 9px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '\ud83d\udd0d Maps');
+            (function (la, lo) { seeBtn.addEventListener('click', function () { tpOpenPoint(la, lo); }); })(s.lat, s.lon);
+            row.appendChild(seeBtn);
             row.appendChild(el('span', { style: 'color:#1b6e2f;font-size:12px;font-weight:600;white-space:nowrap;' }, '\u2713 on route'));
             listWrap.appendChild(row);
           });
@@ -1542,20 +1598,41 @@
     var checks = [];
     if (stops.length) {
       var listWrap = el('div', { style: 'margin:6px 0 6px 4px;' });
+      var _placePts = [];   // { span, pos } to fill with reverse-geocoded names
       stops.forEach(function (st) {
-        var row = el('label', { style: 'display:flex;align-items:center;gap:7px;font-size:12px;color:#333;margin:3px 0;cursor:pointer;' });
+        var row = el('div', { style: 'display:flex;align-items:center;gap:7px;margin:3px 0;' });
+        var lab = el('label', { style: 'display:flex;align-items:center;gap:7px;font-size:12px;color:#333;cursor:pointer;flex:1;min-width:0;' });
         var cb = el('input', { type: 'checkbox' });
         cb.checked = true;
-        var icon = st.charge ? '🔌' : '🛑';
         var when = fmtHMonly(st.atWall);
-        var dur = st.charge && st.durationMin ? ' (' + st.durationMin + ' min)' : '';
-        row.appendChild(cb);
-        row.appendChild(el('span', null, icon + ' <b>' + when + '</b>' + dur +
-          ' <span style="color:#999;">· road point ' + tpLatLng(st.pos) + '</span>'));
+        var txt;
+        if (st.cashDir) {
+          txt = '\ud83d\udea9 Exit <b>' + st.cashDir + '</b> quadrant \u00b7 <b>' + when + '</b> \u00b7 ' +
+            '<span class="tp-place" style="color:#1565c0;">\u2026</span>' +
+            (st.limitDeg != null ? ' <span style="color:#999;">(limit ' + Math.round(st.limitDeg) + '\u00b0)</span>' : '');
+        } else {
+          var dur = st.charge && st.durationMin ? ' (' + st.durationMin + ' min)' : '';
+          txt = (st.charge ? '\ud83d\udd0c' : '\ud83d\uded1') + ' <b>' + when + '</b>' + dur +
+            ' \u00b7 <span class="tp-place" style="color:#999;">\u2026</span>';
+        }
+        lab.appendChild(cb);
+        var span = el('span', null, txt);
+        lab.appendChild(span);
+        row.appendChild(lab);
+        var seeBtn = el('button', { type: 'button', title: 'See this point in Google Maps',
+          style: 'padding:5px 9px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '\ud83d\udd0d Maps');
+        (function (p) { seeBtn.addEventListener('click', function (e) { if (e) e.preventDefault(); tpOpenPoint(p.lat, p.lon); }); })(st.pos);
+        row.appendChild(seeBtn);
         listWrap.appendChild(row);
         checks.push({ cb: cb, pos: st.pos, stop: st });
+        var ps = span.querySelector('.tp-place');
+        if (ps) _placePts.push({ span: ps, pos: st.pos });
       });
       wrap.appendChild(listWrap);
+      // Fill the place names (reverse geocoding, sequential so we are gentle on the geocoder).
+      tpReverseGeocodeMany(_placePts.map(function (x) { return x.pos; }))
+        .then(function (names) { _placePts.forEach(function (x, i) { x.span.textContent = names[i] ? ('near ' + names[i]) : tpLatLng(x.pos); }); })
+        .catch(function () { _placePts.forEach(function (x) { x.span.textContent = tpLatLng(x.pos); }); });
     } else {
       wrap.appendChild(el('div', { style: 'font-size:12px;color:#888;margin:4px 0 4px 4px;' }, 'No planned stops — the link will be a direct route (you can still add your own below).'));
     }
@@ -1643,6 +1720,13 @@
           restart: it.charge ? fmtHMonly(it.restartWall) : fmtHMonly(it.atWall),
           toward: tpHeadDirOnly(it.newHeading) };
       });
+      var exits = [];
+      plan.forEach(function (it) {
+        if (it.type === 'stop' && it.cashDir && it.pos)
+          exits.push({ dir: it.cashDir, at: fmtHMonly(it.atWall),
+            limitDeg: (it.limitDeg != null ? Math.round(it.limitDeg) : null),
+            lat: it.pos.lat, lon: it.pos.lon, place: null });
+      });
       var lines = [];
       lines.push((result.origin.name || 'Origin') + ' → ' + (result.dest.name || 'Destination') +
         ' · bearing ' + Math.round(result.bearing) + '° (' + result.snapDir + ')' +
@@ -1650,6 +1734,10 @@
       plan.forEach(function (it) {
         if (it.type === 'leg') {
           lines.push('Drive ' + fmtHMonly(it.startWall) + '→' + fmtHMonly(it.endWall) + ' (' + (Math.round(it.durationH * 10) / 10) + 'h) toward ' + tpHeadDirOnly(it.heading) + (it.note === 'arrival' ? ' — arrive at ' + result.dest.name : ''));
+        } else if (it.cashDir) {
+          lines.push('Exit ' + it.cashDir + ' quadrant ~' + fmtHMonly(it.atWall) +
+            (it.limitDeg != null ? ' (limit ' + Math.round(it.limitDeg) + '°)' : '') +
+            ', then set off toward ' + tpHeadDirOnly(it.newHeading));
         } else {
           lines.push((it.charge ? 'Charge ' + it.durationMin + ' min' : 'Stop ' + (20) + ' min') + ' at ' + fmtHMonly(it.atWall) + ', then set off toward ' + tpHeadDirOnly(it.newHeading));
         }
@@ -1660,6 +1748,7 @@
         bearing: Math.round(result.bearing), snapped: result.snapDir,
         real_route: !!result.usedRealRoute, km: rm.km ? Math.round(rm.km) : null, driving_time: drive,
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
+        exits: exits,
         text: lines.join('\n')
       };
       // Compact payload for the live compass (net bearing + quadrant from the reference point during the drive).
@@ -1690,6 +1779,14 @@
         var payload = {}; for (var kk in window._tpLastResult) { if (window._tpLastResult.hasOwnProperty(kk)) payload[kk] = window._tpLastResult[kk]; }
         payload.charging_pending = true;   // a charger search runs right after; the line updates in place
         try { window.XKDGChat.addItinerary(payload); } catch (e) {}
+        // Fill the exit place names (reverse geocoding) and update the chat card in place.
+        if (exits.length) {
+          tpReverseGeocodeMany(exits.map(function (e) { return { lat: e.lat, lon: e.lon }; }))
+            .then(function (names) {
+              exits.forEach(function (e, i) { e.place = names[i] || null; });
+              try { if (window.XKDGChat && window.XKDGChat.updateItineraryExits) window.XKDGChat.updateItineraryExits(exits); } catch (e) {}
+            }).catch(function () {});
+        }
       }
       // Hands-free: switch to Google Maps by itself (no tap). Wait a moment so the auto-charger stop is in the link.
       if (fromAI && tpAutoMapsOn()) {
@@ -2493,7 +2590,17 @@
         document.getElementById('tp-date').value && document.getElementById('tp-time').value;
       if (canRun) { var b = document.getElementById('tp-scan'); if (b) b.click(); }
     }
-    fill();
+    // The AI supplies coordinates "from its knowledge", which a small model can
+    // get badly wrong for minor towns (it once placed Tuoro sul Trasimeno in
+    // Sicily). Geocode the place NAMES (reliable) and use those coordinates,
+    // keeping the supplied lat/lon only as a fallback. Sequential to be gentle
+    // on the free geocoder.
+    _tpResolvePlace(params.originName, params.originLat, params.originLon).then(function (o) {
+      if (o) { params.originLat = o.lat; params.originLon = o.lon; }
+      return _tpResolvePlace(params.destName, params.destLat, params.destLon);
+    }).then(function (d) {
+      if (d) { params.destLat = d.lat; params.destLon = d.lon; }
+    }).catch(function () {}).then(function () { fill(); });
     return true;
   }
 
