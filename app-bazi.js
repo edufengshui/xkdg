@@ -716,6 +716,22 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
         return CLASHES.some(([a,b]) => (b1===a && b2===b) || (b1===b && b2===a));
     }
 
+    // Blood Link override (additive, safe-by-default): two pillars that belong
+    // to the same Blood Link family share a cohesive bond strong enough to
+    // override a branch Clash, so an Adding pair between them still counts.
+    // Any error falls back to the original behaviour (treated as not-same-family).
+    function inSameBloodLink(k1, k2) {
+        try {
+            const f1 = getJiaZiFamilies(pillars[k1].stem, pillars[k1].branch) || [];
+            const f2 = getJiaZiFamilies(pillars[k2].stem, pillars[k2].branch) || [];
+            return f1.some(f => f != null && f2.includes(f));
+        } catch (e) { return false; }
+    }
+
+    // True when a branch Clash was overridden by a shared Blood Link family to
+    // let an Adding or Hetu pair count. Used downstream to add a score bonus.
+    let _blOverrideUsed = false;
+
     // Returns 'Pure Hetu', 'Hetu', or null — all 4 pillars must be covered (overlapping allowed)
     // XKDG element relationships (no Earth)
     const XKDG_SHENG = { 'Water':'Wood', 'Wood':'Fire', 'Metal':'Water' };
@@ -731,9 +747,16 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     function checkHetu(valFn) {
         const validPairs = [];
         for (let i = 0; i < keys.length; i++)
-            for (let j = i+1; j < keys.length; j++)
-                if (!isClashing(keys[i], keys[j]) && isHetuPair(valFn(keys[i]), valFn(keys[j])))
+            for (let j = i+1; j < keys.length; j++) {
+                // Skip clashing pairs — UNLESS the two pillars share a Blood Link
+                // family, in which case the bond overrides the clash (same rule as Adding).
+                const _clash = isClashing(keys[i], keys[j]);
+                if (_clash && !inSameBloodLink(keys[i], keys[j])) continue;
+                if (isHetuPair(valFn(keys[i]), valFn(keys[j]))) {
                     validPairs.push([keys[i], keys[j]]);
+                    if (_clash) _blOverrideUsed = true;
+                }
+            }
         if (validPairs.length === 0) return null;
         // All 4 pillars must appear in at least one valid pair
         const covered = new Set(validPairs.flat());
@@ -762,9 +785,15 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
         const validPairs = [];
         for (let i = 0; i < keys.length; i++)
             for (let j = i+1; j < keys.length; j++) {
-                if (isClashing(keys[i], keys[j])) continue;
+                // Skip clashing pairs — UNLESS the two pillars are in the same
+                // Blood Link family, in which case the bond overrides the clash.
+                const _clash = isClashing(keys[i], keys[j]);
+                if (_clash && !inSameBloodLink(keys[i], keys[j])) continue;
                 const s = valFn(keys[i]) + valFn(keys[j]);
-                if ([5,10,15].includes(s)) validPairs.push({ a: keys[i], b: keys[j], sum: s });
+                if ([5,10,15].includes(s)) {
+                    validPairs.push({ a: keys[i], b: keys[j], sum: s });
+                    if (_clash) _blOverrideUsed = true;
+                }
             }
         if (validPairs.length === 0) return null;
         // All 4 pillars must appear in at least one valid pair
@@ -793,6 +822,15 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     const aYun = checkAdd(yun);
     if (aQi)  items.push({ text: `${aQi} Elements`, tag: 'blue' });
     if (aYun) items.push({ text: `${aYun} Periods`,  tag: 'blue' });
+
+    // If a Blood Link bond overrode a clash to form an Adding/Hetu relation,
+    // flag those relation items so the hour score gets a bonus downstream.
+    if (_blOverrideUsed) {
+        items.forEach(it => {
+            if (it.tag === 'blue' && (it.text.indexOf('Adding') !== -1 || it.text.indexOf('Hetu') !== -1))
+                it.blOverride = true;
+        });
+    }
 
     // ── Sheng In / Ke In ─────────────────────────────────────────────
     // Map qi number → element family (no Earth in XKDG)
@@ -3037,6 +3075,12 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     const hasFullBL  = blueItems.some(i => i.tag === 'family');
     const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
 
+    // Bonus when a branch clash was overridden by a shared Blood Link family to
+    // form an Adding/Hetu relation (flagged in analyzeXkdg). Tunable.
+    const BLOOD_LINK_OVERRIDE_BONUS = 2;
+    const hasBLOverride  = blueItems.some(i => i.blOverride);
+    const blOverrideBonus = hasBLOverride ? BLOOD_LINK_OVERRIDE_BONUS : 0;
+
     // Quality score from season
     const qualityScore = getDateQualityScore(analysisItems);
 
@@ -3129,6 +3173,7 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
         + tombShaPenalty + clashPenalty
         + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus
         + fullBLBonus + partialBLBonus
+        + blOverrideBonus
         + nayinScore;
     return Math.max(effectiveFloor, rawScore);
 }
