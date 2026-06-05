@@ -1376,10 +1376,10 @@
       var reserve = parseFloat(document.getElementById('tp-reserve') && document.getElementById('tp-reserve').value) || 0;
       var nets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; });
 
-      if (!key) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key in 🔋 Range & charging first.'; if (auto) tpReportCharger({ error: 'no_key' }); return; }
-      if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; if (auto) tpReportCharger({ error: 'no_range' }); return; }
+      if (!key) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key in 🔋 Range & charging first.'; if (auto) { tpReportCharger({ error: 'no_key' }); window._tpChargerPending = false; } return; }
+      if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; if (auto) { tpReportCharger({ error: 'no_range' }); window._tpChargerPending = false; } return; }
       var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
-      if (!idx) { status.style.color = '#b58900'; status.textContent = 'No real route yet — set the Worker URL and press SCAN TRIP first.'; if (auto) tpReportCharger({ error: 'no_route' }); return; }
+      if (!idx) { status.style.color = '#b58900'; status.textContent = 'No real route yet — set the Worker URL and press SCAN TRIP first.'; if (auto) { tpReportCharger({ error: 'no_route' }); window._tpChargerPending = false; } return; }
       tpSetOcmKey(key);
 
       var usableKm = range * (1 - reserve / 100);
@@ -1408,11 +1408,11 @@
 
           // Cash-stop boundaries: along-route km of each 20-min stop (the 2-hour-window edges), in order.
           var bounds = (result.plan || []).filter(function (x) { return x.type === 'stop' && x.pos; })
-            .map(function (st) { var np = tpNearestRoutePoint(st.pos.lat, st.pos.lon, idx); return { atWall: st.atWall, alongKm: np.alongKm }; })
+            .map(function (st) { var np = tpNearestRoutePoint(st.pos.lat, st.pos.lon, idx); return { atWall: st.atWall, alongKm: np.alongKm, stop: st }; })
             .filter(function (b) { return isFinite(b.alongKm); })
             .sort(function (a, b) { return a.alongKm - b.alongKm; });
 
-          var PRE_KM = 30;   // look this far before each boundary ("a bit before the edge of the two hours")
+          var PRE_KM = 50;   // look this far before each quadrant-exit boundary (50 km before the exit)
           // Best charger inside [lo,hi] reachable from prevAlong; tiers: >=150 Tesla/Electra, >=150 other, >=80 T/E, >=80 other.
           function pickForWindow(lo, hi, prevAlong) {
             function pool(kw) {
@@ -1444,7 +1444,7 @@
               var pk = pickForWindow(lo, hi, prevAlong);
               if (pk && pk.row) {
                 var dup = chosen.some(function (c) { return c.row.s.lat === pk.row.s.lat && c.row.s.lon === pk.row.s.lon; });
-                if (!dup) { chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true; prevAlong = pk.row.alongKm; }
+                if (!dup) { pk.stopRef = b.stop; chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true; prevAlong = pk.row.alongKm; }
               }
             });
           }
@@ -1457,7 +1457,7 @@
           if (!chosen.length) {
             status.style.color = '#b58900';
             status.textContent = 'No charging station \u2265 ' + TP_MIN_KW2 + ' kW near the stops within ' + Math.round(usableKm) + ' km.';
-            if (auto) tpReportCharger({ error: 'none' });
+            if (auto) { tpReportCharger({ error: 'none' }); window._tpChargerPending = false; }
             return;
           }
 
@@ -1465,6 +1465,22 @@
           status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' near the 2-hour boundaries' +
             (anyLow ? ' (\u2265' + TP_MIN_KW2 + ' kW - no \u2265' + TP_MIN_KW + ' kW found)' : '') +
             (anyFb ? ' (other networks)' : '') + '.';
+
+          // Attach each chosen charger to its quadrant-exit stop so the Maps export
+          // shows them interleaved (exit -> charger -> next exit ...). A fallback
+          // charger with no cash stop goes into the free-text waypoints instead.
+          var exEl = document.getElementById('tp-extra-wp');
+          chosen.forEach(function (c) {
+            var s = c.row.s;
+            if (c.stopRef) {
+              c.stopRef.charger = { lat: s.lat, lon: s.lon, title: s.title || s.operator || 'Charger' };
+            } else if (exEl) {
+              var token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+              if ((exEl.value || '').indexOf(token) < 0)
+                exEl.value = exEl.value.trim() ? (exEl.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
+            }
+          });
+          if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true }));  // refresh the Maps URL
 
           chosen.forEach(function (c) {
             var r = c.row, s = r.s, when = new Date(r.etaMs);
@@ -1475,36 +1491,23 @@
             info.appendChild(el('div', { style: 'color:#888;' },
               (s.operator ? s.operator + ' \u00b7 ' : '') + (s.maxKW ? Math.round(s.maxKW) + ' kW \u00b7 ' : '') +
               Math.round(r.alongKm) + ' km along \u00b7 ' + r.offKm.toFixed(1) + ' km off route \u00b7 ETA ' + hm));
-            var addBtn = el('button', { type: 'button',
-              style: 'padding:6px 9px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '+ Maps');
-            addBtn.addEventListener('click', function () {
-              var ex = document.getElementById('tp-extra-wp'); if (!ex) return;
-              var token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
-              if ((ex.value || '').indexOf(token) < 0) { ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token; ex.dispatchEvent(new Event('input', { bubbles: true })); }
-              addBtn.textContent = '\u2713 added'; setTimeout(function () { addBtn.textContent = '+ Maps'; }, 1500);
-            });
-            row.appendChild(info); row.appendChild(addBtn); listWrap.appendChild(row);
+            row.appendChild(info);
+            row.appendChild(el('span', { style: 'color:#1b6e2f;font-size:12px;font-weight:600;white-space:nowrap;' }, '\u2713 on route'));
+            listWrap.appendChild(row);
           });
 
           if (auto) {
-            var ex = document.getElementById('tp-extra-wp');
-            if (ex) {
-              chosen.forEach(function (c) {
-                var s = c.row.s, token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
-                if ((ex.value || '').indexOf(token) < 0) { ex.value = ex.value.trim() ? (ex.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token; }
-              });
-              ex.dispatchEvent(new Event('input', { bubbles: true }));
-              status.textContent += ' \u00b7 added to the Maps export.';
-            }
+            status.textContent += ' \u00b7 added to the Maps export.';
             var first = chosen[0].row;
             tpReportCharger({ name: first.s.title || first.s.operator || 'Charger', km: Math.round(first.alongKm), kw: first.s.maxKW,
               fallback: anyFb, lowPower: anyLow, count: chosen.length });
           }
+          if (auto) window._tpChargerPending = false;
         })
         .catch(function (err) {
           status.style.color = '#b00';
           status.textContent = 'Charging lookup failed: ' + err.message + '. Check the OCM key / connection.';
-          if (auto) tpReportCharger({ error: 'failed' });
+          if (auto) { tpReportCharger({ error: 'failed' }); window._tpChargerPending = false; }
         });
     }
     findBtn.addEventListener('click', function () { runChargerSearch(false); });
@@ -1550,7 +1553,7 @@
         row.appendChild(el('span', null, icon + ' <b>' + when + '</b>' + dur +
           ' <span style="color:#999;">· road point ' + tpLatLng(st.pos) + '</span>'));
         listWrap.appendChild(row);
-        checks.push({ cb: cb, pos: st.pos });
+        checks.push({ cb: cb, pos: st.pos, stop: st });
       });
       wrap.appendChild(listWrap);
     } else {
@@ -1589,9 +1592,18 @@
     wrap.appendChild(hfLab);
 
     function collectWaypoints() {
-      var wps = checks.filter(function (c) { return c.cb.checked; }).map(function (c) { return tpLatLng(c.pos); });
+      var wps = [];
+      checks.filter(function (c) { return c.cb.checked; }).forEach(function (c) {
+        wps.push(tpLatLng(c.pos));                                   // the quadrant-exit point
+        if (c.stop && c.stop.charger && isFinite(c.stop.charger.lat) && isFinite(c.stop.charger.lon))
+          wps.push(tpLatLng(c.stop.charger));                       // its recommended charger, right after
+      });
       var extra = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
-      return wps.concat(extra);
+      wps = wps.concat(extra);
+      // Google Maps keeps only a limited number of waypoints; trim from the far
+      // end so the nearest exit+charger pairs (the ones you reach first) survive.
+      if (wps.length > TP_MAPS_MAX_WAYPOINTS) wps = wps.slice(0, TP_MAPS_MAX_WAYPOINTS);
+      return wps;
     }
     function update() {
       var wps = collectWaypoints();
@@ -1681,7 +1693,16 @@
       }
       // Hands-free: switch to Google Maps by itself (no tap). Wait a moment so the auto-charger stop is in the link.
       if (fromAI && tpAutoMapsOn()) {
-        setTimeout(function () { try { tpOpenInMaps(true); } catch (e) {} }, 3200);
+        // Wait until the auto charging search has finished (so the chargers are
+        // already in the Maps URL) before navigating; cap the wait so we never hang.
+        var _navT0 = Date.now();
+        (function waitForChargers() {
+          if (!window._tpChargerPending || (Date.now() - _navT0) > 10000) {
+            setTimeout(function () { try { tpOpenInMaps(true); } catch (e) {} }, 600);
+            return;
+          }
+          setTimeout(waitForChargers, 200);
+        })();
       }
     } catch (e) {}
   }
@@ -2444,6 +2465,7 @@
     params = params || {};
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
     window._tpAutoChargers = (params.autoChargers !== false);  // auto-run "Find charging stops" after the plan
+    window._tpChargerPending = (params.autoChargers !== false); // hands-free navigation waits until this clears
     window._tpFromAI = true;                            // push the computed itinerary into the AI chat when done
     tpOpen();
     window._tpNames = {
