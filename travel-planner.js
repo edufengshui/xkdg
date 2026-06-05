@@ -707,6 +707,17 @@
     var snapDir = tpSnapDir(bearing);
 
     var startMs = dep.getTime();
+    // Snap the departure back to the START of the Chinese double-hour it falls in, so the trip
+    // uses the FULL two hours of that (favourable) hour instead of beginning halfway through it.
+    if (opts.snapDepart !== false) {
+      try {
+        var offO = tpOffsetMin(O.lon, utc, dstOn);
+        var brOriginAt = function (ms) { return Solar.fromDate(new Date(ms + offO * 60000)).getLunar().getEightChar().getTimeZhi(); };
+        var br0 = brOriginAt(startMs), probe = startMs, guard = 0;
+        while (guard++ < 130) { var prev = probe - 60000; if (brOriginAt(prev) !== br0) break; probe = prev; }
+        startMs = probe;   // start of the current double-hour (to the minute)
+      } catch (e) { /* keep requested departure */ }
+    }
     var endMs = startMs + durH * 3600000;
     var spanMs = Math.max(endMs - startMs, 1);
 
@@ -928,12 +939,13 @@
     }
     // latest in-window point where the NET bearing from P0 is inside the target sector
     function cashPoint(P0, slot, targetDeg) {
-      var step = 2 * 60000, last = null;
+      var step = 2 * 60000, last = null, entered = false;
       for (var t = slot.wallStart.getTime(); t <= slot.wallEnd.getTime(); t += step) {
         var p = posAt(t);
         if (tpHaversineKm(P0.lat, P0.lon, p.lat, p.lon) < 1) continue; // too close: bearing is noise
         var nb = tpBearing(P0.lat, P0.lon, p.lat, p.lon);
-        if (tpAngDiff(nb, targetDeg) <= 22.5) last = { t: t, pos: { lat: p.lat, lon: p.lon }, netBearing: nb };
+        if (tpAngDiff(nb, targetDeg) <= 22.5) { last = { t: t, pos: { lat: p.lat, lon: p.lon }, netBearing: nb }; entered = true; }
+        else if (entered) break; // net has just LEFT the sector -> stop at the last in-sector point (cash before exiting)
       }
       return last;
     }
