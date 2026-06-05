@@ -1650,6 +1650,27 @@
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
         text: lines.join('\n')
       };
+      // Compact payload for the live compass (net bearing + quadrant from the reference point during the drive).
+      try {
+        var favSlots = [];
+        (result.slots || []).forEach(function (s) {
+          var posd = (s.dirs || []).filter(function (d) { return d.eval && d.eval.ok; });
+          if (!posd.length) return;
+          var best = null, bd = 999;
+          posd.forEach(function (d) { var diff = tpAngDiff(TP_DIR_DEG[d.dir], result.bearing); if (diff < bd) { bd = diff; best = d; } });
+          if (!best || tpAngDiff(TP_DIR_DEG[best.dir], result.bearing) > 90) return;   // skip backward-only directions
+          favSlots.push({ startMs: s.wallStart.getTime(), endMs: s.wallEnd.getTime(), dir: best.dir, deg: TP_DIR_DEG[best.dir], ganzhi: s.gZhiPy || s.brPy || '' });
+        });
+        window._tpLive = {
+          stamp: Date.now(),
+          originPos: { lat: result.origin.lat, lon: result.origin.lon }, originName: result.origin.name || 'Origin',
+          destPos: { lat: result.dest.lat, lon: result.dest.lon }, destName: result.dest.name || 'Destination',
+          overallBearing: Math.round(result.bearing), overallDir: result.snapDir,
+          favSlots: favSlots,
+          stops: (result.plan || []).filter(function (x) { return x.type === 'stop' && x.pos; })
+            .map(function (st) { return { lat: st.pos.lat, lon: st.pos.lon, atMs: st.atWall ? st.atWall.getTime() : 0, charge: !!st.charge }; })
+        };
+      } catch (e) {}
       // If the AI opened this planner, push the finished itinerary into the chat (with an Open-in-Maps button).
       var fromAI = !!window._tpFromAI;
       if (fromAI) window._tpFromAI = false;
@@ -2454,9 +2475,143 @@
     return true;
   }
 
+  /* ===== LIVE COMPASS: net bearing + quadrant from the reference point ===== *
+   * While driving (screen on, app foreground) it shows, in real time from GPS:
+   *  - net bearing (degrees) + 8-direction quadrant FROM the reference point
+   *    (origin, advancing to the last stop you have passed),
+   *  - the favourable direction active right now, and a warning when you are
+   *    about to leave its quadrant (time to stop & cash). No Wake Lock: it
+   *    recomputes on screen wake (visibilitychange) and via the ↻ button.
+   * ----------------------------------------------------------------------- */
+  var _tpCmpWatch = null, _tpCmpPos = null, _tpRefMode = 'auto', _tpCmpState = null;
+  function tpCmpVoiceOn() { try { return localStorage.getItem('xkdg_cmp_voice') !== '0'; } catch (e) { return true; } }   // default ON
+  function tpCmpLang() {
+    var s = null; try { s = localStorage.getItem('xkdg_ai_lang'); } catch (e) {}
+    return (s === 'en' || s === 'fr' || s === 'it') ? s : 'it';   // default Italian for spoken alerts
+  }
+  var TP_DIR_WORD = {
+    it: { N: 'Nord', NE: 'Nord-Est', E: 'Est', SE: 'Sud-Est', S: 'Sud', SW: 'Sud-Ovest', W: 'Ovest', NW: 'Nord-Ovest' },
+    en: { N: 'North', NE: 'Northeast', E: 'East', SE: 'Southeast', S: 'South', SW: 'Southwest', W: 'West', NW: 'Northwest' },
+    fr: { N: 'Nord', NE: 'Nord-Est', E: 'Est', SE: 'Sud-Est', S: 'Sud', SW: 'Sud-Ouest', W: 'Ouest', NW: 'Nord-Ouest' }
+  };
+  function tpSpeak(text) {
+    try {
+      if (!tpCmpVoiceOn() || !window.speechSynthesis) return;
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = { it: 'it-IT', en: 'en-US', fr: 'fr-FR' }[tpCmpLang()];
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  function tpCmpAlert(state, q) {
+    var L = tpCmpLang(), name = TP_DIR_WORD[L][q] || q;
+    if (state === 'edge') tpSpeak({ it: 'Stai per uscire dal quadrante ' + name + '. Valuta una sosta.',
+      en: 'About to leave the ' + name + ' quadrant. Consider stopping.',
+      fr: 'Vous allez quitter le quadrant ' + name + '. Pensez \u00e0 vous arr\u00eater.' }[L]);
+    else if (state === 'left') tpSpeak({ it: 'Sei uscito dal quadrante ' + name + '.',
+      en: 'You have left the ' + name + ' quadrant.',
+      fr: 'Vous avez quitt\u00e9 le quadrant ' + name + '.' }[L]);
+  }
+  function tpQ8(deg) { return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round((((deg % 360) + 360) % 360) / 45) % 8]; }
+  function tpCmpRender() {
+    var box = document.getElementById('tp-cmp-body'); if (!box) return;
+    var live = window._tpLive;
+    if (!live) { box.innerHTML = '<div style="color:#888;font-size:13px;">Compute a trip first (set From/To, SCAN TRIP), then reopen.</div>'; return; }
+    if (!_tpCmpPos) { box.innerHTML = '<div style="color:#888;font-size:13px;">Waiting for GPS… allow location and tap ↻.</div>'; return; }
+    var pos = _tpCmpPos, ref = live.originPos, refLabel = 'from start';
+    if (_tpRefMode !== 'origin' && live.stops && live.stops.length) {
+      var myToDest = tpHaversineKm(pos.lat, pos.lon, live.destPos.lat, live.destPos.lon), best = null;
+      live.stops.forEach(function (s) {
+        var sToDest = tpHaversineKm(s.lat, s.lon, live.destPos.lat, live.destPos.lon);
+        if (sToDest > myToDest || tpHaversineKm(pos.lat, pos.lon, s.lat, s.lon) < 3) best = s;   // passed it, or you're at it
+      });
+      if (best) { ref = { lat: best.lat, lon: best.lon }; refLabel = 'from last stop'; }
+    }
+    var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
+    var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
+    var now = Date.now(), slot = null;
+    (live.favSlots || []).forEach(function (s) { if (now >= s.startMs && now < s.endMs) slot = s; });
+    var html = '<div style="font-size:46px;font-weight:800;line-height:1;color:#1565c0;">' + Math.round(deg) + '°</div>' +
+      '<div style="font-size:24px;font-weight:700;margin-top:2px;">' + q + '</div>' +
+      '<div style="font-size:12px;color:#666;margin-top:4px;">' + refLabel + ' · ' + (distKm < 10 ? distKm.toFixed(1) : Math.round(distKm)) + ' km</div>';
+    if (distKm < 1) html += '<div style="font-size:12px;color:#b58900;margin-top:4px;">Too close to the reference for a stable bearing.</div>';
+    html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #eee;font-size:13px;">';
+    if (slot) {
+      var diff = tpAngDiff(deg, slot.deg), inSec = diff <= 22.5, margin = Math.round(22.5 - diff);
+      var qTarget = tpQ8(slot.deg);
+      var state = !inSec ? 'left' : (diff >= 17 ? 'edge' : 'inside');
+      var stateKey = slot.startMs + ':' + state;   // tie the spoken alert to this window + state
+      if (state !== 'inside' && stateKey !== _tpCmpState) tpCmpAlert(state, qTarget);
+      _tpCmpState = (state === 'inside') ? (slot.startMs + ':inside') : stateKey;
+      html += 'Favourable now: <b>' + qTarget + '</b> (' + slot.dir + (slot.ganzhi ? ' · ' + slot.ganzhi : '') + ')</div>';
+      if (!inSec) html += '<div style="color:#b00;font-weight:700;font-size:14px;margin-top:3px;">\u26a0 You have LEFT the ' + qTarget + ' quadrant.</div>';
+      else if (diff >= 17) html += '<div style="color:#b58900;font-weight:700;font-size:14px;margin-top:3px;">\u26a0 About to leave ' + qTarget + ' (~' + margin + '\u00b0 margin) — consider stopping to cash it.</div>';
+      else html += '<div style="color:#1b6e2f;font-size:13px;margin-top:3px;">\u2713 Inside ' + qTarget + ' (~' + margin + '\u00b0 to the edge).</div>';
+    } else {
+      _tpCmpState = null;
+      html += 'No favourable window active now. Overall trip: <b>' + live.overallDir + '</b> ' + live.overallBearing + '\u00b0.</div>';
+    }
+    box.innerHTML = html;
+  }
+  function tpCmpRefreshOnce() {
+    if (!navigator.geolocation) { var b = document.getElementById('tp-cmp-body'); if (b) b.innerHTML = '<div style="color:#b00;font-size:13px;">No geolocation on this device.</div>'; return; }
+    navigator.geolocation.getCurrentPosition(
+      function (p) { _tpCmpPos = { lat: p.coords.latitude, lon: p.coords.longitude }; tpCmpRender(); },
+      function () {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+  }
+  function tpCmpStart() {
+    if (!navigator.geolocation || _tpCmpWatch != null) return;
+    _tpCmpWatch = navigator.geolocation.watchPosition(
+      function (p) { _tpCmpPos = { lat: p.coords.latitude, lon: p.coords.longitude }; tpCmpRender(); },
+      function (err) { var b = document.getElementById('tp-cmp-body'); if (b && !_tpCmpPos) b.innerHTML = '<div style="color:#b00;font-size:13px;">GPS error: ' + (err && err.message) + '. Allow location and tap ↻.</div>'; },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  }
+  function tpCmpStop() { if (_tpCmpWatch != null) { try { navigator.geolocation.clearWatch(_tpCmpWatch); } catch (e) {} _tpCmpWatch = null; } }
+  function tpOpenCompass() {
+    var ov = document.getElementById('tp-cmp-ov');
+    if (!ov) {
+      ov = el('div', { id: 'tp-cmp-ov', style: 'position:fixed;left:12px;bottom:80px;z-index:99996;width:230px;background:#fff;border:2px solid #1565c0;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);' });
+      var head = el('div', { style: 'display:flex;align-items:center;gap:6px;background:#1565c0;color:#fff;border-radius:10px 10px 0 0;padding:7px 9px;' });
+      head.appendChild(el('div', { style: 'flex:1;font-size:13px;font-weight:700;' }, '🧭 Live compass'));
+      var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Reference: Auto (origin→last stop) / Origin only', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
+      var refr = el('button', { type: 'button', title: 'Refresh now', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, '\u21bb');
+      var vox = el('button', { id: 'tp-cmp-vox', type: 'button', title: 'Voice alerts on/off', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, tpCmpVoiceOn() ? '\ud83d\udd0a' : '\ud83d\udd07');
+      vox.addEventListener('click', function () {
+        var on = !tpCmpVoiceOn();
+        try { localStorage.setItem('xkdg_cmp_voice', on ? '1' : '0'); } catch (e) {}
+        vox.textContent = on ? '\ud83d\udd0a' : '\ud83d\udd07';
+        if (on) tpSpeak({ it: 'Voce attivata.', en: 'Voice on.', fr: 'Voix activ\u00e9e.' }[tpCmpLang()]);
+        else if (window.speechSynthesis) window.speechSynthesis.cancel();
+      });
+      var cls = el('button', { type: 'button', title: 'Close', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;' }, '\u00d7');
+      refBtn.addEventListener('click', function () { _tpRefMode = (_tpRefMode === 'origin') ? 'auto' : 'origin'; refBtn.textContent = (_tpRefMode === 'origin') ? 'Origin' : 'Auto'; tpCmpRender(); });
+      refr.addEventListener('click', tpCmpRefreshOnce);
+      cls.addEventListener('click', function () { tpCmpStop(); ov.style.display = 'none'; });
+      head.appendChild(refBtn); head.appendChild(vox); head.appendChild(refr); head.appendChild(cls);
+      ov.appendChild(head);
+      ov.appendChild(el('div', { id: 'tp-cmp-body', style: 'padding:12px;text-align:center;color:#222;' }));
+      document.body.appendChild(ov);
+    }
+    ov.style.display = 'block';
+    tpCmpRender(); tpCmpStart(); tpCmpRefreshOnce();
+  }
+  document.addEventListener('visibilitychange', function () {
+    var ov = document.getElementById('tp-cmp-ov');
+    if (!document.hidden && ov && ov.style.display !== 'none') tpCmpRefreshOnce();   // recompute on screen wake (no Wake Lock)
+  });
+  function tpInstallCompassFab() {
+    if (document.getElementById('tp-compass-fab')) return;
+    var b = el('button', { id: 'tp-compass-fab', type: 'button', title: 'Live compass',
+      style: 'position:fixed;left:14px;bottom:14px;z-index:99994;width:46px;height:46px;border:0;border-radius:50%;background:#1565c0;color:#fff;font-size:21px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);' }, '🧭');
+    b.addEventListener('click', tpOpenCompass);
+    document.body.appendChild(b);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tpInstallCompassFab); else tpInstallCompassFab();
+
   window.TravelPlanner = {
     plan: tpPlan,
     open: tpOpen,
+    openCompass: tpOpenCompass,
     openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
     getLastResult: function () { return window._tpLastResult || null; },
