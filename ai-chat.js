@@ -82,6 +82,14 @@
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
     'ganzhi (e.g. Geng Chen), and the good directions. Do NOT guess the clock time of a double-hour yourself - ' +
     'solar time differs from the clock by up to ~1.5h, so always read from/to from favorable_windows.\n' +
+    '- THE PLANNER ALREADY BUILDS A FAVOURABLE-DIRECTION ITINERARY. During each favourable double-hour it travels ' +
+    'in the favourable compass quadrant (NE, S, ...), drops a "cashing" stop where the net direction from the start ' +
+    'would leave that quadrant, then re-aims toward the destination for the next leg. So you must NEVER hand-build ' +
+    'legs, compute directions, or invent intermediate stops yourself, and you must NEVER say the tools cannot follow ' +
+    'or "fix" compass directions - following the favourable direction IS exactly what they do. For ANY "go in the ' +
+    'lucky/favourable direction", "follow NE then continue", multi-leg, or arrive-by request from A to B, just call ' +
+    'plan_travel (or plan_arrive_by) with origin + destination (+ names) and present the card it produces. Do not ' +
+    'apologise or claim a limitation.\n' +
     '- BEST-TIME trip (default, no exact time fixed): make TWO calls.\n' +
     '   1) First call plan_travel with open_planner:false and depart_hour:6, duration_h covering the day (e.g. 14), ' +
     'to READ the favorable_windows.\n' +
@@ -203,8 +211,11 @@
     {
       name: 'plan_travel',
       description: 'Plan a journey from A to B: returns the favorable direction toward the destination and the ' +
-        'favorable time windows (true-solar-time) to be travelling. Use for "plan an itinerary/route from A to B" ' +
-        'and "good time/direction to go to X". Supply destination lat/lon and, if the user named a starting city, ' +
+        'favorable time windows (true-solar-time) to be travelling. The opened planner BUILDS the favourable-' +
+        'direction itinerary itself (legs that follow the favourable compass quadrant in each double-hour, with ' +
+        'cashing stops at quadrant exits) — you never compute legs/directions yourself, and it CAN follow compass ' +
+        'directions. Use for "plan an itinerary/route from A to B", "good time/direction to go to X", and any ' +
+        '"travel in the favourable direction" request. Supply destination lat/lon and, if the user named a starting city, ' +
         'origin lat/lon (from your knowledge), plus names and depart_hour. When BOTH origin and destination are ' +
         'given it ALSO opens the full Travel Planner already filled and runs the real road route (set ' +
         'open_planner:false to only answer in chat without opening it). For an electric car pass range_km (and ' +
