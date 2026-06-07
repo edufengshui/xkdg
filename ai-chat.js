@@ -90,6 +90,16 @@
     'lucky/favourable direction", "follow NE then continue", multi-leg, or arrive-by request from A to B, just call ' +
     'plan_travel (or plan_arrive_by) with origin + destination (+ names) and present the card it produces. Do not ' +
     'apologise or claim a limitation.\n' +
+    '- NEVER convert a double-hour NAME (Zi, Chou, Yin, ... Wu, Wei, ...) into a clock time yourself, and NEVER ' +
+    'add or subtract an hour for daylight saving - you get DST wrong. The tools already handle DST and true solar ' +
+    'time: read the clock times from plan_travel\'s favorable_windows (from/to) and from plan_arrive_by\'s ' +
+    'depart_clock/arrive_clock, and present THOSE unchanged.\n' +
+    '- A request like "leave Tuoro at the Wu hour, go NE for ~1:45, stop at a point you find, then go E at the ' +
+    'start of Wei to reach Sant\u2019Angelo in Vado by ~14:50, no EV charge" is a fixed-ARRIVAL favourable-direction ' +
+    'trip: call plan_arrive_by with the destination, arrive_time "14:50", origin_name/dest_name, and NO range_km ' +
+    '(no charging). The intermediate "point you find" is the cashing stop the planner returns; the NE/E legs and ' +
+    'their clock times come from the planner too. Do not compute the directions, the stop, or the times yourself - ' +
+    'just present the returned solution (shortest first).\n' +
     '- BEST-TIME trip (default, no exact time fixed): make TWO calls.\n' +
     '   1) First call plan_travel with open_planner:false and depart_hour:6, duration_h covering the day (e.g. 14), ' +
     'to READ the favorable_windows.\n' +
