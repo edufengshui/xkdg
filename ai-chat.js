@@ -231,6 +231,36 @@
       }
     },
     {
+      name: 'plan_arrive_by',
+      description: 'Plan a journey where the ARRIVAL time matters and the departure is flexible. Use for "I need to ' +
+        'be in X by 18:00", "arrive at B around 3pm", "get there for 17:30". Returns several travel solutions that ' +
+        'all arrive at the target time (within a ±15 min tolerance by default), ranked SHORTEST trip first and ' +
+        'longer ones (which travel through more favourable directions) as secondary options. Charging is optional: ' +
+        'pass range_km only if it is an EV and you want charging considered. Supply destination lat/lon and, when the ' +
+        'user named a start, origin lat/lon + names (from your knowledge — the planner geocodes the names). By ' +
+        'default it also opens the full Travel Planner on the shortest solution (set open_planner:false to only answer).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          dest_lat: { type: 'number', description: 'Destination latitude.' },
+          dest_lon: { type: 'number', description: 'Destination longitude.' },
+          dest_name: { type: 'string', description: 'Destination place name.' },
+          origin_lat: { type: 'number', description: 'Origin latitude (defaults to saved GPS if omitted).' },
+          origin_lon: { type: 'number', description: 'Origin longitude.' },
+          origin_name: { type: 'string', description: 'Origin place name.' },
+          arrive_date: { type: 'string', description: 'Target arrival date YYYY-MM-DD (default today).' },
+          arrive_time: { type: 'string', description: 'Target arrival clock time HH:MM (required).' },
+          tolerance_min: { type: 'integer', description: 'Allowed arrival error in minutes (default 15).' },
+          range_km: { type: 'number', description: 'EV autonomy in km. Omit if no charging is wanted.' },
+          reserve_km: { type: 'number', description: 'EV safety reserve in km.' },
+          charging_optional: { type: 'boolean', description: 'Default true: only suggest charging if the distance actually needs it.' },
+          max_extra_hours: { type: 'integer', description: 'How many hours longer than the fastest trip to explore (default 5).' },
+          open_planner: { type: 'boolean', description: 'Open + run the planner on the shortest solution. Defaults true when origin is known.' }
+        },
+        required: ['dest_lat', 'dest_lon', 'arrive_time']
+      }
+    },
+    {
       name: 'open_travel_planner',
       description: 'Open the full Travel Planner. If you pass the route (origin_lat/lon + dest_lat/lon, ideally with ' +
         'names and depart_date/depart_hour), it opens PRE-FILLED and immediately RUNS the real road plan. For an ' +
@@ -399,6 +429,7 @@
       if (name === 'find_bed_dates') return toolFindBedDates(input || {});
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
       if (name === 'plan_travel') return toolPlanTravel(input || {});
+      if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
@@ -764,6 +795,83 @@
     }
     baseOut.planner_opened = false;
     baseOut.note = 'Straight-line estimate. For the real road route + Google Maps export, open the Travel Planner.';
+    return baseOut;
+  }
+  function toolPlanArriveBy(input) {
+    input = input || {};
+    if (!window.TravelPlanner || typeof window.TravelPlanner.planArriveBy !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+    if (input.dest_lat == null || input.dest_lon == null)
+      return { error: 'I need the destination coordinates (dest_lat, dest_lon).' };
+    if (typeof input.arrive_time !== 'string' || !/^\d{1,2}:\d{2}$/.test(input.arrive_time))
+      return { error: 'I need the target arrival time (arrive_time, HH:MM).' };
+    var dest = { lat: +input.dest_lat, lon: +input.dest_lon };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    var today = todayIso();
+    var dateStr = input.arrive_date || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today;
+    var hh = String(parseInt(input.arrive_time.split(':')[0], 10)).padStart(2, '0');
+    var timeStr = hh + ':' + input.arrive_time.split(':')[1];
+    var target = new Date(dateStr + 'T' + timeStr + ':00');
+    if (isNaN(target.getTime())) return { error: 'Invalid arrival date/time.' };
+    var tolMin = (input.tolerance_min != null) ? parseInt(input.tolerance_min, 10) : 15;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+    var dstOn = dstActiveOn(target);
+    var chargingOptional = (input.charging_optional !== false);
+    var range = (input.range_km != null) ? +input.range_km : 0;
+    var reserve = (input.reserve_km != null) ? +input.reserve_km : 0;
+    if (!origin) return { error: 'I need the origin (origin_lat/lon) or a saved GPS position to plan an arrive-by trip.' };
+
+    var out;
+    try {
+      out = window.TravelPlanner.planArriveBy({
+        arriveDate: target, tolMin: tolMin, origin: origin, dest: dest, utc: utc, dstOn: dstOn,
+        rangeKm: range, reserveKm: reserve, maxExtraHours: (input.max_extra_hours != null) ? +input.max_extra_hours : 5
+      });
+    } catch (e) { return { error: 'Arrive-by planning failed: ' + ((e && e.message) || e) }; }
+
+    var sols = (out.solutions || []).slice(0, 4).map(function (s) {
+      return { depart_clock: s.depClock, arrive_clock: s.arriveClock, duration_h: s.durH,
+        favorable_dirs_cashed: s.dirsCashed, favorable_hours: s.favHours, stops: s.nCashStops,
+        charge_needed: s.chargeNeeded };
+    });
+    var baseOut = {
+      target_arrival: dateStr + ' ' + timeStr + ' (\u00b1' + tolMin + ' min)',
+      distance_km: out.km, drive_time_h: out.driveH, used_real_route: out.usedRealRoute,
+      note_times: 'All depart_clock/arrive_clock are LOCAL CLOCK (DST ' + (dstOn ? 'on' : 'off') + '); present as-is. ' +
+        'Solutions are SHORTEST first; longer ones travel through more favourable directions. ' +
+        (out.usedRealRoute ? '' : 'Durations are a straight-line estimate until the planner fetches the real road route. '),
+      solutions: sols
+    };
+
+    var openPlanner = (input.open_planner != null) ? !!input.open_planner : true;
+    var chosen = out.chosen;
+    if (openPlanner && chosen && typeof window.TravelPlanner.openPrefilled === 'function') {
+      var wantCharge = (!chargingOptional) || chosen.chargeNeeded;
+      try {
+        window.TravelPlanner.openPrefilled({
+          originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
+          destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
+          departDate: dateStr, departTime: chosen.depClock,
+          durationH: chosen.durH, utc: utc, dst: dstOn, noSnap: true,
+          rangeKm: wantCharge && range ? range : null,
+          reserveKm: wantCharge && range ? reserve : null,
+          autoChargers: !!(wantCharge && range),
+          run: true
+        });
+      } catch (e) {}
+      baseOut.planner_opened = true;
+      baseOut.chosen_solution = { depart_clock: chosen.depClock, duration_h: chosen.durH, arrive_clock: chosen.arriveClock };
+      baseOut.note = 'The planner is open on the SHORTEST solution (leaves ' + chosen.depClock + ', arrives ' + chosen.arriveClock +
+        '). The full itinerary posts itself into THIS chat as a separate card. Reply with ONE short sentence: the chosen ' +
+        'departure clock time and arrival, then briefly mention there are also longer options through more favourable ' +
+        'directions if they want. Do NOT paste the itinerary or call open_itinerary_in_maps.';
+      return baseOut;
+    }
+    baseOut.planner_opened = false;
+    baseOut.note = 'Present the solutions shortest-first. To open one, the user can pick it and you can open the planner.';
     return baseOut;
   }
   function toolOpenTravelPlanner(input) {

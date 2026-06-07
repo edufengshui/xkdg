@@ -888,6 +888,79 @@
              } : null };
   }
 
+  /* ---- ARRIVE-BY planner ------------------------------------------------- *
+   * Flexible departure, FIXED arrival (± tolerance, default 15 min). Sweeps
+   * candidate trip durations: the shortest = drive straight / leave latest;
+   * longer ones = leave earlier and span more favourable double-hours. Every
+   * candidate arrives at the target (departure = target − duration, no snap),
+   * and they are ranked SHORTEST first (longer = second option). Charging is
+   * optional. Returns { target, tolMin, driveH, usedRealRoute, km,
+   * solutions[ {durH, depWall, arriveWall, depClock, arriveClock, nCashStops,
+   * dirsCashed, favHours, quality, chargeNeeded, result} ], chosen, bestFavorable }.
+   * --------------------------------------------------------------------- */
+  function tpPlanArriveBy(opts) {
+    opts = opts || {};
+    var target = opts.arriveDate;
+    if (!target || isNaN(target.getTime())) throw new Error('Invalid arrival date/time');
+    var O = opts.origin || TP_DEFAULT.origin;
+    var Dst = opts.dest || TP_DEFAULT.dest;
+    var utc = (opts.utc != null) ? opts.utc : 1;
+    var dstOn = !!opts.dstOn;
+    var tolMin = (opts.tolMin != null) ? opts.tolMin : 15;
+    var maxLegHours = opts.maxLegHours || 4;
+    var stepMin = opts.stepMin || 30;
+    var maxExtraHours = (opts.maxExtraHours != null) ? opts.maxExtraHours : 5;
+
+    // Driving time: real route if supplied/cached & matching, else straight-line estimate.
+    var route = opts.route ||
+      ((TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? TP_LAST_ROUTE : null);
+    var routeIdx = tpBuildRouteIndex(route);
+    var usedRealRoute = !!routeIdx;
+    var km = routeIdx ? routeIdx.distanceMeters / 1000 : tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon);
+    var TP_AVG_KMH = 78;   // rough motorway average when no real route is available
+    var driveH = routeIdx ? routeIdx.durationSec / 3600 : (km / TP_AVG_KMH);
+    if (!isFinite(driveH) || driveH <= 0) driveH = 1;
+
+    var usableKm = (opts.rangeKm > 0) ? (opts.rangeKm - (opts.reserveKm || 0)) : 0;
+    var minDur = Math.max(driveH, 0.5);
+    var solutions = [], seen = {};
+    for (var extra = 0; extra <= maxExtraHours + 1e-9; extra += stepMin / 60) {
+      var durH = minDur + extra;
+      var dep = new Date(target.getTime() - durH * 3600000);
+      var key = Math.round(dep.getTime() / 60000);
+      if (seen[key]) continue; seen[key] = 1;
+      var res;
+      try {
+        res = tpPlan({ depDate: dep, durationH: durH, origin: O, dest: Dst, utc: utc, dstOn: dstOn,
+          route: route, maxLegHours: maxLegHours, snapDepart: false, stepMin: 30, stopMode: 'auto' });
+      } catch (e) { continue; }
+      var arriveMs = dep.getTime() + durH * 3600000;
+      if (Math.abs(arriveMs - target.getTime()) > tolMin * 60000 + 1000) continue;
+      var stopsCash = (res.plan || []).filter(function (x) { return x.type === 'stop' && x.cashDir; });
+      var dirsCashed = []; stopsCash.forEach(function (s) { if (dirsCashed.indexOf(s.cashDir) < 0) dirsCashed.push(s.cashDir); });
+      var favHours = (res.slots || []).filter(function (s) { return s.hourPositive; }).length;
+      var towardSlots = (res.slots || []).filter(function (s) {
+        return (s.dirs || []).some(function (d) { return d.towardDest && d.eval && d.eval.ok; });
+      }).length;
+      solutions.push({
+        durH: Math.round(durH * 100) / 100, depWall: dep, arriveWall: new Date(arriveMs),
+        depClock: fmtHMonly(dep), arriveClock: fmtHMonly(new Date(arriveMs)),
+        nCashStops: stopsCash.length, dirsCashed: dirsCashed, favHours: favHours, towardSlots: towardSlots,
+        quality: towardSlots + stopsCash.length + favHours,
+        chargeNeeded: (usableKm > 0) ? (km > usableKm) : false,
+        result: res
+      });
+    }
+    // Shortest first (priority), tie-break by the more favourable trip.
+    solutions.sort(function (a, b) { return (a.durH - b.durH) || (b.quality - a.quality); });
+    var bestFav = null; solutions.forEach(function (s) { if (!bestFav || s.quality > bestFav.quality) bestFav = s; });
+    return {
+      target: target, tolMin: tolMin, driveH: Math.round(driveH * 100) / 100,
+      usedRealRoute: usedRealRoute, km: Math.round(km),
+      solutions: solutions, chosen: solutions[0] || null, bestFavorable: bestFav
+    };
+  }
+
   /* ---- pick the best gated direction in a slot ---------------------------- *
    * Prefers directions heading toward the destination; ranks by combined score.
    * ----------------------------------------------------------------------- */
@@ -2371,6 +2444,83 @@
     }, 'SCAN TRIP');
     panel.appendChild(btn);
 
+    // ---- ARRIVE-BY: fixed arrival, flexible departure ---------------------
+    // Lists travel solutions that all arrive at the target time (± tolerance),
+    // shortest first; "Use" fills departure+duration (no snap) and runs SCAN.
+    var abWrap = el('div', { style: 'margin-top:10px;border:1px solid #d9c9ec;border-radius:8px;padding:9px;background:#faf7fd;' });
+    abWrap.appendChild(el('div', { style: 'font-weight:700;color:#5b2a86;font-size:13px;margin-bottom:5px;' }, '\ud83c\udfaf Arrive by (flexible departure)'));
+    abWrap.appendChild(el('div', { style: 'font-size:11px;color:#777;margin-bottom:7px;' },
+      'Fixed arrival, flexible departure. Solutions are shortest first; longer ones pass through more favourable directions. Uses the trip date above as the arrival date. Run SCAN TRIP first for the real driving time.'));
+    var abRow = el('div', { style: 'display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;' });
+    var abTimeW = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;font-size:12px;flex:1;min-width:110px;' }, 'Arrival time');
+    abTimeW.appendChild(el('input', { id: 'tp-arr-time', type: 'time', value: '18:00', style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+    abRow.appendChild(abTimeW);
+    var abTolW = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#444;font-size:12px;width:96px;' }, 'Tolerance (min)');
+    abTolW.appendChild(el('input', { id: 'tp-arr-tol', type: 'number', value: '15', style: 'padding:6px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
+    abRow.appendChild(abTolW);
+    abWrap.appendChild(abRow);
+    var abBtn = el('button', { type: 'button', id: 'tp-arr-find',
+      style: 'width:100%;margin-top:8px;padding:9px;border:0;border-radius:8px;background:#7e3ff2;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' },
+      'FIND ARRIVE-BY SOLUTIONS');
+    abWrap.appendChild(abBtn);
+    var abOut = el('div', { id: 'tp-arr-out', style: 'margin-top:8px;font-size:12px;' });
+    abWrap.appendChild(abOut);
+    panel.appendChild(abWrap);
+
+    abBtn.addEventListener('click', function () {
+      abOut.innerHTML = '';
+      function num(id) { var e = document.getElementById(id); return e ? parseFloat(e.value) : NaN; }
+      var oLat = num('tp-olat'), oLon = num('tp-olon'), dLat = num('tp-dlat'), dLon = num('tp-dlon');
+      if (!isFinite(oLat) || !isFinite(oLon) || !isFinite(dLat) || !isFinite(dLon)) {
+        abOut.innerHTML = '<div style="color:#b00;">Set From and To (origin/destination) first.</div>'; return;
+      }
+      var dateStr = (document.getElementById('tp-date') || {}).value;
+      var timeStr = (document.getElementById('tp-arr-time') || {}).value || '18:00';
+      var target = new Date(dateStr + 'T' + timeStr);
+      if (isNaN(target.getTime())) { abOut.innerHTML = '<div style="color:#b00;">Invalid arrival date/time.</div>'; return; }
+      var tol = parseInt((document.getElementById('tp-arr-tol') || {}).value, 10); if (!isFinite(tol)) tol = 15;
+      var utc = num('tp-utc'); if (!isFinite(utc)) utc = 0;
+      var range = num('tp-range') || 0, reserve = num('tp-reserve') || 0;
+      var out;
+      try {
+        out = tpPlanArriveBy({ arriveDate: target, tolMin: tol,
+          origin: { lat: oLat, lon: oLon, name: (window._tpNames && window._tpNames.origin) || 'Origin' },
+          dest: { lat: dLat, lon: dLon, name: (window._tpNames && window._tpNames.dest) || 'Destination' },
+          utc: utc, dstOn: tpDstActiveOn(target), rangeKm: range, reserveKm: reserve, maxExtraHours: 5 });
+      } catch (e) { abOut.innerHTML = '<div style="color:#b00;">Error: ' + e.message + '</div>'; return; }
+      if (!out.solutions.length) { abOut.innerHTML = '<div style="color:#b58900;">No solution within \u00b1' + tol + ' min.</div>'; return; }
+      abOut.appendChild(el('div', { style: 'color:#555;margin-bottom:5px;' },
+        'Arrive ' + timeStr + ' \u00b1' + tol + ' min \u00b7 ' + out.km + ' km \u00b7 drive \u2248' + out.driveH + 'h' +
+        (out.usedRealRoute ? ' (real route)' : ' (estimate \u2014 run SCAN TRIP for real driving time)')));
+      out.solutions.slice(0, 5).forEach(function (s, i) {
+        var row = el('div', { style: 'display:flex;align-items:center;gap:8px;border-top:1px solid #e7dcf5;padding:6px 0;' });
+        var info = el('div', { style: 'flex:1;min-width:0;' });
+        info.appendChild(el('div', { style: 'font-weight:600;color:#333;' },
+          (i === 0 ? '\u26a1 ' : '') + 'Leave <b>' + s.depClock + '</b> \u2192 arrive ' + s.arriveClock + ' \u00b7 ' + s.durH + 'h'));
+        info.appendChild(el('div', { style: 'color:#888;' },
+          (s.dirsCashed.length ? 'favourable: ' + s.dirsCashed.join(', ') : 'no favourable cashing') +
+          (s.favHours ? ' \u00b7 ' + s.favHours + ' good hours' : '') +
+          (s.chargeNeeded ? ' \u00b7 \ud83d\udd0c charge needed' : '')));
+        row.appendChild(info);
+        var useBtn = el('button', { type: 'button',
+          style: 'padding:6px 10px;border:1px solid #7e3ff2;border-radius:6px;background:#fff;color:#7e3ff2;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, 'Use');
+        (function (sol) {
+          useBtn.addEventListener('click', function () {
+            var dd = sol.depWall;
+            var ds = dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0') + '-' + String(dd.getDate()).padStart(2, '0');
+            var ts = String(dd.getHours()).padStart(2, '0') + ':' + String(dd.getMinutes()).padStart(2, '0');
+            var de = document.getElementById('tp-date'); if (de) de.value = ds;
+            var te = document.getElementById('tp-time'); if (te) te.value = ts;
+            var du = document.getElementById('tp-dur'); if (du) du.value = sol.durH;
+            window._tpNoSnap = true;   // keep this exact departure so arrival stays on target
+            var sb = document.getElementById('tp-scan'); if (sb) sb.click();
+          });
+        })(s);
+        row.appendChild(useBtn);
+        abOut.appendChild(row);
+      });
+    });
+
     // ---- "I'm here now": reset origin to current GPS and replan ------------
     // For stopping mid-trip (e.g. in the countryside) and restarting the route
     // from the exact point you are. Sets origin = GPS, clears the cached route
@@ -2464,6 +2614,7 @@
         opts.origin.name = (window._tpNames && window._tpNames.origin) || 'Origin';
         opts.stopMode = document.getElementById('tp-stopmode').value;
         opts.charges = tpParseCharges(document.getElementById('tp-charges').value, dep);
+        if (window._tpNoSnap) { opts.snapDepart = false; window._tpNoSnap = false; }  // arrive-by: keep the exact departure
 
         // Auto-scan BEST over the trip dates to fill the hour-score cache, so the
         // user doesn't have to do it manually. Defensive: if anything fails we
@@ -2563,6 +2714,7 @@
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
     window._tpAutoChargers = (params.autoChargers !== false);  // auto-run "Find charging stops" after the plan
     window._tpChargerPending = (params.autoChargers !== false); // hands-free navigation waits until this clears
+    if (params.noSnap) window._tpNoSnap = true;                 // arrive-by: do NOT snap the departure (keep arrival exact)
     window._tpFromAI = true;                            // push the computed itinerary into the AI chat when done
     tpOpen();
     window._tpNames = {
@@ -2739,6 +2891,7 @@
 
   window.TravelPlanner = {
     plan: tpPlan,
+    planArriveBy: tpPlanArriveBy,
     open: tpOpen,
     openCompass: tpOpenCompass,
     openPrefilled: tpOpenPrefilled,
