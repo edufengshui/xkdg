@@ -47,12 +47,13 @@
   };
 
   // ---- SWITCHES (defaults — confirm with user) ----------------------------
-  // Tiger 白虎 is now ACCEPTABLE (no longer rejected).
-  // Warrior 玄武: default = still excluded. Set to false to make it acceptable.
-  var TP_EXCLUDE_WARRIOR = true;
+  // The gate now requires only a FAVOURABLE DOOR. Missing San Qi, a Warrior, or
+  // a Tiger no longer reject a direction — they make it a FALLBACK, used only
+  // when no cleaner direction (San Qi + favourable door, no Warrior/Tiger) is
+  // available in that double-hour. The penalties below order the fallbacks.
+  var TP_EXCLUDE_WARRIOR = false;   // Warrior no longer hard-rejected (now a fallback)
   // Internal Tian-Di clash: 'exclude' = hard reject, 'penalty' = lower score,
-  // 'ignore' = no effect. Default = soft penalty (since the FIXED condition is
-  // now only San Qi + favourable door).
+  // 'ignore' = no effect. Default = soft penalty.
   var TP_CLASH_MODE = 'penalty';
   var TP_CLASH_PENALTY = -1;
 
@@ -60,6 +61,14 @@
   var TP_BONUS_ZHIFU = 1;   // 直符 Zhi Fu at the palace
   var TP_BONUS_ZHISHI = 1;  // 直使 Zhi Shi at the palace
   var TP_BONUS_CONFIG = 1;  // each named auspicious config (Dun/Pretense/Borrow)
+
+  // A usable (gated) direction always scores POSITIVE — low for a fallback,
+  // higher for a clean one. We build the score additively from a positive base
+  // plus bonuses (no negative penalties), and never let it fall below the floor.
+  var TP_SCORE_BASE = 1;       // base for any direction that passes the gate (favourable door)
+  var TP_SCORE_FLOOR = 1;      // a usable direction's score is never below this (> 0)
+  var TP_BONUS_SANQI = 2;      // San Qi present on the Heaven plate (clean)
+  var TP_BONUS_GOODDEITY = 1;  // deity is NOT Warrior/Tiger (clean)
 
   // ---- HOUR positivity + synergy (from the app's BEST score, via cache) ----
   // An hour counts as "positive" when its native app score is >= this:
@@ -446,12 +455,21 @@
            near(route.dest.lat, D.lat) && near(route.dest.lng, D.lng);
   }
 
+  // Directions usable for SELECTION: prefer "clean" ones (San Qi + favourable
+  // door, no Warrior/Tiger); fall back to the relaxed ones (missing San Qi or
+  // Warrior/Tiger) only when no clean direction exists in this slot.
+  function tpUsableDirs(dirs) {
+    var ok = (dirs || []).filter(function (d) { return d.eval && d.eval.ok; });
+    var clean = ok.filter(function (d) { return d.eval && !d.eval.fallback; });
+    return clean.length ? clean : ok;
+  }
+
   /* Best gated direction in a slot toward an ARBITRARY target bearing (not just
    * the final destination). Reuses each direction's precomputed `combined`
    * score; only the "toward" test changes (within 67.5° of the target). Returns
    * a fresh object so the slot's stored dirs are never mutated. */
   function tpBestDirToward(slot, targetBearing) {
-    var gated = slot.dirs.filter(function (d) { return d.eval && d.eval.ok; });
+    var gated = tpUsableDirs(slot.dirs);
     if (!gated.length) return null;
     var toward = gated.filter(function (d) { return tpAngDiff(TP_DIR_DEG[d.dir], targetBearing) <= 67.5; });
     var pool = (toward.length ? toward : gated).slice()
@@ -672,27 +690,37 @@
     var favDoor = TP_FAV_DOORS.indexOf(door) !== -1;
     var clash = (TP_STEM_CLASHES[ti] === di);
     var isWarrior = (deity === 'Warrior');
-    var isTiger = (deity === 'Tiger'); // now acceptable — reported only
+    var isTiger = (deity === 'Tiger');
 
-    // FIXED condition
-    var gate = hasSanQi && favDoor;
+    // GATE: only a FAVOURABLE DOOR is required now. San Qi is no longer
+    // mandatory; a direction without it is still usable, but only as a fallback.
+    var gate = favDoor;
 
-    // Exclusions (switches)
+    // Exclusions (switches) — Warrior no longer excludes by default.
     var excluded = false;
     if (TP_EXCLUDE_WARRIOR && isWarrior) excluded = true;
     if (TP_CLASH_MODE === 'exclude' && clash) excluded = true;
 
     var ok = gate && !excluded;
 
-    // Score (only meaningful when ok)
-    var score = 0;
+    // FALLBACK = usable only when no cleaner direction is available in this slot:
+    // missing San Qi, or a Warrior/Tiger deity at the palace.
+    var fallback = ok && (!hasSanQi || isWarrior || isTiger);
+
+    // Score — always POSITIVE for a usable (gated) direction. Built additively
+    // from a positive base + bonuses; clean directions (San Qi, clean deity)
+    // score higher, fallbacks (no San Qi / Warrior / Tiger) score low but > 0.
+    var score = TP_SCORE_BASE;
+    if (hasSanQi) score += TP_BONUS_SANQI;                       // San Qi present
+    if (!isWarrior && !isTiger) score += TP_BONUS_GOODDEITY;     // clean deity
     if (pd.zhiFu) score += TP_BONUS_ZHIFU;
     if (pd.zhiShi) score += TP_BONUS_ZHISHI;
     score += configCount * TP_BONUS_CONFIG;
-    if (TP_CLASH_MODE === 'penalty' && clash) score += TP_CLASH_PENALTY;
+    if (TP_CLASH_MODE === 'penalty' && clash) score += TP_CLASH_PENALTY;   // mild
+    if (score < TP_SCORE_FLOOR) score = TP_SCORE_FLOOR;          // never below the positive floor
 
     return {
-      ok: ok, score: score,
+      ok: ok, fallback: fallback, score: score,
       hasSanQi: hasSanQi, favDoor: favDoor, clash: clash,
       isWarrior: isWarrior, isTiger: isTiger,
       zhiFu: !!pd.zhiFu, zhiShi: !!pd.zhiShi, configCount: configCount,
@@ -1051,7 +1079,7 @@
     if (!slots.length) return timeline;
 
     function slotTarget(slot) {
-      var posd = slot.dirs.filter(function (d) { return d.eval && d.eval.ok; });
+      var posd = tpUsableDirs(slot.dirs);
       if (!posd.length) return null;
       var best = null, bestDiff = 999;
       posd.forEach(function (d) {
