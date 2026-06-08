@@ -1556,9 +1556,19 @@
         exit: 'Sortie', quad: 'quadrant', limit: 'limite', near: 'pr\u00e8s de' }
     };
     function chatLang() {
+      // Follow the language the user is actually writing in (the same basis the
+      // model uses for its reply), so the itinerary card never diverges from the
+      // chat. The 🌐 selector (xkdg_ai_lang, mainly for voice) is only a fallback.
+      try {
+        for (var i = history.length - 1; i >= 0; i--) {
+          if (history[i] && history[i].role === 'user' && typeof history[i].content === 'string') {
+            var d = detectLang(history[i].content);
+            if (d && ITIN_LBL[d]) return d;   // first detectable user message wins
+          }
+        }
+      } catch (e) {}
       var s = null; try { s = localStorage.getItem('xkdg_ai_lang'); } catch (e) {}
       if (s && s !== 'auto' && ITIN_LBL[s]) return s;
-      try { for (var i = history.length - 1; i >= 0; i--) { if (history[i] && history[i].role === 'user' && typeof history[i].content === 'string') { var d = detectLang(history[i].content); return ITIN_LBL[d] ? d : 'en'; } } } catch (e) {}
       return 'en';
     }
     var _itinChargeEl = null;   // charging line of the latest itinerary bubble (updated in place)
