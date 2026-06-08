@@ -845,55 +845,81 @@
     var reserve = (input.reserve_km != null) ? +input.reserve_km : 0;
     if (!origin) return { error: 'I need the origin (origin_lat/lon) or a saved GPS position to plan an arrive-by trip.' };
 
-    var out;
-    try {
-      out = window.TravelPlanner.planArriveBy({
-        arriveDate: target, tolMin: tolMin, origin: origin, dest: dest, utc: utc, dstOn: dstOn,
-        rangeKm: range, reserveKm: reserve, maxExtraHours: (input.max_extra_hours != null) ? +input.max_extra_hours : 5
-      });
-    } catch (e) { return { error: 'Arrive-by planning failed: ' + ((e && e.message) || e) }; }
-
-    var sols = (out.solutions || []).slice(0, 4).map(function (s) {
-      return { depart_clock: s.depClock, arrive_clock: s.arriveClock, duration_h: s.durH,
-        favorable_dirs_cashed: s.dirsCashed, favorable_hours: s.favHours, stops: s.nCashStops,
-        charge_needed: s.chargeNeeded };
-    });
-    var baseOut = {
-      target_arrival: dateStr + ' ' + timeStr + ' (\u00b1' + tolMin + ' min)',
-      distance_km: out.km, drive_time_h: out.driveH, used_real_route: out.usedRealRoute,
-      note_times: 'All depart_clock/arrive_clock are LOCAL CLOCK (DST ' + (dstOn ? 'on' : 'off') + '); present as-is. ' +
-        'Solutions are SHORTEST first; longer ones travel through more favourable directions. ' +
-        (out.usedRealRoute ? '' : 'Durations are a straight-line estimate until the planner fetches the real road route. '),
-      solutions: sols
-    };
-
+    var TP = window.TravelPlanner;
+    var maxExtra = (input.max_extra_hours != null) ? +input.max_extra_hours : 5;
     var openPlanner = (input.open_planner != null) ? !!input.open_planner : true;
-    var chosen = out.chosen;
-    if (openPlanner && chosen && typeof window.TravelPlanner.openPrefilled === 'function') {
-      var wantCharge = (!chargingOptional) || chosen.chargeNeeded;
+
+    function resolve(name, lat, lon) {
+      return (TP.resolvePlace ? TP.resolvePlace(name, lat, lon) : Promise.resolve({ lat: +lat, lon: +lon }));
+    }
+
+    // Builds the answer once the (real) route is known.
+    function finish(route) {
+      var out;
       try {
-        window.TravelPlanner.openPrefilled({
-          originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
-          destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
-          departDate: dateStr, departTime: chosen.depClock,
-          durationH: chosen.durH, utc: utc, dst: dstOn, noSnap: true,
-          rangeKm: wantCharge && range ? range : null,
-          reserveKm: wantCharge && range ? reserve : null,
-          autoChargers: !!(wantCharge && range),
-          run: true
+        out = TP.planArriveBy({
+          arriveDate: target, tolMin: tolMin, origin: origin, dest: dest, utc: utc, dstOn: dstOn,
+          rangeKm: range, reserveKm: reserve, maxExtraHours: maxExtra, route: route || undefined
         });
-      } catch (e) {}
-      baseOut.planner_opened = true;
-      baseOut.chosen_solution = { depart_clock: chosen.depClock, duration_h: chosen.durH, arrive_clock: chosen.arriveClock };
-      baseOut.note = 'The planner is open on the SHORTEST solution (leaves ' + chosen.depClock + ', arrives ' + chosen.arriveClock +
-        '). The full itinerary posts itself into THIS chat as a separate card. Reply with ONE short sentence: the chosen ' +
-        'departure clock time and arrival, then briefly mention there are also longer options through more favourable ' +
-        'directions if they want. Do NOT paste the itinerary or call open_itinerary_in_maps.';
+      } catch (e) { return { error: 'Arrive-by planning failed: ' + ((e && e.message) || e) }; }
+
+      var sols = (out.solutions || []).slice(0, 4).map(function (s) {
+        return { depart_clock: s.depClock, arrive_clock: s.arriveClock, duration_h: s.durH,
+          favorable_dirs_cashed: s.dirsCashed, favorable_hours: s.favHours, stops: s.nCashStops,
+          charge_needed: s.chargeNeeded };
+      });
+      var baseOut = {
+        target_arrival: dateStr + ' ' + timeStr + ' (\u00b1' + tolMin + ' min)',
+        distance_km: out.km, drive_time_h: out.driveH, used_real_route: out.usedRealRoute,
+        note_times: 'All depart_clock/arrive_clock are LOCAL CLOCK (DST ' + (dstOn ? 'on' : 'off') + '); present as-is. ' +
+          'Solutions are SHORTEST first; longer ones travel through more favourable directions. ' +
+          (out.usedRealRoute ? '' : 'The road route could not be fetched, so durations are a cautious estimate. '),
+        solutions: sols
+      };
+
+      var chosen = out.chosen;
+      if (openPlanner && chosen && typeof TP.openPrefilled === 'function') {
+        var wantCharge = (!chargingOptional) || chosen.chargeNeeded;
+        try {
+          TP.openPrefilled({
+            originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
+            destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
+            departDate: dateStr, departTime: chosen.depClock,
+            durationH: chosen.durH, utc: utc, dst: dstOn, noSnap: true,
+            rangeKm: wantCharge && range ? range : null,
+            reserveKm: wantCharge && range ? reserve : null,
+            autoChargers: !!(wantCharge && range),
+            run: true
+          });
+        } catch (e) {}
+        baseOut.planner_opened = true;
+        baseOut.chosen_solution = { depart_clock: chosen.depClock, duration_h: chosen.durH, arrive_clock: chosen.arriveClock };
+        baseOut.note = 'The planner is open on the SHORTEST solution (leaves ' + chosen.depClock + ', arrives ' + chosen.arriveClock +
+          '). The full itinerary posts itself into THIS chat as a separate card. Reply with ONE short sentence: the chosen ' +
+          'departure clock time and arrival, then briefly mention there are also longer options through more favourable ' +
+          'directions if they want. Do NOT paste the itinerary or call open_itinerary_in_maps.';
+        return baseOut;
+      }
+      baseOut.planner_opened = false;
+      baseOut.note = 'Present the solutions shortest-first. To open one, the user can pick it and you can open the planner.';
       return baseOut;
     }
-    baseOut.planner_opened = false;
-    baseOut.note = 'Present the solutions shortest-first. To open one, the user can pick it and you can open the planner.';
-    return baseOut;
+
+    // 1) geocode the place names (reliable coords) → 2) fetch the REAL road
+    // route (so driving time is accurate) → 3) compute the arrive-by solutions.
+    return resolve(input.origin_name, origin.lat, origin.lon).then(function (o) {
+      if (o && isFinite(o.lat) && isFinite(o.lon)) origin = { lat: o.lat, lon: o.lon };
+      return resolve(input.dest_name, dest.lat, dest.lon);
+    }).then(function (d) {
+      if (d && isFinite(d.lat) && isFinite(d.lon)) dest = { lat: d.lat, lon: d.lon };
+      if (typeof TP.fetchRoute === 'function') {
+        return TP.fetchRoute({ lat: origin.lat, lng: origin.lon }, { lat: dest.lat, lng: dest.lon })
+          .catch(function () { return null; });   // degrade to a cautious estimate if the route service fails
+      }
+      return null;
+    }).then(function (route) {
+      return finish(route);
+    });
   }
   function toolOpenTravelPlanner(input) {
     input = input || {};

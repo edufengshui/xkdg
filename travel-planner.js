@@ -916,8 +916,13 @@
       ((TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? TP_LAST_ROUTE : null);
     var routeIdx = tpBuildRouteIndex(route);
     var usedRealRoute = !!routeIdx;
-    var km = routeIdx ? routeIdx.distanceMeters / 1000 : tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon);
-    var TP_AVG_KMH = 78;   // rough motorway average when no real route is available
+    // Straight-line distance badly under-estimates a real drive, so when we have
+    // no road route yet, inflate by a road factor and use a cautious average
+    // speed — otherwise the chosen duration can come out shorter than the real
+    // driving time and the plan looks "compressed".
+    var TP_ROAD_FACTOR = 1.3, TP_AVG_KMH = 72;
+    var straightKm = tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon);
+    var km = routeIdx ? routeIdx.distanceMeters / 1000 : straightKm * TP_ROAD_FACTOR;
     var driveH = routeIdx ? routeIdx.durationSec / 3600 : (km / TP_AVG_KMH);
     if (!isFinite(driveH) || driveH <= 0) driveH = 1;
 
@@ -1742,16 +1747,28 @@
     wrap.appendChild(hfLab);
 
     function collectWaypoints() {
-      var wps = [];
+      // Resolve each point's distance ALONG the route so the waypoints come out
+      // in travel order (origin → … → destination) instead of the order they
+      // were collected — otherwise Maps draws a zig-zag.
+      var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
+      function alongOf(p) {
+        if (!idx) return Infinity;
+        var np = tpNearestRoutePoint(p.lat, p.lon, idx);
+        return (np && isFinite(np.alongKm)) ? np.alongKm : Infinity;
+      }
+      var pts = [];
       checks.filter(function (c) { return c.cb.checked; }).forEach(function (c) {
-        wps.push(tpLatLng(c.pos));                                   // the quadrant-exit point
+        pts.push({ token: tpLatLng(c.pos), along: alongOf(c.pos) });                 // quadrant-exit point
         if (c.stop && c.stop.charger && isFinite(c.stop.charger.lat) && isFinite(c.stop.charger.lon))
-          wps.push(tpLatLng(c.stop.charger));                       // its recommended charger, right after
+          pts.push({ token: tpLatLng(c.stop.charger), along: alongOf(c.stop.charger) });  // its charger
       });
+      if (idx) pts.sort(function (a, b) { return a.along - b.along; });               // travel order
+      var wps = [];
+      pts.forEach(function (p) { if (!wps.length || wps[wps.length - 1] !== p.token) wps.push(p.token); }); // de-dup neighbours
       var extra = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
       wps = wps.concat(extra);
-      // Google Maps keeps only a limited number of waypoints; trim from the far
-      // end so the nearest exit+charger pairs (the ones you reach first) survive.
+      // Google Maps keeps only a limited number of waypoints; after sorting,
+      // trimming from the far end keeps the nearest ones (reached first).
       if (wps.length > TP_MAPS_MAX_WAYPOINTS) wps = wps.slice(0, TP_MAPS_MAX_WAYPOINTS);
       return wps;
     }
@@ -2892,6 +2909,11 @@
   window.TravelPlanner = {
     plan: tpPlan,
     planArriveBy: tpPlanArriveBy,
+    fetchRoute: function (origin, dest) {
+      return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });
+    },
+    resolvePlace: function (name, lat, lon) { return _tpResolvePlace(name, lat, lon); },
+    getWorkerUrl: tpGetWorkerUrl,
     open: tpOpen,
     openCompass: tpOpenCompass,
     openPrefilled: tpOpenPrefilled,
