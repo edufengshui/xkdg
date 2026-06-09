@@ -90,6 +90,12 @@
     'lucky/favourable direction", "follow NE then continue", multi-leg, or arrive-by request from A to B, just call ' +
     'plan_travel (or plan_arrive_by) with origin + destination (+ names) and present the card it produces. Do not ' +
     'apologise or claim a limitation.\n' +
+    '- LIVE COMPASS (🧭, bottom-left) is a STANDALONE tool, no trip needed: it reads GPS live and shows the ' +
+    'direction (45° quadrant) FROM an origin point, your real travel heading, and a PREDICTION of where on the map ' +
+    'you will cross out of the current quadrant into the next one (distance, ETA, a Maps button). Use start_compass ' +
+    'when the user wants to activate/start the compass: origin:"here" to use the current GPS spot as origin, or ' +
+    'place:"<town>" when they say "start the compass from <place>" (a place they already left behind). After it ' +
+    'opens, tell the user it is reading GPS and will show the predicted quadrant-exit point as they move.\n' +
     '- NEVER convert a double-hour NAME (Zi, Chou, Yin, ... Wu, Wei, ...) into a clock time yourself, and NEVER ' +
     'add or subtract an hour for daylight saving - you get DST wrong. The tools already handle DST and true solar ' +
     'time: read the clock times from plan_travel\'s favorable_windows (from/to) and from plan_arrive_by\'s ' +
@@ -317,6 +323,24 @@
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
+      name: 'start_compass',
+      description: 'Open and ACTIVATE the live compass (the 🧭 button, bottom-left) as a standalone tool — no trip ' +
+        'needed. It reads GPS live and shows the net direction (45° quadrant) FROM an origin point, your real ' +
+        'travel heading, and a PREDICTION of where on the map you will cross out of the current quadrant into the ' +
+        'next one (with distance, ETA and a Maps button). Use this for requests like "start the compass", ' +
+        '"activate the compass from here", or "start the compass from <place>" (a place you already left some km ' +
+        'behind). Set origin="here" to use the current GPS position as the origin; or pass place="<town/city>" to ' +
+        'use that named place as the origin (it is geocoded). With neither, it just opens the compass.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin: { type: 'string', enum: ['here'], description: 'Set the origin to the current GPS position.' },
+          place: { type: 'string', description: 'Set the origin to this named place (geocoded), e.g. a town you already passed.' }
+        },
+        additionalProperties: false
+      }
+    },
+    {
       name: 'open_qimen_for_flying_stars',
       description: 'Open the "Qimen hours for Flying Stars" (QFS) panel, where the user selects a target (profiles / ' +
         'entities) and scans for the hours that send a Qimen configuration to a flying-star palace. Use for requests ' +
@@ -453,6 +477,7 @@
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
+      if (name === 'start_compass') return toolStartCompass(input || {});
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
@@ -967,6 +992,22 @@
       return window.TravelPlanner.openInMaps();
     }
     return { ok: false, reason: 'planner_unavailable', note: 'Travel Planner not available on this page.' };
+  }
+  function toolStartCompass(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.startCompass !== 'function')
+      return { error: 'Compass not available on this page.' };
+    var place = (input.place && String(input.place).trim()) ? String(input.place).trim() : null;
+    var spec = place ? place : (input.origin === 'here' ? 'here' : null);
+    try {
+      var r = window.TravelPlanner.startCompass(spec);   // may return a Promise (geocoding)
+      if (r && typeof r.then === 'function') {
+        return r.then(function (res) {
+          if (place && res && res.found === false) return { opened: 'compass', origin_set: false, note: 'Compass opened, but the place "' + place + '" was not found. Ask the user to confirm or pick a nearby town.' };
+          return { opened: 'compass', origin_set: true, origin: (res && res.origin) || (place || 'here') };
+        });
+      }
+      return { opened: 'compass', origin_set: !!spec, origin: spec || null };
+    } catch (e) { return { error: String((e && e.message) || e) }; }
   }
   function toolOpenQimenFS() {
     if (!window.QFS || typeof window.QFS.open !== 'function') return { error: 'Qimen-for-flying-stars (QFS) not available on this page.' };

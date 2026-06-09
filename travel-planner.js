@@ -2801,15 +2801,44 @@
     return true;
   }
 
-  /* ===== LIVE COMPASS: net bearing + quadrant from the reference point ===== *
-   * While driving (screen on, app foreground) it shows, in real time from GPS:
-   *  - net bearing (degrees) + 8-direction quadrant FROM the reference point
-   *    (origin, advancing to the last stop you have passed),
-   *  - the favourable direction active right now, and a warning when you are
-   *    about to leave its quadrant (time to stop & cash). No Wake Lock: it
-   *    recomputes on screen wake (visibilitychange) and via the ↻ button.
+  /* ===== LIVE COMPASS: autonomous + predictive ============================ *
+   * Works on its own (no trip needed). From a REFERENCE point it shows, live
+   * from GPS:
+   *   - the net bearing (deg) + 8-direction quadrant FROM the reference,
+   *   - your real travel heading (derived from movement) + speed,
+   *   - a PREDICTION of where on the map you will cross out of the current
+   *     45 deg quadrant into the next one (point, distance, ETA, place name,
+   *     and a "Maps" button to that exact spot),
+   *   - and, IF a trip was computed, the favourable window active right now
+   *     plus the spoken "about to leave the quadrant" alert (unchanged).
+   *
+   * REFERENCE priority:
+   *   1) an autonomous origin set with "Qui" (current GPS) or "Da luogo"/AI
+   *      (a named place, possibly already km behind you);
+   *   2) else, if a trip is loaded, origin -> last passed stop (Auto) or origin;
+   *   3) else nothing yet -> ask to tap "Qui".
+   * No Wake Lock: it recomputes on screen wake (visibilitychange) and via the
+   * refresh button.
    * ----------------------------------------------------------------------- */
-  var _tpCmpWatch = null, _tpCmpPos = null, _tpRefMode = 'auto', _tpCmpState = null;
+  var _cmpWatch = null;          // GPS watch id
+  var _cmpPos = null;            // current fix {lat, lon, acc}
+  var _cmpPrev = null;           // last fix kept for heading/speed {lat, lon, t}
+  var _cmpHeading = null;        // travel heading in degrees (derived or GPS)
+  var _cmpSpeedKmh = null;       // travel speed (km/h), null if unknown
+  var _cmpOrigin = null;         // autonomous reference {lat, lon, name}; null -> trip-based
+  var _cmpExit = null;           // last predicted exit {lat, lon, fromQ, toQ, distKm, etaMin}
+  var _cmpExitName = null;       // reverse-geocoded name of the predicted exit
+  var _cmpExitNameAt = null;     // {lat, lon} the cached name was fetched for
+  var _cmpExitNameTs = 0;        // last reverse-geocode time (ms) for throttling
+  var _tpRefMode = 'auto', _tpCmpState = null;
+  // ---- Leaflet map state (lazy-loaded from CDN; optional) ----
+  var _cmpLeafletP = null;       // promise: resolves to window.L once loaded
+  var _cmpMap = null;            // Leaflet map instance
+  var _cmpMapLayer = null;       // layer group we clear+repaint each update
+  var _cmpMapBig = false;        // expanded (near-fullscreen) state
+  var _cmpMapFollow = true;      // auto-fit origin/you/exit (toggle off to pan freely)
+  var _cmpMapFitted = false;     // have we framed the current scene yet
+  var _cmpMapFailed = false;     // Leaflet could not load (offline) -> keep Maps button only
   function tpCmpVoiceOn() { try { return localStorage.getItem('xkdg_cmp_voice') !== '0'; } catch (e) { return true; } }   // default ON
   function tpCmpLang() {
     var s = null; try { s = localStorage.getItem('xkdg_ai_lang'); } catch (e) {}
@@ -2839,67 +2868,364 @@
       fr: 'Vous avez quitt\u00e9 le quadrant ' + name + '.' }[L]);
   }
   function tpQ8(deg) { return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round((((deg % 360) + 360) % 360) / 45) % 8]; }
+
+  /* ---- Leaflet: lazy-load from CDN once, on first map open --------------- */
+  function cmpEnsureLeaflet() {
+    if (window.L) return Promise.resolve(window.L);
+    if (_cmpLeafletP) return _cmpLeafletP;
+    _cmpLeafletP = new Promise(function (res, rej) {
+      try {
+        if (!document.getElementById('tp-leaflet-css')) {
+          var lk = document.createElement('link');
+          lk.id = 'tp-leaflet-css'; lk.rel = 'stylesheet';
+          lk.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+          document.head.appendChild(lk);
+        }
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+        s.onload = function () { window.L ? res(window.L) : rej(new Error('Leaflet missing after load')); };
+        s.onerror = function () { rej(new Error('Leaflet load failed')); };
+        document.head.appendChild(s);
+      } catch (e) { rej(e); }
+    });
+    return _cmpLeafletP;
+  }
+  // Destination point from `ref` at bearing `brgDeg` and `km` (equirectangular; fine at these scales).
+  function cmpForward(ref, brgDeg, km) {
+    var toR = Math.PI / 180, mLat = 111.320, mLon = 111.320 * Math.cos(ref.lat * toR);
+    return { lat: ref.lat + (Math.cos(brgDeg * toR) * km) / mLat, lon: ref.lon + (Math.sin(brgDeg * toR) * km) / (mLon || 1e-6) };
+  }
+  // Build the current 45° quadrant pie-slice (from `ref`, centred on the bearing
+  // to `pos`, spanning center±22.5) as an array of [lat,lon] points for a polygon.
+  function cmpWedgePoints(ref, centerDeg, radiusKm) {
+    var pts = [[ref.lat, ref.lon]];
+    for (var a = -22.5; a <= 22.5 + 0.001; a += 4.5) {
+      var p = cmpForward(ref, centerDeg + a, radiusKm);
+      pts.push([p.lat, p.lon]);
+    }
+    pts.push([ref.lat, ref.lon]);
+    return pts;
+  }
+  // Draw / refresh the map: origin, you, predicted exit, the 45° wedge, bearing line.
+  function cmpRenderMap() {
+    if (_cmpMapFailed) return;
+    var host = document.getElementById('tp-cmp-map'); if (!host) return;
+    var r = cmpResolveRef();
+    if (!r || !_cmpPos) return;   // nothing to draw yet
+    cmpEnsureLeaflet().then(function (L) {
+      host = document.getElementById('tp-cmp-map'); if (!host) return;
+      if (!_cmpMap) {
+        _cmpMap = L.map(host, { zoomControl: true, attributionControl: false, dragging: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(_cmpMap);
+        _cmpMap.setView([_cmpPos.lat, _cmpPos.lon], 11);
+        _cmpMapLayer = L.layerGroup().addTo(_cmpMap);
+        setTimeout(function () { if (_cmpMap) _cmpMap.invalidateSize(); }, 60);
+      }
+      _cmpMapLayer.clearLayers();
+      var ref = r.ref, pos = _cmpPos;
+      var bearDeg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon);
+      var center = Math.round(bearDeg / 45) * 45;
+      var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
+      var exit = _cmpExit;
+      var radiusKm = Math.max(distKm, exit ? tpHaversineKm(ref.lat, ref.lon, exit.lat, exit.lon) : 0, 2) * 1.15;
+
+      // 45° wedge (current quadrant from the origin).
+      L.polygon(cmpWedgePoints(ref, center, radiusKm), { color: '#1565c0', weight: 1, fillColor: '#1565c0', fillOpacity: 0.12 }).addTo(_cmpMapLayer);
+      // The two boundary rays, slightly stronger.
+      L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center - 22.5, radiusKm).lat, cmpForward(ref, center - 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
+      L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center + 22.5, radiusKm).lat, cmpForward(ref, center + 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
+      // Bearing line origin -> you.
+      L.polyline([[ref.lat, ref.lon], [pos.lat, pos.lon]], { color: '#888', weight: 1.5, opacity: 0.8 }).addTo(_cmpMapLayer);
+      // Origin marker.
+      L.circleMarker([ref.lat, ref.lon], { radius: 6, color: '#0b8043', weight: 2, fillColor: '#0b8043', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('Origin', { permanent: false });
+      // You.
+      L.circleMarker([pos.lat, pos.lon], { radius: 6, color: '#b00', weight: 2, fillColor: '#e53935', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('You', { permanent: false });
+      // Predicted exit point.
+      if (exit) {
+        L.marker([exit.lat, exit.lon]).addTo(_cmpMapLayer)
+          .bindTooltip('Exit ' + exit.fromQ + '→' + exit.toQ + ' · ' + (exit.distKm < 10 ? exit.distKm.toFixed(1) : Math.round(exit.distKm)) + ' km', { permanent: false });
+      }
+      // Frame the scene (only while following, and only once per scene change).
+      if (_cmpMapFollow && !_cmpMapFitted) {
+        var b = L.latLngBounds([[ref.lat, ref.lon], [pos.lat, pos.lon]]);
+        if (exit) b.extend([exit.lat, exit.lon]);
+        try { _cmpMap.fitBounds(b, { padding: [24, 24], maxZoom: 14, animate: false }); } catch (e) {}
+        _cmpMapFitted = true;
+      } else if (_cmpMapFollow) {
+        // keep you in view without changing zoom abruptly
+        var b2 = L.latLngBounds([[ref.lat, ref.lon], [pos.lat, pos.lon]]);
+        if (exit) b2.extend([exit.lat, exit.lon]);
+        if (!_cmpMap.getBounds().contains([pos.lat, pos.lon])) {
+          try { _cmpMap.fitBounds(b2, { padding: [24, 24], maxZoom: 14, animate: false }); } catch (e) {}
+        }
+      }
+    }).catch(function () {
+      _cmpMapFailed = true;
+      var wrap = document.getElementById('tp-cmp-map-wrap');
+      if (wrap) wrap.innerHTML = '<div style="font-size:11px;color:#888;padding:8px;text-align:center;">Map needs internet — use the 🔍 Maps button for the exit point.</div>';
+    });
+  }
+  // Expand the map to (near) fullscreen, or collapse it back.
+  function cmpSetMapBig(big) {
+    _cmpMapBig = !!big; _cmpMapFitted = false;
+    var small = document.getElementById('tp-cmp-map-wrap');
+    var host = document.getElementById('tp-cmp-map');
+    var btn = document.getElementById('tp-cmp-expand');
+    if (!host) return;
+    if (_cmpMapBig) {
+      var big2 = document.getElementById('tp-cmp-map-big');
+      if (!big2) {
+        big2 = el('div', { id: 'tp-cmp-map-big', style: 'position:fixed;inset:0;z-index:100000;background:#fff;display:flex;flex-direction:column;' });
+        var bar = el('div', { style: 'display:flex;align-items:center;gap:8px;background:#1565c0;color:#fff;padding:9px 12px;font-size:14px;font-weight:700;' });
+        bar.appendChild(el('div', { style: 'flex:1;' }, '🧭 Compass map'));
+        var foll = el('button', { id: 'tp-cmp-big-follow', type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, _cmpMapFollow ? '📍 Follow: on' : '📍 Follow: off');
+        var mapsB = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, '🔍 Maps');
+        var close = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:14px;cursor:pointer;' }, '✕ Close');
+        foll.addEventListener('click', function () { _cmpMapFollow = !_cmpMapFollow; _cmpMapFitted = false; foll.textContent = _cmpMapFollow ? '📍 Follow: on' : '📍 Follow: off'; cmpRenderMap(); });
+        mapsB.addEventListener('click', function () { if (_cmpExit) tpOpenPoint(_cmpExit.lat, _cmpExit.lon); });
+        close.addEventListener('click', function () { cmpSetMapBig(false); });
+        bar.appendChild(foll); bar.appendChild(mapsB); bar.appendChild(close);
+        big2.appendChild(bar);
+        var holder = el('div', { id: 'tp-cmp-map-bigholder', style: 'flex:1;min-height:0;' });
+        big2.appendChild(holder);
+        document.body.appendChild(big2);
+      }
+      document.getElementById('tp-cmp-map-bigholder').appendChild(host);   // move the SAME map element
+      host.style.height = '100%';
+      big2.style.display = 'flex';
+      if (btn) btn.textContent = '⛶';
+    } else {
+      var big3 = document.getElementById('tp-cmp-map-big');
+      if (big3) big3.style.display = 'none';
+      if (small) small.appendChild(host);   // move it back into the small panel
+      host.style.height = '150px';
+      if (btn) btn.textContent = '⛶ Ingrandisci';
+    }
+    setTimeout(function () { if (_cmpMap) { _cmpMap.invalidateSize(); cmpRenderMap(); } }, 80);
+  }
+
+  // Resolve the reference point to measure FROM. Returns { ref:{lat,lon}, label } or null.
+  function cmpResolveRef() {
+    if (_cmpOrigin) return { ref: { lat: _cmpOrigin.lat, lon: _cmpOrigin.lon }, label: _cmpOrigin.name ? ('from ' + _cmpOrigin.name) : 'from set start' };
+    var live = window._tpLive;
+    if (live && live.originPos) {
+      var ref = live.originPos, label = 'from trip start';
+      if (_tpRefMode !== 'origin' && _cmpPos && live.stops && live.stops.length && live.destPos) {
+        var myToDest = tpHaversineKm(_cmpPos.lat, _cmpPos.lon, live.destPos.lat, live.destPos.lon), best = null;
+        live.stops.forEach(function (s) {
+          var sToDest = tpHaversineKm(s.lat, s.lon, live.destPos.lat, live.destPos.lon);
+          if (sToDest > myToDest || tpHaversineKm(_cmpPos.lat, _cmpPos.lon, s.lat, s.lon) < 3) best = s;
+        });
+        if (best) { ref = { lat: best.lat, lon: best.lon }; label = 'from last stop'; }
+      }
+      return { ref: { lat: ref.lat, lon: ref.lon }, label: label };
+    }
+    return null;
+  }
+
+  // Predict where the current 45 deg quadrant (measured from `ref`) is crossed,
+  // travelling from `pos` along `headingDeg`. Local equirectangular projection
+  // centred on `ref` (fine for tens of km). Returns the nearest crossing AHEAD.
+  function cmpPredictExit(ref, pos, headingDeg) {
+    if (ref == null || pos == null || headingDeg == null || !isFinite(headingDeg)) return null;
+    var toR = Math.PI / 180;
+    var mLat = 111320, mLon = 111320 * Math.cos(ref.lat * toR);
+    if (!isFinite(mLon) || Math.abs(mLon) < 1) return null;
+    var Px = (pos.lon - ref.lon) * mLon, Py = (pos.lat - ref.lat) * mLat;
+    if (Math.hypot(Px, Py) < 50) return null;   // too close to the reference: bearing unstable
+    var ux = Math.sin(headingDeg * toR), uy = Math.cos(headingDeg * toR);
+    var curBear = (Math.atan2(Px, Py) / toR + 360) % 360;
+    var center = Math.round(curBear / 45) * 45;
+    var best = null;
+    [1, -1].forEach(function (side) {
+      var theta = ((center + side * 22.5) % 360 + 360) % 360;
+      var vx = Math.sin(theta * toR), vy = Math.cos(theta * toR);
+      var denom = ux * vy - uy * vx;
+      if (Math.abs(denom) < 1e-9) return;                 // travelling parallel to the boundary
+      var d = (Py * vx - Px * vy) / denom;                // metres ahead along travel
+      if (!(d > 1)) return;                               // boundary is behind you
+      var Qx = Px + d * ux, Qy = Py + d * uy;
+      var t = Math.abs(vx) > Math.abs(vy) ? Qx / vx : Qy / vy;   // distance from ref along the boundary ray
+      if (!(t > 0)) return;                               // crossing is on the wrong side of the origin
+      if (!best || d < best.dM) {
+        best = {
+          dM: d,
+          lat: ref.lat + Qy / mLat, lon: ref.lon + Qx / mLon,
+          fromQ: tpQ8(center), toQ: tpQ8(center + side * 45)
+        };
+      }
+    });
+    if (!best) return null;
+    var distKm = best.dM / 1000;
+    var etaMin = (_cmpSpeedKmh && _cmpSpeedKmh > 3) ? (distKm / _cmpSpeedKmh * 60) : null;
+    return { lat: best.lat, lon: best.lon, fromQ: best.fromQ, toQ: best.toQ, distKm: distKm, etaMin: etaMin };
+  }
+
+  // Lazily reverse-geocode the predicted exit (throttled; only when it moved enough).
+  function cmpUpdateExitName(exit) {
+    if (!exit) { _cmpExitName = null; _cmpExitNameAt = null; return; }
+    var moved = !_cmpExitNameAt || tpHaversineKm(_cmpExitNameAt.lat, _cmpExitNameAt.lon, exit.lat, exit.lon) > 3;
+    var now = Date.now();
+    if (!moved || (now - _cmpExitNameTs) < 15000) return;
+    _cmpExitNameTs = now; _cmpExitNameAt = { lat: exit.lat, lon: exit.lon };
+    tpReverseGeocode(exit.lat, exit.lon)
+      .then(function (name) { if (name) { _cmpExitName = name; tpCmpRender(); } })
+      .catch(function () {});
+  }
+
+  function cmpFmtEta(min) {
+    if (min == null) return '';
+    if (min < 1) return '<1 min';
+    if (min < 90) return Math.round(min) + ' min';
+    var h = Math.floor(min / 60), m = Math.round(min % 60);
+    return h + 'h' + (m ? ' ' + m + 'm' : '');
+  }
+
   function tpCmpRender() {
     var box = document.getElementById('tp-cmp-body'); if (!box) return;
-    var live = window._tpLive;
-    if (!live) { box.innerHTML = '<div style="color:#888;font-size:13px;">Compute a trip first (set From/To, SCAN TRIP), then reopen.</div>'; return; }
-    if (!_tpCmpPos) { box.innerHTML = '<div style="color:#888;font-size:13px;">Waiting for GPS… allow location and tap ↻.</div>'; return; }
-    var pos = _tpCmpPos, ref = live.originPos, refLabel = 'from start';
-    if (_tpRefMode !== 'origin' && live.stops && live.stops.length) {
-      var myToDest = tpHaversineKm(pos.lat, pos.lon, live.destPos.lat, live.destPos.lon), best = null;
-      live.stops.forEach(function (s) {
-        var sToDest = tpHaversineKm(s.lat, s.lon, live.destPos.lat, live.destPos.lon);
-        if (sToDest > myToDest || tpHaversineKm(pos.lat, pos.lon, s.lat, s.lon) < 3) best = s;   // passed it, or you're at it
-      });
-      if (best) { ref = { lat: best.lat, lon: best.lon }; refLabel = 'from last stop'; }
-    }
+    var r = cmpResolveRef();
+    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Qui</b> to set this spot as the origin, or set one with <b>✏️ Da luogo</b> — or compute a trip first.</div>'; return; }
+    if (!_cmpPos) { box.innerHTML = '<div style="color:#888;font-size:13px;">Waiting for GPS… allow location and tap ↻.</div>'; return; }
+    var ref = r.ref, refLabel = r.label, pos = _cmpPos;
     var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
     var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
-    var now = Date.now(), slot = null;
-    (live.favSlots || []).forEach(function (s) { if (now >= s.startMs && now < s.endMs) slot = s; });
+
     var html = '<div style="font-size:46px;font-weight:800;line-height:1;color:#1565c0;">' + Math.round(deg) + '°</div>' +
       '<div style="font-size:24px;font-weight:700;margin-top:2px;">' + q + '</div>' +
       '<div style="font-size:12px;color:#666;margin-top:4px;">' + refLabel + ' · ' + (distKm < 10 ? distKm.toFixed(1) : Math.round(distKm)) + ' km</div>';
-    if (distKm < 1) html += '<div style="font-size:12px;color:#b58900;margin-top:4px;">Too close to the reference for a stable bearing.</div>';
-    html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #eee;font-size:13px;">';
+    if (distKm < 1) html += '<div style="font-size:12px;color:#b58900;margin-top:4px;">Too close to the reference for a stable bearing — drive a bit.</div>';
+
+    // Travel heading (your real direction of march).
+    html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:13px;text-align:left;">';
+    if (_cmpHeading != null && isFinite(_cmpHeading)) {
+      html += 'Heading: <b>' + Math.round(_cmpHeading) + '° ' + tpQ8(_cmpHeading) + '</b>' +
+        (_cmpSpeedKmh ? ' · ' + Math.round(_cmpSpeedKmh) + ' km/h' : '');
+    } else {
+      html += '<span style="color:#888;">Move a little so I can read your travel direction…</span>';
+    }
+    html += '</div>';
+
+    // PREDICTION: where you cross out of the current quadrant.
+    var exit = cmpPredictExit(ref, pos, _cmpHeading);
+    _cmpExit = exit;
+    if (exit) {
+      cmpUpdateExitName(exit);
+      var placeTxt = (_cmpExitName && _cmpExitNameAt && tpHaversineKm(_cmpExitNameAt.lat, _cmpExitNameAt.lon, exit.lat, exit.lon) < 5) ? (' · near ' + _cmpExitName) : '';
+      var etaTxt = exit.etaMin != null ? (' · ~' + cmpFmtEta(exit.etaMin)) : '';
+      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:13px;text-align:left;">' +
+        '🚩 Exit <b>' + exit.fromQ + '</b> → <b>' + exit.toQ + '</b> in <b>' +
+        (exit.distKm < 10 ? exit.distKm.toFixed(1) : Math.round(exit.distKm)) + ' km</b>' + etaTxt + placeTxt +
+        ' <button id="tp-cmp-exit-maps" type="button" style="margin-left:4px;background:#1565c0;color:#fff;border:0;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;">🔍 Maps</button>' +
+        '</div>';
+    } else if (_cmpHeading != null && isFinite(_cmpHeading)) {
+      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:12px;color:#888;text-align:left;">No quadrant exit ahead on this heading (you are heading toward / along the origin).</div>';
+    }
+
+    // Favourable window now (only if a trip was computed) + spoken alert.
+    var live = window._tpLive;
+    var now = Date.now(), slot = null;
+    if (live) (live.favSlots || []).forEach(function (s) { if (now >= s.startMs && now < s.endMs) slot = s; });
     if (slot) {
       var diff = tpAngDiff(deg, slot.deg), inSec = diff <= 22.5, margin = Math.round(22.5 - diff);
       var qTarget = tpQ8(slot.deg);
       var state = !inSec ? 'left' : (diff >= 17 ? 'edge' : 'inside');
-      var stateKey = slot.startMs + ':' + state;   // tie the spoken alert to this window + state
+      var stateKey = slot.startMs + ':' + state;
       if (state !== 'inside' && stateKey !== _tpCmpState) tpCmpAlert(state, qTarget);
       _tpCmpState = (state === 'inside') ? (slot.startMs + ':inside') : stateKey;
-      html += 'Favourable now: <b>' + qTarget + '</b> (' + slot.dir + (slot.ganzhi ? ' · ' + slot.ganzhi : '') + ')</div>';
+      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:13px;text-align:left;">';
+      html += 'Favourable now: <b>' + qTarget + '</b> (' + slot.dir + (slot.ganzhi ? ' · ' + slot.ganzhi : '') + ')';
       if (!inSec) html += '<div style="color:#b00;font-weight:700;font-size:14px;margin-top:3px;">\u26a0 You have LEFT the ' + qTarget + ' quadrant.</div>';
       else if (diff >= 17) html += '<div style="color:#b58900;font-weight:700;font-size:14px;margin-top:3px;">\u26a0 About to leave ' + qTarget + ' (~' + margin + '\u00b0 margin) — consider stopping to cash it.</div>';
       else html += '<div style="color:#1b6e2f;font-size:13px;margin-top:3px;">\u2713 Inside ' + qTarget + ' (~' + margin + '\u00b0 to the edge).</div>';
-    } else {
+      html += '</div>';
+    } else if (live) {
       _tpCmpState = null;
-      html += 'No favourable window active now. Overall trip: <b>' + live.overallDir + '</b> ' + live.overallBearing + '\u00b0.</div>';
+      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:13px;text-align:left;">No favourable window now. Overall trip: <b>' + live.overallDir + '</b> ' + live.overallBearing + '\u00b0.</div>';
     }
+
     box.innerHTML = html;
+    var mapsBtn = document.getElementById('tp-cmp-exit-maps');
+    if (mapsBtn) mapsBtn.addEventListener('click', function () { if (_cmpExit) tpOpenPoint(_cmpExit.lat, _cmpExit.lon); });
+    cmpRenderMap();
   }
+
+  // Take one GPS fix, update position + derive heading/speed, then render.
+  function cmpAcceptFix(p) {
+    var pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy };
+    var tNow = (p.timestamp || Date.now());
+    if (_cmpPrev) {
+      var dKm = tpHaversineKm(_cmpPrev.lat, _cmpPrev.lon, pos.lat, pos.lon);
+      if (dKm >= 0.02) {                                   // moved >= 20 m: trust this leg for heading
+        _cmpHeading = tpBearing(_cmpPrev.lat, _cmpPrev.lon, pos.lat, pos.lon);
+        var dtH = (tNow - _cmpPrev.t) / 3600000;
+        _cmpSpeedKmh = (dtH > 0) ? (dKm / dtH) : _cmpSpeedKmh;
+        _cmpPrev = { lat: pos.lat, lon: pos.lon, t: tNow };
+      }
+    } else {
+      _cmpPrev = { lat: pos.lat, lon: pos.lon, t: tNow };
+    }
+    // Fall back to the device's own heading/speed if we have no movement-derived one yet.
+    if ((_cmpHeading == null || !isFinite(_cmpHeading)) && p.coords.heading != null && isFinite(p.coords.heading)) {
+      _cmpHeading = p.coords.heading;
+      if (p.coords.speed != null && isFinite(p.coords.speed)) _cmpSpeedKmh = p.coords.speed * 3.6;
+    }
+    _cmpPos = pos;
+    tpCmpRender();
+  }
+
   function tpCmpRefreshOnce() {
     if (!navigator.geolocation) { var b = document.getElementById('tp-cmp-body'); if (b) b.innerHTML = '<div style="color:#b00;font-size:13px;">No geolocation on this device.</div>'; return; }
     navigator.geolocation.getCurrentPosition(
-      function (p) { _tpCmpPos = { lat: p.coords.latitude, lon: p.coords.longitude }; tpCmpRender(); },
+      function (p) { cmpAcceptFix(p); },
       function () {}, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
   }
   function tpCmpStart() {
-    if (!navigator.geolocation || _tpCmpWatch != null) return;
-    _tpCmpWatch = navigator.geolocation.watchPosition(
-      function (p) { _tpCmpPos = { lat: p.coords.latitude, lon: p.coords.longitude }; tpCmpRender(); },
-      function (err) { var b = document.getElementById('tp-cmp-body'); if (b && !_tpCmpPos) b.innerHTML = '<div style="color:#b00;font-size:13px;">GPS error: ' + (err && err.message) + '. Allow location and tap ↻.</div>'; },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    if (!navigator.geolocation || _cmpWatch != null) return;
+    _cmpWatch = navigator.geolocation.watchPosition(
+      function (p) { cmpAcceptFix(p); },
+      function (err) { var b = document.getElementById('tp-cmp-body'); if (b && !_cmpPos) b.innerHTML = '<div style="color:#b00;font-size:13px;">GPS error: ' + (err && err.message) + '. Allow location and tap ↻.</div>'; },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 });
   }
-  function tpCmpStop() { if (_tpCmpWatch != null) { try { navigator.geolocation.clearWatch(_tpCmpWatch); } catch (e) {} _tpCmpWatch = null; } }
+  function tpCmpStop() { if (_cmpWatch != null) { try { navigator.geolocation.clearWatch(_cmpWatch); } catch (e) {} _cmpWatch = null; } }
+
+  // Set the autonomous origin to the current GPS spot.
+  function tpCmpSetOriginHere() {
+    var lbl = document.getElementById('tp-cmp-ref-label');
+    if (!navigator.geolocation) { if (lbl) lbl.textContent = 'No GPS.'; return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      _cmpOrigin = { lat: p.coords.latitude, lon: p.coords.longitude, name: null };
+      _cmpPrev = null; _cmpHeading = null; _cmpSpeedKmh = null; _cmpExitName = null; _cmpExitNameAt = null; _cmpMapFitted = false;
+      tpReverseGeocode(_cmpOrigin.lat, _cmpOrigin.lon).then(function (n) { if (n && _cmpOrigin) { _cmpOrigin.name = n; tpCmpRender(); cmpUpdateRefLabel(); } }).catch(function () {});
+      cmpAcceptFix(p); cmpUpdateRefLabel();
+    }, function () { if (lbl) lbl.textContent = 'GPS denied.'; }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+  }
+  // Set the autonomous origin to a named place (geocoded). Returns a Promise.
+  function tpCmpSetOriginFrom(name) {
+    if (!name || !String(name).trim()) return Promise.resolve(null);
+    return _tpResolvePlace(String(name).trim(), null, null).then(function (g) {
+      if (!g) return null;
+      _cmpOrigin = { lat: g.lat, lon: g.lon, name: String(name).trim() };
+      _cmpPrev = null; _cmpHeading = null; _cmpSpeedKmh = null; _cmpExitName = null; _cmpExitNameAt = null; _cmpMapFitted = false;
+      cmpUpdateRefLabel(); tpCmpRender(); tpCmpRefreshOnce();
+      return { lat: g.lat, lon: g.lon, name: _cmpOrigin.name };
+    });
+  }
+  function tpCmpClearOrigin() { _cmpOrigin = null; _cmpExitName = null; _cmpExitNameAt = null; _cmpMapFitted = false; cmpUpdateRefLabel(); tpCmpRender(); }
+  function cmpUpdateRefLabel() {
+    var lbl = document.getElementById('tp-cmp-ref-label'); if (!lbl) return;
+    if (_cmpOrigin) lbl.innerHTML = 'Origin: <b>' + (_cmpOrigin.name || 'here') + '</b> · <span id="tp-cmp-clear" style="color:#1565c0;cursor:pointer;text-decoration:underline;">clear</span>';
+    else if (window._tpLive) lbl.textContent = 'Origin: trip start (use Qui / Da luogo to override).';
+    else lbl.textContent = 'No origin yet — tap 📍 Qui.';
+    var clr = document.getElementById('tp-cmp-clear'); if (clr) clr.addEventListener('click', tpCmpClearOrigin);
+  }
+
   function tpOpenCompass() {
     var ov = document.getElementById('tp-cmp-ov');
     if (!ov) {
-      ov = el('div', { id: 'tp-cmp-ov', style: 'position:fixed;left:12px;bottom:80px;z-index:99996;width:230px;background:#fff;border:2px solid #1565c0;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);' });
+      ov = el('div', { id: 'tp-cmp-ov', style: 'position:fixed;left:12px;bottom:80px;z-index:99996;width:248px;background:#fff;border:2px solid #1565c0;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);' });
       var head = el('div', { style: 'display:flex;align-items:center;gap:6px;background:#1565c0;color:#fff;border-radius:10px 10px 0 0;padding:7px 9px;' });
       head.appendChild(el('div', { style: 'flex:1;font-size:13px;font-weight:700;' }, '🧭 Live compass'));
-      var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Reference: Auto (origin→last stop) / Origin only', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
+      var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Trip reference: Auto (origin→last stop) / Origin only (used only when no Qui/Da luogo origin is set)', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
       var refr = el('button', { type: 'button', title: 'Refresh now', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, '\u21bb');
       var vox = el('button', { id: 'tp-cmp-vox', type: 'button', title: 'Voice alerts on/off', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, tpCmpVoiceOn() ? '\ud83d\udd0a' : '\ud83d\udd07');
       vox.addEventListener('click', function () {
@@ -2915,16 +3241,60 @@
       cls.addEventListener('click', function () { tpCmpStop(); ov.style.display = 'none'; });
       head.appendChild(refBtn); head.appendChild(vox); head.appendChild(refr); head.appendChild(cls);
       ov.appendChild(head);
+
       ov.appendChild(el('div', { id: 'tp-cmp-body', style: 'padding:12px;text-align:center;color:#222;' }));
+
+      // Origin controls.
+      var ctrl = el('div', { style: 'padding:0 10px 10px;border-top:1px solid #eee;' });
+      ctrl.appendChild(el('div', { id: 'tp-cmp-ref-label', style: 'font-size:11px;color:#666;margin:7px 0;' }));
+      var row = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
+      var hereBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, '📍 Qui');
+      var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'Da luogo… (es. Arezzo)', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
+      var setBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#0b8043;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Set');
+      hereBtn.addEventListener('click', function () { tpCmpStart(); tpCmpSetOriginHere(); });
+      function doSet() {
+        var v = nameInp.value;
+        if (!v || !v.trim()) return;
+        setBtn.textContent = '…';
+        tpCmpStart();
+        tpCmpSetOriginFrom(v).then(function (r) { setBtn.textContent = 'Set'; if (!r) { var lbl = document.getElementById('tp-cmp-ref-label'); if (lbl) lbl.textContent = 'Place not found.'; } });
+      }
+      setBtn.addEventListener('click', doSet);
+      nameInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSet(); } });
+      row.appendChild(hereBtn); row.appendChild(nameInp); row.appendChild(setBtn);
+      ctrl.appendChild(row);
+      ov.appendChild(ctrl);
+
+      // Mini map + expand button.
+      var mapWrap = el('div', { id: 'tp-cmp-map-wrap', style: 'padding:0 10px 10px;' });
+      var expandRow = el('div', { style: 'display:flex;justify-content:flex-end;margin-bottom:6px;' });
+      var expandBtn = el('button', { id: 'tp-cmp-expand', type: 'button', style: 'background:#1565c0;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;' }, '⛶ Ingrandisci');
+      expandBtn.addEventListener('click', function () { cmpSetMapBig(!_cmpMapBig); });
+      expandRow.appendChild(expandBtn);
+      mapWrap.appendChild(expandRow);
+      mapWrap.appendChild(el('div', { id: 'tp-cmp-map', style: 'width:100%;height:150px;border-radius:8px;overflow:hidden;background:#eef;' }));
+      ov.appendChild(mapWrap);
+
       document.body.appendChild(ov);
     }
     ov.style.display = 'block';
-    tpCmpRender(); tpCmpStart(); tpCmpRefreshOnce();
+    cmpUpdateRefLabel(); tpCmpRender(); tpCmpStart(); tpCmpRefreshOnce();
   }
   document.addEventListener('visibilitychange', function () {
     var ov = document.getElementById('tp-cmp-ov');
     if (!document.hidden && ov && ov.style.display !== 'none') tpCmpRefreshOnce();   // recompute on screen wake (no Wake Lock)
   });
+
+  // Open the compass and, optionally, set its origin in one go.
+  //   spec === 'here'  -> origin = current GPS
+  //   spec (a string)  -> origin = that named place (geocoded)
+  function tpStartCompass(spec) {
+    tpOpenCompass(); tpCmpStart();
+    if (spec === 'here' || spec === true) { tpCmpSetOriginHere(); return Promise.resolve({ origin: 'here' }); }
+    if (spec && typeof spec === 'string') return tpCmpSetOriginFrom(spec).then(function (r) { return { origin: (r && r.name) || spec, found: !!r }; });
+    return Promise.resolve({ opened: true });
+  }
+
   function tpInstallCompassFab() {
     if (document.getElementById('tp-compass-fab')) return;
     var b = el('button', { id: 'tp-compass-fab', type: 'button', title: 'Live compass',
@@ -2944,6 +3314,8 @@
     getWorkerUrl: tpGetWorkerUrl,
     open: tpOpen,
     openCompass: tpOpenCompass,
+    startCompass: tpStartCompass,
+    setCompassOrigin: tpCmpSetOriginFrom,
     openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
     getLastResult: function () { return window._tpLastResult || null; },
