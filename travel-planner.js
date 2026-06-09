@@ -81,6 +81,11 @@
   // Consumer Google Maps keeps a limited number of intermediate stops in a
   // shared "directions" link. Beyond this we warn (Maps may drop the extras).
   var TP_MAPS_MAX_WAYPOINTS = 9;
+  // "Shortest possible" guard: a planned cashing/quadrant stop is added to the
+  // Maps route ONLY if it sits within this many km of the fastest real road.
+  // Beyond it (or with no real route at all) we export the DIRECT route so the
+  // trip is never lengthened by an off-road waypoint.
+  var TP_WAYPOINT_MAX_OFFKM = 3;
 
   // ---- Access lock (preview gate) -----------------------------------------
   // The Travel Planner is gated behind a code while the feature is in
@@ -161,7 +166,7 @@
   function tpReportCharger(info) {
     try { if (window.XKDGChat && typeof window.XKDGChat.updateItineraryCharging === 'function') window.XKDGChat.updateItineraryCharging(info); } catch (e) {}
   }
-  function tpAutoMapsOn() { try { return localStorage.getItem('xkdg_tp_automaps') !== '0'; } catch (e) { return true; } }
+  function tpAutoMapsOn() { try { return localStorage.getItem('xkdg_tp_automaps') === '1'; } catch (e) { return false; } }   // default OFF: Maps opens only on an explicit command/tap
   function tpSetAutoMaps(on) { try { localStorage.setItem('xkdg_tp_automaps', on ? '1' : '0'); } catch (e) {} }
   // Open the current itinerary in Google Maps. navigate=true changes the current tab (NOT blocked by pop-up
   // blockers, works with no tap) - used hands-free. Otherwise open a new tab (keeps the app), falling back to
@@ -1764,14 +1769,15 @@
     btnRow.appendChild(openBtn); btnRow.appendChild(copyBtn);
     wrap.appendChild(btnRow);
 
-    // Hands-free toggle: when ON, an AI-planned itinerary opens Google Maps by itself (no tap), by navigating
-    // this tab to Maps. Meant for driving: wake the phone, give the voice command, then just tap "send to car".
+    // Auto-open toggle (default OFF): when ticked, an AI-planned itinerary opens Google Maps by itself (no tap), by
+    // navigating this tab to Maps. Default OFF — the planner stays open and the user opens Maps deliberately
+    // (button, or a voice/typed "open in Maps"). Meant only for those who want the old hands-free driving behaviour.
     var hfLab = el('label', { style: 'display:flex;align-items:center;gap:7px;margin:8px 0 0;font-size:12px;color:#444;cursor:pointer;' });
     var hfCb = el('input', { type: 'checkbox', id: 'tp-automaps' });
     hfCb.checked = tpAutoMapsOn();
     hfCb.addEventListener('change', function () { tpSetAutoMaps(hfCb.checked); });
     hfLab.appendChild(hfCb);
-    hfLab.appendChild(el('span', null, '🚗 Hands-free (default ON): when the AI plans a trip, open Google Maps automatically (no tap). The app switches to Maps. Untick to keep the planner open instead.'));
+    hfLab.appendChild(el('span', null, '🚗 Auto-open Maps (default OFF): tick only if you want an AI-planned trip to jump to Google Maps by itself. Off = the planner stays open and you open Maps with the button (or by saying/typing "open in Maps").'));
     wrap.appendChild(hfLab);
 
     function collectWaypoints() {
@@ -1779,22 +1785,31 @@
       // in travel order (origin → … → destination) instead of the order they
       // were collected — otherwise Maps draws a zig-zag.
       var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
-      function alongOf(p) {
-        if (!idx) return Infinity;
-        var np = tpNearestRoutePoint(p.lat, p.lon, idx);
-        return (np && isFinite(np.alongKm)) ? np.alongKm : Infinity;
-      }
+      // SHORTEST-ROUTE GUARANTEE: with no real road route we cannot tell whether a
+      // planned stop sits on the fast road, so we export the DIRECT route (only the
+      // user's own free-text waypoints are still honoured).
+      var extra = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!idx) return extra.slice(0, TP_MAPS_MAX_WAYPOINTS);
+      function nearOf(p) { return tpNearestRoutePoint(p.lat, p.lon, idx); }
       var pts = [];
+      var dropped = 0;
       checks.filter(function (c) { return c.cb.checked; }).forEach(function (c) {
-        pts.push({ token: tpLatLng(c.pos), along: alongOf(c.pos) });                 // quadrant-exit point
-        if (c.stop && c.stop.charger && isFinite(c.stop.charger.lat) && isFinite(c.stop.charger.lon))
-          pts.push({ token: tpLatLng(c.stop.charger), along: alongOf(c.stop.charger) });  // its charger
+        var np = nearOf(c.pos);
+        // Only keep a cashing/quadrant stop if it lies ON the fast road (within the
+        // off-route limit). Anything that would force a detour is skipped.
+        if (!np || !isFinite(np.alongKm) || np.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
+        pts.push({ token: tpLatLng(c.pos), along: np.alongKm });                      // quadrant-exit point
+        if (c.stop && c.stop.charger && isFinite(c.stop.charger.lat) && isFinite(c.stop.charger.lon)) {
+          var npc = nearOf(c.stop.charger);
+          if (npc && isFinite(npc.alongKm) && npc.offKm <= TP_WAYPOINT_MAX_OFFKM)
+            pts.push({ token: tpLatLng(c.stop.charger), along: npc.alongKm });          // its charger (also on-road)
+        }
       });
-      if (idx) pts.sort(function (a, b) { return a.along - b.along; });               // travel order
+      pts.sort(function (a, b) { return a.along - b.along; });                          // travel order
       var wps = [];
       pts.forEach(function (p) { if (!wps.length || wps[wps.length - 1] !== p.token) wps.push(p.token); }); // de-dup neighbours
-      var extra = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
       wps = wps.concat(extra);
+      collectWaypoints._dropped = dropped;
       // Google Maps keeps only a limited number of waypoints; after sorting,
       // trimming from the far end keeps the nearest ones (reached first).
       if (wps.length > TP_MAPS_MAX_WAYPOINTS) wps = wps.slice(0, TP_MAPS_MAX_WAYPOINTS);
@@ -1803,13 +1818,20 @@
     function update() {
       var wps = collectWaypoints();
       var n = wps.length;
+      var dropped = collectWaypoints._dropped || 0;
       var url = tpBuildMapsUrl({ lat: O.lat, lon: O.lon }, { lat: Dst.lat, lon: Dst.lon }, wps);
       openBtn._url = url; copyBtn._url = url;
       var warn = (n > TP_MAPS_MAX_WAYPOINTS)
         ? ' <span style="color:#b00;">⚠️ ' + n + ' waypoints — Maps may keep only the first ' + TP_MAPS_MAX_WAYPOINTS + '. Deselect a few.</span>'
         : '';
+      var dropNote = dropped
+        ? ' <span style="color:#0b8043;">' + dropped + ' favourable stop' + (dropped === 1 ? '' : 's') + ' off the fast road were skipped to keep the route shortest.</span>'
+        : '';
+      var routeNote = (!tpBuildRouteIndex(TP_LAST_ROUTE))
+        ? ' <span style="color:#b58900;">No real road route loaded — exporting the DIRECT route (press 🛰️ Fetch route / set the Worker URL to follow favourable on-road stops).</span>'
+        : '';
       status.innerHTML = '<b>' + n + '</b> waypoint' + (n === 1 ? '' : 's') + ' selected (added after the planned stops, in order). ' +
-        'You can drag to reorder once Maps opens.' + warn;
+        'You can drag to reorder once Maps opens.' + warn + dropNote + routeNote;
     }
     checks.forEach(function (c) { c.cb.addEventListener('change', update); });
     extraInp.addEventListener('input', update);
@@ -2682,6 +2704,25 @@
         function buildAndRender(route, fetchNote) {
           try {
             opts.route = route || null;
+            // "Shortest possible" timing: when a real road route is known and the
+            // duration is still at the generic default (12h or blank), shrink the
+            // planning window to the actual driving time + a small margin (enough to
+            // pick a favourable double-hour and short on-road stops). Never EXPAND a
+            // duration the user typed deliberately, and never grow past 12h.
+            try {
+              var durField = document.getElementById('tp-dur');
+              var raw = durField ? (durField.value || '').trim() : '';
+              var isDefaultDur = (raw === '' || raw === '12');
+              var ridx = tpBuildRouteIndex(route);
+              if (isDefaultDur && ridx && ridx.durationSec) {
+                var driveH = ridx.durationSec / 3600;
+                var sized = Math.max(2, Math.min(12, Math.ceil(driveH + 2)));   // drive + ~2h margin
+                if (sized < (parseFloat(raw) || 12)) {
+                  opts.durationH = sized;
+                  if (durField) durField.value = String(sized);
+                }
+              }
+            } catch (eDur) { /* keep whatever duration was set */ }
             var res = tpPlan(opts);
             tpRender(res, results);
             if (fetchNote) {

@@ -128,10 +128,11 @@
     'time, each leg and the stops/charging) appears in THIS chat automatically a few seconds later, as its own ' +
     'message with a "📍 Open in Google Maps" button the user taps to send it to Maps (charging stop included). So ' +
     'you only give a SHORT one-line intro (the chosen double-hour + clock start time + direction). ' +
-    'Do NOT paste the itinerary yourself, do NOT ask the user to fill anything, and do NOT call ' +
-    'open_itinerary_in_maps - the button does that on tap. Hands-free is ON by default: a few seconds after each ' +
-    'plan the app opens Google Maps by itself (they only tap "send to car" in Maps). If the user prefers to keep ' +
-    'the planner open instead, tell them to untick "🚗 Hands-free" in the planner\'s "Send to Google Maps" section.\n' +
+    'Do NOT paste the itinerary yourself and do NOT ask the user to fill anything. Google Maps does NOT open by ' +
+    'itself anymore: the user opens it deliberately — by tapping the "📍 Open in Google Maps" button, or by asking ' +
+    'you ("open in Maps", "apri in Maps", "send it to Maps"). Call open_itinerary_in_maps ONLY when the user ' +
+    'explicitly asks to open/navigate; never on your own right after planning. In your one-line intro you may ' +
+    'remind them they can open Maps with the button or by asking.\n' +
     '- WHAT "BEST ITINERARY" MEANS: the most favorable configurations WITH the shortest practical travel time. ' +
     'The best itineraries are normally also the shortest - do NOT trade a lot of extra time for a small luck gain ' +
     '(e.g. never turn a ~10h trip into 16h just to catch a better window). Shifting departure inside the allowed ' +
@@ -861,7 +862,9 @@
         '"Open in Google Maps" button) within a few seconds - you do NOT render it. Reply with ONE short sentence ' +
         'only: the departure clock time from departure_planned (it is the START of the favourable double-hour, ' +
         'already DST-adjusted) and the optimal direction. Do NOT paste the itinerary, do NOT say "below"/"above" or ' +
-        '"I am calculating", do NOT tell the user to fill anything, and do NOT call open_itinerary_in_maps.';
+        '"I am calculating", do NOT tell the user to fill anything, and do NOT call open_itinerary_in_maps on your ' +
+        'own. Google Maps does not auto-open; the user opens it by tapping the card button or by asking ("open in ' +
+        'Maps") — you may mention this in your one line.';
       return baseOut;
     }
     baseOut.planner_opened = false;
@@ -947,7 +950,8 @@
         baseOut.note = 'The planner is open on the SHORTEST solution (leaves ' + chosen.depClock + ', arrives ' + chosen.arriveClock +
           '). The full itinerary posts itself into THIS chat as a separate card. Reply with ONE short sentence: the chosen ' +
           'departure clock time and arrival, then briefly mention there are also longer options through more favourable ' +
-          'directions if they want. Do NOT paste the itinerary or call open_itinerary_in_maps.';
+          'directions if they want. Do NOT paste the itinerary; do NOT call open_itinerary_in_maps on your own ' +
+          '(Maps opens only when the user taps the card button or asks for it).';
         return baseOut;
       }
       baseOut.planner_opened = false;
