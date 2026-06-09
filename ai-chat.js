@@ -96,6 +96,11 @@
     'when the user wants to activate/start the compass: origin:"here" to use the current GPS spot as origin, or ' +
     'place:"<town>" when they say "start the compass from <place>" (a place they already left behind). After it ' +
     'opens, tell the user it is reading GPS and will show the predicted quadrant-exit point as they move.\n' +
+    '- COMPASS VOICE CONTROL: once the compass is open, map spoken commands to control_compass(action): ' +
+    '"ingrandisci/enlarge/expand the map" -> expand; "rimpicciolisci/shrink/small" -> collapse; "chiudi la bussola/' +
+    'close the compass" -> close; "azzera/reset/clear origin" -> clear_origin; "ricalcola/refresh/recalculate" -> ' +
+    'refresh; "ricentra/recenter/follow" -> recenter; "lascia libera la mappa/stop following" -> follow_off. Keep ' +
+    'the spoken reply very short (e.g. "Fatto.") since the user is likely driving.\n' +
     '- NEVER convert a double-hour NAME (Zi, Chou, Yin, ... Wu, Wei, ...) into a clock time yourself, and NEVER ' +
     'add or subtract an hour for daylight saving - you get DST wrong. The tools already handle DST and true solar ' +
     'time: read the clock times from plan_travel\'s favorable_windows (from/to) and from plan_arrive_by\'s ' +
@@ -341,6 +346,25 @@
       }
     },
     {
+      name: 'control_compass',
+      description: 'Control the already-open live compass by VOICE/command. Map the user\'s spoken request to one ' +
+        'action: "expand" (enlarge the map to fullscreen — e.g. "ingrandisci la mappa", "enlarge/expand the map", ' +
+        '"agrandis la carte"), "collapse" (shrink it back — "rimpicciolisci", "shrink", "small map"), "close" (close ' +
+        'the compass — "chiudi la bussola", "close the compass"), "clear_origin" (forget the origin — "azzera ' +
+        'l\'origine", "reset origin", "clear origin"), "refresh" (recompute now from GPS — "ricalcola", "refresh", ' +
+        '"recalculate"), "recenter" (re-frame the map on origin/you/exit and resume auto-follow — "ricentra", ' +
+        '"recenter", "follow"), "follow_off" (stop auto-follow so the map can be panned freely), "open" (just open ' +
+        'the compass). For "start the compass" / setting the origin, use start_compass instead.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['open', 'close', 'expand', 'collapse', 'clear_origin', 'refresh', 'recenter', 'follow_off'], description: 'The compass action to perform.' }
+        },
+        required: ['action'],
+        additionalProperties: false
+      }
+    },
+    {
       name: 'open_qimen_for_flying_stars',
       description: 'Open the "Qimen hours for Flying Stars" (QFS) panel, where the user selects a target (profiles / ' +
         'entities) and scans for the hours that send a Qimen configuration to a flying-star palace. Use for requests ' +
@@ -478,6 +502,7 @@
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
       if (name === 'start_compass') return toolStartCompass(input || {});
+      if (name === 'control_compass') return toolControlCompass(input || {});
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
@@ -1008,6 +1033,14 @@
       }
       return { opened: 'compass', origin_set: !!spec, origin: spec || null };
     } catch (e) { return { error: String((e && e.message) || e) }; }
+  }
+  function toolControlCompass(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.compassControl !== 'function')
+      return { error: 'Compass not available on this page.' };
+    var action = (input.action || '').toString().trim();
+    if (!action) return { error: 'No action given.' };
+    try { return window.TravelPlanner.compassControl(action); }
+    catch (e) { return { error: String((e && e.message) || e) }; }
   }
   function toolOpenQimenFS() {
     if (!window.QFS || typeof window.QFS.open !== 'function') return { error: 'Qimen-for-flying-stars (QFS) not available on this page.' };

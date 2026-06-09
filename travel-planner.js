@@ -3238,7 +3238,7 @@
       var cls = el('button', { type: 'button', title: 'Close', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;' }, '\u00d7');
       refBtn.addEventListener('click', function () { _tpRefMode = (_tpRefMode === 'origin') ? 'auto' : 'origin'; refBtn.textContent = (_tpRefMode === 'origin') ? 'Origin' : 'Auto'; tpCmpRender(); });
       refr.addEventListener('click', tpCmpRefreshOnce);
-      cls.addEventListener('click', function () { tpCmpStop(); ov.style.display = 'none'; });
+      cls.addEventListener('click', function () { tpCloseCompass(); });
       head.appendChild(refBtn); head.appendChild(vox); head.appendChild(refr); head.appendChild(cls);
       ov.appendChild(head);
 
@@ -3294,6 +3294,28 @@
     if (spec && typeof spec === 'string') return tpCmpSetOriginFrom(spec).then(function (r) { return { origin: (r && r.name) || spec, found: !!r }; });
     return Promise.resolve({ opened: true });
   }
+  function tpCloseCompass() {
+    tpCmpStop();
+    if (_cmpMapBig) cmpSetMapBig(false);
+    var ov = document.getElementById('tp-cmp-ov'); if (ov) ov.style.display = 'none';
+  }
+  // Voice/AI control of the open compass. Returns a small status object.
+  function tpCompassControl(action) {
+    action = (action || '').toString().toLowerCase().trim();
+    switch (action) {
+      case 'open': tpOpenCompass(); tpCmpStart(); return { ok: true, action: 'open' };
+      case 'close': tpCloseCompass(); return { ok: true, action: 'close' };
+      case 'expand': case 'enlarge': case 'big': case 'fullscreen':
+        tpOpenCompass(); tpCmpStart(); tpCmpRefreshOnce(); cmpSetMapBig(true); return { ok: true, action: 'expand' };
+      case 'collapse': case 'shrink': case 'small': cmpSetMapBig(false); return { ok: true, action: 'collapse' };
+      case 'clear': case 'clear_origin': case 'reset_origin': tpCmpClearOrigin(); return { ok: true, action: 'clear_origin' };
+      case 'refresh': case 'recalculate': case 'recompute': tpCmpRefreshOnce(); return { ok: true, action: 'refresh' };
+      case 'recenter': case 'center': case 'follow_on':
+        _cmpMapFollow = true; _cmpMapFitted = false; cmpRenderMap(); return { ok: true, action: 'recenter' };
+      case 'follow_off': case 'free': _cmpMapFollow = false; cmpRenderMap(); return { ok: true, action: 'follow_off' };
+      default: return { error: 'Unknown compass action: ' + action };
+    }
+  }
 
   function tpInstallCompassFab() {
     if (document.getElementById('tp-compass-fab')) return;
@@ -3315,6 +3337,8 @@
     open: tpOpen,
     openCompass: tpOpenCompass,
     startCompass: tpStartCompass,
+    closeCompass: tpCloseCompass,
+    compassControl: tpCompassControl,
     setCompassOrigin: tpCmpSetOriginFrom,
     openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
