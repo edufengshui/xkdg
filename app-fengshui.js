@@ -362,7 +362,7 @@ function buildFengShuiView(){
       <div id="fs-flying-stars-block" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
         <div style="font-size:11px;color:#8a6a1f;font-weight:bold;margin-bottom:6px;">⭐ FLYING STARS (玄空飛星)</div>
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
-          <div style="flex:1;min-width:110px;">
+          <div style="flex:0 0 140px;min-width:120px;">
             <label style="font-size:11px;color:#666;display:block;">House Facing (°)</label>
             <input type="number" id="fs-house-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
@@ -378,6 +378,7 @@ function buildFengShuiView(){
           <button id="fs-manual-toggle" onclick="fsOpenManualStars()" title="Compile the flying stars chart by hand" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Manual</button>
           <button onclick="(typeof FSChartFinder!=='undefined') ? FSChartFinder.open() : alert('fs-chart-finder.js not loaded')" title="Find charts by star position" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🔍 Charts</button>
           <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" title="Find Qimen hours for flying stars" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🌀 Qimen</button>
+          <button id="fs-save-house-top" onclick="fsSaveHouse()" title="Save this house profile" style="margin-left:auto;background:#558b2f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">💾 SAVE</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
         <div id="fs-manual-badge" style="display:none;margin-top:6px;text-align:center;"></div>
@@ -447,7 +448,6 @@ function buildFengShuiView(){
       <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-top:16px;margin-bottom:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
           <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
-          <button onclick="fsSaveHouse()" style="background:#558b2f;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;">💾 SAVE HOUSE</button>
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
         <div id="fs-house-list" style="font-size:12px;"></div>
@@ -4475,11 +4475,33 @@ function _fsHexConnect(qi1, yun1, qi2, yun2){
   };
 }
 
+// Full "communication" check between two hexagrams. What matters is THAT they
+// communicate — not how — so this accepts ANY mechanism the app recognises:
+// Hetu (qi/yun), Adding (qi/yun), Pure Qi, Family, Inverse Hex. Returns
+// { connected, labels } where labels names the mechanism(s) for display.
+// (Replaces the reduced _fsHexConnect, which only saw Hetu/Adding on qi/yun.)
+function _fsCommunicate(hexA, qiA, yunA, hexB, qiB, yunB){
+  var labels = (typeof hexConnectionLabels === 'function')
+    ? hexConnectionLabels(hexA, qiA, yunA, hexB, qiB, yunB) : [];
+  return { connected: labels.length > 0, labels: labels };
+}
+// Compact, human-readable rendering of communication labels.
+function _fsCommText(labels){
+  if (!labels || !labels.length) return '—';
+  return labels.map(function(t){
+    return String(t)
+      .replace('Hetu (qi)',  '氣 Hetu').replace('Hetu (yun)', '運 Hetu')
+      .replace(/Adding qi=\d+/, '氣 Adding').replace(/Adding yun=\d+/, '運 Adding')
+      .replace('Pure Qi (qi)', '氣 Pure').replace('Pure Qi (yun)', '運 Pure')
+      .replace(/Family:.*/, 'Family').replace('Inverse Hex', 'Inverse');
+  }).join(', ');
+}
+
 function _fsBedPersons(){
   var c = (typeof fsGetCurrentContext === 'function') ? fsGetCurrentContext() : {};
   var arr = [];
-  if (c.pAHex != null) arr.push({ who: 'A', label: c.pALabel || '', qi: c.pAQi, yun: c.pAYun });
-  if (c.pBHex != null) arr.push({ who: 'B', label: c.pBLabel || '', qi: c.pBQi, yun: c.pBYun });
+  if (c.pAHex != null) arr.push({ who: 'A', label: c.pALabel || '', hex: c.pAHex, qi: c.pAQi, yun: c.pAYun });
+  if (c.pBHex != null) arr.push({ who: 'B', label: c.pBLabel || '', hex: c.pBHex, qi: c.pBQi, yun: c.pBYun });
   return arr;
 }
 
@@ -4490,8 +4512,7 @@ function _fsBedNearestCompatibleZS(deg, persons){
   FS_SLOTS.forEach(function(s){
     if (!fsIsZhengShen(s.yun)) return;
     var allOk = persons.every(function(p){
-      var l = _fsHexConnect(p.qi, p.yun, s.qi, s.yun);
-      return l.periodLink || l.elementLink;
+      return _fsCommunicate(p.hex, p.qi, p.yun, s.hexNum, s.qi, s.yun).connected;
     });
     if (!allOk) return;
     var d = fsAngularDist(s.centerDeg, d0);
@@ -4505,19 +4526,17 @@ function _fsBedCompatHTML(slot){
   if (!persons.length){
     return '<div style="margin-top:8px;font-size:12px;color:#999;">Load a person (A or B) to check compatibility with this sitting.</div>';
   }
-  var mark = function(b){ return b ? '<span style="color:#2e7d32;font-weight:bold;">✓</span>' : '<span style="color:#bbb;">–</span>'; };
   var html = '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #e1bee7;">'
-    + '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:4px;">Compatibility with the sitting hexagram</div>';
+    + '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:4px;">Communication with the sitting hexagram</div>';
   var anyIncompat = false;
   persons.forEach(function(p){
-    var l = _fsHexConnect(p.qi, p.yun, slot.qi, slot.yun);
-    var ok = l.periodLink || l.elementLink;
-    if (!ok) anyIncompat = true;
+    var c = _fsCommunicate(p.hex, p.qi, p.yun, slot.hexNum, slot.qi, slot.yun);
+    if (!c.connected) anyIncompat = true;
     html += '<div style="font-size:12px;margin:2px 0;">'
       + '<strong>' + p.who + '</strong> ' + (p.label ? '<span style="color:#888;">' + p.label + '</span> ' : '')
-      + '— period ' + mark(l.periodLink) + ' · element ' + mark(l.elementLink) + ' &nbsp;→ '
-      + (ok ? '<span style="color:#2e7d32;font-weight:bold;">compatible</span>'
-            : '<span style="color:#c0392b;font-weight:bold;">not compatible</span>')
+      + '→ ' + (c.connected
+            ? '<span style="color:#2e7d32;font-weight:bold;">communicates</span> <span style="color:#888;">(' + _fsCommText(c.labels) + ')</span>'
+            : '<span style="color:#c0392b;font-weight:bold;">no communication</span>')
       + '</div>';
   });
   if (anyIncompat){
@@ -4558,22 +4577,22 @@ function _fsIsoLocal(dt){
   return y + '-' + m + '-' + d;
 }
 
-// One date evaluation against a placement (facing/sitting) slot for a set of
-// persons. Returns { pass, dateLink, perPerson:[{who,label,ps,pd,periodCov,elemCov,dateOk,ok}] }.
-function _fsEvalDateForPlacement(persons, slot, dayQi, dayYun){
-  var dl = _fsHexConnect(slot.qi, slot.yun, dayQi, dayYun);   // date ↔ placement
+// One date evaluation against a placement (sitting/facing) slot for a set of
+// persons. The loop closes when every pair COMMUNICATES — by any mechanism
+// (Hetu, Adding, Pure Qi, Family, Inverse). The kind of communication does not
+// matter, only that it exists. Returns
+// { pass, dateLink, perPerson:[{who,label,ps,pd,ok}] }.
+function _fsEvalDateForPlacement(persons, slot, dayHex, dayQi, dayYun){
+  var dl = _fsCommunicate(slot.hexNum, slot.qi, slot.yun, dayHex, dayQi, dayYun);  // date ↔ placement
   var res = { pass: false, dateLink: dl, perPerson: [] };
-  if (!(dl.periodLink || dl.elementLink)) return res;          // date must touch the placement
+  if (!dl.connected) return res;                                // date must communicate with the placement
   var allOk = (persons.length > 0);
   persons.forEach(function(p){
-    var ps = _fsHexConnect(p.qi, p.yun, slot.qi, slot.yun);    // person ↔ placement
-    var pd = _fsHexConnect(p.qi, p.yun, dayQi, dayYun);        // person ↔ date
-    var dateOk = pd.periodLink || pd.elementLink;
-    var periodCov = ps.periodLink || pd.periodLink;
-    var elemCov   = ps.elementLink || pd.elementLink;
-    var ok = dateOk && periodCov && elemCov;
+    var ps = _fsCommunicate(p.hex, p.qi, p.yun, slot.hexNum, slot.qi, slot.yun);   // person ↔ placement (fixed)
+    var pd = _fsCommunicate(p.hex, p.qi, p.yun, dayHex, dayQi, dayYun);            // person ↔ date (varies)
+    var ok = ps.connected && pd.connected;                       // person must communicate with BOTH
     if (!ok) allOk = false;
-    res.perPerson.push({ who: p.who, label: p.label, ps: ps, pd: pd, periodCov: periodCov, elemCov: elemCov, dateOk: dateOk, ok: ok });
+    res.perPerson.push({ who: p.who, label: p.label, ps: ps, pd: pd, ok: ok });
   });
   res.pass = allOk;
   return res;
@@ -4608,7 +4627,7 @@ function _fsScanLuckyDates(persons, slot, maxResults){
       dData = getXkdgData(dGan, dZhi);
     } catch(e){ continue; }
     if (!dData) continue;
-    var ev = _fsEvalDateForPlacement(persons, slot, dData.qi, dData.yun);
+    var ev = _fsEvalDateForPlacement(persons, slot, dData.hex, dData.qi, dData.yun);
     if (ev.pass){
       out.push({ iso: iso, dGan: dGan, dZhi: dZhi, dData: dData, eval: ev });
       if (out.length >= cap) break;
@@ -4635,23 +4654,51 @@ function fsBedScan(){
   } catch(err){ console.warn('fsBedScan', err); }
 }
 
+// 'YYYY-MM-DD' -> 'DD/MM/YYYY' (Chinese ganzhi is shown separately, unchanged).
+function _fsFmtDMY(iso){
+  var p = String(iso).split('-');
+  return (p.length === 3) ? (p[2] + '/' + p[1] + '/' + p[0]) : iso;
+}
+
+// Plain-language explanation of WHEN a date is lucky (shown above the list).
+function _fsLuckyLegend(kind){
+  var place = (kind === 'desk') ? 'desk facing' : 'bed sitting';
+  var who   = (kind === 'desk') ? 'the person who sits' : 'each loaded person (A and/or B)';
+  return '<div style="background:#faf3ff;border:1px solid #e1bee7;border-radius:6px;padding:8px;font-size:11px;color:#4a148c;line-height:1.5;margin-bottom:8px;">'
+    + '<b>What makes a date lucky?</b> What matters is that the hexagrams <b>communicate</b> — not how. '
+    + 'Two hexagrams communicate when they share <u>any</u> of these links: Hetu pair, Adding (sum 5/10/15), '
+    + 'Pure Qi (same number), same Family, or Inverse hexagram (運 = period numbers, 氣 = element numbers).<br>'
+    + 'A day passes when the loop closes: ① the <b>date</b> communicates with the <b>' + place + '</b>; and for ' + who + ' — '
+    + '② the person communicates with the <b>' + place + '</b> (the fixed link) <b>and</b> ③ the person communicates with the <b>date</b> (this is the part that changes day to day). '
+    + 'Each line below shows the kind of communication for every pair.'
+    + '</div>';
+}
+
+// One lucky-date row: dd/mm/yyyy + ganzhi + the date's own 運/氣, then per person
+// HOW the date communicates with the person and with the placement (any mechanism).
+function _fsLuckyDateRowHTML(m, persons, slot, placeWord){
+  var dQi = m.dData.qi, dYun = m.dData.yun;
+  var perHtml = m.eval.perPerson.map(function(pp){
+    return '<div style="margin-top:2px;"><span style="color:#6a1b9a;font-weight:bold;">' + pp.who
+      + (pp.label ? ' (' + pp.label + ')' : '') + '</span> — ↔ ' + placeWord + ': '
+      + _fsCommText(pp.ps.labels) + ' &nbsp;·&nbsp; ↔ date: ' + _fsCommText(pp.pd.labels) + '</div>';
+  }).join('');
+  return '<div style="border-top:1px solid #eee;padding:6px 0;font-size:12px;">'
+    + '<strong>' + _fsFmtDMY(m.iso) + '</strong> · ' + m.dGan + m.dZhi
+    + ' <span style="color:#555;">· 運 ' + dYun + ' · 氣 ' + dQi + '</span>'
+    + ' <span style="color:#999;">(hex ' + m.dData.hex + ')</span>'
+    + '<div style="font-size:11px;color:#666;margin-top:1px;">date ↔ ' + placeWord + ': ' + _fsCommText(m.eval.dateLink.labels) + '</div>'
+    + '<div style="font-size:11px;color:#444;">' + perHtml + '</div>'
+    + '</div>';
+}
+
 function _fsBedScanHTML(persons, slot, matches){
   if (!matches.length){
     return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a different sitting (compatibility may not close the loop here).</div>';
   }
   var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to move the bed — ' + matches.length + ' found</div>';
-  matches.forEach(function(m){
-    var per = m.eval.perPerson.map(function(pp){
-      var pCh = pp.ps.periodLink ? 'sitting' : (pp.pd.periodLink ? 'date' : '–');
-      var eCh = pp.ps.elementLink ? 'sitting' : (pp.pd.elementLink ? 'date' : '–');
-      return '<span style="color:#6a1b9a;font-weight:bold;">' + pp.who + '</span>: period via ' + pCh + ' · element via ' + eCh;
-    }).join(' &nbsp;|&nbsp; ');
-    html += '<div style="border-top:1px solid #eee;padding:5px 0;font-size:12px;">'
-      + '<strong>' + m.iso + '</strong> · ' + m.dGan + m.dZhi
-      + ' <span style="color:#888;">(hex ' + m.dData.hex + ', qi ' + m.dData.qi + ', yun ' + m.dData.yun + ')</span>'
-      + '<div style="font-size:11px;color:#555;margin-top:2px;">' + per + '</div>'
-      + '</div>';
-  });
+  html += _fsLuckyLegend('bed');
+  matches.forEach(function(m){ html += _fsLuckyDateRowHTML(m, persons, slot, 'bed sitting'); });
   return html;
 }
 
@@ -4714,8 +4761,7 @@ function _fsDeskNearestGoodFacing(deg, person){
   var best = null, bestD = Infinity;
   FS_SLOTS.forEach(function(s){
     if (!fsIsZhengShen(s.yun)) return;
-    var l = _fsHexConnect(person.qi, person.yun, s.qi, s.yun);
-    if (!(l.periodLink || l.elementLink)) return;
+    if (!_fsCommunicate(person.hex, person.qi, person.yun, s.hexNum, s.qi, s.yun).connected) return;
     var d = fsAngularDist(s.centerDeg, d0);
     if (d < bestD){ bestD = d; best = s; }
   });
@@ -4732,8 +4778,8 @@ function _fsDeskWaterList(facingSlot, person){
     if (dist > FS_WATER_MAX_DEG) return;
     var mLabels = fsWaterMatchVsFacing(facingSlot, s);
     if (!mLabels.length) return;
-    var pl = person ? _fsHexConnect(person.qi, person.yun, s.qi, s.yun) : null;
-    if (person && !(pl.periodLink || pl.elementLink)) return; // must suit the person
+    var pl = person ? _fsCommunicate(person.hex, person.qi, person.yun, s.hexNum, s.qi, s.yun) : null;
+    if (person && !pl.connected) return; // must suit the person
     out.push({ slot: s, matchLabels: mLabels, link: pl, dist: dist });
   });
   out.sort(function(a, b){ return a.dist - b.dist; });
@@ -4763,12 +4809,12 @@ function fsDeskReadChart(){
     if (!person){
       parts.push('<div style="font-size:12px;color:#999;margin-top:4px;">Load a person to check compatibility and water positions.</div>');
     } else {
-      var l = _fsHexConnect(person.qi, person.yun, slot.qi, slot.yun);
-      compatOk = l.periodLink || l.elementLink;
-      var mark = function(b){ return b ? '<span style="color:#2e7d32;font-weight:bold;">✓</span>' : '<span style="color:#bbb;">–</span>'; };
+      var c = _fsCommunicate(person.hex, person.qi, person.yun, slot.hexNum, slot.qi, slot.yun);
+      compatOk = c.connected;
       parts.push('<div style="font-size:12px;margin-top:4px;"><strong>' + person.who + '</strong> ' + (person.label ? '<span style="color:#888;">' + person.label + '</span> ' : '')
-        + '— period ' + mark(l.periodLink) + ' · element ' + mark(l.elementLink) + ' &nbsp;→ '
-        + (compatOk ? '<span style="color:#2e7d32;font-weight:bold;">compatible</span>' : '<span style="color:#c0392b;font-weight:bold;">not compatible</span>') + '</div>');
+        + '→ ' + (compatOk
+            ? '<span style="color:#2e7d32;font-weight:bold;">communicates</span> <span style="color:#888;">(' + _fsCommText(c.labels) + ')</span>'
+            : '<span style="color:#c0392b;font-weight:bold;">no communication</span>') + '</div>');
     }
 
     if (person && (!isZS || !compatOk)){
@@ -4789,11 +4835,8 @@ function fsDeskReadChart(){
       } else {
         waters.slice(0, 8).forEach(function(w){
           var pTxt = '';
-          if (w.link){
-            var bits = [];
-            if (w.link.periodLink) bits.push('period');
-            if (w.link.elementLink) bits.push('element');
-            pTxt = ' · person: ' + bits.join('+');
+          if (w.link && w.link.connected){
+            pTxt = ' · person: ' + _fsCommText(w.link.labels);
           }
           parts.push('<div style="font-size:12px;margin:2px 0;">💧 <strong>' + w.slot.centerDeg.toFixed(1) + '°</strong> (hex ' + w.slot.hexNum + ', yun ' + w.slot.yun + ') <span style="color:#888;">— ' + w.matchLabels.join(', ') + pTxt + '</span></div>');
         });
@@ -4827,16 +4870,8 @@ function _fsDeskScanHTML(person, slot, matches){
     return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a facing that better suits the person.</div>';
   }
   var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to set up the desk &amp; place the moving water — ' + matches.length + ' found</div>';
-  matches.forEach(function(m){
-    var pp = m.eval.perPerson[0];
-    var pCh = pp.ps.periodLink ? 'facing' : (pp.pd.periodLink ? 'date' : '–');
-    var eCh = pp.ps.elementLink ? 'facing' : (pp.pd.elementLink ? 'date' : '–');
-    html += '<div style="border-top:1px solid #eee;padding:5px 0;font-size:12px;">'
-      + '<strong>' + m.iso + '</strong> · ' + m.dGan + m.dZhi
-      + ' <span style="color:#888;">(hex ' + m.dData.hex + ', qi ' + m.dData.qi + ', yun ' + m.dData.yun + ')</span>'
-      + '<div style="font-size:11px;color:#555;margin-top:2px;"><span style="color:#6a1b9a;font-weight:bold;">' + pp.who + '</span>: period via ' + pCh + ' · element via ' + eCh + '</div>'
-      + '</div>';
-  });
+  html += _fsLuckyLegend('desk');
+  matches.forEach(function(m){ html += _fsLuckyDateRowHTML(m, [person], slot, 'desk facing'); });
   return html;
 }
 
