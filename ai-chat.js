@@ -111,18 +111,22 @@
     '(no charging). The intermediate "point you find" is the cashing stop the planner returns; the NE/E legs and ' +
     'their clock times come from the planner too. Do not compute the directions, the stop, or the times yourself - ' +
     'just present the returned solution (shortest first).\n' +
-    '- BEST-TIME trip (default, no exact time fixed): make TWO calls.\n' +
-    '   1) First call plan_travel with open_planner:false and depart_hour:6, duration_h covering the day (e.g. 14), ' +
-    'to READ the favorable_windows.\n' +
-    '   2) Choose the window heading toward the destination during reasonable DAYTIME hours (from is between about ' +
-    '06:00 and 21:00) with the best direction score; among ties prefer the soonest. Do NOT pick pre-dawn windows ' +
-    '(before 06:00) unless the user explicitly wants the best time at any hour.\n' +
-    '   3) Then call plan_travel again with depart_time set to that window\'s `from`, fixed_time:true, the real ' +
-    'duration_h, range_km/reserve_km if given, and open_planner:true. This opens + runs the filled planner exactly ' +
-    'at the start of that double-hour, so the traveller gets the full two hours.\n' +
-    '   Announce the chosen double-hour by name and its clock start (from departure_planned) and the direction.\n' +
+    '- BEST-TIME trip (default, no exact time fixed): make ONE call to plan_travel with origin + destination ' +
+    '(coords + names), depart_date, and range_km/reserve_km if given — and DELIBERATELY OMIT depart_time and ' +
+    'depart_hour. When the time is omitted the app itself auto-selects the most favourable (highest luck) and, on a ' +
+    'tie, the EARLIEST daytime departure, then opens and runs the planner. NEVER default to 08:00 or invent a time. ' +
+    'The exact chosen clock time appears in the itinerary card that posts to the chat. Your reply is ONE short line: ' +
+    'say you picked the most favourable departure of the day and that the exact time + direction are shown in the ' +
+    'card.\n' +
     '- FIXED time ("I leave at 11 exactly/sharp", "tassativamente"): one call with depart_time "HH:MM" + ' +
     'fixed_time:true + open_planner:true.\n' +
+    '- TIME CONVENTION (important): every clock time the user says ("parto alle 12:00") and every time you report ' +
+    '(from/to, wall_from, departure_planned) is the LOCAL LEGAL time on their phone — i.e. already daylight-saving ' +
+    '(ora legale) when DST is in effect. NEVER convert it, and NEVER add or subtract an hour. The favourable ' +
+    'directions belong to the Chinese double-hour (时辰) the planner reports in departure_double_hour: name it ' +
+    '(e.g. "the Wu hour 午"), and its start on the user\'s clock is wall_from. So "parto alle 12:00" in summer means ' +
+    '12:00 ora legale, which the planner places at the start of the Wu double-hour. The solar_* fields are true ' +
+    'solar time for the engine only — do not mention them unless the user explicitly asks about solar time.\n' +
     '- open_travel_planner is only for showing a blank planner. Do not call open_itinerary_in_maps.\n' +
     '- AFTER plan_travel opens the planner: the full computed itinerary (origin→destination, distance, driving ' +
     'time, each leg and the stops/charging) appears in THIS chat automatically a few seconds later, as its own ' +
@@ -252,7 +256,7 @@
           origin_lon: { type: 'number', description: 'Origin longitude.' },
           origin_name: { type: 'string', description: 'Origin place name (for labels).' },
           depart_date: { type: 'string', description: 'Departure date YYYY-MM-DD (default today).' },
-          depart_hour: { type: 'integer', description: 'Wall-clock start hour 0-23 (default 8). Ignored if depart_time is given.' },
+          depart_hour: { type: 'integer', description: 'Wall-clock start hour 0-23. OMIT it (and depart_time) to let the app auto-pick the most favourable, earliest daytime departure. Ignored if depart_time is given.' },
           depart_time: { type: 'string', description: 'Wall-clock start time HH:MM (overrides depart_hour). Use the favourable window start.' },
           fixed_time: { type: 'boolean', description: 'TRUE only if the user fixed an exact time ("exactly/sharp"). When false (default) the departure is auto-snapped to the START of the soonest favourable double-hour.' },
           duration_h: { type: 'integer', description: 'Trip length in hours (default 12).' },
@@ -312,7 +316,7 @@
           dest_lon: { type: 'number', description: 'Destination longitude.' },
           dest_name: { type: 'string', description: 'Destination place name.' },
           depart_date: { type: 'string', description: 'Departure date YYYY-MM-DD (default today).' },
-          depart_hour: { type: 'integer', description: 'Departure hour 0-23 (default 8).' },
+          depart_hour: { type: 'integer', description: 'Departure hour 0-23. OMIT (with depart_time) for the app to auto-pick the most favourable, earliest departure.' },
           duration_h: { type: 'integer', description: 'Trip length in hours.' },
           range_km: { type: 'number', description: 'EV autonomy in km (for charging-stop search).' },
           reserve_km: { type: 'number', description: 'EV safety reserve in km kept before recharging.' },
@@ -804,13 +808,20 @@
     var today = todayIso();
     var dateStr = input.depart_date || today;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today; // ignore a hallucinated past/invalid date
-    var hour = (input.depart_hour != null) ? parseInt(input.depart_hour, 10) : 8;
+    // Did the user give an explicit departure time? If not, the app must AUTO-PICK
+    // the most favourable (and earliest, to stay shortest) departure — never a fixed 08:00.
+    var hasExplicitTime = (input.depart_hour != null) ||
+      (typeof input.depart_time === 'string' && /^\d{1,2}:\d{2}$/.test(input.depart_time));
+    var autoDepart = !hasExplicitTime;
+    var hour = (input.depart_hour != null) ? parseInt(input.depart_hour, 10) : 12;   // 12:00 is only a neutral probe time for the summary; the planner picks the real one
     var timeStr = (typeof input.depart_time === 'string' && /^\d{1,2}:\d{2}$/.test(input.depart_time))
       ? (String(parseInt(input.depart_time.split(':')[0], 10)).padStart(2, '0') + ':' + input.depart_time.split(':')[1])
       : (String(hour).padStart(2, '0') + ':00');
     var dep = new Date(dateStr + 'T' + timeStr + ':00');
     if (isNaN(dep.getTime())) return { error: 'Invalid departure date/time.' };
-    var durH = parseInt(input.duration_h, 10) || 12;
+    // When the time is auto-picked, scan the whole day for the favourable-windows summary.
+    var durH = parseInt(input.duration_h, 10) || (autoDepart ? 16 : 12);
+    if (autoDepart) dep = new Date(dateStr + 'T05:00:00');
     var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
     if (isNaN(utc)) utc = 1;
     var dstOn = dstActiveOn(dep);   // auto-detect daylight saving for the departure date (device timezone)
@@ -825,7 +836,11 @@
       var good = (s.dirs || []).filter(function (d) { return d.towardDest && d.eval && d.eval.ok; });
       if (good.length) {
         windows.push({
-          from: hm(s.wallStart), to: hm(s.wallEnd), ganzhi: s.gZhiPy || s.gZhiHan, weekday: s.weekday,
+          from: hm(s.wallStart), to: hm(s.wallEnd),          // LOCAL LEGAL (DST) clock — the times the user reads
+          double_hour: s.brPy || s.brHan,                    // e.g. "Wu" — the Chinese double-hour (时辰) branch
+          double_hour_han: s.brHan,                          // e.g. "午"
+          solar_from: s.tstStart, solar_to: s.tstEnd,        // same window in TRUE SOLAR time (for reference only)
+          ganzhi: s.gZhiPy || s.gZhiHan, weekday: s.weekday,
           directions: good.map(function (d) { return { dir: d.dir, score: d.eval.score, door: d.eval.door }; })
         });
       }
@@ -833,11 +848,52 @@
     // For a real A→B itinerary, also open the planner already filled and run the road plan
     // (one reliable call instead of depending on a separate open_travel_planner call).
     var openPlanner = (input.open_planner != null) ? !!input.open_planner : (input.origin_lat != null && input.dest_lat != null);
-    var snapStart = hm(dep);
+
+    // When no time was given, recommend the day's BEST (highest luck), EARLIEST-on-tie
+    // departure from the scanned slots (daytime only). The visual planner re-picks this
+    // with a warm score cache and the exact chosen time appears in the itinerary card.
+    var recommendedClock = null;
+    var chosenSlot = null;
+    if (autoDepart) {
+      var bestSlot = null, bestSc = -Infinity, earliestSlot = null;
+      (plan.slots || []).forEach(function (s) {
+        var h = (s.wallStart && s.wallStart.getHours) ? s.wallStart.getHours() : null;
+        if (h == null || h < 5 || h > 21) return;
+        if (!earliestSlot) earliestSlot = s;
+        var sc = -Infinity;
+        (s.dirs || []).forEach(function (d) { if (d.towardDest && d.combined != null && d.combined > sc) sc = d.combined; });
+        if (sc > bestSc) { bestSc = sc; bestSlot = s; }
+      });
+      var pickSlot = (bestSc > -Infinity ? bestSlot : earliestSlot);
+      chosenSlot = pickSlot;
+      if (pickSlot && pickSlot.wallStart) recommendedClock = hm(pickSlot.wallStart);
+    } else {
+      // Fixed time: the user typed a LOCAL LEGAL (DST) clock time. Find the double-hour
+      // slot that CONTAINS it, so we can tell the AI which 时辰 (e.g. Wu) is active.
+      var depMs = dep.getTime();
+      (plan.slots || []).forEach(function (s) {
+        if (s.wallStart && s.wallEnd && depMs >= s.wallStart.getTime() && depMs < s.wallEnd.getTime()) chosenSlot = s;
+      });
+      if (!chosenSlot && plan.slots && plan.slots.length) chosenSlot = plan.slots[0];
+    }
+    // The double-hour (时辰) active at the chosen departure — surfaced explicitly so
+    // the AI never has to infer it from the ganzhi string.
+    var depDH = chosenSlot ? {
+      double_hour: chosenSlot.brPy || chosenSlot.brHan,     // e.g. "Wu"
+      double_hour_han: chosenSlot.brHan,                    // e.g. "午"
+      wall_from: hm(chosenSlot.wallStart), wall_to: hm(chosenSlot.wallEnd),   // LOCAL LEGAL (DST) clock
+      solar_from: chosenSlot.tstStart, solar_to: chosenSlot.tstEnd            // TRUE SOLAR time (reference)
+    } : null;
+    var snapStart = autoDepart ? (recommendedClock || hm(dep)) : hm(dep);
     var baseOut = {
       direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
-      departure_planned: dateStr + ' ' + snapStart,
-      departure_note: 'departure_planned is the exact clock time the planner used. For a best-time trip this should be the START (the favorable window\'s `from`) of the favourable daytime double-hour you chose. Announce THIS time and name the double-hour.',
+      departure_planned: autoDepart ? (dateStr + ' (auto-selected — see the itinerary card for the exact time)') : (dateStr + ' ' + snapStart),
+      recommended_departure: autoDepart && recommendedClock ? (dateStr + ' ' + recommendedClock) : null,
+      departure_double_hour: depDH,
+      time_convention: 'Any clock time the user gives or that appears in from/to/wall_* is the LOCAL LEGAL (civil/DST) time they read on their phone. NEVER convert it, add or subtract an hour. solar_* fields are TRUE SOLAR time for reference only — do not show them unless asked. The favourable directions belong to the double-hour named in departure_double_hour (e.g. "Wu"), whose start on the user\'s clock is wall_from.',
+      departure_note: autoDepart
+        ? 'No time was given, so the app auto-selects the most favourable (and earliest, to stay shortest) daytime departure. If the planner is opening, the exact chosen time appears in the itinerary card — do NOT invent 08:00 or any other time. If the planner is NOT opening, announce recommended_departure as the suggested start.'
+        : 'departure_planned is the exact LOCAL LEGAL clock time the user chose. Announce THIS time as-is and name the active double-hour from departure_double_hour (e.g. the Wu hour).',
       duration_hours: durH,
       window_times: 'LOCAL CLOCK time, already adjusted for daylight saving (DST ' + (dstOn ? 'on' : 'off') + '). Present these times as-is; do NOT add or subtract an hour.',
       favorable_windows_count: windows.length,
@@ -848,8 +904,8 @@
         window.TravelPlanner.openPrefilled({
           originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
           destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
-          departDate: dateStr, departTime: snapStart,
-          durationH: durH, utc: utc, dst: dstOn,
+          departDate: dateStr, departTime: autoDepart ? null : snapStart, autoDepart: autoDepart,
+          durationH: (input.duration_h != null ? durH : null), utc: utc, dst: dstOn,
           rangeKm: (input.range_km != null) ? +input.range_km : null,
           reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
           run: true
@@ -860,8 +916,10 @@
         ((input.range_km != null) ? ' and the charging stops' : '') +
         '. The full itinerary will post itself into THIS chat as a separate card (numbered steps + charging + an ' +
         '"Open in Google Maps" button) within a few seconds - you do NOT render it. Reply with ONE short sentence ' +
-        'only: the departure clock time from departure_planned (it is the START of the favourable double-hour, ' +
-        'already DST-adjusted) and the optimal direction. Do NOT paste the itinerary, do NOT say "below"/"above" or ' +
+        'only: ' + (autoDepart
+          ? 'say you picked the most favourable departure of the day and that the exact clock time + direction are in the card; do NOT invent a time.'
+          : 'the departure clock time from departure_planned (it is the START of the favourable double-hour, already DST-adjusted) and the optimal direction.') +
+        ' Do NOT paste the itinerary, do NOT say "below"/"above" or ' +
         '"I am calculating", do NOT tell the user to fill anything, and do NOT call open_itinerary_in_maps on your ' +
         'own. Google Maps does not auto-open; the user opens it by tapping the card button or by asking ("open in ' +
         'Maps") — you may mention this in your one line.';
