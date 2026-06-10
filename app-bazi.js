@@ -698,6 +698,24 @@ function getInverseHex(hexNum) {
     return INVERSE_HEX[hexNum] || null;
 }
 
+// ── Person ↔ date "communication" — ANY mechanism (condition A or B) ──────
+// True when the two hexagrams communicate by Hetu, Adding, Pure Qi (same
+// number), shared Family, or Inverse hexagram. The KIND does not matter for
+// VALIDITY — condition B (communicate in a way the date does not itself carry
+// as a setting) is valid too, only lower-scored than the same-type condition A
+// (see getPersonSameTypeBonus). Safe-by-default on any error.
+function _xkConnectsAny(pYr, pStem, pBranch, dQi, dYun, dHex, dStem, dBranch){
+  try {
+    if (!pYr) return false;
+    if (isHetuPair(pYr.qi,  dQi)  || [5,10,15].includes(pYr.qi  + dQi))  return true;
+    if (isHetuPair(pYr.yun, dYun) || [5,10,15].includes(pYr.yun + dYun)) return true;
+    if (pYr.qi === dQi || pYr.yun === dYun) return true;              // Pure Qi (communication)
+    if (getJiaZiFamilies(pStem, pBranch).some(function(f){ return getJiaZiFamilies(dStem, dBranch).includes(f); })) return true;
+    if (pYr.hex && dHex && getInverseHex(dHex) === pYr.hex) return true; // Inverse hexagram
+    return false;
+  } catch(e){ return false; }
+}
+
 function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     const items = [];
     const keys = ['year','month','day','hour'];
@@ -3037,6 +3055,11 @@ function getPersonSameTypeBonus(blueItems, personYear, dayXkdg, pStem, pBranch, 
     if (hasDatePureQi     && (personIsPureQiEl || personIsPureQiPer))        return 4;
     if (hasDateAdding     && (personIsAddingEl || personIsAddingPer))        return 4;
     if (hasDateHetu       && (personIsHetuEl   || personIsHetuPer))          return 4;
+    // Inverse same-type: date carries an Inverse Hex setting AND the person's
+    // year hex is the inverse of the day hex → same-type (condition A) bonus.
+    const hasDateInverse = blueItems.some(i => i.text && i.text.startsWith && i.text.startsWith('Inverse Hex'));
+    const personIsInverse = (personYear.hex && dayXkdg.hex && getInverseHex(dayXkdg.hex) === personYear.hex);
+    if (hasDateInverse && personIsInverse)                                   return 4;
 
     // Condition B: connects but different type → no extra bonus
     return 0;
@@ -4572,6 +4595,7 @@ function buildCalView() {
                             if (dDataZi) {
                                 const mLabelsZi = getMatchLabels(personAYear, pYStem, pYBranch, dDataZi, dGan, dZhi, null, null, null);
                                 if (mLabelsZi.length > 0) dayIsFavourable = true;
+                                else if (_xkConnectsAny(personAYear, pYStem, pYBranch, dDataZi.qi, dDataZi.yun, dDataZi.hex, dGan, dZhi)) dayIsFavourable = true;
                             }
                         }
                     }
@@ -4629,6 +4653,7 @@ function buildCalView() {
                         if (dDataCAL) {
                             const matchLabels = getMatchLabels(personAYear, pYStem, pYBranch, dDataCAL, dGan, dZhi, null, null, null);
                             if (matchLabels.length > 0) dayIsFavourable = true;
+                            else if (_xkConnectsAny(personAYear, pYStem, pYBranch, dDataCAL.qi, dDataCAL.yun, dDataCAL.hex, dGan, dZhi)) dayIsFavourable = true;
                         }
                     }
                 }
@@ -4837,6 +4862,7 @@ function buildMonthView() {
                 if (o.blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pYr.qi  === dQi)  return true;
                 if (o.blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods')  && pYr.yun === dYun) return true;
                 if (getJiaZiFamilies(pStem, pBranch).some(f => getJiaZiFamilies(o.dGan, o.dZhi).includes(f))) return true;
+                if (pYr.hex && o.dayXkdg && o.dayXkdg.hex && getInverseHex(o.dayXkdg.hex) === pYr.hex) return true; // Inverse hexagram
                 return false;
             };
             if (personAYear && personBYear) {
@@ -4877,6 +4903,19 @@ function buildMonthView() {
                 isFavourable = labelsB.length > 0;
             }
             _currentDayAnalysis = _saved;
+        }
+        // Condition B: the person communicates with the date in a way the date
+        // does not itself carry as a setting (valid, just lower-scored). Such
+        // dates already passed GATE 1; keep them so they are not dropped by the
+        // score gate below. The A-vs-B score difference is handled elsewhere.
+        if (!isFavourable && (personAYear || personBYear) && o.dayXkdg){
+            const _dx = o.dayXkdg;
+            if (personAYear && personBYear){
+                if (_xkConnectsAny(personAYear, pYStem, pYBranch, _dx.qi, _dx.yun, _dx.hex, o.dGan, o.dZhi) &&
+                    _xkConnectsAny(personBYear, pBYStem, pBYBranch, _dx.qi, _dx.yun, _dx.hex, o.dGan, o.dZhi)) isFavourable = true;
+            } else if (_xkConnectsAny(activePersonYear, activePersonStem, activePersonBranch, _dx.qi, _dx.yun, _dx.hex, o.dGan, o.dZhi)) {
+                isFavourable = true;
+            }
         }
         if (!o.calShowAll && !o.listShowAll && !o.filtersActive && !o.hasNeg &&
             (personAYear || personBYear) && !isFavourable && o.score < 8) {
@@ -5395,6 +5434,7 @@ function buildMonthView() {
                            isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
                            (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pQi === dQi) ||
                            (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods') && pYun === dYun) ||
+                           (activePersonYearLV.hex && dayXkdgLV.hex && getInverseHex(dayXkdgLV.hex) === activePersonYearLV.hex) ||
                            getJiaZiFamilies(activePYStemLV, activePYBranchLV).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
                 })();
                 // If BOTH persons active, require both connect
@@ -5402,12 +5442,12 @@ function buildMonthView() {
                     const connectsA = (() => {
                         const pQi = personAYear.qi, pYun = personAYear.yun;
                         const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
-                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(pYStem,pYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||(personAYear.hex&&dayXkdgLV.hex&&getInverseHex(dayXkdgLV.hex)===personAYear.hex)||getJiaZiFamilies(pYStem,pYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
                     })();
                     const connectsB = (() => {
                         const pQi = personBYear.qi, pYun = personBYear.yun;
                         const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
-                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||(personBYear.hex&&dayXkdgLV.hex&&getInverseHex(dayXkdgLV.hex)===personBYear.hex)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
                     })();
                     if (!(connectsA && connectsB)) { continue; }
                 } else {
@@ -5446,7 +5486,20 @@ function buildMonthView() {
                 }
                 _currentDayAnalysis = _savedAnalysis;
             }
-
+            // Condition B: person communicates with the date in a way the date
+            // does not itself carry as a setting — valid, just lower-scored. These
+            // already passed the connection gate; keep them visible (the A-vs-B
+            // score difference is applied by getPersonSameTypeBonus).
+            if (!isFavourable && isPositive && (personAYear || personBYear)){
+                if (personAYear && personBYear){
+                    if (_xkConnectsAny(personAYear, pYStem, pYBranch, dayXkdgLV.qi, dayXkdgLV.yun, dayXkdgLV.hex, dGan, dZhi) &&
+                        _xkConnectsAny(personBYear, pBYStem, pBYBranch, dayXkdgLV.qi, dayXkdgLV.yun, dayXkdgLV.hex, dGan, dZhi)) isFavourable = true;
+                } else if (personAYear){
+                    if (_xkConnectsAny(personAYear, pYStem, pYBranch, dayXkdgLV.qi, dayXkdgLV.yun, dayXkdgLV.hex, dGan, dZhi)) isFavourable = true;
+                } else if (personBYear){
+                    if (_xkConnectsAny(personBYear, pBYStem, pBYBranch, dayXkdgLV.qi, dayXkdgLV.yun, dayXkdgLV.hex, dGan, dZhi)) isFavourable = true;
+                }
+            }
             const elNotes  = blueItems.filter(i => {
                 if (activeFiltersMV.size > 0) return itemMatchesFilter(i.text, i.tag, activeFiltersMV);
                 return i.text.includes('Element') || i.text === 'Pure Qi' || i.tag === 'family' || i.text.startsWith('Inverse Hex') || i.text.includes('Period');
