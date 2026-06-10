@@ -4059,6 +4059,7 @@ function fsRenderZoneGate(){
       + '<button onclick="fsSelectZone(\'water\')" style="' + _fsZoneBtnStyle(z === 'water') + '">' + FS_ZONES.water.label + '</button>'
       + '<button onclick="fsSelectZone(\'bed\')"   style="' + _fsZoneBtnStyle(z === 'bed')   + '">' + FS_ZONES.bed.label   + '</button>'
       + '<button onclick="fsSelectZone(\'desk\')"  style="' + _fsZoneBtnStyle(z === 'desk')  + '">' + FS_ZONES.desk.label  + '</button>'
+      + (z ? '<button onclick="fsExitZone()" title="Back to the base (set facing / period / start date)" style="flex:0 0 auto;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:bold;cursor:pointer;border:2px solid #b71c1c;background:#fff;color:#b71c1c;white-space:nowrap;">← Back</button>' : '')
     + '</div>'
     + (z ? '' : '<div style="font-size:11px;color:#999;margin-top:8px;text-align:center;">Pick a section to reveal its tools. The shared base (facing · sitting · flying stars) stays available above.</div>')
     + '</div>';
@@ -4102,6 +4103,31 @@ function fsSelectZone(zone){
     }
     if (typeof fsRedraw === 'function') fsRedraw();
   } catch(err){ console.warn('fsSelectZone', err); }
+}
+
+// Leave the current section and return to the shared base (no zone). Lets the
+// user go back when they need to set the base chart / start date they forgot.
+function fsExitZone(){
+  try {
+    window._fsActiveZone = null;
+    window._fsFSRecalled = false;
+    var bedPanel = document.getElementById('fs-bed-panel');
+    var deskPanel = document.getElementById('fs-desk-panel');
+    var generic  = document.getElementById('fs-generic-tools');
+    if (bedPanel)  bedPanel.style.display  = 'none';
+    if (deskPanel) deskPanel.style.display = 'none';
+    if (generic)   generic.style.display   = 'none';
+    var tools = document.getElementById('fs-zone-tools');
+    if (tools) tools.style.display = 'none';
+    var banner = document.getElementById('fs-zone-banner');
+    if (banner) banner.innerHTML = '';
+    if (typeof _fsSyncRecallButtons === 'function') _fsSyncRecallButtons();
+    if (typeof fsRenderZoneGate === 'function') fsRenderZoneGate();
+    if (typeof _fsUpdateLuopanVis === 'function') _fsUpdateLuopanVis();
+    if (typeof fsRedraw === 'function') fsRedraw();
+    var gate = document.getElementById('fs-zone-gate');
+    if (gate) gate.scrollIntoView({ behavior:'smooth', block:'start' });
+  } catch(err){ console.warn('fsExitZone', err); }
 }
 
 // Reorganise the FS view into: gate + shared base (incl. luopan) + gated tools.
@@ -4697,7 +4723,6 @@ function _fsBedScanHTML(persons, slot, matches){
     return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a different sitting (compatibility may not close the loop here).</div>';
   }
   var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to move the bed — ' + matches.length + ' found</div>';
-  html += _fsLuckyLegend('bed');
   matches.forEach(function(m){ html += _fsLuckyDateRowHTML(m, persons, slot, 'bed sitting'); });
   return html;
 }
@@ -4870,7 +4895,6 @@ function _fsDeskScanHTML(person, slot, matches){
     return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a facing that better suits the person.</div>';
   }
   var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to set up the desk &amp; place the moving water — ' + matches.length + ' found</div>';
-  html += _fsLuckyLegend('desk');
   matches.forEach(function(m){ html += _fsLuckyDateRowHTML(m, [person], slot, 'desk facing'); });
   return html;
 }
