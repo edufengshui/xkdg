@@ -321,22 +321,49 @@
   }
 
   // ---------------------------------------------------------------
+  // CONTAINER — always render into a dedicated, visible host placed
+  // right under the FLYING STARS block (where the 🔍 Charts button is),
+  // so the finder can never silently no-op because fs-results-area is
+  // missing/hidden in the current view state.
+  // ---------------------------------------------------------------
+  function isVisible(el){ return !!(el && el.offsetParent !== null); }
+  function getHost(){
+    var host = document.getElementById('fscf-host');
+    if(host) return host;
+    host = document.createElement('div');
+    host.id = 'fscf-host';
+    host.style.margin = '10px 0';
+    var block = document.getElementById('fs-flying-stars-block');
+    if(block && block.parentNode){
+      block.parentNode.insertBefore(host, block.nextSibling);   // directly under the FS block
+    } else {
+      var area = document.getElementById('fs-results-area');
+      if(area && area.parentNode){
+        area.parentNode.insertBefore(host, area);
+      } else {
+        (document.getElementById('fengshui-view') || document.body).appendChild(host);
+      }
+    }
+    return host;
+  }
+
+  // ---------------------------------------------------------------
   // API PUBBLICA
   // ---------------------------------------------------------------
   function open(){
-    var area = document.getElementById('fs-results-area');
-    if(!area){ alert('Feng Shui view not active. Open the Feng Shui mode first.'); return; }
     if(typeof FlyingStars === 'undefined'){ alert('flying-stars.js not loaded'); return; }
-    buildPanel(area);
+    var host = getHost();
+    buildPanel(host);
     var panel = document.getElementById('fscf-panel');
     if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
   }
 
   function close(){
-    var panel = document.getElementById('fscf-panel');
-    if(panel) panel.remove();
-    var res = document.getElementById('fscf-results');
-    if(res) res.remove();
+    var host = document.getElementById('fscf-host');
+    if(host){ host.remove(); return; }
+    // legacy fallback (older builds rendered into fs-results-area)
+    var panel = document.getElementById('fscf-panel'); if(panel) panel.remove();
+    var res = document.getElementById('fscf-results'); if(res) res.remove();
   }
 
   window.FSChartFinder = {
