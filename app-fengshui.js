@@ -3143,6 +3143,8 @@ function _fsApplyTransform(){
   canvas.style.transform =
     'translate(' + _fsZoomTx + 'px, ' + _fsZoomTy + 'px) ' +
     'scale('     + _fsZoomScale + ')';
+  // At 1x the page must scroll through the luopan; when zoomed, the finger pans it.
+  canvas.style.touchAction = (_fsZoomScale > 1.01) ? 'none' : 'pan-y';
 }
 
 function _fsResetZoom(){
@@ -3156,7 +3158,11 @@ function _fsAttachZoomHandlers(){
   const canvas = document.getElementById('fs-canvas');
   if (!canvas || canvas.dataset.zoomAttached === '1') return;
   canvas.dataset.zoomAttached = '1';
-  canvas.style.touchAction = 'none';
+  // Let the PAGE scroll vertically through the luopan when it is NOT zoomed; only
+  // capture all gestures (pan the image) once zoomed in. _fsApplyTransform keeps
+  // this in sync with the zoom level. (Was 'none', which blocked page scroll and
+  // made the luopan feel "stuck" on phones.)
+  canvas.style.touchAction = 'pan-y';
   canvas.title = 'Pinch to zoom · drag to pan · double-tap to reset';
 
   // Mobile: touch
@@ -3176,7 +3182,9 @@ function _fsAttachZoomHandlers(){
       e.preventDefault();
     } else if (e.touches.length === 1){
       const now = Date.now();
-      if (now - _fsLastTapTime < 300){
+      // Double-tap to reset only matters when zoomed; at 1x do nothing so a quick
+      // double-flick still scrolls the page.
+      if (_fsZoomScale > 1.01 && now - _fsLastTapTime < 300){
         _fsResetZoom();
         _fsLastTapTime = 0;
         e.preventDefault();
@@ -3189,6 +3197,7 @@ function _fsAttachZoomHandlers(){
         _fsPanLastY = e.touches[0].clientY;
         e.preventDefault();
       }
+      // scale == 1: do NOT preventDefault — let the page scroll normally.
     }
   }, { passive: false });
 
