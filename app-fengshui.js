@@ -4705,15 +4705,15 @@ function _fsLuckyLegend(kind){
 function _fsLuckyDateRowHTML(m, persons, slot, placeWord){
   var dQi = m.dData.qi, dYun = m.dData.yun;
   var perHtml = m.eval.perPerson.map(function(pp){
-    return '<div style="margin-top:2px;"><span style="color:#6a1b9a;font-weight:bold;">' + pp.who
-      + (pp.label ? ' (' + pp.label + ')' : '') + '</span> — ↔ ' + placeWord + ': '
-      + _fsCommText(pp.ps.labels) + ' &nbsp;·&nbsp; ↔ date: ' + _fsCommText(pp.pd.labels) + '</div>';
+    return '<div style="margin-top:3px;"><span style="color:#6a1b9a;font-weight:bold;">' + pp.who
+      + '</span> communicates with the ' + placeWord + ': <b>' + _fsCommText(pp.ps.labels)
+      + '</b> &nbsp;·&nbsp; with the date: <b>' + _fsCommText(pp.pd.labels) + '</b></div>';
   }).join('');
   return '<div style="border-top:1px solid #eee;padding:6px 0;font-size:12px;">'
     + '<strong>' + _fsFmtDMY(m.iso) + '</strong> · ' + m.dGan + m.dZhi
     + ' <span style="color:#555;">· 運 ' + dYun + ' · 氣 ' + dQi + '</span>'
     + ' <span style="color:#999;">(hex ' + m.dData.hex + ')</span>'
-    + '<div style="font-size:11px;color:#666;margin-top:1px;">date ↔ ' + placeWord + ': ' + _fsCommText(m.eval.dateLink.labels) + '</div>'
+    + '<div style="font-size:11px;color:#666;margin-top:2px;">The date communicates with the ' + placeWord + ': <b>' + _fsCommText(m.eval.dateLink.labels) + '</b></div>'
     + '<div style="font-size:11px;color:#444;">' + perHtml + '</div>'
     + '</div>';
 }
