@@ -3386,9 +3386,11 @@ function fsInjectExpansionCSS(){
     '}',
     '@media (max-width: 600px) {',
     '  #fs-canvas-wrap {',
-    '    width: 100vw !important;',
-    '    margin-left: calc(50% - 50vw) !important;',
-    '    margin-right: calc(50% - 50vw) !important;',
+    '    width: 100% !important;',          /* fill the (max-width:none) container, centred — */
+    '    margin-left: auto !important;',    /* NOT 100vw full-bleed, which shifted the disc and */
+    '    margin-right: auto !important;',   /* pushed the right/bottom star boxes off-screen. */
+    '    box-sizing: border-box !important;',/* padding insets the canvas instead of growing the box */
+    '    padding: 8px 16px !important;',     /* safety gutter: keeps the side/bottom star boxes on-screen */
     '  }',
     '}',
     '@media (min-width: 601px) {',
