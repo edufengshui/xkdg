@@ -77,6 +77,18 @@
     'no person is loaded, ask the user to load Person A or B first.\n' +
     '- Keep answers concise: summarise the top few results (date, time/ganzhi, score) and offer to open one. ' +
     'If a tool returns an error, relay it briefly and suggest the fix.\n' +
+    '- FORMATTING for any list of dates or hours: do NOT use Markdown tables (they render cramped and unreadable on ' +
+    'the phone). List each option as its own short block, and ALWAYS put a BLANK LINE between options so they are ' +
+    'clearly separated. Example:\n' +
+    '  🥇 **11:55\u201313:55** \u00b7 Wu \u5348 \u00b7 score 5\n' +
+    '  Open Door \u958b \u00b7 San Qi Yi \u4e59 \u00b7 Zhi Shi\n' +
+    '\n' +
+    '  🥈 **23:55\u201301:55** \u00b7 Zi \u5b50 \u00b7 score 3\n' +
+    '  ...\n' +
+    'Keep each block to one or two short lines; never put options in a single dense paragraph or a table.\n' +
+    '- HOUR TIMES from find_water_hours / find_qimen_hours_for_star: the `hour` field is the REAL LOCAL CLOCK window ' +
+    '(true solar time, DST-adjusted \u2014 the same convention as the BEST/LIST date pages, NOT the textbook ' +
+    '23:00-01:00 ranges). Report `hour` exactly as returned, and never recompute or "round" a double-hour clock time yourself.\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
@@ -553,6 +565,32 @@
     } catch (e) { return null; }
   }
   function startOfTodayMs() { var t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime(); }
+
+  // Map a Chinese hour BRANCH (a solar double-hour) to the REAL LOCAL CLOCK
+  // window at the app's configured longitude / UTC / DST — the SAME convention
+  // as the BEST/LIST date pages (offsetMin = (lon - utc*15)*4 - dst*60).
+  // hourHan may be a full ganzhi ("戊子") — the branch is the last CJK char.
+  // Returns 'HH:MM–HH:MM' or null if longitude/UTC are not set.
+  var _BRANCH_SOLAR_START = { '子':23,'丑':1,'寅':3,'卯':5,'辰':7,'巳':9,'午':11,'未':13,'申':15,'酉':17,'戌':19,'亥':21 };
+  function solarBranchToClock(hourHan) {
+    try {
+      if (!hourHan) return null;
+      var chars = String(hourHan).replace(/[^\u4e00-\u9fff]/g, ''), br = null;
+      for (var i = chars.length - 1; i >= 0; i--) { if (_BRANCH_SOLAR_START[chars[i]] != null) { br = chars[i]; break; } }
+      if (!br) return null;
+      var lonEl = document.getElementById('longitude'), utcEl = document.getElementById('utc-offset');
+      if (!lonEl || !utcEl) return null;
+      var lon = parseFloat(lonEl.value), utc = parseFloat(utcEl.value);
+      if (isNaN(lon) || isNaN(utc)) return null;
+      var dstOn = false;
+      try { dstOn = (typeof _dstOn !== 'undefined') ? _dstOn : !!window._dstOn; } catch (e) {}
+      var offsetMin = (lon - utc * 15) * 4 - (dstOn ? 60 : 0);          // solar = clock + offsetMin
+      var startMin = (((_BRANCH_SOLAR_START[br] * 60 - offsetMin) % 1440) + 1440) % 1440;
+      var endMin = (startMin + 120) % 1440;
+      var fmt = function (m) { m = Math.round(((m % 1440) + 1440) % 1440); var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; };
+      return fmt(startMin) + '\u2013' + fmt(endMin);
+    } catch (e) { return null; }
+  }
 
   // Read-only reference of how each Purpose is coded in checkPurpose() (kept in sync with app-bazi.js).
   var PURPOSE_SHARED_GATES = [
@@ -1265,12 +1303,15 @@
     return {
       scanner: 'qmdj_water', direction: dir, start: start, days: days, count: results.length,
       results: results.slice(0, 15).map(function (r) {
+        var clk = solarBranchToClock(r.hourHan);
         return {
-          date: r.date, weekday: r.weekday, hour: r.hourTime, ganzhi: r.hourHan,
+          date: r.date, weekday: r.weekday,
+          hour: clk || r.hourTime, civil_hour: r.hourTime, ganzhi: r.hourHan,
           dun: r.dun, ju: r.ju, score: r.score,
           hits: (r.hits || []).map(function (h) { return { label: h.label, kind: h.cat }; })
         };
-      })
+      }),
+      time_note: 'hour = real local clock window (true solar time, DST-adjusted, same as BEST/LIST). civil_hour = textbook double-hour range, for reference only — do not show it.'
     };
   }
 
@@ -1293,12 +1334,15 @@
       scanner: 'qimen_for_flying_stars', star: type + ' ' + num,
       target_palaces: r.palaces, preset: r.preset, count: r.count,
       results: (r.results || []).slice(0, 15).map(function (x) {
+        var clk = solarBranchToClock(x.hourHan);
         return {
-          date: x.date, weekday: x.weekday, hour: x.hourTime, ganzhi: x.hourHan,
+          date: x.date, weekday: x.weekday,
+          hour: clk || x.hourTime, civil_hour: x.hourTime, ganzhi: x.hourHan,
           palace: x.palaceLbl, dun: x.dun, ju: x.ju, score: x.score,
           hits: (x.hits || []).map(function (h) { return h.label; })
         };
-      })
+      }),
+      time_note: 'hour = real local clock window (true solar time, DST-adjusted, same as BEST/LIST). civil_hour is for reference only.'
     };
   }
 

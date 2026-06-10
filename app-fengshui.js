@@ -1613,9 +1613,28 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
     html += '<tr style="background:' + rowBg + ';' + rowBorder + 'cursor:pointer;" onclick="loadDateIntoMain(\'' + m.isoDate + '\', 6)">';
     html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + datePrefix + dateLabel + '</td>';
     // Hour cell: bestHour pillar + time range
-    const _hourTimes = {'子':'23-01','丑':'01-03','寅':'03-05','卯':'05-07','辰':'07-09','巳':'09-11','午':'11-13','未':'13-15','申':'15-17','酉':'17-19','戌':'19-21','亥':'21-23'};
+    // Hour cell: bestHour pillar + REAL clock window (true solar time, DST-adjusted — as in BEST/LIST)
+    const _BR_SOLAR = {'子':23,'丑':1,'寅':3,'卯':5,'辰':7,'巳':9,'午':11,'未':13,'申':15,'酉':17,'戌':19,'亥':21};
     const hLabel = m.bestHour ? (m.bestHour.hGan + '<br>' + m.bestHour.hZhi) : (m.dGan + '<br>' + m.dZhi);
-    const hTime = (m.bestHour && _hourTimes[m.bestHour.hZhi]) ? '<div style="font-size:9px;color:#666;margin-top:1px;">' + _hourTimes[m.bestHour.hZhi] + '</div>' : '';
+    let hTimeTxt = '';
+    if (m.bestHour && _BR_SOLAR[m.bestHour.hZhi] != null) {
+      try {
+        const _lon = parseFloat(document.getElementById('longitude').value);
+        const _utc = parseFloat(document.getElementById('utc-offset').value);
+        if (!isNaN(_lon) && !isNaN(_utc)) {
+          const _off = (_lon - _utc * 15) * 4 - (_dstOn ? 60 : 0);          // solar = clock + off
+          let _s = (((_BR_SOLAR[m.bestHour.hZhi] * 60 - _off) % 1440) + 1440) % 1440;
+          let _e = (_s + 120) % 1440;
+          const _f = v => { v = Math.round(((v % 1440) + 1440) % 1440); const H = Math.floor(v / 60), M = v % 60; return (H < 10 ? '0' : '') + H + ':' + (M < 10 ? '0' : '') + M; };
+          hTimeTxt = _f(_s) + '\u2013' + _f(_e);
+        }
+      } catch (e) {}
+      if (!hTimeTxt) {
+        const _civ = {'子':'23-01','丑':'01-03','寅':'03-05','卯':'05-07','辰':'07-09','巳':'09-11','午':'11-13','未':'13-15','申':'15-17','酉':'17-19','戌':'19-21','亥':'21-23'};
+        hTimeTxt = _civ[m.bestHour.hZhi] || '';
+      }
+    }
+    const hTime = hTimeTxt ? '<div style="font-size:9px;color:#666;margin-top:1px;">' + hTimeTxt + '</div>' : '';
     html += '<td style="padding:6px 4px;text-align:center;color:#880e4f;font-weight:bold;font-size:12px;line-height:1.1;border-bottom:1px solid #eee;">' + hLabel + hTime + '</td>';
     html += '<td style="padding:6px 8px;text-align:left;border-bottom:1px solid #eee;">' + xkdgHtml + '</td>';
     html += qimenCell;
