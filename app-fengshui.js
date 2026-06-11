@@ -425,10 +425,10 @@ function buildFengShuiView(){
 
       <!-- 💧 Activate water in a generic 45° quadrant — manual Qimen + XKDG double calc -->
       <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 auto 12px;max-width:760px;">
-        <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Activate water — quadrant (Qimen + XKDG)</div>
+        <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Scan for good dates to activate a generic water feature — XKDG + Qimen</div>
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
           <div style="flex:1;min-width:150px;">
-            <label style="font-size:11px;color:#666;display:block;">Water quadrant (where the water faces)</label>
+            <label style="font-size:11px;color:#666;display:block;">Palace</label>
             <select id="fs-wateract-dir" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
               <option value="">— select —</option>
               <option value="N">N 坎</option><option value="NE">NE 艮</option><option value="E">E 震</option><option value="SE">SE 巽</option>
@@ -441,7 +441,6 @@ function buildFengShuiView(){
           </div>
           <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
         </div>
-        <div style="font-size:11px;color:#00695c;margin-top:6px;">Combines the Qimen of the chosen 45° quadrant with the loaded person's XKDG day quality. Hours are the real local clock (true solar time).</div>
         <div id="fs-wateract-results" style="margin-top:10px;"></div>
       </div>
 

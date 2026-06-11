@@ -802,19 +802,39 @@
   // ---------------------------------------------------------------
   // API PUBBLICA
   // ---------------------------------------------------------------
+  // Dedicated, always-reachable mount point inserted right under the FLYING
+  // STARS block — same approach as the Charts finder (#fscf-host). Avoids
+  // depending on #fs-results-area, which the zone-gate layout can hide/move.
+  function qfsGetHost(){
+    var host = document.getElementById('qfs-host');
+    if(host) return host;
+    host = document.createElement('div');
+    host.id = 'qfs-host';
+    host.style.marginTop = '10px';
+    var anchor = document.getElementById('fs-flying-stars-block');
+    if(anchor && anchor.parentNode){
+      if(anchor.nextSibling) anchor.parentNode.insertBefore(host, anchor.nextSibling);
+      else anchor.parentNode.appendChild(host);
+    } else {
+      var fv = document.getElementById('fengshui-view') ||
+               document.getElementById('fs-results-area') || document.body;
+      fv.appendChild(host);
+    }
+    return host;
+  }
+
   function open(){
-    var area = document.getElementById('fs-results-area');
-    if(!area){ alert('Feng Shui view not active. Open the Feng Shui mode first.'); return; }
     if(typeof FlyingStars === 'undefined'){ alert('flying-stars.js not loaded'); return; }
     if(typeof QMDJWaterScanner === 'undefined'){ alert('qmdj-water-scanner.js not loaded'); return; }
 
     var chart = getCurrentFSChart();
     if(!chart){
-      alert('Set House Facing (°) and Period (1-9) in the Flying Stars block first.');
+      alert('Set House Facing (\u00b0) and Period (1-9) in the Flying Stars block first.');
       return;
     }
 
-    buildPanel(area);
+    var host = qfsGetHost();
+    buildPanel(host);
     var panel = document.getElementById('qfs-panel');
     if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
   }
