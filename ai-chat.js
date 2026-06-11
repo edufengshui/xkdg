@@ -162,9 +162,17 @@
     'is saving their Open Charge Map key once; if it is missing the charging panel says so.\n' +
     '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
     'user for it (0-360) and call the tool with it.\n' +
-    '- Two different "water" questions: find_water_dates picks Feng Shui DATES for a water feature given a ' +
-    'Facing/water setup; find_water_hours (QMDJ Water Scanner) picks the HOURS when a favorable Qimen ' +
-    'configuration faces a compass DIRECTION (N/NE/E/SE/S/SW/W/NW). Pick the one that matches the question.\n' +
+    '- ACTIVATING WATER ("turn on / switch on the aquarium / fountain / water feature" facing a DIRECTION, e.g. South): ' +
+    'use the single tool find_water_activation(direction) - it GUARANTEES the double calculation, running BOTH the ' +
+    'Qimen water-hour scan AND the XKDG day scan for the loaded person and returning each hour with qimen_score, ' +
+    'xkdg_score and combined_score. Present the top results with BOTH scores stated explicitly (the DAY suits the ' +
+    'person = XKDG, the HOUR suits the water sector = Qimen) and rank by combined_score. If a strong Qimen hour falls ' +
+    'on a day that is NOT XKDG-favourable (xkdg_favourable=false), say so honestly. Do NOT hand-combine find_water_hours ' +
+    'and find_good_dates yourself - find_water_activation already does it.\n' +
+    '- find_water_dates is a DIFFERENT question: the Feng Shui Water-section date scan for PLACING/installing a ' +
+    'moving-water feature for the saved Facing/water setup; use it only for placing/installing water.\n' +
+    '- find_water_hours (QMDJ Water Scanner) returns ONLY the Qimen sector hours (no XKDG); use it only if the user ' +
+    'explicitly wants the Qimen sector alone, or when no person is loaded and only the sector matters.\n' +
     '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
@@ -488,6 +496,22 @@
       }
     },
     {
+      name: 'find_water_activation',
+      description: 'ACTIVATING / turning on a water feature (aquarium, fountain) facing a compass DIRECTION. This is the ' +
+        'GUARANTEED double calculation: it runs BOTH the QMDJ water-hour scan for that direction AND the XKDG day scan ' +
+        'for the loaded person, then returns each hour with BOTH scores (qimen_score + xkdg_score) and a combined_score. ' +
+        'Always use THIS for "good date/time to turn on the aquarium facing X" when you want both Qimen and XKDG considered.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'Compass direction the water faces.' },
+          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
+          start_date: { type: 'string', description: 'Optional start date YYYY-MM-DD (defaults to today).' }
+        },
+        required: ['direction']
+      }
+    },
+    {
       name: 'find_qimen_hours_for_star',
       description: 'Qimen x Flying Stars (fixed preset): given a flying star (type water = facing star, or mountain = ' +
         'sitting star; number 1-9), find the hours that send a FIXED favourable preset to that star\'s palace(s) in ' +
@@ -523,6 +547,7 @@
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
+      if (name === 'find_water_activation') return toolFindWaterActivation(input || {});
       if (name === 'open_section') return toolOpenSection(input || {});
       if (name === 'recall_flying_stars') return toolRecallFlyingStars();
       if (name === 'open_direction_calculator') return toolOpenDirectionCalc();
@@ -1312,6 +1337,78 @@
         };
       }),
       time_note: 'hour = real local clock window (true solar time, DST-adjusted, same as BEST/LIST). civil_hour = textbook double-hour range, for reference only — do not show it.'
+    };
+  }
+
+  // GUARANTEED double calculation for "turn on the water facing DIRECTION":
+  // runs BOTH the QMDJ water-hour scan (Qimen sector) AND the XKDG person day
+  // scan, then merges by date so every hour carries both scores + a combined.
+  function toolFindWaterActivation(input) {
+    input = input || {};
+    if (!window.QMDJWaterScanner || typeof window.QMDJWaterScanner.scan !== 'function')
+      return { error: 'The QMDJ water scanner is not available on this page.' };
+    var dir = (input.direction || '').toUpperCase();
+    var valid = (typeof window.QMDJWaterScanner.validDirections === 'function')
+      ? window.QMDJWaterScanner.validDirections() : ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    if (valid.indexOf(dir) < 0) return { error: 'direction must be one of: ' + valid.join(', ') + '.' };
+    var days = parseInt(input.days, 10) || 7;
+    var today = todayIso();
+    var start = today;
+    if (input.start_date && /^\d{4}-\d{2}-\d{2}$/.test(input.start_date) && input.start_date >= today) start = input.start_date;
+
+    // (1) Qimen sector hours
+    var qres;
+    try { qres = window.QMDJWaterScanner.scan(dir, start, days) || []; }
+    catch (e) { return { error: 'QMDJ water scan failed: ' + ((e && e.message) || e) }; }
+
+    // (2) XKDG day quality for the loaded person (best score per date)
+    var pl = personLoaded();
+    var xkdgByDate = {}, xkdgRan = false;
+    if (pl.any && typeof window.runScanner === 'function') {
+      try {
+        var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days'), ps = document.getElementById('purpose-select');
+        if (ss) ss.value = start;
+        if (sd) sd.value = String(days);
+        if (ps) { ps.value = ''; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
+        try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
+        window.runScanner();
+        (window._lastScanResults || []).forEach(function (r) {
+          if (!r.isoDate) return;
+          if (xkdgByDate[r.isoDate] == null || r.score > xkdgByDate[r.isoDate]) xkdgByDate[r.isoDate] = r.score;
+        });
+        xkdgRan = true;
+      } catch (e) { xkdgRan = false; }
+    }
+
+    // (3) Merge by date — every hour gets BOTH scores + combined
+    var merged = qres.map(function (r) {
+      var xs = (xkdgByDate[r.date] != null) ? xkdgByDate[r.date] : null;
+      var clk = solarBranchToClock(r.hourHan);
+      return {
+        date: r.date, weekday: r.weekday,
+        hour: clk || r.hourTime, ganzhi: r.hourHan,
+        qimen_score: r.score,
+        xkdg_score: xs,
+        xkdg_favourable: (xs != null && xs >= 1),
+        combined_score: (r.score || 0) + (xs != null ? xs : 0),
+        qimen_hits: (r.hits || []).map(function (h) { return h.label; })
+      };
+    });
+    merged.sort(function (a, b) {
+      if (b.combined_score !== a.combined_score) return b.combined_score - a.combined_score;
+      return (b.qimen_score || 0) - (a.qimen_score || 0);
+    });
+
+    return {
+      scanner: 'water_activation', direction: dir, start: start, days: days,
+      person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',
+      xkdg_considered: xkdgRan,
+      count: merged.length,
+      results: merged.slice(0, 15),
+      note: pl.any
+        ? 'Each hour carries BOTH scores: qimen_score (Qimen favourability of the water sector) and xkdg_score (the day\'s XKDG quality for the person; null = that day is not XKDG-favourable). combined_score = qimen_score + xkdg_score. ALWAYS report both scores and the combined; prefer high combined_score with xkdg_favourable=true, and state both sides explicitly.'
+        : 'No person loaded, so only qimen_score is present (xkdg_score is null). Tell the user to load Person A or B so their XKDG birth-chart day quality is also factored.',
+      time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
     };
   }
 
