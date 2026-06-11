@@ -6758,3 +6758,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+
+// Remove the obsolete "Test mode" checkbox next to PURPOSES (no longer used).
+// Additive + guarded. With the element gone, every `purpose-no-person` lookup
+// reads null and test mode is simply treated as OFF.
+(function(){
+  function _removeTestMode(){
+    try {
+      var cb = document.getElementById('purpose-no-person');
+      if (!cb) return;
+      var lbl = (cb.closest ? cb.closest('label') : null) || cb.parentNode || cb;
+      if (lbl && lbl.parentNode) lbl.parentNode.removeChild(lbl);
+    } catch(e){}
+  }
+  try {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _removeTestMode);
+    else _removeTestMode();
+  } catch(e){}
+})();
