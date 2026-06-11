@@ -423,6 +423,28 @@ function buildFengShuiView(){
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
       </div>
 
+      <!-- 💧 Activate water in a generic 45° quadrant — manual Qimen + XKDG double calc -->
+      <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 auto 12px;max-width:760px;">
+        <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Activate water — quadrant (Qimen + XKDG)</div>
+        <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:150px;">
+            <label style="font-size:11px;color:#666;display:block;">Water quadrant (where the water faces)</label>
+            <select id="fs-wateract-dir" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+              <option value="">— select —</option>
+              <option value="N">N 坎</option><option value="NE">NE 艮</option><option value="E">E 震</option><option value="SE">SE 巽</option>
+              <option value="S">S 離</option><option value="SW">SW 坤</option><option value="W">W 兌</option><option value="NW">NW 乾</option>
+            </select>
+          </div>
+          <div style="flex:0 0 80px;">
+            <label style="font-size:11px;color:#666;display:block;">Days</label>
+            <input type="number" id="fs-wateract-days" min="1" max="120" value="7" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+          </div>
+          <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
+        </div>
+        <div style="font-size:11px;color:#00695c;margin-top:6px;">Combines the Qimen of the chosen 45° quadrant with the loaded person's XKDG day quality. Hours are the real local clock (true solar time).</div>
+        <div id="fs-wateract-results" style="margin-top:10px;"></div>
+      </div>
+
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
       <!-- Date-selection controls (DIRECTION / Purpose / SCAN) intentionally removed:
@@ -4149,6 +4171,96 @@ function fsExitZone(){
   } catch(err){ console.warn('fsExitZone', err); }
 }
 
+// Real local clock window (true solar time, DST-adjusted) for a Chinese hour
+// branch — same convention as BEST/LIST. hourHan may be a full ganzhi.
+function _fsBranchClock(hourHan){
+  try {
+    var SOLAR = {'子':23,'丑':1,'寅':3,'卯':5,'辰':7,'巳':9,'午':11,'未':13,'申':15,'酉':17,'戌':19,'亥':21};
+    var chars = String(hourHan||'').replace(/[^\u4e00-\u9fff]/g,''), br=null;
+    for (var i=chars.length-1;i>=0;i--){ if (SOLAR[chars[i]]!=null){ br=chars[i]; break; } }
+    if (!br) return null;
+    var lon=parseFloat((document.getElementById('longitude')||{}).value);
+    var utc=parseFloat((document.getElementById('utc-offset')||{}).value);
+    if (isNaN(lon)||isNaN(utc)) return null;
+    var dstOn=false; try{ dstOn=(typeof _dstOn!=='undefined')?_dstOn:!!window._dstOn; }catch(e){}
+    var off=(lon-utc*15)*4-(dstOn?60:0);
+    var s=(((SOLAR[br]*60-off)%1440)+1440)%1440, e=(s+120)%1440;
+    var f=function(m){m=Math.round(((m%1440)+1440)%1440);var h=Math.floor(m/60),mm=m%60;return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm;};
+    return f(s)+'\u2013'+f(e);
+  } catch(e){ return null; }
+}
+
+// MANUAL equivalent of the AI find_water_activation tool: for the selected 45°
+// quadrant, run BOTH the QMDJ water-hour scan (Qimen sector) AND the XKDG day
+// scan for the loaded person, then merge by date with a combined score.
+function fsWaterActivationScan(){
+  var out=document.getElementById('fs-wateract-results');
+  if (!out) return;
+  try {
+    var sel=document.getElementById('fs-wateract-dir');
+    var dir=sel?sel.value:'';
+    if (!dir){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Select a quadrant first.</div>'; return; }
+    if (typeof window.QMDJWaterScanner==='undefined' || typeof window.QMDJWaterScanner.scan!=='function'){
+      out.innerHTML='<div style="font-size:12px;color:#c0392b;">QMDJ water scanner not available on this page.</div>'; return;
+    }
+    var daysEl=document.getElementById('fs-wateract-days');
+    var days=(daysEl&&parseInt(daysEl.value,10))||7;
+    var startEl=document.getElementById('scan-start');
+    var start=(startEl&&startEl.value)|| new Date().toISOString().slice(0,10);
+    out.innerHTML='<div style="font-size:12px;color:#666;">Scanning…</div>';
+
+    // (1) Qimen sector hours
+    var qres=[];
+    try { qres=window.QMDJWaterScanner.scan(dir,start,days)||[]; }
+    catch(e){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Qimen scan failed.</div>'; return; }
+
+    // (2) XKDG day quality for the loaded person (best score per date)
+    var xkdgByDate={}, hasPerson=false;
+    try { var pA=(typeof _personAYear!=='undefined')?_personAYear:window._personAYear; var pB=(typeof _personBYear!=='undefined')?_personBYear:window._personBYear; hasPerson=!!(pA||pB); } catch(e){}
+    if (hasPerson && typeof window.runScanner==='function'){
+      try {
+        var ss=document.getElementById('scan-start'), sd=document.getElementById('scan-days'), ps=document.getElementById('purpose-select');
+        if (ss) ss.value=start; if (sd) sd.value=String(days);
+        if (ps){ ps.value=''; if (typeof window.onPurposeChange==='function') try{window.onPurposeChange();}catch(e){} }
+        window.runScanner();
+        (window._lastScanResults||[]).forEach(function(r){ if(!r.isoDate) return; if(xkdgByDate[r.isoDate]==null||r.score>xkdgByDate[r.isoDate]) xkdgByDate[r.isoDate]=r.score; });
+      } catch(e){}
+    }
+
+    // (3) Merge by date — both scores + combined
+    var rows=qres.map(function(r){
+      var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
+      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), hits:(r.hits||[]).map(function(h){return h.label;}) };
+    });
+    rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
+    if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No favourable Qimen water hours in this range for '+dir+'.</div>'; return; }
+
+    var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
+    var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'+dir+' — '+rows.length+' hours · '+(hasPerson?'Qimen + XKDG':'Qimen only — load a person (A/B) to add XKDG')+'</div>';
+    html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html+='<tr style="color:#00695c;">'
+      +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Hour</th>'
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Qimen</th>'
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">XKDG</th>'
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Combined</th></tr>';
+    rows.slice(0,20).forEach(function(r){
+      html+='<tr style="border-bottom:1px solid #eee;">'
+        +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+(r.ganzhi||'')+'</span></td>'
+        +'<td style="padding:4px;text-align:center;white-space:nowrap;">'+r.hour+'</td>'
+        +'<td style="padding:4px;text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
+        +'<td style="padding:4px;text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
+        +'<td style="padding:4px;text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
+        +'</tr>';
+      if (r.hits && r.hits.length){
+        html+='<tr><td colspan="5" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
+      }
+    });
+    html+='</table></div>';
+    out.innerHTML=html;
+  } catch(err){ console.warn('fsWaterActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
+}
+
 // Reorganise the FS view into: gate + shared base (incl. luopan) + gated tools.
 // Runs once. Anchors on stable IDs so it survives the earlier wrappers.
 function _fsBuildZoneGate(){
@@ -4941,6 +5053,9 @@ function _fsUpdateLuopanVis(){
     // House Profiles also belong to the main sector only.
     var hp = document.getElementById('fs-house-profiles');
     if (hp) hp.style.display = inSection ? 'none' : '';
+    // Water-activation quadrant block: main sector only.
+    var wact = document.getElementById('fs-wateract-block');
+    if (wact) wact.style.display = inSection ? 'none' : '';
 
     var showLuopan;
     if (!inSection){
