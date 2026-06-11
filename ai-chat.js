@@ -162,17 +162,21 @@
     'is saving their Open Charge Map key once; if it is missing the charging panel says so.\n' +
     '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
     'user for it (0-360) and call the tool with it.\n' +
-    '- ACTIVATING WATER ("turn on / switch on the aquarium / fountain / water feature" facing a DIRECTION, e.g. South): ' +
-    'use the single tool find_water_activation(direction) - it GUARANTEES the double calculation, running BOTH the ' +
-    'Qimen water-hour scan AND the XKDG day scan for the loaded person and returning each hour with qimen_score, ' +
-    'xkdg_score and combined_score. Present the top results with BOTH scores stated explicitly (the DAY suits the ' +
-    'person = XKDG, the HOUR suits the water sector = Qimen) and rank by combined_score. If a strong Qimen hour falls ' +
-    'on a day that is NOT XKDG-favourable (xkdg_favourable=false), say so honestly. Do NOT hand-combine find_water_hours ' +
-    'and find_good_dates yourself - find_water_activation already does it.\n' +
-    '- find_water_dates is a DIFFERENT question: the Feng Shui Water-section date scan for PLACING/installing a ' +
-    'moving-water feature for the saved Facing/water setup; use it only for placing/installing water.\n' +
-    '- find_water_hours (QMDJ Water Scanner) returns ONLY the Qimen sector hours (no XKDG); use it only if the user ' +
-    'explicitly wants the Qimen sector alone, or when no person is loaded and only the sector matters.\n' +
+    '- ACTIVATING WATER ("positive hours / good date to turn on the aquarium / fountain / water feature" facing a ' +
+    'DIRECTION): use find_water_activation_full(direction, star_type, star_num) - the UNIFIED triple scan that merges ' +
+    'XKDG person hours + Qimen quadrant + Qimen special configurations and ranks by tier (3 = all three, best, down to ' +
+    '1). For an aquarium facing X: direction=X, star_type=water, star_num = the WATER (facing) star living in palace X ' +
+    '(get it via recall_flying_stars or get_app_state). Present tier 3 first, then 2, then 1, stating for each which ' +
+    'scans it passed and the sub-scores. The tool skips gracefully any scan it cannot run (e.g. no person, no star) and ' +
+    'reports it in scan_notes.\n' +
+    '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
+    'whole house in one shot (facing/period, aquariums with their direction + water star, QFS zones with target/preset, ' +
+    'and saved Water/Bed/Desk settings). Then for activating the aquarium, take an aquarium and call ' +
+    'find_water_activation_full(direction = aquarium direction, star_type = water, star_num = its water_star). The loaded ' +
+    'person provides the XKDG scan. Only fall back to list_houses / load_house if get_house_setup cannot resolve the name.\n' +
+    '- find_water_activation (two-scan: Qimen quadrant + XKDG only) and find_water_dates / find_water_hours still exist; ' +
+    'prefer find_water_activation_full when the user wants the full picture. find_water_dates is the Feng Shui Water-section ' +
+    'date scan for PLACING water; find_water_hours is the Qimen sector alone.\n' +
     '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
@@ -448,6 +452,19 @@
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
+      name: 'get_house_setup',
+      description: 'Return the FULL setup of one saved house resolved BY NAME (e.g. "Vienna"): facing/period, doors, ' +
+        'aquariums (each with its direction and the water star living there), QFS zones (direction + target star + ' +
+        'preset auto/custom + star number), and the saved Water/Bed/Desk settings. Everything for the house is here. ' +
+        'Use this when the user names a house (e.g. "activate the aquarium in the Vienna house"), then feed an ' +
+        'aquarium (direction + water_star) into find_water_activation_full.',
+      input_schema: {
+        type: 'object',
+        properties: { house_name: { type: 'string', description: 'The house name to look up (case-insensitive, partial allowed).' } },
+        required: ['house_name']
+      }
+    },
+    {
       name: 'set_active_house',
       description: 'Set which saved house is active for the loaded person (the active house follows the person).',
       input_schema: {
@@ -512,6 +529,26 @@
       }
     },
     {
+      name: 'find_water_activation_full',
+      description: 'UNIFIED triple scan for "positive hours to turn on the aquarium / water feature" - runs and merges ALL THREE: ' +
+        '(1) XKDG positive hours for the loaded person, (2) Qimen of the generic 45deg quadrant (direction), and ' +
+        '(3) Qimen SPECIAL configurations at the flying-star palace (via the favourable preset). Returns each hour with ' +
+        'its three sub-scores, which scans it passed (matched), a tier (3 = passed all three, best), and a combined_score. ' +
+        'Results are ranked from tier 3 down to tier 1. For "turn on the aquarium facing X" the direction is X and the ' +
+        'special-config star is the WATER (facing) star living in palace X (star_type=water, star_num=that star).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'Compass quadrant the water faces (for scan 2).' },
+          star_type: { type: 'string', enum: ['water', 'mountain'], description: 'For scan 3: water = facing star, mountain = sitting star. For an aquarium use water.' },
+          star_num: { type: 'integer', description: 'For scan 3: the flying star number (1-9) living in that palace. Get it from the chart (recall_flying_stars / get_app_state).' },
+          days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
+          start_date: { type: 'string', description: 'Optional start date YYYY-MM-DD (defaults to today).' }
+        },
+        required: ['direction']
+      }
+    },
+    {
       name: 'find_qimen_hours_for_star',
       description: 'Qimen x Flying Stars (fixed preset): given a flying star (type water = facing star, or mountain = ' +
         'sitting star; number 1-9), find the hours that send a FIXED favourable preset to that star\'s palace(s) in ' +
@@ -548,11 +585,13 @@
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
       if (name === 'find_water_activation') return toolFindWaterActivation(input || {});
+      if (name === 'find_water_activation_full') return toolFindWaterActivationFull(input || {});
       if (name === 'open_section') return toolOpenSection(input || {});
       if (name === 'recall_flying_stars') return toolRecallFlyingStars();
       if (name === 'open_direction_calculator') return toolOpenDirectionCalc();
       if (name === 'open_chart_finder') return toolOpenChartFinder();
       if (name === 'list_houses') return toolListHouses();
+      if (name === 'get_house_setup') return toolGetHouseSetup(input || {});
       if (name === 'set_active_house') return toolSetActiveHouse(input || {});
       if (name === 'load_house') return toolLoadHouse(input || {});
       if (name === 'load_placement') return toolLoadPlacement(input || {});
@@ -1279,6 +1318,58 @@
     };
   }
 
+  // Full setup of one house, resolved by name — everything converges here:
+  // facing/period, doors, aquariums (+ the water star at each), QFS zones
+  // (+ target star number and preset), and the saved Water/Bed/Desk settings.
+  function toolGetHouseSetup(input) {
+    input = input || {};
+    var houses;
+    try { houses = JSON.parse(localStorage.getItem('xkdg_houses') || '{}'); }
+    catch (e) { return { error: 'Could not read house profiles.' }; }
+    var q = (input.house_name || '').trim().toLowerCase();
+    var found = null, foundPerson = null;
+    function scanHouses(matchFn) {
+      Object.keys(houses).forEach(function (pn) {
+        (houses[pn] || []).forEach(function (h) {
+          if (!found && h && h.name && matchFn(h.name.trim().toLowerCase())) { found = h; foundPerson = pn; }
+        });
+      });
+    }
+    if (q) { scanHouses(function (n) { return n === q; }); if (!found) scanHouses(function (n) { return n.indexOf(q) >= 0; }); }
+    if (!found) {
+      var avail = [];
+      Object.keys(houses).forEach(function (pn) { (houses[pn] || []).forEach(function (h) { if (h && h.name) avail.push({ person: pn, name: h.name }); }); });
+      return { error: q ? ('No house matching "' + input.house_name + '".') : 'Provide house_name.', available_houses: avail };
+    }
+    var DIR2GRID = { SE: 0, S: 1, SW: 2, E: 3, C: 4, W: 5, NE: 6, N: 7, NW: 8 };   // S-at-top grid
+    var chart = null;
+    try {
+      if (window.FlyingStars && typeof window.fsMountainCharFromDeg === 'function' && found.houseFacing != null && found.period != null) {
+        chart = window.FlyingStars.calculate(parseInt(found.period, 10), window.fsMountainCharFromDeg(parseFloat(found.houseFacing)));
+      }
+    } catch (e) { chart = null; }
+    function starAt(dir, type) {
+      if (!chart || dir == null) return null;
+      var gi = DIR2GRID[dir]; if (gi == null) return null;
+      var arr = (type === 'mountain') ? chart.sittingStars : chart.facingStars;
+      return (arr && arr[gi] != null) ? arr[gi] : null;
+    }
+    var settings = found.settings || { water: [], bed: [], desk: [] };
+    return {
+      house: found.name, person: foundPerson,
+      houseFacing: found.houseFacing, period: found.period,
+      doors: (found.doors || []).map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
+      aquariums: (found.waters || []).map(function (w) { return { name: w.name, direction: w.dir, palace: w.palace, water_star: starAt(w.dir, 'water') }; }),
+      qfs_zones: (found.zones || []).map(function (z) { return { name: z.name, direction: z.dir || null, palace: z.palace, target: z.target, preset: z.preset || 'auto', star_num: starAt(z.dir, z.target) }; }),
+      saved_settings: {
+        water: (settings.water || []).map(function (s) { return s.name; }),
+        bed: (settings.bed || []).map(function (s) { return s.name; }),
+        desk: (settings.desk || []).map(function (s) { return s.name; })
+      },
+      note: 'Full setup of the house (House Profiles). To activate the aquarium: take an aquarium and call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star. The loaded person provides the XKDG scan. qfs_zones are explicit saved targets (direction + target star + preset). If water_star/star_num are null (no FS page to compute the chart), read the star via recall_flying_stars.'
+    };
+  }
+
   function toolSetActiveHouse(input) {
     if (typeof window.fsSetActiveHouse !== 'function') return { error: 'House profiles not available.' };
     var person = _activeHousePerson();
@@ -1408,6 +1499,112 @@
       note: pl.any
         ? 'Each hour carries BOTH scores: qimen_score (Qimen favourability of the water sector) and xkdg_score (the day\'s XKDG quality for the person; null = that day is not XKDG-favourable). combined_score = qimen_score + xkdg_score. ALWAYS report both scores and the combined; prefer high combined_score with xkdg_favourable=true, and state both sides explicitly.'
         : 'No person loaded, so only qimen_score is present (xkdg_score is null). Tell the user to load Person A or B so their XKDG birth-chart day quality is also factored.',
+      time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
+    };
+  }
+
+  // UNIFIED triple scan: XKDG person hours + Qimen quadrant + Qimen special
+  // configurations, merged by date+hour and ranked by how many of the 3 match
+  // (tier 3 = all three, best) then by combined score.
+  var _BRANCHES_IDX = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];  // hourIndex 0..11
+  function _branchOfHan(hourHan) {
+    var chars = String(hourHan || '').replace(/[^\u4e00-\u9fff]/g, '');
+    for (var i = chars.length - 1; i >= 0; i--) { if (_BRANCHES_IDX.indexOf(chars[i]) >= 0) return chars[i]; }
+    return null;
+  }
+  function toolFindWaterActivationFull(input) {
+    input = input || {};
+    var days = parseInt(input.days, 10) || 7;
+    var today = todayIso();
+    var start = today;
+    if (input.start_date && /^\d{4}-\d{2}-\d{2}$/.test(input.start_date) && input.start_date >= today) start = input.start_date;
+    var dir = (input.direction || '').toUpperCase();
+    var starType = (input.star_type || '').toLowerCase();
+    var starNum = parseInt(input.star_num, 10);
+
+    var map = {};   // 'date|branch' -> {date, branch, x, q, s, qhits, shits}
+    function slot(date, branch) {
+      var k = date + '|' + branch;
+      if (!map[k]) map[k] = { date: date, branch: branch, x: null, q: null, s: null, qhits: [], shits: [] };
+      return map[k];
+    }
+    var ran = { xkdg: false, quadrant: false, special: false };
+    var notes = [];
+
+    // (1) XKDG positive hours for the loaded person
+    var pl = personLoaded();
+    if (pl.any && typeof window.runScanner === 'function') {
+      try {
+        var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days'), ps = document.getElementById('purpose-select');
+        if (ss) ss.value = start;
+        if (sd) sd.value = String(days);
+        if (ps) { ps.value = ''; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
+        try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
+        window.runScanner();
+        (window._lastScanResults || []).forEach(function (r) {
+          if (!r.isoDate) return;
+          var br = _BRANCHES_IDX[r.hourIndex]; if (!br) return;
+          var sl = slot(r.isoDate, br);
+          if (sl.x == null || r.score > sl.x) sl.x = r.score;
+        });
+        ran.xkdg = true;
+      } catch (e) { notes.push('XKDG scan failed.'); }
+    } else if (!pl.any) { notes.push('No person loaded — XKDG hours skipped.'); }
+
+    // (2) Qimen generic quadrant (sector)
+    if (dir && window.QMDJWaterScanner && typeof window.QMDJWaterScanner.scan === 'function') {
+      try {
+        (window.QMDJWaterScanner.scan(dir, start, days) || []).forEach(function (r) {
+          var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
+          var sl = slot(r.date, br);
+          if (sl.q == null || r.score > sl.q) sl.q = r.score;
+          sl.qhits = (r.hits || []).map(function (h) { return h.label; });
+        });
+        ran.quadrant = true;
+      } catch (e) { notes.push('Qimen quadrant scan failed.'); }
+    } else if (!dir) { notes.push('No direction — Qimen quadrant skipped.'); }
+
+    // (3) Qimen special configurations (QFS preset at the flying-star palace)
+    if (window.QFS && typeof window.QFS.scanStarPreset === 'function' && (starType === 'water' || starType === 'mountain') && !isNaN(starNum)) {
+      try {
+        var sres = window.QFS.scanStarPreset(starType, starNum, { days: days });
+        if (sres && !sres.error && sres.results) {
+          sres.results.forEach(function (r) {
+            var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
+            var sl = slot(r.date, br);
+            if (sl.s == null || r.score > sl.s) sl.s = r.score;
+            sl.shits = (r.hits || []).map(function (h) { return h.label || h; });
+          });
+          ran.special = true;
+        } else if (sres && sres.error) { notes.push('Qimen special: ' + sres.error); }
+      } catch (e) { notes.push('Qimen special scan failed.'); }
+    } else if (starType !== 'water' && starType !== 'mountain') { notes.push('No star target — Qimen special configurations skipped.'); }
+
+    // Merge & rank: tier (how many of 3) DESC, then combined DESC, then date ASC
+    var rows = Object.keys(map).map(function (k) {
+      var m = map[k];
+      var matched = [];
+      if (m.x != null && m.x >= 1) matched.push('XKDG');
+      if (m.q != null && m.q >= 1) matched.push('Qimen quadrant');
+      if (m.s != null && m.s >= 1) matched.push('Qimen special');
+      return {
+        date: m.date, branch: m.branch,
+        hour: solarBranchToClock(m.branch) || m.branch,
+        tier: matched.length, matched: matched,
+        xkdg_score: m.x, qimen_quadrant_score: m.q, qimen_special_score: m.s,
+        combined_score: (m.x || 0) + (m.q || 0) + (m.s || 0),
+        hits: (m.qhits || []).concat(m.shits || [])
+      };
+    }).filter(function (r) { return r.tier >= 1; });
+    rows.sort(function (a, b) { return (b.tier - a.tier) || (b.combined_score - a.combined_score) || (a.date < b.date ? -1 : 1); });
+
+    return {
+      scanner: 'water_activation_full',
+      direction: dir || null, star: ran.special ? (starType + ' ' + starNum) : null,
+      start: start, days: days, scans_run: ran,
+      person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',
+      count: rows.length, results: rows.slice(0, 20), scan_notes: notes,
+      note: 'Triple scan merged by date+hour. matched lists which of the 3 the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace). tier = how many of the 3 (3 = best). PRESENT tier 3 first, then tier 2, then tier 1. combined_score = sum of the 3 sub-scores. State for each which scans it passed.',
       time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
     };
   }

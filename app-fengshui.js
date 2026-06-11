@@ -2676,8 +2676,9 @@ function fsRenderHouseProfiles(){
       var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
       zones.forEach(function(z, zi){
         var targetLabel = z.target === 'water' ? 'Water ★' : 'Mountain ★';
+        var presetLabel = (z.preset === 'custom') ? ' · custom preset' : ' · auto preset';
         html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">🌀 <strong>' + escHtml(z.name) + '</strong> — Palace ' + z.palace + ' (' + (_palDir[z.palace]||'?') + ') · ' + targetLabel + '</span>';
+        html += '<span style="font-size:11px;">🌀 <strong>' + escHtml(z.name) + '</strong> — Palace ' + z.palace + ' (' + (_palDir[z.palace]||'?') + ') · ' + targetLabel + presetLabel + '</span>';
         html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">✕</button>';
         html += '</div>';
       });
@@ -2685,6 +2686,22 @@ function fsRenderHouseProfiles(){
       html += '<div style="font-size:11px;color:#999;padding:2px 0;">No zones yet</div>';
     }
     html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Zone</button>';
+    html += '</div>';
+
+    // ── Saved section settings (Water / Bed / Desk) — converged into the house ──
+    html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #8a6a1f;">';
+    html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">💾 Saved settings (Water / Bed / Desk)</div>';
+    var _st = h.settings || { water: [], bed: [], desk: [] };
+    var _zlbl = { water: '💧 Water', bed: '🛏 Bed', desk: '🪑 Desk' };
+    var _anySt = false;
+    ['water', 'bed', 'desk'].forEach(function(z){
+      var arr = _st[z] || [];
+      if (!arr.length) return;
+      _anySt = true;
+      html += '<div style="font-size:11px;color:#5a4410;padding:1px 0;"><strong>' + _zlbl[z] + ':</strong> '
+        + arr.map(function(s){ return escHtml(s.name); }).join(', ') + '</div>';
+    });
+    if (!_anySt) html += '<div style="font-size:11px;color:#999;padding:2px 0;">None yet — save from "Setting up the Bed / Desk / Water".</div>';
     html += '</div>';
 
     html += '</div>';
@@ -2913,6 +2930,18 @@ function fsAddZone(personName, houseIdx){
   var target = (t === 'm' || t === 'mountain') ? 'mountain' : (t === 'w' || t === 'water' || t === '') ? 'water' : null;
   if (!target){ alert('Type W (water) or M (mountain).'); return; }
 
+  // Preset for the Qimen special-config scan: auto (San Qi + 4 doors + the
+  // star matching the flying star) or the saved custom Qimen selection.
+  var preset = 'auto';
+  var hasCustom = false;
+  try { var cp = JSON.parse(localStorage.getItem('xkdg_qfs_preset') || 'null');
+    hasCustom = !!(cp && ((cp.stems||[]).length + (cp.doors||[]).length + (cp.stars||[]).length + (cp.spirits||[]).length)); } catch(e){}
+  if (hasCustom){
+    var pStr = prompt('Qimen preset for this zone?\n\nType  A  = Auto (San Qi + 4 doors + the star matching the flying star)\nType  C  = Custom (your saved Qimen selection)', 'A');
+    if (pStr === null) return;
+    preset = (pStr.trim().toLowerCase().charAt(0) === 'c') ? 'custom' : 'auto';
+  }
+
   var defName = (target === 'water' ? 'Water ' : 'Mountain ') + dir;
   var zName = prompt('Name for this zone (optional):', defName);
   if (zName === null) return;
@@ -2921,7 +2950,7 @@ function fsAddZone(personName, houseIdx){
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
   if (!all[personName][houseIdx].zones) all[personName][houseIdx].zones = [];
-  all[personName][houseIdx].zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir });
+  all[personName][houseIdx].zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir, preset: preset });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
@@ -4384,6 +4413,46 @@ function _fsZsLoad(){
 function _fsZsSave(data){
   try { localStorage.setItem('xkdg_fs_settings', JSON.stringify(data)); } catch(e){}
 }
+// ── Phase C: everything converges into House Profiles ─────────────
+// Section settings (water/bed/desk) now live INSIDE the active house
+// (house.settings = {water:[],bed:[],desk:[]}), so the AI can read the
+// whole setup of a house from House Profiles.
+function _fsActiveHouseRef(){
+  var person = fsGetActivePersonForHouse();
+  if (!person) return null;
+  var all = _fsHousesLoad();
+  var list = all[person.name];
+  if (!list || !list.length) return null;
+  var idx = _fsActiveHouseGet(person.name);
+  if (idx >= list.length) idx = 0;
+  var house = list[idx];
+  if (!house) return null;
+  if (!house.settings) house.settings = { water: [], bed: [], desk: [] };
+  return { all: all, person: person, idx: idx, house: house };
+}
+// One-time, NON-destructive migration of the old per-person settings
+// store into each person's active (or first) house.
+function _fsMigrateZoneSettings(){
+  try {
+    if (localStorage.getItem('xkdg_fs_settings_migrated') === '1') return;
+    var old = JSON.parse(localStorage.getItem('xkdg_fs_settings') || '{}');
+    var houses = _fsHousesLoad();
+    var changed = false;
+    Object.keys(old).forEach(function(pname){
+      var list = houses[pname];
+      if (!list || !list.length) return;            // no house for this person — leave old data as-is
+      var idx = _fsActiveHouseGet(pname); if (idx >= list.length) idx = 0;
+      var house = list[idx];
+      if (!house.settings) house.settings = { water: [], bed: [], desk: [] };
+      ['water', 'bed', 'desk'].forEach(function(z){
+        var arr = (old[pname] && old[pname][z]) || [];
+        if (arr.length){ house.settings[z] = (house.settings[z] || []).concat(arr); changed = true; }
+      });
+    });
+    if (changed) _fsHousesSave(houses);
+    localStorage.setItem('xkdg_fs_settings_migrated', '1');
+  } catch(e){ console.warn('migrate zone settings', e); }
+}
 function _fsEsc(s){
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -4398,8 +4467,8 @@ function fsSaveZoneSetting(){
   try {
     var zone = window._fsActiveZone;
     if (!FS_ZONES[zone]) return;
-    var person = fsGetActivePersonForHouse();
-    if (!person){ alert('Load a person (A or B) first.'); return; }
+    var ref = _fsActiveHouseRef();
+    if (!ref){ alert('Load a person and a saved house first — these settings are stored inside the active house.'); return; }
     var hf = (document.getElementById('fs-house-facing') || {}).value || '';
     var pd = (document.getElementById('fs-period') || {}).value || '';
     var df = (document.getElementById('fs-facing') || {}).value || '';
@@ -4411,30 +4480,24 @@ function fsSaveZoneSetting(){
     var name = prompt('Setting name (e.g. "Aquarium SE"):');
     if (!name || !name.trim()) return;
     var s = {
-      name: name.trim(),
-      ts: Date.now(),
-      houseFacing: hf,
-      period: pd,
-      doorFacing: df,
-      water: wt,
+      name: name.trim(), ts: Date.now(),
+      houseFacing: hf, period: pd, doorFacing: df, water: wt,
       manualChart: window._fsManualChart ? JSON.parse(JSON.stringify(window._fsManualChart)) : null
     };
-    var all = _fsZsLoad();
-    if (!all[person.name]) all[person.name] = { water: [], bed: [], desk: [] };
-    if (!all[person.name][zone]) all[person.name][zone] = [];
-    all[person.name][zone].push(s);
-    _fsZsSave(all);
+    if (!ref.house.settings[zone]) ref.house.settings[zone] = [];
+    ref.house.settings[zone].push(s);
+    _fsHousesSave(ref.all);
     fsRenderZoneSettings();
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
   } catch(err){ console.warn('fsSaveZoneSetting', err); }
 }
 
 function fsLoadZoneSetting(idx){
   try {
     var zone = window._fsActiveZone;
-    var person = fsGetActivePersonForHouse();
-    if (!FS_ZONES[zone] || !person) return;
-    var all = _fsZsLoad();
-    var list = ((all[person.name] || {})[zone]) || [];
+    var ref = _fsActiveHouseRef();
+    if (!FS_ZONES[zone] || !ref) return;
+    var list = ref.house.settings[zone] || [];
     var s = list[idx];
     if (!s) return;
     _fsSetVal('fs-house-facing', s.houseFacing);
@@ -4451,15 +4514,15 @@ function fsLoadZoneSetting(idx){
 function fsDeleteZoneSetting(idx){
   try {
     var zone = window._fsActiveZone;
-    var person = fsGetActivePersonForHouse();
-    if (!FS_ZONES[zone] || !person) return;
-    var all = _fsZsLoad();
-    var list = (all[person.name] || {})[zone];
+    var ref = _fsActiveHouseRef();
+    if (!FS_ZONES[zone] || !ref) return;
+    var list = ref.house.settings[zone];
     if (!list || !list[idx]) return;
     if (!confirm('Delete setting "' + list[idx].name + '"?')) return;
     list.splice(idx, 1);
-    _fsZsSave(all);
+    _fsHousesSave(ref.all);
     fsRenderZoneSettings();
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
   } catch(err){ console.warn('fsDeleteZoneSetting', err); }
 }
 
@@ -4468,27 +4531,27 @@ function fsRenderZoneSettings(){
   if (!box) return;
   var zone = window._fsActiveZone;
   if (!FS_ZONES[zone]){ box.innerHTML = ''; return; }
-  var person = fsGetActivePersonForHouse();
+  _fsMigrateZoneSettings();
+  var ref = _fsActiveHouseRef();
   var zoneLabel = FS_ZONES[zone].label;
 
   var html = '<div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">'
       + '<span style="font-size:12px;font-weight:bold;color:#8a6a1f;">💾 ' + zoneLabel + ' — settings</span>';
-  if (person){
+  if (ref){
     html += '<button onclick="fsSaveZoneSetting()" style="background:#8a6a1f;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">💾 Save current</button>';
   }
   html += '</div>';
 
-  if (!person){
-    html += '<div style="font-size:11px;color:#999;">Load a person (A or B) to save and recall this section\'s settings.</div></div>';
+  if (!ref){
+    html += '<div style="font-size:11px;color:#999;">Load a person (A or B) and a saved house first — these settings are stored inside the active house (House Profiles).</div></div>';
     box.innerHTML = html;
     return;
   }
 
-  html += '<div style="font-size:11px;color:#666;margin-bottom:4px;">Person: <strong>' + _fsEsc(person.name) + '</strong> — provisional, isolated to this section.</div>';
+  html += '<div style="font-size:11px;color:#666;margin-bottom:4px;">House: <strong>' + _fsEsc(ref.house.name) + '</strong> · Person: <strong>' + _fsEsc(ref.person.name) + '</strong> — saved inside House Profiles.</div>';
 
-  var all = _fsZsLoad();
-  var list = ((all[person.name] || {})[zone]) || [];
+  var list = ref.house.settings[zone] || [];
   if (!list.length){
     html += '<div style="font-size:12px;color:#999;padding:4px 0;">No settings saved yet for this section.</div>';
   } else {
