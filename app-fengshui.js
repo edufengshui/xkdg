@@ -3925,18 +3925,78 @@ if (typeof buildCalView === 'function') {
         var cityData = {};
         options.forEach(function(c){ cityData[c.name] = c; });
 
+        // Current UTC offset (hours, incl. DST) of an IANA zone at instant d.
+        function _tzOffH(tz, d){
+            try {
+                var p = new Intl.DateTimeFormat('en-US',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'})
+                    .formatToParts(d).reduce(function(a,x){ a[x.type]=x.value; return a; },{});
+                var hh = (p.hour === '24') ? 0 : parseInt(p.hour,10);
+                var asUTC = Date.UTC(p.year, p.month-1, p.day, hh, p.minute, p.second);
+                return Math.round((asUTC - d.getTime())/60000)/60;
+            } catch(e){ return null; }
+        }
+        function _tzLocalParts(tz, d){
+            var p = new Intl.DateTimeFormat('en-CA',{timeZone:tz,hour12:false,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+                .formatToParts(d).reduce(function(a,x){ a[x.type]=x.value; return a; },{});
+            return { date: p.year+'-'+p.month+'-'+p.day, time: ((p.hour==='24')?'00':p.hour)+':'+p.minute };
+        }
+
         document.getElementById('city-picker').addEventListener('change', function(e){
             var picked = cityData[e.target.value];
             if (!picked) return;
             lngInput.value = picked.lng.toFixed(2);
             lngInput.dispatchEvent(new Event('input',  { bubbles: true }));
             lngInput.dispatchEvent(new Event('change', { bubbles: true }));
+
             var utcInput = document.getElementById('utc-offset');
-            if (utcInput) {
-                utcInput.value = picked.utc;
-                utcInput.dispatchEvent(new Event('input',  { bubbles: true }));
-                utcInput.dispatchEvent(new Event('change', { bubbles: true }));
+            var dEl = document.getElementById('date'), tEl = document.getElementById('time');
+            var p2 = function(n){ return (n < 10 ? '0' : '') + n; };
+            var now = new Date();
+            var doneViaTz = false;
+
+            // Preferred: use the city's IANA timezone (browser's built-in DST rules).
+            if (picked.tz) {
+                try {
+                    var cur = _tzOffH(picked.tz, now);
+                    var jan = _tzOffH(picked.tz, new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 12)));
+                    var jul = _tzOffH(picked.tz, new Date(Date.UTC(now.getUTCFullYear(), 6, 1, 12)));
+                    if (cur != null && jan != null && jul != null) {
+                        var std = Math.min(jan, jul);          // winter standard offset
+                        var isDst = cur > std + 0.01;          // DST currently active?
+                        if (utcInput) {
+                            utcInput.value = std;
+                            utcInput.dispatchEvent(new Event('input',  { bubbles: true }));
+                            utcInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        // Sync the DST toggle to the real situation in that city.
+                        if (typeof _dstOn !== 'undefined' && typeof toggleDST === 'function') {
+                            if (isDst && !_dstOn) toggleDST();
+                            else if (!isDst && _dstOn) toggleDST();
+                        }
+                        var lp = _tzLocalParts(picked.tz, now);
+                        if (dEl) dEl.value = lp.date;
+                        if (tEl) tEl.value = lp.time;
+                        doneViaTz = true;
+                    }
+                } catch (err) { console.warn('city tz update', err); }
             }
+
+            // Fallback: fixed standard offset + current DST toggle (legacy behaviour).
+            if (!doneViaTz) {
+                if (utcInput) {
+                    utcInput.value = picked.utc;
+                    utcInput.dispatchEvent(new Event('input',  { bubbles: true }));
+                    utcInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                try {
+                    var dstAdd = (typeof _dstOn !== 'undefined' && _dstOn) ? 3600000 : 0;
+                    var cityWall = new Date(now.getTime() + picked.utc * 3600000 + dstAdd);
+                    if (dEl) dEl.value = cityWall.getUTCFullYear() + '-' + p2(cityWall.getUTCMonth() + 1) + '-' + p2(cityWall.getUTCDate());
+                    if (tEl) tEl.value = p2(cityWall.getUTCHours()) + ':' + p2(cityWall.getUTCMinutes());
+                } catch (err) { console.warn('city clock update', err); }
+            }
+
+            try { if (typeof calculateBazi === 'function') calculateBazi(); } catch (err) {}
             e.target.value = '';
         });
     }
