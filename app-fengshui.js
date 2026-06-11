@@ -2670,6 +2670,7 @@ function fsRenderHouseProfiles(){
     // ── QFS ZONES (🌀 Qimen × Flying Stars) ──
     html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #7b1fa2;">';
     html += '<div style="font-size:11px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones (Qimen × Flying Stars)</div>';
+    html += '<div style="font-size:10px;color:#888;margin-bottom:4px;font-style:italic;">A saved target for the Qimen × Flying-Stars scan: a direction + which flying star to activate there (Water 向星 for aquariums, Mountain 山星 for still features).</div>';
     var zones = h.zones || [];
     if (zones.length){
       var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
@@ -2898,21 +2899,29 @@ function fsRemoveWater(personName, houseIdx, waterIdx){
 // ── QFS ZONE CRUD ───────────────────────────────────────────────
 
 function fsAddZone(personName, houseIdx){
-  var zName = prompt('Zone name\n(e.g. "Aquarium SE", "Bedroom NW", "Study E"):');
-  if (!zName || !zName.trim()) return;
-  var palaceStr = prompt('Palace number (1-9):\n1=N, 2=SW, 3=E, 4=SE, 5=Center, 6=NW, 7=W, 8=NE, 9=S');
-  if (!palaceStr) return;
-  var palace = parseInt(palaceStr);
-  if (isNaN(palace) || palace < 1 || palace > 9){ alert('Invalid palace (1-9).'); return; }
-  var targetStr = prompt('Target FS star type:\nType "water" for Water Star (向星) or "mountain" for Mountain Star (山星)');
-  if (!targetStr) return;
-  var target = targetStr.trim().toLowerCase();
-  if (target !== 'water' && target !== 'mountain'){ alert('Invalid: must be "water" or "mountain".'); return; }
+  // Ask by DIRECTION (clear) and map to the palace internally.
+  var DIR2PAL = { N:1, NE:8, E:3, SE:4, S:9, SW:2, W:7, NW:6 };
+  var dirStr = prompt('Direction of this zone \u2014 where the aquarium / feature sits.\nType one: N, NE, E, SE, S, SW, W, NW');
+  if (!dirStr) return;
+  var dir = dirStr.trim().toUpperCase();
+  if (!DIR2PAL[dir]){ alert('Invalid direction. Use N, NE, E, SE, S, SW, W or NW.'); return; }
+  var palace = DIR2PAL[dir];
+
+  var tStr = prompt('Which flying star to activate here?\n\nType  W  = Water Star \u5411\u661f  (for aquariums / moving water)\nType  M  = Mountain Star \u5C71\u661f  (for still / mountain features)', 'W');
+  if (tStr === null) return;
+  var t = tStr.trim().toLowerCase();
+  var target = (t === 'm' || t === 'mountain') ? 'mountain' : (t === 'w' || t === 'water' || t === '') ? 'water' : null;
+  if (!target){ alert('Type W (water) or M (mountain).'); return; }
+
+  var defName = (target === 'water' ? 'Water ' : 'Mountain ') + dir;
+  var zName = prompt('Name for this zone (optional):', defName);
+  if (zName === null) return;
+  if (!zName.trim()) zName = defName;
 
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
   if (!all[personName][houseIdx].zones) all[personName][houseIdx].zones = [];
-  all[personName][houseIdx].zones.push({ name: zName.trim(), palace: palace, target: target });
+  all[personName][houseIdx].zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
