@@ -61,16 +61,17 @@
   };
 
   // 9 stelle celesti — il QMDJ scanner ritorna i nomi inglesi tradotti
+  // num = numero della stella (1-9); color = colore richiesto per la UI.
   var QM_STARS = [
-    {key:'Peng',  en:'Grass',     han:'天蓬', label:'天蓬 Peng (Grass)'},
-    {key:'Rui',   en:'Rice',      han:'天芮', label:'天芮 Rui (Rice)'},
-    {key:'Chong', en:'Aggressor', han:'天沖', label:'天沖 Chong (Aggressor)'},
-    {key:'Fu',    en:'Assistant', han:'天輔', label:'天輔 Fu (Assistant)'},
-    {key:'Qin',   en:'Fowl',      han:'天禽', label:'天禽 Qin (Fowl)'},
-    {key:'Xin',   en:'Heart',     han:'天心', label:'天心 Xin (Heart)'},
-    {key:'Zhu',   en:'Pillar',    han:'天柱', label:'天柱 Zhu (Pillar)'},
-    {key:'Ren',   en:'Official',  han:'天任', label:'天任 Ren (Official)'},
-    {key:'Ying',  en:'Hero',      han:'天英', label:'天英 Ying (Hero)'}
+    {key:'Peng',  en:'Grass',     han:'天蓬', num:1, color:'#1565c0', label:'天蓬 Peng (Grass)'},
+    {key:'Rui',   en:'Rice',      han:'天芮', num:2, color:'#795548', label:'天芮 Rui (Rice)'},
+    {key:'Chong', en:'Aggressor', han:'天沖', num:3, color:'#2e7d32', label:'天沖 Chong (Aggressor)'},
+    {key:'Fu',    en:'Assistant', han:'天輔', num:4, color:'#2e7d32', label:'天輔 Fu (Assistant)'},
+    {key:'Qin',   en:'Fowl',      han:'天禽', num:5, color:'#795548', label:'天禽 Qin (Fowl)'},
+    {key:'Xin',   en:'Heart',     han:'天心', num:6, color:'#9e9e9e', label:'天心 Xin (Heart)'},
+    {key:'Zhu',   en:'Pillar',    han:'天柱', num:7, color:'#9e9e9e', label:'天柱 Zhu (Pillar)'},
+    {key:'Ren',   en:'Official',  han:'天任', num:8, color:'#795548', label:'天任 Ren (Official)'},
+    {key:'Ying',  en:'Hero',      han:'天英', num:9, color:'#c62828', label:'天英 Ying (Hero)'}
   ];
   // Mappa nome inglese (come restituito da getHourChart) → chiave pinyin
   var STAR_EN_TO_KEY = {};
@@ -232,8 +233,11 @@
            + '</label>';
     }).join('');
     var starHtml = QM_STARS.map(function(s){
+      var c = s.color || '#333';
       return '<label style="white-space:nowrap;font-size:11px;">'
-           +   '<input type="checkbox" class="qfs-ent" data-cat="star" data-key="'+s.key+'"> '+s.label
+           +   '<input type="checkbox" class="qfs-ent" data-cat="star" data-key="'+s.key+'"> '
+           +   '<span style="color:'+c+';">'+s.label+'</span>'
+           +   ' <b style="color:'+c+';">'+s.num+'</b>'
            + '</label>';
     }).join('');
     var spiritHtml = QM_SPIRITS.map(function(sp){
