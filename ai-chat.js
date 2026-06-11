@@ -1344,8 +1344,9 @@
     var DIR2GRID = { SE: 0, S: 1, SW: 2, E: 3, C: 4, W: 5, NE: 6, N: 7, NW: 8 };   // S-at-top grid
     var chart = null;
     try {
-      if (window.FlyingStars && typeof window.fsMountainCharFromDeg === 'function' && found.houseFacing != null && found.period != null) {
-        chart = window.FlyingStars.calculate(parseInt(found.period, 10), window.fsMountainCharFromDeg(parseFloat(found.houseFacing)));
+      // FlyingStars is a top-level `const` (NOT on window) — reference it bare.
+      if (typeof FlyingStars !== 'undefined' && typeof fsMountainCharFromDeg === 'function' && found.houseFacing != null && found.period != null) {
+        chart = FlyingStars.calculate(parseInt(found.period, 10), fsMountainCharFromDeg(parseFloat(found.houseFacing)));
       }
     } catch (e) { chart = null; }
     function starAt(dir, type) {
