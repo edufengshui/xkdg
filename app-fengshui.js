@@ -2542,8 +2542,10 @@ function _fsHousesLoad(){
     var dirty = false;
     Object.keys(raw).forEach(function(pn){
       raw[pn] = raw[pn].map(function(h){
-        if (!h.doors){ dirty = true; h = _fsHouseMigrate(h); }
-        if (!h.floors){ dirty = true; h = _fsHouseAddFloors(h); }
+        if (!h.floors){
+          if (!h.doors){ dirty = true; h = _fsHouseMigrate(h); }
+          dirty = true; h = _fsHouseAddFloors(h);
+        }
         return h;
       });
     });
@@ -2771,7 +2773,7 @@ function fsRenderHouseProfiles(){
       html += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>';
     });
     html += '</select>';
-    html += '<button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">➕ Add</button>';
+    html += '<button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:2px 9px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button>';
     html += '<button onclick="fsRenameFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">✏ Rename</button>';
     if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">🗑</button>';
     html += '</div>';
