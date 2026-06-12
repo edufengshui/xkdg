@@ -2793,6 +2793,17 @@ function fsRenderHouseProfiles(){
     html += '<button onclick="fsEditHouseAddress(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Address</button>';
     html += '</div>';
 
+    // ── Drive folder link (client dossier on Google Drive) ──
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin-bottom:4px;">';
+    html += '<span>🔗</span>';
+    if (h.driveUrl){
+      html += '<a href="' + escHtml(h.driveUrl) + '" target="_blank" rel="noopener" style="background:#0f9d58;color:#fff;border-radius:3px;padding:1px 8px;font-size:10px;text-decoration:none;">📁 Open Drive folder</a>';
+    } else {
+      html += '<span style="color:#999;">No Drive folder</span>';
+    }
+    html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Drive folder</button>';
+    html += '</div>';
+
     // ── Person (name + birth date) — unified with Person A/B ──
     var _pn = h.personName || person.name;
     html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin-bottom:4px;">';
@@ -2994,6 +3005,20 @@ function fsEditHouseAddress(personName, houseIdx){
     _fsHousesSave(all);
     fsRenderHouseProfiles();
   } catch(e){ console.warn('fsEditHouseAddress', e); }
+}
+
+function fsEditHouseDrive(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    var u = prompt('Google Drive folder link for this client\n(open the folder in Drive → Share → Copy link, then paste here):', h.driveUrl || '');
+    if (u === null) return;
+    u = u.trim();
+    if (u && !/^https?:\/\//i.test(u)){ alert('Please paste a full link starting with http:// or https://'); return; }
+    h.driveUrl = u || null;
+    _fsHousesSave(all);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsEditHouseDrive', e); }
 }
 function fsFilterHouses(val){
   window._fsHouseFilter = (val === '__all__' ? null : val);
