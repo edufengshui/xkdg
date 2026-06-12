@@ -467,8 +467,9 @@ function buildFengShuiView(){
 
       <!-- ═══ HOUSE PROFILES (🏠) — at the end ═══ -->
       <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-top:16px;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;">
           <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
+          <button onclick="fsAddNewHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">+ Add a new house</button>
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
         <div id="fs-house-list" style="font-size:12px;"></div>
@@ -2870,6 +2871,51 @@ function fsRenderHouseProfiles(){
   list.innerHTML = html;
 }
 
+/** Header "+ Add a new house": create a house, optionally importing the
+ *  current Main-Luopan consultation (House Facing / Period / door) as its data. */
+function fsAddNewHouse(){
+  var person = fsGetActivePersonForHouse();
+  if (!person){ alert('Load a person (A or B) first.'); return; }
+  var name = prompt('Name of the new house (e.g. "Vienna apartment"):');
+  if (name === null || !name.trim()) return;
+  name = name.trim();
+
+  var hf = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+  var pd = parseInt((document.getElementById('fs-period') || {}).value, 10);
+  var df = parseFloat((document.getElementById('fs-facing') || {}).value);
+  var wt = parseFloat((document.getElementById('fs-water') || {}).value);
+  var hasConsult = !isNaN(hf) || !isNaN(pd) || !isNaN(df);
+
+  var importIt = false;
+  if (hasConsult){
+    importIt = confirm('Import the current Main Luopan consultation into "' + name + '"?\n\n'
+      + 'Facing: ' + (isNaN(hf) ? '—' : hf + '\u00b0') + '   Period: ' + (isNaN(pd) ? '—' : pd)
+      + (isNaN(df) ? '' : '   Door: ' + df + '\u00b0')
+      + '\n\nOK = import these as the house\u2019s facing/period.\nCancel = start an empty house and fill it in yourself.');
+  }
+  var facing = (importIt && !isNaN(hf)) ? hf : null;
+  var period = (importIt && !isNaN(pd)) ? pd : null;
+  var doors = [];
+  if (importIt && !isNaN(df)) doors.push({ name: 'Main door', facing: df, water: (!isNaN(wt) ? wt : null) });
+
+  var house = {
+    name: name, sameFacing: true, houseFacing: facing, period: period,
+    floors: [{ label: 'Floor 1', facing: facing, period: period, doors: doors, waters: [], zones: [], settings: { water: [], bed: [], desk: [] } }],
+    activeFloor: 0
+  };
+  var all = _fsHousesLoad();
+  if (!all[person.name]) all[person.name] = [];
+  var newIdx = all[person.name].length;
+  all[person.name].push(house);
+  _fsHousesSave(all);
+  _fsActiveHouseSet(person.name, newIdx);     // new house becomes active
+  // Make the settings sections target the new house by default
+  window._fsSettingHouseIdx = newIdx; window._fsSettingFloorIdx = null;
+  if (importIt) fsLoadHouse(person.name, newIdx);
+  fsRenderHouseProfiles();
+  if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+}
+
 function fsSaveHouse(){
   const person = fsGetActivePersonForHouse();
   if (!person){ alert('Load a person (A or B) first.'); return; }
@@ -4654,7 +4700,35 @@ function _fsActiveHouseRef(){
   if (!floor.settings) floor.settings = { water: [], bed: [], desk: [] };
   return { all: all, person: person, idx: idx, house: house, floor: floor };
 }
-// One-time, NON-destructive migration of the old per-person settings
+
+// Target house/floor for the "Setting up…" sections. Defaults to the active
+// house + active floor, but the user can override via the dropdowns.
+function _fsSettingRef(){
+  var person = fsGetActivePersonForHouse();
+  if (!person) return null;
+  var all = _fsHousesLoad();
+  var list = all[person.name];
+  if (!list || !list.length) return null;
+  var hIdx = (window._fsSettingHouseIdx != null) ? window._fsSettingHouseIdx : _fsActiveHouseGet(person.name);
+  if (hIdx == null || hIdx >= list.length) hIdx = 0;
+  var house = list[hIdx];
+  if (!house) return null;
+  _fsActiveFloor(house);                                   // self-heal floors[]
+  var fIdx = (window._fsSettingFloorIdx != null) ? window._fsSettingFloorIdx : (house.activeFloor || 0);
+  if (fIdx >= house.floors.length) fIdx = 0;
+  var floor = house.floors[fIdx];
+  if (!floor.settings) floor.settings = { water: [], bed: [], desk: [] };
+  return { all: all, person: person, idx: hIdx, house: house, floor: floor, floorIdx: fIdx };
+}
+function fsSettingPickHouse(v){
+  window._fsSettingHouseIdx = (v === '' ? null : parseInt(v, 10));
+  window._fsSettingFloorIdx = null;                        // reset floor for the new house
+  if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+}
+function fsSettingPickFloor(v){
+  window._fsSettingFloorIdx = (v === '' ? null : parseInt(v, 10));
+  if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+}
 // store into each person's active (or first) house.
 function _fsMigrateZoneSettings(){
   try {
@@ -4692,7 +4766,7 @@ function fsSaveZoneSetting(){
   try {
     var zone = window._fsActiveZone;
     if (!FS_ZONES[zone]) return;
-    var ref = _fsActiveHouseRef();
+    var ref = _fsSettingRef();
     if (!ref){ alert('Load a person and a saved house first — these settings are stored inside the active house.'); return; }
     var hf = (document.getElementById('fs-house-facing') || {}).value || '';
     var pd = (document.getElementById('fs-period') || {}).value || '';
@@ -4720,7 +4794,7 @@ function fsSaveZoneSetting(){
 function fsLoadZoneSetting(idx){
   try {
     var zone = window._fsActiveZone;
-    var ref = _fsActiveHouseRef();
+    var ref = _fsSettingRef();
     if (!FS_ZONES[zone] || !ref) return;
     var list = ref.floor.settings[zone] || [];
     var s = list[idx];
@@ -4739,7 +4813,7 @@ function fsLoadZoneSetting(idx){
 function fsDeleteZoneSetting(idx){
   try {
     var zone = window._fsActiveZone;
-    var ref = _fsActiveHouseRef();
+    var ref = _fsSettingRef();
     if (!FS_ZONES[zone] || !ref) return;
     var list = ref.floor.settings[zone];
     if (!list || !list[idx]) return;
@@ -4757,7 +4831,7 @@ function fsRenderZoneSettings(){
   var zone = window._fsActiveZone;
   if (!FS_ZONES[zone]){ box.innerHTML = ''; return; }
   _fsMigrateZoneSettings();
-  var ref = _fsActiveHouseRef();
+  var ref = _fsSettingRef();
   var zoneLabel = FS_ZONES[zone].label;
 
   var html = '<div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;">'
@@ -4774,7 +4848,22 @@ function fsRenderZoneSettings(){
     return;
   }
 
-  html += '<div style="font-size:11px;color:#666;margin-bottom:4px;">House: <strong>' + _fsEsc(ref.house.name) + '</strong> · Floor: <strong>' + _fsEsc((ref.floor && ref.floor.label) || 'Floor 1') + '</strong> · Person: <strong>' + _fsEsc(ref.person.name) + '</strong> — saved inside House Profiles.</div>';
+  // Target selectors: choose WHICH house and WHICH floor this setting is saved into.
+  var _houses = ref.all[ref.person.name] || [];
+  html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;font-size:11px;color:#666;">';
+  html += '<span>Save in:</span>';
+  html += '<span>🏠</span><select onchange="fsSettingPickHouse(this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #8a6a1f;border-radius:4px;max-width:150px;">';
+  _houses.forEach(function(hh, hidx){
+    html += '<option value="' + hidx + '"' + (hidx === ref.idx ? ' selected' : '') + '>' + _fsEsc(hh.name) + '</option>';
+  });
+  html += '</select>';
+  html += '<span>🏢</span><select onchange="fsSettingPickFloor(this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #8a6a1f;border-radius:4px;max-width:130px;">';
+  (ref.house.floors || []).forEach(function(fl, fidx){
+    html += '<option value="' + fidx + '"' + (fidx === ref.floorIdx ? ' selected' : '') + '>' + _fsEsc(fl.label || ('Floor ' + (fidx + 1))) + '</option>';
+  });
+  html += '</select>';
+  html += '<span style="color:#999;">· ' + _fsEsc(ref.person.name) + '</span>';
+  html += '</div>';
 
   var list = ref.floor.settings[zone] || [];
   if (!list.length){
