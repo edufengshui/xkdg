@@ -2727,7 +2727,7 @@ function fsRenderHouseProfiles(){
   const houses = all[person.name] || [];
 
   if (!houses.length){
-    list.innerHTML = '<div style="color:#999;font-style:italic;padding:4px 0;">No saved houses. Enter House Facing / Period above, then press 💾 Save House.</div>';
+    list.innerHTML = '<div style="color:#999;font-style:italic;padding:4px 0;">No saved houses yet. Press <strong>+ Add a new house</strong> (top right) to create one.</div>';
     return;
   }
 
@@ -2737,8 +2737,20 @@ function fsRenderHouseProfiles(){
   var activeIdx = _fsActiveHouseGet(person.name);
   if (activeIdx >= houses.length) activeIdx = 0;
 
+  var cats = _fsCatsLoad();
+  var filter = window._fsHouseFilter || null;
+
   var html = '';
+  // Category filter (only if categories exist)
+  if (cats.length){
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11px;color:#555;">';
+    html += '<span>🔎 Filter:</span><select onchange="fsFilterHouses(this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
+    html += '<option value="__all__"' + (!filter ? ' selected' : '') + '>All categories</option>';
+    cats.forEach(function(c){ html += '<option value="' + escHtml(c) + '"' + (filter === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; });
+    html += '</select></div>';
+  }
   houses.forEach(function(h, hi){
+    if (filter && (h.category || null) !== filter) return;   // hidden by filter
     var isActive = (hi === activeIdx);
     var borderColor = isActive ? '#2e7d32' : '#a5d6a7';
     var bgColor = isActive ? '#f1f8e9' : '#fff';
@@ -2759,7 +2771,35 @@ function fsRenderHouseProfiles(){
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
     html += '</span></div>';
 
-    // Active floor + effective facing/period
+    // ── Category (free, user-defined) + Address + Google Maps link ──
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 4px;font-size:11px;color:#555;">';
+    html += '<span>🏷</span><select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
+    html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
+    cats.forEach(function(c){ html += '<option value="' + escHtml(c) + '"' + (h.category === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; });
+    html += '<option value="__new__">➕ New category…</option>';
+    html += '</select>';
+    html += '</div>';
+
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin-bottom:4px;">';
+    html += '<span>📍</span>';
+    if (h.address){
+      var mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(h.address);
+      html += '<span>' + escHtml(h.address) + '</span>';
+      html += '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="background:#1565c0;color:#fff;border-radius:3px;padding:1px 8px;font-size:10px;text-decoration:none;">🗺 Map</a>';
+    } else {
+      html += '<span style="color:#999;">No address</span>';
+    }
+    html += '<button onclick="fsEditHouseAddress(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Address</button>';
+    html += '</div>';
+
+    // ── Person (name + birth date) — unified with Person A/B ──
+    var _pn = h.personName || person.name;
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin-bottom:4px;">';
+    html += '<span>👤 <strong>' + escHtml(_pn) + '</strong></span>';
+    html += '<span>🎂 ' + (h.birthDate ? escHtml(h.birthDate) : '<span style="color:#999;">no birth date</span>') + '</span>';
+    html += '<button onclick="fsEditHousePerson(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#7b1fa2;border:1px solid #7b1fa2;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Person</button>';
+    html += '<button onclick="fsSyncHousePerson(\'' + escJs(person.name) + '\',' + hi + ')" title="Copy from Person A/B — and fill Person A/B if those are empty" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">⤓ Sync A/B</button>';
+    html += '</div>';
     var f = _fsActiveFloor(h);
     var fIdx = h.activeFloor || 0; if (fIdx >= h.floors.length) fIdx = 0;
     var effFacing = _fsFloorFacing(h, f);
@@ -2903,17 +2943,141 @@ function fsAddNewHouse(){
     floors: [{ label: 'Floor 1', facing: facing, period: period, doors: doors, waters: [], zones: [], settings: { water: [], bed: [], desk: [] } }],
     activeFloor: 0
   };
+  var pdata = _fsActivePersonData();
+  house.personName = (pdata && pdata.name) || person.name;
+  house.birthDate  = (pdata && pdata.birthDate) || null;
+  house.birthTime  = (pdata && pdata.birthTime) || null;
   var all = _fsHousesLoad();
   if (!all[person.name]) all[person.name] = [];
   var newIdx = all[person.name].length;
   all[person.name].push(house);
   _fsHousesSave(all);
+  _fsUpsertPersonDB(house.personName, house.birthDate, house.birthTime, house.category, false);   // unify owner into people DB
   _fsActiveHouseSet(person.name, newIdx);     // new house becomes active
   // Make the settings sections target the new house by default
   window._fsSettingHouseIdx = newIdx; window._fsSettingFloorIdx = null;
   if (importIt) fsLoadHouse(person.name, newIdx);
   fsRenderHouseProfiles();
   if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+}
+
+// ── House categories (free, user-defined) + address ──────────────
+function _fsCatsLoad(){ try { var c = JSON.parse(localStorage.getItem('xkdg_house_categories') || 'null'); return (Array.isArray(c) && c.length) ? c : ['Mine', 'Students', 'Clients', 'Friends']; } catch(e){ return ['Mine', 'Students', 'Clients', 'Friends']; } }
+function _fsCatsSave(arr){ try { localStorage.setItem('xkdg_house_categories', JSON.stringify(arr)); } catch(e){} }
+
+function fsSetHouseCategory(personName, houseIdx, val){
+  try {
+    if (val === '__new__'){
+      var nc = prompt('New category (e.g. "My clients", "My students"):');
+      if (!nc || !nc.trim()){ fsRenderHouseProfiles(); return; }
+      nc = nc.trim();
+      var cats = _fsCatsLoad();
+      if (cats.indexOf(nc) < 0){ cats.push(nc); _fsCatsSave(cats); }
+      val = nc;
+    }
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    h.category = (val === '' ? null : val);
+    _fsHousesSave(all);
+    if (h.personName) _fsUpsertPersonDB(h.personName, h.birthDate, h.birthTime, h.category, false);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsSetHouseCategory', e); }
+}
+function fsEditHouseAddress(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    var a = prompt('Address of this house (street, city, country):', h.address || '');
+    if (a === null) return;
+    h.address = a.trim() ? a.trim() : null;
+    _fsHousesSave(all);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsEditHouseAddress', e); }
+}
+function fsFilterHouses(val){
+  window._fsHouseFilter = (val === '__all__' ? null : val);
+  fsRenderHouseProfiles();
+}
+
+// ── House ↔ Person (name + birth date) unification ───────────────
+/** Read the loaded person's name + birth date/time from Person A/B inputs. */
+function _fsActivePersonData(){
+  var p = fsGetActivePersonForHouse();
+  if (!p) return null;
+  var dEl = document.getElementById(p.who === 'B' ? 'person-date-b' : 'person-date');
+  var tEl = document.getElementById(p.who === 'B' ? 'person-time-b' : 'person-time');
+  var d = ((dEl && dEl.value) || '').trim();
+  if (!d && p.who === 'B'){ var yEl = document.getElementById('person-year-b'); d = ((yEl && yEl.value) || '').trim(); }
+  var t = ((tEl && tEl.value) || '').trim();
+  return { name: p.name, who: p.who, birthDate: d, birthTime: t };
+}
+
+/** Non-destructive upsert of a house owner into the people DB
+ *  (xkdg_persons_a / _b), adding a `category` tag — to unify house owners
+ *  with the saved-people archive. `force` overwrites an existing birth date. */
+function _fsUpsertPersonDB(name, birthDate, birthTime, category, force){
+  if (!name) return;
+  try {
+    var A = JSON.parse(localStorage.getItem('xkdg_persons_a') || '{}');
+    var B = JSON.parse(localStorage.getItem('xkdg_persons_b') || '{}');
+    var key, arch;
+    if (B[name] && !A[name]) { key = 'xkdg_persons_b'; arch = B; } else { key = 'xkdg_persons_a'; arch = A; }
+    var rec = arch[name] || {};
+    if (birthDate) rec.date = force ? birthDate : (rec.date || birthDate);
+    if (birthTime && !rec.time) rec.time = birthTime;
+    if (!rec.time) rec.time = '12:00';
+    if (category) rec.category = category;
+    if (!rec.savedAt) rec.savedAt = Date.now();
+    arch[name] = rec;
+    localStorage.setItem(key, JSON.stringify(arch));
+  } catch(e){ console.warn('upsert person DB', e); }
+}
+/** Sync: pull name/birth from Person A/B into the house; and if a Person A/B
+ *  field is empty, push the house value back into it (transfer to the person DB). */
+function fsSyncHousePerson(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    if (!h.personName) h.personName = personName;
+    var pd = _fsActivePersonData();
+    if (pd){
+      if (pd.name) h.personName = pd.name;
+      if (pd.birthDate) h.birthDate = pd.birthDate;
+      if (pd.birthTime) h.birthTime = pd.birthTime;
+      var nameEl = document.getElementById(pd.who === 'B' ? 'person-name-b' : 'person-name');
+      var dateEl = document.getElementById(pd.who === 'B' ? 'person-date-b' : 'person-date');
+      var timeEl = document.getElementById(pd.who === 'B' ? 'person-time-b' : 'person-time');
+      if (nameEl && !nameEl.value && h.personName) nameEl.value = h.personName;
+      if (dateEl && !dateEl.value && h.birthDate) dateEl.value = h.birthDate;
+      if (timeEl && !timeEl.value && h.birthTime) timeEl.value = h.birthTime;
+    }
+    _fsHousesSave(all);
+    if (h.personName) _fsUpsertPersonDB(h.personName, h.birthDate, h.birthTime, h.category, true);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsSyncHousePerson', e); }
+}
+/** Manually edit the house's person name + birth date (and push to an empty Person A/B). */
+function fsEditHousePerson(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    var nm = prompt('Person name for this house:', h.personName || personName || '');
+    if (nm === null) return;
+    var bd = prompt('Birth date (e.g. 1985-07-23):', h.birthDate || '');
+    if (bd === null) return;
+    h.personName = nm.trim() || h.personName || personName;
+    h.birthDate  = bd.trim() ? bd.trim() : null;
+    _fsHousesSave(all);
+    if (h.personName) _fsUpsertPersonDB(h.personName, h.birthDate, h.birthTime, h.category, true);
+    var p = fsGetActivePersonForHouse();
+    if (p){
+      var nameEl = document.getElementById(p.who === 'B' ? 'person-name-b' : 'person-name');
+      var dateEl = document.getElementById(p.who === 'B' ? 'person-date-b' : 'person-date');
+      if (nameEl && !nameEl.value && h.personName) nameEl.value = h.personName;
+      if (dateEl && !dateEl.value && h.birthDate) dateEl.value = h.birthDate;
+    }
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsEditHousePerson', e); }
 }
 
 function fsSaveHouse(){
@@ -2958,6 +3122,10 @@ function fsSaveHouse(){
     }],
     activeFloor: 0
   };
+  var pdata2 = _fsActivePersonData();
+  house.personName = (pdata2 && pdata2.name) || person.name;
+  house.birthDate  = (pdata2 && pdata2.birthDate) || null;
+  house.birthTime  = (pdata2 && pdata2.birthTime) || null;
 
   const all = _fsHousesLoad();
   if (!all[person.name]) all[person.name] = [];
