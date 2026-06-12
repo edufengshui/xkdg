@@ -2542,7 +2542,8 @@ function _fsHousesLoad(){
     var dirty = false;
     Object.keys(raw).forEach(function(pn){
       raw[pn] = raw[pn].map(function(h){
-        if (!h.doors){ dirty = true; return _fsHouseMigrate(h); }
+        if (!h.doors){ dirty = true; h = _fsHouseMigrate(h); }
+        if (!h.floors){ dirty = true; h = _fsHouseAddFloors(h); }
         return h;
       });
     });
@@ -2550,6 +2551,48 @@ function _fsHousesLoad(){
     return raw;
   } catch(e){ return {}; }
 }
+
+/** Migrate a v2 house (flat doors/waters/zones/settings) to v3 (floors[]). */
+function _fsHouseAddFloors(h){
+  if (h.floors) return h;
+  var floor0 = {
+    label:    'Floor 1',
+    facing:   (h.houseFacing != null ? h.houseFacing : null),
+    period:   (h.period != null ? h.period : null),
+    doors:    h.doors  || [],
+    waters:   h.waters || [],
+    zones:    h.zones  || [],
+    settings: h.settings || { water: [], bed: [], desk: [] }
+  };
+  return {
+    name:        h.name,
+    sameFacing:  (h.sameFacing != null ? h.sameFacing : true),
+    houseFacing: (h.houseFacing != null ? h.houseFacing : null),
+    period:      (h.period != null ? h.period : null),
+    floors:      [floor0],
+    activeFloor: 0
+  };
+}
+
+/** The currently-selected floor object of a house (self-healing). */
+function _fsActiveFloor(h){
+  if (!h) return null;
+  if (!h.floors || !h.floors.length){
+    h.floors = [{ label: 'Floor 1', facing: (h.houseFacing != null ? h.houseFacing : null), period: (h.period != null ? h.period : null),
+      doors: h.doors || [], waters: h.waters || [], zones: h.zones || [], settings: h.settings || { water: [], bed: [], desk: [] } }];
+    h.activeFloor = 0;
+  }
+  var i = h.activeFloor || 0; if (i >= h.floors.length) i = 0;
+  var f = h.floors[i];
+  if (!f.doors) f.doors = [];
+  if (!f.waters) f.waters = [];
+  if (!f.zones) f.zones = [];
+  if (!f.settings) f.settings = { water: [], bed: [], desk: [] };
+  return f;
+}
+/** Effective facing/period for a floor (shared house value when sameFacing). */
+function _fsFloorFacing(h, f){ return (h && h.sameFacing) ? h.houseFacing : (f ? f.facing : null); }
+function _fsFloorPeriod(h, f){ return (h && h.sameFacing) ? h.period : (f ? f.period : null); }
 function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
 
 // Active house index per person — stored separately to avoid migration issues
@@ -2563,6 +2606,96 @@ function fsSetActiveHouse(personName, idx){
   _fsActiveHouseSet(personName, idx);
   fsLoadHouse(personName, idx);
   fsRenderHouseProfiles();
+}
+
+// ── Multi-floor operations ───────────────────────────────────────
+function fsSwitchFloor(personName, houseIdx, floorIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    floorIdx = parseInt(floorIdx, 10) || 0;
+    if (!h.floors || floorIdx >= h.floors.length) return;
+    h.activeFloor = floorIdx;
+    _fsHousesSave(all);
+    if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
+    fsRenderHouseProfiles();
+    if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+  } catch(e){ console.warn('fsSwitchFloor', e); }
+}
+function fsAddFloor(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    if (!h.floors) h.floors = [];
+    var name = prompt('Name of the new floor (e.g. "1st floor", "Attic"):', 'Floor ' + (h.floors.length + 1));
+    if (name === null) return;
+    if (!name.trim()) name = 'Floor ' + (h.floors.length + 1);
+    h.floors.push({ label: name.trim(),
+      facing: (h.sameFacing ? h.houseFacing : null), period: (h.sameFacing ? h.period : null),
+      doors: [], waters: [], zones: [], settings: { water: [], bed: [], desk: [] } });
+    h.activeFloor = h.floors.length - 1;
+    _fsHousesSave(all);
+    if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
+    fsRenderHouseProfiles();
+    if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+  } catch(e){ console.warn('fsAddFloor', e); }
+}
+function fsRenameFloor(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    var f = _fsActiveFloor(h); if (!f) return;
+    var name = prompt('Rename floor:', f.label || '');
+    if (name === null || !name.trim()) return;
+    f.label = name.trim();
+    _fsHousesSave(all);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsRenameFloor', e); }
+}
+function fsDeleteFloor(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h || !h.floors || h.floors.length <= 1) return;
+    var f = _fsActiveFloor(h);
+    if (!confirm('Delete floor "' + (f.label || '') + '" and all its settings?')) return;
+    h.floors.splice((h.activeFloor || 0), 1);
+    h.activeFloor = 0;
+    _fsHousesSave(all);
+    if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
+    fsRenderHouseProfiles();
+    if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+  } catch(e){ console.warn('fsDeleteFloor', e); }
+}
+function fsToggleSameFacing(personName, houseIdx, checked){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    h.sameFacing = !!checked;
+    if (h.sameFacing){
+      var f = _fsActiveFloor(h);
+      if (h.houseFacing == null && f && f.facing != null) h.houseFacing = f.facing;
+      if (h.period == null && f && f.period != null) h.period = f.period;
+    }
+    _fsHousesSave(all);
+    if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsToggleSameFacing', e); }
+}
+function fsEditFloorFacing(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    var f = _fsActiveFloor(h); if (!f) return;
+    var fac = prompt('Facing (\u00b0) for floor "' + (f.label || '') + '":', f.facing != null ? f.facing : '');
+    if (fac === null) return;
+    var per = prompt('Period (1-9) for floor "' + (f.label || '') + '":', f.period != null ? f.period : '');
+    if (per === null) return;
+    f.facing = (String(fac).trim() === '') ? null : parseFloat(fac);
+    f.period = (String(per).trim() === '') ? null : parseInt(per, 10);
+    _fsHousesSave(all);
+    if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsEditFloorFacing', e); }
 }
 
 /** Return { name, who } for the currently loaded person (A preferred, else B). */
@@ -2623,16 +2756,42 @@ function fsRenderHouseProfiles(){
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
     html += '</span></div>';
 
-    // House info
+    // Active floor + effective facing/period
+    var f = _fsActiveFloor(h);
+    var fIdx = h.activeFloor || 0; if (fIdx >= h.floors.length) fIdx = 0;
+    var effFacing = _fsFloorFacing(h, f);
+    var effPeriod = _fsFloorPeriod(h, f);
+
+    // ── FLOORS selector + same-facing toggle ──
+    html += '<div style="margin:4px 0;padding:4px 6px;background:#eef5ee;border-radius:5px;">';
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+    html += '<span style="font-size:11px;font-weight:bold;color:#2e7d32;">🏢 Floor:</span>';
+    html += '<select onchange="fsSwitchFloor(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
+    h.floors.forEach(function(fl, fi){
+      html += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>';
+    });
+    html += '</select>';
+    html += '<button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">➕ Add</button>';
+    html += '<button onclick="fsRenameFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">✏ Rename</button>';
+    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">🗑</button>';
+    html += '</div>';
+    html += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#555;margin-top:3px;cursor:pointer;">';
+    html += '<input type="checkbox"' + (h.sameFacing ? ' checked' : '') + ' onchange="fsToggleSameFacing(\'' + escJs(person.name) + '\',' + hi + ',this.checked)"> Same Facing / Period for all floors';
+    html += '</label>';
+    html += '</div>';
+
+    // House / floor info
     html += '<div style="font-size:11px;color:#555;">';
-    if (h.houseFacing != null) html += 'House Facing: ' + h.houseFacing + '° &nbsp;';
-    if (h.period != null) html += 'Period: ' + h.period;
+    if (effFacing != null) html += 'Facing: ' + effFacing + '° &nbsp;';
+    if (effPeriod != null) html += 'Period: ' + effPeriod;
+    if (effFacing == null && effPeriod == null) html += '<span style="color:#e65100;">No facing/period for this floor yet</span>';
+    if (!h.sameFacing) html += ' <button onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 7px;font-size:10px;cursor:pointer;margin-left:4px;">✏ Floor facing/period</button>';
     html += '</div>';
 
     // ── DOORS (🚪 XKDG Porte/Facciate) ──
     html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #c9a84c;">';
     html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 XKDG Doors</div>';
-    var doors = h.doors || [];
+    var doors = f.doors;
     if (doors.length){
       doors.forEach(function(d, di){
         var facingStr = d.facing != null ? d.facing + '°' : '—';
@@ -2652,8 +2811,8 @@ function fsRenderHouseProfiles(){
     // ── STAR WATERS (🐟 Acquari permanenti) ──
     html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #4db6ac;">';
     html += '<div style="font-size:11px;font-weight:bold;color:#00897b;margin-bottom:3px;">🐟 Star Waters (aquariums)</div>';
-    if (h.waters && h.waters.length){
-      h.waters.forEach(function(w, wi){
+    if (f.waters && f.waters.length){
+      f.waters.forEach(function(w, wi){
         var dirLabel = w.dir ? w.dir : (w.deg != null ? w.deg + '°' : '?');
         var palaceLabel = w.palace ? ' (Palace ' + w.palace + ')' : '';
         html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
@@ -2671,7 +2830,7 @@ function fsRenderHouseProfiles(){
     html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #7b1fa2;">';
     html += '<div style="font-size:11px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones (Qimen × Flying Stars)</div>';
     html += '<div style="font-size:10px;color:#888;margin-bottom:4px;font-style:italic;">A saved target for the Qimen × Flying-Stars scan: a direction + which flying star to activate there (Water 向星 for aquariums, Mountain 山星 for still features).</div>';
-    var zones = h.zones || [];
+    var zones = f.zones;
     if (zones.length){
       var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
       zones.forEach(function(z, zi){
@@ -2691,7 +2850,7 @@ function fsRenderHouseProfiles(){
     // ── Saved section settings (Water / Bed / Desk) — converged into the house ──
     html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #8a6a1f;">';
     html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">💾 Saved settings (Water / Bed / Desk)</div>';
-    var _st = h.settings || { water: [], bed: [], desk: [] };
+    var _st = f.settings || { water: [], bed: [], desk: [] };
     var _zlbl = { water: '💧 Water', bed: '🛏 Bed', desk: '🪑 Desk' };
     var _anySt = false;
     ['water', 'bed', 'desk'].forEach(function(z){
@@ -2733,12 +2892,23 @@ function fsSaveHouse(){
     });
   }
 
+  var facingNum = hfVal  ? parseFloat(hfVal) : null;
+  var periodNum = perVal ? parseInt(perVal)  : null;
   const house = {
     name: name.trim(),
-    houseFacing: hfVal  ? parseFloat(hfVal) : null,
-    period:      perVal ? parseInt(perVal)   : null,
-    doors:       doors,
-    waters:      []
+    sameFacing: true,
+    houseFacing: facingNum,
+    period:      periodNum,
+    floors: [{
+      label: 'Floor 1',
+      facing: facingNum,
+      period: periodNum,
+      doors:  doors,
+      waters: [],
+      zones:  [],
+      settings: { water: [], bed: [], desk: [] }
+    }],
+    activeFloor: 0
   };
 
   const all = _fsHousesLoad();
@@ -2757,30 +2927,22 @@ function fsLoadHouse(personName, houseIdx){
   const h = houses[houseIdx];
   if (!h) return;
 
-  // Load House Facing + Period
-  if (h.houseFacing != null){
-    const el = document.getElementById('fs-house-facing');
-    if (el){ el.value = h.houseFacing; }
-  }
-  if (h.period != null){
-    const el = document.getElementById('fs-period');
-    if (el){ el.value = h.period; }
-  }
-  // Load first door's Facing + Water into Luopan inputs
-  var doors = h.doors || [];
+  var f = _fsActiveFloor(h);
+  var effFacing = _fsFloorFacing(h, f);
+  var effPeriod = _fsFloorPeriod(h, f);
+
+  // Load (effective) House Facing + Period
+  if (effFacing != null){ const el = document.getElementById('fs-house-facing'); if (el){ el.value = effFacing; } }
+  if (effPeriod != null){ const el = document.getElementById('fs-period');       if (el){ el.value = effPeriod; } }
+  // Load active floor's first door Facing + Water into Luopan inputs
+  var doors = f.doors || [];
   if (doors.length > 0){
     var d0 = doors[0];
-    if (d0.facing != null){
-      const el = document.getElementById('fs-facing');
-      if (el){ el.value = d0.facing; }
-    }
-    if (d0.water != null){
-      const el = document.getElementById('fs-water');
-      if (el){ el.value = d0.water; }
-    }
+    if (d0.facing != null){ const el = document.getElementById('fs-facing'); if (el){ el.value = d0.facing; } }
+    if (d0.water != null){ const el = document.getElementById('fs-water'); if (el){ el.value = d0.water; } }
   }
-  // Turn on Flying Stars if house data is loaded
-  if (h.houseFacing != null && h.period != null && !FS_STARS_ON){
+  // Turn on Flying Stars if facing+period are available
+  if (effFacing != null && effPeriod != null && !FS_STARS_ON){
     fsToggleStars();
   }
   fsRedraw();
@@ -2841,8 +3003,8 @@ function fsAddDoor(personName, houseIdx){
 
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  if (!all[personName][houseIdx].doors) all[personName][houseIdx].doors = [];
-  all[personName][houseIdx].doors.push({ name: dName.trim(), facing: facing, water: water });
+  var _f = _fsActiveFloor(all[personName][houseIdx]);
+  _f.doors.push({ name: dName.trim(), facing: facing, water: water });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
@@ -2850,7 +3012,7 @@ function fsAddDoor(personName, houseIdx){
 function fsEditDoor(personName, houseIdx, doorIdx){
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  var doors = all[personName][houseIdx].doors || [];
+  var doors = _fsActiveFloor(all[personName][houseIdx]).doors;
   var d = doors[doorIdx];
   if (!d) return;
 
@@ -2877,7 +3039,7 @@ function fsRemoveDoor(personName, houseIdx, doorIdx){
   if (!confirm('Remove this door?')) return;
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  var doors = all[personName][houseIdx].doors || [];
+  var doors = _fsActiveFloor(all[personName][houseIdx]).doors;
   doors.splice(doorIdx, 1);
   _fsHousesSave(all);
   fsRenderHouseProfiles();
@@ -2899,7 +3061,7 @@ function fsAddWaterToHouse(personName, houseIdx){
   if (!palace) { alert('Invalid direction. Use: N, NE, E, SE, S, SW, W, NW'); return; }
   const all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  all[personName][houseIdx].waters.push({ name: wName.trim(), dir: dir, palace: palace });
+  _fsActiveFloor(all[personName][houseIdx]).waters.push({ name: wName.trim(), dir: dir, palace: palace });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
@@ -2908,7 +3070,7 @@ function fsRemoveWater(personName, houseIdx, waterIdx){
   if (!confirm('Remove this aquarium?')) return;
   const all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  all[personName][houseIdx].waters.splice(waterIdx, 1);
+  _fsActiveFloor(all[personName][houseIdx]).waters.splice(waterIdx, 1);
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
@@ -2949,8 +3111,7 @@ function fsAddZone(personName, houseIdx){
 
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  if (!all[personName][houseIdx].zones) all[personName][houseIdx].zones = [];
-  all[personName][houseIdx].zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir, preset: preset });
+  _fsActiveFloor(all[personName][houseIdx]).zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir, preset: preset });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
@@ -2959,7 +3120,7 @@ function fsRemoveZone(personName, houseIdx, zoneIdx){
   if (!confirm('Remove this QFS zone?')) return;
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
-  var zones = all[personName][houseIdx].zones || [];
+  var zones = _fsActiveFloor(all[personName][houseIdx]).zones;
   zones.splice(zoneIdx, 1);
   _fsHousesSave(all);
   fsRenderHouseProfiles();
@@ -3997,7 +4158,7 @@ if (typeof buildCalView === 'function') {
             }
 
             try { if (typeof calculateBazi === 'function') calculateBazi(); } catch (err) {}
-            e.target.value = '';
+            // Keep the selected city name visible in the field (do not clear it).
         });
     }
     if (document.readyState === 'loading') {
@@ -4487,8 +4648,9 @@ function _fsActiveHouseRef(){
   if (idx >= list.length) idx = 0;
   var house = list[idx];
   if (!house) return null;
-  if (!house.settings) house.settings = { water: [], bed: [], desk: [] };
-  return { all: all, person: person, idx: idx, house: house };
+  var floor = _fsActiveFloor(house);
+  if (!floor.settings) floor.settings = { water: [], bed: [], desk: [] };
+  return { all: all, person: person, idx: idx, house: house, floor: floor };
 }
 // One-time, NON-destructive migration of the old per-person settings
 // store into each person's active (or first) house.
@@ -4503,10 +4665,11 @@ function _fsMigrateZoneSettings(){
       if (!list || !list.length) return;            // no house for this person — leave old data as-is
       var idx = _fsActiveHouseGet(pname); if (idx >= list.length) idx = 0;
       var house = list[idx];
-      if (!house.settings) house.settings = { water: [], bed: [], desk: [] };
+      var floor = _fsActiveFloor(house);
+      if (!floor.settings) floor.settings = { water: [], bed: [], desk: [] };
       ['water', 'bed', 'desk'].forEach(function(z){
         var arr = (old[pname] && old[pname][z]) || [];
-        if (arr.length){ house.settings[z] = (house.settings[z] || []).concat(arr); changed = true; }
+        if (arr.length){ floor.settings[z] = (floor.settings[z] || []).concat(arr); changed = true; }
       });
     });
     if (changed) _fsHousesSave(houses);
@@ -4544,8 +4707,8 @@ function fsSaveZoneSetting(){
       houseFacing: hf, period: pd, doorFacing: df, water: wt,
       manualChart: window._fsManualChart ? JSON.parse(JSON.stringify(window._fsManualChart)) : null
     };
-    if (!ref.house.settings[zone]) ref.house.settings[zone] = [];
-    ref.house.settings[zone].push(s);
+    if (!ref.floor.settings[zone]) ref.floor.settings[zone] = [];
+    ref.floor.settings[zone].push(s);
     _fsHousesSave(ref.all);
     fsRenderZoneSettings();
     if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
@@ -4557,7 +4720,7 @@ function fsLoadZoneSetting(idx){
     var zone = window._fsActiveZone;
     var ref = _fsActiveHouseRef();
     if (!FS_ZONES[zone] || !ref) return;
-    var list = ref.house.settings[zone] || [];
+    var list = ref.floor.settings[zone] || [];
     var s = list[idx];
     if (!s) return;
     _fsSetVal('fs-house-facing', s.houseFacing);
@@ -4576,7 +4739,7 @@ function fsDeleteZoneSetting(idx){
     var zone = window._fsActiveZone;
     var ref = _fsActiveHouseRef();
     if (!FS_ZONES[zone] || !ref) return;
-    var list = ref.house.settings[zone];
+    var list = ref.floor.settings[zone];
     if (!list || !list[idx]) return;
     if (!confirm('Delete setting "' + list[idx].name + '"?')) return;
     list.splice(idx, 1);
@@ -4609,9 +4772,9 @@ function fsRenderZoneSettings(){
     return;
   }
 
-  html += '<div style="font-size:11px;color:#666;margin-bottom:4px;">House: <strong>' + _fsEsc(ref.house.name) + '</strong> · Person: <strong>' + _fsEsc(ref.person.name) + '</strong> — saved inside House Profiles.</div>';
+  html += '<div style="font-size:11px;color:#666;margin-bottom:4px;">House: <strong>' + _fsEsc(ref.house.name) + '</strong> · Floor: <strong>' + _fsEsc((ref.floor && ref.floor.label) || 'Floor 1') + '</strong> · Person: <strong>' + _fsEsc(ref.person.name) + '</strong> — saved inside House Profiles.</div>';
 
-  var list = ref.house.settings[zone] || [];
+  var list = ref.floor.settings[zone] || [];
   if (!list.length){
     html += '<div style="font-size:12px;color:#999;padding:4px 0;">No settings saved yet for this section.</div>';
   } else {

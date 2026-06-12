@@ -453,11 +453,13 @@
     },
     {
       name: 'get_house_setup',
-      description: 'Return the FULL setup of one saved house resolved BY NAME (e.g. "Vienna"): facing/period, doors, ' +
-        'aquariums (each with its direction and the water star living there), QFS zones (direction + target star + ' +
-        'preset auto/custom + star number), and the saved Water/Bed/Desk settings. Everything for the house is here. ' +
-        'Use this when the user names a house (e.g. "activate the aquarium in the Vienna house"), then feed an ' +
-        'aquarium (direction + water_star) into find_water_activation_full.',
+      description: 'Return the FULL setup of one saved house resolved BY NAME (e.g. "Vienna"). The house is organised in ' +
+        'FLOORS: the response has a floors[] array, each floor carrying its own doors, aquariums (each with its direction ' +
+        'and the water star living there), QFS zones (direction + target star + preset + star number) and saved ' +
+        'Water/Bed/Desk settings — plus its own facing/period when same_facing_period is false. active_floor marks the ' +
+        'current floor. If the user names a floor use it, otherwise use the active floor. ' +
+        'Use this when the user names a house (e.g. "activate the aquarium on the first floor of the Vienna house"), then ' +
+        'feed an aquarium (direction + water_star) into find_water_activation_full.',
       input_schema: {
         type: 'object',
         properties: { house_name: { type: 'string', description: 'The house name to look up (case-insensitive, partial allowed).' } },
@@ -1342,32 +1344,51 @@
       return { error: q ? ('No house matching "' + input.house_name + '".') : 'Provide house_name.', available_houses: avail };
     }
     var DIR2GRID = { SE: 0, S: 1, SW: 2, E: 3, C: 4, W: 5, NE: 6, N: 7, NW: 8 };   // S-at-top grid
-    var chart = null;
-    try {
-      // FlyingStars is a top-level `const` (NOT on window) — reference it bare.
-      if (typeof FlyingStars !== 'undefined' && typeof fsMountainCharFromDeg === 'function' && found.houseFacing != null && found.period != null) {
-        chart = FlyingStars.calculate(parseInt(found.period, 10), fsMountainCharFromDeg(parseFloat(found.houseFacing)));
-      }
-    } catch (e) { chart = null; }
-    function starAt(dir, type) {
+    function chartFor(facing, period) {
+      try {
+        // FlyingStars is a top-level `const` (NOT on window) — reference it bare.
+        if (typeof FlyingStars !== 'undefined' && typeof fsMountainCharFromDeg === 'function' && facing != null && period != null)
+          return FlyingStars.calculate(parseInt(period, 10), fsMountainCharFromDeg(parseFloat(facing)));
+      } catch (e) {}
+      return null;
+    }
+    function starAt(chart, dir, type) {
       if (!chart || dir == null) return null;
       var gi = DIR2GRID[dir]; if (gi == null) return null;
       var arr = (type === 'mountain') ? chart.sittingStars : chart.facingStars;
       return (arr && arr[gi] != null) ? arr[gi] : null;
     }
-    var settings = found.settings || { water: [], bed: [], desk: [] };
+    var same = (found.sameFacing == null) ? true : !!found.sameFacing;
+    var floorsArr = (found.floors && found.floors.length) ? found.floors
+      : [{ label: 'Floor 1', facing: found.houseFacing, period: found.period, doors: found.doors || [], waters: found.waters || [], zones: found.zones || [], settings: found.settings || { water: [], bed: [], desk: [] } }];
+    var activeFloor = found.activeFloor || 0; if (activeFloor >= floorsArr.length) activeFloor = 0;
+    var floorsOut = floorsArr.map(function (f, fi) {
+      var effFacing = same ? found.houseFacing : f.facing;
+      var effPeriod = same ? found.period : f.period;
+      var chart = chartFor(effFacing, effPeriod);
+      var st = f.settings || { water: [], bed: [], desk: [] };
+      return {
+        index: fi,
+        label: f.label || ('Floor ' + (fi + 1)),
+        active: (fi === activeFloor),
+        facing: effFacing, period: effPeriod,
+        doors: (f.doors || []).map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
+        aquariums: (f.waters || []).map(function (w) { return { name: w.name, direction: w.dir, palace: w.palace, water_star: starAt(chart, w.dir, 'water') }; }),
+        qfs_zones: (f.zones || []).map(function (z) { return { name: z.name, direction: z.dir || null, palace: z.palace, target: z.target, preset: z.preset || 'auto', star_num: starAt(chart, z.dir, z.target) }; }),
+        saved_settings: {
+          water: (st.water || []).map(function (s) { return s.name; }),
+          bed: (st.bed || []).map(function (s) { return s.name; }),
+          desk: (st.desk || []).map(function (s) { return s.name; })
+        }
+      };
+    });
     return {
       house: found.name, person: foundPerson,
-      houseFacing: found.houseFacing, period: found.period,
-      doors: (found.doors || []).map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
-      aquariums: (found.waters || []).map(function (w) { return { name: w.name, direction: w.dir, palace: w.palace, water_star: starAt(w.dir, 'water') }; }),
-      qfs_zones: (found.zones || []).map(function (z) { return { name: z.name, direction: z.dir || null, palace: z.palace, target: z.target, preset: z.preset || 'auto', star_num: starAt(z.dir, z.target) }; }),
-      saved_settings: {
-        water: (settings.water || []).map(function (s) { return s.name; }),
-        bed: (settings.bed || []).map(function (s) { return s.name; }),
-        desk: (settings.desk || []).map(function (s) { return s.name; })
-      },
-      note: 'Full setup of the house (House Profiles). To activate the aquarium: take an aquarium and call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star. The loaded person provides the XKDG scan. qfs_zones are explicit saved targets (direction + target star + preset). If water_star/star_num are null (no FS page to compute the chart), read the star via recall_flying_stars.'
+      same_facing_period: same,
+      house_facing: found.houseFacing, house_period: found.period,
+      active_floor: activeFloor,
+      floors: floorsOut,
+      note: 'Multi-floor house: each floor has its own doors / aquariums / QFS zones / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star. The loaded person provides the XKDG scan. If star values are null (no FS page open to compute the chart), read the star via recall_flying_stars.'
     };
   }
 
