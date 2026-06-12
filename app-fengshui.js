@@ -2768,6 +2768,7 @@ function fsRenderHouseProfiles(){
     html += '</div>';
     html += '<span>';
     html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:4px;" title="Load into FS inputs to edit">📂 Load</button>';
+    html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:4px;" title="Rename house">✏ Rename</button>';
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
     html += '</span></div>';
 
@@ -3084,57 +3085,78 @@ function fsSaveHouse(){
   const person = fsGetActivePersonForHouse();
   if (!person){ alert('Load a person (A or B) first.'); return; }
 
-  const hfVal     = document.getElementById('fs-house-facing').value;
-  const perVal    = document.getElementById('fs-period').value;
-  const facingVal = document.getElementById('fs-facing').value;
-  const xkdgWVal  = document.getElementById('fs-water').value;
+  const hfVal     = (document.getElementById('fs-house-facing') || {}).value || '';
+  const perVal    = (document.getElementById('fs-period') || {}).value || '';
+  const facingVal = (document.getElementById('fs-facing') || {}).value || '';
+  const xkdgWVal  = (document.getElementById('fs-water') || {}).value || '';
 
-  if (!hfVal && !facingVal){ alert('Enter at least a House Facing or Facing.'); return; }
+  if (!hfVal && !facingVal){ alert('Enter at least a House Facing or a Door Facing first.'); return; }
 
-  const name = prompt('House name (e.g. "My House"):');
-  if (!name || !name.trim()) return;
+  var all = _fsHousesLoad();
+  var houses = all[person.name] || [];
 
-  // Auto-create first door from current Facing + Water inputs
-  var doors = [];
-  if (facingVal){
-    doors.push({
-      name: 'Main door',
-      facing: parseFloat(facingVal),
-      water:  xkdgWVal ? parseFloat(xkdgWVal) : null
-    });
+  // No house yet for this person → create a new one (same as "+ Add a new house").
+  if (!houses.length){ fsAddNewHouse(); return; }
+
+  // Otherwise ask WHICH house (or a new one) to save this chart into.
+  var lines = ['Save this chart into which house?', '', '0 = \u2795 New house'];
+  houses.forEach(function(h, i){ lines.push((i + 1) + ' = ' + h.name); });
+  var pick = prompt(lines.join('\n'), '1');
+  if (pick === null) return;
+  pick = parseInt(pick, 10);
+  if (isNaN(pick)){ alert('Please type a number.'); return; }
+  if (pick === 0){ fsAddNewHouse(); return; }
+  var hIdx = pick - 1;
+  if (hIdx < 0 || hIdx >= houses.length){ alert('Invalid choice.'); return; }
+  var h = houses[hIdx];
+
+  // Which floor?
+  _fsActiveFloor(h);                                       // ensure floors[]
+  var fIdx = (h.activeFloor || 0);
+  if (h.floors.length > 1){
+    var flines = ['Into which floor of "' + h.name + '"?'];
+    h.floors.forEach(function(fl, i){ flines.push((i + 1) + ' = ' + (fl.label || ('Floor ' + (i + 1)))); });
+    var fp = prompt(flines.join('\n'), String(fIdx + 1));
+    if (fp === null) return;
+    fp = parseInt(fp, 10);
+    if (isNaN(fp) || fp < 1 || fp > h.floors.length){ alert('Invalid floor.'); return; }
+    fIdx = fp - 1;
   }
+  var floor = h.floors[fIdx];
 
+  // Write the chart (facing / period / main door) into the chosen floor.
   var facingNum = hfVal  ? parseFloat(hfVal) : null;
-  var periodNum = perVal ? parseInt(perVal)  : null;
-  const house = {
-    name: name.trim(),
-    sameFacing: true,
-    houseFacing: facingNum,
-    period:      periodNum,
-    floors: [{
-      label: 'Floor 1',
-      facing: facingNum,
-      period: periodNum,
-      doors:  doors,
-      waters: [],
-      zones:  [],
-      settings: { water: [], bed: [], desk: [] }
-    }],
-    activeFloor: 0
-  };
-  var pdata2 = _fsActivePersonData();
-  house.personName = (pdata2 && pdata2.name) || person.name;
-  house.birthDate  = (pdata2 && pdata2.birthDate) || null;
-  house.birthTime  = (pdata2 && pdata2.birthTime) || null;
-
-  const all = _fsHousesLoad();
-  if (!all[person.name]) all[person.name] = [];
-  var newIdx = all[person.name].length;
-  all[person.name].push(house);
+  var periodNum = perVal ? parseInt(perVal, 10) : null;
+  if (h.sameFacing){
+    if (facingNum != null) h.houseFacing = facingNum;     // shared across floors
+    if (periodNum != null) h.period = periodNum;
+  }
+  if (facingNum != null) floor.facing = facingNum;
+  if (periodNum != null) floor.period = periodNum;
+  if (facingVal){
+    var door = { name: 'Main door', facing: parseFloat(facingVal), water: (xkdgWVal ? parseFloat(xkdgWVal) : null) };
+    if (!floor.doors) floor.doors = [];
+    if (floor.doors.length) floor.doors[0] = door; else floor.doors.push(door);
+  }
+  h.activeFloor = fIdx;
   _fsHousesSave(all);
-  // First house → auto-set as active; otherwise keep current active
-  if (newIdx === 0) _fsActiveHouseSet(person.name, 0);
+  _fsActiveHouseSet(person.name, hIdx);
+  window._fsSettingHouseIdx = hIdx; window._fsSettingFloorIdx = fIdx;
   fsRenderHouseProfiles();
+  if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+  alert('Chart saved into "' + h.name + '" \u00b7 ' + (floor.label || ('Floor ' + (fIdx + 1))) + '.');
+}
+
+function fsRenameHouse(personName, houseIdx){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
+    var nm = prompt('Rename house:', h.name || '');
+    if (nm === null || !nm.trim()) return;
+    h.name = nm.trim();
+    _fsHousesSave(all);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsRenameHouse', e); }
 }
 
 function fsLoadHouse(personName, houseIdx){
