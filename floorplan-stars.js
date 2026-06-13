@@ -40,41 +40,39 @@
   var st = {
     img: null, drawW: 0, drawH: 0,
     facingDeg: 180, facingSide: 'top', period: 8,
-    centerMode: 'auto',
-    verts: [], center: null, chart: null, centerOutside: false
+    centerMode: 'rect',          // 'rect' (draw rectangles) | 'manual' (tap a point)
+    rects: [],                   // [{x0,y0,x1,y1}] rectangles covering the area
+    drag: null,                  // {x0,y0,x1,y1} rectangle being dragged
+    center: null, chart: null, centerOutside: false
   };
 
   var els = {}; // cached DOM refs
 
   // ── Geometry ──────────────────────────────────────────────
-  function centroid(pts) {
-    if (!pts || pts.length === 0) return null;
-    if (pts.length < 3) { // average for 1–2 points
-      var sx = 0, sy = 0; pts.forEach(function (p) { sx += p.x; sy += p.y; });
-      return { x: sx / pts.length, y: sy / pts.length };
-    }
-    var A = 0, cx = 0, cy = 0, n = pts.length;
-    for (var i = 0; i < n; i++) {
-      var j = (i + 1) % n;
-      var cross = pts[i].x * pts[j].y - pts[j].x * pts[i].y;
-      A += cross; cx += (pts[i].x + pts[j].x) * cross; cy += (pts[i].y + pts[j].y) * cross;
-    }
-    A *= 0.5;
-    if (Math.abs(A) < 1e-6) { // degenerate → fall back to average
-      var ax = 0, ay = 0; pts.forEach(function (p) { ax += p.x; ay += p.y; });
-      return { x: ax / n, y: ay / n };
-    }
-    return { x: cx / (6 * A), y: cy / (6 * A) };
+  function normRect(r) {
+    return { x0: Math.min(r.x0, r.x1), y0: Math.min(r.y0, r.y1), x1: Math.max(r.x0, r.x1), y1: Math.max(r.y0, r.y1) };
   }
-  function pointInPolygon(pt, poly) {
-    if (!poly || poly.length < 3) return true;
-    var inside = false, n = poly.length;
-    for (var i = 0, j = n - 1; i < n; j = i++) {
-      var xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
-      var hit = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
-      if (hit) inside = !inside;
+  function inAnyRect(pt, rects) {
+    return rects.some(function (r) { return pt.x >= r.x0 && pt.x <= r.x1 && pt.y >= r.y0 && pt.y <= r.y1; });
+  }
+  // Centroid of the UNION of rectangles, by area sampling — correct even if
+  // rectangles overlap (overlap is counted once, not twice).
+  function unionCentroid(rects) {
+    if (!rects || !rects.length) return null;
+    var minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    rects.forEach(function (r) { minx = Math.min(minx, r.x0); miny = Math.min(miny, r.y0); maxx = Math.max(maxx, r.x1); maxy = Math.max(maxy, r.y1); });
+    var step = Math.max(2, Math.round(Math.min(maxx - minx, maxy - miny) / 120)); // ~120 samples across the smaller side
+    var sx = 0, sy = 0, n = 0;
+    for (var y = miny; y <= maxy; y += step) {
+      for (var x = minx; x <= maxx; x += step) {
+        for (var k = 0; k < rects.length; k++) {
+          var r = rects[k];
+          if (x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1) { sx += x; sy += y; n++; break; }
+        }
+      }
     }
-    return inside;
+    if (!n) return null;
+    return { x: sx / n, y: sy / n };
   }
   // compass degree that "up" (−y) of the image points to
   function imageUpDeg() {
@@ -112,15 +110,19 @@
     ctx.clearRect(0, 0, c.width, c.height);
     if (st.img) ctx.drawImage(st.img, 0, 0, st.drawW, st.drawH);
 
-    // perimeter polygon being tapped (auto mode)
-    if (st.centerMode === 'auto' && st.verts.length) {
+    // rectangles covering the area (rect mode) + live drag preview
+    if (st.centerMode === 'rect') {
       ctx.save();
-      ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 2; ctx.fillStyle = 'rgba(21,101,192,0.10)';
-      ctx.beginPath();
-      st.verts.forEach(function (p, i) { i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); });
-      if (st.verts.length > 2) { ctx.closePath(); ctx.fill(); }
-      ctx.stroke();
-      st.verts.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI); ctx.fillStyle = '#1565c0'; ctx.fill(); });
+      ctx.lineWidth = 2; ctx.strokeStyle = '#1565c0'; ctx.fillStyle = 'rgba(21,101,192,0.08)';
+      st.rects.forEach(function (r) {
+        ctx.beginPath(); ctx.rect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.fill(); ctx.stroke();
+      });
+      if (st.drag) {
+        var d = normRect(st.drag);
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.rect(d.x0, d.y0, d.x1 - d.x0, d.y1 - d.y0); ctx.fill(); ctx.stroke();
+        ctx.setLineDash([]);
+      }
       ctx.restore();
     }
 
@@ -222,19 +224,49 @@
   }
 
   // ── Actions ───────────────────────────────────────────────
-  function onTap(ev) {
+  // Pointer handling: in 'rect' mode a drag draws one rectangle; in 'manual'
+  // mode a single tap sets the center.
+  function onDown(ev) {
     if (!st.img) return;
     ev.preventDefault();
     var p = canvasPt(ev);
     if (st.centerMode === 'manual') {
       st.center = p; st.centerOutside = false;
-      if (st.chart) {} // chart stays; user can redraw
-      status('Center set. Press “Draw chart”.');
+      status('Center set. Set facing/period, then “Draw chart”.');
+      redraw();
     } else {
-      st.verts.push(p);
-      status(st.verts.length + ' vertex point(s). Tap each corner, then “Draw chart”.');
+      st.drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+    }
+  }
+  function onMove(ev) {
+    if (!st.drag) return;
+    ev.preventDefault();
+    var p = canvasPt(ev);
+    st.drag.x1 = p.x; st.drag.y1 = p.y;
+    redraw();
+  }
+  function onUp(ev) {
+    if (!st.drag) return;
+    var d = normRect(st.drag);
+    st.drag = null;
+    if ((d.x1 - d.x0) > 6 && (d.y1 - d.y0) > 6) { // ignore tiny accidental drags
+      st.rects.push(d);
+      st.center = null; st.chart = null; // outdated until Find center is pressed again
+      status(st.rects.length + ' rectangle(s). Add more to cover the plan, then “Find center”.');
     }
     redraw();
+  }
+
+  function findCenter() {
+    if (st.centerMode === 'manual') { status('Manual mode: tap a point on the plan to set the center.'); return; }
+    if (!st.rects.length) { status('Draw at least one rectangle over the plan first.', true); return; }
+    st.center = unionCentroid(st.rects);
+    st.centerOutside = st.center ? !inAnyRect(st.center, st.rects) : false;
+    st.chart = null;
+    redraw();
+    var msg = 'Center found from ' + st.rects.length + ' rectangle(s). Set facing/period, then “Draw chart”.';
+    if (st.centerOutside) msg += ' ⚠ The center falls in a gap between rectangles (irregular plan) — review the missing-sector situation.';
+    status(msg, st.centerOutside);
   }
 
   function draw() {
@@ -245,10 +277,13 @@
     st.period = clampPeriod(parseInt(els.period.value, 10));
     els.deg.value = st.facingDeg; els.period.value = st.period;
 
-    if (st.centerMode === 'auto') {
-      if (st.verts.length < 3) { status('Tap at least 3 perimeter corners first.', true); return; }
-      st.center = centroid(st.verts);
-      st.centerOutside = !pointInPolygon(st.center, st.verts);
+    if (st.centerMode === 'rect') {
+      if (!st.center) { // compute it now if the user skipped Find center
+        if (!st.rects.length) { status('Draw rectangle(s) over the plan, then “Find center”.', true); return; }
+        st.center = unionCentroid(st.rects);
+        st.centerOutside = st.center ? !inAnyRect(st.center, st.rects) : false;
+      }
+      if (!st.center) { status('Could not compute the center — redraw the rectangles.', true); return; }
     } else {
       if (!st.center) { status('Tap a point to set the center first.', true); return; }
       st.centerOutside = false;
@@ -261,7 +296,7 @@
     redraw();
     var mtn = mountainFromDeg(st.facingDeg);
     var msg = 'Period ' + st.period + ' · facing ' + st.facingDeg + '° (' + mtn + ', ' + st.chart.facingDirection + ') · facing side: ' + st.facingSide + '.';
-    if (st.centerOutside) msg += ' ⚠ The centroid falls OUTSIDE the outline (irregular plan) — review the missing-sector situation.';
+    if (st.centerOutside) msg += ' ⚠ The center falls outside the covered area (irregular plan) — review the missing-sector situation.';
     status(msg, st.centerOutside);
   }
 
@@ -337,35 +372,37 @@
     // Controls row 3: center mode + actions
     var row3 = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;' });
     var modeWrap = el('div', { style: 'display:flex;gap:6px;flex:1;min-width:220px;' });
-    els.autoBtn = el('button', { style: modeBtnStyle(st.centerMode === 'auto') }, 'Auto center (tap perimeter)');
+    els.autoBtn = el('button', { style: modeBtnStyle(st.centerMode === 'rect') }, 'Rectangles (drag to cover area)');
     els.manBtn = el('button', { style: modeBtnStyle(st.centerMode === 'manual') }, 'Manual center (tap a point)');
     function setMode(m) {
       st.centerMode = m;
-      els.autoBtn.setAttribute('style', modeBtnStyle(m === 'auto'));
+      els.autoBtn.setAttribute('style', modeBtnStyle(m === 'rect'));
       els.manBtn.setAttribute('style', modeBtnStyle(m === 'manual'));
-      if (m === 'manual') { st.verts = []; }
-      st.chart = null;
-      status(m === 'auto' ? 'Auto: tap each perimeter corner, then “Draw chart”.' : 'Manual: tap any point to set the center.');
+      st.center = null; st.chart = null; st.drag = null;
+      if (m === 'manual') st.rects = [];
+      status(m === 'rect' ? 'Drag to draw rectangles covering the plan, then “Find center”.' : 'Tap any point to set the center.');
       redraw();
     }
-    els.autoBtn.addEventListener('click', function () { setMode('auto'); });
+    els.autoBtn.addEventListener('click', function () { setMode('rect'); });
     els.manBtn.addEventListener('click', function () { setMode('manual'); });
     modeWrap.appendChild(els.autoBtn); modeWrap.appendChild(els.manBtn);
     row3.appendChild(modeWrap);
 
-    var undo = el('button', { style: 'padding:7px 10px;border:1px solid #999;border-radius:6px;background:#fff;color:#444;font-size:12px;cursor:pointer;' }, 'Undo point');
-    undo.addEventListener('click', function () { if (st.centerMode === 'auto') st.verts.pop(); else st.center = null; st.chart = null; redraw(); status(''); });
-    var clr = el('button', { style: 'padding:7px 10px;border:1px solid #999;border-radius:6px;background:#fff;color:#444;font-size:12px;cursor:pointer;' }, 'Clear points');
-    clr.addEventListener('click', function () { st.verts = []; st.center = null; st.chart = null; redraw(); status(''); });
+    var findBtn = el('button', { style: 'padding:7px 12px;border:0;border-radius:6px;background:#5d4037;color:#fff;font-size:12px;font-weight:600;cursor:pointer;' }, 'Find center');
+    findBtn.addEventListener('click', findCenter);
+    var undo = el('button', { style: 'padding:7px 10px;border:1px solid #999;border-radius:6px;background:#fff;color:#444;font-size:12px;cursor:pointer;' }, 'Undo');
+    undo.addEventListener('click', function () { if (st.centerMode === 'rect') st.rects.pop(); st.center = null; st.chart = null; redraw(); status(''); });
+    var clr = el('button', { style: 'padding:7px 10px;border:1px solid #999;border-radius:6px;background:#fff;color:#444;font-size:12px;cursor:pointer;' }, 'Clear');
+    clr.addEventListener('click', function () { st.rects = []; st.center = null; st.chart = null; st.drag = null; redraw(); status(''); });
     var drawBtn = el('button', { style: 'padding:7px 14px;border:0;border-radius:6px;background:#2e7d32;color:#fff;font-size:13px;font-weight:700;cursor:pointer;' }, 'Draw chart');
     drawBtn.addEventListener('click', draw);
-    row3.appendChild(undo); row3.appendChild(clr); row3.appendChild(drawBtn);
+    row3.appendChild(findBtn); row3.appendChild(undo); row3.appendChild(clr); row3.appendChild(drawBtn);
     card.appendChild(row3);
 
     // Canvas
     var canvasWrap = el('div', { style: 'border:1px solid #ddd;border-radius:8px;overflow:auto;max-height:60vh;background:#fafafa;display:flex;justify-content:center;' });
     els.canvas = el('canvas', { style: 'touch-action:none;display:block;max-width:100%;' });
-    var ph = el('div', { id: 'fps-ph', style: 'padding:40px 16px;color:#999;font-size:13px;text-align:center;' }, 'Add a floor plan with 📷 Camera (take a photo now) or 🖼️ Gallery / Files (existing image — Google Drive is available here too). Then choose Auto (tap the corners) or Manual (tap one point), set the facing degree/side and period, and press “Draw chart”.');
+    var ph = el('div', { id: 'fps-ph', style: 'padding:40px 16px;color:#999;font-size:13px;text-align:center;' }, 'Add a floor plan with 📷 Camera (take a photo now) or 🖼️ Gallery / Files (existing image — Google Drive is available here too). Then drag to draw rectangles covering the plan (several if needed) and press “Find center”; set the facing degree/side and period, and press “Draw chart”.');
     canvasWrap.appendChild(ph);
     canvasWrap.appendChild(els.canvas);
     els.canvas.style.display = 'none';
@@ -386,10 +423,10 @@
       rd.onload = function () {
         var im = new Image();
         im.onload = function () {
-          st.img = im; st.verts = []; st.center = null; st.chart = null;
+          st.img = im; st.rects = []; st.drag = null; st.center = null; st.chart = null;
           ph.style.display = 'none'; els.canvas.style.display = 'block';
           fitCanvas(); redraw();
-          status(st.centerMode === 'auto' ? 'Tap each perimeter corner, then “Draw chart”.' : 'Tap any point to set the center.');
+          status(st.centerMode === 'rect' ? 'Drag to draw rectangles covering the plan, then “Find center”.' : 'Tap any point to set the center.');
         };
         im.src = rd.result;
       };
@@ -398,11 +435,19 @@
     }
     camInput.addEventListener('change', loadFile);
     galInput.addEventListener('change', loadFile);
-    els.canvas.addEventListener('pointerdown', onTap);
-    // fallback for browsers without Pointer Events
-    if (!('PointerEvent' in window)) {
-      els.canvas.addEventListener('touchstart', onTap, { passive: false });
-      els.canvas.addEventListener('mousedown', onTap);
+
+    if ('PointerEvent' in window) {
+      els.canvas.addEventListener('pointerdown', onDown);
+      els.canvas.addEventListener('pointermove', onMove);
+      els.canvas.addEventListener('pointerup', onUp);
+      els.canvas.addEventListener('pointercancel', function () { st.drag = null; redraw(); });
+    } else {
+      els.canvas.addEventListener('touchstart', onDown, { passive: false });
+      els.canvas.addEventListener('touchmove', onMove, { passive: false });
+      els.canvas.addEventListener('touchend', onUp);
+      els.canvas.addEventListener('mousedown', onDown);
+      els.canvas.addEventListener('mousemove', onMove);
+      els.canvas.addEventListener('mouseup', onUp);
     }
     window.addEventListener('resize', function () { if (st.img && document.getElementById('fps-overlay')) { fitCanvas(); redraw(); } });
   }
