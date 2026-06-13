@@ -1663,10 +1663,39 @@
   }
 
   var history = [];   // [{role:'user'|'assistant', content:'...'}]
+  var currentConvId = null; // id of the archived conversation currently open (null = unsaved/new)
   var sending = false;
 
   function getUrl() { try { return (localStorage.getItem(URL_KEY) || '').trim() || DEFAULT_URL; } catch (e) { return DEFAULT_URL; } }
   function setUrl(u) { try { localStorage.setItem(URL_KEY, (u || '').trim()); } catch (e) {} }
+
+  // ── Conversation archive (saved manually, kept in localStorage on THIS device) ──
+  var ARCHIVE_KEY = 'xkdg_ai_archive';
+  var ARCHIVE_MAX = 50; // cap number of stored conversations to stay within localStorage quota
+  function archiveLoad() {
+    try { var a = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]'); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  }
+  function archiveStore(arr) {
+    try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(arr)); return true; }
+    catch (e) { return false; } // quota exceeded or storage blocked
+  }
+  // Build a short title from the first typed user message in a history array.
+  function convTitle(h) {
+    try {
+      for (var i = 0; i < h.length; i++) {
+        if (h[i] && h[i].role === 'user' && typeof h[i].content === 'string') {
+          var t = h[i].content.trim().replace(/\s+/g, ' ');
+          if (t) return t.length > 48 ? t.slice(0, 48) + '…' : t;
+        }
+      }
+    } catch (e) {}
+    return 'Conversation';
+  }
+  function convDateLabel(ts) {
+    try { var d = new Date(ts); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    catch (e) { return ''; }
+  }
 
   function elc(tag, attrs, text) {
     var e = document.createElement(tag);
@@ -1703,13 +1732,17 @@
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '⚙');
     var clearBtn = elc('button', { id: 'xkdg-ai-clear', title: 'Clear conversation',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🗑');
+    var saveBtn = elc('button', { id: 'xkdg-ai-save', title: 'Save conversation to archive',
+      style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '💾');
+    var archBtn = elc('button', { id: 'xkdg-ai-archive', title: 'Conversation archive',
+      style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '📚');
     var speakerBtn = elc('button', { id: 'xkdg-ai-speak', title: 'Read replies aloud',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🔇');
     var hfBtn = elc('button', { id: 'xkdg-ai-hf', title: 'Hands-free driving mode (wake word)',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🚗');
     var closeBtn = elc('button', { id: 'xkdg-ai-close', title: 'Close',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '✕');
-    header.appendChild(langSel); header.appendChild(gear); header.appendChild(speakerBtn); header.appendChild(hfBtn); header.appendChild(clearBtn); header.appendChild(closeBtn);
+    header.appendChild(langSel); header.appendChild(gear); header.appendChild(speakerBtn); header.appendChild(hfBtn); header.appendChild(saveBtn); header.appendChild(archBtn); header.appendChild(clearBtn); header.appendChild(closeBtn);
     panel.appendChild(header);
 
     var msgs = elc('div', { id: 'xkdg-ai-msgs',
@@ -1941,7 +1974,9 @@
     btn.addEventListener('click', function () { panel.style.display === 'flex' ? closePanel() : openPanel(); });
     closeBtn.addEventListener('click', closePanel);
     gear.addEventListener('click', openSettings);
-    clearBtn.addEventListener('click', function () { history = []; msgs.innerHTML = ''; setStatus(''); });
+    clearBtn.addEventListener('click', function () { history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); });
+    saveBtn.addEventListener('click', function () { saveCurrentConversation(false); });
+    archBtn.addEventListener('click', openArchive);
 
     function promptUrl() {
       var cur = getUrl();
@@ -2026,9 +2061,153 @@
 
       ov.appendChild(card); document.body.appendChild(ov);
     }
+
+    // ── Save the current conversation to the archive (manual, via 💾) ──
+    function saveCurrentConversation(silent) {
+      if (!history.length) { if (!silent) setStatus('Nothing to save yet.'); return false; }
+      var arr = archiveLoad();
+      var rec = {
+        id: currentConvId || ('c' + Date.now() + Math.floor(Math.random() * 1000)),
+        title: convTitle(history), ts: Date.now(), lang: chatLang(),
+        history: JSON.parse(JSON.stringify(history))
+      };
+      var idx = -1, i;
+      for (i = 0; i < arr.length; i++) { if (arr[i] && arr[i].id === rec.id) { idx = i; break; } }
+      if (idx >= 0) arr[idx] = rec; else arr.unshift(rec);
+      if (arr.length > ARCHIVE_MAX) arr = arr.slice(0, ARCHIVE_MAX);
+      currentConvId = rec.id;
+      var ok = archiveStore(arr);
+      if (!silent) {
+        if (ok) { saveBtn.textContent = '✓'; setTimeout(function () { saveBtn.textContent = '💾'; }, 1200);
+          setStatus(idx >= 0 ? 'Conversation updated in archive.' : 'Conversation saved to archive.'); }
+        else setStatus('Could not save — storage full. Export the archive (📚) and delete some.', '#b00');
+      }
+      return ok;
+    }
+
+    // Redraw the visible bubbles from `history` (text only; tool blocks are skipped, nothing read aloud).
+    function renderHistoryBubbles() {
+      msgs.innerHTML = '';
+      history.forEach(function (m) {
+        if (!m) return;
+        if (m.role === 'user') {
+          if (typeof m.content === 'string' && m.content.trim()) addBubble('user', m.content, true);
+        } else if (m.role === 'assistant') {
+          var t = (typeof m.content === 'string') ? m.content : extractText({ content: m.content });
+          if (t && t.trim()) addBubble('assistant', t, true);
+        }
+      });
+    }
+
+    // Reopen a saved conversation so it can be reviewed and continued.
+    function loadConversation(conv) {
+      if (!conv || !Array.isArray(conv.history)) return;
+      history = JSON.parse(JSON.stringify(conv.history));
+      currentConvId = conv.id;
+      renderHistoryBubbles();
+      openPanel();
+      setStatus('Conversation loaded — you can continue it.');
+    }
+
+    // ── Archive browser (📚): list, reopen, delete, clear all, export/import ──
+    function openArchive() {
+      var ex0 = document.getElementById('xkdg-ai-arch-ov'); if (ex0) ex0.remove();
+      var arr = archiveLoad();
+      var ov = elc('div', { id: 'xkdg-ai-arch-ov', style: 'position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;' });
+      var card = elc('div', { style: 'background:#fff;border-radius:12px;max-width:520px;width:100%;padding:16px 18px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.3);' });
+      var hd = elc('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;' });
+      hd.appendChild(elc('h3', { style: 'margin:0;font-size:16px;color:#4a148c;' }, '\ud83d\udcda Conversation archive'));
+      var x = elc('button', { style: 'border:0;background:transparent;font-size:20px;cursor:pointer;color:#888;' }, '\u2715');
+      x.addEventListener('click', function () { ov.remove(); });
+      hd.appendChild(x); card.appendChild(hd);
+      card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:10px;line-height:1.5;' },
+        'Saved on THIS device. "Clear site data" (used for app updates) erases it \u2014 use Export below to keep a copy.'));
+
+      var listWrap = elc('div', { style: 'display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;' });
+      if (!arr.length) {
+        listWrap.appendChild(elc('div', { style: 'font-size:13px;color:#999;padding:10px;text-align:center;' }, 'No saved conversations yet. Use \ud83d\udcbe in the chat header to save one.'));
+      } else {
+        arr.forEach(function (conv) {
+          var row = elc('div', { style: 'display:flex;align-items:center;gap:8px;border:1px solid #eee;border-radius:8px;padding:8px 10px;' });
+          var info = elc('div', { style: 'flex:1;min-width:0;cursor:pointer;' });
+          info.appendChild(elc('div', { style: 'font-size:13px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' }, conv.title || 'Conversation'));
+          info.appendChild(elc('div', { style: 'font-size:11px;color:#999;' }, convDateLabel(conv.ts)));
+          info.addEventListener('click', function () { ov.remove(); loadConversation(conv); });
+          var del = elc('button', { title: 'Delete', style: 'border:0;background:transparent;font-size:16px;cursor:pointer;color:#b00;' }, '\ud83d\uddd1');
+          del.addEventListener('click', function () {
+            if (!window.confirm('Delete this conversation?')) return;
+            var a2 = archiveLoad().filter(function (c) { return c.id !== conv.id; });
+            archiveStore(a2);
+            if (currentConvId === conv.id) currentConvId = null;
+            ov.remove(); openArchive();
+          });
+          row.appendChild(info); row.appendChild(del);
+          listWrap.appendChild(row);
+        });
+      }
+      card.appendChild(listWrap);
+
+      if (arr.length) {
+        var clearAll = elc('button', { style: 'width:100%;margin-top:10px;padding:8px;border:1px solid #b00;border-radius:6px;background:#fff;color:#b00;font-size:13px;font-weight:600;cursor:pointer;' }, '\ud83d\uddd1 Clear all conversations');
+        clearAll.addEventListener('click', function () {
+          if (!window.confirm('Delete ALL saved conversations? This cannot be undone.')) return;
+          archiveStore([]); currentConvId = null; ov.remove(); openArchive();
+        });
+        card.appendChild(clearAll);
+      }
+
+      card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
+
+      card.appendChild(elc('div', { style: 'font-size:13px;font-weight:700;color:#1565c0;margin:0 0 3px;' }, '\u2b06\ufe0f Export archive'));
+      card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:6px;line-height:1.5;' }, 'Copy or download all saved conversations. Keep this before clearing site data, then Import it back.'));
+      var exp = elc('textarea', { readonly: 'readonly', style: 'width:100%;height:60px;box-sizing:border-box;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:11px;font-family:monospace;' });
+      exp.value = JSON.stringify({ _xkdg_archive: 1, v: 1, ts: Date.now(), data: arr });
+      card.appendChild(exp);
+      var expRow = elc('div', { style: 'display:flex;gap:6px;margin-top:6px;' });
+      var copyB = elc('button', { style: 'flex:1;padding:8px;border:0;border-radius:6px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '\ud83d\udccb Copy');
+      var dlB = elc('button', { style: 'flex:1;padding:8px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;' }, '\u2b07 Download');
+      copyB.addEventListener('click', function () {
+        try { exp.focus(); exp.select(); } catch (e) {}
+        var done = function () { copyB.textContent = '\u2713 Copied'; setTimeout(function () { copyB.textContent = '\ud83d\udccb Copy'; }, 1200); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(exp.value).then(done, function () { try { document.execCommand('copy'); done(); } catch (e) {} });
+        else { try { document.execCommand('copy'); done(); } catch (e) {} }
+      });
+      dlB.addEventListener('click', function () {
+        try { var blob = new Blob([exp.value], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'xkdg-conversations.json'; document.body.appendChild(a); a.click(); a.remove(); } catch (e) {}
+      });
+      expRow.appendChild(copyB); expRow.appendChild(dlB); card.appendChild(expRow);
+
+      card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
+
+      card.appendChild(elc('div', { style: 'font-size:13px;font-weight:700;color:#2e7d32;margin:0 0 3px;' }, '\u267b\ufe0f Import archive'));
+      card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:6px;line-height:1.5;' }, 'Paste an exported archive. Conversations are merged with the ones already here (duplicates skipped).'));
+      var imp = elc('textarea', { placeholder: 'Paste the exported archive here\u2026', style: 'width:100%;height:60px;box-sizing:border-box;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:11px;font-family:monospace;' });
+      card.appendChild(imp);
+      var impStatus = elc('div', { style: 'font-size:11px;margin-top:4px;min-height:14px;' }, '');
+      card.appendChild(impStatus);
+      var impB = elc('button', { style: 'width:100%;margin-top:6px;padding:9px;border:0;border-radius:6px;background:#2e7d32;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '\u267b\ufe0f Import');
+      impB.addEventListener('click', function () {
+        var t = (imp.value || '').trim();
+        if (!t) { impStatus.style.color = '#b58900'; impStatus.textContent = 'Paste an exported archive first.'; return; }
+        var incoming;
+        try { var parsed = JSON.parse(t); incoming = (parsed && parsed.data) ? parsed.data : parsed; if (!Array.isArray(incoming)) throw new Error('bad'); }
+        catch (e) { impStatus.style.color = '#b00'; impStatus.textContent = 'That text is not a valid archive.'; return; }
+        var cur = archiveLoad(), seen = {};
+        cur.forEach(function (c) { if (c && c.id) seen[c.id] = 1; });
+        var added = 0;
+        incoming.forEach(function (c) { if (c && c.id && !seen[c.id] && Array.isArray(c.history)) { cur.unshift(c); seen[c.id] = 1; added++; } });
+        if (cur.length > ARCHIVE_MAX) cur = cur.slice(0, ARCHIVE_MAX);
+        archiveStore(cur);
+        impStatus.style.color = '#2e7d32'; impStatus.textContent = 'Imported ' + added + ' conversation(s).';
+        setTimeout(function () { ov.remove(); openArchive(); }, 800);
+      });
+      card.appendChild(impB);
+
+      ov.appendChild(card); document.body.appendChild(ov);
+    }
     function setStatus(t, color) { status.textContent = t || ''; status.style.color = color || '#888'; }
 
-    function addBubble(role, text) {
+    function addBubble(role, text, noSpeak) {
       var mine = role === 'user';
       var b = elc('div', { style:
         'max-width:85%;padding:8px 11px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;' +
@@ -2036,7 +2215,7 @@
               : 'align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;border-bottom-left-radius:3px;') }, text);
       msgs.appendChild(b);
       msgs.scrollTop = msgs.scrollHeight;
-      if (!mine) speak(text);
+      if (!mine && !noSpeak) speak(text);
       return b;
     }
     // Injected by the Travel Planner when it finishes computing an AI-opened trip:
