@@ -3599,18 +3599,17 @@
   // ---- POI engine (OpenStreetMap / Overpass, free, called directly) --------
   // Turns a projected "point" into a REAL place of a chosen category near it.
   var TP_POI_FILTERS = {
-    // Real STOP / START points for a walk — somewhere you can actually park and set off,
-    // not the abstract centre of a lake or wood.
+    // NODE-only (light, no heavy way/relation geometries that time out): real
+    // stop/start points for a walk — somewhere you can park and set off.
     nature: ['node["tourism"="viewpoint"]["name"]', 'node["tourism"="picnic_site"]["name"]',
              'node["tourism"="camp_site"]["name"]', 'node["amenity"="parking"]["name"]',
-             'node["information"="guidepost"]["name"]', 'way["leisure"="park"]["name"]',
-             'way["leisure"="nature_reserve"]["name"]', 'node["natural"="water"]["name"]'],
-    culture: ['node["historic"="castle"]["name"]', 'way["historic"="castle"]["name"]',
-              'node["tourism"="museum"]["name"]', 'node["historic"="monument"]["name"]',
-              'node["historic"]["name"]'],
+             'node["information"="guidepost"]["name"]', 'node["natural"="peak"]["name"]'],
+    culture: ['node["historic"="castle"]["name"]', 'node["tourism"="museum"]["name"]',
+              'node["historic"="monument"]["name"]', 'node["historic"="memorial"]["name"]',
+              'node["historic"="ruins"]["name"]'],
     town: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]'],
     any: ['node["tourism"="attraction"]["name"]', 'node["place"="town"]["name"]',
-          'node["historic"="castle"]["name"]', 'node["natural"="water"]["name"]'],
+          'node["historic"="castle"]["name"]', 'node["tourism"="viewpoint"]["name"]'],
     // light, almost-always-populated set used as a fallback to name a real place
     broad: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]',
             'node["tourism"="attraction"]["name"]', 'node["amenity"="parking"]["name"]']
@@ -3664,12 +3663,12 @@
     var q = '[out:json][timeout:25];(' +
       filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
       'node["amenity"="charging_station"](around:' + r + ',' + lat + ',' + lon + ');' +
-      ');out center 80;';
+      ');out 80;';
     // Route OpenStreetMap (Overpass) through our own Cloudflare worker (avoids browser
     // CORS / service-worker issues). The worker itself falls back across public mirrors.
     // Can be overridden at runtime by setting window.TP_OVERPASS_URL.
     var customUrl = (typeof window !== 'undefined' && window.TP_OVERPASS_URL)
-      ? window.TP_OVERPASS_URL : 'https://xkdg-overpass.decumano16.workers.dev';
+      ? window.TP_OVERPASS_URL : 'https://xkdg-osm.decumano16.workers.dev';
     var endpoints = [customUrl];
     function parse(j) {
       var els = [], chargers = [];
