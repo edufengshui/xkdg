@@ -3467,6 +3467,20 @@
     return { h: Math.max(0.5, km / 72), km: km, real: false };
   }
 
+  // Chinese double-hour (时辰) at a wall-clock instant `ms` and longitude `lon`,
+  // computed on the SAME compensated true-solar-time the Main uses:
+  // solar = wall-clock + tpOffsetMin(lon, utc, dstOn) [longitude eq. of time + UTC + DST].
+  // Returns { han:'午', py:'Wu', tst:'13:12' } (tst is the true-solar clock, for cross-checking).
+  function tpChineseHourAt(ms, lon, utc, dstOn) {
+    try {
+      var off = tpOffsetMin(lon, utc, dstOn);
+      var sd = new Date(ms + off * 60000);
+      var han = Solar.fromDate(sd).getLunar().getEightChar().getTimeZhi();
+      var tst = String(sd.getHours()).padStart(2, '0') + ':' + String(sd.getMinutes()).padStart(2, '0');
+      return { han: han, py: (BR_PY[han] || han), tst: tst };
+    } catch (e) { return null; }
+  }
+
   function tpPlanRoundTrip(opts) {
     opts = opts || {};
     var O = opts.origin || TP_DEFAULT.origin;
@@ -3527,12 +3541,20 @@
       function clock(ms) { var d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
       var arriveBackMs = best.depBackMs + driveBack.h * 3600000;
       var clean = (qOut.q >= GOOD && best.qBack.q >= GOOD);
+      // Chinese double-hours on compensated TST: departure & arrival use the longitude
+      // of the place they happen at (origin for departure/home-arrival, dest for arrival/return).
+      var cnDepOut = tpChineseHourAt(depOutMs, O.lon, utc, dstOn);
+      var cnArrOut = tpChineseHourAt(arriveOutMs, Dst.lon, utc, dstOn);
+      var cnDepBack = tpChineseHourAt(best.depBackMs, Dst.lon, utc, dstOn);
+      var cnArrBack = tpChineseHourAt(arriveBackMs, O.lon, utc, dstOn);
       return {
         ok: true, date: dateStr, widenedStay: widened, clean: clean,
-        outbound: { depClock: clock(depOutMs), arriveClock: clock(arriveOutMs), driveH: Math.round(driveOut.h * 100) / 100,
+        outbound: { depClock: clock(depOutMs), arriveClock: clock(arriveOutMs), departCn: cnDepOut, arriveCn: cnArrOut,
+          driveH: Math.round(driveOut.h * 100) / 100,
           km: Math.round(driveOut.km), quality: qOut.q, favHours: qOut.favHours, towardSlots: qOut.towardSlots, cashStops: qOut.cash, realRoute: driveOut.real },
         stayH: best.stayH,
-        back: { depClock: clock(best.depBackMs), arriveClock: clock(arriveBackMs), driveH: Math.round(driveBack.h * 100) / 100,
+        back: { depClock: clock(best.depBackMs), arriveClock: clock(arriveBackMs), departCn: cnDepBack, arriveCn: cnArrBack,
+          driveH: Math.round(driveBack.h * 100) / 100,
           km: Math.round(driveBack.km), quality: best.qBack.q, favHours: best.qBack.favHours, towardSlots: best.qBack.towardSlots, cashStops: best.qBack.cash, realRoute: driveBack.real },
         combined: best.combined,
         note: clean ? (widened ? 'Favourable round-trip found by widening the stay.' : 'Favourable round-trip.')
@@ -3549,6 +3571,60 @@
     return { lat: lat2 * 180 / Math.PI, lon: ((lon2 * 180 / Math.PI) + 540) % 360 - 180 };
   }
 
+  // ---- POI engine (OpenStreetMap / Overpass, free, called directly) --------
+  // Turns a projected "point" into a REAL place of a chosen category near it.
+  var TP_POI_FILTERS = {
+    nature: ['node["natural"="water"]["name"]', 'way["natural"="water"]["name"]',
+             'node["tourism"="viewpoint"]["name"]', 'way["leisure"="park"]["name"]',
+             'way["boundary"="national_park"]["name"]', 'way["natural"="wood"]["name"]',
+             'relation["natural"="water"]["name"]'],
+    culture: ['node["historic"="castle"]["name"]', 'way["historic"="castle"]["name"]',
+              'node["tourism"="museum"]["name"]', 'node["historic"="monument"]["name"]',
+              'way["historic"]["name"]', 'node["historic"]["name"]'],
+    town: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]'],
+    any: ['node["tourism"="attraction"]["name"]', 'node["place"="town"]["name"]',
+          'node["historic"="castle"]["name"]', 'node["natural"="water"]["name"]']
+  };
+  function tpPoiCategory(cat) {
+    cat = (cat || '').toLowerCase();
+    if (/(natur|walk|hik|lake|lago|forest|bosco|wood|park|parco|passeg|escursion|sentier|monta|outdoor|panoram|viewpoint)/.test(cat)) return 'nature';
+    if (/(cultur|castle|castell|museo|museum|histor|storic|monument|art|abbazia|chiesa|church)/.test(cat)) return 'culture';
+    if (/(town|village|borgo|borghi|paese|paesi|citt)/.test(cat)) return 'town';
+    if (TP_POI_FILTERS[cat]) return cat;
+    return 'any';
+  }
+  function tpFindPOI(lat, lon, radiusKm, category) {
+    var key = tpPoiCategory(category);
+    var filters = TP_POI_FILTERS[key] || TP_POI_FILTERS.any;
+    var r = Math.round(Math.max(1, radiusKm) * 1000);
+    var q = '[out:json][timeout:25];(' +
+      filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
+      ');out center 60;';
+    var url = (typeof TP_OVERPASS_URL !== 'undefined' && TP_OVERPASS_URL) ? TP_OVERPASS_URL : 'https://overpass-api.de/api/interpreter';
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) })
+      .then(function (res) { return res.json(); })
+      .then(function (j) {
+        return (j.elements || []).map(function (e) {
+          var la = (e.lat != null) ? e.lat : (e.center && e.center.lat);
+          var lo = (e.lon != null) ? e.lon : (e.center && e.center.lon);
+          var nm = e.tags && (e.tags['name:en'] || e.tags.name);
+          if (la == null || lo == null || !nm) return null;
+          return { name: nm, lat: la, lon: lo, tags: e.tags || {} };
+        }).filter(Boolean);
+      })
+      .catch(function () { return []; });
+  }
+  // Choose the POI closest to the projected point, still within maxKm of the origin.
+  function tpPickBestPOI(els, projPoint, origin, maxKm) {
+    var best = null, bestD = Infinity;
+    (els || []).forEach(function (p) {
+      if (maxKm && tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) > maxKm + 5) return;
+      var d = tpHaversineKm(projPoint.lat, projPoint.lon, p.lat, p.lon);
+      if (d < bestD) { bestD = d; best = p; }
+    });
+    return best;
+  }
+
   /* Generate several VARIED lucky round-trip proposals for one day: probes
    * multiple directions × distances (estimate-only, no network), scores each,
    * and returns the best few diversified by direction and distance band. The
@@ -3563,6 +3639,7 @@
     var stayMin = (opts.stayMinH != null) ? opts.stayMinH : 1.5;
     var stayMax = (opts.stayMaxH != null) ? opts.stayMaxH : 3;
     var topN = opts.topN || 4;
+    var category = opts.category || null;
     var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
     var bearings = [0, 45, 90, 135, 180, 225, 270, 315];
     var dists = (opts.distancesKm || [30, 80, 150]).filter(function (d) { return d <= maxKm; });
@@ -3601,18 +3678,43 @@
       for (var j = 0; j < ok.length && picked.length < topN; j++) { if (picked.indexOf(ok[j]) < 0) picked.push(ok[j]); }
       picked.sort(function (a, b) { return b.combined - a.combined; });
 
-      return {
-        date: dateStr, origin: O, anyClean: picked.some(function (r) { return r.clean; }),
-        proposals: picked.map(function (r) {
-          return {
-            direction: r.snapDir, bearing: r.bearing, km: r.km,
-            depart: r.outbound.depClock, arrive: r.outbound.arriveClock,
-            stay_h: r.stayH, return_depart: r.back.depClock, return_arrive: r.back.arriveClock,
-            score: Math.round(r.combined * 5), clean: r.clean, widened_stay: r.widenedStay,
-            dest_lat: Math.round(r.dest.lat * 100000) / 100000, dest_lon: Math.round(r.dest.lon * 100000) / 100000
-          };
-        })
-      };
+      function fmtCn(h) { return h ? (h.py + ' ' + h.han + ' · TST ' + h.tst) : null; }
+      function buildProposal(r, poi) {
+        var dlat = poi ? poi.lat : r.dest.lat;
+        var dlon = poi ? poi.lon : r.dest.lon;
+        return {
+          direction: r.snapDir, bearing: r.bearing,
+          km: poi ? Math.round(tpHaversineKm(O.lat, O.lon, dlat, dlon)) : r.km,
+          place: poi ? poi.name : null,
+          depart: r.outbound.depClock, arrive: r.outbound.arriveClock,
+          depart_cn: fmtCn(r.outbound.departCn), arrive_cn: fmtCn(r.outbound.arriveCn),
+          stay_h: r.stayH, return_depart: r.back.depClock, return_arrive: r.back.arriveClock,
+          return_depart_cn: fmtCn(r.back.departCn), return_arrive_cn: fmtCn(r.back.arriveCn),
+          score: Math.round(r.combined * 5), clean: r.clean, widened_stay: r.widenedStay,
+          dest_lat: Math.round(dlat * 100000) / 100000, dest_lon: Math.round(dlon * 100000) / 100000
+        };
+      }
+
+      if (!category) {
+        return {
+          date: dateStr, origin: O, category: null, anyClean: picked.some(function (r) { return r.clean; }),
+          proposals: picked.map(function (r) { return buildProposal(r, null); })
+        };
+      }
+      // Category given → find a REAL place near each picked point (search ~25 km around it).
+      var poiRadius = 25;
+      return Promise.all(picked.map(function (r) {
+        return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category)
+          .then(function (els) { return tpPickBestPOI(els, r.dest, O, maxKm); })
+          .catch(function () { return null; });
+      })).then(function (pois) {
+        return {
+          date: dateStr, origin: O, category: tpPoiCategory(category),
+          anyClean: picked.some(function (r) { return r.clean; }),
+          some_without_place: pois.some(function (p) { return !p; }),
+          proposals: picked.map(function (r, i) { return buildProposal(r, pois[i]); })
+        };
+      });
     });
   }
 
@@ -3620,6 +3722,7 @@
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
     proposeLuckyTrips: tpProposeLuckyTrips,
+    findPOI: tpFindPOI,
     planArriveBy: tpPlanArriveBy,
     fetchRoute: function (origin, dest) {
       return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });

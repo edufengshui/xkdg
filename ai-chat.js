@@ -98,7 +98,10 @@
     'stay_min_h/stay_max_h) and let the tool decide everything else. Then present the returned proposals as ' +
     'several DISTINCT options (varying by direction, distance and stay) with their scores; the user picks one and you run it ' +
     'with plan_travel using THAT option\'s dest_lat/dest_lon. Use plan_travel (which needs a destination) ONLY when the user ' +
-    'names a specific place. Never tell the user a lucky trip needs a destination.\n' +
+    'names a specific place. Never tell the user a lucky trip needs a destination. If the user wants a KIND of place ' +
+    '("in natura", "una passeggiata", "culturale", "castelli", "borghi") OR asks to filter the proposals afterwards ' +
+    '("ora solo natura"), pass the category parameter and call again with the SAME other parameters — each proposal ' +
+    'then becomes a real named place. When a proposal has a "place", show that name as the destination.\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
@@ -321,6 +324,7 @@
           max_radius_km: { type: 'number', description: 'Maximum distance from the origin in km (default 200).' },
           stay_min_h: { type: 'number', description: 'Minimum stay at the destination in hours (default 1.5).' },
           stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
+          category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL place (from OpenStreetMap) instead of a generic point. Use "nature" (lakes, woods, parks, viewpoints, walks), "culture" (castles, museums, historic sites), "town" (villages/towns), or leave empty for generic points. Pass the user\'s words ("natura", "passeggiata", "culturale", "borghi"...) — they are mapped automatically. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
           count: { type: 'integer', description: 'How many distinct proposals to return (2-6, default 4).' }
         },
         required: []
@@ -954,6 +958,7 @@
       stayMaxH: (input.stay_max_h != null ? +input.stay_max_h : 3),
       topN: (input.count != null ? Math.max(2, Math.min(6, parseInt(input.count, 10))) : 4)
     };
+    if (input.category) opts.category = String(input.category);
     if (origin) opts.origin = origin;
     return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
       if (!r || !r.proposals || !r.proposals.length) {
@@ -965,9 +970,14 @@
       return {
         ok: true, date: r.date, any_fully_favourable: r.anyClean,
         instructions: 'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +
-          'All times are local wall-clock. "score" = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
-          '"clean"=true means both legs are fully favourable. The destinations are points along a direction; once the user picks one, ' +
-          'call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.',
+          'All clock times are local wall-clock. For EACH key moment also show the Chinese double-hour provided: ' +
+          'depart_cn (departure), arrive_cn (reaching the destination), return_depart_cn (leaving back), return_arrive_cn (home). ' +
+          'These are already computed on the compensated true-solar-time (longitude + DST) exactly like the Main — show them ' +
+          'verbatim and NEVER recompute or shift them yourself. Format e.g. "Partenza 15:55 (Wei 未 · TST 14:30)". ' +
+          '"score" (0-5) = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
+          '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination ' +
+          '(otherwise it is a generic point along that direction). The user can refine by category later ("solo natura"). ' +
+          'Once the user picks one, call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.',
         proposals: r.proposals
       };
     }).catch(function (e) { return { error: 'Lucky-trip planning failed: ' + ((e && e.message) || e) }; });
