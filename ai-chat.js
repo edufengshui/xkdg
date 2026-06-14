@@ -956,8 +956,12 @@
     };
     if (origin) opts.origin = origin;
     return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
-      if (!r || !r.proposals || !r.proposals.length)
-        return { ok: false, note: 'No round-trip proposals could be computed for ' + dateStr + '. Try a larger radius.' };
+      if (!r || !r.proposals || !r.proposals.length) {
+        var tmr = new Date(dateStr + 'T12:00:00'); tmr.setDate(tmr.getDate() + 1);
+        var tmrStr = tmr.getFullYear() + '-' + String(tmr.getMonth() + 1).padStart(2, '0') + '-' + String(tmr.getDate()).padStart(2, '0');
+        return { ok: false, too_late_or_empty: true, tomorrow: tmrStr,
+          note: 'No round-trip fits ' + dateStr + ' from now on — it is probably too late in the day for a there-and-back trip (or the radius is too small). Tell the user and offer to look at tomorrow (call again with date=' + tmrStr + ') or a larger radius.' };
+      }
       return {
         ok: true, date: r.date, any_fully_favourable: r.anyClean,
         instructions: 'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +

@@ -2819,7 +2819,7 @@
   // toward-destination direction's `combined` value (direction score + hour
   // synergy), which is exactly what the planner ranks on. Considers daytime
   // departures only. Returns { clock:'HH:MM', ms, score } or null.
-  function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route) {
+  function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route, minMs) {
     var DAY_START_H = 5, DAY_END_H = 21;   // sensible driving window, local clock
     var probe;
     try {
@@ -2836,6 +2836,7 @@
     probe.slots.forEach(function (slot) {
       var h = slot.wallStart.getHours();
       if (h < DAY_START_H || h > DAY_END_H) return;
+      if (minMs && slot.wallStart.getTime() < minMs) return;   // skip departures already past / too soon (today)
       if (!earliest) earliest = slot;
       // hour-only fallback ranking (best hourScore) if no direction passes the gate
       var hs = (slot.hourScore != null) ? slot.hourScore : -Infinity;
@@ -3470,6 +3471,10 @@
     var dateStr = opts.dateStr || tpLocalISO(new Date());
     var stayMin = (opts.stayMinH != null) ? opts.stayMinH : (opts.stayHours != null ? opts.stayHours : 2);
     var stayMax = (opts.stayMaxH != null) ? opts.stayMaxH : (opts.stayHours != null ? opts.stayHours : 3);
+    var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
+    var marginMs = ((opts.departMarginMin != null) ? opts.departMarginMin : 20) * 60000;
+    // For today, departures must be in the future (now + margin); for a future day, no floor.
+    var minDepartMs = (dateStr === tpLocalISO(new Date(nowMs))) ? (nowMs + marginMs) : 0;
     var worker = tpGetWorkerUrl();
     var STAY_STEP = 0.5, WIDEN_MAX = 8, GOOD = 1;
 
@@ -3485,8 +3490,8 @@
       var driveOut = tpRouteDriveH(routeOut, O, Dst);
       var driveBack = tpRouteDriveH(routeBack, Dst, O);
 
-      var bestDep = tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, routeOut);
-      if (!bestDep) throw new Error('No outbound departure found for ' + dateStr);
+      var bestDep = tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, routeOut, minDepartMs);
+      if (!bestDep) throw new Error('No future departure available for ' + dateStr);
       var depOutMs = bestDep.ms;
       var outRes = tpPlan({ depDate: new Date(depOutMs), durationH: Math.max(driveOut.h, 0.5),
         origin: O, dest: Dst, utc: utc, dstOn: dstOn, route: routeOut, snapDepart: false, stepMin: 30, stopMode: 'auto' });
@@ -3553,6 +3558,7 @@
     var stayMin = (opts.stayMinH != null) ? opts.stayMinH : 1.5;
     var stayMax = (opts.stayMaxH != null) ? opts.stayMaxH : 3;
     var topN = opts.topN || 4;
+    var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
     var bearings = [0, 45, 90, 135, 180, 225, 270, 315];
     var dists = (opts.distancesKm || [30, 80, 150]).filter(function (d) { return d <= maxKm; });
     if (!dists.length) dists = [Math.min(30, maxKm)];
@@ -3563,7 +3569,7 @@
         var Dst = tpDestPoint(O, b, km);
         jobs.push(
           tpPlanRoundTrip({ origin: O, dest: Dst, utc: utc, dstOn: dstOn, dateStr: dateStr,
-            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true })
+            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true, nowMs: nowMs })
             .then(function (r) { if (r) { r.bearing = b; r.snapDir = tpSnapDir(b); r.km = km; r.dest = Dst; } return r; })
             .catch(function () { return null; })
         );
