@@ -2700,6 +2700,24 @@
           }
         } catch (autoErr) { /* keep going; manual scan / banner is the fallback */ }
 
+        // ---- Auto-departure: no time was given -> pick the most favourable (and
+        // earliest, to stay shortest) departure now that the hour cache is warm. --
+        if (window._tpAutoDepart) {
+          window._tpAutoDepart = false;
+          try {
+            var routeForPick = (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: opts.origin.lat, lng: opts.origin.lon }, { lat: opts.dest.lat, lng: opts.dest.lon })) ? TP_LAST_ROUTE : null;
+            var bestDep = tpPickBestDepartureForDay(opts.origin, opts.dest, dStr, opts.utc, opts.dstOn, routeForPick);
+            if (bestDep && bestDep.clock) {
+              var teEl2 = document.getElementById('tp-time'); if (teEl2) teEl2.value = bestDep.clock;
+              dep = new Date(dStr + 'T' + bestDep.clock);
+              opts.depDate = dep;
+              if (dstAuto) dstAuto.checked = tpDstActiveOn(dep);
+              opts.dstOn = document.getElementById('tp-dst').checked;
+              opts.charges = tpParseCharges(document.getElementById('tp-charges').value, dep);
+            }
+          } catch (ePick) { /* keep the placeholder departure */ }
+        }
+
         // ---- Build + render. The route may be supplied (real road) or null. --
         function buildAndRender(route, fetchNote) {
           try {
@@ -2795,6 +2813,50 @@
   // unlock-code case) before filling. params keys: originLat/originLon/originName,
   // destLat/destLon/destName, departDate ('YYYY-MM-DD'), departTime ('HH:MM'),
   // durationH, utc, rangeKm, reserveKm, charges, worker, run (default true).
+  // Pick the best DEPARTURE double-hour of a day when the user gave no time.
+  // Rule (Edu): highest luck score wins; on a tie, the EARLIEST start (so the
+  // trip is also the shortest/finishes soonest). "Luck score" = the best
+  // toward-destination direction's `combined` value (direction score + hour
+  // synergy), which is exactly what the planner ranks on. Considers daytime
+  // departures only. Returns { clock:'HH:MM', ms, score } or null.
+  function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route) {
+    var DAY_START_H = 5, DAY_END_H = 21;   // sensible driving window, local clock
+    var probe;
+    try {
+      probe = tpPlan({
+        depDate: new Date(dateStr + 'T05:00:00'),
+        durationH: (DAY_END_H - DAY_START_H),
+        origin: O, dest: Dst, utc: utc, dstOn: dstOn,
+        snapDepart: true, stepMin: 30, stopMode: 'auto',
+        route: (route && tpRouteMatches(route, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? route : null
+      });
+    } catch (e) { return null; }
+    if (!probe || !probe.slots || !probe.slots.length) return null;
+    var best = null, bestHourOnly = null, earliest = null;
+    probe.slots.forEach(function (slot) {
+      var h = slot.wallStart.getHours();
+      if (h < DAY_START_H || h > DAY_END_H) return;
+      if (!earliest) earliest = slot;
+      // hour-only fallback ranking (best hourScore) if no direction passes the gate
+      var hs = (slot.hourScore != null) ? slot.hourScore : -Infinity;
+      if (!bestHourOnly || hs > bestHourOnly._hs) { bestHourOnly = slot; bestHourOnly._hs = hs; }
+      var bd = tpBestDirToward(slot, slot.bearingDest);
+      var sc = (bd && bd.combined != null) ? bd.combined : null;
+      if (sc != null) {
+        // tie-break: strictly greater wins; equal keeps the earlier one already stored
+        if (!best || sc > best._sc) { best = slot; best._sc = sc; }
+      }
+    });
+    var chosen = best || bestHourOnly || earliest;
+    if (!chosen) return null;
+    var d = chosen.wallStart;
+    return {
+      clock: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'),
+      ms: d.getTime(),
+      score: (best ? best._sc : null)
+    };
+  }
+
   function tpOpenPrefilled(params) {
     params = params || {};
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
@@ -2802,6 +2864,7 @@
     window._tpChargerPending = (params.autoChargers !== false); // hands-free navigation waits until this clears
     if (params.noSnap) window._tpNoSnap = true;                 // arrive-by: do NOT snap the departure (keep arrival exact)
     window._tpFromAI = true;                            // push the computed itinerary into the AI chat when done
+    window._tpAutoDepart = !!params.autoDepart;          // no time given -> SCAN picks the most favourable (and earliest) departure
     tpOpen();
     window._tpNames = {
       origin: params.originName || (window._tpNames && window._tpNames.origin) || 'Origin',
@@ -2819,6 +2882,9 @@
       set('tp-olat', params.originLat); set('tp-olon', params.originLon);
       set('tp-dlat', params.destLat);   set('tp-dlon', params.destLon);
       set('tp-date', params.departDate); set('tp-time', params.departTime);
+      // Auto-depart: leave a placeholder time so the SCAN can run; it will be
+      // replaced by the best departure the planner picks (cache is warm there).
+      if (window._tpAutoDepart) { var teEl = document.getElementById('tp-time'); if (teEl && !teEl.value) teEl.value = '12:00'; }
       set('tp-dur', params.durationH);   set('tp-utc', params.utc);
       var dstEl = document.getElementById('tp-dst'); if (dstEl && params.dst != null) dstEl.checked = !!params.dst;
       set('tp-range', params.rangeKm);   set('tp-reserve', params.reserveKm);
@@ -3367,8 +3433,174 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tpInstallCompassFab); else tpInstallCompassFab();
 
+  /* ---- LUCKY ROUND-TRIP orchestration (core) ----------------------------- *
+   * Plans OUT -> stay -> BACK, reusing the existing per-leg planner. The return
+   * leg is planned toward HOME, so the engine's net-direction logic composes
+   * alternative favourable legs (e.g. SE+NE -> E) on its own. A leg's "quality"
+   * = favourable-hours + toward-dest slots + cashing stops; the trip score is
+   * the MINIMUM of the two legs (both must be good). If no stay length in the
+   * requested window yields a clean return, the stay window is widened
+   * automatically. Returns a Promise of a structured summary for the AI card.
+   * NOTE: fine "back-timing" of leg starts is a separate, later step.
+   * ----------------------------------------------------------------------- */
+  function tpTripQuality(res) {
+    var slots = (res && res.slots) || [];
+    var favHours = slots.filter(function (s) { return s.hourPositive; }).length;
+    var towardSlots = slots.filter(function (s) {
+      return (s.dirs || []).some(function (d) { return d.towardDest && d.eval && d.eval.ok; });
+    }).length;
+    var cash = ((res && res.plan) || []).filter(function (x) { return x.type === 'stop' && x.cashDir; }).length;
+    var anyOk = slots.some(function (s) { return tpUsableDirs(s.dirs).length > 0; });
+    return { q: towardSlots + favHours + cash, favHours: favHours, towardSlots: towardSlots, cash: cash, anyOk: anyOk };
+  }
+
+  function tpRouteDriveH(route, A, B) {
+    var idx = tpBuildRouteIndex(route);
+    if (idx && idx.durationSec) return { h: idx.durationSec / 3600, km: idx.distanceMeters / 1000, real: true };
+    var km = tpHaversineKm(A.lat, A.lon, B.lat, B.lon) * 1.3;
+    return { h: Math.max(0.5, km / 72), km: km, real: false };
+  }
+
+  function tpPlanRoundTrip(opts) {
+    opts = opts || {};
+    var O = opts.origin || TP_DEFAULT.origin;
+    var Dst = opts.dest || TP_DEFAULT.dest;
+    var utc = (opts.utc != null) ? opts.utc : 1;
+    var dstOn = !!opts.dstOn;
+    var dateStr = opts.dateStr || tpLocalISO(new Date());
+    var stayMin = (opts.stayMinH != null) ? opts.stayMinH : (opts.stayHours != null ? opts.stayHours : 2);
+    var stayMax = (opts.stayMaxH != null) ? opts.stayMaxH : (opts.stayHours != null ? opts.stayHours : 3);
+    var worker = tpGetWorkerUrl();
+    var STAY_STEP = 0.5, WIDEN_MAX = 8, GOOD = 1;
+
+    var fetchOut = (opts.estimateOnly) ? Promise.resolve(null)
+      : (opts.routeOut ? Promise.resolve(opts.routeOut)
+        : tpFetchRoute(worker, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon }).catch(function () { return null; }));
+    var fetchBack = (opts.estimateOnly) ? Promise.resolve(null)
+      : (opts.routeBack ? Promise.resolve(opts.routeBack)
+        : tpFetchRoute(worker, { lat: Dst.lat, lng: Dst.lon }, { lat: O.lat, lng: O.lon }).catch(function () { return null; }));
+
+    return Promise.all([fetchOut, fetchBack]).then(function (rs) {
+      var routeOut = rs[0], routeBack = rs[1];
+      var driveOut = tpRouteDriveH(routeOut, O, Dst);
+      var driveBack = tpRouteDriveH(routeBack, Dst, O);
+
+      var bestDep = tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, routeOut);
+      if (!bestDep) throw new Error('No outbound departure found for ' + dateStr);
+      var depOutMs = bestDep.ms;
+      var outRes = tpPlan({ depDate: new Date(depOutMs), durationH: Math.max(driveOut.h, 0.5),
+        origin: O, dest: Dst, utc: utc, dstOn: dstOn, route: routeOut, snapDepart: false, stepMin: 30, stopMode: 'auto' });
+      var qOut = tpTripQuality(outRes);
+      var arriveOutMs = depOutMs + driveOut.h * 3600000;
+
+      function evalStay(stayH) {
+        var depBackMs = arriveOutMs + stayH * 3600000;
+        var res = tpPlan({ depDate: new Date(depBackMs), durationH: Math.max(driveBack.h, 0.5),
+          origin: Dst, dest: O, utc: utc, dstOn: dstOn, route: routeBack, snapDepart: false, stepMin: 30, stopMode: 'auto' });
+        var qBack = tpTripQuality(res);
+        return { stayH: stayH, res: res, qBack: qBack, depBackMs: depBackMs, combined: Math.min(qOut.q, qBack.q) };
+      }
+      function bestOf(list) { return list.slice().sort(function (a, b) { return b.combined - a.combined; })[0]; }
+
+      var cands = [];
+      for (var s = stayMin; s <= stayMax + 1e-9; s += STAY_STEP) cands.push(evalStay(Math.round(s * 100) / 100));
+      var best = bestOf(cands), widened = false;
+      if (!best || best.combined < GOOD) {
+        for (var s2 = stayMax + STAY_STEP; s2 <= WIDEN_MAX + 1e-9; s2 += STAY_STEP) {
+          cands.push(evalStay(Math.round(s2 * 100) / 100)); widened = true;
+          best = bestOf(cands);
+          if (best && best.combined >= GOOD) break;
+        }
+      }
+      best = bestOf(cands);
+
+      function clock(ms) { var d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+      var arriveBackMs = best.depBackMs + driveBack.h * 3600000;
+      var clean = (qOut.q >= GOOD && best.qBack.q >= GOOD);
+      return {
+        ok: true, date: dateStr, widenedStay: widened, clean: clean,
+        outbound: { depClock: clock(depOutMs), arriveClock: clock(arriveOutMs), driveH: Math.round(driveOut.h * 100) / 100,
+          km: Math.round(driveOut.km), quality: qOut.q, favHours: qOut.favHours, towardSlots: qOut.towardSlots, cashStops: qOut.cash, realRoute: driveOut.real },
+        stayH: best.stayH,
+        back: { depClock: clock(best.depBackMs), arriveClock: clock(arriveBackMs), driveH: Math.round(driveBack.h * 100) / 100,
+          km: Math.round(driveBack.km), quality: best.qBack.q, favHours: best.qBack.favHours, towardSlots: best.qBack.towardSlots, cashStops: best.qBack.cash, realRoute: driveBack.real },
+        combined: best.combined,
+        note: clean ? (widened ? 'Favourable round-trip found by widening the stay.' : 'Favourable round-trip.')
+                    : 'No fully favourable round-trip today even after widening — best compromise shown.'
+      };
+    });
+  }
+
+  // Project a point from O along a compass bearing for `km` (spherical).
+  function tpDestPoint(O, bearingDeg, km) {
+    var R = 6371, br = bearingDeg * Math.PI / 180, lat1 = O.lat * Math.PI / 180, dr = km / R;
+    var lat2 = Math.asin(Math.sin(lat1) * Math.cos(dr) + Math.cos(lat1) * Math.sin(dr) * Math.cos(br));
+    var lon2 = (O.lon * Math.PI / 180) + Math.atan2(Math.sin(br) * Math.sin(dr) * Math.cos(lat1), Math.cos(dr) - Math.sin(lat1) * Math.sin(lat2));
+    return { lat: lat2 * 180 / Math.PI, lon: ((lon2 * 180 / Math.PI) + 540) % 360 - 180 };
+  }
+
+  /* Generate several VARIED lucky round-trip proposals for one day: probes
+   * multiple directions × distances (estimate-only, no network), scores each,
+   * and returns the best few diversified by direction and distance band. The
+   * real route is computed later, when the user picks one. */
+  function tpProposeLuckyTrips(opts) {
+    opts = opts || {};
+    var O = opts.origin || TP_DEFAULT.origin;
+    var utc = (opts.utc != null) ? opts.utc : 1;
+    var dstOn = !!opts.dstOn;
+    var dateStr = opts.dateStr || tpLocalISO(new Date());
+    var maxKm = opts.maxRadiusKm || 200;
+    var stayMin = (opts.stayMinH != null) ? opts.stayMinH : 1.5;
+    var stayMax = (opts.stayMaxH != null) ? opts.stayMaxH : 3;
+    var topN = opts.topN || 4;
+    var bearings = [0, 45, 90, 135, 180, 225, 270, 315];
+    var dists = (opts.distancesKm || [30, 80, 150]).filter(function (d) { return d <= maxKm; });
+    if (!dists.length) dists = [Math.min(30, maxKm)];
+
+    var jobs = [];
+    bearings.forEach(function (b) {
+      dists.forEach(function (km) {
+        var Dst = tpDestPoint(O, b, km);
+        jobs.push(
+          tpPlanRoundTrip({ origin: O, dest: Dst, utc: utc, dstOn: dstOn, dateStr: dateStr,
+            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true })
+            .then(function (r) { if (r) { r.bearing = b; r.snapDir = tpSnapDir(b); r.km = km; r.dest = Dst; } return r; })
+            .catch(function () { return null; })
+        );
+      });
+    });
+
+    return Promise.all(jobs).then(function (list) {
+      var ok = list.filter(function (r) { return r && r.ok; });
+      ok.sort(function (a, b) { return b.combined - a.combined; });
+      function band(km) { return km <= 50 ? 'near' : (km <= 120 ? 'mid' : 'far'); }
+      var picked = [], seen = {};
+      for (var i = 0; i < ok.length && picked.length < topN; i++) {
+        var key = ok[i].snapDir + '|' + band(ok[i].km);
+        if (seen[key]) continue;
+        seen[key] = 1; picked.push(ok[i]);
+      }
+      for (var j = 0; j < ok.length && picked.length < topN; j++) { if (picked.indexOf(ok[j]) < 0) picked.push(ok[j]); }
+
+      return {
+        date: dateStr, origin: O, anyClean: picked.some(function (r) { return r.clean; }),
+        proposals: picked.map(function (r) {
+          return {
+            direction: r.snapDir, bearing: r.bearing, km: r.km,
+            depart: r.outbound.depClock, arrive: r.outbound.arriveClock,
+            stay_h: r.stayH, return_depart: r.back.depClock, return_arrive: r.back.arriveClock,
+            score: r.combined, clean: r.clean, widened_stay: r.widenedStay,
+            dest_lat: Math.round(r.dest.lat * 100000) / 100000, dest_lon: Math.round(r.dest.lon * 100000) / 100000
+          };
+        })
+      };
+    });
+  }
+
   window.TravelPlanner = {
     plan: tpPlan,
+    planRoundTrip: tpPlanRoundTrip,
+    proposeLuckyTrips: tpProposeLuckyTrips,
     planArriveBy: tpPlanArriveBy,
     fetchRoute: function (origin, dest) {
       return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });

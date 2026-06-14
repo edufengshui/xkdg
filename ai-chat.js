@@ -292,6 +292,31 @@
       }
     },
     {
+      name: 'plan_lucky_day_trip',
+      description: 'Propose SEVERAL varied lucky round-trips (out → stay → back) for ONE day, when the user has no ' +
+        'fixed destination ("find me a lucky few-hours trip out of town, up to 200 km", "where could I go today ' +
+        'that is most fortunate?"). The app probes many directions and distances (near ~30 km, mid ~80, far ~150) ' +
+        'within the radius, scores each round-trip (luck = min of outbound and return; both the going direction AND ' +
+        'the return direction must be favourable, with stay length chosen to wait for the hour to turn if needed) ' +
+        'and returns a few DISTINCT options. Present them as alternatives the user can pick from — they vary by ' +
+        'direction, distance and stay (e.g. a short 30 km walk with top luck vs a 150 km drive). To actually run a ' +
+        'chosen one, call plan_travel with that option\'s dest_lat/dest_lon. You never compute directions/times yourself.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_lat: { type: 'number', description: 'Start latitude (defaults to saved GPS, else the app default).' },
+          origin_lon: { type: 'number', description: 'Start longitude.' },
+          origin_name: { type: 'string', description: 'Start place name (for labels).' },
+          date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
+          max_radius_km: { type: 'number', description: 'Maximum distance from the origin in km (default 200).' },
+          stay_min_h: { type: 'number', description: 'Minimum stay at the destination in hours (default 1.5).' },
+          stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
+          count: { type: 'integer', description: 'How many distinct proposals to return (2-6, default 4).' }
+        },
+        required: []
+      }
+    },
+    {
       name: 'plan_arrive_by',
       description: 'Plan a journey where the ARRIVAL time matters and the departure is flexible. Use for "I need to ' +
         'be in X by 18:00", "arrive at B around 3pm", "get there for 17:30". Returns several travel solutions that ' +
@@ -578,6 +603,7 @@
       if (name === 'find_bed_dates') return toolFindBedDates(input || {});
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
       if (name === 'plan_travel') return toolPlanTravel(input || {});
+      if (name === 'plan_lucky_day_trip') return toolPlanLuckyDayTrip(input || {});
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
@@ -900,6 +926,39 @@
   }
 
   // ── Travel + Qimen-for-flying-stars tools ──
+  function toolPlanLuckyDayTrip(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.proposeLuckyTrips !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    var today = todayIso();
+    var dateStr = input.date || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+    var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
+    var opts = {
+      utc: utc, dstOn: dstOn, dateStr: dateStr,
+      maxRadiusKm: (input.max_radius_km != null ? +input.max_radius_km : 200),
+      stayMinH: (input.stay_min_h != null ? +input.stay_min_h : 1.5),
+      stayMaxH: (input.stay_max_h != null ? +input.stay_max_h : 3),
+      topN: (input.count != null ? Math.max(2, Math.min(6, parseInt(input.count, 10))) : 4)
+    };
+    if (origin) opts.origin = origin;
+    return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
+      if (!r || !r.proposals || !r.proposals.length)
+        return { ok: false, note: 'No round-trip proposals could be computed for ' + dateStr + '. Try a larger radius.' };
+      return {
+        ok: true, date: r.date, any_fully_favourable: r.anyClean,
+        instructions: 'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +
+          'All times are local wall-clock. "score" = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
+          '"clean"=true means both legs are fully favourable. The destinations are points along a direction; once the user picks one, ' +
+          'call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.',
+        proposals: r.proposals
+      };
+    }).catch(function (e) { return { error: 'Lucky-trip planning failed: ' + ((e && e.message) || e) }; });
+  }
+
   function toolPlanTravel(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.plan !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
