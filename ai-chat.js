@@ -102,6 +102,13 @@
     '("in natura", "una passeggiata", "culturale", "castelli", "borghi") OR asks to filter the proposals afterwards ' +
     '("ora solo natura"), pass the category parameter and call again with the SAME other parameters — each proposal ' +
     'then becomes a real named place. When a proposal has a "place", show that name as the destination.\n' +
+    '- WHY A DIRECTION IS / ISN\'T PROPOSED: never invent a QMDJ reason. You do NOT compute Qi Men, so do not claim a ' +
+    'palace "has no good configuration" / "lacks the right setup" or judge doors, San Qi or deities yourself. The Lucky ' +
+    'Trip keeps only directions whose OUTBOUND and RETURN are BOTH favourable, then shows a few diversified by distance. ' +
+    'So a direction can be fully favourable as an outbound (e.g. View 景 + San Qi) yet not appear — because its RETURN is ' +
+    'unfavourable at the return hour, or because it was diversified out to vary the distances. If the user questions a ' +
+    'specific direction, say exactly this, and offer to verify it by running plan_travel toward that direction (it shows ' +
+    'that direction\'s own favourable hours). Never assert a direction is unfavourable unless a tool result says so.\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
