@@ -3625,19 +3625,30 @@
     var q = '[out:json][timeout:25];(' +
       filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
       ');out center 60;';
-    var url = (typeof TP_OVERPASS_URL !== 'undefined' && TP_OVERPASS_URL) ? TP_OVERPASS_URL : 'https://overpass-api.de/api/interpreter';
-    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) })
-      .then(function (res) { return res.json(); })
-      .then(function (j) {
-        return (j.elements || []).map(function (e) {
-          var la = (e.lat != null) ? e.lat : (e.center && e.center.lat);
-          var lo = (e.lon != null) ? e.lon : (e.center && e.center.lon);
-          var nm = e.tags && (e.tags['name:en'] || e.tags.name);
-          if (la == null || lo == null || !nm) return null;
-          return { name: nm, lat: la, lon: lo, tags: e.tags || {} };
-        }).filter(Boolean);
-      })
-      .catch(function () { return []; });
+    var endpoints = (typeof TP_OVERPASS_URL !== 'undefined' && TP_OVERPASS_URL)
+      ? [TP_OVERPASS_URL]
+      : ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+    function parse(j) {
+      return (j.elements || []).map(function (e) {
+        var la = (e.lat != null) ? e.lat : (e.center && e.center.lat);
+        var lo = (e.lon != null) ? e.lon : (e.center && e.center.lon);
+        var nm = e.tags && (e.tags['name:en'] || e.tags.name);
+        if (la == null || lo == null || !nm) return null;
+        return { name: nm, lat: la, lon: lo, tags: e.tags || {} };
+      }).filter(Boolean);
+    }
+    function tryAt(i) {
+      if (i >= endpoints.length) return Promise.resolve({ ok: false, els: [], error: 'unreachable' });
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 12000) : null;
+      return fetch(endpoints[i], {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(q), signal: ctrl ? ctrl.signal : undefined
+      }).then(function (res) { if (to) clearTimeout(to); if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+        .then(function (j) { return { ok: true, els: parse(j), error: null }; })
+        .catch(function () { if (to) clearTimeout(to); return tryAt(i + 1); });
+    }
+    return tryAt(0);
   }
   // Choose the POI closest to the projected point, still within maxKm of the origin.
   function tpPickBestPOI(els, projPoint, origin, maxKm) {
@@ -3730,14 +3741,15 @@
       var poiRadius = 25;
       return Promise.all(picked.map(function (r) {
         return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category)
-          .then(function (els) { return tpPickBestPOI(els, r.dest, O, maxKm); })
-          .catch(function () { return null; });
-      })).then(function (pois) {
+          .then(function (resp) { return { poi: tpPickBestPOI(resp.els, r.dest, O, maxKm), failed: !resp.ok }; })
+          .catch(function () { return { poi: null, failed: true }; });
+      })).then(function (res) {
         return {
           date: dateStr, origin: O, category: tpPoiCategory(category),
           anyClean: picked.some(function (r) { return r.clean; }),
-          some_without_place: pois.some(function (p) { return !p; }),
-          proposals: picked.map(function (r, i) { return buildProposal(r, pois[i]); })
+          some_without_place: res.some(function (x) { return !x.poi; }),
+          poi_service_error: res.some(function (x) { return x.failed; }),
+          proposals: picked.map(function (r, i) { return buildProposal(r, res[i].poi); })
         };
       });
     });

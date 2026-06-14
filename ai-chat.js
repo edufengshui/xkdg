@@ -984,6 +984,9 @@
           '"score" (0-5) = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
           '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination ' +
           '(otherwise it is a generic point along that direction). The user can refine by category later ("solo natura"). ' +
+          'If "poi_service_error" is true, the places service (OpenStreetMap) was temporarily unreachable — say exactly that ' +
+          'and offer to retry; do NOT claim there are no places of that kind. If only "some_without_place" is true, those few ' +
+          'points simply had no named place of that category nearby (offer a larger radius or a different category). ' +
           'Once the user picks one, call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.',
         proposals: r.proposals
       };
