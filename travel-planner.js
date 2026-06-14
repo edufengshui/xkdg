@@ -483,6 +483,18 @@
     return { dir: best.dir, palace: best.palace, eval: best.eval, combined: best.combined, towardDest: true };
   }
 
+  // The single palace whose compass direction is CLOSEST to `bearing` (no ±tolerance).
+  // Used to enforce the absolute rule: the exact travel direction's door must be
+  // favourable at the moment of departure.
+  function tpDirExact(slot, bearing) {
+    var best = null, bd = 999;
+    (slot.dirs || []).forEach(function (d) {
+      var diff = tpAngDiff(TP_DIR_DEG[d.dir], bearing);
+      if (diff < bd) { bd = diff; best = d; }
+    });
+    return best;
+  }
+
   /* ---- PHASE D: Google Maps export helpers -------------------------------- *
    * Build a Google Maps "Directions" deep link (Maps URL API) with the chosen
    * stops as waypoints. Opening it on the phone hands navigation to Maps; on a
@@ -2844,7 +2856,7 @@
   // toward-destination direction's `combined` value (direction score + hour
   // synergy), which is exactly what the planner ranks on. Considers daytime
   // departures only. Returns { clock:'HH:MM', ms, score } or null.
-  function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route, minMs) {
+  function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route, minMs, strict) {
     var DAY_START_H = 5, DAY_END_H = 21;   // sensible driving window, local clock
     var probe;
     try {
@@ -2863,17 +2875,22 @@
       if (h < DAY_START_H || h > DAY_END_H) return;
       if (minMs && slot.wallStart.getTime() < minMs) return;   // skip departures already past / too soon (today)
       if (!earliest) earliest = slot;
-      // hour-only fallback ranking (best hourScore) if no direction passes the gate
       var hs = (slot.hourScore != null) ? slot.hourScore : -Infinity;
       if (!bestHourOnly || hs > bestHourOnly._hs) { bestHourOnly = slot; bestHourOnly._hs = hs; }
-      var bd = tpBestDirToward(slot, slot.bearingDest);
-      var sc = (bd && bd.combined != null) ? bd.combined : null;
-      if (sc != null) {
-        // tie-break: strictly greater wins; equal keeps the earlier one already stored
-        if (!best || sc > best._sc) { best = slot; best._sc = sc; }
+      if (strict) {
+        // ABSOLUTE RULE: the EXACT travel direction's door must be favourable at departure.
+        var de = tpDirExact(slot, slot.bearingDest);
+        if (!de || !de.eval || !de.eval.ok) return;   // unfavourable door in the travel direction -> not allowed
+        var scs = (de.combined != null) ? de.combined : 0;
+        if (!best || scs > best._sc) { best = slot; best._sc = scs; }
+      } else {
+        var bd = tpBestDirToward(slot, slot.bearingDest);
+        var sc = (bd && bd.combined != null) ? bd.combined : null;
+        if (sc != null) { if (!best || sc > best._sc) { best = slot; best._sc = sc; } }
       }
     });
-    var chosen = best || bestHourOnly || earliest;
+    // strict: NO fallback to an unfavourable hour — if nothing qualifies, there is no valid departure.
+    var chosen = strict ? best : (best || bestHourOnly || earliest);
     if (!chosen) return null;
     var d = chosen.wallStart;
     return {
@@ -3534,8 +3551,8 @@
       var driveOut = tpRouteDriveH(routeOut, O, Dst);
       var driveBack = tpRouteDriveH(routeBack, Dst, O);
 
-      var bestDep = tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, routeOut, minDepartMs);
-      if (!bestDep) throw new Error('No future departure available for ' + dateStr);
+      var bestDep = tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, routeOut, minDepartMs, true);
+      if (!bestDep) throw new Error('No favourable departure (exact direction) for ' + dateStr);
       var depOutMs = bestDep.ms;
       var outRes = tpPlan({ depDate: new Date(depOutMs), durationH: Math.max(driveOut.h, 0.5),
         origin: O, dest: Dst, utc: utc, dstOn: dstOn, route: routeOut, snapDepart: false, stepMin: 30, stopMode: 'auto' });
@@ -3547,9 +3564,17 @@
         var res = tpPlan({ depDate: new Date(depBackMs), durationH: Math.max(driveBack.h, 0.5),
           origin: Dst, dest: O, utc: utc, dstOn: dstOn, route: routeBack, snapDepart: false, stepMin: 30, stopMode: 'auto' });
         var qBack = tpTripQuality(res);
-        return { stayH: stayH, res: res, qBack: qBack, depBackMs: depBackMs, combined: Math.min(qOut.q, qBack.q) };
+        // ABSOLUTE RULE: the exact direction toward home must be favourable at the moment of leaving back.
+        var s0 = (res.slots && res.slots[0]) ? res.slots[0] : null;
+        var de = s0 ? tpDirExact(s0, s0.bearingDest) : null;
+        var validStart = !!(de && de.eval && de.eval.ok);
+        return { stayH: stayH, res: res, qBack: qBack, depBackMs: depBackMs, combined: Math.min(qOut.q, qBack.q), validStart: validStart };
       }
-      function bestOf(list) { return list.slice().sort(function (a, b) { return b.combined - a.combined; })[0]; }
+      // Only round-trips whose RETURN also departs in a favourable exact direction are admissible.
+      function bestOf(list) {
+        var valid = list.filter(function (c) { return c.validStart; });
+        return valid.slice().sort(function (a, b) { return b.combined - a.combined; })[0] || null;
+      }
 
       var cands = [];
       for (var s = stayMin; s <= stayMax + 1e-9; s += STAY_STEP) cands.push(evalStay(Math.round(s * 100) / 100));
@@ -3562,6 +3587,7 @@
         }
       }
       best = bestOf(cands);
+      if (!best) return { ok: false, reason: 'no_favourable_return' };   // no admissible return -> drop this direction
 
       function clock(ms) { var d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
       var arriveBackMs = best.depBackMs + driveBack.h * 3600000;
