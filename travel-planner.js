@@ -3446,13 +3446,18 @@
    * ----------------------------------------------------------------------- */
   function tpTripQuality(res) {
     var slots = (res && res.slots) || [];
+    var n = slots.length || 1;
     var favHours = slots.filter(function (s) { return s.hourPositive; }).length;
     var towardSlots = slots.filter(function (s) {
       return (s.dirs || []).some(function (d) { return d.towardDest && d.eval && d.eval.ok; });
     }).length;
     var cash = ((res && res.plan) || []).filter(function (x) { return x.type === 'stop' && x.cashDir; }).length;
     var anyOk = slots.some(function (s) { return tpUsableDirs(s.dirs).length > 0; });
-    return { q: towardSlots + favHours + cash, favHours: favHours, towardSlots: towardSlots, cash: cash, anyOk: anyOk };
+    // Length-INDEPENDENT quality 0..1: average favourability per double-hour
+    // (direction toward dest + hour positive). A short fully-favourable trip
+    // scores as high as a long one — distance no longer inflates luck.
+    var q = ((towardSlots / n) + (favHours / n)) / 2;
+    return { q: q, favHours: favHours, towardSlots: towardSlots, cash: cash, slots: n, anyOk: anyOk };
   }
 
   function tpRouteDriveH(route, A, B) {
@@ -3476,7 +3481,7 @@
     // For today, departures must be in the future (now + margin); for a future day, no floor.
     var minDepartMs = (dateStr === tpLocalISO(new Date(nowMs))) ? (nowMs + marginMs) : 0;
     var worker = tpGetWorkerUrl();
-    var STAY_STEP = 0.5, WIDEN_MAX = 8, GOOD = 1;
+    var STAY_STEP = 0.5, WIDEN_MAX = 8, GOOD = 0.5;   // GOOD on a 0..1 quality scale
 
     var fetchOut = (opts.estimateOnly) ? Promise.resolve(null)
       : (opts.routeOut ? Promise.resolve(opts.routeOut)
@@ -3579,14 +3584,22 @@
     return Promise.all(jobs).then(function (list) {
       var ok = list.filter(function (r) { return r && r.ok; });
       ok.sort(function (a, b) { return b.combined - a.combined; });
-      function band(km) { return km <= 50 ? 'near' : (km <= 120 ? 'mid' : 'far'); }
-      var picked = [], seen = {};
+      function band(km) { return km <= 60 ? 'near' : (km <= 120 ? 'mid' : 'far'); }
+      var picked = [], usedDir = {};
+      // 1) best of each distance band → guarantees variety of distance (near / mid / far)
+      ['near', 'mid', 'far'].forEach(function (bd) {
+        for (var i = 0; i < ok.length; i++) {
+          if (band(ok[i].km) === bd && picked.indexOf(ok[i]) < 0) { picked.push(ok[i]); usedDir[ok[i].snapDir] = 1; break; }
+        }
+      });
+      // 2) fill remaining slots with the next best in a NEW direction
       for (var i = 0; i < ok.length && picked.length < topN; i++) {
-        var key = ok[i].snapDir + '|' + band(ok[i].km);
-        if (seen[key]) continue;
-        seen[key] = 1; picked.push(ok[i]);
+        if (picked.indexOf(ok[i]) >= 0 || usedDir[ok[i].snapDir]) continue;
+        picked.push(ok[i]); usedDir[ok[i].snapDir] = 1;
       }
+      // 3) still short? take the next best regardless
       for (var j = 0; j < ok.length && picked.length < topN; j++) { if (picked.indexOf(ok[j]) < 0) picked.push(ok[j]); }
+      picked.sort(function (a, b) { return b.combined - a.combined; });
 
       return {
         date: dateStr, origin: O, anyClean: picked.some(function (r) { return r.clean; }),
@@ -3595,7 +3608,7 @@
             direction: r.snapDir, bearing: r.bearing, km: r.km,
             depart: r.outbound.depClock, arrive: r.outbound.arriveClock,
             stay_h: r.stayH, return_depart: r.back.depClock, return_arrive: r.back.arriveClock,
-            score: r.combined, clean: r.clean, widened_stay: r.widenedStay,
+            score: Math.round(r.combined * 5), clean: r.clean, widened_stay: r.widenedStay,
             dest_lat: Math.round(r.dest.lat * 100000) / 100000, dest_lon: Math.round(r.dest.lon * 100000) / 100000
           };
         })
