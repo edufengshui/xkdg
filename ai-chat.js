@@ -1826,13 +1826,15 @@
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '💾');
     var archBtn = elc('button', { id: 'xkdg-ai-archive', title: 'Conversation archive',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '📚');
+    var shareBtn = elc('button', { id: 'xkdg-ai-share', title: 'Share the last itinerary in English',
+      style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '📤');
     var speakerBtn = elc('button', { id: 'xkdg-ai-speak', title: 'Read replies aloud',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🔇');
     var hfBtn = elc('button', { id: 'xkdg-ai-hf', title: 'Hands-free driving mode (wake word)',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🚗');
     var closeBtn = elc('button', { id: 'xkdg-ai-close', title: 'Close',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '✕');
-    header.appendChild(langSel); header.appendChild(gear); header.appendChild(speakerBtn); header.appendChild(hfBtn); header.appendChild(saveBtn); header.appendChild(archBtn); header.appendChild(clearBtn); header.appendChild(closeBtn);
+    header.appendChild(langSel); header.appendChild(gear); header.appendChild(speakerBtn); header.appendChild(hfBtn); header.appendChild(saveBtn); header.appendChild(archBtn); header.appendChild(shareBtn); header.appendChild(clearBtn); header.appendChild(closeBtn);
     panel.appendChild(header);
 
     var msgs = elc('div', { id: 'xkdg-ai-msgs',
@@ -2067,6 +2069,7 @@
     clearBtn.addEventListener('click', function () { history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); });
     saveBtn.addEventListener('click', function () { saveCurrentConversation(false); });
     archBtn.addEventListener('click', openArchive);
+    shareBtn.addEventListener('click', shareItinerary);
 
     function promptUrl() {
       var cur = getUrl();
@@ -2460,6 +2463,54 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.', tools: TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
+    }
+
+    // Most recent assistant message as plain text (skips tool_use blocks).
+    function lastAssistantText() {
+      for (var i = history.length - 1; i >= 0; i--) {
+        var m = history[i];
+        if (!m || m.role !== 'assistant') continue;
+        if (typeof m.content === 'string') return m.content;
+        if (Array.isArray(m.content)) {
+          var t = m.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n');
+          if (t) return t;
+        }
+      }
+      return '';
+    }
+
+    // One-shot translation via the worker (no tools, isolated from the chat history).
+    function translateToEnglish(text) {
+      var url = getUrl();
+      if (!url) return Promise.reject(new Error('no url'));
+      var sys = 'You are a translator. Translate the user message into natural English. It is a travel itinerary. ' +
+        'KEEP every clock time exactly, KEEP the Chinese double-hours (pinyin + hanzi, e.g. "Wu 午"), KEEP all place names, ' +
+        'directions and numbers, and KEEP the line breaks / emoji structure. Output ONLY the English translation, no preamble.';
+      return fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: sys, tools: [], messages: [{ role: 'user', content: text }] })
+      }).then(function (r) { return r.json(); }).then(function (d) { return extractText(d) || text; });
+    }
+
+    // 📤 Share the last itinerary, translated to English (Web Share, else clipboard).
+    function shareItinerary() {
+      var t = lastAssistantText();
+      if (!t) { setStatus('Nothing to share yet — ask for an itinerary first.', '#b00'); return; }
+      shareBtn.textContent = '…'; setStatus('Translating to English…');
+      translateToEnglish(t).then(function (en) {
+        shareBtn.textContent = '📤'; setStatus('');
+        var payload = { title: 'XKDG itinerary', text: en };
+        if (navigator.share) {
+          navigator.share(payload).catch(function () {});
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(en).then(function () {
+            shareBtn.textContent = '✓'; setStatus('Copied to clipboard (English).', '#1b8a3f');
+            setTimeout(function () { shareBtn.textContent = '📤'; }, 1400);
+          }).catch(function () { window.prompt('Copy the English itinerary:', en); });
+        } else {
+          window.prompt('Copy the English itinerary:', en);
+        }
+      }).catch(function () { shareBtn.textContent = '📤'; setStatus('Translation failed — try again.', '#b00'); });
     }
 
     // Drives the tool-use loop: text → (optional tool calls → results) → text.
