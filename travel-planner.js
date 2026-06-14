@@ -689,22 +689,47 @@
   function tpPalaceOK(pd, configCount) {
     if (!pd) return null;
     var ti = pd.ti, di = pd.di, door = pd.door, deity = pd.deity;
+    var star = pd.star, isZhiFu = !!pd.zhiFu;
     configCount = configCount || 0;
 
-    var hasSanQi = TP_SAN_QI.indexOf(ti) !== -1;
+    // San Qi 三奇 present ABOVE (Heaven plate) OR BELOW (Earth plate) of this palace.
+    var hasSanQi = (TP_SAN_QI.indexOf(ti) !== -1) || (TP_SAN_QI.indexOf(di) !== -1);
     var favDoor = TP_FAV_DOORS.indexOf(door) !== -1;
     var clash = (TP_STEM_CLASHES[ti] === di);
     var isWarrior = (deity === 'Warrior');
     var isTiger = (deity === 'Tiger');
 
-    // GATE: only a FAVOURABLE DOOR is required now. San Qi is no longer
-    // mandatory; a direction without it is still usable, but only as a fallback.
-    var gate = favDoor;
+    // TRAVEL DOMAIN RULE: the Injury door 傷 (code 'Shang') relates to vehicles and
+    // journeys, so a San Qi present in the palace (above or below) REDEEMS it for trips.
+    // Such a direction is treated as CLEAN (confirmed), not a fallback.
+    var injuryRescue = (door === 'Shang') && hasSanQi;
+
+    // GATE: a FAVOURABLE DOOR, or an Injury door redeemed by a San Qi.
+    var gate = favDoor || injuryRescue;
+
+    // GENG 庚 is negative for travel UNLESS neutralized by: (1) Geng IS the Commander
+    // (carries the Zhi Fu), or (2) the water trine 申子辰 inside this palace. 子 and 辰
+    // may come from a stem, a star or a door: Zi = Wu戊 / Grass / Rest(Xiu); Chen = Ren壬
+    // / Assistant / Delusion(Du). Geng + Ding in the palace also stays positive.
+    var gengInPalace = (ti === 'Geng' || di === 'Geng');
+    var gengExcluded = false;
+    if (gengInPalace) {
+      var gengIsCommander = isZhiFu && (ti === 'Geng');
+      var hasZi   = (ti === 'Wu'  || di === 'Wu'  || star === 'Grass'     || door === 'Xiu');
+      var hasChen = (ti === 'Ren' || di === 'Ren' || star === 'Assistant' || door === 'Du');
+      var waterTrine = hasZi && hasChen;                 // Geng itself supplies 申
+      var hasDing = (ti === 'Ding' || di === 'Ding');
+      if (!gengIsCommander && !waterTrine) {
+        if (isZhiFu) gengExcluded = true;                // Geng as the OTHER stem with the Commander
+        else if (!hasDing) gengExcluded = true;          // Geng without Ding
+      }
+    }
 
     // Exclusions (switches) — Warrior no longer excludes by default.
     var excluded = false;
     if (TP_EXCLUDE_WARRIOR && isWarrior) excluded = true;
     if (TP_CLASH_MODE === 'exclude' && clash) excluded = true;
+    if (gengExcluded) excluded = true;
 
     var ok = gate && !excluded;
 
@@ -726,7 +751,7 @@
 
     return {
       ok: ok, fallback: fallback, score: score,
-      hasSanQi: hasSanQi, favDoor: favDoor, clash: clash,
+      hasSanQi: hasSanQi, favDoor: favDoor, clash: clash, injuryRescue: injuryRescue, gengExcluded: gengExcluded,
       isWarrior: isWarrior, isTiger: isTiger,
       zhiFu: !!pd.zhiFu, zhiShi: !!pd.zhiShi, configCount: configCount,
       ti: ti, di: di, door: door, deity: deity

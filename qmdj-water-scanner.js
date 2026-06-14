@@ -156,14 +156,26 @@
       if(!isCloudOrTiger) return [];
     }
 
-    // FILTER 2 — Geng restrictions
+    // FILTER 2 — Geng restrictions (with exceptions that NEUTRALIZE Geng)
     var gengInPalace = (ti === 'Geng' || di === 'Geng');
     if(gengInPalace){
-      // 2a — Geng in Commander palace → always excluded
-      if(targetPalace === commanderPal) return [];
-      // 2b — Geng without Ding in the palace → excluded
-      var dingInPalace = (ti === 'Ding' || di === 'Ding');
-      if(!dingInPalace) return [];
+      // EXCEPTION 1 — Geng IS the Commander (the Tian stem carrying the Zhi Fu) → not negative.
+      var gengIsCommander = (targetPalace === commanderPal && ti === 'Geng');
+      // EXCEPTION 2 — Water trine 申子辰 inside THIS palace neutralizes Geng (Geng = 申 Shen).
+      // 子 Zi and 辰 Chen may come from a stem, a star or a door:
+      //   Zi  = Wu 戊 / Grass (Peng 天蓬) / Rest (Xiu 休)
+      //   Chen= Ren 壬 / Assistant (Fu 天輔) / Delusion (Du 杜)
+      var star2 = cell[2];
+      var hasZi   = (ti === 'Wu'  || di === 'Wu'  || star2 === 'Peng' || door === 'Xiu');
+      var hasChen = (ti === 'Ren' || di === 'Ren' || star2 === 'Fu'   || door === 'Du');
+      var waterTrine = hasZi && hasChen;   // Geng itself supplies 申
+      if(!gengIsCommander && !waterTrine){
+        // 2a — Geng as the OTHER stem in the Commander palace → excluded
+        if(targetPalace === commanderPal) return [];
+        // 2b — Geng without Ding in the palace → excluded (Geng + Ding stays positive)
+        var dingInPalace = (ti === 'Ding' || di === 'Ding');
+        if(!dingInPalace) return [];
+      }
     }
 
     // FILTER 3 — duplicate Xin/Ren/Gui (Tian == Di), allowed only if that stem is Commander
