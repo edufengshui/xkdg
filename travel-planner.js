@@ -3599,17 +3599,55 @@
   // ---- POI engine (OpenStreetMap / Overpass, free, called directly) --------
   // Turns a projected "point" into a REAL place of a chosen category near it.
   var TP_POI_FILTERS = {
-    nature: ['node["natural"="water"]["name"]', 'way["natural"="water"]["name"]',
-             'node["tourism"="viewpoint"]["name"]', 'way["leisure"="park"]["name"]',
-             'way["boundary"="national_park"]["name"]', 'way["natural"="wood"]["name"]',
-             'relation["natural"="water"]["name"]'],
+    // Real STOP / START points for a walk — somewhere you can actually park and set off,
+    // not the abstract centre of a lake or wood.
+    nature: ['node["tourism"="viewpoint"]["name"]', 'node["tourism"="picnic_site"]["name"]',
+             'node["tourism"="camp_site"]["name"]', 'node["amenity"="parking"]["name"]',
+             'node["information"="guidepost"]["name"]', 'way["leisure"="park"]["name"]',
+             'way["leisure"="nature_reserve"]["name"]', 'node["natural"="water"]["name"]'],
     culture: ['node["historic"="castle"]["name"]', 'way["historic"="castle"]["name"]',
               'node["tourism"="museum"]["name"]', 'node["historic"="monument"]["name"]',
-              'way["historic"]["name"]', 'node["historic"]["name"]'],
+              'node["historic"]["name"]'],
     town: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]'],
     any: ['node["tourism"="attraction"]["name"]', 'node["place"="town"]["name"]',
-          'node["historic"="castle"]["name"]', 'node["natural"="water"]["name"]']
+          'node["historic"="castle"]["name"]', 'node["natural"="water"]["name"]'],
+    // light, almost-always-populated set used as a fallback to name a real place
+    broad: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]',
+            'node["tourism"="attraction"]["name"]', 'node["amenity"="parking"]["name"]']
   };
+  // Classify an OSM element so the user knows WHAT kind of stop it is.
+  function tpPoiKind(t) {
+    if (!t) return 'place';
+    if (t.amenity === 'parking') return 'parking';
+    if (t.information === 'guidepost' || t.tourism === 'information') return 'trailhead';
+    if (t.tourism === 'viewpoint') return 'viewpoint';
+    if (t.tourism === 'picnic_site') return 'picnic';
+    if (t.tourism === 'camp_site') return 'camp';
+    if (t.leisure === 'nature_reserve' || t.boundary === 'national_park') return 'reserve';
+    if (t.leisure === 'park') return 'park';
+    if (t.natural === 'water') return 'lake';
+    if (t.natural === 'peak') return 'peak';
+    if (t.place === 'town' || t.place === 'village') return 'town';
+    if (t.historic) return 'historic';
+    if (t.tourism === 'museum') return 'museum';
+    return 'place';
+  }
+  // Lower rank = better place to actually stop and start a walk.
+  function tpAccessRank(kind) {
+    var R = { parking: 0, trailhead: 0, picnic: 1, viewpoint: 1, camp: 1, park: 2, reserve: 2, town: 3, lake: 4, forest: 4, peak: 4 };
+    return (R[kind] != null) ? R[kind] : 5;
+  }
+  function tpChargerPower(t) {
+    var p = t['charging_station:output'] || t.maximum_power || t.output ||
+            t['socket:type2:output'] || t['socket:type2_combo:output'] || t['socket:ccs:output'] || t['socket:chademo:output'];
+    return p ? String(p) : null;
+  }
+  // Nearest EV charger to a stop point (within ~350 m, so you can charge while you walk).
+  function tpNearestCharger(p, chargers) {
+    var best = null, bd = Infinity;
+    (chargers || []).forEach(function (c) { var d = tpHaversineKm(p.lat, p.lon, c.lat, c.lon); if (d < bd) { bd = d; best = c; } });
+    return (best && bd <= 0.35) ? { dist: bd, power: best.power } : null;
+  }
   function tpPoiCategory(cat) {
     cat = (cat || '').toLowerCase();
     if (/(natur|walk|hik|lake|lago|forest|bosco|wood|park|parco|passeg|escursion|sentier|monta|outdoor|panoram|viewpoint)/.test(cat)) return 'nature';
@@ -3622,41 +3660,51 @@
     var key = tpPoiCategory(category);
     var filters = TP_POI_FILTERS[key] || TP_POI_FILTERS.any;
     var r = Math.round(Math.max(1, radiusKm) * 1000);
+    // Always also fetch EV chargers in the area (free, same call) to favour rechargeable stops.
     var q = '[out:json][timeout:25];(' +
       filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
-      ');out center 60;';
+      'node["amenity"="charging_station"](around:' + r + ',' + lat + ',' + lon + ');' +
+      ');out center 80;';
     var endpoints = (typeof TP_OVERPASS_URL !== 'undefined' && TP_OVERPASS_URL)
       ? [TP_OVERPASS_URL]
       : ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
     function parse(j) {
-      return (j.elements || []).map(function (e) {
+      var els = [], chargers = [];
+      (j.elements || []).forEach(function (e) {
         var la = (e.lat != null) ? e.lat : (e.center && e.center.lat);
         var lo = (e.lon != null) ? e.lon : (e.center && e.center.lon);
-        var nm = e.tags && (e.tags['name:en'] || e.tags.name);
-        if (la == null || lo == null || !nm) return null;
-        return { name: nm, lat: la, lon: lo, tags: e.tags || {} };
-      }).filter(Boolean);
+        if (la == null || lo == null) return;
+        var t = e.tags || {};
+        if (t.amenity === 'charging_station') { chargers.push({ lat: la, lon: lo, power: tpChargerPower(t) }); return; }
+        var nm = t['name:en'] || t.name;
+        if (!nm) return;
+        els.push({ name: nm, lat: la, lon: lo, kind: tpPoiKind(t), tags: t });
+      });
+      return { els: els, chargers: chargers };
     }
     function tryAt(i) {
-      if (i >= endpoints.length) return Promise.resolve({ ok: false, els: [], error: 'unreachable' });
+      if (i >= endpoints.length) return Promise.resolve({ ok: false, els: [], chargers: [], error: 'unreachable' });
       var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 12000) : null;
       return fetch(endpoints[i], {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'data=' + encodeURIComponent(q), signal: ctrl ? ctrl.signal : undefined
       }).then(function (res) { if (to) clearTimeout(to); if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
-        .then(function (j) { return { ok: true, els: parse(j), error: null }; })
+        .then(function (j) { var pr = parse(j); return { ok: true, els: pr.els, chargers: pr.chargers, error: null }; })
         .catch(function () { if (to) clearTimeout(to); return tryAt(i + 1); });
     }
     return tryAt(0);
   }
-  // Choose the POI closest to the projected point, still within maxKm of the origin.
+  // Choose the best POI: prefer real stop/start points (parking, trailhead, viewpoint…)
+  // over abstract areas (lake/wood), then the closest to the projected point, within maxKm.
   function tpPickBestPOI(els, projPoint, origin, maxKm) {
-    var best = null, bestD = Infinity;
+    var best = null, bestKey = Infinity;
     (els || []).forEach(function (p) {
       if (maxKm && tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) > maxKm + 5) return;
       var d = tpHaversineKm(projPoint.lat, projPoint.lon, p.lat, p.lon);
-      if (d < bestD) { bestD = d; best = p; }
+      // type priority dominates; a nearby EV charger lifts the stop ~1.5 ranks; distance breaks ties
+      var key = (tpAccessRank(p.kind) - (p.ev ? 1.5 : 0)) * 1000 + d;
+      if (key < bestKey) { bestKey = key; best = p; }
     });
     return best;
   }
@@ -3722,6 +3770,9 @@
           direction: r.snapDir, bearing: r.bearing,
           km: poi ? Math.round(tpHaversineKm(O.lat, O.lon, dlat, dlon)) : r.km,
           place: poi ? poi.name : null,
+          place_kind: poi ? poi.kind : null,
+          ev_charging: !!(poi && poi.ev),
+          ev_power: (poi && poi.ev && poi.ev.power) ? poi.ev.power : null,
           depart: r.outbound.depClock, arrive: r.outbound.arriveClock,
           depart_cn: fmtCn(r.outbound.departCn), arrive_cn: fmtCn(r.outbound.arriveCn),
           stay_h: r.stayH, return_depart: r.back.depClock, return_arrive: r.back.arriveClock,
@@ -3737,12 +3788,20 @@
           proposals: picked.map(function (r) { return buildProposal(r, null); })
         };
       }
-      // Category given → find a REAL place near each picked point (search ~25 km around it).
-      var poiRadius = 25;
+      // Category given → find a REAL place near each picked point (search ~40 km around it).
+      var poiRadius = 40;
       return Promise.all(picked.map(function (r) {
-        return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category)
-          .then(function (resp) { return { poi: tpPickBestPOI(resp.els, r.dest, O, maxKm), failed: !resp.ok }; })
-          .catch(function () { return { poi: null, failed: true }; });
+        return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category).then(function (resp) {
+          if (!resp.ok) return { poi: null, failed: true };
+          resp.els.forEach(function (p) { p.ev = tpNearestCharger(p, resp.chargers); });
+          var pick = tpPickBestPOI(resp.els, r.dest, O, maxKm);
+          if (pick) return { poi: pick, failed: false };
+          // service OK but the specific category was empty here → fall back to nearest named town/place
+          return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, 'broad').then(function (r2) {
+            if (r2.ok) r2.els.forEach(function (p) { p.ev = tpNearestCharger(p, r2.chargers); });
+            return { poi: (r2.ok ? tpPickBestPOI(r2.els, r.dest, O, maxKm) : null), failed: false };
+          });
+        }).catch(function () { return { poi: null, failed: true }; });
       })).then(function (res) {
         return {
           date: dateStr, origin: O, category: tpPoiCategory(category),

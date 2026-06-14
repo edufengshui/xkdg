@@ -982,8 +982,13 @@
           'These are already computed on the compensated true-solar-time (longitude + DST) exactly like the Main — show them ' +
           'verbatim and NEVER recompute or shift them yourself. Format e.g. "Partenza 15:55 (Wei 未 · TST 14:30)". ' +
           '"score" (0-5) = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
-          '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination ' +
-          '(otherwise it is a generic point along that direction). The user can refine by category later ("solo natura"). ' +
+          '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination, ' +
+          'and use "place_kind" to tell the user WHAT kind of stop it is so they know where to pull over and start walking: ' +
+          'parking=car park, trailhead=path start, viewpoint=panorama, picnic=picnic area, camp=campsite, park=park, ' +
+          'reserve=nature reserve, lake=lakeside, town=village/town (e.g. "Parcheggio Seeparkplatz — inizio sentiero"). ' +
+          'If "ev_charging" is true the stop has an EV charger within walking distance (ev_power = its power if known) — ' +
+          'highlight it (e.g. "🔌 colonnina di ricarica" / "🔌 EV charger ~' + '11 kW"), the car can charge while the user walks. ' +
+          'If there is no place it is a generic point along that direction. The user can refine by category later ("solo natura"). ' +
           'If "poi_service_error" is true, the places service (OpenStreetMap) was temporarily unreachable — say exactly that ' +
           'and offer to retry; do NOT claim there are no places of that kind. If only "some_without_place" is true, those few ' +
           'points simply had no named place of that category nearby (offer a larger radius or a different category). ' +
