@@ -133,13 +133,16 @@
     }
 
     if (st.center) {
-      if (st.chart) drawPie(ctx, st.center);
-      // center marker
-      ctx.save();
-      ctx.beginPath(); ctx.arc(st.center.x, st.center.y, 6, 0, 2 * Math.PI);
-      ctx.fillStyle = st.centerOutside ? '#b00020' : '#222'; ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.restore();
+      if (st.chart) {
+        drawPie(ctx, st.center); // includes the central palace cluster at the center
+      } else {
+        // center marker (shown until the chart is drawn)
+        ctx.save();
+        ctx.beginPath(); ctx.arc(st.center.x, st.center.y, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = st.centerOutside ? '#b00020' : '#222'; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+      }
     }
   }
 
@@ -166,6 +169,8 @@
     });
 
     drawFacingArrow(ctx, ctr);
+    // central palace (Heaven Heart) drawn at the center point
+    drawCluster(ctx, ctr.x, ctr.y, st.chart.sittingStars[4], st.chart.baseStars[4], st.chart.facingStars[4], '中');
   }
 
   // distance from center along (dx,dy) to the image rectangle (minus margin)
