@@ -1809,8 +1809,8 @@
         'max-height:min(600px,calc(100vh - 110px));background:#fff;border:1px solid #ccc;border-radius:14px;' +
         'box-shadow:0 8px 30px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;font-family:inherit;' });
 
-    var header = elc('div', { style: 'display:flex;align-items:center;gap:8px;padding:10px 12px;background:#6a1b9a;color:#fff;' });
-    header.appendChild(elc('div', { style: 'flex:1;font-weight:700;font-size:15px;' }, '💬 XKDG Assistant'));
+    var header = elc('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;background:#6a1b9a;color:#fff;' });
+    header.appendChild(elc('div', { style: 'flex:1 1 auto;min-width:0;font-weight:700;font-size:15px;' }, '💬 XKDG Assistant'));
     var langSel = elc('select', { id: 'xkdg-ai-lang', title: 'Voice language',
       style: 'border:0;border-radius:6px;background:rgba(255,255,255,.18);color:#fff;font-size:12px;padding:2px 4px;cursor:pointer;' });
     [['auto', '🌐'], ['it', 'IT'], ['en', 'EN'], ['fr', 'FR']].forEach(function (o) {
@@ -1834,7 +1834,9 @@
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🚗');
     var closeBtn = elc('button', { id: 'xkdg-ai-close', title: 'Close',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '✕');
-    header.appendChild(langSel); header.appendChild(gear); header.appendChild(speakerBtn); header.appendChild(hfBtn); header.appendChild(saveBtn); header.appendChild(archBtn); header.appendChild(shareBtn); header.appendChild(clearBtn); header.appendChild(closeBtn);
+    var iconWrap = elc('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:flex-end;flex:1 1 auto;' });
+    iconWrap.appendChild(langSel); iconWrap.appendChild(gear); iconWrap.appendChild(speakerBtn); iconWrap.appendChild(hfBtn); iconWrap.appendChild(saveBtn); iconWrap.appendChild(archBtn); iconWrap.appendChild(shareBtn); iconWrap.appendChild(clearBtn); iconWrap.appendChild(closeBtn);
+    header.appendChild(iconWrap);
     panel.appendChild(header);
 
     var msgs = elc('div', { id: 'xkdg-ai-msgs',
