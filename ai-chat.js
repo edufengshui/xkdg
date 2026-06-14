@@ -89,6 +89,16 @@
     '- HOUR TIMES from find_water_hours / find_qimen_hours_for_star: the `hour` field is the REAL LOCAL CLOCK window ' +
     '(true solar time, DST-adjusted \u2014 the same convention as the BEST/LIST date pages, NOT the textbook ' +
     '23:00-01:00 ranges). Report `hour` exactly as returned, and never recompute or "round" a double-hour clock time yourself.\n' +
+    '- "LUCKY TRIP" IS A DEDICATED COMMAND PHRASE. Whenever the user writes or says "lucky trip" in ANY case or ' +
+    'language ("lucky trip", "Lucky Trip", "un lucky trip", "il mio lucky trip", "giro fortunato"), it ALWAYS means: ' +
+    'call plan_lucky_day_trip and DECIDE EVERYTHING yourself — do NOT ask where to go. The tool itself chooses the ' +
+    'direction, destination, departure time, stay length and return. The same applies to equivalent no-destination ' +
+    'phrasings ("un giro fortunato di qualche ora", "dove posso andare oggi di fortunato", "find me a lucky trip out ' +
+    'of town", "where could I go today"). Pass only what the user gave (origin if you know it, max_radius_km, ' +
+    'stay_min_h/stay_max_h) and let the tool decide everything else. Then present the returned proposals as ' +
+    'several DISTINCT options (varying by direction, distance and stay) with their scores; the user picks one and you run it ' +
+    'with plan_travel using THAT option\'s dest_lat/dest_lon. Use plan_travel (which needs a destination) ONLY when the user ' +
+    'names a specific place. Never tell the user a lucky trip needs a destination.\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
