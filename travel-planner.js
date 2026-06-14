@@ -3665,11 +3665,12 @@
       filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
       'node["amenity"="charging_station"](around:' + r + ',' + lat + ',' + lon + ');' +
       ');out center 80;';
-    var customUrl = (typeof window !== 'undefined' && window.TP_OVERPASS_URL) ? window.TP_OVERPASS_URL
-                  : (typeof TP_OVERPASS_URL !== 'undefined' ? TP_OVERPASS_URL : null);
-    var endpoints = customUrl
-      ? [customUrl]
-      : ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+    // Route OpenStreetMap (Overpass) through our own Cloudflare worker (avoids browser
+    // CORS / service-worker issues). The worker itself falls back across public mirrors.
+    // Can be overridden at runtime by setting window.TP_OVERPASS_URL.
+    var customUrl = (typeof window !== 'undefined' && window.TP_OVERPASS_URL)
+      ? window.TP_OVERPASS_URL : 'https://xkdg-overpass.decumano16.workers.dev';
+    var endpoints = [customUrl];
     function parse(j) {
       var els = [], chargers = [];
       (j.elements || []).forEach(function (e) {
