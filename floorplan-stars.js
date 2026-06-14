@@ -43,6 +43,7 @@
     centerMode: 'rect',          // 'rect' (draw rectangles) | 'manual' (tap a point)
     rects: [],                   // [{x0,y0,x1,y1}] rectangles covering the area
     drag: null,                  // {x0,y0,x1,y1} rectangle being dragged
+    pending: null,               // {x,y} first tapped corner (two-tap rectangle)
     center: null, chart: null, centerOutside: false
   };
 
@@ -122,6 +123,11 @@
         ctx.setLineDash([6, 4]);
         ctx.beginPath(); ctx.rect(d.x0, d.y0, d.x1 - d.x0, d.y1 - d.y0); ctx.fill(); ctx.stroke();
         ctx.setLineDash([]);
+      }
+      if (st.pending) {
+        ctx.beginPath(); ctx.arc(st.pending.x, st.pending.y, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = '#1565c0'; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
       }
       ctx.restore();
     }
@@ -224,42 +230,67 @@
   }
 
   // ── Actions ───────────────────────────────────────────────
-  // Pointer handling: in 'rect' mode a drag draws one rectangle; in 'manual'
-  // mode a single tap sets the center.
+  // In 'rect' mode you can either DRAG a rectangle, or TAP two opposite corners.
+  // In 'manual' mode a single tap sets the center.
+  var _down = null, _moved = false;
   function onDown(ev) {
     if (!st.img) return;
     ev.preventDefault();
+    try { if (ev.pointerId != null && els.canvas.setPointerCapture) els.canvas.setPointerCapture(ev.pointerId); } catch (e) {}
     var p = canvasPt(ev);
     if (st.centerMode === 'manual') {
-      st.center = p; st.centerOutside = false;
+      st.center = p; st.centerOutside = false; st.pending = null;
       status('Center set. Set facing/period, then “Draw chart”.');
       redraw();
-    } else {
-      st.drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
+      return;
     }
+    _down = p; _moved = false;
+    st.drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
   }
   function onMove(ev) {
-    if (!st.drag) return;
+    if (!st.drag || !_down) return;
     ev.preventDefault();
     var p = canvasPt(ev);
     st.drag.x1 = p.x; st.drag.y1 = p.y;
+    if (Math.abs(p.x - _down.x) > 4 || Math.abs(p.y - _down.y) > 4) _moved = true;
     redraw();
   }
   function onUp(ev) {
-    if (!st.drag) return;
-    var d = normRect(st.drag);
+    if (st.centerMode !== 'rect') { st.drag = null; return; }
+    var end = st.drag ? { x: st.drag.x1, y: st.drag.y1 } : null;
     st.drag = null;
-    if ((d.x1 - d.x0) > 6 && (d.y1 - d.y0) > 6) { // ignore tiny accidental drags
-      st.rects.push(d);
-      st.center = null; st.chart = null; // outdated until Find center is pressed again
-      status(st.rects.length + ' rectangle(s). Add more to cover the plan, then “Find center”.');
+    if (!_down) { redraw(); return; }
+    var dragged = _moved && end && Math.hypot(end.x - _down.x, end.y - _down.y) > 8;
+
+    if (dragged) {
+      var d = normRect({ x0: _down.x, y0: _down.y, x1: end.x, y1: end.y });
+      if ((d.x1 - d.x0) > 6 && (d.y1 - d.y0) > 6) { st.rects.push(d); st.center = null; st.chart = null; }
+      st.pending = null;
+      status(st.rects.length + ' rectangle(s). Add more or press “Find center”.');
+    } else {
+      // tap → two-tap rectangle (first corner, then opposite corner)
+      if (!st.pending) {
+        st.pending = { x: _down.x, y: _down.y };
+        status('First corner set — tap the opposite corner (or drag) to make a rectangle.');
+      } else {
+        var r = normRect({ x0: st.pending.x, y0: st.pending.y, x1: _down.x, y1: _down.y });
+        st.pending = null;
+        if ((r.x1 - r.x0) > 6 && (r.y1 - r.y0) > 6) {
+          st.rects.push(r); st.center = null; st.chart = null;
+          status(st.rects.length + ' rectangle(s). Add more or press “Find center”.');
+        } else {
+          status('Rectangle too small — tap two corners further apart.', true);
+        }
+      }
     }
+    _down = null; _moved = false;
     redraw();
   }
 
   function findCenter() {
     if (st.centerMode === 'manual') { status('Manual mode: tap a point on the plan to set the center.'); return; }
     if (!st.rects.length) { status('Draw at least one rectangle over the plan first.', true); return; }
+    st.pending = null;
     st.center = unionCentroid(st.rects);
     st.centerOutside = st.center ? !inAnyRect(st.center, st.rects) : false;
     st.chart = null;
@@ -378,9 +409,9 @@
       st.centerMode = m;
       els.autoBtn.setAttribute('style', modeBtnStyle(m === 'rect'));
       els.manBtn.setAttribute('style', modeBtnStyle(m === 'manual'));
-      st.center = null; st.chart = null; st.drag = null;
+      st.center = null; st.chart = null; st.drag = null; st.pending = null;
       if (m === 'manual') st.rects = [];
-      status(m === 'rect' ? 'Drag to draw rectangles covering the plan, then “Find center”.' : 'Tap any point to set the center.');
+      status(m === 'rect' ? 'Drag, or tap two opposite corners, to draw rectangles covering the plan; then “Find center”.' : 'Tap any point to set the center.');
       redraw();
     }
     els.autoBtn.addEventListener('click', function () { setMode('rect'); });
@@ -391,9 +422,9 @@
     var findBtn = el('button', { style: 'padding:7px 12px;border:0;border-radius:6px;background:#5d4037;color:#fff;font-size:12px;font-weight:600;cursor:pointer;' }, 'Find center');
     findBtn.addEventListener('click', findCenter);
     var undo = el('button', { style: 'padding:7px 10px;border:1px solid #999;border-radius:6px;background:#fff;color:#444;font-size:12px;cursor:pointer;' }, 'Undo');
-    undo.addEventListener('click', function () { if (st.centerMode === 'rect') st.rects.pop(); st.center = null; st.chart = null; redraw(); status(''); });
+    undo.addEventListener('click', function () { if (st.centerMode === 'rect') { if (st.pending) st.pending = null; else st.rects.pop(); } st.center = null; st.chart = null; redraw(); status(''); });
     var clr = el('button', { style: 'padding:7px 10px;border:1px solid #999;border-radius:6px;background:#fff;color:#444;font-size:12px;cursor:pointer;' }, 'Clear');
-    clr.addEventListener('click', function () { st.rects = []; st.center = null; st.chart = null; st.drag = null; redraw(); status(''); });
+    clr.addEventListener('click', function () { st.rects = []; st.center = null; st.chart = null; st.drag = null; st.pending = null; redraw(); status(''); });
     var drawBtn = el('button', { style: 'padding:7px 14px;border:0;border-radius:6px;background:#2e7d32;color:#fff;font-size:13px;font-weight:700;cursor:pointer;' }, 'Draw chart');
     drawBtn.addEventListener('click', draw);
     row3.appendChild(findBtn); row3.appendChild(undo); row3.appendChild(clr); row3.appendChild(drawBtn);
@@ -402,7 +433,7 @@
     // Canvas
     var canvasWrap = el('div', { style: 'border:1px solid #ddd;border-radius:8px;overflow:auto;max-height:60vh;background:#fafafa;display:flex;justify-content:center;' });
     els.canvas = el('canvas', { style: 'touch-action:none;display:block;max-width:100%;' });
-    var ph = el('div', { id: 'fps-ph', style: 'padding:40px 16px;color:#999;font-size:13px;text-align:center;' }, 'Add a floor plan with 📷 Camera (take a photo now) or 🖼️ Gallery / Files (existing image — Google Drive is available here too). Then drag to draw rectangles covering the plan (several if needed) and press “Find center”; set the facing degree/side and period, and press “Draw chart”.');
+    var ph = el('div', { id: 'fps-ph', style: 'padding:40px 16px;color:#999;font-size:13px;text-align:center;' }, 'Add a floor plan with 📷 Camera (take a photo now) or 🖼️ Gallery / Files (existing image — Google Drive is available here too). Then mark the area: drag rectangles, or tap two opposite corners, covering the plan (several if needed), and press “Find center”. Finally set the facing degree/side and period, and press “Draw chart”.');
     canvasWrap.appendChild(ph);
     canvasWrap.appendChild(els.canvas);
     els.canvas.style.display = 'none';
@@ -423,10 +454,10 @@
       rd.onload = function () {
         var im = new Image();
         im.onload = function () {
-          st.img = im; st.rects = []; st.drag = null; st.center = null; st.chart = null;
+          st.img = im; st.rects = []; st.drag = null; st.pending = null; st.center = null; st.chart = null;
           ph.style.display = 'none'; els.canvas.style.display = 'block';
           fitCanvas(); redraw();
-          status(st.centerMode === 'rect' ? 'Drag to draw rectangles covering the plan, then “Find center”.' : 'Tap any point to set the center.');
+          status(st.centerMode === 'rect' ? 'Drag, or tap two opposite corners, to draw rectangles covering the plan; then “Find center”.' : 'Tap any point to set the center.');
         };
         im.src = rd.result;
       };
