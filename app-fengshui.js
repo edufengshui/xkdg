@@ -1899,8 +1899,15 @@ function _fsBearingToDir8(deg){
   return dirs[Math.round(deg / 45) % 8];
 }
 var _fsDirectionArrows = {N:'↑',NE:'↗',E:'→',SE:'↘',S:'↓',SW:'↙',W:'←',NW:'↖'};
+var _fsDirReturn = null;
+function fsCloseDirectionCalc(){
+  var p = document.getElementById('dir-calc-popup'); if(p) p.remove();
+  var o = document.getElementById('dir-calc-overlay'); if(o) o.remove();
+  if(typeof _fsDirReturn === 'function'){ var f = _fsDirReturn; _fsDirReturn = null; try { f(); } catch(e){} }
+}
 
-function fsOpenDirectionCalc(){
+function fsOpenDirectionCalc(onClose){
+  _fsDirReturn = (typeof onClose === 'function' ? onClose : null);
   var old = document.getElementById('dir-calc-overlay');
   if(old) old.remove();
   old = document.getElementById('dir-calc-popup');
@@ -1930,7 +1937,7 @@ function fsOpenDirectionCalc(){
   popup.innerHTML = ''
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
     + '<span style="font-weight:bold;color:#1565c0;font-size:16px;">🧭 Direction Calculator</span>'
-    + '<button onclick="document.getElementById(\'dir-calc-popup\').remove();document.getElementById(\'dir-calc-overlay\').remove()" style="background:#888;color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:12px;cursor:pointer;">✕</button>'
+    + '<button onclick="fsCloseDirectionCalc()" style="background:#888;color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:12px;cursor:pointer;">✕</button>'
     + '</div>'
 
     // ORIGIN
@@ -1975,7 +1982,7 @@ function fsOpenDirectionCalc(){
     // RESULT
     + '<div id="dir-calc-result" style="text-align:center;min-height:40px;"></div>';
 
-  overlay.onclick = function(e){ if(e.target === overlay){ popup.remove(); overlay.remove(); } };
+  overlay.onclick = function(e){ if(e.target === overlay){ fsCloseDirectionCalc(); } };
   document.body.appendChild(overlay);
   document.body.appendChild(popup);
 }
@@ -2118,7 +2125,8 @@ function fsDirectionScanFlights(){
   var sd = document.getElementById('scan-days');
   if(sd && (!sd.value || parseInt(sd.value) < 1)){ sd.value = '7'; }
 
-  // 4) Close the popup.
+  // 4) Close the popup. (This path runs the scan in Main on purpose — no hub return.)
+  _fsDirReturn = null;
   var p = document.getElementById('dir-calc-popup'); if(p) p.remove();
   var o = document.getElementById('dir-calc-overlay'); if(o) o.remove();
 
@@ -2710,6 +2718,56 @@ function fsGetActivePersonForHouse(){
   return null;
 }
 
+// Open the Floor-Plan Flying-Stars tool for a SPECIFIC house, pre-filled with
+// that house's active-floor facing & period, restoring any saved plan, and
+// saving the plan back into that floor (xkdg_houses) — so it's tied to the house.
+function fsHouseImportFloorplan(pName, hi){
+  try {
+    var all = _fsHousesLoad();
+    var houses = all[pName] || [];
+    var h = houses[hi];
+    if (!h){ alert('House not found.'); return; }
+    var fIdx = h.activeFloor || 0; if (fIdx >= h.floors.length) fIdx = 0;
+    var f = h.floors[fIdx];
+    var opts = {
+      houseName: h.name,
+      saved: (f && f.floorplan && f.floorplan.imgData) ? f.floorplan : null,
+      onSave: function(obj){
+        try {
+          var all2 = _fsHousesLoad();
+          var hh = (all2[pName] || [])[hi];
+          if (!hh) return false;
+          var fi = hh.activeFloor || 0; if (fi >= hh.floors.length) fi = 0;
+          if (!hh.floors[fi]) return false;
+          hh.floors[fi].floorplan = obj;
+          _fsHousesSave(all2);            // throws on quota overflow -> caught below
+          fsRenderHouseProfiles();
+          return true;
+        } catch (e){ return false; }
+      }
+    };
+    var fac = _fsFloorFacing(h, f);
+    var per = _fsFloorPeriod(h, f);
+    if (typeof fac === 'number') opts.facingDeg = fac;
+    if (typeof per === 'number') opts.period = per;
+    if (f && f.floorplan && f.floorplan.facingSide) opts.facingSide = f.floorplan.facingSide;
+    if (window.FloorPlanStars && typeof FloorPlanStars.open === 'function') FloorPlanStars.open(opts);
+    else alert('Floorplans not available on this page.');
+  } catch (e){ alert('Could not open the floor-plan tool.'); }
+}
+
+// Remove the saved floor plan from a house's active floor.
+function fsHouseRemoveFloorplan(pName, hi){
+  if (!confirm('Remove the saved floor plan for this floor?')) return;
+  try {
+    var all = _fsHousesLoad();
+    var h = (all[pName] || [])[hi];
+    if (!h) return;
+    var fi = h.activeFloor || 0; if (fi >= h.floors.length) fi = 0;
+    if (h.floors[fi] && h.floors[fi].floorplan){ delete h.floors[fi].floorplan; _fsHousesSave(all); fsRenderHouseProfiles(); }
+  } catch (e){}
+}
+
 function fsRenderHouseProfiles(){
   const label = document.getElementById('fs-house-person-label');
   const list  = document.getElementById('fs-house-list');
@@ -2841,6 +2899,18 @@ function fsRenderHouseProfiles(){
     if (effPeriod != null) html += 'Period: ' + effPeriod;
     if (effFacing == null && effPeriod == null) html += '<span style="color:#e65100;">No facing/period for this floor yet</span>';
     if (!h.sameFacing) html += ' <button onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 7px;font-size:10px;cursor:pointer;margin-left:4px;">✏ Floor facing/period</button>';
+    html += '</div>';
+
+    // ── FLOOR PLAN (📐) — saved per house/floor (uses its facing & period) ──
+    html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #5d4037;">';
+    html += '<div style="font-size:11px;font-weight:bold;color:#5d4037;margin-bottom:3px;">📐 Floor plan</div>';
+    if (f && f.floorplan && f.floorplan.imgData){
+      html += '<span style="font-size:11px;color:#2e7d32;margin-right:6px;">✓ Saved for this floor</span>';
+      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-right:4px;">📐 Open / edit</button>';
+      html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🗑 Remove</button>';
+    } else {
+      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
+    }
     html += '</div>';
 
     // ── DOORS (🚪 XKDG Porte/Facciate) ──

@@ -2248,24 +2248,24 @@
 
     // ✈️ Air travel — FREE
     sectionBtn('\u2708\uFE0F', 'Air travel', 'Flight direction & best dates', '#1565c0', function () {
-      if (typeof window.fsOpenDirectionCalc === 'function') window.fsOpenDirectionCalc();
-      else if (typeof fsOpenDirectionCalc === 'function') fsOpenDirectionCalc();
+      if (typeof window.fsOpenDirectionCalc === 'function') window.fsOpenDirectionCalc(xkdgOpenDirections);
+      else if (typeof fsOpenDirectionCalc === 'function') fsOpenDirectionCalc(xkdgOpenDirections);
       else alert('The Direction Calculator is not available on this page.');
     }, false, false);
 
     // 🚗 Travel Planner — under code (gated via the shared preview code)
     sectionBtn('\uD83D\uDE97', 'Travel Planner', 'Road-trip direction planner', '#1b8a3f', function () {
-      tpOpenReal();
+      tpOpenReal(xkdgOpenDirections);
     }, true, false);
 
     // 🔮 Divinations — gated (QMDJ rotating chart + strategy notes)
     sectionBtn('\uD83D\uDD2E', 'Divinations', 'QMDJ chart + strategy', '#6a1b9a', function () {
-      if (window.DirectionsCharts && window.DirectionsCharts.openDivinations) window.DirectionsCharts.openDivinations();
+      if (window.DirectionsCharts && window.DirectionsCharts.openDivinations) window.DirectionsCharts.openDivinations(xkdgOpenDirections);
       else alert('Divinations module not available on this page.');
     }, true, false);
     // 🎴 Birth charts — gated (QMDJ rotating chart from a birth date)
     sectionBtn('\uD83C\uDCCF', 'Birth charts', 'QMDJ chart from a birth date', '#6a1b9a', function () {
-      if (window.DirectionsCharts && window.DirectionsCharts.openBirthCharts) window.DirectionsCharts.openBirthCharts();
+      if (window.DirectionsCharts && window.DirectionsCharts.openBirthCharts) window.DirectionsCharts.openBirthCharts(xkdgOpenDirections);
       else alert('Birth charts module not available on this page.');
     }, true, false);
 
@@ -2322,9 +2322,11 @@
       });
     }
   }
-  function tpOpenReal() {
+  var tpReturnFn = null;
+  function tpOpenReal(onClose) {
     var existing = document.getElementById('tp-overlay');
-    if (existing) { existing.style.display = 'flex'; return; }
+    if (existing) { existing.style.display = 'flex'; tpReturnFn = (typeof onClose === 'function' ? onClose : null); return; }
+    tpReturnFn = (typeof onClose === 'function' ? onClose : null);
 
     var ov = el('div', {
       id: 'tp-overlay',
@@ -2785,7 +2787,7 @@
     ov.appendChild(panel);
     document.body.appendChild(ov);
 
-    ov.querySelector('#tp-close').addEventListener('click', function () { ov.style.display = 'none'; });
+    ov.querySelector('#tp-close').addEventListener('click', function () { ov.style.display = 'none'; if (tpReturnFn) { var f = tpReturnFn; tpReturnFn = null; try { f(); } catch (e) {} } });
     ov.querySelector('#tp-guide').addEventListener('click', tpShowGuide);
     // Show the guide automatically the first time the planner is opened this session.
     if (!window._tpGuideShown) { window._tpGuideShown = true; tpShowGuide(); }

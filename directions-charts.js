@@ -178,12 +178,16 @@
 
     var ov = el('div', { id: 'dc-overlay',
       style: 'position:fixed;inset:0;z-index:99995;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;font-family:system-ui,Arial,sans-serif;' });
-    var panel = el('div', { style: 'background:#fff;border-radius:12px;max-width:980px;width:100%;padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-height:94vh;overflow:auto;' });
+    var panel = el('div', { style: 'background:#fff;border-radius:12px;max-width:1040px;width:100%;padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-height:96vh;overflow:auto;' });
 
     var hd = el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;' });
     hd.appendChild(el('div', { style: 'font-size:17px;font-weight:700;color:#236b45;' }, esc(cfg.title)));
+    function closeSelf() {
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      if (cfg && typeof cfg.onClose === 'function') { try { cfg.onClose(); } catch (e) {} }
+    }
     var x = el('button', { style: 'border:0;background:transparent;font-size:22px;cursor:pointer;color:#888;' }, '✕');
-    x.addEventListener('click', function () { if (ov.parentNode) ov.parentNode.removeChild(ov); });
+    x.addEventListener('click', closeSelf);
     hd.appendChild(x); panel.appendChild(hd);
 
     // Two columns: chart (left) + controls/strategy (right). Wraps on narrow screens.
@@ -233,8 +237,8 @@
       leftCol.appendChild(srcRow);
     }
 
-    // Chart container
-    var chart = el('div', { id: 'dc-chart', style: 'max-width:560px;margin:0 auto;' });
+    // Chart container — cap by viewport height so the square board always fits
+    var chart = el('div', { id: 'dc-chart', style: 'width:100%;max-width:min(540px,58vh);margin:0 auto;' });
     leftCol.appendChild(chart);
 
     var lastSummary = null;
@@ -323,15 +327,15 @@
     cols.appendChild(leftCol); cols.appendChild(rightCol);
     panel.appendChild(cols);
     ov.appendChild(panel);
-    ov.addEventListener('click', function (e) { if (e.target === ov) { if (ov.parentNode) ov.parentNode.removeChild(ov); } });
+    ov.addEventListener('click', function (e) { if (e.target === ov) closeSelf(); });
     document.body.appendChild(ov);
 
     renderArchive();
     redraw(); // draw today's chart immediately
   }
 
-  function openDivinations() { openSection({ title: '🔮 Divinations', key: 'xkdg_dirchart_div', birth: false }); }
-  function openBirthCharts() { openSection({ title: '🎴 Birth charts', key: 'xkdg_dirchart_birth', birth: true }); }
+  function openDivinations(onReturn) { openSection({ title: '🔮 Divinations', key: 'xkdg_dirchart_div', birth: false, onClose: (typeof onReturn === 'function' ? onReturn : null) }); }
+  function openBirthCharts(onReturn) { openSection({ title: '🎴 Birth charts', key: 'xkdg_dirchart_birth', birth: true, onClose: (typeof onReturn === 'function' ? onReturn : null) }); }
 
   try {
     window.DirectionsCharts = { openDivinations: openDivinations, openBirthCharts: openBirthCharts, drawChartInto: drawChartInto };
