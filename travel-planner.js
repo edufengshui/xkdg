@@ -3781,7 +3781,7 @@
     var filters = TP_POI_FILTERS[key] || TP_POI_FILTERS.any;
     var r = Math.round(Math.max(1, radiusKm) * 1000);
     // Always also fetch EV chargers in the area (free, same call) to favour rechargeable stops.
-    var q = '[out:json][timeout:25];(' +
+    var q = '[out:json][timeout:18];(' +
       filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
       'node["amenity"="charging_station"](around:' + r + ',' + lat + ',' + lon + ');' +
       ');out 80;';
@@ -3808,7 +3808,7 @@
     function tryAt(i) {
       if (i >= endpoints.length) return Promise.resolve({ ok: false, els: [], chargers: [], error: 'unreachable' });
       var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 12000) : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 20000) : null;
       return fetch(endpoints[i], {
         method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'data=' + encodeURIComponent(q), signal: ctrl ? ctrl.signal : undefined
@@ -3816,7 +3816,12 @@
         .then(function (j) { var pr = parse(j); return { ok: true, els: pr.els, chargers: pr.chargers, error: null }; })
         .catch(function () { if (to) clearTimeout(to); return tryAt(i + 1); });
     }
-    return tryAt(0);
+    // One automatic retry on a service failure (transient Overpass/mirror hiccup)
+    // before we report the area as having no place.
+    return tryAt(0).then(function (res) {
+      if (res && res.ok) return res;
+      return new Promise(function (rs) { setTimeout(rs, 800); }).then(function () { return tryAt(0); });
+    });
   }
   // Choose the best POI: prefer real stop/start points (parking, trailhead, viewpoint…)
   // over abstract areas (lake/wood), then the closest to the projected point, within maxKm.
@@ -4089,10 +4094,19 @@
           resp.els.forEach(function (p) { p.ev = tpNearestCharger(p, resp.chargers); });
           var pick = tpPickBestPOI(resp.els, r.dest, O, maxKm);
           if (pick) return { poi: pick, failed: false };
-          // service OK but the specific category was empty here → fall back to nearest named town/place
+          // service OK but the specific category was empty here → fall back to the nearest
+          // named place, widening the radius before giving up so a real name appears in
+          // populated areas (only truly remote points end up without a place).
           return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, 'broad').then(function (r2) {
-            if (r2.ok) r2.els.forEach(function (p) { p.ev = tpNearestCharger(p, r2.chargers); });
-            return { poi: (r2.ok ? tpPickBestPOI(r2.els, r.dest, O, maxKm) : null), failed: false };
+            if (!r2.ok) return { poi: null, failed: true };
+            r2.els.forEach(function (p) { p.ev = tpNearestCharger(p, r2.chargers); });
+            var b1 = tpPickBestPOI(r2.els, r.dest, O, maxKm);
+            if (b1) return { poi: b1, failed: false };
+            return tpFindPOI(r.dest.lat, r.dest.lon, 90, 'broad').then(function (r3) {
+              if (!r3.ok) return { poi: null, failed: true };
+              r3.els.forEach(function (p) { p.ev = tpNearestCharger(p, r3.chargers); });
+              return { poi: tpPickBestPOI(r3.els, r.dest, O, Math.max(maxKm || 0, 95)), failed: false };
+            });
           });
         }).catch(function () { return { poi: null, failed: true }; });
       })).then(function (res) {
