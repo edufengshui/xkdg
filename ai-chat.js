@@ -101,7 +101,19 @@
     'names a specific place. Never tell the user a lucky trip needs a destination. If the user wants a KIND of place ' +
     '("in natura", "una passeggiata", "culturale", "castelli", "borghi") OR asks to filter the proposals afterwards ' +
     '("ora solo natura"), pass the category parameter and call again with the SAME other parameters — each proposal ' +
-    'then becomes a real named place. When a proposal has a "place", show that name as the destination.\n' +
+    'then becomes a real named place. When a proposal has a "place", show that name as the destination. ' +
+    'A Lucky Trip answer may ALSO contain a "chains" field: the tool adds multi-leg lucky LOOPS automatically when the ' +
+    'simple options were few. When present, show them in the SAME answer in a clearly separate section (e.g. "🔗 Tragitti a ' +
+    'catena") AFTER the simple options, each loop numbered with its legs (direction, door, double-hour, km, end coordinates, ' +
+    'departCn/arriveCn) and noting it returns to the start within "resid" km. Briefly say they were added because few simple ' +
+    'round-trips were available.\n' +
+    '- MULTI-DAY TOUR (offer as an option): the same lucky-travel idea extends to a trip of SEVERAL DAYS visiting a country ' +
+    '(e.g. France), like an organised tour — each transfer between stops driven in a favourable hour/direction. You do NOT have ' +
+    'a dedicated engine for this; you build it as a SEQUENCE of plan_travel calls, one per transfer between the stops the user ' +
+    'gives you, choosing each day\'s most favourable departure window. It therefore REQUIRES the user to provide the itinerary ' +
+    'stops and the overnight/stay locations. When a user plans such a multi-day trip, or after a Lucky Trip when it fits, you may ' +
+    'PROPOSE this: "posso costruirti anche un tour di più giorni — dimmi le tappe e dove pernotti e scelgo gli orari/direzioni più ' +
+    'fortunati per ogni spostamento". Only start once the user supplies the stops and stays; present the result as a day-by-day itinerary.\n' +
     '- WHY A DIRECTION IS / ISN\'T PROPOSED: never invent a QMDJ reason. You do NOT compute Qi Men, so do not claim a ' +
     'palace "has no good configuration" / "lacks the right setup" or judge doors, San Qi or deities yourself. The Lucky ' +
     'Trip keeps only directions whose OUTBOUND and RETURN are BOTH favourable, then shows a few diversified by distance. ' +
@@ -109,6 +121,15 @@
     'unfavourable at the return hour, or because it was diversified out to vary the distances. If the user questions a ' +
     'specific direction, say exactly this, and offer to verify it by running plan_travel toward that direction (it shows ' +
     'that direction\'s own favourable hours). Never assert a direction is unfavourable unless a tool result says so.\n' +
+    '- "VIAGGIO A CATENA" / "CHAINED LUCKY TRIP" IS A SEPARATE COMMAND. Whenever the user asks for a "viaggio a catena", ' +
+    '"tragitto a catena", "percorso a tappe", "chained lucky trip", "lucky loop", or describes hopping direction by direction ' +
+    'across consecutive hours and coming back home (e.g. "NE nell\'ora Si, poi Sud nell\'ora Wu, poi NW per tornare"), call ' +
+    'plan_lucky_chain and DECIDE EVERYTHING yourself. It returns one or more LOOPS, each a sequence of legs (one per consecutive ' +
+    'double-hour) in a favourable direction, that close EXACTLY back on the origin. Present each loop as a numbered option with ' +
+    'its legs in order: leg number, direction, favourable door (doorLabel), double-hour (brPy+br), distance (km), end coordinates ' +
+    '(to.lat/to.lon), and departCn/arriveCn shown verbatim. Say it returns to the start within "resid" km. Never compute the ' +
+    'directions, doors or times yourself — only show what plan_lucky_chain returns. This is DIFFERENT from a normal "lucky trip" ' +
+    '(out-stay-back to ONE place): use plan_lucky_chain only for the multi-leg loop.\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
@@ -333,6 +354,30 @@
           stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
           category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL place (from OpenStreetMap) instead of a generic point. Use "nature" (lakes, woods, parks, viewpoints, walks), "culture" (castles, museums, historic sites), "town" (villages/towns), or leave empty for generic points. Pass the user\'s words ("natura", "passeggiata", "culturale", "borghi"...) — they are mapped automatically. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
           count: { type: 'integer', description: 'How many distinct proposals to return (2-6, default 4).' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'plan_lucky_chain',
+      description: 'Propose CHAINED lucky trips for ONE day: a multi-leg loop where EACH leg is driven during one ' +
+        'consecutive Chinese double-hour, in a direction whose DOOR is favourable in THAT hour, and the path RETURNS ' +
+        'EXACTLY to the origin (a closed polygon). This is the true XKDG "travelling" method — e.g. NE in hour Si, then ' +
+        'South in hour Wu, then NW in hour Wei, back to the start. Use when the user asks for a "viaggio a catena", ' +
+        '"tragitto a catena", "percorso a tappe fortunato", "chained lucky trip", "lucky loop", or describes hopping ' +
+        'direction-by-direction across the hours to gather favourable qi and come home. The app chooses the favourable ' +
+        'directions per double-hour and solves the leg lengths so the loop closes on the origin; it returns a few ' +
+        'distinct loops. You never compute directions, doors or times yourself.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_lat: { type: 'number', description: 'Start latitude (defaults to saved GPS, else the app default).' },
+          origin_lon: { type: 'number', description: 'Start longitude.' },
+          origin_name: { type: 'string', description: 'Start place name (for labels).' },
+          date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
+          max_legs: { type: 'integer', description: 'Maximum legs before returning home (2-5, default 5).' },
+          max_leg_km: { type: 'number', description: 'Maximum length of a single leg in km (default 140).' },
+          count: { type: 'integer', description: 'How many distinct loops to return (2-6, default 5).' }
         },
         required: []
       }
@@ -625,6 +670,7 @@
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
       if (name === 'plan_travel') return toolPlanTravel(input || {});
       if (name === 'plan_lucky_day_trip') return toolPlanLuckyDayTrip(input || {});
+      if (name === 'plan_lucky_chain') return toolPlanLuckyChain(input || {});
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
@@ -967,15 +1013,29 @@
     };
     if (input.category) opts.category = String(input.category);
     if (origin) opts.origin = origin;
+    // Helper: explore CHAINED loops (sync, no network) to enrich the answer.
+    function chainBlock() {
+      if (typeof window.TravelPlanner.proposeChainTrips !== 'function') return null;
+      try {
+        var cr = window.TravelPlanner.proposeChainTrips({ utc: utc, dstOn: dstOn, dateStr: dateStr, maxLegs: 5, count: 3, origin: (origin || undefined) });
+        return (cr && cr.ok && cr.chains && cr.chains.length) ? cr.chains : null;
+      } catch (e) { return null; }
+    }
     return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
-      if (!r || !r.proposals || !r.proposals.length) {
+      var proposals = (r && r.proposals) ? r.proposals : [];
+      // "Few" simple options -> also explore chained loops, all in ONE answer.
+      var few = (proposals.length < 3) || !(r && r.anyClean);
+      var chains = few ? chainBlock() : null;
+
+      if (!proposals.length && !chains) {
         var tmr = new Date(dateStr + 'T12:00:00'); tmr.setDate(tmr.getDate() + 1);
         var tmrStr = tmr.getFullYear() + '-' + String(tmr.getMonth() + 1).padStart(2, '0') + '-' + String(tmr.getDate()).padStart(2, '0');
         return { ok: false, too_late_or_empty: true, tomorrow: tmrStr,
-          note: 'No round-trip fits ' + dateStr + ' from now on — it is probably too late in the day for a there-and-back trip (or the radius is too small). Tell the user and offer to look at tomorrow (call again with date=' + tmrStr + ') or a larger radius.' };
+          note: 'No round-trip AND no chained loop fits ' + dateStr + ' from now on — probably too late in the day (or radius too small). Offer tomorrow (call again with date=' + tmrStr + ') or a larger radius.' };
       }
       return {
         ok: true, date: r.date, any_fully_favourable: r.anyClean,
+        chains_included: !!chains,
         instructions: 'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +
           'All clock times are local wall-clock. For EACH key moment also show the Chinese double-hour provided: ' +
           'depart_cn (departure), arrive_cn (reaching the destination), return_depart_cn (leaving back), return_arrive_cn (home). ' +
@@ -992,10 +1052,65 @@
           'If "poi_service_error" is true, the places service (OpenStreetMap) was temporarily unreachable — say exactly that ' +
           'and offer to retry; do NOT claim there are no places of that kind. If only "some_without_place" is true, those few ' +
           'points simply had no named place of that category nearby (offer a larger radius or a different category). ' +
-          'Once the user picks one, call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.',
-        proposals: r.proposals
+          (chains
+            ? 'CHAINED LOOPS ALSO INCLUDED: because the simple options were few, the field "chains" carries multi-leg lucky LOOPS. ' +
+              'After the simple options, add a clearly separate section (e.g. "🔗 Tragitti a catena") and present each loop as a ' +
+              'numbered option with its legs in order: leg number, direction (dir), favourable door (doorLabel, e.g. "Open 开"), ' +
+              'double-hour (brPy + br, e.g. "Si 巳"), distance (km), end coordinates (to.lat, to.lon), and departCn/arriveCn verbatim. ' +
+              'Each loop returns to the start within "resid" km; "score" 0-5 is its luck and "sanqiCount" how many legs carry San Qi. ' +
+              'Explain briefly that these multi-stop loops were added because few simple round-trips were available. '
+            : '') +
+          'Once the user picks a SIMPLE option, call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.',
+        proposals: proposals,
+        chains: chains || undefined
       };
     }).catch(function (e) { return { error: 'Lucky-trip planning failed: ' + ((e && e.message) || e) }; });
+  }
+
+  function toolPlanLuckyChain(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.proposeChainTrips !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    var today = todayIso();
+    var dateStr = input.date || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+    var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
+    var opts = {
+      utc: utc, dstOn: dstOn, dateStr: dateStr,
+      maxLegs: (input.max_legs != null ? Math.max(2, Math.min(5, parseInt(input.max_legs, 10))) : 5),
+      maxLegKm: (input.max_leg_km != null ? +input.max_leg_km : 140),
+      count: (input.count != null ? Math.max(2, Math.min(6, parseInt(input.count, 10))) : 5)
+    };
+    if (origin) opts.origin = origin;
+    try {
+      var r = window.TravelPlanner.proposeChainTrips(opts);
+      if (!r || !r.ok || !r.chains || !r.chains.length) {
+        var reason = r && r.reason;
+        var tmr = new Date(dateStr + 'T12:00:00'); tmr.setDate(tmr.getDate() + 1);
+        var tmrStr = tmr.getFullYear() + '-' + String(tmr.getMonth() + 1).padStart(2, '0') + '-' + String(tmr.getDate()).padStart(2, '0');
+        return {
+          ok: false, reason: reason || 'empty', tomorrow: tmrStr,
+          note: 'No fortunate CHAIN closes back on the origin for ' + dateStr + ' from now on (reason: ' + (reason || 'none') + '). ' +
+            'This happens when the favourable directions in the remaining double-hours cannot geometrically form a loop back home. ' +
+            'Explain this plainly and offer to try tomorrow (call again with date=' + tmrStr + ') or to allow more legs.'
+        };
+      }
+      return {
+        ok: true, date: r.date,
+        instructions: 'These are CHAINED lucky trips: each loop is a sequence of legs, ONE per consecutive Chinese double-hour, ' +
+          'and the polygon RETURNS EXACTLY to the origin (resid km is ~0). Present EACH chain as a numbered option, then its ordered ' +
+          'itinerary leg by leg. For every leg show: the leg number, the DIRECTION (dir), the favourable DOOR (doorLabel, e.g. ' +
+          '"Open 开"), the double-hour (brPy + br, e.g. "Si 巳"), the distance (km), and the leg END coordinates (to.lat, to.lon) so ' +
+          'the user can open it on a map. Also show departCn/arriveCn (the Chinese double-hour of leaving/arriving each leg) VERBATIM ' +
+          '— they are already on compensated true-solar-time, never recompute or shift them. State clearly that the trip closes back ' +
+          'on the start within "resid" km. "score" (0-5) is the overall luck of the loop; "sanqiCount" = how many legs carry San Qi. ' +
+          'Do NOT invent directions, doors or times — show only what the tool provides. The final leg returns to the origin.',
+        origin: r.origin, chains: r.chains
+      };
+    } catch (e) { return { error: 'Chain planning failed: ' + ((e && e.message) || e) }; }
   }
 
   function toolPlanTravel(input) {
