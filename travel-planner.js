@@ -2195,6 +2195,81 @@
   }
   try { window.xkdgRequireCode = xkdgRequireCode; } catch (e) {}
 
+  // ---- Directions hub -----------------------------------------------------
+  // Single entry point for the "Directions" area. Lists its sections:
+  //   ✈️ Air travel    — FREE (no code) — opens the flight Direction Calculator
+  //   🚗 Travel Planner — under code     — opens the road-trip planner (tpOpen)
+  //   🔮 Divinations / 🎴 Birth charts — coming soon (placeholders, built later)
+  function xkdgOpenDirections() {
+    var existing = document.getElementById('xkdg-dir-overlay');
+    if (existing) { existing.style.display = 'flex'; return; }
+
+    var ov = el('div', {
+      id: 'xkdg-dir-overlay',
+      style: 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;' +
+        'align-items:center;justify-content:center;padding:16px;'
+    });
+    var card = el('div', {
+      style: 'background:#fff;border-radius:14px;max-width:360px;width:100%;padding:18px;' +
+        'box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:system-ui,Arial,sans-serif;'
+    });
+
+    var head = el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;' });
+    head.appendChild(el('div', { style: 'font-size:17px;font-weight:700;color:#1565c0;' }, '\uD83E\uDDED Directions'));
+    var xBtn = el('span', { style: 'cursor:pointer;font-size:22px;color:#888;line-height:1;' }, '\u2715');
+    head.appendChild(xBtn);
+    card.appendChild(head);
+
+    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+
+    // A section button. `gated` true -> opens behind the shared code.
+    function sectionBtn(emoji, label, sub, color, onOpen, gated, soon) {
+      var b = el('button', {
+        type: 'button',
+        style: 'width:100%;text-align:left;display:flex;align-items:center;gap:10px;margin-bottom:8px;' +
+          'padding:12px 14px;border:1px solid #e0e0e0;border-radius:10px;background:' + (soon ? '#f5f5f5' : '#fff') + ';' +
+          'cursor:' + (soon ? 'default' : 'pointer') + ';' + (soon ? 'opacity:.6;' : '')
+      });
+      b.appendChild(el('span', { style: 'font-size:20px;' }, emoji));
+      var txt = el('div', { style: 'flex:1;min-width:0;' });
+      txt.appendChild(el('div', { style: 'font-weight:700;font-size:14px;color:' + color + ';' },
+        label + (gated ? '  \uD83D\uDD12' : '')));
+      if (sub) txt.appendChild(el('div', { style: 'font-size:11px;color:#777;' }, sub));
+      b.appendChild(txt);
+      if (!soon) {
+        b.addEventListener('click', function () {
+          close();
+          if (gated) xkdgRequireCode(onOpen, label + ' (preview)');
+          else { try { onOpen(); } catch (e) {} }
+        });
+      }
+      card.appendChild(b);
+    }
+
+    // ✈️ Air travel — FREE
+    sectionBtn('\u2708\uFE0F', 'Air travel', 'Flight direction & best dates', '#1565c0', function () {
+      if (typeof window.fsOpenDirectionCalc === 'function') window.fsOpenDirectionCalc();
+      else if (typeof fsOpenDirectionCalc === 'function') fsOpenDirectionCalc();
+      else alert('The Direction Calculator is not available on this page.');
+    }, false, false);
+
+    // 🚗 Travel Planner — under code (gated via the shared preview code)
+    sectionBtn('\uD83D\uDE97', 'Travel Planner', 'Road-trip direction planner', '#1b8a3f', function () {
+      tpOpenReal();
+    }, true, false);
+
+    // 🔮 Divinations — coming soon (will be gated when built)
+    sectionBtn('\uD83D\uDD2E', 'Divinations', 'Coming soon', '#6a1b9a', null, true, true);
+    // 🎴 Birth charts — coming soon (will be gated when built)
+    sectionBtn('\uD83C\uDCCF', 'Birth charts', 'Coming soon', '#6a1b9a', null, true, true);
+
+    xBtn.addEventListener('click', close);
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+  }
+  try { window.xkdgOpenDirections = xkdgOpenDirections; } catch (e) {}
+
   // Gate every entry point: ask for the code (once per session), then open.
   function tpOpen() {
     if (!TP_LOCK_ENABLED || tpUnlocked) { tpOpenReal(); return; }
@@ -2265,37 +2340,6 @@
       '<span id="tp-min" title="Minimize / expand (drag the bar to move)" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">–</span>' +
       '<span id="tp-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">✕</span></span>';
     panel.appendChild(header);
-
-    // ── Section 1: AIR TRAVEL (✈️) ──────────────────────────────────────────
-    // Additive box that launches the existing, proven flight Direction Calculator
-    // (compute flight direction + scan the best dates to fly). No logic is
-    // duplicated here: it opens fsOpenDirectionCalc() from app-fengshui.js.
-    var airBox = el('div', {
-      style: 'margin:10px 0 6px;border:1px solid #bbdefb;border-radius:10px;padding:10px 12px;background:#e3f2fd;'
-    });
-    airBox.appendChild(el('div', {
-      style: 'font-weight:700;color:#1565c0;font-size:14px;margin-bottom:2px;'
-    }, '\u2708\uFE0F Air travel'));
-    airBox.appendChild(el('div', {
-      style: 'font-size:12px;color:#555;margin-bottom:8px;'
-    }, 'Compute the flight direction to a destination and scan the best dates to fly.'));
-    var airBtn = el('button', {
-      id: 'tp-air-open', type: 'button',
-      style: 'width:100%;background:#1565c0;color:#fff;border:none;border-radius:8px;padding:10px;' +
-        'font-size:14px;font-weight:700;cursor:pointer;'
-    }, '\uD83E\uDDED Flight direction & dates');
-    airBtn.addEventListener('click', function () {
-      if (typeof window.fsOpenDirectionCalc === 'function') window.fsOpenDirectionCalc();
-      else if (typeof fsOpenDirectionCalc === 'function') fsOpenDirectionCalc();
-      else alert('The Direction Calculator is not available on this page.');
-    });
-    airBox.appendChild(airBtn);
-    panel.appendChild(airBox);
-
-    // ── Section 2: ROAD TRIP (🚗) — the existing planner inputs follow below ──
-    panel.appendChild(el('div', {
-      style: 'font-weight:700;color:#1b8a3f;font-size:14px;margin:12px 0 2px;'
-    }, '\uD83D\uDE97 Road trip'));
 
     var nowUtc = (function () {
       var v = document.getElementById('utc-offset');
