@@ -2258,10 +2258,16 @@
       tpOpenReal();
     }, true, false);
 
-    // 🔮 Divinations — coming soon (will be gated when built)
-    sectionBtn('\uD83D\uDD2E', 'Divinations', 'Coming soon', '#6a1b9a', null, true, true);
-    // 🎴 Birth charts — coming soon (will be gated when built)
-    sectionBtn('\uD83C\uDCCF', 'Birth charts', 'Coming soon', '#6a1b9a', null, true, true);
+    // 🔮 Divinations — gated (QMDJ rotating chart + strategy notes)
+    sectionBtn('\uD83D\uDD2E', 'Divinations', 'QMDJ chart + strategy', '#6a1b9a', function () {
+      if (window.DirectionsCharts && window.DirectionsCharts.openDivinations) window.DirectionsCharts.openDivinations();
+      else alert('Divinations module not available on this page.');
+    }, true, false);
+    // 🎴 Birth charts — gated (QMDJ rotating chart from a birth date)
+    sectionBtn('\uD83C\uDCCF', 'Birth charts', 'QMDJ chart from a birth date', '#6a1b9a', function () {
+      if (window.DirectionsCharts && window.DirectionsCharts.openBirthCharts) window.DirectionsCharts.openBirthCharts();
+      else alert('Birth charts module not available on this page.');
+    }, true, false);
 
     xBtn.addEventListener('click', close);
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });

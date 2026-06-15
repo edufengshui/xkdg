@@ -269,7 +269,6 @@
             <button class="btn-scan" id="mode-cal"   onclick="setMode('cal')"   style="background:#555;">🗓 CAL</button>
             <button class="btn-scan" id="mode-table" onclick="setMode('table')" style="background:#555;">📋 TABLES</button>
             <button class="btn-scan" id="mode-fengshui" onclick="setMode('fengshui')" style="background:#8a6a1f;">🧭 FENG SHUI</button>
-            <button class="btn-scan" id="btn-floorplan" onclick="FloorPlanStars.open()" style="background:#5d4037;">🏠 PLAN STARS</button>
             <button class="btn-scan" id="btn-direction" onclick="(window.xkdgOpenDirections?window.xkdgOpenDirections():fsOpenDirectionCalc())" style="background:#1565c0;">🧭 DIRECTIONS</button>
             <button class="btn-scan" id="btn-filter" onclick="toggleFilter()" style="background:#555;">⚙ FILTER</button>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -351,6 +350,7 @@
 <script src="floorplan-stars.js"></script>
 <script src="flying-stars-qimen.js"></script>
 <script src="fs-chart-finder.js"></script>
+<script src="directions-charts.js"></script>
 <script>/* Route OpenStreetMap (Overpass) through our own Cloudflare worker to avoid browser CORS. */
 window.TP_OVERPASS_URL = 'https://xkdg-overpass.decumano16.workers.dev';</script>
 <script src="travel-planner.js"></script>
