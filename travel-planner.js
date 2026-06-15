@@ -3781,7 +3781,7 @@
     var filters = TP_POI_FILTERS[key] || TP_POI_FILTERS.any;
     var r = Math.round(Math.max(1, radiusKm) * 1000);
     // Always also fetch EV chargers in the area (free, same call) to favour rechargeable stops.
-    var q = '[out:json][timeout:18];(' +
+    var q = '[out:json][timeout:13];(' +
       filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
       'node["amenity"="charging_station"](around:' + r + ',' + lat + ',' + lon + ');' +
       ');out 80;';
