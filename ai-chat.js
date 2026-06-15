@@ -1920,6 +1920,17 @@
   function build() {
     if (document.getElementById('xkdg-ai-btn')) return; // already installed
 
+    // Fullscreen mode CSS (overrides the inline floating-window styles when toggled on)
+    if (!document.getElementById('xkdg-ai-fs-style')) {
+      var fsStyle = document.createElement('style');
+      fsStyle.id = 'xkdg-ai-fs-style';
+      fsStyle.textContent =
+        '#xkdg-ai-panel.xkdg-ai-fs{top:0 !important;right:0 !important;bottom:0 !important;left:0 !important;' +
+        'width:100vw !important;max-width:100vw !important;height:100vh !important;max-height:100vh !important;' +
+        'border-radius:0 !important;border:0 !important;}';
+      document.head.appendChild(fsStyle);
+    }
+
     // Floating launcher
     var btn = elc('button', { id: 'xkdg-ai-btn', title: 'Assistant',
       style: 'position:fixed;right:16px;bottom:16px;z-index:99998;width:52px;height:52px;border-radius:50%;' +
@@ -1955,10 +1966,12 @@
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🔇');
     var hfBtn = elc('button', { id: 'xkdg-ai-hf', title: 'Hands-free driving mode (wake word)',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🚗');
+    var fsBtn = elc('button', { id: 'xkdg-ai-fs', title: 'Enlarge to full screen',
+      style: 'border:0;background:transparent;color:#fff;font-size:17px;cursor:pointer;' }, '\u26F6');
     var closeBtn = elc('button', { id: 'xkdg-ai-close', title: 'Close',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '✕');
     var iconWrap = elc('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:flex-end;flex:1 1 auto;' });
-    iconWrap.appendChild(langSel); iconWrap.appendChild(gear); iconWrap.appendChild(speakerBtn); iconWrap.appendChild(hfBtn); iconWrap.appendChild(saveBtn); iconWrap.appendChild(archBtn); iconWrap.appendChild(shareBtn); iconWrap.appendChild(clearBtn); iconWrap.appendChild(closeBtn);
+    iconWrap.appendChild(langSel); iconWrap.appendChild(gear); iconWrap.appendChild(speakerBtn); iconWrap.appendChild(hfBtn); iconWrap.appendChild(saveBtn); iconWrap.appendChild(archBtn); iconWrap.appendChild(shareBtn); iconWrap.appendChild(clearBtn); iconWrap.appendChild(fsBtn); iconWrap.appendChild(closeBtn);
     header.appendChild(iconWrap);
     panel.appendChild(header);
 
@@ -2188,8 +2201,16 @@
     }
     function closePanel() { stopSpeaking(); if (handsFree) stopHF(); panel.style.display = 'none'; }
 
+    function toggleFullscreen() {
+      var full = panel.classList.toggle('xkdg-ai-fs');
+      fsBtn.textContent = full ? '\uD83D\uDDD5' : '\u26F6';
+      fsBtn.title = full ? 'Restore small window' : 'Enlarge to full screen';
+      try { input.focus(); } catch (e) {}
+    }
+
     btn.addEventListener('click', function () { panel.style.display === 'flex' ? closePanel() : openPanel(); });
     closeBtn.addEventListener('click', closePanel);
+    fsBtn.addEventListener('click', toggleFullscreen);
     gear.addEventListener('click', openSettings);
     clearBtn.addEventListener('click', function () { history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); });
     saveBtn.addEventListener('click', function () { saveCurrentConversation(false); });
