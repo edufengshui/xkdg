@@ -2126,7 +2126,7 @@
    * Asked once per page load; after a correct code the planner opens freely
    * until the page is reloaded.
    * ----------------------------------------------------------------------- */
-  function tpRequestCode(onSuccess) {
+  function tpRequestCode(onSuccess, title) {
     var existing = document.getElementById('tp-lock-overlay');
     if (existing) existing.parentNode.removeChild(existing);
 
@@ -2139,7 +2139,7 @@
       style: 'background:#fff;border-radius:14px;max-width:340px;width:100%;padding:20px;' +
         'box-shadow:0 10px 40px rgba(0,0,0,.35);font-family:inherit;'
     });
-    card.appendChild(el('div', { style: 'font-size:17px;font-weight:700;color:#1565c0;margin-bottom:6px;' }, '🔒 Travel Planner (preview)'));
+    card.appendChild(el('div', { style: 'font-size:17px;font-weight:700;color:#1565c0;margin-bottom:6px;' }, '\uD83D\uDD12 ' + (title || 'Travel Planner (preview)')));
     card.appendChild(el('div', { style: 'font-size:13px;color:#555;line-height:1.5;margin-bottom:14px;' },
       'This feature is still in development. Enter the access code to continue.'));
 
@@ -2182,6 +2182,18 @@
     document.body.appendChild(ov);
     setTimeout(function () { try { inp.focus(); } catch (e) {} }, 50);
   }
+
+  // ---- Shared preview-code gate ------------------------------------------
+  // One code (TP_LOCK_CODE) protects the whole in-development "Directions" area:
+  // Travel Planner + the future Divinations and Birth-charts sections. Unlocking
+  // any one of them unlocks the others for the session/device (xkdg_tp_unlocked).
+  // Usage from anywhere:
+  //   window.xkdgRequireCode(function(){ /* open the section */ }, 'Divinations (preview)');
+  function xkdgRequireCode(onSuccess, title) {
+    if (!TP_LOCK_ENABLED || tpUnlocked) { try { if (onSuccess) onSuccess(); } catch (e) {} return; }
+    tpRequestCode(function () { try { if (onSuccess) onSuccess(); } catch (e) {} }, title);
+  }
+  try { window.xkdgRequireCode = xkdgRequireCode; } catch (e) {}
 
   // Gate every entry point: ask for the code (once per session), then open.
   function tpOpen() {
@@ -2253,6 +2265,37 @@
       '<span id="tp-min" title="Minimize / expand (drag the bar to move)" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">–</span>' +
       '<span id="tp-close" style="cursor:pointer;font-size:22px;color:#888;line-height:1;">✕</span></span>';
     panel.appendChild(header);
+
+    // ── Section 1: AIR TRAVEL (✈️) ──────────────────────────────────────────
+    // Additive box that launches the existing, proven flight Direction Calculator
+    // (compute flight direction + scan the best dates to fly). No logic is
+    // duplicated here: it opens fsOpenDirectionCalc() from app-fengshui.js.
+    var airBox = el('div', {
+      style: 'margin:10px 0 6px;border:1px solid #bbdefb;border-radius:10px;padding:10px 12px;background:#e3f2fd;'
+    });
+    airBox.appendChild(el('div', {
+      style: 'font-weight:700;color:#1565c0;font-size:14px;margin-bottom:2px;'
+    }, '\u2708\uFE0F Air travel'));
+    airBox.appendChild(el('div', {
+      style: 'font-size:12px;color:#555;margin-bottom:8px;'
+    }, 'Compute the flight direction to a destination and scan the best dates to fly.'));
+    var airBtn = el('button', {
+      id: 'tp-air-open', type: 'button',
+      style: 'width:100%;background:#1565c0;color:#fff;border:none;border-radius:8px;padding:10px;' +
+        'font-size:14px;font-weight:700;cursor:pointer;'
+    }, '\uD83E\uDDED Flight direction & dates');
+    airBtn.addEventListener('click', function () {
+      if (typeof window.fsOpenDirectionCalc === 'function') window.fsOpenDirectionCalc();
+      else if (typeof fsOpenDirectionCalc === 'function') fsOpenDirectionCalc();
+      else alert('The Direction Calculator is not available on this page.');
+    });
+    airBox.appendChild(airBtn);
+    panel.appendChild(airBox);
+
+    // ── Section 2: ROAD TRIP (🚗) — the existing planner inputs follow below ──
+    panel.appendChild(el('div', {
+      style: 'font-weight:700;color:#1b8a3f;font-size:14px;margin:12px 0 2px;'
+    }, '\uD83D\uDE97 Road trip'));
 
     var nowUtc = (function () {
       var v = document.getElementById('utc-offset');
@@ -3737,6 +3780,176 @@
     return best;
   }
 
+  /* ===================================================================== *
+   * CHAINED LUCKY TRIP (multi-leg) — Edu's true XKDG model.
+   * A chain of legs, ONE per consecutive double-hour, each driven in a
+   * direction whose door is favourable in THAT hour; the polygon closes
+   * EXACTLY back on the origin. The first legs "explore" (chosen base
+   * lengths) and the last two legs are solved so the trip returns home.
+   * Pure local-plane geometry (verified), no network calls.
+   * ===================================================================== */
+  var TP_DOOR_LABEL = {
+    Kai: { en: 'Open', han: '开' }, Xiu: { en: 'Rest', han: '休' }, Sheng: { en: 'Birth', han: '生' },
+    JingS: { en: 'View', han: '景' }, Shang: { en: 'Injury', han: '伤' }, Du: { en: 'Delusion', han: '杜' },
+    Jing: { en: 'Shocking', han: '惊' }, Si: { en: 'Death', han: '死' }
+  };
+  function tpDoorLabel(code) { var d = TP_DOOR_LABEL[code]; return d ? (d.en + ' ' + d.han) : (code || '?'); }
+
+  var TP_D2R = Math.PI / 180;
+  function tpUnitVec(deg) { return { e: Math.sin(deg * TP_D2R), n: Math.cos(deg * TP_D2R) }; }
+
+  // Solve the last two leg lengths so the polygon returns to the origin (plane).
+  function tpCloseChain(dirsDeg, exploreLens, minKm, maxKm) {
+    var N = dirsDeg.length;
+    if (N < 2) return null;
+    var u = dirsDeg.map(tpUnitVec);
+    if (N === 2) {
+      var dot = u[0].e * u[1].e + u[0].n * u[1].n;
+      if (dot > -0.985) return null;                 // legs not (nearly) opposite -> cannot close
+      var L = exploreLens[0] || 50; return [L, L];
+    }
+    var Re = 0, Rn = 0, lens = [];
+    for (var i = 0; i < N - 2; i++) { var d = exploreLens[i] || 50; lens.push(d); Re -= d * u[i].e; Rn -= d * u[i].n; }
+    var a = u[N - 2], b = u[N - 1];
+    var det = a.e * b.n - b.e * a.n;
+    if (Math.abs(det) < 1e-6) return null;             // last two legs collinear
+    var dA = (Re * b.n - Rn * b.e) / det;
+    var dB = (a.e * Rn - a.n * Re) / det;
+    if (dA < minKm - 1e-6 || dB < minKm - 1e-6) return null;
+    if (dA > maxKm + 1e-6 || dB > maxKm + 1e-6) return null;
+    lens.push(dA, dB); return lens;
+  }
+
+  // Favourable directions for the double-hour containing `ms` (evaluated at O).
+  function tpHourFavDirs(ms, O, utc, dstOn) {
+    try {
+      var off = tpOffsetMin(O.lon, utc, dstOn);
+      var sd = new Date(ms + off * 60000);
+      var ec = Solar.fromDate(sd).getLunar().getEightChar();
+      var gHan = ec.getTimeGan(), brHan = ec.getTimeZhi();
+      var dirs = tpScanDirs(sd.getFullYear(), sd.getMonth() + 1, sd.getDate(), gHan, brHan, null);
+      var fav = tpUsableDirs(dirs);
+      return {
+        brHan: brHan, brPy: (BR_PY[brHan] || brHan), gHan: gHan,
+        dirs: fav.map(function (d) {
+          return {
+            dir: d.dir, deg: TP_DIR_DEG[d.dir], door: (d.eval && d.eval.door) || '',
+            combined: (d.eval && d.eval.score) || 1, sanqi: !!(d.eval && d.eval.hasSanQi),
+            configs: (d.eval && d.eval.configs) || []
+          };
+        })
+      };
+    } catch (e) { return null; }
+  }
+
+  // The future daytime double-hours of `dateStr`, each with its favourable dirs.
+  function tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs) {
+    var DAY_START_H = 5, DAY_END_H = 21, out = [], seen = {};
+    var off = tpOffsetMin(O.lon, utc, dstOn);
+    var minMs = nowMs + marginMs;
+    for (var h = DAY_START_H; h <= DAY_END_H; h++) {
+      for (var mm = 0; mm < 60; mm += 20) {
+        var d = new Date(dateStr + 'T' + String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ':00');
+        var ms = d.getTime();
+        if (ms < minMs) continue;
+        var sd = new Date(ms + off * 60000);
+        var br = Solar.fromDate(sd).getLunar().getEightChar().getTimeZhi();
+        if (seen[br]) continue;                         // first entry into this double-hour at/after now
+        seen[br] = true;
+        var fav = tpHourFavDirs(ms, O, utc, dstOn);
+        if (fav && fav.dirs.length) out.push({ startMs: ms, br: br, fav: fav });
+      }
+    }
+    out.sort(function (a, b) { return a.startMs - b.startMs; });
+    return out;
+  }
+
+  function tpProposeChainTrips(opts) {
+    opts = opts || {};
+    var O = opts.origin || TP_DEFAULT.origin;
+    var utc = (opts.utc != null) ? opts.utc : 1;
+    var dstOn = !!opts.dstOn;
+    var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
+    var dateStr = opts.dateStr || tpLocalISO(new Date(nowMs));
+    var marginMs = ((opts.departMarginMin != null) ? opts.departMarginMin : 20) * 60000;
+    if (dateStr !== tpLocalISO(new Date(nowMs))) marginMs = -(24 * 3600000);  // future day: no floor
+    var maxLegs = Math.min(opts.maxLegs || 5, 5);
+    var minKm = opts.minLegKm || 10, maxKm = opts.maxLegKm || 140;
+    var speed = opts.speedKmh || 70, count = opts.count || 5, maxDirsPerHour = 4;
+
+    if (typeof Solar === 'undefined') return { ok: false, reason: 'no_solar' };
+    var hours = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs);
+    if (hours.length < 2) return { ok: false, reason: 'not_enough_hours', date: dateStr };
+
+    var chains = [];
+    for (var si = 0; si < hours.length; si++) {
+      for (var N = 2; N <= maxLegs && si + N <= hours.length; N++) {
+        var win = hours.slice(si, si + N);
+        var perHour = win.map(function (hh) {
+          return hh.fav.dirs.slice().sort(function (a, b) { return b.combined - a.combined; }).slice(0, maxDirsPerHour);
+        });
+        var combos = [[]];
+        for (var k = 0; k < perHour.length; k++) {
+          var nx = [];
+          for (var c = 0; c < combos.length; c++) for (var p = 0; p < perHour[k].length; p++) nx.push(combos[c].concat([perHour[k][p]]));
+          combos = nx; if (combos.length > 4000) break;
+        }
+        for (var ci = 0; ci < combos.length; ci++) {
+          var combo = combos[ci];
+          if (combo.length !== N) continue;
+          var dirsDeg = combo.map(function (x) { return x.deg; });
+          var baseSet = (N <= 2) ? [50] : [40, 70, 100];
+          for (var bi = 0; bi < baseSet.length; bi++) {
+            var explore = []; for (var e = 0; e < N - 2; e++) explore.push(baseSet[bi]);
+            var lens = tpCloseChain(dirsDeg, explore, minKm, maxKm);
+            if (!lens) continue;
+            var ok = true, pts = [O], legs = [];
+            for (var L = 0; L < N; L++) {
+              var km = lens[L], durH = km / speed;
+              if (durH > 2.2) { ok = false; break; }      // a leg must fit inside its ~2h double-hour
+              var from = pts[pts.length - 1];
+              var to = tpDestPoint(from, dirsDeg[L], km);
+              var depMs = win[L].startMs, arrMs = depMs + durH * 3600000;
+              legs.push({
+                n: L + 1, dir: combo[L].dir, deg: dirsDeg[L], km: Math.round(km),
+                door: combo[L].door, doorLabel: tpDoorLabel(combo[L].door),
+                br: win[L].br, brPy: (BR_PY[win[L].br] || win[L].br),
+                sanqi: combo[L].sanqi, combined: combo[L].combined,
+                from: { lat: from.lat, lon: from.lon }, to: { lat: to.lat, lon: to.lon },
+                departCn: tpChineseHourAt(depMs, from.lon, utc, dstOn),
+                arriveCn: tpChineseHourAt(arrMs, to.lon, utc, dstOn)
+              });
+              pts.push(to);
+            }
+            if (!ok) continue;
+            var endPt = pts[pts.length - 1];
+            var resid = tpHaversineKm(endPt.lat, endPt.lon, O.lat, O.lon);
+            if (resid > 6) continue;                       // must return (near-)exactly to Vienna
+            var avg = legs.reduce(function (s, l) { return s + l.combined; }, 0) / legs.length;
+            var sanqiCount = legs.filter(function (l) { return l.sanqi; }).length;
+            var maxClean = TP_SCORE_BASE + TP_BONUS_SANQI + TP_BONUS_GOODDEITY;
+            var score5 = Math.max(1, Math.min(5, Math.round(avg / maxClean * 5)));
+            chains.push({
+              legs: legs, n: N, startMs: win[0].startMs, score: score5, avg: avg,
+              sanqiCount: sanqiCount, resid: Math.round(resid * 10) / 10,
+              sig: combo.map(function (x) { return x.dir; }).join('-')
+            });
+            break;                                          // one closing base length is enough
+          }
+        }
+      }
+    }
+    if (!chains.length) return { ok: false, reason: 'no_closed_chain', date: dateStr };
+    chains.sort(function (a, b) { return (b.score - a.score) || (b.sanqiCount - a.sanqiCount) || (a.n - b.n) || (a.startMs - b.startMs); });
+    var picked = [], seen2 = {};
+    for (var x = 0; x < chains.length && picked.length < count; x++) {
+      var key = chains[x].n + '|' + chains[x].legs[0].dir;
+      if (seen2[key]) continue; seen2[key] = true; picked.push(chains[x]);
+    }
+    for (var y = 0; y < chains.length && picked.length < count; y++) if (picked.indexOf(chains[y]) === -1) picked.push(chains[y]);
+    return { ok: true, date: dateStr, origin: { lat: O.lat, lon: O.lon }, count: picked.length, chains: picked };
+  }
+
   /* Generate several VARIED lucky round-trip proposals for one day: probes
    * multiple directions × distances (estimate-only, no network), scores each,
    * and returns the best few diversified by direction and distance band. The
@@ -3846,6 +4059,7 @@
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
     proposeLuckyTrips: tpProposeLuckyTrips,
+    proposeChainTrips: tpProposeChainTrips,
     findPOI: tpFindPOI,
     planArriveBy: tpPlanArriveBy,
     fetchRoute: function (origin, dest) {
