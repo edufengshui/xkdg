@@ -86,7 +86,20 @@
       '.dc-center-pal .dc-deity,.dc-center-pal .dc-door{opacity:.5}' +
       '.dc-wood{color:#3f8f4a}.dc-fire{color:#c0392b}.dc-earth{color:#bd8b2a}.dc-metal{color:#7d8893}.dc-water{color:#2f6da8}' +
       '.dc-head{text-align:center;color:#236b45;font-size:13px;margin:0 0 8px;font-family:Georgia,serif}' +
-      '.dc-head b{color:#b5432f}';
+      '.dc-head b{color:#b5432f}' +
+      '@media (max-width:600px){' +
+      '.dc-board-frame{padding:12px 10px}' +
+      '.dc-board{gap:4px}' +
+      '.dc-pal{padding:5px 5px}' +
+      '.dc-r1{grid-template-columns:minmax(0,0.8fr) minmax(0,1.5fr) minmax(0,1.15fr)}' +
+      '.dc-hstem,.dc-estem{font-size:15px}' +
+      '.dc-deity{padding:0 1px;overflow:hidden}.dc-deity .en{font-size:8px;line-height:1.05;overflow-wrap:anywhere}.dc-deity .cn{font-size:7.5px}' +
+      '.dc-star{font-size:8px;overflow:hidden;overflow-wrap:anywhere}.dc-star .cn{font-size:7px}' +
+      '.dc-door .en{font-size:13px}.dc-door .cn{font-size:8.5px}' +
+      '.dc-palabel{font-size:6.5px;line-height:1.15}.dc-palabel .br{font-size:6px}' +
+      '.dc-zb{width:17px;height:17px;font-size:9px}' +
+      '.dc-dir{font-size:9px}.dc-dir.cjk{font-size:11px}' +
+      '}';
     var st = document.createElement('style');
     st.id = 'dc-styles';
     st.textContent = css;
