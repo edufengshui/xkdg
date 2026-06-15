@@ -3816,12 +3816,18 @@
         .then(function (j) { var pr = parse(j); return { ok: true, els: pr.els, chargers: pr.chargers, error: null }; })
         .catch(function () { if (to) clearTimeout(to); return tryAt(i + 1); });
     }
-    // One automatic retry on a service failure (transient Overpass/mirror hiccup)
+    // Up to 2 automatic retries (3 attempts total) with growing backoff, to ride
+    // out transient windows where every Overpass mirror is briefly slow/over capacity
     // before we report the area as having no place.
-    return tryAt(0).then(function (res) {
-      if (res && res.ok) return res;
-      return new Promise(function (rs) { setTimeout(rs, 800); }).then(function () { return tryAt(0); });
-    });
+    function attemptWithRetries(retriesLeft, delayMs) {
+      return tryAt(0).then(function (res) {
+        if (res && res.ok) return res;
+        if (retriesLeft <= 0) return res;
+        return new Promise(function (rs) { setTimeout(rs, delayMs); })
+          .then(function () { return attemptWithRetries(retriesLeft - 1, Math.min(delayMs * 2, 3000)); });
+      });
+    }
+    return attemptWithRetries(2, 800);
   }
   // Choose the best POI: prefer real stop/start points (parking, trailhead, viewpoint…)
   // over abstract areas (lake/wood), then the closest to the projected point, within maxKm.
