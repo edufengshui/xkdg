@@ -3863,45 +3863,47 @@
 
   function tpIsAccessKind(k) { return k === 'parking' || k === 'trailhead' || k === 'picnic' || k === 'camp'; }
   function tpIsFeatureKind(k) { return k === 'reserve' || k === 'park' || k === 'viewpoint' || k === 'peak' || k === 'lake' || k === 'waterfall'; }
-  // For "nature": choose a STOP that is a real access point (car park / trailhead /
-  // picnic) as close as possible to a natural FEATURE (reserve, park, viewpoint, lake,
-  // peak, waterfall). The stop coordinates are the parking; the shown name is the nearby
-  // feature when there is one — so you stop at a lot by the trail, not in the road.
-  // Falls back to the nearest named feature, then anything.
-  function tpPickNatureStop(els, projPoint, origin, maxKm) {
+  // Real wild features rank above urban parks/picnic so "nature" means nature.
+  function tpFeatRank(k) { var R = { reserve: 0, peak: 0, waterfall: 0, lake: 1, viewpoint: 1, park: 2, picnic: 2 }; return (R[k] != null) ? R[k] : 2; }
+  // For "nature": pick the best natural FEATURE near the target and OUT of the city
+  // (>= minOriginKm from origin so urban parks don't win), preferring real wild
+  // features over city parks; then attach the nearest car park / trailhead (<=4 km)
+  // as the actual stop. Stop coords = the lot; shown name = the feature.
+  function tpPickNatureStop(els, projPoint, origin, maxKm, minOriginKm) {
     els = els || [];
+    minOriginKm = (minOriginKm != null) ? minOriginKm : 15;
+    function farEnough(p) { return tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) >= minOriginKm; }
+    function within(p) { return !(maxKm && tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) > maxKm + 5); }
     var feats = els.filter(function (e) { return tpIsFeatureKind(e.kind) && e.named; });
     var access = els.filter(function (e) { return tpIsAccessKind(e.kind); });
-    function within(p) { return !(maxKm && tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) > maxKm + 5); }
-    function nearestFeat(a) {
-      var best = null, bd = Infinity;
-      feats.forEach(function (f) { var d = tpHaversineKm(a.lat, a.lon, f.lat, f.lon); if (d < bd) { bd = d; best = f; } });
-      return best ? { f: best, d: bd } : null;
-    }
-    function pickStop(useCap) {
+    function pickFeat(useMin, useCap) {
       var best = null, bk = Infinity;
-      access.forEach(function (a) {
-        if (useCap && !within(a)) return;
-        var nf = nearestFeat(a);
-        var near = nf ? nf.d : Infinity;
-        var dproj = tpHaversineKm(projPoint.lat, projPoint.lon, a.lat, a.lon);
-        // prefer access points that sit near a named feature (trailhead lots), then closest to target
-        var key = (near <= 3 ? 0 : 1) * 1e6 + (near <= 3 ? near : 50) * 1000 + dproj;
-        if (key < bk) { bk = key; best = { stop: a, feat: (nf && nf.d <= 3) ? nf.f : null }; }
+      feats.forEach(function (f) {
+        if (useMin && !farEnough(f)) return;
+        if (useCap && !within(f)) return;
+        // real features preferred (rank*15 km-equiv), then closeness to the target point
+        var key = tpFeatRank(f.kind) * 15 + tpHaversineKm(projPoint.lat, projPoint.lon, f.lat, f.lon);
+        if (key < bk) { bk = key; best = f; }
       });
       return best;
     }
-    var c = pickStop(true) || pickStop(false);
-    if (c) {
-      var s = c.stop;
-      return {
-        name: c.feat ? c.feat.name : (s.named ? s.name : (s.kind === 'trailhead' ? 'Trailhead' : 'Parking')),
-        lat: s.lat, lon: s.lon, kind: c.feat ? c.feat.kind : s.kind, tags: s.tags, ev: s.ev,
-        access: s.kind, feature: c.feat ? c.feat.name : null
-      };
+    var feat = pickFeat(true, true) || pickFeat(false, true) || pickFeat(false, false);
+    if (feat) {
+      var lot = null, ld = Infinity;
+      access.forEach(function (a) { var d = tpHaversineKm(feat.lat, feat.lon, a.lat, a.lon); if (d < ld) { ld = d; lot = a; } });
+      if (lot && ld <= 4) {
+        return { name: feat.name, lat: lot.lat, lon: lot.lon, kind: feat.kind, tags: lot.tags, ev: lot.ev, access: lot.kind, feature: feat.name };
+      }
+      return { name: feat.name, lat: feat.lat, lon: feat.lon, kind: feat.kind, tags: feat.tags, ev: feat.ev, access: null, feature: feat.name };
     }
-    // No mapped car park / trailhead here → nearest named feature, else anything.
-    return tpPickBestPOI(feats.length ? feats : els, projPoint, origin, maxKm);
+    // No usable wild feature → a car park / trailhead out of the city, nearest to the target.
+    var aOk = access.filter(farEnough); if (!aOk.length) aOk = access;
+    if (aOk.length) {
+      var b = null, bd = Infinity;
+      aOk.forEach(function (a) { var d = tpHaversineKm(projPoint.lat, projPoint.lon, a.lat, a.lon); if (d < bd) { bd = d; b = a; } });
+      return { name: (b.named ? b.name : (b.kind === 'trailhead' ? 'Trailhead' : 'Parking')), lat: b.lat, lon: b.lon, kind: b.kind, tags: b.tags, ev: b.ev, access: b.kind, feature: null };
+    }
+    return tpPickBestPOI(els, projPoint, origin, maxKm);
   }
 
   /* ===================================================================== *
@@ -4155,9 +4157,11 @@
           proposals: picked.map(function (r) { return buildProposal(r, null); })
         };
       }
-      // Category given → find a REAL place near each picked point (search ~40 km around it).
-      var poiRadius = 40;
+      // Category given → find a REAL place near each picked point.
+      // Nature searches a tighter radius (25 km) so the stop stays near the target
+      // instead of reaching back toward the city; other categories use 40 km.
       var catKey = tpPoiCategory(category);
+      var poiRadius = (catKey === 'nature') ? 25 : 40;
       var poiDbg = [];
       return Promise.all(picked.map(function (r) {
         var dbg = { dest: [Math.round(r.dest.lat * 1000) / 1000, Math.round(r.dest.lon * 1000) / 1000], nature: -1, broad40: -1, broad90: -1, pick: null };
@@ -4167,7 +4171,7 @@
           resp.els.forEach(function (p) { p.ev = tpNearestCharger(p, resp.chargers); });
           dbg.nature = resp.els.length;
           var pick = (catKey === 'nature')
-            ? tpPickNatureStop(resp.els, r.dest, O, maxKm)
+            ? tpPickNatureStop(resp.els, r.dest, O, maxKm, 15)
             : tpPickBestPOI(resp.els, r.dest, O, maxKm);
           if (pick) { dbg.pick = pick.name; return { poi: pick, failed: false }; }
           // service OK but the specific category was empty here → fall back to the nearest
