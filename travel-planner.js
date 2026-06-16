@@ -1548,6 +1548,33 @@
     return { alongKm: best.alongM / 1000, offKm: best.off };
   }
 
+  // Fetch chargers along the WHOLE route, not just near the origin: sample the
+  // polyline every ~step km and query Open Charge Map around each sample, then merge
+  // and de-duplicate. Without this, on a long trip only stations within ~250 km of the
+  // start are ever retrieved, so the chain collapses to one early charge near home.
+  function tpFetchChargersAlong(idx, key, usableKm, corridorKm) {
+    var total = idx.total / 1000;
+    var step = Math.max(60, Math.min(usableKm * 0.8, 120));   // sample spacing along the route
+    var radius = 80;                                          // OCM per-call radius (km); circles overlap at step<=120
+    var centers = [];
+    for (var a = 0; a < total; a += step) centers.push(idx.posAt(a / total));
+    centers.push(idx.posAt(1)); // include the destination end
+    var seen = {};
+    return Promise.all(centers.map(function (c) {
+      return tpFetchChargers({ key: key, lat: c.lat, lon: c.lon, radiusKm: radius, maxResults: 60 })
+        .catch(function () { return []; });
+    })).then(function (lists) {
+      var merged = [];
+      lists.forEach(function (list) {
+        (list || []).forEach(function (s) {
+          var id = s.lat.toFixed(4) + ',' + s.lon.toFixed(4);
+          if (seen[id]) return; seen[id] = 1; merged.push(s);
+        });
+      });
+      return merged;
+    });
+  }
+
   function tpRenderChargers(result, container) {
     var block = el('div', { style: 'border:2px solid #1b6e2f;border-radius:10px;padding:10px 12px;margin:14px 0 4px;background:#f6fbf6;' });
     block.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1b6e2f;margin-bottom:6px;' }, '🔌 Charging stops along the route'));
@@ -1594,8 +1621,8 @@
       var corridorKm = 15;
 
       status.style.color = '#888';
-      status.textContent = 'Searching Open Charge Map (≤ ' + Math.round(usableKm) + ' km usable)…';
-      tpFetchChargers({ key: key, lat: O.lat, lon: O.lon, radiusKm: Math.min(Math.ceil(usableKm) + corridorKm, 250), maxResults: 100 })
+      status.textContent = 'Searching Open Charge Map along the route (usable ≈ ' + Math.round(usableKm) + ' km/leg)…';
+      tpFetchChargersAlong(idx, key, usableKm, corridorKm)
         .then(function (stations) {
           // Enrich every station with along-route distance + ETA; keep only those near the corridor.
           function tpEnrich(s) {
@@ -1637,34 +1664,52 @@
             return null;
           }
 
-          var chosen = [], anyLow = false, anyFb = false, prevAlong = 0;
-          if (bounds.length) {
-            bounds.forEach(function (b) {
-              var hi = b.alongKm, lo = Math.max(0, hi - PRE_KM);
-              var pk = pickForWindow(lo, hi, prevAlong);
-              if (pk && pk.row) {
-                var dup = chosen.some(function (c) { return c.row.s.lat === pk.row.s.lat && c.row.s.lon === pk.row.s.lon; });
-                if (!dup) { pk.stopRef = b.stop; chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true; prevAlong = pk.row.alongKm; }
-              }
-            });
+          // RANGE-BASED CHAIN: add charges from start to finish so no leg exceeds the
+          // usable range. As far as possible each step (maximise progress), preferring a
+          // fast Tesla/Electra; when a 2-hour cash stop falls within the reachable window
+          // we charge there (rest + charge together). Stops once the destination is in range.
+          var chosen = [], anyLow = false, anyFb = false, prevAlong = 0, gap = false, guard = 0;
+          while ((totalKm - prevAlong) > usableKm && guard++ < 15) {
+            var hi = prevAlong + usableKm;
+            var pk = null;
+            // (a) prefer a cash-stop boundary reachable within range — charge while resting
+            var reach = bounds.filter(function (b) { return b.alongKm > prevAlong + 5 && b.alongKm <= hi; });
+            if (reach.length) {
+              var bb = reach[reach.length - 1]; // farthest reachable boundary
+              pk = pickForWindow(Math.max(prevAlong + 1, bb.alongKm - PRE_KM), Math.min(hi, bb.alongKm + 8), prevAlong);
+              if (pk && pk.row) pk.stopRef = bb.stop;
+            }
+            // (b) otherwise the farthest fast charger within range (near the range edge first)
+            if (!pk || !pk.row) pk = pickForWindow(Math.max(prevAlong + 1, hi - PRE_KM), hi, prevAlong);
+            // (c) last resort: anything reachable ahead
+            if (!pk || !pk.row) pk = pickForWindow(prevAlong + 1, hi, prevAlong);
+            if (!pk || !pk.row) { gap = true; break; }                    // no reachable charger ahead → gap
+            if (pk.row.alongKm <= prevAlong + 1) { gap = true; break; }   // no forward progress → stop
+            var dup = chosen.some(function (c) { return c.row.s.lat === pk.row.s.lat && c.row.s.lon === pk.row.s.lon; });
+            if (dup) break;
+            chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true; prevAlong = pk.row.alongKm;
           }
-          // Fallback: no cash stops (or none found at them) -> single best fast charger along the whole reachable route.
-          if (!chosen.length) {
-            var pkG = pickForWindow(0, usableKm, 0);
-            if (pkG && pkG.row) { chosen.push(pkG); anyLow = pkG.lowPower; anyFb = pkG.fallback; }
-          }
+          if (!gap && (totalKm - prevAlong) > usableKm) gap = true;        // tail leg still too long
 
           if (!chosen.length) {
-            status.style.color = '#b58900';
-            status.textContent = 'No charging station \u2265 ' + TP_MIN_KW2 + ' kW near the stops within ' + Math.round(usableKm) + ' km.';
-            if (auto) { tpReportCharger({ error: 'none' }); window._tpChargerPending = false; }
+            if ((totalKm - prevAlong) <= usableKm) {
+              // Whole trip fits in the usable range — no charging stop is needed.
+              status.style.color = '#1b6e2f';
+              status.textContent = '\u2713 Trip is within range (' + Math.round(totalKm) + ' km \u2264 ' + Math.round(usableKm) + ' km usable) — no charging stop needed.';
+              if (auto) { tpReportCharger({ error: 'not_needed' }); window._tpChargerPending = false; }
+            } else {
+              status.style.color = '#b58900';
+              status.textContent = 'No reachable fast charger on this route within ' + Math.round(usableKm) + ' km — try a higher range or a different route.';
+              if (auto) { tpReportCharger({ error: 'none' }); window._tpChargerPending = false; }
+            }
             return;
           }
 
-          status.style.color = '#1b6e2f';
-          status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' near the 2-hour boundaries' +
+          status.style.color = gap ? '#b58900' : '#1b6e2f';
+          status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' along the route (every \u2248' + Math.round(usableKm) + ' km)' +
             (anyLow ? ' (\u2265' + TP_MIN_KW2 + ' kW - no \u2265' + TP_MIN_KW + ' kW found)' : '') +
-            (anyFb ? ' (other networks)' : '') + '.';
+            (anyFb ? ' (other networks)' : '') +
+            (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.';
 
           // Attach each chosen charger to its quadrant-exit stop so the Maps export
           // shows them interleaved (exit -> charger -> next exit ...). A fallback
@@ -1825,8 +1870,8 @@
       // SHORTEST-ROUTE GUARANTEE: with no real road route we cannot tell whether a
       // planned stop sits on the fast road, so we export the DIRECT route (only the
       // user's own free-text waypoints are still honoured).
-      var extra = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
-      if (!idx) return extra.slice(0, TP_MAPS_MAX_WAYPOINTS);
+      var extraRaw = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!idx) return extraRaw.slice(0, TP_MAPS_MAX_WAYPOINTS);
       function nearOf(p) { return tpNearestRoutePoint(p.lat, p.lon, idx); }
       var pts = [];
       var dropped = 0;
@@ -1842,10 +1887,25 @@
             pts.push({ token: tpLatLng(c.stop.charger), along: npc.alongKm });          // its charger (also on-road)
         }
       });
+      // Merge free-text extras INTO travel order. Coordinate extras (this is how a
+      // fallback charger like a start-of-trip Supercharger is added) get their own
+      // along-route position and are sorted in with everything else — otherwise they
+      // would be appended at the end and Maps would route back to them mid-trip.
+      // Named extras (typed by the user) cannot be positioned synchronously, so they
+      // are kept, in typed order, after the sorted points.
+      var trailing = [];
+      extraRaw.forEach(function (tok) {
+        var m = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(tok);
+        if (m) {
+          var np2 = tpNearestRoutePoint(parseFloat(m[1]), parseFloat(m[2]), idx);
+          if (np2 && isFinite(np2.alongKm)) { pts.push({ token: tok, along: np2.alongKm }); return; }
+        }
+        trailing.push(tok);
+      });
       pts.sort(function (a, b) { return a.along - b.along; });                          // travel order
       var wps = [];
       pts.forEach(function (p) { if (!wps.length || wps[wps.length - 1] !== p.token) wps.push(p.token); }); // de-dup neighbours
-      wps = wps.concat(extra);
+      wps = wps.concat(trailing);
       collectWaypoints._dropped = dropped;
       // Google Maps keeps only a limited number of waypoints; after sorting,
       // trimming from the far end keeps the nearest ones (reached first).
@@ -2998,8 +3058,11 @@
   function tpOpenPrefilled(params) {
     params = params || {};
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
-    window._tpAutoChargers = (params.autoChargers !== false);  // auto-run "Find charging stops" after the plan
-    window._tpChargerPending = (params.autoChargers !== false); // hands-free navigation waits until this clears
+    // Auto-run charging ONLY when a real range was given. Without it we must NOT charge
+    // off the panel's default value (that silently assumed ~200 km) — the AI should ask.
+    var wantCharge = (params.autoChargers !== false) && (parseFloat(params.rangeKm) > 0);
+    window._tpAutoChargers = wantCharge;               // auto-run "Find charging stops" after the plan
+    window._tpChargerPending = wantCharge;             // hands-free navigation waits until this clears
     if (params.noSnap) window._tpNoSnap = true;                 // arrive-by: do NOT snap the departure (keep arrival exact)
     window._tpFromAI = true;                            // push the computed itinerary into the AI chat when done
     window._tpAutoDepart = !!params.autoDepart;          // no time given -> SCAN picks the most favourable (and earliest) departure

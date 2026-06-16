@@ -197,6 +197,10 @@
     'when options are close pick the shorter/earlier one. Only lengthen the trip noticeably if the user explicitly ' +
     'says they want maximum luck regardless of time.\n' +
     '- For an electric car, if the user stated the autonomy/range, pass it as range_km - do NOT ask again. ' +
+    'But if the user wants the trip planned for an EV / with charging and has NOT given the autonomy, ASK for it once ' +
+    '(a single short question, e.g. "Quanti km di autonomia ha l\'auto adesso?") BEFORE planning charging — never assume ' +
+    'a default range. With no range given, plan the trip WITHOUT charging (omit range_km) and offer to add charging once ' +
+    'they tell you the autonomy. ' +
     'reserve_km is optional: if not given, omit it or assume ~20 km (say so briefly), never block to ask for it. ' +
     'When range_km is passed, the planner finds the charging stops automatically (Tesla + Electra) and adds the ' +
     'best to the Maps export - never tell the user to tap "Find charging stops". The only manual thing ever needed ' +
@@ -2526,6 +2530,12 @@
       if (info.error === 'no_key') return L.noKey;
       if (info.error === 'no_range') return L.noRange;
       if (info.error === 'no_route') return L.noRoute;
+      if (info.error === 'not_needed') {
+        var nn = { it: '🔌 Ricarica: viaggio entro l\u2019autonomia, nessuna sosta necessaria',
+                   fr: '🔌 Recharge : trajet dans l\u2019autonomie, aucun arr\u00eat n\u00e9cessaire',
+                   en: '🔌 Charging: trip within range, no stop needed' };
+        return nn[chatLang()] || nn.en;
+      }
       if (info.error === 'none') return L.none;
       if (info.error) return L.failed;
       var extra = (info.kw ? ' \u00b7 ' + Math.round(info.kw) + ' kW' : '') + (info.km != null ? ' \u00b7 ~' + info.km + ' km' : '');
