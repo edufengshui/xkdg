@@ -2026,13 +2026,29 @@
         // so a stop is never "in the middle of the road". Falls back to naming the locality.
         var hasRange = false;
         try { var rEl = document.getElementById('tp-range'); hasRange = !!(rEl && parseFloat(rEl.value) > 0); } catch (e) {}
+        // OCM key + preferred networks (so EV cash stops can snap to a real high-power charger).
+        var ocmKey = '';
+        try {
+          var ek = document.getElementById('tp-ocm-key-edit'), rk = document.getElementById('tp-ocm-key');
+          ocmKey = (ek && ek.style.display !== 'none' && (ek.value || '').trim()) ? ek.value.trim() : ((rk && rk.value) || '').trim();
+        } catch (e) {}
+        var ocmNets = [];
+        try { ocmNets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; }); } catch (e) {}
+        // For an EV trip, the cashing stop should COINCIDE with a high-power charger
+        // (you must recharge anyway): try a charger first, then a generic stopover.
+        function findStop(la, lo) {
+          if (hasRange) {
+            return tpFindChargerStop(la, lo, ocmKey, ocmNets).then(function (c) { return c || tpFindStopover(la, lo, true); });
+          }
+          return tpFindStopover(la, lo, false);
+        }
         window._tpStopoverDebug = [];
         plan.forEach(function (it, i) {
           if (!(it.type === 'stop' && it.pos)) return;
           var leg = window._tpLastResult.legs[i];
           var dbg = { at: leg && leg.at, from: [Math.round(it.pos.lat * 1000) / 1000, Math.round(it.pos.lon * 1000) / 1000], snapped: null, kind: null };
           window._tpStopoverDebug.push(dbg);
-          tpFindStopover(it.pos.lat, it.pos.lon, hasRange).then(function (place) {
+          findStop(it.pos.lat, it.pos.lon).then(function (place) {
             if (place) {
               dbg.snapped = place.name; dbg.kind = place.kind;
               it.pos.lat = place.lat; it.pos.lon = place.lon;                 // snap Maps/checks (shared reference)
@@ -3977,6 +3993,31 @@
       if (key < bk) { bk = key; best = c; }
     });
     return best;
+  }
+  // High-power EV charger near a cash stop (Open Charge Map: real power + operator).
+  // Priority: preferred brand (selected nets, e.g. Tesla/Electra) ≥150 kW, then ANY ≥150,
+  // then preferred ≥80, then any ≥80, then nearest of anything — so a long-trip cashing
+  // stop coincides with where you must recharge anyway. Needs the OCM key.
+  function tpFindChargerStop(lat, lon, key, nets) {
+    if (!key) return Promise.resolve(null);
+    var pt = { lat: lat, lon: lon };
+    return tpFetchChargers({ key: key, lat: lat, lon: lon, radiusKm: 30, maxResults: 60 })
+      .then(function (stations) {
+        var pool = (stations || []).filter(function (s) { return tpHaversineKm(pt.lat, pt.lon, s.lat, s.lon) <= 30; });
+        if (!pool.length) return null;
+        function dist(s) { return tpHaversineKm(pt.lat, pt.lon, s.lat, s.lon); }
+        var pref = tpFilterChargersByNetwork(pool, nets || []);     // preferred brands (e.g. Tesla/Electra)
+        function bestBy(list, minKW) {
+          var c = (list || []).filter(function (s) { return (s.maxKW || 0) >= minKW; }).slice().sort(function (a, b) { return dist(a) - dist(b); });
+          return c[0] || null;
+        }
+        var pick = bestBy(pref, TP_MIN_KW) || bestBy(pool, TP_MIN_KW) ||
+                   bestBy(pref, TP_MIN_KW2) || bestBy(pool, TP_MIN_KW2) ||
+                   pool.slice().sort(function (a, b) { return dist(a) - dist(b); })[0];
+        if (!pick) return null;
+        return { name: pick.title || pick.operator || 'EV charging', lat: pick.lat, lon: pick.lon,
+                 kind: 'charger', power: (pick.maxKW ? Math.round(pick.maxKW) + ' kW' : null), operator: pick.operator || null };
+      }).catch(function () { return null; });
   }
   function tpFindStopover(lat, lon, ev) {
     // Staged so the query stays LIGHT and reliable: 1) sparse types (service area / rest
