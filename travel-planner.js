@@ -4053,6 +4053,16 @@
     return out;
   }
 
+  // ---- 8-wind compass helpers (shared by lucky round-trips and chain loops) ----
+  var TP_DIRS8 = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  function tpDir8Step(a, b) {                  // 0,1,2… 45° steps between two 8-wind labels
+    var ia = TP_DIRS8.indexOf(a), ib = TP_DIRS8.indexOf(b);
+    if (ia < 0 || ib < 0) return 99;
+    var d = Math.abs(ia - ib); return Math.min(d, 8 - d);
+  }
+  function tpDir8Near(a, b) { return tpDir8Step(a, b) <= 1; }   // within one 45° step
+  function tpDir8Exact(a, b) { return tpDir8Step(a, b) === 0; }
+
   function tpProposeChainTrips(opts) {
     opts = opts || {};
     var O = opts.origin || TP_DEFAULT.origin;
@@ -4065,6 +4075,8 @@
     var maxLegs = Math.min(opts.maxLegs || 5, 5);
     var minKm = opts.minLegKm || 10, maxKm = opts.maxLegKm || 140;
     var speed = opts.speedKmh || 70, count = opts.count || 5, maxDirsPerHour = 4;
+    var wantDir = opts.firstDir || null;          // bias/limit loops by their FIRST leg's direction
+    var firstDirOnly = !!opts.firstDirOnly;       // keep ONLY loops whose first leg heads wantDir (±45°)
 
     if (typeof Solar === 'undefined') return { ok: false, reason: 'no_solar' };
     var hours = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs);
@@ -4119,7 +4131,7 @@
             var maxClean = TP_SCORE_BASE + TP_BONUS_SANQI + TP_BONUS_GOODDEITY;
             var score5 = Math.max(1, Math.min(5, Math.round(avg / maxClean * 5)));
             chains.push({
-              legs: legs, n: N, startMs: win[0].startMs, score: score5, avg: avg,
+              legs: legs, n: N, stops: N - 1, startMs: win[0].startMs, score: score5, avg: avg,
               sanqiCount: sanqiCount, resid: Math.round(resid * 10) / 10,
               sig: combo.map(function (x) { return x.dir; }).join('-')
             });
@@ -4129,13 +4141,31 @@
       }
     }
     if (!chains.length) return { ok: false, reason: 'no_closed_chain', date: dateStr };
-    chains.sort(function (a, b) { return (b.score - a.score) || (b.sanqiCount - a.sanqiCount) || (a.n - b.n) || (a.startMs - b.startMs); });
-    var picked = [], seen2 = {};
-    for (var x = 0; x < chains.length && picked.length < count; x++) {
-      var key = chains[x].n + '|' + chains[x].legs[0].dir;
-      if (seen2[key]) continue; seen2[key] = true; picked.push(chains[x]);
+    if (wantDir && firstDirOnly) {
+      chains = chains.filter(function (c) { return tpDir8Near(c.legs[0].dir, wantDir); });
+      if (!chains.length) return { ok: false, reason: 'no_chain_toward_dir', date: dateStr, requestedDir: wantDir };
     }
-    for (var y = 0; y < chains.length && picked.length < count; y++) if (picked.indexOf(chains[y]) === -1) picked.push(chains[y]);
+    chains.sort(function (a, b) {
+      if (wantDir) {                                            // first leg toward the requested direction first
+        var as = tpDir8Step(a.legs[0].dir, wantDir), bs = tpDir8Step(b.legs[0].dir, wantDir);
+        var ar = as === 0 ? 0 : (as <= 1 ? 1 : 2), br = bs === 0 ? 0 : (bs <= 1 ? 1 : 2);  // exact < adjacent < far
+        if (ar !== br) return ar - br;
+      }
+      return (b.score - a.score) || (b.sanqiCount - a.sanqiCount) || (a.n - b.n) || (a.startMs - b.startMs);
+    });
+    var picked = [], seen2 = {};
+    if (opts.onePerN) {
+      // Best loop for EACH leg-count (2..maxLegs) → one option with 1 stop, one with 2, 3, 4…
+      var byN = {};
+      for (var z = 0; z < chains.length; z++) { var nn = chains[z].n; if (!byN[nn]) byN[nn] = chains[z]; }
+      picked = Object.keys(byN).map(function (k) { return byN[k]; }).sort(function (a, b) { return a.n - b.n; });
+    } else {
+      for (var x = 0; x < chains.length && picked.length < count; x++) {
+        var key = chains[x].n + '|' + chains[x].legs[0].dir;
+        if (seen2[key]) continue; seen2[key] = true; picked.push(chains[x]);
+      }
+      for (var y = 0; y < chains.length && picked.length < count; y++) if (picked.indexOf(chains[y]) === -1) picked.push(chains[y]);
+    }
     return { ok: true, date: dateStr, origin: { lat: O.lat, lon: O.lon }, count: picked.length, chains: picked };
   }
 
@@ -4174,6 +4204,7 @@
 
     return Promise.all(jobs).then(function (list) {
       var ok = list.filter(function (r) { return r && r.ok; });
+      if (opts.direction) ok = ok.filter(function (r) { return tpDir8Near(r.snapDir, opts.direction); });  // keep only round-trips toward the requested direction
       ok.sort(function (a, b) { return b.combined - a.combined; });
       function band(km) { return km <= 60 ? 'near' : (km <= 120 ? 'mid' : 'far'); }
       var picked = [], usedDir = {};

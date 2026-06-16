@@ -95,18 +95,23 @@
     'direction, destination, departure time, stay length and return. The same applies to equivalent no-destination ' +
     'phrasings ("un giro fortunato di qualche ora", "dove posso andare oggi di fortunato", "find me a lucky trip out ' +
     'of town", "where could I go today"). Pass only what the user gave (origin if you know it, max_radius_km, ' +
-    'stay_min_h/stay_max_h) and let the tool decide everything else. Then present the returned proposals as ' +
+    'stay_min_h/stay_max_h, and direction if the user named one e.g. "verso nord" → direction:"N") and let the tool decide ' +
+    'everything else. Then present the returned proposals as ' +
     'several DISTINCT options (varying by direction, distance and stay) with their scores; the user picks one and you run it ' +
     'with plan_travel using THAT option\'s dest_lat/dest_lon. Use plan_travel (which needs a destination) ONLY when the user ' +
     'names a specific place. Never tell the user a lucky trip needs a destination. If the user wants a KIND of place ' +
     '("in natura", "una passeggiata", "culturale", "castelli", "borghi") OR asks to filter the proposals afterwards ' +
     '("ora solo natura"), pass the category parameter and call again with the SAME other parameters — each proposal ' +
     'then becomes a real named place. When a proposal has a "place", show that name as the destination. ' +
-    'A Lucky Trip answer may ALSO contain a "chains" field: the tool adds multi-leg lucky LOOPS automatically when the ' +
-    'simple options were few. When present, show them in the SAME answer in a clearly separate section (e.g. "🔗 Tragitti a ' +
-    'catena") AFTER the simple options, each loop numbered with its legs (direction, door, double-hour, km, end coordinates, ' +
-    'departCn/arriveCn) and noting it returns to the start within "resid" km. Briefly say they were added because few simple ' +
-    'round-trips were available.\n' +
+    'A Lucky Trip answer ALWAYS contains a "chains" field too: multi-leg lucky LOOPS, one per stop-count. When NO direction is ' +
+    'requested, present the WHOLE answer together: FIRST the simple out-and-back options, THEN a "🔗 Tragitti a catena" section ' +
+    'with the loops ordered by increasing stops (1-stop, then 2, 3, 4). When the user DID request a direction (e.g. "verso nord" → ' +
+    'direction:"N"), the tool applies a strict priority: it returns out-and-back trips toward that direction AND chain loops heading ' +
+    'that way; "direction_satisfied":true means everything shown DOES head that way — present it as the answer (round-trips first, ' +
+    'then chains by stops). Only if NOTHING heads that way (no round-trip AND no chain) does it return "direction_satisfied":false ' +
+    'with ALTERNATIVE directions — in that case tell the user plainly FIRST that their direction is not available today, then show ' +
+    'the alternatives. NEVER make the user ask for chains separately, and NEVER offer alternative directions while a trip toward the ' +
+    'requested direction still exists.\n' +
     '- MULTI-DAY TOUR (offer as an option): the same lucky-travel idea extends to a trip of SEVERAL DAYS visiting a country ' +
     '(e.g. France), like an organised tour — each transfer between stops driven in a favourable hour/direction. You do NOT have ' +
     'a dedicated engine for this; you build it as a SEQUENCE of plan_travel calls, one per transfer between the stops the user ' +
@@ -120,7 +125,9 @@
     'So a direction can be fully favourable as an outbound (e.g. View 景 + San Qi) yet not appear — because its RETURN is ' +
     'unfavourable at the return hour, or because it was diversified out to vary the distances. If the user questions a ' +
     'specific direction, say exactly this, and offer to verify it by running plan_travel toward that direction (it shows ' +
-    'that direction\'s own favourable hours). Never assert a direction is unfavourable unless a tool result says so.\n' +
+    'that direction\'s own favourable hours). Crucially, a direction with no favourable round-trip can STILL be reached luckily ' +
+    'via a chain loop whose first leg heads that way — the Lucky Trip answer already includes those, so offer them instead of ' +
+    'just saying "not favourable". Never assert a direction is unfavourable unless a tool result says so.\n' +
     '- "VIAGGIO A CATENA" / "CHAINED LUCKY TRIP" IS A SEPARATE COMMAND. Whenever the user asks for a "viaggio a catena", ' +
     '"tragitto a catena", "percorso a tappe", "chained lucky trip", "lucky loop", or describes hopping direction by direction ' +
     'across consecutive hours and coming back home (e.g. "NE nell\'ora Si, poi Sud nell\'ora Wu, poi NW per tornare"), call ' +
@@ -357,7 +364,8 @@
           stay_min_h: { type: 'number', description: 'Minimum stay at the destination in hours (default 1.5).' },
           stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
           category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL place (from OpenStreetMap) instead of a generic point. Use "nature" (lakes, woods, parks, viewpoints, walks), "culture" (castles, museums, historic sites), "town" (villages/towns), or leave empty for generic points. Pass the user\'s words ("natura", "passeggiata", "culturale", "borghi"...) — they are mapped automatically. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
-          count: { type: 'integer', description: 'How many distinct proposals to return (2-6, default 4).' }
+          count: { type: 'integer', description: 'How many distinct proposals to return (2-6, default 4).' },
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'OPTIONAL compass direction the user wants to head ("verso nord" → N). Out-and-back options still come from the day\'s favourable directions; this biases the chain loops so the ones whose FIRST leg goes this way are offered first (useful when no round-trip is favourable that way).' }
         },
         required: []
       }
@@ -1017,60 +1025,101 @@
     };
     if (input.category) opts.category = String(input.category);
     if (origin) opts.origin = origin;
-    // Helper: explore CHAINED loops (sync, no network) to enrich the answer.
-    function chainBlock() {
+    var wantDir = (input.direction && /^(N|NE|E|SE|S|SW|W|NW)$/.test(input.direction)) ? input.direction : null;
+
+    // CHAINED loops (sync, no network): one BEST loop per stop-count (1,2,3,4 direction-changes).
+    // firstDir biases/limits loops by their first leg; only=true keeps ONLY loops heading that way.
+    function chainBlock(firstDir, only) {
       if (typeof window.TravelPlanner.proposeChainTrips !== 'function') return null;
       try {
-        var cr = window.TravelPlanner.proposeChainTrips({ utc: utc, dstOn: dstOn, dateStr: dateStr, maxLegs: 5, count: 3, origin: (origin || undefined) });
+        var cr = window.TravelPlanner.proposeChainTrips({ utc: utc, dstOn: dstOn, dateStr: dateStr,
+          maxLegs: 5, onePerN: true, firstDir: firstDir || null, firstDirOnly: !!only, origin: (origin || undefined) });
         return (cr && cr.ok && cr.chains && cr.chains.length) ? cr.chains : null;
       } catch (e) { return null; }
     }
+    function tooLate() {
+      var tmr = new Date(dateStr + 'T12:00:00'); tmr.setDate(tmr.getDate() + 1);
+      var tmrStr = tmr.getFullYear() + '-' + String(tmr.getMonth() + 1).padStart(2, '0') + '-' + String(tmr.getDate()).padStart(2, '0');
+      return { ok: false, too_late_or_empty: true, tomorrow: tmrStr,
+        note: 'No round-trip AND no chained loop fits ' + dateStr + ' from now on — probably too late in the day (or radius too small). Offer tomorrow (call again with date=' + tmrStr + ') or a larger radius.' };
+    }
+    function buildResult(r, proposals, chains, meta) {
+      meta = meta || {};
+      var instr = 'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +
+        'All clock times are local wall-clock. For EACH key moment also show the Chinese double-hour provided: ' +
+        'depart_cn (departure), arrive_cn (reaching the destination), return_depart_cn (leaving back), return_arrive_cn (home). ' +
+        'These are already computed on the compensated true-solar-time (longitude + DST) exactly like the Main — show them ' +
+        'verbatim and NEVER recompute or shift them yourself. Format e.g. "Partenza 15:55 (Wei 未 · TST 14:30)". ' +
+        '"score" (0-5) = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
+        '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination, ' +
+        'and use "place_kind" to tell the user WHAT kind of stop it is so they know where to pull over and start walking: ' +
+        'parking=car park, trailhead=path start, viewpoint=panorama, picnic=picnic area, camp=campsite, park=park, ' +
+        'reserve=nature reserve, lake=lakeside, town=village/town (e.g. "Parcheggio Seeparkplatz — inizio sentiero"). ' +
+        'For nature stops, "place_access" (parking/trailhead) tells you the stop is a real car park or path-start near the ' +
+        'natural feature named in "place" (and "place_feature"): present it as "park at the lot/trailhead by <feature>", never ' +
+        'as a point in the road. ' +
+        'If "ev_charging" is true the stop has an EV charger within walking distance (ev_power = its power if known) — ' +
+        'highlight it (e.g. "🔌 colonnina di ricarica" / "🔌 EV charger ~11 kW"), the car can charge while the user walks. ' +
+        'If there is no place it is a generic point along that direction. The user can refine by category later ("solo natura"). ' +
+        'If "poi_service_error" is true, the places service (OpenStreetMap) was temporarily unreachable — say exactly that ' +
+        'and offer to retry; do NOT claim there are no places of that kind. If only "some_without_place" is true, those few ' +
+        'points simply had no named place of that category nearby (offer a larger radius or a different category). ' +
+        ((chains && chains.length)
+          ? 'CHAINED LOOPS ARE INCLUDED in the field "chains": multi-leg lucky LOOPS that leave home, change direction at each ' +
+            'stop, and return the same day. Each has "stops" (1, 2, 3 or 4 direction-changes), "n" legs, "score" 0-5 and ' +
+            '"sanqiCount". PRESENT THE WHOLE ANSWER IN THIS PRIORITY ORDER, all together: (1) the simple OUT-AND-BACK options ' +
+            'first; then a section "🔗 Tragitti a catena" with the loops ordered by increasing stops (1-stop, then 2, 3, 4). For ' +
+            'each loop list its legs in order: leg number, direction (dir), favourable door (doorLabel), double-hour (brPy + br), ' +
+            'distance (km), end coordinates (to.lat, to.lon), and departCn/arriveCn verbatim; note it returns home within "resid" km. ' +
+            'Do NOT make the user ask for chains separately — they are part of the answer. '
+          : '') +
+        (meta.direction_satisfied === true
+          ? 'The user asked to travel toward ' + (wantDir || '?') + '. EVERY option here heads that way (round-trips toward it ' +
+            'and/or chain loops whose FIRST leg goes that way). Present them as the answer to that request. '
+          : '') +
+        (meta.direction_satisfied === false
+          ? ('IMPORTANT — ' + meta.direction_note + ' State plainly FIRST that no favourable trip (neither round-trip nor chain) ' +
+             'heads ' + (wantDir || 'that way') + ' on this day, THEN offer the options below as ALTERNATIVE directions. ')
+          : '') +
+        'Once the user picks a SIMPLE option, call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.';
+      return {
+        ok: true, date: (r && r.date) || dateStr, any_fully_favourable: !!(r && r.anyClean),
+        chains_included: !!(chains && chains.length),
+        requested_direction: wantDir || undefined,
+        direction_satisfied: (meta.direction_satisfied !== undefined ? meta.direction_satisfied : undefined),
+        instructions: instr,
+        proposals: proposals,
+        chains: (chains && chains.length) ? chains : undefined
+      };
+    }
+
+    if (wantDir) {
+      // 1) round-trips toward the requested direction; 2) chains heading that way.
+      opts.direction = wantDir;
+      return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
+        var proposals = (r && r.proposals) ? r.proposals : [];
+        var chains = chainBlock(wantDir, true);                 // STRICT: only loops toward wantDir
+        if (proposals.length || (chains && chains.length)) {
+          return buildResult(r, proposals, chains, { direction_satisfied: true });
+        }
+        // 3) ONLY now, when nothing heads that way at all → propose alternative directions.
+        delete opts.direction;
+        return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r2) {
+          var altP = (r2 && r2.proposals) ? r2.proposals : [];
+          var altC = chainBlock(null, false);
+          if (!altP.length && !(altC && altC.length)) return tooLate();
+          return buildResult(r2, altP, altC, { direction_satisfied: false,
+            direction_note: 'no favourable round-trip and no chain loop head ' + wantDir + ' on ' + dateStr + '.' });
+        });
+      }).catch(function (e) { return { error: 'Lucky-trip planning failed: ' + ((e && e.message) || e) }; });
+    }
+
+    // No direction requested → round-trips + chains (one per stop-count), all together.
     return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
       var proposals = (r && r.proposals) ? r.proposals : [];
-      // "Few" simple options -> also explore chained loops, all in ONE answer.
-      var few = (proposals.length < 3) || !(r && r.anyClean);
-      var chains = few ? chainBlock() : null;
-
-      if (!proposals.length && !chains) {
-        var tmr = new Date(dateStr + 'T12:00:00'); tmr.setDate(tmr.getDate() + 1);
-        var tmrStr = tmr.getFullYear() + '-' + String(tmr.getMonth() + 1).padStart(2, '0') + '-' + String(tmr.getDate()).padStart(2, '0');
-        return { ok: false, too_late_or_empty: true, tomorrow: tmrStr,
-          note: 'No round-trip AND no chained loop fits ' + dateStr + ' from now on — probably too late in the day (or radius too small). Offer tomorrow (call again with date=' + tmrStr + ') or a larger radius.' };
-      }
-      return {
-        ok: true, date: r.date, any_fully_favourable: r.anyClean,
-        chains_included: !!chains,
-        instructions: 'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +
-          'All clock times are local wall-clock. For EACH key moment also show the Chinese double-hour provided: ' +
-          'depart_cn (departure), arrive_cn (reaching the destination), return_depart_cn (leaving back), return_arrive_cn (home). ' +
-          'These are already computed on the compensated true-solar-time (longitude + DST) exactly like the Main — show them ' +
-          'verbatim and NEVER recompute or shift them yourself. Format e.g. "Partenza 15:55 (Wei 未 · TST 14:30)". ' +
-          '"score" (0-5) = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
-          '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination, ' +
-          'and use "place_kind" to tell the user WHAT kind of stop it is so they know where to pull over and start walking: ' +
-          'parking=car park, trailhead=path start, viewpoint=panorama, picnic=picnic area, camp=campsite, park=park, ' +
-          'reserve=nature reserve, lake=lakeside, town=village/town (e.g. "Parcheggio Seeparkplatz — inizio sentiero"). ' +
-          'For nature stops, "place_access" (parking/trailhead) tells you the stop is a real car park or path-start near the ' +
-          'natural feature named in "place" (and "place_feature"): present it as "park at the lot/trailhead by <feature>", never ' +
-          'as a point in the road. ' +
-          'If "ev_charging" is true the stop has an EV charger within walking distance (ev_power = its power if known) — ' +
-          'highlight it (e.g. "🔌 colonnina di ricarica" / "🔌 EV charger ~' + '11 kW"), the car can charge while the user walks. ' +
-          'If there is no place it is a generic point along that direction. The user can refine by category later ("solo natura"). ' +
-          'If "poi_service_error" is true, the places service (OpenStreetMap) was temporarily unreachable — say exactly that ' +
-          'and offer to retry; do NOT claim there are no places of that kind. If only "some_without_place" is true, those few ' +
-          'points simply had no named place of that category nearby (offer a larger radius or a different category). ' +
-          (chains
-            ? 'CHAINED LOOPS ALSO INCLUDED: because the simple options were few, the field "chains" carries multi-leg lucky LOOPS. ' +
-              'After the simple options, add a clearly separate section (e.g. "🔗 Tragitti a catena") and present each loop as a ' +
-              'numbered option with its legs in order: leg number, direction (dir), favourable door (doorLabel, e.g. "Open 开"), ' +
-              'double-hour (brPy + br, e.g. "Si 巳"), distance (km), end coordinates (to.lat, to.lon), and departCn/arriveCn verbatim. ' +
-              'Each loop returns to the start within "resid" km; "score" 0-5 is its luck and "sanqiCount" how many legs carry San Qi. ' +
-              'Explain briefly that these multi-stop loops were added because few simple round-trips were available. '
-            : '') +
-          'Once the user picks a SIMPLE option, call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.',
-        proposals: proposals,
-        chains: chains || undefined
-      };
+      var chains = chainBlock(null, false);
+      if (!proposals.length && !(chains && chains.length)) return tooLate();
+      return buildResult(r, proposals, chains, {});
     }).catch(function (e) { return { error: 'Lucky-trip planning failed: ' + ((e && e.message) || e) }; });
   }
 
