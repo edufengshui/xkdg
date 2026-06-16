@@ -3717,17 +3717,21 @@
     return { lat: lat2 * 180 / Math.PI, lon: ((lon2 * 180 / Math.PI) + 540) % 360 - 180 };
   }
 
-  // ---- POI engine (OpenStreetMap / Overpass, free, called directly) --------
+  // ---- POI engine (OpenStreetMap / Overpass, free) ------------------------
   // Turns a projected "point" into a REAL place of a chosen category near it.
+  // NOTE: nature includes AREAS (parks/reserves/national parks/water) via nwr,
+  // and access points (parking/trailhead) WITHOUT a name requirement — a trailhead
+  // car park is exactly where you stop to start a walk, and most are unnamed in OSM.
   var TP_POI_FILTERS = {
-    // NODE-only (light, no heavy way/relation geometries that time out): real
-    // stop/start points for a walk — somewhere you can park and set off.
-    nature: ['node["tourism"="viewpoint"]["name"]', 'node["tourism"="picnic_site"]["name"]',
-             'node["tourism"="camp_site"]["name"]', 'node["amenity"="parking"]["name"]',
-             'node["information"="guidepost"]["name"]', 'node["natural"="peak"]["name"]'],
+    nature: ['nwr["leisure"="nature_reserve"]', 'nwr["boundary"="national_park"]',
+             'nwr["leisure"="park"]', 'nwr["natural"="water"]',
+             'node["tourism"="viewpoint"]', 'node["natural"="peak"]', 'node["natural"="waterfall"]',
+             'node["tourism"="picnic_site"]', 'node["tourism"="camp_site"]',
+             'node["information"="guidepost"]', 'node["highway"="trailhead"]',
+             'nwr["amenity"="parking"]'],
     culture: ['node["historic"="castle"]["name"]', 'node["tourism"="museum"]["name"]',
               'node["historic"="monument"]["name"]', 'node["historic"="memorial"]["name"]',
-              'node["historic"="ruins"]["name"]'],
+              'node["historic"="ruins"]["name"]', 'nwr["amenity"="parking"]'],
     town: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]'],
     any: ['node["tourism"="attraction"]["name"]', 'node["place"="town"]["name"]',
           'node["historic"="castle"]["name"]', 'node["tourism"="viewpoint"]["name"]'],
@@ -3739,12 +3743,13 @@
   function tpPoiKind(t) {
     if (!t) return 'place';
     if (t.amenity === 'parking') return 'parking';
-    if (t.information === 'guidepost' || t.tourism === 'information') return 'trailhead';
+    if (t.highway === 'trailhead' || t.information === 'guidepost' || t.tourism === 'information') return 'trailhead';
     if (t.tourism === 'viewpoint') return 'viewpoint';
     if (t.tourism === 'picnic_site') return 'picnic';
     if (t.tourism === 'camp_site') return 'camp';
-    if (t.leisure === 'nature_reserve' || t.boundary === 'national_park') return 'reserve';
+    if (t.boundary === 'national_park' || t.leisure === 'nature_reserve' || t.boundary === 'protected_area') return 'reserve';
     if (t.leisure === 'park') return 'park';
+    if (t.natural === 'waterfall' || t.waterway === 'waterfall') return 'waterfall';
     if (t.natural === 'water') return 'lake';
     if (t.natural === 'peak') return 'peak';
     if (t.place === 'town' || t.place === 'village') return 'town';
@@ -3754,7 +3759,7 @@
   }
   // Lower rank = better place to actually stop and start a walk.
   function tpAccessRank(kind) {
-    var R = { parking: 0, trailhead: 0, picnic: 1, viewpoint: 1, camp: 1, park: 2, reserve: 2, town: 3, lake: 4, forest: 4, peak: 4 };
+    var R = { parking: 0, trailhead: 0, picnic: 1, viewpoint: 1, camp: 1, waterfall: 1, park: 2, reserve: 2, town: 3, lake: 4, forest: 4, peak: 4 };
     return (R[kind] != null) ? R[kind] : 5;
   }
   function tpChargerPower(t) {
@@ -3784,13 +3789,14 @@
     var q = '[out:json][timeout:13];(' +
       filters.map(function (f) { return f + '(around:' + r + ',' + lat + ',' + lon + ');'; }).join('') +
       'node["amenity"="charging_station"](around:' + r + ',' + lat + ',' + lon + ');' +
-      ');out 80;';
+      ');out center 250;';
     // Route OpenStreetMap (Overpass) through our own Cloudflare worker (avoids browser
     // CORS / service-worker issues). The worker itself falls back across public mirrors.
     // Can be overridden at runtime by setting window.TP_OVERPASS_URL.
     var customUrl = (typeof window !== 'undefined' && window.TP_OVERPASS_URL)
       ? window.TP_OVERPASS_URL : 'https://xkdg-osm.decumano16.workers.dev';
     var endpoints = [customUrl];
+    var TP_SYN_NAME = { parking: 'Parking', trailhead: 'Trailhead', picnic: 'Picnic area', camp: 'Campsite', viewpoint: 'Viewpoint', peak: 'Peak', waterfall: 'Waterfall' };
     function parse(j) {
       var els = [], chargers = [];
       (j.elements || []).forEach(function (e) {
@@ -3799,9 +3805,15 @@
         if (la == null || lo == null) return;
         var t = e.tags || {};
         if (t.amenity === 'charging_station') { chargers.push({ lat: la, lon: lo, power: tpChargerPower(t) }); return; }
+        var kind = tpPoiKind(t);
         var nm = t['name:en'] || t.name;
-        if (!nm) return;
-        els.push({ name: nm, lat: la, lon: lo, kind: tpPoiKind(t), tags: t });
+        var named = !!nm;
+        if (!nm) {
+          // Unnamed elements are useful only as access/landmark stop points.
+          if (!TP_SYN_NAME[kind]) return;
+          nm = TP_SYN_NAME[kind];
+        }
+        els.push({ name: nm, lat: la, lon: lo, kind: kind, tags: t, named: named });
       });
       return { els: els, chargers: chargers };
     }
@@ -3830,17 +3842,66 @@
     return attemptWithRetries(2, 800);
   }
   // Choose the best POI: prefer real stop/start points (parking, trailhead, viewpoint…)
-  // over abstract areas (lake/wood), then the closest to the projected point, within maxKm.
+  // over abstract areas (lake/wood), then the closest to the projected point.
+  // Two passes: first within the trip's reach (maxKm), then — if that eliminated
+  // every candidate — ignoring the cap, so any returned data still yields a NAME
+  // (better to label a slightly-far place than to show "no place").
   function tpPickBestPOI(els, projPoint, origin, maxKm) {
-    var best = null, bestKey = Infinity;
-    (els || []).forEach(function (p) {
-      if (maxKm && tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) > maxKm + 5) return;
-      var d = tpHaversineKm(projPoint.lat, projPoint.lon, p.lat, p.lon);
-      // type priority dominates; a nearby EV charger lifts the stop ~1.5 ranks; distance breaks ties
-      var key = (tpAccessRank(p.kind) - (p.ev ? 1.5 : 0)) * 1000 + d;
-      if (key < bestKey) { bestKey = key; best = p; }
-    });
-    return best;
+    function pick(useCap) {
+      var best = null, bestKey = Infinity;
+      (els || []).forEach(function (p) {
+        if (useCap && maxKm && tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) > maxKm + 5) return;
+        var d = tpHaversineKm(projPoint.lat, projPoint.lon, p.lat, p.lon);
+        // type priority dominates; a nearby EV charger lifts the stop ~1.5 ranks; distance breaks ties
+        var key = (tpAccessRank(p.kind) - (p.ev ? 1.5 : 0)) * 1000 + d;
+        if (key < bestKey) { bestKey = key; best = p; }
+      });
+      return best;
+    }
+    return pick(true) || pick(false);
+  }
+
+  function tpIsAccessKind(k) { return k === 'parking' || k === 'trailhead' || k === 'picnic' || k === 'camp'; }
+  function tpIsFeatureKind(k) { return k === 'reserve' || k === 'park' || k === 'viewpoint' || k === 'peak' || k === 'lake' || k === 'waterfall'; }
+  // For "nature": choose a STOP that is a real access point (car park / trailhead /
+  // picnic) as close as possible to a natural FEATURE (reserve, park, viewpoint, lake,
+  // peak, waterfall). The stop coordinates are the parking; the shown name is the nearby
+  // feature when there is one — so you stop at a lot by the trail, not in the road.
+  // Falls back to the nearest named feature, then anything.
+  function tpPickNatureStop(els, projPoint, origin, maxKm) {
+    els = els || [];
+    var feats = els.filter(function (e) { return tpIsFeatureKind(e.kind) && e.named; });
+    var access = els.filter(function (e) { return tpIsAccessKind(e.kind); });
+    function within(p) { return !(maxKm && tpHaversineKm(origin.lat, origin.lon, p.lat, p.lon) > maxKm + 5); }
+    function nearestFeat(a) {
+      var best = null, bd = Infinity;
+      feats.forEach(function (f) { var d = tpHaversineKm(a.lat, a.lon, f.lat, f.lon); if (d < bd) { bd = d; best = f; } });
+      return best ? { f: best, d: bd } : null;
+    }
+    function pickStop(useCap) {
+      var best = null, bk = Infinity;
+      access.forEach(function (a) {
+        if (useCap && !within(a)) return;
+        var nf = nearestFeat(a);
+        var near = nf ? nf.d : Infinity;
+        var dproj = tpHaversineKm(projPoint.lat, projPoint.lon, a.lat, a.lon);
+        // prefer access points that sit near a named feature (trailhead lots), then closest to target
+        var key = (near <= 3 ? 0 : 1) * 1e6 + (near <= 3 ? near : 50) * 1000 + dproj;
+        if (key < bk) { bk = key; best = { stop: a, feat: (nf && nf.d <= 3) ? nf.f : null }; }
+      });
+      return best;
+    }
+    var c = pickStop(true) || pickStop(false);
+    if (c) {
+      var s = c.stop;
+      return {
+        name: c.feat ? c.feat.name : (s.named ? s.name : (s.kind === 'trailhead' ? 'Trailhead' : 'Parking')),
+        lat: s.lat, lon: s.lon, kind: c.feat ? c.feat.kind : s.kind, tags: s.tags, ev: s.ev,
+        access: s.kind, feature: c.feat ? c.feat.name : null
+      };
+    }
+    // No mapped car park / trailhead here → nearest named feature, else anything.
+    return tpPickBestPOI(feats.length ? feats : els, projPoint, origin, maxKm);
   }
 
   /* ===================================================================== *
@@ -4075,6 +4136,8 @@
           km: poi ? Math.round(tpHaversineKm(O.lat, O.lon, dlat, dlon)) : r.km,
           place: poi ? poi.name : null,
           place_kind: poi ? poi.kind : null,
+          place_access: poi && poi.access ? poi.access : null,
+          place_feature: poi && poi.feature ? poi.feature : null,
           ev_charging: !!(poi && poi.ev),
           ev_power: (poi && poi.ev && poi.ev.power) ? poi.ev.power : null,
           depart: r.outbound.depClock, arrive: r.outbound.arriveClock,
@@ -4094,28 +4157,40 @@
       }
       // Category given → find a REAL place near each picked point (search ~40 km around it).
       var poiRadius = 40;
+      var catKey = tpPoiCategory(category);
+      var poiDbg = [];
       return Promise.all(picked.map(function (r) {
+        var dbg = { dest: [Math.round(r.dest.lat * 1000) / 1000, Math.round(r.dest.lon * 1000) / 1000], nature: -1, broad40: -1, broad90: -1, pick: null };
+        poiDbg.push(dbg);
         return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category).then(function (resp) {
-          if (!resp.ok) return { poi: null, failed: true };
+          if (!resp.ok) { dbg.nature = 'FAIL'; return { poi: null, failed: true }; }
           resp.els.forEach(function (p) { p.ev = tpNearestCharger(p, resp.chargers); });
-          var pick = tpPickBestPOI(resp.els, r.dest, O, maxKm);
-          if (pick) return { poi: pick, failed: false };
+          dbg.nature = resp.els.length;
+          var pick = (catKey === 'nature')
+            ? tpPickNatureStop(resp.els, r.dest, O, maxKm)
+            : tpPickBestPOI(resp.els, r.dest, O, maxKm);
+          if (pick) { dbg.pick = pick.name; return { poi: pick, failed: false }; }
           // service OK but the specific category was empty here → fall back to the nearest
           // named place, widening the radius before giving up so a real name appears in
           // populated areas (only truly remote points end up without a place).
           return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, 'broad').then(function (r2) {
-            if (!r2.ok) return { poi: null, failed: true };
+            if (!r2.ok) { dbg.broad40 = 'FAIL'; return { poi: null, failed: true }; }
             r2.els.forEach(function (p) { p.ev = tpNearestCharger(p, r2.chargers); });
+            dbg.broad40 = r2.els.length;
             var b1 = tpPickBestPOI(r2.els, r.dest, O, maxKm);
-            if (b1) return { poi: b1, failed: false };
+            if (b1) { dbg.pick = b1.name; return { poi: b1, failed: false }; }
             return tpFindPOI(r.dest.lat, r.dest.lon, 90, 'broad').then(function (r3) {
-              if (!r3.ok) return { poi: null, failed: true };
+              if (!r3.ok) { dbg.broad90 = 'FAIL'; return { poi: null, failed: true }; }
               r3.els.forEach(function (p) { p.ev = tpNearestCharger(p, r3.chargers); });
-              return { poi: tpPickBestPOI(r3.els, r.dest, O, Math.max(maxKm || 0, 95)), failed: false };
+              dbg.broad90 = r3.els.length;
+              var b3 = tpPickBestPOI(r3.els, r.dest, O, 0); // last resort: no origin cap → guarantee a name if any data
+              if (b3) dbg.pick = b3.name;
+              return { poi: b3, failed: false };
             });
           });
-        }).catch(function () { return { poi: null, failed: true }; });
+        }).catch(function () { dbg.pick = 'EXCEPTION'; return { poi: null, failed: true }; });
       })).then(function (res) {
+        try { window._tpLastPoiDebug = poiDbg; } catch (e) {}
         return {
           date: dateStr, origin: O, category: tpPoiCategory(category),
           anyClean: picked.some(function (r) { return r.clean; }),

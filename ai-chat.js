@@ -1046,6 +1046,9 @@
           'and use "place_kind" to tell the user WHAT kind of stop it is so they know where to pull over and start walking: ' +
           'parking=car park, trailhead=path start, viewpoint=panorama, picnic=picnic area, camp=campsite, park=park, ' +
           'reserve=nature reserve, lake=lakeside, town=village/town (e.g. "Parcheggio Seeparkplatz — inizio sentiero"). ' +
+          'For nature stops, "place_access" (parking/trailhead) tells you the stop is a real car park or path-start near the ' +
+          'natural feature named in "place" (and "place_feature"): present it as "park at the lot/trailhead by <feature>", never ' +
+          'as a point in the road. ' +
           'If "ev_charging" is true the stop has an EV charger within walking distance (ev_power = its power if known) — ' +
           'highlight it (e.g. "🔌 colonnina di ricarica" / "🔌 EV charger ~' + '11 kW"), the car can charge while the user walks. ' +
           'If there is no place it is a generic point along that direction. The user can refine by category later ("solo natura"). ' +
