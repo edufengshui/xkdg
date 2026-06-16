@@ -2026,18 +2026,23 @@
         // so a stop is never "in the middle of the road". Falls back to naming the locality.
         var hasRange = false;
         try { var rEl = document.getElementById('tp-range'); hasRange = !!(rEl && parseFloat(rEl.value) > 0); } catch (e) {}
+        window._tpStopoverDebug = [];
         plan.forEach(function (it, i) {
           if (!(it.type === 'stop' && it.pos)) return;
           var leg = window._tpLastResult.legs[i];
+          var dbg = { at: leg && leg.at, from: [Math.round(it.pos.lat * 1000) / 1000, Math.round(it.pos.lon * 1000) / 1000], snapped: null, kind: null };
+          window._tpStopoverDebug.push(dbg);
           tpFindStopover(it.pos.lat, it.pos.lon, hasRange).then(function (place) {
             if (place) {
+              dbg.snapped = place.name; dbg.kind = place.kind;
               it.pos.lat = place.lat; it.pos.lon = place.lon;                 // snap Maps/checks (shared reference)
               if (leg) { leg.lat = place.lat; leg.lon = place.lon; leg.place = place.name; leg.stopKind = place.kind; if (place.power) leg.stopPower = place.power; }
               try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {}
             } else if (leg && leg.lat != null) {
+              dbg.kind = 'point(fallback)';
               // No stoppable place nearby → at least name the locality so it is not a bare point.
               tpReverseGeocodeMany([{ lat: leg.lat, lon: leg.lon }]).then(function (names) {
-                leg.place = names[0] || null; leg.stopKind = 'point';
+                leg.place = names[0] || null; leg.stopKind = 'point'; dbg.snapped = leg.place;
                 try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {}
               }).catch(function () {});
             }
@@ -3821,10 +3826,11 @@
     broad: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]',
             'node["tourism"="attraction"]["name"]', 'node["amenity"="parking"]["name"]'],
     // real places where you can actually pull over and stop (snapped cash stops):
-    // motorway service area / rest area / fuel station / parking (EV chargers are
-    // always fetched too, by tpFindPOI, and preferred for electric trips).
-    stopover: ['nwr["highway"="services"]', 'nwr["highway"="rest_area"]',
-               'nwr["amenity"="fuel"]', 'nwr["amenity"="parking"]']
+    // SPARSE, fast-to-query types — motorway service area / rest area / fuel station.
+    // (EV chargers are always fetched too, by tpFindPOI, and preferred for electric trips.)
+    stopover: ['nwr["highway"="services"]', 'nwr["highway"="rest_area"]', 'nwr["amenity"="fuel"]'],
+    // parking is VERY dense (times out a wide query), so it is a separate small-radius fallback.
+    parkingonly: ['nwr["amenity"="parking"]']
   };
   // Classify an OSM element so the user knows WHAT kind of stop it is.
   function tpPoiKind(t) {
@@ -3973,13 +3979,23 @@
     return best;
   }
   function tpFindStopover(lat, lon, ev) {
-    return tpFindPOI(lat, lon, 8, 'stopover').then(function (resp) {
-      if (!resp.ok) return null;
-      var pick = tpPickStopover(resp.els, resp.chargers, { lat: lat, lon: lon }, ev);
-      if (pick) return pick;
-      return tpFindPOI(lat, lon, 18, 'stopover').then(function (r2) {   // widen once
-        if (!r2.ok) return null;
-        return tpPickStopover(r2.els, r2.chargers, { lat: lat, lon: lon }, ev);
+    // Staged so the query stays LIGHT and reliable: 1) sparse types (service area / rest
+    // area / fuel + EV chargers) at 8 km then 20 km; 2) only if nothing, a small-radius
+    // parking query (parking is too dense to query wide without timing out).
+    function tryStop(radius) {
+      return tpFindPOI(lat, lon, radius, 'stopover').then(function (resp) {
+        if (!resp.ok) return { fail: true };
+        return { pick: tpPickStopover(resp.els, resp.chargers, { lat: lat, lon: lon }, ev) };
+      });
+    }
+    return tryStop(8).then(function (a) {
+      if (a.pick) return a.pick;
+      return tryStop(20).then(function (b) {
+        if (b.pick) return b.pick;
+        return tpFindPOI(lat, lon, 5, 'parkingonly').then(function (r) {
+          if (!r.ok) return null;
+          return tpPickStopover(r.els, r.chargers, { lat: lat, lon: lon }, ev);
+        });
       });
     }).catch(function () { return null; });
   }
