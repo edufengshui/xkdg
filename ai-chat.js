@@ -66,7 +66,10 @@
     'find_qimen_hours_for_star to scan with a fixed favourable preset for one flying star), Chart finder ' +
     '(open_chart_finder), Direction calculator (open_direction_calculator), Travel planner (plan_travel computes ' +
     'direction + time windows for a journey; open_travel_planner only opens the blank road-route UI).\n' +
-    '- get_app_state tells you what the user currently has loaded/typed.\n\n' +
+    '- get_app_state tells you what the user currently has loaded/typed.\n' +
+    '- When the user asks about a SPECIFIC stop or point of the planned road trip ("dove avviene la sosta 2?", "where is ' +
+    'stop 2?", "qual è la seconda tappa?"), call get_trip_itinerary and answer DIRECTLY with that stop\'s real place name and ' +
+    'coordinates and time (index 2 = "punto 2"). NEVER deflect with "look at the card" or "scroll down".\n\n' +
     'RULES:\n' +
     '- Use every detail the user already gave (autonomy, departure time, city, etc.) and NEVER ask again for ' +
     'something already stated in the conversation. Ask a question only for essential information that is genuinely ' +
@@ -511,6 +514,17 @@
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
+      name: 'get_trip_itinerary',
+      description: 'Read the LAST road trip the Travel Planner computed in this session: origin, destination, ' +
+        'direction, distance, driving time, and the full ordered list of legs (drives and stops). Each STOP carries its ' +
+        'real place name, exact coordinates, clock time, which compass quadrant it exits, and where it heads next. CALL THIS ' +
+        'whenever the user asks anything about a specific stop or point of the planned trip (e.g. "where is stop 2?", "dove ' +
+        'avviene la sosta 2?", "what\'s the second stop?"). The "index" of each leg matches the numbered list shown in the ' +
+        'itinerary card, so "punto 2" = the leg with index 2. Answer directly with the place + coordinates; NEVER tell the ' +
+        'user to scroll or look at the card.',
+      input_schema: { type: 'object', properties: {}, additionalProperties: false }
+    },
+    {
       name: 'find_water_dates',
       description: 'Feng Shui WATER section: find the dates that suit placing a moving-water feature for the given ' +
         'door/house Facing (Zheng Shen) and optional water position (Ling Shen, within +/-70 deg). Returns the best dates.',
@@ -690,6 +704,7 @@
       if (name === 'control_compass') return toolControlCompass(input || {});
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
       if (name === 'get_app_state') return toolGetAppState();
+      if (name === 'get_trip_itinerary') return toolGetTripItinerary();
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
       if (name === 'find_water_activation') return toolFindWaterActivation(input || {});
       if (name === 'find_water_activation_full') return toolFindWaterActivationFull(input || {});
@@ -1484,6 +1499,34 @@
   }
 
   // ── Whole-app tools (state, Water, navigation, houses/placements) ──
+  function toolGetTripItinerary() {
+    try {
+      var r = (window.TravelPlanner && window.TravelPlanner.getLastResult)
+        ? window.TravelPlanner.getLastResult() : (window._tpLastResult || null);
+      if (!r || !r.legs) return { ok: false, note: 'No road trip has been planned yet in this session. Plan one first with plan_travel.' };
+      var legs = r.legs.map(function (l, i) {
+        if (l.kind === 'drive') {
+          return { index: i + 1, kind: 'drive', from: l.from, to: l.to, hours: l.hours, toward: l.toward, arrival: !!l.arrival };
+        }
+        return { index: i + 1, kind: l.kind, time: l.at, place: l.place || null,
+          stop_kind: l.stopKind || null, charger_power: l.stopPower || null,
+          lat: l.lat, lon: l.lon, exit_quadrant: l.cashDir || null, limit_deg: l.limitDeg,
+          then_toward: l.toward, duration_min: l.duration_min };
+      });
+      return {
+        ok: true, origin: r.origin, dest: r.dest, direction: r.snapped,
+        km: r.km, driving_time: r.driving_time,
+        legs: legs,
+        instructions: 'Answer the user about any specific stop or leg using "index" (it matches the numbered list in the ' +
+          'itinerary card, so "punto 2"/"stop 2" = index 2). Each stop is snapped to a REAL stoppable place: "stop_kind" is ' +
+          'charger (EV charging, with charger_power), services (motorway service area), rest_area, fuel (fuel station) or parking. ' +
+          'Give its "place" name, "stop_kind", "lat","lon" and "time", and that it exits the "exit_quadrant" quadrant then heads ' +
+          '"then_toward". If "place" is null the lookup is still running — give the coordinates and the quadrant. NEVER tell the ' +
+          'user to scroll or read the card; answer directly.'
+      };
+    } catch (e) { return { error: 'Could not read the itinerary: ' + ((e && e.message) || e) }; }
+  }
+
   function toolGetAppState() {
     var v = function (id) { var e = document.getElementById(id); return e ? (e.value || null) : null; };
     var pl = personLoaded();
@@ -2569,6 +2612,19 @@
     }
     var _itinChargeEl = null;   // charging line of the latest itinerary bubble (updated in place)
     var _itinExitEls = [];      // exit lines of the latest itinerary bubble (place names filled async)
+    var _itinStopEls = [];      // numbered STOP lines (place names filled async)
+    function stopKindIcon(k) {
+      return k === 'charger' ? '\ud83d\udd0c ' : (k === 'fuel' ? '\u26fd ' : ((k === 'services' || k === 'rest_area' || k === 'parking') ? '\ud83c\udd7f\ufe0f ' : ''));
+    }
+    function stopLineText(L, it) {
+      var what = (it.kind === 'charge') ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min)
+                                        : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
+      var where = it.place ? (' \u2014 ' + stopKindIcon(it.stopKind) + it.place + (it.stopPower ? ' (' + it.stopPower + ')' : '')) : '';
+      var exitInfo = it.cashDir
+        ? (' (' + L.exit + ' ' + it.cashDir + (it.limitDeg != null ? ', ' + L.limit + ' ' + it.limitDeg + '\u00b0' : '') + ')')
+        : '';
+      return what + ' @ ' + it.at + where + exitInfo + ', ' + L.then + ' ' + it.toward;
+    }
     function exitLineText(L, ex) {
       return '\ud83d\udea9 ' + L.exit + ' ' + ex.dir + ' \u00b7 ~' + ex.at +
         (ex.place ? ' \u00b7 ' + L.near + ' ' + ex.place : '') +
@@ -2608,27 +2664,20 @@
         ' \u00b7 ' + distline;
       wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:4px;' }, title));
       var ol = elc('ol', { style: 'margin:0;padding-left:20px;' });
+      _itinStopEls = [];
       (payload.legs || []).forEach(function (it) {
-        var t;
+        var li;
         if (it.kind === 'drive') {
-          t = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + (it.arrival ? ' \u2014 ' + L.arrive + ' ' + (payload.dest || '') : '');
+          var t = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + (it.arrival ? ' \u2014 ' + L.arrive + ' ' + (payload.dest || '') : '');
+          li = elc('li', { style: 'margin:2px 0;' }, t);
         } else {
-          var what = (it.kind === 'charge') ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min) : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
-          t = what + ' @ ' + it.at + ', ' + L.then + ' ' + it.toward;
+          li = elc('li', { style: 'margin:2px 0;' }, stopLineText(L, it));
+          _itinStopEls.push({ el: li, it: it });
         }
-        ol.appendChild(elc('li', { style: 'margin:2px 0;' }, t));
+        ol.appendChild(li);
       });
       wrap.appendChild(ol);
       _itinExitEls = [];
-      if (payload.exits && payload.exits.length) {
-        var exWrap = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' });
-        payload.exits.forEach(function (ex) {
-          var line = elc('div', { style: 'margin:1px 0;' }, exitLineText(L, ex));
-          exWrap.appendChild(line);
-          _itinExitEls.push({ el: line, ex: ex });
-        });
-        wrap.appendChild(exWrap);
-      }
       if (payload.charging_pending || payload.charging) {
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
         wrap.appendChild(_itinChargeEl);
@@ -2648,6 +2697,13 @@
     }
     function updateItineraryCharging(info) {
       try { if (_itinChargeEl) { var L = ITIN_LBL[chatLang()] || ITIN_LBL.en; _itinChargeEl.textContent = chargingText(L, info); msgs.scrollTop = msgs.scrollHeight; } } catch (e) {}
+    }
+    function updateItineraryStops() {
+      try {
+        var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+        _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); });
+        msgs.scrollTop = msgs.scrollHeight;
+      } catch (e) {}
     }
     function updateItineraryExits(exits) {
       try {
@@ -2785,6 +2841,7 @@
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
       updateItineraryExits: function (exits) { try { updateItineraryExits(exits); } catch (e) {} },
+      updateItineraryStops: function (legs) { try { updateItineraryStops(legs); } catch (e) {} },
       _send: doSend, _history: function () { return history; }
     };
   }

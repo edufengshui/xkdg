@@ -1955,7 +1955,11 @@
         return { kind: it.charge ? 'charge' : 'stop', at: fmtHMonly(it.atWall),
           duration_min: it.charge ? it.durationMin : 20,
           restart: it.charge ? fmtHMonly(it.restartWall) : fmtHMonly(it.atWall),
-          toward: tpHeadDirOnly(it.newHeading) };
+          toward: tpHeadDirOnly(it.newHeading),
+          lat: (it.pos ? it.pos.lat : null), lon: (it.pos ? it.pos.lon : null),
+          cashDir: it.cashDir || null,
+          limitDeg: (it.limitDeg != null ? Math.round(it.limitDeg) : null),
+          place: null };
       });
       var exits = [];
       plan.forEach(function (it) {
@@ -2016,14 +2020,29 @@
         var payload = {}; for (var kk in window._tpLastResult) { if (window._tpLastResult.hasOwnProperty(kk)) payload[kk] = window._tpLastResult[kk]; }
         payload.charging_pending = true;   // a charger search runs right after; the line updates in place
         try { window.XKDGChat.addItinerary(payload); } catch (e) {}
-        // Fill the exit place names (reverse geocoding) and update the chat card in place.
-        if (exits.length) {
-          tpReverseGeocodeMany(exits.map(function (e) { return { lat: e.lat, lon: e.lon }; }))
-            .then(function (names) {
-              exits.forEach(function (e, i) { e.place = names[i] || null; });
-              try { if (window.XKDGChat && window.XKDGChat.updateItineraryExits) window.XKDGChat.updateItineraryExits(exits); } catch (e) {}
-            }).catch(function () {});
-        }
+        // Snap each numbered STOP to a REAL stoppable place — EV charger (if electric),
+        // else service area / rest area / fuel / parking near the on-route point. This
+        // updates the card AND the Maps waypoint coords (checks share it.pos by reference),
+        // so a stop is never "in the middle of the road". Falls back to naming the locality.
+        var hasRange = false;
+        try { var rEl = document.getElementById('tp-range'); hasRange = !!(rEl && parseFloat(rEl.value) > 0); } catch (e) {}
+        plan.forEach(function (it, i) {
+          if (!(it.type === 'stop' && it.pos)) return;
+          var leg = window._tpLastResult.legs[i];
+          tpFindStopover(it.pos.lat, it.pos.lon, hasRange).then(function (place) {
+            if (place) {
+              it.pos.lat = place.lat; it.pos.lon = place.lon;                 // snap Maps/checks (shared reference)
+              if (leg) { leg.lat = place.lat; leg.lon = place.lon; leg.place = place.name; leg.stopKind = place.kind; if (place.power) leg.stopPower = place.power; }
+              try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {}
+            } else if (leg && leg.lat != null) {
+              // No stoppable place nearby → at least name the locality so it is not a bare point.
+              tpReverseGeocodeMany([{ lat: leg.lat, lon: leg.lon }]).then(function (names) {
+                leg.place = names[0] || null; leg.stopKind = 'point';
+                try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {}
+              }).catch(function () {});
+            }
+          });
+        });
       }
       // Hands-free: switch to Google Maps by itself (no tap). Wait a moment so the auto-charger stop is in the link.
       if (fromAI && tpAutoMapsOn()) {
@@ -3800,11 +3819,19 @@
           'node["historic"="castle"]["name"]', 'node["tourism"="viewpoint"]["name"]'],
     // light, almost-always-populated set used as a fallback to name a real place
     broad: ['node["place"="town"]["name"]', 'node["place"="village"]["name"]',
-            'node["tourism"="attraction"]["name"]', 'node["amenity"="parking"]["name"]']
+            'node["tourism"="attraction"]["name"]', 'node["amenity"="parking"]["name"]'],
+    // real places where you can actually pull over and stop (snapped cash stops):
+    // motorway service area / rest area / fuel station / parking (EV chargers are
+    // always fetched too, by tpFindPOI, and preferred for electric trips).
+    stopover: ['nwr["highway"="services"]', 'nwr["highway"="rest_area"]',
+               'nwr["amenity"="fuel"]', 'nwr["amenity"="parking"]']
   };
   // Classify an OSM element so the user knows WHAT kind of stop it is.
   function tpPoiKind(t) {
     if (!t) return 'place';
+    if (t.highway === 'services') return 'services';
+    if (t.highway === 'rest_area') return 'rest_area';
+    if (t.amenity === 'fuel') return 'fuel';
     if (t.amenity === 'parking') return 'parking';
     if (t.highway === 'trailhead' || t.information === 'guidepost' || t.tourism === 'information') return 'trailhead';
     if (t.tourism === 'viewpoint') return 'viewpoint';
@@ -3859,7 +3886,7 @@
     var customUrl = (typeof window !== 'undefined' && window.TP_OVERPASS_URL)
       ? window.TP_OVERPASS_URL : 'https://xkdg-osm.decumano16.workers.dev';
     var endpoints = [customUrl];
-    var TP_SYN_NAME = { parking: 'Parking', trailhead: 'Trailhead', picnic: 'Picnic area', camp: 'Campsite', viewpoint: 'Viewpoint', peak: 'Peak', waterfall: 'Waterfall' };
+    var TP_SYN_NAME = { parking: 'Parking', trailhead: 'Trailhead', picnic: 'Picnic area', camp: 'Campsite', viewpoint: 'Viewpoint', peak: 'Peak', waterfall: 'Waterfall', services: 'Service area', rest_area: 'Rest area', fuel: 'Fuel station' };
     function parse(j) {
       var els = [], chargers = [];
       (j.elements || []).forEach(function (e) {
@@ -3922,6 +3949,39 @@
       return best;
     }
     return pick(true) || pick(false);
+  }
+
+  // ---- Snap a cash stop to a REAL stoppable place -------------------------
+  // A geometric quadrant-exit point is unusable ("middle of the road"). Snap it
+  // to where one can actually stop: an EV charger (preferred for electric trips),
+  // else a motorway service area / rest area / fuel station / parking, near the point.
+  function tpStopoverRank(kind) { var R = { charger: 0, services: 1, rest_area: 2, fuel: 3, parking: 4 }; return (R[kind] != null) ? R[kind] : 5; }
+  function tpPickStopover(els, chargers, point, ev) {
+    var cands = [];
+    if (ev) (chargers || []).forEach(function (c) { cands.push({ kind: 'charger', name: 'EV charging', lat: c.lat, lon: c.lon, power: c.power || null }); });
+    (els || []).forEach(function (e) {
+      if (e.kind === 'services' || e.kind === 'rest_area' || e.kind === 'fuel' || e.kind === 'parking')
+        cands.push({ kind: e.kind, name: e.name, lat: e.lat, lon: e.lon });
+    });
+    var best = null, bk = Infinity;
+    cands.forEach(function (c) {
+      var d = tpHaversineKm(point.lat, point.lon, c.lat, c.lon);
+      if (d > 12) return;                                   // must stay near the on-route stop point
+      var key = tpStopoverRank(c.kind) * 100 + d;           // type preference dominates, distance breaks ties
+      if (key < bk) { bk = key; best = c; }
+    });
+    return best;
+  }
+  function tpFindStopover(lat, lon, ev) {
+    return tpFindPOI(lat, lon, 8, 'stopover').then(function (resp) {
+      if (!resp.ok) return null;
+      var pick = tpPickStopover(resp.els, resp.chargers, { lat: lat, lon: lon }, ev);
+      if (pick) return pick;
+      return tpFindPOI(lat, lon, 18, 'stopover').then(function (r2) {   // widen once
+        if (!r2.ok) return null;
+        return tpPickStopover(r2.els, r2.chargers, { lat: lat, lon: lon }, ev);
+      });
+    }).catch(function () { return null; });
   }
 
   function tpIsAccessKind(k) { return k === 'parking' || k === 'trailhead' || k === 'picnic' || k === 'camp'; }
