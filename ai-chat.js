@@ -69,7 +69,13 @@
     '- get_app_state tells you what the user currently has loaded/typed.\n' +
     '- When the user asks about a SPECIFIC stop or point of the planned road trip ("dove avviene la sosta 2?", "where is ' +
     'stop 2?", "qual è la seconda tappa?"), call get_trip_itinerary and answer DIRECTLY with that stop\'s real place name and ' +
-    'coordinates and time (index 2 = "punto 2"). NEVER deflect with "look at the card" or "scroll down".\n\n' +
+    'coordinates and time (index 2 = "punto 2"). NEVER deflect with "look at the card" or "scroll down".\n' +
+    '- EXPANDED VIEW: get_app_state returns expanded_view (the 🔬 toggle). When it is TRUE and the user chooses a DIRECTION or a ' +
+    'route (Directions / Travel Planner / Lucky Trip), call analyze_direction for that direction (use the trip\'s date and ' +
+    'departure time) and add a short "🔬 Dettaglio direzionale" section: the starting-palace qi-flow (intention/emotion/remedy) ' +
+    'and any alerts (stem clash/combination with the destination; Tai Sui authority at the destination). When expanded_view is ' +
+    'FALSE, keep the answer light and do NOT add this section (you may briefly offer it). Also run analyze_direction whenever the ' +
+    'user explicitly asks to analyse a direction, regardless of the toggle.\n\n' +
     'RULES:\n' +
     '- Use every detail the user already gave (autonomy, departure time, city, etc.) and NEVER ask again for ' +
     'something already stated in the conversation. Ask a question only for essential information that is genuinely ' +
@@ -525,6 +531,20 @@
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
+      name: 'analyze_direction',
+      description: 'EXPANDED-VIEW directional analysis (rotating QMDJ chart) for a travel direction at a date/hour. ' +
+        'Returns: the qi-flow of the STARTING palace (opposite the travel direction) with intention/emotion/remedy advice; ' +
+        'an alert for a strong stem interaction (clash 冲 / combination 合) between the start and destination heaven stems; ' +
+        'and a Tai Sui alert if the destination carries the year stem (authority/government). Call this when the user has ' +
+        'chosen a DIRECTION or a route (Directions / Travel Planner) AND wants the deeper "Expanded View" detail, or asks to ' +
+        'analyse a direction. Keep it concise.',
+      input_schema: { type: 'object', properties: {
+        date: { type: 'string', description: 'Travel date YYYY-MM-DD.' },
+        time: { type: 'string', description: 'Local departure time HH:MM (24h). Defaults to 12:00 if omitted.' },
+        direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'Travel direction.' }
+      }, required: ['date', 'direction'], additionalProperties: false }
+    },
+    {
       name: 'find_water_dates',
       description: 'Feng Shui WATER section: find the dates that suit placing a moving-water feature for the given ' +
         'door/house Facing (Zheng Shen) and optional water position (Ling Shen, within +/-70 deg). Returns the best dates.',
@@ -705,6 +725,7 @@
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'get_trip_itinerary') return toolGetTripItinerary();
+      if (name === 'analyze_direction') return toolAnalyzeDirection(input || {});
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
       if (name === 'find_water_activation') return toolFindWaterActivation(input || {});
       if (name === 'find_water_activation_full') return toolFindWaterActivationFull(input || {});
@@ -1499,6 +1520,39 @@
   }
 
   // ── Whole-app tools (state, Water, navigation, houses/placements) ──
+  function toolAnalyzeDirection(input) {
+    try {
+      if (typeof window.QimenDirAnalysis === 'undefined' || typeof window.QimenDirAnalysis.analyzeDirection !== 'function')
+        return { error: 'Direction analysis engine not loaded.' };
+      var S = window.Solar || (window.Lunar && window.Lunar.Solar);
+      if (!S) return { error: 'Lunar library not available.' };
+      var dir = String(input.direction || '').toUpperCase();
+      if (!/^(N|NE|E|SE|S|SW|W|NW)$/.test(dir)) return { error: 'direction must be one of N,NE,E,SE,S,SW,W,NW' };
+      var date = input.date, time = input.time || '12:00';
+      var dp = String(date).split('-').map(Number), tp = String(time).split(':').map(Number);
+      if (dp.length < 3) return { error: 'date must be YYYY-MM-DD' };
+      var H2P = { '甲': 'Jia', '乙': 'Yi', '丙': 'Bing', '丁': 'Ding', '戊': 'Wu', '己': 'Ji', '庚': 'Geng', '辛': 'Xin', '壬': 'Ren', '癸': 'Gui' };
+      var BR = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
+      var lunar = S.fromYmdHms(dp[0], dp[1], dp[2], tp[0] || 0, tp[1] || 0, 0).getLunar();
+      var ec = lunar.getEightChar();
+      var hGan = H2P[ec.getTimeGan()] || ec.getTimeGan();
+      var hZhi = BR[ec.getTimeZhi()] || ec.getTimeZhi();
+      var yStemCN = (typeof lunar.getYearGanByLiChun === 'function') ? lunar.getYearGanByLiChun() : ec.getYearGan();
+      var yearStem = H2P[yStemCN] || null;
+      var r = window.QimenDirAnalysis.analyzeDirection({ Y: dp[0], M: dp[1], D: dp[2], hGan: hGan, hZhi: hZhi, direction: dir, yearStem: yearStem });
+      if (!r) return { error: 'Could not compute the rotating chart for that date/hour.' };
+      return {
+        ok: true, date: date, time: time, direction: dir,
+        start_palace: r.startPalace, start_ti: r.startTi, dest_palace: r.destPalace, dest_ti: r.destTi,
+        start_palace_flow: r.flowAdvice.map(function (m) { return m.text; }),
+        alerts: r.alerts.map(function (a) { return a.text; }),
+        instructions: 'Present concisely: (1) the starting palace (' + r.startPalace + ') qi-flow advice — intention/emotion/remedy; ' +
+          '(2) any alerts (stem clash/combination between start and destination; Tai Sui authority at destination). These are ' +
+          'EXPANDED-VIEW details: include them when the user wants depth, otherwise keep the main answer light.'
+      };
+    } catch (e) { return { error: 'Direction analysis failed: ' + ((e && e.message) || e) }; }
+  }
+
   function toolGetTripItinerary() {
     try {
       var r = (window.TravelPlanner && window.TravelPlanner.getLastResult)
@@ -1537,6 +1591,7 @@
       personA: v('person-name'), personB: v('person-name-b'),
       selectedDate: v('date'), scanStart: v('scan-start'), scanDays: v('scan-days'),
       purpose: v('purpose-select'),
+      expanded_view: (function () { try { return localStorage.getItem('xkdg_expanded_view') === '1'; } catch (e) { return false; } })(),
       fengShui: {
         activeSection: sect,
         houseFacing: v('fs-house-facing'), period: v('fs-period'),
@@ -2065,12 +2120,20 @@
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🔇');
     var hfBtn = elc('button', { id: 'xkdg-ai-hf', title: 'Hands-free driving mode (wake word)',
       style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '🚗');
+    var expBtn = elc('button', { id: 'xkdg-ai-expanded', title: 'Expanded View — directional Qimen detail (starting palace flow, clash/combination, Tai Sui)',
+      style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;opacity:' + (localStorage.getItem('xkdg_expanded_view') === '1' ? '1' : '0.45') + ';' }, '🔬');
+    expBtn.onclick = function () {
+      var on = localStorage.getItem('xkdg_expanded_view') === '1';
+      if (on) localStorage.removeItem('xkdg_expanded_view'); else localStorage.setItem('xkdg_expanded_view', '1');
+      expBtn.style.opacity = on ? '0.45' : '1';
+      try { var st = document.getElementById('xkdg-ai-status'); if (st) { st.textContent = on ? 'Expanded View OFF' : 'Expanded View ON'; setTimeout(function () { if (st.textContent.indexOf('Expanded View') === 0) st.textContent = ''; }, 2500); } } catch (e) {}
+    };
     var fsBtn = elc('button', { id: 'xkdg-ai-fs', title: 'Enlarge to full screen',
       style: 'border:0;background:transparent;color:#fff;font-size:17px;cursor:pointer;' }, '\u26F6');
     var closeBtn = elc('button', { id: 'xkdg-ai-close', title: 'Close',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '✕');
     var iconWrap = elc('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:flex-end;flex:1 1 auto;' });
-    iconWrap.appendChild(langSel); iconWrap.appendChild(gear); iconWrap.appendChild(speakerBtn); iconWrap.appendChild(hfBtn); iconWrap.appendChild(saveBtn); iconWrap.appendChild(archBtn); iconWrap.appendChild(shareBtn); iconWrap.appendChild(clearBtn); iconWrap.appendChild(fsBtn); iconWrap.appendChild(closeBtn);
+    iconWrap.appendChild(langSel); iconWrap.appendChild(gear); iconWrap.appendChild(speakerBtn); iconWrap.appendChild(hfBtn); iconWrap.appendChild(expBtn); iconWrap.appendChild(saveBtn); iconWrap.appendChild(archBtn); iconWrap.appendChild(shareBtn); iconWrap.appendChild(clearBtn); iconWrap.appendChild(fsBtn); iconWrap.appendChild(closeBtn);
     header.appendChild(iconWrap);
     panel.appendChild(header);
 

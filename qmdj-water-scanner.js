@@ -839,6 +839,20 @@
         jiaName: ''
       };
     }
+    // Fowl (天禽) + the central-palace stem are "migrants": on the moving Tien Pan they
+    // always travel WITH Rice (天芮); on the static Di Pan they are housed at SW (Kun, 2).
+    // Expose the second star/stem so the directional flow analysis reads the full palace.
+    var centerStem = dp[5];
+    if (centerStem) {
+      for (var rp = 1; rp <= 9; rp++) {
+        if (rp === 5 || !palaces[rp]) continue;
+        if (palaces[rp].star === 'Rice') {
+          palaces[rp].star2 = 'Fowl';
+          palaces[rp].ti2 = centerStem; palaces[rp].ti2H = STEM_P2H_R[centerStem] || centerStem;
+        }
+      }
+      if (palaces[2]) { palaces[2].di2 = centerStem; palaces[2].di2H = STEM_P2H_R[centerStem] || centerStem; }
+    }
     return { palaces: palaces, dun: dun, ju: ju, method: 'rotating' };
   }
 
