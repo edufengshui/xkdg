@@ -356,6 +356,17 @@ function buildFengShuiView(){
   view.dataset.built = '1';
   view.innerHTML = `
     <div style="max-width:480px;margin:0 auto;font-family:serif;color:#1a1008;">
+
+      <!-- ═══ HOUSE PROFILES (🏠) — DOMINANT, AT TOP ═══ -->
+      <div id="fs-house-profiles" style="background:#e8f5e9;border:2px solid #4caf50;border-radius:8px;padding:10px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;">
+          <span style="font-size:14px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
+          <button onclick="fsAddNewHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">+ Add a new house</button>
+        </div>
+        <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
+        <div style="font-size:11px;color:#888;font-style:italic;">Pick a house below to edit its chart and placements. New house → enter the Flying Stars data, read the luopan, then add Water / Bed / Desk under the luopan.</div>
+      </div>
+
       <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.5;"></div>
 
       <!-- ═══ FLYING STARS (玄空飛星) — FIRST ═══ -->
@@ -423,8 +434,11 @@ function buildFengShuiView(){
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
       </div>
 
-      <!-- 💧 Activate water in a generic 45° quadrant — manual Qimen + XKDG double calc -->
-      <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 auto 12px;max-width:760px;">
+      <!-- ═══ ACTIVE HOUSE DETAIL (placements & Add buttons) — BELOW THE LUOPAN ═══ -->
+      <div id="fs-house-detail" style="font-size:12px;margin:0 auto 12px;max-width:760px;"></div>
+
+      <!-- 💧 Generic water-feature date scan — MOVED to the Operative area. Hidden here. -->
+      <div id="fs-wateract-block" style="display:none;background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 auto 12px;max-width:760px;">
         <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Scan for good dates to activate a generic water feature — XKDG + Qimen</div>
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
           <div style="flex:1;min-width:150px;">
@@ -464,16 +478,6 @@ function buildFengShuiView(){
       </div>
 
       <div id="fs-results-area"></div>
-
-      <!-- ═══ HOUSE PROFILES (🏠) — at the end ═══ -->
-      <div id="fs-house-profiles" style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;margin-top:16px;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;">
-          <span style="font-size:12px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
-          <button onclick="fsAddNewHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">+ Add a new house</button>
-        </div>
-        <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
-        <div id="fs-house-list" style="font-size:12px;"></div>
-      </div>
     </div>`;
 
   // Inject legend
@@ -2782,7 +2786,7 @@ function fsHouseRemoveFloorplan(pName, hi){
 
 function fsRenderHouseProfiles(){
   const label = document.getElementById('fs-house-person-label');
-  const list  = document.getElementById('fs-house-list');
+  const list  = document.getElementById('fs-house-detail') || document.getElementById('fs-house-list');
   if (!label || !list) return;
 
   const person = fsGetActivePersonForHouse();
