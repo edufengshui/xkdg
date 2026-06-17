@@ -75,7 +75,12 @@
     'departure time) and add a short "🔬 Dettaglio direzionale" section: the starting-palace qi-flow (intention/emotion/remedy) ' +
     'and any alerts (stem clash/combination with the destination; Tai Sui authority at the destination). When expanded_view is ' +
     'FALSE, keep the answer light and do NOT add this section (you may briefly offer it). Also run analyze_direction whenever the ' +
-    'user explicitly asks to analyse a direction, regardless of the toggle.\n\n' +
+    'user explicitly asks to analyse a direction, regardless of the toggle.\n' +
+    '- DIVINATION chart finding: when the user wants a future chart that satisfies QMDJ conditions (a stem in a palace / in any ' +
+    'of several palaces, a door in a palace) — e.g. "find a chart where Bing is in Li, Injury in Gen, and Geng can be in Gen, ' +
+    'Xun, Dui or Qian" — call find_divination_chart with those conditions and list the matching date/double-hours. Translate ' +
+    'the user\'s plain wording into stems[] and doors[] conditions; a querent who "can stay in X, Y or Z" becomes one stem ' +
+    'condition with palaces:[X,Y,Z].\n\n' +
     'RULES:\n' +
     '- Use every detail the user already gave (autonomy, departure time, city, etc.) and NEVER ask again for ' +
     'something already stated in the conversation. Ask a question only for essential information that is genuinely ' +
@@ -545,6 +550,30 @@
       }, required: ['date', 'direction'], additionalProperties: false }
     },
     {
+      name: 'find_divination_chart',
+      description: 'DIVINATION chart finder. Scan future ROTATING QMDJ hour charts and return the date/double-hours whose ' +
+        'chart satisfies a set of conditions: a STEM sitting (on the Tien Pan) in a palace or in ANY of a set of palaces, ' +
+        'and/or a DOOR sitting in a palace. ALL conditions must hold in the same chart. Use this for strategic divination, ' +
+        'e.g. "find a chart where Bing is in Li, Injury is in Gen, and Geng can be in Gen, Xun, Dui or Qian". Stems: the ten ' +
+        'heavenly stems (Jia,Yi,Bing,Ding,Wu,Ji,Geng,Xin,Ren,Gui) or their Han form. Doors: Open,Rest,Birth,Injury,Delusion,' +
+        'View,Death,Shocking. Palaces: by trigram (Kan,Kun,Zhen,Xun,Qian,Dui,Gen,Li) or compass (N,SW,E,SE,NW,W,NE,S).',
+      input_schema: { type: 'object', properties: {
+        stems: { type: 'array', description: 'Stem-position conditions. Each: a stem that must sit (Tien Pan) in one of the listed palaces.',
+          items: { type: 'object', properties: {
+            stem: { type: 'string', description: 'Heavenly stem, e.g. "Bing" or "丙".' },
+            palaces: { type: 'array', items: { type: 'string' }, description: 'Allowed palaces (one must match), e.g. ["Gen","Xun","Dui","Qian"].' }
+          }, required: ['stem', 'palaces'] } },
+        doors: { type: 'array', description: 'Door-position conditions. Each: a door that must sit in a given palace.',
+          items: { type: 'object', properties: {
+            door: { type: 'string', description: 'Door name, e.g. "Injury".' },
+            palace: { type: 'string', description: 'Palace, e.g. "Gen".' }
+          }, required: ['door', 'palace'] } },
+        start_date: { type: 'string', description: 'Scan start YYYY-MM-DD (default: today).' },
+        days: { type: 'integer', description: 'How many days forward to scan (default 60, max 400).' },
+        max_results: { type: 'integer', description: 'Max charts to return (default 20).' }
+      }, additionalProperties: false }
+    },
+    {
       name: 'find_water_dates',
       description: 'Feng Shui WATER section: find the dates that suit placing a moving-water feature for the given ' +
         'door/house Facing (Zheng Shen) and optional water position (Ling Shen, within +/-70 deg). Returns the best dates.',
@@ -726,6 +755,7 @@
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'get_trip_itinerary') return toolGetTripItinerary();
       if (name === 'analyze_direction') return toolAnalyzeDirection(input || {});
+      if (name === 'find_divination_chart') return toolFindDivinationChart(input || {});
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
       if (name === 'find_water_activation') return toolFindWaterActivation(input || {});
       if (name === 'find_water_activation_full') return toolFindWaterActivationFull(input || {});
@@ -1520,6 +1550,25 @@
   }
 
   // ── Whole-app tools (state, Water, navigation, houses/placements) ──
+  function toolFindDivinationChart(input) {
+    try {
+      if (typeof window.QimenDivFinder === 'undefined' || typeof window.QimenDivFinder.scan !== 'function')
+        return { error: 'Divination chart finder not loaded.' };
+      var conds = { stems: input.stems || [], doors: input.doors || [] };
+      if (!conds.stems.length && !conds.doors.length) return { error: 'Provide at least one stem or door condition.' };
+      var r = window.QimenDivFinder.scan(conds, { startDate: input.start_date || null, days: input.days || 60, maxResults: input.max_results || 20 });
+      if (!r.ok) return { error: r.error || 'Scan failed.' };
+      if (!r.count) return { ok: true, count: 0, note: 'No chart in the scanned window satisfies all conditions. Try a longer "days" window, fewer conditions, or more allowed palaces for a stem.' };
+      return {
+        ok: true, count: r.count, truncated: r.truncated,
+        matches: r.matches.map(function (m) { return { date: m.date, double_hour: m.label, branch: m.branch, positions: m.where }; }),
+        instructions: 'List the matching charts (date + double-hour) in chronological order (soonest first), each showing where ' +
+          'every condition landed (e.g. "Geng in Qian"). Then the user can draw that chart in Directions → Divinations for the ' +
+          'date/hour. Keep it concise.'
+      };
+    } catch (e) { return { error: 'Divination scan failed: ' + ((e && e.message) || e) }; }
+  }
+
   function toolAnalyzeDirection(input) {
     try {
       if (typeof window.QimenDirAnalysis === 'undefined' || typeof window.QimenDirAnalysis.analyzeDirection !== 'function')
