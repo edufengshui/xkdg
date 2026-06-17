@@ -2619,6 +2619,18 @@ function fsSetActiveHouse(personName, idx){
   fsRenderHouseProfiles();
 }
 
+// Open the Water/Bed/Desk calculation tool, pre-attached to a specific house/floor.
+// This makes House the single entry point: the "Set up …" buttons in a house card
+// open the same engine the old standalone tiles used, already bound to that house.
+function fsOpenZoneForHouse(personName, houseIdx, zone){
+  try { if (typeof fsSetActiveHouse === 'function') fsSetActiveHouse(personName, houseIdx); } catch(e){ console.warn('fsOpenZoneForHouse/setActive', e); }
+  try { if (typeof fsSelectZone === 'function') fsSelectZone(zone); } catch(e){ console.warn('fsOpenZoneForHouse/selectZone', e); }
+  try {
+    var el = document.getElementById('fs-zone-tools') || document.getElementById('fs-zone-banner') || document.getElementById('fs-zone-gate');
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e){}
+}
+
 // ── Multi-floor operations ───────────────────────────────────────
 function fsSwitchFloor(personName, houseIdx, floorIdx){
   try {
@@ -2948,7 +2960,7 @@ function fsRenderHouseProfiles(){
     } else {
       html += '<div style="font-size:11px;color:#999;padding:2px 0;">No aquariums</div>';
     }
-    html += '<button onclick="fsAddWaterToHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Aquarium</button>';
+    html += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">💧 Set up Water</button>';
     html += '</div>';
 
     // ── QFS ZONES (🌀 Qimen × Flying Stars) ──
@@ -2985,7 +2997,11 @@ function fsRenderHouseProfiles(){
       html += '<div style="font-size:11px;color:#5a4410;padding:1px 0;"><strong>' + _zlbl[z] + ':</strong> '
         + arr.map(function(s){ return escHtml(s.name); }).join(', ') + '</div>';
     });
-    if (!_anySt) html += '<div style="font-size:11px;color:#999;padding:2px 0;">None yet — save from "Setting up the Bed / Desk / Water".</div>';
+    if (!_anySt) html += '<div style="font-size:11px;color:#999;padding:2px 0;">None yet — use the buttons below to set up Water / Bed / Desk for this house.</div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;">'
+      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Set up Bed</button>'
+      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Set up Desk</button>'
+      + '</div>';
     html += '</div>';
 
     html += '</div>';
@@ -4684,17 +4700,22 @@ function fsRenderZoneGate(){
   var gate = document.getElementById('fs-zone-gate');
   if (!gate) return;
   var z = window._fsActiveZone;
-  gate.innerHTML =
-    '<div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;">'
-    + '<div style="font-size:12px;color:#8a6a1f;font-weight:bold;margin-bottom:8px;text-align:center;">Choose a Feng Shui section</div>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-      + '<button onclick="fsSelectZone(\'water\')" style="' + _fsZoneBtnStyle(z === 'water') + '">' + FS_ZONES.water.label + '</button>'
-      + '<button onclick="fsSelectZone(\'bed\')"   style="' + _fsZoneBtnStyle(z === 'bed')   + '">' + FS_ZONES.bed.label   + '</button>'
-      + '<button onclick="fsSelectZone(\'desk\')"  style="' + _fsZoneBtnStyle(z === 'desk')  + '">' + FS_ZONES.desk.label  + '</button>'
-      + (z ? '<button onclick="fsExitZone()" title="Back to the base (set facing / period / start date)" style="flex:0 0 auto;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:bold;cursor:pointer;border:2px solid #b71c1c;background:#fff;color:#b71c1c;white-space:nowrap;">← Back</button>' : '')
-    + '</div>'
-    + (z ? '' : '<div style="font-size:11px;color:#999;margin-top:8px;text-align:center;">Pick a section to reveal its tools. The shared base (facing · sitting · flying stars) stays available above.</div>')
-    + '</div>';
+  if (z){
+    // A tool is open (launched from a house card): show its label + a way back.
+    var lbl = (FS_ZONES[z] && FS_ZONES[z].label) || z;
+    gate.innerHTML =
+      '<div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:8px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+      + '<span style="background:#8a6a1f;color:#fff;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:bold;">' + lbl + '</span>'
+      + '<span style="font-size:11px;color:#999;flex:1 1 auto;">Editing for the active house. Save with “Add setting to house”.</span>'
+      + '<button onclick="fsExitZone()" style="flex:0 0 auto;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:bold;cursor:pointer;border:2px solid #b71c1c;background:#fff;color:#b71c1c;white-space:nowrap;">← Close</button>'
+      + '</div>';
+  } else {
+    // The 3 standalone tiles are absorbed into House: a tool opens from a house card.
+    gate.innerHTML =
+      '<div style="background:#fdf6e3;border:1px dashed #c9a84c;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#8a6a1f;text-align:center;">'
+      + 'To place <strong>Water</strong>, <strong>Bed</strong> or <strong>Desk</strong>, open a house card above and use its <strong>“Set up …”</strong> buttons.'
+      + '</div>';
+  }
 }
 
 function fsSelectZone(zone){
