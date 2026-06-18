@@ -2870,6 +2870,20 @@ function fsRenderHouseProfiles(){
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
     html += '</span></div>';
 
+    // ── Collapse / expand: card details are HIDDEN by default, opened via toggle ──
+    var _expKey = person.name + '|' + hi;
+    var _exp = !!(window._fsHouseExpanded && window._fsHouseExpanded[_expKey]);
+    var _sf = _fsActiveFloor(h);
+    var _sFacing = _fsFloorFacing(h, _sf), _sPeriod = _fsFloorPeriod(h, _sf);
+    var _sumBits = [];
+    if (_sFacing != null) _sumBits.push('Facing ' + _sFacing + '°');
+    if (_sPeriod != null) _sumBits.push('Period ' + _sPeriod);
+    html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">';
+    html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
+    if (_sumBits.length) html += '<span style="font-size:11px;color:#777;">' + _sumBits.join(' · ') + '</span>';
+    html += '</div>';
+    html += '<div class="fs-house-body" id="fs-house-body-' + hi + '" style="display:' + (_exp ? 'block' : 'none') + ';">';
+
     // ── Category (free, user-defined) + Address + Google Maps link ──
     html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 4px;font-size:11px;color:#555;">';
     html += '<span>🏷</span><select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
@@ -3032,9 +3046,31 @@ function fsRenderHouseProfiles(){
       + '</div>';
     html += '</div>';
 
+    html += '</div>'; // close .fs-house-body (collapsible)
     html += '</div>';
   });
   list.innerHTML = html;
+}
+
+// Toggle a house card's detail body. Default is collapsed; state is kept in
+// memory so it survives the frequent re-renders of the house list.
+function fsToggleHouseDetails(personName, hi, btn){
+  try {
+    if (!window._fsHouseExpanded) window._fsHouseExpanded = {};
+    var key = personName + '|' + hi;
+    var body = document.getElementById('fs-house-body-' + hi);
+    if (!body) return;
+    var isHidden = (body.style.display === 'none' || body.style.display === '');
+    if (isHidden){
+      body.style.display = 'block';
+      window._fsHouseExpanded[key] = true;
+      if (btn) btn.innerHTML = '▾ Hide details';
+    } else {
+      body.style.display = 'none';
+      window._fsHouseExpanded[key] = false;
+      if (btn) btn.innerHTML = '▸ Open details';
+    }
+  } catch(e){ console.warn('fsToggleHouseDetails', e); }
 }
 
 /** Header "+ Add a new house": create a house, optionally importing the
