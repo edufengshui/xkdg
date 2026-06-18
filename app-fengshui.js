@@ -5331,6 +5331,12 @@ function fsSelectZone(zone){
       if (bedPanel) bedPanel.style.display = 'none';
       if (deskPanel) deskPanel.style.display = 'none';
       if (generic) generic.style.display = 'block';
+      // Guarantee the ① General Water box sits at the TOP of the Water section,
+      // even if the one-time build relocation didn't apply.
+      try {
+        var gw = document.getElementById('fs-wateract-block');
+        if (gw && generic && generic.firstElementChild !== gw) generic.insertBefore(gw, generic.firstChild);
+      } catch(e){}
     }
     if (typeof fsRedraw === 'function') fsRedraw();
   } catch(err){ console.warn('fsSelectZone', err); }
