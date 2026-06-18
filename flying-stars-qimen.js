@@ -338,6 +338,9 @@
     +       ' <button onclick="QFS.selectAll(true)" style="background:#00695c;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px;font-weight:bold;">All</button>'
     +       ' <button onclick="QFS.selectAll(false)" style="background:#999;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:bold;">None</button>'
     +       ' <button onclick="QFS.clearAllQimen()" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px;font-weight:bold;">✗ Clear ALL (entities + profiles)</button>'
+    +       ' <button onclick="QFS.savePreset()" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;margin-left:6px;font-weight:bold;">💾 Save as preset</button>'
+    +       ' <button onclick="QFS.clearPreset()" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:2px 8px;font-size:10px;cursor:pointer;font-weight:bold;">↺ Auto preset</button>'
+    +       '<div id="qfs-preset-state" style="font-size:10px;color:#00695c;margin-top:4px;font-style:italic;"></div>'
     +     '</div>'
     +     '<div style="font-size:10px;color:#666;margin-bottom:6px;font-style:italic;">'
     +       'REQ = the palace MUST contain an entity from that category. OPT = bonus only.'
@@ -583,8 +586,15 @@
         var dayStemEn = null;
         var dayPillarHan = '', dayPillarPy = '';
         try {
-          var ec = Solar.fromYmd(Y, M, D).getLunar().getEightChar();
-          var dGanHan = ec.getDayGan(), dZhiHan = ec.getDayZhi();
+          var dGanHan, dZhiHan;
+          var _ltq = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+          if (_ltq && isFinite(_ltq.lonDeg)) {
+            var _Pq = XKDGSolarTime.pillarsFromCivil(Y, M, D, 12, 0, 0, _ltq.lonDeg, _ltq.tzOffsetMin);
+            dGanHan = _Pq.day.charAt(0); dZhiHan = _Pq.day.charAt(1);
+          } else {
+            var ec = Solar.fromYmd(Y, M, D).getLunar().getEightChar();
+            dGanHan = ec.getDayGan(); dZhiHan = ec.getDayZhi();
+          }
           dayStemEn = STEM_HAN_TO_EN[dGanHan];
           var dBranchEn = BR_HAN_TO_EN[dZhiHan] || '';
           dayPillarHan = dGanHan + dZhiHan;
@@ -839,6 +849,7 @@
 
     var host = qfsGetHost();
     buildPanel(host);
+    try { updatePresetLabel(); } catch(e){}
     var panel = document.getElementById('qfs-panel');
     if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
   }
@@ -945,13 +956,29 @@
     if(!fsPalaces.length)
       return { error:'Star '+starN+' ('+type+') does not appear in any outer palace of this chart.', palaces:[], count:0, results:[] };
 
-    // FIXED favourable preset
+    // Default favourable preset: San Qi + 4 good doors + the Qimen celestial
+    // star that CORRESPONDS to the flying star (same number 1-9). A saved
+    // custom selection, if present, always overrides this preset.
+    var presetLabel = 'San Qi (Yi/Bing/Ding) + Open/Rest/Birth/View doors + matching \u4e5d\u661f star';
     var wanted = {
       stems:   new Set(['Yi','Bing','Ding']),
       doors:   new Set(['Open','Rest','Birth','View']),
       stars:   new Set(),
       spirits: new Set()
     };
+    QM_STARS.forEach(function(s){ if(s.num === starN) wanted.stars.add(s.key); });   // corresponding 九星
+    try {
+      var savedP = JSON.parse(localStorage.getItem('xkdg_qfs_preset') || 'null');
+      if(savedP && (((savedP.stems||[]).length)+((savedP.doors||[]).length)+((savedP.stars||[]).length)+((savedP.spirits||[]).length)) > 0){
+        wanted = {
+          stems:   new Set(savedP.stems   || []),
+          doors:   new Set(savedP.doors   || []),
+          stars:   new Set(savedP.stars   || []),
+          spirits: new Set(savedP.spirits || [])
+        };
+        presetLabel = 'Custom saved preset';
+      }
+    } catch(e){}
     var excludeFuYin = !!opts.excludeFuYin;
 
     var range = getRange();
@@ -968,8 +995,15 @@
       var Y = dt.getFullYear(), M = dt.getMonth() + 1, D = dt.getDate();
       var dayStemEn = null, dayPillarHan = '';
       try {
-        var ec = Solar.fromYmd(Y, M, D).getLunar().getEightChar();
-        var dG = ec.getDayGan(), dZ = ec.getDayZhi();
+        var dG, dZ;
+        var _ltq2 = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+        if (_ltq2 && isFinite(_ltq2.lonDeg)) {
+          var _Pq2 = XKDGSolarTime.pillarsFromCivil(Y, M, D, 12, 0, 0, _ltq2.lonDeg, _ltq2.tzOffsetMin);
+          dG = _Pq2.day.charAt(0); dZ = _Pq2.day.charAt(1);
+        } else {
+          var ec = Solar.fromYmd(Y, M, D).getLunar().getEightChar();
+          dG = ec.getDayGan(); dZ = ec.getDayZhi();
+        }
         dayStemEn = STEM_HAN_TO_EN[dG]; dayPillarHan = dG + dZ;
       } catch(e){ continue; }
       if(!dayStemEn) continue;
@@ -1005,9 +1039,42 @@
     return {
       starType: type, starNum: starN,
       palaces: fsPalaces.map(function(p){ return QMDJ_PALACE_TO_LABEL[p] || ('P' + p); }),
-      preset: 'Open/Rest/Birth/View doors + Yi/Bing/Ding (San Qi)',
+      preset: presetLabel,
       count: out.length, results: out
     };
+  }
+
+  // Save the current checkbox selection as a custom preset (overrides the auto
+  // preset in scanStarPreset). Clear reverts to the auto preset.
+  function savePreset(){
+    var w = { stems:[], doors:[], stars:[], spirits:[] };
+    var boxes = document.querySelectorAll('input.qfs-ent');
+    for(var b=0;b<boxes.length;b++){
+      if(!boxes[b].checked) continue;
+      var cat = boxes[b].getAttribute('data-cat'), key = boxes[b].getAttribute('data-key');
+      if(cat==='stem') w.stems.push(key);
+      else if(cat==='door') w.doors.push(key);
+      else if(cat==='star') w.stars.push(key);
+      else if(cat==='spirit') w.spirits.push(key);
+    }
+    if((w.stems.length+w.doors.length+w.stars.length+w.spirits.length) === 0){ alert('Select at least one entity to save as preset.'); return; }
+    try { localStorage.setItem('xkdg_qfs_preset', JSON.stringify(w)); alert('Saved as custom preset. It will now be used instead of the auto preset (San Qi + doors + matching star).'); }
+    catch(e){ alert('Could not save preset.'); }
+    updatePresetLabel();
+  }
+  function clearPreset(){
+    try { localStorage.removeItem('xkdg_qfs_preset'); } catch(e){}
+    alert('Custom preset cleared. Auto preset restored: San Qi + 4 doors + the matching \u4e5d\u661f star.');
+    updatePresetLabel();
+  }
+  function updatePresetLabel(){
+    var el = document.getElementById('qfs-preset-state'); if(!el) return;
+    var has = false;
+    try { var s = JSON.parse(localStorage.getItem('xkdg_qfs_preset') || 'null');
+      has = !!(s && ((s.stems||[]).length + (s.doors||[]).length + (s.stars||[]).length + (s.spirits||[]).length)); } catch(e){}
+    el.textContent = has
+      ? '\u25CF Active preset: your custom saved selection (overrides auto).'
+      : '\u25CB Active preset: auto = San Qi + 4 doors + the star matching the flying star.';
   }
 
   window.QFS = {
@@ -1017,6 +1084,8 @@
     selectAll: selectAll,
     selectAllProfiles: selectAllProfiles,
     clearAllQimen: clearAllQimen,
+    savePreset: savePreset,
+    clearPreset: clearPreset,
     profInfo:  profInfo,
     showChart: showChart,
     toggleCat: toggleCat

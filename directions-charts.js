@@ -44,10 +44,15 @@
     return (typeof window !== 'undefined' && window.Solar) ? window.Solar : null;
   }
 
-  // Hour pillar (stem+branch, pinyin) for a solar date+time, via lunar-javascript.
+  // Hour pillar (stem+branch, pinyin) for a solar date+time, in LOCAL TRUE SOLAR TIME.
   function hourPillar(y, m, d, H, Min) {
     var S = getSolar(); if (!S) return null;
     try {
+      var lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+      if (lt && isFinite(lt.lonDeg) && typeof XKDGSolarTime.hourPillarFromCivil === 'function') {
+        var hp = XKDGSolarTime.hourPillarFromCivil(y, m, d, H, Min, 0, lt.lonDeg, lt.tzOffsetMin);
+        return { stem: H2P[hp.gan] || hp.gan, branch: BR_H2P[hp.zhi] || hp.zhi, stemCN: hp.gan, brCN: hp.zhi };
+      }
       var ec = S.fromYmdHms(y, m, d, H, Min, 0).getLunar().getEightChar();
       var stemCN = ec.getTimeGan(), brCN = ec.getTimeZhi();
       return { stem: H2P[stemCN] || stemCN, branch: BR_H2P[brCN] || brCN, stemCN: stemCN, brCN: brCN };

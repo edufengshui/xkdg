@@ -1582,12 +1582,22 @@
       if (dp.length < 3) return { error: 'date must be YYYY-MM-DD' };
       var H2P = { '甲': 'Jia', '乙': 'Yi', '丙': 'Bing', '丁': 'Ding', '戊': 'Wu', '己': 'Ji', '庚': 'Geng', '辛': 'Xin', '壬': 'Ren', '癸': 'Gui' };
       var BR = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
-      var lunar = S.fromYmdHms(dp[0], dp[1], dp[2], tp[0] || 0, tp[1] || 0, 0).getLunar();
-      var ec = lunar.getEightChar();
-      var hGan = H2P[ec.getTimeGan()] || ec.getTimeGan();
-      var hZhi = BR[ec.getTimeZhi()] || ec.getTimeZhi();
-      var yStemCN = (typeof lunar.getYearGanByLiChun === 'function') ? lunar.getYearGanByLiChun() : ec.getYearGan();
-      var yearStem = H2P[yStemCN] || null;
+      var hGan, hZhi, yearStem;
+      var _lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+      if (_lt && isFinite(_lt.lonDeg)) {
+        // TRUE SOLAR TIME (current GPS): hour + year pillars.
+        var _P = XKDGSolarTime.pillarsFromCivil(dp[0], dp[1], dp[2], tp[0] || 0, tp[1] || 0, 0, _lt.lonDeg, _lt.tzOffsetMin);
+        hGan = H2P[_P.hour.charAt(0)] || _P.hour.charAt(0);
+        hZhi = BR[_P.hour.charAt(1)] || _P.hour.charAt(1);
+        yearStem = H2P[_P.year.charAt(0)] || null;
+      } else {
+        var lunar = S.fromYmdHms(dp[0], dp[1], dp[2], tp[0] || 0, tp[1] || 0, 0).getLunar();
+        var ec = lunar.getEightChar();
+        hGan = H2P[ec.getTimeGan()] || ec.getTimeGan();
+        hZhi = BR[ec.getTimeZhi()] || ec.getTimeZhi();
+        var yStemCN = (typeof lunar.getYearGanByLiChun === 'function') ? lunar.getYearGanByLiChun() : ec.getYearGan();
+        yearStem = H2P[yStemCN] || null;
+      }
       var r = window.QimenDirAnalysis.analyzeDirection({ Y: dp[0], M: dp[1], D: dp[2], hGan: hGan, hZhi: hZhi, direction: dir, yearStem: yearStem });
       if (!r) return { error: 'Could not compute the rotating chart for that date/hour.' };
       return {

@@ -75,16 +75,23 @@
     var start = opts.startDate ? opts.startDate.split('-').map(Number) : (function () { var d = new Date(); return [d.getFullYear(), d.getMonth() + 1, d.getDate()]; })();
     var base = new Date(start[0], start[1] - 1, start[2]);
     var matches = [];
+    var _lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+    var _useTST = _lt && isFinite(_lt.lonDeg) && typeof XKDGSolarTime.hourPillarFromCivil === 'function';
     for (var day = 0; day < days && matches.length < maxResults; day++) {
       var d = new Date(base.getTime() + day * 86400000);
       var Y = d.getFullYear(), M = d.getMonth() + 1, D = d.getDate();
       for (var i = 0; i < DH.length && matches.length < maxResults; i++) {
         var rep = DH[i];
-        var ec, hGan, hZhi;
+        var hGan, hZhi;
         try {
-          ec = S.fromYmdHms(Y, M, D, rep.h, 30, 0).getLunar().getEightChar();
-          hGan = H2P[ec.getTimeGan()] || ec.getTimeGan();
-          hZhi = BR_H2P[ec.getTimeZhi()] || ec.getTimeZhi();
+          if (_useTST) {
+            var hp = XKDGSolarTime.hourPillarFromCivil(Y, M, D, rep.h, 30, 0, _lt.lonDeg, _lt.tzOffsetMin);
+            hGan = H2P[hp.gan] || hp.gan; hZhi = BR_H2P[hp.zhi] || hp.zhi;
+          } else {
+            var ec = S.fromYmdHms(Y, M, D, rep.h, 30, 0).getLunar().getEightChar();
+            hGan = H2P[ec.getTimeGan()] || ec.getTimeGan();
+            hZhi = BR_H2P[ec.getTimeZhi()] || ec.getTimeZhi();
+          }
         } catch (e) { continue; }
         var chart;
         try { chart = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi); } catch (e) { continue; }

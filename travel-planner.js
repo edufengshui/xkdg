@@ -362,8 +362,13 @@
   }
 
   /* ---- solar-time offset (minutes), matching app convention -------------- */
-  function tpOffsetMin(lon, utc, dstOn) {
-    return (lon - utc * 15) * 4 - (dstOn ? 60 : 0);
+  function tpOffsetMin(lon, utc, dstOn, refMs) {
+    var base = (lon - utc * 15) * 4 - (dstOn ? 60 : 0);
+    // Full true solar time: add the Equation of Time for the reference instant when available.
+    if (refMs != null && typeof XKDGSolarTime !== 'undefined' && typeof XKDGSolarTime.equationOfTimeMinutes === 'function') {
+      try { base += XKDGSolarTime.equationOfTimeMinutes(new Date(refMs)); } catch (e) {}
+    }
+    return base;
   }
   // Is daylight saving in effect on date d (per the device timezone)? Standard time has the larger offset;
   // a smaller offset on d means DST is active. Works in both hemispheres.
@@ -828,7 +833,7 @@
     // uses the FULL two hours of that (favourable) hour instead of beginning halfway through it.
     if (opts.snapDepart !== false) {
       try {
-        var offO = tpOffsetMin(O.lon, utc, dstOn);
+        var offO = tpOffsetMin(O.lon, utc, dstOn, startMs);
         var brOriginAt = function (ms) { return Solar.fromDate(new Date(ms + offO * 60000)).getLunar().getEightChar().getTimeZhi(); };
         var br0 = brOriginAt(startMs), probe = startMs, guard = 0;
         while (guard++ < 130) { var prev = probe - 60000; if (brOriginAt(prev) !== br0) break; probe = prev; }
@@ -853,7 +858,7 @@
     }
     function solarAt(ms) {
       var p = posAt(ms);
-      var off = tpOffsetMin(p.lon, utc, dstOn);
+      var off = tpOffsetMin(p.lon, utc, dstOn, ms);
       return { lat: p.lat, lon: p.lon, date: new Date(ms + off * 60000) };
     }
     function fmtHM(d) {
@@ -3713,7 +3718,7 @@
   // Returns { han:'午', py:'Wu', tst:'13:12' } (tst is the true-solar clock, for cross-checking).
   function tpChineseHourAt(ms, lon, utc, dstOn) {
     try {
-      var off = tpOffsetMin(lon, utc, dstOn);
+      var off = tpOffsetMin(lon, utc, dstOn, ms);
       var sd = new Date(ms + off * 60000);
       var han = Solar.fromDate(sd).getLunar().getEightChar().getTimeZhi();
       var tst = String(sd.getHours()).padStart(2, '0') + ':' + String(sd.getMinutes()).padStart(2, '0');
@@ -4129,7 +4134,7 @@
   // Favourable directions for the double-hour containing `ms` (evaluated at O).
   function tpHourFavDirs(ms, O, utc, dstOn) {
     try {
-      var off = tpOffsetMin(O.lon, utc, dstOn);
+      var off = tpOffsetMin(O.lon, utc, dstOn, ms);
       var sd = new Date(ms + off * 60000);
       var ec = Solar.fromDate(sd).getLunar().getEightChar();
       var gHan = ec.getTimeGan(), brHan = ec.getTimeZhi();
@@ -4151,7 +4156,7 @@
   // The future daytime double-hours of `dateStr`, each with its favourable dirs.
   function tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs) {
     var DAY_START_H = 5, DAY_END_H = 21, out = [], seen = {};
-    var off = tpOffsetMin(O.lon, utc, dstOn);
+    var off = tpOffsetMin(O.lon, utc, dstOn, (function(){ try { return new Date(dateStr + 'T12:00:00').getTime(); } catch(e){ return null; } })());
     var minMs = nowMs + marginMs;
     for (var h = DAY_START_H; h <= DAY_END_H; h++) {
       for (var mm = 0; mm < 60; mm += 20) {

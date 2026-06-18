@@ -1153,13 +1153,26 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
   for (let d = 0; d < days; d++){
     const dayDate = new Date(start.getTime() + d * 86400000);
     const midDay  = new Date(dayDate); midDay.setHours(12, 0, 0, 0);
-    const ec      = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000)).getLunar().getEightChar();
-    const dGan = ec.getDayGan(),  dZhi = ec.getDayZhi();
+    let dGan, dZhi, yGan, yZhi, mGan, mZhi, hGanNoon, hZhiNoon;
+    const _Pn = (function(){ try {
+        if (typeof XKDGSolarTime === 'undefined') return null;
+        const lt = XKDGSolarTime.currentLonTz(); if (!isFinite(lt.lonDeg)) return null;
+        return XKDGSolarTime.pillarsFromCivil(dayDate.getFullYear(), dayDate.getMonth()+1, dayDate.getDate(), 12, 0, 0, lt.lonDeg, lt.tzOffsetMin);
+    } catch(e){ return null; } })();
+    if (_Pn) {
+        dGan=_Pn.day.charAt(0); dZhi=_Pn.day.charAt(1);
+        yGan=_Pn.year.charAt(0); yZhi=_Pn.year.charAt(1);
+        mGan=_Pn.month.charAt(0); mZhi=_Pn.month.charAt(1);
+        hGanNoon=_Pn.hour.charAt(0); hZhiNoon=_Pn.hour.charAt(1);
+    } else {
+        const ec = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000)).getLunar().getEightChar();
+        dGan = ec.getDayGan(); dZhi = ec.getDayZhi();
+        yGan = ec.getYearGan(); yZhi = ec.getYearZhi();
+        mGan = ec.getMonthGan(); mZhi = ec.getMonthZhi();
+        hGanNoon = ec.getTimeGan(); hZhiNoon = ec.getTimeZhi();
+    }
     const dData = getXkdgData(dGan, dZhi);
     if (!dData) continue;
-    const yGan = ec.getYearGan(),  yZhi = ec.getYearZhi();
-    const mGan = ec.getMonthGan(), mZhi = ec.getMonthZhi();
-    const hGanNoon = ec.getTimeGan(),  hZhiNoon = ec.getTimeZhi();
     const { strong: ss, growing: sg } = getJieqiSeason(midDay);
 
     // Family detection at noon (used by the normal connection rule below).
@@ -1220,7 +1233,7 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
       let bd = new Date(dayDate);
       if (hs === 23) bd = new Date(dayDate.getTime() - 86400000);
       bd.setHours(hs, 30, 0, 0);
-      const ecH = Solar.fromDate(new Date(bd.getTime() + offsetMin * 60000)).getLunar().getEightChar();
+      const ecH = Solar.fromDate(new Date(bd.getTime() + (offsetMin + ((typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.equationOfTimeMinutes(midDay) : 0)) * 60000)).getLunar().getEightChar();
       const hGanH = ecH.getTimeGan(), hZhiH = ecH.getTimeZhi();
 
       let scoreH = 0;
@@ -5474,8 +5487,13 @@ function _fsScanLuckyDates(persons, slot, maxResults){
     var midDay = new Date(dayDate); midDay.setHours(12, 0, 0, 0);
     var dGan, dZhi, dData;
     try {
-      var ec = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000)).getLunar().getEightChar();
-      dGan = ec.getDayGan(); dZhi = ec.getDayZhi();
+      var _Pn3 = (function(){ try {
+          if (typeof XKDGSolarTime === 'undefined') return null;
+          var lt = XKDGSolarTime.currentLonTz(); if (!isFinite(lt.lonDeg)) return null;
+          return XKDGSolarTime.pillarsFromCivil(dayDate.getFullYear(), dayDate.getMonth()+1, dayDate.getDate(), 12, 0, 0, lt.lonDeg, lt.tzOffsetMin);
+      } catch(e){ return null; } })();
+      if (_Pn3) { dGan = _Pn3.day.charAt(0); dZhi = _Pn3.day.charAt(1); }
+      else { var ec = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000)).getLunar().getEightChar(); dGan = ec.getDayGan(); dZhi = ec.getDayZhi(); }
       dData = getXkdgData(dGan, dZhi);
     } catch(e){ continue; }
     if (!dData) continue;
