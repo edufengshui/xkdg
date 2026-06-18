@@ -6940,6 +6940,14 @@ function _xkdgApplyPersonSnap(person, snap){
     if (typeof calculateBazi === 'function') calculateBazi();
     if (typeof calculatePerson === 'function') calculatePerson(person);
     if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(snap.name);
+    // A restored person was, by definition, already entered before → keep the
+    // birth Bazi/XKDG details collapsed by default (the toggle re-opens them).
+    try {
+      var _k = isB ? 'b' : 'a';
+      if (!window._personDetailsVisible) window._personDetailsVisible = { a:true, b:true };
+      window._personDetailsVisible[_k] = false;
+      if (typeof setPersonDetailsVisibility === 'function') setPersonDetailsVisibility(_k, false);
+    } catch(e){}
   } catch(e){ console.warn('_xkdgApplyPersonSnap', e); }
 }
 
