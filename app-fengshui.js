@@ -364,7 +364,9 @@ function buildFengShuiView(){
           <button onclick="fsAddNewHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">+ Add a new house</button>
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
-        <div style="font-size:11px;color:#888;font-style:italic;">Pick a house below to edit its chart and placements. New house → enter the Flying Stars data, read the luopan, then add Water / Bed / Desk under the luopan.</div>
+        <div style="font-size:11px;color:#888;font-style:italic;margin-bottom:8px;">Pick a house to edit its chart and placements. New house → press “+ Add a new house”, then fill the Flying Stars data and read the luopan below.</div>
+        <!-- ACTIVE HOUSE DETAIL (cards + placements + Add buttons) — now lives INSIDE House Profiles, at the very top -->
+        <div id="fs-house-detail" style="font-size:12px;"></div>
       </div>
 
       <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.5;"></div>
@@ -434,29 +436,8 @@ function buildFengShuiView(){
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
       </div>
 
-      <!-- ═══ ACTIVE HOUSE DETAIL (placements & Add buttons) — BELOW THE LUOPAN ═══ -->
-      <div id="fs-house-detail" style="font-size:12px;margin:0 auto 12px;max-width:760px;"></div>
-
-      <!-- 💧 Generic water-feature date scan — MOVED to the Operative area. Hidden here. -->
-      <div id="fs-wateract-block" style="display:none;background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 auto 12px;max-width:760px;">
-        <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Scan for good dates to activate a generic water feature — XKDG + Qimen</div>
-        <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
-          <div style="flex:1;min-width:150px;">
-            <label style="font-size:11px;color:#666;display:block;">Palace</label>
-            <select id="fs-wateract-dir" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
-              <option value="">— select —</option>
-              <option value="N">N 坎</option><option value="NE">NE 艮</option><option value="E">E 震</option><option value="SE">SE 巽</option>
-              <option value="S">S 離</option><option value="SW">SW 坤</option><option value="W">W 兌</option><option value="NW">NW 乾</option>
-            </select>
-          </div>
-          <div style="flex:0 0 80px;">
-            <label style="font-size:11px;color:#666;display:block;">Days</label>
-            <input type="number" id="fs-wateract-days" min="1" max="120" value="7" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
-          </div>
-          <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
-        </div>
-        <div id="fs-wateract-results" style="margin-top:10px;"></div>
-      </div>
+      <!-- (Active house detail moved UP into the green HOUSE PROFILES box.) -->
+      <!-- (Generic water-feature scan moved DOWN into the ⚡ OPERATIVE area.) -->
 
       <div id="fs-legend" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px;font-size:11px;"></div>
 
@@ -478,6 +459,36 @@ function buildFengShuiView(){
       </div>
 
       <div id="fs-results-area"></div>
+
+      <!-- ═══ ⚡ OPERATIVE — ACTIVATION (dynamic) — AT THE BOTTOM ═══ -->
+      <div id="fs-operative" style="background:#ede7f6;border:2px solid #5e35b1;border-radius:8px;padding:10px;margin-top:18px;">
+        <div style="font-size:14px;font-weight:bold;color:#4527a0;margin-bottom:4px;">⚡ OPERATIVE — Activation</div>
+        <div style="font-size:11px;color:#666;font-style:italic;margin-bottom:10px;">Setup lives above in House Profiles. Here you decide <strong>when</strong> (dates / hours) and <strong>how</strong> (Qimen) to activate a placed element. Dates appear only as answers.</div>
+
+        <!-- 💧 Add a generic water feature → scan good dates/hours to activate it (XKDG + Qimen) -->
+        <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 0 10px;">
+          <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Add a generic water feature — scan good dates to activate it (XKDG + Qimen)</div>
+          <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+            <div style="flex:1;min-width:150px;">
+              <label style="font-size:11px;color:#666;display:block;">Palace</label>
+              <select id="fs-wateract-dir" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+                <option value="">— select —</option>
+                <option value="N">N 坎</option><option value="NE">NE 艮</option><option value="E">E 震</option><option value="SE">SE 巽</option>
+                <option value="S">S 離</option><option value="SW">SW 坤</option><option value="W">W 兌</option><option value="NW">NW 乾</option>
+              </select>
+            </div>
+            <div style="flex:0 0 80px;">
+              <label style="font-size:11px;color:#666;display:block;">Days</label>
+              <input type="number" id="fs-wateract-days" min="1" max="120" value="7" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+            </div>
+            <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
+          </div>
+          <div id="fs-wateract-results" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- More operative tools (placed-element activation, Qimen stimulators, QFS Zone) get added here next. -->
+        <div style="font-size:11px;color:#9575cd;font-style:italic;">Coming next in this area: activate a saved Water / Bed / Desk placement, Qimen stimulators, and the QFS Zone (moved out of House Profiles).</div>
+      </div>
     </div>`;
 
   // Inject legend
@@ -5769,6 +5780,9 @@ function _fsUpdateLuopanVis(){
     // Water-activation quadrant block: main sector only.
     var wact = document.getElementById('fs-wateract-block');
     if (wact) wact.style.display = inSection ? 'none' : '';
+    // Operative area: main sector only.
+    var op = document.getElementById('fs-operative');
+    if (op) op.style.display = inSection ? 'none' : '';
 
     var showLuopan;
     if (!inSection){
