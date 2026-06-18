@@ -404,24 +404,24 @@ function buildFengShuiView(){
       <!-- ═══ XKDG DOOR (🚪) — SECOND ═══ -->
       <div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px;">
-          <span style="font-size:11px;color:#c9a84c;font-weight:bold;">🚪 XKDG DOOR</span>
+          <span style="font-size:11px;color:#c9a84c;font-weight:bold;">② 🚪 Internal Door</span>
           <span style="color:#666;font-size:11px;">PERIOD:</span>
           <button id="fs-period-btn" onclick="fsTogglePeriod()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">NOW → 2044</button>
           <span id="fs-period-lbl" style="font-style:italic;color:#8a6a1f;font-size:11px;">Zheng Shen = 6-9</span>
         </div>
         <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
           <div style="flex:1;min-width:120px;">
-            <label style="font-size:11px;color:#666;display:block;">Door Facing (°)</label>
+            <label style="font-size:11px;color:#666;display:block;">Door Facing (°) · 正神 ZS</label>
             <input type="number" id="fs-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
                    style="width:100%;padding:6px;border:1px solid #c9a84c;border-radius:4px;font-size:14px;"
-                   oninput="fsRedraw()">
+                   oninput="fsRedraw()" onchange="fsCheckFacingZS()">
           </div>
           <div style="flex:1;min-width:120px;">
-            <label style="font-size:11px;color:#666;display:block;">Water (°)</label>
+            <label style="font-size:11px;color:#666;display:block;">Water (°) · 零神 LS</label>
             <div style="display:flex;gap:4px;">
               <input type="number" id="fs-water" min="0" max="360" step="0.1" placeholder="optional"
                      style="flex:1;padding:6px;border:1px solid #4a9ead;border-radius:4px;font-size:14px;"
-                     oninput="fsRedraw()">
+                     oninput="fsRedraw()" onchange="fsCheckWaterLS()">
               <button onclick="fsSuggestWater()" title="Suggest closest favorable Water position" style="background:#4a9ead;color:#fff;border:none;border-radius:4px;padding:0 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">💡 Suggest</button>
             </div>
           </div>
@@ -473,7 +473,7 @@ function buildFengShuiView(){
 
         <!-- 💧 Add a generic water feature → scan good dates/hours to activate it (XKDG + Qimen) -->
         <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 0 10px;">
-          <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Add a generic water feature — scan good dates to activate it (XKDG + Qimen)</div>
+          <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">① 💧 General water feature (aquarium / fountain) — by palace</div>
           <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
             <div style="flex:1;min-width:150px;">
               <label style="font-size:11px;color:#666;display:block;">Palace</label>
@@ -487,7 +487,8 @@ function buildFengShuiView(){
               <label style="font-size:11px;color:#666;display:block;">Days</label>
               <input type="number" id="fs-wateract-days" min="1" max="120" value="7" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
             </div>
-            <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
+            <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN dates</button>
+            <button onclick="fsGenWaterSaveToHouse()" title="Save this water feature into the active house" style="background:#fff;color:#00695c;border:1px solid #00695c;font-weight:bold;font-size:12px;padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;">💾 Save to house</button>
           </div>
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
@@ -2387,6 +2388,66 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
+// ── Internal/External door helpers: Zheng Shen facing + Ling Shen water ──
+function fsNearestZhengShen(deg){
+  if (!isFinite(deg)) return null;
+  var best = null, bestD = 999;
+  for (var i = 0; i < FS_SLOTS.length; i++){
+    var s = FS_SLOTS[i];
+    if (!fsIsZhengShen(s.yun)) continue;
+    var d = fsAngularDist(deg, s.centerDeg);
+    if (d < bestD){ bestD = d; best = s; }
+  }
+  return best;
+}
+function fsCheckFacingZS(){
+  try {
+    var el = document.getElementById('fs-facing');
+    var v = parseFloat((el || {}).value);
+    if (!isFinite(v)) return;
+    var slot = fsSlotForDeg(v);
+    if (slot && fsIsZhengShen(slot.yun)) return;            // OK — it's Zheng Shen
+    var near = fsNearestZhengShen(v);
+    var msg = '\u26A0 This Door Facing (' + v.toFixed(1) + '\u00B0) is NOT on a \u6B63\u795E Zheng Shen hexagram'
+            + (slot ? ' (hex ' + slot.hexNum + ', yun ' + slot.yun + ').' : '.');
+    if (near){
+      msg += '\n\nNearest \u6B63\u795E facing: ' + near.centerDeg.toFixed(1) + '\u00B0 (hex ' + near.hexNum + ', yun ' + near.yun + ').'
+           + '\n\nPress OK to use it, or Cancel to keep your value.';
+      if (confirm(msg)){
+        el.value = near.centerDeg.toFixed(2);
+        if (typeof fsRedraw === 'function') fsRedraw();
+      }
+    } else { alert(msg); }
+  } catch(e){ console.warn('fsCheckFacingZS', e); }
+}
+function fsCheckWaterLS(){
+  try {
+    var v = parseFloat((document.getElementById('fs-water') || {}).value);
+    if (!isFinite(v)) return;
+    var slot = fsSlotForDeg(v);
+    if (slot && fsIsLingShen(slot.yun)) return;             // OK — it's Ling Shen
+    alert('\u26A0 This Water position (' + v.toFixed(1) + '\u00B0) is NOT on a \u96F6\u795E Ling Shen hexagram'
+        + (slot ? ' (hex ' + slot.hexNum + ', yun ' + slot.yun + ').' : '.')
+        + '\n\nUse \uD83D\uDCA1 Suggest to get the closest favorable \u96F6\u795E Water.');
+  } catch(e){ console.warn('fsCheckWaterLS', e); }
+}
+function fsGenWaterSaveToHouse(){
+  try {
+    var ref = (typeof _fsSettingRef === 'function') ? _fsSettingRef() : null;
+    if (!ref){ alert('Load a person and a saved house first — placements are stored inside the active house.'); return; }
+    var pal = (document.getElementById('fs-wateract-dir') || {}).value || '';
+    if (!pal){ alert('Select a Palace first.'); return; }
+    var name = prompt('Name for this water feature (e.g. "Aquarium ' + pal + '"):', 'Water ' + pal);
+    if (!name || !name.trim()) return;
+    if (!ref.floor.settings.water) ref.floor.settings.water = [];
+    ref.floor.settings.water.push({ name: name.trim(), kind: 'general', palace: pal, ts: Date.now() });
+    _fsHousesSave(ref.all);
+    if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+    alert('Saved "' + name.trim() + '" (palace ' + pal + ') to the house.');
+  } catch(e){ console.warn('fsGenWaterSaveToHouse', e); alert('Save failed.'); }
+}
+
 // ── Suggest closest favorable Water position ──
 // Searches all 64 hex slots for Water positions that:
 //   (1) are Ling Shen (valid),
@@ -3069,7 +3130,7 @@ function fsRenderHouseProfiles(){
     var doors = f.doors;
     if (doors.length){
       html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #c9a84c;">';
-      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 XKDG Doors</div>';
+      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 External Doors</div>';
       doors.forEach(function(d, di){
         var facingStr = d.facing != null ? d.facing + '°' : '—';
         var waterStr  = d.water  != null ? d.water  + '°' : '—';
@@ -3079,7 +3140,7 @@ function fsRenderHouseProfiles(){
         html += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
         html += '</div>';
       });
-      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Door</button>';
+      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add External Door</button>';
       html += '</div>';
     }
 
@@ -3136,7 +3197,7 @@ function fsRenderHouseProfiles(){
     // ── Bottom "Add" row: empty sections collapse to horizontal Add buttons here
     //    (no point in a full vertical block when there is nothing inside). ──
     var _addBtns = '';
-    if (!doors.length) _addBtns += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">+ Add Door</button>';
+    if (!doors.length) _addBtns += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">+ Add External Door</button>';
     if (!hasWaters)    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">💧 Add Water</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>';
@@ -3504,7 +3565,7 @@ function fsDeleteHouse(personName, houseIdx){
 // ── DOOR CRUD ───────────────────────────────────────────────────
 
 function fsAddDoor(personName, houseIdx){
-  var dName = prompt('Name for this door / facade\n(e.g. "Garage door", "South facade"):');
+  var dName = prompt('Name for this EXTERNAL door / facade\n(e.g. "Garage door", "South facade"):');
   if (!dName || !dName.trim()) return;
   var facingStr = prompt('XKDG Facing degree (°) for this door:');
   if (!facingStr) return;
@@ -3742,7 +3803,8 @@ function _fsTaskStar(task, house, floor, freeType){
     var dir = null, type = task.type;
     if (task.kind === 'water'){
       var sw = (floor.settings.water || [])[task.idx]; if (!sw) return null;
-      dir = _fsDeg8(parseFloat(sw.water)); type = 'water';
+      dir = sw.palace ? sw.palace : _fsDeg8(parseFloat(sw.water));   // general → palace; XKDG → water degree
+      type = 'water';
     } else if (task.kind === 'bed'){
       var sb = (floor.settings.bed || [])[task.idx]; if (!sb) return null;
       dir = sb.bedPalace || null; type = 'mountain';
@@ -3793,7 +3855,7 @@ function fsRenderOperativeActivate(){
 
   // build task list (only placements that exist)
   var tasks = [];
-  (floor.settings && floor.settings.water || []).forEach(function(s, idx){ tasks.push({ kind:'water', idx:idx, label:'💧 ' + s.name + ' · Water (向星)', type:'water', free:false }); });
+  (floor.settings && floor.settings.water || []).forEach(function(s, idx){ tasks.push({ kind:'water', idx:idx, label:'💧 ' + s.name + (s.palace ? ' · ' + s.palace : '') + ' · Water (向星)', type:'water', free:false }); });
   (floor.settings && floor.settings.bed   || []).forEach(function(s, idx){ tasks.push({ kind:'bed',   idx:idx, label:'🛏 ' + s.name + ' · Bed (山星)',   type:'mountain', free:false }); });
   (floor.settings && floor.settings.desk  || []).forEach(function(s, idx){ tasks.push({ kind:'desk',  idx:idx, label:'🪑 ' + s.name + ' · Desk (free)',  type:null, free:true }); });
   (floor.doors || []).forEach(function(d, idx){ tasks.push({ kind:'door', idx:idx, label:'🚪 ' + d.name + ' · Door (free)', type:null, free:true }); });
@@ -5246,9 +5308,9 @@ function fsSelectZone(zone){
     var banner = document.getElementById('fs-zone-banner');
     if (banner){
       var z = FS_ZONES[zone];
-      banner.innerHTML =
-        '<span style="background:#8a6a1f;color:#fff;border-radius:8px;padding:4px 12px;font-size:13px;font-weight:bold;">' + z.label + '</span>'
-        + (z.clone ? '<span style="font-size:11px;color:#999;margin-left:8px;">clone — section-specific rules coming in a later phase</span>' : '');
+      // The gate header above already names the section, so don't repeat the
+      // title here; keep only the (rare) clone note.
+      banner.innerHTML = (z && z.clone) ? '<span style="font-size:11px;color:#999;">clone — section-specific rules coming in a later phase</span>' : '';
     }
     if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
     // Bed and Desk zones show their dedicated panels; Water shows the generic tools.
@@ -5441,6 +5503,11 @@ function _fsBuildZoneGate(){
     var modeToggle = modeEl;
     while (modeToggle && modeToggle.parentNode !== fsRoot) modeToggle = modeToggle.parentNode;
     if (modeToggle) generic.appendChild(modeToggle);
+
+    // ① General water feature box lives in the Water section (moved out of the
+    // OPERATIVE area so there is no duplicate). Put it FIRST, above the Internal Door.
+    var genWater = document.getElementById('fs-wateract-block');
+    if (genWater) generic.insertBefore(genWater, generic.firstChild);
 
     // Capture House Profiles BEFORE the sweep (the sweep moves it into the
     // detached generic wrapper, after which getElementById can't find it).
