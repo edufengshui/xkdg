@@ -2771,9 +2771,32 @@ function fsEditFloorFacing(personName, houseIdx){
 function fsGetActivePersonForHouse(){
   const nA = (document.getElementById('person-name') || {}).value || '';
   const nB = (document.getElementById('person-name-b') || {}).value || '';
-  if (nA.trim()) return { name: nA.trim(), who: 'A' };
-  if (nB.trim()) return { name: nB.trim(), who: 'B' };
-  return null;
+  var raw = nA.trim() ? { name: nA.trim(), who: 'A' } : (nB.trim() ? { name: nB.trim(), who: 'B' } : null);
+  if (!raw) return null;
+  // House profiles are keyed by person name, so a small name difference (case,
+  // or "ed" vs "Edu") would hide them. If the exact name has no group, fall back
+  // to a case-insensitive key, then to a group whose stored birthDate matches
+  // this person's birth date — so houses are never lost to a name typo.
+  try {
+    var all = _fsHousesLoad();
+    if (!all[raw.name] || !all[raw.name].length){
+      var keys  = Object.keys(all);
+      var lower = raw.name.toLowerCase();
+      var ci = keys.filter(function(k){ return k.toLowerCase() === lower; })[0];
+      if (ci){
+        raw.name = ci;
+      } else {
+        var bd = (document.getElementById(raw.who === 'B' ? 'person-date-b' : 'person-date') || {}).value || '';
+        if (bd){
+          var byDate = keys.filter(function(k){
+            return (all[k] || []).some(function(h){ return h && h.birthDate === bd; });
+          })[0];
+          if (byDate) raw.name = byDate;
+        }
+      }
+    }
+  } catch(e){}
+  return raw;
 }
 
 // Open the Floor-Plan Flying-Stars tool for a SPECIFIC house, pre-filled with
