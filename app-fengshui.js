@@ -369,8 +369,6 @@ function buildFengShuiView(){
         <div id="fs-house-detail" style="font-size:12px;"></div>
       </div>
 
-      <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.5;"></div>
-
       <!-- ═══ FLYING STARS (玄空飛星) — FIRST ═══ -->
       <div id="fs-flying-stars-block" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
         <div style="font-size:11px;color:#8a6a1f;font-weight:bold;margin-bottom:6px;">⭐ FLYING STARS (玄空飛星)</div>
@@ -465,6 +463,9 @@ function buildFengShuiView(){
         <div style="font-size:14px;font-weight:bold;color:#4527a0;margin-bottom:4px;">⚡ OPERATIVE — Activation</div>
         <div style="font-size:11px;color:#666;font-style:italic;margin-bottom:10px;">Setup lives above in House Profiles. Here you decide <strong>when</strong> (dates / hours) and <strong>how</strong> (Qimen) to activate a placed element. Dates appear only as answers.</div>
 
+        <!-- Current context (date / person analysis) — moved here from the top -->
+        <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin:0 0 10px;font-size:13px;line-height:1.5;"></div>
+
         <!-- 💧 Add a generic water feature → scan good dates/hours to activate it (XKDG + Qimen) -->
         <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 0 10px;">
           <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">💧 Add a generic water feature — scan good dates to activate it (XKDG + Qimen)</div>
@@ -486,10 +487,13 @@ function buildFengShuiView(){
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
 
+        <!-- ⚡ Placed elements (saved Water / Bed / Desk) → Activate to scan dates / hours -->
+        <div id="fs-op-elements" style="background:#ede7f6;border:1px solid #5e35b1;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
+
         <!-- 🌀 QFS Zones (Qimen × Flying Stars) — relocated here from House Profiles -->
         <div id="fs-op-zones" style="background:#f3e5f5;border:1px solid #7b1fa2;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
 
-        <div style="font-size:11px;color:#9575cd;font-style:italic;">Coming next: activate a saved Water / Bed / Desk placement, plus Qimen stimulators.</div>
+        <div style="font-size:11px;color:#9575cd;font-style:italic;">Coming next: Qimen stimulators for placed elements.</div>
       </div>
     </div>`;
 
@@ -595,6 +599,7 @@ function openFengShui(){
   fsRenderHouseProfiles();
   if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
   if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
+  if (typeof fsRenderOperativeElements === 'function') fsRenderOperativeElements();
   // Auto-load active house for current person (covers app startup / view switch)
   var person = fsGetActivePersonForHouse();
   if (person) fsAutoLoadHouse(person.name);
@@ -2649,6 +2654,7 @@ function fsSetActiveHouse(personName, idx){
   fsLoadHouse(personName, idx);
   fsRenderHouseProfiles();
   if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
+  if (typeof fsRenderOperativeElements === 'function') fsRenderOperativeElements();
 }
 
 // Open the Water/Bed/Desk calculation tool, pre-attached to a specific house/floor.
@@ -3519,6 +3525,56 @@ function fsRenderOperativeZones(){
   }
   html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;margin-top:6px;">+ Add Zone</button>';
   box.innerHTML = html;
+}
+
+// ── ⚡ OPERATIVE: Placed elements (saved Water / Bed / Desk) of the ACTIVE house ──
+// Each has an ⚡ Activate button that opens its tool pre-loaded, ready to scan.
+function fsRenderOperativeElements(){
+  var box = document.getElementById('fs-op-elements');
+  if (!box) return;
+  var header = '<div style="font-size:12px;font-weight:bold;color:#4527a0;margin-bottom:3px;">⚡ Placed elements</div>'
+    + '<div style="font-size:10px;color:#888;margin-bottom:6px;font-style:italic;">Saved Water / Bed / Desk placements of the active house. <strong>Activate</strong> opens the matching tool already loaded \u2014 then press SCAN for good dates / hours.</div>';
+  var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+  if (!person){ box.innerHTML = header + '<div style="font-size:11px;color:#999;">Load a person and pick an active house above.</div>'; return; }
+  var all = _fsHousesLoad();
+  var houses = all[person.name] || [];
+  if (!houses.length){ box.innerHTML = header + '<div style="font-size:11px;color:#999;">No houses yet \u2014 add one in House Profiles above.</div>'; return; }
+  var hi = _fsActiveHouseGet(person.name); if (hi >= houses.length) hi = 0;
+  var house = houses[hi];
+  var floor = _fsActiveFloor(house);
+  var fIdx = house.activeFloor || 0; if (fIdx >= house.floors.length) fIdx = 0;
+  var st = floor.settings || { water: [], bed: [], desk: [] };
+  var escHtml = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
+  var escJs   = function(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); };
+  var ICON = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF', desk: '\uD83E\uDE91' };
+  var ZLBL = { water: 'Water', bed: 'Bed', desk: 'Desk' };
+  var html = header;
+  html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">House: <strong>' + escHtml(house.name) + '</strong> \u00b7 Floor: <strong>' + escHtml(floor.label || 'Floor 1') + '</strong></div>';
+  var any = false;
+  ['water', 'bed', 'desk'].forEach(function(zone){
+    var arr = st[zone] || [];
+    arr.forEach(function(s, idx){
+      any = true;
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+      html += '<span style="font-size:11px;flex:1 1 auto;">' + ICON[zone] + ' <strong>' + escHtml(s.name) + '</strong> <span style="color:#999;">\u00b7 ' + ZLBL[zone] + '</span></span>';
+      html += '<button onclick="fsActivatePlacement(\'' + escJs(person.name) + '\',' + hi + ',' + fIdx + ',\'' + zone + '\',' + idx + ')" style="background:#5e35b1;color:#fff;border:none;border-radius:4px;padding:3px 12px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">\u26A1 Activate</button>';
+      html += '</div>';
+    });
+  });
+  if (!any) html += '<div style="font-size:11px;color:#999;padding:2px 0;">No placements yet \u2014 add Water / Bed / Desk in the house card above.</div>';
+  box.innerHTML = html;
+}
+
+// Open the matching zone tool with a saved placement loaded, ready to SCAN.
+function fsActivatePlacement(personName, hi, fIdx, zone, idx){
+  try {
+    window._fsSettingHouseIdx = hi;
+    window._fsSettingFloorIdx = fIdx;
+    if (typeof fsSelectZone === 'function') fsSelectZone(zone);
+    if (typeof fsLoadZoneSetting === 'function') fsLoadZoneSetting(idx);
+    var tools = document.getElementById('fs-zone-tools');
+    if (tools) setTimeout(function(){ try { tools.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e){} }, 60);
+  } catch(e){ console.warn('fsActivatePlacement', e); }
 }
 
 function fsAddZone(personName, houseIdx){
@@ -4807,11 +4863,8 @@ function fsRenderZoneGate(){
       + '<button onclick="fsExitZone()" style="flex:0 0 auto;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:bold;cursor:pointer;border:2px solid #b71c1c;background:#fff;color:#b71c1c;white-space:nowrap;">← Close</button>'
       + '</div>';
   } else {
-    // The 3 standalone tiles are absorbed into House: a tool opens from a house card.
-    gate.innerHTML =
-      '<div style="background:#fdf6e3;border:1px dashed #c9a84c;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#8a6a1f;text-align:center;">'
-      + 'To place <strong>Water</strong>, <strong>Bed</strong> or <strong>Desk</strong>, open a house card above and use its <strong>“Add …”</strong> buttons.'
-      + '</div>';
+    // No tool open → no hint needed (the house "Add …" buttons are self-explanatory).
+    gate.innerHTML = '';
   }
 }
 
@@ -4875,6 +4928,8 @@ function fsExitZone(){
     if (typeof fsRenderZoneGate === 'function') fsRenderZoneGate();
     if (typeof _fsUpdateLuopanVis === 'function') _fsUpdateLuopanVis();
     if (typeof fsRedraw === 'function') fsRedraw();
+    if (typeof fsRenderOperativeElements === 'function') fsRenderOperativeElements();
+    if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
     var gate = document.getElementById('fs-zone-gate');
     if (gate) gate.scrollIntoView({ behavior:'smooth', block:'start' });
   } catch(err){ console.warn('fsExitZone', err); }
@@ -5191,9 +5246,14 @@ function fsSaveZoneSetting(){
     }
     var name = prompt('Setting name (e.g. "Aquarium SE"):');
     if (!name || !name.trim()) return;
+    // Zone-specific direction so Bed / Desk can be re-loaded ready to scan.
+    var bedPalace  = (document.getElementById('fs-bed-palace')  || {}).value || '';
+    var bedSitting = (document.getElementById('fs-bed-sitting') || {}).value || '';
+    var deskFacing = (document.getElementById('fs-desk-facing') || {}).value || '';
     var s = {
       name: name.trim(), ts: Date.now(),
       houseFacing: hf, period: pd, doorFacing: df, water: wt,
+      bedPalace: bedPalace, bedSitting: bedSitting, deskFacing: deskFacing,
       manualChart: window._fsManualChart ? JSON.parse(JSON.stringify(window._fsManualChart)) : null
     };
     if (!ref.floor.settings[zone]) ref.floor.settings[zone] = [];
@@ -5218,6 +5278,15 @@ function fsLoadZoneSetting(idx){
     _fsSetVal('fs-water', s.water);
     window._fsManualChart = s.manualChart ? JSON.parse(JSON.stringify(s.manualChart)) : null;
     if (typeof fsUpdateManualBadge === 'function') fsUpdateManualBadge();
+    // Restore the zone-specific direction so the Bed / Desk scan has everything it needs.
+    if (zone === 'bed'){
+      _fsSetVal('fs-bed-palace', s.bedPalace);
+      _fsSetVal('fs-bed-sitting', s.bedSitting);
+      if (typeof fsBedReadChart === 'function') fsBedReadChart();
+    } else if (zone === 'desk'){
+      _fsSetVal('fs-desk-facing', s.deskFacing);
+      if (typeof fsDeskReadChart === 'function') fsDeskReadChart();
+    }
     if (typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON){ fsToggleStars(); }
     else if (typeof fsRedraw === 'function'){ fsRedraw(); }
   } catch(err){ console.warn('fsLoadZoneSetting', err); }
