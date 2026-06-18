@@ -76,9 +76,20 @@
     var dayGZ = Solar.fromYmdHms(tst.y, tst.mo, tst.d, 12, 0, 0).getLunar().getDayInGanZhi();
     var dayStemIdx = STEMS.indexOf(dayGZ.charAt(0));
 
-    // HOUR: branch from TST clock; stem via 五鼠遁 from the TST day stem.
+    // HOUR: branch from TST clock; stem via 五鼠遁 from the day stem.
+    // Late 子 (TST 23:00–24:00): the 子 hour opens the NEXT day's hour cycle, so its
+    // stem comes from the next day's stem — after 癸亥 (亥 hour) comes 甲子 (子 hour),
+    // keeping the 60-cycle continuous. The DAY pillar still rolls at TST midnight, so
+    // it stays the current day (e.g. 癸亥 day with a 甲子 late-子 hour).
+    var hourDayStemIdx = dayStemIdx;
+    if (tst.h === 23) {
+      var nd = new Date(Date.UTC(tst.y, tst.mo - 1, tst.d, 12, 0, 0) + 24 * 3600000);
+      var nextDayGZ = Solar.fromYmdHms(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate(), 12, 0, 0).getLunar().getDayInGanZhi();
+      var ndIdx = STEMS.indexOf(nextDayGZ.charAt(0));
+      if (ndIdx >= 0) hourDayStemIdx = ndIdx;
+    }
     var hbi = hourBranchIndex(tst.h);
-    var hsi = hourStemIndex(dayStemIdx, hbi);
+    var hsi = hourStemIndex(hourDayStemIdx, hbi);
     var hourGZ = STEMS[hsi] + BRANCHES[hbi];
 
     return {
