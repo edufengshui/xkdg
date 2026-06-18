@@ -3631,6 +3631,52 @@ function fsActivatePlacement(personName, hi, fIdx, zone, idx){
   } catch(e){ console.warn('fsActivatePlacement', e); }
 }
 
+// Degrees → 8-direction (N/NE/.../NW), or null if not a number.
+function _fsDeg8(deg){
+  if (deg == null || isNaN(deg)) return null;
+  var dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  var i = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+  return dirs[i];
+}
+// Auto-target the flying star for a task from its position on the house chart
+// (the chart fixed in House Profiles). Returns {type, starNum, dir} or null.
+function _fsTaskStar(task, house, floor, freeType){
+  try {
+    if (typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function') return null;
+    var effFacing = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(house, floor) : null;
+    var effPeriod = (typeof _fsFloorPeriod === 'function') ? _fsFloorPeriod(house, floor) : null;
+    if (effFacing == null || effPeriod == null) return null;
+    var chart;
+    try { chart = FlyingStars.calculate(parseInt(effPeriod, 10), fsMountainCharFromDeg(parseFloat(effFacing))); } catch(e){ return null; }
+    if (!chart || !FlyingStars.DIR_TO_INDEX) return null;
+    var PAL = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
+    var dir = null, type = task.type;
+    if (task.kind === 'water'){
+      var sw = (floor.settings.water || [])[task.idx]; if (!sw) return null;
+      dir = _fsDeg8(parseFloat(sw.water)); type = 'water';
+    } else if (task.kind === 'bed'){
+      var sb = (floor.settings.bed || [])[task.idx]; if (!sb) return null;
+      dir = sb.bedPalace || null; type = 'mountain';
+    } else if (task.kind === 'desk'){
+      var sd = (floor.settings.desk || [])[task.idx]; if (!sd) return null;
+      dir = _fsDeg8(parseFloat(sd.deskFacing)); type = freeType || 'water';
+    } else if (task.kind === 'door'){
+      var dr = (floor.doors || [])[task.idx]; if (!dr) return null;
+      dir = _fsDeg8(parseFloat(dr.facing)); type = freeType || 'water';
+    } else if (task.kind === 'zone'){
+      var z = (floor.zones || [])[task.idx]; if (!z) return null;
+      dir = z.dir || PAL[z.palace]; type = (z.target === 'mountain') ? 'mountain' : 'water';
+    }
+    if (!dir || dir === 'C') return null;
+    var gi = FlyingStars.DIR_TO_INDEX[dir];
+    if (gi == null) return null;
+    var arr = (type === 'water') ? chart.facingStars : chart.sittingStars;
+    var starNum = arr ? arr[gi] : null;
+    if (starNum == null) return null;
+    return { type: type, starNum: starNum, dir: dir };
+  } catch(e){ console.warn('_fsTaskStar', e); return null; }
+}
+
 // ── ⚡ OPERATIVE: guided activation (house → task → SCAN) ──
 // Replaces the old "Placed elements" + "QFS Zones" boxes. Lists only the
 // placements that actually exist in the chosen house; SCAN opens the Qimen
@@ -3679,15 +3725,21 @@ function fsRenderOperativeActivate(){
   tasks.forEach(function(t){ var k = t.kind + '|' + t.idx; html += '<option value="' + k + '"' + (k === selKey ? ' selected' : '') + '>' + escHtml(t.label) + '</option>'; });
   html += '</select>';
 
-  // STEP 3 — target star
+  // STEP 3 — target star (auto-derived from the placement's position)
   var cur = tasks[keys.indexOf(selKey)];
+  var freeType = window._fsOpFreeType || 'water';
   html += '<div style="font-size:11px;color:#555;margin:8px 0 2px;"><strong>3.</strong> Target star:</div>';
   if (cur.free){
-    var ft = window._fsOpFreeType || 'water';
-    html += '<label style="font-size:12px;margin-right:14px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="water"' + (ft === 'water' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 向星 Water</label>';
-    html += '<label style="font-size:12px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="mountain"' + (ft === 'mountain' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 山星 Mountain</label>';
+    html += '<label style="font-size:12px;margin-right:14px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="water"' + (freeType === 'water' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 向星 Water</label>';
+    html += '<label style="font-size:12px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="mountain"' + (freeType === 'mountain' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 山星 Mountain</label>';
+  }
+  var info = _fsTaskStar(cur, house, floor, freeType);
+  window._fsOpStar = info;   // remembered for the one-click scan
+  if (info){
+    var tl = (info.type === 'mountain') ? '山星 Mountain' : '向星 Water';
+    html += '<div style="font-size:12px;color:#4527a0;font-weight:bold;margin-top:5px;">\u2192 ' + tl + ' Star <span style="font-size:15px;">' + info.starNum + '</span> at ' + info.dir + ' <span style="color:#999;font-weight:normal;">(auto-targeted)</span></div>';
   } else {
-    html += '<div style="font-size:12px;color:#4527a0;font-weight:bold;">' + (cur.type === 'mountain' ? '山星 Mountain Star (required for this task)' : '向星 Water Star (required for this task)') + '</div>';
+    html += '<div style="font-size:11px;color:#c0392b;margin-top:5px;">Can\'t auto-target \u2014 set the house chart (Facing + Period) in House Profiles and give this placement its direction. SCAN will open the panel to pick the star manually.</div>';
   }
 
   // STEP 4 — scan
@@ -3707,7 +3759,7 @@ function fsOpPickHouse(v){
   } catch(e){ console.warn('fsOpPickHouse', e); }
 }
 function fsOpPickTask(v){ window._fsOpTaskKey = v; fsRenderOperativeActivate(); }
-function fsOpPickFreeType(v){ window._fsOpFreeType = v; }
+function fsOpPickFreeType(v){ window._fsOpFreeType = v; fsRenderOperativeActivate(); }
 function fsOpScan(){
   try {
     var tasks = window._fsOpTasks || [];
@@ -3715,8 +3767,24 @@ function fsOpScan(){
     var cur = null;
     for (var i = 0; i < tasks.length; i++){ if ((tasks[i].kind + '|' + tasks[i].idx) === key){ cur = tasks[i]; break; } }
     if (!cur){ alert('Select a task first.'); return; }
-    var type = cur.free ? (window._fsOpFreeType || 'water') : cur.type;
-    fsQimenStimulate(type);   // opens the Qimen stimulator panel, locked to this target star type
+    if (typeof QFS === 'undefined' || typeof QFS.open !== 'function'){ alert('flying-stars-qimen.js not loaded'); return; }
+    // Make sure the active house chart is loaded into the Flying Stars block.
+    var hfEl = document.getElementById('fs-house-facing');
+    if (hfEl && !hfEl.value){
+      var p = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+      if (p && typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(p.name);
+    }
+    var info = window._fsOpStar;
+    if (info && info.starNum){
+      // Auto-targeted → open the panel locked to the exact star and run it in one click.
+      QFS.open({ type: info.type, starNum: info.starNum, lockType: true });
+      var btn = document.getElementById('qfs-scan-btn');
+      if (btn) btn.click();
+    } else {
+      // Fallback (no derivable direction) → open the panel locked to the type only.
+      var type = cur.free ? (window._fsOpFreeType || 'water') : cur.type;
+      fsQimenStimulate(type);
+    }
   } catch(e){ console.warn('fsOpScan', e); }
 }
 
