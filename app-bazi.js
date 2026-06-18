@@ -6903,21 +6903,9 @@ function _xkdgSnapshotPerson(person){
 // Kept for existing call sites — now stores the full snapshot read from the inputs.
 function _xkdgSetLastPerson(person, name){ _xkdgSnapshotPerson(person); }
 
-function _xkdgRestoreLastPerson(person){
+function _xkdgApplyPersonSnap(person, snap){
   try {
-    var isB = (person === 'B');
-    var raw = localStorage.getItem(isB ? 'xkdg_last_person_b' : 'xkdg_last_person_a');
-    if (!raw) return;
-    var snap = null;
-    try { snap = JSON.parse(raw); } catch(e){ snap = null; }
-    if (typeof snap === 'string') snap = null;
-    if (!snap){                                                // back-compat: old name-only value → archive
-      var nm = raw;
-      var arch = (typeof loadArchive === 'function') ? loadArchive(isB ? 'xkdg_persons_b' : 'xkdg_persons_a') : null;
-      if (arch && arch[nm]) snap = { name:nm, date:arch[nm].date, time:arch[nm].time, depth:arch[nm].depth, year:arch[nm].jiaZiYear };
-      else return;
-    }
-    if (!snap.name || !(snap.date || snap.year)) return;
+    var isB = (person === 'B' || person === 'b');
     if (isB){                                                  // Person B panel may need opening first
       try {
         if (typeof _personPanelOpen !== 'undefined' && _personPanelOpen && !_personPanelOpen.b && typeof togglePersonPanel === 'function') togglePersonPanel('b');
@@ -6929,7 +6917,7 @@ function _xkdgRestoreLastPerson(person){
     var dateEl = document.getElementById(isB ? 'person-date-b' : 'person-date');
     var timeEl = document.getElementById(isB ? 'person-time-b' : 'person-time');
     if (nameEl) nameEl.value = snap.name;
-    if (dateEl && snap.date) dateEl.value = snap.date;          // <-- restores the birth date explicitly
+    if (dateEl && snap.date) dateEl.value = snap.date;          // restores the birth date explicitly
     if (timeEl && snap.time) timeEl.value = snap.time;
     if (isB){
       var depthEl = document.getElementById('person-pillars-b');
@@ -6940,7 +6928,61 @@ function _xkdgRestoreLastPerson(person){
     if (typeof calculateBazi === 'function') calculateBazi();
     if (typeof calculatePerson === 'function') calculatePerson(person);
     if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(snap.name);
+  } catch(e){ console.warn('_xkdgApplyPersonSnap', e); }
+}
+
+function _xkdgReadSnap(person){
+  var isB = (person === 'B');
+  var raw = localStorage.getItem(isB ? 'xkdg_last_person_b' : 'xkdg_last_person_a');
+  if (!raw) return null;
+  var snap = null;
+  try { snap = JSON.parse(raw); } catch(e){ snap = null; }
+  if (typeof snap === 'string') snap = null;
+  if (!snap){                                                  // back-compat: old name-only value → archive
+    var nm = raw;
+    var arch = (typeof loadArchive === 'function') ? loadArchive(isB ? 'xkdg_persons_b' : 'xkdg_persons_a') : null;
+    if (arch && arch[nm]) snap = { name:nm, date:arch[nm].date, time:arch[nm].time, depth:arch[nm].depth, year:arch[nm].jiaZiYear };
+    else return null;
+  }
+  if (!snap.name || !(snap.date || snap.year)) return null;
+  return snap;
+}
+
+function _xkdgRestoreLastPerson(person){
+  try {
+    var snap = _xkdgReadSnap(person);
+    if (!snap) return;
+    _xkdgApplyPersonSnap(person, snap);
+    // Re-assert against late browser form-restoration that can blank the date
+    // input AFTER our restore (common on soft reload with <input type="date">).
+    var isB = (person === 'B');
+    var dateId = isB ? 'person-date-b' : 'person-date';
+    function reassert(){
+      try {
+        var dEl = document.getElementById(dateId);
+        if (snap.date && dEl && dEl.value !== snap.date) _xkdgApplyPersonSnap(person, snap);
+      } catch(e){}
+    }
+    setTimeout(reassert, 700);
+    setTimeout(reassert, 1800);
   } catch(e){ console.warn('_xkdgRestoreLastPerson', e); }
+}
+
+// Save the snapshot the instant the user edits a person field — independent of
+// pressing CALCULATE, so persistence can never be missed.
+function _xkdgAttachPersonAutosave(){
+  try {
+    if (window._xkdgAutosaveAttached) return;
+    window._xkdgAutosaveAttached = true;
+    ['person-name','person-date','person-time'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', function(){ try { _xkdgSnapshotPerson('A'); } catch(e){} });
+    });
+    ['person-name-b','person-date-b','person-time-b','person-pillars-b','person-year-b'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', function(){ try { _xkdgSnapshotPerson('B'); } catch(e){} });
+    });
+  } catch(e){}
 }
 function _xkdgConsultRestore(){
   if (window._xkdgRestored) return;
@@ -6951,6 +6993,7 @@ function _xkdgConsultRestore(){
   } catch(e){}
   try { _xkdgRestoreLastPerson('A'); } catch(e){}                            // point 1: last Person A
   try { _xkdgRestoreLastPerson('B'); } catch(e){}                            // point 1: last Person B
+  try { _xkdgAttachPersonAutosave(); } catch(e){}                            // bulletproof persistence
 }
 (function(){
   var tries = 0;
