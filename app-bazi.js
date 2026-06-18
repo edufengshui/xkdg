@@ -1954,6 +1954,7 @@ function loadPersonFromDB(targetPanel, name) {
         calculatePerson(targetPanel);
         // Auto-load house profile for this person
         if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(name);
+        try { _xkdgSetLastPerson(targetPanel, name); } catch(e){}
         // Saved person → always hide Bazi/XKDG details by default.
         // User can expand via the toggle button.
         setTimeout(function(){
@@ -2016,6 +2017,7 @@ function savePerson(person) {
         localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
     }
     renderArchive(person);
+    try { _xkdgSetLastPerson(person, name); } catch(e){}
 }
 
 function loadPerson(person, name) {
@@ -2034,6 +2036,7 @@ function loadPerson(person, name) {
     calculatePerson(person);
     // Auto-load house profile for this person
     if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(name);
+    try { _xkdgSetLastPerson(person, name); } catch(e){}
 }
 
 function hidePerson(e, person, name) {
@@ -6826,6 +6829,7 @@ async function submitPin() {
         document.getElementById('license-overlay').style.display = 'none';
         checkLicense();
         setNow();
+        try { _xkdgConsultRestore(); } catch(e){}
     } else {
         errorEl.textContent = 'Invalid PIN. Please try again.';
     }
@@ -6857,5 +6861,77 @@ document.addEventListener('DOMContentLoaded', () => {
   try {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _removeTestMode);
     else _removeTestMode();
+  } catch(e){}
+})();
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Consultation convenience (additive + guarded):
+//   1. Auto-restore the last person used in Person A / Person B on reopen.
+//   2. (Their birth Bazi/XKDG details stay hidden by default via the existing
+//      applyPersonDetailsVisibility "seen" logic — openable with the toggle.)
+//   3. Default the SCAN start date (#scan-start) to today.
+//  Runs ONCE, after the app is unlocked and the main date is set.
+// ════════════════════════════════════════════════════════════════════════
+function _xkdgSetLastPerson(person, name){
+  try { localStorage.setItem((person === 'B' || person === 'b') ? 'xkdg_last_person_b' : 'xkdg_last_person_a', name); } catch(e){}
+}
+function _xkdgRestoreLastPerson(person){
+  try {
+    var lk   = (person === 'B') ? 'xkdg_last_person_b' : 'xkdg_last_person_a';
+    var name = localStorage.getItem(lk);
+    if (!name) return;
+    var akey = (person === 'B') ? 'xkdg_persons_b' : 'xkdg_persons_a';
+    var archive = (typeof loadArchive === 'function') ? loadArchive(akey) : null;
+    if (!archive || !archive[name]) return;                  // only restore a saved person
+    var nameId = (person === 'B') ? 'person-name-b' : 'person-name';
+    var nameEl = document.getElementById(nameId);
+    if (nameEl && nameEl.value && nameEl.value.trim()) return; // don't overwrite a filled panel
+    if (person === 'B'){                                       // Person B panel may need opening
+      try {
+        if (typeof _personPanelOpen !== 'undefined' && _personPanelOpen && !_personPanelOpen.b && typeof togglePersonPanel === 'function') togglePersonPanel('b');
+        var pb = document.getElementById('person-panel-b');
+        if (pb && pb.style.display === 'none') pb.style.display = 'block';
+      } catch(e){}
+    }
+    if (typeof loadPerson === 'function') loadPerson(person, name);
+  } catch(e){ console.warn('_xkdgRestoreLastPerson', e); }
+}
+function _xkdgConsultRestore(){
+  if (window._xkdgRestored) return;
+  window._xkdgRestored = true;
+  try {
+    var ss = document.getElementById('scan-start');
+    if (ss && !ss.value && typeof setScanNow === 'function') setScanNow();   // point 3: today by default
+  } catch(e){}
+  try { _xkdgRestoreLastPerson('A'); } catch(e){}                            // point 1: last Person A
+  try { _xkdgRestoreLastPerson('B'); } catch(e){}                            // point 1: last Person B
+}
+(function(){
+  var tries = 0;
+  function _isUnlocked(){
+    try {
+      var ov = document.getElementById('license-overlay');
+      if (!ov) return true;
+      if (ov.style.display === 'none') return true;
+      return (window.getComputedStyle ? getComputedStyle(ov).display === 'none' : false);
+    } catch(e){ return false; }
+  }
+  function _ready(){
+    var d = document.getElementById('date');
+    return _isUnlocked()
+      && document.getElementById('scan-start')
+      && document.getElementById('person-name')
+      && d && d.value;                                  // wait until setNow() has set the main date
+  }
+  function _poll(){
+    if (window._xkdgRestored) return;
+    tries++;
+    try { if (_ready()){ _xkdgConsultRestore(); return; } } catch(e){}
+    if (tries < 60) setTimeout(_poll, 400);             // retry up to ~24s while the user unlocks
+  }
+  try {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(_poll, 250); });
+    else setTimeout(_poll, 250);
   } catch(e){}
 })();
