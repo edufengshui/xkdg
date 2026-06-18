@@ -3267,12 +3267,18 @@ function buildJieqiMap(startYear, endYear, offsetMin) {
         const table = Lunar.fromYmd(yr, 1, 1).getJieQiTable();
         for (const [name, s] of Object.entries(table)) {
             const bH = s.getHour ? s.getHour() : 0, bMi = s.getMinute ? s.getMinute() : 0;
-            let iso, timeStr;
+            let iso, timeStr, wallStr = '';
             if (haveTST) {
-                // Beijing-time term → local true solar time.
+                // Beijing-time term → local true solar time (for placement + the (TST …) label).
                 const t = XKDGSolarTime.beijingTermToTST(s.getYear(), s.getMonth(), s.getDay(), bH, bMi, 0, lonDeg);
                 iso = t.y + '-' + String(t.mo).padStart(2,'0') + '-' + String(t.d).padStart(2,'0');
                 timeStr = String(t.h).padStart(2,'0') + ':' + String(t.mi).padStart(2,'0');
+                // Home wall-clock time (longitude + EoT + DST), consistent with the hour list.
+                try {
+                    const lt = XKDGSolarTime.currentLonTz();
+                    const w = XKDGSolarTime.wallClockFromTST(t.y, t.mo, t.d, t.h, t.mi, lonDeg, lt.tzOffsetMin);
+                    wallStr = String(w.h).padStart(2,'0') + ':' + String(w.mi).padStart(2,'0');
+                } catch(e) {}
             } else {
                 // Fallback (no longitude / engine): legacy behaviour.
                 const rawDate = new Date(s.getYear(), s.getMonth()-1, s.getDay(), bH, bMi);
@@ -3281,7 +3287,7 @@ function buildJieqiMap(startYear, endYear, offsetMin) {
                 timeStr = String(solarDate.getHours()).padStart(2,'0') + ':' + String(solarDate.getMinutes()).padStart(2,'0');
             }
             if (!map[iso]) map[iso] = [];
-            map[iso].push({ name, time: timeStr });
+            map[iso].push({ name, time: timeStr, wall: wallStr });
         }
     }
     return map;
@@ -4403,7 +4409,7 @@ function buildTableView() {
                 html += jqMatchTV.map(j => {
                     const isJ = MONTH_START_JQ_TV.includes(j.name);
                     const bg = isJ ? '#1565c0' : '#e65100';
-                    return `<tr><td colspan="3" style="text-align:center;padding:4px;background:${bg};color:#fff;font-weight:bold;font-size:11px;letter-spacing:1px;">── ${isJ?'节':'气'} ${j.name} ${j.time} ──</td></tr>`;
+                    return `<tr><td colspan="3" style="text-align:center;padding:4px;background:${bg};color:#fff;font-weight:bold;font-size:11px;letter-spacing:1px;">── ${isJ?'节':'气'} ${j.name} ${j.wall||j.time}${j.wall?' (TST '+j.time+')':''} ──</td></tr>`;
                 }).join('');
             }
         }
@@ -4593,7 +4599,7 @@ function buildCalView() {
                 const jqHtmlSimple = jqEntry.map(j => {
                     const isJie = ['小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'].includes(j.name);
                     const jqBg = isJie ? '#1565c0' : '#ff9800';
-                    return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}${j.time ? ' '+j.time : ''}</div>`;
+                    return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}${j.wall ? ' '+j.wall+' (TST '+j.time+')' : (j.time ? ' '+j.time : '')}</div>`;
                 }).join('');
                 html += `<div class="cal-cell${isToday?' today':''}" style="opacity:${isInRange?1:0.4};" onclick="showDayInList('${isoDate}')">
                     <div style="display:flex;justify-content:space-between;">
@@ -4795,7 +4801,7 @@ function buildCalView() {
             const jieqiHTML = jqEntry.map(j => {
                 const isJie = MONTH_START_JQ.includes(j.name);
                 const jqBg = isJie ? '#1565c0' : '#ff9800';
-                return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}${j.time ? ' '+j.time : ''}</div>`;
+                return `<div style="display:inline-block;background:${jqBg};color:#fff;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:6px;margin-top:2px;margin-right:2px;line-height:1.2;">${isJie?'节':'气'} ${j.name}${j.wall ? ' '+j.wall+' (TST '+j.time+')' : (j.time ? ' '+j.time : '')}</div>`;
             }).join('');
 
             const nobleIndicator = dayBranchIsNoble ? `<div style="font-size:10px;color:#1a7a1a;font-weight:bold;border:1px solid #1a7a1a;border-radius:3px;padding:0 3px;margin-top:2px;display:inline-block;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'N')">N</div>` : '';
@@ -5022,7 +5028,7 @@ function buildMonthView() {
         const mGanDay = midEC.getMonthGan(), mZhiDay = midEC.getMonthZhi();
 
         const jieqiDay = jieqiMap[localISODate(dayDate)] || [];
-        const jieqiDayHTML = jieqiDay.map(j => `<span style="font-size:10px;color:#e65100;font-weight:bold;"> ⟐ ${j.name} ${j.time}</span>`).join('');
+        const jieqiDayHTML = jieqiDay.map(j => `<span style="font-size:10px;color:#e65100;font-weight:bold;"> ⟐ ${j.name} ${j.wall||j.time}${j.wall?' (TST '+j.time+')':''}</span>`).join('');
 
         // Clash for this day
         const dayClashType = getClashType(dGanDay, dZhiDay, midEC.getYearZhi(), mGanDay, mZhiDay);
@@ -5711,7 +5717,7 @@ function buildMonthView() {
                 const isJie = MONTH_START_JQ_LV.includes(j.name);
                 const bg = isJie ? '#1565c0' : '#e65100';
                 return `<div style="text-align:center;padding:4px 8px;background:${bg};color:#fff;font-weight:bold;font-size:12px;letter-spacing:1px;border-bottom:1px solid #eee;">
-                    ── ${isJie?'节':'气'} ${j.name} ${j.time} ──</div>`;
+                    ── ${isJie?'节':'气'} ${j.name} ${j.wall||j.time}${j.wall?' (TST '+j.time+')':''} ──</div>`;
             }).join('');
 
             // Purpose filter for LIST view — needs current hour's _currentDayAnalysis
