@@ -605,6 +605,13 @@ function openFengShui(){
   var person = fsGetActivePersonForHouse();
   if (person) fsAutoLoadHouse(person.name);
   else fsRedraw();
+  // No house profile? Restore the last hand-composed (global) manual chart.
+  try {
+    if (!_fsActiveHouseFloorCtx() && !window._fsManualChart){
+      _fsRestoreManualChartForHouse(null);
+      if (typeof fsRedraw === 'function') fsRedraw();
+    }
+  } catch(e){}
 }
 
 // Called from the 🧭 FS button next to CALCULATE — switches mode + scrolls.
@@ -3365,6 +3372,8 @@ function fsLoadHouse(personName, houseIdx){
     if (d0.facing != null){ const el = document.getElementById('fs-facing'); if (el){ el.value = d0.facing; } }
     if (d0.water != null){ const el = document.getElementById('fs-water'); if (el){ el.value = d0.water; } }
   }
+  // Restore this house/floor's hand-composed manual chart (or clear if none).
+  _fsRestoreManualChartForHouse(f);
   // Turn on Flying Stars if facing+period are available
   if (effFacing != null && effPeriod != null && !FS_STARS_ON){
     fsToggleStars();
@@ -4088,9 +4097,31 @@ let _fsPinchInitCx = 0,   _fsPinchInitCy = 0;
 let _fsPanLastX = 0, _fsPanLastY = 0, _fsPanning = false;
 let _fsLastTapTime = 0;
 
+// Keep the zoomed luopan inside its frame so it can never be dragged
+// "overboard". transformOrigin is 0,0, so the visible box runs from
+// (tx,ty) to (tx + W*scale, ty + H*scale); constrain it to cover the wrap.
+// At scale 1 this forces tx=ty=0, i.e. the image snaps back to its place.
+function _fsClampPan(canvas){
+  try {
+    canvas = canvas || document.getElementById('fs-canvas');
+    if (!canvas) return;
+    var wrap = canvas.parentElement;
+    var W  = canvas.offsetWidth  || 1;
+    var H  = canvas.offsetHeight || 1;
+    var Wc = wrap ? wrap.clientWidth  : W;
+    var Hc = wrap ? wrap.clientHeight : H;
+    var s  = _fsZoomScale;
+    var minTx = Math.min(0, Wc - W * s);
+    var minTy = Math.min(0, Hc - H * s);
+    if (_fsZoomTx > 0) _fsZoomTx = 0; else if (_fsZoomTx < minTx) _fsZoomTx = minTx;
+    if (_fsZoomTy > 0) _fsZoomTy = 0; else if (_fsZoomTy < minTy) _fsZoomTy = minTy;
+  } catch(e){}
+}
+
 function _fsApplyTransform(){
   const canvas = document.getElementById('fs-canvas');
   if (!canvas) return;
+  _fsClampPan(canvas);
   canvas.style.transformOrigin = '0 0';
   canvas.style.transform =
     'translate(' + _fsZoomTx + 'px, ' + _fsZoomTy + 'px) ' +
@@ -5009,6 +5040,7 @@ function fsApplyManualStars(){
     };
     fsCloseManualStars();
     fsUpdateManualBadge();
+    _fsPersistManualChart();
     if (typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON){ fsToggleStars(); }
     else if (typeof fsRedraw === 'function'){ fsRedraw(); }
   } catch(err){ console.warn('fsApplyManualStars', err); }
@@ -5017,6 +5049,7 @@ function fsApplyManualStars(){
 function fsResetManualStars(){
   window._fsManualChart = null;
   fsUpdateManualBadge();
+  _fsPersistManualChart();
   if (typeof fsRedraw === 'function') fsRedraw();
 }
 
@@ -5032,6 +5065,48 @@ function fsUpdateManualBadge(){
     b.style.display = 'none';
     b.innerHTML = '';
   }
+}
+
+// ── Manual chart persistence ──────────────────────────────────────
+//  The hand-composed chart is tied to the active house's floor (saved in
+//  xkdg_houses) plus a global fallback (xkdg_fs_manual) for users who edit
+//  without a house profile. It is restored on house load / FS open so the
+//  student never has to recompose it.
+function _fsActiveHouseFloorCtx(){
+  try {
+    var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+    if (!person) return null;
+    var all = _fsHousesLoad();
+    var houses = all[person.name]; if (!houses || !houses.length) return null;
+    var hi = (typeof _fsActiveHouseGet === 'function') ? _fsActiveHouseGet(person.name) : 0;
+    if (hi >= houses.length) hi = 0;
+    var house = houses[hi]; if (!house) return null;
+    var floor = _fsActiveFloor(house);
+    return { all: all, house: house, floor: floor };
+  } catch(e){ return null; }
+}
+function _fsPersistManualChart(){
+  try {
+    var mc = window._fsManualChart || null;
+    try { if (mc) localStorage.setItem('xkdg_fs_manual', JSON.stringify(mc)); else localStorage.removeItem('xkdg_fs_manual'); } catch(e){}
+    var ctx = _fsActiveHouseFloorCtx();
+    if (ctx && ctx.floor){
+      if (mc) ctx.floor.manualChart = mc;
+      else { try { delete ctx.floor.manualChart; } catch(e){ ctx.floor.manualChart = null; } }
+      _fsHousesSave(ctx.all);
+    }
+  } catch(e){ console.warn('_fsPersistManualChart', e); }
+}
+function _fsRestoreManualChartForHouse(floor){
+  try {
+    if (floor && floor.manualChart){ window._fsManualChart = floor.manualChart; }
+    else if (floor){ window._fsManualChart = null; }           // this house has no manual override
+    else {                                                       // no house context → last global manual
+      try { var raw = localStorage.getItem('xkdg_fs_manual'); if (raw) window._fsManualChart = JSON.parse(raw); } catch(e){}
+    }
+    if (typeof fsUpdateManualBadge === 'function') fsUpdateManualBadge();
+    if (window._fsManualChart && typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON && typeof fsToggleStars === 'function') fsToggleStars();
+  } catch(e){ console.warn('_fsRestoreManualChartForHouse', e); }
 }
 
 // ═══════════════════════════════════════════════════════════════
