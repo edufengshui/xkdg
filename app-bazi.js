@@ -2298,6 +2298,12 @@ function calculatePerson(person) {
         analysisSection.style.display = 'none';
     }
     updateScoreModeBtn();
+    // Remember this as the last person used in this panel (catch-all for all load paths)
+    try {
+      var _pnEl = document.getElementById(person === 'B' ? 'person-name-b' : 'person-name');
+      var _pnm  = _pnEl ? (_pnEl.value || '').trim() : '';
+      if (_pnm && typeof _xkdgSetLastPerson === 'function') _xkdgSetLastPerson(person, _pnm);
+    } catch(e){}
     // Apply "seen before" collapse behavior for Bazi/XKDG details
     try { applyPersonDetailsVisibility(person); } catch(e) {}
 }
@@ -6884,9 +6890,8 @@ function _xkdgRestoreLastPerson(person){
     var akey = (person === 'B') ? 'xkdg_persons_b' : 'xkdg_persons_a';
     var archive = (typeof loadArchive === 'function') ? loadArchive(akey) : null;
     if (!archive || !archive[name]) return;                  // only restore a saved person
-    var nameId = (person === 'B') ? 'person-name-b' : 'person-name';
-    var nameEl = document.getElementById(nameId);
-    if (nameEl && nameEl.value && nameEl.value.trim()) return; // don't overwrite a filled panel
+    // On startup we WANT this person fully loaded + recalculated, even if the
+    // browser auto-restored stale text into the name field (which has no chart).
     if (person === 'B'){                                       // Person B panel may need opening
       try {
         if (typeof _personPanelOpen !== 'undefined' && _personPanelOpen && !_personPanelOpen.b && typeof togglePersonPanel === 'function') togglePersonPanel('b');
