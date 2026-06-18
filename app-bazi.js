@@ -3201,21 +3201,34 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     return Math.max(effectiveFloor, rawScore);
 }
 
-// Build a map of isoDate+time → jieqi name for a given year range, adjusted to true solar time
+// Build a map of isoDate → [{name,time}] for a year range, in LOCAL TRUE SOLAR TIME.
+// lunar-javascript reports each 节气 in Beijing time (UTC+8); we convert that to the true
+// solar time of the current GPS longitude (longitude + Equation of Time) via XKDGSolarTime.
+// The legacy offsetMin argument is ignored (kept for call-site compatibility).
 function buildJieqiMap(startYear, endYear, offsetMin) {
-    const map = {}; // key: 'YYYY-MM-DD', value: { name, time }
+    const map = {};
+    // Current GPS longitude (always the present location, per house rule).
+    let lonDeg = NaN;
+    try { lonDeg = parseFloat(document.getElementById('longitude').value); } catch(e) {}
+    if (!isFinite(lonDeg)) { try { lonDeg = JSON.parse(localStorage.getItem('xkdg_gps')||'{}').lng; } catch(e) {} }
+    const haveTST = (typeof XKDGSolarTime !== 'undefined') && isFinite(lonDeg);
     for (let yr = startYear; yr <= endYear; yr++) {
         const table = Lunar.fromYmd(yr, 1, 1).getJieQiTable();
         for (const [name, s] of Object.entries(table)) {
-            // s is a Solar object — get its datetime
-            const rawDate = new Date(s.getYear(), s.getMonth()-1, s.getDay(),
-                                     s.getHour ? s.getHour() : 0,
-                                     s.getMinute ? s.getMinute() : 0);
-            // Adjust to true solar time
-            const solarMs   = rawDate.getTime() + offsetMin * 60000;
-            const solarDate = new Date(solarMs);
-            const iso       = solarDate.toISOString().split('T')[0];
-            const timeStr   = String(solarDate.getHours()).padStart(2,'0') + ':' + String(solarDate.getMinutes()).padStart(2,'0');
+            const bH = s.getHour ? s.getHour() : 0, bMi = s.getMinute ? s.getMinute() : 0;
+            let iso, timeStr;
+            if (haveTST) {
+                // Beijing-time term → local true solar time.
+                const t = XKDGSolarTime.beijingTermToTST(s.getYear(), s.getMonth(), s.getDay(), bH, bMi, 0, lonDeg);
+                iso = t.y + '-' + String(t.mo).padStart(2,'0') + '-' + String(t.d).padStart(2,'0');
+                timeStr = String(t.h).padStart(2,'0') + ':' + String(t.mi).padStart(2,'0');
+            } else {
+                // Fallback (no longitude / engine): legacy behaviour.
+                const rawDate = new Date(s.getYear(), s.getMonth()-1, s.getDay(), bH, bMi);
+                const solarDate = new Date(rawDate.getTime() + (offsetMin||0) * 60000);
+                iso = solarDate.toISOString().split('T')[0];
+                timeStr = String(solarDate.getHours()).padStart(2,'0') + ':' + String(solarDate.getMinutes()).padStart(2,'0');
+            }
             if (!map[iso]) map[iso] = [];
             map[iso].push({ name, time: timeStr });
         }
