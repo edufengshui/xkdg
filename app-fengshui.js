@@ -363,6 +363,11 @@ function buildFengShuiView(){
           <span style="font-size:14px;font-weight:bold;color:#2e7d32;">🏠 HOUSE PROFILES</span>
           <button onclick="fsAddNewHouse()" style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">+ Add a new house</button>
         </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+          <button onclick="fsExportBackup()" title="Download a .json backup of all houses, persons and settings" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">⬇ Backup</button>
+          <button onclick="document.getElementById('fs-restore-input').click()" title="Restore everything from a .json backup file" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">⬆ Restore</button>
+          <input type="file" id="fs-restore-input" accept="application/json,.json" style="display:none;" onchange="fsImportBackup(this)">
+        </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
         <div style="font-size:11px;color:#888;font-style:italic;margin-bottom:8px;">Pick a house to edit its chart and placements. New house → press “+ Add a new house”, then fill the Flying Stars data and read the luopan below.</div>
         <!-- ACTIVE HOUSE DETAIL (cards + placements + Add buttons) — now lives INSIDE House Profiles, at the very top -->
@@ -2649,6 +2654,58 @@ function _fsActiveFloor(h){
 function _fsFloorFacing(h, f){ return (h && h.sameFacing) ? h.houseFacing : (f ? f.facing : null); }
 function _fsFloorPeriod(h, f){ return (h && h.sameFacing) ? h.period : (f ? f.period : null); }
 function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
+
+// ── Backup / Restore (all localStorage: houses, persons, archives, settings) ──
+function fsExportBackup(){
+  try {
+    var data = {};
+    for (var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if (k != null) data[k] = localStorage.getItem(k);
+    }
+    var payload = { app: 'XKDG', kind: 'backup', version: 1, savedAt: new Date().toISOString(), data: data };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var url  = URL.createObjectURL(blob);
+    var d = new Date();
+    var p2 = function(n){ return String(n).padStart(2, '0'); };
+    var stamp = d.getFullYear() + '-' + p2(d.getMonth()+1) + '-' + p2(d.getDate()) + '_' + p2(d.getHours()) + p2(d.getMinutes());
+    var a = document.createElement('a');
+    a.href = url; a.download = 'xkdg-backup_' + stamp + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch(e){} }, 1500);
+  } catch(e){ alert('Backup failed: ' + ((e && e.message) || e)); }
+}
+
+function fsImportBackup(input){
+  try {
+    var file = input && input.files && input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try {
+        var parsed = JSON.parse(reader.result);
+        var data = (parsed && parsed.data && typeof parsed.data === 'object') ? parsed.data : parsed;
+        if (!data || typeof data !== 'object'){ alert('This file is not a valid XKDG backup.'); input.value = ''; return; }
+        var keys = Object.keys(data);
+        var nHouses = 0;
+        try { var hh = JSON.parse(data['xkdg_houses'] || '{}'); Object.keys(hh).forEach(function(k){ nHouses += (hh[k] || []).length; }); } catch(e){}
+        var msg = 'Restore this backup?\n\n'
+                + (nHouses ? ('Houses: ' + nHouses + '\n') : '')
+                + 'Stored items: ' + keys.length + '\n'
+                + (parsed && parsed.savedAt ? ('Saved: ' + parsed.savedAt + '\n') : '')
+                + '\nThis OVERWRITES the houses, persons and settings currently on this device.';
+        if (!confirm(msg)){ input.value = ''; return; }
+        keys.forEach(function(k){
+          try { localStorage.setItem(k, (typeof data[k] === 'string') ? data[k] : JSON.stringify(data[k])); } catch(e){}
+        });
+        alert('Backup restored. The app will reload now.');
+        input.value = '';
+        location.reload();
+      } catch(e){ alert('Could not read this backup file: ' + ((e && e.message) || e)); input.value = ''; }
+    };
+    reader.readAsText(file);
+  } catch(e){ alert('Restore failed: ' + ((e && e.message) || e)); }
+}
 
 // Active house index per person — stored separately to avoid migration issues
 function _fsActiveHouseGet(personName){
