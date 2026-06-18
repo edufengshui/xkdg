@@ -487,13 +487,14 @@ function buildFengShuiView(){
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
 
-        <!-- ⚡ Placed elements (saved Water / Bed / Desk) → Activate to scan dates / hours -->
-        <div id="fs-op-elements" style="background:#ede7f6;border:1px solid #5e35b1;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
+        <!-- 🎯 Guided activation: house → task → SCAN (replaces Placed elements + QFS boxes) -->
+        <div id="fs-op-activate" style="background:#ede7f6;border:1px solid #5e35b1;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
 
-        <!-- 🌀 QFS Zones (Qimen × Flying Stars) — relocated here from House Profiles -->
-        <div id="fs-op-zones" style="background:#f3e5f5;border:1px solid #7b1fa2;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
-
-        <!-- (Operative area complete: context, generic water, placed elements + Qimen, QFS zones + Qimen.) -->
+        <!-- 🔧 Fine-tune (advanced) — at the very end -->
+        <div id="fs-op-finetune" style="border-top:1px dashed #b39ddb;padding-top:8px;margin-top:4px;">
+          <button onclick="fsQimenStimulate(null)" style="background:#fff;color:#7e57c2;border:1px solid #b39ddb;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Free choice of target star on the general chart — advanced use">🔧 Fine-tune target (advanced)</button>
+          <span style="font-size:10px;color:#999;font-style:italic;margin-left:6px;">Free choice of star on the general chart — for advanced students.</span>
+        </div>
       </div>
     </div>`;
 
@@ -598,8 +599,8 @@ function openFengShui(){
   fsRenderContext();
   fsRenderHouseProfiles();
   if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
-  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
-  if (typeof fsRenderOperativeElements === 'function') fsRenderOperativeElements();
+  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
+  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
   // Auto-load active house for current person (covers app startup / view switch)
   var person = fsGetActivePersonForHouse();
   if (person) fsAutoLoadHouse(person.name);
@@ -2653,8 +2654,8 @@ function fsSetActiveHouse(personName, idx){
   _fsActiveHouseSet(personName, idx);
   fsLoadHouse(personName, idx);
   fsRenderHouseProfiles();
-  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
-  if (typeof fsRenderOperativeElements === 'function') fsRenderOperativeElements();
+  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
+  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
 }
 
 // Open the Water/Bed/Desk calculation tool, pre-attached to a specific house/floor.
@@ -3012,7 +3013,22 @@ function fsRenderHouseProfiles(){
       html += '</div>';
     }
 
-    // ── QFS ZONES moved OUT of House Profiles → ⚡ OPERATIVE area. ──
+    // ── QFS ZONES (🌀) — management lives here in House Profiles; the SCAN runs
+    //    from the ⚡ Operative area (zones appear there as tasks). ──
+    if (f.zones && f.zones.length){
+      var _palDirZ = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
+      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #7b1fa2;">';
+      html += '<div style="font-size:11px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones</div>';
+      f.zones.forEach(function(z, zi){
+        var tl = z.target === 'mountain' ? '山星' : '向星';
+        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+        html += '<span style="font-size:11px;">🌀 <strong>' + escHtml(z.name) + '</strong> — ' + (z.dir || (_palDirZ[z.palace] || '?')) + ' (Palace ' + z.palace + ') · ' + tl + '</span>';
+        html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">✕</button>';
+        html += '</div>';
+      });
+      html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Zone</button>';
+      html += '</div>';
+    }
 
     // ── Saved settings (Water / Bed / Desk) — names block only when some exist ──
     var _st = f.settings || { water: [], bed: [], desk: [] };
@@ -3037,6 +3053,7 @@ function fsRenderHouseProfiles(){
     if (!hasWaters)    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">💧 Add Water</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>';
+    if (!(f.zones && f.zones.length)) _addBtns += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🌀 Add Zone</button>';
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">'
       + '<span style="font-size:10px;color:#999;">Add:</span>' + _addBtns + '</div>';
 
@@ -3614,6 +3631,95 @@ function fsActivatePlacement(personName, hi, fIdx, zone, idx){
   } catch(e){ console.warn('fsActivatePlacement', e); }
 }
 
+// ── ⚡ OPERATIVE: guided activation (house → task → SCAN) ──
+// Replaces the old "Placed elements" + "QFS Zones" boxes. Lists only the
+// placements that actually exist in the chosen house; SCAN opens the Qimen
+// stimulator pre-set/locked to the right target star.
+function fsRenderOperativeActivate(){
+  var box = document.getElementById('fs-op-activate');
+  if (!box) return;
+  var escHtml = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
+  var title = '<div style="font-size:12px;font-weight:bold;color:#4527a0;margin-bottom:6px;">🎯 Activate a placement (Qimen stimulator)</div>';
+  var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+  if (!person){ box.innerHTML = title + '<div style="font-size:11px;color:#999;">Load a person (A or B) first.</div>'; return; }
+  var all = _fsHousesLoad();
+  var houses = all[person.name] || [];
+  if (!houses.length){ box.innerHTML = title + '<div style="font-size:11px;color:#999;">No houses yet — add one in House Profiles above.</div>'; return; }
+  var activeIdx = _fsActiveHouseGet(person.name); if (activeIdx >= houses.length) activeIdx = 0;
+  var house = houses[activeIdx];
+  var floor = _fsActiveFloor(house);
+
+  var html = title;
+  // STEP 1 — house
+  html += '<div style="font-size:11px;color:#555;margin-bottom:2px;"><strong>1.</strong> House to treat:</div>';
+  html += '<select onchange="fsOpPickHouse(this.value)" style="width:100%;padding:6px;border:1px solid #5e35b1;border-radius:4px;font-size:13px;margin-bottom:4px;">';
+  houses.forEach(function(h, i){ html += '<option value="' + i + '"' + (i === activeIdx ? ' selected' : '') + '>' + escHtml(h.name) + '</option>'; });
+  html += '</select>';
+
+  // build task list (only placements that exist)
+  var tasks = [];
+  (floor.settings && floor.settings.water || []).forEach(function(s, idx){ tasks.push({ kind:'water', idx:idx, label:'💧 ' + s.name + ' · Water (向星)', type:'water', free:false }); });
+  (floor.settings && floor.settings.bed   || []).forEach(function(s, idx){ tasks.push({ kind:'bed',   idx:idx, label:'🛏 ' + s.name + ' · Bed (山星)',   type:'mountain', free:false }); });
+  (floor.settings && floor.settings.desk  || []).forEach(function(s, idx){ tasks.push({ kind:'desk',  idx:idx, label:'🪑 ' + s.name + ' · Desk (free)',  type:null, free:true }); });
+  (floor.doors || []).forEach(function(d, idx){ tasks.push({ kind:'door', idx:idx, label:'🚪 ' + d.name + ' · Door (free)', type:null, free:true }); });
+  (floor.zones || []).forEach(function(z, idx){ tasks.push({ kind:'zone', idx:idx, label:'🌀 ' + z.name + ' · Zone (' + (z.target === 'mountain' ? '山星' : '向星') + ')', type:(z.target === 'mountain' ? 'mountain' : 'water'), free:false }); });
+  window._fsOpTasks = tasks;
+
+  // STEP 2 — task
+  html += '<div style="font-size:11px;color:#555;margin:8px 0 2px;"><strong>2.</strong> Task in this house:</div>';
+  if (!tasks.length){
+    html += '<div style="font-size:11px;color:#999;">No placements in this house yet — add Door / Water / Bed / Desk (and QFS Zones) in House Profiles above.</div>';
+    box.innerHTML = html; return;
+  }
+  var keys = tasks.map(function(t){ return t.kind + '|' + t.idx; });
+  var selKey = window._fsOpTaskKey;
+  if (keys.indexOf(selKey) === -1) selKey = keys[0];
+  window._fsOpTaskKey = selKey;
+  html += '<select onchange="fsOpPickTask(this.value)" style="width:100%;padding:6px;border:1px solid #5e35b1;border-radius:4px;font-size:13px;">';
+  tasks.forEach(function(t){ var k = t.kind + '|' + t.idx; html += '<option value="' + k + '"' + (k === selKey ? ' selected' : '') + '>' + escHtml(t.label) + '</option>'; });
+  html += '</select>';
+
+  // STEP 3 — target star
+  var cur = tasks[keys.indexOf(selKey)];
+  html += '<div style="font-size:11px;color:#555;margin:8px 0 2px;"><strong>3.</strong> Target star:</div>';
+  if (cur.free){
+    var ft = window._fsOpFreeType || 'water';
+    html += '<label style="font-size:12px;margin-right:14px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="water"' + (ft === 'water' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 向星 Water</label>';
+    html += '<label style="font-size:12px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="mountain"' + (ft === 'mountain' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 山星 Mountain</label>';
+  } else {
+    html += '<div style="font-size:12px;color:#4527a0;font-weight:bold;">' + (cur.type === 'mountain' ? '山星 Mountain Star (required for this task)' : '向星 Water Star (required for this task)') + '</div>';
+  }
+
+  // STEP 4 — scan
+  html += '<div style="margin-top:10px;"><button onclick="fsOpScan()" style="background:linear-gradient(135deg,#5e35b1,#7e57c2);color:#fff;font-weight:bold;font-size:14px;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN</button></div>';
+  box.innerHTML = html;
+}
+
+function fsOpPickHouse(v){
+  try {
+    var person = fsGetActivePersonForHouse(); if (!person) return;
+    var i = parseInt(v, 10); if (isNaN(i)) return;
+    window._fsOpTaskKey = null;                       // reset task selection for the new house
+    if (typeof _fsActiveHouseSet === 'function') _fsActiveHouseSet(person.name, i);
+    if (typeof fsLoadHouse === 'function') fsLoadHouse(person.name, i);  // load its chart into the FS block
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+    fsRenderOperativeActivate();
+  } catch(e){ console.warn('fsOpPickHouse', e); }
+}
+function fsOpPickTask(v){ window._fsOpTaskKey = v; fsRenderOperativeActivate(); }
+function fsOpPickFreeType(v){ window._fsOpFreeType = v; }
+function fsOpScan(){
+  try {
+    var tasks = window._fsOpTasks || [];
+    var key = window._fsOpTaskKey;
+    var cur = null;
+    for (var i = 0; i < tasks.length; i++){ if ((tasks[i].kind + '|' + tasks[i].idx) === key){ cur = tasks[i]; break; } }
+    if (!cur){ alert('Select a task first.'); return; }
+    var type = cur.free ? (window._fsOpFreeType || 'water') : cur.type;
+    fsQimenStimulate(type);   // opens the Qimen stimulator panel, locked to this target star type
+  } catch(e){ console.warn('fsOpScan', e); }
+}
+
 function fsAddZone(personName, houseIdx){
   // Ask by DIRECTION (clear) and map to the palace internally.
   var DIR2PAL = { N:1, NE:8, E:3, SE:4, S:9, SW:2, W:7, NW:6 };
@@ -3651,7 +3757,7 @@ function fsAddZone(personName, houseIdx){
   _fsActiveFloor(all[personName][houseIdx]).zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir, preset: preset });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
-  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
+  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
 }
 
 function fsRemoveZone(personName, houseIdx, zoneIdx){
@@ -3662,7 +3768,7 @@ function fsRemoveZone(personName, houseIdx, zoneIdx){
   zones.splice(zoneIdx, 1);
   _fsHousesSave(all);
   fsRenderHouseProfiles();
-  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
+  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
 }
 
 
@@ -4965,8 +5071,8 @@ function fsExitZone(){
     if (typeof fsRenderZoneGate === 'function') fsRenderZoneGate();
     if (typeof _fsUpdateLuopanVis === 'function') _fsUpdateLuopanVis();
     if (typeof fsRedraw === 'function') fsRedraw();
-    if (typeof fsRenderOperativeElements === 'function') fsRenderOperativeElements();
-    if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
+    if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
+    if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
     var gate = document.getElementById('fs-zone-gate');
     if (gate) gate.scrollIntoView({ behavior:'smooth', block:'start' });
   } catch(err){ console.warn('fsExitZone', err); }
