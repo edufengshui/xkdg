@@ -6879,27 +6879,67 @@ document.addEventListener('DOMContentLoaded', () => {
 //   3. Default the SCAN start date (#scan-start) to today.
 //  Runs ONCE, after the app is unlocked and the main date is set.
 // ════════════════════════════════════════════════════════════════════════
-function _xkdgSetLastPerson(person, name){
-  try { localStorage.setItem((person === 'B' || person === 'b') ? 'xkdg_last_person_b' : 'xkdg_last_person_a', name); } catch(e){}
+// Full snapshot of a panel's inputs (name + birth date/time, plus Person B
+// depth/year), so the person can be restored even if they were typed by hand
+// and never saved to the archive — this is what fixes "name loads but date does not".
+function _xkdgSnapshotPerson(person){
+  try {
+    var isB = (person === 'B' || person === 'b');
+    var name = (document.getElementById(isB ? 'person-name-b' : 'person-name') || {}).value;
+    var date = (document.getElementById(isB ? 'person-date-b' : 'person-date') || {}).value;
+    var time = (document.getElementById(isB ? 'person-time-b' : 'person-time') || {}).value;
+    name = (name || '').trim(); date = date || ''; time = time || '';
+    var snap = { name:name, date:date, time:time };
+    if (isB){
+      var depthEl = document.getElementById('person-pillars-b');
+      var yearEl  = document.getElementById('person-year-b');
+      if (depthEl) snap.depth = parseInt(depthEl.value, 10) || 4;
+      if (yearEl)  snap.year  = yearEl.value || '';
+    }
+    if (!name || !(date || (isB && snap.year))) return;        // need name + (date or year)
+    localStorage.setItem(isB ? 'xkdg_last_person_b' : 'xkdg_last_person_a', JSON.stringify(snap));
+  } catch(e){}
 }
+// Kept for existing call sites — now stores the full snapshot read from the inputs.
+function _xkdgSetLastPerson(person, name){ _xkdgSnapshotPerson(person); }
+
 function _xkdgRestoreLastPerson(person){
   try {
-    var lk   = (person === 'B') ? 'xkdg_last_person_b' : 'xkdg_last_person_a';
-    var name = localStorage.getItem(lk);
-    if (!name) return;
-    var akey = (person === 'B') ? 'xkdg_persons_b' : 'xkdg_persons_a';
-    var archive = (typeof loadArchive === 'function') ? loadArchive(akey) : null;
-    if (!archive || !archive[name]) return;                  // only restore a saved person
-    // On startup we WANT this person fully loaded + recalculated, even if the
-    // browser auto-restored stale text into the name field (which has no chart).
-    if (person === 'B'){                                       // Person B panel may need opening
+    var isB = (person === 'B');
+    var raw = localStorage.getItem(isB ? 'xkdg_last_person_b' : 'xkdg_last_person_a');
+    if (!raw) return;
+    var snap = null;
+    try { snap = JSON.parse(raw); } catch(e){ snap = null; }
+    if (typeof snap === 'string') snap = null;
+    if (!snap){                                                // back-compat: old name-only value → archive
+      var nm = raw;
+      var arch = (typeof loadArchive === 'function') ? loadArchive(isB ? 'xkdg_persons_b' : 'xkdg_persons_a') : null;
+      if (arch && arch[nm]) snap = { name:nm, date:arch[nm].date, time:arch[nm].time, depth:arch[nm].depth, year:arch[nm].jiaZiYear };
+      else return;
+    }
+    if (!snap.name || !(snap.date || snap.year)) return;
+    if (isB){                                                  // Person B panel may need opening first
       try {
         if (typeof _personPanelOpen !== 'undefined' && _personPanelOpen && !_personPanelOpen.b && typeof togglePersonPanel === 'function') togglePersonPanel('b');
         var pb = document.getElementById('person-panel-b');
         if (pb && pb.style.display === 'none') pb.style.display = 'block';
       } catch(e){}
     }
-    if (typeof loadPerson === 'function') loadPerson(person, name);
+    var nameEl = document.getElementById(isB ? 'person-name-b' : 'person-name');
+    var dateEl = document.getElementById(isB ? 'person-date-b' : 'person-date');
+    var timeEl = document.getElementById(isB ? 'person-time-b' : 'person-time');
+    if (nameEl) nameEl.value = snap.name;
+    if (dateEl && snap.date) dateEl.value = snap.date;          // <-- restores the birth date explicitly
+    if (timeEl && snap.time) timeEl.value = snap.time;
+    if (isB){
+      var depthEl = document.getElementById('person-pillars-b');
+      if (depthEl && snap.depth){ depthEl.value = snap.depth; if (typeof onPersonBPillarsChange === 'function') onPersonBPillarsChange(); }
+      var yearEl = document.getElementById('person-year-b');
+      if (yearEl && snap.year) yearEl.value = snap.year;
+    }
+    if (typeof calculateBazi === 'function') calculateBazi();
+    if (typeof calculatePerson === 'function') calculatePerson(person);
+    if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(snap.name);
   } catch(e){ console.warn('_xkdgRestoreLastPerson', e); }
 }
 function _xkdgConsultRestore(){
