@@ -486,8 +486,10 @@ function buildFengShuiView(){
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
 
-        <!-- More operative tools (placed-element activation, Qimen stimulators, QFS Zone) get added here next. -->
-        <div style="font-size:11px;color:#9575cd;font-style:italic;">Coming next in this area: activate a saved Water / Bed / Desk placement, Qimen stimulators, and the QFS Zone (moved out of House Profiles).</div>
+        <!-- 🌀 QFS Zones (Qimen × Flying Stars) — relocated here from House Profiles -->
+        <div id="fs-op-zones" style="background:#f3e5f5;border:1px solid #7b1fa2;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
+
+        <div style="font-size:11px;color:#9575cd;font-style:italic;">Coming next: activate a saved Water / Bed / Desk placement, plus Qimen stimulators.</div>
       </div>
     </div>`;
 
@@ -592,6 +594,7 @@ function openFengShui(){
   fsRenderContext();
   fsRenderHouseProfiles();
   if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
+  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
   // Auto-load active house for current person (covers app startup / view switch)
   var person = fsGetActivePersonForHouse();
   if (person) fsAutoLoadHouse(person.name);
@@ -2645,6 +2648,7 @@ function fsSetActiveHouse(personName, idx){
   _fsActiveHouseSet(personName, idx);
   fsLoadHouse(personName, idx);
   fsRenderHouseProfiles();
+  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
 }
 
 // Open the Water/Bed/Desk calculation tool, pre-attached to a specific house/floor.
@@ -2967,11 +2971,11 @@ function fsRenderHouseProfiles(){
     }
     html += '</div>';
 
-    // ── DOORS (🚪 XKDG Porte/Facciate) ──
-    html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #c9a84c;">';
-    html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 XKDG Doors</div>';
+    // ── DOORS (🚪) — labeled block only when there are doors ──
     var doors = f.doors;
     if (doors.length){
+      html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #c9a84c;">';
+      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 XKDG Doors</div>';
       doors.forEach(function(d, di){
         var facingStr = d.facing != null ? d.facing + '°' : '—';
         var waterStr  = d.water  != null ? d.water  + '°' : '—';
@@ -2981,16 +2985,15 @@ function fsRenderHouseProfiles(){
         html += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
         html += '</div>';
       });
-    } else {
-      html += '<div style="font-size:11px;color:#999;padding:2px 0;">No doors yet</div>';
+      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Door</button>';
+      html += '</div>';
     }
-    html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Door</button>';
-    html += '</div>';
 
-    // ── STAR WATERS (🐟 Acquari permanenti) ──
-    html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #4db6ac;">';
-    html += '<div style="font-size:11px;font-weight:bold;color:#00897b;margin-bottom:3px;">🐟 Star Waters (aquariums)</div>';
-    if (f.waters && f.waters.length){
+    // ── STAR WATERS (🐟) — labeled block only when there are aquariums ──
+    var hasWaters = !!(f.waters && f.waters.length);
+    if (hasWaters){
+      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #4db6ac;">';
+      html += '<div style="font-size:11px;font-weight:bold;color:#00897b;margin-bottom:3px;">🐟 Star Waters (aquariums)</div>';
       f.waters.forEach(function(w, wi){
         var dirLabel = w.dir ? w.dir : (w.deg != null ? w.deg + '°' : '?');
         var palaceLabel = w.palace ? ' (Palace ' + w.palace + ')' : '';
@@ -2999,36 +3002,37 @@ function fsRenderHouseProfiles(){
         html += '<button onclick="fsRemoveWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove this aquarium">✕</button>';
         html += '</div>';
       });
-    } else {
-      html += '<div style="font-size:11px;color:#999;padding:2px 0;">No aquariums</div>';
+      html += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">💧 Add Water</button>';
+      html += '</div>';
     }
-    html += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">💧 Add Water</button>';
-    html += '</div>';
 
-    // ── QFS ZONES moved OUT of House Profiles → they belong to the ⚡ OPERATIVE
-    //    area (dynamic activation). Data (f.zones) + fsAddZone/fsRemoveZone kept
-    //    for reuse when the Operative QFS panel is built. ──
+    // ── QFS ZONES moved OUT of House Profiles → ⚡ OPERATIVE area. ──
 
-
-    // ── Saved section settings (Water / Bed / Desk) — converged into the house ──
-    html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #8a6a1f;">';
-    html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">💾 Saved settings (Water / Bed / Desk)</div>';
+    // ── Saved settings (Water / Bed / Desk) — names block only when some exist ──
     var _st = f.settings || { water: [], bed: [], desk: [] };
     var _zlbl = { water: '💧 Water', bed: '🛏 Bed', desk: '🪑 Desk' };
-    var _anySt = false;
-    ['water', 'bed', 'desk'].forEach(function(z){
-      var arr = _st[z] || [];
-      if (!arr.length) return;
-      _anySt = true;
-      html += '<div style="font-size:11px;color:#5a4410;padding:1px 0;"><strong>' + _zlbl[z] + ':</strong> '
-        + arr.map(function(s){ return escHtml(s.name); }).join(', ') + '</div>';
-    });
-    if (!_anySt) html += '<div style="font-size:11px;color:#999;padding:2px 0;">None yet — use the buttons below to set up Water / Bed / Desk for this house.</div>';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;">'
-      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>'
-      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>'
-      + '</div>';
-    html += '</div>';
+    var _anySt = ['water', 'bed', 'desk'].some(function(z){ return (_st[z] || []).length; });
+    if (_anySt){
+      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #8a6a1f;">';
+      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">💾 Saved settings (Water / Bed / Desk)</div>';
+      ['water', 'bed', 'desk'].forEach(function(z){
+        var arr = _st[z] || [];
+        if (!arr.length) return;
+        html += '<div style="font-size:11px;color:#5a4410;padding:1px 0;"><strong>' + _zlbl[z] + ':</strong> '
+          + arr.map(function(s){ return escHtml(s.name); }).join(', ') + '</div>';
+      });
+      html += '</div>';
+    }
+
+    // ── Bottom "Add" row: empty sections collapse to horizontal Add buttons here
+    //    (no point in a full vertical block when there is nothing inside). ──
+    var _addBtns = '';
+    if (!doors.length) _addBtns += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">+ Add Door</button>';
+    if (!hasWaters)    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">💧 Add Water</button>';
+    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>';
+    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">'
+      + '<span style="font-size:10px;color:#999;">Add:</span>' + _addBtns + '</div>';
 
     html += '</div>'; // close .fs-house-body (collapsible)
     html += '</div>';
@@ -3474,6 +3478,49 @@ function fsRemoveWater(personName, houseIdx, waterIdx){
 
 // ── QFS ZONE CRUD ───────────────────────────────────────────────
 
+// ── ⚡ OPERATIVE: QFS Zones panel (relocated from House Profiles) ──
+// Operates on the ACTIVE house's ACTIVE floor; reuses fsAddZone/fsRemoveZone.
+function fsRenderOperativeZones(){
+  var box = document.getElementById('fs-op-zones');
+  if (!box) return;
+  var header = '<div style="font-size:12px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones (Qimen × Flying Stars)</div>'
+    + '<div style="font-size:10px;color:#888;margin-bottom:6px;font-style:italic;">A saved target for the Qimen × Flying-Stars scan: a direction + which flying star to activate there (Water 向星 for aquariums, Mountain 山星 for still features).</div>';
+  var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+  if (!person){
+    box.innerHTML = header + '<div style="font-size:11px;color:#999;">Load a person and pick an active house in House Profiles above to manage its QFS zones.</div>';
+    return;
+  }
+  var all = _fsHousesLoad();
+  var houses = all[person.name] || [];
+  if (!houses.length){
+    box.innerHTML = header + '<div style="font-size:11px;color:#999;">No houses yet — add one in House Profiles above.</div>';
+    return;
+  }
+  var hi = _fsActiveHouseGet(person.name); if (hi >= houses.length) hi = 0;
+  var house = houses[hi];
+  var floor = _fsActiveFloor(house);
+  var zones = floor.zones || [];
+  var escHtml = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
+  var escJs   = function(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); };
+  var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
+  var html = header;
+  html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">House: <strong>' + escHtml(house.name) + '</strong> · Floor: <strong>' + escHtml(floor.label || 'Floor 1') + '</strong></div>';
+  if (zones.length){
+    zones.forEach(function(z, zi){
+      var targetLabel = z.target === 'water' ? 'Water \u2605' : 'Mountain \u2605';
+      var presetLabel = (z.preset === 'custom') ? ' \u00b7 custom preset' : ' \u00b7 auto preset';
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+      html += '<span style="font-size:11px;">\uD83C\uDF00 <strong>' + escHtml(z.name) + '</strong> \u2014 ' + (z.dir || (_palDir[z.palace] || '?')) + ' (Palace ' + z.palace + ') \u00b7 ' + targetLabel + presetLabel + '</span>';
+      html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">\u2715</button>';
+      html += '</div>';
+    });
+  } else {
+    html += '<div style="font-size:11px;color:#999;padding:2px 0;">No zones yet</div>';
+  }
+  html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;margin-top:6px;">+ Add Zone</button>';
+  box.innerHTML = html;
+}
+
 function fsAddZone(personName, houseIdx){
   // Ask by DIRECTION (clear) and map to the palace internally.
   var DIR2PAL = { N:1, NE:8, E:3, SE:4, S:9, SW:2, W:7, NW:6 };
@@ -3511,6 +3558,7 @@ function fsAddZone(personName, houseIdx){
   _fsActiveFloor(all[personName][houseIdx]).zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir, preset: preset });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
+  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
 }
 
 function fsRemoveZone(personName, houseIdx, zoneIdx){
@@ -3521,6 +3569,7 @@ function fsRemoveZone(personName, houseIdx, zoneIdx){
   zones.splice(zoneIdx, 1);
   _fsHousesSave(all);
   fsRenderHouseProfiles();
+  if (typeof fsRenderOperativeZones === 'function') fsRenderOperativeZones();
 }
 
 
