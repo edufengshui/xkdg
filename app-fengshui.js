@@ -493,7 +493,7 @@ function buildFengShuiView(){
         <!-- 🌀 QFS Zones (Qimen × Flying Stars) — relocated here from House Profiles -->
         <div id="fs-op-zones" style="background:#f3e5f5;border:1px solid #7b1fa2;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
 
-        <div style="font-size:11px;color:#9575cd;font-style:italic;">Coming next: Qimen stimulators for placed elements.</div>
+        <!-- (Operative area complete: context, generic water, placed elements + Qimen, QFS zones + Qimen.) -->
       </div>
     </div>`;
 
@@ -3516,7 +3516,8 @@ function fsRenderOperativeZones(){
       var targetLabel = z.target === 'water' ? 'Water \u2605' : 'Mountain \u2605';
       var presetLabel = (z.preset === 'custom') ? ' \u00b7 custom preset' : ' \u00b7 auto preset';
       html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-      html += '<span style="font-size:11px;">\uD83C\uDF00 <strong>' + escHtml(z.name) + '</strong> \u2014 ' + (z.dir || (_palDir[z.palace] || '?')) + ' (Palace ' + z.palace + ') \u00b7 ' + targetLabel + presetLabel + '</span>';
+      html += '<span style="font-size:11px;flex:1 1 auto;">\uD83C\uDF00 <strong>' + escHtml(z.name) + '</strong> \u2014 ' + (z.dir || (_palDir[z.palace] || '?')) + ' (Palace ' + z.palace + ') \u00b7 ' + targetLabel + presetLabel + '</span>';
+      html += '<button onclick="fsQimenStimulate(\'' + (z.target === 'mountain' ? 'mountain' : 'water') + '\')" style="background:#fff;color:#7b1fa2;border:1px solid #7b1fa2;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;" title="Qimen stimulator for this zone">\uD83C\uDF00 Qimen</button>';
       html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">\u2715</button>';
       html += '</div>';
     });
@@ -3532,8 +3533,11 @@ function fsRenderOperativeZones(){
 function fsRenderOperativeElements(){
   var box = document.getElementById('fs-op-elements');
   if (!box) return;
-  var header = '<div style="font-size:12px;font-weight:bold;color:#4527a0;margin-bottom:3px;">⚡ Placed elements</div>'
-    + '<div style="font-size:10px;color:#888;margin-bottom:6px;font-style:italic;">Saved Water / Bed / Desk placements of the active house. <strong>Activate</strong> opens the matching tool already loaded \u2014 then press SCAN for good dates / hours.</div>';
+  var header = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
+    + '<span style="font-size:12px;font-weight:bold;color:#4527a0;">⚡ Placed elements</span>'
+    + '<button onclick="fsQimenStimulate(null)" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Qimen stimulator on the general flying-star chart (free choice of star)">\uD83C\uDF00 Qimen (general)</button>'
+    + '</div>'
+    + '<div style="font-size:10px;color:#888;margin-bottom:6px;font-style:italic;">Placements of the active house. <strong>\u26A1 Activate</strong> opens the tool ready to scan dates. <strong>\uD83C\uDF00 Qimen</strong> finds hours to stimulate the flying star (Water \u2192 \u5411\u661f, Bed \u2192 \u5C71\u661f, others \u2192 free).</div>';
   var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
   if (!person){ box.innerHTML = header + '<div style="font-size:11px;color:#999;">Load a person and pick an active house above.</div>'; return; }
   var all = _fsHousesLoad();
@@ -3548,21 +3552,54 @@ function fsRenderOperativeElements(){
   var escJs   = function(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); };
   var ICON = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF', desk: '\uD83E\uDE91' };
   var ZLBL = { water: 'Water', bed: 'Bed', desk: 'Desk' };
+  var QLOCK = { water: 'water', bed: 'mountain', desk: null };   // forced target star per type
+  var QBTN = 'background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;';
+  var ABTN = 'background:#5e35b1;color:#fff;border:none;border-radius:4px;padding:3px 12px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;';
   var html = header;
   html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">House: <strong>' + escHtml(house.name) + '</strong> \u00b7 Floor: <strong>' + escHtml(floor.label || 'Floor 1') + '</strong></div>';
   var any = false;
+
+  // Doors (free choice) — Qimen only; doors have no date-Activate.
+  var fdoors = floor.doors || [];
+  fdoors.forEach(function(dr){
+    any = true;
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+    html += '<span style="font-size:11px;flex:1 1 auto;">\uD83D\uDEAA <strong>' + escHtml(dr.name) + '</strong> <span style="color:#999;">\u00b7 Door</span></span>';
+    html += '<button onclick="fsQimenStimulate(null)" style="' + QBTN + '" title="Qimen stimulator (free choice of star)">\uD83C\uDF00 Qimen</button>';
+    html += '</div>';
+  });
+
+  // Water / Bed / Desk placements — Qimen (locked per type) + Activate.
   ['water', 'bed', 'desk'].forEach(function(zone){
     var arr = st[zone] || [];
     arr.forEach(function(s, idx){
       any = true;
+      var lockJs = (QLOCK[zone] === null) ? 'null' : ("'" + QLOCK[zone] + "'");
       html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
       html += '<span style="font-size:11px;flex:1 1 auto;">' + ICON[zone] + ' <strong>' + escHtml(s.name) + '</strong> <span style="color:#999;">\u00b7 ' + ZLBL[zone] + '</span></span>';
-      html += '<button onclick="fsActivatePlacement(\'' + escJs(person.name) + '\',' + hi + ',' + fIdx + ',\'' + zone + '\',' + idx + ')" style="background:#5e35b1;color:#fff;border:none;border-radius:4px;padding:3px 12px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">\u26A1 Activate</button>';
+      html += '<button onclick="fsQimenStimulate(' + lockJs + ')" style="' + QBTN + '" title="Qimen stimulator">\uD83C\uDF00 Qimen</button>';
+      html += '<button onclick="fsActivatePlacement(\'' + escJs(person.name) + '\',' + hi + ',' + fIdx + ',\'' + zone + '\',' + idx + ')" style="' + ABTN + '">\u26A1 Activate</button>';
       html += '</div>';
     });
   });
-  if (!any) html += '<div style="font-size:11px;color:#999;padding:2px 0;">No placements yet \u2014 add Water / Bed / Desk in the house card above.</div>';
+
+  if (!any) html += '<div style="font-size:11px;color:#999;padding:2px 0;">No placements yet \u2014 add Door / Water / Bed / Desk in the house card above.</div>';
   box.innerHTML = html;
+}
+
+// Open the Qimen × Flying-Stars stimulator. typeLock: 'water' | 'mountain' | null (free).
+function fsQimenStimulate(typeLock){
+  try {
+    if (typeof QFS === 'undefined' || typeof QFS.open !== 'function'){ alert('flying-stars-qimen.js not loaded'); return; }
+    // Make sure the active house chart is loaded into the Flying Stars block.
+    var hfEl = document.getElementById('fs-house-facing');
+    if (hfEl && !hfEl.value){
+      var p = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+      if (p && typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(p.name);
+    }
+    var locked = (typeLock === 'water' || typeLock === 'mountain');
+    QFS.open({ type: locked ? typeLock : undefined, lockType: locked });
+  } catch(e){ console.warn('fsQimenStimulate', e); }
 }
 
 // Open the matching zone tool with a saved placement loaded, ready to SCAN.

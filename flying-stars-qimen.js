@@ -837,7 +837,8 @@
     return host;
   }
 
-  function open(){
+  function open(opts){
+    opts = opts || {};
     if(typeof FlyingStars === 'undefined'){ alert('flying-stars.js not loaded'); return; }
     if(typeof QMDJWaterScanner === 'undefined'){ alert('qmdj-water-scanner.js not loaded'); return; }
 
@@ -850,6 +851,24 @@
     var host = qfsGetHost();
     buildPanel(host);
     try { updatePresetLabel(); } catch(e){}
+
+    // Optional: preset (and optionally LOCK) the target star type — used by the
+    // Operative Qimen stimulators (Water → 向星, Bed → 山星, others → free).
+    try {
+      if(opts.type === 'water' || opts.type === 'mountain'){
+        var _r = document.querySelectorAll('input[name="qfs-type"]');
+        for(var _i = 0; _i < _r.length; _i++){
+          _r[_i].checked  = (_r[_i].value === opts.type);
+          _r[_i].disabled = !!opts.lockType && (_r[_i].value !== opts.type);
+        }
+      }
+      if(opts.starNum){
+        var _sn = document.getElementById('qfs-starnum');
+        if(_sn) _sn.value = String(opts.starNum);
+      }
+      if((opts.type || opts.starNum) && typeof updatePalaceInfo === 'function') updatePalaceInfo();
+    } catch(e){ console.warn('QFS.open opts', e); }
+
     var panel = document.getElementById('qfs-panel');
     if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
   }
