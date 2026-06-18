@@ -1159,38 +1159,47 @@ function calculateBazi() {
     
     if (!dVal) return;
 
-    // 1. True Solar Time
-    const standardMeridian = utc * 15;
-    const offsetMinutes = (lon - standardMeridian) * 4;
-    const dstOffset = _dstOn ? 60 : 0;
-    let baseDate  = new Date(`${dVal}T${tVal}`);
-    let solarDate = new Date(baseDate.getTime() + offsetMinutes * 60000 - dstOffset * 60000);
-    
-    document.getElementById('solar-time-display').textContent =
-        "True Solar: " + solarDate.toTimeString().slice(0,5);
-
-    // 2. Bazi from lunar-javascript
-    const solar    = Solar.fromDate(solarDate);
-    const lunar    = solar.getLunar();
-    const eightChar = lunar.getEightChar();
-
-    // DAY: handle the 23:00-00:00 edge-case
-    let dayGan = eightChar.getDayGan();
-    let dayZhi = eightChar.getDayZhi();
-    if (solarDate.getHours() === 23) {
-        const yesterday = new Date(solarDate.getTime() - 3600000);
-        const oldEC = Solar.fromDate(yesterday).getLunar().getEightChar();
-        dayGan = oldEC.getDayGan();
-        dayZhi = oldEC.getDayZhi();
+    // 1. TRUE SOLAR TIME — full TST (longitude + Equation of Time); day rolls at TST midnight.
+    const _bzD = dVal.split('-').map(Number);
+    const _bzT = (tVal || '00:00').split(':').map(Number);
+    const _bzTz = -(utc * 60 + (_dstOn ? 60 : 0));   // (UTC - local) minutes, incl. DST
+    let pillarKeys, solarDate, _tstShow, dayGan, dayZhi;
+    if (typeof XKDGSolarTime !== 'undefined' && isFinite(lon)) {
+        const P = XKDGSolarTime.pillarsFromCivil(_bzD[0], _bzD[1], _bzD[2], _bzT[0] || 0, _bzT[1] || 0, 0, lon, _bzTz);
+        pillarKeys = {
+            year:  { stem: P.year.charAt(0),  branch: P.year.charAt(1)  },
+            month: { stem: P.month.charAt(0), branch: P.month.charAt(1) },
+            day:   { stem: P.day.charAt(0),   branch: P.day.charAt(1)   },
+            hour:  { stem: P.hour.charAt(0),  branch: P.hour.charAt(1)  }
+        };
+        const t = P.meta.tst;
+        solarDate = new Date(t.y, t.mo - 1, t.d, t.h, t.mi, t.s || 0);
+        _tstShow = String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
+    } else {
+        // Fallback (TST engine or longitude unavailable): legacy longitude+DST, 23:00 day edge.
+        const offsetMinutes = (lon - utc * 15) * 4;
+        const dstOffset = _dstOn ? 60 : 0;
+        solarDate = new Date(new Date(`${dVal}T${tVal}`).getTime() + offsetMinutes * 60000 - dstOffset * 60000);
+        const ec = Solar.fromDate(solarDate).getLunar().getEightChar();
+        let dG = ec.getDayGan(), dZ = ec.getDayZhi();
+        if (solarDate.getHours() === 23) {
+            const oldEC = Solar.fromDate(new Date(solarDate.getTime() - 3600000)).getLunar().getEightChar();
+            dG = oldEC.getDayGan(); dZ = oldEC.getDayZhi();
+        }
+        pillarKeys = {
+            year:  { stem: ec.getYearGan(),  branch: ec.getYearZhi()  },
+            month: { stem: ec.getMonthGan(), branch: ec.getMonthZhi() },
+            day:   { stem: dG,               branch: dZ               },
+            hour:  { stem: ec.getTimeGan(),  branch: ec.getTimeZhi()  }
+        };
+        _tstShow = solarDate.toTimeString().slice(0, 5);
     }
+    dayGan = pillarKeys.day.stem;
+    dayZhi = pillarKeys.day.branch;
+    function nayinOf(p){ try { return (typeof LunarUtil !== 'undefined' ? LunarUtil : Lunar.LunarUtil).NAYIN[p.stem + p.branch] || ''; } catch(e){ return ''; } }
 
-    // 3. Collect pillar keys (Stem+Branch) for XKDG lookup
-    const pillarKeys = {
-        year:  { stem: eightChar.getYearGan(),  branch: eightChar.getYearZhi()  },
-        month: { stem: eightChar.getMonthGan(), branch: eightChar.getMonthZhi() },
-        day:   { stem: dayGan,                  branch: dayZhi                  },
-        hour:  { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  }
-    };
+    const _solarDisp = document.getElementById('solar-time-display');
+    if (_solarDisp) _solarDisp.textContent = "True Solar: " + _tstShow;
 
     // 4. Get XKDG data for each pillar (include branch for clash checking)
     const xkdgData = {};
@@ -1227,10 +1236,10 @@ function calculateBazi() {
     window._currentDayGan = dayGan;
     window._currentDayZhi = dayZhi;
 
-    updatePillar('p-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
-    updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
-    updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
-    updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
+    updatePillar('p-year',  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  nayinOf(pillarKeys.year));
+    updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, nayinOf(pillarKeys.month));
+    updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   nayinOf(pillarKeys.day));
+    updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  nayinOf(pillarKeys.hour));
 
     const { strong: seasonStrong, growing: seasonGrowing } = getJieqiSeason(solarDate);
 
