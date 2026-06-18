@@ -109,6 +109,16 @@
     return { lonDeg: lon, tzOffsetMin: -(utcH * 60 + (dstOn ? 60 : 0)) };
   }
 
+  // Inverse of pillarsFromCivil's TST step: given a TST clock time on a date, return the
+  // civil WALL-CLOCK {y,mo,d,h,mi} that produces it (used to open a scan row back into Main).
+  function wallClockFromTST(y, mo, d, h, mi, lonDeg, tzOffsetMin) {
+    var tstMs = Date.UTC(y, mo - 1, d, h, mi || 0, 0);
+    var eot = equationOfTimeMinutes(new Date(tstMs - lonDeg * 4 * 60000)); // EoT at ~UTC of that moment
+    var utcMs = tstMs - (lonDeg * 4 + eot) * 60000;
+    var w = new Date(utcMs - (tzOffsetMin || 0) * 60000);
+    return { y: w.getUTCFullYear(), mo: w.getUTCMonth() + 1, d: w.getUTCDate(), h: w.getUTCHours(), mi: w.getUTCMinutes() };
+  }
+
   // Convert a Beijing-time solar-term instant (as lunar-javascript reports it) to local TST clock.
   // Pass the term's Beijing Y/M/D H:M:S; returns the {y,mo,d,h,mi,s} in local TST.
   function beijingTermToTST(by, bmo, bd, bh, bmi, bs, lonDeg) {
@@ -125,6 +135,7 @@
     hourPillarFromCivil: hourPillarFromCivil,
     currentLonTz: currentLonTz,
     beijingTermToTST: beijingTermToTST,
+    wallClockFromTST: wallClockFromTST,
     hourBranchIndex: hourBranchIndex, hourStemIndex: hourStemIndex,
     STEMS: STEMS, BRANCHES: BRANCHES
   };

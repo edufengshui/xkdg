@@ -2643,32 +2643,28 @@ function localISODate(date) {
 }
 
 function loadDateIntoMain(isoDate, hourIndex, isZiSecondHalf) {
-    const lon = parseFloat(document.getElementById('longitude').value);
-    const utc = parseFloat(document.getElementById('utc-offset').value);
-    const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
-
-    // Convert True Solar hour midpoint back to local clock time
-    // For Zi second half (00:00-01:00), use hour 0 instead of 23
     const hourStart = (hourIndex === 0 && isZiSecondHalf) ? 0 : HOUR_STARTS[hourIndex];
-    const solarMinutes = hourStart * 60 + 30;
-    const localMinutes = solarMinutes - offsetMin;
-
-    // Handle day crossing
-    let dateStr = isoDate;
-    let dayOffset = 0;
-    if (localMinutes < 0) dayOffset = -1;
-    else if (localMinutes >= 1440) dayOffset = 1;
-
-    if (dayOffset !== 0) {
-        const d = new Date(isoDate + 'T12:00:00');
-        d.setDate(d.getDate() + dayOffset);
-        dateStr = d.toISOString().split('T')[0];
+    const dP = isoDate.split('-').map(Number);
+    let dateStr, timeStr;
+    const lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+    if (lt && isFinite(lt.lonDeg) && typeof XKDGSolarTime.wallClockFromTST === 'function') {
+        // TST 时辰 midpoint → civil wall clock (includes longitude + Equation of Time).
+        const w = XKDGSolarTime.wallClockFromTST(dP[0], dP[1], dP[2], hourStart, 30, lt.lonDeg, lt.tzOffsetMin);
+        dateStr = w.y + '-' + String(w.mo).padStart(2, '0') + '-' + String(w.d).padStart(2, '0');
+        timeStr = String(w.h).padStart(2, '0') + ':' + String(w.mi).padStart(2, '0');
+    } else {
+        // Fallback: legacy longitude+DST (no EoT).
+        const lon = parseFloat(document.getElementById('longitude').value);
+        const utc = parseFloat(document.getElementById('utc-offset').value);
+        const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+        const localMinutes = (hourStart * 60 + 30) - offsetMin;
+        let dayOffset = 0;
+        if (localMinutes < 0) dayOffset = -1; else if (localMinutes >= 1440) dayOffset = 1;
+        dateStr = isoDate;
+        if (dayOffset !== 0) { const d = new Date(isoDate + 'T12:00:00'); d.setDate(d.getDate() + dayOffset); dateStr = d.toISOString().split('T')[0]; }
+        const totalMins = ((localMinutes % 1440) + 1440) % 1440;
+        timeStr = String(Math.floor(totalMins / 60)).padStart(2, '0') + ':' + String(Math.floor(totalMins % 60)).padStart(2, '0');
     }
-
-    const totalMins = ((localMinutes % 1440) + 1440) % 1440;
-    const hh = Math.floor(totalMins / 60);
-    const mm = Math.floor(totalMins % 60);
-    const timeStr = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
 
     document.getElementById('date').value = dateStr;
     document.getElementById('time').value = timeStr;
@@ -2705,13 +2701,22 @@ function renderScanResults(results, mode) {
     if (!container) return;
     // --- AI bridge: expose the rendered list as structured data (Phase E2) ---
     try {
+        var _lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+        var _useTST = _lt && isFinite(_lt.lonDeg) && typeof XKDGSolarTime.wallClockFromTST === 'function';
         var _blon = parseFloat(document.getElementById('longitude').value);
         var _butc = parseFloat(document.getElementById('utc-offset').value);
         var _boff = (_blon - _butc * 15) * 4 - (_dstOn ? 60 : 0);
         window._lastScanResults = (results || []).map(function (r) {
-            var _hs = HOUR_STARTS[r.hourIndex]; var _lm = (_hs * 60 + 30) - _boff;
-            var _t = ((_lm % 1440) + 1440) % 1440;
-            var _ts = String(Math.floor(_t / 60)).padStart(2, '0') + ':' + String(Math.floor(_t % 60)).padStart(2, '0');
+            var _ts;
+            if (_useTST) {
+                var _dp = r.isoDate.split('-').map(Number);
+                var _w = XKDGSolarTime.wallClockFromTST(_dp[0], _dp[1], _dp[2], HOUR_STARTS[r.hourIndex], 30, _lt.lonDeg, _lt.tzOffsetMin);
+                _ts = String(_w.h).padStart(2, '0') + ':' + String(_w.mi).padStart(2, '0');
+            } else {
+                var _hs = HOUR_STARTS[r.hourIndex]; var _lm = (_hs * 60 + 30) - _boff;
+                var _t = ((_lm % 1440) + 1440) % 1440;
+                _ts = String(Math.floor(_t / 60)).padStart(2, '0') + ':' + String(Math.floor(_t % 60)).padStart(2, '0');
+            }
             return { isoDate: r.isoDate, hourIndex: r.hourIndex, time: _ts, score: r.score, scoreA: r.scoreA, scoreB: r.scoreB };
         });
         window._lastScanMode = mode;
@@ -2860,21 +2865,24 @@ function formatTSTRange(baseStart, baseEnd) {
     const lon = lonEl ? parseFloat(lonEl.value) : NaN;
     const utc = utcEl ? parseFloat(utcEl.value) : NaN;
     if (!isFinite(lon) || !isFinite(utc)) return baseStart + '-' + baseEnd;
-    const tstMins  = (lon - utc * 15) * 4;       // longitude correction (TST vs standard)
-    const wallMins = (_dstOn ? 60 : 0);           // DST offset (civil convention)
-    // Wall clock = TST → standard (−tstMins) → wall (+wallMins)
-    const wallShift = Math.round(-tstMins + wallMins);
-    if (wallShift === 0) return baseStart + '-' + baseEnd;
-    function shift(t, mins) {
-        const [hs, ms] = t.split(':');
-        const total = parseInt(hs) * 60 + (parseInt(ms) || 0) + mins;
-        const norm  = ((total % 1440) + 1440) % 1440;
-        return String(Math.floor(norm / 60)).padStart(2, '0') + ':' +
-               String(Math.floor(norm % 60)).padStart(2, '0');
+    const lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+    const canTST = lt && isFinite(lt.lonDeg) && typeof XKDGSolarTime.wallClockFromTST === 'function';
+    // Reference date for the Equation of Time: the scan start, else today.
+    const refIso = (document.getElementById('scan-start') && document.getElementById('scan-start').value) || new Date().toISOString().split('T')[0];
+    const rp = refIso.split('-').map(Number);
+    function toWall(t) {
+        const parts = t.split(':'); const h = parseInt(parts[0]), mi = parseInt(parts[1]) || 0;
+        if (canTST) {
+            const w = XKDGSolarTime.wallClockFromTST(rp[0], rp[1], rp[2], h, mi, lt.lonDeg, lt.tzOffsetMin);
+            return String(w.h).padStart(2, '0') + ':' + String(w.mi).padStart(2, '0');
+        }
+        const wallShift = Math.round(-((lon - utc * 15) * 4) + (_dstOn ? 60 : 0));
+        const total = h * 60 + mi + wallShift; const norm = ((total % 1440) + 1440) % 1440;
+        return String(Math.floor(norm / 60)).padStart(2, '0') + ':' + String(Math.floor(norm % 60)).padStart(2, '0');
     }
-    const wallStr = shift(baseStart, wallShift) + '-' + shift(baseEnd, wallShift);
-    const tstStr  = baseStart + '-' + baseEnd;
-    return wallStr + '<br>(TST ' + tstStr + ') ✦';
+    const wallStart = toWall(baseStart), wallEnd = toWall(baseEnd);
+    if (wallStart === baseStart && wallEnd === baseEnd) return baseStart + '-' + baseEnd;
+    return wallStart + '-' + wallEnd + '<br>(TST ' + baseStart + '-' + baseEnd + ') ✦';
 }
 
 // Convenience wrapper: returns TST-adjusted label for hour index 0..11 (子=0 .. 亥=11).
@@ -4079,13 +4087,20 @@ function buildTableView() {
         const isoDate = localISODate(dayDate);
         const isToday = isoDate === localISODate(new Date());
 
-        // Get day/month/year JiaZi
-        let bd0 = new Date(dayDate); bd0.setHours(12, 0, 0, 0);
-        const sd0 = new Date(bd0.getTime() + offsetMin * 60000);
-        const ec0 = Solar.fromDate(sd0).getLunar().getEightChar();
-        const dGan = ec0.getDayGan(), dZhi = ec0.getDayZhi();
-        const mGan = ec0.getMonthGan(), mZhi = ec0.getMonthZhi();
-        const yGan = ec0.getYearGan(),  yZhi = ec0.getYearZhi();
+        // Get day/month/year JiaZi (noon, in true solar time)
+        let dGan, dZhi, mGan, mZhi, yGan, yZhi;
+        const _P0 = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(isoDate, '12:00') : null;
+        if (_P0) {
+            dGan = _P0.day.charAt(0);  dZhi = _P0.day.charAt(1);
+            mGan = _P0.month.charAt(0); mZhi = _P0.month.charAt(1);
+            yGan = _P0.year.charAt(0);  yZhi = _P0.year.charAt(1);
+        } else {
+            let bd0 = new Date(dayDate); bd0.setHours(12, 0, 0, 0);
+            const ec0 = Solar.fromDate(new Date(bd0.getTime() + offsetMin * 60000)).getLunar().getEightChar();
+            dGan = ec0.getDayGan(); dZhi = ec0.getDayZhi();
+            mGan = ec0.getMonthGan(); mZhi = ec0.getMonthZhi();
+            yGan = ec0.getYearGan();  yZhi = ec0.getYearZhi();
+        }
         const dd = dayDate.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
 
         // Check if day has a clash
@@ -4412,10 +4427,12 @@ function buildCalView() {
     const birthTime = document.getElementById('person-time').value || '12:00';
     let personAYear = null, pYStem = null, pYBranch = null;
     if (birthDate) {
-        const bBase  = new Date(`${birthDate}T${birthTime}`);
-        const bSolar = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
-        const bEC    = bSolar.getLunar().getEightChar();
-        pYStem = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
+        const _PA = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(birthDate, birthTime) : null;
+        if (_PA) { pYStem = _PA.year.charAt(0); pYBranch = _PA.year.charAt(1); }
+        else {
+            const bEC = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + offsetMin * 60000)).getLunar().getEightChar();
+            pYStem = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
+        }
         const pYData = getXkdgData(pYStem, pYBranch);
         if (pYData) personAYear = { ...pYData, stem: pYStem, branch: pYBranch };
     }
@@ -5975,13 +5992,17 @@ function getPersonYearData() {
     const birthDate = (document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none') ? document.getElementById('person-date').value : '';
     const birthTime = document.getElementById('person-time').value || '12:00';
     if (!birthDate) return null;
-    const lon = parseFloat(document.getElementById('longitude').value);
-    const utc = parseFloat(document.getElementById('utc-offset').value);
-    const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
-    const base  = new Date(`${birthDate}T${birthTime}`);
-    const solar = Solar.fromDate(new Date(base.getTime() + offsetMin * 60000));
-    const ec    = solar.getLunar().getEightChar();
-    const yStem = ec.getYearGan(), yBranch = ec.getYearZhi();
+    let yStem, yBranch;
+    const _PY = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(birthDate, birthTime) : null;
+    if (_PY) {
+        yStem = _PY.year.charAt(0); yBranch = _PY.year.charAt(1);
+    } else {
+        const lon = parseFloat(document.getElementById('longitude').value);
+        const utc = parseFloat(document.getElementById('utc-offset').value);
+        const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
+        const ec = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + offsetMin * 60000)).getLunar().getEightChar();
+        yStem = ec.getYearGan(); yBranch = ec.getYearZhi();
+    }
     const data  = getXkdgData(yStem, yBranch);
     if (!data) return null;
     const families = getJiaZiFamilies(yStem, yBranch);
