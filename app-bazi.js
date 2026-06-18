@@ -2108,6 +2108,18 @@ function calculatePerson(person) {
     const lon = parseFloat(document.getElementById('longitude').value);
     const personDst = isB ? _dstOnB : _dstOnA;
     let pillarKeys, dGan, dZhi;
+    // Birth solar date at FUNCTION scope. Previously it was declared only inside
+    // the fallback branch, so the primary (_ppP) path reached getJieqiSeason(solarDate)
+    // with solarDate undefined → "ReferenceError: solarDate is not defined", which
+    // crashed every person calculation. Compute it once here for both paths.
+    let solarDate;
+    try {
+        const _utcS = parseFloat(document.getElementById('utc-offset').value);
+        const _offS = ((lon - (isFinite(_utcS) ? _utcS : 0) * 15) * 4) - (personDst ? 60 : 0);
+        solarDate = new Date(new Date(`${dVal}T${tVal}`).getTime() + (isFinite(_offS) ? _offS : 0) * 60000);
+    } catch (e) {
+        try { solarDate = new Date(`${dVal}T${tVal}`); } catch (_e) { solarDate = new Date(); }
+    }
     const _ppP = (function(){
         try {
             if (typeof XKDGSolarTime === 'undefined' || !isFinite(lon)) return null;
@@ -2128,7 +2140,7 @@ function calculatePerson(person) {
     } else {
         const utc = parseFloat(document.getElementById('utc-offset').value);
         const offsetMin = ((lon - utc * 15) * 4) - (personDst ? 60 : 0);
-        const solarDate = new Date(new Date(`${dVal}T${tVal}`).getTime() + offsetMin * 60000);
+        solarDate = new Date(new Date(`${dVal}T${tVal}`).getTime() + offsetMin * 60000);
         const eightChar = Solar.fromDate(solarDate).getLunar().getEightChar();
         dGan = eightChar.getDayGan(); dZhi = eightChar.getDayZhi();
         if (solarDate.getHours() === 23) {
