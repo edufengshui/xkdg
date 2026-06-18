@@ -3002,29 +3002,13 @@ function fsRenderHouseProfiles(){
     } else {
       html += '<div style="font-size:11px;color:#999;padding:2px 0;">No aquariums</div>';
     }
-    html += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">💧 Set up Water</button>';
+    html += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">💧 Add Water</button>';
     html += '</div>';
 
-    // ── QFS ZONES (🌀 Qimen × Flying Stars) ──
-    html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #7b1fa2;">';
-    html += '<div style="font-size:11px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones (Qimen × Flying Stars)</div>';
-    html += '<div style="font-size:10px;color:#888;margin-bottom:4px;font-style:italic;">A saved target for the Qimen × Flying-Stars scan: a direction + which flying star to activate there (Water 向星 for aquariums, Mountain 山星 for still features).</div>';
-    var zones = f.zones;
-    if (zones.length){
-      var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
-      zones.forEach(function(z, zi){
-        var targetLabel = z.target === 'water' ? 'Water ★' : 'Mountain ★';
-        var presetLabel = (z.preset === 'custom') ? ' · custom preset' : ' · auto preset';
-        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">🌀 <strong>' + escHtml(z.name) + '</strong> — Palace ' + z.palace + ' (' + (_palDir[z.palace]||'?') + ') · ' + targetLabel + presetLabel + '</span>';
-        html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">✕</button>';
-        html += '</div>';
-      });
-    } else {
-      html += '<div style="font-size:11px;color:#999;padding:2px 0;">No zones yet</div>';
-    }
-    html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Zone</button>';
-    html += '</div>';
+    // ── QFS ZONES moved OUT of House Profiles → they belong to the ⚡ OPERATIVE
+    //    area (dynamic activation). Data (f.zones) + fsAddZone/fsRemoveZone kept
+    //    for reuse when the Operative QFS panel is built. ──
+
 
     // ── Saved section settings (Water / Bed / Desk) — converged into the house ──
     html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #8a6a1f;">';
@@ -3041,8 +3025,8 @@ function fsRenderHouseProfiles(){
     });
     if (!_anySt) html += '<div style="font-size:11px;color:#999;padding:2px 0;">None yet — use the buttons below to set up Water / Bed / Desk for this house.</div>';
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;">'
-      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Set up Bed</button>'
-      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Set up Desk</button>'
+      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>'
+      + '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>'
       + '</div>';
     html += '</div>';
 
@@ -4777,7 +4761,7 @@ function fsRenderZoneGate(){
     // The 3 standalone tiles are absorbed into House: a tool opens from a house card.
     gate.innerHTML =
       '<div style="background:#fdf6e3;border:1px dashed #c9a84c;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#8a6a1f;text-align:center;">'
-      + 'To place <strong>Water</strong>, <strong>Bed</strong> or <strong>Desk</strong>, open a house card above and use its <strong>“Set up …”</strong> buttons.'
+      + 'To place <strong>Water</strong>, <strong>Bed</strong> or <strong>Desk</strong>, open a house card above and use its <strong>“Add …”</strong> buttons.'
       + '</div>';
   }
 }
