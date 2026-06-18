@@ -4955,6 +4955,9 @@ function _fsBuildZoneGate(){
     // Capture House Profiles BEFORE the sweep (the sweep moves it into the
     // detached generic wrapper, after which getElementById can't find it).
     var hp = document.getElementById('fs-house-profiles');
+    // Capture the ⚡ OPERATIVE area too — it sits after the legend and would
+    // otherwise be swept into the hidden tools wrapper.
+    var op = document.getElementById('fs-operative');
 
     var legend = document.getElementById('fs-legend');
     if (legend){
@@ -4962,11 +4965,13 @@ function _fsBuildZoneGate(){
       while (node){ var next = node.nextSibling; generic.appendChild(node); node = next; }
     }
 
-    // House Profiles belong to the MAIN sector — put them back in the base, at
-    // the bottom of the flying-stars area (right after the legend).
-    if (hp && legend && legend.parentNode){
-      if (legend.nextSibling) legend.parentNode.insertBefore(hp, legend.nextSibling);
-      else legend.parentNode.appendChild(hp);
+    // House Profiles belong to the MAIN sector and must be the FIRST thing the
+    // user sees — put them at the very TOP of the base (above the gate hint),
+    // i.e. above the Flying-Stars box and the luopan.
+    if (hp){
+      var gateEl = document.getElementById('fs-zone-gate');
+      if (gateEl && gateEl.parentNode === fsRoot) fsRoot.insertBefore(hp, gateEl);
+      else fsRoot.insertBefore(hp, fsRoot.firstChild);
     }
 
     // Section content order: banner, [Door-first generic], bed, desk, settings.
@@ -4975,6 +4980,11 @@ function _fsBuildZoneGate(){
     tools.appendChild(deskPanel);
     tools.appendChild(zoneSettings);
     fsRoot.appendChild(tools);
+
+    // ⚡ OPERATIVE must stay in the MAIN base and be visible at the BOTTOM.
+    // The post-legend sweep pulled it into the hidden tools wrapper, so move it
+    // back out as the last child of the base.
+    if (op) fsRoot.appendChild(op);
 
     if (typeof fsBuildBedPanel === 'function') fsBuildBedPanel();
     if (typeof fsBuildDeskPanel === 'function') fsBuildDeskPanel();
