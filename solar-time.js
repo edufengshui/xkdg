@@ -91,6 +91,24 @@
     return pillarsFromUtc(utcFromCivil(y, mo, d, h, mi, s, tzOffsetMin), lonDeg);
   }
 
+  // Just the HOUR pillar {gan, zhi} in true solar time — for QMDJ hour charts / scanners
+  // that previously did Solar.fromYmdHms(civil)…getTimeGan()/getTimeZhi() on civil time.
+  function hourPillarFromCivil(y, mo, d, h, mi, s, lonDeg, tzOffsetMin) {
+    var p = pillarsFromCivil(y, mo, d, h, mi, s, lonDeg, tzOffsetMin);
+    return p ? { gan: p.hour.charAt(0), zhi: p.hour.charAt(1), tst: p.meta.tst } : null;
+  }
+
+  // Read the current GPS longitude + civil UTC offset (incl. DST) from the app inputs,
+  // so every call site is a one-liner. Falls back to localStorage GPS for longitude.
+  function currentLonTz() {
+    var lon = NaN, utcH = 0, dstOn = false;
+    try { lon = parseFloat(document.getElementById('longitude').value); } catch (e) {}
+    if (!isFinite(lon)) { try { lon = JSON.parse(localStorage.getItem('xkdg_gps') || '{}').lng; } catch (e) {} }
+    try { utcH = parseFloat(document.getElementById('utc-offset').value) || 0; } catch (e) {}
+    try { dstOn = (typeof _dstOn !== 'undefined') ? _dstOn : !!(typeof window !== 'undefined' && window._dstOn); } catch (e) {}
+    return { lonDeg: lon, tzOffsetMin: -(utcH * 60 + (dstOn ? 60 : 0)) };
+  }
+
   // Convert a Beijing-time solar-term instant (as lunar-javascript reports it) to local TST clock.
   // Pass the term's Beijing Y/M/D H:M:S; returns the {y,mo,d,h,mi,s} in local TST.
   function beijingTermToTST(by, bmo, bd, bh, bmi, bs, lonDeg) {
@@ -104,6 +122,8 @@
     convert: convert,
     pillarsFromUtc: pillarsFromUtc,
     pillarsFromCivil: pillarsFromCivil,
+    hourPillarFromCivil: hourPillarFromCivil,
+    currentLonTz: currentLonTz,
     beijingTermToTST: beijingTermToTST,
     hourBranchIndex: hourBranchIndex, hourStemIndex: hourStemIndex,
     STEMS: STEMS, BRANCHES: BRANCHES
