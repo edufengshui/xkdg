@@ -620,8 +620,23 @@ const MONTH_VIRTUE = {
     '申':{ stem:'壬', branch:'亥' }, '子':{ stem:'壬', branch:'亥' }, '辰':{ stem:'壬', branch:'亥' }
 };
 
+// TST pillars for a person's birth (current GPS longitude + civil offset). Returns {year,month,day,hour} or null.
+function _tstPillarsFor(dateStr, timeStr) {
+    try {
+        if (typeof XKDGSolarTime === 'undefined') return null;
+        const lt = XKDGSolarTime.currentLonTz();
+        if (!isFinite(lt.lonDeg)) return null;
+        const d = String(dateStr).split('-').map(Number);
+        const t = String(timeStr || '12:00').split(':').map(Number);
+        return XKDGSolarTime.pillarsFromCivil(d[0], d[1], d[2], t[0] || 0, t[1] || 0, 0, lt.lonDeg, lt.tzOffsetMin);
+    } catch (e) { return null; }
+}
+
 function getPersonMonthBranch(birthDate, birthTime, offsetMin) {
     if (!birthDate) return null;
+    const P = _tstPillarsFor(birthDate, birthTime);
+    if (P) return P.month.charAt(1);
+    // Fallback: legacy offset method
     const base  = new Date(`${birthDate}T${birthTime}`);
     const solar = new Date(base.getTime() + offsetMin * 60000);
     return Solar.fromDate(solar).getLunar().getEightChar().getMonthZhi();
@@ -654,6 +669,9 @@ function getPersonDayStem() {
     const dVal = document.getElementById('person-date').value;
     const tVal = document.getElementById('person-time').value || '12:00';
     if (!dVal) return null;
+    const P = _tstPillarsFor(dVal, tVal);
+    if (P) return P.day.charAt(0);
+    // Fallback: legacy offset method
     const lon = parseFloat(document.getElementById('longitude').value);
     const utc = parseFloat(document.getElementById('utc-offset').value);
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
@@ -670,6 +688,9 @@ function getPersonDayStem() {
 
 function getPersonDayStemFromBirth(birthDate, birthTime, offsetMin) {
     if (!birthDate) return null;
+    const P = _tstPillarsFor(birthDate, birthTime);
+    if (P) return P.day.charAt(0);
+    // Fallback: legacy offset method
     const base  = new Date(`${birthDate}T${birthTime}`);
     const solar = new Date(base.getTime() + offsetMin * 60000);
     const ec    = Solar.fromDate(solar).getLunar().getEightChar();
@@ -2082,29 +2103,42 @@ function calculatePerson(person) {
     if (!dVal) return;
 
     const lon = parseFloat(document.getElementById('longitude').value);
-    const utc = parseFloat(document.getElementById('utc-offset').value);
     const personDst = isB ? _dstOnB : _dstOnA;
-    const offsetMin = ((lon - utc * 15) * 4) - (personDst ? 60 : 0);
-
-    const baseDate  = new Date(`${dVal}T${tVal}`);
-    const solarDate = new Date(baseDate.getTime() + offsetMin * 60000);
-    const solar     = Solar.fromDate(solarDate);
-    const lunar     = solar.getLunar();
-    const eightChar = lunar.getEightChar();
-
-    let dGan = eightChar.getDayGan(), dZhi = eightChar.getDayZhi();
-    if (solarDate.getHours() === 23) {
-        const yest = Solar.fromDate(new Date(solarDate.getTime() - 3600000));
-        dGan = yest.getLunar().getEightChar().getDayGan();
-        dZhi = yest.getLunar().getEightChar().getDayZhi();
+    let pillarKeys, dGan, dZhi;
+    const _ppP = (function(){
+        try {
+            if (typeof XKDGSolarTime === 'undefined' || !isFinite(lon)) return null;
+            const utc = parseFloat(document.getElementById('utc-offset').value) || 0;
+            const tz = -(utc * 60 + (personDst ? 60 : 0));
+            const d = dVal.split('-').map(Number), t = (tVal || '12:00').split(':').map(Number);
+            return XKDGSolarTime.pillarsFromCivil(d[0], d[1], d[2], t[0] || 0, t[1] || 0, 0, lon, tz);
+        } catch (e) { return null; }
+    })();
+    if (_ppP) {
+        dGan = _ppP.day.charAt(0); dZhi = _ppP.day.charAt(1);
+        pillarKeys = {
+            year:  { stem: _ppP.year.charAt(0),  branch: _ppP.year.charAt(1)  },
+            month: depth >= 2 ? { stem: _ppP.month.charAt(0), branch: _ppP.month.charAt(1) } : null,
+            day:   depth >= 3 ? { stem: dGan, branch: dZhi } : null,
+            hour:  depth >= 4 ? { stem: _ppP.hour.charAt(0),  branch: _ppP.hour.charAt(1)  } : null
+        };
+    } else {
+        const utc = parseFloat(document.getElementById('utc-offset').value);
+        const offsetMin = ((lon - utc * 15) * 4) - (personDst ? 60 : 0);
+        const solarDate = new Date(new Date(`${dVal}T${tVal}`).getTime() + offsetMin * 60000);
+        const eightChar = Solar.fromDate(solarDate).getLunar().getEightChar();
+        dGan = eightChar.getDayGan(); dZhi = eightChar.getDayZhi();
+        if (solarDate.getHours() === 23) {
+            const yest = Solar.fromDate(new Date(solarDate.getTime() - 3600000)).getLunar().getEightChar();
+            dGan = yest.getDayGan(); dZhi = yest.getDayZhi();
+        }
+        pillarKeys = {
+            year:  { stem: eightChar.getYearGan(),  branch: eightChar.getYearZhi()  },
+            month: depth >= 2 ? { stem: eightChar.getMonthGan(), branch: eightChar.getMonthZhi() } : null,
+            day:   depth >= 3 ? { stem: dGan, branch: dZhi } : null,
+            hour:  depth >= 4 ? { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  } : null
+        };
     }
-
-    const pillarKeys = {
-        year:  { stem: eightChar.getYearGan(),  branch: eightChar.getYearZhi()  },
-        month: depth >= 2 ? { stem: eightChar.getMonthGan(), branch: eightChar.getMonthZhi() } : null,
-        day:   depth >= 3 ? { stem: dGan, branch: dZhi } : null,
-        hour:  depth >= 4 ? { stem: eightChar.getTimeGan(),  branch: eightChar.getTimeZhi()  } : null
-    };
 
     // Hide/show chart pillar columns based on depth (Person B only)
     if (isB) {
@@ -2134,10 +2168,10 @@ function calculatePerson(person) {
     if (wrap) wrap.style.display = 'block';
 
     const prefix = isB ? 'pb' : 'pp';
-    updatePillar(`${prefix}-year`,  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  eightChar.getYearNaYin());
-    if (pillarKeys.month) updatePillar(`${prefix}-month`, pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, eightChar.getMonthNaYin());
-    if (pillarKeys.day)   updatePillar(`${prefix}-day`,   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   eightChar.getDayNaYin());
-    if (pillarKeys.hour)  updatePillar(`${prefix}-hour`,  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  eightChar.getTimeNaYin());
+    updatePillar(`${prefix}-year`,  pillarKeys.year.stem,  pillarKeys.year.branch,  xkdgData.year,  NAYIN[pillarKeys.year.stem + pillarKeys.year.branch] || '');
+    if (pillarKeys.month) updatePillar(`${prefix}-month`, pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, NAYIN[pillarKeys.month.stem + pillarKeys.month.branch] || '');
+    if (pillarKeys.day)   updatePillar(`${prefix}-day`,   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   NAYIN[pillarKeys.day.stem + pillarKeys.day.branch] || '');
+    if (pillarKeys.hour)  updatePillar(`${prefix}-hour`,  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  NAYIN[pillarKeys.hour.stem + pillarKeys.hour.branch] || '');
 
     // Store year + day hexagram and active relations for compatibility
     if (isB) {
