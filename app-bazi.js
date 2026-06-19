@@ -4891,9 +4891,11 @@ function buildCalView() {
     let _flightAllBtn = '';
     if (window._fsFlightCalMode && Object.keys(_flightBestByDay).length) {
         const _nDays = Object.keys(_flightBestByDay).length;
+        const _MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const _monLbl = _MN[start.getMonth()] + ' ' + start.getFullYear();
         _flightAllBtn = '<div style="text-align:center;margin:10px 0 4px;">'
-            + '<button onclick="fsFlightSearchAll()" style="background:#0b8043;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">🔎 Search ALL favourable flights (' + _nDays + ' days)</button>'
-            + '<div style="font-size:11px;color:#777;margin-top:3px;">Searches every favourable day in this view for flights in its positive window</div></div>';
+            + '<button onclick="fsFlightSearchAll()" style="background:#0b8043;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">🔎 Search ALL favourable flights — ' + _monLbl + ' (' + _nDays + ' days)</button>'
+            + '<div style="font-size:11px;color:#777;margin-top:3px;">Searches every favourable day this month for flights in its positive window</div></div>';
     }
 
     document.getElementById('cal-view').innerHTML = calNavHtml + _flightAllBtn + html + _flightAllBtn;
@@ -5928,11 +5930,44 @@ function buildMonthView() {
 }
 
 // ── Filter ────────────────────────────────────────────────────
+// Scan a SINGLE calendar month for favourable flight dates and show it on the
+// calendar. Current/past month → start from today; future month → whole month.
+function _fsScanMonthForFlights(year, month){   // month = 1..12
+    const ss = document.getElementById('scan-start');
+    const sd = document.getElementById('scan-days');
+    if (!ss || !sd) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const monthStart = new Date(year, month - 1, 1);
+    const monthEnd   = new Date(year, month, 0);            // last day of the month
+    let start = (today > monthStart) ? today : monthStart;  // current month → from today
+    if (start > monthEnd){
+        // Whole month already past: just show it, no flight scan.
+        ss.value = year + '-' + String(month).padStart(2,'0') + '-01';
+        window._fsFlightCalMode = false;
+        if (typeof setMode === 'function') setMode('cal');
+        buildCalView();
+        return;
+    }
+    const iso = start.getFullYear() + '-' + String(start.getMonth()+1).padStart(2,'0') + '-' + String(start.getDate()).padStart(2,'0');
+    const ndays = Math.round((monthEnd - start) / 86400000) + 1;
+    ss.value = iso;
+    sd.value = String(ndays);
+    if (typeof runScanner === 'function') runScanner();
+    if (typeof setMode === 'function') setMode('cal');     // resets _fsFlightCalMode
+    window._fsFlightCalMode = true;
+    buildCalView();
+}
+
 function shiftCalMonth(n) {
     const startSel = document.getElementById('scan-start');
     if (!startSel || !startSel.value) return;
     const d = new Date(startSel.value + 'T00:00:00');
     d.setMonth(d.getMonth() + n);
+    // In flight mode, re-scan the WHOLE displayed month (bounded by today).
+    if (window._fsFlightCalMode && typeof _fsScanMonthForFlights === 'function'){
+        _fsScanMonthForFlights(d.getFullYear(), d.getMonth() + 1);
+        return;
+    }
     // Format as YYYY-MM-DD
     const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     startSel.value = iso;

@@ -2230,14 +2230,17 @@ function fsDirectionScanFlights(){
         : ((_dlat && _dlng && _dlat.value && _dlng.value) ? (_dlat.value + ',' + _dlng.value) : '');
   } catch(e){}
 
-  // 5) Run the scan (filtered to the flight direction) to compute the per-hour
-  //    results, then show them on the CALENDAR with the suggested departure hour
-  //    on each favourable day. Clicking a day drills into that day's LIST.
-  if(typeof runScanner === 'function'){
+  // 5) Scan the CURRENT month (today → end of month) and show it on the calendar
+  //    with ✈ favourable-hour badges. Navigating months (+1m/+2m/…) re-scans that
+  //    whole month. A future month is scanned in full; the current month starts today.
+  if (typeof _fsScanMonthForFlights === 'function'){
+    var _tn = new Date();
+    _fsScanMonthForFlights(_tn.getFullYear(), _tn.getMonth() + 1);
+  } else if (typeof runScanner === 'function'){
     runScanner();
-    if(typeof setMode === 'function' && typeof buildCalView === 'function'){
-      setMode('cal');                 // resets _fsFlightCalMode
-      window._fsFlightCalMode = true; // enable ✈ hour badges for this scan
+    if (typeof setMode === 'function' && typeof buildCalView === 'function'){
+      setMode('cal');
+      window._fsFlightCalMode = true;
       buildCalView();
     }
   }
