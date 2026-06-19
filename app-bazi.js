@@ -4547,7 +4547,11 @@ function buildCalView() {
         const r = _flightBestByDay[iso];
         if (!r) return '';
         const hr = r.hour || ((typeof HOUR_ROMAN !== 'undefined' && HOUR_ROMAN[r.hourIndex]) ? HOUR_ROMAN[r.hourIndex] : '');
-        return '<div title="Suggested departure (TST)" style="margin-top:2px;background:#1565c0;color:#fff;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;text-align:center;line-height:1.25;">✈ ' + hr + ' · ' + r.score + '</div>';
+        const civ = (typeof fsFlightCivil === 'function') ? fsFlightCivil(iso, r.hourIndex) : null;
+        const civTxt = civ ? civ.hhmm : '';
+        let out = '<div title="Suggested departure (TST)" style="margin-top:2px;background:#1565c0;color:#fff;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;text-align:center;line-height:1.25;">✈ ' + hr + ' · ' + r.score + '</div>';
+        out += '<button onclick="event.stopPropagation();fsFlightSearch(\'' + iso + '\',' + r.hourIndex + ')" title="Search flights' + (civTxt ? ' — civil departure ' + civTxt : '') + '" style="margin-top:2px;width:100%;background:#0b8043;color:#fff;border:none;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;cursor:pointer;line-height:1.25;">🔎 ' + (civTxt || 'flights') + '</button>';
+        return out;
     }
 
     // Build set of Jieqi dates for quick lookup
@@ -5818,6 +5822,15 @@ function buildMonthView() {
             }
             if (purposeLV && !purposeIconLV && !isZiFirst && !_calShowAllForThisDay) continue;
 
+            // ✈ Flight search button — only in flight context (direction filter +
+            // destination set by "SCAN flight dates"). Shows the civil departure time.
+            let _flightBtnLV = '';
+            if (window._fsFlightDest && _fsActionPalace && typeof fsFlightSearch === 'function') {
+                const _civLV = (typeof fsFlightCivil === 'function') ? fsFlightCivil(isoDate, h) : null;
+                const _civTxtLV = _civLV ? _civLV.hhmm : '';
+                _flightBtnLV = `<button onclick="event.stopPropagation();fsFlightSearch('${isoDate}',${h})" title="Search flights${_civTxtLV ? ' — civil departure ' + _civTxtLV : ''}" style="margin-top:3px;background:#0b8043;color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:bold;cursor:pointer;">🔎 Flights${_civTxtLV ? ' · ' + _civTxtLV : ''}</button>`;
+            }
+
             const rowHtml = `${jqBannerLV}<div onclick="loadDateIntoMain('${isoDate}',${h})"
                 style="display:flex;align-items:center;padding:3px 8px;border-bottom:1px solid #eee;${rowStyle}cursor:pointer;">
                 <div style="width:28px;flex-shrink:0;font-size:13px;font-weight:bold;color:${hasNegativesFilterMV?'#b71c1c':'#1b5e20'};text-align:left;padding-left:2px;">${hasNegativesFilterMV?'-'+negativeScore:listScore}${purposeIconLV ? `<div style="font-size:14px;line-height:1;">${purposeIconLV}</div>` : ''}</div>
@@ -5854,6 +5867,7 @@ function buildMonthView() {
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${pqRotHTMLLV} ${fsHTMLLV}
+                    ${_flightBtnLV}
                 </div>
             </div>`;
             dayRows.push({ score: hasNegativesFilterMV ? negativeScore : listScore, html: rowHtml });
@@ -5913,6 +5927,126 @@ function shiftCalMonth(n) {
     const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     startSel.value = iso;
     buildCalView();
+}
+
+// ───────────────────────── ✈ Flight search (Google Flights) ─────────────────────────
+// Convert a favourable TST double-hour into the CIVIL clock time at the departure
+// location (origin = Main page location: #longitude / #utc-offset / DST). Returns
+// { dateStr:'YYYY-MM-DD', hhmm:'HH:MM' } or null.
+function fsFlightCivil(iso, h){
+    try {
+        if (typeof XKDGSolarTime === 'undefined' || !XKDGSolarTime.wallClockFromTST) return null;
+        const p = String(iso).split('-').map(Number);
+        if (p.length < 3) return null;
+        const tstH = ((h * 2 + 23) % 24);            // TST start hour of the 時辰 (Zi=23, Chou=01, …)
+        const lon = parseFloat(document.getElementById('longitude').value);
+        const utc = parseFloat(document.getElementById('utc-offset').value) || 0;
+        if (!isFinite(lon)) return null;
+        const tz = -(utc * 60 + (_dstOn ? 60 : 0));  // (UTC - local) minutes, incl. DST
+        const w = XKDGSolarTime.wallClockFromTST(p[0], p[1], p[2], tstH, 0, lon, tz);
+        const pad = n => String(n).padStart(2, '0');
+        return { dateStr: w.y + '-' + pad(w.mo) + '-' + pad(w.d), hhmm: pad(w.h) + ':' + pad(w.mi) };
+    } catch(e){ return null; }
+}
+
+// Open Google Flights (natural-language query, no IATA needed) for the scanned
+// origin → destination on the CIVIL departure date of the favourable hour.
+// Cloudflare Worker that proxies Travelpayouts (holds the API token server-side).
+const FS_FLIGHTS_WORKER = 'https://xkdg-flights.decumano16.workers.dev';
+
+function _fsHHMMtoMin(t){ if(!t) return null; const p = t.split(':'); return (+p[0])*60 + (+p[1]); }
+function _fsMinToHHMM(m){ m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); }
+
+// Real flight search: query the Worker for the route/date, keep flights whose
+// departure time falls in the favourable civil window (strict first; if none,
+// retry ±30 min), and show them in a results panel with booking links.
+async function fsFlightSearch(iso, h){
+    try {
+        const dest = (window._fsFlightDest || '').trim();
+        if (!dest){ alert('Set a destination city in the Direction Calculator, then run "SCAN flight dates" again.'); return; }
+        const orig = (window._fsFlightOrigin || '').trim();
+        const civ = fsFlightCivil(iso, h);
+        const dateStr = (civ && civ.dateStr) ? civ.dateStr : iso;
+        const winStart = civ ? civ.hhmm : null;                 // civil window start 'HH:MM'
+        const winStartMin = winStart ? _fsHHMMtoMin(winStart) : null;
+        const winEndMin = (winStartMin != null) ? winStartMin + 120 : null;   // 2-hour 時辰
+
+        fsFlightShowPanel({ loading:true, date:dateStr, orig:orig, dest:dest, winStart:winStart, winEndMin:winEndMin });
+
+        const url = FS_FLIGHTS_WORKER + '/?action=flights'
+            + '&origin=' + encodeURIComponent(orig || '')
+            + '&dest='   + encodeURIComponent(dest)
+            + '&date='   + encodeURIComponent(dateStr);
+        let data;
+        try { const r = await fetch(url); data = await r.json(); }
+        catch(e){ fsFlightShowPanel({ error:'Network error: ' + e.message, date:dateStr, orig:orig, dest:dest }); return; }
+        if (!data || !data.ok){
+            fsFlightShowPanel({ error:(data && data.error) || 'No data', date:dateStr, orig:orig, dest:dest, searchUrl:(data && data.search_url) });
+            return;
+        }
+
+        const all = Array.isArray(data.flights) ? data.flights : [];
+        function inWin(t, tol){
+            if (!t || winStartMin == null) return true;
+            const mm = _fsHHMMtoMin(t);
+            const lo = winStartMin - tol, hi = winEndMin + tol;
+            if (mm >= lo && mm <= hi) return true;
+            if (hi >= 1440 && mm <= (hi - 1440)) return true;   // wrap past midnight (e.g. 子 hour)
+            if (lo < 0 && mm >= (lo + 1440)) return true;
+            return false;
+        }
+        let matched = all.filter(function(f){ return inWin(f.time, 0); });
+        let note = '';
+        if (matched.length === 0){
+            const relaxed = all.filter(function(f){ return inWin(f.time, 30); });
+            if (relaxed.length){ matched = relaxed; note = 'No flight exactly in the window — showing ±30 min.'; }
+        }
+        fsFlightShowPanel({
+            date:dateStr, orig:data.origin || orig, dest:data.dest || dest,
+            winStart:winStart, winEndMin:winEndMin, flights:matched, note:note,
+            searchUrl:data.search_url, currency:data.currency
+        });
+    } catch(e){ alert('Flight search error: ' + e.message); }
+}
+
+// Floating results panel (works identically from CAL cell and LIST row).
+function fsFlightShowPanel(o){
+    o = o || {};
+    let el = document.getElementById('fs-flights-panel');
+    if (!el){
+        el = document.createElement('div');
+        el.id = 'fs-flights-panel';
+        el.style.cssText = 'position:fixed;z-index:99999;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:80vh;overflow:auto;background:#fff;border:1px solid #ccc;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.3);padding:14px 14px 16px;font-family:inherit;color:#222;';
+        document.body.appendChild(el);
+    }
+    const close = '<button onclick="var p=document.getElementById(\'fs-flights-panel\');if(p)p.remove();" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:20px;cursor:pointer;color:#666;line-height:1;">×</button>';
+    const winTxt = (o.winStart && o.winEndMin != null) ? (o.winStart + '–' + _fsMinToHHMM(o.winEndMin)) : '';
+    let head = '<div style="font-weight:bold;font-size:15px;color:#0b3d91;margin:0 24px 2px 0;">✈ Flights ' + (o.orig || '?') + ' → ' + (o.dest || '?') + '</div>'
+             + '<div style="font-size:12px;color:#555;margin-bottom:10px;">' + (o.date || '') + (winTxt ? (' · favourable window ' + winTxt + ' (civil)') : '') + '</div>';
+    let body = '';
+    if (o.loading){
+        body = '<div style="padding:18px;text-align:center;color:#555;">Searching real flights…</div>';
+    } else if (o.error){
+        body = '<div style="color:#b71c1c;font-size:13px;margin-bottom:10px;">' + o.error + '</div>';
+        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:inline-block;background:#0b8043;color:#fff;text-decoration:none;border-radius:6px;padding:8px 12px;font-weight:bold;">Open Aviasales search</a>';
+    } else {
+        if (o.note) body += '<div style="font-size:12px;color:#b8860b;margin-bottom:8px;">' + o.note + '</div>';
+        if (!o.flights || !o.flights.length){
+            body += '<div style="font-size:13px;color:#555;margin-bottom:10px;">No flight found in the favourable window for this date.</div>';
+        } else {
+            body += o.flights.map(function(f){
+                const stops = (f.transfers != null) ? (f.transfers === 0 ? 'direct' : (f.transfers + ' stop')) : '';
+                return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;">'
+                    + '<div><div style="font-weight:bold;font-size:16px;color:#111;">' + (f.time || '--:--') + '</div>'
+                    + '<div style="font-size:11px;color:#666;">' + (f.flight_number || f.airline || '') + (stops ? (' · ' + stops) : '') + '</div></div>'
+                    + '<div style="text-align:right;"><div style="font-weight:bold;color:#0b8043;">' + (f.price != null ? (f.price + ' ' + (f.currency || '')) : '') + '</div>'
+                    + '<a href="' + (f.booking_url || o.searchUrl || '#') + '" target="_blank" rel="noopener" style="font-size:12px;color:#1565c0;font-weight:bold;text-decoration:none;">Book →</a></div>'
+                    + '</div>';
+            }).join('');
+        }
+        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;font-size:12px;color:#555;text-decoration:none;">See all on Aviasales →</a>';
+    }
+    el.innerHTML = close + head + body;
 }
 
 function showDayInList(isoDate) {
