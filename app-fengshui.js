@@ -1963,18 +1963,20 @@ function fsOpenDirectionCalc(onClose){
   old = document.getElementById('dir-calc-popup');
   if(old) old.remove();
 
-  // Try to get origin from app's GPS/longitude inputs
+  // Origin defaults to the Main page's CURRENT location (the GPS / NOW location set
+  // on the first page). The Main's visible Longitude field is authoritative for the
+  // longitude; the latitude comes from the most recent GPS fix the Main recorded.
   var defLat = '', defLng = '';
   var lonEl = document.getElementById('longitude');
-  if(lonEl && lonEl.value) defLng = lonEl.value;
-  // GPS saved in a previous session (persisted in localStorage) — fills BOTH lat and lng
-  try {
-    var _savedGps = JSON.parse(localStorage.getItem('xkdg_gps') || 'null');
-    if(_savedGps && _savedGps.lat != null){ defLat = String(_savedGps.lat); defLng = String(_savedGps.lng); }
-  } catch(e){}
-  // GPS used in THIS session wins (freshest)
-  if(window._lastGpsLat) defLat = String(window._lastGpsLat);
-  if(window._lastGpsLng) defLng = String(window._lastGpsLng);
+  if (lonEl && lonEl.value) defLng = lonEl.value;                       // Main longitude (what you see)
+  // Latitude from the freshest GPS fix (this session first, then the saved one).
+  if (window._lastGpsLat != null) defLat = String(window._lastGpsLat);
+  else { try { var _g = JSON.parse(localStorage.getItem('xkdg_gps') || 'null'); if (_g && _g.lat != null) defLat = String(_g.lat); } catch(e){} }
+  // If the Main longitude was empty, fall back to the GPS longitude so the pair stays consistent.
+  if (!defLng){
+    if (window._lastGpsLng != null) defLng = String(window._lastGpsLng);
+    else { try { var _g2 = JSON.parse(localStorage.getItem('xkdg_gps') || 'null'); if (_g2 && _g2.lng != null) defLng = String(_g2.lng); } catch(e){} }
+  }
 
   var overlay = document.createElement('div');
   overlay.id = 'dir-calc-overlay';
