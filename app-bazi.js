@@ -5785,7 +5785,15 @@ function buildMonthView() {
                                     var _cfgLV = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
                                         ? (QMDJWaterScanner.checkRotatingPalace(_rotLV, _fsActionPalace) || []).length : 0;
                                     var _evLV = window.TravelPlanner.evalPalace(_pdLV, _cfgLV);
-                                    _dirOKLV = !!(_evLV && _evLV.ok);
+                                    // Favourable departure = favourable Door + San Qi
+                                    // (乙丙丁) on the HEAVEN plate (ti, rotating) —
+                                    // OBLIGATORY — with Warrior/Tiger excluded. Earth-plate
+                                    // San Qi does NOT count (it is constant all day, which
+                                    // would wrongly mark most hours favourable). Other
+                                    // deities (e.g. Red Bird 朱雀) are allowed.
+                                    var _SANQI_H = ['Yi','Bing','Ding'];
+                                    _dirOKLV = !!(_evLV && _evLV.ok && !_evLV.isWarrior && !_evLV.isTiger
+                                                  && _SANQI_H.indexOf(_evLV.ti) !== -1);
                                 }
                             } else {
                                 _dirOKLV = pqRotLV.some(function(h){ return h.palace === _fsActionPalace; })
@@ -6574,7 +6582,13 @@ function runScanner() {
                             var _cfgCountBST = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
                                 ? (QMDJWaterScanner.checkRotatingPalace(_rotChartBST, _fsActionPalace) || []).length : 0;
                             var _evalBST = window.TravelPlanner.evalPalace(_pdBST, _cfgCountBST);
-                            _dirOK = !!(_evalBST && _evalBST.ok);
+                            // Favourable departure = favourable Door + San Qi (乙丙丁)
+                            // on the HEAVEN plate (ti, rotating) — OBLIGATORY — Warrior/
+                            // Tiger excluded. Earth-plate San Qi is ignored (constant all
+                            // day). Red Bird 朱雀 and other deities are allowed.
+                            var _SANQI_HB = ['Yi','Bing','Ding'];
+                            _dirOK = !!(_evalBST && _evalBST.ok && !_evalBST.isWarrior && !_evalBST.isTiger
+                                        && _SANQI_HB.indexOf(_evalBST.ti) !== -1);
                         }
                     } else {
                         // Fallback if the Travel Planner gate isn't available: keep the
