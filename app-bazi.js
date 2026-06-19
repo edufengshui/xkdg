@@ -5869,7 +5869,9 @@ function buildMonthView() {
                 if(s&&window._calBackFrom) s.value=window._calBackFrom;
                 if(d&&window._calBackDays) d.value=window._calBackDays;
                 window._calBackDate=null;
-                setMode('cal');buildCalView();
+                setMode('cal');
+                window._fsFlightCalMode = window._calBackFlight || false;
+                buildCalView();
             " style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #555;background:#fff;color:#555;cursor:pointer;">← Back to Calendar</button>
            </div>`
         : '';
@@ -5911,6 +5913,8 @@ function showDayInList(isoDate) {
     const daysSel  = document.getElementById('scan-days');
     const origFrom = startSel ? startSel.value : null;
     const origDays = daysSel  ? daysSel.value  : null;
+    // Capture ✈ flight mode BEFORE setMode (setMode resets _fsFlightCalMode).
+    const wasFlight = !!window._fsFlightCalMode;
     // Switch to the per-day LIST (month-view) FIRST. setMode('month') clears the
     // back-button state, so we set _calBackDate AFTER it — otherwise the
     // "← Back to Calendar" button never appears. (Previously this called
@@ -5920,10 +5924,12 @@ function showDayInList(isoDate) {
     window._calBackDate   = isoDate;
     window._calBackFrom   = origFrom;
     window._calBackDays   = origDays;
-    // Flag: when LIST renders this specific date, bypass the score filter and the
-    // skip-gate so ALL hours appear (positive AND negative) — user's expectation
-    // when drilling into a single day from the calendar.
-    window._calShowAllForDate = isoDate;
+    window._calBackFlight = wasFlight;   // remember to re-enable ✈ badges on return to CAL
+    // Drill-down hour filtering:
+    //   • Flight mode  → show ONLY the recommended departure hours (keep the normal
+    //     direction + score gate, so non-favourable hours are skipped).
+    //   • Normal CAL   → show ALL hours of that day (positive AND negative).
+    window._calShowAllForDate = wasFlight ? null : isoDate;
     if (startSel) startSel.value = isoDate;
     if (daysSel)  daysSel.value  = 1;
     buildMonthView();
