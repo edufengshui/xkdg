@@ -397,9 +397,27 @@
     var area = document.getElementById('fs-results-area');
     if(!area){ alert('Feng Shui view not active. Open the Feng Shui mode first.'); return; }
     if(typeof FlyingStars === 'undefined'){ alert('flying-stars.js not loaded'); return; }
+
+    // First try inline (original behaviour).
     buildPanel(area);
     var panel = document.getElementById('fscf-panel');
-    if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'});
+
+    // If the inline host is hidden by the current FS layout/section state, the
+    // panel exists but isn't visible (offsetParent === null). In that case rebuild
+    // it as a floating overlay on <body> so it's always shown.
+    if(panel && panel.offsetParent === null){
+      close();                                   // remove the hidden inline panel + results
+      var host = document.createElement('div');
+      host.id = 'fscf-float-host';
+      host.style.cssText = 'position:fixed;z-index:99999;left:50%;top:50%;transform:translate(-50%,-50%);'
+        + 'width:min(520px,94vw);max-height:88vh;overflow:auto;background:#e3f2fd;border-radius:10px;'
+        + 'box-shadow:0 12px 48px rgba(0,0,0,.35);';
+      document.body.appendChild(host);
+      buildPanel(host);                          // panel + results now live in the visible host
+      panel = document.getElementById('fscf-panel');
+    }
+
+    try { if(panel) panel.scrollIntoView({behavior:'smooth', block:'start'}); } catch(e){}
   }
 
   function close(){
@@ -407,6 +425,8 @@
     if(panel) panel.remove();
     var res = document.getElementById('fscf-results');
     if(res) res.remove();
+    var host = document.getElementById('fscf-float-host');
+    if(host) host.remove();
   }
 
   window.FSChartFinder = {
