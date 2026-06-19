@@ -4543,6 +4543,7 @@ function buildCalView() {
             if (!c || r.score > c.score) _flightBestByDay[r.isoDate] = r;
         });
     }
+    window._fsFlightBestByDay = _flightBestByDay;  // for the "search ALL favourable flights" action
     function _flightHourCell(iso){
         const r = _flightBestByDay[iso];
         if (!r) return '';
@@ -4886,7 +4887,16 @@ function buildCalView() {
         <button onclick="shiftCalMonth(6)"  style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">+6m</button>
     </div>`;
 
-    document.getElementById('cal-view').innerHTML = calNavHtml + html;
+    // ✈ Big "search ALL favourable flights in this period" button (flight mode only).
+    let _flightAllBtn = '';
+    if (window._fsFlightCalMode && Object.keys(_flightBestByDay).length) {
+        const _nDays = Object.keys(_flightBestByDay).length;
+        _flightAllBtn = '<div style="text-align:center;margin:10px 0 4px;">'
+            + '<button onclick="fsFlightSearchAll()" style="background:#0b8043;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">🔎 Search ALL favourable flights (' + _nDays + ' days)</button>'
+            + '<div style="font-size:11px;color:#777;margin-top:3px;">Searches every favourable day in this view for flights in its positive window</div></div>';
+    }
+
+    document.getElementById('cal-view').innerHTML = calNavHtml + _flightAllBtn + html + _flightAllBtn;
     const cvEl = document.getElementById('cal-view'); if(cvEl) cvEl.style.display = 'block';
     const srEl1 = document.getElementById('scan-results'); if(srEl1) srEl1.style.display = 'none';
     const mvEl1 = document.getElementById('month-view'); if(mvEl1) mvEl1.style.display = 'none';
@@ -5825,10 +5835,10 @@ function buildMonthView() {
             // ✈ Flight search button — only in flight context (direction filter +
             // destination set by "SCAN flight dates"). Shows the civil departure time.
             let _flightBtnLV = '';
-            if (window._fsFlightDest && _fsActionPalace && typeof fsFlightSearch === 'function') {
+            if ((window._calBackFlight || (window._fsFlightDest && _fsActionPalace)) && typeof fsFlightSearch === 'function') {
                 const _civLV = (typeof fsFlightCivil === 'function') ? fsFlightCivil(isoDate, h) : null;
                 const _civTxtLV = _civLV ? _civLV.hhmm : '';
-                _flightBtnLV = `<button onclick="event.stopPropagation();fsFlightSearch('${isoDate}',${h})" title="Search flights${_civTxtLV ? ' — civil departure ' + _civTxtLV : ''}" style="margin-top:3px;background:#0b8043;color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:10px;font-weight:bold;cursor:pointer;">🔎 Flights${_civTxtLV ? ' · ' + _civTxtLV : ''}</button>`;
+                _flightBtnLV = `<button onclick="event.stopPropagation();fsFlightSearch('${isoDate}',${h})" title="Search flights${_civTxtLV ? ' — civil departure ' + _civTxtLV : ''}" style="margin-top:3px;background:#0b8043;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;">🔎 Search flights${_civTxtLV ? ' · ' + _civTxtLV : ''}</button>`;
             }
 
             const rowHtml = `${jqBannerLV}<div onclick="loadDateIntoMain('${isoDate}',${h})"
@@ -5957,55 +5967,122 @@ const FS_FLIGHTS_WORKER = 'https://xkdg-flights.decumano16.workers.dev';
 function _fsHHMMtoMin(t){ if(!t) return null; const p = t.split(':'); return (+p[0])*60 + (+p[1]); }
 function _fsMinToHHMM(m){ m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); }
 
-// Real flight search: query the Worker for the route/date, keep flights whose
-// departure time falls in the favourable civil window (strict first; if none,
-// retry ±30 min), and show them in a results panel with booking links.
+// Resolve origin/destination from any available source (captured globals → live
+// Direction Calculator fields → localStorage → prompt). Persists what it finds.
+function _fsResolveRoute(promptIfMissing){
+    const clean = function(v){ return (v || '').trim(); };
+    let dest = clean(window._fsFlightDest);
+    let orig = clean(window._fsFlightOrigin);
+    const dEl = document.getElementById('dir-dest-addr'); if (!dest && dEl) dest = clean(dEl.value);
+    const oEl = document.getElementById('dir-orig-addr'); if (!orig && oEl) orig = clean(oEl.value);
+    try { if (!dest) dest = clean(localStorage.getItem('xkdg_flight_dest')); } catch(e){}
+    try { if (!orig) orig = clean(localStorage.getItem('xkdg_flight_orig')); } catch(e){}
+    if (!dest && promptIfMissing) dest = clean(prompt('Destination city for the flight search (e.g. Milano):', ''));
+    if (!orig && promptIfMissing) orig = clean(prompt('Origin city (leave empty to let the site decide):', orig || ''));
+    if (dest){ window._fsFlightDest = dest; try { localStorage.setItem('xkdg_flight_dest', dest); } catch(e){} }
+    if (orig){ window._fsFlightOrigin = orig; try { localStorage.setItem('xkdg_flight_orig', orig); } catch(e){} }
+    return dest ? { orig: orig, dest: dest } : null;
+}
+
+// Civil departure window for a favourable (date, hourIndex): {dateStr, winStart, winStartMin, winEndMin}
+function _fsFlightWindow(iso, h){
+    const civ = (typeof fsFlightCivil === 'function') ? fsFlightCivil(iso, h) : null;
+    const dateStr = (civ && civ.dateStr) ? civ.dateStr : iso;
+    const winStart = civ ? civ.hhmm : null;
+    const winStartMin = winStart ? _fsHHMMtoMin(winStart) : null;
+    const winEndMin = (winStartMin != null) ? winStartMin + 120 : null;
+    return { dateStr: dateStr, winStart: winStart, winStartMin: winStartMin, winEndMin: winEndMin };
+}
+
+// Two-tier filter: strict window first; if empty, ±30 min. Returns {flights, note}.
+function _fsFilterByWindow(all, winStartMin, winEndMin){
+    function inWin(t, tol){
+        if (!t || winStartMin == null) return true;
+        const mm = _fsHHMMtoMin(t);
+        const lo = winStartMin - tol, hi = winEndMin + tol;
+        if (mm >= lo && mm <= hi) return true;
+        if (hi >= 1440 && mm <= (hi - 1440)) return true;
+        if (lo < 0 && mm >= (lo + 1440)) return true;
+        return false;
+    }
+    let matched = (all || []).filter(function(f){ return inWin(f.time, 0); });
+    let note = '';
+    if (matched.length === 0){
+        const relaxed = (all || []).filter(function(f){ return inWin(f.time, 30); });
+        if (relaxed.length){ matched = relaxed; note = '±30 min'; }
+    }
+    return { flights: matched, note: note };
+}
+
+async function _fsFetchFlights(orig, dest, dateStr){
+    const url = FS_FLIGHTS_WORKER + '/?action=flights'
+        + '&origin=' + encodeURIComponent(orig || '')
+        + '&dest='   + encodeURIComponent(dest)
+        + '&date='   + encodeURIComponent(dateStr);
+    const r = await fetch(url);
+    return await r.json();
+}
+
+// Real flight search for ONE favourable day.
 async function fsFlightSearch(iso, h){
     try {
-        const dest = (window._fsFlightDest || '').trim();
-        if (!dest){ alert('Set a destination city in the Direction Calculator, then run "SCAN flight dates" again.'); return; }
-        const orig = (window._fsFlightOrigin || '').trim();
-        const civ = fsFlightCivil(iso, h);
-        const dateStr = (civ && civ.dateStr) ? civ.dateStr : iso;
-        const winStart = civ ? civ.hhmm : null;                 // civil window start 'HH:MM'
-        const winStartMin = winStart ? _fsHHMMtoMin(winStart) : null;
-        const winEndMin = (winStartMin != null) ? winStartMin + 120 : null;   // 2-hour 時辰
+        const route = _fsResolveRoute(true);
+        if (!route){ return; }   // user cancelled the destination prompt
+        const orig = route.orig, dest = route.dest;
+        const w = _fsFlightWindow(iso, h);
 
-        fsFlightShowPanel({ loading:true, date:dateStr, orig:orig, dest:dest, winStart:winStart, winEndMin:winEndMin });
+        fsFlightShowPanel({ loading:true, date:w.dateStr, orig:orig, dest:dest, winStart:w.winStart, winEndMin:w.winEndMin });
 
-        const url = FS_FLIGHTS_WORKER + '/?action=flights'
-            + '&origin=' + encodeURIComponent(orig || '')
-            + '&dest='   + encodeURIComponent(dest)
-            + '&date='   + encodeURIComponent(dateStr);
         let data;
-        try { const r = await fetch(url); data = await r.json(); }
-        catch(e){ fsFlightShowPanel({ error:'Network error: ' + e.message, date:dateStr, orig:orig, dest:dest }); return; }
+        try { data = await _fsFetchFlights(orig, dest, w.dateStr); }
+        catch(e){ fsFlightShowPanel({ error:'Network error: ' + e.message, date:w.dateStr, orig:orig, dest:dest }); return; }
         if (!data || !data.ok){
-            fsFlightShowPanel({ error:(data && data.error) || 'No data', date:dateStr, orig:orig, dest:dest, searchUrl:(data && data.search_url) });
+            fsFlightShowPanel({ error:(data && data.error) || 'No data', date:w.dateStr, orig:orig, dest:dest, searchUrl:(data && data.search_url) });
             return;
         }
-
-        const all = Array.isArray(data.flights) ? data.flights : [];
-        function inWin(t, tol){
-            if (!t || winStartMin == null) return true;
-            const mm = _fsHHMMtoMin(t);
-            const lo = winStartMin - tol, hi = winEndMin + tol;
-            if (mm >= lo && mm <= hi) return true;
-            if (hi >= 1440 && mm <= (hi - 1440)) return true;   // wrap past midnight (e.g. 子 hour)
-            if (lo < 0 && mm >= (lo + 1440)) return true;
-            return false;
-        }
-        let matched = all.filter(function(f){ return inWin(f.time, 0); });
-        let note = '';
-        if (matched.length === 0){
-            const relaxed = all.filter(function(f){ return inWin(f.time, 30); });
-            if (relaxed.length){ matched = relaxed; note = 'No flight exactly in the window — showing ±30 min.'; }
-        }
+        const filt = _fsFilterByWindow(data.flights || [], w.winStartMin, w.winEndMin);
         fsFlightShowPanel({
-            date:dateStr, orig:data.origin || orig, dest:data.dest || dest,
-            winStart:winStart, winEndMin:winEndMin, flights:matched, note:note,
+            date:w.dateStr, orig:data.origin || orig, dest:data.dest || dest,
+            winStart:w.winStart, winEndMin:w.winEndMin, flights:filt.flights,
+            note: filt.note ? ('No flight exactly in the window — showing ' + filt.note + '.') : '',
             searchUrl:data.search_url, currency:data.currency
         });
+    } catch(e){ alert('Flight search error: ' + e.message); }
+}
+
+// Real flight search across ALL favourable days currently shown on the calendar.
+async function fsFlightSearchAll(){
+    try {
+        const route = _fsResolveRoute(true);
+        if (!route){ return; }
+        const orig = route.orig, dest = route.dest;
+        const map = window._fsFlightBestByDay || {};
+        const isos = Object.keys(map).sort();
+        if (!isos.length){ alert('No favourable days in view. Run "SCAN flight dates" first.'); return; }
+
+        fsFlightShowPanel({ loading:true, multi:true, orig:orig, dest:dest, loadingMsg:'Searching ' + isos.length + ' favourable days…' });
+
+        const tasks = isos.map(async function(iso){
+            const r = map[iso];
+            const w = _fsFlightWindow(iso, r.hourIndex);
+            let data = null;
+            try { data = await _fsFetchFlights(orig, dest, w.dateStr); } catch(e){ data = null; }
+            const ok = data && data.ok;
+            const filt = ok ? _fsFilterByWindow(data.flights || [], w.winStartMin, w.winEndMin) : { flights: [], note: '' };
+            return {
+                date: w.dateStr, winStart: w.winStart, winEndMin: w.winEndMin,
+                flights: filt.flights, note: filt.note,
+                searchUrl: ok ? data.search_url : null
+            };
+        });
+        const groups = await Promise.all(tasks);
+        // Sort: days with matches first, then by date
+        groups.sort(function(a,b){
+            const am = a.flights.length ? 0 : 1, bm = b.flights.length ? 0 : 1;
+            if (am !== bm) return am - bm;
+            return a.date < b.date ? -1 : 1;
+        });
+        fsFlightShowPanel({ multi:true, orig:orig, dest:dest, groups:groups });
     } catch(e){ alert('Flight search error: ' + e.message); }
 }
 
@@ -6020,6 +6097,45 @@ function fsFlightShowPanel(o){
         document.body.appendChild(el);
     }
     const close = '<button onclick="var p=document.getElementById(\'fs-flights-panel\');if(p)p.remove();" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:20px;cursor:pointer;color:#666;line-height:1;">×</button>';
+
+    // Render a single flight row
+    function flightRow(f, fallbackUrl){
+        const stops = (f.transfers != null) ? (f.transfers === 0 ? 'direct' : (f.transfers + ' stop')) : '';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;">'
+            + '<div><div style="font-weight:bold;font-size:16px;color:#111;">' + (f.time || '--:--') + '</div>'
+            + '<div style="font-size:11px;color:#666;">' + (f.flight_number || f.airline || '') + (stops ? (' · ' + stops) : '') + '</div></div>'
+            + '<div style="text-align:right;"><div style="font-weight:bold;color:#0b8043;">' + (f.price != null ? (f.price + ' ' + (f.currency || '')) : '') + '</div>'
+            + '<a href="' + (f.booking_url || fallbackUrl || '#') + '" target="_blank" rel="noopener" style="font-size:12px;color:#1565c0;font-weight:bold;text-decoration:none;">Book →</a></div>'
+            + '</div>';
+    }
+
+    // ---- MULTI-DATE (search across the whole period) ----
+    if (o.multi){
+        let head = '<div style="font-weight:bold;font-size:15px;color:#0b3d91;margin:0 24px 8px 0;">✈ Favourable flights ' + (o.orig || '?') + ' → ' + (o.dest || '?') + '</div>';
+        let body = '';
+        if (o.loading){
+            body = '<div style="padding:18px;text-align:center;color:#555;">' + (o.loadingMsg || 'Searching…') + '<br><span style="font-size:11px;">(may take a few seconds)</span></div>';
+        } else {
+            const groups = o.groups || [];
+            const withFlights = groups.filter(function(g){ return g.flights && g.flights.length; });
+            body += '<div style="font-size:12px;color:#555;margin-bottom:8px;">' + withFlights.length + ' of ' + groups.length + ' favourable days have a flight in the window.</div>';
+            body += groups.map(function(g){
+                const winTxt = (g.winStart && g.winEndMin != null) ? (g.winStart + '–' + _fsMinToHHMM(g.winEndMin)) : '';
+                let h = '<div style="margin:10px 0 4px;font-weight:bold;font-size:13px;color:#0b3d91;border-top:1px solid #eee;padding-top:8px;">' + g.date + (winTxt ? ' <span style="font-weight:normal;color:#888;font-size:11px;">· ' + winTxt + '</span>' : '') + '</div>';
+                if (g.flights && g.flights.length){
+                    if (g.note) h += '<div style="font-size:11px;color:#b8860b;margin-bottom:4px;">' + g.note + ' window</div>';
+                    h += g.flights.map(function(f){ return flightRow(f, g.searchUrl); }).join('');
+                } else {
+                    h += '<div style="font-size:12px;color:#999;margin-bottom:4px;">no flight in window' + (g.searchUrl ? ' · <a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">check on Aviasales →</a>' : '') + '</div>';
+                }
+                return h;
+            }).join('');
+        }
+        el.innerHTML = close + head + body;
+        return;
+    }
+
+    // ---- SINGLE DAY ----
     const winTxt = (o.winStart && o.winEndMin != null) ? (o.winStart + '–' + _fsMinToHHMM(o.winEndMin)) : '';
     let head = '<div style="font-weight:bold;font-size:15px;color:#0b3d91;margin:0 24px 2px 0;">✈ Flights ' + (o.orig || '?') + ' → ' + (o.dest || '?') + '</div>'
              + '<div style="font-size:12px;color:#555;margin-bottom:10px;">' + (o.date || '') + (winTxt ? (' · favourable window ' + winTxt + ' (civil)') : '') + '</div>';
@@ -6034,15 +6150,7 @@ function fsFlightShowPanel(o){
         if (!o.flights || !o.flights.length){
             body += '<div style="font-size:13px;color:#555;margin-bottom:10px;">No flight found in the favourable window for this date.</div>';
         } else {
-            body += o.flights.map(function(f){
-                const stops = (f.transfers != null) ? (f.transfers === 0 ? 'direct' : (f.transfers + ' stop')) : '';
-                return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;">'
-                    + '<div><div style="font-weight:bold;font-size:16px;color:#111;">' + (f.time || '--:--') + '</div>'
-                    + '<div style="font-size:11px;color:#666;">' + (f.flight_number || f.airline || '') + (stops ? (' · ' + stops) : '') + '</div></div>'
-                    + '<div style="text-align:right;"><div style="font-weight:bold;color:#0b8043;">' + (f.price != null ? (f.price + ' ' + (f.currency || '')) : '') + '</div>'
-                    + '<a href="' + (f.booking_url || o.searchUrl || '#') + '" target="_blank" rel="noopener" style="font-size:12px;color:#1565c0;font-weight:bold;text-decoration:none;">Book →</a></div>'
-                    + '</div>';
-            }).join('');
+            body += o.flights.map(function(f){ return flightRow(f, o.searchUrl); }).join('');
         }
         if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;font-size:12px;color:#555;text-decoration:none;">See all on Aviasales →</a>';
     }
