@@ -3318,6 +3318,7 @@ let _currentMode = 'dates';
 
 function setMode(mode) {
     _currentMode = mode;
+    window._fsFlightCalMode = false; // reset ✈ flight-hour annotation on any mode change
     if (mode === 'month') window._calBackDate = null; // clear back button when LIST opened manually
     // Reset the FS "matching dates" flag when leaving the FS view, so the
     // next time the user enters FS they see the live auto-rendered analysis
@@ -4531,6 +4532,24 @@ function buildCalView() {
     const today    = new Date().toISOString().split('T')[0];
     const DOW      = ['Mo','Tu','We','Th','Fr','Sa','Su'];
 
+    // ✈ Flight mode: annotate each favourable day with the best departure HOUR
+    // from the last direction-filtered scan (_scanResults). Only active right
+    // after "SCAN flight dates" (window._fsFlightCalMode), reset on any mode change.
+    const _flightBestByDay = {};
+    if (window._fsFlightCalMode && typeof _scanResults !== 'undefined' && _scanResults && _scanResults.length) {
+        _scanResults.forEach(function(r){
+            if (!r || !r.isoDate || r.score == null) return;
+            const c = _flightBestByDay[r.isoDate];
+            if (!c || r.score > c.score) _flightBestByDay[r.isoDate] = r;
+        });
+    }
+    function _flightHourCell(iso){
+        const r = _flightBestByDay[iso];
+        if (!r) return '';
+        const hr = r.hour || ((typeof HOUR_ROMAN !== 'undefined' && HOUR_ROMAN[r.hourIndex]) ? HOUR_ROMAN[r.hourIndex] : '');
+        return '<div title="Suggested departure (TST)" style="margin-top:2px;background:#1565c0;color:#fff;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;text-align:center;line-height:1.25;">✈ ' + hr + ' · ' + r.score + '</div>';
+    }
+
     // Build set of Jieqi dates for quick lookup
     const jieqiDates = {}; // isoDate → {name, isMajor}
     // Major Jieqi (节 — month starters): odd indices 0,2,4...
@@ -4626,7 +4645,7 @@ function buildCalView() {
                     <div style="display:flex;justify-content:space-between;">
                         <span class="cal-day-num">${dd}${personTagsCAL}</span>
                         <span class="cal-stem" style="color:${stemColor2};font-size:9px;">${dGan}<br>${dZhi}</span>
-                    </div>${jqHtmlSimple}</div>`;
+                    </div>${jqHtmlSimple}${_flightHourCell(isoDate)}</div>`;
                 continue;
             }
 
@@ -4840,6 +4859,7 @@ function buildCalView() {
                     </div>
                     ${_clashIcon}
                     ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
+                    ${_flightHourCell(isoDate)}
                 </div>
                 ${jieqiHTML ? `<div style="border-top:1px solid #ddd;margin-top:2px;padding-top:1px;">${jieqiHTML}</div>` : ''}
             </div>`;
@@ -5889,19 +5909,26 @@ function showDayInList(isoDate) {
     // Save current FROM/DAYS to restore when going back
     const startSel = document.getElementById('scan-start');
     const daysSel  = document.getElementById('scan-days');
+    const origFrom = startSel ? startSel.value : null;
+    const origDays = daysSel  ? daysSel.value  : null;
+    // Switch to the per-day LIST (month-view) FIRST. setMode('month') clears the
+    // back-button state, so we set _calBackDate AFTER it — otherwise the
+    // "← Back to Calendar" button never appears. (Previously this called
+    // setMode('list'), an unrecognised mode that left month-view hidden, so the
+    // day click appeared to do nothing.)
+    setMode('month');
     window._calBackDate   = isoDate;
-    window._calBackFrom   = startSel ? startSel.value : null;
-    window._calBackDays   = daysSel  ? daysSel.value  : null;
+    window._calBackFrom   = origFrom;
+    window._calBackDays   = origDays;
     // Flag: when LIST renders this specific date, bypass the score filter and the
     // skip-gate so ALL hours appear (positive AND negative) — user's expectation
     // when drilling into a single day from the calendar.
     window._calShowAllForDate = isoDate;
-    // Switch to LIST mode showing only that single day
-    setMode('list');
     if (startSel) startSel.value = isoDate;
     if (daysSel)  daysSel.value  = 1;
     buildMonthView();
-    window.scrollTo({ top: document.getElementById('month-view').offsetTop - 60, behavior: 'smooth' });
+    const _mv = document.getElementById('month-view');
+    if (_mv) window.scrollTo({ top: _mv.offsetTop - 60, behavior: 'smooth' });
 }
 
 // ── TRAVEL PLANNER helper (additive) ─────────────────────────────────────────

@@ -2182,8 +2182,17 @@ function fsDirectionScanFlights(){
   var p = document.getElementById('dir-calc-popup'); if(p) p.remove();
   var o = document.getElementById('dir-calc-overlay'); if(o) o.remove();
 
-  // 5) Run the BEST scan (filtered to the flight direction).
-  if(typeof runScanner === 'function'){ runScanner(); }
+  // 5) Run the scan (filtered to the flight direction) to compute the per-hour
+  //    results, then show them on the CALENDAR with the suggested departure hour
+  //    on each favourable day. Clicking a day drills into that day's LIST.
+  if(typeof runScanner === 'function'){
+    runScanner();
+    if(typeof setMode === 'function' && typeof buildCalView === 'function'){
+      setMode('cal');                 // resets _fsFlightCalMode
+      window._fsFlightCalMode = true; // enable ✈ hour badges for this scan
+      buildCalView();
+    }
+  }
   else { alert('Scanner not available on this page.'); }
 }
 
