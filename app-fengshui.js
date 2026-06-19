@@ -2037,6 +2037,38 @@ function fsOpenDirectionCalc(onClose){
   overlay.onclick = function(e){ if(e.target === overlay){ fsCloseDirectionCalc(); } };
   document.body.appendChild(overlay);
   document.body.appendChild(popup);
+  try { _fsDirRestore(); } catch(e){}
+}
+
+// Persist / restore the Direction Calculator origin+destination so the user
+// doesn't have to re-enter them every time the panel (or page) is reopened.
+function _fsDirSave(){
+  try {
+    var g = function(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+    var route = {
+      oAddr: g('dir-orig-addr'), oLat: g('dir-orig-lat'), oLng: g('dir-orig-lng'),
+      dAddr: g('dir-dest-addr'), dLat: g('dir-dest-lat'), dLng: g('dir-dest-lng')
+    };
+    localStorage.setItem('xkdg_dir_route', JSON.stringify(route));
+    // Keep the flight-search route in sync too (used by the 🔎 buttons).
+    if (route.dAddr){ window._fsFlightDest = route.dAddr; localStorage.setItem('xkdg_flight_dest', route.dAddr); }
+    if (route.oAddr){ window._fsFlightOrigin = route.oAddr; localStorage.setItem('xkdg_flight_orig', route.oAddr); }
+  } catch(e){}
+}
+function _fsDirRestore(){
+  try {
+    var route = JSON.parse(localStorage.getItem('xkdg_dir_route') || 'null');
+    if (!route) return;
+    var set = function(id, v){ var e = document.getElementById(id); if (e && v) e.value = v; };
+    // Destination: always restore (it has no other default source).
+    set('dir-dest-addr', route.dAddr); set('dir-dest-lat', route.dLat); set('dir-dest-lng', route.dLng);
+    // Origin: restore the city name; keep the live Main/GPS coordinates if already
+    // filled (so origin still reflects "where I am now"), else use the saved ones.
+    set('dir-orig-addr', route.oAddr);
+    var ol = document.getElementById('dir-orig-lat'), og = document.getElementById('dir-orig-lng');
+    if (ol && !ol.value && route.oLat) ol.value = route.oLat;
+    if (og && !og.value && route.oLng) og.value = route.oLng;
+  } catch(e){}
 }
 
 function fsDirectionGPS(){
@@ -2073,6 +2105,7 @@ function fsDirectionGeocodeOrigin(){
     document.getElementById('dir-orig-lat').value = parseFloat(place.lat).toFixed(6);
     document.getElementById('dir-orig-lng').value = parseFloat(place.lon).toFixed(6);
     if(status) status.textContent = '✓ Origin: ' + place.display_name.substring(0, 80);
+    try { _fsDirSave(); } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Origin geocoding error: ' + err.message;
@@ -2097,6 +2130,7 @@ function fsDirectionGeocode(){
     document.getElementById('dir-dest-lat').value = parseFloat(place.lat).toFixed(6);
     document.getElementById('dir-dest-lng').value = parseFloat(place.lon).toFixed(6);
     if(status) status.textContent = '✓ Found: ' + place.display_name.substring(0, 80);
+    try { _fsDirSave(); } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Geocoding error: ' + err.message;
@@ -2110,6 +2144,7 @@ function fsDirectionCalc(){
   var lng2 = parseFloat(document.getElementById('dir-dest-lng').value);
   if(isNaN(lat1)||isNaN(lng1)){ alert('Enter Origin coordinates or use GPS.'); return; }
   if(isNaN(lat2)||isNaN(lng2)){ alert('Enter Destination address and click Find.'); return; }
+  try { _fsDirSave(); } catch(e){}
 
   var deg = _fsBearing(lat1, lng1, lat2, lng2);
   var dir = _fsBearingToDir8(deg);
@@ -2181,6 +2216,19 @@ function fsDirectionScanFlights(){
   _fsDirReturn = null;
   var p = document.getElementById('dir-calc-popup'); if(p) p.remove();
   var o = document.getElementById('dir-calc-overlay'); if(o) o.remove();
+
+  // Capture origin/destination for the ✈ flight-search buttons (CAL + LIST).
+  // Prefer the typed city names; fall back to coordinates if no city given.
+  try {
+    var _oa = document.getElementById('dir-orig-addr');
+    var _da = document.getElementById('dir-dest-addr');
+    var _olat = document.getElementById('dir-orig-lat'), _olng = document.getElementById('dir-orig-lng');
+    var _dlat = document.getElementById('dir-dest-lat'), _dlng = document.getElementById('dir-dest-lng');
+    window._fsFlightOrigin = (_oa && _oa.value.trim()) ? _oa.value.trim()
+        : ((_olat && _olng && _olat.value && _olng.value) ? (_olat.value + ',' + _olng.value) : '');
+    window._fsFlightDest = (_da && _da.value.trim()) ? _da.value.trim()
+        : ((_dlat && _dlng && _dlat.value && _dlng.value) ? (_dlat.value + ',' + _dlng.value) : '');
+  } catch(e){}
 
   // 5) Run the scan (filtered to the flight direction) to compute the per-hour
   //    results, then show them on the CALENDAR with the suggested departure hour
