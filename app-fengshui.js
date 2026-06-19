@@ -6438,9 +6438,11 @@ function _fsUpdateLuopanVis(){
     // House Profiles also belong to the main sector only.
     var hp = document.getElementById('fs-house-profiles');
     if (hp) hp.style.display = inSection ? 'none' : '';
-    // Water-activation quadrant block: main sector only.
+    // General water-feature block: it is the ① part of the Water section, so it
+    // must stay visible there. Hide it only in the Bed/Desk sections. (In MAIN it
+    // sits inside the hidden zone-tools wrapper, so display:'' is harmless.)
     var wact = document.getElementById('fs-wateract-block');
-    if (wact) wact.style.display = inSection ? 'none' : '';
+    if (wact) wact.style.display = (inSection && window._fsActiveZone !== 'water') ? 'none' : '';
     // Operative area: main sector only.
     var op = document.getElementById('fs-operative');
     if (op) op.style.display = inSection ? 'none' : '';
