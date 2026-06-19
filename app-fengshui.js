@@ -404,7 +404,7 @@ function buildFengShuiView(){
       <!-- ═══ XKDG DOOR (🚪) — SECOND ═══ -->
       <div style="background:#fdf6e3;border:1px solid #c9a84c;border-radius:6px;padding:8px;margin-bottom:10px;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px;">
-          <span style="font-size:11px;color:#c9a84c;font-weight:bold;">② 🚪 Internal Door</span>
+          <span style="font-size:11px;color:#c9a84c;font-weight:bold;">② 🚪 Internal Door Facing</span>
           <span style="color:#666;font-size:11px;">PERIOD:</span>
           <button id="fs-period-btn" onclick="fsTogglePeriod()" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">NOW → 2044</button>
           <span id="fs-period-lbl" style="font-style:italic;color:#8a6a1f;font-size:11px;">Zheng Shen = 6-9</span>
@@ -5393,11 +5393,23 @@ function fsSelectZone(zone){
       if (bedPanel) bedPanel.style.display = 'none';
       if (deskPanel) deskPanel.style.display = 'none';
       if (generic) generic.style.display = 'block';
-      // Guarantee the ① General Water box sits at the TOP of the Water section,
-      // even if the one-time build relocation didn't apply.
+      // Water section order (robust against the fragile one-time relocation):
+      //   ① General water feature (by palace)  →  ② Internal Door Facing  →  rest.
       try {
-        var gw = document.getElementById('fs-wateract-block');
-        if (gw && generic && generic.firstElementChild !== gw) generic.insertBefore(gw, generic.firstChild);
+        if (generic){
+          var gw = document.getElementById('fs-wateract-block');
+          // Find the Internal Door block = the wrapper of #fs-facing that is a
+          // direct child of the generic container.
+          var doorBlk = document.getElementById('fs-facing');
+          while (doorBlk && doorBlk.parentNode && doorBlk.parentNode !== generic) doorBlk = doorBlk.parentNode;
+          // ① General Water first.
+          if (gw && generic.firstElementChild !== gw) generic.insertBefore(gw, generic.firstChild);
+          // ② Internal Door Facing right after ① (only if it's a child of generic).
+          if (doorBlk && doorBlk.parentNode === generic){
+            var afterGw = gw ? gw.nextSibling : generic.firstChild;
+            if (doorBlk !== afterGw) generic.insertBefore(doorBlk, afterGw);
+          }
+        }
       } catch(e){}
     }
     if (typeof fsRedraw === 'function') fsRedraw();
