@@ -3386,8 +3386,9 @@ function fsRenderHouseProfiles(){
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>';
     if (!(f.zones && f.zones.length)) _addBtns += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🌀 Add Zone</button>';
-    // "+ Add a new guest" — at the END of the Add series (one guest per house).
-    if (!(h.guest && h.guest.name)) _addBtns += '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as intestatario #2 (considered in every scan, like Person B)" style="background:#1565c0;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">👥 Add a new guest</button>';
+    // "+ Add a new guest" — pushed to the RIGHT and visually separated from the
+    // placement "Add" buttons (it's a different kind of action).
+    if (!(h.guest && h.guest.name)) _addBtns += '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as occupant #2 (considered in every scan, like Person B)" style="margin-left:auto;background:#0d47a1;color:#fff;border:1px solid #82b1ff;border-radius:4px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 1px 3px rgba(13,71,161,.3);">👥 Add a new guest</button>';
     // Floor plan button(s) — leftmost in the bottom row, before the Add buttons.
     var _fpBtns;
     if (f && f.floorplan && f.floorplan.imgData){
@@ -3465,7 +3466,7 @@ function fsAddNewHouse(){
   var pADate = ((document.getElementById('person-date') || {}).value || '').trim();
   var pATime = ((document.getElementById('person-time') || {}).value || '').trim();
 
-  var owner = prompt('Who is this house registered to?  (owner — intestatario #1)', pAName || '');
+  var owner = prompt('Who is this house registered to?  (owner — occupant #1)', pAName || '');
   if (owner === null) return;
   owner = owner.trim();
   if (!owner){ alert('An owner name is required.'); return; }
@@ -3775,7 +3776,7 @@ function fsAddGuest(personName, hi){
   try {
     var all = _fsHousesLoad();
     var house = (all[personName] || [])[hi]; if (!house) return;
-    var name = prompt('Guest name (intestatario #2 — invited to stay):', '');
+    var name = prompt('Guest name (occupant #2 — invited to stay):', '');
     if (name === null || !name.trim()) return;
     name = name.trim();
     var date = prompt('Birth date of ' + name + '  (YYYY-MM-DD):', '');
