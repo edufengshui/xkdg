@@ -4580,13 +4580,26 @@ function buildCalView() {
         });
     }
     window._fsFlightBestByDay = _flightBestByDay;  // for the "search ALL favourable flights" action
+    // Per-day selection for the bulk search. Default: all favourable days ticked.
+    // Reset to all-ticked whenever the favourable-day set changes (new scan/period).
+    (function(){
+        const isos = Object.keys(_flightBestByDay).sort();
+        const sig = isos.join(',');
+        if (window._fsFlightSelSig !== sig){
+            window._fsFlightSel = {};
+            isos.forEach(function(i){ window._fsFlightSel[i] = true; });
+            window._fsFlightSelSig = sig;
+        }
+    })();
     function _flightHourCell(iso){
         const r = _flightBestByDay[iso];
         if (!r) return '';
         const hr = r.hour || ((typeof HOUR_ROMAN !== 'undefined' && HOUR_ROMAN[r.hourIndex]) ? HOUR_ROMAN[r.hourIndex] : '');
         const civ = (typeof fsFlightCivil === 'function') ? fsFlightCivil(iso, r.hourIndex) : null;
         const civTxt = civ ? civ.hhmm : '';
-        let out = '<div title="Suggested departure (TST)" style="margin-top:2px;background:#1565c0;color:#fff;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;text-align:center;line-height:1.25;">✈ ' + hr + ' · ' + r.score + '</div>';
+        const checked = (window._fsFlightSel && window._fsFlightSel[iso]) ? 'checked' : '';
+        let out = '<label title="Include this day in the bulk search" onclick="event.stopPropagation();" style="display:block;text-align:right;margin-top:1px;line-height:1;cursor:pointer;"><input type="checkbox" ' + checked + ' onchange="event.stopPropagation();fsFlightToggleSel(\'' + iso + '\',this.checked)" style="margin:0;cursor:pointer;transform:scale(0.95);"></label>';
+        out += '<div title="Suggested departure (TST)" style="margin-top:1px;background:#1565c0;color:#fff;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;text-align:center;line-height:1.25;">✈ ' + hr + ' · ' + r.score + '</div>';
         out += '<button onclick="event.stopPropagation();fsFlightOpen(\'' + iso + '\',' + r.hourIndex + ')" title="Flights' + (civTxt ? ' — civil departure ' + civTxt : '') + '" style="margin-top:2px;width:100%;background:#0b8043;color:#fff;border:none;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;cursor:pointer;line-height:1.25;">✈ ' + (civTxt || 'flights') + '</button>';
         return out;
     }
@@ -4923,11 +4936,12 @@ function buildCalView() {
         <button onclick="shiftCalMonth(6)"  style="padding:3px 8px;border-radius:8px;border:1px solid #795548;background:#fff;color:#795548;font-size:11px;cursor:pointer;">+6m</button>
     </div>`;
 
-    // ✈ Big "search ALL favourable flights in this period" button (flight mode only).
+    // ✈ Big "search selected favourable flights" button (flight mode only).
     let _flightAllBtn = '';
     if (window._fsFlightCalMode && Object.keys(_flightBestByDay).length) {
         const _favIsos = Object.keys(_flightBestByDay).sort();
         const _nDays = _favIsos.length;
+        const _nSel = _favIsos.filter(function(i){ return window._fsFlightSel && window._fsFlightSel[i]; }).length;
         const _MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         // Label the ACTUAL span of favourable days (DAYS can cover several months),
         // not just the start month — otherwise extending DAYS would still read "June".
@@ -4936,8 +4950,10 @@ function buildCalView() {
         const _lastLbl  = _moOf(_favIsos[_nDays - 1]);
         const _spanLbl = (_firstLbl === _lastLbl) ? _firstLbl : (_firstLbl + ' → ' + _lastLbl);
         _flightAllBtn = '<div style="text-align:center;margin:10px 0 4px;">'
-            + '<button onclick="fsFlightSearchAll()" style="background:#0b8043;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">🔎 Search ALL favourable flights — ' + _spanLbl + ' (' + _nDays + ' days)</button>'
-            + '<div style="font-size:11px;color:#777;margin-top:3px;">Searches every favourable day in this period for flights in its positive window</div></div>';
+            + '<button onclick="fsFlightSearchAll()" style="background:#0b8043;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">🔎 Search selected flights — ' + _spanLbl + ' (<span id="fs-flight-sel-count">' + _nSel + '</span> of ' + _nDays + ' days)</button>'
+            + '<div style="font-size:11px;color:#777;margin-top:3px;">Tick the days on the calendar, then search just those · '
+            + '<a onclick="fsFlightSelectAll(true)" style="color:#1565c0;cursor:pointer;text-decoration:underline;">all</a> · '
+            + '<a onclick="fsFlightSelectAll(false)" style="color:#1565c0;cursor:pointer;text-decoration:underline;">none</a></div></div>';
     }
 
     document.getElementById('cal-view').innerHTML = calNavHtml + _flightAllBtn + html + _flightAllBtn;
@@ -6277,17 +6293,42 @@ async function fsFlightSearch(iso, h){
     } catch(e){ alert('Flight search error: ' + e.message); }
 }
 
-// Real flight search across ALL favourable days currently shown on the calendar.
+// Toggle one day in the bulk-search selection; update the button counter live.
+function fsFlightToggleSel(iso, on){
+    try {
+        window._fsFlightSel = window._fsFlightSel || {};
+        window._fsFlightSel[iso] = !!on;
+        const map = window._fsFlightBestByDay || {};
+        const n = Object.keys(map).filter(function(i){ return window._fsFlightSel[i]; }).length;
+        const el = document.getElementById('fs-flight-sel-count');
+        if (el) el.textContent = n;
+    } catch(e){}
+}
+
+// Select / deselect every favourable day, then re-render the calendar.
+function fsFlightSelectAll(on){
+    try {
+        const map = window._fsFlightBestByDay || {};
+        window._fsFlightSel = window._fsFlightSel || {};
+        Object.keys(map).forEach(function(i){ window._fsFlightSel[i] = !!on; });
+        if (typeof buildCalView === 'function') buildCalView();
+    } catch(e){}
+}
+
+// Real flight search across the SELECTED favourable days currently shown.
 async function fsFlightSearchAll(){
     try {
         const route = await _fsResolveRouteIata(true);
         if (!route){ return; }
         const orig = route.orig, dest = route.dest;
         const map = window._fsFlightBestByDay || {};
-        const isos = Object.keys(map).sort();
-        if (!isos.length){ alert('No favourable days in view. Run "SCAN flight dates" first.'); return; }
+        const allIsos = Object.keys(map).sort();
+        if (!allIsos.length){ alert('No favourable days in view. Run "SCAN flight dates" first.'); return; }
+        const sel = window._fsFlightSel || {};
+        const isos = allIsos.filter(function(i){ return sel[i]; });
+        if (!isos.length){ alert('No days selected. Tick at least one favourable day on the calendar (or press "all").'); return; }
         if (!confirm('This will use ' + isos.length + ' search' + (isos.length === 1 ? '' : 'es')
-            + ' of your monthly quota (one per favourable day).\n\nContinue?')) return;
+            + ' of your monthly quota (one per selected day).\n\nContinue?')) return;
 
         fsFlightShowPanel({ loading:true, multi:true, orig:orig, dest:dest, loadingMsg:'Searching ' + isos.length + ' favourable days…' });
 
