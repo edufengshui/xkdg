@@ -6233,8 +6233,28 @@ async function _fsFetchFlights(orig, dest, dateStr){
     return await r.json();
 }
 
-// Client-side Google Flights deep-link (mirrors the worker's search_url).
+// Build the reliable Google Flights deep-link. The natural-language ?q= form is
+// flaky (often fills only the origin), so we encode the proper ?tfs= token —
+// a base64url protobuf carrying origin, destination and date (one-way, 1 adult).
+function _fsGflightsTfs(orig, dest, date){
+    function varint(n){ const b = []; n = n >>> 0; do { let x = n & 0x7f; n >>>= 7; if (n) x |= 0x80; b.push(x); } while (n); return b; }
+    function key(f, w){ return varint((f << 3) | w); }
+    function strF(f, s){ const u = []; for (let i = 0; i < s.length; i++) u.push(s.charCodeAt(i) & 0xff); return key(f, 2).concat(varint(u.length), u); }
+    function msgF(f, bytes){ return key(f, 2).concat(varint(bytes.length), bytes); }
+    function varF(f, v){ return key(f, 0).concat(varint(v)); }
+    const airport = function(code){ return strF(2, String(code).toUpperCase()); };           // Airport.name = field 2
+    const fd = strF(2, date).concat(msgF(13, airport(orig)), msgF(14, airport(dest)));        // FlightData: date=2, from=13, to=14
+    const info = msgF(3, fd).concat(varF(8, 1), varF(9, 1), varF(19, 2));                     // Info: data=3, passenger=8(adult), seat=9(eco), trip=19(one-way)
+    let bin = ''; for (let i = 0; i < info.length; i++) bin += String.fromCharCode(info[i]);
+    const b64 = (typeof btoa === 'function') ? btoa(bin) : Buffer.from(info).toString('base64');
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 function _fsGoogleFlightsUrl(orig, dest, date){
+    if (/^[A-Za-z]{3}$/.test(orig || '') && /^[A-Za-z]{3}$/.test(dest || '') && /^\d{4}-\d{2}-\d{2}$/.test(date || '')){
+        return 'https://www.google.com/travel/flights?tfs=' + _fsGflightsTfs(orig, dest, date) + '&hl=en&gl=US&curr=EUR';
+    }
+    // Fallback only if we somehow don't have clean IATA codes.
     const q = 'flights from ' + orig + ' to ' + dest + ' on ' + date;
     return 'https://www.google.com/travel/flights?q=' + encodeURIComponent(q);
 }
@@ -6384,7 +6404,7 @@ function fsFlightShowPanel(o){
             + '<div><div style="font-weight:bold;font-size:16px;color:#111;">' + (f.time || '--:--') + badge + '</div>'
             + '<div style="font-size:11px;color:#666;">' + (f.flight_number || f.airline || '') + (stops ? (' · ' + stops) : '') + '</div></div>'
             + '<div style="text-align:right;"><div style="font-weight:bold;color:#0b8043;">' + (f.price != null ? (f.price + ' ' + (f.currency || '')) : '') + '</div>'
-            + '<a href="' + (f.booking_url || fallbackUrl || '#') + '" target="_blank" rel="noopener" style="font-size:12px;color:#1565c0;font-weight:bold;text-decoration:none;">Book →</a></div>'
+            + '<a href="' + (fallbackUrl || f.booking_url || '#') + '" target="_blank" rel="noopener" style="font-size:12px;color:#1565c0;font-weight:bold;text-decoration:none;">Book →</a></div>'
             + '</div>';
     }
 
@@ -6419,21 +6439,22 @@ function fsFlightShowPanel(o){
                 + 'Other days show the closest available departures.</div>';
             body += groups.map(function(g){
                 const winTxt = (g.winStart && g.winEndMin != null) ? (g.winStart + '–' + _fsMinToHHMM(g.winEndMin)) : '';
+                const gfu = _fsGoogleFlightsUrl(o.orig, o.dest, g.date);
                 let h = '<div style="margin:10px 0 4px;font-weight:bold;font-size:13px;color:#0b3d91;border-top:1px solid #eee;padding-top:8px;">'
                     + g.date + (winTxt ? ' <span style="font-weight:normal;color:#888;font-size:11px;">· ' + winTxt + '</span>' : '')
                     + (g.inWindow ? ' <span style="color:#0b8043;font-size:11px;">· ' + g.inWindow + ' in window</span>' : '') + '</div>';
                 if (g.flights && g.flights.length){
                     const top = g.flights.slice(0, 4);   // closest-first already
-                    h += top.map(function(f){ return flightRow(f, g.searchUrl); }).join('');
+                    h += top.map(function(f){ return flightRow(f, gfu); }).join('');
                     if (g.flights.length > top.length){
                         h += '<div style="font-size:11px;color:#999;margin-bottom:4px;">+' + (g.flights.length - top.length) + ' more'
-                            + (g.searchUrl ? ' · <a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">all on Google Flights →</a>' : '') + '</div>';
-                    } else if (g.searchUrl){
-                        h += '<div style="font-size:11px;margin-bottom:4px;"><a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a></div>';
+                            + ' · <a href="' + gfu + '" target="_blank" rel="noopener" style="color:#1565c0;">all on Google Flights →</a></div>';
+                    } else {
+                        h += '<div style="font-size:11px;margin-bottom:4px;"><a href="' + gfu + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a></div>';
                     }
                 } else {
                     h += '<div style="font-size:12px;color:#999;margin-bottom:4px;">no flights found'
-                        + (g.searchUrl ? ' · <a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a>' : '') + '</div>';
+                        + ' · <a href="' + gfu + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a></div>';
                 }
                 return h;
             }).join('');
@@ -6447,11 +6468,12 @@ function fsFlightShowPanel(o){
     let head = '<div style="font-weight:bold;font-size:15px;color:#0b3d91;margin:0 24px 2px 0;">✈ Flights ' + (o.orig || '?') + ' → ' + (o.dest || '?') + '</div>'
              + '<div style="font-size:12px;color:#555;margin-bottom:10px;">' + (o.date || '') + (winTxt ? (' · favourable window ' + winTxt + ' (civil)') : '') + '</div>';
     let body = '';
+    const gfu1 = _fsGoogleFlightsUrl(o.orig, o.dest, o.date);
     if (o.loading){
         body = '<div style="padding:18px;text-align:center;color:#555;">Searching real flights…</div>';
     } else if (o.error){
         body = '<div style="color:#b71c1c;font-size:13px;margin-bottom:10px;">' + o.error + '</div>';
-        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:8px 12px;font-weight:bold;">🌐 Open in Google Flights</a>';
+        body += '<a href="' + gfu1 + '" target="_blank" rel="noopener" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:8px 12px;font-weight:bold;">🌐 Open in Google Flights</a>';
     } else {
         if (!o.flights || !o.flights.length){
             body += '<div style="font-size:13px;color:#555;margin-bottom:10px;">No flights found for this date. Open Google Flights below for the full timetable.</div>';
@@ -6461,9 +6483,9 @@ function fsFlightShowPanel(o){
                 + o.flights.length + ' real flight' + (o.flights.length === 1 ? '' : 's')
                 + ' · <span style="color:#0b8043;font-weight:bold;">' + inW + ' in the lucky window</span>'
                 + (inW === 0 ? ' — closest shown first' : '') + '</div>';
-            body += o.flights.map(function(f){ return flightRow(f, o.searchUrl); }).join('');
+            body += o.flights.map(function(f){ return flightRow(f, gfu1); }).join('');
         }
-        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:9px 12px;font-weight:bold;font-size:13px;">🌐 Open in Google Flights →</a>';
+        body += '<a href="' + gfu1 + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:9px 12px;font-weight:bold;font-size:13px;">🌐 Open in Google Flights →</a>';
     }
     el.innerHTML = close + head + body;
 }
