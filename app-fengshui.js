@@ -3173,9 +3173,8 @@ function fsRenderHouseProfiles(){
     html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
     if (_sumBits.length) html += '<span style="font-size:11px;color:#777;">' + _sumBits.join(' · ') + '</span>';
     html += '</div>';
-    // Owner name (no birth data) + category selector
+    // Category selector (the owner name now sits on the Facing/Period line inside the house)
     html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:#555;">';
-    html += '<span>👤 <strong>' + escHtml(_pn) + '</strong></span>';
     html += '<span style="display:flex;align-items:center;gap:3px;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
     html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
     cats.forEach(function(c){ html += '<option value="' + escHtml(c) + '"' + (h.category === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; });
@@ -3194,7 +3193,7 @@ function fsRenderHouseProfiles(){
       html += '<a href="' + escHtml(h.driveUrl) + '" target="_blank" rel="noopener" style="background:#0f9d58;color:#fff;border-radius:3px;padding:3px 8px;font-size:10px;text-decoration:none;" title="Open the Google Drive archive (photos, consultations)">📁 Archive</a>';
       html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:3px 6px;font-size:10px;cursor:pointer;" title="Edit the archive link">✏</button>';
     } else {
-      html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Set the Google Drive archive link (photos, consultations)">📁 Set archive</button>';
+      html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Set the Google Drive archive link (photos, consultations)">📁 Archive</button>';
     }
     html += '</div>';
 
@@ -3250,12 +3249,15 @@ function fsRenderHouseProfiles(){
         + '</div>';
     }
 
-    // House / floor info
-    html += '<div style="font-size:11px;color:#555;">';
+    // House / floor info (owner name on the right)
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#555;">';
+    html += '<span>';
     if (effFacing != null) html += 'Facing: ' + effFacing + '° &nbsp;';
     if (effPeriod != null) html += 'Period: ' + effPeriod;
     if (effFacing == null && effPeriod == null) html += '<span style="color:#e65100;">No facing/period for this floor yet</span>';
     if (!h.sameFacing) html += ' <button onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 7px;font-size:10px;cursor:pointer;margin-left:4px;">✏ Floor facing/period</button>';
+    html += '</span>';
+    html += '<span style="white-space:nowrap;color:#444;">👤 <strong>' + escHtml(_pn) + '</strong></span>';
     html += '</div>';
 
     // ── FLOOR PLAN (📐) — moved DOWN into the bottom "Add" row (see _fpBtns below) ──
