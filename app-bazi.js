@@ -4587,7 +4587,7 @@ function buildCalView() {
         const civ = (typeof fsFlightCivil === 'function') ? fsFlightCivil(iso, r.hourIndex) : null;
         const civTxt = civ ? civ.hhmm : '';
         let out = '<div title="Suggested departure (TST)" style="margin-top:2px;background:#1565c0;color:#fff;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;text-align:center;line-height:1.25;">✈ ' + hr + ' · ' + r.score + '</div>';
-        out += '<button onclick="event.stopPropagation();fsFlightSearch(\'' + iso + '\',' + r.hourIndex + ')" title="Search flights' + (civTxt ? ' — civil departure ' + civTxt : '') + '" style="margin-top:2px;width:100%;background:#0b8043;color:#fff;border:none;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;cursor:pointer;line-height:1.25;">🔎 ' + (civTxt || 'flights') + '</button>';
+        out += '<button onclick="event.stopPropagation();fsFlightOpen(\'' + iso + '\',' + r.hourIndex + ')" title="Flights' + (civTxt ? ' — civil departure ' + civTxt : '') + '" style="margin-top:2px;width:100%;background:#0b8043;color:#fff;border:none;border-radius:5px;padding:1px 3px;font-size:9px;font-weight:bold;cursor:pointer;line-height:1.25;">✈ ' + (civTxt || 'flights') + '</button>';
         return out;
     }
 
@@ -5882,7 +5882,7 @@ function buildMonthView() {
             if ((window._calBackFlight || (window._fsFlightDest && _fsActionPalace)) && typeof fsFlightSearch === 'function') {
                 const _civLV = (typeof fsFlightCivil === 'function') ? fsFlightCivil(isoDate, h) : null;
                 const _civTxtLV = _civLV ? _civLV.hhmm : '';
-                _flightBtnLV = `<button onclick="event.stopPropagation();fsFlightSearch('${isoDate}',${h})" title="Search flights${_civTxtLV ? ' — civil departure ' + _civTxtLV : ''}" style="margin-top:3px;background:#0b8043;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;">🔎 Search flights${_civTxtLV ? ' · ' + _civTxtLV : ''}</button>`;
+                _flightBtnLV = `<button onclick="event.stopPropagation();fsFlightOpen('${isoDate}',${h})" title="Flights${_civTxtLV ? ' — civil departure ' + _civTxtLV : ''}" style="margin-top:3px;background:#0b8043;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;">✈ Flights${_civTxtLV ? ' · ' + _civTxtLV : ''}</button>`;
             }
 
             const rowHtml = `${jqBannerLV}<div onclick="loadDateIntoMain('${isoDate}',${h})"
@@ -6038,9 +6038,8 @@ function fsFlightCivil(iso, h){
     } catch(e){ return null; }
 }
 
-// Open Google Flights (natural-language query, no IATA needed) for the scanned
-// origin → destination on the CIVIL departure date of the favourable hour.
-// Cloudflare Worker that proxies Travelpayouts (holds the API token server-side).
+// Cloudflare Worker (SerpApi · google_flights) that returns real Google Flights
+// results. Holds the SERPAPI_KEY server-side. Same request/response shape as before.
 const FS_FLIGHTS_WORKER = 'https://xkdg-flights.decumano16.workers.dev';
 
 function _fsHHMMtoMin(t){ if(!t) return null; const p = t.split(':'); return (+p[0])*60 + (+p[1]); }
@@ -6088,21 +6087,29 @@ function _fsRankByWindow(all, winStartMin, winEndMin){
     return { ranked: list, inWindow: inWindow };
 }
 
-// Resolve origin/destination from any available source (captured globals → live
-// Direction Calculator fields → localStorage → prompt). Persists what it finds.
+// Resolve origin/destination as IATA airport codes (required by the flight API;
+// the Google Flights deep-link accepts them too). Persists what it finds.
 function _fsResolveRoute(promptIfMissing){
-    const clean = function(v){ return (v || '').trim(); };
-    let dest = clean(window._fsFlightDest);
-    let orig = clean(window._fsFlightOrigin);
-    const dEl = document.getElementById('dir-dest-addr'); if (!dest && dEl) dest = clean(dEl.value);
-    const oEl = document.getElementById('dir-orig-addr'); if (!orig && oEl) orig = clean(oEl.value);
-    try { if (!dest) dest = clean(localStorage.getItem('xkdg_flight_dest')); } catch(e){}
-    try { if (!orig) orig = clean(localStorage.getItem('xkdg_flight_orig')); } catch(e){}
-    if (!dest && promptIfMissing) dest = clean(prompt('Destination city for the flight search (e.g. Milano):', ''));
-    if (!orig && promptIfMissing) orig = clean(prompt('Origin city (leave empty to let the site decide):', orig || ''));
-    if (dest){ window._fsFlightDest = dest; try { localStorage.setItem('xkdg_flight_dest', dest); } catch(e){} }
-    if (orig){ window._fsFlightOrigin = orig; try { localStorage.setItem('xkdg_flight_orig', orig); } catch(e){} }
-    return dest ? { orig: orig, dest: dest } : null;
+    const up = function(v){ return (v || '').trim().toUpperCase(); };
+    const isIata = function(v){ return /^[A-Z]{3}$/.test(v); };
+    const fromCache = function(key, cur){
+        if (isIata(cur)) return cur;
+        try { const c = up(localStorage.getItem(key)); if (isIata(c)) return c; } catch(e){}
+        return '';
+    };
+    let orig = fromCache('xkdg_flight_orig', up(window._fsFlightOrigin));
+    let dest = fromCache('xkdg_flight_dest', up(window._fsFlightDest));
+    if (!isIata(orig) && promptIfMissing){
+        orig = up(prompt('Origin AIRPORT code (IATA — e.g. VIE Vienna, MXP Milan, LHR London):', ''));
+        if (!isIata(orig)){ if (orig) alert('Please enter a 3-letter airport code, e.g. VIE.'); return null; }
+    }
+    if (!isIata(dest) && promptIfMissing){
+        dest = up(prompt('Destination AIRPORT code (IATA — e.g. LHR London, CDG Paris, FCO Rome):', ''));
+        if (!isIata(dest)){ if (dest) alert('Please enter a 3-letter airport code, e.g. LHR.'); return null; }
+    }
+    if (isIata(orig)){ window._fsFlightOrigin = orig; try { localStorage.setItem('xkdg_flight_orig', orig); } catch(e){} }
+    if (isIata(dest)){ window._fsFlightDest = dest; try { localStorage.setItem('xkdg_flight_dest', dest); } catch(e){} }
+    return (isIata(orig) && isIata(dest)) ? { orig: orig, dest: dest } : null;
 }
 
 // Civil departure window for a favourable (date, hourIndex): {dateStr, winStart, winStartMin, winEndMin}
@@ -6144,6 +6151,36 @@ async function _fsFetchFlights(orig, dest, dateStr){
     return await r.json();
 }
 
+// Client-side Google Flights deep-link (mirrors the worker's search_url).
+function _fsGoogleFlightsUrl(orig, dest, date){
+    const q = 'flights from ' + orig + ' to ' + dest + ' on ' + date;
+    return 'https://www.google.com/travel/flights?q=' + encodeURIComponent(q);
+}
+
+// PHASE 1 (free): open the two-choice panel for a favourable day — no API call yet.
+function fsFlightOpen(iso, h){
+    try {
+        const route = _fsResolveRoute(true);
+        if (!route) return;                 // user cancelled the destination prompt
+        const w = _fsFlightWindow(iso, h);
+        fsFlightShowPanel({
+            choose: true, date: w.dateStr, orig: route.orig, dest: route.dest,
+            winStart: w.winStart, winEndMin: w.winEndMin,
+            gfUrl: _fsGoogleFlightsUrl(route.orig, route.dest, w.dateStr),
+            iso: iso, hourIndex: h
+        });
+    } catch(e){ alert('Flight panel error: ' + e.message); }
+}
+
+// Clear the saved airports and re-open the chooser (re-prompts for IATA codes).
+function fsFlightChangeRoute(iso, h){
+    try {
+        window._fsFlightOrigin = ''; window._fsFlightDest = '';
+        try { localStorage.removeItem('xkdg_flight_orig'); localStorage.removeItem('xkdg_flight_dest'); } catch(e){}
+        fsFlightOpen(iso, h);
+    } catch(e){}
+}
+
 // Real flight search for ONE favourable day.
 async function fsFlightSearch(iso, h){
     try {
@@ -6180,6 +6217,8 @@ async function fsFlightSearchAll(){
         const map = window._fsFlightBestByDay || {};
         const isos = Object.keys(map).sort();
         if (!isos.length){ alert('No favourable days in view. Run "SCAN flight dates" first.'); return; }
+        if (!confirm('This will use ' + isos.length + ' search' + (isos.length === 1 ? '' : 'es')
+            + ' of your monthly quota (one per favourable day).\n\nContinue?')) return;
 
         fsFlightShowPanel({ loading:true, multi:true, orig:orig, dest:dest, loadingMsg:'Searching ' + isos.length + ' favourable days…' });
 
@@ -6239,6 +6278,23 @@ function fsFlightShowPanel(o){
             + '</div>';
     }
 
+    // ---- CHOOSE (two phases: free Google Flights, or precise in-window API) ----
+    if (o.choose){
+        const winTxt = (o.winStart && o.winEndMin != null) ? (o.winStart + '–' + _fsMinToHHMM(o.winEndMin)) : '';
+        const head = '<div style="font-weight:bold;font-size:15px;color:#0b3d91;margin:0 24px 2px 0;">✈ Flights ' + (o.orig || '?') + ' → ' + (o.dest || '?')
+            + ' <a onclick="fsFlightChangeRoute(\'' + String(o.iso || '').replace(/'/g, "") + '\',' + (o.hourIndex || 0) + ')" style="font-size:11px;font-weight:normal;color:#1565c0;cursor:pointer;">✎ change</a></div>'
+            + '<div style="font-size:12px;color:#555;margin-bottom:4px;">' + (o.date || '') + '</div>'
+            + (winTxt ? '<div style="font-size:13px;margin-bottom:12px;">Your lucky departure window: <strong style="color:#0b8043;">' + winTxt + '</strong></div>' : '');
+        const isoJs = String(o.iso || '').replace(/'/g, "");
+        let body = ''
+            + '<a href="' + (o.gfUrl || '#') + '" target="_blank" rel="noopener" style="display:block;text-align:center;background:#1a73e8;color:#fff;text-decoration:none;border-radius:8px;padding:11px 12px;font-weight:bold;font-size:14px;margin-bottom:4px;">🌐 Open in Google Flights</a>'
+            + '<div style="font-size:11px;color:#888;margin-bottom:14px;text-align:center;">Free · shows all flights — drag the “Times” filter to your window</div>'
+            + '<button onclick="fsFlightSearch(\'' + isoJs + '\',' + (o.hourIndex || 0) + ')" style="display:block;width:100%;text-align:center;background:#0b8043;color:#fff;border:none;border-radius:8px;padding:11px 12px;font-weight:bold;font-size:14px;cursor:pointer;margin-bottom:4px;">🎯 Find exact flights in my window</button>'
+            + '<div style="font-size:11px;color:#888;text-align:center;">Uses 1 search of your monthly quota</div>';
+        el.innerHTML = close + head + body;
+        return;
+    }
+
     // ---- MULTI-DATE (search across the whole period) ----
     if (o.multi){
         let head = '<div style="font-weight:bold;font-size:15px;color:#0b3d91;margin:0 24px 8px 0;">✈ Favourable flights ' + (o.orig || '?') + ' → ' + (o.dest || '?') + '</div>';
@@ -6261,13 +6317,13 @@ function fsFlightShowPanel(o){
                     h += top.map(function(f){ return flightRow(f, g.searchUrl); }).join('');
                     if (g.flights.length > top.length){
                         h += '<div style="font-size:11px;color:#999;margin-bottom:4px;">+' + (g.flights.length - top.length) + ' more'
-                            + (g.searchUrl ? ' · <a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">all live on Aviasales →</a>' : '') + '</div>';
+                            + (g.searchUrl ? ' · <a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">all on Google Flights →</a>' : '') + '</div>';
                     } else if (g.searchUrl){
-                        h += '<div style="font-size:11px;margin-bottom:4px;"><a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">live on Aviasales →</a></div>';
+                        h += '<div style="font-size:11px;margin-bottom:4px;"><a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a></div>';
                     }
                 } else {
-                    h += '<div style="font-size:12px;color:#999;margin-bottom:4px;">no cached flights'
-                        + (g.searchUrl ? ' · <a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">check live on Aviasales →</a>' : '') + '</div>';
+                    h += '<div style="font-size:12px;color:#999;margin-bottom:4px;">no flights found'
+                        + (g.searchUrl ? ' · <a href="' + g.searchUrl + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a>' : '') + '</div>';
                 }
                 return h;
             }).join('');
@@ -6285,10 +6341,10 @@ function fsFlightShowPanel(o){
         body = '<div style="padding:18px;text-align:center;color:#555;">Searching real flights…</div>';
     } else if (o.error){
         body = '<div style="color:#b71c1c;font-size:13px;margin-bottom:10px;">' + o.error + '</div>';
-        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:inline-block;background:#0b8043;color:#fff;text-decoration:none;border-radius:6px;padding:8px 12px;font-weight:bold;">Open Aviasales search</a>';
+        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:8px 12px;font-weight:bold;">🌐 Open in Google Flights</a>';
     } else {
         if (!o.flights || !o.flights.length){
-            body += '<div style="font-size:13px;color:#555;margin-bottom:10px;">No cached flights for this date. Open the live Aviasales search below for the full timetable.</div>';
+            body += '<div style="font-size:13px;color:#555;margin-bottom:10px;">No flights found for this date. Open Google Flights below for the full timetable.</div>';
         } else {
             const inW = o.inWindow || 0;
             body += '<div style="font-size:12px;color:#555;margin-bottom:8px;">'
@@ -6296,9 +6352,8 @@ function fsFlightShowPanel(o){
                 + ' · <span style="color:#0b8043;font-weight:bold;">' + inW + ' in the lucky window</span>'
                 + (inW === 0 ? ' — closest shown first' : '') + '</div>';
             body += o.flights.map(function(f){ return flightRow(f, o.searchUrl); }).join('');
-            body += '<div style="font-size:10px;color:#aaa;margin:6px 0 2px;">Cached deal prices — open live for the full timetable.</div>';
         }
-        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#0b8043;color:#fff;text-decoration:none;border-radius:6px;padding:9px 12px;font-weight:bold;font-size:13px;">🔎 Open live Aviasales results →</a>';
+        if (o.searchUrl) body += '<a href="' + o.searchUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:9px 12px;font-weight:bold;font-size:13px;">🌐 Open in Google Flights →</a>';
     }
     el.innerHTML = close + head + body;
 }
