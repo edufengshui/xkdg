@@ -2065,6 +2065,26 @@ function onPersonBPillarsChange() {
 }
 
 // ── Calculate Person ─────────────────────────
+// Clear Person B (inputs + globals + UI). Used by the Feng Shui house-occupant
+// loader when a house has no active second occupant, so a stale Person B is not
+// carried into scans. Additive + guarded per app-bazi.js rules.
+function fsClearPersonB(){
+  try {
+    ['person-name-b','person-date-b','person-time-b'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+    var yb=document.getElementById('person-year-b'); if(yb && yb.options && yb.options.length) yb.selectedIndex=0;
+    try {
+      _personBYear = null; _personBStem = null; _personBBranch = null;
+      _personBDay  = null; _personBRelations = null;
+      _personBDayStem = null; _personBDayBranch = null;
+      _personBMonth = null; _personBHour = null;
+      _personBMonthBranch = null; _personBDayBranchXkdg = null;
+      _personBPillars = null;
+    } catch(e){}
+    ['person-chart-b','person-analysis-b','person-analysis-container-b','pillar-toggle-b-wrap'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+    try { if (typeof updateScoreModeBtn === 'function') updateScoreModeBtn(); } catch(e){}
+  } catch(e){ console.warn('fsClearPersonB', e); }
+}
+
 function calculatePerson(person) {
     const isB    = person === 'B';
     const depth  = isB ? (parseInt(document.getElementById('person-pillars-b')?.value) || 4) : 4;

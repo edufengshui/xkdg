@@ -3222,6 +3222,19 @@ function fsRenderHouseProfiles(){
     html += '<button onclick="fsEditHousePerson(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#7b1fa2;border:1px solid #7b1fa2;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Person</button>';
     html += '<button onclick="fsSyncHousePerson(\'' + escJs(person.name) + '\',' + hi + ')" title="Copy from Person A/B — and fill Person A/B if those are empty" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">⤓ Sync A/B</button>';
     html += '</div>';
+    // ── Guest (intestatario #2) — cohabit (owner+guest) or guest-as-#1 (owner away) ──
+    if (h.guest && h.guest.name){
+      html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#1565c0;margin-bottom:4px;padding-left:8px;border-left:2px solid #90caf9;">'
+        + '<span>👥 Guest #2: <strong>' + escHtml(h.guest.name) + '</strong></span>'
+        + '<span style="color:#888;">🎂 ' + (h.guest.birthDate ? escHtml(h.guest.birthDate) : 'no date') + '</span>'
+        + (h.ownerAway ? '<span style="color:#8a6a1f;">· owner #1 hidden</span>' : '')
+        + '<select onchange="fsSetGuestAway(\'' + escJs(person.name) + '\',' + hi + ',this.value===\'1\')" style="font-size:10px;padding:1px 4px;border:1px solid #1565c0;border-radius:4px;">'
+        +   '<option value="0"' + (!h.ownerAway ? ' selected' : '') + '>Cohabit (owner + guest)</option>'
+        +   '<option value="1"' + (h.ownerAway ? ' selected' : '') + '>Guest as #1 (owner away)</option>'
+        + '</select>'
+        + '<button onclick="fsRemoveGuest(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c0392b;border:1px solid #e09a9a;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">🗑 Remove guest</button>'
+        + '</div>';
+    }
     var f = _fsActiveFloor(h);
     var fIdx = h.activeFloor || 0; if (fIdx >= h.floors.length) fIdx = 0;
     var effFacing = _fsFloorFacing(h, f);
@@ -3253,17 +3266,7 @@ function fsRenderHouseProfiles(){
     if (!h.sameFacing) html += ' <button onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 7px;font-size:10px;cursor:pointer;margin-left:4px;">✏ Floor facing/period</button>';
     html += '</div>';
 
-    // ── FLOOR PLAN (📐) — saved per house/floor (uses its facing & period) ──
-    html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #5d4037;">';
-    html += '<div style="font-size:11px;font-weight:bold;color:#5d4037;margin-bottom:3px;">📐 Floor plan</div>';
-    if (f && f.floorplan && f.floorplan.imgData){
-      html += '<span style="font-size:11px;color:#2e7d32;margin-right:6px;">✓ Saved for this floor</span>';
-      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-right:4px;">📐 Open / edit</button>';
-      html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🗑 Remove</button>';
-    } else {
-      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
-    }
-    html += '</div>';
+    // ── FLOOR PLAN (📐) — moved DOWN into the bottom "Add" row (see _fpBtns below) ──
 
     // ── DOORS (🚪) — labeled block only when there are doors ──
     var doors = f.doors;
@@ -3383,8 +3386,18 @@ function fsRenderHouseProfiles(){
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>';
     if (!(f.zones && f.zones.length)) _addBtns += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🌀 Add Zone</button>';
+    // "+ Add a new guest" — at the END of the Add series (one guest per house).
+    if (!(h.guest && h.guest.name)) _addBtns += '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as intestatario #2 (considered in every scan, like Person B)" style="background:#1565c0;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">👥 Add a new guest</button>';
+    // Floor plan button(s) — leftmost in the bottom row, before the Add buttons.
+    var _fpBtns;
+    if (f && f.floorplan && f.floorplan.imgData){
+      _fpBtns = '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" title="Open / edit the saved floor plan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Floor plan ✓</button>'
+        + '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" title="Remove floor plan" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">🗑</button>';
+    } else {
+      _fpBtns = '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
+    }
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">'
-      + '<span style="font-size:10px;color:#999;">Add:</span>' + _addBtns + '</div>';
+      + '<span style="font-size:10px;color:#999;">Add:</span>' + _fpBtns + _addBtns + '</div>';
 
     html += '</div>'; // close .fs-house-body (collapsible)
     html += '</div>';
@@ -3445,20 +3458,49 @@ function fsAddNewHouse(){
     floors: [{ label: 'Floor 1', facing: facing, period: period, doors: doors, waters: [], zones: [], settings: { water: [], bed: [], desk: [] } }],
     activeFloor: 0
   };
-  var pdata = _fsActivePersonData();
-  house.personName = (pdata && pdata.name) || person.name;
-  house.birthDate  = (pdata && pdata.birthDate) || null;
-  house.birthTime  = (pdata && pdata.birthTime) || null;
+  // ── Owner (intestatario #1) ───────────────────────────────────────────
+  // Person A's current data (the usual owner). If the entered owner matches
+  // Person A we reuse their birth data; otherwise we ask for it and save them.
+  var pAName = ((document.getElementById('person-name') || {}).value || '').trim();
+  var pADate = ((document.getElementById('person-date') || {}).value || '').trim();
+  var pATime = ((document.getElementById('person-time') || {}).value || '').trim();
+
+  var owner = prompt('Who is this house registered to?  (owner — intestatario #1)', pAName || '');
+  if (owner === null) return;
+  owner = owner.trim();
+  if (!owner){ alert('An owner name is required.'); return; }
+
+  var oDate, oTime;
+  if (pAName && owner.toLowerCase() === pAName.toLowerCase() && pADate){
+    oDate = pADate; oTime = pATime || '';
+  } else {
+    oDate = prompt('Birth date of ' + owner + '  (YYYY-MM-DD):', '');
+    if (oDate === null) return;
+    oDate = oDate.trim();
+    if (oDate && !/^\d{4}-\d{2}-\d{2}$/.test(oDate)){ alert('Please use the format YYYY-MM-DD.'); return; }
+    oTime = prompt('Birth time of ' + owner + '  (HH:MM — leave blank if unknown):', '12:00');
+    if (oTime === null) oTime = '';
+    oTime = oTime.trim();
+  }
+
+  house.personName = owner;
+  house.birthDate  = oDate || null;
+  house.birthTime  = oTime || null;
+
+  // The house belongs to its owner → store it under the owner's key, so it
+  // shows in that person's House Profiles once they become Person A.
   var all = _fsHousesLoad();
-  if (!all[person.name]) all[person.name] = [];
-  var newIdx = all[person.name].length;
-  all[person.name].push(house);
+  if (!all[owner]) all[owner] = [];
+  var newIdx = all[owner].length;
+  all[owner].push(house);
   _fsHousesSave(all);
   _fsUpsertPersonDB(house.personName, house.birthDate, house.birthTime, house.category, false);   // unify owner into people DB
-  _fsActiveHouseSet(person.name, newIdx);     // new house becomes active
+  _fsActiveHouseSet(owner, newIdx);     // new house becomes active
   // Make the settings sections target the new house by default
   window._fsSettingHouseIdx = newIdx; window._fsSettingFloorIdx = null;
-  if (importIt) fsLoadHouse(person.name, newIdx);
+  // Bring the owner into Person A (and load the chart if we imported one).
+  if (importIt) fsLoadHouse(owner, newIdx);
+  else _fsLoadOwnerIntoPersonA(house);
   fsRenderHouseProfiles();
   if (typeof fsRenderZoneSettings === 'function') fsRenderZoneSettings();
 }
@@ -3674,6 +3716,111 @@ function fsRenameHouse(personName, houseIdx){
   } catch(e){ console.warn('fsRenameHouse', e); }
 }
 
+// Load a house's active occupants into the global Person A (+ Person B) inputs and
+// recalculate, so every date / Feng Shui scan automatically uses them:
+//   • owner (#1) → Person A   (unless ownerAway → owner hidden, not scanned)
+//   • guest (#2) → Person B   (cohabit). If only one active occupant → B cleared.
+// Guarded so it does nothing when already loaded and cannot re-enter itself.
+function _fsLoadHouseOccupants(house){
+  try {
+    if (!house || window._fsLoadingOwner) return;
+    var occ = [];
+    if (!house.ownerAway && (house.personName || house.birthDate)){
+      occ.push({ name: (house.personName||''), date: (house.birthDate||''), time: (house.birthTime||'') });
+    }
+    if (house.guest && (house.guest.name || house.guest.birthDate)){
+      occ.push({ name: (house.guest.name||''), date: (house.guest.birthDate||''), time: (house.guest.birthTime||'') });
+    }
+    if (!occ.length) return;
+    window._fsLoadingOwner = true;
+    try {
+      // Person A = first active occupant
+      var a = occ[0];
+      var nA = document.getElementById('person-name'), dA = document.getElementById('person-date'), tA = document.getElementById('person-time');
+      if (nA && dA){
+        var sameA = ((nA.value||'').trim().toLowerCase() === a.name.trim().toLowerCase()) && ((dA.value||'').trim() === a.date.trim());
+        if (!sameA){
+          if (a.name) nA.value = a.name;
+          if (a.date) dA.value = a.date;
+          if (tA && a.time) tA.value = a.time;
+          if (a.date && typeof calculatePerson === 'function') calculatePerson('A');
+        }
+      }
+      // Person B = second active occupant; otherwise clear B.
+      if (occ.length >= 2){
+        var b = occ[1];
+        var nB = document.getElementById('person-name-b'), dB = document.getElementById('person-date-b'), tB = document.getElementById('person-time-b');
+        if (nB && dB){
+          var sameB = ((nB.value||'').trim().toLowerCase() === b.name.trim().toLowerCase()) && ((dB.value||'').trim() === b.date.trim());
+          if (!sameB){
+            if (b.name) nB.value = b.name;
+            if (b.date) dB.value = b.date;
+            if (tB && b.time) tB.value = b.time;
+            if (b.date && typeof calculatePerson === 'function') calculatePerson('B');
+          }
+        }
+      } else {
+        if (typeof fsClearPersonB === 'function') fsClearPersonB();
+      }
+    } finally { window._fsLoadingOwner = false; }
+  } catch(e){ window._fsLoadingOwner = false; console.warn('_fsLoadHouseOccupants', e); }
+}
+// Back-compat name used by existing callers.
+function _fsLoadOwnerIntoPersonA(house){ return _fsLoadHouseOccupants(house); }
+
+// ── Guest (intestatario #2) ──────────────────────────────────────────────
+// Default relationship is "cohabit": owner #1 → Person A, guest #2 → Person B,
+// so every Feng Shui / date scan considers both (exactly like A + B).
+function fsAddGuest(personName, hi){
+  try {
+    var all = _fsHousesLoad();
+    var house = (all[personName] || [])[hi]; if (!house) return;
+    var name = prompt('Guest name (intestatario #2 — invited to stay):', '');
+    if (name === null || !name.trim()) return;
+    name = name.trim();
+    var date = prompt('Birth date of ' + name + '  (YYYY-MM-DD):', '');
+    if (date === null) return;
+    date = date.trim();
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)){ alert('Please use the format YYYY-MM-DD.'); return; }
+    var time = prompt('Birth time of ' + name + '  (HH:MM — leave blank if unknown):', '12:00');
+    if (time === null) time = '';
+    time = time.trim();
+    house.guest = { name: name, birthDate: date || null, birthTime: time || null };
+    house.ownerAway = false;   // cohabit by default
+    _fsHousesSave(all);
+    _fsUpsertPersonDB(name, date, time, house.category, false);
+    _fsLoadHouseOccupants(house);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsAddGuest', e); }
+}
+
+// away=true → guest acts as #1, owner hidden from scans (kept, recoverable).
+// away=false → cohabit (owner #1 + guest #2 both scanned).
+function fsSetGuestAway(personName, hi, away){
+  try {
+    var all = _fsHousesLoad();
+    var house = (all[personName] || [])[hi]; if (!house) return;
+    house.ownerAway = !!away;
+    _fsHousesSave(all);
+    _fsLoadHouseOccupants(house);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsSetGuestAway', e); }
+}
+
+function fsRemoveGuest(personName, hi){
+  try {
+    var all = _fsHousesLoad();
+    var house = (all[personName] || [])[hi]; if (!house) return;
+    if (!house.guest) return;
+    if (!confirm('Remove guest "' + (house.guest.name || '') + '" from this house?')) return;
+    delete house.guest;
+    house.ownerAway = false;
+    _fsHousesSave(all);
+    _fsLoadHouseOccupants(house);
+    fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsRemoveGuest', e); }
+}
+
 function fsLoadHouse(personName, houseIdx){
   const all = _fsHousesLoad();
   const houses = all[personName] || [];
@@ -3700,6 +3847,8 @@ function fsLoadHouse(personName, houseIdx){
   if (effFacing != null && effPeriod != null && !FS_STARS_ON){
     fsToggleStars();
   }
+  // Auto-insert this house's owner (intestatario #1) into Person A.
+  _fsLoadOwnerIntoPersonA(h);
   fsRedraw();
 }
 
