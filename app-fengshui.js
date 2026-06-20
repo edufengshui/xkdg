@@ -3165,10 +3165,9 @@ function fsRenderHouseProfiles(){
 
     // LEFT: ●/○ name ACTIVE [Hide details] summary  ·  then owner name + category
     html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;flex:1 1 auto;">';
-    if (isActive) html += '<span style="color:#2e7d32;font-size:16px;" title="Active house">●</span>';
-    else html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#aaa;font-size:16px;cursor:pointer;" title="Set as active house">○</span>';
+    if (isActive) html += '<span style="color:#2e7d32;font-size:22px;line-height:1;" title="Active house">●</span>';
+    else html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#bbb;font-size:22px;line-height:1;cursor:pointer;" title="Set as active house">○</span>';
     html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
-    if (isActive) html += '<span style="font-size:9px;color:#2e7d32;font-weight:bold;">ACTIVE</span>';
     html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
     if (_sumBits.length) html += '<span style="font-size:11px;color:#777;">' + _sumBits.join(' · ') + '</span>';
     // Category selector — on the same line (the owner name sits on the Facing/Period line inside the house)
