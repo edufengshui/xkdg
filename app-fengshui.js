@@ -2510,6 +2510,83 @@ function fsGenWaterSaveToHouse(){
   } catch(e){ console.warn('fsGenWaterSaveToHouse', e); alert('Save failed.'); }
 }
 
+// ── Saved settings (Water/Bed/Desk) — view / edit / scan / remove from the card ──
+// Toggle the inline view-edit panel under a saved setting chip.
+function fsToggleSavedEdit(hi, zone, idx){
+  try {
+    var el = document.getElementById('fs-set-edit-' + hi + '-' + zone + '-' + idx);
+    if (!el) return;
+    el.style.display = (!el.style.display || el.style.display === 'none') ? 'block' : 'none';
+  } catch(e){ console.warn('fsToggleSavedEdit', e); }
+}
+
+// Persist edits (name, and palace for a general water feature) made inline.
+function fsSaveSavedSetting(personName, hi, zone, idx){
+  try {
+    var all = _fsHousesLoad();
+    var houses = all[personName] || [];
+    var house = houses[hi]; if (!house) return;
+    var floor = _fsActiveFloor(house);
+    var arr = (floor.settings && floor.settings[zone]) || [];
+    var s = arr[idx]; if (!s) return;
+    var nameEl = document.getElementById('fs-setname-' + hi + '-' + zone + '-' + idx);
+    if (nameEl && nameEl.value.trim()) s.name = nameEl.value.trim();
+    var palEl = document.getElementById('fs-setpal-' + hi + '-' + zone + '-' + idx);
+    if (palEl && palEl.value) s.palace = palEl.value;
+    _fsHousesSave(all);
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+    if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
+  } catch(e){ console.warn('fsSaveSavedSetting', e); }
+}
+
+// Jump from a saved setting straight to its ⚡ Operative activation (house + task
+// pre-selected) AND auto-start the SCAN. No need to re-enter "Add Water".
+function fsActivateSavedSetting(personName, hi, zone, idx){
+  try {
+    if (typeof _fsActiveHouseSet === 'function') _fsActiveHouseSet(personName, hi);
+    if (typeof fsLoadHouse === 'function') fsLoadHouse(personName, hi);   // load chart so the target star can be derived
+    window._fsOpTaskKey = zone + '|' + idx;
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+    if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();  // derives window._fsOpStar from the placement
+    var box = document.getElementById('fs-op-activate');
+    if (box) box.scrollIntoView({ behavior:'smooth', block:'center' });
+    // Auto-start the scan once the render has settled and QFS is ready.
+    setTimeout(function(){
+      try {
+        window._fsOpTaskKey = zone + '|' + idx;          // re-assert in case a re-render reset it
+        if (typeof fsOpScan === 'function') fsOpScan();
+      } catch(e){ console.warn('fsActivateSavedSetting/auto-scan', e); }
+    }, 220);
+  } catch(e){ console.warn('fsActivateSavedSetting', e); }
+}
+
+// Open a snapshot-type setting (Water-by-degrees / Bed / Desk) back in its zone
+// editor, pre-filled, so its geometry can be modified.
+function fsOpenSavedForEdit(personName, hi, zone, idx){
+  try {
+    if (typeof fsSetActiveHouse === 'function') fsSetActiveHouse(personName, hi);
+    if (typeof fsOpenZoneForHouse === 'function') fsOpenZoneForHouse(personName, hi, zone);
+    if (typeof fsLoadZoneSetting === 'function') fsLoadZoneSetting(idx);
+  } catch(e){ console.warn('fsOpenSavedForEdit', e); }
+}
+
+// Remove a saved Water/Bed/Desk setting from a house floor.
+function fsDeleteSavedSetting(personName, hi, zone, idx){
+  try {
+    var all = _fsHousesLoad();
+    var houses = all[personName] || [];
+    var house = houses[hi]; if (!house) return;
+    var floor = _fsActiveFloor(house);
+    var arr = (floor.settings && floor.settings[zone]) || [];
+    var s = arr[idx]; if (!s) return;
+    if (!confirm('Remove saved ' + zone + ' "' + (s.name || '') + '" from this house?')) return;
+    arr.splice(idx, 1);
+    _fsHousesSave(all);
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+    if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
+  } catch(e){ console.warn('fsDeleteSavedSetting', e); }
+}
+
 // ── Suggest closest favorable Water position ──
 // Searches all 64 hex slots for Water positions that:
 //   (1) are Ling Shen (valid),
@@ -3250,8 +3327,50 @@ function fsRenderHouseProfiles(){
       ['water', 'bed', 'desk'].forEach(function(z){
         var arr = _st[z] || [];
         if (!arr.length) return;
-        html += '<div style="font-size:11px;color:#5a4410;padding:1px 0;"><strong>' + _zlbl[z] + ':</strong> '
-          + arr.map(function(s){ return escHtml(s.name); }).join(', ') + '</div>';
+        var PAL  = ['N','NE','E','SE','S','SW','W','NW'];
+        var PALL = {N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
+        html += '<div style="font-size:11px;color:#5a4410;padding:1px 0;"><strong>' + _zlbl[z] + ':</strong> ';
+        arr.forEach(function(s, sidx){
+          var eid    = 'fs-set-edit-' + hi + '-' + z + '-' + sidx;
+          var nameId = 'fs-setname-' + hi + '-' + z + '-' + sidx;
+          var palId  = 'fs-setpal-'  + hi + '-' + z + '-' + sidx;
+          // Clickable chip → toggles the inline view/edit/scan panel below.
+          html += '<span onclick="fsToggleSavedEdit(' + hi + ',\'' + z + '\',' + sidx + ')" '
+            + 'style="cursor:pointer;color:#1565c0;text-decoration:underline dotted;margin-right:6px;" title="View / edit / scan dates">'
+            + '⚙ ' + escHtml(s.name) + (s.palace ? (' (' + escHtml(s.palace) + ')') : '') + '</span>';
+          // Inline view/edit panel (hidden until the chip is clicked)
+          var ed = '<div id="' + eid + '" style="display:none;margin:4px 0 8px;padding:8px;background:#fff;border:1px solid #c9a84c;border-radius:6px;">';
+          ed += '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">';
+          ed += '<label style="font-size:10px;color:#888;">Name</label>';
+          ed += '<input id="' + nameId + '" value="' + escHtml(s.name || '') + '" style="flex:1;min-width:110px;padding:4px 6px;border:1px solid #c9a84c;border-radius:4px;font-size:12px;">';
+          if (s.palace){
+            ed += '<label style="font-size:10px;color:#888;">Palace</label>';
+            ed += '<select id="' + palId + '" style="padding:4px 6px;border:1px solid #00897b;border-radius:4px;font-size:12px;">';
+            PAL.forEach(function(p){ ed += '<option value="' + p + '"' + (p === s.palace ? ' selected' : '') + '>' + PALL[p] + '</option>'; });
+            ed += '</select>';
+          } else {
+            var bits = [];
+            if (s.houseFacing != null && s.houseFacing !== '') bits.push('Facing ' + s.houseFacing + '°');
+            if (s.period      != null && s.period      !== '') bits.push('P' + s.period);
+            if (s.doorFacing  != null && s.doorFacing  !== '') bits.push('Door ' + s.doorFacing + '°');
+            if (s.water       != null && s.water       !== '') bits.push('Water ' + s.water + '°');
+            if (s.bedPalace)  bits.push('Bed ' + s.bedPalace);
+            if (s.bedSitting) bits.push('Sit ' + s.bedSitting);
+            if (s.deskFacing) bits.push('Desk ' + s.deskFacing + '°');
+            if (bits.length) ed += '<span style="font-size:10px;color:#777;">' + bits.join(' · ') + '</span>';
+          }
+          ed += '</div>';
+          ed += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+          ed += '<button onclick="fsSaveSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✓ Save</button>';
+          ed += '<button onclick="fsActivateSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#5e35b1;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🔎 Scan dates</button>';
+          if (!s.palace){
+            ed += '<button onclick="fsOpenSavedForEdit(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✏️ Open to edit</button>';
+          }
+          ed += '<button onclick="fsDeleteSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#c0392b;border:1px solid #e09a9a;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🗑 Remove</button>';
+          ed += '</div></div>';
+          html += ed;
+        });
+        html += '</div>';
       });
       html += '</div>';
     }
