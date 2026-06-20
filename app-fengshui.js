@@ -3164,23 +3164,19 @@ function fsRenderHouseProfiles(){
     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">';
 
     // LEFT: ●/○ name ACTIVE [Hide details] summary  ·  then owner name + category
-    html += '<div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto;">';
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;flex:1 1 auto;">';
     if (isActive) html += '<span style="color:#2e7d32;font-size:16px;" title="Active house">●</span>';
     else html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#aaa;font-size:16px;cursor:pointer;" title="Set as active house">○</span>';
     html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
     if (isActive) html += '<span style="font-size:9px;color:#2e7d32;font-weight:bold;">ACTIVE</span>';
     html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
     if (_sumBits.length) html += '<span style="font-size:11px;color:#777;">' + _sumBits.join(' · ') + '</span>';
-    html += '</div>';
-    // Category selector (the owner name now sits on the Facing/Period line inside the house)
-    html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:#555;">';
-    html += '<span style="display:flex;align-items:center;gap:3px;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
+    // Category selector — on the same line (the owner name sits on the Facing/Period line inside the house)
+    html += '<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#555;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
     html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
     cats.forEach(function(c){ html += '<option value="' + escHtml(c) + '"' + (h.category === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; });
     html += '<option value="__new__">➕ New…</option>';
     html += '</select></span>';
-    html += '</div>';
     html += '</div>';
 
     // RIGHT (top-right corner): Load · Rename · Delete · Archive
