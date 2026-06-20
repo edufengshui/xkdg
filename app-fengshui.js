@@ -369,7 +369,7 @@ function buildFengShuiView(){
           <input type="file" id="fs-restore-input" accept="application/json,.json" style="display:none;" onchange="fsImportBackup(this)">
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
-        <div style="font-size:11px;color:#888;font-style:italic;margin-bottom:8px;">Pick a house to edit its chart and placements. New house → press “+ Add a new house”, then fill the Flying Stars data and read the luopan below.</div>
+        <div style="font-size:11px;color:#888;font-style:italic;margin-bottom:8px;">Pick a house to edit its chart and settings. New house → press “+ Add a new house”, then fill the Flying Stars data and read the luopan below.</div>
         <!-- ACTIVE HOUSE DETAIL (cards + placements + Add buttons) — now lives INSIDE House Profiles, at the very top -->
         <div id="fs-house-detail" style="font-size:12px;"></div>
       </div>
@@ -2496,7 +2496,7 @@ function fsCheckWaterLS(){
 function fsGenWaterSaveToHouse(){
   try {
     var ref = (typeof _fsSettingRef === 'function') ? _fsSettingRef() : null;
-    if (!ref){ alert('Load a person and a saved house first — placements are stored inside the active house.'); return; }
+    if (!ref){ alert('Load a person and a saved house first — settings are stored inside the active house.'); return; }
     var pal = (document.getElementById('fs-wateract-dir') || {}).value || '';
     if (!pal){ alert('Select a Palace first.'); return; }
     var name = prompt('Name for this water feature (e.g. "Aquarium ' + pal + '"):', 'Water ' + pal);
@@ -4005,7 +4005,7 @@ function fsRenderOperativeZones(){
       var presetLabel = (z.preset === 'custom') ? ' \u00b7 custom preset' : ' \u00b7 auto preset';
       html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
       html += '<span style="font-size:11px;flex:1 1 auto;">\uD83C\uDF00 <strong>' + escHtml(z.name) + '</strong> \u2014 ' + (z.dir || (_palDir[z.palace] || '?')) + ' (Palace ' + z.palace + ') \u00b7 ' + targetLabel + presetLabel + '</span>';
-      html += '<button onclick="fsQimenStimulate(\'' + (z.target === 'mountain' ? 'mountain' : 'water') + '\')" style="background:#fff;color:#7b1fa2;border:1px solid #7b1fa2;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;" title="Qimen stimulator for this zone">\uD83C\uDF00 Qimen</button>';
+      html += '<button onclick="fsQimenStimulate(\'' + (z.target === 'mountain' ? 'mountain' : 'water') + '\')" style="background:#fff;color:#7b1fa2;border:1px solid #7b1fa2;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;" title="Qimen targeting for this zone">\uD83C\uDF00 Qimen</button>';
       html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">\u2715</button>';
       html += '</div>';
     });
@@ -4023,7 +4023,7 @@ function fsRenderOperativeElements(){
   if (!box) return;
   var header = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">'
     + '<span style="font-size:12px;font-weight:bold;color:#4527a0;">⚡ Placed elements</span>'
-    + '<button onclick="fsQimenStimulate(null)" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Qimen stimulator on the general flying-star chart (free choice of star)">\uD83C\uDF00 Qimen (general)</button>'
+    + '<button onclick="fsQimenStimulate(null)" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Qimen targeting on the general flying-star chart (free choice of star)">\uD83C\uDF00 Qimen (general)</button>'
     + '</div>'
     + '<div style="font-size:10px;color:#888;margin-bottom:6px;font-style:italic;">Placements of the active house. <strong>\u26A1 Activate</strong> opens the tool ready to scan dates. <strong>\uD83C\uDF00 Qimen</strong> finds hours to stimulate the flying star (Water \u2192 \u5411\u661f, Bed \u2192 \u5C71\u661f, others \u2192 free).</div>';
   var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
@@ -4053,7 +4053,7 @@ function fsRenderOperativeElements(){
     any = true;
     html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
     html += '<span style="font-size:11px;flex:1 1 auto;">\uD83D\uDEAA <strong>' + escHtml(dr.name) + '</strong> <span style="color:#999;">\u00b7 Door</span></span>';
-    html += '<button onclick="fsQimenStimulate(null)" style="' + QBTN + '" title="Qimen stimulator (free choice of star)">\uD83C\uDF00 Qimen</button>';
+    html += '<button onclick="fsQimenStimulate(null)" style="' + QBTN + '" title="Qimen targeting (free choice of star)">\uD83C\uDF00 Qimen</button>';
     html += '</div>';
   });
 
@@ -4065,13 +4065,13 @@ function fsRenderOperativeElements(){
       var lockJs = (QLOCK[zone] === null) ? 'null' : ("'" + QLOCK[zone] + "'");
       html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
       html += '<span style="font-size:11px;flex:1 1 auto;">' + ICON[zone] + ' <strong>' + escHtml(s.name) + '</strong> <span style="color:#999;">\u00b7 ' + ZLBL[zone] + '</span></span>';
-      html += '<button onclick="fsQimenStimulate(' + lockJs + ')" style="' + QBTN + '" title="Qimen stimulator">\uD83C\uDF00 Qimen</button>';
+      html += '<button onclick="fsQimenStimulate(' + lockJs + ')" style="' + QBTN + '" title="Qimen targeting">\uD83C\uDF00 Qimen</button>';
       html += '<button onclick="fsActivatePlacement(\'' + escJs(person.name) + '\',' + hi + ',' + fIdx + ',\'' + zone + '\',' + idx + ')" style="' + ABTN + '">\u26A1 Activate</button>';
       html += '</div>';
     });
   });
 
-  if (!any) html += '<div style="font-size:11px;color:#999;padding:2px 0;">No placements yet \u2014 add Door / Water / Bed / Desk in the house card above.</div>';
+  if (!any) html += '<div style="font-size:11px;color:#999;padding:2px 0;">No settings yet \u2014 add Door / Water / Bed / Desk in the house card above.</div>';
   box.innerHTML = html;
 }
 
@@ -4157,7 +4157,7 @@ function fsRenderOperativeActivate(){
   var box = document.getElementById('fs-op-activate');
   if (!box) return;
   var escHtml = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
-  var title = '<div style="font-size:12px;font-weight:bold;color:#4527a0;margin-bottom:6px;">🎯 Activate a placement (Qimen stimulator)</div>';
+  var title = '<div style="font-size:12px;font-weight:bold;color:#4527a0;margin-bottom:6px;">🎯 Activate a setting (Qimen targeting)</div>';
   var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
   if (!person){ box.innerHTML = title + '<div style="font-size:11px;color:#999;">Load a person (A or B) first.</div>'; return; }
   var all = _fsHousesLoad();
@@ -4168,13 +4168,8 @@ function fsRenderOperativeActivate(){
   var floor = _fsActiveFloor(house);
 
   var html = title;
-  // STEP 1 — house
-  html += '<div style="font-size:11px;color:#555;margin-bottom:2px;"><strong>1.</strong> House to treat:</div>';
-  html += '<select onchange="fsOpPickHouse(this.value)" style="width:100%;padding:6px;border:1px solid #5e35b1;border-radius:4px;font-size:13px;margin-bottom:4px;">';
-  houses.forEach(function(h, i){ html += '<option value="' + i + '"' + (i === activeIdx ? ' selected' : '') + '>' + escHtml(h.name) + '</option>'; });
-  html += '</select>';
 
-  // build task list (only placements that exist)
+  // build task list first (only settings that exist), so House + Task can share a row
   var tasks = [];
   (floor.settings && floor.settings.water || []).forEach(function(s, idx){ tasks.push({ kind:'water', idx:idx, label:'💧 ' + s.name + (s.palace ? ' · ' + s.palace : '') + ' · Water (向星)', type:'water', free:false }); });
   (floor.settings && floor.settings.bed   || []).forEach(function(s, idx){ tasks.push({ kind:'bed',   idx:idx, label:'🛏 ' + s.name + ' · Bed (山星)',   type:'mountain', free:false }); });
@@ -4183,10 +4178,21 @@ function fsRenderOperativeActivate(){
   (floor.zones || []).forEach(function(z, idx){ tasks.push({ kind:'zone', idx:idx, label:'🌀 ' + z.name + ' · Zone (' + (z.target === 'mountain' ? '山星' : '向星') + ')', type:(z.target === 'mountain' ? 'mountain' : 'water'), free:false }); });
   window._fsOpTasks = tasks;
 
-  // STEP 2 — task
-  html += '<div style="font-size:11px;color:#555;margin:8px 0 2px;"><strong>2.</strong> Task in this house:</div>';
+  // STEP 1 (house) + STEP 2 (task) — on the same row
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;">';
+  // House (left)
+  html += '<div style="flex:1 1 240px;min-width:200px;">';
+  html += '<div style="font-size:11px;color:#555;margin-bottom:2px;"><strong>1.</strong> House to treat:</div>';
+  html += '<select onchange="fsOpPickHouse(this.value)" style="width:100%;padding:6px;border:1px solid #5e35b1;border-radius:4px;font-size:13px;">';
+  houses.forEach(function(h, i){ html += '<option value="' + i + '"' + (i === activeIdx ? ' selected' : '') + '>' + escHtml(h.name) + '</option>'; });
+  html += '</select>';
+  html += '</div>';
+  // Task (right)
+  html += '<div style="flex:1 1 240px;min-width:200px;">';
+  html += '<div style="font-size:11px;color:#555;margin-bottom:2px;"><strong>2.</strong> Task in this house:</div>';
   if (!tasks.length){
-    html += '<div style="font-size:11px;color:#999;">No placements in this house yet — add Door / Water / Bed / Desk (and QFS Zones) in House Profiles above.</div>';
+    html += '<div style="font-size:11px;color:#999;">No settings in this house yet — add Door / Water / Bed / Desk (and QFS Zones) in House Profiles above.</div>';
+    html += '</div></div>';
     box.innerHTML = html; return;
   }
   var keys = tasks.map(function(t){ return t.kind + '|' + t.idx; });
@@ -4196,11 +4202,13 @@ function fsRenderOperativeActivate(){
   html += '<select onchange="fsOpPickTask(this.value)" style="width:100%;padding:6px;border:1px solid #5e35b1;border-radius:4px;font-size:13px;">';
   tasks.forEach(function(t){ var k = t.kind + '|' + t.idx; html += '<option value="' + k + '"' + (k === selKey ? ' selected' : '') + '>' + escHtml(t.label) + '</option>'; });
   html += '</select>';
+  html += '</div>';   // close task column (row still open)
 
-  // STEP 3 — target star (auto-derived from the placement's position)
+  // STEP 3 — target star (third column on the same row, auto-derived from the setting)
   var cur = tasks[keys.indexOf(selKey)];
   var freeType = window._fsOpFreeType || 'water';
-  html += '<div style="font-size:11px;color:#555;margin:8px 0 2px;"><strong>3.</strong> Target star:</div>';
+  html += '<div style="flex:1 1 200px;min-width:180px;">';
+  html += '<div style="font-size:11px;color:#555;margin-bottom:2px;"><strong>3.</strong> Target star:</div>';
   if (cur.free){
     html += '<label style="font-size:12px;margin-right:14px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="water"' + (freeType === 'water' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 向星 Water</label>';
     html += '<label style="font-size:12px;cursor:pointer;"><input type="radio" name="fs-op-ft" value="mountain"' + (freeType === 'mountain' ? ' checked' : '') + ' onchange="fsOpPickFreeType(this.value)"> 山星 Mountain</label>';
@@ -4211,8 +4219,10 @@ function fsRenderOperativeActivate(){
     var tl = (info.type === 'mountain') ? '山星 Mountain' : '向星 Water';
     html += '<div style="font-size:12px;color:#4527a0;font-weight:bold;margin-top:5px;">\u2192 ' + tl + ' Star <span style="font-size:15px;">' + info.starNum + '</span> at ' + info.dir + ' <span style="color:#999;font-weight:normal;">(auto-targeted)</span></div>';
   } else {
-    html += '<div style="font-size:11px;color:#c0392b;margin-top:5px;">Can\'t auto-target \u2014 set the house chart (Facing + Period) in House Profiles and give this placement its direction. SCAN will open the panel to pick the star manually.</div>';
+    html += '<div style="font-size:11px;color:#c0392b;margin-top:5px;">Can\'t auto-target \u2014 set the house chart (Facing + Period) in House Profiles and give this setting its direction. SCAN will open the panel to pick the star manually.</div>';
   }
+  html += '</div>';   // close target-star column
+  html += '</div>';   // close the row
 
   // STEP 4 — scan
   html += '<div style="margin-top:10px;"><button onclick="fsOpScan()" style="background:linear-gradient(135deg,#5e35b1,#7e57c2);color:#fff;font-weight:bold;font-size:14px;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN</button></div>';
