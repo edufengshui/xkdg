@@ -3151,24 +3151,7 @@ function fsRenderHouseProfiles(){
     var borderColor = isActive ? '#2e7d32' : '#a5d6a7';
     var bgColor = isActive ? '#f1f8e9' : '#fff';
     html += '<div style="background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:6px;padding:8px;margin-bottom:6px;">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
-    // Active selector + name
-    html += '<div style="display:flex;align-items:center;gap:6px;">';
-    if (isActive) {
-      html += '<span style="color:#2e7d32;font-size:16px;cursor:default;" title="Active house">●</span>';
-    } else {
-      html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#aaa;font-size:16px;cursor:pointer;" title="Set as active house">○</span>';
-    }
-    html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
-    if (isActive) html += '<span style="font-size:9px;color:#2e7d32;font-weight:bold;"> ACTIVE</span>';
-    html += '</div>';
-    html += '<span>';
-    html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:4px;" title="Load into FS inputs to edit">📂 Load</button>';
-    html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:4px;" title="Rename house">✏ Rename</button>';
-    html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
-    html += '</span></div>';
-
-    // ── Collapse / expand: card details are HIDDEN by default, opened via toggle ──
+    // ── Collapse / expand state + summary ──
     var _expKey = person.name + '|' + hi;
     var _exp = !!(window._fsHouseExpanded && window._fsHouseExpanded[_expKey]);
     var _sf = _fsActiveFloor(h);
@@ -3176,22 +3159,57 @@ function fsRenderHouseProfiles(){
     var _sumBits = [];
     if (_sFacing != null) _sumBits.push('Facing ' + _sFacing + '°');
     if (_sPeriod != null) _sumBits.push('Period ' + _sPeriod);
-    html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">';
+    var _pn = h.personName || person.name;
+
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">';
+
+    // LEFT: ●/○ name ACTIVE [Hide details] summary  ·  then owner name + category
+    html += '<div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto;">';
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+    if (isActive) html += '<span style="color:#2e7d32;font-size:16px;" title="Active house">●</span>';
+    else html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#aaa;font-size:16px;cursor:pointer;" title="Set as active house">○</span>';
+    html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
+    if (isActive) html += '<span style="font-size:9px;color:#2e7d32;font-weight:bold;">ACTIVE</span>';
     html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
     if (_sumBits.length) html += '<span style="font-size:11px;color:#777;">' + _sumBits.join(' · ') + '</span>';
     html += '</div>';
-    html += '<div class="fs-house-body" id="fs-house-body-' + hi + '" style="display:' + (_exp ? 'block' : 'none') + ';">';
-
-    // ── Category (free, user-defined) + Address + Google Maps link ──
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 4px;font-size:11px;color:#555;">';
-    html += '<span>🏷</span><select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
+    // Owner name (no birth data) + category selector
+    html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:#555;">';
+    html += '<span>👤 <strong>' + escHtml(_pn) + '</strong></span>';
+    html += '<span style="display:flex;align-items:center;gap:3px;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
     html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
     cats.forEach(function(c){ html += '<option value="' + escHtml(c) + '"' + (h.category === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; });
-    html += '<option value="__new__">➕ New category…</option>';
-    html += '</select>';
+    html += '<option value="__new__">➕ New…</option>';
+    html += '</select></span>';
+    html += '</div>';
     html += '</div>';
 
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin-bottom:4px;">';
+    // RIGHT (top-right corner): Load · Rename · Delete · Archive
+    html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto;">';
+    html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Load into FS inputs to edit">📂 Load</button>';
+    html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';
+    html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
+    // 📁 Archive = the client\'s Google Drive folder (photos, written consultations, etc.)
+    if (h.driveUrl){
+      html += '<a href="' + escHtml(h.driveUrl) + '" target="_blank" rel="noopener" style="background:#0f9d58;color:#fff;border-radius:3px;padding:3px 8px;font-size:10px;text-decoration:none;" title="Open the Google Drive archive (photos, consultations)">📁 Archive</a>';
+      html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:3px 6px;font-size:10px;cursor:pointer;" title="Edit the archive link">✏</button>';
+    } else {
+      html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Set the Google Drive archive link (photos, consultations)">📁 Set archive</button>';
+    }
+    html += '</div>';
+
+    html += '</div>';
+    html += '<div class="fs-house-body" id="fs-house-body-' + hi + '" style="display:' + (_exp ? 'block' : 'none') + ';">';
+
+    // ── Address (left) + Floor selector (right) on one line ──
+    var f = _fsActiveFloor(h);
+    var fIdx = h.activeFloor || 0; if (fIdx >= h.floors.length) fIdx = 0;
+    var effFacing = _fsFloorFacing(h, f);
+    var effPeriod = _fsFloorPeriod(h, f);
+
+    html += '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;margin:2px 0 4px;">';
+    // Address (left)
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;">';
     html += '<span>📍</span>';
     if (h.address){
       var mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(h.address);
@@ -3202,27 +3220,23 @@ function fsRenderHouseProfiles(){
     }
     html += '<button onclick="fsEditHouseAddress(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Address</button>';
     html += '</div>';
-
-    // ── Drive folder link (client dossier on Google Drive) ──
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin-bottom:4px;">';
-    html += '<span>🔗</span>';
-    if (h.driveUrl){
-      html += '<a href="' + escHtml(h.driveUrl) + '" target="_blank" rel="noopener" style="background:#0f9d58;color:#fff;border-radius:3px;padding:1px 8px;font-size:10px;text-decoration:none;">📁 Open Drive folder</a>';
-    } else {
-      html += '<span style="color:#999;">No Drive folder</span>';
-    }
-    html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Drive folder</button>';
+    // Floor (right) — uses the empty space on the right
+    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;">';
+    html += '<span style="font-weight:bold;color:#2e7d32;">🏢 Floor:</span>';
+    html += '<select onchange="fsSwitchFloor(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
+    h.floors.forEach(function(fl, fi){ html += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>'; });
+    html += '</select>';
+    html += '<button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:2px 9px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button>';
+    html += '<button onclick="fsRenameFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">✏ Rename</button>';
+    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">🗑</button>';
     html += '</div>';
-
-    // ── Person (name + birth date) — unified with Person A/B ──
-    var _pn = h.personName || person.name;
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;margin-bottom:4px;">';
-    html += '<span>👤 <strong>' + escHtml(_pn) + '</strong></span>';
-    html += '<span>🎂 ' + (h.birthDate ? escHtml(h.birthDate) : '<span style="color:#999;">no birth date</span>') + '</span>';
-    html += '<button onclick="fsEditHousePerson(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#7b1fa2;border:1px solid #7b1fa2;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Person</button>';
-    html += '<button onclick="fsSyncHousePerson(\'' + escJs(person.name) + '\',' + hi + ')" title="Copy from Person A/B — and fill Person A/B if those are empty" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">⤓ Sync A/B</button>';
     html += '</div>';
-    // ── Guest (intestatario #2) — cohabit (owner+guest) or guest-as-#1 (owner away) ──
+    // Same Facing / Period toggle
+    html += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#555;margin:0 0 4px;cursor:pointer;">';
+    html += '<input type="checkbox"' + (h.sameFacing ? ' checked' : '') + ' onchange="fsToggleSameFacing(\'' + escJs(person.name) + '\',' + hi + ',this.checked)"> Same Facing / Period for all floors';
+    html += '</label>';
+
+    // ── Guest (occupant #2) — cohabit (owner+guest) or guest-as-#1 (owner away) ──
     if (h.guest && h.guest.name){
       html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#1565c0;margin-bottom:4px;padding-left:8px;border-left:2px solid #90caf9;">'
         + '<span>👥 Guest #2: <strong>' + escHtml(h.guest.name) + '</strong></span>'
@@ -3235,28 +3249,6 @@ function fsRenderHouseProfiles(){
         + '<button onclick="fsRemoveGuest(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c0392b;border:1px solid #e09a9a;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">🗑 Remove guest</button>'
         + '</div>';
     }
-    var f = _fsActiveFloor(h);
-    var fIdx = h.activeFloor || 0; if (fIdx >= h.floors.length) fIdx = 0;
-    var effFacing = _fsFloorFacing(h, f);
-    var effPeriod = _fsFloorPeriod(h, f);
-
-    // ── FLOORS selector + same-facing toggle ──
-    html += '<div style="margin:4px 0;padding:4px 6px;background:#eef5ee;border-radius:5px;">';
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
-    html += '<span style="font-size:11px;font-weight:bold;color:#2e7d32;">🏢 Floor:</span>';
-    html += '<select onchange="fsSwitchFloor(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
-    h.floors.forEach(function(fl, fi){
-      html += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>';
-    });
-    html += '</select>';
-    html += '<button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:2px 9px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button>';
-    html += '<button onclick="fsRenameFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">✏ Rename</button>';
-    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">🗑</button>';
-    html += '</div>';
-    html += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#555;margin-top:3px;cursor:pointer;">';
-    html += '<input type="checkbox"' + (h.sameFacing ? ' checked' : '') + ' onchange="fsToggleSameFacing(\'' + escJs(person.name) + '\',' + hi + ',this.checked)"> Same Facing / Period for all floors';
-    html += '</label>';
-    html += '</div>';
 
     // House / floor info
     html += '<div style="font-size:11px;color:#555;">';
