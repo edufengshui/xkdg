@@ -6087,28 +6087,94 @@ function _fsRankByWindow(all, winStartMin, winEndMin){
     return { ranked: list, inWindow: inWindow };
 }
 
-// Resolve origin/destination as IATA airport codes (required by the flight API;
-// the Google Flights deep-link accepts them too). Persists what it finds.
-function _fsResolveRoute(promptIfMissing){
+// OpenStreetMap (Overpass) proxy worker — used to find the nearest airport.
+const FS_OSM_WORKER = (typeof window !== 'undefined' && window.TP_OVERPASS_URL)
+    ? window.TP_OVERPASS_URL : 'https://xkdg-osm.decumano16.workers.dev';
+
+function _fsHaversineKm(lat1, lon1, lat2, lon2){
+    const R = 6371, toRad = function(d){ return d * Math.PI / 180; };
+    const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Nearest airport IATA code to a lat/lng, via OpenStreetMap (Overpass) through
+// the xkdg-osm worker. Cached in-memory per rounded coordinate for the session.
+async function _fsNearestAirportIata(lat, lng){
+    lat = parseFloat(lat); lng = parseFloat(lng);
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    window._fsAirportCache = window._fsAirportCache || {};
+    const ckey = lat.toFixed(2) + ',' + lng.toFixed(2);
+    if (window._fsAirportCache[ckey]) return window._fsAirportCache[ckey];
+
+    async function tryRadius(r){
+        const q = '[out:json][timeout:20];('
+            + 'node["aeroway"="aerodrome"]["iata"](around:' + r + ',' + lat + ',' + lng + ');'
+            + 'way["aeroway"="aerodrome"]["iata"](around:' + r + ',' + lat + ',' + lng + ');'
+            + ');out center tags;';
+        let resp;
+        try { resp = await fetch(FS_OSM_WORKER, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'data=' + encodeURIComponent(q) }); }
+        catch(e){ return null; }
+        let j; try { j = await resp.json(); } catch(e){ return null; }
+        const els = (j && j.elements) || [];
+        let best = null, bestD = Infinity;
+        for (const e of els){
+            const t = e.tags || {};
+            const code = (t.iata || '').trim().toUpperCase();
+            if (!/^[A-Z]{3}$/.test(code)) continue;
+            const elat = (e.lat != null) ? e.lat : (e.center && e.center.lat);
+            const elng = (e.lon != null) ? e.lon : (e.center && e.center.lon);
+            if (elat == null || elng == null) continue;
+            const d = _fsHaversineKm(lat, lng, elat, elng);
+            if (d < bestD){ bestD = d; best = code; }
+        }
+        return best;
+    }
+    const found = (await tryRadius(120000)) || (await tryRadius(400000));
+    if (found) window._fsAirportCache[ckey] = found;
+    return found;
+}
+
+// Read the geocoded origin/destination coordinates from the Direction Calculator
+// (live fields first, then the saved route).
+function _fsRouteCoords(){
+    let r = null; try { r = JSON.parse(localStorage.getItem('xkdg_dir_route') || 'null'); } catch(e){}
+    const gv = function(id){ const el = document.getElementById(id); return el ? (el.value || '').trim() : ''; };
+    return {
+        oLat: gv('dir-orig-lat') || (r && r.oLat) || '', oLng: gv('dir-orig-lng') || (r && r.oLng) || '',
+        dLat: gv('dir-dest-lat') || (r && r.dLat) || '', dLng: gv('dir-dest-lng') || (r && r.dLng) || ''
+    };
+}
+
+// Resolve origin/destination as IATA codes. Default: auto-detect the nearest
+// airport from the geocoded coordinates (OpenStreetMap). Falls back to a saved
+// code, then to a manual prompt. "✎ change" forces the manual prompt.
+async function _fsResolveRouteIata(promptIfMissing){
     const up = function(v){ return (v || '').trim().toUpperCase(); };
     const isIata = function(v){ return /^[A-Z]{3}$/.test(v); };
-    const fromCache = function(key, cur){
-        if (isIata(cur)) return cur;
-        try { const c = up(localStorage.getItem(key)); if (isIata(c)) return c; } catch(e){}
-        return '';
-    };
-    let orig = fromCache('xkdg_flight_orig', up(window._fsFlightOrigin));
-    let dest = fromCache('xkdg_flight_dest', up(window._fsFlightDest));
+    const manual = !!window._fsForceManualIata;
+    window._fsForceManualIata = false;
+
+    let orig = up(window._fsFlightOrigIata), dest = up(window._fsFlightDestIata);
+    if (!isIata(orig)){ try { const c = up(localStorage.getItem('xkdg_flight_orig_iata')); if (isIata(c)) orig = c; } catch(e){} }
+    if (!isIata(dest)){ try { const c = up(localStorage.getItem('xkdg_flight_dest_iata')); if (isIata(c)) dest = c; } catch(e){} }
+
+    if (!manual){
+        const c = _fsRouteCoords();
+        if (c.oLat && c.oLng){ const a = await _fsNearestAirportIata(c.oLat, c.oLng); if (isIata(a || '')) orig = a; }
+        if (c.dLat && c.dLng){ const a = await _fsNearestAirportIata(c.dLat, c.dLng); if (isIata(a || '')) dest = a; }
+    }
+
     if (!isIata(orig) && promptIfMissing){
-        orig = up(prompt('Origin AIRPORT code (IATA — e.g. VIE Vienna, MXP Milan, LHR London):', ''));
+        orig = up(prompt('Origin AIRPORT code (IATA — e.g. VIE Vienna):', isIata(orig) ? orig : ''));
         if (!isIata(orig)){ if (orig) alert('Please enter a 3-letter airport code, e.g. VIE.'); return null; }
     }
     if (!isIata(dest) && promptIfMissing){
-        dest = up(prompt('Destination AIRPORT code (IATA — e.g. LHR London, CDG Paris, FCO Rome):', ''));
+        dest = up(prompt('Destination AIRPORT code (IATA — e.g. LHR London):', isIata(dest) ? dest : ''));
         if (!isIata(dest)){ if (dest) alert('Please enter a 3-letter airport code, e.g. LHR.'); return null; }
     }
-    if (isIata(orig)){ window._fsFlightOrigin = orig; try { localStorage.setItem('xkdg_flight_orig', orig); } catch(e){} }
-    if (isIata(dest)){ window._fsFlightDest = dest; try { localStorage.setItem('xkdg_flight_dest', dest); } catch(e){} }
+    if (isIata(orig)){ window._fsFlightOrigIata = orig; try { localStorage.setItem('xkdg_flight_orig_iata', orig); } catch(e){} }
+    if (isIata(dest)){ window._fsFlightDestIata = dest; try { localStorage.setItem('xkdg_flight_dest_iata', dest); } catch(e){} }
     return (isIata(orig) && isIata(dest)) ? { orig: orig, dest: dest } : null;
 }
 
@@ -6157,12 +6223,14 @@ function _fsGoogleFlightsUrl(orig, dest, date){
     return 'https://www.google.com/travel/flights?q=' + encodeURIComponent(q);
 }
 
-// PHASE 1 (free): open the two-choice panel for a favourable day — no API call yet.
-function fsFlightOpen(iso, h){
+// PHASE 1 (free): open the two-choice panel for a favourable day — no flight
+// API call yet. Auto-detects the nearest airports (OSM) from the route coords.
+async function fsFlightOpen(iso, h){
     try {
-        const route = _fsResolveRoute(true);
-        if (!route) return;                 // user cancelled the destination prompt
         const w = _fsFlightWindow(iso, h);
+        fsFlightShowPanel({ loading: true, date: w.dateStr });   // "finding airports…"
+        const route = await _fsResolveRouteIata(true);
+        if (!route){ const p = document.getElementById('fs-flights-panel'); if (p) p.remove(); return; }
         fsFlightShowPanel({
             choose: true, date: w.dateStr, orig: route.orig, dest: route.dest,
             winStart: w.winStart, winEndMin: w.winEndMin,
@@ -6172,11 +6240,12 @@ function fsFlightOpen(iso, h){
     } catch(e){ alert('Flight panel error: ' + e.message); }
 }
 
-// Clear the saved airports and re-open the chooser (re-prompts for IATA codes).
+// "✎ change": clear the detected airports and force a manual IATA entry.
 function fsFlightChangeRoute(iso, h){
     try {
-        window._fsFlightOrigin = ''; window._fsFlightDest = '';
-        try { localStorage.removeItem('xkdg_flight_orig'); localStorage.removeItem('xkdg_flight_dest'); } catch(e){}
+        window._fsFlightOrigIata = ''; window._fsFlightDestIata = '';
+        try { localStorage.removeItem('xkdg_flight_orig_iata'); localStorage.removeItem('xkdg_flight_dest_iata'); } catch(e){}
+        window._fsForceManualIata = true;   // ask for codes, don't auto-detect this time
         fsFlightOpen(iso, h);
     } catch(e){}
 }
@@ -6184,7 +6253,7 @@ function fsFlightChangeRoute(iso, h){
 // Real flight search for ONE favourable day.
 async function fsFlightSearch(iso, h){
     try {
-        const route = _fsResolveRoute(true);
+        const route = await _fsResolveRouteIata(true);
         if (!route){ return; }   // user cancelled the destination prompt
         const orig = route.orig, dest = route.dest;
         const w = _fsFlightWindow(iso, h);
@@ -6211,7 +6280,7 @@ async function fsFlightSearch(iso, h){
 // Real flight search across ALL favourable days currently shown on the calendar.
 async function fsFlightSearchAll(){
     try {
-        const route = _fsResolveRoute(true);
+        const route = await _fsResolveRouteIata(true);
         if (!route){ return; }
         const orig = route.orig, dest = route.dest;
         const map = window._fsFlightBestByDay || {};
