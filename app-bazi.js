@@ -6412,7 +6412,7 @@ async function _fsFetchFlights(orig, dest, dateStr){
 // Build the reliable Google Flights deep-link. The natural-language ?q= form is
 // flaky (often fills only the origin), so we encode the proper ?tfs= token —
 // a base64url protobuf carrying origin, destination and date (one-way, 1 adult).
-function _fsGflightsTfs(orig, dest, date){
+function _fsGflightsTfs(orig, dest, date, win){
     function varint(n){ const b = []; n = n >>> 0; do { let x = n & 0x7f; n >>>= 7; if (n) x |= 0x80; b.push(x); } while (n); return b; }
     function key(f, w){ return varint((f << 3) | w); }
     function strF(f, s){ const u = []; for (let i = 0; i < s.length; i++) u.push(s.charCodeAt(i) & 0xff); return key(f, 2).concat(varint(u.length), u); }
@@ -6424,16 +6424,31 @@ function _fsGflightsTfs(orig, dest, date){
     let fd = strF(2, date);                                                                    // FlightData.date = field 2
     origs.forEach(function(a){ fd = fd.concat(msgF(13, airport(a))); });                       // from = field 13 (repeated)
     dests.forEach(function(a){ fd = fd.concat(msgF(14, airport(a))); });                       // to   = field 14 (repeated)
+    if (win && win.sH != null && win.eH != null){
+        // Departure-time-of-day window (reverse-engineered field; protobuf skips it if wrong).
+        fd = fd.concat(msgF(8, varF(1, win.sH).concat(varF(2, win.eH))));
+    }
     const info = msgF(3, fd).concat(varF(8, 1), varF(9, 1), varF(19, 2));                      // Info: data=3, passenger=8(adult), seat=9(eco), trip=19(one-way)
     let bin = ''; for (let i = 0; i < info.length; i++) bin += String.fromCharCode(info[i]);
     const b64 = (typeof btoa === 'function') ? btoa(bin) : Buffer.from(info).toString('base64');
     return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function _fsGoogleFlightsUrl(orig, dest, date){
+// Parse a band label "09:56–11:56" into whole-hour departure bounds {sH, eH}.
+function _fsBandToWin(label){
+    if (!label) return null;
+    const m = String(label).match(/(\d{1,2}):(\d{2}).*?(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    const sH = parseInt(m[1], 10);
+    const eMin = parseInt(m[3], 10) * 60 + parseInt(m[4], 10);
+    const eH = Math.min(23, Math.max(sH, Math.floor((eMin - 1) / 60)));
+    return { sH: sH, eH: eH };
+}
+
+function _fsGoogleFlightsUrl(orig, dest, date, win){
     const isCode = function(v){ return /^[A-Za-z]{3}(,[A-Za-z]{3})*$/.test(v || ''); };
     if (isCode(orig) && isCode(dest) && /^\d{4}-\d{2}-\d{2}$/.test(date || '')){
-        return 'https://www.google.com/travel/flights?tfs=' + _fsGflightsTfs(orig, dest, date) + '&hl=en&gl=US&curr=EUR';
+        return 'https://www.google.com/travel/flights?tfs=' + _fsGflightsTfs(orig, dest, date, win) + '&hl=en&gl=US&curr=EUR';
     }
     // Fallback only if we somehow don't have clean IATA codes.
     const q = 'flights from ' + orig + ' to ' + dest + ' on ' + date;
@@ -6702,11 +6717,15 @@ function fsFlightShowPanel(o){
             + '</div>';
     }
 
-    // Render a labelled tier of flights (directional / XKDG-lucky).
-    function tierBlock(title, color, flights, gfu){
+    // Render a labelled tier of flights. Each flight's Book link is time-filtered to
+    // that flight's own lucky band (day-level links stay full-day & reliable).
+    function tierBlock(title, color, flights, dateForRows){
         if (!flights || !flights.length) return '';
         return '<div style="font-size:11px;font-weight:bold;color:' + color + ';margin:6px 0 3px;">' + title + '</div>'
-            + flights.map(function(f){ return flightRow(f, gfu); }).join('');
+            + flights.map(function(f){
+                const url = _fsGoogleFlightsUrl(o.orig, o.dest, dateForRows, _fsBandToWin(f._bandLabel));
+                return flightRow(f, url);
+            }).join('');
     }
     if (o.choose){
         const winTxt = (o.winStart && o.winEndMin != null) ? (o.winStart + '–' + _fsMinToHHMM(o.winEndMin)) : '';
@@ -6757,9 +6776,9 @@ function fsFlightShowPanel(o){
                 const isoJs = String(g.date || '').replace(/'/g, "");
                 let h = '<div style="margin:10px 0 2px;font-weight:bold;font-size:13px;color:#0b3d91;border-top:1px solid #eee;padding-top:8px;">'
                     + g.date + (winTxt ? ' <span style="font-weight:normal;color:#888;font-size:11px;">· dir. window ' + winTxt + '</span>' : '') + '</div>';
-                h += tierBlock('⭐ Best — directional + XKDG', '#9a6a00', g.best, gfu);
-                h += tierBlock('🟢 Directional', '#0b8043', g.premium, gfu);
-                h += tierBlock('🔵 XKDG-lucky',  '#1565c0', g.lucky,   gfu);
+                h += tierBlock('⭐ Best — directional + XKDG', '#9a6a00', g.best, g.date);
+                h += tierBlock('🟢 Directional', '#0b8043', g.premium, g.date);
+                h += tierBlock('🔵 XKDG-lucky',  '#1565c0', g.lucky, g.date);
                 h += '<div style="font-size:11px;margin:2px 0 4px;">'
                     + '<a href="' + gfu + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a>'
                     + (o.fromCache ? ' &nbsp;·&nbsp; <a onclick="fsFlightSearch(\'' + isoJs + '\',' + (g.hourIndex || 0) + ')" style="color:#0b8043;cursor:pointer;font-weight:bold;">↻ confirm live (1 search)</a>' : '')
@@ -6796,9 +6815,9 @@ function fsFlightShowPanel(o){
                 + (best.length ? '<span style="color:#9a6a00;font-weight:bold;">⭐ ' + best.length + ' best</span> · ' : '')
                 + '<span style="color:#0b8043;font-weight:bold;">🟢 ' + prem.length + ' directional</span> · '
                 + '<span style="color:#1565c0;font-weight:bold;">🔵 ' + lucky.length + ' XKDG-lucky</span></div>';
-            body += tierBlock('⭐ Best — directional + XKDG', '#9a6a00', best, gfu1);
-            body += tierBlock('🟢 Directional', '#0b8043', prem, gfu1);
-            body += tierBlock('🔵 XKDG-lucky',  '#1565c0', lucky, gfu1);
+            body += tierBlock('⭐ Best — directional + XKDG', '#9a6a00', best, o.date);
+            body += tierBlock('🟢 Directional', '#0b8043', prem, o.date);
+            body += tierBlock('🔵 XKDG-lucky',  '#1565c0', lucky, o.date);
         }
         body += '<a href="' + gfu1 + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:9px 12px;font-weight:bold;font-size:13px;">🌐 Open in Google Flights →</a>';
     }
