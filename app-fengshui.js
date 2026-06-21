@@ -384,7 +384,7 @@ function buildFengShuiView(){
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()">
             <button onclick="fsFacingFromMap('fs-house-facing')" title="Measure facing from satellite map (magnetic)"
-                    style="margin-top:4px;width:100%;background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Map</button>
+                    style="margin-top:4px;width:100%;background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Measure facing</button>
           </div>
           <div style="min-width:90px;">
             <label style="font-size:11px;color:#666;display:block;">Period (1-9)</label>
@@ -418,7 +418,7 @@ function buildFengShuiView(){
                    style="width:100%;padding:6px;border:1px solid #c9a84c;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()" onchange="fsCheckFacingZS()">
             <button onclick="fsFacingFromMap('fs-facing')" title="Measure door facing from satellite map (magnetic)"
-                    style="margin-top:4px;width:100%;background:#fff;color:#c9a84c;border:1px solid #c9a84c;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Map</button>
+                    style="margin-top:4px;width:100%;background:#fff;color:#c9a84c;border:1px solid #c9a84c;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Measure facing</button>
           </div>
           <div style="flex:1;min-width:120px;">
             <label style="font-size:11px;color:#666;display:block;">Water (°) · 零神 LS</label>
@@ -2470,10 +2470,16 @@ function fsNearestZhengShen(deg){
 function fsFacingFromMap(targetId){
   try {
     if (typeof XKDGFacingMap === 'undefined'){ alert('facing-map.js not loaded — add it (and Leaflet) in index.html.'); return; }
-    var g = function(id){ var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
-    var lat = parseFloat(g('dir-orig-lat')), lng = parseFloat(g('dir-orig-lng'));
-    var addr = g('dir-orig-addr') || g('fs-house-addr') || '';
-    if (!(isFinite(lat) && isFinite(lng))){
+    // Use the ACTIVE house's address (the tool geocodes it). Houses store an
+    // address string, not coordinates, so we hand the address to the map.
+    var addr = '';
+    try { if (window._fsLoadedHouse && window._fsLoadedHouse.address) addr = String(window._fsLoadedHouse.address).trim(); } catch(e){}
+    if (!addr){
+      var e1 = document.getElementById('dir-orig-addr'); if (e1) addr = String(e1.value || '').trim();
+    }
+    var lat = NaN, lng = NaN;
+    if (!addr){
+      // No address at all → at least open near the last GPS fix so the map isn't blank.
       try { var gps = JSON.parse(localStorage.getItem('xkdg_gps') || 'null'); if (gps && isFinite(gps.lat)){ lat = gps.lat; lng = gps.lng; } } catch(e){}
     }
     XKDGFacingMap.open({
@@ -3842,6 +3848,7 @@ function fsLoadHouse(personName, houseIdx){
   const houses = all[personName] || [];
   const h = houses[houseIdx];
   if (!h) return;
+  try { window._fsLoadedHouse = { personName: personName, houseIdx: houseIdx, address: (h.address || '') }; } catch(e){}
 
   var f = _fsActiveFloor(h);
   var effFacing = _fsFloorFacing(h, f);
