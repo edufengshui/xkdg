@@ -6205,6 +6205,67 @@ function _fsHaversineKm(lat1, lon1, lat2, lon2){
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+// Curated city → airports map. For multi-airport metros the comma-joined list is
+// passed straight to one flight search (SerpApi & Google Flights both accept
+// comma-separated airport codes), so a single search covers every airport of the
+// city. Also corrects common single-airport cities the nearest-airport lookup gets
+// wrong (e.g. Amsterdam → AMS, not the empty Lelystad/LEY). Match by name first,
+// then by proximity (< 70 km) to the city centre.
+const FS_CITY_AIRPORTS = [
+    { names:['london','londra'],              lat:51.5074, lng:-0.1278,  airports:['LHR','LGW','STN','LTN','LCY'] },
+    { names:['new york','new york city'],     lat:40.7128, lng:-74.0060, airports:['JFK','EWR','LGA'] },
+    { names:['paris','parigi'],               lat:48.8566, lng:2.3522,   airports:['CDG','ORY','BVA'] },
+    { names:['milan','milano'],               lat:45.4642, lng:9.1900,   airports:['MXP','LIN','BGY'] },
+    { names:['rome','roma'],                  lat:41.9028, lng:12.4964,  airports:['FCO','CIA'] },
+    { names:['tokyo','tokio'],                lat:35.6762, lng:139.6503, airports:['HND','NRT'] },
+    { names:['moscow','mosca'],               lat:55.7558, lng:37.6173,  airports:['SVO','DME','VKO'] },
+    { names:['washington'],                   lat:38.9072, lng:-77.0369, airports:['IAD','DCA','BWI'] },
+    { names:['chicago'],                      lat:41.8781, lng:-87.6298, airports:['ORD','MDW'] },
+    { names:['stockholm','stoccolma'],        lat:59.3293, lng:18.0686,  airports:['ARN','BMA','NYO'] },
+    { names:['osaka'],                        lat:34.6937, lng:135.5023, airports:['KIX','ITM'] },
+    { names:['istanbul'],                     lat:41.0082, lng:28.9784,  airports:['IST','SAW'] },
+    { names:['bangkok'],                      lat:13.7563, lng:100.5018, airports:['BKK','DMK'] },
+    { names:['seoul','seul'],                 lat:37.5665, lng:126.9780, airports:['ICN','GMP'] },
+    { names:['sao paulo','são paulo'],        lat:-23.5505, lng:-46.6333, airports:['GRU','CGH','VCP'] },
+    { names:['buenos aires'],                 lat:-34.6037, lng:-58.3816, airports:['EZE','AEP'] },
+    { names:['toronto'],                      lat:43.6532, lng:-79.3832, airports:['YYZ','YTZ'] },
+    { names:['taipei','taibei'],              lat:25.0330, lng:121.5654, airports:['TPE','TSA'] },
+    { names:['houston'],                      lat:29.7604, lng:-95.3698, airports:['IAH','HOU'] },
+    { names:['belfast'],                      lat:54.5973, lng:-5.9301,  airports:['BFS','BHD'] },
+    // single-airport corrections (avoid the lookup picking a tiny nearby field)
+    { names:['amsterdam'],                    lat:52.3676, lng:4.9041,   airports:['AMS'] },
+    { names:['barcelona','barcellona'],       lat:41.3851, lng:2.1734,   airports:['BCN'] },
+    { names:['munich','münchen','monaco di baviera'], lat:48.1351, lng:11.5820, airports:['MUC'] },
+    { names:['vienna','wien'],                lat:48.2082, lng:16.3738,  airports:['VIE'] },
+    { names:['madrid'],                       lat:40.4168, lng:-3.7038,  airports:['MAD'] },
+    { names:['frankfurt','francoforte'],      lat:50.1109, lng:8.6821,   airports:['FRA'] },
+    { names:['zurich','zürich','zurigo'],     lat:47.3769, lng:8.5417,   airports:['ZRH'] },
+];
+
+// City (name and/or coords) → comma-joined airport list, or null if not in the table.
+function _fsCityCode(name, lat, lng){
+    const n = (name || '').toLowerCase().trim();
+    if (n){
+        for (let i = 0; i < FS_CITY_AIRPORTS.length; i++){
+            const m = FS_CITY_AIRPORTS[i];
+            for (let j = 0; j < m.names.length; j++){
+                if (n === m.names[j] || n.indexOf(m.names[j]) >= 0) return m.airports.join(',');
+            }
+        }
+    }
+    const la = parseFloat(lat), lo = parseFloat(lng);
+    if (isFinite(la) && isFinite(lo)){
+        let best = null, bestD = Infinity;
+        for (let i = 0; i < FS_CITY_AIRPORTS.length; i++){
+            const m = FS_CITY_AIRPORTS[i];
+            const d = _fsHaversineKm(la, lo, m.lat, m.lng);
+            if (d < 70 && d < bestD){ bestD = d; best = m.airports.join(','); }
+        }
+        if (best) return best;
+    }
+    return null;
+}
+
 // Nearest airport IATA code to a lat/lng, via OpenStreetMap (Overpass) through
 // the xkdg-osm worker. Cached in-memory per rounded coordinate for the session.
 async function _fsNearestAirportIata(lat, lng){
@@ -6224,7 +6285,7 @@ async function _fsNearestAirportIata(lat, lng){
         catch(e){ return null; }
         let j; try { j = await resp.json(); } catch(e){ return null; }
         const els = (j && j.elements) || [];
-        let best = null, bestD = Infinity;
+        let best = null, bestScore = Infinity;
         for (const e of els){
             const t = e.tags || {};
             const code = (t.iata || '').trim().toUpperCase();
@@ -6233,7 +6294,11 @@ async function _fsNearestAirportIata(lat, lng){
             const elng = (e.lon != null) ? e.lon : (e.center && e.center.lon);
             if (elat == null || elng == null) continue;
             const d = _fsHaversineKm(lat, lng, elat, elng);
-            if (d < bestD){ bestD = d; best = code; }
+            // Prefer international aerodromes: subtract a big bonus so an international
+            // airport a bit farther still beats a tiny local strip next door.
+            const intl = (t.aerodrome === 'international' || t['aerodrome:type'] === 'international');
+            const score = d - (intl ? 300 : 0);
+            if (score < bestScore){ bestScore = score; best = code; }
         }
         return best;
     }
@@ -6253,36 +6318,50 @@ function _fsRouteCoords(){
     };
 }
 
+// Read the typed origin/destination city names (e.g. "Milano, Italy").
+function _fsRouteCityNames(){
+    let r = null; try { r = JSON.parse(localStorage.getItem('xkdg_dir_route') || 'null'); } catch(e){}
+    const gv = function(id){ const el = document.getElementById(id); return el ? (el.value || '').trim() : ''; };
+    return { o: gv('dir-orig-addr') || (r && r.oAddr) || '', d: gv('dir-dest-addr') || (r && r.dAddr) || '' };
+}
+
 // Resolve origin/destination as IATA codes. Default: auto-detect the nearest
 // airport from the geocoded coordinates (OpenStreetMap). Falls back to a saved
 // code, then to a manual prompt. "✎ change" forces the manual prompt.
 async function _fsResolveRouteIata(promptIfMissing){
     const up = function(v){ return (v || '').trim().toUpperCase(); };
     const isIata = function(v){ return /^[A-Z]{3}$/.test(v); };
+    const isCode = function(v){ return /^[A-Z]{3}(,[A-Z]{3})*$/.test(v); };   // single or comma-list
     const manual = !!window._fsForceManualIata;
     window._fsForceManualIata = false;
 
     let orig = up(window._fsFlightOrigIata), dest = up(window._fsFlightDestIata);
-    if (!isIata(orig)){ try { const c = up(localStorage.getItem('xkdg_flight_orig_iata')); if (isIata(c)) orig = c; } catch(e){} }
-    if (!isIata(dest)){ try { const c = up(localStorage.getItem('xkdg_flight_dest_iata')); if (isIata(c)) dest = c; } catch(e){} }
+    if (!isCode(orig)){ try { const c = up(localStorage.getItem('xkdg_flight_orig_iata')); if (isCode(c)) orig = c; } catch(e){} }
+    if (!isCode(dest)){ try { const c = up(localStorage.getItem('xkdg_flight_dest_iata')); if (isCode(c)) dest = c; } catch(e){} }
 
     if (!manual){
+        const names = _fsRouteCityNames();
         const c = _fsRouteCoords();
-        if (c.oLat && c.oLng){ const a = await _fsNearestAirportIata(c.oLat, c.oLng); if (isIata(a || '')) orig = a; }
-        if (c.dLat && c.dLng){ const a = await _fsNearestAirportIata(c.dLat, c.dLng); if (isIata(a || '')) dest = a; }
+        // City table first: handles multi-airport metros AND single-airport corrections.
+        const oCity = _fsCityCode(names.o, c.oLat, c.oLng);
+        const dCity = _fsCityCode(names.d, c.dLat, c.dLng);
+        if (oCity) orig = up(oCity);
+        else if (c.oLat && c.oLng){ const a = await _fsNearestAirportIata(c.oLat, c.oLng); if (isIata(a || '')) orig = a; }
+        if (dCity) dest = up(dCity);
+        else if (c.dLat && c.dLng){ const a = await _fsNearestAirportIata(c.dLat, c.dLng); if (isIata(a || '')) dest = a; }
     }
 
-    if (!isIata(orig) && promptIfMissing){
-        orig = up(prompt('Origin AIRPORT code (IATA — e.g. VIE Vienna):', isIata(orig) ? orig : ''));
-        if (!isIata(orig)){ if (orig) alert('Please enter a 3-letter airport code, e.g. VIE.'); return null; }
+    if (!isCode(orig) && promptIfMissing){
+        orig = up(prompt('Origin AIRPORT code (IATA — e.g. VIE Vienna):', isCode(orig) ? orig : ''));
+        if (!isCode(orig)){ if (orig) alert('Please enter a 3-letter airport code, e.g. VIE.'); return null; }
     }
-    if (!isIata(dest) && promptIfMissing){
-        dest = up(prompt('Destination AIRPORT code (IATA — e.g. LHR London):', isIata(dest) ? dest : ''));
-        if (!isIata(dest)){ if (dest) alert('Please enter a 3-letter airport code, e.g. LHR.'); return null; }
+    if (!isCode(dest) && promptIfMissing){
+        dest = up(prompt('Destination AIRPORT code (IATA — e.g. LHR London):', isCode(dest) ? dest : ''));
+        if (!isCode(dest)){ if (dest) alert('Please enter a 3-letter airport code, e.g. LHR.'); return null; }
     }
-    if (isIata(orig)){ window._fsFlightOrigIata = orig; try { localStorage.setItem('xkdg_flight_orig_iata', orig); } catch(e){} }
-    if (isIata(dest)){ window._fsFlightDestIata = dest; try { localStorage.setItem('xkdg_flight_dest_iata', dest); } catch(e){} }
-    return (isIata(orig) && isIata(dest)) ? { orig: orig, dest: dest } : null;
+    if (isCode(orig)){ window._fsFlightOrigIata = orig; try { localStorage.setItem('xkdg_flight_orig_iata', orig); } catch(e){} }
+    if (isCode(dest)){ window._fsFlightDestIata = dest; try { localStorage.setItem('xkdg_flight_dest_iata', dest); } catch(e){} }
+    return (isCode(orig) && isCode(dest)) ? { orig: orig, dest: dest } : null;
 }
 
 // Civil departure window for a favourable (date, hourIndex): {dateStr, winStart, winStartMin, winEndMin}
@@ -6334,15 +6413,20 @@ function _fsGflightsTfs(orig, dest, date){
     function msgF(f, bytes){ return key(f, 2).concat(varint(bytes.length), bytes); }
     function varF(f, v){ return key(f, 0).concat(varint(v)); }
     const airport = function(code){ return strF(2, String(code).toUpperCase()); };           // Airport.name = field 2
-    const fd = strF(2, date).concat(msgF(13, airport(orig)), msgF(14, airport(dest)));        // FlightData: date=2, from=13, to=14
-    const info = msgF(3, fd).concat(varF(8, 1), varF(9, 1), varF(19, 2));                     // Info: data=3, passenger=8(adult), seat=9(eco), trip=19(one-way)
+    const origs = String(orig).toUpperCase().split(',').filter(Boolean);
+    const dests = String(dest).toUpperCase().split(',').filter(Boolean);
+    let fd = strF(2, date);                                                                    // FlightData.date = field 2
+    origs.forEach(function(a){ fd = fd.concat(msgF(13, airport(a))); });                       // from = field 13 (repeated)
+    dests.forEach(function(a){ fd = fd.concat(msgF(14, airport(a))); });                       // to   = field 14 (repeated)
+    const info = msgF(3, fd).concat(varF(8, 1), varF(9, 1), varF(19, 2));                      // Info: data=3, passenger=8(adult), seat=9(eco), trip=19(one-way)
     let bin = ''; for (let i = 0; i < info.length; i++) bin += String.fromCharCode(info[i]);
     const b64 = (typeof btoa === 'function') ? btoa(bin) : Buffer.from(info).toString('base64');
     return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function _fsGoogleFlightsUrl(orig, dest, date){
-    if (/^[A-Za-z]{3}$/.test(orig || '') && /^[A-Za-z]{3}$/.test(dest || '') && /^\d{4}-\d{2}-\d{2}$/.test(date || '')){
+    const isCode = function(v){ return /^[A-Za-z]{3}(,[A-Za-z]{3})*$/.test(v || ''); };
+    if (isCode(orig) && isCode(dest) && /^\d{4}-\d{2}-\d{2}$/.test(date || '')){
         return 'https://www.google.com/travel/flights?tfs=' + _fsGflightsTfs(orig, dest, date) + '&hl=en&gl=US&curr=EUR';
     }
     // Fallback only if we somehow don't have clean IATA codes.
