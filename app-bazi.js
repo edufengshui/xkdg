@@ -6709,23 +6709,26 @@ function fsFlightShowPanel(o){
             badge = '<span style="display:inline-block;background:#e8f0fe;color:#1565c0;border:1px solid #1565c0;border-radius:5px;font-size:10px;font-weight:bold;padding:0 5px;margin-left:6px;vertical-align:middle;">🔵 XKDG-lucky</span>';
             border = '#1565c0'; bg = '#f5f9ff';
         }
+        const priceTxt = (f.price != null)
+            ? (o.fromCache
+                ? '<div title="Indicative price from the sample week — varies by date. Use “confirm live” for the real fare." style="color:#999;font-weight:normal;font-size:13px;">~' + f.price + ' ' + (f.currency || '') + '</div>'
+                : '<div style="font-weight:bold;color:#0b8043;">' + f.price + ' ' + (f.currency || '') + '</div>')
+            : '';
         return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid ' + border + ';background:' + bg + ';border-radius:8px;margin-bottom:6px;' + (tier === 'best' ? 'box-shadow:0 0 0 1px #e0a800;' : '') + '">'
             + '<div><div style="font-weight:bold;font-size:16px;color:#111;">' + (f.time || '--:--') + badge + '</div>'
             + '<div style="font-size:11px;color:#666;">' + (f.flight_number || f.airline || '') + (stops ? (' · ' + stops) : '') + '</div></div>'
-            + '<div style="text-align:right;"><div style="font-weight:bold;color:#0b8043;">' + (f.price != null ? (f.price + ' ' + (f.currency || '')) : '') + '</div>'
+            + '<div style="text-align:right;">' + priceTxt
             + '<a href="' + (fallbackUrl || f.booking_url || '#') + '" target="_blank" rel="noopener" style="font-size:12px;color:#1565c0;font-weight:bold;text-decoration:none;">Book →</a></div>'
             + '</div>';
     }
 
-    // Render a labelled tier of flights. Each flight's Book link is time-filtered to
-    // that flight's own lucky band (day-level links stay full-day & reliable).
+    // Render a labelled tier of flights. Book opens the correct day on Google Flights
+    // (Google sorts by departure time; the row already names the exact flight & time).
     function tierBlock(title, color, flights, dateForRows){
         if (!flights || !flights.length) return '';
+        const url = _fsGoogleFlightsUrl(o.orig, o.dest, dateForRows);
         return '<div style="font-size:11px;font-weight:bold;color:' + color + ';margin:6px 0 3px;">' + title + '</div>'
-            + flights.map(function(f){
-                const url = _fsGoogleFlightsUrl(o.orig, o.dest, dateForRows, _fsBandToWin(f._bandLabel));
-                return flightRow(f, url);
-            }).join('');
+            + flights.map(function(f){ return flightRow(f, url); }).join('');
     }
     if (o.choose){
         const winTxt = (o.winStart && o.winEndMin != null) ? (o.winStart + '–' + _fsMinToHHMM(o.winEndMin)) : '';
@@ -6764,7 +6767,7 @@ function fsFlightShowPanel(o){
                 const ageTxt = (o.ttAge != null) ? (o.ttAge === 0 ? 'today' : (o.ttAge + 'd ago')) : '';
                 body += '<div style="font-size:11px;color:#9a6a00;background:#fff8e6;border:1px solid #f0dca0;border-radius:6px;padding:5px 8px;margin-bottom:8px;">'
                     + '📅 From the ' + _fsSeasonName(o.ttSeason) + ' timetable (built ' + ageTxt + ', no quota used). '
-                    + 'Times are the expected schedule — use “confirm live” on the day you book.'
+                    + 'Times are the expected schedule; prices are only indicative (they swing a lot by date) — use “confirm live” for real fares.'
                     + ' <a onclick="fsFlightRefreshTT()" style="color:#1565c0;cursor:pointer;font-weight:bold;">↻ rebuild (7 searches)</a></div>';
             }
             if (!shown.length){

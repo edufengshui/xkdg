@@ -38,6 +38,7 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
       /* Negatives chip — white by default, red when active */
       .filter-chip.negatives-chip {
@@ -356,6 +357,9 @@
 <script src="directions-charts.js"></script>
 <script>/* Route OpenStreetMap (Overpass) through our own Cloudflare worker to avoid browser CORS. */
 window.TP_OVERPASS_URL = 'https://xkdg-overpass.decumano16.workers.dev';</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="geomag.js"></script>
+<script src="facing-map.js"></script>
 <script src="travel-planner.js"></script>
 <script src="ai-chat.js"></script>
 <div id="version-tag" style="text-align:center;margin:20px 0 10px;font-size:15px;font-weight:bold;color:#888;letter-spacing:1px;">v476</div>

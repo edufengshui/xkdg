@@ -383,6 +383,8 @@ function buildFengShuiView(){
             <input type="number" id="fs-house-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()">
+            <button onclick="fsFacingFromMap('fs-house-facing')" title="Measure facing from satellite map (magnetic)"
+                    style="margin-top:4px;width:100%;background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Map</button>
           </div>
           <div style="min-width:90px;">
             <label style="font-size:11px;color:#666;display:block;">Period (1-9)</label>
@@ -415,6 +417,8 @@ function buildFengShuiView(){
             <input type="number" id="fs-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
                    style="width:100%;padding:6px;border:1px solid #c9a84c;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()" onchange="fsCheckFacingZS()">
+            <button onclick="fsFacingFromMap('fs-facing')" title="Measure door facing from satellite map (magnetic)"
+                    style="margin-top:4px;width:100%;background:#fff;color:#c9a84c;border:1px solid #c9a84c;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Map</button>
           </div>
           <div style="flex:1;min-width:120px;">
             <label style="font-size:11px;color:#666;display:block;">Water (°) · 零神 LS</label>
@@ -2461,6 +2465,28 @@ function fsNearestZhengShen(deg){
     if (d < bestD){ bestD = d; best = s; }
   }
   return best;
+}
+// Open the satellite "measure facing" tool and write the MAGNETIC facing into targetId.
+function fsFacingFromMap(targetId){
+  try {
+    if (typeof XKDGFacingMap === 'undefined'){ alert('facing-map.js not loaded — add it (and Leaflet) in index.html.'); return; }
+    var g = function(id){ var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+    var lat = parseFloat(g('dir-orig-lat')), lng = parseFloat(g('dir-orig-lng'));
+    var addr = g('dir-orig-addr') || g('fs-house-addr') || '';
+    if (!(isFinite(lat) && isFinite(lng))){
+      try { var gps = JSON.parse(localStorage.getItem('xkdg_gps') || 'null'); if (gps && isFinite(gps.lat)){ lat = gps.lat; lng = gps.lng; } } catch(e){}
+    }
+    XKDGFacingMap.open({
+      lat: lat, lng: lng, address: addr, target: targetId,
+      onResult: function(deg){
+        var inp = document.getElementById(targetId);
+        if (!inp) return;
+        inp.value = (Math.round(deg * 10) / 10).toFixed(1);
+        inp.dispatchEvent(new Event('input',  { bubbles: true }));   // → fsRedraw()
+        inp.dispatchEvent(new Event('change', { bubbles: true }));   // → fsCheckFacingZS() for the door field
+      }
+    });
+  } catch(e){ alert('Map facing error: ' + e.message); }
 }
 function fsCheckFacingZS(){
   try {
