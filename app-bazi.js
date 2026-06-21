@@ -6158,14 +6158,15 @@ function _fsXkdgHoursForDay(iso){
     return set;
 }
 
-// Classify a day's flights into 🟢 premium (directional 時辰) and 🔵 lucky
-// (XKDG-positive 時辰 for the person). Flights in neither are dropped.
-// dirHourIndex = the day's directional favourable 時辰 (premium band).
+// Classify a day's flights into ⭐ best (directional 時辰 that is ALSO XKDG-positive),
+// 🟢 directional (directional only), and 🔵 lucky (XKDG-positive only). Flights in
+// none are dropped. dirHourIndex = the day's directional favourable 時辰.
 function _fsClassifyFlights(flights, iso, dirHourIndex){
-    const out = { premium: [], lucky: [], rejected: 0, dirWin: null };
+    const out = { best: [], premium: [], lucky: [], rejected: 0, dirWin: null };
     const all = (flights || []).slice();
     const dirBands = (dirHourIndex != null && dirHourIndex >= 0) ? [dirHourIndex] : [];
     const xkdg = _fsXkdgHoursForDay(iso);
+    const dirIsXkdg = dirBands.some(function(h){ return xkdg[h]; });   // directional hour also lucky for the traveller?
     const luckyBands = [];
     for (let h = 0; h < 12; h++){ if (xkdg[h] && dirBands.indexOf(h) < 0) luckyBands.push(h); }
     function bandWin(h){
@@ -6183,13 +6184,18 @@ function _fsClassifyFlights(flights, iso, dirHourIndex){
     }
     all.forEach(function(f){
         const dw = inAny(f.time, dirWins);
-        if (dw){ f._tier = 'premium'; f._bandLabel = dw.label; out.premium.push(f); return; }
+        if (dw){
+            f._bandLabel = dw.label;
+            if (dirIsXkdg){ f._tier = 'best'; out.best.push(f); }
+            else { f._tier = 'premium'; out.premium.push(f); }
+            return;
+        }
         const lw = inAny(f.time, luckyWins);
         if (lw){ f._tier = 'lucky'; f._bandLabel = lw.label; out.lucky.push(f); return; }
         out.rejected++;
     });
     const byTime = function(a, b){ return (_fsHHMMtoMin(a.time) || 0) - (_fsHHMMtoMin(b.time) || 0); };
-    out.premium.sort(byTime); out.lucky.sort(byTime);
+    out.best.sort(byTime); out.premium.sort(byTime); out.lucky.sort(byTime);
     out.dirWin = dirWins[0] || null;
     return out;
 }
@@ -6482,7 +6488,7 @@ async function fsFlightSearch(iso, h){
         fsFlightShowPanel({
             date:w.dateStr, orig:data.origin || orig, dest:data.dest || dest,
             winStart:w.winStart, winEndMin:w.winEndMin,
-            premium:cls.premium, lucky:cls.lucky, rejected:cls.rejected,
+            best:cls.best, premium:cls.premium, lucky:cls.lucky, rejected:cls.rejected,
             currency:data.currency
         });
     } catch(e){ alert('Flight search error: ' + e.message); }
@@ -6567,12 +6573,13 @@ async function _fsBuildRouteTT(orig, dest, anchorIso, onProgress){
     _fsSaveRouteTT(orig, dest, tt);
     return tt;
 }
-// Flights for an ISO date from the cached weekday pattern.
+// Flights for an ISO date from the cached weekday pattern. Returns fresh copies so
+// per-day classification (_tier, badges) never bleeds between days sharing a weekday.
 function _fsFlightsFromTT(tt, iso){
     if (!tt || !tt.weekday) return [];
     const p = iso.split('-').map(Number);
     const wd = new Date(p[0], p[1] - 1, p[2]).getDay();
-    return (tt.weekday[wd] || []).slice();
+    return (tt.weekday[wd] || []).map(function(f){ return Object.assign({}, f); });
 }
 
 // Real flight search across the SELECTED favourable days currently shown.
@@ -6611,12 +6618,14 @@ async function fsFlightSearchAll(){
             const cls = _fsClassifyFlights(flights, iso, r.hourIndex);
             return {
                 date: w.dateStr, winStart: w.winStart, winEndMin: w.winEndMin, hourIndex: r.hourIndex,
-                premium: cls.premium, lucky: cls.lucky, rejected: cls.rejected,
-                hasFlight: (cls.premium.length + cls.lucky.length) > 0
+                best: cls.best, premium: cls.premium, lucky: cls.lucky, rejected: cls.rejected,
+                hasFlight: (cls.best.length + cls.premium.length + cls.lucky.length) > 0
             };
         });
-        // Sort: days with a directional (premium) flight first, then XKDG-lucky, then date.
+        // Sort: days with a ⭐ best flight first, then directional, then XKDG-lucky, then date.
         groups.sort(function(a,b){
+            const ab = a.best.length ? 0 : 1, bb = b.best.length ? 0 : 1;
+            if (ab !== bb) return ab - bb;
             const ap = a.premium.length ? 0 : 1, bp = b.premium.length ? 0 : 1;
             if (ap !== bp) return ap - bp;
             const al = a.lucky.length ? 0 : 1, bl = b.lucky.length ? 0 : 1;
@@ -6637,9 +6646,28 @@ async function fsFlightRefreshTT(){
     } catch(e){}
 }
 
+// Apply the panel size for the current maximized state (persists across re-renders).
+function _fsFlightApplySize(el){
+    if (!el) return;
+    if (window._fsFlightMax){
+        el.style.width = '96vw'; el.style.maxWidth = '1100px';
+        el.style.height = '94vh'; el.style.maxHeight = '94vh';
+    } else {
+        el.style.width = 'min(420px,92vw)'; el.style.maxWidth = '';
+        el.style.height = ''; el.style.maxHeight = '80vh';
+    }
+}
+// Toggle the flights panel between compact and (near) full screen.
+function fsFlightToggleMax(){
+    window._fsFlightMax = !window._fsFlightMax;
+    _fsFlightApplySize(document.getElementById('fs-flights-panel'));
+    if (window._fsFlightLastOpts) fsFlightShowPanel(window._fsFlightLastOpts);
+}
+
 // Floating results panel (works identically from CAL cell and LIST row).
 function fsFlightShowPanel(o){
     o = o || {};
+    window._fsFlightLastOpts = o;
     let el = document.getElementById('fs-flights-panel');
     if (!el){
         el = document.createElement('div');
@@ -6647,18 +6675,26 @@ function fsFlightShowPanel(o){
         el.style.cssText = 'position:fixed;z-index:99999;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:80vh;overflow:auto;background:#fff;border:1px solid #ccc;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.3);padding:14px 14px 16px;font-family:inherit;color:#222;';
         document.body.appendChild(el);
     }
+    _fsFlightApplySize(el);
+    const maxBtn = '<button onclick="fsFlightToggleMax()" title="' + (window._fsFlightMax ? 'Restore' : 'Full screen') + '" style="position:absolute;top:8px;right:40px;background:none;border:none;font-size:17px;cursor:pointer;color:#666;line-height:1;">' + (window._fsFlightMax ? '🗗' : '⛶') + '</button>';
     const close = '<button onclick="var p=document.getElementById(\'fs-flights-panel\');if(p)p.remove();" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:20px;cursor:pointer;color:#666;line-height:1;">×</button>';
 
     // Render a single flight row, badged by tier: 🟢 directional / 🔵 XKDG-lucky.
     function flightRow(f, fallbackUrl){
         const stops = (f.transfers != null) ? (f.transfers === 0 ? 'direct' : (f.transfers + ' stop')) : '';
-        const premium = (f._tier === 'premium');
-        const badge = premium
-            ? '<span style="display:inline-block;background:#e6f4ea;color:#0b8043;border:1px solid #0b8043;border-radius:5px;font-size:10px;font-weight:bold;padding:0 5px;margin-left:6px;vertical-align:middle;">🟢 directional</span>'
-            : '<span style="display:inline-block;background:#e8f0fe;color:#1565c0;border:1px solid #1565c0;border-radius:5px;font-size:10px;font-weight:bold;padding:0 5px;margin-left:6px;vertical-align:middle;">🔵 XKDG-lucky</span>';
-        const border = premium ? '#0b8043' : '#1565c0';
-        const bg = premium ? '#f6fbf7' : '#f5f9ff';
-        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid ' + border + ';background:' + bg + ';border-radius:8px;margin-bottom:6px;">'
+        const tier = f._tier;
+        let badge, border, bg;
+        if (tier === 'best'){
+            badge = '<span style="display:inline-block;background:#fff4d6;color:#9a6a00;border:1px solid #e0a800;border-radius:5px;font-size:10px;font-weight:bold;padding:0 5px;margin-left:6px;vertical-align:middle;">⭐ directional + lucky</span>';
+            border = '#e0a800'; bg = '#fffdf5';
+        } else if (tier === 'premium'){
+            badge = '<span style="display:inline-block;background:#e6f4ea;color:#0b8043;border:1px solid #0b8043;border-radius:5px;font-size:10px;font-weight:bold;padding:0 5px;margin-left:6px;vertical-align:middle;">🟢 directional</span>';
+            border = '#0b8043'; bg = '#f6fbf7';
+        } else {
+            badge = '<span style="display:inline-block;background:#e8f0fe;color:#1565c0;border:1px solid #1565c0;border-radius:5px;font-size:10px;font-weight:bold;padding:0 5px;margin-left:6px;vertical-align:middle;">🔵 XKDG-lucky</span>';
+            border = '#1565c0'; bg = '#f5f9ff';
+        }
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid ' + border + ';background:' + bg + ';border-radius:8px;margin-bottom:6px;' + (tier === 'best' ? 'box-shadow:0 0 0 1px #e0a800;' : '') + '">'
             + '<div><div style="font-weight:bold;font-size:16px;color:#111;">' + (f.time || '--:--') + badge + '</div>'
             + '<div style="font-size:11px;color:#666;">' + (f.flight_number || f.airline || '') + (stops ? (' · ' + stops) : '') + '</div></div>'
             + '<div style="text-align:right;"><div style="font-weight:bold;color:#0b8043;">' + (f.price != null ? (f.price + ' ' + (f.currency || '')) : '') + '</div>'
@@ -6684,7 +6720,7 @@ function fsFlightShowPanel(o){
             + '<div style="font-size:11px;color:#888;margin-bottom:14px;text-align:center;">Free · shows all flights — drag the “Times” filter to your window</div>'
             + '<button onclick="fsFlightSearch(\'' + isoJs + '\',' + (o.hourIndex || 0) + ')" style="display:block;width:100%;text-align:center;background:#0b8043;color:#fff;border:none;border-radius:8px;padding:11px 12px;font-weight:bold;font-size:14px;cursor:pointer;margin-bottom:4px;">🎯 Find lucky flights (directional + XKDG)</button>'
             + '<div style="font-size:11px;color:#888;text-align:center;">Uses 1 search of your monthly quota</div>';
-        el.innerHTML = close + head + body;
+        el.innerHTML = close + maxBtn + head + body;
         return;
     }
 
@@ -6696,13 +6732,15 @@ function fsFlightShowPanel(o){
             body = '<div style="padding:18px;text-align:center;color:#555;"><span class="fs-loadmsg">' + (o.loadingMsg || 'Searching…') + '</span><br><span style="font-size:11px;">(may take a few seconds)</span></div>';
         } else {
             const groups = o.groups || [];
+            const withBest  = groups.filter(function(g){ return g.best && g.best.length; });
             const withPrem  = groups.filter(function(g){ return g.premium && g.premium.length; });
             const withLucky = groups.filter(function(g){ return g.lucky && g.lucky.length; });
-            const shown = groups.filter(function(g){ return (g.premium && g.premium.length) || (g.lucky && g.lucky.length); });
+            const shown = groups.filter(function(g){ return (g.best && g.best.length) || (g.premium && g.premium.length) || (g.lucky && g.lucky.length); });
             body += '<div style="font-size:13px;color:#0b3d91;font-weight:bold;margin-bottom:2px;">'
+                + '<span style="color:#9a6a00;">⭐ ' + withBest.length + '</span> best · '
                 + '<span style="color:#0b8043;">🟢 ' + withPrem.length + '</span> directional · '
                 + '<span style="color:#1565c0;">🔵 ' + withLucky.length + '</span> XKDG-lucky · of ' + groups.length + ' days</div>';
-            body += '<div style="font-size:11px;color:#888;margin-bottom:8px;">🟢 takeoff in the directional window · 🔵 takeoff in an XKDG-positive hour for the traveller(s)</div>';
+            body += '<div style="font-size:11px;color:#888;margin-bottom:8px;">⭐ directional <em>and</em> XKDG-positive (the strongest) · 🟢 directional only · 🔵 XKDG-positive hour only</div>';
             if (o.fromCache){
                 const ageTxt = (o.ttAge != null) ? (o.ttAge === 0 ? 'today' : (o.ttAge + 'd ago')) : '';
                 body += '<div style="font-size:11px;color:#9a6a00;background:#fff8e6;border:1px solid #f0dca0;border-radius:6px;padding:5px 8px;margin-bottom:8px;">'
@@ -6719,6 +6757,7 @@ function fsFlightShowPanel(o){
                 const isoJs = String(g.date || '').replace(/'/g, "");
                 let h = '<div style="margin:10px 0 2px;font-weight:bold;font-size:13px;color:#0b3d91;border-top:1px solid #eee;padding-top:8px;">'
                     + g.date + (winTxt ? ' <span style="font-weight:normal;color:#888;font-size:11px;">· dir. window ' + winTxt + '</span>' : '') + '</div>';
+                h += tierBlock('⭐ Best — directional + XKDG', '#9a6a00', g.best, gfu);
                 h += tierBlock('🟢 Directional', '#0b8043', g.premium, gfu);
                 h += tierBlock('🔵 XKDG-lucky',  '#1565c0', g.lucky,   gfu);
                 h += '<div style="font-size:11px;margin:2px 0 4px;">'
@@ -6733,7 +6772,7 @@ function fsFlightShowPanel(o){
                     + 'The other ' + none + ' day' + (none === 1 ? '' : 's') + ' have no flight in a positive 時辰.</div>';
             }
         }
-        el.innerHTML = close + head + body;
+        el.innerHTML = close + maxBtn + head + body;
         return;
     }
 
@@ -6749,19 +6788,21 @@ function fsFlightShowPanel(o){
         body = '<div style="color:#b71c1c;font-size:13px;margin-bottom:10px;">' + o.error + '</div>';
         body += '<a href="' + gfu1 + '" target="_blank" rel="noopener" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:8px 12px;font-weight:bold;">🌐 Open in Google Flights</a>';
     } else {
-        const prem = o.premium || [], lucky = o.lucky || [];
-        if (!prem.length && !lucky.length){
+        const best = o.best || [], prem = o.premium || [], lucky = o.lucky || [];
+        if (!best.length && !prem.length && !lucky.length){
             body += '<div style="font-size:13px;color:#555;margin-bottom:10px;">No flight takes off in a positive 時辰 on this date — neither in the directional window nor in an XKDG-positive hour for the traveller(s). Open Google Flights below for the full timetable.</div>';
         } else {
             body += '<div style="font-size:12px;color:#555;margin-bottom:6px;">'
+                + (best.length ? '<span style="color:#9a6a00;font-weight:bold;">⭐ ' + best.length + ' best</span> · ' : '')
                 + '<span style="color:#0b8043;font-weight:bold;">🟢 ' + prem.length + ' directional</span> · '
                 + '<span style="color:#1565c0;font-weight:bold;">🔵 ' + lucky.length + ' XKDG-lucky</span></div>';
+            body += tierBlock('⭐ Best — directional + XKDG', '#9a6a00', best, gfu1);
             body += tierBlock('🟢 Directional', '#0b8043', prem, gfu1);
             body += tierBlock('🔵 XKDG-lucky',  '#1565c0', lucky, gfu1);
         }
         body += '<a href="' + gfu1 + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:8px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:6px;padding:9px 12px;font-weight:bold;font-size:13px;">🌐 Open in Google Flights →</a>';
     }
-    el.innerHTML = close + head + body;
+    el.innerHTML = close + maxBtn + head + body;
 }
 
 function showDayInList(isoDate) {
