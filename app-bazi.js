@@ -6426,6 +6426,71 @@ function fsFlightSelectAll(on){
     } catch(e){}
 }
 
+// ───────── Route timetable cache (weekday pattern, reused within a season) ─────────
+// Flight schedules repeat weekly within an IATA season (summer ≈ last Sun of March →
+// last Sun of October; winter otherwise). We sample ONE representative week
+// (7 searches) and reuse it to classify every candidate day for free. A live
+// re-check stays available for the final chosen day.
+
+// Last Sunday of a given month (monthIdx 0-11).
+function _fsLastSunday(year, monthIdx){
+    const d = new Date(year, monthIdx + 1, 0);     // last day of month
+    d.setDate(d.getDate() - d.getDay());           // step back to Sunday
+    return d;
+}
+// 'S' (summer) or 'W' (winter) IATA season for an ISO date.
+function _fsIataSeason(iso){
+    const p = String(iso).split('-').map(Number);
+    const y = p[0] || new Date().getFullYear();
+    const dt = new Date(y, (p[1] || 1) - 1, p[2] || 1);
+    const start = _fsLastSunday(y, 2);   // last Sunday of March
+    const end   = _fsLastSunday(y, 9);   // last Sunday of October
+    return (dt >= start && dt < end) ? 'S' : 'W';
+}
+function _fsSeasonName(s){ return s === 'S' ? 'summer' : 'winter'; }
+
+function _fsRouteTTKey(orig, dest){ return 'xkdg_route_tt_' + orig + '_' + dest; }
+function _fsLoadRouteTT(orig, dest){
+    try { const s = localStorage.getItem(_fsRouteTTKey(orig, dest)); return s ? JSON.parse(s) : null; } catch(e){ return null; }
+}
+function _fsSaveRouteTT(orig, dest, tt){
+    try { localStorage.setItem(_fsRouteTTKey(orig, dest), JSON.stringify(tt)); } catch(e){}
+}
+// Usable if same season as the sample date and < 21 days old.
+function _fsTTFresh(tt, sampleIso){
+    if (!tt || !tt.weekday) return false;
+    if (tt.season !== _fsIataSeason(sampleIso)) return false;
+    return (Date.now() - (tt.built || 0)) < 21 * 24 * 3600 * 1000;
+}
+function _fsTTAgeDays(tt){ return tt && tt.built ? Math.floor((Date.now() - tt.built) / (24*3600*1000)) : null; }
+
+// Build the weekday pattern: 7 consecutive days from anchorIso (clamped to today).
+async function _fsBuildRouteTT(orig, dest, anchorIso, onProgress){
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const startIso = (anchorIso && anchorIso > todayIso) ? anchorIso : todayIso;
+    const p = startIso.split('-').map(Number);
+    const base = new Date(p[0], p[1] - 1, p[2]);
+    const weekday = {};
+    for (let i = 0; i < 7; i++){
+        const d = new Date(base); d.setDate(base.getDate() + i);
+        const iso = d.toISOString().slice(0, 10);
+        if (onProgress) onProgress(i + 1, 7, iso);
+        let data = null;
+        try { data = await _fsFetchFlights(orig, dest, iso); } catch(e){ data = null; }
+        weekday[d.getDay()] = (data && data.ok && data.flights) ? data.flights : [];   // 0=Sun..6=Sat
+    }
+    const tt = { orig: orig, dest: dest, season: _fsIataSeason(startIso), built: Date.now(), anchor: startIso, weekday: weekday };
+    _fsSaveRouteTT(orig, dest, tt);
+    return tt;
+}
+// Flights for an ISO date from the cached weekday pattern.
+function _fsFlightsFromTT(tt, iso){
+    if (!tt || !tt.weekday) return [];
+    const p = iso.split('-').map(Number);
+    const wd = new Date(p[0], p[1] - 1, p[2]).getDay();
+    return (tt.weekday[wd] || []).slice();
+}
+
 // Real flight search across the SELECTED favourable days currently shown.
 async function fsFlightSearchAll(){
     try {
@@ -6438,26 +6503,34 @@ async function fsFlightSearchAll(){
         const sel = window._fsFlightSel || {};
         const isos = allIsos.filter(function(i){ return sel[i]; });
         if (!isos.length){ alert('No days selected. Tick at least one favourable day on the calendar (or press "all").'); return; }
-        if (!confirm('This will use ' + isos.length + ' search' + (isos.length === 1 ? '' : 'es')
-            + ' of your monthly quota (one per selected day).\n\nContinue?')) return;
 
-        fsFlightShowPanel({ loading:true, multi:true, orig:orig, dest:dest, loadingMsg:'Searching ' + isos.length + ' favourable days…' });
+        // Use the cached weekday timetable; build it (7 searches) only if missing/stale/wrong-season.
+        const sampleIso = isos[0];
+        let tt = _fsLoadRouteTT(orig, dest);
+        if (!_fsTTFresh(tt, sampleIso)){
+            const seasonTxt = _fsSeasonName(_fsIataSeason(sampleIso));
+            if (!confirm('I need to build the ' + seasonTxt + ' timetable for ' + orig + ' → ' + dest + '.\n\n'
+                + 'This uses 7 searches once. After that, all ' + isos.length + ' selected days — and future scans this season — cost nothing.\n\nBuild it now?')) return;
+            fsFlightShowPanel({ loading:true, multi:true, orig:orig, dest:dest, loadingMsg:'Building timetable… 0/7' });
+            tt = await _fsBuildRouteTT(orig, dest, sampleIso, function(i, n, iso){
+                const elm = document.querySelector('#fs-flights-panel .fs-loadmsg');
+                if (elm) elm.textContent = 'Building timetable… ' + i + '/' + n + '  (' + iso + ')';
+            });
+        }
 
-        const tasks = isos.map(async function(iso){
+        fsFlightShowPanel({ loading:true, multi:true, orig:orig, dest:dest, loadingMsg:'Classifying ' + isos.length + ' days…' });
+
+        const groups = isos.map(function(iso){
             const r = map[iso];
             const w = _fsFlightWindow(iso, r.hourIndex);
-            let data = null;
-            try { data = await _fsFetchFlights(orig, dest, w.dateStr); } catch(e){ data = null; }
-            const ok = data && data.ok;
-            const cls = ok ? _fsClassifyFlights(data.flights || [], iso, r.hourIndex)
-                           : { premium: [], lucky: [], rejected: 0, dirWin: null };
+            const flights = _fsFlightsFromTT(tt, iso);
+            const cls = _fsClassifyFlights(flights, iso, r.hourIndex);
             return {
-                date: w.dateStr, winStart: w.winStart, winEndMin: w.winEndMin,
+                date: w.dateStr, winStart: w.winStart, winEndMin: w.winEndMin, hourIndex: r.hourIndex,
                 premium: cls.premium, lucky: cls.lucky, rejected: cls.rejected,
                 hasFlight: (cls.premium.length + cls.lucky.length) > 0
             };
         });
-        const groups = await Promise.all(tasks);
         // Sort: days with a directional (premium) flight first, then XKDG-lucky, then date.
         groups.sort(function(a,b){
             const ap = a.premium.length ? 0 : 1, bp = b.premium.length ? 0 : 1;
@@ -6466,8 +6539,18 @@ async function fsFlightSearchAll(){
             if (al !== bl) return al - bl;
             return a.date < b.date ? -1 : 1;
         });
-        fsFlightShowPanel({ multi:true, orig:orig, dest:dest, groups:groups });
+        fsFlightShowPanel({ multi:true, orig:orig, dest:dest, groups:groups,
+            fromCache:true, ttBuilt:(tt && tt.built), ttSeason:(tt && tt.season), ttAge:_fsTTAgeDays(tt) });
     } catch(e){ alert('Flight search error: ' + e.message); }
+}
+
+// "↻ rebuild": drop the cached timetable for the current route and re-scan.
+async function fsFlightRefreshTT(){
+    try {
+        const route = await _fsResolveRouteIata(false);
+        if (route){ try { localStorage.removeItem(_fsRouteTTKey(route.orig, route.dest)); } catch(e){} }
+        fsFlightSearchAll();
+    } catch(e){}
 }
 
 // Floating results panel (works identically from CAL cell and LIST row).
@@ -6526,7 +6609,7 @@ function fsFlightShowPanel(o){
         let head = '<div style="font-weight:bold;font-size:15px;color:#0b3d91;margin:0 24px 8px 0;">✈ Favourable flights ' + (o.orig || '?') + ' → ' + (o.dest || '?') + '</div>';
         let body = '';
         if (o.loading){
-            body = '<div style="padding:18px;text-align:center;color:#555;">' + (o.loadingMsg || 'Searching…') + '<br><span style="font-size:11px;">(may take a few seconds)</span></div>';
+            body = '<div style="padding:18px;text-align:center;color:#555;"><span class="fs-loadmsg">' + (o.loadingMsg || 'Searching…') + '</span><br><span style="font-size:11px;">(may take a few seconds)</span></div>';
         } else {
             const groups = o.groups || [];
             const withPrem  = groups.filter(function(g){ return g.premium && g.premium.length; });
@@ -6536,17 +6619,28 @@ function fsFlightShowPanel(o){
                 + '<span style="color:#0b8043;">🟢 ' + withPrem.length + '</span> directional · '
                 + '<span style="color:#1565c0;">🔵 ' + withLucky.length + '</span> XKDG-lucky · of ' + groups.length + ' days</div>';
             body += '<div style="font-size:11px;color:#888;margin-bottom:8px;">🟢 takeoff in the directional window · 🔵 takeoff in an XKDG-positive hour for the traveller(s)</div>';
+            if (o.fromCache){
+                const ageTxt = (o.ttAge != null) ? (o.ttAge === 0 ? 'today' : (o.ttAge + 'd ago')) : '';
+                body += '<div style="font-size:11px;color:#9a6a00;background:#fff8e6;border:1px solid #f0dca0;border-radius:6px;padding:5px 8px;margin-bottom:8px;">'
+                    + '📅 From the ' + _fsSeasonName(o.ttSeason) + ' timetable (built ' + ageTxt + ', no quota used). '
+                    + 'Times are the expected schedule — use “confirm live” on the day you book.'
+                    + ' <a onclick="fsFlightRefreshTT()" style="color:#1565c0;cursor:pointer;font-weight:bold;">↻ rebuild (7 searches)</a></div>';
+            }
             if (!shown.length){
                 body += '<div style="font-size:12px;color:#777;margin-bottom:6px;">No flight takes off in a positive 時辰 (directional or XKDG) on the selected days. Try a wider period or more favourable days.</div>';
             }
             body += shown.map(function(g){
                 const winTxt = (g.winStart && g.winEndMin != null) ? (g.winStart + '–' + _fsMinToHHMM(g.winEndMin)) : '';
                 const gfu = _fsGoogleFlightsUrl(o.orig, o.dest, g.date);
+                const isoJs = String(g.date || '').replace(/'/g, "");
                 let h = '<div style="margin:10px 0 2px;font-weight:bold;font-size:13px;color:#0b3d91;border-top:1px solid #eee;padding-top:8px;">'
                     + g.date + (winTxt ? ' <span style="font-weight:normal;color:#888;font-size:11px;">· dir. window ' + winTxt + '</span>' : '') + '</div>';
                 h += tierBlock('🟢 Directional', '#0b8043', g.premium, gfu);
                 h += tierBlock('🔵 XKDG-lucky',  '#1565c0', g.lucky,   gfu);
-                h += '<div style="font-size:11px;margin:2px 0 4px;"><a href="' + gfu + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a></div>';
+                h += '<div style="font-size:11px;margin:2px 0 4px;">'
+                    + '<a href="' + gfu + '" target="_blank" rel="noopener" style="color:#1565c0;">open on Google Flights →</a>'
+                    + (o.fromCache ? ' &nbsp;·&nbsp; <a onclick="fsFlightSearch(\'' + isoJs + '\',' + (g.hourIndex || 0) + ')" style="color:#0b8043;cursor:pointer;font-weight:bold;">↻ confirm live (1 search)</a>' : '')
+                    + '</div>';
                 return h;
             }).join('');
             const none = groups.length - shown.length;
