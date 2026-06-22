@@ -252,6 +252,21 @@
     'hexagram 7?", "is this hexagram Zheng Shen now?"), CALL get_hexagram_info (by hex number, or by upper + lower ' +
     'trigram) and answer from it. NEVER say hexagrams/families are out of scope and NEVER send the user to an ' +
     'external I Ching book - the answer is in the app.\n' +
+    '- FLYING vs ROTATING chart (CRITICAL - NEVER mix): FS STIMULATORS - activating a flying star / water / aquarium / ' +
+    'fountain / mountain star (find_water_activation_full, find_water_hours, find_qimen_hours_for_star, QFS) - ALWAYS ' +
+    'use the FLYING chart (\u98db\u76e4). The ROTATING chart (\u8f49\u76e4) is used ONLY for human DIRECTIONAL actions: travel / ' +
+    'departures and divination (analyze_direction, travel tools). NEVER describe water / flying-star activation as ' +
+    'using the "rotating chart", and never present rotating-chart results for an FS-stimulator question. If a star has ' +
+    'no Qimen configuration, explain the REAL reason from the tool result (e.g. the star sits in the CENTRE palace this ' +
+    'period, so it has no outer palace to activate; or no favourable Door / San Qi reached its palace this date) - do ' +
+    'NOT say "rotating chart".\n' +
+    '- IMPRISONED STAR (\u5165\u56da): when the CURRENT-PERIOD water star (now ws9) sits in the CENTRE of the flying-star ' +
+    'chart it is "imprisoned" and has no outer palace to activate directly. It is freed with MOVING WATER toward EITHER ' +
+    'the palace where the 5 water star sits OR the FACING palace (if they coincide, that single quadrant). The water ' +
+    'tools detect this and return imprisoned:true with the liberation palace(s) (the "imprisonment" / imprisonment_note ' +
+    'field). When that happens: tell the user the period star is imprisoned, name the liberation quadrant(s), and ASK in ' +
+    'which of those quadrants the moving water sits; then present the favourable Qimen hours as "frees ws<period> toward ' +
+    '<direction>" (flying chart). Never report the imprisoned star as simply absent.\n' +
     '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
@@ -2060,6 +2075,7 @@
     }
     var ran = { xkdg: false, quadrant: false, special: false };
     var notes = [];
+    var imprisonNote = null;
 
     // (1) XKDG positive hours for the loaded person
     var pl = personLoaded();
@@ -2097,7 +2113,8 @@
     // (3) Qimen special configurations (QFS preset at the flying-star palace)
     if (window.QFS && typeof window.QFS.scanStarPreset === 'function' && (starType === 'water' || starType === 'mountain') && !isNaN(starNum)) {
       try {
-        var sres = window.QFS.scanStarPreset(starType, starNum, { days: days });
+        var sres = window.QFS.scanStarPreset(starType, starNum, { days: days, liberationDir: dir || null });
+        if (sres && sres.imprisoned && sres.imprisonment_note) imprisonNote = sres.imprisonment_note;
         if (sres && !sres.error && sres.results) {
           sres.results.forEach(function (r) {
             var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
@@ -2106,7 +2123,10 @@
             sl.shits = (r.hits || []).map(function (h) { return h.label || h; });
           });
           ran.special = true;
-        } else if (sres && sres.error) { notes.push('Qimen special: ' + sres.error); }
+        } else if (sres && sres.error) {
+          notes.push('Qimen special: ' + sres.error);
+          if (sres.imprisonment_note) imprisonNote = sres.imprisonment_note;
+        }
       } catch (e) { notes.push('Qimen special scan failed.'); }
     } else if (starType !== 'water' && starType !== 'mountain') { notes.push('No star target — Qimen special configurations skipped.'); }
 
@@ -2130,6 +2150,8 @@
 
     return {
       scanner: 'water_activation_full',
+      chart: 'flying (\u98db\u76e4) \u2014 FS stimulators always use the flying chart, never the rotating chart',
+      imprisonment: imprisonNote || undefined,
       direction: dir || null, star: ran.special ? (starType + ' ' + starNum) : null,
       start: start, days: days, scans_run: ran,
       person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',

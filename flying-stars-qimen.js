@@ -957,6 +957,46 @@
   // A palace matches if it carries AT LEAST ONE of those entities.
   // Returns data (no DOM), so it can be called programmatically.
   // ---------------------------------------------------------------
+  // ── Imprisoned-star (入囚) detection & liberation ──────────────────────
+  // When the CURRENT-PERIOD water (facing) star sits in the CENTRE it is
+  // "imprisoned". Moving water frees it toward EITHER the palace where the
+  // 5 water star sits OR the FACING palace (if they coincide, that one).
+  function _fsCurrentPeriod(){
+    var y = new Date().getFullYear();
+    return ((Math.floor((y - 1864) / 20)) % 9) + 1;            // San Yuan 9×20y; P9 = 2024-2043
+  }
+  var _FS_OCT_TO_GRID = [7, 6, 3, 0, 1, 2, 5, 8];              // N,NE,E,SE,S,SW,W,NW → grid idx
+  function _fsFacingGridFromDeg(deg){
+    if(!isFinite(deg)) return -1;
+    var oct = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+    return _FS_OCT_TO_GRID[oct];
+  }
+  function _fsDirNameToGrid(name){
+    if(name == null) return -1;
+    var s = String(name).trim().toUpperCase();
+    if(/^-?\d+(\.\d+)?$/.test(s)) return _fsFacingGridFromDeg(parseFloat(s));
+    var map = { N:7,NORTH:7,NORD:7, NE:6,NORDEST:6, E:3,EAST:3,EST:3, SE:0,SUDEST:0,
+                S:1,SOUTH:1,SUD:1, SW:2,SUDOVEST:2, W:5,WEST:5,OVEST:5, NW:8,NORDOVEST:8 };
+    return (s in map) ? map[s] : -1;
+  }
+  function imprisonmentInfo(chart){
+    try {
+      if(!chart || !chart.facingStars) return { imprisoned:false };
+      var per = _fsCurrentPeriod();
+      if(chart.facingStars[4] !== per) return { imprisoned:false };   // period water star not in centre
+      var byGrid = {};
+      var add = function(g, via){ if(g==null || g<0 || g===4) return; if(!byGrid[g]) byGrid[g]={grid:g,vias:[]}; if(byGrid[g].vias.indexOf(via)<0) byGrid[g].vias.push(via); };
+      for(var i=0;i<9;i++){ if(chart.facingStars[i] === 5) add(i, '5ws'); }            // (a) where the 5 water star sits
+      var hf = (typeof document!=='undefined') ? document.getElementById('fs-house-facing') : null;
+      if(hf){ add(_fsFacingGridFromDeg(parseFloat(hf.value)), 'facing'); }              // (b) the facing palace
+      var palaces = Object.keys(byGrid).map(function(g){
+        var c = byGrid[g], pal = FS_GRID_TO_QMDJ_PALACE[c.grid];
+        return { grid:c.grid, qmdj:pal, label:QMDJ_PALACE_TO_LABEL[pal]||('P'+pal), via:c.vias.join('+') };
+      });
+      return { imprisoned:true, periodStar:per, palaces:palaces };
+    } catch(e){ return { imprisoned:false }; }
+  }
+
   function scanStarPreset(type, starN, opts){
     opts = opts || {};
     if(typeof Solar === 'undefined') return { error:'lunar-javascript not loaded.' };
@@ -968,12 +1008,42 @@
     starN = parseInt(starN, 10);
     if(isNaN(starN) || starN < 1 || starN > 9) return { error:'star_num must be 1-9.' };
 
+    var imp = imprisonmentInfo(chart);
     var gridIndices = findStarPalaces(chart, type, starN);
     var fsPalaces = gridIndices
       .filter(function(g){ return g !== 4; })
       .map(function(g){ return FS_GRID_TO_QMDJ_PALACE[g]; });
-    if(!fsPalaces.length)
-      return { error:'Star '+starN+' ('+type+') does not appear in any outer palace of this chart.', palaces:[], count:0, results:[] };
+
+    // 入囚 — the CURRENT-PERIOD water star imprisoned in the centre is activated
+    // by MOVING WATER at the liberation palace(s) instead of its own (centre) palace.
+    var liberation = null;
+    if(type === 'water' && imp.imprisoned && starN === imp.periodStar && !fsPalaces.length){
+      liberation = imp.palaces.slice();
+      if(opts.liberationDir != null){
+        var wantGrid = _fsDirNameToGrid(opts.liberationDir);
+        if(wantGrid >= 0){ var f = liberation.filter(function(p){ return p.grid === wantGrid; }); if(f.length) liberation = f; }
+      }
+      fsPalaces = liberation.map(function(p){ return p.qmdj; });
+    }
+
+    if(!fsPalaces.length){
+      var inCentre = gridIndices.indexOf(4) !== -1;
+      var isImp = imp.imprisoned && starN === imp.periodStar;
+      return {
+        error: 'Star ' + starN + ' (' + type + ') ' + (inCentre
+          ? 'sits in the CENTRE palace this period, so it has no outer palace to activate with Qimen'
+          : 'does not appear in any outer palace of this chart') + '.',
+        chart: 'flying (\u98db\u76e4)',
+        imprisoned: isImp || false,
+        imprisonment_note: isImp
+          ? ('Star ' + starN + ' (current period) is IMPRISONED in the centre (\u5165\u56da). Free it with moving water toward: '
+             + imp.palaces.map(function(p){ return p.label + ' (' + p.via + ')'; }).join(' OR ')
+             + '. Ask the user in which of those quadrants the water sits, then scan that palace.')
+          : undefined,
+        liberation: isImp ? imp.palaces : undefined,
+        palaces: [], count: 0, results: []
+      };
+    }
 
     // Default favourable preset: San Qi + 4 good doors + the Qimen celestial
     // star that CORRESPONDS to the flying star (same number 1-9). A saved
@@ -1044,6 +1114,7 @@
             dayPillar: dayPillarHan,
             palace:    palace,
             palaceLbl: QMDJ_PALACE_TO_LABEL[palace] || ('P' + palace),
+            liberates: liberation ? ('frees ws' + imp.periodStar + ' toward ' + (QMDJ_PALACE_TO_LABEL[palace] || palace)) : undefined,
             hourHan:   hp.han,
             hourTime:  hp.time,
             dun:       hourChart.dun,
@@ -1057,6 +1128,13 @@
     out.sort(function(a, b){ if(a.date !== b.date) return a.date < b.date ? -1 : 1; return b.score - a.score; });
     return {
       starType: type, starNum: starN,
+      chart: 'flying (\u98db\u76e4)',
+      imprisoned: !!liberation,
+      liberatesStar: liberation ? imp.periodStar : undefined,
+      liberationPalaces: liberation ? liberation.map(function(p){ return p.label + ' (' + p.via + ')'; }) : undefined,
+      imprisonment_note: liberation
+        ? ('Star ' + imp.periodStar + ' is imprisoned in the centre (\u5165\u56da); these hours send the favourable Qimen preset to the LIBERATION palace, freeing it toward ' + liberation.map(function(p){ return p.label; }).join(' / ') + '.')
+        : undefined,
       palaces: fsPalaces.map(function(p){ return QMDJ_PALACE_TO_LABEL[p] || ('P' + p); }),
       preset: presetLabel,
       count: out.length, results: out
