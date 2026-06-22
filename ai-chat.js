@@ -14,7 +14,7 @@
 
   var URL_KEY = 'xkdg_ai_url';
   var DEFAULT_URL = 'https://xkdg-ai.decumano16.workers.dev'; // baked-in default; ⚙ can override
-  var MODEL = 'claude-haiku-4-5-20251001'; // change here if you prefer another model
+  var MODEL = 'claude-sonnet-4-6'; // change here if you prefer another model
   var MAX_TOKENS = 1024;
 
   // System prompt: app-wide assistant that ANSWERS about and OPERATES the whole app.
