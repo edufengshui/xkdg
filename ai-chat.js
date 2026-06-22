@@ -243,6 +243,15 @@
     '- find_water_activation (two-scan: Qimen quadrant + XKDG only) and find_water_dates / find_water_hours still exist; ' +
     'prefer find_water_activation_full when the user wants the full picture. find_water_dates is the Feng Shui Water-section ' +
     'date scan for PLACING water; find_water_hours is the Qimen sector alone.\n' +
+    '- XKDG HEXAGRAM SYSTEM (CORE, in-scope - NOT external I Ching): the 64 hexagrams / gua, their two trigrams ' +
+    '(Qian, Dui, Li, Zhen, Xun, Kan, Gen, Kun), each hexagram\'s qi (1-9) and yun (1-9), its Zheng Shen 正神 / Ling ' +
+    'Shen 零神 status for the current period, its luopan degree, and the 8 FAMILIES (Qian-Kun, Kan-Li, Zhen-Xun, ' +
+    'Gen-Dui, Pi-Tai, JiJi-WeiJi, Heng-Yi, Sun-Xian) with father/mother/son/daughter roles (via gan-zhi) are ALL part ' +
+    'of THIS app\'s XKDG method and live in its data tables. For ANY question about a hexagram, trigram, gua, qi, ' +
+    'yun, family/role, or Zheng Shen / Ling Shen (e.g. "which family does Kun over Kan belong to?", "qi and yun of ' +
+    'hexagram 7?", "is this hexagram Zheng Shen now?"), CALL get_hexagram_info (by hex number, or by upper + lower ' +
+    'trigram) and answer from it. NEVER say hexagrams/families are out of scope and NEVER send the user to an ' +
+    'external I Ching book - the answer is in the app.\n' +
     '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
@@ -733,8 +742,80 @@
         },
         required: ['star_type', 'star_num']
       }
+    },
+    {
+      name: 'get_hexagram_info',
+      description: 'XKDG hexagram lookup (CORE in-app knowledge, NOT external I Ching). Given a hexagram by number ' +
+        '(1-64) OR by its two trigrams (upper + lower, e.g. upper "Kun", lower "Kan"), return the app\'s own data: ' +
+        'hexagram number, upper/lower trigrams, qi (1-9), yun (1-9), whether it is Zheng Shen 正神 or Ling Shen 零神 ' +
+        'for the current period, its luopan centre degree, and the family/families it belongs to WITH the role ' +
+        '(father/mother/son/daughter) via its gan-zhi. Use for ANY question about hexagrams, trigrams, gua, qi, yun, ' +
+        'families/roles, or Zheng Shen / Ling Shen. Trigram names: Qian, Dui, Li, Zhen, Xun, Kan, Gen, Kun.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          hex_number: { type: 'integer', description: 'Hexagram number 1-64 (King Wen).' },
+          upper_trigram: { type: 'string', description: 'Upper trigram name (Qian/Dui/Li/Zhen/Xun/Kan/Gen/Kun).' },
+          lower_trigram: { type: 'string', description: 'Lower trigram name (Qian/Dui/Li/Zhen/Xun/Kan/Gen/Kun).' }
+        }
+      }
     }
   ];
+
+  // XKDG hexagram / trigram / family lookup — answers from the app's own tables.
+  function toolHexagramInfo(input) {
+    try {
+      var TRIG = ['Qian', 'Dui', 'Li', 'Zhen', 'Xun', 'Kan', 'Gen', 'Kun'];
+      function normTrig(s) {
+        if (!s) return null;
+        s = String(s).trim().toLowerCase();
+        for (var i = 0; i < TRIG.length; i++) if (TRIG[i].toLowerCase() === s) return TRIG[i];
+        return null;
+      }
+      if (typeof fsQiYun !== 'function') return { error: 'Hexagram tables not loaded.' };
+      var num = null;
+      if (input.hex_number != null && isFinite(parseInt(input.hex_number, 10))) {
+        num = parseInt(input.hex_number, 10);
+        if (num < 1 || num > 64) return { error: 'hex_number must be 1-64.' };
+      } else {
+        var U = normTrig(input.upper_trigram), L = normTrig(input.lower_trigram);
+        if (!U || !L) return { error: 'Provide hex_number (1-64), or both upper_trigram and lower_trigram (Qian/Dui/Li/Zhen/Xun/Kan/Gen/Kun).' };
+        for (var n = 1; n <= 64; n++) { var q = fsQiYun(n); if (q.upper === U && q.lower === L) { num = n; break; } }
+        if (num == null) return { error: 'No hexagram has upper ' + U + ' over lower ' + L + '.' };
+      }
+      var qy = fsQiYun(num);
+      var zs = (typeof fsIsZhengShen === 'function') ? fsIsZhengShen(qy.yun) : null;
+      var ls = (typeof fsIsLingShen === 'function') ? fsIsLingShen(qy.yun) : null;
+      var post2044 = (typeof FS_POST_2044 !== 'undefined') ? FS_POST_2044 : false;
+      var centerDeg = null;
+      if (typeof FS_SLOTS !== 'undefined' && FS_SLOTS && FS_SLOTS.length) {
+        for (var s = 0; s < FS_SLOTS.length; s++) { if (FS_SLOTS[s].hexNum === num) { centerDeg = FS_SLOTS[s].centerDeg; break; } }
+      }
+      var families = [];
+      if (typeof XKDG_TABLE !== 'undefined' && typeof JIAZI_FAMILY_DATA !== 'undefined') {
+        for (var jz in XKDG_TABLE) {
+          var r = XKDG_TABLE[jz];
+          var via = (r.hex === num) ? 'primary' : (r.alt && r.alt.hex === num ? 'alt' : null);
+          if (!via) continue;
+          var fl = JIAZI_FAMILY_DATA[jz] || [];
+          for (var k = 0; k < fl.length; k++) families.push({ family: fl[k].family, role: fl[k].role, ganzhi: jz, via: via });
+        }
+      }
+      return {
+        hexagram: num,
+        upper_trigram: qy.upper,
+        lower_trigram: qy.lower,
+        qi: qy.qi,
+        yun: qy.yun,
+        period_basis: post2044 ? 'post-2044 (yun<=4 Zheng Shen, yun>=6 Ling Shen)' : 'pre-2044 (yun>=6 Zheng Shen, yun<=4 Ling Shen)',
+        zheng_shen: zs,
+        ling_shen: ls,
+        luopan_center_deg: (centerDeg != null ? Math.round(centerDeg * 100) / 100 : null),
+        families: families,
+        note: families.length ? undefined : 'This hexagram\'s gan-zhi carry no family role in the table.'
+      };
+    } catch (e) { return { error: String((e && e.message) || e) }; }
+  }
 
   function execTool(name, input) {
     try {
@@ -770,6 +851,7 @@
       if (name === 'load_placement') return toolLoadPlacement(input || {});
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
+      if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
