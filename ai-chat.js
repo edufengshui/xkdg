@@ -237,9 +237,12 @@
     'reports it in scan_notes.\n' +
     '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
     'whole house in one shot (facing/period, aquariums with their direction + water star, QFS zones with target/preset, ' +
-    'and saved Water/Bed/Desk settings). Then for activating the aquarium, take an aquarium and call ' +
-    'find_water_activation_full(direction = aquarium direction, star_type = water, star_num = its water_star). The loaded ' +
-    'person provides the XKDG scan. Only fall back to list_houses / load_house if get_house_setup cannot resolve the name.\n' +
+    'and saved Water/Bed/Desk settings). The aquariums list ALREADY INCLUDES saved Water positions (source = ' +
+    'saved_water_setting) - a SAVED WATER POSITION IS A WATER FEATURE; that is enough, do NOT ask the user for the ' +
+    'direction when one is already saved. To activate it, take the aquarium and call find_water_activation_full(direction ' +
+    '= its direction, star_type = water, star_num = its water_star). Only ask the user for a direction if NO aquarium and ' +
+    'NO saved Water position exist. The loaded person provides the XKDG scan. Fall back to list_houses / load_house only ' +
+    'if get_house_setup cannot resolve the name.\n' +
     '- find_water_activation (two-scan: Qimen quadrant + XKDG only) and find_water_dates / find_water_hours still exist; ' +
     'prefer find_water_activation_full when the user wants the full picture. find_water_dates is the Feng Shui Water-section ' +
     'date scan for PLACING water; find_water_hours is the Qimen sector alone.\n' +
@@ -1896,7 +1899,9 @@
         active: (fi === activeFloor),
         facing: effFacing, period: effPeriod,
         doors: (f.doors || []).map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
-        aquariums: (f.waters || []).map(function (w) { return { name: w.name, direction: w.dir, palace: w.palace, water_star: starAt(chart, w.dir, 'water') }; }),
+        aquariums: (f.waters || []).map(function (w) { return { name: w.name, direction: w.dir, palace: w.palace, water_star: starAt(chart, w.dir, 'water'), source: 'aquarium' }; })
+          .concat((st.water || []).filter(function (s) { return s && s.palace && DIR2GRID[s.palace] != null; })
+            .map(function (s) { return { name: s.name, direction: s.palace, water_star: starAt(chart, s.palace, 'water'), source: 'saved_water_setting' }; })),
         qfs_zones: (f.zones || []).map(function (z) { return { name: z.name, direction: z.dir || null, palace: z.palace, target: z.target, preset: z.preset || 'auto', star_num: starAt(chart, z.dir, z.target) }; }),
         saved_settings: {
           water: (st.water || []).map(function (s) { return s.name; }),
