@@ -2312,9 +2312,9 @@
     function detectLang(text) {
       var t = ' ' + String(text || '').toLowerCase().replace(/[^a-zàâäéèêëïîôöùûüç\s]/g, ' ') + ' ';
       var sets = {
-        it: [' il ', ' lo ', ' gli ', ' che ', ' è ', ' sei ', ' oggi ', ' viaggio ', ' ore ', ' partenza ', ' buongiorno ', ' grazie ', ' direzione ', ' fortunato ', ' della '],
-        en: [' the ', ' is ', ' you ', ' today ', ' travel ', ' hours ', ' leave ', ' hello ', ' thanks ', ' yes ', ' direction ', ' lucky ', ' route ', ' your '],
-        fr: [' le ', ' la ', ' les ', ' est ', ' vous ', ' aujourd ', ' voyage ', ' heures ', ' partir ', ' bonjour ', ' merci ', ' oui ', ' direction ', ' chance ', ' votre ']
+        it: [' il ', ' lo ', ' gli ', ' che ', ' è ', ' sei ', ' oggi ', ' viaggio ', ' ore ', ' partenza ', ' buongiorno ', ' grazie ', ' direzione ', ' fortunato ', ' della ', ' di ', ' un ', ' una ', ' per ', ' come ', ' quale ', ' sono ', ' più ', ' anche ', ' questo ', ' mi ', ' fare ', ' posso ', ' famiglia ', ' esagramma '],
+        en: [' the ', ' is ', ' you ', ' today ', ' travel ', ' hours ', ' leave ', ' hello ', ' thanks ', ' yes ', ' direction ', ' lucky ', ' route ', ' your ', ' to ', ' of ', ' what ', ' which ', ' how ', ' does ', ' do ', ' and ', ' for ', ' my ', ' can ', ' are ', ' this ', ' with ', ' family ', ' hexagram '],
+        fr: [' le ', ' la ', ' les ', ' est ', ' vous ', ' aujourd ', ' voyage ', ' heures ', ' partir ', ' bonjour ', ' merci ', ' oui ', ' direction ', ' chance ', ' votre ', ' de ', ' une ', ' pour ', ' comment ', ' quel ', ' quelle ', ' je ', ' avec ', ' ce ', ' plus ', ' faire ', ' famille ', ' hexagramme ']
       };
       var best = null, bestN = 0;
       Object.keys(sets).forEach(function (k) {
@@ -2926,10 +2926,31 @@
     }
 
     function callAnthropic() {
+      // Per-turn language lock: detect the language of the user's latest typed message and
+      // append a high-priority directive so the reply never drifts (e.g. to Italian) because
+      // of the Italian example phrases in the system prompt or an Italian-heavy history.
+      function replyLangDirective() {
+        function nameOf(c) { return c === 'it' ? 'Italian' : (c === 'fr' ? 'French' : 'English'); }
+        var lang = null;
+        try {
+          for (var i = history.length - 1; i >= 0; i--) {
+            var m = history[i];
+            if (m && m.role === 'user' && typeof m.content === 'string') { lang = detectLang(m.content); break; }
+          }
+        } catch (e) {}
+        if (!lang) { var s = null; try { s = localStorage.getItem('xkdg_ai_lang'); } catch (e) {} if (s && s !== 'auto') lang = s; }
+        if (lang) {
+          return '\n\nREPLY LANGUAGE (HIGHEST PRIORITY, overrides everything above): the user\'s latest message is in ' +
+            nameOf(lang) + '. Reply ONLY in ' + nameOf(lang) + '. The example phrases in these instructions (some written ' +
+            'in Italian) are ONLY examples and must NOT influence the language you answer in.';
+        }
+        return '\n\nREPLY LANGUAGE (HIGHEST PRIORITY): reply in the SAME language as the user\'s latest message. ' +
+          'Do NOT default to Italian \u2014 the Italian phrases in these instructions are only examples, not a language preference.';
+      }
       return fetch(getUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.', tools: TOOLS, messages: history })
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + replyLangDirective(), tools: TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
 
