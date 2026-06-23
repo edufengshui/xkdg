@@ -270,6 +270,10 @@
     'field). When that happens: tell the user the period star is imprisoned, name the liberation quadrant(s), and ASK in ' +
     'which of those quadrants the moving water sits; then present the favourable Qimen hours as "frees ws<period> toward ' +
     '<direction>" (flying chart). Never report the imprisoned star as simply absent.\n' +
+    '- MULTIPLE HOUSES ("each house" / "both houses"): handle them ONE AT A TIME. For each saved house of the active ' +
+    'person: set_active_house to it, read its setup, then run the requested scan using THAT house\u2019s own saved water ' +
+    'position (direction) and water star on its own chart, and report a SEPARATE result per house (label each clearly ' +
+    'by house name). Restore the originally active house at the end.\n' +
     '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
@@ -880,6 +884,76 @@
     var t = new Date();
     return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
   }
+
+  // ── MACROS — short triggers the user types that expand into a full instruction ──
+  var _macroChipRefresh = null;   // set by buildPanel; lets the manager refresh the chip row
+  function loadMacros() {
+    try { var a = JSON.parse(localStorage.getItem('xkdg_ai_macros') || 'null'); if (Array.isArray(a)) return a; } catch (e) {}
+    var def = [{
+      trigger: 'aq',
+      label: 'Acquario — entrambe le case, domani',
+      text: 'Per la data di DOMANI, trova le ore migliori per accendere l\u2019acquario in OGNI casa salvata della persona attiva. ' +
+            'Per ciascuna casa usa la SUA posizione d\u2019acqua salvata (direzione) e la sua stella d\u2019acqua (facing), sulla SUA carta volante. ' +
+            'Procedi una casa alla volta: rendi attiva la casa (set_active_house), leggi il suo setup, esegui find_water_activation_full per quella casa, ' +
+            'e dammi UN\u2019ora migliore PER OGNI casa (un risultato separato per ciascuna), con data e motivo. Alla fine ripristina la casa che era attiva all\u2019inizio.'
+    }];
+    try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(def)); } catch (e) {}
+    return def;
+  }
+  function saveMacros(arr) { try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {} }
+  function findMacro(text) {
+    var t = (text || '').trim().toLowerCase(); if (!t) return null;
+    var arr = loadMacros();
+    for (var i = 0; i < arr.length; i++) { if ((arr[i].trigger || '').trim().toLowerCase() === t) return arr[i]; }
+    return null;
+  }
+  function openMacroManager() {
+    var old = document.getElementById('xkdg-macro-root'); if (old && old.parentNode) old.parentNode.removeChild(old);
+    function E(tag, css, html) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; return e; }
+    var root = E('div', 'position:fixed;inset:0;z-index:100001;background:rgba(20,8,30,.96);display:flex;align-items:center;justify-content:center;padding:14px;font-family:inherit;'); root.id = 'xkdg-macro-root';
+    var card = E('div', 'background:#1c1024;border:1px solid #432a52;border-radius:12px;max-width:460px;width:100%;max-height:90vh;overflow:auto;padding:16px;');
+    card.appendChild(E('div', 'font-weight:700;color:#e1bee7;font-size:15px;margin-bottom:4px;', '\u26A1 Macros'));
+    card.appendChild(E('div', 'font-size:12px;color:#cbb8d6;margin-bottom:10px;', 'Type a macro\u2019s short trigger in the chat (e.g. <b>aq</b>) and it expands into the full instruction below. Create your own for any task.'));
+    var listWrap = E('div', 'margin-bottom:12px;'); card.appendChild(listWrap);
+    var tIn = E('input', 'width:100%;padding:7px;margin-bottom:6px;border:1px solid #432a52;border-radius:6px;background:#120a18;color:#fff;font-size:13px;box-sizing:border-box;'); tIn.placeholder = 'Short trigger (e.g. aq)';
+    var lIn = E('input', 'width:100%;padding:7px;margin-bottom:6px;border:1px solid #432a52;border-radius:6px;background:#120a18;color:#fff;font-size:13px;box-sizing:border-box;'); lIn.placeholder = 'Label (what it does)';
+    var xIn = E('textarea', 'width:100%;min-height:90px;padding:7px;margin-bottom:8px;border:1px solid #432a52;border-radius:6px;background:#120a18;color:#fff;font-size:13px;box-sizing:border-box;'); xIn.placeholder = 'Full instruction the macro sends to the assistant\u2026';
+    function renderList() {
+      listWrap.innerHTML = '';
+      var arr = loadMacros();
+      if (!arr.length) { listWrap.appendChild(E('div', 'color:#aaa;font-size:12px;', 'No macros yet.')); return; }
+      arr.forEach(function (m, idx) {
+        var row = E('div', 'background:#2a1633;border:1px solid #432a52;border-radius:8px;padding:8px;margin-bottom:6px;');
+        row.appendChild(E('div', 'color:#fff;font-size:13px;', '<b style="color:#ffd479;">' + (m.trigger || '') + '</b> \u2014 ' + ((m.label || '').replace(/</g, '&lt;'))));
+        row.appendChild(E('div', 'color:#bba;font-size:11px;margin:4px 0;white-space:pre-wrap;', (m.text || '').replace(/</g, '&lt;')));
+        var edit = E('button', 'background:#23314f;color:#fff;border:0;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin-right:6px;', 'Edit');
+        edit.onclick = function () { tIn.value = m.trigger || ''; lIn.value = m.label || ''; xIn.value = m.text || ''; card.scrollTop = card.scrollHeight; };
+        var del = E('button', 'background:#5a2030;color:#fff;border:0;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;', 'Delete');
+        del.onclick = function () { var a = loadMacros(); a.splice(idx, 1); saveMacros(a); renderList(); if (typeof _macroChipRefresh === 'function') _macroChipRefresh(); };
+        row.appendChild(edit); row.appendChild(del);
+        listWrap.appendChild(row);
+      });
+    }
+    card.appendChild(E('div', 'font-weight:600;color:#e1bee7;font-size:13px;margin:6px 0 4px;', 'Add / update a macro'));
+    card.appendChild(tIn); card.appendChild(lIn); card.appendChild(xIn);
+    var saveB = E('button', 'background:#1d7a3a;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;margin-right:8px;', 'Save macro');
+    saveB.onclick = function () {
+      var t = (tIn.value || '').trim(), x = (xIn.value || '').trim();
+      if (!t || !x) { alert('Give a trigger and the instruction text.'); return; }
+      var a = loadMacros(), i = -1;
+      for (var k = 0; k < a.length; k++) { if ((a[k].trigger || '').trim().toLowerCase() === t.toLowerCase()) { i = k; break; } }
+      var obj = { trigger: t, label: (lIn.value || '').trim(), text: x };
+      if (i >= 0) a[i] = obj; else a.push(obj);
+      saveMacros(a); tIn.value = ''; lIn.value = ''; xIn.value = ''; renderList();
+      if (typeof _macroChipRefresh === 'function') _macroChipRefresh();
+    };
+    var closeB = E('button', 'background:#3a2030;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;', 'Close');
+    closeB.onclick = function () { if (root.parentNode) root.parentNode.removeChild(root); };
+    card.appendChild(saveB); card.appendChild(closeB);
+    root.appendChild(card); document.body.appendChild(root);
+    renderList();
+  }
+
   // Is daylight saving in effect on date d (per the device timezone)? Standard time has the larger UTC offset;
   // a smaller offset on d means DST is active. Works for northern and southern hemispheres.
   function dstActiveOn(d) {
@@ -2242,10 +2316,13 @@
     };
     var fsBtn = elc('button', { id: 'xkdg-ai-fs', title: 'Enlarge to full screen',
       style: 'border:0;background:transparent;color:#fff;font-size:17px;cursor:pointer;' }, '\u26F6');
+    var macroBtn = elc('button', { id: 'xkdg-ai-macros', title: 'Macros — short commands you define',
+      style: 'border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;' }, '\u26A1');
+    macroBtn.onclick = openMacroManager;
     var closeBtn = elc('button', { id: 'xkdg-ai-close', title: 'Close',
       style: 'border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;' }, '✕');
     var iconWrap = elc('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:flex-end;flex:1 1 auto;' });
-    iconWrap.appendChild(langSel); iconWrap.appendChild(gear); iconWrap.appendChild(speakerBtn); iconWrap.appendChild(hfBtn); iconWrap.appendChild(expBtn); iconWrap.appendChild(saveBtn); iconWrap.appendChild(archBtn); iconWrap.appendChild(shareBtn); iconWrap.appendChild(clearBtn); iconWrap.appendChild(fsBtn); iconWrap.appendChild(closeBtn);
+    iconWrap.appendChild(langSel); iconWrap.appendChild(gear); iconWrap.appendChild(speakerBtn); iconWrap.appendChild(hfBtn); iconWrap.appendChild(expBtn); iconWrap.appendChild(macroBtn); iconWrap.appendChild(saveBtn); iconWrap.appendChild(archBtn); iconWrap.appendChild(shareBtn); iconWrap.appendChild(clearBtn); iconWrap.appendChild(fsBtn); iconWrap.appendChild(closeBtn);
     header.appendChild(iconWrap);
     panel.appendChild(header);
 
@@ -2265,6 +2342,48 @@
       style: 'border:0;border-radius:8px;background:#6a1b9a;color:#fff;font-size:14px;font-weight:600;padding:8px 14px;cursor:pointer;' }, 'Send');
     inputRow.appendChild(input); inputRow.appendChild(mic); inputRow.appendChild(send);
     panel.appendChild(inputRow);
+
+    // Quick-launch chips for macros (tap a chip instead of typing its trigger).
+    var chipRow = elc('div', { id: 'xkdg-ai-chips', style: 'display:flex;flex-wrap:wrap;gap:6px;padding:6px 12px 0;' });
+    panel.insertBefore(chipRow, inputRow);
+    // Shared popup bubble that reminds what a chip does (hover on desktop, long-press on touch).
+    var macroTip = elc('div', { id: 'xkdg-ai-chiptip',
+      style: 'position:fixed;z-index:100002;max-width:240px;background:#2a1633;color:#fff;border:1px solid #6a1b9a;border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.35;box-shadow:0 4px 16px rgba(0,0,0,.4);display:none;pointer-events:none;' }, '');
+    document.body.appendChild(macroTip);
+    function showTip(chip, m) {
+      macroTip.textContent = (m.label && m.label.trim()) ? m.label : ('Sends: ' + (m.text || '').slice(0, 120) + ((m.text || '').length > 120 ? '…' : ''));
+      macroTip.style.display = 'block';
+      var r = chip.getBoundingClientRect();
+      var top = r.top - macroTip.offsetHeight - 8;
+      if (top < 6) top = r.bottom + 8;                       // flip below if no room above
+      var left = Math.max(6, Math.min(r.left, window.innerWidth - macroTip.offsetWidth - 6));
+      macroTip.style.top = top + 'px'; macroTip.style.left = left + 'px';
+    }
+    function hideTip() { macroTip.style.display = 'none'; }
+    function renderMacroChips() {
+      chipRow.innerHTML = ''; hideTip();
+      var arr = loadMacros();
+      if (!arr.length) { chipRow.style.display = 'none'; return; }
+      chipRow.style.display = 'flex';
+      arr.forEach(function (m) {
+        var chip = elc('button', { title: (m.label || m.trigger),
+          style: 'border:1px solid #c9b6d6;background:#f3edf8;color:#6a1b9a;border-radius:14px;padding:4px 11px;font-size:12px;font-weight:600;cursor:pointer;' },
+          '\u26A1 ' + (m.trigger || ''));
+        var lpTimer = null, suppress = false;
+        chip.onclick = function () { if (suppress) { suppress = false; return; } hideTip(); if (sending) return; input.value = m.trigger; doSend(); };
+        // Desktop: hover shows the reminder.
+        chip.onmouseenter = function () { showTip(chip, m); };
+        chip.onmouseleave = hideTip;
+        // Touch: long-press (~450ms) shows the reminder and cancels the launch.
+        chip.addEventListener('touchstart', function () { suppress = false; lpTimer = setTimeout(function () { suppress = true; showTip(chip, m); }, 450); }, { passive: true });
+        chip.addEventListener('touchend', function () { if (lpTimer) clearTimeout(lpTimer); setTimeout(hideTip, 1600); });
+        chip.addEventListener('touchmove', function () { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } });
+        chip.addEventListener('touchcancel', function () { if (lpTimer) clearTimeout(lpTimer); hideTip(); });
+        chipRow.appendChild(chip);
+      });
+    }
+    _macroChipRefresh = renderMacroChips;
+    renderMacroChips();
 
     document.body.appendChild(panel);
 
@@ -2896,7 +3015,7 @@
       return data.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n');
     }
 
-    function callAnthropic() {
+    function callAnthropic(noTools) {
       // Per-turn language lock: detect the language of the user's latest typed message and
       // append a high-priority directive so the reply never drifts (e.g. to Italian) because
       // of the Italian example phrases in the system prompt or an Italian-heavy history.
@@ -2921,7 +3040,7 @@
       return fetch(getUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + replyLangDirective(), tools: TOOLS, messages: history })
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
 
@@ -2994,8 +3113,15 @@
             });
             return Promise.all(resultPromises).then(function (toolResults) {
               history.push({ role: 'user', content: toolResults });
-              if (guard++ < 6) return step();   // let Claude read the results and continue
-              addBubble('assistant', '(stopped after several tool steps)');
+              if (guard++ < 12) return step();   // let Claude read the results and continue
+              // Step cap reached: make ONE final call WITHOUT tools so Claude must
+              // answer in prose with what it has, instead of dead-ending.
+              setStatus('Finishing…');
+              return callAnthropic(true).then(function (fin) {
+                if (fin && !fin.error) { history.push({ role: 'assistant', content: fin.content }); var ft = extractText(fin); addBubble('assistant', ft || '(no further response)'); }
+                else { addBubble('assistant', '(stopped after several tool steps)'); }
+                setStatus('');
+              });
             });
           }
           setStatus('');
@@ -3012,9 +3138,12 @@
       var url = getUrl();
       if (!url) { promptUrl(); if (!getUrl()) return; }
 
+      var macro = findMacro(text);          // a short trigger expands into its full instruction
+      var toSend = macro ? macro.text : text;
+
       input.value = '';
-      history.push({ role: 'user', content: text });
-      addBubble('user', text);
+      history.push({ role: 'user', content: toSend });
+      addBubble('user', macro ? ('\u26A1 ' + text + (macro.label ? ' \u2014 ' + macro.label : '')) : text);
       sending = true; setStatus('Thinking…');
       send.disabled = true; send.style.opacity = '0.6';
 
