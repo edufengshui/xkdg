@@ -645,6 +645,18 @@
         if(_qmGengIsCommander(cell)) reasons.push('\u4e19\u5e9a excused — Geng hides Commander \u503c\u7b26');
         else { disq = true; reasons.push('\u4e19\u5e9a formation'); }
       }
+      // 戊辛 (Wu+Xin, either order) — excluded unless either stem hides the Commander.
+      if(_qmPairIs(cell, 'Wu', 'Xin')){
+        if(_qmIsCommander(cell) && (cell.cmdStem === 'Wu' || cell.cmdStem === 'Xin'))
+          reasons.push('\u620a\u8f9b excused — stem hides Commander \u503c\u7b26');
+        else { disq = true; reasons.push('\u620a\u8f9b formation'); }
+      }
+      // 壬己 (Ren+Ji, either order) — excluded unless either stem hides the Commander.
+      if(_qmPairIs(cell, 'Ren', 'Ji')){
+        if(_qmIsCommander(cell) && (cell.cmdStem === 'Ren' || cell.cmdStem === 'Ji'))
+          reasons.push('\u58ec\u5df1 excused — stem hides Commander \u503c\u7b26');
+        else { disq = true; reasons.push('\u58ec\u5df1 formation'); }
+      }
       // 庚己 — excluded unless Pillar 天柱 AND a favourable door.
       if(_qmPairIs(cell, 'Geng', 'Ji')){
         if(cell.star === 'Pillar' && _qmFavDoor(cell)) reasons.push('\u5e9a\u5df1 ok — Pillar \u5929\u67f1 + favourable door');

@@ -18,6 +18,8 @@ Valgono per **ogni** valutazione di palazzo QMDJ (sia carta volante 飛盤 sia r
 | Tiger 白虎 | **escluso** | tenuto SOLO con San Qi/Wu **+** porta favorevole |
 | Clash di steli 相冲 (甲庚, 乙辛, 丙壬, 丁癸) | **escluso** | salvo se lo stelo che fa clash **nasconde il Commander 值符** |
 | 丙庚 (Bing+Geng, qualsiasi ordine) | **escluso** | salvo se **Geng nasconde il Commander** (su Tian o Di pan) |
+| 戊辛 (Wu+Xin, qualsiasi ordine) | **escluso** | salvo se **uno dei due stemi nasconde il Commander** |
+| 壬己 (Ren+Ji, qualsiasi ordine) | **escluso** | salvo se **uno dei due stemi nasconde il Commander** |
 | 庚己 (Geng+Ji, qualsiasi ordine) | **escluso** | salvo con la stella **Pillar 天柱 _E_ porta favorevole** |
 | Geng sopra/sotto un **Commander che NON è Geng** | **sempre escluso** | nessuna |
 
