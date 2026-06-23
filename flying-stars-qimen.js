@@ -994,6 +994,11 @@
                 S:1,SOUTH:1,SUD:1, SW:2,SUDOVEST:2, W:5,WEST:5,OVEST:5, NW:8,NORDOVEST:8 };
     return (s in map) ? map[s] : -1;
   }
+  // Heavenly-stem clash (相冲): 甲庚, 乙辛, 丙壬, 丁癸. A palace whose Tian Pan stem
+  // clashes its Di Pan stem (e.g. 乙/辛 = 青龍逃走) is NOT favourable for activation.
+  var _FS_STEM_CLASH = { Jia:'Geng', Geng:'Jia', Yi:'Xin', Xin:'Yi', Bing:'Ren', Ren:'Bing', Ding:'Gui', Gui:'Ding' };
+  function _fsStemClash(a, b){ return !!a && !!b && _FS_STEM_CLASH[a] === b; }
+
   function imprisonmentInfo(chart){
     try {
       if(!chart || !chart.facingStars) return { imprisoned:false };
@@ -1066,7 +1071,7 @@
     // Default favourable preset: San Qi + 4 good doors + the Qimen celestial
     // star that CORRESPONDS to the flying star (same number 1-9). A saved
     // custom selection, if present, always overrides this preset.
-    var presetLabel = 'San Qi (Yi/Bing/Ding) + Open/Rest/Birth/View doors + matching \u4e5d\u661f star';
+    var presetLabel = 'San Qi (Yi/Bing/Ding) + Open/Rest/Birth/View doors + matching \u4e5d\u661f star (palaces with a Tian/Di stem clash \u76f8\u51b2 are excluded)';
     var wanted = {
       stems:   new Set(['Yi','Bing','Ding']),
       doors:   new Set(['Open','Rest','Birth','View']),
@@ -1124,6 +1129,12 @@
           var pdata = hourChart.palaces[palace];
           if(!pdata) continue;
           if(excludeFuYin && pdata.ti && pdata.ti === pdata.di) continue;
+          // Centralised formation gate (clash 相冲 unless Commander, 丙庚, 庚己 unless Pillar).
+          var pflags = (window.QMDJWaterScanner && window.QMDJWaterScanner.palaceFlags)
+            ? window.QMDJWaterScanner.palaceFlags(pdata)
+            : { disqualified: _fsStemClash(pdata.ti, pdata.di), reasons: [] };
+          if(!opts.allowClash && pflags.disqualified) continue;
+          var isVoid = (hourChart.voidPalaces || []).indexOf(palace) >= 0;
           var hits = matchPalace(pdata, wanted);
           if(!hits.length) continue;
           out.push({
@@ -1133,6 +1144,7 @@
             palace:    palace,
             palaceLbl: QMDJ_PALACE_TO_LABEL[palace] || ('P' + palace),
             liberates: liberation ? ('frees ws' + imp.periodStar + ' toward ' + (QMDJ_PALACE_TO_LABEL[palace] || palace)) : undefined,
+            isVoid:    isVoid || undefined,
             hourHan:   hp.han,
             hourTime:  hp.time,
             dun:       hourChart.dun,
