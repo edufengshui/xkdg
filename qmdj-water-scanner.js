@@ -608,6 +608,72 @@
    * @param {number} palace     - Target palace (1-9, not 5)
    * @returns {Object|null} {matched:bool, hits:[{cat,label}], score:N} or null on error
    */
+  // ── Palace formation flags + Void (shared rule set, used by all scans) ─────
+  // Disqualifying formations for activation:
+  //   • stem CLASH 相冲 (甲庚 乙辛 丙壬 丁癸) — EXCUSED if the palace carries the Commander 值符
+  //   • 丙庚 (either order)
+  //   • 庚己 (either order) — unless the Pillar star 天柱 is present
+  var _QM_STEM_CLASH = { Jia:'Geng', Geng:'Jia', Yi:'Xin', Xin:'Yi', Bing:'Ren', Ren:'Bing', Ding:'Gui', Gui:'Ding' };
+  function _qmIsCommander(cell){ return !!cell && (cell.zhiFu === true || cell.deity === 'Commander' || cell.deity === '\u503c\u7b26'); }
+  function _qmPairIs(cell, a, b){ return cell && ((cell.ti === a && cell.di === b) || (cell.ti === b && cell.di === a)); }
+  function palaceFlags(cell){
+    var reasons = [], disq = false;
+    if(cell){
+      if(_QM_STEM_CLASH[cell.ti] === cell.di){
+        if(_qmIsCommander(cell)) reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' excused by Commander \u503c\u7b26');
+        else { disq = true; reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' \u76f8\u51b2'); }
+      }
+      if(_qmPairIs(cell, 'Bing', 'Geng')){ disq = true; reasons.push('\u4e19\u5e9a formation'); }
+      if(_qmPairIs(cell, 'Geng', 'Ji')){ if(cell.star === 'Pillar') reasons.push('\u5e9a\u5df1 ok with Pillar \u5929\u67f1'); else { disq = true; reasons.push('\u5e9a\u5df1 formation'); } }
+    }
+    return { disqualified: disq, reasons: reasons };
+  }
+  // 旬空 (Void) is based on the DAY pillar's decade — NOT the hour. The decade's two
+  // empty branches map to their palace(s). E.g. day 戊辰 (甲子 decade) → void 戌亥 → NW 乾.
+  var _QM_VOID_BY_DECADE = [ ['Xu','Hai'], ['Shen','You'], ['Wu','Wei'], ['Chen','Si'], ['Yin','Mao'], ['Zi','Chou'] ];
+  var _QM_BR_TO_PAL = { Zi:1, Chou:8, Yin:8, Mao:3, Chen:4, Si:4, Wu:9, Wei:2, Shen:2, You:7, Xu:6, Hai:6 };
+  var _QM_BR_H = { Zi:'\u5b50', Chou:'\u4e11', Yin:'\u5bc5', Mao:'\u536f', Chen:'\u8fb0', Si:'\u5df3', Wu:'\u5348', Wei:'\u672a', Shen:'\u7533', You:'\u9149', Xu:'\u620c', Hai:'\u4ea5' };
+  function voidInfoForIdx(idx60){
+    if(idx60 == null || idx60 < 0) return { palaces: [], branches: [] };
+    var brs = _QM_VOID_BY_DECADE[Math.floor(idx60 / 10)] || [];
+    var pals = []; brs.forEach(function(b){ var p = _QM_BR_TO_PAL[b]; if(pals.indexOf(p) < 0) pals.push(p); });
+    return { palaces: pals, branches: brs.map(function(b){ return _QM_BR_H[b]; }) };
+  }
+  // Day pillar (pinyin + 60-jiazi index), TST boundary when available.
+  var _QM_BR_CLASH = { Zi:'Wu', Wu:'Zi', Chou:'Wei', Wei:'Chou', Yin:'Shen', Shen:'Yin', Mao:'You', You:'Mao', Chen:'Xu', Xu:'Chen', Si:'Hai', Hai:'Si' };
+  function dayPillarPin(Y, M, D){
+    var dG = null, dZ = null;
+    try {
+      if(typeof XKDGSolarTime !== 'undefined' && XKDGSolarTime.currentLonTz){
+        var lt = XKDGSolarTime.currentLonTz();
+        if(lt && isFinite(lt.lonDeg)){
+          var P = XKDGSolarTime.pillarsFromCivil(Y, M, D, 12, 0, 0, lt.lonDeg, lt.tzOffsetMin);
+          dG = P.day.charAt(0); dZ = P.day.charAt(1);
+        }
+      }
+    } catch(e){}
+    if(!dG){ try { var ec = Solar.fromYmd(Y, M, D).getLunar().getEightChar(); dG = ec.getDayGan(); dZ = ec.getDayZhi(); } catch(e){ return null; } }
+    var sp = STEM_H2P[dG] || dG, bp = BR_H2P[dZ] || dZ;
+    return { stem: sp, branch: bp, idx: jiaZiIdx(sp, bp) };
+  }
+  // Void palaces for a DAY, applying 冲空填实: a decade-void branch CLASHED by the day
+  // branch is "filled" (no longer void), so its palace is not flagged void that day.
+  function dayVoidPalaces(Y, M, D){
+    var dp = dayPillarPin(Y, M, D);
+    if(!dp || dp.idx < 0) return { palaces: [], branches: [], filledPalaces: [] };
+    var vbrs = _QM_VOID_BY_DECADE[Math.floor(dp.idx / 10)] || [];
+    var fills = _QM_BR_CLASH[dp.branch];                 // branch the day clashes (fills)
+    var byPal = {};
+    vbrs.forEach(function(b){ var p = _QM_BR_TO_PAL[b]; (byPal[p] = byPal[p] || []).push(b); });
+    var palaces = [], branches = [], filledPalaces = [];
+    Object.keys(byPal).forEach(function(pk){
+      var p = +pk, bs = byPal[pk];
+      if(bs.indexOf(fills) >= 0){ filledPalaces.push(p); }   // day clashes one of this palace's void branches → filled
+      else { palaces.push(p); bs.forEach(function(b){ branches.push(_QM_BR_H[b]); }); }
+    });
+    return { palaces: palaces, branches: branches, filledPalaces: filledPalaces };
+  }
+
   function checkHourAtPalace(year, month, day, hourStem, hourBranch, palace){
     if(typeof Solar === 'undefined') return null;
     var charts = _charts || EMBEDDED_CHARTS;
@@ -648,13 +714,17 @@
       jiaName: isZhiFu ? (JIA_HIDE[chart.ld]||'') : ''
     };
 
-    if(hits.length === 0) return { matched: false, hits: [], score: 0, cell: cellInfo };
+    var flags = palaceFlags(cellInfo);
+    var isVoid = dayVoidPalaces(year, month, day).palaces.indexOf(palace) >= 0;
+
+    if(flags.disqualified) return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, flags: flags.reasons, isVoid: isVoid };
+    if(hits.length === 0) return { matched: false, hits: [], score: 0, cell: cellInfo, isVoid: isVoid, flags: flags.reasons };
 
     var pos = 0, neg = 0;
     for(var i = 0; i < hits.length; i++){
       if(hits[i].cat === 'pen') neg++; else pos++;
     }
-    return { matched: true, hits: hits, score: pos - neg, cell: cellInfo };
+    return { matched: true, hits: hits, score: pos - neg, cell: cellInfo, isVoid: isVoid, flags: flags.reasons };
   }
 
   // ── getHourChart: returns full 9-palace chart data for rendering ──
@@ -703,7 +773,8 @@
         jiaName: isZF ? (JIA_HIDE[chart.ld]||'') : ''
       };
     }
-    return { palaces: palaces, dun: info.dun, ju: info.ju };
+    var _vp = dayVoidPalaces(year, month, day);
+    return { palaces: palaces, dun: info.dun, ju: info.ju, voidPalaces: _vp.palaces, voidBranches: _vp.branches };
   }
 
   function mount(root){
@@ -937,6 +1008,9 @@
     },
     checkRotatingPalace: function(chart, palace){
       return checkRotatingPalace(chart, palace);
-    }
+    },
+    palaceFlags: function(cell){ return palaceFlags(cell); },
+    voidInfoForIdx: function(idx60){ return voidInfoForIdx(idx60); },
+    dayVoidPalaces: function(Y, M, D){ return dayVoidPalaces(Y, M, D); }
   };
 })();
