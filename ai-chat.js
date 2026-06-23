@@ -274,6 +274,14 @@
     'person: set_active_house to it, read its setup, then run the requested scan using THAT house\u2019s own saved water ' +
     'position (direction) and water star on its own chart, and report a SEPARATE result per house (label each clearly ' +
     'by house name). Restore the originally active house at the end.\n' +
+    '- UNFAVOURABLE PALACE FORMATIONS (CRITICAL): a palace is NOT good for activation if it has any of: a stem CLASH ' +
+    '\u76f8\u51b2 (\u7532\u5e9a/\u4e59\u8f9b/\u4e19\u58ec/\u4e01\u7678) \u2014 EXCUSED only if the palace carries the Commander \u503c\u7b26; \u4e19\u5e9a (either order); or \u5e9a\u5df1 (either ' +
+    'order) unless the Pillar star \u5929\u67f1 is present. The water tools already exclude these palaces; never present one as ' +
+    'a good hour. ALSO: if a result is flagged isVoid (the palace is in Void \u7a7a\u4ea1 that hour), HIGHLIGHT it to the user ' +
+    '(a void hour is weak/empty even if otherwise favourable).\n' +
+    '- VERIFY BUTTON: whenever you recommend a specific DATE + HOUR (water activation, date selection, etc.), also call ' +
+    'show_verify_button(date, hour branch, direction if any) so the user gets a one-tap button to open the XKDG date and ' +
+    'the QMDJ Hour Flying Chart and check it. For several houses, add one button per recommended date+hour.\n' +
     '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
@@ -324,6 +332,23 @@
         type: 'object',
         properties: { rank: { type: 'integer', description: '1-based position in the last results list.' } },
         required: ['rank']
+      }
+    },
+    {
+      name: 'show_verify_button',
+      description: 'Add a "check" button to the chat that lets the user open BOTH the XKDG date analysis AND the QMDJ ' +
+        'Hour Flying Chart for a date+hour you recommend, to verify it visually. Call this whenever you recommend a ' +
+        'specific date + hour for activating water / selecting a date (one call per recommended date+hour; for ' +
+        'multiple houses, one button per house). The button itself opens the views when the user taps it.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'Recommended date YYYY-MM-DD.' },
+          hour: { type: 'string', description: 'Hour branch of the recommended double-hour (e.g. "Wu" or "\u5348").' },
+          direction: { type: 'string', description: 'Optional palace direction to highlight (N, NE, E, SE, S, SW, W, NW).' },
+          label: { type: 'string', description: 'Optional short label for the button (e.g. house name + date).' }
+        },
+        required: ['date', 'hour']
       }
     },
     {
@@ -846,6 +871,7 @@
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'explain_purpose') return toolExplainPurpose(input || {});
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
+      if (name === 'show_verify_button') return toolShowVerifyButton(input || {});
       if (name === 'find_bed_dates') return toolFindBedDates(input || {});
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
       if (name === 'plan_travel') return toolPlanTravel(input || {});
@@ -952,6 +978,49 @@
     card.appendChild(saveB); card.appendChild(closeB);
     root.appendChild(card); document.body.appendChild(root);
     renderList();
+  }
+
+  // ── Verification helper: open the XKDG date + the QMDJ chart for a recommended date/hour ──
+  var _VB_BR_ORDER = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+  var _VB_BR_HAN = { Zi:'\u5b50', Chou:'\u4e11', Yin:'\u5bc5', Mao:'\u536f', Chen:'\u8fb0', Si:'\u5df3', Wu:'\u5348', Wei:'\u672a', Shen:'\u7533', You:'\u9149', Xu:'\u620c', Hai:'\u4ea5' };
+  var _VB_HAN2PIN = { '\u5b50':'Zi','\u4e11':'Chou','\u5bc5':'Yin','\u536f':'Mao','\u8fb0':'Chen','\u5df3':'Si','\u5348':'Wu','\u672a':'Wei','\u7533':'Shen','\u9149':'You','\u620c':'Xu','\u4ea5':'Hai' };
+  var _VB_STEMS_HAN = ['\u7532','\u4e59','\u4e19','\u4e01','\u6208','\u5df1','\u5e9a','\u8f9b','\u58ec','\u7678'];
+  var _VB_ZI_BY_DAYSTEM = { '\u7532':'\u7532','\u5df1':'\u7532','\u4e59':'\u4e19','\u5e9a':'\u4e19','\u4e19':'\u6208','\u8f9b':'\u6208','\u4e01':'\u5e9a','\u58ec':'\u5e9a','\u6208':'\u58ec','\u7678':'\u58ec' };
+  var _VB_DIR2PAL = { SE:4, S:9, SW:2, E:3, C:5, W:7, NE:8, N:1, NW:6 };
+  function _vbBranch(s){
+    if(s == null) return null; s = String(s).trim();
+    for(var k in _VB_HAN2PIN){ if(s.indexOf(k) >= 0) return _VB_HAN2PIN[k]; }
+    var cap = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    return (_VB_BR_ORDER.indexOf(cap) >= 0) ? cap : null;
+  }
+  function _vbDayStemHan(Y, M, D){
+    try {
+      if(typeof XKDGSolarTime !== 'undefined' && XKDGSolarTime.currentLonTz){
+        var lt = XKDGSolarTime.currentLonTz();
+        if(lt && isFinite(lt.lonDeg)){ var P = XKDGSolarTime.pillarsFromCivil(Y, M, D, 12, 0, 0, lt.lonDeg, lt.tzOffsetMin); return P.day.charAt(0); }
+      }
+    } catch(e){}
+    return null;
+  }
+  function _vbHourPillar(iso, branchPin){
+    var p = String(iso).split('-'); var Y = +p[0], M = +p[1], D = +p[2];
+    var dG = _vbDayStemHan(Y, M, D); if(!dG) return null;
+    var ziIdx = _VB_STEMS_HAN.indexOf(_VB_ZI_BY_DAYSTEM[dG]);
+    var bi = _VB_BR_ORDER.indexOf(branchPin); if(bi < 0 || ziIdx < 0) return null;
+    return { hGan: _VB_STEMS_HAN[(ziIdx + bi) % 10], hZhi: _VB_BR_HAN[branchPin], hourIndex: bi };
+  }
+  function toolShowVerifyButton(input){
+    input = input || {};
+    var iso = String(input.date || '').trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return { error: 'Provide date as YYYY-MM-DD.' };
+    var bp = _vbBranch(input.hour); if(!bp) return { error: 'Provide the hour branch (e.g. Wu / \u5348).' };
+    var hp = _vbHourPillar(iso, bp); if(!hp) return { error: 'Could not compute the hour pillar for that date.' };
+    var dir = String(input.direction || '').trim().toUpperCase();
+    var palace = _VB_DIR2PAL[dir] || null;
+    var label = input.label || ('Controllo: ' + iso + ' \u00b7 ' + _VB_BR_HAN[bp] + (dir ? (' \u00b7 ' + dir) : ''));
+    try { if(window.XKDGChat && window.XKDGChat.addVerifyButton) window.XKDGChat.addVerifyButton({ date: iso, hourIndex: hp.hourIndex, hGan: hp.hGan, hZhi: hp.hZhi, palace: palace, label: label }); }
+    catch(e){ return { error: 'Could not add the button.' }; }
+    return { ok: true, button_shown: true, date: iso, hour: _VB_BR_HAN[bp], hour_pillar: hp.hGan + hp.hZhi, palace: palace };
   }
 
   // Is daylight saving in effect on date d (per the device timezone)? Standard time has the larger UTC offset;
@@ -2989,6 +3058,29 @@
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
+    // A "check" button: opens the XKDG date analysis AND the QMDJ Hour Flying Chart
+    // for the date/hour the assistant recommends, so the user can verify visually.
+    function addVerifyButtonBubble(info) {
+      info = info || {};
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:14px;line-height:1.5;' });
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:6px;' }, '\uD83D\uDD0D ' + (info.label || 'Check')));
+      var btn = elc('button', { style:
+        'width:100%;padding:9px;border:0;border-radius:8px;background:#6a1b9a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' },
+        'Apri data XKDG + carta QMDJ');
+      btn.addEventListener('click', function () {
+        var okDate = false, okChart = false;
+        try { if (typeof window.loadDateIntoMain === 'function' && info.date) { window.loadDateIntoMain(info.date, info.hourIndex); okDate = true; } } catch (e) {}
+        try { if (typeof window.showQimenChart === 'function' && info.date && info.hGan && info.hZhi) { window.showQimenChart(info.date, info.hGan, info.hZhi, info.palace); okChart = true; } } catch (e) {}
+        closePanel();   // hide the chat so the opened date + chart are visible
+        if (!okDate && !okChart) { openPanel(); addBubble('assistant', '\u26A0 Could not open the views on this page.'); }
+      });
+      wrap.appendChild(btn);
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
     function updateItineraryCharging(info) {
       try { if (_itinChargeEl) { var L = ITIN_LBL[chatLang()] || ITIN_LBL.en; _itinChargeEl.textContent = chargingText(L, info); msgs.scrollTop = msgs.scrollHeight; } } catch (e) {}
     }
@@ -3164,6 +3256,7 @@
     window.XKDGChat = {
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
+      addVerifyButton: function (info) { try { openPanel(); return addVerifyButtonBubble(info); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
       updateItineraryExits: function (exits) { try { updateItineraryExits(exits); } catch (e) {} },
       updateItineraryStops: function (legs) { try { updateItineraryStops(legs); } catch (e) {} },
