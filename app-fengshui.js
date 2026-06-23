@@ -467,32 +467,45 @@ function buildFengShuiView(){
 
       <div id="fs-results-area"></div>
 
-      <!-- ═══ ⚡ OPERATIVE — ACTIVATION (dynamic) — AT THE BOTTOM ═══ -->
+      <!-- ═══ ⚡ ACTIVATION (dynamic) — AT THE BOTTOM ═══ -->
       <div id="fs-operative" style="background:#ede7f6;border:2px solid #5e35b1;border-radius:8px;padding:10px;margin-top:18px;">
-        <div style="font-size:14px;font-weight:bold;color:#4527a0;margin-bottom:4px;">⚡ OPERATIVE — Activation</div>
-        <div style="font-size:11px;color:#666;font-style:italic;margin-bottom:10px;">Setup lives above in House Profiles. Here you decide <strong>when</strong> (dates / hours) and <strong>how</strong> (Qimen) to activate a placed element. Dates appear only as answers.</div>
+        <div style="font-size:14px;font-weight:bold;color:#4527a0;margin-bottom:4px;">⚡ ACTIVATION</div>
+        <div style="font-size:11px;color:#666;font-style:italic;margin-bottom:10px;">Setup lives above in House Profiles. Here you pick a <strong>quadrant</strong> and a <strong>Purpose</strong>, then scan for future dates/hours that carry <strong>both</strong> the Main Purpose conditions (XKDG) <strong>and</strong> the Feng Shui activation conditions (Qimen door). Dates appear only as answers.</div>
 
         <!-- Current context (date / person analysis) — moved here from the top -->
         <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin:0 0 10px;font-size:13px;line-height:1.5;"></div>
 
-        <!-- 💧 Add a generic water feature → scan good dates/hours to activate it (XKDG + Qimen) -->
+        <!-- ⚡ Activate by Purpose → scan future dates/hours (Main Purpose XKDG + Qimen FS door) -->
         <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 0 10px;">
-          <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">① 💧 General water feature (aquarium / fountain) — by palace</div>
+          <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">① ⚡ PURPOSE ACTIVATION</div>
           <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
-            <div style="flex:1;min-width:150px;">
-              <label style="font-size:11px;color:#666;display:block;">Palace</label>
+            <div style="flex:1;min-width:160px;">
+              <label style="font-size:11px;color:#666;display:block;">Purpose</label>
+              <select id="fs-wateract-purpose" onchange="fsActPurposeChanged()" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+                <option value="health">🏥 Health · Rest 休</option>
+                <option value="career">💼 Career · Open 開 / View 景</option>
+                <option value="birth">🌱 Birth · Birth 生</option>
+                <option value="relationship">❤️ Relationship · Rest 休</option>
+                <option value="journey">✈️ Journey · Rest 休</option>
+                <option value="speak">🎤 Speak · View 景</option>
+                <option value="legal">⚖️ Legal · Shocking 驚</option>
+                <option value="water">💧 Water activation (house position)</option>
+              </select>
+            </div>
+            <div id="fs-act-quadrant-wrap" style="flex:1;min-width:150px;display:none;">
+              <label style="font-size:11px;color:#666;display:block;">Quadrant (water position)</label>
               <select id="fs-wateract-dir" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
-                <option value="">— select —</option>
+                <option value="">— from house —</option>
                 <option value="N">N 坎</option><option value="NE">NE 艮</option><option value="E">E 震</option><option value="SE">SE 巽</option>
                 <option value="S">S 離</option><option value="SW">SW 坤</option><option value="W">W 兌</option><option value="NW">NW 乾</option>
               </select>
             </div>
             <div style="flex:0 0 80px;">
               <label style="font-size:11px;color:#666;display:block;">Days</label>
-              <input type="number" id="fs-wateract-days" min="1" max="120" value="7" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+              <input type="number" id="fs-wateract-days" min="1" max="120" value="30" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
             </div>
-            <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN dates</button>
-            <button onclick="fsGenWaterSaveToHouse()" title="Save this water feature into the active house" style="background:#fff;color:#00695c;border:1px solid #00695c;font-weight:bold;font-size:12px;padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;">💾 Save to house</button>
+            <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
+            <button id="fs-act-save-water-btn" onclick="fsGenWaterSaveToHouse()" title="Save a water feature at this quadrant into the active house" style="display:none;background:#fff;color:#00695c;border:1px solid #00695c;font-weight:bold;font-size:12px;padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;">💾 Save water</button>
           </div>
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
@@ -5804,72 +5817,145 @@ function _fsBranchClock(hourHan){
 // MANUAL equivalent of the AI find_water_activation tool: for the selected 45°
 // quadrant, run BOTH the QMDJ water-hour scan (Qimen sector) AND the XKDG day
 // scan for the loaded person, then merge by date with a combined score.
+// ── Purpose Activation: show/hide quadrant selector & save button ──
+function fsActPurposeChanged(){
+  var purpEl = document.getElementById('fs-wateract-purpose');
+  var qWrap  = document.getElementById('fs-act-quadrant-wrap');
+  var saveBtn= document.getElementById('fs-act-save-water-btn');
+  var isWater = purpEl && purpEl.value === 'water';
+  if(qWrap) qWrap.style.display = isWater ? '' : 'none';
+  if(saveBtn) saveBtn.style.display = isWater ? '' : 'none';
+}
+
 function fsWaterActivationScan(){
   var out=document.getElementById('fs-wateract-results');
   if (!out) return;
   try {
-    var sel=document.getElementById('fs-wateract-dir');
-    var dir=sel?sel.value:'';
-    if (!dir){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Select a quadrant first.</div>'; return; }
-    if (typeof window.QMDJWaterScanner==='undefined' || typeof window.QMDJWaterScanner.scan!=='function'){
-      out.innerHTML='<div style="font-size:12px;color:#c0392b;">QMDJ water scanner not available on this page.</div>'; return;
+    var scanner = window.QMDJWaterScanner;
+    if (typeof scanner==='undefined' || typeof scanner.scanWaterPurpose!=='function'){
+      out.innerHTML='<div style="font-size:12px;color:#c0392b;">QMDJ water scanner not available.</div>'; return;
     }
+    var purpEl=document.getElementById('fs-wateract-purpose');
+    var purposeKey=purpEl?purpEl.value:'health';
+    var doorsMap=(typeof scanner.fsPurposeDoors==='function')?scanner.fsPurposeDoors():{};
+    var purpose=doorsMap[purposeKey]||null;
+    var isWater=!!(purpose && purpose.isWater);
     var daysEl=document.getElementById('fs-wateract-days');
-    var days=(daysEl&&parseInt(daysEl.value,10))||7;
+    var days=(daysEl&&parseInt(daysEl.value,10))||30;
     var startEl=document.getElementById('scan-start');
     var start=(startEl&&startEl.value)|| new Date().toISOString().slice(0,10);
-    out.innerHTML='<div style="font-size:12px;color:#666;">Scanning…</div>';
 
-    // (1) Qimen sector hours
+    // ── Determine target direction(s) ──
+    var targetDir = '';  // empty = scan all 8 palaces
+    if(isWater){
+      // Try to read water palace from the active house profile
+      var manDir = (document.getElementById('fs-wateract-dir')||{}).value || '';
+      if(manDir){
+        targetDir = manDir;
+      } else {
+        // Auto-read from house
+        var wp = _fsGetHouseWaterPalace();
+        if(wp){
+          targetDir = wp;
+        } else {
+          out.innerHTML='<div style="font-size:12px;color:#c0392b;">No water position found. Save a water feature in House Profiles first, or select a quadrant manually.</div>';
+          return;
+        }
+      }
+    }
+    // For non-water purposes, targetDir stays '' → scan all palaces
+
+    out.innerHTML='<div style="font-size:12px;color:#666;">Scanning ' + (targetDir ? targetDir : 'all quadrants') + '…</div>';
+
+    // (1) Qimen scan — canonical §1+§2 path
     var qres=[];
-    try { qres=window.QMDJWaterScanner.scan(dir,start,days)||[]; }
-    catch(e){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Qimen scan failed.</div>'; return; }
+    try { qres=scanner.scanWaterPurpose(targetDir,start,days,purposeKey)||[]; }
+    catch(e){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Qimen scan failed: '+e.message+'</div>'; return; }
 
-    // (2) XKDG day quality for the loaded person (best score per date)
+    // (2) XKDG day quality for the loaded person
     var xkdgByDate={}, hasPerson=false;
+    var mainPurpose=(purpose&&purpose.mainPurpose)?purpose.mainPurpose:'';
     try { var pA=(typeof _personAYear!=='undefined')?_personAYear:window._personAYear; var pB=(typeof _personBYear!=='undefined')?_personBYear:window._personBYear; hasPerson=!!(pA||pB); } catch(e){}
     if (hasPerson && typeof window.runScanner==='function'){
       try {
         var ss=document.getElementById('scan-start'), sd=document.getElementById('scan-days'), ps=document.getElementById('purpose-select');
         if (ss) ss.value=start; if (sd) sd.value=String(days);
-        if (ps){ ps.value=''; if (typeof window.onPurposeChange==='function') try{window.onPurposeChange();}catch(e){} }
+        if (ps){ ps.value=mainPurpose; if (typeof window.onPurposeChange==='function') try{window.onPurposeChange();}catch(e){} }
         window.runScanner();
         (window._lastScanResults||[]).forEach(function(r){ if(!r.isoDate) return; if(xkdgByDate[r.isoDate]==null||r.score>xkdgByDate[r.isoDate]) xkdgByDate[r.isoDate]=r.score; });
       } catch(e){}
     }
 
-    // (3) Merge by date — both scores + combined
+    // (3) Merge
+    var multiPalace = !targetDir;  // showing quadrant column?
     var rows=qres.map(function(r){
       var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
-      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), hits:(r.hits||[]).map(function(h){return h.label;}) };
+      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), dir:(r.dir||''), palace:(r.palace||0), door:(r.purposeDoor||null), hits:(r.hits||[]).map(function(h){return h.label;}) };
     });
     rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
-    if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No favourable Qimen water hours in this range for '+dir+'.</div>'; return; }
+    var DOOR_LBL={Kai:'Open 開',Xiu:'Rest 休',Sheng:'Birth 生',JingS:'View 景',JingF:'Shocking 驚',Shang:'Injury 傷',Du:'Delusion 杜',Si:'Death 死'};
+    var purpLabel = purpose ? purpose.label : purposeKey;
+    var purpDoorTxt = (purpose && purpose.doors) ? purpose.doors.map(function(d){return DOOR_LBL[d]||d;}).join('/') : 'any fav door';
+    if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No qualifying hours in this range for <b>'+purpLabel+'</b> ('+purpDoorTxt+')'+(targetDir?' at '+targetDir:'')+'.</div>'; return; }
 
     var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
-    var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'+dir+' — '+rows.length+' hours · '+(hasPerson?'Qimen + XKDG':'Qimen only — load a person (A/B) to add XKDG')+'</div>';
+    var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'
+      + purpLabel + ' · ' + purpDoorTxt
+      + (targetDir ? ' · ' + targetDir : ' · all quadrants')
+      + ' — ' + rows.length + ' hours'
+      + ' · ' + (hasPerson ? ('Qimen + XKDG' + (mainPurpose ? ' (' + mainPurpose + ')' : '')) : 'Qimen only — load a person to add XKDG')
+      + '</div>';
     html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
     html+='<tr style="color:#00695c;">'
       +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
       +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Hour</th>'
+      +(multiPalace?'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Quadrant</th>':'')
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Door</th>'
       +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Qimen</th>'
       +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">XKDG</th>'
       +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Combined</th></tr>';
-    rows.slice(0,20).forEach(function(r){
+    var colSpan = multiPalace ? 7 : 6;
+    rows.slice(0,40).forEach(function(r){
       html+='<tr style="border-bottom:1px solid #eee;">'
         +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+(r.ganzhi||'')+'</span></td>'
         +'<td style="padding:4px;text-align:center;white-space:nowrap;">'+r.hour+'</td>'
+        +(multiPalace?'<td style="padding:4px;text-align:center;font-weight:bold;color:#5e35b1;">'+r.dir+'</td>':'')
+        +'<td style="padding:4px;text-align:center;white-space:nowrap;color:#2e7d32;font-weight:bold;">'+((r.door&&(DOOR_LBL[r.door]||r.door))||(r.hits&&r.hits[0])||'\u2014')+'</td>'
         +'<td style="padding:4px;text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
         +'<td style="padding:4px;text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
         +'<td style="padding:4px;text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
         +'</tr>';
       if (r.hits && r.hits.length){
-        html+='<tr><td colspan="5" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
+        html+='<tr><td colspan="'+colSpan+'" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
       }
     });
     html+='</table></div>';
+    if(rows.length>40) html+='<div style="font-size:11px;color:#888;margin-top:4px;">Showing top 40 of '+rows.length+' results.</div>';
     out.innerHTML=html;
   } catch(err){ console.warn('fsWaterActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
+}
+
+// Read the first water palace from the active house/floor.
+function _fsGetHouseWaterPalace(){
+  try {
+    var h = window.XKDGHouse;
+    if(!h || !h.floors) return null;
+    var fIdx = h.activeFloor || 0;
+    if(fIdx >= h.floors.length) fIdx = 0;
+    var fl = h.floors[fIdx];
+    // settings.water[] (general water features)
+    if(fl.settings && fl.settings.water && fl.settings.water.length){
+      var sw = fl.settings.water[0];
+      if(sw.palace) return sw.palace;
+    }
+    // legacy waters[] (permanent aquariums)
+    if(fl.waters && fl.waters.length){
+      var w = fl.waters[0];
+      if(w.palace) return w.palace;
+      if(w.dir) return w.dir;
+    }
+    return null;
+  } catch(e){ return null; }
 }
 
 // Reorganise the FS view into: gate + shared base (incl. luopan) + gated tools.

@@ -81,6 +81,24 @@
   const DOOR_TAG_LABELS = {Kai:'Open 開', Xiu:'Rest 休', Sheng:'Birth 生', JingS:'View 景', Du:'Delusion 杜', Shang:'Injury 傷', Si:'Death 死', JingF:'Shocking 驚'};
   const QI_TAG_LABELS   = {Yi:'乙 Yi', Bing:'丙 Bing', Ding:'丁 Ding'};
 
+  // ── FS WATER-ACTIVATION PURPOSES → primary QMDJ door(s) ─────────────────
+  // Date per "accendere l'acquario": ogni Purpose seleziona la porta principale
+  // del palazzo. Tutte le regole canoniche valgono (§1 formationFlags + §2 gate
+  // San Qi/Wu obbligatorio). `allowNonFav` = la porta primaria NON è favorevole
+  // (Kai/Xiu/Sheng/JingS) ed è redenta dal San Qi — stesso schema dell'eccezione
+  // Injury-per-viaggi. `wuBonus` = bonus quando Wu 戊 è nello stesso palazzo.
+  // `mainPurpose` = chiave del Purpose Main corrispondente per lo score XKDG.
+  const FS_PURPOSE_DOORS = {
+    health:       { doors:['Xiu'],          allowNonFav:false, label:'Health',       mainPurpose:'health' },
+    career:       { doors:['Kai','JingS'],  allowNonFav:false, label:'Career',       mainPurpose:'career' },
+    birth:        { doors:['Sheng'],        allowNonFav:false, wuBonus:true, label:'Birth', mainPurpose:'' },
+    relationship: { doors:['Xiu'],          allowNonFav:false, label:'Relationship', mainPurpose:'relationship' },
+    journey:      { doors:['Xiu'],          allowNonFav:false, label:'Journey',      mainPurpose:'journey' },
+    speak:        { doors:['JingS'],        allowNonFav:false, label:'Speak',        mainPurpose:'speak' },
+    legal:        { doors:['JingF'],        allowNonFav:true,  label:'Legal',        mainPurpose:'legal' },  // JingF 驚 redento dal San Qi
+    water:        { doors:null,             allowNonFav:false, label:'Water',        mainPurpose:'',     isWater:true }  // any fav door; palace from house profile
+  };
+
   function jiaZiIdx(stem, branch){
     for(var i=0;i<60;i++){
       if(STEM_SEQ[i%10]===stem && BR_SEQ[i%12]===branch) return i;
@@ -333,6 +351,62 @@
       if(a.date!==b.date) return a.date<b.date ? -1 : 1;
       return b.score-a.score;
     });
+    return results;
+  }
+
+  // ── PURPOSE-AWARE ACTIVATION SCAN (canonical §1+§2 path) ──────────────────
+  // Iterates days/hours through the canonical checkHourAtPalace gate
+  // (formationFlags §1 + directionGate §2), optionally filtered to a
+  // purpose's primary door. purposeKey = ''/null → general canonical scan.
+  //
+  // targetDir:
+  //   - 'N','NE',… → scan only that palace (used for Water, where palace is fixed)
+  //   - '' / null   → scan ALL 8 outer palaces (the purpose can match at any quadrant)
+  //
+  // Results include .palace and .dir so the caller knows WHERE the match happened.
+  var _PAL_DIR = {1:'N',2:'SW',3:'E',4:'SE',6:'NW',7:'W',8:'NE',9:'S'};
+  function scanWaterPurpose(targetDir, startDateStr, numDays, purposeKey){
+    var palaces;
+    if(targetDir && DIR_TO_PALACE[targetDir]){
+      palaces = [DIR_TO_PALACE[targetDir]];
+    } else {
+      palaces = [1,2,3,4,6,7,8,9]; // all 8 outer palaces
+    }
+    var purpose = purposeKey ? (FS_PURPOSE_DOORS[purposeKey] || null) : null;
+    var results = [];
+    var parts = startDateStr.split('-');
+    var startDate = new Date(+parts[0], +parts[1]-1, +parts[2]);
+    for(var d=0; d<numDays; d++){
+      var date = new Date(startDate.getTime() + d*86400000);
+      var Y = date.getFullYear(), M = date.getMonth()+1, D = date.getDate();
+      var info = getDunJuForDate(Y, M, D);
+      if(!info) continue;
+      var hourPillars = getHourPillarsForDay(info.dayStem);
+      for(var h=0; h<hourPillars.length; h++){
+        var hp = hourPillars[h];
+        for(var pi=0; pi<palaces.length; pi++){
+          var pal = palaces[pi];
+          var res = checkHourAtPalace(Y, M, D, hp.stem, hp.branch, pal, { purpose: purpose });
+          if(res && res.matched){
+            results.push({
+              date: Y + '-' + String(M).padStart(2,'0') + '-' + String(D).padStart(2,'0'),
+              weekday: WEEKDAYS_IT[date.getDay()],
+              hourHan: STEM_HAN[hp.stem] + BR_HAN[hp.branch],
+              hourTime: hp.time,
+              dun: info.dun, ju: info.ju, jieQi: info.jqPy,
+              score: res.score || 0,
+              hits: res.hits || [],
+              cell: res.cell,
+              palace: pal,
+              dir: _PAL_DIR[pal] || '?',
+              purposeDoor: res.purposeDoor || null
+            });
+          }
+        }
+      }
+    }
+    // Sort: best score first; within same score, by date
+    results.sort(function(a,b){ return (b.score-a.score) || (a.date<b.date ? -1 : a.date>b.date ? 1 : 0); });
     return results;
   }
 
@@ -687,8 +761,19 @@
     if(!_qmHasSanQiWu(cell)) return { eligible:false, reasons:['no San Qi/Wu \u4e59\u4e19\u4e01/\u620a'] };
     var fav = _qmFavDoor(cell);
     var injuryTravel = !!opts.travel && cell.doorCode === 'Shang';   // San Qi already required above
-    if(!fav && !injuryTravel) return { eligible:false, reasons:['no favourable door'] };
-    return { eligible:true, reasons: injuryTravel ? ['Injury \u50b7 redeemed by San Qi (travel)'] : [] };
+    // FS Purpose: a purpose may redeem its NON-favourable primary door, but a
+    // non-favourable door (e.g. Legal → JingF 驚) is redeemed by San Qi 三奇 (乙丙丁)
+    // ONLY — not by Wu 戊. (Wu is acceptable only together with a FAVOURABLE door.)
+    var purposeRedeem = false;
+    if(opts.purpose && opts.purpose.allowNonFav && opts.purpose.doors &&
+       opts.purpose.doors.indexOf(cell.doorCode) !== -1){
+      purposeRedeem = (SAN_QI.indexOf(cell.ti) !== -1 || SAN_QI.indexOf(cell.di) !== -1);
+    }
+    if(!fav && !injuryTravel && !purposeRedeem) return { eligible:false, reasons:['no favourable door'] };
+    var rs = [];
+    if(injuryTravel)              rs.push('Injury \u50b7 redeemed by San Qi (travel)');
+    if(purposeRedeem && !fav)     rs.push((DOOR_TAG_LABELS[cell.doorCode]||cell.doorCode) + ' redeemed by San Qi (' + (opts.purpose.label||'purpose') + ')');
+    return { eligible:true, reasons: rs };
   }
   // 旬空 (Void) is based on the DAY pillar's decade — NOT the hour. The decade's two
   // empty branches map to their palace(s). E.g. day 戊辰 (甲子 decade) → void 戌亥 → NW 乾.
@@ -736,7 +821,9 @@
     return { palaces: palaces, branches: branches, filledPalaces: filledPalaces };
   }
 
-  function checkHourAtPalace(year, month, day, hourStem, hourBranch, palace){
+  function checkHourAtPalace(year, month, day, hourStem, hourBranch, palace, opts){
+    opts = opts || {};
+    var purpose = opts.purpose || null;   // resolved FS_PURPOSE_DOORS entry, or null
     if(typeof Solar === 'undefined') return null;
     var charts = _charts || EMBEDDED_CHARTS;
     if(!charts) return null;
@@ -783,15 +870,55 @@
 
     if(flags.disqualified) return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, flags: flags.reasons, isVoid: isVoid };
     // §2 gate — San Qi/Wu + favourable door is mandatory for activation too (flying 飛盤).
-    var gate = directionGate(cellInfo, { travel: false });
+    // A purpose may redeem its own non-favourable primary door (e.g. Legal JingF) with San Qi.
+    var gate = directionGate(cellInfo, { travel: false, purpose: purpose });
     if(!gate.eligible) return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, flags: flags.reasons.concat(gate.reasons), gateFail: true, isVoid: isVoid };
-    if(hits.length === 0) return { matched: false, hits: [], score: 0, cell: cellInfo, isVoid: isVoid, flags: flags.reasons };
+
+    // Purpose door filter — when a purpose specifies primary doors, the palace door
+    // must match. Water purpose has doors:null → no filter (any favourable door is fine).
+    if(purpose && purpose.doors && purpose.doors.indexOf(cellInfo.doorCode) === -1){
+      return { matched: false, hits: [], score: 0, cell: cellInfo, isVoid: isVoid, flags: flags.reasons, purposeMismatch: true };
+    }
+
+    // extractHits filters out non-favourable doors, so for a purpose whose primary door
+    // is non-favourable (Legal JingF) the hit list is empty even though the gate passed.
+    // Synthesize a canonical hit list from the gated cell in that case.
+    if(hits.length === 0){
+      if(purpose){
+        hits = [{ cat:'door', label:(DOOR_TAG_LABELS[cellInfo.doorCode] || cellInfo.door) }];
+        if(SAN_QI.indexOf(cellInfo.ti) !== -1)      hits.push({ cat:'qi', label:(QI_TAG_LABELS[cellInfo.ti] || cellInfo.ti) });
+        else if(SAN_QI.indexOf(cellInfo.di) !== -1) hits.push({ cat:'qi', label:(QI_TAG_LABELS[cellInfo.di] || cellInfo.di) });
+        if(cellInfo.zhiFu)  hits.push({ cat:'zhi', label:'Zhi Fu \u76f4\u7b26' });
+        if(cellInfo.zhiShi) hits.push({ cat:'zhi', label:'Zhi Shi \u76f4\u4f7f' });
+      } else {
+        return { matched: false, hits: [], score: 0, cell: cellInfo, isVoid: isVoid, flags: flags.reasons };
+      }
+    }
 
     var pos = 0, neg = 0;
     for(var i = 0; i < hits.length; i++){
       if(hits[i].cat === 'pen') neg++; else pos++;
     }
-    return { matched: true, hits: hits, score: pos - neg, cell: cellInfo, isVoid: isVoid, flags: flags.reasons };
+    var score = pos - neg;
+    // Birth purpose: Wu 戊 in the same palace amplifies (handoff: "ancora meglio con Wu 戊").
+    if(purpose && purpose.wuBonus && (cellInfo.ti === 'Wu' || cellInfo.di === 'Wu')){
+      score += 1;
+      hits = hits.concat([{ cat:'combo', label:'\u620a in Birth palace' }]);
+    }
+    // Wu+Bing pairing (戊丙 / 丙戊) — highly valued; takes PRIORITY among Wu cases.
+    // 戊↑丙 = Wu on Tian over Bing on Di; 丙↑戊 = Bing on Tian over Wu on Di.
+    if(purpose && ((cellInfo.ti === 'Wu' && cellInfo.di === 'Bing') ||
+                   (cellInfo.ti === 'Bing' && cellInfo.di === 'Wu'))){
+      score += 2;
+      var comboLbl = (cellInfo.ti === 'Wu') ? '\u620a\u2191\u4e19' : '\u4e19\u2191\u620a';
+      var found = false;
+      hits = hits.map(function(h){
+        if(h.label === '\u620a\u2191\u4e19' || h.label === '\u4e19\u2191\u620a'){ found = true; return { cat:'combo', label:h.label + ' \u2605' }; }
+        return h;
+      });
+      if(!found) hits = hits.concat([{ cat:'combo', label:comboLbl + ' \u2605' }]);
+    }
+    return { matched: true, hits: hits, score: score, cell: cellInfo, isVoid: isVoid, flags: flags.reasons, purposeDoor: purpose ? cellInfo.doorCode : null };
   }
 
   // ── getHourChart: returns full 9-palace chart data for rendering ──
@@ -1066,10 +1193,18 @@
       if(!_charts) throw new Error('Embedded charts not loaded (qmdj-water-scanner-data.js missing?).');
       return scanDates(dir, start, days);
     },
+    // Purpose-aware canonical scan (§1 formationFlags + §2 directionGate), optionally
+    // filtered to a Purpose's primary door. purposeKey '' / null → general canonical scan.
+    scanWaterPurpose: function(dir, start, days, purposeKey){
+      if(!_charts) _charts = EMBEDDED_CHARTS;
+      if(!_charts) throw new Error('Embedded charts not loaded (qmdj-water-scanner-data.js missing?).');
+      return scanWaterPurpose(dir, start, days, purposeKey);
+    },
+    fsPurposeDoors: function(){ return FS_PURPOSE_DOORS; },
     validDirections: function(){ return Object.keys(DIR_TO_PALACE); },
     degToPalace: degToPalace,
-    checkHourAtPalace: function(year, month, day, hourStem, hourBranch, palace){
-      return checkHourAtPalace(year, month, day, hourStem, hourBranch, palace);
+    checkHourAtPalace: function(year, month, day, hourStem, hourBranch, palace, opts){
+      return checkHourAtPalace(year, month, day, hourStem, hourBranch, palace, opts);
     },
     getHourChart: function(year, month, day, hourStem, hourBranch){
       return getHourChart(year, month, day, hourStem, hourBranch);
