@@ -6905,3 +6905,126 @@ function fsDrawSectionLuopan(){
     }
   } catch(err){ console.warn('fsDrawSectionLuopan', err); }
 }
+
+/* ============================================================================
+ * XKDGHouse — SINGLE SOURCE OF TRUTH for reading house data.
+ * Every consumer (AI tools, FS chart engine, water/imprisonment scans) reads
+ * houses THROUGH this module, so facing / period / water features / doors are
+ * resolved in ONE place instead of being re-derived (and drifting) everywhere.
+ *
+ *   XKDGHouse.normalize(houseObj)  -> rich, consistent shape (floors[], facing,
+ *                                     period, chart, water_features, doors, …)
+ *   XKDGHouse.resolveByName(name)  -> { person, house, index } | null
+ *   XKDGHouse.active()             -> normalized context of the ACTIVE house
+ *   XKDGHouse.list()               -> summary of all houses for the active person
+ *   XKDGHouse.chartFor / starAt / DIR2GRID  -> shared primitives
+ * ========================================================================== */
+window.XKDGHouse = (function () {
+  var DIR2GRID = { SE: 0, S: 1, SW: 2, E: 3, C: 4, W: 5, NE: 6, N: 7, NW: 8 };  // S-at-top grid
+
+  function chartFor(facing, period) {
+    try {
+      if (typeof FlyingStars !== 'undefined' && typeof fsMountainCharFromDeg === 'function' && facing != null && period != null) {
+        var p = parseInt(period, 10);
+        if (p >= 1 && p <= 9) return FlyingStars.calculate(p, fsMountainCharFromDeg(parseFloat(facing)));
+      }
+    } catch (e) {}
+    return null;
+  }
+  function starAt(chart, dir, type) {
+    if (!chart || dir == null) return null;
+    var gi = DIR2GRID[dir]; if (gi == null) return null;
+    var arr = (type === 'mountain') ? chart.sittingStars : chart.facingStars;
+    return (arr && arr[gi] != null) ? arr[gi] : null;
+  }
+  function loadAll() { try { return JSON.parse(localStorage.getItem('xkdg_houses') || '{}'); } catch (e) { return {}; } }
+  function activePerson() { try { return (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null; } catch (e) { return null; } }
+  function activeIndex(name) { try { return (typeof _fsActiveHouseGet === 'function') ? _fsActiveHouseGet(name) : 0; } catch (e) { return 0; } }
+
+  function floorsOf(h) {
+    if (h && h.floors && h.floors.length) return h.floors;
+    return [{ label: 'Floor 1', facing: h && h.houseFacing, period: h && h.period,
+              doors: (h && h.doors) || [], waters: (h && h.waters) || [], zones: (h && h.zones) || [],
+              settings: (h && h.settings) || { water: [], bed: [], desk: [] } }];
+  }
+  function waterFeaturesOf(f, chart) {
+    var st = f.settings || { water: [], bed: [], desk: [] };
+    var out = (f.waters || []).map(function (w) {
+      var dir = w.dir || w.palace || null;
+      return { name: w.name, direction: dir, palace: w.palace, water_star: starAt(chart, dir, 'water'), source: 'aquarium' };
+    });
+    (st.water || []).forEach(function (s) {
+      if (s && s.palace && DIR2GRID[s.palace] != null)
+        out.push({ name: s.name, direction: s.palace, water_star: starAt(chart, s.palace, 'water'), source: 'saved_water_setting' });
+    });
+    return out;
+  }
+
+  // Normalize ONE house object into the canonical shape.
+  function normalize(h) {
+    if (!h) return null;
+    var same = (h.sameFacing == null) ? true : !!h.sameFacing;
+    var floors = floorsOf(h);
+    var activeFloor = h.activeFloor || 0; if (activeFloor >= floors.length) activeFloor = 0;
+    var floorsOut = floors.map(function (f, fi) {
+      var facing = same ? h.houseFacing : f.facing;
+      var period = same ? h.period : f.period;
+      var chart = chartFor(facing, period);
+      var st = f.settings || { water: [], bed: [], desk: [] };
+      return {
+        index: fi, label: f.label || ('Floor ' + (fi + 1)), active: (fi === activeFloor),
+        facing: facing, period: period, chart: chart,
+        doors: (f.doors || []).map(function (d) { return { name: d.name, facing: d.facing, water: d.water, dir: d.dir, palace: d.palace }; }),
+        water_features: waterFeaturesOf(f, chart),
+        qfs_zones: (f.zones || []).map(function (z) { return { name: z.name, direction: z.dir || null, palace: z.palace, target: z.target, preset: z.preset || 'auto', star_num: starAt(chart, z.dir, z.target) }; }),
+        saved_settings: {
+          water: (st.water || []).map(function (s) { return s.name; }),
+          bed: (st.bed || []).map(function (s) { return s.name; }),
+          desk: (st.desk || []).map(function (s) { return s.name; })
+        }
+      };
+    });
+    var af = floorsOut[activeFloor] || floorsOut[0] || {};
+    return {
+      name: h.name, sameFacing: same, activeFloor: activeFloor, floors: floorsOut,
+      facing: af.facing, period: af.period, chart: af.chart,
+      water_features: af.water_features || [], driveUrl: h.driveUrl || null
+    };
+  }
+
+  function resolveByName(name) {
+    var all = loadAll(), q = (name || '').trim().toLowerCase(), res = null;
+    function scan(fn) { Object.keys(all).forEach(function (pn) { (all[pn] || []).forEach(function (h, i) { if (!res && h && h.name && fn(h.name.trim().toLowerCase())) res = { person: pn, house: h, index: i }; }); }); }
+    if (q) { scan(function (n) { return n === q; }); if (!res) scan(function (n) { return n.indexOf(q) >= 0; }); }
+    return res;
+  }
+
+  function active() {
+    var p = activePerson(); if (!p) return null;
+    var hs = loadAll()[p.name] || []; var idx = activeIndex(p.name);
+    var h = hs[idx]; if (!h) return null;
+    var n = normalize(h); n.person = p.name; n.index = idx; return n;
+  }
+
+  function list() {
+    var p = activePerson(); if (!p) return { person: null, count: 0, houses: [] };
+    var hs = loadAll()[p.name] || []; var idx = activeIndex(p.name);
+    return {
+      person: p.name, active_index: idx, count: hs.length,
+      houses: hs.map(function (h, i) {
+        var n = normalize(h), doors = 0, wf = [];
+        n.floors.forEach(function (f) { doors += f.doors.length; f.water_features.forEach(function (w) { wf.push({ name: w.name, direction: w.direction, source: w.source }); }); });
+        return { index: i, name: h.name, houseFacing: h.houseFacing, period: h.period, doors: doors, aquariums: wf.length, water_features: wf, active: (i === idx) };
+      })
+    };
+  }
+
+  function availableHouses() {
+    var all = loadAll(), out = [];
+    Object.keys(all).forEach(function (pn) { (all[pn] || []).forEach(function (h) { if (h && h.name) out.push({ person: pn, name: h.name }); }); });
+    return out;
+  }
+
+  return { DIR2GRID: DIR2GRID, chartFor: chartFor, starAt: starAt, normalize: normalize,
+           resolveByName: resolveByName, active: active, list: list, availableHouses: availableHouses };
+})();

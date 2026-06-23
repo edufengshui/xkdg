@@ -1828,33 +1828,10 @@
   }
 
   function toolListHouses() {
-    if (typeof window._fsHousesLoad !== 'function') return { error: 'House profiles not available on this page.' };
-    var person = _activeHousePerson();
-    if (!person) return { error: 'No person loaded. Ask the user to load Person A or B.' };
-    var all = window._fsHousesLoad();
-    var houses = all[person.name] || [];
-    var activeIdx = (typeof window._fsActiveHouseGet === 'function') ? window._fsActiveHouseGet(person.name) : 0;
-    return {
-      person: person.name, active_index: activeIdx, count: houses.length,
-      houses: houses.map(function (h, i) {
-        var floors = (h.floors && h.floors.length) ? h.floors
-          : [{ doors: h.doors || [], waters: h.waters || [], settings: h.settings || h.placements || { water: [], bed: [], desk: [] } }];
-        var doors = 0, water_features = [];
-        floors.forEach(function (f) {
-          doors += (f.doors || []).length;
-          (f.waters || []).forEach(function (w) { water_features.push({ name: w.name, direction: w.dir || w.palace || null, source: 'aquarium' }); });
-          var st = f.settings || f.placements || {};
-          (st.water || []).forEach(function (s) { if (s && s.palace) water_features.push({ name: s.name, direction: s.palace, source: 'saved_water_setting' }); });
-        });
-        return {
-          index: i, name: h.name, houseFacing: h.houseFacing, period: h.period,
-          doors: doors,
-          aquariums: water_features.length,
-          water_features: water_features,   // includes saved Water positions — a saved water position IS a water feature
-          active: i === activeIdx
-        };
-      })
-    };
+    if (!window.XKDGHouse) return { error: 'House profiles not available on this page.' };
+    var r = window.XKDGHouse.list();
+    if (!r.person) return { error: 'No person loaded. Ask the user to load Person A or B.' };
+    return r;   // { person, active_index, count, houses:[{index,name,houseFacing,period,doors,aquariums,water_features,active}] }
   }
 
   // Full setup of one house, resolved by name — everything converges here:
@@ -1862,71 +1839,27 @@
   // (+ target star number and preset), and the saved Water/Bed/Desk settings.
   function toolGetHouseSetup(input) {
     input = input || {};
-    var houses;
-    try { houses = JSON.parse(localStorage.getItem('xkdg_houses') || '{}'); }
-    catch (e) { return { error: 'Could not read house profiles.' }; }
-    var q = (input.house_name || '').trim().toLowerCase();
-    var found = null, foundPerson = null;
-    function scanHouses(matchFn) {
-      Object.keys(houses).forEach(function (pn) {
-        (houses[pn] || []).forEach(function (h) {
-          if (!found && h && h.name && matchFn(h.name.trim().toLowerCase())) { found = h; foundPerson = pn; }
-        });
-      });
-    }
-    if (q) { scanHouses(function (n) { return n === q; }); if (!found) scanHouses(function (n) { return n.indexOf(q) >= 0; }); }
-    if (!found) {
-      var avail = [];
-      Object.keys(houses).forEach(function (pn) { (houses[pn] || []).forEach(function (h) { if (h && h.name) avail.push({ person: pn, name: h.name }); }); });
-      return { error: q ? ('No house matching "' + input.house_name + '".') : 'Provide house_name.', available_houses: avail };
-    }
-    var DIR2GRID = { SE: 0, S: 1, SW: 2, E: 3, C: 4, W: 5, NE: 6, N: 7, NW: 8 };   // S-at-top grid
-    function chartFor(facing, period) {
-      try {
-        // FlyingStars is a top-level `const` (NOT on window) — reference it bare.
-        if (typeof FlyingStars !== 'undefined' && typeof fsMountainCharFromDeg === 'function' && facing != null && period != null)
-          return FlyingStars.calculate(parseInt(period, 10), fsMountainCharFromDeg(parseFloat(facing)));
-      } catch (e) {}
-      return null;
-    }
-    function starAt(chart, dir, type) {
-      if (!chart || dir == null) return null;
-      var gi = DIR2GRID[dir]; if (gi == null) return null;
-      var arr = (type === 'mountain') ? chart.sittingStars : chart.facingStars;
-      return (arr && arr[gi] != null) ? arr[gi] : null;
-    }
-    var same = (found.sameFacing == null) ? true : !!found.sameFacing;
-    var floorsArr = (found.floors && found.floors.length) ? found.floors
-      : [{ label: 'Floor 1', facing: found.houseFacing, period: found.period, doors: found.doors || [], waters: found.waters || [], zones: found.zones || [], settings: found.settings || { water: [], bed: [], desk: [] } }];
-    var activeFloor = found.activeFloor || 0; if (activeFloor >= floorsArr.length) activeFloor = 0;
-    var floorsOut = floorsArr.map(function (f, fi) {
-      var effFacing = same ? found.houseFacing : f.facing;
-      var effPeriod = same ? found.period : f.period;
-      var chart = chartFor(effFacing, effPeriod);
-      var st = f.settings || { water: [], bed: [], desk: [] };
+    if (!window.XKDGHouse) return { error: 'House profiles not available on this page.' };
+    var q = (input.house_name || '').trim();
+    var res = q ? window.XKDGHouse.resolveByName(q) : null;
+    if (!res) return { error: q ? ('No house matching "' + input.house_name + '".') : 'Provide house_name.', available_houses: window.XKDGHouse.availableHouses() };
+    var n = window.XKDGHouse.normalize(res.house);
+    var floors = n.floors.map(function (f) {       // strip the heavy chart object; keep the extracted star values
       return {
-        index: fi,
-        label: f.label || ('Floor ' + (fi + 1)),
-        active: (fi === activeFloor),
-        facing: effFacing, period: effPeriod,
-        doors: (f.doors || []).map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
-        aquariums: (f.waters || []).map(function (w) { return { name: w.name, direction: w.dir, palace: w.palace, water_star: starAt(chart, w.dir, 'water'), source: 'aquarium' }; })
-          .concat((st.water || []).filter(function (s) { return s && s.palace && DIR2GRID[s.palace] != null; })
-            .map(function (s) { return { name: s.name, direction: s.palace, water_star: starAt(chart, s.palace, 'water'), source: 'saved_water_setting' }; })),
-        qfs_zones: (f.zones || []).map(function (z) { return { name: z.name, direction: z.dir || null, palace: z.palace, target: z.target, preset: z.preset || 'auto', star_num: starAt(chart, z.dir, z.target) }; }),
-        saved_settings: {
-          water: (st.water || []).map(function (s) { return s.name; }),
-          bed: (st.bed || []).map(function (s) { return s.name; }),
-          desk: (st.desk || []).map(function (s) { return s.name; })
-        }
+        index: f.index, label: f.label, active: f.active,
+        facing: f.facing, period: f.period,
+        doors: f.doors.map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
+        aquariums: f.water_features,               // a saved Water position IS a water feature (source tags which)
+        qfs_zones: f.qfs_zones,
+        saved_settings: f.saved_settings
       };
     });
     return {
-      house: found.name, person: foundPerson,
-      same_facing_period: same,
-      house_facing: found.houseFacing, house_period: found.period,
-      active_floor: activeFloor,
-      floors: floorsOut,
+      house: n.name, person: res.person,
+      same_facing_period: n.sameFacing,
+      house_facing: res.house.houseFacing, house_period: res.house.period,
+      active_floor: n.activeFloor,
+      floors: floors,
       note: 'Multi-floor house: each floor has its own doors / aquariums / QFS zones / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star. The loaded person provides the XKDG scan. If star values are null (no FS page open to compute the chart), read the star via recall_flying_stars.'
     };
   }

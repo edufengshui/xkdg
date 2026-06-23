@@ -167,14 +167,29 @@
   }
 
   // Recupera la carta Flying Stars corrente leggendo dagli input
+  // Resolve the active house's facing/period via the single source of truth
+  // (window.XKDGHouse), used when the FS panel fields are empty.
+  function _fsActiveHouseFP(){
+    try {
+      var c = window.XKDGHouse && window.XKDGHouse.active();
+      return c ? { facing: c.facing, period: c.period } : null;
+    } catch(e){ return null; }
+  }
+
   function getCurrentFSChart(){
     if(typeof FlyingStars === 'undefined') return null;
     if(typeof fsMountainCharFromDeg !== 'function') return null;
     var hf = document.getElementById('fs-house-facing');
     var pp = document.getElementById('fs-period');
-    if(!hf || !pp) return null;
-    var hfDeg = parseFloat(hf.value);
-    var period = parseInt(pp.value, 10);
+    var hfDeg = hf ? parseFloat(hf.value) : NaN;
+    var period = pp ? parseInt(pp.value, 10) : NaN;
+    if(isNaN(hfDeg) || isNaN(period) || period < 1 || period > 9){
+      var fp = _fsActiveHouseFP();
+      if(fp){
+        if(isNaN(hfDeg) && fp.facing != null) hfDeg = parseFloat(fp.facing);
+        if((isNaN(period) || period < 1 || period > 9) && fp.period != null) period = parseInt(fp.period, 10);
+      }
+    }
     if(isNaN(hfDeg) || isNaN(period) || period < 1 || period > 9) return null;
     try {
       var mch = fsMountainCharFromDeg(hfDeg);
@@ -987,8 +1002,11 @@
       var byGrid = {};
       var add = function(g, via){ if(g==null || g<0 || g===4) return; if(!byGrid[g]) byGrid[g]={grid:g,vias:[]}; if(byGrid[g].vias.indexOf(via)<0) byGrid[g].vias.push(via); };
       for(var i=0;i<9;i++){ if(chart.facingStars[i] === 5) add(i, '5ws'); }            // (a) where the 5 water star sits
+      var facDeg = NaN;
       var hf = (typeof document!=='undefined') ? document.getElementById('fs-house-facing') : null;
-      if(hf){ add(_fsFacingGridFromDeg(parseFloat(hf.value)), 'facing'); }              // (b) the facing palace
+      if(hf) facDeg = parseFloat(hf.value);
+      if(isNaN(facDeg)){ var fp = _fsActiveHouseFP(); if(fp && fp.facing != null) facDeg = parseFloat(fp.facing); }
+      if(isFinite(facDeg)) add(_fsFacingGridFromDeg(facDeg), 'facing');                  // (b) the facing palace
       var palaces = Object.keys(byGrid).map(function(g){
         var c = byGrid[g], pal = FS_GRID_TO_QMDJ_PALACE[c.grid];
         return { grid:c.grid, qmdj:pal, label:QMDJ_PALACE_TO_LABEL[pal]||('P'+pal), via:c.vias.join('+') };
