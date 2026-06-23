@@ -1009,6 +1009,25 @@
     var bi = _VB_BR_ORDER.indexOf(branchPin); if(bi < 0 || ziIdx < 0) return null;
     return { hGan: _VB_STEMS_HAN[(ziIdx + bi) % 10], hZhi: _VB_BR_HAN[branchPin], hourIndex: bi };
   }
+  // Show the QMDJ chart HTML in a floating overlay (works over ANY active section,
+  // since showQimenChart otherwise renders only inside the Feng Shui results area).
+  function _vbShowChartOverlay(html){
+    var ex = document.getElementById('xkdg-vb-overlay'); if(ex) ex.remove();
+    var ov = document.createElement('div');
+    ov.id = 'xkdg-vb-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;overflow:auto;padding:18px;';
+    var box = document.createElement('div');
+    box.style.cssText = 'max-width:520px;width:100%;margin:24px auto;';
+    box.innerHTML = html;
+    var close = document.createElement('button');
+    close.textContent = '\u2715';
+    close.style.cssText = 'position:fixed;top:12px;right:14px;z-index:100001;background:#6a1b9a;color:#fff;border:0;border-radius:50%;width:38px;height:38px;font-size:17px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+    close.onclick = function(){ ov.remove(); };
+    ov.appendChild(box);
+    ov.appendChild(close);
+    ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
   function toolShowVerifyButton(input){
     input = input || {};
     var iso = String(input.date || '').trim();
@@ -3072,8 +3091,13 @@
       btn.addEventListener('click', function () {
         var okDate = false, okChart = false;
         try { if (typeof window.loadDateIntoMain === 'function' && info.date) { window.loadDateIntoMain(info.date, info.hourIndex); okDate = true; } } catch (e) {}
-        try { if (typeof window.showQimenChart === 'function' && info.date && info.hGan && info.hZhi) { window.showQimenChart(info.date, info.hGan, info.hZhi, info.palace); okChart = true; } } catch (e) {}
-        closePanel();   // hide the chat so the opened date + chart are visible
+        try {
+          if (typeof window.showQimenChart === 'function' && info.date && info.hGan && info.hZhi) {
+            var _html = window.showQimenChart(info.date, info.hGan, info.hZhi, info.palace, { returnHtml: true });
+            if (_html) { _vbShowChartOverlay(_html); okChart = true; }
+          }
+        } catch (e) {}
+        closePanel();   // hide the chat; the QMDJ chart shows in a floating overlay, the XKDG date underneath
         if (!okDate && !okChart) { openPanel(); addBubble('assistant', '\u26A0 Could not open the views on this page.'); }
       });
       wrap.appendChild(btn);
