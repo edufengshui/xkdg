@@ -3501,10 +3501,20 @@ function fsAddNewHouse(){
   if (pAName && owner.toLowerCase() === pAName.toLowerCase() && pADate){
     oDate = pADate; oTime = pATime || '';
   } else {
-    oDate = prompt('Birth date of ' + owner + '  (YYYY-MM-DD):', '');
+    // Birth date is asked DAY/MONTH/YEAR (DD-MM-YYYY) and stored internally as
+    // YYYY-MM-DD so the rest of the app (Bazi, lookups, person DB) keeps working.
+    // Old YYYY-MM-DD input is still accepted for backwards compatibility.
+    oDate = prompt('Birth date of ' + owner + '  (DD-MM-YYYY):', '');
     if (oDate === null) return;
-    oDate = oDate.trim();
-    if (oDate && !/^\d{4}-\d{2}-\d{2}$/.test(oDate)){ alert('Please use the format YYYY-MM-DD.'); return; }
+    oDate = oDate.trim().replace(/\//g, '-');
+    if (oDate){
+      var _m;
+      if ((_m = oDate.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/))){
+        oDate = _m[3] + '-' + ('0'+_m[2]).slice(-2) + '-' + ('0'+_m[1]).slice(-2);
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(oDate)){
+        alert('Please use the format DD-MM-YYYY (e.g. 23-07-1985).'); return;
+      }
+    }
     oTime = prompt('Birth time of ' + owner + '  (HH:MM — leave blank if unknown):', '12:00');
     if (oTime === null) oTime = '';
     oTime = oTime.trim();
@@ -3648,10 +3658,26 @@ function fsEditHousePerson(personName, houseIdx){
     var h = all[personName] && all[personName][houseIdx]; if (!h) return;
     var nm = prompt('Person name for this house:', h.personName || personName || '');
     if (nm === null) return;
-    var bd = prompt('Birth date (e.g. 1985-07-23):', h.birthDate || '');
+    // Pre-fill the prompt in DD-MM-YYYY (the user-friendly format) but keep storing
+    // YYYY-MM-DD internally so Bazi / lookups keep working.
+    var _pre = '';
+    if (h.birthDate){
+      var _mp = h.birthDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      _pre = _mp ? (_mp[3] + '-' + _mp[2] + '-' + _mp[1]) : h.birthDate;
+    }
+    var bd = prompt('Birth date (DD-MM-YYYY, e.g. 23-07-1985):', _pre);
     if (bd === null) return;
+    bd = bd.trim().replace(/\//g, '-');
+    if (bd){
+      var _mb;
+      if ((_mb = bd.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/))){
+        bd = _mb[3] + '-' + ('0'+_mb[2]).slice(-2) + '-' + ('0'+_mb[1]).slice(-2);
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(bd)){
+        alert('Please use the format DD-MM-YYYY (e.g. 23-07-1985).'); return;
+      }
+    }
     h.personName = nm.trim() || h.personName || personName;
-    h.birthDate  = bd.trim() ? bd.trim() : null;
+    h.birthDate  = bd ? bd : null;
     _fsHousesSave(all);
     if (h.personName) _fsUpsertPersonDB(h.personName, h.birthDate, h.birthTime, h.category, true);
     var p = fsGetActivePersonForHouse();
@@ -3805,10 +3831,17 @@ function fsAddGuest(personName, hi){
     var name = prompt('Guest name (occupant #2 — invited to stay):', '');
     if (name === null || !name.trim()) return;
     name = name.trim();
-    var date = prompt('Birth date of ' + name + '  (YYYY-MM-DD):', '');
+    var date = prompt('Birth date of ' + name + '  (DD-MM-YYYY):', '');
     if (date === null) return;
-    date = date.trim();
-    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)){ alert('Please use the format YYYY-MM-DD.'); return; }
+    date = date.trim().replace(/\//g, '-');
+    if (date){
+      var _md;
+      if ((_md = date.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/))){
+        date = _md[3] + '-' + ('0'+_md[2]).slice(-2) + '-' + ('0'+_md[1]).slice(-2);
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)){
+        alert('Please use the format DD-MM-YYYY (e.g. 23-07-1985).'); return;
+      }
+    }
     var time = prompt('Birth time of ' + name + '  (HH:MM — leave blank if unknown):', '12:00');
     if (time === null) time = '';
     time = time.trim();
