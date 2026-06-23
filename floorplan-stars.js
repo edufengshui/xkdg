@@ -356,6 +356,19 @@
       (active ? 'background:#8a6a1f;color:#fff;' : 'background:#fff;color:#8a6a1f;');
   }
 
+  // Re-encode an image to a compact JPEG data URL (capped size) so it can be
+  // persisted in localStorage without blowing the quota.
+  function compressImageToDataURL(img, maxDim, quality) {
+    var nW = img.naturalWidth || img.width, nH = img.naturalHeight || img.height;
+    if (!nW || !nH) return null;
+    var scale = Math.min(1, maxDim / Math.max(nW, nH));
+    var w = Math.max(1, Math.round(nW * scale)), h = Math.max(1, Math.round(nH * scale));
+    var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    var cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, w, h);
+    try { return cv.toDataURL('image/jpeg', quality); }
+    catch (e) { try { return cv.toDataURL(); } catch (e2) { return null; } }
+  }
+
   function open(opts) {
     opts = opts || {};
     if (typeof opts.facingDeg === 'number') st.facingDeg = clampDeg(opts.facingDeg);
@@ -368,7 +381,7 @@
     var card = el('div', { style: 'background:#fff;border-radius:12px;max-width:940px;width:100%;padding:14px 16px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.35);' });
 
     var hd = el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;' });
-    hd.appendChild(el('h3', { style: 'margin:0;font-size:16px;color:#4a148c;' }, '🏠 Floor Plan Flying Stars'));
+    hd.appendChild(el('h3', { style: 'margin:0;font-size:16px;color:#4a148c;' }, '🏠 Floor Plan Flying Stars' + (opts.houseName ? ' — ' + opts.houseName : '')));
     var x = el('button', { style: 'border:0;background:transparent;font-size:22px;cursor:pointer;color:#888;' }, '✕');
     x.addEventListener('click', function () { ov.remove(); });
     hd.appendChild(x); card.appendChild(hd);
@@ -433,6 +446,11 @@
     var drawBtn = el('button', { style: 'padding:7px 14px;border:0;border-radius:6px;background:#2e7d32;color:#fff;font-size:13px;font-weight:700;cursor:pointer;' }, 'Draw chart');
     drawBtn.addEventListener('click', draw);
     row3.appendChild(findBtn); row3.appendChild(undo); row3.appendChild(clr); row3.appendChild(drawBtn);
+    if (typeof opts.onSave === 'function') {
+      var saveBtn = el('button', { style: 'padding:7px 14px;border:0;border-radius:6px;background:#5d4037;color:#fff;font-size:13px;font-weight:700;cursor:pointer;' }, '💾 Save to house');
+      saveBtn.addEventListener('click', doSave);
+      row3.appendChild(saveBtn);
+    }
     card.appendChild(row3);
 
     // Canvas
@@ -486,6 +504,94 @@
       els.canvas.addEventListener('mouseup', onUp);
     }
     window.addEventListener('resize', function () { if (st.img && document.getElementById('fps-overlay')) { fitCanvas(); redraw(); } });
+
+    // ── Persistence: build a compact saved object / restore one ──
+    function buildSaved() {
+      if (!st.img) return null;
+      var dW = st.drawW || 1, dH = st.drawH || 1;
+      var rectsF = (st.rects || []).map(function (r) { return { x0: r.x0 / dW, y0: r.y0 / dH, x1: r.x1 / dW, y1: r.y1 / dH }; });
+      var centerF = st.center ? { x: st.center.x / dW, y: st.center.y / dH } : null;
+      var imgData = compressImageToDataURL(st.img, 1100, 0.72);
+      if (!imgData) return null;
+      return {
+        imgData: imgData,
+        facingDeg: st.facingDeg, facingSide: st.facingSide, period: st.period,
+        centerMode: st.centerMode, rectsF: rectsF, centerF: centerF,
+        savedAt: Date.now()
+      };
+    }
+    // Build a save object at a given (maxDim, quality) — used by the retry ladder.
+    function buildSavedAt(maxDim, quality) {
+      if (!st.img) return null;
+      var dW = st.drawW || 1, dH = st.drawH || 1;
+      var rectsF = (st.rects || []).map(function (r) { return { x0: r.x0 / dW, y0: r.y0 / dH, x1: r.x1 / dW, y1: r.y1 / dH }; });
+      var centerF = st.center ? { x: st.center.x / dW, y: st.center.y / dH } : null;
+      var imgData = compressImageToDataURL(st.img, maxDim, quality);
+      if (!imgData) return null;
+      return {
+        imgData: imgData,
+        facingDeg: st.facingDeg, facingSide: st.facingSide, period: st.period,
+        centerMode: st.centerMode, rectsF: rectsF, centerF: centerF,
+        savedAt: Date.now()
+      };
+    }
+    function doSave() {
+      if (!st.img) { status('Add a floor plan first.', true); return; }
+      st.facingDeg = clampDeg(parseFloat(els.deg.value));
+      st.period = clampPeriod(parseInt(els.period.value, 10));
+      els.deg.value = st.facingDeg; els.period.value = st.period;
+      // Compression ladder: try progressively smaller / lower-quality encodings until
+      // localStorage accepts the payload. Most plans go through at the first step;
+      // very large camera photos may need a step down or two.
+      var ladder = [ [1100, 0.72], [900, 0.65], [750, 0.58], [600, 0.5] ];
+      var ok = false, lastErr = null, used = null;
+      for (var i = 0; i < ladder.length && !ok; i++) {
+        var obj = null;
+        try { obj = buildSavedAt(ladder[i][0], ladder[i][1]); } catch (e) { lastErr = e; obj = null; }
+        if (!obj) { lastErr = lastErr || new Error('encode-failed'); continue; }
+        try {
+          var ret = opts.onSave(obj);
+          if (ret !== false) { ok = true; used = ladder[i]; }
+          else { lastErr = new Error('quota'); }
+        } catch (e) { lastErr = e; }
+      }
+      if (ok) {
+        var note = (used && used[0] < 1100) ? ' (image downscaled to fit storage)' : '';
+        status('Floor plan saved to this house \u2713' + note, false);
+      } else {
+        var msg = (lastErr && /quota/i.test(String(lastErr && lastErr.name || lastErr))) ?
+          'Storage is full — remove an unused house or another saved floor plan, then try again.' :
+          'Could not save the floor plan. Try removing other large items from this app, or use a smaller image.';
+        status(msg, true);
+      }
+    }
+    function restoreSaved(s) {
+      st.facingDeg = clampDeg(s.facingDeg);
+      st.period = clampPeriod(s.period);
+      if (s.facingSide && SIDE_OFFSET.hasOwnProperty(s.facingSide)) st.facingSide = s.facingSide;
+      st.centerMode = (s.centerMode === 'manual') ? 'manual' : 'rect';
+      els.deg.value = st.facingDeg; els.period.value = st.period;
+      try { Object.keys(els.sideBtns).forEach(function (k) { els.sideBtns[k].setAttribute('style', sideBtnStyle(k === st.facingSide)); }); } catch (e) {}
+      try { els.autoBtn.setAttribute('style', modeBtnStyle(st.centerMode === 'rect')); els.manBtn.setAttribute('style', modeBtnStyle(st.centerMode === 'manual')); } catch (e) {}
+      var im = new Image();
+      im.onload = function () {
+        st.img = im; st.drag = null; st.pending = null;
+        ph.style.display = 'none'; els.canvas.style.display = 'block';
+        fitCanvas();
+        var dW = st.drawW || 1, dH = st.drawH || 1;
+        st.rects = (s.rectsF || []).map(function (r) { return { x0: r.x0 * dW, y0: r.y0 * dH, x1: r.x1 * dW, y1: r.y1 * dH }; });
+        st.center = s.centerF ? { x: s.centerF.x * dW, y: s.centerF.y * dH } : null;
+        st.centerOutside = (st.center && st.centerMode === 'rect') ? !inAnyRect(st.center, st.rects) : false;
+        var FS = getFS();
+        if (FS && st.center) { try { st.chart = FS.calculate(st.period, mountainFromDeg(st.facingDeg)); } catch (e) { st.chart = null; } }
+        else { st.chart = null; }
+        redraw();
+        status('Saved floor plan loaded \u2014 edit if needed, then \u201C\uD83D\uDCBE Save to house\u201D.');
+      };
+      im.src = s.imgData;
+    }
+
+    if (opts.saved && opts.saved.imgData) { try { restoreSaved(opts.saved); } catch (e) {} }
   }
 
   window.FloorPlanStars = { open: open };

@@ -3103,17 +3103,22 @@ function fsHouseImportFloorplan(pName, hi){
       houseName: h.name,
       saved: (f && f.floorplan && f.floorplan.imgData) ? f.floorplan : null,
       onSave: function(obj){
-        try {
-          var all2 = _fsHousesLoad();
-          var hh = (all2[pName] || [])[hi];
-          if (!hh) return false;
-          var fi = hh.activeFloor || 0; if (fi >= hh.floors.length) fi = 0;
-          if (!hh.floors[fi]) return false;
-          hh.floors[fi].floorplan = obj;
-          _fsHousesSave(all2);            // throws on quota overflow -> caught below
-          fsRenderHouseProfiles();
-          return true;
-        } catch (e){ return false; }
+        var all2 = _fsHousesLoad();
+        var hh = (all2[pName] || [])[hi];
+        if (!hh) return false;
+        var fi = hh.activeFloor || 0; if (fi >= hh.floors.length) fi = 0;
+        if (!hh.floors[fi]) return false;
+        hh.floors[fi].floorplan = obj;
+        // Let QuotaExceededError propagate so the caller's compression ladder
+        // can retry with a smaller image. Other errors → quiet false.
+        try { _fsHousesSave(all2); }
+        catch (e) {
+          var nm = (e && e.name) || '';
+          if (nm === 'QuotaExceededError' || /quota/i.test(nm) || /quota/i.test(String(e))) throw e;
+          return false;
+        }
+        fsRenderHouseProfiles();
+        return true;
       }
     };
     var fac = _fsFloorFacing(h, f);
