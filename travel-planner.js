@@ -709,50 +709,32 @@
     var star = pd.star, isZhiFu = !!pd.zhiFu;
     configCount = configCount || 0;
 
-    // San Qi 三奇 present ABOVE (Heaven plate) OR BELOW (Earth plate) of this palace.
-    var hasSanQi = (TP_SAN_QI.indexOf(ti) !== -1) || (TP_SAN_QI.indexOf(di) !== -1);
+    // ── CANONICAL rules (single source: QMDJWaterScanner). No local rule logic. ──
+    // Display flags for the returned object / UI — NOT the gate authority.
+    var hasSanQi = (TP_SAN_QI.indexOf(ti) !== -1) || (TP_SAN_QI.indexOf(di) !== -1)
+                 || (ti === 'Wu') || (di === 'Wu');            // Wu 戊 ranks with San Qi
     var favDoor = TP_FAV_DOORS.indexOf(door) !== -1;
     var clash = (TP_STEM_CLASHES[ti] === di);
     var isWarrior = (deity === 'Warrior');
     var isTiger = (deity === 'Tiger');
-
-    // TRAVEL DOMAIN RULE: the Injury door 傷 (code 'Shang') relates to vehicles and
-    // journeys, so a San Qi present in the palace (above or below) REDEEMS it for trips.
-    // Such a direction is treated as CLEAN (confirmed), not a fallback.
+    // Injury door 傷 redeemed by San Qi/Wu (travel only) — handled inside directionGate.
     var injuryRescue = (door === 'Shang') && hasSanQi;
 
-    // GATE: a FAVOURABLE DOOR, or an Injury door redeemed by a San Qi.
-    var gate = favDoor || injuryRescue;
-
-    // GENG 庚 is negative for travel UNLESS neutralized by: (1) Geng IS the Commander
-    // (carries the Zhi Fu), or (2) the water trine 申子辰 inside this palace. 子 and 辰
-    // may come from a stem, a star or a door: Zi = Wu戊 / Grass / Rest(Xiu); Chen = Ren壬
-    // / Assistant / Delusion(Du). Geng + Ding in the palace also stays positive.
-    var gengInPalace = (ti === 'Geng' || di === 'Geng');
-    var gengExcluded = false;
-    if (gengInPalace) {
-      var gengIsCommander = isZhiFu && (ti === 'Geng');
-      var hasZi   = (ti === 'Wu'  || di === 'Wu'  || star === 'Grass'     || door === 'Xiu');
-      var hasChen = (ti === 'Ren' || di === 'Ren' || star === 'Assistant' || door === 'Du');
-      var waterTrine = hasZi && hasChen;                 // Geng itself supplies 申
-      var hasDing = (ti === 'Ding' || di === 'Ding');
-      if (!gengIsCommander && !waterTrine) {
-        if (isZhiFu) gengExcluded = true;                // Geng as the OTHER stem with the Commander
-        else if (!hasDing) gengExcluded = true;          // Geng without Ding
-      }
-    }
-
-    // Exclusions (switches) — Warrior no longer excludes by default.
-    var excluded = false;
-    if (TP_EXCLUDE_WARRIOR && isWarrior) excluded = true;
-    if (TP_CLASH_MODE === 'exclude' && clash) excluded = true;
-    if (gengExcluded) excluded = true;
+    // §1 exclusions + §2 mandatory gate — DELEGATED to the canonical predicate so
+    // travel/directions, Water/FS activation and the special scan share one rule set.
+    var _Q = (typeof QMDJWaterScanner !== 'undefined') ? QMDJWaterScanner : null;
+    var _ff = (_Q && _Q.formationFlags) ? _Q.formationFlags(pd) : { disqualified: false, reasons: [] };
+    var _gate = (_Q && _Q.directionGate) ? _Q.directionGate(pd, { travel: true }) : { eligible: (favDoor || injuryRescue), reasons: [] };
+    var excluded = !!_ff.disqualified;
+    var gengExcluded = excluded && _ff.reasons.join(';').indexOf('Geng') !== -1;   // display only
+    var gate = !!_gate.eligible;
 
     var ok = gate && !excluded;
 
-    // FALLBACK = usable only when no cleaner direction is available in this slot:
-    // missing San Qi, or a Warrior/Tiger deity at the palace.
-    var fallback = ok && (!hasSanQi || isWarrior || isTiger);
+    // No "fallback" any more: San Qi/Wu + favourable door is mandatory, Warrior is
+    // always excluded, Tiger only with San Qi/Wu + favourable door — all enforced by
+    // the canonical predicate. A palace either qualifies cleanly or it is out.
+    var fallback = false;
 
     // Score — always POSITIVE for a usable (gated) direction. Built additively
     // from a positive base + bonuses; clean directions (San Qi, clean deity)

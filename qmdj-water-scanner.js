@@ -613,20 +613,70 @@
   //   • stem CLASH 相冲 (甲庚 乙辛 丙壬 丁癸) — EXCUSED if the palace carries the Commander 值符
   //   • 丙庚 (either order)
   //   • 庚己 (either order) — unless the Pillar star 天柱 is present
+  // ════════════════════════════════════════════════════════════════════════
+  // CANONICAL QMDJ RULES — single source of truth (see QMDJ-RULES.md).
+  // Consumed by every section: Water/FS activation (flying 飛盤), special Qimen
+  // scan, directions and travel (rotating 轉盤). No section re-implements these.
+  // ════════════════════════════════════════════════════════════════════════
   var _QM_STEM_CLASH = { Jia:'Geng', Geng:'Jia', Yi:'Xin', Xin:'Yi', Bing:'Ren', Ren:'Bing', Ding:'Gui', Gui:'Ding' };
+  // Wu 戊 ranks alongside San Qi 乙丙丁 (favourable, with a lucky door).
+  var _QM_SANQI_WU = { Yi:1, Bing:1, Ding:1, Wu:1 };
+  // Favourable doors 三吉門(+景): Open 開, Rest 休, Birth 生, View 景.
+  var _QM_FAV_DOOR = { Kai:1, Xiu:1, Sheng:1, JingS:1 };
+
   function _qmIsCommander(cell){ return !!cell && (cell.zhiFu === true || cell.deity === 'Commander' || cell.deity === '\u503c\u7b26'); }
+  function _qmHasStem(cell, s){ return cell && (cell.ti === s || cell.di === s); }
   function _qmPairIs(cell, a, b){ return cell && ((cell.ti === a && cell.di === b) || (cell.ti === b && cell.di === a)); }
-  function palaceFlags(cell){
+  function _qmGengIsCommander(cell){ return _qmIsCommander(cell) && cell.cmdStem === 'Geng'; }
+  function _qmHasSanQiWu(cell){ return !!cell && (_QM_SANQI_WU[cell.ti] === 1 || _QM_SANQI_WU[cell.di] === 1); }
+  function _qmFavDoor(cell){ return !!cell && _QM_FAV_DOOR[cell.doorCode] === 1; }
+
+  // §1 — UNIVERSAL EXCLUSIONS. A disqualified palace is out, in every section.
+  function formationFlags(cell){
     var reasons = [], disq = false;
     if(cell){
+      // Stem clash 相冲 — excused only if the palace carries the Commander 值符.
       if(_QM_STEM_CLASH[cell.ti] === cell.di){
         if(_qmIsCommander(cell)) reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' excused by Commander \u503c\u7b26');
         else { disq = true; reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' \u76f8\u51b2'); }
       }
-      if(_qmPairIs(cell, 'Bing', 'Geng')){ disq = true; reasons.push('\u4e19\u5e9a formation'); }
-      if(_qmPairIs(cell, 'Geng', 'Ji')){ if(cell.star === 'Pillar') reasons.push('\u5e9a\u5df1 ok with Pillar \u5929\u67f1'); else { disq = true; reasons.push('\u5e9a\u5df1 formation'); } }
+      // 丙庚 — excluded unless Geng hides the Commander (on Tian or Di plate).
+      if(_qmPairIs(cell, 'Bing', 'Geng')){
+        if(_qmGengIsCommander(cell)) reasons.push('\u4e19\u5e9a excused — Geng hides Commander \u503c\u7b26');
+        else { disq = true; reasons.push('\u4e19\u5e9a formation'); }
+      }
+      // 庚己 — excluded unless Pillar 天柱 AND a favourable door.
+      if(_qmPairIs(cell, 'Geng', 'Ji')){
+        if(cell.star === 'Pillar' && _qmFavDoor(cell)) reasons.push('\u5e9a\u5df1 ok — Pillar \u5929\u67f1 + favourable door');
+        else { disq = true; reasons.push('\u5e9a\u5df1 formation'); }
+      }
+      // Geng sitting with a Commander that is NOT Geng (above or below) — always excluded.
+      if(_qmHasStem(cell, 'Geng') && _qmIsCommander(cell) && cell.cmdStem !== 'Geng'){
+        disq = true; reasons.push('Geng \u5e9a oppressing Commander \u503c\u7b26');
+      }
+      // Warrior 玄武 — always excluded.
+      if(cell.deity === 'Warrior'){ disq = true; reasons.push('Warrior \u7384\u6b66 \u51f6\u795e'); }
+      // Tiger 白虎 — kept only with San Qi/Wu AND a favourable door.
+      if(cell.deity === 'Tiger'){
+        if(_qmHasSanQiWu(cell) && _qmFavDoor(cell)) reasons.push('Tiger \u767d\u864e kept — San Qi/Wu + favourable door');
+        else { disq = true; reasons.push('Tiger \u767d\u864e \u51f6\u795e'); }
+      }
     }
     return { disqualified: disq, reasons: reasons };
+  }
+  // palaceFlags kept as the public name (now a thin alias over the canonical predicate).
+  function palaceFlags(cell){ return formationFlags(cell); }
+
+  // §2 — MANDATORY GATE (San Qi/Wu + favourable door). Applies to BOTH charts.
+  // Only exception: Injury door 傷 (Shang) admitted for TRAVEL, and only with San Qi/Wu.
+  function directionGate(cell, opts){
+    opts = opts || {};
+    if(!cell) return { eligible:false, reasons:['no cell'] };
+    if(!_qmHasSanQiWu(cell)) return { eligible:false, reasons:['no San Qi/Wu \u4e59\u4e19\u4e01/\u620a'] };
+    var fav = _qmFavDoor(cell);
+    var injuryTravel = !!opts.travel && cell.doorCode === 'Shang';   // San Qi already required above
+    if(!fav && !injuryTravel) return { eligible:false, reasons:['no favourable door'] };
+    return { eligible:true, reasons: injuryTravel ? ['Injury \u50b7 redeemed by San Qi (travel)'] : [] };
   }
   // 旬空 (Void) is based on the DAY pillar's decade — NOT the hour. The decade's two
   // empty branches map to their palace(s). E.g. day 戊辰 (甲子 decade) → void 戌亥 → NW 乾.
@@ -709,6 +759,8 @@
       star:  STAR_NAME[cell[2]]||cell[2],
       deity: cell[3],
       door:  DOOR_NAME[cell[4]]||cell[4],
+      doorCode: cell[4],
+      cmdStem: chart.ld,
       zhiFu:  isZhiFu,
       zhiShi: isZhiShi,
       jiaName: isZhiFu ? (JIA_HIDE[chart.ld]||'') : ''
@@ -718,6 +770,9 @@
     var isVoid = dayVoidPalaces(year, month, day).palaces.indexOf(palace) >= 0;
 
     if(flags.disqualified) return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, flags: flags.reasons, isVoid: isVoid };
+    // §2 gate — San Qi/Wu + favourable door is mandatory for activation too (flying 飛盤).
+    var gate = directionGate(cellInfo, { travel: false });
+    if(!gate.eligible) return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, flags: flags.reasons.concat(gate.reasons), gateFail: true, isVoid: isVoid };
     if(hits.length === 0) return { matched: false, hits: [], score: 0, cell: cellInfo, isVoid: isVoid, flags: flags.reasons };
 
     var pos = 0, neg = 0;
@@ -768,6 +823,8 @@
         star: STAR_NAME[cell[2]]||cell[2],
         deity: cell[3],
         door: DOOR_NAME[cell[4]]||cell[4],
+        doorCode: cell[4],          // raw door code (Kai/Xiu/Sheng/JingS/Shang…) for rule gates
+        cmdStem: chart.ld,          // lead/Commander stem of the xun (for Geng↔Commander rules)
         zhiFu: isZF,
         zhiShi: (chart.zsp === p),
         jiaName: isZF ? (JIA_HIDE[chart.ld]||'') : ''
@@ -904,7 +961,9 @@
         star: R_STAR_EN[star]||'',
         deity: deityIdx!==undefined ? R_DEITY_EN[deityIdx] : '',
         door: doorKey,  // use scanner key (Kai/Xiu/Sheng/etc.) for hit detection
+        doorCode: doorKey,  // canonical rule gates read doorCode
         doorName: doorName, // English name for display
+        cmdStem: xstem,     // 旬首 lead/Commander stem (for Geng↔Commander rules)
         zhiFu: (pn===isZhiFu),
         zhiShi: (pn===zhiShi),
         jiaName: ''
@@ -1010,6 +1069,8 @@
       return checkRotatingPalace(chart, palace);
     },
     palaceFlags: function(cell){ return palaceFlags(cell); },
+    formationFlags: function(cell){ return formationFlags(cell); },
+    directionGate: function(cell, opts){ return directionGate(cell, opts); },
     voidInfoForIdx: function(idx60){ return voidInfoForIdx(idx60); },
     dayVoidPalaces: function(Y, M, D){ return dayVoidPalaces(Y, M, D); }
   };

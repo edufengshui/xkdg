@@ -1129,11 +1129,17 @@
           var pdata = hourChart.palaces[palace];
           if(!pdata) continue;
           if(excludeFuYin && pdata.ti && pdata.ti === pdata.di) continue;
-          // Centralised formation gate (clash 相冲 unless Commander, 丙庚, 庚己 unless Pillar).
+          // Centralised CANONICAL gate (single source: QMDJWaterScanner).
+          // §1 exclusions (clash 相冲 unless Commander, 丙庚 unless Geng=Commander,
+          // 庚己 unless Pillar+door, Geng↔Commander, Warrior always, Tiger unless gate).
           var pflags = (window.QMDJWaterScanner && window.QMDJWaterScanner.palaceFlags)
             ? window.QMDJWaterScanner.palaceFlags(pdata)
             : { disqualified: _fsStemClash(pdata.ti, pdata.di), reasons: [] };
           if(!opts.allowClash && pflags.disqualified) continue;
+          // §2 mandatory gate — San Qi/Wu + favourable door (flying 飛盤, no travel exception).
+          if(!opts.allowClash && window.QMDJWaterScanner && window.QMDJWaterScanner.directionGate){
+            if(!window.QMDJWaterScanner.directionGate(pdata, { travel:false }).eligible) continue;
+          }
           var isVoid = (hourChart.voidPalaces || []).indexOf(palace) >= 0;
           var hits = matchPalace(pdata, wanted);
           if(!hits.length) continue;

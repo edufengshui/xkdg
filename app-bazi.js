@@ -5864,10 +5864,11 @@ function buildMonthView() {
                                     // OBLIGATORY — with Warrior/Tiger excluded. Earth-plate
                                     // San Qi does NOT count (it is constant all day, which
                                     // would wrongly mark most hours favourable). Other
-                                    // deities (e.g. Red Bird 朱雀) are allowed.
-                                    var _SANQI_H = ['Yi','Bing','Ding'];
-                                    _dirOKLV = !!(_evLV && _evLV.ok && !_evLV.isWarrior && !_evLV.isTiger
-                                                  && _SANQI_H.indexOf(_evLV.ti) !== -1);
+                                    // CANONICAL: evalPalace.ok already enforces the
+                                    // single rule set (Warrior out, Tiger only with
+                                    // San Qi/Wu + door, San Qi/Wu + favourable door
+                                    // mandatory, Injury redeemed for travel). Delegate.
+                                    _dirOKLV = !!(_evLV && _evLV.ok);
                                 }
                             } else {
                                 _dirOKLV = pqRotLV.some(function(h){ return h.palace === _fsActionPalace; })
@@ -7496,11 +7497,8 @@ function runScanner() {
                             var _evalBST = window.TravelPlanner.evalPalace(_pdBST, _cfgCountBST);
                             // Favourable departure = favourable Door + San Qi (乙丙丁)
                             // on the HEAVEN plate (ti, rotating) — OBLIGATORY — Warrior/
-                            // Tiger excluded. Earth-plate San Qi is ignored (constant all
-                            // day). Red Bird 朱雀 and other deities are allowed.
-                            var _SANQI_HB = ['Yi','Bing','Ding'];
-                            _dirOK = !!(_evalBST && _evalBST.ok && !_evalBST.isWarrior && !_evalBST.isTiger
-                                        && _SANQI_HB.indexOf(_evalBST.ti) !== -1);
+                            // CANONICAL: delegate to evalPalace.ok (single rule set).
+                            _dirOK = !!(_evalBST && _evalBST.ok);
                         }
                     } else {
                         // Fallback if the Travel Planner gate isn't available: keep the
