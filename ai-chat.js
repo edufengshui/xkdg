@@ -640,8 +640,10 @@
     },
     {
       name: 'list_houses',
-      description: 'List the saved houses for the loaded person, with index, name, facing/period, counts of doors/' +
-        'aquariums/placements, and which one is active. Use before set_active_house / load_house / load_placement.',
+      description: 'List the saved houses for the loaded person, with index, name, facing/period, door count, and ' +
+        'water_features (across all floors): each explicit aquarium AND each saved Water position, with its name + ' +
+        'direction. A saved Water position IS a water feature - if water_features is non-empty, do NOT ask the user for ' +
+        'the direction. Use before set_active_house / load_house / load_placement.',
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
@@ -1835,11 +1837,20 @@
     return {
       person: person.name, active_index: activeIdx, count: houses.length,
       houses: houses.map(function (h, i) {
-        var pl = h.placements || {};
+        var floors = (h.floors && h.floors.length) ? h.floors
+          : [{ doors: h.doors || [], waters: h.waters || [], settings: h.settings || h.placements || { water: [], bed: [], desk: [] } }];
+        var doors = 0, water_features = [];
+        floors.forEach(function (f) {
+          doors += (f.doors || []).length;
+          (f.waters || []).forEach(function (w) { water_features.push({ name: w.name, direction: w.dir || w.palace || null, source: 'aquarium' }); });
+          var st = f.settings || f.placements || {};
+          (st.water || []).forEach(function (s) { if (s && s.palace) water_features.push({ name: s.name, direction: s.palace, source: 'saved_water_setting' }); });
+        });
         return {
           index: i, name: h.name, houseFacing: h.houseFacing, period: h.period,
-          doors: (h.doors || []).length, aquariums: (h.waters || []).length,
-          placements: { water: (pl.water || []).length, bed: (pl.bed || []).length, desk: (pl.desk || []).length },
+          doors: doors,
+          aquariums: water_features.length,
+          water_features: water_features,   // includes saved Water positions — a saved water position IS a water feature
           active: i === activeIdx
         };
       })
