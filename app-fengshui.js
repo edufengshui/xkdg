@@ -2387,27 +2387,31 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
     if(d.zhiShi) zMark = '<div onclick="event.stopPropagation();showZhiPopup(\'zhiShi\')" style="display:inline-block;font-size:10px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">Zhi Shi ℹ</div>';
     var jia = ''; // Jia hiding name removed per user request
 
-    // Center palace gets a special layout with vertical spacing between the two stems
+    // Center palace: deity on top, star/heaven-stem centred, di-pan stem at the bottom.
     if(p === 5){
-      return '<td style="background:'+bg+';padding:8px 7px;vertical-align:middle;text-align:center;border:'+border+';width:33%;">'
-        + '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;">' + (d.deity||'Center') + '</div>'
-        + '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;margin:8px 0 2px;">' + (d.tiH||'') + '</div>'
-        + '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
-        + '<div style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:18px;margin:8px 0 2px;">' + (d.diH||'') + '</div>'
-        + '<div style="color:#999;font-size:13px;font-weight:bold;margin-top:4px;">' + p + '</div>'
+      return '<td style="background:'+bg+';padding:8px 7px;text-align:center;border:'+border+';width:33%;height:1px;">'
+        + '<div style="display:flex;flex-direction:column;height:100%;min-height:90px;">'
+        +   '<div style="color:#222;font-size:13px;font-weight:bold;">' + (d.deity||'Center') + '</div>'
+        +   '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;">'
+        +     '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;">' + (d.tiH||'') + '</div>'
+        +     '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
+        +   '</div>'
+        +   '<div style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:18px;">' + (d.diH||'') + '</div>'
+        + '</div>'
         + '</td>';
     }
 
-    return '<td style="background:'+bg+';padding:6px 7px;vertical-align:top;border:'+border+';width:33%;">'
-      + '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
-      +   '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
-      +   '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
-      + '</div>'
-      + '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
-      + '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
-      +   '<div><span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
-      +   '<span style="color:#999;font-size:13px;font-weight:bold;">' + p + '</span>'
+    return '<td style="background:'+bg+';padding:6px 7px;border:'+border+';width:33%;height:1px;">'
+      + '<div style="display:flex;flex-direction:column;height:100%;min-height:90px;">'
+      +   '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
+      +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
+      +     '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
+      +     '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
+      +   '</div>'
+      +   '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
+      +   '<div style="margin-top:auto;display:flex;align-items:flex-end;gap:6px;">'
+      +     '<span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'') + '</span>' + jia + zMark
+      +   '</div>'
       + '</div>'
       + '</td>';
   }
