@@ -21,6 +21,7 @@
   var K_CLIENT = 'xkdg_gdrive_client_id';
   var K_FILEID = 'xkdg_gdrive_fileid';
   var K_LASTSYNC = 'xkdg_gdrive_lastsync';
+  var K_DRIVE_MTIME = 'xkdg_gdrive_drive_mtime';   // Drive file modifiedTime as last seen by THIS device (server clock)
   var EXCLUDE_PREFIX = 'xkdg_gdrive_';   // never sync the sync config itself
 
   var tokenClient = null, pendingAction = null;
@@ -106,15 +107,33 @@
   function doSave(){
     setStatus('Authorizing…');
     getToken(function (token){
-      setStatus('Saving to Drive…');
+      setStatus('Checking the Drive copy…');
       var content = collectData();
       var savedId = '';
       try { savedId = localStorage.getItem(K_FILEID) || ''; } catch(e){}
       driveFind(token).then(function (f){
+        // GUARD: if the Drive copy changed (another device) after our last sync, warn before overwriting.
+        var seen = ''; try { seen = localStorage.getItem(K_DRIVE_MTIME) || ''; } catch(e){}
+        if (f && f.modifiedTime && seen && f.modifiedTime !== seen){
+          if (!confirm('\u26A0\uFE0F The copy on Drive was updated (by another device) on '
+              + new Date(f.modifiedTime).toLocaleString()
+              + ', AFTER this device\u2019s last sync.\n\n'
+              + 'Saving now will OVERWRITE that newer copy with THIS device\u2019s data.\n\n'
+              + 'Tip: Cancel, then \u2b07 Load it first if you want to keep those changes.\n\nOverwrite anyway?')){
+            setStatus('Save cancelled — the Drive copy is newer.', '#ffd479');
+            return null;
+          }
+        }
+        setStatus('Saving to Drive…');
         var id = (f && f.id) || savedId;
         return id ? driveUpdate(token, id, content) : driveCreate(token, content);
       }).then(function (res){
-        try { localStorage.setItem(K_FILEID, res.id); localStorage.setItem(K_LASTSYNC, new Date().toISOString()); } catch(e){}
+        if (!res) return;   // aborted by the guard
+        try {
+          localStorage.setItem(K_FILEID, res.id);
+          localStorage.setItem(K_LASTSYNC, new Date().toISOString());
+          if (res.modifiedTime) localStorage.setItem(K_DRIVE_MTIME, res.modifiedTime);
+        } catch(e){}
         setStatus('✓ Saved to Drive ' + new Date().toLocaleString(), '#7CFC9A');
         refreshInfo();
       }).catch(function (e){ setStatus('✗ ' + e.message, '#ff6b6b'); });
@@ -126,11 +145,26 @@
       setStatus('Looking for the Drive copy…');
       driveFind(token).then(function (f){
         if (!f){ setStatus('No xkdg-sync.json found in Drive yet. Save from your other device first.', '#ffd479'); return; }
-        if (!confirm('This will REPLACE this device\u2019s data with the Drive copy (saved ' +
-                     new Date(f.modifiedTime).toLocaleString() + ').\n\nContinue?')) { setStatus('Cancelled.'); return; }
+        var seen = ''; try { seen = localStorage.getItem(K_DRIVE_MTIME) || ''; } catch(e){}
+        var when = new Date(f.modifiedTime).toLocaleString();
+        var msg;
+        if (seen && f.modifiedTime === seen){
+          // GUARD: the Drive copy has NOT changed since this device last synced →
+          // loading brings nothing newer and would overwrite any local edits made since.
+          msg = '\u26A0\uFE0F The Drive copy has NOT changed since this device\u2019s last sync ('
+              + when + ').\n\n'
+              + 'Loading brings nothing newer and will OVERWRITE any changes you made on THIS device since then.\n\nLoad anyway?';
+        } else {
+          msg = 'This will REPLACE this device\u2019s data with the Drive copy (saved ' + when + ').\n\nContinue?';
+        }
+        if (!confirm(msg)) { setStatus('Cancelled.'); return; }
         return driveDownload(token, f.id).then(function (text){
           var r = restoreData(text);
-          try { localStorage.setItem(K_FILEID, f.id); localStorage.setItem(K_LASTSYNC, new Date().toISOString()); } catch(e){}
+          try {
+            localStorage.setItem(K_FILEID, f.id);
+            localStorage.setItem(K_LASTSYNC, new Date().toISOString());
+            if (f.modifiedTime) localStorage.setItem(K_DRIVE_MTIME, f.modifiedTime);
+          } catch(e){}
           setStatus('✓ Loaded ' + r.count + ' items. Reloading…', '#7CFC9A');
           setTimeout(function (){ location.reload(); }, 800);
         });
