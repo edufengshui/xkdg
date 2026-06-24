@@ -515,6 +515,7 @@ function buildFengShuiView(){
           </div>
           <div style="font-size:11px;color:#777;font-style:italic;margin-top:6px;">Default: the quadrant is free — the scan searches all 8 palaces and reports where the purpose's door appears. Tick <b>Water palaces only</b> to restrict the same purpose to the water palaces of the active house (House Profiles). Either way the result combines the Qimen door (Feng Shui) with the matching Main Purpose (XKDG).</div>
           <div id="fs-purpact-results" style="margin-top:10px;"></div>
+          <div id="fs-purpact-chart" style="margin-top:10px;"></div>
         </div>
 
         <!-- 💧 Add a generic water feature → scan good dates/hours to activate it (XKDG + Qimen) -->
@@ -6016,6 +6017,22 @@ function fsPurposeActivationScan(){
   } catch(err){ console.warn('fsPurposeActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
 }
 
+// Render the Qimen chart for a result row inside the PURPOSE ACTIVATION block
+// (self-contained — does not depend on the distant #fs-results-area).
+function fsPurpactShowChart(isoDate, hGan, hZhi, palace){
+  var box = document.getElementById('fs-purpact-chart');
+  if(!box) return;
+  try {
+    if(typeof showQimenChart !== 'function'){ box.innerHTML='<div style="font-size:12px;color:#c0392b;">Chart renderer not available.</div>'; return; }
+    var html = showQimenChart(isoDate, hGan, hZhi, palace, { returnHtml:true });
+    if(!html){ box.innerHTML='<div style="font-size:12px;color:#c0392b;">Cannot load chart for '+isoDate+' '+hGan+hZhi+'.</div>'; return; }
+    box.innerHTML = '<div style="margin-top:6px;">'
+      + '<button onclick="document.getElementById(\'fs-purpact-chart\').innerHTML=\'\'" style="background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-bottom:6px;">✕ close chart</button>'
+      + html + '</div>';
+    box.scrollIntoView({ behavior:'smooth', block:'start' });
+  } catch(err){ console.warn('fsPurpactShowChart', err); box.innerHTML='<div style="font-size:12px;color:#c0392b;">Chart error.</div>'; }
+}
+
 // Render the saved scan according to window._fsPurpactSort ('best' | 'date').
 function _fsPurpactRender(){
   var out=document.getElementById('fs-purpact-results');
@@ -6064,7 +6081,7 @@ function _fsPurpactRender(){
     var pal=DIR2PAL[r.dir]||0;
     var canChart=(hGan && hZhi && pal);
     var chartBtn = canChart
-      ? '<button onclick="showQimenChart(\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+pal+')" title="see the chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 chart</button>'
+      ? '<button onclick="fsPurpactShowChart(\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+pal+')" title="see the chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 chart</button>'
       : '';
     html+='<tr style="border-bottom:1px solid #eee;">'
       +'<td style="'+pad+'white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+gz+'</span></td>'
