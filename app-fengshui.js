@@ -496,7 +496,7 @@ function buildFengShuiView(){
             </div>
             <div style="flex:1;min-width:150px;">
               <label style="font-size:11px;color:#666;display:block;">House</label>
-              <select id="fs-purpact-house" onmousedown="_fsPurpactPopulateHouses()" onchange="fsPurpactWaterToggle()" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+              <select id="fs-purpact-house" onmousedown="_fsPurpactPopulateHouses()" onchange="_fsPurpactPopulateTarget()" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
                 <option value="">— active —</option>
               </select>
             </div>
@@ -506,14 +506,14 @@ function buildFengShuiView(){
             </div>
             <button onclick="fsPurposeActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
           </div>
-          <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <label style="font-size:13px;color:#00695c;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:6px;">
-              <input type="checkbox" id="fs-purpact-wateronly" onchange="fsPurpactWaterToggle()" style="width:16px;height:16px;cursor:pointer;">
-              💧 Water palaces only
-            </label>
-            <span id="fs-purpact-hint" style="font-size:12px;color:#777;font-style:italic;"></span>
+          <div style="margin-top:8px;">
+            <label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Target (where to look)</label>
+            <select id="fs-purpact-target" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:13px;">
+              <option value="">All quadrants (free) — search all 8 palaces</option>
+            </select>
+            <span id="fs-purpact-hint" style="font-size:11px;color:#777;font-style:italic;display:block;margin-top:4px;"></span>
           </div>
-          <div style="font-size:11px;color:#777;font-style:italic;margin-top:6px;">Default: the quadrant is free — the scan searches all 8 palaces and reports where the purpose's door appears. Tick <b>Water palaces only</b> to restrict the same purpose to the water palaces of the active house (House Profiles). Either way the result combines the Qimen door (Feng Shui) with the matching Main Purpose (XKDG).</div>
+          <div style="font-size:11px;color:#777;font-style:italic;margin-top:6px;">Pick a <b>Target</b>: <b>All quadrants</b> searches everywhere and reports where the purpose's door appears; <b>Water palaces</b> restricts to your placed water features; or pick a specific <b>向星 Water star</b> / <b>山星 Mountain star</b> of the saved chart to scan the palace where that star sits (some purposes work better on a specific mountain star). Either way the result combines the Qimen door (Feng Shui) with the matching Main Purpose (XKDG).</div>
           <div id="fs-purpact-results" style="margin-top:10px;"></div>
           <div id="fs-purpact-chart" style="margin-top:10px;"></div>
         </div>
@@ -646,6 +646,7 @@ function fsRenderContext(){
   if (c.pBHex) html += `Person B year ${c.pBLabel} — hex ${c.pBHex}, qi ${c.pBQi}, yun ${c.pBYun}<br>`;
   ctxBox.innerHTML = html;
   try { if (typeof _fsPurpactPopulateHouses === 'function') _fsPurpactPopulateHouses(); } catch(e){}
+  try { if (typeof _fsPurpactPopulateTarget === 'function') _fsPurpactPopulateTarget(); } catch(e){}
 }
 
 function openFengShui(){
@@ -5924,17 +5925,74 @@ function fsWaterActivationScan(){
 // ── PURPOSE ACTIVATION (⚡ ACTIVATION section) ──────────────────────────────
 // Show/hide the quadrant selector: only Water needs a fixed palace (from house).
 // Toggle 💧 Water palaces only — refresh the hint showing detected water palaces.
-function fsPurpactWaterToggle(){
-  var cb   = document.getElementById('fs-purpact-wateronly');
+// Compute the flying-stars chart of a house's active floor and return the
+// 8 outer palaces' water (向星) and mountain (山星) stars. → [{type,num,dir}]
+function _fsPurpactChartStars(house){
+  var out = [];
+  try {
+    if (typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function') return out;
+    if (!house) return out;
+    var floor = _fsActiveFloor(house);
+    var fac = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(house, floor) : null;
+    var per = (typeof _fsFloorPeriod === 'function') ? _fsFloorPeriod(house, floor) : null;
+    if (fac == null || per == null) return out;
+    var chart;
+    try { chart = FlyingStars.calculate(parseInt(per, 10), fsMountainCharFromDeg(parseFloat(fac))); } catch(e){ return out; }
+    if (!chart || !FlyingStars.DIR_TO_INDEX) return out;
+    var DIRS = ['N','NE','E','SE','S','SW','W','NW'];  // outer palaces only (no center)
+    DIRS.forEach(function(dir){
+      var gi = FlyingStars.DIR_TO_INDEX[dir];
+      if (gi == null) return;
+      var w = chart.facingStars  ? chart.facingStars[gi]  : null;
+      var m = chart.sittingStars ? chart.sittingStars[gi] : null;
+      if (w != null) out.push({ type:'water',    num:w, dir:dir });
+      if (m != null) out.push({ type:'mountain', num:m, dir:dir });
+    });
+  } catch(e){ console.warn('_fsPurpactChartStars', e); }
+  return out;
+}
+
+// Populate the Target dropdown for the currently-selected house:
+//  "" = all quadrants; "water" = placed water palaces; "star:type:num:dir" = a chart star.
+function _fsPurpactPopulateTarget(){
+  var sel = document.getElementById('fs-purpact-target');
+  if (!sel) return;
+  var DIRH = {N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
+  var prev = sel.value;
+  var html = '<option value="">All quadrants (free) — search all 8 palaces</option>';
+
+  // Placed water features (if any)
+  var wp = [];
+  try { wp = _fsGetHouseWaterPalaces(); } catch(e){}
+  if (wp.length){
+    html += '<optgroup label="Placements">'
+         +  '<option value="water">💧 Water palaces only — ' + wp.map(function(d){return DIRH[d]||d;}).join(', ') + '</option>'
+         +  '</optgroup>';
+  }
+
+  // Chart stars (water 向星 + mountain 山星) of the selected house
+  var house = (typeof _fsPurpactSelectedHouse === 'function') ? _fsPurpactSelectedHouse() : null;
+  var stars = _fsPurpactChartStars(house);
+  if (stars.length){
+    var waters = stars.filter(function(s){return s.type==='water';}).sort(function(a,b){return a.num-b.num;});
+    var mtns   = stars.filter(function(s){return s.type==='mountain';}).sort(function(a,b){return a.num-b.num;});
+    html += '<optgroup label="Water stars 向星">';
+    waters.forEach(function(s){ html += '<option value="star:water:'+s.num+':'+s.dir+'">向星 Water ' + s.num + ' · ' + (DIRH[s.dir]||s.dir) + '</option>'; });
+    html += '</optgroup><optgroup label="Mountain stars 山星">';
+    mtns.forEach(function(s){ html += '<option value="star:mountain:'+s.num+':'+s.dir+'">山星 Mountain ' + s.num + ' · ' + (DIRH[s.dir]||s.dir) + '</option>'; });
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+  // keep prior selection if still present
+  if (prev){ sel.value = prev; if (sel.value !== prev) sel.value = ''; }
+
+  // Hint about chart availability
   var hint = document.getElementById('fs-purpact-hint');
-  if(!hint) return;
-  if(cb && cb.checked){
-    var dirs = _fsGetHouseWaterPalaces();
-    var DIRH={N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
-    if(dirs.length){ hint.textContent = 'water at: ' + dirs.map(function(d){return DIRH[d]||d;}).join(', '); hint.style.color='#00695c'; }
-    else           { hint.textContent = 'no water palace in the active house'; hint.style.color='#c0392b'; }
-  } else {
-    hint.textContent = '';
+  if (hint){
+    if (!stars.length){
+      hint.textContent = 'Set this house’s facing & period in House Profiles to target individual stars.';
+      hint.style.color = '#b26a00';
+    } else { hint.textContent = ''; }
   }
 }
 
@@ -5959,28 +6017,39 @@ function fsPurposeActivationScan(){
     var purposeKey=purpEl?purpEl.value:'health';
     var doorsMap=(typeof scanner.fsPurposeDoors==='function')?scanner.fsPurposeDoors():{};
     var purpose=doorsMap[purposeKey]||null;
-    var waterCb=document.getElementById('fs-purpact-wateronly');
-    var waterOnly=!!(waterCb && waterCb.checked);
+    var tgtEl=document.getElementById('fs-purpact-target');
+    var target=tgtEl?tgtEl.value:'';
     var daysEl=document.getElementById('fs-purpact-days');
     var days=(daysEl&&parseInt(daysEl.value,10))||30;
     var startEl=document.getElementById('scan-start');
     var start=(startEl&&startEl.value)|| new Date().toISOString().slice(0,10);
+    var DIRH={N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
 
-    // Mode A: quadrant free → all 8 palaces (targetDir='').
-    // Mode B: water palaces only → restrict to the house's water palaces (>=1).
-    var waterDirs=[];
-    if(waterOnly){
-      waterDirs=_fsGetHouseWaterPalaces();
-      if(!waterDirs.length){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">No water palace in the active house. Save a water feature in House Profiles first.</div>'; return; }
+    // Resolve the Target into a list of palace directions to scan, plus a label.
+    //  ''               → all 8 palaces (free)
+    //  'water'          → the house's placed water palaces
+    //  'star:type:n:dir'→ the single palace where that chart star sits
+    var scanDirs=[];          // [] means "all 8"
+    var scopeTxt='all quadrants';
+    if(target==='water'){
+      scanDirs=_fsGetHouseWaterPalaces();
+      if(!scanDirs.length){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">No water palace in this house. Save a water feature in House Profiles first.</div>'; return; }
+      scopeTxt='💧 water palaces: '+scanDirs.map(function(d){return DIRH[d]||d;}).join(', ');
+    } else if(target.indexOf('star:')===0){
+      var parts=target.split(':');           // star : type : num : dir
+      var sType=parts[1], sNum=parts[2], sDir=parts[3];
+      if(!sDir){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Could not read the target star.</div>'; return; }
+      scanDirs=[sDir];
+      scopeTxt=(sType==='mountain'?'山星 Mountain ':'向星 Water ')+sNum+' · '+(DIRH[sDir]||sDir);
     }
 
-    out.innerHTML='<div style="font-size:12px;color:#666;">Scanning '+(waterOnly?('water palaces: '+waterDirs.join(', ')):'all quadrants')+'…</div>';
+    out.innerHTML='<div style="font-size:12px;color:#666;">Scanning '+scopeTxt+'…</div>';
 
     // (1) Qimen — canonical §1+§2 path, filtered to the Purpose door
     var qres=[];
     try {
-      if(waterOnly){
-        waterDirs.forEach(function(dir){ qres=qres.concat(scanner.scanWaterPurpose(dir,start,days,purposeKey)||[]); });
+      if(scanDirs.length){
+        scanDirs.forEach(function(dir){ qres=qres.concat(scanner.scanWaterPurpose(dir,start,days,purposeKey)||[]); });
       } else {
         qres=scanner.scanWaterPurpose('',start,days,purposeKey)||[];
       }
@@ -6011,7 +6080,6 @@ function fsPurposeActivationScan(){
     var DOOR_LBL={Kai:'Open 開',Xiu:'Rest 休',Sheng:'Birth 生',JingS:'View 景',JingF:'Shocking 驚',Shang:'Injury 傷',Du:'Delusion 杜',Si:'Death 死'};
     var purpLabel=purpose?purpose.label:purposeKey;
     var purpDoorTxt=(purpose&&purpose.doors)?purpose.doors.map(function(d){return DOOR_LBL[d]||d;}).join('/'):'any fav door';
-    var scopeTxt=waterOnly?('💧 water: '+waterDirs.join(', ')):'all quadrants';
 
     window._fsPurpactState = {
       rows:rows, multiPalace:multiPalace, scopeTxt:scopeTxt, purpLabel:purpLabel,
