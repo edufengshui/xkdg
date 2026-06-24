@@ -6045,28 +6045,39 @@ function _fsPurpactRender(){
     + ' — ' + rows.length + ' hours · '
     + (st.hasPerson?('Qimen + XKDG'+(st.mainPurpose?(' ('+st.mainPurpose+')'):'')):'Qimen only — load a person to add XKDG')
     + '</div>';
-  html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  var DIR2PAL={N:1,SW:2,E:3,SE:4,S:9,W:7,NE:8,NW:6};
+  var pad='padding:3px 10px;';
+  html+='<div style="overflow-x:auto;"><table style="width:auto;border-collapse:collapse;font-size:12px;">';
   html+='<tr style="color:#00695c;">'
-    +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
-    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Hour</th>'
-    +(st.multiPalace?'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Quadrant</th>':'')
-    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Door</th>'
-    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Qimen</th>'
-    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">XKDG</th>'
-    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Combined</th></tr>';
-  var colSpan=st.multiPalace?7:6;
+    +'<th style="text-align:left;'+pad+'border-bottom:1px solid #b2dfdb;">Date</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Hour</th>'
+    +(st.multiPalace?'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Quad</th>':'')
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Door</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Qi</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">XK</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Comb</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;"></th></tr>';
+  var colSpan=st.multiPalace?8:7;
   rows.slice(0,40).forEach(function(r){
+    var gz=String(r.ganzhi||'');
+    var hGan=gz.charAt(0), hZhi=gz.charAt(1);
+    var pal=DIR2PAL[r.dir]||0;
+    var canChart=(hGan && hZhi && pal);
+    var chartBtn = canChart
+      ? '<button onclick="showQimenChart(\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+pal+')" title="see the chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 chart</button>'
+      : '';
     html+='<tr style="border-bottom:1px solid #eee;">'
-      +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+(r.ganzhi||'')+'</span></td>'
-      +'<td style="padding:4px;text-align:center;white-space:nowrap;">'+r.hour+'</td>'
-      +(st.multiPalace?'<td style="padding:4px;text-align:center;font-weight:bold;color:#5e35b1;">'+r.dir+'</td>':'')
-      +'<td style="padding:4px;text-align:center;white-space:nowrap;color:#2e7d32;font-weight:bold;">'+((r.door&&(DOOR_LBL[r.door]||r.door))||(r.hits&&r.hits[0])||'\u2014')+'</td>'
-      +'<td style="padding:4px;text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
-      +'<td style="padding:4px;text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
-      +'<td style="padding:4px;text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
+      +'<td style="'+pad+'white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+gz+'</span></td>'
+      +'<td style="'+pad+'text-align:center;white-space:nowrap;">'+r.hour+'</td>'
+      +(st.multiPalace?'<td style="'+pad+'text-align:center;font-weight:bold;color:#5e35b1;">'+r.dir+'</td>':'')
+      +'<td style="'+pad+'text-align:center;white-space:nowrap;color:#2e7d32;font-weight:bold;">'+((r.door&&(DOOR_LBL[r.door]||r.door))||(r.hits&&r.hits[0])||'\u2014')+'</td>'
+      +'<td style="'+pad+'text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
+      +'<td style="'+pad+'text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
+      +'<td style="'+pad+'text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
+      +'<td style="'+pad+'text-align:center;">'+chartBtn+'</td>'
       +'</tr>';
     if (r.hits && r.hits.length){
-      html+='<tr><td colspan="'+colSpan+'" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
+      html+='<tr><td colspan="'+colSpan+'" style="padding:0 10px 6px 10px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
     }
   });
   html+='</table></div>';
