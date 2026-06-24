@@ -393,6 +393,7 @@
               weekday: WEEKDAYS_IT[date.getDay()],
               hourHan: STEM_HAN[hp.stem] + BR_HAN[hp.branch],
               hourTime: hp.time,
+              hidx: (d * 100) + h,   // chronological key: day index * 100 + hour-of-day index
               dun: info.dun, ju: info.ju, jieQi: info.jqPy,
               score: res.score || 0,
               hits: res.hits || [],

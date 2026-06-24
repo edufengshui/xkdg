@@ -494,12 +494,8 @@ function buildFengShuiView(){
               </select>
             </div>
             <div id="fs-purpact-quadrant-wrap" style="flex:1;min-width:150px;display:none;">
-              <label style="font-size:11px;color:#666;display:block;">Quadrant (water)</label>
-              <select id="fs-purpact-dir" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
-                <option value="">— from house —</option>
-                <option value="N">N 坎</option><option value="NE">NE 艮</option><option value="E">E 震</option><option value="SE">SE 巽</option>
-                <option value="S">S 離</option><option value="SW">SW 坤</option><option value="W">W 兌</option><option value="NW">NW 乾</option>
-              </select>
+              <label style="font-size:11px;color:#666;display:block;">Water palace (active house)</label>
+              <div id="fs-purpact-hint" style="padding:6px;font-size:13px;color:#00695c;background:#f1f8e9;border:1px dashed #00897b;border-radius:4px;">auto</div>
             </div>
             <div style="flex:0 0 80px;">
               <label style="font-size:11px;color:#666;display:block;">Days</label>
@@ -5914,8 +5910,24 @@ function fsWaterActivationScan(){
 function fsPurpactPurposeChanged(){
   var purpEl = document.getElementById('fs-purpact-purpose');
   var qWrap  = document.getElementById('fs-purpact-quadrant-wrap');
+  var hint   = document.getElementById('fs-purpact-hint');
   var isWater = purpEl && purpEl.value === 'water';
   if(qWrap) qWrap.style.display = isWater ? '' : 'none';
+  if(isWater && hint){
+    var wp = _fsGetHouseWaterPalace();
+    var DIRH={N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
+    if(wp){ hint.textContent = (DIRH[wp]||wp); hint.style.color='#00695c'; }
+    else  { hint.textContent = 'no aquarium in active house'; hint.style.color='#c0392b'; }
+  }
+}
+
+// Holds the last scan so the BEST / by DATE buttons can re-sort without re-scanning.
+window._fsPurpactState = null;
+window._fsPurpactSort  = 'best';   // 'best' | 'date'
+
+function fsPurpactSort(mode){
+  window._fsPurpactSort = (mode === 'date') ? 'date' : 'best';
+  _fsPurpactRender();
 }
 
 function fsPurposeActivationScan(){
@@ -5936,16 +5948,12 @@ function fsPurposeActivationScan(){
     var startEl=document.getElementById('scan-start');
     var start=(startEl&&startEl.value)|| new Date().toISOString().slice(0,10);
 
-    // Target direction(s): water → fixed palace (manual or from house); else all 8.
+    // Water → fixed aquarium palace of the ACTIVE house (automatic). Else → all 8 palaces.
     var targetDir='';
     if(isWater){
-      var manDir=(document.getElementById('fs-purpact-dir')||{}).value || '';
-      if(manDir){ targetDir=manDir; }
-      else {
-        var wp=_fsGetHouseWaterPalace();
-        if(wp){ targetDir=wp; }
-        else { out.innerHTML='<div style="font-size:12px;color:#c0392b;">No water position found. Save a water feature in House Profiles, or pick a quadrant.</div>'; return; }
-      }
+      var wp=_fsGetHouseWaterPalace();
+      if(!wp){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">No aquarium found in the active house. Save a water feature in House Profiles first.</div>'; return; }
+      targetDir=wp;
     }
 
     out.innerHTML='<div style="font-size:12px;color:#666;">Scanning '+(targetDir?targetDir:'all quadrants')+'…</div>';
@@ -5969,52 +5977,82 @@ function fsPurposeActivationScan(){
       } catch(e){}
     }
 
-    // (3) Merge
+    // (3) Build rows
     var multiPalace=!targetDir;
     var rows=qres.map(function(r){
       var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
-      return { date:r.date, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), dir:(r.dir||''), door:(r.purposeDoor||null), hits:(r.hits||[]).map(function(h){return h.label;}) };
+      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), dir:(r.dir||''), door:(r.purposeDoor||null), hits:(r.hits||[]).map(function(h){return h.label;}) };
     });
-    rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
+
     var DOOR_LBL={Kai:'Open 開',Xiu:'Rest 休',Sheng:'Birth 生',JingS:'View 景',JingF:'Shocking 驚',Shang:'Injury 傷',Du:'Delusion 杜',Si:'Death 死'};
     var purpLabel=purpose?purpose.label:purposeKey;
     var purpDoorTxt=(purpose&&purpose.doors)?purpose.doors.map(function(d){return DOOR_LBL[d]||d;}).join('/'):'any fav door';
-    if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No qualifying hours for <b>'+purpLabel+'</b> ('+purpDoorTxt+')'+(targetDir?' at '+targetDir:'')+' in this range.</div>'; return; }
 
-    var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
-    var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'
-      + purpLabel + ' · ' + purpDoorTxt + (targetDir?(' · '+targetDir):' · all quadrants')
-      + ' — ' + rows.length + ' hours · '
-      + (hasPerson?('Qimen + XKDG'+(mainPurpose?(' ('+mainPurpose+')'):'')):'Qimen only — load a person to add XKDG')
-      + '</div>';
-    html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
-    html+='<tr style="color:#00695c;">'
-      +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Hour</th>'
-      +(multiPalace?'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Quadrant</th>':'')
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Door</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Qimen</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">XKDG</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Combined</th></tr>';
-    var colSpan=multiPalace?7:6;
-    rows.slice(0,40).forEach(function(r){
-      html+='<tr style="border-bottom:1px solid #eee;">'
-        +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+(r.ganzhi||'')+'</span></td>'
-        +'<td style="padding:4px;text-align:center;white-space:nowrap;">'+r.hour+'</td>'
-        +(multiPalace?'<td style="padding:4px;text-align:center;font-weight:bold;color:#5e35b1;">'+r.dir+'</td>':'')
-        +'<td style="padding:4px;text-align:center;white-space:nowrap;color:#2e7d32;font-weight:bold;">'+((r.door&&(DOOR_LBL[r.door]||r.door))||(r.hits&&r.hits[0])||'\u2014')+'</td>'
-        +'<td style="padding:4px;text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
-        +'<td style="padding:4px;text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
-        +'<td style="padding:4px;text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
-        +'</tr>';
-      if (r.hits && r.hits.length){
-        html+='<tr><td colspan="'+colSpan+'" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
-      }
-    });
-    html+='</table></div>';
-    if(rows.length>40) html+='<div style="font-size:11px;color:#888;margin-top:4px;">Showing top 40 of '+rows.length+'.</div>';
-    out.innerHTML=html;
+    // Save state for re-sorting
+    window._fsPurpactState = {
+      rows:rows, multiPalace:multiPalace, targetDir:targetDir, purpLabel:purpLabel,
+      purpDoorTxt:purpDoorTxt, hasPerson:hasPerson, mainPurpose:mainPurpose, DOOR_LBL:DOOR_LBL
+    };
+    _fsPurpactRender();
   } catch(err){ console.warn('fsPurposeActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
+}
+
+// Render the saved scan according to window._fsPurpactSort ('best' | 'date').
+function _fsPurpactRender(){
+  var out=document.getElementById('fs-purpact-results');
+  if(!out) return;
+  var st=window._fsPurpactState;
+  if(!st){ out.innerHTML=''; return; }
+  var mode=window._fsPurpactSort==='date'?'date':'best';
+  var rows=st.rows.slice();
+  if(mode==='date') rows.sort(function(a,b){ if(a.date!==b.date) return a.date<b.date?-1:1; return (a.hidx-b.hidx)||(b.c-a.c); });
+  else              rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
+
+  var DOOR_LBL=st.DOOR_LBL;
+  if (!rows.length){
+    out.innerHTML='<div style="font-size:12px;color:#e65100;">No qualifying hours for <b>'+st.purpLabel+'</b> ('+st.purpDoorTxt+')'+(st.targetDir?' at '+st.targetDir:'')+' in this range.</div>';
+    return;
+  }
+  var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
+
+  // Sort toggle buttons
+  var btn=function(label,m){
+    var on=(mode===m);
+    return '<button onclick="fsPurpactSort(\''+m+'\')" style="background:'+(on?'#00897b':'#fff')+';color:'+(on?'#fff':'#00695c')+';border:1px solid #00897b;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;margin-right:6px;">'+label+'</button>';
+  };
+  var html='<div style="margin-bottom:6px;">'+btn('★ BEST','best')+btn('📅 by DATE','date')+'</div>';
+  html+='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'
+    + st.purpLabel + ' · ' + st.purpDoorTxt + (st.targetDir?(' · '+st.targetDir):' · all quadrants')
+    + ' — ' + rows.length + ' hours · '
+    + (st.hasPerson?('Qimen + XKDG'+(st.mainPurpose?(' ('+st.mainPurpose+')'):'')):'Qimen only — load a person to add XKDG')
+    + '</div>';
+  html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html+='<tr style="color:#00695c;">'
+    +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
+    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Hour</th>'
+    +(st.multiPalace?'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Quadrant</th>':'')
+    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Door</th>'
+    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Qimen</th>'
+    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">XKDG</th>'
+    +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Combined</th></tr>';
+  var colSpan=st.multiPalace?7:6;
+  rows.slice(0,40).forEach(function(r){
+    html+='<tr style="border-bottom:1px solid #eee;">'
+      +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+(r.ganzhi||'')+'</span></td>'
+      +'<td style="padding:4px;text-align:center;white-space:nowrap;">'+r.hour+'</td>'
+      +(st.multiPalace?'<td style="padding:4px;text-align:center;font-weight:bold;color:#5e35b1;">'+r.dir+'</td>':'')
+      +'<td style="padding:4px;text-align:center;white-space:nowrap;color:#2e7d32;font-weight:bold;">'+((r.door&&(DOOR_LBL[r.door]||r.door))||(r.hits&&r.hits[0])||'\u2014')+'</td>'
+      +'<td style="padding:4px;text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
+      +'<td style="padding:4px;text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
+      +'<td style="padding:4px;text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
+      +'</tr>';
+    if (r.hits && r.hits.length){
+      html+='<tr><td colspan="'+colSpan+'" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
+    }
+  });
+  html+='</table></div>';
+  if(rows.length>40) html+='<div style="font-size:11px;color:#888;margin-top:4px;">Showing top 40 of '+rows.length+'.</div>';
+  out.innerHTML=html;
 }
 
 // Read the first water palace from the active house/floor.
