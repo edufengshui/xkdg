@@ -487,11 +487,17 @@ function buildFengShuiView(){
               <select id="fs-purpact-purpose" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
                 <option value="health">🏥 Health · Rest 休</option>
                 <option value="career">💼 Career · Open 開 / View 景</option>
-                <option value="birth">🌱 Birth · Birth 生 (+Wu 戊)</option>
+                <option value="wealth">💰 Wealth · Birth 生 (+Wu 戊)</option>
                 <option value="relationship">❤️ Relationship · Rest 休</option>
                 <option value="journey">✈️ Journey · Rest 休</option>
                 <option value="speak">🎤 Speak · View 景</option>
                 <option value="legal">⚖️ Legal · Shocking 驚 +San Qi</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:150px;">
+              <label style="font-size:11px;color:#666;display:block;">House</label>
+              <select id="fs-purpact-house" onmousedown="_fsPurpactPopulateHouses()" onchange="fsPurpactWaterToggle()" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+                <option value="">— active —</option>
               </select>
             </div>
             <div style="flex:0 0 80px;">
@@ -638,6 +644,7 @@ function fsRenderContext(){
   if (c.pAHex) html += `Person A year ${c.pALabel} — hex ${c.pAHex}, qi ${c.pAQi}, yun ${c.pAYun}<br>`;
   if (c.pBHex) html += `Person B year ${c.pBLabel} — hex ${c.pBHex}, qi ${c.pBQi}, yun ${c.pBYun}<br>`;
   ctxBox.innerHTML = html;
+  try { if (typeof _fsPurpactPopulateHouses === 'function') _fsPurpactPopulateHouses(); } catch(e){}
 }
 
 function openFengShui(){
@@ -6067,8 +6074,52 @@ function _fsPurpactRender(){
   out.innerHTML=html;
 }
 
-// Read ALL water palaces (as direction strings) of the ACTIVE house/floor,
-// from House Profiles. Collects from floor.settings.water[] and floor.waters[].
+// Populate the PURPOSE ACTIVATION house dropdown with the active person's houses,
+// defaulting to the active house (marked ★). Preserves a valid prior selection.
+function _fsPurpactPopulateHouses(){
+  var sel = document.getElementById('fs-purpact-house');
+  if(!sel) return;
+  try {
+    var person = fsGetActivePersonForHouse();
+    var all = _fsHousesLoad();
+    var list = (person && all[person.name]) || [];
+    var activeIdx = person ? (_fsActiveHouseGet(person.name) || 0) : 0;
+    if(activeIdx >= list.length) activeIdx = 0;
+    var prev = sel.value;
+    sel.innerHTML = '';
+    if(!list.length){
+      var o0 = document.createElement('option'); o0.value=''; o0.textContent='— no houses —'; sel.appendChild(o0); return;
+    }
+    list.forEach(function(h,i){
+      var o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = (h.name || ('House '+(i+1))) + (i===activeIdx ? ' ★' : '');
+      sel.appendChild(o);
+    });
+    if(prev!=='' && prev!=null && !isNaN(parseInt(prev,10)) && parseInt(prev,10) < list.length) sel.value = prev;
+    else sel.value = String(activeIdx);
+  } catch(e){}
+}
+
+// Resolve the house currently chosen in the PURPOSE ACTIVATION dropdown
+// (falls back to the active house). Always read fresh — never cached.
+function _fsPurpactSelectedHouse(){
+  try {
+    var person = fsGetActivePersonForHouse();
+    if(!person) return null;
+    var all = _fsHousesLoad();
+    var list = all[person.name];
+    if(!list || !list.length) return null;
+    var sel = document.getElementById('fs-purpact-house');
+    var idx = (sel && sel.value!=='' && !isNaN(parseInt(sel.value,10))) ? parseInt(sel.value,10) : _fsActiveHouseGet(person.name);
+    if(idx==null || isNaN(idx) || idx>=list.length) idx = _fsActiveHouseGet(person.name) || 0;
+    if(idx>=list.length) idx = 0;
+    return list[idx] || null;
+  } catch(e){ return null; }
+}
+
+// Read ALL water palaces (as direction strings) of the SELECTED house's active
+// floor (from House Profiles). Collects from settings.water[] and waters[].
 function _fsGetHouseWaterPalaces(){
   var PAL_DIR={1:'N',2:'SW',3:'E',4:'SE',6:'NW',7:'W',8:'NE',9:'S'};
   var VALID={N:1,NE:1,E:1,SE:1,S:1,SW:1,W:1,NW:1};
@@ -6081,8 +6132,9 @@ function _fsGetHouseWaterPalaces(){
     if(d && !seen[d]){ seen[d]=1; dirs.push(d); }
   }
   try {
-    var ref = _fsActiveHouseRef();
-    var fl = ref && ref.floor;
+    var house = _fsPurpactSelectedHouse();
+    if(!house) return dirs;
+    var fl = _fsActiveFloor(house);   // active floor of the chosen house
     if(!fl) return dirs;
     if(fl.settings && fl.settings.water) fl.settings.water.forEach(function(s){ add(s && s.palace); });
     if(fl.waters) fl.waters.forEach(function(w){ if(w && w.palace!=null) add(w.palace); else if(w && w.dir) add(w.dir); });

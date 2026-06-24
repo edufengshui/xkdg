@@ -91,7 +91,7 @@
   const FS_PURPOSE_DOORS = {
     health:       { doors:['Xiu'],          allowNonFav:false, label:'Health',       mainPurpose:'health' },
     career:       { doors:['Kai','JingS'],  allowNonFav:false, label:'Career',       mainPurpose:'career' },
-    birth:        { doors:['Sheng'],        allowNonFav:false, wuBonus:true, label:'Birth', mainPurpose:'' },
+    wealth:       { doors:['Sheng'],        allowNonFav:false, wuBonus:true, label:'Wealth', mainPurpose:'wealth' },
     relationship: { doors:['Xiu'],          allowNonFav:false, label:'Relationship', mainPurpose:'relationship' },
     journey:      { doors:['Xiu'],          allowNonFav:false, label:'Journey',      mainPurpose:'journey' },
     speak:        { doors:['JingS'],        allowNonFav:false, label:'Speak',        mainPurpose:'speak' },
@@ -901,10 +901,10 @@
       if(hits[i].cat === 'pen') neg++; else pos++;
     }
     var score = pos - neg;
-    // Birth purpose: Wu 戊 in the same palace amplifies (handoff: "ancora meglio con Wu 戊").
+    // Wealth purpose: Wu 戊 in the same palace amplifies (handoff: "ancora meglio con Wu 戊").
     if(purpose && purpose.wuBonus && (cellInfo.ti === 'Wu' || cellInfo.di === 'Wu')){
       score += 1;
-      hits = hits.concat([{ cat:'combo', label:'\u620a in Birth palace' }]);
+      hits = hits.concat([{ cat:'combo', label:'\u620a in Wealth palace' }]);
     }
     // Wu+Bing pairing (戊丙 / 丙戊) — highly valued; takes PRIORITY among Wu cases.
     // 戊↑丙 = Wu on Tian over Bing on Di; 丙↑戊 = Bing on Tian over Wu on Di.
