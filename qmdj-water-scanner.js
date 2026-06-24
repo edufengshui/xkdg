@@ -91,7 +91,7 @@
   const FS_PURPOSE_DOORS = {
     health:       { doors:['Xiu'],          allowNonFav:false, label:'Health',       mainPurpose:'health' },
     career:       { doors:['Kai','JingS'],  allowNonFav:false, label:'Career',       mainPurpose:'career' },
-    wealth:       { doors:['Sheng'],        allowNonFav:false, wuBonus:true, label:'Wealth', mainPurpose:'wealth' },
+    wealth:       { doors:['Sheng'],        allowNonFav:false, wuBonus:true, premiumWuBing:true, label:'Wealth', mainPurpose:'wealth' },
     relationship: { doors:['Xiu'],          allowNonFav:false, label:'Relationship', mainPurpose:'relationship' },
     journey:      { doors:['Xiu'],          allowNonFav:false, label:'Journey',      mainPurpose:'journey' },
     speak:        { doors:['JingS'],        allowNonFav:false, label:'Speak',        mainPurpose:'speak' },
@@ -918,6 +918,20 @@
         return h;
       });
       if(!found) hits = hits.concat([{ cat:'combo', label:comboLbl + ' \u2605' }]);
+
+      // PREMIUM (Wealth): Birth door (already required) + 戊丙/丙戊 + Commander 值符
+      // and/or Zhi Shi 值使 → top tier, scored above everything else.
+      if(purpose && purpose.premiumWuBing){
+        var hasCmd = !!cellInfo.zhiFu, hasShi = !!cellInfo.zhiShi;
+        if(hasCmd || hasShi){
+          score += (hasCmd ? 2 : 0) + (hasShi ? 2 : 0);   // up to +4 when both present
+          var prem = '\uD83D\uDC8E PREMIUM';
+          if(hasCmd && hasShi) prem += ' (\u503c\u7b26+\u503c\u4f7f)';
+          else if(hasCmd)      prem += ' (\u503c\u7b26)';
+          else                 prem += ' (\u503c\u4f7f)';
+          hits = hits.concat([{ cat:'combo', label: prem }]);
+        }
+      }
     }
     return { matched: true, hits: hits, score: score, cell: cellInfo, isVoid: isVoid, flags: flags.reasons, purposeDoor: purpose ? cellInfo.doorCode : null };
   }
