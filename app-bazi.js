@@ -620,21 +620,61 @@ const MONTH_VIRTUE = {
     '申':{ stem:'壬', branch:'亥' }, '子':{ stem:'壬', branch:'亥' }, '辰':{ stem:'壬', branch:'亥' }
 };
 
-// TST pillars for a person's birth (current GPS longitude + civil offset). Returns {year,month,day,hour} or null.
-function _tstPillarsFor(dateStr, timeStr) {
+// Frozen BIRTH geo for a saved person, looked up by the name currently in the
+// panel. A person's birth pillars must use the BIRTH place's longitude (frozen
+// at save time), never the current GPS — otherwise the chart drifts when the
+// user returns to their own location. Returns {lon,utc,dst} or null (→ caller
+// falls back to the current fields, preserving old behaviour for unsaved/legacy).
+function _personBirthGeo(person) {
+    try {
+        const nameId = (person === 'B') ? 'person-name-b' : 'person-name';
+        const el = document.getElementById(nameId);
+        const nm = (el && el.value || '').trim();
+        if (!nm) return null;
+        // The panel's own archive first, then the other (a DB load can place a
+        // person saved under one panel into the other).
+        const ownKey   = (person === 'B') ? 'xkdg_persons_b' : 'xkdg_persons_a';
+        const otherKey = (person === 'B') ? 'xkdg_persons_a' : 'xkdg_persons_b';
+        const rec = ((loadArchive(ownKey) || {})[nm]) || ((loadArchive(otherKey) || {})[nm]);
+        if (rec && isFinite(rec.birthLon)) {
+            return {
+                lon: rec.birthLon,
+                utc: isFinite(rec.birthUtc) ? rec.birthUtc : (parseFloat(document.getElementById('utc-offset').value) || 0),
+                dst: !!rec.birthDst
+            };
+        }
+    } catch (e) {}
+    return null;
+}
+// Civil-offset tz (minutes) used by XKDGSolarTime, from a birth geo.
+function _personBirthGeoToTz(g) { return -(((g && g.utc) || 0) * 60 + (g && g.dst ? 60 : 0)); }
+// {lon,tz} geo for _tstPillarsFor, or undefined (→ current GPS) for a person.
+function _pgeo(person) { const g = _personBirthGeo(person); return g ? { lon: g.lon, tz: _personBirthGeoToTz(g) } : undefined; }
+
+// TST pillars for a birth date/time. With an explicit `geo` {lon,tz} it uses the
+// frozen BIRTH location; without it, the current GPS longitude (e.g. calendar).
+// Returns {year,month,day,hour} or null.
+function _tstPillarsFor(dateStr, timeStr, geo) {
     try {
         if (typeof XKDGSolarTime === 'undefined') return null;
-        const lt = XKDGSolarTime.currentLonTz();
-        if (!isFinite(lt.lonDeg)) return null;
+        let lonDeg, tzOff;
+        if (geo && isFinite(geo.lon)) {
+            lonDeg = geo.lon;
+            tzOff = isFinite(geo.tz) ? geo.tz : XKDGSolarTime.currentLonTz().tzOffsetMin;
+        } else {
+            const lt = XKDGSolarTime.currentLonTz();
+            if (!isFinite(lt.lonDeg)) return null;
+            lonDeg = lt.lonDeg; tzOff = lt.tzOffsetMin;
+        }
         const d = String(dateStr).split('-').map(Number);
         const t = String(timeStr || '12:00').split(':').map(Number);
-        return XKDGSolarTime.pillarsFromCivil(d[0], d[1], d[2], t[0] || 0, t[1] || 0, 0, lt.lonDeg, lt.tzOffsetMin);
+        return XKDGSolarTime.pillarsFromCivil(d[0], d[1], d[2], t[0] || 0, t[1] || 0, 0, lonDeg, tzOff);
     } catch (e) { return null; }
 }
 
-function getPersonMonthBranch(birthDate, birthTime, offsetMin) {
+function getPersonMonthBranch(birthDate, birthTime, offsetMin, geo) {
     if (!birthDate) return null;
-    const P = _tstPillarsFor(birthDate, birthTime);
+    const P = _tstPillarsFor(birthDate, birthTime, geo);
     if (P) return P.month.charAt(1);
     // Fallback: legacy offset method
     const base  = new Date(`${birthDate}T${birthTime}`);
@@ -669,7 +709,7 @@ function getPersonDayStem() {
     const dVal = document.getElementById('person-date').value;
     const tVal = document.getElementById('person-time').value || '12:00';
     if (!dVal) return null;
-    const P = _tstPillarsFor(dVal, tVal);
+    const P = _tstPillarsFor(dVal, tVal, _pgeo('A'));
     if (P) return P.day.charAt(0);
     // Fallback: legacy offset method
     const lon = parseFloat(document.getElementById('longitude').value);
@@ -686,9 +726,9 @@ function getPersonDayStem() {
     return dGan;
 }
 
-function getPersonDayStemFromBirth(birthDate, birthTime, offsetMin) {
+function getPersonDayStemFromBirth(birthDate, birthTime, offsetMin, geo) {
     if (!birthDate) return null;
-    const P = _tstPillarsFor(birthDate, birthTime);
+    const P = _tstPillarsFor(birthDate, birthTime, geo);
     if (P) return P.day.charAt(0);
     // Fallback: legacy offset method
     const base  = new Date(`${birthDate}T${birthTime}`);
@@ -1386,7 +1426,8 @@ function calculateBazi() {
     const personMthBranch = getPersonMonthBranch(
         document.getElementById('person-date').value,
         document.getElementById('person-time').value || '12:00',
-        (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0)
+        (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0),
+        _pgeo('A')
     );
     const hvBranchPerson = personMthBranch ? (HEAVEN_VIRTUE[personMthBranch] || null) : null;
     const isDateHV   = hvBranchDate   === pillarKeys.hour.branch;
@@ -1420,7 +1461,8 @@ function calculateBazi() {
     const personMthBranchMV2 = getPersonMonthBranch(
         document.getElementById('person-date').value,
         document.getElementById('person-time').value || '12:00',
-        (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0)
+        (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0),
+        _pgeo('A')
     );
     const mvPerson = personMthBranchMV2 ? (MONTH_VIRTUE[personMthBranchMV2] || null) : null;
     const isDateMVStem   = mvDate   ? mvDate.stem   === pillarKeys.hour.stem   : false;
@@ -2086,7 +2128,19 @@ function savePerson(person) {
     const isB     = person === 'B';
     const depth = isB ? (parseInt(document.getElementById('person-pillars-b')?.value) || 4) : 4;
     const jiaZiYear = (isB && depth === 1) ? (document.getElementById('person-year-b')?.value || '') : '';
-    archive[name] = { date, time, savedAt: Date.now(), depth, jiaZiYear };
+    // Freeze the BIRTH location: capture the longitude / UTC / DST currently in
+    // effect (the city the user simulated for this person) so the saved chart
+    // never drifts when they return to their own GPS.
+    let birthLon, birthUtc, birthDst = false;
+    try { birthLon = parseFloat(document.getElementById('longitude').value); } catch (e) {}
+    try { birthUtc = parseFloat(document.getElementById('utc-offset').value); } catch (e) {}
+    try { birthDst = (person === 'B') ? !!_dstOnB : !!_dstOnA; } catch (e) {}
+    archive[name] = {
+        date, time, savedAt: Date.now(), depth, jiaZiYear,
+        birthLon: isFinite(birthLon) ? birthLon : undefined,
+        birthUtc: isFinite(birthUtc) ? birthUtc : undefined,
+        birthDst: birthDst
+    };
     saveArchiveData(key, archive);
     // Un-hide if re-saving a previously hidden person
     const hidden = loadArchive('xkdg_persons_hidden') || {};
@@ -2203,8 +2257,14 @@ function calculatePerson(person) {
     }
     if (!dVal) return;
 
-    const lon = parseFloat(document.getElementById('longitude').value);
-    const personDst = isB ? _dstOnB : _dstOnA;
+    // Person birth pillars MUST use the FROZEN birth location (saved at save
+    // time), never the current GPS — otherwise the chart drifts when the user
+    // returns to their own location. Falls back to the live fields for unsaved
+    // entries / legacy records (preserving prior behaviour).
+    const _pbg = _personBirthGeo(person);
+    const lon = _pbg ? _pbg.lon : parseFloat(document.getElementById('longitude').value);
+    const personDst = _pbg ? _pbg.dst : (isB ? _dstOnB : _dstOnA);
+    const personUtc = _pbg ? _pbg.utc : parseFloat(document.getElementById('utc-offset').value);
     let pillarKeys, dGan, dZhi;
     // Birth solar date at FUNCTION scope. Previously it was declared only inside
     // the fallback branch, so the primary (_ppP) path reached getJieqiSeason(solarDate)
@@ -2212,7 +2272,7 @@ function calculatePerson(person) {
     // crashed every person calculation. Compute it once here for both paths.
     let solarDate;
     try {
-        const _utcS = parseFloat(document.getElementById('utc-offset').value);
+        const _utcS = personUtc;
         const _offS = ((lon - (isFinite(_utcS) ? _utcS : 0) * 15) * 4) - (personDst ? 60 : 0);
         solarDate = new Date(new Date(`${dVal}T${tVal}`).getTime() + (isFinite(_offS) ? _offS : 0) * 60000);
     } catch (e) {
@@ -2221,7 +2281,7 @@ function calculatePerson(person) {
     const _ppP = (function(){
         try {
             if (typeof XKDGSolarTime === 'undefined' || !isFinite(lon)) return null;
-            const utc = parseFloat(document.getElementById('utc-offset').value) || 0;
+            const utc = isFinite(personUtc) ? personUtc : 0;
             const tz = -(utc * 60 + (personDst ? 60 : 0));
             const d = dVal.split('-').map(Number), t = (tVal || '12:00').split(':').map(Number);
             return XKDGSolarTime.pillarsFromCivil(d[0], d[1], d[2], t[0] || 0, t[1] || 0, 0, lon, tz);
@@ -2236,7 +2296,7 @@ function calculatePerson(person) {
             hour:  depth >= 4 ? { stem: _ppP.hour.charAt(0),  branch: _ppP.hour.charAt(1)  } : null
         };
     } else {
-        const utc = parseFloat(document.getElementById('utc-offset').value);
+        const utc = personUtc;
         const offsetMin = ((lon - utc * 15) * 4) - (personDst ? 60 : 0);
         solarDate = new Date(new Date(`${dVal}T${tVal}`).getTime() + offsetMin * 60000);
         const eightChar = Solar.fromDate(solarDate).getLunar().getEightChar();
@@ -4575,15 +4635,20 @@ function buildCalView() {
 
     const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
 
+    // Person A birth geo, FROZEN to the saved birth location (never current GPS).
+    const _pgA      = _personBirthGeo('A');
+    const _pgeoA    = _pgA ? { lon: _pgA.lon, tz: _personBirthGeoToTz(_pgA) } : undefined;
+    const _pOffMinA = _pgA ? ((_pgA.lon - _pgA.utc * 15) * 4 - (_pgA.dst ? 60 : 0)) : offsetMin;
+
     // Person A year for favourable check
     const birthDate = (document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none') ? document.getElementById('person-date').value : '';
     const birthTime = document.getElementById('person-time').value || '12:00';
     let personAYear = null, pYStem = null, pYBranch = null;
     if (birthDate) {
-        const _PA = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(birthDate, birthTime) : null;
+        const _PA = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(birthDate, birthTime, _pgeoA) : null;
         if (_PA) { pYStem = _PA.year.charAt(0); pYBranch = _PA.year.charAt(1); }
         else {
-            const bEC = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + offsetMin * 60000)).getLunar().getEightChar();
+            const bEC = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + _pOffMinA * 60000)).getLunar().getEightChar();
             pYStem = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
         }
         const pYData = getXkdgData(pYStem, pYBranch);
@@ -4593,18 +4658,18 @@ function buildCalView() {
     const personDayStemCAL = getPersonDayStemFromBirth(
         document.getElementById('person-date').value,
         document.getElementById('person-time').value || '12:00',
-        offsetMin
+        _pOffMinA, _pgeoA
     );
     const personMthBranchCAL = getPersonMonthBranch(
         document.getElementById('person-date').value,
         document.getElementById('person-time').value || '12:00',
-        offsetMin
+        _pOffMinA, _pgeoA
     );
     const personDayZhiCAL = (() => {
         const dv = document.getElementById('person-date').value;
         const tv = document.getElementById('person-time').value || '12:00';
         if (!dv) return null;
-        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + offsetMin * 60000));
+        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + _pOffMinA * 60000));
         return s.getLunar().getEightChar().getDayZhi();
     })();
 
@@ -4953,7 +5018,7 @@ function buildCalView() {
             const dayBranchIsNoble = personNobles.includes(dZhi);
             const dayBranchIsLu  = personDayStemCAL ? LU_BRANCH[personDayStemCAL] === dZhi : false;
             const dayBranchIsHV  = personMthBranchCAL ? HEAVEN_VIRTUE[personMthBranchCAL] === dZhi : false;
-            const personDayZhiCAL2 = (() => { if (!personDayStemCAL) return null; try { const b = new Date(`${document.getElementById('person-date').value}T${document.getElementById('person-time').value||'12:00'}`); return Solar.fromDate(new Date(b.getTime()+(parseFloat(document.getElementById('longitude').value)-parseFloat(document.getElementById('utc-offset').value)*15)*4*60000)).getLunar().getEightChar().getDayZhi(); } catch(e) { return null; } })();
+            const personDayZhiCAL2 = (() => { if (!personDayStemCAL) return null; try { const b = new Date(`${document.getElementById('person-date').value}T${document.getElementById('person-time').value||'12:00'}`); return Solar.fromDate(new Date(b.getTime()+_pOffMinA*60000)).getLunar().getEightChar().getDayZhi(); } catch(e) { return null; } })();
             const dayBranchIsBV  = personDayZhiCAL2 ? BRANCH_VIRTUE[personDayZhiCAL2] === dZhi : false;
             const dayBranchIsTY  = personDayStemCAL ? TIAN_YI[personDayStemCAL] === dZhi : false;
             const mvCAL = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
@@ -7063,7 +7128,7 @@ function getPersonYearData() {
     const birthTime = document.getElementById('person-time').value || '12:00';
     if (!birthDate) return null;
     let yStem, yBranch;
-    const _PY = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(birthDate, birthTime) : null;
+    const _PY = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(birthDate, birthTime, _pgeo('A')) : null;
     if (_PY) {
         yStem = _PY.year.charAt(0); yBranch = _PY.year.charAt(1);
     } else {

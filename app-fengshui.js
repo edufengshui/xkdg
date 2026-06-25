@@ -433,14 +433,17 @@ function buildFengShuiView(){
       </div>
 
       <!-- ═══ LUOPAN MODE TOGGLE ═══ -->
-      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;">
+      <div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
         <button id="fs-mode-fs" onclick="fsSetLuopanMode('fs')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐ FS only</button>
         <button id="fs-mode-xkdg" onclick="fsSetLuopanMode('xkdg')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🚪 XKDG only</button>
         <button id="fs-mode-both" onclick="fsSetLuopanMode('both')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐🚪 Both</button>
+        <span style="width:1px;height:18px;background:#ddd;margin:0 2px;"></span>
+        <button id="fs-mode-floorplan" onclick="fsToggleFloorplanView()" title="Show the saved floor plan in place of the luopan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🏠 Floorplan</button>
       </div>
 
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
+        <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
       </div>
 
       <!-- (Active house detail moved UP into the green HOUSE PROFILES box.) -->
@@ -582,6 +585,7 @@ let FS_STARS_ON = true;
 var _fsLuopanMode = 'fs';
 function fsSetLuopanMode(mode){
   _fsLuopanMode = mode;
+  try { _fsRestoreLuopanView(); } catch(e){}   // picking a luopan mode returns to the luopan
   ['fs','xkdg','both'].forEach(function(m){
     var btn = document.getElementById('fs-mode-' + m);
     if (btn){
@@ -589,6 +593,43 @@ function fsSetLuopanMode(mode){
     }
   });
   fsRedraw();
+}
+
+// ── Saved floor plan, shown IN PLACE OF the luopan ──────────────────────────
+// Toggle button (🏠 Floorplan) swaps the luopan canvas for the active floor's
+// saved floor-plan image. Any luopan-mode button or a house switch restores it.
+var _fsFloorplanShown = false;
+function fsToggleFloorplanView(){
+  try {
+    var canvas = document.getElementById('fs-canvas');
+    var img    = document.getElementById('fs-floorplan-view');
+    var btn    = document.getElementById('fs-mode-floorplan');
+    if (!canvas || !img) return;
+    if (_fsFloorplanShown){ _fsRestoreLuopanView(); return; }
+    var ctx = (typeof _fsActiveHouseFloorCtx === 'function') ? _fsActiveHouseFloorCtx() : null;
+    var fp  = ctx && ctx.floor && ctx.floor.floorplan;
+    if (!fp || !fp.imgData){
+      alert('No saved floor plan for the active house/floor yet.\n\nImport one from the house card (\uD83D\uDCD0 Import a floorplan), set it up, then \uD83D\uDCBE Save to house.');
+      return;
+    }
+    img.src = fp.imgData;
+    img.style.display = 'block';
+    canvas.style.display = 'none';
+    _fsFloorplanShown = true;
+    if (btn) btn.style.background = '#1b8a3f';
+  } catch(e){}
+}
+function _fsRestoreLuopanView(){
+  try {
+    if (!_fsFloorplanShown) return;
+    var canvas = document.getElementById('fs-canvas');
+    var img    = document.getElementById('fs-floorplan-view');
+    var btn    = document.getElementById('fs-mode-floorplan');
+    if (img)    img.style.display = 'none';
+    if (canvas) canvas.style.display = 'block';
+    _fsFloorplanShown = false;
+    if (btn) btn.style.background = '#5d4037';
+  } catch(e){}
 }
 window._fsStarsVisible = false;
 function _fsSyncStarsToggleLabel(visible){
@@ -4031,6 +4072,7 @@ function fsLoadHouse(personName, houseIdx){
   const houses = all[personName] || [];
   const h = houses[houseIdx];
   if (!h) return;
+  try { _fsRestoreLuopanView(); } catch(e){}   // a house switch returns to the luopan (avoid a stale plan)
   try { window._fsLoadedHouse = { personName: personName, houseIdx: houseIdx, address: (h.address || '') }; } catch(e){}
 
   var f = _fsActiveFloor(h);
