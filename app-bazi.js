@@ -553,7 +553,7 @@ function calcNegativeScore(opts) {
     if (isWJDT(yGan, dZhi, hZhi)) score += 3;
     if (nayinLabel === 'Nayin Weak') score += 2;
     if (nayinPersonScore < 0) score += 1;
-    const hasBlueItems = analysisItems && analysisItems.some(i => i.tag === 'blue' || i.tag === 'family');
+    const hasBlueItems = analysisItems && analysisItems.some(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
     if (!hasBlueItems) score += 1;
     // ── Positive factors (push score DOWN) ──
     if (spirit && spirit.auspicious) score -= 3;
@@ -983,6 +983,81 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     if (allSameFamily) {
         validFamilies.forEach(f => items.push({ text: `${f} Family`, tag: 'family' }));
     }
+
+    // ── Two-Family Bond ──────────────────────────────────────────────
+    // Special, positive condition (just BELOW a full Blood Link): the 4 pillars
+    // split cleanly into TWO families of 2 (each pair already communicates by
+    // being same-family), AND the two families communicate with EACH OTHER by
+    // Hetu / Adding / Pure Qi / Inverse hexagram. Parent rule: a child hexagram
+    // belongs to two families, but a Parent (father/mother) present among the 4
+    // claims the child for its own family.
+    function _tfbResolveEntries(k){
+        var st = pillars[k].stem, br = pillars[k].branch, hx = pillars[k].hex;
+        var es = JIAZI_FAMILY_DATA[st + br] || [];
+        if (es.length <= 1) return es.slice();
+        var raw = (typeof XKDG_TABLE !== 'undefined') ? XKDG_TABLE[st + br] : null;
+        if (!raw || !raw.alt) return es.slice();
+        var isPrimary = raw.hex === hx;       // primary hex → parent role; alt hex → child roles
+        return es.filter(function(e){
+            if (e.role === 'father' || e.role === 'mother') return isPrimary;
+            return !isPrimary;
+        });
+    }
+    function _interFamilyLink(a, b){
+        if (isClashing(a, b)) return null;   // a branch clash breaks communication
+        var qa = qi(a), qb = qi(b), ya = yun(a), yb = yun(b);
+        var qiLink  = isHetuPair(qa, qb) || [5,10,15].indexOf(qa + qb) >= 0 || qa === qb;
+        var yunLink = isHetuPair(ya, yb) || [5,10,15].indexOf(ya + yb) >= 0 || ya === yb;
+        var invLink = pillars[a].hex && pillars[b].hex && getInverseHex(pillars[a].hex) === pillars[b].hex;
+        if (!qiLink && !yunLink && !invLink) return null;
+        return { qi: !!qiLink, yun: !!yunLink, inv: !!invLink };
+    }
+    function checkTwoFamilyBond(){
+        var info = {};
+        keys.forEach(function(k){
+            var es = _tfbResolveEntries(k), parentFam = null, childFams = [];
+            es.forEach(function(e){
+                if (e.role === 'father' || e.role === 'mother') parentFam = e.family;
+                else childFams.push(e.family);
+            });
+            info[k] = { parentFam: parentFam, childFams: childFams };
+        });
+        // Need exactly two anchored (parent) families.
+        var pFamSet = {};
+        keys.forEach(function(k){ if (info[k].parentFam) pFamSet[info[k].parentFam] = 1; });
+        var pFams = Object.keys(pFamSet);
+        if (pFams.length !== 2) return null;
+        var F1 = pFams[0], F2 = pFams[1];
+        var assign = {}, count = {}; count[F1] = 0; count[F2] = 0;
+        keys.forEach(function(k){ if (info[k].parentFam){ assign[k] = info[k].parentFam; count[assign[k]]++; } });
+        var ok = true;
+        keys.forEach(function(k){
+            if (assign[k]) return;
+            var cands = info[k].childFams.filter(function(f){ return f === F1 || f === F2; });
+            cands.sort(function(x, y){ return count[x] - count[y]; });
+            var chosen = null;
+            for (var i = 0; i < cands.length; i++){ if (count[cands[i]] < 2){ chosen = cands[i]; break; } }
+            if (!chosen){ ok = false; return; }
+            assign[k] = chosen; count[chosen]++;
+        });
+        if (!ok || count[F1] !== 2 || count[F2] !== 2) return null;   // must be a clean 2+2
+        var famA = keys.filter(function(k){ return assign[k] === F1; });
+        var famB = keys.filter(function(k){ return assign[k] === F2; });
+        var anyLink = false, qiCh = false, yunCh = false;
+        famA.forEach(function(a){ famB.forEach(function(b){
+            var L = _interFamilyLink(a, b);
+            if (L){ anyLink = true; if (L.qi) qiCh = true; if (L.yun) yunCh = true; }
+        });});
+        if (!anyLink) return null;
+        // "Double" = the two families bond on BOTH channels (qi AND yun) — very special.
+        return { f1: F1, f2: F2, double: (qiCh && yunCh) };
+    }
+    try {
+        if (!allSameFamily){
+            var _tfb = checkTwoFamilyBond();
+            if (_tfb) items.push({ text: 'Two-Family Bond', tag: 'family2', tfbDouble: !!_tfb.double });
+        }
+    } catch(e){ /* additive: never break analysis */ }
 
     return { items, sameFamily: allSameFamily };
 }
@@ -1517,6 +1592,7 @@ const ANALYSIS_TIPS = {
     'Pure Qi Periods':  'All four pillars share the same Yun number.',
     'Inverse Hex':      'Hexagrams communicate well with their inverted counterparts, making the date usable.',
     'Family':           'Hexagrams belong to the same Blood Link family — a powerful and cohesive energy setting.',
+    'Two-Family Bond':  'The 4 pillars split into two families of two; each pair already communicates as same-family, and the two families also communicate by Hetu, Adding, Pure Qi or Inverse hexagram — a double bond, just below a full Blood Link.',
     'Nayin Power': 'Nayin Power — All 3 other pillars support the Day Melodic Element (generated, in command, or matched). The day carries maximum Nayin energy.',
     'Nayin':       'Nayin — 2 of the 3 other pillars support the Day Melodic Element. Good Nayin setting, but not at full power.',
     'Nayin Weak':  'Nayin Weak — All 3 other pillars drain or suppress the Day Melodic Element. Avoid important actions on this day.',
@@ -1537,6 +1613,7 @@ const PROFILE_TIPS = {
     'Pure Qi Periods':   'All four pillars share the same Yun number.',
     'Inverse Hex':       'Two or more pillars are inverted (mirror) versions of each other — all six lines flipped.',
     'Family':            'Two or more pillars belong to the same Blood Link family of eight hexagrams.',
+    'Two-Family Bond':   'Two families of two pillars, bonded to each other by Hetu, Adding, Pure Qi or Inverse hexagram.',
 };
 function showProfileTip(el, text, dict) {
     event.stopPropagation();
@@ -1586,6 +1663,7 @@ function renderAnalysis(items) {
                       : item.tag === 'green'        ? `<span class="tag-green">${item.text}</span>`
                       : item.tag === 'gold'         ? `<span class="tag-gold">${item.text}</span>`
                       : item.tag === 'family'       ? `<span class="tag-family">⬡ ${item.text}</span>`
+                      : item.tag === 'family2'      ? `<span class="tag-family">⬡⬡ ${item.text}${item.tfbDouble ? ' (double)' : ''}</span>`
                       : item.tag === 'noble-both'   ? `<span class="tag-noble-both">☯ ${item.text}</span>`
                       : item.tag === 'noble'        ? `<span class="tag-noble">☯ ${item.text}</span>`
                       : item.tag === 'lu-both'      ? `<span class="tag-lu-both">禄 ${item.text}</span>`
@@ -2241,7 +2319,7 @@ function calculatePerson(person) {
     // Store active relations (blue items) for compatibility analysis
     const { strong: pStrong, growing: pGrowing } = getJieqiSeason(solarDate);
     const { items: personAnalysis } = analyzeXkdg(xkdgData, pStrong, pGrowing);
-    const activeRelations = personAnalysis.filter(i => i.tag === 'blue' || i.tag === 'family');
+    const activeRelations = personAnalysis.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
     if (isB) _personBRelations = activeRelations;
     else      _personARelations = activeRelations;
 
@@ -2298,6 +2376,7 @@ function calculatePerson(person) {
                           : item.tag === 'green'  ? `<span class="tag-green">${item.text}</span>`
                           : item.tag === 'gold'   ? `<span class="tag-gold">${item.text}</span>`
                           : item.tag === 'family' ? `<span class="tag-family">⬡ ${item.text}</span>`
+                          : item.tag === 'family2' ? `<span class="tag-family">⬡⬡ ${item.text}${item.tfbDouble ? ' (double)' : ''}</span>`
                           : item.tag === 'noble'  ? `<span class="tag-noble">☯ ${item.text}</span>`
                           : item.tag === 'lu'     ? `<span class="tag-lu">禄 ${item.text}</span>`
                           : item.tag === 'hv'     ? `<span class="tag-hv">天德 ${item.text}</span>`
@@ -2606,6 +2685,7 @@ const BADGE_INFO = {
     // Nayin
     'Inverse Hex':           { full: 'Inverse Hexagram', desc: 'Hexagrams communicate well with their inverted counterparts, making the date usable.' },
     'Family':                { full: 'Blood Link Family', desc: 'Hexagrams belong to the same Blood Link family — a powerful and cohesive energy setting.' },
+    'Two-Family Bond':       { full: 'Two-Family Bond', desc: 'Two families of two pillars; each pair communicates as same-family and the two families also bond by Hetu, Adding, Pure Qi or Inverse hexagram — just below a full Blood Link.' },
     'Nayin Power':           { full: 'Nayin Power ☯', desc: 'All three pillars (Hour, Month, Year) have positive Nayin relationships with the Day Nayin. Maximum melodic element harmony. Strong amplification of the day\'s energy.' },
     'Nayin':                 { full: 'Nayin 纳音', desc: 'Two pillars have positive Nayin relationships with the Day Nayin. Melodic element harmony — the day\'s energy is supported and amplified.' },
     'Nayin Weak':            { full: 'Nayin Weak ✕', desc: 'All three pillars have negative Nayin relationships with the Day Nayin. The day\'s melodic energy is drained or opposed. Reduces overall effectiveness.' },
@@ -3186,7 +3266,7 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
                        personAYear, pYStem, pYBranch,
                        pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA,
                        pillars) {
-    const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+    const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
     const hasFullBL  = blueItems.some(i => i.tag === 'family');
     const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
 
@@ -3202,6 +3282,7 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     // Base score from the date's own XKDG relations (guaranteed floor regardless of person/season)
     let relationBaseScore = 0;
     if (blueItems.some(i => i.tag === 'family'))                                                  relationBaseScore = 6;
+    else if (blueItems.some(i => i.tag === 'family2'))                                            relationBaseScore = 5;
     else if (blueItems.some(i => i.text.includes('Pure Qi')))                                     relationBaseScore = 5;
     else if (blueItems.some(i => i.text.includes('Pure Adding') || i.text.includes('Pure Hetu'))) relationBaseScore = 4;
     else if (blueItems.some(i => i.text.includes('Adding') || i.text.includes('Hetu') || i.text.startsWith('Inverse Hex'))) relationBaseScore = 2;
@@ -3260,10 +3341,17 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
     const nayinFloor = nayinRes.label === 'Nayin Power' ? 6 : nayinRes.label === 'Nayin' ? 2 : null;
 
     const relationFloor = blueItems.some(i => i.tag === 'family')                                                  ? 12
+                        : blueItems.some(i => i.tag === 'family2')                                                 ? 11
                         : blueItems.some(i => i.text.includes('Pure Qi'))                                          ? 10
                         : blueItems.some(i => i.text.includes('Pure Adding') || i.text.includes('Pure Hetu'))      ? 7
                         : blueItems.some(i => i.text.includes('Adding') || i.text.includes('Hetu') || i.text.startsWith('Inverse Hex')) ? 3
                         : 1;
+
+    // "Double" Two-Family Bond: the two families bond on BOTH channels (qi AND yun) —
+    // a very special date. Extra push on top of the relation base; the relation floor
+    // stays 11 (still below a full Blood Link). Tunable.
+    const TFB_DOUBLE_BONUS = 2;
+    const tfbDoubleBonus = blueItems.some(i => i.tfbDouble) ? TFB_DOUBLE_BONUS : 0;
 
     // Option 1 — a genuine hexagram relation OUTRANKS element-level Nayin Weak.
     // Nayin Weak is an element-level weakness: it must not drag down, nor remove
@@ -3289,6 +3377,7 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
         + nobleBonus + luBonus + hvBonus + bvBonus + mvBonus + tyBonus
         + fullBLBonus + partialBLBonus
         + blOverrideBonus
+        + tfbDoubleBonus
         + nayinScore;
     return Math.max(effectiveFloor, rawScore);
 }
@@ -4342,7 +4431,7 @@ function buildTableView() {
                         : (h % 2 === 0 ? '#f8f9fa' : '#fff');
 
             // Relations text
-            const blueTexts = items.filter(i => i.tag === 'blue' || i.tag === 'family').map(i => i.text);
+            const blueTexts = items.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2').map(i => i.text);
             const qualTexts = items.filter(i => ['Powerful','Energetic','Very Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const relHtml = blueTexts.length > 0 ? `<div style="font-size:9px;color:#1a7a1a;font-weight:bold;line-height:1.4;text-align:right;">${blueTexts.join('<br>')}</div>` : '';
             const qualHtml = qualTexts.length > 0 ? `<div style="font-size:9px;color:#555;line-height:1.3;text-align:right;">${qualTexts.join(' · ')}</div>` : '';
@@ -4737,7 +4826,7 @@ function buildCalView() {
                     const { strong: ziSS, growing: ziSG } = getJieqiSeason(sdZi2);
                     const ziPillarsCAL = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGZi2, hZZi2);
                     const { items: ziItemsCAL } = analyzeXkdg(ziPillarsCAL, ziSS, ziSG);
-                    const ziBlueCAL = ziItemsCAL.filter(i => i.tag === 'blue' || i.tag === 'family');
+                    const ziBlueCAL = ziItemsCAL.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
                     const ziSpiritCAL = getSpiritForHour(dZhi, hZZi2);
                     let ziScoreCAL;
                     if (personAYear && personBYear_CAL && _scoreModeBalanced) {
@@ -4791,7 +4880,7 @@ function buildCalView() {
                 const { strong: hSS, growing: hSG } = getJieqiSeason(sd);
                 const hPillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hG, hZ);
                 const { items: hItems } = analyzeXkdg(hPillars, hSS, hSG);
-                const hBlue = hItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+                const hBlue = hItems.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
                 const hSpirit = getSpiritForHour(dZhi, hZ);
 
                 // Score the hour — balanced mode uses average(A,B), else active person
@@ -5529,7 +5618,7 @@ function buildMonthView() {
                 continue;
             }
             const { items: analysisItems } = analyzeXkdg(pillars, sS, sG);
-            const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+            const blueItems  = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
 
             // Add TY and Noble to analysisItems for Purpose filter
             const tyBranch = TIAN_YI[dGan];
@@ -7267,7 +7356,7 @@ function runScanner() {
             const { items: analysisItems } = analyzeXkdg(pillars, sStrong, sGrowing);
 
             // Step 1: Hour must have blue relations among 4 hexagrams
-            const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family');
+            const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
 
             // Add TY and Noble to analysisItems for Purpose filter
             const tyBranch = TIAN_YI[dGan];
@@ -7441,7 +7530,7 @@ function runScanner() {
             if (window._tpHourCache) {
                 try {
                     var _tpXkdgTags = analysisItems
-                        .filter(function (i) { return i.tag === 'blue' || i.tag === 'family'; })
+                        .filter(function (i) { return i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2'; })
                         .map(function (i) { return i.text; });
                     window._tpHourCache[_isoDay + '#' + hZhi] = {
                         score: totalScore, iso: _isoDay,
