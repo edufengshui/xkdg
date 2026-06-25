@@ -1234,6 +1234,18 @@
     formationFlags: function(cell){ return formationFlags(cell); },
     directionGate: function(cell, opts){ return directionGate(cell, opts); },
     voidInfoForIdx: function(idx60){ return voidInfoForIdx(idx60); },
-    dayVoidPalaces: function(Y, M, D){ return dayVoidPalaces(Y, M, D); }
+    dayVoidPalaces: function(Y, M, D){ return dayVoidPalaces(Y, M, D); },
+    // Public helper: the 12 hour pillars (時辰) of a civil date, with Chinese
+    // stem/branch and the clock range — used by the QMDJ Chart tool to turn a
+    // chosen date + 時辰 into the (stem, branch) that showQimenChart needs.
+    hourPillarsForDate: function(Y, M, D){
+      try {
+        var info = getDunJuForDate(Y, M, D);
+        if(!info) return null;
+        return getHourPillarsForDay(info.dayStem).map(function(p){
+          return { stem:p.stem, branch:p.branch, stemHan:STEM_HAN[p.stem], branchHan:BR_HAN[p.branch], time:p.time };
+        });
+      } catch(e){ return null; }
+    }
   };
 })();

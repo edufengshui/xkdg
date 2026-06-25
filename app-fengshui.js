@@ -2503,6 +2503,98 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// QMDJ CHART TOOL — a standalone panel so anyone can view a Qimen chart
+// (Rotating 轉盤 or Flying 飛盤) for any date + 時辰, without scanning.
+// Reuses showQimenChart (renderer) + QMDJWaterScanner.hourPillarsForDate.
+// ═══════════════════════════════════════════════════════════════════
+function _qmdjChartPopulateHours(selectCurrent){
+  var dEl = document.getElementById('qmdj-tool-date');
+  var sel = document.getElementById('qmdj-tool-hour');
+  if(!dEl || !sel) return;
+  if(!window.QMDJWaterScanner || typeof QMDJWaterScanner.hourPillarsForDate !== 'function'){
+    sel.innerHTML = '<option value="">scanner not loaded</option>'; return;
+  }
+  var parts = String(dEl.value || '').split('-');
+  if(parts.length !== 3){ sel.innerHTML = '<option value="">(set a valid date)</option>'; return; }
+  var hp = QMDJWaterScanner.hourPillarsForDate(+parts[0], +parts[1], +parts[2]);
+  if(!hp){ sel.innerHTML = '<option value="">(could not compute the day)</option>'; return; }
+  var prev = sel.value;
+  sel.innerHTML = hp.map(function(p, i){
+    return '<option value="' + i + '" data-gan="' + p.stemHan + '" data-zhi="' + p.branchHan + '">'
+         + p.branchHan + '\u6642 ' + (p.time || '') + ' \u00b7 ' + p.stemHan + p.branchHan + '</option>';
+  }).join('');
+  if(selectCurrent){
+    var h = new Date().getHours();
+    sel.value = String(Math.floor(((h + 1) % 24) / 2));   // current double-hour (子=0 … 亥=11)
+  } else if(prev){ sel.value = prev; }
+}
+function qmdjChartShow(){
+  var dEl = document.getElementById('qmdj-tool-date');
+  var sel = document.getElementById('qmdj-tool-hour');
+  var box = document.getElementById('qmdj-tool-chart');
+  if(!dEl || !sel || !box) return;
+  var opt = sel.options[sel.selectedIndex];
+  if(!opt || !opt.getAttribute('data-gan')){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Pick an hour.</div>'; return; }
+  var hGan = opt.getAttribute('data-gan'), hZhi = opt.getAttribute('data-zhi');
+  var modeEl = document.querySelector('input[name="qmdj-tool-mode"]:checked');
+  var rotating = !!(modeEl && modeEl.value === 'rotating');
+  if(typeof showQimenChart !== 'function'){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>'; return; }
+  var html = '';
+  try { html = showQimenChart(dEl.value, hGan, hZhi, null, { mode:(rotating ? 'rotating' : undefined), returnHtml:true }); }
+  catch(e){ html = ''; }
+  box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Cannot load chart for ' + dEl.value + ' ' + hGan + hZhi + '.</div>';
+}
+function openQmdjChartPanel(){
+  var ov = document.getElementById('qmdj-tool-overlay');
+  if(ov){ ov.style.display = 'flex'; _qmdjChartPopulateHours(true); return; }
+  ov = document.createElement('div');
+  ov.id = 'qmdj-tool-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,8,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
+  ov.addEventListener('click', function(e){ if(e.target === ov) ov.style.display = 'none'; });
+  var today = new Date().toISOString().slice(0,10);
+  ov.innerHTML =
+      '<div style="background:#fff;border-radius:12px;max-width:780px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);">'
+    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+    +     '<div style="font-size:16px;font-weight:bold;color:#5e35b1;">\ud83c\udfb2 QMDJ Chart</div>'
+    +     '<button onclick="document.getElementById(\'qmdj-tool-overlay\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">\u2715</button>'
+    +   '</div>'
+    +   '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">'
+    +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Date</label>'
+    +       '<input type="date" id="qmdj-tool-date" value="' + today + '" onchange="_qmdjChartPopulateHours()" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></div>'
+    +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Hour \u6642\u8fb0</label>'
+    +       '<select id="qmdj-tool-hour" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></select></div>'
+    +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Chart</label>'
+    +       '<label style="font-size:13px;margin-right:10px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="flying" checked> Flying \u98db\u76e4</label>'
+    +       '<label style="font-size:13px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="rotating"> Rotating \u8f49\u76e4</label></div>'
+    +     '<button onclick="qmdjChartShow()" style="background:#5e35b1;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-weight:bold;cursor:pointer;font-size:13px;">Show chart</button>'
+    +   '</div>'
+    +   '<div style="font-size:11px;color:#888;font-style:italic;margin-bottom:10px;">Rotating \u8f49\u76e4 = human directional actions &amp; divination. Flying \u98db\u76e4 = Feng Shui stimulators. South is at the top.</div>'
+    +   '<div id="qmdj-tool-chart"></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  _qmdjChartPopulateHours(true);
+  try { qmdjChartShow(); } catch(e){}   // show "now" immediately
+}
+function _injectQmdjChartLauncher(){
+  try {
+    if(document.getElementById('qmdj-tool-launcher')) return;
+    var b = document.createElement('button');
+    b.id = 'qmdj-tool-launcher';
+    b.type = 'button';
+    b.title = 'QMDJ Chart (Rotating / Flying)';
+    b.textContent = '\ud83c\udfb2';   // 🎲 — distinct from the 🧭 directional compass and the 🌀 water/Qimen spiral
+    b.onclick = openQmdjChartPanel;
+    // Circular FAB sitting right beside the compass FAB (compass is at left:14, width 46).
+    b.style.cssText = 'position:fixed;left:70px;bottom:14px;z-index:99994;width:46px;height:46px;border:0;border-radius:50%;background:#5e35b1;color:#fff;font-size:21px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+    document.body.appendChild(b);
+  } catch(e){}
+}
+if(typeof document !== 'undefined'){
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _injectQmdjChartLauncher);
+  else _injectQmdjChartLauncher();
+}
+
 // ── Internal/External door helpers: Zheng Shen facing + Ling Shen water ──
 function fsNearestZhengShen(deg){
   if (!isFinite(deg)) return null;
