@@ -3404,6 +3404,11 @@ function fsRenderHouseProfiles(){
     // RIGHT (top-right corner): Load · Rename · Delete · Archive
     html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto;">';
     html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Load into FS inputs to edit">📂 Load</button>';
+    // 📐 Floor plan — ALWAYS visible (even when details are collapsed) when this
+    // floor has a saved plan, so it is easy to reopen from House Profiles.
+    if (_sf && _sf.floorplan && _sf.floorplan.imgData){
+      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Open the saved floor plan (with its flying stars)">📐 Floor plan</button>';
+    }
     html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
     // 📁 Archive = the client\'s Google Drive folder (photos, written consultations, etc.)
