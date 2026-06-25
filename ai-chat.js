@@ -924,19 +924,90 @@
   // ── MACROS — short triggers the user types that expand into a full instruction ──
   var _macroChipRefresh = null;   // set by buildPanel; lets the manager refresh the chip row
   function loadMacros() {
-    try { var a = JSON.parse(localStorage.getItem('xkdg_ai_macros') || 'null'); if (Array.isArray(a)) return a; } catch (e) {}
-    var def = [{
-      trigger: 'aq',
-      label: 'Acquario — entrambe le case, domani',
-      text: 'Per la data di DOMANI, trova le ore migliori per accendere l\u2019acquario in OGNI casa salvata della persona attiva. ' +
-            'Per ciascuna casa usa la SUA posizione d\u2019acqua salvata (direzione) e la sua stella d\u2019acqua (facing), sulla SUA carta volante. ' +
-            'Procedi una casa alla volta: rendi attiva la casa (set_active_house), leggi il suo setup, esegui find_water_activation_full per quella casa, ' +
-            'e dammi UN\u2019ora migliore PER OGNI casa (un risultato separato per ciascuna), con data e motivo. Alla fine ripristina la casa che era attiva all\u2019inizio.'
-    }];
-    try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(def)); } catch (e) {}
-    return def;
+    var arr = null;
+    try { var a = JSON.parse(localStorage.getItem('xkdg_ai_macros') || 'null'); if (Array.isArray(a)) arr = a; } catch (e) {}
+    if (!arr) {
+      arr = [{
+        trigger: 'aq',
+        label: 'Acquario — entrambe le case, domani',
+        text: 'Per la data di DOMANI, trova le ore migliori per accendere l\u2019acquario in OGNI casa salvata della persona attiva. ' +
+              'Per ciascuna casa usa la SUA posizione d\u2019acqua salvata (direzione) e la sua stella d\u2019acqua (facing), sulla SUA carta volante. ' +
+              'Procedi una casa alla volta: rendi attiva la casa (set_active_house), leggi il suo setup, esegui find_water_activation_full per quella casa, ' +
+              'e dammi UN\u2019ora migliore PER OGNI casa (un risultato separato per ciascuna), con data e motivo. Alla fine ripristina la casa che era attiva all\u2019inizio.'
+      }];
+    }
+    // Seed / refresh the Vienna<->Tuoro travel-planner test macros (VT / TV).
+    // They ASK for the departure date/time on tap, then plan with exact coordinates.
+    try {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '2') {
+        var seed = [
+          {
+            trigger: 'VT', icon: '\ud83d\ude97', askDepart: true,   // 🚗
+            label: 'Vienna \u2192 Tuoro (travel-planner test)',
+            text: 'Pianifica un viaggio in auto da Vienna (Austria) a Tuoro sul Trasimeno (Italia). ' +
+                  'Chiama plan_travel con queste coordinate ESATTE e questi nomi: ' +
+                  'origin_name "Vienna", origin_lat 48.2082, origin_lon 16.3738; ' +
+                  'dest_name "Tuoro sul Trasimeno", dest_lat 43.2074, dest_lon 12.0772. ' +
+                  'Apri il planner (open_planner: true).'
+          },
+          {
+            trigger: 'TV', icon: '\ud83d\ude97', askDepart: true,   // 🚗
+            label: 'Tuoro \u2192 Vienna (travel-planner test)',
+            text: 'Pianifica un viaggio in auto da Tuoro sul Trasimeno (Italia) a Vienna (Austria). ' +
+                  'Chiama plan_travel con queste coordinate ESATTE e questi nomi: ' +
+                  'origin_name "Tuoro sul Trasimeno", origin_lat 43.2074, origin_lon 12.0772; ' +
+                  'dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738. ' +
+                  'Apri il planner (open_planner: true).'
+          }
+        ];
+        // Replace any earlier VT/TV, then append the current definitions.
+        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv'; });
+        seed.forEach(function (m) { arr.push(m); });
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '2');
+      }
+    } catch (e) {}
+    try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
+    return arr;
   }
   function saveMacros(arr) { try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {} }
+
+  // Small prompt asked before a travel macro runs: when do you want to depart?
+  // Calls cb(clause, humanLabel) — clause is appended to the macro instruction.
+  function _askDepart(cb) {
+    var old = document.getElementById('xkdg-depart-ov'); if (old && old.parentNode) old.parentNode.removeChild(old);
+    var ov = E('div', 'position:fixed;inset:0;z-index:100003;background:rgba(20,8,30,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:inherit;');
+    ov.id = 'xkdg-depart-ov';
+    var today = new Date().toISOString().slice(0, 10);
+    var card = E('div', 'background:#fff;border-radius:12px;max-width:340px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);');
+    card.innerHTML =
+        '<div style="font-weight:700;color:#6a1b9a;font-size:15px;margin-bottom:12px;">\ud83d\ude97 Quando vuoi partire?</div>'
+      + '<label style="font-size:12px;color:#555;display:block;margin-bottom:3px;">Data</label>'
+      + '<input type="date" id="xkdg-depart-date" value="' + today + '" style="width:100%;padding:8px;border:1px solid #c9b6d6;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:13px;">'
+      + '<label style="font-size:12px;color:#555;display:block;margin-bottom:3px;">Ora <span style="color:#999;">(vuoto = ora pi\u00f9 favorevole)</span></label>'
+      + '<input type="time" id="xkdg-depart-time" style="width:100%;padding:8px;border:1px solid #c9b6d6;border-radius:6px;margin-bottom:16px;box-sizing:border-box;font-size:13px;">'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+      +   '<button id="xkdg-depart-cancel" style="background:#eee;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;">Annulla</button>'
+      +   '<button id="xkdg-depart-go" style="background:#6a1b9a;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;">Pianifica</button>'
+      + '</div>';
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function (e) { if (e.target === ov && ov.parentNode) ov.parentNode.removeChild(ov); });
+    document.getElementById('xkdg-depart-cancel').onclick = function () { if (ov.parentNode) ov.parentNode.removeChild(ov); };
+    document.getElementById('xkdg-depart-go').onclick = function () {
+      var d = document.getElementById('xkdg-depart-date').value || today;
+      var t = document.getElementById('xkdg-depart-time').value || '';
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      var clause, human;
+      if (t) {
+        clause = 'Parti il ' + d + ' alle ' + t + ': usa depart_date ' + d + ' e depart_time ' + t + '.';
+        human = d + ' ' + t;
+      } else {
+        clause = 'Parti il ' + d + ': usa depart_date ' + d + ' e OMETTI depart_time/depart_hour, lasciando che il planner scelga l\u2019ora diurna pi\u00f9 favorevole di quel giorno.';
+        human = d + ' \u00b7 ora pi\u00f9 favorevole';
+      }
+      try { cb(clause, human); } catch (e) {}
+    };
+  }
   function findMacro(text) {
     var t = (text || '').trim().toLowerCase(); if (!t) return null;
     var arr = loadMacros();
@@ -2488,9 +2559,21 @@
       arr.forEach(function (m) {
         var chip = elc('button', { title: (m.label || m.trigger),
           style: 'border:1px solid #c9b6d6;background:#f3edf8;color:#6a1b9a;border-radius:14px;padding:4px 11px;font-size:12px;font-weight:600;cursor:pointer;' },
-          '\u26A1 ' + (m.trigger || ''));
+          (m.icon || '\u26A1') + ' ' + (m.trigger || ''));
         var lpTimer = null, suppress = false;
-        chip.onclick = function () { if (suppress) { suppress = false; return; } hideTip(); if (sending) return; input.value = m.trigger; doSend(); };
+        chip.onclick = function () {
+          if (suppress) { suppress = false; return; }
+          hideTip(); if (sending) return;
+          if (m.askDepart) {
+            _askDepart(function (clause, human) {
+              var toSend = m.text + (clause ? (' ' + clause) : '');
+              var bubble = (m.icon || '\u26A1') + ' ' + (m.trigger || '') + (m.label ? ' \u2014 ' + m.label : '') + (human ? ' \u00b7 ' + human : '');
+              doSend(toSend, bubble);
+            });
+            return;
+          }
+          input.value = m.trigger; doSend();
+        };
         // Desktop: hover shows the reminder.
         chip.onmouseenter = function () { showTip(chip, m); };
         chip.onmouseleave = hideTip;
@@ -3278,20 +3361,24 @@
       return step();
     }
 
-    function doSend() {
+    function doSend(overrideToSend, overrideBubble) {
       if (sending) return;
       stopSpeaking();
+      var hasOverride = (typeof overrideToSend === 'string' && overrideToSend.length > 0);
       var text = (input.value || '').trim();
-      if (!text) return;
+      if (!hasOverride && !text) return;
       var url = getUrl();
       if (!url) { promptUrl(); if (!getUrl()) return; }
 
-      var macro = findMacro(text);          // a short trigger expands into its full instruction
-      var toSend = macro ? macro.text : text;
+      var macro = hasOverride ? null : findMacro(text);   // a short trigger expands into its full instruction
+      var toSend = hasOverride ? overrideToSend : (macro ? macro.text : text);
 
       input.value = '';
       history.push({ role: 'user', content: toSend });
-      addBubble('user', macro ? ('\u26A1 ' + text + (macro.label ? ' \u2014 ' + macro.label : '')) : text);
+      var bubble = (typeof overrideBubble === 'string' && overrideBubble.length)
+        ? overrideBubble
+        : (macro ? ('\u26A1 ' + text + (macro.label ? ' \u2014 ' + macro.label : '')) : text);
+      addBubble('user', bubble);
       sending = true; setStatus('Thinking…');
       send.disabled = true; send.style.opacity = '0.6';
 

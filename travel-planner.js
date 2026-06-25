@@ -1110,14 +1110,23 @@
     function slotTarget(slot) {
       var posd = tpUsableDirs(slot.dirs);
       if (!posd.length) return null;
-      var best = null, bestDiff = 999;
-      posd.forEach(function (d) {
-        var diff = tpAngDiff(TP_DIR_DEG[d.dir], overallBearing);
-        if (diff < bestDiff) { bestDiff = diff; best = d; }
+      // Bearing toward the FINAL destination from THIS leg's real start position
+      // (recomputed per double-hour). Candidates = positive directions within ±67.5°
+      // of it (the direct quadrant + the two adjacent). A positive direction ≥90°
+      // off — it would lead AWAY from the destination — is excluded (e.g. E when the
+      // destination is S), even when an adjacent quadrant was reached earlier.
+      var bearToFinal = (slot.bearingDest != null) ? slot.bearingDest : overallBearing;
+      var cand = posd.filter(function (d) { return tpAngDiff(TP_DIR_DEG[d.dir], bearToFinal) <= 67.5; });
+      if (!cand.length) return null;
+      // Prefer the MOST DIRECT candidate (closest to the destination bearing → cuts
+      // the residual distance fastest). Use the positivity score only as a tie-break
+      // between candidates that are essentially equally direct.
+      cand.sort(function (a, b) {
+        var da = tpAngDiff(TP_DIR_DEG[a.dir], bearToFinal), db = tpAngDiff(TP_DIR_DEG[b.dir], bearToFinal);
+        if (Math.abs(da - db) > 1) return da - db;                 // more direct first
+        return (b.combined || 0) - (a.combined || 0);              // then more positive
       });
-      // skip a positive direction that points essentially backward vs the route
-      if (best && tpAngDiff(TP_DIR_DEG[best.dir], overallBearing) > 90) return null;
-      return best;
+      return cand[0];
     }
     // latest in-window point where the NET bearing from P0 is inside the target sector
     function cashPoint(P0, slot, targetDeg) {
