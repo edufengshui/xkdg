@@ -22,9 +22,15 @@
   var K_FILEID = 'xkdg_gdrive_fileid';
   var K_LASTSYNC = 'xkdg_gdrive_lastsync';
   var K_DRIVE_MTIME = 'xkdg_gdrive_drive_mtime';   // Drive file modifiedTime as last seen by THIS device (server clock)
+  var K_AUTOSYNC = 'xkdg_gdrive_autosync';         // '1' when auto-sync is ON for THIS device
   var EXCLUDE_PREFIX = 'xkdg_gdrive_';   // never sync the sync config itself
 
   var tokenClient = null, pendingAction = null;
+  var pendingOnToken = null, pendingOnFail = null, pendingSilent = false;
+  var accessToken = null, tokenExp = 0;                 // cached short-lived token for silent ops
+  var dirty = false, saveTimer = null, suppressDirty = false, autoBusy = false, AUTO_DEBOUNCE = 9000;
+
+  function autoOn(){ try { return localStorage.getItem(K_AUTOSYNC) === '1'; } catch(e){ return false; } }
 
   function clientId(){ try { return (localStorage.getItem(K_CLIENT) || '').trim(); } catch(e){ return ''; } }
 
@@ -42,30 +48,52 @@
     var obj = JSON.parse(text);
     if (!obj || !obj.__xkdg_sync || !obj.data) throw new Error('Not an XKDG sync file.');
     var keys = Object.keys(obj.data);
-    keys.forEach(function (k){ if (k.indexOf(EXCLUDE_PREFIX) !== 0) localStorage.setItem(k, obj.data[k]); });
+    suppressDirty = true;
+    try { keys.forEach(function (k){ if (k.indexOf(EXCLUDE_PREFIX) !== 0) localStorage.setItem(k, obj.data[k]); }); }
+    finally { suppressDirty = false; }
     return { count: keys.length, ts: obj.ts };
   }
 
   // ---- Google auth (GIS token model) ----
-  function getToken(action){
-    pendingAction = action;
+  // requestToken({silent, onToken, onFail}). Silent ops never show UI or alerts
+  // (prompt:'none'); manual ops keep the original prompts. A short-lived token is
+  // cached so background auto-sync doesn't re-prompt.
+  function requestToken(opts){
+    opts = opts || {};
     var cid = clientId();
-    if (!cid){ alert('First paste your Google Client ID (⚙ Settings in this panel).'); return; }
+    if (!cid){ if (opts.silent){ opts.onFail && opts.onFail('no-client'); } else { alert('First paste your Google Client ID (⚙ Settings in this panel).'); } return; }
     if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2){
-      alert('Google sign-in script not ready yet — wait a second and try again.'); return;
+      if (opts.silent){ opts.onFail && opts.onFail('gis-not-ready'); } else { alert('Google sign-in script not ready yet — wait a second and try again.'); }
+      return;
     }
+    if (accessToken && Date.now() < tokenExp){ opts.onToken && opts.onToken(accessToken); return; }
     if (!tokenClient || tokenClient.__cid !== cid){
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: cid, scope: SCOPE,
         callback: function (resp){
-          if (resp && resp.access_token){ var a = pendingAction; pendingAction = null; if (a) a(resp.access_token); }
-          else { alert('Google authorization failed or was cancelled.'); }
+          if (resp && resp.access_token){
+            accessToken = resp.access_token;
+            tokenExp = Date.now() + ((resp.expires_in || 3600) * 1000) - 60000;
+            var a = pendingOnToken; pendingOnToken = null; pendingOnFail = null;
+            if (a) a(accessToken);
+          } else {
+            var f = pendingOnFail; var silent = pendingSilent; pendingOnToken = null; pendingOnFail = null;
+            if (silent){ if (f) f('no-token'); } else { alert('Google authorization failed or was cancelled.'); }
+          }
+        },
+        error_callback: function (err){
+          var f = pendingOnFail; var silent = pendingSilent; pendingOnToken = null; pendingOnFail = null;
+          if (silent){ if (f) f((err && err.type) || 'error'); } else { setStatus('Authorization error — try again.', '#ff6b6b'); }
         }
       });
       tokenClient.__cid = cid;
     }
-    tokenClient.requestAccessToken({ prompt: '' });
+    pendingOnToken = opts.onToken; pendingOnFail = opts.onFail; pendingSilent = !!opts.silent;
+    try { tokenClient.requestAccessToken({ prompt: opts.silent ? 'none' : '' }); }
+    catch(e){ if (opts.silent){ opts.onFail && opts.onFail('throw'); } else { alert('Could not start Google authorization.'); } }
   }
+  // Manual flow (unchanged behaviour): pops UI/alerts as before.
+  function getToken(action){ requestToken({ silent:false, onToken:action, onFail:function(){} }); }
 
   // ---- Drive REST ----
   function driveFind(token){
@@ -180,6 +208,87 @@
     el.textContent = last ? ('Last sync on this device: ' + new Date(last).toLocaleString()) : 'This device has never synced.';
   }
 
+  // ===== AUTO-SYNC (per device) =====================================
+  // Debounced push after edits + a "newer copy?" check on open. Both are
+  // silent (no popups). Conflicts are NEVER auto-overwritten.
+
+  function scheduleAutoSave(){
+    if (!autoOn()) return;
+    dirty = true;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function (){ saveTimer = null; if (dirty) autoSave(); }, AUTO_DEBOUNCE);
+  }
+
+  function autoSave(){
+    if (!autoOn() || !clientId() || autoBusy) return;
+    requestToken({ silent:true, onToken:function (token){
+      autoBusy = true;
+      var content = collectData();
+      var savedId = ''; try { savedId = localStorage.getItem(K_FILEID) || ''; } catch(e){}
+      driveFind(token).then(function (f){
+        var seen = ''; try { seen = localStorage.getItem(K_DRIVE_MTIME) || ''; } catch(e){}
+        // CONFLICT: Drive changed (another device) since our last sync → do NOT auto-overwrite.
+        if (f && f.modifiedTime && seen && f.modifiedTime !== seen){
+          setStatus('⚠ Auto-sync paused: Drive has newer data from another device. Open Drive Sync and Load or Save manually.', '#ffd479');
+          autoBusy = false; return null;
+        }
+        var id = (f && f.id) || savedId;
+        return id ? driveUpdate(token, id, content) : driveCreate(token, content);
+      }).then(function (res){
+        autoBusy = false;
+        if (!res) return;
+        try {
+          localStorage.setItem(K_FILEID, res.id);
+          localStorage.setItem(K_LASTSYNC, new Date().toISOString());
+          if (res.modifiedTime) localStorage.setItem(K_DRIVE_MTIME, res.modifiedTime);
+        } catch(e){}
+        dirty = false;
+        setStatus('✓ Auto-saved ' + new Date().toLocaleTimeString(), '#7CFC9A');
+        refreshInfo();
+      }).catch(function (){ autoBusy = false; /* stay dirty; will retry on next edit */ });
+    }, onFail:function (){ /* no silent token available → skip quietly, retry later */ } });
+  }
+
+  // On open: if the Drive copy is newer than what this device last synced, ASK to load it.
+  function checkNewerOnOpen(){
+    if (!autoOn() || !clientId()) return;
+    var seen = ''; try { seen = localStorage.getItem(K_DRIVE_MTIME) || ''; } catch(e){}
+    if (!seen) return;   // never synced on this device → do the first sync manually
+    requestToken({ silent:true, onToken:function (token){
+      driveFind(token).then(function (f){
+        if (!f || !f.modifiedTime || f.modifiedTime === seen) return;   // nothing newer
+        var when = new Date(f.modifiedTime).toLocaleString();
+        if (!confirm('\u2601 A newer XKDG copy is on Drive (saved ' + when + '), from another device.\n\nLoad it now? This will REPLACE this device\u2019s data.')) return;
+        driveDownload(token, f.id).then(function (text){
+          try {
+            restoreData(text);
+            localStorage.setItem(K_FILEID, f.id);
+            localStorage.setItem(K_LASTSYNC, new Date().toISOString());
+            localStorage.setItem(K_DRIVE_MTIME, f.modifiedTime);
+          } catch(e){ alert('Could not load the Drive copy: ' + e.message); return; }
+          location.reload();
+        }).catch(function (){});
+      }).catch(function (){});
+    }, onFail:function (){ /* silent token not available → skip; user can sync manually */ } });
+  }
+
+  // Hook localStorage writes so edits schedule a debounced auto-save.
+  function installAutoSaveHook(){
+    try {
+      var store = window.localStorage;
+      if (!store || store.__xkdgHook) return;
+      var orig = store.setItem.bind(store);
+      store.setItem = function (k, v){
+        orig(k, v);
+        try {
+          if (!suppressDirty && k && k.indexOf(EXCLUDE_PREFIX) !== 0 && autoOn()) scheduleAutoSave();
+        } catch(e){}
+      };
+      store.__xkdgHook = true;
+    } catch(e){ /* if the environment forbids it, auto-save simply won't trigger */ }
+  }
+  // ==================================================================
+
   // ---- panel UI ----
   function openPanel(){
     if (document.getElementById('gds-root')) return;
@@ -199,7 +308,23 @@
     card.appendChild(btnRow);
 
     card.appendChild(el('div', 'font-size:12px;min-height:18px;margin-bottom:4px;', '')).id = 'gds-status';
-    card.appendChild(el('div', 'font-size:11px;color:#7e8db3;margin-bottom:12px;', '')).id = 'gds-info';
+    card.appendChild(el('div', 'font-size:11px;color:#7e8db3;margin-bottom:10px;', '')).id = 'gds-info';
+
+    // auto-sync toggle (per device)
+    var autoRow = el('div', 'border-top:1px solid #2a3556;padding-top:10px;margin-bottom:10px;');
+    var autoLab = el('label', 'display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#cfe0ff;font-weight:bold;');
+    var autoCb = document.createElement('input'); autoCb.type = 'checkbox'; autoCb.style.cssText = 'width:16px;height:16px;cursor:pointer;';
+    try { autoCb.checked = autoOn(); } catch(e){}
+    autoCb.onchange = function (){
+      try { localStorage.setItem(K_AUTOSYNC, autoCb.checked ? '1' : '0'); } catch(e){}
+      if (autoCb.checked){ installAutoSaveHook(); setStatus('Auto-sync ON for this device.', '#7CFC9A'); }
+      else { if (saveTimer){ clearTimeout(saveTimer); saveTimer = null; } setStatus('Auto-sync OFF.', '#9fb0d6'); }
+    };
+    autoLab.appendChild(autoCb); autoLab.appendChild(document.createTextNode('Auto-sync (this device)'));
+    autoRow.appendChild(autoLab);
+    autoRow.appendChild(el('div', 'font-size:10.5px;color:#7e8db3;margin-top:6px;',
+      'When on: checks Drive for a newer copy when you open the app (asks before loading), and auto-saves your changes a few seconds after you edit. Conflicts are never auto-overwritten — you stay in control.'));
+    card.appendChild(autoRow);
 
     // settings (client id)
     var setRow = el('div', 'border-top:1px solid #2a3556;padding-top:10px;');
@@ -207,7 +332,7 @@
     var inp = el('input', 'width:100%;padding:7px;border:1px solid #2a3556;border-radius:6px;background:#0b1020;color:#eee;font-size:12px;');
     inp.placeholder = 'xxxxxxxx.apps.googleusercontent.com';
     try { inp.value = clientId(); } catch(e){}
-    inp.onchange = function (){ try { localStorage.setItem(K_CLIENT, (inp.value || '').trim()); tokenClient = null; setStatus('Client ID saved.', '#7CFC9A'); } catch(e){} };
+    inp.onchange = function (){ try { localStorage.setItem(K_CLIENT, (inp.value || '').trim()); tokenClient = null; accessToken = null; tokenExp = 0; setStatus('Client ID saved.', '#7CFC9A'); } catch(e){} };
     setRow.appendChild(inp);
     setRow.appendChild(el('div', 'font-size:10.5px;color:#7e8db3;margin-top:6px;',
       'Create it once in Google Cloud Console (Drive API + OAuth client, scope drive.file). Origin must be this site.'));
@@ -236,6 +361,13 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectLauncher);
   else injectLauncher();
+
+  // Boot auto-sync if enabled on this device: install the edit hook now, and
+  // (after GIS has had a moment to load) silently check for a newer Drive copy.
+  if (autoOn()){
+    installAutoSaveHook();
+    setTimeout(checkNewerOnOpen, 4000);
+  }
 
   window.XKDGDriveSync = { open: openPanel, save: doSave, load: doLoad };
 })();
