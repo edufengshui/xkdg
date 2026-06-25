@@ -1014,7 +1014,7 @@
   var _FS_STEM_CLASH = { Jia:'Geng', Geng:'Jia', Yi:'Xin', Xin:'Yi', Bing:'Ren', Ren:'Bing', Ding:'Gui', Gui:'Ding' };
   function _fsStemClash(a, b){ return !!a && !!b && _FS_STEM_CLASH[a] === b; }
 
-  function imprisonmentInfo(chart){
+  function imprisonmentInfo(chart, facingDegOpt){
     try {
       if(!chart || !chart.facingStars) return { imprisoned:false };
       var per = _fsCurrentPeriod();
@@ -1022,10 +1022,12 @@
       var byGrid = {};
       var add = function(g, via){ if(g==null || g<0 || g===4) return; if(!byGrid[g]) byGrid[g]={grid:g,vias:[]}; if(byGrid[g].vias.indexOf(via)<0) byGrid[g].vias.push(via); };
       for(var i=0;i<9;i++){ if(chart.facingStars[i] === 5) add(i, '5ws'); }            // (a) where the 5 water star sits
-      var facDeg = NaN;
-      var hf = (typeof document!=='undefined') ? document.getElementById('fs-house-facing') : null;
-      if(hf) facDeg = parseFloat(hf.value);
-      if(isNaN(facDeg)){ var fp = _fsActiveHouseFP(); if(fp && fp.facing != null) facDeg = parseFloat(fp.facing); }
+      var facDeg = (facingDegOpt != null && isFinite(parseFloat(facingDegOpt))) ? parseFloat(facingDegOpt) : NaN;
+      if(isNaN(facDeg)){
+        var hf = (typeof document!=='undefined') ? document.getElementById('fs-house-facing') : null;
+        if(hf) facDeg = parseFloat(hf.value);
+        if(isNaN(facDeg)){ var fp = _fsActiveHouseFP(); if(fp && fp.facing != null) facDeg = parseFloat(fp.facing); }
+      }
       if(isFinite(facDeg)) add(_fsFacingGridFromDeg(facDeg), 'facing');                  // (b) the facing palace
       var palaces = Object.keys(byGrid).map(function(g){
         var c = byGrid[g], pal = FS_GRID_TO_QMDJ_PALACE[c.grid];
@@ -1035,18 +1037,57 @@
     } catch(e){ return { imprisoned:false }; }
   }
 
+  // ── STATELESS authoritative chart for a given facing+period ───────────
+  // Does NOT read the DOM / the rendered FS page. Returns every palace's
+  // water (向) and mountain (山) star by direction, plus the imprisoned-star
+  // (入囚) flag and its liberation palaces. Used by the AI assistant so it
+  // never has to guess a star or depend on the FS page being open.
+  var _FS_GRID_TO_DIR = { 0:'SE', 1:'S', 2:'SW', 3:'E', 4:'C', 5:'W', 6:'NE', 7:'N', 8:'NW' };
+  function computeChart(facingDeg, period){
+    try {
+      if(typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function')
+        return { error:'flying-stars engine not loaded' };
+      var deg = parseFloat(facingDeg), per = parseInt(period, 10);
+      if(!isFinite(deg) || isNaN(per) || per < 1 || per > 9) return { error:'facing/period missing or invalid' };
+      var chart = FlyingStars.calculate(per, fsMountainCharFromDeg(deg));
+      if(!chart || !chart.facingStars || !chart.sittingStars) return { error:'chart computation failed' };
+      var palaces = {};
+      for(var g = 0; g < 9; g++){
+        var dir = _FS_GRID_TO_DIR[g];
+        palaces[dir] = { water: chart.facingStars[g], mountain: chart.sittingStars[g] };
+      }
+      var imp = imprisonmentInfo(chart, deg);
+      var out = {
+        facing_deg: deg, period: per, current_period: _fsCurrentPeriod(),
+        palaces: palaces,
+        center: { water: chart.facingStars[4], mountain: chart.sittingStars[4] },
+        imprisoned: !!imp.imprisoned
+      };
+      if(imp.imprisoned){
+        out.period_water_star = imp.periodStar;
+        out.liberation = imp.palaces.map(function(p){ return { direction:_FS_GRID_TO_DIR[p.grid], palace:p.qmdj, label:p.label, via:p.via }; });
+        out.imprisonment_note = 'The current-period water star ' + imp.periodStar + ' (\u5411\u661f) is IMPRISONED in the CENTRE (\u5165\u56da): it has no outer palace and must be freed with MOVING WATER toward '
+          + out.liberation.map(function(p){ return p.direction + ' (' + p.via + ')'; }).join(' OR ')
+          + '. Never report this star as simply absent.';
+      }
+      return out;
+    } catch(e){ return { error: String((e && e.message) || e) }; }
+  }
+
   function scanStarPreset(type, starN, opts){
     opts = opts || {};
     if(typeof Solar === 'undefined') return { error:'lunar-javascript not loaded.' };
     if(typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getHourChart !== 'function')
       return { error:'qmdj-water-scanner.js not loaded.' };
-    var chart = getCurrentFSChart();
+    var chart = (opts.facingDeg != null && opts.period != null && isFinite(parseFloat(opts.facingDeg)) && parseInt(opts.period,10) >= 1)
+      ? (function(){ try { return FlyingStars.calculate(parseInt(opts.period,10), fsMountainCharFromDeg(parseFloat(opts.facingDeg))); } catch(e){ return null; } })()
+      : getCurrentFSChart();
     if(!chart) return { error:'Set House Facing and Period first.' };
     if(type !== 'water' && type !== 'mountain') return { error:"star_type must be 'water' (facing star) or 'mountain' (sitting star)." };
     starN = parseInt(starN, 10);
     if(isNaN(starN) || starN < 1 || starN > 9) return { error:'star_num must be 1-9.' };
 
-    var imp = imprisonmentInfo(chart);
+    var imp = imprisonmentInfo(chart, (opts.facingDeg != null ? opts.facingDeg : null));
     var gridIndices = findStarPalaces(chart, type, starN);
     var fsPalaces = gridIndices
       .filter(function(g){ return g !== 4; })
@@ -1228,6 +1269,7 @@
   window.QFS = {
     open:      open,
     scanStarPreset: scanStarPreset,
+    computeChart: computeChart,
     close:     close,
     selectAll: selectAll,
     selectAllProfiles: selectAllProfiles,

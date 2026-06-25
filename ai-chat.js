@@ -255,6 +255,14 @@
     'hexagram 7?", "is this hexagram Zheng Shen now?"), CALL get_hexagram_info (by hex number, or by upper + lower ' +
     'trigram) and answer from it. NEVER say hexagrams/families are out of scope and NEVER send the user to an ' +
     'external I Ching book - the answer is in the app.\n' +
+    '- FLYING-STAR GROUNDING (CRITICAL - NEVER GUESS): NEVER state which flying star sits in a direction from your own ' +
+    'reasoning or memory, and NEVER compute a chart in your head. The ONLY source of truth is get_house_setup → each ' +
+    'floor\u2019s flying_stars object (palaces{DIR:{water,mountain}}, center, imprisoned, liberation, imprisonment_note), ' +
+    'computed authoritatively from facing+period. To answer "what water star is at <DIR>" or to pick star_num for an ' +
+    'activation, READ flying_stars.palaces[<DIR>].water — do not infer it. If flying_stars is null/absent (facing or ' +
+    'period not set for that house), tell the user the chart cannot be computed and ask them to set facing & period - ' +
+    'do NOT invent a star. When you call find_water_activation_full, also pass facing_deg and period from that floor so ' +
+    'the special-config scan uses the SAME chart.\n' +
     '- FLYING vs ROTATING chart (CRITICAL - NEVER mix): FS STIMULATORS - activating a flying star / water / aquarium / ' +
     'fountain / mountain star (find_water_activation_full, find_water_hours, find_qimen_hours_for_star, QFS) - ALWAYS ' +
     'use the FLYING chart (\u98db\u76e4). The ROTATING chart (\u8f49\u76e4) is used ONLY for human DIRECTIONAL actions: travel / ' +
@@ -767,7 +775,9 @@
         properties: {
           direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'Compass quadrant the water faces (for scan 2).' },
           star_type: { type: 'string', enum: ['water', 'mountain'], description: 'For scan 3: water = facing star, mountain = sitting star. For an aquarium use water.' },
-          star_num: { type: 'integer', description: 'For scan 3: the flying star number (1-9) living in that palace. Get it from the chart (recall_flying_stars / get_app_state).' },
+          star_num: { type: 'integer', description: 'For scan 3: the flying star number (1-9) living in that palace. Get it from get_house_setup flying_stars (authoritative); never guess.' },
+          facing_deg: { type: 'number', description: 'The house/floor facing in degrees (from get_house_setup floor.facing). Pass it so scan 3 uses THIS house\u2019s chart instead of whatever page is open. Strongly recommended.' },
+          period: { type: 'integer', description: 'The house/floor period 1-9 (from get_house_setup floor.period). Pass together with facing_deg.' },
           days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
           start_date: { type: 'string', description: 'Optional start date YYYY-MM-DD (defaults to today).' }
         },
@@ -2007,11 +2017,30 @@
     if (!res) return { error: q ? ('No house matching "' + input.house_name + '".') : 'Provide house_name.', available_houses: window.XKDGHouse.availableHouses() };
     var n = window.XKDGHouse.normalize(res.house);
     var floors = n.floors.map(function (f) {       // strip the heavy chart object; keep the extracted star values
+      // AUTHORITATIVE flying-star chart computed from this floor's facing+period
+      // (stateless — does NOT depend on the FS page being open). Gives every
+      // palace's water/mountain star + the imprisoned-star (入囚) flag.
+      var fsChart = null;
+      try {
+        if (window.QFS && typeof QFS.computeChart === 'function' && f.facing != null && f.period != null) {
+          fsChart = QFS.computeChart(f.facing, f.period);
+          if (fsChart && fsChart.error) fsChart = null;
+        }
+      } catch (e) { fsChart = null; }
+      var aquariums = (f.water_features || []).map(function (a) {
+        var out = {}; for (var k in a) if (Object.prototype.hasOwnProperty.call(a, k)) out[k] = a[k];
+        // Fill the water star from the authoritative chart when missing/unknown.
+        if ((out.water_star == null) && fsChart && fsChart.palaces && out.direction && fsChart.palaces[out.direction]) {
+          out.water_star = fsChart.palaces[out.direction].water;
+        }
+        return out;
+      });
       return {
         index: f.index, label: f.label, active: f.active,
         facing: f.facing, period: f.period,
+        flying_stars: fsChart,                     // authoritative: all palaces + imprisoned + liberation
         doors: f.doors.map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
-        aquariums: f.water_features,               // a saved Water position IS a water feature (source tags which)
+        aquariums: aquariums,                      // a saved Water position IS a water feature (source tags which)
         qfs_zones: f.qfs_zones,
         saved_settings: f.saved_settings
       };
@@ -2022,7 +2051,7 @@
       house_facing: res.house.houseFacing, house_period: res.house.period,
       active_floor: n.activeFloor,
       floors: floors,
-      note: 'Multi-floor house: each floor has its own doors / aquariums / QFS zones / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star. The loaded person provides the XKDG scan. If star values are null (no FS page open to compute the chart), read the star via recall_flying_stars.'
+      note: 'Multi-floor house: each floor has its own doors / aquariums / QFS zones / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars.'
     };
   }
 
@@ -2224,7 +2253,10 @@
     // (3) Qimen special configurations (QFS preset at the flying-star palace)
     if (window.QFS && typeof window.QFS.scanStarPreset === 'function' && (starType === 'water' || starType === 'mountain') && !isNaN(starNum)) {
       try {
-        var sres = window.QFS.scanStarPreset(starType, starNum, { days: days, liberationDir: dir || null });
+        var _spOpts = { days: days, liberationDir: dir || null };
+        var _fd = parseFloat(input.facing_deg), _pe = parseInt(input.period, 10);
+        if (isFinite(_fd) && _pe >= 1 && _pe <= 9) { _spOpts.facingDeg = _fd; _spOpts.period = _pe; }
+        var sres = window.QFS.scanStarPreset(starType, starNum, _spOpts);
         if (sres && sres.imprisoned && sres.imprisonment_note) imprisonNote = sres.imprisonment_note;
         if (sres && !sres.error && sres.results) {
           sres.results.forEach(function (r) {
