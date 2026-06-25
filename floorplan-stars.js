@@ -326,12 +326,27 @@
     }
 
     try {
-      st.chart = FS.calculate(st.period, mountainFromDeg(st.facingDeg));
+      var computed = FS.calculate(st.period, mountainFromDeg(st.facingDeg));
+      if (st.manualChart) {
+        // Use the manually edited stars; keep the computed facing direction /
+        // mountain only as labels (the star numbers come from the manual chart).
+        st.chart = {
+          sittingStars: st.manualChart.sittingStars.slice(),
+          baseStars:    st.manualChart.baseStars.slice(),
+          facingStars:  st.manualChart.facingStars.slice(),
+          facingDirection: computed ? computed.facingDirection : '',
+          facingMountain:  st.manualChart.facingMountain || (computed ? computed.facingMountain : ''),
+          _manual: true
+        };
+      } else {
+        st.chart = computed;
+      }
     } catch (e) { status('Calculation error: ' + (e && e.message || e), true); return; }
 
     redraw();
     var mtn = mountainFromDeg(st.facingDeg);
-    var msg = 'Period ' + st.period + ' · facing ' + st.facingDeg + '° (' + mtn + ', ' + st.chart.facingDirection + ') · facing side: ' + st.facingSide + '.';
+    var msg = 'Period ' + st.period + ' · facing ' + st.facingDeg + '° (' + mtn + ', ' + st.chart.facingDirection + ') · facing side: ' + st.facingSide + '.'
+            + (st.manualChart ? ' ⭐ Using the saved MANUAL chart.' : '');
     if (st.centerOutside) msg += ' ⚠ The center falls outside the covered area (irregular plan) — review the missing-sector situation.';
     status(msg, st.centerOutside);
   }
@@ -374,6 +389,10 @@
     if (typeof opts.facingDeg === 'number') st.facingDeg = clampDeg(opts.facingDeg);
     if (typeof opts.period === 'number') st.period = clampPeriod(opts.period);
     if (opts.facingSide && SIDE_OFFSET.hasOwnProperty(opts.facingSide)) st.facingSide = opts.facingSide;
+    // Saved MANUAL chart (replacement / changement chart). When present, "Draw
+    // chart" uses these hand-edited stars instead of recomputing from facing+period.
+    st.manualChart = (opts.manualChart && opts.manualChart.sittingStars && opts.manualChart.facingStars && opts.manualChart.baseStars)
+      ? opts.manualChart : null;
 
     var old = document.getElementById('fps-overlay'); if (old) old.remove();
 
