@@ -926,11 +926,10 @@
   }
 
   function showChart(btn, isoDate, hStemKey, hBranchKey, palace){
-    var existing = document.getElementById('qimen-full-chart');
-
-    // Se QUESTO bottone ha già aperto la carta → nascondila (toggle)
-    if(btn && _openChartBtn === btn && existing){
-      existing.remove();
+    // Toggle OFF: if this button already opened its inline chart, close it.
+    if(btn && btn.__chartEl && btn.__chartEl.parentNode){
+      btn.__chartEl.parentNode.removeChild(btn.__chartEl);
+      btn.__chartEl = null;
       setChartBtnLabel(btn, false);
       _openChartBtn = null;
       return;
@@ -940,27 +939,43 @@
       alert('showQimenChart not available (defined in app-fengshui.js).');
       return;
     }
-    // showQimenChart è definita in app-fengshui.js e accetta caratteri cinesi
-    showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace);
 
-    // Riporta l'eventuale bottone precedentemente aperto a "View full chart"
-    if(_openChartBtn && _openChartBtn !== btn) setChartBtnLabel(_openChartBtn, false);
+    // Close any other open chart first (one at a time).
+    if(_openChartBtn && _openChartBtn !== btn){
+      if(_openChartBtn.__chartEl && _openChartBtn.__chartEl.parentNode) _openChartBtn.__chartEl.parentNode.removeChild(_openChartBtn.__chartEl);
+      _openChartBtn.__chartEl = null;
+      setChartBtnLabel(_openChartBtn, false);
+    }
 
-    // Questo bottone ora mostra la carta
+    // Render INLINE right below this button (self-contained — do NOT rely on the
+    // distant #fs-results-area, which is out of view here and made the chart
+    // appear to "do nothing").
+    var html = '';
+    try { html = showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace, { returnHtml: true }); }
+    catch(e){ html = ''; }
+    if(!html){ alert('Cannot load chart for ' + isoDate); return; }
+
+    var wrap = document.createElement('div');
+    wrap.className = 'qfs-inline-chart';
+    wrap.style.cssText = 'margin-top:8px;';
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = '\u2715 close chart';
+    closeBtn.style.cssText = 'background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-bottom:6px;display:block;';
+    closeBtn.addEventListener('click', function(){
+      if(wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      btn.__chartEl = null;
+      setChartBtnLabel(btn, false);
+      if(_openChartBtn === btn) _openChartBtn = null;
+    });
+    wrap.innerHTML = html;
+    wrap.insertBefore(closeBtn, wrap.firstChild);
+
+    if(btn && btn.parentNode) btn.parentNode.insertBefore(wrap, btn.nextSibling);
+    btn.__chartEl = wrap;
     setChartBtnLabel(btn, true);
     _openChartBtn = btn;
 
-    // Se l'utente chiude la carta con la ✕ propria, riallinea l'etichetta del bottone
-    var chartEl = document.getElementById('qimen-full-chart');
-    if(chartEl){
-      var closeX = chartEl.querySelector('[onclick*="qimen-full-chart"]');
-      if(closeX){
-        closeX.addEventListener('click', function(){
-          setChartBtnLabel(btn, false);
-          if(_openChartBtn === btn) _openChartBtn = null;
-        });
-      }
-    }
+    try { wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){}
   }
 
   // ---------------------------------------------------------------
