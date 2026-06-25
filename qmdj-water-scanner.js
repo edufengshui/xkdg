@@ -162,16 +162,16 @@
     var cell = chart.c[targetPalace];
     if(!cell) return [];
     var di = cell[0], ti = cell[1], door = cell[4];
+    // CANONICAL: Warrior 玄武 is ALWAYS excluded — no exception, in every section.
+    if(cell[3] === 'Warrior') return [];
     var leadStem = chart.ld;       // Commander stem of the current xun
     var commanderPal = chart.zfp;  // Zhi Fu palace = where Commander lives
 
-    // FILTER 1 — Tian/Di stem clash → exclude
-    // EXCEPTION: Yi/Tian + Xin/Di with favorable door (Kai/Xiu/Sheng) forms Cloud Dun (or Tiger Dun at Gen)
-    // — Joseph Yu tradition treats this clash as transformed in this Nine Glimpses configuration
+    // FILTER 1 — Tian/Di stem clash 相冲 → exclude.
+    // DEFAULT (automatic): excused ONLY if this palace carries the Commander 值符.
+    // (Cloud/Tiger Dun excusing a clash is a Glimpse — available via MANUAL selection only.)
     if(STEM_CLASHES[ti] === di){
-      var doorsFav3 = ['Kai','Xiu','Sheng'];
-      var isCloudOrTiger = (ti==='Yi' && di==='Xin' && doorsFav3.indexOf(door)!==-1);
-      if(!isCloudOrTiger) return [];
+      if(targetPalace !== commanderPal) return [];
     }
 
     // FILTER 2 — Geng restrictions (with exceptions that NEUTRALIZE Geng)
@@ -187,7 +187,10 @@
       var hasZi   = (ti === 'Wu'  || di === 'Wu'  || star2 === 'Peng' || door === 'Xiu');
       var hasChen = (ti === 'Ren' || di === 'Ren' || star2 === 'Fu'   || door === 'Du');
       var waterTrine = hasZi && hasChen;   // Geng itself supplies 申
-      if(!gengIsCommander && !waterTrine){
+      // Canonical default: 庚己 is allowed with the Pillar star 天柱 + a favourable door.
+      var gengJiPillar = (((ti==='Geng'&&di==='Ji')||(ti==='Ji'&&di==='Geng'))
+        && STAR_NAME[star2] === 'Pillar' && FAV_DOORS.indexOf(door) !== -1);
+      if(!gengIsCommander && !waterTrine && !gengJiPillar){
         // 2a — Geng as the OTHER stem in the Commander palace → excluded
         if(targetPalace === commanderPal) return [];
         // 2b — Geng without Ding in the palace → excluded (Geng + Ding stays positive)
@@ -201,27 +204,20 @@
       if(leadStem !== ti) return [];
     }
 
-    // FILTER 4 — must have favorable door
-    // EXCEPTIONS: Ghost Dun and Five Borrows are auspicious despite using non-favorable doors
+    // FILTER 4 — DEFAULT (automatic): a favourable door is required.
+    // Ghost Dun / Five Borrows that use a non-favourable door qualify ONLY via
+    // MANUAL selection (advanced students), never in an automatic search.
     var hasFavDoor = door && FAV_DOORS.indexOf(door) !== -1;
     var deity = cell[3];
-    var isGhostDun = (ti==='Ding' && door==='Du' && deity==='Earth');
-    // Five Borrows (五假 Wu Jia) — named auspicious configurations with unfavorable doors
-    var isTianJia = (ti==='Ding' && door==='JingS' && deity==='Heaven');
-    var isDiJia   = (ti==='Gui' && door==='Du' && deity==='Earth');
-    var isRenJia  = (ti==='Ren' && door==='JingS' && deity==='Earth');
-    var isShenJia = (ti==='Bing' && door==='JingS' && deity==='Commander');
-    var isGuiJia  = (ti==='Ding' && door==='Du' && deity==='Earth');
-    var isAnyBorrow = isTianJia || isDiJia || isRenJia || isShenJia || isGuiJia;
-    if(!hasFavDoor && !isGhostDun && !isAnyBorrow) return [];
+    if(!hasFavDoor) return [];
 
-    // FILTER 5 — must have San Qi on Tian (Yi/Bing/Ding).
-    // EXCEPTION: Five Borrows bypass this filter (they are recognized configurations).
+    // FILTER 5 — DEFAULT (automatic): San Qi on Tian (Yi/Bing/Ding) is required.
+    // Five Borrows bypass this ONLY via manual selection.
     // NOTE: Zhi Fu / Zhi Shi are BONUSES (add to score), not qualifiers.
     var hasSanQi  = SAN_QI.indexOf(ti) !== -1;
     var hasZhiFu  = chart.zfp === targetPalace;
     var hasZhiShi = chart.zsp === targetPalace;
-    if(!hasSanQi && !isAnyBorrow) return [];
+    if(!hasSanQi) return [];
 
     // PASSED ALL FILTERS — build hit list
     var hits = [];
@@ -285,7 +281,15 @@
     }
 
     // FIVE BORROWS 五假 (Wu Jia) — auspicious configurations for specific tactical uses
-    // (use unfavorable doors but recognized as positive in their domain)
+    // (use unfavorable doors but recognized as positive in their domain). These are
+    // LABELS ONLY now: in an automatic search they appear solely on a palace that
+    // already passed the default conditions above. The unfavourable-door Borrows
+    // (Earth/Ghost via Du) are reachable only through MANUAL selection.
+    var isTianJia = (ti==='Ding' && door==='JingS' && deity==='Heaven');
+    var isDiJia   = (ti==='Gui'  && door==='Du'    && deity==='Earth');
+    var isRenJia  = (ti==='Ren'  && door==='JingS' && deity==='Earth');
+    var isShenJia = (ti==='Bing' && door==='JingS' && deity==='Commander');
+    var isGuiJia  = (ti==='Ding' && door==='Du'    && deity==='Earth');
     if(isTianJia) hits.push({cat:'jia', label:'Heaven Borrows 天假'});  // war, litigation, important post
     if(isDiJia)   hits.push({cat:'jia', label:'Earth Borrows 地假'});   // hiding, preparations, secret affairs
     if(isRenJia)  hits.push({cat:'jia', label:'Human Borrows 人假'});   // pursuing fugitives
@@ -1147,6 +1151,8 @@
     var pd = chart.palaces[palace];
     if(!pd) return [];
     var ti = pd.ti, di = pd.di, door = pd.door, deity = pd.deity;
+    // CANONICAL: Warrior 玄武 is ALWAYS excluded — no exception, in every section.
+    if(deity === 'Warrior') return [];
     var hits = [];
 
     // NINE DUN
