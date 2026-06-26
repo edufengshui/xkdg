@@ -1789,7 +1789,10 @@
             if (c.stopRef) {
               c.stopRef.charger = { lat: s.lat, lon: s.lon, title: s.title || s.operator || 'Charger' };
             } else if (exEl) {
-              var token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+              // Fallback charger (no linked quadrant stop) — inject BY NAME when a real
+              // title exists so Google is forced through it (tappable pin, route matches).
+              var cTitle = (s.title && !/^\s*charger\s*$/i.test(s.title)) ? String(s.title).trim() : '';
+              var token = cTitle || (s.lat.toFixed(5) + ',' + s.lon.toFixed(5));
               if ((exEl.value || '').indexOf(token) < 0)
                 exEl.value = exEl.value.trim() ? (exEl.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
             }
