@@ -97,7 +97,16 @@
     st.drawH = Math.round(nH * scale);
     var c = els.canvas;
     c.width = st.drawW; c.height = st.drawH;
-    c.style.width = '100%'; c.style.height = 'auto';
+    // Keep the on-screen display aspect-correct and responsive. The inline
+    // !important properties beat any global `canvas { … }` rule in the app's
+    // stylesheet (inline + !important has the highest precedence), so the plan
+    // can no longer be stretched. aspect-ratio enforces the true proportions;
+    // max-width caps it at the bitmap size so it never upscales/blurs.
+    c.style.setProperty('width', '100%', 'important');
+    c.style.setProperty('height', 'auto', 'important');
+    c.style.setProperty('aspect-ratio', st.drawW + ' / ' + st.drawH, 'important');
+    c.style.setProperty('max-width', st.drawW + 'px', 'important');
+    c.style.setProperty('align-self', 'flex-start', 'important');
   }
   function canvasPt(ev) {
     var c = els.canvas, r = c.getBoundingClientRect();
@@ -492,7 +501,7 @@
     card.appendChild(row3);
 
     // Canvas
-    var canvasWrap = el('div', { style: 'border:1px solid #ddd;border-radius:8px;overflow:auto;max-height:60vh;background:#fafafa;display:flex;justify-content:center;' });
+    var canvasWrap = el('div', { style: 'border:1px solid #ddd;border-radius:8px;overflow:auto;max-height:60vh;background:#fafafa;display:flex;justify-content:center;align-items:flex-start;' });
     els.canvas = el('canvas', { style: 'touch-action:none;display:block;max-width:100%;' });
     var ph = el('div', { id: 'fps-ph', style: 'padding:40px 16px;color:#999;font-size:13px;text-align:center;' }, 'Add a floor plan with 📷 Camera (take a photo now) or 🖼️ Gallery / Files (existing image — Google Drive is available here too). Then mark the area: drag rectangles, or tap two opposite corners, covering the plan (several if needed), and press “Find center”. Finally set the facing degree/side and period, and press “Draw chart”.');
     canvasWrap.appendChild(ph);
