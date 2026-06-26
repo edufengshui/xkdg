@@ -665,5 +665,51 @@
     if (opts.saved && opts.saved.imgData) { try { restoreSaved(opts.saved); } catch (e) {} }
   }
 
-  window.FloorPlanStars = { open: open };
+  // Headless: render a saved floor plan + its flying stars to a composite JPEG
+  // data URL, WITHOUT opening the modal. Reuses the exact modal renderer (drawPie)
+  // so the stars match the editor / luopan. Async (image load): cb(dataURL | null).
+  // Used for plans saved before the stars-snapshot feature, so the in-place view
+  // always shows the chart, never the bare plan.
+  function renderComposite(saved, cb) {
+    cb = cb || function () {};
+    try {
+      if (!saved || !saved.imgData) { cb(null); return; }
+      var im = new Image();
+      im.onload = function () {
+        // back up module state so an open editor (if any) is not disturbed
+        var bak = { drawW: st.drawW, drawH: st.drawH, chart: st.chart,
+                    facingDeg: st.facingDeg, facingSide: st.facingSide, period: st.period };
+        try {
+          var nW = im.naturalWidth || im.width, nH = im.naturalHeight || im.height;
+          var scale = Math.min(1, 1100 / Math.max(nW, nH));
+          var dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
+          var cv = document.createElement('canvas'); cv.width = dW; cv.height = dH;
+          var ctx = cv.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, dW, dH);
+          ctx.drawImage(im, 0, 0, dW, dH);
+          st.drawW = dW; st.drawH = dH;
+          st.facingDeg = clampDeg(saved.facingDeg);
+          st.facingSide = (saved.facingSide && SIDE_OFFSET.hasOwnProperty(saved.facingSide)) ? saved.facingSide : 'top';
+          st.period = clampPeriod(saved.period);
+          var center = saved.centerF ? { x: saved.centerF.x * dW, y: saved.centerF.y * dH } : null;
+          var FS = getFS();
+          st.chart = (FS && center) ? (function () { try { return FS.calculate(st.period, mountainFromDeg(st.facingDeg)); } catch (e) { return null; } })() : null;
+          if (center && st.chart) drawPie(ctx, center);
+          var url = null;
+          try { url = cv.toDataURL('image/jpeg', 0.72); } catch (e) { try { url = cv.toDataURL(); } catch (e2) { url = null; } }
+          st.drawW = bak.drawW; st.drawH = bak.drawH; st.chart = bak.chart;
+          st.facingDeg = bak.facingDeg; st.facingSide = bak.facingSide; st.period = bak.period;
+          cb(url || saved.imgData);
+        } catch (e) {
+          st.drawW = bak.drawW; st.drawH = bak.drawH; st.chart = bak.chart;
+          st.facingDeg = bak.facingDeg; st.facingSide = bak.facingSide; st.period = bak.period;
+          cb(saved.imgData);
+        }
+      };
+      im.onerror = function () { cb(saved.imgData || null); };
+      im.src = saved.imgData;
+    } catch (e) { cb((saved && saved.imgData) || null); }
+  }
+
+  window.FloorPlanStars = { open: open, renderComposite: renderComposite };
 })();

@@ -611,21 +611,39 @@ function fsToggleFloorplanView(){
       return;
     }
     var wrap = document.getElementById('fs-canvas-wrap');
-    // Prefer the composite (plan + flying stars); fall back to the bare plan for
-    // plans saved before this feature (re-save once to bake the stars in).
-    img.src = fp.starsImg || fp.imgData;
-    // Present it LARGE: break out of the square luopan box so a landscape plan
-    // uses the full width with its natural height.
-    img.style.position = 'relative';
-    img.style.inset = 'auto';
-    img.style.width = '100%';
-    img.style.height = 'auto';
-    img.style.maxHeight = '82vh';
-    img.style.display = 'block';
-    if (wrap){ wrap.style.aspectRatio = 'auto'; wrap.style.maxWidth = '100%'; }
-    canvas.style.display = 'none';
-    _fsFloorplanShown = true;
-    if (btn) btn.style.background = '#1b8a3f';
+    // Present the plan LARGE: break out of the square luopan box so a landscape
+    // plan uses the full width with its natural height.
+    function _present(src){
+      img.src = src;
+      img.style.position = 'relative';
+      img.style.inset = 'auto';
+      img.style.width = '100%';
+      img.style.height = 'auto';
+      img.style.maxHeight = '82vh';
+      img.style.display = 'block';
+      if (wrap){ wrap.style.aspectRatio = 'auto'; wrap.style.maxWidth = '100%'; }
+      canvas.style.display = 'none';
+      _fsFloorplanShown = true;
+      if (btn) btn.style.background = '#1b8a3f';
+    }
+    if (fp.starsImg){
+      _present(fp.starsImg);                       // composite already baked (new saves)
+    } else if (window.FloorPlanStars && typeof FloorPlanStars.renderComposite === 'function'){
+      // Legacy plan saved before the stars snapshot — render the stars NOW from
+      // its saved geometry (same facing/period/center as the luopan), show it, and
+      // cache the result so it persists and is instant next time. The bare plan
+      // never replaces the luopan; the chart does.
+      _present(fp.imgData);                        // instant: bare plan while rendering
+      FloorPlanStars.renderComposite(fp, function(url){
+        if (!_fsFloorplanShown) return;            // user already switched away
+        if (url && url !== fp.imgData){
+          img.src = url;
+          try { fp.starsImg = url; if (ctx && ctx.all) _fsHousesSave(ctx.all); } catch(e){}
+        }
+      });
+    } else {
+      _present(fp.imgData);
+    }
   } catch(e){}
 }
 function _fsRestoreLuopanView(){
