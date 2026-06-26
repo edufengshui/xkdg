@@ -6393,6 +6393,10 @@ function openPurposeGuide(key){
   } catch(e){ console.warn('openPurposeGuide', e); }
 }
 window.openPurposeGuide = openPurposeGuide;
+// Single source for the in-app AI: explain_purpose reads this same object so the
+// chat answer to "what makes a good date for X / how to activate it" stays identical
+// to the 📖 Guide modal and auto-updates whenever the guide content changes.
+try { window.PURPOSE_GUIDE = PURPOSE_GUIDE; window.PURPOSE_GUIDE_GENERAL = PURPOSE_GUIDE_GENERAL; } catch(e){}
 
 // Inject a 📄 guide icon next to the Main "purpose-select" dropdown (which lives in
 // index.html). Idempotent; retries briefly until the element exists.

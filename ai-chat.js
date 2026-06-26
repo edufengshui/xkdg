@@ -29,8 +29,13 @@
     'meet as the ANSWER to a query.\n' +
     '- Date selection scans days/hours for the loaded person(s), optionally filtered by a Purpose ' +
     '(Health, Career, Wealth, Relationship, Journey, Speak, Legal). Tools: find_good_dates, open_scan_result, ' +
-    'explain_purpose (read-only: tells how a purpose is coded - its required conditions, disqualifying spirits, ' +
-    'bonuses, and the shared gates - when the user asks how Legal/Career/etc. is defined).\n' +
+    'explain_purpose (read-only: returns the approved guide for a purpose — the SAME content the 📖 button ' +
+    'shows). CALL IT whenever the user asks what makes a good DATE for a purpose ("cosa costituisce una buona ' +
+    'data per Health?", "what makes a good date for Career?", "comment choisir une bonne date pour…"), how a ' +
+    'purpose is DEFINED/coded, or how to ACTIVATE it in Feng Shui — in any language. Then present BOTH parts of ' +
+    'the returned `guide`: (1) the good DATE criteria (good_date_xkdg) and (2) the Feng Shui ACTIVATION ' +
+    '(feng_shui_activation_qmdj: door, QMDJ stars/spirits, flying stars), followed by the general_rules. Do not ' +
+    'invent criteria — report only what the tool returns).\n' +
     '- FLIGHT / TRIP DATE QUERIES (e.g. "good dates to fly from Vienna to Sydney in July and August, flights only ' +
     'on Sun/Tue/Thu/Sat, departure 10:25"): answer with ONE find_good_dates call set up like this:\n' +
     '   • purpose = "journey" (it is travel).\n' +
@@ -1216,13 +1221,39 @@
       requires: ['Only the shared base (the loop closes + the common gates). No extra Parent/Noble requirement - so Legal is broader/softer than Career.'],
       bonuses: ['+2 Bright Hall (signings)', '+2 Fate Master (authority)', '+2 Heaven Virtue (protection)'] }
   };
+  // Pull the SAME approved guide the 📖 button shows (window.PURPOSE_GUIDE), as plain
+  // text, so the chat answer matches the modal and stays current automatically.
+  function purposeGuideFor(p) {
+    try {
+      var G = window.PURPOSE_GUIDE && window.PURPOSE_GUIDE[p];
+      if (!G) return null;
+      var strip = function (s) { return String(s || '').replace(/<br\s*\/?>(?=)/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(); };
+      var gen = [];
+      try {
+        gen = String(window.PURPOSE_GUIDE_GENERAL || '')
+          .replace(/<br\s*\/?>(?=)/gi, '\n').replace(/<[^>]+>/g, '')
+          .split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      } catch (e) {}
+      return {
+        name: G.name,
+        good_date_xkdg: (G.date || []).map(strip),
+        feng_shui_activation_qmdj: (G.fs || []).map(strip),
+        general_rules: gen
+      };
+    } catch (e) { return null; }
+  }
+
   function toolExplainPurpose(input) {
     input = input || {};
     var p = (input.purpose || '').toLowerCase();
     if (p && PURPOSE_RULES[p]) {
+      var guide = purposeGuideFor(p);
       return { purpose: p, name: PURPOSE_RULES[p].name, conditions: PURPOSE_RULES[p],
         shared_gates: PURPOSE_SHARED_GATES,
-        note: 'These are the coded conditions in checkPurpose. A date qualifies for this purpose only if it passes ALL the shared gates, is not blocked by the listed bad spirits, and meets the "requires" items. Explain them to the user in their language.' };
+        guide: guide,
+        note: (guide
+          ? 'Present BOTH parts of `guide` to the user in their language: (1) what makes a good DATE (good_date_xkdg) and (2) how to ACTIVATE it in Feng Shui (feng_shui_activation_qmdj — door, QMDJ stars/spirits, flying stars), then the general_rules. This is the same approved guide the 📖 button shows. `conditions` is the underlying coded detail you may draw on, but lead with `guide`.'
+          : 'These are the coded conditions in checkPurpose. A date qualifies only if it passes ALL the shared gates, is not blocked by the listed bad spirits, and meets the "requires" items. Explain them in the user\'s language.') };
     }
     return { all_purposes: PURPOSE_RULES, shared_gates: PURPOSE_SHARED_GATES,
       note: 'Full reference of every purpose\'s coded conditions. If the user asked about one purpose, summarise just that one.' };
