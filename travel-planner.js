@@ -326,6 +326,14 @@
   // Last route fetched from the Worker (used later by the bearing phase)
   // shape: { origin, dest, distanceMeters, durationSec, coords: [[lon,lat],...] }
   var TP_LAST_ROUTE = null;
+  // Range-only (fallback) chargers found for the CURRENT plan: kept WITH their
+  // coordinates so the Maps export can POSITION them in travel order yet emit them
+  // BY NAME. Reset at the start of every charger search.
+  var TP_RANGE_CHARGERS = [];
+  // Reference to the live Maps-export update() so a later charger search can refresh
+  // the link once the range chargers are known.
+  var _tpMapsUpdate = null;
+  function tpRefreshMapsExport() { try { if (typeof _tpMapsUpdate === 'function') _tpMapsUpdate(); } catch (e) {} }
 
   /* ---- fetch the real route from the Cloudflare Worker (Google Routes API) -
    * Returns a Promise resolving to
@@ -1798,20 +1806,22 @@
           // shows them interleaved (exit -> charger -> next exit ...). A fallback
           // charger with no cash stop goes into the free-text waypoints instead.
           var exEl = document.getElementById('tp-extra-wp');
+          TP_RANGE_CHARGERS = [];   // fresh for this plan
           chosen.forEach(function (c) {
             var s = c.row.s;
             if (c.stopRef) {
               c.stopRef.charger = { lat: s.lat, lon: s.lon, title: s.title || s.operator || 'Charger' };
-            } else if (exEl) {
-              // Fallback charger (no linked quadrant stop) — inject BY NAME when a real
-              // title exists so Google is forced through it (tappable pin, route matches).
+            } else if (isFinite(s.lat) && isFinite(s.lon)) {
+              // Fallback charger (no linked quadrant stop). Keep its NAME *and* its
+              // coordinates so the Maps export positions it in travel order yet emits
+              // it by name. (Previously only the name went into the free-text field,
+              // which Maps could not position → it trailed out of order.)
               var cTitle = (s.title && !/^\s*charger\s*$/i.test(s.title)) ? String(s.title).trim() : '';
-              var token = cTitle || (s.lat.toFixed(5) + ',' + s.lon.toFixed(5));
-              if ((exEl.value || '').indexOf(token) < 0)
-                exEl.value = exEl.value.trim() ? (exEl.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
+              TP_RANGE_CHARGERS.push({ name: cTitle || null, lat: s.lat, lon: s.lon });
             }
           });
-          if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true }));  // refresh the Maps URL
+          tpRefreshMapsExport();   // rebuild the Maps link now that the range chargers are known
+          if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true }));  // also refresh via the panel
 
           chosen.forEach(function (c) {
             var r = c.row, s = r.s, when = new Date(r.etaMs);
@@ -1952,53 +1962,62 @@
       // Resolve each point's distance ALONG the route so the waypoints come out
       // in travel order (origin → … → destination) instead of the order they
       // were collected — otherwise Maps draws a zig-zag.
-      var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
-      // SHORTEST-ROUTE GUARANTEE: with no real road route we cannot tell whether a
-      // planned stop sits on the fast road, so we export the DIRECT route (only the
-      // user's own free-text waypoints are still honoured).
+      // Use the real road route ONLY if it matches THIS trip's endpoints (never an
+      // earlier trip's route — projecting onto a stale route is what put stops out of
+      // order). If it does not match, we cannot project, so we keep the chargers in
+      // their found (travel) order instead.
+      var matchRoute = (TP_LAST_ROUTE && O && Dst &&
+        tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? TP_LAST_ROUTE : null;
+      var idx = tpBuildRouteIndex(matchRoute);
       var extraRaw = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
-      if (!idx) return extraRaw.slice(0, TP_MAPS_MAX_WAYPOINTS);
-      function nearOf(p) { return tpNearestRoutePoint(p.lat, p.lon, idx); }
-      var pts = [];
-      var dropped = 0;
+      function nearOf(p) { return idx ? tpNearestRoutePoint(p.lat, p.lon, idx) : null; }
+      var pts = [];          // positionable along the route ({token, along})
+      var seq = [];          // travel-ordered fallback when no route ({token, order})
+      var seqN = 0, dropped = 0;
+      function addCharger(name, lat, lon) {
+        var tok = (name && String(name).trim()) ? String(name).trim() : tpLatLng({ lat: lat, lon: lon });
+        if (idx) {
+          var npc = nearOf({ lat: lat, lon: lon });
+          if (npc && isFinite(npc.alongKm)) { pts.push({ token: tok, along: npc.alongKm }); return; }
+        }
+        seq.push({ token: tok, order: seqN++ });   // no route (or off the indexed path): keep found order
+      }
       checks.filter(function (c) { return c.cb.checked; }).forEach(function (c) {
         var st = c.stop;
-        // A CHARGE stop IS the charger: pass it BY NAME when it has a real title, so
-        // Google shows a recognizable, tappable pin and is forced through the exact
-        // charger (the drawn route then matches the planned one). One waypoint per
-        // charge stop (no redundant route point). Falls back to coordinates if the
-        // charger has no usable name or carries no coordinates.
+        // A CHARGE stop IS the charger: emit it BY NAME (tappable, route-forcing pin).
         if (st && st.charge && st.charger && isFinite(st.charger.lat) && isFinite(st.charger.lon)) {
-          var npc = nearOf(st.charger);
-          if (!npc || !isFinite(npc.alongKm) || npc.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
           var title = (st.charger.title && !/^\s*charger\s*$/i.test(st.charger.title)) ? String(st.charger.title).trim() : '';
-          pts.push({ token: title || tpLatLng(st.charger), along: npc.alongKm });          // named charger (route-forcing)
+          addCharger(title, st.charger.lat, st.charger.lon);
           return;
         }
-        // A quadrant-exit (cash-direction) stop is a point on the road, not a named
-        // place — keep it as a precise coordinate, only if it lies ON the fast road.
+        // A quadrant-exit point is a bare coordinate that must sit ON the fast road —
+        // it can only be placed when a matching route is loaded; otherwise skip it
+        // (an unpositioned coordinate would scramble the order).
+        if (!idx) { return; }
         var np = nearOf(c.pos);
         if (!np || !isFinite(np.alongKm) || np.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
         pts.push({ token: tpLatLng(c.pos), along: np.alongKm });                            // quadrant-exit point
       });
-      // Merge free-text extras INTO travel order. Coordinate extras (this is how a
-      // fallback charger like a start-of-trip Supercharger is added) get their own
-      // along-route position and are sorted in with everything else — otherwise they
-      // would be appended at the end and Maps would route back to them mid-trip.
-      // Named extras (typed by the user) cannot be positioned synchronously, so they
-      // are kept, in typed order, after the sorted points.
+      // Range-only (fallback) chargers: already found in travel order; emit BY NAME,
+      // positioned along the route when possible so they interleave correctly.
+      (TP_RANGE_CHARGERS || []).forEach(function (ch) {
+        if (ch && isFinite(ch.lat) && isFinite(ch.lon)) addCharger(ch.name, ch.lat, ch.lon);
+      });
+      // User free-text extras: coordinates get positioned; typed names trail in order.
       var trailing = [];
       extraRaw.forEach(function (tok) {
         var m = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(tok);
-        if (m) {
+        if (m && idx) {
           var np2 = tpNearestRoutePoint(parseFloat(m[1]), parseFloat(m[2]), idx);
           if (np2 && isFinite(np2.alongKm)) { pts.push({ token: tok, along: np2.alongKm }); return; }
         }
         trailing.push(tok);
       });
       pts.sort(function (a, b) { return a.along - b.along; });                          // travel order
+      var ordered = pts.map(function (p) { return p.token; })
+        .concat(seq.sort(function (a, b) { return a.order - b.order; }).map(function (s) { return s.token; }));
       var wps = [];
-      pts.forEach(function (p) { if (!wps.length || wps[wps.length - 1] !== p.token) wps.push(p.token); }); // de-dup neighbours
+      ordered.forEach(function (t) { if (!wps.length || wps[wps.length - 1] !== t) wps.push(t); }); // de-dup neighbours
       wps = wps.concat(trailing);
       collectWaypoints._dropped = dropped;
       // Google Maps keeps only a limited number of waypoints; after sorting,
@@ -2021,13 +2040,14 @@
       var routeNote = (!tpBuildRouteIndex(TP_LAST_ROUTE))
         ? ' <span style="color:#b58900;">No real road route loaded — exporting the DIRECT route (press 🛰️ Fetch route / set the Worker URL to follow favourable on-road stops).</span>'
         : '';
-      status.innerHTML = '<b>' + n + '</b> waypoint' + (n === 1 ? '' : 's') + ' selected (added after the planned stops, in order). ' +
-        'You can drag to reorder once Maps opens.' + warn + dropNote + routeNote;
+      status.innerHTML = '<b>' + n + '</b> waypoint' + (n === 1 ? '' : 's') + ' in travel order (origin → … → destination). ' +
+        'You can still drag to reorder once Maps opens.' + warn + dropNote + routeNote;
     }
     checks.forEach(function (c) { c.cb.addEventListener('change', update); });
     extraInp.addEventListener('input', update);
     openBtn.addEventListener('click', function () { tpOpenInMaps(false); });
     copyBtn.addEventListener('click', function () { tpCopyToClipboard(copyBtn._url, copyBtn, '✓ Copied', '🔗 Copy link'); });
+    _tpMapsUpdate = update;   // let a later charger search refresh the link
     update();
 
     container.appendChild(wrap);
