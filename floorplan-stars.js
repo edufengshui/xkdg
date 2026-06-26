@@ -89,23 +89,25 @@
 
   // ── Canvas drawing ────────────────────────────────────────
   function fitCanvas() {
-    var maxW = Math.min(window.innerWidth - 48, 900);
     var nW = st.img.naturalWidth || st.img.width;
     var nH = st.img.naturalHeight || st.img.height;
-    var scale = Math.min(1, maxW / nW);
-    st.drawW = Math.round(nW * scale);
-    st.drawH = Math.round(nH * scale);
+    // Fit within BOTH the available width and height (minus room for the toolbar),
+    // so a wide/tall plan is fully visible inside the modal — no overflow.
+    var maxW = Math.min(window.innerWidth - 40, 1040);
+    var maxH = Math.max(260, window.innerHeight - 260);
+    var scale = Math.min(1, maxW / nW, maxH / nH);
+    st.drawW = Math.max(1, Math.round(nW * scale));
+    st.drawH = Math.max(1, Math.round(nH * scale));
     var c = els.canvas;
     c.width = st.drawW; c.height = st.drawH;
-    // Keep the on-screen display aspect-correct and responsive. The inline
-    // !important properties beat any global `canvas { … }` rule in the app's
-    // stylesheet (inline + !important has the highest precedence), so the plan
-    // can no longer be stretched. aspect-ratio enforces the true proportions;
-    // max-width caps it at the bitmap size so it never upscales/blurs.
+    // Keep the on-screen display aspect-correct and bounded. The inline
+    // !important properties beat any global `canvas { … }` rule, so the plan can
+    // neither stretch nor overflow. aspect-ratio enforces the true proportions.
     c.style.setProperty('width', '100%', 'important');
     c.style.setProperty('height', 'auto', 'important');
     c.style.setProperty('aspect-ratio', st.drawW + ' / ' + st.drawH, 'important');
     c.style.setProperty('max-width', st.drawW + 'px', 'important');
+    c.style.setProperty('max-height', st.drawH + 'px', 'important');
     c.style.setProperty('align-self', 'flex-start', 'important');
   }
   function canvasPt(ev) {
@@ -407,7 +409,7 @@
     var old = document.getElementById('fps-overlay'); if (old) old.remove();
 
     var ov = el('div', { id: 'fps-overlay', style: 'position:fixed;inset:0;z-index:100050;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;' });
-    var card = el('div', { style: 'background:#fff;border-radius:12px;max-width:940px;width:100%;padding:14px 16px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.35);' });
+    var card = el('div', { style: 'background:#fff;border-radius:12px;max-width:1100px;width:100%;padding:14px 16px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.35);' });
 
     var hd = el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;' });
     hd.appendChild(el('h3', { style: 'margin:0;font-size:16px;color:#4a148c;' }, '🏠 Floor Plan Flying Stars' + (opts.houseName ? ' — ' + opts.houseName : '')));
@@ -501,7 +503,7 @@
     card.appendChild(row3);
 
     // Canvas
-    var canvasWrap = el('div', { style: 'border:1px solid #ddd;border-radius:8px;overflow:auto;max-height:60vh;background:#fafafa;display:flex;justify-content:center;align-items:flex-start;' });
+    var canvasWrap = el('div', { style: 'border:1px solid #ddd;border-radius:8px;overflow:auto;background:#fafafa;display:flex;justify-content:center;align-items:flex-start;' });
     els.canvas = el('canvas', { style: 'touch-action:none;display:block;max-width:100%;' });
     var ph = el('div', { id: 'fps-ph', style: 'padding:40px 16px;color:#999;font-size:13px;text-align:center;' }, 'Add a floor plan with 📷 Camera (take a photo now) or 🖼️ Gallery / Files (existing image — Google Drive is available here too). Then mark the area: drag rectangles, or tap two opposite corners, covering the plan (several if needed), and press “Find center”. Finally set the facing degree/side and period, and press “Draw chart”.');
     canvasWrap.appendChild(ph);
