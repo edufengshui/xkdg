@@ -4538,6 +4538,77 @@
     });
   }
 
+  // ── DIAGNOSTICS: why does Google Maps differ from the planned stops? ─────────
+  // Returns the runtime facts the in-app AI needs to answer that: the ACTUAL Maps
+  // link on the button, its parsed waypoints (name vs anonymous coordinate), the
+  // planned itinerary it was built from, the real-road route state (and whether it
+  // matches THIS trip), the drop/cap rules, and a plain diff. Read-only.
+  function tpDiagnoseMapsExport() {
+    var out = { ok: true, what: 'Diagnostics for the last trip\'s "Open in Google Maps" link.' };
+    try {
+      var btn = document.getElementById('tp-maps-open');
+      var url = (btn && btn._url) || null;
+      out.maps_link_present = !!url;
+      if (url) {
+        out.maps_url = url;
+        var pick = function (re) { var m = url.match(re); return m ? decodeURIComponent(m[1]) : null; };
+        out.link_origin = pick(/[?&]origin=([^&]*)/);
+        out.link_destination = pick(/[?&]destination=([^&]*)/);
+        var wpRaw = (url.match(/[?&]waypoints=([^&]*)/) || [])[1] || '';
+        var list = wpRaw ? decodeURIComponent(wpRaw).split('|') : [];
+        out.link_waypoint_count = list.length;
+        out.link_waypoints = list.map(function (t) {
+          var coord = /^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/.test(t);
+          return { value: t, kind: coord ? 'coordinate (anonymous lettered pin in Maps)' : 'name (tappable named pin; Maps is forced through it)' };
+        });
+      } else {
+        out.note = 'No Maps link built yet — plan a trip and make sure the "Send to Google Maps" section has rendered.';
+      }
+
+      var r = window._tpLastResult || null;
+      if (r) {
+        out.planned = { from: r.origin, to: r.dest, bearing_deg: r.bearing, snapped_dir: r.snapped,
+          real_road_route_used: r.real_route, road_km: r.km, driving_time: r.driving_time, planned_stops: r.stops };
+        var stops = [];
+        (r.legs || []).forEach(function (l) {
+          if (l.kind === 'charge' || l.kind === 'stop')
+            stops.push({ kind: l.kind, cashDir: l.cashDir || null, at: l.at, lat: l.lat, lon: l.lon });
+        });
+        out.planned_stop_list = stops;
+      } else { out.planned = null; }
+
+      out.export_rules = { max_waypoints: TP_MAPS_MAX_WAYPOINTS, off_road_drop_km: TP_WAYPOINT_MAX_OFFKM,
+        note: 'A planned stop more than off_road_drop_km from the fast road is dropped from the link; Maps keeps at most max_waypoints.' };
+
+      var routeLoaded = !!TP_LAST_ROUTE;
+      out.real_route_loaded = routeLoaded;
+      if (routeLoaded) {
+        var ridx = tpBuildRouteIndex(TP_LAST_ROUTE);
+        out.real_route_km = ridx ? Math.round((ridx.distanceMeters || ridx.total) / 1000) : null;
+        out.real_route_drive_h = (ridx && ridx.durationSec) ? Math.round(ridx.durationSec / 360) / 10 : null;
+        var live = window._tpLive;
+        if (live && live.originPos && live.destPos) {
+          out.real_route_matches_trip = tpRouteMatches(TP_LAST_ROUTE,
+            { lat: live.originPos.lat, lng: live.originPos.lon }, { lat: live.destPos.lat, lng: live.destPos.lon });
+          out.matches_note = out.real_route_matches_trip
+            ? 'The route used for the export matches this trip.'
+            : 'WARNING: the loaded route does NOT match this trip — the export may project stops onto a stale route or fall back to a direct link.';
+        }
+      } else {
+        out.real_route_note = 'No real road route loaded — the link is exported as a DIRECT origin→destination route (planned stops are not added as waypoints).';
+      }
+
+      if (out.planned && out.link_waypoint_count != null) {
+        out.diff_hint = 'Planned stops: ' + (out.planned.planned_stops || 0) + ' · waypoints actually in the link: ' + out.link_waypoint_count +
+          '. A gap usually means stops were dropped (off the fast road), capped (>' + TP_MAPS_MAX_WAYPOINTS + '), or the link fell back to a direct route.';
+      }
+      out.why_maps_can_differ = 'Google re-plans the road BETWEEN the points it receives, using live traffic the app did not have. ' +
+        'Coordinate waypoints become anonymous lettered pins; named ones are forced through and tappable. A small divergence is normal; ' +
+        'a large one means stops were dropped or never passed. A per-segment time tooltip in Maps (e.g. "3 hr 37 min") is ONE leg, not the whole trip.';
+    } catch (e) { out.ok = false; out.error = String((e && e.message) || e); }
+    return out;
+  }
+
   window.TravelPlanner = {
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
@@ -4560,6 +4631,7 @@
     evalPalace: tpPalaceOK,
     getLastResult: function () { return window._tpLastResult || null; },
     openInMaps: function (navigate) { return tpOpenInMaps(!!navigate); },
+    diagnoseMapsExport: function () { return tpDiagnoseMapsExport(); },
     getAutoMaps: tpAutoMapsOn,
     setAutoMaps: tpSetAutoMaps,
     config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); }

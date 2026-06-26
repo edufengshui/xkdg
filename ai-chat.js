@@ -82,6 +82,12 @@
     'on-demand: you see changes once they are pushed (GitHub may lag a few minutes right after a push), not local ' +
     'unpushed edits. For "what can you do?" you may also summarise your available tools. Do NOT read source for ' +
     'ordinary date/Feng-Shui questions — use the dedicated tools and explain_purpose for those.\n' +
+    '- WHY GOOGLE MAPS DIFFERS / what the A,B,C pins are / a planned stop is missing in Maps: call ' +
+    'diagnose_maps_export and answer from it. Explain plainly: the link\'s waypoints (named = tappable pin Maps is ' +
+    'forced through; coordinate = anonymous lettered pin), any stops dropped (off the fast road) or capped, whether ' +
+    'the real route matches the trip, that Google re-routes between points with live traffic (so small differences ' +
+    'are normal and not an error), and that a per-segment time like "3 hr 37 min" is one leg, not the whole trip. ' +
+    'If you want the exact export code, read_source travel-planner.js (search "collectWaypoints").\n' +
     '- When the user asks about a SPECIFIC stop or point of the planned road trip ("dove avviene la sosta 2?", "where is ' +
     'stop 2?", "qual è la seconda tappa?"), call get_trip_itinerary and answer DIRECTLY with that stop\'s real place name and ' +
     'coordinates and time (index 2 = "punto 2"). NEVER deflect with "look at the card" or "scroll down".\n' +
@@ -857,6 +863,14 @@
         },
         required: ['file']
       }
+    },
+    {
+      name: 'diagnose_maps_export',
+      description: 'Inspect why the Google Maps link for the last planned trip may differ from the planned stops/itinerary. ' +
+        'Returns the ACTUAL Maps link, its parsed waypoints (named vs anonymous coordinate), the planned itinerary it was ' +
+        'built from, the real-road route state (and whether it matches this trip), the drop/cap rules, and a diff. Call this ' +
+        'when the user asks why Google Maps shows a different route, what the lettered A/B/C pins are, or why a stop is missing.',
+      input_schema: { type: 'object', properties: {}, required: [] }
     }
   ];
 
@@ -986,6 +1000,14 @@
       .catch(function (e) { return { error: 'Could not read ' + f + ': ' + ((e && e.message) || e) }; });
   }
 
+  function toolDiagnoseMapsExport() {
+    try {
+      if (window.TravelPlanner && typeof window.TravelPlanner.diagnoseMapsExport === 'function')
+        return window.TravelPlanner.diagnoseMapsExport();
+      return { error: 'The travel planner is not available on this page.' };
+    } catch (e) { return { error: String((e && e.message) || e) }; }
+  }
+
   function execTool(name, input) {
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
@@ -1024,6 +1046,7 @@
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'list_source') return toolListSource();
       if (name === 'read_source') return toolReadSource(input || {});
+      if (name === 'diagnose_maps_export') return toolDiagnoseMapsExport();
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
