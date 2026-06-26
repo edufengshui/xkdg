@@ -393,7 +393,6 @@ function buildFengShuiView(){
           <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Show Stars</button>
           <button id="fs-manual-toggle" onclick="fsOpenManualStars()" title="Compile the flying stars chart by hand" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Manual</button>
           <button onclick="(typeof FSChartFinder!=='undefined') ? FSChartFinder.open() : alert('fs-chart-finder.js not loaded')" title="Find charts by star position" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🔍 Charts</button>
-          <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" title="Find Qimen hours for flying stars" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🌀 Qimen</button>
           <button id="fs-save-house-top" onclick="fsSaveHouse()" title="Save this house profile" style="margin-left:auto;background:#558b2f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">💾 SAVE</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
@@ -517,6 +516,11 @@ function buildFengShuiView(){
           <div style="font-size:11px;color:#777;font-style:italic;margin-top:6px;">Pick a <b>Target</b>: <b>All quadrants</b> searches everywhere and reports where the purpose's door appears; <b>Water palaces</b> restricts to your placed water features; or pick a specific <b>向星 Water star</b> / <b>山星 Mountain star</b> of the saved chart to scan the palace where that star sits (some purposes work better on a specific mountain star). Either way the result combines the Qimen door (Feng Shui) with the matching Main Purpose (XKDG).</div>
           <div id="fs-purpact-results" style="margin-top:10px;"></div>
           <div id="fs-purpact-chart" style="margin-top:10px;"></div>
+          <!-- 🔧 Fine-tune (advanced) — free choice of star on the general chart -->
+          <div id="fs-op-finetune" style="border-top:1px dashed #80cbc4;padding-top:8px;margin-top:10px;">
+            <button onclick="fsQimenStimulate(null)" style="background:#fff;color:#00695c;border:1px solid #4db6ac;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Free choice of target star on the general chart — advanced use">🔧 Fine-tune target (advanced)</button>
+            <span style="font-size:10px;color:#999;font-style:italic;margin-left:6px;">Free choice of star on the general chart — for advanced students.</span>
+          </div>
         </div>
 
         <!-- 💧 Add a generic water feature → scan good dates/hours to activate it (XKDG + Qimen) -->
@@ -541,14 +545,10 @@ function buildFengShuiView(){
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
 
-        <!-- 🎯 Guided activation: house → task → SCAN (replaces Placed elements + QFS boxes) -->
-        <div id="fs-op-activate" style="background:#ede7f6;border:1px solid #5e35b1;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
-
-        <!-- 🔧 Fine-tune (advanced) — at the very end -->
-        <div id="fs-op-finetune" style="border-top:1px dashed #b39ddb;padding-top:8px;margin-top:4px;">
-          <button onclick="fsQimenStimulate(null)" style="background:#fff;color:#7e57c2;border:1px solid #b39ddb;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Free choice of target star on the general chart — advanced use">🔧 Fine-tune target (advanced)</button>
-          <span style="font-size:10px;color:#999;font-style:italic;margin-left:6px;">Free choice of star on the general chart — for advanced students.</span>
-        </div>
+        <!-- 🎯 "Activate a setting" — replaced by the PURPOSE ACTIVATION block above.
+             Kept hidden (not deleted) because the saved-settings "🔎 Scan dates"
+             button still uses this engine to derive the target star and open QFS. -->
+        <div id="fs-op-activate" style="display:none;"></div>
       </div>
     </div>`;
 
@@ -3414,7 +3414,7 @@ function fsRenderHouseProfiles(){
     else html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#bbb;font-size:22px;line-height:1;cursor:pointer;" title="Set as active house">○</span>';
     html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
     if (_sumBits.length) html += '<span style="font-size:11px;color:#777;white-space:nowrap;">' + _sumBits.join(' · ') + '</span>';
-    html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
+    html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" title="' + (_exp ? 'Hide details' : 'Show details') + '" style="background:none;border:none;color:#2e7d32;font-size:13px;line-height:1;cursor:pointer;padding:0 4px;">' + (_exp ? '▾' : '▸') + '</button>';
     // Category selector — on the same line (the owner name sits on the Facing/Period line inside the house)
     html += '<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#555;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
     html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
@@ -3649,11 +3649,11 @@ function fsToggleHouseDetails(personName, hi, btn){
     if (isHidden){
       body.style.display = 'block';
       window._fsHouseExpanded[key] = true;
-      if (btn) btn.innerHTML = '▾ Hide details';
+      if (btn){ btn.innerHTML = '▾'; btn.title = 'Hide details'; }
     } else {
       body.style.display = 'none';
       window._fsHouseExpanded[key] = false;
-      if (btn) btn.innerHTML = '▸ Open details';
+      if (btn){ btn.innerHTML = '▸'; btn.title = 'Show details'; }
     }
   } catch(e){ console.warn('fsToggleHouseDetails', e); }
 }
