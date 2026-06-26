@@ -484,7 +484,7 @@ function buildFengShuiView(){
           <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">🎯 PURPOSE ACTIVATION</div>
           <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
             <div style="flex:1;min-width:170px;">
-              <label style="font-size:11px;color:#666;display:block;">Purpose</label>
+              <label style="font-size:11px;color:#666;display:block;">Purpose <button type="button" onclick="openPurposeGuide(document.getElementById('fs-purpact-purpose').value)" title="What this purpose looks for (a good date + Feng Shui activation)" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 2px;vertical-align:middle;">📄</button></label>
               <select id="fs-purpact-purpose" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
                 <option value="health">🏥 Health · Rest 休</option>
                 <option value="career">💼 Career · Open 開 / View 景</option>
@@ -6313,8 +6313,103 @@ function _fsPurpactRender(){
   out.innerHTML=html;
 }
 
-// Populate the PURPOSE ACTIVATION house dropdown with the active person's houses,
-// defaulting to the active house (marked ★). Preserves a valid prior selection.
+// ── PURPOSE GUIDES (📄) — opens a plain-language guide for a purpose ──────────
+// Shown next to each Purpose (Feng Shui dropdown + Main purpose-select). Content
+// approved with Edu; mirrors PURPOSE-GUIDES.md. Exposed on window so app-bazi.js
+// (Main) can open the same modal.
+var PURPOSE_GUIDE = {
+  health: { name:'🏥 Health',
+    date:['Structure: a <b>Parent (印 Resource)</b> present (best on the <b>day pillar</b>).',
+          '<b>Celestial Doctor 天醫 (Tian Yi)</b> — the healing star: date hour branch matches the day stem\u2019s Heavenly Doctor, or date day branch matches the person\u2019s. <i>(The 天醫 healing star, not the Noble 天乙貴人.)</i>',
+          'Especially favoured: <b>Cerulean Dragon 青龍</b>, <b>Jade Hall 玉堂</b>.',
+          'Timely formations: <b>Deity Dun 神遁</b>, <b>Human Dun 人遁</b>.'],
+    fs:['Door: <b>Rest 休 (Xiu)</b>.','QMDJ star: <b>Heart 天心</b>.','Flying Stars: <b>8</b> (and 9).'] },
+  career: { name:'💼 Career',
+    date:['Structure: a <b>Parent (印 Resource)</b> present (best on the <b>day pillar</b>) <b>and</b> a <b>Noble 貴人</b>.',
+          'Especially favoured: <b>Bright Hall 明堂</b>, <b>Fate Master 司命</b>, <b>Lu 祿</b>.',
+          'Timely formations: <b>Heaven Dun 天遁</b>, <b>Wind Dun 風遁</b>, <b>Dragon Dun 龍遁</b>, <b>Cloud Dun 云遁</b>.'],
+    fs:['Door: <b>Open 開 (Kai)</b> or <b>View 景 (JingS)</b>.','QMDJ stars: <b>Hero 天英</b>, <b>Official 天任</b>.','QMDJ spirit: <b>Norm 勾陳</b>.','Flying Stars: <b>6</b> (and 9).'] },
+  wealth: { name:'💰 Wealth',
+    date:['Structure: <b>day pillar in the Child role + a Parent present</b> (Child + Parent).',
+          'Wealth ✦ (controlling / 克): person\u2019s day stem controls the date\u2019s day stem; the date\u2019s day stem controls the hour / month / year stems; same on the Nayin (Qi) level. Each adds a point.',
+          'Especially favoured: <b>Golden Box 金匱</b>, <b>Cerulean Dragon 青龍</b>, <b>Jade Hall 玉堂</b>, <b>Lu 祿</b>.',
+          'Timely formations: <b>Earth Dun 地遁</b>, <b>Cloud Dun 云遁</b>, <b>Rest Pretenses 休詐</b>, <b>Earth Borrows 地假</b>.'],
+    fs:['Door: <b>Birth 生 (Sheng)</b>.','Bonus: <b>Wu 戊</b> adds a wealth bonus; strongest with <b>Wu 戊 / Bing 丙</b>.','Flying Stars: <b>9</b>.'] },
+  relationship: { name:'❤️ Relationship',
+    date:['Structure: <b>day pillar in the Child role</b>, <b>and</b> either a <b>Parent present</b> or an <b>Adding / Hetu</b> hexagram relation.',
+          'Especially favoured: <b>Cerulean Dragon 青龍</b>.',
+          'Timely formations: <b>Human Dun 人遁</b>, <b>Multiple Pretenses 重詐</b>, <b>Human Borrows 人假</b>.'],
+    fs:['Door: <b>Rest 休 (Xiu)</b>.','Flying Stars: <b>1</b> and <b>4</b> (and 9).'] },
+  journey: { name:'✈️ Journey',
+    date:['Structure: a <b>Parent (父母)</b> present in the date.',
+          'Timeliness: a date branch matches the person\u2019s <b>Post Horse 驛馬</b> or <b>Ding Spirit 丁奇</b> (bonus when the date hour branch is the day\u2019s Post Horse / Ding Spirit).',
+          'Especially favoured: <b>Cerulean Dragon 青龍</b>, <b>Jade Hall 玉堂</b>.',
+          'Timely formations: <b>Dragon Dun 龍遁</b>.'],
+    fs:['Door: <b>Rest 休 (Xiu)</b>.','Flying Stars: <b>1</b> (and 9).'] },
+  speak: { name:'🎤 Speak',
+    date:['Structure: a good <b>Nayin–Person link (Nayin ✦ Person)</b>.',
+          'Especially favoured: <b>Jade Hall 玉堂</b>, <b>Cerulean Dragon 青龍</b>; <b>Wen Chang 文昌</b> (of the date and of the person).',
+          'Timely formations: <b>Wind Dun 風遁</b>, <b>Heaven Borrows 天假</b>, <b>Tiger Dun 虎遁</b>.'],
+    fs:['Door: <b>View 景 (JingS)</b>.','QMDJ stars: <b>Pillar 天柱</b>, <b>Assistant 天輔</b>.','Flying Stars: <b>1</b> and <b>4</b> (and 9).'] },
+  legal: { name:'⚖️ Legal',
+    date:['Structure: a generally favourable XKDG day (no extra blood-link requirement).',
+          'Especially favoured: <b>Bright Hall 明堂</b>, <b>Fate Master 司命</b>, <b>Heaven Virtue 天德</b>.',
+          'Timely formations: <b>Tiger Dun 虎遁</b>, <b>Dragon Dun 龍遁</b>, <b>Ghost Dun 鬼遁</b>, <b>Real Pretenses 真詐</b>, <b>Deity Borrows 神假</b>, <b>Ghost Borrows 鬼假</b>, <b>Heaven Borrows 天假</b>.'],
+    fs:['Door: <b>Shocking 驚 (JingF)</b> — the exception: an unfavourable door, accepted <b>only when redeemed by San Qi 三奇 (乙丙丁)</b>.','QMDJ spirit: <b>Bird 朱雀</b>.','Flying Stars: <b>7</b> (and 9).'] }
+};
+var PURPOSE_GUIDE_GENERAL =
+  '<div style="background:#f5f3fb;border:1px solid #d7cdf0;border-radius:8px;padding:8px 10px;margin-top:10px;font-size:11px;color:#4527a0;line-height:1.5;">'
+  + '<b>General rules</b><br>'
+  + '• A Feng Shui door counts only on a favourable structure — <b>San Qi 三奇 (乙丙丁)</b> or <b>Wu 戊</b> + good door.<br>'
+  + '• <b>Commander 值符</b>, wherever it sits, boosts every purpose.<br>'
+  + '• Shared favourable spirits (every date): 青龍 · 金匱 · 天德 · 司命 · 祿.<br>'
+  + '• Flying star <b>9</b> helps every purpose; a lucky 山/向 star at the activation palace adds effect.'
+  + '</div>';
+function openPurposeGuide(key){
+  try {
+    var g = PURPOSE_GUIDE[key];
+    if(!g){ return; }   // e.g. 'water' has no guide
+    var old=document.getElementById('purpose-guide-overlay'); if(old) old.remove();
+    var ov=document.createElement('div'); ov.id='purpose-guide-overlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:100060;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;';
+    ov.addEventListener('click', function(e){ if(e.target===ov) ov.remove(); });
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 18px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.35);';
+    var li=function(arr){ return '<ul style="margin:0 0 6px;padding-left:18px;font-size:13px;line-height:1.55;color:#222;">'+arr.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'; };
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+      + '<div style="font-size:17px;font-weight:bold;color:#4527a0;">'+g.name+' — Purpose guide</div>'
+      + '<button onclick="document.getElementById(\'purpose-guide-overlay\').remove()" style="background:none;border:none;font-size:20px;line-height:1;cursor:pointer;color:#888;">\u2715</button>'
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:bold;color:#00695c;margin:8px 0 3px;">1 · A good date (XKDG)</div>' + li(g.date)
+      + '<div style="font-size:12px;font-weight:bold;color:#00695c;margin:10px 0 3px;">2 · Feng Shui activation (QMDJ)</div>' + li(g.fs)
+      + PURPOSE_GUIDE_GENERAL;
+    ov.appendChild(card); document.body.appendChild(ov);
+  } catch(e){ console.warn('openPurposeGuide', e); }
+}
+window.openPurposeGuide = openPurposeGuide;
+
+// Inject a 📄 guide icon next to the Main "purpose-select" dropdown (which lives in
+// index.html). Idempotent; retries briefly until the element exists.
+function _injectMainPurposeGuideIcon(){
+  try {
+    var ps=document.getElementById('purpose-select');
+    if(!ps || document.getElementById('main-purpose-guide-btn')) return;
+    var b=document.createElement('button');
+    b.id='main-purpose-guide-btn'; b.type='button'; b.textContent='📄';
+    b.title='What this purpose looks for (a good date + Feng Shui activation)';
+    b.style.cssText='background:none;border:none;cursor:pointer;font-size:15px;padding:0 4px;vertical-align:middle;';
+    b.addEventListener('click', function(){ try { openPurposeGuide(ps.value); } catch(e){} });
+    if(ps.parentNode) ps.parentNode.insertBefore(b, ps.nextSibling);
+  } catch(e){}
+}
+try {
+  if(document.readyState!=='loading') setTimeout(_injectMainPurposeGuideIcon,0);
+  else document.addEventListener('DOMContentLoaded', function(){ setTimeout(_injectMainPurposeGuideIcon,0); });
+  setTimeout(_injectMainPurposeGuideIcon, 1500);  // safety retry after dynamic UI builds
+} catch(e){}
+
+
 function _fsPurpactPopulateHouses(){
   var sel = document.getElementById('fs-purpact-house');
   if(!sel) return;
