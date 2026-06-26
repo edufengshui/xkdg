@@ -6034,33 +6034,43 @@ function fsWaterActivationScan(){
     // (3) Merge by date — both scores + combined
     var rows=qres.map(function(r){
       var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
-      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), hits:(r.hits||[]).map(function(h){return h.label;}) };
+      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, hidx:(r.hidx!=null?r.hidx:null), q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), hits:(r.hits||[]).map(function(h){return h.label;}) };
     });
     rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
     if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No favourable Qimen water hours in this range for '+dir+'.</div>'; return; }
 
+    var WDIR2PAL={N:1,SW:2,E:3,SE:4,S:9,W:7,NE:8,NW:6};
+    var wPal=WDIR2PAL[dir]||0;
     var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
     var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'+dir+' — '+rows.length+' hours · '+(hasPerson?'Qimen + XKDG':'Qimen only — load a person (A/B) to add XKDG')+'</div>';
     html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
     html+='<tr style="color:#00695c;">'
       +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
       +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Hour</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Qimen</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">XKDG</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Combined</th></tr>';
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Score</th>'
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;"></th></tr>';
     rows.slice(0,20).forEach(function(r){
-      html+='<tr style="border-bottom:1px solid #eee;">'
-        +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+(r.ganzhi||'')+'</span></td>'
+      var gz=String(r.ganzhi||'');
+      var hGan=gz.charAt(0), hZhi=gz.charAt(1);
+      var canChart=(hGan && hZhi && wPal);
+      var hi=(r.hidx!=null?(r.hidx % 100):null);   // hidx = dayIdx*100 + hourIdx
+      var clickable=(hi!=null);
+      var chartBtn = canChart
+        ? '<button onclick="event.stopPropagation();fsScanShowChart(\'fs-wateract-chart\',\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+wPal+')" title="see the QMDJ chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 QMDJ</button>'
+        : '';
+      html+='<tr '+(clickable?'onclick="loadDateIntoMain(\''+r.date+'\','+hi+')" onmouseover="this.style.background=\'#e0f2f1\'" onmouseout="this.style.background=\'\'" ':'')
+        +'style="border-bottom:1px solid #eee;'+(clickable?'cursor:pointer;':'')+'" '+(clickable?'title="Open this date/hour in Main (XKDG profile)"':'')+'>'
+        +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+gz+'</span></td>'
         +'<td style="padding:4px;text-align:center;white-space:nowrap;">'+r.hour+'</td>'
-        +'<td style="padding:4px;text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
-        +'<td style="padding:4px;text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
         +'<td style="padding:4px;text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
+        +'<td style="padding:4px;text-align:center;">'+chartBtn+'</td>'
         +'</tr>';
-      if (r.hits && r.hits.length){
-        html+='<tr><td colspan="5" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
+      if(r.hits && r.hits.length){
+        html+='<tr><td colspan="4" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
       }
     });
     html+='</table></div>';
+    html+='<div id="fs-wateract-chart" style="margin-top:8px;"></div>';
     out.innerHTML=html;
   } catch(err){ console.warn('fsWaterActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
 }
@@ -6232,20 +6242,24 @@ function fsPurposeActivationScan(){
   } catch(err){ console.warn('fsPurposeActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
 }
 
-// Render the Qimen chart for a result row inside the PURPOSE ACTIVATION block
-// (self-contained — does not depend on the distant #fs-results-area).
-function fsPurpactShowChart(isoDate, hGan, hZhi, palace){
-  var box = document.getElementById('fs-purpact-chart');
+// Render the QMDJ chart for a result row into a given box (shared by all the
+// FS scan result lists: Purpose Activation, Water/Direction scan, …).
+function fsScanShowChart(boxId, isoDate, hGan, hZhi, palace){
+  var box = document.getElementById(boxId);
   if(!box) return;
   try {
     if(typeof showQimenChart !== 'function'){ box.innerHTML='<div style="font-size:12px;color:#c0392b;">Chart renderer not available.</div>'; return; }
     var html = showQimenChart(isoDate, hGan, hZhi, palace, { returnHtml:true });
     if(!html){ box.innerHTML='<div style="font-size:12px;color:#c0392b;">Cannot load chart for '+isoDate+' '+hGan+hZhi+'.</div>'; return; }
     box.innerHTML = '<div style="margin-top:6px;">'
-      + '<button onclick="document.getElementById(\'fs-purpact-chart\').innerHTML=\'\'" style="background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-bottom:6px;">✕ close chart</button>'
+      + '<button onclick="document.getElementById(\''+boxId+'\').innerHTML=\'\'" style="background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-bottom:6px;">✕ close chart</button>'
       + html + '</div>';
     box.scrollIntoView({ behavior:'smooth', block:'start' });
-  } catch(err){ console.warn('fsPurpactShowChart', err); box.innerHTML='<div style="font-size:12px;color:#c0392b;">Chart error.</div>'; }
+  } catch(err){ console.warn('fsScanShowChart', err); box.innerHTML='<div style="font-size:12px;color:#c0392b;">Chart error.</div>'; }
+}
+// Back-compat wrapper for the Purpose Activation block.
+function fsPurpactShowChart(isoDate, hGan, hZhi, palace){
+  fsScanShowChart('fs-purpact-chart', isoDate, hGan, hZhi, palace);
 }
 
 // Render the saved scan according to window._fsPurpactSort ('best' | 'date').
@@ -6285,30 +6299,30 @@ function _fsPurpactRender(){
     +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Hour</th>'
     +(st.multiPalace?'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Quad</th>':'')
     +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Door</th>'
-    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Qi</th>'
-    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">XK</th>'
-    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Comb</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Score</th>'
     +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;"></th></tr>';
-  var colSpan=st.multiPalace?8:7;
+  var colSpan=st.multiPalace?6:5;
   rows.slice(0,40).forEach(function(r){
     var gz=String(r.ganzhi||'');
     var hGan=gz.charAt(0), hZhi=gz.charAt(1);
     var pal=DIR2PAL[r.dir]||0;
     var canChart=(hGan && hZhi && pal);
+    var hidx=(r.hidx!=null?(r.hidx % 100):'');   // hidx = dayIdx*100 + hourIdx → hour index is %100
+    var clickable=(hidx!=='');
     var chartBtn = canChart
-      ? '<button onclick="fsPurpactShowChart(\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+pal+')" title="see the chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 chart</button>'
+      ? '<button onclick="event.stopPropagation();fsScanShowChart(\'fs-purpact-chart\',\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+pal+')" title="see the QMDJ chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 QMDJ</button>'
       : '';
-    html+='<tr style="border-bottom:1px solid #eee;">'
+    html+='<tr '+(clickable?'onclick="loadDateIntoMain(\''+r.date+'\','+hidx+')" onmouseover="this.style.background=\'#e0f2f1\'" onmouseout="this.style.background=\'\'" ':'')
+      +'style="border-bottom:1px solid #eee;'+(clickable?'cursor:pointer;':'')+'" '+(clickable?'title="Open this date/hour in Main (XKDG profile)"':'')+'>'
       +'<td style="'+pad+'white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+gz+'</span></td>'
       +'<td style="'+pad+'text-align:center;white-space:nowrap;">'+r.hour+'</td>'
       +(st.multiPalace?'<td style="'+pad+'text-align:center;font-weight:bold;color:#5e35b1;">'+r.dir+'</td>':'')
       +'<td style="'+pad+'text-align:center;white-space:nowrap;color:#2e7d32;font-weight:bold;">'+((r.door&&(DOOR_LBL[r.door]||r.door))||(r.hits&&r.hits[0])||'\u2014')+'</td>'
-      +'<td style="'+pad+'text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
-      +'<td style="'+pad+'text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
       +'<td style="'+pad+'text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
       +'<td style="'+pad+'text-align:center;">'+chartBtn+'</td>'
       +'</tr>';
-    if (r.hits && r.hits.length){
+    // Sub-line: the detail hits only (score is now a single column; chart button is inline).
+    if(r.hits && r.hits.length){
       html+='<tr><td colspan="'+colSpan+'" style="padding:0 10px 6px 10px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
     }
   });
@@ -7077,7 +7091,7 @@ function _fsLuckyDateRowHTML(m, persons, slot, placeWord){
       + '</span> communicates with the ' + placeWord + ': <b>' + _fsCommText(pp.ps.labels)
       + '</b> &nbsp;·&nbsp; with the date: <b>' + _fsCommText(pp.pd.labels) + '</b></div>';
   }).join('');
-  return '<div style="border-top:1px solid #eee;padding:6px 0;font-size:12px;">'
+  return '<div onclick="loadDateIntoMain(\''+m.iso+'\',6)" onmouseover="this.style.background=\'#faf5ff\'" onmouseout="this.style.background=\'\'" title="Open this date in Main (XKDG profile)" style="border-top:1px solid #eee;padding:6px 0;font-size:12px;cursor:pointer;">'
     + '<strong>' + _fsFmtDMY(m.iso) + '</strong> · ' + m.dGan + m.dZhi
     + ' <span style="color:#555;">· 運 ' + dYun + ' · 氣 ' + dQi + '</span>'
     + ' <span style="color:#999;">(hex ' + m.dData.hex + ')</span>'
