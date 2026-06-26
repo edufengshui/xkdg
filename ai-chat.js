@@ -236,7 +236,7 @@
     'scans it passed and the sub-scores. The tool skips gracefully any scan it cannot run (e.g. no person, no star) and ' +
     'reports it in scan_notes.\n' +
     '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
-    'whole house in one shot (facing/period, aquariums with their direction + water star, QFS zones with target/preset, ' +
+    'whole house in one shot (facing/period, aquariums with their direction + water star, ' +
     'and saved Water/Bed/Desk settings). The aquariums list ALREADY INCLUDES saved Water positions (source = ' +
     'saved_water_setting) - a SAVED WATER POSITION IS A WATER FEATURE; that is enough, do NOT ask the user for the ' +
     'direction when one is already saved. To activate it, take the aquarium and call find_water_activation_full(direction ' +
@@ -687,7 +687,7 @@
       name: 'get_house_setup',
       description: 'Return the FULL setup of one saved house resolved BY NAME (e.g. "Vienna"). The house is organised in ' +
         'FLOORS: the response has a floors[] array, each floor carrying its own doors, aquariums (each with its direction ' +
-        'and the water star living there), QFS zones (direction + target star + preset + star number) and saved ' +
+        'and the water star living there) and saved ' +
         'Water/Bed/Desk settings — plus its own facing/period when same_facing_period is false. active_floor marks the ' +
         'current floor. If the user names a floor use it, otherwise use the active floor. ' +
         'Use this when the user names a house (e.g. "activate the aquarium on the first floor of the Vienna house"), then ' +
@@ -2078,8 +2078,8 @@
   }
 
   // Full setup of one house, resolved by name — everything converges here:
-  // facing/period, doors, aquariums (+ the water star at each), QFS zones
-  // (+ target star number and preset), and the saved Water/Bed/Desk settings.
+  // facing/period, doors, aquariums (+ the water star at each), and the
+  // saved Water/Bed/Desk settings.
   function toolGetHouseSetup(input) {
     input = input || {};
     if (!window.XKDGHouse) return { error: 'House profiles not available on this page.' };
@@ -2112,7 +2112,6 @@
         flying_stars: fsChart,                     // authoritative: all palaces + imprisoned + liberation
         doors: f.doors.map(function (d) { return { name: d.name, facing: d.facing, water: d.water }; }),
         aquariums: aquariums,                      // a saved Water position IS a water feature (source tags which)
-        qfs_zones: f.qfs_zones,
         saved_settings: f.saved_settings
       };
     });
@@ -2122,7 +2121,7 @@
       house_facing: res.house.houseFacing, house_period: res.house.period,
       active_floor: n.activeFloor,
       floors: floors,
-      note: 'Multi-floor house: each floor has its own doors / aquariums / QFS zones / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars.'
+      note: 'Multi-floor house: each floor has its own doors / aquariums / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars.'
     };
   }
 
