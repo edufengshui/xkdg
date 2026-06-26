@@ -72,6 +72,16 @@
     '(open_chart_finder), Direction calculator (open_direction_calculator), Travel planner (plan_travel computes ' +
     'direction + time windows for a journey; open_travel_planner only opens the blank road-route UI).\n' +
     '- get_app_state tells you what the user currently has loaded/typed.\n' +
+    '- SOURCE / "HOW IS THIS BUILT" / CURRENT STATUS: you can read the app\'s OWN code. When the user asks how a ' +
+    'feature is really implemented, why the app behaves a certain way, what the current state/version of some part ' +
+    'is, or to check the actual logic ("come è fatta la porta legale?", "how does plan_travel pick the hour?", ' +
+    '"qual è lo stato di X nel codice?"), FIRST call list_source, then read_source on the relevant file(s) — use ' +
+    'the `search` argument (a function name or keyword) for big files instead of dumping the whole thing. The files ' +
+    'are fetched LIVE from GitHub (branch main), so they reflect the latest PUSHED code; answer from what you read, ' +
+    'cite the file (and line if useful), and never guess about internals you have not read. This reading is ' +
+    'on-demand: you see changes once they are pushed (GitHub may lag a few minutes right after a push), not local ' +
+    'unpushed edits. For "what can you do?" you may also summarise your available tools. Do NOT read source for ' +
+    'ordinary date/Feng-Shui questions — use the dedicated tools and explain_purpose for those.\n' +
     '- When the user asks about a SPECIFIC stop or point of the planned road trip ("dove avviene la sosta 2?", "where is ' +
     'stop 2?", "qual è la seconda tappa?"), call get_trip_itinerary and answer DIRECTLY with that stop\'s real place name and ' +
     'coordinates and time (index 2 = "punto 2"). NEVER deflect with "look at the card" or "scroll down".\n' +
@@ -823,6 +833,30 @@
           lower_trigram: { type: 'string', description: 'Lower trigram name (Qian/Dui/Li/Zhen/Xun/Kan/Gen/Kun).' }
         }
       }
+    },
+    {
+      name: 'list_source',
+      description: 'List the app\'s own source files (the live published version on GitHub, branch main). Use this ' +
+        'as the FIRST step when the user asks how something is implemented, how a feature really works under the ' +
+        'hood, the current status/version of a part of the app, or to look something up in the actual code. Returns ' +
+        'each file name with its size. After listing, pick the relevant file(s) and call read_source to read them.',
+      input_schema: { type: 'object', properties: {}, required: [] }
+    },
+    {
+      name: 'read_source',
+      description: 'Read one of the app\'s own source files, fetched LIVE from GitHub (branch main) at call time, so ' +
+        'it always reflects the latest PUSHED code (note: not local unpushed edits; GitHub\'s CDN may lag ~5 min ' +
+        'right after a push). Use after list_source to inspect how a feature is built and answer from the real code. ' +
+        'Large files are truncated; pass a search term to focus on the relevant part. Only the app\'s own root files ' +
+        'are allowed.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          file: { type: 'string', description: 'Exact file name from list_source, e.g. "qmdj-water-scanner.js", "app-fengshui.js", "ai-chat.js", "index.html".' },
+          search: { type: 'string', description: 'Optional: a keyword/function name to focus on. Returns the matching regions (with context) instead of the whole file — cheaper and more precise for big files.' }
+        },
+        required: ['file']
+      }
     }
   ];
 
@@ -881,6 +915,77 @@
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
 
+  // ── SOURCE ACCESS (list_source / read_source) ───────────────────────────────
+  // Lets the assistant read the app's OWN code, fetched live from GitHub (branch
+  // main) at call time, so its answers about how things work / current status track
+  // the latest PUSHED file. On-demand only (no background watching). Root files only.
+  var SRC_OWNER = 'edufengshui', SRC_REPO = 'eduXKDG', SRC_BRANCH = 'main';
+  var SRC_MAX_CHARS = 80000;            // ~20K tokens cap per read
+  var SRC_ALLOWED_EXT = /\.(js|html|css|webmanifest|json|md)$/i;
+  function srcValidName(f) {
+    f = String(f || '').trim();
+    if (!f || f.indexOf('/') >= 0 || f.indexOf('\\') >= 0 || f.indexOf('..') >= 0) return null;
+    if (!SRC_ALLOWED_EXT.test(f)) return null;
+    if (!/^[A-Za-z0-9_.\-]+$/.test(f)) return null;
+    return f;
+  }
+  // Static fallback list (used only if the GitHub contents API is unreachable).
+  var SRC_FALLBACK = ['index.html', 'styles.css', 'sw.js', 'manifest.webmanifest',
+    'app-bazi.js', 'app-fengshui.js', 'flying-stars.js', 'flying-stars-qimen.js',
+    'qmdj-water-scanner.js', 'qimen-direction-analysis.js', 'qimen-div-finder.js',
+    'travel-planner.js', 'ai-chat.js', 'floorplan-stars.js', 'solar-time.js'];
+  function toolListSource() {
+    var api = 'https://api.github.com/repos/' + SRC_OWNER + '/' + SRC_REPO + '/contents?ref=' + SRC_BRANCH + '&_=' + Date.now();
+    return fetch(api, { headers: { 'Accept': 'application/vnd.github+json' } })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (arr) {
+        if (!Array.isArray(arr)) throw new Error('unexpected response');
+        var files = arr.filter(function (e) { return e && e.type === 'file' && SRC_ALLOWED_EXT.test(e.name); })
+          .map(function (e) { return { file: e.name, bytes: e.size }; })
+          .sort(function (a, b) { return a.file < b.file ? -1 : 1; });
+        return { repo: SRC_OWNER + '/' + SRC_REPO + '@' + SRC_BRANCH, count: files.length, files: files,
+          note: 'Live file list. Call read_source with a file name to read it (use the `search` arg for big files).' };
+      })
+      .catch(function (e) {
+        return { repo: SRC_OWNER + '/' + SRC_REPO + '@' + SRC_BRANCH, files: SRC_FALLBACK.map(function (f) { return { file: f }; }),
+          note: 'Live listing failed (' + ((e && e.message) || e) + '); showing the known file set. read_source still works for these names.' };
+      });
+  }
+  function toolReadSource(input) {
+    input = input || {};
+    var f = srcValidName(input.file);
+    if (!f) return Promise.resolve({ error: 'Invalid or disallowed file name. Use a root file name from list_source, e.g. "app-fengshui.js".' });
+    var url = 'https://raw.githubusercontent.com/' + SRC_OWNER + '/' + SRC_REPO + '/' + SRC_BRANCH + '/' + f + '?_=' + Date.now();
+    return fetch(url, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 404 ? ' (file not found on branch ' + SRC_BRANCH + ')' : '')); return r.text(); })
+      .then(function (text) {
+        var total = text.length;
+        var search = (input.search != null) ? String(input.search) : '';
+        if (search) {
+          // Return focused regions around each match (case-insensitive), with context.
+          var hay = text, low = hay.toLowerCase(), q = search.toLowerCase(), idx = 0, regions = [], MAXR = 6, CTX = 1400, used = 0;
+          while (regions.length < MAXR) {
+            var at = low.indexOf(q, idx); if (at < 0) break;
+            var s = Math.max(0, at - CTX), e = Math.min(hay.length, at + q.length + CTX);
+            var lineNo = hay.slice(0, at).split('\n').length;
+            var snip = hay.slice(s, e);
+            if (used + snip.length > SRC_MAX_CHARS) { snip = snip.slice(0, Math.max(0, SRC_MAX_CHARS - used)); }
+            regions.push({ near_line: lineNo, snippet: (s > 0 ? '…' : '') + snip + (e < hay.length ? '…' : '') });
+            used += snip.length; idx = at + q.length;
+            if (used >= SRC_MAX_CHARS) break;
+          }
+          if (!regions.length) return { file: f, bytes: total, search: search, matches: 0, note: 'No occurrence of the search term in this file.' };
+          return { file: f, bytes: total, search: search, matches: regions.length, regions: regions,
+            note: 'Focused excerpts around the search term (live from ' + SRC_BRANCH + '). Ask to read more or another term if needed.' };
+        }
+        var truncated = total > SRC_MAX_CHARS;
+        return { file: f, bytes: total, truncated: truncated,
+          content: truncated ? text.slice(0, SRC_MAX_CHARS) : text,
+          note: truncated ? ('File is large; showing the first ~' + SRC_MAX_CHARS + ' chars. Use the `search` arg to jump to a specific function/keyword instead.') : 'Full file, live from branch ' + SRC_BRANCH + '.' };
+      })
+      .catch(function (e) { return { error: 'Could not read ' + f + ': ' + ((e && e.message) || e) }; });
+  }
+
   function execTool(name, input) {
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
@@ -917,6 +1022,8 @@
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
+      if (name === 'list_source') return toolListSource();
+      if (name === 'read_source') return toolReadSource(input || {});
       return { error: 'Unknown tool: ' + name };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
