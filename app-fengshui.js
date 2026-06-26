@@ -441,6 +441,7 @@ function buildFengShuiView(){
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
+        <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
       </div>
 
       <!-- (Active house detail moved UP into the green HOUSE PROFILES box.) -->
@@ -623,6 +624,8 @@ function fsToggleFloorplanView(){
       img.style.display = 'block';
       if (wrap){ wrap.style.aspectRatio = 'auto'; wrap.style.maxWidth = '100%'; }
       canvas.style.display = 'none';
+      var back = document.getElementById('fs-floorplan-back');
+      if (back) back.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
     }
@@ -659,6 +662,8 @@ function _fsRestoreLuopanView(){
       img.style.width = '100%'; img.style.height = '100%'; img.style.maxHeight = '';
     }
     if (wrap){ wrap.style.aspectRatio = ''; wrap.style.maxWidth = ''; }
+    var back = document.getElementById('fs-floorplan-back');
+    if (back) back.style.display = 'none';
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
     if (btn) btn.style.background = '#5d4037';
