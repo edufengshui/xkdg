@@ -610,8 +610,19 @@ function fsToggleFloorplanView(){
       alert('No saved floor plan for the active house/floor yet.\n\nImport one from the house card (\uD83D\uDCD0 Import a floorplan), set it up, then \uD83D\uDCBE Save to house.');
       return;
     }
-    img.src = fp.imgData;
+    var wrap = document.getElementById('fs-canvas-wrap');
+    // Prefer the composite (plan + flying stars); fall back to the bare plan for
+    // plans saved before this feature (re-save once to bake the stars in).
+    img.src = fp.starsImg || fp.imgData;
+    // Present it LARGE: break out of the square luopan box so a landscape plan
+    // uses the full width with its natural height.
+    img.style.position = 'relative';
+    img.style.inset = 'auto';
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    img.style.maxHeight = '82vh';
     img.style.display = 'block';
+    if (wrap){ wrap.style.aspectRatio = 'auto'; wrap.style.maxWidth = '100%'; }
     canvas.style.display = 'none';
     _fsFloorplanShown = true;
     if (btn) btn.style.background = '#1b8a3f';
@@ -623,12 +634,30 @@ function _fsRestoreLuopanView(){
     var canvas = document.getElementById('fs-canvas');
     var img    = document.getElementById('fs-floorplan-view');
     var btn    = document.getElementById('fs-mode-floorplan');
-    if (img)    img.style.display = 'none';
+    var wrap   = document.getElementById('fs-canvas-wrap');
+    if (img){
+      img.style.display = 'none';
+      img.style.position = 'absolute'; img.style.inset = '0';
+      img.style.width = '100%'; img.style.height = '100%'; img.style.maxHeight = '';
+    }
+    if (wrap){ wrap.style.aspectRatio = ''; wrap.style.maxWidth = ''; }
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
     if (btn) btn.style.background = '#5d4037';
   } catch(e){}
 }
+// Header "🖼 Floor plan": make this house active, then show its saved plan (with
+// flying stars) large, in place of the luopan. Edit stays on the ✏ button (modal).
+function fsViewFloorplanInPlace(personName, hi){
+  try {
+    if (typeof fsSetActiveHouse === 'function') fsSetActiveHouse(personName, hi);
+    try { _fsRestoreLuopanView(); } catch(e){}   // start from the luopan, then show the plan
+    if (typeof fsToggleFloorplanView === 'function') fsToggleFloorplanView();
+    var wrap = document.getElementById('fs-canvas-wrap');
+    if (wrap && wrap.scrollIntoView) wrap.scrollIntoView({ behavior:'smooth', block:'center' });
+  } catch(e){ console.warn('fsViewFloorplanInPlace', e); }
+}
+
 window._fsStarsVisible = false;
 function _fsSyncStarsToggleLabel(visible){
   window._fsStarsVisible = !!visible;
@@ -3428,7 +3457,8 @@ function fsRenderHouseProfiles(){
     // 📐 "Import a floorplan" button below; same brown colour. Remove (🗑) sits
     // right beside it (deletion lives with the floor-plan, not in the Add row).
     if (_sf && _sf.floorplan && _sf.floorplan.imgData){
-      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="View the saved floor plan (with its flying stars)">🖼 Floor plan</button>';
+      html += '<button onclick="fsViewFloorplanInPlace(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Show the saved plan with its flying stars, large, in place of the luopan">🖼 Floor plan</button>';
+      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#5d4037;border:1px solid #5d4037;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Edit the floor plan in the editor">✏</button>';
       html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Remove the saved floor plan">🗑</button>';
     }
     html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';

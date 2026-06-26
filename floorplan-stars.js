@@ -112,7 +112,8 @@
     if (st.img) ctx.drawImage(st.img, 0, 0, st.drawW, st.drawH);
 
     // rectangles covering the area (rect mode) + live drag preview
-    if (st.centerMode === 'rect') {
+    // (skipped when building a clean composite snapshot for the in-place view)
+    if (!st._clean && st.centerMode === 'rect') {
       ctx.save();
       ctx.lineWidth = 2; ctx.strokeStyle = '#1565c0'; ctx.fillStyle = 'rgba(21,101,192,0.08)';
       st.rects.forEach(function (r) {
@@ -135,7 +136,7 @@
     if (st.center) {
       if (st.chart) {
         drawPie(ctx, st.center); // includes the central palace cluster at the center
-      } else {
+      } else if (!st._clean) {
         // center marker (shown until the chart is drawn)
         ctx.save();
         ctx.beginPath(); ctx.arc(st.center.x, st.center.y, 6, 0, 2 * Math.PI);
@@ -543,6 +544,28 @@
     window.addEventListener('resize', function () { if (st.img && document.getElementById('fps-overlay')) { fitCanvas(); redraw(); } });
 
     // ── Persistence: build a compact saved object / restore one ──
+    // Clean composite (plan + flying stars, no editing rectangles), scaled and
+    // JPEG-encoded — this is what the in-place "show in place of the luopan" view
+    // displays large. Restores the editing redraw afterwards.
+    function compositeToDataURL(maxDim, quality) {
+      try {
+        if (!st.img) return null;
+        st._clean = true; redraw(); st._clean = false;
+        var src = els.canvas;
+        var sw = src.width || 1, sh = src.height || 1;
+        var scale = Math.min(1, maxDim / Math.max(sw, sh));
+        var w = Math.max(1, Math.round(sw * scale)), h = Math.max(1, Math.round(sh * scale));
+        var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        var cx = cv.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+        cx.drawImage(src, 0, 0, w, h);
+        var url = null;
+        try { url = cv.toDataURL('image/jpeg', quality); }
+        catch (e) { try { url = cv.toDataURL(); } catch (e2) { url = null; } }
+        redraw();
+        return url;
+      } catch (e) { try { st._clean = false; redraw(); } catch (_) {} return null; }
+    }
     function buildSaved() {
       if (!st.img) return null;
       var dW = st.drawW || 1, dH = st.drawH || 1;
@@ -552,6 +575,7 @@
       if (!imgData) return null;
       return {
         imgData: imgData,
+        starsImg: compositeToDataURL(1100, 0.72) || imgData,
         facingDeg: st.facingDeg, facingSide: st.facingSide, period: st.period,
         centerMode: st.centerMode, rectsF: rectsF, centerF: centerF,
         savedAt: Date.now()
@@ -567,6 +591,7 @@
       if (!imgData) return null;
       return {
         imgData: imgData,
+        starsImg: compositeToDataURL(maxDim, quality) || imgData,
         facingDeg: st.facingDeg, facingSide: st.facingSide, period: st.period,
         centerMode: st.centerMode, rectsF: rectsF, centerF: centerF,
         savedAt: Date.now()
