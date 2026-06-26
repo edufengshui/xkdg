@@ -1848,9 +1848,9 @@
     var wrap = el('div', { style: 'border:2px solid #1565c0;border-radius:10px;padding:10px 12px;margin:14px 0 4px;background:#f4f8ff;' });
     wrap.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1565c0;margin-bottom:6px;' }, '🗺️ Send to Google Maps'));
     wrap.appendChild(el('div', { style: 'font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;' },
-      'Pick which planned stops to include as waypoints. Each is a point <i>on the road</i> matching the planned time — ' +
-      'open the link and adjust it to the nearest charger/town if needed. Add your own stops below for real-world changes ' +
-      '(separate with “;”).'));
+      'Pick which planned stops to include as waypoints. Charging stops are sent <b>by name</b> (a named, tappable pin in ' +
+      'Google Maps, so the route is forced through them); other on-road points are sent as coordinates. Open the link and ' +
+      'adjust to the nearest charger/town if needed. Add your own stops below for real-world changes (separate with “;”).'));
 
     // From (fixed)
     wrap.appendChild(el('div', { style: 'font-size:12px;color:#333;margin:2px 0;' },
@@ -1945,16 +1945,24 @@
       var pts = [];
       var dropped = 0;
       checks.filter(function (c) { return c.cb.checked; }).forEach(function (c) {
-        var np = nearOf(c.pos);
-        // Only keep a cashing/quadrant stop if it lies ON the fast road (within the
-        // off-route limit). Anything that would force a detour is skipped.
-        if (!np || !isFinite(np.alongKm) || np.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
-        pts.push({ token: tpLatLng(c.pos), along: np.alongKm });                      // quadrant-exit point
-        if (c.stop && c.stop.charger && isFinite(c.stop.charger.lat) && isFinite(c.stop.charger.lon)) {
-          var npc = nearOf(c.stop.charger);
-          if (npc && isFinite(npc.alongKm) && npc.offKm <= TP_WAYPOINT_MAX_OFFKM)
-            pts.push({ token: tpLatLng(c.stop.charger), along: npc.alongKm });          // its charger (also on-road)
+        var st = c.stop;
+        // A CHARGE stop IS the charger: pass it BY NAME when it has a real title, so
+        // Google shows a recognizable, tappable pin and is forced through the exact
+        // charger (the drawn route then matches the planned one). One waypoint per
+        // charge stop (no redundant route point). Falls back to coordinates if the
+        // charger has no usable name or carries no coordinates.
+        if (st && st.charge && st.charger && isFinite(st.charger.lat) && isFinite(st.charger.lon)) {
+          var npc = nearOf(st.charger);
+          if (!npc || !isFinite(npc.alongKm) || npc.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
+          var title = (st.charger.title && !/^\s*charger\s*$/i.test(st.charger.title)) ? String(st.charger.title).trim() : '';
+          pts.push({ token: title || tpLatLng(st.charger), along: npc.alongKm });          // named charger (route-forcing)
+          return;
         }
+        // A quadrant-exit (cash-direction) stop is a point on the road, not a named
+        // place — keep it as a precise coordinate, only if it lies ON the fast road.
+        var np = nearOf(c.pos);
+        if (!np || !isFinite(np.alongKm) || np.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
+        pts.push({ token: tpLatLng(c.pos), along: np.alongKm });                            // quadrant-exit point
       });
       // Merge free-text extras INTO travel order. Coordinate extras (this is how a
       // fallback charger like a start-of-trip Supercharger is added) get their own
