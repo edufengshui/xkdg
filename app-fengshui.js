@@ -383,8 +383,6 @@ function buildFengShuiView(){
             <input type="number" id="fs-house-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()">
-            <button onclick="fsFacingFromMap('fs-house-facing')" title="Measure facing from satellite map (magnetic)"
-                    style="margin-top:4px;width:100%;background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Measure facing</button>
           </div>
           <div style="min-width:90px;">
             <label style="font-size:11px;color:#666;display:block;">Period (1-9)</label>
@@ -3170,8 +3168,21 @@ function fsAddFloor(personName, houseIdx){
     var name = prompt('Name of the new floor (e.g. "1st floor", "Attic"):', 'Floor ' + (h.floors.length + 1));
     if (name === null) return;
     if (!name.trim()) name = 'Floor ' + (h.floors.length + 1);
+    // Options previously shown on the card now live here, inside Add floor:
+    var same = confirm('Same facing & period as the rest of the house for this floor?\n\nOK = same for all floors\nCancel = this floor has its own facing / period');
+    var fFacing, fPeriod;
+    if (same){
+      h.sameFacing = true;
+      if (h.houseFacing == null){ var hf = prompt('House facing (\u00b0):', ''); if (hf !== null && String(hf).trim() !== '') h.houseFacing = parseFloat(hf); }
+      if (h.period == null){ var hp = prompt('Period (1-9):', ''); if (hp !== null && String(hp).trim() !== '') h.period = parseInt(hp, 10); }
+      fFacing = h.houseFacing; fPeriod = h.period;
+    } else {
+      h.sameFacing = false;
+      var ff = prompt('Facing (\u00b0) for "' + name.trim() + '":', ''); fFacing = (ff === null || String(ff).trim() === '') ? null : parseFloat(ff);
+      var pp = prompt('Period (1-9) for "' + name.trim() + '":', ''); fPeriod = (pp === null || String(pp).trim() === '') ? null : parseInt(pp, 10);
+    }
     h.floors.push({ label: name.trim(),
-      facing: (h.sameFacing ? h.houseFacing : null), period: (h.sameFacing ? h.period : null),
+      facing: fFacing, period: fPeriod,
       doors: [], waters: [], zones: [], settings: { water: [], bed: [], desk: [] } });
     h.activeFloor = h.floors.length - 1;
     _fsHousesSave(all);
@@ -3226,12 +3237,23 @@ function fsEditFloorFacing(personName, houseIdx){
     var all = _fsHousesLoad();
     var h = all[personName] && all[personName][houseIdx]; if (!h) return;
     var f = _fsActiveFloor(h); if (!f) return;
-    var fac = prompt('Facing (\u00b0) for floor "' + (f.label || '') + '":', f.facing != null ? f.facing : '');
-    if (fac === null) return;
-    var per = prompt('Period (1-9) for floor "' + (f.label || '') + '":', f.period != null ? f.period : '');
-    if (per === null) return;
-    f.facing = (String(fac).trim() === '') ? null : parseFloat(fac);
-    f.period = (String(per).trim() === '') ? null : parseInt(per, 10);
+    // When the house shares one facing/period across floors, edit the HOUSE value
+    // (that is what is shown); otherwise edit just this floor.
+    if (h.sameFacing){
+      var hfac = prompt('House facing (\u00b0) — applies to all floors:', h.houseFacing != null ? h.houseFacing : '');
+      if (hfac === null) return;
+      var hper = prompt('Period (1-9) — applies to all floors:', h.period != null ? h.period : '');
+      if (hper === null) return;
+      h.houseFacing = (String(hfac).trim() === '') ? null : parseFloat(hfac);
+      h.period = (String(hper).trim() === '') ? null : parseInt(hper, 10);
+    } else {
+      var fac = prompt('Facing (\u00b0) for floor "' + (f.label || '') + '":', f.facing != null ? f.facing : '');
+      if (fac === null) return;
+      var per = prompt('Period (1-9) for floor "' + (f.label || '') + '":', f.period != null ? f.period : '');
+      if (per === null) return;
+      f.facing = (String(fac).trim() === '') ? null : parseFloat(fac);
+      f.period = (String(per).trim() === '') ? null : parseInt(per, 10);
+    }
     _fsHousesSave(all);
     if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
     fsRenderHouseProfiles();
@@ -3391,8 +3413,8 @@ function fsRenderHouseProfiles(){
     if (isActive) html += '<span style="color:#2e7d32;font-size:22px;line-height:1;" title="Active house">●</span>';
     else html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#bbb;font-size:22px;line-height:1;cursor:pointer;" title="Set as active house">○</span>';
     html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
+    if (_sumBits.length) html += '<span style="font-size:11px;color:#777;white-space:nowrap;">' + _sumBits.join(' · ') + '</span>';
     html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
-    if (_sumBits.length) html += '<span style="font-size:11px;color:#777;">' + _sumBits.join(' · ') + '</span>';
     // Category selector — on the same line (the owner name sits on the Facing/Period line inside the house)
     html += '<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#555;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
     html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
@@ -3404,10 +3426,12 @@ function fsRenderHouseProfiles(){
     // RIGHT (top-right corner): Load · Rename · Delete · Archive
     html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto;">';
     html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Load into FS inputs to edit">📂 Load</button>';
-    // 📐 Floor plan — ALWAYS visible (even when details are collapsed) when this
-    // floor has a saved plan, so it is easy to reopen from House Profiles.
+    // 🖼 Floor plan — VIEW the saved plan. Square icon to distinguish it from the
+    // 📐 "Import a floorplan" button below; same brown colour. Remove (🗑) sits
+    // right beside it (deletion lives with the floor-plan, not in the Add row).
     if (_sf && _sf.floorplan && _sf.floorplan.imgData){
-      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Open the saved floor plan (with its flying stars)">📐 Floor plan</button>';
+      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="View the saved floor plan (with its flying stars)">🖼 Floor plan</button>';
+      html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Remove the saved floor plan">🗑</button>';
     }
     html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
@@ -3440,23 +3464,26 @@ function fsRenderHouseProfiles(){
     } else {
       html += '<span style="color:#999;">No address</span>';
     }
+    html += '<button onclick="fsFacingFromMap(\'fs-house-facing\')" title="Measure facing from satellite map (magnetic)" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">📍 Measure facing</button>';
     html += '<button onclick="fsEditHouseAddress(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Address</button>';
     html += '</div>';
-    // Floor (right) — uses the empty space on the right
+    // Floor (right) — facing/period inline next to the selector; click the value to edit it.
     html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;">';
     html += '<span style="font-weight:bold;color:#2e7d32;">🏢 Floor:</span>';
     html += '<select onchange="fsSwitchFloor(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
     h.floors.forEach(function(fl, fi){ html += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>'; });
     html += '</select>';
-    html += '<button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:2px 9px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button>';
+    var _fpTxt = '';
+    if (effFacing != null) _fpTxt += 'Facing ' + effFacing + '\u00b0';
+    if (effPeriod != null) _fpTxt += (_fpTxt ? ' \u00b7 ' : '') + 'Period ' + effPeriod;
+    if (!_fpTxt) _fpTxt = '<span style="color:#e65100;">no facing/period</span>';
+    html += '<span onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" title="Edit this floor\'s facing / period" style="font-size:11px;color:#555;white-space:nowrap;cursor:pointer;border-bottom:1px dotted #aaa;">' + _fpTxt + ' \u270E</span>';
     html += '<button onclick="fsRenameFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">✏ Rename</button>';
-    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">🗑</button>';
+    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete this floor">🗑</button>';
     html += '</div>';
     html += '</div>';
-    // Same Facing / Period toggle
-    html += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#555;margin:0 0 4px;cursor:pointer;">';
-    html += '<input type="checkbox"' + (h.sameFacing ? ' checked' : '') + ' onchange="fsToggleSameFacing(\'' + escJs(person.name) + '\',' + hi + ',this.checked)"> Same Facing / Period for all floors';
-    html += '</label>';
+    // + Add floor on its own row below (facing/period & same-for-all options are asked there)
+    html += '<div style="margin:0 0 6px;"><button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button></div>';
 
     // ── Guest (occupant #2) — cohabit (owner+guest) or guest-as-#1 (owner away) ──
     if (h.guest && h.guest.name){
@@ -3472,18 +3499,8 @@ function fsRenderHouseProfiles(){
         + '</div>';
     }
 
-    // House / floor info (owner name on the right)
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#555;">';
-    html += '<span>';
-    if (effFacing != null) html += 'Facing: ' + effFacing + '° &nbsp;';
-    if (effPeriod != null) html += 'Period: ' + effPeriod;
-    if (effFacing == null && effPeriod == null) html += '<span style="color:#e65100;">No facing/period for this floor yet</span>';
-    if (!h.sameFacing) html += ' <button onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 7px;font-size:10px;cursor:pointer;margin-left:4px;">✏ Floor facing/period</button>';
-    html += '</span>';
-    html += '<span style="white-space:nowrap;color:#444;">👤 <strong>' + escHtml(_pn) + '</strong></span>';
-    html += '</div>';
-
-    // ── FLOOR PLAN (📐) — moved DOWN into the bottom "Add" row (see _fpBtns below) ──
+    // (Facing/Period now shown inline next to the Floor selector above; the owner
+    // is implicit — every House Profile follows the active person — so no 👤 label.)
 
     // ── DOORS (🚪) — labeled block only when there are doors ──
     var doors = f.doors;
@@ -3606,14 +3623,11 @@ function fsRenderHouseProfiles(){
     // "+ Add a new guest" — pushed to the RIGHT and visually separated from the
     // placement "Add" buttons (it's a different kind of action).
     if (!(h.guest && h.guest.name)) _addBtns += '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as occupant #2 (considered in every scan, like Person B)" style="margin-left:auto;background:#0d47a1;color:#fff;border:1px solid #82b1ff;border-radius:4px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 1px 3px rgba(13,71,161,.3);">👥 Add a new guest</button>';
-    // Floor plan button(s) — leftmost in the bottom row, before the Add buttons.
-    var _fpBtns;
-    if (f && f.floorplan && f.floorplan.imgData){
-      _fpBtns = '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" title="Open / edit the saved floor plan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Floor plan ✓</button>'
-        + '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" title="Remove floor plan" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">🗑</button>';
-    } else {
-      _fpBtns = '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
-    }
+    // Floor plan — only the "Import" action lives in the Add row. When a plan is
+    // already saved, viewing/removing it lives in the header (🖼 + 🗑), not here.
+    var _fpBtns = (f && f.floorplan && f.floorplan.imgData)
+      ? ''
+      : '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">'
       + '<span style="font-size:10px;color:#999;">Add:</span>' + _fpBtns + _addBtns + '</div>';
 
