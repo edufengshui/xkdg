@@ -6176,9 +6176,40 @@ function fsPurposeActivationScan(){
     // (3) Build rows. Show the Quadrant column when results span more than one palace.
     var palSet={}; qres.forEach(function(r){ if(r.dir) palSet[r.dir]=1; });
     var multiPalace=Object.keys(palSet).length>1;
+
+    // Flying Stars booster: a lucky flying star (山 mountain / 向 facing) sitting at
+    // the activation palace adds effectiveness. 9 helps every purpose; the rest are
+    // purpose-specific. (Each matching star = +1; checks BOTH mountain and facing.)
+    var FS_LUCKY={ _all:[9], health:[8], journey:[1], career:[6], relationship:[1,4], speak:[1,4], legal:[7] };
+    var _fsChart=null, _fsDirIdx=null;
+    try {
+      var _ph=_fsPurpactSelectedHouse(); var _pf=_ph?_fsActiveFloor(_ph):null;
+      var _pfac=(_ph&&_pf&&typeof _fsFloorFacing==='function')?_fsFloorFacing(_ph,_pf):null;
+      var _pper=(_ph&&_pf&&typeof _fsFloorPeriod==='function')?_fsFloorPeriod(_ph,_pf):null;
+      if(_pfac!=null && _pper!=null && typeof FlyingStars!=='undefined' && typeof fsMountainCharFromDeg==='function'){
+        _fsChart=FlyingStars.calculate(parseInt(_pper,10), fsMountainCharFromDeg(parseFloat(_pfac)));
+        _fsDirIdx=FlyingStars.DIR_TO_INDEX||null;
+      }
+    } catch(e){}
+    var _fsLucky=(FS_LUCKY._all||[]).concat(FS_LUCKY[mainPurpose]||[]);
+    function _fsStarBonus(dir){
+      var o={n:0,labels:[]};
+      try {
+        if(!_fsChart||!_fsDirIdx||!dir) return o;
+        var gi=_fsDirIdx[dir]; if(gi==null) return o;
+        var ms=_fsChart.sittingStars?_fsChart.sittingStars[gi]:null;
+        var fsr=_fsChart.facingStars?_fsChart.facingStars[gi]:null;
+        if(ms!=null && _fsLucky.indexOf(ms)!==-1){ o.n++; o.labels.push('\u2b50\u5c71'+ms); }
+        if(fsr!=null && _fsLucky.indexOf(fsr)!==-1){ o.n++; o.labels.push('\u2b50\u5411'+fsr); }
+      } catch(e){}
+      return o;
+    }
+
     var rows=qres.map(function(r){
       var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
-      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), dir:(r.dir||''), door:(r.purposeDoor||null), hits:(r.hits||[]).map(function(h){return h.label;}) };
+      var fb=_fsStarBonus(r.dir||'');
+      var hitsArr=(r.hits||[]).map(function(h){return h.label;}).concat(fb.labels);
+      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+fb.n, dir:(r.dir||''), door:(r.purposeDoor||null), hits:hitsArr };
     });
 
     var DOOR_LBL={Kai:'Open 開',Xiu:'Rest 休',Sheng:'Birth 生',JingS:'View 景',JingF:'Shocking 驚',Shang:'Injury 傷',Du:'Delusion 杜',Si:'Death 死'};

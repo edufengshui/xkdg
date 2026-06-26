@@ -45,6 +45,12 @@
   const STAR_NAME = {Peng:'Grass',Rui:'Rice',Chong:'Aggressor',Fu:'Assistant',Qin:'Fowl',Xin:'Heart',Zhu:'Pillar',Ren:'Official',Ying:'Hero'};
   const DOOR_NAME = {Kai:'Open',Xiu:'Rest',Sheng:'Birth',Shang:'Injury',Du:'Delusion',JingS:'View',Si:'Death',JingF:'Shocking'};
 
+  // Purpose-specific QMDJ boosters — ADD to effectiveness/score, never gate.
+  // Star names use STAR_NAME English values (cell star). Spirits use the raw
+  // deity key (cell[3]): Bird=朱雀, Norm=勾陳.
+  const PURPOSE_QM_STARS   = { health:['Heart'], speak:['Pillar','Assistant'], career:['Hero','Official'] };
+  const PURPOSE_QM_SPIRITS = { legal:['Bird'], career:['Norm'] };
+
   const JQ_CN2PY = {
     '冬至':'Dong Zhi','小寒':'Xiao Han','大寒':'Da Han',
     '立春':'Li Chun','雨水':'Yu Shui','惊蛰':'Jing Zhe',
@@ -937,6 +943,21 @@
         }
       }
     }
+    // ── Purpose / Commander effectiveness boosters (additive; never gate) ──
+    try {
+      // Commander 值符, wherever it is, increases effectiveness (any purpose).
+      var _hasCmdHit = hits.some(function(h){ return h.label && (h.label.indexOf('Commander') >= 0 || h.label.indexOf('\u503c\u7b26') >= 0); });
+      if((cellInfo.deity === 'Commander' || cellInfo.zhiFu) && !_hasCmdHit){
+        score += 1; hits = hits.concat([{ cat:'combo', label:'\u503c\u7b26 Commander \u2605' }]);
+      }
+      var _pk = purpose && purpose.mainPurpose;
+      if(_pk){
+        var _qs = PURPOSE_QM_STARS[_pk];
+        if(_qs && _qs.indexOf(cellInfo.star) !== -1){ score += 1; hits = hits.concat([{ cat:'combo', label:'\u2605 ' + cellInfo.star + ' star' }]); }
+        var _qd = PURPOSE_QM_SPIRITS[_pk];
+        if(_qd && _qd.indexOf(cellInfo.deity) !== -1){ score += 1; hits = hits.concat([{ cat:'combo', label:'\u2605 ' + cellInfo.deity + ' spirit' }]); }
+      }
+    } catch(e){}
     return { matched: true, hits: hits, score: score, cell: cellInfo, isVoid: isVoid, flags: flags.reasons, purposeDoor: purpose ? cellInfo.doorCode : null };
   }
 

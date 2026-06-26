@@ -4073,6 +4073,7 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         if (hourSpirit && hourSpirit.en === 'Golden Box')      spiritBonus += 2;
         if (hourSpirit && hourSpirit.en === 'Cerulean Dragon') spiritBonus += 2;
         if (hourSpirit && hourSpirit.en === 'Jade Hall')       spiritBonus += 2;
+        try { if (hasLu) spiritBonus += 2; } catch(e){} // Lu 祿 prosperity — extra weight for wealth (not mandatory)
         var wealthPass = dayRole === 'child' && pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
         if (!wealthPass) return false;
 
