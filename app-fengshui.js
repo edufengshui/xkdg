@@ -484,7 +484,7 @@ function buildFengShuiView(){
           <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">🎯 PURPOSE ACTIVATION</div>
           <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
             <div style="flex:1;min-width:170px;">
-              <label style="font-size:11px;color:#666;display:block;">Purpose <button type="button" onclick="openPurposeGuide(document.getElementById('fs-purpact-purpose').value)" title="What this purpose looks for (a good date + Feng Shui activation)" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 2px;vertical-align:middle;">📄</button></label>
+              <label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Purpose <button type="button" onclick="openPurposeGuide(document.getElementById('fs-purpact-purpose').value)" title="What this purpose looks for (a good date + Feng Shui activation)" style="background:#ede7f6;border:1px solid #b39ddb;color:#4527a0;cursor:pointer;font-size:11px;font-weight:700;padding:1px 8px;border-radius:11px;vertical-align:middle;margin-left:4px;">📖 Guide</button></label>
               <select id="fs-purpact-purpose" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
                 <option value="health">🏥 Health · Rest 休</option>
                 <option value="career">💼 Career · Open 開 / View 景</option>
@@ -6367,7 +6367,12 @@ var PURPOSE_GUIDE_GENERAL =
   + '</div>';
 function openPurposeGuide(key){
   try {
-    var g = PURPOSE_GUIDE[key];
+    var k = String(key||'').toLowerCase().trim();
+    var g = PURPOSE_GUIDE[k];
+    if(!g){ // tolerant match: pick the known key the value starts with / contains
+      var keys=Object.keys(PURPOSE_GUIDE);
+      for(var i=0;i<keys.length;i++){ if(k.indexOf(keys[i])>=0){ g=PURPOSE_GUIDE[keys[i]]; break; } }
+    }
     if(!g){ return; }   // e.g. 'water' has no guide
     var old=document.getElementById('purpose-guide-overlay'); if(old) old.remove();
     var ov=document.createElement('div'); ov.id='purpose-guide-overlay';
@@ -6396,9 +6401,9 @@ function _injectMainPurposeGuideIcon(){
     var ps=document.getElementById('purpose-select');
     if(!ps || document.getElementById('main-purpose-guide-btn')) return;
     var b=document.createElement('button');
-    b.id='main-purpose-guide-btn'; b.type='button'; b.textContent='📄';
+    b.id='main-purpose-guide-btn'; b.type='button'; b.textContent='📖 Guide';
     b.title='What this purpose looks for (a good date + Feng Shui activation)';
-    b.style.cssText='background:none;border:none;cursor:pointer;font-size:15px;padding:0 4px;vertical-align:middle;';
+    b.style.cssText='background:#ede7f6;border:1px solid #b39ddb;color:#4527a0;cursor:pointer;font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;vertical-align:middle;margin-left:6px;white-space:nowrap;';
     b.addEventListener('click', function(){ try { openPurposeGuide(ps.value); } catch(e){} });
     if(ps.parentNode) ps.parentNode.insertBefore(b, ps.nextSibling);
   } catch(e){}
