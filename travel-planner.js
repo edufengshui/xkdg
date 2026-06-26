@@ -3274,10 +3274,10 @@
    *     plus the spoken "about to leave the quadrant" alert (unchanged).
    *
    * REFERENCE priority:
-   *   1) an autonomous origin set with "Qui" (current GPS) or "Da luogo"/AI
+   *   1) an autonomous origin set with "Here" (current GPS) or "From place"/AI
    *      (a named place, possibly already km behind you);
    *   2) else, if a trip is loaded, origin -> last passed stop (Auto) or origin;
-   *   3) else nothing yet -> ask to tap "Qui".
+   *   3) else nothing yet -> ask to tap "Here".
    * No Wake Lock: it recomputes on screen wake (visibilitychange) and via the
    * refresh button.
    * ----------------------------------------------------------------------- */
@@ -3460,7 +3460,7 @@
       if (big3) big3.style.display = 'none';
       if (small) small.appendChild(host);   // move it back into the small panel
       host.style.height = '150px';
-      if (btn) btn.textContent = '⛶ Ingrandisci';
+      if (btn) btn.textContent = '⛶ Expand';
     }
     setTimeout(function () { if (_cmpMap) { _cmpMap.invalidateSize(); cmpRenderMap(); } }, 80);
   }
@@ -3545,7 +3545,7 @@
   function tpCmpRender() {
     var box = document.getElementById('tp-cmp-body'); if (!box) return;
     var r = cmpResolveRef();
-    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Qui</b> to set this spot as the origin, or set one with <b>✏️ Da luogo</b> — or compute a trip first.</div>'; return; }
+    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Here</b> to set this spot as the origin, or set one with <b>✏️ From place</b> — or compute a trip first.</div>'; return; }
     if (!_cmpPos) { box.innerHTML = '<div style="color:#888;font-size:13px;">Waiting for GPS… allow location and tap ↻.</div>'; return; }
     var ref = r.ref, refLabel = r.label, pos = _cmpPos;
     var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
@@ -3675,8 +3675,8 @@
   function cmpUpdateRefLabel() {
     var lbl = document.getElementById('tp-cmp-ref-label'); if (!lbl) return;
     if (_cmpOrigin) lbl.innerHTML = 'Origin: <b>' + (_cmpOrigin.name || 'here') + '</b> · <span id="tp-cmp-clear" style="color:#1565c0;cursor:pointer;text-decoration:underline;">clear</span>';
-    else if (window._tpLive) lbl.textContent = 'Origin: trip start (use Qui / Da luogo to override).';
-    else lbl.textContent = 'No origin yet — tap 📍 Qui.';
+    else if (window._tpLive) lbl.textContent = 'Origin: trip start (use Here / From place to override).';
+    else lbl.textContent = 'No origin yet — tap 📍 Here.';
     var clr = document.getElementById('tp-cmp-clear'); if (clr) clr.addEventListener('click', tpCmpClearOrigin);
   }
 
@@ -3686,7 +3686,7 @@
       ov = el('div', { id: 'tp-cmp-ov', style: 'position:fixed;left:12px;bottom:80px;z-index:99996;width:248px;background:#fff;border:2px solid #1565c0;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);' });
       var head = el('div', { style: 'display:flex;align-items:center;gap:6px;background:#1565c0;color:#fff;border-radius:10px 10px 0 0;padding:7px 9px;' });
       head.appendChild(el('div', { style: 'flex:1;font-size:13px;font-weight:700;' }, '🧭 Live compass'));
-      var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Trip reference: Auto (origin→last stop) / Origin only (used only when no Qui/Da luogo origin is set)', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
+      var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Trip reference: Auto (origin→last stop) / Origin only (used only when no Here/From place origin is set)', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
       var refr = el('button', { type: 'button', title: 'Refresh now', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, '\u21bb');
       var vox = el('button', { id: 'tp-cmp-vox', type: 'button', title: 'Voice alerts on/off', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, tpCmpVoiceOn() ? '\ud83d\udd0a' : '\ud83d\udd07');
       vox.addEventListener('click', function () {
@@ -3709,8 +3709,8 @@
       var ctrl = el('div', { style: 'padding:0 10px 10px;border-top:1px solid #eee;' });
       ctrl.appendChild(el('div', { id: 'tp-cmp-ref-label', style: 'font-size:11px;color:#666;margin:7px 0;' }));
       var row = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
-      var hereBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, '📍 Qui');
-      var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'Da luogo… (es. Arezzo)', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
+      var hereBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, '📍 Here');
+      var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'From a place… (e.g. Arezzo)', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
       var setBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#0b8043;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Set');
       hereBtn.addEventListener('click', function () { tpCmpStart(); tpCmpSetOriginHere(); });
       function doSet() {
@@ -3729,7 +3729,7 @@
       // Mini map + expand button.
       var mapWrap = el('div', { id: 'tp-cmp-map-wrap', style: 'padding:0 10px 10px;' });
       var expandRow = el('div', { style: 'display:flex;justify-content:flex-end;margin-bottom:6px;' });
-      var expandBtn = el('button', { id: 'tp-cmp-expand', type: 'button', style: 'background:#1565c0;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;' }, '⛶ Ingrandisci');
+      var expandBtn = el('button', { id: 'tp-cmp-expand', type: 'button', style: 'background:#1565c0;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;' }, '⛶ Expand');
       expandBtn.addEventListener('click', function () { cmpSetMapBig(!_cmpMapBig); });
       expandRow.appendChild(expandBtn);
       mapWrap.appendChild(expandRow);
