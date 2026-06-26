@@ -2097,13 +2097,44 @@
           lines.push((it.charge ? 'Charge ' + it.durationMin + ' min' : 'Stop ' + (20) + ' min') + ' at ' + fmtHMonly(it.atWall) + ', then set off toward ' + tpHeadDirOnly(it.newHeading));
         }
       });
+      // Per-HOUR QMDJ panel: one row per 时辰 so the user can inspect every hour's
+      // rotating chart and see which travel directions are favourable vs neutral.
+      // Additive — does not touch legs / exits / text.
+      var PALACE_NAME = { 1: 'Kan', 2: 'Kun', 3: 'Zhen', 4: 'Xun', 5: 'Center', 6: 'Qian', 7: 'Dui', 8: 'Gen', 9: 'Li' };
+      var hours = [];
+      try {
+        (result.slots || []).forEach(function (s) {
+          var roadDir = tpSnapDir((s.bearingDest != null) ? s.bearingDest : result.bearing);
+          var entry = (s.dirs || []).filter(function (d) { return d.dir === roadDir; })[0] || null;
+          var ev = (entry && entry.eval) ? entry.eval : null;
+          var fortunate = !!(ev && ev.ok);
+          var fav = (s.dirs || []).filter(function (d) { return d.eval && d.eval.ok; })
+            .map(function (d) {
+              return { dir: d.dir, palace: d.palace, palaceName: PALACE_NAME[d.palace] || '',
+                       door: (d.eval.door || null), score: (d.eval.score || null), sanqi: !!d.eval.hasSanQi };
+            });
+          hours.push({
+            from: fmtHMonly(s.wallStart), to: fmtHMonly(s.wallEnd),
+            ganzhi: s.gZhiPy || s.brPy || '',
+            roadDir: roadDir, palace: TP_DIR_TO_PALACE[roadDir], palaceName: PALACE_NAME[TP_DIR_TO_PALACE[roadDir]] || '',
+            fortunate: fortunate,
+            door: fortunate ? (ev.door || null) : null,
+            sanqi: fortunate ? !!ev.hasSanQi : false,
+            deity: fortunate ? (ev.deity || null) : null,
+            score: fortunate ? (ev.score || null) : null,
+            configs: fortunate ? (ev.configs || []) : [],
+            favourable_dirs: fav,
+            iso: s.iso, hGan: s.hGanHan, hZhi: s.hZhiHan, brPy: s.brPy
+          });
+        });
+      } catch (eH) { hours = []; }
       window._tpLastResult = {
         stamp: Date.now(),
         origin: result.origin.name || null, dest: result.dest.name || null,
         bearing: Math.round(result.bearing), snapped: result.snapDir,
         real_route: !!result.usedRealRoute, km: rm.km ? Math.round(rm.km) : null, driving_time: drive,
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
-        exits: exits,
+        exits: exits, hours: hours,
         text: lines.join('\n')
       };
       // Compact payload for the live compass (net bearing + quadrant from the reference point during the drive).

@@ -3344,6 +3344,71 @@
       if (info.count && info.count > 1) tail.push('+' + (info.count - 1) + ' ' + L.moreStops);
       return L.ch + ': ' + (info.name || 'station') + extra + ' (' + tail.join(' \u00b7 ') + ')';
     }
+    // Build the small "favourable directions this hour" summary shown above the
+    // rotating chart, so the user sees at a glance which directions are favourable
+    // and which the road direction is.
+    function buildHourFavSummary(h) {
+      var favs = (h.favourable_dirs || []).map(function (d) {
+        var road = (d.dir === h.roadDir) ? ' \u25c4 road' : '';
+        return '<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 7px;border-radius:10px;background:#e8f5e9;border:1px solid #66bb6a;color:#1b5e20;font-size:12px;">' +
+          d.dir + ' \u00b7 P' + d.palace + (d.palaceName ? (' ' + d.palaceName) : '') +
+          (d.door ? (' \u00b7 ' + d.door) : '') + (d.sanqi ? ' \u00b7 \u4e09\u5947' : '') +
+          (d.score != null ? (' \u00b7 ' + d.score) : '') + road + '</span>';
+      }).join('');
+      if (!favs) favs = '<span style="color:#888;font-size:12px;">No favourable travel direction this hour (neutral).</span>';
+      var roadLine = '<div style="font-size:12px;color:#444;margin-bottom:4px;">Road direction toward destination: <b>' +
+        h.roadDir + '</b> (palace ' + h.palace + (h.palaceName ? (' ' + h.palaceName) : '') + ') \u2014 ' +
+        (h.fortunate ? '<span style="color:#1b5e20;font-weight:600;">favourable \u2713</span>'
+                     : '<span style="color:#b58900;font-weight:600;">neutral</span>') + '</div>';
+      return '<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.2);">' +
+        '<div style="font-weight:700;margin-bottom:6px;">' + h.from + '\u2013' + h.to + (h.ganzhi ? (' \u00b7 ' + h.ganzhi) : '') + '</div>' +
+        roadLine +
+        '<div style="font-size:12px;color:#444;margin:6px 0 3px;">Favourable directions this hour (rotating QMDJ):</div>' +
+        '<div>' + favs + '</div></div>';
+    }
+    // Open the ROTATING QMDJ chart for one hour (the correct chart for travel
+    // directions), with the favourable-directions summary on top.
+    function openHourChart(h) {
+      var ok = false;
+      try {
+        if (typeof window.showQimenChart === 'function' && h && h.iso && h.hGan && h.hZhi) {
+          var chart = window.showQimenChart(h.iso, h.hGan, h.hZhi, h.palace, { mode: 'rotating', returnHtml: true });
+          if (chart) { _vbShowChartOverlay(buildHourFavSummary(h) + chart); ok = true; }
+        }
+      } catch (e) {}
+      if (!ok) { try { addBubble('assistant', '\u26A0 Could not open the rotating chart for this hour.'); } catch (e2) {} }
+    }
+    // Collapsible per-hour panel: every 时辰 of the trip, marked favourable / neutral,
+    // each with a 🔍 button that opens its rotating QMDJ chart.
+    function addHoursPanel(wrap, hours, L) {
+      if (!hours || !hours.length) return;
+      var favCount = hours.filter(function (h) { return h.fortunate; }).length;
+      var head = elc('button', { style:
+        'width:100%;text-align:left;margin-top:8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:8px;' +
+        'padding:7px 9px;font-size:12px;font-weight:600;color:#4527a0;cursor:pointer;' },
+        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' favourable \u00b7 tap a chart to inspect \u25be');
+      var body = elc('div', { style: 'display:none;margin-top:4px;' });
+      head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
+      hours.forEach(function (h) {
+        var fav = h.fortunate;
+        var row = elc('div', { style:
+          'display:flex;align-items:center;gap:6px;margin:3px 0;padding:4px 7px;border-radius:7px;border-left:3px solid ' +
+          (fav ? '#43a047' : '#bbb') + ';background:' + (fav ? '#f1f8f2' : '#f7f7f7') + ';font-size:12px;' });
+        var txt = fav
+          ? (h.from + '\u2013' + h.to + ' \u00b7 ' + L.toward + ' ' + h.roadDir + ' \u00b7 P' + h.palace +
+             (h.palaceName ? (' ' + h.palaceName) : '') + (h.door ? (' \u00b7 ' + h.door) : '') +
+             (h.sanqi ? ' \u00b7 \u4e09\u5947' : '') + (h.score != null ? (' \u00b7 ' + h.score) : '') + ' \u2713')
+          : (h.from + '\u2013' + h.to + ' \u00b7 drive, no cash');
+        var label = elc('span', { style: 'flex:1;color:' + (fav ? '#1b5e20' : '#666') + ';' }, txt);
+        var btn = elc('button', { style:
+          'flex:none;background:#6a1b9a;color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;' }, '\uD83D\uDD0D');
+        btn.addEventListener('click', function () { openHourChart(h); });
+        row.appendChild(label); row.appendChild(btn);
+        body.appendChild(row);
+      });
+      wrap.appendChild(head);
+      wrap.appendChild(body);
+    }
     function addItineraryBubble(payload) {
       payload = payload || {};
       var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
@@ -3376,6 +3441,7 @@
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
         wrap.appendChild(_itinChargeEl);
       } else { _itinChargeEl = null; }
+      addHoursPanel(wrap, payload.hours, L);
       var mapsBtn = elc('button', { style:
         'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, L.openMaps);
       mapsBtn.addEventListener('click', function () {
