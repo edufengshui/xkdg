@@ -1164,108 +1164,122 @@
   function tpSuggestStopsNetDir(slots, posAt, O, Dst, overallBearing, maxLegHours) {
     maxLegHours = maxLegHours || 4;
     var timeline = [];
-    timeline.detourIntents = [];   // PHASE 2: positive directions the fast route could not realize
+    timeline.detourIntents = [];   // PHASE 2: detour opportunities for the async real-route layer
     if (!slots.length) return timeline;
 
-    function slotTarget(slot) {
-      var posd = tpUsableDirs(slot.dirs);
-      if (!posd.length) return null;
-      // Bearing toward the FINAL destination from THIS leg's real start position
-      // (recomputed per double-hour). Candidates = positive directions within ±67.5°
-      // of it (the direct quadrant + the two adjacent). A positive direction ≥90°
-      // off — it would lead AWAY from the destination — is excluded (e.g. E when the
-      // destination is S), even when an adjacent quadrant was reached earlier.
-      var bearToFinal = (slot.bearingDest != null) ? slot.bearingDest : overallBearing;
-      var cand = posd.filter(function (d) { return tpAngDiff(TP_DIR_DEG[d.dir], bearToFinal) <= 67.5; });
-      if (!cand.length) return null;
-      // Prefer the MOST DIRECT candidate (closest to the destination bearing → cuts
-      // the residual distance fastest). Use the positivity score only as a tie-break
-      // between candidates that are essentially equally direct.
-      cand.sort(function (a, b) {
-        var da = tpAngDiff(TP_DIR_DEG[a.dir], bearToFinal), db = tpAngDiff(TP_DIR_DEG[b.dir], bearToFinal);
-        if (Math.abs(da - db) > 1) return da - db;                 // more direct first
-        return (b.combined || 0) - (a.combined || 0);              // then more positive
-      });
-      return cand[0];
+    // ── METHOD RULE (authoritative) ──────────────────────────────────────────
+    // For EACH Chinese double-hour (时辰):
+    //  • If the ROAD direction toward the destination is FORTUNATE this hour → drive
+    //    toward the destination and CASH (stop) at the END of the 时辰 (incassi the luck).
+    //  • If it is NOT fortunate → either
+    //      A) keep driving toward the destination but DO NOT stop until the hour ends
+    //         (nothing to cash in a non-positive hour), or
+    //      B) DETOUR toward an adjacent (±45°) direction that IS fortunate and does not
+    //         lead too far from the destination (within ±67.5°), cashing there; the
+    //         return toward the destination in the next hour is itself fortunate, or an
+    //         option-A leg. Recorded as a detour intent for the async real-route layer.
+    // The leg heading shown is ALWAYS the real direction driven — never a fortunate
+    // direction we are not actually following.
+    function roadDirOf(slot) {
+      var b = (slot.bearingDest != null) ? slot.bearingDest : overallBearing;
+      return { name: tpSnapDir(b), deg: b };
     }
-    // latest in-window point where the NET bearing from P0 is inside the target sector
-    function cashPoint(P0, slot, targetDeg) {
-      var step = 2 * 60000, last = null, entered = false;
-      for (var t = slot.wallStart.getTime(); t <= slot.wallEnd.getTime(); t += step) {
-        var p = posAt(t);
-        if (tpHaversineKm(P0.lat, P0.lon, p.lat, p.lon) < 1) continue; // too close: bearing is noise
-        var nb = tpBearing(P0.lat, P0.lon, p.lat, p.lon);
-        if (tpAngDiff(nb, targetDeg) <= 22.5) { last = { t: t, pos: { lat: p.lat, lon: p.lon }, netBearing: nb }; entered = true; }
-        else if (entered) break; // net has just LEFT the sector -> stop at the last in-sector point (cash before exiting)
-      }
-      if (last) {
-        // which sector edge it is about to cross (target ± 22.5°), for display
-        var loB = (((targetDeg - 22.5) % 360) + 360) % 360, hiB = (((targetDeg + 22.5) % 360) + 360) % 360;
-        last.limitDeg = (tpAngDiff(last.netBearing, loB) <= tpAngDiff(last.netBearing, hiB)) ? loB : hiB;
-      }
-      return last;
-    }
-    function nextTargetFrom(i) {
-      for (var j = i; j < slots.length; j++) { var tg = slotTarget(slots[j]); if (tg) return tg; }
+    function entryOf(slot, name) {
+      var ds = slot.dirs || [];
+      for (var k = 0; k < ds.length; k++) if (ds[k].dir === name) return ds[k];
       return null;
+    }
+    // The road direction's QMDJ entry IF it is fortunate this hour, else null.
+    function roadFortunate(slot) {
+      var e = entryOf(slot, roadDirOf(slot).name);
+      return (e && e.eval && e.eval.ok) ? e : null;
+    }
+    function neighboursOf(name) {
+      var i = TP_DIR_ORDER.indexOf(name);
+      if (i < 0) return [];
+      var n = TP_DIR_ORDER.length;
+      return [TP_DIR_ORDER[(i + n - 1) % n], TP_DIR_ORDER[(i + 1) % n]];
+    }
+    // A fortunate ADJACENT direction usable for a detour (conditions 1 + 2), or null.
+    function detourEntryOf(slot) {
+      var rd = roadDirOf(slot);
+      var best = null, bestSc = -Infinity;
+      neighboursOf(rd.name).forEach(function (nm) {
+        var e = entryOf(slot, nm);
+        if (!e || !e.eval || !e.eval.ok) return;                 // (1) the adjacent dir must be fortunate
+        if (tpAngDiff(TP_DIR_DEG[nm], rd.deg) > 67.5) return;     // (2) must not lead too far from the dest
+        var sc = (e.combined != null) ? e.combined : 0;
+        if (sc > bestSc) { bestSc = sc; best = e; }
+      });
+      return best;
+    }
+    function headFromEntry(entry, roadName, fortunate) {
+      if (entry) return { dir: entry.dir, palace: entry.palace, eval: entry.eval, combined: entry.combined, fortunate: !!fortunate, towardDest: true };
+      return { dir: roadName, palace: TP_DIR_TO_PALACE[roadName], eval: null, combined: null, fortunate: false, towardDest: true };
+    }
+    // "then set off toward …" shown on a stop = the next hour's real road heading.
+    function nextHeadAfter(i) {
+      var ns = (i + 1 < slots.length) ? slots[i + 1] : slots[i];
+      var nf = roadFortunate(ns);
+      return nf ? headFromEntry(nf, roadDirOf(ns).name, true) : headFromEntry(null, roadDirOf(ns).name, false);
     }
 
     var P0 = { lat: O.lat, lon: O.lon };
     var legStartMs = slots[0].wallStart.getTime();
-    var curHead = nextTargetFrom(0) || tpBestDir(slots[0], true);
-
-    function pushLeg(endWall, endSlotIdx, note) {
-      timeline.push({
-        type: 'leg', startWall: new Date(legStartMs), endWall: endWall, heading: curHead,
+    function pushLeg(endWall, endSlotIdx, head, note) {
+      timeline.push({ type: 'leg', startWall: new Date(legStartMs), endWall: endWall, heading: head,
         startSlotIdx: tpSlotIndexAt(slots, new Date(legStartMs)), endSlotIdx: endSlotIdx,
-        durationH: (endWall.getTime() - legStartMs) / 3600000, note: note || ''
-      });
+        durationH: (endWall.getTime() - legStartMs) / 3600000, note: note || '' });
     }
 
     for (var i = 0; i < slots.length; i++) {
       var slot = slots[i];
-      var target = slotTarget(slot);
-      if (!target) {
-        // no usable positive direction this double-hour; only a forced rest if we've driven long
-        var elapsedH = (slot.wallEnd.getTime() - legStartMs) / 3600000;
-        if (elapsedH >= maxLegHours && i < slots.length - 1) {
-          var rp = posAt(slot.wallEnd.getTime());
-          pushLeg(slot.wallEnd, i, '');
-          var nh = nextTargetFrom(i + 1) || curHead;
-          timeline.push({ type: 'stop', atWall: slot.wallEnd, slotIdx: i,
-            reason: 'rest stop (\u2265' + maxLegHours + 'h driving)', newHeading: nh,
-            pos: { lat: rp.lat, lon: rp.lon } });
-          P0 = { lat: rp.lat, lon: rp.lon }; legStartMs = slot.wallEnd.getTime(); curHead = nh;
-        }
+      var rd = roadDirOf(slot);
+      var fortEntry = roadFortunate(slot);
+
+      if (fortEntry) {
+        // FORTUNATE HOUR → drive toward the destination and CASH at the end of the 时辰.
+        var endWall = slot.wallEnd;
+        var rp = posAt(endWall.getTime());
+        pushLeg(endWall, i, headFromEntry(fortEntry, rd.name, true), '');
+        timeline.push({ type: 'stop', atWall: endWall, slotIdx: i,
+          reason: 'cash a positive ' + rd.name + ' hour (' + slot.brPy + ')',
+          newHeading: nextHeadAfter(i), pos: { lat: rp.lat, lon: rp.lon },
+          cashDir: rd.name, limitDeg: null, fortunate: true });
+        P0 = { lat: rp.lat, lon: rp.lon };
+        legStartMs = endWall.getTime();
         continue;
       }
-      curHead = target;   // the leg into this cash aims at the net target direction
-      var cp = cashPoint(P0, slot, TP_DIR_DEG[target.dir]);
-      if (cp) {
-        var endWall = new Date(cp.t);
-        pushLeg(endWall, i, '');
-        var nh2 = nextTargetFrom(i + 1) || target;
-        timeline.push({ type: 'stop', atWall: endWall, slotIdx: i,
-          reason: 'cashed a net ' + target.dir + ' trip from the start point (positive ' + slot.brPy + ' hour)',
-          newHeading: nh2, pos: cp.pos, cashDir: target.dir, limitDeg: cp.limitDeg });
-        P0 = cp.pos; legStartMs = cp.t; curHead = nh2;
-      } else {
-        // PHASE 2: a positive direction WAS chosen but the fast route never points
-        // there (its net bearing never enters the sector). Record a detour intent so
-        // the async layer can try to DEVIATE to a real place in this positive
-        // adjacent quadrant, then resume toward the destination.
-        try {
-          timeline.detourIntents.push({
-            slotIdx: i, pos: { lat: P0.lat, lon: P0.lon },
-            dir: target.dir, targetDeg: TP_DIR_DEG[target.dir],
-            bearingDest: slot.bearingDest,
-            wallStart: slot.wallStart, wallEnd: slot.wallEnd, brPy: slot.brPy
-          });
-        } catch (eDI) { /* intent recording is best-effort */ }
+
+      // NON-FORTUNATE HOUR → option B (record a detour) when possible, else option A.
+      var det = detourEntryOf(slot);
+      if (det) {
+        var nextFort = (i + 1 < slots.length) ? !!roadFortunate(slots[i + 1]) : false;
+        timeline.detourIntents.push({
+          slotIdx: i, pos: { lat: P0.lat, lon: P0.lon },
+          dir: det.dir, targetDeg: TP_DIR_DEG[det.dir],
+          bearingDest: slot.bearingDest, returnFortunate: nextFort,
+          wallStart: slot.wallStart, wallEnd: slot.wallEnd, brPy: slot.brPy
+        });
       }
-      // if no cash point this slot: keep driving (P0 unchanged), the direction was not achievable here
+      // OPTION A (also the base behaviour while a B detour is pending realization):
+      // keep driving toward the destination through the whole non-positive hour with
+      // NO cash/stop. Only a SAFETY rest is allowed after very long continuous driving.
+      var elapsedH = (slot.wallEnd.getTime() - legStartMs) / 3600000;
+      if (elapsedH >= maxLegHours && i < slots.length - 1) {
+        var rp2 = posAt(slot.wallEnd.getTime());
+        pushLeg(slot.wallEnd, i, headFromEntry(null, rd.name, false), '');
+        timeline.push({ type: 'stop', atWall: slot.wallEnd, slotIdx: i,
+          reason: 'rest stop (\u2265' + maxLegHours + 'h driving, non-positive hour \u2014 not a cash)',
+          newHeading: nextHeadAfter(i), pos: { lat: rp2.lat, lon: rp2.lon },
+          cashDir: null, limitDeg: null, fortunate: false });
+        P0 = { lat: rp2.lat, lon: rp2.lon };
+        legStartMs = slot.wallEnd.getTime();
+      }
+      // else: keep driving into the next slot (P0 / legStartMs unchanged)
     }
-    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrival');
+    var lastSlot = slots[slots.length - 1];
+    pushLeg(lastSlot.wallEnd, slots.length - 1, headFromEntry(null, roadDirOf(lastSlot).name, false), 'arrival');
     return timeline;
   }
 
