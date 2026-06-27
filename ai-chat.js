@@ -3382,13 +3382,30 @@
     // Collapsible per-hour panel: every 时辰 of the trip, classified CASH / DETOUR /
     // DRIVE, with the activated QMDJ setting, the stop length, and a 🔍 button that
     // opens its rotating QMDJ chart. Open by default so the chart buttons are visible.
-    function addHoursPanel(wrap, hours, L) {
+    function addHoursPanel(wrap, hours, L, stepList) {
       if (!hours || !hours.length) return;
+      stepList = stepList || [];
+      function toMin(s) { var p = String(s || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
+      var baseMin = stepList.length ? toMin(stepList[0].from || stepList[0].at) : 0;
+      function norm(s) { var m = toMin(s); return m < baseMin ? m + 1440 : m; }
+      // Which numbered itinerary step(s) does this hour fall in? (the Drive leg that
+      // contains it, plus the Stop at its end for a cash hour).
+      function stepRef(h) {
+        var hf = norm(h.from), ht = norm(h.to), driveN = null, stopN = null;
+        stepList.forEach(function (s) {
+          if (s.kind === 'drive') { if (norm(s.from) <= hf && norm(s.to) >= ht) driveN = s.n; }
+          else if (s.kind === 'stop') { if (s.at === h.to) stopN = s.n; }
+        });
+        if (stopN != null && driveN != null) return 'steps ' + driveN + '\u2013' + stopN;
+        if (stopN != null) return 'step ' + stopN;
+        if (driveN != null) return 'step ' + driveN;
+        return '';
+      }
       var favCount = hours.filter(function (h) { return h.kind === 'cash'; }).length;
       var head = elc('button', { style:
         'width:100%;text-align:left;margin-top:8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:8px;' +
         'padding:7px 9px;font-size:12px;font-weight:600;color:#4527a0;cursor:pointer;' },
-        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' cash \u00b7 tap a chart to inspect \u25be');
+        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' cash \u00b7 each row maps to the numbered step(s) above \u25be');
       var body = elc('div', { style: 'display:block;margin-top:4px;' });
       head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
       hours.forEach(function (h) {
@@ -3414,7 +3431,12 @@
           detail = '';
         }
         var txtWrap = elc('div', { style: 'flex:1;color:' + fg + ';' });
-        txtWrap.appendChild(elc('div', { style: 'font-weight:600;' }, head1));
+        var ref = stepRef(h);
+        var headRow = elc('div', { style: 'font-weight:600;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;' });
+        if (ref) headRow.appendChild(elc('span', { style:
+          'flex:none;background:#ede7f6;color:#4527a0;border:1px solid #c9b6d6;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;' }, ref));
+        headRow.appendChild(elc('span', {}, head1));
+        txtWrap.appendChild(headRow);
         if (detail) txtWrap.appendChild(elc('div', { style: 'color:#555;margin-top:1px;' }, detail));
         var btn = elc('button', { style:
           'flex:none;background:#6a1b9a;color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;' }, '\uD83D\uDD0D');
@@ -3440,12 +3462,17 @@
       wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:4px;' }, title));
       var ol = elc('ol', { style: 'margin:0;padding-left:20px;' });
       _itinStopEls = [];
+      var stepList = [];   // map numbered itinerary steps to times, to cross-reference the Hours panel
+      var _stepN = 0;
       (payload.legs || []).forEach(function (it) {
+        _stepN++;
         var li;
         if (it.kind === 'drive') {
+          stepList.push({ n: _stepN, kind: 'drive', from: it.from, to: it.to });
           var t = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + (it.arrival ? ' \u2014 ' + L.arrive + ' ' + (payload.dest || '') : '');
           li = elc('li', { style: 'margin:2px 0;' }, t);
         } else {
+          stepList.push({ n: _stepN, kind: 'stop', at: it.at });
           li = elc('li', { style: 'margin:2px 0;' }, stopLineText(L, it));
           _itinStopEls.push({ el: li, it: it });
         }
@@ -3457,7 +3484,7 @@
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
         wrap.appendChild(_itinChargeEl);
       } else { _itinChargeEl = null; }
-      addHoursPanel(wrap, payload.hours, L);
+      addHoursPanel(wrap, payload.hours, L, stepList);
       var mapsBtn = elc('button', { style:
         'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, L.openMaps);
       mapsBtn.addEventListener('click', function () {
