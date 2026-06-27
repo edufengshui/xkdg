@@ -3456,7 +3456,7 @@ function fsRenderHouseProfiles(){
     if (_sPeriod != null) _sumBits.push('Period ' + _sPeriod);
     var _pn = h.personName || person.name;
 
-    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">';
+    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px;">';
 
     // LEFT: ●/○ name ACTIVE [Hide details] summary  ·  then owner name + category
     html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;flex:1 1 auto;">';
@@ -3473,8 +3473,9 @@ function fsRenderHouseProfiles(){
     html += '</select></span>';
     html += '</div>';
 
-    // RIGHT (top-right corner): Load · Rename · Delete · Archive
-    html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto;">';
+    // ACTIONS (own full-width row): Load · Floor plan · Rename · Delete · Archive
+    // — wraps within the card on narrow screens, left-aligned, no overflow.
+    html += '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-start;">';
     html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Load into FS inputs to edit">📂 Load</button>';
     // 🖼 Floor plan — VIEW the saved plan. Square icon to distinguish it from the
     // 📐 "Import a floorplan" button below; same brown colour. Remove (🗑) sits
