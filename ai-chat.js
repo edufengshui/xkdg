@@ -250,6 +250,11 @@
     'The exact chosen clock time appears in the itinerary card that posts to the chat. Your reply is ONE short line: ' +
     'say you picked the most favourable departure of the day and that the exact time + direction are shown in the ' +
     'card.\n' +
+    '- BEST DAY within a RANGE: when the user wants the best day+time across several days ("best day to drive to X ' +
+    'in the next week", "qual è il giorno migliore nei prossimi N giorni?"), call search_travel with origin + ' +
+    'destination (coords + names), start_date, days, and optimize_arrival if they care about arriving in a favourable ' +
+    'hour. It posts a ranked, SELECTABLE card (top results scored by total cashed luck); the user taps "Choose" to ' +
+    'open the full plan. Reply with ONE short line — do NOT list the days or invent times yourself.\n' +
     '- FIXED time ("I leave at 11 exactly/sharp", "tassativamente"): one call with depart_time "HH:MM" + ' +
     'fixed_time:true + open_planner:true.\n' +
     '- TIME CONVENTION (important): every clock time the user says ("parto alle 12:00") and every time you report ' +
@@ -475,6 +480,35 @@
           range_km: { type: 'number', description: 'EV autonomy in km (enables auto charging-stop search in the planner).' },
           reserve_km: { type: 'number', description: 'EV safety reserve in km.' },
           open_planner: { type: 'boolean', description: 'Open + run the filled Travel Planner. Defaults true when both origin and destination are given.' }
+        },
+        required: ['dest_lat', 'dest_lon']
+      }
+    },
+    {
+      name: 'search_travel',
+      description: 'Find the BEST day+time to drive A→B across a RANGE of days. Use when the user wants the app to ' +
+        'choose the most favourable departure within N days ("find me the best day to drive to X in the next week", ' +
+        '"qual è il giorno migliore per andare a Y nei prossimi 10 giorni?"). The app fetches the road route ONCE, ' +
+        'then for every daytime double-hour departure on each day it plans the trip and SCORES it by TOTAL CASH (the ' +
+        'sum of the QMDJ scores of every fortunate/cash hour of the trip). With optimize_arrival it also rewards ' +
+        'arriving in a favourable hour/direction. It posts a SELECTABLE ranked list (top N) into the chat; the user ' +
+        'taps "Choose" on one to open the full plan. You never compute scores/times yourself. Needs origin + ' +
+        'destination coordinates (+names).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          dest_lat: { type: 'number', description: 'Destination latitude.' },
+          dest_lon: { type: 'number', description: 'Destination longitude.' },
+          dest_name: { type: 'string', description: 'Destination place name.' },
+          origin_lat: { type: 'number', description: 'Origin latitude (defaults to saved GPS if omitted).' },
+          origin_lon: { type: 'number', description: 'Origin longitude.' },
+          origin_name: { type: 'string', description: 'Origin place name.' },
+          start_date: { type: 'string', description: 'First day to consider, YYYY-MM-DD (default today).' },
+          days: { type: 'integer', description: 'How many days from start_date to scan (1-31, default 7).' },
+          optimize_arrival: { type: 'boolean', description: 'Also reward itineraries that ARRIVE in a favourable hour/direction (default false = score only the cashed driving hours).' },
+          top_k: { type: 'integer', description: 'How many ranked itineraries to offer (default 5).' },
+          range_km: { type: 'number', description: 'EV autonomy in km (passed to the full plan when the user picks one).' },
+          reserve_km: { type: 'number', description: 'EV safety reserve in km.' }
         },
         required: ['dest_lat', 'dest_lon']
       }
@@ -1054,6 +1088,7 @@
       if (name === 'find_bed_dates') return toolFindBedDates(input || {});
       if (name === 'find_desk_dates') return toolFindDeskDates(input || {});
       if (name === 'plan_travel') return toolPlanTravel(input || {});
+      if (name === 'search_travel') return toolSearchTravel(input || {});
       if (name === 'plan_lucky_day_trip') return toolPlanLuckyDayTrip(input || {});
       if (name === 'plan_lucky_chain') return toolPlanLuckyChain(input || {});
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
@@ -1911,6 +1946,56 @@
     baseOut.planner_opened = false;
     baseOut.note = 'Straight-line estimate. For the real road route + Google Maps export, open the Travel Planner.';
     return baseOut;
+  }
+  function toolSearchTravel(input) {
+    input = input || {};
+    if (!window.TravelPlanner || typeof window.TravelPlanner.searchItineraries !== 'function')
+      return { error: 'The Travel Planner search is not available on this page.' };
+    if (input.dest_lat == null || input.dest_lon == null)
+      return { error: 'I need the destination coordinates (dest_lat, dest_lon).' };
+    var dest = { lat: +input.dest_lat, lon: +input.dest_lon };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    if (!origin) return { error: 'I need the origin coordinates (origin_lat/origin_lon) or a saved GPS position.' };
+    var today = todayIso();
+    var startDate = input.start_date || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || startDate < today) startDate = today;
+    var days = Math.max(1, Math.min(parseInt(input.days, 10) || 7, 31));
+    var topK = Math.max(1, Math.min(parseInt(input.top_k, 10) || 5, 10));
+    var optArr = !!input.optimize_arrival;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+    var dstOn = dstActiveOn(new Date(startDate + 'T12:00:00'));
+    return window.TravelPlanner.searchItineraries({
+      origin: origin, dest: dest, startDate: startDate, days: days,
+      utc: utc, dstOn: dstOn, optimizeArrival: optArr, topK: topK
+    }).then(function (res) {
+      try {
+        if (window.XKDGChat && typeof window.XKDGChat.addItinerarySearch === 'function') {
+          window.XKDGChat.addItinerarySearch({
+            origin: origin, dest: dest,
+            originName: input.origin_name || null, destName: input.dest_name || null,
+            rangeKm: (input.range_km != null) ? +input.range_km : null,
+            reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
+            utc: utc, optimizeArrival: optArr, result: res
+          });
+        }
+      } catch (e) {}
+      return {
+        search_done: true, days: days, optimize_arrival: optArr,
+        score_method: 'total_cash' + (optArr ? ' + arrival favourability' : ''),
+        km: res.km, driving_h: res.driving_h, total_evaluated: res.total_evaluated,
+        top: (res.top || []).map(function (c) {
+          return { date: c.date, weekday: c.weekday, depart: c.depart,
+            arrive: c.arrive + (c.arrive_next_day ? ' (+1d)' : ''), score: c.score,
+            total_cash: c.total_cash, cash_hours: c.cash_hours, of_hours: c.total_hours };
+        }),
+        note: 'A SELECTABLE ranked list of the top itineraries has ALREADY been posted into THIS chat as a card; ' +
+          'the user taps "Choose" on one to open the full plan. Reply with ONE short sentence: say you ranked the ' +
+          'days by total cashed luck' + (optArr ? ' (and favourable arrival)' : '') + ' and they can pick one from ' +
+          'the card. Do NOT paste the list, do NOT invent times.'
+      };
+    }).catch(function (err) { return { error: 'Search failed: ' + ((err && err.message) || err) }; });
   }
   function toolPlanArriveBy(input) {
     input = input || {};
@@ -3498,6 +3583,66 @@
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
+    // Selectable ranked list of the best departures from a multi-day search. Each row
+    // shows the date/time, the TOTAL-CASH score, and a "Choose" button that opens the
+    // full plan for that exact day+time (which then posts its own detailed card).
+    function addItinerarySearchBubble(payload) {
+      payload = payload || {};
+      var res = payload.result || {};
+      var top = res.top || [];
+      var origin = payload.origin || res.origin, dest = payload.dest || res.dest;
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:14px;line-height:1.5;' });
+      var ttl = (payload.originName || 'Origin') + ' \u2192 ' + (payload.destName || 'Destination');
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:2px;' }, '\uD83C\uDFC1 Best departures \u00b7 ' + ttl));
+      wrap.appendChild(elc('div', { style: 'font-size:12px;color:#666;margin-bottom:7px;' },
+        'score = total cash' + (payload.optimizeArrival ? ' + arrival' : '') +
+        (res.km != null ? (' \u00b7 ' + res.km + ' km') : '') +
+        (res.driving_h != null ? (' \u00b7 ' + res.driving_h + ' h driving') : '') +
+        (res.total_evaluated != null ? (' \u00b7 ' + res.total_evaluated + ' departures tried') : '')));
+      if (!top.length) {
+        wrap.appendChild(elc('div', { style: 'color:#888;font-size:13px;' }, 'No favourable departures found in this window.'));
+        msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight; return wrap;
+      }
+      top.forEach(function (c, i) {
+        var best = (i === 0);
+        var card = elc('div', { style:
+          'display:flex;align-items:center;gap:8px;margin:4px 0;padding:7px 9px;border-radius:8px;border:1px solid ' +
+          (best ? '#43a047' : '#e0d4e8') + ';background:' + (best ? '#f1f8f2' : '#faf8fc') + ';' });
+        var info = elc('div', { style: 'flex:1;min-width:0;' });
+        info.appendChild(elc('div', { style: 'font-weight:700;color:#4527a0;' },
+          '#' + (i + 1) + ' \u00b7 score ' + c.score + (best ? ' \u2605' : '')));
+        info.appendChild(elc('div', { style: 'font-size:12px;color:#333;' },
+          c.date + (c.weekday ? (' (' + c.weekday + ')') : '') + ' \u00b7 ' + c.depart + ' \u2192 ' + c.arrive + (c.arrive_next_day ? ' (+1d)' : '')));
+        info.appendChild(elc('div', { style: 'font-size:11px;color:#666;' },
+          'total cash ' + c.total_cash + ' \u00b7 ' + c.cash_hours + '/' + c.total_hours + ' cash hours' +
+          (payload.optimizeArrival && c.arrival_score ? (' \u00b7 arrival +' + c.arrival_score) : '')));
+        var btn = elc('button', { style:
+          'flex:none;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Choose');
+        btn.addEventListener('click', function () {
+          btn.textContent = 'Opening\u2026'; btn.disabled = true;
+          try {
+            if (window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
+              var dstOn = (typeof dstActiveOn === 'function') ? dstActiveOn(new Date(c.date + 'T12:00:00')) : false;
+              window.TravelPlanner.openPrefilled({
+                originLat: origin.lat, originLon: origin.lon, originName: payload.originName || null,
+                destLat: dest.lat, destLon: dest.lon, destName: payload.destName || null,
+                departDate: c.date, departTime: c.depart, autoDepart: false,
+                utc: payload.utc, dst: dstOn,
+                rangeKm: (payload.rangeKm != null) ? payload.rangeKm : null,
+                reserveKm: (payload.reserveKm != null) ? payload.reserveKm : null,
+                run: true
+              });
+            }
+          } catch (e) {}
+        });
+        card.appendChild(info); card.appendChild(btn);
+        wrap.appendChild(card);
+      });
+      msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
     // A "check" button: opens the XKDG date analysis AND the QMDJ Hour Flying Chart
     // for the date/hour the assistant recommends, so the user can verify visually.
     function addVerifyButtonBubble(info) {
@@ -3705,6 +3850,7 @@
     window.XKDGChat = {
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
+      addItinerarySearch: function (payload) { try { openPanel(); return addItinerarySearchBubble(payload); } catch (e) { return null; } },
       addVerifyButton: function (info) { try { openPanel(); return addVerifyButtonBubble(info); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
       updateItineraryExits: function (exits) { try { updateItineraryExits(exits); } catch (e) {} },

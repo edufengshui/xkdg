@@ -334,6 +334,10 @@
   // the link once the range chargers are known.
   var _tpMapsUpdate = null;
   function tpRefreshMapsExport() { try { if (typeof _tpMapsUpdate === 'function') _tpMapsUpdate(); } catch (e) {} }
+  // When set to an object, getRotatingHourChart results are memoised by date+hour
+  // pillar. Enabled only during a multi-day SEARCH (many candidates share the same
+  // hour charts) and cleared afterwards, so normal single plans are unaffected.
+  var _tpRotCache = null;
 
   /* ---- fetch the real route from the Cloudflare Worker (Google Routes API) -
    * Returns a Promise resolving to
@@ -829,7 +833,13 @@
     var out = [];
     if (typeof QMDJWaterScanner === 'undefined' ||
         typeof QMDJWaterScanner.getRotatingHourChart !== 'function') return out;
-    var chart = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGanHan, hZhiHan);
+    var chart;
+    if (_tpRotCache) {
+      var _ck = Y + '-' + M + '-' + D + '-' + hGanHan + '-' + hZhiHan;
+      chart = _tpRotCache[_ck] || (_tpRotCache[_ck] = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGanHan, hZhiHan));
+    } else {
+      chart = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGanHan, hZhiHan);
+    }
     if (!chart || !chart.palaces) return out;
     for (var i = 0; i < TP_DIR_ORDER.length; i++) {
       var dir = TP_DIR_ORDER[i];
@@ -3316,6 +3326,105 @@
     };
   }
 
+  // ── MULTI-DAY ITINERARY SEARCH ───────────────────────────────────────────────
+  // Score = TOTAL CASH: the sum of the QMDJ scores of every fortunate (cash) hour
+  // of the trip. With optimizeArrival, the arrival hour's own favourable score is
+  // added too (so arriving in a favourable hour/direction is rewarded).
+  function tpScoreItinerary(result, optimizeArrival) {
+    var slots = (result && result.slots) || [];
+    function roadEntry(s) {
+      var rd = tpSnapDir((s.bearingDest != null) ? s.bearingDest : result.bearing);
+      return (s.dirs || []).filter(function (d) { return d.dir === rd; })[0] || null;
+    }
+    var total = 0, cashHours = 0;
+    slots.forEach(function (s) {
+      var e = roadEntry(s);
+      if (e && e.eval && e.eval.ok) { total += (e.eval.score || 0); cashHours++; }
+    });
+    var arrivalScore = 0;
+    if (optimizeArrival && slots.length) {
+      var le = roadEntry(slots[slots.length - 1]);
+      if (le && le.eval && le.eval.ok) arrivalScore = (le.eval.score || 0);
+    }
+    return { total_cash: total, cash_hours: cashHours, total_hours: slots.length,
+             arrival_score: arrivalScore, score: total + arrivalScore };
+  }
+
+  // Scan `days` days from startDate; for every double-hour departure in the daytime
+  // window, plan the trip (reusing ONE pre-fetched route) and score it. Returns a
+  // Promise of the ranked top-K itineraries. The route is fetched once; per-candidate
+  // planning is local (no network). Chart results are memoised and the loop yields
+  // between days so the UI never freezes.
+  function tpSearchItineraries(opts) {
+    opts = opts || {};
+    var O = opts.origin, Dst = opts.dest;
+    var days = Math.max(1, Math.min(parseInt(opts.days, 10) || 7, 31));
+    var utc = (opts.utc != null) ? opts.utc : 1, dstOn = !!opts.dstOn;
+    var topK = Math.max(1, parseInt(opts.topK, 10) || 5);
+    var optArr = !!opts.optimizeArrival;
+    var startDate = (opts.startDate instanceof Date) ? opts.startDate : new Date(String(opts.startDate || '') + 'T00:00:00');
+    if (isNaN(startDate.getTime())) startDate = new Date();
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function ensureRoute() {
+      if (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) return Promise.resolve(TP_LAST_ROUTE);
+      return tpFetchRoute(tpGetWorkerUrl(), O, Dst).then(function (r) { TP_LAST_ROUTE = r; return r; }).catch(function () { return null; });
+    }
+    return ensureRoute().then(function (route) {
+      return new Promise(function (resolve) {
+        var matchRoute = (route && tpRouteMatches(route, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? route : null;
+        var driveH = matchRoute ? (matchRoute.durationSec / 3600) : (tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon) / TP_AVG_KMH);
+        var DAY_START_H = 5, DAY_END_H = 21;
+        var candidates = [];
+        _tpRotCache = {};   // memoise rotating charts across all candidates of this scan
+        function finish() {
+          _tpRotCache = null;
+          candidates.sort(function (a, b) { return (b.score - a.score) || (a.depart_ms - b.depart_ms); });
+          resolve({ origin: O, dest: Dst, driving_h: Math.round(driveH * 10) / 10,
+            km: matchRoute ? Math.round(matchRoute.distanceMeters / 1000) : null,
+            real_route: !!matchRoute, optimize_arrival: optArr, days: days,
+            total_evaluated: candidates.length, top: candidates.slice(0, topK) });
+        }
+        function processDay(di) {
+          if (di >= days) { finish(); return; }
+          var day = new Date(startDate.getTime() + di * 86400000);
+          var dateStr = day.getFullYear() + '-' + pad(day.getMonth() + 1) + '-' + pad(day.getDate());
+          var probe = null;
+          try {
+            probe = tpPlan({ depDate: new Date(dateStr + 'T05:00:00'), durationH: (DAY_END_H - DAY_START_H),
+              origin: O, dest: Dst, utc: utc, dstOn: dstOn, snapDepart: true, stepMin: 30, stopMode: 'auto', route: matchRoute });
+          } catch (e) {}
+          if (probe && probe.slots) {
+            var seen = {};
+            probe.slots.forEach(function (slot) {
+              var h = slot.wallStart.getHours();
+              if (h < DAY_START_H || h > DAY_END_H) return;
+              var depMs = slot.wallStart.getTime();
+              if (seen[depMs]) return; seen[depMs] = 1;
+              var r = null;
+              try {
+                r = tpPlan({ depDate: new Date(depMs), durationH: driveH, origin: O, dest: Dst,
+                  utc: utc, dstOn: dstOn, snapDepart: false, stepMin: 30, stopMode: 'auto', route: matchRoute });
+              } catch (e) {}
+              if (!r || !r.slots || !r.slots.length) return;
+              var sc = tpScoreItinerary(r, optArr);
+              var depD = r.slots[0].wallStart, arrD = r.slots[r.slots.length - 1].wallEnd;
+              candidates.push({
+                date: dateStr, weekday: (typeof WD_IT !== 'undefined' && WD_IT) ? WD_IT[depD.getDay()] : '',
+                depart: pad(depD.getHours()) + ':' + pad(depD.getMinutes()),
+                arrive: pad(arrD.getHours()) + ':' + pad(arrD.getMinutes()),
+                arrive_next_day: (arrD.getDate() !== depD.getDate()),
+                depart_ms: depMs, score: sc.score, total_cash: sc.total_cash,
+                cash_hours: sc.cash_hours, total_hours: sc.total_hours, arrival_score: sc.arrival_score
+              });
+            });
+          }
+          setTimeout(function () { processDay(di + 1); }, 0);   // yield to the UI between days
+        }
+        processDay(0);
+      });
+    });
+  }
+
   function tpOpenPrefilled(params) {
     params = params || {};
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
@@ -4716,6 +4825,7 @@
     proposeChainTrips: tpProposeChainTrips,
     findPOI: tpFindPOI,
     planArriveBy: tpPlanArriveBy,
+    searchItineraries: function (opts) { return tpSearchItineraries(opts); },
     fetchRoute: function (origin, dest) {
       return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });
     },
