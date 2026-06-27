@@ -253,7 +253,7 @@
     '- BEST DAY within a RANGE: when the user wants the best day+time across several days ("best day to drive to X ' +
     'in the next week", "qual è il giorno migliore nei prossimi N giorni?"), call search_travel with origin + ' +
     'destination (coords + names), start_date, days, and optimize_arrival if they care about arriving in a favourable ' +
-    'hour. It posts a ranked, SELECTABLE card (top results scored by total cashed luck); the user taps "Choose" to ' +
+    'hour. It posts a ranked, SELECTABLE card (top results scored by total cashed luck, with a Best / By date toggle to view them chronologically); the user taps "Choose" to ' +
     'open the full plan. Reply with ONE short line — do NOT list the days or invent times yourself.\n' +
     '- FIXED time ("I leave at 11 exactly/sharp", "tassativamente"): one call with depart_time "HH:MM" + ' +
     'fixed_time:true + open_planner:true.\n' +
@@ -2036,9 +2036,11 @@
             total_cash: c.total_cash, cash_hours: c.cash_hours, of_hours: c.total_hours };
         }),
         note: 'A SELECTABLE ranked list of the top itineraries has ALREADY been posted into THIS chat as a card; ' +
-          'the user taps "Choose" on one to open the full plan. Reply with ONE short sentence: say you ranked the ' +
-          'days by total cashed luck' + (optArr ? ' (and favourable arrival)' : '') + ' and they can pick one from ' +
-          'the card. Do NOT paste the list, do NOT invent times.'
+          'the user taps "Choose" on one to open the full plan. The card has a Best / By date toggle so they can ' +
+          'view the same itineraries ranked by luck (Best) or in chronological order (By date) - the best one stays ' +
+          'starred in both. Reply with ONE short sentence: say you ranked the ' +
+          'days by total cashed luck' + (optArr ? ' (and favourable arrival)' : '') + ', they can pick one from ' +
+          'the card, and can sort it by date if they prefer. Do NOT paste the list, do NOT invent times.'
       };
     }).catch(function (err) { return { error: 'Search failed: ' + ((err && err.message) || err) }; });
   }
@@ -3652,42 +3654,81 @@
         wrap.appendChild(elc('div', { style: 'color:#888;font-size:13px;' }, 'No favourable departures found in this window.'));
         msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight; return wrap;
       }
-      top.forEach(function (c, i) {
-        var best = (i === 0);
-        var card = elc('div', { style:
-          'display:flex;align-items:center;gap:8px;margin:4px 0;padding:7px 9px;border-radius:8px;border:1px solid ' +
-          (best ? '#43a047' : '#e0d4e8') + ';background:' + (best ? '#f1f8f2' : '#faf8fc') + ';' });
-        var info = elc('div', { style: 'flex:1;min-width:0;' });
-        info.appendChild(elc('div', { style: 'font-weight:700;color:#4527a0;' },
-          '#' + (i + 1) + ' \u00b7 score ' + c.score + (best ? ' \u2605' : '')));
-        info.appendChild(elc('div', { style: 'font-size:12px;color:#333;' },
-          c.date + (c.weekday ? (' (' + c.weekday + ')') : '') + ' \u00b7 ' + c.depart + ' \u2192 ' + c.arrive + (c.arrive_next_day ? ' (+1d)' : '') +
-          (dvg ? (' \u00b7 ' + dvg + ' driving') : '')));
-        info.appendChild(elc('div', { style: 'font-size:11px;color:#666;' },
-          'total cash ' + c.total_cash + ' \u00b7 ' + c.cash_hours + '/' + c.total_hours + ' cash hours' +
-          (payload.optimizeArrival && c.arrival_score ? (' \u00b7 arrival +' + c.arrival_score) : '')));
-        var btn = elc('button', { style:
-          'flex:none;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Choose');
-        btn.addEventListener('click', function () {
-          btn.textContent = 'Opening\u2026'; btn.disabled = true;
-          try {
-            if (window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
-              var dstOn = (typeof dstActiveOn === 'function') ? dstActiveOn(new Date(c.date + 'T12:00:00')) : false;
-              window.TravelPlanner.openPrefilled({
-                originLat: origin.lat, originLon: origin.lon, originName: payload.originName || null,
-                destLat: dest.lat, destLon: dest.lon, destName: payload.destName || null,
-                departDate: c.date, departTime: c.depart, autoDepart: false,
-                utc: payload.utc, dst: dstOn,
-                rangeKm: (payload.rangeKm != null) ? payload.rangeKm : null,
-                reserveKm: (payload.reserveKm != null) ? payload.reserveKm : null,
-                run: true
-              });
-            }
-          } catch (e) {}
+      // The single objectively-best departure (the engine returns top[] ranked best-first,
+      // so top[0]). It keeps its green highlight and star in BOTH sort modes, so the best
+      // option stays identifiable even when the list is shown chronologically.
+      var bestRef = top[0];
+      // --- Best / By date toggle (same idea as the BEST/LIST toggle on the Main date pages) ---
+      var sortMode = 'best';   // 'best' = highest cashed luck first; 'date' = chronological
+      var toggleRow = elc('div', { style: 'display:flex;gap:6px;margin-bottom:7px;' });
+      var btnBest = elc('button', {}, 'Best');
+      var btnDate = elc('button', {}, 'By date');
+      function styleToggle() {
+        [[btnBest, 'best'], [btnDate, 'date']].forEach(function (p) {
+          var on = (sortMode === p[1]);
+          p[0].style.cssText = 'flex:none;border:1px solid ' + (on ? '#1565c0' : '#cfc3da') +
+            ';background:' + (on ? '#1565c0' : '#fff') + ';color:' + (on ? '#fff' : '#666') +
+            ';border-radius:7px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;';
         });
-        card.appendChild(info); card.appendChild(btn);
-        wrap.appendChild(card);
-      });
+      }
+      toggleRow.appendChild(btnBest); toggleRow.appendChild(btnDate);
+      wrap.appendChild(toggleRow);
+      var listHost = elc('div', {});
+      wrap.appendChild(listHost);
+      function orderedTop() {
+        if (sortMode === 'date') {
+          return top.slice().sort(function (a, b) {
+            if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+            var ta = a.depart || '', tb = b.depart || '';
+            if (ta !== tb) return ta < tb ? -1 : 1;
+            return (b.score || 0) - (a.score || 0);
+          });
+        }
+        return top.slice();   // already ranked best-first by the engine
+      }
+      function renderList() {
+        listHost.innerHTML = '';
+        orderedTop().forEach(function (c, i) {
+          var best = (c === bestRef);
+          var card = elc('div', { style:
+            'display:flex;align-items:center;gap:8px;margin:4px 0;padding:7px 9px;border-radius:8px;border:1px solid ' +
+            (best ? '#43a047' : '#e0d4e8') + ';background:' + (best ? '#f1f8f2' : '#faf8fc') + ';' });
+          var info = elc('div', { style: 'flex:1;min-width:0;' });
+          info.appendChild(elc('div', { style: 'font-weight:700;color:#4527a0;' },
+            '#' + (i + 1) + ' \u00b7 score ' + c.score + (best ? ' \u2605' : '')));
+          info.appendChild(elc('div', { style: 'font-size:12px;color:#333;' },
+            c.date + (c.weekday ? (' (' + c.weekday + ')') : '') + ' \u00b7 ' + c.depart + ' \u2192 ' + c.arrive + (c.arrive_next_day ? ' (+1d)' : '') +
+            (dvg ? (' \u00b7 ' + dvg + ' driving') : '')));
+          info.appendChild(elc('div', { style: 'font-size:11px;color:#666;' },
+            'total cash ' + c.total_cash + ' \u00b7 ' + c.cash_hours + '/' + c.total_hours + ' cash hours' +
+            (payload.optimizeArrival && c.arrival_score ? (' \u00b7 arrival +' + c.arrival_score) : '')));
+          var btn = elc('button', { style:
+            'flex:none;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Choose');
+          btn.addEventListener('click', function () {
+            btn.textContent = 'Opening\u2026'; btn.disabled = true;
+            try {
+              if (window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
+                var dstOn = (typeof dstActiveOn === 'function') ? dstActiveOn(new Date(c.date + 'T12:00:00')) : false;
+                window.TravelPlanner.openPrefilled({
+                  originLat: origin.lat, originLon: origin.lon, originName: payload.originName || null,
+                  destLat: dest.lat, destLon: dest.lon, destName: payload.destName || null,
+                  departDate: c.date, departTime: c.depart, autoDepart: false,
+                  utc: payload.utc, dst: dstOn,
+                  rangeKm: (payload.rangeKm != null) ? payload.rangeKm : null,
+                  reserveKm: (payload.reserveKm != null) ? payload.reserveKm : null,
+                  run: true
+                });
+              }
+            } catch (e) {}
+          });
+          card.appendChild(info); card.appendChild(btn);
+          listHost.appendChild(card);
+        });
+      }
+      btnBest.addEventListener('click', function () { if (sortMode !== 'best') { sortMode = 'best'; styleToggle(); renderList(); } });
+      btnDate.addEventListener('click', function () { if (sortMode !== 'date') { sortMode = 'date'; styleToggle(); renderList(); } });
+      styleToggle();
+      renderList();
       msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
