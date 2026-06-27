@@ -926,10 +926,11 @@
   }
 
   function showChart(btn, isoDate, hStemKey, hBranchKey, palace){
-    // Toggle OFF: if this button already opened its inline chart, close it.
-    if(btn && btn.__chartEl && btn.__chartEl.parentNode){
-      btn.__chartEl.parentNode.removeChild(btn.__chartEl);
-      btn.__chartEl = null;
+    var existing = document.getElementById('qimen-full-chart');
+
+    // Se QUESTO bottone ha già aperto la carta → nascondila (toggle)
+    if(btn && _openChartBtn === btn && existing){
+      existing.remove();
       setChartBtnLabel(btn, false);
       _openChartBtn = null;
       return;
@@ -939,43 +940,27 @@
       alert('showQimenChart not available (defined in app-fengshui.js).');
       return;
     }
+    // showQimenChart è definita in app-fengshui.js e accetta caratteri cinesi
+    showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace);
 
-    // Close any other open chart first (one at a time).
-    if(_openChartBtn && _openChartBtn !== btn){
-      if(_openChartBtn.__chartEl && _openChartBtn.__chartEl.parentNode) _openChartBtn.__chartEl.parentNode.removeChild(_openChartBtn.__chartEl);
-      _openChartBtn.__chartEl = null;
-      setChartBtnLabel(_openChartBtn, false);
-    }
+    // Riporta l'eventuale bottone precedentemente aperto a "View full chart"
+    if(_openChartBtn && _openChartBtn !== btn) setChartBtnLabel(_openChartBtn, false);
 
-    // Render INLINE right below this button (self-contained — do NOT rely on the
-    // distant #fs-results-area, which is out of view here and made the chart
-    // appear to "do nothing").
-    var html = '';
-    try { html = showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace, { returnHtml: true }); }
-    catch(e){ html = ''; }
-    if(!html){ alert('Cannot load chart for ' + isoDate); return; }
-
-    var wrap = document.createElement('div');
-    wrap.className = 'qfs-inline-chart';
-    wrap.style.cssText = 'margin-top:8px;';
-    var closeBtn = document.createElement('button');
-    closeBtn.textContent = '\u2715 close chart';
-    closeBtn.style.cssText = 'background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-bottom:6px;display:block;';
-    closeBtn.addEventListener('click', function(){
-      if(wrap.parentNode) wrap.parentNode.removeChild(wrap);
-      btn.__chartEl = null;
-      setChartBtnLabel(btn, false);
-      if(_openChartBtn === btn) _openChartBtn = null;
-    });
-    wrap.innerHTML = html;
-    wrap.insertBefore(closeBtn, wrap.firstChild);
-
-    if(btn && btn.parentNode) btn.parentNode.insertBefore(wrap, btn.nextSibling);
-    btn.__chartEl = wrap;
+    // Questo bottone ora mostra la carta
     setChartBtnLabel(btn, true);
     _openChartBtn = btn;
 
-    try { wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){}
+    // Se l'utente chiude la carta con la ✕ propria, riallinea l'etichetta del bottone
+    var chartEl = document.getElementById('qimen-full-chart');
+    if(chartEl){
+      var closeX = chartEl.querySelector('[onclick*="qimen-full-chart"]');
+      if(closeX){
+        closeX.addEventListener('click', function(){
+          setChartBtnLabel(btn, false);
+          if(_openChartBtn === btn) _openChartBtn = null;
+        });
+      }
+    }
   }
 
   // ---------------------------------------------------------------
@@ -1014,7 +999,7 @@
   var _FS_STEM_CLASH = { Jia:'Geng', Geng:'Jia', Yi:'Xin', Xin:'Yi', Bing:'Ren', Ren:'Bing', Ding:'Gui', Gui:'Ding' };
   function _fsStemClash(a, b){ return !!a && !!b && _FS_STEM_CLASH[a] === b; }
 
-  function imprisonmentInfo(chart, facingDegOpt){
+  function imprisonmentInfo(chart){
     try {
       if(!chart || !chart.facingStars) return { imprisoned:false };
       var per = _fsCurrentPeriod();
@@ -1022,12 +1007,10 @@
       var byGrid = {};
       var add = function(g, via){ if(g==null || g<0 || g===4) return; if(!byGrid[g]) byGrid[g]={grid:g,vias:[]}; if(byGrid[g].vias.indexOf(via)<0) byGrid[g].vias.push(via); };
       for(var i=0;i<9;i++){ if(chart.facingStars[i] === 5) add(i, '5ws'); }            // (a) where the 5 water star sits
-      var facDeg = (facingDegOpt != null && isFinite(parseFloat(facingDegOpt))) ? parseFloat(facingDegOpt) : NaN;
-      if(isNaN(facDeg)){
-        var hf = (typeof document!=='undefined') ? document.getElementById('fs-house-facing') : null;
-        if(hf) facDeg = parseFloat(hf.value);
-        if(isNaN(facDeg)){ var fp = _fsActiveHouseFP(); if(fp && fp.facing != null) facDeg = parseFloat(fp.facing); }
-      }
+      var facDeg = NaN;
+      var hf = (typeof document!=='undefined') ? document.getElementById('fs-house-facing') : null;
+      if(hf) facDeg = parseFloat(hf.value);
+      if(isNaN(facDeg)){ var fp = _fsActiveHouseFP(); if(fp && fp.facing != null) facDeg = parseFloat(fp.facing); }
       if(isFinite(facDeg)) add(_fsFacingGridFromDeg(facDeg), 'facing');                  // (b) the facing palace
       var palaces = Object.keys(byGrid).map(function(g){
         var c = byGrid[g], pal = FS_GRID_TO_QMDJ_PALACE[c.grid];
@@ -1037,57 +1020,18 @@
     } catch(e){ return { imprisoned:false }; }
   }
 
-  // ── STATELESS authoritative chart for a given facing+period ───────────
-  // Does NOT read the DOM / the rendered FS page. Returns every palace's
-  // water (向) and mountain (山) star by direction, plus the imprisoned-star
-  // (入囚) flag and its liberation palaces. Used by the AI assistant so it
-  // never has to guess a star or depend on the FS page being open.
-  var _FS_GRID_TO_DIR = { 0:'SE', 1:'S', 2:'SW', 3:'E', 4:'C', 5:'W', 6:'NE', 7:'N', 8:'NW' };
-  function computeChart(facingDeg, period){
-    try {
-      if(typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function')
-        return { error:'flying-stars engine not loaded' };
-      var deg = parseFloat(facingDeg), per = parseInt(period, 10);
-      if(!isFinite(deg) || isNaN(per) || per < 1 || per > 9) return { error:'facing/period missing or invalid' };
-      var chart = FlyingStars.calculate(per, fsMountainCharFromDeg(deg));
-      if(!chart || !chart.facingStars || !chart.sittingStars) return { error:'chart computation failed' };
-      var palaces = {};
-      for(var g = 0; g < 9; g++){
-        var dir = _FS_GRID_TO_DIR[g];
-        palaces[dir] = { water: chart.facingStars[g], mountain: chart.sittingStars[g] };
-      }
-      var imp = imprisonmentInfo(chart, deg);
-      var out = {
-        facing_deg: deg, period: per, current_period: _fsCurrentPeriod(),
-        palaces: palaces,
-        center: { water: chart.facingStars[4], mountain: chart.sittingStars[4] },
-        imprisoned: !!imp.imprisoned
-      };
-      if(imp.imprisoned){
-        out.period_water_star = imp.periodStar;
-        out.liberation = imp.palaces.map(function(p){ return { direction:_FS_GRID_TO_DIR[p.grid], palace:p.qmdj, label:p.label, via:p.via }; });
-        out.imprisonment_note = 'The current-period water star ' + imp.periodStar + ' (\u5411\u661f) is IMPRISONED in the CENTRE (\u5165\u56da): it has no outer palace and must be freed with MOVING WATER toward '
-          + out.liberation.map(function(p){ return p.direction + ' (' + p.via + ')'; }).join(' OR ')
-          + '. Never report this star as simply absent.';
-      }
-      return out;
-    } catch(e){ return { error: String((e && e.message) || e) }; }
-  }
-
   function scanStarPreset(type, starN, opts){
     opts = opts || {};
     if(typeof Solar === 'undefined') return { error:'lunar-javascript not loaded.' };
     if(typeof QMDJWaterScanner === 'undefined' || typeof QMDJWaterScanner.getHourChart !== 'function')
       return { error:'qmdj-water-scanner.js not loaded.' };
-    var chart = (opts.facingDeg != null && opts.period != null && isFinite(parseFloat(opts.facingDeg)) && parseInt(opts.period,10) >= 1)
-      ? (function(){ try { return FlyingStars.calculate(parseInt(opts.period,10), fsMountainCharFromDeg(parseFloat(opts.facingDeg))); } catch(e){ return null; } })()
-      : getCurrentFSChart();
+    var chart = getCurrentFSChart();
     if(!chart) return { error:'Set House Facing and Period first.' };
     if(type !== 'water' && type !== 'mountain') return { error:"star_type must be 'water' (facing star) or 'mountain' (sitting star)." };
     starN = parseInt(starN, 10);
     if(isNaN(starN) || starN < 1 || starN > 9) return { error:'star_num must be 1-9.' };
 
-    var imp = imprisonmentInfo(chart, (opts.facingDeg != null ? opts.facingDeg : null));
+    var imp = imprisonmentInfo(chart);
     var gridIndices = findStarPalaces(chart, type, starN);
     var fsPalaces = gridIndices
       .filter(function(g){ return g !== 4; })
@@ -1266,10 +1210,66 @@
       : '\u25CB Active preset: auto = San Qi + 4 doors + the star matching the flying star.';
   }
 
+  // ── Stateless flying-star chart from facing degrees + period ─────────────────
+  // Adapter the AI chat uses (get_house_setup -> flying_stars). It does NOT depend
+  // on any open page: it computes the SAME chart the Feng Shui section draws,
+  // via FlyingStars.calculate(period, fsMountainCharFromDeg(facing)), and returns
+  // it keyed by DIRECTION (South-at-top) so the AI can read palaces[<DIR>].water.
+  // Convert ANY flying-star chart object (auto from FlyingStars.calculate OR a
+  // hand-composed manual chart) into the direction-keyed shape the AI reads.
+  // Both share facingStars/sittingStars/baseStars (9 values by grid index, South
+  // at top), so a manual override flows through here unchanged.
+  function chartToFlyingStars(chart){
+    if (!chart || !chart.facingStars || !chart.sittingStars) return { error: 'no chart' };
+    var I = FlyingStars.DIR_TO_INDEX;
+    var DIRS = ['SE','S','SW','E','W','NE','N','NW'];
+    var palaces = {};
+    DIRS.forEach(function (d) { var gi = I[d]; palaces[d] = { water: chart.facingStars[gi], mountain: chart.sittingStars[gi], base: (chart.baseStars ? chart.baseStars[gi] : null) }; });
+    var center = { water: chart.facingStars[4], mountain: chart.sittingStars[4], base: (chart.baseStars ? chart.baseStars[4] : null) };
+    // Facing direction: auto charts carry facingDirection; manual ones carry only
+    // facingMountain, so derive it from the mountain when needed.
+    var facingDir = chart.facingDirection || null;
+    if (!facingDir && chart.facingMountain && typeof FlyingStars.getMountainPosition === 'function') {
+      var mp = FlyingStars.getMountainPosition(chart.facingMountain); if (mp) facingDir = mp.direction;
+    }
+    // 入囚 (imprisonment): the CURRENT-period water (facing) star locked in the centre.
+    // Freed with moving water at the liberation quadrant(s): where the 5 water star
+    // sits and/or the facing palace. Matches the section's own imprisonment handling.
+    var imprisoned = false, liberation = null, note = null;
+    var curPer = (typeof _fsCurrentPeriod === 'function') ? _fsCurrentPeriod() : NaN;
+    if (isFinite(curPer) && chart.facingStars[4] === curPer) {
+      imprisoned = true;
+      var gridToDir = {}; DIRS.forEach(function (d) { gridToDir[I[d]] = d; });
+      var libSet = {};
+      for (var i = 0; i < 9; i++) { if (i !== 4 && chart.facingStars[i] === 5 && gridToDir[i]) libSet[gridToDir[i]] = true; }
+      var facGrid = (facingDir != null) ? I[facingDir] : null; if (facGrid != null && facGrid !== 4 && gridToDir[facGrid]) libSet[gridToDir[facGrid]] = true;
+      liberation = Object.keys(libSet);
+      note = 'Imprisoned (\u5165\u56da): the current-period water star sits in the centre. Free it with MOVING WATER at the liberation quadrant(s): ' + liberation.join(', ') + '.';
+    }
+    return {
+      manual: !!chart._manual,
+      facing_mountain: chart.facingMountain || null, facing_direction: facingDir, sitting_direction: chart.sittingDirection || null,
+      palaces: palaces, center: center,
+      imprisoned: imprisoned, liberation: liberation, imprisonment_note: note
+    };
+  }
+  function computeChart(facingDeg, period){
+    if (typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function')
+      return { error: 'flying-star engine unavailable' };
+    var f = parseFloat(facingDeg), p = parseInt(period, 10);
+    if (!isFinite(f) || isNaN(p) || p < 1 || p > 9) return { error: 'facing or period missing/invalid' };
+    var mch; try { mch = fsMountainCharFromDeg(f); } catch (e) { return { error: 'bad facing degrees' }; }
+    var chart; try { chart = FlyingStars.calculate(p, mch); } catch (e) { return { error: (e && e.message) || 'calculate failed' }; }
+    var out = chartToFlyingStars(chart);
+    if (out && !out.error) { out.facing = f; out.period = p; }
+    return out;
+  }
+
   window.QFS = {
     open:      open,
-    scanStarPreset: scanStarPreset,
     computeChart: computeChart,
+    chartToFlyingStars: chartToFlyingStars,
+    scanStarPreset: scanStarPreset,
     close:     close,
     selectAll: selectAll,
     selectAllProfiles: selectAllProfiles,

@@ -321,7 +321,7 @@
     '- FLYING-STAR GROUNDING (CRITICAL - NEVER GUESS): NEVER state which flying star sits in a direction from your own ' +
     'reasoning or memory, and NEVER compute a chart in your head. The ONLY source of truth is get_house_setup → each ' +
     'floor\u2019s flying_stars object (palaces{DIR:{water,mountain}}, center, imprisoned, liberation, imprisonment_note), ' +
-    'computed authoritatively from facing+period. To answer "what water star is at <DIR>" or to pick star_num for an ' +
+    'computed authoritatively from facing+period, OR taken from a hand-composed MANUAL chart when the floor has one (flying_stars.manual === true - the same chart the luopan shows; if so, say it is a manual chart and do NOT recompute or second-guess it). To answer "what water star is at <DIR>" or to pick star_num for an ' +
     'activation, READ flying_stars.palaces[<DIR>].water — do not infer it. If flying_stars is null/absent (facing or ' +
     'period not set for that house), tell the user the chart cannot be computed and ask them to set facing & period - ' +
     'do NOT invent a star. When you call find_water_activation_full, also pass facing_deg and period from that floor so ' +
@@ -1136,41 +1136,47 @@
     if (!arr) {
       arr = [{
         trigger: 'aq',
-        label: 'Acquario — entrambe le case, domani',
-        text: 'Per la data di DOMANI, trova le ore migliori per accendere l\u2019acquario in OGNI casa salvata della persona attiva. ' +
-              'Per ciascuna casa usa la SUA posizione d\u2019acqua salvata (direzione) e la sua stella d\u2019acqua (facing), sulla SUA carta volante. ' +
-              'Procedi una casa alla volta: rendi attiva la casa (set_active_house), leggi il suo setup, esegui find_water_activation_full per quella casa, ' +
-              'e dammi UN\u2019ora migliore PER OGNI casa (un risultato separato per ciascuna), con data e motivo. Alla fine ripristina la casa che era attiva all\u2019inizio.'
+        label: 'Aquarium — both houses, tomorrow',
+        text: 'For TOMORROW\u2019s date, find the best hours to activate the aquarium in EVERY saved house of the active person. ' +
+              'For each house use ITS saved water position (direction) and its water star (facing), on ITS flying chart. ' +
+              'Proceed one house at a time: make the house active (set_active_house), read its setup, run find_water_activation_full for that house, ' +
+              'and give me ONE best hour FOR EACH house (a separate result for each), with the date and the reason. At the end, restore the house that was active at the start.'
       }];
     }
-    // Seed / refresh the Vienna<->Tuoro travel-planner test macros (VT / TV). On tap
-    // they ask single-day vs multi-day SEARCH (with day count + how many itineraries),
-    // then run with exact coordinates. The text is tool-agnostic; the dialog's clause
-    // chooses plan_travel (single day) or search_travel (range).
+    // Seed / refresh the built-in macros (aquarium "aq" + Vienna<->Tuoro travel tests VT / TV).
+    // Bumping the version below re-seeds them in English, replacing any older Italian copies (now v5).
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '3') {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '5') {
         var seed = [
           {
-            trigger: 'VT', icon: '\ud83d\ude97', askDepart: true,   // 🚗
-            label: 'Vienna \u2192 Tuoro (travel-planner test)',
-            text: 'Viaggio in auto da Vienna (Austria) a Tuoro sul Trasimeno (Italia). ' +
-                  'Usa queste coordinate e questi nomi ESATTI: ' +
+            trigger: 'aq',
+            label: 'Aquarium — both houses, tomorrow',
+            text: 'For TOMORROW\u2019s date, find the best hours to activate the aquarium in EVERY saved house of the active person. ' +
+                  'For each house use ITS saved water position (direction) and its water star (facing), on ITS flying chart. ' +
+                  'Proceed one house at a time: make the house active (set_active_house), read its setup, run find_water_activation_full for that house, ' +
+                  'and give me ONE best hour FOR EACH house (a separate result for each), with the date and the reason. At the end, restore the house that was active at the start.'
+          },
+          {
+            trigger: 'VT', icon: '🚗', askDepart: true,
+            label: 'Vienna → Tuoro (travel-planner test)',
+            text: 'Car trip from Vienna (Austria) to Tuoro sul Trasimeno (Italy). ' +
+                  'Use these EXACT coordinates and names: ' +
                   'origin_name "Vienna", origin_lat 48.2082, origin_lon 16.3738; ' +
                   'dest_name "Tuoro sul Trasimeno", dest_lat 43.2074, dest_lon 12.0772.'
           },
           {
-            trigger: 'TV', icon: '\ud83d\ude97', askDepart: true,   // 🚗
-            label: 'Tuoro \u2192 Vienna (travel-planner test)',
-            text: 'Viaggio in auto da Tuoro sul Trasimeno (Italia) a Vienna (Austria). ' +
-                  'Usa queste coordinate e questi nomi ESATTI: ' +
+            trigger: 'TV', icon: '🚗', askDepart: true,
+            label: 'Tuoro → Vienna (travel-planner test)',
+            text: 'Car trip from Tuoro sul Trasimeno (Italy) to Vienna (Austria). ' +
+                  'Use these EXACT coordinates and names: ' +
                   'origin_name "Tuoro sul Trasimeno", origin_lat 43.2074, origin_lon 12.0772; ' +
                   'dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738.'
           }
         ];
-        // Replace any earlier VT/TV, then append the current definitions.
-        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv'; });
+        // Replace any earlier aq/VT/TV, then append the current English definitions.
+        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq'; });
         seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '3');
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '5');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
@@ -1190,27 +1196,27 @@
     var labCss = 'font-size:12px;color:#555;display:block;margin-bottom:3px;';
     var card = E('div', 'background:#fff;border-radius:12px;max-width:340px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);');
     card.innerHTML =
-        '<div style="font-weight:700;color:#6a1b9a;font-size:15px;margin-bottom:12px;">\ud83d\ude97 Come pianificare il viaggio?</div>'
+        '<div style="font-weight:700;color:#6a1b9a;font-size:15px;margin-bottom:12px;">\ud83d\ude97 How do you want to plan the trip?</div>'
       + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
-      +   '<button id="xkdg-mode-single">Giorno singolo</button>'
-      +   '<button id="xkdg-mode-search">Cerca giorno migliore</button>'
+      +   '<button id="xkdg-mode-single">Single day</button>'
+      +   '<button id="xkdg-mode-search">Find best day</button>'
       + '</div>'
-      + '<label style="' + labCss + '" id="xkdg-date-lab">Data</label>'
+      + '<label style="' + labCss + '" id="xkdg-date-lab">Date</label>'
       + '<input type="date" id="xkdg-depart-date" value="' + today + '" style="' + inputCss + '">'
       + '<div id="xkdg-grp-single">'
-      +   '<label style="' + labCss + '">Ora <span style="color:#999;">(vuoto = ora pi\u00f9 favorevole)</span></label>'
+      +   '<label style="' + labCss + '">Time <span style="color:#999;">(empty = most favourable hour)</span></label>'
       +   '<input type="time" id="xkdg-depart-time" style="' + inputCss + '">'
       + '</div>'
       + '<div id="xkdg-grp-search" style="display:none;">'
-      +   '<label style="' + labCss + '">Per quanti giorni cercare</label>'
+      +   '<label style="' + labCss + '">How many days to search</label>'
       +   '<input type="number" id="xkdg-search-days" value="7" min="1" max="31" style="' + inputCss + '">'
-      +   '<label style="' + labCss + '">Quanti itinerari mostrare</label>'
+      +   '<label style="' + labCss + '">How many itineraries to show</label>'
       +   '<input type="number" id="xkdg-search-topk" value="5" min="1" max="10" style="' + inputCss + '">'
-      +   '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:7px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="xkdg-search-arr" style="width:16px;height:16px;"> Ottimizza anche l\u2019ora/direzione di arrivo</label>'
+      +   '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:7px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="xkdg-search-arr" style="width:16px;height:16px;"> Also optimise arrival hour/direction</label>'
       + '</div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">'
-      +   '<button id="xkdg-depart-cancel" style="background:#eee;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;">Annulla</button>'
-      +   '<button id="xkdg-depart-go" style="background:#6a1b9a;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;">Vai</button>'
+      +   '<button id="xkdg-depart-cancel" style="background:#eee;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;">Cancel</button>'
+      +   '<button id="xkdg-depart-go" style="background:#6a1b9a;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;">Go</button>'
       + '</div>';
     ov.appendChild(card);
     document.body.appendChild(ov);
@@ -1225,7 +1231,7 @@
       bSearch.style.cssText = base + (m === 'search' ? 'background:#6a1b9a;color:#fff;' : 'background:#eee;color:#333;');
       grpSingle.style.display = (m === 'single') ? 'block' : 'none';
       grpSearch.style.display = (m === 'search') ? 'block' : 'none';
-      if (dateLab) dateLab.textContent = (m === 'search') ? 'Dal giorno' : 'Data';
+      if (dateLab) dateLab.textContent = (m === 'search') ? 'From day' : 'Date';
     }
     bSingle.onclick = function () { setMode('single'); };
     bSearch.onclick = function () { setMode('search'); };
@@ -1239,18 +1245,18 @@
         var days = Math.max(1, Math.min(parseInt(document.getElementById('xkdg-search-days').value, 10) || 7, 31));
         var topk = Math.max(1, Math.min(parseInt(document.getElementById('xkdg-search-topk').value, 10) || 5, 10));
         var arr = !!document.getElementById('xkdg-search-arr').checked;
-        clause = 'Trova il GIORNO MIGLIORE con search_travel (NON plan_travel): start_date ' + d + ', days ' + days +
-                 ', top_k ' + topk + (arr ? ', optimize_arrival true' : '') + '. Posta la lista selezionabile.';
-        human = 'ricerca ' + days + ' giorni \u00b7 top ' + topk + (arr ? ' \u00b7 arrivo ottimizzato' : '');
+        clause = 'Find the BEST DAY with search_travel (NOT plan_travel): start_date ' + d + ', days ' + days +
+                 ', top_k ' + topk + (arr ? ', optimize_arrival true' : '') + '. Post the selectable list.';
+        human = 'search ' + days + ' days \u00b7 top ' + topk + (arr ? ' \u00b7 arrival optimised' : '');
       } else {
         var t = document.getElementById('xkdg-depart-time').value || '';
         if (t) {
-          clause = 'Pianifica con plan_travel (open_planner true): depart_date ' + d + ', depart_time ' + t + '.';
+          clause = 'Plan with plan_travel (open_planner true): depart_date ' + d + ', depart_time ' + t + '.';
           human = d + ' ' + t;
         } else {
-          clause = 'Pianifica con plan_travel (open_planner true): depart_date ' + d + ', e OMETTI depart_time/depart_hour, ' +
-                   'lasciando che il planner scelga l\u2019ora diurna pi\u00f9 favorevole di quel giorno.';
-          human = d + ' \u00b7 ora pi\u00f9 favorevole';
+          clause = 'Plan with plan_travel (open_planner true): depart_date ' + d + ', and OMIT depart_time/depart_hour, ' +
+                   'letting the planner pick the most favourable daytime hour of that day.';
+          human = d + ' \u00b7 most favourable hour';
         }
       }
       if (ov.parentNode) ov.parentNode.removeChild(ov);
@@ -1976,7 +1982,7 @@
       baseOut.planner_opened = true;
       baseOut.note = 'The planner is open and computing the real road route' +
         ((input.range_km != null) ? ' and the charging stops' : '') +
-        '. The full itinerary will post itself into THIS chat as a separate card (numbered steps + charging + an ' +
+        '. The full itinerary will post itself into THIS chat as a separate card (lettered steps A/B/C matching Google Maps + charging + an ' +
         '"Open in Google Maps" button) within a few seconds - you do NOT render it. Reply with ONE short sentence ' +
         'only: ' + (autoDepart
           ? 'say you picked the most favourable departure of the day and that the exact clock time + direction are in the card; do NOT invent a time.'
@@ -2419,12 +2425,17 @@
     if (!res) return { error: q ? ('No house matching "' + input.house_name + '".') : 'Provide house_name.', available_houses: window.XKDGHouse.availableHouses() };
     var n = window.XKDGHouse.normalize(res.house);
     var floors = n.floors.map(function (f) {       // strip the heavy chart object; keep the extracted star values
-      // AUTHORITATIVE flying-star chart computed from this floor's facing+period
-      // (stateless — does NOT depend on the FS page being open). Gives every
-      // palace's water/mountain star + the imprisoned-star (入囚) flag.
+      // AUTHORITATIVE flying-star chart for this floor. Prefer the floor's chart from
+      // XKDGHouse.normalize (which already applies a hand-composed MANUAL chart when the
+      // floor has one — exactly what the Feng Shui luopan shows); fall back to computing
+      // from facing+period. Gives every palace's water/mountain star + the 入囚 flag.
       var fsChart = null;
       try {
-        if (window.QFS && typeof QFS.computeChart === 'function' && f.facing != null && f.period != null) {
+        if (window.QFS && typeof QFS.chartToFlyingStars === 'function' && f.chart) {
+          fsChart = QFS.chartToFlyingStars(f.chart);
+          if (fsChart && fsChart.error) fsChart = null;
+          if (fsChart) { fsChart.manual = !!f.manual_chart; fsChart.facing = f.facing; fsChart.period = f.period; }
+        } else if (window.QFS && typeof QFS.computeChart === 'function' && f.facing != null && f.period != null) {
           fsChart = QFS.computeChart(f.facing, f.period);
           if (fsChart && fsChart.error) fsChart = null;
         }
@@ -2452,7 +2463,7 @@
       house_facing: res.house.houseFacing, house_period: res.house.period,
       active_floor: n.activeFloor,
       floors: floors,
-      note: 'Multi-floor house: each floor has its own doors / aquariums / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars.'
+      note: 'Multi-floor house: each floor has its own doors / aquariums / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.manual is true, it is a HAND-COMPOSED chart (overrides facing+period) - report it as a manual chart and use its numbers as-is. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars.'
     };
   }
 
@@ -3523,21 +3534,20 @@
       // Which numbered itinerary step(s) does this hour fall in? (the Drive leg that
       // contains it, plus the Stop at its end for a cash hour).
       function stepRef(h) {
-        var hf = norm(h.from), ht = norm(h.to), driveN = null, stopN = null;
+        var hf = norm(h.from), ht = norm(h.to), driveTo = null, stopL = null;
         stepList.forEach(function (s) {
-          if (s.kind === 'drive') { if (norm(s.from) <= hf && norm(s.to) >= ht) driveN = s.n; }
-          else if (s.kind === 'stop') { if (s.at === h.to) stopN = s.n; }
+          if (s.kind === 'drive') { if (norm(s.from) <= hf && norm(s.to) >= ht) driveTo = s.toLetter; }
+          else if (s.kind === 'stop') { if (s.at === h.to) stopL = s.letter; }
         });
-        if (stopN != null && driveN != null) return 'steps ' + driveN + '\u2013' + stopN;
-        if (stopN != null) return 'step ' + stopN;
-        if (driveN != null) return 'step ' + driveN;
+        if (stopL != null) return 'at ' + stopL;            // cash hour ends AT this map point
+        if (driveTo != null) return '\u2192 ' + driveTo;     // driving TOWARD this map point
         return '';
       }
       var favCount = hours.filter(function (h) { return h.kind === 'cash'; }).length;
       var head = elc('button', { style:
         'width:100%;text-align:left;margin-top:8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:8px;' +
         'padding:7px 9px;font-size:12px;font-weight:600;color:#4527a0;cursor:pointer;' },
-        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' cash \u00b7 each row maps to the numbered step(s) above \u25be');
+        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' cash \u00b7 each row maps to the map letters above \u25be');
       var body = elc('div', { style: 'display:block;margin-top:4px;' });
       head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
       hours.forEach(function (h) {
@@ -3592,25 +3602,54 @@
         (payload.snapped ? ' \u00b7 ' + payload.snapped + (payload.bearing != null ? ' ' + payload.bearing + '\u00b0' : '') : '') +
         ' \u00b7 ' + distline;
       wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:4px;' }, title));
-      var ol = elc('ol', { style: 'margin:0;padding-left:20px;' });
+      // ---- Map-letter alignment ---------------------------------------------------
+      // Google Maps labels POINTS: origin = A, each stop = B, C, ... (in route order),
+      // destination = the next letter. Drives are the lines BETWEEN letters, not points.
+      // So we letter the points here to match the pins on the map, and render drives as
+      // connectors that show which letter they head to. (Default Maps export keeps every
+      // stop in route order, so these letters line up with the pins.)
+      function letterChar(i) { return String.fromCharCode(65 + (i < 0 ? 0 : i)); }
+      function ptBadge(letter, color) {
+        return elc('span', { style:
+          'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;' +
+          'background:' + (color || '#1565c0') + ';color:#fff;font-size:11px;font-weight:700;margin-right:7px;margin-top:1px;flex:none;' }, letter);
+      }
+      function ptLine(letter, color, text) {
+        var row = elc('div', { style: 'display:flex;align-items:flex-start;margin:3px 0;' });
+        row.appendChild(ptBadge(letter, color));
+        var tx = elc('span', { style: 'flex:1;min-width:0;' }, text);
+        row.appendChild(tx);
+        return { row: row, tx: tx };
+      }
+      var legs = payload.legs || [];
+      var stopLetters = [], _p = 0;
+      legs.forEach(function (it) { if (it.kind !== 'drive') { _p++; stopLetters.push(letterChar(_p)); } });
+      var destLetter = letterChar(_p + 1);     // destination = next letter after the last stop
+
+      var listEl = elc('div', { style: 'margin:0;' });
       _itinStopEls = [];
-      var stepList = [];   // map numbered itinerary steps to times, to cross-reference the Hours panel
-      var _stepN = 0;
-      (payload.legs || []).forEach(function (it) {
-        _stepN++;
-        var li;
+      var stepList = [];   // map itinerary steps to times AND to map letters, for the Hours panel
+      // Origin (A, green like the Maps start pin)
+      listEl.appendChild(ptLine('A', '#2e7d32', (payload.origin || 'Origin')).row);
+      var si = 0;
+      legs.forEach(function (it) {
         if (it.kind === 'drive') {
-          stepList.push({ n: _stepN, kind: 'drive', from: it.from, to: it.to });
-          var t = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + (it.arrival ? ' \u2014 ' + L.arrive + ' ' + (payload.dest || '') : '');
-          li = elc('li', { style: 'margin:2px 0;' }, t);
+          var toL = it.arrival ? destLetter : (stopLetters[si] || destLetter);
+          stepList.push({ kind: 'drive', from: it.from, to: it.to, toLetter: toL });
+          var dtxt = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + ' \u00b7 \u2192 ' + toL;
+          listEl.appendChild(elc('div', { style: 'margin:2px 0 2px 25px;color:#555;font-size:13px;' }, dtxt));
+          if (it.arrival) {
+            listEl.appendChild(ptLine(destLetter, '#c62828', L.arrive + ' ' + (payload.dest || '')).row);
+          }
         } else {
-          stepList.push({ n: _stepN, kind: 'stop', at: it.at });
-          li = elc('li', { style: 'margin:2px 0;' }, stopLineText(L, it));
-          _itinStopEls.push({ el: li, it: it });
+          var letter = stopLetters[si]; si++;
+          stepList.push({ kind: 'stop', at: it.at, letter: letter });
+          var pl = ptLine(letter, '#1565c0', stopLineText(L, it));
+          listEl.appendChild(pl.row);
+          _itinStopEls.push({ el: pl.tx, it: it });
         }
-        ol.appendChild(li);
       });
-      wrap.appendChild(ol);
+      wrap.appendChild(listEl);
       _itinExitEls = [];
       if (payload.charging_pending || payload.charging) {
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
