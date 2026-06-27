@@ -3379,32 +3379,47 @@
       } catch (e) {}
       if (!ok) { try { addBubble('assistant', '\u26A0 Could not open the rotating chart for this hour.'); } catch (e2) {} }
     }
-    // Collapsible per-hour panel: every 时辰 of the trip, marked favourable / neutral,
-    // each with a 🔍 button that opens its rotating QMDJ chart.
+    // Collapsible per-hour panel: every 时辰 of the trip, classified CASH / DETOUR /
+    // DRIVE, with the activated QMDJ setting, the stop length, and a 🔍 button that
+    // opens its rotating QMDJ chart. Open by default so the chart buttons are visible.
     function addHoursPanel(wrap, hours, L) {
       if (!hours || !hours.length) return;
-      var favCount = hours.filter(function (h) { return h.fortunate; }).length;
+      var favCount = hours.filter(function (h) { return h.kind === 'cash'; }).length;
       var head = elc('button', { style:
         'width:100%;text-align:left;margin-top:8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:8px;' +
         'padding:7px 9px;font-size:12px;font-weight:600;color:#4527a0;cursor:pointer;' },
-        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' favourable \u00b7 tap a chart to inspect \u25be');
-      var body = elc('div', { style: 'display:none;margin-top:4px;' });
+        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' cash \u00b7 tap a chart to inspect \u25be');
+      var body = elc('div', { style: 'display:block;margin-top:4px;' });
       head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
       hours.forEach(function (h) {
-        var fav = h.fortunate;
+        var isCash = (h.kind === 'cash'), isDetour = (h.kind === 'detour');
+        var border = isCash ? '#43a047' : (isDetour ? '#f9a825' : '#bbb');
+        var bg = isCash ? '#f1f8f2' : (isDetour ? '#fff8e1' : '#f7f7f7');
+        var fg = isCash ? '#1b5e20' : (isDetour ? '#8a6d00' : '#666');
         var row = elc('div', { style:
-          'display:flex;align-items:center;gap:6px;margin:3px 0;padding:4px 7px;border-radius:7px;border-left:3px solid ' +
-          (fav ? '#43a047' : '#bbb') + ';background:' + (fav ? '#f1f8f2' : '#f7f7f7') + ';font-size:12px;' });
-        var txt = fav
-          ? (h.from + '\u2013' + h.to + ' \u00b7 ' + L.toward + ' ' + h.roadDir + ' \u00b7 P' + h.palace +
-             (h.palaceName ? (' ' + h.palaceName) : '') + (h.door ? (' \u00b7 ' + h.door) : '') +
-             (h.sanqi ? ' \u00b7 \u4e09\u5947' : '') + (h.score != null ? (' \u00b7 ' + h.score) : '') + ' \u2713')
-          : (h.from + '\u2013' + h.to + ' \u00b7 drive, no cash');
-        var label = elc('span', { style: 'flex:1;color:' + (fav ? '#1b5e20' : '#666') + ';' }, txt);
+          'display:flex;align-items:flex-start;gap:6px;margin:3px 0;padding:5px 8px;border-radius:7px;border-left:3px solid ' +
+          border + ';background:' + bg + ';font-size:12px;' });
+        var head1, detail;
+        if (isCash) {
+          head1 = h.from + '\u2013' + h.to + ' \u00b7 CASH toward ' + h.roadDir + ' \u00b7 P' + h.palace + (h.palaceName ? (' ' + h.palaceName) : '');
+          detail = (h.setting ? ('setting: ' + h.setting) : '') +
+                   (h.score != null ? (' \u00b7 score ' + h.score) : '') +
+                   (h.cash_min ? (' \u00b7 stop ~' + h.cash_min + ' min') : '');
+        } else if (isDetour) {
+          head1 = h.from + '\u2013' + h.to + ' \u00b7 DETOUR toward ' + h.detour.dir + ' \u00b7 P' + h.detour.palace + (h.detour.palaceName ? (' ' + h.detour.palaceName) : '') +
+                  ' (road ' + h.roadDir + ' neutral)';
+          detail = (h.detour.setting ? ('setting: ' + h.detour.setting) : '') + (h.detour.score != null ? (' \u00b7 score ' + h.detour.score) : '');
+        } else {
+          head1 = h.from + '\u2013' + h.to + ' \u00b7 DRIVE toward ' + h.roadDir + ' \u00b7 no fortunate window (no cash)';
+          detail = '';
+        }
+        var txtWrap = elc('div', { style: 'flex:1;color:' + fg + ';' });
+        txtWrap.appendChild(elc('div', { style: 'font-weight:600;' }, head1));
+        if (detail) txtWrap.appendChild(elc('div', { style: 'color:#555;margin-top:1px;' }, detail));
         var btn = elc('button', { style:
           'flex:none;background:#6a1b9a;color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;' }, '\uD83D\uDD0D');
         btn.addEventListener('click', function () { openHourChart(h); });
-        row.appendChild(label); row.appendChild(btn);
+        row.appendChild(txtWrap); row.appendChild(btn);
         body.appendChild(row);
       });
       wrap.appendChild(head);

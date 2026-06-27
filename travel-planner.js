@@ -2098,31 +2098,63 @@
         }
       });
       // Per-HOUR QMDJ panel: one row per 时辰 so the user can inspect every hour's
-      // rotating chart and see which travel directions are favourable vs neutral.
-      // Additive — does not touch legs / exits / text.
+      // rotating chart, see the activated setting, the stop length, and whether the
+      // hour is a CASH (road direction fortunate), a DETOUR (an adjacent direction is
+      // fortunate), or a plain DRIVE (no fortunate direction). Additive.
       var PALACE_NAME = { 1: 'Kan', 2: 'Kun', 3: 'Zhen', 4: 'Xun', 5: 'Center', 6: 'Qian', 7: 'Dui', 8: 'Gen', 9: 'Li' };
+      // Map each fortunate cash hour to the length of the stop placed at its end.
+      var stopDurBySlot = {};
+      try { plan.forEach(function (p) { if (p.type === 'stop' && p.slotIdx != null) stopDurBySlot[p.slotIdx] = p.charge ? p.durationMin : 20; }); } catch (e) {}
+      // Concise description of the QMDJ "setting" being activated (door · San Qi/Wu · named formations · spirit).
+      function settingOf(ev) {
+        if (!ev) return '';
+        var bits = [];
+        if (ev.door) bits.push(ev.door);
+        if (ev.hasSanQi) bits.push('San Qi 三奇');
+        if (ev.configs && ev.configs.length) bits.push(ev.configs.join(' · '));
+        if (ev.deity) bits.push(ev.deity);
+        if (ev.zhiFu) bits.push('Commander 值符');
+        return bits.join(' · ');
+      }
       var hours = [];
       try {
-        (result.slots || []).forEach(function (s) {
+        (result.slots || []).forEach(function (s, si) {
           var roadDir = tpSnapDir((s.bearingDest != null) ? s.bearingDest : result.bearing);
-          var entry = (s.dirs || []).filter(function (d) { return d.dir === roadDir; })[0] || null;
-          var ev = (entry && entry.eval) ? entry.eval : null;
-          var fortunate = !!(ev && ev.ok);
+          var rEntry = (s.dirs || []).filter(function (d) { return d.dir === roadDir; })[0] || null;
+          var rev = (rEntry && rEntry.eval) ? rEntry.eval : null;
+          var fortunate = !!(rev && rev.ok);
           var fav = (s.dirs || []).filter(function (d) { return d.eval && d.eval.ok; })
             .map(function (d) {
               return { dir: d.dir, palace: d.palace, palaceName: PALACE_NAME[d.palace] || '',
-                       door: (d.eval.door || null), score: (d.eval.score || null), sanqi: !!d.eval.hasSanQi };
+                       door: (d.eval.door || null), score: (d.eval.score || null), sanqi: !!d.eval.hasSanQi,
+                       setting: settingOf(d.eval) };
             });
+          // Classify the hour. DETOUR = the road dir is NOT fortunate, but one of its
+          // 45° neighbours IS fortunate and stays within ±67.5° of the destination.
+          var ri = TP_DIR_ORDER.indexOf(roadDir), rdeg = (s.bearingDest != null) ? s.bearingDest : result.bearing;
+          var detour = null;
+          if (!fortunate && ri >= 0) {
+            var nbrs = [TP_DIR_ORDER[(ri + 7) % 8], TP_DIR_ORDER[(ri + 1) % 8]];
+            fav.forEach(function (d) {
+              if (nbrs.indexOf(d.dir) < 0) return;
+              if (tpAngDiff(TP_DIR_DEG[d.dir], rdeg) > 67.5) return;
+              if (!detour || (d.score || 0) > (detour.score || 0)) detour = d;
+            });
+          }
+          var kind = fortunate ? 'cash' : (detour ? 'detour' : 'drive');
           hours.push({
             from: fmtHMonly(s.wallStart), to: fmtHMonly(s.wallEnd),
             ganzhi: s.gZhiPy || s.brPy || '',
             roadDir: roadDir, palace: TP_DIR_TO_PALACE[roadDir], palaceName: PALACE_NAME[TP_DIR_TO_PALACE[roadDir]] || '',
-            fortunate: fortunate,
-            door: fortunate ? (ev.door || null) : null,
-            sanqi: fortunate ? !!ev.hasSanQi : false,
-            deity: fortunate ? (ev.deity || null) : null,
-            score: fortunate ? (ev.score || null) : null,
-            configs: fortunate ? (ev.configs || []) : [],
+            fortunate: fortunate, kind: kind,
+            setting: fortunate ? settingOf(rev) : (detour ? detour.setting : ''),
+            door: fortunate ? (rev.door || null) : null,
+            sanqi: fortunate ? !!rev.hasSanQi : false,
+            deity: fortunate ? (rev.deity || null) : null,
+            score: fortunate ? (rev.score || null) : null,
+            configs: fortunate ? (rev.configs || []) : [],
+            cash_min: fortunate ? (stopDurBySlot[si] || 20) : null,
+            detour: detour ? { dir: detour.dir, palace: detour.palace, palaceName: detour.palaceName, door: detour.door, score: detour.score, setting: detour.setting } : null,
             favourable_dirs: fav,
             iso: s.iso, hGan: s.hGanHan, hZhi: s.hZhiHan, brPy: s.brPy
           });
