@@ -1146,6 +1146,7 @@
   // Small prompt asked before a travel macro runs: when do you want to depart?
   // Calls cb(clause, humanLabel) — clause is appended to the macro instruction.
   function _askDepart(cb) {
+    function E(tag, css, html) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; return e; }
     var old = document.getElementById('xkdg-depart-ov'); if (old && old.parentNode) old.parentNode.removeChild(old);
     var ov = E('div', 'position:fixed;inset:0;z-index:100003;background:rgba(20,8,30,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:inherit;');
     ov.id = 'xkdg-depart-ov';
