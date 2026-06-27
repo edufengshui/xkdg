@@ -3367,12 +3367,14 @@
     function pad(n) { return String(n).padStart(2, '0'); }
     function ensureRoute() {
       if (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) return Promise.resolve(TP_LAST_ROUTE);
-      return tpFetchRoute(tpGetWorkerUrl(), O, Dst).then(function (r) { TP_LAST_ROUTE = r; return r; }).catch(function () { return null; });
+      return tpFetchRoute(tpGetWorkerUrl(), { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })
+        .then(function (r) { TP_LAST_ROUTE = r; return r; }).catch(function () { return null; });
     }
     return ensureRoute().then(function (route) {
       return new Promise(function (resolve) {
         var matchRoute = (route && tpRouteMatches(route, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? route : null;
-        var driveH = matchRoute ? (matchRoute.durationSec / 3600) : (tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon) / TP_AVG_KMH);
+        var AVG_KMH = 72;   // straight-line fallback speed (same as tpPlan) when no road route is available
+        var driveH = matchRoute ? (matchRoute.durationSec / 3600) : (tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon) / AVG_KMH);
         var DAY_START_H = 5, DAY_END_H = 21;
         var candidates = [];
         _tpRotCache = {};   // memoise rotating charts across all candidates of this scan
