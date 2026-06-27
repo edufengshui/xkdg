@@ -6321,7 +6321,7 @@ function _fsPurpactRender(){
 var PURPOSE_GUIDE = {
   health: { name:'🏥 Health',
     date:['Structure: a <b>Parent (印 Resource)</b> present (best on the <b>day pillar</b>).',
-          '<b>Celestial Doctor 天醫 (Tian Yi)</b> — the healing star: date hour branch matches the day stem\u2019s Heavenly Doctor, or date day branch matches the person\u2019s. <i>(The 天醫 healing star, not the Noble 天乙貴人.)</i>',
+          '<b>Celestial Doctor 天醫 (Tian Yi)</b> — the healing star: date hour branch matches the day stem\u2019s Heavenly Doctor, or date day branch matches the person\u2019s.',
           'Especially favoured: <b>Cerulean Dragon 青龍</b>, <b>Jade Hall 玉堂</b>.',
           'Timely formations: <b>Deity Dun 神遁</b>, <b>Human Dun 人遁</b>.'],
     fs:['Door: <b>Rest 休 (Xiu)</b>.','QMDJ star: <b>Heart 天心</b>.','Flying Stars: <b>8</b> (and 9).'] },
@@ -6356,15 +6356,15 @@ var PURPOSE_GUIDE = {
     date:['Structure: a generally favourable XKDG day (no extra blood-link requirement).',
           'Especially favoured: <b>Bright Hall 明堂</b>, <b>Fate Master 司命</b>, <b>Heaven Virtue 天德</b>.',
           'Timely formations: <b>Tiger Dun 虎遁</b>, <b>Dragon Dun 龍遁</b>, <b>Ghost Dun 鬼遁</b>, <b>Real Pretenses 真詐</b>, <b>Deity Borrows 神假</b>, <b>Ghost Borrows 鬼假</b>, <b>Heaven Borrows 天假</b>.'],
-    fs:['Door: <b>Shocking 驚 (JingF)</b> — the exception: an unfavourable door, accepted <b>only when redeemed by San Qi 三奇 (乙丙丁)</b>.','QMDJ spirit: <b>Bird 朱雀</b>.','Flying Stars: <b>7</b> (and 9).'] }
+    fs:['Door: <b>Shocking 驚 (JingF)</b> — the exception: an unfavourable door, accepted <b>only when redeemed by San Qi 三奇 (乙丙丁 Yi\u00b7Bing\u00b7Ding)</b>.','QMDJ spirit: <b>Bird 朱雀</b>.','Flying Stars: <b>7</b> (and 9).'] }
 };
 var PURPOSE_GUIDE_GENERAL =
   '<div style="background:#f5f3fb;border:1px solid #d7cdf0;border-radius:8px;padding:8px 10px;margin-top:10px;font-size:11px;color:#4527a0;line-height:1.5;">'
   + '<b>General rules</b><br>'
-  + '• A Feng Shui door counts only on a favourable structure — <b>San Qi 三奇 (乙丙丁)</b> or <b>Wu 戊</b> + good door.<br>'
+  + '• A Feng Shui door counts only on a favourable structure — <b>San Qi 三奇 (乙丙丁 Yi\u00b7Bing\u00b7Ding)</b> or <b>Wu 戊</b> + good door.<br>'
   + '• <b>Commander 值符</b>, wherever it sits, boosts every purpose.<br>'
-  + '• Shared favourable spirits (every date): 青龍 · 金匱 · 天德 · 司命 · 祿.<br>'
-  + '• Flying star <b>9</b> helps every purpose; a lucky 山/向 star at the activation palace adds effect.'
+  + '• Shared favourable spirits (every date): Cerulean Dragon 青龍 · Golden Box 金匱 · Heaven Virtue 天德 · Fate Master 司命 · Lu 祿.<br>'
+  + '• Flying star <b>9</b> helps every purpose; a lucky Mountain/Facing 山/向 star at the activation palace adds effect.'
   + '</div>';
 function openPurposeGuide(key){
   try {
