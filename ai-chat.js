@@ -1143,34 +1143,34 @@
               'e dammi UN\u2019ora migliore PER OGNI casa (un risultato separato per ciascuna), con data e motivo. Alla fine ripristina la casa che era attiva all\u2019inizio.'
       }];
     }
-    // Seed / refresh the Vienna<->Tuoro travel-planner test macros (VT / TV).
-    // They ASK for the departure date/time on tap, then plan with exact coordinates.
+    // Seed / refresh the Vienna<->Tuoro travel-planner test macros (VT / TV). On tap
+    // they ask single-day vs multi-day SEARCH (with day count + how many itineraries),
+    // then run with exact coordinates. The text is tool-agnostic; the dialog's clause
+    // chooses plan_travel (single day) or search_travel (range).
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '2') {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '3') {
         var seed = [
           {
             trigger: 'VT', icon: '\ud83d\ude97', askDepart: true,   // 🚗
             label: 'Vienna \u2192 Tuoro (travel-planner test)',
-            text: 'Pianifica un viaggio in auto da Vienna (Austria) a Tuoro sul Trasimeno (Italia). ' +
-                  'Chiama plan_travel con queste coordinate ESATTE e questi nomi: ' +
+            text: 'Viaggio in auto da Vienna (Austria) a Tuoro sul Trasimeno (Italia). ' +
+                  'Usa queste coordinate e questi nomi ESATTI: ' +
                   'origin_name "Vienna", origin_lat 48.2082, origin_lon 16.3738; ' +
-                  'dest_name "Tuoro sul Trasimeno", dest_lat 43.2074, dest_lon 12.0772. ' +
-                  'Apri il planner (open_planner: true).'
+                  'dest_name "Tuoro sul Trasimeno", dest_lat 43.2074, dest_lon 12.0772.'
           },
           {
             trigger: 'TV', icon: '\ud83d\ude97', askDepart: true,   // 🚗
             label: 'Tuoro \u2192 Vienna (travel-planner test)',
-            text: 'Pianifica un viaggio in auto da Tuoro sul Trasimeno (Italia) a Vienna (Austria). ' +
-                  'Chiama plan_travel con queste coordinate ESATTE e questi nomi: ' +
+            text: 'Viaggio in auto da Tuoro sul Trasimeno (Italia) a Vienna (Austria). ' +
+                  'Usa queste coordinate e questi nomi ESATTI: ' +
                   'origin_name "Tuoro sul Trasimeno", origin_lat 43.2074, origin_lon 12.0772; ' +
-                  'dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738. ' +
-                  'Apri il planner (open_planner: true).'
+                  'dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738.'
           }
         ];
         // Replace any earlier VT/TV, then append the current definitions.
         arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv'; });
         seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '2');
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '3');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
@@ -1186,33 +1186,74 @@
     var ov = E('div', 'position:fixed;inset:0;z-index:100003;background:rgba(20,8,30,.6);display:flex;align-items:center;justify-content:center;padding:16px;font-family:inherit;');
     ov.id = 'xkdg-depart-ov';
     var today = new Date().toISOString().slice(0, 10);
+    var inputCss = 'width:100%;padding:8px;border:1px solid #c9b6d6;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:13px;';
+    var labCss = 'font-size:12px;color:#555;display:block;margin-bottom:3px;';
     var card = E('div', 'background:#fff;border-radius:12px;max-width:340px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);');
     card.innerHTML =
-        '<div style="font-weight:700;color:#6a1b9a;font-size:15px;margin-bottom:12px;">\ud83d\ude97 Quando vuoi partire?</div>'
-      + '<label style="font-size:12px;color:#555;display:block;margin-bottom:3px;">Data</label>'
-      + '<input type="date" id="xkdg-depart-date" value="' + today + '" style="width:100%;padding:8px;border:1px solid #c9b6d6;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:13px;">'
-      + '<label style="font-size:12px;color:#555;display:block;margin-bottom:3px;">Ora <span style="color:#999;">(vuoto = ora pi\u00f9 favorevole)</span></label>'
-      + '<input type="time" id="xkdg-depart-time" style="width:100%;padding:8px;border:1px solid #c9b6d6;border-radius:6px;margin-bottom:16px;box-sizing:border-box;font-size:13px;">'
-      + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+        '<div style="font-weight:700;color:#6a1b9a;font-size:15px;margin-bottom:12px;">\ud83d\ude97 Come pianificare il viaggio?</div>'
+      + '<div style="display:flex;gap:6px;margin-bottom:12px;">'
+      +   '<button id="xkdg-mode-single">Giorno singolo</button>'
+      +   '<button id="xkdg-mode-search">Cerca giorno migliore</button>'
+      + '</div>'
+      + '<label style="' + labCss + '" id="xkdg-date-lab">Data</label>'
+      + '<input type="date" id="xkdg-depart-date" value="' + today + '" style="' + inputCss + '">'
+      + '<div id="xkdg-grp-single">'
+      +   '<label style="' + labCss + '">Ora <span style="color:#999;">(vuoto = ora pi\u00f9 favorevole)</span></label>'
+      +   '<input type="time" id="xkdg-depart-time" style="' + inputCss + '">'
+      + '</div>'
+      + '<div id="xkdg-grp-search" style="display:none;">'
+      +   '<label style="' + labCss + '">Per quanti giorni cercare</label>'
+      +   '<input type="number" id="xkdg-search-days" value="7" min="1" max="31" style="' + inputCss + '">'
+      +   '<label style="' + labCss + '">Quanti itinerari mostrare</label>'
+      +   '<input type="number" id="xkdg-search-topk" value="5" min="1" max="10" style="' + inputCss + '">'
+      +   '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:7px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="xkdg-search-arr" style="width:16px;height:16px;"> Ottimizza anche l\u2019ora/direzione di arrivo</label>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">'
       +   '<button id="xkdg-depart-cancel" style="background:#eee;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;">Annulla</button>'
-      +   '<button id="xkdg-depart-go" style="background:#6a1b9a;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;">Pianifica</button>'
+      +   '<button id="xkdg-depart-go" style="background:#6a1b9a;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;">Vai</button>'
       + '</div>';
     ov.appendChild(card);
     document.body.appendChild(ov);
+    var mode = 'single';
+    var bSingle = document.getElementById('xkdg-mode-single'), bSearch = document.getElementById('xkdg-mode-search');
+    var grpSingle = document.getElementById('xkdg-grp-single'), grpSearch = document.getElementById('xkdg-grp-search');
+    var dateLab = document.getElementById('xkdg-date-lab');
+    function setMode(m) {
+      mode = m;
+      var base = 'border:0;border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px;font-weight:600;flex:1;';
+      bSingle.style.cssText = base + (m === 'single' ? 'background:#6a1b9a;color:#fff;' : 'background:#eee;color:#333;');
+      bSearch.style.cssText = base + (m === 'search' ? 'background:#6a1b9a;color:#fff;' : 'background:#eee;color:#333;');
+      grpSingle.style.display = (m === 'single') ? 'block' : 'none';
+      grpSearch.style.display = (m === 'search') ? 'block' : 'none';
+      if (dateLab) dateLab.textContent = (m === 'search') ? 'Dal giorno' : 'Data';
+    }
+    bSingle.onclick = function () { setMode('single'); };
+    bSearch.onclick = function () { setMode('search'); };
+    setMode('single');
     ov.addEventListener('click', function (e) { if (e.target === ov && ov.parentNode) ov.parentNode.removeChild(ov); });
     document.getElementById('xkdg-depart-cancel').onclick = function () { if (ov.parentNode) ov.parentNode.removeChild(ov); };
     document.getElementById('xkdg-depart-go').onclick = function () {
       var d = document.getElementById('xkdg-depart-date').value || today;
-      var t = document.getElementById('xkdg-depart-time').value || '';
-      if (ov.parentNode) ov.parentNode.removeChild(ov);
       var clause, human;
-      if (t) {
-        clause = 'Parti il ' + d + ' alle ' + t + ': usa depart_date ' + d + ' e depart_time ' + t + '.';
-        human = d + ' ' + t;
+      if (mode === 'search') {
+        var days = Math.max(1, Math.min(parseInt(document.getElementById('xkdg-search-days').value, 10) || 7, 31));
+        var topk = Math.max(1, Math.min(parseInt(document.getElementById('xkdg-search-topk').value, 10) || 5, 10));
+        var arr = !!document.getElementById('xkdg-search-arr').checked;
+        clause = 'Trova il GIORNO MIGLIORE con search_travel (NON plan_travel): start_date ' + d + ', days ' + days +
+                 ', top_k ' + topk + (arr ? ', optimize_arrival true' : '') + '. Posta la lista selezionabile.';
+        human = 'ricerca ' + days + ' giorni \u00b7 top ' + topk + (arr ? ' \u00b7 arrivo ottimizzato' : '');
       } else {
-        clause = 'Parti il ' + d + ': usa depart_date ' + d + ' e OMETTI depart_time/depart_hour, lasciando che il planner scelga l\u2019ora diurna pi\u00f9 favorevole di quel giorno.';
-        human = d + ' \u00b7 ora pi\u00f9 favorevole';
+        var t = document.getElementById('xkdg-depart-time').value || '';
+        if (t) {
+          clause = 'Pianifica con plan_travel (open_planner true): depart_date ' + d + ', depart_time ' + t + '.';
+          human = d + ' ' + t;
+        } else {
+          clause = 'Pianifica con plan_travel (open_planner true): depart_date ' + d + ', e OMETTI depart_time/depart_hour, ' +
+                   'lasciando che il planner scelga l\u2019ora diurna pi\u00f9 favorevole di quel giorno.';
+          human = d + ' \u00b7 ora pi\u00f9 favorevole';
+        }
       }
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
       try { cb(clause, human); } catch (e) {}
     };
   }
