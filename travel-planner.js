@@ -2119,7 +2119,7 @@
       function settingOf(ev) {
         if (!ev) return '';
         var bits = [];
-        if (ev.door) bits.push(ev.door);
+        if (ev.door) bits.push(tpDoorLabel(ev.door));
         if (ev.hasSanQi) bits.push('San Qi 三奇');
         if (ev.configs && ev.configs.length) bits.push(ev.configs.join(' · '));
         if (ev.deity) bits.push(ev.deity);
@@ -2136,7 +2136,7 @@
           var fav = (s.dirs || []).filter(function (d) { return d.eval && d.eval.ok; })
             .map(function (d) {
               return { dir: d.dir, palace: d.palace, palaceName: PALACE_NAME[d.palace] || '',
-                       door: (d.eval.door || null), score: (d.eval.score || null), sanqi: !!d.eval.hasSanQi,
+                       door: (d.eval.door ? tpDoorLabel(d.eval.door) : null), score: (d.eval.score || null), sanqi: !!d.eval.hasSanQi,
                        setting: settingOf(d.eval) };
             });
           // Classify the hour. DETOUR = the road dir is NOT fortunate, but one of its
@@ -2158,7 +2158,7 @@
             roadDir: roadDir, palace: TP_DIR_TO_PALACE[roadDir], palaceName: PALACE_NAME[TP_DIR_TO_PALACE[roadDir]] || '',
             fortunate: fortunate, kind: kind,
             setting: fortunate ? settingOf(rev) : (detour ? detour.setting : ''),
-            door: fortunate ? (rev.door || null) : null,
+            door: fortunate ? (rev.door ? tpDoorLabel(rev.door) : null) : null,
             sanqi: fortunate ? !!rev.hasSanQi : false,
             deity: fortunate ? (rev.deity || null) : null,
             score: fortunate ? (rev.score || null) : null,
@@ -3382,6 +3382,7 @@
           _tpRotCache = null;
           candidates.sort(function (a, b) { return (b.score - a.score) || (a.depart_ms - b.depart_ms); });
           resolve({ origin: O, dest: Dst, driving_h: Math.round(driveH * 10) / 10,
+            driving_min: Math.round(driveH * 60),
             km: matchRoute ? Math.round(matchRoute.distanceMeters / 1000) : null,
             real_route: !!matchRoute, optimize_arrival: optArr, days: days,
             total_evaluated: candidates.length, top: candidates.slice(0, topK) });
@@ -4427,9 +4428,9 @@
    * Pure local-plane geometry (verified), no network calls.
    * ===================================================================== */
   var TP_DOOR_LABEL = {
-    Kai: { en: 'Open', han: '开' }, Xiu: { en: 'Rest', han: '休' }, Sheng: { en: 'Birth', han: '生' },
-    JingS: { en: 'View', han: '景' }, Shang: { en: 'Injury', han: '伤' }, Du: { en: 'Delusion', han: '杜' },
-    Jing: { en: 'Shocking', han: '惊' }, Si: { en: 'Death', han: '死' }
+    Kai: { en: 'Open', han: '\u958b' }, Xiu: { en: 'Rest', han: '\u4f11' }, Sheng: { en: 'Birth', han: '\u751f' },
+    JingS: { en: 'View', han: '\u666f' }, Shang: { en: 'Injury', han: '\u50b7' }, Du: { en: 'Delusion', han: '\u675c' },
+    JingF: { en: 'Shocking', han: '\u9a5a' }, Jing: { en: 'Shocking', han: '\u9a5a' }, Si: { en: 'Death', han: '\u6b7b' }
   };
   function tpDoorLabel(code) { var d = TP_DOOR_LABEL[code]; return d ? (d.en + ' ' + d.han) : (code || '?'); }
 
@@ -4841,6 +4842,7 @@
     setCompassOrigin: tpCmpSetOriginFrom,
     openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
+    doorLabel: function (code) { return tpDoorLabel(code); },
     getLastResult: function () { return window._tpLastResult || null; },
     openInMaps: function (navigate) { return tpOpenInMaps(!!navigate); },
     diagnoseMapsExport: function () { return tpDiagnoseMapsExport(); },

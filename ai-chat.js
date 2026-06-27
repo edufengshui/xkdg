@@ -1900,7 +1900,10 @@
           double_hour_han: s.brHan,                          // e.g. "午"
           solar_from: s.tstStart, solar_to: s.tstEnd,        // same window in TRUE SOLAR time (for reference only)
           ganzhi: s.gZhiPy || s.gZhiHan, weekday: s.weekday,
-          directions: good.map(function (d) { return { dir: d.dir, score: d.eval.score, door: d.eval.door }; })
+          directions: good.map(function (d) {
+            var dl = (window.TravelPlanner && window.TravelPlanner.doorLabel) ? window.TravelPlanner.doorLabel(d.eval.door) : d.eval.door;
+            return { dir: d.dir, score: d.eval.score, door: dl };
+          })
         });
       }
     });
@@ -2025,10 +2028,11 @@
       return {
         search_done: true, days: days, optimize_arrival: optArr,
         score_method: 'total_cash' + (optArr ? ' + arrival favourability' : ''),
-        km: res.km, driving_h: res.driving_h, total_evaluated: res.total_evaluated,
+        km: res.km, driving_h: res.driving_h, driving_min: res.driving_min, total_evaluated: res.total_evaluated,
+        driving_time_note: 'All itineraries share the same road, so the driving time is the same for each; what differs is the departure/arrival and the cashed luck.',
         top: (res.top || []).map(function (c) {
           return { date: c.date, weekday: c.weekday, depart: c.depart,
-            arrive: c.arrive + (c.arrive_next_day ? ' (+1d)' : ''), score: c.score,
+            arrive: c.arrive + (c.arrive_next_day ? ' (+1d)' : ''), driving_min: res.driving_min, score: c.score,
             total_cash: c.total_cash, cash_hours: c.cash_hours, of_hours: c.total_hours };
         }),
         note: 'A SELECTABLE ranked list of the top itineraries has ALREADY been posted into THIS chat as a card; ' +
@@ -3632,6 +3636,8 @@
       var res = payload.result || {};
       var top = res.top || [];
       var origin = payload.origin || res.origin, dest = payload.dest || res.dest;
+      function fmtDur(min) { if (min == null) return ''; var h = Math.floor(min / 60), m = Math.round(min % 60); return (h ? (h + 'h') : '') + (m ? ((h ? ' ' : '') + m + 'm') : (h ? '' : '0m')); }
+      var dvg = fmtDur(res.driving_min != null ? res.driving_min : (res.driving_h != null ? res.driving_h * 60 : null));
       var wrap = elc('div', { style:
         'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
         'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:14px;line-height:1.5;' });
@@ -3655,7 +3661,8 @@
         info.appendChild(elc('div', { style: 'font-weight:700;color:#4527a0;' },
           '#' + (i + 1) + ' \u00b7 score ' + c.score + (best ? ' \u2605' : '')));
         info.appendChild(elc('div', { style: 'font-size:12px;color:#333;' },
-          c.date + (c.weekday ? (' (' + c.weekday + ')') : '') + ' \u00b7 ' + c.depart + ' \u2192 ' + c.arrive + (c.arrive_next_day ? ' (+1d)' : '')));
+          c.date + (c.weekday ? (' (' + c.weekday + ')') : '') + ' \u00b7 ' + c.depart + ' \u2192 ' + c.arrive + (c.arrive_next_day ? ' (+1d)' : '') +
+          (dvg ? (' \u00b7 ' + dvg + ' driving') : '')));
         info.appendChild(elc('div', { style: 'font-size:11px;color:#666;' },
           'total cash ' + c.total_cash + ' \u00b7 ' + c.cash_hours + '/' + c.total_hours + ' cash hours' +
           (payload.optimizeArrival && c.arrival_score ? (' \u00b7 arrival +' + c.arrival_score) : '')));
