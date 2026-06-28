@@ -3075,6 +3075,12 @@
     }, 'SCAN TRIP');
     panel.appendChild(btn);
 
+    var depBtn = el('button', { id: 'tp-depopts', type: 'button',
+      style: 'width:100%;margin-top:6px;padding:9px;border:1px solid #4527a0;border-radius:8px;background:#fff;color:#4527a0;font-size:13px;font-weight:600;cursor:pointer;' },
+      '\uD83D\uDD50 Departure options (BEST / BY HOUR)');
+    depBtn.addEventListener('click', function(){ try { tpShowDepartureOptions(); } catch(e){} });
+    panel.appendChild(depBtn);
+
     // ---- ARRIVE-BY: fixed arrival, flexible departure ---------------------
     // Lists travel solutions that all arrive at the target time (± tolerance),
     // shortest first; "Use" fills departure+duration (no snap) and runs SCAN.
@@ -3421,6 +3427,116 @@
   // toward-destination direction's `combined` value (direction score + hour
   // synergy), which is exactly what the planner ranks on. Considers daytime
   // departures only. Returns { clock:'HH:MM', ms, score } or null.
+  // ---- B) DEPARTURE OPTIONS: rank ALL favourable daytime departures (one per 2h
+  // block, best-scored), each with the planner's luck score, sortable BEST / BY HOUR.
+  function tpRankDepartures(O, Dst, dateStr, utc, dstOn, route, minMs, strict) {
+    function pad(n){ return String(n).padStart(2, '0'); }
+    var DAY_START_H = 5, DAY_END_H = 21;
+    var probe;
+    try {
+      probe = tpPlan({ depDate: new Date(dateStr + 'T05:00:00'), durationH: (DAY_END_H - DAY_START_H),
+        origin: O, dest: Dst, utc: utc, dstOn: dstOn, snapDepart: true, stepMin: 30, stopMode: 'auto',
+        route: (route && tpRouteMatches(route, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? route : null });
+    } catch (e) { return []; }
+    if (!probe || !probe.slots || !probe.slots.length) return [];
+    var byBlock = {};
+    probe.slots.forEach(function (slot) {
+      var hh = slot.wallStart.getHours();
+      if (hh < DAY_START_H || hh > DAY_END_H) return;
+      if (minMs && slot.wallStart.getTime() < minMs) return;
+      var sc = null;
+      if (strict) {
+        var de = tpDirExact(slot, slot.bearingDest);
+        if (!de || !de.eval || !de.eval.ok) return;            // travel-direction door not favourable -> not a valid journey departure
+        sc = (de.combined != null) ? de.combined : 0;
+      } else {
+        var bd = tpBestDirToward(slot, slot.bearingDest);
+        if (!bd || bd.combined == null) return;
+        sc = bd.combined;
+      }
+      var d = slot.wallStart;
+      var key = Math.floor((d.getHours() * 60 + d.getMinutes()) / 120);   // collapse to 2h blocks
+      var cand = { clock: pad(d.getHours()) + ':' + pad(d.getMinutes()), ms: d.getTime(),
+        score: sc, hourScore: (slot.hourScore != null ? slot.hourScore : null), hourPositive: !!slot.hourPositive };
+      var cur = byBlock[key];
+      if (!cur || cand.score > cur.score || (cand.score === cur.score && cand.ms < cur.ms)) byBlock[key] = cand;
+    });
+    return Object.keys(byBlock).map(function (k) { return byBlock[k]; });
+  }
+
+  // Read the form, warm the hour cache, rank departures and render the options panel.
+  function tpShowDepartureOptions() {
+    function pad(n){ return String(n).padStart(2, '0'); }
+    var results = document.getElementById('tp-results');
+    if (!results) return;
+    var dStr = (document.getElementById('tp-date') || {}).value;
+    var oLat = parseFloat((document.getElementById('tp-olat') || {}).value);
+    var oLon = parseFloat((document.getElementById('tp-olon') || {}).value);
+    var dLat = parseFloat((document.getElementById('tp-dlat') || {}).value);
+    var dLon = parseFloat((document.getElementById('tp-dlon') || {}).value);
+    if (!dStr || !isFinite(oLat) || !isFinite(oLon) || !isFinite(dLat) || !isFinite(dLon)) {
+      results.innerHTML = '<div style="color:#b58900;font-size:13px;">Set origin, destination and date first.</div>'; return;
+    }
+    var O = { lat: oLat, lon: oLon }, Dst = { lat: dLat, lon: dLon };
+    var utc = parseFloat((document.getElementById('tp-utc') || {}).value) || 0;
+    var dstOn = tpDstActiveOn(new Date(dStr + 'T12:00:00'));
+    results.innerHTML = '<div style="font-size:13px;color:#666;">Ranking favourable departures\u2026</div>';
+    try {
+      if (typeof runScanner === 'function') {
+        var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days');
+        var ps = ss ? ss.value : null, pd = sd ? sd.value : null;
+        if (ss) ss.value = dStr; if (sd) sd.value = '2';
+        runScanner();
+        if (ss && ps != null) ss.value = ps; if (sd && pd != null) sd.value = pd;
+      }
+    } catch (e) {}
+    var minMs = null;
+    try { var t = new Date(); if (dStr === (t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()))) minMs = t.getTime(); } catch (e) {}
+    var route = (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: oLat, lng: oLon }, { lat: dLat, lng: dLon })) ? TP_LAST_ROUTE : null;
+    var cands = tpRankDepartures(O, Dst, dStr, utc, dstOn, route, minMs, true), strictUsed = true;
+    if (!cands.length) { cands = tpRankDepartures(O, Dst, dStr, utc, dstOn, route, minMs, false); strictUsed = false; }
+    if (!cands.length) { results.innerHTML = '<div style="font-size:13px;color:#8a6d00;">No favourable daytime departure on ' + dStr + '. Try another date.</div>'; return; }
+    tpRenderDepartureOptions(results, cands, strictUsed, dStr);
+  }
+
+  function tpRenderDepartureOptions(container, cands, strictUsed, dStr) {
+    if (!window._tpDepSort) window._tpDepSort = 'best';
+    var chosen = (document.getElementById('tp-time') || {}).value || '';
+    container.innerHTML = '';
+    var box = el('div', { style: 'border:1px solid #c9b6d6;border-radius:10px;padding:10px;background:#faf7fd;' });
+    box.appendChild(el('div', { style: 'font-weight:700;color:#4527a0;font-size:14px;margin-bottom:2px;' }, '\uD83D\uDD50 Departure options \u2014 ' + dStr));
+    box.appendChild(el('div', { style: 'font-size:11px;color:#777;margin-bottom:8px;' },
+      (strictUsed ? 'Departures whose exact travel-direction door is favourable.' : 'No strict-direction departure; showing best-direction-toward options.') + ' Tap one to build its full itinerary.'));
+    var tg = el('div', { style: 'display:flex;gap:6px;margin-bottom:8px;' });
+    function mkTab(id, label){ var on = (window._tpDepSort === id);
+      var b = el('button', { type: 'button', style: 'flex:1;padding:6px;border-radius:7px;border:1px solid ' + (on ? '#4527a0' : '#c9b6d6') + ';background:' + (on ? '#4527a0' : '#fff') + ';color:' + (on ? '#fff' : '#4527a0') + ';font-size:12px;font-weight:700;cursor:pointer;' }, label);
+      b.addEventListener('click', function(){ window._tpDepSort = id; tpRenderDepartureOptions(container, cands, strictUsed, dStr); });
+      return b; }
+    tg.appendChild(mkTab('best', 'BEST')); tg.appendChild(mkTab('hour', 'BY HOUR'));
+    box.appendChild(tg);
+    var list = cands.slice();
+    if (window._tpDepSort === 'best') list.sort(function(a,b){ return (b.score - a.score) || (a.ms - b.ms); });
+    else list.sort(function(a,b){ return a.ms - b.ms; });
+    var maxSc = 0; cands.forEach(function(c){ if (c.score > maxSc) maxSc = c.score; });
+    list.forEach(function(c){
+      var isChosen = (c.clock === chosen);
+      var row = el('div', { style: 'display:flex;align-items:center;gap:8px;margin:4px 0;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ' + (isChosen ? '#1b8a3f' : '#e0d4e8') + ';background:' + (isChosen ? '#f1f8f2' : '#fff') + ';' });
+      var star = (c.score === maxSc && maxSc > 0) ? '\u2b50' : '';
+      var left = el('div', { style: 'flex:1;' });
+      left.appendChild(el('div', { style: 'font-weight:700;font-size:14px;color:#222;' }, (star ? star + ' ' : '') + c.clock));
+      left.appendChild(el('div', { style: 'font-size:11px;color:#666;' }, 'score ' + (Math.round(c.score * 10) / 10) + (c.hourScore != null ? (' \u00b7 hour ' + c.hourScore + (c.hourPositive ? ' \u2713' : '')) : '')));
+      row.appendChild(left);
+      row.appendChild(el('div', { style: 'font-size:12px;color:#1565c0;font-weight:700;white-space:nowrap;' }, isChosen ? 'current' : 'Plan \u2192'));
+      row.addEventListener('click', function(){
+        var tEl = document.getElementById('tp-time'); if (tEl) tEl.value = c.clock;
+        window._tpNoSnap = true; window._tpAutoDepart = false;
+        var scan = document.getElementById('tp-scan'); if (scan) scan.click();
+      });
+      box.appendChild(row);
+    });
+    container.appendChild(box);
+  }
+
   function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route, minMs, strict) {
     var DAY_START_H = 5, DAY_END_H = 21;   // sensible driving window, local clock
     var probe;
