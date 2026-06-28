@@ -1280,21 +1280,24 @@
           wallStart: slot.wallStart, wallEnd: slot.wallEnd, brPy: slot.brPy
         });
       }
-      // OPTION A (also the base behaviour while a B detour is pending realization):
-      // keep driving toward the destination through the whole non-positive hour with
-      // NO cash/stop. Only a SAFETY rest is allowed after very long continuous driving.
-      var elapsedH = (slot.wallEnd.getTime() - legStartMs) / 3600000;
-      if (elapsedH >= maxLegHours && i < slots.length - 1) {
+      // Domain rule: each 時辰 is one travel unit.
+      // In a non-fortunate hour the driver may stop:
+      //   • Option 1 – leave in the last minutes of the previous fortunate hour,
+      //     stop anywhere during this non-fortunate hour; or
+      //   • Option 2 – stop at the END of this non-fortunate hour.
+      // Either way the stop falls inside this slot. We always record a rest stop
+      // at the slot boundary so the snap layer finds a real charger / service area.
+      // The driver chooses where exactly to stop within the window.
+      if (i < slots.length - 1) {
         var rp2 = posAt(slot.wallEnd.getTime());
         pushLeg(slot.wallEnd, i, headFromEntry(null, rd.name, false), '');
         timeline.push({ type: 'stop', atWall: slot.wallEnd, slotIdx: i,
-          reason: 'rest stop (\u2265' + maxLegHours + 'h driving, non-positive hour \u2014 not a cash)',
+          reason: 'rest — stop where convenient (non-positive hour)',
           newHeading: nextHeadAfter(i), pos: { lat: rp2.lat, lon: rp2.lon },
           cashDir: null, limitDeg: null, fortunate: false });
         P0 = { lat: rp2.lat, lon: rp2.lon };
         legStartMs = slot.wallEnd.getTime();
       }
-      // else: keep driving into the next slot (P0 / legStartMs unchanged)
     }
     var lastSlot = slots[slots.length - 1];
     pushLeg(lastSlot.wallEnd, slots.length - 1, headFromEntry(null, roadDirOf(lastSlot).name, false), 'arrival');
