@@ -3633,8 +3633,8 @@
       }
       var legs = payload.legs || [];
       var stopLetters = [], _p = 0;
-      legs.forEach(function (it) { if (it.kind !== 'drive') { _p++; stopLetters.push(letterChar(_p)); } });
-      var destLetter = letterChar(_p + 1);     // destination = next letter after the last stop
+      legs.forEach(function (it) { if (it.kind !== 'drive') { stopLetters.push(letterChar(_p)); _p++; } });
+      var destLetter = letterChar(_p);     // Maps letters waypoints+dest only (origin unlettered); dest = after last stop
       var _hrs = payload.hours || [];
       function _fFort(h){ return h.kind === 'cash' || h.kind === 'detour'; }
       function _fScore(h){ return (h.kind === 'cash') ? (h.score != null ? h.score : 0)
@@ -3652,7 +3652,7 @@
       _itinStopEls = [];
       var stepList = [];   // map itinerary steps to times AND to map letters, for the Hours panel
       // Origin (A, green like the Maps start pin)
-      listEl.appendChild(ptLine('A', '#2e7d32', (payload.origin || 'Origin')).row);
+      listEl.appendChild(ptLine('', '#2e7d32', (payload.origin || 'Origin')).row);   // start dot, no letter (Maps does not letter the origin)
       var si = 0;
       legs.forEach(function (it) {
         if (it.kind === 'drive') {
