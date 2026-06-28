@@ -2755,11 +2755,21 @@
         hour: solarBranchToClock(m.branch) || m.branch,
         tier: matched.length, matched: matched,
         xkdg_score: m.x, qimen_quadrant_score: m.q, qimen_special_score: m.s,
+        qimen_score: (m.q || 0) + (m.s || 0),                 // activation energy AT the palace (what you stimulate)
         combined_score: (m.x || 0) + (m.q || 0) + (m.s || 0),
         hits: (m.qhits || []).concat(m.shits || [])
       };
     }).filter(function (r) { return r.tier >= 1; });
-    rows.sort(function (a, b) { return (b.tier - a.tier) || (b.combined_score - a.combined_score) || (a.date < b.date ? -1 : 1); });
+    // Ranking for an ACTIVATION tool: the Qimen energy AT the palace is the primary
+    // quality (it is what the water stimulates); the XKDG person/day score is the
+    // tiebreaker. So between two same-tier hours, the stronger Qimen quadrant wins
+    // even if the other hour has a higher XKDG day score.
+    rows.sort(function (a, b) {
+      return (b.tier - a.tier)
+          || ((b.qimen_score || 0) - (a.qimen_score || 0))
+          || ((b.xkdg_score || 0) - (a.xkdg_score || 0))
+          || (a.date < b.date ? -1 : 1);
+    });
 
     return {
       scanner: 'water_activation_full',
@@ -2769,7 +2779,7 @@
       start: start, days: days, scans_run: ran,
       person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',
       count: rows.length, results: rows.slice(0, 20), scan_notes: notes,
-      note: 'Triple scan merged by date+hour. matched lists which of the 3 the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace). tier = how many of the 3 (3 = best). PRESENT tier 3 first, then tier 2, then tier 1. combined_score = sum of the 3 sub-scores. State for each which scans it passed.',
+      note: 'Triple scan merged by date+hour. matched lists which of the 3 the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace). tier = how many of the 3 (3 = best). PRESENT tier 3 first, then tier 2, then tier 1. combined_score = sum of the 3 sub-scores (shown for transparency). RANKING within a tier is by qimen_score (Qimen quadrant + special = the activation energy at the palace) FIRST, then xkdg_score as the tiebreaker \u2014 so a stronger Qimen hour outranks a higher-XKDG hour of the same tier. State for each which scans it passed and, when two hours are close, say which has the stronger Qimen (activation) vs the stronger XKDG (person/day).',
       time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
     };
   }

@@ -958,6 +958,19 @@
         if(_qd && _qd.indexOf(cellInfo.deity) !== -1){ score += 1; hits = hits.concat([{ cat:'combo', label:'\u2605 ' + cellInfo.deity + ' spirit' }]); }
       }
     } catch(e){}
+    // \u2605 SUPERIOR CONFIGURATION (any purpose): the Commander \u503c\u7b26 sitting on a
+    // San Qi \u4e09\u5947 (\u4e59\u4e19\u4e01 \u2014 a "Wonder") together with a favourable door is a
+    // top, hard-to-beat activation pattern and must score clearly above an ordinary
+    // favourable hour. Additive on top of the normal hits; never gates.
+    try {
+      var _supCmd = (cellInfo.zhiFu || cellInfo.deity === 'Commander');
+      var _supSanQi = (SAN_QI.indexOf(cellInfo.ti) !== -1 || SAN_QI.indexOf(cellInfo.di) !== -1);  // genuine Wonder \u4e59\u4e19\u4e01 (not Wu)
+      var _supFav = FAV_DOORS.indexOf(cellInfo.doorCode) !== -1;
+      if(_supCmd && _supSanQi && _supFav){
+        score += 4;   // premium elevation \u2014 a superior, hard-to-beat configuration
+        hits = hits.concat([{ cat:'combo', label:'\uD83D\uDC8E \u503c\u7b26 on San Qi \u4e09\u5947 + favourable door (superior)' }]);
+      }
+    } catch(e){}
     return { matched: true, hits: hits, score: score, cell: cellInfo, isVoid: isVoid, flags: flags.reasons, purposeDoor: purpose ? cellInfo.doorCode : null };
   }
 
