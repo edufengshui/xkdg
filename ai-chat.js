@@ -1241,8 +1241,9 @@
       + '<label style="' + labCss + '" id="xkdg-date-lab">Date</label>'
       + '<input type="date" id="xkdg-depart-date" value="' + today + '" style="' + inputCss + '">'
       + '<div id="xkdg-grp-single">'
-      +   '<label style="' + labCss + '">Time <span style="color:#999;">(empty = most favourable hour)</span></label>'
-      +   '<input type="time" id="xkdg-depart-time" style="' + inputCss + '">'
+      +   '<label style="' + labCss + '">How many itineraries to show</label>'
+      +   '<input type="number" id="xkdg-single-topk" value="5" min="1" max="10" style="' + inputCss + '">'
+      +   '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:7px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="xkdg-single-arr" style="width:16px;height:16px;"> Also optimise arrival hour/direction</label>'
       + '</div>'
       + '<div id="xkdg-grp-search" style="display:none;">'
       +   '<label style="' + labCss + '">How many days to search</label>'
@@ -1286,15 +1287,12 @@
                  ', top_k ' + topk + (arr ? ', optimize_arrival true' : '') + '. Post the selectable list.';
         human = 'search ' + days + ' days \u00b7 top ' + topk + (arr ? ' \u00b7 arrival optimised' : '');
       } else {
-        var t = document.getElementById('xkdg-depart-time').value || '';
-        if (t) {
-          clause = 'Plan with plan_travel (open_planner true): depart_date ' + d + ', depart_time ' + t + '.';
-          human = d + ' ' + t;
-        } else {
-          clause = 'Plan with plan_travel (open_planner true): depart_date ' + d + ', and OMIT depart_time/depart_hour, ' +
-                   'letting the planner pick the most favourable daytime hour of that day.';
-          human = d + ' \u00b7 most favourable hour';
-        }
+        var topk1 = Math.max(1, Math.min(parseInt(document.getElementById('xkdg-single-topk').value, 10) || 5, 10));
+        var arr1 = !!document.getElementById('xkdg-single-arr').checked;
+        clause = 'Find the favourable departures for ONE day with search_travel (NOT plan_travel): start_date ' + d +
+                 ', days 1, top_k ' + topk1 + (arr1 ? ', optimize_arrival true' : '') +
+                 '. Post the selectable list of that day\u2019s departures.';
+        human = d + ' \u00b7 all departures (top ' + topk1 + ')';
       }
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       try { cb(clause, human); } catch (e) {}
