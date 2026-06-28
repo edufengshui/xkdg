@@ -2030,10 +2030,36 @@ function fsOpenDirectionCalc(onClose){
     + '</div>'
 
     // CALCULATE BUTTON
+    // FLIGHT SCAN OPTIONS (airports + outbound dates + optional return dates)
+    + '<div style="background:#f1f8e9;border-radius:6px;padding:10px;margin-bottom:10px;">'
+    + '<div style="font-size:12px;font-weight:bold;color:#1b5e20;margin-bottom:6px;">✈️ Flight scan</div>'
+    + '<div style="display:flex;gap:6px;align-items:end;margin-bottom:8px;">'
+    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Origin airport (IATA)</label>'
+    + '<input type="text" id="dir-orig-iata" maxlength="3" placeholder="auto" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;text-transform:uppercase;"></div>'
+    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Dest airport (IATA)</label>'
+    + '<input type="text" id="dir-dest-iata" maxlength="3" placeholder="auto" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;text-transform:uppercase;"></div>'
+    + '</div>'
+    + '<div style="font-size:11px;font-weight:bold;color:#1b5e20;margin-bottom:3px;">Outbound</div>'
+    + '<div style="display:flex;gap:6px;align-items:end;margin-bottom:8px;">'
+    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">From</label>'
+    + '<input type="date" id="dir-flight-from" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
+    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">To (optional)</label>'
+    + '<input type="date" id="dir-flight-to" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
+    + '</div>'
+    + '<div style="font-size:11px;font-weight:bold;color:#8a5a00;margin-bottom:3px;">Return (optional)</div>'
+    + '<div style="display:flex;gap:6px;align-items:end;">'
+    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">From</label>'
+    + '<input type="date" id="dir-return-from" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
+    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">To (optional)</label>'
+    + '<input type="date" id="dir-return-to" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
+    + '</div>'
+    + '<div style="font-size:10px;color:#888;margin-top:4px;">Empty IATA = auto-detect. One day = fill only “From”. Empty dates = current month.</div>'
+    + '</div>'
     + '<button onclick="fsDirectionCalcUser()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">🧭 CALCULATE DIRECTION</button>'
 
     // ONE-TAP: calculate direction + set Journey + 7-day window + run BEST scan
     + '<button onclick="fsDirectionScanFlights()" style="width:100%;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🔭 SCAN flight dates</button>'
+    + '<button onclick="fsDirectionScanReturn()" style="width:100%;background:#ef6c00;color:#fff;border:none;border-radius:6px;padding:11px;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🔄 SCAN return flights</button>'
 
     // RESULT
     + '<div id="dir-calc-result" style="text-align:center;min-height:40px;"></div>';
@@ -2051,7 +2077,9 @@ function _fsDirSave(){
     var g = function(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; };
     var route = {
       oAddr: g('dir-orig-addr'), oLat: g('dir-orig-lat'), oLng: g('dir-orig-lng'),
-      dAddr: g('dir-dest-addr'), dLat: g('dir-dest-lat'), dLng: g('dir-dest-lng')
+      dAddr: g('dir-dest-addr'), dLat: g('dir-dest-lat'), dLng: g('dir-dest-lng'),
+      oIata: g('dir-orig-iata'), dIata: g('dir-dest-iata'),
+      ofrom: g('dir-flight-from'), oto: g('dir-flight-to'), rfrom: g('dir-return-from'), rto: g('dir-return-to')
     };
     localStorage.setItem('xkdg_dir_route', JSON.stringify(route));
     // Keep the flight-search route in sync too (used by the 🔎 buttons).
@@ -2070,8 +2098,14 @@ function _fsDirRestore(){
     // filled (so origin still reflects "where I am now"), else use the saved ones.
     set('dir-orig-addr', route.oAddr);
     var ol = document.getElementById('dir-orig-lat'), og = document.getElementById('dir-orig-lng');
-    if (ol && !ol.value && route.oLat) ol.value = route.oLat;
-    if (og && !og.value && route.oLng) og.value = route.oLng;
+    // A saved, geocoded origin CITY wins over the GPS default (so a typed origin
+    // like "Sydney" persists across close/reopen instead of snapping back to GPS).
+    if (ol && route.oAddr && route.oLat) ol.value = route.oLat;
+    else if (ol && !ol.value && route.oLat) ol.value = route.oLat;
+    if (og && route.oAddr && route.oLng) og.value = route.oLng;
+    else if (og && !og.value && route.oLng) og.value = route.oLng;
+    set('dir-orig-iata', route.oIata); set('dir-dest-iata', route.dIata);
+    set('dir-flight-from', route.ofrom); set('dir-flight-to', route.oto); set('dir-return-from', route.rfrom); set('dir-return-to', route.rto);
   } catch(e){}
 }
 
@@ -2110,6 +2144,8 @@ function fsDirectionGeocodeOrigin(){
     document.getElementById('dir-orig-lng').value = parseFloat(place.lon).toFixed(6);
     if(status) status.textContent = '✓ Origin: ' + place.display_name.substring(0, 80);
     try { _fsDirSave(); } catch(e){}
+    try { if (typeof _fsNearestAirportIata === 'function') { var _fo = document.getElementById('dir-orig-iata');
+      if (_fo && !_fo.value.trim()) _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fo && !_fo.value.trim()){ _fo.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Origin geocoding error: ' + err.message;
@@ -2135,6 +2171,8 @@ function fsDirectionGeocode(){
     document.getElementById('dir-dest-lng').value = parseFloat(place.lon).toFixed(6);
     if(status) status.textContent = '✓ Found: ' + place.display_name.substring(0, 80);
     try { _fsDirSave(); } catch(e){}
+    try { if (typeof _fsNearestAirportIata === 'function') { var _fd = document.getElementById('dir-dest-iata');
+      if (_fd && !_fd.value.trim()) _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fd && !_fd.value.trim()){ _fd.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Geocoding error: ' + err.message;
@@ -2249,6 +2287,21 @@ async function fsDirectionScanFlights(){
   var sd = document.getElementById('scan-days');
   if(sd && (!sd.value || parseInt(sd.value) < 1)){ sd.value = '7'; }
 
+  // Apply the shell's flight options BEFORE closing: airport IATA overrides + month to scan.
+  window._fsDirScanRange = null;
+  try {
+    var _oi = document.getElementById('dir-orig-iata'), _di = document.getElementById('dir-dest-iata');
+    var _ff = document.getElementById('dir-flight-from'), _ft = document.getElementById('dir-flight-to');
+    var _up3 = function(v){ return (v || '').trim().toUpperCase(); };
+    var _oI = _up3(_oi && _oi.value), _dI = _up3(_di && _di.value);
+    if (/^[A-Z]{3}$/.test(_oI)) { window._fsFlightOrigIata = _oI; try { localStorage.setItem('xkdg_flight_orig_iata', _oI); } catch(e){} }
+    else { window._fsFlightOrigIata = ''; try { localStorage.removeItem('xkdg_flight_orig_iata'); } catch(e){} }
+    if (/^[A-Z]{3}$/.test(_dI)) { window._fsFlightDestIata = _dI; try { localStorage.setItem('xkdg_flight_dest_iata', _dI); } catch(e){} }
+    else { window._fsFlightDestIata = ''; try { localStorage.removeItem('xkdg_flight_dest_iata'); } catch(e){} }
+    var _fromV = (_ff && _ff.value) || '', _toV = (_ft && _ft.value) || '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(_fromV)) window._fsDirScanRange = { from: _fromV, to: (/^\d{4}-\d{2}-\d{2}$/.test(_toV) && _toV >= _fromV) ? _toV : _fromV };
+    _fsDirSave();
+  } catch(e){}
   // 4) Close the popup. (This path runs the scan in Main on purpose — no hub return.)
   _fsDirReturn = null;
   var p = document.getElementById('dir-calc-popup'); if(p) p.remove();
@@ -2270,9 +2323,18 @@ async function fsDirectionScanFlights(){
   // 5) Scan the CURRENT month (today → end of month) and show it on the calendar
   //    with ✈ favourable-hour badges. Navigating months (+1m/+2m/…) re-scans that
   //    whole month. A future month is scanned in full; the current month starts today.
-  if (typeof _fsScanMonthForFlights === 'function'){
-    var _tn = new Date();
-    _fsScanMonthForFlights(_tn.getFullYear(), _tn.getMonth() + 1);
+  if (window._fsDirScanRange && typeof runScanner === 'function'){
+    var _R = window._fsDirScanRange;
+    var _ssEl = document.getElementById('scan-start'), _sdEl = document.getElementById('scan-days');
+    if (_ssEl) _ssEl.value = _R.from;
+    var _d1 = new Date(_R.from + 'T00:00:00'), _d2 = new Date(_R.to + 'T00:00:00');
+    if (_sdEl) _sdEl.value = String(Math.max(1, Math.round((_d2 - _d1) / 86400000) + 1));
+    runScanner();
+    if (typeof setMode === 'function') setMode('cal');
+    window._fsFlightCalMode = true;
+    if (typeof buildCalView === 'function') buildCalView();
+  } else if (typeof _fsScanMonthForFlights === 'function'){
+    var _tn = new Date(); _fsScanMonthForFlights(_tn.getFullYear(), _tn.getMonth() + 1);
   } else if (typeof runScanner === 'function'){
     runScanner();
     if (typeof setMode === 'function' && typeof buildCalView === 'function'){
@@ -2282,6 +2344,29 @@ async function fsDirectionScanFlights(){
     }
   }
   else { alert('Scanner not available on this page.'); }
+}
+
+// B) RETURN leg: reuse the whole tested pipeline by swapping origin<->destination
+// (address, coordinates and IATA) and scanning the RETURN dates. The saved
+// outbound route is restored afterwards, so reopening the panel still shows the
+// outbound trip. Direction + favourable hours are recomputed for the reverse leg.
+async function fsDirectionScanReturn(){
+  var rf = (document.getElementById('dir-return-from') || {}).value || '';
+  var rt = (document.getElementById('dir-return-to') || {}).value || '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rf)){ alert('Set a Return date first (Return \u2192 From).'); return; }
+  var savedRoute = null; try { savedRoute = localStorage.getItem('xkdg_dir_route'); } catch(e){}
+  function gv(id){ var e = document.getElementById(id); return e ? e.value : ''; }
+  function sv(id, v){ var e = document.getElementById(id); if (e) e.value = v; }
+  // Capture outbound origin/destination, then swap them into the fields.
+  var oA=gv('dir-orig-addr'), oLa=gv('dir-orig-lat'), oLo=gv('dir-orig-lng'), oI=gv('dir-orig-iata');
+  var dA=gv('dir-dest-addr'), dLa=gv('dir-dest-lat'), dLo=gv('dir-dest-lng'), dI=gv('dir-dest-iata');
+  sv('dir-orig-addr', dA); sv('dir-orig-lat', dLa); sv('dir-orig-lng', dLo); sv('dir-orig-iata', dI);
+  sv('dir-dest-addr', oA); sv('dir-dest-lat', oLa); sv('dir-dest-lng', oLo); sv('dir-dest-iata', oI);
+  // Use the return dates as the (outbound-of-the-return) scan window.
+  sv('dir-flight-from', rf); sv('dir-flight-to', rt || rf);
+  try { await fsDirectionScanFlights(); } catch(e){}
+  // Restore the outbound route so the panel reopens with the outbound trip.
+  try { if (savedRoute != null) localStorage.setItem('xkdg_dir_route', savedRoute); } catch(e){}
 }
 
 function showJiaPopup(jiaName){
