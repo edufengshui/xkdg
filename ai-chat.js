@@ -3573,15 +3573,54 @@
     }
     // Open the ROTATING QMDJ chart for one hour (the correct chart for travel
     // directions), with the favourable-directions summary on top.
+    // Lens on an Hours row: open a 2-tab overlay so you can SEE both views for that
+    // hour and switch freely (\u2715 = back): the QMDJ rotating chart, and the XKDG
+    // LIST row (its XKDG setting + the graded lucky-date score that feeds the bonus).
+    var _BR2I = { '\u5b50':0,'\u4e11':1,'\u5bc5':2,'\u536f':3,'\u8fb0':4,'\u5df3':5,'\u5348':6,'\u672a':7,'\u7533':8,'\u9149':9,'\u620c':10,'\u4ea5':11 };
     function openHourChart(h) {
-      var ok = false;
+      var qimenHtml = '';
       try {
         if (typeof window.showQimenChart === 'function' && h && h.iso && h.hGan && h.hZhi) {
           var chart = window.showQimenChart(h.iso, h.hGan, h.hZhi, h.palace, { mode: 'rotating', returnHtml: true });
-          if (chart) { _vbShowChartOverlay(buildHourFavSummary(h) + chart); ok = true; }
+          if (chart) qimenHtml = buildHourFavSummary(h) + chart;
         }
       } catch (e) {}
-      if (!ok) { try { addBubble('assistant', '\u26A0 Could not open the rotating chart for this hour.'); } catch (e2) {} }
+      var xkdgHtml = '';
+      try {
+        var hi = (h && h.hZhi != null) ? _BR2I[h.hZhi] : null;
+        if (typeof window.tpGetListRowHtml === 'function' && h && h.iso && hi != null) xkdgHtml = window.tpGetListRowHtml(h.iso, hi) || '';
+      } catch (e) {}
+      if (!qimenHtml && !xkdgHtml) { try { addBubble('assistant', '\u26A0 Could not open this hour.'); } catch (e2) {} return; }
+      var ex = document.getElementById('xkdg-vb-overlay'); if (ex) ex.remove();
+      var ov = document.createElement('div');
+      ov.id = 'xkdg-vb-overlay';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;overflow:auto;padding:18px;';
+      var box = document.createElement('div');
+      box.style.cssText = 'max-width:520px;width:100%;margin:24px auto;background:#fff;border-radius:12px;padding:10px;';
+      var tabs = document.createElement('div');
+      tabs.style.cssText = 'display:flex;gap:6px;margin-bottom:10px;';
+      var content = document.createElement('div');
+      var mode = qimenHtml ? 'qimen' : 'xkdg';
+      function styleTab(b, on){ b.style.cssText = 'flex:1;padding:7px;border-radius:7px;border:1px solid ' + (on ? '#6a1b9a' : '#d0bdda') + ';background:' + (on ? '#6a1b9a' : '#fff') + ';color:' + (on ? '#fff' : '#6a1b9a') + ';font-size:13px;font-weight:700;cursor:pointer;'; }
+      var tQ = document.createElement('button'); tQ.textContent = '\uD83E\uDDED Qimen hour';
+      var tX = document.createElement('button'); tX.textContent = '\uD83D\uDD35 XKDG hour';
+      function render(){
+        styleTab(tQ, mode === 'qimen'); styleTab(tX, mode === 'xkdg');
+        content.innerHTML = (mode === 'qimen') ? (qimenHtml || '<div style="padding:10px;color:#888;">No Qimen chart.</div>')
+                                               : (xkdgHtml || '<div style="padding:10px;color:#888;">No XKDG row \u2014 run a trip scan first.</div>');
+      }
+      tQ.onclick = function(){ mode = 'qimen'; render(); };
+      tX.onclick = function(){ mode = 'xkdg'; render(); };
+      if (qimenHtml) tabs.appendChild(tQ);
+      if (xkdgHtml) tabs.appendChild(tX);
+      box.appendChild(tabs); box.appendChild(content); render();
+      var close = document.createElement('button');
+      close.textContent = '\u2715';
+      close.style.cssText = 'position:fixed;top:12px;right:14px;z-index:100001;background:#6a1b9a;color:#fff;border:0;border-radius:50%;width:38px;height:38px;font-size:17px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+      close.onclick = function(){ ov.remove(); };
+      ov.appendChild(box); ov.appendChild(close);
+      ov.addEventListener('click', function(e){ if (e.target === ov) ov.remove(); });
+      document.body.appendChild(ov);
     }
     // Collapsible per-hour panel: every 时辰 of the trip, classified CASH / DETOUR /
     // DRIVE, with the activated QMDJ setting, the stop length, and a 🔍 button that
@@ -3640,6 +3679,13 @@
         } else {
           head1 = h.from + '\u2013' + h.to + ' \u00b7 DRIVE toward ' + h.roadDir + ' \u00b7 no fortunate window (no cash)';
           detail = '';
+        }
+        // XKDG marker: show when this hour communicates with the traveller(s) (its
+        // graded lucky-date score is positive) \u2014 including direction-unfavourable
+        // hours, where the XKDG is the only positive and earns the small bonus.
+        if (h.xkPositive && h.hourScore != null) {
+          var _xk = ' \u00b7 \uD83D\uDD35 XKDG ' + h.hourScore + (isCash ? '' : ' (direction n/a)');
+          detail = detail ? (detail + _xk) : ('\uD83D\uDD35 XKDG ' + h.hourScore + (isCash ? '' : ' \u2014 communicates with the traveller(s), direction not favourable'));
         }
         var txtWrap = elc('div', { style: 'flex:1;color:' + fg + ';' });
         var ref = stepRef(h);

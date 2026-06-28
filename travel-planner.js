@@ -2425,7 +2425,8 @@
             cash_min: fortunate ? (stopDurBySlot[si] || 20) : null,
             detour: detour ? { dir: detour.dir, palace: detour.palace, palaceName: detour.palaceName, door: detour.door, score: detour.score, setting: detour.setting } : null,
             favourable_dirs: fav,
-            iso: s.iso, hGan: s.hGanHan, hZhi: s.hZhiHan, brPy: s.brPy
+            iso: s.iso, hGan: s.hGanHan, hZhi: s.hZhiHan, brPy: s.brPy,
+            hourScore: (s.hourScore != null ? s.hourScore : null), xkPositive: !!s.hourPositive
           });
         });
       } catch (eH) { hours = []; }
