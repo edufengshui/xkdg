@@ -6402,6 +6402,14 @@ const FS_CITY_AIRPORTS = [
     { names:['madrid'],                       lat:40.4168, lng:-3.7038,  airports:['MAD'] },
     { names:['frankfurt','francoforte'],      lat:50.1109, lng:8.6821,   airports:['FRA'] },
     { names:['zurich','zürich','zurigo'],     lat:47.3769, lng:8.5417,   airports:['ZRH'] },
+    // Australia / Oceania (OSM tagging near these is unreliable — pin the right code).
+    { names:['sydney','sidney'],              lat:-33.8688, lng:151.2093, airports:['SYD'] },
+    { names:['gold coast'],                   lat:-28.0167, lng:153.4000, airports:['OOL'] },
+    { names:['melbourne'],                    lat:-37.8136, lng:144.9631, airports:['MEL'] },
+    { names:['brisbane'],                     lat:-27.4698, lng:153.0251, airports:['BNE'] },
+    { names:['perth'],                        lat:-31.9523, lng:115.8613, airports:['PER'] },
+    { names:['adelaide'],                     lat:-34.9285, lng:138.6007, airports:['ADL'] },
+    { names:['auckland'],                     lat:-36.8485, lng:174.7633, airports:['AKL'] },
 ];
 
 // City (name and/or coords) → comma-joined airport list, or null if not in the table.
@@ -6507,13 +6515,19 @@ async function _fsResolveRouteIata(promptIfMissing){
     if (!manual){
         const names = _fsRouteCityNames();
         const c = _fsRouteCoords();
-        // City table first: handles multi-airport metros AND single-airport corrections.
-        const oCity = _fsCityCode(names.o, c.oLat, c.oLng);
-        const dCity = _fsCityCode(names.d, c.dLat, c.dLng);
-        if (oCity) orig = up(oCity);
-        else if (c.oLat && c.oLng){ const a = await _fsNearestAirportIata(c.oLat, c.oLng); if (isIata(a || '')) orig = a; }
-        if (dCity) dest = up(dCity);
-        else if (c.dLat && c.dLng){ const a = await _fsNearestAirportIata(c.dLat, c.dLng); if (isIata(a || '')) dest = a; }
+        // Only auto-detect a side that is NOT already an explicit IATA code (a code
+        // typed in the panel / set by the AI must NEVER be overridden). City table
+        // first (multi-airport metros + single-airport corrections), then nearest airport.
+        if (!isCode(orig)){
+            const oCity = _fsCityCode(names.o, c.oLat, c.oLng);
+            if (oCity) orig = up(oCity);
+            else if (c.oLat && c.oLng){ const a = await _fsNearestAirportIata(c.oLat, c.oLng); if (isIata(a || '')) orig = a; }
+        }
+        if (!isCode(dest)){
+            const dCity = _fsCityCode(names.d, c.dLat, c.dLng);
+            if (dCity) dest = up(dCity);
+            else if (c.dLat && c.dLng){ const a = await _fsNearestAirportIata(c.dLat, c.dLng); if (isIata(a || '')) dest = a; }
+        }
     }
 
     if (!isCode(orig) && promptIfMissing){
