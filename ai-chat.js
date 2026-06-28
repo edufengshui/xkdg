@@ -3843,6 +3843,15 @@
           target: '_blank', rel: 'noopener',
           style: 'color:#1565c0;text-decoration:underline;white-space:nowrap;font-weight:600;' }, '\uD83D\uDCCD Open in Maps');
         metaEl.appendChild(a);
+        // Chargeprice: per-card price comparison for THIS charger (free public web app).
+        var isCharger = (it.stopKind === 'charger') || !!it.stopPower;
+        if (isCharger) {
+          metaEl.appendChild(elc('span', { style: 'color:#bbb;margin:0 6px;' }, '\u00b7'));
+          var cp = elc('a', { href: 'https://www.chargeprice.app/?lat=' + it.lat + '&lng=' + it.lon,
+            target: '_blank', rel: 'noopener',
+            style: 'color:#1b6e2f;text-decoration:underline;white-space:nowrap;font-weight:600;' }, '\u26A1 Chargeprice');
+          metaEl.appendChild(cp);
+        }
       } else if (!txt) {
         metaEl.appendChild(elc('span', { style: 'color:#999;' }, '\u2026'));
       }

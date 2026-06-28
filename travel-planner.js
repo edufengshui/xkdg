@@ -1181,6 +1181,9 @@
    * ----------------------------------------------------------------------- */
   function tpSuggestStopsNetDir(slots, posAt, O, Dst, overallBearing, maxLegHours) {
     maxLegHours = maxLegHours || 4;
+    // Reach the cash point at least ~15 min BEFORE the favourable window closes
+    // (flexible minimum: arriving earlier is fine; arriving later than this is not).
+    var CASH_BUFFER_MS = 15 * 60000;
     var timeline = [];
     timeline.detourIntents = [];   // PHASE 2: detour opportunities for the async real-route layer
     if (!slots.length) return timeline;
@@ -1256,16 +1259,20 @@
       var fortEntry = roadFortunate(slot);
 
       if (fortEntry) {
-        // FORTUNATE HOUR → drive toward the destination and CASH at the end of the 时辰.
-        var endWall = slot.wallEnd;
-        var rp = posAt(endWall.getTime());
+        // FORTUNATE HOUR → drive toward the destination and CASH near the end of the
+        // 时辰, stopping ≥ ~15 min before the window closes (arrive a little early to
+        // park, plug in and cash within the favourable window).
+        var endMs = slot.wallEnd.getTime() - CASH_BUFFER_MS;
+        if (endMs <= legStartMs) endMs = slot.wallEnd.getTime();   // guard: never before this leg started
+        var endWall = new Date(endMs);
+        var rp = posAt(endMs);
         pushLeg(endWall, i, headFromEntry(fortEntry, rd.name, true), '');
         timeline.push({ type: 'stop', atWall: endWall, slotIdx: i,
-          reason: 'cash a positive ' + rd.name + ' hour (' + slot.brPy + ')',
+          reason: 'cash a positive ' + rd.name + ' hour (' + slot.brPy + ') — stop ≥15 min before the window ends',
           newHeading: nextHeadAfter(i), pos: { lat: rp.lat, lon: rp.lon },
           cashDir: rd.name, limitDeg: null, fortunate: true });
         P0 = { lat: rp.lat, lon: rp.lon };
-        legStartMs = endWall.getTime();
+        legStartMs = endMs;
         continue;
       }
 
