@@ -2307,8 +2307,13 @@
             if (place) {
               dbg.snapped = place.name; dbg.kind = place.kind;
               it.pos.lat = place.lat; it.pos.lon = place.lon;                 // snap Maps/checks (shared reference)
-              if (leg) { leg.lat = place.lat; leg.lon = place.lon; leg.place = place.name; leg.stopKind = place.kind; if (place.power) leg.stopPower = place.power; }
+              if (leg) { leg.lat = place.lat; leg.lon = place.lon; leg.place = place.name; leg.stopKind = place.kind; if (place.power) leg.stopPower = place.power; if (place.operator) leg.operator = place.operator; }
               try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {}
+              if (leg && isFinite(place.lat) && isFinite(place.lon)) {   // human address for the card (independent Maps lookup)
+                tpReverseGeocodeMany([{ lat: place.lat, lon: place.lon }]).then(function (nm) {
+                  if (nm && nm[0]) { leg.addr = nm[0]; try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {} }
+                }).catch(function () {});
+              }
             } else if (leg && leg.lat != null) {
               dbg.kind = 'point(fallback)';
               // No stoppable place nearby → at least name the locality so it is not a bare point.
@@ -2723,7 +2728,7 @@
     form.appendChild(field('Departure (date)', 'tp-date', _tpToday, 'date'));
     form.appendChild(field('Departure (time)', 'tp-time', '12:00', 'time'));
     form.appendChild(field('Trip duration (hours)', 'tp-dur', '12', 'number'));
-    form.appendChild(field('Max drive hours per leg', 'tp-maxleg', '4', 'number'));
+    form.appendChild(field('Max drive hours per leg', 'tp-maxleg', '2.5', 'number'));
     form.appendChild(field('UTC offset (base)', 'tp-utc', String(nowUtc), 'number'));
 
     // ---- Location pickers: city dropdown + GPS (same system as Main) -------
@@ -3160,7 +3165,7 @@
         var opts = {
           depDate: dep,
           durationH: parseFloat(document.getElementById('tp-dur').value) || 12,
-          maxLegHours: parseFloat(document.getElementById('tp-maxleg').value) || 4,
+          maxLegHours: parseFloat(document.getElementById('tp-maxleg').value) || 2.5,
           utc: parseFloat(document.getElementById('tp-utc').value) || 0,
           dstOn: document.getElementById('tp-dst').checked,
           origin: { lat: parseFloat(document.getElementById('tp-olat').value), lon: parseFloat(document.getElementById('tp-olon').value) },

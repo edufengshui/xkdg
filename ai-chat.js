@@ -3670,7 +3670,10 @@
           var _st = _starFor(letter);
           if (_st) pl.row.appendChild(elc('span', { style: 'flex:none;margin-left:4px;font-size:13px;' }, _st));
           listEl.appendChild(pl.row);
-          _itinStopEls.push({ el: pl.tx, it: it });
+          var _meta = elc('div', { style: 'margin:1px 0 5px 25px;font-size:12px;line-height:1.35;' });
+          fillStopMeta(_meta, it);
+          listEl.appendChild(_meta);
+          _itinStopEls.push({ el: pl.tx, it: it, meta: _meta });
         }
       });
       wrap.appendChild(listEl);
@@ -3826,10 +3829,28 @@
     function updateItineraryCharging(info) {
       try { if (_itinChargeEl) { var L = ITIN_LBL[chatLang()] || ITIN_LBL.en; _itinChargeEl.textContent = chargingText(L, info); msgs.scrollTop = msgs.scrollHeight; } } catch (e) {}
     }
+    // Per-stop meta line: operator + address + an independent Google-Maps link for THAT charger,
+    // so the user can check what/where a charger is (e.g. an unfamiliar "Hypercharger Audi").
+    function fillStopMeta(metaEl, it) {
+      if (!metaEl || !it) return;
+      metaEl.innerHTML = '';
+      var op = (it.operator && it.place && it.place.toLowerCase().indexOf(String(it.operator).toLowerCase()) >= 0) ? '' : (it.operator || '');
+      var txt = [op, it.addr].filter(Boolean).join(' \u00b7 ');
+      if (txt) metaEl.appendChild(elc('span', { style: 'color:#666;' }, txt + (txt ? '  ' : '')));
+      if (it.lat != null && it.lon != null && isFinite(it.lat) && isFinite(it.lon)) {
+        var q = it.lat + ',' + it.lon;
+        var a = elc('a', { href: 'https://www.google.com/maps/search/?api=1&query=' + q,
+          target: '_blank', rel: 'noopener',
+          style: 'color:#1565c0;text-decoration:underline;white-space:nowrap;font-weight:600;' }, '\uD83D\uDCCD Open in Maps');
+        metaEl.appendChild(a);
+      } else if (!txt) {
+        metaEl.appendChild(elc('span', { style: 'color:#999;' }, '\u2026'));
+      }
+    }
     function updateItineraryStops() {
       try {
         var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
-        _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); });
+        _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); if (s.meta && s.it) fillStopMeta(s.meta, s.it); });
         msgs.scrollTop = msgs.scrollHeight;
       } catch (e) {}
     }
