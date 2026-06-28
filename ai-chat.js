@@ -2569,7 +2569,7 @@
     var start = input.start;
     if (!start) { var s = document.getElementById('scan-start'); start = (s && s.value) || todayIso(); }
     var results;
-    try { results = window.QMDJWaterScanner.scan(dir, start, days); }
+    try { results = ((typeof window.QMDJWaterScanner.scanWaterPurpose === 'function') ? window.QMDJWaterScanner.scanWaterPurpose(dir, start, days, 'water') : window.QMDJWaterScanner.scan(dir, start, days)); }
     catch (e) { return { error: 'QMDJ water scan failed: ' + ((e && e.message) || e) }; }
     return {
       scanner: 'qmdj_water', direction: dir, start: start, days: days, count: results.length,
@@ -2604,7 +2604,7 @@
 
     // (1) Qimen sector hours
     var qres;
-    try { qres = window.QMDJWaterScanner.scan(dir, start, days) || []; }
+    try { qres = (((typeof window.QMDJWaterScanner.scanWaterPurpose === 'function') ? window.QMDJWaterScanner.scanWaterPurpose(dir, start, days, 'water') : window.QMDJWaterScanner.scan(dir, start, days))) || []; }
     catch (e) { return { error: 'QMDJ water scan failed: ' + ((e && e.message) || e) }; }
 
     // (2) XKDG day quality for the loaded person (best score per date)
@@ -2710,7 +2710,7 @@
     // (2) Qimen generic quadrant (sector)
     if (dir && window.QMDJWaterScanner && typeof window.QMDJWaterScanner.scan === 'function') {
       try {
-        (window.QMDJWaterScanner.scan(dir, start, days) || []).forEach(function (r) {
+        ((((typeof window.QMDJWaterScanner.scanWaterPurpose === 'function') ? window.QMDJWaterScanner.scanWaterPurpose(dir, start, days, 'water') : window.QMDJWaterScanner.scan(dir, start, days))) || []).forEach(function (r) {
           var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
           var sl = slot(r.date, br);
           if (sl.q == null || r.score > sl.q) sl.q = r.score;
