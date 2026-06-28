@@ -2030,7 +2030,7 @@ function fsOpenDirectionCalc(onClose){
     + '</div>'
 
     // CALCULATE BUTTON
-    + '<button onclick="fsDirectionCalc()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">🧭 CALCULATE DIRECTION</button>'
+    + '<button onclick="fsDirectionCalcUser()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">🧭 CALCULATE DIRECTION</button>'
 
     // ONE-TAP: calculate direction + set Journey + 7-day window + run BEST scan
     + '<button onclick="fsDirectionScanFlights()" style="width:100%;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🔭 SCAN flight dates</button>'
@@ -2187,7 +2187,40 @@ function fsClearDirectionFilter(){
 // days if none set), close the popup, and run the BEST scan. The BEST scan then
 // lists the day/hours whose score >= 8 AND whose Qimen direction gate (San Qi +
 // favourable door) passes toward the flight direction — best first.
-function fsDirectionScanFlights(){
+// Geocode a free-text place to {lat,lon,name} via Nominatim (Promise). Returns null if not found.
+function _fsGeocodePromise(addr){
+  return fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(addr) + '&format=json&limit=1', { headers:{'Accept-Language':'en'} })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if (d && d.length) return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), name: d[0].display_name }; return null; });
+}
+// Before any direction/flight action: if an address box has text, refresh ITS
+// coordinates from that text, so a typed city (e.g. "Sydney") is always used
+// instead of stale GPS/default coordinates. Origin with an empty address keeps
+// its GPS coordinates (it means "where I am now").
+async function _fsDirSyncCoordsFromAddr(){
+  var st = document.getElementById('dir-geocode-status');
+  var oa = document.getElementById('dir-orig-addr'), da = document.getElementById('dir-dest-addr');
+  if (oa && oa.value.trim()){
+    if (st) st.textContent = 'Locating origin\u2026';
+    try { var o = await _fsGeocodePromise(oa.value.trim());
+      if (o){ document.getElementById('dir-orig-lat').value = o.lat.toFixed(6); document.getElementById('dir-orig-lng').value = o.lon.toFixed(6); } } catch(e){}
+  }
+  if (da && da.value.trim()){
+    if (st) st.textContent = 'Locating destination\u2026';
+    try { var d = await _fsGeocodePromise(da.value.trim());
+      if (d){ document.getElementById('dir-dest-lat').value = d.lat.toFixed(6); document.getElementById('dir-dest-lng').value = d.lon.toFixed(6); } } catch(e){}
+  }
+  if (st) st.textContent = '';
+  try { _fsDirSave(); } catch(e){}
+}
+// CALCULATE button: sync typed cities to coordinates first, then compute.
+async function fsDirectionCalcUser(){
+  try { await _fsDirSyncCoordsFromAddr(); } catch(e){}
+  try { fsDirectionCalc(); } catch(e){}
+}
+
+async function fsDirectionScanFlights(){
+  try { await _fsDirSyncCoordsFromAddr(); } catch(e){}   // typed city -> coordinates, so the right airport is used
   var lat1 = parseFloat(document.getElementById('dir-orig-lat').value);
   var lng1 = parseFloat(document.getElementById('dir-orig-lng').value);
   var lat2 = parseFloat(document.getElementById('dir-dest-lat').value);

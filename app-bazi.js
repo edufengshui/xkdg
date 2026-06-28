@@ -6456,10 +6456,13 @@ async function _fsNearestAirportIata(lat, lng){
             const elng = (e.lon != null) ? e.lon : (e.center && e.center.lon);
             if (elat == null || elng == null) continue;
             const d = _fsHaversineKm(lat, lng, elat, elng);
-            // Prefer international aerodromes: subtract a big bonus so an international
-            // airport a bit farther still beats a tiny local strip next door.
-            const intl = (t.aerodrome === 'international' || t['aerodrome:type'] === 'international');
-            const score = d - (intl ? 300 : 0);
+            // Prefer real international airports; strongly push down tiny private/airfield
+            // strips, so e.g. Gold Coast resolves to OOL, not a local airstrip next door.
+            const nm = ((t.name || '') + ' ' + (t['name:en'] || ''));
+            const intl = (t.aerodrome === 'international' || t['aerodrome:type'] === 'international' || /international/i.test(nm));
+            const tiny = (t.aerodrome === 'private' || t.access === 'private' || t.aeroway === 'airstrip'
+                          || /(airfield|airstrip|aero ?club|gliding|ultralight|glider|model)/i.test(nm));
+            const score = d - (intl ? 400 : 0) + (tiny ? 600 : 0);
             if (score < bestScore){ bestScore = score; best = code; }
         }
         return best;
