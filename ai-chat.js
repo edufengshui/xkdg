@@ -3458,10 +3458,13 @@
       var what = (it.kind === 'charge') ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min)
                                         : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
       var where = it.place ? (' \u2014 ' + stopKindIcon(it.stopKind) + it.place + (it.stopPower ? ' (' + it.stopPower + ')' : '')) : '';
+      var tf = null;
+      try { if (it.place && window.TravelPlanner && window.TravelPlanner.cheapestTariff) tf = window.TravelPlanner.cheapestTariff(it.place); } catch (e) {}
+      var tariff = tf ? (' \u00b7 \uD83D\uDCB3 ' + tf.card + ' \u20ac' + tf.eur.toFixed(2) + '/kWh') : '';
       var exitInfo = it.cashDir
         ? (' (' + L.exit + ' ' + it.cashDir + (it.limitDeg != null ? ', ' + L.limit + ' ' + it.limitDeg + '\u00b0' : '') + ')')
         : '';
-      return what + ' @ ' + it.at + where + exitInfo + ', ' + L.then + ' ' + it.toward;
+      return what + ' @ ' + it.at + where + tariff + exitInfo + ', ' + L.then + ' ' + it.toward;
     }
     function exitLineText(L, ex) {
       return '\ud83d\udea9 ' + L.exit + ' ' + ex.dir + ' \u00b7 ~' + ex.at +

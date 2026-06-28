@@ -1297,6 +1297,83 @@
     if (html != null) e.innerHTML = html;
     return e;
   }
+
+  // ---- "My tariffs": user-owned charging cards & their per-kWh price -------
+  // Fully user-editable, on this device only. Each row:
+  //   { network (substring matched against a charger's operator/title),
+  //     card (display name), eur (price per kWh) }.
+  // No external API — the user enters the rates they actually pay (incl. roaming
+  // discounts like EVDC on Free To X), so we can show the cheapest applicable
+  // card on each charger along the route. Tesla dynamic pricing stays an estimate.
+  function tpGetTariffs() {
+    try { var a = JSON.parse(localStorage.getItem('xkdg_tp_tariffs') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function tpSaveTariffs(list) { try { localStorage.setItem('xkdg_tp_tariffs', JSON.stringify((list || []).slice(0, 60))); } catch (e) {} }
+  // Common European operators (Italy + Austria + pan-EU), pre-loaded ONCE with
+  // EMPTY card/price so the user only fills in their own rates. No invented prices.
+  var TP_TARIFF_SEED = ['Tesla', 'Electra', 'Electric', 'Ionity', 'Free To X', 'Ewiva',
+    'Be Charge', 'Atlante', 'A2A', 'EnBW', 'Smatrics', 'Wien Energie', 'Fastned', 'Allego', 'Shell Recharge'];
+  function tpSeedTariffsIfNeeded() {
+    try {
+      if (localStorage.getItem('xkdg_tp_tariffs_seeded') === '1') return;   // only ever seed once
+      if (tpGetTariffs().length) { localStorage.setItem('xkdg_tp_tariffs_seeded', '1'); return; }
+      tpSaveTariffs(TP_TARIFF_SEED.map(function (n) { return { network: n, card: '', eur: null }; }));
+      localStorage.setItem('xkdg_tp_tariffs_seeded', '1');
+    } catch (e) {}
+  }
+  // Cheapest saved card that applies to a charger NAME (operator/title), matched
+  // as a case-insensitive substring of the row's network. Returns {card,eur,network}|null.
+  function tpCheapestTariff(name) {
+    var hay = String(name || '').toLowerCase();
+    if (!hay) return null;
+    var best = null;
+    tpGetTariffs().forEach(function (t) {
+      var net = String(t.network || '').trim().toLowerCase();
+      if (!net || hay.indexOf(net) < 0) return;
+      var eur = parseFloat(t.eur);
+      if (!isFinite(eur)) return;
+      if (!best || eur < best.eur) best = { card: (t.card || t.network), eur: eur, network: t.network };
+    });
+    return best;
+  }
+  // Editable table for the Range & charging panel.
+  function tpBuildTariffTable() {
+    tpSeedTariffsIfNeeded();
+    var box = el('div', { style: 'grid-column:1 / span 2;margin-top:8px;' });
+    box.appendChild(el('div', { style: 'font-weight:600;color:#2e5d2e;font-size:12px;margin-bottom:3px;' }, '\uD83D\uDCB3 My charging tariffs'));
+    box.appendChild(el('div', { style: 'color:#777;font-size:11px;margin-bottom:5px;' },
+      'Add any operator + the card you use + your \u20AC/kWh. The cheapest matching card is shown on each charger. Operator is matched as text inside the charger name (e.g. \u201CFree To X\u201D, \u201CIonity\u201D, \u201CTesla\u201D).'));
+    var rowsHost = el('div', {});
+    box.appendChild(rowsHost);
+    function render() {
+      rowsHost.innerHTML = '';
+      var list = tpGetTariffs();
+      if (!list.length) rowsHost.appendChild(el('div', { style: 'color:#999;font-size:11px;margin:3px 0;' }, 'No tariffs yet \u2014 add your cards below.'));
+      list.forEach(function (t, i) {
+        var r = el('div', { style: 'display:flex;gap:5px;align-items:center;margin:3px 0;' });
+        var netI = el('input', { type: 'text', placeholder: 'Operator (e.g. Free To X)', value: (t.network || ''),
+          style: 'flex:2;min-width:0;padding:4px 6px;border:1px solid #cfe3cf;border-radius:5px;font-size:12px;' });
+        var cardI = el('input', { type: 'text', placeholder: 'Card (e.g. EVDC)', value: (t.card || ''),
+          style: 'flex:1.4;min-width:0;padding:4px 6px;border:1px solid #cfe3cf;border-radius:5px;font-size:12px;' });
+        var eurI = el('input', { type: 'number', step: '0.01', min: '0', placeholder: '\u20AC/kWh', value: (t.eur != null && isFinite(t.eur) ? t.eur : ''),
+          style: 'flex:none;width:74px;padding:4px 6px;border:1px solid #cfe3cf;border-radius:5px;font-size:12px;' });
+        function save() { var l = tpGetTariffs(); l[i] = { network: netI.value.trim(), card: cardI.value.trim(), eur: parseFloat(eurI.value) }; tpSaveTariffs(l); }
+        netI.addEventListener('change', save); cardI.addEventListener('change', save); eurI.addEventListener('change', save);
+        var del = el('button', { type: 'button', title: 'Remove',
+          style: 'flex:none;padding:4px 8px;border:1px solid #e0b0b0;border-radius:5px;background:#fff;color:#b00;font-size:12px;cursor:pointer;' }, '\u2715');
+        del.addEventListener('click', function () { var l = tpGetTariffs(); l.splice(i, 1); tpSaveTariffs(l); render(); });
+        r.appendChild(netI); r.appendChild(cardI); r.appendChild(eurI); r.appendChild(del);
+        rowsHost.appendChild(r);
+      });
+    }
+    var addBtn = el('button', { type: 'button',
+      style: 'margin-top:4px;padding:5px 11px;border:1px solid #2e7d32;border-radius:6px;background:#fff;color:#2e7d32;font-size:12px;font-weight:600;cursor:pointer;' }, '+ Add card');
+    addBtn.addEventListener('click', function () { var l = tpGetTariffs(); l.push({ network: '', card: '', eur: null }); tpSaveTariffs(l); render(); });
+    box.appendChild(addBtn);
+    render();
+    return box;
+  }
+
   function fmtDateHM(d) {
     return String(d.getDate()).padStart(2, '0') + '/' +
            String(d.getMonth() + 1).padStart(2, '0') + ' ' +
@@ -1732,6 +1809,9 @@
             info.appendChild(el('div', { style: 'color:#888;' },
               (s.operator ? s.operator + ' \u00b7 ' : '') + (s.maxKW ? Math.round(s.maxKW) + ' kW \u00b7 ' : '') +
               Math.round(r.alongKm) + ' km along \u00b7 ' + r.offKm.toFixed(1) + ' km off route \u00b7 ETA ' + hm));
+            var _tf = tpCheapestTariff((s.title || '') + ' ' + (s.operator || ''));
+            if (_tf) info.appendChild(el('div', { style: 'color:#1b6e2f;font-size:11px;font-weight:600;' },
+              '\uD83D\uDCB3 ' + _tf.card + ' \u00b7 \u20AC' + _tf.eur.toFixed(2) + '/kWh'));
             row.appendChild(info);
             var seeBtn = el('button', { type: 'button', title: 'See this charger in Google Maps',
               style: 'padding:5px 9px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '\ud83d\udd0d Maps');
@@ -2686,6 +2766,7 @@
       netWrap.appendChild(lab);
     });
     rcBlock.appendChild(netWrap);
+    rcBlock.appendChild(tpBuildTariffTable());   // user-editable €/kWh per card
 
     // OCM key: hidden input holds the real key (read by Find); the visible UI
     // shows it masked once saved, with reveal (👁) and change (✏️) actions.
@@ -4430,6 +4511,7 @@
       return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });
     },
     resolvePlace: function (name, lat, lon) { return _tpResolvePlace(name, lat, lon); },
+    cheapestTariff: function (name) { return tpCheapestTariff(name); },
     getWorkerUrl: tpGetWorkerUrl,
     open: tpOpen,
     openCompass: tpOpenCompass,
