@@ -373,6 +373,118 @@
     });
   }
 
+  /* ===== PERSISTENT ROAD-SHAPE CACHE ==================================== *
+   * The road SHAPE between two points is ~fixed, so we save it (localStorage)
+   * keyed by rounded origin/dest and reuse it across sessions instead of re-
+   * fetching from the Worker. The SAME cache also serves detour legs (they are
+   * just A->B routes too), so realized detours are saved and reused as well.
+   * ------------------------------------------------------------------- */
+  function tpRouteShapeKey(O, D) {
+    function r(n){ return Math.round(parseFloat(n) * 1000) / 1000; }   // ~111 m bucket
+    return 'xkdg_tp_route_' + r(O.lat) + '_' + r(O.lng) + '_' + r(D.lat) + '_' + r(D.lng);
+  }
+  function tpSaveRouteShape(route, names) {
+    try {
+      if (!route || !route.origin || !route.dest || !route.coords || !route.coords.length) return;
+      var key = tpRouteShapeKey({ lat: route.origin.lat, lng: route.origin.lng }, { lat: route.dest.lat, lng: route.dest.lng });
+      var rec = { origin: route.origin, dest: route.dest,
+        distanceMeters: route.distanceMeters, durationSec: route.durationSec, coords: route.coords, saved: Date.now() };
+      if (names && (names.origin || names.dest)) rec.names = { o: names.origin || '', d: names.dest || '' };
+      localStorage.setItem(key, JSON.stringify(rec));
+    } catch (e) {}
+  }
+  function tpLoadRouteShape(O, D) {
+    try {
+      var raw = localStorage.getItem(tpRouteShapeKey(O, D));
+      if (!raw) return null;
+      var r = JSON.parse(raw);
+      if (!r || !r.coords || !r.coords.length) return null;
+      r._fromCache = true; return r;
+    } catch (e) { return null; }
+  }
+  // Fetch a leg but reuse/save the persistent shape. Does NOT touch TP_LAST_ROUTE
+  // (safe for detour segments). Returns a route or null (never throws).
+  function tpFetchRouteCached(workerUrl, O, D) {
+    var saved = tpLoadRouteShape(O, D);
+    if (saved) return Promise.resolve(saved);
+    if (!workerUrl) return Promise.resolve(null);
+    return tpFetchRoute(workerUrl, O, D).then(function (r) { tpSaveRouteShape(r); return r; }).catch(function () { return null; });
+  }
+  // Acquire the MAIN route: in-session match -> saved shape -> fetch (then save).
+  function tpAcquireRoute(O, D, workerUrl) {
+    if (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, O, D)) return Promise.resolve(TP_LAST_ROUTE);
+    var saved = tpLoadRouteShape(O, D);
+    if (saved) { TP_LAST_ROUTE = saved; return Promise.resolve(saved); }
+    if (!workerUrl) return Promise.resolve(null);
+    return tpFetchRoute(workerUrl, O, D).then(function (r) { TP_LAST_ROUTE = r; tpSaveRouteShape(r, window._tpNames); return r; }).catch(function () { return null; });
+  }
+
+  // List every saved road shape (for the management panel).
+  function tpListSavedRoutes() {
+    var out = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf('xkdg_tp_route_') !== 0) continue;
+        var r; try { r = JSON.parse(localStorage.getItem(k)); } catch (e) { continue; }
+        if (!r || !r.origin || !r.dest) continue;
+        out.push({ key: k, origin: r.origin, dest: r.dest, names: r.names || null,
+          km: r.distanceMeters ? Math.round(r.distanceMeters / 1000) : null,
+          min: r.durationSec ? Math.round(r.durationSec / 60) : null, saved: r.saved || null });
+      }
+    } catch (e) {}
+    out.sort(function (a, b) { return (b.saved || 0) - (a.saved || 0); });
+    return out;
+  }
+  function tpClearSavedRoute(key) { try { localStorage.removeItem(key); } catch (e) {} }
+  function tpClearAllSavedRoutes() {
+    try {
+      var del = [];
+      for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('xkdg_tp_route_') === 0) del.push(k); }
+      del.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+  }
+  // Render the saved-roads manager into #tp-results.
+  function tpShowSavedRoads() {
+    function r3(n){ return Math.round(parseFloat(n) * 1000) / 1000; }
+    var results = document.getElementById('tp-results');
+    if (!results) return;
+    var rows = tpListSavedRoutes();
+    results.innerHTML = '';
+    var box = el('div', { style: 'border:1px solid #cdd7e0;border-radius:10px;padding:10px;background:#f7f9fb;' });
+    var top = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:8px;' });
+    top.appendChild(el('div', { style: 'flex:1;font-weight:700;color:#1f3a5f;font-size:14px;' }, '\uD83D\uDDFA Saved roads (' + rows.length + ')'));
+    if (rows.length) {
+      var clrAll = el('button', { type: 'button', style: 'padding:5px 9px;border:1px solid #b00;border-radius:6px;background:#fff;color:#b00;font-size:12px;font-weight:600;cursor:pointer;' }, 'Clear all');
+      clrAll.addEventListener('click', function () { if (window.confirm('Delete all saved road shapes?')) { tpClearAllSavedRoutes(); tpShowSavedRoads(); } });
+      top.appendChild(clrAll);
+    }
+    box.appendChild(top);
+    if (!rows.length) {
+      box.appendChild(el('div', { style: 'font-size:12px;color:#888;' }, 'No saved road shapes yet. Run SCAN TRIP with the Worker URL set; the road is saved and reused next time.'));
+    } else {
+      rows.forEach(function (it) {
+        var label = (it.names && (it.names.o || it.names.d)) ? ((it.names.o || '?') + ' \u2192 ' + (it.names.d || '?'))
+          : (r3(it.origin.lat) + ',' + r3(it.origin.lng) + ' \u2192 ' + r3(it.dest.lat) + ',' + r3(it.dest.lng));
+        var meta = [];
+        if (it.km != null) meta.push(it.km + ' km');
+        if (it.min != null) meta.push('~' + (Math.round(it.min / 6) / 10) + 'h');
+        if (it.saved) { try { meta.push('saved ' + new Date(it.saved).toLocaleDateString()); } catch (e) {} }
+        var row = el('div', { style: 'display:flex;align-items:center;gap:8px;margin:4px 0;padding:7px 9px;border-radius:8px;border:1px solid #e2e8ee;background:#fff;' });
+        var left = el('div', { style: 'flex:1;min-width:0;' });
+        left.appendChild(el('div', { style: 'font-weight:600;font-size:13px;color:#222;overflow:hidden;text-overflow:ellipsis;' }, label));
+        left.appendChild(el('div', { style: 'font-size:11px;color:#777;' }, meta.join(' \u00b7 ')));
+        row.appendChild(left);
+        var del = el('button', { type: 'button', style: 'flex:none;padding:5px 10px;border:1px solid #b00;border-radius:6px;background:#fff;color:#b00;font-size:12px;font-weight:600;cursor:pointer;' }, 'Clear');
+        del.addEventListener('click', function () { tpClearSavedRoute(it.key); tpShowSavedRoads(); });
+        row.appendChild(del);
+        box.appendChild(row);
+      });
+      box.appendChild(el('div', { style: 'font-size:11px;color:#888;margin-top:6px;' }, 'Clearing a road forces a fresh fetch from the Worker next time (use it if a route really changed).'));
+    }
+    results.appendChild(box);
+  }
+
   /* ===== PHASE 2 — active detour engine ================================= *
    * When the fast route gives a 时辰 with a POSITIVE adjacent direction that
    * cannot be cashed on the direct road, deviate to a REAL place in that
@@ -460,14 +572,14 @@
         });
         if (!ws.length) return null;
         var segIn = [], segOut = [], fetches = [];   // segIn: origin->W1, W1->W2, ... ; segOut: Wk->dest
-        fetches.push(tpFetchRoute(workerUrl, originLL, { lat: ws[0].W.lat, lng: ws[0].W.lon })
+        fetches.push(tpFetchRouteCached(workerUrl, originLL, { lat: ws[0].W.lat, lng: ws[0].W.lon })
           .then(function (r) { segIn[0] = r; }).catch(function () { segIn[0] = null; }));
         for (var a = 0; a < ws.length - 1; a++) { (function (a) {
-          fetches.push(tpFetchRoute(workerUrl, { lat: ws[a].W.lat, lng: ws[a].W.lon }, { lat: ws[a+1].W.lat, lng: ws[a+1].W.lon })
+          fetches.push(tpFetchRouteCached(workerUrl, { lat: ws[a].W.lat, lng: ws[a].W.lon }, { lat: ws[a+1].W.lat, lng: ws[a+1].W.lon })
             .then(function (r) { segIn[a+1] = r; }).catch(function () { segIn[a+1] = null; }));
         })(a); }
         for (var b = 0; b < ws.length; b++) { (function (b) {
-          fetches.push(tpFetchRoute(workerUrl, { lat: ws[b].W.lat, lng: ws[b].W.lon }, destLL)
+          fetches.push(tpFetchRouteCached(workerUrl, { lat: ws[b].W.lat, lng: ws[b].W.lon }, destLL)
             .then(function (r) { segOut[b] = r; }).catch(function () { segOut[b] = null; }));
         })(b); }
         return Promise.all(fetches).then(function () {
@@ -3081,6 +3193,12 @@
     depBtn.addEventListener('click', function(){ try { tpShowDepartureOptions(); } catch(e){} });
     panel.appendChild(depBtn);
 
+    var roadsBtn = el('button', { id: 'tp-savedroads', type: 'button',
+      style: 'width:100%;margin-top:6px;padding:8px;border:1px solid #1f3a5f;border-radius:8px;background:#fff;color:#1f3a5f;font-size:12px;font-weight:600;cursor:pointer;' },
+      '\uD83D\uDDFA Saved roads');
+    roadsBtn.addEventListener('click', function(){ try { tpShowSavedRoads(); } catch(e){} });
+    panel.appendChild(roadsBtn);
+
     // ---- ARRIVE-BY: fixed arrival, flexible departure ---------------------
     // Lists travel solutions that all arrive at the target time (± tolerance),
     // shortest first; "Use" fills departure+duration (no snap) and runs SCAN.
@@ -3367,14 +3485,19 @@
         var O = { lat: opts.origin.lat, lng: opts.origin.lon };
         var D = { lat: opts.dest.lat, lng: opts.dest.lon };
         var haveMatch = TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, O, D);
+        var savedShape = haveMatch ? null : tpLoadRouteShape(O, D);   // persistent road shape from a previous session
 
         if (haveMatch) {
           buildAndRender(TP_LAST_ROUTE);
+        } else if (savedShape) {
+          TP_LAST_ROUTE = savedShape;
+          buildAndRender(savedShape);
         } else if (url) {
           tpSetWorkerUrl(url);
           results.innerHTML = '<div style="font-size:13px;color:#666;">Fetching real route from the Worker…</div>';
           tpFetchRoute(url, O, D).then(function (r) {
             TP_LAST_ROUTE = r;
+            tpSaveRouteShape(r, window._tpNames); // save the shape (with names) so next time no fetch is needed
             buildAndRender(r);
           }).catch(function (e) {
             buildAndRender(null, 'Route fetch failed (' + e.message + ') — used the straight-line fallback. ' +
@@ -3427,44 +3550,12 @@
   // toward-destination direction's `combined` value (direction score + hour
   // synergy), which is exactly what the planner ranks on. Considers daytime
   // departures only. Returns { clock:'HH:MM', ms, score } or null.
-  // ---- B) DEPARTURE OPTIONS: rank ALL favourable daytime departures (one per 2h
-  // block, best-scored), each with the planner's luck score, sortable BEST / BY HOUR.
-  function tpRankDepartures(O, Dst, dateStr, utc, dstOn, route, minMs, strict) {
-    function pad(n){ return String(n).padStart(2, '0'); }
-    var DAY_START_H = 5, DAY_END_H = 21;
-    var probe;
-    try {
-      probe = tpPlan({ depDate: new Date(dateStr + 'T05:00:00'), durationH: (DAY_END_H - DAY_START_H),
-        origin: O, dest: Dst, utc: utc, dstOn: dstOn, snapDepart: true, stepMin: 30, stopMode: 'auto',
-        route: (route && tpRouteMatches(route, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? route : null });
-    } catch (e) { return []; }
-    if (!probe || !probe.slots || !probe.slots.length) return [];
-    var byBlock = {};
-    probe.slots.forEach(function (slot) {
-      var hh = slot.wallStart.getHours();
-      if (hh < DAY_START_H || hh > DAY_END_H) return;
-      if (minMs && slot.wallStart.getTime() < minMs) return;
-      var sc = null;
-      if (strict) {
-        var de = tpDirExact(slot, slot.bearingDest);
-        if (!de || !de.eval || !de.eval.ok) return;            // travel-direction door not favourable -> not a valid journey departure
-        sc = (de.combined != null) ? de.combined : 0;
-      } else {
-        var bd = tpBestDirToward(slot, slot.bearingDest);
-        if (!bd || bd.combined == null) return;
-        sc = bd.combined;
-      }
-      var d = slot.wallStart;
-      var key = Math.floor((d.getHours() * 60 + d.getMinutes()) / 120);   // collapse to 2h blocks
-      var cand = { clock: pad(d.getHours()) + ':' + pad(d.getMinutes()), ms: d.getTime(),
-        score: sc, hourScore: (slot.hourScore != null ? slot.hourScore : null), hourPositive: !!slot.hourPositive };
-      var cur = byBlock[key];
-      if (!cur || cand.score > cur.score || (cand.score === cur.score && cand.ms < cur.ms)) byBlock[key] = cand;
-    });
-    return Object.keys(byBlock).map(function (k) { return byBlock[k]; });
-  }
-
-  // Read the form, warm the hour cache, rank departures and render the options panel.
+  // ---- B) DEPARTURE OPTIONS ------------------------------------------------
+  // Edu's "road timetable" idea: the road SHAPE (e.g. Vienna->Tuoro) is ~fixed, so
+  // we fetch/reuse ONE route and score MANY departure times against it cheaply.
+  // Reuses tpSearchItineraries (one route + per-departure tpPlan + tpScoreItinerary
+  // = whole-trip cash score). One option per 2h block, sortable BEST / BY HOUR;
+  // tapping a time builds its full itinerary.
   function tpShowDepartureOptions() {
     function pad(n){ return String(n).padStart(2, '0'); }
     var results = document.getElementById('tp-results');
@@ -3480,7 +3571,7 @@
     var O = { lat: oLat, lon: oLon }, Dst = { lat: dLat, lon: dLon };
     var utc = parseFloat((document.getElementById('tp-utc') || {}).value) || 0;
     var dstOn = tpDstActiveOn(new Date(dStr + 'T12:00:00'));
-    results.innerHTML = '<div style="font-size:13px;color:#666;">Ranking favourable departures\u2026</div>';
+    results.innerHTML = '<div style="font-size:13px;color:#666;">Scoring departures along the road shape\u2026</div>';
     try {
       if (typeof runScanner === 'function') {
         var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days');
@@ -3490,45 +3581,58 @@
         if (ss && ps != null) ss.value = ps; if (sd && pd != null) sd.value = pd;
       }
     } catch (e) {}
-    var minMs = null;
-    try { var t = new Date(); if (dStr === (t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()))) minMs = t.getTime(); } catch (e) {}
-    var route = (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: oLat, lng: oLon }, { lat: dLat, lng: dLon })) ? TP_LAST_ROUTE : null;
-    var cands = tpRankDepartures(O, Dst, dStr, utc, dstOn, route, minMs, true), strictUsed = true;
-    if (!cands.length) { cands = tpRankDepartures(O, Dst, dStr, utc, dstOn, route, minMs, false); strictUsed = false; }
-    if (!cands.length) { results.innerHTML = '<div style="font-size:13px;color:#8a6d00;">No favourable daytime departure on ' + dStr + '. Try another date.</div>'; return; }
-    tpRenderDepartureOptions(results, cands, strictUsed, dStr);
+    var nowMs = null;
+    try { var t = new Date(); if (dStr === (t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()))) nowMs = t.getTime(); } catch (e) {}
+    tpSearchItineraries({ origin: O, dest: Dst, startDate: dStr, days: 1, topK: 64, utc: utc, dstOn: dstOn, optimizeArrival: true })
+      .then(function (res) {
+        var all = (res && res.top) || [];
+        if (nowMs) all = all.filter(function (c) { return c.depart_ms >= nowMs; });
+        var byBlock = {};
+        all.forEach(function (c) {
+          var d = new Date(c.depart_ms);
+          var key = Math.floor((d.getHours() * 60 + d.getMinutes()) / 120);   // 2h block
+          var cur = byBlock[key];
+          if (!cur || c.score > cur.score || (c.score === cur.score && c.depart_ms < cur.depart_ms)) byBlock[key] = c;
+        });
+        var cands = Object.keys(byBlock).map(function (k) { return byBlock[k]; });
+        if (!cands.length) { results.innerHTML = '<div style="font-size:13px;color:#8a6d00;">No favourable daytime departure on ' + dStr + '. Try another date.</div>'; return; }
+        tpRenderDepartureOptions(results, cands, res, dStr);
+      })
+      .catch(function (e) { results.innerHTML = '<div style="color:#b00;font-size:13px;">Could not rank departures: ' + (e && e.message ? e.message : e) + '</div>'; });
   }
 
-  function tpRenderDepartureOptions(container, cands, strictUsed, dStr) {
+  function tpRenderDepartureOptions(container, cands, meta, dStr) {
     if (!window._tpDepSort) window._tpDepSort = 'best';
     var chosen = (document.getElementById('tp-time') || {}).value || '';
     container.innerHTML = '';
     var box = el('div', { style: 'border:1px solid #c9b6d6;border-radius:10px;padding:10px;background:#faf7fd;' });
     box.appendChild(el('div', { style: 'font-weight:700;color:#4527a0;font-size:14px;margin-bottom:2px;' }, '\uD83D\uDD50 Departure options \u2014 ' + dStr));
-    box.appendChild(el('div', { style: 'font-size:11px;color:#777;margin-bottom:8px;' },
-      (strictUsed ? 'Departures whose exact travel-direction door is favourable.' : 'No strict-direction departure; showing best-direction-toward options.') + ' Tap one to build its full itinerary.'));
+    var sub = 'Whole-trip score (sum of favourable cash hours).';
+    if (meta) sub += ' ' + (meta.real_route ? 'Real road' : 'Straight-line') + (meta.driving_h != null ? (' \u00b7 ~' + meta.driving_h + 'h' + (meta.km ? (' \u00b7 ' + meta.km + ' km') : '')) : '') + '.';
+    box.appendChild(el('div', { style: 'font-size:11px;color:#777;margin-bottom:8px;' }, sub + ' Tap a time to build its full itinerary.'));
     var tg = el('div', { style: 'display:flex;gap:6px;margin-bottom:8px;' });
     function mkTab(id, label){ var on = (window._tpDepSort === id);
       var b = el('button', { type: 'button', style: 'flex:1;padding:6px;border-radius:7px;border:1px solid ' + (on ? '#4527a0' : '#c9b6d6') + ';background:' + (on ? '#4527a0' : '#fff') + ';color:' + (on ? '#fff' : '#4527a0') + ';font-size:12px;font-weight:700;cursor:pointer;' }, label);
-      b.addEventListener('click', function(){ window._tpDepSort = id; tpRenderDepartureOptions(container, cands, strictUsed, dStr); });
+      b.addEventListener('click', function(){ window._tpDepSort = id; tpRenderDepartureOptions(container, cands, meta, dStr); });
       return b; }
     tg.appendChild(mkTab('best', 'BEST')); tg.appendChild(mkTab('hour', 'BY HOUR'));
     box.appendChild(tg);
     var list = cands.slice();
-    if (window._tpDepSort === 'best') list.sort(function(a,b){ return (b.score - a.score) || (a.ms - b.ms); });
-    else list.sort(function(a,b){ return a.ms - b.ms; });
+    if (window._tpDepSort === 'best') list.sort(function(a,b){ return (b.score - a.score) || (a.depart_ms - b.depart_ms); });
+    else list.sort(function(a,b){ return a.depart_ms - b.depart_ms; });
     var maxSc = 0; cands.forEach(function(c){ if (c.score > maxSc) maxSc = c.score; });
     list.forEach(function(c){
-      var isChosen = (c.clock === chosen);
+      var hhmm = c.depart || '';
+      var isChosen = (hhmm === chosen);
       var row = el('div', { style: 'display:flex;align-items:center;gap:8px;margin:4px 0;padding:7px 9px;border-radius:8px;cursor:pointer;border:1px solid ' + (isChosen ? '#1b8a3f' : '#e0d4e8') + ';background:' + (isChosen ? '#f1f8f2' : '#fff') + ';' });
       var star = (c.score === maxSc && maxSc > 0) ? '\u2b50' : '';
       var left = el('div', { style: 'flex:1;' });
-      left.appendChild(el('div', { style: 'font-weight:700;font-size:14px;color:#222;' }, (star ? star + ' ' : '') + c.clock));
-      left.appendChild(el('div', { style: 'font-size:11px;color:#666;' }, 'score ' + (Math.round(c.score * 10) / 10) + (c.hourScore != null ? (' \u00b7 hour ' + c.hourScore + (c.hourPositive ? ' \u2713' : '')) : '')));
+      left.appendChild(el('div', { style: 'font-weight:700;font-size:14px;color:#222;' }, (star ? star + ' ' : '') + hhmm + (c.arrive ? (' \u2192 ' + c.arrive + (c.arrive_next_day ? ' (+1)' : '')) : '')));
+      left.appendChild(el('div', { style: 'font-size:11px;color:#666;' }, 'score ' + (Math.round((c.score||0) * 10) / 10) + ' \u00b7 ' + (c.cash_hours||0) + '/' + (c.total_hours||0) + ' fortunate hours'));
       row.appendChild(left);
       row.appendChild(el('div', { style: 'font-size:12px;color:#1565c0;font-weight:700;white-space:nowrap;' }, isChosen ? 'current' : 'Plan \u2192'));
       row.addEventListener('click', function(){
-        var tEl = document.getElementById('tp-time'); if (tEl) tEl.value = c.clock;
+        var tEl = document.getElementById('tp-time'); if (tEl) tEl.value = hhmm;
         window._tpNoSnap = true; window._tpAutoDepart = false;
         var scan = document.getElementById('tp-scan'); if (scan) scan.click();
       });
@@ -3621,9 +3725,9 @@
     if (isNaN(startDate.getTime())) startDate = new Date();
     function pad(n) { return String(n).padStart(2, '0'); }
     function ensureRoute() {
-      if (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) return Promise.resolve(TP_LAST_ROUTE);
-      return tpFetchRoute(tpGetWorkerUrl(), { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })
-        .then(function (r) { TP_LAST_ROUTE = r; return r; }).catch(function () { return null; });
+      // Persistent road-shape cache: reuse the saved shape across sessions; only
+      // fetch from the Worker the first time, then save it.
+      return tpAcquireRoute({ lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon }, tpGetWorkerUrl());
     }
     return ensureRoute().then(function (route) {
       return new Promise(function (resolve) {
