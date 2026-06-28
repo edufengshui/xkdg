@@ -2145,7 +2145,9 @@ function fsDirectionGeocodeOrigin(){
     if(status) status.textContent = '✓ Origin: ' + place.display_name.substring(0, 80);
     try { _fsDirSave(); } catch(e){}
     try { if (typeof _fsNearestAirportIata === 'function') { var _fo = document.getElementById('dir-orig-iata');
-      if (_fo && !_fo.value.trim()) _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fo && !_fo.value.trim()){ _fo.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } catch(e){}
+      if (_fo) { var _cc = (typeof _fsCityCode === 'function') ? _fsCityCode(place.display_name || '', parseFloat(place.lat), parseFloat(place.lon)) : null;
+        if (_cc) { _fo.value = String(_cc).split(',')[0]; try{_fsDirSave();}catch(e){} }
+        else _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fo){ _fo.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Origin geocoding error: ' + err.message;
@@ -2172,7 +2174,9 @@ function fsDirectionGeocode(){
     if(status) status.textContent = '✓ Found: ' + place.display_name.substring(0, 80);
     try { _fsDirSave(); } catch(e){}
     try { if (typeof _fsNearestAirportIata === 'function') { var _fd = document.getElementById('dir-dest-iata');
-      if (_fd && !_fd.value.trim()) _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fd && !_fd.value.trim()){ _fd.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } catch(e){}
+      if (_fd) { var _cc = (typeof _fsCityCode === 'function') ? _fsCityCode(place.display_name || '', parseFloat(place.lat), parseFloat(place.lon)) : null;
+        if (_cc) { _fd.value = String(_cc).split(',')[0]; try{_fsDirSave();}catch(e){} }
+        else _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fd){ _fd.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Geocoding error: ' + err.message;
