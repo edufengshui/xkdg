@@ -3543,6 +3543,11 @@
         if (driveTo != null) return '\u2192 ' + driveTo;     // driving TOWARD this map point
         return '';
       }
+      function _hrFortunate(h){ return h.kind === 'cash' || h.kind === 'detour'; }
+      function _hrScore(h){ return (h.kind === 'cash') ? (h.score != null ? h.score : 0)
+        : (h.kind === 'detour' && h.detour ? (h.detour.score != null ? h.detour.score : 0) : 0); }
+      var _maxHrScore = 0; hours.forEach(function (h) { if (_hrFortunate(h)) _maxHrScore = Math.max(_maxHrScore, _hrScore(h)); });
+      function _hrStar(h){ if (!_hrFortunate(h)) return ''; return (_hrScore(h) === _maxHrScore && _maxHrScore > 0) ? '\u2b50\u2b50' : '\u2b50'; }
       var favCount = hours.filter(function (h) { return h.kind === 'cash'; }).length;
       var head = elc('button', { style:
         'width:100%;text-align:left;margin-top:8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:8px;' +
@@ -3575,6 +3580,8 @@
         var txtWrap = elc('div', { style: 'flex:1;color:' + fg + ';' });
         var ref = stepRef(h);
         var headRow = elc('div', { style: 'font-weight:600;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;' });
+        var _star = _hrStar(h);
+        if (_star) headRow.appendChild(elc('span', { style: 'flex:none;font-size:12px;' }, _star));
         if (ref) headRow.appendChild(elc('span', { style:
           'flex:none;background:#ede7f6;color:#4527a0;border:1px solid #c9b6d6;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;' }, ref));
         headRow.appendChild(elc('span', {}, head1));
@@ -3625,6 +3632,22 @@
       var stopLetters = [], _p = 0;
       legs.forEach(function (it) { if (it.kind !== 'drive') { _p++; stopLetters.push(letterChar(_p)); } });
       var destLetter = letterChar(_p + 1);     // destination = next letter after the last stop
+      // \u2b50 fortune per map letter, read from the SAME per-hour data as the Hours panel:
+      // a stop/destination is fortunate if a CASH (or favourable DETOUR) window ends there.
+      // \u2b50\u2b50 marks the highest-scoring one.
+      var _hrs = payload.hours || [];
+      function _fFort(h){ return h.kind === 'cash' || h.kind === 'detour'; }
+      function _fScore(h){ return (h.kind === 'cash') ? (h.score != null ? h.score : 0)
+        : (h.kind === 'detour' && h.detour ? (h.detour.score != null ? h.detour.score : 0) : 0); }
+      var _maxFort = 0; _hrs.forEach(function (h) { if (_fFort(h)) _maxFort = Math.max(_maxFort, _fScore(h)); });
+      // arrival time -> letter (stops by their atWall, destination by the arrival drive's end)
+      var _timeByLetter = {}; (function () { var k = 0; legs.forEach(function (it) {
+        if (it.kind === 'drive') { if (it.arrival) _timeByLetter[it.to] = destLetter; }
+        else { _timeByLetter[it.at] = stopLetters[k]; k++; } }); })();
+      var _fortByLetter = {};
+      _hrs.forEach(function (h) { if (!_fFort(h)) return; var Lk = _timeByLetter[h.to]; if (!Lk) return;
+        var sc = _fScore(h); var cur = _fortByLetter[Lk]; if (cur == null || sc > cur) _fortByLetter[Lk] = sc; });
+      function _starFor(letter){ if (!(letter in _fortByLetter)) return ''; return (_fortByLetter[letter] === _maxFort && _maxFort > 0) ? '\u2b50\u2b50' : '\u2b50'; }
 
       var listEl = elc('div', { style: 'margin:0;' });
       _itinStopEls = [];
@@ -3639,12 +3662,14 @@
           var dtxt = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + ' \u00b7 \u2192 ' + toL;
           listEl.appendChild(elc('div', { style: 'margin:2px 0 2px 25px;color:#555;font-size:13px;' }, dtxt));
           if (it.arrival) {
-            listEl.appendChild(ptLine(destLetter, '#c62828', L.arrive + ' ' + (payload.dest || '')).row);
+            listEl.appendChild(ptLine(destLetter, '#c62828', L.arrive + ' ' + (payload.dest || '') + (_starFor(destLetter) ? (' ' + _starFor(destLetter)) : '')).row);
           }
         } else {
           var letter = stopLetters[si]; si++;
           stepList.push({ kind: 'stop', at: it.at, letter: letter });
           var pl = ptLine(letter, '#1565c0', stopLineText(L, it));
+          var _st = _starFor(letter);
+          if (_st) pl.row.appendChild(elc('span', { style: 'flex:none;margin-left:4px;font-size:13px;' }, _st));
           listEl.appendChild(pl.row);
           _itinStopEls.push({ el: pl.tx, it: it });
         }

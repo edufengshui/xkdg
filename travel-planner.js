@@ -326,18 +326,6 @@
   // Last route fetched from the Worker (used later by the bearing phase)
   // shape: { origin, dest, distanceMeters, durationSec, coords: [[lon,lat],...] }
   var TP_LAST_ROUTE = null;
-  // Range-only (fallback) chargers found for the CURRENT plan: kept WITH their
-  // coordinates so the Maps export can POSITION them in travel order yet emit them
-  // BY NAME. Reset at the start of every charger search.
-  var TP_RANGE_CHARGERS = [];
-  // Reference to the live Maps-export update() so a later charger search can refresh
-  // the link once the range chargers are known.
-  var _tpMapsUpdate = null;
-  function tpRefreshMapsExport() { try { if (typeof _tpMapsUpdate === 'function') _tpMapsUpdate(); } catch (e) {} }
-  // When set to an object, getRotatingHourChart results are memoised by date+hour
-  // pillar. Enabled only during a multi-day SEARCH (many candidates share the same
-  // hour charts) and cleared afterwards, so normal single plans are unaffected.
-  var _tpRotCache = null;
 
   /* ---- fetch the real route from the Cloudflare Worker (Google Routes API) -
    * Returns a Promise resolving to
@@ -371,65 +359,6 @@
         };
       });
     });
-  }
-
-  /* ===== PHASE 2 — active detour engine ================================= *
-   * When the fast route gives a 时辰 with a POSITIVE adjacent direction that
-   * cannot be cashed on the direct road, deviate to a REAL place in that
-   * direction, then resume toward the destination. Adopt only if the extra
-   * REAL road time stays within +TP_DETOUR_BUDGET; otherwise flag it for the
-   * user's explicit authorization. Fully async; safe fallback to the base plan.
-   * TP_DETOUR_REACH_H is a TUNING knob (how far ahead to place the waypoint),
-   * NOT a domain rule — tune it after testing.
-   * --------------------------------------------------------------------- */
-  var TP_DETOUR_BUDGET = 0.15;   // max extra REAL road time vs the direct route
-  var TP_DETOUR_REACH_H = 1.0;   // hours of cruising ahead to place the detour waypoint (tunable)
-
-  // Great-circle projection: point at distance km on bearing from (lat,lon)
-  function tpProject(lat, lon, bearingDeg, km) {
-    var R = 6371, d = km / R, br = bearingDeg * Math.PI / 180;
-    var la1 = lat * Math.PI / 180, lo1 = lon * Math.PI / 180;
-    var la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(br));
-    var lo2 = lo1 + Math.atan2(Math.sin(br) * Math.sin(d) * Math.cos(la1), Math.cos(d) - Math.sin(la1) * Math.sin(la2));
-    return { lat: la2 * 180 / Math.PI, lon: ((lo2 * 180 / Math.PI + 540) % 360) - 180 };
-  }
-
-  // Concatenate two fetched routes into one (drops the duplicate join vertex)
-  function tpStitchRoutes(rA, rB) {
-    if (!rA || !rB || !rA.coords || !rB.coords || !rA.coords.length || !rB.coords.length) return null;
-    var coords = rA.coords.concat(rB.coords.slice(1));
-    return {
-      origin: rA.origin, dest: rB.dest,
-      distanceMeters: (rA.distanceMeters || 0) + (rB.distanceMeters || 0),
-      durationSec: (rA.durationSec || 0) + (rB.durationSec || 0),
-      coords: coords, _viaDetour: true
-    };
-  }
-
-  /* Realize ONE detour intent into a real, stitched route.
-   * originLL/destLL: {lat,lng}. Resolves with
-   *   { route, W, dir, addedPct, withinBudget, intent }  or  null.
-   * Never throws. */
-  function tpRealizeDetour(workerUrl, originLL, destLL, baselineSec, intent, isEV, cruiseKmh) {
-    try {
-      if (!workerUrl || !intent || !baselineSec) return Promise.resolve(null);
-      var reachKm = Math.max(15, (cruiseKmh || 80) * TP_DETOUR_REACH_H);
-      var wt = tpProject(intent.pos.lat, intent.pos.lon, intent.targetDeg, reachKm);
-      return tpFindStopover(wt.lat, wt.lon, !!isEV).then(function (W) {
-        if (!W || W.lat == null || W.lon == null) return null;
-        var wLL = { lat: W.lat, lng: W.lon };
-        return Promise.all([
-          tpFetchRoute(workerUrl, originLL, wLL).catch(function () { return null; }),
-          tpFetchRoute(workerUrl, wLL, destLL).catch(function () { return null; })
-        ]).then(function (parts) {
-          var stitched = tpStitchRoutes(parts[0], parts[1]);
-          if (!stitched) return null;
-          var addedPct = (stitched.durationSec - baselineSec) / baselineSec;
-          return { route: stitched, W: W, dir: intent.dir, intent: intent,
-                   addedPct: addedPct, withinBudget: (addedPct <= TP_DETOUR_BUDGET) };
-        });
-      }).catch(function () { return null; });
-    } catch (e) { return Promise.resolve(null); }
   }
 
   /* ---- solar-time offset (minutes), matching app convention -------------- */
@@ -833,13 +762,7 @@
     var out = [];
     if (typeof QMDJWaterScanner === 'undefined' ||
         typeof QMDJWaterScanner.getRotatingHourChart !== 'function') return out;
-    var chart;
-    if (_tpRotCache) {
-      var _ck = Y + '-' + M + '-' + D + '-' + hGanHan + '-' + hZhiHan;
-      chart = _tpRotCache[_ck] || (_tpRotCache[_ck] = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGanHan, hZhiHan));
-    } else {
-      chart = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGanHan, hZhiHan);
-    }
+    var chart = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGanHan, hZhiHan);
     if (!chart || !chart.palaces) return out;
     for (var i = 0; i < TP_DIR_ORDER.length; i++) {
       var dir = TP_DIR_ORDER[i];
@@ -1182,122 +1105,90 @@
   function tpSuggestStopsNetDir(slots, posAt, O, Dst, overallBearing, maxLegHours) {
     maxLegHours = maxLegHours || 4;
     var timeline = [];
-    timeline.detourIntents = [];   // PHASE 2: detour opportunities for the async real-route layer
     if (!slots.length) return timeline;
 
-    // ── METHOD RULE (authoritative) ──────────────────────────────────────────
-    // For EACH Chinese double-hour (时辰):
-    //  • If the ROAD direction toward the destination is FORTUNATE this hour → drive
-    //    toward the destination and CASH (stop) at the END of the 时辰 (incassi the luck).
-    //  • If it is NOT fortunate → either
-    //      A) keep driving toward the destination but DO NOT stop until the hour ends
-    //         (nothing to cash in a non-positive hour), or
-    //      B) DETOUR toward an adjacent (±45°) direction that IS fortunate and does not
-    //         lead too far from the destination (within ±67.5°), cashing there; the
-    //         return toward the destination in the next hour is itself fortunate, or an
-    //         option-A leg. Recorded as a detour intent for the async real-route layer.
-    // The leg heading shown is ALWAYS the real direction driven — never a fortunate
-    // direction we are not actually following.
-    function roadDirOf(slot) {
-      var b = (slot.bearingDest != null) ? slot.bearingDest : overallBearing;
-      return { name: tpSnapDir(b), deg: b };
-    }
-    function entryOf(slot, name) {
-      var ds = slot.dirs || [];
-      for (var k = 0; k < ds.length; k++) if (ds[k].dir === name) return ds[k];
-      return null;
-    }
-    // The road direction's QMDJ entry IF it is fortunate this hour, else null.
-    function roadFortunate(slot) {
-      var e = entryOf(slot, roadDirOf(slot).name);
-      return (e && e.eval && e.eval.ok) ? e : null;
-    }
-    function neighboursOf(name) {
-      var i = TP_DIR_ORDER.indexOf(name);
-      if (i < 0) return [];
-      var n = TP_DIR_ORDER.length;
-      return [TP_DIR_ORDER[(i + n - 1) % n], TP_DIR_ORDER[(i + 1) % n]];
-    }
-    // A fortunate ADJACENT direction usable for a detour (conditions 1 + 2), or null.
-    function detourEntryOf(slot) {
-      var rd = roadDirOf(slot);
-      var best = null, bestSc = -Infinity;
-      neighboursOf(rd.name).forEach(function (nm) {
-        var e = entryOf(slot, nm);
-        if (!e || !e.eval || !e.eval.ok) return;                 // (1) the adjacent dir must be fortunate
-        if (tpAngDiff(TP_DIR_DEG[nm], rd.deg) > 67.5) return;     // (2) must not lead too far from the dest
-        var sc = (e.combined != null) ? e.combined : 0;
-        if (sc > bestSc) { bestSc = sc; best = e; }
+    function slotTarget(slot) {
+      var posd = tpUsableDirs(slot.dirs);
+      if (!posd.length) return null;
+      var best = null, bestDiff = 999;
+      posd.forEach(function (d) {
+        var diff = tpAngDiff(TP_DIR_DEG[d.dir], overallBearing);
+        if (diff < bestDiff) { bestDiff = diff; best = d; }
       });
+      // skip a positive direction that points essentially backward vs the route
+      if (best && tpAngDiff(TP_DIR_DEG[best.dir], overallBearing) > 90) return null;
       return best;
     }
-    function headFromEntry(entry, roadName, fortunate) {
-      if (entry) return { dir: entry.dir, palace: entry.palace, eval: entry.eval, combined: entry.combined, fortunate: !!fortunate, towardDest: true };
-      return { dir: roadName, palace: TP_DIR_TO_PALACE[roadName], eval: null, combined: null, fortunate: false, towardDest: true };
+    // latest in-window point where the NET bearing from P0 is inside the target sector
+    function cashPoint(P0, slot, targetDeg) {
+      var step = 2 * 60000, last = null, entered = false;
+      // TIME rule (separate from the 45° sector): cash NEAR the end of the favourable
+      // double-hour, but reach the stop at least 15 min BEFORE it closes, so the ~20-min
+      // stop actually cashes inside the fortunate window instead of right as it expires.
+      var CASH_BUFFER_MS = 15 * 60000;
+      var latestT = slot.wallEnd.getTime() - CASH_BUFFER_MS;
+      for (var t = slot.wallStart.getTime(); t <= latestT; t += step) {
+        var p = posAt(t);
+        if (tpHaversineKm(P0.lat, P0.lon, p.lat, p.lon) < 1) continue; // too close: bearing is noise
+        var nb = tpBearing(P0.lat, P0.lon, p.lat, p.lon);
+        if (tpAngDiff(nb, targetDeg) <= 22.5) { last = { t: t, pos: { lat: p.lat, lon: p.lon }, netBearing: nb }; entered = true; }
+        else if (entered) break; // net has just LEFT the sector -> stop at the last in-sector point (cash before exiting)
+      }
+      if (last) {
+        // which sector edge it is about to cross (target ± 22.5°), for display
+        var loB = (((targetDeg - 22.5) % 360) + 360) % 360, hiB = (((targetDeg + 22.5) % 360) + 360) % 360;
+        last.limitDeg = (tpAngDiff(last.netBearing, loB) <= tpAngDiff(last.netBearing, hiB)) ? loB : hiB;
+      }
+      return last;
     }
-    // "then set off toward …" shown on a stop = the next hour's real road heading.
-    function nextHeadAfter(i) {
-      var ns = (i + 1 < slots.length) ? slots[i + 1] : slots[i];
-      var nf = roadFortunate(ns);
-      return nf ? headFromEntry(nf, roadDirOf(ns).name, true) : headFromEntry(null, roadDirOf(ns).name, false);
+    function nextTargetFrom(i) {
+      for (var j = i; j < slots.length; j++) { var tg = slotTarget(slots[j]); if (tg) return tg; }
+      return null;
     }
 
     var P0 = { lat: O.lat, lon: O.lon };
     var legStartMs = slots[0].wallStart.getTime();
-    function pushLeg(endWall, endSlotIdx, head, note) {
-      timeline.push({ type: 'leg', startWall: new Date(legStartMs), endWall: endWall, heading: head,
+    var curHead = nextTargetFrom(0) || tpBestDir(slots[0], true);
+
+    function pushLeg(endWall, endSlotIdx, note) {
+      timeline.push({
+        type: 'leg', startWall: new Date(legStartMs), endWall: endWall, heading: curHead,
         startSlotIdx: tpSlotIndexAt(slots, new Date(legStartMs)), endSlotIdx: endSlotIdx,
-        durationH: (endWall.getTime() - legStartMs) / 3600000, note: note || '' });
+        durationH: (endWall.getTime() - legStartMs) / 3600000, note: note || ''
+      });
     }
 
     for (var i = 0; i < slots.length; i++) {
       var slot = slots[i];
-      var rd = roadDirOf(slot);
-      var fortEntry = roadFortunate(slot);
-
-      if (fortEntry) {
-        // FORTUNATE HOUR → drive toward the destination and CASH at the end of the 时辰.
-        var endWall = slot.wallEnd;
-        var rp = posAt(endWall.getTime());
-        pushLeg(endWall, i, headFromEntry(fortEntry, rd.name, true), '');
-        timeline.push({ type: 'stop', atWall: endWall, slotIdx: i,
-          reason: 'cash a positive ' + rd.name + ' hour (' + slot.brPy + ')',
-          newHeading: nextHeadAfter(i), pos: { lat: rp.lat, lon: rp.lon },
-          cashDir: rd.name, limitDeg: null, fortunate: true });
-        P0 = { lat: rp.lat, lon: rp.lon };
-        legStartMs = endWall.getTime();
+      var target = slotTarget(slot);
+      if (!target) {
+        // no usable positive direction this double-hour; only a forced rest if we've driven long
+        var elapsedH = (slot.wallEnd.getTime() - legStartMs) / 3600000;
+        if (elapsedH >= maxLegHours && i < slots.length - 1) {
+          var rp = posAt(slot.wallEnd.getTime());
+          pushLeg(slot.wallEnd, i, '');
+          var nh = nextTargetFrom(i + 1) || curHead;
+          timeline.push({ type: 'stop', atWall: slot.wallEnd, slotIdx: i,
+            reason: 'rest stop (\u2265' + maxLegHours + 'h driving)', newHeading: nh,
+            pos: { lat: rp.lat, lon: rp.lon } });
+          P0 = { lat: rp.lat, lon: rp.lon }; legStartMs = slot.wallEnd.getTime(); curHead = nh;
+        }
         continue;
       }
-
-      // NON-FORTUNATE HOUR → option B (record a detour) when possible, else option A.
-      var det = detourEntryOf(slot);
-      if (det) {
-        var nextFort = (i + 1 < slots.length) ? !!roadFortunate(slots[i + 1]) : false;
-        timeline.detourIntents.push({
-          slotIdx: i, pos: { lat: P0.lat, lon: P0.lon },
-          dir: det.dir, targetDeg: TP_DIR_DEG[det.dir],
-          bearingDest: slot.bearingDest, returnFortunate: nextFort,
-          wallStart: slot.wallStart, wallEnd: slot.wallEnd, brPy: slot.brPy
-        });
+      curHead = target;   // the leg into this cash aims at the net target direction
+      var cp = cashPoint(P0, slot, TP_DIR_DEG[target.dir]);
+      if (cp) {
+        var endWall = new Date(cp.t);
+        pushLeg(endWall, i, '');
+        var nh2 = nextTargetFrom(i + 1) || target;
+        timeline.push({ type: 'stop', atWall: endWall, slotIdx: i,
+          reason: 'cashed a net ' + target.dir + ' trip from the start point (positive ' + slot.brPy + ' hour)',
+          newHeading: nh2, pos: cp.pos, cashDir: target.dir, limitDeg: cp.limitDeg });
+        P0 = cp.pos; legStartMs = cp.t; curHead = nh2;
       }
-      // OPTION A (also the base behaviour while a B detour is pending realization):
-      // keep driving toward the destination through the whole non-positive hour with
-      // NO cash/stop. Only a SAFETY rest is allowed after very long continuous driving.
-      var elapsedH = (slot.wallEnd.getTime() - legStartMs) / 3600000;
-      if (elapsedH >= maxLegHours && i < slots.length - 1) {
-        var rp2 = posAt(slot.wallEnd.getTime());
-        pushLeg(slot.wallEnd, i, headFromEntry(null, rd.name, false), '');
-        timeline.push({ type: 'stop', atWall: slot.wallEnd, slotIdx: i,
-          reason: 'rest stop (\u2265' + maxLegHours + 'h driving, non-positive hour \u2014 not a cash)',
-          newHeading: nextHeadAfter(i), pos: { lat: rp2.lat, lon: rp2.lon },
-          cashDir: null, limitDeg: null, fortunate: false });
-        P0 = { lat: rp2.lat, lon: rp2.lon };
-        legStartMs = slot.wallEnd.getTime();
-      }
-      // else: keep driving into the next slot (P0 / legStartMs unchanged)
+      // if no cash point this slot: keep driving (P0 unchanged), the direction was not achievable here
     }
-    var lastSlot = slots[slots.length - 1];
-    pushLeg(lastSlot.wallEnd, slots.length - 1, headFromEntry(null, roadDirOf(lastSlot).name, false), 'arrival');
+    pushLeg(slots[slots.length - 1].wallEnd, slots.length - 1, 'arrival');
     return timeline;
   }
 
@@ -1740,7 +1631,7 @@
             .filter(function (b) { return isFinite(b.alongKm); })
             .sort(function (a, b) { return a.alongKm - b.alongKm; });
 
-          var PRE_KM = 50;   // look this far before each quadrant-exit boundary (50 km before the exit)
+          var PRE_KM = 50;   // look this far back from the cash-stop position when picking a charger
           // Best charger inside [lo,hi] reachable from prevAlong; tiers: >=150 Tesla/Electra, >=150 other, >=80 T/E, >=80 other.
           function pickForWindow(lo, hi, prevAlong) {
             function pool(kw) {
@@ -1777,7 +1668,10 @@
             var reach = bounds.filter(function (b) { return b.alongKm > prevAlong + 5 && b.alongKm <= hi; });
             if (reach.length) {
               var bb = reach[reach.length - 1]; // farthest reachable boundary
-              pk = pickForWindow(Math.max(prevAlong + 1, bb.alongKm - PRE_KM), Math.min(hi, bb.alongKm + 8), prevAlong);
+              // The cash stop is already timed to be >=15 min before the window ends, so the
+              // charger must not be reached LATER than the stop (that would eat the margin):
+              // cap the search at the stop's along-km. Anywhere earlier in the window is fine.
+              pk = pickForWindow(Math.max(prevAlong + 1, bb.alongKm - PRE_KM), Math.min(hi, bb.alongKm), prevAlong);
               if (pk && pk.row) pk.stopRef = bb.stop;
             }
             // (b) otherwise the farthest fast charger within range (near the range edge first)
@@ -1812,26 +1706,22 @@
             (anyFb ? ' (other networks)' : '') +
             (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.';
 
-          // Attach each chosen charger to its quadrant-exit stop so the Maps export
-          // shows them interleaved (exit -> charger -> next exit ...). A fallback
-          // charger with no cash stop goes into the free-text waypoints instead.
+          // Attach each chosen charger to its cash stop. The Maps export then uses ONE
+          // waypoint per stop = the charger (the real cashing point, inside the quadrant),
+          // so the map letters line up with the card. A fallback charger with no cash stop
+          // goes into the free-text waypoints instead.
           var exEl = document.getElementById('tp-extra-wp');
-          TP_RANGE_CHARGERS = [];   // fresh for this plan
           chosen.forEach(function (c) {
             var s = c.row.s;
             if (c.stopRef) {
               c.stopRef.charger = { lat: s.lat, lon: s.lon, title: s.title || s.operator || 'Charger' };
-            } else if (isFinite(s.lat) && isFinite(s.lon)) {
-              // Fallback charger (no linked quadrant stop). Keep its NAME *and* its
-              // coordinates so the Maps export positions it in travel order yet emits
-              // it by name. (Previously only the name went into the free-text field,
-              // which Maps could not position → it trailed out of order.)
-              var cTitle = (s.title && !/^\s*charger\s*$/i.test(s.title)) ? String(s.title).trim() : '';
-              TP_RANGE_CHARGERS.push({ name: cTitle || null, lat: s.lat, lon: s.lon });
+            } else if (exEl) {
+              var token = s.lat.toFixed(5) + ',' + s.lon.toFixed(5);
+              if ((exEl.value || '').indexOf(token) < 0)
+                exEl.value = exEl.value.trim() ? (exEl.value.trim().replace(/;?\s*$/, '') + '; ' + token) : token;
             }
           });
-          tpRefreshMapsExport();   // rebuild the Maps link now that the range chargers are known
-          if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true }));  // also refresh via the panel
+          if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true }));  // refresh the Maps URL
 
           chosen.forEach(function (c) {
             var r = c.row, s = r.s, when = new Date(r.etaMs);
@@ -1885,9 +1775,9 @@
     var wrap = el('div', { style: 'border:2px solid #1565c0;border-radius:10px;padding:10px 12px;margin:14px 0 4px;background:#f4f8ff;' });
     wrap.appendChild(el('div', { style: 'font-size:14px;font-weight:700;color:#1565c0;margin-bottom:6px;' }, '🗺️ Send to Google Maps'));
     wrap.appendChild(el('div', { style: 'font-size:11px;color:#666;margin-bottom:8px;line-height:1.5;' },
-      'Pick which planned stops to include as waypoints. Charging stops are sent <b>by name</b> (a named, tappable pin in ' +
-      'Google Maps, so the route is forced through them); other on-road points are sent as coordinates. Open the link and ' +
-      'adjust to the nearest charger/town if needed. Add your own stops below for real-world changes (separate with “;”).'));
+      'Pick which planned stops to include as waypoints. Each is a point <i>on the road</i> matching the planned time — ' +
+      'open the link and adjust it to the nearest charger/town if needed. Add your own stops below for real-world changes ' +
+      '(separate with “;”).'));
 
     // From (fixed)
     wrap.appendChild(el('div', { style: 'font-size:12px;color:#333;margin:2px 0;' },
@@ -1972,62 +1862,51 @@
       // Resolve each point's distance ALONG the route so the waypoints come out
       // in travel order (origin → … → destination) instead of the order they
       // were collected — otherwise Maps draws a zig-zag.
-      // Use the real road route ONLY if it matches THIS trip's endpoints (never an
-      // earlier trip's route — projecting onto a stale route is what put stops out of
-      // order). If it does not match, we cannot project, so we keep the chargers in
-      // their found (travel) order instead.
-      var matchRoute = (TP_LAST_ROUTE && O && Dst &&
-        tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? TP_LAST_ROUTE : null;
-      var idx = tpBuildRouteIndex(matchRoute);
+      var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
+      // SHORTEST-ROUTE GUARANTEE: with no real road route we cannot tell whether a
+      // planned stop sits on the fast road, so we export the DIRECT route (only the
+      // user's own free-text waypoints are still honoured).
       var extraRaw = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
-      function nearOf(p) { return idx ? tpNearestRoutePoint(p.lat, p.lon, idx) : null; }
-      var pts = [];          // positionable along the route ({token, along})
-      var seq = [];          // travel-ordered fallback when no route ({token, order})
-      var seqN = 0, dropped = 0;
-      function addCharger(name, lat, lon) {
-        var tok = (name && String(name).trim()) ? String(name).trim() : tpLatLng({ lat: lat, lon: lon });
-        if (idx) {
-          var npc = nearOf({ lat: lat, lon: lon });
-          if (npc && isFinite(npc.alongKm)) { pts.push({ token: tok, along: npc.alongKm }); return; }
-        }
-        seq.push({ token: tok, order: seqN++ });   // no route (or off the indexed path): keep found order
-      }
+      if (!idx) return extraRaw.slice(0, TP_MAPS_MAX_WAYPOINTS);
+      function nearOf(p) { return tpNearestRoutePoint(p.lat, p.lon, idx); }
+      var pts = [];
+      var dropped = 0;
       checks.filter(function (c) { return c.cb.checked; }).forEach(function (c) {
-        var st = c.stop;
-        // A CHARGE stop IS the charger: emit it BY NAME (tappable, route-forcing pin).
-        if (st && st.charge && st.charger && isFinite(st.charger.lat) && isFinite(st.charger.lon)) {
-          var title = (st.charger.title && !/^\s*charger\s*$/i.test(st.charger.title)) ? String(st.charger.title).trim() : '';
-          addCharger(title, st.charger.lat, st.charger.lon);
-          return;
+        // ONE waypoint per stop, at the REAL stop point only: the charger if there is
+        // one, otherwise the stop's own position. We no longer add the separate
+        // quadrant-exit waypoint, so the Maps letters line up 1:1 with the itinerary
+        // card's lettered stops (A origin, B first stop, C second stop, …).
+        var pt = null;
+        if (c.stop && c.stop.charger && isFinite(c.stop.charger.lat) && isFinite(c.stop.charger.lon)) {
+          var npc = nearOf(c.stop.charger);
+          if (npc && isFinite(npc.alongKm) && npc.offKm <= TP_WAYPOINT_MAX_OFFKM)
+            pt = { token: tpLatLng(c.stop.charger), along: npc.alongKm };               // the charger = the real stop
         }
-        // A quadrant-exit point is a bare coordinate that must sit ON the fast road —
-        // it can only be placed when a matching route is loaded; otherwise skip it
-        // (an unpositioned coordinate would scramble the order).
-        if (!idx) { return; }
-        var np = nearOf(c.pos);
-        if (!np || !isFinite(np.alongKm) || np.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
-        pts.push({ token: tpLatLng(c.pos), along: np.alongKm });                            // quadrant-exit point
+        if (!pt) {
+          var np = nearOf(c.pos);                                                       // no charger → the stop point itself
+          if (np && isFinite(np.alongKm) && np.offKm <= TP_WAYPOINT_MAX_OFFKM)
+            pt = { token: tpLatLng(c.pos), along: np.alongKm };
+        }
+        if (pt) pts.push(pt); else dropped++;                                           // off the fast road → skipped
       });
-      // Range-only (fallback) chargers: already found in travel order; emit BY NAME,
-      // positioned along the route when possible so they interleave correctly.
-      (TP_RANGE_CHARGERS || []).forEach(function (ch) {
-        if (ch && isFinite(ch.lat) && isFinite(ch.lon)) addCharger(ch.name, ch.lat, ch.lon);
-      });
-      // User free-text extras: coordinates get positioned; typed names trail in order.
+      // Merge free-text extras INTO travel order. Coordinate extras (this is how a
+      // fallback charger like a start-of-trip Supercharger is added) get their own
+      // along-route position and are sorted in with everything else — otherwise they
+      // would be appended at the end and Maps would route back to them mid-trip.
+      // Named extras (typed by the user) cannot be positioned synchronously, so they
+      // are kept, in typed order, after the sorted points.
       var trailing = [];
       extraRaw.forEach(function (tok) {
         var m = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(tok);
-        if (m && idx) {
+        if (m) {
           var np2 = tpNearestRoutePoint(parseFloat(m[1]), parseFloat(m[2]), idx);
           if (np2 && isFinite(np2.alongKm)) { pts.push({ token: tok, along: np2.alongKm }); return; }
         }
         trailing.push(tok);
       });
       pts.sort(function (a, b) { return a.along - b.along; });                          // travel order
-      var ordered = pts.map(function (p) { return p.token; })
-        .concat(seq.sort(function (a, b) { return a.order - b.order; }).map(function (s) { return s.token; }));
       var wps = [];
-      ordered.forEach(function (t) { if (!wps.length || wps[wps.length - 1] !== t) wps.push(t); }); // de-dup neighbours
+      pts.forEach(function (p) { if (!wps.length || wps[wps.length - 1] !== p.token) wps.push(p.token); }); // de-dup neighbours
       wps = wps.concat(trailing);
       collectWaypoints._dropped = dropped;
       // Google Maps keeps only a limited number of waypoints; after sorting,
@@ -2050,14 +1929,13 @@
       var routeNote = (!tpBuildRouteIndex(TP_LAST_ROUTE))
         ? ' <span style="color:#b58900;">No real road route loaded — exporting the DIRECT route (press 🛰️ Fetch route / set the Worker URL to follow favourable on-road stops).</span>'
         : '';
-      status.innerHTML = '<b>' + n + '</b> waypoint' + (n === 1 ? '' : 's') + ' in travel order (origin → … → destination). ' +
-        'You can still drag to reorder once Maps opens.' + warn + dropNote + routeNote;
+      status.innerHTML = '<b>' + n + '</b> waypoint' + (n === 1 ? '' : 's') + ' selected (added after the planned stops, in order). ' +
+        'You can drag to reorder once Maps opens.' + warn + dropNote + routeNote;
     }
     checks.forEach(function (c) { c.cb.addEventListener('change', update); });
     extraInp.addEventListener('input', update);
     openBtn.addEventListener('click', function () { tpOpenInMaps(false); });
     copyBtn.addEventListener('click', function () { tpCopyToClipboard(copyBtn._url, copyBtn, '✓ Copied', '🔗 Copy link'); });
-    _tpMapsUpdate = update;   // let a later charger search refresh the link
     update();
 
     container.appendChild(wrap);
@@ -2107,76 +1985,13 @@
           lines.push((it.charge ? 'Charge ' + it.durationMin + ' min' : 'Stop ' + (20) + ' min') + ' at ' + fmtHMonly(it.atWall) + ', then set off toward ' + tpHeadDirOnly(it.newHeading));
         }
       });
-      // Per-HOUR QMDJ panel: one row per 时辰 so the user can inspect every hour's
-      // rotating chart, see the activated setting, the stop length, and whether the
-      // hour is a CASH (road direction fortunate), a DETOUR (an adjacent direction is
-      // fortunate), or a plain DRIVE (no fortunate direction). Additive.
-      var PALACE_NAME = { 1: 'Kan', 2: 'Kun', 3: 'Zhen', 4: 'Xun', 5: 'Center', 6: 'Qian', 7: 'Dui', 8: 'Gen', 9: 'Li' };
-      // Map each fortunate cash hour to the length of the stop placed at its end.
-      var stopDurBySlot = {};
-      try { plan.forEach(function (p) { if (p.type === 'stop' && p.slotIdx != null) stopDurBySlot[p.slotIdx] = p.charge ? p.durationMin : 20; }); } catch (e) {}
-      // Concise description of the QMDJ "setting" being activated (door · San Qi/Wu · named formations · spirit).
-      function settingOf(ev) {
-        if (!ev) return '';
-        var bits = [];
-        if (ev.door) bits.push(tpDoorLabel(ev.door));
-        if (ev.hasSanQi) bits.push('San Qi 三奇');
-        if (ev.configs && ev.configs.length) bits.push(ev.configs.join(' · '));
-        if (ev.deity) bits.push(ev.deity);
-        if (ev.zhiFu) bits.push('Commander 值符');
-        return bits.join(' · ');
-      }
-      var hours = [];
-      try {
-        (result.slots || []).forEach(function (s, si) {
-          var roadDir = tpSnapDir((s.bearingDest != null) ? s.bearingDest : result.bearing);
-          var rEntry = (s.dirs || []).filter(function (d) { return d.dir === roadDir; })[0] || null;
-          var rev = (rEntry && rEntry.eval) ? rEntry.eval : null;
-          var fortunate = !!(rev && rev.ok);
-          var fav = (s.dirs || []).filter(function (d) { return d.eval && d.eval.ok; })
-            .map(function (d) {
-              return { dir: d.dir, palace: d.palace, palaceName: PALACE_NAME[d.palace] || '',
-                       door: (d.eval.door ? tpDoorLabel(d.eval.door) : null), score: (d.eval.score || null), sanqi: !!d.eval.hasSanQi,
-                       setting: settingOf(d.eval) };
-            });
-          // Classify the hour. DETOUR = the road dir is NOT fortunate, but one of its
-          // 45° neighbours IS fortunate and stays within ±67.5° of the destination.
-          var ri = TP_DIR_ORDER.indexOf(roadDir), rdeg = (s.bearingDest != null) ? s.bearingDest : result.bearing;
-          var detour = null;
-          if (!fortunate && ri >= 0) {
-            var nbrs = [TP_DIR_ORDER[(ri + 7) % 8], TP_DIR_ORDER[(ri + 1) % 8]];
-            fav.forEach(function (d) {
-              if (nbrs.indexOf(d.dir) < 0) return;
-              if (tpAngDiff(TP_DIR_DEG[d.dir], rdeg) > 67.5) return;
-              if (!detour || (d.score || 0) > (detour.score || 0)) detour = d;
-            });
-          }
-          var kind = fortunate ? 'cash' : (detour ? 'detour' : 'drive');
-          hours.push({
-            from: fmtHMonly(s.wallStart), to: fmtHMonly(s.wallEnd),
-            ganzhi: s.gZhiPy || s.brPy || '',
-            roadDir: roadDir, palace: TP_DIR_TO_PALACE[roadDir], palaceName: PALACE_NAME[TP_DIR_TO_PALACE[roadDir]] || '',
-            fortunate: fortunate, kind: kind,
-            setting: fortunate ? settingOf(rev) : (detour ? detour.setting : ''),
-            door: fortunate ? (rev.door ? tpDoorLabel(rev.door) : null) : null,
-            sanqi: fortunate ? !!rev.hasSanQi : false,
-            deity: fortunate ? (rev.deity || null) : null,
-            score: fortunate ? (rev.score || null) : null,
-            configs: fortunate ? (rev.configs || []) : [],
-            cash_min: fortunate ? (stopDurBySlot[si] || 20) : null,
-            detour: detour ? { dir: detour.dir, palace: detour.palace, palaceName: detour.palaceName, door: detour.door, score: detour.score, setting: detour.setting } : null,
-            favourable_dirs: fav,
-            iso: s.iso, hGan: s.hGanHan, hZhi: s.hZhiHan, brPy: s.brPy
-          });
-        });
-      } catch (eH) { hours = []; }
       window._tpLastResult = {
         stamp: Date.now(),
         origin: result.origin.name || null, dest: result.dest.name || null,
         bearing: Math.round(result.bearing), snapped: result.snapDir,
         real_route: !!result.usedRealRoute, km: rm.km ? Math.round(rm.km) : null, driving_time: drive,
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
-        exits: exits, hours: hours,
+        exits: exits,
         text: lines.join('\n')
       };
       // Compact payload for the live compass (net bearing + quadrant from the reference point during the drive).
@@ -3166,50 +2981,6 @@
               var n = el('div', { style: 'margin-top:6px;font-size:11px;color:#b58900;' }, fetchNote);
               results.appendChild(n);
             }
-            // ---- PHASE 2: active detour (best-effort, async) ----------------
-            try {
-              var _intents = (res.plan && res.plan.detourIntents) || [];
-              if (!opts._detourTried && opts.detours !== false && _intents.length &&
-                  res.routeMeta && res.routeMeta.durationSec) {
-                var _wurl = (document.getElementById('tp-worker') || {}).value;
-                _wurl = (_wurl || '').trim();
-                if (_wurl) {
-                  var _rng = document.getElementById('tp-range');
-                  var _isEV = !!(_rng && parseFloat(_rng.value) > 0);
-                  var _cruise = (res.routeMeta.km && res.routeMeta.durationSec)
-                    ? (res.routeMeta.km / (res.routeMeta.durationSec / 3600)) : 80;
-                  var _baseSec = res.routeMeta.durationSec;
-                  var _oLL = { lat: opts.origin.lat, lng: opts.origin.lon };
-                  var _dLL = { lat: opts.dest.lat, lng: opts.dest.lon };
-                  var _dn = el('div', { id: 'tp-detour-note', style: 'margin-top:8px;font-size:12px;color:#666;' },
-                    '\u21aa Checking a real positive detour\u2026');
-                  results.appendChild(_dn);
-                  tpRealizeDetour(_wurl, _oLL, _dLL, _baseSec, _intents[0], _isEV, _cruise).then(function (det) {
-                    try {
-                      if (!det) { if (_dn.parentNode) _dn.parentNode.removeChild(_dn); return; }
-                      var pct = Math.round(det.addedPct * 100);
-                      if (det.withinBudget) {
-                        opts._detourTried = true;
-                        TP_LAST_ROUTE = det.route;
-                        var _df = document.getElementById('tp-dur'); if (_df) _df.value = '';
-                        results.innerHTML = '';
-                        buildAndRender(det.route);
-                        var ok = el('div', { style: 'margin-top:8px;font-size:12px;color:#1b5e20;border:1px solid #1b8a3f;border-radius:8px;padding:8px 10px;background:#f3fbf5;' },
-                          '\u21aa Detour adopted via ' + (det.W.name || 'a real stop') + ' \u2014 heading ' + det.dir +
-                          ', +' + pct + '% road time (within the 15% budget) so the direction stays positive.');
-                        results.appendChild(ok);
-                      } else {
-                        if (_dn.parentNode) _dn.parentNode.removeChild(_dn);
-                        var ask = el('div', { style: 'margin-top:8px;font-size:12px;color:#8a6d00;border:1px solid #d4a800;border-radius:8px;padding:8px 10px;background:#fffbf0;' },
-                          '\u21aa A real detour via ' + (det.W.name || 'a stop') + ' would keep heading ' + det.dir +
-                          ' positive, but it adds +' + pct + '% road time (over the 15% budget). It was NOT applied \u2014 authorize it explicitly to use it.');
-                        results.appendChild(ask);
-                      }
-                    } catch (e3) { try { if (_dn.parentNode) _dn.parentNode.removeChild(_dn); } catch (e4) {} }
-                  });
-                }
-              }
-            } catch (eDet) { /* detours are best-effort; keep the base plan */ }
           } catch (err) {
             results.innerHTML = '<div style="color:#b00;font-size:13px;">Error: ' + err.message + '</div>';
           }
@@ -3326,108 +3097,6 @@
     };
   }
 
-  // ── MULTI-DAY ITINERARY SEARCH ───────────────────────────────────────────────
-  // Score = TOTAL CASH: the sum of the QMDJ scores of every fortunate (cash) hour
-  // of the trip. With optimizeArrival, the arrival hour's own favourable score is
-  // added too (so arriving in a favourable hour/direction is rewarded).
-  function tpScoreItinerary(result, optimizeArrival) {
-    var slots = (result && result.slots) || [];
-    function roadEntry(s) {
-      var rd = tpSnapDir((s.bearingDest != null) ? s.bearingDest : result.bearing);
-      return (s.dirs || []).filter(function (d) { return d.dir === rd; })[0] || null;
-    }
-    var total = 0, cashHours = 0;
-    slots.forEach(function (s) {
-      var e = roadEntry(s);
-      if (e && e.eval && e.eval.ok) { total += (e.eval.score || 0); cashHours++; }
-    });
-    var arrivalScore = 0;
-    if (optimizeArrival && slots.length) {
-      var le = roadEntry(slots[slots.length - 1]);
-      if (le && le.eval && le.eval.ok) arrivalScore = (le.eval.score || 0);
-    }
-    return { total_cash: total, cash_hours: cashHours, total_hours: slots.length,
-             arrival_score: arrivalScore, score: total + arrivalScore };
-  }
-
-  // Scan `days` days from startDate; for every double-hour departure in the daytime
-  // window, plan the trip (reusing ONE pre-fetched route) and score it. Returns a
-  // Promise of the ranked top-K itineraries. The route is fetched once; per-candidate
-  // planning is local (no network). Chart results are memoised and the loop yields
-  // between days so the UI never freezes.
-  function tpSearchItineraries(opts) {
-    opts = opts || {};
-    var O = opts.origin, Dst = opts.dest;
-    var days = Math.max(1, Math.min(parseInt(opts.days, 10) || 7, 31));
-    var utc = (opts.utc != null) ? opts.utc : 1, dstOn = !!opts.dstOn;
-    var topK = Math.max(1, parseInt(opts.topK, 10) || 5);
-    var optArr = !!opts.optimizeArrival;
-    var startDate = (opts.startDate instanceof Date) ? opts.startDate : new Date(String(opts.startDate || '') + 'T00:00:00');
-    if (isNaN(startDate.getTime())) startDate = new Date();
-    function pad(n) { return String(n).padStart(2, '0'); }
-    function ensureRoute() {
-      if (TP_LAST_ROUTE && tpRouteMatches(TP_LAST_ROUTE, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) return Promise.resolve(TP_LAST_ROUTE);
-      return tpFetchRoute(tpGetWorkerUrl(), { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })
-        .then(function (r) { TP_LAST_ROUTE = r; return r; }).catch(function () { return null; });
-    }
-    return ensureRoute().then(function (route) {
-      return new Promise(function (resolve) {
-        var matchRoute = (route && tpRouteMatches(route, { lat: O.lat, lng: O.lon }, { lat: Dst.lat, lng: Dst.lon })) ? route : null;
-        var AVG_KMH = 72;   // straight-line fallback speed (same as tpPlan) when no road route is available
-        var driveH = matchRoute ? (matchRoute.durationSec / 3600) : (tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon) / AVG_KMH);
-        var DAY_START_H = 5, DAY_END_H = 21;
-        var candidates = [];
-        _tpRotCache = {};   // memoise rotating charts across all candidates of this scan
-        function finish() {
-          _tpRotCache = null;
-          candidates.sort(function (a, b) { return (b.score - a.score) || (a.depart_ms - b.depart_ms); });
-          resolve({ origin: O, dest: Dst, driving_h: Math.round(driveH * 10) / 10,
-            driving_min: Math.round(driveH * 60),
-            km: matchRoute ? Math.round(matchRoute.distanceMeters / 1000) : null,
-            real_route: !!matchRoute, optimize_arrival: optArr, days: days,
-            total_evaluated: candidates.length, top: candidates.slice(0, topK) });
-        }
-        function processDay(di) {
-          if (di >= days) { finish(); return; }
-          var day = new Date(startDate.getTime() + di * 86400000);
-          var dateStr = day.getFullYear() + '-' + pad(day.getMonth() + 1) + '-' + pad(day.getDate());
-          var probe = null;
-          try {
-            probe = tpPlan({ depDate: new Date(dateStr + 'T05:00:00'), durationH: (DAY_END_H - DAY_START_H),
-              origin: O, dest: Dst, utc: utc, dstOn: dstOn, snapDepart: true, stepMin: 30, stopMode: 'auto', route: matchRoute });
-          } catch (e) {}
-          if (probe && probe.slots) {
-            var seen = {};
-            probe.slots.forEach(function (slot) {
-              var h = slot.wallStart.getHours();
-              if (h < DAY_START_H || h > DAY_END_H) return;
-              var depMs = slot.wallStart.getTime();
-              if (seen[depMs]) return; seen[depMs] = 1;
-              var r = null;
-              try {
-                r = tpPlan({ depDate: new Date(depMs), durationH: driveH, origin: O, dest: Dst,
-                  utc: utc, dstOn: dstOn, snapDepart: false, stepMin: 30, stopMode: 'auto', route: matchRoute });
-              } catch (e) {}
-              if (!r || !r.slots || !r.slots.length) return;
-              var sc = tpScoreItinerary(r, optArr);
-              var depD = r.slots[0].wallStart, arrD = r.slots[r.slots.length - 1].wallEnd;
-              candidates.push({
-                date: dateStr, weekday: (typeof WD_IT !== 'undefined' && WD_IT) ? WD_IT[depD.getDay()] : '',
-                depart: pad(depD.getHours()) + ':' + pad(depD.getMinutes()),
-                arrive: pad(arrD.getHours()) + ':' + pad(arrD.getMinutes()),
-                arrive_next_day: (arrD.getDate() !== depD.getDate()),
-                depart_ms: depMs, score: sc.score, total_cash: sc.total_cash,
-                cash_hours: sc.cash_hours, total_hours: sc.total_hours, arrival_score: sc.arrival_score
-              });
-            });
-          }
-          setTimeout(function () { processDay(di + 1); }, 0);   // yield to the UI between days
-        }
-        processDay(0);
-      });
-    });
-  }
-
   function tpOpenPrefilled(params) {
     params = params || {};
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
@@ -3494,10 +3163,10 @@
    *     plus the spoken "about to leave the quadrant" alert (unchanged).
    *
    * REFERENCE priority:
-   *   1) an autonomous origin set with "Here" (current GPS) or "From place"/AI
+   *   1) an autonomous origin set with "Qui" (current GPS) or "Da luogo"/AI
    *      (a named place, possibly already km behind you);
    *   2) else, if a trip is loaded, origin -> last passed stop (Auto) or origin;
-   *   3) else nothing yet -> ask to tap "Here".
+   *   3) else nothing yet -> ask to tap "Qui".
    * No Wake Lock: it recomputes on screen wake (visibilitychange) and via the
    * refresh button.
    * ----------------------------------------------------------------------- */
@@ -3680,7 +3349,7 @@
       if (big3) big3.style.display = 'none';
       if (small) small.appendChild(host);   // move it back into the small panel
       host.style.height = '150px';
-      if (btn) btn.textContent = '⛶ Expand';
+      if (btn) btn.textContent = '⛶ Ingrandisci';
     }
     setTimeout(function () { if (_cmpMap) { _cmpMap.invalidateSize(); cmpRenderMap(); } }, 80);
   }
@@ -3765,7 +3434,7 @@
   function tpCmpRender() {
     var box = document.getElementById('tp-cmp-body'); if (!box) return;
     var r = cmpResolveRef();
-    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Here</b> to set this spot as the origin, or set one with <b>✏️ From place</b> — or compute a trip first.</div>'; return; }
+    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Qui</b> to set this spot as the origin, or set one with <b>✏️ Da luogo</b> — or compute a trip first.</div>'; return; }
     if (!_cmpPos) { box.innerHTML = '<div style="color:#888;font-size:13px;">Waiting for GPS… allow location and tap ↻.</div>'; return; }
     var ref = r.ref, refLabel = r.label, pos = _cmpPos;
     var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
@@ -3895,8 +3564,8 @@
   function cmpUpdateRefLabel() {
     var lbl = document.getElementById('tp-cmp-ref-label'); if (!lbl) return;
     if (_cmpOrigin) lbl.innerHTML = 'Origin: <b>' + (_cmpOrigin.name || 'here') + '</b> · <span id="tp-cmp-clear" style="color:#1565c0;cursor:pointer;text-decoration:underline;">clear</span>';
-    else if (window._tpLive) lbl.textContent = 'Origin: trip start (use Here / From place to override).';
-    else lbl.textContent = 'No origin yet — tap 📍 Here.';
+    else if (window._tpLive) lbl.textContent = 'Origin: trip start (use Qui / Da luogo to override).';
+    else lbl.textContent = 'No origin yet — tap 📍 Qui.';
     var clr = document.getElementById('tp-cmp-clear'); if (clr) clr.addEventListener('click', tpCmpClearOrigin);
   }
 
@@ -3906,7 +3575,7 @@
       ov = el('div', { id: 'tp-cmp-ov', style: 'position:fixed;left:12px;bottom:80px;z-index:99996;width:248px;background:#fff;border:2px solid #1565c0;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);' });
       var head = el('div', { style: 'display:flex;align-items:center;gap:6px;background:#1565c0;color:#fff;border-radius:10px 10px 0 0;padding:7px 9px;' });
       head.appendChild(el('div', { style: 'flex:1;font-size:13px;font-weight:700;' }, '🧭 Live compass'));
-      var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Trip reference: Auto (origin→last stop) / Origin only (used only when no Here/From place origin is set)', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
+      var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Trip reference: Auto (origin→last stop) / Origin only (used only when no Qui/Da luogo origin is set)', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
       var refr = el('button', { type: 'button', title: 'Refresh now', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, '\u21bb');
       var vox = el('button', { id: 'tp-cmp-vox', type: 'button', title: 'Voice alerts on/off', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, tpCmpVoiceOn() ? '\ud83d\udd0a' : '\ud83d\udd07');
       vox.addEventListener('click', function () {
@@ -3929,8 +3598,8 @@
       var ctrl = el('div', { style: 'padding:0 10px 10px;border-top:1px solid #eee;' });
       ctrl.appendChild(el('div', { id: 'tp-cmp-ref-label', style: 'font-size:11px;color:#666;margin:7px 0;' }));
       var row = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
-      var hereBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, '📍 Here');
-      var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'From a place… (e.g. Arezzo)', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
+      var hereBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, '📍 Qui');
+      var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'Da luogo… (es. Arezzo)', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
       var setBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#0b8043;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Set');
       hereBtn.addEventListener('click', function () { tpCmpStart(); tpCmpSetOriginHere(); });
       function doSet() {
@@ -3949,7 +3618,7 @@
       // Mini map + expand button.
       var mapWrap = el('div', { id: 'tp-cmp-map-wrap', style: 'padding:0 10px 10px;' });
       var expandRow = el('div', { style: 'display:flex;justify-content:flex-end;margin-bottom:6px;' });
-      var expandBtn = el('button', { id: 'tp-cmp-expand', type: 'button', style: 'background:#1565c0;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;' }, '⛶ Expand');
+      var expandBtn = el('button', { id: 'tp-cmp-expand', type: 'button', style: 'background:#1565c0;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;' }, '⛶ Ingrandisci');
       expandBtn.addEventListener('click', function () { cmpSetMapBig(!_cmpMapBig); });
       expandRow.appendChild(expandBtn);
       mapWrap.appendChild(expandRow);
@@ -4428,9 +4097,9 @@
    * Pure local-plane geometry (verified), no network calls.
    * ===================================================================== */
   var TP_DOOR_LABEL = {
-    Kai: { en: 'Open', han: '\u958b' }, Xiu: { en: 'Rest', han: '\u4f11' }, Sheng: { en: 'Birth', han: '\u751f' },
-    JingS: { en: 'View', han: '\u666f' }, Shang: { en: 'Injury', han: '\u50b7' }, Du: { en: 'Delusion', han: '\u675c' },
-    JingF: { en: 'Shocking', han: '\u9a5a' }, Jing: { en: 'Shocking', han: '\u9a5a' }, Si: { en: 'Death', han: '\u6b7b' }
+    Kai: { en: 'Open', han: '开' }, Xiu: { en: 'Rest', han: '休' }, Sheng: { en: 'Birth', han: '生' },
+    JingS: { en: 'View', han: '景' }, Shang: { en: 'Injury', han: '伤' }, Du: { en: 'Delusion', han: '杜' },
+    Jing: { en: 'Shocking', han: '惊' }, Si: { en: 'Death', han: '死' }
   };
   function tpDoorLabel(code) { var d = TP_DOOR_LABEL[code]; return d ? (d.en + ' ' + d.han) : (code || '?'); }
 
@@ -4750,77 +4419,6 @@
     });
   }
 
-  // ── DIAGNOSTICS: why does Google Maps differ from the planned stops? ─────────
-  // Returns the runtime facts the in-app AI needs to answer that: the ACTUAL Maps
-  // link on the button, its parsed waypoints (name vs anonymous coordinate), the
-  // planned itinerary it was built from, the real-road route state (and whether it
-  // matches THIS trip), the drop/cap rules, and a plain diff. Read-only.
-  function tpDiagnoseMapsExport() {
-    var out = { ok: true, what: 'Diagnostics for the last trip\'s "Open in Google Maps" link.' };
-    try {
-      var btn = document.getElementById('tp-maps-open');
-      var url = (btn && btn._url) || null;
-      out.maps_link_present = !!url;
-      if (url) {
-        out.maps_url = url;
-        var pick = function (re) { var m = url.match(re); return m ? decodeURIComponent(m[1]) : null; };
-        out.link_origin = pick(/[?&]origin=([^&]*)/);
-        out.link_destination = pick(/[?&]destination=([^&]*)/);
-        var wpRaw = (url.match(/[?&]waypoints=([^&]*)/) || [])[1] || '';
-        var list = wpRaw ? decodeURIComponent(wpRaw).split('|') : [];
-        out.link_waypoint_count = list.length;
-        out.link_waypoints = list.map(function (t) {
-          var coord = /^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/.test(t);
-          return { value: t, kind: coord ? 'coordinate (anonymous lettered pin in Maps)' : 'name (tappable named pin; Maps is forced through it)' };
-        });
-      } else {
-        out.note = 'No Maps link built yet — plan a trip and make sure the "Send to Google Maps" section has rendered.';
-      }
-
-      var r = window._tpLastResult || null;
-      if (r) {
-        out.planned = { from: r.origin, to: r.dest, bearing_deg: r.bearing, snapped_dir: r.snapped,
-          real_road_route_used: r.real_route, road_km: r.km, driving_time: r.driving_time, planned_stops: r.stops };
-        var stops = [];
-        (r.legs || []).forEach(function (l) {
-          if (l.kind === 'charge' || l.kind === 'stop')
-            stops.push({ kind: l.kind, cashDir: l.cashDir || null, at: l.at, lat: l.lat, lon: l.lon });
-        });
-        out.planned_stop_list = stops;
-      } else { out.planned = null; }
-
-      out.export_rules = { max_waypoints: TP_MAPS_MAX_WAYPOINTS, off_road_drop_km: TP_WAYPOINT_MAX_OFFKM,
-        note: 'A planned stop more than off_road_drop_km from the fast road is dropped from the link; Maps keeps at most max_waypoints.' };
-
-      var routeLoaded = !!TP_LAST_ROUTE;
-      out.real_route_loaded = routeLoaded;
-      if (routeLoaded) {
-        var ridx = tpBuildRouteIndex(TP_LAST_ROUTE);
-        out.real_route_km = ridx ? Math.round((ridx.distanceMeters || ridx.total) / 1000) : null;
-        out.real_route_drive_h = (ridx && ridx.durationSec) ? Math.round(ridx.durationSec / 360) / 10 : null;
-        var live = window._tpLive;
-        if (live && live.originPos && live.destPos) {
-          out.real_route_matches_trip = tpRouteMatches(TP_LAST_ROUTE,
-            { lat: live.originPos.lat, lng: live.originPos.lon }, { lat: live.destPos.lat, lng: live.destPos.lon });
-          out.matches_note = out.real_route_matches_trip
-            ? 'The route used for the export matches this trip.'
-            : 'WARNING: the loaded route does NOT match this trip — the export may project stops onto a stale route or fall back to a direct link.';
-        }
-      } else {
-        out.real_route_note = 'No real road route loaded — the link is exported as a DIRECT origin→destination route (planned stops are not added as waypoints).';
-      }
-
-      if (out.planned && out.link_waypoint_count != null) {
-        out.diff_hint = 'Planned stops: ' + (out.planned.planned_stops || 0) + ' · waypoints actually in the link: ' + out.link_waypoint_count +
-          '. A gap usually means stops were dropped (off the fast road), capped (>' + TP_MAPS_MAX_WAYPOINTS + '), or the link fell back to a direct route.';
-      }
-      out.why_maps_can_differ = 'Google re-plans the road BETWEEN the points it receives, using live traffic the app did not have. ' +
-        'Coordinate waypoints become anonymous lettered pins; named ones are forced through and tappable. A small divergence is normal; ' +
-        'a large one means stops were dropped or never passed. A per-segment time tooltip in Maps (e.g. "3 hr 37 min") is ONE leg, not the whole trip.';
-    } catch (e) { out.ok = false; out.error = String((e && e.message) || e); }
-    return out;
-  }
-
   window.TravelPlanner = {
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
@@ -4828,7 +4426,6 @@
     proposeChainTrips: tpProposeChainTrips,
     findPOI: tpFindPOI,
     planArriveBy: tpPlanArriveBy,
-    searchItineraries: function (opts) { return tpSearchItineraries(opts); },
     fetchRoute: function (origin, dest) {
       return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });
     },
@@ -4842,10 +4439,8 @@
     setCompassOrigin: tpCmpSetOriginFrom,
     openPrefilled: tpOpenPrefilled,
     evalPalace: tpPalaceOK,
-    doorLabel: function (code) { return tpDoorLabel(code); },
     getLastResult: function () { return window._tpLastResult || null; },
     openInMaps: function (navigate) { return tpOpenInMaps(!!navigate); },
-    diagnoseMapsExport: function () { return tpDiagnoseMapsExport(); },
     getAutoMaps: tpAutoMapsOn,
     setAutoMaps: tpSetAutoMaps,
     config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); }
