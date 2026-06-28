@@ -498,6 +498,8 @@
   var TP_DETOUR_REACH_H = 1.0;   // hours of cruising ahead to place the detour waypoint (tunable)
   var TP_DETOUR_MAX = 3;             // max real detours to chain along ONE trip
   var TP_DETOUR_BUDGET_TOTAL = 0.30; // max extra REAL road time for ALL chained detours combined
+  var TP_XKDG_WEIGHT = 0.5;          // weight of the GRADED XKDG/person hour score (slot.hourScore: Blood Link/Family/Pure Qi...) when the direction is ALSO favourable
+  var TP_XKDG_ONLY_WEIGHT = 0.25;    // smaller weight when the hour is XKDG-positive but the DIRECTION is not (beats a dead hour; flags a detour candidate)
 
   // Great-circle projection: point at distance km on bearing from (lat,lon)
   function tpProject(lat, lon, bearingDeg, km) {
@@ -555,7 +557,12 @@
     try {
       if (!workerUrl || !baselineSec || !intents || !intents.length) return Promise.resolve(null);
       var reachKm = Math.max(15, (cruiseKmh || 80) * TP_DETOUR_REACH_H);
-      var cand = intents.slice(0, TP_DETOUR_MAX);
+      // Prefer rescuing XKDG-positive hours (a detour there yields cash + the big XKDG
+      // bonus), then keep them in route order so the stitched route stays geographic.
+      var _pool = intents.slice();
+      _pool.sort(function (a, b) { return ((b.xkPositive ? 1 : 0) - (a.xkPositive ? 1 : 0)) || ((a.slotIdx || 0) - (b.slotIdx || 0)); });
+      var cand = _pool.slice(0, TP_DETOUR_MAX);
+      cand.sort(function (a, b) { return (a.slotIdx || 0) - (b.slotIdx || 0); });
       return Promise.all(cand.map(function (it) {
         var wt = tpProject(it.pos.lat, it.pos.lon, it.targetDeg, reachKm);
         return tpFindStopover(wt.lat, wt.lon, !!isEV).then(function (W) {
@@ -1457,6 +1464,7 @@
           slotIdx: i, pos: { lat: P0.lat, lon: P0.lon },
           dir: det.dir, targetDeg: TP_DIR_DEG[det.dir],
           bearingDest: slot.bearingDest, returnFortunate: nextFort,
+          xkScore: (slot.hourScore != null ? slot.hourScore : null), xkPositive: !!slot.hourPositive,
           wallStart: slot.wallStart, wallEnd: slot.wallEnd, brPy: slot.brPy
         });
       }
@@ -3628,7 +3636,7 @@
       var star = (c.score === maxSc && maxSc > 0) ? '\u2b50' : '';
       var left = el('div', { style: 'flex:1;' });
       left.appendChild(el('div', { style: 'font-weight:700;font-size:14px;color:#222;' }, (star ? star + ' ' : '') + hhmm + (c.arrive ? (' \u2192 ' + c.arrive + (c.arrive_next_day ? ' (+1)' : '')) : '')));
-      left.appendChild(el('div', { style: 'font-size:11px;color:#666;' }, 'score ' + (Math.round((c.score||0) * 10) / 10) + ' \u00b7 ' + (c.cash_hours||0) + '/' + (c.total_hours||0) + ' fortunate hours'));
+      left.appendChild(el('div', { style: 'font-size:11px;color:#666;' }, 'score ' + (Math.round((c.score||0) * 10) / 10) + ' \u00b7 ' + (c.cash_hours||0) + '/' + (c.total_hours||0) + ' fortunate' + ((c.xkdg_bonus) ? (' \u00b7 XKDG +' + c.xkdg_bonus + ' (' + (c.xkdg_hours||0) + ')') : '')));
       row.appendChild(left);
       row.appendChild(el('div', { style: 'font-size:12px;color:#1565c0;font-weight:700;white-space:nowrap;' }, isChosen ? 'current' : 'Plan \u2192'));
       row.addEventListener('click', function(){
@@ -3695,18 +3703,40 @@
       var rd = tpSnapDir((s.bearingDest != null) ? s.bearingDest : result.bearing);
       return (s.dirs || []).filter(function (d) { return d.dir === rd; })[0] || null;
     }
-    var total = 0, cashHours = 0;
+    // XKDG/person dimension is the GRADED lucky-date hour score (slot.hourScore),
+    // exactly the Date Selection number: it already folds in Blood Link / Family /
+    // Pure Qi / Hetu / Adding with the traveller(s) (calcHourScore, averaged over A
+    // and B). hourPositive = score >= TP_HOUR_THRESHOLD. Combined with the QMDJ
+    // direction score so BOTH dimensions count:
+    //   direction favourable + XKDG-positive -> dir score + graded XKDG bonus
+    //   direction favourable only            -> dir score
+    //   XKDG-positive only (bad direction)   -> SMALL XKDG bonus (beats a dead hour)
+    //   neither                              -> 0 (the worst)
+    function xkScore(s){ return (s && s.hourScore != null) ? s.hourScore : null; }
+    function xkPositive(s){ return !!(s && s.hourPositive); }
+    var cash = 0, xkBonus = 0, cashHours = 0, xkdgHours = 0;
     slots.forEach(function (s) {
       var e = roadEntry(s);
-      if (e && e.eval && e.eval.ok) { total += (e.eval.score || 0); cashHours++; }
+      var dirOK = !!(e && e.eval && e.eval.ok);
+      var xs = xkScore(s), xkOK = xkPositive(s);
+      if (dirOK) {
+        cash += (e.eval.score || 0); cashHours++;
+        if (xkOK && xs != null) { xkBonus += xs * TP_XKDG_WEIGHT; xkdgHours++; }      // graded bonus (Blood Link big)
+      } else if (xkOK && xs != null) {
+        xkBonus += xs * TP_XKDG_ONLY_WEIGHT; xkdgHours++;                              // small bonus: XKDG good, direction not
+      }
     });
     var arrivalScore = 0;
     if (optimizeArrival && slots.length) {
-      var le = roadEntry(slots[slots.length - 1]);
-      if (le && le.eval && le.eval.ok) arrivalScore = (le.eval.score || 0);
+      var last = slots[slots.length - 1], le = roadEntry(last);
+      if (le && le.eval && le.eval.ok) {
+        arrivalScore = (le.eval.score || 0);
+        if (xkPositive(last) && xkScore(last) != null) arrivalScore += xkScore(last) * TP_XKDG_WEIGHT;
+      }
     }
-    return { total_cash: total, cash_hours: cashHours, total_hours: slots.length,
-             arrival_score: arrivalScore, score: total + arrivalScore };
+    var rnd = function (n) { return Math.round(n * 10) / 10; };
+    return { total_cash: cash, xkdg_bonus: rnd(xkBonus), cash_hours: cashHours, xkdg_hours: xkdgHours,
+             total_hours: slots.length, arrival_score: arrivalScore, score: rnd(cash + xkBonus + arrivalScore) };
   }
 
   // Scan `days` days from startDate; for every double-hour departure in the daytime
@@ -3776,12 +3806,24 @@
                 arrive: pad(arrD.getHours()) + ':' + pad(arrD.getMinutes()),
                 arrive_next_day: (arrD.getDate() !== depD.getDate()),
                 depart_ms: depMs, score: sc.score, total_cash: sc.total_cash,
-                cash_hours: sc.cash_hours, total_hours: sc.total_hours, arrival_score: sc.arrival_score
+                cash_hours: sc.cash_hours, xkdg_hours: sc.xkdg_hours, xkdg_bonus: sc.xkdg_bonus, total_hours: sc.total_hours, arrival_score: sc.arrival_score
               });
             });
           }
           setTimeout(function () { processDay(di + 1); }, 0);   // yield to the UI between days
         }
+        // Warm the per-hour XKDG/person cache over the whole search range so each
+        // candidate's hours carry the graded lucky-date score (slot.hourScore).
+        try {
+          if (typeof runScanner === 'function') {
+            var _ss = document.getElementById('scan-start'), _sd = document.getElementById('scan-days');
+            var _ps = _ss ? _ss.value : null, _pd = _sd ? _sd.value : null;
+            var _sy = startDate.getFullYear() + '-' + pad(startDate.getMonth() + 1) + '-' + pad(startDate.getDate());
+            if (_ss) _ss.value = _sy; if (_sd) _sd.value = String(Math.min(days + 1, 32));
+            runScanner();
+            if (_ss && _ps != null) _ss.value = _ps; if (_sd && _pd != null) _sd.value = _pd;
+          }
+        } catch (e) {}
         processDay(0);
       });
     });

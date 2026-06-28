@@ -2074,7 +2074,7 @@
         top: (res.top || []).map(function (c) {
           return { date: c.date, weekday: c.weekday, depart: c.depart,
             arrive: c.arrive + (c.arrive_next_day ? ' (+1d)' : ''), driving_min: res.driving_min, score: c.score,
-            total_cash: c.total_cash, cash_hours: c.cash_hours, of_hours: c.total_hours };
+            total_cash: c.total_cash, cash_hours: c.cash_hours, xkdg_hours: c.xkdg_hours, xkdg_bonus: c.xkdg_bonus, of_hours: c.total_hours };
         }),
         note: 'A SELECTABLE ranked list of the top itineraries has ALREADY been posted into THIS chat as a card; ' +
           'the user taps "Choose" on one to open the full plan. The card has a Best / By date toggle so they can ' +
@@ -3828,6 +3828,7 @@
             (dvg ? (' \u00b7 ' + dvg + ' driving') : '')));
           info.appendChild(elc('div', { style: 'font-size:11px;color:#666;' },
             'total cash ' + c.total_cash + ' \u00b7 ' + c.cash_hours + '/' + c.total_hours + ' cash hours' +
+            (c.xkdg_bonus ? (' \u00b7 \uD83D\uDD35 XKDG +' + c.xkdg_bonus + ' (' + (c.xkdg_hours||0) + ' hrs)') : '') +
             (payload.optimizeArrival && c.arrival_score ? (' \u00b7 arrival +' + c.arrival_score) : '')));
           var btn = elc('button', { style:
             'flex:none;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Choose');
