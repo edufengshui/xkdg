@@ -384,6 +384,8 @@
    * --------------------------------------------------------------------- */
   var TP_DETOUR_BUDGET = 0.15;   // max extra REAL road time vs the direct route
   var TP_DETOUR_REACH_H = 1.0;   // hours of cruising ahead to place the detour waypoint (tunable)
+  var TP_DETOUR_MAX = 3;             // max real detours to chain along ONE trip
+  var TP_DETOUR_BUDGET_TOTAL = 0.30; // max extra REAL road time for ALL chained detours combined
 
   // Great-circle projection: point at distance km on bearing from (lat,lon)
   function tpProject(lat, lon, bearingDeg, km) {
@@ -427,6 +429,65 @@
           var addedPct = (stitched.durationSec - baselineSec) / baselineSec;
           return { route: stitched, W: W, dir: intent.dir, intent: intent,
                    addedPct: addedPct, withinBudget: (addedPct <= TP_DETOUR_BUDGET) };
+        });
+      }).catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  /* Realize MULTIPLE detour intents into ONE real route: origin -> W1 -> W2 ->
+   * ... -> dest. Greedily keeps the longest prefix of detours whose TOTAL extra
+   * road time stays within TP_DETOUR_BUDGET_TOTAL. Resolves with
+   *   { route, count, Ws:[...], dirs:[...], addedPct, withinBudget:true }  or  null.
+   * Never throws. */
+  function tpRealizeDetoursMulti(workerUrl, originLL, destLL, baselineSec, intents, isEV, cruiseKmh) {
+    try {
+      if (!workerUrl || !baselineSec || !intents || !intents.length) return Promise.resolve(null);
+      var reachKm = Math.max(15, (cruiseKmh || 80) * TP_DETOUR_REACH_H);
+      var cand = intents.slice(0, TP_DETOUR_MAX);
+      return Promise.all(cand.map(function (it) {
+        var wt = tpProject(it.pos.lat, it.pos.lon, it.targetDeg, reachKm);
+        return tpFindStopover(wt.lat, wt.lon, !!isEV).then(function (W) {
+          return (W && W.lat != null && W.lon != null) ? { W: W, dir: it.dir, intent: it } : null;
+        }).catch(function () { return null; });
+      })).then(function (resolved) {
+        var ws = [];
+        resolved.forEach(function (r) {
+          if (!r) return;
+          for (var i = 0; i < ws.length; i++) {              // drop waypoints clustered together
+            if (tpHaversineKm(ws[i].W.lat, ws[i].W.lon, r.W.lat, r.W.lon) < 12) return;
+          }
+          ws.push(r);
+        });
+        if (!ws.length) return null;
+        var segIn = [], segOut = [], fetches = [];   // segIn: origin->W1, W1->W2, ... ; segOut: Wk->dest
+        fetches.push(tpFetchRoute(workerUrl, originLL, { lat: ws[0].W.lat, lng: ws[0].W.lon })
+          .then(function (r) { segIn[0] = r; }).catch(function () { segIn[0] = null; }));
+        for (var a = 0; a < ws.length - 1; a++) { (function (a) {
+          fetches.push(tpFetchRoute(workerUrl, { lat: ws[a].W.lat, lng: ws[a].W.lon }, { lat: ws[a+1].W.lat, lng: ws[a+1].W.lon })
+            .then(function (r) { segIn[a+1] = r; }).catch(function () { segIn[a+1] = null; }));
+        })(a); }
+        for (var b = 0; b < ws.length; b++) { (function (b) {
+          fetches.push(tpFetchRoute(workerUrl, { lat: ws[b].W.lat, lng: ws[b].W.lon }, destLL)
+            .then(function (r) { segOut[b] = r; }).catch(function () { segOut[b] = null; }));
+        })(b); }
+        return Promise.all(fetches).then(function () {
+          var best = null, prefix = null;
+          for (var k = 0; k < ws.length; k++) {
+            if (!segIn[k]) break;                              // missing link -> cannot extend further
+            prefix = prefix ? tpStitchRoutes(prefix, segIn[k]) : segIn[k];
+            if (!prefix) break;
+            if (!segOut[k]) continue;                          // cannot close to dest here; try a longer prefix
+            var full = tpStitchRoutes(prefix, segOut[k]);
+            if (!full) continue;
+            var addedPct = (full.durationSec - baselineSec) / baselineSec;
+            if (addedPct <= TP_DETOUR_BUDGET_TOTAL) {
+              best = { route: full, count: k + 1,
+                       Ws: ws.slice(0, k + 1).map(function (x) { return x.W; }),
+                       dirs: ws.slice(0, k + 1).map(function (x) { return x.dir; }),
+                       addedPct: addedPct, withinBudget: true };
+            } else { break; }                                  // more waypoints only add time
+          }
+          return best;
         });
       }).catch(function () { return null; });
     } catch (e) { return Promise.resolve(null); }
@@ -3268,27 +3329,21 @@
                   var _dn = el('div', { id: 'tp-detour-note', style: 'margin-top:8px;font-size:12px;color:#666;' },
                     '\u21aa Checking a real positive detour\u2026');
                   results.appendChild(_dn);
-                  tpRealizeDetour(_wurl, _oLL, _dLL, _baseSec, _intents[0], _isEV, _cruise).then(function (det) {
+                  tpRealizeDetoursMulti(_wurl, _oLL, _dLL, _baseSec, _intents, _isEV, _cruise).then(function (det) {
                     try {
                       if (!det) { if (_dn.parentNode) _dn.parentNode.removeChild(_dn); return; }
                       var pct = Math.round(det.addedPct * 100);
-                      if (det.withinBudget) {
-                        opts._detourTried = true;
-                        TP_LAST_ROUTE = det.route;
-                        var _df = document.getElementById('tp-dur'); if (_df) _df.value = '';
-                        results.innerHTML = '';
-                        buildAndRender(det.route);
-                        var ok = el('div', { style: 'margin-top:8px;font-size:12px;color:#1b5e20;border:1px solid #1b8a3f;border-radius:8px;padding:8px 10px;background:#f3fbf5;' },
-                          '\u21aa Detour adopted via ' + (det.W.name || 'a real stop') + ' \u2014 heading ' + det.dir +
-                          ', +' + pct + '% road time (within the 15% budget) so the direction stays positive.');
-                        results.appendChild(ok);
-                      } else {
-                        if (_dn.parentNode) _dn.parentNode.removeChild(_dn);
-                        var ask = el('div', { style: 'margin-top:8px;font-size:12px;color:#8a6d00;border:1px solid #d4a800;border-radius:8px;padding:8px 10px;background:#fffbf0;' },
-                          '\u21aa A real detour via ' + (det.W.name || 'a stop') + ' would keep heading ' + det.dir +
-                          ' positive, but it adds +' + pct + '% road time (over the 15% budget). It was NOT applied \u2014 authorize it explicitly to use it.');
-                        results.appendChild(ask);
-                      }
+                      opts._detourTried = true;
+                      TP_LAST_ROUTE = det.route;
+                      var _df = document.getElementById('tp-dur'); if (_df) _df.value = '';
+                      results.innerHTML = '';
+                      buildAndRender(det.route);
+                      var _via = (det.Ws || []).map(function (w) { return w.name || 'a stop'; }).join(', ');
+                      var _n = det.count || ((det.Ws && det.Ws.length) || 1);
+                      var ok = el('div', { style: 'margin-top:8px;font-size:12px;color:#1b5e20;border:1px solid #1b8a3f;border-radius:8px;padding:8px 10px;background:#f3fbf5;' },
+                        '\u21aa ' + _n + ' positive detour' + (_n === 1 ? '' : 's') + ' adopted via ' + _via +
+                        ' \u2014 +' + pct + '% road time total (within budget), so more legs head a favourable direction.');
+                      results.appendChild(ok);
                     } catch (e3) { try { if (_dn.parentNode) _dn.parentNode.removeChild(_dn); } catch (e4) {} }
                   });
                 }
