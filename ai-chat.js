@@ -50,6 +50,12 @@
     'specific date (open_scan_result) to check that exact hour. You may also mention the favourable DIRECTION ' +
     'toward the destination as a note, but for a FLIGHT do NOT open the driving Travel Planner (plan_travel opens ' +
     'the road planner - use it only for actual road trips).\n' +
+    '- FIND A FAVOURABLE FLIGHT (e.g. "find me a lucky flight from Sydney to Gold Coast on 20 Aug"): call ONE ' +
+    'scan_flights with origin_name/dest_name + origin_lat/lon + dest_lat/lon (from your knowledge), the airport ' +
+    'IATA codes when you know them (Sydney SYD, Gold Coast OOL) and depart_from = the date (add depart_to for a ' +
+    'window). It opens the flight panel, fills it and RUNS the scan; the favourable days/takeoffs are shown in-app ' +
+    '(do NOT invent flights or times). For the return leg call scan_flights again with leg:"return" and ' +
+    'return_from/return_to. Use scan_flights (not find_good_dates) whenever the user wants an actual FLIGHT on a route.\n' +
     '   • If too few dates come back, offer the soft search (strictness:"soft").\n' +
     '- TRIPS ON CERTAIN DAYS: in general, pass weekdays to find_good_dates to keep only those days; a clock time ' +
     'maps to the double-hour above.\n' +
@@ -763,6 +769,36 @@
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
     },
     {
+      name: 'scan_flights',
+      description: 'Find FAVOURABLE FLIGHTS between two cities on a date (or date range). Opens the flight panel, ' +
+        'fills origin/destination + airport IATA codes + dates, and RUNS the scan, which highlights the days whose ' +
+        'flights take off in a favourable double-hour AND/OR a favourable direction toward the destination. Use for ' +
+        '"find me a lucky/favourable FLIGHT from A to B on <date>", "good flight day to fly A->B". Supply origin/dest ' +
+        'lat/lon and names from your knowledge, and the airport IATA codes when you know them (e.g. Sydney SYD, Gold ' +
+        'Coast OOL) so the right airports are used. depart_from = the date (YYYY-MM-DD); add depart_to for a window. ' +
+        'For the RETURN leg set leg:"return" and return_from/return_to (it scans the reverse direction B->A). This is ' +
+        'for FLIGHTS only — never use plan_travel (road) for a flight.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_name: { type: 'string', description: 'Origin city name (e.g. "Sydney").' },
+          origin_lat: { type: 'number', description: 'Origin latitude (from your knowledge).' },
+          origin_lon: { type: 'number', description: 'Origin longitude.' },
+          dest_name: { type: 'string', description: 'Destination city name (e.g. "Gold Coast").' },
+          dest_lat: { type: 'number', description: 'Destination latitude.' },
+          dest_lon: { type: 'number', description: 'Destination longitude.' },
+          origin_iata: { type: 'string', description: 'Origin airport IATA (e.g. SYD). Strongly recommended.' },
+          dest_iata: { type: 'string', description: 'Destination airport IATA (e.g. OOL). Strongly recommended.' },
+          depart_from: { type: 'string', description: 'Departure date YYYY-MM-DD (single day = this only).' },
+          depart_to: { type: 'string', description: 'Optional end of a departure window YYYY-MM-DD.' },
+          return_from: { type: 'string', description: 'Optional return date YYYY-MM-DD (use with leg:"return").' },
+          return_to: { type: 'string', description: 'Optional end of a return window YYYY-MM-DD.' },
+          leg: { type: 'string', enum: ['outbound', 'return'], description: 'Which leg to scan. Default outbound. "return" scans B->A on the return dates.' }
+        },
+        required: []
+      }
+    },
+    {
       name: 'open_chart_finder',
       description: 'Open the "Find charts by star position" panel.',
       input_schema: { type: 'object', properties: {}, additionalProperties: false }
@@ -1107,6 +1143,7 @@
       if (name === 'open_section') return toolOpenSection(input || {});
       if (name === 'recall_flying_stars') return toolRecallFlyingStars();
       if (name === 'open_direction_calculator') return toolOpenDirectionCalc();
+      if (name === 'scan_flights') return toolScanFlights(input || {});
       if (name === 'open_chart_finder') return toolOpenChartFinder();
       if (name === 'list_houses') return toolListHouses();
       if (name === 'get_house_setup') return toolGetHouseSetup(input || {});
@@ -2394,6 +2431,29 @@
     if (typeof window.fsOpenDirectionCalc !== 'function') return { error: 'Direction calculator not available on this page.' };
     window.fsOpenDirectionCalc();
     return { opened: 'direction_calculator' };
+  }
+  function toolScanFlights(p) {
+    p = p || {};
+    if (typeof window.fsOpenDirectionCalc !== 'function') return { error: 'Flight scanner not available on this page.' };
+    try { window.fsOpenDirectionCalc(); } catch (e) { return { error: 'Could not open the flight panel.' }; }
+    function sv(id, v) { var e = document.getElementById(id); if (e && v != null && v !== '') e.value = String(v); }
+    sv('dir-orig-addr', p.origin_name); sv('dir-orig-lat', p.origin_lat); sv('dir-orig-lng', p.origin_lon);
+    sv('dir-dest-addr', p.dest_name);   sv('dir-dest-lat', p.dest_lat);   sv('dir-dest-lng', p.dest_lon);
+    if (p.origin_iata) sv('dir-orig-iata', String(p.origin_iata).toUpperCase());
+    if (p.dest_iata)   sv('dir-dest-iata', String(p.dest_iata).toUpperCase());
+    sv('dir-flight-from', p.depart_from); sv('dir-flight-to', p.depart_to);
+    sv('dir-return-from', p.return_from); sv('dir-return-to', p.return_to);
+    var leg = (p.leg === 'return') ? 'return' : 'outbound';
+    try {
+      if (leg === 'return' && typeof window.fsDirectionScanReturn === 'function') window.fsDirectionScanReturn();
+      else if (typeof window.fsDirectionScanFlights === 'function') window.fsDirectionScanFlights();
+      else return { error: 'Flight scan function not available.' };
+    } catch (e) { return { error: 'Flight scan failed to start.' }; }
+    return { scanning: true, leg: leg,
+      origin: p.origin_name || p.origin_iata || null, destination: p.dest_name || p.dest_iata || null,
+      depart_from: p.depart_from || null, depart_to: p.depart_to || null,
+      return_from: p.return_from || null, return_to: p.return_to || null,
+      note: 'The flight scanner is running; favourable days appear on the calendar with takeoff badges. Results are shown in-app, not by you.' };
   }
 
   function toolOpenChartFinder() {
