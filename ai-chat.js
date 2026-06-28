@@ -3635,15 +3635,11 @@
       var stopLetters = [], _p = 0;
       legs.forEach(function (it) { if (it.kind !== 'drive') { _p++; stopLetters.push(letterChar(_p)); } });
       var destLetter = letterChar(_p + 1);     // destination = next letter after the last stop
-      // \u2b50 fortune per map letter, read from the SAME per-hour data as the Hours panel:
-      // a stop/destination is fortunate if a CASH (or favourable DETOUR) window ends there.
-      // \u2b50\u2b50 marks the highest-scoring one.
       var _hrs = payload.hours || [];
       function _fFort(h){ return h.kind === 'cash' || h.kind === 'detour'; }
       function _fScore(h){ return (h.kind === 'cash') ? (h.score != null ? h.score : 0)
         : (h.kind === 'detour' && h.detour ? (h.detour.score != null ? h.detour.score : 0) : 0); }
       var _maxFort = 0; _hrs.forEach(function (h) { if (_fFort(h)) _maxFort = Math.max(_maxFort, _fScore(h)); });
-      // arrival time -> letter (stops by their atWall, destination by the arrival drive's end)
       var _timeByLetter = {}; (function () { var k = 0; legs.forEach(function (it) {
         if (it.kind === 'drive') { if (it.arrival) _timeByLetter[it.to] = destLetter; }
         else { _timeByLetter[it.at] = stopLetters[k]; k++; } }); })();
