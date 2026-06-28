@@ -3600,7 +3600,10 @@
         var hf = norm(h.from), ht = norm(h.to), driveTo = null, stopL = null;
         stepList.forEach(function (s) {
           if (s.kind === 'drive') { if (norm(s.from) <= hf && norm(s.to) >= ht) driveTo = s.toLetter; }
-          else if (s.kind === 'stop') { if (s.at === h.to) stopL = s.letter; }
+          else if (s.kind === 'stop') {
+            if (s.at === h.to) stopL = s.letter;                              // rest stop sitting on this hour's boundary
+            else if (stopL == null && norm(s.at) > hf && norm(s.at) <= ht) stopL = s.letter;  // CASH/DETOUR stop falling INSIDE this hour
+          }
         });
         if (stopL != null) return 'at ' + stopL;            // cash hour ends AT this map point
         if (driveTo != null) return '\u2192 ' + driveTo;     // driving TOWARD this map point
