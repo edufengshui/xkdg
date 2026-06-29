@@ -3395,10 +3395,22 @@ function fsHouseRemoveFloorplan(pName, hi){
   try {
     var all = _fsHousesLoad();
     var h = (all[pName] || [])[hi];
-    if (!h) return;
+    if (!h) { alert('House not found — could not remove the floor plan.'); return; }
     var fi = h.activeFloor || 0; if (fi >= h.floors.length) fi = 0;
-    if (h.floors[fi] && h.floors[fi].floorplan){ delete h.floors[fi].floorplan; _fsHousesSave(all); fsRenderHouseProfiles(); }
-  } catch (e){}
+    if (!(h.floors[fi] && h.floors[fi].floorplan)) {
+      alert('There is no saved floor plan on the active floor. If the plan is on another floor, switch to that floor first, then remove it.');
+      return;
+    }
+    delete h.floors[fi].floorplan;
+    try {
+      _fsHousesSave(all);
+    } catch (e) {
+      var nm = (e && e.name) || '';
+      alert('Could not remove the floor plan — storage error (' + (nm || e) + '). Free some space (e.g. remove another large floor plan) and try again.');
+      return;
+    }
+    fsRenderHouseProfiles();
+  } catch (e){ alert('Remove failed: ' + ((e && e.message) || e)); }
 }
 
 function fsRenderHouseProfiles(){
