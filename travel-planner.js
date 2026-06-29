@@ -3161,6 +3161,54 @@
       if (_feB) _feB.addEventListener('input', tpSocRecalc);
     } catch (e) {}
 
+    // ---- 🔋 Read charge from car (Strada 2: xkdg-soc Worker) -------------
+    // Paste the xkdg-soc Worker URL once (including ?k=YOUR_KEY); it is saved
+    // locally. Tapping the button asks the Worker (which holds the Polestar
+    // credentials) for the live SoC and remaining range, then fills the fields.
+    try {
+      var socWk = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#555;font-size:11px;margin-top:4px;' }, 'SoC Worker URL (include ?k=)');
+      var socWkIn = el('input', { id: 'tp-soc-worker', type: 'text',
+        value: (function () { try { return localStorage.getItem('xkdg_tp_soc_worker') || ''; } catch (e) { return ''; } })(),
+        placeholder: 'https://xkdg-soc.<name>.workers.dev/?k=YOUR_KEY',
+        style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:12px;' });
+      socWk.appendChild(socWkIn);
+      rcBlock.appendChild(socWk);
+
+      var socBtnRow = el('div', { style: 'display:flex;gap:8px;align-items:center;margin:6px 0 2px;' });
+      var socBtn = el('button', { type: 'button', id: 'tp-soc-read',
+        style: 'padding:6px 12px;border:0;border-radius:6px;background:#1b6e2f;color:#fff;font-size:13px;cursor:pointer;' },
+        '\uD83D\uDD0B Read charge from car');
+      socBtnRow.appendChild(socBtn);
+      rcBlock.appendChild(socBtnRow);
+
+      socBtn.addEventListener('click', function () {
+        var wk = (socWkIn.value || '').trim();
+        if (!wk) { socHint.style.color = '#b00'; socHint.textContent = 'Paste the SoC Worker URL first.'; return; }
+        try { localStorage.setItem('xkdg_tp_soc_worker', wk); } catch (e) {}
+        socBtn.disabled = true; var _old = socBtn.textContent; socBtn.textContent = '\u23F3 Reading\u2026';
+        socHint.style.color = '#1b6e2f'; socHint.textContent = 'Contacting car\u2026';
+        fetch(wk, { method: 'GET' }).then(function (r) { return r.json(); }).then(function (d) {
+          if (d && d.error) throw new Error(d.error);
+          var soc = (d && d.soc != null) ? Number(d.soc) : NaN;
+          var rangeKm = (d && d.rangeKm != null) ? Number(d.rangeKm) : NaN;
+          var socEl = document.getElementById('tp-soc');
+          var rgEl = document.getElementById('tp-range');
+          if (socEl && isFinite(soc)) socEl.value = String(Math.round(soc));
+          if (rgEl && isFinite(rangeKm) && rangeKm > 0) { rgEl.value = String(Math.round(rangeKm)); }
+          else if (isFinite(soc)) { tpSocRecalc(); }
+          var bits = [];
+          if (isFinite(soc)) bits.push(Math.round(soc) + '%');
+          if (isFinite(rangeKm) && rangeKm > 0) bits.push('~' + Math.round(rangeKm) + ' km left');
+          if (d && d.charging) bits.push('\u26A1 charging');
+          socHint.style.color = '#1b6e2f';
+          socHint.textContent = '\uD83D\uDD0B From car: ' + (bits.join(' \u00B7 ') || 'updated');
+        }).catch(function (e) {
+          socHint.style.color = '#b00';
+          socHint.textContent = 'Could not read charge: ' + ((e && e.message) || e);
+        }).then(function () { socBtn.disabled = false; socBtn.textContent = _old; });
+      });
+    } catch (e) {}
+
     var netWrap = el('div', { style: 'display:flex;flex-wrap:wrap;gap:12px;margin:6px 0;font-size:12px;color:#444;' });
     TP_NETWORKS.forEach(function (n) {
       var lab = el('label', { style: 'display:flex;align-items:center;gap:5px;cursor:pointer;' });
