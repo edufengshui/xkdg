@@ -3167,7 +3167,7 @@
     // credentials) for the live SoC and remaining range, then fills the fields.
     try {
       var socWk = el('label', { style: 'display:flex;flex-direction:column;gap:2px;color:#555;font-size:11px;margin-top:4px;' }, 'SoC Worker URL (include ?k=)');
-      var socWkIn = el('input', { id: 'tp-soc-worker', type: 'text',
+      var socWkIn = el('input', { id: 'tp-soc-worker', type: 'password', autocomplete: 'off', spellcheck: 'false',
         value: (function () { try { return localStorage.getItem('xkdg_tp_soc_worker') || ''; } catch (e) { return ''; } })(),
         placeholder: 'https://xkdg-soc.<name>.workers.dev/?k=YOUR_KEY',
         style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:12px;' });
@@ -3179,6 +3179,14 @@
         style: 'padding:6px 12px;border:0;border-radius:6px;background:#1b6e2f;color:#fff;font-size:13px;cursor:pointer;' },
         '\uD83D\uDD0B Read charge from car');
       socBtnRow.appendChild(socBtn);
+      var socEye = el('button', { type: 'button', id: 'tp-soc-eye', title: 'Show/hide URL',
+        style: 'padding:6px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:13px;cursor:pointer;' },
+        '\uD83D\uDC41');
+      socEye.addEventListener('click', function () {
+        if (socWkIn.type === 'password') { socWkIn.type = 'text'; socEye.textContent = '\uD83D\uDE48'; }
+        else { socWkIn.type = 'password'; socEye.textContent = '\uD83D\uDC41'; }
+      });
+      socBtnRow.appendChild(socEye);
       rcBlock.appendChild(socBtnRow);
 
       socBtn.addEventListener('click', function () {
