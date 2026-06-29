@@ -1231,6 +1231,8 @@
     var today = new Date().toISOString().slice(0, 10);
     var inputCss = 'width:100%;padding:8px;border:1px solid #c9b6d6;border-radius:6px;margin-bottom:12px;box-sizing:border-box;font-size:13px;';
     var labCss = 'font-size:12px;color:#555;display:block;margin-bottom:3px;';
+    var hourOpts = '<option value="">Auto (find best hours)</option>';
+    for (var _h = 0; _h < 24; _h++) { var _hh = (_h < 10 ? '0' + _h : '' + _h) + ':00'; hourOpts += '<option value="' + _hh + '">' + _hh + '</option>'; }
     var card = E('div', 'background:#fff;border-radius:12px;max-width:340px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);');
     card.innerHTML =
         '<div style="font-weight:700;color:#6a1b9a;font-size:15px;margin-bottom:12px;">\ud83d\ude97 How do you want to plan the trip?</div>'
@@ -1241,6 +1243,8 @@
       + '<label style="' + labCss + '" id="xkdg-date-lab">Date</label>'
       + '<input type="date" id="xkdg-depart-date" value="' + today + '" style="' + inputCss + '">'
       + '<div id="xkdg-grp-single">'
+      +   '<label style="' + labCss + '">Departure time</label>'
+      +   '<select id="xkdg-single-hour" style="' + inputCss + '">' + hourOpts + '</select>'
       +   '<label style="' + labCss + '">How many itineraries to show</label>'
       +   '<input type="number" id="xkdg-single-topk" value="5" min="1" max="10" style="' + inputCss + '">'
       +   '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:7px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="xkdg-single-arr" style="width:16px;height:16px;"> Also optimise arrival hour/direction</label>'
@@ -1252,6 +1256,8 @@
       +   '<input type="number" id="xkdg-search-topk" value="5" min="1" max="10" style="' + inputCss + '">'
       +   '<label style="font-size:12px;color:#555;display:flex;align-items:center;gap:7px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="xkdg-search-arr" style="width:16px;height:16px;"> Also optimise arrival hour/direction</label>'
       + '</div>'
+      + '<label style="font-size:12px;color:#333;display:flex;align-items:center;gap:7px;margin:10px 0 2px;cursor:pointer;"><input type="checkbox" id="xkdg-read-charge" checked style="width:16px;height:16px;"> \uD83D\uDD0B Read live charge from the car first</label>'
+      + '<div id="xkdg-rc-note" style="font-size:11px;color:#999;margin-bottom:2px;min-height:13px;"></div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">'
       +   '<button id="xkdg-depart-cancel" style="background:#eee;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;">Cancel</button>'
       +   '<button id="xkdg-depart-go" style="background:#6a1b9a;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer;font-size:13px;">Go</button>'
@@ -1287,15 +1293,38 @@
                  ', top_k ' + topk + (arr ? ', optimize_arrival true' : '') + '. Post the selectable list.';
         human = 'search ' + days + ' days \u00b7 top ' + topk + (arr ? ' \u00b7 arrival optimised' : '');
       } else {
-        var topk1 = Math.max(1, Math.min(parseInt(document.getElementById('xkdg-single-topk').value, 10) || 5, 10));
-        var arr1 = !!document.getElementById('xkdg-single-arr').checked;
-        clause = 'Find the favourable departures for ONE day with search_travel (NOT plan_travel): start_date ' + d +
-                 ', days 1, top_k ' + topk1 + (arr1 ? ', optimize_arrival true' : '') +
-                 '. Post the selectable list of that day\u2019s departures.';
-        human = d + ' \u00b7 all departures (top ' + topk1 + ')';
+        var hh = (document.getElementById('xkdg-single-hour') || {}).value || '';
+        if (hh) {
+          clause = 'Plan this exact trip with plan_travel: depart_date ' + d + ', depart_time ' + hh +
+                   '. Run the real route and post the itinerary card.';
+          human = d + ' \u00b7 depart ' + hh;
+        } else {
+          var topk1 = Math.max(1, Math.min(parseInt(document.getElementById('xkdg-single-topk').value, 10) || 5, 10));
+          var arr1 = !!document.getElementById('xkdg-single-arr').checked;
+          clause = 'Find the favourable departures for ONE day with search_travel (NOT plan_travel): start_date ' + d +
+                   ', days 1, top_k ' + topk1 + (arr1 ? ', optimize_arrival true' : '') +
+                   '. Post the selectable list of that day\u2019s departures.';
+          human = d + ' \u00b7 all departures (top ' + topk1 + ')';
+        }
       }
-      if (ov.parentNode) ov.parentNode.removeChild(ov);
-      try { cb(clause, human); } catch (e) {}
+      var goBtn = document.getElementById('xkdg-depart-go');
+      var rcChk = document.getElementById('xkdg-read-charge');
+      function _proceed() { if (ov.parentNode) ov.parentNode.removeChild(ov); try { cb(clause, human); } catch (e) {} }
+      if (rcChk && rcChk.checked && window.TravelPlanner && typeof window.TravelPlanner.readChargeFromCar === 'function') {
+        if (goBtn) { goBtn.disabled = true; goBtn.textContent = '\uD83D\uDD0B Reading\u2026'; }
+        var rcNote = document.getElementById('xkdg-rc-note');
+        if (rcNote) { rcNote.style.color = '#1b6e2f'; rcNote.textContent = 'Reading live charge from the car\u2026'; }
+        window.TravelPlanner.readChargeFromCar().then(function (info) {
+          if (info && info.rangeKm) human = human + ' \u00b7 \uD83D\uDD0B ' + Math.round(info.rangeKm) + ' km';
+          _proceed();
+        }).catch(function (e) {
+          if (rcNote) { rcNote.style.color = '#b00'; rcNote.textContent = 'Charge read failed: ' + ((e && e.message) || e) + ' \u2014 planning with the saved value.'; }
+          if (goBtn) { goBtn.disabled = false; goBtn.textContent = 'Go'; }
+          setTimeout(_proceed, 1100);
+        });
+        return;
+      }
+      _proceed();
     };
   }
   function findMacro(text) {
@@ -3587,7 +3616,44 @@
     // hour and switch freely (\u2715 = back): the QMDJ rotating chart, and the XKDG
     // LIST row (its XKDG setting + the graded lucky-date score that feeds the bonus).
     var _BR2I = { '\u5b50':0,'\u4e11':1,'\u5bc5':2,'\u536f':3,'\u8fb0':4,'\u5df3':5,'\u5348':6,'\u672a':7,'\u7533':8,'\u9149':9,'\u620c':10,'\u4ea5':11 };
-    function openHourChart(h) {
+    // Shared overlay used by the in-chat listings: a panel over the chat with a
+    // Back button (\u2190) and a \u2715, matching the rest of the app's row\u2192XKDG /
+    // button\u2192Qimen pattern. Content is the SAME html as the Main listing.
+    function _vbOverlay(html, accent) {
+      accent = accent || '#6a1b9a';
+      var ex = document.getElementById('xkdg-vb-overlay'); if (ex) ex.remove();
+      var ov = document.createElement('div');
+      ov.id = 'xkdg-vb-overlay';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;overflow:auto;padding:18px;';
+      var box = document.createElement('div');
+      box.style.cssText = 'max-width:520px;width:100%;margin:24px auto;background:#fff;border-radius:12px;padding:10px;';
+      var back = document.createElement('button');
+      back.textContent = '\u2190 Back';
+      back.style.cssText = 'margin-bottom:10px;padding:6px 12px;border:1px solid ' + accent + ';background:#fff;color:' + accent + ';border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;';
+      back.onclick = function () { ov.remove(); };
+      var inner = document.createElement('div');
+      inner.innerHTML = html;
+      box.appendChild(back); box.appendChild(inner);
+      var close = document.createElement('button');
+      close.textContent = '\u2715';
+      close.style.cssText = 'position:fixed;top:12px;right:14px;z-index:100001;background:' + accent + ';color:#fff;border:0;border-radius:50%;width:38px;height:38px;font-size:17px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+      close.onclick = function () { ov.remove(); };
+      ov.appendChild(box); ov.appendChild(close);
+      ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+      document.body.appendChild(ov);
+    }
+    // Click a listing ROW \u2192 that hour's XKDG (same content as the Main listing).
+    function openHourXKDG(h) {
+      var xkdgHtml = '';
+      try {
+        var hi = (h && h.hZhi != null) ? _BR2I[h.hZhi] : null;
+        if (typeof window.tpGetListRowHtml === 'function' && h && h.iso && hi != null) xkdgHtml = window.tpGetListRowHtml(h.iso, hi) || '';
+      } catch (e) {}
+      if (!xkdgHtml) { try { addBubble('assistant', '\u26A0 No XKDG row \u2014 run a trip scan first.'); } catch (e2) {} return; }
+      _vbOverlay('<div style="font-weight:700;color:#1565c0;margin-bottom:6px;">\uD83D\uDD35 XKDG \u00b7 ' + (h.from || '') + '\u2013' + (h.to || '') + '</div>' + xkdgHtml, '#1565c0');
+    }
+    // The \uD83D\uDD0D button \u2192 that hour's Qimen rotating chart only.
+    function openHourQimen(h) {
       var qimenHtml = '';
       try {
         if (typeof window.showQimenChart === 'function' && h && h.iso && h.hGan && h.hZhi) {
@@ -3595,42 +3661,8 @@
           if (chart) qimenHtml = buildHourFavSummary(h) + chart;
         }
       } catch (e) {}
-      var xkdgHtml = '';
-      try {
-        var hi = (h && h.hZhi != null) ? _BR2I[h.hZhi] : null;
-        if (typeof window.tpGetListRowHtml === 'function' && h && h.iso && hi != null) xkdgHtml = window.tpGetListRowHtml(h.iso, hi) || '';
-      } catch (e) {}
-      if (!qimenHtml && !xkdgHtml) { try { addBubble('assistant', '\u26A0 Could not open this hour.'); } catch (e2) {} return; }
-      var ex = document.getElementById('xkdg-vb-overlay'); if (ex) ex.remove();
-      var ov = document.createElement('div');
-      ov.id = 'xkdg-vb-overlay';
-      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;overflow:auto;padding:18px;';
-      var box = document.createElement('div');
-      box.style.cssText = 'max-width:520px;width:100%;margin:24px auto;background:#fff;border-radius:12px;padding:10px;';
-      var tabs = document.createElement('div');
-      tabs.style.cssText = 'display:flex;gap:6px;margin-bottom:10px;';
-      var content = document.createElement('div');
-      var mode = qimenHtml ? 'qimen' : 'xkdg';
-      function styleTab(b, on){ b.style.cssText = 'flex:1;padding:7px;border-radius:7px;border:1px solid ' + (on ? '#6a1b9a' : '#d0bdda') + ';background:' + (on ? '#6a1b9a' : '#fff') + ';color:' + (on ? '#fff' : '#6a1b9a') + ';font-size:13px;font-weight:700;cursor:pointer;'; }
-      var tQ = document.createElement('button'); tQ.textContent = '\uD83E\uDDED Qimen hour';
-      var tX = document.createElement('button'); tX.textContent = '\uD83D\uDD35 XKDG hour';
-      function render(){
-        styleTab(tQ, mode === 'qimen'); styleTab(tX, mode === 'xkdg');
-        content.innerHTML = (mode === 'qimen') ? (qimenHtml || '<div style="padding:10px;color:#888;">No Qimen chart.</div>')
-                                               : (xkdgHtml || '<div style="padding:10px;color:#888;">No XKDG row \u2014 run a trip scan first.</div>');
-      }
-      tQ.onclick = function(){ mode = 'qimen'; render(); };
-      tX.onclick = function(){ mode = 'xkdg'; render(); };
-      if (qimenHtml) tabs.appendChild(tQ);
-      if (xkdgHtml) tabs.appendChild(tX);
-      box.appendChild(tabs); box.appendChild(content); render();
-      var close = document.createElement('button');
-      close.textContent = '\u2715';
-      close.style.cssText = 'position:fixed;top:12px;right:14px;z-index:100001;background:#6a1b9a;color:#fff;border:0;border-radius:50%;width:38px;height:38px;font-size:17px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
-      close.onclick = function(){ ov.remove(); };
-      ov.appendChild(box); ov.appendChild(close);
-      ov.addEventListener('click', function(e){ if (e.target === ov) ov.remove(); });
-      document.body.appendChild(ov);
+      if (!qimenHtml) { try { addBubble('assistant', '\u26A0 Could not open the Qimen chart for this hour.'); } catch (e2) {} return; }
+      _vbOverlay('<div style="font-weight:700;color:#6a1b9a;margin-bottom:6px;">\uD83E\uDDED Qimen hour \u00b7 ' + (h.from || '') + '\u2013' + (h.to || '') + '</div>' + qimenHtml, '#6a1b9a');
     }
     // Collapsible per-hour panel: every 时辰 of the trip, classified CASH / DETOUR /
     // DRIVE, with the activated QMDJ setting, the stop length, and a 🔍 button that
@@ -3675,7 +3707,9 @@
         var fg = isCash ? '#1b5e20' : (isDetour ? '#8a6d00' : '#666');
         var row = elc('div', { style:
           'display:flex;align-items:flex-start;gap:6px;margin:3px 0;padding:5px 8px;border-radius:7px;border-left:3px solid ' +
-          border + ';background:' + bg + ';font-size:12px;' });
+          border + ';background:' + bg + ';font-size:12px;cursor:pointer;' });
+        row.title = 'Tap for XKDG';
+        row.addEventListener('click', function () { openHourXKDG(h); });
         var head1, detail;
         if (isCash) {
           head1 = h.from + '\u2013' + h.to + ' \u00b7 CASH toward ' + h.roadDir + ' \u00b7 P' + h.palace + (h.palaceName ? (' ' + h.palaceName) : '');
@@ -3709,7 +3743,8 @@
         if (detail) txtWrap.appendChild(elc('div', { style: 'color:#555;margin-top:1px;' }, detail));
         var btn = elc('button', { style:
           'flex:none;background:#6a1b9a;color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;' }, '\uD83D\uDD0D');
-        btn.addEventListener('click', function () { openHourChart(h); });
+        btn.title = 'Qimen chart';
+        btn.addEventListener('click', function (ev) { ev.stopPropagation(); openHourQimen(h); });
         row.appendChild(txtWrap); row.appendChild(btn);
         body.appendChild(row);
       });

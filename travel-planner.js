@@ -168,6 +168,38 @@
   }
   function tpAutoMapsOn() { try { return localStorage.getItem('xkdg_tp_automaps') === '1'; } catch (e) { return false; } }   // default OFF: Maps opens only on an explicit command/tap
   function tpSetAutoMaps(on) { try { localStorage.setItem('xkdg_tp_automaps', on ? '1' : '0'); } catch (e) {} }
+
+  // --- Live charge from the car (Strada 2) ---------------------------------
+  // The last range read from the Polestar, kept so any later plan (even with the
+  // panel closed, even one launched by the AI) can use the real remaining range.
+  function tpGetLiveRange() {
+    try { var o = JSON.parse(localStorage.getItem('xkdg_tp_live_range') || 'null'); return (o && isFinite(o.km)) ? o : null; } catch (e) { return null; }
+  }
+  function tpSetLiveRange(km, soc) {
+    try { localStorage.setItem('xkdg_tp_live_range', JSON.stringify({ km: Math.round(km), soc: (soc != null ? Math.round(soc) : null), ts: Date.now() })); } catch (e) {}
+  }
+  // Ask the xkdg-soc Worker for the live SoC + remaining range. Reads the Worker
+  // URL from localStorage (set in the planner), stores the live range, and fills
+  // the form fields if the panel is open. Returns a Promise.
+  function tpReadChargeFromCar() {
+    return new Promise(function (resolve, reject) {
+      var wk = '';
+      try { wk = (localStorage.getItem('xkdg_tp_soc_worker') || '').trim(); } catch (e) {}
+      if (!wk) { reject(new Error('No SoC Worker URL set (open the planner \u2192 \uD83D\uDD0B Range & charging).')); return; }
+      fetch(wk, { method: 'GET' }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d && d.error) throw new Error(d.error);
+        var soc = (d && d.soc != null) ? Number(d.soc) : null;
+        var km = (d && d.rangeKm != null) ? Number(d.rangeKm) : null;
+        if (km != null && isFinite(km) && km > 0) tpSetLiveRange(km, soc);
+        try {
+          var socEl = document.getElementById('tp-soc'), rgEl = document.getElementById('tp-range');
+          if (socEl && soc != null) socEl.value = String(Math.round(soc));
+          if (rgEl && km != null && isFinite(km) && km > 0) rgEl.value = String(Math.round(km));
+        } catch (e) {}
+        resolve({ soc: soc, rangeKm: km, charging: !!(d && d.charging), raw: d });
+      }).catch(function (e) { reject(e instanceof Error ? e : new Error(String(e))); });
+    });
+  }
   // Open the current itinerary in Google Maps. navigate=true changes the current tab (NOT blocked by pop-up
   // blockers, works with no tap) - used hands-free. Otherwise open a new tab (keeps the app), falling back to
   // navigation if the pop-up is blocked.
@@ -3136,7 +3168,9 @@
     rcBlock.appendChild(socHint);
 
     var rcRow = el('div', { style: 'display:flex;gap:8px;' });
-    rcRow.appendChild(rcNum('Remaining range (km)', 'tp-range', 200));
+    var _liveR = tpGetLiveRange();
+    var _rangeDefault = (_liveR && (Date.now() - _liveR.ts) < 2 * 3600000) ? _liveR.km : 200;
+    rcRow.appendChild(rcNum('Remaining range (km)', 'tp-range', _rangeDefault));
     rcRow.appendChild(rcNum('Safety reserve (%)', 'tp-reserve', 15));
     rcBlock.appendChild(rcRow);
 
@@ -3195,15 +3229,10 @@
         try { localStorage.setItem('xkdg_tp_soc_worker', wk); } catch (e) {}
         socBtn.disabled = true; var _old = socBtn.textContent; socBtn.textContent = '\u23F3 Reading\u2026';
         socHint.style.color = '#1b6e2f'; socHint.textContent = 'Contacting car\u2026';
-        fetch(wk, { method: 'GET' }).then(function (r) { return r.json(); }).then(function (d) {
-          if (d && d.error) throw new Error(d.error);
+        tpReadChargeFromCar().then(function (d) {
           var soc = (d && d.soc != null) ? Number(d.soc) : NaN;
           var rangeKm = (d && d.rangeKm != null) ? Number(d.rangeKm) : NaN;
-          var socEl = document.getElementById('tp-soc');
-          var rgEl = document.getElementById('tp-range');
-          if (socEl && isFinite(soc)) socEl.value = String(Math.round(soc));
-          if (rgEl && isFinite(rangeKm) && rangeKm > 0) { rgEl.value = String(Math.round(rangeKm)); }
-          else if (isFinite(soc)) { tpSocRecalc(); }
+          if (!(isFinite(rangeKm) && rangeKm > 0) && isFinite(soc)) { tpSocRecalc(); }
           var bits = [];
           if (isFinite(soc)) bits.push(Math.round(soc) + '%');
           if (isFinite(rangeKm) && rangeKm > 0) bits.push('~' + Math.round(rangeKm) + ' km left');
@@ -5327,6 +5356,8 @@
     resolvePlace: function (name, lat, lon) { return _tpResolvePlace(name, lat, lon); },
     cheapestTariff: function (name) { return tpCheapestTariff(name); },
     getWorkerUrl: tpGetWorkerUrl,
+    readChargeFromCar: tpReadChargeFromCar,
+    getLiveRange: tpGetLiveRange,
     open: tpOpen,
     openCompass: tpOpenCompass,
     startCompass: tpStartCompass,
