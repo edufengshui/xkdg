@@ -3718,9 +3718,24 @@
     }
     var _itinMapsCtx = null;
     function _itinMapsPoint(name, lat, lon) {
-      if (name && String(name).trim()) return encodeURIComponent(String(name).trim());
+      if (name && String(name).trim()) return String(name).trim();   // raw; encoded by the builder
       if (isFinite(lat) && isFinite(lon)) return lat + ',' + lon;
       return '';
+    }
+    // Reliable origin/dest coordinates: payload first, then window._tpLive (always
+    // populated when an itinerary exists, regardless of which files are deployed).
+    function _itinEndCoords(which) {
+      try {
+        var live = (typeof window !== 'undefined' && window._tpLive) ? window._tpLive : {};
+        if (which === 'origin') {
+          if (_itinMapsCtx && isFinite(_itinMapsCtx.oLat) && isFinite(_itinMapsCtx.oLon)) return { lat: _itinMapsCtx.oLat, lon: _itinMapsCtx.oLon };
+          if (live.originPos && isFinite(live.originPos.lat) && isFinite(live.originPos.lon)) return live.originPos;
+        } else {
+          if (_itinMapsCtx && isFinite(_itinMapsCtx.dLat) && isFinite(_itinMapsCtx.dLon)) return { lat: _itinMapsCtx.dLat, lon: _itinMapsCtx.dLon };
+          if (live.destPos && isFinite(live.destPos.lat) && isFinite(live.destPos.lon)) return live.destPos;
+        }
+      } catch (e) {}
+      return null;
     }
     // Build the Google Maps route link from EXACTLY the lettered stops shown in the
     // bubble (origin -> B,C,... -> destination), so the map pins correspond 1:1 with
@@ -3728,24 +3743,29 @@
     // else by coordinates. One waypoint per stop \u2014 no exit/charger interleaving.
     function _itinBuildMapsUrl() {
       try {
-        if (!_itinMapsCtx) return null;
-        var parts = ['https://www.google.com/maps/dir/?api=1'];
-        var o = _itinMapsPoint(_itinMapsCtx.origin, _itinMapsCtx.oLat, _itinMapsCtx.oLon);
-        var d = _itinMapsPoint(_itinMapsCtx.dest, _itinMapsCtx.dLat, _itinMapsCtx.dLon);
-        if (o) parts.push('origin=' + o);
-        if (d) parts.push('destination=' + d);
+        if (!_itinMapsCtx) { try { window._tpItinMapsUrl = null; } catch (e) {} return null; }
+        var oc = _itinEndCoords('origin'), dc = _itinEndCoords('dest');
+        var oStr = (_itinMapsCtx.origin && String(_itinMapsCtx.origin).trim()) ? String(_itinMapsCtx.origin).trim()
+                 : (oc ? (oc.lat + ',' + oc.lon) : '');
+        var dStr = (_itinMapsCtx.dest && String(_itinMapsCtx.dest).trim()) ? String(_itinMapsCtx.dest).trim()
+                 : (dc ? (dc.lat + ',' + dc.lon) : '');
+        // A destination is mandatory: without it Google keeps only the first waypoint.
+        // If we cannot resolve origin AND destination, fall back to the planner export.
+        if (!oStr || !dStr) { try { window._tpItinMapsUrl = null; } catch (e) {} return null; }
+        var parts = ['https://www.google.com/maps/dir/?api=1',
+          'origin=' + encodeURIComponent(oStr), 'destination=' + encodeURIComponent(dStr)];
         var wps = [];
         (_itinStopEls || []).forEach(function (s) {
           var it = s && s.it; if (!it) return;
-          var pt = _itinMapsPoint(it.place, it.lat, it.lon);
+          var pt = _itinMapsPoint(it.place, it.lat, it.lon);   // name when known, else coords
           if (pt) wps.push(pt);
         });
-        if (wps.length) parts.push('waypoints=' + wps.join('%7C'));
+        if (wps.length) parts.push('waypoints=' + wps.map(encodeURIComponent).join('%7C'));
         parts.push('travelmode=driving');
         var url = parts.join('&');
         try { window._tpItinMapsUrl = url; } catch (e) {}
         return url;
-      } catch (e) { return null; }
+      } catch (e) { try { window._tpItinMapsUrl = null; } catch (e2) {} return null; }
     }
     function addItineraryBubble(payload) {
       payload = payload || {};
