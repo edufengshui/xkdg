@@ -173,9 +173,7 @@
   // navigation if the pop-up is blocked.
   function tpOpenInMaps(navigate) {
     var b = document.getElementById('tp-maps-open');
-    // Prefer the itinerary-bubble link (origin -> lettered stops -> dest, exactly the
-    // points shown in chat) so Maps pins line up 1:1 with the A/B/C... in the bubble.
-    var url = (typeof window !== 'undefined' && window._tpItinMapsUrl) ? window._tpItinMapsUrl : (b && b._url);
+    var url = b && b._url;
     if (!url) return { ok: false, reason: 'no_itinerary', note: 'No computed itinerary yet — plan a trip first.' };
     if (navigate) { try { window.location.href = url; } catch (e) {} return { ok: true, navigated: true, url: url }; }
     var w = null; try { w = window.open(url, '_blank'); } catch (e) {}
@@ -2435,10 +2433,6 @@
       window._tpLastResult = {
         stamp: Date.now(),
         origin: result.origin.name || null, dest: result.dest.name || null,
-        origin_lat: (result.origin && isFinite(result.origin.lat) ? result.origin.lat : null),
-        origin_lon: (result.origin && isFinite(result.origin.lon) ? result.origin.lon : null),
-        dest_lat: (result.dest && isFinite(result.dest.lat) ? result.dest.lat : null),
-        dest_lon: (result.dest && isFinite(result.dest.lon) ? result.dest.lon : null),
         bearing: Math.round(result.bearing), snapped: result.snapDir,
         real_route: !!result.usedRealRoute, km: rm.km ? Math.round(rm.km) : null, driving_time: drive,
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,

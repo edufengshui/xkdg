@@ -3716,57 +3716,6 @@
       wrap.appendChild(head);
       wrap.appendChild(body);
     }
-    var _itinMapsCtx = null;
-    function _itinMapsPoint(name, lat, lon) {
-      if (name && String(name).trim()) return String(name).trim();   // raw; encoded by the builder
-      if (isFinite(lat) && isFinite(lon)) return lat + ',' + lon;
-      return '';
-    }
-    // Reliable origin/dest coordinates: payload first, then window._tpLive (always
-    // populated when an itinerary exists, regardless of which files are deployed).
-    function _itinEndCoords(which) {
-      try {
-        var live = (typeof window !== 'undefined' && window._tpLive) ? window._tpLive : {};
-        if (which === 'origin') {
-          if (_itinMapsCtx && isFinite(_itinMapsCtx.oLat) && isFinite(_itinMapsCtx.oLon)) return { lat: _itinMapsCtx.oLat, lon: _itinMapsCtx.oLon };
-          if (live.originPos && isFinite(live.originPos.lat) && isFinite(live.originPos.lon)) return live.originPos;
-        } else {
-          if (_itinMapsCtx && isFinite(_itinMapsCtx.dLat) && isFinite(_itinMapsCtx.dLon)) return { lat: _itinMapsCtx.dLat, lon: _itinMapsCtx.dLon };
-          if (live.destPos && isFinite(live.destPos.lat) && isFinite(live.destPos.lon)) return live.destPos;
-        }
-      } catch (e) {}
-      return null;
-    }
-    // Build the Google Maps route link from EXACTLY the lettered stops shown in the
-    // bubble (origin -> B,C,... -> destination), so the map pins correspond 1:1 with
-    // the letters. Stops go by NAME when known (tappable, identical to the bubble),
-    // else by coordinates. One waypoint per stop \u2014 no exit/charger interleaving.
-    function _itinBuildMapsUrl() {
-      try {
-        if (!_itinMapsCtx) { try { window._tpItinMapsUrl = null; } catch (e) {} return null; }
-        var oc = _itinEndCoords('origin'), dc = _itinEndCoords('dest');
-        var oStr = (_itinMapsCtx.origin && String(_itinMapsCtx.origin).trim()) ? String(_itinMapsCtx.origin).trim()
-                 : (oc ? (oc.lat + ',' + oc.lon) : '');
-        var dStr = (_itinMapsCtx.dest && String(_itinMapsCtx.dest).trim()) ? String(_itinMapsCtx.dest).trim()
-                 : (dc ? (dc.lat + ',' + dc.lon) : '');
-        // A destination is mandatory: without it Google keeps only the first waypoint.
-        // If we cannot resolve origin AND destination, fall back to the planner export.
-        if (!oStr || !dStr) { try { window._tpItinMapsUrl = null; } catch (e) {} return null; }
-        var parts = ['https://www.google.com/maps/dir/?api=1',
-          'origin=' + encodeURIComponent(oStr), 'destination=' + encodeURIComponent(dStr)];
-        var wps = [];
-        (_itinStopEls || []).forEach(function (s) {
-          var it = s && s.it; if (!it) return;
-          var pt = _itinMapsPoint(it.place, it.lat, it.lon);   // name when known, else coords
-          if (pt) wps.push(pt);
-        });
-        if (wps.length) parts.push('waypoints=' + wps.map(encodeURIComponent).join('%7C'));
-        parts.push('travelmode=driving');
-        var url = parts.join('&');
-        try { window._tpItinMapsUrl = url; } catch (e) {}
-        return url;
-      } catch (e) { try { window._tpItinMapsUrl = null; } catch (e2) {} return null; }
-    }
     function addItineraryBubble(payload) {
       payload = payload || {};
       var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
@@ -3800,7 +3749,7 @@
         return { row: row, tx: tx };
       }
       var legs = payload.legs || [];
-      var stopLetters = [], _p = 1;   // origin is A; stops start at B (matches Google Maps pin lettering)
+      var stopLetters = [], _p = 0;
       legs.forEach(function (it) { if (it.kind !== 'drive') { stopLetters.push(letterChar(_p)); _p++; } });
       var destLetter = letterChar(_p);     // Maps letters waypoints+dest only (origin unlettered); dest = after last stop
       var _hrs = payload.hours || [];
@@ -3818,11 +3767,9 @@
 
       var listEl = elc('div', { style: 'margin:0;' });
       _itinStopEls = [];
-      _itinMapsCtx = { origin: payload.origin || null, dest: payload.dest || null,
-        oLat: payload.origin_lat, oLon: payload.origin_lon, dLat: payload.dest_lat, dLon: payload.dest_lon };
       var stepList = [];   // map itinerary steps to times AND to map letters, for the Hours panel
       // Origin (A, green like the Maps start pin)
-      listEl.appendChild(ptLine('A', '#2e7d32', (payload.origin || 'Origin')).row);   // origin = A (green), like the Maps start pin
+      listEl.appendChild(ptLine('', '#2e7d32', (payload.origin || 'Origin')).row);   // start dot, no letter (Maps does not letter the origin)
       var si = 0;
       legs.forEach(function (it) {
         if (it.kind === 'drive') {
@@ -3853,15 +3800,13 @@
         wrap.appendChild(_itinChargeEl);
       } else { _itinChargeEl = null; }
       addHoursPanel(wrap, payload.hours, L, stepList);
-      _itinBuildMapsUrl();   // build the route link from exactly the lettered stops above
       var mapsBtn = elc('button', { style:
         'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, L.openMaps);
       mapsBtn.addEventListener('click', function () {
-        var url = _itinBuildMapsUrl();   // rebuild from current stops (charger names may have arrived)
-        var opened = false;
-        if (url) { try { opened = !!window.open(url, '_blank'); } catch (e) {} if (!opened) { try { window.location.href = url; opened = true; } catch (e2) {} } }
-        else { try { if (window.TravelPlanner && window.TravelPlanner.openInMaps) { var r = window.TravelPlanner.openInMaps(); opened = !(r && r.opened === false); } } catch (e3) {} }
-        mapsBtn.textContent = opened ? L.opened : L.blocked;
+        var r = null;
+        try { if (window.TravelPlanner && window.TravelPlanner.openInMaps) r = window.TravelPlanner.openInMaps(); } catch (e) {}
+        if (r && r.opened === false) mapsBtn.textContent = L.blocked;
+        else mapsBtn.textContent = L.opened;
       });
       wrap.appendChild(mapsBtn);
       msgs.appendChild(wrap);
@@ -4024,7 +3969,6 @@
       try {
         var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
         _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); if (s.meta && s.it) fillStopMeta(s.meta, s.it); });
-        _itinBuildMapsUrl();   // charger names/coords may have arrived \u2014 keep the Maps link in sync
         msgs.scrollTop = msgs.scrollHeight;
       } catch (e) {}
     }
