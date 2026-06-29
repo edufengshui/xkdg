@@ -383,8 +383,6 @@ function buildFengShuiView(){
             <input type="number" id="fs-house-facing" min="0" max="360" step="0.1" placeholder="e.g. 180"
                    style="width:100%;padding:6px;border:1px solid #8a6a1f;border-radius:4px;font-size:14px;"
                    oninput="fsRedraw()">
-            <button onclick="fsFacingFromMap('fs-house-facing')" title="Measure facing from satellite map (magnetic)"
-                    style="margin-top:4px;width:100%;background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">📍 Measure facing</button>
           </div>
           <div style="min-width:90px;">
             <label style="font-size:11px;color:#666;display:block;">Period (1-9)</label>
@@ -395,7 +393,6 @@ function buildFengShuiView(){
           <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Show Stars</button>
           <button id="fs-manual-toggle" onclick="fsOpenManualStars()" title="Compile the flying stars chart by hand" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Manual</button>
           <button onclick="(typeof FSChartFinder!=='undefined') ? FSChartFinder.open() : alert('fs-chart-finder.js not loaded')" title="Find charts by star position" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🔍 Charts</button>
-          <button onclick="(typeof QFS!=='undefined') ? QFS.open() : alert('flying-stars-qimen.js not loaded')" title="Find Qimen hours for flying stars" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🌀 Qimen</button>
           <button id="fs-save-house-top" onclick="fsSaveHouse()" title="Save this house profile" style="margin-left:auto;background:#558b2f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">💾 SAVE</button>
         </div>
         <div id="fs-stars-center" style="margin-top:6px;font-size:13px;color:#666;text-align:center;min-height:18px;"></div>
@@ -433,14 +430,18 @@ function buildFengShuiView(){
       </div>
 
       <!-- ═══ LUOPAN MODE TOGGLE ═══ -->
-      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;">
+      <div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
         <button id="fs-mode-fs" onclick="fsSetLuopanMode('fs')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐ FS only</button>
         <button id="fs-mode-xkdg" onclick="fsSetLuopanMode('xkdg')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🚪 XKDG only</button>
         <button id="fs-mode-both" onclick="fsSetLuopanMode('both')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐🚪 Both</button>
+        <span style="width:1px;height:18px;background:#ddd;margin:0 2px;"></span>
+        <button id="fs-mode-floorplan" onclick="fsToggleFloorplanView()" title="Show the saved floor plan in place of the luopan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🏠 Floorplan</button>
       </div>
 
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
+        <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
+        <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
       </div>
 
       <!-- (Active house detail moved UP into the green HOUSE PROFILES box.) -->
@@ -467,13 +468,61 @@ function buildFengShuiView(){
 
       <div id="fs-results-area"></div>
 
-      <!-- ═══ ⚡ OPERATIVE — ACTIVATION (dynamic) — AT THE BOTTOM ═══ -->
+      <!-- ═══ ⚡ ACTIVATION (dynamic) — AT THE BOTTOM ═══ -->
       <div id="fs-operative" style="background:#ede7f6;border:2px solid #5e35b1;border-radius:8px;padding:10px;margin-top:18px;">
-        <div style="font-size:14px;font-weight:bold;color:#4527a0;margin-bottom:4px;">⚡ OPERATIVE — Activation</div>
-        <div style="font-size:11px;color:#666;font-style:italic;margin-bottom:10px;">Setup lives above in House Profiles. Here you decide <strong>when</strong> (dates / hours) and <strong>how</strong> (Qimen) to activate a placed element. Dates appear only as answers.</div>
+        <div style="font-size:14px;font-weight:bold;color:#4527a0;margin-bottom:4px;">⚡ ACTIVATION</div>
+        <div style="font-size:11px;color:#666;font-style:italic;margin-bottom:10px;">Setup lives above in House Profiles. Here you pick a <strong>quadrant</strong> and a <strong>Purpose</strong>, then scan for future dates/hours that carry <strong>both</strong> the Main Purpose conditions (XKDG) <strong>and</strong> the Feng Shui activation conditions (Qimen door). Dates appear only as answers.</div>
 
         <!-- Current context (date / person analysis) — moved here from the top -->
         <div id="fs-context" style="background:#fff8e1;border:1px solid #c9a84c;border-radius:8px;padding:10px;margin:0 0 10px;font-size:13px;line-height:1.5;"></div>
+
+        <!-- ⚡ PURPOSE ACTIVATION — pick a Purpose → scan future dates/hours.
+             Mode A (default): quadrant free → all 8 palaces.
+             Mode B (💧 Water palaces only): same purpose, restricted to the water
+             palaces of the active house (from House Profiles). -->
+        <div id="fs-purpact-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 0 10px;">
+          <div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:8px;">🎯 PURPOSE ACTIVATION</div>
+          <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+            <div style="flex:1;min-width:170px;">
+              <label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Purpose <button type="button" onclick="openPurposeGuide(document.getElementById('fs-purpact-purpose').value)" title="What this purpose looks for (a good date + Feng Shui activation)" style="background:#ede7f6;border:1px solid #b39ddb;color:#4527a0;cursor:pointer;font-size:11px;font-weight:700;padding:1px 8px;border-radius:11px;vertical-align:middle;margin-left:4px;">📖 Guide</button></label>
+              <select id="fs-purpact-purpose" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+                <option value="health">🏥 Health · Rest 休</option>
+                <option value="career">💼 Career · Open 開 / View 景</option>
+                <option value="wealth">💰 Wealth · Birth 生 (+Wu 戊)</option>
+                <option value="relationship">❤️ Relationship · Rest 休</option>
+                <option value="journey">✈️ Journey · Rest 休</option>
+                <option value="speak">🎤 Speak · View 景</option>
+                <option value="legal">⚖️ Legal · Shocking 驚 +San Qi</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:150px;">
+              <label style="font-size:11px;color:#666;display:block;">House</label>
+              <select id="fs-purpact-house" onmousedown="_fsPurpactPopulateHouses()" onchange="_fsPurpactPopulateTarget()" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+                <option value="">— active —</option>
+              </select>
+            </div>
+            <div style="flex:0 0 80px;">
+              <label style="font-size:11px;color:#666;display:block;">Days</label>
+              <input type="number" id="fs-purpact-days" min="1" max="120" value="30" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:14px;">
+            </div>
+            <button onclick="fsPurposeActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN</button>
+          </div>
+          <div style="margin-top:8px;">
+            <label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Target (where to look)</label>
+            <select id="fs-purpact-target" style="width:100%;padding:6px;border:1px solid #00897b;border-radius:4px;font-size:13px;">
+              <option value="">All quadrants (free) — search all 8 palaces</option>
+            </select>
+            <span id="fs-purpact-hint" style="font-size:11px;color:#777;font-style:italic;display:block;margin-top:4px;"></span>
+          </div>
+          <div style="font-size:11px;color:#777;font-style:italic;margin-top:6px;">Pick a <b>Target</b>: <b>All quadrants</b> searches everywhere and reports where the purpose's door appears; <b>Water palaces</b> restricts to your placed water features; or pick a specific <b>向星 Water star</b> / <b>山星 Mountain star</b> of the saved chart to scan the palace where that star sits (some purposes work better on a specific mountain star). Either way the result combines the Qimen door (Feng Shui) with the matching Main Purpose (XKDG).</div>
+          <div id="fs-purpact-results" style="margin-top:10px;"></div>
+          <div id="fs-purpact-chart" style="margin-top:10px;"></div>
+          <!-- 🔧 Fine-tune (advanced) — free choice of star on the general chart -->
+          <div id="fs-op-finetune" style="border-top:1px dashed #80cbc4;padding-top:8px;margin-top:10px;">
+            <button onclick="fsQimenStimulate(null)" style="background:#fff;color:#00695c;border:1px solid #4db6ac;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Free choice of target star on the general chart — advanced use">🔧 Fine-tune target (advanced)</button>
+            <span style="font-size:10px;color:#999;font-style:italic;margin-left:6px;">Free choice of star on the general chart — for advanced students.</span>
+          </div>
+        </div>
 
         <!-- 💧 Add a generic water feature → scan good dates/hours to activate it (XKDG + Qimen) -->
         <div id="fs-wateract-block" style="background:#e0f2f1;border:1px solid #00897b;border-radius:8px;padding:10px;margin:0 0 10px;">
@@ -497,14 +546,10 @@ function buildFengShuiView(){
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
 
-        <!-- 🎯 Guided activation: house → task → SCAN (replaces Placed elements + QFS boxes) -->
-        <div id="fs-op-activate" style="background:#ede7f6;border:1px solid #5e35b1;border-radius:8px;padding:10px;margin:0 0 10px;"></div>
-
-        <!-- 🔧 Fine-tune (advanced) — at the very end -->
-        <div id="fs-op-finetune" style="border-top:1px dashed #b39ddb;padding-top:8px;margin-top:4px;">
-          <button onclick="fsQimenStimulate(null)" style="background:#fff;color:#7e57c2;border:1px solid #b39ddb;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:bold;cursor:pointer;" title="Free choice of target star on the general chart — advanced use">🔧 Fine-tune target (advanced)</button>
-          <span style="font-size:10px;color:#999;font-style:italic;margin-left:6px;">Free choice of star on the general chart — for advanced students.</span>
-        </div>
+        <!-- 🎯 "Activate a setting" — replaced by the PURPOSE ACTIVATION block above.
+             Kept hidden (not deleted) because the saved-settings "🔎 Scan dates"
+             button still uses this engine to derive the target star and open QFS. -->
+        <div id="fs-op-activate" style="display:none;"></div>
       </div>
     </div>`;
 
@@ -539,6 +584,7 @@ let FS_STARS_ON = true;
 var _fsLuopanMode = 'fs';
 function fsSetLuopanMode(mode){
   _fsLuopanMode = mode;
+  try { _fsRestoreLuopanView(); } catch(e){}   // picking a luopan mode returns to the luopan
   ['fs','xkdg','both'].forEach(function(m){
     var btn = document.getElementById('fs-mode-' + m);
     if (btn){
@@ -547,6 +593,94 @@ function fsSetLuopanMode(mode){
   });
   fsRedraw();
 }
+
+// ── Saved floor plan, shown IN PLACE OF the luopan ──────────────────────────
+// Toggle button (🏠 Floorplan) swaps the luopan canvas for the active floor's
+// saved floor-plan image. Any luopan-mode button or a house switch restores it.
+var _fsFloorplanShown = false;
+function fsToggleFloorplanView(){
+  try {
+    var canvas = document.getElementById('fs-canvas');
+    var img    = document.getElementById('fs-floorplan-view');
+    var btn    = document.getElementById('fs-mode-floorplan');
+    if (!canvas || !img) return;
+    if (_fsFloorplanShown){ _fsRestoreLuopanView(); return; }
+    var ctx = (typeof _fsActiveHouseFloorCtx === 'function') ? _fsActiveHouseFloorCtx() : null;
+    var fp  = ctx && ctx.floor && ctx.floor.floorplan;
+    if (!fp || !fp.imgData){
+      alert('No saved floor plan for the active house/floor yet.\n\nImport one from the house card (\uD83D\uDCD0 Import a floorplan), set it up, then \uD83D\uDCBE Save to house.');
+      return;
+    }
+    var wrap = document.getElementById('fs-canvas-wrap');
+    // Present the plan LARGE: break out of the square luopan box so a landscape
+    // plan uses the full width with its natural height.
+    function _present(src){
+      img.src = src;
+      img.style.position = 'relative';
+      img.style.inset = 'auto';
+      img.style.width = '100%';
+      img.style.height = 'auto';
+      img.style.maxHeight = '82vh';
+      img.style.display = 'block';
+      if (wrap){ wrap.style.aspectRatio = 'auto'; wrap.style.maxWidth = '100%'; }
+      canvas.style.display = 'none';
+      var back = document.getElementById('fs-floorplan-back');
+      if (back) back.style.display = 'block';
+      _fsFloorplanShown = true;
+      if (btn) btn.style.background = '#1b8a3f';
+    }
+    if (fp.starsImg){
+      _present(fp.starsImg);                       // composite already baked (new saves)
+    } else if (window.FloorPlanStars && typeof FloorPlanStars.renderComposite === 'function'){
+      // Legacy plan saved before the stars snapshot — render the stars NOW from
+      // its saved geometry (same facing/period/center as the luopan), show it, and
+      // cache the result so it persists and is instant next time. The bare plan
+      // never replaces the luopan; the chart does.
+      _present(fp.imgData);                        // instant: bare plan while rendering
+      FloorPlanStars.renderComposite(fp, function(url){
+        if (!_fsFloorplanShown) return;            // user already switched away
+        if (url && url !== fp.imgData){
+          img.src = url;
+          try { fp.starsImg = url; if (ctx && ctx.all) _fsHousesSave(ctx.all); } catch(e){}
+        }
+      });
+    } else {
+      _present(fp.imgData);
+    }
+  } catch(e){}
+}
+function _fsRestoreLuopanView(){
+  try {
+    if (!_fsFloorplanShown) return;
+    var canvas = document.getElementById('fs-canvas');
+    var img    = document.getElementById('fs-floorplan-view');
+    var btn    = document.getElementById('fs-mode-floorplan');
+    var wrap   = document.getElementById('fs-canvas-wrap');
+    if (img){
+      img.style.display = 'none';
+      img.style.position = 'absolute'; img.style.inset = '0';
+      img.style.width = '100%'; img.style.height = '100%'; img.style.maxHeight = '';
+    }
+    if (wrap){ wrap.style.aspectRatio = ''; wrap.style.maxWidth = ''; }
+    var back = document.getElementById('fs-floorplan-back');
+    if (back) back.style.display = 'none';
+    if (canvas) canvas.style.display = 'block';
+    _fsFloorplanShown = false;
+    if (btn) btn.style.background = '#5d4037';
+  } catch(e){}
+}
+// Header "🖼 Floor plan": make this house active, then show its saved plan (with
+// flying stars) large, in place of the luopan. Edit stays on the ✏ button (modal).
+function fsViewFloorplanInPlace(personName, hi){
+  try {
+    if (typeof fsSetActiveHouse === 'function') fsSetActiveHouse(personName, hi);
+    try { _fsRestoreLuopanView(); } catch(e){}   // start from the luopan, then show the plan
+    if (typeof fsToggleFloorplanView === 'function') fsToggleFloorplanView();
+    var wrap = document.getElementById('fs-canvas-wrap');
+    if (wrap && wrap.scrollIntoView) wrap.scrollIntoView({ behavior:'smooth', block:'center' });
+  } catch(e){ console.warn('fsViewFloorplanInPlace', e); }
+}
+
 window._fsStarsVisible = false;
 function _fsSyncStarsToggleLabel(visible){
   window._fsStarsVisible = !!visible;
@@ -602,6 +736,8 @@ function fsRenderContext(){
   if (c.pAHex) html += `Person A year ${c.pALabel} — hex ${c.pAHex}, qi ${c.pAQi}, yun ${c.pAYun}<br>`;
   if (c.pBHex) html += `Person B year ${c.pBLabel} — hex ${c.pBHex}, qi ${c.pBQi}, yun ${c.pBYun}<br>`;
   ctxBox.innerHTML = html;
+  try { if (typeof _fsPurpactPopulateHouses === 'function') _fsPurpactPopulateHouses(); } catch(e){}
+  try { if (typeof _fsPurpactPopulateTarget === 'function') _fsPurpactPopulateTarget(); } catch(e){}
 }
 
 function openFengShui(){
@@ -2030,36 +2166,10 @@ function fsOpenDirectionCalc(onClose){
     + '</div>'
 
     // CALCULATE BUTTON
-    // FLIGHT SCAN OPTIONS (airports + outbound dates + optional return dates)
-    + '<div style="background:#f1f8e9;border-radius:6px;padding:10px;margin-bottom:10px;">'
-    + '<div style="font-size:12px;font-weight:bold;color:#1b5e20;margin-bottom:6px;">✈️ Flight scan</div>'
-    + '<div style="display:flex;gap:6px;align-items:end;margin-bottom:8px;">'
-    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Origin airport (IATA)</label>'
-    + '<input type="text" id="dir-orig-iata" maxlength="3" placeholder="auto" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;text-transform:uppercase;"></div>'
-    + '<div style="flex:1;min-width:80px;"><label style="font-size:10px;color:#666;">Dest airport (IATA)</label>'
-    + '<input type="text" id="dir-dest-iata" maxlength="3" placeholder="auto" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;text-transform:uppercase;"></div>'
-    + '</div>'
-    + '<div style="font-size:11px;font-weight:bold;color:#1b5e20;margin-bottom:3px;">Outbound</div>'
-    + '<div style="display:flex;gap:6px;align-items:end;margin-bottom:8px;">'
-    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">From</label>'
-    + '<input type="date" id="dir-flight-from" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
-    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">To (optional)</label>'
-    + '<input type="date" id="dir-flight-to" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
-    + '</div>'
-    + '<div style="font-size:11px;font-weight:bold;color:#8a5a00;margin-bottom:3px;">Return (optional)</div>'
-    + '<div style="display:flex;gap:6px;align-items:end;">'
-    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">From</label>'
-    + '<input type="date" id="dir-return-from" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
-    + '<div style="flex:1;"><label style="font-size:10px;color:#666;">To (optional)</label>'
-    + '<input type="date" id="dir-return-to" style="width:100%;padding:5px;border:1px solid #a5d6a7;border-radius:4px;font-size:13px;"></div>'
-    + '</div>'
-    + '<div style="font-size:10px;color:#888;margin-top:4px;">Empty IATA = auto-detect. One day = fill only “From”. Empty dates = current month.</div>'
-    + '</div>'
-    + '<button onclick="fsDirectionCalcUser()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">🧭 CALCULATE DIRECTION</button>'
+    + '<button onclick="fsDirectionCalc()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">🧭 CALCULATE DIRECTION</button>'
 
     // ONE-TAP: calculate direction + set Journey + 7-day window + run BEST scan
     + '<button onclick="fsDirectionScanFlights()" style="width:100%;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:12px;font-size:15px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🔭 SCAN flight dates</button>'
-    + '<button onclick="fsDirectionScanReturn()" style="width:100%;background:#ef6c00;color:#fff;border:none;border-radius:6px;padding:11px;font-size:14px;font-weight:bold;cursor:pointer;margin-bottom:10px;">🔄 SCAN return flights</button>'
 
     // RESULT
     + '<div id="dir-calc-result" style="text-align:center;min-height:40px;"></div>';
@@ -2077,9 +2187,7 @@ function _fsDirSave(){
     var g = function(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; };
     var route = {
       oAddr: g('dir-orig-addr'), oLat: g('dir-orig-lat'), oLng: g('dir-orig-lng'),
-      dAddr: g('dir-dest-addr'), dLat: g('dir-dest-lat'), dLng: g('dir-dest-lng'),
-      oIata: g('dir-orig-iata'), dIata: g('dir-dest-iata'),
-      ofrom: g('dir-flight-from'), oto: g('dir-flight-to'), rfrom: g('dir-return-from'), rto: g('dir-return-to')
+      dAddr: g('dir-dest-addr'), dLat: g('dir-dest-lat'), dLng: g('dir-dest-lng')
     };
     localStorage.setItem('xkdg_dir_route', JSON.stringify(route));
     // Keep the flight-search route in sync too (used by the 🔎 buttons).
@@ -2098,14 +2206,8 @@ function _fsDirRestore(){
     // filled (so origin still reflects "where I am now"), else use the saved ones.
     set('dir-orig-addr', route.oAddr);
     var ol = document.getElementById('dir-orig-lat'), og = document.getElementById('dir-orig-lng');
-    // A saved, geocoded origin CITY wins over the GPS default (so a typed origin
-    // like "Sydney" persists across close/reopen instead of snapping back to GPS).
-    if (ol && route.oAddr && route.oLat) ol.value = route.oLat;
-    else if (ol && !ol.value && route.oLat) ol.value = route.oLat;
-    if (og && route.oAddr && route.oLng) og.value = route.oLng;
-    else if (og && !og.value && route.oLng) og.value = route.oLng;
-    set('dir-orig-iata', route.oIata); set('dir-dest-iata', route.dIata);
-    set('dir-flight-from', route.ofrom); set('dir-flight-to', route.oto); set('dir-return-from', route.rfrom); set('dir-return-to', route.rto);
+    if (ol && !ol.value && route.oLat) ol.value = route.oLat;
+    if (og && !og.value && route.oLng) og.value = route.oLng;
   } catch(e){}
 }
 
@@ -2144,10 +2246,6 @@ function fsDirectionGeocodeOrigin(){
     document.getElementById('dir-orig-lng').value = parseFloat(place.lon).toFixed(6);
     if(status) status.textContent = '✓ Origin: ' + place.display_name.substring(0, 80);
     try { _fsDirSave(); } catch(e){}
-    try { if (typeof _fsNearestAirportIata === 'function') { var _fo = document.getElementById('dir-orig-iata');
-      if (_fo) { var _cc = (typeof _fsCityCode === 'function') ? _fsCityCode(place.display_name || '', parseFloat(place.lat), parseFloat(place.lon)) : null;
-        if (_cc) { _fo.value = String(_cc).split(',')[0]; try{_fsDirSave();}catch(e){} }
-        else _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fo){ _fo.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Origin geocoding error: ' + err.message;
@@ -2173,10 +2271,6 @@ function fsDirectionGeocode(){
     document.getElementById('dir-dest-lng').value = parseFloat(place.lon).toFixed(6);
     if(status) status.textContent = '✓ Found: ' + place.display_name.substring(0, 80);
     try { _fsDirSave(); } catch(e){}
-    try { if (typeof _fsNearestAirportIata === 'function') { var _fd = document.getElementById('dir-dest-iata');
-      if (_fd) { var _cc = (typeof _fsCityCode === 'function') ? _fsCityCode(place.display_name || '', parseFloat(place.lat), parseFloat(place.lon)) : null;
-        if (_cc) { _fd.value = String(_cc).split(',')[0]; try{_fsDirSave();}catch(e){} }
-        else _fsNearestAirportIata(parseFloat(place.lat), parseFloat(place.lon)).then(function(c){ if (c && _fd){ _fd.value = c; try{_fsDirSave();}catch(e){} } }).catch(function(){}); } } } catch(e){}
   })
   .catch(function(err){
     if(status) status.textContent = 'Geocoding error: ' + err.message;
@@ -2229,40 +2323,7 @@ function fsClearDirectionFilter(){
 // days if none set), close the popup, and run the BEST scan. The BEST scan then
 // lists the day/hours whose score >= 8 AND whose Qimen direction gate (San Qi +
 // favourable door) passes toward the flight direction — best first.
-// Geocode a free-text place to {lat,lon,name} via Nominatim (Promise). Returns null if not found.
-function _fsGeocodePromise(addr){
-  return fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(addr) + '&format=json&limit=1', { headers:{'Accept-Language':'en'} })
-    .then(function(r){ return r.json(); })
-    .then(function(d){ if (d && d.length) return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), name: d[0].display_name }; return null; });
-}
-// Before any direction/flight action: if an address box has text, refresh ITS
-// coordinates from that text, so a typed city (e.g. "Sydney") is always used
-// instead of stale GPS/default coordinates. Origin with an empty address keeps
-// its GPS coordinates (it means "where I am now").
-async function _fsDirSyncCoordsFromAddr(){
-  var st = document.getElementById('dir-geocode-status');
-  var oa = document.getElementById('dir-orig-addr'), da = document.getElementById('dir-dest-addr');
-  if (oa && oa.value.trim()){
-    if (st) st.textContent = 'Locating origin\u2026';
-    try { var o = await _fsGeocodePromise(oa.value.trim());
-      if (o){ document.getElementById('dir-orig-lat').value = o.lat.toFixed(6); document.getElementById('dir-orig-lng').value = o.lon.toFixed(6); } } catch(e){}
-  }
-  if (da && da.value.trim()){
-    if (st) st.textContent = 'Locating destination\u2026';
-    try { var d = await _fsGeocodePromise(da.value.trim());
-      if (d){ document.getElementById('dir-dest-lat').value = d.lat.toFixed(6); document.getElementById('dir-dest-lng').value = d.lon.toFixed(6); } } catch(e){}
-  }
-  if (st) st.textContent = '';
-  try { _fsDirSave(); } catch(e){}
-}
-// CALCULATE button: sync typed cities to coordinates first, then compute.
-async function fsDirectionCalcUser(){
-  try { await _fsDirSyncCoordsFromAddr(); } catch(e){}
-  try { fsDirectionCalc(); } catch(e){}
-}
-
-async function fsDirectionScanFlights(){
-  try { await _fsDirSyncCoordsFromAddr(); } catch(e){}   // typed city -> coordinates, so the right airport is used
+function fsDirectionScanFlights(){
   var lat1 = parseFloat(document.getElementById('dir-orig-lat').value);
   var lng1 = parseFloat(document.getElementById('dir-orig-lng').value);
   var lat2 = parseFloat(document.getElementById('dir-dest-lat').value);
@@ -2291,21 +2352,6 @@ async function fsDirectionScanFlights(){
   var sd = document.getElementById('scan-days');
   if(sd && (!sd.value || parseInt(sd.value) < 1)){ sd.value = '7'; }
 
-  // Apply the shell's flight options BEFORE closing: airport IATA overrides + month to scan.
-  window._fsDirScanRange = null;
-  try {
-    var _oi = document.getElementById('dir-orig-iata'), _di = document.getElementById('dir-dest-iata');
-    var _ff = document.getElementById('dir-flight-from'), _ft = document.getElementById('dir-flight-to');
-    var _up3 = function(v){ return (v || '').trim().toUpperCase(); };
-    var _oI = _up3(_oi && _oi.value), _dI = _up3(_di && _di.value);
-    if (/^[A-Z]{3}$/.test(_oI)) { window._fsFlightOrigIata = _oI; try { localStorage.setItem('xkdg_flight_orig_iata', _oI); } catch(e){} }
-    else { window._fsFlightOrigIata = ''; try { localStorage.removeItem('xkdg_flight_orig_iata'); } catch(e){} }
-    if (/^[A-Z]{3}$/.test(_dI)) { window._fsFlightDestIata = _dI; try { localStorage.setItem('xkdg_flight_dest_iata', _dI); } catch(e){} }
-    else { window._fsFlightDestIata = ''; try { localStorage.removeItem('xkdg_flight_dest_iata'); } catch(e){} }
-    var _fromV = (_ff && _ff.value) || '', _toV = (_ft && _ft.value) || '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(_fromV)) window._fsDirScanRange = { from: _fromV, to: (/^\d{4}-\d{2}-\d{2}$/.test(_toV) && _toV >= _fromV) ? _toV : _fromV };
-    _fsDirSave();
-  } catch(e){}
   // 4) Close the popup. (This path runs the scan in Main on purpose — no hub return.)
   _fsDirReturn = null;
   var p = document.getElementById('dir-calc-popup'); if(p) p.remove();
@@ -2327,18 +2373,9 @@ async function fsDirectionScanFlights(){
   // 5) Scan the CURRENT month (today → end of month) and show it on the calendar
   //    with ✈ favourable-hour badges. Navigating months (+1m/+2m/…) re-scans that
   //    whole month. A future month is scanned in full; the current month starts today.
-  if (window._fsDirScanRange && typeof runScanner === 'function'){
-    var _R = window._fsDirScanRange;
-    var _ssEl = document.getElementById('scan-start'), _sdEl = document.getElementById('scan-days');
-    if (_ssEl) _ssEl.value = _R.from;
-    var _d1 = new Date(_R.from + 'T00:00:00'), _d2 = new Date(_R.to + 'T00:00:00');
-    if (_sdEl) _sdEl.value = String(Math.max(1, Math.round((_d2 - _d1) / 86400000) + 1));
-    runScanner();
-    if (typeof setMode === 'function') setMode('cal');
-    window._fsFlightCalMode = true;
-    if (typeof buildCalView === 'function') buildCalView();
-  } else if (typeof _fsScanMonthForFlights === 'function'){
-    var _tn = new Date(); _fsScanMonthForFlights(_tn.getFullYear(), _tn.getMonth() + 1);
+  if (typeof _fsScanMonthForFlights === 'function'){
+    var _tn = new Date();
+    _fsScanMonthForFlights(_tn.getFullYear(), _tn.getMonth() + 1);
   } else if (typeof runScanner === 'function'){
     runScanner();
     if (typeof setMode === 'function' && typeof buildCalView === 'function'){
@@ -2348,29 +2385,6 @@ async function fsDirectionScanFlights(){
     }
   }
   else { alert('Scanner not available on this page.'); }
-}
-
-// B) RETURN leg: reuse the whole tested pipeline by swapping origin<->destination
-// (address, coordinates and IATA) and scanning the RETURN dates. The saved
-// outbound route is restored afterwards, so reopening the panel still shows the
-// outbound trip. Direction + favourable hours are recomputed for the reverse leg.
-async function fsDirectionScanReturn(){
-  var rf = (document.getElementById('dir-return-from') || {}).value || '';
-  var rt = (document.getElementById('dir-return-to') || {}).value || '';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(rf)){ alert('Set a Return date first (Return \u2192 From).'); return; }
-  var savedRoute = null; try { savedRoute = localStorage.getItem('xkdg_dir_route'); } catch(e){}
-  function gv(id){ var e = document.getElementById(id); return e ? e.value : ''; }
-  function sv(id, v){ var e = document.getElementById(id); if (e) e.value = v; }
-  // Capture outbound origin/destination, then swap them into the fields.
-  var oA=gv('dir-orig-addr'), oLa=gv('dir-orig-lat'), oLo=gv('dir-orig-lng'), oI=gv('dir-orig-iata');
-  var dA=gv('dir-dest-addr'), dLa=gv('dir-dest-lat'), dLo=gv('dir-dest-lng'), dI=gv('dir-dest-iata');
-  sv('dir-orig-addr', dA); sv('dir-orig-lat', dLa); sv('dir-orig-lng', dLo); sv('dir-orig-iata', dI);
-  sv('dir-dest-addr', oA); sv('dir-dest-lat', oLa); sv('dir-dest-lng', oLo); sv('dir-dest-iata', oI);
-  // Use the return dates as the (outbound-of-the-return) scan window.
-  sv('dir-flight-from', rf); sv('dir-flight-to', rt || rf);
-  try { await fsDirectionScanFlights(); } catch(e){}
-  // Restore the outbound route so the panel reopens with the outbound trip.
-  try { if (savedRoute != null) localStorage.setItem('xkdg_dir_route', savedRoute); } catch(e){}
 }
 
 function showJiaPopup(jiaName){
@@ -2465,27 +2479,31 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
     if(d.zhiShi) zMark = '<div onclick="event.stopPropagation();showZhiPopup(\'zhiShi\')" style="display:inline-block;font-size:10px;color:#e65100;font-weight:bold;line-height:1.2;cursor:pointer;background:#fff8e1;border:1px solid #ffb74d;border-radius:3px;padding:1px 5px;margin-top:2px;">Zhi Shi ℹ</div>';
     var jia = ''; // Jia hiding name removed per user request
 
-    // Center palace gets a special layout with vertical spacing between the two stems
+    // Center palace: deity on top, star/heaven-stem centred, di-pan stem at the bottom.
     if(p === 5){
-      return '<td style="background:'+bg+';padding:8px 7px;vertical-align:middle;text-align:center;border:'+border+';width:33%;">'
-        + '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;">' + (d.deity||'Center') + '</div>'
-        + '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;margin:8px 0 2px;">' + (d.tiH||'') + '</div>'
-        + '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
-        + '<div style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:18px;margin:8px 0 2px;">' + (d.diH||'') + '</div>'
-        + '<div style="color:#999;font-size:13px;font-weight:bold;margin-top:4px;">' + p + '</div>'
+      return '<td style="background:'+bg+';padding:8px 7px;text-align:center;border:'+border+';width:33%;height:1px;">'
+        + '<div style="display:flex;flex-direction:column;height:100%;min-height:90px;">'
+        +   '<div style="color:#222;font-size:13px;font-weight:bold;">' + (d.deity||'Center') + '</div>'
+        +   '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;">'
+        +     '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;">' + (d.tiH||'') + '</div>'
+        +     '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
+        +   '</div>'
+        +   '<div style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:18px;">' + (d.diH||'') + '</div>'
+        + '</div>'
         + '</td>';
     }
 
-    return '<td style="background:'+bg+';padding:6px 7px;vertical-align:top;border:'+border+';width:33%;">'
-      + '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
-      +   '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
-      +   '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
-      + '</div>'
-      + '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
-      + '<div style="display:flex;justify-content:space-between;align-items:flex-end;">'
-      +   '<div><span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'') + '</span>' + jia + zMark + '</div>'
-      +   '<span style="color:#999;font-size:13px;font-weight:bold;">' + p + '</span>'
+    return '<td style="background:'+bg+';padding:6px 7px;border:'+border+';width:33%;height:1px;">'
+      + '<div style="display:flex;flex-direction:column;height:100%;min-height:90px;">'
+      +   '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
+      +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
+      +     '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
+      +     '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
+      +   '</div>'
+      +   '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
+      +   '<div style="margin-top:auto;display:flex;align-items:flex-end;gap:6px;">'
+      +     '<span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'') + '</span>' + jia + zMark
+      +   '</div>'
       + '</div>'
       + '</td>';
   }
@@ -2574,6 +2592,98 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   // Scroll to it
   var el = document.getElementById('qimen-full-chart');
   if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// QMDJ CHART TOOL — a standalone panel so anyone can view a Qimen chart
+// (Rotating 轉盤 or Flying 飛盤) for any date + 時辰, without scanning.
+// Reuses showQimenChart (renderer) + QMDJWaterScanner.hourPillarsForDate.
+// ═══════════════════════════════════════════════════════════════════
+function _qmdjChartPopulateHours(selectCurrent){
+  var dEl = document.getElementById('qmdj-tool-date');
+  var sel = document.getElementById('qmdj-tool-hour');
+  if(!dEl || !sel) return;
+  if(!window.QMDJWaterScanner || typeof QMDJWaterScanner.hourPillarsForDate !== 'function'){
+    sel.innerHTML = '<option value="">scanner not loaded</option>'; return;
+  }
+  var parts = String(dEl.value || '').split('-');
+  if(parts.length !== 3){ sel.innerHTML = '<option value="">(set a valid date)</option>'; return; }
+  var hp = QMDJWaterScanner.hourPillarsForDate(+parts[0], +parts[1], +parts[2]);
+  if(!hp){ sel.innerHTML = '<option value="">(could not compute the day)</option>'; return; }
+  var prev = sel.value;
+  sel.innerHTML = hp.map(function(p, i){
+    return '<option value="' + i + '" data-gan="' + p.stemHan + '" data-zhi="' + p.branchHan + '">'
+         + p.branchHan + '\u6642 ' + (p.time || '') + ' \u00b7 ' + p.stemHan + p.branchHan + '</option>';
+  }).join('');
+  if(selectCurrent){
+    var h = new Date().getHours();
+    sel.value = String(Math.floor(((h + 1) % 24) / 2));   // current double-hour (子=0 … 亥=11)
+  } else if(prev){ sel.value = prev; }
+}
+function qmdjChartShow(){
+  var dEl = document.getElementById('qmdj-tool-date');
+  var sel = document.getElementById('qmdj-tool-hour');
+  var box = document.getElementById('qmdj-tool-chart');
+  if(!dEl || !sel || !box) return;
+  var opt = sel.options[sel.selectedIndex];
+  if(!opt || !opt.getAttribute('data-gan')){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Pick an hour.</div>'; return; }
+  var hGan = opt.getAttribute('data-gan'), hZhi = opt.getAttribute('data-zhi');
+  var modeEl = document.querySelector('input[name="qmdj-tool-mode"]:checked');
+  var rotating = !!(modeEl && modeEl.value === 'rotating');
+  if(typeof showQimenChart !== 'function'){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>'; return; }
+  var html = '';
+  try { html = showQimenChart(dEl.value, hGan, hZhi, null, { mode:(rotating ? 'rotating' : undefined), returnHtml:true }); }
+  catch(e){ html = ''; }
+  box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Cannot load chart for ' + dEl.value + ' ' + hGan + hZhi + '.</div>';
+}
+function openQmdjChartPanel(){
+  var ov = document.getElementById('qmdj-tool-overlay');
+  if(ov){ ov.style.display = 'flex'; _qmdjChartPopulateHours(true); return; }
+  ov = document.createElement('div');
+  ov.id = 'qmdj-tool-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,8,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
+  ov.addEventListener('click', function(e){ if(e.target === ov) ov.style.display = 'none'; });
+  var today = new Date().toISOString().slice(0,10);
+  ov.innerHTML =
+      '<div style="background:#fff;border-radius:12px;max-width:780px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);">'
+    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+    +     '<div style="font-size:16px;font-weight:bold;color:#5e35b1;">\ud83c\udfb2 QMDJ Chart</div>'
+    +     '<button onclick="document.getElementById(\'qmdj-tool-overlay\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">\u2715</button>'
+    +   '</div>'
+    +   '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">'
+    +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Date</label>'
+    +       '<input type="date" id="qmdj-tool-date" value="' + today + '" onchange="_qmdjChartPopulateHours()" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></div>'
+    +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Hour \u6642\u8fb0</label>'
+    +       '<select id="qmdj-tool-hour" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></select></div>'
+    +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Chart</label>'
+    +       '<label style="font-size:13px;margin-right:10px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="flying" checked> Flying \u98db\u76e4</label>'
+    +       '<label style="font-size:13px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="rotating"> Rotating \u8f49\u76e4</label></div>'
+    +     '<button onclick="qmdjChartShow()" style="background:#5e35b1;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-weight:bold;cursor:pointer;font-size:13px;">Show chart</button>'
+    +   '</div>'
+    +   '<div style="font-size:11px;color:#888;font-style:italic;margin-bottom:10px;">Rotating \u8f49\u76e4 = human directional actions &amp; divination. Flying \u98db\u76e4 = Feng Shui stimulators. South is at the top.</div>'
+    +   '<div id="qmdj-tool-chart"></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  _qmdjChartPopulateHours(true);
+  try { qmdjChartShow(); } catch(e){}   // show "now" immediately
+}
+function _injectQmdjChartLauncher(){
+  try {
+    if(document.getElementById('qmdj-tool-launcher')) return;
+    var b = document.createElement('button');
+    b.id = 'qmdj-tool-launcher';
+    b.type = 'button';
+    b.title = 'QMDJ Chart (Rotating / Flying)';
+    b.textContent = '\ud83c\udfb2';   // 🎲 — distinct from the 🧭 directional compass and the 🌀 water/Qimen spiral
+    b.onclick = openQmdjChartPanel;
+    // Circular FAB sitting right beside the compass FAB (compass is at left:14, width 46).
+    b.style.cssText = 'position:fixed;left:70px;bottom:14px;z-index:99994;width:46px;height:46px;border:0;border-radius:50%;background:#5e35b1;color:#fff;font-size:21px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+    document.body.appendChild(b);
+  } catch(e){}
+}
+if(typeof document !== 'undefined'){
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _injectQmdjChartLauncher);
+  else _injectQmdjChartLauncher();
 }
 
 // ── Internal/External door helpers: Zheng Shen facing + Ling Shen water ──
@@ -2975,7 +3085,6 @@ function _fsHouseAddFloors(h){
     period:   (h.period != null ? h.period : null),
     doors:    h.doors  || [],
     waters:   h.waters || [],
-    zones:    h.zones  || [],
     settings: h.settings || { water: [], bed: [], desk: [] }
   };
   return {
@@ -2993,14 +3102,13 @@ function _fsActiveFloor(h){
   if (!h) return null;
   if (!h.floors || !h.floors.length){
     h.floors = [{ label: 'Floor 1', facing: (h.houseFacing != null ? h.houseFacing : null), period: (h.period != null ? h.period : null),
-      doors: h.doors || [], waters: h.waters || [], zones: h.zones || [], settings: h.settings || { water: [], bed: [], desk: [] } }];
+      doors: h.doors || [], waters: h.waters || [], settings: h.settings || { water: [], bed: [], desk: [] } }];
     h.activeFloor = 0;
   }
   var i = h.activeFloor || 0; if (i >= h.floors.length) i = 0;
   var f = h.floors[i];
   if (!f.doors) f.doors = [];
   if (!f.waters) f.waters = [];
-  if (!f.zones) f.zones = [];
   if (!f.settings) f.settings = { water: [], bed: [], desk: [] };
   return f;
 }
@@ -3110,9 +3218,22 @@ function fsAddFloor(personName, houseIdx){
     var name = prompt('Name of the new floor (e.g. "1st floor", "Attic"):', 'Floor ' + (h.floors.length + 1));
     if (name === null) return;
     if (!name.trim()) name = 'Floor ' + (h.floors.length + 1);
+    // Options previously shown on the card now live here, inside Add floor:
+    var same = confirm('Same facing & period as the rest of the house for this floor?\n\nOK = same for all floors\nCancel = this floor has its own facing / period');
+    var fFacing, fPeriod;
+    if (same){
+      h.sameFacing = true;
+      if (h.houseFacing == null){ var hf = prompt('House facing (\u00b0):', ''); if (hf !== null && String(hf).trim() !== '') h.houseFacing = parseFloat(hf); }
+      if (h.period == null){ var hp = prompt('Period (1-9):', ''); if (hp !== null && String(hp).trim() !== '') h.period = parseInt(hp, 10); }
+      fFacing = h.houseFacing; fPeriod = h.period;
+    } else {
+      h.sameFacing = false;
+      var ff = prompt('Facing (\u00b0) for "' + name.trim() + '":', ''); fFacing = (ff === null || String(ff).trim() === '') ? null : parseFloat(ff);
+      var pp = prompt('Period (1-9) for "' + name.trim() + '":', ''); fPeriod = (pp === null || String(pp).trim() === '') ? null : parseInt(pp, 10);
+    }
     h.floors.push({ label: name.trim(),
-      facing: (h.sameFacing ? h.houseFacing : null), period: (h.sameFacing ? h.period : null),
-      doors: [], waters: [], zones: [], settings: { water: [], bed: [], desk: [] } });
+      facing: fFacing, period: fPeriod,
+      doors: [], waters: [], settings: { water: [], bed: [], desk: [] } });
     h.activeFloor = h.floors.length - 1;
     _fsHousesSave(all);
     if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
@@ -3166,12 +3287,23 @@ function fsEditFloorFacing(personName, houseIdx){
     var all = _fsHousesLoad();
     var h = all[personName] && all[personName][houseIdx]; if (!h) return;
     var f = _fsActiveFloor(h); if (!f) return;
-    var fac = prompt('Facing (\u00b0) for floor "' + (f.label || '') + '":', f.facing != null ? f.facing : '');
-    if (fac === null) return;
-    var per = prompt('Period (1-9) for floor "' + (f.label || '') + '":', f.period != null ? f.period : '');
-    if (per === null) return;
-    f.facing = (String(fac).trim() === '') ? null : parseFloat(fac);
-    f.period = (String(per).trim() === '') ? null : parseInt(per, 10);
+    // When the house shares one facing/period across floors, edit the HOUSE value
+    // (that is what is shown); otherwise edit just this floor.
+    if (h.sameFacing){
+      var hfac = prompt('House facing (\u00b0) — applies to all floors:', h.houseFacing != null ? h.houseFacing : '');
+      if (hfac === null) return;
+      var hper = prompt('Period (1-9) — applies to all floors:', h.period != null ? h.period : '');
+      if (hper === null) return;
+      h.houseFacing = (String(hfac).trim() === '') ? null : parseFloat(hfac);
+      h.period = (String(hper).trim() === '') ? null : parseInt(hper, 10);
+    } else {
+      var fac = prompt('Facing (\u00b0) for floor "' + (f.label || '') + '":', f.facing != null ? f.facing : '');
+      if (fac === null) return;
+      var per = prompt('Period (1-9) for floor "' + (f.label || '') + '":', f.period != null ? f.period : '');
+      if (per === null) return;
+      f.facing = (String(fac).trim() === '') ? null : parseFloat(fac);
+      f.period = (String(per).trim() === '') ? null : parseInt(per, 10);
+    }
     _fsHousesSave(all);
     if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
     fsRenderHouseProfiles();
@@ -3248,12 +3380,10 @@ function fsHouseImportFloorplan(pName, hi){
     if (typeof fac === 'number') opts.facingDeg = fac;
     if (typeof per === 'number') opts.period = per;
     if (f && f.floorplan && f.floorplan.facingSide) opts.facingSide = f.floorplan.facingSide;
-    // Pass THIS floor's hand-composed manual chart so the tool's "Draw chart"
-    // uses the student's manual stars instead of recomputing the STANDARD chart
-    // for the facing+period. (Regression fix: opts.manualChart was being dropped.)
-    if (f && f.manualChart && f.manualChart.sittingStars && f.manualChart.facingStars && f.manualChart.baseStars) {
-      opts.manualChart = f.manualChart;
-    }
+    // Pass the saved MANUAL chart (if any) so the floor plan draws the manually
+    // edited stars instead of recomputing the regular chart from facing+period.
+    var _mc = (f && f.manualChart) ? f.manualChart : (window._fsManualChart || null);
+    if (_mc && _mc.sittingStars && _mc.facingStars && _mc.baseStars) opts.manualChart = _mc;
     if (window.FloorPlanStars && typeof FloorPlanStars.open === 'function') FloorPlanStars.open(opts);
     else alert('Floorplans not available on this page.');
   } catch (e){ alert('Could not open the floor-plan tool.'); }
@@ -3333,8 +3463,8 @@ function fsRenderHouseProfiles(){
     if (isActive) html += '<span style="color:#2e7d32;font-size:22px;line-height:1;" title="Active house">●</span>';
     else html += '<span onclick="fsSetActiveHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="color:#bbb;font-size:22px;line-height:1;cursor:pointer;" title="Set as active house">○</span>';
     html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
-    html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">' + (_exp ? '▾ Hide details' : '▸ Open details') + '</button>';
-    if (_sumBits.length) html += '<span style="font-size:11px;color:#777;">' + _sumBits.join(' · ') + '</span>';
+    if (_sumBits.length) html += '<span style="font-size:11px;color:#777;white-space:nowrap;">' + _sumBits.join(' · ') + '</span>';
+    html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" title="' + (_exp ? 'Hide details' : 'Open details & tools (Add water / bed / desk / floor…)') + '" style="background:' + (_exp ? '#2e7d32' : '#eef5ee') + ';color:' + (_exp ? '#fff' : '#2e7d32') + ';border:1px solid #2e7d32;font-size:14px;font-weight:bold;line-height:1;cursor:pointer;padding:5px 12px;border-radius:6px;white-space:nowrap;">' + (_exp ? '▾ Hide' : '▸ Open') + '</button>';
     // Category selector — on the same line (the owner name sits on the Facing/Period line inside the house)
     html += '<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#555;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
     html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
@@ -3346,6 +3476,14 @@ function fsRenderHouseProfiles(){
     // RIGHT (top-right corner): Load · Rename · Delete · Archive
     html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto;">';
     html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Load into FS inputs to edit">📂 Load</button>';
+    // 🖼 Floor plan — VIEW the saved plan. Square icon to distinguish it from the
+    // 📐 "Import a floorplan" button below; same brown colour. Remove (🗑) sits
+    // right beside it (deletion lives with the floor-plan, not in the Add row).
+    if (_sf && _sf.floorplan && _sf.floorplan.imgData){
+      html += '<button onclick="fsViewFloorplanInPlace(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Show the saved plan with its flying stars, large, in place of the luopan">🖼 Floor plan</button>';
+      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#5d4037;border:1px solid #5d4037;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Edit the floor plan in the editor">✏</button>';
+      html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Remove the saved floor plan">🗑</button>';
+    }
     html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
     // 📁 Archive = the client\'s Google Drive folder (photos, written consultations, etc.)
@@ -3377,23 +3515,26 @@ function fsRenderHouseProfiles(){
     } else {
       html += '<span style="color:#999;">No address</span>';
     }
+    html += '<button onclick="fsFacingFromMap(\'fs-house-facing\')" title="Measure facing from satellite map (magnetic)" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">📍 Measure facing</button>';
     html += '<button onclick="fsEditHouseAddress(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Address</button>';
     html += '</div>';
-    // Floor (right) — uses the empty space on the right
+    // Floor (right) — facing/period inline next to the selector; click the value to edit it.
     html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;">';
     html += '<span style="font-weight:bold;color:#2e7d32;">🏢 Floor:</span>';
     html += '<select onchange="fsSwitchFloor(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
     h.floors.forEach(function(fl, fi){ html += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>'; });
     html += '</select>';
-    html += '<button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:2px 9px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button>';
+    var _fpTxt = '';
+    if (effFacing != null) _fpTxt += 'Facing ' + effFacing + '\u00b0';
+    if (effPeriod != null) _fpTxt += (_fpTxt ? ' \u00b7 ' : '') + 'Period ' + effPeriod;
+    if (!_fpTxt) _fpTxt = '<span style="color:#e65100;">no facing/period</span>';
+    html += '<span onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" title="Edit this floor\'s facing / period" style="font-size:11px;color:#555;white-space:nowrap;cursor:pointer;border-bottom:1px dotted #aaa;">' + _fpTxt + ' \u270E</span>';
     html += '<button onclick="fsRenameFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">✏ Rename</button>';
-    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">🗑</button>';
+    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete this floor">🗑</button>';
     html += '</div>';
     html += '</div>';
-    // Same Facing / Period toggle
-    html += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#555;margin:0 0 4px;cursor:pointer;">';
-    html += '<input type="checkbox"' + (h.sameFacing ? ' checked' : '') + ' onchange="fsToggleSameFacing(\'' + escJs(person.name) + '\',' + hi + ',this.checked)"> Same Facing / Period for all floors';
-    html += '</label>';
+    // + Add floor on its own row below (facing/period & same-for-all options are asked there)
+    html += '<div style="margin:0 0 6px;"><button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button></div>';
 
     // ── Guest (occupant #2) — cohabit (owner+guest) or guest-as-#1 (owner away) ──
     if (h.guest && h.guest.name){
@@ -3409,18 +3550,8 @@ function fsRenderHouseProfiles(){
         + '</div>';
     }
 
-    // House / floor info (owner name on the right)
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;color:#555;">';
-    html += '<span>';
-    if (effFacing != null) html += 'Facing: ' + effFacing + '° &nbsp;';
-    if (effPeriod != null) html += 'Period: ' + effPeriod;
-    if (effFacing == null && effPeriod == null) html += '<span style="color:#e65100;">No facing/period for this floor yet</span>';
-    if (!h.sameFacing) html += ' <button onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 7px;font-size:10px;cursor:pointer;margin-left:4px;">✏ Floor facing/period</button>';
-    html += '</span>';
-    html += '<span style="white-space:nowrap;color:#444;">👤 <strong>' + escHtml(_pn) + '</strong></span>';
-    html += '</div>';
-
-    // ── FLOOR PLAN (📐) — moved DOWN into the bottom "Add" row (see _fpBtns below) ──
+    // (Facing/Period now shown inline next to the Floor selector above; the owner
+    // is implicit — every House Profile follows the active person — so no 👤 label.)
 
     // ── DOORS (🚪) — labeled block only when there are doors ──
     var doors = f.doors;
@@ -3457,22 +3588,8 @@ function fsRenderHouseProfiles(){
       html += '</div>';
     }
 
-    // ── QFS ZONES (🌀) — management lives here in House Profiles; the SCAN runs
-    //    from the ⚡ Operative area (zones appear there as tasks). ──
-    if (f.zones && f.zones.length){
-      var _palDirZ = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
-      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #7b1fa2;">';
-      html += '<div style="font-size:11px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones</div>';
-      f.zones.forEach(function(z, zi){
-        var tl = z.target === 'mountain' ? '山星' : '向星';
-        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">🌀 <strong>' + escHtml(z.name) + '</strong> — ' + (z.dir || (_palDirZ[z.palace] || '?')) + ' (Palace ' + z.palace + ') · ' + tl + '</span>';
-        html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">✕</button>';
-        html += '</div>';
-      });
-      html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add Zone</button>';
-      html += '</div>';
-    }
+    // ── QFS ZONES removed — the PURPOSE ACTIVATION block (Target → Water palaces /
+    //    specific star) now covers what custom zones used to do. ──
 
     // ── Saved settings (Water / Bed / Desk) — names block only when some exist ──
     var _st = f.settings || { water: [], bed: [], desk: [] };
@@ -3539,18 +3656,14 @@ function fsRenderHouseProfiles(){
     if (!hasWaters)    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">💧 Add Water</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>';
     _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>';
-    if (!(f.zones && f.zones.length)) _addBtns += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🌀 Add Zone</button>';
     // "+ Add a new guest" — pushed to the RIGHT and visually separated from the
     // placement "Add" buttons (it's a different kind of action).
     if (!(h.guest && h.guest.name)) _addBtns += '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as occupant #2 (considered in every scan, like Person B)" style="margin-left:auto;background:#0d47a1;color:#fff;border:1px solid #82b1ff;border-radius:4px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 1px 3px rgba(13,71,161,.3);">👥 Add a new guest</button>';
-    // Floor plan button(s) — leftmost in the bottom row, before the Add buttons.
-    var _fpBtns;
-    if (f && f.floorplan && f.floorplan.imgData){
-      _fpBtns = '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" title="Open / edit the saved floor plan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Floor plan ✓</button>'
-        + '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" title="Remove floor plan" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">🗑</button>';
-    } else {
-      _fpBtns = '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
-    }
+    // Floor plan — only the "Import" action lives in the Add row. When a plan is
+    // already saved, viewing/removing it lives in the header (🖼 + 🗑), not here.
+    var _fpBtns = (f && f.floorplan && f.floorplan.imgData)
+      ? ''
+      : '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">'
       + '<span style="font-size:10px;color:#999;">Add:</span>' + _fpBtns + _addBtns + '</div>';
 
@@ -3572,11 +3685,11 @@ function fsToggleHouseDetails(personName, hi, btn){
     if (isHidden){
       body.style.display = 'block';
       window._fsHouseExpanded[key] = true;
-      if (btn) btn.innerHTML = '▾ Hide details';
+      if (btn){ btn.innerHTML = '▾ Hide'; btn.title = 'Hide details'; btn.style.background = '#2e7d32'; btn.style.color = '#fff'; }
     } else {
       body.style.display = 'none';
       window._fsHouseExpanded[key] = false;
-      if (btn) btn.innerHTML = '▸ Open details';
+      if (btn){ btn.innerHTML = '▸ Open'; btn.title = 'Open details & tools (Add water / bed / desk / floor…)'; btn.style.background = '#eef5ee'; btn.style.color = '#2e7d32'; }
     }
   } catch(e){ console.warn('fsToggleHouseDetails', e); }
 }
@@ -3610,7 +3723,7 @@ function fsAddNewHouse(){
 
   var house = {
     name: name, sameFacing: true, houseFacing: facing, period: period,
-    floors: [{ label: 'Floor 1', facing: facing, period: period, doors: doors, waters: [], zones: [], settings: { water: [], bed: [], desk: [] } }],
+    floors: [{ label: 'Floor 1', facing: facing, period: period, doors: doors, waters: [], settings: { water: [], bed: [], desk: [] } }],
     activeFloor: 0
   };
   // ── Owner (intestatario #1) ───────────────────────────────────────────
@@ -4014,6 +4127,7 @@ function fsLoadHouse(personName, houseIdx){
   const houses = all[personName] || [];
   const h = houses[houseIdx];
   if (!h) return;
+  try { _fsRestoreLuopanView(); } catch(e){}   // a house switch returns to the luopan (avoid a stale plan)
   try { window._fsLoadedHouse = { personName: personName, houseIdx: houseIdx, address: (h.address || '') }; } catch(e){}
 
   var f = _fsActiveFloor(h);
@@ -4170,50 +4284,6 @@ function fsRemoveWater(personName, houseIdx, waterIdx){
 
 // ── QFS ZONE CRUD ───────────────────────────────────────────────
 
-// ── ⚡ OPERATIVE: QFS Zones panel (relocated from House Profiles) ──
-// Operates on the ACTIVE house's ACTIVE floor; reuses fsAddZone/fsRemoveZone.
-function fsRenderOperativeZones(){
-  var box = document.getElementById('fs-op-zones');
-  if (!box) return;
-  var header = '<div style="font-size:12px;font-weight:bold;color:#7b1fa2;margin-bottom:3px;">🌀 QFS Zones (Qimen × Flying Stars)</div>'
-    + '<div style="font-size:10px;color:#888;margin-bottom:6px;font-style:italic;">A saved target for the Qimen × Flying-Stars scan: a direction + which flying star to activate there (Water 向星 for aquariums, Mountain 山星 for still features).</div>';
-  var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
-  if (!person){
-    box.innerHTML = header + '<div style="font-size:11px;color:#999;">Load a person and pick an active house in House Profiles above to manage its QFS zones.</div>';
-    return;
-  }
-  var all = _fsHousesLoad();
-  var houses = all[person.name] || [];
-  if (!houses.length){
-    box.innerHTML = header + '<div style="font-size:11px;color:#999;">No houses yet — add one in House Profiles above.</div>';
-    return;
-  }
-  var hi = _fsActiveHouseGet(person.name); if (hi >= houses.length) hi = 0;
-  var house = houses[hi];
-  var floor = _fsActiveFloor(house);
-  var zones = floor.zones || [];
-  var escHtml = function(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); };
-  var escJs   = function(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); };
-  var _palDir = {1:'N',2:'SW',3:'E',4:'SE',5:'C',6:'NW',7:'W',8:'NE',9:'S'};
-  var html = header;
-  html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">House: <strong>' + escHtml(house.name) + '</strong> · Floor: <strong>' + escHtml(floor.label || 'Floor 1') + '</strong></div>';
-  if (zones.length){
-    zones.forEach(function(z, zi){
-      var targetLabel = z.target === 'water' ? 'Water \u2605' : 'Mountain \u2605';
-      var presetLabel = (z.preset === 'custom') ? ' \u00b7 custom preset' : ' \u00b7 auto preset';
-      html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-      html += '<span style="font-size:11px;flex:1 1 auto;">\uD83C\uDF00 <strong>' + escHtml(z.name) + '</strong> \u2014 ' + (z.dir || (_palDir[z.palace] || '?')) + ' (Palace ' + z.palace + ') \u00b7 ' + targetLabel + presetLabel + '</span>';
-      html += '<button onclick="fsQimenStimulate(\'' + (z.target === 'mountain' ? 'mountain' : 'water') + '\')" style="background:#fff;color:#7b1fa2;border:1px solid #7b1fa2;border-radius:4px;padding:2px 10px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;" title="Qimen targeting for this zone">\uD83C\uDF00 Qimen</button>';
-      html += '<button onclick="fsRemoveZone(\'' + escJs(person.name) + '\',' + hi + ',' + zi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove zone">\u2715</button>';
-      html += '</div>';
-    });
-  } else {
-    html += '<div style="font-size:11px;color:#999;padding:2px 0;">No zones yet</div>';
-  }
-  html += '<button onclick="fsAddZone(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#7b1fa2;color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;margin-top:6px;">+ Add Zone</button>';
-  box.innerHTML = html;
-}
-
 // ── ⚡ OPERATIVE: Placed elements (saved Water / Bed / Desk) of the ACTIVE house ──
 // Each has an ⚡ Activate button that opens its tool pre-loaded, ready to scan.
 function fsRenderOperativeElements(){
@@ -4333,9 +4403,6 @@ function _fsTaskStar(task, house, floor, freeType){
     } else if (task.kind === 'door'){
       var dr = (floor.doors || [])[task.idx]; if (!dr) return null;
       dir = _fsDeg8(parseFloat(dr.facing)); type = freeType || 'water';
-    } else if (task.kind === 'zone'){
-      var z = (floor.zones || [])[task.idx]; if (!z) return null;
-      dir = z.dir || PAL[z.palace]; type = (z.target === 'mountain') ? 'mountain' : 'water';
     }
     if (!dir || dir === 'C') return null;
     var gi = FlyingStars.DIR_TO_INDEX[dir];
@@ -4373,7 +4440,6 @@ function fsRenderOperativeActivate(){
   (floor.settings && floor.settings.bed   || []).forEach(function(s, idx){ tasks.push({ kind:'bed',   idx:idx, label:'🛏 ' + s.name + ' · Bed (山星)',   type:'mountain', free:false }); });
   (floor.settings && floor.settings.desk  || []).forEach(function(s, idx){ tasks.push({ kind:'desk',  idx:idx, label:'🪑 ' + s.name + ' · Desk (free)',  type:null, free:true }); });
   (floor.doors || []).forEach(function(d, idx){ tasks.push({ kind:'door', idx:idx, label:'🚪 ' + d.name + ' · Door (free)', type:null, free:true }); });
-  (floor.zones || []).forEach(function(z, idx){ tasks.push({ kind:'zone', idx:idx, label:'🌀 ' + z.name + ' · Zone (' + (z.target === 'mountain' ? '山星' : '向星') + ')', type:(z.target === 'mountain' ? 'mountain' : 'water'), free:false }); });
   window._fsOpTasks = tasks;
 
   // STEP 1 (house) + STEP 2 (task) — on the same row
@@ -4389,7 +4455,7 @@ function fsRenderOperativeActivate(){
   html += '<div style="flex:1 1 240px;min-width:200px;">';
   html += '<div style="font-size:11px;color:#555;margin-bottom:2px;"><strong>2.</strong> Task in this house:</div>';
   if (!tasks.length){
-    html += '<div style="font-size:11px;color:#999;">No settings in this house yet — add Door / Water / Bed / Desk (and QFS Zones) in House Profiles above.</div>';
+    html += '<div style="font-size:11px;color:#999;">No settings in this house yet — add Door / Water / Bed / Desk in House Profiles above.</div>';
     html += '</div></div>';
     box.innerHTML = html; return;
   }
@@ -4466,57 +4532,6 @@ function fsOpScan(){
       fsQimenStimulate(type);
     }
   } catch(e){ console.warn('fsOpScan', e); }
-}
-
-function fsAddZone(personName, houseIdx){
-  // Ask by DIRECTION (clear) and map to the palace internally.
-  var DIR2PAL = { N:1, NE:8, E:3, SE:4, S:9, SW:2, W:7, NW:6 };
-  var dirStr = prompt('Direction of this zone \u2014 where the aquarium / feature sits.\nType one: N, NE, E, SE, S, SW, W, NW');
-  if (!dirStr) return;
-  var dir = dirStr.trim().toUpperCase();
-  if (!DIR2PAL[dir]){ alert('Invalid direction. Use N, NE, E, SE, S, SW, W or NW.'); return; }
-  var palace = DIR2PAL[dir];
-
-  var tStr = prompt('Which flying star to activate here?\n\nType  W  = Water Star \u5411\u661f  (for aquariums / moving water)\nType  M  = Mountain Star \u5C71\u661f  (for still / mountain features)', 'W');
-  if (tStr === null) return;
-  var t = tStr.trim().toLowerCase();
-  var target = (t === 'm' || t === 'mountain') ? 'mountain' : (t === 'w' || t === 'water' || t === '') ? 'water' : null;
-  if (!target){ alert('Type W (water) or M (mountain).'); return; }
-
-  // Preset for the Qimen special-config scan: auto (San Qi + 4 doors + the
-  // star matching the flying star) or the saved custom Qimen selection.
-  var preset = 'auto';
-  var hasCustom = false;
-  try { var cp = JSON.parse(localStorage.getItem('xkdg_qfs_preset') || 'null');
-    hasCustom = !!(cp && ((cp.stems||[]).length + (cp.doors||[]).length + (cp.stars||[]).length + (cp.spirits||[]).length)); } catch(e){}
-  if (hasCustom){
-    var pStr = prompt('Qimen preset for this zone?\n\nType  A  = Auto (San Qi + 4 doors + the star matching the flying star)\nType  C  = Custom (your saved Qimen selection)', 'A');
-    if (pStr === null) return;
-    preset = (pStr.trim().toLowerCase().charAt(0) === 'c') ? 'custom' : 'auto';
-  }
-
-  var defName = (target === 'water' ? 'Water ' : 'Mountain ') + dir;
-  var zName = prompt('Name for this zone (optional):', defName);
-  if (zName === null) return;
-  if (!zName.trim()) zName = defName;
-
-  var all = _fsHousesLoad();
-  if (!all[personName] || !all[personName][houseIdx]) return;
-  _fsActiveFloor(all[personName][houseIdx]).zones.push({ name: zName.trim(), palace: palace, target: target, dir: dir, preset: preset });
-  _fsHousesSave(all);
-  fsRenderHouseProfiles();
-  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
-}
-
-function fsRemoveZone(personName, houseIdx, zoneIdx){
-  if (!confirm('Remove this QFS zone?')) return;
-  var all = _fsHousesLoad();
-  if (!all[personName] || !all[personName][houseIdx]) return;
-  var zones = _fsActiveFloor(all[personName][houseIdx]).zones;
-  zones.splice(zoneIdx, 1);
-  _fsHousesSave(all);
-  fsRenderHouseProfiles();
-  if (typeof fsRenderOperativeActivate === 'function') fsRenderOperativeActivate();
 }
 
 
@@ -5932,6 +5947,7 @@ function _fsBranchClock(hourHan){
 // MANUAL equivalent of the AI find_water_activation tool: for the selected 45°
 // quadrant, run BOTH the QMDJ water-hour scan (Qimen sector) AND the XKDG day
 // scan for the loaded person, then merge by date with a combined score.
+// ── Purpose Activation: show/hide quadrant selector & save button ──
 function fsWaterActivationScan(){
   var out=document.getElementById('fs-wateract-results');
   if (!out) return;
@@ -5969,35 +5985,500 @@ function fsWaterActivationScan(){
     // (3) Merge by date — both scores + combined
     var rows=qres.map(function(r){
       var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
-      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), hits:(r.hits||[]).map(function(h){return h.label;}) };
+      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, hidx:(r.hidx!=null?r.hidx:null), q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), hits:(r.hits||[]).map(function(h){return h.label;}) };
     });
     rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
     if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No favourable Qimen water hours in this range for '+dir+'.</div>'; return; }
 
+    var WDIR2PAL={N:1,SW:2,E:3,SE:4,S:9,W:7,NE:8,NW:6};
+    var wPal=WDIR2PAL[dir]||0;
     var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
     var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'+dir+' — '+rows.length+' hours · '+(hasPerson?'Qimen + XKDG':'Qimen only — load a person (A/B) to add XKDG')+'</div>';
     html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
     html+='<tr style="color:#00695c;">'
       +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
       +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Hour</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Qimen</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">XKDG</th>'
-      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Combined</th></tr>';
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;">Score</th>'
+      +'<th style="padding:4px;border-bottom:1px solid #b2dfdb;"></th></tr>';
     rows.slice(0,20).forEach(function(r){
-      html+='<tr style="border-bottom:1px solid #eee;">'
-        +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+(r.ganzhi||'')+'</span></td>'
+      var gz=String(r.ganzhi||'');
+      var hGan=gz.charAt(0), hZhi=gz.charAt(1);
+      var canChart=(hGan && hZhi && wPal);
+      var hi=(r.hidx!=null?(r.hidx % 100):null);   // hidx = dayIdx*100 + hourIdx
+      var clickable=(hi!=null);
+      var chartBtn = canChart
+        ? '<button onclick="event.stopPropagation();fsScanShowChart(\'fs-wateract-chart\',\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+wPal+')" title="see the QMDJ chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 QMDJ</button>'
+        : '';
+      html+='<tr '+(clickable?'onclick="loadDateIntoMain(\''+r.date+'\','+hi+')" onmouseover="this.style.background=\'#e0f2f1\'" onmouseout="this.style.background=\'\'" ':'')
+        +'style="border-bottom:1px solid #eee;'+(clickable?'cursor:pointer;':'')+'" '+(clickable?'title="Open this date/hour in Main (XKDG profile)"':'')+'>'
+        +'<td style="padding:4px;white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+gz+'</span></td>'
         +'<td style="padding:4px;text-align:center;white-space:nowrap;">'+r.hour+'</td>'
-        +'<td style="padding:4px;text-align:center;color:#00695c;font-weight:bold;">'+r.q+'</td>'
-        +'<td style="padding:4px;text-align:center;font-weight:bold;color:'+(r.x!=null?'#6a1b9a':'#bbb')+';">'+(r.x!=null?r.x:'\u2014')+'</td>'
         +'<td style="padding:4px;text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
+        +'<td style="padding:4px;text-align:center;">'+chartBtn+'</td>'
         +'</tr>';
-      if (r.hits && r.hits.length){
-        html+='<tr><td colspan="5" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
+      if(r.hits && r.hits.length){
+        html+='<tr><td colspan="4" style="padding:0 4px 6px 4px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
       }
     });
     html+='</table></div>';
+    html+='<div id="fs-wateract-chart" style="margin-top:8px;"></div>';
     out.innerHTML=html;
   } catch(err){ console.warn('fsWaterActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
+}
+
+// ── PURPOSE ACTIVATION (⚡ ACTIVATION section) ──────────────────────────────
+// Show/hide the quadrant selector: only Water needs a fixed palace (from house).
+// Toggle 💧 Water palaces only — refresh the hint showing detected water palaces.
+// Compute the flying-stars chart of a house's active floor and return the
+// 8 outer palaces' water (向星) and mountain (山星) stars. → [{type,num,dir}]
+function _fsPurpactChartStars(house){
+  var out = [];
+  try {
+    if (typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function') return out;
+    if (!house) return out;
+    var floor = _fsActiveFloor(house);
+    var fac = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(house, floor) : null;
+    var per = (typeof _fsFloorPeriod === 'function') ? _fsFloorPeriod(house, floor) : null;
+    if (fac == null || per == null) return out;
+    var chart;
+    try { chart = FlyingStars.calculate(parseInt(per, 10), fsMountainCharFromDeg(parseFloat(fac))); } catch(e){ return out; }
+    if (!chart || !FlyingStars.DIR_TO_INDEX) return out;
+    var DIRS = ['N','NE','E','SE','S','SW','W','NW'];  // outer palaces only (no center)
+    DIRS.forEach(function(dir){
+      var gi = FlyingStars.DIR_TO_INDEX[dir];
+      if (gi == null) return;
+      var w = chart.facingStars  ? chart.facingStars[gi]  : null;
+      var m = chart.sittingStars ? chart.sittingStars[gi] : null;
+      if (w != null) out.push({ type:'water',    num:w, dir:dir });
+      if (m != null) out.push({ type:'mountain', num:m, dir:dir });
+    });
+  } catch(e){ console.warn('_fsPurpactChartStars', e); }
+  return out;
+}
+
+// Populate the Target dropdown for the currently-selected house:
+//  "" = all quadrants; "water" = placed water palaces; "star:type:num:dir" = a chart star.
+function _fsPurpactPopulateTarget(){
+  var sel = document.getElementById('fs-purpact-target');
+  if (!sel) return;
+  var DIRH = {N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
+  var prev = sel.value;
+  var html = '<option value="">All quadrants (free) — search all 8 palaces</option>';
+
+  // Placed water features (if any)
+  var wp = [];
+  try { wp = _fsGetHouseWaterPalaces(); } catch(e){}
+  if (wp.length){
+    html += '<optgroup label="Placements">'
+         +  '<option value="water">💧 Water palaces only — ' + wp.map(function(d){return DIRH[d]||d;}).join(', ') + '</option>'
+         +  '</optgroup>';
+  }
+
+  // Chart stars (water 向星 + mountain 山星) of the selected house
+  var house = (typeof _fsPurpactSelectedHouse === 'function') ? _fsPurpactSelectedHouse() : null;
+  var stars = _fsPurpactChartStars(house);
+  if (stars.length){
+    var waters = stars.filter(function(s){return s.type==='water';}).sort(function(a,b){return a.num-b.num;});
+    var mtns   = stars.filter(function(s){return s.type==='mountain';}).sort(function(a,b){return a.num-b.num;});
+    html += '<optgroup label="Water stars 向星">';
+    waters.forEach(function(s){ html += '<option value="star:water:'+s.num+':'+s.dir+'">向星 Water ' + s.num + ' · ' + (DIRH[s.dir]||s.dir) + '</option>'; });
+    html += '</optgroup><optgroup label="Mountain stars 山星">';
+    mtns.forEach(function(s){ html += '<option value="star:mountain:'+s.num+':'+s.dir+'">山星 Mountain ' + s.num + ' · ' + (DIRH[s.dir]||s.dir) + '</option>'; });
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+  // keep prior selection if still present
+  if (prev){ sel.value = prev; if (sel.value !== prev) sel.value = ''; }
+
+  // Hint about chart availability
+  var hint = document.getElementById('fs-purpact-hint');
+  if (hint){
+    if (!stars.length){
+      hint.textContent = 'Set this house’s facing & period in House Profiles to target individual stars.';
+      hint.style.color = '#b26a00';
+    } else { hint.textContent = ''; }
+  }
+}
+
+// Holds the last scan so the BEST / by DATE buttons can re-sort without re-scanning.
+window._fsPurpactState = null;
+window._fsPurpactSort  = 'best';   // 'best' | 'date'
+
+function fsPurpactSort(mode){
+  window._fsPurpactSort = (mode === 'date') ? 'date' : 'best';
+  _fsPurpactRender();
+}
+
+function fsPurposeActivationScan(){
+  var out=document.getElementById('fs-purpact-results');
+  if (!out) return;
+  try {
+    var scanner = window.QMDJWaterScanner;
+    if (typeof scanner==='undefined' || typeof scanner.scanWaterPurpose!=='function'){
+      out.innerHTML='<div style="font-size:12px;color:#c0392b;">QMDJ scanner not available.</div>'; return;
+    }
+    var purpEl=document.getElementById('fs-purpact-purpose');
+    var purposeKey=purpEl?purpEl.value:'health';
+    var doorsMap=(typeof scanner.fsPurposeDoors==='function')?scanner.fsPurposeDoors():{};
+    var purpose=doorsMap[purposeKey]||null;
+    var tgtEl=document.getElementById('fs-purpact-target');
+    var target=tgtEl?tgtEl.value:'';
+    var daysEl=document.getElementById('fs-purpact-days');
+    var days=(daysEl&&parseInt(daysEl.value,10))||30;
+    var startEl=document.getElementById('scan-start');
+    var start=(startEl&&startEl.value)|| new Date().toISOString().slice(0,10);
+    var DIRH={N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
+
+    // Resolve the Target into a list of palace directions to scan, plus a label.
+    //  ''               → all 8 palaces (free)
+    //  'water'          → the house's placed water palaces
+    //  'star:type:n:dir'→ the single palace where that chart star sits
+    var scanDirs=[];          // [] means "all 8"
+    var scopeTxt='all quadrants';
+    if(target==='water'){
+      scanDirs=_fsGetHouseWaterPalaces();
+      if(!scanDirs.length){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">No water palace in this house. Save a water feature in House Profiles first.</div>'; return; }
+      scopeTxt='💧 water palaces: '+scanDirs.map(function(d){return DIRH[d]||d;}).join(', ');
+    } else if(target.indexOf('star:')===0){
+      var parts=target.split(':');           // star : type : num : dir
+      var sType=parts[1], sNum=parts[2], sDir=parts[3];
+      if(!sDir){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Could not read the target star.</div>'; return; }
+      scanDirs=[sDir];
+      scopeTxt=(sType==='mountain'?'山星 Mountain ':'向星 Water ')+sNum+' · '+(DIRH[sDir]||sDir);
+    }
+
+    out.innerHTML='<div style="font-size:12px;color:#666;">Scanning '+scopeTxt+'…</div>';
+
+    // (1) Qimen — canonical §1+§2 path, filtered to the Purpose door
+    var qres=[];
+    try {
+      if(scanDirs.length){
+        scanDirs.forEach(function(dir){ qres=qres.concat(scanner.scanWaterPurpose(dir,start,days,purposeKey)||[]); });
+      } else {
+        qres=scanner.scanWaterPurpose('',start,days,purposeKey)||[];
+      }
+    } catch(e){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Qimen scan failed: '+e.message+'</div>'; return; }
+
+    // (2) XKDG day quality with the matching Main purpose
+    var xkdgByDate={}, hasPerson=false;
+    var mainPurpose=(purpose&&purpose.mainPurpose)?purpose.mainPurpose:'';
+    try { var pA=(typeof _personAYear!=='undefined')?_personAYear:window._personAYear; var pB=(typeof _personBYear!=='undefined')?_personBYear:window._personBYear; hasPerson=!!(pA||pB); } catch(e){}
+    if (hasPerson && typeof window.runScanner==='function'){
+      try {
+        var ss=document.getElementById('scan-start'), sd=document.getElementById('scan-days'), ps=document.getElementById('purpose-select');
+        if (ss) ss.value=start; if (sd) sd.value=String(days);
+        if (ps){ ps.value=mainPurpose; if (typeof window.onPurposeChange==='function') try{window.onPurposeChange();}catch(e){} }
+        window.runScanner();
+        (window._lastScanResults||[]).forEach(function(r){ if(!r.isoDate) return; if(xkdgByDate[r.isoDate]==null||r.score>xkdgByDate[r.isoDate]) xkdgByDate[r.isoDate]=r.score; });
+      } catch(e){}
+    }
+
+    // (3) Build rows. Show the Quadrant column when results span more than one palace.
+    var palSet={}; qres.forEach(function(r){ if(r.dir) palSet[r.dir]=1; });
+    var multiPalace=Object.keys(palSet).length>1;
+
+    // Flying Stars booster: a lucky flying star (山 mountain / 向 facing) sitting at
+    // the activation palace adds effectiveness. 9 helps every purpose; the rest are
+    // purpose-specific. (Each matching star = +1; checks BOTH mountain and facing.)
+    var FS_LUCKY={ _all:[9], health:[8], journey:[1], career:[6], relationship:[1,4], speak:[1,4], legal:[7] };
+    var _fsChart=null, _fsDirIdx=null;
+    try {
+      var _ph=_fsPurpactSelectedHouse(); var _pf=_ph?_fsActiveFloor(_ph):null;
+      var _pfac=(_ph&&_pf&&typeof _fsFloorFacing==='function')?_fsFloorFacing(_ph,_pf):null;
+      var _pper=(_ph&&_pf&&typeof _fsFloorPeriod==='function')?_fsFloorPeriod(_ph,_pf):null;
+      if(_pfac!=null && _pper!=null && typeof FlyingStars!=='undefined' && typeof fsMountainCharFromDeg==='function'){
+        _fsChart=FlyingStars.calculate(parseInt(_pper,10), fsMountainCharFromDeg(parseFloat(_pfac)));
+        _fsDirIdx=FlyingStars.DIR_TO_INDEX||null;
+      }
+    } catch(e){}
+    var _fsLucky=(FS_LUCKY._all||[]).concat(FS_LUCKY[mainPurpose]||[]);
+    function _fsStarBonus(dir){
+      var o={n:0,labels:[]};
+      try {
+        if(!_fsChart||!_fsDirIdx||!dir) return o;
+        var gi=_fsDirIdx[dir]; if(gi==null) return o;
+        var ms=_fsChart.sittingStars?_fsChart.sittingStars[gi]:null;
+        var fsr=_fsChart.facingStars?_fsChart.facingStars[gi]:null;
+        if(ms!=null && _fsLucky.indexOf(ms)!==-1){ o.n++; o.labels.push('\u2b50\u5c71'+ms); }
+        if(fsr!=null && _fsLucky.indexOf(fsr)!==-1){ o.n++; o.labels.push('\u2b50\u5411'+fsr); }
+      } catch(e){}
+      return o;
+    }
+
+    var rows=qres.map(function(r){
+      var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
+      var fb=_fsStarBonus(r.dir||'');
+      var hitsArr=(r.hits||[]).map(function(h){return h.label;}).concat(fb.labels);
+      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+fb.n, dir:(r.dir||''), door:(r.purposeDoor||null), hits:hitsArr };
+    });
+
+    var DOOR_LBL={Kai:'Open 開',Xiu:'Rest 休',Sheng:'Birth 生',JingS:'View 景',JingF:'Shocking 驚',Shang:'Injury 傷',Du:'Delusion 杜',Si:'Death 死'};
+    var purpLabel=purpose?purpose.label:purposeKey;
+    var purpDoorTxt=(purpose&&purpose.doors)?purpose.doors.map(function(d){return DOOR_LBL[d]||d;}).join('/'):'any fav door';
+
+    window._fsPurpactState = {
+      rows:rows, multiPalace:multiPalace, scopeTxt:scopeTxt, purpLabel:purpLabel,
+      purpDoorTxt:purpDoorTxt, hasPerson:hasPerson, mainPurpose:mainPurpose, DOOR_LBL:DOOR_LBL
+    };
+    _fsPurpactRender();
+  } catch(err){ console.warn('fsPurposeActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
+}
+
+// Render the QMDJ chart for a result row into a given box (shared by all the
+// FS scan result lists: Purpose Activation, Water/Direction scan, …).
+function fsScanShowChart(boxId, isoDate, hGan, hZhi, palace){
+  var box = document.getElementById(boxId);
+  if(!box) return;
+  try {
+    if(typeof showQimenChart !== 'function'){ box.innerHTML='<div style="font-size:12px;color:#c0392b;">Chart renderer not available.</div>'; return; }
+    var html = showQimenChart(isoDate, hGan, hZhi, palace, { returnHtml:true });
+    if(!html){ box.innerHTML='<div style="font-size:12px;color:#c0392b;">Cannot load chart for '+isoDate+' '+hGan+hZhi+'.</div>'; return; }
+    box.innerHTML = '<div style="margin-top:6px;">'
+      + '<button onclick="document.getElementById(\''+boxId+'\').innerHTML=\'\'" style="background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-bottom:6px;">✕ close chart</button>'
+      + html + '</div>';
+    box.scrollIntoView({ behavior:'smooth', block:'start' });
+  } catch(err){ console.warn('fsScanShowChart', err); box.innerHTML='<div style="font-size:12px;color:#c0392b;">Chart error.</div>'; }
+}
+// Back-compat wrapper for the Purpose Activation block.
+function fsPurpactShowChart(isoDate, hGan, hZhi, palace){
+  fsScanShowChart('fs-purpact-chart', isoDate, hGan, hZhi, palace);
+}
+
+// Render the saved scan according to window._fsPurpactSort ('best' | 'date').
+function _fsPurpactRender(){
+  var out=document.getElementById('fs-purpact-results');
+  if(!out) return;
+  var st=window._fsPurpactState;
+  if(!st){ out.innerHTML=''; return; }
+  var mode=window._fsPurpactSort==='date'?'date':'best';
+  var rows=st.rows.slice();
+  if(mode==='date') rows.sort(function(a,b){ if(a.date!==b.date) return a.date<b.date?-1:1; return (a.hidx-b.hidx)||(b.c-a.c); });
+  else              rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
+
+  var DOOR_LBL=st.DOOR_LBL;
+  if (!rows.length){
+    out.innerHTML='<div style="font-size:12px;color:#e65100;">No qualifying hours for <b>'+st.purpLabel+'</b> ('+st.purpDoorTxt+') · '+st.scopeTxt+' in this range.</div>';
+    return;
+  }
+  var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
+
+  // Sort toggle buttons
+  var btn=function(label,m){
+    var on=(mode===m);
+    return '<button onclick="fsPurpactSort(\''+m+'\')" style="background:'+(on?'#00897b':'#fff')+';color:'+(on?'#fff':'#00695c')+';border:1px solid #00897b;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:bold;cursor:pointer;margin-right:6px;">'+label+'</button>';
+  };
+  var html='<div style="margin-bottom:6px;">'+btn('★ BEST','best')+btn('📅 by DATE','date')+'</div>';
+  html+='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'
+    + st.purpLabel + ' · ' + st.purpDoorTxt + ' · ' + st.scopeTxt
+    + ' — ' + rows.length + ' hours · '
+    + (st.hasPerson?('Qimen + XKDG'+(st.mainPurpose?(' ('+st.mainPurpose+')'):'')):'Qimen only — load a person to add XKDG')
+    + '</div>';
+  var DIR2PAL={N:1,SW:2,E:3,SE:4,S:9,W:7,NE:8,NW:6};
+  var pad='padding:3px 10px;';
+  html+='<div style="overflow-x:auto;"><table style="width:auto;border-collapse:collapse;font-size:12px;">';
+  html+='<tr style="color:#00695c;">'
+    +'<th style="text-align:left;'+pad+'border-bottom:1px solid #b2dfdb;">Date</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Hour</th>'
+    +(st.multiPalace?'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Quad</th>':'')
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Door</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;">Score</th>'
+    +'<th style="'+pad+'border-bottom:1px solid #b2dfdb;"></th></tr>';
+  var colSpan=st.multiPalace?6:5;
+  rows.slice(0,40).forEach(function(r){
+    var gz=String(r.ganzhi||'');
+    var hGan=gz.charAt(0), hZhi=gz.charAt(1);
+    var pal=DIR2PAL[r.dir]||0;
+    var canChart=(hGan && hZhi && pal);
+    var hidx=(r.hidx!=null?(r.hidx % 100):'');   // hidx = dayIdx*100 + hourIdx → hour index is %100
+    var clickable=(hidx!=='');
+    var chartBtn = canChart
+      ? '<button onclick="event.stopPropagation();fsScanShowChart(\'fs-purpact-chart\',\''+r.date+'\',\''+hGan+'\',\''+hZhi+'\','+pal+')" title="see the QMDJ chart" style="background:#fff;color:#5e35b1;border:1px solid #5e35b1;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">📊 QMDJ</button>'
+      : '';
+    html+='<tr '+(clickable?'onclick="loadDateIntoMain(\''+r.date+'\','+hidx+')" onmouseover="this.style.background=\'#e0f2f1\'" onmouseout="this.style.background=\'\'" ':'')
+      +'style="border-bottom:1px solid #eee;'+(clickable?'cursor:pointer;':'')+'" '+(clickable?'title="Open this date/hour in Main (XKDG profile)"':'')+'>'
+      +'<td style="'+pad+'white-space:nowrap;"><b>'+dmy(r.date)+'</b> <span style="color:#888;">'+gz+'</span></td>'
+      +'<td style="'+pad+'text-align:center;white-space:nowrap;">'+r.hour+'</td>'
+      +(st.multiPalace?'<td style="'+pad+'text-align:center;font-weight:bold;color:#5e35b1;">'+r.dir+'</td>':'')
+      +'<td style="'+pad+'text-align:center;white-space:nowrap;color:#2e7d32;font-weight:bold;">'+((r.door&&(DOOR_LBL[r.door]||r.door))||(r.hits&&r.hits[0])||'\u2014')+'</td>'
+      +'<td style="'+pad+'text-align:center;font-weight:bold;color:#1565c0;">'+r.c+'</td>'
+      +'<td style="'+pad+'text-align:center;">'+chartBtn+'</td>'
+      +'</tr>';
+    // Sub-line: the detail hits only (score is now a single column; chart button is inline).
+    if(r.hits && r.hits.length){
+      html+='<tr><td colspan="'+colSpan+'" style="padding:0 10px 6px 10px;font-size:10px;color:#777;">'+r.hits.join(' \u00b7 ')+'</td></tr>';
+    }
+  });
+  html+='</table></div>';
+  if(rows.length>40) html+='<div style="font-size:11px;color:#888;margin-top:4px;">Showing top 40 of '+rows.length+'.</div>';
+  out.innerHTML=html;
+}
+
+// ── PURPOSE GUIDES (📄) — opens a plain-language guide for a purpose ──────────
+// Shown next to each Purpose (Feng Shui dropdown + Main purpose-select). Content
+// approved with Edu; mirrors PURPOSE-GUIDES.md. Exposed on window so app-bazi.js
+// (Main) can open the same modal.
+var PURPOSE_GUIDE = {
+  health: { name:'🏥 Health',
+    date:['Structure: a <b>Parent (印 Resource)</b> present (best on the <b>day pillar</b>).',
+          '<b>Celestial Doctor 天醫 (Tian Yi)</b> — the healing star: date hour branch matches the day stem\u2019s Heavenly Doctor, or date day branch matches the person\u2019s. <i>(The 天醫 healing star, not the Noble 天乙貴人.)</i>',
+          'Especially favoured: <b>Cerulean Dragon 青龍</b>, <b>Jade Hall 玉堂</b>.',
+          'Timely formations: <b>Deity Dun 神遁</b>, <b>Human Dun 人遁</b>.'],
+    fs:['Door: <b>Rest 休 (Xiu)</b>.','QMDJ star: <b>Heart 天心</b>.','Flying Stars: <b>8</b> (and 9).'] },
+  career: { name:'💼 Career',
+    date:['Structure: a <b>Parent (印 Resource)</b> present (best on the <b>day pillar</b>) <b>and</b> a <b>Noble 貴人</b>.',
+          'Especially favoured: <b>Bright Hall 明堂</b>, <b>Fate Master 司命</b>, <b>Lu 祿</b>.',
+          'Timely formations: <b>Heaven Dun 天遁</b>, <b>Wind Dun 風遁</b>, <b>Dragon Dun 龍遁</b>, <b>Cloud Dun 云遁</b>.'],
+    fs:['Door: <b>Open 開 (Kai)</b> or <b>View 景 (JingS)</b>.','QMDJ stars: <b>Hero 天英</b>, <b>Official 天任</b>.','QMDJ spirit: <b>Norm 勾陳</b>.','Flying Stars: <b>6</b> (and 9).'] },
+  wealth: { name:'💰 Wealth',
+    date:['Structure: <b>day pillar in the Child role + a Parent present</b> (Child + Parent).',
+          'Wealth ✦ (controlling / 克): person\u2019s day stem controls the date\u2019s day stem; the date\u2019s day stem controls the hour / month / year stems; same on the Nayin (Qi) level. Each adds a point.',
+          'Especially favoured: <b>Golden Box 金匱</b>, <b>Cerulean Dragon 青龍</b>, <b>Jade Hall 玉堂</b>, <b>Lu 祿</b>.',
+          'Timely formations: <b>Earth Dun 地遁</b>, <b>Cloud Dun 云遁</b>, <b>Rest Pretenses 休詐</b>, <b>Earth Borrows 地假</b>.'],
+    fs:['Door: <b>Birth 生 (Sheng)</b>.','Bonus: <b>Wu 戊</b> adds a wealth bonus; strongest with <b>Wu 戊 / Bing 丙</b>.','Flying Stars: <b>9</b>.'] },
+  relationship: { name:'❤️ Relationship',
+    date:['Structure: <b>day pillar in the Child role</b>, <b>and</b> either a <b>Parent present</b> or an <b>Adding / Hetu</b> hexagram relation.',
+          'Especially favoured: <b>Cerulean Dragon 青龍</b>.',
+          'Timely formations: <b>Human Dun 人遁</b>, <b>Multiple Pretenses 重詐</b>, <b>Human Borrows 人假</b>.'],
+    fs:['Door: <b>Rest 休 (Xiu)</b>.','Flying Stars: <b>1</b> and <b>4</b> (and 9).'] },
+  journey: { name:'✈️ Journey',
+    date:['Structure: a <b>Parent (父母)</b> present in the date.',
+          'Timeliness: a date branch matches the person\u2019s <b>Post Horse 驛馬</b> or <b>Ding Spirit 丁奇</b> (bonus when the date hour branch is the day\u2019s Post Horse / Ding Spirit).',
+          'Especially favoured: <b>Cerulean Dragon 青龍</b>, <b>Jade Hall 玉堂</b>.',
+          'Timely formations: <b>Dragon Dun 龍遁</b>.'],
+    fs:['Door: <b>Rest 休 (Xiu)</b>.','Flying Stars: <b>1</b> (and 9).'] },
+  speak: { name:'🎤 Speak',
+    date:['Structure: a good <b>Nayin–Person link (Nayin ✦ Person)</b>.',
+          'Especially favoured: <b>Jade Hall 玉堂</b>, <b>Cerulean Dragon 青龍</b>; <b>Wen Chang 文昌</b> (of the date and of the person).',
+          'Timely formations: <b>Wind Dun 風遁</b>, <b>Heaven Borrows 天假</b>, <b>Tiger Dun 虎遁</b>.'],
+    fs:['Door: <b>View 景 (JingS)</b>.','QMDJ stars: <b>Pillar 天柱</b>, <b>Assistant 天輔</b>.','Flying Stars: <b>1</b> and <b>4</b> (and 9).'] },
+  legal: { name:'⚖️ Legal',
+    date:['Structure: a generally favourable XKDG day (no extra blood-link requirement).',
+          'Especially favoured: <b>Bright Hall 明堂</b>, <b>Fate Master 司命</b>, <b>Heaven Virtue 天德</b>.',
+          'Timely formations: <b>Tiger Dun 虎遁</b>, <b>Dragon Dun 龍遁</b>, <b>Ghost Dun 鬼遁</b>, <b>Real Pretenses 真詐</b>, <b>Deity Borrows 神假</b>, <b>Ghost Borrows 鬼假</b>, <b>Heaven Borrows 天假</b>.'],
+    fs:['Door: <b>Shocking 驚 (JingF)</b> — the exception: an unfavourable door, accepted <b>only when redeemed by San Qi 三奇 (乙丙丁)</b>.','QMDJ spirit: <b>Bird 朱雀</b>.','Flying Stars: <b>7</b> (and 9).'] }
+};
+var PURPOSE_GUIDE_GENERAL =
+  '<div style="background:#f5f3fb;border:1px solid #d7cdf0;border-radius:8px;padding:8px 10px;margin-top:10px;font-size:11px;color:#4527a0;line-height:1.5;">'
+  + '<b>General rules</b><br>'
+  + '• A Feng Shui door counts only on a favourable structure — <b>San Qi 三奇 (乙丙丁)</b> or <b>Wu 戊</b> + good door.<br>'
+  + '• <b>Commander 值符</b>, wherever it sits, boosts every purpose.<br>'
+  + '• Shared favourable spirits (every date): 青龍 · 金匱 · 天德 · 司命 · 祿.<br>'
+  + '• Flying star <b>9</b> helps every purpose; a lucky 山/向 star at the activation palace adds effect.'
+  + '</div>';
+function openPurposeGuide(key){
+  try {
+    var k = String(key||'').toLowerCase().trim();
+    var g = PURPOSE_GUIDE[k];
+    if(!g){ // tolerant match: pick the known key the value starts with / contains
+      var keys=Object.keys(PURPOSE_GUIDE);
+      for(var i=0;i<keys.length;i++){ if(k.indexOf(keys[i])>=0){ g=PURPOSE_GUIDE[keys[i]]; break; } }
+    }
+    if(!g){ return; }   // e.g. 'water' has no guide
+    var old=document.getElementById('purpose-guide-overlay'); if(old) old.remove();
+    var ov=document.createElement('div'); ov.id='purpose-guide-overlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:100060;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;';
+    ov.addEventListener('click', function(e){ if(e.target===ov) ov.remove(); });
+    var card=document.createElement('div');
+    card.style.cssText='background:#fff;border-radius:12px;max-width:640px;width:100%;padding:16px 18px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.35);';
+    var li=function(arr){ return '<ul style="margin:0 0 6px;padding-left:18px;font-size:13px;line-height:1.55;color:#222;">'+arr.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'; };
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+      + '<div style="font-size:17px;font-weight:bold;color:#4527a0;">'+g.name+' — Purpose guide</div>'
+      + '<button onclick="document.getElementById(\'purpose-guide-overlay\').remove()" style="background:none;border:none;font-size:20px;line-height:1;cursor:pointer;color:#888;">\u2715</button>'
+      + '</div>'
+      + '<div style="font-size:12px;font-weight:bold;color:#00695c;margin:8px 0 3px;">1 · A good date (XKDG)</div>' + li(g.date)
+      + '<div style="font-size:12px;font-weight:bold;color:#00695c;margin:10px 0 3px;">2 · Feng Shui activation (QMDJ)</div>' + li(g.fs)
+      + PURPOSE_GUIDE_GENERAL;
+    ov.appendChild(card); document.body.appendChild(ov);
+  } catch(e){ console.warn('openPurposeGuide', e); }
+}
+window.openPurposeGuide = openPurposeGuide;
+
+// Inject a 📄 guide icon next to the Main "purpose-select" dropdown (which lives in
+// index.html). Idempotent; retries briefly until the element exists.
+function _injectMainPurposeGuideIcon(){
+  try {
+    var ps=document.getElementById('purpose-select');
+    if(!ps || document.getElementById('main-purpose-guide-btn')) return;
+    var b=document.createElement('button');
+    b.id='main-purpose-guide-btn'; b.type='button'; b.textContent='📖 Guide';
+    b.title='What this purpose looks for (a good date + Feng Shui activation)';
+    b.style.cssText='background:#ede7f6;border:1px solid #b39ddb;color:#4527a0;cursor:pointer;font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;vertical-align:middle;margin-left:6px;white-space:nowrap;';
+    b.addEventListener('click', function(){ try { openPurposeGuide(ps.value); } catch(e){} });
+    if(ps.parentNode) ps.parentNode.insertBefore(b, ps.nextSibling);
+  } catch(e){}
+}
+try {
+  if(document.readyState!=='loading') setTimeout(_injectMainPurposeGuideIcon,0);
+  else document.addEventListener('DOMContentLoaded', function(){ setTimeout(_injectMainPurposeGuideIcon,0); });
+  setTimeout(_injectMainPurposeGuideIcon, 1500);  // safety retry after dynamic UI builds
+} catch(e){}
+
+
+function _fsPurpactPopulateHouses(){
+  var sel = document.getElementById('fs-purpact-house');
+  if(!sel) return;
+  try {
+    var person = fsGetActivePersonForHouse();
+    var all = _fsHousesLoad();
+    var list = (person && all[person.name]) || [];
+    var activeIdx = person ? (_fsActiveHouseGet(person.name) || 0) : 0;
+    if(activeIdx >= list.length) activeIdx = 0;
+    var prev = sel.value;
+    sel.innerHTML = '';
+    if(!list.length){
+      var o0 = document.createElement('option'); o0.value=''; o0.textContent='— no houses —'; sel.appendChild(o0); return;
+    }
+    list.forEach(function(h,i){
+      var o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = (h.name || ('House '+(i+1))) + (i===activeIdx ? ' ★' : '');
+      sel.appendChild(o);
+    });
+    if(prev!=='' && prev!=null && !isNaN(parseInt(prev,10)) && parseInt(prev,10) < list.length) sel.value = prev;
+    else sel.value = String(activeIdx);
+  } catch(e){}
+}
+
+// Resolve the house currently chosen in the PURPOSE ACTIVATION dropdown
+// (falls back to the active house). Always read fresh — never cached.
+function _fsPurpactSelectedHouse(){
+  try {
+    var person = fsGetActivePersonForHouse();
+    if(!person) return null;
+    var all = _fsHousesLoad();
+    var list = all[person.name];
+    if(!list || !list.length) return null;
+    var sel = document.getElementById('fs-purpact-house');
+    var idx = (sel && sel.value!=='' && !isNaN(parseInt(sel.value,10))) ? parseInt(sel.value,10) : _fsActiveHouseGet(person.name);
+    if(idx==null || isNaN(idx) || idx>=list.length) idx = _fsActiveHouseGet(person.name) || 0;
+    if(idx>=list.length) idx = 0;
+    return list[idx] || null;
+  } catch(e){ return null; }
+}
+
+// Read ALL water palaces (as direction strings) of the SELECTED house's active
+// floor (from House Profiles). Collects from settings.water[] and waters[].
+function _fsGetHouseWaterPalaces(){
+  var PAL_DIR={1:'N',2:'SW',3:'E',4:'SE',6:'NW',7:'W',8:'NE',9:'S'};
+  var VALID={N:1,NE:1,E:1,SE:1,S:1,SW:1,W:1,NW:1};
+  var dirs=[], seen={};
+  function add(v){
+    if(v==null) return;
+    var d=null;
+    if(typeof v==='number') d=PAL_DIR[v]||null;
+    else if(typeof v==='string'){ var s=v.toUpperCase(); if(VALID[s]) d=s; else if(PAL_DIR[parseInt(v,10)]) d=PAL_DIR[parseInt(v,10)]; }
+    if(d && !seen[d]){ seen[d]=1; dirs.push(d); }
+  }
+  try {
+    var house = _fsPurpactSelectedHouse();
+    if(!house) return dirs;
+    var fl = _fsActiveFloor(house);   // active floor of the chosen house
+    if(!fl) return dirs;
+    if(fl.settings && fl.settings.water) fl.settings.water.forEach(function(s){ add(s && s.palace); });
+    if(fl.waters) fl.waters.forEach(function(w){ if(w && w.palace!=null) add(w.palace); else if(w && w.dir) add(w.dir); });
+  } catch(e){}
+  return dirs;
 }
 
 // Reorganise the FS view into: gate + shared base (incl. luopan) + gated tools.
@@ -6692,7 +7173,7 @@ function _fsLuckyDateRowHTML(m, persons, slot, placeWord){
       + '</span> communicates with the ' + placeWord + ': <b>' + _fsCommText(pp.ps.labels)
       + '</b> &nbsp;·&nbsp; with the date: <b>' + _fsCommText(pp.pd.labels) + '</b></div>';
   }).join('');
-  return '<div style="border-top:1px solid #eee;padding:6px 0;font-size:12px;">'
+  return '<div onclick="loadDateIntoMain(\''+m.iso+'\',6)" onmouseover="this.style.background=\'#faf5ff\'" onmouseout="this.style.background=\'\'" title="Open this date in Main (XKDG profile)" style="border-top:1px solid #eee;padding:6px 0;font-size:12px;cursor:pointer;">'
     + '<strong>' + _fsFmtDMY(m.iso) + '</strong> · ' + m.dGan + m.dZhi
     + ' <span style="color:#555;">· 運 ' + dYun + ' · 氣 ' + dQi + '</span>'
     + ' <span style="color:#999;">(hex ' + m.dData.hex + ')</span>'
@@ -7110,7 +7591,7 @@ window.XKDGHouse = (function () {
   function floorsOf(h) {
     if (h && h.floors && h.floors.length) return h.floors;
     return [{ label: 'Floor 1', facing: h && h.houseFacing, period: h && h.period,
-              doors: (h && h.doors) || [], waters: (h && h.waters) || [], zones: (h && h.zones) || [],
+              doors: (h && h.doors) || [], waters: (h && h.waters) || [],
               settings: (h && h.settings) || { water: [], bed: [], desk: [] } }];
   }
   function waterFeaturesOf(f, chart) {
@@ -7135,19 +7616,13 @@ window.XKDGHouse = (function () {
     var floorsOut = floors.map(function (f, fi) {
       var facing = same ? h.houseFacing : f.facing;
       var period = same ? h.period : f.period;
-      // A hand-composed (manual) chart on this floor OVERRIDES the auto computation,
-      // exactly like the Feng Shui luopan shows it. It has the same shape
-      // (facingStars/sittingStars/baseStars), so starAt() and every downstream
-      // consumer (water_star, zones, the AI) read the SAME numbers the user sees.
-      var manual = (f.manualChart && f.manualChart.facingStars && f.manualChart.sittingStars) ? f.manualChart : null;
-      var chart = manual || chartFor(facing, period);
+      var chart = chartFor(facing, period);
       var st = f.settings || { water: [], bed: [], desk: [] };
       return {
         index: fi, label: f.label || ('Floor ' + (fi + 1)), active: (fi === activeFloor),
-        facing: facing, period: period, chart: chart, manual_chart: !!manual,
+        facing: facing, period: period, chart: chart,
         doors: (f.doors || []).map(function (d) { return { name: d.name, facing: d.facing, water: d.water, dir: d.dir, palace: d.palace }; }),
         water_features: waterFeaturesOf(f, chart),
-        qfs_zones: (f.zones || []).map(function (z) { return { name: z.name, direction: z.dir || null, palace: z.palace, target: z.target, preset: z.preset || 'auto', star_num: starAt(chart, z.dir, z.target) }; }),
         saved_settings: {
           water: (st.water || []).map(function (s) { return s.name; }),
           bed: (st.bed || []).map(function (s) { return s.name; }),
