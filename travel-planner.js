@@ -188,6 +188,82 @@
   function tpSetFullRange(km) {
     try { if (isFinite(km) && km > 0) localStorage.setItem('xkdg_tp_fullrange', String(Math.round(km))); } catch (e) {}
   }
+
+  // --- Range-forced EV charging stops (Phase E) ----------------------------
+  // The default charge level reached at a fast stop on a trip (DC slows a lot
+  // past 80%). Tunable.
+  var TP_CHARGE_TARGET = 0.80;
+  // Two usable-range numbers for an EV trip:
+  //   firstKm = how far you can go RIGHT NOW (current charge, minus reserve)
+  //   afterKm = how far you can go after a fast charge to TP_CHARGE_TARGET
+  // Returns null when there is no EV range set (then no charge stops are forced).
+  function tpEvRangePlan() {
+    try {
+      var firstKm = 0;
+      var lr = tpGetLiveRange();
+      if (lr && (Date.now() - lr.ts) < 2 * 3600000 && lr.km > 0) firstKm = lr.km;
+      else { var rEl = document.getElementById('tp-range'); var v = rEl ? parseFloat(rEl.value) : NaN; if (isFinite(v) && v > 0) firstKm = v; }
+      if (!(firstKm > 0)) return null;
+      var reserve = 15;
+      var resEl = document.getElementById('tp-reserve');
+      if (resEl) { var rv = parseFloat(resEl.value); if (isFinite(rv)) reserve = rv; }
+      var resFrac = Math.max(0, Math.min(0.9, reserve / 100));
+      var full = tpGetFullRange();
+      var firstUsable = firstKm * (1 - resFrac);
+      var afterUsable = (full > 0) ? (TP_CHARGE_TARGET * full * (1 - resFrac)) : firstUsable;
+      if (!(firstUsable > 0)) return null;
+      if (!(afterUsable > 0)) afterUsable = firstUsable;
+      return { firstKm: firstUsable, afterKm: afterUsable };
+    } catch (e) { return null; }
+  }
+  // Walk the leg/stop timeline and SPLIT any leg whose distance exceeds the
+  // usable range, inserting a charge stop. The FIRST gap uses the current
+  // charge (firstKm); every gap after a charge uses the post-charge range
+  // (afterKm). Additive only: never removes the favourable (auspicious) stops.
+  // time<->distance is linear here (posAt maps a time fraction to a distance
+  // fraction of the real route), so range thresholds become time thresholds.
+  function tpInsertRangeCharges(plan, ev, totalKm, startMs, spanMs, posAt) {
+    if (!ev || !(ev.firstKm > 0) || !(totalKm > 0) || !(spanMs > 0) || !plan || !plan.length) return plan;
+    var firstMs = (ev.firstKm / totalKm) * spanMs;
+    var afterMs = (ev.afterKm > 0 ? (ev.afterKm / totalKm) * spanMs : firstMs);
+    if (!(firstMs > 0)) return plan;
+    if (!(afterMs > 0)) afterMs = firstMs;
+    var SLACK = 1.05, MIN_LEG_MS = 4 * 60000, MAX_INS = 15;
+    var out = [], inserted = 0, lastChargeMs = null, limit = firstMs;
+    function mkLeg(s, e, head, note, ss, es) {
+      return { type: 'leg', startWall: new Date(s), endWall: new Date(e), heading: head,
+        startSlotIdx: (ss != null ? ss : null), endSlotIdx: (es != null ? es : null),
+        durationH: (e - s) / 3600000, note: note || '' };
+    }
+    function mkCharge(tc, head, slotIdx) {
+      var p = posAt(tc);
+      return { type: 'stop', charge: true, durationMin: 20, atWall: new Date(tc), restartWall: new Date(tc),
+        newHeading: head, pos: { lat: p.lat, lon: p.lon }, cashDir: null, limitDeg: null,
+        slotIdx: (slotIdx != null ? slotIdx : null), reason: 'charging stop (battery range)',
+        fortunate: false, rangeForced: true };
+    }
+    for (var i = 0; i < plan.length; i++) {
+      var it = plan[i];
+      if (it.type === 'leg') {
+        var s = it.startWall.getTime(), e = it.endWall.getTime();
+        if (lastChargeMs == null) lastChargeMs = s;
+        var curStart = s;
+        while (inserted < MAX_INS && (e - lastChargeMs) > limit * SLACK) {
+          var tc = lastChargeMs + limit;
+          if (tc <= curStart) tc = curStart + Math.max(MIN_LEG_MS, limit);
+          if (tc >= e - MIN_LEG_MS) break;   // close enough to the leg's own stop — charge there instead
+          out.push(mkLeg(curStart, tc, it.heading, '', it.startSlotIdx, it.endSlotIdx));
+          out.push(mkCharge(tc, it.heading, it.endSlotIdx));
+          inserted++; curStart = tc; lastChargeMs = tc; limit = afterMs;
+        }
+        out.push(mkLeg(curStart, e, it.heading, it.note, it.startSlotIdx, it.endSlotIdx));
+      } else if (it.type === 'stop') {
+        out.push(it);
+        if (it.atWall) { lastChargeMs = it.atWall.getTime(); limit = afterMs; }
+      } else { out.push(it); }
+    }
+    return out;
+  }
   // Ask the xkdg-soc Worker for the live SoC + remaining range. Reads the Worker
   // URL from localStorage (set in the planner), stores the live range, and fills
   // the form fields if the panel is open. Returns a Promise.
@@ -1223,6 +1299,20 @@
     var plan = (opts.stopMode === 'mine')
       ? tpPlanWithStops(slots, opts.charges || [])
       : tpSuggestStopsNetDir(slots, posAt, O, Dst, bearing, opts.maxLegHours || 4);
+
+    // ---- PHASE E: insert range-forced charging stops for an EV -------------
+    // Auto mode + a REAL route only (straight-line distances are unreliable).
+    // Splits any leg longer than the usable range; first gap = current charge,
+    // later gaps = post-charge range. Fully guarded: on any error keep the plan.
+    try {
+      if ((opts.stopMode || 'auto') !== 'mine' && routeIdx) {
+        var _ev = tpEvRangePlan();
+        if (_ev) {
+          var _totKm = (routeIdx.distanceMeters || routeIdx.total || 0) / 1000;
+          plan = tpInsertRangeCharges(plan, _ev, _totKm, startMs, spanMs, posAt);
+        }
+      }
+    } catch (e) { /* keep base plan on any error */ }
 
     // ---- PHASE C re-aim only applies to the user-charges timeline ----------
     if (opts.stopMode === 'mine') {

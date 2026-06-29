@@ -3248,6 +3248,12 @@ function fsHouseImportFloorplan(pName, hi){
     if (typeof fac === 'number') opts.facingDeg = fac;
     if (typeof per === 'number') opts.period = per;
     if (f && f.floorplan && f.floorplan.facingSide) opts.facingSide = f.floorplan.facingSide;
+    // Pass THIS floor's hand-composed manual chart so the tool's "Draw chart"
+    // uses the student's manual stars instead of recomputing the STANDARD chart
+    // for the facing+period. (Regression fix: opts.manualChart was being dropped.)
+    if (f && f.manualChart && f.manualChart.sittingStars && f.manualChart.facingStars && f.manualChart.baseStars) {
+      opts.manualChart = f.manualChart;
+    }
     if (window.FloorPlanStars && typeof FloorPlanStars.open === 'function') FloorPlanStars.open(opts);
     else alert('Floorplans not available on this page.');
   } catch (e){ alert('Could not open the floor-plan tool.'); }
