@@ -178,6 +178,16 @@
   function tpSetLiveRange(km, soc) {
     try { localStorage.setItem('xkdg_tp_live_range', JSON.stringify({ km: Math.round(km), soc: (soc != null ? Math.round(soc) : null), ts: Date.now() })); } catch (e) {}
   }
+  // The car's REAL full range at 100% for the way THIS driver actually drives
+  // (mostly motorway → higher consumption than the dashboard estimate). Persisted
+  // so range = SoC% x this, which matches reality far better than the car's own
+  // optimistic "distance to empty". Default 450; the user calibrates it.
+  function tpGetFullRange() {
+    try { var v = parseFloat(localStorage.getItem('xkdg_tp_fullrange')); return (isFinite(v) && v > 0) ? v : 450; } catch (e) { return 450; }
+  }
+  function tpSetFullRange(km) {
+    try { if (isFinite(km) && km > 0) localStorage.setItem('xkdg_tp_fullrange', String(Math.round(km))); } catch (e) {}
+  }
   // Ask the xkdg-soc Worker for the live SoC + remaining range. Reads the Worker
   // URL from localStorage (set in the planner), stores the live range, and fills
   // the form fields if the panel is open. Returns a Promise.
@@ -189,14 +199,18 @@
       fetch(wk, { method: 'GET' }).then(function (r) { return r.json(); }).then(function (d) {
         if (d && d.error) throw new Error(d.error);
         var soc = (d && d.soc != null) ? Number(d.soc) : null;
-        var km = (d && d.rangeKm != null) ? Number(d.rangeKm) : null;
-        if (km != null && isFinite(km) && km > 0) tpSetLiveRange(km, soc);
+        var carKm = (d && d.rangeKm != null) ? Number(d.rangeKm) : null;   // car's optimistic estimate (reference)
+        var fr = tpGetFullRange();
+        // Realistic remaining range = SoC% of the driver's real full range.
+        var realKm = (soc != null && isFinite(soc) && fr > 0) ? Math.round(soc * fr / 100)
+                   : ((carKm != null && isFinite(carKm)) ? Math.round(carKm) : null);
+        if (realKm != null && realKm > 0) tpSetLiveRange(realKm, soc);
         try {
           var socEl = document.getElementById('tp-soc'), rgEl = document.getElementById('tp-range');
           if (socEl && soc != null) socEl.value = String(Math.round(soc));
-          if (rgEl && km != null && isFinite(km) && km > 0) rgEl.value = String(Math.round(km));
+          if (rgEl && realKm != null && realKm > 0) rgEl.value = String(realKm);
         } catch (e) {}
-        resolve({ soc: soc, rangeKm: km, charging: !!(d && d.charging), raw: d });
+        resolve({ soc: soc, rangeKm: realKm, carKm: carKm, fullRange: fr, charging: !!(d && d.charging), raw: d });
       }).catch(function (e) { reject(e instanceof Error ? e : new Error(String(e))); });
     });
   }
@@ -1991,6 +2005,16 @@
         : ((ocmRealEl && ocmRealEl.value) || '').trim();
       if (ocmRealEl) ocmRealEl.value = key;
       var range = parseFloat(document.getElementById('tp-range') && document.getElementById('tp-range').value) || 0;
+      // If we have a FRESH live reading from the car (<2h), it is authoritative for
+      // charging-stop placement — otherwise the plan would silently use the typed/
+      // default value and send you to a charger you cannot reach. Reflect it in the field.
+      try {
+        var _lr = tpGetLiveRange();
+        if (_lr && (Date.now() - _lr.ts) < 2 * 3600000 && _lr.km > 0) {
+          range = _lr.km;
+          var _rEl2 = document.getElementById('tp-range'); if (_rEl2) _rEl2.value = String(_lr.km);
+        }
+      } catch (e) {}
       var reserve = parseFloat(document.getElementById('tp-reserve') && document.getElementById('tp-reserve').value) || 0;
       var nets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; });
 
@@ -3162,7 +3186,7 @@
     // (Strada 2 will later write tp-soc on its own; for now it is typed by hand.)
     var socRow = el('div', { style: 'display:flex;gap:8px;' });
     socRow.appendChild(rcNum('Current charge (%)', 'tp-soc', '', 'e.g. 80'));
-    socRow.appendChild(rcNum('Full range @100% (km)', 'tp-fullrange', 450));
+    socRow.appendChild(rcNum('Full range @100% (km)', 'tp-fullrange', tpGetFullRange()));
     rcBlock.appendChild(socRow);
     var socHint = el('div', { id: 'tp-soc-hint', style: 'font-size:11px;color:#1b6e2f;margin:2px 0 6px;min-height:14px;' }, '');
     rcBlock.appendChild(socHint);
@@ -3192,7 +3216,7 @@
       var _seB = socRow.querySelector('#tp-soc');
       var _feB = socRow.querySelector('#tp-fullrange');
       if (_seB) _seB.addEventListener('input', tpSocRecalc);
-      if (_feB) _feB.addEventListener('input', tpSocRecalc);
+      if (_feB) _feB.addEventListener('input', function () { tpSetFullRange(parseFloat(_feB.value)); tpSocRecalc(); });
     } catch (e) {}
 
     // ---- 🔋 Read charge from car (Strada 2: xkdg-soc Worker) -------------
