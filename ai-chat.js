@@ -3716,6 +3716,37 @@
       wrap.appendChild(head);
       wrap.appendChild(body);
     }
+    var _itinMapsCtx = null;
+    function _itinMapsPoint(name, lat, lon) {
+      if (name && String(name).trim()) return encodeURIComponent(String(name).trim());
+      if (isFinite(lat) && isFinite(lon)) return lat + ',' + lon;
+      return '';
+    }
+    // Build the Google Maps route link from EXACTLY the lettered stops shown in the
+    // bubble (origin -> B,C,... -> destination), so the map pins correspond 1:1 with
+    // the letters. Stops go by NAME when known (tappable, identical to the bubble),
+    // else by coordinates. One waypoint per stop \u2014 no exit/charger interleaving.
+    function _itinBuildMapsUrl() {
+      try {
+        if (!_itinMapsCtx) return null;
+        var parts = ['https://www.google.com/maps/dir/?api=1'];
+        var o = _itinMapsPoint(_itinMapsCtx.origin, _itinMapsCtx.oLat, _itinMapsCtx.oLon);
+        var d = _itinMapsPoint(_itinMapsCtx.dest, _itinMapsCtx.dLat, _itinMapsCtx.dLon);
+        if (o) parts.push('origin=' + o);
+        if (d) parts.push('destination=' + d);
+        var wps = [];
+        (_itinStopEls || []).forEach(function (s) {
+          var it = s && s.it; if (!it) return;
+          var pt = _itinMapsPoint(it.place, it.lat, it.lon);
+          if (pt) wps.push(pt);
+        });
+        if (wps.length) parts.push('waypoints=' + wps.join('%7C'));
+        parts.push('travelmode=driving');
+        var url = parts.join('&');
+        try { window._tpItinMapsUrl = url; } catch (e) {}
+        return url;
+      } catch (e) { return null; }
+    }
     function addItineraryBubble(payload) {
       payload = payload || {};
       var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
@@ -3749,7 +3780,7 @@
         return { row: row, tx: tx };
       }
       var legs = payload.legs || [];
-      var stopLetters = [], _p = 0;
+      var stopLetters = [], _p = 1;   // origin is A; stops start at B (matches Google Maps pin lettering)
       legs.forEach(function (it) { if (it.kind !== 'drive') { stopLetters.push(letterChar(_p)); _p++; } });
       var destLetter = letterChar(_p);     // Maps letters waypoints+dest only (origin unlettered); dest = after last stop
       var _hrs = payload.hours || [];
@@ -3767,9 +3798,11 @@
 
       var listEl = elc('div', { style: 'margin:0;' });
       _itinStopEls = [];
+      _itinMapsCtx = { origin: payload.origin || null, dest: payload.dest || null,
+        oLat: payload.origin_lat, oLon: payload.origin_lon, dLat: payload.dest_lat, dLon: payload.dest_lon };
       var stepList = [];   // map itinerary steps to times AND to map letters, for the Hours panel
       // Origin (A, green like the Maps start pin)
-      listEl.appendChild(ptLine('', '#2e7d32', (payload.origin || 'Origin')).row);   // start dot, no letter (Maps does not letter the origin)
+      listEl.appendChild(ptLine('A', '#2e7d32', (payload.origin || 'Origin')).row);   // origin = A (green), like the Maps start pin
       var si = 0;
       legs.forEach(function (it) {
         if (it.kind === 'drive') {
@@ -3800,13 +3833,15 @@
         wrap.appendChild(_itinChargeEl);
       } else { _itinChargeEl = null; }
       addHoursPanel(wrap, payload.hours, L, stepList);
+      _itinBuildMapsUrl();   // build the route link from exactly the lettered stops above
       var mapsBtn = elc('button', { style:
         'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, L.openMaps);
       mapsBtn.addEventListener('click', function () {
-        var r = null;
-        try { if (window.TravelPlanner && window.TravelPlanner.openInMaps) r = window.TravelPlanner.openInMaps(); } catch (e) {}
-        if (r && r.opened === false) mapsBtn.textContent = L.blocked;
-        else mapsBtn.textContent = L.opened;
+        var url = _itinBuildMapsUrl();   // rebuild from current stops (charger names may have arrived)
+        var opened = false;
+        if (url) { try { opened = !!window.open(url, '_blank'); } catch (e) {} if (!opened) { try { window.location.href = url; opened = true; } catch (e2) {} } }
+        else { try { if (window.TravelPlanner && window.TravelPlanner.openInMaps) { var r = window.TravelPlanner.openInMaps(); opened = !(r && r.opened === false); } } catch (e3) {} }
+        mapsBtn.textContent = opened ? L.opened : L.blocked;
       });
       wrap.appendChild(mapsBtn);
       msgs.appendChild(wrap);
@@ -3969,6 +4004,7 @@
       try {
         var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
         _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); if (s.meta && s.it) fillStopMeta(s.meta, s.it); });
+        _itinBuildMapsUrl();   // charger names/coords may have arrived \u2014 keep the Maps link in sync
         msgs.scrollTop = msgs.scrollHeight;
       } catch (e) {}
     }
