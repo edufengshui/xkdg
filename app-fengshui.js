@@ -442,6 +442,7 @@ function buildFengShuiView(){
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
+        <button id="fs-floorplan-del" onclick="fsRemoveActiveFloorplan()" title="Remove this floor plan" style="display:none;position:absolute;top:8px;left:8px;z-index:6;background:#c62828;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🗑 Remove plan</button>
       </div>
 
       <!-- (Active house detail moved UP into the green HOUSE PROFILES box.) -->
@@ -626,6 +627,7 @@ function fsToggleFloorplanView(){
       canvas.style.display = 'none';
       var back = document.getElementById('fs-floorplan-back');
       if (back) back.style.display = 'block';
+      var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
     }
@@ -664,10 +666,27 @@ function _fsRestoreLuopanView(){
     if (wrap){ wrap.style.aspectRatio = ''; wrap.style.maxWidth = ''; }
     var back = document.getElementById('fs-floorplan-back');
     if (back) back.style.display = 'none';
+    var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'none';
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
     if (btn) btn.style.background = '#5d4037';
   } catch(e){}
+}
+
+// Remove the active floor's saved plan from INSIDE the floor-plan view, then
+// fall back to the luopan. Same effect as the card's 🗑 Plan button.
+function fsRemoveActiveFloorplan(){
+  try {
+    if (!confirm('Remove the saved floor plan for this floor?')) return;
+    var ctx = (typeof _fsActiveHouseFloorCtx === 'function') ? _fsActiveHouseFloorCtx() : null;
+    if (!ctx || !ctx.floor){ alert('No active house/floor.'); return; }
+    if (!ctx.floor.floorplan){ alert('There is no saved floor plan on this floor.'); return; }
+    delete ctx.floor.floorplan;
+    try { if (ctx.all) _fsHousesSave(ctx.all); }
+    catch (e){ alert('Could not remove the floor plan \u2014 storage error (' + ((e && e.name) || e) + ').'); return; }
+    try { _fsRestoreLuopanView(); } catch(e){}
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+  } catch (e){ alert('Remove failed: ' + ((e && e.message) || e)); }
 }
 // Header "🖼 Floor plan": make this house active, then show its saved plan (with
 // flying stars) large, in place of the luopan. Edit stays on the ✏ button (modal).
@@ -3494,10 +3513,10 @@ function fsRenderHouseProfiles(){
     if (_sf && _sf.floorplan && _sf.floorplan.imgData){
       html += '<button onclick="fsViewFloorplanInPlace(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Show the saved plan with its flying stars, large, in place of the luopan">🖼 Floor plan</button>';
       html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#5d4037;border:1px solid #5d4037;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Edit the floor plan in the editor">✏</button>';
-      html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Remove the saved floor plan">🗑</button>';
+      html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Remove the saved floor plan">🗑 Plan</button>';
     }
     html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';
-    html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑</button>';
+    html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑 House</button>';
     // 📁 Archive = the client\'s Google Drive folder (photos, written consultations, etc.)
     if (h.driveUrl){
       html += '<a href="' + escHtml(h.driveUrl) + '" target="_blank" rel="noopener" style="background:#0f9d58;color:#fff;border-radius:3px;padding:3px 8px;font-size:10px;text-decoration:none;" title="Open the Google Drive archive (photos, consultations)">📁 Archive</a>';
