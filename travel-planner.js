@@ -259,7 +259,8 @@
       dcity: v('tp-dcity'), dlat: v('tp-dlat'), dlon: v('tp-dlon'),
       date: v('tp-date'), time: v('tp-time'), dur: v('tp-dur'), maxleg: v('tp-maxleg'),
       utc: v('tp-utc'), dst: chk('tp-dst'), stopmode: v('tp-stopmode'), charges: v('tp-charges'),
-      worker: v('tp-worker'), range: v('tp-range'), reserve: v('tp-reserve'), nets: nets
+      worker: v('tp-worker'), range: v('tp-range'), reserve: v('tp-reserve'),
+      soc: v('tp-soc'), fullrange: v('tp-fullrange'), nets: nets
     };
   }
   function tpApplyFields(f) {
@@ -270,6 +271,7 @@
     set('tp-date', f.date); set('tp-time', f.time); set('tp-dur', f.dur); set('tp-maxleg', f.maxleg);
     set('tp-utc', f.utc); set('tp-stopmode', f.stopmode); set('tp-charges', f.charges);
     set('tp-worker', f.worker); set('tp-range', f.range); set('tp-reserve', f.reserve);
+    set('tp-soc', f.soc); set('tp-fullrange', f.fullrange);
     var dstEl = document.getElementById('tp-dst'); if (dstEl) dstEl.checked = !!f.dst;
     if (f.nets) TP_NETWORKS.forEach(function (n) { var c = document.getElementById('tp-net-' + n.id); if (c && f.nets[n.id] != null) c.checked = !!f.nets[n.id]; });
     var ms = document.getElementById('tp-stopmode'); if (ms) { try { ms.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} }
@@ -3116,16 +3118,48 @@
     var rcBlock = el('div', { style: 'grid-column:1 / span 2;border:1px solid #cfe3cf;border-radius:8px;padding:8px 10px;background:#f6fbf6;' });
     rcBlock.appendChild(el('div', { style: 'font-weight:600;color:#1b6e2f;margin-bottom:6px;' }, '🔋 Range & charging'));
 
-    var rcRow = el('div', { style: 'display:flex;gap:8px;' });
     function rcNum(lbl, id, val, ph) {
       var w = el('label', { style: 'flex:1;display:flex;flex-direction:column;gap:2px;color:#555;font-size:11px;' }, lbl);
       w.appendChild(el('input', { id: id, type: 'number', step: 'any', value: String(val), placeholder: ph || '',
         style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:13px;' }));
       return w;
     }
+
+    // Charge-from-% helper: type the car's current charge (%) and the car's
+    // full range (km); "Remaining range (km)" below is filled automatically.
+    // (Strada 2 will later write tp-soc on its own; for now it is typed by hand.)
+    var socRow = el('div', { style: 'display:flex;gap:8px;' });
+    socRow.appendChild(rcNum('Current charge (%)', 'tp-soc', '', 'e.g. 80'));
+    socRow.appendChild(rcNum('Full range @100% (km)', 'tp-fullrange', 450));
+    rcBlock.appendChild(socRow);
+    var socHint = el('div', { id: 'tp-soc-hint', style: 'font-size:11px;color:#1b6e2f;margin:2px 0 6px;min-height:14px;' }, '');
+    rcBlock.appendChild(socHint);
+
+    var rcRow = el('div', { style: 'display:flex;gap:8px;' });
     rcRow.appendChild(rcNum('Remaining range (km)', 'tp-range', 200));
     rcRow.appendChild(rcNum('Safety reserve (%)', 'tp-reserve', 15));
     rcBlock.appendChild(rcRow);
+
+    function tpSocRecalc() {
+      try {
+        var socEl = document.getElementById('tp-soc');
+        var frEl  = document.getElementById('tp-fullrange');
+        var rgEl  = document.getElementById('tp-range');
+        if (!socEl || !frEl || !rgEl) return;
+        var soc = parseFloat(socEl.value), fr = parseFloat(frEl.value);
+        if (isFinite(soc) && soc > 0 && isFinite(fr) && fr > 0) {
+          var km = Math.round(fr * Math.min(soc, 100) / 100);
+          rgEl.value = String(km);
+          socHint.textContent = '\u2192 Remaining range set to \u2248 ' + km + ' km (' + soc + '% of ' + fr + ' km)';
+        } else { socHint.textContent = ''; }
+      } catch (e) {}
+    }
+    try {
+      var _seB = socRow.querySelector('#tp-soc');
+      var _feB = socRow.querySelector('#tp-fullrange');
+      if (_seB) _seB.addEventListener('input', tpSocRecalc);
+      if (_feB) _feB.addEventListener('input', tpSocRecalc);
+    } catch (e) {}
 
     var netWrap = el('div', { style: 'display:flex;flex-wrap:wrap;gap:12px;margin:6px 0;font-size:12px;color:#444;' });
     TP_NETWORKS.forEach(function (n) {
