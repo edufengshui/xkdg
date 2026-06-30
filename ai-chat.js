@@ -539,7 +539,7 @@
           max_radius_km: { type: 'number', description: 'Maximum distance from the origin in km (default 200).' },
           stay_min_h: { type: 'number', description: 'Minimum stay at the destination in hours (default 1.5).' },
           stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
-          category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL place (from OpenStreetMap) instead of a generic point. Use "nature" (lakes, woods, parks, viewpoints, walks), "culture" (castles, museums, historic sites), "town" (villages/towns), or leave empty for generic points. Pass the user\'s words ("natura", "passeggiata", "culturale", "borghi"...) — they are mapped automatically. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
+          category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL named place (looked up via Google Places) instead of a generic point. IMPORTANT: pass the user\'s OWN specific word — it is matched to that exact kind of place. E.g. "castelli"/"castles" -> castles, "musei"/"museums" -> museums, "terme"/"spa" -> thermal baths, "borghi"/"villages" -> old villages, "eremi"/"abbazie" -> hermitages & abbeys, "natura" -> parks/lakes/viewpoints, "spiagge appartate" -> secluded beaches, "luoghi misteriosi" -> megalithic/mystical sites, "cantine" -> wineries. Do NOT collapse "castles" into a generic "culture" (that returns MUSEUMS, not castles). Leave empty for generic points. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
           count: { type: 'integer', description: 'How many distinct proposals to return (2-6, default 4).' },
           direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'OPTIONAL compass direction the user wants to head ("verso nord" → N). Out-and-back options still come from the day\'s favourable directions; this biases the chain loops so the ones whose FIRST leg goes this way are offered first (useful when no round-trip is favourable that way).' }
         },
@@ -1817,7 +1817,7 @@
         'If "ev_charging" is true the stop has an EV charger within walking distance (ev_power = its power if known) — ' +
         'highlight it (e.g. "🔌 colonnina di ricarica" / "🔌 EV charger ~11 kW"), the car can charge while the user walks. ' +
         'If there is no place it is a generic point along that direction. The user can refine by category later ("solo natura"). ' +
-        'If "poi_service_error" is true, the places service (OpenStreetMap) was temporarily unreachable — say exactly that ' +
+        'If "poi_service_error" is true, the places service was temporarily unreachable — say exactly that ' +
         'and offer to retry; do NOT claim there are no places of that kind. If only "some_without_place" is true, those few ' +
         'points simply had no named place of that category nearby (offer a larger radius or a different category). ' +
         ((chains && chains.length)
@@ -4181,6 +4181,9 @@
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
       updateItineraryExits: function (exits) { try { updateItineraryExits(exits); } catch (e) {} },
       updateItineraryStops: function (legs) { try { updateItineraryStops(legs); } catch (e) {} },
+      // Programmatic ask: open the panel, drop a message in the box and send it.
+      // Used by structured UIs (e.g. the Lucky Trip panel) to drive the AI.
+      ask: function (text) { try { openPanel(); if (input) { input.value = text; } doSend(); } catch (e) {} },
       _send: doSend, _history: function () { return history; }
     };
   }

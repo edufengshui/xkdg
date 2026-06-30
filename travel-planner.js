@@ -2966,6 +2966,11 @@
       tpOpenReal(xkdgOpenDirections);
     }, true, false);
 
+    // 🍀 Lucky Trip — under code (same 9861 gate) — theme/area lucky itineraries
+    sectionBtn('\uD83C\uDF40', 'Lucky Trip', 'Lucky itineraries by area or theme', '#2e7d32', function () {
+      tpOpenLuckyTrip(xkdgOpenDirections);
+    }, true, false);
+
     // 🔮 Divinations — gated (QMDJ rotating chart + strategy notes)
     sectionBtn('\uD83D\uDD2E', 'Divinations', 'QMDJ chart + strategy', '#6a1b9a', function () {
       if (window.DirectionsCharts && window.DirectionsCharts.openDivinations) window.DirectionsCharts.openDivinations(xkdgOpenDirections);
@@ -2983,6 +2988,153 @@
     document.body.appendChild(ov);
   }
   try { window.xkdgOpenDirections = xkdgOpenDirections; } catch (e) {}
+
+  // ---- Lucky Trip panel ---------------------------------------------------
+  // A structured front-end that DRIVES the existing AI (XKDGChat.ask): the user
+  // picks an area/theme + category families, and we compose a request the AI
+  // engine already knows how to answer (real POIs + lucky direction & hour).
+  // Two modes:  A — explore what an area offers in the chosen categories;
+  //             B — compose an n-day itinerary around a theme.
+  // Additive & isolated; opened only behind the shared 9861 gate.
+  function tpOpenLuckyTrip(back) {
+    var existing = document.getElementById('xkdg-lucky-overlay');
+    if (existing) { existing.style.display = 'flex'; return; }
+
+    var ov = el('div', { id: 'xkdg-lucky-overlay',
+      style: 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.45);display:flex;' +
+        'align-items:center;justify-content:center;padding:16px;' });
+    var card = el('div', { style: 'background:#fff;border-radius:14px;max-width:380px;width:100%;' +
+      'max-height:90vh;overflow:auto;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.35);' +
+      'font-family:system-ui,Arial,sans-serif;' });
+
+    var head = el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;' });
+    head.appendChild(el('div', { style: 'font-size:17px;font-weight:700;color:#2e7d32;' }, '\uD83C\uDF40 Lucky Trip'));
+    var xBtn = el('span', { style: 'cursor:pointer;font-size:22px;color:#888;line-height:1;' }, '\u2715');
+    head.appendChild(xBtn);
+    card.appendChild(head);
+
+    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    xBtn.addEventListener('click', function () { close(); if (typeof back === 'function') back(); });
+
+    // mode tabs
+    var mode = 'A';
+    var tabRow = el('div', { style: 'display:flex;gap:6px;margin-bottom:10px;' });
+    function mkTab(id, label) {
+      var t = el('button', { type: 'button',
+        style: 'flex:1;padding:9px;border-radius:8px;border:1px solid #cfcfcf;cursor:pointer;font-size:12px;font-weight:700;' }, label);
+      t.addEventListener('click', function () { mode = id; paint(); });
+      return t;
+    }
+    var tabA = mkTab('A', 'Explore an area');
+    var tabB = mkTab('B', 'Themed trip');
+    tabRow.appendChild(tabA); tabRow.appendChild(tabB);
+    card.appendChild(tabRow);
+
+    var explain = el('div', { style: 'font-size:11px;color:#666;margin-bottom:10px;line-height:1.4;' });
+    card.appendChild(explain);
+
+    // area / origin
+    var areaWrap = el('div', { style: 'margin-bottom:10px;' });
+    var areaLab = el('div', { style: 'font-size:11px;color:#555;margin-bottom:3px;font-weight:600;' }, 'Area');
+    var areaInp = el('input', { type: 'text', placeholder: '',
+      style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
+    areaWrap.appendChild(areaLab); areaWrap.appendChild(areaInp); card.appendChild(areaWrap);
+
+    // date + days
+    var dateRow = el('div', { style: 'display:flex;gap:8px;margin-bottom:10px;' });
+    var dateW = el('div', { style: 'flex:1;' });
+    dateW.appendChild(el('div', { style: 'font-size:11px;color:#555;margin-bottom:3px;font-weight:600;' }, 'Date'));
+    var dateInp = el('input', { type: 'date', value: tpLocalISO(new Date()),
+      style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
+    dateW.appendChild(dateInp); dateRow.appendChild(dateW);
+    var daysW = el('div', { style: 'width:84px;' });
+    daysW.appendChild(el('div', { style: 'font-size:11px;color:#555;margin-bottom:3px;font-weight:600;' }, 'Days'));
+    var daysInp = el('input', { type: 'number', min: '1', max: '14', value: '1',
+      style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
+    daysW.appendChild(daysInp); dateRow.appendChild(daysW);
+    card.appendChild(dateRow);
+
+    // category families (multi-select)
+    card.appendChild(el('div', { style: 'font-size:11px;color:#555;margin:6px 0 5px;font-weight:600;' }, 'Categories (pick one or more)'));
+    var FAMILIES = [
+      ['\uD83C\uDF3F', 'Sacred nature / off the crowd', 'natura sacra fuori dalla folla'],
+      ['\uD83D\uDD2E', 'Mysterious / energetic', 'luoghi misteriosi simbolici energetici'],
+      ['\uD83D\uDED5', 'Spiritual / sacred', 'luoghi spirituali eremi abbazie santuari'],
+      ['\uD83C\uDF38', 'Healing / wellbeing', 'terme benessere guarigione naturale'],
+      ['\uD83C\uDFDB', 'Deep culture', 'cultura profonda borghi medievali rovine'],
+      ['\uD83C\uDF77', 'Land & tradition', 'cantine biologiche fattorie prodotti locali'],
+      ['\uD83C\uDFD6', 'Secluded / exclusive beauty', 'spiagge nascoste laghi alpini trekking luoghi esclusivi appartati'],
+      ['\uD83C\uDFAD', 'Events / festivals', 'eventi festival sagre'],
+      ['\uD83D\uDDFA', 'Popular classics', 'castelli musei borghi attrazioni principali']
+    ];
+    var picked = {};
+    var grid = el('div', { style: 'display:flex;flex-direction:column;gap:5px;margin-bottom:12px;' });
+    FAMILIES.forEach(function (f, i) {
+      var row = el('label', { style: 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;font-size:12px;' });
+      var cb = el('input', { type: 'checkbox' });
+      cb.addEventListener('change', function () { picked[i] = cb.checked; });
+      row.appendChild(cb);
+      row.appendChild(el('span', { style: 'font-size:16px;' }, f[0]));
+      row.appendChild(el('span', null, f[1]));
+      grid.appendChild(row);
+    });
+    card.appendChild(grid);
+
+    var go = el('button', { type: 'button',
+      style: 'width:100%;padding:12px;border:none;border-radius:10px;background:#2e7d32;color:#fff;font-size:14px;font-weight:700;cursor:pointer;' },
+      '\uD83C\uDF40 Find lucky trips');
+    card.appendChild(go);
+    card.appendChild(el('div', { style: 'font-size:10.5px;color:#888;margin-top:8px;text-align:center;' },
+      'Proposals appear in the AI chat.'));
+
+    go.addEventListener('click', function () {
+      var area = (areaInp.value || '').trim();
+      var date = dateInp.value || tpLocalISO(new Date());
+      var cats = FAMILIES.filter(function (f, i) { return picked[i]; }).map(function (f) { return f[2]; });
+      if (!cats.length) { alert('Pick at least one category.'); return; }
+      var catTxt = cats.join('; ');
+      var prompt;
+      if (mode === 'A') {
+        prompt = 'Lucky Trip \u2014 explore an area. Area/origin: ' + (area || '(use my current location)') +
+          '. Date: ' + date + '. Categories: ' + catTxt +
+          '. Propose several REAL, named places in these categories around that area, each reachable with a propitious direction and hour, so I can choose among them. Show the place names.';
+      } else {
+        var days = parseInt(daysInp.value, 10) || 1;
+        prompt = 'Lucky Trip \u2014 themed itinerary. Origin: ' + (area || '(use my current location)') +
+          '. Start date: ' + date + '. Days: ' + days + '. Theme/categories: ' + catTxt +
+          '. Compose a ' + days + '-day itinerary where EVERY stop has a propitious direction and hour, choosing real named places that fit the theme. Show the place names.';
+      }
+      if (window.XKDGChat && typeof window.XKDGChat.ask === 'function') {
+        close();
+        window.XKDGChat.ask(prompt);
+      } else if (window.XKDGChat && typeof window.XKDGChat.open === 'function') {
+        window.XKDGChat.open();
+        alert('Copy this into the AI chat:\n\n' + prompt);
+      } else {
+        alert(prompt);
+      }
+    });
+
+    function paint() {
+      var aOn = mode === 'A';
+      tabA.style.background = aOn ? '#2e7d32' : '#f5f5f5';
+      tabA.style.color = aOn ? '#fff' : '#333';
+      tabB.style.background = !aOn ? '#2e7d32' : '#f5f5f5';
+      tabB.style.color = !aOn ? '#fff' : '#333';
+      daysW.style.display = aOn ? 'none' : 'block';
+      areaLab.textContent = aOn ? 'Area to explore' : 'Starting point';
+      areaInp.placeholder = aOn ? 'e.g. Rome, or: north of Vienna' : 'e.g. Vienna (where you start)';
+      explain.textContent = aOn
+        ? 'Given a place, the AI proposes what it offers in the chosen categories \u2014 you pick among the proposals.'
+        : 'Given a theme, the AI composes a multi-day itinerary, finding suitable places.';
+    }
+    paint();
+
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.appendChild(card);
+    document.body.appendChild(ov);
+  }
+  try { window.tpOpenLuckyTrip = tpOpenLuckyTrip; } catch (e) {}
 
   // Gate every entry point: ask for the code (once per session), then open.
   function tpOpen() {
