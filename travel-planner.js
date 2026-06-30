@@ -3056,17 +3056,18 @@
 
     // mode tabs
     var mode = 'A';
-    var tabRow = el('div', { style: 'display:flex;gap:6px;margin-bottom:10px;' });
+    var tabRow = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;' });
     function mkTab(id, label) {
       var t = el('button', { type: 'button',
-        style: 'flex:1;padding:9px;border-radius:8px;border:1px solid #cfcfcf;cursor:pointer;font-size:12px;font-weight:700;' }, label);
+        style: 'flex:1 1 45%;padding:8px 6px;border-radius:8px;border:1px solid #cfcfcf;cursor:pointer;font-size:12px;font-weight:700;' }, label);
       t.addEventListener('click', function () { mode = id; paint(); });
       return t;
     }
     var tabA = mkTab('A', 'Explore an area');
     var tabB = mkTab('B', 'Themed trip');
     var tabC = mkTab('C', 'City tour');
-    tabRow.appendChild(tabA); tabRow.appendChild(tabB); tabRow.appendChild(tabC);
+    var tabD = mkTab('D', '\uD83C\uDF9F Events');
+    tabRow.appendChild(tabA); tabRow.appendChild(tabB); tabRow.appendChild(tabC); tabRow.appendChild(tabD);
     card.appendChild(tabRow);
 
     var explain = el('div', { style: 'font-size:11px;color:#666;margin-bottom:10px;line-height:1.4;' });
@@ -3146,7 +3147,15 @@
       var cats = FAMILIES.filter(function (f, i) { return picked[i]; }).map(function (f) { return f[2]; });
       var catTxt = cats.join('; ');
       var prompt;
-      if (mode === 'C') {
+      if (mode === 'D') {
+        var evCat = cats.length ? catTxt : 'any kind';
+        prompt = 'Lucky Trip \\u2014 EVENTS. Base: ' + (area || '(use my current location)') +
+          '. From ' + date + ' for the next 30 days, within about 80 km. Kind of event: ' + evCat + '. ' +
+          'Use the lucky-events planner (plan_lucky_events): find REAL dated events and keep only the ones whose ' +
+          'direction from the base is favourable ON THE EVENT\\u2019S OWN DATE. For each kept event tell me the ' +
+          'double-hour to set off, the door, the score and the ticket link; and list separately events found but NOT ' +
+          'auspicious to reach on their day.';
+      } else if (mode === 'C') {
         var cTheme = cats.length ? catTxt : 'famous attractions';
         prompt = 'Lucky Trip \u2014 CITY TOUR (inside the city). City/base: ' + (area || '(use my current location)') +
           '. Date: ' + date + '. Categories: ' + cTheme + '. Minimum distance from base: ' + minKm + ' km. ' +
@@ -3177,17 +3186,22 @@
 
     function paint() {
       function setTab(t, on) { t.style.background = on ? '#2e7d32' : '#f5f5f5'; t.style.color = on ? '#fff' : '#333'; }
-      setTab(tabA, mode === 'A'); setTab(tabB, mode === 'B'); setTab(tabC, mode === 'C');
+      setTab(tabA, mode === 'A'); setTab(tabB, mode === 'B'); setTab(tabC, mode === 'C'); setTab(tabD, mode === 'D');
       daysW.style.display = (mode === 'B') ? 'block' : 'none';
+      minWrap.style.display = (mode === 'D') ? 'none' : 'block';
       if (!minTouched) minSel.value = (mode === 'C') ? '0' : '15';   // sensible default per mode
-      areaLab.textContent = (mode === 'A') ? 'Area to explore' : (mode === 'C') ? 'City' : 'Starting point';
+      areaLab.textContent = (mode === 'A') ? 'Area to explore' : (mode === 'C') ? 'City' : (mode === 'D') ? 'Base' : 'Starting point';
       areaInp.placeholder = (mode === 'A') ? 'e.g. Rome, or: north of Vienna'
-        : (mode === 'C') ? 'e.g. Rome (the city to tour)' : 'e.g. Vienna (where you start)';
+        : (mode === 'C') ? 'e.g. Rome (the city to tour)'
+        : (mode === 'D') ? 'e.g. Vienna (your base)'
+        : 'e.g. Vienna (where you start)';
       explain.textContent = (mode === 'A')
         ? 'Given a place, the AI proposes what it offers in the chosen categories \u2014 you pick among the proposals.'
         : (mode === 'C')
           ? 'A one-day tour of famous places INSIDE a city, each visited when its direction from the base is favourable.'
-          : 'Given a theme, the AI composes a multi-day itinerary, finding suitable places.';
+          : (mode === 'D')
+            ? 'Real dated events near the base: keeps the ones whose direction is favourable on the event date, with the hour to set off. (The date below is the window start.)'
+            : 'Given a theme, the AI composes a multi-day itinerary, finding suitable places.';
     }
     paint();
 
