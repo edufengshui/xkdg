@@ -3027,7 +3027,8 @@
     }
     var tabA = mkTab('A', 'Explore an area');
     var tabB = mkTab('B', 'Themed trip');
-    tabRow.appendChild(tabA); tabRow.appendChild(tabB);
+    var tabC = mkTab('C', 'City tour');
+    tabRow.appendChild(tabA); tabRow.appendChild(tabB); tabRow.appendChild(tabC);
     card.appendChild(tabRow);
 
     var explain = el('div', { style: 'font-size:11px;color:#666;margin-bottom:10px;line-height:1.4;' });
@@ -3053,6 +3054,19 @@
       style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
     daysW.appendChild(daysInp); dateRow.appendChild(daysW);
     card.appendChild(dateRow);
+
+    // minimum distance from base — selectable (replaces the old hardcoded 15 km).
+    // Defaults: 0 for City tour (in-city), 15 km otherwise; user can override.
+    var minTouched = false;
+    var minWrap = el('div', { style: 'margin-bottom:10px;' });
+    minWrap.appendChild(el('div', { style: 'font-size:11px;color:#555;margin-bottom:3px;font-weight:600;' }, 'Minimum distance from base'));
+    var minSel = el('select', { style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;background:#fff;' });
+    [['0', 'No minimum (in-city)'], ['1', '1 km'], ['5', '5 km'], ['15', '15 km (excursion)'], ['30', '30 km']].forEach(function (o) {
+      minSel.appendChild(el('option', { value: o[0] }, o[1]));
+    });
+    minSel.value = '15';
+    minSel.addEventListener('change', function () { minTouched = true; });
+    minWrap.appendChild(minSel); card.appendChild(minWrap);
 
     // category families (multi-select)
     card.appendChild(el('div', { style: 'font-size:11px;color:#555;margin:6px 0 5px;font-weight:600;' }, 'Categories (pick one or more)'));
@@ -3090,19 +3104,27 @@
     go.addEventListener('click', function () {
       var area = (areaInp.value || '').trim();
       var date = dateInp.value || tpLocalISO(new Date());
+      var minKm = minSel.value || '15';
       var cats = FAMILIES.filter(function (f, i) { return picked[i]; }).map(function (f) { return f[2]; });
-      if (!cats.length) { alert('Pick at least one category.'); return; }
       var catTxt = cats.join('; ');
       var prompt;
-      if (mode === 'A') {
-        prompt = 'Lucky Trip \u2014 explore an area. Area/origin: ' + (area || '(use my current location)') +
-          '. Date: ' + date + '. Categories: ' + catTxt +
-          '. Propose several REAL, named places in these categories around that area, each reachable with a propitious direction and hour, so I can choose among them. Show the place names.';
-      } else {
+      if (mode === 'C') {
+        var cTheme = cats.length ? catTxt : 'famous attractions';
+        prompt = 'Lucky Trip \u2014 CITY TOUR (inside the city). City/base: ' + (area || '(use my current location)') +
+          '. Date: ' + date + '. Categories: ' + cTheme + '. Minimum distance from base: ' + minKm + ' km. ' +
+          'Compose a ONE-DAY tour of famous places INSIDE the city using the city-tour planner: each place visited in the ' +
+          'double-hour when its direction from the base is favourable. Show the place names, their direction and the hour.';
+      } else if (mode === 'B') {
+        if (!cats.length) { alert('Pick at least one category.'); return; }
         var days = parseInt(daysInp.value, 10) || 1;
         prompt = 'Lucky Trip \u2014 themed itinerary. Origin: ' + (area || '(use my current location)') +
-          '. Start date: ' + date + '. Days: ' + days + '. Theme/categories: ' + catTxt +
-          '. Compose a ' + days + '-day itinerary where EVERY stop has a propitious direction and hour, choosing real named places that fit the theme. Show the place names.';
+          '. Start date: ' + date + '. Days: ' + days + '. Theme/categories: ' + catTxt + '. Minimum distance from base: ' + minKm + ' km. ' +
+          'Compose a ' + days + '-day itinerary where EVERY stop has a propitious direction and hour, choosing real named places that fit the theme. Show the place names.';
+      } else {
+        if (!cats.length) { alert('Pick at least one category.'); return; }
+        prompt = 'Lucky Trip \u2014 explore an area. Area/origin: ' + (area || '(use my current location)') +
+          '. Date: ' + date + '. Categories: ' + catTxt + '. Minimum distance from base: ' + minKm + ' km. ' +
+          'Propose several REAL, named places in these categories around that area, each reachable with a propitious direction and hour, so I can choose among them. Show the place names.';
       }
       if (window.XKDGChat && typeof window.XKDGChat.ask === 'function') {
         close();
@@ -3116,17 +3138,18 @@
     });
 
     function paint() {
-      var aOn = mode === 'A';
-      tabA.style.background = aOn ? '#2e7d32' : '#f5f5f5';
-      tabA.style.color = aOn ? '#fff' : '#333';
-      tabB.style.background = !aOn ? '#2e7d32' : '#f5f5f5';
-      tabB.style.color = !aOn ? '#fff' : '#333';
-      daysW.style.display = aOn ? 'none' : 'block';
-      areaLab.textContent = aOn ? 'Area to explore' : 'Starting point';
-      areaInp.placeholder = aOn ? 'e.g. Rome, or: north of Vienna' : 'e.g. Vienna (where you start)';
-      explain.textContent = aOn
+      function setTab(t, on) { t.style.background = on ? '#2e7d32' : '#f5f5f5'; t.style.color = on ? '#fff' : '#333'; }
+      setTab(tabA, mode === 'A'); setTab(tabB, mode === 'B'); setTab(tabC, mode === 'C');
+      daysW.style.display = (mode === 'B') ? 'block' : 'none';
+      if (!minTouched) minSel.value = (mode === 'C') ? '0' : '15';   // sensible default per mode
+      areaLab.textContent = (mode === 'A') ? 'Area to explore' : (mode === 'C') ? 'City' : 'Starting point';
+      areaInp.placeholder = (mode === 'A') ? 'e.g. Rome, or: north of Vienna'
+        : (mode === 'C') ? 'e.g. Rome (the city to tour)' : 'e.g. Vienna (where you start)';
+      explain.textContent = (mode === 'A')
         ? 'Given a place, the AI proposes what it offers in the chosen categories \u2014 you pick among the proposals.'
-        : 'Given a theme, the AI composes a multi-day itinerary, finding suitable places.';
+        : (mode === 'C')
+          ? 'A one-day tour of famous places INSIDE a city, each visited when its direction from the base is favourable.'
+          : 'Given a theme, the AI composes a multi-day itinerary, finding suitable places.';
     }
     paint();
 
@@ -5280,6 +5303,30 @@
         .catch(function () { if (to) clearTimeout(to); return null; });
     } catch (e) { return Promise.resolve(null); }
   }
+  // LIST variant: returns an array of named places (for a city tour). Best-effort,
+  // never throws; [] on any failure so callers degrade gracefully.
+  function tpFindPlacesList(lat, lon, radiusKm, category, max) {
+    try {
+      var base = tpPlacesWorkerUrl();
+      if (!base) return Promise.resolve([]);
+      var q = tpPlacesQueryFor(category);
+      var k = tpPlacesAccessKey();
+      var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
+        'q=' + encodeURIComponent(q) + '&lat=' + lat + '&lon=' + lon +
+        '&radius=' + Math.round(Math.max(1, radiusKm) * 1000) + '&max=' + (max || 20) +
+        (k ? '&k=' + encodeURIComponent(k) : '');
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+      return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
+        .then(function (res) { return res.json(); })
+        .then(function (j) {
+          if (to) clearTimeout(to);
+          if (!j || j.status !== 'ok' || !j.results) return [];
+          return j.results.filter(function (r) { return isFinite(r.lat) && isFinite(r.lon); });
+        })
+        .catch(function () { if (to) clearTimeout(to); return []; });
+    } catch (e) { return Promise.resolve([]); }
+  }
   function tpFindStopover(lat, lon, ev) {
     // Staged so the query stays LIGHT and reliable: 1) sparse types (service area / rest
     // area / fuel + EV chargers) at 8 km then 20 km; 2) only if nothing, a small-radius
@@ -5565,9 +5612,13 @@
     var topN = opts.topN || 4;
     var category = opts.category || null;
     var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
+    var minKm = (opts.minOriginKm != null) ? opts.minOriginKm : 15;   // selectable floor (0 = in-city)
     var bearings = [0, 45, 90, 135, 180, 225, 270, 315];
-    var dists = (opts.distancesKm || [30, 80, 150]).filter(function (d) { return d <= maxKm; });
-    if (!dists.length) dists = [Math.min(30, maxKm)];
+    // When the floor is small (city scale) probe SHORT distances too, so in-city
+    // famous places can win; otherwise keep the excursion spread.
+    var dflt = (minKm < 12) ? [Math.max(1, minKm || 2), 4, 8, 15, 30, 60, 120] : [30, 80, 150];
+    var dists = (opts.distancesKm || dflt).filter(function (d) { return d <= maxKm && d >= Math.max(0, minKm * 0.5); });
+    if (!dists.length) dists = [Math.min(Math.max(minKm, 2), maxKm)];
 
     var jobs = [];
     bearings.forEach(function (b) {
@@ -5634,8 +5685,9 @@
       // Category given → find a REAL place near each picked point.
       // Nature searches a tighter radius (25 km) so the stop stays near the target
       // instead of reaching back toward the city; other categories use 40 km.
+      // In city mode (small maxKm) shrink the POI radius so a stop is precise.
       var catKey = tpPoiCategory(category);
-      var poiRadius = (catKey === 'nature') ? 25 : 40;
+      var poiRadius = Math.max(3, Math.min((catKey === 'nature') ? 25 : 40, maxKm));
       var poiDbg = [];
       return Promise.all(picked.map(function (r) {
         var dbg = { dest: [Math.round(r.dest.lat * 1000) / 1000, Math.round(r.dest.lon * 1000) / 1000], nature: -1, broad40: -1, broad90: -1, pick: null };
@@ -5647,7 +5699,7 @@
           resp.els.forEach(function (p) { p.ev = tpNearestCharger(p, resp.chargers); });
           dbg.nature = resp.els.length;
           var pick = (catKey === 'nature')
-            ? tpPickNatureStop(resp.els, r.dest, O, maxKm, 15)
+            ? tpPickNatureStop(resp.els, r.dest, O, maxKm, minKm)
             : tpPickBestPOI(resp.els, r.dest, O, maxKm);
           if (pick) { dbg.pick = pick.name; return { poi: pick, failed: false }; }
           // service OK but the specific category was empty here → fall back to the nearest
@@ -5754,11 +5806,85 @@
     return out;
   }
 
+  /* ===================================================================== *
+   * CITY TOUR (multi-stop, intra-city) — same direction-per-hour model,
+   * at any scale (no minimum distance). For a chosen city BASE and date,
+   * fetch famous places INSIDE the city (Google Places) and assign each to
+   * the double-hour in which its direction FROM THE BASE is favourable —
+   * building a one-day walking/short-drive tour. Pure reuse of tpDayHourSlots
+   * (the per-hour favourable-direction engine) + Places. Async (Places).
+   * ===================================================================== */
+  function tpProposeCityTour(opts) {
+    opts = opts || {};
+    var O = opts.origin || TP_DEFAULT.origin;
+    var utc = (opts.utc != null) ? opts.utc : 1;
+    var dstOn = !!opts.dstOn;
+    var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
+    var dateStr = opts.dateStr || tpLocalISO(new Date(nowMs));
+    var marginMs = ((opts.departMarginMin != null) ? opts.departMarginMin : 20) * 60000;
+    if (dateStr !== tpLocalISO(new Date(nowMs))) marginMs = -(24 * 3600000);   // future day: no floor
+    var radiusKm = opts.radiusKm || 8;                 // city extent
+    var minKm = (opts.minOriginKm != null) ? opts.minOriginKm : 0;   // 0 = include everything in town
+    var category = opts.category || 'top tourist attractions';
+    var maxStops = opts.maxStops || 6;
+
+    if (typeof Solar === 'undefined') return Promise.resolve({ ok: false, reason: 'no_solar', date: dateStr });
+    var hours = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs);
+    if (!hours.length) return Promise.resolve({ ok: false, reason: 'no_hours', date: dateStr });
+
+    return tpFindPlacesList(O.lat, O.lon, radiusKm, category, 20).then(function (places) {
+      if (!places || !places.length) return { ok: false, reason: 'no_places', date: dateStr, category: category };
+      // bearing + 8-wind + distance from the base for each place
+      places = places.map(function (p) {
+        var b = tpBearing(O.lat, O.lon, p.lat, p.lon);
+        return { name: p.name, lat: p.lat, lon: p.lon, rating: (p.rating != null ? p.rating : null),
+                 bearing: b, dir8: tpSnapDir(b), distKm: tpHaversineKm(O.lat, O.lon, p.lat, p.lon) };
+      }).filter(function (p) { return p.distKm >= minKm; });   // honour the chosen floor
+      if (!places.length) return { ok: false, reason: 'no_places_beyond_min', date: dateStr };
+
+      // Greedy: for each double-hour in time order, take the nearest unused famous
+      // place whose direction matches one of that hour's favourable directions.
+      var used = {}, stops = [];
+      for (var hi = 0; hi < hours.length && stops.length < maxStops; hi++) {
+        var hh = hours[hi];
+        var favs = hh.fav.dirs.slice().sort(function (a, b) { return b.combined - a.combined; });
+        var chosen = -1, chosenFav = null;
+        for (var fi = 0; fi < favs.length && chosen < 0; fi++) {
+          var fav = favs[fi], best = -1, bd = Infinity;
+          for (var pi = 0; pi < places.length; pi++) {
+            if (used[pi]) continue;
+            if (!tpDir8Near(places[pi].dir8, fav.dir)) continue;     // within one 45° step
+            if (places[pi].distKm < bd) { bd = places[pi].distKm; best = pi; }
+          }
+          if (best >= 0) { chosen = best; chosenFav = fav; }
+        }
+        if (chosen >= 0) {
+          used[chosen] = 1;
+          var p = places[chosen];
+          stops.push({
+            place: p.name, dest_lat: Math.round(p.lat * 100000) / 100000, dest_lon: Math.round(p.lon * 100000) / 100000,
+            rating: p.rating, direction: chosenFav.dir, bearing: Math.round(p.bearing),
+            dist_km: Math.round(p.distKm * 10) / 10,
+            door: chosenFav.door, doorLabel: tpDoorLabel(chosenFav.door),
+            score: Math.round((chosenFav.combined || 0) * 5),
+            br: hh.br, brPy: (BR_PY[hh.br] || hh.br),
+            hour_cn: tpChineseHourAt(hh.startMs, O.lon, utc, dstOn)
+          });
+        }
+      }
+      var leftover = [];
+      for (var li = 0; li < places.length; li++) if (!used[li]) leftover.push({ place: places[li].name, direction: places[li].dir8 });
+      return { ok: true, date: dateStr, origin: O, category: category, city_radius_km: radiusKm,
+               stops: stops, places_found: places.length, leftover: leftover.slice(0, 8) };
+    }).catch(function (e) { return { ok: false, reason: 'error', error: (e && e.message) || String(e), date: dateStr }; });
+  }
+
   window.TravelPlanner = {
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
     proposeLuckyTrips: tpProposeLuckyTrips,
     proposeChainTrips: tpProposeChainTrips,
+    proposeCityTour: tpProposeCityTour,
     findPOI: tpFindPOI,
     planArriveBy: tpPlanArriveBy,
     searchItineraries: function (opts) { return tpSearchItineraries(opts); },

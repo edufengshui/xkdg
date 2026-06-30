@@ -221,6 +221,12 @@
     '"itinerary" array (one entry per day, each with a "proposal" = that day lucky themed place). Present it as ' +
     '"Day 1 ... Day N" exactly as its "instructions" field says; never compute directions or times yourself. HUB model ' +
     '(sleep at the base, one lucky themed excursion per day). Use plan_lucky_day_trip for a SINGLE day, plan_lucky_multiday for SEVERAL.\n' +
+    '- CITY TOUR (famous places INSIDE one city): when the user wants to tour WITHIN a city ("a lucky day in Rome", "cosa vedere ' +
+    'a Firenze oggi alle ore giuste", the Lucky Trip panel "City tour"), call plan_city_tour with origin (the city centre or ' +
+    'hotel), date and optional category. The XKDG direction model works at ANY scale (no minimum distance — it was a battlefield ' +
+    'art of short moves): it returns "stops" (famous places, each tied to the double-hour when its direction from the base is ' +
+    'favourable). Present them in time order as a one-day plan, exactly as its "instructions" say. For an in-city SINGLE place you ' +
+    'may instead use plan_lucky_day_trip with min_km:0 and a small max_radius_km.\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
@@ -543,6 +549,7 @@
           origin_name: { type: 'string', description: 'Start place name (for labels).' },
           date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
           max_radius_km: { type: 'number', description: 'Maximum distance from the origin in km (default 200).' },
+          min_km: { type: 'number', description: 'Minimum distance from the origin in km (default 15). Pass 0 for in-city / very short trips so nearby famous places are not filtered out.' },
           stay_min_h: { type: 'number', description: 'Minimum stay at the destination in hours (default 1.5).' },
           stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
           category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL named place (looked up via Google Places) instead of a generic point. IMPORTANT: pass the user\'s OWN specific word — it is matched to that exact kind of place. E.g. "castelli"/"castles" -> castles, "musei"/"museums" -> museums, "terme"/"spa" -> thermal baths, "borghi"/"villages" -> old villages, "eremi"/"abbazie" -> hermitages & abbeys, "natura" -> parks/lakes/viewpoints, "spiagge appartate" -> secluded beaches, "luoghi misteriosi" -> megalithic/mystical sites, "cantine" -> wineries. Do NOT collapse "castles" into a generic "culture" (that returns MUSEUMS, not castles). Leave empty for generic points. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
@@ -596,6 +603,29 @@
           days: { type: 'integer', description: 'How many consecutive days (1-10, default 3).' },
           category: { type: 'string', description: 'Theme/kind of place for EVERY day. Pass the user\'s specific word ("castles", "thermal baths", "hermitages abbeys", "mysterious energetic places", "secluded beaches"...). Becomes real named places via Google Places.' },
           max_radius_km: { type: 'number', description: 'Maximum distance of each daily excursion from the base in km (default 200).' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'plan_city_tour',
+      description: 'Compose a ONE-DAY CITY TOUR of famous places INSIDE a city (Rome, Florence, Vienna...). Same XKDG ' +
+        'direction model at city scale (NO minimum distance): the app fetches famous places inside the city and assigns ' +
+        'each to the double-hour in which its direction FROM THE BASE is favourable, building a walking / short-drive day. ' +
+        'Use when the user wants a tour WITHIN a city ("a lucky day in Rome", "tour dentro Firenze", "cosa vedere a Vienna ' +
+        'oggi alle ore fortunate", the Lucky Trip panel "City tour"). Pass the city centre (or the user\'s hotel) as ' +
+        'origin_lat/lon. You never compute directions or hours yourself — present exactly what it returns.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_lat: { type: 'number', description: 'City centre / hotel latitude (defaults to saved GPS).' },
+          origin_lon: { type: 'number', description: 'City centre / hotel longitude.' },
+          origin_name: { type: 'string', description: 'City / base name (for labels).' },
+          date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
+          category: { type: 'string', description: 'OPTIONAL kind of place ("churches", "museums", "castles", "famous attractions"...). Default: famous attractions.' },
+          radius_km: { type: 'number', description: 'City extent in km (default 8).' },
+          min_km: { type: 'number', description: 'Minimum distance from the base in km (default 0 = include everything in town).' },
+          max_stops: { type: 'integer', description: 'How many stops in the day (default 6).' }
         },
         required: []
       }
@@ -1158,6 +1188,7 @@
       if (name === 'plan_lucky_day_trip') return toolPlanLuckyDayTrip(input || {});
       if (name === 'plan_lucky_chain') return toolPlanLuckyChain(input || {});
       if (name === 'plan_lucky_multiday') return toolPlanLuckyMultiDay(input || {});
+      if (name === 'plan_city_tour') return toolPlanCityTour(input || {});
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
@@ -1811,6 +1842,7 @@
       topN: (input.count != null ? Math.max(2, Math.min(6, parseInt(input.count, 10))) : 4)
     };
     if (input.category) opts.category = String(input.category);
+    if (input.min_km != null) opts.minOriginKm = +input.min_km;
     if (origin) opts.origin = origin;
     var wantDir = (input.direction && /^(N|NE|E|SE|S|SW|W|NW)$/.test(input.direction)) ? input.direction : null;
 
@@ -1977,6 +2009,45 @@
       return { ok: true, base: originName || undefined, start_date: start, days: days,
         category: category || undefined, itinerary: out, instructions: instr };
     }).catch(function (e) { return { error: 'Multi-day planning failed: ' + ((e && e.message) || e) }; });
+  }
+
+  // ── CITY TOUR (intra-city, one day) ──────────────────────────────────────
+  function toolPlanCityTour(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.proposeCityTour !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    var today = todayIso();
+    var dateStr = input.date || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+    var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
+    var opts = { utc: utc, dstOn: dstOn, dateStr: dateStr,
+      radiusKm: (input.radius_km != null ? +input.radius_km : 8),
+      minOriginKm: (input.min_km != null ? +input.min_km : 0),
+      maxStops: (input.max_stops != null ? Math.max(2, Math.min(10, parseInt(input.max_stops, 10))) : 6) };
+    if (input.category) opts.category = String(input.category);
+    if (origin) opts.origin = origin;
+    return window.TravelPlanner.proposeCityTour(opts).then(function (r) {
+      if (!r || !r.ok) {
+        var why = r && r.reason;
+        return { ok: false, reason: why || 'unknown', date: dateStr,
+          note: why === 'no_places' ? 'No famous places of that kind were found inside the city radius — try a larger radius_km or a different category.'
+            : (why === 'no_places_beyond_min') ? 'All places fell within the minimum distance — lower min_km (0 for a full in-city tour).'
+            : (why === 'no_hours') ? 'No favourable double-hours remain today — offer tomorrow.'
+            : 'No city tour could be built.' };
+      }
+      var instr = 'This is a ONE-DAY CITY TOUR inside ' + (input.origin_name || 'the city') + '. Each stop is a famous place ' +
+        'visited in the double-hour when its DIRECTION from the base is favourable. Present it in TIME ORDER as a day plan: for ' +
+        'EACH stop show the place name, the direction (stop.direction) and bearing, the distance from base (stop.dist_km km), the ' +
+        'favourable DOOR (stop.doorLabel), the double-hour (stop.brPy + stop.br) with its Chinese hour info (stop.hour_cn) VERBATIM, ' +
+        'and the score (stop.score 0-5). Keep the SAME base all day (walk / short drive between stops). If "leftover" places remain, ' +
+        'you may mention a couple as alternatives whose favourable hour did not fit today. Do NOT invent directions or hours. To ' +
+        'navigate to a stop, use plan_travel with its dest_lat / dest_lon.';
+      return { ok: true, base: input.origin_name || undefined, date: r.date, category: r.category,
+        city_radius_km: r.city_radius_km, stops: r.stops, leftover: r.leftover, instructions: instr };
+    }).catch(function (e) { return { error: 'City tour failed: ' + ((e && e.message) || e) }; });
   }
 
   function toolPlanLuckyChain(input) {
