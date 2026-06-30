@@ -981,6 +981,26 @@
       });
   }
 
+  // Geocode an AREA/region NAME to its bounding box (Nominatim returns one for
+  // administrative areas). Returns a Promise of
+  // { lat, lon, box:{south,north,west,east} } or rejects. Used to fence a
+  // themed trip to a region (e.g. Tuscany) so stops can't drift into a neighbour.
+  function tpGeocodeArea(query) {
+    return fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(query) + '&format=json&limit=1',
+        { headers: { 'Accept-Language': 'en' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.length) throw new Error('not found');
+        var p = data[0];
+        var bb = p.boundingbox || null;
+        var box = (bb && bb.length === 4) ? {
+          south: parseFloat(bb[0]), north: parseFloat(bb[1]),
+          west: parseFloat(bb[2]), east: parseFloat(bb[3])
+        } : null;
+        return { lat: parseFloat(p.lat), lon: parseFloat(p.lon), display: p.display_name || query, box: box };
+      });
+  }
+
   // Resolve a place to {lat,lon}. Prefers geocoding the NAME (reliable) over  // caller-supplied coordinates, which the AI generates "from its knowledge" and
   // can get badly wrong for small towns. Falls back to the supplied lat/lon if
   // the name is missing or geocoding fails/times out. Always resolves (never rejects).
@@ -3080,6 +3100,15 @@
       style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
     areaWrap.appendChild(areaLab); areaWrap.appendChild(areaInp); card.appendChild(areaWrap);
 
+    // Themed trip only: a SECOND field = the AREA/region to stay within, so the
+    // base (e.g. Siena) and the area to explore (e.g. Tuscany) are DISTINCT. This
+    // fences the search to the region and stops it wandering into a neighbour.
+    var areaConstraintWrap = el('div', { style: 'margin-bottom:10px;display:none;' });
+    var areaConstraintLab = el('div', { style: 'font-size:11px;color:#555;margin-bottom:3px;font-weight:600;' }, 'Area to explore (stay within)');
+    var areaConstraintInp = el('input', { type: 'text', placeholder: 'e.g. Tuscany - optional, keeps stops inside it',
+      style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
+    areaConstraintWrap.appendChild(areaConstraintLab); areaConstraintWrap.appendChild(areaConstraintInp); card.appendChild(areaConstraintWrap);
+
     // date + days
     var dateRow = el('div', { style: 'display:flex;gap:8px;margin-bottom:10px;' });
     var dateW = el('div', { style: 'flex:1;' });
@@ -3164,8 +3193,10 @@
       } else if (mode === 'B') {
         if (!cats.length) { alert('Pick at least one category.'); return; }
         var days = parseInt(daysInp.value, 10) || 1;
+        var areaConstraint = (areaConstraintInp.value || '').trim();
         prompt = 'Lucky Trip \u2014 themed itinerary. Origin: ' + (area || '(use my current location)') +
           '. Start date: ' + date + '. Days: ' + days + '. Theme/categories: ' + catTxt + '. Minimum distance from base: ' + minKm + ' km. ' +
+          (areaConstraint ? ('Area to stay within: ' + areaConstraint + '. Keep EVERY place strictly inside this area (do NOT wander into neighbouring regions). ') : '') +
           'Compose a ' + days + '-day itinerary where EVERY stop has a propitious direction and hour, choosing real named places that fit the theme. Show the place names.';
       } else {
         if (!cats.length) { alert('Pick at least one category.'); return; }
@@ -3189,11 +3220,13 @@
       setTab(tabA, mode === 'A'); setTab(tabB, mode === 'B'); setTab(tabC, mode === 'C'); setTab(tabD, mode === 'D');
       daysW.style.display = (mode === 'B') ? 'block' : 'none';
       minWrap.style.display = (mode === 'D') ? 'none' : 'block';
+      areaConstraintWrap.style.display = (mode === 'B') ? 'block' : 'none';   // base vs area are separate only for Themed trip
       if (!minTouched) minSel.value = (mode === 'C') ? '0' : '15';   // sensible default per mode
-      areaLab.textContent = (mode === 'A') ? 'Area to explore' : (mode === 'C') ? 'City' : (mode === 'D') ? 'Base' : 'Starting point';
+      areaLab.textContent = (mode === 'A') ? 'Area to explore' : (mode === 'C') ? 'City' : (mode === 'D') ? 'Base' : (mode === 'B') ? 'Base town (where you sleep)' : 'Starting point';
       areaInp.placeholder = (mode === 'A') ? 'e.g. Rome, or: north of Vienna'
         : (mode === 'C') ? 'e.g. Rome (the city to tour)'
         : (mode === 'D') ? 'e.g. Vienna (your base)'
+        : (mode === 'B') ? 'e.g. Siena (your base town)'
         : 'e.g. Vienna (where you start)';
       explain.textContent = (mode === 'A')
         ? 'Given a place, the AI proposes what it offers in the chosen categories \u2014 you pick among the proposals.'
@@ -6108,6 +6141,10 @@
       return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });
     },
     resolvePlace: function (name, lat, lon) { return _tpResolvePlace(name, lat, lon); },
+    resolveArea: function (name) {
+      if (!name || !String(name).trim()) return Promise.resolve(null);
+      return tpGeocodeArea(String(name).trim()).then(function (a) { return a; }).catch(function () { return null; });
+    },
     cheapestTariff: function (name) { return tpCheapestTariff(name); },
     getWorkerUrl: tpGetWorkerUrl,
     readChargeFromCar: tpReadChargeFromCar,

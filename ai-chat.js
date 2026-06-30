@@ -220,7 +220,9 @@
     '"Themed trip"), call plan_lucky_multiday with origin (the base), start_date, days and category. If the user lists ' +
     'SEVERAL themes, pass them ALL in ONE call via the "categories" array (e.g. categories:["sacred nature","hermitages ' +
     'abbeys","thermal baths"]) — NEVER call this tool once per theme (that floods the app and can stall it); the app ' +
-    'spreads the themes across the days for you. It returns an ' +
+    'spreads the themes across the days for you. If the user names a REGION/AREA to stay within (e.g. "tour in ' +
+    'Tuscany", "stay in the Dolomites", "Area to stay within: Tuscany"), pass it as "area" — it is DISTINCT from the ' +
+    'base (base = Siena, area = Tuscany) and fences every stop inside that region. It returns an ' +
     '"itinerary" array (one entry per day, each with a "proposal" = that day lucky themed place). Present it as ' +
     '"Day 1 ... Day N" exactly as its "instructions" field says; never compute directions or times yourself. HUB model ' +
     '(sleep at the base, one lucky themed excursion per day). Use plan_lucky_day_trip for a SINGLE day, plan_lucky_multiday for SEVERAL.\n' +
@@ -613,6 +615,7 @@
           days: { type: 'integer', description: 'How many consecutive days (1-10, default 3).' },
           category: { type: 'string', description: 'A SINGLE theme/kind of place for EVERY day. Pass the user\'s specific word ("castles", "thermal baths", "hermitages abbeys", "mysterious energetic places", "secluded beaches"...). Becomes real named places via Google Places. If the user gave SEVERAL themes, use "categories" instead.' },
           categories: { type: 'array', items: { type: 'string' }, description: 'MULTIPLE themes for the trip, passed in ONE call (NEVER call this tool once per theme). The app draws each day\'s excursion from this palette, varying the theme across days and picking the best favourable place per day. Use this whenever the user lists more than one theme (e.g. ["sacred nature","hermitages abbeys","thermal baths","medieval villages","organic wineries"]).' },
+          area: { type: 'string', description: 'OPTIONAL region/area to STAY WITHIN, distinct from the base (e.g. base "Siena", area "Tuscany"). The app geocodes it to a bounding box and keeps EVERY stop inside it, so the trip can\'t drift into a neighbouring region. Pass it whenever the user names an area to remain in ("tour in Tuscany", "stay in the Dolomites", "Area to stay within: ...").' },
           max_radius_km: { type: 'number', description: 'Maximum distance of each daily excursion from the base in km (default 200).' },
           avoid_crowds: { type: 'boolean', description: 'OPTIONAL. True for quiet / secluded / non-touristy excursions (away from the crowds); gently de-emphasises very popular places without overriding the favourable direction.' }
         },
@@ -1997,16 +2000,25 @@
       return null;
     }
     var origin = _gpsOrCoords();   // provisional; a base NAME (if given) is geocoded below and overrides this
-    // Resolve the base NAME to real coordinates. resolvePlace PREFERS geocoding
-    // the name over AI-guessed coordinates (wrong for small towns) and over saved
-    // GPS — so "Siena" really means Siena, not your home location.
+    var areaName = input.area ? String(input.area).trim() : null;
+    var areaBox = null;            // bounding box of the region to stay within (Tuscany, Dolomites...)
+    // Resolve the base NAME to real coordinates, and the AREA name to a bounding
+    // box, before running. resolvePlace PREFERS geocoding the name over AI-guessed
+    // coordinates (wrong for small towns) and over saved GPS — so "Siena" really
+    // means Siena. The area box then fences every stop inside the region.
     function _resolveOriginStep() {
+      var jobs = [];
       if (originName && typeof window.TravelPlanner.resolvePlace === 'function') {
-        return window.TravelPlanner.resolvePlace(originName, _rawLat, _rawLon).then(function (o) {
+        jobs.push(window.TravelPlanner.resolvePlace(originName, _rawLat, _rawLon).then(function (o) {
           if (o && isFinite(o.lat) && isFinite(o.lon)) origin = { lat: o.lat, lon: o.lon };
-        }).catch(function () {});
+        }).catch(function () {}));
       }
-      return Promise.resolve();
+      if (areaName && typeof window.TravelPlanner.resolveArea === 'function') {
+        jobs.push(window.TravelPlanner.resolveArea(areaName).then(function (a) {
+          if (a && a.box) areaBox = a.box;
+        }).catch(function () {}));
+      }
+      return Promise.all(jobs);
     }
     var today = todayIso();
     var start = input.start_date || input.date || today;
@@ -2046,10 +2058,18 @@
       return null;
     }
 
+    // Keep a proposal only if its place falls inside the requested region box
+    // (no box set → everything passes).
+    function inArea(p) {
+      if (!areaBox || !p || p.dest_lat == null || p.dest_lon == null) return true;
+      return p.dest_lat >= areaBox.south && p.dest_lat <= areaBox.north &&
+             p.dest_lon >= areaBox.west && p.dest_lon <= areaBox.east;
+    }
+
     function dayOptsFor(dateStr, themeStr) {
       var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
       var o = { utc: utc, dstOn: dstOn, dateStr: dateStr, maxRadiusKm: maxKm,
-        stayMinH: 1.5, stayMaxH: 3, topN: 6 };
+        stayMinH: 1.5, stayMaxH: 3, topN: (areaBox ? 16 : 6) };
       if (themeStr) o.category = themeStr;
       if (avoidCrowds) o.avoidCrowds = true;
       if (origin) o.origin = origin;
@@ -2059,7 +2079,7 @@
     // Single-theme day (unchanged proven behaviour).
     function runSingle(dayIdx, dateStr, themeStr) {
       return window.TravelPlanner.proposeLuckyTrips(dayOptsFor(dateStr, themeStr)).then(function (r) {
-        var props = (r && r.proposals) ? r.proposals : [];
+        var props = ((r && r.proposals) ? r.proposals : []).filter(inArea);
         var pick = pickFromProposals(props);
         if (!pick && props.length) pick = props[0];     // all repeated → reuse the best
         out.push({ day: dayIdx + 1, date: dateStr,
@@ -2084,7 +2104,7 @@
         }
         var theme = order[ti++];
         return window.TravelPlanner.proposeLuckyTrips(dayOptsFor(dateStr, theme)).then(function (r) {
-          var props = (r && r.proposals) ? r.proposals : [];
+          var props = ((r && r.proposals) ? r.proposals : []).filter(inArea);
           var pick = pickFromProposals(props);
           if (pick) {
             usedThemes[theme] = 1;
