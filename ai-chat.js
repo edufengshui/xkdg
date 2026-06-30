@@ -2039,12 +2039,15 @@
             : 'No city tour could be built.' };
       }
       var instr = 'This is a ONE-DAY CITY TOUR inside ' + (input.origin_name || 'the city') + '. Each stop is a famous place ' +
-        'visited in the double-hour when its DIRECTION from the base is favourable. Present it in TIME ORDER as a day plan: for ' +
-        'EACH stop show the place name, the direction (stop.direction) and bearing, the distance from base (stop.dist_km km), the ' +
-        'favourable DOOR (stop.doorLabel), the double-hour (stop.brPy + stop.br) with its Chinese hour info (stop.hour_cn) VERBATIM, ' +
-        'and the score (stop.score 0-5). Keep the SAME base all day (walk / short drive between stops). If "leftover" places remain, ' +
-        'you may mention a couple as alternatives whose favourable hour did not fit today. Do NOT invent directions or hours. To ' +
-        'navigate to a stop, use plan_travel with its dest_lat / dest_lon.';
+        'visited in the double-hour when its DIRECTION from the base is favourable. Stops are ALREADY ordered to flow as a ' +
+        'continuous walk (each is the nearest favourable place to the previous one), so present them IN THE GIVEN ORDER as a ' +
+        'day plan: for EACH stop show the place name, the direction (stop.direction) and bearing, the distance from base ' +
+        '(stop.dist_km km), the favourable DOOR (stop.doorLabel), the double-hour (stop.brPy + stop.br) with its Chinese hour ' +
+        'info (stop.hour_cn) VERBATIM, and the score (stop.score 0-5). You may add the short hop between consecutive stops ' +
+        '(stop.hop_km km) so the route reads naturally. Keep the SAME base all day (walk / short drive between stops). If ' +
+        '"leftover" places remain, you may mention a couple as alternatives: each has fav_hours (the Chinese double-hours today ' +
+        'when its direction is favourable) — quote those. NEVER suggest a leftover whose no_fav_today is true for a directional ' +
+        'visit. Do NOT invent directions or hours. To navigate to a stop, use plan_travel with its dest_lat / dest_lon.';
       return { ok: true, base: input.origin_name || undefined, date: r.date, category: r.category,
         city_radius_km: r.city_radius_km, stops: r.stops, leftover: r.leftover, instructions: instr };
     }).catch(function (e) { return { error: 'City tour failed: ' + ((e && e.message) || e) }; });
@@ -3307,6 +3310,30 @@
 
     // ── Hands-free wake-word mode ("Hey Claude") for driving ──
     var handsFree = false, awaitingCmd = false, recogHF = null, hfStopping = false;
+
+    // --- Screen Wake Lock: keep the display awake while hands-free driving mode is on. ---
+    // Fully additive and self-contained; degrades silently where the API is missing.
+    var hfWakeLock = null;
+    function hfAcquireWakeLock() {
+      try {
+        if (!('wakeLock' in navigator) || !navigator.wakeLock || !navigator.wakeLock.request) return;
+        navigator.wakeLock.request('screen').then(function (wl) {
+          hfWakeLock = wl;
+          try { wl.addEventListener('release', function () { hfWakeLock = null; }); } catch (e) {}
+        }).catch(function () { /* battery saver / no gesture may refuse — ignore */ });
+      } catch (e) {}
+    }
+    function hfReleaseWakeLock() {
+      try { if (hfWakeLock) { hfWakeLock.release().catch(function () {}); } } catch (e) {}
+      hfWakeLock = null;
+    }
+    // The OS drops the lock when the tab is hidden; re-acquire when we return and are still hands-free.
+    try {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible' && handsFree && !hfWakeLock) hfAcquireWakeLock();
+      });
+    } catch (e) {}
+
     var DEFAULT_WAKE = ['hey claude', 'hey cloud', 'hey clod', 'ehi claude', 'ehi cloud', 'ok claude', 'okay claude', 'ciao claude', 'a claude'];
     var customWake = null;
     try { customWake = (localStorage.getItem('xkdg_ai_wake') || '').trim().toLowerCase() || null; } catch (e) {}
@@ -3345,6 +3372,7 @@
       if (!ttsOn) { ttsOn = true; try { localStorage.setItem('xkdg_ai_tts', '1'); } catch (e) {} refreshSpeakerBtn(); }
       if (panel.style.display !== 'flex') panel.style.display = 'flex';
       refreshHfBtn();
+      hfAcquireWakeLock();
       try {
         recogHF = new SR();
         recogHF.lang = recogLang();
@@ -3386,7 +3414,7 @@
     function stopHF() {
       hfStopping = true; handsFree = false; awaitingCmd = false;
       try { if (recogHF) recogHF.stop(); } catch (e) {}
-      recogHF = null; refreshHfBtn(); setStatus('Hands-free off.');
+      recogHF = null; hfReleaseWakeLock(); refreshHfBtn(); setStatus('Hands-free off.');
     }
     if (!SR) { hfBtn.style.display = 'none'; }
     else {

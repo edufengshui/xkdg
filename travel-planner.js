@@ -5842,21 +5842,28 @@
       }).filter(function (p) { return p.distKm >= minKm; });   // honour the chosen floor
       if (!places.length) return { ok: false, reason: 'no_places_beyond_min', date: dateStr };
 
-      // Greedy: for each double-hour in time order, take the nearest unused famous
-      // place whose direction matches one of that hour's favourable directions.
+      // Greedy route-builder: walk the double-hours in time order. For each hour
+      // pick the favourable direction (best score first) that still has an unused
+      // famous place, and among those take the one NEAREST TO WHERE WE CURRENTLY
+      // ARE — not nearest to the base — so the day flows as a continuous tour
+      // instead of zig-zagging out and back from the centre. The direction is
+      // still measured from the base (the metaphysical anchor); this only reorders
+      // the visiting sequence and never relaxes the direction rule.
       var used = {}, stops = [];
+      var refLat = O.lat, refLon = O.lon;             // the walk starts at the base
       for (var hi = 0; hi < hours.length && stops.length < maxStops; hi++) {
         var hh = hours[hi];
         var favs = hh.fav.dirs.slice().sort(function (a, b) { return b.combined - a.combined; });
-        var chosen = -1, chosenFav = null;
+        var chosen = -1, chosenFav = null, chosenHop = 0;
         for (var fi = 0; fi < favs.length && chosen < 0; fi++) {
           var fav = favs[fi], best = -1, bd = Infinity;
           for (var pi = 0; pi < places.length; pi++) {
             if (used[pi]) continue;
             if (!tpDir8Near(places[pi].dir8, fav.dir)) continue;     // within one 45° step
-            if (places[pi].distKm < bd) { bd = places[pi].distKm; best = pi; }
+            var hop = tpHaversineKm(refLat, refLon, places[pi].lat, places[pi].lon);
+            if (hop < bd) { bd = hop; best = pi; }
           }
-          if (best >= 0) { chosen = best; chosenFav = fav; }
+          if (best >= 0) { chosen = best; chosenFav = fav; chosenHop = bd; }
         }
         if (chosen >= 0) {
           used[chosen] = 1;
@@ -5865,15 +5872,35 @@
             place: p.name, dest_lat: Math.round(p.lat * 100000) / 100000, dest_lon: Math.round(p.lon * 100000) / 100000,
             rating: p.rating, direction: chosenFav.dir, bearing: Math.round(p.bearing),
             dist_km: Math.round(p.distKm * 10) / 10,
+            hop_km: Math.round(chosenHop * 10) / 10,         // distance from the previous stop
             door: chosenFav.door, doorLabel: tpDoorLabel(chosenFav.door),
             score: Math.round((chosenFav.combined || 0) * 5),
             br: hh.br, brPy: (BR_PY[hh.br] || hh.br),
             hour_cn: tpChineseHourAt(hh.startMs, O.lon, utc, dstOn)
           });
+          refLat = p.lat; refLon = p.lon;                   // continue the walk from here
         }
       }
+
+      // Leftovers made ACTIONABLE: for every famous place we couldn't fit, list the
+      // double-hours today when its direction from the base is favourable (so a
+      // student with spare time can still slot it in), and sort nearest-first.
+      // Places with no favourable window today are flagged so they aren't proposed
+      // for a direction-based visit by mistake.
       var leftover = [];
-      for (var li = 0; li < places.length; li++) if (!used[li]) leftover.push({ place: places[li].name, direction: places[li].dir8 });
+      for (var li = 0; li < places.length; li++) {
+        if (used[li]) continue;
+        var lp = places[li], windows = [];
+        for (var wj = 0; wj < hours.length; wj++) {
+          var wf = hours[wj].fav.dirs, okHour = false;
+          for (var wk = 0; wk < wf.length; wk++) { if (tpDir8Near(lp.dir8, wf[wk].dir)) { okHour = true; break; } }
+          if (okHour) windows.push(tpChineseHourAt(hours[wj].startMs, O.lon, utc, dstOn));
+        }
+        leftover.push({ place: lp.name, direction: lp.dir8, dist_km: Math.round(lp.distKm * 10) / 10,
+                        fav_hours: windows.slice(0, 4), no_fav_today: windows.length === 0 });
+      }
+      leftover.sort(function (a, b) { return a.dist_km - b.dist_km; });
+
       return { ok: true, date: dateStr, origin: O, category: category, city_radius_km: radiusKm,
                stops: stops, places_found: places.length, leftover: leftover.slice(0, 8) };
     }).catch(function (e) { return { ok: false, reason: 'error', error: (e && e.message) || String(e), date: dateStr }; });
