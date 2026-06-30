@@ -217,7 +217,10 @@
     '(out-stay-back to ONE place): use plan_lucky_chain only for the multi-leg loop.\n' +
     '- MULTI-DAY THEMED trip (several DAYS around a theme): when the user wants a trip of more than one day built around ' +
     'a category/theme (e.g. "3-day castle tour from Vienna", "viaggio di 4 giorni tra le terme", or the Lucky Trip panel ' +
-    '"Themed trip"), call plan_lucky_multiday with origin (the base), start_date, days and category. It returns an ' +
+    '"Themed trip"), call plan_lucky_multiday with origin (the base), start_date, days and category. If the user lists ' +
+    'SEVERAL themes, pass them ALL in ONE call via the "categories" array (e.g. categories:["sacred nature","hermitages ' +
+    'abbeys","thermal baths"]) — NEVER call this tool once per theme (that floods the app and can stall it); the app ' +
+    'spreads the themes across the days for you. It returns an ' +
     '"itinerary" array (one entry per day, each with a "proposal" = that day lucky themed place). Present it as ' +
     '"Day 1 ... Day N" exactly as its "instructions" field says; never compute directions or times yourself. HUB model ' +
     '(sleep at the base, one lucky themed excursion per day). Use plan_lucky_day_trip for a SINGLE day, plan_lucky_multiday for SEVERAL.\n' +
@@ -608,7 +611,8 @@
           origin_name: { type: 'string', description: 'Base place name (for labels).' },
           start_date: { type: 'string', description: 'First day YYYY-MM-DD (default today).' },
           days: { type: 'integer', description: 'How many consecutive days (1-10, default 3).' },
-          category: { type: 'string', description: 'Theme/kind of place for EVERY day. Pass the user\'s specific word ("castles", "thermal baths", "hermitages abbeys", "mysterious energetic places", "secluded beaches"...). Becomes real named places via Google Places.' },
+          category: { type: 'string', description: 'A SINGLE theme/kind of place for EVERY day. Pass the user\'s specific word ("castles", "thermal baths", "hermitages abbeys", "mysterious energetic places", "secluded beaches"...). Becomes real named places via Google Places. If the user gave SEVERAL themes, use "categories" instead.' },
+          categories: { type: 'array', items: { type: 'string' }, description: 'MULTIPLE themes for the trip, passed in ONE call (NEVER call this tool once per theme). The app draws each day\'s excursion from this palette, varying the theme across days and picking the best favourable place per day. Use this whenever the user lists more than one theme (e.g. ["sacred nature","hermitages abbeys","thermal baths","medieval villages","organic wineries"]).' },
           max_radius_km: { type: 'number', description: 'Maximum distance of each daily excursion from the base in km (default 200).' },
           avoid_crowds: { type: 'boolean', description: 'OPTIONAL. True for quiet / secluded / non-touristy excursions (away from the crowds); gently de-emphasises very popular places without overriding the favourable direction.' }
         },
@@ -1994,6 +1998,17 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || start < today) start = today;
     var days = (input.days != null) ? Math.max(1, Math.min(10, parseInt(input.days, 10))) : 3;
     var category = input.category ? String(input.category) : null;
+    var themes = [];
+    if (Array.isArray(input.categories)) {
+      themes = input.categories.map(function (s) { return String(s || '').trim(); }).filter(Boolean);
+    } else if (category) {
+      // a single string may hold several themes separated by ; , / |  (NOT spaces:
+      // "hermitages abbeys sanctuaries" is ONE theme)
+      themes = category.split(/\s*[;,/|]\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    var multiTheme = themes.length > 1;
+    if (!multiTheme) category = themes.length ? themes[0] : category;
+
     var avoidCrowds = !!input.avoid_crowds;
     var maxKm = (input.max_radius_km != null) ? +input.max_radius_km : 200;
     var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
@@ -2004,30 +2019,78 @@
     }
 
     var used = {};        // avoid repeating the same place across days
+    var usedThemes = {};  // spread different themes across the days
     var out = [];
+
+    function pickFromProposals(props) {
+      for (var k = 0; k < props.length; k++) {
+        var nameKey = props[k].place ? props[k].place.toLowerCase()
+          : ((props[k].dest_lat) + ',' + (props[k].dest_lon));
+        if (!used[nameKey]) { used[nameKey] = 1; return props[k]; }
+      }
+      return null;
+    }
+
+    function dayOptsFor(dateStr, themeStr) {
+      var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
+      var o = { utc: utc, dstOn: dstOn, dateStr: dateStr, maxRadiusKm: maxKm,
+        stayMinH: 1.5, stayMaxH: 3, topN: 6 };
+      if (themeStr) o.category = themeStr;
+      if (avoidCrowds) o.avoidCrowds = true;
+      if (origin) o.origin = origin;
+      return o;
+    }
+
+    // Single-theme day (unchanged proven behaviour).
+    function runSingle(dayIdx, dateStr, themeStr) {
+      return window.TravelPlanner.proposeLuckyTrips(dayOptsFor(dateStr, themeStr)).then(function (r) {
+        var props = (r && r.proposals) ? r.proposals : [];
+        var pick = pickFromProposals(props);
+        if (!pick && props.length) pick = props[0];     // all repeated → reuse the best
+        out.push({ day: dayIdx + 1, date: dateStr,
+          any_fully_favourable: !!(r && r.anyClean),
+          poi_service_error: !!(r && r.poi_service_error), proposal: pick || null });
+      }).catch(function () { out.push({ day: dayIdx + 1, date: dateStr, proposal: null, error: true }); });
+    }
+
+    // Multi-theme day: try themes in order (least-used first, for variety) and
+    // STOP at the first theme that yields a new distinct place. Serial — never
+    // parallel — so the shared engine state is never stomped.
+    function runMulti(dayIdx, dateStr) {
+      var order = themes.slice().sort(function (a, b) {
+        return (usedThemes[a] ? 1 : 0) - (usedThemes[b] ? 1 : 0);
+      });
+      var ti = 0, best = null, bestTheme = null, sawError = false;
+      function tryNext() {
+        if (ti >= order.length) {
+          if (best) out.push({ day: dayIdx + 1, date: dateStr, theme: bestTheme, proposal: best });
+          else out.push({ day: dayIdx + 1, date: dateStr, proposal: null, error: sawError || undefined });
+          return Promise.resolve();
+        }
+        var theme = order[ti++];
+        return window.TravelPlanner.proposeLuckyTrips(dayOptsFor(dateStr, theme)).then(function (r) {
+          var props = (r && r.proposals) ? r.proposals : [];
+          var pick = pickFromProposals(props);
+          if (pick) {
+            usedThemes[theme] = 1;
+            out.push({ day: dayIdx + 1, date: dateStr, theme: theme,
+              any_fully_favourable: !!(r && r.anyClean),
+              poi_service_error: !!(r && r.poi_service_error), proposal: pick });
+            return;   // day filled
+          }
+          if (!best && props.length) { best = props[0]; bestTheme = theme; }  // last-resort fallback
+          return tryNext();
+        }).catch(function () { sawError = true; return tryNext(); });
+      }
+      return tryNext();
+    }
+
     var chain = Promise.resolve();
     for (var i = 0; i < days; i++) {
       (function (dayIdx) {
         chain = chain.then(function () {
           var dateStr = addDays(start, dayIdx);
-          var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
-          var opts = { utc: utc, dstOn: dstOn, dateStr: dateStr, maxRadiusKm: maxKm,
-            stayMinH: 1.5, stayMaxH: 3, topN: 6 };
-          if (category) opts.category = category;
-          if (avoidCrowds) opts.avoidCrowds = true;
-          if (origin) opts.origin = origin;
-          return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
-            var props = (r && r.proposals) ? r.proposals : [];
-            var pick = null;
-            for (var k = 0; k < props.length; k++) {
-              var nameKey = props[k].place ? props[k].place.toLowerCase()
-                : ((props[k].dest_lat) + ',' + (props[k].dest_lon));
-              if (!used[nameKey]) { pick = props[k]; used[nameKey] = 1; break; }
-            }
-            if (!pick && props.length) pick = props[0];     // all repeated → reuse the best
-            out.push({ day: dayIdx + 1, date: dateStr, any_fully_favourable: !!(r && r.anyClean),
-              poi_service_error: !!(r && r.poi_service_error), proposal: pick || null });
-          }).catch(function () { out.push({ day: dayIdx + 1, date: dateStr, proposal: null, error: true }); });
+          return multiTheme ? runMulti(dayIdx, dateStr) : runSingle(dayIdx, dateStr, category);
         });
       })(i);
     }
@@ -2043,9 +2106,11 @@
         'and the score (proposal.score 0-5; proposal.clean=true means both legs fully favourable). If "ev_charging" is true, note the ' +
         'EV charger (🔌). If a day\'s "proposal" is null, state plainly that no favourable themed excursion fits that day from this base, ' +
         'and offer a larger radius or a different base. Do NOT invent directions or times. To actually drive one day, call plan_travel ' +
-        'with that day\'s proposal.dest_lat / dest_lon.';
+        'with that day\'s proposal.dest_lat / dest_lon. If a day entry has a "theme" field, name which theme that ' +
+        'day draws from (the trip mixes the requested themes across the days).';
       return { ok: true, base: originName || undefined, start_date: start, days: days,
-        category: category || undefined, itinerary: out, instructions: instr };
+        category: category || undefined, categories: (multiTheme ? themes : undefined),
+        itinerary: out, instructions: instr };
     }).catch(function (e) { return { error: 'Multi-day planning failed: ' + ((e && e.message) || e) }; });
   }
 
@@ -4466,13 +4531,37 @@
 
           if (data.stop_reason === 'tool_use') {
             var toolUses = (data.content || []).filter(function (c) { return c.type === 'tool_use'; });
-            var resultPromises = toolUses.map(function (tu) {
-              setStatus('Running: ' + tu.name + '…');
-              return Promise.resolve().then(function () { return execTool(tu.name, tu.input); })
-                .then(function (out) { return { type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out) }; })
-                .catch(function (e) { return { type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ error: String((e && e.message) || e) }) }; });
+            // Run tool calls ONE AT A TIME (the heavy planners share engine/DOM
+            // state and are NOT safe to run concurrently — parallel runs could
+            // leave a promise hung and freeze the whole chat), each guarded by a
+            // timeout so a single stuck tool can never block the conversation.
+            function execToolSafe(tu) {
+              var TIMEOUT_MS = 60000;
+              return new Promise(function (resolve) {
+                var settled = false;
+                var timer = setTimeout(function () {
+                  if (settled) return; settled = true;
+                  resolve({ type: 'tool_result', tool_use_id: tu.id,
+                    content: JSON.stringify({ error: 'Tool "' + tu.name + '" timed out — try a smaller request (fewer themes/days or a smaller radius).' }) });
+                }, TIMEOUT_MS);
+                Promise.resolve().then(function () { return execTool(tu.name, tu.input); })
+                  .catch(function (e) { return { error: String((e && e.message) || e) }; })
+                  .then(function (out) {
+                    if (settled) return; settled = true; clearTimeout(timer);
+                    resolve({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(out) });
+                  });
+              });
+            }
+            var toolResultsAcc = [];
+            var seq = Promise.resolve();
+            toolUses.forEach(function (tu) {
+              seq = seq.then(function () {
+                setStatus('Running: ' + tu.name + '…');
+                return execToolSafe(tu).then(function (tr) { toolResultsAcc.push(tr); });
+              });
             });
-            return Promise.all(resultPromises).then(function (toolResults) {
+            return seq.then(function () {
+              var toolResults = toolResultsAcc;
               history.push({ role: 'user', content: toolResults });
               if (guard++ < 12) return step();   // let Claude read the results and continue
               // Step cap reached: make ONE final call WITHOUT tools so Claude must
