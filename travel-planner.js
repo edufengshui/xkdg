@@ -5263,9 +5263,11 @@
           if (to) clearTimeout(to);
           if (!j || j.status !== 'ok' || !j.results || !j.results.length) return null;
           var best = null, bk = -Infinity;
-          j.results.forEach(function (rr) {
+          var maxKm = Math.max(60, (radiusKm || 25) * 2.5);   // hard area cap: drop geocoding strays
+          j.results.forEach(function (rr) {                    // (e.g. a same-named abbey on another continent)
             if (!isFinite(rr.lat) || !isFinite(rr.lon)) return;
             var d = tpHaversineKm(lat, lon, rr.lat, rr.lon);
+            if (d > maxKm) return;                             // too far from the target → ignore
             var rating = (rr.rating != null) ? rr.rating : 3.0;
             var score = rating - 0.1 * d;                 // rating dominates; nearer breaks ties
             if (score > bk) { bk = score; best = rr; }
