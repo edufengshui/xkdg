@@ -550,6 +550,7 @@
           date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
           max_radius_km: { type: 'number', description: 'Maximum distance from the origin in km (default 200).' },
           min_km: { type: 'number', description: 'Minimum distance from the origin in km (default 15). Pass 0 for in-city / very short trips so nearby famous places are not filtered out.' },
+          avoid_crowds: { type: 'boolean', description: 'OPTIONAL. Set true when the user wants to stay OFF the beaten path — quiet, secluded, non-touristy, away from the crowds ("posti tranquilli", "non turistico", "lontano dalla folla", "hidden gems"). It gently de-emphasises very popular places (many reviews) WITHOUT ever overriding the favourable direction. Leave false/absent otherwise (popular places stay welcome).' },
           stay_min_h: { type: 'number', description: 'Minimum stay at the destination in hours (default 1.5).' },
           stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
           category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL named place (looked up via Google Places) instead of a generic point. IMPORTANT: pass the user\'s OWN specific word — it is matched to that exact kind of place. E.g. "castelli"/"castles" -> castles, "musei"/"museums" -> museums, "terme"/"spa" -> thermal baths, "borghi"/"villages" -> old villages, "eremi"/"abbazie" -> hermitages & abbeys, "natura" -> parks/lakes/viewpoints, "spiagge appartate" -> secluded beaches, "luoghi misteriosi" -> megalithic/mystical sites, "cantine" -> wineries. Do NOT collapse "castles" into a generic "culture" (that returns MUSEUMS, not castles). Leave empty for generic points. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
@@ -602,7 +603,8 @@
           start_date: { type: 'string', description: 'First day YYYY-MM-DD (default today).' },
           days: { type: 'integer', description: 'How many consecutive days (1-10, default 3).' },
           category: { type: 'string', description: 'Theme/kind of place for EVERY day. Pass the user\'s specific word ("castles", "thermal baths", "hermitages abbeys", "mysterious energetic places", "secluded beaches"...). Becomes real named places via Google Places.' },
-          max_radius_km: { type: 'number', description: 'Maximum distance of each daily excursion from the base in km (default 200).' }
+          max_radius_km: { type: 'number', description: 'Maximum distance of each daily excursion from the base in km (default 200).' },
+          avoid_crowds: { type: 'boolean', description: 'OPTIONAL. True for quiet / secluded / non-touristy excursions (away from the crowds); gently de-emphasises very popular places without overriding the favourable direction.' }
         },
         required: []
       }
@@ -625,6 +627,7 @@
           category: { type: 'string', description: 'OPTIONAL kind of place ("churches", "museums", "castles", "famous attractions"...). Default: famous attractions.' },
           radius_km: { type: 'number', description: 'City extent in km (default 8).' },
           min_km: { type: 'number', description: 'Minimum distance from the base in km (default 0 = include everything in town).' },
+          avoid_crowds: { type: 'boolean', description: 'OPTIONAL. Set true when the user wants quiet / secluded / non-touristy stops ("posti tranquilli", "non turistico", "lontano dalla folla", "hidden gems"). Gently de-emphasises very popular places without overriding the favourable direction. Leave false/absent otherwise.' },
           max_stops: { type: 'integer', description: 'How many stops in the day (default 6).' }
         },
         required: []
@@ -1843,6 +1846,7 @@
     };
     if (input.category) opts.category = String(input.category);
     if (input.min_km != null) opts.minOriginKm = +input.min_km;
+    if (input.avoid_crowds != null) opts.avoidCrowds = !!input.avoid_crowds;
     if (origin) opts.origin = origin;
     var wantDir = (input.direction && /^(N|NE|E|SE|S|SW|W|NW)$/.test(input.direction)) ? input.direction : null;
 
@@ -1958,6 +1962,7 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || start < today) start = today;
     var days = (input.days != null) ? Math.max(1, Math.min(10, parseInt(input.days, 10))) : 3;
     var category = input.category ? String(input.category) : null;
+    var avoidCrowds = !!input.avoid_crowds;
     var maxKm = (input.max_radius_km != null) ? +input.max_radius_km : 200;
     var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
 
@@ -1977,6 +1982,7 @@
           var opts = { utc: utc, dstOn: dstOn, dateStr: dateStr, maxRadiusKm: maxKm,
             stayMinH: 1.5, stayMaxH: 3, topN: 6 };
           if (category) opts.category = category;
+          if (avoidCrowds) opts.avoidCrowds = true;
           if (origin) opts.origin = origin;
           return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
             var props = (r && r.proposals) ? r.proposals : [];
@@ -2028,6 +2034,7 @@
       minOriginKm: (input.min_km != null ? +input.min_km : 0),
       maxStops: (input.max_stops != null ? Math.max(2, Math.min(10, parseInt(input.max_stops, 10))) : 6) };
     if (input.category) opts.category = String(input.category);
+    if (input.avoid_crowds != null) opts.avoidCrowds = !!input.avoid_crowds;
     if (origin) opts.origin = origin;
     return window.TravelPlanner.proposeCityTour(opts).then(function (r) {
       if (!r || !r.ok) {

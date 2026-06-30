@@ -927,6 +927,18 @@
     parts.push('travelmode=' + m);
     return parts.join('&');
   }
+  // ---- Crowd de-emphasis (opt-in "off the beaten path") -----------------------
+  // When the traveller wants to stay away from the crowds, a place with very many
+  // reviews is treated as slightly "farther" (a mild multiplier on its effective
+  // distance) or scored slightly lower. It NEVER overrides the direction/door rule —
+  // it only breaks ties toward quieter spots among already-valid candidates. Opt-in;
+  // if review counts are absent (Places worker not yet updated) it has no effect.
+  var TP_CROWD_W = 0.12;
+  function tpCrowdMult(reviews) {
+    var n = (reviews != null && isFinite(reviews) && reviews > 0) ? reviews : 0;
+    if (!n) return 1;
+    return 1 + TP_CROWD_W * (Math.log(1 + n) / Math.LN10);   // log10, ES5-safe
+  }
   // Clipboard with a graceful fallback for browsers without the async API.
   function tpCopyToClipboard(text, btn, doneLabel, restoreLabel) {
     function ok() { if (btn) { btn.textContent = doneLabel; setTimeout(function () { btn.textContent = restoreLabel; }, 1500); } }
@@ -5290,7 +5302,7 @@
   // Returns a single best place (rating, then closeness) in the OSM-pick shape, or
   // null. Best-effort: any failure (no worker, no key, error) resolves to null so
   // the caller falls back to OSM. NEVER throws.
-  function tpFindPlacesPOI(lat, lon, radiusKm, category) {
+  function tpFindPlacesPOI(lat, lon, radiusKm, category, avoidCrowds) {
     try {
       var base = tpPlacesWorkerUrl();
       if (!base) return Promise.resolve(null);
@@ -5315,12 +5327,14 @@
             if (d > maxKm) return;                             // too far from the target → ignore
             var rating = (rr.rating != null) ? rr.rating : 3.0;
             var score = rating - 0.1 * d;                 // rating dominates; nearer breaks ties
+            if (avoidCrowds) score -= (tpCrowdMult(rr.reviews) - 1);   // quieter spots score higher (opt-in)
             if (score > bk) { bk = score; best = rr; }
           });
           if (!best) return null;
           return { name: best.name, lat: best.lat, lon: best.lon, kind: 'place',
                    access: null, feature: best.name, ev: null, source: 'google',
-                   rating: (best.rating != null ? best.rating : null) };
+                   rating: (best.rating != null ? best.rating : null),
+                   reviews: (best.reviews != null ? best.reviews : null) };
         })
         .catch(function () { if (to) clearTimeout(to); return null; });
     } catch (e) { return Promise.resolve(null); }
@@ -5633,6 +5647,7 @@
     var stayMax = (opts.stayMaxH != null) ? opts.stayMaxH : 3;
     var topN = opts.topN || 4;
     var category = opts.category || null;
+    var avoidCrowds = !!opts.avoidCrowds;   // opt-in "off the beaten path" (needs Places review counts)
     var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
     var minKm = (opts.minOriginKm != null) ? opts.minOriginKm : 15;   // selectable floor (0 = in-city)
     var bearings = [0, 45, 90, 135, 180, 225, 270, 315];
@@ -5714,7 +5729,7 @@
       return Promise.all(picked.map(function (r) {
         var dbg = { dest: [Math.round(r.dest.lat * 1000) / 1000, Math.round(r.dest.lon * 1000) / 1000], nature: -1, broad40: -1, broad90: -1, pick: null };
         poiDbg.push(dbg);
-        return tpFindPlacesPOI(r.dest.lat, r.dest.lon, poiRadius, category).then(function (gp) {
+        return tpFindPlacesPOI(r.dest.lat, r.dest.lon, poiRadius, category, avoidCrowds).then(function (gp) {
           if (gp) { dbg.pick = gp.name + ' (google)'; return { poi: gp, failed: false }; }
           return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category).then(function (resp) {
           if (!resp.ok) { dbg.nature = 'FAIL'; return { poi: null, failed: true }; }
@@ -5849,6 +5864,7 @@
     var minKm = (opts.minOriginKm != null) ? opts.minOriginKm : 0;   // 0 = include everything in town
     var category = opts.category || 'top tourist attractions';
     var maxStops = opts.maxStops || 6;
+    var avoidCrowds = !!opts.avoidCrowds;   // opt-in "off the beaten path" (needs Places review counts)
 
     if (typeof Solar === 'undefined') return Promise.resolve({ ok: false, reason: 'no_solar', date: dateStr });
     var hours = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs);
@@ -5860,6 +5876,7 @@
       places = places.map(function (p) {
         var b = tpBearing(O.lat, O.lon, p.lat, p.lon);
         return { name: p.name, lat: p.lat, lon: p.lon, rating: (p.rating != null ? p.rating : null),
+                 reviews: (p.reviews != null ? p.reviews : null),
                  bearing: b, dir8: tpSnapDir(b), distKm: tpHaversineKm(O.lat, O.lon, p.lat, p.lon) };
       }).filter(function (p) { return p.distKm >= minKm; });   // honour the chosen floor
       if (!places.length) return { ok: false, reason: 'no_places_beyond_min', date: dateStr };
@@ -5878,14 +5895,15 @@
         var favs = hh.fav.dirs.slice().sort(function (a, b) { return b.combined - a.combined; });
         var chosen = -1, chosenFav = null, chosenHop = 0;
         for (var fi = 0; fi < favs.length && chosen < 0; fi++) {
-          var fav = favs[fi], best = -1, bd = Infinity;
+          var fav = favs[fi], best = -1, bd = Infinity, bestHop = 0;
           for (var pi = 0; pi < places.length; pi++) {
             if (used[pi]) continue;
             if (!tpDir8Near(places[pi].dir8, fav.dir)) continue;     // within one 45° step
             var hop = tpHaversineKm(refLat, refLon, places[pi].lat, places[pi].lon);
-            if (hop < bd) { bd = hop; best = pi; }
+            var eff = avoidCrowds ? (hop * tpCrowdMult(places[pi].reviews)) : hop;  // busier = "farther" (opt-in)
+            if (eff < bd) { bd = eff; best = pi; bestHop = hop; }
           }
-          if (best >= 0) { chosen = best; chosenFav = fav; chosenHop = bd; }
+          if (best >= 0) { chosen = best; chosenFav = fav; chosenHop = bestHop; }
         }
         if (chosen >= 0) {
           used[chosen] = 1;
