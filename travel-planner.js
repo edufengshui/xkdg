@@ -153,6 +153,10 @@
   // Google Places (New) proxy — turns a point+category into a REAL named place.
   // Optional: if not deployed/reachable, the planner silently falls back to OSM.
   var TP_PLACES_WORKER_DEFAULT = 'https://xkdg-places.decumano16.workers.dev';
+  // Ticketmaster (Discovery) proxy — turns a point + date window + category into
+  // REAL dated events. Optional: if not deployed/reachable, event search silently
+  // returns nothing and the rest of the planner is unaffected.
+  var TP_EVENTS_WORKER_DEFAULT = 'https://xkdg-events.decumano16.workers.dev';
   function tpGetWorkerUrl() {
     try { return localStorage.getItem('xkdg_worker_url') || TP_DEFAULT_WORKER; } catch (e) { return TP_DEFAULT_WORKER; }
   }
@@ -5363,6 +5367,62 @@
         .catch(function () { if (to) clearTimeout(to); return []; });
     } catch (e) { return Promise.resolve([]); }
   }
+  // ---- Events (Ticketmaster via the xkdg-events Worker) -----------------------
+  function tpEventsWorkerUrl() {
+    try {
+      if (typeof window !== 'undefined' && window.TP_EVENTS_URL) return window.TP_EVENTS_URL;
+      var v = localStorage.getItem('xkdg_tp_events_url'); if (v) return v;
+    } catch (e) {}
+    return TP_EVENTS_WORKER_DEFAULT;
+  }
+  function tpEventsAccessKey() {
+    try { var v = localStorage.getItem('xkdg_tp_events_key'); if (v) return v; } catch (e) {}
+    return '';
+  }
+  // Map a free-text category (IT/EN) to Ticketmaster's keyword / segment. Most
+  // categories are best as a KEYWORD (festival, jazz, opera...); a few map to a
+  // proper segment. Returns { q, classification } — either may be ''.
+  function tpEventClassFor(category) {
+    var c = String(category || '').toLowerCase().trim();
+    if (!c) return { q: '', classification: '' };
+    if (/concert|concerto|music|musica|live|gig|dj\b/.test(c)) return { q: '', classification: 'Music' };
+    if (/theatre|theater|teatro|opera|ballet|danza|dance|musical/.test(c)) return { q: '', classification: 'Arts & Theatre' };
+    if (/sport|calcio|football|match|gara/.test(c)) return { q: '', classification: 'Sports' };
+    if (/film|cinema|movie/.test(c)) return { q: '', classification: 'Film' };
+    if (/family|famiglia|bambin|kids|child/.test(c)) return { q: 'family', classification: '' };
+    // festivals, fairs, comedy, exhibitions, markets... → keyword search (the user's word)
+    return { q: c, classification: '' };
+  }
+  // Returns an array of dated events near a point in a date window. Best-effort,
+  // never throws; [] on any failure so callers degrade gracefully.
+  function tpFindEvents(lat, lon, radiusKm, opts) {
+    opts = opts || {};
+    try {
+      var base = tpEventsWorkerUrl();
+      if (!base) return Promise.resolve([]);
+      var cls = tpEventClassFor(opts.category);
+      var k = tpEventsAccessKey();
+      var qs = 'lat=' + lat + '&lon=' + lon + '&radius=' + Math.round(Math.max(1, radiusKm || 50)) +
+               '&max=' + (opts.max || 40) +
+               (opts.from ? ('&from=' + encodeURIComponent(opts.from)) : '') +
+               (opts.to ? ('&to=' + encodeURIComponent(opts.to)) : '') +
+               (cls.q ? ('&q=' + encodeURIComponent(cls.q)) : '') +
+               (cls.classification ? ('&classification=' + encodeURIComponent(cls.classification)) : '') +
+               (k ? ('&k=' + encodeURIComponent(k)) : '');
+      var url = base + (base.indexOf('?') >= 0 ? '&' : '?') + qs;
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+      return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
+        .then(function (res) { return res.json(); })
+        .then(function (j) {
+          if (to) clearTimeout(to);
+          if (!j || j.status !== 'ok' || !j.results) return [];
+          return j.results.filter(function (r) { return isFinite(r.lat) && isFinite(r.lon) && r.start; });
+        })
+        .catch(function () { if (to) clearTimeout(to); return []; });
+    } catch (e) { return Promise.resolve([]); }
+  }
+
   function tpFindStopover(lat, lon, ev) {
     // Staged so the query stays LIGHT and reliable: 1) sparse types (service area / rest
     // area / fuel + EV chargers) at 8 km then 20 km; 2) only if nothing, a small-radius
@@ -5946,12 +6006,87 @@
     }).catch(function (e) { return { ok: false, reason: 'error', error: (e && e.message) || String(e), date: dateStr }; });
   }
 
+  /* Given a base, a date window and a category, fetch REAL dated events nearby and —
+   * because an event's DATE is FIXED — check whether that date has a favourable
+   * double-hour whose favourable directions include the event's direction from the
+   * base. "Catchable" events come back with the matching hour/door/score; the rest
+   * are listed as found-but-not-auspicious-to-reach-that-day. */
+  function tpProposeLuckyEvents(opts) {
+    opts = opts || {};
+    var O = opts.origin || TP_DEFAULT.origin;
+    var utc = (opts.utc != null) ? opts.utc : 1;
+    var dstOn = !!opts.dstOn;
+    var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
+    var radiusKm = opts.radiusKm || 80;
+    var category = opts.category || 'festival';
+    var todayIso = tpLocalISO(new Date(nowMs));
+    var from = opts.from || todayIso;
+    var to = opts.to || tpLocalISO(new Date(nowMs + 30 * 86400000));
+    var maxOut = opts.maxOut || 12;
+
+    if (typeof Solar === 'undefined') return Promise.resolve({ ok: false, reason: 'no_solar' });
+
+    return tpFindEvents(O.lat, O.lon, radiusKm, { from: from, to: to, category: category, max: 60 }).then(function (events) {
+      if (!events || !events.length) return { ok: false, reason: 'no_events', from: from, to: to, category: category };
+
+      var slotsByDate = {};   // the day's favourable double-hour slots, computed once per date
+      function slotsFor(dateStr) {
+        if (slotsByDate[dateStr]) return slotsByDate[dateStr];
+        var margin = (dateStr === todayIso) ? (20 * 60000) : -(24 * 3600000);   // future day: no floor
+        var s = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, margin) || [];
+        slotsByDate[dateStr] = s;
+        return s;
+      }
+
+      var good = [], skipped = [];
+      events.forEach(function (ev) {
+        var dateStr = String(ev.start).slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+        var bearing = tpBearing(O.lat, O.lon, ev.lat, ev.lon);
+        var dir8 = tpSnapDir(bearing);
+        var distKm = tpHaversineKm(O.lat, O.lon, ev.lat, ev.lon);
+        var slots = slotsFor(dateStr);
+        var bestSlot = null, bestFav = null;
+        for (var si = 0; si < slots.length; si++) {
+          var favs = slots[si].fav.dirs;
+          for (var fi = 0; fi < favs.length; fi++) {
+            if (!tpDir8Near(dir8, favs[fi].dir)) continue;
+            if (!bestFav || (favs[fi].combined || 0) > (bestFav.combined || 0)) { bestFav = favs[fi]; bestSlot = slots[si]; }
+          }
+        }
+        var rec = {
+          event: ev.name, date: dateStr, event_start: ev.start, local_time: ev.local_time || null,
+          venue: ev.venue || null, city: ev.city || null, category: ev.category || null, url: ev.url || null,
+          direction: dir8, bearing: Math.round(bearing), dist_km: Math.round(distKm * 10) / 10,
+          dest_lat: Math.round(ev.lat * 100000) / 100000, dest_lon: Math.round(ev.lon * 100000) / 100000
+        };
+        if (bestSlot && bestFav) {
+          rec.hour_cn = tpChineseHourAt(bestSlot.startMs, O.lon, utc, dstOn);
+          rec.br = bestSlot.br; rec.brPy = (BR_PY[bestSlot.br] || bestSlot.br);
+          rec.door = bestFav.door; rec.doorLabel = tpDoorLabel(bestFav.door);
+          rec.score = Math.round((bestFav.combined || 0) * 5);
+          good.push(rec);
+        } else {
+          skipped.push(rec);
+        }
+      });
+
+      good.sort(function (a, b) { return (b.score - a.score) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0); });
+      skipped.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+
+      return { ok: true, origin: O, from: from, to: to, category: category,
+               events_found: events.length, events: good.slice(0, maxOut), skipped: skipped.slice(0, 8) };
+    }).catch(function (e) { return { ok: false, reason: 'error', error: (e && e.message) || String(e) }; });
+  }
+
   window.TravelPlanner = {
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
     proposeLuckyTrips: tpProposeLuckyTrips,
     proposeChainTrips: tpProposeChainTrips,
     proposeCityTour: tpProposeCityTour,
+    proposeLuckyEvents: tpProposeLuckyEvents,
+    findEvents: tpFindEvents,
     findPOI: tpFindPOI,
     planArriveBy: tpPlanArriveBy,
     searchItineraries: function (opts) { return tpSearchItineraries(opts); },

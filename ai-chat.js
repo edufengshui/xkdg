@@ -227,6 +227,12 @@
     'art of short moves): it returns "stops" (famous places, each tied to the double-hour when its direction from the base is ' +
     'favourable). Present them in time order as a one-day plan, exactly as its "instructions" say. For an in-city SINGLE place you ' +
     'may instead use plan_lucky_day_trip with min_km:0 and a small max_radius_km.\n' +
+    '- LUCKY EVENTS (real dated events, fixed date): when the user asks about concerts / theatre / festivals / events they ' +
+    'could attend ("eventi fortunati", "what festivals can I reach this month", "concerti a luglio"), call plan_lucky_events ' +
+    'with origin, a date window (date_from/date_to) and optional category. Unlike trips, the DATE is fixed by the event, so the ' +
+    'tool keeps only events whose direction from the base is favourable ON THEIR OWN DATE and tells you the favourable ' +
+    'double-hour to set off. Present its "events" list exactly as its instructions say; it is strong on ticketed events, weak ' +
+    'on village fairs/sagre (say so if nothing is found).\\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
@@ -629,6 +635,31 @@
           min_km: { type: 'number', description: 'Minimum distance from the base in km (default 0 = include everything in town).' },
           avoid_crowds: { type: 'boolean', description: 'OPTIONAL. Set true when the user wants quiet / secluded / non-touristy stops ("posti tranquilli", "non turistico", "lontano dalla folla", "hidden gems"). Gently de-emphasises very popular places without overriding the favourable direction. Leave false/absent otherwise.' },
           max_stops: { type: 'integer', description: 'How many stops in the day (default 6).' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'plan_lucky_events',
+      description: 'Find REAL dated EVENTS (concerts, theatre, festivals, family shows, sports...) near a base within a ' +
+        'date window, and — because an event\'s DATE is fixed — keep the ones whose date has a favourable double-hour ' +
+        'whose favourable directions include the event\'s direction FROM THE BASE. Use for "lucky events near me", "what ' +
+        'festivals can I reach auspiciously this month", "concerti fortunati a luglio", the Lucky Trip events search. ' +
+        'Returns events AUSPICIOUS to reach (with the favourable hour + door + score) and, separately, events found but ' +
+        'NOT auspicious to reach on their day. Source: Ticketmaster — strong on ticketed concerts/theatre/festivals, weak ' +
+        'on village fairs (sagre). You never compute directions or hours yourself; present what it returns. To navigate to ' +
+        'a chosen event use plan_travel with its dest_lat/dest_lon on the event\'s date.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_lat: { type: 'number', description: 'Base latitude (defaults to saved GPS).' },
+          origin_lon: { type: 'number', description: 'Base longitude.' },
+          origin_name: { type: 'string', description: 'Base name (for labels).' },
+          date_from: { type: 'string', description: 'Window start YYYY-MM-DD (default today).' },
+          date_to: { type: 'string', description: 'Window end YYYY-MM-DD (default +30 days).' },
+          radius_km: { type: 'number', description: 'Search radius from the base in km (default 80).' },
+          category: { type: 'string', description: 'OPTIONAL kind of event in the user\'s own word ("festival", "concerto"/"concert", "teatro"/"theatre", "opera", "jazz", "sport", "family"...). Most map to a keyword; music/theatre/sports/film map to a Ticketmaster segment. Leave empty for all kinds.' },
+          max: { type: 'integer', description: 'Max auspicious events to return (default 12).' }
         },
         required: []
       }
@@ -1192,6 +1223,7 @@
       if (name === 'plan_lucky_chain') return toolPlanLuckyChain(input || {});
       if (name === 'plan_lucky_multiday') return toolPlanLuckyMultiDay(input || {});
       if (name === 'plan_city_tour') return toolPlanCityTour(input || {});
+      if (name === 'plan_lucky_events') return toolPlanLuckyEvents(input || {});
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
@@ -2078,6 +2110,48 @@
     }).catch(function (e) { return { error: 'City tour failed: ' + ((e && e.message) || e) }; });
   }
 
+  function toolPlanLuckyEvents(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.proposeLuckyEvents !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    var today = todayIso();
+    function plusDays(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    var from = input.date_from || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || from < today) from = today;
+    var to = input.date_to || plusDays(today, 30);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from) to = plusDays(from, 30);
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+    var dstOn = dstActiveOn(new Date(from + 'T12:00:00'));
+    var opts = { utc: utc, dstOn: dstOn, from: from, to: to,
+      radiusKm: (input.radius_km != null ? +input.radius_km : 80),
+      maxOut: (input.max != null ? Math.max(3, Math.min(25, parseInt(input.max, 10))) : 12) };
+    if (input.category) opts.category = String(input.category);
+    if (origin) opts.origin = origin;
+    return window.TravelPlanner.proposeLuckyEvents(opts).then(function (r) {
+      if (!r || !r.ok) {
+        var why = r && r.reason;
+        return { ok: false, reason: why || 'unknown', from: from, to: to,
+          note: why === 'no_events' ? 'No events of that kind were found near the base in this window — widen radius_km or the date window, or try a different category (the source may simply have no listings there; remember it is weak on village fairs/sagre).'
+            : why === 'no_solar' ? 'Date engine not ready on this page.'
+            : 'No lucky events could be built.' };
+      }
+      var instr = 'These are REAL dated events near ' + (input.origin_name || 'the base') + '. The "events" list is AUSPICIOUS ' +
+        'to reach: each is shown on the double-hour when its DIRECTION from the base is favourable on the EVENT\'S OWN DATE ' +
+        '(the date is fixed by the event — you do NOT pick it). For EACH event show: name, date, the event\'s own start time ' +
+        '(event_start / local_time) if present, venue/city, the direction (direction) + bearing, distance (dist_km km), the ' +
+        'favourable DOOR (doorLabel), the double-hour to travel in (brPy + br) with its Chinese hour info (hour_cn) VERBATIM, ' +
+        'and the score (0-5). Tell the user to set off DURING that favourable double-hour even if the event itself starts later. ' +
+        'Give the ticket link (url) when present. The "skipped" list is events found whose direction is NOT favourable on their ' +
+        'date — you may mention 1-2 as "found, but not auspicious to reach that day". Do NOT invent directions or hours. To ' +
+        'navigate to one, call plan_travel with its dest_lat/dest_lon and depart_date = the event\'s date.';
+      return { ok: true, base: input.origin_name || undefined, from: r.from, to: r.to, category: r.category,
+        events_found: r.events_found, events: r.events, skipped: r.skipped, instructions: instr };
+    }).catch(function (e) { return { error: 'Lucky events failed: ' + ((e && e.message) || e) }; });
+  }
+
   function toolPlanLuckyChain(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.proposeChainTrips !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
@@ -2156,6 +2230,10 @@
     function hm(d) { return (d && d.getHours) ? (String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')) : null; }
     var opts = { depDate: dep, durationH: durH, dest: dest, utc: utc, dstOn: dstOn, stepMin: 30 };
     if (origin) opts.origin = origin;
+    // Warm the XKDG hour-score cache for the trip day(s) so the itinerary's Hours rows
+    // can show the XKDG marker. That cache is filled by the Bazi scanner, which a direct
+    // plan_travel would otherwise never run. Headless (no rendering), best-effort, never blocks.
+    try { if (typeof window.runScanner === 'function') window.runScanner({ startDate: dateStr, days: 2 }); } catch (e) {}
     var plan;
     try { plan = window.TravelPlanner.plan(opts); }
     catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
