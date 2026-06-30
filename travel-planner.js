@@ -3057,15 +3057,15 @@
     // category families (multi-select)
     card.appendChild(el('div', { style: 'font-size:11px;color:#555;margin:6px 0 5px;font-weight:600;' }, 'Categories (pick one or more)'));
     var FAMILIES = [
-      ['\uD83C\uDF3F', 'Sacred nature / off the crowd', 'natura sacra fuori dalla folla'],
-      ['\uD83D\uDD2E', 'Mysterious / energetic', 'luoghi misteriosi simbolici energetici'],
-      ['\uD83D\uDED5', 'Spiritual / sacred', 'luoghi spirituali eremi abbazie santuari'],
-      ['\uD83C\uDF38', 'Healing / wellbeing', 'terme benessere guarigione naturale'],
-      ['\uD83C\uDFDB', 'Deep culture', 'cultura profonda borghi medievali rovine'],
-      ['\uD83C\uDF77', 'Land & tradition', 'cantine biologiche fattorie prodotti locali'],
-      ['\uD83C\uDFD6', 'Secluded / exclusive beauty', 'spiagge nascoste laghi alpini trekking luoghi esclusivi appartati'],
-      ['\uD83C\uDFAD', 'Events / festivals', 'eventi festival sagre'],
-      ['\uD83D\uDDFA', 'Popular classics', 'castelli musei borghi attrazioni principali']
+      ['\uD83C\uDF3F', 'Sacred nature / off the crowd', 'sacred nature off the crowd'],
+      ['\uD83D\uDD2E', 'Mysterious / energetic', 'mysterious symbolic energetic places'],
+      ['\uD83D\uDED5', 'Spiritual / sacred', 'spiritual places hermitages abbeys sanctuaries'],
+      ['\uD83C\uDF38', 'Healing / wellbeing', 'thermal baths wellness natural healing'],
+      ['\uD83C\uDFDB', 'Deep culture', 'deep culture medieval villages ruins'],
+      ['\uD83C\uDF77', 'Land & tradition', 'organic wineries farms local products'],
+      ['\uD83C\uDFD6', 'Secluded / exclusive beauty', 'secluded beaches alpine lakes hiking exclusive places'],
+      ['\uD83C\uDFAD', 'Events / festivals', 'events festivals'],
+      ['\uD83D\uDDFA', 'Popular classics', 'castles museums villages main attractions']
     ];
     var picked = {};
     var grid = el('div', { style: 'display:flex;flex-direction:column;gap:5px;margin-bottom:12px;' });
