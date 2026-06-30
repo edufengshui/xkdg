@@ -1989,10 +1989,25 @@
   function toolPlanLuckyMultiDay(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.proposeLuckyTrips !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
-    var origin = null;
-    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
-    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
     var originName = input.origin_name || null;
+    var _rawLat = input.origin_lat, _rawLon = input.origin_lon;
+    function _gpsOrCoords() {
+      if (_rawLat != null && _rawLon != null) return { lat: +_rawLat, lon: +_rawLon };
+      if (window._lastGpsLat != null && window._lastGpsLng != null) return { lat: window._lastGpsLat, lon: window._lastGpsLng };
+      return null;
+    }
+    var origin = _gpsOrCoords();   // provisional; a base NAME (if given) is geocoded below and overrides this
+    // Resolve the base NAME to real coordinates. resolvePlace PREFERS geocoding
+    // the name over AI-guessed coordinates (wrong for small towns) and over saved
+    // GPS — so "Siena" really means Siena, not your home location.
+    function _resolveOriginStep() {
+      if (originName && typeof window.TravelPlanner.resolvePlace === 'function') {
+        return window.TravelPlanner.resolvePlace(originName, _rawLat, _rawLon).then(function (o) {
+          if (o && isFinite(o.lat) && isFinite(o.lon)) origin = { lat: o.lat, lon: o.lon };
+        }).catch(function () {});
+      }
+      return Promise.resolve();
+    }
     var today = todayIso();
     var start = input.start_date || input.date || today;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || start < today) start = today;
@@ -2085,7 +2100,7 @@
       return tryNext();
     }
 
-    var chain = Promise.resolve();
+    var chain = _resolveOriginStep();
     for (var i = 0; i < days; i++) {
       (function (dayIdx) {
         chain = chain.then(function () {
@@ -2096,6 +2111,32 @@
     }
 
     return chain.then(function () {
+      // ---- Maps links (hub model: each day is an out-and-back from the SAME base) ----
+      function gmapsDir(orig, dest, wps) {
+        var u = 'https://www.google.com/maps/dir/?api=1&travelmode=driving';
+        u += '&origin=' + encodeURIComponent(orig) + '&destination=' + encodeURIComponent(dest);
+        if (wps && wps.length) u += '&waypoints=' + encodeURIComponent(wps.join('|'));
+        return u;
+      }
+      var baseLL = origin ? (origin.lat + ',' + origin.lon) : null;
+      var cardEntries = [], wpAll = [];
+      out.forEach(function (d) {
+        var p = d.proposal || null;
+        var hasLL = !!(p && p.dest_lat != null && p.dest_lon != null);
+        var perUrl = (baseLL && hasLL) ? gmapsDir(baseLL, baseLL, [p.dest_lat + ',' + p.dest_lon]) : null;
+        cardEntries.push({ day: d.day, date: d.date, theme: d.theme || null,
+          place: (p && p.place) || null, direction: (p && p.direction) || null,
+          depart_cn: (p && p.depart_cn) || null, km: (p && p.km != null) ? p.km : null,
+          dest_lat: hasLL ? p.dest_lat : null, dest_lon: hasLL ? p.dest_lon : null,
+          maps_url: perUrl });
+        if (baseLL && hasLL) wpAll.push(p.dest_lat + ',' + p.dest_lon);
+      });
+      var allUrl = (baseLL && wpAll.length) ? gmapsDir(baseLL, baseLL, wpAll) : null;
+      if (window.XKDGChat && typeof window.XKDGChat.addMultiDay === 'function') {
+        try { window.XKDGChat.addMultiDay({ base: originName || 'Base',
+          start_date: start, days: days, entries: cardEntries, all_maps_url: allUrl }); } catch (e) {}
+      }
+
       var instr = 'This is a MULTI-DAY themed Lucky Trip around a fixed BASE (' + (originName || 'the starting point') + '). ' +
         'Each day has ONE chosen lucky excursion: a real named place (in "proposal.place") reached in a favourable direction ' +
         'during a favourable hour, then back to the base (hub model — keep the SAME base every day). ' +
@@ -2107,10 +2148,12 @@
         'EV charger (🔌). If a day\'s "proposal" is null, state plainly that no favourable themed excursion fits that day from this base, ' +
         'and offer a larger radius or a different base. Do NOT invent directions or times. To actually drive one day, call plan_travel ' +
         'with that day\'s proposal.dest_lat / dest_lon. If a day entry has a "theme" field, name which theme that ' +
-        'day draws from (the trip mixes the requested themes across the days).';
+        'day draws from (the trip mixes the requested themes across the days). A MAP CARD with a per-day "Open in ' +
+        'Maps" button (each day out-and-back from the base) AND an "all days" overview button has ALREADY been shown ' +
+        'to the user by the app — do NOT call open_itinerary_in_maps yourself.';
       return { ok: true, base: originName || undefined, start_date: start, days: days,
         category: category || undefined, categories: (multiTheme ? themes : undefined),
-        itinerary: out, instructions: instr };
+        itinerary: out, maps_shown: true, all_maps_url: allUrl || undefined, instructions: instr };
     }).catch(function (e) { return { error: 'Multi-day planning failed: ' + ((e && e.message) || e) }; });
   }
 
@@ -4266,6 +4309,86 @@
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
+    // Injected after a MULTI-DAY themed Lucky Trip: one box per day (base = A,
+    // each day = B, C, D... matching the combined map pins), with a per-day
+    // "Open in Maps" button (out-and-back from the base) and an "all days"
+    // overview button. Real taps, so the browser won't block the pop-ups.
+    function addMultiDayBubble(payload) {
+      payload = payload || {};
+      var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+      var entries = payload.entries || [];
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:13px;line-height:1.5;word-wrap:break-word;' });
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:5px;' },
+        '\uD83D\uDDFA Themed trip \u00b7 ' + (payload.base || 'Base') +
+        (payload.start_date ? (' \u00b7 ' + payload.start_date) : '') +
+        (payload.days ? (' \u00b7 ' + payload.days + 'd') : '')));
+
+      function badge(letter, color) {
+        return elc('span', { style:
+          'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;' +
+          'background:' + (color || '#6a1b9a') + ';color:#fff;font-size:11px;font-weight:700;margin-right:7px;flex:none;' }, letter);
+      }
+      function openUrl(u, btn) {
+        var w = null; try { w = window.open(u, '_blank'); } catch (e) {}
+        if (!w) { try { window.location.href = u; } catch (e) {} }
+        if (btn) btn.textContent = L.opened;
+      }
+
+      // base = A (green start pin)
+      var baseRow = elc('div', { style: 'display:flex;align-items:center;margin:2px 0 6px;' });
+      baseRow.appendChild(badge('A', '#2e7d32'));
+      baseRow.appendChild(elc('span', { style: 'flex:1;min-width:0;color:#555;' }, (payload.base || 'Base') + ' \u2014 home base'));
+      wrap.appendChild(baseRow);
+
+      var placed = 0;
+      entries.forEach(function (e) { if (e.maps_url) placed++; });
+      var liveIdx = 0;
+      entries.forEach(function (e) {
+        var hasMap = !!e.maps_url;
+        var letter = hasMap ? String.fromCharCode(66 + (liveIdx++ % 25)) : '\u00b7';
+        var box = elc('div', { style: 'margin:6px 0;padding:6px 8px;background:#faf6fd;border:1px solid #ecdff5;border-radius:9px;' });
+        var head = elc('div', { style: 'display:flex;align-items:center;' });
+        head.appendChild(badge(letter, hasMap ? '#6a1b9a' : '#bbb'));
+        head.appendChild(elc('span', { style: 'flex:1;min-width:0;font-weight:600;' },
+          'Day ' + e.day + (e.date ? (' \u00b7 ' + e.date) : '')));
+        box.appendChild(head);
+        if (e.place) {
+          box.appendChild(elc('div', { style: 'margin:3px 0 1px 25px;font-weight:600;' }, e.place));
+          var meta = [];
+          if (e.theme) meta.push(e.theme);
+          if (e.direction) meta.push(e.direction);
+          if (e.depart_cn) meta.push(e.depart_cn);
+          if (e.km != null) meta.push(e.km + ' km');
+          if (meta.length) box.appendChild(elc('div', { style: 'margin:0 0 4px 25px;color:#666;font-size:12px;' }, meta.join(' \u00b7 ')));
+          if (hasMap) {
+            var b = elc('button', { style:
+              'margin-left:25px;background:#6a1b9a;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;' },
+              '\uD83D\uDCCD Day ' + e.day);
+            b._u = e.maps_url;
+            b.addEventListener('click', function () { openUrl(b._u, b); });
+            box.appendChild(b);
+          }
+        } else {
+          box.appendChild(elc('div', { style: 'margin:3px 0 1px 25px;color:#a00;font-size:12px;' }, 'No favourable place this day'));
+        }
+        wrap.appendChild(box);
+      });
+
+      if (payload.all_maps_url && placed > 1) {
+        var lastLetter = String.fromCharCode(65 + placed);
+        var all = elc('button', { style:
+          'margin-top:7px;width:100%;padding:9px;border:0;border-radius:8px;background:#4a148c;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' },
+          '\uD83D\uDDFA ' + L.openMaps + ' \u2014 all days (A\u2013' + lastLetter + ')');
+        all._u = payload.all_maps_url;
+        all.addEventListener('click', function () { openUrl(all._u, all); });
+        wrap.appendChild(all);
+      }
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
     // Selectable ranked list of the best departures from a multi-day search. Each row
     // shows the date/time, the TOTAL-CASH score, and a "Choose" button that opens the
     // full plan for that exact day+time (which then posts its own detailed card).
@@ -4619,6 +4742,7 @@
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
       addCityTour: function (payload) { try { openPanel(); return addCityTourBubble(payload); } catch (e) { return null; } },
+      addMultiDay: function (payload) { try { openPanel(); return addMultiDayBubble(payload); } catch (e) { return null; } },
       addItinerarySearch: function (payload) { try { openPanel(); return addItinerarySearchBubble(payload); } catch (e) { return null; } },
       addVerifyButton: function (info) { try { openPanel(); return addVerifyButtonBubble(info); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
