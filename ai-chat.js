@@ -2048,8 +2048,26 @@
         '"leftover" places remain, you may mention a couple as alternatives: each has fav_hours (the Chinese double-hours today ' +
         'when its direction is favourable) — quote those. NEVER suggest a leftover whose no_fav_today is true for a directional ' +
         'visit. Do NOT invent directions or hours. To navigate to a stop, use plan_travel with its dest_lat / dest_lon.';
+      // Build the multi-stop WALKING Maps link for the whole tour (base + every stop
+      // in order) and push a chat bubble with a one-tap "Open in Google Maps" button.
+      // The tap is a real user gesture, so the pop-up is not blocked — this is how the
+      // student actually SEES and navigates the tour. Fully wrapped so a failure here
+      // never breaks the textual answer.
+      var mapsUrl = null;
+      try {
+        if (window.TravelPlanner && typeof window.TravelPlanner.buildTourMapsUrl === 'function')
+          mapsUrl = window.TravelPlanner.buildTourMapsUrl(r.origin, r.stops, 'walking');
+      } catch (e) {}
+      try {
+        if (mapsUrl && window.XKDGChat && typeof window.XKDGChat.addCityTour === 'function')
+          window.XKDGChat.addCityTour({ base: input.origin_name || (r.origin && r.origin.name) || 'Base',
+            date: r.date, origin: r.origin, stops: r.stops, maps_url: mapsUrl });
+      } catch (e) {}
+      if (mapsUrl) instr += ' A card with the ordered stops and a tappable "Open in Google Maps" button (the whole ' +
+        'walking route) HAS ALREADY been shown to the user — tell them to tap it to see/navigate the tour; do NOT paste a raw link.';
+
       return { ok: true, base: input.origin_name || undefined, date: r.date, category: r.category,
-        city_radius_km: r.city_radius_km, stops: r.stops, leftover: r.leftover, instructions: instr };
+        city_radius_km: r.city_radius_km, stops: r.stops, leftover: r.leftover, maps_url: mapsUrl || undefined, instructions: instr };
     }).catch(function (e) { return { error: 'City tour failed: ' + ((e && e.message) || e) }; });
   }
 
@@ -4047,6 +4065,57 @@
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
+    // Injected after a CITY TOUR is computed: a compact ordered list of the stops
+    // plus a one-tap "Open in Google Maps" button that opens the WHOLE walk (base +
+    // every stop, in visiting order). A real tap, so the browser won't block it.
+    function addCityTourBubble(payload) {
+      payload = payload || {};
+      var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+      var stops = payload.stops || [];
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:13px;line-height:1.5;word-wrap:break-word;' });
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:4px;' },
+        '\uD83D\uDDFA City tour \u00b7 ' + (payload.base || 'Base') + (payload.date ? (' \u00b7 ' + payload.date) : '')));
+      function badge(letter) {
+        return elc('span', { style:
+          'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;' +
+          'background:#1565c0;color:#fff;font-size:11px;font-weight:700;margin-right:7px;flex:none;' }, letter);
+      }
+      // Google letters the origin A, then each stop B, C, ... so they line up with the pins.
+      var baseRow = elc('div', { style: 'display:flex;align-items:flex-start;margin:2px 0;' });
+      baseRow.appendChild(badge('A'));
+      baseRow.appendChild(elc('span', { style: 'flex:1;min-width:0;color:#555;' }, (payload.base || 'Base') + ' \u2014 start'));
+      wrap.appendChild(baseRow);
+      stops.forEach(function (s, i) {
+        var row = elc('div', { style: 'display:flex;align-items:flex-start;margin:2px 0;' });
+        row.appendChild(badge(String.fromCharCode(66 + (i % 25))));
+        var meta = [];
+        if (s.direction) meta.push(s.direction + (s.bearing != null ? (' ' + s.bearing + '\u00b0') : ''));
+        if (s.brPy || s.br) meta.push(s.brPy || s.br);
+        if (s.doorLabel) meta.push('\uD83D\uDEAA ' + s.doorLabel);
+        if (s.hop_km != null && i > 0) meta.push('+' + s.hop_km + ' km');
+        var line = (s.place || 'Stop') + (meta.length ? (' \u00b7 ' + meta.join(' \u00b7 ')) : '');
+        row.appendChild(elc('span', { style: 'flex:1;min-width:0;' }, line));
+        wrap.appendChild(row);
+      });
+      if (payload.maps_url) {
+        var btn = elc('button', { style:
+          'margin-top:7px;background:#1565c0;color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;' },
+          L.openMaps);
+        btn._url = payload.maps_url;
+        btn.addEventListener('click', function () {
+          var u = btn._url, w = null;
+          try { w = window.open(u, '_blank'); } catch (e) {}
+          if (!w) { try { window.location.href = u; } catch (e) {} }
+          btn.textContent = L.opened;
+        });
+        wrap.appendChild(btn);
+      }
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
     // Selectable ranked list of the best departures from a multi-day search. Each row
     // shows the date/time, the TOTAL-CASH score, and a "Choose" button that opens the
     // full plan for that exact day+time (which then posts its own detailed card).
@@ -4375,6 +4444,7 @@
     window.XKDGChat = {
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
+      addCityTour: function (payload) { try { openPanel(); return addCityTourBubble(payload); } catch (e) { return null; } },
       addItinerarySearch: function (payload) { try { openPanel(); return addItinerarySearchBubble(payload); } catch (e) { return null; } },
       addVerifyButton: function (info) { try { openPanel(); return addVerifyButtonBubble(info); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },

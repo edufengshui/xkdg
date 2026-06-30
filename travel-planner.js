@@ -905,6 +905,28 @@
     parts.push('travelmode=driving');
     return parts.join('&');
   }
+  // Build a Google Maps "Directions" link for a multi-stop CITY TOUR: the base as
+  // the start, then every stop in visiting order, ending at the last stop. Defaults
+  // to WALKING (a city tour is on foot / short hops). Returns null if fewer than two
+  // points resolve. Kept SEPARATE from tpBuildMapsUrl so the driving export is untouched.
+  function tpBuildTourMapsUrl(origin, stops, mode) {
+    var pts = [];
+    if (origin && isFinite(origin.lat) && isFinite(origin.lon)) pts.push(tpLatLng(origin));
+    (stops || []).forEach(function (s) {
+      var la = (s && s.dest_lat != null) ? s.dest_lat : (s && s.lat);
+      var lo = (s && s.dest_lon != null) ? s.dest_lon : (s && s.lon);
+      if (isFinite(la) && isFinite(lo)) pts.push(Number(la).toFixed(5) + ',' + Number(lo).toFixed(5));
+    });
+    if (pts.length < 2) return null;     // need at least base + one stop
+    var parts = ['https://www.google.com/maps/dir/?api=1',
+      'origin=' + encodeURIComponent(pts[0]),
+      'destination=' + encodeURIComponent(pts[pts.length - 1])];
+    var wps = pts.slice(1, pts.length - 1);
+    if (wps.length) parts.push('waypoints=' + wps.map(encodeURIComponent).join('%7C'));
+    var m = (mode === 'driving' || mode === 'bicycling' || mode === 'transit') ? mode : 'walking';
+    parts.push('travelmode=' + m);
+    return parts.join('&');
+  }
   // Clipboard with a graceful fallback for browsers without the async API.
   function tpCopyToClipboard(text, btn, doneLabel, restoreLabel) {
     function ok() { if (btn) { btn.textContent = doneLabel; setTimeout(function () { btn.textContent = restoreLabel; }, 1500); } }
@@ -5934,6 +5956,7 @@
     doorLabel: function (code) { return tpDoorLabel(code); },
     getLastResult: function () { return window._tpLastResult || null; },
     openInMaps: function (navigate) { return tpOpenInMaps(!!navigate); },
+    buildTourMapsUrl: function (origin, stops, mode) { return tpBuildTourMapsUrl(origin, stops, mode); },
     diagnoseMapsExport: function () { return tpDiagnoseMapsExport(); },
     getAutoMaps: tpAutoMapsOn,
     setAutoMaps: tpSetAutoMaps,
