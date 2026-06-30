@@ -150,6 +150,9 @@
 
   // Cloudflare Worker proxy (Routes API). Editable in the panel; persisted in localStorage.
   var TP_DEFAULT_WORKER = 'https://xkdg-proxy.decumano16.workers.dev/';
+  // Google Places (New) proxy — turns a point+category into a REAL named place.
+  // Optional: if not deployed/reachable, the planner silently falls back to OSM.
+  var TP_PLACES_WORKER_DEFAULT = 'https://xkdg-places.decumano16.workers.dev';
   function tpGetWorkerUrl() {
     try { return localStorage.getItem('xkdg_worker_url') || TP_DEFAULT_WORKER; } catch (e) { return TP_DEFAULT_WORKER; }
   }
@@ -2649,6 +2652,11 @@
               it.pos.lat = place.lat; it.pos.lon = place.lon;                 // snap Maps/checks (shared reference)
               if (leg) { leg.lat = place.lat; leg.lon = place.lon; leg.place = place.name; leg.stopKind = place.kind; if (place.power) leg.stopPower = place.power; if (place.operator) leg.operator = place.operator; }
               try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {}
+              if (leg && place.kind === 'charger') {   // second opinion: nearby services (fills in async, like the address)
+                tpFindAmenitiesNear(place.lat, place.lon).then(function (am) {
+                  if (am) { leg.amenities = am; try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {} }
+                }).catch(function () {});
+              }
               if (leg && isFinite(place.lat) && isFinite(place.lon)) {   // human address for the card (independent Maps lookup)
                 tpReverseGeocodeMany([{ lat: place.lat, lon: place.lon }]).then(function (nm) {
                   if (nm && nm[0]) { leg.addr = nm[0]; try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (e) {} }
@@ -4987,6 +4995,137 @@
                  kind: 'charger', power: (pick.maxKW ? Math.round(pick.maxKW) + ' kW' : null), operator: pick.operator || null };
       }).catch(function () { return null; });
   }
+  // Best-effort "second opinion" on a charger: which services sit within ~600 m
+  // (food / WC / fuel / shop). Returns a compact flags object or null. Uses the
+  // same OSM (Overpass) worker as tpFindPOI; never blocks the charger result.
+  function tpFindAmenitiesNear(lat, lon) {
+    try {
+      var r = 600;
+      var q = '[out:json][timeout:12];(' +
+        'node["amenity"~"^(restaurant|cafe|fast_food)$"](around:' + r + ',' + lat + ',' + lon + ');' +
+        'node["amenity"="toilets"](around:' + r + ',' + lat + ',' + lon + ');' +
+        'node["amenity"="fuel"](around:' + r + ',' + lat + ',' + lon + ');' +
+        'node["shop"~"^(supermarket|convenience)$"](around:' + r + ',' + lat + ',' + lon + ');' +
+        ');out tags 80;';
+      var url = (typeof window !== 'undefined' && window.TP_OVERPASS_URL)
+        ? window.TP_OVERPASS_URL : 'https://xkdg-osm.decumano16.workers.dev';
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+      return fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(q), signal: ctrl ? ctrl.signal : undefined
+      }).then(function (res) { if (to) clearTimeout(to); if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+        .then(function (j) {
+          var sum = { food: false, wc: false, fuel: false, shop: false };
+          ((j && j.elements) || []).forEach(function (e) {
+            var t = e.tags || {};
+            if (t.amenity === 'restaurant' || t.amenity === 'cafe' || t.amenity === 'fast_food') sum.food = true;
+            else if (t.amenity === 'toilets') sum.wc = true;
+            else if (t.amenity === 'fuel') sum.fuel = true;
+            else if (t.shop === 'supermarket' || t.shop === 'convenience') sum.shop = true;
+          });
+          return (sum.food || sum.wc || sum.fuel || sum.shop) ? sum : null;
+        }).catch(function () { if (to) clearTimeout(to); return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  // --- Google Places (New): real named POIs for tour/Lucky-Trip stops ---------
+  function tpPlacesWorkerUrl() {
+    try {
+      if (typeof window !== 'undefined' && window.TP_PLACES_URL) return window.TP_PLACES_URL;
+      var v = localStorage.getItem('xkdg_tp_places_url'); if (v) return v;
+    } catch (e) {}
+    return TP_PLACES_WORKER_DEFAULT;
+  }
+  function tpPlacesAccessKey() {
+    try { var v = localStorage.getItem('xkdg_tp_places_key'); if (v) return v; } catch (e) {}
+    return '';
+  }
+  // Map a free-text category (IT/EN, whatever the AI passes) to a concise English
+  // search term for Google Places. Ordered: the most SPECIFIC niche families first
+  // (Part 2 of the POI document), then the generic/popular ones (Part 1), then a
+  // safe default. First regex that matches wins.
+  var TP_PLACES_MAP = [
+    // ---- Part 2 — misterioso / simbolico / energetico ----
+    [/megalit|dolmen|menhir|stone circle|cerchio di pietr|standing stone|luogo di poter|place of power|energetic|ley.?line|linea energ|labirint|labyrinth|cript|crypt|mister|mystery|esoteri|sacro antico|sacred site/, 'megalithic site standing stones sacred mystical place'],
+    // ---- Part 2 — spirituale / sacro non turistico ----
+    [/eremo|hermitage|monaster|abbazi|abbey|pieve|santuari|sanctuary|pellegrin|pilgrimage|convent/, 'hermitage monastery abbey sanctuary'],
+    // ---- Part 2 — guarigione / benessere naturale ----
+    [/term|thermal|hot spring|sorgente termal|\bspa\b|wellness|benesser|ritir|retreat|\bzen\b|\berbe\b|herb garden|giardino terap|botanic|botanico/, 'natural hot spring thermal bath wellness spa'],
+    // ---- Part 2 — terra e tradizione ----
+    [/cantina|vino\b|\bwine\b|vineyard|vigne|weingut|fattoria|\bfarm\b|farmers market|biodinam|biologic|organic/, 'organic winery biodynamic farm'],
+    // ---- Part 2 — bellezza appartata / esclusiva (stagionale) ----
+    [/spiagg|beach|calet|\bcala\b|\bcove\b|\bmare\b/, 'secluded beach hidden cove'],
+    [/lago alpin|alpine lake|baita|rifugio|refuge|chalet|malga/, 'alpine lake mountain refuge'],
+    [/trekking|\bhik|sentier|\btrail\b|escursion|cammin/, 'scenic hiking trail nature trail'],
+    [/vetta|summit|\bpasso\b|mountain pass|alta quota|\bcima\b/, 'mountain summit scenic mountain pass'],
+    [/boutique|agriturism|charme|charming|appartat|secluded|\bretreat\b/, 'boutique hotel charming secluded retreat'],
+    [/esclusiv|\blusso\b|luxury|\bresort\b|exclusive/, 'exclusive luxury resort retreat'],
+    // ---- Part 2 — natura sacra / fuori dalla folla ----
+    [/foresta antic|ancient forest|albero monument|monumental tree|bosco sacr|sacred grove/, 'ancient forest monumental tree'],
+    [/sorgent|\bspring\b|cascat|waterfall/, 'sacred spring secluded waterfall'],
+    [/grott|\bcave\b|\bgola\b|gorge|formazione rocci|rock formation/, 'cave gorge rock formation'],
+    [/belveder|viewpoint|panoram|scenic overlook/, 'scenic viewpoint'],
+    // ---- Part 2 — cultura profonda / autentica ----
+    [/borgo mediev|medieval village|citt.? fantasma|ghost town/, 'medieval village ghost town'],
+    [/rovin|ruins|rudere/, 'atmospheric ruins'],
+    [/casa d.?artist|artist house|piccolo museo|small museum|collezione/, 'small museum artist house'],
+    // ---- Part 1 — generic / popular ----
+    [/castel|castle|fortez|rocca|palazzo|palace|\bburg\b|schloss/, 'castle palace'],
+    [/\bmus|galler|\barte\b|\bart\b|cultur/, 'museum art gallery'],
+    [/storic|historic|archeolog|archaeolog/, 'historic site archaeological site'],
+    [/chies|church|cattedr|cathedral|basilic|tempio|temple|duomo|sinagog|\bculto\b/, 'church cathedral'],
+    [/borgh|village|villaggio|old town|\bpaese\b|hamlet/, 'historic village old town'],
+    [/centro storic|historic center|piazza|town square/, 'historic center old town'],
+    [/\bparc|\bpark|giardin|garden/, 'park garden'],
+    [/natur|nature|\blago\b|\blake\b|\bmonte\b|mountain|national park|outdoor/, 'national park scenic nature'],
+    [/enogastronom|ristorant|restaurant|\bfood\b|cucina|trattoria|osteria/, 'restaurant local food'],
+    [/mercat|market|shopping|artigian|craft/, 'local market craft'],
+    [/\bzoo\b|acquari|aquarium|parco a tema|theme park|famigli|\bfamily\b/, 'zoo aquarium theme park family'],
+    [/attrazion|tourist|landmark|monument/, 'tourist attraction landmark']
+  ];
+  function tpPlacesQueryFor(category) {
+    var c = String(category || '').toLowerCase();
+    for (var i = 0; i < TP_PLACES_MAP.length; i++) {
+      if (TP_PLACES_MAP[i][0].test(c)) return TP_PLACES_MAP[i][1];
+    }
+    return 'tourist attraction';
+  }
+  // Returns a single best place (rating, then closeness) in the OSM-pick shape, or
+  // null. Best-effort: any failure (no worker, no key, error) resolves to null so
+  // the caller falls back to OSM. NEVER throws.
+  function tpFindPlacesPOI(lat, lon, radiusKm, category) {
+    try {
+      var base = tpPlacesWorkerUrl();
+      if (!base) return Promise.resolve(null);
+      var q = tpPlacesQueryFor(category);
+      var k = tpPlacesAccessKey();
+      var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
+        'q=' + encodeURIComponent(q) + '&lat=' + lat + '&lon=' + lon +
+        '&radius=' + Math.round(Math.max(1, radiusKm) * 1000) + '&max=12' +
+        (k ? '&k=' + encodeURIComponent(k) : '');
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+      return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
+        .then(function (res) { return res.json(); })
+        .then(function (j) {
+          if (to) clearTimeout(to);
+          if (!j || j.status !== 'ok' || !j.results || !j.results.length) return null;
+          var best = null, bk = -Infinity;
+          j.results.forEach(function (rr) {
+            if (!isFinite(rr.lat) || !isFinite(rr.lon)) return;
+            var d = tpHaversineKm(lat, lon, rr.lat, rr.lon);
+            var rating = (rr.rating != null) ? rr.rating : 3.0;
+            var score = rating - 0.1 * d;                 // rating dominates; nearer breaks ties
+            if (score > bk) { bk = score; best = rr; }
+          });
+          if (!best) return null;
+          return { name: best.name, lat: best.lat, lon: best.lon, kind: 'place',
+                   access: null, feature: best.name, ev: null, source: 'google',
+                   rating: (best.rating != null ? best.rating : null) };
+        })
+        .catch(function () { if (to) clearTimeout(to); return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
   function tpFindStopover(lat, lon, ev) {
     // Staged so the query stays LIGHT and reliable: 1) sparse types (service area / rest
     // area / fuel + EV chargers) at 8 km then 20 km; 2) only if nothing, a small-radius
@@ -5042,7 +5181,9 @@
       if (lot && ld <= 4) {
         return { name: feat.name, lat: lot.lat, lon: lot.lon, kind: feat.kind, tags: lot.tags, ev: lot.ev, access: lot.kind, feature: feat.name };
       }
-      return { name: feat.name, lat: feat.lat, lon: feat.lon, kind: feat.kind, tags: feat.tags, ev: feat.ev, access: null, feature: feat.name };
+      // No real access point near this feature → do NOT drop the pin on the feature
+      // CENTRE (often water / forest / a road crossing it: the "stop in the middle of
+      // the road" bug). Fall through to a real access point near the target instead.
     }
     // No usable wild feature → a car park / trailhead out of the city, nearest to the target.
     var aOk = access.filter(farEnough); if (!aOk.length) aOk = access;
@@ -5345,7 +5486,9 @@
       return Promise.all(picked.map(function (r) {
         var dbg = { dest: [Math.round(r.dest.lat * 1000) / 1000, Math.round(r.dest.lon * 1000) / 1000], nature: -1, broad40: -1, broad90: -1, pick: null };
         poiDbg.push(dbg);
-        return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category).then(function (resp) {
+        return tpFindPlacesPOI(r.dest.lat, r.dest.lon, poiRadius, category).then(function (gp) {
+          if (gp) { dbg.pick = gp.name + ' (google)'; return { poi: gp, failed: false }; }
+          return tpFindPOI(r.dest.lat, r.dest.lon, poiRadius, category).then(function (resp) {
           if (!resp.ok) { dbg.nature = 'FAIL'; return { poi: null, failed: true }; }
           resp.els.forEach(function (p) { p.ev = tpNearestCharger(p, resp.chargers); });
           dbg.nature = resp.els.length;
@@ -5371,7 +5514,8 @@
               return { poi: b3, failed: false };
             });
           });
-        }).catch(function () { dbg.pick = 'EXCEPTION'; return { poi: null, failed: true }; });
+          }).catch(function () { dbg.pick = 'EXCEPTION'; return { poi: null, failed: true }; });
+        });
       })).then(function (res) {
         try { window._tpLastPoiDebug = poiDbg; } catch (e) {}
         return {
