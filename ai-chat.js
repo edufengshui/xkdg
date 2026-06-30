@@ -215,6 +215,12 @@
     '(to.lat/to.lon), and departCn/arriveCn shown verbatim. Say it returns to the start within "resid" km. Never compute the ' +
     'directions, doors or times yourself — only show what plan_lucky_chain returns. This is DIFFERENT from a normal "lucky trip" ' +
     '(out-stay-back to ONE place): use plan_lucky_chain only for the multi-leg loop.\n' +
+    '- MULTI-DAY THEMED trip (several DAYS around a theme): when the user wants a trip of more than one day built around ' +
+    'a category/theme (e.g. "3-day castle tour from Vienna", "viaggio di 4 giorni tra le terme", or the Lucky Trip panel ' +
+    '"Themed trip"), call plan_lucky_multiday with origin (the base), start_date, days and category. It returns an ' +
+    '"itinerary" array (one entry per day, each with a "proposal" = that day lucky themed place). Present it as ' +
+    '"Day 1 ... Day N" exactly as its "instructions" field says; never compute directions or times yourself. HUB model ' +
+    '(sleep at the base, one lucky themed excursion per day). Use plan_lucky_day_trip for a SINGLE day, plan_lucky_multiday for SEVERAL.\n' +
     '- TRAVEL / ITINERARY from A to B by car: use plan_travel with dest_lat/lon (+dest_name) and origin_lat/lon ' +
     '(+origin_name) from your knowledge of the places. The favorable double-hours come back in favorable_windows as ' +
     'LOCAL CLOCK times (already DST-adjusted): each has from/to (the real clock start/end of that double-hour), ' +
@@ -566,6 +572,30 @@
           max_legs: { type: 'integer', description: 'Maximum legs before returning home (2-5, default 5).' },
           max_leg_km: { type: 'number', description: 'Maximum length of a single leg in km (default 140).' },
           count: { type: 'integer', description: 'How many distinct loops to return (2-6, default 5).' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'plan_lucky_multiday',
+      description: 'Compose a MULTI-DAY themed Lucky Trip: an itinerary of N consecutive days around a fixed BASE, ' +
+        'where each day has ONE lucky excursion — a real named place that fits a THEME/category, reached in a ' +
+        'favourable direction during a favourable hour, then back to the base (hub model: sleep at the base, ' +
+        'day-trip out each day). Use when the user wants a trip of several DAYS around a theme ("3-day castle tour ' +
+        'from Vienna", "un viaggio di 4 giorni tra le terme", "itinerario di piu giorni sui luoghi misteriosi", or the ' +
+        'Lucky Trip panel\'s "Themed trip"). The app re-runs the proven single-day lucky engine once per day (each day ' +
+        'has its OWN favourable directions and hours) and picks the best DISTINCT place per day. You never compute ' +
+        'directions, doors or times yourself — present exactly what it returns.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_lat: { type: 'number', description: 'Base latitude (defaults to saved GPS, else the app default).' },
+          origin_lon: { type: 'number', description: 'Base longitude.' },
+          origin_name: { type: 'string', description: 'Base place name (for labels).' },
+          start_date: { type: 'string', description: 'First day YYYY-MM-DD (default today).' },
+          days: { type: 'integer', description: 'How many consecutive days (1-10, default 3).' },
+          category: { type: 'string', description: 'Theme/kind of place for EVERY day. Pass the user\'s specific word ("castles", "thermal baths", "hermitages abbeys", "mysterious energetic places", "secluded beaches"...). Becomes real named places via Google Places.' },
+          max_radius_km: { type: 'number', description: 'Maximum distance of each daily excursion from the base in km (default 200).' }
         },
         required: []
       }
@@ -1127,6 +1157,7 @@
       if (name === 'search_travel') return toolSearchTravel(input || {});
       if (name === 'plan_lucky_day_trip') return toolPlanLuckyDayTrip(input || {});
       if (name === 'plan_lucky_chain') return toolPlanLuckyChain(input || {});
+      if (name === 'plan_lucky_multiday') return toolPlanLuckyMultiDay(input || {});
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
       if (name === 'open_travel_planner') return toolOpenTravelPlanner(input || {});
       if (name === 'open_itinerary_in_maps') return toolOpenItineraryInMaps();
@@ -1877,6 +1908,75 @@
       if (!proposals.length && !(chains && chains.length)) return tooLate();
       return buildResult(r, proposals, chains, {});
     }).catch(function (e) { return { error: 'Lucky-trip planning failed: ' + ((e && e.message) || e) }; });
+  }
+
+  // ── MULTI-DAY themed Lucky Trip (engine B) ───────────────────────────────
+  // Reuses the proven single-day engine (proposeLuckyTrips) once per day around a
+  // fixed base, picking the best DISTINCT themed place each day. Sequential (each
+  // call is async); hub model. Returns a structured Day-1..N itinerary + how to show it.
+  function toolPlanLuckyMultiDay(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.proposeLuckyTrips !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+    var origin = null;
+    if (input.origin_lat != null && input.origin_lon != null) origin = { lat: +input.origin_lat, lon: +input.origin_lon };
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
+    var originName = input.origin_name || null;
+    var today = todayIso();
+    var start = input.start_date || input.date || today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || start < today) start = today;
+    var days = (input.days != null) ? Math.max(1, Math.min(10, parseInt(input.days, 10))) : 3;
+    var category = input.category ? String(input.category) : null;
+    var maxKm = (input.max_radius_km != null) ? +input.max_radius_km : 200;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+
+    function addDays(iso, n) {
+      var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    var used = {};        // avoid repeating the same place across days
+    var out = [];
+    var chain = Promise.resolve();
+    for (var i = 0; i < days; i++) {
+      (function (dayIdx) {
+        chain = chain.then(function () {
+          var dateStr = addDays(start, dayIdx);
+          var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
+          var opts = { utc: utc, dstOn: dstOn, dateStr: dateStr, maxRadiusKm: maxKm,
+            stayMinH: 1.5, stayMaxH: 3, topN: 6 };
+          if (category) opts.category = category;
+          if (origin) opts.origin = origin;
+          return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
+            var props = (r && r.proposals) ? r.proposals : [];
+            var pick = null;
+            for (var k = 0; k < props.length; k++) {
+              var nameKey = props[k].place ? props[k].place.toLowerCase()
+                : ((props[k].dest_lat) + ',' + (props[k].dest_lon));
+              if (!used[nameKey]) { pick = props[k]; used[nameKey] = 1; break; }
+            }
+            if (!pick && props.length) pick = props[0];     // all repeated → reuse the best
+            out.push({ day: dayIdx + 1, date: dateStr, any_fully_favourable: !!(r && r.anyClean),
+              poi_service_error: !!(r && r.poi_service_error), proposal: pick || null });
+          }).catch(function () { out.push({ day: dayIdx + 1, date: dateStr, proposal: null, error: true }); });
+        });
+      })(i);
+    }
+
+    return chain.then(function () {
+      var instr = 'This is a MULTI-DAY themed Lucky Trip around a fixed BASE (' + (originName || 'the starting point') + '). ' +
+        'Each day has ONE chosen lucky excursion: a real named place (in "proposal.place") reached in a favourable direction ' +
+        'during a favourable hour, then back to the base (hub model — keep the SAME base every day). ' +
+        'Present it as an itinerary "Day 1 … Day N". For EACH day show: the date, the place name (proposal.place) and what kind it ' +
+        'is (proposal.place_kind), the direction (proposal.direction), the distance (proposal.km), the depart/arrive clock times ' +
+        'AND their Chinese double-hour (proposal.depart_cn / proposal.arrive_cn) VERBATIM — never recompute or shift them — the stay ' +
+        'length (proposal.stay_h), the return times (proposal.return_depart / return_arrive with return_depart_cn / return_arrive_cn), ' +
+        'and the score (proposal.score 0-5; proposal.clean=true means both legs fully favourable). If "ev_charging" is true, note the ' +
+        'EV charger (🔌). If a day\'s "proposal" is null, state plainly that no favourable themed excursion fits that day from this base, ' +
+        'and offer a larger radius or a different base. Do NOT invent directions or times. To actually drive one day, call plan_travel ' +
+        'with that day\'s proposal.dest_lat / dest_lon.';
+      return { ok: true, base: originName || undefined, start_date: start, days: days,
+        category: category || undefined, itinerary: out, instructions: instr };
+    }).catch(function (e) { return { error: 'Multi-day planning failed: ' + ((e && e.message) || e) }; });
   }
 
   function toolPlanLuckyChain(input) {
