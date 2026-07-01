@@ -5893,13 +5893,42 @@
         });
       })).then(function (res) {
         try { window._tpLastPoiDebug = poiDbg; } catch (e) {}
-        return {
-          date: dateStr, origin: O, category: tpPoiCategory(category),
-          anyClean: picked.some(function (r) { return r.clean; }),
-          some_without_place: res.some(function (x) { return !x.poi; }),
-          poi_service_error: res.some(function (x) { return x.failed; }),
-          proposals: picked.map(function (r, i) { return buildProposal(r, res[i].poi); })
-        };
+        // CORRECTNESS FIX (Edu directive): the POI search above can fall back all the way to a
+        // 90 km, origin-DISTANCE-UNCAPPED lookup ("guarantee a name if any data"), so the real
+        // place found can sit at a TRUE bearing from origin that has nothing to do with the
+        // synthetic compass ray (r.bearing/r.snapDir) that was searched. Showing that stale
+        // synthetic direction — while the Qimen favourability was also only ever validated for
+        // THAT synthetic direction — would label a place with the wrong compass direction AND
+        // claim a "clean"/favourable verdict that was never actually checked for the real place.
+        // So: re-run the round-trip evaluation on the REAL poi coordinates (bearing, door
+        // favourability, everything) and only keep proposals still favourable at the TRUE
+        // direction. Never present a direction or a verdict that doesn't match the real place.
+        var rescored = picked.map(function (r, i) {
+          var poi = res[i].poi;
+          if (!poi) return Promise.resolve({ r: r, poi: null, dropped: false });
+          var realBearing = tpBearing(O.lat, O.lon, poi.lat, poi.lon);
+          return tpPlanRoundTrip({ origin: O, dest: { lat: poi.lat, lon: poi.lon }, utc: utc, dstOn: dstOn, dateStr: dateStr,
+            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true, nowMs: nowMs })
+            .then(function (r2) {
+              if (!r2 || !r2.ok) return { r: r, poi: poi, dropped: true };  // not favourable at the REAL direction -> drop
+              r2.bearing = realBearing; r2.snapDir = tpSnapDir(realBearing);
+              r2.km = Math.round(tpHaversineKm(O.lat, O.lon, poi.lat, poi.lon)); r2.dest = { lat: poi.lat, lon: poi.lon };
+              return { r: r2, poi: poi, dropped: false };
+            })
+            .catch(function () { return { r: r, poi: poi, dropped: true }; });
+        });
+        return Promise.all(rescored).then(function (final) {
+          var kept = final.filter(function (x) { return !x.dropped; });
+          var droppedForRealDirection = final.length - kept.length;
+          return {
+            date: dateStr, origin: O, category: tpPoiCategory(category),
+            anyClean: kept.some(function (x) { return x.r.clean; }),
+            some_without_place: kept.some(function (x) { return !x.poi; }),
+            poi_service_error: res.some(function (x) { return x.failed; }),
+            poi_found_but_not_favourable: droppedForRealDirection || undefined,
+            proposals: kept.map(function (x) { return buildProposal(x.r, x.poi); })
+          };
+        });
       });
     });
   }
