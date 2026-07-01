@@ -195,7 +195,7 @@
     if (existing) existing.parentNode.removeChild(existing);
 
     var ov = el('div', { id: 'dc-overlay',
-      style: 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;font-family:system-ui,Arial,sans-serif;' });
+      style: 'position:fixed;inset:0;z-index:99995;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;font-family:system-ui,Arial,sans-serif;' });
     var panel = el('div', { style: 'background:#fff;border-radius:12px;max-width:1040px;width:100%;padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.35);max-height:96vh;overflow:auto;' });
 
     var hd = el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;' });
@@ -285,6 +285,7 @@
       var ctx = lastSummary ? ('[Chart: ' + lastSummary.dun + ' Jú ' + lastSummary.ju + ', ' + lastSummary.date + ' ' + lastSummary.time + ', hour ' + lastSummary.hour + '] ') : '';
       // Use the assistant's public API: it opens the panel, fills the input AND sends.
       if (window.XKDGChat && typeof window.XKDGChat.ask === 'function') {
+        try { closeSelf(); } catch (e) {}
         try { window.XKDGChat.ask(ctx + strat); } catch (e) { alert('Could not reach the assistant: ' + (e && e.message ? e.message : e)); }
       } else {
         alert('The assistant is not available on this page.');

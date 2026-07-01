@@ -4732,7 +4732,10 @@
         var _d = m.date, _t = timeFor(m);
         b.addEventListener('click', function () {
           try {
-            if (window.DirectionsCharts && typeof window.DirectionsCharts.openDivinationsAt === 'function') window.DirectionsCharts.openDivinationsAt(_d, _t);
+            if (window.DirectionsCharts && typeof window.DirectionsCharts.openDivinationsAt === 'function') {
+              try { closePanel(); } catch (e) {}
+              window.DirectionsCharts.openDivinationsAt(_d, _t);
+            }
             else alert('The Divinations module is not available on this page.');
           } catch (e) {}
         });
