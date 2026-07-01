@@ -77,24 +77,28 @@
     var matches = [];
     var _lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
     var _useTST = _lt && isFinite(_lt.lonDeg) && typeof XKDGSolarTime.hourPillarFromCivil === 'function';
+    // House rule (Edu): EVERYTHING is decided in True Solar Time. Without longitude (no GPS) TST
+    // cannot be computed, so we BLOCK and warn rather than silently fall back to civil time.
+    if (!_useTST) {
+      return { ok: false, error: 'Location (longitude) is missing — True Solar Time cannot be computed, so the scan is not run (civil time is never used). Set your GPS / longitude first.' };
+    }
     for (var day = 0; day < days && matches.length < maxResults; day++) {
       var d = new Date(base.getTime() + day * 86400000);
       var Y = d.getFullYear(), M = d.getMonth() + 1, D = d.getDate();
       for (var i = 0; i < DH.length && matches.length < maxResults; i++) {
         var rep = DH[i];
-        var hGan, hZhi;
+        var hGan, hZhi, qmY, qmM, qmD;
         try {
-          if (_useTST) {
-            var hp = XKDGSolarTime.hourPillarFromCivil(Y, M, D, rep.h, 30, 0, _lt.lonDeg, _lt.tzOffsetMin);
-            hGan = H2P[hp.gan] || hp.gan; hZhi = BR_H2P[hp.zhi] || hp.zhi;
-          } else {
-            var ec = S.fromYmdHms(Y, M, D, rep.h, 30, 0).getLunar().getEightChar();
-            hGan = H2P[ec.getTimeGan()] || ec.getTimeGan();
-            hZhi = BR_H2P[ec.getTimeZhi()] || ec.getTimeZhi();
-          }
+          // Hour pillar in TST; the engine reads day / Jú / 元 / Jie Qi from the date it is given,
+          // so we pass the TRUE SOLAR TIME calendar date (hp.tst), not the civil day — near TST
+          // midnight the two differ and the civil date would select the wrong Jú.
+          var hp = XKDGSolarTime.hourPillarFromCivil(Y, M, D, rep.h, 30, 0, _lt.lonDeg, _lt.tzOffsetMin);
+          if (!hp || !hp.tst) continue;
+          hGan = H2P[hp.gan] || hp.gan; hZhi = BR_H2P[hp.zhi] || hp.zhi;
+          qmY = hp.tst.y; qmM = hp.tst.mo; qmD = hp.tst.d;
         } catch (e) { continue; }
         var chart;
-        try { chart = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi); } catch (e) { continue; }
+        try { chart = QMDJWaterScanner.getRotatingHourChart(qmY, qmM, qmD, hGan, hZhi); } catch (e) { continue; }
         var where = chartMatches(chart, conds);
         if (where) {
           // Focus palace = the door's palace (the scene of the action); else the
@@ -115,6 +119,7 @@
           } catch (e) {}
           matches.push({
             date: Y + '-' + String(M).padStart(2, '0') + '-' + String(D).padStart(2, '0'),
+            qmDate: qmY + '-' + String(qmM).padStart(2, '0') + '-' + String(qmD).padStart(2, '0'),
             hour: rep.h, branch: hZhi, hourStem: hGan,
             label: STEM_HAN[hGan] + BR_BRANCH_HAN(hZhi),
             where: where,

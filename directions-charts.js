@@ -44,18 +44,27 @@
     return (typeof window !== 'undefined' && window.Solar) ? window.Solar : null;
   }
 
-  // Hour pillar (stem+branch, pinyin) for a solar date+time, in LOCAL TRUE SOLAR TIME.
+  // Hour pillar (stem+branch, pinyin) + the TST calendar date, in LOCAL TRUE SOLAR TIME.
+  // House rule (Edu): EVERYTHING is decided in True Solar Time — day rollover, the 子 boundary,
+  // the Jú and the Jie Qi. So we also return the TST calendar date (tstY/tstMo/tstD); the caller
+  // MUST pass that TST date (not the civil pick) to the engine, otherwise Jú/元/dun are read from
+  // the wrong day near TST midnight.
+  // If longitude is unknown (no GPS), TST cannot be computed → we do NOT fall back to civil time;
+  // we return { noTST:true } so the caller blocks and warns.
   function hourPillar(y, m, d, H, Min) {
     var S = getSolar(); if (!S) return null;
     try {
       var lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
-      if (lt && isFinite(lt.lonDeg) && typeof XKDGSolarTime.hourPillarFromCivil === 'function') {
-        var hp = XKDGSolarTime.hourPillarFromCivil(y, m, d, H, Min, 0, lt.lonDeg, lt.tzOffsetMin);
-        return { stem: H2P[hp.gan] || hp.gan, branch: BR_H2P[hp.zhi] || hp.zhi, stemCN: hp.gan, brCN: hp.zhi };
+      if (!lt || !isFinite(lt.lonDeg) || typeof XKDGSolarTime.hourPillarFromCivil !== 'function') {
+        return { noTST: true };
       }
-      var ec = S.fromYmdHms(y, m, d, H, Min, 0).getLunar().getEightChar();
-      var stemCN = ec.getTimeGan(), brCN = ec.getTimeZhi();
-      return { stem: H2P[stemCN] || stemCN, branch: BR_H2P[brCN] || brCN, stemCN: stemCN, brCN: brCN };
+      var hp = XKDGSolarTime.hourPillarFromCivil(y, m, d, H, Min, 0, lt.lonDeg, lt.tzOffsetMin);
+      if (!hp || !hp.tst) return { noTST: true };
+      return {
+        stem: H2P[hp.gan] || hp.gan, branch: BR_H2P[hp.zhi] || hp.zhi,
+        stemCN: hp.gan, brCN: hp.zhi,
+        tstY: hp.tst.y, tstMo: hp.tst.mo, tstD: hp.tst.d, tst: true
+      };
     } catch (e) { return null; }
   }
 
@@ -169,13 +178,24 @@
     var y = +dm[1], mo = +dm[2], d = +dm[3], H = +tm[1], Min = +tm[2];
     var hp = hourPillar(y, mo, d, H, Min);
     if (!hp) { container.innerHTML = '<div style="color:#b00;font:13px sans-serif;padding:14px;">Could not compute the hour pillar (calendar library missing?).</div>'; return null; }
+    if (hp.noTST) {
+      container.innerHTML = '<div style="color:#b00;font:13px sans-serif;padding:14px;line-height:1.5;">' +
+        '<b>Location (longitude) is missing.</b><br>True Solar Time cannot be computed without it, so the chart is not drawn — ' +
+        'civil clock time is never used. Set your GPS / longitude first, then try again.</div>';
+      return null;
+    }
+    // TST rule: the engine reads the day, Jú, 元 and Jie Qi from the date it is given, so we pass
+    // the TRUE SOLAR TIME calendar date (tstY/tstMo/tstD), not the civil pick. Near TST midnight the
+    // two differ, and passing the civil date would read Jú/元 from the wrong day.
     var info;
-    try { info = eng.getRotatingHourChart(y, mo, d, hp.stem, hp.branch); } catch (e) { info = null; }
+    try { info = eng.getRotatingHourChart(hp.tstY, hp.tstMo, hp.tstD, hp.stem, hp.branch); } catch (e) { info = null; }
     if (!info) { container.innerHTML = '<div style="color:#b00;font:13px sans-serif;padding:14px;">No chart for this date/time.</div>'; return null; }
 
     var dun = info.dun === 'yang' ? 'Yang Dun' : 'Yin Dun';
+    var tstNote = (hp.tstMo !== mo || hp.tstD !== d)
+      ? ' <span style="color:#a4562a;">(TST day ' + hp.tstD + '/' + hp.tstMo + ')</span>' : '';
     var head = '<div class="dc-head"><b>' + dun + ' &middot; Jú ' + info.ju + '</b> &middot; ' +
-      esc(dateStr) + ' ' + esc(timeStr) + ' &middot; hour ' + esc(hp.stemCN + hp.brCN) + ' &middot; rotating pan 转盘</div>';
+      esc(dateStr) + ' ' + esc(timeStr) + tstNote + ' &middot; hour ' + esc(hp.stemCN + hp.brCN) + ' &middot; rotating pan 转盘</div>';
     var cells = ''; for (var i = 0; i < LUOSHU.length; i++) cells += cellHTML(info, LUOSHU[i]);
     container.innerHTML = head + '<div class="dc-board-frame">' + boardDirsHTML() + '<div class="dc-board">' + cells + '</div></div>';
     return { dun: info.dun, ju: info.ju, hour: hp.stemCN + hp.brCN, date: dateStr, time: timeStr };
