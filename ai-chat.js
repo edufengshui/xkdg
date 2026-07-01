@@ -190,6 +190,11 @@
     'with ALTERNATIVE directions — in that case tell the user plainly FIRST that their direction is not available today, then show ' +
     'the alternatives. NEVER make the user ask for chains separately, and NEVER offer alternative directions while a trip toward the ' +
     'requested direction still exists.\n' +
+    '- ANY POI / no theme: when the user gives NO specific theme but wants a real place at each option ("qualsiasi POI va ' +
+    'bene", "any POI is fine", "any place", "somewhere interesting"), call plan_lucky_day_trip with any_poi:true so every ' +
+    'favourable direction gets a real nearby attraction instead of a bare geometric point. For a WALK or BIKE trip also pass a ' +
+    'small max_radius_km (e.g. 2-3) and short stay hours; the tool then automatically omits the long-leg chain loops (which are ' +
+    'car-only), so do not mention them for a bike/walk. ' +
     '- MULTI-DAY TOUR (offer as an option): the same lucky-travel idea extends to a trip of SEVERAL DAYS visiting a country ' +
     '(e.g. France), like an organised tour — each transfer between stops driven in a favourable hour/direction. You do NOT have ' +
     'a dedicated engine for this; you build it as a SEQUENCE of plan_travel calls, one per transfer between the stops the user ' +
