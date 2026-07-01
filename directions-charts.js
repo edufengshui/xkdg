@@ -283,13 +283,9 @@
       var strat = (notes.value || '').trim();
       if (!strat) { alert('Write a strategy first.'); return; }
       var ctx = lastSummary ? ('[Chart: ' + lastSummary.dun + ' Jú ' + lastSummary.ju + ', ' + lastSummary.date + ' ' + lastSummary.time + ', hour ' + lastSummary.hour + '] ') : '';
-      var aiInput = document.getElementById('xkdg-ai-input');
-      var aiBtnEl = document.getElementById('xkdg-ai-btn');
-      var aiPanel = document.getElementById('xkdg-ai-panel');
-      if (aiPanel && aiPanel.style.display !== 'flex' && aiBtnEl) { try { aiBtnEl.click(); } catch (e) {} }
-      if (aiInput) {
-        aiInput.value = ctx + strat;
-        try { aiInput.focus(); } catch (e) {}
+      // Use the assistant's public API: it opens the panel, fills the input AND sends.
+      if (window.XKDGChat && typeof window.XKDGChat.ask === 'function') {
+        try { window.XKDGChat.ask(ctx + strat); } catch (e) { alert('Could not reach the assistant: ' + (e && e.message ? e.message : e)); }
       } else {
         alert('The assistant is not available on this page.');
       }
