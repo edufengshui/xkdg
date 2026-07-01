@@ -346,12 +346,25 @@
 
     renderArchive();
     redraw(); // draw today's chart immediately
+
+    // Optional deep-link: open straight onto a given date/time (used by the
+    // assistant's "view chart" buttons on divination search results).
+    if (cfg.at && cfg.at.date) {
+      try {
+        dateInp.value = cfg.at.date;
+        if (cfg.at.time) timeInp.value = cfg.at.time;
+        redraw();
+      } catch (e) {}
+    }
   }
+
+  function openDivinationsAt(date, time, onReturn) { openSection({ title: '🔮 Divinations', key: 'xkdg_dirchart_div', birth: false, at: { date: date, time: time }, onClose: (typeof onReturn === 'function' ? onReturn : null) }); }
+  function openBirthChartsAt(date, time, onReturn) { openSection({ title: '🎴 Birth charts', key: 'xkdg_dirchart_birth', birth: true, at: { date: date, time: time }, onClose: (typeof onReturn === 'function' ? onReturn : null) }); }
 
   function openDivinations(onReturn) { openSection({ title: '🔮 Divinations', key: 'xkdg_dirchart_div', birth: false, onClose: (typeof onReturn === 'function' ? onReturn : null) }); }
   function openBirthCharts(onReturn) { openSection({ title: '🎴 Birth charts', key: 'xkdg_dirchart_birth', birth: true, onClose: (typeof onReturn === 'function' ? onReturn : null) }); }
 
   try {
-    window.DirectionsCharts = { openDivinations: openDivinations, openBirthCharts: openBirthCharts, drawChartInto: drawChartInto };
+    window.DirectionsCharts = { openDivinations: openDivinations, openBirthCharts: openBirthCharts, openDivinationsAt: openDivinationsAt, openBirthChartsAt: openBirthChartsAt, drawChartInto: drawChartInto };
   } catch (e) {}
 })();

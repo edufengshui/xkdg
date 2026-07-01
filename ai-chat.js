@@ -2971,12 +2971,21 @@
       var r = window.QimenDivFinder.scan(conds, { startDate: input.start_date || null, days: input.days || 60, maxResults: input.max_results || 20 });
       if (!r.ok) return { error: r.error || 'Scan failed.' };
       if (!r.count) return { ok: true, count: 0, note: 'No chart in the scanned window satisfies all conditions. Try a longer "days" window, fewer conditions, or more allowed palaces for a stem.' };
+      var matchList = r.matches.map(function (m) { return { date: m.date, double_hour: m.label, branch: m.branch, positions: m.where, score: (m.score != null ? m.score : null), score_ok: m.scoreOk, palace: m.scorePalace || null, profile: m.profile || null }; });
+      try {
+        if (window.XKDGChat && typeof window.XKDGChat.addDivinationMatches === 'function') {
+          window.XKDGChat.addDivinationMatches({ count: r.count, truncated: r.truncated,
+            conditions: [].concat(conds.doors || [], conds.stems || []).join('+') || undefined, matches: matchList });
+        }
+      } catch (e) {}
       return {
         ok: true, count: r.count, truncated: r.truncated,
-        matches: r.matches.map(function (m) { return { date: m.date, double_hour: m.label, branch: m.branch, positions: m.where }; }),
-        instructions: 'List the matching charts (date + double-hour) in chronological order (soonest first), each showing where ' +
-          'every condition landed (e.g. "Geng in Qian"). Then the user can draw that chart in Directions → Divinations for the ' +
-          'date/hour. Keep it concise.'
+        matches: matchList,
+        instructions: 'A CARD listing every matching chart (date + double-hour + where each condition landed + a rotating-chart ' +
+          'SCORE and profile chips + a "View chart" button that opens Directions -> Divinations already drawn on that date/hour) ' +
+          'has ALREADY been shown by the app, sorted BEST score first. Give a SHORT summary highlighting the top 1-2 by score ' +
+          '(mention the score and why, e.g. San Qi / Commander present); do NOT tell the user to open Divinations manually, and ' +
+          'do NOT repeat the full list if long. Each match carries "score" (rotating-chart auspiciousness) and "profile". Keep it concise.'
       };
     } catch (e) { return { error: 'Divination scan failed: ' + ((e && e.message) || e) }; }
   }
@@ -4673,6 +4682,65 @@
       return wrap;
     }
 
+    // Injected after a DIVINATION CHART search: one row per matching chart (date +
+    // double-hour + where each condition landed) with a "view chart" button that
+    // opens Directions -> Divinations already drawn on that date/hour.
+    function addDivinationMatchesBubble(payload) {
+      payload = payload || {};
+      var ms = payload.matches || [];
+      if (!ms.length) return null;
+      var BR_TIME = { Zi: '00:00', Chou: '02:00', Yin: '04:00', Mao: '06:00', Chen: '08:00', Si: '10:00', Wu: '12:00', Wei: '14:00', Shen: '16:00', You: '18:00', Xu: '20:00', Hai: '22:00',
+        '\u5B50': '00:00', '\u4E11': '02:00', '\u5BC5': '04:00', '\u536F': '06:00', '\u8FB0': '08:00', '\u5DF3': '10:00', '\u5348': '12:00', '\u672A': '14:00', '\u7533': '16:00', '\u9149': '18:00', '\u620C': '20:00', '\u4EA5': '22:00' };
+      function timeFor(m) {
+        if (m.branch && BR_TIME[m.branch]) return BR_TIME[m.branch];
+        var mm = String(m.double_hour || '').match(/\(([A-Za-z]+)\s*hour\)/);
+        if (mm && BR_TIME[mm[1]]) return BR_TIME[mm[1]];
+        return '12:00';
+      }
+      function whereText(w) {
+        if (!w) return '';
+        if (typeof w === 'string') return w;
+        if (Array.isArray(w)) return w.join(', ');
+        try { return Object.keys(w).map(function (k) { return k + ' in ' + w[k]; }).join(', '); } catch (e) { return ''; }
+      }
+      var wrap = elc('div', { style: 'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:13px;line-height:1.5;word-wrap:break-word;' });
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:5px;color:#6a1b9a;' },
+        '\uD83D\uDD2E Chart matches' + (payload.count != null ? (' \u00b7 ' + payload.count) : '') + (payload.conditions ? (' \u00b7 ' + payload.conditions) : '')));
+      ms.forEach(function (m) {
+        var box = elc('div', { style: 'margin:6px 0;padding:6px 8px;background:#faf6fd;border:1px solid #ecdff5;border-radius:9px;' });
+        var head = elc('div', { style: 'display:flex;align-items:center;gap:7px;' });
+        head.appendChild(elc('span', { style: 'flex:1;min-width:0;font-weight:600;' }, (m.date || '') + (m.double_hour ? (' \u00b7 ' + m.double_hour) : '')));
+        if (m.score != null) head.appendChild(elc('span', { style: 'background:' + (m.score_ok ? '#e0efe1' : '#f3e9d8') + ';color:' + (m.score_ok ? '#2e7d32' : '#8a5a00') + ';font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 8px;flex:none;' }, 'score ' + m.score));
+        box.appendChild(head);
+        if (m.profile) {
+          var pf = [];
+          if (m.profile.sanQi) pf.push('San Qi');
+          if (m.profile.commander) pf.push('\u503C\u7B26 Commander');
+          if (m.profile.zhiShi) pf.push('\u503C\u4F7F Zhi Shi');
+          if (m.profile.door) pf.push(m.profile.door);
+          if (m.profile.deity) pf.push(m.profile.deity);
+          if (m.profile.configs && m.profile.configs.length) pf = pf.concat(m.profile.configs);
+          if (pf.length) box.appendChild(elc('div', { style: 'margin:2px 0 0;color:#6a1b9a;font-size:11px;' }, (m.palace ? (m.palace + ': ') : '') + pf.join(' \u00b7 ')));
+        }
+        var w = whereText(m.positions);
+        if (w) box.appendChild(elc('div', { style: 'margin:1px 0 4px;color:#888;font-size:11px;' }, w));
+        var b = elc('button', { style: 'background:#6a1b9a;color:#fff;border:0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;' }, '\uD83D\uDCCA View chart');
+        var _d = m.date, _t = timeFor(m);
+        b.addEventListener('click', function () {
+          try {
+            if (window.DirectionsCharts && typeof window.DirectionsCharts.openDivinationsAt === 'function') window.DirectionsCharts.openDivinationsAt(_d, _t);
+            else alert('The Divinations module is not available on this page.');
+          } catch (e) {}
+        });
+        box.appendChild(b);
+        wrap.appendChild(box);
+      });
+      if (payload.truncated) wrap.appendChild(elc('div', { style: 'margin-top:5px;color:#888;font-size:11px;font-style:italic;' }, '+ more in the window \u2014 narrow the dates or ask for the full list.'));
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
+
     // Injected after an OPEN-PATH MOBILE-BASE tour: origin = A (green start), each
     // night's base = B, C, D... reached by a favourable transfer. Per-leg "Open in
     // Maps" buttons (previous base -> this base) plus a full open-route button.
@@ -5199,6 +5267,7 @@
       addMultiDay: function (payload) { try { openPanel(); return addMultiDayBubble(payload); } catch (e) { return null; } },
       addMobileTour: function (payload) { try { openPanel(); return addMobileTourBubble(payload); } catch (e) { return null; } },
       addDayTrip: function (payload) { try { openPanel(); return addDayTripBubble(payload); } catch (e) { return null; } },
+      addDivinationMatches: function (payload) { try { openPanel(); return addDivinationMatchesBubble(payload); } catch (e) { return null; } },
       addItinerarySearch: function (payload) { try { openPanel(); return addItinerarySearchBubble(payload); } catch (e) { return null; } },
       addVerifyButton: function (info) { try { openPanel(); return addVerifyButtonBubble(info); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
