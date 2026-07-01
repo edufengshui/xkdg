@@ -226,6 +226,12 @@
     '"itinerary" array (one entry per day, each with a "proposal" = that day lucky themed place). Present it as ' +
     '"Day 1 ... Day N" exactly as its "instructions" field says; never compute directions or times yourself. HUB model ' +
     '(sleep at the base, one lucky themed excursion per day). Use plan_lucky_day_trip for a SINGLE day, plan_lucky_multiday for SEVERAL.\n' +
+    '- MOBILE-BASE tour (sleep in a DIFFERENT place each night): when the user wants to CHANGE ACCOMMODATION every ' +
+    'night and move town to town ("cambiando alloggio ogni notte", "dormo in un posto diverso ogni sera", "tour ' +
+    'itinerante", "basi mobili", "road trip sleeping somewhere new each night"), call plan_mobile_tour (NOT ' +
+    'plan_lucky_multiday, which keeps ONE fixed base). Pass origin_name, start_date, days (nights) and optional area. ' +
+    'It returns an OPEN-PATH itinerary: each night a real place of character to sleep, reached by a favourable ' +
+    'transfer; a route map card is shown by the app. Present night by night; the path ends at the last favourable base. ' +
     '- CITY TOUR (famous places INSIDE one city): when the user wants to tour WITHIN a city ("a lucky day in Rome", "cosa vedere ' +
     'a Firenze oggi alle ore giuste", the Lucky Trip panel "City tour"), call plan_city_tour with origin (the city centre or ' +
     'hotel), date and optional category. The XKDG direction model works at ANY scale (no minimum distance — it was a battlefield ' +
@@ -618,6 +624,32 @@
           area: { type: 'string', description: 'OPTIONAL region/area to STAY WITHIN, distinct from the base (e.g. base "Siena", area "Tuscany"). The app geocodes it to a bounding box and keeps EVERY stop inside it, so the trip can\'t drift into a neighbouring region. Pass it whenever the user names an area to remain in ("tour in Tuscany", "stay in the Dolomites", "Area to stay within: ...").' },
           max_radius_km: { type: 'number', description: 'Maximum distance of each daily excursion from the base in km (default 200).' },
           avoid_crowds: { type: 'boolean', description: 'OPTIONAL. True for quiet / secluded / non-touristy excursions (away from the crowds); gently de-emphasises very popular places without overriding the favourable direction.' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'plan_mobile_tour',
+      description: 'Plan an OPEN-PATH MOBILE-BASE tour: the traveller SLEEPS IN A DIFFERENT PLACE each night, and each ' +
+        'night\'s base is reached by a favourable-direction transfer from the previous night\'s base. The path is OPEN ' +
+        '(it ends at the last favourable base, it does NOT loop home). Use when the user asks to CHANGE ACCOMMODATION / ' +
+        'HOTEL each night, "cambiando alloggio ogni notte", "dormo in un posto diverso ogni sera", "basi mobili", ' +
+        '"tour itinerante", "moving from town to town", "road trip sleeping in a different place each night". Different ' +
+        'from plan_lucky_multiday, which keeps ONE fixed base. The app chooses each night\'s town by favourable ' +
+        'direction on that day, finds a real place of character to sleep there, and returns the chain plus a route map. ' +
+        'You never compute directions, doors or times yourself.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_name: { type: 'string', description: 'Where the traveller starts (base town name, e.g. "Siena"). The app geocodes it.' },
+          origin_lat: { type: 'number', description: 'Start latitude (optional; the name is preferred and geocoded).' },
+          origin_lon: { type: 'number', description: 'Start longitude (optional).' },
+          start_date: { type: 'string', description: 'First day YYYY-MM-DD (default today).' },
+          days: { type: 'integer', description: 'Number of NIGHTS / bases to chain (1-10, default 3).' },
+          area: { type: 'string', description: 'OPTIONAL region to STAY WITHIN (e.g. "Tuscany"); every night\'s base is kept inside it.' },
+          categories: { type: 'array', items: { type: 'string' }, description: 'OPTIONAL themes (used to flavour the trip; the daytime theme stop layer will use these).' },
+          min_leg_km: { type: 'number', description: 'Minimum distance of each nightly transfer in km (default 40).' },
+          max_leg_km: { type: 'number', description: 'Maximum distance of each nightly transfer in km (default 120).' }
         },
         required: []
       }
@@ -1229,6 +1261,7 @@
       if (name === 'plan_lucky_day_trip') return toolPlanLuckyDayTrip(input || {});
       if (name === 'plan_lucky_chain') return toolPlanLuckyChain(input || {});
       if (name === 'plan_lucky_multiday') return toolPlanLuckyMultiDay(input || {});
+      if (name === 'plan_mobile_tour') return toolPlanMobileTour(input || {});
       if (name === 'plan_city_tour') return toolPlanCityTour(input || {});
       if (name === 'plan_lucky_events') return toolPlanLuckyEvents(input || {});
       if (name === 'plan_arrive_by') return toolPlanArriveBy(input || {});
@@ -1989,6 +2022,212 @@
   // Reuses the proven single-day engine (proposeLuckyTrips) once per day around a
   // fixed base, picking the best DISTINCT themed place each day. Sequential (each
   // call is async); hub model. Returns a structured Day-1..N itinerary + how to show it.
+  // OPEN-PATH MOBILE-BASE tour: sleep in a different place each night, each base
+  // reached by a favourable-direction transfer from the previous one. Greedy chain:
+  // per day, ask the engine for a favourable destination inside the area & leg range,
+  // then find a real place of character to sleep near it. Serial (never parallel).
+  function toolPlanMobileTour(input) {
+    if (!window.TravelPlanner || typeof window.TravelPlanner.proposeLuckyTrips !== 'function')
+      return { error: 'The Travel Planner is not available on this page.' };
+
+    var originName = input.origin_name || null;
+    var _rawLat = input.origin_lat, _rawLon = input.origin_lon;
+    function _gpsOrCoords() {
+      if (_rawLat != null && _rawLon != null) return { lat: +_rawLat, lon: +_rawLon };
+      if (window._lastGpsLat != null && window._lastGpsLng != null) return { lat: window._lastGpsLat, lon: window._lastGpsLng };
+      return null;
+    }
+    var origin = _gpsOrCoords();
+    var areaName = input.area ? String(input.area).trim() : null;
+    var areaBox = null;
+
+    var start = input.start_date || input.date || todayIso();
+    var nights = Math.max(1, Math.min(10, parseInt(input.days != null ? input.days : input.nights, 10) || 3));
+    var minLeg = (input.min_leg_km != null) ? +input.min_leg_km : 40;
+    var maxLeg = (input.max_leg_km != null) ? +input.max_leg_km : 120;
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+
+    function addDays(iso, n) {
+      var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function inBox(lat, lon) {
+      if (!areaBox) return true;
+      return lat >= areaBox.south && lat <= areaBox.north && lon >= areaBox.west && lon <= areaBox.east;
+    }
+
+    function _resolve() {
+      var jobs = [];
+      if (originName && typeof window.TravelPlanner.resolvePlace === 'function') {
+        jobs.push(window.TravelPlanner.resolvePlace(originName, _rawLat, _rawLon).then(function (o) {
+          if (o && isFinite(o.lat) && isFinite(o.lon)) origin = { lat: o.lat, lon: o.lon };
+        }).catch(function () {}));
+      }
+      if (areaName && typeof window.TravelPlanner.resolveArea === 'function') {
+        jobs.push(window.TravelPlanner.resolveArea(areaName).then(function (a) {
+          if (a && a.box) areaBox = a.box;
+        }).catch(function () {}));
+      }
+      return Promise.all(jobs);
+    }
+
+    var itinerary = [];
+    var usedKeys = {};
+
+    var themes = [];
+    if (Array.isArray(input.categories)) themes = input.categories.map(function (s) { return String(s || '').trim(); }).filter(Boolean);
+    else if (input.category) themes = [String(input.category)];
+
+    // bearing (deg) A->B, and 8-point compass sector match (~1.5 sectors tolerance)
+    function bearingDeg(a, b) {
+      var la1 = a.lat * Math.PI / 180, la2 = b.lat * Math.PI / 180, dlo = (b.lon - a.lon) * Math.PI / 180;
+      var y = Math.sin(dlo) * Math.cos(la2);
+      var x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dlo);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+    var DIR_CENTRE = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
+    function sectorMatch(label, brg) {
+      var c = DIR_CENTRE[String(label || '').toUpperCase().trim()];
+      if (c == null) return true;   // unknown label -> don't filter
+      var d = Math.abs(brg - c) % 360; if (d > 180) d = 360 - d;
+      return d <= 34;
+    }
+
+    function stopRec(s, th) {
+      return { name: s.place || s.name || 'Stop', lat: s.dest_lat, lon: s.dest_lon,
+        theme: th || null, direction: s.direction || null, depart_cn: s.depart_cn || null,
+        km: (s.km != null ? s.km : null) };
+    }
+
+    // A favourable stop from `from` on `dateStr`. With a category it's a real themed
+    // place (abbey, winery...). minKm enforces a real move; area keeps it in-region.
+    function pickFavourableStop(from, dateStr, category, minKm) {
+      var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
+      var opts = { utc: utc, dstOn: dstOn, dateStr: dateStr, maxRadiusKm: maxLeg,
+        stayMinH: 1, stayMaxH: 2, topN: 18, origin: from };
+      if (category) opts.category = category;
+      return window.TravelPlanner.proposeLuckyTrips(opts).then(function (r) {
+        var props = (r && r.proposals) ? r.proposals : [];
+        for (var i = 0; i < props.length; i++) {
+          var p = props[i];
+          if (p.dest_lat == null || p.dest_lon == null) continue;
+          if (!inBox(p.dest_lat, p.dest_lon)) continue;
+          if (minKm != null && p.km != null && p.km < minKm) continue;
+          if (p.km != null && p.km > maxLeg) continue;
+          var k = (Math.round(p.dest_lat * 100) / 100) + ',' + (Math.round(p.dest_lon * 100) / 100);
+          if (usedKeys['S:' + k]) continue;
+          usedKeys['S:' + k] = 1;
+          return p;
+        }
+        return null;
+      }).catch(function () { return null; });
+    }
+
+    // A place of character to sleep near `pt`. launchPt + wantDir enforce that the
+    // bearing FROM the last stop TO the hotel falls in the favourable direction
+    // ("the last stop -> hotel direction must be positive").
+    function findLodgingNear(pt, launchPt, wantDir) {
+      if (!(window.ResonanceFinder && typeof window.ResonanceFinder.findLodging === 'function')) return Promise.resolve(null);
+      return window.ResonanceFinder.findLodging(pt.lat, pt.lon, { radiusM: 12000, limit: 8 }).then(function (list) {
+        var pool = list;
+        if (launchPt && wantDir) {
+          var kept = list.filter(function (p) { return sectorMatch(wantDir, bearingDeg(launchPt, { lat: p.lat, lon: p.lon })); });
+          if (kept.length) pool = kept;
+        }
+        for (var i = 0; i < pool.length; i++) {
+          var k = (pool[i].name || '').toLowerCase();
+          if (!usedKeys['L:' + k]) { usedKeys['L:' + k] = 1; return pool[i]; }
+        }
+        return pool.length ? pool[0] : null;
+      }).catch(function () { return null; });
+    }
+
+    var state = { cur: null, date: start };
+    var chain = _resolve().then(function () { state.cur = origin; });
+
+    for (var i = 0; i < nights; i++) {
+      (function (nightIdx) {
+        chain = chain.then(function () {
+          if (!state.cur) return;                       // chain already broke
+          var dateStr = state.date;
+          var B = state.cur;
+          var theme = themes.length ? themes[nightIdx % themes.length] : null;
+
+          // 1) the day's LAST stop: a favourable themed stop from the morning base.
+          //    This is the launch point from which the hotel direction is judged.
+          return pickFavourableStop(B, dateStr, theme, minLeg).then(function (stop) {
+            var launch = stop ? { lat: stop.dest_lat, lon: stop.dest_lon } : B;
+
+            // 2) the HOTEL: a favourable move FROM the last stop, then a real place
+            //    of character to sleep in that favourable direction.
+            return pickFavourableStop(launch, dateStr, null, null).then(function (mv) {
+              if (!mv) {
+                itinerary.push({ night: nightIdx + 1, date: dateStr,
+                  theme_stop: stop ? stopRec(stop, theme) : null, base: null,
+                  note: 'no favourable place to sleep from the last stop this day' });
+                state.cur = null; return;
+              }
+              return findLodgingNear({ lat: mv.dest_lat, lon: mv.dest_lon }, launch, mv.direction).then(function (lodg) {
+                var bLat = lodg ? lodg.lat : mv.dest_lat;
+                var bLon = lodg ? lodg.lon : mv.dest_lon;
+                itinerary.push({
+                  night: nightIdx + 1, date: dateStr,
+                  theme_stop: stop ? stopRec(stop, theme) : null,
+                  transfer: { from_last_stop: !!stop, direction: mv.direction || null, depart_cn: mv.depart_cn || null, km: (mv.km != null ? mv.km : null) },
+                  base: {
+                    name: lodg ? lodg.name : ('Area near ' + mv.dest_lat.toFixed(2) + ', ' + mv.dest_lon.toFixed(2)),
+                    lat: bLat, lon: bLon, category: lodg ? lodg.category : null, source: lodg ? lodg.source : null,
+                    characterScore: lodg ? lodg.characterScore : null, address: lodg ? lodg.address : null,
+                    url: lodg ? (lodg.url || lodg.website || '') : ''
+                  }
+                });
+                state.cur = { lat: bLat, lon: bLon };
+                state.date = addDays(state.date, 1);
+              });
+            });
+          });
+        });
+      })(i);
+    }
+
+    return chain.then(function () {
+      function gmapsRoute(pts) {
+        if (pts.length < 2) return null;
+        var u = 'https://www.google.com/maps/dir/?api=1&travelmode=driving';
+        u += '&origin=' + encodeURIComponent(pts[0].lat + ',' + pts[0].lon);
+        u += '&destination=' + encodeURIComponent(pts[pts.length - 1].lat + ',' + pts[pts.length - 1].lon);
+        if (pts.length > 2) {
+          var w = pts.slice(1, -1).map(function (p) { return p.lat + ',' + p.lon; });
+          u += '&waypoints=' + encodeURIComponent(w.join('|'));
+        }
+        return u;
+      }
+      var pts = origin ? [{ lat: origin.lat, lon: origin.lon, name: originName || 'Start' }] : [];
+      itinerary.forEach(function (d) {
+        if (d.theme_stop && d.theme_stop.lat != null) pts.push({ lat: d.theme_stop.lat, lon: d.theme_stop.lon, name: d.theme_stop.name });
+        if (d.base && d.base.lat != null) pts.push({ lat: d.base.lat, lon: d.base.lon, name: d.base.name });
+      });
+      var routeUrl = gmapsRoute(pts);
+
+      if (window.XKDGChat && typeof window.XKDGChat.addMobileTour === 'function') {
+        try { window.XKDGChat.addMobileTour({ origin: originName || 'Start', start_date: start,
+          origin_lat: origin ? origin.lat : null, origin_lon: origin ? origin.lon : null,
+          itinerary: itinerary, route_url: routeUrl }); } catch (e) {}
+      }
+
+      var instr = 'This is an OPEN-PATH MOBILE-BASE tour. Each day: a favourable THEME STOP (theme_stop) during the ' +
+        'day, then the night\'s hotel (base) reached by a favourable move FROM THAT LAST STOP (not from the morning ' +
+        'base). Present it night by night: the theme stop, then the place ' +
+        'to sleep (base.name), how they got there (transfer.direction in the transfer.depart_cn hour, transfer.km km), ' +
+        'and the character score if present. The path is OPEN \u2014 it ends at the last favourable base and does NOT ' +
+        'return home. If a night has base=null, say honestly that the favourable chain ended there. A ROUTE MAP CARD ' +
+        'with per-leg buttons has ALREADY been shown by the app \u2014 do NOT call open_itinerary_in_maps.';
+      return { ok: true, mode: 'mobile_open_path', origin: originName || undefined, start_date: start,
+        nights_requested: nights, nights_planned: itinerary.filter(function (d) { return d.base; }).length,
+        area: areaName || undefined, itinerary: itinerary, route_url: routeUrl || undefined, instructions: instr };
+    }).catch(function (e) { return { error: 'mobile tour failed: ' + ((e && e.message) || e) }; });
+  }
+
   function toolPlanLuckyMultiDay(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.proposeLuckyTrips !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
@@ -4329,6 +4568,96 @@
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
+    // Injected after an OPEN-PATH MOBILE-BASE tour: origin = A (green start), each
+    // night's base = B, C, D... reached by a favourable transfer. Per-leg "Open in
+    // Maps" buttons (previous base -> this base) plus a full open-route button.
+    function addMobileTourBubble(payload) {
+      payload = payload || {};
+      var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+      var it = payload.itinerary || [];
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:13px;line-height:1.5;word-wrap:break-word;' });
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:5px;' },
+        '\uD83E\uDDF3 Mobile tour \u00b7 from ' + (payload.origin || 'Start') +
+        (payload.start_date ? (' \u00b7 ' + payload.start_date) : '') + ' \u00b7 open path'));
+
+      function badge(letter, color) {
+        return elc('span', { style:
+          'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;' +
+          'background:' + (color || '#6a1b9a') + ';color:#fff;font-size:11px;font-weight:700;margin-right:7px;flex:none;' }, letter);
+      }
+      function openUrl(u, btn) {
+        var w = null; try { w = window.open(u, '_blank'); } catch (e) {}
+        if (!w) { try { window.location.href = u; } catch (e) {} }
+        if (btn) btn.textContent = L.opened;
+      }
+
+      var prev = (payload.origin_lat != null) ? { lat: payload.origin_lat, lon: payload.origin_lon } : null;
+      var baseRow = elc('div', { style: 'display:flex;align-items:center;margin:2px 0 6px;' });
+      baseRow.appendChild(badge('A', '#2e7d32'));
+      baseRow.appendChild(elc('span', { style: 'flex:1;min-width:0;color:#555;' }, (payload.origin || 'Start') + ' \u2014 start'));
+      wrap.appendChild(baseRow);
+
+      var liveIdx = 0;
+      it.forEach(function (d) {
+        var hasBase = !!(d.base && d.base.lat != null);
+        var letter = hasBase ? String.fromCharCode(66 + (liveIdx++ % 25)) : '\u00b7';
+        var box = elc('div', { style: 'margin:6px 0;padding:6px 8px;background:#faf6fd;border:1px solid #ecdff5;border-radius:9px;' });
+        var head = elc('div', { style: 'display:flex;align-items:center;' });
+        head.appendChild(badge(letter, hasBase ? '#6a1b9a' : '#bbb'));
+        head.appendChild(elc('span', { style: 'flex:1;min-width:0;font-weight:600;' }, 'Night ' + d.night + (d.date ? (' \u00b7 ' + d.date) : '')));
+        if (hasBase && d.base.characterScore != null) {
+          head.appendChild(elc('span', { style: 'background:#efe3f7;color:#6a1b9a;font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 7px;' }, String(Math.round(d.base.characterScore * 100))));
+        }
+        box.appendChild(head);
+        if (hasBase) {
+          if (d.theme_stop && d.theme_stop.lat != null) {
+            box.appendChild(elc('div', { style: 'margin:3px 0 0 25px;' }, '\uD83C\uDFAF ' + d.theme_stop.name));
+            var sMeta = [];
+            if (d.theme_stop.theme) sMeta.push(d.theme_stop.theme);
+            if (d.theme_stop.direction) sMeta.push('via ' + d.theme_stop.direction);
+            if (d.theme_stop.depart_cn) sMeta.push(d.theme_stop.depart_cn);
+            if (sMeta.length) box.appendChild(elc('div', { style: 'margin:0 0 2px 25px;color:#999;font-size:11px;' }, sMeta.join(' \u00b7 ')));
+          }
+          box.appendChild(elc('div', { style: 'margin:2px 0 1px 25px;font-weight:600;' }, '\uD83D\uDECF ' + d.base.name));
+          var meta = [];
+          if (d.base.category) meta.push(d.base.category);
+          if (d.transfer && d.transfer.direction) meta.push((d.transfer.from_last_stop ? 'from stop ' : 'via ') + d.transfer.direction);
+          if (d.transfer && d.transfer.depart_cn) meta.push(d.transfer.depart_cn);
+          if (d.transfer && d.transfer.km != null) meta.push(d.transfer.km + ' km');
+          if (meta.length) box.appendChild(elc('div', { style: 'margin:0 0 4px 25px;color:#666;font-size:12px;' }, meta.join(' \u00b7 ')));
+          if (prev) {
+            var b = elc('button', { style:
+              'margin-left:25px;background:#6a1b9a;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;' },
+              '\uD83D\uDCCD Day ' + d.night);
+            var du = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=' + encodeURIComponent(prev.lat + ',' + prev.lon) +
+              '&destination=' + encodeURIComponent(d.base.lat + ',' + d.base.lon);
+            if (d.theme_stop && d.theme_stop.lat != null) du += '&waypoints=' + encodeURIComponent(d.theme_stop.lat + ',' + d.theme_stop.lon);
+            b._u = du;
+            b.addEventListener('click', function () { openUrl(b._u, b); });
+            box.appendChild(b);
+          }
+          prev = { lat: d.base.lat, lon: d.base.lon };
+        } else {
+          if (d.theme_stop && d.theme_stop.lat != null) box.appendChild(elc('div', { style: 'margin:3px 0 0 25px;' }, '\uD83C\uDFAF ' + d.theme_stop.name));
+          box.appendChild(elc('div', { style: 'margin:3px 0 1px 25px;color:#a00;font-size:12px;' }, d.note || 'No favourable base this night \u2014 chain ends here'));
+        }
+        wrap.appendChild(box);
+      });
+
+      if (payload.route_url && liveIdx > 1) {
+        var all = elc('button', { style:
+          'margin-top:7px;width:100%;padding:9px;border:0;border-radius:8px;background:#4a148c;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' },
+          '\uD83D\uDDFA ' + L.openMaps + ' \u2014 full route (A\u2013' + String.fromCharCode(65 + liveIdx) + ')');
+        all._u = payload.route_url;
+        all.addEventListener('click', function () { openUrl(all._u, all); });
+        wrap.appendChild(all);
+      }
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
     // Injected after a MULTI-DAY themed Lucky Trip: one box per day (base = A,
     // each day = B, C, D... matching the combined map pins), with a per-day
     // "Open in Maps" button (out-and-back from the base) and an "all days"
@@ -4763,6 +5092,7 @@
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
       addCityTour: function (payload) { try { openPanel(); return addCityTourBubble(payload); } catch (e) { return null; } },
       addMultiDay: function (payload) { try { openPanel(); return addMultiDayBubble(payload); } catch (e) { return null; } },
+      addMobileTour: function (payload) { try { openPanel(); return addMobileTourBubble(payload); } catch (e) { return null; } },
       addItinerarySearch: function (payload) { try { openPanel(); return addItinerarySearchBubble(payload); } catch (e) { return null; } },
       addVerifyButton: function (info) { try { openPanel(); return addVerifyButtonBubble(info); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
