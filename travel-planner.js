@@ -3247,9 +3247,9 @@
       minWrap.style.display = (mode === 'D') ? 'none' : 'block';
       areaConstraintWrap.style.display = (mode === 'B') ? 'block' : 'none';   // base vs area are separate only for Themed trip
       if (!minTouched) minSel.value = (mode === 'C') ? '0' : '15';   // sensible default per mode
-      areaLab.textContent = (mode === 'A') ? 'Area to explore' : (mode === 'C') ? 'City' : (mode === 'D') ? 'Base' : (mode === 'B') ? 'Base town (where you sleep)' : 'Starting point';
+      areaLab.textContent = (mode === 'A') ? 'Area to explore' : (mode === 'C') ? 'City or start address' : (mode === 'D') ? 'Base' : (mode === 'B') ? 'Base town (where you sleep)' : 'Starting point';
       areaInp.placeholder = (mode === 'A') ? 'e.g. Rome, or: north of Vienna'
-        : (mode === 'C') ? 'e.g. Rome (the city to tour)'
+        : (mode === 'C') ? 'e.g. Rome, or a hotel / street address'
         : (mode === 'D') ? 'e.g. Vienna (your base)'
         : (mode === 'B') ? 'e.g. Siena (your base town)'
         : 'e.g. Vienna (where you start)';
