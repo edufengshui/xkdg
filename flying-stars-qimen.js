@@ -211,6 +211,80 @@
     return indices;
   }
 
+  // 令星入囚 — the RULER water star trapped at the centre.
+  // Domain rule (Edu): the ruler of the CURRENT ERA (San Yuan period, 2024–2044 → star 9) is the
+  // ONLY star released when it falls in the centre. It applies ONLY to the WATER star (向星) that
+  // equals the current-era ruler — NOT to the house/chart period, and not to any other star or the
+  // mountain star. Two classical releases are offered as options:
+  //   ① 向 facing — the grid palace of the house's facing direction;
+  //   ② swap with 5 — the palace where 向星5 naturally lives becomes the active palace for 9.
+  //
+  // IMPLEMENTATION NOTE: this delegates to the pre-existing imprisonmentInfo()/_fsCurrentPeriod()
+  // used by the headless AI-chat path (scanStarPreset), so the panel UI (label + scan) and the AI
+  // tool share ONE source of truth. The ruler is the CURRENT-ERA period (from the civil year via
+  // _fsCurrentPeriod), deliberately NOT chart.period — a Period-2 house whose chart still has ws9
+  // trapped at centre must still release it, because 9 is the ruler of the current era.
+  // Returns null when no release applies. Otherwise { facingGrid, swapGrid } (either may be -1),
+  // so the same result feeds both the label and the scan.
+  function rulerCenterRelease(chart, starType, starNum){
+    if(!chart || starType !== 'water') return null;                 // water star only
+    var imp = imprisonmentInfo(chart);
+    if(!imp || !imp.imprisoned) return null;
+    if(parseInt(starNum, 10) !== imp.periodStar) return null;       // only the current-era ruler star
+    var facingGrid = -1, swapGrid = -1;
+    (imp.palaces || []).forEach(function(p){
+      if(p.via && p.via.indexOf('facing') >= 0 && facingGrid < 0) facingGrid = p.grid;
+      if(p.via && p.via.indexOf('5ws')    >= 0 && swapGrid   < 0) swapGrid   = p.grid;
+    });
+    if(facingGrid < 0 && swapGrid < 0) return null;
+    return { facingGrid: facingGrid, swapGrid: swapGrid };
+  }
+
+  // 令星入囚 + real aquarium: the trapped ruler is released to the facing palace OR the
+  // swap-with-5 palace — but the aquarium has ALREADY been physically placed in ONE of them,
+  // and that placement is a saved fact in the house profile (XKDGHouse). So we don't offer two
+  // abstract options: we look across ALL FLOORS of the ACTIVE house for a saved water feature
+  // whose direction matches one of the two release palaces, and use ONLY that one.
+  //   • Returns { grid, via, aquarium } when a saved aquarium sits in a release palace.
+  //   • Returns { none:true, release:{facingGrid,swapGrid} } when the ruler IS trapped but no
+  //     saved aquarium occupies either release palace (caller must BLOCK + warn).
+  //   • Returns null when the ruler is not trapped (normal case; no release at all).
+  function resolveReleaseAquarium(chart, starType, starNum){
+    var rel = rulerCenterRelease(chart, starType, starNum);
+    if(!rel) return null;                                           // not trapped → no release
+    var releaseGrids = [];
+    if(rel.facingGrid >= 0) releaseGrids.push({ grid: rel.facingGrid, via: 'facing' });
+    if(rel.swapGrid   >= 0) releaseGrids.push({ grid: rel.swapGrid,   via: '5ws' });
+
+    // Gather every saved water feature across all floors of the ACTIVE house, mapped to a grid.
+    var found = null;
+    try {
+      var D2G = (window.XKDGHouse && window.XKDGHouse.DIR2GRID) ? window.XKDGHouse.DIR2GRID
+              : { SE:0, S:1, SW:2, E:3, C:4, W:5, NE:6, N:7, NW:8 };
+      var h = window.XKDGHouse && window.XKDGHouse.active();
+      var floors = (h && h.floors) ? h.floors : [];
+      for(var fi = 0; fi < floors.length && !found; fi++){
+        var wfs = floors[fi].water_features || [];
+        for(var wi = 0; wi < wfs.length && !found; wi++){
+          var wf = wfs[wi];
+          var g = (wf && wf.direction != null) ? D2G[wf.direction] : null;
+          if(g == null) continue;
+          for(var ri = 0; ri < releaseGrids.length; ri++){
+            if(releaseGrids[ri].grid === g){
+              found = { grid: g, via: releaseGrids[ri].via,
+                        aquarium: { name: wf.name || 'aquarium', direction: wf.direction,
+                                    floor: floors[fi].label || ('Floor ' + (fi + 1)), source: wf.source || 'aquarium' } };
+              break;
+            }
+          }
+        }
+      }
+    } catch(e){ found = null; }
+
+    if(found) return found;
+    return { none: true, release: rel };
+  }
+
   // Recupera il range dalla toolbar principale
   function getRange(){
     var days = (typeof window._fsRangeDays === 'number' && window._fsRangeDays > 0)
@@ -446,7 +520,26 @@
     var hasCenter = indices.indexOf(4) >= 0;
     var typeLbl = (type === 'water') ? '向星' : '山星';
     var msg = typeLbl + ' ' + n + ' lives in: <b>' + (outerLabels.join(', ') || '—') + '</b>';
-    if(hasCenter) msg += ' <span style="color:#888;">(also at center — center is skipped in scan)</span>';
+    if(hasCenter){
+      var res = resolveReleaseAquarium(chart, type, n);
+      if(res && res.none){
+        // 令星入囚 but NO saved aquarium sits in either release palace → block + warn.
+        var rel = res.release, rl = [];
+        if(rel.facingGrid >= 0) rl.push('① 向 facing = ' + FS_GRID_TO_LABEL[rel.facingGrid]);
+        if(rel.swapGrid >= 0)   rl.push('② swap with 5 = ' + FS_GRID_TO_LABEL[rel.swapGrid]);
+        msg = typeLbl + ' ' + n + ' is the Period ruler <b>trapped at the centre (入囚)</b>. '
+            + '<span style="color:#c62828;">⚠ No saved aquarium is in a release palace (' + rl.join(' or ') + '). '
+            + 'Place the aquarium in one of them first — the scan is blocked.</span>';
+      } else if(res){
+        // 令星入囚 resolved to the ACTUAL aquarium position → use ONLY that palace.
+        var viaLbl = (res.via === 'facing') ? '向 facing' : 'swap with 5';
+        msg = typeLbl + ' ' + n + ' is the Period ruler <b>trapped at the centre (入囚)</b>, released at your aquarium: '
+            + '<b>' + FS_GRID_TO_LABEL[res.grid] + '</b> <span style="color:#888;">(' + viaLbl + ' · '
+            + res.aquarium.name + (res.aquarium.floor ? ', ' + res.aquarium.floor : '') + ')</span>';
+      } else {
+        msg += ' <span style="color:#888;">(also at center — center is skipped in scan)</span>';
+      }
+    }
     box.innerHTML = msg;
   }
 
@@ -519,9 +612,27 @@
 
     // Trova i palazzi QMDJ dove vive la stella scelta (esclude il centro)
     var gridIndices = findStarPalaces(chart, type, starN);
-    var fsPalaces = gridIndices
-      .filter(function(g){ return g !== 4; })
-      .map(function(g){ return FS_GRID_TO_QMDJ_PALACE[g]; });
+    var fsGrids = gridIndices.filter(function(g){ return g !== 4; });
+    // 令星入囚: if the current-era ruler water star sits in the centre, it is released to the
+    // palace where the REAL aquarium is already placed (facing OR swap-with-5). Use ONLY that
+    // palace. If no saved aquarium occupies either release palace, BLOCK with a warning.
+    var _res = resolveReleaseAquarium(chart, type, starN);
+    if(_res && _res.none){
+      var _r = _res.release, _rl = [];
+      if(_r.facingGrid >= 0) _rl.push('向 facing = ' + FS_GRID_TO_LABEL[_r.facingGrid]);
+      if(_r.swapGrid >= 0)   _rl.push('swap with 5 = ' + FS_GRID_TO_LABEL[_r.swapGrid]);
+      resultsBox.innerHTML = '<div style="color:#c62828;padding:12px;font-size:13px;line-height:1.5;">'
+        + '⚠ <b>' + (type === 'water' ? '向星' : '山星') + ' ' + starN + ' is trapped at the centre (入囚)</b>, '
+        + 'but no saved aquarium is in a release palace (' + _rl.join(' or ') + ').<br>'
+        + 'Place the aquarium in one of those palaces (in the house profile) first — the scan is blocked.'
+        + '</div>';
+      return;
+    }
+    if(_res){
+      // Resolved to the actual aquarium position → scan ONLY that palace.
+      fsGrids = [_res.grid];
+    }
+    var fsPalaces = fsGrids.map(function(g){ return FS_GRID_TO_QMDJ_PALACE[g]; });
     if(!fsPalaces.length){
       resultsBox.innerHTML = '<div style="color:#c62828;padding:10px;">⚠ Star '+starN+' does not appear in any outer palace of this chart.</div>';
       return;
