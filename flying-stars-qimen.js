@@ -936,23 +936,47 @@
       return;
     }
 
+    // Rimuovi la carta eventualmente aperta da un ALTRO bottone e riallinea la sua etichetta
+    if(existing) existing.remove();
+    if(_openChartBtn && _openChartBtn !== btn) setChartBtnLabel(_openChartBtn, false);
+
     if(typeof showQimenChart !== 'function'){
       alert('showQimenChart not available (defined in app-fengshui.js).');
       return;
     }
-    // showQimenChart è definita in app-fengshui.js e accetta caratteri cinesi
-    showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace);
 
-    // Riporta l'eventuale bottone precedentemente aperto a "View full chart"
-    if(_openChartBtn && _openChartBtn !== btn) setChartBtnLabel(_openChartBtn, false);
+    // showQimenChart è definita in app-fengshui.js e accetta caratteri cinesi.
+    // IMPORTANTE: da sola inserisce la carta in #fs-results-area, che il layout a
+    // zone del pannello QFS può nascondere o spostare — per questo il bottone
+    // sembrava "morto". Usiamo invece la sua API returnHtml per ottenere l'HTML e
+    // lo agganciamo dentro #qfs-results (i risultati QFS, sempre visibili).
+    var html = null;
+    try {
+      html = showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace, { returnHtml:true });
+    } catch(e){ html = null; }
+
+    if(html){
+      var host = document.getElementById('qfs-results') || document.getElementById('qfs-host');
+      if(!host && btn && btn.closest) host = btn.closest('table') ? btn.closest('table').parentNode : null;
+      if(host){
+        host.insertAdjacentHTML('beforeend', html);
+      } else {
+        // ultimissima risorsa: lascia che sia showQimenChart a piazzarla
+        showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace);
+      }
+    } else {
+      // returnHtml non supportato / carta non disponibile → comportamento originale
+      showQimenChart(isoDate, STEM_HAN[hStemKey] || hStemKey, BR_HAN[hBranchKey] || hBranchKey, palace);
+    }
 
     // Questo bottone ora mostra la carta
     setChartBtnLabel(btn, true);
     _openChartBtn = btn;
 
-    // Se l'utente chiude la carta con la ✕ propria, riallinea l'etichetta del bottone
+    // Porta la carta in vista e, se l'utente la chiude con la ✕ propria, riallinea l'etichetta
     var chartEl = document.getElementById('qimen-full-chart');
     if(chartEl){
+      if(chartEl.scrollIntoView) chartEl.scrollIntoView({behavior:'smooth', block:'nearest'});
       var closeX = chartEl.querySelector('[onclick*="qimen-full-chart"]');
       if(closeX){
         closeX.addEventListener('click', function(){
