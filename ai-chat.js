@@ -572,6 +572,7 @@
           stay_max_h: { type: 'number', description: 'Maximum stay at the destination in hours (default 3); widened automatically if no clean return is found.' },
           category: { type: 'string', description: 'OPTIONAL kind of destination, so each proposal becomes a REAL named place (looked up via Google Places) instead of a generic point. IMPORTANT: pass the user\'s OWN specific word — it is matched to that exact kind of place. E.g. "castelli"/"castles" -> castles, "musei"/"museums" -> museums, "terme"/"spa" -> thermal baths, "borghi"/"villages" -> old villages, "eremi"/"abbazie" -> hermitages & abbeys, "natura" -> parks/lakes/viewpoints, "spiagge appartate" -> secluded beaches, "luoghi misteriosi" -> megalithic/mystical sites, "cantine" -> wineries. Do NOT collapse "castles" into a generic "culture" (that returns MUSEUMS, not castles). Leave empty for generic points. The user can also choose the category AFTERWARDS ("now only nature ones"): just call again with the same parameters plus this one.' },
           count: { type: 'integer', description: 'How many distinct proposals to return (2-6, default 4).' },
+          any_poi: { type: 'boolean', description: 'Set TRUE when the user gives NO specific theme but still wants a REAL place at each option ("qualsiasi POI va bene", "any POI is fine", "any place", "somewhere interesting"). Each favourable direction then gets the nearest real attraction (via Google Places) instead of a bare geometric point. Leave false only if the user explicitly wants pure directional points.' },
           direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'OPTIONAL compass direction the user wants to head ("verso nord" → N). Out-and-back options still come from the day\'s favourable directions; this biases the chain loops so the ones whose FIRST leg goes this way are offered first (useful when no round-trip is favourable that way).' }
         },
         required: []
@@ -1917,14 +1918,20 @@
       topN: (input.count != null ? Math.max(2, Math.min(6, parseInt(input.count, 10))) : 4)
     };
     if (input.category) opts.category = String(input.category);
+    else if (input.any_poi) opts.category = 'famous attractions';   // "qualsiasi POI" -> real generic place per option
     if (input.min_km != null) opts.minOriginKm = +input.min_km;
     if (input.avoid_crowds != null) opts.avoidCrowds = !!input.avoid_crowds;
     if (origin) opts.origin = origin;
     var wantDir = (input.direction && /^(N|NE|E|SE|S|SW|W|NW)$/.test(input.direction)) ? input.direction : null;
+    // Chained loops have long legs (40+ km): they make no sense for a walk/bike or a
+    // very local trip, so suppress them when the radius is small (avoids a confusing
+    // "only by car" section on a bike request).
+    var allowChains = !(opts.maxRadiusKm != null && opts.maxRadiusKm < 15);
 
     // CHAINED loops (sync, no network): one BEST loop per stop-count (1,2,3,4 direction-changes).
     // firstDir biases/limits loops by their first leg; only=true keeps ONLY loops heading that way.
     function chainBlock(firstDir, only) {
+      if (!allowChains) return null;
       if (typeof window.TravelPlanner.proposeChainTrips !== 'function') return null;
       try {
         var cr = window.TravelPlanner.proposeChainTrips({ utc: utc, dstOn: dstOn, dateStr: dateStr,
@@ -3553,7 +3560,7 @@
     // Panel
     var panel = elc('div', { id: 'xkdg-ai-panel',
       style: 'display:none;position:fixed;right:16px;bottom:80px;z-index:99999;width:min(380px,calc(100vw - 32px));' +
-        'max-height:min(600px,calc(100vh - 110px));background:#fff;border:1px solid #ccc;border-radius:14px;' +
+        'max-height:min(600px,calc(100dvh - 110px));background:#fff;border:1px solid #ccc;border-radius:14px;' +
         'box-shadow:0 8px 30px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;font-family:inherit;' });
 
     var header = elc('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;background:#6a1b9a;color:#fff;' });
