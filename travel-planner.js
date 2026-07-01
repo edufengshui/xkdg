@@ -3096,9 +3096,27 @@
     // area / origin
     var areaWrap = el('div', { style: 'margin-bottom:10px;' });
     var areaLab = el('div', { style: 'font-size:11px;color:#555;margin-bottom:3px;font-weight:600;' }, 'Area');
+    var areaRow = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
     var areaInp = el('input', { type: 'text', placeholder: '',
-      style: 'width:100%;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
-    areaWrap.appendChild(areaLab); areaWrap.appendChild(areaInp); card.appendChild(areaWrap);
+      style: 'flex:1;min-width:0;padding:9px;border:1px solid #ccc;border-radius:8px;font-size:13px;box-sizing:border-box;' });
+    var areaGps = el('button', { type: 'button', title: 'Use my exact GPS position as the start point',
+      style: 'padding:9px 11px;border:1px solid #1565c0;border-radius:8px;background:#fff;color:#1565c0;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '\uD83D\uDCCD GPS');
+    var areaGpsStatus = el('div', { style: 'font-size:11px;color:#888;margin-top:3px;min-height:13px;' }, '');
+    areaGps.addEventListener('click', function () {
+      if (!navigator.geolocation) { areaGpsStatus.style.color = '#b00'; areaGpsStatus.textContent = 'GPS not available on this device/browser.'; return; }
+      areaGpsStatus.style.color = '#888'; areaGpsStatus.textContent = 'Getting GPS position\u2026';
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        var la = pos.coords.latitude, lo = pos.coords.longitude;
+        areaInp.value = la.toFixed(5) + ', ' + lo.toFixed(5);
+        try { window._lastGpsLat = la; window._lastGpsLng = lo; localStorage.setItem('xkdg_gps', JSON.stringify({ lat: la, lng: lo })); } catch (e) {}
+        areaGpsStatus.style.color = '#1b8a3f';
+        areaGpsStatus.textContent = '\u2713 Exact GPS set as start \u00b7 ' + la.toFixed(4) + ', ' + lo.toFixed(4);
+      }, function (err) {
+        areaGpsStatus.style.color = '#b00'; areaGpsStatus.textContent = 'GPS error: ' + err.message;
+      }, { enableHighAccuracy: true, timeout: 10000 });
+    });
+    areaRow.appendChild(areaInp); areaRow.appendChild(areaGps);
+    areaWrap.appendChild(areaLab); areaWrap.appendChild(areaRow); areaWrap.appendChild(areaGpsStatus); card.appendChild(areaWrap);
 
     // Themed trip only: a SECOND field = the AREA/region to stay within, so the
     // base (e.g. Siena) and the area to explore (e.g. Tuscany) are DISTINCT. This
@@ -3171,6 +3189,7 @@
 
     go.addEventListener('click', function () {
       var area = (areaInp.value || '').trim();
+      if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(area)) area += ' (exact GPS coordinates - use these directly as the origin, do not geocode)';
       var date = dateInp.value || tpLocalISO(new Date());
       var minKm = minSel.value || '15';
       var cats = FAMILIES.filter(function (f, i) { return picked[i]; }).map(function (f) { return f[2]; });
