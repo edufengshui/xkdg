@@ -3186,6 +3186,12 @@
     card.appendChild(go);
     card.appendChild(el('div', { style: 'font-size:10.5px;color:#888;margin-top:8px;text-align:center;' },
       'Proposals appear in the AI chat.'));
+    var rfTest = el('div', { style: 'font-size:10.5px;color:#9c27b0;margin-top:6px;text-align:center;cursor:pointer;text-decoration:underline;' }, '\uD83E\uDDED Resonance test (dev)');
+    rfTest.addEventListener('click', function () {
+      if (window.ResonanceFinder && typeof window.ResonanceFinder.openTestPanel === 'function') window.ResonanceFinder.openTestPanel();
+      else alert('Resonance Finder not loaded on this page.');
+    });
+    card.appendChild(rfTest);
 
     go.addEventListener('click', function () {
       var area = (areaInp.value || '').trim();

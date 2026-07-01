@@ -33,7 +33,7 @@ window.ResonanceFinder = (function () {
   const RF_CFG = {
     workerUrl: 'https://xkdg-fsq.decumano16.workers.dev',  // your deployed xkdg-fsq worker
     accessKey: '',        // only if you set ACCESS_KEY on the worker
-    testButton: true      // shows a floating "🧭 Resonance" test button (set false to hide)
+    testButton: false     // no floating button — the test panel opens from inside Lucky Trip (ResonanceFinder.openTestPanel)
   };
 
   // ----- resonance vocabulary ----------------------------------------------
@@ -281,7 +281,7 @@ window.ResonanceFinder = (function () {
       resultsEl.innerHTML = '';
       if (!list.length) { resultsEl.appendChild(el('div', 'color:#a00;font-size:13px;', 'No resonant places found here.')); return; }
       list.forEach(function (r) {
-        var box = el('div', 'padding:7px 9px;margin:5px 0;border:1px solid #ecdff5;border-radius:9px;background:#faf6fd;');
+        var box = el('div', 'padding:7px 9px;margin:5px 0;border:1px solid #ecdff5;border-radius:9px;background:#faf6fd;cursor:pointer;');
         var top = el('div', 'display:flex;align-items:center;gap:8px;');
         top.appendChild(el('span', 'display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px;border-radius:11px;background:' + (r.source === 'curated' ? '#2e7d32' : '#6a1b9a') + ';color:#fff;font-size:11px;font-weight:700;', String(Math.round(r.characterScore * 100))));
         top.appendChild(el('span', 'flex:1;min-width:0;font-weight:600;font-size:13px;', r.name));
@@ -292,6 +292,12 @@ window.ResonanceFinder = (function () {
         if (r.rating != null) meta.push('\u2605 ' + r.rating);
         box.appendChild(el('div', 'font-size:11px;color:#666;margin:2px 0 0 42px;', meta.join(' \u00b7 ')));
         if (r.reasons && r.reasons.length) box.appendChild(el('div', 'font-size:10.5px;color:#999;margin:1px 0 0 42px;', r.reasons.join(', ')));
+        box.addEventListener('click', function () {
+          var q = (r.lat != null && r.lon != null) ? (r.lat + ',' + r.lon) : (r.name || '');
+          var u = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+          var w = null; try { w = window.open(u, '_blank'); } catch (e) {}
+          if (!w) { try { window.location.href = u; } catch (e) {} }
+        });
         resultsEl.appendChild(box);
       });
     }
