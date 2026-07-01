@@ -112,11 +112,22 @@
     return -1;
   }
 
-  function getDunJuForDate(year, month, day){
+  function getDunJuForDate(year, month, day, bjInstant){
     var solar = Solar.fromYmd(year, month, day);
     var lunar = solar.getLunar();
     var bazi  = lunar.getEightChar();
-    var pjq   = lunar.getPrevJieQi();
+    // Jie Qi / dun at INSTANT level when a Beijing-naive instant is supplied (TST-correct on the
+    // exact day a term falls); otherwise day granularity. lunar-javascript's jieqi are Beijing-based,
+    // so the Beijing-naive instant is the correct frame to compare against. The DAY pillar and 元
+    // stay from (year,month,day) = the TST calendar date (元 is a day property).
+    var pjq = lunar.getPrevJieQi();
+    if(bjInstant && bjInstant.y){
+      try {
+        pjq = Solar.fromYmdHms(bjInstant.y, bjInstant.mo, bjInstant.d,
+                               bjInstant.h || 0, bjInstant.mi || 0, bjInstant.s || 0)
+                   .getLunar().getPrevJieQi();
+      } catch(e){ /* keep the day-granular pjq */ }
+    }
     var jqPy  = JQ_CN2PY[pjq.getName()];
     if(!jqPy) return null;
     var dun   = YANG_TERMS.has(jqPy) ? 'yang' : 'yin';
@@ -977,10 +988,10 @@
   // ── getHourChart: returns full 9-palace chart data for rendering ──
   // Returns { palaces: {1:{ti,tiH,di,diH,star,deity,door,zhiFu,zhiShi,jiaName}, ...}, dun, ju }
   // or null if chart not found.
-  function getHourChart(year, month, day, hourStem, hourBranch){
+  function getHourChart(year, month, day, hourStem, hourBranch, bjInstant){
     var charts = _charts || EMBEDDED_CHARTS;
     if(!charts) return null;
-    var info = getDunJuForDate(year, month, day);
+    var info = getDunJuForDate(year, month, day, bjInstant);
     if(!info) return null;
     var hs = hourStem, hb = hourBranch;
     if(STEM_H2P[hs]) hs = STEM_H2P[hs];
@@ -1068,8 +1079,8 @@
     return dp;
   }
 
-  function getRotatingHourChart(year, month, day, hourStem, hourBranch){
-    var info = getDunJuForDate(year, month, day);
+  function getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant){
+    var info = getDunJuForDate(year, month, day, bjInstant);
     if(!info) return null;
     var hs = STEM_H2P[hourStem] || hourStem;
     var hb = BR_H2P[hourBranch] || hourBranch;
@@ -1263,11 +1274,11 @@
     checkHourAtPalace: function(year, month, day, hourStem, hourBranch, palace, opts){
       return checkHourAtPalace(year, month, day, hourStem, hourBranch, palace, opts);
     },
-    getHourChart: function(year, month, day, hourStem, hourBranch){
-      return getHourChart(year, month, day, hourStem, hourBranch);
+    getHourChart: function(year, month, day, hourStem, hourBranch, bjInstant){
+      return getHourChart(year, month, day, hourStem, hourBranch, bjInstant);
     },
-    getRotatingHourChart: function(year, month, day, hourStem, hourBranch){
-      return getRotatingHourChart(year, month, day, hourStem, hourBranch);
+    getRotatingHourChart: function(year, month, day, hourStem, hourBranch, bjInstant){
+      return getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant);
     },
     checkRotatingPalace: function(chart, palace){
       return checkRotatingPalace(chart, palace);

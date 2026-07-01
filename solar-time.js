@@ -106,7 +106,10 @@
   // that previously did Solar.fromYmdHms(civil)…getTimeGan()/getTimeZhi() on civil time.
   function hourPillarFromCivil(y, mo, d, h, mi, s, lonDeg, tzOffsetMin) {
     var p = pillarsFromCivil(y, mo, d, h, mi, s, lonDeg, tzOffsetMin);
-    return p ? { gan: p.hour.charAt(0), zhi: p.hour.charAt(1), tst: p.meta.tst } : null;
+    // `bj` = the Beijing-naive instant of this moment. lunar-javascript's jieqi are Beijing-based,
+    // so feeding this instant to getPrevJieQi decides the Jie Qi / Jú at INSTANT level (TST-correct),
+    // not merely at day granularity. Callers pass it down to the QMDJ engine.
+    return p ? { gan: p.hour.charAt(0), zhi: p.hour.charAt(1), tst: p.meta.tst, bj: p.meta.beijing } : null;
   }
 
   // Read the current GPS longitude + civil UTC offset (incl. DST) from the app inputs,

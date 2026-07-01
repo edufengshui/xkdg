@@ -63,7 +63,8 @@
       return {
         stem: H2P[hp.gan] || hp.gan, branch: BR_H2P[hp.zhi] || hp.zhi,
         stemCN: hp.gan, brCN: hp.zhi,
-        tstY: hp.tst.y, tstMo: hp.tst.mo, tstD: hp.tst.d, tst: true
+        tstY: hp.tst.y, tstMo: hp.tst.mo, tstD: hp.tst.d, tst: true,
+        bj: hp.bj  // Beijing-naive instant, for INSTANT-level Jie Qi in the engine
       };
     } catch (e) { return null; }
   }
@@ -188,7 +189,7 @@
     // the TRUE SOLAR TIME calendar date (tstY/tstMo/tstD), not the civil pick. Near TST midnight the
     // two differ, and passing the civil date would read Jú/元 from the wrong day.
     var info;
-    try { info = eng.getRotatingHourChart(hp.tstY, hp.tstMo, hp.tstD, hp.stem, hp.branch); } catch (e) { info = null; }
+    try { info = eng.getRotatingHourChart(hp.tstY, hp.tstMo, hp.tstD, hp.stem, hp.branch, hp.bj); } catch (e) { info = null; }
     if (!info) { container.innerHTML = '<div style="color:#b00;font:13px sans-serif;padding:14px;">No chart for this date/time.</div>'; return null; }
 
     var dun = info.dun === 'yang' ? 'Yang Dun' : 'Yin Dun';

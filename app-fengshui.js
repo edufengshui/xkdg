@@ -2456,9 +2456,12 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   var isRot = (opts.mode === 'rotating' && typeof window.QMDJWaterScanner.getRotatingHourChart === 'function');
   var parts = isoDate.split('-');
   var Y = parseInt(parts[0]), M = parseInt(parts[1]), D = parseInt(parts[2]);
+  // opts.bjInstant (Beijing-naive {y,mo,d,h,mi,s}) lets the engine decide Jie Qi / Jú at
+  // INSTANT level in TST, not just day granularity. Optional: callers without a clock instant
+  // (e.g. the dice tool, which only has a date) simply omit it — day-granular as before.
   var chart = isRot
-    ? window.QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi)
-    : window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi);
+    ? window.QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi, opts.bjInstant)
+    : window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi, opts.bjInstant);
   if (!chart) { if (opts.returnHtml) return ''; alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
 
   // Direction info (label, hanzi, di-pan trigram)

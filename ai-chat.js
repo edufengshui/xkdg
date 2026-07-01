@@ -5037,7 +5037,7 @@
         try { if (typeof window.loadDateIntoMain === 'function' && info.date) { window.loadDateIntoMain(info.date, info.hourIndex); okDate = true; } } catch (e) {}
         try {
           if (typeof window.showQimenChart === 'function' && info.date && info.hGan && info.hZhi) {
-            var _html = window.showQimenChart(info.date, info.hGan, info.hZhi, info.palace, { returnHtml: true });
+            var _html = window.showQimenChart(info.date, info.hGan, info.hZhi, info.palace, { mode: 'rotating', returnHtml: true });
             if (_html) { _vbShowChartOverlay(_html); okChart = true; }
           }
         } catch (e) {}

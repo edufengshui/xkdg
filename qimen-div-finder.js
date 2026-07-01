@@ -98,7 +98,7 @@
           qmY = hp.tst.y; qmM = hp.tst.mo; qmD = hp.tst.d;
         } catch (e) { continue; }
         var chart;
-        try { chart = QMDJWaterScanner.getRotatingHourChart(qmY, qmM, qmD, hGan, hZhi); } catch (e) { continue; }
+        try { chart = QMDJWaterScanner.getRotatingHourChart(qmY, qmM, qmD, hGan, hZhi, hp.bj); } catch (e) { continue; }
         var where = chartMatches(chart, conds);
         if (where) {
           // Focus palace = the door's palace (the scene of the action); else the
