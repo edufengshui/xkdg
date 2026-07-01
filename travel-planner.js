@@ -6156,6 +6156,22 @@
     planRoundTrip: tpPlanRoundTrip,
     proposeLuckyTrips: tpProposeLuckyTrips,
     proposeChainTrips: tpProposeChainTrips,
+    // Score ONE palace of a ROTATING (转盘) chart with the canonical predicate —
+    // the same auspiciousness score the Travel Planner uses for directions. Never
+    // the flying chart. Returns { ok, score, hasSanQi, zhiFu, zhiShi, deity, door,
+    // configs, ... } or null.
+    scoreRotatingPalace: function (chart, pal) {
+      try {
+        if (!chart || !chart.palaces) return null;
+        var p = (typeof pal === 'number') ? pal : parseInt(pal, 10);
+        if (!p || !chart.palaces[p]) return null;
+        var configs = (typeof QMDJWaterScanner !== 'undefined' && typeof QMDJWaterScanner.checkRotatingPalace === 'function')
+          ? (QMDJWaterScanner.checkRotatingPalace(chart, p) || []) : [];
+        var ev = tpPalaceOK(chart.palaces[p], configs.length);
+        if (ev) ev.configs = configs.map(function (c) { return c.label; });
+        return ev;
+      } catch (e) { return null; }
+    },
     proposeCityTour: tpProposeCityTour,
     proposeLuckyEvents: tpProposeLuckyEvents,
     findEvents: tpFindEvents,

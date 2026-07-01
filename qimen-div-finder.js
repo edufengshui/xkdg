@@ -97,15 +97,43 @@
         try { chart = QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi); } catch (e) { continue; }
         var where = chartMatches(chart, conds);
         if (where) {
+          // Focus palace = the door's palace (the scene of the action); else the
+          // first matched stem's palace. Score THAT palace on this ROTATING chart
+          // with the app's canonical rotating scorer (never the flying chart).
+          var focusPal = null;
+          if (conds.doors && conds.doors.length) focusPal = palNum(conds.doors[0].palace);
+          if (!focusPal && conds.stems && conds.stems.length) {
+            var c0 = conds.stems[0];
+            var pals0 = (c0.palaces || (c0.palace != null ? [c0.palace] : [])).map(palNum).filter(Boolean);
+            var s0 = normStem(c0.stem);
+            for (var pi = 0; pi < pals0.length; pi++) { if (stemInPalace(chart.palaces[pals0[pi]], s0)) { focusPal = pals0[pi]; break; } }
+          }
+          var sc = null;
+          try {
+            if (focusPal && G().TravelPlanner && typeof G().TravelPlanner.scoreRotatingPalace === 'function')
+              sc = G().TravelPlanner.scoreRotatingPalace(chart, focusPal);
+          } catch (e) {}
           matches.push({
             date: Y + '-' + String(M).padStart(2, '0') + '-' + String(D).padStart(2, '0'),
             hour: rep.h, branch: hZhi, hourStem: hGan,
             label: STEM_HAN[hGan] + BR_BRANCH_HAN(hZhi),
-            where: where
+            where: where,
+            score: sc ? sc.score : null,
+            scoreOk: sc ? !!sc.ok : null,
+            scorePalace: focusPal ? PAL2NAME[focusPal] : null,
+            profile: sc ? {
+              sanQi: !!sc.hasSanQi, commander: !!sc.zhiFu, zhiShi: !!sc.zhiShi,
+              deity: sc.deity || null, door: sc.door || null, configs: sc.configs || []
+            } : null
           });
         }
       }
     }
+    matches.sort(function (a, b) {
+      var sa = (a.score == null) ? -Infinity : a.score, sb = (b.score == null) ? -Infinity : b.score;
+      if (sb !== sa) return sb - sa;                       // best rotating score first
+      return (a.date < b.date) ? -1 : (a.date > b.date ? 1 : 0);   // then soonest
+    });
     return { ok: true, count: matches.length, truncated: matches.length >= maxResults, matches: matches };
   }
   var BR_P2H = { Zi: '子', Chou: '丑', Yin: '寅', Mao: '卯', Chen: '辰', Si: '巳', Wu: '午', Wei: '未', Shen: '申', You: '酉', Xu: '戌', Hai: '亥' };
