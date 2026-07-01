@@ -86,10 +86,16 @@
 
   // 4 porte favorevoli — il QMDJ scanner ritorna i nomi inglesi
   var QM_DOORS = [
-    {key:'Open',  han:'開', label:'開 Open'},
-    {key:'Rest',  han:'休', label:'休 Rest'},
-    {key:'Birth', han:'生', label:'生 Birth'},
-    {key:'View',  han:'景', label:'景 View'}
+    {key:'Open',     han:'開', label:'開 Open'},
+    {key:'Rest',     han:'休', label:'休 Rest'},
+    {key:'Birth',    han:'生', label:'生 Birth'},
+    {key:'View',     han:'景', label:'景 View'},
+    // Unfavorable doors 凶門 — keys MUST match the scanner's pdata.door values
+    // (DOOR_NAME in qmdj-water-scanner.js): Si→Death, JingF→Shocking, Shang→Injury, Du→Delusion.
+    {key:'Death',    han:'死', label:'死 Death',      unfav:true},
+    {key:'Shocking', han:'驚', label:'驚 Fear/Shocking', unfav:true},
+    {key:'Injury',   han:'傷', label:'傷 Injury',     unfav:true},
+    {key:'Delusion', han:'杜', label:'杜 Delusion',   unfav:true}
   ];
 
   // 8(+2) spiriti 八神 — cell[3] del chart QMDJ, stringa inglese
@@ -176,6 +182,24 @@
     } catch(e){ return null; }
   }
 
+  // Floors of the ACTIVE house (each: {index,label,facing,period,chart}). Empty if none.
+  function _qfsFloors(){
+    try {
+      var c = window.XKDGHouse && window.XKDGHouse.active();
+      return (c && c.floors) ? c.floors : [];
+    } catch(e){ return []; }
+  }
+  // The floor the panel is currently pointed at. Defaults to the house's active floor.
+  function _qfsSelectedFloor(){
+    var floors = _qfsFloors();
+    if(!floors.length) return null;
+    var idx = (typeof window._qfsFloorIndex === 'number') ? window._qfsFloorIndex : -1;
+    for(var i = 0; i < floors.length; i++){ if(floors[i].index === idx) return floors[i]; }
+    // fall back to the active floor
+    for(var j = 0; j < floors.length; j++){ if(floors[j].active) return floors[j]; }
+    return floors[0];
+  }
+
   function getCurrentFSChart(){
     // House rule fix: a saved MANUAL override (window._fsManualChart, set via the ⭐ Manual
     // editor) must take precedence over the auto-computed chart — exactly like the sibling
@@ -183,6 +207,14 @@
     // this check, this locator always recomputed the natural chart from facing+period and
     // silently ignored any manual star placement, showing stale "lives in" palaces.
     if(typeof window !== 'undefined' && window._fsManualChart) return window._fsManualChart;
+    // Multi-floor: if the panel points at a specific floor, use THAT floor's own chart
+    // (each floor can have its own facing/period). This is what makes the panel see every floor.
+    // Only engage for multi-floor houses so single-floor behaviour (DOM inputs) is unchanged.
+    var _floors = _qfsFloors();
+    if(_floors.length > 1){
+      var selFloor = _qfsSelectedFloor();
+      if(selFloor && selFloor.chart) return selFloor.chart;
+    }
     if(typeof FlyingStars === 'undefined') return null;
     if(typeof fsMountainCharFromDeg !== 'function') return null;
     var hf = document.getElementById('fs-house-facing');
@@ -256,13 +288,19 @@
     if(rel.facingGrid >= 0) releaseGrids.push({ grid: rel.facingGrid, via: 'facing' });
     if(rel.swapGrid   >= 0) releaseGrids.push({ grid: rel.swapGrid,   via: '5ws' });
 
-    // Gather every saved water feature across all floors of the ACTIVE house, mapped to a grid.
+    // Gather saved water features. Prefer the SELECTED floor (its chart is what defines the
+    // imprisonment); if that floor has no matching aquarium, fall back to all floors of the house.
     var found = null;
     try {
       var D2G = (window.XKDGHouse && window.XKDGHouse.DIR2GRID) ? window.XKDGHouse.DIR2GRID
               : { SE:0, S:1, SW:2, E:3, C:4, W:5, NE:6, N:7, NW:8 };
       var h = window.XKDGHouse && window.XKDGHouse.active();
-      var floors = (h && h.floors) ? h.floors : [];
+      var allFloors = (h && h.floors) ? h.floors : [];
+      var sel = _qfsSelectedFloor();
+      // ordered list: selected floor first, then the rest
+      var floors = [];
+      if(sel) floors.push(sel);
+      for(var af = 0; af < allFloors.length; af++){ if(!sel || allFloors[af].index !== sel.index) floors.push(allFloors[af]); }
       for(var fi = 0; fi < floors.length && !found; fi++){
         var wfs = floors[fi].water_features || [];
         for(var wi = 0; wi < wfs.length && !found; wi++){
@@ -313,33 +351,86 @@
     }
   }
 
+  // Per-ITEM REQ/OPT toggle handler. Flipping an item to REQ auto-checks its checkbox
+  // (a required item that isn't selected would make every hour impossible).
+  function toggleEnt(el){
+    var state = el.getAttribute('data-state');
+    if(state === 'optional'){
+      el.setAttribute('data-state', 'required');
+      el.textContent = 'REQ';
+      el.style.background = '#00695c';
+      el.style.color = '#fff';
+      // ensure the linked checkbox is checked
+      var cat = el.getAttribute('data-cat'), key = el.getAttribute('data-key');
+      var cb = document.querySelector('input.qfs-ent[data-cat="'+cat+'"][data-key="'+key+'"]');
+      if(cb) cb.checked = true;
+    } else {
+      el.setAttribute('data-state', 'optional');
+      el.textContent = 'OPT';
+      el.style.background = '#cfd8dc';
+      el.style.color = '#555';
+    }
+  }
+
   // ---------------------------------------------------------------
   // COSTRUZIONE PANNELLO DI CONFIGURAZIONE
   // ---------------------------------------------------------------
   function buildPanel(area){
+    // Per-ITEM REQ/OPT toggle: each entity (stem, door, star, spirit) carries its own small
+    // toggle so a SINGLE item (e.g. Commander) can be made mandatory without forcing its whole
+    // category. Default OPT (bonus only). data-key on the toggle links it to its checkbox.
+    var entToggle = function(cat, key){
+      return '<span class="qfs-ent-toggle" data-cat="'+cat+'" data-key="'+key+'" data-state="optional" '
+           + 'onclick="event.preventDefault();event.stopPropagation();QFS.toggleEnt(this)" '
+           + 'style="display:inline-block;padding:0 5px;border-radius:3px;font-size:8px;font-weight:bold;'
+           + 'cursor:pointer;vertical-align:middle;margin-left:3px;background:#cfd8dc;color:#555;user-select:none;">OPT</span>';
+    };
+    // One entity checkbox + its individual REQ/OPT toggle. `extra` = optional colored inner HTML.
+    var entItem = function(cat, key, labelHtml, checked, wrapStyle){
+      return '<span style="display:inline-flex;align-items:center;white-space:nowrap;'+(wrapStyle||'')+'">'
+           +   '<label style="white-space:nowrap;cursor:pointer;">'
+           +     '<input type="checkbox" class="qfs-ent" data-cat="'+cat+'" data-key="'+key+'"'+(checked?' checked':'')+'> '+labelHtml
+           +   '</label>'
+           +   entToggle(cat, key)
+           + '</span>';
+    };
+
     var stemHtml = QM_STEMS.map(function(s){
-      return '<label style="white-space:nowrap;">'
-           +   '<input type="checkbox" class="qfs-ent" data-cat="stem" data-key="'+s.key+'" checked> '+s.label
-           + '</label>';
+      return entItem('stem', s.key, s.label, true);
     }).join('');
     var doorHtml = QM_DOORS.map(function(d){
-      return '<label style="white-space:nowrap;">'
-           +   '<input type="checkbox" class="qfs-ent" data-cat="door" data-key="'+d.key+'" checked> '+d.label
-           + '</label>';
+      // Favorable doors default checked; unfavorable doors shown in red, default unchecked.
+      var lbl = d.unfav ? '<span style="color:#c62828;">'+d.label+'</span>' : d.label;
+      return entItem('door', d.key, lbl, !d.unfav);
     }).join('');
     var starHtml = QM_STARS.map(function(s){
       var c = s.color || '#333';
-      return '<label style="white-space:nowrap;font-size:11px;">'
-           +   '<input type="checkbox" class="qfs-ent" data-cat="star" data-key="'+s.key+'"> '
-           +   '<span style="color:'+c+';">'+s.label+'</span>'
-           +   ' <b style="color:'+c+';">'+s.num+'</b>'
-           + '</label>';
+      var lbl = '<span style="color:'+c+';">'+s.label+'</span> <b style="color:'+c+';">'+s.num+'</b>';
+      return entItem('star', s.key, lbl, false, 'font-size:11px;');
     }).join('');
     var spiritHtml = QM_SPIRITS.map(function(sp){
-      return '<label style="white-space:nowrap;font-size:11px;">'
-           +   '<input type="checkbox" class="qfs-ent" data-cat="spirit" data-key="'+sp.key+'"> '+sp.label
-           + '</label>';
+      return entItem('spirit', sp.key, sp.label, false, 'font-size:11px;');
     }).join('');
+
+    // Floor selector — only meaningful when the active house has more than one floor.
+    var floorSelHtml = '';
+    var _fl = _qfsFloors();
+    if(_fl.length > 1){
+      var cur = _qfsSelectedFloor();
+      var curIdx = cur ? cur.index : (_fl[0] && _fl[0].index);
+      var opts = _fl.map(function(f){
+        var lbl = (f.label || ('Floor ' + (f.index + 1)));
+        if(f.facing != null && f.period != null) lbl += ' · ' + f.facing + '° P' + f.period;
+        return '<option value="'+f.index+'"'+(f.index === curIdx ? ' selected' : '')+'>'+lbl+'</option>';
+      }).join('');
+      floorSelHtml =
+          '<div style="margin-bottom:8px;padding:6px 8px;background:#b2dfdb;border-radius:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+        +   '<span style="font-size:11px;font-weight:bold;color:#004d40;">🏠 Floor:</span>'
+        +   '<select id="qfs-floor" style="padding:4px 6px;border:1px solid #00695c;border-radius:4px;font-size:12px;">'+opts+'</select>'
+        +   '<span style="font-size:10px;color:#00695c;font-style:italic;">this house has multiple floors — pick which one to scan</span>'
+        + '</div>';
+    }
+
 
     // Sezione 17 profili Qimen — ciascuno con info (ⓘ) → descrizione + warning
     var profGroup = function(arr){
@@ -412,6 +503,8 @@
     +     '🌀 Find Qimen hours that activate a Flying Star'
     +     '<span onclick="QFS.close()" style="float:right;cursor:pointer;color:#666;font-weight:normal;">✕</span>'
     +   '</div>'
+
+    +   floorSelHtml
 
       // STEP 1 — selezione stella FS
     +   '<div style="margin-bottom:10px;">'
@@ -493,6 +586,15 @@
     var radios = document.querySelectorAll('input[name="qfs-type"]');
     for(var i = 0; i < radios.length; i++) radios[i].onchange = updatePalaceInfo;
     document.getElementById('qfs-starnum').onchange = updatePalaceInfo;
+    var floorSel = document.getElementById('qfs-floor');
+    if(floorSel){
+      floorSel.onchange = function(){
+        window._qfsFloorIndex = parseInt(this.value, 10);
+        updatePalaceInfo();
+      };
+      // initialise the panel's floor index to the current selection
+      window._qfsFloorIndex = parseInt(floorSel.value, 10);
+    }
 
     updatePalaceInfo();
     updateRangeLabel();
@@ -562,23 +664,23 @@
     var hits = [];
     // Stems (San Qi)
     if(palaceData.ti && wanted.stems.has(palaceData.ti)){
-      hits.push({cat:'stem', label:(palaceData.tiH || palaceData.ti) + ' (天/Tian)'});
+      hits.push({cat:'stem', key:palaceData.ti, label:(palaceData.tiH || palaceData.ti) + ' (天/Tian)'});
     }
     if(palaceData.di && wanted.stems.has(palaceData.di)){
-      hits.push({cat:'stem', label:(palaceData.diH || palaceData.di) + ' (地/Di)'});
+      hits.push({cat:'stem', key:palaceData.di, label:(palaceData.diH || palaceData.di) + ' (地/Di)'});
     }
     // Doors
     if(palaceData.door && wanted.doors.has(palaceData.door)){
-      hits.push({cat:'door', label:palaceData.door + ' Door'});
+      hits.push({cat:'door', key:palaceData.door, label:palaceData.door + ' Door'});
     }
     // Stars
     var starKey = STAR_EN_TO_KEY[palaceData.star];
     if(starKey && wanted.stars.has(starKey)){
-      hits.push({cat:'star', label:palaceData.star + ' Star'});
+      hits.push({cat:'star', key:starKey, label:palaceData.star + ' Star'});
     }
     // Spirits (八神)
     if(palaceData.deity && wanted.spirits.has(palaceData.deity)){
-      hits.push({cat:'spirit', label:palaceData.deity + ' 神'});
+      hits.push({cat:'spirit', key:palaceData.deity, label:palaceData.deity + ' 神'});
     }
     return hits;
   }
@@ -679,6 +781,21 @@
         if(tCat === 'star'   && wanted.stars.size   > 0) required.add('star');
         if(tCat === 'spirit' && wanted.spirits.size > 0) required.add('spirit');
       }
+    }
+
+    // Raccoglie le voci REQ INDIVIDUALI (Commander, una porta specifica, …). Ogni voce marcata
+    // REQ e spuntata diventa un requisito obbligatorio a sé: il palazzo dell'ora DEVE contenerla.
+    // Se ce ne sono più di una, valgono tutte insieme (AND). Set di chiavi "cat:key".
+    var requiredItems = new Set();
+    var entToggles = document.querySelectorAll('.qfs-ent-toggle');
+    for(var et = 0; et < entToggles.length; et++){
+      if(entToggles[et].getAttribute('data-state') !== 'required') continue;
+      var eCat = entToggles[et].getAttribute('data-cat');
+      var eKey = entToggles[et].getAttribute('data-key');
+      // only count it if its checkbox is actually selected
+      var setForCat = (eCat === 'stem') ? wanted.stems : (eCat === 'door') ? wanted.doors
+                    : (eCat === 'star') ? wanted.stars : (eCat === 'spirit') ? wanted.spirits : null;
+      if(setForCat && setForCat.has(eKey)) requiredItems.add(eCat + ':' + eKey);
     }
 
     var range = getRange();
@@ -785,6 +902,19 @@
               });
             } else {
               passEnt = entityHits.length > 0;
+            }
+
+            // Vincolo per-VOCE (Commander, una porta specifica, …): OGNI voce marcata REQ
+            // deve essere presente in questo palazzo. Vale insieme (AND) e si somma ai
+            // vincoli di categoria: se manca anche una sola voce obbligatoria, l'ora è esclusa.
+            if(requiredItems.size > 0){
+              requiredItems.forEach(function(ck){
+                var found = false;
+                for(var hi = 0; hi < entityHits.length; hi++){
+                  if((entityHits[hi].cat + ':' + entityHits[hi].key) === ck){ found = true; break; }
+                }
+                if(!found) passEnt = false;
+              });
             }
 
             // --- DECISIONE DI INCLUSIONE ---
@@ -1022,12 +1152,24 @@
     for(var i = 0; i < boxes.length; i++) boxes[i].checked = state;
   }
 
+  // Reset every per-item REQ toggle back to OPT (used by Clear ALL).
+  function _resetEntToggles(){
+    var t = document.querySelectorAll('.qfs-ent-toggle');
+    for(var i = 0; i < t.length; i++){
+      t[i].setAttribute('data-state', 'optional');
+      t[i].textContent = 'OPT';
+      t[i].style.background = '#cfd8dc';
+      t[i].style.color = '#555';
+    }
+  }
+
   // Deseleziona TUTTE le scelte della sezione Qimen (entità + profili) in un colpo solo
   function clearAllQimen(){
     var ent  = document.querySelectorAll('input.qfs-ent');
     for(var i = 0; i < ent.length; i++)  ent[i].checked  = false;
     var prof = document.querySelectorAll('input.qfs-prof');
     for(var j = 0; j < prof.length; j++) prof[j].checked = false;
+    _resetEntToggles();
   }
 
   // Mostra descrizione + warning di un profilo (riusa showQimenPopup di app-fengshui.js)
@@ -1419,7 +1561,8 @@
     clearPreset: clearPreset,
     profInfo:  profInfo,
     showChart: showChart,
-    toggleCat: toggleCat
+    toggleCat: toggleCat,
+    toggleEnt: toggleEnt
   };
   // Alias più "verboso" per chi cerca un nome esplicito
   window.fsFindQimenForFlyingStars = open;
