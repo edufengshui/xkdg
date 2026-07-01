@@ -2972,10 +2972,14 @@
       if (!r.ok) return { error: r.error || 'Scan failed.' };
       if (!r.count) return { ok: true, count: 0, note: 'No chart in the scanned window satisfies all conditions. Try a longer "days" window, fewer conditions, or more allowed palaces for a stem.' };
       var matchList = r.matches.map(function (m) { return { date: m.date, double_hour: m.label, branch: m.branch, positions: m.where, score: (m.score != null ? m.score : null), score_ok: m.scoreOk, palace: m.scorePalace || null, profile: m.profile || null }; });
+      var _condParts = [];
+      (conds.doors || []).forEach(function (d) { if (d && d.door) _condParts.push(String(d.door)); });
+      (conds.stems || []).forEach(function (s) { if (s && s.stem) _condParts.push(String(s.stem)); });
+      var _condStr = _condParts.join(' + ') || undefined;
       try {
         if (window.XKDGChat && typeof window.XKDGChat.addDivinationMatches === 'function') {
           window.XKDGChat.addDivinationMatches({ count: r.count, truncated: r.truncated,
-            conditions: [].concat(conds.doors || [], conds.stems || []).join('+') || undefined, matches: matchList });
+            conditions: _condStr, matches: matchList });
         }
       } catch (e) {}
       return {
