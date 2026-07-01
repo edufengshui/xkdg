@@ -1098,8 +1098,14 @@
     if(tgt===null) return null;
     if(tgt===5) tgt=2;  // center lodges to Kun
 
-    // Stars — rigid compass rotation from xpal to tgt
-    var sS = R_COMP.indexOf(tgt) - R_COMP.indexOf(xpal);
+    // When the 旬首 (fu-head) sits in the CENTER (palace 5), it lodges to Kun (2)
+    // for the rigid ring rotation of stars AND gates — exactly as tgt does above.
+    // Without this, R_COMP.indexOf(5) === -1 poisons both shifts. The 值使 gate
+    // ADVANCE (below) still starts from the real xpal, so center counts as a step.
+    var xpalRing = (xpal === 5) ? 2 : xpal;
+
+    // Stars — rigid compass rotation from xpalRing to tgt
+    var sS = R_COMP.indexOf(tgt) - R_COMP.indexOf(xpalRing);
     var starAt = {};
     for(var i=0; i<8; i++) starAt[R_COMP[((i+sS)%8+8)%8]] = R_COMP[i];
     starAt[5] = 5;
@@ -1111,18 +1117,14 @@
       deityMap[dun==='yang' ? R_COMP[(iF+dd)%8] : R_COMP[((iF-dd)%8+8)%8]] = dd;
     }
 
-    // Gates — 值使 advances from xpal by k steps; rigid rotation; 杜↔景 swap
+    // Gates — 值使 advances from the real xpal by k steps (center counts as a
+    // step); then a rigid rotation on the same compass ring as the stars.
     var g = xpal;
     for(var s=0; s<k; s++) g = dun==='yang' ? (g%9+1) : ((g-2+9)%9+1);
     if(g===5) g=2;
-    var gS = R_COMP.indexOf(g) - R_COMP.indexOf(xpal);
+    var gS = R_COMP.indexOf(g) - R_COMP.indexOf(xpalRing);
     var gateHome = {};
     for(var i=0; i<8; i++) gateHome[R_COMP[((i+gS)%8+8)%8]] = R_COMP[i];
-    // 杜↔景 swap (palace 4 ↔ palace 9 gate identities)
-    for(var q in gateHome){
-      if(gateHome[q]===4) gateHome[q]=9;
-      else if(gateHome[q]===9) gateHome[q]=4;
-    }
 
     // Build palaces in same format as getHourChart
     var STEM_P2H_R = {Jia:'甲',Yi:'乙',Bing:'丙',Ding:'丁',Wu:'戊',Ji:'己',Geng:'庚',Xin:'辛',Ren:'壬',Gui:'癸'};
