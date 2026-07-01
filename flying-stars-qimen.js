@@ -177,6 +177,12 @@
   }
 
   function getCurrentFSChart(){
+    // House rule fix: a saved MANUAL override (window._fsManualChart, set via the ⭐ Manual
+    // editor) must take precedence over the auto-computed chart — exactly like the sibling
+    // _fsGetActiveChart() in app-fengshui.js (used by the Bed section) already does. Without
+    // this check, this locator always recomputed the natural chart from facing+period and
+    // silently ignored any manual star placement, showing stale "lives in" palaces.
+    if(typeof window !== 'undefined' && window._fsManualChart) return window._fsManualChart;
     if(typeof FlyingStars === 'undefined') return null;
     if(typeof fsMountainCharFromDeg !== 'function') return null;
     var hf = document.getElementById('fs-house-facing');
