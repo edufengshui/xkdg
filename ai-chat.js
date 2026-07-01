@@ -1952,7 +1952,10 @@
     }
     function buildResult(r, proposals, chains, meta) {
       meta = meta || {};
-      var instr = 'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +
+      var instr = 'A visual CARD listing every option (direction, real place, times, score) WITH a per-option map button ' +
+        'and a share button has ALREADY been shown to the user by the app. Give a SHORT summary (2-4 lines) highlighting the ' +
+        'best 1-2 options and what each activates; do NOT repeat every option in full, and do NOT output map links yourself. ' +
+        'Present these as DISTINCT options to choose from — they vary by direction, distance and stay. ' +
         'All clock times are local wall-clock. For EACH key moment also show the Chinese double-hour provided: ' +
         'depart_cn (departure), arrive_cn (reaching the destination), return_depart_cn (leaving back), return_arrive_cn (home). ' +
         'These are already computed on the compensated true-solar-time (longitude + DST) exactly like the Main — show them ' +
@@ -1989,6 +1992,13 @@
              'heads ' + (wantDir || 'that way') + ' on this day, THEN offer the options below as ALTERNATIVE directions. ')
           : '') +
         'Once the user picks a SIMPLE option, call plan_travel with its dest_lat/dest_lon to run the real route. Do not invent directions or times yourself.';
+      try {
+        if (window.XKDGChat && typeof window.XKDGChat.addDayTrip === 'function' && proposals && proposals.length) {
+          window.XKDGChat.addDayTrip({ origin: input.origin_name || undefined,
+            origin_lat: origin ? origin.lat : null, origin_lon: origin ? origin.lon : null,
+            date: (r && r.date) || dateStr, proposals: proposals });
+        }
+      } catch (e) {}
       return {
         ok: true, date: (r && r.date) || dateStr, any_fully_favourable: !!(r && r.anyClean),
         chains_included: !!(chains && chains.length),
@@ -4580,6 +4590,89 @@
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
+    // Share arbitrary text via the OS share sheet (WhatsApp, mail...) or clipboard.
+    function shareText(title, text) {
+      try { if (navigator.share) { navigator.share({ title: title, text: text }).catch(function () {}); return; } } catch (e) {}
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { try { alert('Itinerary copied to clipboard.'); } catch (e) {} }).catch(function () {});
+          return;
+        }
+      } catch (e) {}
+      try { window.prompt('Copy the itinerary:', text); } catch (e) {}
+    }
+
+    // Plain-text version of a lucky-trip payload, for sharing with a friend.
+    function dayTripText(payload) {
+      var out = [];
+      out.push('Lucky trip' + (payload.origin ? (' - ' + payload.origin) : '') + (payload.date ? (' - ' + payload.date) : ''));
+      (payload.proposals || []).forEach(function (p, i) {
+        out.push((i + 1) + '. ' + (p.direction || '') + (p.place ? (' - ' + p.place) : (p.km != null ? (' (~' + p.km + ' km)') : '')));
+        var t = [];
+        if (p.depart && p.arrive) t.push('go ' + p.depart + '-' + p.arrive);
+        if (p.return_depart && p.return_arrive) t.push('back ' + p.return_depart + '-' + p.return_arrive);
+        if (p.score != null) t.push('score ' + p.score + '/5');
+        if (t.length) out.push('   ' + t.join('  '));
+        if (p.dest_lat != null) out.push('   https://www.google.com/maps/search/?api=1&query=' + p.dest_lat + ',' + p.dest_lon);
+      });
+      return out.join('\n');
+    }
+
+    // Injected after a single-day LUCKY TRIP: one row per option (direction + real
+    // place + times + score) with a per-option map button, plus a share button.
+    function addDayTripBubble(payload) {
+      payload = payload || {};
+      var props = payload.proposals || [];
+      if (!props.length) return null;
+      var O = (payload.origin_lat != null) ? { lat: payload.origin_lat, lon: payload.origin_lon } : null;
+      var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #cfe6d2;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:13px;line-height:1.5;word-wrap:break-word;' });
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:5px;color:#2e7d32;' },
+        '\uD83C\uDF40 Lucky trip' + (payload.origin ? (' \u00b7 ' + payload.origin) : '') + (payload.date ? (' \u00b7 ' + payload.date) : '')));
+
+      function medal(i) { return i === 0 ? '\uD83E\uDD47' : i === 1 ? '\uD83E\uDD48' : i === 2 ? '\uD83E\uDD49' : (String(i + 1) + '.'); }
+      function openUrl(u, btn) { var w = null; try { w = window.open(u, '_blank'); } catch (e) {} if (!w) { try { window.location.href = u; } catch (e) {} } if (btn) btn.textContent = L.opened; }
+      function dirUrl(d) {
+        if (O) return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=' + encodeURIComponent(O.lat + ',' + O.lon) + '&destination=' + encodeURIComponent(d.lat + ',' + d.lon);
+        return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(d.lat + ',' + d.lon);
+      }
+
+      props.forEach(function (p, i) {
+        var box = elc('div', { style: 'margin:6px 0;padding:6px 8px;background:#f5faf5;border:1px solid #e0efe1;border-radius:9px;' });
+        var head = elc('div', { style: 'display:flex;align-items:center;gap:7px;' });
+        head.appendChild(elc('span', { style: 'font-size:14px;flex:none;' }, medal(i)));
+        head.appendChild(elc('span', { style: 'flex:1;min-width:0;font-weight:600;' },
+          (p.direction || '') + (p.place ? (' \u00b7 ' + p.place) : (p.km != null ? (' \u00b7 ~' + p.km + ' km') : ''))));
+        if (p.score != null) head.appendChild(elc('span', { style: 'background:#e0efe1;color:#2e7d32;font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 7px;flex:none;' }, 'score ' + p.score));
+        box.appendChild(head);
+
+        var sub = [];
+        if (p.km != null && p.place) sub.push('~' + p.km + ' km');
+        if (p.depart && p.arrive) sub.push('go ' + p.depart + '\u2192' + p.arrive);
+        if (p.return_depart && p.return_arrive) sub.push('back ' + p.return_depart + '\u2192' + p.return_arrive);
+        if (sub.length) box.appendChild(elc('div', { style: 'margin:2px 0 3px 21px;color:#666;font-size:12px;' }, sub.join(' \u00b7 ')));
+        if (p.clean) box.appendChild(elc('div', { style: 'margin:0 0 3px 21px;color:#2e7d32;font-size:11px;' }, '\u2705 both legs favourable'));
+
+        if (p.dest_lat != null) {
+          var b = elc('button', { style: 'margin-left:21px;background:#2e7d32;color:#fff;border:0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;' }, '\uD83D\uDCCD ' + L.openMaps);
+          b._u = dirUrl({ lat: p.dest_lat, lon: p.dest_lon });
+          b.addEventListener('click', function () { openUrl(b._u, b); });
+          box.appendChild(b);
+        }
+        wrap.appendChild(box);
+      });
+
+      var share = elc('button', { style: 'margin-top:7px;width:100%;padding:9px;border:0;border-radius:8px;background:#1b5e20;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, '\uD83D\uDCE4 Share itinerary');
+      share.addEventListener('click', function () { shareText('Lucky trip', dayTripText(payload)); });
+      wrap.appendChild(share);
+
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
+
     // Injected after an OPEN-PATH MOBILE-BASE tour: origin = A (green start), each
     // night's base = B, C, D... reached by a favourable transfer. Per-leg "Open in
     // Maps" buttons (previous base -> this base) plus a full open-route button.
@@ -5105,6 +5198,7 @@
       addCityTour: function (payload) { try { openPanel(); return addCityTourBubble(payload); } catch (e) { return null; } },
       addMultiDay: function (payload) { try { openPanel(); return addMultiDayBubble(payload); } catch (e) { return null; } },
       addMobileTour: function (payload) { try { openPanel(); return addMobileTourBubble(payload); } catch (e) { return null; } },
+      addDayTrip: function (payload) { try { openPanel(); return addDayTripBubble(payload); } catch (e) { return null; } },
       addItinerarySearch: function (payload) { try { openPanel(); return addItinerarySearchBubble(payload); } catch (e) { return null; } },
       addVerifyButton: function (info) { try { openPanel(); return addVerifyButtonBubble(info); } catch (e) { return null; } },
       updateItineraryCharging: function (info) { try { updateItineraryCharging(info); } catch (e) {} },
