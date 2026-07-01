@@ -1139,7 +1139,7 @@
    * `configCount` is the number of named auspicious configs at this palace
    * (computed by the caller via QMDJWaterScanner.checkRotatingPalace).
    * ----------------------------------------------------------------------- */
-  function tpPalaceOK(pd, configCount) {
+  function tpPalaceOK(pd, configCount, noCar) {
     if (!pd) return null;
     var ti = pd.ti, di = pd.di, door = pd.door, deity = pd.deity;
     var star = pd.star, isZhiFu = !!pd.zhiFu;
@@ -1164,6 +1164,13 @@
     var excluded = !!_ff.disqualified;
     var gengExcluded = excluded && _ff.reasons.join(';').indexOf('Geng') !== -1;   // display only
     var gate = !!_gate.eligible;
+
+    // Edu directive: the Injury-door/San-Qi "rescue" is TRAVEL-ONLY in the canonical sense
+    // (i.e. by car). On foot/bike (noCar) it must NOT redeem an Injury door — San Qi does
+    // not excuse walking through 傷門. Scoped locally: only callers that explicitly pass
+    // noCar=true (currently City Tour, which is always a walking route) are affected; every
+    // other caller keeps the canonical car-travel behaviour unchanged.
+    if (noCar && door === 'Shang') gate = false;
 
     var ok = gate && !excluded;
 
@@ -1194,7 +1201,7 @@
   }
 
   /* ---- scan all 8 directions for one rotating chart ---------------------- */
-  function tpScanDirs(Y, M, D, hGanHan, hZhiHan, bearing) {
+  function tpScanDirs(Y, M, D, hGanHan, hZhiHan, bearing, noCar) {
     var out = [];
     if (typeof QMDJWaterScanner === 'undefined' ||
         typeof QMDJWaterScanner.getRotatingHourChart !== 'function') return out;
@@ -1212,7 +1219,7 @@
       // named auspicious configs at this palace (Dun / Pretense / Borrow)
       var configs = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
         ? (QMDJWaterScanner.checkRotatingPalace(chart, pal) || []) : [];
-      var ev = tpPalaceOK(chart.palaces[pal], configs.length);
+      var ev = tpPalaceOK(chart.palaces[pal], configs.length, noCar);
       if (ev) ev.configs = configs.map(function (c) { return c.label; });
       var toward = (bearing != null) ? (tpAngDiff(TP_DIR_DEG[dir], bearing) <= 67.5) : false;
       out.push({ dir: dir, palace: pal, eval: ev, towardDest: toward });
@@ -5605,13 +5612,13 @@
   }
 
   // Favourable directions for the double-hour containing `ms` (evaluated at O).
-  function tpHourFavDirs(ms, O, utc, dstOn) {
+  function tpHourFavDirs(ms, O, utc, dstOn, noCar) {
     try {
       var off = tpOffsetMin(O.lon, utc, dstOn, ms);
       var sd = new Date(ms + off * 60000);
       var ec = Solar.fromDate(sd).getLunar().getEightChar();
       var gHan = ec.getTimeGan(), brHan = ec.getTimeZhi();
-      var dirs = tpScanDirs(sd.getFullYear(), sd.getMonth() + 1, sd.getDate(), gHan, brHan, null);
+      var dirs = tpScanDirs(sd.getFullYear(), sd.getMonth() + 1, sd.getDate(), gHan, brHan, null, noCar);
       var fav = tpUsableDirs(dirs);
       return {
         brHan: brHan, brPy: (BR_PY[brHan] || brHan), gHan: gHan,
@@ -5627,7 +5634,8 @@
   }
 
   // The future daytime double-hours of `dateStr`, each with its favourable dirs.
-  function tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs) {
+  // noCar (optional): when true, the Injury-door/San-Qi rescue does not apply (walking route).
+  function tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs, noCar) {
     var DAY_START_H = 5, DAY_END_H = 21, out = [], seen = {};
     var off = tpOffsetMin(O.lon, utc, dstOn, (function(){ try { return new Date(dateStr + 'T12:00:00').getTime(); } catch(e){ return null; } })());
     var minMs = nowMs + marginMs;
@@ -5640,7 +5648,7 @@
         var br = Solar.fromDate(sd).getLunar().getEightChar().getTimeZhi();
         if (seen[br]) continue;                         // first entry into this double-hour at/after now
         seen[br] = true;
-        var fav = tpHourFavDirs(ms, O, utc, dstOn);
+        var fav = tpHourFavDirs(ms, O, utc, dstOn, noCar);
         if (fav && fav.dirs.length) out.push({ startMs: ms, br: br, fav: fav });
       }
     }
@@ -6028,7 +6036,9 @@
     var avoidCrowds = !!opts.avoidCrowds;   // opt-in "off the beaten path" (needs Places review counts)
 
     if (typeof Solar === 'undefined') return Promise.resolve({ ok: false, reason: 'no_solar', date: dateStr });
-    var hours = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs);
+    // City Tour is ALWAYS a walking route (its Maps export is hardcoded 'walking' below), so
+    // the Injury-door San-Qi rescue — travel-only in the canonical rule — must NOT apply here.
+    var hours = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs, true);
     if (!hours.length) return Promise.resolve({ ok: false, reason: 'no_hours', date: dateStr });
 
     return tpFindPlacesList(O.lat, O.lon, radiusKm, category, 20).then(function (places) {
@@ -6071,7 +6081,11 @@
           var p = places[chosen];
           stops.push({
             place: p.name, dest_lat: Math.round(p.lat * 100000) / 100000, dest_lon: Math.round(p.lon * 100000) / 100000,
-            rating: p.rating, direction: chosenFav.dir, bearing: Math.round(p.bearing),
+            // CORRECTNESS FIX: show the place's OWN true direction (p.dir8, from its real
+            // bearing) — not chosenFav.dir, which is the favourable bucket that was SEARCHED
+            // for that hour. tpDir8Near only requires them to be within one 45° step, so they
+            // can legitimately differ; the label shown must always match the real place.
+            rating: p.rating, direction: p.dir8, bearing: Math.round(p.bearing),
             dist_km: Math.round(p.distKm * 10) / 10,
             hop_km: Math.round(chosenHop * 10) / 10,         // distance from the previous stop
             door: chosenFav.door, doorLabel: tpDoorLabel(chosenFav.door),
