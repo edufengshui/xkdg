@@ -1120,6 +1120,19 @@
   function tpEvWorkerUrl() {
     try { var v = (localStorage.getItem('xkdg_tp_ev_worker') || '').trim(); return v || ''; } catch (e) { return ''; }
   }
+  // Silent-failure tracking: on flaky mobile data a whole source can drop out with no
+  // visible error, silently shrinking the charger pool (that is how an Electra "disappears"
+  // on the phone while the PC finds it). Timestamps of the last DEFINITIVE failure per
+  // source; the search status shows a warning when a failure happened during this search.
+  var TP_SRC_FAIL = { ocm: 0, tomtom: 0 };
+  function tpSrcWarnText() {
+    try {
+      var w = [], now = Date.now();
+      if (TP_SRC_FAIL.tomtom && (now - TP_SRC_FAIL.tomtom) < 180000) w.push('TomTom');
+      if (TP_SRC_FAIL.ocm && (now - TP_SRC_FAIL.ocm) < 180000) w.push('OCM');
+      return w.length ? (' \u26a0 ' + w.join(' & ') + ' unreachable during this search \u2014 charger pool may be incomplete; run it again.') : '';
+    } catch (e) { return ''; }
+  }
   function tpFetchChargersTomTom(opts) {
     var base = tpEvWorkerUrl();
     if (!base) return Promise.resolve([]);
@@ -1132,16 +1145,23 @@
       // 300 kW motorway hubs (Electra!) never make the list. >= TP_MIN_KW2 keeps
       // every returned slot useful for trip charging.
       '&minkw=' + TP_MIN_KW2;
-    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
-    return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (to) clearTimeout(to);
-        if (!j || j.status !== 'ok' || !Array.isArray(j.results)) return [];
-        return j.results.filter(function (s) { return s && isFinite(s.lat) && isFinite(s.lon); });
-      })
-      .catch(function () { if (to) clearTimeout(to); return []; });
+    function once() {
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+      return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (to) clearTimeout(to);
+          if (!j || j.status !== 'ok' || !Array.isArray(j.results)) throw new Error('bad response');
+          return j.results.filter(function (s) { return s && isFinite(s.lat) && isFinite(s.lon); });
+        })
+        .catch(function (e) { if (to) clearTimeout(to); throw e; });
+    }
+    // ONE automatic retry after a short pause: a single dropped request on mobile data
+    // must not silently cost a whole area's stations.
+    return once()
+      .catch(function () { return new Promise(function (res) { setTimeout(res, 800); }).then(once); })
+      .catch(function () { TP_SRC_FAIL.tomtom = Date.now(); return []; });   // reset happens at search start
   }
   // Merge stations from several sources, de-duplicating by REAL distance (<=150 m):
   // the same physical station has slightly different coordinates in each database,
@@ -1179,7 +1199,10 @@
   // optional; rejects only when NEITHER source is configured.
   function tpFetchChargersMerged(opts) {
     var jobs = [];
-    if (((opts && opts.key) || '').trim()) jobs.push(tpFetchChargers(opts).catch(function () { return []; }));
+    if (((opts && opts.key) || '').trim()) jobs.push(
+      tpFetchChargers(opts)
+        .catch(function () { TP_SRC_FAIL.ocm = Date.now(); return []; })   // reset happens at search start
+    );
     if (tpEvWorkerUrl()) jobs.push(tpFetchChargersTomTom(opts));
     if (!jobs.length) return Promise.reject(new Error('no charger source (OCM key or TomTom worker)'));
     return Promise.all(jobs).then(tpMergeChargers);
@@ -2276,6 +2299,7 @@
       var preferredOnly = !!(document.getElementById('tp-net-only') && document.getElementById('tp-net-only').checked);
 
       if (!key && !tpEvWorkerUrl()) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key (or the TomTom EV Worker URL) in 🔋 Range & charging first.'; if (auto) { tpReportCharger({ error: 'no_key' }); window._tpChargerPending = false; } return; }
+      TP_SRC_FAIL.ocm = 0; TP_SRC_FAIL.tomtom = 0;   // fresh failure tracking for THIS search
       if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; if (auto) { tpReportCharger({ error: 'no_range' }); window._tpChargerPending = false; } return; }
       var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
       if (!idx) { status.style.color = '#b58900'; status.textContent = 'No real route yet — set the Worker URL and press SCAN TRIP first.'; if (auto) { tpReportCharger({ error: 'no_route' }); window._tpChargerPending = false; } return; }
@@ -2444,7 +2468,7 @@
               if (auto) { tpReportCharger({ error: 'not_needed' }); window._tpChargerPending = false; }
             } else {
               status.style.color = '#b58900';
-              status.textContent = 'No reachable fast charger on this route within ' + Math.round(usableKm) + ' km — try a higher range or a different route.';
+              status.textContent = 'No reachable fast charger on this route within ' + Math.round(usableKm) + ' km — try a higher range or a different route.' + tpSrcWarnText();
               if (auto) { tpReportCharger({ error: 'none' }); window._tpChargerPending = false; }
             }
             return;
@@ -2458,7 +2482,7 @@
             (anyLow ? ' (a stop uses ' + TP_MIN_KW2 + '\u2013' + TP_MIN_KW + ' kW on a non-fortunate window \u2014 longer charge there costs nothing)' : '') +
             (anyFb ? ' (other networks)' : '') +
             _openedNote +
-            (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.';
+            (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.' + tpSrcWarnText();
 
           // Attach each chosen charger to its quadrant-exit stop so the Maps export
           // shows them interleaved (exit -> charger -> next exit ...). A fallback
