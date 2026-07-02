@@ -3574,7 +3574,7 @@
       fsStyle.id = 'xkdg-ai-fs-style';
       fsStyle.textContent =
         '#xkdg-ai-panel.xkdg-ai-fs{top:0 !important;right:0 !important;bottom:0 !important;left:0 !important;' +
-        'width:100vw !important;max-width:100vw !important;height:100vh !important;max-height:100vh !important;' +
+        'width:100vw !important;max-width:100vw !important;height:100dvh !important;max-height:100dvh !important;' +
         'border-radius:0 !important;border:0 !important;}';
       document.head.appendChild(fsStyle);
     }
