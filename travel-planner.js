@@ -2768,12 +2768,28 @@
           });
         });
       } catch (eH) { hours = []; }
+      // One-line favourable summary — SAME counting as the coloured hour strips
+      // (cash + detour both count as favourable), inserted right under the route
+      // line and exposed as fav_summary, so the strips, the panel header and the
+      // AI's wording all tell the same story (no more "2/7" vs 5 coloured rows).
+      var favSummary = null;
+      try {
+        if (hours.length) {
+          var _nC = hours.filter(function (x) { return x.kind === 'cash'; }).length;
+          var _nD = hours.filter(function (x) { return x.kind === 'detour'; }).length;
+          var _nN = hours.length - _nC - _nD;
+          favSummary = 'Favourable hours: ' + (_nC + _nD) + '/' + hours.length + ' (' + _nC + ' cash + ' + _nD + ' detour)' +
+            (_nN ? ' \u00b7 ' + _nN + ' without favourable window' : '');
+          lines.splice(1, 0, favSummary);
+        }
+      } catch (eS) {}
       window._tpLastResult = {
         stamp: Date.now(),
         origin: result.origin.name || null, dest: result.dest.name || null,
         bearing: Math.round(result.bearing), snapped: result.snapDir,
         real_route: !!result.usedRealRoute, km: rm.km ? Math.round(rm.km) : null, driving_time: drive,
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
+        fav_summary: favSummary,
         exits: exits, hours: hours,
         text: lines.join('\n')
       };

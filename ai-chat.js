@@ -81,6 +81,10 @@
     '- ARCHITECTURE YOU MUST KNOW (so you never claim credit or blame for things you did not do):\n' +
     '  (a) When you call plan_travel, you receive ONLY favourable windows + a note. You do NOT receive stop names, ' +
     'charger names, or the itinerary text. You write ONE short sentence and stop.\n' +
+    '  (a2) FAVOURABLE COUNT — one rule: an hour is FAVOURABLE when it is a CASH hour (road direction fortunate) OR a ' +
+    'DETOUR hour (an adjacent fortunate direction is used). When you mention how favourable a trip is, ALWAYS count ' +
+    'cash + detour together (e.g. "5/7 favourable: 2 cash + 3 detour"), exactly like the itinerary card\u2019s fav_summary. ' +
+    'NEVER report the pure-cash count alone (saying "2/7" when the card shows 5 coloured hours confuses the user).\n' +
     '  (b) The NUMBERED ITINERARY CARD (1. Drive… 2. Stop… 3. Drive…) that appears in the chat is built by ' +
     'JAVASCRIPT CODE (addItineraryBubble + tpStoreLastResult), NOT by you. You did not write it.\n' +
     '  (c) The CHARGER NAMES in that card (e.g. "Villach Supercharger", "Free To X AdS Adige Est") are filled ' +
@@ -4468,12 +4472,21 @@
         : (h.kind === 'detour' && h.detour ? (h.detour.score != null ? h.detour.score : 0) : 0); }
       var _maxHrScore = 0; hours.forEach(function (h) { if (_hrFortunate(h)) _maxHrScore = Math.max(_maxHrScore, _hrScore(h)); });
       function _hrStar(h){ if (!_hrFortunate(h)) return ''; return (_hrScore(h) === _maxHrScore && _maxHrScore > 0) ? '\u2b50\u2b50' : '\u2b50'; }
-      var favCount = hours.filter(function (h) { return h.kind === 'cash'; }).length;
+      var _nCash = hours.filter(function (h) { return h.kind === 'cash'; }).length;
+      var _nDet = hours.filter(function (h) { return h.kind === 'detour'; }).length;
+      var _nFav = _nCash + _nDet, _nNo = hours.length - _nFav;
+      // ONE unified count: favourable = cash + detour (a detour IS a favourable hour —
+      // you deviate toward a fortunate direction). The old header counted only pure
+      // cash hours ("2/7") while the strips showed 5 coloured rows — confusing.
       var head = elc('button', { style:
         'width:100%;text-align:left;margin-top:8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:8px;' +
         'padding:7px 9px;font-size:12px;font-weight:600;color:#4527a0;cursor:pointer;' },
-        '\u23f1 Hours \u00b7 ' + favCount + '/' + hours.length + ' cash \u00b7 each row maps to the map letters above \u25be');
+        '\u23f1 Hours \u00b7 ' + _nFav + '/' + hours.length + ' favourable (' + _nCash + ' cash + ' + _nDet + ' detour)' +
+        (_nNo ? ' \u00b7 ' + _nNo + ' no window' : '') + ' \u25be');
       var body = elc('div', { style: 'display:block;margin-top:4px;' });
+      // Legend: what the colours and the stars mean (stars match the route list above).
+      body.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin:2px 0 4px;padding:0 2px;line-height:1.4;' },
+        '\u2b50 favourable hour \u00b7 \u2b50\u2b50 best of the trip \u00b7 green = cash stop \u00b7 yellow = detour \u00b7 grey = no favourable window'));
       head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
       hours.forEach(function (h) {
         var isCash = (h.kind === 'cash'), isDetour = (h.kind === 'detour');
@@ -4567,11 +4580,30 @@
       function _fScore(h){ return (h.kind === 'cash') ? (h.score != null ? h.score : 0)
         : (h.kind === 'detour' && h.detour ? (h.detour.score != null ? h.detour.score : 0) : 0); }
       var _maxFort = 0; _hrs.forEach(function (h) { if (_fFort(h)) _maxFort = Math.max(_maxFort, _fScore(h)); });
-      var _timeByLetter = {}; (function () { var k = 0; legs.forEach(function (it) {
-        if (it.kind === 'drive') { if (it.arrival) _timeByLetter[it.to] = destLetter; }
-        else { _timeByLetter[it.at] = stopLetters[k]; k++; } }); })();
+      // Map each fortunate hour to the itinerary letter of the stop that falls INSIDE
+      // it (or exactly at its end) — the SAME interval rule the Hours strips use via
+      // stepRef. The previous exact-minute match (stop time === hour end) silently
+      // dropped stars whenever a stop sat inside the hour (e.g. stop 15:49 in an hour
+      // ending 16:04), which is why the route list showed fewer stars than the strips.
+      var _letterTimes = []; (function () { var k = 0; legs.forEach(function (it) {
+        if (it.kind === 'drive') { if (it.arrival) _letterTimes.push({ letter: destLetter, at: it.to }); }
+        else { _letterTimes.push({ letter: stopLetters[k], at: it.at }); k++; } }); })();
+      function _lMin(s) { var p = String(s || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
+      // Base = the trip's FIRST time (departure), not the first stop: with the first
+      // stop as base, the first hour's start (which precedes it) would wrap past
+      // midnight and the first stop would lose its star.
+      var _lBase = (function () { for (var i = 0; i < legs.length; i++) { var t = (legs[i].kind === 'drive') ? legs[i].from : legs[i].at; if (t) return _lMin(t); } return 0; })();
+      function _lNorm(s) { var m = _lMin(s); return m < _lBase ? m + 1440 : m; }
       var _fortByLetter = {};
-      _hrs.forEach(function (h) { if (!_fFort(h)) return; var Lk = _timeByLetter[h.to]; if (!Lk) return;
+      _hrs.forEach(function (h) {
+        if (!_fFort(h)) return;
+        var hf = _lNorm(h.from), ht = _lNorm(h.to), Lk = null;
+        for (var li = 0; li < _letterTimes.length; li++) {
+          var lt = _letterTimes[li];
+          if (lt.at === h.to) { Lk = lt.letter; break; }                       // stop exactly at the hour end
+          if (Lk == null && _lNorm(lt.at) > hf && _lNorm(lt.at) <= ht) Lk = lt.letter;  // stop INSIDE the hour
+        }
+        if (!Lk) return;
         var sc = _fScore(h); var cur = _fortByLetter[Lk]; if (cur == null || sc > cur) _fortByLetter[Lk] = sc; });
       function _starFor(letter){ if (!(letter in _fortByLetter)) return ''; return (_fortByLetter[letter] === _maxFort && _maxFort > 0) ? '\u2b50\u2b50' : '\u2b50'; }
 
@@ -5173,8 +5205,12 @@
       var txt = [op, it.addr].filter(Boolean).join(' \u00b7 ');
       if (txt) metaEl.appendChild(elc('span', { style: 'color:#666;' }, txt + (txt ? '  ' : '')));
       if (it.lat != null && it.lon != null && isFinite(it.lat) && isFinite(it.lon)) {
-        var q = it.lat + ',' + it.lon;
-        var a = elc('a', { href: 'https://www.google.com/maps/search/?api=1&query=' + q,
+        // A bare "lat,lon" query can drop Maps on a generic road point instead of the real
+        // business (e.g. a charger set back behind a shopping centre). When a NAME is known
+        // (charger/service snap), search BY NAME so Maps matches its own indexed listing —
+        // same convention already used by the whole-trip "Open in Google Maps" export.
+        var qText = (it.place && String(it.place).trim()) ? String(it.place).trim() : (it.lat + ',' + it.lon);
+        var a = elc('a', { href: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(qText),
           target: '_blank', rel: 'noopener',
           style: 'color:#1565c0;text-decoration:underline;white-space:nowrap;font-weight:600;' }, '\uD83D\uDCCD Open in Maps');
         metaEl.appendChild(a);
