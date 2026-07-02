@@ -6507,10 +6507,16 @@ function _fsGetHouseWaterPalaces(){
   try {
     var house = _fsPurpactSelectedHouse();
     if(!house) return dirs;
-    var fl = _fsActiveFloor(house);   // active floor of the chosen house
-    if(!fl) return dirs;
-    if(fl.settings && fl.settings.water) fl.settings.water.forEach(function(s){ add(s && s.palace); });
-    if(fl.waters) fl.waters.forEach(function(w){ if(w && w.palace!=null) add(w.palace); else if(w && w.dir) add(w.dir); });
+    // Search ALL floors of the selected house (not just the active one). The aquarium may
+    // be recorded on a different floor than the one currently active — exactly as the QFS
+    // aquarium resolver does — so "💧 Water palaces only" appears whenever ANY floor has a
+    // saved water feature. Collects from settings.water[] and waters[] of every floor.
+    var floors = (house.floors && house.floors.length) ? house.floors : [ _fsActiveFloor(house) ];
+    floors.forEach(function(fl){
+      if(!fl) return;
+      if(fl.settings && fl.settings.water) fl.settings.water.forEach(function(s){ add(s && s.palace); });
+      if(fl.waters) fl.waters.forEach(function(w){ if(w && w.palace!=null) add(w.palace); else if(w && w.dir) add(w.dir); });
+    });
   } catch(e){}
   return dirs;
 }
