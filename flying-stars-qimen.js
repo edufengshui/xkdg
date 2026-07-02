@@ -201,20 +201,19 @@
   }
 
   function getCurrentFSChart(){
-    // House rule fix: a saved MANUAL override (window._fsManualChart, set via the ⭐ Manual
-    // editor) must take precedence over the auto-computed chart — exactly like the sibling
-    // _fsGetActiveChart() in app-fengshui.js (used by the Bed section) already does. Without
-    // this check, this locator always recomputed the natural chart from facing+period and
-    // silently ignored any manual star placement, showing stale "lives in" palaces.
-    if(typeof window !== 'undefined' && window._fsManualChart) return window._fsManualChart;
-    // Multi-floor: if the panel points at a specific floor, use THAT floor's own chart
-    // (each floor can have its own facing/period). This is what makes the panel see every floor.
-    // Only engage for multi-floor houses so single-floor behaviour (DOM inputs) is unchanged.
+    // Priority order matters here:
+    //  1) An EXPLICIT floor pick in this panel (multi-floor house) wins over everything —
+    //     it is a deliberate, later user action; the user expects to see THAT floor's chart.
+    //     Each floor carries its own facing/period, hence its own chart.
+    //  2) Otherwise a saved MANUAL override (window._fsManualChart, ⭐ Manual editor) wins over
+    //     the auto-computed chart — mirrors _fsGetActiveChart() in app-fengshui.js (Bed section).
+    //  3) Otherwise recompute from the panel/house facing+period.
     var _floors = _qfsFloors();
     if(_floors.length > 1){
       var selFloor = _qfsSelectedFloor();
       if(selFloor && selFloor.chart) return selFloor.chart;
     }
+    if(typeof window !== 'undefined' && window._fsManualChart) return window._fsManualChart;
     if(typeof FlyingStars === 'undefined') return null;
     if(typeof fsMountainCharFromDeg !== 'function') return null;
     var hf = document.getElementById('fs-house-facing');
@@ -412,9 +411,18 @@
       return entItem('spirit', sp.key, sp.label, false, 'font-size:11px;');
     }).join('');
 
-    // Floor selector — only meaningful when the active house has more than one floor.
+    // Floor selector — shown when the active house has more than one floor.
+    // TEMP DIAGNOSTIC: also show a small line reporting how many floors the panel sees and from
+    // which house, so we can tell whether "stuck on one floor" is an upstream data issue or a UI
+    // one. (Remove the diagnostic line once confirmed.)
     var floorSelHtml = '';
     var _fl = _qfsFloors();
+    var _diagHouse = '';
+    try { var _hc = window.XKDGHouse && window.XKDGHouse.active(); _diagHouse = _hc ? (_hc.name || '?') : '(no active house)'; } catch(e){ _diagHouse = '(error)'; }
+    var _diag = '<div style="margin-bottom:6px;font-size:10px;color:#00695c;font-style:italic;">'
+              + '🏠 house: <b>' + _diagHouse + '</b> · floors seen: <b>' + _fl.length + '</b>'
+              + (_fl.length ? ' [' + _fl.map(function(f){ return (f.label||('F'+(f.index+1))) + (f.active?'✓':''); }).join(', ') + ']' : '')
+              + '</div>';
     if(_fl.length > 1){
       var cur = _qfsSelectedFloor();
       var curIdx = cur ? cur.index : (_fl[0] && _fl[0].index);
@@ -430,6 +438,7 @@
         +   '<span style="font-size:10px;color:#00695c;font-style:italic;">this house has multiple floors — pick which one to scan</span>'
         + '</div>';
     }
+    floorSelHtml = _diag + floorSelHtml;
 
 
     // Sezione 17 profili Qimen — ciascuno con info (ⓘ) → descrizione + warning
