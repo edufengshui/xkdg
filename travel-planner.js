@@ -1068,11 +1068,18 @@
         if (!Array.isArray(data)) throw new Error('unexpected OCM response');
         return data.map(function (poi) {
           var a = poi.AddressInfo || {};
+          // Operator name: OperatorInfo.Title is often EMPTY in OCM for brands like Electra
+          // (the brand lives only in the site Title). Fall back to the Title so the network
+          // filter can still recognise it — otherwise Electra silently never matches.
           var op = (poi.OperatorInfo && poi.OperatorInfo.Title) || '';
-          var maxKW = 0;
-          (poi.Connections || []).forEach(function (c) { if (c && c.PowerKW && c.PowerKW > maxKW) maxKW = c.PowerKW; });
-          return { lat: a.Latitude, lon: a.Longitude, title: a.Title || op || 'Charger',
-                   operator: op, maxKW: maxKW, distanceKm: a.Distance || null };
+          var titleStr = a.Title || '';
+          var maxKW = 0, anyPower = false;
+          (poi.Connections || []).forEach(function (c) {
+            if (c && c.PowerKW != null) { anyPower = true; if (c.PowerKW > maxKW) maxKW = c.PowerKW; }
+          });
+          return { lat: a.Latitude, lon: a.Longitude, title: titleStr || op || 'Charger',
+                   operator: op || titleStr, maxKW: maxKW, powerKnown: anyPower && maxKW > 0,
+                   distanceKm: a.Distance || null };
         }).filter(function (s) { return isFinite(s.lat) && isFinite(s.lon); });
       });
   }
@@ -2175,6 +2182,7 @@
       } catch (e) {}
       var reserve = parseFloat(document.getElementById('tp-reserve') && document.getElementById('tp-reserve').value) || 0;
       var nets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; });
+      var preferredOnly = !!(document.getElementById('tp-net-only') && document.getElementById('tp-net-only').checked);
 
       if (!key) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key in 🔋 Range & charging first.'; if (auto) { tpReportCharger({ error: 'no_key' }); window._tpChargerPending = false; } return; }
       if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; if (auto) { tpReportCharger({ error: 'no_range' }); window._tpChargerPending = false; } return; }
@@ -2205,6 +2213,10 @@
           }
           var enriched = stations.map(tpEnrich).filter(function (r) { return r.offKm <= corridorKm && isFinite(r.alongKm); });
           function isTE(s) { return tpFilterChargersByNetwork([s], nets).length > 0; }
+          enriched.forEach(function (r) { r.isPref = isTE(r.s); });   // preferred brand (Tesla/Electra)?
+          // "Preferred networks only": drop every non-preferred station up front, so the
+          // fallback tiers below can only ever pick Tesla/Electra. Off by default.
+          if (preferredOnly) enriched = enriched.filter(function (r) { return r.isPref; });
 
           // Cash-stop boundaries: along-route km of each 20-min stop (the 2-hour-window edges), in order.
           var bounds = (result.plan || []).filter(function (x) { return x.type === 'stop' && x.pos; })
@@ -2217,7 +2229,12 @@
           function pickForWindow(lo, hi, prevAlong) {
             function pool(kw) {
               return enriched.filter(function (r) {
-                return r.alongKm >= lo && r.alongKm <= hi && (r.s.maxKW || 0) >= kw &&
+                // Preferred brands (Tesla/Electra) are known fast-DC hubs; OCM frequently
+                // records their PowerKW as null/0. Treat unknown-power PREFERRED stations as
+                // meeting the fast threshold so Electra is no longer silently dropped. Non-
+                // preferred stations still require a real power reading >= kw.
+                var powerOk = (r.isPref && !r.s.powerKnown) ? true : ((r.s.maxKW || 0) >= kw);
+                return r.alongKm >= lo && r.alongKm <= hi && powerOk &&
                        (r.alongKm - prevAlong) >= 0 && (r.alongKm - prevAlong) <= usableKm;
               });
             }
@@ -2710,9 +2727,10 @@
         try { ocmNets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; }); } catch (e) {}
         // For an EV trip, the cashing stop should COINCIDE with a high-power charger
         // (you must recharge anyway): try a charger first, then a generic stopover.
+        var ocmPrefOnly = !!(document.getElementById('tp-net-only') && document.getElementById('tp-net-only').checked);
         function findStop(la, lo) {
           if (hasRange) {
-            return tpFindChargerStop(la, lo, ocmKey, ocmNets).then(function (c) { return c || tpFindStopover(la, lo, true); });
+            return tpFindChargerStop(la, lo, ocmKey, ocmNets, ocmPrefOnly).then(function (c) { return c || tpFindStopover(la, lo, true); });
           }
           return tpFindStopover(la, lo, false);
         }
@@ -3694,6 +3712,15 @@
       netWrap.appendChild(lab);
     });
     rcBlock.appendChild(netWrap);
+    // "Preferred networks only" — when ticked, ONLY the checked networks (Tesla/Electra)
+    // are ever chosen; no fallback to other operators. Persisted on this device.
+    var prefOnlyLab = el('label', { style: 'display:flex;align-items:center;gap:6px;margin:2px 0 6px;font-size:12px;color:#444;cursor:pointer;' });
+    var prefOnlyCb = el('input', { type: 'checkbox', id: 'tp-net-only' });
+    try { prefOnlyCb.checked = (localStorage.getItem('xkdg_tp_pref_only') === '1'); } catch (e) {}
+    prefOnlyCb.addEventListener('change', function () { try { localStorage.setItem('xkdg_tp_pref_only', prefOnlyCb.checked ? '1' : '0'); } catch (e) {} });
+    prefOnlyLab.appendChild(prefOnlyCb);
+    prefOnlyLab.appendChild(el('span', null, '\u2b50 Preferred networks only (no other operators as fallback)'));
+    rcBlock.appendChild(prefOnlyLab);
     rcBlock.appendChild(tpBuildTariffTable());   // user-editable tariffs
 
     // OCM key: hidden input holds the real key (read by Find); the visible UI
@@ -5291,7 +5318,7 @@
   // Priority: preferred brand (selected nets, e.g. Tesla/Electra) ≥150 kW, then ANY ≥150,
   // then preferred ≥80, then any ≥80, then nearest of anything — so a long-trip cashing
   // stop coincides with where you must recharge anyway. Needs the OCM key.
-  function tpFindChargerStop(lat, lon, key, nets) {
+  function tpFindChargerStop(lat, lon, key, nets, preferredOnly) {
     if (!key) return Promise.resolve(null);
     var pt = { lat: lat, lon: lon };
     return tpFetchChargers({ key: key, lat: lat, lon: lon, radiusKm: 30, maxResults: 60 })
@@ -5300,13 +5327,23 @@
         if (!pool.length) return null;
         function dist(s) { return tpHaversineKm(pt.lat, pt.lon, s.lat, s.lon); }
         var pref = tpFilterChargersByNetwork(pool, nets || []);     // preferred brands (e.g. Tesla/Electra)
+        // Preferred brands are known fast-DC hubs; OCM often lacks their power → treat
+        // unknown-power preferred as fast so Electra is not skipped here either.
+        function fast(s, minKW) { return (pref.indexOf(s) >= 0 && !s.powerKnown) ? true : ((s.maxKW || 0) >= minKW); }
         function bestBy(list, minKW) {
-          var c = (list || []).filter(function (s) { return (s.maxKW || 0) >= minKW; }).slice().sort(function (a, b) { return dist(a) - dist(b); });
+          var c = (list || []).filter(function (s) { return fast(s, minKW); }).slice().sort(function (a, b) { return dist(a) - dist(b); });
           return c[0] || null;
         }
-        var pick = bestBy(pref, TP_MIN_KW) || bestBy(pool, TP_MIN_KW) ||
-                   bestBy(pref, TP_MIN_KW2) || bestBy(pool, TP_MIN_KW2) ||
-                   pool.slice().sort(function (a, b) { return dist(a) - dist(b); })[0];
+        var pick;
+        if (preferredOnly) {
+          // Only ever a preferred-brand charger; no fallback to other operators.
+          pick = bestBy(pref, TP_MIN_KW) || bestBy(pref, TP_MIN_KW2) ||
+                 pref.slice().sort(function (a, b) { return dist(a) - dist(b); })[0] || null;
+        } else {
+          pick = bestBy(pref, TP_MIN_KW) || bestBy(pool, TP_MIN_KW) ||
+                 bestBy(pref, TP_MIN_KW2) || bestBy(pool, TP_MIN_KW2) ||
+                 pool.slice().sort(function (a, b) { return dist(a) - dist(b); })[0];
+        }
         if (!pick) return null;
         return { name: pick.title || pick.operator || 'EV charging', lat: pick.lat, lon: pick.lon,
                  kind: 'charger', power: (pick.maxKW ? Math.round(pick.maxKW) + ' kW' : null), operator: pick.operator || null };
