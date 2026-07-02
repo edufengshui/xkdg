@@ -2206,19 +2206,26 @@
       var durH = parseFloat(document.getElementById('tp-dur').value) || 12;
       var spanMs = durH * 3600000;
       var winEnd = (result.slots && result.slots[0] && result.slots[0].wallEnd) ? result.slots[0].wallEnd.getTime() : null;
+      // Corridor: 15 km is the on-route band. We fetch a WIDER band (up to the detour
+      // budget) so the cascade can DETOUR to a preferred, score-preserving Tesla/Electra
+      // before opening to other operators. Off-route distance is penalised in ranking, so
+      // an on-route charger still wins unless a detour is needed to keep the score up.
       var corridorKm = 15;
+      var TP_DETOUR_OFFKM = 35;   // farthest a score-preserving detour may sit off the route
 
       status.style.color = '#888';
       status.textContent = 'Searching Open Charge Map along the route (usable ≈ ' + Math.round(usableKm) + ' km/leg)…';
-      tpFetchChargersAlong(idx, key, usableKm, corridorKm)
+      tpFetchChargersAlong(idx, key, usableKm, TP_DETOUR_OFFKM)
         .then(function (stations) {
-          // Enrich every station with along-route distance + ETA; keep only those near the corridor.
+          // Enrich every station with along-route distance + ETA; keep those within the
+          // DETOUR corridor (a wider band). On-route (<=corridorKm) vs detour is tracked
+          // via offKm and used to rank: on-route first, detours only when they save the score.
           function tpEnrich(s) {
             var np = tpNearestRoutePoint(s.lat, s.lon, idx);
             return { s: s, alongKm: np.alongKm, offKm: np.offKm,
               etaMs: depMs + (totalKm > 0 ? (np.alongKm / totalKm) : 0) * spanMs };
           }
-          var enriched = stations.map(tpEnrich).filter(function (r) { return r.offKm <= corridorKm && isFinite(r.alongKm); });
+          var enriched = stations.map(tpEnrich).filter(function (r) { return r.offKm <= TP_DETOUR_OFFKM && isFinite(r.alongKm); });
           function isTE(s) { return tpFilterChargersByNetwork([s], nets).length > 0; }
           enriched.forEach(function (r) { r.isPref = isTE(r.s); });   // preferred brand (Tesla/Electra)?
           // "Preferred networks only": drop every non-preferred station up front, so the
@@ -2232,7 +2239,39 @@
             .sort(function (a, b) { return a.alongKm - b.alongKm; });
 
           var PRE_KM = 50;   // look this far before each quadrant-exit boundary (50 km before the exit)
-          // Best charger inside [lo,hi] reachable from prevAlong; tiers: >=150 Tesla/Electra, >=150 other, >=80 T/E, >=80 other.
+
+          // --- Score-preserving cascade (keep the trip >= 3/7 positive legs) -------
+          // A charging stop hurts the trip score when its RESTART lands in an
+          // unfavourable double-hour (an unfavourable slot). We can tell, at pick time,
+          // whether a candidate's ETA falls in a POSITIVE slot: one whose hour is
+          // positive OR that offers a gated direction toward the destination. Preferring
+          // such chargers is the concrete form of "detour toward a better Tesla/Electra
+          // that keeps the score up" before opening to other networks.
+          var _slots = result.slots || [];
+          function slotAtMs(ms) {
+            for (var i = 0; i < _slots.length; i++) {
+              var s = _slots[i];
+              var a = s.wallStart ? s.wallStart.getTime() : null;
+              var b = s.wallEnd ? s.wallEnd.getTime() : null;
+              if (a != null && b != null && ms >= a && ms < b) return s;
+            }
+            return null;
+          }
+          // true when restarting in this candidate's slot preserves positivity
+          function preservesScore(r) {
+            var s = slotAtMs(r.etaMs);
+            if (!s) return false;
+            if (s.hourPositive) return true;
+            return (s.dirs || []).some(function (d) { return d.towardDest && d.eval && d.eval.ok; });
+          }
+
+          // Best charger inside [lo,hi] reachable from prevAlong. The cascade, in order:
+          //   1. PREFERRED (Tesla/Electra) that also PRESERVE the score (positive slot)  [fast, then 80kW]
+          //   2. PREFERRED, any slot                                                     [fast, then 80kW]
+          //   3. OTHER networks that PRESERVE the score                                  [fast, then 80kW]
+          //   4. OTHER networks, any slot                                                [fast, then 80kW]
+          // With "preferred networks only" ticked, tiers 3-4 are empty (non-preferred
+          // were already dropped up front), so it stays strictly Tesla/Electra.
           function pickForWindow(lo, hi, prevAlong) {
             function pool(kw) {
               return enriched.filter(function (r) {
@@ -2248,17 +2287,34 @@
             function closest(list) {
               return list.slice().sort(function (a, b) {
                 if (b.alongKm !== a.alongKm) return b.alongKm - a.alongKm;   // as close to the boundary as possible, but before it
+                if ((a.offKm || 0) !== (b.offKm || 0)) return (a.offKm || 0) - (b.offKm || 0);  // then nearer the route (smaller detour)
                 return (b.s.maxKW || 0) - (a.s.maxKW || 0);                  // then higher power
               })[0] || null;
             }
-            function te(list) { return list.filter(function (r) { return isTE(r.s); }); }
-            var p1 = pool(TP_MIN_KW), t1 = te(p1);
-            if (t1.length) return { row: closest(t1), lowPower: false, fallback: false };
-            if (p1.length) return { row: closest(p1), lowPower: false, fallback: true };
-            var p2 = pool(TP_MIN_KW2), t2 = te(p2);
-            if (t2.length) return { row: closest(t2), lowPower: true, fallback: false };
-            if (p2.length) return { row: closest(p2), lowPower: true, fallback: true };
-            return null;
+            function te(list) { return list.filter(function (r) { return r.isPref; }); }
+            function keep(list) { return list.filter(preservesScore); }     // score-preserving subset
+            // Try, in priority order, returning the first non-empty pick with flags.
+            function tryTier(list, opts) {
+              var row = closest(list);
+              return row ? { row: row, lowPower: !!opts.low, fallback: !!opts.fb, scoreKept: !!opts.kept } : null;
+            }
+            var p1 = pool(TP_MIN_KW), p2 = pool(TP_MIN_KW2);
+            var t1 = te(p1), t2 = te(p2);
+            return (
+              // 1. preferred + score-preserving
+              tryTier(keep(t1), { kept: true }) ||
+              tryTier(keep(t2), { kept: true, low: true }) ||
+              // 2. preferred, any slot
+              tryTier(t1, {}) ||
+              tryTier(t2, { low: true }) ||
+              // 3. other networks + score-preserving  (skipped when preferredOnly, t.. == pool)
+              tryTier(keep(p1), { kept: true, fb: true }) ||
+              tryTier(keep(p2), { kept: true, low: true, fb: true }) ||
+              // 4. other networks, any slot
+              tryTier(p1, { fb: true }) ||
+              tryTier(p2, { low: true, fb: true }) ||
+              null
+            );
           }
 
           // RANGE-BASED CHAIN: add charges from start to finish so no leg exceeds the
@@ -2266,6 +2322,7 @@
           // fast Tesla/Electra; when a 2-hour cash stop falls within the reachable window
           // we charge there (rest + charge together). Stops once the destination is in range.
           var chosen = [], anyLow = false, anyFb = false, prevAlong = 0, gap = false, guard = 0;
+          var keptCount = 0, brokeCount = 0;   // score-preserving vs score-breaking stops
           while ((totalKm - prevAlong) > usableKm && guard++ < 15) {
             var hi = prevAlong + usableKm;
             var pk = null;
@@ -2284,7 +2341,9 @@
             if (pk.row.alongKm <= prevAlong + 1) { gap = true; break; }   // no forward progress → stop
             var dup = chosen.some(function (c) { return c.row.s.lat === pk.row.s.lat && c.row.s.lon === pk.row.s.lon; });
             if (dup) break;
-            chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true; prevAlong = pk.row.alongKm;
+            chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true;
+            if (pk.scoreKept) keptCount++; else brokeCount++;
+            prevAlong = pk.row.alongKm;
           }
           if (!gap && (totalKm - prevAlong) > usableKm) gap = true;        // tail leg still too long
 
@@ -2303,9 +2362,13 @@
           }
 
           status.style.color = gap ? '#b58900' : '#1b6e2f';
+          var _openedNote = (anyFb && brokeCount > 0)
+            ? ' \u2014 opened to other networks to keep you moving; ' + brokeCount + ' stop' + (brokeCount === 1 ? '' : 's') + ' may lower the trip score.'
+            : (brokeCount > 0 ? ' \u2014 ' + brokeCount + ' stop' + (brokeCount === 1 ? '' : 's') + ' fall in a less favourable hour.' : '');
           status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' along the route (every \u2248' + Math.round(usableKm) + ' km)' +
             (anyLow ? ' (\u2265' + TP_MIN_KW2 + ' kW - no \u2265' + TP_MIN_KW + ' kW found)' : '') +
             (anyFb ? ' (other networks)' : '') +
+            _openedNote +
             (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.';
 
           // Attach each chosen charger to its quadrant-exit stop so the Maps export
@@ -2375,7 +2438,8 @@
             status.textContent += ' \u00b7 added to the Maps export.';
             var first = chosen[0].row;
             tpReportCharger({ name: first.s.title || first.s.operator || 'Charger', km: Math.round(first.alongKm), kw: first.s.maxKW,
-              fallback: anyFb, lowPower: anyLow, count: chosen.length });
+              fallback: anyFb, lowPower: anyLow, count: chosen.length,
+              scoreKept: keptCount, scoreBroke: brokeCount, openedOtherNetworks: (anyFb && brokeCount > 0) });
           }
           if (auto) window._tpChargerPending = false;
         })
