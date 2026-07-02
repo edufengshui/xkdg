@@ -899,13 +899,20 @@
     if (p.lat != null && p.lon != null && isFinite(p.lat) && isFinite(p.lon)) return tpLatLng(p);
     return '';
   }
-  function tpBuildMapsUrl(origin, dest, waypoints) {
+  function tpBuildMapsUrl(origin, dest, waypoints, placeIds) {
     var parts = ['https://www.google.com/maps/dir/?api=1'];
     var o = tpMapsPoint(origin), d = tpMapsPoint(dest);
     if (o) parts.push('origin=' + encodeURIComponent(o));
     if (d) parts.push('destination=' + encodeURIComponent(d));
     var wps = (waypoints || []).map(tpMapsPoint).filter(Boolean);
     if (wps.length) parts.push('waypoints=' + wps.map(encodeURIComponent).join('%7C'));
+    // Parallel place-ID list (Maps URLs API): pins each waypoint to the EXACT establishment
+    // instead of snapping its lat/lon to the nearest road. Must be same length/order as
+    // waypoints — blanks ('') for points without a place ID. Only emitted if at least one
+    // real ID exists, and only when its length matches the waypoints (Maps requires alignment).
+    if (wps.length && placeIds && placeIds.length === wps.length && placeIds.some(function (x) { return x; })) {
+      parts.push('waypoint_place_ids=' + placeIds.map(function (x) { return encodeURIComponent(x || ''); }).join('%7C'));
+    }
     parts.push('travelmode=driving');
     return parts.join('&');
   }
@@ -2306,21 +2313,42 @@
           // charger with no cash stop goes into the free-text waypoints instead.
           var exEl = document.getElementById('tp-extra-wp');
           TP_RANGE_CHARGERS = [];   // fresh for this plan
+          var _pidJobs = [];        // async place-ID resolutions (exact Maps pin)
           chosen.forEach(function (c) {
             var s = c.row.s;
+            var cName = (s.title && !/^\s*charger\s*$/i.test(s.title)) ? String(s.title).trim() : (s.operator || '');
+            var rec;
             if (c.stopRef) {
-              c.stopRef.charger = { lat: s.lat, lon: s.lon, title: s.title || s.operator || 'Charger' };
+              c.stopRef.charger = { lat: s.lat, lon: s.lon, title: s.title || s.operator || 'Charger', placeId: '' };
+              rec = c.stopRef.charger;
             } else if (isFinite(s.lat) && isFinite(s.lon)) {
               // Fallback charger (no linked quadrant stop). Keep its NAME *and* its
               // coordinates so the Maps export positions it in travel order yet emits
-              // it by name. (Previously only the name went into the free-text field,
-              // which Maps could not position → it trailed out of order.)
+              // it by name.
               var cTitle = (s.title && !/^\s*charger\s*$/i.test(s.title)) ? String(s.title).trim() : '';
-              TP_RANGE_CHARGERS.push({ name: cTitle || null, lat: s.lat, lon: s.lon });
+              rec = { name: cTitle || null, lat: s.lat, lon: s.lon, placeId: '' };
+              TP_RANGE_CHARGERS.push(rec);
+            }
+            // Resolve the Google Place ID so the Maps waypoint pins the station's own
+            // listing (its parking entrance) instead of snapping to the nearest road.
+            // Best-effort: on failure the token still carries name + coords as a fallback.
+            if (rec) {
+              _pidJobs.push(
+                tpResolveChargerPlaceId(cName, s.lat, s.lon).then(function (pid) {
+                  if (pid) rec.placeId = pid;
+                }).catch(function () {})
+              );
             }
           });
           tpRefreshMapsExport();   // rebuild the Maps link now that the range chargers are known
           if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true }));  // also refresh via the panel
+          // Once place IDs come back, rebuild the export again so the URL gains waypoint_place_ids.
+          if (_pidJobs.length) {
+            Promise.all(_pidJobs).then(function () {
+              try { tpRefreshMapsExport(); } catch (e) {}
+              try { if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+            });
+          }
 
           chosen.forEach(function (c) {
             var r = c.row, s = r.s, when = new Date(r.etaMs);
@@ -2473,34 +2501,33 @@
       var idx = tpBuildRouteIndex(matchRoute);
       var extraRaw = (extraInp.value || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean);
       function nearOf(p) { return idx ? tpNearestRoutePoint(p.lat, p.lon, idx) : null; }
-      var pts = [];          // positionable along the route ({token, along})
-      var seq = [];          // travel-ordered fallback when no route ({token, order})
+      var pts = [];          // positionable along the route ({token, placeId, along})
+      var seq = [];          // travel-ordered fallback when no route ({token, placeId, order})
       var seqN = 0, dropped = 0;
-      // A charger token carries BOTH its name AND its coordinates ("Name, lat, lon").
-      // Google Maps/Polestar then resolve the waypoint to the station's OWN listing (its
-      // real parking entrance) instead of snapping a bare "lat,lon" onto the nearest road
-      // — which is what dropped the pin in the middle of the carriageway. The coordinates
-      // stay in the token to disambiguate same-named stations. Positioning along the route
-      // still uses the numeric lat/lon below, so travel order is unchanged.
+      // A charger token carries BOTH its name AND its coordinates ("Name, lat, lon") as a
+      // TEXT fallback; when a Google PLACE ID is known it is emitted in the parallel
+      // waypoint_place_ids list, which pins the station's OWN listing (its parking entrance)
+      // instead of snapping a bare lat/lon onto the nearest road. Positioning along the route
+      // uses the numeric lat/lon, so travel order is unchanged.
       function chargerToken(name, lat, lon) {
         var nm = (name && String(name).trim()) ? String(name).trim() : '';
         var ll = tpLatLng({ lat: lat, lon: lon });
         return nm ? (nm + ', ' + ll) : ll;
       }
-      function addCharger(name, lat, lon) {
+      function addCharger(name, lat, lon, placeId) {
         var tok = chargerToken(name, lat, lon);
         if (idx) {
           var npc = nearOf({ lat: lat, lon: lon });
-          if (npc && isFinite(npc.alongKm)) { pts.push({ token: tok, along: npc.alongKm }); return; }
+          if (npc && isFinite(npc.alongKm)) { pts.push({ token: tok, placeId: placeId || '', along: npc.alongKm }); return; }
         }
-        seq.push({ token: tok, order: seqN++ });   // no route (or off the indexed path): keep found order
+        seq.push({ token: tok, placeId: placeId || '', order: seqN++ });   // no route (or off the indexed path): keep found order
       }
       checks.filter(function (c) { return c.cb.checked; }).forEach(function (c) {
         var st = c.stop;
-        // A CHARGE stop IS the charger: emit it BY NAME (tappable, route-forcing pin).
+        // A CHARGE stop IS the charger: emit it BY NAME + PLACE ID (exact, route-forcing pin).
         if (st && st.charge && st.charger && isFinite(st.charger.lat) && isFinite(st.charger.lon)) {
           var title = (st.charger.title && !/^\s*charger\s*$/i.test(st.charger.title)) ? String(st.charger.title).trim() : '';
-          addCharger(title, st.charger.lat, st.charger.lon);
+          addCharger(title, st.charger.lat, st.charger.lon, st.charger.placeId || '');
           return;
         }
         // A quadrant-exit point is a bare coordinate that must sit ON the fast road —
@@ -2509,12 +2536,12 @@
         if (!idx) { return; }
         var np = nearOf(c.pos);
         if (!np || !isFinite(np.alongKm) || np.offKm > TP_WAYPOINT_MAX_OFFKM) { dropped++; return; }
-        pts.push({ token: tpLatLng(c.pos), along: np.alongKm });                            // quadrant-exit point
+        pts.push({ token: tpLatLng(c.pos), placeId: '', along: np.alongKm });               // quadrant-exit point
       });
-      // Range-only (fallback) chargers: already found in travel order; emit BY NAME,
+      // Range-only (fallback) chargers: already found in travel order; emit BY NAME + PLACE ID,
       // positioned along the route when possible so they interleave correctly.
       (TP_RANGE_CHARGERS || []).forEach(function (ch) {
-        if (ch && isFinite(ch.lat) && isFinite(ch.lon)) addCharger(ch.name, ch.lat, ch.lon);
+        if (ch && isFinite(ch.lat) && isFinite(ch.lon)) addCharger(ch.name, ch.lat, ch.lon, ch.placeId || '');
       });
       // User free-text extras: coordinates get positioned; typed names trail in order.
       var trailing = [];
@@ -2522,27 +2549,30 @@
         var m = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(tok);
         if (m && idx) {
           var np2 = tpNearestRoutePoint(parseFloat(m[1]), parseFloat(m[2]), idx);
-          if (np2 && isFinite(np2.alongKm)) { pts.push({ token: tok, along: np2.alongKm }); return; }
+          if (np2 && isFinite(np2.alongKm)) { pts.push({ token: tok, placeId: '', along: np2.alongKm }); return; }
         }
         trailing.push(tok);
       });
       pts.sort(function (a, b) { return a.along - b.along; });                          // travel order
-      var ordered = pts.map(function (p) { return p.token; })
-        .concat(seq.sort(function (a, b) { return a.order - b.order; }).map(function (s) { return s.token; }));
-      var wps = [];
-      ordered.forEach(function (t) { if (!wps.length || wps[wps.length - 1] !== t) wps.push(t); }); // de-dup neighbours
-      wps = wps.concat(trailing);
+      var orderedPts = pts.concat(seq.sort(function (a, b) { return a.order - b.order; }));
+      var wps = [], pids = [];
+      orderedPts.forEach(function (p) {                                                // de-dup neighbours by token
+        if (wps.length && wps[wps.length - 1] === p.token) return;
+        wps.push(p.token); pids.push(p.placeId || '');
+      });
+      trailing.forEach(function (t) { wps.push(t); pids.push(''); });
       collectWaypoints._dropped = dropped;
       // Google Maps keeps only a limited number of waypoints; after sorting,
       // trimming from the far end keeps the nearest ones (reached first).
-      if (wps.length > TP_MAPS_MAX_WAYPOINTS) wps = wps.slice(0, TP_MAPS_MAX_WAYPOINTS);
+      if (wps.length > TP_MAPS_MAX_WAYPOINTS) { wps = wps.slice(0, TP_MAPS_MAX_WAYPOINTS); pids = pids.slice(0, TP_MAPS_MAX_WAYPOINTS); }
+      collectWaypoints._placeIds = pids;
       return wps;
     }
     function update() {
       var wps = collectWaypoints();
       var n = wps.length;
       var dropped = collectWaypoints._dropped || 0;
-      var url = tpBuildMapsUrl({ lat: O.lat, lon: O.lon }, { lat: Dst.lat, lon: Dst.lon }, wps);
+      var url = tpBuildMapsUrl({ lat: O.lat, lon: O.lon }, { lat: Dst.lat, lon: Dst.lon }, wps, collectWaypoints._placeIds);
       openBtn._url = url; copyBtn._url = url;
       var warn = (n > TP_MAPS_MAX_WAYPOINTS)
         ? ' <span style="color:#b00;">⚠️ ' + n + ' waypoints — Maps may keep only the first ' + TP_MAPS_MAX_WAYPOINTS + '. Deselect a few.</span>'
@@ -5393,6 +5423,42 @@
   function tpPlacesAccessKey() {
     try { var v = localStorage.getItem('xkdg_tp_places_key'); if (v) return v; } catch (e) {}
     return '';
+  }
+  // Resolve a charger's GOOGLE PLACE ID by name + location, via the xkdg-places worker.
+  // A place-ID waypoint is the ONLY way Maps/Polestar pin the exact station (its parking
+  // entrance) instead of snapping a bare lat/lon onto the nearest road. Best-effort:
+  // resolves to null on any failure (worker missing, no match, station too far). Never throws.
+  // Requires the worker to return `place_id` (FieldMask includes places.id).
+  function tpResolveChargerPlaceId(name, lat, lon) {
+    try {
+      var base = tpPlacesWorkerUrl();
+      if (!base || !isFinite(lat) || !isFinite(lon)) return Promise.resolve(null);
+      var q = (name && String(name).trim()) ? String(name).trim() : 'EV charging station';
+      var k = tpPlacesAccessKey();
+      var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
+        'q=' + encodeURIComponent(q) + '&lat=' + lat + '&lon=' + lon +
+        '&radius=2000&max=6' + (k ? '&k=' + encodeURIComponent(k) : '');
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 12000) : null;
+      return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
+        .then(function (res) { return res.json(); })
+        .then(function (j) {
+          if (to) clearTimeout(to);
+          if (!j || j.status !== 'ok' || !j.results || !j.results.length) return null;
+          // Pick the result closest to the charger's own coordinates (the OCM point),
+          // within 400 m, that carries a place_id. Guards against a same-named station
+          // elsewhere in the search box.
+          var best = null, bd = Infinity;
+          j.results.forEach(function (rr) {
+            if (!rr || !rr.place_id || !isFinite(rr.lat) || !isFinite(rr.lon)) return;
+            var d = tpHaversineKm(lat, lon, rr.lat, rr.lon);
+            if (d < bd) { bd = d; best = rr; }
+          });
+          if (best && bd <= 0.4) return best.place_id;   // <=400 m → same station
+          return null;
+        })
+        .catch(function () { if (to) clearTimeout(to); return null; });
+    } catch (e) { return Promise.resolve(null); }
   }
   // Map a free-text category (IT/EN, whatever the AI passes) to a concise English
   // search term for Google Places. Ordered: the most SPECIFIC niche families first
