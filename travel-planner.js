@@ -282,11 +282,19 @@
       fetch(wk, { method: 'GET' }).then(function (r) { return r.json(); }).then(function (d) {
         if (d && d.error) throw new Error(d.error);
         var soc = (d && d.soc != null) ? Number(d.soc) : null;
-        var carKm = (d && d.rangeKm != null) ? Number(d.rangeKm) : null;   // car's optimistic estimate (reference)
+        var carKm = (d && d.rangeKm != null) ? Number(d.rangeKm) : null;   // car's own estimate (knows RECENT real consumption)
         var fr = tpGetFullRange();
-        // Realistic remaining range = SoC% of the driver's real full range.
-        var realKm = (soc != null && isFinite(soc) && fr > 0) ? Math.round(soc * fr / 100)
-                   : ((carKm != null && isFinite(carKm)) ? Math.round(carKm) : null);
+        // PRUDENT range = the MINIMUM of the two available estimates:
+        //   (a) SoC% x the driver's calibrated full range (static model of this driver), and
+        //   (b) the car's own estimate, which incorporates the RECENT real consumption
+        //       (climbs, cold, headwind) that the static model cannot see.
+        // The car's number is usually optimistic on a flat cruise (then (a) wins), but
+        // after an Alpine stretch or in winter it can be LOWER than (a) — and then it is
+        // the truer figure. Taking the minimum is always the safe side.
+        var modelKm = (soc != null && isFinite(soc) && fr > 0) ? Math.round(soc * fr / 100) : null;
+        var realKm = (modelKm != null && carKm != null && isFinite(carKm) && carKm > 0)
+                   ? Math.min(modelKm, Math.round(carKm))
+                   : (modelKm != null ? modelKm : ((carKm != null && isFinite(carKm)) ? Math.round(carKm) : null));
         if (realKm != null && realKm > 0) tpSetLiveRange(realKm, soc);
         try {
           var socEl = document.getElementById('tp-soc'), rgEl = document.getElementById('tp-range');
