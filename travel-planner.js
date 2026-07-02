@@ -2911,6 +2911,13 @@
         var ocmPrefOnly = !!(document.getElementById('tp-net-only') && document.getElementById('tp-net-only').checked);
         function findStop(la, lo) {
           if (hasRange) {
+            // With "Preferred networks only" ON, NEVER substitute a non-preferred charger.
+            // If no Tesla/Electra is here, fall back to a PLAIN stopover (no EV lookup) so
+            // ATLANTE / Free To X / Ionity etc. can never sneak in via the OSM charger
+            // search. Without the flag, the old behaviour stands (any charger, then stop).
+            if (ocmPrefOnly) {
+              return tpFindChargerStop(la, lo, ocmKey, ocmNets, true).then(function (c) { return c || tpFindStopover(la, lo, false); });
+            }
             return tpFindChargerStop(la, lo, ocmKey, ocmNets, ocmPrefOnly).then(function (c) { return c || tpFindStopover(la, lo, true); });
           }
           return tpFindStopover(la, lo, false);
