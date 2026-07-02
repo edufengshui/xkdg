@@ -3187,6 +3187,17 @@
     });
     card.appendChild(grid);
 
+    // Global modifier (opt-in): stay OFF THE BEATEN PATH. When checked, the intent is
+    // added to the prompt so the AI sets avoid_crowds on the planner tools, which then
+    // de-emphasise very popular / crowded places (many reviews) via tpCrowdMult —
+    // WITHOUT ever overriding the favourable direction. Needs Places review counts.
+    var otbWrap = el('label', { style: 'display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid #a5d6a7;border-radius:8px;cursor:pointer;font-size:12px;background:#f1f8f1;margin-bottom:12px;' });
+    var otbCb = el('input', { type: 'checkbox', id: 'tp-otb' });
+    otbWrap.appendChild(otbCb);
+    otbWrap.appendChild(el('span', { style: 'font-size:16px;' }, '\uD83C\uDF3F'));
+    otbWrap.appendChild(el('span', null, 'Off the beaten path (avoid crowded, touristy places)'));
+    card.appendChild(otbWrap);
+
     var go = el('button', { type: 'button',
       style: 'width:100%;padding:12px;border:none;border-radius:10px;background:#2e7d32;color:#fff;font-size:14px;font-weight:700;cursor:pointer;' },
       '\uD83C\uDF40 Find lucky trips');
@@ -3235,6 +3246,9 @@
         prompt = 'Lucky Trip \u2014 explore an area. Area/origin: ' + (area || '(use my current location)') +
           '. Date: ' + date + '. Categories: ' + catTxt + '. Minimum distance from base: ' + minKm + ' km. ' +
           'Propose several REAL, named places in these categories around that area, each reachable with a propitious direction and hour, so I can choose among them. Show the place names.';
+      }
+      if (otbCb.checked) {
+        prompt += ' IMPORTANT: I want to stay OFF THE BEATEN PATH \u2014 set avoid_crowds true and de-emphasise very popular / crowded / touristy places (those with many reviews), preferring quiet, secluded, non-touristy spots, WITHOUT ever overriding the favourable direction.';
       }
       if (window.XKDGChat && typeof window.XKDGChat.ask === 'function') {
         close();
