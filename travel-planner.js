@@ -2459,8 +2459,19 @@
       var pts = [];          // positionable along the route ({token, along})
       var seq = [];          // travel-ordered fallback when no route ({token, order})
       var seqN = 0, dropped = 0;
+      // A charger token carries BOTH its name AND its coordinates ("Name, lat, lon").
+      // Google Maps/Polestar then resolve the waypoint to the station's OWN listing (its
+      // real parking entrance) instead of snapping a bare "lat,lon" onto the nearest road
+      // — which is what dropped the pin in the middle of the carriageway. The coordinates
+      // stay in the token to disambiguate same-named stations. Positioning along the route
+      // still uses the numeric lat/lon below, so travel order is unchanged.
+      function chargerToken(name, lat, lon) {
+        var nm = (name && String(name).trim()) ? String(name).trim() : '';
+        var ll = tpLatLng({ lat: lat, lon: lon });
+        return nm ? (nm + ', ' + ll) : ll;
+      }
       function addCharger(name, lat, lon) {
-        var tok = (name && String(name).trim()) ? String(name).trim() : tpLatLng({ lat: lat, lon: lon });
+        var tok = chargerToken(name, lat, lon);
         if (idx) {
           var npc = nearOf({ lat: lat, lon: lon });
           if (npc && isFinite(npc.alongKm)) { pts.push({ token: tok, along: npc.alongKm }); return; }
