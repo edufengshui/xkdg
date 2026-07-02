@@ -1102,6 +1102,76 @@
     });
   }
 
+  /* ---- SECOND charger source: TomTom via the xkdg-ev Cloudflare Worker ----- *
+   * TomTom's European coverage (Electra, Ionity, ...) is far more complete than
+   * crowd-sourced OCM, carries the brand in the station name and REAL connector
+   * power. The worker normalises its response to the exact OCM station shape
+   * ({title, operator, lat, lon, maxKW, powerKnown, distanceKm}), so merging is
+   * trivial. Everything is optional: no worker URL saved → OCM-only, as before.
+   * ------------------------------------------------------------------------- */
+  function tpEvWorkerUrl() {
+    try { var v = (localStorage.getItem('xkdg_tp_ev_worker') || '').trim(); return v || ''; } catch (e) { return ''; }
+  }
+  function tpFetchChargersTomTom(opts) {
+    var base = tpEvWorkerUrl();
+    if (!base) return Promise.resolve([]);
+    var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
+      'lat=' + opts.lat + '&lon=' + opts.lon +
+      '&radius=' + Math.round((opts.radiusKm || 100) * 1000) +
+      '&max=' + (opts.maxResults || 80);
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
+    return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (to) clearTimeout(to);
+        if (!j || j.status !== 'ok' || !Array.isArray(j.results)) return [];
+        return j.results.filter(function (s) { return s && isFinite(s.lat) && isFinite(s.lon); });
+      })
+      .catch(function () { if (to) clearTimeout(to); return []; });
+  }
+  // Merge stations from several sources, de-duplicating by REAL distance (<=150 m):
+  // the same physical station has slightly different coordinates in each database,
+  // and a grid-cell snap fails right at cell borders. On a duplicate keep the record
+  // with a KNOWN power figure, then higher power, then the longer title. n is small
+  // (a few dozen per sampled centre), so the O(n^2) scan is negligible.
+  function tpMergeChargers(lists) {
+    var kept = [];
+    var DUP_M = 150;   // two records closer than this are the same station
+    function better(a, b) {
+      if (!!a.powerKnown !== !!b.powerKnown) return a.powerKnown ? a : b;
+      if ((a.maxKW || 0) !== (b.maxKW || 0)) return (a.maxKW || 0) > (b.maxKW || 0) ? a : b;
+      return (String(a.title || '').length >= String(b.title || '').length) ? a : b;
+    }
+    function nearIdx(s) {
+      var cosLat = Math.cos(s.lat * Math.PI / 180);
+      for (var i = 0; i < kept.length; i++) {
+        var dLat = (kept[i].lat - s.lat) * 111320;
+        var dLon = (kept[i].lon - s.lon) * 111320 * cosLat;
+        if ((dLat * dLat + dLon * dLon) <= DUP_M * DUP_M) return i;
+      }
+      return -1;
+    }
+    (lists || []).forEach(function (list) {
+      (list || []).forEach(function (s) {
+        if (!s || !isFinite(s.lat) || !isFinite(s.lon)) return;
+        var i = nearIdx(s);
+        if (i >= 0) kept[i] = better(kept[i], s);
+        else kept.push(s);
+      });
+    });
+    return kept;
+  }
+  // Unified fetch: OCM (needs its API key) + TomTom (needs the worker URL), each
+  // optional; rejects only when NEITHER source is configured.
+  function tpFetchChargersMerged(opts) {
+    var jobs = [];
+    if (((opts && opts.key) || '').trim()) jobs.push(tpFetchChargers(opts).catch(function () { return []; }));
+    if (tpEvWorkerUrl()) jobs.push(tpFetchChargersTomTom(opts));
+    if (!jobs.length) return Promise.reject(new Error('no charger source (OCM key or TomTom worker)'));
+    return Promise.all(jobs).then(tpMergeChargers);
+  }
+
   /* ---- PHASE C re-aim: nudge a leg's heading toward the upcoming stop ----- *
    * Implements the confirmed rule for INTERMEDIATE decision moments:
    *   point at the next stop instead of the final destination WHEN
@@ -2138,7 +2208,8 @@
     centers.push(idx.posAt(1)); // include the destination end
     var seen = {};
     return Promise.all(centers.map(function (c) {
-      return tpFetchChargers({ key: key, lat: c.lat, lon: c.lon, radiusKm: radius, maxResults: 60 })
+      // BOTH sources per sampled centre (OCM + TomTom via xkdg-ev), merged & deduped.
+      return tpFetchChargersMerged({ key: key, lat: c.lat, lon: c.lon, radiusKm: radius, maxResults: 60 })
         .catch(function () { return []; });
     })).then(function (lists) {
       var merged = [];
@@ -2191,7 +2262,7 @@
       var nets = TP_NETWORKS.filter(function (n) { var c = document.getElementById('tp-net-' + n.id); return c && c.checked; }).map(function (n) { return n.id; });
       var preferredOnly = !!(document.getElementById('tp-net-only') && document.getElementById('tp-net-only').checked);
 
-      if (!key) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key in 🔋 Range & charging first.'; if (auto) { tpReportCharger({ error: 'no_key' }); window._tpChargerPending = false; } return; }
+      if (!key && !tpEvWorkerUrl()) { status.style.color = '#b58900'; status.textContent = 'Enter your Open Charge Map key (or the TomTom EV Worker URL) in 🔋 Range & charging first.'; if (auto) { tpReportCharger({ error: 'no_key' }); window._tpChargerPending = false; } return; }
       if (!range) { status.style.color = '#b58900'; status.textContent = 'Enter your remaining range (km) in 🔋 Range & charging.'; if (auto) { tpReportCharger({ error: 'no_range' }); window._tpChargerPending = false; } return; }
       var idx = tpBuildRouteIndex(TP_LAST_ROUTE);
       if (!idx) { status.style.color = '#b58900'; status.textContent = 'No real route yet — set the Worker URL and press SCAN TRIP first.'; if (auto) { tpReportCharger({ error: 'no_route' }); window._tpChargerPending = false; } return; }
@@ -3880,6 +3951,17 @@
     rcBlock.appendChild(ocmWrap);
     rcBlock.appendChild(el('div', { style: 'font-size:10px;color:#888;margin-top:3px;' },
       'Saved on this device only. Used to find Tesla/Electra stations reachable within your range AND before the 2-hour window. After SCAN TRIP, use “🔌 Find charging stops”.'));
+    // TomTom EV Worker (xkdg-ev): SECOND charger source merged with OCM — far better
+    // European coverage (Electra!). Optional: leave empty to stay OCM-only.
+    var evWrap = el('div', { style: 'display:flex;flex-direction:column;gap:3px;color:#555;font-size:11px;margin-top:8px;' });
+    evWrap.appendChild(el('span', null, 'TomTom EV Worker URL (optional — adds Electra & full EU coverage)'));
+    var evIn = el('input', { id: 'tp-ev-worker', type: 'text', autocomplete: 'off',
+      placeholder: 'https://xkdg-ev.<name>.workers.dev/?k=YOUR_KEY',
+      value: (function () { try { return localStorage.getItem('xkdg_tp_ev_worker') || ''; } catch (e) { return ''; } })(),
+      style: 'padding:5px;border:1px solid #ccc;border-radius:6px;font-size:12px;' });
+    evIn.addEventListener('change', function () { try { localStorage.setItem('xkdg_tp_ev_worker', (evIn.value || '').trim()); } catch (e) {} });
+    evWrap.appendChild(evIn);
+    rcBlock.appendChild(evWrap);
     form.appendChild(rcBlock);
 
     panel.appendChild(form);
@@ -5429,9 +5511,9 @@
   // then preferred ≥80, then any ≥80, then nearest of anything — so a long-trip cashing
   // stop coincides with where you must recharge anyway. Needs the OCM key.
   function tpFindChargerStop(lat, lon, key, nets, preferredOnly) {
-    if (!key) return Promise.resolve(null);
+    if (!key && !tpEvWorkerUrl()) return Promise.resolve(null);   // no source at all
     var pt = { lat: lat, lon: lon };
-    return tpFetchChargers({ key: key, lat: lat, lon: lon, radiusKm: 30, maxResults: 60 })
+    return tpFetchChargersMerged({ key: key, lat: lat, lon: lon, radiusKm: 30, maxResults: 60 })
       .then(function (stations) {
         var pool = (stations || []).filter(function (s) { return tpHaversineKm(pt.lat, pt.lon, s.lat, s.lon) <= 30; });
         if (!pool.length) return null;
