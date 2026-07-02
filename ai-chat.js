@@ -181,6 +181,11 @@
     '("in natura", "una passeggiata", "culturale", "castelli", "borghi") OR asks to filter the proposals afterwards ' +
     '("ora solo natura"), pass the category parameter and call again with the SAME other parameters — each proposal ' +
     'then becomes a real named place. When a proposal has a "place", show that name as the destination. ' +
+    '- COASTAL / LAKESIDE BASES: real named places come from Google Places and are ALWAYS ON LAND; never invent a place name ' +
+    '(no made-up benches, beaches or spots). When the base is by the sea or a lake, a favourable direction that points toward ' +
+    'OPEN WATER has no reachable land destination \u2014 do NOT present a bare geometric point there and do NOT fabricate a ' +
+    'place; skip that direction (or say plainly it points offshore) and keep the options that resolve to a REAL land place. ' +
+    'Prefer any_poi:true / category so every option snaps to a real place instead of an empty coordinate over water. ' +
     'A Lucky Trip answer ALWAYS contains a "chains" field too: multi-leg lucky LOOPS, one per stop-count. When NO direction is ' +
     'requested, present the WHOLE answer together: FIRST the simple out-and-back options, THEN a "🔗 Tragitti a catena" section ' +
     'with the loops ordered by increasing stops (1-stop, then 2, 3, 4). When the user DID request a direction (e.g. "verso nord" → ' +
@@ -3574,7 +3579,8 @@
       fsStyle.id = 'xkdg-ai-fs-style';
       fsStyle.textContent =
         '#xkdg-ai-panel.xkdg-ai-fs{top:0 !important;right:0 !important;bottom:0 !important;left:0 !important;' +
-        'width:100vw !important;max-width:100vw !important;height:100dvh !important;max-height:100dvh !important;' +
+        'width:100vw !important;max-width:100vw !important;' +
+        'height:100vh !important;height:100dvh !important;max-height:100vh !important;max-height:100dvh !important;' +
         'border-radius:0 !important;border:0 !important;}';
       document.head.appendChild(fsStyle);
     }
@@ -3588,7 +3594,7 @@
     // Panel
     var panel = elc('div', { id: 'xkdg-ai-panel',
       style: 'display:none;position:fixed;right:16px;bottom:80px;z-index:99999;width:min(380px,calc(100vw - 32px));' +
-        'max-height:min(600px,calc(100dvh - 110px));background:#fff;border:1px solid #ccc;border-radius:14px;' +
+        'max-height:min(600px,calc(100vh - 110px));max-height:min(600px,calc(100dvh - 110px));background:#fff;border:1px solid #ccc;border-radius:14px;' +
         'box-shadow:0 8px 30px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden;font-family:inherit;' });
 
     var header = elc('div', { style: 'display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;background:#6a1b9a;color:#fff;' });
@@ -3635,13 +3641,13 @@
     panel.appendChild(header);
 
     var msgs = elc('div', { id: 'xkdg-ai-msgs',
-      style: 'flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#faf7fc;min-height:120px;' });
+      style: 'flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#faf7fc;' });
     panel.appendChild(msgs);
 
     var status = elc('div', { id: 'xkdg-ai-status', style: 'font-size:11px;color:#888;padding:0 12px;min-height:14px;' }, '');
     panel.appendChild(status);
 
-    var inputRow = elc('div', { style: 'display:flex;gap:6px;padding:10px 12px;border-top:1px solid #eee;' });
+    var inputRow = elc('div', { style: 'display:flex;gap:6px;padding:10px 12px calc(10px + env(safe-area-inset-bottom, 0px));border-top:1px solid #eee;flex:0 0 auto;' });
     var input = elc('textarea', { id: 'xkdg-ai-input', rows: '1', placeholder: 'Ask something…',
       style: 'flex:1;resize:none;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;max-height:90px;' });
     var mic = elc('button', { id: 'xkdg-ai-mic', title: 'Speak your message',
