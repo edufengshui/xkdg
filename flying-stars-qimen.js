@@ -412,17 +412,8 @@
     }).join('');
 
     // Floor selector — shown when the active house has more than one floor.
-    // TEMP DIAGNOSTIC: also show a small line reporting how many floors the panel sees and from
-    // which house, so we can tell whether "stuck on one floor" is an upstream data issue or a UI
-    // one. (Remove the diagnostic line once confirmed.)
     var floorSelHtml = '';
     var _fl = _qfsFloors();
-    var _diagHouse = '';
-    try { var _hc = window.XKDGHouse && window.XKDGHouse.active(); _diagHouse = _hc ? (_hc.name || '?') : '(no active house)'; } catch(e){ _diagHouse = '(error)'; }
-    var _diag = '<div style="margin-bottom:6px;font-size:10px;color:#00695c;font-style:italic;">'
-              + '🏠 house: <b>' + _diagHouse + '</b> · floors seen: <b>' + _fl.length + '</b>'
-              + (_fl.length ? ' [' + _fl.map(function(f){ return (f.label||('F'+(f.index+1))) + (f.active?'✓':''); }).join(', ') + ']' : '')
-              + '</div>';
     if(_fl.length > 1){
       var cur = _qfsSelectedFloor();
       var curIdx = cur ? cur.index : (_fl[0] && _fl[0].index);
@@ -438,7 +429,6 @@
         +   '<span style="font-size:10px;color:#00695c;font-style:italic;">this house has multiple floors — pick which one to scan</span>'
         + '</div>';
     }
-    floorSelHtml = _diag + floorSelHtml;
 
 
     // Sezione 17 profili Qimen — ciascuno con info (ⓘ) → descrizione + warning

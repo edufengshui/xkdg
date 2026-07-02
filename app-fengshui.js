@@ -7650,7 +7650,12 @@ window.XKDGHouse = (function () {
     var floorsOut = floors.map(function (f, fi) {
       var facing = same ? h.houseFacing : f.facing;
       var period = same ? h.period : f.period;
-      var chart = chartFor(facing, period);
+      // Prefer a saved MANUAL chart for this floor over the auto-computed one — mirrors the
+      // single-floor path (window._fsManualChart) and _fsGetActiveChart() in the Bed section.
+      // Only floors that actually carry a valid manualChart change; the rest fall back to auto.
+      var chart = (f.manualChart && f.manualChart.sittingStars && f.manualChart.facingStars && f.manualChart.baseStars)
+                    ? f.manualChart
+                    : chartFor(facing, period);
       var st = f.settings || { water: [], bed: [], desk: [] };
       return {
         index: fi, label: f.label || ('Floor ' + (fi + 1)), active: (fi === activeFloor),
