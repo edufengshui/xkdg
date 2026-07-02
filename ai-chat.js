@@ -5004,6 +5004,11 @@
             try {
               if (window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
                 var dstOn = (typeof dstActiveOn === 'function') ? dstActiveOn(new Date(c.date + 'T12:00:00')) : false;
+                // The engine scored THIS exact minute (candidates are planned with snapDepart:false),
+                // so the scan must run it as-is: without this flag the planner would snap the departure
+                // back to the start of its double-hour (e.g. 14:29 -> 13:59) and execute a DIFFERENT
+                // plan than the one scored. Mirrors the in-planner BEST panel rows.
+                window._tpNoSnap = true; window._tpAutoDepart = false;
                 window.TravelPlanner.openPrefilled({
                   originLat: origin.lat, originLon: origin.lon, originName: payload.originName || null,
                   destLat: dest.lat, destLon: dest.lon, destName: payload.destName || null,
