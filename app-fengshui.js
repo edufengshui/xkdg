@@ -3508,7 +3508,7 @@ function fsRenderHouseProfiles(){
     html += '</div>';
 
     // RIGHT (top-right corner): Load · Rename · Delete · Archive
-    html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto;">';
+    html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:1 1 auto;min-width:0;">';
     html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Load into FS inputs to edit">📂 Load</button>';
     // 🖼 Floor plan — VIEW the saved plan. Square icon to distinguish it from the
     // 📐 "Import a floorplan" button below; same brown colour. Remove (🗑) sits
@@ -6063,19 +6063,31 @@ function fsWaterActivationScan(){
 // ── PURPOSE ACTIVATION (⚡ ACTIVATION section) ──────────────────────────────
 // Show/hide the quadrant selector: only Water needs a fixed palace (from house).
 // Toggle 💧 Water palaces only — refresh the hint showing detected water palaces.
-// Compute the flying-stars chart of a house's active floor and return the
-// 8 outer palaces' water (向星) and mountain (山星) stars. → [{type,num,dir}]
+// Effective flying-stars chart for a house's active floor: the saved MANUAL chart when the
+// floor has one (mirrors XKDGHouse.normalize + the Bed section), otherwise auto-computed from
+// facing/period. Keeps the whole ⚡ ACTIVATION Target dropdown consistent with the manual chart.
+function _fsPurpactEffectiveChart(house){
+  try {
+    if (typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function') return null;
+    if (!house) return null;
+    var floor = _fsActiveFloor(house);
+    if (floor && floor.manualChart && floor.manualChart.facingStars && floor.manualChart.sittingStars && floor.manualChart.baseStars)
+      return floor.manualChart;
+    var fac = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(house, floor) : null;
+    var per = (typeof _fsFloorPeriod === 'function') ? _fsFloorPeriod(house, floor) : null;
+    if (fac == null || per == null) return null;
+    try { return FlyingStars.calculate(parseInt(per, 10), fsMountainCharFromDeg(parseFloat(fac))); } catch(e){ return null; }
+  } catch(e){ return null; }
+}
+
+// Return the 8 outer palaces' water (向星) and mountain (山星) stars of a house's effective
+// chart (manual-first). The star at the CENTRE is intentionally omitted (no compass palace) —
+// e.g. a 令星入囚 ruler at the centre is handled by _fsPurpactRulerRelease below. → [{type,num,dir}]
 function _fsPurpactChartStars(house){
   var out = [];
   try {
-    if (typeof FlyingStars === 'undefined' || typeof fsMountainCharFromDeg !== 'function') return out;
-    if (!house) return out;
-    var floor = _fsActiveFloor(house);
-    var fac = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(house, floor) : null;
-    var per = (typeof _fsFloorPeriod === 'function') ? _fsFloorPeriod(house, floor) : null;
-    if (fac == null || per == null) return out;
-    var chart;
-    try { chart = FlyingStars.calculate(parseInt(per, 10), fsMountainCharFromDeg(parseFloat(fac))); } catch(e){ return out; }
+    if (typeof FlyingStars === 'undefined') return out;
+    var chart = _fsPurpactEffectiveChart(house);
     if (!chart || !FlyingStars.DIR_TO_INDEX) return out;
     var DIRS = ['N','NE','E','SE','S','SW','W','NW'];  // outer palaces only (no center)
     DIRS.forEach(function(dir){
@@ -6088,6 +6100,46 @@ function _fsPurpactChartStars(house){
     });
   } catch(e){ console.warn('_fsPurpactChartStars', e); }
   return out;
+}
+
+// 令星入囚 for the ⚡ ACTIVATION section. When the CURRENT-ERA ruler water star (San Yuan
+// period via QFS.currentPeriod — P9 today) sits at the CENTRE of the house's effective chart,
+// it must be released. Two classical release palaces: ① the facing palace, ② the palace where
+// water-star 5 lives. The saved aquarium (searched on ALL floors) decides WHICH one is used.
+//   • { dir, via, ruler }  → an aquarium sits in a release palace → scan there
+//   • { none:true, dirs }  → ruler trapped but NO aquarium in a release palace (hint only)
+//   • null                 → ruler not trapped (normal case)
+function _fsPurpactRulerRelease(house){
+  try {
+    if (!house) return null;
+    var chart = _fsPurpactEffectiveChart(house);
+    if (!chart || !chart.facingStars) return null;
+    var ruler = (window.QFS && typeof window.QFS.currentPeriod === 'function')
+                  ? window.QFS.currentPeriod()
+                  : (((Math.floor((new Date().getFullYear() - 1864) / 20)) % 9) + 1);
+    if (chart.facingStars[4] !== ruler) return null;                 // ruler not at centre → nothing to release
+    var GRID2DIR = { 0:'SE',1:'S',2:'SW',3:'E',4:'C',5:'W',6:'NE',7:'N',8:'NW' };
+    var OCT2GRID = [7,6,3,0,1,2,5,8];                                 // N,NE,E,SE,S,SW,W,NW → grid idx
+    var releaseDirs = [], seen = {};
+    function pushDir(d){ if(d && d!=='C' && !seen[d]){ seen[d]=1; releaseDirs.push(d); } }
+    // ① facing palace — from the active floor's facing degrees
+    var floor = _fsActiveFloor(house);
+    var fac = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(house, floor) : null;
+    if (fac != null && isFinite(parseFloat(fac))){
+      var oct = Math.round((((parseFloat(fac) % 360) + 360) % 360) / 45) % 8;
+      pushDir(GRID2DIR[OCT2GRID[oct]]);
+    }
+    // ② the palace where water-star 5 lives (swap-with-5)
+    for (var i=0;i<9;i++){ if(chart.facingStars[i] === 5 && i!==4) pushDir(GRID2DIR[i]); }
+    if (!releaseDirs.length) return null;
+    // The saved aquarium (any floor) picks WHICH release palace is active.
+    var wp = [];
+    try { wp = _fsGetHouseWaterPalaces(); } catch(e){}
+    for (var r=0;r<releaseDirs.length;r++){
+      if (wp.indexOf(releaseDirs[r]) >= 0) return { dir: releaseDirs[r], via: 'aquarium', ruler: ruler };
+    }
+    return { none:true, dirs: releaseDirs, ruler: ruler };
+  } catch(e){ return null; }
 }
 
 // Populate the Target dropdown for the currently-selected house:
@@ -6110,6 +6162,18 @@ function _fsPurpactPopulateTarget(){
 
   // Chart stars (water 向星 + mountain 山星) of the selected house
   var house = (typeof _fsPurpactSelectedHouse === 'function') ? _fsPurpactSelectedHouse() : null;
+
+  // 令星入囚 — the current-era ruler water star trapped at the CENTRE, released to the real
+  // aquarium (when one sits in a release palace). Shown between Placements and the per-palace
+  // star list. Uses the house's EFFECTIVE (manual-first) chart.
+  var rel = null;
+  try { rel = _fsPurpactRulerRelease(house); } catch(e){}
+  if (rel && rel.dir){
+    html += '<optgroup label="令星入囚 (ruler release)">'
+         +  '<option value="aqrelease:'+rel.dir+'">💧 向星 '+rel.ruler+' \u2192 aquarium (令星入囚 release) · '+(DIRH[rel.dir]||rel.dir)+'</option>'
+         +  '</optgroup>';
+  }
+
   var stars = _fsPurpactChartStars(house);
   if (stars.length){
     var waters = stars.filter(function(s){return s.type==='water';}).sort(function(a,b){return a.num-b.num;});
@@ -6129,6 +6193,9 @@ function _fsPurpactPopulateTarget(){
   if (hint){
     if (!stars.length){
       hint.textContent = 'Set this house’s facing & period in House Profiles to target individual stars.';
+      hint.style.color = '#b26a00';
+    } else if (rel && rel.none){
+      hint.textContent = '令星入囚: the ruler water star ' + rel.ruler + ' is trapped at the centre, but no saved aquarium sits in a release palace (' + rel.dirs.map(function(d){return DIRH[d]||d;}).join(' / ') + '). Place a water feature in one of those palaces to enable the release target.';
       hint.style.color = '#b26a00';
     } else { hint.textContent = ''; }
   }
@@ -6173,6 +6240,11 @@ function fsPurposeActivationScan(){
       scanDirs=_fsGetHouseWaterPalaces();
       if(!scanDirs.length){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">No water palace in this house. Save a water feature in House Profiles first.</div>'; return; }
       scopeTxt='💧 water palaces: '+scanDirs.map(function(d){return DIRH[d]||d;}).join(', ');
+    } else if(target.indexOf('aqrelease:')===0){
+      var aqDir=target.split(':')[1];
+      if(!aqDir){ out.innerHTML='<div style="font-size:12px;color:#c0392b;">Could not read the release palace.</div>'; return; }
+      scanDirs=[aqDir];
+      scopeTxt='💧 向星 (令星入囚 release) \u2192 aquarium · '+(DIRH[aqDir]||aqDir);
     } else if(target.indexOf('star:')===0){
       var parts=target.split(':');           // star : type : num : dir
       var sType=parts[1], sNum=parts[2], sDir=parts[3];
