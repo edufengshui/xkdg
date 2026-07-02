@@ -295,6 +295,11 @@
     'The exact chosen clock time appears in the itinerary card that posts to the chat. Your reply is ONE short line: ' +
     'say you picked the most favourable departure of the day and that the exact time + direction are shown in the ' +
     'card.\n' +
+    '- REPLAN FROM HERE: when the user is ALREADY travelling and something went wrong (roadblock, detour, delay) or ' +
+    'simply says \u201cricalcola da qui\u201d / \u201creplan from here\u201d, call plan_travel with the SAME destination, ' +
+    'from_current_position:true, and NO origin_lat/lon and NO depart_time (the app takes a fresh GPS fix and departs ' +
+    'NOW). If the result has gps_fresh:false, warn the user the fix failed and the SAVED position was used, and ask ' +
+    'them to confirm or name the nearest town.\n' +
     '- BEST DAY within a RANGE: when the user wants the best day+time across several days ("best day to drive to X ' +
     'in the next week", "qual è il giorno migliore nei prossimi N giorni?"), call search_travel with origin + ' +
     'destination (coords + names), start_date, days, and optimize_arrival if they care about arriving in a favourable ' +
@@ -524,6 +529,7 @@
           duration_h: { type: 'integer', description: 'Trip length in hours (default 12).' },
           range_km: { type: 'number', description: 'EV autonomy in km (enables auto charging-stop search in the planner).' },
           reserve_km: { type: 'number', description: 'EV safety reserve in km.' },
+          from_current_position: { type: 'boolean', description: 'TRUE when the user wants to (re)plan FROM WHERE THEY ARE NOW — "da qui", "from here", "ricalcola da qui", roadblock, detour, mid-trip replan. The app acquires a FRESH GPS fix as the origin (do NOT pass origin_lat/lon) and, unless a time is given, departs NOW. Never set it for normal future trips.' },
           open_planner: { type: 'boolean', description: 'Open + run the filled Travel Planner. Defaults true when both origin and destination are given.' }
         },
         required: ['dest_lat', 'dest_lon']
@@ -2592,9 +2598,51 @@
     } catch (e) { return { error: 'Chain planning failed: ' + ((e && e.message) || e) }; }
   }
 
+  // Acquire a FRESH GPS fix (for "replan from here"). Resolves { lat, lon, fresh } —
+  // fresh:false means the fix timed out/failed and we fell back to the SAVED position;
+  // resolves null when no position at all is available. Never rejects. A good fix also
+  // updates the saved GPS so every later "defaults to saved GPS" tool sees the real spot.
+  function freshGps(timeoutMs) {
+    var TO = timeoutMs || 12000;
+    return new Promise(function (resolve) {
+      var done = false;
+      function fallback() {
+        if (done) return; done = true;
+        resolve((window._lastGpsLat != null && window._lastGpsLng != null)
+          ? { lat: window._lastGpsLat, lon: window._lastGpsLng, fresh: false } : null);
+      }
+      try {
+        if (!navigator.geolocation) return fallback();
+        var t = setTimeout(fallback, TO + 500);
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          if (done) return; done = true; clearTimeout(t);
+          var la = pos.coords.latitude, lo = pos.coords.longitude;
+          try {
+            window._lastGpsLat = la; window._lastGpsLng = lo;
+            localStorage.setItem('xkdg_gps', JSON.stringify({ lat: la, lng: lo }));
+          } catch (e) {}
+          resolve({ lat: la, lon: lo, fresh: true });
+        }, function () { fallback(); }, { enableHighAccuracy: true, timeout: TO, maximumAge: 0 });
+      } catch (e) { fallback(); }
+    });
+  }
+
   function toolPlanTravel(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.plan !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
+    // "From here" (roadblock / detour / mid-trip replan): the ORIGIN is where the user IS,
+    // so acquire a FRESH GPS fix — never trust the saved position, which may be hours old.
+    // Falls back to the saved GPS (flagged gps_fresh:false) only if the fix fails.
+    if (input.from_current_position && !input._gpsResolved) {
+      return freshGps(12000).then(function (pos) {
+        if (!pos) return { error: 'Could not get a GPS position for "from here". Ask the user to enable location services or to name the nearest town as origin.' };
+        var next = {}; for (var k in input) if (input.hasOwnProperty(k)) next[k] = input[k];
+        next.origin_lat = pos.lat; next.origin_lon = pos.lon;
+        if (!next.origin_name) next.origin_name = 'Current position (GPS)';
+        next._gpsResolved = true; next.gps_fresh = !!pos.fresh;
+        return toolPlanTravel(next);
+      });
+    }
     if (input.dest_lat == null || input.dest_lon == null)
       return { error: 'I need the destination coordinates (dest_lat, dest_lon). Provide them from the city the user named.' };
     var dest = { lat: +input.dest_lat, lon: +input.dest_lon };
@@ -2613,6 +2661,15 @@
     var timeStr = (typeof input.depart_time === 'string' && /^\d{1,2}:\d{2}$/.test(input.depart_time))
       ? (String(parseInt(input.depart_time.split(':')[0], 10)).padStart(2, '0') + ':' + input.depart_time.split(':')[1])
       : (String(hour).padStart(2, '0') + ':00');
+    // "From here" replan (roadblock/detour): no explicit time means leave NOW — the user is
+    // already on the road, so never wait for a later favourable window and never snap the
+    // departure back to the start of the current double-hour (that would date it in the past).
+    if (input.from_current_position && !hasExplicitTime) {
+      var _now = new Date();
+      dateStr = todayIso();
+      timeStr = String(_now.getHours()).padStart(2, '0') + ':' + String(_now.getMinutes()).padStart(2, '0');
+      autoDepart = false;
+    }
     var dep = new Date(dateStr + 'T' + timeStr + ':00');
     if (isNaN(dep.getTime())) return { error: 'Invalid departure date/time.' };
     // When the time is auto-picked, scan the whole day for the favourable-windows summary.
@@ -2623,6 +2680,7 @@
     var dstOn = dstActiveOn(dep);   // auto-detect daylight saving for the departure date (device timezone)
     function hm(d) { return (d && d.getHours) ? (String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')) : null; }
     var opts = { depDate: dep, durationH: durH, dest: dest, utc: utc, dstOn: dstOn, stepMin: 30 };
+    if (input.from_current_position) opts.snapDepart = false;   // execute the real "now", not the hour start
     if (origin) opts.origin = origin;
     // Warm the XKDG hour-score cache for the trip day(s) so the itinerary's Hours rows
     // can show the XKDG marker. That cache is filled by the Bazi scanner, which a direct
@@ -2704,6 +2762,7 @@
     };
     if (openPlanner && origin && window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
       try {
+        if (input.from_current_position) { window._tpNoSnap = true; window._tpAutoDepart = false; }  // keep the exact "now" departure
         window.TravelPlanner.openPrefilled({
           originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
           destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
@@ -4215,6 +4274,8 @@
         noRoute: '\ud83d\udd0c Ricarica: rotta reale non disponibile (imposta il Worker e rifai lo SCAN)',
         failed: '\ud83d\udd0c Ricarica: ricerca non riuscita (controlla chiave/connessione)',
         openMaps: '\ud83d\udccd Apri in Google Maps', opened: '\u2713 Aperto in Google Maps', blocked: '\u26a0 Pop-up bloccato \u2014 usa \u201cApri in Google Maps\u201d nel pannello',
+        replan: '\ud83d\udd01 Ricalcola da qui', replanGps: '\ud83d\udccd Prendo il GPS\u2026', replanRun: '\u267b\ufe0f Ricalcolo\u2026',
+        replanStale: '\u26a0 GPS non fresco \u2014 uso l\u2019ultima posizione salvata', replanNoGps: '\u26a0 Nessuna posizione GPS disponibile', replanNoDest: '\u26a0 Destinazione non trovata \u2014 rifai lo SCAN nel pannello',
         exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a' },
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
         realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
@@ -4226,6 +4287,8 @@
         noRoute: '\ud83d\udd0c Charging: no real route yet (set the Worker and run SCAN again)',
         failed: '\ud83d\udd0c Charging: lookup failed (check key/connection)',
         openMaps: '\ud83d\udccd Open in Google Maps', opened: '\u2713 Opened in Google Maps', blocked: '\u26a0 Pop-up blocked \u2014 use \u201cOpen in Google Maps\u201d in the planner',
+        replan: '\ud83d\udd01 Replan from here', replanGps: '\ud83d\udccd Getting GPS\u2026', replanRun: '\u267b\ufe0f Replanning\u2026',
+        replanStale: '\u26a0 GPS fix failed \u2014 using the last saved position', replanNoGps: '\u26a0 No GPS position available', replanNoDest: '\u26a0 Destination not found \u2014 run SCAN in the planner first',
         exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near' },
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
         realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
@@ -4237,6 +4300,8 @@
         noRoute: '\ud83d\udd0c Recharge : pas d\u2019itin\u00e9raire r\u00e9el (r\u00e9glez le Worker et relancez SCAN)',
         failed: '\ud83d\udd0c Recharge : \u00e9chec (v\u00e9rifiez la cl\u00e9/connexion)',
         openMaps: '\ud83d\udccd Ouvrir dans Google Maps', opened: '\u2713 Ouvert dans Google Maps', blocked: '\u26a0 Pop-up bloqu\u00e9 \u2014 utilisez \u00ab Ouvrir dans Google Maps \u00bb dans le panneau',
+        replan: '\ud83d\udd01 Replanifier d\u2019ici', replanGps: '\ud83d\udccd Acquisition GPS\u2026', replanRun: '\u267b\ufe0f Recalcul\u2026',
+        replanStale: '\u26a0 Pas de fix GPS \u2014 derni\u00e8re position enregistr\u00e9e utilis\u00e9e', replanNoGps: '\u26a0 Aucune position GPS disponible', replanNoDest: '\u26a0 Destination introuvable \u2014 relancez SCAN dans le panneau',
         exit: 'Sortie', quad: 'quadrant', limit: 'limite', near: 'pr\u00e8s de' }
     };
     function chatLang() {
@@ -4554,6 +4619,42 @@
         else mapsBtn.textContent = L.opened;
       });
       wrap.appendChild(mapsBtn);
+      // "Replan from here" — roadblock/detour rescue. Takes a FRESH GPS fix, keeps the
+      // destination + EV parameters already in the planner, departs NOW (exact minute, no
+      // double-hour snap: the hour start would lie in the past) and re-runs the plan. The
+      // new itinerary posts itself into the chat as usual.
+      var replanBtn = elc('button', { style:
+        'margin-top:6px;width:100%;padding:9px;border:1px solid #e65100;border-radius:8px;background:#fff;color:#e65100;font-size:13px;font-weight:600;cursor:pointer;' }, L.replan);
+      replanBtn.addEventListener('click', function () {
+        function num(id) { var e = document.getElementById(id); return e ? parseFloat(e.value) : NaN; }
+        var dLat = num('tp-dlat'), dLon = num('tp-dlon');
+        if (!isFinite(dLat) || !isFinite(dLon)) { replanBtn.textContent = L.replanNoDest; return; }
+        replanBtn.textContent = L.replanGps; replanBtn.disabled = true;
+        freshGps(12000).then(function (pos) {
+          if (!pos) { replanBtn.textContent = L.replanNoGps; replanBtn.disabled = false; return; }
+          if (!pos.fresh) { try { addBubble('assistant', L.replanStale); } catch (e) {} }
+          replanBtn.textContent = L.replanRun;
+          var now = new Date();
+          var range = num('tp-range'), reserve = num('tp-reserve'), utcv = num('tp-utc');
+          try { window._tpNoSnap = true; window._tpAutoDepart = false; } catch (e) {}
+          try {
+            window.TravelPlanner.openPrefilled({
+              originLat: pos.lat, originLon: pos.lon, originName: 'Current position (GPS)',
+              destLat: dLat, destLon: dLon,
+              destName: (window._tpNames && window._tpNames.dest) || payload.dest || null,
+              departDate: now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'),
+              departTime: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
+              autoDepart: false,
+              utc: isFinite(utcv) ? utcv : undefined,
+              dst: (typeof dstActiveOn === 'function') ? dstActiveOn(now) : undefined,
+              rangeKm: isFinite(range) ? range : null,
+              reserveKm: isFinite(reserve) ? reserve : null,
+              run: true
+            });
+          } catch (e) { replanBtn.textContent = '\u26a0 ' + ((e && e.message) || 'error'); }
+        });
+      });
+      wrap.appendChild(replanBtn);
       msgs.appendChild(wrap);
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
