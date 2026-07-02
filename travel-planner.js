@@ -1118,7 +1118,12 @@
     var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
       'lat=' + opts.lat + '&lon=' + opts.lon +
       '&radius=' + Math.round((opts.radiusKm || 100) * 1000) +
-      '&max=' + (opts.maxResults || 80);
+      '&max=' + (opts.maxResults || 80) +
+      // FAST ONLY: without this, TomTom fills the result limit with the NEAREST
+      // stations — near towns those are dozens of 11-22 kW urban posts, and the
+      // 300 kW motorway hubs (Electra!) never make the list. >= TP_MIN_KW2 keeps
+      // every returned slot useful for trip charging.
+      '&minkw=' + TP_MIN_KW2;
     var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     var to = ctrl ? setTimeout(function () { ctrl.abort(); }, 15000) : null;
     return fetch(url, { signal: ctrl ? ctrl.signal : undefined })
@@ -5535,9 +5540,10 @@
         }
         var pick;
         if (preferredOnly) {
-          // Only ever a preferred-brand charger; no fallback to other operators.
-          pick = bestBy(pref, TP_MIN_KW) || bestBy(pref, TP_MIN_KW2) ||
-                 pref.slice().sort(function (a, b) { return dist(a) - dist(b); })[0] || null;
+          // Only ever a preferred-brand charger, and only FAST tiers: a nearest-any-power
+          // fallback here picked 11 kW Destination Chargers (20 min ≈ 4 km of range —
+          // useless on a trip). Better no charger (plain stopover) than a slow one.
+          pick = bestBy(pref, TP_MIN_KW) || bestBy(pref, TP_MIN_KW2) || null;
         } else {
           pick = bestBy(pref, TP_MIN_KW) || bestBy(pool, TP_MIN_KW) ||
                  bestBy(pref, TP_MIN_KW2) || bestBy(pool, TP_MIN_KW2) ||
