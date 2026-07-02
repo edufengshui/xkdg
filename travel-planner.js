@@ -2369,6 +2369,7 @@
             }
             function te(list) { return list.filter(function (r) { return r.isPref; }); }
             function keep(list) { return list.filter(preservesScore); }     // score-preserving subset
+            function notPos(list) { return list.filter(function (r) { return !preservesScore(r); }); }  // restart window NOT fortunate
             // Try, in priority order, returning the first non-empty pick with flags.
             function tryTier(list, opts) {
               var row = closest(list);
@@ -2376,19 +2377,23 @@
             }
             var p1 = pool(TP_MIN_KW), p2 = pool(TP_MIN_KW2);
             var t1 = te(p1), t2 = te(p2);
+            // POWER RULE (Edu): the plan is built on 20-minute stops, which REQUIRES
+            // >=150 kW. A slower charger (80-149 kW) needs a much longer charge and
+            // would wreck the hour plan — EXCEPT when the restart window is NOT
+            // fortunate: nothing is cashed by leaving quickly, so a longer charge
+            // costs nothing (it even waits out the bad window). So the 80+ tier is
+            // only ever offered on non-fortunate windows.
             return (
-              // 1. preferred + score-preserving
+              // 1. preferred, fast, score-preserving
               tryTier(keep(t1), { kept: true }) ||
-              tryTier(keep(t2), { kept: true, low: true }) ||
-              // 2. preferred, any slot
+              // 2. preferred, fast, any window
               tryTier(t1, {}) ||
-              tryTier(t2, { low: true }) ||
-              // 3. other networks + score-preserving  (skipped when preferredOnly, t.. == pool)
+              // 3. preferred, 80+ kW, ONLY on a non-fortunate restart window (longer charge OK)
+              tryTier(notPos(t2), { low: true }) ||
+              // 4-6. other networks, same ladder (empty when preferredOnly: te == pool)
               tryTier(keep(p1), { kept: true, fb: true }) ||
-              tryTier(keep(p2), { kept: true, low: true, fb: true }) ||
-              // 4. other networks, any slot
               tryTier(p1, { fb: true }) ||
-              tryTier(p2, { low: true, fb: true }) ||
+              tryTier(notPos(p2), { low: true, fb: true }) ||
               null
             );
           }
@@ -2442,7 +2447,7 @@
             ? ' \u2014 opened to other networks to keep you moving; ' + brokeCount + ' stop' + (brokeCount === 1 ? '' : 's') + ' may lower the trip score.'
             : (brokeCount > 0 ? ' \u2014 ' + brokeCount + ' stop' + (brokeCount === 1 ? '' : 's') + ' fall in a less favourable hour.' : '');
           status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' along the route (every \u2248' + Math.round(usableKm) + ' km)' +
-            (anyLow ? ' (\u2265' + TP_MIN_KW2 + ' kW - no \u2265' + TP_MIN_KW + ' kW found)' : '') +
+            (anyLow ? ' (a stop uses ' + TP_MIN_KW2 + '\u2013' + TP_MIN_KW + ' kW on a non-fortunate window \u2014 longer charge there costs nothing)' : '') +
             (anyFb ? ' (other networks)' : '') +
             _openedNote +
             (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.';
@@ -5540,10 +5545,11 @@
         }
         var pick;
         if (preferredOnly) {
-          // Only ever a preferred-brand charger, and only FAST tiers: a nearest-any-power
-          // fallback here picked 11 kW Destination Chargers (20 min ≈ 4 km of range —
-          // useless on a trip). Better no charger (plain stopover) than a slow one.
-          pick = bestBy(pref, TP_MIN_KW) || bestBy(pref, TP_MIN_KW2) || null;
+          // Only a preferred-brand FAST charger (>=150 kW). A cash stop's restart is
+          // fortunate BY CONSTRUCTION (the stop exists to cash that direction), so the
+          // 20-minute plan is rigid here: no 80 kW tier, no slow Destination Chargers.
+          // Better a plain stopover than a charge that wrecks the hour plan.
+          pick = bestBy(pref, TP_MIN_KW) || null;
         } else {
           pick = bestBy(pref, TP_MIN_KW) || bestBy(pool, TP_MIN_KW) ||
                  bestBy(pref, TP_MIN_KW2) || bestBy(pool, TP_MIN_KW2) ||
