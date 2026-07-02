@@ -4330,6 +4330,20 @@
     function stopKindIcon(k) {
       return k === 'charger' ? '\ud83d\udd0c ' : (k === 'fuel' ? '\u26fd ' : ((k === 'services' || k === 'rest_area' || k === 'parking') ? '\ud83c\udd7f\ufe0f ' : ''));
     }
+    // PINK = a stop where you ACTUALLY plug in (a planned range charge, or a cash stop
+    // snapped to a preferred fast charger). Plain cash/rest stops stay unpainted, so
+    // the real charging stops jump out at a glance. Re-applied on every async update
+    // (the charger name arrives after the itinerary is first drawn).
+    function paintChargeRow(rowEl, it) {
+      try {
+        if (!rowEl || !it) return;
+        var isCharge = (it.kind === 'charge') || (it.stopKind === 'charger');
+        rowEl.style.background = isCharge ? '#fdeef4' : '';
+        rowEl.style.borderLeft = isCharge ? '3px solid #e91e63' : '';
+        rowEl.style.borderRadius = isCharge ? '7px' : '';
+        rowEl.style.padding = isCharge ? '3px 6px 3px 4px' : '';
+      } catch (e) {}
+    }
     function stopLineText(L, it) {
       var what = (it.kind === 'charge') ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min)
                                         : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
@@ -4486,7 +4500,7 @@
       var body = elc('div', { style: 'display:block;margin-top:4px;' });
       // Legend: what the colours and the stars mean (stars match the route list above).
       body.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin:2px 0 4px;padding:0 2px;line-height:1.4;' },
-        '\u2b50 favourable hour \u00b7 \u2b50\u2b50 best of the trip \u00b7 green = cash stop \u00b7 yellow = detour \u00b7 grey = no favourable window'));
+        '\u2b50 favourable hour \u00b7 \u2b50\u2b50 best of the trip \u00b7 green = cash stop \u00b7 yellow = detour \u00b7 grey = no favourable window \u00b7 pink row above = you plug in there'));
       head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
       hours.forEach(function (h) {
         var isCash = (h.kind === 'cash'), isDetour = (h.kind === 'detour');
@@ -4626,13 +4640,14 @@
           var letter = stopLetters[si]; si++;
           stepList.push({ kind: 'stop', at: it.at, letter: letter });
           var pl = ptLine(letter, '#1565c0', stopLineText(L, it));
+          paintChargeRow(pl.row, it);
           var _st = _starFor(letter);
           if (_st) pl.row.appendChild(elc('span', { style: 'flex:none;margin-left:4px;font-size:13px;' }, _st));
           listEl.appendChild(pl.row);
           var _meta = elc('div', { style: 'margin:1px 0 5px 25px;font-size:12px;line-height:1.35;' });
           fillStopMeta(_meta, it);
           listEl.appendChild(_meta);
-          _itinStopEls.push({ el: pl.tx, it: it, meta: _meta });
+          _itinStopEls.push({ el: pl.tx, row: pl.row, it: it, meta: _meta });
         }
       });
       wrap.appendChild(listEl);
@@ -5221,7 +5236,7 @@
     function updateItineraryStops() {
       try {
         var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
-        _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); if (s.meta && s.it) fillStopMeta(s.meta, s.it); });
+        _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); if (s.row && s.it) paintChargeRow(s.row, s.it); if (s.meta && s.it) fillStopMeta(s.meta, s.it); });
         msgs.scrollTop = msgs.scrollHeight;
       } catch (e) {}
     }
