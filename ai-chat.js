@@ -1338,10 +1338,11 @@
               'and give me ONE best hour FOR EACH house (a separate result for each), with the date and the reason. At the end, restore the house that was active at the start.'
       }];
     }
-    // Seed / refresh the built-in macros (aquarium "aq" + Vienna<->Tuoro travel tests VT / TV).
-    // Bumping the version below re-seeds them in English, replacing any older Italian copies (now v5).
+    // Seed / refresh the built-in macros (aquarium "aq" + Vienna<->Tuoro travel tests VT / TV
+    // + GPS-origin variants GT / GV: same destinations, but departing from the CURRENT position).
+    // Bumping the version below re-seeds them in English, replacing any older copies (now v6).
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '5') {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '6') {
         var seed = [
           {
             trigger: 'aq',
@@ -1366,12 +1367,26 @@
                   'Use these EXACT coordinates and names: ' +
                   'origin_name "Tuoro sul Trasimeno", origin_lat 43.2074, origin_lon 12.0772; ' +
                   'dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738.'
+          },
+          {
+            trigger: 'GT', icon: '🛰', askDepart: true,
+            label: 'My position → Tuoro (GPS origin)',
+            text: 'Car trip from MY CURRENT POSITION to Tuoro sul Trasimeno (Italy). ' +
+                  'In plan_travel set from_current_position: true (acquire a FRESH GPS fix as the origin; do NOT use a saved or generic origin). ' +
+                  'Destination EXACT: dest_name "Tuoro sul Trasimeno", dest_lat 43.2074, dest_lon 12.0772.'
+          },
+          {
+            trigger: 'GV', icon: '🛰', askDepart: true,
+            label: 'My position → Vienna (GPS origin)',
+            text: 'Car trip from MY CURRENT POSITION to Vienna (Austria). ' +
+                  'In plan_travel set from_current_position: true (acquire a FRESH GPS fix as the origin; do NOT use a saved or generic origin). ' +
+                  'Destination EXACT: dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738.'
           }
         ];
-        // Replace any earlier aq/VT/TV, then append the current English definitions.
-        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq'; });
+        // Replace any earlier aq/VT/TV/GT/GV, then append the current English definitions.
+        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv'; });
         seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '5');
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '6');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}

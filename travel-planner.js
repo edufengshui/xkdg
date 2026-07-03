@@ -312,7 +312,16 @@
     var b = document.getElementById('tp-maps-open');
     var url = b && b._url;
     if (!url) return { ok: false, reason: 'no_itinerary', note: 'No computed itinerary yet — plan a trip first.' };
-    if (navigate) { try { window.location.href = url; } catch (e) {} return { ok: true, navigated: true, url: url }; }
+    if (navigate) {
+      // NAVIGATION (sent to the car): drop the PLANNED origin from the URL. Google Maps
+      // then starts from "your location" — the car's REAL position — so the navigator
+      // locks onto the route immediately. With a fixed generic origin (e.g. Vienna city
+      // centre) the Polestar received a route starting where the car was NOT, and did
+      // not recognise it. The inspect link (navigate=false) keeps the planned origin.
+      var navUrl = url.replace(/([?&])origin=[^&]*&?/, '$1').replace(/[?&]$/, '');
+      try { window.location.href = navUrl; } catch (e) {}
+      return { ok: true, navigated: true, url: navUrl };
+    }
     var w = null; try { w = window.open(url, '_blank'); } catch (e) {}
     if (!w) { try { window.location.href = url; } catch (e) {} return { ok: true, navigated: true, url: url }; }
     return { ok: true, opened: true, url: url };
@@ -639,6 +648,12 @@
   var TP_DETOUR_BUDGET_TOTAL = 0.30; // max extra REAL road time for ALL chained detours combined
   var TP_XKDG_WEIGHT = 0.5;          // weight of the GRADED XKDG/person hour score (slot.hourScore: Blood Link/Family/Pure Qi...) when the direction is ALSO favourable
   var TP_XKDG_ONLY_WEIGHT = 0.25;    // smaller weight when the hour is XKDG-positive but the DIRECTION is not (beats a dead hour; flags a detour candidate)
+  // ARRIVAL CASH (domain rule, Edu): reaching the DESTINATION inside a window whose
+  // gated favourable direction matches the OVERALL origin→destination direction is a
+  // cash in itself — worth MORE than a road-side cash stop. No stop and no margin is
+  // required: arriving within the window is enough. This multiplier scales that
+  // direction's score above a normal (1.0×) cash stop.
+  var TP_ARRIVAL_CASH_MULT = 1.5;
 
   // Great-circle projection: point at distance km on bearing from (lat,lon)
   function tpProject(lat, lon, bearingDeg, km) {
@@ -2896,13 +2911,27 @@
           lines.splice(1, 0, favSummary);
         }
       } catch (eS) {}
+      // ARRIVAL CASH line (domain rule): if the arrival falls inside a window whose
+      // favourable directions include the overall origin→destination direction, say
+      // so explicitly — it outranks a road cash stop and explains departure choices.
+      var arrivalCashNote = null;
+      try {
+        var _lastS = result.slots && result.slots[result.slots.length - 1];
+        if (_lastS && result.snapDir) {
+          var _ad = (_lastS.dirs || []).filter(function (x) { return x.dir === result.snapDir; })[0];
+          if (_ad && _ad.eval && _ad.eval.ok) {
+            arrivalCashNote = '\u2605 ARRIVAL CASH: you reach the destination INSIDE a favourable window (direction ' + result.snapDir + ') \u2014 stronger than a road cash stop.';
+            lines.splice(1, 0, arrivalCashNote);
+          }
+        }
+      } catch (eA) {}
       window._tpLastResult = {
         stamp: Date.now(),
         origin: result.origin.name || null, dest: result.dest.name || null,
         bearing: Math.round(result.bearing), snapped: result.snapDir,
         real_route: !!result.usedRealRoute, km: rm.km ? Math.round(rm.km) : null, driving_time: drive,
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
-        fav_summary: favSummary,
+        fav_summary: favSummary, arrival_cash_note: arrivalCashNote,
         exits: exits, hours: hours,
         text: lines.join('\n')
       };
@@ -4489,6 +4518,30 @@
       });
     } catch (e) { return null; }
     if (!probe || !probe.slots || !probe.slots.length) return null;
+    // Driving time estimate for THIS trip: needed to know in which window the ARRIVAL
+    // falls for each candidate departure (arrival cash — domain rule).
+    var _driveH = (route && route.durationSec) ? (route.durationSec / 3600)
+                : (tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon) / 72);
+    var _overall = probe.snapDir || null;   // overall origin→destination direction (8-wind snap)
+    function _arrivalBonus(depSlot) {
+      // ARRIVAL CASH: if the window containing the (estimated) arrival lists the
+      // OVERALL direction among its gated favourable directions, add its score
+      // × TP_ARRIVAL_CASH_MULT — reaching the destination inside a favourable
+      // window is worth MORE than a favourable departure. Arriving is enough.
+      try {
+        if (!_overall) return 0;
+        var arrMs = depSlot.wallStart.getTime() + _driveH * 3600000;
+        for (var i = 0; i < probe.slots.length; i++) {
+          var s = probe.slots[i];
+          var a = s.wallStart ? s.wallStart.getTime() : null, b = s.wallEnd ? s.wallEnd.getTime() : null;
+          if (a == null || b == null || arrMs < a || arrMs >= b) continue;
+          var d = (s.dirs || []).filter(function (x) { return x.dir === _overall; })[0];
+          if (d && d.eval && d.eval.ok) return ((d.combined != null) ? d.combined : (d.eval.score || 0)) * TP_ARRIVAL_CASH_MULT;
+          return 0;
+        }
+      } catch (e) {}
+      return 0;
+    }
     var best = null, bestHourOnly = null, earliest = null;
     probe.slots.forEach(function (slot) {
       var h = slot.wallStart.getHours();
@@ -4497,16 +4550,23 @@
       if (!earliest) earliest = slot;
       var hs = (slot.hourScore != null) ? slot.hourScore : -Infinity;
       if (!bestHourOnly || hs > bestHourOnly._hs) { bestHourOnly = slot; bestHourOnly._hs = hs; }
+      var arrB = _arrivalBonus(slot);
       if (strict) {
         // ABSOLUTE RULE: the EXACT travel direction's door must be favourable at departure.
         var de = tpDirExact(slot, slot.bearingDest);
         if (!de || !de.eval || !de.eval.ok) return;   // unfavourable door in the travel direction -> not allowed
-        var scs = (de.combined != null) ? de.combined : 0;
+        var scs = ((de.combined != null) ? de.combined : 0) + arrB;   // arrival cash on top, after the gate
         if (!best || scs > best._sc) { best = slot; best._sc = scs; }
       } else {
         var bd = tpBestDirToward(slot, slot.bearingDest);
         var sc = (bd && bd.combined != null) ? bd.combined : null;
-        if (sc != null) { if (!best || sc > best._sc) { best = slot; best._sc = sc; } }
+        // A candidate qualifies if the DEPARTURE is favourable OR the ARRIVAL cashes:
+        // a short trip that lands inside a favourable window is a valid (often the
+        // best) plan even when the departure hour itself offers nothing.
+        if (sc != null || arrB > 0) {
+          var tot = ((sc != null) ? sc : 0) + arrB;
+          if (!best || tot > best._sc) { best = slot; best._sc = tot; }
+        }
       }
     });
     // strict: NO fallback to an unfavourable hour — if nothing qualifies, there is no valid departure.
@@ -4561,9 +4621,24 @@
         if (xkPositive(last) && xkScore(last) != null) arrivalScore += xkScore(last) * TP_XKDG_WEIGHT;
       }
     }
+    // ARRIVAL CASH (domain rule): ALWAYS counted, in every mode. If the window the
+    // ARRIVAL falls in has the OVERALL origin→destination direction (result.snapDir)
+    // among its gated favourable directions, the trip cashes the arrival itself —
+    // worth MORE than a road cash stop (× TP_ARRIVAL_CASH_MULT). Arriving within the
+    // window is enough: no stop, no margin.
+    var arrCash = 0, arrCashDir = null;
+    (function () {
+      var lastS = slots[slots.length - 1];
+      var overall = result && result.snapDir;
+      if (!lastS || !overall) return;
+      var d = (lastS.dirs || []).filter(function (x) { return x.dir === overall; })[0];
+      if (d && d.eval && d.eval.ok) { arrCash = (d.eval.score || 0) * TP_ARRIVAL_CASH_MULT; arrCashDir = overall; }
+    })();
     var rnd = function (n) { return Math.round(n * 10) / 10; };
     return { total_cash: cash, xkdg_bonus: rnd(xkBonus), cash_hours: cashHours, xkdg_hours: xkdgHours,
-             total_hours: slots.length, arrival_score: arrivalScore, score: rnd(cash + xkBonus + arrivalScore) };
+             total_hours: slots.length, arrival_score: arrivalScore,
+             arrival_cash: rnd(arrCash), arrival_cash_dir: arrCashDir,
+             score: rnd(cash + xkBonus + arrivalScore + arrCash) };
   }
 
   // Scan `days` days from startDate; for every double-hour departure in the daytime
