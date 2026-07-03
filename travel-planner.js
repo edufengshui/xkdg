@@ -4810,6 +4810,25 @@
   var _cmpHeading = null;        // travel heading in degrees (derived or GPS)
   var _cmpSpeedKmh = null;       // travel speed (km/h), null if unknown
   var _cmpOrigin = null;         // autonomous reference {lat, lon, name}; null -> trip-based
+  // 🎯 DESTINATION (address → geocoded): shows the CONSTANT rhumb-line bearing to
+  // follow from the CURRENT position, live. Persisted so it survives reloads in the car.
+  var _cmpDest = null;           // {lat, lon, name} or null
+  try { var _cmpDs = localStorage.getItem('xkdg_cmp_dest'); if (_cmpDs) _cmpDest = JSON.parse(_cmpDs); } catch (e) {}
+  function cmpSaveDest() { try { if (_cmpDest) localStorage.setItem('xkdg_cmp_dest', JSON.stringify(_cmpDest)); else localStorage.removeItem('xkdg_cmp_dest'); } catch (e) {}
+  }
+  // Loxodromic (rhumb-line) bearing: the CONSTANT heading from A to B — the same
+  // definition the flight Direction Calculator uses. On the web-mercator map a
+  // straight line IS the rhumb line, so the dashed you→destination line below is
+  // exactly this constant course drawn on the map.
+  function tpRhumbBearing(lat1, lon1, lat2, lon2) {
+    var f1 = lat1 * Math.PI / 180, f2 = lat2 * Math.PI / 180;
+    var dL = (lon2 - lon1) * Math.PI / 180;
+    if (Math.abs(dL) > Math.PI) dL = (dL > 0) ? (dL - 2 * Math.PI) : (dL + 2 * Math.PI);
+    var dPsi = Math.log(Math.tan(Math.PI / 4 + f2 / 2) / Math.tan(Math.PI / 4 + f1 / 2));
+    var th = Math.atan2(dL, dPsi) * 180 / Math.PI;
+    return (th + 360) % 360;
+  }
+  var _cmpPanelFull = false, _cmpPanelCss = null;   // whole-panel fullscreen (distinct from the map-only Expand)
   var _cmpExit = null;           // last predicted exit {lat, lon, fromQ, toQ, distKm, etaMin}
   var _cmpExitName = null;       // reverse-geocoded name of the predicted exit
   var _cmpExitNameAt = null;     // {lat, lon} the cached name was fetched for
@@ -4929,16 +4948,25 @@
         L.marker([exit.lat, exit.lon]).addTo(_cmpMapLayer)
           .bindTooltip('Exit ' + exit.fromQ + '→' + exit.toQ + ' · ' + (exit.distKm < 10 ? exit.distKm.toFixed(1) : Math.round(exit.distKm)) + ' km', { permanent: false });
       }
+      // 🎯 Destination marker + dashed CONSTANT-course line (a straight segment on
+      // the web-mercator map IS the rhumb line: what you see is what you steer).
+      if (_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon)) {
+        L.circleMarker([_cmpDest.lat, _cmpDest.lon], { radius: 6, color: '#7b1fa2', weight: 2, fillColor: '#7b1fa2', fillOpacity: 1 })
+          .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfaf ' + (_cmpDest.name || 'Destination'), { permanent: false });
+        L.polyline([[pos.lat, pos.lon], [_cmpDest.lat, _cmpDest.lon]], { color: '#7b1fa2', weight: 2, opacity: 0.85, dashArray: '6,6' }).addTo(_cmpMapLayer);
+      }
       // Frame the scene (only while following, and only once per scene change).
       if (_cmpMapFollow && !_cmpMapFitted) {
         var b = L.latLngBounds([[ref.lat, ref.lon], [pos.lat, pos.lon]]);
         if (exit) b.extend([exit.lat, exit.lon]);
+        if (_cmpDest) b.extend([_cmpDest.lat, _cmpDest.lon]);
         try { _cmpMap.fitBounds(b, { padding: [24, 24], maxZoom: 14, animate: false }); } catch (e) {}
         _cmpMapFitted = true;
       } else if (_cmpMapFollow) {
         // keep you in view without changing zoom abruptly
         var b2 = L.latLngBounds([[ref.lat, ref.lon], [pos.lat, pos.lon]]);
         if (exit) b2.extend([exit.lat, exit.lon]);
+        if (_cmpDest) b2.extend([_cmpDest.lat, _cmpDest.lon]);
         if (!_cmpMap.getBounds().contains([pos.lat, pos.lon])) {
           try { _cmpMap.fitBounds(b2, { padding: [24, 24], maxZoom: 14, animate: false }); } catch (e) {}
         }
@@ -5089,6 +5117,26 @@
     }
     html += '</div>';
 
+    // 🎯 DESTINATION: the CONSTANT (rhumb-line) bearing to follow from HERE to the
+    // destination — the same definition the flight Direction Calculator uses, now
+    // for any geocoded address. Recomputed on every GPS fix; when your travel
+    // heading is known, the delta tells you how far off the constant course you are.
+    if (_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon)) {
+      var rb = tpRhumbBearing(pos.lat, pos.lon, _cmpDest.lat, _cmpDest.lon);
+      var rq = tpQ8(rb);
+      var rdKm = tpHaversineKm(pos.lat, pos.lon, _cmpDest.lat, _cmpDest.lon);
+      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:13px;text-align:left;">' +
+        '\ud83c\udfaf <b>' + (_cmpDest.name || 'Destination') + '</b>: <b style="color:#7b1fa2;font-size:16px;">' + Math.round(rb) + '\u00b0 ' + rq + '</b>' +
+        ' \u00b7 ' + (rdKm < 10 ? rdKm.toFixed(1) : Math.round(rdKm)) + ' km <span style="color:#888;">(constant course)</span>';
+      if (_cmpHeading != null && isFinite(_cmpHeading)) {
+        var dHead = ((rb - _cmpHeading + 540) % 360) - 180;   // signed: + = steer right, - = steer left
+        var absH = Math.abs(Math.round(dHead));
+        if (absH <= 8) html += '<div style="color:#1b6e2f;font-size:12px;margin-top:2px;">\u2713 On course (\u0394 ' + absH + '\u00b0).</div>';
+        else html += '<div style="color:#b58900;font-size:12px;margin-top:2px;">Steer ' + (dHead > 0 ? 'RIGHT' : 'LEFT') + ' ~' + absH + '\u00b0 to the constant course.</div>';
+      }
+      html += '</div>';
+    }
+
     // PREDICTION: where you cross out of the current quadrant.
     var exit = cmpPredictExit(ref, pos, _cmpHeading);
     _cmpExit = exit;
@@ -5195,6 +5243,42 @@
     });
   }
   function tpCmpClearOrigin() { _cmpOrigin = null; _cmpExitName = null; _cmpExitNameAt = null; _cmpMapFitted = false; cmpUpdateRefLabel(); tpCmpRender(); }
+  // Set the DESTINATION to a named place / address (same geocoder as the origin).
+  function tpCmpSetDest(name) {
+    if (!name || !String(name).trim()) return Promise.resolve(null);
+    return _tpResolvePlace(String(name).trim(), null, null).then(function (g) {
+      if (!g) return null;
+      _cmpDest = { lat: g.lat, lon: g.lon, name: String(name).trim() };
+      cmpSaveDest(); _cmpMapFitted = false; tpCmpRender();
+      return { lat: g.lat, lon: g.lon, name: _cmpDest.name };
+    });
+  }
+  function tpCmpClearDest() { _cmpDest = null; cmpSaveDest(); _cmpMapFitted = false; tpCmpRender(); }
+  // Whole-panel FULLSCREEN (for in-car reading): the entire Live compass — readout,
+  // controls and map — fills the screen; the map stretches to the remaining height.
+  // Pseudo-fullscreen via CSS (works everywhere incl. iPhone PWA, unlike the
+  // Fullscreen API). Distinct from the map-only ⛶ Expand, which stays as is.
+  function cmpSetPanelFull(full) {
+    var ov = document.getElementById('tp-cmp-ov'); if (!ov) return;
+    _cmpPanelFull = !!full;
+    var mapWrap = document.getElementById('tp-cmp-map-wrap');
+    var mapHost = document.getElementById('tp-cmp-map');
+    var fsBtn = document.getElementById('tp-cmp-full');
+    if (_cmpPanelFull) {
+      if (_cmpPanelCss == null) _cmpPanelCss = ov.style.cssText;   // save to restore verbatim
+      ov.style.cssText = 'position:fixed;inset:0;z-index:99999;width:auto;height:100dvh;background:#fff;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;overflow:auto;';
+      if (mapWrap) { mapWrap.style.flex = '1 1 auto'; mapWrap.style.display = 'flex'; mapWrap.style.flexDirection = 'column'; mapWrap.style.minHeight = '180px'; }
+      if (mapHost) { mapHost.style.flex = '1 1 auto'; mapHost.style.height = 'auto'; mapHost.style.minHeight = '160px'; }
+      if (fsBtn) { fsBtn.textContent = '\ud83d\uddd7'; fsBtn.title = 'Exit full screen'; }
+    } else {
+      if (_cmpPanelCss != null) { ov.style.cssText = _cmpPanelCss; _cmpPanelCss = null; }
+      if (mapWrap) { mapWrap.style.flex = ''; mapWrap.style.display = ''; mapWrap.style.flexDirection = ''; mapWrap.style.minHeight = ''; }
+      if (mapHost) { mapHost.style.flex = ''; mapHost.style.height = '150px'; mapHost.style.minHeight = ''; }
+      if (fsBtn) { fsBtn.textContent = '\u26f6'; fsBtn.title = 'Full screen'; }
+    }
+    _cmpMapFitted = false;
+    setTimeout(function () { try { if (_cmpMap) _cmpMap.invalidateSize(); } catch (e) {} cmpRenderMap(); }, 80);
+  }
   function cmpUpdateRefLabel() {
     var lbl = document.getElementById('tp-cmp-ref-label'); if (!lbl) return;
     if (_cmpOrigin) lbl.innerHTML = 'Origin: <b>' + (_cmpOrigin.name || 'here') + '</b> · <span id="tp-cmp-clear" style="color:#1565c0;cursor:pointer;text-decoration:underline;">clear</span>';
@@ -5219,11 +5303,13 @@
         if (on) tpSpeak({ it: 'Voce attivata.', en: 'Voice on.', fr: 'Voix activ\u00e9e.' }[tpCmpLang()]);
         else if (window.speechSynthesis) window.speechSynthesis.cancel();
       });
+      var fullBtn = el('button', { id: 'tp-cmp-full', type: 'button', title: 'Full screen', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;' }, '\u26f6');
+      fullBtn.addEventListener('click', function () { cmpSetPanelFull(!_cmpPanelFull); });
       var cls = el('button', { type: 'button', title: 'Close', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;' }, '\u00d7');
       refBtn.addEventListener('click', function () { _tpRefMode = (_tpRefMode === 'origin') ? 'auto' : 'origin'; refBtn.textContent = (_tpRefMode === 'origin') ? 'Origin' : 'Auto'; tpCmpRender(); });
       refr.addEventListener('click', tpCmpRefreshOnce);
       cls.addEventListener('click', function () { tpCloseCompass(); });
-      head.appendChild(refBtn); head.appendChild(vox); head.appendChild(refr); head.appendChild(cls);
+      head.appendChild(refBtn); head.appendChild(vox); head.appendChild(refr); head.appendChild(fullBtn); head.appendChild(cls);
       ov.appendChild(head);
 
       ov.appendChild(el('div', { id: 'tp-cmp-body', style: 'padding:12px;text-align:center;color:#222;' }));
@@ -5247,6 +5333,28 @@
       nameInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSet(); } });
       row.appendChild(hereBtn); row.appendChild(nameInp); row.appendChild(setBtn);
       ctrl.appendChild(row);
+      // 🎯 DESTINATION row: address → geocode → constant rhumb-line bearing to follow,
+      // shown live in the readout (same "constant heading" the flight calculator uses).
+      var drow = el('div', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px;' });
+      var destInp = el('input', { id: 'tp-cmp-dest', type: 'text', placeholder: '\ud83c\udfaf To a place\u2026 (destination)', value: (_cmpDest && _cmpDest.name) || '', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
+      var destSet = el('button', { type: 'button', style: 'flex:0 0 auto;background:#7b1fa2;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Set');
+      var destClr = el('button', { type: 'button', title: 'Clear destination', style: 'flex:0 0 auto;background:#eee;color:#555;border:0;border-radius:7px;padding:6px 8px;font-size:12px;cursor:pointer;' }, '\u2715');
+      function doSetDest() {
+        var v = destInp.value;
+        if (!v || !v.trim()) return;
+        destSet.textContent = '\u2026';
+        tpCmpStart();
+        tpCmpSetDest(v).then(function (r) {
+          destSet.textContent = 'Set';
+          var lbl2 = document.getElementById('tp-cmp-ref-label');
+          if (!r && lbl2) lbl2.textContent = 'Destination not found.';
+        });
+      }
+      destSet.addEventListener('click', doSetDest);
+      destInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSetDest(); } });
+      destClr.addEventListener('click', function () { destInp.value = ''; tpCmpClearDest(); });
+      drow.appendChild(destInp); drow.appendChild(destSet); drow.appendChild(destClr);
+      ctrl.appendChild(drow);
       ov.appendChild(ctrl);
 
       // Mini map + expand button.
@@ -5289,15 +5397,25 @@
     switch (action) {
       case 'open': tpOpenCompass(); tpCmpStart(); return { ok: true, action: 'open' };
       case 'close': tpCloseCompass(); return { ok: true, action: 'close' };
-      case 'expand': case 'enlarge': case 'big': case 'fullscreen':
+      case 'expand': case 'enlarge': case 'big':
         tpOpenCompass(); tpCmpStart(); tpCmpRefreshOnce(); cmpSetMapBig(true); return { ok: true, action: 'expand' };
-      case 'collapse': case 'shrink': case 'small': cmpSetMapBig(false); return { ok: true, action: 'collapse' };
+      case 'fullscreen': case 'full_screen': case 'full':
+        tpOpenCompass(); tpCmpStart(); tpCmpRefreshOnce(); cmpSetPanelFull(true); return { ok: true, action: 'fullscreen' };
+      case 'exit_fullscreen': case 'windowed': cmpSetPanelFull(false); return { ok: true, action: 'exit_fullscreen' };
+      case 'collapse': case 'shrink': case 'small': cmpSetMapBig(false); cmpSetPanelFull(false); return { ok: true, action: 'collapse' };
+      case 'clear_destination': case 'clear_dest': tpCmpClearDest(); return { ok: true, action: 'clear_destination' };
       case 'clear': case 'clear_origin': case 'reset_origin': tpCmpClearOrigin(); return { ok: true, action: 'clear_origin' };
       case 'refresh': case 'recalculate': case 'recompute': tpCmpRefreshOnce(); return { ok: true, action: 'refresh' };
       case 'recenter': case 'center': case 'follow_on':
         _cmpMapFollow = true; _cmpMapFitted = false; cmpRenderMap(); return { ok: true, action: 'recenter' };
       case 'follow_off': case 'free': _cmpMapFollow = false; cmpRenderMap(); return { ok: true, action: 'follow_off' };
-      default: return { error: 'Unknown compass action: ' + action };
+      default:
+        // 'destination:<name or address>' — set the 🎯 destination by voice/AI.
+        if (action.indexOf('destination:') === 0) {
+          var _dn = action.slice(12).trim();
+          if (_dn) { tpOpenCompass(); tpCmpStart(); tpCmpSetDest(_dn); return { ok: true, action: 'set_destination', name: _dn }; }
+        }
+        return { error: 'Unknown compass action: ' + action };
     }
   }
 
