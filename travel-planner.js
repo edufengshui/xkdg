@@ -1,3 +1,4 @@
+// redeploy bump 2026-07-04b — force redeploy (no logic change)
 /* ============================================================================
  * travel-planner.js — XKDG Travel Direction Planner (engine v1)
  * ----------------------------------------------------------------------------
