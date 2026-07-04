@@ -4941,32 +4941,42 @@
       L.polyline([[ref.lat, ref.lon], [pos.lat, pos.lon]], { color: '#888', weight: 1.5, opacity: 0.8 }).addTo(_cmpMapLayer);
       // Origin marker.
       L.circleMarker([ref.lat, ref.lon], { radius: 6, color: '#0b8043', weight: 2, fillColor: '#0b8043', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('Origin', { permanent: false });
-      // You.
-      L.circleMarker([pos.lat, pos.lon], { radius: 6, color: '#b00', weight: 2, fillColor: '#e53935', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('You', { permanent: false });
-      // Predicted exit point.
-      if (exit) {
-        L.marker([exit.lat, exit.lon]).addTo(_cmpMapLayer)
-          .bindTooltip('Exit ' + exit.fromQ + '→' + exit.toQ + ' · ' + (exit.distKm < 10 ? exit.distKm.toFixed(1) : Math.round(exit.distKm)) + ' km', { permanent: false });
+      // In A->B mode (a destination is set) the user's own GPS position is IRRELEVANT
+      // — the trip is between two typed points. Show the live "You" marker + exit wedge
+      // ONLY in live-quadrant mode (no destination), otherwise a stray red dot hundreds
+      // of km away just clutters the map.
+      var _abMode = !!(_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon));
+      if (!_abMode) {
+        // You.
+        L.circleMarker([pos.lat, pos.lon], { radius: 6, color: '#b00', weight: 2, fillColor: '#e53935', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('You', { permanent: false });
+        // Predicted exit point.
+        if (exit) {
+          L.marker([exit.lat, exit.lon]).addTo(_cmpMapLayer)
+            .bindTooltip('Exit ' + exit.fromQ + '→' + exit.toQ + ' · ' + (exit.distKm < 10 ? exit.distKm.toFixed(1) : Math.round(exit.distKm)) + ' km', { permanent: false });
+        }
       }
-      // 🎯 Destination marker + dashed CONSTANT-course line (a straight segment on
-      // the web-mercator map IS the rhumb line: what you see is what you steer).
-      if (_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon)) {
-        L.circleMarker([_cmpDest.lat, _cmpDest.lon], { radius: 6, color: '#7b1fa2', weight: 2, fillColor: '#7b1fa2', fillOpacity: 1 })
-          .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfaf ' + (_cmpDest.name || 'Destination'), { permanent: false });
-        L.polyline([[ref.lat, ref.lon], [_cmpDest.lat, _cmpDest.lon]], { color: '#7b1fa2', weight: 2, opacity: 0.85, dashArray: '6,6' }).addTo(_cmpMapLayer);   // constant course ORIGIN -> DEST
+      // 🎯 Destination = RED endpoint (arrival colour) with the constant course
+      // drawn A -> B (a straight segment on the web-mercator map IS the rhumb line).
+      if (_abMode) {
+        L.circleMarker([_cmpDest.lat, _cmpDest.lon], { radius: 7, color: '#b00', weight: 2, fillColor: '#e53935', fillOpacity: 1 })
+          .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfaf ' + (_cmpDest.name || 'Destination'), { permanent: true });
+        L.polyline([[ref.lat, ref.lon], [_cmpDest.lat, _cmpDest.lon]], { color: '#7b1fa2', weight: 3, opacity: 0.9 }).addTo(_cmpMapLayer);   // constant course ORIGIN -> DEST
       }
       // Frame the scene (only while following, and only once per scene change).
       if (_cmpMapFollow && !_cmpMapFitted) {
-        var b = L.latLngBounds([[ref.lat, ref.lon], [pos.lat, pos.lon]]);
-        if (exit) b.extend([exit.lat, exit.lon]);
-        if (_cmpDest) b.extend([_cmpDest.lat, _cmpDest.lon]);
+        var b;
+        if (_abMode) {                       // A->B: frame ONLY origin + destination
+          b = L.latLngBounds([[ref.lat, ref.lon], [_cmpDest.lat, _cmpDest.lon]]);
+        } else {
+          b = L.latLngBounds([[ref.lat, ref.lon], [pos.lat, pos.lon]]);
+          if (exit) b.extend([exit.lat, exit.lon]);
+        }
         try { _cmpMap.fitBounds(b, { padding: [24, 24], maxZoom: 14, animate: false }); } catch (e) {}
         _cmpMapFitted = true;
-      } else if (_cmpMapFollow) {
-        // keep you in view without changing zoom abruptly
+      } else if (_cmpMapFollow && !_abMode) {
+        // keep you in view without changing zoom abruptly (live mode only)
         var b2 = L.latLngBounds([[ref.lat, ref.lon], [pos.lat, pos.lon]]);
         if (exit) b2.extend([exit.lat, exit.lon]);
-        if (_cmpDest) b2.extend([_cmpDest.lat, _cmpDest.lon]);
         if (!_cmpMap.getBounds().contains([pos.lat, pos.lon])) {
           try { _cmpMap.fitBounds(b2, { padding: [24, 24], maxZoom: 14, animate: false }); } catch (e) {}
         }
@@ -5097,8 +5107,33 @@
     var box = document.getElementById('tp-cmp-body'); if (!box) return;
     var r = cmpResolveRef();
     if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Here</b> to use this spot as the origin, or type origin (and optional 🎯 destination) below and press <b>\u25b6 Go</b>. No destination = live quadrant mode; with a destination = constant course origin \u2192 destination.</div>'; return; }
+    var ref = r.ref, refLabel = r.label;
+    var _abMode = !!(_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon));
+
+    // A->B MODE: the answer is the CONSTANT course from origin A to destination B.
+    // The user's GPS is irrelevant here, so this works with no location fix at all.
+    if (_abMode) {
+      var rb = tpRhumbBearing(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
+      var rdKm = tpHaversineKm(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
+      var abHtml = '<div style="font-size:46px;font-weight:800;line-height:1;color:#7b1fa2;">' + Math.round(rb) + '°</div>' +
+        '<div style="font-size:24px;font-weight:700;margin-top:2px;">' + tpQ8(rb) + '</div>' +
+        '<div style="font-size:12px;color:#666;margin-top:4px;">constant course \u00b7 ' + (rdKm < 10 ? rdKm.toFixed(1) : Math.round(rdKm)) + ' km</div>' +
+        '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:12px;text-align:left;color:#555;line-height:1.5;">' +
+        '<b style="color:#0b8043;">A</b> ' + (_cmpOrigin && _cmpOrigin.name ? _cmpOrigin.name : 'origin') + '<br>' +
+        '<b style="color:#b00;">B</b> ' + (_cmpDest.name || 'destination') + '</div>';
+      // If a live heading happens to be available, still show the steer delta.
+      if (_cmpHeading != null && isFinite(_cmpHeading)) {
+        var dH = ((rb - _cmpHeading + 540) % 360) - 180, aH = Math.abs(Math.round(dH));
+        abHtml += '<div style="font-size:12px;margin-top:4px;text-align:left;' + (aH <= 8 ? 'color:#1b6e2f;' : 'color:#b58900;') + '">' +
+          (aH <= 8 ? '\u2713 On course (\u0394 ' + aH + '\u00b0)' : 'Steer ' + (dH > 0 ? 'RIGHT' : 'LEFT') + ' ~' + aH + '\u00b0') + '</div>';
+      }
+      box.innerHTML = abHtml;
+      return;
+    }
+
+    // LIVE-QUADRANT MODE (no destination): needs a GPS fix.
     if (!_cmpPos) { box.innerHTML = '<div style="color:#888;font-size:13px;">Waiting for GPS… allow location and tap ↻.</div>'; return; }
-    var ref = r.ref, refLabel = r.label, pos = _cmpPos;
+    var pos = _cmpPos;
     var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
     var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
 
@@ -5117,27 +5152,8 @@
     }
     html += '</div>';
 
-    // 🎯 DESTINATION: the CONSTANT (rhumb-line) bearing to follow from HERE to the
-    // destination — the same definition the flight Direction Calculator uses, now
-    // for any geocoded address. Recomputed on every GPS fix; when your travel
-    // heading is known, the delta tells you how far off the constant course you are.
-    if (_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon)) {
-      // Constant rhumb-line course ORIGIN -> DESTINATION (Edu's rule): a FIXED
-      // trajectory between the two set points, not a live from-me bearing.
-      var rb = tpRhumbBearing(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
-      var rq = tpQ8(rb);
-      var rdKm = tpHaversineKm(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
-      html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:13px;text-align:left;">' +
-        '\ud83c\udfaf <b>' + (_cmpDest.name || 'Destination') + '</b>: <b style="color:#7b1fa2;font-size:16px;">' + Math.round(rb) + '\u00b0 ' + rq + '</b>' +
-        ' \u00b7 ' + (rdKm < 10 ? rdKm.toFixed(1) : Math.round(rdKm)) + ' km <span style="color:#888;">(constant course)</span>';
-      if (_cmpHeading != null && isFinite(_cmpHeading)) {
-        var dHead = ((rb - _cmpHeading + 540) % 360) - 180;   // signed: + = steer right, - = steer left
-        var absH = Math.abs(Math.round(dHead));
-        if (absH <= 8) html += '<div style="color:#1b6e2f;font-size:12px;margin-top:2px;">\u2713 On course (\u0394 ' + absH + '\u00b0).</div>';
-        else html += '<div style="color:#b58900;font-size:12px;margin-top:2px;">Steer ' + (dHead > 0 ? 'RIGHT' : 'LEFT') + ' ~' + absH + '\u00b0 to the constant course.</div>';
-      }
-      html += '</div>';
-    }
+    // (A->B constant course is rendered at the top with an early return; nothing else
+    // to add here for the destination.)
 
     // PREDICTION: where you cross out of the current quadrant.
     var exit = cmpPredictExit(ref, pos, _cmpHeading);
