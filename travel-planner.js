@@ -5254,10 +5254,15 @@
   //   4) the xkdg-places worker (Google Places) near the current GPS (<=50 km box):
   //      resolves businesses and odd addresses that OSM does not know.
   // Resolves to {lat, lon, name} or null. Sequential (gentle on Nominatim).
-  function tpCmpPlacesLookup(q) {
+  function tpCmpPlacesLookup(q, center) {
     try {
       var base = tpPlacesWorkerUrl(); if (!base) return Promise.resolve(null);
-      var c = _cmpPos || ((window._lastGpsLat != null && window._lastGpsLng != null) ? { lat: window._lastGpsLat, lon: window._lastGpsLng } : null);
+      // Search center: an EXPLICIT center (near the destination city) wins; only if none
+      // was resolved do we fall back to the current GPS. This is the fix for a business
+      // far from here ("Studio Anemos, Garda" while standing 287 km away in Tuoro): the
+      // worker restricts results to ~50 km around the point it is given, so it must be
+      // given the destination's area, not mine.
+      var c = center || _cmpPos || ((window._lastGpsLat != null && window._lastGpsLng != null) ? { lat: window._lastGpsLat, lon: window._lastGpsLng } : null);
       if (!c) return Promise.resolve(null);
       var k = tpPlacesAccessKey();
       var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
@@ -5273,23 +5278,72 @@
   function tpCmpGeocodeSmart(raw) {
     var q = String(raw || '').trim();
     if (!q) return Promise.resolve(null);
+    // GOOGLE GEOCODING first: the worker's ?mode=geocode endpoint uses Google's
+    // Geocoding API — the same engine Google Maps uses for street addresses, so
+    // "Via degli Alpini 31/1, 37010 Castion Veronese VR" resolves exactly. This is
+    // far stronger than OSM/Nominatim for Italian addresses; Nominatim + Places stay
+    // as fallbacks below for when the worker URL isn't set or Google finds nothing.
+    function google(qq) {
+      try {
+        var base = tpPlacesWorkerUrl(); if (!base || !qq || !qq.trim()) return Promise.resolve(null);
+        var k = tpPlacesAccessKey();
+        var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
+          'mode=geocode&address=' + encodeURIComponent(qq.trim()) + (k ? '&k=' + encodeURIComponent(k) : '');
+        return fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+          if (!j || j.status !== 'ok' || !j.results || !j.results.length) return null;
+          var b = j.results[0];
+          return (b && isFinite(b.lat) && isFinite(b.lon)) ? { lat: b.lat, lon: b.lon, name: q } : null;
+        }).catch(function () { return null; });
+      } catch (e) { return Promise.resolve(null); }
+    }
     function nom(qq) {
+      if (!qq || !qq.trim()) return Promise.resolve(null);
       return tpGeocode(qq)
         .then(function (g) { return (g && isFinite(g.lat) && isFinite(g.lon)) ? { lat: g.lat, lon: g.lon, name: q } : null; })
         .catch(function () { return null; });
     }
-    return nom(q).then(function (r1) {
-      if (r1) return r1;
-      var q2 = q.replace(/\b(\d+)\s*\/\s*\w+\b/g, '$1');                       // "31/1" -> "31"
-      return (q2 !== q ? nom(q2) : Promise.resolve(null)).then(function (r2) {
-        if (r2) return r2;
-        var q3 = q.replace(/\b\d+\s*\/?\s*\w{0,2}\b\s*,?/, '').replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/^,\s*|\s*,\s*$/g, '').trim();   // drop the house number
-        return (q3 && q3 !== q2 && q3 !== q ? nom(q3) : Promise.resolve(null)).then(function (r3) {
-          if (r3) return r3;
-          return tpCmpPlacesLookup(q);                                          // businesses & stubborn addresses
-        });
-      });
+    return google(q).then(function (gr) {
+      if (gr) return gr;
+      return tpCmpGeocodeOSM(q, nom);   // fallback cascade (Nominatim variants + Places)
     });
+  }
+  // OSM/Nominatim fallback cascade (was the whole function before Google was added).
+  function tpCmpGeocodeOSM(q, nom) {
+    // Build an ordered list of Nominatim variants, from most to least specific.
+    // Italian addresses often carry a compound house number ("31/1"), a 5-digit CAP
+    // and a 2-letter province ("VR") — all of which make OSM miss. We progressively
+    // strip them and also try "street + town" and "town only".
+    function clean(s) { return s.replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/^[,\s]+|[,\s]+$/g, '').trim(); }
+    var variants = [];
+    function add(v) { v = clean(v || ''); if (v && variants.indexOf(v) < 0) variants.push(v); }
+    add(q);                                                            // as typed
+    add(q.replace(/\b(\d+)\s*\/\s*\w+\b/g, '$1'));                     // "31/1" -> "31"
+    var noCapProv = q.replace(/\b\d{5}\b/g, ' ').replace(/\b[A-Z]{2}\b/g, ' ');   // drop CAP + province code
+    add(noCapProv);
+    add(noCapProv.replace(/\b(\d+)\s*\/\s*\w+\b/g, '$1'));             // + normalized house number
+    add(noCapProv.replace(/\b\d+\s*\/?\s*\w{0,2}\b/g, ' '));          // + drop the house number entirely
+    // "street, town" (first street-like part + last town-like part)
+    var parts = q.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var streetPart = null, townPart = null;
+    for (var a = 0; a < parts.length; a++) { if (/\b(via|viale|piazza|corso|strada|località|localita|vicolo|largo)\b/i.test(parts[a])) { streetPart = parts[a].replace(/\b\d+\s*\/?\s*\w{0,2}\b/g, '').trim(); break; } }
+    for (var b = parts.length - 1; b >= 0; b--) { if (parts[b] && !/\d/.test(parts[b]) && !/\b(via|viale|piazza|corso|strada|località|localita|vicolo|largo)\b/i.test(parts[b])) { townPart = parts[b].replace(/\b[A-Z]{2}\b/g, '').trim(); break; } }
+    if (streetPart && townPart) add(streetPart + ', ' + townPart);
+    if (townPart) add(townPart);                                       // town only (last resort for a rough pin)
+
+    // Try each variant in order; first hit wins.
+    function tryFrom(i) {
+      if (i >= variants.length) {
+        // Nothing from OSM: try Places (a business), centered on the town if we have one.
+        var centerP = townPart ? nom(townPart) : Promise.resolve(null);
+        return centerP.then(function (ctr) {
+          return tpCmpPlacesLookup(q, ctr).then(function (viaCtr) {
+            return viaCtr || tpCmpPlacesLookup(q, null);
+          });
+        });
+      }
+      return nom(variants[i]).then(function (r) { return r || tryFrom(i + 1); });
+    }
+    return tryFrom(0);
   }
   // Set the DESTINATION to a named place / address (same geocoder as the origin).
   function tpCmpSetDest(name) {
