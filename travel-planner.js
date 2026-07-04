@@ -4914,38 +4914,42 @@
     if (_cmpMapFailed) return;
     var host = document.getElementById('tp-cmp-map'); if (!host) return;
     var r = cmpResolveRef();
-    if (!r || !_cmpPos) return;   // nothing to draw yet
+    if (!r) return;
+    var _abMode = !!(_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon));
+    // Live-quadrant mode needs a GPS fix; A->B mode does NOT (it draws A and B only).
+    if (!_abMode && !_cmpPos) return;   // nothing to draw yet
     cmpEnsureLeaflet().then(function (L) {
       host = document.getElementById('tp-cmp-map'); if (!host) return;
+      var ref = r.ref;
+      var initCenter = _abMode ? [ (ref.lat + _cmpDest.lat) / 2, (ref.lon + _cmpDest.lon) / 2 ]
+                               : [ _cmpPos.lat, _cmpPos.lon ];
       if (!_cmpMap) {
         _cmpMap = L.map(host, { zoomControl: true, attributionControl: false, dragging: true });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(_cmpMap);
-        _cmpMap.setView([_cmpPos.lat, _cmpPos.lon], 11);
+        _cmpMap.setView(initCenter, 11);
         _cmpMapLayer = L.layerGroup().addTo(_cmpMap);
         setTimeout(function () { if (_cmpMap) _cmpMap.invalidateSize(); }, 60);
       }
       _cmpMapLayer.clearLayers();
-      var ref = r.ref, pos = _cmpPos;
-      var bearDeg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon);
-      var center = Math.round(bearDeg / 45) * 45;
-      var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
+      var pos = _cmpPos;
       var exit = _cmpExit;
-      var radiusKm = Math.max(distKm, exit ? tpHaversineKm(ref.lat, ref.lon, exit.lat, exit.lon) : 0, 2) * 1.15;
-
-      // 45° wedge (current quadrant from the origin).
-      L.polygon(cmpWedgePoints(ref, center, radiusKm), { color: '#1565c0', weight: 1, fillColor: '#1565c0', fillOpacity: 0.12 }).addTo(_cmpMapLayer);
-      // The two boundary rays, slightly stronger.
-      L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center - 22.5, radiusKm).lat, cmpForward(ref, center - 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
-      L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center + 22.5, radiusKm).lat, cmpForward(ref, center + 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
-      // Bearing line origin -> you.
-      L.polyline([[ref.lat, ref.lon], [pos.lat, pos.lon]], { color: '#888', weight: 1.5, opacity: 0.8 }).addTo(_cmpMapLayer);
+      // Live wedge / rays / bearing-to-you line: ONLY in live-quadrant mode.
+      if (!_abMode) {
+        var bearDeg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon);
+        var center = Math.round(bearDeg / 45) * 45;
+        var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
+        var radiusKm = Math.max(distKm, exit ? tpHaversineKm(ref.lat, ref.lon, exit.lat, exit.lon) : 0, 2) * 1.15;
+        L.polygon(cmpWedgePoints(ref, center, radiusKm), { color: '#1565c0', weight: 1, fillColor: '#1565c0', fillOpacity: 0.12 }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center - 22.5, radiusKm).lat, cmpForward(ref, center - 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center + 22.5, radiusKm).lat, cmpForward(ref, center + 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [pos.lat, pos.lon]], { color: '#888', weight: 1.5, opacity: 0.8 }).addTo(_cmpMapLayer);
+      }
       // Origin marker.
       L.circleMarker([ref.lat, ref.lon], { radius: 6, color: '#0b8043', weight: 2, fillColor: '#0b8043', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('Origin', { permanent: false });
       // In A->B mode (a destination is set) the user's own GPS position is IRRELEVANT
       // — the trip is between two typed points. Show the live "You" marker + exit wedge
       // ONLY in live-quadrant mode (no destination), otherwise a stray red dot hundreds
-      // of km away just clutters the map.
-      var _abMode = !!(_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon));
+      // of km away just clutters the map. (_abMode is defined at the top of this fn.)
       if (!_abMode) {
         // You.
         L.circleMarker([pos.lat, pos.lon], { radius: 6, color: '#b00', weight: 2, fillColor: '#e53935', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('You', { permanent: false });
@@ -5384,7 +5388,7 @@
     var fsBtn = document.getElementById('tp-cmp-full');
     if (_cmpPanelFull) {
       if (_cmpPanelCss == null) _cmpPanelCss = ov.style.cssText;   // save to restore verbatim
-      ov.style.cssText = 'position:fixed;inset:0;z-index:99999;width:auto;height:100dvh;background:#fff;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;overflow:auto;';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:99999;width:auto;height:100dvh;padding-top:env(safe-area-inset-top,0px);background:#fff;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;overflow:auto;-webkit-overflow-scrolling:touch;';
       if (mapWrap) { mapWrap.style.flex = '1 1 auto'; mapWrap.style.display = 'flex'; mapWrap.style.flexDirection = 'column'; mapWrap.style.minHeight = '180px'; }
       if (mapHost) { mapHost.style.flex = '1 1 auto'; mapHost.style.height = 'auto'; mapHost.style.minHeight = '160px'; }
       if (fsBtn) { fsBtn.textContent = '\ud83d\uddd7'; fsBtn.title = 'Exit full screen'; }
@@ -5408,8 +5412,12 @@
   function tpOpenCompass() {
     var ov = document.getElementById('tp-cmp-ov');
     if (!ov) {
-      ov = el('div', { id: 'tp-cmp-ov', style: 'position:fixed;left:12px;bottom:80px;z-index:99996;width:248px;background:#fff;border:2px solid #1565c0;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);' });
-      var head = el('div', { style: 'display:flex;align-items:center;gap:6px;background:#1565c0;color:#fff;border-radius:10px 10px 0 0;padding:7px 9px;' });
+      // max-height caps the panel so its TOP never slides under the browser address bar
+      // / notch (previously the header + big readout were cut off at the top with no way
+      // to scroll up). 100dvh accounts for mobile toolbars; safe-area-inset-top respects
+      // the notch. overflow:auto lets the inner content scroll while the panel stays put.
+      ov = el('div', { id: 'tp-cmp-ov', style: 'position:fixed;left:12px;bottom:80px;z-index:99996;width:248px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 96px - env(safe-area-inset-top,0px));overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:#fff;border:2px solid #1565c0;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);' });
+      var head = el('div', { style: 'position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:6px;background:#1565c0;color:#fff;border-radius:10px 10px 0 0;padding:7px 9px;' });
       head.appendChild(el('div', { style: 'flex:1;font-size:13px;font-weight:700;' }, '🧭 Live compass'));
       var refBtn = el('button', { id: 'tp-cmp-ref', type: 'button', title: 'Trip reference: Auto (origin→last stop) / Origin only (used only when no Here/From place origin is set)', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;' }, 'Auto');
       var refr = el('button', { type: 'button', title: 'Refresh now', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 7px;font-size:13px;cursor:pointer;' }, '\u21bb');
