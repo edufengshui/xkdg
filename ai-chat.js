@@ -4515,7 +4515,7 @@
       var body = elc('div', { style: 'display:block;margin-top:4px;' });
       // Legend: what the colours and the stars mean (stars match the route list above).
       body.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin:2px 0 4px;padding:0 2px;line-height:1.4;' },
-        '\u2b50 favourable hour \u00b7 \u2b50\u2b50 best of the trip \u00b7 green = cash stop \u00b7 yellow = detour \u00b7 grey = no favourable window \u00b7 pink row above = you plug in there'));
+        '\u2b50 favourable Qimen direction (cash) \u00b7 \u2b50\u2b50 best of the trip \u00b7 \uD83D\uDD35 favourable XKDG person-hour \u00b7 green = cash stop \u00b7 yellow = detour \u00b7 grey = no favourable window \u00b7 pink row above = you plug in there'));
       head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
       hours.forEach(function (h) {
         var isCash = (h.kind === 'cash'), isDetour = (h.kind === 'detour');
@@ -4624,7 +4624,21 @@
       var _lBase = (function () { for (var i = 0; i < legs.length; i++) { var t = (legs[i].kind === 'drive') ? legs[i].from : legs[i].at; if (t) return _lMin(t); } return 0; })();
       function _lNorm(s) { var m = _lMin(s); return m < _lBase ? m + 1440 : m; }
       var _fortByLetter = {};
+      var _xkByLetter = {};   // #2: which letters also have a favourable XKDG person-hour
       _hrs.forEach(function (h) {
+        // Track XKDG-positive hours separately from Qimen-direction (cash/detour) hours,
+        // so the star can show WHICH kind of luck it is (see _starFor below).
+        var hf0 = _lNorm(h.from), ht0 = _lNorm(h.to);
+        if (h.xkPositive) {
+          for (var xi = 0; xi < _letterTimes.length; xi++) {
+            var lx = _letterTimes[xi];
+            if (lx.at === h.to || (_lNorm(lx.at) > hf0 && _lNorm(lx.at) <= ht0)) {
+              var xsc = (h.hourScore != null ? h.hourScore : 1);
+              if (_xkByLetter[lx.letter] == null || xsc > _xkByLetter[lx.letter]) _xkByLetter[lx.letter] = xsc;
+              if (lx.at === h.to) break;
+            }
+          }
+        }
         if (!_fFort(h)) return;
         var hf = _lNorm(h.from), ht = _lNorm(h.to), Lk = null;
         for (var li = 0; li < _letterTimes.length; li++) {
@@ -4634,7 +4648,15 @@
         }
         if (!Lk) return;
         var sc = _fScore(h); var cur = _fortByLetter[Lk]; if (cur == null || sc > cur) _fortByLetter[Lk] = sc; });
-      function _starFor(letter){ if (!(letter in _fortByLetter)) return ''; return (_fortByLetter[letter] === _maxFort && _maxFort > 0) ? '\u2b50\u2b50' : '\u2b50'; }
+      // Star legend: GOLD star(s) = favourable Qimen DIRECTION (cash), gold double =
+      // best-of-trip; a BLUE circle is appended when that stop's hour is ALSO a
+      // favourable XKDG person-hour (a distinct kind of luck from the direction).
+      function _starFor(letter){
+        var s = '';
+        if (letter in _fortByLetter) s = (_fortByLetter[letter] === _maxFort && _maxFort > 0) ? '\u2b50\u2b50' : '\u2b50';
+        if (letter in _xkByLetter) s += '\uD83D\uDD35';   // blue circle = XKDG person-hour luck
+        return s;
+      }
 
       var listEl = elc('div', { style: 'margin:0;' });
       _itinStopEls = [];

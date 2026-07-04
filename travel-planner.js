@@ -1533,6 +1533,7 @@
     } catch (e) { /* stops without pos are simply skipped in the export */ }
 
     return { bearing: bearing, snapDir: snapDir, origin: O, dest: Dst, slots: slots,
+             utc: utc, dstOn: dstOn,
              hasHourData: anyHour, plan: plan, stopMode: opts.stopMode || 'auto',
              maxLegHours: opts.maxLegHours || 4,
              usedRealRoute: usedRealRoute,
@@ -1830,6 +1831,23 @@
     }
     var lastSlot = slots[slots.length - 1];
     pushLeg(lastSlot.wallEnd, slots.length - 1, headFromEntry(null, roadDirOf(lastSlot).name, false), 'arrival');
+
+    // ── RULE #3 (Edu): ARRIVAL inside a fortunate hour cashes the trip by itself ──
+    // If the journey ENDS while the road direction toward the destination is fortunate,
+    // arriving IS the cash — so the intermediate cash stops (stopping mid-trip just to
+    // "collect" a favourable hour) are pointless: they make you halt for something you
+    // already collect on arrival. Drop every fortunate cash stop in that case. Rest
+    // stops (non-fortunate) and any later EV range-charge stops are NOT touched here;
+    // range charging is re-inserted afterwards only if the battery can't make it.
+    try {
+      var arrFort = !!roadFortunate(lastSlot);   // destination reached within a fortunate window?
+      if (arrFort) {
+        var kept = timeline.filter(function (it) { return !(it.type === 'stop' && it.fortunate); });
+        kept.detourIntents = timeline.detourIntents;
+        kept.arrivalCashes = true;               // flag for the itinerary text
+        timeline = kept;
+      }
+    } catch (e) { /* keep timeline on any error */ }
     return timeline;
   }
 
@@ -2818,8 +2836,18 @@
             lat: it.pos.lat, lon: it.pos.lon, place: null });
       });
       var lines = [];
+      // #1 (Edu): ALWAYS show the Chinese double-hour (时辰) of departure, e.g. "巳时 (Si)".
+      var _depCh = null;
+      try {
+        var _firstLeg = (plan || []).filter(function (x) { return x.type === 'leg' && x.startWall; })[0];
+        if (_firstLeg && result.origin && result.origin.lon != null) {
+          var _ch = tpChineseHourAt(_firstLeg.startWall.getTime(), result.origin.lon, (result.utc != null ? result.utc : 1), !!result.dstOn);
+          if (_ch) _depCh = _ch.han + '时 (' + _ch.py + ')';
+        }
+      } catch (e) {}
       lines.push((result.origin.name || 'Origin') + ' → ' + (result.dest.name || 'Destination') +
         ' · bearing ' + Math.round(result.bearing) + '° (' + result.snapDir + ')' +
+        (_depCh ? ' · depart ' + _depCh : '') +
         (result.usedRealRoute && rm.km ? ' · real road ' + Math.round(rm.km) + ' km' + (drive ? ' · ' + drive + ' driving' : '') : ' · straight-line estimate'));
       plan.forEach(function (it) {
         if (it.type === 'leg') {
