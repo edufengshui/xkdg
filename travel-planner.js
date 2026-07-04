@@ -5234,7 +5234,7 @@
   // Set the autonomous origin to a named place (geocoded). Returns a Promise.
   function tpCmpSetOriginFrom(name) {
     if (!name || !String(name).trim()) return Promise.resolve(null);
-    return _tpResolvePlace(String(name).trim(), null, null).then(function (g) {
+    return tpCmpGeocodeSmart(String(name).trim()).then(function (g) {
       if (!g) return null;
       _cmpOrigin = { lat: g.lat, lon: g.lon, name: String(name).trim() };
       _cmpPrev = null; _cmpHeading = null; _cmpSpeedKmh = null; _cmpExitName = null; _cmpExitNameAt = null; _cmpMapFitted = false;
@@ -5243,12 +5243,58 @@
     });
   }
   function tpCmpClearOrigin() { _cmpOrigin = null; _cmpExitName = null; _cmpExitNameAt = null; _cmpMapFitted = false; cmpUpdateRefLabel(); tpCmpRender(); }
+  // SMART geocoding for the compass fields. Nominatim (used by _tpResolvePlace) is
+  // strict: Italian compound house numbers ("31/1") and BUSINESS names ("Studio
+  // Anemos") routinely fail. Cascade:
+  //   1) the query as typed (Nominatim);
+  //   2) compound house number normalised "31/1" -> "31";
+  //   3) house number dropped entirely (street + town still pin the right spot);
+  //   4) the xkdg-places worker (Google Places) near the current GPS (<=50 km box):
+  //      resolves businesses and odd addresses that OSM does not know.
+  // Resolves to {lat, lon, name} or null. Sequential (gentle on Nominatim).
+  function tpCmpPlacesLookup(q) {
+    try {
+      var base = tpPlacesWorkerUrl(); if (!base) return Promise.resolve(null);
+      var c = _cmpPos || ((window._lastGpsLat != null && window._lastGpsLng != null) ? { lat: window._lastGpsLat, lon: window._lastGpsLng } : null);
+      if (!c) return Promise.resolve(null);
+      var k = tpPlacesAccessKey();
+      var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
+        'q=' + encodeURIComponent(q) + '&lat=' + c.lat + '&lon=' + c.lon +
+        '&radius=50000&max=3' + (k ? '&k=' + encodeURIComponent(k) : '');
+      return fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+        if (!j || j.status !== 'ok' || !j.results || !j.results.length) return null;
+        var b = j.results[0];
+        return (b && isFinite(b.lat) && isFinite(b.lon)) ? { lat: b.lat, lon: b.lon, name: b.name || q } : null;
+      }).catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  function tpCmpGeocodeSmart(raw) {
+    var q = String(raw || '').trim();
+    if (!q) return Promise.resolve(null);
+    function nom(qq) {
+      return tpGeocode(qq)
+        .then(function (g) { return (g && isFinite(g.lat) && isFinite(g.lon)) ? { lat: g.lat, lon: g.lon, name: q } : null; })
+        .catch(function () { return null; });
+    }
+    return nom(q).then(function (r1) {
+      if (r1) return r1;
+      var q2 = q.replace(/\b(\d+)\s*\/\s*\w+\b/g, '$1');                       // "31/1" -> "31"
+      return (q2 !== q ? nom(q2) : Promise.resolve(null)).then(function (r2) {
+        if (r2) return r2;
+        var q3 = q.replace(/\b\d+\s*\/?\s*\w{0,2}\b\s*,?/, '').replace(/\s{2,}/g, ' ').replace(/\s+,/g, ',').replace(/^,\s*|\s*,\s*$/g, '').trim();   // drop the house number
+        return (q3 && q3 !== q2 && q3 !== q ? nom(q3) : Promise.resolve(null)).then(function (r3) {
+          if (r3) return r3;
+          return tpCmpPlacesLookup(q);                                          // businesses & stubborn addresses
+        });
+      });
+    });
+  }
   // Set the DESTINATION to a named place / address (same geocoder as the origin).
   function tpCmpSetDest(name) {
     if (!name || !String(name).trim()) return Promise.resolve(null);
-    return _tpResolvePlace(String(name).trim(), null, null).then(function (g) {
+    return tpCmpGeocodeSmart(String(name).trim()).then(function (g) {
       if (!g) return null;
-      _cmpDest = { lat: g.lat, lon: g.lon, name: String(name).trim() };
+      _cmpDest = { lat: g.lat, lon: g.lon, name: (g.name || String(name).trim()) };
       cmpSaveDest(); _cmpMapFitted = false; tpCmpRender();
       return { lat: g.lat, lon: g.lon, name: _cmpDest.name };
     });
@@ -5327,7 +5373,7 @@
         if (!v || !v.trim()) return;
         setBtn.textContent = '…';
         tpCmpStart();
-        tpCmpSetOriginFrom(v).then(function (r) { setBtn.textContent = 'Set'; if (!r) { var lbl = document.getElementById('tp-cmp-ref-label'); if (lbl) lbl.textContent = 'Place not found.'; } });
+        tpCmpSetOriginFrom(v).then(function (r) { setBtn.textContent = 'Set'; if (!r) { var lbl = document.getElementById('tp-cmp-ref-label'); if (lbl) lbl.textContent = 'Place not found \u2014 try without the house number, or just \u201cname, town\u201d.'; } });
       }
       setBtn.addEventListener('click', doSet);
       nameInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSet(); } });
@@ -5347,7 +5393,7 @@
         tpCmpSetDest(v).then(function (r) {
           destSet.textContent = 'Set';
           var lbl2 = document.getElementById('tp-cmp-ref-label');
-          if (!r && lbl2) lbl2.textContent = 'Destination not found.';
+          if (!r && lbl2) lbl2.textContent = 'Destination not found \u2014 try without the house number, or just \u201cname, town\u201d.';
         });
       }
       destSet.addEventListener('click', doSetDest);
