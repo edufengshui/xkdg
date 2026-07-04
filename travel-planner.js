@@ -4953,7 +4953,7 @@
       if (_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon)) {
         L.circleMarker([_cmpDest.lat, _cmpDest.lon], { radius: 6, color: '#7b1fa2', weight: 2, fillColor: '#7b1fa2', fillOpacity: 1 })
           .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfaf ' + (_cmpDest.name || 'Destination'), { permanent: false });
-        L.polyline([[pos.lat, pos.lon], [_cmpDest.lat, _cmpDest.lon]], { color: '#7b1fa2', weight: 2, opacity: 0.85, dashArray: '6,6' }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [_cmpDest.lat, _cmpDest.lon]], { color: '#7b1fa2', weight: 2, opacity: 0.85, dashArray: '6,6' }).addTo(_cmpMapLayer);   // constant course ORIGIN -> DEST
       }
       // Frame the scene (only while following, and only once per scene change).
       if (_cmpMapFollow && !_cmpMapFitted) {
@@ -5096,7 +5096,7 @@
   function tpCmpRender() {
     var box = document.getElementById('tp-cmp-body'); if (!box) return;
     var r = cmpResolveRef();
-    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Here</b> to set this spot as the origin, or set one with <b>✏️ From place</b> — or compute a trip first.</div>'; return; }
+    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Here</b> to use this spot as the origin, or type origin (and optional 🎯 destination) below and press <b>\u25b6 Go</b>. No destination = live quadrant mode; with a destination = constant course origin \u2192 destination.</div>'; return; }
     if (!_cmpPos) { box.innerHTML = '<div style="color:#888;font-size:13px;">Waiting for GPS… allow location and tap ↻.</div>'; return; }
     var ref = r.ref, refLabel = r.label, pos = _cmpPos;
     var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
@@ -5122,9 +5122,11 @@
     // for any geocoded address. Recomputed on every GPS fix; when your travel
     // heading is known, the delta tells you how far off the constant course you are.
     if (_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon)) {
-      var rb = tpRhumbBearing(pos.lat, pos.lon, _cmpDest.lat, _cmpDest.lon);
+      // Constant rhumb-line course ORIGIN -> DESTINATION (Edu's rule): a FIXED
+      // trajectory between the two set points, not a live from-me bearing.
+      var rb = tpRhumbBearing(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
       var rq = tpQ8(rb);
-      var rdKm = tpHaversineKm(pos.lat, pos.lon, _cmpDest.lat, _cmpDest.lon);
+      var rdKm = tpHaversineKm(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
       html += '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:13px;text-align:left;">' +
         '\ud83c\udfaf <b>' + (_cmpDest.name || 'Destination') + '</b>: <b style="color:#7b1fa2;font-size:16px;">' + Math.round(rb) + '\u00b0 ' + rq + '</b>' +
         ' \u00b7 ' + (rdKm < 10 ? rdKm.toFixed(1) : Math.round(rdKm)) + ' km <span style="color:#888;">(constant course)</span>';
@@ -5360,57 +5362,62 @@
 
       ov.appendChild(el('div', { id: 'tp-cmp-body', style: 'padding:12px;text-align:center;color:#222;' }));
 
-      // Origin controls.
+      // Controls — one clear column (Edu's layout): 📍 Here on top, then origin,
+      // then destination, then a single ▶ Go that resolves everything at once.
+      // GO semantics: destination EMPTY -> original live-quadrant mode from the
+      // origin; destination FILLED -> constant rhumb-line course ORIGIN -> DEST.
       var ctrl = el('div', { style: 'padding:0 10px 10px;border-top:1px solid #eee;' });
       ctrl.appendChild(el('div', { id: 'tp-cmp-ref-label', style: 'font-size:11px;color:#666;margin:7px 0;' }));
-      var row = el('div', { style: 'display:flex;gap:6px;align-items:center;' });
-      var hereBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, '📍 Here');
-      var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'From a place… (e.g. Arezzo)', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
-      var setBtn = el('button', { type: 'button', style: 'flex:0 0 auto;background:#0b8043;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Set');
+      var hereBtn = el('button', { type: 'button', style: 'width:100%;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:7px 9px;font-size:13px;font-weight:700;cursor:pointer;' }, '📍 Here — use my current position as origin');
       hereBtn.addEventListener('click', function () { tpCmpStart(); tpCmpSetOriginHere(); });
-      function doSet() {
-        var v = nameInp.value;
-        if (!v || !v.trim()) return;
-        setBtn.textContent = '…';
-        tpCmpStart();
-        tpCmpSetOriginFrom(v).then(function (r) { setBtn.textContent = 'Set'; if (!r) { var lbl = document.getElementById('tp-cmp-ref-label'); if (lbl) lbl.textContent = 'Place not found \u2014 try without the house number, or just \u201cname, town\u201d.'; } });
-      }
-      setBtn.addEventListener('click', doSet);
-      nameInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSet(); } });
-      row.appendChild(hereBtn); row.appendChild(nameInp); row.appendChild(setBtn);
-      ctrl.appendChild(row);
-      // 🎯 DESTINATION row: address → geocode → constant rhumb-line bearing to follow,
-      // shown live in the readout (same "constant heading" the flight calculator uses).
+      ctrl.appendChild(hereBtn);
+      var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'From a place… (e.g. Arezzo)', style: 'width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
+      ctrl.appendChild(nameInp);
       var drow = el('div', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px;' });
-      var destInp = el('input', { id: 'tp-cmp-dest', type: 'text', placeholder: '\ud83c\udfaf To a place\u2026 (destination)', value: (_cmpDest && _cmpDest.name) || '', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:6px 8px;font-size:12px;' });
-      var destSet = el('button', { type: 'button', style: 'flex:0 0 auto;background:#7b1fa2;color:#fff;border:0;border-radius:7px;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer;' }, 'Set');
-      var destClr = el('button', { type: 'button', title: 'Clear destination', style: 'flex:0 0 auto;background:#eee;color:#555;border:0;border-radius:7px;padding:6px 8px;font-size:12px;cursor:pointer;' }, '\u2715');
-      function doSetDest() {
-        var v = destInp.value;
-        if (!v || !v.trim()) return;
-        destSet.textContent = '\u2026';
-        tpCmpStart();
-        tpCmpSetDest(v).then(function (r) {
-          destSet.textContent = 'Set';
-          var lbl2 = document.getElementById('tp-cmp-ref-label');
-          if (!r && lbl2) lbl2.textContent = 'Destination not found \u2014 try without the house number, or just \u201cname, town\u201d.';
-        });
-      }
-      destSet.addEventListener('click', doSetDest);
-      destInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSetDest(); } });
+      var destInp = el('input', { id: 'tp-cmp-dest', type: 'text', placeholder: '\ud83c\udfaf To a place\u2026 (destination, optional)', value: (_cmpDest && _cmpDest.name) || '', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
+      var destClr = el('button', { type: 'button', title: 'Clear destination', style: 'flex:0 0 auto;background:#eee;color:#555;border:0;border-radius:7px;padding:7px 9px;font-size:12px;cursor:pointer;' }, '\u2715');
       destClr.addEventListener('click', function () { destInp.value = ''; tpCmpClearDest(); });
-      drow.appendChild(destInp); drow.appendChild(destSet); drow.appendChild(destClr);
+      drow.appendChild(destInp); drow.appendChild(destClr);
       ctrl.appendChild(drow);
+      var goBtn = el('button', { type: 'button', style: 'width:100%;margin-top:8px;background:#0b8043;color:#fff;border:0;border-radius:8px;padding:9px;font-size:14px;font-weight:800;cursor:pointer;' }, '\u25b6 Go');
+      function doGo() {
+        var fromV = (nameInp.value || '').trim();
+        var toV = (destInp.value || '').trim();
+        goBtn.textContent = '\u2026';
+        tpCmpStart();
+        var lbl = function () { return document.getElementById('tp-cmp-ref-label'); };
+        // 1) ORIGIN: typed place wins; else keep the existing origin; else fall back to Here.
+        var pOrigin = fromV
+          ? tpCmpSetOriginFrom(fromV).then(function (r) {
+              if (!r && lbl()) lbl().textContent = 'Place not found \u2014 try without the house number, or just \u201cname, town\u201d.';
+              return r;
+            })
+          : Promise.resolve(_cmpOrigin || (window._tpLive ? { trip: true } : null));
+        pOrigin.then(function (o) {
+          if (!o && !fromV) { tpCmpSetOriginHere(); }
+          // 2) DESTINATION: filled -> rhumb course origin->dest; empty -> quadrant mode.
+          if (toV) {
+            return tpCmpSetDest(toV).then(function (r2) {
+              if (!r2 && lbl()) lbl().textContent = 'Destination not found \u2014 try without the house number, or just \u201cname, town\u201d.';
+            });
+          }
+          tpCmpClearDest();
+          return null;
+        }).then(function () {
+          goBtn.textContent = '\u25b6 Go';
+          tpCmpRefreshOnce();
+        }).catch(function () { goBtn.textContent = '\u25b6 Go'; });
+      }
+      goBtn.addEventListener('click', doGo);
+      nameInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doGo(); } });
+      destInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doGo(); } });
+      ctrl.appendChild(goBtn);
       ov.appendChild(ctrl);
 
-      // Mini map + expand button.
+      // Mini map. (The old "⛶ Expand" map-only button is gone — the header ⛶ full
+      // screen replaced it; voice "expand" still works for the big-map overlay.)
       var mapWrap = el('div', { id: 'tp-cmp-map-wrap', style: 'padding:0 10px 10px;' });
-      var expandRow = el('div', { style: 'display:flex;justify-content:flex-end;margin-bottom:6px;' });
-      var expandBtn = el('button', { id: 'tp-cmp-expand', type: 'button', style: 'background:#1565c0;color:#fff;border:0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;' }, '⛶ Expand');
-      expandBtn.addEventListener('click', function () { cmpSetMapBig(!_cmpMapBig); });
-      expandRow.appendChild(expandBtn);
-      mapWrap.appendChild(expandRow);
-      mapWrap.appendChild(el('div', { id: 'tp-cmp-map', style: 'width:100%;height:150px;border-radius:8px;overflow:hidden;background:#eef;' }));
+      mapWrap.appendChild(el('div', { id: 'tp-cmp-map', style: 'width:100%;height:150px;border-radius:8px;overflow:hidden;background:#eef;margin-top:6px;' }));
       ov.appendChild(mapWrap);
 
       document.body.appendChild(ov);
