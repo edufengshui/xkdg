@@ -5136,6 +5136,76 @@
     return h + 'h' + (m ? ' ' + m + 'm' : '');
   }
 
+  /* ⏳ 时辰 COUNTDOWN (additive) ==========================================
+   * Minutes until the current Chinese double-hour (时辰) rolls over, measured on
+   * the SAME compensated TRUE SOLAR TIME the rest of the app uses (longitude eq.
+   * of time + UTC + DST, via tpOffsetMin). 时辰 boundaries fall on the ODD solar
+   * hours (…23:00, 01:00, 03:00…); each 时辰 lasts 120 min. UTC/DST are derived
+   * from the device timezone so this also works with a "bare" compass (no trip).
+   * Everything here is self-contained and never throws. --------------------- */
+  function tpCmpHourCountdown(lon) {
+    try {
+      if (lon == null || !isFinite(lon)) return null;
+      var now = Date.now();
+      var y = new Date(now).getFullYear();
+      // Standard-time UTC offset in hours (DST handled separately by tpOffsetMin).
+      var utcStd = -Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()) / 60;
+      var dstOn = tpDstActiveOn(new Date(now));
+      var off = tpOffsetMin(lon, utcStd, dstOn, now);            // wall-clock -> true solar, minutes
+      var solarMs = now + off * 60000;
+      var sd = new Date(solarMs);
+      var H = sd.getHours();
+      var nextOdd = (H % 2 === 0) ? (H + 1) : (H + 2);           // next ODD solar hour (23/01/03…)
+      var boundarySolarMs = new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), nextOdd, 0, 0, 0).getTime();
+      var boundaryWallMs = boundarySolarMs - off * 60000;        // back to wall-clock
+      var minsLeft = Math.max(0, Math.round((boundaryWallMs - now) / 60000));
+      var cur = tpChineseHourAt(now, lon, utcStd, dstOn);
+      var nxt = tpChineseHourAt(boundaryWallMs + 60000, lon, utcStd, dstOn);   // 1 min into the next 时辰
+      return { minsLeft: minsLeft, cur: cur, next: nxt, tst: cur ? cur.tst : null };
+    } catch (e) { return null; }
+  }
+  // Inner HTML (text only) for the countdown line — regenerated live by the ticker.
+  function tpCmpHourInner(lon) {
+    try {
+      var c = tpCmpHourCountdown(lon);
+      if (!c || !c.cur) return '';
+      var curLbl = c.cur.han + (c.cur.py ? ' ' + c.cur.py : '');
+      var nextLbl = c.next ? (c.next.han + (c.next.py ? ' ' + c.next.py : '')) : '';
+      var m = c.minsLeft, urgent = m <= 15;
+      return '<span style="' + (urgent ? 'color:#b00;font-weight:700;' : 'color:#7b1fa2;') + '">' +
+        '\u23f3 ' + curLbl + ' \u00b7 cambio ora tra <b>' + m + ' min</b>' +
+        (nextLbl ? ' \u2192 ' + nextLbl : '') +
+        (c.tst ? ' <span style="color:#999;font-weight:400;">(TST ' + c.tst + ')</span>' : '') +
+        '</span>';
+    } catch (e) { return ''; }
+  }
+  // Full countdown block (wrapper + inner). Carries data-lon so the ticker can
+  // refresh it in place without a full re-render. Returns '' if unavailable.
+  function tpCmpHourCountdownHtml(lon) {
+    try {
+      var inner = tpCmpHourInner(lon);
+      if (!inner) return '';
+      return '<div id="tp-cmp-hour" data-lon="' + lon + '" style="font-size:12px;margin-top:4px;">' + inner + '</div>';
+    } catch (e) { return ''; }
+  }
+  // Light ticker: once a minute-ish, refresh the countdown text in place so it
+  // counts down even when the car is stopped (no GPS movement -> no re-render).
+  var _cmpHourTimer = null;
+  function tpCmpEnsureHourTimer() {
+    try {
+      if (_cmpHourTimer != null) return;
+      _cmpHourTimer = setInterval(function () {
+        try {
+          var host = document.getElementById('tp-cmp-hour');
+          if (!host) return;
+          var lon = parseFloat(host.getAttribute('data-lon'));
+          if (isFinite(lon)) host.innerHTML = tpCmpHourInner(lon);
+        } catch (e) {}
+      }, 15000);
+    } catch (e) {}
+  }
+  tpCmpEnsureHourTimer();
+
   function tpCmpRender() {
     var box = document.getElementById('tp-cmp-body'); if (!box) return;
     var r = cmpResolveRef();
@@ -5151,6 +5221,7 @@
       var abHtml = '<div style="font-size:46px;font-weight:800;line-height:1;color:#7b1fa2;">' + Math.round(rb) + '°</div>' +
         '<div style="font-size:24px;font-weight:700;margin-top:2px;">' + tpQ8(rb) + '</div>' +
         '<div style="font-size:12px;color:#666;margin-top:4px;">constant course \u00b7 ' + (rdKm < 10 ? rdKm.toFixed(1) : Math.round(rdKm)) + ' km</div>' +
+        tpCmpHourCountdownHtml(ref.lon) +
         '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:12px;text-align:left;color:#555;line-height:1.5;">' +
         '<b style="color:#0b8043;">A</b> ' + (_cmpOrigin && _cmpOrigin.name ? _cmpOrigin.name : 'origin') + '<br>' +
         '<b style="color:#b00;">B</b> ' + (_cmpDest.name || 'destination') + '</div>';
@@ -5172,7 +5243,8 @@
 
     var html = '<div style="font-size:46px;font-weight:800;line-height:1;color:#1565c0;">' + Math.round(deg) + '°</div>' +
       '<div style="font-size:24px;font-weight:700;margin-top:2px;">' + q + '</div>' +
-      '<div style="font-size:12px;color:#666;margin-top:4px;">' + refLabel + ' · ' + (distKm < 10 ? distKm.toFixed(1) : Math.round(distKm)) + ' km</div>';
+      '<div style="font-size:12px;color:#666;margin-top:4px;">' + refLabel + ' · ' + (distKm < 10 ? distKm.toFixed(1) : Math.round(distKm)) + ' km</div>' +
+      tpCmpHourCountdownHtml(pos.lon);
     if (distKm < 1) html += '<div style="font-size:12px;color:#b58900;margin-top:4px;">Too close to the reference for a stable bearing — drive a bit.</div>';
 
     // Travel heading (your real direction of march).
