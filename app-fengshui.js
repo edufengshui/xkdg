@@ -2654,7 +2654,32 @@ function qmdjChartShow(){
   var rotating = !!(modeEl && modeEl.value === 'rotating');
   if(typeof showQimenChart !== 'function'){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>'; return; }
   var html = '';
-  try { html = showQimenChart(dEl.value, hGan, hZhi, null, { mode:(rotating ? 'rotating' : undefined), returnHtml:true }); }
+  try {
+    // House rule (Edu): the Jú / Jie Qi must be decided in TRUE SOLAR TIME at the
+    // hour's own instant — never at day granularity, never civil, never Beijing.
+    // Without this, on a day where a solar term enters mid-day the chart stayed on
+    // the previous term's Jú (e.g. 己酉 on 2026-07-07 wrongly showed 阴9 夏至 instead
+    // of 阴8 小暑, putting the 值符 on the wrong palace). We build the TST hour instant
+    // exactly like qimen-div-finder (hourPillarFromCivil → hp.tst date + hp.bj instant)
+    // and pass hp.bj so the engine reads Jie Qi / Jú at the hour, in local TST.
+    var _opts = { mode:(rotating ? 'rotating' : undefined), returnHtml:true };
+    var _iso = dEl.value, _g = hGan, _z = hZhi;
+    try {
+      var _lt = (typeof XKDGSolarTime !== 'undefined' && XKDGSolarTime.currentLonTz) ? XKDGSolarTime.currentLonTz() : null;
+      var _bi = parseInt(sel.value, 10);   // selected branch index (子=0 … 亥=11)
+      if (_lt && isFinite(_lt.lonDeg) && isFinite(_bi) && typeof XKDGSolarTime.hourPillarFromCivil === 'function') {
+        var _dp = String(dEl.value).split('-');
+        var _hCiv = (_bi * 2) % 24;        // civil hour at the branch centre
+        var _hp = XKDGSolarTime.hourPillarFromCivil(+_dp[0], +_dp[1], +_dp[2], _hCiv, 30, 0, _lt.lonDeg, _lt.tzOffsetMin);
+        if (_hp && _hp.tst && _hp.bj) {
+          _iso = _hp.tst.y + '-' + String(_hp.tst.mo).padStart(2, '0') + '-' + String(_hp.tst.d).padStart(2, '0');
+          _g = _hp.gan; _z = _hp.zhi;      // stems from the same TST computation (kept consistent)
+          _opts.bjInstant = _hp.bj;
+        }
+      }
+    } catch (e2) { /* no TST/longitude available → fall back to selector values */ }
+    html = showQimenChart(_iso, _g, _z, null, _opts);
+  }
   catch(e){ html = ''; }
   box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Cannot load chart for ' + dEl.value + ' ' + hGan + hZhi + '.</div>';
 }
