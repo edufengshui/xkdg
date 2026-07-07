@@ -777,6 +777,80 @@ function _xkConnectsAny(pYr, pStem, pBranch, dQi, dYun, dHex, dStem, dBranch){
   } catch(e){ return false; }
 }
 
+// ── 时辰 4-PILLAR BOND (additive, self-contained, never throws) ─────────────
+// True when the FOUR pillars of a given hour (year/month/day/hour) form a SINGLE
+// connected communication network — independent of any person. Encodes the
+// confirmed rule: number-based links (Hetu / Adding 5·10·15 / Pure Qi) count
+// together only if they are the SAME type AND the SAME line (qi or yun); Family
+// and Inverse-hexagram links are not number-bound and combine freely. "Connected
+// network" = all four pillars joined into one component. Lets good hours that do
+// NOT communicate with the loaded person still be flagged (they rank low, but must
+// show). Pillars are taken in TRUE SOLAR TIME exactly as the scanner does, via
+// XKDGSolarTime (wall-clock ⇄ TST round-trip, so the day pillar rolls at solar
+// midnight correctly). Returns { bond:true, mode } / { bond:false } / null on error.
+function xkdgHourFourPillarBond(isoDate, branchChar) {
+  try {
+    if (typeof XKDGSolarTime === 'undefined' || typeof XKDG_TABLE === 'undefined') return null;
+    var TST_CENTER = { '子':0,'丑':2,'寅':4,'卯':6,'辰':8,'巳':10,'午':12,'未':14,'申':16,'酉':18,'戌':20,'亥':22 };
+    var th = TST_CENTER[branchChar];
+    if (th == null) return null;
+    var dp = String(isoDate).split('-').map(Number);
+    if (dp.length < 3 || !isFinite(dp[0])) return null;
+    var lt = XKDGSolarTime.currentLonTz();
+    if (!lt || !isFinite(lt.lonDeg)) return null;
+    var w = XKDGSolarTime.wallClockFromTST(dp[0], dp[1], dp[2], th, 0, lt.lonDeg, lt.tzOffsetMin);
+    var P = XKDGSolarTime.pillarsFromCivil(w.y, w.mo, w.d, w.h, w.mi, 0, lt.lonDeg, lt.tzOffsetMin);
+    if (!P || !P.year || !P.month || !P.day || !P.hour) return null;
+
+    var gz = [P.year, P.month, P.day, P.hour];
+    var nodes = gz.map(function (g) {
+      var st = g.charAt(0), br = g.charAt(1), raw = XKDG_TABLE[st + br] || {};
+      return { stem: st, branch: br, hex: raw.hex, qi: raw.qi, yun: raw.yun };
+    });
+    if (nodes.some(function (n) { return n.qi == null || n.yun == null; })) return null;
+
+    var N = 4, pairs = [];
+    for (var i = 0; i < N; i++) for (var j = i + 1; j < N; j++) pairs.push([i, j]);
+
+    function famShare(a, b) {
+      try {
+        var fa = getJiaZiFamilies(a.stem, a.branch), fb = getJiaZiFamilies(b.stem, b.branch);
+        return fa.some(function (f) { return fb.indexOf(f) >= 0; });
+      } catch (e) { return false; }
+    }
+    function invPair(a, b) { try { return a.hex && b.hex && getInverseHex(a.hex) === b.hex; } catch (e) { return false; } }
+    // Free (non-number) edges — Family and Inverse combine with anything.
+    var freeEdges = pairs.filter(function (p) {
+      return famShare(nodes[p[0]], nodes[p[1]]) || invPair(nodes[p[0]], nodes[p[1]]);
+    });
+    function numEdge(a, b, type, line) {
+      var va = a[line], vb = b[line];
+      if (type === 'hetu')   return isHetuPair(va, vb);
+      if (type === 'adding') return [5, 10, 15].indexOf(va + vb) >= 0;
+      if (type === 'pure')   return va === vb;
+      return false;
+    }
+    function connected(edges) {
+      var par = [0, 1, 2, 3];
+      function find(x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; }
+      edges.forEach(function (e) { par[find(e[0])] = find(e[1]); });
+      var r = find(0);
+      return find(1) === r && find(2) === r && find(3) === r;
+    }
+    // Family/Inverse alone may already connect all four.
+    if (connected(freeEdges)) return { bond: true, mode: 'family/inverse' };
+    // Otherwise add ONE number mode (same type + same line) on top of the free edges.
+    var modes = [['hetu','qi'], ['hetu','yun'], ['adding','qi'], ['adding','yun'], ['pure','qi'], ['pure','yun']];
+    for (var m = 0; m < modes.length; m++) {
+      var t = modes[m][0], ln = modes[m][1];
+      var ne = pairs.filter(function (p) { return numEdge(nodes[p[0]], nodes[p[1]], t, ln); });
+      if (connected(freeEdges.concat(ne))) return { bond: true, mode: t + ' ' + ln };
+    }
+    return { bond: false };
+  } catch (e) { return null; }
+}
+if (typeof window !== 'undefined') window.xkdgHourFourPillarBond = xkdgHourFourPillarBond;
+
 function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     const items = [];
     const keys = ['year','month','day','hour'];

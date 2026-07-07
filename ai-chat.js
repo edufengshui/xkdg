@@ -3472,10 +3472,10 @@
     var map = {};   // 'date|branch' -> {date, branch, x, q, s, qhits, shits}
     function slot(date, branch) {
       var k = date + '|' + branch;
-      if (!map[k]) map[k] = { date: date, branch: branch, x: null, q: null, s: null, qhits: [], shits: [] };
+      if (!map[k]) map[k] = { date: date, branch: branch, x: null, q: null, s: null, h: null, hlabel: null, qhits: [], shits: [] };
       return map[k];
     }
-    var ran = { xkdg: false, quadrant: false, special: false };
+    var ran = { xkdg: false, quadrant: false, special: false, bond: false };
     var notes = [];
     var imprisonNote = null;
 
@@ -3535,21 +3535,49 @@
       } catch (e) { notes.push('Qimen special scan failed.'); }
     } else if (starType !== 'water' && starType !== 'mountain') { notes.push('No star target — Qimen special configurations skipped.'); }
 
-    // Merge & rank: tier (how many of 3) DESC, then combined DESC, then date ASC
+    // (4) 时辰 4-pillar bond — the hour's OWN four pillars form a connected
+    // communication network (Family/Inverse + one same-type/same-line number
+    // mode). This is INTRINSIC to the hour, independent of the person: an hour
+    // can be good even if it does not communicate with the loaded person (it
+    // will rank low, but must be shown). Person-independent, so it always runs.
+    if (typeof window.xkdgHourFourPillarBond === 'function') {
+      try {
+        for (var _di = 0; _di < days; _di++) {
+          var _d = new Date(start + 'T12:00:00'); _d.setDate(_d.getDate() + _di);
+          var _isoD = _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
+          for (var _bi = 0; _bi < _BRANCHES_IDX.length; _bi++) {
+            var _brc = _BRANCHES_IDX[_bi];
+            var _bond = window.xkdgHourFourPillarBond(_isoD, _brc);
+            if (_bond && _bond.bond) {
+              var _sl = slot(_isoD, _brc);
+              _sl.h = 1;
+              _sl.hlabel = '4-pillar bond (' + (_bond.mode || 'bond') + ')';
+            }
+          }
+        }
+        ran.bond = true;
+      } catch (e) { notes.push('Hexagram 4-pillar bond scan failed.'); }
+    }
+
+    // Merge & rank: tier (how many criteria) DESC, then Qimen energy DESC, then date ASC
     var rows = Object.keys(map).map(function (k) {
       var m = map[k];
       var matched = [];
       if (m.x != null && m.x >= 1) matched.push('XKDG');
       if (m.q != null && m.q >= 1) matched.push('Qimen quadrant');
       if (m.s != null && m.s >= 1) matched.push('Qimen special');
+      if (m.h != null && m.h >= 1) matched.push('Hexagram bond');
+      var _hits = (m.qhits || []).concat(m.shits || []);
+      if (m.hlabel) _hits = _hits.concat([m.hlabel]);
       return {
         date: m.date, branch: m.branch,
         hour: solarBranchToClock(m.branch) || m.branch,
         tier: matched.length, matched: matched,
         xkdg_score: m.x, qimen_quadrant_score: m.q, qimen_special_score: m.s,
+        hex_bond: m.h != null ? (m.hlabel || 'bond') : null,
         qimen_score: (m.q || 0) + (m.s || 0),                 // activation energy AT the palace (what you stimulate)
         combined_score: (m.x || 0) + (m.q || 0) + (m.s || 0),
-        hits: (m.qhits || []).concat(m.shits || [])
+        hits: _hits
       };
     }).filter(function (r) { return r.tier >= 1; });
     // Ranking for an ACTIVATION tool: the Qimen energy AT the palace is the primary
@@ -3571,7 +3599,7 @@
       start: start, days: days, scans_run: ran,
       person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',
       count: rows.length, results: rows.slice(0, 20), scan_notes: notes,
-      note: 'Triple scan merged by date+hour. matched lists which of the 3 the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace). tier = how many of the 3 (3 = best). PRESENT tier 3 first, then tier 2, then tier 1. combined_score = sum of the 3 sub-scores (shown for transparency). RANKING within a tier is by qimen_score (Qimen quadrant + special = the activation energy at the palace) FIRST, then xkdg_score as the tiebreaker \u2014 so a stronger Qimen hour outranks a higher-XKDG hour of the same tier. State for each which scans it passed and, when two hours are close, say which has the stronger Qimen (activation) vs the stronger XKDG (person/day).',
+      note: 'Quadruple scan merged by date+hour. matched lists which criteria the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace), and Hexagram bond (the hour\'s OWN four pillars form a connected communication network \u2014 Family/Inverse plus one same-type/same-line number mode of Hetu/Adding/Pure Qi \u2014 which makes the hour good INDEPENDENTLY of the person). tier = how many criteria matched (4 = best). IMPORTANT: an hour is worth reporting even if it does NOT communicate with the person \u2014 if it has a Hexagram bond and/or a Qimen configuration it MUST still be listed (it will simply rank lower). Never claim an hour is the "only" good one just because it is the only one that connects to the person. PRESENT higher tiers first. RANKING within a tier is by qimen_score (Qimen quadrant + special = activation energy at the palace) FIRST, then xkdg_score as tiebreaker. State for each which criteria it passed; for a Hexagram-bond hour, mention the bond (hex_bond field) as the reason it qualifies.',
       time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
     };
   }
