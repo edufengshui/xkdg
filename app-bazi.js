@@ -778,19 +778,24 @@ function _xkConnectsAny(pYr, pStem, pBranch, dQi, dYun, dHex, dStem, dBranch){
 }
 
 // ── 时辰 4-PILLAR BOND (additive, self-contained, never throws) ─────────────
-// True when the FOUR pillars of a given hour (year/month/day/hour) form a SINGLE
-// connected communication network — independent of any person. Encodes the
-// confirmed rule: number-based links (Hetu / Adding 5·10·15 / Pure Qi) count
-// together only if they are the SAME type AND the SAME line (qi or yun); Family
-// and Inverse-hexagram links are not number-bound and combine freely. "Connected
-// network" = all four pillars joined into one component. Lets good hours that do
-// NOT communicate with the loaded person still be flagged (they rank low, but must
-// show). Pillars are taken in TRUE SOLAR TIME exactly as the scanner does, via
-// XKDGSolarTime (wall-clock ⇄ TST round-trip, so the day pillar rolls at solar
-// midnight correctly). Returns { bond:true, mode } / { bond:false } / null on error.
+// True when the FOUR pillars of a given hour (year/month/day/hour) communicate as
+// a WHOLE-NETWORK bond — independent of any person. This does NOT re-derive any
+// rule: it builds the hour's four pillars in TRUE SOLAR TIME (XKDGSolarTime wall-
+// clock ⇄ TST round-trip, so the day pillar rolls at solar midnight) and hands
+// them to analyzeXkdg — the app's own engine — then accepts ONLY the verdicts that
+// close all four pillars into one bond, exactly as the natal chart does:
+//   • Blood Link          (all four share one family, with male/female balance)
+//   • Two-Family Bond     (two families of two, bonded to each other; male/female)
+//   • Pure Qi / Elements / Periods   (all four share the same Qi or Yun)
+//   • Pure Hetu / Hetu Elements / Periods    (all four covered by He Tu)
+//   • Pure Adding / Adding Elements / Periods (all four covered by Adding)
+// Partial links (a Family of only 2–3 pillars, a lone Pure-Qi pair, a single
+// Inverse) are NOT a whole-network bond and are intentionally rejected — the old
+// pairwise version wrongly accepted them (e.g. the 寅 hour's 7·4·7·4 as "pure qi").
+// Returns { bond:true, mode } / { bond:false } / null on error.
 function xkdgHourFourPillarBond(isoDate, branchChar) {
   try {
-    if (typeof XKDGSolarTime === 'undefined' || typeof XKDG_TABLE === 'undefined') return null;
+    if (typeof XKDGSolarTime === 'undefined' || typeof XKDG_TABLE === 'undefined' || typeof analyzeXkdg !== 'function') return null;
     var TST_CENTER = { '子':0,'丑':2,'寅':4,'卯':6,'辰':8,'巳':10,'午':12,'未':14,'申':16,'酉':18,'戌':20,'亥':22 };
     var th = TST_CENTER[branchChar];
     if (th == null) return null;
@@ -802,49 +807,51 @@ function xkdgHourFourPillarBond(isoDate, branchChar) {
     var P = XKDGSolarTime.pillarsFromCivil(w.y, w.mo, w.d, w.h, w.mi, 0, lt.lonDeg, lt.tzOffsetMin);
     if (!P || !P.year || !P.month || !P.day || !P.hour) return null;
 
-    var gz = [P.year, P.month, P.day, P.hour];
-    var nodes = gz.map(function (g) {
-      var st = g.charAt(0), br = g.charAt(1), raw = XKDG_TABLE[st + br] || {};
-      return { stem: st, branch: br, hex: raw.hex, qi: raw.qi, yun: raw.yun };
-    });
-    if (nodes.some(function (n) { return n.qi == null || n.yun == null; })) return null;
+    // Build the pillars in the exact shape analyzeXkdg expects; it derives families,
+    // roles (male/female) and every relation itself from stem+branch and qi/yun.
+    function _mk(gz) {
+      var st = String(gz).charAt(0), br = String(gz).charAt(1), raw = XKDG_TABLE[st + br] || {};
+      return { stem: st, branch: br, qi: raw.qi, yun: raw.yun, hex: raw.hex };
+    }
+    var pillars = { year: _mk(P.year), month: _mk(P.month), day: _mk(P.day), hour: _mk(P.hour) };
+    var arr = [pillars.year, pillars.month, pillars.day, pillars.hour];
+    if (arr.some(function (p) { return p.qi == null || p.yun == null; })) return null;
 
-    var N = 4, pairs = [];
-    for (var i = 0; i < N; i++) for (var j = i + 1; j < N; j++) pairs.push([i, j]);
+    var res = analyzeXkdg(pillars);
+    if (!res) return { bond: false };
 
-    function famShare(a, b) {
-      try {
-        var fa = getJiaZiFamilies(a.stem, a.branch), fb = getJiaZiFamilies(b.stem, b.branch);
-        return fa.some(function (f) { return fb.indexOf(f) >= 0; });
-      } catch (e) { return false; }
-    }
-    function invPair(a, b) { try { return a.hex && b.hex && getInverseHex(a.hex) === b.hex; } catch (e) { return false; } }
-    // Free (non-number) edges — Family and Inverse combine with anything.
-    var freeEdges = pairs.filter(function (p) {
-      return famShare(nodes[p[0]], nodes[p[1]]) || invPair(nodes[p[0]], nodes[p[1]]);
-    });
-    function numEdge(a, b, type, line) {
-      var va = a[line], vb = b[line];
-      if (type === 'hetu')   return isHetuPair(va, vb);
-      if (type === 'adding') return [5, 10, 15].indexOf(va + vb) >= 0;
-      if (type === 'pure')   return va === vb;
-      return false;
-    }
-    function connected(edges) {
-      var par = [0, 1, 2, 3];
-      function find(x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; }
-      edges.forEach(function (e) { par[find(e[0])] = find(e[1]); });
-      var r = find(0);
-      return find(1) === r && find(2) === r && find(3) === r;
-    }
-    // Family/Inverse alone may already connect all four.
-    if (connected(freeEdges)) return { bond: true, mode: 'family/inverse' };
-    // Otherwise add ONE number mode (same type + same line) on top of the free edges.
-    var modes = [['hetu','qi'], ['hetu','yun'], ['adding','qi'], ['adding','yun'], ['pure','qi'], ['pure','yun']];
-    for (var m = 0; m < modes.length; m++) {
-      var t = modes[m][0], ln = modes[m][1];
-      var ne = pairs.filter(function (p) { return numEdge(nodes[p[0]], nodes[p[1]], t, ln); });
-      if (connected(freeEdges.concat(ne))) return { bond: true, mode: t + ' ' + ln };
+    // Whole-network verdicts only — links that close ALL FOUR pillars.
+    var FULL = {
+      'Two-Family Bond': 1,
+      'Pure Qi': 1, 'Pure Qi Elements': 1, 'Pure Qi Periods': 1,
+      'Pure Hetu': 1, 'Hetu Elements': 1, 'Hetu Periods': 1,
+      'Pure Adding': 1, 'Adding Elements': 1, 'Adding Periods': 1
+    };
+    if (res.sameFamily) return { bond: true, mode: 'Blood Link' };
+    var hit = (res.items || []).filter(function (it) { return it && FULL[it.text]; });
+    if (hit.length) return { bond: true, mode: hit[0].text };
+
+    // Partial Blood Link — three pillars share one family and the 4th connects to
+    // at least one of them via Hetu / Adding (5·10·15) / Pure Qi, with no branch
+    // clash between the lonely pillar and the three. Faithful to app-bazi's own
+    // Partial BL rule (which, in your code, does not require the male/female test).
+    var pk = ['year', 'month', 'day', 'hour'];
+    var fams = ['Qian-Kun', 'Kan-Li', 'Zhen-Xun', 'Gen-Dui', 'Pi-Tai', 'JiJi-WeiJi', 'Heng-Yi', 'Sun-Xian'];
+    for (var fi = 0; fi < fams.length; fi++) {
+      var fam = fams[fi];
+      var inFam = pk.filter(function (k) { return getJiaZiFamilies(pillars[k].stem, pillars[k].branch).indexOf(fam) >= 0; });
+      if (inFam.length !== 3) continue;
+      var lonely = pk.filter(function (k) { return inFam.indexOf(k) < 0; })[0];
+      var lp = pillars[lonely], lb = lp.branch;
+      var connects = inFam.some(function (k) {
+        var fp = pillars[k];
+        return isHetuPair(lp.qi, fp.qi) || isHetuPair(lp.yun, fp.yun) ||
+               [5, 10, 15].indexOf(lp.qi + fp.qi) >= 0 || [5, 10, 15].indexOf(lp.yun + fp.yun) >= 0 ||
+               lp.qi === fp.qi || lp.yun === fp.yun;
+      });
+      if (!connects) continue;
+      var noClash = inFam.every(function (k) { return BRANCH_CLASHES[lb] !== pillars[k].branch && BRANCH_CLASHES[pillars[k].branch] !== lb; });
+      if (noClash) return { bond: true, mode: 'Partial BL(' + fam + ')' };
     }
     return { bond: false };
   } catch (e) { return null; }
