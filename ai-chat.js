@@ -303,12 +303,9 @@
     '(coords + names), depart_date, and range_km/reserve_km if given — and DELIBERATELY OMIT depart_time and ' +
     'depart_hour. When the time is omitted the app itself auto-selects the most favourable (highest luck) and, on a ' +
     'tie, the EARLIEST daytime departure, then opens and runs the planner. NEVER default to 08:00 or invent a time. ' +
-    'The exact chosen clock time appears in the itinerary card that posts to the chat. IMPORTANT: when the itinerary ' +
-    'card is posted, it ALREADY contains, at the top, the full plain-language journey narrative (departure, each ' +
-    'stop with time, cash/detour with the reason, recharges, arrival, "Buon Viaggio"). So your own reply must be ' +
-    'AT MOST one short opening line (e.g. "Ecco l\'itinerario") or nothing at all. DO NOT summarise the trip, the ' +
-    'favourable hours or windows, the count of favourable hours, the stops, the directions, the doors or the scores ' +
-    '\u2014 never re-list or re-explain what the card already shows below.\n' +
+    'The exact chosen clock time appears in the itinerary card that posts to the chat. Your reply is ONE short line: ' +
+    'say you picked the most favourable departure of the day and that the exact time + direction are shown in the ' +
+    'card.\n' +
     '- REPLAN FROM HERE: when the user is ALREADY travelling and something went wrong (roadblock, detour, delay) or ' +
     'simply says \u201cricalcola da qui\u201d / \u201creplan from here\u201d, call plan_travel with the SAME destination, ' +
     'from_current_position:true, and NO origin_lat/lon and NO depart_time (the app takes a fresh GPS fix and departs ' +
@@ -4403,7 +4400,7 @@
     // (a real user tap, so the browser will not block the pop-up).
     var ITIN_LBL = {
       it: { drive: 'Guida', stop: 'Sosta', charge: 'Ricarica', min: 'min', toward: 'verso', then: 'poi verso', arrive: 'arrivo a',
-        realRoad: 'strada reale', driving: 'di guida', estimate: 'stima in linea retta', details: 'Dettagli',
+        realRoad: 'strada reale', driving: 'di guida', estimate: 'stima in linea retta',
         chPending: '\ud83d\udd0c Ricarica: ricerca in corso\u2026', ch: '\ud83d\udd0c Ricarica', addedMaps: 'aggiunta al percorso Maps',
         moreStops: 'altre soste', otherNet: 'altri operatori', lowPow: 'solo \u226580 kW \u2014 nessuna \u2265150 kW',
         noKey: '\ud83d\udd0c Ricarica: manca la chiave Open Charge Map \u2014 aggiungila nel pannello (\ud83d\udd0b Range & charging)',
@@ -4416,7 +4413,7 @@
         replanStale: '\u26a0 GPS non fresco \u2014 uso l\u2019ultima posizione salvata', replanNoGps: '\u26a0 Nessuna posizione GPS disponibile', replanNoDest: '\u26a0 Destinazione non trovata \u2014 rifai lo SCAN nel pannello',
         exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a' },
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
-        realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate', details: 'Details',
+        realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
         chPending: '\ud83d\udd0c Charging: searching\u2026', ch: '\ud83d\udd0c Charging', addedMaps: 'added to the Maps route',
         moreStops: 'more stops', otherNet: 'other networks', lowPow: 'only \u226580 kW \u2014 no \u2265150 kW',
         noKey: '\ud83d\udd0c Charging: no Open Charge Map key \u2014 add it in the planner (\ud83d\udd0b Range & charging)',
@@ -4429,7 +4426,7 @@
         replanStale: '\u26a0 GPS fix failed \u2014 using the last saved position', replanNoGps: '\u26a0 No GPS position available', replanNoDest: '\u26a0 Destination not found \u2014 run SCAN in the planner first',
         exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near' },
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
-        realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau', details: 'D\u00e9tails',
+        realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
         chPending: '\ud83d\udd0c Recharge : recherche\u2026', ch: '\ud83d\udd0c Recharge', addedMaps: 'ajout\u00e9e \u00e0 l\u2019itin\u00e9raire Maps',
         moreStops: 'autres arr\u00eats', otherNet: 'autres r\u00e9seaux', lowPow: '\u226580 kW seulement \u2014 aucune \u2265150 kW',
         noKey: '\ud83d\udd0c Recharge : pas de cl\u00e9 Open Charge Map \u2014 ajoutez-la dans le panneau (\ud83d\udd0b Range & charging)',
@@ -4690,56 +4687,6 @@
     // Plain-language, one-line-per-stop journey story built from the FINISHED plan
     // (real stops, times, cash/detour). 🔴 for stops (A,B,C…), 🔵 for recharges,
     // **cash** / **detour** in bold, closing with "Buon Viaggio". Returns a DOM node.
-    function _tpJourneyNarrative(payload, legs, stopLetters, destLetter, fortByLetter, kindByLetter, xkByLetter, L) {
-      try {
-        if (!legs || !legs.length) return null;
-        var lines = [];
-        // Opening line: where you leave, the overall favourable direction, distance/time.
-        var open = 'Parti da <b>' + (payload.origin || 'origine') + '</b>';
-        if (payload.snapped) open += ' in direzione <b>' + payload.snapped + '</b>' + (payload.bearing != null ? ' (' + payload.bearing + '\u00b0)' : '');
-        open += ' verso <b>' + (payload.dest || 'destinazione') + '</b>';
-        if (payload.km != null) open += ' \u2014 ' + payload.km + ' km' + (payload.driving_time ? ', ' + payload.driving_time + ' di guida' : '');
-        open += '.';
-        lines.push(open);
-
-        var si = 0, pendingToward = null;
-        legs.forEach(function (it) {
-          if (it.kind === 'drive') { pendingToward = it.toward || pendingToward; return; }
-          var letter = stopLetters[si]; si++;
-          var name = it.place || it.name || '';
-          var at = it.at || '';
-          var recharge = !!it.charge;
-          var kind = kindByLetter[letter];
-          var s = '\uD83D\uDD34 <b>' + letter + '</b>';
-          if (name) s += ' \u2014 ' + name;
-          if (at) s += ', alle <b>' + at + '</b>.';
-          else s += '.';
-          if (kind === 'cash') {
-            s += ' La direzione' + (pendingToward ? ' <b>' + pendingToward + '</b>' : '') + ' \u00e8 favorevole: guidi dritto e fai <b>cash</b>.';
-          } else if (kind === 'detour') {
-            s += ' In quest\u2019ora la rotta diretta non \u00e8 favorevole, quindi fai un <b>detour</b>' + (pendingToward ? ' verso <b>' + pendingToward + '</b>' : '') + ' (direzione favorevole) per non perdere l\u2019ora.';
-          } else if (pendingToward) {
-            s += ' Prosegui verso ' + pendingToward + '.';
-          }
-          if (recharge) s += ' \uD83D\uDD35 Qui ricarichi.';
-          if (letter in xkByLetter) s += ' (Ora XKDG favorevole per la persona.)';
-          lines.push(s);
-          pendingToward = null;
-        });
-
-        var arr = '\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || 'destinazione') + '</b>';
-        if (destLetter in fortByLetter) arr += ' con <b>cash</b> all\u2019arrivo';
-        arr += '.';
-        lines.push(arr);
-        lines.push('<i>Buon Viaggio</i>');
-
-        var box = elc('div', { style: 'margin:5px 0 4px;font-size:13.5px;line-height:1.65;' });
-        // Blank line between steps so each stop stands clearly on its own.
-        box.innerHTML = lines.join('<br><br>');
-        return box;
-      } catch (e) { return null; }
-    }
-
     function addItineraryBubble(payload) {
       payload = payload || {};
       var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
@@ -4796,7 +4743,6 @@
       var _lBase = (function () { for (var i = 0; i < legs.length; i++) { var t = (legs[i].kind === 'drive') ? legs[i].from : legs[i].at; if (t) return _lMin(t); } return 0; })();
       function _lNorm(s) { var m = _lMin(s); return m < _lBase ? m + 1440 : m; }
       var _fortByLetter = {};
-      var _kindByLetter = {};   // 'cash' | 'detour' per lettera (per la narrazione)
       var _xkByLetter = {};   // #2: which letters also have a favourable XKDG person-hour
       _hrs.forEach(function (h) {
         // Track XKDG-positive hours separately from Qimen-direction (cash/detour) hours,
@@ -4820,7 +4766,7 @@
           if (Lk == null && _lNorm(lt.at) > hf && _lNorm(lt.at) <= ht) Lk = lt.letter;  // stop INSIDE the hour
         }
         if (!Lk) return;
-        var sc = _fScore(h); var cur = _fortByLetter[Lk]; if (cur == null || sc > cur) { _fortByLetter[Lk] = sc; _kindByLetter[Lk] = h.kind; } });
+        var sc = _fScore(h); var cur = _fortByLetter[Lk]; if (cur == null || sc > cur) _fortByLetter[Lk] = sc; });
       // Star legend: GOLD star(s) = favourable Qimen DIRECTION (cash), gold double =
       // best-of-trip; a BLUE circle is appended when that stop's hour is ALSO a
       // favourable XKDG person-hour (a distinct kind of luck from the direction).
@@ -4860,31 +4806,13 @@
           _itinStopEls.push({ el: pl.tx, row: pl.row, it: it, meta: _meta });
         }
       });
-      // ── Plain-language narrative (from the real plan) + a "Details" toggle that
-      //    hides the step table / hours strips below it. ─────────────────────────
-      try {
-        var _narr = _tpJourneyNarrative(payload, legs, stopLetters, destLetter, _fortByLetter, _kindByLetter, _xkByLetter, L);
-        if (_narr) wrap.appendChild(_narr);
-      } catch (eN) {}
-      var _detailsLbl = (L && L.details) ? L.details : 'Details';
-      var detailsBox = elc('div', { style: 'display:none;margin-top:4px;' });
-      var detailsToggle = elc('button', { style:
-        'margin-top:6px;background:none;border:0;color:#5e35b1;font-size:13px;font-weight:600;cursor:pointer;padding:2px 0;' },
-        '\u25B8 ' + _detailsLbl);
-      detailsToggle.addEventListener('click', function () {
-        var isOpen = detailsBox.style.display !== 'none';
-        detailsBox.style.display = isOpen ? 'none' : 'block';
-        detailsToggle.textContent = (isOpen ? '\u25B8 ' : '\u25BE ') + _detailsLbl;
-      });
-      wrap.appendChild(detailsToggle);
-      detailsBox.appendChild(listEl);
+      wrap.appendChild(listEl);
       _itinExitEls = [];
       if (payload.charging_pending || payload.charging) {
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
-        detailsBox.appendChild(_itinChargeEl);
+        wrap.appendChild(_itinChargeEl);
       } else { _itinChargeEl = null; }
-      addHoursPanel(detailsBox, payload.hours, L, stepList);
-      wrap.appendChild(detailsBox);
+      addHoursPanel(wrap, payload.hours, L, stepList);
       var mapsBtn = elc('button', { style:
         'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, L.openMaps);
       mapsBtn.addEventListener('click', function () {
