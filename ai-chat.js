@@ -4700,6 +4700,52 @@
         (payload.snapped ? ' \u00b7 ' + payload.snapped + (payload.bearing != null ? ' ' + payload.bearing + '\u00b0' : '') : '') +
         ' \u00b7 ' + distline;
       wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:4px;' }, title));
+      // ---- Plain-language per-hour story (PRESENTATION ONLY — reads the plan's own
+      //      fields: ganzhi, kind cash/detour, roadDir, detour.dir, door, arrival_cash).
+      //      No logic is computed here; everything is already decided by the planner. ----
+      try {
+        var _H = payload.hours || [], _slegs = payload.legs || [];
+        if (_H.length) {
+          var _stops = [], _li = 0;
+          _slegs.forEach(function (l) {
+            if (l.kind === 'stop' || l.kind === 'charge') {
+              _stops.push({ letter: String.fromCharCode(65 + _li), at: l.at || '', place: l.place || '', charge: l.kind === 'charge', dur: l.duration_min || 20 });
+              _li++;
+            }
+          });
+          var _inWin = function (a, b) { return _stops.filter(function (s) { return s.at && a && b && s.at >= a && s.at <= b; }); };
+          var _rows = [];
+          _H.forEach(function (h) {
+            var win = (h.from || '') + '\u2013' + (h.to || '');
+            var gz = h.ganzhi ? (' ' + h.ganzhi) : '';
+            var line = '\u23F1 <b>Ora' + gz + '</b> (' + win + ') \u2014 ';
+            if (h.kind === 'cash') {
+              line += 'direzione <b>' + (h.roadDir || '?') + '</b> favorevole \u2014 ora da <b>cash</b>' + (h.door ? ' (porta ' + h.door + (h.score != null ? ', score ' + h.score : '') + ')' : '') + '.';
+            } else if (h.kind === 'detour') {
+              var _dd = h.detour ? h.detour.dir : null;
+              line += 'la direzione <b>' + (h.roadDir || '?') + '</b> non \u00e8 favorevole, quindi <b>detour</b> verso <b>' + (_dd || '?') + '</b> (a fianco, favorevole)' + (h.detour && h.detour.door ? ' (porta ' + h.detour.door + ')' : '') + '.';
+            } else {
+              line += 'nessuna direzione favorevole in quest\u2019ora \u2014 prosegui verso ' + (h.roadDir || '?') + '.';
+            }
+            _rows.push(line);
+            _inWin(h.from, h.to).forEach(function (s) {
+              var t = '\uD83D\uDD34 <b>' + s.letter + '</b> \u00b7 alle <b>' + s.at + '</b>' + (s.place ? ' \u00b7 ' + s.place : '');
+              if (s.charge) t += ' \u00b7 \uD83D\uDD35 ricarica ~' + s.dur + ' min';
+              if (h.kind === 'cash') t += ' \u00b7 qui fai il <b>cash</b>';
+              _rows.push(t);
+            });
+          });
+          if (payload.arrival_cash_note) {
+            _rows.push('\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b> <b>dentro un\u2019ora favorevole</b>: incassi il <b>cash</b> arrivando \u2014 le ore favorevoli fino alla meta si chiudono con l\u2019arrivo, nessuna sosta intermedia necessaria.');
+          } else {
+            _rows.push('\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b>.');
+          }
+          _rows.push('<i>Buon Viaggio</i>');
+          var _story = elc('div', { style: 'margin:2px 0 8px;font-size:13.5px;line-height:1.6;' });
+          _story.innerHTML = _rows.join('<br><br>');
+          wrap.appendChild(_story);
+        }
+      } catch (eStory) {}
       // ---- Map-letter alignment ---------------------------------------------------
       // Google Maps labels POINTS: origin = A, each stop = B, C, ... (in route order),
       // destination = the next letter. Drives are the lines BETWEEN letters, not points.
