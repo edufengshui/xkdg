@@ -303,9 +303,12 @@
     '(coords + names), depart_date, and range_km/reserve_km if given — and DELIBERATELY OMIT depart_time and ' +
     'depart_hour. When the time is omitted the app itself auto-selects the most favourable (highest luck) and, on a ' +
     'tie, the EARLIEST daytime departure, then opens and runs the planner. NEVER default to 08:00 or invent a time. ' +
-    'The exact chosen clock time appears in the itinerary card that posts to the chat. Your reply is ONE short line: ' +
-    'say you picked the most favourable departure of the day and that the exact time + direction are shown in the ' +
-    'card.\n' +
+    'The exact chosen clock time appears in the itinerary card that posts to the chat. IMPORTANT: when the itinerary ' +
+    'card is posted, it ALREADY contains, at the top, the full plain-language journey narrative (departure, each ' +
+    'stop with time, cash/detour with the reason, recharges, arrival, "Buon Viaggio"). So your own reply must be ' +
+    'AT MOST one short opening line (e.g. "Ecco l\'itinerario") or nothing at all. DO NOT summarise the trip, the ' +
+    'favourable hours or windows, the count of favourable hours, the stops, the directions, the doors or the scores ' +
+    '\u2014 never re-list or re-explain what the card already shows below.\n' +
     '- REPLAN FROM HERE: when the user is ALREADY travelling and something went wrong (roadblock, detour, delay) or ' +
     'simply says \u201cricalcola da qui\u201d / \u201creplan from here\u201d, call plan_travel with the SAME destination, ' +
     'from_current_position:true, and NO origin_lat/lon and NO depart_time (the app takes a fresh GPS fix and departs ' +
@@ -4690,7 +4693,16 @@
     function _tpJourneyNarrative(payload, legs, stopLetters, destLetter, fortByLetter, kindByLetter, xkByLetter, L) {
       try {
         if (!legs || !legs.length) return null;
-        var lines = [], si = 0, pendingToward = null;
+        var lines = [];
+        // Opening line: where you leave, the overall favourable direction, distance/time.
+        var open = 'Parti da <b>' + (payload.origin || 'origine') + '</b>';
+        if (payload.snapped) open += ' in direzione <b>' + payload.snapped + '</b>' + (payload.bearing != null ? ' (' + payload.bearing + '\u00b0)' : '');
+        open += ' verso <b>' + (payload.dest || 'destinazione') + '</b>';
+        if (payload.km != null) open += ' \u2014 ' + payload.km + ' km' + (payload.driving_time ? ', ' + payload.driving_time + ' di guida' : '');
+        open += '.';
+        lines.push(open);
+
+        var si = 0, pendingToward = null;
         legs.forEach(function (it) {
           if (it.kind === 'drive') { pendingToward = it.toward || pendingToward; return; }
           var letter = stopLetters[si]; si++;
@@ -4698,27 +4710,32 @@
           var at = it.at || '';
           var recharge = !!it.charge;
           var kind = kindByLetter[letter];
-          var seg = ['\uD83D\uDD34 <b>' + letter + '</b>'];
-          var head = [];
-          if (name) head.push(name);
-          if (at) head.push('alle ' + at);
-          if (pendingToward) head.push('verso ' + pendingToward);
-          if (head.length) seg.push('\u2014 ' + head.join(', '));
-          var act = [];
-          if (kind === 'cash') act.push('per fare <b>cash</b>');
-          else if (kind === 'detour') act.push('con un <b>detour</b>');
-          if (recharge) act.push((act.length ? 'e ' : '') + '\uD83D\uDD35 ricaricare');
-          if (letter in xkByLetter) act.push('(ora XKDG favorevole)');
-          if (act.length) seg.push('\u2014 ' + act.join(' '));
-          lines.push(seg.join(' '));
+          var s = '\uD83D\uDD34 <b>' + letter + '</b>';
+          if (name) s += ' \u2014 ' + name;
+          if (at) s += ', alle <b>' + at + '</b>.';
+          else s += '.';
+          if (kind === 'cash') {
+            s += ' La direzione' + (pendingToward ? ' <b>' + pendingToward + '</b>' : '') + ' \u00e8 favorevole: guidi dritto e fai <b>cash</b>.';
+          } else if (kind === 'detour') {
+            s += ' In quest\u2019ora la rotta diretta non \u00e8 favorevole, quindi fai un <b>detour</b>' + (pendingToward ? ' verso <b>' + pendingToward + '</b>' : '') + ' (direzione favorevole) per non perdere l\u2019ora.';
+          } else if (pendingToward) {
+            s += ' Prosegui verso ' + pendingToward + '.';
+          }
+          if (recharge) s += ' \uD83D\uDD35 Qui ricarichi.';
+          if (letter in xkByLetter) s += ' (Ora XKDG favorevole per la persona.)';
+          lines.push(s);
           pendingToward = null;
         });
-        var arr = '\uD83C\uDFC1 Arrivo a ' + (payload.dest || '');
-        if (destLetter in fortByLetter) arr += ' \u2014 <b>cash</b> all\u2019arrivo';
+
+        var arr = '\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || 'destinazione') + '</b>';
+        if (destLetter in fortByLetter) arr += ' con <b>cash</b> all\u2019arrivo';
+        arr += '.';
         lines.push(arr);
         lines.push('<i>Buon Viaggio</i>');
-        var box = elc('div', { style: 'margin:4px 0 2px;font-size:13.5px;line-height:1.6;' });
-        box.innerHTML = lines.join('<br>');
+
+        var box = elc('div', { style: 'margin:5px 0 4px;font-size:13.5px;line-height:1.65;' });
+        // Blank line between steps so each stop stands clearly on its own.
+        box.innerHTML = lines.join('<br><br>');
         return box;
       } catch (e) { return null; }
     }
