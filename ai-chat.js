@@ -247,6 +247,12 @@
     'plan_lucky_multiday, which keeps ONE fixed base). Pass origin_name, start_date, days (nights) and optional area. ' +
     'It returns an OPEN-PATH itinerary: each night a real place of character to sleep, reached by a favourable ' +
     'transfer; a route map card is shown by the app. Present night by night; the path ends at the last favourable base. ' +
+    '- PRACTICAL STOPOVER LODGING (IN SCOPE — never refuse it): a plain "where do I sleep along the road" request ' +
+    '("trova un hotel economico lungo la strada tra Trento e il confine", "un B&B dove fermarmi vicino a Bolzano", ' +
+    '"cheap hotel near X") is a NORMAL travel service, NOT astrology/feng shui/lucky planning. Call find_lodging with ' +
+    'the coordinates of a sensible town along the route (from your own geography, matching the user\u2019s "after A / ' +
+    'before B"); default style economy (chains included), style="character" only if they ask for boutique/independent. ' +
+    'Do NOT tell the user it is beyond the app. ' +
     '- CITY TOUR (famous places INSIDE one city): when the user wants to tour WITHIN a city ("a lucky day in Rome", "cosa vedere ' +
     'a Firenze oggi alle ore giuste", the Lucky Trip panel "City tour"), call plan_city_tour with origin (the city centre or ' +
     'hotel), date and optional category. The XKDG direction model works at ANY scale (no minimum distance — it was a battlefield ' +
@@ -1086,6 +1092,30 @@
       }
     },
     {
+      name: 'find_lodging',
+      description: 'PRACTICAL place-to-sleep lookup along a route or near a point — a plain hotel/lodging search, ' +
+        'NOT a lucky/directional plan and NOT out of scope. USE IT for everyday requests like "trova un hotel ' +
+        'economico lungo la strada tra Trento e il confine", "un B&B dove fermarmi a dormire vicino a Bolzano", ' +
+        '"cheap hotel near X", "dove dormo lungo il percorso". NEVER refuse these as beyond the app. YOU supply the ' +
+        'coordinates of a sensible search point along the road (from your own geography — e.g. a town that fits the ' +
+        '"stop after A / before B" (e.g. Vipiteno/Bressanone between Trento and the Brenner). Default style ' +
+        'is ECONOMY (best-rated affordable hotels via Google, CHAINS INCLUDED); pass style="character" only when the ' +
+        'user asks for boutique / independent / charming places. Returns a ranked list (name, address, rating). ' +
+        'Present it plainly as travel options — no fortune/direction scoring is applied here.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          lat: { type: 'number', description: 'Latitude of the search point along the route (a town between origin and destination matching "after A / before B").' },
+          lon: { type: 'number', description: 'Longitude of the search point.' },
+          area_name: { type: 'string', description: 'Name of that town/area, for labels (e.g. "Vipiteno").' },
+          style: { type: 'string', enum: ['economy', 'character'], description: 'economy (default) = best affordable hotels incl. chains; character = independent/boutique places of character.' },
+          radius_km: { type: 'number', description: 'Search radius in km (default 20).' },
+          max_results: { type: 'integer', description: 'How many to return (1-12, default 6).' }
+        },
+        required: ['lat', 'lon']
+      }
+    },
+    {
       name: 'get_hexagram_info',
       description: 'XKDG hexagram lookup (CORE in-app knowledge, NOT external I Ching). Given a hexagram by number ' +
         '(1-64) OR by its two trigrams (upper + lower, e.g. upper "Kun", lower "Kan"), return the app\'s own data: ' +
@@ -1311,6 +1341,7 @@
       if (name === 'load_placement') return toolLoadPlacement(input || {});
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
+      if (name === 'find_lodging') return toolFindLodging(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'list_source') return toolListSource();
       if (name === 'read_source') return toolReadSource(input || {});
@@ -3602,6 +3633,62 @@
       note: 'Quadruple scan merged by date+hour. matched lists which criteria the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace), and Hexagram bond (the hour\'s OWN four pillars form a connected communication network \u2014 Family/Inverse plus one same-type/same-line number mode of Hetu/Adding/Pure Qi \u2014 which makes the hour good INDEPENDENTLY of the person). tier = how many criteria matched (4 = best). IMPORTANT: an hour is worth reporting even if it does NOT communicate with the person \u2014 if it has a Hexagram bond and/or a Qimen configuration it MUST still be listed (it will simply rank lower). Never claim an hour is the "only" good one just because it is the only one that connects to the person. PRESENT higher tiers first. RANKING within a tier is by qimen_score (Qimen quadrant + special = activation energy at the palace) FIRST, then xkdg_score as tiebreaker. State for each which criteria it passed; for a Hexagram-bond hour, mention the bond (hex_bond field) as the reason it qualifies.',
       time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
     };
+  }
+
+  // Practical stopover lodging — a plain hotel/lodging lookup along a route or near
+  // a point. NOT a lucky/directional plan: no fortune scoring. economy (default) uses
+  // the Google-backed places worker (chains included, ranked by rating); character
+  // uses ResonanceFinder (independent places of character). The caller passes the
+  // coordinates of a sensible search point along the road.
+  async function toolFindLodging(input) {
+    input = input || {};
+    var lat = Number(input.lat), lon = Number(input.lon);
+    if (!isFinite(lat) || !isFinite(lon)) return { error: 'Need lat and lon of a search point along the route (a town that fits "after A / before B").' };
+    var style = (input.style === 'character') ? 'character' : 'economy';
+    var radiusM = Math.round((Number(input.radius_km) || 20) * 1000);
+    var limit = Math.max(1, Math.min(12, parseInt(input.max_results, 10) || 6));
+    var area = input.area_name || '';
+
+    if (style === 'character') {
+      if (!(window.ResonanceFinder && typeof window.ResonanceFinder.findLodging === 'function'))
+        return { error: 'Character-lodging finder not available on this page.' };
+      try {
+        var list = await window.ResonanceFinder.findLodging(lat, lon, { radiusM: radiusM, limit: limit });
+        return {
+          style: 'character', area: area, count: (list || []).length,
+          results: (list || []).map(function (r) {
+            return { name: r.name || null, lat: r.lat, lon: r.lon, address: r.address || null,
+                     rating: (r.rating != null ? r.rating : null), why: (r.reasons || []).join(', ') || null };
+          }),
+          note: 'Independent / characterful places to sleep near the point. Practical lookup, not a lucky-direction plan — present plainly.'
+        };
+      } catch (e) { return { error: 'Character-lodging search failed.' }; }
+    }
+
+    // ECONOMY (default): Google-rated hotels via the places worker (chains included).
+    try {
+      var base = (typeof window !== 'undefined' && window.TP_PLACES_URL) ? window.TP_PLACES_URL : null;
+      try { if (!base) base = localStorage.getItem('xkdg_tp_places_url'); } catch (e) {}
+      if (!base) base = 'https://xkdg-places.decumano16.workers.dev';
+      var k = ''; try { k = localStorage.getItem('xkdg_tp_places_key') || ''; } catch (e) {}
+      var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
+        'q=' + encodeURIComponent('hotel') + '&lat=' + lat + '&lon=' + lon +
+        '&radius=' + radiusM + '&max=' + limit + (k ? '&k=' + encodeURIComponent(k) : '');
+      var j = await fetch(url).then(function (r) { return r.json(); });
+      if (!j || j.status !== 'ok' || !Array.isArray(j.results) || !j.results.length)
+        return { style: 'economy', area: area, count: 0, results: [], note: 'No hotels found near this point — widen radius_km or try a nearby town along the road.' };
+      var results = j.results.slice(0, limit).map(function (b) {
+        return { name: b.name || null, lat: b.lat, lon: b.lon,
+                 address: b.address || b.vicinity || null,
+                 rating: (b.rating != null ? b.rating : null),
+                 reviews: (b.userRatingCount != null ? b.userRatingCount : null),
+                 price_level: (b.priceLevel != null ? b.priceLevel : null) };
+      });
+      return {
+        style: 'economy', area: area, count: results.length, results: results,
+        note: 'Practical economy hotels near the point, ranked by Google rating (chains included). A normal lookup, NOT a lucky-direction plan — present the options plainly (name, rating, address) and let the user choose.'
+      };
+    } catch (e) { return { error: 'Economy-lodging search failed (places worker unreachable).' }; }
   }
 
   function toolFindQimenHoursForStar(input) {
