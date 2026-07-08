@@ -1833,19 +1833,20 @@
     var lastSlot = slots[slots.length - 1];
     pushLeg(lastSlot.wallEnd, slots.length - 1, headFromEntry(null, roadDirOf(lastSlot).name, false), 'arrival');
 
-    // ── RULE #3 (Edu): ARRIVAL inside a fortunate hour cashes the trip by itself ──
-    // If the journey ENDS while the road direction toward the destination is fortunate,
-    // arriving IS the cash — so the intermediate cash stops (stopping mid-trip just to
-    // "collect" a favourable hour) are pointless: they make you halt for something you
-    // already collect on arrival. Drop every fortunate cash stop in that case. Rest
-    // stops (non-fortunate) and any later EV range-charge stops are NOT touched here;
-    // range charging is re-inserted afterwards only if the battery can't make it.
+    // ── RULE #3 (Edu), RESTRICTED: ARRIVAL cashes ONLY the hour you arrive in ──
+    // If the journey ENDS while the road direction is fortunate, arriving IS the cash
+    // FOR THAT LAST HOUR — so only the last hour's cash stop is pointless and gets
+    // dropped. EARLIER fortunate hours are NOT reached at arrival (the trip isn't over
+    // yet), so they KEEP their own cash stop: you must still cash before each of those
+    // hours ends. Rest stops (non-fortunate) and later EV range-charge stops are NOT
+    // touched here; range charging is re-inserted afterwards only if the battery needs it.
     try {
       var arrFort = !!roadFortunate(lastSlot);   // destination reached within a fortunate window?
       if (arrFort) {
-        var kept = timeline.filter(function (it) { return !(it.type === 'stop' && it.fortunate); });
+        var _lastIdx = slots.length - 1;         // the hour you actually arrive in
+        var kept = timeline.filter(function (it) { return !(it.type === 'stop' && it.fortunate && it.slotIdx === _lastIdx); });
         kept.detourIntents = timeline.detourIntents;
-        kept.arrivalCashes = true;               // flag for the itinerary text
+        kept.arrivalCashes = true;               // flag for the itinerary text (last hour only)
         timeline = kept;
       }
     } catch (e) { /* keep timeline on any error */ }

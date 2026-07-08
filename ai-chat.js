@@ -4713,30 +4713,37 @@
               _li++;
             }
           });
-          var _inWin = function (a, b) { return _stops.filter(function (s) { return s.at && a && b && s.at >= a && s.at <= b; }); };
+          // Each stop belongs to exactly ONE hour: the window whose END it reaches
+          // (from-exclusive, to-inclusive) — the cash is done just before that hour closes.
+          var _inWin = function (a, b) { return _stops.filter(function (s) { return s.at && a && b && s.at > a && s.at <= b; }); };
           var _rows = [];
           _H.forEach(function (h) {
             var win = (h.from || '') + '\u2013' + (h.to || '');
             var gz = h.ganzhi ? (' ' + h.ganzhi) : '';
             var line = '\u23F1 <b>Ora' + gz + '</b> (' + win + ') \u2014 ';
-            if (h.kind === 'cash') {
-              line += 'direzione <b>' + (h.roadDir || '?') + '</b> favorevole \u2014 ora da <b>cash</b>' + (h.door ? ' (porta ' + h.door + (h.score != null ? ', score ' + h.score : '') + ')' : '') + '.';
-            } else if (h.kind === 'detour') {
+            var here = _inWin(h.from, h.to);
+            if (h.kind === 'detour') {
               var _dd = h.detour ? h.detour.dir : null;
-              line += 'la direzione <b>' + (h.roadDir || '?') + '</b> non \u00e8 favorevole, quindi <b>detour</b> verso <b>' + (_dd || '?') + '</b> (a fianco, favorevole)' + (h.detour && h.detour.door ? ' (porta ' + h.detour.door + ')' : '') + '.';
+              line += 'la direzione <b>' + (h.roadDir || '?') + '</b> non \u00e8 favorevole, quindi <b>detour</b> verso <b>' + (_dd || '?') + '</b> (a fianco, favorevole)' + (h.detour && h.detour.door ? ' (porta ' + h.detour.door + ')' : '') + ' \u2014 qui si fa <b>cash</b>.';
+            } else if (h.kind === 'cash') {
+              line += 'direzione <b>' + (h.roadDir || '?') + '</b> favorevole \u2014 ora da <b>cash</b>' + (h.door ? ' (porta ' + h.door + (h.score != null ? ', score ' + h.score : '') + ')' : '') + '.';
             } else {
               line += 'nessuna direzione favorevole in quest\u2019ora \u2014 prosegui verso ' + (h.roadDir || '?') + '.';
             }
             _rows.push(line);
-            _inWin(h.from, h.to).forEach(function (s) {
+            here.forEach(function (s) {
               var t = '\uD83D\uDD34 <b>' + s.letter + '</b> \u00b7 alle <b>' + s.at + '</b>' + (s.place ? ' \u00b7 ' + s.place : '');
-              if (s.charge) t += ' \u00b7 \uD83D\uDD35 ricarica ~' + s.dur + ' min';
-              if (h.kind === 'cash') t += ' \u00b7 qui fai il <b>cash</b>';
+              if (h.kind === 'cash' || h.kind === 'detour') t += ' \u00b7 qui <b>fermati \u226520 min per fare cash</b>';
+              if (s.charge) t += ' e \uD83D\uDD35 ricarica ~' + s.dur + ' min';
               _rows.push(t);
             });
+            // Favourable hour with NO stop of its own → its cash is collected on arrival.
+            if ((h.kind === 'cash' || h.kind === 'detour') && !here.length && payload.arrival_cash_note) {
+              _rows.push('\u21b3 <i>il cash di quest\u2019ora si incassa arrivando (nessuna sosta intermedia)</i>');
+            }
           });
           if (payload.arrival_cash_note) {
-            _rows.push('\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b> <b>dentro un\u2019ora favorevole</b>: incassi il <b>cash</b> arrivando \u2014 le ore favorevoli fino alla meta si chiudono con l\u2019arrivo, nessuna sosta intermedia necessaria.');
+            _rows.push('\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b> <b>dentro un\u2019ora favorevole</b>: l\u2019arrivo stesso \u00e8 il <b>cash</b> \u2014 le ore favorevoli senza sosta si chiudono cos\u00ec.');
           } else {
             _rows.push('\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b>.');
           }
