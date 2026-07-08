@@ -4715,7 +4715,19 @@
           });
           // Each stop belongs to exactly ONE hour: the window whose END it reaches
           // (from-exclusive, to-inclusive) — the cash is done just before that hour closes.
-          var _inWin = function (a, b) { return _stops.filter(function (s) { return s.at && a && b && s.at > a && s.at <= b; }); };
+          // Each stop belongs to exactly ONE hour: the window whose END it reaches
+          // (from-exclusive, to-inclusive). Compare in MINUTES and handle windows that
+          // cross midnight (e.g. 22:22–00:22), otherwise a 00:07 stop is wrongly excluded.
+          var _toMin = function (t) { var p = String(t || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); };
+          var _inWin = function (a, b) {
+            if (!a || !b) return [];
+            var am = _toMin(a), bm = _toMin(b), wrap = bm < am;
+            return _stops.filter(function (s) {
+              if (!s.at) return false;
+              var sm = _toMin(s.at);
+              return wrap ? (sm > am || sm <= bm) : (sm > am && sm <= bm);
+            });
+          };
           var _rows = [];
           _H.forEach(function (h) {
             var win = (h.from || '') + '\u2013' + (h.to || '');
