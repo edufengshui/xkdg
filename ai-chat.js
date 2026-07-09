@@ -3671,22 +3671,38 @@
       try { if (!base) base = localStorage.getItem('xkdg_tp_places_url'); } catch (e) {}
       if (!base) base = 'https://xkdg-places.decumano16.workers.dev';
       var k = ''; try { k = localStorage.getItem('xkdg_tp_places_key') || ''; } catch (e) {}
+      // Ask the worker for BUDGET lodging (inexpensive/moderate), and over-fetch so we
+      // can rank by price ourselves. "economy" must return cheap places, not top-rated luxury.
+      // Over-fetch so we can rank by price ourselves. "economy" must return cheap places.
+      var _fetchN = Math.min(20, Math.max(limit * 3, 12));
+      // Query favours BIO / natural stays by default (Edu's standing preference), but
+      // it is a text-search PREFERENCE, not a hard filter: Google still returns ordinary
+      // hotels when few bio ones exist, so he never runs out of options.
+      var _q = (input.query && String(input.query).trim()) || 'hotel bio naturale';
       var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
-        'q=' + encodeURIComponent('hotel') + '&lat=' + lat + '&lon=' + lon +
-        '&radius=' + radiusM + '&max=' + limit + (k ? '&k=' + encodeURIComponent(k) : '');
+        'q=' + encodeURIComponent(_q) + '&lat=' + lat + '&lon=' + lon +
+        '&radius=' + radiusM + '&max=' + _fetchN + '&budget=1' + (k ? '&k=' + encodeURIComponent(k) : '');
       var j = await fetch(url).then(function (r) { return r.json(); });
       if (!j || j.status !== 'ok' || !Array.isArray(j.results) || !j.results.length)
-        return { style: 'economy', area: area, count: 0, results: [], note: 'No hotels found near this point — widen radius_km or try a nearby town along the road.' };
-      var results = j.results.slice(0, limit).map(function (b) {
+        return { style: 'economy', area: area, count: 0, results: [], note: 'No budget hotels found near this point — widen radius_km or try a nearby town along the road.' };
+      // Sort CHEAPEST first (by Google price level), then best rated as tie-breaker.
+      var _plMap = { PRICE_LEVEL_FREE: 0, PRICE_LEVEL_INEXPENSIVE: 1, PRICE_LEVEL_MODERATE: 2, PRICE_LEVEL_EXPENSIVE: 3, PRICE_LEVEL_VERY_EXPENSIVE: 4 };
+      var _plNum = function (p) { return (p && _plMap[p] != null) ? _plMap[p] : 2; };   // unknown price -> treat as moderate
+      var _euro = function (p) { var n = _plMap[p]; return (n == null) ? null : (n <= 0 ? 'gratis' : '\u20ac'.repeat(Math.max(1, n))); };
+      var results = j.results.slice().sort(function (a, b) {
+        var pa = _plNum(a.priceLevel), pb = _plNum(b.priceLevel);
+        if (pa !== pb) return pa - pb;
+        return (b.rating || 0) - (a.rating || 0);
+      }).slice(0, limit).map(function (b) {
         return { name: b.name || null, lat: b.lat, lon: b.lon,
                  address: b.address || b.vicinity || null,
                  rating: (b.rating != null ? b.rating : null),
-                 reviews: (b.userRatingCount != null ? b.userRatingCount : null),
-                 price_level: (b.priceLevel != null ? b.priceLevel : null) };
+                 reviews: (b.reviews != null ? b.reviews : null),
+                 price: _euro(b.priceLevel), price_level: (b.priceLevel != null ? b.priceLevel : null) };
       });
       return {
         style: 'economy', area: area, count: results.length, results: results,
-        note: 'Practical economy hotels near the point, ranked by Google rating (chains included). A normal lookup, NOT a lucky-direction plan — present the options plainly (name, rating, address) and let the user choose.'
+        note: 'Budget hotels near the point, ranked CHEAPEST first (Google price level; € = inexpensive, €€ = moderate), chains included. Present them plainly with name, price (€/€€), rating and address — lead with the cheapest, and DO NOT suggest expensive/luxury places for an economy request.'
       };
     } catch (e) { return { error: 'Economy-lodging search failed (places worker unreachable).' }; }
   }
