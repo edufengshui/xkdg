@@ -3164,6 +3164,27 @@ function _fsFloorFacing(h, f){ return (h && h.sameFacing) ? h.houseFacing : (f ?
 function _fsFloorPeriod(h, f){ return (h && h.sameFacing) ? h.period : (f ? f.period : null); }
 function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
 
+// ── Name-keyed manual-chart store (clobber-proof persistence) ─────────
+//  A hand-composed chart is ALSO stored here under the HOUSE NAME (+ floor
+//  index), in its OWN localStorage key that no other house-save path writes.
+//  This survives any later re-save of xkdg_houses that used to wipe the manual
+//  chart, and never mixes charts between houses (Vienna stays Vienna).
+function _fsManualChartValid(mc){ return !!(mc && mc.facingStars && mc.sittingStars && mc.baseStars); }
+function _fsManualMapLoad(){ try { return JSON.parse(localStorage.getItem('xkdg_fs_manual_map') || '{}'); } catch(e){ return {}; } }
+function _fsManualMapSave(m){ try { localStorage.setItem('xkdg_fs_manual_map', JSON.stringify(m || {})); } catch(e){} }
+function _fsManualMapKey(name, floorIdx){ return String(name == null ? '' : name).trim().toLowerCase() + '#' + (floorIdx || 0); }
+function _fsManualMapSet(name, floorIdx, mc){
+  if (name == null || String(name).trim() === '') return;       // no name → cannot key safely
+  var m = _fsManualMapLoad();
+  if (_fsManualChartValid(mc)) m[_fsManualMapKey(name, floorIdx)] = mc;
+  else delete m[_fsManualMapKey(name, floorIdx)];
+  _fsManualMapSave(m);
+}
+function _fsManualMapGet(name, floorIdx){
+  try { var mc = _fsManualMapLoad()[_fsManualMapKey(name, floorIdx)]; return _fsManualChartValid(mc) ? mc : null; }
+  catch(e){ return null; }
+}
+
 // ── Backup / Restore (all localStorage: houses, persons, archives, settings) ──
 function fsExportBackup(){
   try {
@@ -5839,15 +5860,29 @@ function _fsPersistManualChart(){
       if (mc) ctx.floor.manualChart = mc;
       else { try { delete ctx.floor.manualChart; } catch(e){ ctx.floor.manualChart = null; } }
       _fsHousesSave(ctx.all);
+      // Also store under the house NAME in a separate, clobber-proof cassette.
+      try { _fsManualMapSet(ctx.house && ctx.house.name, (ctx.house && ctx.house.activeFloor) || 0, mc); } catch(e){}
     }
   } catch(e){ console.warn('_fsPersistManualChart', e); }
 }
 function _fsRestoreManualChartForHouse(floor){
   try {
-    if (floor && floor.manualChart){ window._fsManualChart = floor.manualChart; }
-    else if (floor){ window._fsManualChart = null; }           // this house has no manual override
-    else {                                                       // no house context → last global manual
-      try { var raw = localStorage.getItem('xkdg_fs_manual'); if (raw) window._fsManualChart = JSON.parse(raw); } catch(e){}
+    if (floor && _fsManualChartValid(floor.manualChart)){ window._fsManualChart = floor.manualChart; }
+    else {
+      // The floor object lacks a manual chart (or it was clobbered by another save):
+      // recover it from the name-keyed cassette for THIS house before giving up, and
+      // heal the floor + xkdg_houses so they are consistent again. Never wipe blindly.
+      var recovered = null;
+      try {
+        var ctx = _fsActiveHouseFloorCtx();
+        if (ctx && ctx.house) recovered = _fsManualMapGet(ctx.house.name, (ctx.house.activeFloor) || 0);
+        if (recovered && ctx && ctx.floor){ ctx.floor.manualChart = recovered; _fsHousesSave(ctx.all); }
+      } catch(e){}
+      if (recovered){ window._fsManualChart = recovered; }
+      else if (floor){ window._fsManualChart = null; }          // genuinely no manual override for this house
+      else {                                                     // no house context → last global manual
+        try { var raw = localStorage.getItem('xkdg_fs_manual'); if (raw) window._fsManualChart = JSON.parse(raw); } catch(e){}
+      }
     }
     if (typeof fsUpdateManualBadge === 'function') fsUpdateManualBadge();
     if (window._fsManualChart && typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON && typeof fsToggleStars === 'function') fsToggleStars();
@@ -7756,9 +7791,10 @@ window.XKDGHouse = (function () {
       // Prefer a saved MANUAL chart for this floor over the auto-computed one — mirrors the
       // single-floor path (window._fsManualChart) and _fsGetActiveChart() in the Bed section.
       // Only floors that actually carry a valid manualChart change; the rest fall back to auto.
-      var chart = (f.manualChart && f.manualChart.sittingStars && f.manualChart.facingStars && f.manualChart.baseStars)
-                    ? f.manualChart
-                    : chartFor(facing, period);
+      var mc = (f.manualChart && f.manualChart.sittingStars && f.manualChart.facingStars && f.manualChart.baseStars)
+                 ? f.manualChart
+                 : ((typeof _fsManualMapGet === 'function') ? _fsManualMapGet(h.name, fi) : null);
+      var chart = mc ? mc : chartFor(facing, period);
       var st = f.settings || { water: [], bed: [], desk: [] };
       return {
         index: fi, label: f.label || ('Floor ' + (fi + 1)), active: (fi === activeFloor),
