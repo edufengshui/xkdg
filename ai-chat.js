@@ -5498,16 +5498,17 @@
     // under a 'max_tokens' stop; that single orphan then makes EVERY later request fail with
     // "tool_use ids were found without tool_result blocks". We insert a synthetic tool_result
     // ("interrupted") for each missing id so a poisoned conversation recovers on the next send.
-    function repairHistory() {
+    function repairHistory(hist) {
+      hist = hist || history;   // default: the live chat history; a test may pass its own array
       try {
-        for (var i = 0; i < history.length; i++) {
-          var m = history[i];
+        for (var i = 0; i < hist.length; i++) {
+          var m = hist[i];
           if (!m || m.role !== 'assistant' || !Array.isArray(m.content)) continue;
           var ids = m.content
             .filter(function (c) { return c && c.type === 'tool_use'; })
             .map(function (c) { return c.id; });
           if (!ids.length) continue;
-          var next = history[i + 1];
+          var next = hist[i + 1];
           var answered = {};
           if (next && next.role === 'user' && Array.isArray(next.content)) {
             next.content.forEach(function (c) {
@@ -5522,10 +5523,54 @@
           if (next && next.role === 'user' && Array.isArray(next.content)) {
             next.content = fillers.concat(next.content);   // tool_results must precede any text
           } else {
-            history.splice(i + 1, 0, { role: 'user', content: fillers });
+            hist.splice(i + 1, 0, { role: 'user', content: fillers });
           }
         }
       } catch (e) {}
+      return hist;
+    }
+
+    // Offline self-test for the exact invariant that broke the chat ("tool_use without
+    // tool_result"). Builds a deliberately poisoned history, runs the REAL repairHistory on it,
+    // and checks the invariant now holds. No network, no AI, no cost. Exposed for a test page.
+    function selfTest() {
+      function orphans(hist) {
+        var bad = [];
+        for (var i = 0; i < hist.length; i++) {
+          var m = hist[i];
+          if (!m || m.role !== 'assistant' || !Array.isArray(m.content)) continue;
+          var ids = m.content.filter(function (c) { return c && c.type === 'tool_use'; }).map(function (c) { return c.id; });
+          if (!ids.length) continue;
+          var next = hist[i + 1], answered = {};
+          if (next && next.role === 'user' && Array.isArray(next.content))
+            next.content.forEach(function (c) { if (c && c.type === 'tool_result' && c.tool_use_id) answered[c.tool_use_id] = true; });
+          ids.forEach(function (id) { if (!answered[id]) bad.push(id); });
+        }
+        return bad;
+      }
+      // The exact shape that failed: a tool_use, then a NEW typed user message, no tool_result.
+      var poisoned = [
+        { role: 'user', content: 'Buone ore per accendere gli acquari oggi?' },
+        { role: 'assistant', content: [
+          { type: 'text', text: 'Controllo le ore favorevoli\u2026' },
+          { type: 'tool_use', id: 'toolu_SELFTEST_1', name: 'find_water_hours', input: { direction: 'S' } }
+        ] },
+        { role: 'user', content: 'e a Vienna?' }
+      ];
+      var clone = JSON.parse(JSON.stringify(poisoned));
+      var before = orphans(clone);
+      var repaired = repairHistory(clone);
+      var after = orphans(repaired);
+      var pass = (before.length > 0 && after.length === 0);
+      return {
+        pass: pass,
+        orphans_before: before,   // expected: ["toolu_SELFTEST_1"]
+        orphans_after: after,     // expected: []
+        repaired_length: repaired.length,
+        note: pass
+          ? 'OK: a tool_use left without a tool_result was healed \u2014 the API can no longer reject this history.'
+          : 'FAIL: repairHistory did not heal the orphaned tool_use; the "Request failed" bug can return.'
+      };
     }
 
     // Current instant in TRUE SOLAR TIME at the user's GPS longitude, so the assistant knows the
@@ -5759,7 +5804,8 @@
       // Programmatic ask: open the panel, drop a message in the box and send it.
       // Used by structured UIs (e.g. the Lucky Trip panel) to drive the AI.
       ask: function (text) { try { openPanel(); if (input) { input.value = text; } doSend(); } catch (e) {} },
-      _send: doSend, _history: function () { return history; }
+      _send: doSend, _history: function () { return history; },
+      _repairHistory: repairHistory, _selfTest: selfTest
     };
   }
 

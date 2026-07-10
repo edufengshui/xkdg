@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XKDG — AI chat self-test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; max-width: 660px; margin: 0 auto; color: #222; }
+    h2 { text-align: center; }
+    p { line-height: 1.5; }
+    #result { font-size: 22px; font-weight: bold; padding: 18px; border-radius: 10px; text-align: center; margin: 18px 0; }
+    .pass { background: #e6f7ec; color: #12813f; border: 2px solid #1b8a3f; }
+    .fail { background: #fdecec; color: #b00020; border: 2px solid #b00020; }
+    .wait { background: #f3f3f3; color: #666; border: 2px solid #ccc; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 8px; overflow: auto; font-size: 13px; }
+    button { padding: 10px 18px; font-size: 15px; cursor: pointer; }
+    .center { text-align: center; }
+  </style>
+</head>
+<body>
+  <h2>AI chat — self-test</h2>
+  <p>Verifica l'invariante che rompeva la chat: <b>ogni <code>tool_use</code> deve avere subito dopo il suo <code>tool_result</code></b>.
+     Il test costruisce una history "avvelenata" (una richiesta di tool rimasta senza risposta, seguita da un nuovo messaggio),
+     lancia la <code>repairHistory()</code> reale di <code>ai-chat.js</code> e controlla che venga guarita.
+     <b>Nessuna chiamata all'AI, nessuna rete, nessun costo.</b></p>
+
+  <div id="result" class="wait">Carico…</div>
+  <p class="center"><button onclick="runTest()">Ripeti test</button></p>
+  <pre id="detail"></pre>
+
+  <!-- the real code under test -->
+  <script src="ai-chat.js"></script>
+  <script>
+    function runTest() {
+      var res = document.getElementById('result');
+      var det = document.getElementById('detail');
+      if (!window.XKDGChat || typeof window.XKDGChat._selfTest !== 'function') {
+        res.className = 'fail';
+        res.textContent = '\u2717 FAIL \u2014 ai-chat.js non caricato o senza _selfTest (versione vecchia?). Apri la Console (F12).';
+        det.textContent = '';
+        return;
+      }
+      var r;
+      try { r = window.XKDGChat._selfTest(); }
+      catch (e) {
+        res.className = 'fail';
+        res.textContent = '\u2717 FAIL \u2014 il self-test ha lanciato un errore.';
+        det.textContent = String((e && e.stack) || e);
+        return;
+      }
+      res.className = r.pass ? 'pass' : 'fail';
+      res.textContent = r.pass
+        ? '\u2713 PASS \u2014 la chat non pu\u00F2 pi\u00F9 avvelenarsi'
+        : '\u2717 FAIL \u2014 l\'invariante NON regge (il bug pu\u00F2 tornare)';
+      det.textContent = JSON.stringify(r, null, 2);
+    }
+    // Parte da sola al caricamento (ai-chat.js installa XKDGChat sincrono a fine body).
+    window.addEventListener('load', function () { setTimeout(runTest, 60); });
+  </script>
+</body>
+</html>
