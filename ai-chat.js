@@ -16,7 +16,7 @@
   var URL_KEY = 'xkdg_ai_url';
   var DEFAULT_URL = 'https://xkdg-ai.decumano16.workers.dev'; // baked-in default; ⚙ can override
   var MODEL = 'claude-sonnet-4-6'; // change here if you prefer another model
-  var MAX_TOKENS = 1024;
+  var MAX_TOKENS = 4096;
 
   // System prompt: app-wide assistant that ANSWERS about and OPERATES the whole app.
   var SYSTEM_PROMPT =
@@ -5493,6 +5493,77 @@
       return data.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n');
     }
 
+    // Heal the history so the API never sees a tool_use without its matching tool_result.
+    // A tool_use can be left unanswered when a turn is interrupted or the model emits one
+    // under a 'max_tokens' stop; that single orphan then makes EVERY later request fail with
+    // "tool_use ids were found without tool_result blocks". We insert a synthetic tool_result
+    // ("interrupted") for each missing id so a poisoned conversation recovers on the next send.
+    function repairHistory() {
+      try {
+        for (var i = 0; i < history.length; i++) {
+          var m = history[i];
+          if (!m || m.role !== 'assistant' || !Array.isArray(m.content)) continue;
+          var ids = m.content
+            .filter(function (c) { return c && c.type === 'tool_use'; })
+            .map(function (c) { return c.id; });
+          if (!ids.length) continue;
+          var next = history[i + 1];
+          var answered = {};
+          if (next && next.role === 'user' && Array.isArray(next.content)) {
+            next.content.forEach(function (c) {
+              if (c && c.type === 'tool_result' && c.tool_use_id) answered[c.tool_use_id] = true;
+            });
+          }
+          var missing = ids.filter(function (id) { return !answered[id]; });
+          if (!missing.length) continue;
+          var fillers = missing.map(function (id) {
+            return { type: 'tool_result', tool_use_id: id, content: JSON.stringify({ error: 'interrupted' }) };
+          });
+          if (next && next.role === 'user' && Array.isArray(next.content)) {
+            next.content = fillers.concat(next.content);   // tool_results must precede any text
+          } else {
+            history.splice(i + 1, 0, { role: 'user', content: fillers });
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Current instant in TRUE SOLAR TIME at the user's GPS longitude, so the assistant knows the
+    // real "now" (date, active double-hour 时辰, day & hour pillars) instead of guessing the hour.
+    // Uses the SAME engine Main uses (XKDGSolarTime.pillarsFromCivil).
+    function currentMomentContext() {
+      try {
+        if (typeof XKDGSolarTime === 'undefined' || typeof XKDGSolarTime.currentLonTz !== 'function') return '';
+        var lt = XKDGSolarTime.currentLonTz();
+        if (!lt || !isFinite(lt.lonDeg)) return '';
+        var now = new Date();
+        var P = XKDGSolarTime.pillarsFromCivil(now.getFullYear(), now.getMonth() + 1, now.getDate(),
+                                               now.getHours(), now.getMinutes(), 0, lt.lonDeg, lt.tzOffsetMin);
+        if (!P || !P.hour || !P.day) return '';
+        var H2P = { '甲':'Jia','乙':'Yi','丙':'Bing','丁':'Ding','戊':'Wu','己':'Ji','庚':'Geng','辛':'Xin','壬':'Ren','癸':'Gui' };
+        var BR = { '子':'Zi','丑':'Chou','寅':'Yin','卯':'Mao','辰':'Chen','巳':'Si','午':'Wu','未':'Wei','申':'Shen','酉':'You','戌':'Xu','亥':'Hai' };
+        var dayStem = H2P[P.day.charAt(0)] || P.day.charAt(0);
+        var dayBr = BR[P.day.charAt(1)] || P.day.charAt(1);
+        var hStem = H2P[P.hour.charAt(0)] || P.hour.charAt(0);
+        var hBr = P.hour.charAt(1);
+        var hBrPy = BR[hBr] || hBr;
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        return '\n\nCURRENT MOMENT (authoritative \u2014 use for "now"/"today"/"oggi"/"maintenant"; NEVER guess the hour): ' +
+          'local date ' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+          ', local clock ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + '. In TRUE SOLAR TIME at the user\'s ' +
+          'longitude the active double-hour (\u65F6\u8FB0) is ' + hBrPy + ' ' + hBr + '; day pillar ' + dayStem + ' ' + dayBr +
+          ' (' + P.day + '), hour pillar ' + hStem + ' ' + hBrPy + ' (' + P.hour + '). These pillars are already True Solar Time.';
+      } catch (e) { return ''; }
+    }
+
+    // Reinforce reading real app state instead of hallucinating stars / the current hour.
+    function stateReadingRule() {
+      return '\n\nREADING APP STATE (do NOT guess): for any question about a house\u2019s flying stars / water star / ' +
+        'mountain star, FIRST call get_house_setup and read the numbers from its flying_stars object, applying its ' +
+        'imprisonment/liberation note (free the centre water star at the liberation quadrant). Never state a star from ' +
+        'memory. For the current date or hour, rely on the CURRENT MOMENT block above.';
+    }
+
     function callAnthropic(noTools) {
       // Per-turn language lock: detect the language of the user's latest typed message and
       // append a high-priority directive so the reply never drifts (e.g. to Italian) because
@@ -5515,10 +5586,11 @@
         return '\n\nREPLY LANGUAGE (HIGHEST PRIORITY): reply in the SAME language as the user\'s latest message. ' +
           'Do NOT default to Italian \u2014 the Italian phrases in these instructions are only examples, not a language preference.';
       }
+      repairHistory();   // never send a tool_use without its tool_result (heals a poisoned chat)
       return fetch(getUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
 
@@ -5581,8 +5653,12 @@
           var text = extractText(data);
           if (text) addBubble('assistant', text);
 
-          if (data.stop_reason === 'tool_use') {
-            var toolUses = (data.content || []).filter(function (c) { return c.type === 'tool_use'; });
+          // Answer tool_use blocks whenever they are PRESENT, regardless of stop_reason.
+          // With a small max_tokens the model can emit a tool_use yet report
+          // stop_reason:'max_tokens'; keying on stop_reason left that tool_use unanswered,
+          // which poisoned the whole history (every later request then failed).
+          var toolUses = (data.content || []).filter(function (c) { return c.type === 'tool_use'; });
+          if (toolUses.length) {
             // Run tool calls ONE AT A TIME (the heavy planners share engine/DOM
             // state and are NOT safe to run concurrently — parallel runs could
             // leave a promise hung and freeze the whole chat), each guarded by a
