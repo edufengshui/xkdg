@@ -1088,8 +1088,9 @@
     },
     {
       name: 'program_aquarium_light',
-      description: 'Compute the next-N-days plan of favourable ON hours for a house\u2019s aquarium LIGHT and deposit it into ' +
-        'the Shelly Worker for that house. Rule: each day the light turns ON at the START of the day\u2019s BEST favourable ' +
+      description: 'Compute the next-N-days plan of favourable ON hours for a house\u2019s aquarium and, with commit:true, ' +
+        'deposit it into the Shelly Worker for that house. By DEFAULT (commit:false) it only PREVIEWS \u2014 nothing is ' +
+        'deposited until you pass commit:true. Rule: each day the light turns ON at the START of the day\u2019s BEST favourable ' +
         'hour, but ONLY if that hour falls in the window from the 2nd half of Zi (solar 00:00) through the end of Wei ' +
         '(solar 15:00); it then stays ON until 23:00 CIVIL clock the same day. If the best hour is AFTER Wei, that day is ' +
         'NOT scheduled and is returned in needs_decision \u2014 present those to the user and ask what to do. Times are in the ' +
@@ -1099,7 +1100,9 @@
         type: 'object',
         properties: {
           house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug to program.' },
-          days: { type: 'integer', description: 'How many days ahead to plan (default 7).' }
+          days: { type: 'integer', description: 'How many days ahead to plan (default 7).' },
+          commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
+          approve_dates: { type: 'array', items: { type: 'string' }, description: 'On commit, the YYYY-MM-DD dates (from a previous preview\u2019s needs_decision) the user approved to activate even though their best hour is after Wei. Dates not listed stay excluded.' }
         },
         required: ['house']
       }
@@ -1421,7 +1424,7 @@
     // + GPS-origin variants GT / GV: same destinations, but departing from the CURRENT position).
     // Bumping the version below re-seeds them in English, replacing any older copies (now v6).
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '6') {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '7') {
         var seed = [
           {
             trigger: 'aq',
@@ -1430,6 +1433,16 @@
                   'For each house use ITS saved water position (direction) and its water star (facing), on ITS flying chart. ' +
                   'Proceed one house at a time: make the house active (set_active_house), read its setup, run find_water_activation_full for that house, ' +
                   'and give me ONE best hour FOR EACH house (a separate result for each), with the date and the reason. At the end, restore the house that was active at the start.'
+          },
+          {
+            trigger: 'luce', icon: '\uD83D\uDCA1',
+            label: 'Program aquarium light \u2014 7 days (both houses)',
+            text: 'Program the aquarium light for the NEXT 7 DAYS for BOTH houses (Tuoro and Vienna), WITH my confirmation, in TWO phases. ' +
+                  'PHASE 1 \u2014 PREVIEW, deposit NOTHING: for Tuoro first, then Vienna, call program_aquarium_light with commit:false. ' +
+                  'For each house present two clear lists: (A) the days it INTENDS TO ACTIVATE \u2014 date, the double-hour with its clock window (on_local \u2192 off_local at 23:00) and tier; and (B) SEPARATELY the days whose best hour is AFTER Wei (needs_decision). ' +
+                  'Then STOP and ask me two things: what to do for each after-Wei day, and my OK to proceed. Do NOT deposit anything yet. ' +
+                  'PHASE 2 \u2014 only AFTER I reply with my decisions and OK: call program_aquarium_light again for each house with commit:true and approve_dates set to only the after-Wei dates I approved. Then tell me exactly what was deposited for each house. ' +
+                  'For any Zi day, point out the ON time so I can confirm the night is right.'
           },
           {
             trigger: 'VT', icon: '🚗', askDepart: true,
@@ -1463,9 +1476,9 @@
           }
         ];
         // Replace any earlier aq/VT/TV/GT/GV, then append the current English definitions.
-        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv'; });
+        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv' && t !== 'luce'; });
         seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '6');
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '7');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
@@ -3695,9 +3708,12 @@
     'tuoro':  { device: 'tuoro',  lon: 12.1, utc: 1 },
     'vienna': { device: 'vienna', lon: 16.4, utc: 1 }
   };
-  // Solar minute (from solar midnight) at which the light turns ON for each in-window branch.
-  // Zi uses its SECOND half (solar 00:00); Chou..Wei use their normal solar start.
-  var _WINDOW_ON_SOLAR_MIN = { '\u5b50': 0, '\u4e11': 60, '\u5bc5': 180, '\u536f': 300, '\u8fb0': 420, '\u5df3': 540, '\u5348': 660, '\u672a': 780 };
+  // Solar minute (from solar midnight) at which the light turns ON for each branch.
+  // Zi uses its SECOND half (solar 00:00); the others use their normal solar start.
+  // _WINDOW_BRANCHES marks the ALLOWED window (2nd-half-Zi .. Wei). Branches after Wei
+  // (Shen/You/Xu/Hai) are scheduled only when the user approves that date (approve_dates).
+  var _BRANCH_SOLAR_MIN = { '\u5b50': 0, '\u4e11': 60, '\u5bc5': 180, '\u536f': 300, '\u8fb0': 420, '\u5df3': 540, '\u5348': 660, '\u672a': 780, '\u7533': 900, '\u9149': 1020, '\u620c': 1140, '\u4ea5': 1260 };
+  var _WINDOW_BRANCHES = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1, '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1 };
 
   function _shellyCfg() {
     try { var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || '{}'); return (c && c.url && c.token) ? c : null; }
@@ -3763,6 +3779,9 @@
     var rh = _resolveShellyHouse(input.house);
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
     var days = parseInt(input.days, 10) || 7;
+    var commit = (input.commit === true);
+    var approve = {};
+    (Array.isArray(input.approve_dates) ? input.approve_dates : []).forEach(function (d) { approve[String(d).trim()] = true; });
 
     // 1) make the house active (loads its person) and read its single aquarium
     try {
@@ -3797,34 +3816,43 @@
       var best = bestByDate[iso];
       if (!best) { skipped.push({ date: iso, reason: 'no favourable hour' }); continue; }
       var br = best.branch;
-      if (_WINDOW_ON_SOLAR_MIN[br] != null) {
-        var onTs = _solarToEpoch(iso, _WINDOW_ON_SOLAR_MIN[br], rh.cfg.lon, rh.cfg.utc);
+      var inWindow = !!_WINDOW_BRANCHES[br];
+      var approvedLate = (!inWindow && approve[iso]);
+      if ((inWindow || approvedLate) && _BRANCH_SOLAR_MIN[br] != null) {
+        var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[br], rh.cfg.lon, rh.cfg.utc);
         var offTs = _civilToEpoch(iso, 23 * 60, rh.cfg.utc);       // 23:00 CIVIL clock, same day
         scheduled.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, onTs: onTs, offTs: offTs,
-                         on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString() });
+                         on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString(),
+                         approved_after_wei: approvedLate || undefined });
       } else {
-        needsDecision.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, reason: 'best hour is after Wei (outside the ON window)' });
+        needsDecision.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, reason: 'best hour is after Wei (outside the ON window) \u2014 approve this date to include it' });
       }
     }
 
-    // 4) deposit the scheduled days into the Worker for this device
+    // 4) deposit the scheduled days ONLY on commit; otherwise this is a PREVIEW (await the user's OK)
     var body = { days: scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; }) };
     var workerResp = null, workerErr = null;
-    try {
-      var res2 = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      workerResp = await res2.json().catch(function () { return null; });
-      if (!res2.ok) workerErr = 'HTTP ' + res2.status;
-    } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
+    if (commit) {
+      try {
+        var res2 = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        workerResp = await res2.json().catch(function () { return null; });
+        if (!res2.ok) workerErr = 'HTTP ' + res2.status;
+      } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
+    }
 
     return {
       scanner: 'aquarium_light_plan', house: rh.name, device: rh.cfg.device,
+      mode: commit ? 'committed' : 'preview',
       aquarium: { direction: aq.direction, water_star: aq.water_star },
       window: '2nd half of Zi (solar 00:00) .. end of Wei (solar 15:00); OFF at 23:00 civil',
       scheduled_days: scheduled.length, scheduled: scheduled,
       needs_decision: needsDecision, skipped: skipped,
-      deposited: !workerErr, worker_error: workerErr || undefined, worker: workerResp,
-      note: 'ON = start of the day\u2019s best favourable hour in True Solar Time (Zi = its 2nd half, solar 00:00). OFF = 23:00 civil clock. Days whose best hour is after Wei are in needs_decision: present each and ASK the user what to do. Show the user the scheduled dates with on_local/off_local, and for any Zi day confirm the night is correct.'
+      deposited: commit ? !workerErr : false,
+      worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
+      note: commit
+        ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local).'
+        : 'PREVIEW ONLY \u2014 nothing was deposited. Show the user the scheduled list (date, hour, tier, on_local/off_local) and, separately, the needs_decision days (best hour AFTER Wei). Ask what to do for the needs_decision days AND for a final OK. Do NOT deposit. Then call program_aquarium_light again with commit:true and approve_dates:[...] listing only the after-Wei dates the user approved.'
     };
   }
 
