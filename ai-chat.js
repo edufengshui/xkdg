@@ -181,7 +181,13 @@
     'stay_min_h/stay_max_h, and direction if the user named one e.g. "verso nord" → direction:"N") and let the tool decide ' +
     'everything else. Then present the returned proposals as ' +
     'several DISTINCT options (varying by direction, distance and stay) with their scores; the user picks one and you run it ' +
-    'with plan_travel using THAT option\'s dest_lat/dest_lon. Use plan_travel (which needs a destination) ONLY when the user ' +
+    'with plan_travel using THAT option\'s dest_lat/dest_lon. A unidirectional (out-and-back) option is ONE round trip, NOT an ' +
+    '"A-to-B only" trip: when the user picks one, plan BOTH legs \u2014 the OUTBOUND with plan_travel to the option\'s dest, AND the ' +
+    'RETURN with a second plan_travel from that dest back to the origin departing in the option\'s ALREADY-COMPUTED favourable return ' +
+    'window (return_depart) \u2014 and present them together as a single andata-e-ritorno (outbound + stay + return). Do NOT apologise, ' +
+    'do NOT say the planner "only does A to B" or cannot do the round trip (the Lucky Trip already found BOTH favourable legs), and do ' +
+    'NOT offer chains as a substitute for a unidirectional request (chains are the SEPARATE ring category \u2014 only mention them if the ' +
+    'user asks). Use plan_travel (which needs a destination) ONLY when the user ' +
     'names a specific place. Never tell the user a lucky trip needs a destination. If the user wants a KIND of place ' +
     '("in natura", "una passeggiata", "culturale", "castelli", "borghi") OR asks to filter the proposals afterwards ' +
     '("ora solo natura"), pass the category parameter and call again with the SAME other parameters — each proposal ' +
