@@ -443,6 +443,7 @@ function buildFengShuiView(){
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
         <button id="fs-floorplan-del" onclick="fsRemoveActiveFloorplan()" title="Remove this floor plan" style="display:none;position:absolute;top:8px;left:8px;z-index:6;background:#c62828;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🗑 Remove plan</button>
+        <button id="fs-orient-toggle" onclick="fsSetChartOrient(_fsChartOrient==='top'?'regular':'top')" title="Regular = South at top · Top = facing at top" style="position:absolute;top:8px;right:8px;z-index:5;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🧭 Regular</button>
       </div>
 
       <!-- (Active house detail moved UP into the green HOUSE PROFILES box.) -->
@@ -583,6 +584,8 @@ function fsTogglePeriod(){
 let FS_STARS_ON = true;
 // Luopan display mode: 'fs' = Flying Stars only, 'xkdg' = XKDG Door only, 'both' = combined
 var _fsLuopanMode = 'fs';
+// Chart orientation: 'regular' = South at top (default); 'top' = facing at top (whole chart rotated).
+var _fsChartOrient = (function(){ try { return localStorage.getItem('xkdg_fs_chart_orient') === 'top' ? 'top' : 'regular'; } catch(e){ return 'regular'; } })();
 function fsSetLuopanMode(mode){
   _fsLuopanMode = mode;
   try { _fsRestoreLuopanView(); } catch(e){}   // picking a luopan mode returns to the luopan
@@ -599,6 +602,24 @@ function fsSetLuopanMode(mode){
 // Toggle button (🏠 Floorplan) swaps the luopan canvas for the active floor's
 // saved floor-plan image. Any luopan-mode button or a house switch restores it.
 var _fsFloorplanShown = false;
+// Rotate the WHOLE chart (Luopan + stars) so the facing points straight up, via a CSS
+// transform on the canvas element (no change to the drawing engine). Default keeps South at
+// top. Re-applied on every fsRedraw so the angle always matches the current facing.
+function fsApplyChartOrient(){
+  try {
+    var canvas = document.getElementById('fs-canvas');
+    if (canvas) canvas.style.transform = '';   // rotation is now BAKED INTO the drawing (numbers stay upright)
+    var btn = document.getElementById('fs-orient-toggle');
+    if (btn) btn.textContent = (_fsChartOrient === 'top') ? '\uD83E\uDDED Top' : '\uD83E\uDDED Regular';
+  } catch(e){}
+}
+function fsSetChartOrient(mode){
+  _fsChartOrient = (mode === 'top') ? 'top' : 'regular';
+  try { localStorage.setItem('xkdg_fs_chart_orient', _fsChartOrient); } catch(e){}
+  try { fsApplyChartOrient(); } catch(e){}
+  try { if (typeof fsRedraw === 'function') fsRedraw(); } catch(e){}   // re-render with the new orientation
+}
+
 function fsToggleFloorplanView(){
   try {
     var canvas = document.getElementById('fs-canvas');
@@ -630,6 +651,7 @@ function fsToggleFloorplanView(){
       var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
+      var _ot = document.getElementById('fs-orient-toggle'); if (_ot) _ot.style.display = 'none';
     }
     if (fp.starsImg){
       _present(fp.starsImg);                       // composite already baked (new saves)
@@ -670,6 +692,7 @@ function _fsRestoreLuopanView(){
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
     if (btn) btn.style.background = '#5d4037';
+    var _ot = document.getElementById('fs-orient-toggle'); if (_ot) _ot.style.display = '';
   } catch(e){}
 }
 
@@ -911,6 +934,7 @@ function fsSelectPair(facingDeg, waterDeg){
 function fsRedraw(){
   const canvas = document.getElementById('fs-canvas');
   if (!canvas) return;
+  try { fsApplyChartOrient(); } catch(e){}   // keep "Top" rotation in sync with the current facing
   // Bed/Desk sections draw their OWN luopan (their data, not the Water flow).
   if (window._fsActiveZone === 'bed' || window._fsActiveZone === 'desk'){
     if (typeof fsDrawSectionLuopan === 'function') fsDrawSectionLuopan();
@@ -926,17 +950,26 @@ function fsRedraw(){
   const cx = PAD + 450, cy = PAD + 464;
   const outerR = 447, rHexOut = 360, rHexIn = 295;
 
-  if (FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth>0)
+  // House Facing (drives the FS arrow AND the "Top" orientation rotation).
+  const hfDeg = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+  const hfd = isNaN(hfDeg) ? null : hfDeg;
+  // In "Top" mode rotate the WHOLE plate so the facing points up (theta = 180 - facing).
+  // Every element is placed by a compass angle and text is drawn upright, so adding ROT to
+  // the angles rotates the plate while the star numbers/labels stay readable.
+  const _rotDeg = (_fsChartOrient === 'top' && !isNaN(hfDeg)) ? (((180 - hfDeg) % 360) + 360) % 360 : 0;
+  const ROT = _rotDeg * Math.PI / 180;
+
+  if (FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth>0){
+    ctx.save();
+    if (ROT){ ctx.translate(cx, cy); ctx.rotate(ROT); ctx.translate(-cx, -cy); }
     ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+    ctx.restore();
+  }
 
   const fDeg = parseFloat(document.getElementById('fs-facing').value);
   const wDeg = parseFloat(document.getElementById('fs-water').value);
   const fd = isNaN(fDeg) ? null : fDeg;
   const wd = isNaN(wDeg) ? null : wDeg;
-
-  // House Facing for FS arrow
-  const hfDeg = parseFloat((document.getElementById('fs-house-facing') || {}).value);
-  const hfd = isNaN(hfDeg) ? null : hfDeg;
 
   const showXKDG = (_fsLuopanMode === 'xkdg' || _fsLuopanMode === 'both');
   const showFS   = (_fsLuopanMode === 'fs'   || _fsLuopanMode === 'both') || (!!window._fsActiveZone && !!window._fsFSRecalled);
@@ -946,8 +979,8 @@ function fsRedraw(){
   const wInput = wd !== null ? fsSlotForDeg(wd) : null;
 
   function paintCell(slot, color){
-    const aS = (slot.startDeg - 270) * Math.PI/180;
-    const aE = (slot.endDeg   - 270) * Math.PI/180;
+    const aS = (slot.startDeg - 270) * Math.PI/180 + ROT;
+    const aE = (slot.endDeg   - 270) * Math.PI/180 + ROT;
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, rHexOut, aS, aE);
@@ -967,7 +1000,7 @@ function fsRedraw(){
   // Pass 1b: when a facing is set, draw subtle ±70° water-zone band just outside hex ring
   if (fInput){
     const facingCenter = fInput.startDeg + 2.8125;
-    const aMid = (facingCenter - 270) * Math.PI / 180;
+    const aMid = (facingCenter - 270) * Math.PI / 180 + ROT;
     const halfW = FS_WATER_MAX_DEG * Math.PI / 180;
     const rZoneIn  = rHexOut + 4;
     const rZoneOut = rHexOut + 16;
@@ -1003,7 +1036,7 @@ function fsRedraw(){
   ctx.strokeStyle = 'rgba(180,140,40,0.35)';
   ctx.lineWidth = 0.6;
   FS_SLOTS.forEach(s => {
-    const aS = (s.startDeg - 270) * Math.PI/180;
+    const aS = (s.startDeg - 270) * Math.PI/180 + ROT;
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(aS)*rHexIn,  cy + Math.sin(aS)*rHexIn);
     ctx.lineTo(cx + Math.cos(aS)*rHexOut, cy + Math.sin(aS)*rHexOut);
@@ -1016,7 +1049,7 @@ function fsRedraw(){
   // INNER edge of the star box (and push the label OUTSIDE the box).
   // When OFF, use the original layout.
   function drawArrow(deg, color, label, dashed){
-    const a = (deg - 270) * Math.PI/180;
+    const a = (deg - 270) * Math.PI/180 + ROT;
     let tipR, labelR;
     if (FS_STARS_ON){
       tipR   = outerR + 15;
@@ -1068,7 +1101,7 @@ function fsRedraw(){
   ctx.restore();
 
   // ═══ FLYING STARS (玄空飛星) overlay ═══
-  fsDrawFlyingStars(ctx, cx, cy, outerR);
+  fsDrawFlyingStars(ctx, cx, cy, outerR, _rotDeg);
 
   // Render detail panel
   fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx);
@@ -1080,7 +1113,8 @@ function fsRedraw(){
 
 // Draws Flying Stars on the Luopan if toggle is ON and inputs are valid.
 // Also updates the text under the canvas with the center stars.
-function fsDrawFlyingStars(ctx, cx, cy, outerR){
+function fsDrawFlyingStars(ctx, cx, cy, outerR, rotDeg){
+  rotDeg = rotDeg || 0;
   const centerBox = document.getElementById('fs-stars-center');
   if (!FS_STARS_ON){
     if (centerBox) centerBox.innerHTML = '';
@@ -1090,7 +1124,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
   // Manual override takes precedence over the auto calculation
   if (window._fsManualChart && typeof FlyingStars !== 'undefined'){
     try {
-      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR);
+      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR, { rotateDeg: rotDeg });
       if (centerBox) centerBox.innerHTML =
         '<span style="color:#8a6a1f;font-weight:bold;">⭐ Manual</span> &nbsp;|&nbsp; Center: ' +
         FlyingStars.getCenterStarsHTML(window._fsManualChart);
@@ -1130,7 +1164,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
     return;
   }
 
-  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR);
+  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR, { rotateDeg: rotDeg });
 
   // Update center stars line below the canvas
   if (centerBox){
