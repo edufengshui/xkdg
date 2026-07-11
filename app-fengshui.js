@@ -443,7 +443,6 @@ function buildFengShuiView(){
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
         <button id="fs-floorplan-del" onclick="fsRemoveActiveFloorplan()" title="Remove this floor plan" style="display:none;position:absolute;top:8px;left:8px;z-index:6;background:#c62828;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🗑 Remove plan</button>
-        <button id="fs-orient-toggle" onclick="fsSetChartOrient(_fsChartOrient==='top'?'regular':'top')" title="Regular = South at top · Top = facing at top" style="position:absolute;top:8px;right:8px;z-index:5;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🧭 Regular</button>
       </div>
 
       <!-- (Active house detail moved UP into the green HOUSE PROFILES box.) -->
@@ -584,8 +583,6 @@ function fsTogglePeriod(){
 let FS_STARS_ON = true;
 // Luopan display mode: 'fs' = Flying Stars only, 'xkdg' = XKDG Door only, 'both' = combined
 var _fsLuopanMode = 'fs';
-// Chart orientation: 'regular' = South at top (default); 'top' = facing at top (whole chart rotated).
-var _fsChartOrient = (function(){ try { return localStorage.getItem('xkdg_fs_chart_orient') === 'top' ? 'top' : 'regular'; } catch(e){ return 'regular'; } })();
 function fsSetLuopanMode(mode){
   _fsLuopanMode = mode;
   try { _fsRestoreLuopanView(); } catch(e){}   // picking a luopan mode returns to the luopan
@@ -602,24 +599,6 @@ function fsSetLuopanMode(mode){
 // Toggle button (🏠 Floorplan) swaps the luopan canvas for the active floor's
 // saved floor-plan image. Any luopan-mode button or a house switch restores it.
 var _fsFloorplanShown = false;
-// Rotate the WHOLE chart (Luopan + stars) so the facing points straight up, via a CSS
-// transform on the canvas element (no change to the drawing engine). Default keeps South at
-// top. Re-applied on every fsRedraw so the angle always matches the current facing.
-function fsApplyChartOrient(){
-  try {
-    var canvas = document.getElementById('fs-canvas');
-    if (canvas) canvas.style.transform = '';   // rotation is now BAKED INTO the drawing (numbers stay upright)
-    var btn = document.getElementById('fs-orient-toggle');
-    if (btn) btn.textContent = (_fsChartOrient === 'top') ? '\uD83E\uDDED Top' : '\uD83E\uDDED Regular';
-  } catch(e){}
-}
-function fsSetChartOrient(mode){
-  _fsChartOrient = (mode === 'top') ? 'top' : 'regular';
-  try { localStorage.setItem('xkdg_fs_chart_orient', _fsChartOrient); } catch(e){}
-  try { fsApplyChartOrient(); } catch(e){}
-  try { if (typeof fsRedraw === 'function') fsRedraw(); } catch(e){}   // re-render with the new orientation
-}
-
 function fsToggleFloorplanView(){
   try {
     var canvas = document.getElementById('fs-canvas');
@@ -651,7 +630,6 @@ function fsToggleFloorplanView(){
       var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
-      var _ot = document.getElementById('fs-orient-toggle'); if (_ot) _ot.style.display = 'none';
     }
     if (fp.starsImg){
       _present(fp.starsImg);                       // composite already baked (new saves)
@@ -692,7 +670,6 @@ function _fsRestoreLuopanView(){
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
     if (btn) btn.style.background = '#5d4037';
-    var _ot = document.getElementById('fs-orient-toggle'); if (_ot) _ot.style.display = '';
   } catch(e){}
 }
 
@@ -934,7 +911,6 @@ function fsSelectPair(facingDeg, waterDeg){
 function fsRedraw(){
   const canvas = document.getElementById('fs-canvas');
   if (!canvas) return;
-  try { fsApplyChartOrient(); } catch(e){}   // keep "Top" rotation in sync with the current facing
   // Bed/Desk sections draw their OWN luopan (their data, not the Water flow).
   if (window._fsActiveZone === 'bed' || window._fsActiveZone === 'desk'){
     if (typeof fsDrawSectionLuopan === 'function') fsDrawSectionLuopan();
@@ -950,26 +926,17 @@ function fsRedraw(){
   const cx = PAD + 450, cy = PAD + 464;
   const outerR = 447, rHexOut = 360, rHexIn = 295;
 
-  // House Facing (drives the FS arrow AND the "Top" orientation rotation).
-  const hfDeg = parseFloat((document.getElementById('fs-house-facing') || {}).value);
-  const hfd = isNaN(hfDeg) ? null : hfDeg;
-  // In "Top" mode rotate the WHOLE plate so the facing points up (theta = 180 - facing).
-  // Every element is placed by a compass angle and text is drawn upright, so adding ROT to
-  // the angles rotates the plate while the star numbers/labels stay readable.
-  const _rotDeg = (_fsChartOrient === 'top' && !isNaN(hfDeg)) ? (((180 - hfDeg) % 360) + 360) % 360 : 0;
-  const ROT = _rotDeg * Math.PI / 180;
-
-  if (FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth>0){
-    ctx.save();
-    if (ROT){ ctx.translate(cx, cy); ctx.rotate(ROT); ctx.translate(-cx, -cy); }
+  if (FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth>0)
     ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
-    ctx.restore();
-  }
 
   const fDeg = parseFloat(document.getElementById('fs-facing').value);
   const wDeg = parseFloat(document.getElementById('fs-water').value);
   const fd = isNaN(fDeg) ? null : fDeg;
   const wd = isNaN(wDeg) ? null : wDeg;
+
+  // House Facing for FS arrow
+  const hfDeg = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+  const hfd = isNaN(hfDeg) ? null : hfDeg;
 
   const showXKDG = (_fsLuopanMode === 'xkdg' || _fsLuopanMode === 'both');
   const showFS   = (_fsLuopanMode === 'fs'   || _fsLuopanMode === 'both') || (!!window._fsActiveZone && !!window._fsFSRecalled);
@@ -979,8 +946,8 @@ function fsRedraw(){
   const wInput = wd !== null ? fsSlotForDeg(wd) : null;
 
   function paintCell(slot, color){
-    const aS = (slot.startDeg - 270) * Math.PI/180 + ROT;
-    const aE = (slot.endDeg   - 270) * Math.PI/180 + ROT;
+    const aS = (slot.startDeg - 270) * Math.PI/180;
+    const aE = (slot.endDeg   - 270) * Math.PI/180;
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, rHexOut, aS, aE);
@@ -1000,7 +967,7 @@ function fsRedraw(){
   // Pass 1b: when a facing is set, draw subtle ±70° water-zone band just outside hex ring
   if (fInput){
     const facingCenter = fInput.startDeg + 2.8125;
-    const aMid = (facingCenter - 270) * Math.PI / 180 + ROT;
+    const aMid = (facingCenter - 270) * Math.PI / 180;
     const halfW = FS_WATER_MAX_DEG * Math.PI / 180;
     const rZoneIn  = rHexOut + 4;
     const rZoneOut = rHexOut + 16;
@@ -1036,7 +1003,7 @@ function fsRedraw(){
   ctx.strokeStyle = 'rgba(180,140,40,0.35)';
   ctx.lineWidth = 0.6;
   FS_SLOTS.forEach(s => {
-    const aS = (s.startDeg - 270) * Math.PI/180 + ROT;
+    const aS = (s.startDeg - 270) * Math.PI/180;
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(aS)*rHexIn,  cy + Math.sin(aS)*rHexIn);
     ctx.lineTo(cx + Math.cos(aS)*rHexOut, cy + Math.sin(aS)*rHexOut);
@@ -1049,7 +1016,7 @@ function fsRedraw(){
   // INNER edge of the star box (and push the label OUTSIDE the box).
   // When OFF, use the original layout.
   function drawArrow(deg, color, label, dashed){
-    const a = (deg - 270) * Math.PI/180 + ROT;
+    const a = (deg - 270) * Math.PI/180;
     let tipR, labelR;
     if (FS_STARS_ON){
       tipR   = outerR + 15;
@@ -1101,7 +1068,7 @@ function fsRedraw(){
   ctx.restore();
 
   // ═══ FLYING STARS (玄空飛星) overlay ═══
-  fsDrawFlyingStars(ctx, cx, cy, outerR, _rotDeg);
+  fsDrawFlyingStars(ctx, cx, cy, outerR);
 
   // Render detail panel
   fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx);
@@ -1113,8 +1080,7 @@ function fsRedraw(){
 
 // Draws Flying Stars on the Luopan if toggle is ON and inputs are valid.
 // Also updates the text under the canvas with the center stars.
-function fsDrawFlyingStars(ctx, cx, cy, outerR, rotDeg){
-  rotDeg = rotDeg || 0;
+function fsDrawFlyingStars(ctx, cx, cy, outerR){
   const centerBox = document.getElementById('fs-stars-center');
   if (!FS_STARS_ON){
     if (centerBox) centerBox.innerHTML = '';
@@ -1124,7 +1090,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR, rotDeg){
   // Manual override takes precedence over the auto calculation
   if (window._fsManualChart && typeof FlyingStars !== 'undefined'){
     try {
-      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR, { rotateDeg: rotDeg });
+      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR);
       if (centerBox) centerBox.innerHTML =
         '<span style="color:#8a6a1f;font-weight:bold;">⭐ Manual</span> &nbsp;|&nbsp; Center: ' +
         FlyingStars.getCenterStarsHTML(window._fsManualChart);
@@ -1164,7 +1130,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR, rotDeg){
     return;
   }
 
-  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR, { rotateDeg: rotDeg });
+  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR);
 
   // Update center stars line below the canvas
   if (centerBox){
@@ -3197,27 +3163,6 @@ function _fsActiveFloor(h){
 function _fsFloorFacing(h, f){ return (h && h.sameFacing) ? h.houseFacing : (f ? f.facing : null); }
 function _fsFloorPeriod(h, f){ return (h && h.sameFacing) ? h.period : (f ? f.period : null); }
 function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
-
-// ── Name-keyed manual-chart store (clobber-proof persistence) ─────────
-//  A hand-composed chart is ALSO stored here under the HOUSE NAME (+ floor
-//  index), in its OWN localStorage key that no other house-save path writes.
-//  This survives any later re-save of xkdg_houses that used to wipe the manual
-//  chart, and never mixes charts between houses (Vienna stays Vienna).
-function _fsManualChartValid(mc){ return !!(mc && mc.facingStars && mc.sittingStars && mc.baseStars); }
-function _fsManualMapLoad(){ try { return JSON.parse(localStorage.getItem('xkdg_fs_manual_map') || '{}'); } catch(e){ return {}; } }
-function _fsManualMapSave(m){ try { localStorage.setItem('xkdg_fs_manual_map', JSON.stringify(m || {})); } catch(e){} }
-function _fsManualMapKey(name, floorIdx){ return String(name == null ? '' : name).trim().toLowerCase() + '#' + (floorIdx || 0); }
-function _fsManualMapSet(name, floorIdx, mc){
-  if (name == null || String(name).trim() === '') return;       // no name → cannot key safely
-  var m = _fsManualMapLoad();
-  if (_fsManualChartValid(mc)) m[_fsManualMapKey(name, floorIdx)] = mc;
-  else delete m[_fsManualMapKey(name, floorIdx)];
-  _fsManualMapSave(m);
-}
-function _fsManualMapGet(name, floorIdx){
-  try { var mc = _fsManualMapLoad()[_fsManualMapKey(name, floorIdx)]; return _fsManualChartValid(mc) ? mc : null; }
-  catch(e){ return null; }
-}
 
 // ── Backup / Restore (all localStorage: houses, persons, archives, settings) ──
 function fsExportBackup(){
@@ -5894,29 +5839,15 @@ function _fsPersistManualChart(){
       if (mc) ctx.floor.manualChart = mc;
       else { try { delete ctx.floor.manualChart; } catch(e){ ctx.floor.manualChart = null; } }
       _fsHousesSave(ctx.all);
-      // Also store under the house NAME in a separate, clobber-proof cassette.
-      try { _fsManualMapSet(ctx.house && ctx.house.name, (ctx.house && ctx.house.activeFloor) || 0, mc); } catch(e){}
     }
   } catch(e){ console.warn('_fsPersistManualChart', e); }
 }
 function _fsRestoreManualChartForHouse(floor){
   try {
-    if (floor && _fsManualChartValid(floor.manualChart)){ window._fsManualChart = floor.manualChart; }
-    else {
-      // The floor object lacks a manual chart (or it was clobbered by another save):
-      // recover it from the name-keyed cassette for THIS house before giving up, and
-      // heal the floor + xkdg_houses so they are consistent again. Never wipe blindly.
-      var recovered = null;
-      try {
-        var ctx = _fsActiveHouseFloorCtx();
-        if (ctx && ctx.house) recovered = _fsManualMapGet(ctx.house.name, (ctx.house.activeFloor) || 0);
-        if (recovered && ctx && ctx.floor){ ctx.floor.manualChart = recovered; _fsHousesSave(ctx.all); }
-      } catch(e){}
-      if (recovered){ window._fsManualChart = recovered; }
-      else if (floor){ window._fsManualChart = null; }          // genuinely no manual override for this house
-      else {                                                     // no house context → last global manual
-        try { var raw = localStorage.getItem('xkdg_fs_manual'); if (raw) window._fsManualChart = JSON.parse(raw); } catch(e){}
-      }
+    if (floor && floor.manualChart){ window._fsManualChart = floor.manualChart; }
+    else if (floor){ window._fsManualChart = null; }           // this house has no manual override
+    else {                                                       // no house context → last global manual
+      try { var raw = localStorage.getItem('xkdg_fs_manual'); if (raw) window._fsManualChart = JSON.parse(raw); } catch(e){}
     }
     if (typeof fsUpdateManualBadge === 'function') fsUpdateManualBadge();
     if (window._fsManualChart && typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON && typeof fsToggleStars === 'function') fsToggleStars();
@@ -7825,10 +7756,9 @@ window.XKDGHouse = (function () {
       // Prefer a saved MANUAL chart for this floor over the auto-computed one — mirrors the
       // single-floor path (window._fsManualChart) and _fsGetActiveChart() in the Bed section.
       // Only floors that actually carry a valid manualChart change; the rest fall back to auto.
-      var mc = (f.manualChart && f.manualChart.sittingStars && f.manualChart.facingStars && f.manualChart.baseStars)
-                 ? f.manualChart
-                 : ((typeof _fsManualMapGet === 'function') ? _fsManualMapGet(h.name, fi) : null);
-      var chart = mc ? mc : chartFor(facing, period);
+      var chart = (f.manualChart && f.manualChart.sittingStars && f.manualChart.facingStars && f.manualChart.baseStars)
+                    ? f.manualChart
+                    : chartFor(facing, period);
       var st = f.settings || { water: [], bed: [], desk: [] };
       return {
         index: fi, label: f.label || ('Floor ' + (fi + 1)), active: (fi === activeFloor),

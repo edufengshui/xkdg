@@ -421,8 +421,7 @@ const FlyingStars = (() => {
             dividerColor:     'rgba(138,106,31,0.65)',  // raggi di separazione fra palazzi
             dividerWidth:     1.5,
             fontFamily:       'serif',
-            showDividers:     true,
-            rotateDeg:        0          // rotate the whole star ring by this many degrees (Top view = facing at top)
+            showDividers:     true
         }, options || {});
 
         const blockR = opt.blockSize / 2;
@@ -438,7 +437,7 @@ const FlyingStars = (() => {
             const rInner = rOuter;                          // partenza dal bordo del Luopan
             const rOuterRay = centerR + blockR + 8;         // arriva ~8px oltre il bordo esterno dei blocchi
             for (let i = 0; i < 8; i++) {
-                const compassDeg = 22.5 + i * 45 + opt.rotateDeg;   // confini fra palazzi (+ rotazione carta)
+                const compassDeg = 22.5 + i * 45;           // confini fra palazzi
                 const a = (compassDeg - 270) * Math.PI / 180;
                 const x1 = cx + Math.cos(a) * rInner;
                 const y1 = cy + Math.sin(a) * rInner;
@@ -456,7 +455,7 @@ const FlyingStars = (() => {
         for (let gridIdx = 0; gridIdx < 9; gridIdx++) {
             if (gridIdx === 4) continue;  // salta il centro
 
-            const compassDeg = PALACE_COMPASS_DEG[gridIdx] + opt.rotateDeg;   // + rotazione carta (numeri restano dritti)
+            const compassDeg = PALACE_COMPASS_DEG[gridIdx];
             const a = (compassDeg - 270) * Math.PI / 180;
             const bx = cx + Math.cos(a) * centerR;
             const by = cy + Math.sin(a) * centerR;
