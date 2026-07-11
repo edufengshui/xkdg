@@ -1094,8 +1094,7 @@
         'hour, but ONLY if that hour falls in the window from the 2nd half of Zi (solar 00:00) through the end of Wei ' +
         '(solar 15:00); it then stays ON until 23:00 CIVIL clock the same day. If the best hour is AFTER Wei, that day is ' +
         'NOT scheduled and is returned in needs_decision \u2014 present those to the user and ask what to do. Times are in the ' +
-        'HOUSE\u2019s True Solar Time. After running, show the scheduled dates (on_local/off_local) and, for any Zi day, ' +
-        'confirm the night is right.',
+        'HOUSE\u2019s True Solar Time. After running, show the scheduled dates (on_local/off_local). Night ON times (the Zi hour) are normal \u2014 do NOT flag them or ask about them.',
       input_schema: {
         type: 'object',
         properties: {
@@ -1424,7 +1423,7 @@
     // + GPS-origin variants GT / GV: same destinations, but departing from the CURRENT position).
     // Bumping the version below re-seeds them in English, replacing any older copies (now v6).
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '7') {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '8') {
         var seed = [
           {
             trigger: 'aq',
@@ -1440,9 +1439,8 @@
             text: 'Program the aquarium light for the NEXT 7 DAYS for BOTH houses (Tuoro and Vienna), WITH my confirmation, in TWO phases. ' +
                   'PHASE 1 \u2014 PREVIEW, deposit NOTHING: for Tuoro first, then Vienna, call program_aquarium_light with commit:false. ' +
                   'For each house present two clear lists: (A) the days it INTENDS TO ACTIVATE \u2014 date, the double-hour with its clock window (on_local \u2192 off_local at 23:00) and tier; and (B) SEPARATELY the days whose best hour is AFTER Wei (needs_decision). ' +
-                  'Then STOP and ask me two things: what to do for each after-Wei day, and my OK to proceed. Do NOT deposit anything yet. ' +
-                  'PHASE 2 \u2014 only AFTER I reply with my decisions and OK: call program_aquarium_light again for each house with commit:true and approve_dates set to only the after-Wei dates I approved. Then tell me exactly what was deposited for each house. ' +
-                  'For any Zi day, point out the ON time so I can confirm the night is right.'
+                  'Then STOP. Night ON times (the Zi hour) are NORMAL \u2014 do NOT flag them or ask about them. If there are after-Wei days, ask me about them ONE AT A TIME with tap Si/No buttons whose payload names the date, e.g. [[BTN]] Si=includi il 11 luglio | No=salta il 11 luglio . Then ask for my final OK, also with buttons: [[BTN]] Procedi=procedi | Annulla=annulla . Do NOT deposit anything yet. ' +
+                  'PHASE 2 \u2014 only AFTER I reply with my decisions and OK: call program_aquarium_light again for each house with commit:true and approve_dates set to only the after-Wei dates I approved. Then tell me exactly what was deposited for each house.'
           },
           {
             trigger: 'VT', icon: '🚗', askDepart: true,
@@ -1478,7 +1476,7 @@
         // Replace any earlier aq/VT/TV/GT/GV, then append the current English definitions.
         arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv' && t !== 'luce'; });
         seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '7');
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '8');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
@@ -3679,7 +3677,8 @@
       return (b.tier - a.tier)
           || ((b.qimen_score || 0) - (a.qimen_score || 0))
           || ((b.xkdg_score || 0) - (a.xkdg_score || 0))
-          || (a.date < b.date ? -1 : 1);
+          || ((b.combined_score || 0) - (a.combined_score || 0))
+          || (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));   // consistent: equal dates -> 0 (no Zi-by-insertion bias)
     });
 
     return {
@@ -3807,8 +3806,26 @@
     var rows = (scan && scan.results) || [];
 
     // 3) best row per date (rows are sorted best-first -> first seen per date = best)
-    var bestByDate = {};
-    rows.forEach(function (r) { if (r.date && !bestByDate[r.date]) bestByDate[r.date] = r; });
+    // First choice per day = the MAX-tier hour (ties broken by qimen -> xkdg -> combined score),
+    // and this holds EVEN IF that hour is after Wei (it then goes to needs_decision, never demoted
+    // to a lower-tier in-window hour). We also collect the OTHER hours that share the same top tier
+    // so ties are visible (e.g. Zi tying with a daytime hour you might prefer).
+    var byDate = {};
+    rows.forEach(function (r) { if (!r.date) return; (byDate[r.date] = byDate[r.date] || []).push(r); });
+    function _cmpHour(a, b) {
+      return (b.tier || 0) - (a.tier || 0)
+          || (b.qimen_score || 0) - (a.qimen_score || 0)
+          || (b.xkdg_score || 0) - (a.xkdg_score || 0)
+          || (b.combined_score || 0) - (a.combined_score || 0);
+    }
+    var bestByDate = {}, altByDate = {};
+    Object.keys(byDate).forEach(function (d) {
+      var list = byDate[d].slice().sort(_cmpHour);
+      bestByDate[d] = list[0];
+      var topTier = list[0].tier;
+      altByDate[d] = list.slice(1).filter(function (r) { return r.tier === topTier; })
+        .map(function (r) { return { branch: r.branch, hour: r.hour, tier: r.tier, qimen_score: r.qimen_score }; });
+    });
 
     var scheduled = [], needsDecision = [], skipped = [];
     for (var i = 0; i < days; i++) {
@@ -3818,14 +3835,17 @@
       var br = best.branch;
       var inWindow = !!_WINDOW_BRANCHES[br];
       var approvedLate = (!inWindow && approve[iso]);
+      var alts = (altByDate[iso] && altByDate[iso].length) ? altByDate[iso] : undefined;
       if ((inWindow || approvedLate) && _BRANCH_SOLAR_MIN[br] != null) {
         var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[br], rh.cfg.lon, rh.cfg.utc);
         var offTs = _civilToEpoch(iso, 23 * 60, rh.cfg.utc);       // 23:00 CIVIL clock, same day
         scheduled.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, onTs: onTs, offTs: offTs,
                          on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString(),
-                         approved_after_wei: approvedLate || undefined });
+                         approved_after_wei: approvedLate || undefined, alternatives_same_tier: alts });
       } else {
-        needsDecision.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, reason: 'best hour is after Wei (outside the ON window) \u2014 approve this date to include it' });
+        needsDecision.push({ date: iso, branch: br, hour: best.hour, tier: best.tier,
+                             reason: 'best hour is after Wei (outside the ON window) \u2014 approve this date to include it',
+                             alternatives_same_tier: alts });
       }
     }
 
@@ -3852,7 +3872,7 @@
       worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
       note: commit
         ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local).'
-        : 'PREVIEW ONLY \u2014 nothing was deposited. Show the user the scheduled list (date, hour, tier, on_local/off_local) and, separately, the needs_decision days (best hour AFTER Wei). Ask what to do for the needs_decision days AND for a final OK. Do NOT deposit. Then call program_aquarium_light again with commit:true and approve_dates:[...] listing only the after-Wei dates the user approved.'
+        : 'PREVIEW ONLY \u2014 nothing was deposited. The chosen hour each day is always the day\u2019s MAXIMUM-tier hour (ties broken by Qimen then XKDG score), even if it falls after Wei. Show the user the scheduled list (date, hour, tier, on_local/off_local) and, separately, the needs_decision days (max-tier hour is AFTER Wei). If alternatives_same_tier is present for a day, other hours reached the SAME top tier \u2014 mention them briefly so the user may pick one instead. Ask what to do for the needs_decision days AND for a final OK (use tap buttons). Do NOT deposit. Then call program_aquarium_light again with commit:true and approve_dates:[...] listing only the after-Wei dates the user approved.'
     };
   }
 
@@ -4623,13 +4643,43 @@
 
     function addBubble(role, text, noSpeak) {
       var mine = role === 'user';
+      // Assistant turns may carry a [[BTN]] line that becomes tap buttons (yes/no or
+      // short choices). Parsed only for LIVE assistant messages, not history replay.
+      var btnSpecs = [], displayText = text;
+      if (!mine && !noSpeak && typeof text === 'string' && text.indexOf('[[BTN]]') >= 0) {
+        var keep = [];
+        text.split('\n').forEach(function (ln) {
+          var mm = /^\s*\[\[BTN\]\]\s*(.+)$/.exec(ln);
+          if (!mm) { keep.push(ln); return; }
+          mm[1].split('|').forEach(function (part) {
+            var t = part.trim(); if (!t) return;
+            var eq = t.indexOf('=');
+            var label = eq >= 0 ? t.slice(0, eq).trim() : t;
+            var payload = eq >= 0 ? t.slice(eq + 1).trim() : t;
+            if (label) btnSpecs.push({ label: label, payload: payload || label });
+          });
+        });
+        displayText = keep.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      }
       var b = elc('div', { style:
         'max-width:85%;padding:8px 11px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;' +
         (mine ? 'align-self:flex-end;background:#6a1b9a;color:#fff;border-bottom-right-radius:3px;'
-              : 'align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;border-bottom-left-radius:3px;') }, text);
+              : 'align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;border-bottom-left-radius:3px;') }, displayText);
       msgs.appendChild(b);
+      if (btnSpecs.length) {
+        var row = elc('div', { style: 'display:flex;flex-wrap:wrap;gap:8px;align-self:flex-start;margin:1px 0 5px;' });
+        btnSpecs.forEach(function (spec) {
+          var bt = elc('button', { style: 'padding:7px 16px;border:1px solid #6a1b9a;background:#6a1b9a;color:#fff;border-radius:16px;font-size:14px;font-weight:600;cursor:pointer;' }, spec.label);
+          bt.onclick = function () {
+            try { var bs = row.querySelectorAll('button'); for (var i = 0; i < bs.length; i++) { bs[i].disabled = true; bs[i].style.opacity = '0.5'; bs[i].style.cursor = 'default'; } } catch (e) {}
+            try { doSend(spec.payload, spec.label); } catch (e) {}
+          };
+          row.appendChild(bt);
+        });
+        msgs.appendChild(row);
+      }
       msgs.scrollTop = msgs.scrollHeight;
-      if (!mine && !noSpeak) speak(text);
+      if (!mine && !noSpeak) speak(displayText);
       return b;
     }
     // Injected by the Travel Planner when it finishes computing an AI-opened trip:
@@ -5830,6 +5880,16 @@
         'memory. For the current date or hour, rely on the CURRENT MOMENT block above.';
     }
 
+    // Turn yes/no (or short either/or) questions into tap buttons in the app UI.
+    function uiButtonsRule() {
+      return '\n\nUI BUTTONS: whenever your reply asks the user a yes/no question or a short either/or choice, add it on ' +
+        'its OWN line as a marker the app renders as tap buttons: [[BTN]] Label1 | Label2 . Each item may be ' +
+        '"Label=exact text to send" when the words to send differ from the button label; with no "=", the label itself ' +
+        'is sent. Example (yes/no): [[BTN]] S\u00ec=s\u00ec | No=no . When the choice refers to a specific item, put the item in the ' +
+        'payload so it is unambiguous, e.g. [[BTN]] S\u00ec=includi l\u2019 11 luglio | No=salta l\u2019 11 luglio . Ask one such ' +
+        'question at a time. Do NOT add buttons to statements that are not questions.';
+    }
+
     function callAnthropic(noTools) {
       // Per-turn language lock: detect the language of the user's latest typed message and
       // append a high-priority directive so the reply never drifts (e.g. to Italian) because
@@ -5856,7 +5916,7 @@
       return fetch(getUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + uiButtonsRule() + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
 
