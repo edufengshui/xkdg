@@ -1074,6 +1074,50 @@
       }
     },
     {
+      name: 'configure_shelly',
+      description: 'Save the Shelly aquarium-light Worker URL and token (stored locally in the browser, never in code). ' +
+        'Ask the user for these ONCE; afterwards program_aquarium_light and aquarium_light work without them.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'The Worker base URL, e.g. https://xkdg-shelly.<subdomain>.workers.dev' },
+          token: { type: 'string', description: 'The XKDG_TOKEN secret configured on the Worker.' }
+        },
+        required: ['url', 'token']
+      }
+    },
+    {
+      name: 'program_aquarium_light',
+      description: 'Compute the next-N-days plan of favourable ON hours for a house\u2019s aquarium LIGHT and deposit it into ' +
+        'the Shelly Worker for that house. Rule: each day the light turns ON at the START of the day\u2019s BEST favourable ' +
+        'hour, but ONLY if that hour falls in the window from the 2nd half of Zi (solar 00:00) through the end of Wei ' +
+        '(solar 15:00); it then stays ON until 23:00 CIVIL clock the same day. If the best hour is AFTER Wei, that day is ' +
+        'NOT scheduled and is returned in needs_decision \u2014 present those to the user and ask what to do. Times are in the ' +
+        'HOUSE\u2019s True Solar Time. After running, show the scheduled dates (on_local/off_local) and, for any Zi day, ' +
+        'confirm the night is right.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug to program.' },
+          days: { type: 'integer', description: 'How many days ahead to plan (default 7).' }
+        },
+        required: ['house']
+      }
+    },
+    {
+      name: 'aquarium_light',
+      description: 'Manually turn a house\u2019s aquarium LIGHT on/off, or read its status, via the Shelly Worker. Takes ' +
+        'precedence over the automatic plan.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug.' },
+          turn: { type: 'string', enum: ['on', 'off', 'status'], description: 'on, off, or status (default status).' }
+        },
+        required: ['house']
+      }
+    },
+    {
       name: 'find_qimen_hours_for_star',
       description: 'Qimen x Flying Stars (fixed preset): given a flying star (type water = facing star, or mountain = ' +
         'sitting star; number 1-9), find the hours that send a FIXED favourable preset to that star\'s palace(s) in ' +
@@ -1342,6 +1386,9 @@
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
       if (name === 'find_lodging') return toolFindLodging(input || {});
+      if (name === 'configure_shelly') return toolConfigureShelly(input || {});
+      if (name === 'program_aquarium_light') return toolProgramAquariumLight(input || {});
+      if (name === 'aquarium_light') return toolAquariumLight(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'list_source') return toolListSource();
       if (name === 'read_source') return toolReadSource(input || {});
@@ -3629,9 +3676,155 @@
       direction: dir || null, star: ran.special ? (starType + ' ' + starNum) : null,
       start: start, days: days, scans_run: ran,
       person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',
-      count: rows.length, results: rows.slice(0, 20), scan_notes: notes,
+      count: rows.length, results: (input && input.full ? rows : rows.slice(0, 20)), scan_notes: notes,
       note: 'Quadruple scan merged by date+hour. matched lists which criteria the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace), and Hexagram bond (the hour\'s OWN four pillars form a connected communication network \u2014 Family/Inverse plus one same-type/same-line number mode of Hetu/Adding/Pure Qi \u2014 which makes the hour good INDEPENDENTLY of the person). tier = how many criteria matched (4 = best). IMPORTANT: an hour is worth reporting even if it does NOT communicate with the person \u2014 if it has a Hexagram bond and/or a Qimen configuration it MUST still be listed (it will simply rank lower). Never claim an hour is the "only" good one just because it is the only one that connects to the person. PRESENT higher tiers first. RANKING within a tier is by qimen_score (Qimen quadrant + special = activation energy at the palace) FIRST, then xkdg_score as tiebreaker. State for each which criteria it passed; for a Hexagram-bond hour, mention the bond (hex_bond field) as the reason it qualifies.',
       time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
+    };
+  }
+
+  // ── SHELLY AQUARIUM-LIGHT BRIDGE ────────────────────────────────────────
+  //  Builds a plan of favourable ON hours for a house's aquarium and deposits
+  //  it into the xkdg-shelly Worker (?set_plan&device=..). Plug = LIGHT only.
+  //  Rule (Edu): ON at the START of the day's BEST favourable hour, but only if
+  //  that hour is within the window 2nd-half-of-Zi (solar 00:00) .. end of Wei
+  //  (solar 15:00); the light then stays ON until 23:00 CIVIL clock the same
+  //  day. If the best hour is AFTER Wei it is NOT scheduled — returned in
+  //  needs_decision for the user to decide. Times use the HOUSE's True Solar Time.
+  var SHELLY_HOUSES = {
+    // house name (lower-case) -> { device, lon, utc }.  utc = standard offset (h); DST handled per date.
+    'tuoro':  { device: 'tuoro',  lon: 12.1, utc: 1 },
+    'vienna': { device: 'vienna', lon: 16.4, utc: 1 }
+  };
+  // Solar minute (from solar midnight) at which the light turns ON for each in-window branch.
+  // Zi uses its SECOND half (solar 00:00); Chou..Wei use their normal solar start.
+  var _WINDOW_ON_SOLAR_MIN = { '\u5b50': 0, '\u4e11': 60, '\u5bc5': 180, '\u536f': 300, '\u8fb0': 420, '\u5df3': 540, '\u5348': 660, '\u672a': 780 };
+
+  function _shellyCfg() {
+    try { var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || '{}'); return (c && c.url && c.token) ? c : null; }
+    catch (e) { return null; }
+  }
+  function _dateParts(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m ? { y: +m[1], mo: +m[2], d: +m[3] } : null; }
+  function _isoPlus(iso, n) {
+    var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  // Absolute epoch ms for a SOLAR time (minutes from solar midnight) on `iso` at (lon,utc).
+  function _solarToEpoch(iso, solarMin, lon, utc) {
+    var p = _dateParts(iso); if (!p) return NaN;
+    var dst = false; try { dst = dstActiveOn(new Date(iso + 'T12:00:00')); } catch (e) {}
+    var offsetMin = (lon - utc * 15) * 4 - (dst ? 60 : 0);          // solar = clock + offsetMin
+    var civilClockMin = solarMin - offsetMin;                       // wall-clock minutes past civil midnight
+    var base = Date.UTC(p.y, p.mo - 1, p.d, 0, 0, 0) - (utc + (dst ? 1 : 0)) * 3600000;
+    return base + Math.round(civilClockMin * 60000);
+  }
+  // Absolute epoch ms for a CIVIL wall-clock time (minutes past midnight) on `iso` at utc.
+  function _civilToEpoch(iso, clockMin, utc) {
+    var p = _dateParts(iso); if (!p) return NaN;
+    var dst = false; try { dst = dstActiveOn(new Date(iso + 'T12:00:00')); } catch (e) {}
+    var base = Date.UTC(p.y, p.mo - 1, p.d, 0, 0, 0) - (utc + (dst ? 1 : 0)) * 3600000;
+    return base + clockMin * 60000;
+  }
+  function _resolveShellyHouse(nameOrDevice) {
+    var key = String(nameOrDevice || '').trim().toLowerCase();
+    if (SHELLY_HOUSES[key]) return { name: key, cfg: SHELLY_HOUSES[key] };
+    for (var k in SHELLY_HOUSES) if (SHELLY_HOUSES[k].device === key) return { name: k, cfg: SHELLY_HOUSES[k] };
+    return null;
+  }
+
+  function toolConfigureShelly(input) {
+    input = input || {};
+    var url = String(input.url || '').trim().replace(/\/+$/, '');
+    var token = String(input.token || '').trim();
+    if (!/^https?:\/\//.test(url) || !token) return { error: 'Provide the Worker url (https://...) and the token.' };
+    try { localStorage.setItem('xkdg_shelly_cfg', JSON.stringify({ url: url, token: token })); }
+    catch (e) { return { error: 'Could not save the Shelly config.' }; }
+    return { ok: true, url: url, token: '(saved)' };
+  }
+
+  async function toolAquariumLight(input) {
+    input = input || {};
+    var cfg = _shellyCfg();
+    if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
+    var rh = _resolveShellyHouse(input.house || input.device);
+    if (!rh) return { error: 'Unknown house/device. Use "tuoro" or "vienna".' };
+    var turn = String(input.turn || 'status').toLowerCase();
+    if (['on', 'off', 'status'].indexOf(turn) < 0) return { error: 'turn must be on, off or status.' };
+    try {
+      var res = await fetch(cfg.url + '?turn=' + turn + '&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token), { method: 'POST' });
+      var data = await res.json().catch(function () { return null; });
+      return { device: rh.cfg.device, turn: turn, http: res.status, result: data };
+    } catch (e) { return { error: 'Shelly request failed: ' + ((e && e.message) || e) }; }
+  }
+
+  async function toolProgramAquariumLight(input) {
+    input = input || {};
+    var cfg = _shellyCfg();
+    if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
+    var rh = _resolveShellyHouse(input.house);
+    if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
+    var days = parseInt(input.days, 10) || 7;
+
+    // 1) make the house active (loads its person) and read its single aquarium
+    try {
+      if (window.XKDGHouse && typeof window.XKDGHouse.resolveByName === 'function') {
+        var rb = window.XKDGHouse.resolveByName(rh.name);
+        if (rb && rb.person && typeof window.fsSetActiveHouse === 'function') window.fsSetActiveHouse(rb.person.name, rb.index);
+      }
+    } catch (e) {}
+    var setup = toolGetHouseSetup({ house_name: rh.name });
+    if (!setup || setup.error) return { error: 'Could not read house "' + rh.name + '": ' + ((setup && setup.error) || 'not found') };
+    var floor = (setup.floors || []).filter(function (f) { return f.active; })[0] || (setup.floors || [])[0];
+    if (!floor) return { error: 'House "' + rh.name + '" has no floor.' };
+    var aq = (floor.aquariums || [])[0];
+    if (!aq || !aq.direction) return { error: 'House "' + rh.name + '" has no saved aquarium.' };
+    if (aq.water_star == null) return { error: 'Aquarium water star unknown for "' + rh.name + '" (set the chart first).' };
+
+    // 2) unified scan for this aquarium over the next `days` days (full = all rows, not just top 20)
+    var start = todayIso();
+    var scan = toolFindWaterActivationFull({
+      direction: aq.direction, star_type: 'water', star_num: aq.water_star,
+      facing_deg: floor.facing, period: floor.period, start_date: start, days: days, full: true
+    });
+    var rows = (scan && scan.results) || [];
+
+    // 3) best row per date (rows are sorted best-first -> first seen per date = best)
+    var bestByDate = {};
+    rows.forEach(function (r) { if (r.date && !bestByDate[r.date]) bestByDate[r.date] = r; });
+
+    var scheduled = [], needsDecision = [], skipped = [];
+    for (var i = 0; i < days; i++) {
+      var iso = _isoPlus(start, i);
+      var best = bestByDate[iso];
+      if (!best) { skipped.push({ date: iso, reason: 'no favourable hour' }); continue; }
+      var br = best.branch;
+      if (_WINDOW_ON_SOLAR_MIN[br] != null) {
+        var onTs = _solarToEpoch(iso, _WINDOW_ON_SOLAR_MIN[br], rh.cfg.lon, rh.cfg.utc);
+        var offTs = _civilToEpoch(iso, 23 * 60, rh.cfg.utc);       // 23:00 CIVIL clock, same day
+        scheduled.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, onTs: onTs, offTs: offTs,
+                         on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString() });
+      } else {
+        needsDecision.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, reason: 'best hour is after Wei (outside the ON window)' });
+      }
+    }
+
+    // 4) deposit the scheduled days into the Worker for this device
+    var body = { days: scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; }) };
+    var workerResp = null, workerErr = null;
+    try {
+      var res2 = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      workerResp = await res2.json().catch(function () { return null; });
+      if (!res2.ok) workerErr = 'HTTP ' + res2.status;
+    } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
+
+    return {
+      scanner: 'aquarium_light_plan', house: rh.name, device: rh.cfg.device,
+      aquarium: { direction: aq.direction, water_star: aq.water_star },
+      window: '2nd half of Zi (solar 00:00) .. end of Wei (solar 15:00); OFF at 23:00 civil',
+      scheduled_days: scheduled.length, scheduled: scheduled,
+      needs_decision: needsDecision, skipped: skipped,
+      deposited: !workerErr, worker_error: workerErr || undefined, worker: workerResp,
+      note: 'ON = start of the day\u2019s best favourable hour in True Solar Time (Zi = its 2nd half, solar 00:00). OFF = 23:00 civil clock. Days whose best hour is after Wei are in needs_decision: present each and ASK the user what to do. Show the user the scheduled dates with on_local/off_local, and for any Zi day confirm the night is correct.'
     };
   }
 
