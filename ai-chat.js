@@ -4185,16 +4185,24 @@
     function detectLang(text) {
       var t = ' ' + String(text || '').toLowerCase().replace(/[^a-zàâäéèêëïîôöùûüç\s]/g, ' ') + ' ';
       var sets = {
-        it: [' il ', ' lo ', ' gli ', ' che ', ' è ', ' sei ', ' oggi ', ' viaggio ', ' ore ', ' partenza ', ' buongiorno ', ' grazie ', ' direzione ', ' fortunato ', ' della ', ' di ', ' un ', ' una ', ' per ', ' come ', ' quale ', ' sono ', ' più ', ' anche ', ' questo ', ' mi ', ' fare ', ' posso ', ' famiglia ', ' esagramma '],
-        en: [' the ', ' is ', ' you ', ' today ', ' travel ', ' hours ', ' leave ', ' hello ', ' thanks ', ' yes ', ' direction ', ' lucky ', ' route ', ' your ', ' to ', ' of ', ' what ', ' which ', ' how ', ' does ', ' do ', ' and ', ' for ', ' my ', ' can ', ' are ', ' this ', ' with ', ' family ', ' hexagram '],
-        fr: [' le ', ' la ', ' les ', ' est ', ' vous ', ' aujourd ', ' voyage ', ' heures ', ' partir ', ' bonjour ', ' merci ', ' oui ', ' direction ', ' chance ', ' votre ', ' de ', ' une ', ' pour ', ' comment ', ' quel ', ' quelle ', ' je ', ' avec ', ' ce ', ' plus ', ' faire ', ' famille ', ' hexagramme ']
+        it: [' il ', ' lo ', ' la ', ' gli ', ' le ', ' che ', ' è ', ' sei ', ' oggi ', ' viaggio ', ' ore ', ' partenza ', ' buongiorno ', ' grazie ', ' direzione ', ' fortunato ', ' della ', ' di ', ' un ', ' una ', ' per ', ' come ', ' quale ', ' sono ', ' più ', ' anche ', ' questo ', ' mi ', ' fare ', ' posso ', ' famiglia ', ' esagramma ', ' non ', ' con ', ' da ', ' cosa ', ' dove ', ' quando ', ' ho ', ' hai ', ' ha ', ' mostrami ', ' dimmi ', ' voglio ', ' vorrei ', ' carta ', ' casa ', ' acquario ', ' luce ', ' nord ', ' sud ', ' ovest ', ' verso ', ' ora ', ' giorno '],
+        en: [' the ', ' is ', ' you ', ' today ', ' travel ', ' hours ', ' leave ', ' hello ', ' thanks ', ' yes ', ' direction ', ' lucky ', ' route ', ' your ', ' to ', ' of ', ' what ', ' which ', ' how ', ' does ', ' do ', ' and ', ' for ', ' my ', ' can ', ' are ', ' this ', ' with ', ' family ', ' hexagram ', ' show ', ' me ', ' chart ', ' please ', ' want ', ' need ', ' house ', ' aquarium ', ' light ', ' north ', ' south ', ' west ', ' east ', ' when ', ' where ', ' will ', ' trip ', ' day '],
+        fr: [' le ', ' la ', ' les ', ' est ', ' vous ', ' aujourd ', ' voyage ', ' heures ', ' partir ', ' bonjour ', ' merci ', ' oui ', ' direction ', ' chance ', ' votre ', ' de ', ' une ', ' pour ', ' comment ', ' quel ', ' quelle ', ' je ', ' avec ', ' ce ', ' plus ', ' faire ', ' famille ', ' hexagramme ', ' maison ', ' montre ', ' jour ', ' aujourd hui ', ' ouest ', ' nord ', ' sud ']
       };
-      var best = null, bestN = 0;
+      var counts = {};
       Object.keys(sets).forEach(function (k) {
-        var n = 0; sets[k].forEach(function (w) { if (t.indexOf(w) >= 0) n++; });
-        if (n > bestN) { bestN = n; best = k; }
+        var n = 0; sets[k].forEach(function (w) { if (t.indexOf(w) >= 0) n++; }); counts[k] = n;
       });
-      return bestN >= 2 ? best : null;
+      var best = null, bestN = 0, tie = false;
+      Object.keys(counts).forEach(function (k) {
+        if (counts[k] > bestN) { bestN = counts[k]; best = k; tie = false; }
+        else if (counts[k] === bestN && bestN > 0) { tie = true; }
+      });
+      // Decisive on a single CLEAR leading hit. Short messages ("show me the chart",
+      // "bazi for tomorrow") used to score <2, return null, and fall back to the voice
+      // selector \u2014 which replied in the wrong language. Only truly ambiguous input (0 hits
+      // or a tie between languages) stays null.
+      return (bestN >= 1 && !tie) ? best : null;
     }
     function pickVoice(bcp) {
       try {
@@ -5906,7 +5914,10 @@
         try {
           for (var i = history.length - 1; i >= 0; i--) {
             var m = history[i];
-            if (m && m.role === 'user' && typeof m.content === 'string') { lang = detectLang(m.content); break; }
+            if (m && m.role === 'user' && typeof m.content === 'string') {
+              var d = detectLang(m.content);
+              if (d) { lang = d; break; }   // most recent DETECTABLE user message wins (don't stop on a null)
+            }
           }
         } catch (e) {}
         if (!lang) { var s = null; try { s = localStorage.getItem('xkdg_ai_lang'); } catch (e) {} if (s && s !== 'auto') lang = s; }
