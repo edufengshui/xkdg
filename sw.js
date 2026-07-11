@@ -33,7 +33,7 @@
 //
 // ============================================================
 
-const CACHE = 'xkdg-app-v2';
+const CACHE = 'xkdg-app-v3';
 
 // ── Install: niente precache, take over immediatamente ──────────
 self.addEventListener('install', () => {
