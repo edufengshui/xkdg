@@ -1098,8 +1098,9 @@
         'deposit it into the Shelly Worker for that house. By DEFAULT (commit:false) it only PREVIEWS \u2014 nothing is ' +
         'deposited until you pass commit:true. Rule: each day the light turns ON at the START of the day\u2019s BEST favourable ' +
         'hour, but ONLY if that hour falls in the window from the 2nd half of Zi (solar 00:00) through the end of Wei ' +
-        '(solar 15:00); it then stays ON until 23:00 CIVIL clock the same day. If the best hour is AFTER Wei, that day is ' +
-        'NOT scheduled and is returned in needs_decision \u2014 present those to the user and ask what to do. Times are in the ' +
+        '(solar 15:00); it then stays ON until 23:00 CIVIL clock the same day. If the best hour is AFTER Wei: Tier 3-4 hours ' +
+        'are AUTO-INCLUDED anyway (they appear in the scheduled list, marked after_wei_auto); only Tier 1-2 after-Wei hours ' +
+        'go to needs_decision for the user to approve. Times are in the ' +
         'HOUSE\u2019s True Solar Time. After running, show the scheduled dates (on_local/off_local). Night ON times (the Zi hour) are normal \u2014 do NOT flag them or ask about them.',
       input_schema: {
         type: 'object',
@@ -1429,7 +1430,7 @@
     // + GPS-origin variants GT / GV: same destinations, but departing from the CURRENT position).
     // Bumping the version below re-seeds them in English, replacing any older copies (now v6).
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '8') {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '9') {
         var seed = [
           {
             trigger: 'aq',
@@ -1444,8 +1445,8 @@
             label: 'Program aquarium light \u2014 7 days (both houses)',
             text: 'Program the aquarium light for the NEXT 7 DAYS for BOTH houses (Tuoro and Vienna), WITH my confirmation, in TWO phases. ' +
                   'PHASE 1 \u2014 PREVIEW, deposit NOTHING: for Tuoro first, then Vienna, call program_aquarium_light with commit:false. ' +
-                  'For each house present two clear lists: (A) the days it INTENDS TO ACTIVATE \u2014 date, the double-hour with its clock window (on_local \u2192 off_local at 23:00) and tier; and (B) SEPARATELY the days whose best hour is AFTER Wei (needs_decision). ' +
-                  'Then STOP. Night ON times (the Zi hour) are NORMAL \u2014 do NOT flag them or ask about them. If there are after-Wei days, ask me about them ONE AT A TIME with tap Si/No buttons whose payload names the date, e.g. [[BTN]] Si=includi il 11 luglio | No=salta il 11 luglio . Then ask for my final OK, also with buttons: [[BTN]] Procedi=procedi | Annulla=annulla . Do NOT deposit anything yet. ' +
+                  'For each house present: (A) the days it will ACTIVATE \u2014 date, the double-hour with its clock window (on_local \u2192 off_local at 23:00) and tier; this list ALREADY INCLUDES after-Wei hours of Tier 3-4 (auto-included) \u2014 mark those "(dopo Wei)". And (B) ONLY the days whose best hour is after Wei with LOW tier (1-2), which need my decision. ' +
+                  'Then STOP. Night ON times (the Zi hour) are NORMAL \u2014 do NOT flag them. For EACH day in (B) you MUST ask me with a tap button on its OWN line \u2014 never just list it as text \u2014 like:  [[BTN]] Si=includi il 15 luglio | No=salta il 15 luglio . Then ask for my final go-ahead with buttons:  [[BTN]] Procedi=procedi | Annulla=annulla . Do NOT deposit anything yet. ' +
                   'PHASE 2 \u2014 only AFTER I reply with my decisions and OK: call program_aquarium_light again for each house with commit:true and approve_dates set to only the after-Wei dates I approved. Then tell me exactly what was deposited for each house.'
           },
           {
@@ -1482,7 +1483,7 @@
         // Replace any earlier aq/VT/TV/GT/GV, then append the current English definitions.
         arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv' && t !== 'luce'; });
         seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '8');
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '9');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
@@ -3840,17 +3841,21 @@
       if (!best) { skipped.push({ date: iso, reason: 'no favourable hour' }); continue; }
       var br = best.branch;
       var inWindow = !!_WINDOW_BRANCHES[br];
-      var approvedLate = (!inWindow && approve[iso]);
+      var highTier = (best.tier != null && best.tier >= 3);        // Tier 3-4 = high
+      var autoLate = (!inWindow && highTier);                      // after Wei + high tier -> auto-include
+      var approvedLate = (!inWindow && !highTier && approve[iso]); // after Wei + LOW tier -> only if approved
       var alts = (altByDate[iso] && altByDate[iso].length) ? altByDate[iso] : undefined;
-      if ((inWindow || approvedLate) && _BRANCH_SOLAR_MIN[br] != null) {
+      if ((inWindow || autoLate || approvedLate) && _BRANCH_SOLAR_MIN[br] != null) {
         var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[br], rh.cfg.lon, rh.cfg.utc);
         var offTs = _civilToEpoch(iso, 23 * 60, rh.cfg.utc);       // 23:00 CIVIL clock, same day
         scheduled.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, onTs: onTs, offTs: offTs,
                          on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString(),
+                         after_wei: (!inWindow) || undefined,
+                         after_wei_auto: autoLate || undefined,
                          approved_after_wei: approvedLate || undefined, alternatives_same_tier: alts });
       } else {
         needsDecision.push({ date: iso, branch: br, hour: best.hour, tier: best.tier,
-                             reason: 'best hour is after Wei (outside the ON window) \u2014 approve this date to include it',
+                             reason: 'after Wei with LOW tier (' + best.tier + ') \u2014 approve to include it',
                              alternatives_same_tier: alts });
       }
     }
@@ -3878,7 +3883,7 @@
       worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
       note: commit
         ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local).'
-        : 'PREVIEW ONLY \u2014 nothing was deposited. The chosen hour each day is always the day\u2019s MAXIMUM-tier hour (ties broken by Qimen then XKDG score), even if it falls after Wei. Show the user the scheduled list (date, hour, tier, on_local/off_local) and, separately, the needs_decision days (max-tier hour is AFTER Wei). If alternatives_same_tier is present for a day, other hours reached the SAME top tier \u2014 mention them briefly so the user may pick one instead. Ask what to do for the needs_decision days AND for a final OK (use tap buttons). Do NOT deposit. Then call program_aquarium_light again with commit:true and approve_dates:[...] listing only the after-Wei dates the user approved.'
+        : 'PREVIEW ONLY \u2014 nothing was deposited. Each day\u2019s chosen hour is the MAXIMUM-tier hour (ties broken by Qimen then XKDG score). Rule for hours AFTER Wei: Tier 3-4 are INCLUDED automatically (already in the scheduled list, marked after_wei_auto) \u2014 only Tier 1-2 after-Wei appear in needs_decision. Show the user the scheduled list (date, hour, tier, on_local/off_local; mark the after-Wei auto-includes). For EACH needs_decision day you MUST ask a yes/no with a tap button on its OWN line \u2014 never just list them as text \u2014 like:\n[[BTN]] Si=includi il 15 luglio | No=salta il 15 luglio\nThen ask for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit. On the next call use commit:true and approve_dates:[...] with only the low-tier after-Wei dates the user approved.'
     };
   }
 
