@@ -1430,7 +1430,7 @@
     // + GPS-origin variants GT / GV: same destinations, but departing from the CURRENT position).
     // Bumping the version below re-seeds them in English, replacing any older copies (now v6).
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '9') {
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '10') {
         var seed = [
           {
             trigger: 'aq',
@@ -1448,6 +1448,11 @@
                   'For each house present: (A) the days it will ACTIVATE \u2014 date, the double-hour with its clock window (on_local \u2192 off_local at 23:00) and tier; this list ALREADY INCLUDES after-Wei hours of Tier 3-4 (auto-included) \u2014 mark those "(dopo Wei)". And (B) ONLY the days whose best hour is after Wei with LOW tier (1-2), which need my decision. ' +
                   'Then STOP. Night ON times (the Zi hour) are NORMAL \u2014 do NOT flag them. For EACH day in (B) you MUST ask me with a tap button on its OWN line \u2014 never just list it as text \u2014 like:  [[BTN]] Si=includi il 15 luglio | No=salta il 15 luglio . Then ask for my final go-ahead with buttons:  [[BTN]] Procedi=procedi | Annulla=annulla . Do NOT deposit anything yet. ' +
                   'PHASE 2 \u2014 only AFTER I reply with my decisions and OK: call program_aquarium_light again for each house with commit:true and approve_dates set to only the after-Wei dates I approved. Then tell me exactly what was deposited for each house.'
+          },
+          {
+            trigger: 'qui', icon: '\uD83D\uDCCD',
+            label: 'Start from here (GPS)',
+            text: 'Plan a LUCKY TRIP starting FROM MY CURRENT GPS POSITION, right now. Use from_current_position:true so the app takes a FRESH GPS fix as the origin \u2014 do NOT pass origin coordinates and do NOT invent a city or a "centre"/proxy. Depart NOW. Present the proposals; when I pick one, open it in Google Maps with navigate=true so I can follow it from the car (a real GPS origin is what lets the car recognise the route). If the GPS fix fails (gps_fresh:false), tell me and fall back to my saved position \u2014 never a made-up point.'
           },
           {
             trigger: 'VT', icon: '🚗', askDepart: true,
@@ -1481,9 +1486,9 @@
           }
         ];
         // Replace any earlier aq/VT/TV/GT/GV, then append the current English definitions.
-        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv' && t !== 'luce'; });
+        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv' && t !== 'luce' && t !== 'qui'; });
         seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '9');
+        localStorage.setItem('xkdg_ai_macros_vt_tv', '10');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
@@ -3405,11 +3410,12 @@
     });
     return {
       house: n.name, person: res.person,
+      address: (res.house && res.house.address) || null,
       same_facing_period: n.sameFacing,
       house_facing: res.house.houseFacing, house_period: res.house.period,
       active_floor: n.activeFloor,
       floors: floors,
-      note: 'Multi-floor house: each floor has its own doors / aquariums / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.manual is true, it is a HAND-COMPOSED chart (overrides facing+period) - report it as a manual chart and use its numbers as-is. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars.'
+      note: 'Multi-floor house: each floor has its own doors / aquariums / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.manual is true, it is a HAND-COMPOSED chart (overrides facing+period) - report it as a manual chart and use its numbers as-is. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars. TRIP STARTING FROM THIS HOUSE: use the house `address` as the origin \u2014 pass it as origin_name (the planner geocodes it to real coordinates). If `address` is null, fall back to the saved GPS (omit origin_lat/lon so it defaults to the saved position) or from_current_position for a fresh fix. NEVER invent a city-centre proxy for the house.'
     };
   }
 
@@ -5891,11 +5897,15 @@
         var hBr = P.hour.charAt(1);
         var hBrPy = BR[hBr] || hBr;
         var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        var _ORDER = ['\u5b50','\u4e11','\u5bc5','\u536f','\u8fb0','\u5df3','\u5348','\u672a','\u7533','\u9149','\u620c','\u4ea5'];
+        var _civ = '';
+        try { _civ = _ORDER.map(function (b) { var w = solarBranchToClock(b); return (BR[b] || b) + ' ' + b + ' ' + (w || '?'); }).join(', '); } catch (e) {}
         return '\n\nCURRENT MOMENT (authoritative \u2014 use for "now"/"today"/"oggi"/"maintenant"; NEVER guess the hour): ' +
           'local date ' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
           ', local clock ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + '. In TRUE SOLAR TIME at the user\'s ' +
           'longitude the active double-hour (\u65F6\u8FB0) is ' + hBrPy + ' ' + hBr + '; day pillar ' + dayStem + ' ' + dayBr +
-          ' (' + P.day + '), hour pillar ' + hStem + ' ' + hBrPy + ' (' + P.hour + '). These pillars are already True Solar Time.';
+          ' (' + P.day + '), hour pillar ' + hStem + ' ' + hBrPy + ' (' + P.hour + '). These pillars are already True Solar Time.' +
+          (_civ ? ('\n\nDOUBLE-HOUR CIVIL CLOCK today at the user\u2019s location: ' + _civ + '. The 12 \u65F6\u8FB0 are TST-defined, but ALWAYS tell the user the CIVIL clock time (the windows above), never the raw solar boundary \u2014 e.g. the Wu \u5348 hour is NOT "11:00\u201313:00" on the clock, it is its civil window above. When the user says "beginning of Wu hour" etc., give them the civil start time.') : '');
       } catch (e) { return ''; }
     }
 
