@@ -120,8 +120,11 @@ const FlyingStars = (() => {
      * @param {number} mountainPosition - Posizione della montagna (1, 2 o 3)
      * @returns {boolean} true = avanti (順飛), false = indietro (逆飛)
      */
-    function isForwardFlying(starAtCenter, mountainPosition) {
-        const isOdd = (starAtCenter % 2 !== 0);
+    function isForwardFlying(starAtCenter, mountainPosition, period) {
+        // Il 5 giallo non ha montagna propria: segue la polarità della STELLA DEL PERIODO
+        // (es. Periodo 8 = pari), NON la parità del numero 5.
+        const s = (starAtCenter === 5 && period != null) ? period : starAtCenter;
+        const isOdd = (s % 2 !== 0);
         if (mountainPosition === 1) {
             return isOdd;       // 1ª montagna: dispari=avanti, pari=indietro
         } else {
@@ -182,13 +185,13 @@ const FlyingStars = (() => {
         // 4. Stelle verso (向星)
         const facingPalaceIdx = DIR_TO_INDEX[facingDir];
         const facingCenterStar = baseStars[facingPalaceIdx];
-        const facingForward = isForwardFlying(facingCenterStar, facingPos);
+        const facingForward = isForwardFlying(facingCenterStar, facingPos, period);
         const facingStars = flyStars(facingCenterStar, facingForward);
 
         // 5. Stelle seduta (山星)
         const sittingPalaceIdx = DIR_TO_INDEX[sittingDir];
         const sittingCenterStar = baseStars[sittingPalaceIdx];
-        const sittingForward = isForwardFlying(sittingCenterStar, sittingPos);
+        const sittingForward = isForwardFlying(sittingCenterStar, sittingPos, period);
         const sittingStars = flyStars(sittingCenterStar, sittingForward);
 
         return {
