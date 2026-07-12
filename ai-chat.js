@@ -3812,6 +3812,14 @@
     });
     var rows = (scan && scan.results) || [];
 
+    // ── VETO (absolute): the aquarium sector's Qimen formation must be favourable ──
+    //  qimen_quadrant_score is set ONLY for hours whose formation at the aquarium
+    //  direction passed the canonical QMDJ gate (formationFlags + directionGate).
+    //  Negative palace formations \u2014 e.g. Commander (\u503c\u7b26) over Geng (\u5e9a) \u2014 are gated out and
+    //  therefore have no quadrant score. We drop them here so a high tier from OTHER
+    //  criteria (XKDG, hexagram\u2026) can NEVER schedule an hour with a negative water sector.
+    rows = rows.filter(function (r) { return r.qimen_quadrant_score != null; });
+
     // 3) best row per date (rows are sorted best-first -> first seen per date = best)
     // First choice per day = the MAX-tier hour (ties broken by qimen -> xkdg -> combined score),
     // and this holds EVEN IF that hour is after Wei (it then goes to needs_decision, never demoted
