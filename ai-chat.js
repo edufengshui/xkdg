@@ -5928,6 +5928,18 @@
         'question at a time. Do NOT add buttons to statements that are not questions.';
     }
 
+    // Hard guardrail: only ever recommend an aquarium/water hour that a tool returned; those
+    // tools already exclude any hour whose water sector lacks a favourable QMDJ door.
+    function aquariumSafetyRule() {
+      return '\n\nAQUARIUM / WATER ACTIVATION \u2014 SAFETY (absolute): to answer "when to turn on the aquarium / good water hour", ' +
+        'you MUST get hours from a tool (find_water_hours, find_water_activation, find_water_activation_full, or ' +
+        'program_aquarium_light). Those tools already DROP every hour whose water sector lacks a favourable QMDJ door ' +
+        '(only Open/Rest/Birth/View qualify; Death/Injury/Delusion/Shocking and no-favourable-door are excluded). ' +
+        'NEVER invent an hour, NEVER quote one from memory, and NEVER offer a "best available" hour that a tool did not ' +
+        'return. If the tools return nothing favourable for a day, say clearly there is NO good hour that day \u2014 do not ' +
+        'downgrade to a bad one. Only present the hours the tool actually returned.';
+    }
+
     function callAnthropic(noTools) {
       // Per-turn language lock: detect the language of the user's latest typed message and
       // append a high-priority directive so the reply never drifts (e.g. to Italian) because
@@ -5957,7 +5969,7 @@
       return fetch(getUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + uiButtonsRule() + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + uiButtonsRule() + aquariumSafetyRule() + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
 
