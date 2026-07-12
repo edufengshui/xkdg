@@ -3681,7 +3681,8 @@
         combined_score: (m.x || 0) + (m.q || 0) + (m.s || 0),
         hits: _hits
       };
-    }).filter(function (r) { return r.tier >= 1; });
+    }).filter(function (r) { return r.tier >= 1; })
+      .filter(function (r) { return r.qimen_quadrant_score != null; });   // WATER VETO: the water palace MUST pass the QMDJ gate (a favourable door: Open/Rest/Birth/View). Hours whose water sector has Death/Injury/no-favourable-door get qimen_quadrant_score = null and are dropped here, so a bad-formation hour is NEVER recommended, whatever its XKDG/hexagram tier.
     // Ranking for an ACTIVATION tool: the Qimen energy AT the palace is the primary
     // quality (it is what the water stimulates); the XKDG person/day score is the
     // tiebreaker. So between two same-tier hours, the stronger Qimen quadrant wins
