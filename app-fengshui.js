@@ -7643,19 +7643,35 @@ function fsDrawSectionLuopan(){
     var cx = PAD + 450, cy = PAD + 464;
     var outerR = 447, rHexOut = 360, rHexIn = 295;
 
-    if (typeof FS_LUOPAN_IMG !== 'undefined' && FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth > 0)
-      ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+    // Luopan orientation — same toggle as the main luopan: Regular (ROT 0, South
+    // at top, DEFAULT — identical to before) or 'top' (house facing at top).
+    // Text is never rotated (star numbers / arrow labels stay upright).
+    var _shf = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+    var _srot = (_fsLuopanOrient === 'top' && !isNaN(_shf)) ? (180 - _shf) : 0;
+    _fsLuopanRot = _srot;                                 // read by fsDrawFlyingStars → drawOnLuopan
+    var _sang = function(deg){ return (deg - 270 + _srot) * Math.PI / 180; };
+
+    if (typeof FS_LUOPAN_IMG !== 'undefined' && FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth > 0){
+      if (_srot){
+        ctx.save();
+        ctx.translate(cx, cy); ctx.rotate(_srot * Math.PI / 180); ctx.translate(-cx, -cy);
+        ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+        ctx.restore();
+      } else {
+        ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+      }
+    }
 
     function paintCell(slot, color){
-      var aS = (slot.startDeg - 270) * Math.PI / 180;
-      var aE = (slot.endDeg   - 270) * Math.PI / 180;
+      var aS = _sang(slot.startDeg);
+      var aE = _sang(slot.endDeg);
       ctx.save(); ctx.beginPath();
       ctx.arc(cx, cy, rHexOut, aS, aE);
       ctx.arc(cx, cy, rHexIn,  aE, aS, true);
       ctx.closePath(); ctx.fillStyle = color; ctx.fill(); ctx.restore();
     }
     function drawArrow(deg, color, label, dashed){
-      var a = (deg - 270) * Math.PI / 180;
+      var a = _sang(deg);
       var tipR = outerR + 30, labelR = outerR + 72;
       var tipX = cx + Math.cos(a) * tipR, tipY = cy + Math.sin(a) * tipR;
       ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 4;
@@ -7694,7 +7710,7 @@ function fsDrawSectionLuopan(){
       if (!isNaN(fdg)){
         var fsl = fsSlotForDeg(fdg);
         // ±70° water band just outside the hex ring
-        var aMid = (fsl.startDeg + 2.8125 - 270) * Math.PI / 180;
+        var aMid = _sang(fsl.startDeg + 2.8125);
         var halfW = FS_WATER_MAX_DEG * Math.PI / 180;
         var rZoneIn = rHexOut + 4, rZoneOut = rHexOut + 16;
         ctx.save(); ctx.beginPath();
@@ -7715,7 +7731,7 @@ function fsDrawSectionLuopan(){
     // Cell boundaries
     ctx.save(); ctx.strokeStyle = 'rgba(180,140,40,0.35)'; ctx.lineWidth = 0.6;
     if (Array.isArray(FS_SLOTS)) FS_SLOTS.forEach(function(s){
-      var aS = (s.startDeg - 270) * Math.PI / 180;
+      var aS = _sang(s.startDeg);
       ctx.beginPath();
       ctx.moveTo(cx + Math.cos(aS) * rHexIn,  cy + Math.sin(aS) * rHexIn);
       ctx.lineTo(cx + Math.cos(aS) * rHexOut, cy + Math.sin(aS) * rHexOut);
