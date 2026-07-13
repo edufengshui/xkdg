@@ -597,7 +597,7 @@
           origin_lat: { type: 'number', description: 'Start latitude (defaults to saved GPS, else the app default).' },
           origin_lon: { type: 'number', description: 'Start longitude.' },
           origin_name: { type: 'string', description: 'Start place name (for labels).' },
-          date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
+          date: { type: 'string', description: 'Day YYYY-MM-DD (default today). PAST dates ARE allowed here, to REVIEW/ANALYSE a lucky trip that already happened.' },
           max_radius_km: { type: 'number', description: 'Maximum distance from the origin in km (default 200).' },
           min_km: { type: 'number', description: 'Minimum distance from the origin in km (default 15). Pass 0 for in-city / very short trips so nearby famous places are not filtered out.' },
           avoid_crowds: { type: 'boolean', description: 'OPTIONAL. Set true when the user wants to stay OFF the beaten path — quiet, secluded, non-touristy, away from the crowds ("posti tranquilli", "non turistico", "lontano dalla folla", "hidden gems"). It gently de-emphasises very popular places (many reviews) WITHOUT ever overriding the favourable direction. Leave false/absent otherwise (popular places stay welcome).' },
@@ -2044,7 +2044,7 @@
     else if (window._lastGpsLat != null && window._lastGpsLng != null) origin = { lat: window._lastGpsLat, lon: window._lastGpsLng };
     var today = todayIso();
     var dateStr = input.date || today;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || dateStr < today) dateStr = today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) dateStr = today;
     var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
     var dstOn = dstActiveOn(new Date(dateStr + 'T12:00:00'));
     var opts = {
