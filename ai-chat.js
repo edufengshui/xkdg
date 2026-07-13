@@ -242,7 +242,10 @@
     '"stop and wait for the next hour". If the current favourable direction is STILL favourable in the next hour, have them ' +
     'CONTINUE FURTHER that way \u2014 do not park and idle while a favourable direction is available. (2) Every stop must have a REAL ' +
     'reason \u2014 a favourable-direction POI \u2014 NEVER a filler service/petrol station (allow a fuel/EV stop ONLY if the user asks or the ' +
-    'battery is genuinely low). (3) Every POI, especially nature/woods, MUST have a real, reachable PARKING / access point: name it, ' +
+    'battery is genuinely low). Charging is ALLOWED but must be JUSTIFIED: the assistant knows the car\u2019s state of charge (SoC ' +
+    'via the Polestar/SoC worker, or at least the charge at departure). Insert a charging stop ONLY when the loop\u2019s total ' +
+    'distance would exceed the estimated remaining range \u2014 if the battery is enough for the whole loop (e.g. full at start), ' +
+    'add NO charging stop. NEVER send the user to a Supercharger "just in case" when the charge already covers the trip. (3) Every POI, especially nature/woods, MUST have a real, reachable PARKING / access point: name it, ' +
     'or pick a POI that has one \u2014 never send the user somewhere with nowhere to stop. (4) Always present the COMPLETE loop (every ' +
     'consecutive-hour leg, in order, ending back at the origin), never a partial out-and-stop.\n' +
     '- MULTI-DAY THEMED trip (several DAYS around a theme): when the user wants a trip of more than one day built around ' +
