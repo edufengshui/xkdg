@@ -436,6 +436,8 @@ function buildFengShuiView(){
         <button id="fs-mode-both" onclick="fsSetLuopanMode('both')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐🚪 Both</button>
         <span style="width:1px;height:18px;background:#ddd;margin:0 2px;"></span>
         <button id="fs-mode-floorplan" onclick="fsToggleFloorplanView()" title="Show the saved floor plan in place of the luopan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🏠 Floorplan</button>
+        <span style="width:1px;height:18px;background:#ddd;margin:0 2px;"></span>
+        <button id="fs-orient-toggle" onclick="fsToggleLuopanOrient()" title="Rotate the luopan so the house facing is at the top" style="background:#0d47a1;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⤴ Facing up</button>
       </div>
 
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
@@ -581,6 +583,28 @@ function fsTogglePeriod(){
 
 // ── Flying Stars (玄空飛星) toggle state ───────────────────────────
 let FS_STARS_ON = true;
+// ── Luopan orientation ───────────────────────────────────────────────────────
+// 'regular' = South at top (DEFAULT — the app's absolute display rule, never
+//             changes the maths). 'top' = the whole luopan (image + stars +
+//             arrows) is rotated so the HOUSE FACING sits at the top; the star
+//             numbers and arrow labels stay upright.
+// _fsLuopanRot holds the degrees added to every luopan angle. It is 0 in
+// 'regular', so Regular is byte-for-byte identical to the previous behaviour.
+var _fsLuopanOrient = 'regular';
+var _fsLuopanRot = 0;
+function fsToggleLuopanOrient(){
+  _fsLuopanOrient = (_fsLuopanOrient === 'top') ? 'regular' : 'top';
+  var btn = document.getElementById('fs-orient-toggle');
+  if (btn){
+    var top = (_fsLuopanOrient === 'top');
+    btn.textContent = top ? '⤺ South up' : '⤴ Facing up';
+    btn.title = top ? 'Rotate back so South is at the top'
+                    : 'Rotate the luopan so the house facing is at the top';
+    btn.style.background = top ? '#1565c0' : '#0d47a1';
+  }
+  if (typeof fsRedraw === 'function') fsRedraw();
+}
+
 // Luopan display mode: 'fs' = Flying Stars only, 'xkdg' = XKDG Door only, 'both' = combined
 var _fsLuopanMode = 'fs';
 function fsSetLuopanMode(mode){
@@ -926,8 +950,27 @@ function fsRedraw(){
   const cx = PAD + 450, cy = PAD + 464;
   const outerR = 447, rHexOut = 360, rHexIn = 295;
 
-  if (FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth>0)
-    ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+  // ── Luopan orientation ──────────────────────────────────────────────────
+  // Regular (default): ROT = 0 → every angle below is IDENTICAL to before.
+  // 'top': rotate the whole luopan so the house facing sits at the top
+  //        (ROT = 180 − facing). Text is never rotated (numbers stay upright).
+  const _hfForRot = parseFloat((document.getElementById('fs-house-facing') || {}).value);
+  const ROT = (_fsLuopanOrient === 'top' && !isNaN(_hfForRot)) ? (180 - _hfForRot) : 0;
+  _fsLuopanRot = ROT;                                  // read by fsDrawFlyingStars → drawOnLuopan
+  const _ang = (deg) => (deg - 270 + ROT) * Math.PI / 180;
+
+  if (FS_LUOPAN_IMG.complete && FS_LUOPAN_IMG.naturalWidth>0){
+    if (ROT){
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(ROT * Math.PI / 180);
+      ctx.translate(-cx, -cy);
+      ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+      ctx.restore();
+    } else {
+      ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+    }
+  }
 
   const fDeg = parseFloat(document.getElementById('fs-facing').value);
   const wDeg = parseFloat(document.getElementById('fs-water').value);
@@ -946,8 +989,8 @@ function fsRedraw(){
   const wInput = wd !== null ? fsSlotForDeg(wd) : null;
 
   function paintCell(slot, color){
-    const aS = (slot.startDeg - 270) * Math.PI/180;
-    const aE = (slot.endDeg   - 270) * Math.PI/180;
+    const aS = _ang(slot.startDeg);
+    const aE = _ang(slot.endDeg);
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, rHexOut, aS, aE);
@@ -967,7 +1010,7 @@ function fsRedraw(){
   // Pass 1b: when a facing is set, draw subtle ±70° water-zone band just outside hex ring
   if (fInput){
     const facingCenter = fInput.startDeg + 2.8125;
-    const aMid = (facingCenter - 270) * Math.PI / 180;
+    const aMid = _ang(facingCenter);
     const halfW = FS_WATER_MAX_DEG * Math.PI / 180;
     const rZoneIn  = rHexOut + 4;
     const rZoneOut = rHexOut + 16;
@@ -1003,7 +1046,7 @@ function fsRedraw(){
   ctx.strokeStyle = 'rgba(180,140,40,0.35)';
   ctx.lineWidth = 0.6;
   FS_SLOTS.forEach(s => {
-    const aS = (s.startDeg - 270) * Math.PI/180;
+    const aS = _ang(s.startDeg);
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(aS)*rHexIn,  cy + Math.sin(aS)*rHexIn);
     ctx.lineTo(cx + Math.cos(aS)*rHexOut, cy + Math.sin(aS)*rHexOut);
@@ -1016,7 +1059,7 @@ function fsRedraw(){
   // INNER edge of the star box (and push the label OUTSIDE the box).
   // When OFF, use the original layout.
   function drawArrow(deg, color, label, dashed){
-    const a = (deg - 270) * Math.PI/180;
+    const a = _ang(deg);
     let tipR, labelR;
     if (FS_STARS_ON){
       tipR   = outerR + 15;
@@ -1082,6 +1125,8 @@ function fsRedraw(){
 // Also updates the text under the canvas with the center stars.
 function fsDrawFlyingStars(ctx, cx, cy, outerR){
   const centerBox = document.getElementById('fs-stars-center');
+  // Current luopan rotation (set by fsRedraw); 0 in Regular orientation.
+  const _fsRot = (typeof _fsLuopanRot === 'number') ? _fsLuopanRot : 0;
   if (!FS_STARS_ON){
     if (centerBox) centerBox.innerHTML = '';
     _fsSyncStarsToggleLabel(false);
@@ -1090,7 +1135,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
   // Manual override takes precedence over the auto calculation
   if (window._fsManualChart && typeof FlyingStars !== 'undefined'){
     try {
-      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR);
+      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR, { rotateDeg: _fsRot });
       if (centerBox) centerBox.innerHTML =
         '<span style="color:#8a6a1f;font-weight:bold;">⭐ Manual</span> &nbsp;|&nbsp; Center: ' +
         FlyingStars.getCenterStarsHTML(window._fsManualChart);
@@ -1130,7 +1175,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
     return;
   }
 
-  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR);
+  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR, { rotateDeg: _fsRot });
 
   // Update center stars line below the canvas
   if (centerBox){
