@@ -236,6 +236,15 @@
     '(to.lat/to.lon), and departCn/arriveCn shown verbatim. Say it returns to the start within "resid" km. Never compute the ' +
     'directions, doors or times yourself — only show what plan_lucky_chain returns. This is DIFFERENT from a normal "lucky trip" ' +
     '(out-stay-back to ONE place): use plan_lucky_chain only for the multi-leg loop.\n' +
+    '- CHAIN-TRIP DOCTRINE (from real practice \u2014 follow strictly): a chain trip is a CONTINUOUS LOOP. In each consecutive ' +
+    'double-hour the user DRIVES toward that hour\u2019s favourable direction (a good deity such as Commander/Chief + a good door: ' +
+    'Rest/Birth/Open), hopping hour after hour and closing the loop back home at the end. (1) KEEP MOVING: NEVER tell the user to ' +
+    '"stop and wait for the next hour". If the current favourable direction is STILL favourable in the next hour, have them ' +
+    'CONTINUE FURTHER that way \u2014 do not park and idle while a favourable direction is available. (2) Every stop must have a REAL ' +
+    'reason \u2014 a favourable-direction POI \u2014 NEVER a filler service/petrol station (allow a fuel/EV stop ONLY if the user asks or the ' +
+    'battery is genuinely low). (3) Every POI, especially nature/woods, MUST have a real, reachable PARKING / access point: name it, ' +
+    'or pick a POI that has one \u2014 never send the user somewhere with nowhere to stop. (4) Always present the COMPLETE loop (every ' +
+    'consecutive-hour leg, in order, ending back at the origin), never a partial out-and-stop.\n' +
     '- MULTI-DAY THEMED trip (several DAYS around a theme): when the user wants a trip of more than one day built around ' +
     'a category/theme (e.g. "3-day castle tour from Vienna", "viaggio di 4 giorni tra le terme", or the Lucky Trip panel ' +
     '"Themed trip"), call plan_lucky_multiday with origin (the base), start_date, days and category. If the user lists ' +
