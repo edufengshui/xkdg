@@ -436,12 +436,11 @@ function buildFengShuiView(){
         <button id="fs-mode-both" onclick="fsSetLuopanMode('both')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐🚪 Both</button>
         <span style="width:1px;height:18px;background:#ddd;margin:0 2px;"></span>
         <button id="fs-mode-floorplan" onclick="fsToggleFloorplanView()" title="Show the saved floor plan in place of the luopan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🏠 Floorplan</button>
-        <span style="width:1px;height:18px;background:#ddd;margin:0 2px;"></span>
-        <button id="fs-orient-toggle" onclick="fsToggleLuopanOrient()" title="Rotate the luopan so the house facing is at the top" style="background:#0d47a1;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⤴ Facing up</button>
       </div>
 
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
+        <button id="fs-orient-toggle" onclick="fsToggleLuopanOrient()" title="Rotate the luopan so the house facing is at the top" style="position:absolute;top:8px;right:8px;z-index:6;background:#0d47a1;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">⤴ Facing up</button>
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
         <button id="fs-floorplan-del" onclick="fsRemoveActiveFloorplan()" title="Remove this floor plan" style="display:none;position:absolute;top:8px;left:8px;z-index:6;background:#c62828;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🗑 Remove plan</button>
@@ -651,6 +650,7 @@ function fsToggleFloorplanView(){
       canvas.style.display = 'none';
       var back = document.getElementById('fs-floorplan-back');
       if (back) back.style.display = 'block';
+      var orb0 = document.getElementById('fs-orient-toggle'); if (orb0) orb0.style.display = 'none';
       var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
@@ -690,6 +690,7 @@ function _fsRestoreLuopanView(){
     if (wrap){ wrap.style.aspectRatio = ''; wrap.style.maxWidth = ''; }
     var back = document.getElementById('fs-floorplan-back');
     if (back) back.style.display = 'none';
+    var orb1 = document.getElementById('fs-orient-toggle'); if (orb1) orb1.style.display = 'block';
     var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'none';
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
