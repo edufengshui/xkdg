@@ -139,6 +139,15 @@
     +     '</div>'
     +   '</div>'
 
+    // ---- TOGGLE 替卦 (off by default: not every near-boundary facing is read
+    // as a Replacement chart in practice \u2014 it's a judgment call, not automatic) ----
+    +   '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">'
+    +     '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#0d47a1;">'
+    +       '<input type="checkbox" id="fscf-include-repl" style="width:15px;height:15px;cursor:pointer;">'
+    +       '<span><b>Include \u66FF\u5366 Replacement charts</b> <span style="font-weight:normal;color:#777;">(兼向, near a mountain boundary \u2014 off by default)</span></span>'
+    +     '</label>'
+    +   '</div>'
+
     +   '<div style="margin-top:6px;padding-top:8px;border-top:1px solid #bbdefb;">'
     +     '<button id="fscf-search-btn" type="button" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:bold;cursor:pointer;">\uD83D\uDD0E SEARCH CHARTS</button>'
     +   '</div>'
@@ -200,6 +209,8 @@
 
     var facingFilter = document.getElementById('fscf-facing').value; // 'all' or '0'-'23'
     var periodFilter = document.getElementById('fscf-period').value; // 'all' or '1'-'9'
+    var includeReplEl = document.getElementById('fscf-include-repl');
+    var includeRepl = !!(includeReplEl && includeReplEl.checked);
 
     setTimeout(function(){
       var periods = [];
@@ -219,16 +230,18 @@
           var mi = mtns[mj];
           var mtnChar = MTN_CHAR[mi];
 
-          // Build BOTH the Down-gua (下卦) and the Replacement (替卦) chart for
-          // this facing + period, and search each. The 替卦 is used when the
-          // facing sits in the 兼向 zone near a mountain boundary; it is included
-          // only when it actually differs from the 下卦.
+          // Build the Down-gua (下卦) chart, and — only if the user opted in via
+          // the checkbox — also the Replacement (替卦) chart for the same
+          // facing + period. The 替卦 is included only when it actually
+          // differs from the 下卦.
           var variants;
           try {
             var down = FlyingStars.calculate(period, mtnChar);
-            var repl = FlyingStars.calculate(period, mtnChar, true);
             variants = [{ chart: down, kind: 'down' }];
-            if(repl && !sameChart(down, repl)) variants.push({ chart: repl, kind: 'repl' });
+            if(includeRepl){
+              var repl = FlyingStars.calculate(period, mtnChar, true);
+              if(repl && !sameChart(down, repl)) variants.push({ chart: repl, kind: 'repl' });
+            }
           } catch(e){ continue; }
 
           for(var vi = 0; vi < variants.length; vi++){
@@ -258,7 +271,7 @@
         }
       }
 
-      renderResults(resultsBox, matches, conds, facingFilter, periodFilter);
+      renderResults(resultsBox, matches, conds, facingFilter, periodFilter, includeRepl);
     }, 20);
   }
 
@@ -297,7 +310,7 @@
       + 'border-radius:4px;padding:2px 7px;font-size:11px;font-weight:bold;white-space:nowrap;">\u4E0B\u5366 Down</span>';
   }
 
-  function renderResults(box, matches, conds, facingFilter, periodFilter){
+  function renderResults(box, matches, conds, facingFilter, periodFilter, includeRepl){
     // Mappa palazzo -> {water:bool, mountain:bool} per evidenziare la mini-griglia
     var hl = {};
     for(var ci = 0; ci < conds.length; ci++){
@@ -323,8 +336,9 @@
 
     var nDown = 0, nRepl = 0;
     for(var mi2 = 0; mi2 < matches.length; mi2++){ (matches[mi2].kind === 'repl') ? nRepl++ : nDown++; }
-    var breakdown = ' <span style="font-size:12px;font-weight:normal;color:#777;">('
-      + nDown + ' \u4E0B\u5366 \u00B7 ' + nRepl + ' \u66FF\u5366)</span>';
+    var breakdown = includeRepl
+      ? ' <span style="font-size:12px;font-weight:normal;color:#777;">(' + nDown + ' \u4E0B\u5366 \u00B7 ' + nRepl + ' \u66FF\u5366)</span>'
+      : '';
 
     var html =
       '<div style="font-weight:bold;color:#1565c0;font-size:16px;margin:10px 0 4px;">'
