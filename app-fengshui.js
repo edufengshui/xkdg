@@ -392,6 +392,7 @@ function buildFengShuiView(){
           </div>
           <button id="fs-stars-toggle" onclick="fsToggleStars()" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Show Stars</button>
           <button id="fs-manual-toggle" onclick="fsOpenManualStars()" title="Compile the flying stars chart by hand" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Manual</button>
+          <button id="fs-replacement-toggle" onclick="fsToggleReplacement()" title="Switch this chart to its 替卦 Replacement version (兼向, near a mountain boundary) — off by default, a practitioner's judgment call" style="background:#fff;color:#e65100;border:1px solid #e65100;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">替卦 Off</button>
           <button onclick="(typeof FSChartFinder!=='undefined') ? FSChartFinder.open() : alert('fs-chart-finder.js not loaded')" title="Find charts by star position" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:4px;padding:8px 10px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">🔍 Charts</button>
           <button id="fs-save-house-top" onclick="fsSaveHouse()" title="Save this house profile" style="margin-left:auto;background:#558b2f;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">💾 SAVE</button>
         </div>
@@ -591,6 +592,22 @@ let FS_STARS_ON = true;
 // 'regular', so Regular is byte-for-byte identical to the previous behaviour.
 var _fsLuopanOrient = 'regular';
 var _fsLuopanRot = 0;
+// 替卦 (Replacement chart) toggle — off by default. NOT automatic: even when the
+// house facing sits near a mountain boundary (兼向), whether to read it as a
+// Replacement chart is a practitioner's judgment call, not a rule the app applies
+// on its own. Shared by the main Water luopan (fsDrawFlyingStars) and the
+// Bed/Desk section luopan (fsDrawSectionLuopan) — both read this same flag.
+var _fsReplacementOn = false;
+function fsToggleReplacement(){
+  _fsReplacementOn = !_fsReplacementOn;
+  var btn = document.getElementById('fs-replacement-toggle');
+  if (btn){
+    btn.textContent = _fsReplacementOn ? '替卦 On' : '替卦 Off';
+    btn.style.background = _fsReplacementOn ? '#e65100' : '#fff';
+    btn.style.color = _fsReplacementOn ? '#fff' : '#e65100';
+  }
+  if (typeof fsRedraw === 'function') fsRedraw();
+}
 function fsToggleLuopanOrient(){
   _fsLuopanOrient = (_fsLuopanOrient === 'top') ? 'regular' : 'top';
   var btn = document.getElementById('fs-orient-toggle');
@@ -1168,7 +1185,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
   const mountainChar = fsMountainCharFromDeg(hfDeg);
   let chart;
   try {
-    chart = FlyingStars.calculate(period, mountainChar);
+    chart = FlyingStars.calculate(period, mountainChar, _fsReplacementOn);
   } catch (err){
     if (centerBox) centerBox.innerHTML =
       '<span style="color:#c00;">⚠ ' + err.message + '</span>';
@@ -1180,9 +1197,12 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
 
   // Update center stars line below the canvas
   if (centerBox){
+    const replBadge = _fsReplacementOn
+      ? ' <span style="background:#fff3e0;color:#e65100;border:1px solid #ffb74d;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:bold;">替卦 Repl</span>'
+      : '';
     centerBox.innerHTML =
       '<span style="color:#8a6a1f;font-weight:bold;">第' + period + '運 · ' +
-      chart.facingMountain + '山' + chart.sittingMountain + '向</span>' +
+      chart.facingMountain + '山' + chart.sittingMountain + '向</span>' + replBadge +
       ' &nbsp;|&nbsp; Center: ' + FlyingStars.getCenterStarsHTML(chart);
   }
   _fsSyncStarsToggleLabel(true);
