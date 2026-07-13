@@ -72,6 +72,40 @@ const FlyingStars = (() => {
     const DIR_LABELS_ZH  = ['巽SE', '離S', '坤SW', '震E', '', '兌W', '艮NE', '坎N', '乾NW'];
     const DIR_LABELS_EN  = ['SE',   'S',   'SW',   'E',   '', 'W',   'NE',   'N',   'NW'];
 
+    // ── 替卦 (Replacement / substitute-star charts) ────────────────────────────
+    // Used when the facing sits in the 兼向 zone (near a mountain boundary). The
+    // ONLY change vs the down-gua (下卦) is the number placed at the centre of the
+    // facing/sitting flight: the base star at that palace is replaced by the
+    // "substitute star" (替星) of the mountain occupying the same 地/天/人 position
+    // in that base star's home palace. Flight direction (順/逆) and the period
+    // chart (運盤) are unchanged. Derived from and verified against Edu's full set
+    // of 216 replacement charts (214/216 exact; the 2 that differ are data-entry
+    // slips in the source file: 壬 P5 山/向 swapped, 巳 P7 山 wrong).
+    //   替星訣: 子癸甲申→貪狼1 · 壬卯乙未坤→巨門2 · 辰巽巳戌乾亥→武曲6
+    //           丑艮丙酉辛→破軍7 · 寅午丁庚→右弼9.  Base star 5 has no 替 (stays 5).
+    const REPLACEMENT_STAR = {
+        '子':1, '癸':1, '甲':1, '申':1,
+        '壬':2, '卯':2, '乙':2, '未':2, '坤':2,
+        '辰':6, '巽':6, '巳':6, '戌':6, '乾':6, '亥':6,
+        '丑':7, '艮':7, '丙':7, '酉':7, '辛':7,
+        '寅':9, '午':9, '丁':9, '庚':9
+    };
+    // Luo Shu number → home palace direction (5 = centre, no home)
+    const LUOSHU_TO_DIR = { 1:'N', 2:'SW', 3:'E', 4:'SE', 6:'NW', 7:'W', 8:'NE', 9:'S' };
+
+    /**
+     * Stella-sostituto (替星) da mettere al centro del volo nel 替卦.
+     * @param {number} baseStarAtPalace - stella base (運星) nel palazzo di facing/sitting
+     * @param {number} mountainPosition  - posizione 1/2/3 (地/天/人) della montagna
+     * @returns {number} numero della stella da far volare (1-9)
+     */
+    function replacementCenterStar(baseStarAtPalace, mountainPosition) {
+        if (baseStarAtPalace === 5) return 5;              // 5 非替: resta 5
+        const dir = LUOSHU_TO_DIR[baseStarAtPalace];
+        const mtn = MOUNTAINS_24[dir][mountainPosition - 1];
+        return REPLACEMENT_STAR[mtn];
+    }
+
     // ----------------------------------------------------------
     // FUNZIONI DI CALCOLO
     // ----------------------------------------------------------
@@ -159,7 +193,7 @@ const FlyingStars = (() => {
      * @param {string} facingMountain - Una delle 24 montagne (carattere cinese)
      * @returns {object} Dati del quadro con stelle base, verso, seduta
      */
-    function calculate(period, facingMountain) {
+    function calculate(period, facingMountain, replacement) {
         // Validazione
         if (period < 1 || period > 9) {
             throw new Error('Il periodo deve essere tra 1 e 9. Ricevuto: ' + period);
@@ -168,6 +202,7 @@ const FlyingStars = (() => {
             throw new Error('Montagna sconosciuta: ' + facingMountain +
                 '. Valide: ' + ALL_MOUNTAINS.join(', '));
         }
+        const isRepl = !!replacement;   // 替卦 mode when true; default (false) = 下卦
 
         // 1. Quadro base (運盤): periodo al centro, sempre avanti
         const baseStars = flyStars(period, true);
@@ -182,16 +217,19 @@ const FlyingStars = (() => {
         const sittingMountain = getSittingMountain(facingMountain);
         const sittingPos = facingPos; // stessa posizione nella direzione opposta
 
-        // 4. Stelle verso (向星)
+        // 4. Stelle verso (向星). In 替卦 il numero al centro è sostituito dal 替星;
+        //    la DIREZIONE 順/逆 resta quella del 下卦 (dettata dalla stella base).
         const facingPalaceIdx = DIR_TO_INDEX[facingDir];
-        const facingCenterStar = baseStars[facingPalaceIdx];
-        const facingForward = isForwardFlying(facingCenterStar, facingPos, period);
+        const facingBaseStar = baseStars[facingPalaceIdx];
+        const facingCenterStar = isRepl ? replacementCenterStar(facingBaseStar, facingPos) : facingBaseStar;
+        const facingForward = isForwardFlying(facingBaseStar, facingPos, period);
         const facingStars = flyStars(facingCenterStar, facingForward);
 
         // 5. Stelle seduta (山星)
         const sittingPalaceIdx = DIR_TO_INDEX[sittingDir];
-        const sittingCenterStar = baseStars[sittingPalaceIdx];
-        const sittingForward = isForwardFlying(sittingCenterStar, sittingPos, period);
+        const sittingBaseStar = baseStars[sittingPalaceIdx];
+        const sittingCenterStar = isRepl ? replacementCenterStar(sittingBaseStar, sittingPos) : sittingBaseStar;
+        const sittingForward = isForwardFlying(sittingBaseStar, sittingPos, period);
         const sittingStars = flyStars(sittingCenterStar, sittingForward);
 
         return {
@@ -202,6 +240,7 @@ const FlyingStars = (() => {
             sittingDirection: sittingDir,
             facingMountainPosition: facingPos,
             sittingMountainPosition: sittingPos,
+            replacement: isRepl,   // true = 替卦 (Replacement), false = 下卦 (Down-gua)
             baseStars,        // 運星 — 9 valori indicizzati per posizione griglia
             facingStars,      // 向星 — 9 valori
             sittingStars,     // 山星 — 9 valori

@@ -218,29 +218,43 @@
         for(var mj = 0; mj < mtns.length; mj++){
           var mi = mtns[mj];
           var mtnChar = MTN_CHAR[mi];
-          var chart;
-          try { chart = FlyingStars.calculate(period, mtnChar); }
-          catch(e){ continue; }
-          if(!chart) continue;
 
-          // Tutte le condizioni devono valere (ciascuna nel proprio palazzo)
-          var ok = true;
-          for(var ci = 0; ci < conds.length; ci++){
-            var c = conds[ci];
-            var arr = (c.type === 'water') ? chart.facingStars : chart.sittingStars;
-            if(!arr || arr[c.palace] !== c.star){ ok = false; break; }
+          // Build BOTH the Down-gua (下卦) and the Replacement (替卦) chart for
+          // this facing + period, and search each. The 替卦 is used when the
+          // facing sits in the 兼向 zone near a mountain boundary; it is included
+          // only when it actually differs from the 下卦.
+          var variants;
+          try {
+            var down = FlyingStars.calculate(period, mtnChar);
+            var repl = FlyingStars.calculate(period, mtnChar, true);
+            variants = [{ chart: down, kind: 'down' }];
+            if(repl && !sameChart(down, repl)) variants.push({ chart: repl, kind: 'repl' });
+          } catch(e){ continue; }
+
+          for(var vi = 0; vi < variants.length; vi++){
+            var chart = variants[vi].chart;
+            if(!chart) continue;
+
+            // Tutte le condizioni devono valere (ciascuna nel proprio palazzo)
+            var ok = true;
+            for(var ci = 0; ci < conds.length; ci++){
+              var c = conds[ci];
+              var arr = (c.type === 'water') ? chart.facingStars : chart.sittingStars;
+              if(!arr || arr[c.palace] !== c.star){ ok = false; break; }
+            }
+            if(!ok) continue;
+
+            matches.push({
+              period:    period,
+              mtnIdx:    mi,
+              mtnChar:   mtnChar,
+              mtnPinyin: MTN_PINYIN[mi],
+              degRange:  mtnDegRange(mi),
+              centerDeg: mtnCenterDeg(mi),
+              kind:      variants[vi].kind,   // 'down' = 下卦, 'repl' = 替卦
+              chart:     chart
+            });
           }
-          if(!ok) continue;
-
-          matches.push({
-            period:    period,
-            mtnIdx:    mi,
-            mtnChar:   mtnChar,
-            mtnPinyin: MTN_PINYIN[mi],
-            degRange:  mtnDegRange(mi),
-            centerDeg: mtnCenterDeg(mi),
-            chart:     chart
-          });
         }
       }
 
@@ -260,6 +274,27 @@
     if(facingFilter === 'all') return 'All facings';
     var i = parseInt(facingFilter, 10);
     return MTN_CHAR[i] + ' ' + MTN_PINYIN[i] + ' (' + mtnDegRange(i) + ')';
+  }
+
+  // true if two charts have identical sitting & facing stars (base is always equal)
+  function sameChart(a, b){
+    for(var i = 0; i < 9; i++){
+      if(a.sittingStars[i] !== b.sittingStars[i]) return false;
+      if(a.facingStars[i]  !== b.facingStars[i])  return false;
+    }
+    return true;
+  }
+
+  // Badge 下卦 / 替卦 for a result row
+  function typeBadge(kind){
+    if(kind === 'repl'){
+      return '<span title="Replacement chart \u2014 \u517C\u5411 (jian xiang), near a mountain boundary" '
+        + 'style="display:inline-block;background:#fff3e0;color:#e65100;border:1px solid #ffb74d;'
+        + 'border-radius:4px;padding:2px 7px;font-size:11px;font-weight:bold;white-space:nowrap;">\u66FF\u5366 Repl</span>';
+    }
+    return '<span title="Down-gua \u2014 \u4E0B\u5366 (standard chart)" '
+      + 'style="display:inline-block;background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;'
+      + 'border-radius:4px;padding:2px 7px;font-size:11px;font-weight:bold;white-space:nowrap;">\u4E0B\u5366 Down</span>';
   }
 
   function renderResults(box, matches, conds, facingFilter, periodFilter){
@@ -286,9 +321,14 @@
       return;
     }
 
+    var nDown = 0, nRepl = 0;
+    for(var mi2 = 0; mi2 < matches.length; mi2++){ (matches[mi2].kind === 'repl') ? nRepl++ : nDown++; }
+    var breakdown = ' <span style="font-size:12px;font-weight:normal;color:#777;">('
+      + nDown + ' \u4E0B\u5366 \u00B7 ' + nRepl + ' \u66FF\u5366)</span>';
+
     var html =
       '<div style="font-weight:bold;color:#1565c0;font-size:16px;margin:10px 0 4px;">'
-    +   '\uD83D\uDD0D ' + matches.length + ' chart' + (matches.length > 1 ? 's' : '') + ' found'
+    +   '\uD83D\uDD0D ' + matches.length + ' chart' + (matches.length > 1 ? 's' : '') + ' found' + breakdown
     + '</div>'
     + '<div style="font-size:13px;color:#666;margin-bottom:4px;">' + condTxt + '</div>'
     + '<div style="font-size:12px;color:#888;margin-bottom:10px;">Facing: ' + facingLabel(facingFilter) + ' \u00B7 ' + periodTxt + '</div>';
@@ -301,6 +341,7 @@
     +   '<th style="padding:8px 10px;text-align:left;">Period</th>'
     +   '<th style="padding:8px 10px;text-align:left;">Facing Mountain</th>'
     +   '<th style="padding:8px 10px;text-align:left;">Degrees</th>'
+    +   '<th style="padding:8px 10px;text-align:center;">Type</th>'
     +   '<th style="padding:8px 10px;text-align:center;">Chart Grid</th>'
     +   '<th style="padding:8px 10px;text-align:center;"></th>'
     + '</tr>'
@@ -319,10 +360,13 @@
       +     '<span style="color:#555;">' + m.mtnPinyin + '</span>'
       +   '</td>'
       +   '<td style="padding:8px 10px;color:#555;">' + m.degRange + '</td>'
+      +   '<td style="padding:8px 10px;text-align:center;">' + typeBadge(m.kind) + '</td>'
       +   '<td style="padding:8px 10px;">' + miniGrid + '</td>'
       +   '<td style="padding:8px 10px;text-align:center;">'
-      +     '<button onclick="FSChartFinder.loadChart('+m.period+','+m.centerDeg+')" '
-      +            'style="background:#fff;color:#1565c0;border:1.5px solid #1565c0;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:bold;white-space:nowrap;">Load chart</button>'
+      +     ( m.kind === 'repl'
+          ? '<span style="font-size:11px;color:#999;white-space:nowrap;" title="The main Luopan shows the Down-gua chart; the 替卦 is shown here in the grid.">grid only</span>'
+          : '<button onclick="FSChartFinder.loadChart('+m.period+','+m.centerDeg+')" '
+          +        'style="background:#fff;color:#1565c0;border:1.5px solid #1565c0;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:bold;white-space:nowrap;">Load chart</button>' )
       +   '</td>'
       + '</tr>';
     }
