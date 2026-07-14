@@ -229,7 +229,7 @@
       var group = trineGroup(mainMtn); // [main, +8, -8]
       return group.map(function (m, i) {
         var range = (i === 0) ? nowRange : rangeLabelForName(reverseMap[m], refDate, events);
-        return { mountain: m, label: mtnLabel(m), range: range };
+        return { mountain: m, label: mtnLabel(m), range: range, primary: (i === 0) };
       });
     }
 
@@ -251,16 +251,16 @@
 
     var lines = [];
     if (houseInfo) {
-      lines.push('\u2600\uFE0F Sun (facing \u5411, \u2605 = most important): ' + trioLine(houseInfo.sun.trio));
-      lines.push('\uD83C\uDF19 Moon (sitting \u5C71, \u2605 = most important): ' + trioLine(houseInfo.moon.trio));
+      lines.push('\u2600\uFE0F Sun (facing \u5411): ' + trioLine(houseInfo.sun.trio));
+      lines.push('\uD83C\uDF19 Moon (sitting \u5C71): ' + trioLine(houseInfo.moon.trio));
     } else {
       lines.push('Enter this house\u2019s Facing (\u00B0) above to see its Sun/Moon mountains.');
     }
 
     if (currentInfo) {
       lines.push('\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
-      lines.push('Reference \u2014 right now: Sun at ' + currentInfo.sun.label +
-                  '   \u00B7   Moon at ' + currentInfo.moon.label);
+      lines.push('Right now: \u2600\uFE0F Sun: ' + trioLine(currentInfo.sun.trio));
+      lines.push('           \uD83C\uDF19 Moon: ' + trioLine(currentInfo.moon.trio));
     }
     return lines.join('\n');
   }
