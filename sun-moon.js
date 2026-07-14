@@ -250,13 +250,20 @@
       var info = computeCurrent();
       if (!info) return;
       var ang = function (deg) { return (deg - 270 + (ROT || 0)) * Math.PI / 180; };
-      var r = outerR - 45;
+      // Just past the star blocks (which sit roughly at outerR+15..+95),
+      // near the outer edge of the whole luopan drawing.
+      var r = outerR + 95;
+      var W = (ctx.canvas && ctx.canvas.width)  || (cx * 2);
+      var H = (ctx.canvas && ctx.canvas.height) || (cy * 2);
+      var pad = 20; // half marker size + small margin, same pattern as the arrow labels
       function marker(mtnChar, emoji, color, nudge){
         var idx = mtnIdx(mtnChar);
         if (idx < 0) return;
         var a = ang(mtnCenterDeg(idx));
         var rr = r + nudge;
         var x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+        x = Math.max(pad, Math.min(W - pad, x));
+        y = Math.max(pad, Math.min(H - pad, y));
         ctx.save();
         ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.94)'; ctx.fill();
