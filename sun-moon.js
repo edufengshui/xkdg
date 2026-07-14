@@ -273,8 +273,46 @@
     return '\u2600\uFE0F Sun at ' + sunTxt + '\n\uD83C\uDF19 Moon at ' + moonTxt;
   }
 
-  // ── UI: toggle state, popup, canvas overlay ────────────────────
+  // ── UI: toggle state, popup (draggable), canvas overlay ─────────
   var _on = false;
+  var _drag = null; // { el, startX, startY, origLeft, origTop } while dragging
+  var _dragListenersBound = false;
+
+  function _dragXY(e){
+    if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  }
+  function _dragStart(e){
+    if (e.target && e.target.id === 'sunmoon-popup-close') return; // don't drag from the ✕
+    var el = document.getElementById('sunmoon-popup');
+    if (!el) return;
+    var xy = _dragXY(e);
+    var rect = el.getBoundingClientRect();
+    // Switch from the initial centering (left:50%/transform) to explicit
+    // pixel coordinates, so subsequent drags move it freely.
+    el.style.left = rect.left + 'px';
+    el.style.top = rect.top + 'px';
+    el.style.right = 'auto';
+    el.style.transform = 'none';
+    _drag = { el: el, startX: xy.x, startY: xy.y, origLeft: rect.left, origTop: rect.top };
+    if (e.cancelable) e.preventDefault();
+  }
+  function _dragMove(e){
+    if (!_drag) return;
+    var xy = _dragXY(e);
+    _drag.el.style.left = (_drag.origLeft + (xy.x - _drag.startX)) + 'px';
+    _drag.el.style.top  = (_drag.origTop  + (xy.y - _drag.startY)) + 'px';
+    if (e.cancelable) e.preventDefault();
+  }
+  function _dragEnd(){ _drag = null; }
+  function _ensureDragListeners(){
+    if (_dragListenersBound) return;
+    _dragListenersBound = true;
+    document.addEventListener('mousemove', _dragMove);
+    document.addEventListener('touchmove', _dragMove, { passive: false });
+    document.addEventListener('mouseup', _dragEnd);
+    document.addEventListener('touchend', _dragEnd);
+  }
 
   function showPopup(text){
     var old = document.getElementById('sunmoon-popup');
@@ -283,16 +321,20 @@
     box.id = 'sunmoon-popup';
     box.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%);' +
       'background:#1a1008;color:#fff8e1;border:1px solid #c9a84c;border-radius:8px;' +
-      'padding:12px 16px;font-size:13px;line-height:1.5;z-index:9999;max-width:90vw;' +
-      'white-space:pre-line;box-shadow:0 4px 16px rgba(0,0,0,.4);text-align:center;';
+      'padding:12px 30px 12px 16px;font-size:13px;line-height:1.5;z-index:9999;max-width:90vw;' +
+      'white-space:pre-line;box-shadow:0 4px 16px rgba(0,0,0,.4);text-align:center;' +
+      'cursor:move;user-select:none;-webkit-user-select:none;touch-action:none;';
     box.textContent = text;
     var close = document.createElement('div');
+    close.id = 'sunmoon-popup-close';
     close.textContent = '\u2715';
     close.style.cssText = 'position:absolute;top:2px;right:8px;cursor:pointer;color:#c9a84c;font-weight:bold;';
     close.onclick = function () { box.remove(); };
     box.appendChild(close);
+    box.addEventListener('mousedown', _dragStart);
+    box.addEventListener('touchstart', _dragStart, { passive: false });
+    _ensureDragListeners();
     document.body.appendChild(box);
-    setTimeout(function () { if (box.parentNode) box.remove(); }, 9000);
   }
 
   function toggle(){
@@ -338,6 +380,23 @@
         y = Math.max(pad, Math.min(H - pad, y));
         return { x: x, y: y };
       }
+      // Mountain-name label beside a marker. Flips side (left/right of the
+      // text) depending on which half of the wheel the marker is on, so
+      // the label always reads AWAY from the centre / canvas edge.
+      function drawLabel(p, mtnChar, color, markerR, fontSize){
+        var side = (p.x < cx) ? -1 : 1;
+        var lx = Math.max(pad, Math.min(W - pad, p.x + side * (markerR + 4)));
+        var ly = Math.max(pad, Math.min(H - pad, p.y));
+        ctx.save();
+        ctx.font = 'bold ' + fontSize + 'px serif';
+        ctx.textAlign = side > 0 ? 'left' : 'right';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3;
+        ctx.strokeText(mtnChar, lx, ly);
+        ctx.fillStyle = color;
+        ctx.fillText(mtnChar, lx, ly);
+        ctx.restore();
+      }
       function bigMarker(mtnChar, emoji, color, nudge){
         var idx = mtnIdx(mtnChar);
         if (idx < 0) return;
@@ -349,16 +408,20 @@
         ctx.font = '17px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(emoji, p.x, p.y + 1);
         ctx.restore();
+        drawLabel(p, mtnChar, color, 15, 14);
       }
-      function smallDot(mtnChar, color, nudge){
+      function smallMarker(mtnChar, emoji, color, nudge){
         var idx = mtnIdx(mtnChar);
         if (idx < 0) return;
         var p = place(mtnCenterDeg(idx), r + nudge);
         ctx.save();
-        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = color; ctx.globalAlpha = 0.75; ctx.fill();
-        ctx.lineWidth = 1; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = color; ctx.stroke();
+        ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, p.x, p.y + 0.5);
         ctx.restore();
+        drawLabel(p, mtnChar, color, 10, 11);
       }
 
       var sunTrio  = houseInfo.sun.trio;   // [facing(primary), +8, -8]
@@ -368,18 +431,18 @@
       // land on the same mountain (facing/sitting are always 12
       // positions apart so this can only happen for trine partners).
       function nudgeFor(mtnChar, otherTrio){
-        return otherTrio.some(function (t) { return t.mountain === mtnChar; }) ? 12 : 0;
+        return otherTrio.some(function (t) { return t.mountain === mtnChar; }) ? 16 : 0;
       }
 
       sunTrio.forEach(function (t) {
         var nudge = -nudgeFor(t.mountain, moonTrio);
         if (t.primary) bigMarker(t.mountain, '\u2600\uFE0F', '#e65100', nudge);
-        else smallDot(t.mountain, '#e65100', nudge);
+        else smallMarker(t.mountain, '\u2600\uFE0F', '#e65100', nudge);
       });
       moonTrio.forEach(function (t) {
         var nudge = nudgeFor(t.mountain, sunTrio);
         if (t.primary) bigMarker(t.mountain, '\uD83C\uDF19', '#1a237e', nudge);
-        else smallDot(t.mountain, '#1a237e', nudge);
+        else smallMarker(t.mountain, '\uD83C\uDF19', '#1a237e', nudge);
       });
     } catch (e) { console.warn('SunMoonMountain.drawIfOn', e); }
   }
