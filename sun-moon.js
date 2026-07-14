@@ -167,6 +167,51 @@
     return [mtnChar, MTN_CHAR[(idx + 8) % 24], MTN_CHAR[(idx + 16) % 24]];
   }
 
+  // ── PRIMARY: for THIS house ──────────────────────────────────────
+  // Sun formula centres on the FACING (向) — the facing mountain itself
+  // is the most important of its 3-mountain trine group. Moon formula
+  // centres on the SITTING (山) — the sitting mountain is the most
+  // important of ITS trine group. Reads the house's current facing
+  // from the #fs-house-facing input already on screen.
+  function computeForHouse(refDate){
+    refDate = refDate || new Date();
+    if (typeof Lunar === 'undefined' || typeof FlyingStars === 'undefined' ||
+        typeof fsMountainCharFromDeg !== 'function') return null;
+    var hfEl = document.getElementById('fs-house-facing');
+    var hfDeg = hfEl ? parseFloat(hfEl.value) : NaN;
+    if (isNaN(hfDeg)) return null;
+
+    var facingMtn, sittingMtn;
+    try {
+      facingMtn = fsMountainCharFromDeg(hfDeg);
+      sittingMtn = FlyingStars.getSittingMountain(facingMtn);
+    } catch (e) { return null; }
+
+    var events = eventsForWindow(refDate.getFullYear());
+    if (!events) return null;
+
+    function trioFor(primaryMtn, reverseMap){
+      var group = trineGroup(primaryMtn); // [primary, +8, -8]
+      return group.map(function (m, i) {
+        return {
+          mountain: m,
+          label: mtnLabel(m),
+          range: rangeLabelForName(reverseMap[m], refDate, events),
+          primary: (i === 0)
+        };
+      });
+    }
+
+    return {
+      facingMountain:  facingMtn,
+      sittingMountain: sittingMtn,
+      sun:  { primary: facingMtn,  trio: trioFor(facingMtn,  SUN_JIEQI_BY_MOUNTAIN)  },
+      moon: { primary: sittingMtn, trio: trioFor(sittingMtn, MOON_JIEQI_BY_MOUNTAIN) }
+    };
+  }
+
+  // ── SECONDARY / reference: where the Sun & Moon literally are today.
+  // Useful to keep and consult, but NOT the primary reading for a house.
   function computeCurrent(refDate){
     refDate = refDate || new Date();
     if (typeof Lunar === 'undefined') return null;
@@ -195,7 +240,33 @@
     };
   }
 
-  function popupText(info){
+  function popupText(houseInfo, currentInfo){
+    if (typeof Lunar === 'undefined') return 'Sun/Moon Mountain: data unavailable (lunar-javascript not loaded).';
+
+    function trioLine(trio){
+      return trio.map(function (t) {
+        return (t.primary ? '\u2605 ' : '\u00B7 ') + t.label + ' (' + t.range + ')';
+      }).join('   ');
+    }
+
+    var lines = [];
+    if (houseInfo) {
+      lines.push('\u2600\uFE0F Sun (facing \u5411, \u2605 = most important): ' + trioLine(houseInfo.sun.trio));
+      lines.push('\uD83C\uDF19 Moon (sitting \u5C71, \u2605 = most important): ' + trioLine(houseInfo.moon.trio));
+    } else {
+      lines.push('Enter this house\u2019s Facing (\u00B0) above to see its Sun/Moon mountains.');
+    }
+
+    if (currentInfo) {
+      lines.push('\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+      lines.push('Reference \u2014 right now: Sun at ' + currentInfo.sun.label +
+                  '   \u00B7   Moon at ' + currentInfo.moon.label);
+    }
+    return lines.join('\n');
+  }
+
+  // (kept for backward-compat: full trio text for the "right now" reading)
+  function popupTextCurrentOnly(info){
     if (!info) return 'Sun/Moon Mountain: data unavailable (lunar-javascript not loaded).';
     var sunTxt  = info.sun.trio.map(function (t) { return t.label + ' (' + t.range + ')'; }).join(', ');
     var moonTxt = info.moon.trio.map(function (t) { return t.label + ' (' + t.range + ')'; }).join(', ');
@@ -233,8 +304,9 @@
       btn.style.color = _on ? '#fff' : '#4527a0';
     }
     if (_on) {
-      var info = computeCurrent();
-      showPopup(popupText(info));
+      var houseInfo = computeForHouse();
+      var currentInfo = computeCurrent();
+      showPopup(popupText(houseInfo, currentInfo));
     } else {
       var old = document.getElementById('sunmoon-popup');
       if (old) old.remove();
@@ -242,13 +314,15 @@
     if (typeof fsRedraw === 'function') fsRedraw();
   }
 
-  // Called by fsRedraw() at the end of its draw pass. Draws two small
-  // markers (☀️/🌙) on the mountains where Sun/Moon sit right now.
+  // Called by fsRedraw() at the end of its draw pass. Draws the HOUSE's
+  // Sun trio (centred on the facing 向) and Moon trio (centred on the
+  // sitting 山): a bold marker on the primary mountain, small dots on
+  // its two trine partners (三合, ±8).
   function drawIfOn(ctx, cx, cy, outerR, ROT){
     if (!_on || !ctx) return;
     try {
-      var info = computeCurrent();
-      if (!info) return;
+      var houseInfo = computeForHouse();
+      if (!houseInfo) return;
       var ang = function (deg) { return (deg - 270 + (ROT || 0)) * Math.PI / 180; };
       // Just past the star blocks (which sit roughly at outerR+15..+95),
       // near the outer edge of the whole luopan drawing.
@@ -256,33 +330,65 @@
       var W = (ctx.canvas && ctx.canvas.width)  || (cx * 2);
       var H = (ctx.canvas && ctx.canvas.height) || (cy * 2);
       var pad = 20; // half marker size + small margin, same pattern as the arrow labels
-      function marker(mtnChar, emoji, color, nudge){
-        var idx = mtnIdx(mtnChar);
-        if (idx < 0) return;
-        var a = ang(mtnCenterDeg(idx));
-        var rr = r + nudge;
-        var x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+
+      function place(deg, radius){
+        var a = ang(deg);
+        var x = cx + Math.cos(a) * radius, y = cy + Math.sin(a) * radius;
         x = Math.max(pad, Math.min(W - pad, x));
         y = Math.max(pad, Math.min(H - pad, y));
+        return { x: x, y: y };
+      }
+      function bigMarker(mtnChar, emoji, color, nudge){
+        var idx = mtnIdx(mtnChar);
+        if (idx < 0) return;
+        var p = place(mtnCenterDeg(idx), r + nudge);
         ctx.save();
-        ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.94)'; ctx.fill();
-        ctx.lineWidth = 2; ctx.strokeStyle = color; ctx.stroke();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = color; ctx.stroke();
         ctx.font = '17px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(emoji, x, y + 1);
+        ctx.fillText(emoji, p.x, p.y + 1);
         ctx.restore();
       }
-      // Small radial offset if Sun and Moon land on the same mountain.
-      var same = info.sun.mountain === info.moon.mountain;
-      marker(info.sun.mountain,  '\u2600\uFE0F', '#e65100', same ? -14 : 0);
-      marker(info.moon.mountain, '\uD83C\uDF19', '#1a237e', same ?  14 : 0);
+      function smallDot(mtnChar, color, nudge){
+        var idx = mtnIdx(mtnChar);
+        if (idx < 0) return;
+        var p = place(mtnCenterDeg(idx), r + nudge);
+        ctx.save();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.globalAlpha = 0.75; ctx.fill();
+        ctx.lineWidth = 1; ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.restore();
+      }
+
+      var sunTrio  = houseInfo.sun.trio;   // [facing(primary), +8, -8]
+      var moonTrio = houseInfo.moon.trio;  // [sitting(primary), +8, -8]
+
+      // Small radial nudge if a Sun trio member and a Moon trio member
+      // land on the same mountain (facing/sitting are always 12
+      // positions apart so this can only happen for trine partners).
+      function nudgeFor(mtnChar, otherTrio){
+        return otherTrio.some(function (t) { return t.mountain === mtnChar; }) ? 12 : 0;
+      }
+
+      sunTrio.forEach(function (t) {
+        var nudge = -nudgeFor(t.mountain, moonTrio);
+        if (t.primary) bigMarker(t.mountain, '\u2600\uFE0F', '#e65100', nudge);
+        else smallDot(t.mountain, '#e65100', nudge);
+      });
+      moonTrio.forEach(function (t) {
+        var nudge = nudgeFor(t.mountain, sunTrio);
+        if (t.primary) bigMarker(t.mountain, '\uD83C\uDF19', '#1a237e', nudge);
+        else smallDot(t.mountain, '#1a237e', nudge);
+      });
     } catch (e) { console.warn('SunMoonMountain.drawIfOn', e); }
   }
 
   window.SunMoonMountain = {
     toggle: toggle,
     drawIfOn: drawIfOn,
-    computeCurrent: computeCurrent,   // exposed for future re-use (e.g. an all-houses scan)
+    computeForHouse: computeForHouse, // PRIMARY: this house's Sun (facing) / Moon (sitting) trios
+    computeCurrent: computeCurrent,   // SECONDARY/reference: where Sun/Moon literally are today
     trineGroup: trineGroup,
     isOn: function () { return _on; }
   };
