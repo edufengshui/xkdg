@@ -1141,6 +1141,13 @@ function fsRedraw(){
     }
   } catch (e) { console.warn('SunMoonMountain overlay', e); }
 
+  // ═══ DA LIU REN annual ring overlay (additive, isolated module) ═══
+  try {
+    if (window.FloorPlanDLR && typeof window.FloorPlanDLR.drawIfOn === 'function') {
+      window.FloorPlanDLR.drawIfOn(ctx, cx, cy, outerR, ROT);
+    }
+  } catch (e) { console.warn('FloorPlanDLR overlay', e); }
+
   // Render detail panel
   fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx);
   // Live XKDG detail panel — always visible when facing/water entered
