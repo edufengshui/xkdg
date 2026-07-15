@@ -87,6 +87,94 @@
   const DOOR_TAG_LABELS = {Kai:'Open 開', Xiu:'Rest 休', Sheng:'Birth 生', JingS:'View 景', Du:'Delusion 杜', Shang:'Injury 傷', Si:'Death 死', JingF:'Shocking 驚'};
   const QI_TAG_LABELS   = {Yi:'乙 Yi', Bing:'丙 Bing', Ding:'丁 Ding'};
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  BRANCH LAYER — 三合 trines and 三會 directional combinations INSIDE one palace
+  //  (canonical, Edu). Everything in a palace carries a branch:
+  //   • the six Jia 六甲遁 — each of the six lead stems hides a branch. Jia 甲 and
+  //     the San Qi 乙丙丁 hide none, so they never contribute.
+  //   • the palace itself carries its own branch(es).
+  //   • a star and a door carry the branch(es) of the palace they ORIGINATE from
+  //     (e.g. Assistant 天輔 and Delusion 杜 both come from Xun 巽 → 辰巳).
+  //  Up to five sources per cell: Tian stem, Di stem, star, door, palace.
+  //  NOTE no dual-branch source (未申 · 辰巳 · 戌亥 · 丑寅) can ever supply two
+  //  members of the SAME group, so a completed group is never ambiguous.
+  // ══════════════════════════════════════════════════════════════════════════
+  const JIA_BRANCH = { Wu:'Zi', Ji:'Xu', Geng:'Shen', Xin:'Wu', Ren:'Chen', Gui:'Yin' };  // 甲子戊 甲戌己 甲申庚 甲午辛 甲辰壬 甲寅癸
+  const PALACE_BRANCHES = { 1:['Zi'], 2:['Wei','Shen'], 3:['Mao'], 4:['Chen','Si'], 5:[], 6:['Xu','Hai'], 7:['You'], 8:['Chou','Yin'], 9:['Wu'] };
+  // Origin palace of each star — raw chart code AND the STAR_NAME display value,
+  // because cellInfo carries the display name while extractHits carries the code.
+  const STAR_ORIGIN = { Peng:1, Rui:2, Chong:3, Fu:4, Qin:5, Xin:6, Zhu:7, Ren:8, Ying:9,
+                        Grass:1, Rice:2, Aggressor:3, Assistant:4, Fowl:5, Heart:6, Pillar:7, Official:8, Hero:9 };
+  const DOOR_ORIGIN = { Xiu:1, Si:2, Shang:3, Du:4, Kai:6, JingF:7, Sheng:8, JingS:9 };
+  const BRANCH_GROUPS = [
+    { members:['Shen','Zi','Chen'],  element:'water', kind:'trine',  label:'\u7533\u5b50\u8fb0' },
+    { members:['Yin','Wu','Xu'],     element:'fire',  kind:'trine',  label:'\u5bc5\u5348\u620c' },
+    { members:['Si','You','Chou'],   element:'metal', kind:'trine',  label:'\u5df3\u9149\u4e11' },
+    { members:['Hai','Mao','Wei'],   element:'wood',  kind:'trine',  label:'\u4ea5\u5375\u672a' },
+    { members:['Hai','Zi','Chou'],   element:'water', kind:'combo',  label:'\u4ea5\u5b50\u4e11' },
+    { members:['Yin','Mao','Chen'],  element:'wood',  kind:'combo',  label:'\u5bc5\u5375\u8fb0' },
+    { members:['Si','Wu','Wei'],     element:'fire',  kind:'combo',  label:'\u5df3\u5348\u672a' },
+    { members:['Shen','You','Xu'],   element:'metal', kind:'combo',  label:'\u7533\u9149\u620c' }
+  ];
+  const PALACE_ELEMENT = { 1:'water', 2:'earth', 3:'wood', 4:'wood', 5:'earth', 6:'metal', 7:'metal', 8:'earth', 9:'fire' };
+  const ELEM_GENERATES = { water:'wood', wood:'fire', fire:'earth', earth:'metal', metal:'water' };   // X generates ELEM_GENERATES[X]
+  const ELEM_CONTROLS  = { water:'fire', fire:'metal', metal:'wood', wood:'earth', earth:'water' };   // X controls  ELEM_CONTROLS[X]
+  // Score effect on a WATER/FS ACTIVATION (Edu): a group that GENERATES the palace
+  // outranks a group of the palace's OWN element; the other two relations are neutral;
+  // a group that CONTROLS the palace disqualifies the hour. Tunable.
+  const TRINE_BONUS_GENERATES = 2;
+  const TRINE_BONUS_SAME      = 1;
+
+  // Every branch present in a cell -> the sources that supply it.
+  // `palace` may be omitted (callers that do not know it); the palace branch is then
+  // simply absent and a group can still complete from stems + star + door alone.
+  function _qmBranchesInPalace(cell, palace){
+    var out = {};
+    function add(br, src){ if(!br) return; (out[br] = out[br] || []).push(src); }
+    if(cell){
+      add(JIA_BRANCH[cell.ti], (STEM_HAN[cell.ti] || cell.ti) + '\u5929');   // Tian stem
+      add(JIA_BRANCH[cell.di], (STEM_HAN[cell.di] || cell.di) + '\u5730');   // Di stem
+      var sp = STAR_ORIGIN[cell.star] || STAR_ORIGIN[cell.starCode];
+      if(sp) (PALACE_BRANCHES[sp] || []).forEach(function(b){ add(b, 'star ' + cell.star); });
+      var dp = DOOR_ORIGIN[cell.doorCode];
+      if(dp) (PALACE_BRANCHES[dp] || []).forEach(function(b){ add(b, 'door ' + (DOOR_TAG_LABELS[cell.doorCode] || cell.doorCode)); });
+    }
+    var pal = palace || (cell && cell.palace);
+    if(pal) (PALACE_BRANCHES[pal] || []).forEach(function(b){ add(b, 'palace ' + (PALACE_NAME[pal] || pal)); });
+    return out;
+  }
+
+  // Completed 三合 / 三會 groups in a palace, with their relation to the palace element.
+  // -> { groups:[{label,element,kind,relation}], bonus, controls:Boolean }
+  function detectBranchGroups(cell, palace){
+    var brs = _qmBranchesInPalace(cell, palace);
+    var pal = palace || (cell && cell.palace);
+    var palElem = PALACE_ELEMENT[pal] || null;
+    var groups = [], bonus = 0, controls = false;
+    BRANCH_GROUPS.forEach(function(g){
+      if(!g.members.every(function(m){ return brs[m]; })) return;
+      var rel = 'neutral';
+      if(palElem){
+        if(ELEM_CONTROLS[g.element] === palElem)       { rel = 'controls';  controls = true; }
+        else if(ELEM_GENERATES[g.element] === palElem) { rel = 'generates'; bonus += TRINE_BONUS_GENERATES; }
+        else if(g.element === palElem)                 { rel = 'same';      bonus += TRINE_BONUS_SAME; }
+      }
+      groups.push({ label:g.label, element:g.element, kind:g.kind, relation:rel });
+    });
+    return { groups: groups, bonus: bonus, controls: controls };
+  }
+
+  // Does branch `br` sit inside a COMPLETED group in this palace? Used to neutralize
+  // a negative stem (Geng 庚 = 申; the 庚己 pair completing 申酉戌; …).
+  function _qmBranchInGroup(cell, palace, br){
+    var d = detectBranchGroups(cell, palace);
+    for(var i = 0; i < d.groups.length; i++){
+      var g = BRANCH_GROUPS.filter(function(x){ return x.label === d.groups[i].label; })[0];
+      if(g && g.members.indexOf(br) !== -1) return d.groups[i];
+    }
+    return null;
+  }
+
   // ── FS WATER-ACTIVATION PURPOSES → primary QMDJ door(s) ─────────────────
   // Date per "accendere l'acquario": ogni Purpose seleziona la porta principale
   // del palazzo. Tutte le regole canoniche valgono (§1 formationFlags + §2 gate
@@ -102,7 +190,7 @@
     journey:      { doors:['Xiu'],          allowNonFav:false, label:'Journey',      mainPurpose:'journey' },
     speak:        { doors:['JingS'],        allowNonFav:false, label:'Speak',        mainPurpose:'speak' },
     legal:        { doors:['JingF'],        allowNonFav:true,  label:'Legal',        mainPurpose:'legal' },  // JingF 驚 redento dal San Qi
-    water:        { doors:null,             allowNonFav:false, label:'Water',        mainPurpose:'',     isWater:true }  // any fav door; palace from house profile
+    water:        { doors:null,             allowNonFav:false, wuBonus:true, label:'Water',        mainPurpose:'',     isWater:true }  // any fav door; palace from house profile
   };
 
   function jiaZiIdx(stem, branch){
@@ -196,14 +284,14 @@
     if(gengInPalace){
       // EXCEPTION 1 — Geng IS the Commander (the Tian stem carrying the Zhi Fu) → not negative.
       var gengIsCommander = (targetPalace === commanderPal && ti === 'Geng');
-      // EXCEPTION 2 — Water trine 申子辰 inside THIS palace neutralizes Geng (Geng = 申 Shen).
-      // 子 Zi and 辰 Chen may come from a stem, a star or a door:
-      //   Zi  = Wu 戊 / Grass (Peng 天蓬) / Rest (Xiu 休)
-      //   Chen= Ren 壬 / Assistant (Fu 天輔) / Delusion (Du 杜)
+      // EXCEPTION 2 — Geng 庚 hides 申 Shen (甲申庚). When 申 completes a group INSIDE this
+      // palace — the water trine 申子辰 or the metal combination 申酉戌 — Geng is neutralized.
+      // Branches come from the six Jia stems, the star's and the door's ORIGIN palace and the
+      // palace itself (canonical branch layer at the top of this file), so this generalizes the
+      // old hand-written 子/辰 test to every group 申 can belong to.
       var star2 = cell[2];
-      var hasZi   = (ti === 'Wu'  || di === 'Wu'  || star2 === 'Peng' || door === 'Xiu');
-      var hasChen = (ti === 'Ren' || di === 'Ren' || star2 === 'Fu'   || door === 'Du');
-      var waterTrine = hasZi && hasChen;   // Geng itself supplies 申
+      var _gengCell = { ti: ti, di: di, starCode: star2, doorCode: door, palace: targetPalace };
+      var waterTrine = !!_qmBranchInGroup(_gengCell, targetPalace, 'Shen');
       // Canonical default: 庚己 is allowed with the Pillar star 天柱 + a favourable door.
       var gengJiPillar = (((ti==='Geng'&&di==='Ji')||(ti==='Ji'&&di==='Geng'))
         && STAR_NAME[star2] === 'Pillar' && FAV_DOORS.indexOf(door) !== -1);
@@ -753,9 +841,15 @@
           reasons.push('\u58ec\u5df1 excused — stem hides Commander \u503c\u7b26');
         else { disq = true; reasons.push('\u58ec\u5df1 formation'); }
       }
-      // 庚己 — excluded unless Pillar 天柱 AND a favourable door.
+      // 庚己 — 庚 hides 申 and 己 hides 戌 (甲申庚 · 甲戌己), so the pair is two thirds of the
+      // metal combination 申酉戌: supply 酉 and the negative is annulled. 酉 comes from the
+      // Pillar star 天柱 or from the Dui 兌 palace (both originate in palace 7). The old rule
+      // (Pillar + favourable door) is the keyhole view of this — kept as a fallback for callers
+      // that pass no palace. §2 requires a favourable door anyway.
       if(_qmPairIs(cell, 'Geng', 'Ji')){
-        if(cell.star === 'Pillar' && _qmFavDoor(cell)) reasons.push('\u5e9a\u5df1 ok — Pillar \u5929\u67f1 + favourable door');
+        var _gj = _qmBranchInGroup(cell, cell.palace, 'You');
+        if(_gj && _gj.label === '\u7533\u9149\u620c') reasons.push('\u5e9a\u5df1 annulled — ' + _gj.label + ' metal combination complete');
+        else if(cell.star === 'Pillar' && _qmFavDoor(cell)) reasons.push('\u5e9a\u5df1 ok — Pillar \u5929\u67f1 + favourable door');
         else { disq = true; reasons.push('\u5e9a\u5df1 formation'); }
       }
       // Geng sitting with a Commander that is NOT Geng (above or below) — always excluded.
@@ -878,6 +972,8 @@
       ti:    cell[1],  tiH: STEM_P2H[cell[1]]||cell[1],
       di:    cell[0],  diH: STEM_P2H[cell[0]]||cell[0],
       star:  STAR_NAME[cell[2]]||cell[2],
+      starCode: cell[2],          // raw star code — origin palace lookup for the branch layer
+      palace: palace,             // the palace itself carries a branch (申子辰 / 申酉戌 …)
       deity: cell[3],
       door:  DOOR_NAME[cell[4]]||cell[4],
       doorCode: cell[4],
@@ -922,8 +1018,36 @@
       if(hits[i].cat === 'pen') neg++; else pos++;
     }
     var score = pos - neg;
-    // Wealth purpose: Wu 戊 in the same palace amplifies (handoff: "ancora meglio con Wu 戊").
-    if(purpose && purpose.wuBonus && (cellInfo.ti === 'Wu' || cellInfo.di === 'Wu')){
+
+    // ── 三合 / 三會 INSIDE the palace (Edu, canonical) ──────────────────────
+    // A completed group is read against the PALACE's own element:
+    //   generates the palace → +2 · same element → +1 · neutral → 0 ·
+    //   CONTROLS the palace → the hour is dropped from the selection entirely.
+    // Applies to the FS/water activation path (a purpose is set); the neutralizing
+    // effect on Geng / 庚己 lives in extractHits and formationFlags and is universal.
+    var _bg = null;
+    if(purpose){
+      _bg = detectBranchGroups(cellInfo, palace);
+      if(_bg.controls){
+        var _ctl = _bg.groups.filter(function(g){ return g.relation === 'controls'; })[0];
+        return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, isVoid: isVoid,
+                 flags: flags.reasons.concat([_ctl.label + ' ' + _ctl.element + ' controls the ' +
+                        (PALACE_ELEMENT[palace] || '?') + ' palace']) };
+      }
+      score += _bg.bonus;
+      _bg.groups.forEach(function(g){
+        if(g.relation === 'neutral') return;   // present but with no effect — not worth a hit line
+        hits = hits.concat([{ cat:'combo', label: g.label + ' ' + (g.kind === 'trine' ? '\u4e09\u5408' : '\u4e09\u6703') +
+                              ' ' + g.element + ' ' + (g.relation === 'generates' ? '\u2192 generates palace' : '= palace element') }]);
+      });
+    }
+
+    // Wu 戊 alone (Edu): counted only WITH a favourable door and with NO penalty in the
+    // palace. §1 already removed clashes, §2 already required the favourable door for a
+    // purpose that does not redeem a non-favourable one — both are re-checked here so the
+    // rule stands on its own and does not depend on the caller's path.
+    if(purpose && purpose.wuBonus && (cellInfo.ti === 'Wu' || cellInfo.di === 'Wu') &&
+       _qmFavDoor(cellInfo) && neg === 0 && !flags.disqualified){
       score += 1;
       hits = hits.concat([{ cat:'combo', label:'\u620a in Wealth palace' }]);
     }
@@ -1024,6 +1148,8 @@
         ti: cell[1], tiH: STEM_P2H[cell[1]]||cell[1],
         di: cell[0], diH: STEM_P2H[cell[0]]||cell[0],
         star: STAR_NAME[cell[2]]||cell[2],
+        starCode: cell[2],          // raw star code — origin palace lookup for the branch layer
+        palace: p,                  // the palace carries its own branch(es)
         deity: cell[3],
         door: DOOR_NAME[cell[4]]||cell[4],
         doorCode: cell[4],          // raw door code (Kai/Xiu/Sheng/JingS/Shang…) for rule gates
@@ -1285,6 +1411,9 @@
     },
     palaceFlags: function(cell){ return palaceFlags(cell); },
     formationFlags: function(cell){ return formationFlags(cell); },
+    // 三合 / 三會 completed inside one palace, read against the palace element.
+    // cell needs {ti,di,star|starCode,doorCode} and either a `palace` field or the 2nd argument.
+    detectBranchGroups: function(cell, palace){ return detectBranchGroups(cell, palace); },
     directionGate: function(cell, opts){ return directionGate(cell, opts); },
     voidInfoForIdx: function(idx60){ return voidInfoForIdx(idx60); },
     dayVoidPalaces: function(Y, M, D){ return dayVoidPalaces(Y, M, D); },
