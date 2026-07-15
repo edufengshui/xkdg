@@ -2979,7 +2979,12 @@ function renderScanResults(results, mode) {
                 var _t = ((_lm % 1440) + 1440) % 1440;
                 _ts = String(Math.floor(_t / 60)).padStart(2, '0') + ':' + String(Math.floor(_t % 60)).padStart(2, '0');
             }
-            return { isoDate: r.isoDate, hourIndex: r.hourIndex, time: _ts, score: r.score, scoreA: r.scoreA, scoreB: r.scoreB };
+            // rescuedByNayin marks an hour the person does NOT connect to, kept only because
+            // its Nayin is Power — the AI reads it to tell Tier 1 apart from a weakly connected
+            // hour (scoreA is 1 in BOTH cases, so score alone cannot separate them).
+            // nayinLabel + blueLabels let the AI say WHY without re-deriving anything.
+            return { isoDate: r.isoDate, hourIndex: r.hourIndex, time: _ts, score: r.score, scoreA: r.scoreA, scoreB: r.scoreB,
+                     rescuedByNayin: !!r.rescuedByNayin, nayinLabel: r.nayinLabel || null, blueLabels: r.blueLabels || [] };
         });
         window._lastScanMode = mode;
         window._lastScanPurpose = (typeof getPurpose === 'function') ? getPurpose() : '';
