@@ -371,12 +371,30 @@
     '- For Bed/Desk/Water dates the tool reads the section inputs; if a required degree is missing, ask the ' +
     'user for it (0-360) and call the tool with it.\n' +
     '- ACTIVATING WATER ("positive hours / good date to turn on the aquarium / fountain / water feature" facing a ' +
-    'DIRECTION): use find_water_activation_full(direction, star_type, star_num) - the UNIFIED triple scan that merges ' +
-    'XKDG person hours + Qimen quadrant + Qimen special configurations and ranks by tier (3 = all three, best, down to ' +
-    '1). For an aquarium facing X: direction=X, star_type=water, star_num = the WATER (facing) star living in palace X ' +
-    '(get it via recall_flying_stars or get_app_state). Present tier 3 first, then 2, then 1, stating for each which ' +
-    'scans it passed and the sub-scores. The tool skips gracefully any scan it cannot run (e.g. no person, no star) and ' +
-    'reports it in scan_notes.\n' +
+    'DIRECTION): use find_water_activation_full(direction, star_type, star_num) - it merges XKDG person hours + Qimen ' +
+    'quadrant + Qimen special configurations and grades each hour into a TIER. The tier is a QUALITY GRADE, not a count: ' +
+    'an hour that connects to the person\u2019s BIRTH YEAR always outranks one that does not. Tier 4 = connected, XKDG score ' +
+    '>= 18 (rare); tier 3 = connected, 12-17; tier 2 = connected, below 12; tier 1 = NOT connected to the person but good ' +
+    'on its own \u2014 either an XKDG structure strong enough to stand alone (Nayin Power, score >= 16) or a good Qimen at ' +
+    'the palace (quadrant >= 3). Weaker hours are not returned at all. TIER 1 IS NORMALLY THE MOST COMMON \u2014 a real ' +
+    'connection to the person is rare, a good Qimen is not \u2014 so most activations happen on a tier 1 hour and that is ' +
+    'correct, never apologise for it. For an aquarium facing X: direction=X, star_type=water, star_num = the WATER ' +
+    '(facing) star living in palace X (get it via recall_flying_stars or get_app_state). Present tier 4 first, then 3, 2, ' +
+    '1, using each row\u2019s why field to say what it is made of. The tool skips gracefully any scan it cannot run (e.g. no ' +
+    'person, no star) and reports it in scan_notes.\n' +
+    '- WATER IS A MEANS, NOT A PURPOSE. Water/an aquarium is how you ACTIVATE a purpose (Wealth, Career, Health...), so ' +
+    'every activation hour also answers "what is this good for". Two consequences you must honour:\n' +
+    '  (a) ALWAYS TELL THE USER when a chosen date also serves a purpose. find_water_activation_full and ' +
+    'program_aquarium_light annotate each hour with also_good_for (the same Purpose Activation calculator as the ' +
+    '\u26a1 ACTIVATION panel in the app, seven purposes: health, career, wealth, relationship, journey, speak, legal). ' +
+    'If a scheduled or recommended date carries also_good_for, SAY IT explicitly \u2014 never leave it in the payload.\n' +
+    '  (b) IF THE USER ASKS FOR ONE PURPOSE \u2014 e.g. "find me only Wealth dates to turn on the aquarium next week", ' +
+    '"program only Career activations" \u2014 pass purpose:\'wealth\' / \'career\' to find_water_activation_full or to ' +
+    'program_aquarium_light. It keeps only the hours that open that purpose\u2019s Qimen door. Do NOT filter by hand and do ' +
+    'NOT answer that it is impossible. If the filter leaves few or no days, say so plainly rather than widening it silently.\n' +
+    '- PURPOSE ACTIVATION on its own (no water involved): find_purpose_activation(direction?, purpose?) \u2014 with a purpose ' +
+    'it returns that purpose\u2019s favourable dates/hours at a palace; without one it scans all seven and reports which ' +
+    'purposes each hour serves. Never pass purpose:\'water\' \u2014 water is not a purpose.\n' +
     '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
     'whole house in one shot (facing/period, aquariums with their direction + water star, ' +
     'and saved Water/Bed/Desk settings). The aquariums list ALREADY INCLUDES saved Water positions (source = ' +
@@ -1071,12 +1089,15 @@
     },
     {
       name: 'find_water_activation_full',
-      description: 'UNIFIED triple scan for "positive hours to turn on the aquarium / water feature" - runs and merges ALL THREE: ' +
+      description: 'Scan for "positive hours to turn on the aquarium / water feature" - runs and merges: ' +
         '(1) XKDG positive hours for the loaded person, (2) Qimen of the generic 45deg quadrant (direction), and ' +
-        '(3) Qimen SPECIAL configurations at the flying-star palace (via the favourable preset). Returns each hour with ' +
-        'its three sub-scores, which scans it passed (matched), a tier (3 = passed all three, best), and a combined_score. ' +
-        'Results are ranked from tier 3 down to tier 1. For "turn on the aquarium facing X" the direction is X and the ' +
-        'special-config star is the WATER (facing) star living in palace X (star_type=water, star_num=that star).',
+        '(3) Qimen SPECIAL configurations at the flying-star palace (via the favourable preset). Every hour returned has ' +
+        'already passed the QMDJ water veto. Each row carries a TIER (a quality grade): 4 = connects to the person, XKDG ' +
+        'score >= 18; 3 = connects, 12-17; 2 = connects, below 12; 1 = does NOT connect to the person but stands on its ' +
+        'own (Nayin Power XKDG >= 16, or Qimen quadrant >= 3). Plus person_connected, xkdg_score, qimen_quadrant_score, ' +
+        'qimen_special_score and a ready-made why string. Ranked by tier, then xkdg_score, then qimen_score. For "turn on ' +
+        'the aquarium facing X" the direction is X and the special-config star is the WATER (facing) star living in ' +
+        'palace X (star_type=water, star_num=that star).',
       input_schema: {
         type: 'object',
         properties: {
@@ -1086,7 +1107,8 @@
           facing_deg: { type: 'number', description: 'The house/floor facing in degrees (from get_house_setup floor.facing). Pass it so scan 3 uses THIS house\u2019s chart instead of whatever page is open. Strongly recommended.' },
           period: { type: 'integer', description: 'The house/floor period 1-9 (from get_house_setup floor.period). Pass together with facing_deg.' },
           days: { type: 'integer', description: 'How many days ahead to scan (default 7).' },
-          start_date: { type: 'string', description: 'Optional start date YYYY-MM-DD (defaults to today).' }
+          start_date: { type: 'string', description: 'Optional start date YYYY-MM-DD (defaults to today).' },
+          purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Keep ONLY the hours that ALSO serve this purpose ("only Wealth activations this week"). Water itself is NOT a purpose \u2014 it is the MEANS by which a purpose is activated. Omit it and every hour is instead annotated with the purposes it serves (also_good_for).' }
         },
         required: ['direction']
       }
@@ -1109,10 +1131,12 @@
       description: 'Compute the next-N-days plan of favourable ON hours for a house\u2019s aquarium and, with commit:true, ' +
         'deposit it into the Shelly Worker for that house. By DEFAULT (commit:false) it only PREVIEWS \u2014 nothing is ' +
         'deposited until you pass commit:true. Rule: each day the light turns ON at the START of the day\u2019s BEST favourable ' +
-        'hour, but ONLY if that hour falls in the window from the 2nd half of Zi (solar 00:00) through the end of Wei ' +
-        '(solar 15:00); it then stays ON until 23:00 CIVIL clock the same day. If the best hour is AFTER Wei: Tier 3-4 hours ' +
-        'are AUTO-INCLUDED anyway (they appear in the scheduled list, marked after_wei_auto); only Tier 1-2 after-Wei hours ' +
-        'go to needs_decision for the user to approve. Times are in the ' +
+        'hour. Window: 2nd half of Zi (solar 00:00) through the end of SHEN (solar 17:00); the light then stays ON until ' +
+        '23:00 CIVIL clock. EXTENSION: a Tier 4 day stays on until 23:00 of D+2 unless the next day is Tier 3 or better; ' +
+        'a Tier 3 day stays on until 23:00 of D+1 unless the next day is Tier 2 or better; Tier 2 and Tier 1 always switch ' +
+        'off at 23:00 of their own day. A LATE hour (You/Xu/Hai) is used only when its block runs past 23:00 of the same ' +
+        'day, otherwise the day falls back to its best in-window hour (lower tier), or stays dark. NOTHING is ever asked ' +
+        'day by day \u2014 only the final Procedi/Annulla. Times are in the ' +
         'HOUSE\u2019s True Solar Time. After running, show the scheduled dates (on_local/off_local). Night ON times (the Zi hour) are normal \u2014 do NOT flag them or ask about them.',
       input_schema: {
         type: 'object',
@@ -1120,9 +1144,32 @@
           house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug to program.' },
           days: { type: 'integer', description: 'How many days ahead to plan (default 7).' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
-          approve_dates: { type: 'array', items: { type: 'string' }, description: 'On commit, the YYYY-MM-DD dates (from a previous preview\u2019s needs_decision) the user approved to activate even though their best hour is after Wei. Dates not listed stay excluded.' }
+          purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Plan ONLY on hours that also serve this purpose \u2014 use it for "program only Wealth activations for next week". Water is not a purpose: it is the MEANS by which a purpose is activated. Omit it and every scheduled day is annotated with the purposes it serves (also_good_for).' }
         },
         required: ['house']
+      }
+    },
+    {
+      name: 'find_purpose_activation',
+      description: 'The PURPOSE ACTIVATION calculator, headless \\u2014 the same engine as the \\u26a1 ACTIVATION panel in the app. ' +
+        'Water is NOT a purpose: it is the MEANS by which a purpose is activated. So this answers two different questions. ' +
+        '(1) With purpose set: on which dates/hours is the palace favourable for THAT purpose (its primary Qimen door)? ' +
+        'Use it for \"only Wealth activations this week\", \"good Career hours at my aquarium\". ' +
+        '(2) With purpose omitted: it scans ALL purposes and reports, per date+hour, WHICH purposes that hour serves \\u2014 ' +
+        'use this to annotate a water/aquarium plan (\"this hour is also good for Wealth and Career\"). ' +
+        'Purposes and their primary doors: health=Rest \\u4f11, career=Open \\u958b/View \\u666f, wealth=Birth \\u751f (+Wu \\u620a), ' +
+        'relationship=Rest \\u4f11, journey=Rest \\u4f11, speak=View \\u666f, legal=Shocking \\u9a5a (redeemed by San Qi). ' +
+        'All canonical QMDJ rules apply (\\u00a71 exclusions + \\u00a72 San Qi/Wu + favourable door), flying chart \\u98db\\u76e4. ' +
+        'Give a direction (the palace to look at, e.g. the aquarium\\u2019s) or omit it to search all 8 palaces.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'The palace to scan. Omit to scan all 8 outer palaces and report where each purpose appears.' },
+          purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Restrict to ONE purpose. Omit to scan all seven and get, for each hour, the list of purposes it serves.' },
+          start_date: { type: 'string', description: 'YYYY-MM-DD. Defaults to today; a past date is ignored.' },
+          days: { type: 'integer', description: 'How many days to scan (default 7).' },
+          full: { type: 'boolean', description: 'true = return every row; default returns the top 20.' }
+        }
       }
     },
     {
@@ -1394,6 +1441,7 @@
       if (name === 'find_water_dates') return toolFindWaterDates(input || {});
       if (name === 'find_water_activation') return toolFindWaterActivation(input || {});
       if (name === 'find_water_activation_full') return toolFindWaterActivationFull(input || {});
+      if (name === 'find_purpose_activation') return toolFindPurposeActivation(input || {});
       if (name === 'open_section') return toolOpenSection(input || {});
       if (name === 'recall_flying_stars') return toolRecallFlyingStars();
       if (name === 'open_direction_calculator') return toolOpenDirectionCalc();
@@ -1457,9 +1505,11 @@
             label: 'Program aquarium light \u2014 7 days (both houses)',
             text: 'Program the aquarium light for the NEXT 7 DAYS for BOTH houses (Tuoro and Vienna), WITH my confirmation, in TWO phases. ' +
                   'PHASE 1 \u2014 PREVIEW, deposit NOTHING: for Tuoro first, then Vienna, call program_aquarium_light with commit:false. ' +
-                  'For each house present: (A) the days it will ACTIVATE \u2014 date, the double-hour with its clock window (on_local \u2192 off_local at 23:00) and tier; this list ALREADY INCLUDES after-Wei hours of Tier 3-4 (auto-included) \u2014 mark those "(dopo Wei)". And (B) ONLY the days whose best hour is after Wei with LOW tier (1-2), which need my decision. ' +
-                  'Then STOP. Night ON times (the Zi hour) are NORMAL \u2014 do NOT flag them. For EACH day in (B) you MUST ask me with a tap button on its OWN line \u2014 never just list it as text \u2014 like:  [[BTN]] Si=includi il 15 luglio | No=salta il 15 luglio . Then ask for my final go-ahead with buttons:  [[BTN]] Procedi=procedi | Annulla=annulla . Do NOT deposit anything yet. ' +
-                  'PHASE 2 \u2014 only AFTER I reply with my decisions and OK: call program_aquarium_light again for each house with commit:true and approve_dates set to only the after-Wei dates I approved. Then tell me exactly what was deposited for each house.'
+                  'For each house present the days it will ACTIVATE: date, the double-hour with its clock window (on_local \u2192 off_local) and tier. ' +
+                  'Mark any day that stays_on_until_date \u2014 say the light does NOT switch off at 23:00 and until when. Mark any day with fallback_from \u2014 say the best hour was too late to be useful. Say which days stay dark and why. ' +
+                  'Do NOT ask me to approve individual dates: the rules decide every day, there is nothing to confirm day by day. Night ON times (the Zi hour) are NORMAL \u2014 do NOT flag them. ' +
+                  'Then ask for my final go-ahead with buttons:  [[BTN]] Procedi=procedi | Annulla=annulla . Do NOT deposit anything yet. ' +
+                  'PHASE 2 \u2014 only AFTER I say OK: call program_aquarium_light again for each house with commit:true. Then tell me exactly what was deposited for each house.'
           },
           {
             trigger: 'qui', icon: '\uD83D\uDCCD',
@@ -3564,9 +3614,9 @@
     };
   }
 
-  // UNIFIED triple scan: XKDG person hours + Qimen quadrant + Qimen special
-  // configurations, merged by date+hour and ranked by how many of the 3 match
-  // (tier 3 = all three, best) then by combined score.
+  // UNIFIED scan: XKDG person hours + Qimen quadrant + Qimen special configurations
+  // + the hour's own 4-pillar bond, merged by date+hour, graded into a Tier (see the
+  // TIER block below) and ranked by tier -> XKDG score -> Qimen energy at the palace.
   var _BRANCHES_IDX = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];  // hourIndex 0..11
   function _branchOfHan(hourHan) {
     var chars = String(hourHan || '').replace(/[^\u4e00-\u9fff]/g, '');
@@ -3586,7 +3636,7 @@
     var map = {};   // 'date|branch' -> {date, branch, x, q, s, qhits, shits}
     function slot(date, branch) {
       var k = date + '|' + branch;
-      if (!map[k]) map[k] = { date: date, branch: branch, x: null, q: null, s: null, h: null, hlabel: null, qhits: [], shits: [] };
+      if (!map[k]) map[k] = { date: date, branch: branch, x: null, xNayin: false, xWhy: null, q: null, s: null, h: null, hlabel: null, qhits: [], shits: [] };
       return map[k];
     }
     var ran = { xkdg: false, quadrant: false, special: false, bond: false };
@@ -3607,7 +3657,15 @@
           if (!r.isoDate) return;
           var br = _BRANCHES_IDX[r.hourIndex]; if (!br) return;
           var sl = slot(r.isoDate, br);
-          if (sl.x == null || r.score > sl.x) sl.x = r.score;
+          // Keep the person-connection flag alongside the score: an hour the person does
+          // NOT connect to survives the scan only via a Nayin Power rescue, and that is
+          // exactly what Tier 1 is made of. scoreA is 1 both when weakly connected and
+          // when not connected at all, so the score alone can never separate the two.
+          if (sl.x == null || r.score > sl.x) {
+            sl.x = r.score;
+            sl.xNayin = !!r.rescuedByNayin;
+            sl.xWhy = r.rescuedByNayin ? (r.nayinLabel || 'Nayin Power') : ((r.blueLabels || [])[0] || null);
+          }
         });
         ran.xkdg = true;
       } catch (e) { notes.push('XKDG scan failed.'); }
@@ -3673,39 +3731,79 @@
       } catch (e) { notes.push('Hexagram 4-pillar bond scan failed.'); }
     }
 
-    // Merge & rank: tier (how many criteria) DESC, then Qimen energy DESC, then date ASC
+    // ── TIER (canonical, Edu — session 22) ────────────────────────────────
+    // Tier is a QUALITY GRADE, not a count of matched criteria. Connection with the
+    // person's BIRTH YEAR always outranks: 4/3/2 are CONNECTED hours graded by their
+    // XKDG score; Tier 1 is the best of the UNCONNECTED — either an XKDG structure
+    // strong enough to stand without the person (it survives runScanner only via the
+    // Nayin Power rescue) or a genuinely good Qimen at the palace. Everything below
+    // those two floors leaves the pool entirely.
+    // Cut-offs measured on real scans (session 22): 607 XKDG hours over 6 windows for
+    // 18/12, and the post-veto pool at a single palace over 60 days for 16 / q>=3.
+    var TIER4_MIN   = 18;   // connected, top grade      -> ~1 every 6 days at one palace
+    var TIER3_MIN   = 12;   // connected, middle grade
+    var T1_XKDG_MIN = 16;   // unconnected XKDG (Nayin Power rescue) worth keeping
+    var T1_QIMEN_MIN = 3;   // "good Qimen" at the palace: 3 net positive hits, not 1
+    function _tierOf(m) {
+      if (m.x != null && !m.xNayin) return m.x >= TIER4_MIN ? 4 : (m.x >= TIER3_MIN ? 3 : 2);
+      if (m.x != null && m.xNayin && m.x >= T1_XKDG_MIN) return 1;
+      if (m.q != null && m.q >= T1_QIMEN_MIN) return 1;
+      return 0;                                        // out of the pool
+    }
     var rows = Object.keys(map).map(function (k) {
       var m = map[k];
-      var matched = [];
-      if (m.x != null && m.x >= 1) matched.push('XKDG');
-      if (m.q != null && m.q >= 1) matched.push('Qimen quadrant');
-      if (m.s != null && m.s >= 1) matched.push('Qimen special');
-      if (m.h != null && m.h >= 1) matched.push('Hexagram bond');
+      var tier = _tierOf(m);
+      var connected = (m.x != null && !m.xNayin);
+      var why = [];
+      if (connected) why.push('XKDG ' + m.x + (m.xWhy ? ' (' + m.xWhy + ')' : '') + ' — connects to the person');
+      else if (m.x != null && m.xNayin) why.push('XKDG ' + m.x + ' (' + (m.xWhy || 'Nayin Power') + ') — does NOT connect to the person');
+      if (m.q != null) why.push('Qimen quadrant ' + m.q);
+      if (m.s != null) why.push('Qimen special ' + m.s);
+      if (m.hlabel) why.push(m.hlabel);
       var _hits = (m.qhits || []).concat(m.shits || []);
       if (m.hlabel) _hits = _hits.concat([m.hlabel]);
       return {
         date: m.date, branch: m.branch,
         hour: solarBranchToClock(m.branch) || m.branch,
-        tier: matched.length, matched: matched,
-        xkdg_score: m.x, qimen_quadrant_score: m.q, qimen_special_score: m.s,
+        tier: tier,
+        person_connected: connected,
+        xkdg_score: m.x, xkdg_relation: m.xWhy,
+        qimen_quadrant_score: m.q, qimen_special_score: m.s,
         hex_bond: m.h != null ? (m.hlabel || 'bond') : null,
         qimen_score: (m.q || 0) + (m.s || 0),                 // activation energy AT the palace (what you stimulate)
-        combined_score: (m.x || 0) + (m.q || 0) + (m.s || 0),
+        why: why.join(' · '),
         hits: _hits
       };
     }).filter(function (r) { return r.tier >= 1; })
-      .filter(function (r) { return r.qimen_quadrant_score != null; });   // WATER VETO: the water palace MUST pass the QMDJ gate (a favourable door: Open/Rest/Birth/View). Hours whose water sector has Death/Injury/no-favourable-door get qimen_quadrant_score = null and are dropped here, so a bad-formation hour is NEVER recommended, whatever its XKDG/hexagram tier.
-    // Ranking for an ACTIVATION tool: the Qimen energy AT the palace is the primary
-    // quality (it is what the water stimulates); the XKDG person/day score is the
-    // tiebreaker. So between two same-tier hours, the stronger Qimen quadrant wins
-    // even if the other hour has a higher XKDG day score.
+      .filter(function (r) { return r.qimen_quadrant_score != null; });   // WATER VETO: the water palace MUST pass the QMDJ gate (a favourable door: Open/Rest/Birth/View). Hours whose water sector has Death/Injury/no-favourable-door get qimen_quadrant_score = null and are dropped here, so a bad-formation hour is NEVER recommended, whatever its XKDG tier.
+    // Ranking (Edu): the Tier comes first because a structure that connects to the person
+    // ALWAYS outranks one that does not; inside a Tier the graduatoria follows the XKDG
+    // score, and the Qimen energy at the palace only breaks remaining ties. (The old
+    // combined_score summed XKDG and Qimen — two incompatible scales — and is gone.)
     rows.sort(function (a, b) {
       return (b.tier - a.tier)
-          || ((b.qimen_score || 0) - (a.qimen_score || 0))
           || ((b.xkdg_score || 0) - (a.xkdg_score || 0))
-          || ((b.combined_score || 0) - (a.combined_score || 0))
+          || ((b.qimen_score || 0) - (a.qimen_score || 0))
           || (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));   // consistent: equal dates -> 0 (no Zi-by-insertion bias)
     });
+
+    // Which PURPOSES does each surviving hour also serve? Water is the means, not the
+    // purpose, so an activation hour is worth more when it also opens a purpose's door.
+    // Optional `purpose` narrows the list to hours that serve that one.
+    var _wantPurpose = (input.purpose || '').toLowerCase();
+    if (dir) {
+      try {
+        var _pmap = _purposesBySlot(dir, start, days);
+        rows.forEach(function (r) {
+          var ps = _pmap[r.date + '|' + r.branch];
+          if (ps && ps.length) r.also_good_for = ps.map(function (p) { return { purpose: p, label: _purposeLabel(p) }; });
+        });
+        if (_wantPurpose) {
+          if (_PURPOSE_KEYS.indexOf(_wantPurpose) < 0) notes.push('Unknown purpose "' + _wantPurpose + '" \u2014 ignored. Water is not a purpose, it is the means.');
+          else rows = rows.filter(function (r) { return (_pmap[r.date + '|' + r.branch] || []).indexOf(_wantPurpose) >= 0; });
+        }
+      } catch (e) { notes.push('Purpose annotation failed.'); }
+    }
 
     return {
       scanner: 'water_activation_full',
@@ -3715,19 +3813,102 @@
       start: start, days: days, scans_run: ran,
       person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',
       count: rows.length, results: (input && input.full ? rows : rows.slice(0, 20)), scan_notes: notes,
-      note: 'Quadruple scan merged by date+hour. matched lists which criteria the hour passed: XKDG (person), Qimen quadrant (sector), Qimen special (special configurations at the flying-star palace), and Hexagram bond (the hour\'s OWN four pillars form a connected communication network \u2014 Family/Inverse plus one same-type/same-line number mode of Hetu/Adding/Pure Qi \u2014 which makes the hour good INDEPENDENTLY of the person). tier = how many criteria matched (4 = best). IMPORTANT: an hour is worth reporting even if it does NOT communicate with the person \u2014 if it has a Hexagram bond and/or a Qimen configuration it MUST still be listed (it will simply rank lower). Never claim an hour is the "only" good one just because it is the only one that connects to the person. PRESENT higher tiers first. RANKING within a tier is by qimen_score (Qimen quadrant + special = activation energy at the palace) FIRST, then xkdg_score as tiebreaker. State for each which criteria it passed; for a Hexagram-bond hour, mention the bond (hex_bond field) as the reason it qualifies.',
+      note: 'Quadruple scan merged by date+hour. TIER is a QUALITY GRADE, not a count. An hour that CONNECTS to the person\'s birth year always outranks one that does not: tier 4 = connected, XKDG score >= 18 (rare — roughly one every six days at a single palace); tier 3 = connected, 12-17; tier 2 = connected, below 12; tier 1 = NOT connected to the person but still good on its own — either an XKDG structure strong enough to stand alone (Nayin Power, score >= 16) or a genuinely good Qimen at the palace (quadrant score >= 3). Anything weaker is not in the list at all. Read person_connected and the why field to explain each hour. Tier 1 is normally the MOST COMMON tier, not an exception: a real connection to the person is rare, a good Qimen is not — so most days the water is activated on a tier 1 hour, and that is correct, not a fallback. PRESENT higher tiers first. Inside a tier the order follows xkdg_score, then qimen_score. Never claim an hour is the "only" good one just because it is the only one that connects to the person.',
       time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
+    };
+  }
+
+  // ── PURPOSE ACTIVATION, headless ────────────────────────────────────────
+  //  Same engine as the app's ⚡ ACTIVATION panel, reached through the scanner's
+  //  PUBLIC api (QMDJWaterScanner.scanWaterPurpose / .fsPurposeDoors) — the panel
+  //  itself is DOM-bound and is deliberately not touched.
+  //  Water is not a purpose but a MEANS: `water` is therefore never scanned here.
+  var _PURPOSE_KEYS = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
+  function _purposeLabel(k) {
+    try {
+      var m = window.QMDJWaterScanner.fsPurposeDoors() || {};
+      return (m[k] && m[k].label) || k;
+    } catch (e) { return k; }
+  }
+  // date|branch -> [purpose keys] for a direction over a window. Used both by the tool
+  // and to annotate the water-activation rows.
+  function _purposesBySlot(dir, start, days) {
+    var out = {};
+    if (!(window.QMDJWaterScanner && typeof window.QMDJWaterScanner.scanWaterPurpose === 'function')) return out;
+    _PURPOSE_KEYS.forEach(function (pk) {
+      var res;
+      try { res = window.QMDJWaterScanner.scanWaterPurpose(dir || '', start, days, pk) || []; } catch (e) { return; }
+      res.forEach(function (r) {
+        var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
+        var k = r.date + '|' + br;
+        if (!out[k]) out[k] = [];
+        if (out[k].indexOf(pk) < 0) out[k].push(pk);
+      });
+    });
+    return out;
+  }
+  function toolFindPurposeActivation(input) {
+    input = input || {};
+    if (!(window.QMDJWaterScanner && typeof window.QMDJWaterScanner.scanWaterPurpose === 'function'))
+      return { error: 'QMDJ scanner not available on this page.' };
+    var days = parseInt(input.days, 10) || 7;
+    var today = todayIso();
+    var start = today;
+    if (input.start_date && /^\d{4}-\d{2}-\d{2}$/.test(input.start_date) && input.start_date >= today) start = input.start_date;
+    var dir = (input.direction || '').toUpperCase();
+    var only = (input.purpose || '').toLowerCase();
+    if (only && _PURPOSE_KEYS.indexOf(only) < 0) return { error: 'Unknown purpose. Use one of: ' + _PURPOSE_KEYS.join(', ') + '. Water is not a purpose \u2014 it is the means.' };
+    var keys = only ? [only] : _PURPOSE_KEYS;
+    var map = {}, notes = [];
+    keys.forEach(function (pk) {
+      var res;
+      try { res = window.QMDJWaterScanner.scanWaterPurpose(dir || '', start, days, pk) || []; }
+      catch (e) { notes.push('Scan failed for ' + pk + '.'); return; }
+      res.forEach(function (r) {
+        var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
+        var k = r.date + '|' + br + '|' + (r.dir || dir || '?');
+        if (!map[k]) map[k] = { date: r.date, branch: br, hour: solarBranchToClock(br) || br,
+                                dir: r.dir || dir || null, purposes: [], score: 0, hits: [] };
+        var m = map[k];
+        if (m.purposes.map(function (p) { return p.purpose; }).indexOf(pk) < 0)
+          m.purposes.push({ purpose: pk, label: _purposeLabel(pk), door: r.purposeDoor || null, score: r.score || 0 });
+        if ((r.score || 0) > m.score) { m.score = r.score || 0; m.hits = (r.hits || []).map(function (h) { return h.label; }); }
+      });
+    });
+    var rows = Object.keys(map).map(function (k) { return map[k]; });
+    // A row that serves MORE purposes is more useful; then the stronger Qimen; then date.
+    rows.sort(function (a, b) {
+      return (b.purposes.length - a.purposes.length) || (b.score - a.score)
+          || (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));
+    });
+    return {
+      scanner: 'purpose_activation',
+      chart: 'flying (\u98db\u76e4)',
+      direction: dir || 'all 8 palaces', purpose: only || 'all seven',
+      start: start, days: days, count: rows.length,
+      results: (input && input.full ? rows : rows.slice(0, 20)),
+      scan_notes: notes,
+      note: 'Every hour here already passed the canonical QMDJ gate (\u00a71 exclusions + San Qi/Wu + a favourable door) at that palace, on the FLYING chart. `purposes` lists which purposes that hour serves and through which door. Water is NOT a purpose: it is the means \u2014 so to say "this aquarium hour is ALSO good for Wealth", run the water plan first and use this to annotate it. When the user asks for a single purpose ("only Wealth this week"), pass purpose and use these hours directly.'
     };
   }
 
   // ── SHELLY AQUARIUM-LIGHT BRIDGE ────────────────────────────────────────
   //  Builds a plan of favourable ON hours for a house's aquarium and deposits
   //  it into the xkdg-shelly Worker (?set_plan&device=..). Plug = LIGHT only.
-  //  Rule (Edu): ON at the START of the day's BEST favourable hour, but only if
-  //  that hour is within the window 2nd-half-of-Zi (solar 00:00) .. end of Wei
-  //  (solar 15:00); the light then stays ON until 23:00 CIVIL clock the same
-  //  day. If the best hour is AFTER Wei it is NOT scheduled — returned in
-  //  needs_decision for the user to decide. Times use the HOUSE's True Solar Time.
+  //
+  //  RULES (Edu, session 22 — these REPLACE every earlier aquarium rule):
+  //   • ON at the START of the day's BEST hour (highest Tier; ties by XKDG then Qimen).
+  //   • Window = 2nd-half-of-Zi (solar 00:00) .. end of SHEN (solar 17:00).
+  //   • LATE hour (You/Xu/Hai): taken ONLY if its block runs past 23:00 of the same day
+  //     — i.e. only if the extension below actually fires. Otherwise fall back to the
+  //     day's best IN-WINDOW hour, accepting a lower Tier. No in-window hour -> the day
+  //     stays dark (one hour of light before the 23:00 off is worth nothing).
+  //   • EXTENSION: a Tier 4 day stays on until 23:00 of D+2, unless D+1 is Tier 3 or
+  //     better (a strong day is never swallowed). A Tier 3 day stays on until 23:00 of
+  //     D+1, unless D+1 is Tier 2 or better. Tier 2 and Tier 1 always switch off at
+  //     23:00 of their own day.
+  //   • NOTHING IS EVER ASKED. Only the final Procedi/Annulla before committing.
+  //  Times use the HOUSE's True Solar Time; the OFF is 23:00 on the CIVIL clock.
   var SHELLY_HOUSES = {
     // house name (lower-case) -> { device, lon, utc }.  utc = standard offset (h); DST handled per date.
     'tuoro':  { device: 'tuoro',  lon: 12.1, utc: 1 },
@@ -3735,10 +3916,13 @@
   };
   // Solar minute (from solar midnight) at which the light turns ON for each branch.
   // Zi uses its SECOND half (solar 00:00); the others use their normal solar start.
-  // _WINDOW_BRANCHES marks the ALLOWED window (2nd-half-Zi .. Wei). Branches after Wei
-  // (Shen/You/Xu/Hai) are scheduled only when the user approves that date (approve_dates).
+  // _WINDOW_BRANCHES marks the ALLOWED window: 2nd-half-Zi .. end of SHEN (solar 17:00).
+  // Shen 申 is a normal in-window hour. _LATE_BRANCHES (You/Xu/Hai) are "late": switching
+  // on at e.g. 21:00 only to switch off at 23:00 is a pointless blip, so a late hour is
+  // taken ONLY when its block runs past 23:00 of the same day (see the rule below).
   var _BRANCH_SOLAR_MIN = { '\u5b50': 0, '\u4e11': 60, '\u5bc5': 180, '\u536f': 300, '\u8fb0': 420, '\u5df3': 540, '\u5348': 660, '\u672a': 780, '\u7533': 900, '\u9149': 1020, '\u620c': 1140, '\u4ea5': 1260 };
-  var _WINDOW_BRANCHES = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1, '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1 };
+  var _WINDOW_BRANCHES = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1, '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1, '\u7533': 1 };
+  var _LATE_BRANCHES   = { '\u9149': 1, '\u620c': 1, '\u4ea5': 1 };
 
   function _shellyCfg() {
     try { var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || '{}'); return (c && c.url && c.token) ? c : null; }
@@ -3805,8 +3989,9 @@
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
     var days = parseInt(input.days, 10) || 7;
     var commit = (input.commit === true);
-    var approve = {};
-    (Array.isArray(input.approve_dates) ? input.approve_dates : []).forEach(function (d) { approve[String(d).trim()] = true; });
+    // Water is the MEANS, not the purpose: an optional purpose narrows the plan to hours
+    // that also open that purpose's Qimen door ("program only Wealth activations").
+    var wantPurpose = (input.purpose || '').toLowerCase();
 
     // 1) make the house active (loads its person) and read its single aquarium
     try {
@@ -3827,7 +4012,8 @@
     var start = todayIso();
     var scan = toolFindWaterActivationFull({
       direction: aq.direction, star_type: 'water', star_num: aq.water_star,
-      facing_deg: floor.facing, period: floor.period, start_date: start, days: days, full: true
+      facing_deg: floor.facing, period: floor.period, start_date: start, days: days, full: true,
+      purpose: wantPurpose || undefined
     });
     var rows = (scan && scan.results) || [];
 
@@ -3839,56 +4025,95 @@
     //  criteria (XKDG, hexagram\u2026) can NEVER schedule an hour with a negative water sector.
     rows = rows.filter(function (r) { return r.qimen_quadrant_score != null; });
 
-    // 3) best row per date (rows are sorted best-first -> first seen per date = best)
-    // First choice per day = the MAX-tier hour (ties broken by qimen -> xkdg -> combined score),
-    // and this holds EVEN IF that hour is after Wei (it then goes to needs_decision, never demoted
-    // to a lower-tier in-window hour). We also collect the OTHER hours that share the same top tier
-    // so ties are visible (e.g. Zi tying with a daytime hour you might prefer).
+    // 3) best hour per date. First choice = the MAX-tier hour (ties by XKDG score, then
+    // Qimen). We also keep the best IN-WINDOW hour separately: a late first choice falls
+    // back to it when its block would not run past 23:00.
     var byDate = {};
     rows.forEach(function (r) { if (!r.date) return; (byDate[r.date] = byDate[r.date] || []).push(r); });
     function _cmpHour(a, b) {
       return (b.tier || 0) - (a.tier || 0)
-          || (b.qimen_score || 0) - (a.qimen_score || 0)
           || (b.xkdg_score || 0) - (a.xkdg_score || 0)
-          || (b.combined_score || 0) - (a.combined_score || 0);
+          || (b.qimen_score || 0) - (a.qimen_score || 0);
     }
-    var bestByDate = {}, altByDate = {};
+    var bestByDate = {}, bestInWindowByDate = {}, altByDate = {};
     Object.keys(byDate).forEach(function (d) {
       var list = byDate[d].slice().sort(_cmpHour);
       bestByDate[d] = list[0];
+      bestInWindowByDate[d] = list.filter(function (r) { return !!_WINDOW_BRANCHES[r.branch]; })[0] || null;
       var topTier = list[0].tier;
       altByDate[d] = list.slice(1).filter(function (r) { return r.tier === topTier; })
-        .map(function (r) { return { branch: r.branch, hour: r.hour, tier: r.tier, qimen_score: r.qimen_score }; });
+        .map(function (r) { return { branch: r.branch, hour: r.hour, tier: r.tier, xkdg_score: r.xkdg_score, qimen_score: r.qimen_score }; });
     });
-
-    var scheduled = [], needsDecision = [], skipped = [];
-    for (var i = 0; i < days; i++) {
-      var iso = _isoPlus(start, i);
-      var best = bestByDate[iso];
-      if (!best) { skipped.push({ date: iso, reason: 'no favourable hour' }); continue; }
-      var br = best.branch;
-      var inWindow = !!_WINDOW_BRANCHES[br];
-      var highTier = (best.tier != null && best.tier >= 3);        // Tier 3-4 = high
-      var autoLate = (!inWindow && highTier);                      // after Wei + high tier -> auto-include
-      var approvedLate = (!inWindow && !highTier && approve[iso]); // after Wei + LOW tier -> only if approved
-      var alts = (altByDate[iso] && altByDate[iso].length) ? altByDate[iso] : undefined;
-      if ((inWindow || autoLate || approvedLate) && _BRANCH_SOLAR_MIN[br] != null) {
-        var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[br], rh.cfg.lon, rh.cfg.utc);
-        var offTs = _civilToEpoch(iso, 23 * 60, rh.cfg.utc);       // 23:00 CIVIL clock, same day
-        scheduled.push({ date: iso, branch: br, hour: best.hour, tier: best.tier, onTs: onTs, offTs: offTs,
-                         on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString(),
-                         after_wei: (!inWindow) || undefined,
-                         after_wei_auto: autoLate || undefined,
-                         approved_after_wei: approvedLate || undefined, alternatives_same_tier: alts });
-      } else {
-        needsDecision.push({ date: iso, branch: br, hour: best.hour, tier: best.tier,
-                             reason: 'after Wei with LOW tier (' + best.tier + ') \u2014 approve to include it',
-                             alternatives_same_tier: alts });
-      }
+    function _tierOn(iso) { var b = bestByDate[iso]; return b ? (b.tier || 0) : 0; }
+    // How far a block starting on `iso` with tier `t` runs, in whole days (0 = same day).
+    // Tier 4 -> +2 days unless the next day is Tier 3 or better.
+    // Tier 3 -> +1 day  unless the next day is Tier 2 or better.
+    // A stronger day is never swallowed by a weaker one's block.
+    function _spanOf(iso, t) {
+      var next = _tierOn(_isoPlus(iso, 1));
+      if (t === 4 && next < 3) return 2;
+      if (t === 3 && next < 2) return 1;
+      return 0;
     }
 
-    // 4) deposit the scheduled days ONLY on commit; otherwise this is a PREVIEW (await the user's OK)
-    var body = { days: scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; }) };
+    var scheduled = [], skipped = [];
+    var coveredUntil = null;                    // ISO of the last day covered by a running block
+    for (var i = 0; i < days; i++) {
+      var iso = _isoPlus(start, i);
+      if (coveredUntil && iso <= coveredUntil) continue;   // the light is already on from an earlier block
+      var best = bestByDate[iso];
+      if (!best) { skipped.push({ date: iso, reason: 'no favourable hour' }); continue; }
+      var chosen = best, fallbackFrom = null, span = _spanOf(iso, best.tier);
+      // LATE rule: a late hour is only worth taking when the block outlives the 23:00 off.
+      if (_LATE_BRANCHES[best.branch] && span === 0) {
+        var alt = bestInWindowByDate[iso];
+        if (!alt) {
+          skipped.push({ date: iso, reason: 'best hour is late (' + best.branch + ' ' + best.hour + ', tier ' + best.tier +
+                         ') and its block would end at 23:00 the same day; no in-window alternative that day' });
+          continue;
+        }
+        fallbackFrom = { branch: best.branch, hour: best.hour, tier: best.tier };
+        chosen = alt;
+        span = _spanOf(iso, chosen.tier);
+      }
+      if (_BRANCH_SOLAR_MIN[chosen.branch] == null) { skipped.push({ date: iso, reason: 'unknown branch ' + chosen.branch }); continue; }
+      var endIso = _isoPlus(iso, span);
+      var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[chosen.branch], rh.cfg.lon, rh.cfg.utc);
+      var offTs = _civilToEpoch(endIso, 23 * 60, rh.cfg.utc);     // 23:00 CIVIL clock on the block's LAST day
+      scheduled.push({ date: iso, branch: chosen.branch, hour: chosen.hour, tier: chosen.tier,
+                       person_connected: chosen.person_connected, xkdg_score: chosen.xkdg_score,
+                       qimen_score: chosen.qimen_score, why: chosen.why,
+                       also_good_for: chosen.also_good_for || undefined,
+                       onTs: onTs, offTs: offTs,
+                       on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString(),
+                       stays_on_until_date: span > 0 ? endIso : undefined,
+                       stay_on_note: span > 0
+                         ? ('Tier ' + chosen.tier + ': stays ON until 23:00 of ' + endIso + ' (' + span + ' extra day' + (span > 1 ? 's' : '') + ') \u2014 no stronger day follows'
+                            + (span === 2 ? '; two lit nights, accepted for a Tier 4' : ''))
+                         : undefined,
+                       late_taken: _LATE_BRANCHES[chosen.branch] ? true : undefined,
+                       fallback_from: fallbackFrom || undefined,
+                       alternatives_same_tier: (altByDate[iso] && altByDate[iso].length) ? altByDate[iso] : undefined });
+      if (span > 0) coveredUntil = endIso;
+    }
+
+    // 4) deposit the scheduled days ONLY on commit; otherwise this is a PREVIEW (await the user's OK).
+    // A block can outlive its own day (Tier 4 -> +2 days, Tier 3 -> +1), so the body carries ONE
+    // ROW PER CALENDAR DAY: the block's own row, plus a row starting at 00:00 for each day it
+    // swallows, all sharing the block's final offTs. The light therefore stays lit whether the
+    // Worker's cron looks up "today's row" or unions every row.
+    var _rows = [];
+    scheduled.forEach(function (s) {
+      _rows.push({ date: s.date, onTs: s.onTs, offTs: s.offTs });
+      if (s.stays_on_until_date) {
+        var d = s.date;
+        while (d < s.stays_on_until_date) {
+          d = _isoPlus(d, 1);
+          _rows.push({ date: d, onTs: _civilToEpoch(d, 0, rh.cfg.utc), offTs: s.offTs });
+        }
+      }
+    });
+    var body = { days: _rows };
     var workerResp = null, workerErr = null;
     if (commit) {
       try {
@@ -3903,14 +4128,15 @@
       scanner: 'aquarium_light_plan', house: rh.name, device: rh.cfg.device,
       mode: commit ? 'committed' : 'preview',
       aquarium: { direction: aq.direction, water_star: aq.water_star },
-      window: '2nd half of Zi (solar 00:00) .. end of Wei (solar 15:00); OFF at 23:00 civil',
-      scheduled_days: scheduled.length, scheduled: scheduled,
-      needs_decision: needsDecision, skipped: skipped,
+      purpose_filter: wantPurpose || null,
+      window: '2nd half of Zi (solar 00:00) .. end of Shen (solar 17:00); OFF at 23:00 civil. A late hour (You/Xu/Hai) is taken only when its block runs past 23:00 of the same day.',
+      scheduled_days: scheduled.length, scheduled: scheduled, deposit_rows: _rows.length,
+      skipped: skipped,
       deposited: commit ? !workerErr : false,
       worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
       note: commit
-        ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local).'
-        : 'PREVIEW ONLY \u2014 nothing was deposited. Each day\u2019s chosen hour is the MAXIMUM-tier hour (ties broken by Qimen then XKDG score). Rule for hours AFTER Wei: Tier 3-4 are INCLUDED automatically (already in the scheduled list, marked after_wei_auto) \u2014 only Tier 1-2 after-Wei appear in needs_decision. Show the user the scheduled list (date, hour, tier, on_local/off_local; mark the after-Wei auto-includes). For EACH needs_decision day you MUST ask a yes/no with a tap button on its OWN line \u2014 never just list them as text \u2014 like:\n[[BTN]] Si=includi il 15 luglio | No=salta il 15 luglio\nThen ask for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit. On the next call use commit:true and approve_dates:[...] with only the low-tier after-Wei dates the user approved.'
+        ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local, and for any day with stays_on_until_date say the light does NOT switch off at 23:00 that day).'
+        : 'PREVIEW ONLY \u2014 nothing was deposited. NEVER ask the user to approve individual dates: every day is decided by the rules, there is nothing to confirm day by day. Show the scheduled list (date, hour, tier, on_local/off_local). For every day that carries also_good_for, SAY SO explicitly \u2014 e.g. "questa data e anche buona per Wealth e Career" \u2014 it is the same Purpose Activation calculator as the app\u2019s panel and the user wants to know. If purpose_filter is set, say the plan was restricted to that purpose and that days without it were left out. For a day with stays_on_until_date, say plainly that the light stays on until 23:00 of that later date and why (its tier is high and no stronger day follows). For a day with fallback_from, say the best hour was too late to be useful and the in-window hour was taken instead. For a skipped day, say it stays dark and why. Then ask ONLY for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit until the user confirms; then call again with commit:true.'
     };
   }
 
