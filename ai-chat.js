@@ -423,6 +423,22 @@
     'period not set for that house), tell the user the chart cannot be computed and ask them to set facing & period - ' +
     'do NOT invent a star. When you call find_water_activation_full, also pass facing_deg and period from that floor so ' +
     'the special-config scan uses the SAME chart.\n' +
+    '- WATER-STAR VARIANT SEARCH: when the user asks to BUILD or FIND a chart variant whose WATER stars (\u5411\u661f) sit ' +
+    'in specific palaces (e.g. \"voglio la 9 water star a SW, la 6 a NW o NE, senza la 5 e la 2 a W e SE\"), CALL ' +
+    'find_water_star_charts with require/exclude constraints - NEVER reason the flight out yourself. ALWAYS pass the ' +
+    'base chart (base_period + base_facing_deg or base_facing_mountain, from the house or the user\'s words) - without ' +
+    'it the toward-facing \u4ee4\u661f\u5165\u56da liberation variants are skipped. The pool is CLOSED (18 Luoshu flights + ruler-' +
+    'liberation variants) and often over-constrained: if the tool reports no_exact_solution, say clearly that the ' +
+    'requested combination is impossible (explain via the tool\'s why field), then present the nearest candidates with ' +
+    'what each satisfies and misses. When an exact match is a LIBERATED variant, always state its mechanism (swap with ' +
+    '5, or toward the facing) and that it applies during the current period only. The user can then enter the chosen ' +
+    'variant by hand in the \u2b50 Manual editor \u2014 OR, when the user picks a candidate, call seed_manual_chart with ' +
+    'that candidate\'s water_stars and the SAME base chart: it opens the \u2b50 Manual editor pre-filled (\u5c71/\u904b stars ' +
+    'unchanged from the base, water stars from the chosen variant) for the user to review and Apply. NEVER apply a ' +
+    'chart yourself. GUIDED MODE: when asked to guide the chart construction step by step (the \ud83e\udd16 AI chart button ' +
+    'sends such a request), interview in the user\'s language, ONE question at a time: base chart first (propose the ' +
+    'panel values if given), then required placements, then exclusions; confirm the constraints back in one line ' +
+    'before calling the solver.\n' +
     '- FLYING vs ROTATING chart (CRITICAL - NEVER mix): FS STIMULATORS - activating a flying star / water / aquarium / ' +
     'fountain / mountain star (find_water_activation_full, find_water_hours, find_qimen_hours_for_star, QFS) - ALWAYS ' +
     'use the FLYING chart (\u98db\u76e4). The ROTATING chart (\u8f49\u76e4) is used ONLY for human DIRECTIONAL actions: travel / ' +
@@ -1245,6 +1261,68 @@
       }
     },
     {
+      name: 'find_water_star_charts',
+      description: 'Flying Stars WATER-STAR (\u5411\u661f) constraint solver. The water stars of ANY chart are fully ' +
+        'determined by just two choices: the star at the centre (1-9) and the flight direction (\u9806 forward / \u9006 ' +
+        'reverse) \u2014 18 possible flights \u2014 PLUS the \u4ee4\u661f\u5165\u56da liberation variants: when the current-era ruler water ' +
+        'star (9 during period 9) sits at the centre it is imprisoned and can be released by SWAPPING with the palace ' +
+        'holding water-star 5, or toward the FACING palace (same two classical release palaces the app\'s ruler-release ' +
+        'feature already uses). Given constraints like "water star 9 at SW, 6 at NW or NE, no 5 or 2 at W or SE", this ' +
+        'enumerates the full pool and returns the EXACT matches (liberation variants clearly labeled with their ' +
+        'mechanism); when none exist it says so explicitly and returns the NEAREST candidates ranked by satisfied ' +
+        'constraints, with a per-constraint breakdown. Pass the base chart (period + facing degree or mountain) to ' +
+        'enable the toward-facing liberation and to report the base chart\'s own water stars. Mountain (\u5c71) and base ' +
+        '(\u904b) stars are untouched by design. Palace names: SE,S,SW,E,C,W,NE,N,NW (South-at-top grid).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          require: {
+            type: 'array',
+            description: 'Constraints that MUST hold. Each: { star: 1-9, palaces: ["SW"] } means that star must sit in ONE of the listed palaces.',
+            items: { type: 'object', properties: {
+              star: { type: 'integer', description: 'Water star number 1-9.' },
+              palaces: { type: 'array', items: { type: 'string' }, description: 'Allowed palaces for this star (any one of them satisfies it).' }
+            }, required: ['star', 'palaces'] }
+          },
+          exclude: {
+            type: 'array',
+            description: 'Constraints that must NOT hold. Each: { star: 5, palaces: ["W","SE"] } means that star must sit in NONE of the listed palaces.',
+            items: { type: 'object', properties: {
+              star: { type: 'integer', description: 'Water star number 1-9.' },
+              palaces: { type: 'array', items: { type: 'string' }, description: 'Forbidden palaces for this star.' }
+            }, required: ['star', 'palaces'] }
+          },
+          base_period: { type: 'integer', description: 'Optional: period (1-9) of the base chart, to report its own water stars for comparison.' },
+          base_facing_deg: { type: 'number', description: 'Optional: facing degrees of the base chart (e.g. 237).' },
+          base_facing_mountain: { type: 'string', description: 'Optional alternative to base_facing_deg: the facing mountain character (e.g. \u5764).' }
+        },
+        required: []
+      }
+    },
+    {
+      name: 'seed_manual_chart',
+      description: 'Fill the \u2b50 Manual flying-stars editor with a chart for the user to REVIEW \u2014 never applies it ' +
+        '(the user presses Apply themselves). Use as the FINAL step of a water-star variant search: pass the chosen ' +
+        'candidate\'s water_stars (from find_water_star_charts) plus the base chart (period + facing degree or ' +
+        'mountain); the mountain \u5c71 and base \u904b stars are taken UNCHANGED from that base chart, exactly as the ' +
+        'method requires ("only the water stars change"). Opens the editor and pre-fills all 27 cells.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          water_stars: {
+            type: 'object',
+            description: 'The chosen water stars, one per palace: { "SE":1,"S":5,"SW":9,"E":2,"C":3,"W":7,"NE":6,"N":4,"NW":8 }.',
+            properties: { SE:{type:'integer'},S:{type:'integer'},SW:{type:'integer'},E:{type:'integer'},C:{type:'integer'},W:{type:'integer'},NE:{type:'integer'},N:{type:'integer'},NW:{type:'integer'} },
+            required: ['SE','S','SW','E','C','W','NE','N','NW']
+          },
+          base_period: { type: 'integer', description: 'Period (1-9) of the base chart supplying the unchanged \u5c71/\u904b stars.' },
+          base_facing_deg: { type: 'number', description: 'Facing degrees of the base chart (e.g. 237).' },
+          base_facing_mountain: { type: 'string', description: 'Alternative to base_facing_deg: the facing mountain character (e.g. \u5764).' }
+        },
+        required: ['water_stars']
+      }
+    },
+    {
       name: 'list_source',
       description: 'List the app\'s own source files (the live published version on GitHub, branch main). Use this ' +
         'as the FIRST step when the user asks how something is implemented, how a feature really works under the ' +
@@ -1279,6 +1357,213 @@
   ];
 
   // XKDG hexagram / trigram / family lookup — answers from the app's own tables.
+  // Water-star (向星) constraint solver — session 23. The full search space is
+  // tiny and CLOSED: centre star (1-9) × flight direction (順/逆) = 18 charts.
+  // Requiring one star at one palace already cuts it to exactly 2 candidates
+  // (the flight path is a fixed permutation), so over-constrained requests are
+  // the NORM, not the exception. The tool therefore never just says "no": it
+  // returns the nearest candidates with a per-constraint breakdown, so Edu can
+  // see precisely which condition the Luoshu flight makes impossible to combine.
+  function toolFindWaterStarCharts(input) {
+    try {
+      if (typeof FlyingStars === 'undefined') return { error: 'flying-stars.js not loaded.' };
+      var IDX = { SE: 0, S: 1, SW: 2, E: 3, C: 4, W: 5, NE: 6, N: 7, NW: 8 };
+      var NAME = ['SE', 'S', 'SW', 'E', 'C', 'W', 'NE', 'N', 'NW'];
+      function normPalaces(arr) {
+        var out = [];
+        (arr || []).forEach(function (p) {
+          var k = String(p || '').trim().toUpperCase();
+          if (k === 'CENTER' || k === 'CENTRE' || k === 'CENTRO') k = 'C';
+          if (IDX[k] != null) out.push(k);
+        });
+        return out;
+      }
+      var reqs = [], excs = [], errs = [];
+      (input.require || []).forEach(function (r) {
+        var s = parseInt(r && r.star, 10), ps = normPalaces(r && r.palaces);
+        if (!(s >= 1 && s <= 9) || !ps.length) { errs.push('Bad require entry: ' + JSON.stringify(r)); return; }
+        reqs.push({ star: s, palaces: ps });
+      });
+      (input.exclude || []).forEach(function (r) {
+        var s = parseInt(r && r.star, 10), ps = normPalaces(r && r.palaces);
+        if (!(s >= 1 && s <= 9) || !ps.length) { errs.push('Bad exclude entry: ' + JSON.stringify(r)); return; }
+        excs.push({ star: s, palaces: ps });
+      });
+      if (errs.length) return { error: errs.join(' · ') };
+      if (!reqs.length && !excs.length) return { error: 'Give at least one require or exclude constraint.' };
+
+      // Optional base chart, for comparison
+      var baseInfo = null;
+      var bp = parseInt(input.base_period, 10);
+      var bMtn = null;
+      if (input.base_facing_mountain && FlyingStars.ALL_MOUNTAINS.indexOf(String(input.base_facing_mountain).trim()) >= 0) {
+        bMtn = String(input.base_facing_mountain).trim();
+      } else if (input.base_facing_deg != null && isFinite(parseFloat(input.base_facing_deg)) && typeof fsMountainCharFromDeg === 'function') {
+        bMtn = fsMountainCharFromDeg(parseFloat(input.base_facing_deg));
+      }
+      var baseChart = null;
+      if (bp >= 1 && bp <= 9 && bMtn) {
+        try { baseChart = FlyingStars.calculate(bp, bMtn); } catch (e) {}
+        if (baseChart) {
+          var bws = {}; NAME.forEach(function (n, i) { bws[n] = baseChart.facingStars[i]; });
+          baseInfo = {
+            period: bp, facing_mountain: bMtn, sitting_mountain: baseChart.sittingMountain,
+            water_stars: bws,
+            water_center: baseChart.facingStars[4],
+            water_flight: baseChart.facingForward ? 'forward \u9806' : 'reverse \u9006'
+          };
+        }
+      }
+
+      // Enumerate the closed space: 9 centres × 2 directions = 18 charts
+      var candidates = [];
+      for (var c = 1; c <= 9; c++) {
+        [true, false].forEach(function (fwd) {
+          var ws = FlyingStars.flyStars(c, fwd);
+          var wsMap = {}; NAME.forEach(function (n, i) { wsMap[n] = ws[i]; });
+          candidates.push({
+            water_center: c,
+            flight: fwd ? 'forward \u9806' : 'reverse \u9006',
+            water_stars: wsMap, _ws: ws,
+            is_base_chart: !!(baseChart && baseChart.facingStars[4] === c && baseChart.facingForward === fwd)
+          });
+        });
+      }
+
+      // 令星入囚 liberation variants (Edu, session 23). Semantics taken from the
+      // app's OWN existing rule (_fsPurpactRulerRelease in app-fengshui.js): when
+      // the CURRENT-ERA ruler water star sits at the CENTRE it is imprisoned, and
+      // the two classical release palaces are \u2460 the facing palace, \u2461 the palace
+      // where water-star 5 lives. Ruler = QFS.currentPeriod() (P9 today, so this
+      // fires for star 9 "solo durante il periodo 9" exactly as Edu stated \u2014 and
+      // stays correct after 2044 automatically). Modeled as a SWAP ("scambiando",
+      // Edu's word): the ruler moves to the release palace, the star that was
+      // there moves to the centre. Each variant is labeled with its mechanism.
+      var ruler = (window.QFS && typeof window.QFS.currentPeriod === 'function')
+        ? window.QFS.currentPeriod()
+        : (((Math.floor((new Date().getFullYear() - 1864) / 20)) % 9) + 1);
+      var facingIdx = (baseChart && FlyingStars.DIR_TO_INDEX[baseChart.facingDirection] != null)
+        ? FlyingStars.DIR_TO_INDEX[baseChart.facingDirection] : null;
+      var liberated = [], seenLib = {};
+      candidates.slice().forEach(function (cand) {
+        if (cand._ws[4] !== ruler) return;   // ruler not imprisoned in this flight
+        function addVariant(swapIdx, mechanism) {
+          if (swapIdx == null || swapIdx === 4) return;
+          var v = cand._ws.slice();
+          var tmp = v[swapIdx]; v[swapIdx] = v[4]; v[4] = tmp;
+          var key = v.join(',');
+          if (seenLib[key]) return; seenLib[key] = 1;
+          var wsMap = {}; NAME.forEach(function (n, i) { wsMap[n] = v[i]; });
+          liberated.push({
+            water_center: cand.water_center,
+            flight: cand.flight,
+            liberated: true,
+            liberation: mechanism,
+            note: 'Ruler ' + ruler + ' imprisoned at centre (\u4ee4\u661f\u5165\u56da), released ' +
+              (mechanism === 'toward_facing' ? 'toward the facing palace (' + NAME[swapIdx] + ')' : 'by swapping with water-star 5 (at ' + NAME[swapIdx] + ')') +
+              ' \u2014 current period ' + ruler + ' only.',
+            water_stars: wsMap, _ws: v,
+            is_base_chart: false
+          });
+        }
+        // \u2461 swap with the palace holding water-star 5
+        for (var i = 0; i < 9; i++) { if (i !== 4 && cand._ws[i] === 5) addVariant(i, 'swap_with_5'); }
+        // \u2460 toward the facing palace \u2014 only when the base facing is known
+        if (facingIdx != null) addVariant(facingIdx, 'toward_facing');
+      });
+      var libSkippedNote = null;
+      if (facingIdx == null && candidates.some(function (x) { return x._ws[4] === ruler; })) {
+        libSkippedNote = 'toward_facing liberation variants were SKIPPED: no base facing given. Pass base_period + base_facing_deg (or base_facing_mountain) to include them.';
+      }
+      candidates = candidates.concat(liberated);
+
+      // Constraint check on the full pool (18 flights + liberation variants)
+      candidates.forEach(function (cand) {
+        var ws = cand._ws, passed = [], failed = [];
+        reqs.forEach(function (r) {
+          var ok = r.palaces.some(function (p) { return ws[IDX[p]] === r.star; });
+          (ok ? passed : failed).push('star ' + r.star + ' at ' + r.palaces.join('|'));
+        });
+        excs.forEach(function (r) {
+          var hit = r.palaces.filter(function (p) { return ws[IDX[p]] === r.star; });
+          if (hit.length) failed.push('star ' + r.star + ' must NOT be at ' + r.palaces.join('|') + ' (it sits at ' + hit.join(',') + ')');
+          else passed.push('star ' + r.star + ' not at ' + r.palaces.join('|'));
+        });
+        cand.satisfied = passed.length; cand.total = reqs.length + excs.length;
+        cand.passed = passed; cand.failed = failed;
+        delete cand._ws;
+      });
+      var exact = candidates.filter(function (x) { return x.failed.length === 0; });
+      var out = {
+        search_space: '18 Luoshu flights (centre 1-9 \u00d7 forward/reverse) + \u4ee4\u661f\u5165\u56da liberation variants (ruler ' + ruler + ' at centre, released toward the facing or by swapping with water-star 5 \u2014 current period only). Water stars ONLY \u2014 mountain \u5c71 and base \u904b stars are untouched.',
+        current_period_ruler: ruler,
+        constraints: { require: reqs, exclude: excs },
+        exact_matches: exact
+      };
+      if (libSkippedNote) out.note = libSkippedNote;
+      if (baseInfo) out.base_chart = baseInfo;
+      if (!exact.length) {
+        candidates.sort(function (a, b) { return b.satisfied - a.satisfied; });
+        var best = candidates[0] ? candidates[0].satisfied : 0;
+        out.no_exact_solution = true;
+        out.why = 'The Luoshu flight is a single fixed path: choosing the centre star and the direction fixes ALL nine ' +
+          'positions at once. Requiring one star at one specific palace already narrows the space to exactly 2 charts ' +
+          '(one per direction), so combined constraints are often mutually impossible \u2014 not a limitation of the app.';
+        out.nearest = candidates.filter(function (x) { return x.satisfied === best; });
+      }
+      return out;
+    } catch (e) { return { error: String((e && e.message) || e) }; }
+  }
+  // Fill the ⭐ Manual editor with a reviewed chart — session 23. The 山/運
+  // stars come UNCHANGED from the base chart (period+facing → calculate());
+  // only the water stars are the chosen variant. Never applies: the user
+  // reviews the pre-filled editor and presses Apply themselves.
+  function toolSeedManualChart(input) {
+    try {
+      if (typeof FlyingStars === 'undefined') return { error: 'flying-stars.js not loaded.' };
+      if (typeof fsSeedManualStars !== 'function') return { error: 'Manual editor not available (app-fengshui.js too old — push the session-23 version).' };
+      var NAME = ['SE', 'S', 'SW', 'E', 'C', 'W', 'NE', 'N', 'NW'];
+      var wsIn = input.water_stars || {};
+      var fac = [];
+      for (var i = 0; i < 9; i++) {
+        var v = parseInt(wsIn[NAME[i]], 10);
+        if (!(v >= 1 && v <= 9)) return { error: 'water_stars.' + NAME[i] + ' must be 1-9.' };
+        fac[i] = v;
+      }
+      // Base chart for the unchanged 山/運 stars
+      var bp = parseInt(input.base_period, 10);
+      var bMtn = null;
+      if (input.base_facing_mountain && FlyingStars.ALL_MOUNTAINS.indexOf(String(input.base_facing_mountain).trim()) >= 0) {
+        bMtn = String(input.base_facing_mountain).trim();
+      } else if (input.base_facing_deg != null && isFinite(parseFloat(input.base_facing_deg)) && typeof fsMountainCharFromDeg === 'function') {
+        bMtn = fsMountainCharFromDeg(parseFloat(input.base_facing_deg));
+      }
+      // Fallbacks: the panel's own fields, then an existing manual chart
+      if (!(bp >= 1 && bp <= 9)) { var pEl = document.getElementById('fs-period'); bp = pEl ? parseInt(pEl.value, 10) : NaN; }
+      if (!bMtn && typeof fsMountainCharFromDeg === 'function') {
+        var hEl = document.getElementById('fs-house-facing');
+        var hd = hEl ? parseFloat(hEl.value) : NaN;
+        if (isFinite(hd)) bMtn = fsMountainCharFromDeg(hd);
+      }
+      var sit = null, base = null, srcNote;
+      if (bp >= 1 && bp <= 9 && bMtn) {
+        try {
+          var bc = FlyingStars.calculate(bp, bMtn);
+          sit = bc.sittingStars.slice(); base = bc.baseStars.slice();
+          srcNote = '\u5c71/\u904b stars from period ' + bp + ' facing ' + bMtn + ' (unchanged, as required).';
+        } catch (e) {}
+      }
+      if (!sit && window._fsManualChart && window._fsManualChart.sittingStars) {
+        sit = window._fsManualChart.sittingStars.slice();
+        base = window._fsManualChart.baseStars.slice();
+        srcNote = '\u5c71/\u904b stars kept from the existing manual chart (no base chart given).';
+      }
+      if (!sit) return { error: 'Cannot determine the base chart for the \u5c71/\u904b stars: pass base_period + base_facing_deg (or base_facing_mountain), or set House Facing and Period in the panel first.' };
+      var ok = fsSeedManualStars(sit, fac, base);
+      if (!ok) return { error: 'Could not open/fill the Manual editor.' };
+      return { ok: true, note: 'Manual editor opened and pre-filled. ' + srcNote + ' The user must review it and press Apply \u2014 nothing has been applied.' };
+    } catch (e) { return { error: String((e && e.message) || e) }; }
+  }
   function toolHexagramInfo(input) {
     try {
       var TRIG = ['Qian', 'Dui', 'Li', 'Zhen', 'Xun', 'Kan', 'Gen', 'Kun'];
@@ -1459,6 +1744,8 @@
       if (name === 'program_aquarium_light') return toolProgramAquariumLight(input || {});
       if (name === 'aquarium_light') return toolAquariumLight(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
+      if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
+      if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
       if (name === 'list_source') return toolListSource();
       if (name === 'read_source') return toolReadSource(input || {});
       if (name === 'diagnose_maps_export') return toolDiagnoseMapsExport();

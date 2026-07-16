@@ -5927,12 +5927,59 @@ function fsOpenManualStars(){
         '<div style="font-size:10px;color:#999;margin-bottom:6px;">Per palace: <span style="color:#0a6e1f;font-weight:bold;">山 Sitting</span> · <span style="color:#cc0000;font-weight:bold;">向 Facing</span> · <span style="color:#1a1008;font-weight:bold;">運 Base</span>. Values 1–9.</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px;">' + cells + '</div>' +
         '<div style="display:flex;gap:6px;justify-content:flex-end;">' +
+          '<button onclick="fsAskAIManualChart()" title="Guided AI search: answer a few questions, the AI finds the water-star variant and fills this editor" style="background:#fff;color:#6a1b9a;border:1px solid #6a1b9a;border-radius:5px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;margin-right:auto;">\ud83e\udd16 AI chart</button>' +
           '<button onclick="fsCloseManualStars()" style="background:#eee;color:#555;border:none;border-radius:5px;padding:6px 12px;font-size:12px;cursor:pointer;">Cancel</button>' +
           '<button onclick="fsApplyManualStars()" style="background:#8a6a1f;color:#fff;border:none;border-radius:5px;padding:6px 14px;font-size:12px;font-weight:bold;cursor:pointer;">Apply</button>' +
         '</div>' +
       '</div>';
     ed.style.display = 'block';
   } catch(err){ console.warn('fsOpenManualStars', err); }
+}
+
+// Seed the Manual editor with a full chart WITHOUT applying it (session 23).
+// Called by the AI's seed_manual_chart tool after the guided water-star search:
+// opens the editor (if closed) and fills the 27 inputs so Edu REVIEWS the chart
+// and presses Apply himself — the AI never applies a chart on its own.
+// Arrays are 9-long, South-at-top grid order (SE,S,SW,E,C,W,NE,N,NW).
+function fsSeedManualStars(sittingStars, facingStars, baseStars){
+  try {
+    var ed = document.getElementById('fs-manual-editor');
+    if (!ed) return false;
+    if (ed.style.display === 'none' || !ed.innerHTML) fsOpenManualStars();
+    if (ed.style.display === 'none') ed.style.display = 'block';   // fsOpenManualStars toggles; force open
+    for (var i = 0; i < 9; i++){
+      var sEl = document.getElementById('fsm-sit-' + i);
+      var fEl = document.getElementById('fsm-fac-' + i);
+      var bEl = document.getElementById('fsm-base-' + i);
+      if (sEl && sittingStars && sittingStars[i] != null) sEl.value = sittingStars[i];
+      if (fEl && facingStars  && facingStars[i]  != null) fEl.value = facingStars[i];
+      if (bEl && baseStars    && baseStars[i]    != null) bEl.value = baseStars[i];
+    }
+    try { ed.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e){}
+    return true;
+  } catch(err){ console.warn('fsSeedManualStars', err); return false; }
+}
+
+// 🤖 launcher inside the Manual editor (session 23): one tap starts a guided
+// AI interview (base chart → required placements → exclusions), the AI runs
+// find_water_star_charts and, once Edu picks a candidate, seeds THIS editor
+// via seed_manual_chart. Current panel values are embedded as defaults so the
+// AI can propose them instead of asking from scratch.
+function fsAskAIManualChart(){
+  try {
+    if (!window.XKDGChat || typeof window.XKDGChat.ask !== 'function'){ alert('AI chat not loaded'); return; }
+    var hf = (document.getElementById('fs-house-facing') || {}).value || '';
+    var pd = (document.getElementById('fs-period') || {}).value || '';
+    var ctx = (hf && pd) ? (' The panel currently shows facing ' + hf + '\u00b0 and period ' + pd + ' \u2014 propose these as the base chart and let me confirm or change them.') : '';
+    window.XKDGChat.ask(
+      'Guide me step by step (in my language, ONE question at a time) to build a manual water-star variant chart: ' +
+      '1) confirm the BASE chart (period + facing).' + ctx + ' ' +
+      '2) ask which water stars I REQUIRE and in which palaces; ' +
+      '3) ask which water stars to EXCLUDE from which palaces. ' +
+      'Then call find_water_star_charts with the base chart and my constraints, present the exact matches (or the nearest ' +
+      'candidates if none), and when I choose one call seed_manual_chart to fill the \u2b50 Manual editor \u2014 do NOT apply it, I will review and press Apply.'
+    );
+  } catch(e){ console.warn('fsAskAIManualChart', e); }
 }
 
 function fsApplyManualStars(){
