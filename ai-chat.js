@@ -3186,7 +3186,12 @@
     });
     // For a real A→B itinerary, also open the planner already filled and run the road plan
     // (one reliable call instead of depending on a separate open_travel_planner call).
-    var openPlanner = (input.open_planner != null) ? !!input.open_planner : (input.origin_lat != null && input.dest_lat != null);
+    // ROOT-CAUSE FIX (session 23): the default used to test input.origin_lat — the value
+    // the MODEL passed. For "da qui" trips the model is INSTRUCTED not to pass it (the
+    // app resolves the saved GPS), so the planner never auto-opened on GPS-origin trips
+    // even though the origin WAS resolved and the data was correct. Test the RESOLVED
+    // origin instead, matching this comment's own stated intent.
+    var openPlanner = (input.open_planner != null) ? !!input.open_planner : (origin != null && dest != null);
 
     // When no time was given, recommend the day's BEST (highest luck), EARLIEST-on-tie
     // departure from the scanned slots (daytime only). The visual planner re-picks this
