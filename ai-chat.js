@@ -3224,6 +3224,22 @@
       solar_from: chosenSlot.tstStart, solar_to: chosenSlot.tstEnd            // TRUE SOLAR time (reference)
     } : null;
     var snapStart = autoDepart ? (recommendedClock || hm(dep)) : hm(dep);
+    // Stash the EXACT computed params (session 23) so the chat's "Apri Travel Planner"
+    // button can open the planner DIRECTLY, without asking the model to repeat the tool
+    // call — the model sometimes replied "it is open" without calling anything (verified:
+    // _tpFromAI stayed undefined). Same lesson as tpOpenInMaps for Google Maps: opening
+    // things must never depend on the model's goodwill.
+    try {
+      if (origin && dest) window._XKDGChatLastPlan = {
+        originLat: origin.lat, originLon: origin.lon, originName: input.origin_name || null,
+        destLat: dest.lat, destLon: dest.lon, destName: input.dest_name || null,
+        departDate: dateStr, departTime: autoDepart ? null : snapStart, autoDepart: autoDepart,
+        durationH: (input.duration_h != null ? durH : null), utc: utc, dst: dstOn,
+        rangeKm: (input.range_km != null) ? +input.range_km : null,
+        reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
+        run: true
+      };
+    } catch (eStash) {}
     var baseOut = {
       direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
       departure_planned: autoDepart ? (dateStr + ' (auto-selected — see the itinerary card for the exact time)') : (dateStr + ' ' + snapStart),
@@ -5252,6 +5268,23 @@
           var bt = elc('button', { style: 'padding:7px 16px;border:1px solid #6a1b9a;background:#6a1b9a;color:#fff;border-radius:16px;font-size:14px;font-weight:600;cursor:pointer;' }, spec.label);
           bt.onclick = function () {
             try { var bs = row.querySelectorAll('button'); for (var i = 0; i < bs.length; i++) { bs[i].disabled = true; bs[i].style.opacity = '0.5'; bs[i].style.cursor = 'default'; } } catch (e) {}
+            // DETERMINISTIC local action (session 23): "Apri Travel Planner" opens the
+            // planner DIRECTLY with the params the last plan_travel call computed —
+            // never routed through the model, which was observed replying "it is
+            // open" without making any tool call. Falls back to the normal chat
+            // message when no plan has been stashed (e.g. the button came from an
+            // older conversation).
+            var _pl = String(spec.payload || '').toLowerCase();
+            if (_pl.indexOf('travel planner') >= 0 && _pl.indexOf('apri') >= 0 &&
+                window._XKDGChatLastPlan && window.TravelPlanner &&
+                typeof window.TravelPlanner.openPrefilled === 'function') {
+              var _ok = false;
+              try { window.TravelPlanner.openPrefilled(window._XKDGChatLastPlan); _ok = !!document.getElementById('tp-overlay'); } catch (e) {}
+              addBubble('assistant', _ok
+                ? '\ud83d\ude97 Travel Planner aperto (dietro la chat) \u2014 sta calcolando il percorso reale; l\u2019itinerario arriva qui come card tra qualche secondo.'
+                : '\u26a0 Il pannello del Travel Planner non si \u00e8 aperto \u2014 segnalamelo.', true);
+              return;
+            }
             try { doSend(spec.payload, spec.label); } catch (e) {}
           };
           row.appendChild(bt);
