@@ -201,6 +201,45 @@
   // The default charge level reached at a fast stop on a trip (DC slows a lot
   // past 80%). Tunable.
   var TP_CHARGE_TARGET = 0.80;
+
+  // --- EV DC fast-charging curve (session 23, Edu's real car numbers) ------
+  // Two-segment power(SoC%) model: flat at peak power up to a plateau SoC,
+  // then a power-law taper down toward empty. There is only ONE real
+  // calibration point today — Edu's Polestar 2: 79 kWh usable, 205 kW peak,
+  // 10% -> 80% in 30 min. EV_TAPER_GAMMA was solved offline (bisection) so
+  // this exact model reproduces that number: tpEvChargeTimeMin(10,80) = 30.
+  // If Edu ever gets a second real data point (e.g. a slower-SoC segment or
+  // a cold-weather run), re-solve gamma against BOTH points instead of
+  // guessing — this shape is a plausible curve fitted to one measurement,
+  // not a manufacturer spec.
+  var EV_USABLE_KWH  = 79;
+  var EV_PEAK_KW     = 205;
+  var EV_PLATEAU_END = 20;      // % SoC below which power stays flat at peak
+  var EV_TAPER_GAMMA = 1.1093;  // calibrated so 10% -> 80% = exactly 30 min
+
+  function tpEvPowerAtSoc(socPct) {
+    var s = Math.max(0, Math.min(100, socPct));
+    if (s <= EV_PLATEAU_END) return EV_PEAK_KW;
+    var t = (s - EV_PLATEAU_END) / (100 - EV_PLATEAU_END);
+    return EV_PEAK_KW * Math.pow(1 - t, EV_TAPER_GAMMA);
+  }
+  // Numerically integrates charge time (whole minutes) from socFrom% to socTo%.
+  function tpEvChargeTimeMin(socFrom, socTo) {
+    if (!(socTo > socFrom)) return 0;
+    var steps = 40, dSoc = (socTo - socFrom) / steps, hours = 0;
+    for (var i = 0; i < steps; i++) {
+      var soc = socFrom + dSoc * (i + 0.5);
+      var p = tpEvPowerAtSoc(soc);
+      var dKwh = EV_USABLE_KWH * (dSoc / 100);
+      if (p > 0) hours += dKwh / p;
+    }
+    return Math.round(hours * 60);
+  }
+  function tpEvEnergyKwh(socFrom, socTo) {
+    if (!(socTo > socFrom)) return 0;
+    return Math.round(EV_USABLE_KWH * (socTo - socFrom) / 100 * 10) / 10;
+  }
+
   // Two usable-range numbers for an EV trip:
   //   firstKm = how far you can go RIGHT NOW (current charge, minus reserve)
   //   afterKm = how far you can go after a fast charge to TP_CHARGE_TARGET
@@ -221,7 +260,15 @@
       var afterUsable = (full > 0) ? (TP_CHARGE_TARGET * full * (1 - resFrac)) : firstUsable;
       if (!(firstUsable > 0)) return null;
       if (!(afterUsable > 0)) afterUsable = firstUsable;
-      return { firstKm: firstUsable, afterKm: afterUsable };
+      // Real starting SoC%, for the charging-curve model. Prefer the car's own
+      // reported SoC (tpGetLiveRange().soc); fall back to estimating it from
+      // firstKm/full when only a manual range was entered. null when neither
+      // is available — callers must treat that as "no curve data" and fall
+      // back to the old fixed duration, never guess a number.
+      var soc0 = null;
+      if (lr && lr.soc != null && isFinite(lr.soc)) soc0 = lr.soc;
+      else if (full > 0) soc0 = Math.min(100, (firstKm / full) * 100);
+      return { firstKm: firstUsable, afterKm: afterUsable, soc0: soc0, fullKm: (full > 0 ? full : null) };
     } catch (e) { return null; }
   }
   // Walk the leg/stop timeline and SPLIT any leg whose distance exceeds the
@@ -238,17 +285,41 @@
     if (!(afterMs > 0)) afterMs = firstMs;
     var SLACK = 1.05, MIN_LEG_MS = 4 * 60000, MAX_INS = 15;
     var out = [], inserted = 0, lastChargeMs = null, limit = firstMs;
+    // Real-SoC tracking, parallel to the existing km/ms bookkeeping above.
+    // curSegStartSoc = the SoC% at the start of the current "segment" (since
+    // departure, or since the last stop/charge). It mirrors the SAME reset
+    // assumption already baked into `limit` (every stop is assumed to leave
+    // you at TP_CHARGE_TARGET usable range) — so a real charge stop's SoC
+    // stays consistent with WHEN the existing algorithm decided to place it.
+    // null (no live SoC / no full-range figure) -> every mkCharge() call below
+    // falls back to the old fixed 20 min, never a guessed number.
+    var curSegStartSoc = (ev.soc0 != null && isFinite(ev.soc0)) ? ev.soc0 : null;
+    var pctPerKm = (ev.fullKm > 0) ? (100 / ev.fullKm) : null;
+    var TARGET_PCT = TP_CHARGE_TARGET * 100;
     function mkLeg(s, e, head, note, ss, es) {
       return { type: 'leg', startWall: new Date(s), endWall: new Date(e), heading: head,
         startSlotIdx: (ss != null ? ss : null), endSlotIdx: (es != null ? es : null),
         durationH: (e - s) / 3600000, note: note || '' };
     }
-    function mkCharge(tc, head, slotIdx) {
+    function mkCharge(tc, head, slotIdx, socFrom) {
       var p = posAt(tc);
-      return { type: 'stop', charge: true, durationMin: 20, atWall: new Date(tc), restartWall: new Date(tc),
+      var targetPct = TP_CHARGE_TARGET * 100;
+      // Real duration/kWh only when we know where the battery actually stood at
+      // arrival (socFrom, from the curve model). Otherwise fall back to the old
+      // fixed 20 min — never invent a SoC number to force the curve to run.
+      var hasSoc = (socFrom != null && isFinite(socFrom) && socFrom < targetPct);
+      var durMin = hasSoc ? Math.max(5, tpEvChargeTimeMin(socFrom, targetPct)) : 20;
+      var kwh = hasSoc ? tpEvEnergyKwh(socFrom, targetPct) : null;
+      // BUGFIX (session 23): restartWall used to equal atWall (charge duration
+      // was never actually added to the restart time) — the "restart" shown to
+      // the user was really just the arrival time.
+      var restart = new Date(tc + durMin * 60000);
+      return { type: 'stop', charge: true, durationMin: durMin, atWall: new Date(tc), restartWall: restart,
         newHeading: head, pos: { lat: p.lat, lon: p.lon }, cashDir: null, limitDeg: null,
         slotIdx: (slotIdx != null ? slotIdx : null), reason: 'charging stop (battery range)',
-        fortunate: false, rangeForced: true };
+        fortunate: false, rangeForced: true,
+        socFrom: (hasSoc ? Math.round(socFrom) : null), socTo: (hasSoc ? Math.round(targetPct) : null),
+        kwh: kwh };
     }
     for (var i = 0; i < plan.length; i++) {
       var it = plan[i];
@@ -261,13 +332,20 @@
           if (tc <= curStart) tc = curStart + Math.max(MIN_LEG_MS, limit);
           if (tc >= e - MIN_LEG_MS) break;   // close enough to the leg's own stop — charge there instead
           out.push(mkLeg(curStart, tc, it.heading, '', it.startSlotIdx, it.endSlotIdx));
-          out.push(mkCharge(tc, it.heading, it.endSlotIdx));
-          inserted++; curStart = tc; lastChargeMs = tc; limit = afterMs;
+          // Real SoC at arrival: elapsed range since the last reset (start,
+          // stop, or charge), converted from km to % via the full-range figure.
+          var socFromNow = null;
+          if (curSegStartSoc != null && pctPerKm != null && spanMs > 0) {
+            var elapsedKm = ((tc - lastChargeMs) / spanMs) * totalKm;
+            socFromNow = Math.max(0, curSegStartSoc - elapsedKm * pctPerKm);
+          }
+          out.push(mkCharge(tc, it.heading, it.endSlotIdx, socFromNow));
+          inserted++; curStart = tc; lastChargeMs = tc; limit = afterMs; curSegStartSoc = TARGET_PCT;
         }
         out.push(mkLeg(curStart, e, it.heading, it.note, it.startSlotIdx, it.endSlotIdx));
       } else if (it.type === 'stop') {
         out.push(it);
-        if (it.atWall) { lastChargeMs = it.atWall.getTime(); limit = afterMs; }
+        if (it.atWall) { lastChargeMs = it.atWall.getTime(); limit = afterMs; curSegStartSoc = TARGET_PCT; }
       } else { out.push(it); }
     }
     return out;
@@ -1538,6 +1616,7 @@
              hasHourData: anyHour, plan: plan, stopMode: opts.stopMode || 'auto',
              maxLegHours: opts.maxLegHours || 4,
              usedRealRoute: usedRealRoute,
+             evSoc0: (typeof _ev !== 'undefined' && _ev && _ev.soc0 != null) ? Math.round(_ev.soc0) : null,
              routeMeta: routeIdx ? {
                km: routeIdx.distanceMeters / 1000,
                durationSec: routeIdx.durationSec,
@@ -2828,6 +2907,9 @@
           lat: (it.pos ? it.pos.lat : null), lon: (it.pos ? it.pos.lon : null),
           cashDir: it.cashDir || null,
           limitDeg: (it.limitDeg != null ? Math.round(it.limitDeg) : null),
+          socFrom: (it.socFrom != null ? it.socFrom : null),
+          socTo: (it.socTo != null ? it.socTo : null),
+          kwh: (it.kwh != null ? it.kwh : null),
           place: null };
       });
       var exits = [];
@@ -2963,6 +3045,7 @@
         stops: nStops, legs: legs, has_hour_data: !!result.hasHourData,
         fav_summary: favSummary, arrival_cash_note: arrivalCashNote,
         exits: exits, hours: hours,
+        soc: (result.evSoc0 != null ? result.evSoc0 : null),
         text: lines.join('\n')
       };
       // Compact payload for the live compass (net bearing + quadrant from the reference point during the drive).

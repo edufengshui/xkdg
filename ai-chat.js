@@ -6066,6 +6066,14 @@
     function fillStopMeta(metaEl, it) {
       if (!metaEl || !it) return;
       metaEl.innerHTML = '';
+      // Real battery state at this charge stop, when the planner has it (session 23:
+      // curve-based SoC tracking in travel-planner.js). Absent on older itineraries
+      // or when no live SoC/full-range was set — nothing shown then, no guessing.
+      if (isChargeStop(it) && it.socFrom != null && it.socTo != null) {
+        var socTxt = '\uD83D\uDD0B ' + it.socFrom + '% \u2192 ' + it.socTo + '%' +
+          (it.kwh != null ? (' \u00b7 ' + it.kwh + ' kWh') : '');
+        metaEl.appendChild(elc('div', { style: 'color:#c2185b;font-weight:600;margin-bottom:2px;' }, socTxt));
+      }
       var op = (it.operator && it.place && it.place.toLowerCase().indexOf(String(it.operator).toLowerCase()) >= 0) ? '' : (it.operator || '');
       var txt = [op, it.addr].filter(Boolean).join(' \u00b7 ');
       if (txt) metaEl.appendChild(elc('span', { style: 'color:#666;' }, txt + (txt ? '  ' : '')));
