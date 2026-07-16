@@ -415,6 +415,50 @@ const FlyingStars = (() => {
     }
 
     // ----------------------------------------------------------
+    // CARD VIEW — data helpers (Edu, session 23)
+    // ----------------------------------------------------------
+    // Degree/pinyin/Luo-Shu lookups for the flat "card" chart. The actual
+    // renderer is NOT here: Edu pointed out the app already has the right
+    // visual format — showQimenChart()'s HTML table in app-fengshui.js —
+    // so the card reuses THAT template (colours, title bar, cell layout)
+    // instead of a bespoke canvas drawing. This module only exposes the
+    // small lookups app-fengshui.js needs (mountain degree/pinyin, the
+    // fixed Luo Shu numbers) to build that HTML without duplicating them.
+    //
+    // Scope (Edu, explicit, session 23): ONLY the Flying Stars chart for
+    // the facing/period ALREADY selected elsewhere in the app. No Annual
+    // or Monthly stars (he confirmed he doesn't need them), no hexagram
+    // box, no door icon — none of those are in this delivery.
+
+    // Fixed Luo Shu number per palace — SAME index scheme as the rest of
+    // this file (see the header comment: 4|9|2 / 3|5|7 / 8|1|6).
+    const LUOSHU_BASE = [4, 9, 2, 3, 5, 7, 8, 1, 6];
+
+    // Pinyin for all 24 mountains. Self-contained on purpose: this module
+    // declares itself standalone (see the file header) and must not gain
+    // a load-order dependency on app-bazi.js's GAN_PINYIN/ZHI_PINYIN just
+    // for four extra trigram-name entries (艮巽坤乾).
+    const MOUNTAIN_PINYIN = {
+        '壬':'Ren','子':'Zi','癸':'Gui','丑':'Chou','艮':'Gen','寅':'Yin',
+        '甲':'Jia','卯':'Mao','乙':'Yi','辰':'Chen','巽':'Xun','巳':'Si',
+        '丙':'Bing','午':'Wu','丁':'Ding','未':'Wei','坤':'Kun','申':'Shen',
+        '庚':'Geng','酉':'You','辛':'Xin','戌':'Xu','乾':'Qian','亥':'Hai'
+    };
+
+    // Compass centre degree of each of the 8 directions. Matches the
+    // scheme app-fengshui.js's fsMountainCharFromDeg already uses (Ren
+    // centred at 345°) — verified by hand, not assumed.
+    const DIR_CENTER_DEG = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
+
+    // Exact bearing of one of the 24 mountains: direction centre ± 15°
+    // by its position (1 = 地元 low side, 2 = 天元 centre, 3 = 人元 high side).
+    function mountainDegree(direction, position) {
+        const c = DIR_CENTER_DEG[direction];
+        if (c == null) return null;
+        return ((c + (position - 2) * 15) + 360) % 360;
+    }
+
+    // ----------------------------------------------------------
     // DISEGNO SOVRAPPOSTO AL LUOPAN
     // ----------------------------------------------------------
     //
@@ -576,7 +620,13 @@ const FlyingStars = (() => {
         // Costanti (sola lettura)
         MOUNTAINS_24:         MOUNTAINS_24,
         ALL_MOUNTAINS:        ALL_MOUNTAINS,
-        DIR_TO_INDEX:         DIR_TO_INDEX
+        DIR_TO_INDEX:         DIR_TO_INDEX,
+
+        // Card-view data helpers (session 23) — used by app-fengshui.js's
+        // HTML card renderer, modeled on showQimenChart's own table.
+        LUOSHU_BASE:          LUOSHU_BASE,
+        MOUNTAIN_PINYIN:      MOUNTAIN_PINYIN,
+        mountainDegree:       mountainDegree
     };
 
 })();

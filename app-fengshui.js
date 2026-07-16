@@ -441,8 +441,10 @@ function buildFengShuiView(){
 
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
+        <div id="fs-cardview-html" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;overflow:auto;padding:10px;box-sizing:border-box;"></div>
         <button id="fs-orient-toggle" onclick="fsToggleLuopanOrient()" title="Rotate the luopan so the house facing is at the top" style="position:absolute;top:8px;right:8px;z-index:6;background:#0d47a1;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">⤴ Facing up</button>
         <button id="fs-sunmoon-toggle" onclick="(typeof SunMoonMountain!=='undefined') ? SunMoonMountain.toggle() : alert('sun-moon.js not loaded')" title="Show where the Sun ☀️ and Moon 🌙 currently sit on the 24-mountain wheel, and their trine (三合, ±8 mountains) partners" style="position:absolute;top:8px;left:8px;z-index:6;background:#fff;color:#4527a0;border:1px solid #4527a0;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">☀️🌙 Time</button>
+        <button id="fs-cardview-toggle" onclick="fsToggleCardView()" title="Flat Flying Stars card (facing/period already selected)" style="position:absolute;bottom:8px;right:8px;z-index:6;background:#fff;color:#6a1b9a;border:1px solid #6a1b9a;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">📄 Card</button>
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
         <button id="fs-floorplan-del" onclick="fsRemoveActiveFloorplan()" title="Remove this floor plan" style="display:none;position:absolute;top:8px;left:8px;z-index:6;background:#c62828;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🗑 Remove plan</button>
@@ -599,6 +601,112 @@ var _fsLuopanRot = 0;
 // on its own. Shared by the main Water luopan (fsDrawFlyingStars) and the
 // Bed/Desk section luopan (fsDrawSectionLuopan) — both read this same flag.
 var _fsReplacementOn = false;
+// Card view (Edu, session 23): flat, non-Luopan Flying Stars chart for the
+// facing/period ALREADY selected in the panel (or the manual override chart,
+// same one FS_STARS_ON's Luopan mode already respects). Renderer only, no
+// new calculation.
+//
+// HTML table, NOT canvas — Edu pointed out the app already has the right
+// visual format for this kind of chart: showQimenChart()'s table just above
+// (title bar, green borders, per-cell layout). This reuses that exact
+// grammar with Flying Stars fields (山/向/運) in place of QMDJ's (deity/
+// door/stems), instead of a bespoke canvas drawing.
+var _fsCardViewOn = false;
+function flyingStarsChartHtml(chart){
+  if (!chart) return '';
+  var GREEN = '#0d5e2c';
+  var DIR_LBL = ['SE','S','SW','E','','W','NE','N','NW'];   // same idx scheme as flying-stars.js (South-top)
+  var luoshu = FlyingStars.LUOSHU_BASE;
+  var sittingIdx = FlyingStars.DIR_TO_INDEX[chart.sittingDirection];
+
+  function cellHtml(idx){
+    var isSitting = (idx === sittingIdx);
+    var bg = isSitting ? '#fff3b0' : '#fff';
+    var border = isSitting ? '3px solid #f9a825' : '1px solid ' + GREEN;
+    var dirTxt = DIR_LBL[idx] || '';
+    return '<td style="background:'+bg+';padding:6px 7px;border:'+border+';width:33%;height:1px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+      +   '<span style="color:#666;font-size:11px;font-weight:bold;">'+dirTxt+'</span>'
+      +   '<span style="color:#999;font-size:12px;">'+luoshu[idx]+'</span>'
+      + '</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">'
+      +   '<span style="color:#0a6e1f;font-weight:bold;font-size:20px;">'+chart.sittingStars[idx]+'</span>'
+      +   '<span style="color:#cc0000;font-weight:bold;font-size:20px;">'+chart.facingStars[idx]+'</span>'
+      + '</div>'
+      + '<div style="text-align:center;font-weight:bold;color:#1a1a2e;font-size:26px;margin-top:2px;">'+chart.baseStars[idx]+'</div>'
+      + '</td>';
+  }
+
+  var fPos = FlyingStars.getMountainPosition(chart.facingMountain);
+  var sPos = FlyingStars.getMountainPosition(chart.sittingMountain);
+  var fDeg = fPos ? Math.round(FlyingStars.mountainDegree(fPos.direction, fPos.position)) : null;
+  var sDeg = sPos ? Math.round(FlyingStars.mountainDegree(sPos.direction, sPos.position)) : null;
+  var fLabel = fPos ? (fPos.direction + fPos.position) : '?';
+  var sLabel = sPos ? (sPos.direction + sPos.position) : '?';
+  var fPy = FlyingStars.MOUNTAIN_PINYIN[chart.facingMountain] || '';
+  var sPy = FlyingStars.MOUNTAIN_PINYIN[chart.sittingMountain] || '';
+  var replBadge = chart.replacement
+    ? ' <span style="background:#fff3e0;color:#e65100;border:1px solid #ffb74d;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:bold;">替卦 Repl</span>'
+    : '';
+
+  var html = '<div style="margin:0 auto;max-width:480px;border-radius:8px;overflow:hidden;background:'+GREEN+';">';
+  html += '<div style="background:#fff;color:'+GREEN+';padding:8px 12px;font-weight:bold;font-size:14px;text-align:center;border-bottom:2px solid '+GREEN+';">'
+       +   '\u2b50 Period ' + chart.period + ' Flying Stars' + replBadge
+       + '</div>';
+  html += '<table style="width:100%;border-collapse:collapse;background:'+GREEN+';">';
+  html += '<tr>' + cellHtml(0) + cellHtml(1) + cellHtml(2) + '</tr>';
+  html += '<tr>' + cellHtml(3) + cellHtml(4) + cellHtml(5) + '</tr>';
+  html += '<tr>' + cellHtml(6) + cellHtml(7) + cellHtml(8) + '</tr>';
+  html += '</table>';
+  html += '<div style="background:#fff;color:#444;padding:6px 12px;text-align:center;font-size:12px;border-top:2px solid '+GREEN+';">'
+       +   'FACING ' + (fDeg != null ? fDeg + '\u00b0' : '?') + ' \u00b7 ' + fLabel + ' ' + chart.facingMountain + ' ' + fPy
+       +   '<br>SITTING ' + (sDeg != null ? sDeg + '\u00b0' : '?') + ' \u00b7 ' + sLabel + ' ' + chart.sittingMountain + ' ' + sPy
+       + '</div>';
+  html += '</div>';
+  return html;
+}
+function fsRenderCardView(){
+  var box = document.getElementById('fs-cardview-html');
+  if (!box) return;
+  if (typeof FlyingStars === 'undefined') { box.innerHTML = ''; return; }
+  var chart = null;
+  if (window._fsManualChart) {
+    chart = window._fsManualChart;
+  } else {
+    var hfInput = document.getElementById('fs-house-facing');
+    var pInput  = document.getElementById('fs-period');
+    if (!hfInput || !pInput) { box.innerHTML = ''; return; }
+    var hfDeg = parseFloat(hfInput.value);
+    var period = parseInt(pInput.value, 10);
+    if (isNaN(hfDeg) || isNaN(period) || period < 1 || period > 9) {
+      box.innerHTML = '<div style="color:#aaa;text-align:center;padding:20px;font-size:12px;">Enter House Facing (\u00b0) and Period (1-9) first</div>';
+      return;
+    }
+    var mountainChar = fsMountainCharFromDeg(hfDeg);
+    try { chart = FlyingStars.calculate(period, mountainChar, _fsReplacementOn); }
+    catch (e) { box.innerHTML = '<div style="color:#c00;text-align:center;padding:20px;font-size:12px;">\u26a0 ' + e.message + '</div>'; return; }
+  }
+  try { box.innerHTML = flyingStarsChartHtml(chart); }
+  catch (e) { console.warn('flyingStarsChartHtml', e); box.innerHTML = ''; }
+}
+
+function fsToggleCardView(){
+  _fsCardViewOn = !_fsCardViewOn;
+  var btn = document.getElementById('fs-cardview-toggle');
+  if (btn){
+    btn.textContent = _fsCardViewOn ? '\ud83e\udded Luopan' : '\ud83d\udcc4 Card';
+    btn.title = _fsCardViewOn ? 'Back to the circular Luopan view'
+                               : 'Flat Flying Stars card (facing/period already selected)';
+    btn.style.background = _fsCardViewOn ? '#6a1b9a' : '#fff';
+    btn.style.color = _fsCardViewOn ? '#fff' : '#6a1b9a';
+  }
+  var canvas = document.getElementById('fs-canvas');
+  var box = document.getElementById('fs-cardview-html');
+  if (canvas) canvas.style.display = _fsCardViewOn ? 'none' : 'block';
+  if (box) box.style.display = _fsCardViewOn ? 'flex' : 'none';
+  if (_fsCardViewOn) fsRenderCardView();
+  else if (typeof fsRedraw === 'function') fsRedraw();
+}
 function fsToggleReplacement(){
   _fsReplacementOn = !_fsReplacementOn;
   var btn = document.getElementById('fs-replacement-toggle');
@@ -670,6 +778,7 @@ function fsToggleFloorplanView(){
       if (back) back.style.display = 'block';
       var orb0 = document.getElementById('fs-orient-toggle'); if (orb0) orb0.style.display = 'none';
       var smb0 = document.getElementById('fs-sunmoon-toggle'); if (smb0) smb0.style.display = 'none';
+      var cvb0 = document.getElementById('fs-cardview-toggle'); if (cvb0) cvb0.style.display = 'none';
       var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
@@ -711,6 +820,7 @@ function _fsRestoreLuopanView(){
     if (back) back.style.display = 'none';
     var orb1 = document.getElementById('fs-orient-toggle'); if (orb1) orb1.style.display = 'block';
     var smb1 = document.getElementById('fs-sunmoon-toggle'); if (smb1) smb1.style.display = 'block';
+    var cvb1 = document.getElementById('fs-cardview-toggle'); if (cvb1) cvb1.style.display = 'block';
     var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'none';
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
