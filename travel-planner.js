@@ -2836,36 +2836,122 @@
           // time and push the cash stops out of their favourable double-hours, so that
           // needs a full replan (open work). Until then they are at least REPORTED, with
           // their SoC/ETA, so the itinerary never understates how many stops it needs.
+          // Fold "extra" chargers (no cash-stop pairing) INTO the real numbered
+          // sequence instead of hiding them (Edu, session 23): "non capisco il senso
+          // di avere degli stop che non sono inclusi nella lista... per le ore non
+          // positive in cui bisogna fermarsi si fa così" — the SAME Option-2 doctrine
+          // already used for every other forced stop in a non-fortunate hour (stop at
+          // the END of that double-hour, then depart) applies here too. A charger
+          // landing in a bad hour is not special-cased: charge, and if the charge
+          // alone ends before the hour does, wait out the rest of it.
+          function _optionTwoRestart(arrivalMs, chargeDurMin) {
+            var chargeEndMs = arrivalMs + chargeDurMin * 60000;
+            var slot = slotAtMs(arrivalMs);
+            var fortunateHere = slot ? (slot.hourPositive || (slot.dirs || []).some(function (d) { return d.towardDest && d.eval && d.eval.ok; })) : true;
+            if (fortunateHere || !slot) return { restartMs: chargeEndMs, fortunate: fortunateHere };
+            // Option 2 (established doctrine): stay until the unfavourable double-hour
+            // itself ends, whichever is later than the charge's own natural end.
+            return { restartMs: Math.max(chargeEndMs, slot.wallEnd.getTime()), fortunate: false };
+          }
           try {
-            if (window._tpLastResult) {
-              window._tpLastResult.extra_chargers = chosen.filter(function (c) { return !c.stopRef; })
-                .map(function (c) {
-                  return {
-                    name: (c.row.s.title && !/^\s*charger\s*$/i.test(c.row.s.title)) ? String(c.row.s.title).trim() : (c.row.s.operator || 'Charger'),
-                    km: Math.round(c.row.alongKm),
-                    kw: (c.row.s.maxKW > 0) ? Math.round(c.row.s.maxKW) : null,
-                    eta: fmtHMonly(new Date(c.row.etaMs)),
-                    socFrom: c.socFrom, socTo: c.socTo, kwh: c.kwh, duration_min: c.durationMin,
-                    fortunate: !!c.fortunate
+            var _extras = chosen.filter(function (c) { return !c.stopRef; });
+            var _mergeFailed = [];
+            if (_extras.length && window._tpLastResult && window._tpLastResult.legs && result.plan) {
+              var _planArr = result.plan;
+              var _storedLegsX = window._tpLastResult.legs;
+              _extras.forEach(function (c) {
+                try {
+                  var arrivalMs = c.row.etaMs;
+                  var opt2 = _optionTwoRestart(arrivalMs, c.durationMin);
+                  var waitMin = Math.round((opt2.restartMs - (arrivalMs + c.durationMin * 60000)) / 60000);
+                  // Find the drive leg (in the ORIGINAL, unshifted plan — absolute
+                  // Date objects, immune to any HH:MM string ambiguity around
+                  // midnight) that currently spans this charger's arrival.
+                  var splitAt = -1;
+                  for (var pi = 0; pi < _planArr.length; pi++) {
+                    var pit = _planArr[pi];
+                    if (pit.type === 'leg' && pit.startWall.getTime() <= arrivalMs && arrivalMs < pit.endWall.getTime()) { splitAt = pi; break; }
+                  }
+                  if (splitAt < 0) { _mergeFailed.push(c); return; }
+                  var origLeg = _planArr[splitAt];
+                  // Guard: if the Option-2 wait runs long enough to reach (or pass) the
+                  // ALREADY-planned end of this leg, splitting here would produce a
+                  // negative-duration "after" leg. Abandon the merge for this one
+                  // charger — it falls back to the yellow-box report — rather than
+                  // emit a broken step.
+                  if (opt2.restartMs >= origLeg.endWall.getTime() - 60000) { _mergeFailed.push(c); return; }
+                  var arrivalDate = new Date(arrivalMs), restartDate = new Date(opt2.restartMs);
+                  var slotHere = tpSlotIndexAt(_slots, arrivalDate);
+                  var slotAfter = tpSlotIndexAt(_slots, restartDate);
+                  var newStop = {
+                    type: 'stop', charge: true, durationMin: (c.durationMin + Math.max(0, waitMin)),
+                    atWall: arrivalDate, restartWall: restartDate,
+                    newHeading: origLeg.heading, pos: { lat: c.row.lat, lon: c.row.lon },
+                    cashDir: null, limitDeg: null, slotIdx: slotAfter,
+                    reason: 'charging stop (battery range)' + (waitMin > 0 ? ' + wait for the next favourable hour' : ''),
+                    fortunate: opt2.fortunate, rangeForced: false,
+                    socFrom: c.socFrom, socTo: c.socTo, kwh: c.kwh
                   };
-                });
-              // Whole-trip lucky fraction (Edu, session 23): counts EVERY stop the
-              // itinerary actually needs — cash stops from the timeline plus BOTH kinds
-              // of charging stop (stopRef-linked, visible in the card, and the extra
-              // ones above) — so nothing is left out of the count the way extra_chargers
-              // used to be left out of the card.
-              try {
-                var _lr = window._tpLastResult;
-                var _cashStops = (_lr.legs || []).filter(function (it) { return it && it.type === 'stop'; });
-                var _cashFort = _cashStops.filter(function (it) { return !!it.fortunate; }).length;
-                var _chFort = chosen.filter(function (c) { return !!c.fortunate; }).length;
-                var _total = _cashStops.length + chosen.length;
-                var _fort = _cashFort + _chFort;
-                _lr.lucky_fraction = _total > 0 ? Math.round((_fort / _total) * 100) / 100 : null;
-                _lr.lucky_stops = _fort; _lr.total_stops = _total;
-              } catch (eFrac) {}
+                  var legBefore = { type: 'leg', startWall: origLeg.startWall, endWall: arrivalDate, heading: origLeg.heading,
+                    startSlotIdx: origLeg.startSlotIdx, endSlotIdx: slotHere, durationH: (arrivalMs - origLeg.startWall.getTime()) / 3600000, note: '' };
+                  var legAfter = { type: 'leg', startWall: restartDate, endWall: origLeg.endWall, heading: origLeg.heading,
+                    startSlotIdx: slotAfter, endSlotIdx: origLeg.endSlotIdx, durationH: (origLeg.endWall.getTime() - opt2.restartMs) / 3600000, note: origLeg.note };
+                  _planArr.splice(splitAt, 1, legBefore, newStop, legAfter);
+                  // Same shape tpStoreLastResult()'s own plan.map() produces — kept in
+                  // sync by hand so this stays a splice, not a full rebuild (which would
+                  // replace _tpLastResult.legs and break the card's existing DOM refs).
+                  var storedBefore = { kind: 'drive', from: fmtHMonly(legBefore.startWall), to: fmtHMonly(legBefore.endWall),
+                    hours: Math.round(legBefore.durationH * 10) / 10, toward: tpHeadDirOnly(legBefore.heading), arrival: false };
+                  var storedStop = { kind: 'charge', at: fmtHMonly(newStop.atWall), duration_min: newStop.durationMin,
+                    restart: fmtHMonly(newStop.restartWall), toward: tpHeadDirOnly(newStop.newHeading),
+                    lat: c.row.lat, lon: c.row.lon, cashDir: null, limitDeg: null,
+                    socFrom: c.socFrom, socTo: c.socTo, kwh: c.kwh, fortunate: opt2.fortunate,
+                    rangeForced: false, redundant: false,
+                    place: (c.row.s.title && !/^\s*charger\s*$/i.test(c.row.s.title)) ? String(c.row.s.title).trim() : (c.row.s.operator || null) };
+                  var storedAfter = { kind: 'drive', from: fmtHMonly(legAfter.startWall), to: fmtHMonly(legAfter.endWall),
+                    hours: Math.round(legAfter.durationH * 10) / 10, toward: tpHeadDirOnly(legAfter.heading), arrival: (origLeg.note === 'arrival') };
+                  var storedIdx = -1;
+                  for (var si2 = 0; si2 < _storedLegsX.length; si2++) {
+                    if (_storedLegsX[si2].kind === 'drive' && _storedLegsX[si2].from === fmtHMonly(origLeg.startWall) && _storedLegsX[si2].to === fmtHMonly(origLeg.endWall)) { storedIdx = si2; break; }
+                  }
+                  if (storedIdx < 0) { _planArr.splice(splitAt, 3, origLeg); _mergeFailed.push(c); return; }   // undo the plan splice, fall back
+                  _storedLegsX.splice(storedIdx, 1, storedBefore, storedStop, storedAfter);
+                } catch (eOne) { _mergeFailed.push(c); }
+              });
+              window._tpLastResult.stops_changed = true;   // signal ai-chat.js: rebuild the numbered list, don't just patch fields
+            } else {
+              _mergeFailed = _extras;
+            }
+            // Any charger that could NOT be merged (rare — split point not found, or a
+            // stored-leg lookup mismatch) still gets reported, never silently dropped.
+            if (window._tpLastResult) {
+              window._tpLastResult.extra_chargers = _mergeFailed.map(function (c) {
+                return {
+                  name: (c.row.s.title && !/^\s*charger\s*$/i.test(c.row.s.title)) ? String(c.row.s.title).trim() : (c.row.s.operator || 'Charger'),
+                  km: Math.round(c.row.alongKm), kw: (c.row.s.maxKW > 0) ? Math.round(c.row.s.maxKW) : null,
+                  eta: fmtHMonly(new Date(c.row.etaMs)), socFrom: c.socFrom, socTo: c.socTo, kwh: c.kwh,
+                  duration_min: c.durationMin, fortunate: !!c.fortunate
+                };
+              });
             }
           } catch (eExtra) {}
+          // Whole-trip lucky fraction (Edu, session 23). BUGFIX: this used to filter
+          // _lr.legs by `it.type === 'stop'` — but legs (the STORED/exposed mirror) use
+          // `kind`, not `type` (`type` only exists on the separate `plan` array) — so
+          // _cashStops was ALWAYS empty and every cash stop was silently missing from
+          // the count. Now every stop/charge entry in the FINAL legs array (cash stops,
+          // Phase-F-attached chargers, blind Phase-E chargers, and the merged extras
+          // above — all of it, one array, no more separate tally) counts once.
+          try {
+            var _lr = window._tpLastResult;
+            if (_lr && _lr.legs) {
+              var _allStops = _lr.legs.filter(function (it) { return it && (it.kind === 'stop' || it.kind === 'charge'); });
+              var _fort = _allStops.filter(function (it) { return !!it.fortunate; }).length;
+              var _total = _allStops.length;
+              _lr.lucky_fraction = _total > 0 ? Math.round((_fort / _total) * 100) / 100 : null;
+              _lr.lucky_stops = _fort; _lr.total_stops = _total;
+            }
+          } catch (eFrac) {}
           // Edu, session 23: forced-by-range stops (Phase E, blind) should be the LAST
           // resort, not the default — this is the concrete fix ("lo AI costruisce un
           // itinerario dove mi devo fermare anche se non ce n'è bisogno"). A forced stop

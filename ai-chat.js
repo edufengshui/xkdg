@@ -5445,6 +5445,9 @@
       return 'en';
     }
     var _itinChargeEl = null;   // charging line of the latest itinerary bubble (updated in place)
+    var _lastItinWrapEl = null; // the itinerary bubble's root element — lets a later
+                                 // structural change (stops_changed) REPLACE it in place
+                                 // instead of posting a second, duplicate card (session 23)
     var _itinExtraEl = null;    // "extra chargers needed" box of the latest itinerary bubble
     var _itinExitEls = [];      // exit lines of the latest itinerary bubble (place names filled async)
     var _itinStopEls = [];      // numbered STOP lines (place names filled async)
@@ -6006,7 +6009,19 @@
         });
       });
       wrap.appendChild(replanBtn);
-      msgs.appendChild(wrap);
+      // Structural rebuild (session 23): a merged "extra" charger changes the NUMBER
+      // of steps, not just a field on an existing one — the incremental patch pattern
+      // every other async update uses (mutate a field, refresh the DOM) cannot add a
+      // whole new lettered row safely. Rebuilding this same function from the FINAL,
+      // settled _tpLastResult and swapping it in for the old bubble is simpler and
+      // safer than patching structure into place, and it only happens once (after
+      // Phase F settles), not repeatedly.
+      if (payload._rebuild && _lastItinWrapEl && _lastItinWrapEl.parentNode === msgs) {
+        msgs.replaceChild(wrap, _lastItinWrapEl);
+      } else {
+        msgs.appendChild(wrap);
+      }
+      _lastItinWrapEl = wrap;
       msgs.scrollTop = msgs.scrollHeight;
       return wrap;
     }
@@ -6556,6 +6571,18 @@
     }
     function updateItineraryStops() {
       try {
+        // Structural rebuild (session 23): a merged "extra" charger adds a whole new
+        // lettered step, not just a field change — rebuild the bubble from the FINAL
+        // _tpLastResult (once, when Phase F settles) instead of patching in place.
+        if (window._tpLastResult && window._tpLastResult.stops_changed) {
+          window._tpLastResult.stops_changed = false;
+          var rebuildPayload = {};
+          for (var rk in window._tpLastResult) { if (window._tpLastResult.hasOwnProperty(rk)) rebuildPayload[rk] = window._tpLastResult[rk]; }
+          rebuildPayload._rebuild = true;
+          rebuildPayload.charging_pending = false;   // this render already reflects the settled plan
+          addItineraryBubble(rebuildPayload);
+          return;   // the rebuild already reflects every field the code below would have patched
+        }
         var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
         _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); if (s.row && s.it) paintChargeRow(s.row, s.it); if (s.meta && s.it) fillStopMeta(s.meta, s.it); });
         // Chargers the trip needs that pair with no cash stop: they are NOT card steps
