@@ -4959,6 +4959,7 @@
     // (a real user tap, so the browser will not block the pop-up).
     var ITIN_LBL = {
       it: { drive: 'Guida', stop: 'Sosta', charge: 'Ricarica', min: 'min', toward: 'verso', then: 'poi verso', arrive: 'arrivo a',
+        favourable: 'favorevoli', noWindow: 'nessuna finestra', tapDetails: 'tocca per i dettagli della tappa', favDir: 'direzione Qimen favorevole (cash)', bestTrip: 'la migliore del viaggio', xkHour: 'ora XKDG favorevole alla persona',
         realRoad: 'strada reale', driving: 'di guida', estimate: 'stima in linea retta',
         chPending: '\ud83d\udd0c Ricarica: ricerca in corso\u2026', ch: '\ud83d\udd0c Ricarica', addedMaps: 'aggiunta al percorso Maps',
         moreStops: 'altre soste', otherNet: 'altri operatori', lowPow: 'solo \u226580 kW \u2014 nessuna \u2265150 kW',
@@ -4972,6 +4973,7 @@
         replanStale: '\u26a0 GPS non fresco \u2014 uso l\u2019ultima posizione salvata', replanNoGps: '\u26a0 Nessuna posizione GPS disponibile', replanNoDest: '\u26a0 Destinazione non trovata \u2014 rifai lo SCAN nel pannello',
         exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a' },
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
+        favourable: 'favourable', noWindow: 'no window', tapDetails: 'tap for the stop details', favDir: 'favourable Qimen direction (cash)', bestTrip: 'best of the trip', xkHour: 'favourable XKDG person-hour',
         realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
         chPending: '\ud83d\udd0c Charging: searching\u2026', ch: '\ud83d\udd0c Charging', addedMaps: 'added to the Maps route',
         moreStops: 'more stops', otherNet: 'other networks', lowPow: 'only \u226580 kW \u2014 no \u2265150 kW',
@@ -4985,6 +4987,7 @@
         replanStale: '\u26a0 GPS fix failed \u2014 using the last saved position', replanNoGps: '\u26a0 No GPS position available', replanNoDest: '\u26a0 Destination not found \u2014 run SCAN in the planner first',
         exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near' },
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
+        favourable: 'favorables', noWindow: 'aucune fen\u00eatre', tapDetails: 'appuyez pour les d\u00e9tails de l\u2019\u00e9tape', favDir: 'direction Qimen favorable (cash)', bestTrip: 'la meilleure du voyage', xkHour: 'heure XKDG favorable \u00e0 la personne',
         realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
         chPending: '\ud83d\udd0c Recharge : recherche\u2026', ch: '\ud83d\udd0c Recharge', addedMaps: 'ajout\u00e9e \u00e0 l\u2019itin\u00e9raire Maps',
         moreStops: 'autres arr\u00eats', otherNet: 'autres r\u00e9seaux', lowPow: '\u226580 kW seulement \u2014 aucune \u2265150 kW',
@@ -5147,11 +5150,14 @@
       if (!qimenHtml) { try { addBubble('assistant', '\u26A0 Could not open the Qimen chart for this hour.'); } catch (e2) {} return; }
       _vbOverlay('<div style="font-weight:700;color:#6a1b9a;margin-bottom:6px;">\uD83E\uDDED Qimen hour \u00b7 ' + (h.from || '') + '\u2013' + (h.to || '') + '</div>' + qimenHtml, '#6a1b9a');
     }
-    // Collapsible per-hour panel: every 时辰 of the trip, classified CASH / DETOUR /
-    // DRIVE, with the activated QMDJ setting, the stop length, and a 🔍 button that
-    // opens its rotating QMDJ chart. Open by default so the chart buttons are visible.
-    function addHoursPanel(wrap, hours, L, stepList) {
-      if (!hours || !hours.length) return;
+    // Every 时辰 of the trip, classified CASH / DETOUR / DRIVE, with its QMDJ setting,
+    // stop length and a 🔍 button for its rotating chart — but INDEXED BY ITINERARY STEP
+    // instead of listed in a parallel panel. The card used to show the same journey twice
+    // (once per stop, once per hour); now each stop owns its own hours behind an expand.
+    // Returns { byRef: {'at A': [el…], '→ B': [el…]}, favByRef, summary }.
+    function hourDetailIndex(hours, L, stepList, prose) {
+      var out = { byRef: {}, favByRef: {}, summary: '' };
+      if (!hours || !hours.length) return out;
       stepList = stepList || [];
       function toMin(s) { var p = String(s || '').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
       var baseMin = stepList.length ? toMin(stepList[0].from || stepList[0].at) : 0;
@@ -5180,18 +5186,9 @@
       var _nDet = hours.filter(function (h) { return h.kind === 'detour'; }).length;
       var _nFav = _nCash + _nDet, _nNo = hours.length - _nFav;
       // ONE unified count: favourable = cash + detour (a detour IS a favourable hour —
-      // you deviate toward a fortunate direction). The old header counted only pure
-      // cash hours ("2/7") while the strips showed 5 coloured rows — confusing.
-      var head = elc('button', { style:
-        'width:100%;text-align:left;margin-top:8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:8px;' +
-        'padding:7px 9px;font-size:12px;font-weight:600;color:#4527a0;cursor:pointer;' },
-        '\u23f1 Hours \u00b7 ' + _nFav + '/' + hours.length + ' favourable (' + _nCash + ' cash + ' + _nDet + ' detour)' +
-        (_nNo ? ' \u00b7 ' + _nNo + ' no window' : '') + ' \u25be');
-      var body = elc('div', { style: 'display:block;margin-top:4px;' });
-      // Legend: what the colours and the stars mean (stars match the route list above).
-      body.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin:2px 0 4px;padding:0 2px;line-height:1.4;' },
-        '\u2b50 favourable Qimen direction (cash) \u00b7 \u2b50\u2b50 best of the trip \u00b7 \uD83D\uDD35 favourable XKDG person-hour \u00b7 green = cash stop \u00b7 yellow = detour \u00b7 grey = no favourable window \u00b7 pink row above = you plug in there'));
-      head.addEventListener('click', function () { body.style.display = (body.style.display === 'none') ? 'block' : 'none'; });
+      // you deviate toward a fortunate direction).
+      out.summary = '\u23f1 ' + _nFav + '/' + hours.length + ' ' + L.favourable + ' (' + _nCash + ' cash + ' + _nDet + ' detour)' +
+        (_nNo ? ' \u00b7 ' + _nNo + ' ' + L.noWindow : '');
       hours.forEach(function (h) {
         var isCash = (h.kind === 'cash'), isDetour = (h.kind === 'detour');
         var border = isCash ? '#43a047' : (isDetour ? '#f9a825' : '#bbb');
@@ -5225,23 +5222,32 @@
         }
         var txtWrap = elc('div', { style: 'flex:1;color:' + fg + ';' });
         var ref = stepRef(h);
+        // The plain-language sentence for this 时辰, if the story built one.
+        var _pr = prose ? prose[(h.from || '') + '|' + (h.to || '')] : null;
         var headRow = elc('div', { style: 'font-weight:600;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;' });
         var _star = _hrStar(h);
         if (_star) headRow.appendChild(elc('span', { style: 'flex:none;font-size:12px;' }, _star));
-        if (ref) headRow.appendChild(elc('span', { style:
-          'flex:none;background:#ede7f6;color:#4527a0;border:1px solid #c9b6d6;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700;' }, ref));
-        headRow.appendChild(elc('span', {}, head1));
+        headRow.appendChild(elc('span', {}, head1));   // the 'at A' chip is gone: the row now sits INSIDE A
         txtWrap.appendChild(headRow);
         if (detail) txtWrap.appendChild(elc('div', { style: 'color:#555;margin-top:1px;' }, detail));
+        if (_pr) {
+          var _prEl = elc('div', { style: 'color:#444;margin-top:3px;font-size:12px;line-height:1.5;font-style:italic;' });
+          _prEl.innerHTML = _pr;
+          txtWrap.appendChild(_prEl);
+        }
         var btn = elc('button', { style:
           'flex:none;background:#6a1b9a;color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;' }, '\uD83D\uDD0D');
         btn.title = 'Qimen chart';
         btn.addEventListener('click', function (ev) { ev.stopPropagation(); openHourQimen(h); });
         row.appendChild(txtWrap); row.appendChild(btn);
-        body.appendChild(row);
+        var key = ref || '\u2014';
+        (out.byRef[key] = out.byRef[key] || []).push(row);
+        // Does this step have ANY fortunate hour? Edu: a stop with no favourable direction
+        // must be visible WITHOUT opening the expand.
+        if (_hrFortunate(h)) out.favByRef[key] = true;
+        else if (!(key in out.favByRef)) out.favByRef[key] = false;
       });
-      wrap.appendChild(head);
-      wrap.appendChild(body);
+      return out;
     }
     // Plain-language, one-line-per-stop journey story built from the FINISHED plan
     // (real stops, times, cash/detour). 🔴 for stops (A,B,C…), 🔵 for recharges,
@@ -5249,6 +5255,7 @@
     function addItineraryBubble(payload) {
       payload = payload || {};
       var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+      var _proseByHour = null, _closingProse = '';
       var wrap = elc('div', { style:
         'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #e0d4e8;color:#222;' +
         'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:14px;line-height:1.5;word-wrap:break-word;' });
@@ -5288,6 +5295,7 @@
             });
           };
           var _rows = [];
+          _proseByHour = {};      // 'from|to' -> the sentence for that 时辰 (goes in the step's expand)
           _H.forEach(function (h) {
             var win = (h.from || '') + '\u2013' + (h.to || '');
             var gz = h.ganzhi ? (' ' + h.ganzhi) : '';
@@ -5302,6 +5310,7 @@
               line += 'nessuna direzione favorevole in quest\u2019ora \u2014 prosegui verso ' + (h.roadDir || '?') + '.';
             }
             _rows.push(line);
+            _proseByHour[(h.from || '') + '|' + (h.to || '')] = line;
             here.forEach(function (s) {
               var t = '\uD83D\uDD34 <b>' + s.letter + '</b> \u00b7 alle <b>' + s.at + '</b>' + (s.place ? ' \u00b7 ' + s.place : '');
               if (h.kind === 'cash' || h.kind === 'detour') t += ' \u00b7 qui <b>fermati \u226520 min per fare cash</b>';
@@ -5313,17 +5322,13 @@
               _rows.push('\u21b3 <i>il cash di quest\u2019ora si incassa arrivando (nessuna sosta intermedia)</i>');
             }
           });
+          // The arrival note is the only sentence that belongs to no single hour, so it
+          // stays visible; everything else moved into the per-step expands.
           if (payload.arrival_cash_note) {
-            _rows.push('\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b> <b>dentro un\u2019ora favorevole</b>: l\u2019arrivo stesso \u00e8 il <b>cash</b> \u2014 le ore favorevoli senza sosta si chiudono cos\u00ec.');
-          } else {
-            _rows.push('\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b>.');
+            _closingProse = '\uD83C\uDFC1 Arrivi a <b>' + (payload.dest || '') + '</b> <b>dentro un\u2019ora favorevole</b>: l\u2019arrivo stesso \u00e8 il <b>cash</b> \u2014 le ore favorevoli senza sosta si chiudono cos\u00ec.';
           }
-          _rows.push('<i>Buon Viaggio</i>');
-          var _story = elc('div', { style: 'margin:2px 0 8px;font-size:13.5px;line-height:1.6;' });
-          _story.innerHTML = _rows.join('<br><br>');
-          wrap.appendChild(_story);
         }
-      } catch (eStory) {}
+      } catch (eStory) { _proseByHour = null; }
       // ---- Map-letter alignment ---------------------------------------------------
       // Google Maps labels POINTS: origin = A, each stop = B, C, ... (in route order),
       // destination = the next letter. Drives are the lines BETWEEN letters, not points.
@@ -5403,22 +5408,64 @@
 
       var listEl = elc('div', { style: 'margin:0;' });
       _itinStopEls = [];
-      var stepList = [];   // map itinerary steps to times AND to map letters, for the Hours panel
-      // Origin (A, green like the Maps start pin)
+      var stepList = [];   // map itinerary steps to times AND to map letters
+      // Two passes: the first only needs the times+letters so the hour index can be built,
+      // the second draws the rows and hangs each step's hours inside its own expand.
+      (function () {
+        var k = 0;
+        legs.forEach(function (it) {
+          if (it.kind === 'drive') stepList.push({ kind: 'drive', from: it.from, to: it.to, toLetter: it.arrival ? destLetter : (stopLetters[k] || destLetter) });
+          else { stepList.push({ kind: 'stop', at: it.at, letter: stopLetters[k] }); k++; }
+        });
+      })();
+      var _hIdx = hourDetailIndex(payload.hours, L, stepList, _proseByHour);
+      // Hang a step's 时辰 rows under its own line, CLOSED by default (Edu): collapsed you
+      // see the whole trip on one screen; open one step and you get its hours, its QMDJ
+      // setting and its 🔍 charts. `noWin` paints the grey badge that must stay visible
+      // WITHOUT expanding — a stop with no favourable direction has to be readable at a glance.
+      function attachDetail(rowEl, ref) {
+        var rows = _hIdx.byRef[ref];
+        if (!rows || !rows.length) return null;
+        if (_hIdx.favByRef[ref] === false) {
+          rowEl.appendChild(elc('span', { style:
+            'flex:none;margin-left:5px;background:#eee;color:#666;border:1px solid #ddd;border-radius:9px;' +
+            'padding:0 6px;font-size:10px;font-weight:700;white-space:nowrap;' }, L.noWindow));
+        }
+        var body = elc('div', { style: 'display:none;margin:1px 0 5px 25px;' });
+        rows.forEach(function (r) { body.appendChild(r); });
+        var tog = elc('button', { style:
+          'flex:none;margin-left:5px;background:#f3eef8;color:#4527a0;border:1px solid #e0d4e8;border-radius:6px;' +
+          'padding:1px 6px;font-size:11px;font-weight:700;cursor:pointer;line-height:1.5;' }, '\u25b8');
+        tog.title = 'Details';
+        tog.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          var open = (body.style.display !== 'none');
+          body.style.display = open ? 'none' : 'block';
+          tog.textContent = open ? '\u25b8' : '\u25be';
+        });
+        rowEl.appendChild(tog);
+        return body;
+      }
+      // Origin (green like the Maps start pin)
       listEl.appendChild(ptLine('', '#2e7d32', (payload.origin || 'Origin')).row);   // start dot, no letter (Maps does not letter the origin)
       var si = 0;
       legs.forEach(function (it) {
         if (it.kind === 'drive') {
           var toL = it.arrival ? destLetter : (stopLetters[si] || destLetter);
-          stepList.push({ kind: 'drive', from: it.from, to: it.to, toLetter: toL });
           var dtxt = L.drive + ' ' + it.from + ' \u2192 ' + it.to + ' (' + it.hours + 'h) ' + L.toward + ' ' + it.toward + ' \u00b7 \u2192 ' + toL;
-          listEl.appendChild(elc('div', { style: 'margin:2px 0 2px 25px;color:#555;font-size:13px;' }, dtxt));
+          var dRow = elc('div', { style: 'display:flex;align-items:baseline;margin:2px 0 2px 25px;color:#555;font-size:13px;' });
+          dRow.appendChild(elc('span', { style: 'flex:1;' }, dtxt));
+          listEl.appendChild(dRow);
+          var dBody = attachDetail(dRow, '\u2192 ' + toL);
+          if (dBody) listEl.appendChild(dBody);
           if (it.arrival) {
-            listEl.appendChild(ptLine(destLetter, '#c62828', L.arrive + ' ' + (payload.dest || '') + (_starFor(destLetter) ? (' ' + _starFor(destLetter)) : '')).row);
+            var aPl = ptLine(destLetter, '#c62828', L.arrive + ' ' + (payload.dest || '') + (_starFor(destLetter) ? (' ' + _starFor(destLetter)) : ''));
+            listEl.appendChild(aPl.row);
+            var aBody = attachDetail(aPl.row, 'at ' + destLetter);
+            if (aBody) listEl.appendChild(aBody);
           }
         } else {
           var letter = stopLetters[si]; si++;
-          stepList.push({ kind: 'stop', at: it.at, letter: letter });
           var pl = ptLine(letter, '#1565c0', stopLineText(L, it));
           paintChargeRow(pl.row, it);
           var _st = _starFor(letter);
@@ -5427,16 +5474,28 @@
           var _meta = elc('div', { style: 'margin:1px 0 5px 25px;font-size:12px;line-height:1.35;' });
           fillStopMeta(_meta, it);
           listEl.appendChild(_meta);
+          var sBody = attachDetail(pl.row, 'at ' + letter);
+          if (sBody) listEl.appendChild(sBody);
           _itinStopEls.push({ el: pl.tx, row: pl.row, it: it, meta: _meta });
         }
       });
       wrap.appendChild(listEl);
+      if (_closingProse) {
+        var _clo = elc('div', { style: 'margin-top:6px;font-size:13px;line-height:1.5;color:#333;' });
+        _clo.innerHTML = _closingProse;
+        wrap.appendChild(_clo);
+      }
+      if (_hIdx.summary) wrap.appendChild(elc('div', { style:
+        'margin-top:7px;padding:5px 8px;background:#f3eef8;border:1px solid #e0d4e8;border-radius:7px;' +
+        'font-size:12px;font-weight:600;color:#4527a0;' }, _hIdx.summary));
+      // Legend: what the markers mean. The strips themselves now live inside each step.
+      wrap.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin:3px 0 0;padding:0 2px;line-height:1.4;' },
+        '\u25b8 ' + L.tapDetails + ' \u00b7 \u2b50 ' + L.favDir + ' \u00b7 \u2b50\u2b50 ' + L.bestTrip + ' \u00b7 \uD83D\uDD35 ' + L.xkHour));
       _itinExitEls = [];
       if (payload.charging_pending || payload.charging) {
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
         wrap.appendChild(_itinChargeEl);
       } else { _itinChargeEl = null; }
-      addHoursPanel(wrap, payload.hours, L, stepList);
       var mapsBtn = elc('button', { style:
         'margin-top:9px;width:100%;padding:9px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, L.openMaps);
       mapsBtn.addEventListener('click', function () {
@@ -6239,8 +6298,30 @@
     }
 
     // 📤 Share the last itinerary, translated to English (Web Share, else clipboard).
+    // The itinerary is NOT the assistant's prose: it is built by the planner and lives in
+    // window._tpLastResult.text (the same lines the card is drawn from). Sharing
+    // lastAssistantText() sends whatever the model happened to say last — after a depart-day
+    // comparison that is the comparison, not the trip. So: plan first, chat text only as a
+    // fallback when no plan exists in this session.
+    function itineraryToShare() {
+      try {
+        var r = window._tpLastResult;
+        if (r && r.text && String(r.text).trim()) {
+          var head = [];
+          if (r.origin || r.dest) head.push((r.origin || '?') + ' \u2192 ' + (r.dest || '?'));
+          var sub = [];
+          if (r.km != null) sub.push(r.km + ' km');
+          if (r.driving_time) sub.push(r.driving_time);
+          if (r.snapped) sub.push('direction ' + r.snapped);
+          if (sub.length) head.push(sub.join(' \u00b7 '));
+          if (r.fav_summary) head.push(r.fav_summary);
+          return (head.length ? head.join('\n') + '\n\n' : '') + r.text;
+        }
+      } catch (e) {}
+      return lastAssistantText();
+    }
     function shareItinerary() {
-      var t = lastAssistantText();
+      var t = itineraryToShare();
       if (!t) { setStatus('Nothing to share yet — ask for an itinerary first.', '#b00'); return; }
       shareBtn.textContent = '…'; setStatus('Translating to English…');
       translateToEnglish(t).then(function (en) {
