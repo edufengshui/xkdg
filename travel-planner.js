@@ -224,12 +224,18 @@
     return EV_PEAK_KW * Math.pow(1 - t, EV_TAPER_GAMMA);
   }
   // Numerically integrates charge time (whole minutes) from socFrom% to socTo%.
-  function tpEvChargeTimeMin(socFrom, socTo) {
+  // capKw optional: caps the curve at a realistic sustained power (e.g. 150 kW at a
+  // REAL station along the road, rather than the car's own 205 kW peak — Edu, session
+  // 23: "limitare l'ottimistica previsione di una carica a 200kW ai più normali 150").
+  // Default (no capKw) = the car's own peak, unchanged: Phase E's forced-range stops
+  // (mkCharge) keep calling this the old way and are NOT affected by this addition.
+  function tpEvChargeTimeMin(socFrom, socTo, capKw) {
     if (!(socTo > socFrom)) return 0;
+    var cap = (capKw != null && capKw > 0) ? capKw : EV_PEAK_KW;
     var steps = 40, dSoc = (socTo - socFrom) / steps, hours = 0;
     for (var i = 0; i < steps; i++) {
       var soc = socFrom + dSoc * (i + 0.5);
-      var p = tpEvPowerAtSoc(soc);
+      var p = Math.min(tpEvPowerAtSoc(soc), cap);
       var dKwh = EV_USABLE_KWH * (dSoc / 100);
       if (p > 0) hours += dKwh / p;
     }
@@ -2568,6 +2574,7 @@
             if (pk.row.alongKm <= prevAlong + 1) { gap = true; break; }   // no forward progress → stop
             var dup = chosen.some(function (c) { return c.row.s.lat === pk.row.s.lat && c.row.s.lon === pk.row.s.lon; });
             if (dup) break;
+            pk.segStartAlong = prevAlong;   // where THIS segment began, for real SoC math below
             chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true;
             if (pk.scoreKept) keptCount++; else brokeCount++;
             prevAlong = pk.row.alongKm;
@@ -2597,6 +2604,47 @@
             (anyFb ? ' (other networks)' : '') +
             _openedNote +
             (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.' + tpSrcWarnText();
+
+          // Real SoC/duration at each REAL charger Phase F picked (session 23). Same
+          // segment-reset assumption as Phase E (every charge tops back up to
+          // TP_CHARGE_TARGET), walked along `chosen` in route order. Power is capped
+          // at 150 kW — the station's own rating if lower, never the car's 205 kW peak
+          // (Edu: a real charging session rarely sustains the car's own ceiling).
+          // null soc0/fullKm -> every stop below falls back to the old fixed 20 min,
+          // exactly like Phase E when the same data is missing.
+          try {
+            var _fFullKm = tpGetFullRange();
+            var _fLr = tpGetLiveRange();
+            var _fSoc0 = (_fLr && _fLr.soc != null && isFinite(_fLr.soc)) ? _fLr.soc
+              : ((_fFullKm > 0) ? Math.min(100, (range / _fFullKm) * 100) : null);
+            var _fPctPerKm = (_fFullKm > 0) ? (100 / _fFullKm) : null;
+            var _fCurSoc = (_fSoc0 != null && isFinite(_fSoc0)) ? _fSoc0 : null;
+            var _fTargetPct = TP_CHARGE_TARGET * 100;
+            chosen.forEach(function (c) {
+              var elapsedKm = c.row.alongKm - (c.segStartAlong != null ? c.segStartAlong : 0);
+              var socFrom = (_fCurSoc != null && _fPctPerKm != null)
+                ? Math.max(0, _fCurSoc - elapsedKm * _fPctPerKm) : null;
+              var capKw = Math.min(150, (c.row.s.maxKW && c.row.s.maxKW > 0) ? c.row.s.maxKW : 150);
+              var hasSoc = (socFrom != null && socFrom < _fTargetPct);
+              var durMin = hasSoc ? Math.max(5, tpEvChargeTimeMin(socFrom, _fTargetPct, capKw)) : 20;
+              var kwh = hasSoc ? tpEvEnergyKwh(socFrom, _fTargetPct) : null;
+              c.durationMin = durMin;
+              c.socFrom = hasSoc ? Math.round(socFrom) : null;
+              c.socTo = hasSoc ? Math.round(_fTargetPct) : null;
+              c.kwh = kwh;
+              if (_fCurSoc != null) _fCurSoc = _fTargetPct;
+              // Write onto the actual plan stop, when this charger coincides with one:
+              // tpStoreLastResult() already reads it.charge/durationMin/socFrom/socTo/kwh
+              // (session 23, Phase E plumbing) — reusing those SAME field names means
+              // no second wiring is needed downstream, the card picks this up for free.
+              if (c.stopRef) {
+                c.stopRef.charge = true;
+                c.stopRef.durationMin = durMin;
+                if (c.stopRef.atWall) c.stopRef.restartWall = new Date(c.stopRef.atWall.getTime() + durMin * 60000);
+                c.stopRef.socFrom = c.socFrom; c.stopRef.socTo = c.socTo; c.stopRef.kwh = kwh;
+              }
+            });
+          } catch (eSoc) { /* leave chosen[].durationMin undefined -> falls back to 20 min below */ }
 
           // Attach each chosen charger to its quadrant-exit stop so the Maps export
           // shows them interleaved (exit -> charger -> next exit ...). A fallback
@@ -2639,6 +2687,30 @@
               try { if (exEl) exEl.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
             });
           }
+          // The card (_tpLastResult / an already-open chat bubble) was built BEFORE this
+          // async charger search resolved, so its stop objects still hold the placeholder
+          // 20 min. Re-calling tpStoreLastResult() here would REPLACE window._tpLastResult
+          // .legs with brand-new objects, breaking the reference the open card's DOM holds
+          // (_itinStopEls[i].it) — same trap the OTHER async flow above avoids by mutating
+          // leg.place/leg.kind IN PLACE. Do the same: find each matching stored leg (by
+          // its "at" time, already unique per stop) and mutate it, then refresh the DOM.
+          try {
+            if (window._tpLastResult && window._tpLastResult.legs) {
+              var _storedLegs = window._tpLastResult.legs;
+              chosen.forEach(function (c) {
+                if (!c.stopRef || !c.stopRef.atWall) return;
+                var atStr = fmtHMonly(c.stopRef.atWall);
+                var match = _storedLegs.filter(function (Lg) { return Lg.kind !== 'drive' && Lg.at === atStr; })[0];
+                if (match) {
+                  match.kind = 'charge';
+                  match.duration_min = c.durationMin;
+                  match.restart = fmtHMonly(c.stopRef.restartWall);
+                  match.socFrom = c.socFrom; match.socTo = c.socTo; match.kwh = c.kwh;
+                }
+              });
+            }
+          } catch (eMatch) {}
+          try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (eUpd) {}
 
           chosen.forEach(function (c) {
             var r = c.row, s = r.s, when = new Date(r.etaMs);
