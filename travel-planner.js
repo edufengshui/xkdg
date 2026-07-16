@@ -4987,7 +4987,17 @@
     window._tpGuideShown = true;                       // don't show the guide overlay when the AI opens it
     // Auto-run charging ONLY when a real range was given. Without it we must NOT charge
     // off the panel's default value (that silently assumed ~200 km) — the AI should ask.
-    var wantCharge = (params.autoChargers !== false) && (parseFloat(params.rangeKm) > 0);
+    // Auto-run charging ONLY when a real range is known. The old test looked ONLY at
+    // params.rangeKm — the value the MODEL passed — so a natural-language trip never
+    // ran the charger search (and never showed the per-stop SoC targets) even when the
+    // car's LIVE range sat right there in storage from the xkdg-soc worker. A fresh
+    // live reading (same 2h freshness rule runChargerSearch itself applies) is a real
+    // figure, not the panel's blind default the original guard was protecting against.
+    var _wcRange = parseFloat(params.rangeKm);
+    if (!(_wcRange > 0)) {
+      try { var _wcLr = tpGetLiveRange(); if (_wcLr && _wcLr.km > 0 && (Date.now() - _wcLr.ts) < 2 * 3600000) _wcRange = _wcLr.km; } catch (e) {}
+    }
+    var wantCharge = (params.autoChargers !== false) && (_wcRange > 0);
     window._tpAutoChargers = wantCharge;               // auto-run "Find charging stops" after the plan
     window._tpChargerPending = wantCharge;             // hands-free navigation waits until this clears
     if (params.noSnap) window._tpNoSnap = true;                 // arrive-by: do NOT snap the departure (keep arrival exact)
