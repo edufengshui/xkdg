@@ -2428,6 +2428,21 @@
       tpSetOcmKey(key);
 
       var usableKm = range * (1 - reserve / 100);
+      // DYNAMIC REACH (session 23, Edu: "ho bisogno di un sistema dinamico, altrimenti
+      // durante il viaggio l'itinerario non è più realistico"). usableKm is the range
+      // from the CURRENT charge — correct for the FIRST leg only. The loop below used it
+      // for every leg, i.e. it assumed each recharge put you back exactly where you are
+      // now: leaving at 50% planned the whole trip in half-battery hops and invented
+      // stops that reality does not need. After a charge the reach is what the target
+      // charge gives (up to the 95% ceiling Edu allows), so track it separately.
+      var _fullKmR = 0; try { _fullKmR = tpGetFullRange() || 0; } catch (e) {}
+      // Same arithmetic the per-stop target below uses (reserve as SoC POINTS, not as a
+      // fraction of what's left): reach at the 95% ceiling = (95 - reserve)% of the full
+      // range. Deliberately the more conservative of the two formulas in play, so the
+      // loop can never pick a charger the charge target cannot actually reach.
+      var _afterChargeKm = (_fullKmR > 0) ? (Math.max(0, 95 - reserve) / 100) * _fullKmR : usableKm;
+      if (!(_afterChargeKm > 0)) _afterChargeKm = usableKm;
+      var _reachKm = usableKm;   // reach for the CURRENT leg; becomes _afterChargeKm after each stop
       var totalKm = idx.total / 1000;
       var O = result.origin;
       // departure + span for ETA (constant average speed)
@@ -2511,7 +2526,7 @@
                 // preferred stations still require a real power reading >= kw.
                 var powerOk = (r.isPref && !r.s.powerKnown) ? true : ((r.s.maxKW || 0) >= kw);
                 return r.alongKm >= lo && r.alongKm <= hi && powerOk &&
-                       (r.alongKm - prevAlong) >= 0 && (r.alongKm - prevAlong) <= usableKm;
+                       (r.alongKm - prevAlong) >= 0 && (r.alongKm - prevAlong) <= _reachKm;
               });
             }
             function closest(list) {
@@ -2558,8 +2573,8 @@
           // we charge there (rest + charge together). Stops once the destination is in range.
           var chosen = [], anyLow = false, anyFb = false, prevAlong = 0, gap = false, guard = 0;
           var keptCount = 0, brokeCount = 0;   // score-preserving vs score-breaking stops
-          while ((totalKm - prevAlong) > usableKm && guard++ < 15) {
-            var hi = prevAlong + usableKm;
+          while ((totalKm - prevAlong) > _reachKm && guard++ < 15) {
+            var hi = prevAlong + _reachKm;
             var pk = null;
             // (a) prefer a cash-stop boundary reachable within range — charge while resting
             var reach = bounds.filter(function (b) { return b.alongKm > prevAlong + 5 && b.alongKm <= hi; });
@@ -2580,8 +2595,9 @@
             chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true;
             if (pk.scoreKept) keptCount++; else brokeCount++;
             prevAlong = pk.row.alongKm;
+            _reachKm = _afterChargeKm;   // from here on you travel on a CHARGED battery, not today's leftover
           }
-          if (!gap && (totalKm - prevAlong) > usableKm) gap = true;        // tail leg still too long
+          if (!gap && (totalKm - prevAlong) > _reachKm) gap = true;        // tail leg still too long
 
           if (!chosen.length) {
             if ((totalKm - prevAlong) <= usableKm) {
@@ -2601,7 +2617,7 @@
           var _openedNote = (anyFb && brokeCount > 0)
             ? ' \u2014 opened to other networks to keep you moving; ' + brokeCount + ' stop' + (brokeCount === 1 ? '' : 's') + ' may lower the trip score.'
             : (brokeCount > 0 ? ' \u2014 ' + brokeCount + ' stop' + (brokeCount === 1 ? '' : 's') + ' fall in a less favourable hour.' : '');
-          status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' along the route (every \u2248' + Math.round(usableKm) + ' km)' +
+          status.textContent = '\u2713 ' + chosen.length + ' charging stop' + (chosen.length === 1 ? '' : 's') + ' along the route (first leg \u2248' + Math.round(usableKm) + ' km on the current charge, then \u2248' + Math.round(_afterChargeKm) + ' km per charged leg)' +
             (anyLow ? ' (a stop uses ' + TP_MIN_KW2 + '\u2013' + TP_MIN_KW + ' kW on a non-fortunate window \u2014 longer charge there costs nothing)' : '') +
             (anyFb ? ' (other networks)' : '') +
             _openedNote +
