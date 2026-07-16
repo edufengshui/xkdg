@@ -201,6 +201,8 @@
   // The default charge level reached at a fast stop on a trip (DC slows a lot
   // past 80%). Tunable.
   var TP_CHARGE_TARGET = 0.80;
+  var TP_LAST_MAPS_CHECKS = [];   // {cb, pos, stop}[] from the LAST Maps-export render;
+                                   // lets Phase F uncheck a stop it proves unnecessary.
 
   // --- EV DC fast-charging curve (session 23, Edu's real car numbers) ------
   // Two-segment power(SoC%) model: flat at peak power up to a plateau SoC,
@@ -2605,11 +2607,15 @@
             _openedNote +
             (gap ? ' \u2014 \u26a0\ufe0f a leg may exceed your range; add range or stops.' : '') + '.' + tpSrcWarnText();
 
-          // Real SoC/duration at each REAL charger Phase F picked (session 23). Same
-          // segment-reset assumption as Phase E (every charge tops back up to
-          // TP_CHARGE_TARGET), walked along `chosen` in route order. Power is capped
-          // at 150 kW — the station's own rating if lower, never the car's 205 kW peak
-          // (Edu: a real charging session rarely sustains the car's own ceiling).
+          // Real SoC/duration at each REAL charger Phase F picked (session 23).
+          // Target SoC is no longer flat at 80% for every stop: it is computed PER
+          // STOP from how far the NEXT chosen charger (or the destination) actually
+          // is. A short gap after this stop → charge little (Edu's "40→60% for a
+          // mini cash"); a long gap → charge more, up to the 95% ceiling (Edu's
+          // "90% to reach further"). This falls straight out of the route's own
+          // geometry — no separate rule needed for the two cases he described.
+          // Power is capped at 150 kW — the station's own rating if lower, never the
+          // car's 205 kW peak (Edu: a real session rarely sustains the car's ceiling).
           // null soc0/fullKm -> every stop below falls back to the old fixed 20 min,
           // exactly like Phase E when the same data is missing.
           try {
@@ -2619,20 +2625,34 @@
               : ((_fFullKm > 0) ? Math.min(100, (range / _fFullKm) * 100) : null);
             var _fPctPerKm = (_fFullKm > 0) ? (100 / _fFullKm) : null;
             var _fCurSoc = (_fSoc0 != null && isFinite(_fSoc0)) ? _fSoc0 : null;
-            var _fTargetPct = TP_CHARGE_TARGET * 100;
-            chosen.forEach(function (c) {
+            var _fReserveFrac = Math.max(0, Math.min(0.9, (reserve || 15) / 100));
+            var TARGET_CAP_PCT = 95;   // Edu, session 23: fine up to 95% when the stop
+                                       // itself costs nothing extra (e.g. a mall charger).
+            var TARGET_MARGIN_PCT = 5; // small safety buffer over the bare minimum needed
+            chosen.forEach(function (c, ci) {
               var elapsedKm = c.row.alongKm - (c.segStartAlong != null ? c.segStartAlong : 0);
               var socFrom = (_fCurSoc != null && _fPctPerKm != null)
                 ? Math.max(0, _fCurSoc - elapsedKm * _fPctPerKm) : null;
+              // How far to the NEXT already-chosen stop (or the destination, for the
+              // last one)? That distance — not a flat percentage — sets the target.
+              var nextAlongKm = (ci + 1 < chosen.length) ? chosen[ci + 1].row.alongKm : totalKm;
+              var gapKm = Math.max(0, nextAlongKm - c.row.alongKm);
+              var targetPct = null;
+              if (_fPctPerKm != null) {
+                var neededPct = (_fReserveFrac * 100) + (gapKm * _fPctPerKm) + TARGET_MARGIN_PCT;
+                targetPct = Math.min(TARGET_CAP_PCT, Math.max(neededPct, (socFrom != null ? socFrom : 0) + 5));
+              } else {
+                targetPct = TP_CHARGE_TARGET * 100;   // no full-range figure -> old flat fallback
+              }
               var capKw = Math.min(150, (c.row.s.maxKW && c.row.s.maxKW > 0) ? c.row.s.maxKW : 150);
-              var hasSoc = (socFrom != null && socFrom < _fTargetPct);
-              var durMin = hasSoc ? Math.max(5, tpEvChargeTimeMin(socFrom, _fTargetPct, capKw)) : 20;
-              var kwh = hasSoc ? tpEvEnergyKwh(socFrom, _fTargetPct) : null;
+              var hasSoc = (socFrom != null && socFrom < targetPct);
+              var durMin = hasSoc ? Math.max(5, tpEvChargeTimeMin(socFrom, targetPct, capKw)) : 20;
+              var kwh = hasSoc ? tpEvEnergyKwh(socFrom, targetPct) : null;
               c.durationMin = durMin;
               c.socFrom = hasSoc ? Math.round(socFrom) : null;
-              c.socTo = hasSoc ? Math.round(_fTargetPct) : null;
+              c.socTo = hasSoc ? Math.round(targetPct) : null;
               c.kwh = kwh;
-              if (_fCurSoc != null) _fCurSoc = _fTargetPct;
+              if (_fCurSoc != null) _fCurSoc = targetPct;
               // Write onto the actual plan stop, when this charger coincides with one:
               // tpStoreLastResult() already reads it.charge/durationMin/socFrom/socTo/kwh
               // (session 23, Phase E plumbing) — reusing those SAME field names means
@@ -2645,6 +2665,7 @@
               }
             });
           } catch (eSoc) { /* leave chosen[].durationMin undefined -> falls back to 20 min below */ }
+
 
           // Attach each chosen charger to its quadrant-exit stop so the Maps export
           // shows them interleaved (exit -> charger -> next exit ...). A fallback
@@ -2710,6 +2731,40 @@
               });
             }
           } catch (eMatch) {}
+          // Edu, session 23: forced-by-range stops (Phase E, blind) should be the LAST
+          // resort, not the default — this is the concrete fix ("lo AI costruisce un
+          // itinerario dove mi devo fermare anche se non ce n'è bisogno"). A forced stop
+          // is provably UNNECESSARY when (a) the whole trip turned out coverable end to
+          // end by REAL chargers (gap === false, computed above) AND (b) THIS SPECIFIC
+          // forced stop never got a real charger attached by Phase F's own bounds-match
+          // (which already tries — see `bounds` above, built from EVERY stop incl.
+          // forced ones). If Phase F found no gap yet skipped straight past it, nothing
+          // was ever needed there. Never removes the row (would desync the A/B/C… map
+          // letters other lines already reference) — greys it out instead.
+          try {
+            if (!gap && result.plan && window._tpLastResult && window._tpLastResult.legs) {
+              var _storedLegs2 = window._tpLastResult.legs;
+              result.plan.forEach(function (fp) {
+                if (fp.type === 'stop' && fp.rangeForced && !fp.charger && fp.atWall) {
+                  fp.redundant = true;
+                  var atStr2 = fmtHMonly(fp.atWall);
+                  var match2 = _storedLegs2.filter(function (Lg) { return Lg.kind !== 'drive' && Lg.at === atStr2; })[0];
+                  if (match2) match2.redundant = true;
+                  // Also uncheck it in the Maps-export checklist (session 23) — the
+                  // real-world stakes here are higher than the chat card: sending Edu
+                  // to a stop that was never needed is a wasted 20+ minutes on the road,
+                  // not just a confusing line of text. He can still re-check it by hand.
+                  try {
+                    var cbEntry = TP_LAST_MAPS_CHECKS.filter(function (x) { return x.stop === fp; })[0];
+                    if (cbEntry && cbEntry.cb) {
+                      cbEntry.cb.checked = false;
+                      cbEntry.cb.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                  } catch (eCb) {}
+                }
+              });
+            }
+          } catch (eRedund) {}
           try { if (window.XKDGChat && window.XKDGChat.updateItineraryStops) window.XKDGChat.updateItineraryStops(); } catch (eUpd) {}
 
           chosen.forEach(function (c) {
@@ -2778,6 +2833,9 @@
 
     // Stops checklist
     var checks = [];
+    TP_LAST_MAPS_CHECKS = checks;   // exposed so Phase F (async, later) can uncheck a
+                                     // stop it proves unnecessary — same `stop` object
+                                     // reference as `result.plan`'s entries (see below).
     if (stops.length) {
       var listWrap = el('div', { style: 'margin:6px 0 6px 4px;' });
       var _placePts = [];   // { span, pos } to fill with reverse-geocoded names
@@ -2982,6 +3040,14 @@
           socFrom: (it.socFrom != null ? it.socFrom : null),
           socTo: (it.socTo != null ? it.socTo : null),
           kwh: (it.kwh != null ? it.kwh : null),
+          // rangeForced: this stop exists ONLY because a leg exceeded usable range —
+          // not because of a favourable hour or a real charger (Phase E, blind).
+          // redundant: set later, ASYNC, by Phase F (session 23) — true only when the
+          // whole trip turned out coverable by REAL chargers and this specific forced
+          // stop never got one attached. False/undefined at first render; the card
+          // greys it out once (if) Phase F confirms it wasn't actually needed.
+          rangeForced: !!it.rangeForced,
+          redundant: false,
           place: null };
       });
       var exits = [];

@@ -4971,7 +4971,8 @@
         openMaps: '\ud83d\udccd Apri in Google Maps', opened: '\u2713 Aperto in Google Maps', blocked: '\u26a0 Pop-up bloccato \u2014 usa \u201cApri in Google Maps\u201d nel pannello',
         replan: '\ud83d\udd01 Ricalcola da qui', replanGps: '\ud83d\udccd Prendo il GPS\u2026', replanRun: '\u267b\ufe0f Ricalcolo\u2026',
         replanStale: '\u26a0 GPS non fresco \u2014 uso l\u2019ultima posizione salvata', replanNoGps: '\u26a0 Nessuna posizione GPS disponibile', replanNoDest: '\u26a0 Destinazione non trovata \u2014 rifai lo SCAN nel pannello',
-        exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a' },
+        exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a',
+        notNeeded: 'Non necessaria', notNeededWhy: 'un caricatore reale altrove copre gi\u00e0 questo tratto' },
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
         favourable: 'favourable', noWindow: 'no window', tapDetails: 'tap for the stop details', favDir: 'favourable Qimen direction (cash)', bestTrip: 'best of the trip', xkHour: 'favourable XKDG person-hour',
         realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
@@ -4985,7 +4986,8 @@
         openMaps: '\ud83d\udccd Open in Google Maps', opened: '\u2713 Opened in Google Maps', blocked: '\u26a0 Pop-up blocked \u2014 use \u201cOpen in Google Maps\u201d in the planner',
         replan: '\ud83d\udd01 Replan from here', replanGps: '\ud83d\udccd Getting GPS\u2026', replanRun: '\u267b\ufe0f Replanning\u2026',
         replanStale: '\u26a0 GPS fix failed \u2014 using the last saved position', replanNoGps: '\u26a0 No GPS position available', replanNoDest: '\u26a0 Destination not found \u2014 run SCAN in the planner first',
-        exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near' },
+        exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near',
+        notNeeded: 'Not needed', notNeededWhy: 'a real charger elsewhere already covers this stretch' },
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
         favourable: 'favorables', noWindow: 'aucune fen\u00eatre', tapDetails: 'appuyez pour les d\u00e9tails de l\u2019\u00e9tape', favDir: 'direction Qimen favorable (cash)', bestTrip: 'la meilleure du voyage', xkHour: 'heure XKDG favorable \u00e0 la personne',
         realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
@@ -4999,7 +5001,8 @@
         openMaps: '\ud83d\udccd Ouvrir dans Google Maps', opened: '\u2713 Ouvert dans Google Maps', blocked: '\u26a0 Pop-up bloqu\u00e9 \u2014 utilisez \u00ab Ouvrir dans Google Maps \u00bb dans le panneau',
         replan: '\ud83d\udd01 Replanifier d\u2019ici', replanGps: '\ud83d\udccd Acquisition GPS\u2026', replanRun: '\u267b\ufe0f Recalcul\u2026',
         replanStale: '\u26a0 Pas de fix GPS \u2014 derni\u00e8re position enregistr\u00e9e utilis\u00e9e', replanNoGps: '\u26a0 Aucune position GPS disponible', replanNoDest: '\u26a0 Destination introuvable \u2014 relancez SCAN dans le panneau',
-        exit: 'Sortie', quad: 'quadrant', limit: 'limite', near: 'pr\u00e8s de' }
+        exit: 'Sortie', quad: 'quadrant', limit: 'limite', near: 'pr\u00e8s de',
+        notNeeded: 'Non n\u00e9cessaire', notNeededWhy: 'un chargeur r\u00e9el ailleurs couvre d\u00e9j\u00e0 ce tron\u00e7on' }
     };
     function chatLang() {
       // Follow the language the user is actually writing in (the same basis the
@@ -5041,14 +5044,32 @@
     function paintChargeRow(rowEl, it) {
       try {
         if (!rowEl || !it) return;
+        if (it.redundant) {
+          // Proven unnecessary AFTER the fact (session 23): Phase F found the whole
+          // trip coverable by real chargers without ever needing this one. Grey it
+          // out rather than remove the row — removing would desync the A/B/C… map
+          // letters other lines already reference.
+          rowEl.style.background = '#f3f3f3';
+          rowEl.style.borderLeft = '3px solid #bbb';
+          rowEl.style.borderRadius = '7px';
+          rowEl.style.padding = '3px 6px 3px 4px';
+          rowEl.style.opacity = '0.6';
+          return;
+        }
         var isCharge = isChargeStop(it);
         rowEl.style.background = isCharge ? '#fdeef4' : '';
         rowEl.style.borderLeft = isCharge ? '3px solid #e91e63' : '';
         rowEl.style.borderRadius = isCharge ? '7px' : '';
         rowEl.style.padding = isCharge ? '3px 6px 3px 4px' : '';
+        rowEl.style.opacity = '';
       } catch (e) {}
     }
     function stopLineText(L, it) {
+      if (it.redundant) {
+        // it.at/it.toward still shown so the row stays legible in context; the
+        // duration/charge language is dropped since none of it applies any more.
+        return '\u23ed\ufe0f ' + L.notNeeded + ' @ ' + it.at + ' (' + L.notNeededWhy + '), ' + L.then + ' ' + it.toward;
+      }
       var what = isChargeStop(it) ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min)
                                   : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
       var where = it.place ? (' \u2014 ' + stopKindIcon(it.stopKind) + it.place + (it.stopPower ? ' (' + it.stopPower + ')' : '')) : '';
