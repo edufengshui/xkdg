@@ -5023,6 +5023,17 @@
     function stopKindIcon(k) {
       return k === 'charger' ? '\ud83d\udd0c ' : (k === 'fuel' ? '\u26fd ' : ((k === 'services' || k === 'rest_area' || k === 'parking') ? '\ud83c\udd7f\ufe0f ' : ''));
     }
+    // SINGLE SOURCE OF TRUTH for "is this stop a charge?".
+    // Two independent fields can say so and they do NOT always agree:
+    //   it.kind      === 'charge'   -> set when the planner books a stop AS a range charge
+    //   it.stopKind  === 'charger'  -> set by findStop() when a stop SNAPS onto a charger
+    // A cash/rest stop snapped onto a fast charger has stopKind='charger' but kind='stop',
+    // and that is the common case in practice. Testing only it.kind made the row print
+    // "Stop 20 min" while paintChargeRow (which tested both) painted it pink: the same row
+    // was a charge for the colour and a plain stop for the text. Everything routes here now.
+    function isChargeStop(it) {
+      return !!it && (it.kind === 'charge' || it.stopKind === 'charger');
+    }
     // PINK = a stop where you ACTUALLY plug in (a planned range charge, or a cash stop
     // snapped to a preferred fast charger). Plain cash/rest stops stay unpainted, so
     // the real charging stops jump out at a glance. Re-applied on every async update
@@ -5030,7 +5041,7 @@
     function paintChargeRow(rowEl, it) {
       try {
         if (!rowEl || !it) return;
-        var isCharge = (it.kind === 'charge') || (it.stopKind === 'charger');
+        var isCharge = isChargeStop(it);
         rowEl.style.background = isCharge ? '#fdeef4' : '';
         rowEl.style.borderLeft = isCharge ? '3px solid #e91e63' : '';
         rowEl.style.borderRadius = isCharge ? '7px' : '';
@@ -5038,8 +5049,8 @@
       } catch (e) {}
     }
     function stopLineText(L, it) {
-      var what = (it.kind === 'charge') ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min)
-                                        : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
+      var what = isChargeStop(it) ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min)
+                                  : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
       var where = it.place ? (' \u2014 ' + stopKindIcon(it.stopKind) + it.place + (it.stopPower ? ' (' + it.stopPower + ')' : '')) : '';
       var tf = null;
       try { if (it.place && window.TravelPlanner && window.TravelPlanner.cheapestTariff) tf = window.TravelPlanner.cheapestTariff(it.place); } catch (e) {}
@@ -5275,7 +5286,7 @@
           var _stops = [], _li = 0;
           _slegs.forEach(function (l) {
             if (l.kind === 'stop' || l.kind === 'charge') {
-              _stops.push({ letter: String.fromCharCode(65 + _li), at: l.at || '', place: l.place || '', charge: l.kind === 'charge', dur: l.duration_min || 20 });
+              _stops.push({ letter: String.fromCharCode(65 + _li), at: l.at || '', place: l.place || '', charge: isChargeStop(l), dur: l.duration_min || 20 });
               _li++;
             }
           });
@@ -6059,12 +6070,21 @@
       var txt = [op, it.addr].filter(Boolean).join(' \u00b7 ');
       if (txt) metaEl.appendChild(elc('span', { style: 'color:#666;' }, txt + (txt ? '  ' : '')));
       if (it.lat != null && it.lon != null && isFinite(it.lat) && isFinite(it.lon)) {
-        // A bare "lat,lon" query can drop Maps on a generic road point instead of the real
-        // business (e.g. a charger set back behind a shopping centre). When a NAME is known
-        // (charger/service snap), search BY NAME so Maps matches its own indexed listing —
-        // same convention already used by the whole-trip "Open in Google Maps" export.
-        var qText = (it.place && String(it.place).trim()) ? String(it.place).trim() : (it.lat + ',' + it.lon);
-        var a = elc('a', { href: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(qText),
+        // Name AND position — never one without the other.
+        // A bare "lat,lon" query drops Maps on a generic road point instead of the real
+        // business (e.g. a charger set back behind a shopping centre). But a bare NAME is
+        // worse: "?api=1&query=ELECTRA" searches the whole planet, so Maps zooms out far
+        // enough to hold every hit (observed: the whole of Austria at 7z) and the user has
+        // no idea which pin is their stop.
+        // The /maps/search/<name>/@<lat>,<lon>,<zoom>z form searches the name INSIDE that
+        // viewport, so Maps returns this charger's own indexed listing (with its parking
+        // entrance) already centred. Falls back to lat,lon when no name has been snapped yet.
+        var nm = (it.place && String(it.place).trim()) ? String(it.place).trim() : '';
+        var href = nm
+          ? 'https://www.google.com/maps/search/' + encodeURIComponent(nm) +
+            '/@' + it.lat + ',' + it.lon + ',16z'
+          : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(it.lat + ',' + it.lon);
+        var a = elc('a', { href: href,
           target: '_blank', rel: 'noopener',
           style: 'color:#1565c0;text-decoration:underline;white-space:nowrap;font-weight:600;' }, '\uD83D\uDCCD Open in Maps');
         metaEl.appendChild(a);
