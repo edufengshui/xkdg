@@ -336,6 +336,14 @@
     'open the full plan. Reply with ONE short line — do NOT list the days or invent times yourself.\n' +
     '- FIXED time ("I leave at 11 exactly/sharp", "tassativamente"): one call with depart_time "HH:MM" + ' +
     'fixed_time:true + open_planner:true.\n' +
+    '- NEVER CLAIM AN ACTION YOU DID NOT PERFORM (ABSOLUTE): saying "the Travel Planner is open", "the itinerary is ' +
+    'computing", "the card will appear" is TRUE ONLY in the same turn in which you actually called plan_travel / ' +
+    'search_travel_solutions / open_travel_planner AND its result says planner_opened:true. If the user answers a ' +
+    'question of yours with "yes, open it" (in any words, or by tapping a button), that answer is NOT an action: you ' +
+    'MUST make the tool call in THAT turn, with the same parameters plus open_planner:true — replying with a ' +
+    'description of the opening, without the call, is inventing an action and is the worst possible failure. If the ' +
+    'result says planner_opened:false, report its planner_error plainly and say the panel did not open. When you ask ' +
+    'whether to open the planner, ALWAYS offer it as buttons: [[BTN]] Apri Travel Planner=apri il travel planner | No grazie=no grazie\n' +
     '- TIME CONVENTION (important): every clock time the user says ("parto alle 12:00") and every time you report ' +
     '(from/to, wall_from, departure_planned) is the LOCAL LEGAL time on their phone — i.e. already daylight-saving ' +
     '(ora legale) when DST is in effect. NEVER convert it, and NEVER add or subtract an hour. The favourable ' +
@@ -3231,6 +3239,7 @@
       favorable_windows: windows.slice(0, 12)
     };
     if (openPlanner && origin && window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
+      var _openErr = null;
       try {
         if (input.from_current_position) { window._tpNoSnap = true; window._tpAutoDepart = false; }  // keep the exact "now" departure
         window.TravelPlanner.openPrefilled({
@@ -3242,7 +3251,18 @@
           reserveKm: (input.reserve_km != null) ? +input.reserve_km : null,
           run: true
         });
-      } catch (e) {}
+      } catch (e) { _openErr = String((e && e.message) || e); }
+      // VERIFY, never assume (session 23): the old code swallowed any error and
+      // declared planner_opened=true unconditionally — the AI then TOLD the user
+      // the planner was open when nothing had happened, and nobody could see why.
+      var _reallyOpen = !_openErr && !!document.getElementById('tp-overlay');
+      if (!_reallyOpen) {
+        baseOut.planner_opened = false;
+        baseOut.planner_error = _openErr || 'openPrefilled ran but the tp-overlay panel did not appear.';
+        baseOut.note = 'The Travel Planner did NOT open (' + baseOut.planner_error + '). Tell the user plainly that the ' +
+          'planner could not be opened and to report this — do NOT claim it is open, do NOT invent an itinerary.';
+        return baseOut;
+      }
       baseOut.planner_opened = true;
       baseOut.note = 'The planner is open and computing the real road route' +
         ((input.range_km != null) ? ' and the charging stops' : '') +
@@ -3388,7 +3408,8 @@
             run: true
           });
         } catch (e) {}
-        baseOut.planner_opened = true;
+        baseOut.planner_opened = !!document.getElementById('tp-overlay');   // VERIFIED, not assumed (session 23)
+        if (!baseOut.planner_opened) baseOut.planner_error = 'The planner panel did not appear — tell the user plainly, do NOT claim it is open.';
         baseOut.chosen_solution = { depart_clock: chosen.depClock, duration_h: chosen.durH, arrive_clock: chosen.arriveClock };
         baseOut.note = 'The planner is open on the SHORTEST solution (leaves ' + chosen.depClock + ', arrives ' + chosen.arriveClock +
           '). The full itinerary posts itself into THIS chat as a separate card. Reply with ONE short sentence: the chosen ' +
