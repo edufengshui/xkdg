@@ -612,28 +612,44 @@ var _fsReplacementOn = false;
 // grammar with Flying Stars fields (山/向/運) in place of QMDJ's (deity/
 // door/stems), instead of a bespoke canvas drawing.
 var _fsCardViewOn = false;
-function flyingStarsChartHtml(chart){
+function flyingStarsChartHtml(chart, boxW){
   if (!chart) return '';
   var GREEN = '#0d5e2c';
   var DIR_LBL = ['SE','S','SW','E','','W','NE','N','NW'];   // same idx scheme as flying-stars.js (South-top)
   var luoshu = FlyingStars.LUOSHU_BASE;
   var sittingIdx = FlyingStars.DIR_TO_INDEX[chart.sittingDirection];
 
+  // Proportional sizing (session 23 fix): the card used to have a hardcoded
+  // max-width:480px and fixed px font sizes, so on the wrap's real ~760px it
+  // rendered small and centred in a lot of empty space — it never filled the
+  // area the Luopan does. Same approach the (now-removed) canvas renderer
+  // used: every size is a FRACTION of the actual available width, so the
+  // card fills #fs-canvas-wrap exactly like the Luopan canvas does.
+  var W = (boxW > 200) ? boxW : 480;
+  var cell = W / 3;
+  var fTitle = Math.round(W * 0.034);
+  var fDirLbl = Math.round(cell * 0.11);
+  var fLuoshu = Math.round(cell * 0.13);
+  var fStar = Math.round(cell * 0.22);
+  var fBase = Math.round(cell * 0.30);
+  var fFooter = Math.round(W * 0.026);
+  var padCell = Math.max(4, Math.round(cell * 0.05));
+
   function cellHtml(idx){
     var isSitting = (idx === sittingIdx);
     var bg = isSitting ? '#fff3b0' : '#fff';
     var border = isSitting ? '3px solid #f9a825' : '1px solid ' + GREEN;
     var dirTxt = DIR_LBL[idx] || '';
-    return '<td style="background:'+bg+';padding:6px 7px;border:'+border+';width:33%;height:1px;">'
+    return '<td style="background:'+bg+';padding:'+padCell+'px;border:'+border+';width:33%;height:1px;">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
-      +   '<span style="color:#666;font-size:11px;font-weight:bold;">'+dirTxt+'</span>'
-      +   '<span style="color:#999;font-size:12px;">'+luoshu[idx]+'</span>'
+      +   '<span style="color:#666;font-size:'+fDirLbl+'px;font-weight:bold;">'+dirTxt+'</span>'
+      +   '<span style="color:#999;font-size:'+fLuoshu+'px;">'+luoshu[idx]+'</span>'
       + '</div>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">'
-      +   '<span style="color:#0a6e1f;font-weight:bold;font-size:20px;">'+chart.sittingStars[idx]+'</span>'
-      +   '<span style="color:#cc0000;font-weight:bold;font-size:20px;">'+chart.facingStars[idx]+'</span>'
+      +   '<span style="color:#0a6e1f;font-weight:bold;font-size:'+fStar+'px;">'+chart.sittingStars[idx]+'</span>'
+      +   '<span style="color:#cc0000;font-weight:bold;font-size:'+fStar+'px;">'+chart.facingStars[idx]+'</span>'
       + '</div>'
-      + '<div style="text-align:center;font-weight:bold;color:#1a1a2e;font-size:26px;margin-top:2px;">'+chart.baseStars[idx]+'</div>'
+      + '<div style="text-align:center;font-weight:bold;color:#1a1a2e;font-size:'+fBase+'px;margin-top:2px;">'+chart.baseStars[idx]+'</div>'
       + '</td>';
   }
 
@@ -646,11 +662,11 @@ function flyingStarsChartHtml(chart){
   var fPy = FlyingStars.MOUNTAIN_PINYIN[chart.facingMountain] || '';
   var sPy = FlyingStars.MOUNTAIN_PINYIN[chart.sittingMountain] || '';
   var replBadge = chart.replacement
-    ? ' <span style="background:#fff3e0;color:#e65100;border:1px solid #ffb74d;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:bold;">替卦 Repl</span>'
+    ? ' <span style="background:#fff3e0;color:#e65100;border:1px solid #ffb74d;border-radius:4px;padding:1px 6px;font-size:'+Math.round(fFooter*0.9)+'px;font-weight:bold;">替卦 Repl</span>'
     : '';
 
-  var html = '<div style="margin:0 auto;max-width:480px;border-radius:8px;overflow:hidden;background:'+GREEN+';">';
-  html += '<div style="background:#fff;color:'+GREEN+';padding:8px 12px;font-weight:bold;font-size:14px;text-align:center;border-bottom:2px solid '+GREEN+';">'
+  var html = '<div style="width:100%;max-width:'+W+'px;margin:0 auto;border-radius:8px;overflow:hidden;background:'+GREEN+';">';
+  html += '<div style="background:#fff;color:'+GREEN+';padding:'+Math.round(W*0.02)+'px '+Math.round(W*0.03)+'px;font-weight:bold;font-size:'+fTitle+'px;text-align:center;border-bottom:2px solid '+GREEN+';">'
        +   '\u2b50 Period ' + chart.period + ' Flying Stars' + replBadge
        + '</div>';
   html += '<table style="width:100%;border-collapse:collapse;background:'+GREEN+';">';
@@ -658,7 +674,7 @@ function flyingStarsChartHtml(chart){
   html += '<tr>' + cellHtml(3) + cellHtml(4) + cellHtml(5) + '</tr>';
   html += '<tr>' + cellHtml(6) + cellHtml(7) + cellHtml(8) + '</tr>';
   html += '</table>';
-  html += '<div style="background:#fff;color:#444;padding:6px 12px;text-align:center;font-size:12px;border-top:2px solid '+GREEN+';">'
+  html += '<div style="background:#fff;color:#444;padding:'+Math.round(W*0.015)+'px '+Math.round(W*0.03)+'px;text-align:center;font-size:'+fFooter+'px;border-top:2px solid '+GREEN+';">'
        +   'FACING ' + (fDeg != null ? fDeg + '\u00b0' : '?') + ' \u00b7 ' + fLabel + ' ' + chart.facingMountain + ' ' + fPy
        +   '<br>SITTING ' + (sDeg != null ? sDeg + '\u00b0' : '?') + ' \u00b7 ' + sLabel + ' ' + chart.sittingMountain + ' ' + sPy
        + '</div>';
@@ -686,7 +702,11 @@ function fsRenderCardView(){
     try { chart = FlyingStars.calculate(period, mountainChar, _fsReplacementOn); }
     catch (e) { box.innerHTML = '<div style="color:#c00;text-align:center;padding:20px;font-size:12px;">\u26a0 ' + e.message + '</div>'; return; }
   }
-  try { box.innerHTML = flyingStarsChartHtml(chart); }
+  try {
+    var wrapEl = document.getElementById('fs-canvas-wrap');
+    var W = (wrapEl && wrapEl.clientWidth > 0) ? wrapEl.clientWidth : (box.clientWidth || 480);
+    box.innerHTML = flyingStarsChartHtml(chart, W);
+  }
   catch (e) { console.warn('flyingStarsChartHtml', e); box.innerHTML = ''; }
 }
 
