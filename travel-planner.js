@@ -371,7 +371,14 @@
             socFromNow = Math.max(0, curSegStartSoc - elapsedKm * pctPerKm);
           }
           out.push(mkCharge(tc, it.heading, it.endSlotIdx, socFromNow));
-          inserted++; curStart = tc; lastChargeMs = tc; limit = afterMs; curSegStartSoc = TARGET_PCT;
+          // ROOT FIX (session 23): curStart/lastChargeMs used to advance to `tc`
+          // (ARRIVAL at the charger) — the charge's own duration was computed and
+          // shown on the stop, but the NEXT driving leg silently started at the
+          // same instant, as if charging took zero minutes. Read the charge just
+          // pushed and resume from ITS restartWall (arrival + real duration).
+          var _justCharged = out[out.length - 1];
+          var _restartMs = (_justCharged && _justCharged.restartWall) ? _justCharged.restartWall.getTime() : tc;
+          inserted++; curStart = _restartMs; lastChargeMs = _restartMs; limit = afterMs; curSegStartSoc = TARGET_PCT;
         }
         out.push(mkLeg(curStart, e, it.heading, it.note, it.startSlotIdx, it.endSlotIdx));
       } else if (it.type === 'stop') {
@@ -2773,15 +2780,52 @@
           try {
             if (window._tpLastResult && window._tpLastResult.legs) {
               var _storedLegs = window._tpLastResult.legs;
+              // Shift an "HH:MM" string by N minutes (session 23 helper — the cascading
+              // fix below needs it, nothing upstream provided one).
+              function _shiftHM(hm, deltaMin) {
+                var m = /^(\d{1,2}):(\d{2})$/.exec(hm || '');
+                if (!m || !deltaMin) return hm;
+                var total = ((parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + deltaMin) % 1440 + 1440) % 1440;
+                return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+              }
               chosen.forEach(function (c) {
                 if (!c.stopRef || !c.stopRef.atWall) return;
-                var atStr = fmtHMonly(c.stopRef.atWall);
-                var match = _storedLegs.filter(function (Lg) { return Lg.kind !== 'drive' && Lg.at === atStr; })[0];
-                if (match) {
-                  match.kind = 'charge';
-                  match.duration_min = c.durationMin;
-                  match.restart = fmtHMonly(c.stopRef.restartWall);
-                  match.socFrom = c.socFrom; match.socTo = c.socTo; match.kwh = c.kwh;
+                // Match by ARRAY POSITION (plan and _storedLegs share the same order/length
+                // via the original plan.map() build), not by comparing "at" strings — a
+                // string match would break for the SECOND+ charge corrected in this same
+                // loop, since the FIRST one's cascade has already shifted later strings.
+                var idx = plan.indexOf(c.stopRef);
+                if (idx < 0 || idx >= _storedLegs.length) return;
+                var match = _storedLegs[idx];
+                var atStr = match.at;   // this stop's OWN clock (possibly already shifted by an earlier charge's cascade — that's fine, exits compare against the current timeline)
+                // CASCADE FIX (session 23): the charge's real duration/restart (from Phase F,
+                // async) can differ a lot from the placeholder it replaces — a blind Phase E
+                // stop defaults to 20 min flat, but a real 20%→95% charge often needs 45-70+
+                // min (most of it in the slow tail of the curve). Before now only THIS stop's
+                // own fields were corrected; every "Drive HH:MM → HH:MM" and every later stop's
+                // clock AFTER it stayed frozen at the old estimate — Edu saw a charge start and
+                // the very next drive line begin at the SAME clock time, as if the charge took
+                // zero minutes. Shift everything from here on by the real delta.
+                var oldDurMin = (match.duration_min != null) ? match.duration_min : 20;
+                match.kind = 'charge';
+                match.duration_min = c.durationMin;
+                match.restart = fmtHMonly(c.stopRef.restartWall);
+                match.socFrom = c.socFrom; match.socTo = c.socTo; match.kwh = c.kwh;
+                var deltaMin = Math.round(c.durationMin - oldDurMin);
+                if (deltaMin) {
+                  for (var lj = idx + 1; lj < _storedLegs.length; lj++) {
+                    var Lg = _storedLegs[lj];
+                    if (Lg.kind === 'drive') { Lg.from = _shiftHM(Lg.from, deltaMin); Lg.to = _shiftHM(Lg.to, deltaMin); }
+                    else { Lg.at = _shiftHM(Lg.at, deltaMin); Lg.restart = _shiftHM(Lg.restart, deltaMin); }
+                  }
+                  if (window._tpLastResult.exits) {
+                    window._tpLastResult.exits.forEach(function (ex) {
+                      // Only exits strictly after this stop's ORIGINAL time — comparing the
+                      // (now-shifted) boundary via the stop's pre-shift clock avoids moving
+                      // exits that happened earlier in the trip.
+                      if (ex.at > atStr) ex.at = _shiftHM(ex.at, deltaMin);
+                    });
+                  }
                 }
               });
             }

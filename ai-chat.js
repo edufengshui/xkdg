@@ -5388,6 +5388,7 @@
         replanStale: '\u26a0 GPS non fresco \u2014 uso l\u2019ultima posizione salvata', replanNoGps: '\u26a0 Nessuna posizione GPS disponibile', replanNoDest: '\u26a0 Destinazione non trovata \u2014 rifai lo SCAN nel pannello',
         exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a',
         notNeeded: 'Non necessaria', notNeededWhy: 'un caricatore reale altrove copre gi\u00e0 questo tratto',
+        noPlaceYet: 'nessun luogo agganciato (posizione lungo il percorso)',
         extraCharges: 'Ricariche in pi\u00f9 necessarie (non sono tappe qui sopra)',
         extraChargesWhy: 'Sono nel percorso Google Maps. Non compaiono come tappe perch\u00e9 sposterebbero gli orari delle soste fuori dalle loro ore favorevoli.' },
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
@@ -5405,6 +5406,7 @@
         replanStale: '\u26a0 GPS fix failed \u2014 using the last saved position', replanNoGps: '\u26a0 No GPS position available', replanNoDest: '\u26a0 Destination not found \u2014 run SCAN in the planner first',
         exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near',
         notNeeded: 'Not needed', notNeededWhy: 'a real charger elsewhere already covers this stretch',
+        noPlaceYet: 'no place snapped yet (position along the route)',
         extraCharges: 'Extra charges needed (not steps above)',
         extraChargesWhy: 'They are in the Google Maps route. They are not shown as steps because they would push the stops out of their favourable hours.' },
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
@@ -5422,6 +5424,7 @@
         replanStale: '\u26a0 Pas de fix GPS \u2014 derni\u00e8re position enregistr\u00e9e utilis\u00e9e', replanNoGps: '\u26a0 Aucune position GPS disponible', replanNoDest: '\u26a0 Destination introuvable \u2014 relancez SCAN dans le panneau',
         exit: 'Sortie', quad: 'quadrant', limit: 'limite', near: 'pr\u00e8s de',
         notNeeded: 'Non n\u00e9cessaire', notNeededWhy: 'un chargeur r\u00e9el ailleurs couvre d\u00e9j\u00e0 ce tron\u00e7on',
+        noPlaceYet: 'aucun lieu associ\u00e9 (position sur l\u2019itin\u00e9raire)',
         extraCharges: 'Recharges suppl\u00e9mentaires n\u00e9cessaires (pas des \u00e9tapes ci-dessus)',
         extraChargesWhy: 'Elles sont dans l\u2019itin\u00e9raire Google Maps. Elles ne sont pas des \u00e9tapes car elles d\u00e9caleraient les arr\u00eats hors de leurs heures favorables.' }
     };
@@ -5495,6 +5498,10 @@
       var what = isChargeStop(it) ? (L.charge + ' ' + (it.duration_min || 20) + ' ' + L.min)
                                   : (L.stop + ' ' + (it.duration_min || 20) + ' ' + L.min);
       var where = it.place ? (' \u2014 ' + stopKindIcon(it.stopKind) + it.place + (it.stopPower ? ' (' + it.stopPower + ')' : '')) : '';
+      // Never leave a charge stop with NO location text at all — the real-place snap
+      // is async and can still be resolving, or can fail to find anything nearby
+      // (session 23: Edu saw a bare "Charge 14 min @ 20:16" with nothing after it).
+      if (!where && isChargeStop(it) && !it.redundant) where = ' \u2014 \u26a0\ufe0f ' + L.noPlaceYet;
       var tf = null;
       try { if (it.place && window.TravelPlanner && window.TravelPlanner.cheapestTariff) tf = window.TravelPlanner.cheapestTariff(it.place); } catch (e) {}
       var tariff = tf ? (' \u00b7 \uD83D\uDCB3 ' + tf.card + ' \u20ac' + tf.eur.toFixed(2) + '/kWh') : '';
