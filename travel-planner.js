@@ -309,6 +309,25 @@
         startSlotIdx: (ss != null ? ss : null), endSlotIdx: (es != null ? es : null),
         durationH: (e - s) / 3600000, note: note || '' };
     }
+    // Self-contained fortune check for a charge stop's arrival slot (session 23).
+    // Duplicates tpPlan's own roadFortunate() logic (same slot.dirs/bearingDest
+    // fields, populated once per slot and carried through) rather than threading a
+    // closure reference across functions — a charge stop landing in a fortunate
+    // hour IS fortunate; it was never even checked before.
+    function chargeSlotFortunate(slotIdx) {
+      if (slotIdx == null) return false;
+      var slot = slots[slotIdx];
+      if (!slot) return false;
+      // slot.bearingDest is set unconditionally for every slot (tpPlan's own
+      // build loop) — no outer-scope fallback needed or available here.
+      var deg = slot.bearingDest;
+      var name = tpSnapDir(deg);
+      var ds = slot.dirs || [];
+      for (var k = 0; k < ds.length; k++) {
+        if (ds[k].dir === name) return !!(ds[k].eval && ds[k].eval.ok);
+      }
+      return false;
+    }
     function mkCharge(tc, head, slotIdx, socFrom) {
       var p = posAt(tc);
       var targetPct = TP_CHARGE_TARGET * 100;
@@ -325,7 +344,11 @@
       return { type: 'stop', charge: true, durationMin: durMin, atWall: new Date(tc), restartWall: restart,
         newHeading: head, pos: { lat: p.lat, lon: p.lon }, cashDir: null, limitDeg: null,
         slotIdx: (slotIdx != null ? slotIdx : null), reason: 'charging stop (battery range)',
-        fortunate: false, rangeForced: true,
+        // FIX (session 23): this used to be hardcoded false — a charging stop was
+        // NEVER counted as fortunate no matter when it landed. Edu: "voglio che le
+        // tappe di ricarica stiano dentro un itinerario fortunato" — the very first
+        // step is to actually SEE when they already are.
+        fortunate: chargeSlotFortunate(slotIdx), rangeForced: true,
         socFrom: (hasSoc ? Math.round(socFrom) : null), socTo: (hasSoc ? Math.round(targetPct) : null),
         kwh: kwh };
     }
@@ -2484,6 +2507,12 @@
             .sort(function (a, b) { return a.alongKm - b.alongKm; });
 
           var PRE_KM = 50;   // look this far before each quadrant-exit boundary (50 km before the exit)
+          // How far PAST a boundary a charger may still be paired with it. Was hardcoded
+          // at 8 km, which lost a real pairing by ONE km on Vienna→Tuoro (ELECTRA at
+          // 609 km vs a stop at ~600 km → window ended at 608). A charger a few km past
+          // the stop is the same practical break; 25 km stays well inside the reach test
+          // in pool(), which independently caps everything at _reachKm.
+          var POST_KM = 25;
 
           // --- Score-preserving cascade (keep the trip >= 3/7 positive legs) -------
           // A charging stop hurts the trip score when its RESTART lands in an
@@ -2576,11 +2605,17 @@
           while ((totalKm - prevAlong) > _reachKm && guard++ < 15) {
             var hi = prevAlong + _reachKm;
             var pk = null;
-            // (a) prefer a cash-stop boundary reachable within range — charge while resting
+            // (a) prefer a cash-stop boundary reachable within range — charge while resting.
+            // Session 23: this used to try ONLY the farthest reachable boundary; if no
+            // charger sat next to THAT one, the pick fell through to (b)/(c) and produced
+            // a charger with no stopRef — which is invisible in the chat card (it only
+            // reaches the Maps export). Measured on Vienna→Tuoro: 4 chargers chosen, 3 of
+            // them stopRef-less, so the card showed 1 real charge out of 4. Try EVERY
+            // reachable boundary, farthest first, before giving up on a cash pairing.
             var reach = bounds.filter(function (b) { return b.alongKm > prevAlong + 5 && b.alongKm <= hi; });
-            if (reach.length) {
-              var bb = reach[reach.length - 1]; // farthest reachable boundary
-              pk = pickForWindow(Math.max(prevAlong + 1, bb.alongKm - PRE_KM), Math.min(hi, bb.alongKm + 8), prevAlong);
+            for (var _bi = reach.length - 1; _bi >= 0 && (!pk || !pk.row); _bi--) {
+              var bb = reach[_bi];
+              pk = pickForWindow(Math.max(prevAlong + 1, bb.alongKm - PRE_KM), Math.min(hi, bb.alongKm + POST_KM), prevAlong);
               if (pk && pk.row) pk.stopRef = bb.stop;
             }
             // (b) otherwise the farthest fast charger within range (near the range edge first)
@@ -2592,6 +2627,10 @@
             var dup = chosen.some(function (c) { return c.row.s.lat === pk.row.s.lat && c.row.s.lon === pk.row.s.lon; });
             if (dup) break;
             pk.segStartAlong = prevAlong;   // where THIS segment began, for real SoC math below
+            // Expose the tier ladder's own fortune judgment (session 23) — pickForWindow
+            // already prefers a restart-window-preserving charger FIRST (tiers 1/2/4);
+            // that decision existed but was silently discarded before now.
+            pk.fortunate = !!pk.scoreKept;
             chosen.push(pk); if (pk.lowPower) anyLow = true; if (pk.fallback) anyFb = true;
             if (pk.scoreKept) keptCount++; else brokeCount++;
             prevAlong = pk.row.alongKm;
@@ -2747,6 +2786,42 @@
               });
             }
           } catch (eMatch) {}
+          // Chargers Phase F chose that pair with NO cash stop (stopRef null) never reach
+          // the chat card — they only enter the Maps export. Measured on Vienna→Tuoro:
+          // 4 chosen, 1 visible. Inserting them as real steps would shift every later
+          // time and push the cash stops out of their favourable double-hours, so that
+          // needs a full replan (open work). Until then they are at least REPORTED, with
+          // their SoC/ETA, so the itinerary never understates how many stops it needs.
+          try {
+            if (window._tpLastResult) {
+              window._tpLastResult.extra_chargers = chosen.filter(function (c) { return !c.stopRef; })
+                .map(function (c) {
+                  return {
+                    name: (c.row.s.title && !/^\s*charger\s*$/i.test(c.row.s.title)) ? String(c.row.s.title).trim() : (c.row.s.operator || 'Charger'),
+                    km: Math.round(c.row.alongKm),
+                    kw: (c.row.s.maxKW > 0) ? Math.round(c.row.s.maxKW) : null,
+                    eta: fmtHMonly(new Date(c.row.etaMs)),
+                    socFrom: c.socFrom, socTo: c.socTo, kwh: c.kwh, duration_min: c.durationMin,
+                    fortunate: !!c.fortunate
+                  };
+                });
+              // Whole-trip lucky fraction (Edu, session 23): counts EVERY stop the
+              // itinerary actually needs — cash stops from the timeline plus BOTH kinds
+              // of charging stop (stopRef-linked, visible in the card, and the extra
+              // ones above) — so nothing is left out of the count the way extra_chargers
+              // used to be left out of the card.
+              try {
+                var _lr = window._tpLastResult;
+                var _cashStops = (_lr.legs || []).filter(function (it) { return it && it.type === 'stop'; });
+                var _cashFort = _cashStops.filter(function (it) { return !!it.fortunate; }).length;
+                var _chFort = chosen.filter(function (c) { return !!c.fortunate; }).length;
+                var _total = _cashStops.length + chosen.length;
+                var _fort = _cashFort + _chFort;
+                _lr.lucky_fraction = _total > 0 ? Math.round((_fort / _total) * 100) / 100 : null;
+                _lr.lucky_stops = _fort; _lr.total_stops = _total;
+              } catch (eFrac) {}
+            }
+          } catch (eExtra) {}
           // Edu, session 23: forced-by-range stops (Phase E, blind) should be the LAST
           // resort, not the default — this is the concrete fix ("lo AI costruisce un
           // itinerario dove mi devo fermare anche se non ce n'è bisogno"). A forced stop
@@ -5062,6 +5137,111 @@
     return true;
   }
 
+  // Search across departure DAYS for one where the resulting itinerary keeps
+  // MORE THAN HALF its stops (cash + charging) inside a fortunate window (Edu,
+  // session 23: "voglio che le tappe di ricarica stiano dentro un itinerario
+  // fortunato... se quel giorno non ci riesce se ne trova un altro, altrimenti
+  // mi dici che non ce ne sono"). Reuses the EXISTING single-day pipeline
+  // unchanged (openPrefilled -> real SCAN -> Phase E dynamic reach -> Phase F
+  // real chargers, all fixed earlier this session) once per candidate day —
+  // deliberately NOT a rewrite of the chain-trip stop-placement logic, which
+  // stays untouched. Coordinates only (no place names) to avoid re-geocoding
+  // the same origin/destination on every candidate day.
+  function tpFindLuckyDeparture(params, opts) {
+    opts = opts || {};
+    var maxDays = Math.max(1, Math.min(14, opts.maxDays || 5));
+    var threshold = (opts.threshold != null) ? opts.threshold : 0.5;
+    var startDate = opts.startDate || tpLocalISO(new Date());
+    return new Promise(function (resolve) {
+      var tried = [], day = 0;
+      function tryDay() {
+        var d = new Date(startDate + 'T00:00:00');
+        d.setDate(d.getDate() + day);
+        var dateStr = tpLocalISO(d);
+        var stampBefore = (window._tpLastResult && window._tpLastResult.stamp) || 0;
+        window._tpFromAI = false;   // this is a silent trial — only the FINAL pick posts a card
+        tpOpenPrefilled({
+          originLat: params.originLat, originLon: params.originLon,
+          destLat: params.destLat, destLon: params.destLon,
+          departDate: dateStr, autoDepart: true,
+          utc: params.utc, dst: params.dst,
+          rangeKm: opts.rangeKm, reserveKm: opts.reserveKm, run: true
+        });
+        var waited = 0;
+        var poll = setInterval(function () {
+          waited += 300;
+          var r = window._tpLastResult;
+          var fresh = r && r.stamp && r.stamp !== stampBefore;
+          var settled = fresh && !window._tpChargerPending;
+          if (settled || waited > 25000) {
+            clearInterval(poll);
+            var frac = (settled && r.lucky_fraction != null) ? r.lucky_fraction : null;
+            tried.push({ date: dateStr, lucky_fraction: frac, lucky_stops: r ? r.lucky_stops : null,
+              total_stops: r ? r.total_stops : null, timed_out: !settled });
+            if (frac != null && frac >= threshold) {
+              // Re-run this SAME winning day once more with _tpFromAI restored, so it
+              // posts the real chat card — every earlier trial (including this one)
+              // ran silently on purpose, so nothing posted yet.
+              var winDate = dateStr;
+              window._tpFromAI = true;
+              var stampBeforeFinal = (window._tpLastResult && window._tpLastResult.stamp) || 0;
+              tpOpenPrefilled({
+                originLat: params.originLat, originLon: params.originLon,
+                destLat: params.destLat, destLon: params.destLon,
+                departDate: winDate, autoDepart: true,
+                utc: params.utc, dst: params.dst,
+                rangeKm: opts.rangeKm, reserveKm: opts.reserveKm, run: true
+              });
+              var waited2 = 0;
+              var poll2 = setInterval(function () {
+                waited2 += 300;
+                var r2 = window._tpLastResult;
+                var settled2 = r2 && r2.stamp && r2.stamp !== stampBeforeFinal && !window._tpChargerPending;
+                if (settled2 || waited2 > 25000) {
+                  clearInterval(poll2);
+                  resolve({ ok: true, chosen_date: winDate, lucky_fraction: frac, days_tried: tried.length, tried: tried });
+                }
+              }, 300);
+              return;
+            }
+            day++;
+            if (day >= maxDays) {
+              var ranked = tried.filter(function (t) { return t.lucky_fraction != null; })
+                .sort(function (a, b) { return b.lucky_fraction - a.lucky_fraction; });
+              var bestT = ranked[0] || null;
+              if (!bestT) { resolve({ ok: false, best: null, days_tried: tried.length, tried: tried }); return; }
+              // No day cleared the threshold — still surface the CLOSEST one as a real
+              // card (re-run once more with _tpFromAI restored), so the user sees an
+              // actual itinerary instead of only a verdict.
+              window._tpFromAI = true;
+              var stampBeforeBest = (window._tpLastResult && window._tpLastResult.stamp) || 0;
+              tpOpenPrefilled({
+                originLat: params.originLat, originLon: params.originLon,
+                destLat: params.destLat, destLon: params.destLon,
+                departDate: bestT.date, autoDepart: true,
+                utc: params.utc, dst: params.dst,
+                rangeKm: opts.rangeKm, reserveKm: opts.reserveKm, run: true
+              });
+              var waited3 = 0;
+              var poll3 = setInterval(function () {
+                waited3 += 300;
+                var r3 = window._tpLastResult;
+                var settled3 = r3 && r3.stamp && r3.stamp !== stampBeforeBest && !window._tpChargerPending;
+                if (settled3 || waited3 > 25000) {
+                  clearInterval(poll3);
+                  resolve({ ok: false, best: bestT, days_tried: tried.length, tried: tried });
+                }
+              }, 300);
+              return;
+            }
+            tryDay();
+          }
+        }, 300);
+      }
+      tryDay();
+    });
+  }
+
   /* ===== LIVE COMPASS: autonomous + predictive ============================ *
    * Works on its own (no trip needed). From a REFERENCE point it shows, live
    * from GPS:
@@ -7254,6 +7434,7 @@
     compassControl: tpCompassControl,
     setCompassOrigin: tpCmpSetOriginFrom,
     openPrefilled: tpOpenPrefilled,
+    findLuckyDeparture: tpFindLuckyDeparture,
     evalPalace: tpPalaceOK,
     doorLabel: function (code) { return tpDoorLabel(code); },
     getLastResult: function () { return window._tpLastResult || null; },

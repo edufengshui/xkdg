@@ -431,8 +431,15 @@
     'period not set for that house), tell the user the chart cannot be computed and ask them to set facing & period - ' +
     'do NOT invent a star. When you call find_water_activation_full, also pass facing_deg and period from that floor so ' +
     'the special-config scan uses the SAME chart.\n' +
+    '- LONG EV TRIP, MAJORITY-FORTUNATE ITINERARY: when the user wants an EV trip that NEEDS charging stops (long ' +
+    'distance, range_km known) AND wants most of the itinerary to fall in fortunate windows ("voglio che le tappe di ' +
+    'ricarica stiano dentro un itinerario fortunato", "trova un altro giorno se serve"), use find_lucky_charge_day ' +
+    'instead of plan_travel directly \u2014 it searches departure days for you and posts the winning (or closest) day as ' +
+    'the normal card. Tell the user you are searching (it takes a while) before calling it. A plain "plan a trip" ' +
+    'without that emphasis still uses plan_travel as usual \u2014 this tool is for when the majority-fortunate condition ' +
+    'matters to the user.\n' +
     '- WATER-STAR VARIANT SEARCH: when the user asks to BUILD or FIND a chart variant whose WATER stars (\u5411\u661f) sit ' +
-    'in specific palaces (e.g. \"voglio la 9 water star a SW, la 6 a NW o NE, senza la 5 e la 2 a W e SE\"), CALL ' +
+    'in specific palaces (e.g. "voglio la 9 water star a SW, la 6 a NW o NE, senza la 5 e la 2 a W e SE"), CALL ' +
     'find_water_star_charts with require/exclude constraints - NEVER reason the flight out yourself. ALWAYS pass the ' +
     'base chart (base_period + base_facing_deg or base_facing_mountain, from the house or the user\'s words) - without ' +
     'it the toward-facing \u4ee4\u661f\u5165\u56da liberation variants are skipped. The pool is CLOSED (18 Luoshu flights + ruler-' +
@@ -1269,6 +1276,32 @@
       }
     },
     {
+      name: 'find_lucky_charge_day',
+      description: 'For a LONG EV trip that needs charging stops: search across departure DAYS for one where MORE ' +
+        'THAN HALF the trip\'s stops (cash stops + charging stops together) land inside a fortunate window. Reuses ' +
+        'the real single-day planner (real route, real chargers, real SoC) once per candidate day \u2014 it does NOT ' +
+        'invent a shortcut. If a day clears the 50% threshold it stops there and posts that itinerary as the normal ' +
+        'chat card. If NO day in the search window clears it, it says so explicitly and still posts the CLOSEST day ' +
+        'found as a card, with its exact fraction \u2014 so the user sees a real itinerary either way and can decide ' +
+        '(e.g. \"parto un altro giorno\" vs \"va bene comunque\"). Requires the route\'s origin/dest coordinates (usually ' +
+        'already known from the conversation) and the car\'s range (range_km, reserve_km) \u2014 without a range this is ' +
+        'no different from find fastest itinerary and should not be called. Takes 10-60+ seconds (several real plans ' +
+        'computed in sequence); tell the user you are searching before calling it.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          origin_lat: { type: 'number' }, origin_lon: { type: 'number' },
+          dest_lat: { type: 'number' }, dest_lon: { type: 'number' }, dest_name: { type: 'string' },
+          start_date: { type: 'string', description: 'YYYY-MM-DD to start searching from (defaults to today).' },
+          max_days: { type: 'integer', description: 'How many consecutive days to try (default 5, max 14).' },
+          threshold: { type: 'number', description: 'Fraction of stops that must be fortunate, 0-1 (default 0.5 = more than half).' },
+          range_km: { type: 'number', description: 'Current usable range in km (from the car\'s live SoC if known).' },
+          reserve_km: { type: 'number', description: 'Reserve to keep in km.' }
+        },
+        required: ['origin_lat', 'origin_lon', 'dest_lat', 'dest_lon', 'range_km']
+      }
+    },
+    {
       name: 'find_water_star_charts',
       description: 'Flying Stars WATER-STAR (\u5411\u661f) constraint solver. The water stars of ANY chart are fully ' +
         'determined by just two choices: the star at the centre (1-9) and the flight direction (\u9806 forward / \u9006 ' +
@@ -1372,6 +1405,41 @@
   // the NORM, not the exception. The tool therefore never just says "no": it
   // returns the nearest candidates with a per-constraint breakdown, so Edu can
   // see precisely which condition the Luoshu flight makes impossible to combine.
+  async function toolFindLuckyChargeDay(input) {
+    input = input || {};
+    if (!window.TravelPlanner || typeof window.TravelPlanner.findLuckyDeparture !== 'function')
+      return { error: 'Travel Planner not available on this page (needs the session-23 travel-planner.js).' };
+    if (input.origin_lat == null || input.dest_lat == null) return { error: 'Need origin_lat/lon and dest_lat/lon.' };
+    if (!(parseFloat(input.range_km) > 0)) return { error: 'Need range_km (current usable range) \u2014 without it use plan_travel instead.' };
+    var utc = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utc)) utc = 1;
+    var startDate = (/^\d{4}-\d{2}-\d{2}$/.test(input.start_date || '')) ? input.start_date : todayIso();
+    try {
+      var r = await window.TravelPlanner.findLuckyDeparture(
+        { originLat: +input.origin_lat, originLon: +input.origin_lon, destLat: +input.dest_lat, destLon: +input.dest_lon, utc: utc, dst: dstActiveOn(new Date()) },
+        { startDate: startDate, maxDays: input.max_days, threshold: input.threshold,
+          rangeKm: +input.range_km, reserveKm: (input.reserve_km != null) ? +input.reserve_km : null }
+      );
+      if (r.ok) {
+        return {
+          found: true, chosen_date: r.chosen_date, lucky_fraction: Math.round(r.lucky_fraction * 100) + '%',
+          days_tried: r.days_tried,
+          note: 'The itinerary for ' + r.chosen_date + ' is posted as the normal chat card (charging stops included, ' +
+            'more than the required fraction fortunate). Reply with ONE short sentence naming the date and the fraction ' +
+            '\u2014 do NOT paste the itinerary, it is already in the card below.'
+        };
+      }
+      return {
+        found: false, days_tried: r.days_tried,
+        closest: r.best ? { date: r.best.date, lucky_fraction: Math.round(r.best.lucky_fraction * 100) + '%' } : null,
+        note: r.best
+          ? 'NO day in the next ' + r.days_tried + ' cleared the threshold. The CLOSEST day (' + r.best.date + ', ' +
+            Math.round(r.best.lucky_fraction * 100) + '% fortunate) is posted as the chat card anyway so the user sees a ' +
+            'real itinerary. Tell them plainly no day met the bar, name the closest one and its fraction, and ask if ' +
+            'they want to use it, search further days, or relax the threshold.'
+          : 'No feasible itinerary was found at all in the search window \u2014 tell the user plainly and suggest widening the range or checking the route.'
+      };
+    } catch (e) { return { error: String((e && e.message) || e) }; }
+  }
   function toolFindWaterStarCharts(input) {
     try {
       if (typeof FlyingStars === 'undefined') return { error: 'flying-stars.js not loaded.' };
@@ -1748,6 +1816,7 @@
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
       if (name === 'find_lodging') return toolFindLodging(input || {});
+      if (name === 'find_lucky_charge_day') return toolFindLuckyChargeDay(input || {});
       if (name === 'configure_shelly') return toolConfigureShelly(input || {});
       if (name === 'program_aquarium_light') return toolProgramAquariumLight(input || {});
       if (name === 'aquarium_light') return toolAquariumLight(input || {});
@@ -5318,7 +5387,9 @@
         replan: '\ud83d\udd01 Ricalcola da qui', replanGps: '\ud83d\udccd Prendo il GPS\u2026', replanRun: '\u267b\ufe0f Ricalcolo\u2026',
         replanStale: '\u26a0 GPS non fresco \u2014 uso l\u2019ultima posizione salvata', replanNoGps: '\u26a0 Nessuna posizione GPS disponibile', replanNoDest: '\u26a0 Destinazione non trovata \u2014 rifai lo SCAN nel pannello',
         exit: 'Uscita', quad: 'quadrante', limit: 'limite', near: 'vicino a',
-        notNeeded: 'Non necessaria', notNeededWhy: 'un caricatore reale altrove copre gi\u00e0 questo tratto' },
+        notNeeded: 'Non necessaria', notNeededWhy: 'un caricatore reale altrove copre gi\u00e0 questo tratto',
+        extraCharges: 'Ricariche in pi\u00f9 necessarie (non sono tappe qui sopra)',
+        extraChargesWhy: 'Sono nel percorso Google Maps. Non compaiono come tappe perch\u00e9 sposterebbero gli orari delle soste fuori dalle loro ore favorevoli.' },
       en: { drive: 'Drive', stop: 'Stop', charge: 'Charge', min: 'min', toward: 'toward', then: 'then toward', arrive: 'arrive at',
         favourable: 'favourable', noWindow: 'no window', tapDetails: 'tap for the stop details', favDir: 'favourable Qimen direction (cash)', bestTrip: 'best of the trip', xkHour: 'favourable XKDG person-hour',
         realRoad: 'real road', driving: 'driving', estimate: 'straight-line estimate',
@@ -5333,7 +5404,9 @@
         replan: '\ud83d\udd01 Replan from here', replanGps: '\ud83d\udccd Getting GPS\u2026', replanRun: '\u267b\ufe0f Replanning\u2026',
         replanStale: '\u26a0 GPS fix failed \u2014 using the last saved position', replanNoGps: '\u26a0 No GPS position available', replanNoDest: '\u26a0 Destination not found \u2014 run SCAN in the planner first',
         exit: 'Exit', quad: 'quadrant', limit: 'limit', near: 'near',
-        notNeeded: 'Not needed', notNeededWhy: 'a real charger elsewhere already covers this stretch' },
+        notNeeded: 'Not needed', notNeededWhy: 'a real charger elsewhere already covers this stretch',
+        extraCharges: 'Extra charges needed (not steps above)',
+        extraChargesWhy: 'They are in the Google Maps route. They are not shown as steps because they would push the stops out of their favourable hours.' },
       fr: { drive: 'Route', stop: 'Arr\u00eat', charge: 'Recharge', min: 'min', toward: 'vers', then: 'puis vers', arrive: 'arriv\u00e9e \u00e0',
         favourable: 'favorables', noWindow: 'aucune fen\u00eatre', tapDetails: 'appuyez pour les d\u00e9tails de l\u2019\u00e9tape', favDir: 'direction Qimen favorable (cash)', bestTrip: 'la meilleure du voyage', xkHour: 'heure XKDG favorable \u00e0 la personne',
         realRoad: 'route r\u00e9elle', driving: 'de conduite', estimate: 'estimation \u00e0 vol d\u2019oiseau',
@@ -5348,7 +5421,9 @@
         replan: '\ud83d\udd01 Replanifier d\u2019ici', replanGps: '\ud83d\udccd Acquisition GPS\u2026', replanRun: '\u267b\ufe0f Recalcul\u2026',
         replanStale: '\u26a0 Pas de fix GPS \u2014 derni\u00e8re position enregistr\u00e9e utilis\u00e9e', replanNoGps: '\u26a0 Aucune position GPS disponible', replanNoDest: '\u26a0 Destination introuvable \u2014 relancez SCAN dans le panneau',
         exit: 'Sortie', quad: 'quadrant', limit: 'limite', near: 'pr\u00e8s de',
-        notNeeded: 'Non n\u00e9cessaire', notNeededWhy: 'un chargeur r\u00e9el ailleurs couvre d\u00e9j\u00e0 ce tron\u00e7on' }
+        notNeeded: 'Non n\u00e9cessaire', notNeededWhy: 'un chargeur r\u00e9el ailleurs couvre d\u00e9j\u00e0 ce tron\u00e7on',
+        extraCharges: 'Recharges suppl\u00e9mentaires n\u00e9cessaires (pas des \u00e9tapes ci-dessus)',
+        extraChargesWhy: 'Elles sont dans l\u2019itin\u00e9raire Google Maps. Elles ne sont pas des \u00e9tapes car elles d\u00e9caleraient les arr\u00eats hors de leurs heures favorables.' }
     };
     function chatLang() {
       // Follow the language the user is actually writing in (the same basis the
@@ -5367,6 +5442,7 @@
       return 'en';
     }
     var _itinChargeEl = null;   // charging line of the latest itinerary bubble (updated in place)
+    var _itinExtraEl = null;    // "extra chargers needed" box of the latest itinerary bubble
     var _itinExitEls = [];      // exit lines of the latest itinerary bubble (place names filled async)
     var _itinStopEls = [];      // numbered STOP lines (place names filled async)
     function stopKindIcon(k) {
@@ -5870,6 +5946,10 @@
       wrap.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin:3px 0 0;padding:0 2px;line-height:1.4;' },
         '\u25b8 ' + L.tapDetails + ' \u00b7 \u2b50 ' + L.favDir + ' \u00b7 \u2b50\u2b50 ' + L.bestTrip + ' \u00b7 \uD83D\uDD35 ' + L.xkHour));
       _itinExitEls = [];
+      // Container for chargers the planner needs but that pair with no cash stop —
+      // filled async by updateItineraryStops once Phase F resolves (session 23).
+      _itinExtraEl = elc('div', { style: 'display:none;margin-top:7px;padding:6px 8px;border-radius:7px;background:#fff8e1;border:1px solid #ffb74d;font-size:12px;line-height:1.45;color:#7a4f00;' });
+      wrap.appendChild(_itinExtraEl);
       if (payload.charging_pending || payload.charging) {
         _itinChargeEl = elc('div', { style: 'margin-top:6px;font-size:13px;color:#444;' }, chargingText(L, payload.charging || null));
         wrap.appendChild(_itinChargeEl);
@@ -6471,6 +6551,30 @@
       try {
         var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
         _itinStopEls.forEach(function (s) { if (s.el && s.it) s.el.textContent = stopLineText(L, s.it); if (s.row && s.it) paintChargeRow(s.row, s.it); if (s.meta && s.it) fillStopMeta(s.meta, s.it); });
+        // Chargers the trip needs that pair with no cash stop: they are NOT card steps
+        // (inserting them would shift every later time out of its favourable double-hour),
+        // but they must not be hidden either — the card would understate the stop count.
+        try {
+          if (_itinExtraEl) {
+            var xs = (window._tpLastResult && window._tpLastResult.extra_chargers) || [];
+            if (!xs.length) { _itinExtraEl.style.display = 'none'; _itinExtraEl.textContent = ''; }
+            else {
+              var html = '<b>\uD83D\uDD0B ' + L.extraCharges + '</b>';
+              xs.forEach(function (x) {
+                var bits = [];
+                if (x.km != null) bits.push('~' + x.km + ' km');
+                if (x.eta) bits.push('ETA ' + x.eta);
+                if (x.socFrom != null && x.socTo != null) bits.push(x.socFrom + '% \u2192 ' + x.socTo + '%');
+                if (x.duration_min) bits.push(x.duration_min + ' min');
+                html += '<br>\u2022 ' + String(x.name) + (x.kw ? ' (' + x.kw + ' kW)' : '') +
+                        (bits.length ? ' \u00b7 ' + bits.join(' \u00b7 ') : '');
+              });
+              html += '<br><i>' + L.extraChargesWhy + '</i>';
+              _itinExtraEl.innerHTML = html;
+              _itinExtraEl.style.display = 'block';
+            }
+          }
+        } catch (eX) {}
         msgs.scrollTop = msgs.scrollHeight;
       } catch (e) {}
     }
