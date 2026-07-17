@@ -5759,9 +5759,9 @@
       var nextLbl = c.next ? (c.next.han + (c.next.py ? ' ' + c.next.py : '')) : '';
       var m = c.minsLeft, urgent = m <= 15;
       return '<span style="' + (urgent ? 'color:#b00;font-weight:700;' : 'color:#7b1fa2;') + '">' +
-        '\u23f3 ' + curLbl + ' \u00b7 cambio ora tra <b>' + m + ' min</b>' +
+        '\u23f3 ' + curLbl + ' \u00b7 cambio ora tra <b style="font-size:34px;vertical-align:-2px;">' + m + ' min</b>' +
         (nextLbl ? ' \u2192 ' + nextLbl : '') +
-        (c.tst ? ' <span style="color:#999;font-weight:400;">(TST ' + c.tst + ')</span>' : '') +
+        (c.tst ? ' <span style="color:#999;font-weight:400;font-size:14px;">(TST ' + c.tst + ')</span>' : '') +
         '</span>';
     } catch (e) { return ''; }
   }
@@ -5771,7 +5771,11 @@
     try {
       var inner = tpCmpHourInner(lon);
       if (!inner) return '';
-      return '<div id="tp-cmp-hour" data-lon="' + lon + '" style="font-size:12px;margin-top:4px;">' + inner + '</div>';
+      // Driving-readable (Edu, session 23): this line was font-size:12px — unreadable
+      // at a glance behind the wheel. The countdown is THE number that decides when
+      // to stop, so it gets a big block of its own; tpCmpHourInner makes the minutes
+      // themselves even larger.
+      return '<div id="tp-cmp-hour" data-lon="' + lon + '" style="font-size:22px;line-height:1.3;margin-top:8px;text-align:center;">' + inner + '</div>';
     } catch (e) { return ''; }
   }
   // Light ticker: once a minute-ish, refresh the countdown text in place so it
@@ -5804,8 +5808,8 @@
     if (_abMode) {
       var rb = tpRhumbBearing(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
       var rdKm = tpHaversineKm(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
-      var abHtml = '<div style="font-size:46px;font-weight:800;line-height:1;color:#7b1fa2;">' + Math.round(rb) + '°</div>' +
-        '<div style="font-size:24px;font-weight:700;margin-top:2px;">' + tpQ8(rb) + '</div>' +
+      var abHtml = '<div style="font-size:64px;font-weight:800;line-height:1;color:#7b1fa2;">' + Math.round(rb) + '°</div>' +
+        '<div style="font-size:30px;font-weight:700;margin-top:2px;">' + tpQ8(rb) + '</div>' +
         '<div style="font-size:12px;color:#666;margin-top:4px;">constant course \u00b7 ' + (rdKm < 10 ? rdKm.toFixed(1) : Math.round(rdKm)) + ' km</div>' +
         tpCmpHourCountdownHtml(ref.lon) +
         '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-size:12px;text-align:left;color:#555;line-height:1.5;">' +
@@ -5827,8 +5831,8 @@
     var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
     var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
 
-    var html = '<div style="font-size:46px;font-weight:800;line-height:1;color:#1565c0;">' + Math.round(deg) + '°</div>' +
-      '<div style="font-size:24px;font-weight:700;margin-top:2px;">' + q + '</div>' +
+    var html = '<div style="font-size:64px;font-weight:800;line-height:1;color:#1565c0;">' + Math.round(deg) + '°</div>' +
+      '<div style="font-size:30px;font-weight:700;margin-top:2px;">' + q + '</div>' +
       '<div style="font-size:12px;color:#666;margin-top:4px;">' + refLabel + ' · ' + (distKm < 10 ? distKm.toFixed(1) : Math.round(distKm)) + ' km</div>' +
       tpCmpHourCountdownHtml(pos.lon);
     if (distKm < 1) html += '<div style="font-size:12px;color:#b58900;margin-top:4px;">Too close to the reference for a stable bearing — drive a bit.</div>';
@@ -6131,7 +6135,23 @@
       // then destination, then a single ▶ Go that resolves everything at once.
       // GO semantics: destination EMPTY -> original live-quadrant mode from the
       // origin; destination FILLED -> constant rhumb-line course ORIGIN -> DEST.
+      //
+      // COLLAPSIBLE (Edu, session 23: "l'importante è che direzione, mappa e
+      // countdown siano leggibili mentre guido"): the whole setup block —
+      // origin row, Here, from/to inputs, Go — is setup-time machinery that was
+      // eating the vertical space between the countdown and the map. A slim
+      // toggle keeps it one tap away; it starts COLLAPSED whenever an origin is
+      // already set (i.e. while actually driving), OPEN on a fresh panel.
+      var _ctrlOpen = !(_cmpOrigin || (window._tpLive && window._tpLive.originLat != null));
+      var ctrlToggle = el('button', { type: 'button', style: 'display:block;width:calc(100% - 20px);margin:4px 10px 0;background:#f4f0fa;color:#5e35b1;border:1px solid #d1c4e9;border-radius:7px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;text-align:left;' });
       var ctrl = el('div', { style: 'padding:0 10px 10px;border-top:1px solid #eee;' });
+      function _syncCtrl() {
+        ctrl.style.display = _ctrlOpen ? 'block' : 'none';
+        ctrlToggle.textContent = (_ctrlOpen ? '\u25be ' : '\u25b8 ') + '\u2699 Origin / Destination';
+      }
+      ctrlToggle.addEventListener('click', function () { _ctrlOpen = !_ctrlOpen; _syncCtrl(); setTimeout(function () { try { if (_cmpMap) _cmpMap.invalidateSize(); } catch (e) {} }, 60); });
+      ov.appendChild(ctrlToggle);
+      _syncCtrl();
       ctrl.appendChild(el('div', { id: 'tp-cmp-ref-label', style: 'font-size:11px;color:#666;margin:7px 0;' }));
       var hereBtn = el('button', { type: 'button', style: 'width:100%;background:#1565c0;color:#fff;border:0;border-radius:7px;padding:7px 9px;font-size:13px;font-weight:700;cursor:pointer;' }, '📍 Here — use my current position as origin');
       hereBtn.addEventListener('click', function () { tpCmpStart(); tpCmpSetOriginHere(); });
@@ -6171,6 +6191,8 @@
         }).then(function () {
           goBtn.textContent = '\u25b6 Go';
           tpCmpRefreshOnce();
+          _ctrlOpen = false; _syncCtrl();   // back to the driving view (session 23)
+          setTimeout(function () { try { if (_cmpMap) _cmpMap.invalidateSize(); } catch (e) {} }, 60);
         }).catch(function () { goBtn.textContent = '\u25b6 Go'; });
       }
       goBtn.addEventListener('click', doGo);
@@ -6182,7 +6204,7 @@
       // Mini map. (The old "⛶ Expand" map-only button is gone — the header ⛶ full
       // screen replaced it; voice "expand" still works for the big-map overlay.)
       var mapWrap = el('div', { id: 'tp-cmp-map-wrap', style: 'padding:0 10px 10px;' });
-      mapWrap.appendChild(el('div', { id: 'tp-cmp-map', style: 'width:100%;height:150px;border-radius:8px;overflow:hidden;background:#eef;margin-top:6px;' }));
+      mapWrap.appendChild(el('div', { id: 'tp-cmp-map', style: 'width:100%;height:48vh;min-height:300px;border-radius:8px;overflow:hidden;background:#eef;margin-top:6px;' }));
       ov.appendChild(mapWrap);
 
       document.body.appendChild(ov);
