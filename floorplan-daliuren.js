@@ -171,7 +171,7 @@
       ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(cap, cx, 6);
       ctx.fillStyle = '#5d4037'; ctx.fillText(cap, cx, 6);
       ctx.restore();
-    } catch (e) { /* never break the luopan */ }
+    } catch (e) { console.warn('FloorPlanDLR drawIfOn', e); /* never break the luopan — but never hide the reason either (session 23: this silent catch cost a whole debugging session) */ }
   }
 
   function toggleRing() {

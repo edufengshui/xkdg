@@ -7963,6 +7963,24 @@ function fsDrawSectionLuopan(){
     if (window._fsFSRecalled && typeof fsDrawFlyingStars === 'function'){
       fsDrawFlyingStars(ctx, cx, cy, outerR);
     }
+
+    // ═══ Overlay hooks (session 23 fix) ═══
+    // The Bed/Desk section luopan is drawn HERE, not by fsRedraw (which
+    // early-returns for these zones) — so the additive overlays hooked at the
+    // end of fsRedraw (Sun/Moon, Da Liu Ren ring) silently never fired in
+    // these sections: the DLR button toggled ON, the engine computed its 12
+    // sectors perfectly, and nothing appeared. Same hooks, same pattern,
+    // same rotation this section luopan itself uses (_srot).
+    try {
+      if (window.SunMoonMountain && typeof window.SunMoonMountain.drawIfOn === 'function') {
+        window.SunMoonMountain.drawIfOn(ctx, cx, cy, outerR, _srot);
+      }
+    } catch (eSM) { console.warn('SunMoonMountain overlay (section)', eSM); }
+    try {
+      if (window.FloorPlanDLR && typeof window.FloorPlanDLR.drawIfOn === 'function') {
+        window.FloorPlanDLR.drawIfOn(ctx, cx, cy, outerR, _srot);
+      }
+    } catch (eDLR) { console.warn('FloorPlanDLR overlay (section)', eDLR); }
   } catch(err){ console.warn('fsDrawSectionLuopan', err); }
 }
 
