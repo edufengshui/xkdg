@@ -209,16 +209,18 @@
   function _styleButton() {
     var b = document.getElementById('fs-dlr-toggle');
     if (!b) return;
-    b.textContent = st.ringOn ? '\uD83C\uDC04 DLR ON' : '\uD83C\uDC04 DLR';
-    b.style.background = st.ringOn ? '#5d4037' : '#fff';
-    b.style.color = st.ringOn ? '#fff' : '#5d4037';
+    var want = st.ringOn ? '\uD83C\uDC04 DLR ON' : '\uD83C\uDC04 DLR';
+    if (b.textContent !== want) b.textContent = want;   // idempotent — see _refreshYear
+    var bg = st.ringOn ? '#5d4037' : '#fff', fg = st.ringOn ? '#fff' : '#5d4037';
+    if (b.style.background !== bg) b.style.background = bg;
+    if (b.style.color !== fg) b.style.color = fg;
   }
 
   function _syncControls() {
     var wrap = document.getElementById('fs-canvas-wrap');
     if (!wrap) return;
     var bar = document.getElementById('fs-dlr-controls');
-    if (!st.ringOn) { if (bar) bar.style.display = 'none'; return; }
+    if (!st.ringOn) { if (bar && bar.style.display !== 'none') bar.style.display = 'none'; return; }
     if (!bar) {
       bar = document.createElement('div');
       bar.id = 'fs-dlr-controls';
@@ -242,10 +244,17 @@
       bar.appendChild(prev); bar.appendChild(ylabel); bar.appendChild(next); bar.appendChild(plan);
       wrap.appendChild(bar);
     }
-    bar.style.display = 'flex';
+    if (bar.style.display !== 'flex') bar.style.display = 'flex';
     _refreshYear();
   }
-  function _refreshYear() { var y = document.getElementById('fs-dlr-year'); if (y) y.textContent = String(st.year); }
+  function _refreshYear() {
+    var y = document.getElementById('fs-dlr-year');
+    // IDEMPOTENT (session 23): writing textContent replaces the text node even when
+    // the value is identical — a childList mutation the body-wide observer sees,
+    // which re-invoked this very function: an infinite microtask loop that froze
+    // the whole page the moment the ring turned ON. Write only on real change.
+    if (y && y.textContent !== String(st.year)) y.textContent = String(st.year);
+  }
 
   function ensureButton() {
     var wrap = document.getElementById('fs-canvas-wrap');
@@ -254,13 +263,34 @@
     b.id = 'fs-dlr-toggle'; b.type = 'button';
     b.title = 'Da Liu Ren annual chart — draw the 12 annual spirits around the luopan (and, from here, on the saved floor plan)';
     b.setAttribute('style',
-      'position:absolute;bottom:8px;left:8px;z-index:6;background:#fff;color:#5d4037;border:1px solid #5d4037;' +
-      'border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);');
-    b.addEventListener('click', toggleRing);
+      'position:absolute;bottom:8px;left:8px;z-index:30;background:#fff;color:#5d4037;border:1px solid #5d4037;' +
+      'border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);pointer-events:auto;');
+    b.addEventListener('click', _guardedToggle);
     wrap.appendChild(b);
     _styleButton();
     if (st.ringOn) _syncControls();
   }
+
+  // BELT AND BRACES (session 23): a DELEGATED click handler on the document.
+  // Direct listeners die silently if the button node is ever cloned or its
+  // subtree rebuilt by other UI code; a delegated handler survives all of that.
+  // Guarded so a click handled by the direct listener is not handled twice.
+  var _lastToggleTs = 0;
+  function _guardedToggle() {
+    var now = Date.now();
+    if (now - _lastToggleTs < 350) return;   // the direct listener already handled this click
+    _lastToggleTs = now;
+    toggleRing();
+  }
+  try {
+    document.addEventListener('click', function (ev) {
+      var t = ev.target;
+      while (t && t !== document) {
+        if (t.id === 'fs-dlr-toggle') { _guardedToggle(); return; }
+        t = t.parentNode;
+      }
+    }, true);   // capture phase: fires even if something stops propagation at the button
+  } catch (eDel) {}
 
   // ============================================================
   // B) FLOOR-PLAN MODAL  (stars visible under the DLR sectors)
@@ -557,7 +587,13 @@
     try { ensureButton(); } catch (e) {}
     try {
       if (typeof MutationObserver !== 'undefined' && document.body) {
-        var mo = new MutationObserver(function () { try { ensureButton(); } catch (e) {} });
+        var _inObs = false;   // re-entrancy guard: our own DOM writes must not re-trigger us
+        var mo = new MutationObserver(function () {
+          if (_inObs) return;
+          _inObs = true;
+          try { ensureButton(); } catch (e) {}
+          _inObs = false;
+        });
         mo.observe(document.body, { childList: true, subtree: true });
       }
     } catch (e) {}
