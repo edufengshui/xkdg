@@ -6211,10 +6211,23 @@
     }
     ov.style.display = 'block';
     cmpUpdateRefLabel(); tpCmpRender(); tpCmpStart(); tpCmpRefreshOnce();
+    // Leaflet caches its container size: after a close (display:none) → reopen,
+    // it still draws tiles for the OLD size and the rest of the box stays blank
+    // ("taglia a metà la mappa", session 23). Re-measure on every open, after
+    // the box has its real layout size.
+    setTimeout(function () { try { if (_cmpMap) { _cmpMap.invalidateSize(); cmpRenderMap(); } } catch (e) {} }, 120);
   }
   document.addEventListener('visibilitychange', function () {
     var ov = document.getElementById('tp-cmp-ov');
     if (!document.hidden && ov && ov.style.display !== 'none') tpCmpRefreshOnce();   // recompute on screen wake (no Wake Lock)
+  });
+  // 48vh changes with orientation/keyboard: re-measure the map on any resize
+  // while the compass is open (session 23, same stale-size class as above).
+  window.addEventListener('resize', function () {
+    try {
+      var ov = document.getElementById('tp-cmp-ov');
+      if (ov && ov.style.display !== 'none' && _cmpMap) setTimeout(function () { try { _cmpMap.invalidateSize(); } catch (e) {} }, 120);
+    } catch (e) {}
   });
 
   // Open the compass and, optionally, set its origin in one go.
