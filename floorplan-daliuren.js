@@ -137,6 +137,15 @@
   // Signature matches SunMoonMountain.drawIfOn(ctx, cx, cy, outerR, ROT).
   function drawIfOn(ctx, cx, cy, outerR, ROT) {
     if (!st.ringOn || !ctx) return;
+    // HARDENING (session 23): this overlay draws LAST in fsRedraw. If ANY earlier
+    // draw threw mid-way between a ctx.save() and its ctx.restore() (the throw gets
+    // swallowed by fsRedraw's own try/catch wrappers), the context is left with a
+    // stray transform/alpha and everything drawn afterwards lands transformed —
+    // possibly entirely off-canvas — with no error anywhere. This function's math
+    // assumes untransformed absolute coordinates by design, so resetting to the
+    // identity state here is correct, not a workaround.
+    var _canReset = (typeof ctx.setTransform === 'function');
+    try { ctx.save(); if (_canReset) ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; } catch (ePre) {}
     try {
       var facing = ringFacing();
       st.facingDeg = facing;
@@ -172,6 +181,7 @@
       ctx.fillStyle = '#5d4037'; ctx.fillText(cap, cx, 6);
       ctx.restore();
     } catch (e) { console.warn('FloorPlanDLR drawIfOn', e); /* never break the luopan — but never hide the reason either (session 23: this silent catch cost a whole debugging session) */ }
+    try { ctx.restore(); } catch (ePost) {}
   }
 
   function toggleRing() {
