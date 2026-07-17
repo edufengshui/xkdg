@@ -2780,14 +2780,6 @@
           try {
             if (window._tpLastResult && window._tpLastResult.legs) {
               var _storedLegs = window._tpLastResult.legs;
-              // Shift an "HH:MM" string by N minutes (session 23 helper — the cascading
-              // fix below needs it, nothing upstream provided one).
-              function _shiftHM(hm, deltaMin) {
-                var m = /^(\d{1,2}):(\d{2})$/.exec(hm || '');
-                if (!m || !deltaMin) return hm;
-                var total = ((parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + deltaMin) % 1440 + 1440) % 1440;
-                return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
-              }
               chosen.forEach(function (c) {
                 if (!c.stopRef || !c.stopRef.atWall) return;
                 // Match by ARRAY POSITION (plan and _storedLegs share the same order/length
@@ -2874,13 +2866,28 @@
                   }
                   if (splitAt < 0) { _mergeFailed.push(c); return; }
                   var origLeg = _planArr[splitAt];
-                  // Guard: if the Option-2 wait runs long enough to reach (or pass) the
-                  // ALREADY-planned end of this leg, splitting here would produce a
-                  // negative-duration "after" leg. Abandon the merge for this one
-                  // charger — it falls back to the yellow-box report — rather than
-                  // emit a broken step.
-                  if (opt2.restartMs >= origLeg.endWall.getTime() - 60000) { _mergeFailed.push(c); return; }
+                  var origLegStartStr = fmtHMonly(origLeg.startWall), origLegEndStr = fmtHMonly(origLeg.endWall);
+                  // EXTENDED (session 23 follow-up, Edu's screenshot): a charger that
+                  // needs more time than is left before the NEXT already-planned stop
+                  // used to just be abandoned here (safe, but back in the yellow box —
+                  // exactly the case Edu found: charge 20:16→20:46, but stop F was
+                  // already fixed at 20:26, only 10 min of room). Instead of giving up,
+                  // PUSH that next stop (and everything after it) later by the overflow —
+                  // the same cascade already used for Phase F's real-duration correction,
+                  // just triggered by an insertion instead of a delta.
+                  var overflowMs = Math.max(0, opt2.restartMs - (origLeg.endWall.getTime() - 60000));
+                  var overflowMin = Math.ceil(overflowMs / 60000);
+                  if (overflowMs > 0) {
+                    for (var pj = splitAt + 1; pj < _planArr.length; pj++) {
+                      var pjt = _planArr[pj];
+                      if (pjt.startWall) pjt.startWall = new Date(pjt.startWall.getTime() + overflowMs);
+                      if (pjt.endWall) pjt.endWall = new Date(pjt.endWall.getTime() + overflowMs);
+                      if (pjt.atWall) pjt.atWall = new Date(pjt.atWall.getTime() + overflowMs);
+                      if (pjt.restartWall) pjt.restartWall = new Date(pjt.restartWall.getTime() + overflowMs);
+                    }
+                  }
                   var arrivalDate = new Date(arrivalMs), restartDate = new Date(opt2.restartMs);
+                  var pushedEndWall = new Date(origLeg.endWall.getTime() + overflowMs);
                   var slotHere = tpSlotIndexAt(_slots, arrivalDate);
                   var slotAfter = tpSlotIndexAt(_slots, restartDate);
                   var newStop = {
@@ -2894,8 +2901,8 @@
                   };
                   var legBefore = { type: 'leg', startWall: origLeg.startWall, endWall: arrivalDate, heading: origLeg.heading,
                     startSlotIdx: origLeg.startSlotIdx, endSlotIdx: slotHere, durationH: (arrivalMs - origLeg.startWall.getTime()) / 3600000, note: '' };
-                  var legAfter = { type: 'leg', startWall: restartDate, endWall: origLeg.endWall, heading: origLeg.heading,
-                    startSlotIdx: slotAfter, endSlotIdx: origLeg.endSlotIdx, durationH: (origLeg.endWall.getTime() - opt2.restartMs) / 3600000, note: origLeg.note };
+                  var legAfter = { type: 'leg', startWall: restartDate, endWall: pushedEndWall, heading: origLeg.heading,
+                    startSlotIdx: slotAfter, endSlotIdx: origLeg.endSlotIdx, durationH: (pushedEndWall.getTime() - opt2.restartMs) / 3600000, note: origLeg.note };
                   _planArr.splice(splitAt, 1, legBefore, newStop, legAfter);
                   // Same shape tpStoreLastResult()'s own plan.map() produces — kept in
                   // sync by hand so this stays a splice, not a full rebuild (which would
@@ -2912,9 +2919,19 @@
                     hours: Math.round(legAfter.durationH * 10) / 10, toward: tpHeadDirOnly(legAfter.heading), arrival: (origLeg.note === 'arrival') };
                   var storedIdx = -1;
                   for (var si2 = 0; si2 < _storedLegsX.length; si2++) {
-                    if (_storedLegsX[si2].kind === 'drive' && _storedLegsX[si2].from === fmtHMonly(origLeg.startWall) && _storedLegsX[si2].to === fmtHMonly(origLeg.endWall)) { storedIdx = si2; break; }
+                    if (_storedLegsX[si2].kind === 'drive' && _storedLegsX[si2].from === origLegStartStr && _storedLegsX[si2].to === origLegEndStr) { storedIdx = si2; break; }
                   }
                   if (storedIdx < 0) { _planArr.splice(splitAt, 3, origLeg); _mergeFailed.push(c); return; }   // undo the plan splice, fall back
+                  if (overflowMin > 0) {
+                    for (var sj = storedIdx + 1; sj < _storedLegsX.length; sj++) {
+                      var Lgx = _storedLegsX[sj];
+                      if (Lgx.kind === 'drive') { Lgx.from = _shiftHM(Lgx.from, overflowMin); Lgx.to = _shiftHM(Lgx.to, overflowMin); }
+                      else { Lgx.at = _shiftHM(Lgx.at, overflowMin); Lgx.restart = _shiftHM(Lgx.restart, overflowMin); }
+                    }
+                    if (window._tpLastResult.exits) {
+                      window._tpLastResult.exits.forEach(function (ex) { if (ex.at >= origLegEndStr) ex.at = _shiftHM(ex.at, overflowMin); });
+                    }
+                  }
                   _storedLegsX.splice(storedIdx, 1, storedBefore, storedStop, storedAfter);
                 } catch (eOne) { _mergeFailed.push(c); }
               });
@@ -3239,6 +3256,17 @@
   }
 
   function tpHeadDirOnly(h) { return (h && h.dir) ? h.dir : '?'; }
+  // Shift an "HH:MM" string by N minutes (session 23 helper). Module-scope on
+  // purpose — two separate cascade fixes inside tpRenderChargers both need it,
+  // and a function declared inside one try-block's if-body is NOT reliably
+  // visible to a sibling try-block (that depends on non-strict-mode hoisting
+  // quirks this file shouldn't lean on).
+  function _shiftHM(hm, deltaMin) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(hm || '');
+    if (!m || !deltaMin) return hm;
+    var total = ((parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + deltaMin) % 1440 + 1440) % 1440;
+    return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+  }
   function tpStoreLastResult(result) {
     try {
       var rm = result.routeMeta || {};
