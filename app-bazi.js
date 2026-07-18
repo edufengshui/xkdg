@@ -6099,7 +6099,11 @@ function buildMonthView() {
                                 if (_pdLV) {
                                     var _cfgLV = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
                                         ? (QMDJWaterScanner.checkRotatingPalace(_rotLV, _fsActionPalace) || []).length : 0;
-                                    var _evLV = window.TravelPlanner.evalPalace(_pdLV, _cfgLV);
+                                    // PURPOSE-AWARE (session 23) — same fix as the BEST scan, so LIST
+                                    // and BEST keep agreeing when a Purpose is selected.
+                                    var _purposeObjLV = (typeof QMDJWaterScanner !== 'undefined' && QMDJWaterScanner.fsPurposeDoors)
+                                        ? (QMDJWaterScanner.fsPurposeDoors()[getPurpose()] || null) : null;
+                                    var _evLV = window.TravelPlanner.evalPalace(_pdLV, _cfgLV, false, _purposeObjLV);
                                     // Favourable departure = favourable Door + San Qi
                                     // (乙丙丁) on the HEAVEN plate (ti, rotating) —
                                     // OBLIGATORY — with Warrior/Tiger excluded. Earth-plate
@@ -7752,7 +7756,17 @@ function runScanner() {
                         if (_pdBST) {
                             var _cfgCountBST = (typeof QMDJWaterScanner.checkRotatingPalace === 'function')
                                 ? (QMDJWaterScanner.checkRotatingPalace(_rotChartBST, _fsActionPalace) || []).length : 0;
-                            var _evalBST = window.TravelPlanner.evalPalace(_pdBST, _cfgCountBST);
+                            // PURPOSE-AWARE (session 23, Edu: "i PURPOSES hanno il loro menu a
+                            // tendina, perché devo chiedere all'AI?"). Before this, direction
+                            // mode accepted ANY favourable door regardless of which Purpose was
+                            // selected in the SAME dropdown that already drives the date scan —
+                            // picking "Wealth" and "Career" gave identical direction results. Now
+                            // the palace must also carry that purpose's own door (Wealth -> Sheng,
+                            // Career -> Kai/JingS, etc.) — same table as the date Purposes and as
+                            // find_purpose_activation, just applied to the ROTATING chart here.
+                            var _purposeObjBST = (typeof QMDJWaterScanner !== 'undefined' && QMDJWaterScanner.fsPurposeDoors)
+                                ? (QMDJWaterScanner.fsPurposeDoors()[getPurpose()] || null) : null;
+                            var _evalBST = window.TravelPlanner.evalPalace(_pdBST, _cfgCountBST, false, _purposeObjBST);
                             // Favourable departure = favourable Door + San Qi (乙丙丁)
                             // on the HEAVEN plate (ti, rotating) — OBLIGATORY — Warrior/
                             // CANONICAL: delegate to evalPalace.ok (single rule set).

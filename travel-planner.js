@@ -1391,7 +1391,7 @@
    * `configCount` is the number of named auspicious configs at this palace
    * (computed by the caller via QMDJWaterScanner.checkRotatingPalace).
    * ----------------------------------------------------------------------- */
-  function tpPalaceOK(pd, configCount, noCar) {
+  function tpPalaceOK(pd, configCount, noCar, purpose) {
     if (!pd) return null;
     var ti = pd.ti, di = pd.di, door = pd.door, deity = pd.deity;
     var star = pd.star, isZhiFu = !!pd.zhiFu;
@@ -1410,12 +1410,22 @@
 
     // §1 exclusions + §2 mandatory gate — DELEGATED to the canonical predicate so
     // travel/directions, Water/FS activation and the special scan share one rule set.
+    // OPTIONAL purpose (session 23): when given (an FS_PURPOSE_DOORS-shaped object,
+    // e.g. QMDJWaterScanner.fsPurposeDoors()['wealth']), the gate ALSO requires that
+    // purpose's own primary door — not just "any favourable door". Every existing
+    // caller that doesn't pass this 4th argument keeps the exact old behaviour.
     var _Q = (typeof QMDJWaterScanner !== 'undefined') ? QMDJWaterScanner : null;
     var _ff = (_Q && _Q.formationFlags) ? _Q.formationFlags(pd) : { disqualified: false, reasons: [] };
-    var _gate = (_Q && _Q.directionGate) ? _Q.directionGate(pd, { travel: true }) : { eligible: (favDoor || injuryRescue), reasons: [] };
+    var _gate = (_Q && _Q.directionGate) ? _Q.directionGate(pd, { travel: true, purpose: purpose || null }) : { eligible: (favDoor || injuryRescue), reasons: [] };
     var excluded = !!_ff.disqualified;
     var gengExcluded = excluded && _ff.reasons.join(';').indexOf('Geng') !== -1;   // display only
     var gate = !!_gate.eligible;
+    // Purpose door filter — UNCONDITIONAL, mirroring the canonical
+    // checkHourAtPalace/checkRotatingHourAtPalace exactly: a purpose with a
+    // specific door list only accepts THAT door (allowNonFav only widens what
+    // directionGate itself will redeem into eligibility above — it does NOT
+    // widen which doors satisfy the purpose afterward).
+    if (purpose && purpose.doors && purpose.doors.indexOf(door) === -1) gate = false;
 
     // Edu directive: the Injury-door/San-Qi "rescue" is TRAVEL-ONLY in the canonical sense
     // (i.e. by car). On foot/bike (noCar) it must NOT redeem an Injury door — San Qi does
