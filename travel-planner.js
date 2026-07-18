@@ -5561,6 +5561,33 @@
       }
       // Origin marker.
       L.circleMarker([ref.lat, ref.lon], { radius: 6, color: '#0b8043', weight: 2, fillColor: '#0b8043', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('Origin', { permanent: false });
+
+      // ═══ PLANNED-TRIP OVERLAY (Edu, session 23): the itinerary the AI/planner
+      // computed (window._tpLive, published by tpStoreLastResult) drawn ON the live
+      // compass map — follow the plan and check the directions in one screen.
+      // Fresh within 24h; ignored otherwise (yesterday's trip must not haunt today).
+      try {
+        var _lv = window._tpLive;
+        if (_lv && _lv.stamp && (Date.now() - _lv.stamp) < 24 * 3600000 && _lv.stops) {
+          var _routePts = [[_lv.originPos.lat, _lv.originPos.lon]];
+          _lv.stops.forEach(function (st, si) {
+            _routePts.push([st.lat, st.lon]);
+            var isCh = !!st.charge;
+            var letter = String.fromCharCode(65 + si);   // A, B, C… same lettering as the chat card
+            var hhmm = st.atMs ? (function (d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); })(new Date(st.atMs)) : '';
+            L.circleMarker([st.lat, st.lon], {
+              radius: 7, weight: 2,
+              color: isCh ? '#ad1457' : '#1565c0',
+              fillColor: isCh ? '#f8bbd0' : '#bbdefb', fillOpacity: 1
+            }).addTo(_cmpMapLayer)
+              .bindTooltip((isCh ? '\u26a1 ' : '') + letter + (hhmm ? ' \u00b7 ' + hhmm : ''), { permanent: true, direction: 'top', offset: [0, -8], opacity: 0.9 });
+          });
+          _routePts.push([_lv.destPos.lat, _lv.destPos.lon]);
+          L.polyline(_routePts, { color: '#1565c0', weight: 3, opacity: 0.55, dashArray: '7 6' }).addTo(_cmpMapLayer);
+          L.circleMarker([_lv.destPos.lat, _lv.destPos.lon], { radius: 7, color: '#b00', weight: 2, fillColor: '#e53935', fillOpacity: 1 })
+            .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfc1 ' + (_lv.destName || 'Arrival'), { permanent: false });
+        }
+      } catch (eTrip) {}
       // In A->B mode (a destination is set) the user's own GPS position is IRRELEVANT
       // — the trip is between two typed points. Show the live "You" marker + exit wedge
       // ONLY in live-quadrant mode (no destination), otherwise a stray red dot hundreds
@@ -5607,6 +5634,19 @@
     });
   }
   // Expand the map to (near) fullscreen, or collapse it back.
+  // Refresh the drive-view strip (direction + countdown) over the big map.
+  // Called from tpCmpRender on every GPS tick and from the minute ticker, so
+  // both numbers stay live in either mode.
+  function cmpUpdateBigStrip(degRounded, quadrant, lon, color) {
+    try {
+      var strip = document.getElementById('tp-cmp-big-strip');
+      if (!strip || !_cmpMapBig) return;
+      strip.innerHTML =
+        '<span style="font-size:46px;font-weight:800;line-height:1;color:' + (color || '#1565c0') + ';">' + degRounded + '\u00b0</span>' +
+        ' <span style="font-size:26px;font-weight:700;vertical-align:6px;">' + quadrant + '</span>' +
+        '<div id="tp-cmp-big-hour" data-lon="' + lon + '" style="font-size:16px;line-height:1.25;margin-top:1px;">' + tpCmpHourInner(lon) + '</div>';
+    } catch (e) {}
+  }
   function cmpSetMapBig(big) {
     _cmpMapBig = !!big; _cmpMapFitted = false;
     var small = document.getElementById('tp-cmp-map-wrap');
@@ -5618,7 +5658,7 @@
       if (!big2) {
         big2 = el('div', { id: 'tp-cmp-map-big', style: 'position:fixed;inset:0;z-index:100000;background:#fff;display:flex;flex-direction:column;' });
         var bar = el('div', { style: 'display:flex;align-items:center;gap:8px;background:#1565c0;color:#fff;padding:9px 12px;font-size:14px;font-weight:700;' });
-        bar.appendChild(el('div', { style: 'flex:1;' }, '🧭 Compass map'));
+        bar.appendChild(el('div', { style: 'flex:1;' }, '🧭 Drive view'));
         var foll = el('button', { id: 'tp-cmp-big-follow', type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, _cmpMapFollow ? '📍 Follow: on' : '📍 Follow: off');
         var mapsB = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, '🔍 Maps');
         var close = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:14px;cursor:pointer;' }, '✕ Close');
@@ -5627,7 +5667,12 @@
         close.addEventListener('click', function () { cmpSetMapBig(false); });
         bar.appendChild(foll); bar.appendChild(mapsB); bar.appendChild(close);
         big2.appendChild(bar);
-        var holder = el('div', { id: 'tp-cmp-map-bigholder', style: 'flex:1;min-height:0;' });
+        var holder = el('div', { id: 'tp-cmp-map-bigholder', style: 'flex:1;min-height:0;position:relative;' });
+        // DRIVE STRIP (Edu, session 23): direction + hour countdown floating over the
+        // near-fullscreen map — the only two numbers that must stay readable while
+        // everything else is out of the way. pointer-events:none: the map underneath
+        // stays fully pannable/zoomable straight through it.
+        holder.appendChild(el('div', { id: 'tp-cmp-big-strip', style: 'position:absolute;top:0;left:0;right:0;z-index:1000;pointer-events:none;text-align:center;background:rgba(255,255,255,.85);padding:4px 8px 6px;border-bottom:1px solid rgba(0,0,0,.08);' }));
         big2.appendChild(holder);
         document.body.appendChild(big2);
       }
@@ -5639,7 +5684,7 @@
       var big3 = document.getElementById('tp-cmp-map-big');
       if (big3) big3.style.display = 'none';
       if (small) small.appendChild(host);   // move it back into the small panel
-      host.style.height = '150px';
+      host.style.height = '48vh'; host.style.minHeight = '300px';   // matches the (session 23) enlarged panel map
       if (btn) btn.textContent = '⛶ Expand';
     }
     setTimeout(function () { if (_cmpMap) { _cmpMap.invalidateSize(); cmpRenderMap(); } }, 80);
@@ -5759,7 +5804,7 @@
       var nextLbl = c.next ? (c.next.han + (c.next.py ? ' ' + c.next.py : '')) : '';
       var m = c.minsLeft, urgent = m <= 15;
       return '<span style="' + (urgent ? 'color:#b00;font-weight:700;' : 'color:#7b1fa2;') + '">' +
-        '\u23f3 ' + curLbl + ' \u00b7 cambio ora tra <b style="font-size:34px;vertical-align:-2px;">' + m + ' min</b>' +
+        '\u23f3 ' + curLbl + ' \u00b7 hour change in <b style="font-size:34px;vertical-align:-2px;">' + m + ' min</b>' +
         (nextLbl ? ' \u2192 ' + nextLbl : '') +
         (c.tst ? ' <span style="color:#999;font-weight:400;font-size:14px;">(TST ' + c.tst + ')</span>' : '') +
         '</span>';
@@ -5787,9 +5832,16 @@
       _cmpHourTimer = setInterval(function () {
         try {
           var host = document.getElementById('tp-cmp-hour');
-          if (!host) return;
-          var lon = parseFloat(host.getAttribute('data-lon'));
-          if (isFinite(lon)) host.innerHTML = tpCmpHourInner(lon);
+          if (host) {
+            var lon = parseFloat(host.getAttribute('data-lon'));
+            if (isFinite(lon)) host.innerHTML = tpCmpHourInner(lon);
+          }
+          // Drive-view strip over the big map (session 23): same in-place refresh
+          var strip = document.getElementById('tp-cmp-big-hour');
+          if (strip) {
+            var lon2 = parseFloat(strip.getAttribute('data-lon'));
+            if (isFinite(lon2)) strip.innerHTML = tpCmpHourInner(lon2);
+          }
         } catch (e) {}
       }, 15000);
     } catch (e) {}
@@ -5808,6 +5860,7 @@
     if (_abMode) {
       var rb = tpRhumbBearing(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
       var rdKm = tpHaversineKm(ref.lat, ref.lon, _cmpDest.lat, _cmpDest.lon);
+      cmpUpdateBigStrip(Math.round(rb), tpQ8(rb), ref.lon, '#7b1fa2');   // drive strip over the big map (session 23)
       var abHtml = '<div style="font-size:64px;font-weight:800;line-height:1;color:#7b1fa2;">' + Math.round(rb) + '°</div>' +
         '<div style="font-size:30px;font-weight:700;margin-top:2px;">' + tpQ8(rb) + '</div>' +
         '<div style="font-size:12px;color:#666;margin-top:4px;">constant course \u00b7 ' + (rdKm < 10 ? rdKm.toFixed(1) : Math.round(rdKm)) + ' km</div>' +
@@ -5830,11 +5883,38 @@
     var pos = _cmpPos;
     var deg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon), q = tpQ8(deg);
     var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
+    cmpUpdateBigStrip(Math.round(deg), q, pos.lon, '#1565c0');   // drive strip over the big map (session 23)
 
     var html = '<div style="font-size:64px;font-weight:800;line-height:1;color:#1565c0;">' + Math.round(deg) + '°</div>' +
       '<div style="font-size:30px;font-weight:700;margin-top:2px;">' + q + '</div>' +
       '<div style="font-size:12px;color:#666;margin-top:4px;">' + refLabel + ' · ' + (distKm < 10 ? distKm.toFixed(1) : Math.round(distKm)) + ' km</div>' +
       tpCmpHourCountdownHtml(pos.lon);
+    // NEXT PLANNED STOP (Edu, session 23): tie the AI itinerary to the live drive.
+    // "Next" = the not-yet-reached stop (>1.5 km away) with the earliest planned
+    // time no more than 30 min in the past — times drift while driving, so a stop
+    // whose clock has slipped a little is still "next", but one you are parked at
+    // (or long past) is not.
+    try {
+      var _lvN = window._tpLive;
+      if (_lvN && _lvN.stamp && (Date.now() - _lvN.stamp) < 24 * 3600000 && _lvN.stops && _lvN.stops.length) {
+        var _nowMs = Date.now(), _next = null, _nextIdx = -1;
+        for (var ni = 0; ni < _lvN.stops.length; ni++) {
+          var stN = _lvN.stops[ni];
+          if (stN.atMs && stN.atMs < _nowMs - 30 * 60000) continue;
+          if (tpHaversineKm(pos.lat, pos.lon, stN.lat, stN.lon) < 1.5) continue;
+          _next = stN; _nextIdx = ni; break;
+        }
+        if (_next) {
+          var _dN = tpHaversineKm(pos.lat, pos.lon, _next.lat, _next.lon);
+          var _tN = _next.atMs ? new Date(_next.atMs) : null;
+          var _hhN = _tN ? (String(_tN.getHours()).padStart(2, '0') + ':' + String(_tN.getMinutes()).padStart(2, '0')) : '';
+          html += '<div style="font-size:18px;font-weight:700;margin-top:6px;color:' + (_next.charge ? '#ad1457' : '#1565c0') + ';">' +
+            (_next.charge ? '\u26a1 ' : '\ud83d\udccd ') + 'Next: ' + String.fromCharCode(65 + _nextIdx) +
+            ' \u00b7 <b style="font-size:24px;">' + (_dN < 10 ? _dN.toFixed(1) : Math.round(_dN)) + ' km</b>' +
+            (_hhN ? ' \u00b7 ' + _hhN : '') + '</div>';
+        }
+      }
+    } catch (eNext) {}
     if (distKm < 1) html += '<div style="font-size:12px;color:#b58900;margin-top:4px;">Too close to the reference for a stable bearing — drive a bit.</div>';
 
     // Travel heading (your real direction of march).
@@ -6204,6 +6284,11 @@
       // Mini map. (The old "⛶ Expand" map-only button is gone — the header ⛶ full
       // screen replaced it; voice "expand" still works for the big-map overlay.)
       var mapWrap = el('div', { id: 'tp-cmp-map-wrap', style: 'padding:0 10px 10px;' });
+      // ⛶ Drive view (Edu, session 23): one tap → near-fullscreen map with ONLY the
+      // direction + hour countdown floating on it; everything else disappears until Close.
+      var driveBtn = el('button', { type: 'button', style: 'display:block;width:100%;margin-top:6px;background:#1565c0;color:#fff;border:0;border-radius:8px;padding:8px;font-size:14px;font-weight:800;cursor:pointer;' }, '\u26f6 Drive view \u2014 full-screen map');
+      driveBtn.addEventListener('click', function () { cmpSetMapBig(true); });
+      mapWrap.appendChild(driveBtn);
       mapWrap.appendChild(el('div', { id: 'tp-cmp-map', style: 'width:100%;height:48vh;min-height:300px;border-radius:8px;overflow:hidden;background:#eef;margin-top:6px;' }));
       ov.appendChild(mapWrap);
 
@@ -6211,6 +6296,7 @@
     }
     ov.style.display = 'block';
     cmpUpdateRefLabel(); tpCmpRender(); tpCmpStart(); tpCmpRefreshOnce();
+    tpCmpWakeAcquire();   // keep the phone screen alive while the compass is the driving screen (session 23)
     // Leaflet caches its container size: after a close (display:none) → reopen,
     // it still draws tiles for the OLD size and the rest of the box stays blank
     // ("taglia a metà la mappa", session 23). Re-measure on every open, after
@@ -6239,8 +6325,37 @@
     if (spec && typeof spec === 'string') return tpCmpSetOriginFrom(spec).then(function (r) { return { origin: (r && r.name) || spec, found: !!r }; });
     return Promise.resolve({ opened: true });
   }
+  // ═══ WAKE LOCK (Edu, session 23, promoted from the long-standing backlog) ═══
+  // Vivaldi on the Polestar's own screen is killed by Android Automotive's
+  // driver-distraction lockout the moment the car moves, so the REAL driving
+  // screen is the phone on its mount — where the display would otherwise go to
+  // sleep mid-trip. Screen Wake Lock while the compass is open keeps it alive.
+  // The lock is auto-released by the OS whenever the tab goes to background;
+  // the visibilitychange listener below re-acquires it on return. Browsers
+  // without the API (or with it denied) are simply left as they are.
+  var _cmpWakeLock = null;
+  function tpCmpWakeAcquire() {
+    try {
+      if (!('wakeLock' in navigator)) return;
+      navigator.wakeLock.request('screen').then(function (wl) {
+        _cmpWakeLock = wl;
+        wl.addEventListener('release', function () { _cmpWakeLock = null; });
+      }).catch(function () { /* denied / power-save: nothing to do */ });
+    } catch (e) {}
+  }
+  function tpCmpWakeRelease() {
+    try { if (_cmpWakeLock) { _cmpWakeLock.release(); _cmpWakeLock = null; } } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () {
+    try {
+      var ov = document.getElementById('tp-cmp-ov');
+      if (!document.hidden && ov && ov.style.display !== 'none' && !_cmpWakeLock) tpCmpWakeAcquire();
+    } catch (e) {}
+  });
+
   function tpCloseCompass() {
     tpCmpStop();
+    tpCmpWakeRelease();
     if (_cmpMapBig) cmpSetMapBig(false);
     var ov = document.getElementById('tp-cmp-ov'); if (ov) ov.style.display = 'none';
   }
