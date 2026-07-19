@@ -3811,6 +3811,25 @@
     head.appendChild(xBtn);
     card.appendChild(head);
 
+    // PURPOSE selector (Edu, session 23: "inserisci il PURPOSES qui dentro" — this
+    // hub, not one level down inside Air travel's own popup). Same element, same
+    // sync pattern as the one added to fsOpenDirectionCalc(): reads/writes the
+    // page's #purpose-select directly (single source of truth), bypassing
+    // onPurposeChange()'s birth-data reset check, which is for the DATE-scan use
+    // case and irrelevant here (a direction's door doesn't need a person's data).
+    var purWrap = el('div', { style: 'background:#f3e5f5;border-radius:8px;padding:10px;margin-bottom:12px;' });
+    purWrap.appendChild(el('div', { style: 'font-size:11px;font-weight:700;color:#6a1b9a;margin-bottom:5px;' }, '\ud83c\udfaf PURPOSE (applies to all sections below)'));
+    var purSel = el('select', { id: 'xkdg-dir-purpose-select', style: 'width:100%;padding:6px 8px;border-radius:4px;border:1px solid #6a1b9a;font-size:12px;font-weight:bold;color:#6a1b9a;' });
+    [['', '\u2014 Any \u2014'], ['health', '\ud83c\udfe5 Health'], ['career', '\ud83d\udcbc Career'], ['wealth', '\ud83d\udcb0 Wealth'],
+     ['relationship', '\u2764\ufe0f Relationship'], ['journey', '\u2708\ufe0f Journey'], ['speak', '\ud83c\udfa4 Speak'], ['legal', '\u2696\ufe0f Legal']]
+      .forEach(function (opt) { purSel.appendChild(el('option', { value: opt[0] }, opt[1])); });
+    try { var _mainPur = document.getElementById('purpose-select'); if (_mainPur) purSel.value = _mainPur.value || ''; } catch (e) {}
+    purSel.addEventListener('change', function () {
+      try { var _mp = document.getElementById('purpose-select'); if (_mp) _mp.value = purSel.value; } catch (e) {}
+    });
+    purWrap.appendChild(purSel);
+    card.appendChild(purWrap);
+
     function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
 
     // A section button. `gated` true -> opens behind the shared code.
