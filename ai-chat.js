@@ -403,6 +403,12 @@
     '- PURPOSE ACTIVATION on its own (no water involved): find_purpose_activation(direction?, purpose?) \u2014 with a purpose ' +
     'it returns that purpose\u2019s favourable dates/hours at a palace; without one it scans all seven and reports which ' +
     'purposes each hour serves. Never pass purpose:\'water\' \u2014 water is not a purpose.\n' +
+    '- PURPOSE FOR A TRAVEL DIRECTION (not a house palace): find_purpose_direction(direction?, purpose?) \u2014 the SAME ' +
+    'seven purposes, but on the ROTATING chart for heading somewhere (\"quando conviene un viaggio di lavoro verso NW nei ' +
+    'prossimi giorni\" \u2192 purpose=career, direction=NW; \"le tappe di ricarica erano anche buone per altro?\" \u2192 no purpose, ' +
+    'annotate the chosen hours). Use this, not find_purpose_activation, whenever the question is about MOVING in a ' +
+    'direction rather than a fixed palace/aquarium. Hand the chosen window to plan_travel or plan_lucky_day_trip to run ' +
+    'the actual trip \u2014 this tool only finds the window.\n' +
     '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
     'whole house in one shot (facing/period, aquariums with their direction + water star, ' +
     'and saved Water/Bed/Desk settings). The aquariums list ALREADY INCLUDES saved Water positions (source = ' +
@@ -1181,6 +1187,31 @@
       }
     },
     {
+      name: 'find_purpose_direction',
+      description: 'The PURPOSE ACTIVATION calculator, headless \u2014 for TRAVEL/MOVEMENT directions (the ROTATING chart ' +
+        '\u8f49\u76e4, e.g. driving, walking, a trip), NOT for a house palace. Same seven purposes as find_purpose_activation ' +
+        'and as the date PURPOSES (health, career, wealth, relationship, journey, speak, legal), same canonical QMDJ gate ' +
+        '(\u00a71 exclusions + \u00a72 San Qi/Wu + favourable door \u2014 travel mode also admits the Injury \u50b7 door when redeemed by ' +
+        'San Qi/Wu, as every other travel-direction check in the app already does). (1) With purpose set: on which dates/hours ' +
+        'is heading in THAT direction favourable for that purpose (e.g. \"quando \u00e8 un buon momento per un viaggio di lavoro ' +
+        'verso NW nei prossimi giorni\" \u2192 purpose=career, direction=NW). (2) With purpose omitted: for a direction (or all ' +
+        '8), reports every hour whose gate passes canonically AND which purposes it also happens to serve. Purposes and ' +
+        'their primary doors: health=Rest \u4f11, career=Open \u958b/View \u666f, wealth=Birth \u751f (+Wu \u620a), relationship=Rest \u4f11, ' +
+        'journey=Rest \u4f11, speak=View \u666f, legal=Shocking \u9a5a (redeemed by San Qi). Use this for \"best hours to travel this ' +
+        'way in the next few days\", or to annotate a Lucky Trip/Travel Planner answer with which purposes a chosen window ' +
+        'also serves. This does NOT replan a route \u2014 pair it with plan_travel or plan_lucky_day_trip for the actual trip.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'The travel direction. Omit to scan all 8 and report where each purpose appears.' },
+          purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Restrict to ONE purpose. Omit to scan all seven and get, for each hour, the list of purposes it serves.' },
+          start_date: { type: 'string', description: 'YYYY-MM-DD. Defaults to today; a past date is ignored.' },
+          days: { type: 'integer', description: 'How many days to scan (default 7).' },
+          full: { type: 'boolean', description: 'true = return every row; default returns the top 20.' }
+        }
+      }
+    },
+    {
       name: 'find_purpose_activation',
       description: 'The PURPOSE ACTIVATION calculator, headless \\u2014 the same engine as the \\u26a1 ACTIVATION panel in the app. ' +
         'Water is NOT a purpose: it is the MEANS by which a purpose is activated. So this answers two different questions. ' +
@@ -1803,6 +1834,7 @@
       if (name === 'find_water_activation') return toolFindWaterActivation(input || {});
       if (name === 'find_water_activation_full') return toolFindWaterActivationFull(input || {});
       if (name === 'find_purpose_activation') return toolFindPurposeActivation(input || {});
+      if (name === 'find_purpose_direction') return toolFindPurposeDirection(input || {});
       if (name === 'open_section') return toolOpenSection(input || {});
       if (name === 'recall_flying_stars') return toolRecallFlyingStars();
       if (name === 'open_direction_calculator') return toolOpenDirectionCalc();
@@ -4244,6 +4276,53 @@
       });
     });
     return out;
+  }
+  function toolFindPurposeDirection(input) {
+    input = input || {};
+    if (!(window.QMDJWaterScanner && typeof window.QMDJWaterScanner.scanTravelPurpose === 'function'))
+      return { error: 'QMDJ scanner not available on this page.' };
+    var days = parseInt(input.days, 10) || 7;
+    var today = todayIso();
+    var start = today;
+    if (input.start_date && /^\d{4}-\d{2}-\d{2}$/.test(input.start_date) && input.start_date >= today) start = input.start_date;
+    var dir = (input.direction || '').toUpperCase();
+    var only = (input.purpose || '').toLowerCase();
+    if (only && _PURPOSE_KEYS.indexOf(only) < 0) return { error: 'Unknown purpose. Use one of: ' + _PURPOSE_KEYS.join(', ') + '.' };
+    var keys = only ? [only] : _PURPOSE_KEYS;
+    var map = {}, notes = [];
+    keys.forEach(function (pk) {
+      var res;
+      try { res = window.QMDJWaterScanner.scanTravelPurpose(dir || '', start, days, pk) || []; }
+      catch (e) { notes.push('Scan failed for ' + pk + '.'); return; }
+      res.forEach(function (r) {
+        var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
+        var k = r.date + '|' + br + '|' + (r.dir || dir || '?');
+        if (!map[k]) map[k] = { date: r.date, branch: br, hour: solarBranchToClock(br) || br,
+                                dir: r.dir || dir || null, purposes: [], score: 0, hits: [] };
+        var m = map[k];
+        if (m.purposes.map(function (p) { return p.purpose; }).indexOf(pk) < 0)
+          m.purposes.push({ purpose: pk, label: _purposeLabel(pk), door: r.purposeDoor || null, score: r.score || 0 });
+        if ((r.score || 0) > m.score) { m.score = r.score || 0; m.hits = (r.hits || []).map(function (h) { return h.label || h; }); }
+      });
+    });
+    var rows = Object.keys(map).map(function (k) { return map[k]; });
+    rows.sort(function (a, b) {
+      return (b.purposes.length - a.purposes.length) || (b.score - a.score)
+          || (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));
+    });
+    return {
+      scanner: 'purpose_direction',
+      chart: 'rotating (\u8f49\u76e4)',
+      direction: dir || 'all 8 directions', purpose: only || 'all seven',
+      start: start, days: days, count: rows.length,
+      results: (input && input.full ? rows : rows.slice(0, 20)),
+      scan_notes: notes,
+      note: 'Every hour here already passed the canonical QMDJ gate (\u00a71 exclusions + San Qi/Wu + a favourable door, travel ' +
+        'mode) for that TRAVEL direction, on the ROTATING chart \u2014 this is about heading that way, not a fixed house palace. ' +
+        '`purposes` lists which purposes that hour/direction serves and through which door. When the user asks for a single ' +
+        'purpose (\"solo viaggi di lavoro questa settimana verso NW\"), pass purpose and direction together and use these ' +
+        'hours directly as candidate departure windows \u2014 then hand the chosen one to plan_travel.'
+    };
   }
   function toolFindPurposeActivation(input) {
     input = input || {};

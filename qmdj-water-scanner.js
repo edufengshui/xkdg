@@ -474,6 +474,91 @@
   //
   // Results include .palace and .dir so the caller knows WHERE the match happened.
   var _PAL_DIR = {1:'N',2:'SW',3:'E',4:'SE',6:'NW',7:'W',8:'NE',9:'S'};
+  // ══════════════════════════════════════════════════════════════════════
+  //  PURPOSE SCAN ON THE ROTATING CHART (轉盤) — travel/movement directions
+  //  (Edu, session 23: "vorrei un corrispondente dei PURPOSES anche per le
+  //  direzioni. Lo abbiamo per le date, lo abbiamo nel Feng Shui, ci manca
+  //  per le direzioni.") Mirrors checkHourAtPalace/scanWaterPurpose exactly,
+  //  on getRotatingHourChart instead of the embedded flying charts — this is
+  //  the SAME engine travel-planner.js already calls for its own directional
+  //  gate checks (getRotatingHourChart / checkRotatingPalace), just walked
+  //  across many days/hours here instead of one live moment. directionGate's
+  //  own comment already says "Applies to BOTH charts" — nothing new to
+  //  invent, only a scan loop that was missing.
+  // ══════════════════════════════════════════════════════════════════════
+
+  function checkRotatingHourAtPalace(year, month, day, hourStem, hourBranch, palace, opts){
+    opts = opts || {};
+    var purpose = opts.purpose || null;
+    if(palace === 5 || palace < 1 || palace > 9) return null;
+    var chart = getRotatingHourChart(year, month, day, hourStem, hourBranch);
+    if(!chart) return null;
+    var cellInfo = chart.palaces[palace];
+    if(!cellInfo) return null;
+
+    var flags = formationFlags(cellInfo);
+    if(flags.disqualified) return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, flags: flags.reasons };
+
+    // §2 gate — travel:true admits the Injury 傷 door when redeemed by San Qi/Wu,
+    // exactly like every other travel-direction check in the app.
+    var gate = directionGate(cellInfo, { travel: true, purpose: purpose });
+    if(!gate.eligible) return { matched: false, hits: [], score: 0, cell: cellInfo, disqualified: true, flags: flags.reasons.concat(gate.reasons), gateFail: true };
+
+    if(purpose && purpose.doors && purpose.doors.indexOf(cellInfo.doorCode) === -1){
+      return { matched: false, hits: [], score: 0, cell: cellInfo, flags: flags.reasons, purposeMismatch: true };
+    }
+
+    var hits = checkRotatingPalace(chart, palace) || [];
+    var score = hits.length + (gate.reasons.length ? 0.5 : 0);   // same shape as the flying score, redemptions count as a soft plus
+    return { matched: true, hits: hits, score: score, cell: cellInfo, flags: flags.reasons,
+             purposeDoor: purpose ? cellInfo.doorCode : null };
+  }
+
+  function scanTravelPurpose(targetDir, startDateStr, numDays, purposeKey){
+    var palaces;
+    if(targetDir && DIR_TO_PALACE[targetDir]){
+      palaces = [DIR_TO_PALACE[targetDir]];
+    } else {
+      palaces = [1,2,3,4,6,7,8,9]; // all 8 outer palaces
+    }
+    var purpose = purposeKey ? (FS_PURPOSE_DOORS[purposeKey] || null) : null;
+    var results = [];
+    var parts = startDateStr.split('-');
+    var startDate = new Date(+parts[0], +parts[1]-1, +parts[2]);
+    for(var d=0; d<numDays; d++){
+      var date = new Date(startDate.getTime() + d*86400000);
+      var Y = date.getFullYear(), M = date.getMonth()+1, D = date.getDate();
+      var info = getDunJuForDate(Y, M, D);
+      if(!info) continue;
+      var hourPillars = getHourPillarsForDay(info.dayStem);
+      for(var h=0; h<hourPillars.length; h++){
+        var hp = hourPillars[h];
+        for(var pi=0; pi<palaces.length; pi++){
+          var pal = palaces[pi];
+          var res = checkRotatingHourAtPalace(Y, M, D, hp.stem, hp.branch, pal, { purpose: purpose });
+          if(res && res.matched){
+            results.push({
+              date: Y + '-' + String(M).padStart(2,'0') + '-' + String(D).padStart(2,'0'),
+              weekday: WEEKDAYS_IT[date.getDay()],
+              hourHan: STEM_HAN[hp.stem] + BR_HAN[hp.branch],
+              hourTime: hp.time,
+              hidx: (d * 100) + h,
+              dun: info.dun, ju: info.ju, jieQi: info.jqPy,
+              score: res.score || 0,
+              hits: res.hits || [],
+              cell: res.cell,
+              palace: pal,
+              dir: _PAL_DIR[pal] || '?',
+              purposeDoor: res.purposeDoor || null
+            });
+          }
+        }
+      }
+    }
+    results.sort(function(a,b){ return (b.score-a.score) || (a.date<b.date ? -1 : a.date>b.date ? 1 : 0); });
+    return results;
+  }
+
   function scanWaterPurpose(targetDir, startDateStr, numDays, purposeKey){
     var palaces;
     if(targetDir && DIR_TO_PALACE[targetDir]){
@@ -1393,6 +1478,12 @@
       if(!_charts) _charts = EMBEDDED_CHARTS;
       if(!_charts) throw new Error('Embedded charts not loaded (qmdj-water-scanner-data.js missing?).');
       return scanWaterPurpose(dir, start, days, purposeKey);
+    },
+    // Same purpose scan, but for TRAVEL/movement directions on the ROTATING chart
+    // (session 23) — no embedded charts needed, getRotatingHourChart builds each
+    // hour's chart on the fly (same engine travel-planner.js already uses).
+    scanTravelPurpose: function(dir, start, days, purposeKey){
+      return scanTravelPurpose(dir, start, days, purposeKey);
     },
     fsPurposeDoors: function(){ return FS_PURPOSE_DOORS; },
     validDirections: function(){ return Object.keys(DIR_TO_PALACE); },
