@@ -3828,6 +3828,48 @@
       try { var _mp = document.getElementById('purpose-select'); if (_mp) _mp.value = purSel.value; } catch (e) {}
     });
     purWrap.appendChild(purSel);
+
+    // SCAN button (Edu, session 23: "il pulsante Scan dove sta? Dovrebbe darmi
+    // tutte le carte/direzioni buone per Wealth"). No origin/destination needed —
+    // this scans ALL 8 compass directions for the chosen Purpose, using the SAME
+    // engine (scanTravelPurpose, rotating chart) already built and verified for
+    // find_purpose_direction — just called directly here, results shown inline,
+    // no AI round-trip.
+    var scanBtn = el('button', { type: 'button', style: 'width:100%;margin-top:8px;background:#6a1b9a;color:#fff;border:0;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;' }, '\ud83d\udd0e Scan next 7 days');
+    var scanBox = el('div', { style: 'margin-top:8px;max-height:220px;overflow-y:auto;' });
+    scanBtn.addEventListener('click', function () {
+      scanBtn.textContent = '\u2026';
+      setTimeout(function () {
+        try {
+          if (!(window.QMDJWaterScanner && typeof window.QMDJWaterScanner.scanTravelPurpose === 'function')) {
+            scanBox.innerHTML = '<div style="font-size:12px;color:#b00;">Scanner not loaded on this page.</div>';
+            return;
+          }
+          var purposeVal = purSel.value || null;
+          var today = tpLocalISO(new Date());
+          var rows = window.QMDJWaterScanner.scanTravelPurpose('', today, 7, purposeVal) || [];
+          if (!rows.length) {
+            scanBox.innerHTML = '<div style="font-size:12px;color:#888;padding:6px 0;">No favourable window found for ' +
+              (purposeVal ? purposeVal : 'any purpose') + ' in the next 7 days.</div>';
+            return;
+          }
+          var html = '';
+          rows.slice(0, 25).forEach(function (r) {
+            html += '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 4px;border-bottom:1px solid #f0f0f0;font-size:12px;">' +
+              '<span>' + r.date + ' \u00b7 ' + r.weekday + ' \u00b7 ' + r.hourHan + '</span>' +
+              '<span style="font-weight:700;color:#6a1b9a;">' + r.dir + '</span>' +
+              '</div>';
+          });
+          scanBox.innerHTML = html;
+        } catch (eScan) {
+          scanBox.innerHTML = '<div style="font-size:12px;color:#b00;">Scan failed: ' + (eScan && eScan.message || eScan) + '</div>';
+        } finally {
+          scanBtn.textContent = '\ud83d\udd0e Scan next 7 days';
+        }
+      }, 10);
+    });
+    purWrap.appendChild(scanBtn);
+    purWrap.appendChild(scanBox);
     card.appendChild(purWrap);
 
     function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
