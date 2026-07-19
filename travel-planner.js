@@ -911,6 +911,21 @@
    * turns/curves in between. This is the "direction of march" of a leg, snapped
    * to a 45° palace. (Not great-circle — that would change heading along the path.)
    * ----------------------------------------------------------------------- */
+  // Magnetic declination at a point, "today" (Edu, session 23: "le direzioni dei
+  // palazzi Feng Shui sono SEMPRE in base alla bussola magnetica" — not true/map
+  // north). WMM2025, same model + convention (East declination = positive) already
+  // used by facing-map.js's "Measure facing" tool: magnetic = true − declination.
+  // Synchronous, no network. Falls back to 0 (= old true-north behaviour) if
+  // geomag.js isn't loaded for some reason — never throws, never blocks a bearing.
+  function tpMagDeclination(lat, lon) {
+    try {
+      if (window.XKDGGeoMag && typeof window.XKDGGeoMag.declination === 'function') {
+        var d = window.XKDGGeoMag.declination(lat, lon, new Date());
+        if (isFinite(d)) return d;
+      }
+    } catch (e) {}
+    return 0;
+  }
   function tpBearing(lat1, lon1, lat2, lon2) {
     var toR = Math.PI / 180;
     var p1 = lat1 * toR, p2 = lat2 * toR;
@@ -918,7 +933,12 @@
     var dl = (lon2 - lon1) * toR;
     if (Math.abs(dl) > Math.PI) dl = dl > 0 ? -(2 * Math.PI - dl) : (2 * Math.PI + dl);
     var b = Math.atan2(dl, dpsi) / toR;
-    return (b + 360) % 360;
+    var trueBearing = (b + 360) % 360;
+    // MAGNETIC (session 23, root fix): every QMDJ/Feng Shui palace/direction check
+    // in this file (Lucky Trip, road-fortune gate, EV day-search, Live compass —
+    // ALL of it) reads this return value, so the correction belongs HERE, once,
+    // not patched into each of the dozens of call sites.
+    return (trueBearing - tpMagDeclination(lat1, lon1) + 360) % 360;
   }
   function tpSnapDir(deg) {
     var best = 'N', bestD = 999;
@@ -5451,7 +5471,9 @@
     if (Math.abs(dL) > Math.PI) dL = (dL > 0) ? (dL - 2 * Math.PI) : (dL + 2 * Math.PI);
     var dPsi = Math.log(Math.tan(Math.PI / 4 + f2 / 2) / Math.tan(Math.PI / 4 + f1 / 2));
     var th = Math.atan2(dL, dPsi) * 180 / Math.PI;
-    return (th + 360) % 360;
+    var trueBearing = (th + 360) % 360;
+    // MAGNETIC (session 23) — same root fix and same reasoning as tpBearing above.
+    return (trueBearing - tpMagDeclination(lat1, lon1) + 360) % 360;
   }
   var _cmpPanelFull = false, _cmpPanelCss = null;   // whole-panel fullscreen (distinct from the map-only Expand)
   var _cmpExit = null;           // last predicted exit {lat, lon, fromQ, toQ, distKm, etaMin}
@@ -5716,6 +5738,12 @@
       }
       return { ref: { lat: ref.lat, lon: ref.lon }, label: label };
     }
+    // No explicit origin, no computed trip — but a destination IS set and GPS is
+    // available (Edu, session 23: "la direzione fra dove mi trovo e una città,
+    // dovrebbe essere ovvio"). Use the LIVE fix as the reference, continuously —
+    // NOT a one-time snapshot like 📍 Here — so it keeps following the car as it
+    // moves, rather than needing an explicit setup step first.
+    if (_cmpDest && _cmpPos) return { ref: { lat: _cmpPos.lat, lon: _cmpPos.lon }, label: 'from here (live)' };
     return null;
   }
 
@@ -6000,8 +6028,10 @@
       _cmpPrev = { lat: pos.lat, lon: pos.lon, t: tNow };
     }
     // Fall back to the device's own heading/speed if we have no movement-derived one yet.
+    // GeolocationCoordinates.heading is defined (W3C spec) relative to TRUE north —
+    // same magnetic correction as tpBearing above, so it agrees with everything else.
     if ((_cmpHeading == null || !isFinite(_cmpHeading)) && p.coords.heading != null && isFinite(p.coords.heading)) {
-      _cmpHeading = p.coords.heading;
+      _cmpHeading = (p.coords.heading - tpMagDeclination(pos.lat, pos.lon) + 360) % 360;
       if (p.coords.speed != null && isFinite(p.coords.speed)) _cmpSpeedKmh = p.coords.speed * 3.6;
     }
     _cmpPos = pos;
@@ -6262,12 +6292,19 @@
         tpCmpStart();
         var lbl = function () { return document.getElementById('tp-cmp-ref-label'); };
         // 1) ORIGIN: typed place wins; else keep the existing origin; else fall back to Here.
+        // FIX (session 23, Edu: "la direzione fra dove mi trovo e una città... funziona solo
+        // se ci si muove"): a NEW destination typed with origin left blank is a fresh "from
+        // here to X" question — it must default to Here, NOT silently reuse an unrelated
+        // earlier trip's origin (e.g. this morning's Vienna→Tuoro), which produced a stale,
+        // meaningless bearing that only looked "alive" once driving shifted the trip's own
+        // last-stop tracking. Reusing the trip is still correct when NEITHER field changed
+        // (re-pressing Go on an already-active trip view).
         var pOrigin = fromV
           ? tpCmpSetOriginFrom(fromV).then(function (r) {
               if (!r && lbl()) lbl().textContent = 'Place not found \u2014 try without the house number, or just \u201cname, town\u201d.';
               return r;
             })
-          : Promise.resolve(_cmpOrigin || (window._tpLive ? { trip: true } : null));
+          : (toV ? Promise.resolve(_cmpOrigin) : Promise.resolve(_cmpOrigin || (window._tpLive ? { trip: true } : null)));
         pOrigin.then(function (o) {
           if (!o && !fromV) { tpCmpSetOriginHere(); }
           // 2) DESTINATION: filled -> rhumb course origin->dest; empty -> quadrant mode.
