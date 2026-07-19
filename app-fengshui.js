@@ -2397,6 +2397,27 @@ function fsOpenDirectionCalc(onClose){
     + '<div id="dir-geocode-status" style="font-size:10px;color:#888;margin-top:4px;"></div>'
     + '</div>'
 
+    // PURPOSE (session 23, Edu: "non ho capito dove sta, non hai fatto un menù a
+    // discesa dentro il Tab DIRECTIONS?"). The real Purpose control (#purpose-select)
+    // lives on the MAIN page, and this popup's full-screen overlay hides it completely
+    // while open — the earlier evalPalace fix was correctly WIRED but practically
+    // UNREACHABLE. This duplicate reads/writes the SAME element (single source of
+    // truth, no new state), so it's usable right here without closing the popup.
+    + '<div style="background:#f3e5f5;border-radius:6px;padding:10px;margin-bottom:10px;">'
+    + '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">🎯 PURPOSE for this direction</div>'
+    + '<select id="dir-purpose-select" onchange="_fsDirPurposeSync()" style="width:100%;padding:6px 8px;border-radius:4px;border:1px solid #6a1b9a;font-size:12px;font-weight:bold;color:#6a1b9a;">'
+    + '<option value="">— Any —</option>'
+    + '<option value="health">🏥 Health</option>'
+    + '<option value="career">💼 Career</option>'
+    + '<option value="wealth">💰 Wealth</option>'
+    + '<option value="relationship">❤️ Relationship</option>'
+    + '<option value="journey">✈️ Journey</option>'
+    + '<option value="speak">🎤 Speak</option>'
+    + '<option value="legal">⚖️ Legal</option>'
+    + '</select>'
+    + '<div style="font-size:10px;color:#888;margin-top:4px;">Sets the same PURPOSE used by BEST/LIST scans — pick it here, then run the scan from the main page.</div>'
+    + '</div>'
+
     // CALCULATE BUTTON
     + '<button onclick="fsDirectionCalc()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:6px;padding:12px;font-size:16px;font-weight:bold;cursor:pointer;margin-bottom:8px;">🧭 CALCULATE DIRECTION</button>'
 
@@ -2410,6 +2431,23 @@ function fsOpenDirectionCalc(onClose){
   document.body.appendChild(overlay);
   document.body.appendChild(popup);
   try { _fsDirRestore(); } catch(e){}
+  // Initialise the in-popup Purpose select from the SAME source of truth.
+  try {
+    var _mainSel = document.getElementById('purpose-select');
+    var _popSel = document.getElementById('dir-purpose-select');
+    if (_mainSel && _popSel) _popSel.value = _mainSel.value || '';
+  } catch(e){}
+}
+// Bidirectional sync (session 23): the popup's Purpose select writes DIRECTLY to
+// #purpose-select — bypassing onPurposeChange()'s birth-data reset check, which
+// exists for the DATE-scan use case and has nothing to do with directions (no
+// person data is needed to check a palace's door against a purpose).
+function _fsDirPurposeSync(){
+  try {
+    var _popSel = document.getElementById('dir-purpose-select');
+    var _mainSel = document.getElementById('purpose-select');
+    if (_popSel && _mainSel) _mainSel.value = _popSel.value;
+  } catch(e){}
 }
 
 // Persist / restore the Direction Calculator origin+destination so the user
