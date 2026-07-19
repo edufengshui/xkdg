@@ -5458,6 +5458,7 @@
   // 🎯 DESTINATION (address → geocoded): shows the CONSTANT rhumb-line bearing to
   // follow from the CURRENT position, live. Persisted so it survives reloads in the car.
   var _cmpDest = null;           // {lat, lon, name} or null
+  var _cmpDest2 = null;          // {lat, lon, name} or null — turn-wedge advisor target (session 23)
   try { var _cmpDs = localStorage.getItem('xkdg_cmp_dest'); if (_cmpDs) _cmpDest = JSON.parse(_cmpDs); } catch (e) {}
   function cmpSaveDest() { try { if (_cmpDest) localStorage.setItem('xkdg_cmp_dest', JSON.stringify(_cmpDest)); else localStorage.removeItem('xkdg_cmp_dest'); } catch (e) {}
   }
@@ -5561,15 +5562,17 @@
     if (_cmpMapFailed) return;
     var host = document.getElementById('tp-cmp-map'); if (!host) return;
     var r = cmpResolveRef();
-    if (!r) return;
+    // TURN-WEDGE (session 23): dest2 alone (no origin/dest1/trip) is still enough
+    // to draw the wedges — don't bail out just because there's no "main" reference.
+    if (!r && !(_cmpDest2 && _cmpPos)) return;
     var _abMode = !!(_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon));
     // Live-quadrant mode needs a GPS fix; A->B mode does NOT (it draws A and B only).
-    if (!_abMode && !_cmpPos) return;   // nothing to draw yet
+    if (!_abMode && !_cmpPos && !(r && _cmpDest2)) return;   // nothing to draw yet
     cmpEnsureLeaflet().then(function (L) {
       host = document.getElementById('tp-cmp-map'); if (!host) return;
-      var ref = r.ref;
+      var ref = (r && r.ref) || { lat: _cmpPos.lat, lon: _cmpPos.lon };
       var initCenter = _abMode ? [ (ref.lat + _cmpDest.lat) / 2, (ref.lon + _cmpDest.lon) / 2 ]
-                               : [ _cmpPos.lat, _cmpPos.lon ];
+                               : [ (_cmpPos || ref).lat, (_cmpPos || ref).lon ];
       if (!_cmpMap) {
         _cmpMap = L.map(host, { zoomControl: true, attributionControl: false, dragging: true });
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(_cmpMap);
@@ -5620,6 +5623,36 @@
             .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfc1 ' + (_lv.destName || 'Arrival'), { permanent: false });
         }
       } catch (eTrip) {}
+
+      // ═══ TURN-WEDGE ADVISOR (Edu, session 23) ═══ — from the sea today: "la
+      // direzione positiva era N, mi sono spinto avanti fino al punto dove il
+      // quadrante NW che parte da casa intersecava la mia strada." Draws the
+      // wedge(s) radiating OUT of the 2nd destination: arrive anywhere in a
+      // shaded wedge and that point sits in a FAVOURABLE direction from there,
+      // now (orange) or at the next hour change (green).
+      try {
+        if (_cmpDest2) {
+          var _radiusKm = Math.max(8, Math.min(60, (_cmpPos ? tpHaversineKm(_cmpPos.lat, _cmpPos.lon, _cmpDest2.lat, _cmpDest2.lon) : 25) * 0.35));
+          var _advice = tpTurnWedgeAdvice(_cmpDest2, _cmpDest2.lon);
+          _advice.forEach(function (a) {
+            var poly = tpWedgePolygon(_cmpDest2, a.wedgeDir, _radiusKm);
+            if (!poly) return;
+            var isNow = (a.when === 'now');
+            L.polygon(poly, {
+              color: isNow ? '#e65100' : '#2e7d32', weight: 2,
+              fillColor: isNow ? '#ffb74d' : '#81c784', fillOpacity: 0.28
+            }).addTo(_cmpMapLayer)
+              .bindTooltip(
+                (isNow ? '\u23f1\ufe0f now' : '\u23e9 next hour') + ' \u00b7 ' + a.hourHan +
+                ': stop here \u2192 ' + (_cmpDest2.name || '2nd dest') + ' becomes ' + a.favDir +
+                (a.minsLeft != null ? ' (' + a.minsLeft + ' min left)' : ''),
+                { sticky: true }
+              );
+          });
+          L.circleMarker([_cmpDest2.lat, _cmpDest2.lon], { radius: 8, color: '#6a1b9a', weight: 2, fillColor: '#ce93d8', fillOpacity: 1 })
+            .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfe0 ' + (_cmpDest2.name || '2nd destination'), { permanent: false });
+        }
+      } catch (eWedge) {}
       // In A->B mode (a destination is set) the user's own GPS position is IRRELEVANT
       // — the trip is between two typed points. Show the live "You" marker + exit wedge
       // ONLY in live-quadrant mode (no destination), otherwise a stray red dot hundreds
@@ -5812,6 +5845,74 @@
    * hours (…23:00, 01:00, 03:00…); each 时辰 lasts 120 min. UTC/DST are derived
    * from the device timezone so this also works with a "bare" compass (no trip).
    * Everything here is self-contained and never throws. --------------------- */
+  // ══════════════════════════════════════════════════════════════════════
+  //  TURN-WEDGE ADVISOR (Edu, session 23) — the technique he described from
+  //  the sea today: the direct hour was unfavourable (NE), so he drove a
+  //  favourable direction instead (N) far enough that, once the NEW hour
+  //  started, home would sit in a favourable octant (SE) from wherever he'd
+  //  be. He worked this out "by eye" mid-drive; this computes it.
+  //
+  //  Geometry: if the driver stands somewhere in octant X *from home*, then
+  //  home sits in octant opposite(X) *from the driver* (NW-of-home <=>
+  //  home-is-SE-from-there). So to arrive somewhere that puts home in a
+  //  FAVOURABLE octant F, the wedge to aim for is opposite(F), drawn radiating
+  //  OUT of home — exactly "il quadrante NW che parte dalla casa" in Edu's
+  //  own words. Uses the SAME rotating-chart favourability tpScanDirs already
+  //  computes everywhere else in this file — no new rule, just a new use.
+  // ══════════════════════════════════════════════════════════════════════
+  function tpTurnWedgeAdvice(home, lon) {
+    if (!home || lon == null || !isFinite(lon)) return [];
+    var now = Date.now();
+    var y = new Date(now).getFullYear();
+    var utc = -Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()) / 60;
+    var dstOn = tpDstActiveOn(new Date(now));
+    var c = tpCmpHourCountdown(lon);
+    if (!c) return [];
+    var windows = [
+      { label: 'now', ms: now, minsLeft: c.minsLeft },
+      { label: 'next', ms: (now + (c.minsLeft + 1) * 60000), minsLeft: null }
+    ];
+    var seen = {}, byWin = { now: [], next: [] };
+    windows.forEach(function (win) {
+      var hp = tpFullHourAt(win.ms, lon, utc, dstOn);
+      if (!hp) return;
+      var dirs = tpScanDirs(hp.Y, hp.M, hp.D, hp.gan, hp.zhi, null, false);
+      dirs.forEach(function (d) {
+        if (!d.eval || !d.eval.ok) return;                     // only favourable octants
+        var favIdx = TP_DIR_ORDER.indexOf(d.dir);
+        var wedgeIdx = (favIdx + 4) % 8;                        // opposite octant = where to STAND
+        var wedgeDir = TP_DIR_ORDER[wedgeIdx];
+        var key = win.label + '|' + wedgeDir;
+        if (seen[key]) return; seen[key] = true;
+        byWin[win.label].push({
+          when: win.label, minsLeft: win.minsLeft,
+          hourHan: hp.zhi, favDir: d.dir, wedgeDir: wedgeDir,
+          door: d.eval.door || null, score: d.eval.score || 0
+        });
+      });
+    });
+    // Cap to the best TWO per window (Edu: "oppure anche solo uno o due") — highest
+    // score first; a tie keeps the one closer to the current heading if given.
+    var out = [];
+    ['now', 'next'].forEach(function (w) {
+      byWin[w].sort(function (a, b) { return b.score - a.score; });
+      out = out.concat(byWin[w].slice(0, 2));
+    });
+    return out;
+  }
+  // Pie-slice polygon for one octant, radiating OUT of a centre point — the
+  // wedge itself (45° wide, centred on wedgeDir), for drawing on the map.
+  function tpWedgePolygon(center, wedgeDir, radiusKm) {
+    var centerDeg = TP_DIR_DEG[wedgeDir];
+    if (centerDeg == null) return null;
+    var pts = [[center.lat, center.lon]];
+    for (var a = centerDeg - 22.5; a <= centerDeg + 22.5 + 0.01; a += 5) {
+      var p = tpDestPoint(center, ((a % 360) + 360) % 360, radiusKm);
+      pts.push([p.lat, p.lon]);
+    }
+    pts.push([center.lat, center.lon]);
+    return pts;
+  }
   function tpCmpHourCountdown(lon) {
     try {
       if (lon == null || !isFinite(lon)) return null;
@@ -5889,7 +5990,21 @@
   function tpCmpRender() {
     var box = document.getElementById('tp-cmp-body'); if (!box) return;
     var r = cmpResolveRef();
-    if (!r) { box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Here</b> to use this spot as the origin, or type origin (and optional 🎯 destination) below and press <b>\u25b6 Go</b>. No destination = live quadrant mode; with a destination = constant course origin \u2192 destination.</div>'; return; }
+    if (!r) {
+      // TURN-WEDGE (session 23): dest2 alone still has something real to show —
+      // don't reduce it to the generic "Tap Here" placeholder.
+      if (_cmpDest2 && _cmpPos) {
+        var _adviceOnly = tpTurnWedgeAdvice(_cmpDest2, _cmpDest2.lon);
+        var _pickOnly = _adviceOnly.filter(function (a) { return a.when === 'now'; })[0] || _adviceOnly[0];
+        box.innerHTML = '<div style="color:#888;font-size:12px;margin-bottom:6px;">No origin/destination set \u2014 showing the turn-wedge advisor only.</div>' +
+          (_pickOnly
+            ? '<div style="font-size:15px;font-weight:700;color:#6a1b9a;">\ud83c\udfe0 ' + (_cmpDest2.name || '2nd dest') + ': stop in the <b>' + _pickOnly.wedgeDir + '</b> wedge \u2192 becomes ' +
+              '<b>' + _pickOnly.favDir + '</b> (' + (_pickOnly.when === 'now' ? 'now, ' + _pickOnly.minsLeft + ' min left' : 'next hour, ' + _pickOnly.hourHan) + ')</div>'
+            : '<div style="font-size:13px;color:#888;">No favourable wedge found in the current or next hour.</div>');
+        return;
+      }
+      box.innerHTML = '<div style="color:#888;font-size:13px;">Tap <b>📍 Here</b> to use this spot as the origin, or type origin (and optional 🎯 destination) below and press <b>\u25b6 Go</b>. No destination = live quadrant mode; with a destination = constant course origin \u2192 destination.</div>'; return;
+    }
     var ref = r.ref, refLabel = r.label;
     var _abMode = !!(_cmpDest && isFinite(_cmpDest.lat) && isFinite(_cmpDest.lon));
 
@@ -5953,6 +6068,22 @@
         }
       }
     } catch (eNext) {}
+    // TURN-WEDGE summary line (Edu, session 23) — the top pick in text, so it's
+    // readable without looking at the map at all.
+    try {
+      if (_cmpDest2) {
+        var _adviceTxt = tpTurnWedgeAdvice(_cmpDest2, _cmpDest2.lon);
+        var _bestNow = _adviceTxt.filter(function (a) { return a.when === 'now'; })[0];
+        var _bestNext = _adviceTxt.filter(function (a) { return a.when === 'next'; })[0];
+        var _pick = _bestNow || _bestNext;
+        if (_pick) {
+          html += '<div style="font-size:15px;font-weight:700;margin-top:6px;color:#6a1b9a;">' +
+            '\ud83c\udfe0 ' + (_cmpDest2.name || '2nd dest') + ': stop in the <b>' + _pick.wedgeDir + '</b> wedge \u2192 becomes ' +
+            '<b>' + _pick.favDir + '</b> (' + (_pick.when === 'now' ? 'now, ' + _pick.minsLeft + ' min left' : 'next hour, ' + _pick.hourHan) + ')' +
+            '</div>';
+        }
+      }
+    } catch (eWedgeTxt) {}
     if (distKm < 1) html += '<div style="font-size:12px;color:#b58900;margin-top:4px;">Too close to the reference for a stable bearing — drive a bit.</div>';
 
     // Travel heading (your real direction of march).
@@ -6284,6 +6415,26 @@
       destClr.addEventListener('click', function () { destInp.value = ''; tpCmpClearDest(); });
       drow.appendChild(destInp); drow.appendChild(destClr);
       ctrl.appendChild(drow);
+      // TURN-WEDGE ADVISOR (Edu, session 23): a SEPARATE point (his example: home)
+      // from which the map draws the wedge(s) to aim for — the octant, radiating
+      // OUT of this point, such that arriving there puts it in a favourable
+      // direction from you, now or at the next hour change. Independent of the
+      // main Destination above (in his example the two happened to coincide, but
+      // they don't have to — this is the "detour timing" tool, not the route).
+      var drow2 = el('div', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px;' });
+      var dest2Inp = el('input', { id: 'tp-cmp-dest2', type: 'text', placeholder: '\ud83c\udfe0 2nd destination\u2026 (turn-wedge target)', value: (_cmpDest2 && _cmpDest2.name) || '', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
+      var dest2Clr = el('button', { type: 'button', title: 'Clear 2nd destination', style: 'flex:0 0 auto;background:#eee;color:#555;border:0;border-radius:7px;padding:7px 9px;font-size:12px;cursor:pointer;' }, '\u2715');
+      dest2Clr.addEventListener('click', function () { dest2Inp.value = ''; _cmpDest2 = null; cmpRenderMap(); tpCmpRender(); });
+      dest2Inp.addEventListener('change', function () {
+        var v = dest2Inp.value.trim();
+        if (!v) { _cmpDest2 = null; cmpRenderMap(); tpCmpRender(); return; }
+        _tpResolvePlace(v, null, null).then(function (p) {
+          if (p) { _cmpDest2 = { lat: p.lat, lon: p.lon, name: v }; cmpRenderMap(); tpCmpRender(); }
+          else { var l2 = document.getElementById('tp-cmp-ref-label'); if (l2) l2.textContent = '2nd destination not found.'; }
+        });
+      });
+      drow2.appendChild(dest2Inp); drow2.appendChild(dest2Clr);
+      ctrl.appendChild(drow2);
       var goBtn = el('button', { type: 'button', style: 'width:100%;margin-top:8px;background:#0b8043;color:#fff;border:0;border-radius:8px;padding:9px;font-size:14px;font-weight:800;cursor:pointer;' }, '\u25b6 Go');
       function doGo() {
         var fromV = (nameInp.value || '').trim();
@@ -6480,6 +6631,17 @@
   // computed on the SAME compensated true-solar-time the Main uses:
   // solar = wall-clock + tpOffsetMin(lon, utc, dstOn) [longitude eq. of time + UTC + DST].
   // Returns { han:'午', py:'Wu', tst:'13:12' } (tst is the true-solar clock, for cross-checking).
+  // Full hour pillar (stem+branch+solar date) at a moment — tpChineseHourAt only
+  // returns the branch (for the countdown display); tpScanDirs needs the FULL
+  // pillar plus Y/M/D to look up the rotating chart (session 23, turn-wedge advisor).
+  function tpFullHourAt(ms, lon, utc, dstOn) {
+    try {
+      var off = tpOffsetMin(lon, utc, dstOn, ms);
+      var sd = new Date(ms + off * 60000);
+      var ec = Solar.fromDate(sd).getLunar().getEightChar();
+      return { Y: sd.getFullYear(), M: sd.getMonth() + 1, D: sd.getDate(), gan: ec.getTimeGan(), zhi: ec.getTimeZhi() };
+    } catch (e) { return null; }
+  }
   function tpChineseHourAt(ms, lon, utc, dstOn) {
     try {
       var off = tpOffsetMin(lon, utc, dstOn, ms);
