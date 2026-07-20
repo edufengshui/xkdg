@@ -5530,6 +5530,13 @@
     dest2:  { radiusKm: null, handle: null, dragging: false },
     origin: { radiusKm: null, handle: null, dragging: false }
   };
+  // Manual octant override (session 24): typing a bare compass token (N/NE/…/NW;
+  // Italian O/NO/SO/NORD/SUD/EST/OVEST accepted) into a destination field draws a
+  // single 45° wedge instead of geocoding a place.
+  //   dest1 field → ORIGIN wedge, drawn AS TYPED (travel direction).
+  //   dest2 field → the dest2 point's wedge, drawn OPPOSITE (favourable-from-there).
+  var _cmpOriginManualDir = null;  // typed dir for the origin wedge (drawn direct)
+  var _cmpDest2ManualDir  = null;  // typed dir for the dest2 wedge (drawn opposite)
   try { var _cmpDs = localStorage.getItem('xkdg_cmp_dest'); if (_cmpDs) _cmpDest = JSON.parse(_cmpDs); } catch (e) {}
   function cmpSaveDest() { try { if (_cmpDest) localStorage.setItem('xkdg_cmp_dest', JSON.stringify(_cmpDest)); else localStorage.removeItem('xkdg_cmp_dest'); } catch (e) {}
   }
@@ -5972,6 +5979,22 @@
   // Drag a handle to extend/shrink that source's wedges and sight the exact point
   // where the origin's travel wedge crosses the dest2 stop wedge (or a road).
   // Octants are drawn MAGNETIC (declination added). Double-tap a handle = auto length.
+  // Parse a bare compass token → canonical dir (N/NE/E/SE/S/SW/W/NW), else null.
+  // English + Italian aliases; ignores spaces/dots and case.
+  function tpParseOctant(text) {
+    if (!text) return null;
+    var t = String(text).trim().toUpperCase().replace(/[\s.]/g, '');
+    var map = {
+      N: 'N', NE: 'NE', E: 'E', SE: 'SE', S: 'S', SW: 'SW', W: 'W', NW: 'NW',
+      O: 'W', NO: 'NW', SO: 'SW',                       // Italian: Ovest, Nord-Ovest, Sud-Ovest
+      NORD: 'N', SUD: 'S', EST: 'E', OVEST: 'W'
+    };
+    return map[t] || null;
+  }
+  function tpOppositeDir(dir) {
+    var i = TP_DIR_ORDER.indexOf(dir);
+    return i < 0 ? null : TP_DIR_ORDER[(i + 4) % 8];
+  }
   // Pie-slice polygon around an ALREADY-magnetic centre bearing (degrees), radiating
   // out of `center`. Kept separate from tpWedgePolygon so the declination is applied
   // once, at the call site, not baked into the octant table.
@@ -6001,9 +6024,9 @@
       dirKey: 'wedgeDir', now: '#e65100', next: '#2e7d32', fillNow: '#ffb74d', fillNext: '#81c784',
       apex: '#6a1b9a', apexFill: '#ce93d8', drawApex: true, tag: 'stop-wedge', verb: 'stop here'
     });
-    // Origin wedges only make sense in turn-wedge mode (a 2nd destination is set) —
-    // otherwise they'd clutter plain A->B navigation.
-    if (_cmpDest2) {
+    // Origin wedges show in turn-wedge mode (a 2nd destination set) OR when a manual
+    // origin direction was typed — otherwise they'd clutter plain A->B navigation.
+    if (_cmpDest2 || _cmpOriginManualDir) {
       cmpDrawWedgeSet('origin', {
         dirKey: 'favDir', now: '#1565c0', next: '#00838f', fillNow: '#90caf9', fillNext: '#80deea',
         apex: '#0b8043', apexFill: '#a5d6a7', drawApex: false, tag: 'go-wedge', verb: 'head this way'
@@ -6027,22 +6050,39 @@
     var autoR = Math.max(8, Math.min(60, (_cmpPos ? tpHaversineKm(_cmpPos.lat, _cmpPos.lon, center.lat, center.lon) : 25) * 0.35));
     var radiusKm = (st.radiusKm != null) ? st.radiusKm : autoR;
 
-    var advice = tpTurnWedgeAdvice(center, center.lon);
-    advice.forEach(function (a) {
-      var baseDeg = TP_DIR_DEG[a[pal.dirKey]];
+    // Build the octant list to draw: a MANUAL typed direction wins (single 45°
+    // wedge), else the chart's auto favourable wedges. origin draws the typed dir
+    // AS-IS (travel direction); dest2 draws its OPPOSITE (favourable-from-there).
+    var manualDir = (key === 'origin') ? _cmpOriginManualDir : _cmpDest2ManualDir;
+    var items;
+    if (manualDir) {
+      var drawDir = (key === 'origin') ? manualDir : tpOppositeDir(manualDir);
+      items = drawDir ? [{ dir: drawDir, isNow: true, manual: true, typed: manualDir }] : [];
+    } else {
+      items = tpTurnWedgeAdvice(center, center.lon).map(function (a) {
+        return { dir: a[pal.dirKey], isNow: (a.when === 'now'), hourHan: a.hourHan, favDir: a.favDir, minsLeft: a.minsLeft };
+      });
+    }
+
+    items.forEach(function (it) {
+      var baseDeg = TP_DIR_DEG[it.dir];
       if (baseDeg == null) return;
       var centerDeg = ((baseDeg + decl) % 360 + 360) % 360;   // MAGNETIC octant
-      var isNow = (a.when === 'now');
+      var isNow = it.isNow;
       L.polygon(cmpWedgePolyAtBearing(center, centerDeg, radiusKm), {
         color: isNow ? pal.now : pal.next, weight: 2,
         fillColor: isNow ? pal.fillNow : pal.fillNext, fillOpacity: 0.28
       }).addTo(_cmpWedgeLayer)
         .bindTooltip(
-          (isNow ? '\u23f1\ufe0f now' : '\u23e9 next hour') + ' \u00b7 ' + a.hourHan + ': ' + pal.verb +
-          (key === 'dest2'
-            ? ' \u2192 ' + (center.name || '2nd dest') + ' becomes ' + a.favDir
-            : ' (' + a.favDir + ' favourable)') +
-          (a.minsLeft != null ? ' (' + a.minsLeft + ' min left)' : ''),
+          it.manual
+            ? (key === 'dest2'
+                ? '\ud83d\udccd manual ' + it.typed + ' \u2192 ' + (center.name || '2nd dest') + ' stand-wedge ' + it.dir
+                : '\ud83d\udccd manual: head ' + it.dir)
+            : (isNow ? '\u23f1\ufe0f now' : '\u23e9 next hour') + ' \u00b7 ' + it.hourHan + ': ' + pal.verb +
+              (key === 'dest2'
+                ? ' \u2192 ' + (center.name || '2nd dest') + ' becomes ' + it.favDir
+                : ' (' + it.favDir + ' favourable)') +
+              (it.minsLeft != null ? ' (' + it.minsLeft + ' min left)' : ''),
           { sticky: true }
         );
       // Faint dashed bisector out to the tip — easier to sight a crossing along a road.
@@ -6059,8 +6099,8 @@
 
     // Draggable handle (one per source). Lives on the map, not in _cmpWedgeLayer, so
     // a redraw never destroys it mid-drag. Placed on the FIRST wedge's magnetic tip.
-    if (advice.length) {
-      var b0 = TP_DIR_DEG[advice[0][pal.dirKey]];
+    if (items.length) {
+      var b0 = TP_DIR_DEG[items[0].dir];
       var hDeg = ((((b0 == null ? 90 : b0) + decl) % 360) + 360) % 360;
       var tip = tpDestPoint(center, hDeg, radiusKm);
       if (!st.handle) {
@@ -6595,9 +6635,9 @@
       var nameInp = el('input', { id: 'tp-cmp-name', type: 'text', placeholder: 'From a place… (e.g. Arezzo)', style: 'width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
       ctrl.appendChild(nameInp);
       var drow = el('div', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px;' });
-      var destInp = el('input', { id: 'tp-cmp-dest', type: 'text', placeholder: '\ud83c\udfaf To a place\u2026 (destination, optional)', value: (_cmpDest && _cmpDest.name) || '', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
+      var destInp = el('input', { id: 'tp-cmp-dest', type: 'text', placeholder: '\ud83c\udfaf To a place\u2026 or a direction (NW) from origin', value: (_cmpOriginManualDir || (_cmpDest && _cmpDest.name) || ''), style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
       var destClr = el('button', { type: 'button', title: 'Clear destination', style: 'flex:0 0 auto;background:#eee;color:#555;border:0;border-radius:7px;padding:7px 9px;font-size:12px;cursor:pointer;' }, '\u2715');
-      destClr.addEventListener('click', function () { destInp.value = ''; tpCmpClearDest(); });
+      destClr.addEventListener('click', function () { destInp.value = ''; _cmpOriginManualDir = null; tpCmpClearDest(); cmpRenderMap(); });
       drow.appendChild(destInp); drow.appendChild(destClr);
       ctrl.appendChild(drow);
       // TURN-WEDGE ADVISOR (Edu, session 23): a SEPARATE point (his example: home)
@@ -6607,12 +6647,23 @@
       // main Destination above (in his example the two happened to coincide, but
       // they don't have to — this is the "detour timing" tool, not the route).
       var drow2 = el('div', { style: 'display:flex;gap:6px;align-items:center;margin-top:6px;' });
-      var dest2Inp = el('input', { id: 'tp-cmp-dest2', type: 'text', placeholder: '\ud83c\udfe0 2nd destination\u2026 (turn-wedge target)', value: (_cmpDest2 && _cmpDest2.name) || '', style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
+      var dest2Inp = el('input', { id: 'tp-cmp-dest2', type: 'text', placeholder: '\ud83c\udfe0 2nd dest place\u2026 or a direction (S)', value: (_cmpDest2ManualDir || (_cmpDest2 && _cmpDest2.name) || ''), style: 'flex:1;min-width:0;border:1px solid #ccc;border-radius:7px;padding:7px 8px;font-size:12px;' });
       var dest2Clr = el('button', { type: 'button', title: 'Clear 2nd destination', style: 'flex:0 0 auto;background:#eee;color:#555;border:0;border-radius:7px;padding:7px 9px;font-size:12px;cursor:pointer;' }, '\u2715');
-      dest2Clr.addEventListener('click', function () { dest2Inp.value = ''; _cmpDest2 = null; cmpRenderMap(); tpCmpRender(); });
+      dest2Clr.addEventListener('click', function () { dest2Inp.value = ''; _cmpDest2 = null; _cmpDest2ManualDir = null; cmpRenderMap(); tpCmpRender(); });
       dest2Inp.addEventListener('change', function () {
         var v = dest2Inp.value.trim();
-        if (!v) { _cmpDest2 = null; cmpRenderMap(); tpCmpRender(); return; }
+        if (!v) { _cmpDest2 = null; _cmpDest2ManualDir = null; cmpRenderMap(); tpCmpRender(); return; }
+        // A bare direction (e.g. "S") → manual octant for the dest2 wedge (drawn as the
+        // OPPOSITE octant). The dest2 POINT is kept; set a place first if none exists.
+        var octD = tpParseOctant(v);
+        if (octD) {
+          _cmpDest2ManualDir = octD;
+          var lm = document.getElementById('tp-cmp-ref-label');
+          if (!_cmpDest2 && lm) lm.textContent = 'Set a 2nd-destination place first, then type the direction.';
+          cmpRenderMap(); tpCmpRender();
+          return;
+        }
+        _cmpDest2ManualDir = null;   // a real place → back to the chart's auto wedges
         _tpResolvePlace(v, null, null).then(function (p) {
           if (p) { _cmpDest2 = { lat: p.lat, lon: p.lon, name: v }; cmpRenderMap(); tpCmpRender(); }
           else { var l2 = document.getElementById('tp-cmp-ref-label'); if (l2) l2.textContent = '2nd destination not found.'; }
@@ -6643,7 +6694,11 @@
           : (toV ? Promise.resolve(_cmpOrigin) : Promise.resolve(_cmpOrigin || (window._tpLive ? { trip: true } : null)));
         pOrigin.then(function (o) {
           if (!o && !fromV) { tpCmpSetOriginHere(); }
-          // 2) DESTINATION: filled -> rhumb course origin->dest; empty -> quadrant mode.
+          // 2) DESTINATION: a bare direction (e.g. "NW") → manual ORIGIN wedge, no
+          //    geocode. A place → rhumb course origin->dest. Empty → quadrant mode.
+          var octD = tpParseOctant(toV);
+          if (octD) { _cmpOriginManualDir = octD; tpCmpClearDest(); return null; }
+          _cmpOriginManualDir = null;   // a real place clears any manual origin octant
           if (toV) {
             return tpCmpSetDest(toV).then(function (r2) {
               if (!r2 && lbl()) lbl().textContent = 'Destination not found \u2014 try without the house number, or just \u201cname, town\u201d.';
