@@ -520,7 +520,13 @@ function buildFengShuiView(){
             </select>
             <span id="fs-purpact-hint" style="font-size:11px;color:#777;font-style:italic;display:block;margin-top:4px;"></span>
           </div>
-          <div style="font-size:11px;color:#777;font-style:italic;margin-top:6px;">Pick a <b>Target</b>: <b>All quadrants</b> searches everywhere and reports where the purpose's door appears; <b>Water palaces</b> restricts to your placed water features; or pick a specific <b>向星 Water star</b> / <b>山星 Mountain star</b> of the saved chart to scan the palace where that star sits (some purposes work better on a specific mountain star). Either way the result combines the Qimen door (Feng Shui) with the matching Main Purpose (XKDG).</div>
+          <div style="margin-top:6px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:bold;color:#5d4037;cursor:pointer;">
+              <input type="checkbox" id="fs-purpact-zsls" onchange="fsPurposeActivationScan()">
+              🧭 + Zheng Shen / Ling Shen (XKDG) — also check the house's main door facing/water
+            </label>
+          </div>
+          <div style="font-size:11px;color:#777;font-style:italic;margin-top:6px;">Pick a <b>Target</b>: <b>All quadrants</b> searches everywhere and reports where the purpose's door appears; <b>Water palaces</b> restricts to your placed water features; or pick a specific <b>向星 Water star</b> / <b>山星 Mountain star</b> of the saved chart to scan the palace where that star sits (some purposes work better on a specific mountain star). Either way the result combines the Qimen door (Feng Shui) with the matching Main Purpose (XKDG). Check <b>Zheng Shen / Ling Shen</b> to ALSO fold in the same door-facing + water compatibility check used in House Profiles' own 🔎 SCAN.</div>
           <div id="fs-purpact-results" style="margin-top:10px;"></div>
           <div id="fs-purpact-chart" style="margin-top:10px;"></div>
           <!-- 🔧 Fine-tune (advanced) — free choice of star on the general chart -->
@@ -548,6 +554,12 @@ function buildFengShuiView(){
             </div>
             <button onclick="fsWaterActivationScan()" style="background:linear-gradient(135deg,#00897b,#26a69a);color:#fff;font-weight:bold;font-size:14px;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;">🔎 SCAN dates</button>
             <button onclick="fsGenWaterSaveToHouse()" title="Save this water feature into the active house" style="background:#fff;color:#00695c;border:1px solid #00695c;font-weight:bold;font-size:12px;padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;">💾 Save to house</button>
+          </div>
+          <div style="margin-top:6px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:bold;color:#5d4037;cursor:pointer;">
+              <input type="checkbox" id="fs-wateract-zsls" onchange="fsWaterActivationScan()">
+              🧭 + Zheng Shen / Ling Shen (XKDG) — also check the house's main door facing/water
+            </label>
           </div>
           <div id="fs-wateract-results" style="margin-top:10px;"></div>
         </div>
@@ -6397,10 +6409,46 @@ function fsWaterActivationScan(){
       } catch(e){}
     }
 
+    // Zheng Shen / Ling Shen — same add-on as Purpose Activation above
+    // (Edu, session 23), gated by its own toggle.
+    var zsLsSet2 = {}, zsLsOn2 = !!(document.getElementById('fs-wateract-zsls') || {}).checked, zsLsNote2 = '';
+    if (zsLsOn2) {
+      try {
+        var _zh2 = _fsPurpactSelectedHouse();
+        var _zf2 = _zh2 ? _fsActiveFloor(_zh2) : null;
+        var _zd2 = (_zf2 && _zf2.doors && _zf2.doors.length) ? _zf2.doors[0] : null;
+        if (!_zd2 || _zd2.facing == null) {
+          zsLsNote2 = 'No door facing set on the active house \u2014 add one in House Profiles first.';
+        } else {
+          var _zfSlot2 = fsSlotForDeg(_zd2.facing);
+          if (!fsIsZhengShen(_zfSlot2.yun)) {
+            zsLsNote2 = 'This house\u2019s door facing is NOT Zheng Shen \u2014 edit it in House Profiles.';
+          } else {
+            var _zwSlot2 = null;
+            if (_zd2.water != null) {
+              _zwSlot2 = fsSlotForDeg(_zd2.water);
+              if (!fsIsLingShen(_zwSlot2.yun)) { zsLsNote2 = 'This house\u2019s water is NOT Ling Shen \u2014 edit it in House Profiles.'; _zwSlot2 = null; }
+            }
+            if (!zsLsNote2) {
+              var _zMatches2 = fsFindMatchingDatesForSetup(_zfSlot2, _zwSlot2);
+              if (_zMatches2) _zMatches2.forEach(function (m) {
+                var iso = m.date.getFullYear() + '-' + String(m.date.getMonth() + 1).padStart(2, '0') + '-' + String(m.date.getDate()).padStart(2, '0');
+                zsLsSet2[iso] = true;
+              });
+              if (!Object.keys(zsLsSet2).length) zsLsNote2 = 'No Zheng Shen / Ling Shen match found in this range.';
+            }
+          }
+        }
+      } catch (e) { zsLsNote2 = 'Zheng Shen / Ling Shen check failed.'; }
+    }
+
     // (3) Merge by date — both scores + combined
     var rows=qres.map(function(r){
       var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
-      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, hidx:(r.hidx!=null?r.hidx:null), q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0), hits:(r.hits||[]).map(function(h){return h.label;}) };
+      var zsHit2 = zsLsOn2 && !!zsLsSet2[r.date];
+      var hits2 = (r.hits||[]).map(function(h){return h.label;});
+      if (zsHit2) hits2 = hits2.concat(['\ud83e\udded ZS/LS \u2713']);
+      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, hidx:(r.hidx!=null?r.hidx:null), q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+(zsHit2?12:0), hits:hits2, zsls:zsHit2 };
     });
     rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
     if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No favourable Qimen water hours in this range for '+dir+'.</div>'; return; }
@@ -6408,7 +6456,8 @@ function fsWaterActivationScan(){
     var WDIR2PAL={N:1,SW:2,E:3,SE:4,S:9,W:7,NE:8,NW:6};
     var wPal=WDIR2PAL[dir]||0;
     var dmy=function(iso){ var p=String(iso).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):iso; };
-    var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'+dir+' — '+rows.length+' hours · '+(hasPerson?'Qimen + XKDG':'Qimen only — load a person (A/B) to add XKDG')+'</div>';
+    var html='<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:6px;">'+dir+' — '+rows.length+' hours · '+(hasPerson?'Qimen + XKDG':'Qimen only — load a person (A/B) to add XKDG')+(zsLsOn2?' + \ud83e\udded Zheng/Ling Shen':'')+'</div>';
+    if (zsLsOn2 && zsLsNote2) html += '<div style="font-size:11px;color:#e65100;margin-bottom:6px;">\ud83e\udded ' + zsLsNote2 + '</div>';
     html+='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
     html+='<tr style="color:#00695c;">'
       +'<th style="text-align:left;padding:4px;border-bottom:1px solid #b2dfdb;">Date</th>'
@@ -6660,6 +6709,43 @@ function fsPurposeActivationScan(){
       } catch(e){}
     }
 
+    // (2b) Zheng Shen / Ling Shen — XKDG door-facing + water compatibility
+    // (Edu, session 23: "nella sezione ACTIVATIONS... lo SCAN deve includere
+    // ANCHE il risultato del calcolo XKDG di cui sopra" — the SAME check now
+    // wired into House Profiles' own SCAN button, folded in here too, gated
+    // by its own toggle so it stays opt-in). Reuses fsFindMatchingDatesForSetup
+    // as-is (one call, used as a date lookup) — no new rule, no duplicated logic.
+    var zsLsSet = {}, zsLsOn = !!(document.getElementById('fs-purpact-zsls') || {}).checked, zsLsNote = '';
+    if (zsLsOn) {
+      try {
+        var _zh = _fsPurpactSelectedHouse();
+        var _zf = _zh ? _fsActiveFloor(_zh) : null;
+        var _zd = (_zf && _zf.doors && _zf.doors.length) ? _zf.doors[0] : null;
+        if (!_zd || _zd.facing == null) {
+          zsLsNote = 'No door facing set on the active house \u2014 add one in House Profiles first.';
+        } else {
+          var _zfSlot = fsSlotForDeg(_zd.facing);
+          if (!fsIsZhengShen(_zfSlot.yun)) {
+            zsLsNote = 'This house\u2019s door facing is NOT Zheng Shen \u2014 edit it in House Profiles.';
+          } else {
+            var _zwSlot = null;
+            if (_zd.water != null) {
+              _zwSlot = fsSlotForDeg(_zd.water);
+              if (!fsIsLingShen(_zwSlot.yun)) { zsLsNote = 'This house\u2019s water is NOT Ling Shen \u2014 edit it in House Profiles.'; _zwSlot = null; }
+            }
+            if (!zsLsNote) {
+              var _zMatches = fsFindMatchingDatesForSetup(_zfSlot, _zwSlot);
+              if (_zMatches) _zMatches.forEach(function (m) {
+                var iso = m.date.getFullYear() + '-' + String(m.date.getMonth() + 1).padStart(2, '0') + '-' + String(m.date.getDate()).padStart(2, '0');
+                zsLsSet[iso] = true;
+              });
+              if (!Object.keys(zsLsSet).length) zsLsNote = 'No Zheng Shen / Ling Shen match found in this range.';
+            }
+          }
+        }
+      } catch (e) { zsLsNote = 'Zheng Shen / Ling Shen check failed.'; }
+    }
+
     // (3) Build rows. Show the Quadrant column when results span more than one palace.
     var palSet={}; qres.forEach(function(r){ if(r.dir) palSet[r.dir]=1; });
     var multiPalace=Object.keys(palSet).length>1;
@@ -6696,7 +6782,9 @@ function fsPurposeActivationScan(){
       var xs=(xkdgByDate[r.date]!=null)?xkdgByDate[r.date]:null;
       var fb=_fsStarBonus(r.dir||'');
       var hitsArr=(r.hits||[]).map(function(h){return h.label;}).concat(fb.labels);
-      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+fb.n, dir:(r.dir||''), door:(r.purposeDoor||null), hits:hitsArr };
+      var zsHit = zsLsOn && !!zsLsSet[r.date];
+      if (zsHit) hitsArr = hitsArr.concat(['\ud83e\udded ZS/LS \u2713']);
+      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+fb.n+(zsHit?12:0), dir:(r.dir||''), door:(r.purposeDoor||null), hits:hitsArr, zsls:zsHit };
     });
 
     var DOOR_LBL={Kai:'Open 開',Xiu:'Rest 休',Sheng:'Birth 生',JingS:'View 景',JingF:'Shocking 驚',Shang:'Injury 傷',Du:'Delusion 杜',Si:'Death 死'};
@@ -6705,7 +6793,8 @@ function fsPurposeActivationScan(){
 
     window._fsPurpactState = {
       rows:rows, multiPalace:multiPalace, scopeTxt:scopeTxt, purpLabel:purpLabel,
-      purpDoorTxt:purpDoorTxt, hasPerson:hasPerson, mainPurpose:mainPurpose, DOOR_LBL:DOOR_LBL
+      purpDoorTxt:purpDoorTxt, hasPerson:hasPerson, mainPurpose:mainPurpose, DOOR_LBL:DOOR_LBL,
+      zsLsOn:zsLsOn, zsLsNote:zsLsNote
     };
     _fsPurpactRender();
   } catch(err){ console.warn('fsPurposeActivationScan', err); out.innerHTML='<div style="font-size:12px;color:#c0392b;">Scan error.</div>'; }
@@ -6759,7 +6848,11 @@ function _fsPurpactRender(){
     + st.purpLabel + ' · ' + st.purpDoorTxt + ' · ' + st.scopeTxt
     + ' — ' + rows.length + ' hours · '
     + (st.hasPerson?('Qimen + XKDG'+(st.mainPurpose?(' ('+st.mainPurpose+')'):'')):'Qimen only — load a person to add XKDG')
+    + (st.zsLsOn?' + \ud83e\udded Zheng/Ling Shen':'')
     + '</div>';
+  if (st.zsLsOn && st.zsLsNote) {
+    html += '<div style="font-size:11px;color:#e65100;margin-bottom:6px;">\ud83e\udded ' + st.zsLsNote + '</div>';
+  }
   var DIR2PAL={N:1,SW:2,E:3,SE:4,S:9,W:7,NE:8,NW:6};
   var pad='padding:3px 10px;';
   html+='<div style="overflow-x:auto;"><table style="width:auto;border-collapse:collapse;font-size:12px;">';
