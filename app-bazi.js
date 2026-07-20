@@ -8073,6 +8073,13 @@ async function submitPin() {
 
     if (validated) {
         localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate }));
+        // Per-student identifier (Edu, session 23: "si può sapere quale studente fa
+        // più domande?"). Reuses the SAME hash already computed to check the PIN —
+        // no new student-management system, no new data collected beyond what the
+        // license check already touches. Sent as a header (not in the message body)
+        // to every AI request, so the worker can log usage per student without this
+        // ever counting as conversation content or LLM tokens.
+        localStorage.setItem('xkdg_student_id', hashed);
         document.getElementById('license-overlay').style.display = 'none';
         checkLicense();
         setNow();
