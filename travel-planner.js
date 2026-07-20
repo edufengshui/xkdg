@@ -5537,6 +5537,11 @@
   //   dest2 field → the dest2 point's wedge, drawn OPPOSITE (favourable-from-there).
   var _cmpOriginManualDir = null;  // typed dir for the origin wedge (drawn direct)
   var _cmpDest2ManualDir  = null;  // typed dir for the dest2 wedge (drawn opposite)
+  // Draggable endpoints (session 24): finger-move the origin (green) and the A->B
+  // destination (red) markers directly on the map. Handles live on _cmpMap (not in
+  // _cmpMapLayer) so a redraw never destroys them mid-drag.
+  var _cmpEndHandle   = { origin: null, dest: null };
+  var _cmpEndDragging = { origin: false, dest: false };
   try { var _cmpDs = localStorage.getItem('xkdg_cmp_dest'); if (_cmpDs) _cmpDest = JSON.parse(_cmpDs); } catch (e) {}
   function cmpSaveDest() { try { if (_cmpDest) localStorage.setItem('xkdg_cmp_dest', JSON.stringify(_cmpDest)); else localStorage.removeItem('xkdg_cmp_dest'); } catch (e) {}
   }
@@ -5711,6 +5716,7 @@
       // Turn-wedge advisor now lives in its own layer + draggable handle so it can
       // be stretched with a finger (session 24). See cmpDrawWedges() below.
       try { cmpDrawWedges(); } catch (eWedge) {}
+      try { cmpDrawDragPoints(); } catch (eDrag) {}
       // In A->B mode (a destination is set) the user's own GPS position is IRRELEVANT
       // — the trip is between two typed points. Show the live "You" marker + exit wedge
       // ONLY in live-quadrant mode (no destination), otherwise a stray red dot hundreds
@@ -6136,6 +6142,56 @@
     st.radiusKm = Math.max(1, Math.min(400, d));   // clamp 1–400 km
     st.dragging = (e && e.type === 'drag');         // true while dragging, false on dragend
     try { cmpDrawWedges(); } catch (err) {}
+  }
+
+  // ═══ DRAGGABLE ENDPOINTS (session 24) ═════════════════════════════════
+  // Finger-move the ORIGIN (green) and the A->B DESTINATION (red) on the map.
+  // Dragging the origin pins it as an explicit origin at the dropped spot (so the
+  // origin wedge follows). Handles live on _cmpMap so a redraw won't kill them.
+  function cmpDrawDragPoints() {
+    if (!_cmpMap) return;
+    var r = null; try { r = cmpResolveRef(); } catch (e) {}
+    var oPt = (r && r.ref && isFinite(r.ref.lat)) ? r.ref : null;
+    cmpEnsureEndHandle('origin', oPt, '#0b8043', function (lat, lon) {
+      _cmpOrigin = { lat: lat, lon: lon, name: (_cmpOrigin && _cmpOrigin.name) || null };
+    });
+    var dPt = (_cmpDest && isFinite(_cmpDest.lat)) ? _cmpDest : null;
+    cmpEnsureEndHandle('dest', dPt, '#e53935', function (lat, lon) {
+      _cmpDest = { lat: lat, lon: lon, name: (_cmpDest && _cmpDest.name) || null };
+      cmpSaveDest();
+    });
+  }
+
+  function cmpEnsureEndHandle(key, pt, color, onMove) {
+    var h = _cmpEndHandle[key];
+    if (!pt) {
+      if (h) { try { _cmpMap.removeLayer(h); } catch (e) {} _cmpEndHandle[key] = null; }
+      return;
+    }
+    if (!h) {
+      var icon = L.divIcon({
+        className: '',
+        html: '<div style="width:26px;height:26px;border-radius:50%;border:3px solid ' + color + ';background:rgba(255,255,255,.25);box-shadow:0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.4);cursor:grab;"></div>',
+        iconSize: [26, 26], iconAnchor: [13, 13]
+      });
+      h = L.marker([pt.lat, pt.lon], { draggable: true, icon: icon, zIndexOffset: 1100, keyboard: false }).addTo(_cmpMap);
+      h.bindTooltip(key === 'origin' ? 'Drag to move origin' : 'Drag to move destination', { permanent: false, direction: 'top', offset: [0, -14] });
+      h.on('drag', function () {
+        _cmpEndDragging[key] = true;
+        var ll = h.getLatLng();
+        onMove(ll.lat, ll.lng);            // Leaflet latlng uses .lng
+        try { cmpRenderMap(); } catch (e) {}
+      });
+      h.on('dragend', function () {
+        _cmpEndDragging[key] = false;
+        var ll = h.getLatLng();
+        onMove(ll.lat, ll.lng);
+        try { cmpRenderMap(); tpCmpRender(); } catch (e) {}
+      });
+      _cmpEndHandle[key] = h;
+    } else if (!_cmpEndDragging[key]) {
+      h.setLatLng([pt.lat, pt.lon]);        // reposition only when the finger isn't holding it
+    }
   }
 
   function tpCmpHourCountdown(lon) {
