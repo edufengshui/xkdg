@@ -5520,6 +5520,16 @@
   // follow from the CURRENT position, live. Persisted so it survives reloads in the car.
   var _cmpDest = null;           // {lat, lon, name} or null
   var _cmpDest2 = null;          // {lat, lon, name} or null — turn-wedge advisor target (session 23)
+  // ── Draggable turn-wedges (session 24): two independent wedge sources, each with
+  // its own dragged radius + handle. 'dest2' = where to STOP (wedgeDir); 'origin' =
+  // favourable travel direction to head IN now/next (favDir). Octants are drawn
+  // MAGNETIC (declination added at draw time) to match the rest of the direction
+  // system. null radius = auto length (old behaviour).
+  var _cmpWedgeLayer = null;     // shared Leaflet layer for all wedge polygons
+  var _cmpWedgeState = {
+    dest2:  { radiusKm: null, handle: null, dragging: false },
+    origin: { radiusKm: null, handle: null, dragging: false }
+  };
   try { var _cmpDs = localStorage.getItem('xkdg_cmp_dest'); if (_cmpDs) _cmpDest = JSON.parse(_cmpDs); } catch (e) {}
   function cmpSaveDest() { try { if (_cmpDest) localStorage.setItem('xkdg_cmp_dest', JSON.stringify(_cmpDest)); else localStorage.removeItem('xkdg_cmp_dest'); } catch (e) {}
   }
@@ -5691,29 +5701,9 @@
       // wedge(s) radiating OUT of the 2nd destination: arrive anywhere in a
       // shaded wedge and that point sits in a FAVOURABLE direction from there,
       // now (orange) or at the next hour change (green).
-      try {
-        if (_cmpDest2) {
-          var _radiusKm = Math.max(8, Math.min(60, (_cmpPos ? tpHaversineKm(_cmpPos.lat, _cmpPos.lon, _cmpDest2.lat, _cmpDest2.lon) : 25) * 0.35));
-          var _advice = tpTurnWedgeAdvice(_cmpDest2, _cmpDest2.lon);
-          _advice.forEach(function (a) {
-            var poly = tpWedgePolygon(_cmpDest2, a.wedgeDir, _radiusKm);
-            if (!poly) return;
-            var isNow = (a.when === 'now');
-            L.polygon(poly, {
-              color: isNow ? '#e65100' : '#2e7d32', weight: 2,
-              fillColor: isNow ? '#ffb74d' : '#81c784', fillOpacity: 0.28
-            }).addTo(_cmpMapLayer)
-              .bindTooltip(
-                (isNow ? '\u23f1\ufe0f now' : '\u23e9 next hour') + ' \u00b7 ' + a.hourHan +
-                ': stop here \u2192 ' + (_cmpDest2.name || '2nd dest') + ' becomes ' + a.favDir +
-                (a.minsLeft != null ? ' (' + a.minsLeft + ' min left)' : ''),
-                { sticky: true }
-              );
-          });
-          L.circleMarker([_cmpDest2.lat, _cmpDest2.lon], { radius: 8, color: '#6a1b9a', weight: 2, fillColor: '#ce93d8', fillOpacity: 1 })
-            .addTo(_cmpMapLayer).bindTooltip('\ud83c\udfe0 ' + (_cmpDest2.name || '2nd destination'), { permanent: false });
-        }
-      } catch (eWedge) {}
+      // Turn-wedge advisor now lives in its own layer + draggable handle so it can
+      // be stretched with a finger (session 24). See cmpDrawWedges() below.
+      try { cmpDrawWedges(); } catch (eWedge) {}
       // In A->B mode (a destination is set) the user's own GPS position is IRRELEVANT
       // — the trip is between two typed points. Show the live "You" marker + exit wedge
       // ONLY in live-quadrant mode (no destination), otherwise a stray red dot hundreds
@@ -5974,6 +5964,140 @@
     pts.push([center.lat, center.lon]);
     return pts;
   }
+
+  // ═══ DRAGGABLE TURN-WEDGES (session 24) ═══════════════════════════════
+  // Two wedge sources, each in _cmpWedgeLayer with its own draggable handle:
+  //   • dest2  — orange/green — where to STOP (opposite octant, wedgeDir).
+  //   • origin — blue/teal   — favourable travel direction to head IN (favDir).
+  // Drag a handle to extend/shrink that source's wedges and sight the exact point
+  // where the origin's travel wedge crosses the dest2 stop wedge (or a road).
+  // Octants are drawn MAGNETIC (declination added). Double-tap a handle = auto length.
+  // Pie-slice polygon around an ALREADY-magnetic centre bearing (degrees), radiating
+  // out of `center`. Kept separate from tpWedgePolygon so the declination is applied
+  // once, at the call site, not baked into the octant table.
+  function cmpWedgePolyAtBearing(center, centerDeg, radiusKm) {
+    var pts = [[center.lat, center.lon]];
+    for (var a = centerDeg - 22.5; a <= centerDeg + 22.5 + 0.01; a += 5) {
+      var p = tpDestPoint(center, ((a % 360) + 360) % 360, radiusKm);
+      pts.push([p.lat, p.lon]);
+    }
+    pts.push([center.lat, center.lon]);
+    return pts;
+  }
+
+  // Resolve the current centre point for a wedge source ('dest2' or 'origin').
+  function cmpWedgeCenter(key) {
+    if (key === 'dest2') return _cmpDest2;
+    try { var r = cmpResolveRef(); return (r && r.ref && isFinite(r.ref.lat)) ? r.ref : null; } catch (e) { return null; }
+  }
+
+  // Draw / refresh both wedge sources. Called from cmpRenderMap and after every drag.
+  function cmpDrawWedges() {
+    if (!_cmpMap) return;
+    if (!_cmpWedgeLayer) _cmpWedgeLayer = L.layerGroup().addTo(_cmpMap);
+    _cmpWedgeLayer.clearLayers();
+    // dest2 = where to STOP (opposite octant). origin = favourable travel direction.
+    cmpDrawWedgeSet('dest2', {
+      dirKey: 'wedgeDir', now: '#e65100', next: '#2e7d32', fillNow: '#ffb74d', fillNext: '#81c784',
+      apex: '#6a1b9a', apexFill: '#ce93d8', drawApex: true, tag: 'stop-wedge', verb: 'stop here'
+    });
+    // Origin wedges only make sense in turn-wedge mode (a 2nd destination is set) —
+    // otherwise they'd clutter plain A->B navigation.
+    if (_cmpDest2) {
+      cmpDrawWedgeSet('origin', {
+        dirKey: 'favDir', now: '#1565c0', next: '#00838f', fillNow: '#90caf9', fillNext: '#80deea',
+        apex: '#0b8043', apexFill: '#a5d6a7', drawApex: false, tag: 'go-wedge', verb: 'head this way'
+      });
+    } else if (_cmpWedgeState.origin.handle) {
+      try { _cmpMap.removeLayer(_cmpWedgeState.origin.handle); } catch (e) {}
+      _cmpWedgeState.origin.handle = null;
+    }
+  }
+
+  // Draw one wedge source into _cmpWedgeLayer + manage its draggable handle.
+  // Octants are rotated by the local magnetic declination so they match the compass.
+  function cmpDrawWedgeSet(key, pal) {
+    var st = _cmpWedgeState[key];
+    var center = cmpWedgeCenter(key);
+    if (!center || !isFinite(center.lat) || !isFinite(center.lon)) {
+      if (st.handle) { try { _cmpMap.removeLayer(st.handle); } catch (e) {} st.handle = null; }
+      return;
+    }
+    var decl = tpMagDeclination(center.lat, center.lon);   // true = magnetic + declination
+    var autoR = Math.max(8, Math.min(60, (_cmpPos ? tpHaversineKm(_cmpPos.lat, _cmpPos.lon, center.lat, center.lon) : 25) * 0.35));
+    var radiusKm = (st.radiusKm != null) ? st.radiusKm : autoR;
+
+    var advice = tpTurnWedgeAdvice(center, center.lon);
+    advice.forEach(function (a) {
+      var baseDeg = TP_DIR_DEG[a[pal.dirKey]];
+      if (baseDeg == null) return;
+      var centerDeg = ((baseDeg + decl) % 360 + 360) % 360;   // MAGNETIC octant
+      var isNow = (a.when === 'now');
+      L.polygon(cmpWedgePolyAtBearing(center, centerDeg, radiusKm), {
+        color: isNow ? pal.now : pal.next, weight: 2,
+        fillColor: isNow ? pal.fillNow : pal.fillNext, fillOpacity: 0.28
+      }).addTo(_cmpWedgeLayer)
+        .bindTooltip(
+          (isNow ? '\u23f1\ufe0f now' : '\u23e9 next hour') + ' \u00b7 ' + a.hourHan + ': ' + pal.verb +
+          (key === 'dest2'
+            ? ' \u2192 ' + (center.name || '2nd dest') + ' becomes ' + a.favDir
+            : ' (' + a.favDir + ' favourable)') +
+          (a.minsLeft != null ? ' (' + a.minsLeft + ' min left)' : ''),
+          { sticky: true }
+        );
+      // Faint dashed bisector out to the tip — easier to sight a crossing along a road.
+      var mid = tpDestPoint(center, centerDeg, radiusKm);
+      L.polyline([[center.lat, center.lon], [mid.lat, mid.lon]],
+        { color: isNow ? pal.now : pal.next, weight: 1, opacity: 0.5, dashArray: '4,5' }).addTo(_cmpWedgeLayer);
+    });
+
+    // Apex marker (dest2 only — the origin already has its green 'Origin' dot).
+    if (pal.drawApex) {
+      L.circleMarker([center.lat, center.lon], { radius: 8, color: pal.apex, weight: 2, fillColor: pal.apexFill, fillOpacity: 1 })
+        .addTo(_cmpWedgeLayer).bindTooltip('\ud83c\udfe0 ' + (center.name || '2nd destination'), { permanent: false });
+    }
+
+    // Draggable handle (one per source). Lives on the map, not in _cmpWedgeLayer, so
+    // a redraw never destroys it mid-drag. Placed on the FIRST wedge's magnetic tip.
+    if (advice.length) {
+      var b0 = TP_DIR_DEG[advice[0][pal.dirKey]];
+      var hDeg = ((((b0 == null ? 90 : b0) + decl) % 360) + 360) % 360;
+      var tip = tpDestPoint(center, hDeg, radiusKm);
+      if (!st.handle) {
+        var icon = L.divIcon({
+          className: '',
+          html: '<div style="width:20px;height:20px;border-radius:50%;background:' + pal.apex + ';border:3px solid #fff;box-shadow:0 0 0 2px ' + pal.apex + ',0 1px 4px rgba(0,0,0,.4);cursor:grab;"></div>',
+          iconSize: [20, 20], iconAnchor: [10, 10]
+        });
+        st.handle = L.marker([tip.lat, tip.lon], { draggable: true, icon: icon, zIndexOffset: 1000, keyboard: false }).addTo(_cmpMap);
+        st.handle.on('drag', function (e) { cmpWedgeHandleDrag(key, e); });
+        st.handle.on('dragend', function (e) { cmpWedgeHandleDrag(key, e); });
+        st.handle.on('dblclick', function () { st.radiusKm = null; st.dragging = false; cmpDrawWedges(); });
+        st.handle.bindTooltip('', { permanent: false, direction: 'top', offset: [0, -12] });
+      } else if (!st.dragging) {
+        st.handle.setLatLng([tip.lat, tip.lon]);   // reposition only when the finger isn't holding it
+      }
+      st.handle.setTooltipContent('\u2194\ufe0f ' + Math.round(radiusKm) + ' km \u00b7 ' + pal.tag + ' \u00b7 drag to extend \u00b7 double-tap = auto');
+    } else if (st.handle) {
+      try { _cmpMap.removeLayer(st.handle); } catch (e) {}
+      st.handle = null;
+    }
+  }
+
+  // Turn a handle's dragged position into a new radius for its source and redraw.
+  // During the drag the finger owns the handle, so cmpDrawWedgeSet must NOT move it
+  // (guarded by st.dragging).
+  function cmpWedgeHandleDrag(key, e) {
+    var st = _cmpWedgeState[key];
+    var center = cmpWedgeCenter(key);
+    if (!center || !st.handle) return;
+    var ll = st.handle.getLatLng();   // Leaflet latlng uses .lng (not .lon)
+    var d = tpHaversineKm(center.lat, center.lon, ll.lat, ll.lng);
+    st.radiusKm = Math.max(1, Math.min(400, d));   // clamp 1–400 km
+    st.dragging = (e && e.type === 'drag');         // true while dragging, false on dragend
+    try { cmpDrawWedges(); } catch (err) {}
+  }
+
   function tpCmpHourCountdown(lon) {
     try {
       if (lon == null || !isFinite(lon)) return null;
