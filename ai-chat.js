@@ -4725,7 +4725,30 @@
   var sending = false;
 
   function getUrl() { try { return (localStorage.getItem(URL_KEY) || '').trim() || DEFAULT_URL; } catch (e) { return DEFAULT_URL; } }
+  // Per-student usage tracking (Edu, session 23): a header, never part of the
+  // JSON body sent to the model — it costs no LLM tokens and cannot be mistaken
+  // for conversation content. Reuses the SAME PIN hash the license check already
+  // computes (see submitPin() in app-bazi.js) — no new identifier, no new data.
+  // Absent for anyone who unlocked before this change until they re-enter their
+  // PIN once; the worker should treat a missing header as "unknown".
+  function _aiHeaders() {
+    var h = { 'Content-Type': 'application/json' };
+    try { var sid = localStorage.getItem('xkdg_student_id'); if (sid) h['X-Student-Id'] = sid; } catch (e) {}
+    return h;
+  }
   function setUrl(u) { try { localStorage.setItem(URL_KEY, (u || '').trim()); } catch (e) {} }
+  // BYOK — "bring your own key" (Edu, session 23: "l'abbonamento allo AI dovrebbe
+  // essere gestito da ogni studente indipendentemente da me... aprono un account e
+  // stabiliscono il limite mensile"). Each student can paste THEIR OWN Anthropic API
+  // key here, from THEIR OWN console.anthropic.com account, where THEY set their own
+  // spending limit — exactly the screen Edu showed. Stored only on their own device,
+  // used only for their own direct-to-Anthropic calls; nothing routes through Edu's
+  // worker or his account once this is set. Anthropic's own official pattern for
+  // client-side "bring your own key" apps (anthropic-dangerous-direct-browser-access) —
+  // not a workaround, a documented, supported header for exactly this case.
+  var OWN_KEY_KEY = 'xkdg_own_api_key';
+  function getOwnKey() { try { return (localStorage.getItem(OWN_KEY_KEY) || '').trim(); } catch (e) { return ''; } }
+  function setOwnKey(k) { try { localStorage.setItem(OWN_KEY_KEY, (k || '').trim()); } catch (e) {} }
 
   // ── Conversation archive (saved manually, kept in localStorage on THIS device) ──
   var ARCHIVE_KEY = 'xkdg_ai_archive';
@@ -5197,6 +5220,24 @@
       var urlSave = elc('button', { style: 'padding:7px 12px;border:0;border-radius:6px;background:#6a1b9a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, 'Save');
       urlSave.addEventListener('click', function () { setUrl(urlInp.value); urlSave.textContent = '\u2713'; setTimeout(function () { urlSave.textContent = 'Save'; }, 1200); });
       urlRow.appendChild(urlInp); urlRow.appendChild(urlSave); card.appendChild(urlRow);
+      card.appendChild(elc('div', { style: 'font-size:10px;color:#999;margin-top:3px;' }, 'The shared worker Edu runs — used unless you set your own key below.'));
+
+      card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
+
+      // BYOK — bring your own Anthropic API key (session 23)
+      card.appendChild(elc('div', { style: 'font-size:13px;font-weight:700;color:#00695c;margin:0 0 3px;' }, '\ud83d\udd11 My own Anthropic API key'));
+      card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:6px;line-height:1.5;' },
+        'Optional: use your OWN Anthropic account instead of the shared one. Create an account and an API key at ' +
+        'console.anthropic.com, set your own monthly spending limit there, and paste the key below. From then on ' +
+        'every AI request in this app goes DIRECTLY from your device to Anthropic \u2014 your key never passes through ' +
+        'Edu\u2019s worker or account, and you are billed by Anthropic exactly for what you use. Leave empty to keep ' +
+        'using the shared worker above.'));
+      var keyRow = elc('div', { style: 'display:flex;gap:6px;' });
+      var keyInp = elc('input', { type: 'password', placeholder: 'sk-ant-...', value: getOwnKey(), style: 'flex:1;min-width:0;padding:7px;border:1px solid #ccc;border-radius:6px;font-size:13px;font-family:monospace;' });
+      var keySave = elc('button', { style: 'padding:7px 12px;border:0;border-radius:6px;background:#00897b;color:#fff;font-size:13px;font-weight:600;cursor:pointer;' }, 'Save');
+      keySave.addEventListener('click', function () { setOwnKey(keyInp.value); keySave.textContent = '\u2713'; setTimeout(function () { keySave.textContent = 'Save'; }, 1200); });
+      keyRow.appendChild(keyInp); keyRow.appendChild(keySave); card.appendChild(keyRow);
+      if (getOwnKey()) card.appendChild(elc('div', { style: 'font-size:11px;color:#00695c;font-weight:600;margin-top:4px;' }, '\u2713 Using your own key \u2014 billed directly by Anthropic to your account.'));
 
       card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
 
@@ -6875,9 +6916,14 @@
           'Do NOT default to Italian \u2014 the Italian phrases in these instructions are only examples, not a language preference.';
       }
       repairHistory();   // never send a tool_use without its tool_result (heals a poisoned chat)
-      return fetch(getUrl(), {
+      var _ownKey = getOwnKey();
+      var _target = _ownKey ? 'https://api.anthropic.com/v1/messages' : getUrl();
+      var _headers = _ownKey
+        ? { 'Content-Type': 'application/json', 'x-api-key': _ownKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        : _aiHeaders();
+      return fetch(_target, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _headers,
         body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + uiButtonsRule() + aquariumSafetyRule() + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
@@ -6899,12 +6945,17 @@
     // One-shot translation via the worker (no tools, isolated from the chat history).
     function translateToEnglish(text) {
       var url = getUrl();
-      if (!url) return Promise.reject(new Error('no url'));
+      if (!url && !getOwnKey()) return Promise.reject(new Error('no url'));
       var sys = 'You are a translator. Translate the user message into natural English. It is a travel itinerary. ' +
         'KEEP every clock time exactly, KEEP the Chinese double-hours (pinyin + hanzi, e.g. "Wu 午"), KEEP all place names, ' +
         'directions and numbers, and KEEP the line breaks / emoji structure. Output ONLY the English translation, no preamble.';
-      return fetch(url, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      var _ownKeyT = getOwnKey();
+      var _targetT = _ownKeyT ? 'https://api.anthropic.com/v1/messages' : url;
+      var _headersT = _ownKeyT
+        ? { 'Content-Type': 'application/json', 'x-api-key': _ownKeyT, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        : _aiHeaders();
+      return fetch(_targetT, {
+        method: 'POST', headers: _headersT,
         body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: sys, tools: [], messages: [{ role: 'user', content: text }] })
       }).then(function (r) { return r.json(); }).then(function (d) { return extractText(d) || text; });
     }
