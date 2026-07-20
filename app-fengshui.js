@@ -1473,6 +1473,7 @@ function fsFindDirections(){
 
 // ── Flow B: Find matching dates given facing/water ────────────────
 function fsFindDates(){
+  window._fsLastRescan = fsFindDates;
   const fDeg = parseFloat(document.getElementById('fs-facing').value);
   const wDeg = parseFloat(document.getElementById('fs-water').value);
   if (isNaN(fDeg)){ alert('Set a facing degree first.'); return; }
@@ -1607,7 +1608,12 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
     
     // Calculate Pure YY star for this facing/water pair
     const fTri = (typeof fsMountainTrigramDi === 'function') ? fsMountainTrigramDi(fSlot.startDeg + 2.8125) : null;
-    const wTri = (typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(wSlot.centerDeg) : null;
+    // BUGFIX (session 23, found while testing fsScanDoorDates with no water set —
+    // a legitimate, supported case: fsFindDates() itself allows an empty Water
+    // field). wSlot can be null here; every OTHER read of wSlot.centerDeg nearby
+    // already guards for it (e.g. "wSlot ? wSlot.centerDeg : null") — this one
+    // didn't, and threw whenever a door/facing had no water at all.
+    const wTri = (wSlot && typeof fsMountainTrigramTien === 'function') ? fsMountainTrigramTien(wSlot.centerDeg) : null;
     const pureYYStarInfo = (typeof fsPureYYStarInfo === 'function') ? fsPureYYStarInfo(fTri, wTri) : { name: '', auspicious: null };
         const hasNormalMatch = fLbls.length > 0 && (!wSlot || wLbls.length > 0);
 
@@ -1729,9 +1735,14 @@ function fsConnectionLabelsForDay(srcHex, srcYun, dayHex, dayYun, dayFamilies){
 // a Sort toggle (BEST/LIST) and Range buttons (1m..5y) that override the
 // main scan-days input for this scan only. BL dates are pinned to the top
 // in BEST mode and highlighted in yellow with a Family Blood Link badge.
-function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
-  const box = document.getElementById('fs-pairs-table');
+function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
+  // OPTIONAL containerId (session 23, Edu: "nella stessa sezione ci deve essere
+  // un pulsante SCAN" — House Profiles needs its OWN results spot, not the
+  // Luopan screen's #fs-pairs-table). Defaults to the original ID so the
+  // existing fsFindDates() caller is completely unaffected.
+  const box = document.getElementById(containerId || 'fs-pairs-table');
   if (!box) return;
+  window._fsLastContainerId = containerId || 'fs-pairs-table';
 
   // Cache last context so the Sort toggle can re-render without rescanning.
   window._fsLastMatches = matches;
@@ -2102,7 +2113,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches){
 // Re-runs fsFindDates with the same Facing/Water already entered.
 function fsSetRange(days){
   window._fsRangeDays = (typeof days === 'number' && days > 0) ? days : null;
-  fsFindDates();
+  (window._fsLastRescan || fsFindDates)();
 }
 
 // BEST/LIST toggle — primary sort within tier (score-priority or chronological).
@@ -2110,7 +2121,7 @@ function fsSetRange(days){
 function fsSetSortMode(mode){
   window._fsSortMode = (mode === 'list') ? 'list' : 'best';
   if (window._fsLastMatches && window._fsLastFSlot) {
-    fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches);
+    fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches, window._fsLastContainerId);
   }
 }
 
@@ -3875,7 +3886,13 @@ function fsRenderHouseProfiles(){
         html += '<span style="font-size:11px;">🚪 <strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · Water: ' + waterStr + '</span>';
         html += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
         html += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
+        if (d.facing != null) {
+          html += '<button onclick="fsScanDoorDates(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 8px;font-size:10px;font-weight:bold;cursor:pointer;" title="Scan for dates matching this door\'s Zheng Shen facing + Ling Shen water, and this person\'s Bazi">🔎 SCAN</button>';
+        }
         html += '</div>';
+        if (d.facing != null) {
+          html += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
+        }
       });
       html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add External Door</button>';
       html += '</div>';
@@ -4550,6 +4567,47 @@ function fsEditDoor(personName, houseIdx, doorIdx){
   d.water  = water;
   _fsHousesSave(all);
   fsRenderHouseProfiles();
+}
+
+// SCAN button, right in House Profiles (Edu, session 23: "nella stessa sezione
+// quando si sono inseriti i dati, ci deve essere un pulsante SCAN... facciata
+// Zheng Shen e acqua Ling Shen" — House Profiles must stay pure XKDG, no QMDJ).
+// Reuses the EXACT SAME validation and date-scan engine fsFindDates() already
+// uses (fsSlotForDeg / fsIsZhengShen / fsIsLingShen / hexConnectionLabels /
+// fsFindMatchingDatesForSetup) — just fed from the door's OWN saved facing/
+// water instead of the Luopan screen's fs-facing/fs-water inputs, which are a
+// SEPARATE field the student never touched. Results render INLINE, right here.
+function fsScanDoorDates(personName, houseIdx, doorIdx){
+  var all = _fsHousesLoad();
+  if (!all[personName] || !all[personName][houseIdx]) { alert('House not found.'); return; }
+  var doors = _fsActiveFloor(all[personName][houseIdx]).doors;
+  var d = doors[doorIdx];
+  if (!d || d.facing == null) { alert('Set a Facing degree for this door first (\u270f).'); return; }
+
+  var fSlot = fsSlotForDeg(d.facing);
+  if (!fsIsZhengShen(fSlot.yun)) { alert('This door\u2019s facing (yun ' + fSlot.yun + ') is NOT Zheng Shen \u2014 edit the door (\u270f) and pick a Zheng Shen facing.'); return; }
+  var wSlot = null;
+  if (d.water != null) {
+    wSlot = fsSlotForDeg(d.water);
+    if (!fsIsLingShen(wSlot.yun)) { alert('This water (yun ' + wSlot.yun + ') is NOT Ling Shen \u2014 edit the door (\u270f) and pick a Ling Shen water.'); return; }
+    var facingCenter = fSlot.startDeg + 2.8125;
+    var dist = fsAngularDist(facingCenter, wSlot.centerDeg);
+    if (dist > FS_WATER_MAX_DEG) { alert('Water is ' + dist.toFixed(1) + '\u00b0 from facing \u2014 exceeds the \u00b1' + FS_WATER_MAX_DEG + '\u00b0 limit.'); return; }
+    var lbls = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, fSlot.hexNum, fSlot.qi, fSlot.yun);
+    if (lbls.length === 0) { alert('Water hex does not communicate with the facing hex via any rule \u2014 pick a compatible water.'); return; }
+  }
+
+  var boxId = 'fs-doorscan-' + personName.replace(/[^a-zA-Z0-9]/g, '_') + '-' + houseIdx + '-' + doorIdx;
+  var box = document.getElementById(boxId);
+  if (!box) { alert('Results box not found \u2014 reopen House Profiles and try again.'); return; }
+  box.innerHTML = '<div style="font-size:11px;color:#888;">Scanning\u2026</div>';
+
+  window._fsLastRescan = function () { fsScanDoorDates(personName, houseIdx, doorIdx); };
+  var matches = fsFindMatchingDatesForSetup(fSlot, wSlot);
+  if (matches === null) { box.innerHTML = ''; return; }   // alert already shown by fsFindMatchingDatesForSetup
+  window._fsShowingMatching = true;
+  fsRenderMatchingDatesTable(fSlot, wSlot, matches, boxId);
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function fsRemoveDoor(personName, houseIdx, doorIdx){
