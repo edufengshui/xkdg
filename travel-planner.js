@@ -5540,8 +5540,12 @@
   // Draggable endpoints (session 24): finger-move the origin (green) and the A->B
   // destination (red) markers directly on the map. Handles live on _cmpMap (not in
   // _cmpMapLayer) so a redraw never destroys them mid-drag.
-  var _cmpEndHandle   = { origin: null, dest: null };
-  var _cmpEndDragging = { origin: false, dest: false };
+  var _cmpEndHandle   = { origin: null, dest: null, probe: null };
+  var _cmpEndDragging = { origin: false, dest: false, probe: false };
+  // Octant-rose probe (session 24): tap the map to drop an independent point and see
+  // the full 8-octant rose from there, each octant coloured favourable/not.
+  var _cmpProbe = null;          // {lat, lon} or null
+  var _cmpProbeMode = false;     // when true, a map tap places/moves the probe
   try { var _cmpDs = localStorage.getItem('xkdg_cmp_dest'); if (_cmpDs) _cmpDest = JSON.parse(_cmpDs); } catch (e) {}
   function cmpSaveDest() { try { if (_cmpDest) localStorage.setItem('xkdg_cmp_dest', JSON.stringify(_cmpDest)); else localStorage.removeItem('xkdg_cmp_dest'); } catch (e) {}
   }
@@ -5661,6 +5665,13 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(_cmpMap);
         _cmpMap.setView(initCenter, 11);
         _cmpMapLayer = L.layerGroup().addTo(_cmpMap);
+        // Tap-to-place the octant-rose probe (session 24). A Leaflet 'click' fires on
+        // a tap, NOT on a pan/drag, so this never interferes with moving the map.
+        _cmpMap.on('click', function (e) {
+          if (!_cmpProbeMode || !e || !e.latlng) return;
+          _cmpProbe = { lat: e.latlng.lat, lon: e.latlng.lng };
+          try { cmpRenderMap(); tpCmpRender(); } catch (er) {}
+        });
         setTimeout(function () { if (_cmpMap) _cmpMap.invalidateSize(); }, 60);
       }
       _cmpMapLayer.clearLayers();
@@ -6041,6 +6052,8 @@
       try { _cmpMap.removeLayer(_cmpWedgeState.origin.handle); } catch (e) {}
       _cmpWedgeState.origin.handle = null;
     }
+    // Octant-rose probe (independent tap point), drawn into the same (cleared) layer.
+    try { cmpDrawProbeRose(); } catch (eRose) {}
   }
 
   // Draw one wedge source into _cmpWedgeLayer + manage its draggable handle.
@@ -6190,6 +6203,56 @@
     } else if (!_cmpEndDragging[key]) {
       h.setLatLng([pt.lat, pt.lon]);        // reposition only when the finger isn't holding it
     }
+  }
+
+  // ═══ OCTANT-ROSE PROBE (session 24) ═══════════════════════════════════
+  // Favourability of ALL 8 octants at the probe point, for the current TST hour.
+  function cmpProbeOctants() {
+    if (!_cmpProbe) return [];
+    try {
+      var now = Date.now();
+      var y = new Date(now).getFullYear();
+      var utc = -Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()) / 60;
+      var dstOn = tpDstActiveOn(new Date(now));
+      var hp = tpFullHourAt(now, _cmpProbe.lon, utc, dstOn);   // TST hour pillar at the probe
+      if (!hp) return [];
+      var dirs = tpScanDirs(hp.Y, hp.M, hp.D, hp.gan, hp.zhi, null, false);
+      return dirs.map(function (d) { return { dir: d.dir, ok: !!(d.eval && d.eval.ok), score: (d.eval && d.eval.score) || 0 }; });
+    } catch (e) { return []; }
+  }
+
+  // Draw the full 8-octant rose from the probe, each octant coloured favourable/not.
+  // Octants are MAGNETIC (declination added). Radius scales to the current view so
+  // the rose stays visible at any zoom. Drawn into _cmpWedgeLayer (cleared by
+  // cmpDrawWedges); the probe centre is a draggable handle on the map.
+  function cmpDrawProbeRose() {
+    if (!_cmpMap) return;
+    if (!_cmpProbeMode || !_cmpProbe || !isFinite(_cmpProbe.lat)) {
+      cmpEnsureEndHandle('probe', null, '#5e35b1', function () {});
+      return;
+    }
+    if (!_cmpWedgeLayer) _cmpWedgeLayer = L.layerGroup().addTo(_cmpMap);
+    var c = _cmpProbe;
+    var decl = tpMagDeclination(c.lat, c.lon);
+    var radiusKm = 30;
+    try {
+      var b = _cmpMap.getBounds();
+      var diagKm = tpHaversineKm(b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
+      if (isFinite(diagKm) && diagKm > 0) radiusKm = Math.max(3, diagKm * 0.22);
+    } catch (e) {}
+    var okByDir = {};
+    cmpProbeOctants().forEach(function (o) { okByDir[o.dir] = o.ok; });
+    TP_DIR_ORDER.forEach(function (dir) {
+      var centerDeg = ((TP_DIR_DEG[dir] + decl) % 360 + 360) % 360;   // magnetic
+      var ok = !!okByDir[dir];
+      L.polygon(cmpWedgePolyAtBearing(c, centerDeg, radiusKm), {
+        color: ok ? '#2e7d32' : '#9e9e9e', weight: ok ? 2 : 1,
+        fillColor: ok ? '#66bb6a' : '#bdbdbd', fillOpacity: ok ? 0.32 : 0.12
+      }).addTo(_cmpWedgeLayer)
+        .bindTooltip((ok ? '\u2705 ' : '\u2014 ') + dir + (ok ? ' favourable' : ' not favourable'), { sticky: true });
+    });
+    // Probe centre — draggable to fine-tune after the tap.
+    cmpEnsureEndHandle('probe', c, '#5e35b1', function (lat, lon) { _cmpProbe = { lat: lat, lon: lon }; });
   }
 
   function tpCmpHourCountdown(lon) {
@@ -6653,10 +6716,22 @@
       var fullBtn = el('button', { id: 'tp-cmp-full', type: 'button', title: 'Full screen', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;' }, '\u26f6');
       fullBtn.addEventListener('click', function () { cmpSetPanelFull(!_cmpPanelFull); });
       var cls = el('button', { type: 'button', title: 'Close', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;' }, '\u00d7');
+      // 🧭 Octant-rose probe toggle (session 24): when ON, a tap on the map drops an
+      // independent probe and draws the full 8-octant rose (favourable/not) from it.
+      var probeBtn = el('button', { id: 'tp-cmp-probe', type: 'button', title: 'Octant rose: tap the map to probe any point', style: 'background:' + (_cmpProbeMode ? '#ffd54f' : 'rgba(255,255,255,.2)') + ';color:' + (_cmpProbeMode ? '#333' : '#fff') + ';border:0;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;' }, '\ud83e\udded');
+      probeBtn.addEventListener('click', function () {
+        _cmpProbeMode = !_cmpProbeMode;
+        if (!_cmpProbeMode) _cmpProbe = null;   // turning off clears the probe
+        probeBtn.style.background = _cmpProbeMode ? '#ffd54f' : 'rgba(255,255,255,.2)';
+        probeBtn.style.color = _cmpProbeMode ? '#333' : '#fff';
+        var lp = document.getElementById('tp-cmp-ref-label');
+        if (_cmpProbeMode && lp) lp.textContent = 'Octant rose ON \u2014 tap the map to probe a point.';
+        try { cmpRenderMap(); tpCmpRender(); } catch (e) {}
+      });
       refBtn.addEventListener('click', function () { _tpRefMode = (_tpRefMode === 'origin') ? 'auto' : 'origin'; refBtn.textContent = (_tpRefMode === 'origin') ? 'Origin' : 'Auto'; tpCmpRender(); });
       refr.addEventListener('click', tpCmpRefreshOnce);
       cls.addEventListener('click', function () { tpCloseCompass(); });
-      head.appendChild(refBtn); head.appendChild(vox); head.appendChild(refr); head.appendChild(fullBtn); head.appendChild(cls);
+      head.appendChild(refBtn); head.appendChild(probeBtn); head.appendChild(vox); head.appendChild(refr); head.appendChild(fullBtn); head.appendChild(cls);
       ov.appendChild(head);
 
       ov.appendChild(el('div', { id: 'tp-cmp-body', style: 'padding:12px;text-align:center;color:#222;' }));
