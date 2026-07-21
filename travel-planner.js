@@ -6057,13 +6057,13 @@
     var radiusKm = (st.radiusKm != null) ? st.radiusKm : autoR;
 
     // Build the octant list to draw: a MANUAL typed direction wins (single 45°
-    // wedge), else the chart's auto favourable wedges. origin draws the typed dir
-    // AS-IS (travel direction); dest2 draws its OPPOSITE (favourable-from-there).
+    // wedge), else the chart's auto favourable wedges. In manual mode BOTH sources
+    // draw the typed direction AS-IS — you type where each sector should point, i.e.
+    // toward the crossing (origin points your travel way, dest2 points back at it).
     var manualDir = (key === 'origin') ? _cmpOriginManualDir : _cmpDest2ManualDir;
     var items;
     if (manualDir) {
-      var drawDir = (key === 'origin') ? manualDir : tpOppositeDir(manualDir);
-      items = drawDir ? [{ dir: drawDir, isNow: true, manual: true, typed: manualDir }] : [];
+      items = [{ dir: manualDir, isNow: true, manual: true, typed: manualDir }];
     } else {
       items = tpTurnWedgeAdvice(center, center.lon).map(function (a) {
         return { dir: a[pal.dirKey], isNow: (a.when === 'now'), hourHan: a.hourHan, favDir: a.favDir, minsLeft: a.minsLeft };
@@ -6081,9 +6081,7 @@
       }).addTo(_cmpWedgeLayer)
         .bindTooltip(
           it.manual
-            ? (key === 'dest2'
-                ? '\ud83d\udccd manual ' + it.typed + ' \u2192 ' + (center.name || '2nd dest') + ' stand-wedge ' + it.dir
-                : '\ud83d\udccd manual: head ' + it.dir)
+            ? '\ud83d\udccd manual: sector points ' + it.dir + (key === 'dest2' ? ' \u00b7 toward crossing' : '')
             : (isNow ? '\u23f1\ufe0f now' : '\u23e9 next hour') + ' \u00b7 ' + it.hourHan + ': ' + pal.verb +
               (key === 'dest2'
                 ? ' \u2192 ' + (center.name || '2nd dest') + ' becomes ' + it.favDir
