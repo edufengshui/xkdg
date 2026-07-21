@@ -5528,7 +5528,8 @@
   var _cmpWedgeLayer = null;     // shared Leaflet layer for all wedge polygons
   var _cmpWedgeState = {
     dest2:  { radiusKm: null, handle: null, dragging: false },
-    origin: { radiusKm: null, handle: null, dragging: false }
+    origin: { radiusKm: null, handle: null, dragging: false },
+    probe:  { radiusKm: null, handle: null, dragging: false }
   };
   // Manual octant override (session 24): typing a bare compass token (N/NE/…/NW;
   // Italian O/NO/SO/NORD/SUD/EST/OVEST accepted) into a destination field draws a
@@ -5681,11 +5682,16 @@
       if (!_abMode) {
         var bearDeg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon);
         var center = Math.round(bearDeg / 45) * 45;
+        // MAGNETIC: bearDeg is a magnetic bearing, so `center` is the magnetic octant.
+        // cmpForward/cmpWedgePoints treat their angle as true north, so add the local
+        // declination to place the magnetic octant correctly on the true-north map
+        // (matches the turn-wedge / probe — no more geographic sector anywhere).
+        var mcenter = center + tpMagDeclination(ref.lat, ref.lon);
         var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
         var radiusKm = Math.max(distKm, exit ? tpHaversineKm(ref.lat, ref.lon, exit.lat, exit.lon) : 0, 2) * 1.15;
-        L.polygon(cmpWedgePoints(ref, center, radiusKm), { color: '#1565c0', weight: 1, fillColor: '#1565c0', fillOpacity: 0.12 }).addTo(_cmpMapLayer);
-        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center - 22.5, radiusKm).lat, cmpForward(ref, center - 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
-        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, center + 22.5, radiusKm).lat, cmpForward(ref, center + 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
+        L.polygon(cmpWedgePoints(ref, mcenter, radiusKm), { color: '#1565c0', weight: 1, fillColor: '#1565c0', fillOpacity: 0.12 }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, mcenter - 22.5, radiusKm).lat, cmpForward(ref, mcenter - 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, mcenter + 22.5, radiusKm).lat, cmpForward(ref, mcenter + 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
         L.polyline([[ref.lat, ref.lon], [pos.lat, pos.lon]], { color: '#888', weight: 1.5, opacity: 0.8 }).addTo(_cmpMapLayer);
       }
       // Origin marker.
@@ -6028,6 +6034,7 @@
   // Resolve the current centre point for a wedge source ('dest2' or 'origin').
   function cmpWedgeCenter(key) {
     if (key === 'dest2') return _cmpDest2;
+    if (key === 'probe') return _cmpProbe;
     try { var r = cmpResolveRef(); return (r && r.ref && isFinite(r.ref.lat)) ? r.ref : null; } catch (e) { return null; }
   }
 
@@ -6227,19 +6234,23 @@
   // cmpDrawWedges); the probe centre is a draggable handle on the map.
   function cmpDrawProbeRose() {
     if (!_cmpMap) return;
+    var pst = _cmpWedgeState.probe;
     if (!_cmpProbeMode || !_cmpProbe || !isFinite(_cmpProbe.lat)) {
       cmpEnsureEndHandle('probe', null, '#5e35b1', function () {});
+      if (pst.handle) { try { _cmpMap.removeLayer(pst.handle); } catch (e) {} pst.handle = null; }
       return;
     }
     if (!_cmpWedgeLayer) _cmpWedgeLayer = L.layerGroup().addTo(_cmpMap);
     var c = _cmpProbe;
     var decl = tpMagDeclination(c.lat, c.lon);
-    var radiusKm = 30;
+    // Auto radius scales to the view; a dragged value (pst.radiusKm) overrides it.
+    var autoR = 30;
     try {
       var b = _cmpMap.getBounds();
       var diagKm = tpHaversineKm(b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
-      if (isFinite(diagKm) && diagKm > 0) radiusKm = Math.max(3, diagKm * 0.22);
+      if (isFinite(diagKm) && diagKm > 0) autoR = Math.max(3, diagKm * 0.22);
     } catch (e) {}
+    var radiusKm = (pst.radiusKm != null) ? pst.radiusKm : autoR;
     var okByDir = {};
     cmpProbeOctants().forEach(function (o) { okByDir[o.dir] = o.ok; });
     TP_DIR_ORDER.forEach(function (dir) {
@@ -6251,8 +6262,26 @@
       }).addTo(_cmpWedgeLayer)
         .bindTooltip((ok ? '\u2705 ' : '\u2014 ') + dir + (ok ? ' favourable' : ' not favourable'), { sticky: true });
     });
-    // Probe centre — draggable to fine-tune after the tap.
+    // Probe centre — draggable to MOVE the whole rose (hollow indigo ring).
     cmpEnsureEndHandle('probe', c, '#5e35b1', function (lat, lon) { _cmpProbe = { lat: lat, lon: lon }; });
+    // Radius handle — drag to EXTEND all 8 octants (solid indigo dot on the N rim).
+    var rimDeg = ((TP_DIR_DEG['N'] + decl) % 360 + 360) % 360;
+    var tip = tpDestPoint(c, rimDeg, radiusKm);
+    if (!pst.handle) {
+      var icon = L.divIcon({
+        className: '',
+        html: '<div style="width:20px;height:20px;border-radius:50%;background:#5e35b1;border:3px solid #fff;box-shadow:0 0 0 2px #5e35b1,0 1px 4px rgba(0,0,0,.4);cursor:grab;"></div>',
+        iconSize: [20, 20], iconAnchor: [10, 10]
+      });
+      pst.handle = L.marker([tip.lat, tip.lon], { draggable: true, icon: icon, zIndexOffset: 1050, keyboard: false }).addTo(_cmpMap);
+      pst.handle.on('drag', function (e) { cmpWedgeHandleDrag('probe', e); });
+      pst.handle.on('dragend', function (e) { cmpWedgeHandleDrag('probe', e); });
+      pst.handle.on('dblclick', function () { pst.radiusKm = null; pst.dragging = false; cmpDrawWedges(); });
+      pst.handle.bindTooltip('', { permanent: false, direction: 'top', offset: [0, -12] });
+    } else if (!pst.dragging) {
+      pst.handle.setLatLng([tip.lat, tip.lon]);
+    }
+    pst.handle.setTooltipContent('\u2194\ufe0f ' + Math.round(radiusKm) + ' km \u00b7 rose \u00b7 drag to extend \u00b7 double-tap = auto');
   }
 
   function tpCmpHourCountdown(lon) {
