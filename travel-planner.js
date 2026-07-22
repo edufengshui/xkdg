@@ -5821,14 +5821,27 @@
       if (!big2) {
         big2 = el('div', { id: 'tp-cmp-map-big', style: 'position:fixed;inset:0;z-index:100000;background:#fff;display:flex;flex-direction:column;' });
         var bar = el('div', { style: 'display:flex;align-items:center;gap:8px;background:#1565c0;color:#fff;padding:9px 12px;font-size:14px;font-weight:700;' });
-        bar.appendChild(el('div', { style: 'flex:1;' }, '🧭 Drive view'));
+        bar.appendChild(el('div', { style: 'flex:1;' }, '\ud83d\ude97 Drive view'));
+        // 🧭 Octant-rose probe toggle — available IN drive view (this is where Edu
+        // actually is while driving). ON = yellow; then a tap on the map drops a rose.
+        var probeB = el('button', { id: 'tp-cmp-big-probe', type: 'button', style: 'background:' + (_cmpProbeMode ? '#ffd54f' : 'rgba(255,255,255,.2)') + ';color:' + (_cmpProbeMode ? '#333' : '#fff') + ';border:0;border-radius:6px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;' }, _cmpProbeMode ? '\ud83e\udded TAP MAP' : '\ud83e\udded Rose');
         var foll = el('button', { id: 'tp-cmp-big-follow', type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, _cmpMapFollow ? '📍 Follow: on' : '📍 Follow: off');
         var mapsB = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, '🔍 Maps');
         var close = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:14px;cursor:pointer;' }, '✕ Close');
+        probeB.addEventListener('click', function () {
+          _cmpProbeMode = !_cmpProbeMode;
+          if (!_cmpProbeMode) _cmpProbe = null;
+          probeB.style.background = _cmpProbeMode ? '#ffd54f' : 'rgba(255,255,255,.2)';
+          probeB.style.color = _cmpProbeMode ? '#333' : '#fff';
+          probeB.textContent = _cmpProbeMode ? '\ud83e\udded TAP MAP' : '\ud83e\udded Rose';
+          var pb = document.getElementById('tp-cmp-probe');
+          if (pb) { pb.style.background = _cmpProbeMode ? '#ffd54f' : 'rgba(255,255,255,.2)'; pb.style.color = _cmpProbeMode ? '#333' : '#fff'; }
+          try { cmpRenderMap(); } catch (e) {}
+        });
         foll.addEventListener('click', function () { _cmpMapFollow = !_cmpMapFollow; _cmpMapFitted = false; foll.textContent = _cmpMapFollow ? '📍 Follow: on' : '📍 Follow: off'; cmpRenderMap(); });
         mapsB.addEventListener('click', function () { if (_cmpExit) tpOpenPoint(_cmpExit.lat, _cmpExit.lon); });
         close.addEventListener('click', function () { cmpSetMapBig(false); });
-        bar.appendChild(foll); bar.appendChild(mapsB); bar.appendChild(close);
+        bar.appendChild(probeB); bar.appendChild(foll); bar.appendChild(mapsB); bar.appendChild(close);
         big2.appendChild(bar);
         var holder = el('div', { id: 'tp-cmp-map-bigholder', style: 'flex:1;min-height:0;position:relative;' });
         // DRIVE STRIP (Edu, session 23): direction + hour countdown floating over the
