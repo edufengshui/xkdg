@@ -5529,7 +5529,8 @@
   var _cmpWedgeState = {
     dest2:  { radiusKm: null, handle: null, dragging: false },
     origin: { radiusKm: null, handle: null, dragging: false },
-    probe:  { radiusKm: null, handle: null, dragging: false }
+    probe:  { radiusKm: null, handle: null, dragging: false },
+    live:   { radiusKm: null, handle: null, dragging: false }
   };
   // Manual octant override (session 24): typing a bare compass token (N/NE/…/NW;
   // Italian O/NO/SO/NORD/SUD/EST/OVEST accepted) into a destination field draws a
@@ -5682,17 +5683,33 @@
       if (!_abMode) {
         var bearDeg = tpBearing(ref.lat, ref.lon, pos.lat, pos.lon);
         var center = Math.round(bearDeg / 45) * 45;
-        // MAGNETIC: bearDeg is a magnetic bearing, so `center` is the magnetic octant.
-        // cmpForward/cmpWedgePoints treat their angle as true north, so add the local
-        // declination to place the magnetic octant correctly on the true-north map
-        // (matches the turn-wedge / probe — no more geographic sector anywhere).
+        // MAGNETIC octant (declination added). interactive:false so a tap goes THROUGH
+        // to the map (otherwise the polygon eats the tap and the probe never drops).
         var mcenter = center + tpMagDeclination(ref.lat, ref.lon);
         var distKm = tpHaversineKm(ref.lat, ref.lon, pos.lat, pos.lon);
-        var radiusKm = Math.max(distKm, exit ? tpHaversineKm(ref.lat, ref.lon, exit.lat, exit.lon) : 0, 2) * 1.15;
-        L.polygon(cmpWedgePoints(ref, mcenter, radiusKm), { color: '#1565c0', weight: 1, fillColor: '#1565c0', fillOpacity: 0.12 }).addTo(_cmpMapLayer);
-        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, mcenter - 22.5, radiusKm).lat, cmpForward(ref, mcenter - 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
-        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, mcenter + 22.5, radiusKm).lat, cmpForward(ref, mcenter + 22.5, radiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4' }).addTo(_cmpMapLayer);
-        L.polyline([[ref.lat, ref.lon], [pos.lat, pos.lon]], { color: '#888', weight: 1.5, opacity: 0.8 }).addTo(_cmpMapLayer);
+        var lst = _cmpWedgeState.live;
+        var autoR = Math.max(distKm, exit ? tpHaversineKm(ref.lat, ref.lon, exit.lat, exit.lon) : 0, 2) * 1.15;
+        var lRadiusKm = (lst.radiusKm != null) ? lst.radiusKm : autoR;   // dragged value overrides
+        L.polygon(cmpWedgePoints(ref, mcenter, lRadiusKm), { color: '#1565c0', weight: 1, fillColor: '#1565c0', fillOpacity: 0.12, interactive: false }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, mcenter - 22.5, lRadiusKm).lat, cmpForward(ref, mcenter - 22.5, lRadiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4', interactive: false }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [cmpForward(ref, mcenter + 22.5, lRadiusKm).lat, cmpForward(ref, mcenter + 22.5, lRadiusKm).lon]], { color: '#1565c0', weight: 1.5, opacity: 0.6, dashArray: '4,4', interactive: false }).addTo(_cmpMapLayer);
+        L.polyline([[ref.lat, ref.lon], [pos.lat, pos.lon]], { color: '#888', weight: 1.5, opacity: 0.8, interactive: false }).addTo(_cmpMapLayer);
+        // Extend handle for the quadrant (blue dot on its tip).
+        var lTip = cmpForward(ref, mcenter, lRadiusKm);
+        if (!lst.handle) {
+          var licon = L.divIcon({ className: '', html: '<div style="width:20px;height:20px;border-radius:50%;background:#1565c0;border:3px solid #fff;box-shadow:0 0 0 2px #1565c0,0 1px 4px rgba(0,0,0,.4);cursor:grab;"></div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+          lst.handle = L.marker([lTip.lat, lTip.lon], { draggable: true, icon: licon, zIndexOffset: 1000, keyboard: false }).addTo(_cmpMap);
+          lst.handle.on('drag', function (e) { cmpWedgeHandleDrag('live', e); });
+          lst.handle.on('dragend', function (e) { cmpWedgeHandleDrag('live', e); });
+          lst.handle.on('dblclick', function () { lst.radiusKm = null; lst.dragging = false; cmpRenderMap(); });
+          lst.handle.bindTooltip('', { permanent: false, direction: 'top', offset: [0, -12] });
+        } else if (!lst.dragging) {
+          lst.handle.setLatLng([lTip.lat, lTip.lon]);
+        }
+        lst.handle.setTooltipContent('\u2194\ufe0f ' + Math.round(lRadiusKm) + ' km \u00b7 quadrant \u00b7 drag to extend \u00b7 double-tap = auto');
+      } else if (_cmpWedgeState.live.handle) {
+        try { _cmpMap.removeLayer(_cmpWedgeState.live.handle); } catch (e) {}
+        _cmpWedgeState.live.handle = null;
       }
       // Origin marker.
       L.circleMarker([ref.lat, ref.lon], { radius: 6, color: '#0b8043', weight: 2, fillColor: '#0b8043', fillOpacity: 1 }).addTo(_cmpMapLayer).bindTooltip('Origin', { permanent: false });
@@ -6097,7 +6114,7 @@
       var isNow = it.isNow;
       L.polygon(cmpWedgePolyAtBearing(center, centerDeg, radiusKm), {
         color: isNow ? pal.now : pal.next, weight: 2,
-        fillColor: isNow ? pal.fillNow : pal.fillNext, fillOpacity: 0.28
+        fillColor: isNow ? pal.fillNow : pal.fillNext, fillOpacity: 0.28, interactive: false
       }).addTo(_cmpWedgeLayer)
         .bindTooltip(
           it.manual
@@ -6112,7 +6129,7 @@
       // Faint dashed bisector out to the tip — easier to sight a crossing along a road.
       var mid = tpDestPoint(center, centerDeg, radiusKm);
       L.polyline([[center.lat, center.lon], [mid.lat, mid.lon]],
-        { color: isNow ? pal.now : pal.next, weight: 1, opacity: 0.5, dashArray: '4,5' }).addTo(_cmpWedgeLayer);
+        { color: isNow ? pal.now : pal.next, weight: 1, opacity: 0.5, dashArray: '4,5', interactive: false }).addTo(_cmpWedgeLayer);
     });
 
     // Apex marker (dest2 only — the origin already has its green 'Origin' dot).
@@ -6159,7 +6176,8 @@
     var d = tpHaversineKm(center.lat, center.lon, ll.lat, ll.lng);
     st.radiusKm = Math.max(1, Math.min(400, d));   // clamp 1–400 km
     st.dragging = (e && e.type === 'drag');         // true while dragging, false on dragend
-    try { cmpDrawWedges(); } catch (err) {}
+    if (key === 'live') { try { cmpRenderMap(); } catch (err) {} }
+    else { try { cmpDrawWedges(); } catch (err) {} }
   }
 
   // ═══ DRAGGABLE ENDPOINTS (session 24) ═════════════════════════════════
@@ -6258,7 +6276,7 @@
       var ok = !!okByDir[dir];
       L.polygon(cmpWedgePolyAtBearing(c, centerDeg, radiusKm), {
         color: ok ? '#2e7d32' : '#9e9e9e', weight: ok ? 2 : 1,
-        fillColor: ok ? '#66bb6a' : '#bdbdbd', fillOpacity: ok ? 0.32 : 0.12
+        fillColor: ok ? '#66bb6a' : '#bdbdbd', fillOpacity: ok ? 0.32 : 0.12, interactive: false
       }).addTo(_cmpWedgeLayer)
         .bindTooltip((ok ? '\u2705 ' : '\u2014 ') + dir + (ok ? ' favourable' : ' not favourable'), { sticky: true });
     });
