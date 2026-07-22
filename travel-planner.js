@@ -5827,7 +5827,7 @@
         var probeB = el('button', { id: 'tp-cmp-big-probe', type: 'button', style: 'background:' + (_cmpProbeMode ? '#ffd54f' : 'rgba(255,255,255,.2)') + ';color:' + (_cmpProbeMode ? '#333' : '#fff') + ';border:0;border-radius:6px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;' }, _cmpProbeMode ? '\ud83e\udded TAP MAP' : '\ud83e\udded Rose');
         var foll = el('button', { id: 'tp-cmp-big-follow', type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, _cmpMapFollow ? '📍 Follow: on' : '📍 Follow: off');
         var mapsB = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;' }, '🔍 Maps');
-        var close = el('button', { type: 'button', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:14px;cursor:pointer;' }, '✕ Close');
+        var close = el('button', { type: 'button', title: 'Back to setup (edit origin / destination) \u2014 keeps your points', style: 'background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:14px;cursor:pointer;' }, '\u2b05\ufe0f Setup');
         probeB.addEventListener('click', function () {
           _cmpProbeMode = !_cmpProbeMode;
           if (!_cmpProbeMode) _cmpProbe = null;
