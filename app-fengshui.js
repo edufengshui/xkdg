@@ -3890,12 +3890,15 @@ function fsRenderHouseProfiles(){
     var doors = f.doors;
     if (doors.length){
       html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #c9a84c;">';
-      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 External Doors</div>';
+      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 XKDG Doors</div>';
       doors.forEach(function(d, di){
         var facingStr = d.facing != null ? d.facing + '°' : '—';
         var waterStr  = d.water  != null ? d.water  + '°' : '—';
+        var _isInt = (d.kind === 'internal');
+        var _typeBadge = '<span style="font-size:9px;font-weight:bold;color:#fff;background:' + (_isInt ? '#8e6a3f' : '#c9a84c') + ';border-radius:3px;padding:0 5px;margin-right:4px;">' + (_isInt ? 'INTERNAL' : 'EXTERNAL') + '</span>';
+        var _waterLbl = _isInt ? 'Fountain' : 'Water';
         html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">🚪 <strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · Water: ' + waterStr + '</span>';
+        html += '<span style="font-size:11px;">🚪 ' + _typeBadge + '<strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr + '</span>';
         html += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
         html += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
         if (d.facing != null) {
@@ -3906,7 +3909,8 @@ function fsRenderHouseProfiles(){
           html += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
         }
       });
-      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ Add External Door</button>';
+      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'external\')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ External Door</button>';
+      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'internal\')" style="background:#8e6a3f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;margin-left:4px;">+ Internal Door</button>';
       html += '</div>';
     }
 
@@ -3990,21 +3994,32 @@ function fsRenderHouseProfiles(){
 
     // ── Bottom "Add" row: empty sections collapse to horizontal Add buttons here
     //    (no point in a full vertical block when there is nothing inside). ──
-    var _addBtns = '';
-    if (!doors.length) _addBtns += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">+ Add External Door</button>';
-    if (!hasWaters)    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">💧 Add Water</button>';
-    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🛏 Add Bed</button>';
-    _addBtns += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">🪑 Add Desk</button>';
-    // "+ Add a new guest" — pushed to the RIGHT and visually separated from the
-    // placement "Add" buttons (it's a different kind of action).
-    if (!(h.guest && h.guest.name)) _addBtns += '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as occupant #2 (considered in every scan, like Person B)" style="margin-left:auto;background:#0d47a1;color:#fff;border:1px solid #82b1ff;border-radius:4px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 1px 3px rgba(13,71,161,.3);">👥 Add a new guest</button>';
-    // Floor plan — only the "Import" action lives in the Add row. When a plan is
-    // already saved, viewing/removing it lives in the header (🖼 + 🗑), not here.
+    //    Now split into two labeled competence groups: XKDG (doors/bed/desk) and
+    //    Flying Stars (generic water). The division is shown right here in the box. ──
+    var _bStyle = 'color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;';
+    // ── XKDG group: external door, internal door, bed, desk ──
+    var _xkAdd = '';
+    if (!doors.length) _xkAdd += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'external\')" style="background:#c9a84c;' + _bStyle + '">+ External Door</button>';
+    _xkAdd += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'internal\')" style="background:#8e6a3f;' + _bStyle + '">+ Internal Door</button>';
+    _xkAdd += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;' + _bStyle + '">🛏 Add Bed</button>';
+    _xkAdd += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;' + _bStyle + '">🪑 Add Desk</button>';
+    // ── Flying Stars group: generic water placement ──
+    var _fsAdd = '';
+    if (!hasWaters) _fsAdd += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;' + _bStyle + '">💧 Add Water</button>';
+    else _fsAdd += '<span style="font-size:10px;color:#999;font-style:italic;">water placed above</span>';
+    // ── Guest + floorplan (neither group) ──
+    var _guestBtn = (!(h.guest && h.guest.name)) ? '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as occupant #2 (considered in every scan, like Person B)" style="margin-left:auto;background:#0d47a1;color:#fff;border:1px solid #82b1ff;border-radius:4px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 1px 3px rgba(13,71,161,.3);">👥 Add a new guest</button>' : '';
     var _fpBtns = (f && f.floorplan && f.floorplan.imgData)
       ? ''
       : '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px;">'
-      + '<span style="font-size:10px;color:#999;">Add:</span>' + _fpBtns + _addBtns + '</div>';
+    var _rowStyle = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;';
+    var _lblXk = '<span style="font-size:10px;font-weight:bold;color:#8a6a1f;background:#f3ecd6;border-radius:3px;padding:1px 6px;">🚪 XKDG</span>';
+    var _lblFs = '<span style="font-size:10px;font-weight:bold;color:#00695c;background:#d8f0ec;border-radius:3px;padding:1px 6px;">⭐ Flying Stars</span>';
+    html += '<div style="margin-top:6px;padding-top:5px;border-top:1px dashed #ccc;">';
+    html += '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblXk + _xkAdd + '</div>';
+    html += '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblFs + _fsAdd + '</div>';
+    html += '<div style="' + _rowStyle + '">' + _fpBtns + _guestBtn + '</div>';
+    html += '</div>';
 
     html += '</div>'; // close .fs-house-body (collapsible)
     html += '</div>';
@@ -4536,21 +4551,25 @@ function fsDeleteHouse(personName, houseIdx){
 
 // ── DOOR CRUD ───────────────────────────────────────────────────
 
-function fsAddDoor(personName, houseIdx){
-  var dName = prompt('Name for this EXTERNAL door / facade\n(e.g. "Garage door", "South facade"):');
+function fsAddDoor(personName, houseIdx, kind){
+  kind = (kind === 'internal') ? 'internal' : 'external';
+  var isInt = (kind === 'internal');
+  var dName = prompt('Name for this ' + (isInt ? 'INTERNAL door / room' : 'EXTERNAL door / facade') +
+                     '\n(e.g. "' + (isInt ? 'Study door' : 'Garage door, South facade') + '"):');
   if (!dName || !dName.trim()) return;
-  var facingStr = prompt('XKDG Facing degree (°) for this door:');
+  var facingStr = prompt('XKDG Facing degree (\u00b0) for this ' + (isInt ? 'internal door' : 'door') + ':');
   if (!facingStr) return;
   var facing = parseFloat(facingStr);
   if (isNaN(facing)){ alert('Invalid degree.'); return; }
-  var waterStr = prompt('XKDG Water degree (°) for this door\n(leave empty if none):');
+  var waterStr = prompt('XKDG ' + (isInt ? 'Fountain' : 'Water') + ' degree (\u00b0) for this ' +
+                        (isInt ? 'room' : 'door') + '\n(leave empty if none):');
   var water = (waterStr && waterStr.trim()) ? parseFloat(waterStr) : null;
   if (water !== null && isNaN(water)){ alert('Invalid water degree.'); return; }
 
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
   var _f = _fsActiveFloor(all[personName][houseIdx]);
-  _f.doors.push({ name: dName.trim(), facing: facing, water: water });
+  _f.doors.push({ name: dName.trim(), facing: facing, water: water, kind: kind });
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
