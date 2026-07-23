@@ -121,6 +121,37 @@
     ctx.restore();
   }
 
+  // Bigger, boxed label for the DLR format: opaque card so it stays readable even
+  // over the wheel, with the spirit name, the earth branch and the heaven branch.
+  function drawSectorBox(ctx, x, y, s, fs) {
+    var net = s.net;
+    var spCol = (net === 'green' || net === 'green_hollow') ? GREEN : (net === 'red' ? RED : GREY);
+    var name = SPIRIT_EN[s.general && s.general.cn] || (s.general && s.general.cn) || '';
+    var num = SPIRIT_NUM[s.general && s.general.cn];
+    var l1 = name;
+    var l2 = branchLabel(s.earth);
+    var l3 = branchLabel(s.heaven) + (num ? ('  ' + num) : '');
+    ctx.save();
+    ctx.font = 'bold ' + fs + 'px sans-serif';
+    var w = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width, ctx.measureText(l3).width) + 18;
+    var h = fs * 3.6 + 10;
+    // card
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') ctx.roundRect(x - w / 2, y - h / 2, w, h, 7);
+    else ctx.rect(x - w / 2, y - h / 2, w, h);
+    ctx.fillStyle = 'rgba(255,252,242,0.96)';
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = spCol; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = spCol; ctx.font = 'bold ' + fs + 'px sans-serif';
+    ctx.fillText(l1, x, y - fs * 1.1);
+    ctx.fillStyle = '#7a5a2a'; ctx.font = (fs - 1) + 'px serif';
+    ctx.fillText(l2, x, y + fs * 0.1);
+    ctx.fillStyle = INK; ctx.font = 'bold ' + (fs - 1) + 'px serif';
+    ctx.fillText(l3, x, y + fs * 1.25);
+    ctx.restore();
+  }
+
   // ============================================================
   // A) MAIN LUOPAN RING  (called by fsRedraw)
   // ============================================================
@@ -162,62 +193,45 @@
       var H = (ctx.canvas && ctx.canvas.height) || (cy * 2);
       var rLabel = outerR + 108, rDotInner = outerR + 40;
       var pad = 42;
-      // ── Collision avoidance (session 24) ─────────────────────────────
-      // The Flying Stars blocks sit in the band just outside the wheel and publish
-      // their rectangles on window._fsStarBlocks. Blindly clamping a label into the
-      // canvas used to drop it straight on top of a star block (unreadable, both of
-      // them). Instead, for every label we search outward — and, if needed, a little
-      // sideways — for the first spot that clears the blocks AND fits on the canvas.
-      var starRects = [];
-      try { if (Array.isArray(window._fsStarBlocks)) starRects = window._fsStarBlocks; } catch (eSB) {}
-      var LW = 46, LH = 32;                    // half-width / half-height of a label block
-      var placed = [];                          // labels already positioned this pass
-      function hits(x, y) {
-        if (x - LW < 4 || x + LW > W - 4 || y - LH < 4 || y + LH > H - 4) return true;   // off-canvas
-        for (var i = 0; i < starRects.length; i++) {
-          var b = starRects[i];
-          if (x + LW > b.x - 3 && x - LW < b.x + b.w + 3 &&
-              y + LH > b.y - 3 && y - LH < b.y + b.h + 3) return true;                    // over a star block
-        }
-        for (var j = 0; j < placed.length; j++) {                                          // over a sibling label
-          if (Math.abs(x - placed[j].x) < LW * 1.7 && Math.abs(y - placed[j].y) < LH * 1.5) return true;
-        }
-        return false;
-      }
-      function place(a) {
-        // 1) straight out along the sector angle
-        for (var r = rLabel; r <= rLabel + 120; r += 6) {
-          var x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
-          if (!hits(x, y)) return { x: x, y: y };
-        }
-        // 2) same band, nudged sideways (the gaps between star blocks)
-        for (var off = 6; off <= 34; off += 4) {
-          for (var sgn = -1; sgn <= 1; sgn += 2) {
-            var a2 = a + sgn * off * Math.PI / 180;
-            for (var r2 = rLabel; r2 <= rLabel + 120; r2 += 8) {
-              var x2 = cx + Math.cos(a2) * r2, y2 = cy + Math.sin(a2) * r2;
-              if (!hits(x2, y2)) return { x: x2, y: y2 };
-            }
-          }
-        }
-        // 3) nothing clear — keep the old clamped position rather than dropping the label
-        var xf = Math.max(pad, Math.min(W - pad, cx + Math.cos(a) * rLabel));
-        var yf = Math.max(pad, Math.min(H - pad, cy + Math.sin(a) * rLabel));
-        return { x: xf, y: yf, crowded: true };
-      }
+      // ── DLR FORMAT (session 24) ──────────────────────────────────────
+      // The 12 DLR sectors ARE the 12 Double Mountains (雙山): each spans 30° and
+      // the SECOND mountain of the pair is always the earthly branch, so the sector
+      // for a branch at B° runs from B-22.5° to B+7.5°. Four of these boundaries
+      // (67.5 / 157.5 / 247.5 / 337.5) coincide exactly with the Eight-Palace
+      // boundaries where the Flying Stars live — those are drawn heavier.
+      var SECT_BACK = 22.5, SECT_FWD = 7.5;              // sector = [B-22.5°, B+7.5°]
+      var PALACE_EDGES = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5];
+      var rLineIn = outerR * 0.62;                        // lines start inside the wheel…
+      var rLineOut = outerR + 150;                        // …and protrude well outside it
+      var rBox = outerR + 61;                             // centre of each DLR box (outer band)
+
+      // 1) the 12 dividing lines
+      ctx.save();
       r.sectors.forEach(function (s) {
-        var a = ang(branchDeg(s.earth));
-        var p = place(a);
-        placed.push(p);
+        var edge = branchDeg(s.earth) + SECT_FWD;         // shared edge with the next sector
+        var e = ((edge % 360) + 360) % 360;
+        var coincides = PALACE_EDGES.some(function (p) { return Math.abs(p - e) < 0.01; });
+        var a = ang(e);
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * rLineIn, cy + Math.sin(a) * rLineIn);
+        ctx.lineTo(cx + Math.cos(a) * rLineOut, cy + Math.sin(a) * rLineOut);
+        ctx.lineWidth = coincides ? 2.6 : 1.2;
+        ctx.strokeStyle = coincides ? 'rgba(120,80,20,0.85)' : 'rgba(150,120,60,0.5)';
+        if (!coincides) { ctx.setLineDash([5, 4]); } else { ctx.setLineDash([]); }
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // 2) one big box per sector, centred in its own 30° wedge
+      r.sectors.forEach(function (s) {
+        var mid = branchDeg(s.earth) - SECT_BACK + 15;    // middle of the 30° sector
+        var a = ang(mid);
+        var bx = cx + Math.cos(a) * rBox, by = cy + Math.sin(a) * rBox;
         // colour dot on the wheel edge, pointing at the sector
-        var dx = cx + Math.cos(a) * rDotInner, dy = cy + Math.sin(a) * rDotInner;
+        var dx = cx + Math.cos(a) * (outerR + 40), dy = cy + Math.sin(a) * (outerR + 40);
         drawDot(ctx, dx, dy, s.net);
-        // thin leader line from the wheel dot to the (possibly moved) label
-        ctx.save();
-        ctx.strokeStyle = 'rgba(160,130,70,0.55)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(p.x, p.y + LH * 0.55); ctx.stroke();
-        ctx.restore();
-        drawLabelBlock(ctx, p.x, p.y, s, 13);
+        drawSectorBox(ctx, bx, by, s, 11);
       });
       // small caption at the top of the canvas
       var cap = st.year + ' ' + r.yearPillar.gz + '  \u00B7  \u6708\u5C07 ' +
@@ -646,7 +660,8 @@
     } catch (e) {}
   }
 
-  var API = { open: open, openOnPlan: openOnPlan, toggleRing: toggleRing, drawIfOn: drawIfOn, mount: mount };
+  var API = { open: open, openOnPlan: openOnPlan, toggleRing: toggleRing, drawIfOn: drawIfOn, mount: mount,
+              isRingOn: function () { return !!st.ringOn; } };
   if (typeof window !== 'undefined') window.FloorPlanDLR = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof document !== 'undefined') {

@@ -1431,6 +1431,20 @@ function fsRenderSettingAdvice(){
 
 // Draws Flying Stars on the Luopan if toggle is ON and inputs are valid.
 // Also updates the text under the canvas with the center stars.
+// When the DLR ring is ON the luopan switches to "DLR format": the Flying Stars
+// blocks shrink and move in, freeing the outer band for the 12 Double-Mountain
+// sectors and their bigger boxes. Returns the options for FlyingStars.drawOnLuopan.
+function _fsStarOpts(rot){
+  var o = { rotateDeg: rot };
+  try {
+    if (window.FloorPlanDLR && typeof FloorPlanDLR.isRingOn === 'function' && FloorPlanDLR.isRingOn()){
+      o.blockSize = 32;        // was 80 — shrunk to free the outer band
+      o.radiusOffset = 18;     // was 55 — tucked close to the wheel
+    }
+  } catch(e){}
+  return o;
+}
+
 function fsDrawFlyingStars(ctx, cx, cy, outerR){
   const centerBox = document.getElementById('fs-stars-center');
   // Current luopan rotation (set by fsRedraw); 0 in Regular orientation.
@@ -1443,7 +1457,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
   // Manual override takes precedence over the auto calculation
   if (window._fsManualChart && typeof FlyingStars !== 'undefined'){
     try {
-      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR, { rotateDeg: _fsRot });
+      FlyingStars.drawOnLuopan(ctx, window._fsManualChart, cx, cy, outerR, _fsStarOpts(_fsRot));
       if (centerBox) centerBox.innerHTML =
         '<span style="color:#8a6a1f;font-weight:bold;">⭐ Manual</span> &nbsp;|&nbsp; Center: ' +
         FlyingStars.getCenterStarsHTML(window._fsManualChart);
@@ -1483,7 +1497,7 @@ function fsDrawFlyingStars(ctx, cx, cy, outerR){
     return;
   }
 
-  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR, { rotateDeg: _fsRot });
+  FlyingStars.drawOnLuopan(ctx, chart, cx, cy, outerR, _fsStarOpts(_fsRot));
 
   // Update center stars line below the canvas
   if (centerBox){
