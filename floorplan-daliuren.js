@@ -286,11 +286,17 @@
       bar = document.createElement('div');
       bar.id = 'fs-dlr-controls';
       bar.setAttribute('style',
-        // Session 24: was centred at the bottom, where it sat right on top of the
-        // wheel. Parked in the bottom-left corner instead — stacked just above the
-        // "DLR ON" toggle (bottom:8px), in the dead space outside the circle.
-        'position:absolute;bottom:52px;left:8px;z-index:7;display:flex;gap:5px;align-items:center;' +
-        'background:rgba(255,255,255,.94);border:1px solid #5d4037;border-radius:8px;padding:3px 5px;box-shadow:0 1px 4px rgba(0,0,0,.3);');
+        // Session 24: floating panel — drag it anywhere with a finger/mouse; the
+        // position is remembered. Starts bottom-left, above the "DLR ON" toggle.
+        'position:absolute;bottom:52px;left:8px;z-index:9;display:flex;gap:5px;align-items:center;' +
+        'background:rgba(255,255,255,.94);border:1px solid #5d4037;border-radius:8px;padding:3px 5px;box-shadow:0 1px 4px rgba(0,0,0,.3);' +
+        'touch-action:none;user-select:none;-webkit-user-select:none;');
+      // drag grip
+      var grip = document.createElement('span');
+      grip.textContent = '\u2237';
+      grip.title = 'Drag to move this panel';
+      grip.setAttribute('style', 'cursor:grab;color:#8d6e63;font-size:15px;font-weight:bold;padding:0 3px;line-height:1;');
+      bar.appendChild(grip);
       var mk = function (txt, title) {
         var e = document.createElement('button'); e.type = 'button'; e.textContent = txt; if (title) e.title = title;
         e.setAttribute('style', 'background:#f6f1ea;color:#5d4037;border:1px solid #cbb;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:bold;cursor:pointer;');
@@ -307,10 +313,70 @@
       plan.addEventListener('click', function () { openOnPlan(); });
       bar.appendChild(prev); bar.appendChild(ylabel); bar.appendChild(next); bar.appendChild(plan);
       wrap.appendChild(bar);
+      _makeDraggable(bar, wrap, grip);
     }
     if (bar.style.display !== 'flex') bar.style.display = 'flex';
     _refreshYear();
   }
+  // ── Floating panel drag (session 24) ────────────────────────────────
+  // Pointer Events cover finger and mouse with one code path. Dragging starts on
+  // the grip, or anywhere on the bar background — never on a button, so the year
+  // arrows and "Plan" keep working normally. Position is clamped inside the luopan
+  // wrapper and remembered in localStorage, per device.
+  var DRAG_KEY = 'xkdg_dlr_bar_pos';
+  function _savePos(l, t) { try { localStorage.setItem(DRAG_KEY, JSON.stringify({ l: Math.round(l), t: Math.round(t) })); } catch (e) {} }
+  function _loadPos() { try { var v = JSON.parse(localStorage.getItem(DRAG_KEY) || 'null'); return (v && isFinite(v.l) && isFinite(v.t)) ? v : null; } catch (e) { return null; } }
+  function _applyPos(bar, wrap, p) {
+    if (!p) return;
+    var wr = wrap.getBoundingClientRect(), br = bar.getBoundingClientRect();
+    var maxL = Math.max(0, wr.width - br.width), maxT = Math.max(0, wr.height - br.height);
+    bar.style.left = Math.max(0, Math.min(maxL, p.l)) + 'px';
+    bar.style.top = Math.max(0, Math.min(maxT, p.t)) + 'px';
+    bar.style.bottom = 'auto';
+  }
+  function _makeDraggable(bar, wrap, grip) {
+    var saved = _loadPos();
+    if (saved) { setTimeout(function () { _applyPos(bar, wrap, saved); }, 0); }
+    var dragging = false, sx = 0, sy = 0, sl = 0, stp = 0;
+    function down(e) {
+      // let the buttons do their job
+      if (e.target && e.target.tagName === 'BUTTON') return;
+      var wr = wrap.getBoundingClientRect(), br = bar.getBoundingClientRect();
+      sl = br.left - wr.left; stp = br.top - wr.top;
+      // switch from bottom-anchored to top-anchored on first drag
+      bar.style.left = sl + 'px'; bar.style.top = stp + 'px'; bar.style.bottom = 'auto';
+      sx = e.clientX; sy = e.clientY; dragging = true;
+      if (grip) grip.style.cursor = 'grabbing';
+      try { bar.setPointerCapture(e.pointerId); } catch (er) {}
+      e.preventDefault();
+    }
+    function move(e) {
+      if (!dragging) return;
+      var wr = wrap.getBoundingClientRect(), br = bar.getBoundingClientRect();
+      var maxL = Math.max(0, wr.width - br.width), maxT = Math.max(0, wr.height - br.height);
+      var nl = Math.max(0, Math.min(maxL, sl + (e.clientX - sx)));
+      var nt = Math.max(0, Math.min(maxT, stp + (e.clientY - sy)));
+      bar.style.left = nl + 'px'; bar.style.top = nt + 'px';
+      e.preventDefault();
+    }
+    function up(e) {
+      if (!dragging) return;
+      dragging = false;
+      if (grip) grip.style.cursor = 'grab';
+      try { bar.releasePointerCapture(e.pointerId); } catch (er) {}
+      _savePos(parseFloat(bar.style.left) || 0, parseFloat(bar.style.top) || 0);
+    }
+    bar.addEventListener('pointerdown', down);
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', up);
+    bar.addEventListener('pointercancel', up);
+    // double-tap the grip → back to the default corner
+    if (grip) grip.addEventListener('dblclick', function () {
+      try { localStorage.removeItem(DRAG_KEY); } catch (er) {}
+      bar.style.left = '8px'; bar.style.top = 'auto'; bar.style.bottom = '52px';
+    });
+  }
+
   function _refreshYear() {
     var y = document.getElementById('fs-dlr-year');
     // IDEMPOTENT (session 23): writing textContent replaces the text node even when
