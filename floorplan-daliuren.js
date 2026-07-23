@@ -162,15 +162,62 @@
       var H = (ctx.canvas && ctx.canvas.height) || (cy * 2);
       var rLabel = outerR + 108, rDotInner = outerR + 40;
       var pad = 42;
+      // ── Collision avoidance (session 24) ─────────────────────────────
+      // The Flying Stars blocks sit in the band just outside the wheel and publish
+      // their rectangles on window._fsStarBlocks. Blindly clamping a label into the
+      // canvas used to drop it straight on top of a star block (unreadable, both of
+      // them). Instead, for every label we search outward — and, if needed, a little
+      // sideways — for the first spot that clears the blocks AND fits on the canvas.
+      var starRects = [];
+      try { if (Array.isArray(window._fsStarBlocks)) starRects = window._fsStarBlocks; } catch (eSB) {}
+      var LW = 46, LH = 32;                    // half-width / half-height of a label block
+      var placed = [];                          // labels already positioned this pass
+      function hits(x, y) {
+        if (x - LW < 4 || x + LW > W - 4 || y - LH < 4 || y + LH > H - 4) return true;   // off-canvas
+        for (var i = 0; i < starRects.length; i++) {
+          var b = starRects[i];
+          if (x + LW > b.x - 3 && x - LW < b.x + b.w + 3 &&
+              y + LH > b.y - 3 && y - LH < b.y + b.h + 3) return true;                    // over a star block
+        }
+        for (var j = 0; j < placed.length; j++) {                                          // over a sibling label
+          if (Math.abs(x - placed[j].x) < LW * 1.7 && Math.abs(y - placed[j].y) < LH * 1.5) return true;
+        }
+        return false;
+      }
+      function place(a) {
+        // 1) straight out along the sector angle
+        for (var r = rLabel; r <= rLabel + 120; r += 6) {
+          var x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+          if (!hits(x, y)) return { x: x, y: y };
+        }
+        // 2) same band, nudged sideways (the gaps between star blocks)
+        for (var off = 6; off <= 34; off += 4) {
+          for (var sgn = -1; sgn <= 1; sgn += 2) {
+            var a2 = a + sgn * off * Math.PI / 180;
+            for (var r2 = rLabel; r2 <= rLabel + 120; r2 += 8) {
+              var x2 = cx + Math.cos(a2) * r2, y2 = cy + Math.sin(a2) * r2;
+              if (!hits(x2, y2)) return { x: x2, y: y2 };
+            }
+          }
+        }
+        // 3) nothing clear — keep the old clamped position rather than dropping the label
+        var xf = Math.max(pad, Math.min(W - pad, cx + Math.cos(a) * rLabel));
+        var yf = Math.max(pad, Math.min(H - pad, cy + Math.sin(a) * rLabel));
+        return { x: xf, y: yf, crowded: true };
+      }
       r.sectors.forEach(function (s) {
         var a = ang(branchDeg(s.earth));
-        var lx = cx + Math.cos(a) * rLabel, ly = cy + Math.sin(a) * rLabel;
-        lx = Math.max(pad, Math.min(W - pad, lx));
-        ly = Math.max(pad, Math.min(H - pad, ly));
+        var p = place(a);
+        placed.push(p);
         // colour dot on the wheel edge, pointing at the sector
         var dx = cx + Math.cos(a) * rDotInner, dy = cy + Math.sin(a) * rDotInner;
         drawDot(ctx, dx, dy, s.net);
-        drawLabelBlock(ctx, lx, ly, s, 13);
+        // thin leader line from the wheel dot to the (possibly moved) label
+        ctx.save();
+        ctx.strokeStyle = 'rgba(160,130,70,0.55)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(p.x, p.y + LH * 0.55); ctx.stroke();
+        ctx.restore();
+        drawLabelBlock(ctx, p.x, p.y, s, 13);
       });
       // small caption at the top of the canvas
       var cap = st.year + ' ' + r.yearPillar.gz + '  \u00B7  \u6708\u5C07 ' +
