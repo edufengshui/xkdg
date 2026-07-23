@@ -1290,12 +1290,84 @@ function fsRedraw(){
     }
   } catch (e) { console.warn('FloorPlanDLR overlay', e); }
 
+  // ═══ SETTING ICONS (🚪 doors · 🛏 bed · 🪑 desk · 💧 fountains) ═══
+  // Drawn last so the icons sit on top of every other ring/overlay.
+  try { fsDrawSettingIcons(ctx, cx, cy, outerR, ROT); } catch (e) { console.warn('fsDrawSettingIcons', e); }
+
   // Render detail panel
   fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx);
   // Live XKDG detail panel — always visible when facing/water entered
   fsRenderXkdgDetail(fInput, wInput, facingSlot);
   fsRenderPairsTable();
   if (typeof _fsUpdateLuopanVis === 'function') _fsUpdateLuopanVis();
+}
+
+// ═══ SETTING ICONS overlay (session 24) ═══════════════════════════════
+// Draws, automatically, a BIG icon on the luopan at the degree of every saved /
+// live setting, so you can see at a glance what you are working on and where:
+//   🚪 external door · 🚪 internal door · 🛏 bed · 🪑 desk   (at their facing/sitting °)
+//   💧 fountain for each of them — OPTIONAL, drawn only when a degree was entered.
+// Doors come from the active house profile; bed/desk from the live zone panels.
+// Purely additive: wrapped in try/catch, never blocks the rest of the redraw.
+function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
+  try {
+    if (!ctx) return;
+    var items = [];
+    var num = function(v){ var n = parseFloat(v); return isFinite(n) ? n : null; };
+
+    // ── 1) Doors of the active house / floor (external + internal) ──
+    try {
+      var ref = (typeof _fsSettingRef === 'function') ? _fsSettingRef() : null;
+      var floor = ref && ref.floor;
+      if (floor && floor.doors && floor.doors.length){
+        floor.doors.forEach(function(d){
+          if (!d) return;
+          var isInt = (d.kind === 'internal');
+          var fdeg = num(d.facing);
+          if (fdeg !== null) items.push({ deg: fdeg, icon: '\uD83D\uDEAA', color: isInt ? '#8e6a3f' : '#c9a84c', tag: (isInt ? 'Int door' : 'Ext door') });
+          var wdeg = num(d.water);
+          if (wdeg !== null) items.push({ deg: wdeg, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Fountain' });
+        });
+      }
+    } catch(e){}
+
+    // ── 2) Live zone panels (bed / desk) — fountain optional ──
+    var g = function(id){ var el = document.getElementById(id); return el ? num(el.value) : null; };
+    var bedSit = g('fs-bed-sitting');
+    if (bedSit !== null) items.push({ deg: bedSit, icon: '\uD83D\uDECF', color: '#9c27b0', tag: 'Bed' });
+    var bedW = g('fs-bed-water');
+    if (bedW !== null) items.push({ deg: bedW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Bed fountain' });
+    var deskF = g('fs-desk-facing');
+    if (deskF !== null) items.push({ deg: deskF, icon: '\uD83E\uDE91', color: '#6a1b9a', tag: 'Desk' });
+    var deskW = g('fs-desk-water');
+    if (deskW !== null) items.push({ deg: deskW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Desk fountain' });
+
+    if (!items.length) return;
+
+    // Draw inside the ring so the icons never collide with the outer arrows/labels.
+    var R = outerR * 0.70;
+    items.forEach(function(it){
+      var a = (it.deg - 270 + ROT) * Math.PI / 180;
+      var x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 5;
+      ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = 3; ctx.strokeStyle = it.color; ctx.stroke();
+      ctx.font = '24px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#000';
+      ctx.fillText(it.icon, x, y + 1);
+      // Small caption + degree, so you know which section you are in.
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = it.color;
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3;
+      var cap = it.tag + ' ' + it.deg.toFixed(0) + '\u00b0';
+      ctx.strokeText(cap, x, y + 30);
+      ctx.fillText(cap, x, y + 30);
+      ctx.restore();
+    });
+  } catch(e){ console.warn('fsDrawSettingIcons', e); }
 }
 
 // Draws Flying Stars on the Luopan if toggle is ON and inputs are valid.
@@ -7316,10 +7388,14 @@ function fsSaveZoneSetting(){
     var bedPalace  = (document.getElementById('fs-bed-palace')  || {}).value || '';
     var bedSitting = (document.getElementById('fs-bed-sitting') || {}).value || '';
     var deskFacing = (document.getElementById('fs-desk-facing') || {}).value || '';
+    // Optional fountain per zone (may be left empty — never mandatory).
+    var bedWater   = (document.getElementById('fs-bed-water')   || {}).value || '';
+    var deskWater  = (document.getElementById('fs-desk-water')  || {}).value || '';
     var s = {
       name: name.trim(), ts: Date.now(),
       houseFacing: hf, period: pd, doorFacing: df, water: wt,
       bedPalace: bedPalace, bedSitting: bedSitting, deskFacing: deskFacing,
+      bedWater: bedWater, deskWater: deskWater,
       manualChart: window._fsManualChart ? JSON.parse(JSON.stringify(window._fsManualChart)) : null
     };
     if (!ref.floor.settings[zone]) ref.floor.settings[zone] = [];
@@ -7348,9 +7424,11 @@ function fsLoadZoneSetting(idx){
     if (zone === 'bed'){
       _fsSetVal('fs-bed-palace', s.bedPalace);
       _fsSetVal('fs-bed-sitting', s.bedSitting);
+      _fsSetVal('fs-bed-water', s.bedWater);
       if (typeof fsBedReadChart === 'function') fsBedReadChart();
     } else if (zone === 'desk'){
       _fsSetVal('fs-desk-facing', s.deskFacing);
+      _fsSetVal('fs-desk-water', s.deskWater);
       if (typeof fsDeskReadChart === 'function') fsDeskReadChart();
     }
     if (typeof FS_STARS_ON !== 'undefined' && !FS_STARS_ON){ fsToggleStars(); }
@@ -7481,6 +7559,10 @@ function fsBuildBedPanel(){
       + '<div style="flex:1;min-width:130px;">'
         + '<label style="font-size:11px;color:#666;display:block;">Bed Sitting (°) — headboard</label>'
         + '<input type="number" id="fs-bed-sitting" min="0" max="360" step="0.1" placeholder="e.g. 0" oninput="fsBedReadChart()" style="width:100%;padding:6px;border:1px solid #9c27b0;border-radius:4px;font-size:14px;">'
+      + '</div>'
+      + '<div style="flex:1;min-width:130px;">'
+        + '<label style="font-size:11px;color:#666;display:block;">💧 Fountain (°) — optional</label>'
+        + '<input type="number" id="fs-bed-water" min="0" max="360" step="0.1" placeholder="leave empty if none" oninput="fsRedraw()" style="width:100%;padding:6px;border:1px solid #4db6ac;border-radius:4px;font-size:14px;">'
       + '</div>'
     + '</div>'
     + '<div id="fs-bed-readout" style="margin-top:10px;font-size:13px;line-height:1.5;"></div>'
@@ -7821,6 +7903,9 @@ function fsBuildDeskPanel(){
     + '<label style="font-size:12px;color:#555;">Desk Facing (°)</label>'
     + '<input id="fs-desk-facing" type="number" step="0.1" min="0" max="360" placeholder="e.g. 175.5" '
     + 'oninput="fsDeskReadChart()" style="width:100%;padding:8px;margin:4px 0 8px;border:1px solid #ce93d8;border-radius:6px;font-size:14px;box-sizing:border-box;" />'
+    + '<label style="font-size:12px;color:#555;">💧 Fountain (°) — optional</label>'
+    + '<input id="fs-desk-water" type="number" step="0.1" min="0" max="360" placeholder="leave empty if none" '
+    + 'oninput="fsRedraw()" style="width:100%;padding:8px;margin:4px 0 8px;border:1px solid #4db6ac;border-radius:6px;font-size:14px;box-sizing:border-box;" />'
     + '<div id="fs-desk-readout" style="font-size:13px;line-height:1.5;"></div>'
     + '<div style="margin-top:10px;display:flex;gap:8px;align-items:stretch;"><button onclick="fsDeskScan()" style="flex:1;background:linear-gradient(135deg,#6a1b9a,#9c27b0);color:#fff;font-weight:bold;font-size:14px;padding:10px;border:none;border-radius:8px;cursor:pointer;">🔎 SCAN lucky dates to set up the desk &amp; water</button><button class="fs-recall-fs-btn" onclick="fsRecallFlyingStars()" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">⭐ Recall Flying Stars</button></div>'
     + '<div id="fs-desk-results" style="margin-top:10px;"></div>'
