@@ -116,8 +116,9 @@
     var num = SPIRIT_NUM[s.general && s.general.cn];
     drawDot(ctx, x, y - fs * 1.7, net);
     txt(name, y - fs * 0.55, spCol, 'bold ' + fs + 'px sans-serif');
-    txt(branchLabel(s.earth), y + fs * 0.55, '#7a5a2a', (fs - 1) + 'px serif');
-    txt(branchLabel(s.heaven) + (num ? ('  ' + num) : ''), y + fs * 1.6, INK, 'bold ' + (fs - 1) + 'px serif');
+    // 天盤 tianpan above, 地盤 dipan below — see drawSectorBox for the rationale.
+    txt(branchLabel(s.heaven) + (num ? ('  ' + num) : ''), y + fs * 0.55, INK, 'bold ' + (fs - 1) + 'px serif');
+    txt(branchLabel(s.earth), y + fs * 1.6, '#7a5a2a', (fs - 1) + 'px serif');
     ctx.restore();
   }
 
@@ -129,8 +130,12 @@
     var name = SPIRIT_EN[s.general && s.general.cn] || (s.general && s.general.cn) || '';
     var num = SPIRIT_NUM[s.general && s.general.cn];
     var l1 = name;
-    var l2 = branchLabel(s.earth);
-    var l3 = branchLabel(s.heaven) + (num ? ('  ' + num) : '');
+    // DLR convention (Edu, session 24): the TIANPAN (heaven plate, which rotates)
+    // is written ABOVE and the DIPAN (earth plate, fixed to the compass) BELOW.
+    // The block itself sits at the DIPAN position — that is what anchors it to the
+    // luopan. Writing them the other way round made the whole chart read reversed.
+    var l2 = branchLabel(s.heaven) + (num ? ('  ' + num) : '');   // 天盤 tianpan
+    var l3 = branchLabel(s.earth);                                 // 地盤 dipan (position)
     ctx.save();
     ctx.font = 'bold ' + fs + 'px sans-serif';
     var w = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width, ctx.measureText(l3).width) + 18;
