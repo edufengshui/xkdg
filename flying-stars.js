@@ -543,6 +543,10 @@ const FlyingStars = (() => {
         }
 
         // ───── Blocco 3-stelle per ognuno degli 8 palazzi esterni ─────
+        // Session 24: the rectangles are also PUBLISHED on window._fsStarBlocks so
+        // later overlays (the DLR ring) can place their labels without covering them.
+        // Purely informational — nothing here reads it back.
+        const _publishedRects = [];
         for (let gridIdx = 0; gridIdx < 9; gridIdx++) {
             if (gridIdx === 4) continue;  // salta il centro
 
@@ -550,6 +554,7 @@ const FlyingStars = (() => {
             const a = (compassDeg - 270 + _rot) * Math.PI / 180;
             const bx = cx + Math.cos(a) * centerR;
             const by = cy + Math.sin(a) * centerR;
+            _publishedRects.push({ x: bx - blockR, y: by - blockR, w: opt.blockSize, h: opt.blockSize });
 
             // Sfondo del blocco
             ctx.save();
@@ -583,6 +588,8 @@ const FlyingStars = (() => {
             ctx.textBaseline = 'bottom';
             ctx.fillText(chartData.baseStars[gridIdx], bx, by + blockR - 4);
         }
+        // Publish for later overlays (DLR label placement). Never throws.
+        try { window._fsStarBlocks = _publishedRects; } catch (e) {}
     }
 
     /**
