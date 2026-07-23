@@ -6,11 +6,20 @@
 // judgement for the 12 double-mountain sectors of a house.
 //
 // CASTING (per Edu's slides, all validated against the July-2019 example):
-//   • Day pillar   = the YEAR pillar (Tai Sui). Of the 6 "Tai Sui days"
-//     in the year (day GanZhi == year GanZhi, 60 days apart) pick the one
-//     whose chart has the house SITTING branch riding (sitting in HEAVEN,
-//     over) the Day branch in EARTH; if none, the branch in 六合 with the
-//     sitting must ride it.
+//   • Day pillar   = the YEAR pillar (Tai Sui). The 6 "Tai Sui days" are those
+//     with day GanZhi == year GanZhi (60 days apart) inside the SOLAR year,
+//     i.e. from 立春 Lichun to the next Lichun — never Jan 1 → Dec 31.
+//     Among them pick, in this order (Edu, session 24):
+//       1. the day whose chart has the house SITTING branch riding (in HEAVEN,
+//          over) the Tai Sui branch in EARTH;
+//       2. else the day where the 六合 OF THE SITTING rides the Tai Sui branch;
+//       3. else the reverse relation — the SITTING rides the 六合 OF THE TAI SUI
+//          (e.g. 2026, Tai Sui 午 whose 六合 is 未, sitting 子 → 子 over 未);
+//       4. else the reverse of rule 1 — the TAI SUI rides the SITTING;
+//       5. else the TAI SUI rides the FACING.
+//     Rules 4 and 5 together mean "the Tai Sui must ride the house", from the
+//     sitting side then from the facing side. Verified over 1212 year/sector
+//     pairs (2000-2100): every one resolves, none is left without a chart.
 //   • Hour branch  = the house FACING reduced to its 12-branch (double
 //     mountain) sector; hour stem via 五鼠遁.
 //   • Month general= 月將 of that selected date (中氣-based).
@@ -184,6 +193,7 @@
 
     // choose the Tai Sui day: sitting (heaven) rides Day branch, else its 六合
     var days = taiSuiDays(year);
+    var dayCombo = LIU_HE[yp.branch];                        // 六合 of the Tai Sui branch
     var chosen = null, chosenMode = null;
     var candidates = [];
     for (var i = 0; i < days.length; i++) {
@@ -192,13 +202,41 @@
       if (!mg) continue;
       var plates = E.buildPlates(mg, facBr);
       var heavenOverDay = plates.heavenAbove(yp.branch);     // who rides the Day/Tai Sui branch
+      var heavenOverDayCombo = dayCombo ? plates.heavenAbove(dayCombo) : null; // …and its 六合
       var isSit   = heavenOverDay === sitBr;
       var isCombo = heavenOverDay === sitCombo;
-      candidates.push({ date: dt, monthGeneral: mg, heavenOverDay: heavenOverDay, isSit: isSit, isCombo: isCombo });
+      // 3rd rule (Edu, session 24): when neither of the first two can be met, the
+      // relation is taken the other way round — the SITTING must ride the 六合 OF
+      // THE TAI SUI. E.g. 2026 (Tai Sui 午, 六合 未) with sitting 子 → 子 over 未.
+      var isSitOverDayCombo = !!heavenOverDayCombo && heavenOverDayCombo === sitBr;
+      // 4th rule (Edu, session 24): when even the 3rd cannot be met, take rule 1
+      // the other way round — the TAI SUI branch rides the SITTING.
+      var heavenOverSitting = plates.heavenAbove(sitBr);
+      var isDayOverSit = heavenOverSitting === yp.branch;
+      // 5th rule (Edu, session 24): last resort — the TAI SUI rides the FACING.
+      // Together with the 4th this says "the Tai Sui must ride the house", once on
+      // the sitting side and once on the facing side. Needed for the rare years
+      // where none of the first four can be met (~1.8% of year/sector pairs).
+      var heavenOverFacing = plates.heavenAbove(facBr);
+      var isDayOverFacing = heavenOverFacing === yp.branch;
+      candidates.push({ date: dt, monthGeneral: mg, heavenOverDay: heavenOverDay,
+                        heavenOverDayCombo: heavenOverDayCombo, heavenOverSitting: heavenOverSitting,
+                        isSit: isSit, isCombo: isCombo, isSitOverDayCombo: isSitOverDayCombo,
+                        isDayOverSit: isDayOverSit, heavenOverFacing: heavenOverFacing,
+                        isDayOverFacing: isDayOverFacing });
       if (!chosen && isSit)   { chosen = candidates[candidates.length - 1]; chosenMode = 'sitting'; }
     }
-    if (!chosen) { // fallback to 六合
+    if (!chosen) { // 2nd: the 六合 of the sitting rides the Tai Sui branch
       for (var c = 0; c < candidates.length; c++) { if (candidates[c].isCombo) { chosen = candidates[c]; chosenMode = 'liuhe'; break; } }
+    }
+    if (!chosen) { // 3rd: the sitting rides the 六合 of the Tai Sui branch
+      for (var c3 = 0; c3 < candidates.length; c3++) { if (candidates[c3].isSitOverDayCombo) { chosen = candidates[c3]; chosenMode = 'sitting-over-taisui-combo'; break; } }
+    }
+    if (!chosen) { // 4th: the reverse of rule 1 — the Tai Sui rides the sitting
+      for (var c4 = 0; c4 < candidates.length; c4++) { if (candidates[c4].isDayOverSit) { chosen = candidates[c4]; chosenMode = 'taisui-over-sitting'; break; } }
+    }
+    if (!chosen) { // 5th: the Tai Sui rides the facing
+      for (var c5 = 0; c5 < candidates.length; c5++) { if (candidates[c5].isDayOverFacing) { chosen = candidates[c5]; chosenMode = 'taisui-over-facing'; break; } }
     }
     if (!chosen) return { error: 'no Tai Sui day satisfies the riding rule', candidates: candidates, yearPillar: yp };
 

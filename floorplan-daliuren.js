@@ -195,7 +195,18 @@
       if (st._ringKey === key && st._ringResult) { r = st._ringResult; }
       else { r = compute(facing, st.year); st._ringKey = key; st._ringResult = r; }
       st.result = r;
-      if (!r || r.error || !r.sectors) return;
+      if (!r || r.error || !r.sectors) {
+        // Never fail silently: say WHY on the canvas (session 24).
+        try {
+          ctx.save();
+          ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          var msg = '\u26a0 DLR ' + st.year + ': ' + ((r && r.error) || 'chart unavailable');
+          ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(msg, cx, 6);
+          ctx.fillStyle = '#c62828'; ctx.fillText(msg, cx, 6);
+          ctx.restore();
+        } catch (eMsg) {}
+        return;
+      }
       var ang = function (deg) { return (deg - 270 + (ROT || 0)) * Math.PI / 180; };
       var W = (ctx.canvas && ctx.canvas.width) || (cx * 2);
       var H = (ctx.canvas && ctx.canvas.height) || (cy * 2);
