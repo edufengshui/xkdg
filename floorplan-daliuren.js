@@ -389,11 +389,15 @@
   // A floating, draggable panel listing the 12 sectors with everything that made
   // them green or red, so the reasons behind each dot are visible at a glance.
   function openTable() {
-    var wrap = document.getElementById('fs-luopan-wrap') || document.body;
+    var wrap = document.getElementById('fs-canvas-wrap') || document.getElementById('fs-luopan-wrap');
+    if (!wrap) { alert('Luopan container not found.'); return; }
     var old = document.getElementById('fs-dlr-table');
     if (old) { old.parentNode.removeChild(old); return; }        // toggle off
     var r = st.result;
-    if (!r || !r.sectors) { alert('Turn the DLR ring on first.'); return; }
+    if (!r || !r.sectors) {                       // not drawn yet → build it now
+      try { r = compute(ringFacing(), st.year); st.result = r; } catch (e) {}
+    }
+    if (!r || r.error || !r.sectors) { alert('DLR chart not available' + (r && r.error ? (': ' + r.error) : '') + '. Turn the DLR ring on.'); return; }
     var box = document.createElement('div');
     box.id = 'fs-dlr-table';
     box.setAttribute('style',
