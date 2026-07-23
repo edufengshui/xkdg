@@ -99,24 +99,44 @@
   }
 
   // ── the (up to 6) Tai Sui days of a civil year: day GanZhi == year GanZhi ──
+  // 立春 Lichun timestamp for a given civil year — the boundary of the SOLAR year.
+  // (Edu, session 24: the Tai Sui days always run Lichun → Lichun, never Jan 1 →
+  // Dec 31. A day before Lichun belongs to the PREVIOUS solar year.)
+  function lichunOf(year){
+    var L = LUN(); if (!L) return null;
+    var best = null;
+    [year - 1, year, year + 1].forEach(function (yy) {
+      var table = L.fromYmd(yy, 1, 1).getJieQiTable();
+      for (var kk in table) {
+        var nm = ROMAN2CN[kk] || kk;
+        if (nm !== '\u7ACB\u6625') continue;                       // 立春
+        var s = table[kk];
+        var ts = new Date(s.getYear(), s.getMonth() - 1, s.getDay(), s.getHour() || 0, s.getMinute() || 0);
+        if (ts.getFullYear() === year && (!best || ts < best)) best = ts;
+      }
+    });
+    return best;
+  }
+
   function taiSuiDays(year){
     var L = LUN(); if (!L) return [];
     var yp = yearPillar(year); if (!yp) return [];
-    var out = [], d = new Date(year, 0, 1), end = new Date(year, 11, 31);
-    // find first match then step +60 days
-    var Solar = (typeof window !== 'undefined' && window.Solar) || (typeof Solar !== 'undefined' ? Solar : null);
+    // SOLAR year window: [Lichun(year), Lichun(year+1)) — NOT the civil year.
+    var start = lichunOf(year), end = lichunOf(year + 1);
+    if (!start || !end) { start = new Date(year, 1, 4); end = new Date(year + 1, 1, 4); }
+    var out = [];
     function dayGZ(dt){
       var lun = L.fromDate(dt);
       return lun.getDayInGanZhi();
     }
-    // scan first 60 days for the first Tai Sui day
+    // find the first Tai Sui day at or after Lichun, then step +60 days
     var first = null;
     for (var k = 0; k < 62 && !first; k++) {
-      var dt = new Date(year, 0, 1 + k);
+      var dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + k);
       if (dayGZ(dt) === yp.gz) first = dt;
     }
     if (!first) return [];
-    for (var t = new Date(first); t <= end; t = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 60)) {
+    for (var t = new Date(first); t < end; t = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 60)) {
       out.push(new Date(t));
     }
     return out;
