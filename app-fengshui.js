@@ -7730,6 +7730,7 @@ function fsBedReadChart(){
 
       // ── Person compatibility (Piece 2): period / element links ──
       parts.push(_fsBedCompatHTML(slot));
+      parts.push(_fsBedFountainHTML(slot));
     }
 
     box.innerHTML = parts.join('');
@@ -7799,6 +7800,73 @@ function _fsBedNearestCompatibleZS(deg, persons){
     if (d < bestD){ bestD = d; best = s; }
   });
   return best;
+}
+
+// ── Ideal FOUNTAIN position for the bed (session 24) ──────────────────
+// Reuses the existing water engine (_fsDeskWaterList): a valid water slot is
+// 零神 Ling Shen, within ±FS_WATER_MAX_DEG of the reference hexagram, matching it
+// (fsWaterMatchVsFacing) and communicating with the person.
+// DOMAIN (Edu, session 24): water is ALWAYS relative to the FACING, never to the
+// sitting — the sitting is the wall, and a fountain cannot stand behind the wall.
+// So the reference here is the bed's FACING = sitting + 180°, and the frontal
+// visibility band is measured from that facing.
+// Note: 正神/零神 is read from `yun`, and in XKDG the sitting and facing hexagrams
+// always share the same yun (their qi sum to 10), so the Zheng Shen gate gives the
+// same verdict whichever of the two is tested.
+function _fsBedFountainHTML(sittingSlot){
+  try {
+    if (!sittingSlot) return '';
+    var sitDeg = parseFloat((document.getElementById('fs-bed-sitting') || {}).value);
+    if (isNaN(sitDeg)) return '';
+    var faceDeg = (sitDeg + 180) % 360;                 // the bed FACES the opposite way
+    var facingSlot = fsSlotForDeg(faceDeg);
+    if (!facingSlot) return '';
+    var cur = parseFloat((document.getElementById('fs-bed-water') || {}).value);
+    var html = '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #b2dfdb;">'
+      + '<div style="font-size:12px;font-weight:bold;color:#00695c;margin-bottom:4px;">💧 Fountain position (零神 Ling Shen)</div>'
+      + '<div style="font-size:11px;color:#888;margin-bottom:4px;">Measured from the bed <strong>facing</strong> '
+      + faceDeg.toFixed(1) + '\u00b0 (hex ' + facingSlot.hexNum + ', yun ' + facingSlot.yun + ') \u2014 in front of the bed, not behind the headboard.</div>';
+
+    if (!fsIsZhengShen(facingSlot.yun)){
+      html += '<div style="font-size:12px;color:#c0392b;">The facing hexagram is not 正神 Zheng Shen — fix the sitting/facing first, then place the fountain.</div></div>';
+      return html;
+    }
+    var person = (typeof _fsDeskPerson === 'function') ? _fsDeskPerson() : null;
+    var list = (typeof _fsDeskWaterList === 'function') ? _fsDeskWaterList(facingSlot, person) : [];
+    if (!list.length){
+      html += '<div style="font-size:12px;color:#c0392b;">No compatible fountain position found within \u00b1' + FS_WATER_MAX_DEG + '\u00b0 of this facing'
+           + (person ? ' that also communicates with the person' : '') + '.</div></div>';
+      return html;
+    }
+    // Current value verdict, when one was entered.
+    if (!isNaN(cur)){
+      var cs = fsSlotForDeg(cur);
+      var okNow = list.some(function(w){ return w.slot.hexNum === cs.hexNum; });
+      html += '<div style="font-size:12px;margin-bottom:3px;">Current <strong>' + cur.toFixed(1) + '\u00b0</strong> (hex ' + cs.hexNum + ') \u2014 '
+           + (okNow ? '<span style="color:#2e7d32;font-weight:bold;">valid \u2713</span>'
+                    : '<span style="color:#c0392b;font-weight:bold;">not valid</span>') + '</div>';
+    }
+    // Best = nearest valid slot (the list is already sorted by distance).
+    var best = list[0];
+    html += '<div style="font-size:12px;color:#00695c;">Ideal: <strong>' + best.slot.centerDeg.toFixed(1) + '\u00b0</strong>'
+         + ' (hex ' + best.slot.hexNum + ', yun ' + best.slot.yun + ')'
+         + (best.matchLabels && best.matchLabels.length ? ' <span style="color:#888;">' + best.matchLabels.join(', ') + '</span>' : '')
+         + ' <button onclick="document.getElementById(\'fs-bed-water\').value=' + best.slot.centerDeg.toFixed(1) + ';fsBedReadChart();if(typeof fsRedraw===\'function\')fsRedraw();" '
+         + 'style="background:#00897b;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;margin-left:6px;">Use</button></div>';
+    // Alternatives (highlighted on the luopan too).
+    if (list.length > 1){
+      html += '<div style="margin-top:3px;font-size:11px;color:#00695c;">Other valid positions: ';
+      list.slice(1, 6).forEach(function(w){
+        html += '<span onclick="document.getElementById(\'fs-bed-water\').value=' + w.slot.centerDeg.toFixed(1) + ';fsBedReadChart();if(typeof fsRedraw===\'function\')fsRedraw();" '
+             + 'style="cursor:pointer;text-decoration:underline dotted;margin-right:8px;" title="Use this position">'
+             + w.slot.centerDeg.toFixed(1) + '\u00b0 (hex ' + w.slot.hexNum + ')</span>';
+      });
+      html += '</div>';
+    }
+    html += '<div style="margin-top:3px;font-size:10px;color:#888;">Valid positions are highlighted in blue on the luopan.</div>';
+    html += '</div>';
+    return html;
+  } catch(e){ console.warn('_fsBedFountainHTML', e); return ''; }
 }
 
 function _fsBedCompatHTML(slot){
@@ -8317,8 +8385,35 @@ function fsDrawSectionLuopan(){
       var sd = parseFloat((document.getElementById('fs-bed-sitting') || {}).value);
       if (!isNaN(sd)){
         var ss = fsSlotForDeg(sd);
+        // DOMAIN (Edu): water is always relative to the FACING — the sitting is the
+        // wall, a fountain cannot be behind it. Band + valid cells are measured from
+        // facing = sitting + 180°.
+        var bFaceDeg = (sd + 180) % 360;
+        var bFace = fsSlotForDeg(bFaceDeg);
+        var aMidB = _sang(bFace.startDeg + 2.8125);
+        var halfB = FS_WATER_MAX_DEG * Math.PI / 180;
+        var rInB = rHexOut + 4, rOutB = rHexOut + 16;
+        ctx.save(); ctx.beginPath();
+        ctx.arc(cx, cy, rOutB, aMidB - halfB, aMidB + halfB);
+        ctx.arc(cx, cy, rInB,  aMidB + halfB, aMidB - halfB, true);
+        ctx.closePath(); ctx.fillStyle = 'rgba(0,200,255,0.45)';
+        ctx.fill(); ctx.strokeStyle = 'rgba(0,100,180,0.7)'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
+        var personB = (typeof _fsDeskPerson === 'function') ? _fsDeskPerson() : null;
+        if (fsIsZhengShen(bFace.yun) && typeof _fsDeskWaterList === 'function'){
+          _fsDeskWaterList(bFace, personB).forEach(function(w){ paintCell(w.slot, 'rgba(0,200,255,0.55)'); });
+        }
         paintCell(ss, 'rgba(255,200,0,0.80)');
         drawArrow(sd, '#cc0000', 'Sitting');
+        drawArrow(bFaceDeg, '#cc6600', 'Facing');
+        // The chosen fountain, when entered: green if valid, red if not.
+        var bw = parseFloat((document.getElementById('fs-bed-water') || {}).value);
+        if (!isNaN(bw)){
+          var bws = fsSlotForDeg(bw);
+          var okW = (typeof _fsDeskWaterList === 'function') &&
+                    _fsDeskWaterList(bFace, personB).some(function(w){ return w.slot.hexNum === bws.hexNum; });
+          paintCell(bws, okW ? 'rgba(0,255,200,0.85)' : 'rgba(255,30,30,0.85)');
+          drawArrow(bw, okW ? '#00796b' : '#cc0000', 'Fountain');
+        }
       }
     } else { // desk
       var fdg = parseFloat((document.getElementById('fs-desk-facing') || {}).value);
