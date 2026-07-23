@@ -1102,8 +1102,10 @@ function fsRedraw(){
   if (window._fsActiveZone === 'bed' || window._fsActiveZone === 'desk'){
     if (typeof fsDrawSectionLuopan === 'function') fsDrawSectionLuopan();
     if (typeof _fsUpdateLuopanVis === 'function') _fsUpdateLuopanVis();
+    try { _fsZoneBadge(window._fsActiveZone); } catch(e){}
     return;
   }
+  try { _fsZoneBadge(null); } catch(e){}
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0,0,W,H);
@@ -6459,6 +6461,29 @@ var FS_ZONES = {
 function _fsZoneBtnStyle(active){
   return 'flex:1;min-width:130px;border-radius:8px;padding:12px 10px;font-size:13px;font-weight:bold;cursor:pointer;white-space:nowrap;border:2px solid #8a6a1f;'
     + (active ? 'background:#8a6a1f;color:#fff;' : 'background:#fff8e1;color:#8a6a1f;');
+}
+
+// Badge ON the luopan telling you which section owns the wheel right now, with a
+// one-click way out (session 24). The "← Close" in the zone banner scrolls out of
+// view while you look at the wheel, so it looked as if Flying Stars had vanished.
+function _fsZoneBadge(zone){
+  var wrap = document.getElementById('fs-canvas-wrap');
+  if (!wrap) return;
+  var el = document.getElementById('fs-zone-badge');
+  if (!zone){ if (el && el.parentNode) el.parentNode.removeChild(el); return; }
+  var lbl = (zone === 'bed') ? '\uD83D\uDECF Bed setup' : '\uD83E\uDE91 Desk setup';
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'fs-zone-badge';
+    el.setAttribute('style',
+      'position:absolute;top:8px;left:8px;z-index:12;display:flex;align-items:center;gap:8px;' +
+      'background:rgba(255,248,225,.96);border:2px solid #8a6a1f;border-radius:9px;padding:5px 9px;' +
+      'box-shadow:0 2px 8px rgba(0,0,0,.28);font-size:12px;color:#5a4410;');
+    wrap.appendChild(el);
+  }
+  el.innerHTML = '<strong>' + lbl + '</strong>'
+    + '<span style="color:#8a6a1f;">this wheel shows the section data \u2014 Flying Stars are hidden</span>'
+    + '<button onclick="fsExitZone()" style="border:2px solid #b71c1c;background:#fff;color:#b71c1c;border-radius:7px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">\u2190 Back to Flying Stars</button>';
 }
 
 function fsRenderZoneGate(){
