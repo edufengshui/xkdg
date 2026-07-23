@@ -1324,9 +1324,9 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
           if (!d) return;
           var isInt = (d.kind === 'internal');
           var fdeg = num(d.facing);
-          if (fdeg !== null) items.push({ deg: fdeg, icon: '\uD83D\uDEAA', color: isInt ? '#8e6a3f' : '#c9a84c', tag: (isInt ? 'Int door' : 'Ext door') });
+          if (fdeg !== null) items.push({ deg: fdeg, icon: '\uD83D\uDEAA', color: isInt ? '#8e6a3f' : '#c9a84c', tag: (isInt ? 'Int door' : 'Ext door'), role: 'ZS', name: d.name });
           var wdeg = num(d.water);
-          if (wdeg !== null) items.push({ deg: wdeg, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Fountain' });
+          if (wdeg !== null) items.push({ deg: wdeg, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Fountain', role: 'LS', name: (d.name || '') + ' fountain' });
         });
       }
     } catch(e){}
@@ -1334,40 +1334,99 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
     // ── 2) Live zone panels (bed / desk) — fountain optional ──
     var g = function(id){ var el = document.getElementById(id); return el ? num(el.value) : null; };
     var bedSit = g('fs-bed-sitting');
-    if (bedSit !== null) items.push({ deg: bedSit, icon: '\uD83D\uDECF', color: '#9c27b0', tag: 'Bed' });
+    if (bedSit !== null) items.push({ deg: bedSit, icon: '\uD83D\uDECF', color: '#9c27b0', tag: 'Bed', name: 'Bed' });
     var bedW = g('fs-bed-water');
-    if (bedW !== null) items.push({ deg: bedW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Bed fountain' });
+    if (bedW !== null) items.push({ deg: bedW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Bed fountain', role: 'LS', name: 'Bed fountain', src: 'fs-bed-water' });
     var deskF = g('fs-desk-facing');
-    if (deskF !== null) items.push({ deg: deskF, icon: '\uD83E\uDE91', color: '#6a1b9a', tag: 'Desk' });
+    if (deskF !== null) items.push({ deg: deskF, icon: '\uD83E\uDE91', color: '#6a1b9a', tag: 'Desk', name: 'Desk' });
     var deskW = g('fs-desk-water');
-    if (deskW !== null) items.push({ deg: deskW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Desk fountain' });
+    if (deskW !== null) items.push({ deg: deskW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Desk fountain', role: 'LS', name: 'Desk fountain', src: 'fs-desk-water' });
 
-    if (!items.length) return;
+    if (!items.length) { window._fsSettingAdvice = []; fsRenderSettingAdvice(); return; }
+
+    // Zheng Shen / Ling Shen verdict per item (only where a role applies).
+    var advice = [];
+    items.forEach(function(it){
+      if (!it.role) return;                       // no ZS/LS rule declared for this type
+      var v = fsSettingZsLsCheck(it.deg, it.role);
+      if (!v) return;
+      it.bad = !v.ok;                             // drives the RED icon below
+      if (!v.ok) advice.push({ name: it.name, tag: it.tag, deg: it.deg, role: it.role, slot: v.slot, better: v.better, src: it.src });
+    });
+    window._fsSettingAdvice = advice;
+    fsRenderSettingAdvice();
 
     // Draw inside the ring so the icons never collide with the outer arrows/labels.
     var R = outerR * 0.70;
     items.forEach(function(it){
       var a = (it.deg - 270 + ROT) * Math.PI / 180;
       var x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
+      var col = it.bad ? '#c62828' : it.color;      // RED when ZS/LS says the spot is wrong
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 5;
       ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fill();
+      ctx.fillStyle = it.bad ? 'rgba(255,235,235,0.95)' : 'rgba(255,255,255,0.92)'; ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.lineWidth = 3; ctx.strokeStyle = it.color; ctx.stroke();
+      ctx.lineWidth = it.bad ? 4 : 3; ctx.strokeStyle = col; ctx.stroke();
       ctx.font = '24px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#000';
       ctx.fillText(it.icon, x, y + 1);
-      // Small caption + degree, so you know which section you are in.
+      // Small caption + degree (+ warning mark), so you know which section you are in.
       ctx.font = 'bold 10px sans-serif';
-      ctx.fillStyle = it.color;
+      ctx.fillStyle = col;
       ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3;
-      var cap = it.tag + ' ' + it.deg.toFixed(0) + '\u00b0';
+      var cap = (it.bad ? '\u26a0 ' : '') + it.tag + ' ' + it.deg.toFixed(0) + '\u00b0';
       ctx.strokeText(cap, x, y + 30);
       ctx.fillText(cap, x, y + 30);
       ctx.restore();
     });
   } catch(e){ console.warn('fsDrawSettingIcons', e); }
+}
+
+// Text panel under the luopan listing every setting that FAILS its Zheng Shen /
+// Ling Shen rule, with the nearest correct slot proposed and a "Use" button that
+// writes it straight into the field (bed/desk fountains) — door degrees are edited
+// from House Profiles, so those get the number to copy.
+function fsRenderSettingAdvice(){
+  try {
+    var box = document.getElementById('fs-setting-advice');
+    if (!box){
+      var anchor = document.getElementById('fs-stars-center');
+      if (!anchor || !anchor.parentNode) return;
+      box = document.createElement('div');
+      box.id = 'fs-setting-advice';
+      box.style.cssText = 'margin:8px 0;';
+      anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    }
+    var adv = window._fsSettingAdvice || [];
+    if (!adv.length){ box.innerHTML = ''; return; }
+    var html = '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:8px;padding:8px 10px;">'
+      + '<div style="font-size:12px;font-weight:bold;color:#e65100;margin-bottom:5px;">\u26a0 Position check (\u6b63\u795e / \u96f6\u795e)</div>';
+    adv.forEach(function(a){
+      var roleTxt = (a.role === 'LS') ? 'water must be \u96f6\u795e Ling Shen' : 'facing must be \u6b63\u795e Zheng Shen';
+      html += '<div style="font-size:11px;line-height:1.55;padding:3px 0;border-top:1px dotted #ffcc80;">';
+      var slotLbl = function(s){ return s ? ('hex ' + s.hexNum + ', yun ' + s.yun) : ''; };
+      html += '<strong>' + (a.name || a.tag) + '</strong> at <strong>' + a.deg.toFixed(1) + '\u00b0</strong>'
+           + (a.slot ? ' (' + slotLbl(a.slot) + ')' : '')
+           + ' \u2014 <span style="color:#c62828;">not valid</span>: ' + roleTxt + '.';
+      if (a.better){
+        var bd = a.better.centerDeg;
+        html += ' <span style="color:#2e7d32;">Nearest valid: <strong>' + bd.toFixed(1) + '\u00b0</strong>'
+             + ' (' + slotLbl(a.better) + ')</span>';
+        if (a.src){
+          html += ' <button onclick="document.getElementById(\'' + a.src + '\').value=' + bd.toFixed(1) + ';fsRedraw();" '
+               + 'style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:2px 9px;font-size:10px;font-weight:bold;cursor:pointer;margin-left:4px;">Use</button>';
+        } else {
+          html += ' <span style="color:#888;font-size:10px;">(edit in House Profiles)</span>';
+        }
+      } else {
+        html += ' <span style="color:#888;">No valid alternative found.</span>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    box.innerHTML = html;
+  } catch(e){ console.warn('fsRenderSettingAdvice', e); }
 }
 
 // Draws Flying Stars on the Luopan if toggle is ON and inputs are valid.
@@ -3091,6 +3150,36 @@ function fsNearestZhengShen(deg){
   }
   return best;
 }
+// Nearest Ling Shen (零神) slot to a degree — mirror of fsNearestZhengShen,
+// used to suggest a better fountain/water position.
+function fsNearestLingShen(deg){
+  if (!isFinite(deg)) return null;
+  var best = null, bestD = 999;
+  for (var i = 0; i < FS_SLOTS.length; i++){
+    var s = FS_SLOTS[i];
+    if (!fsIsLingShen(s.yun)) continue;
+    var d = fsAngularDist(deg, s.centerDeg);
+    if (d < bestD){ bestD = d; best = s; }
+  }
+  return best;
+}
+
+// Zheng Shen / Ling Shen verdict for one setting degree.
+//   role 'ZS' → a facing (door facing) must sit on a 正神 slot
+//   role 'LS' → water / fountain must sit on a 零神 slot
+// Returns null when the degree is unusable, else {ok, role, slot, better}.
+function fsSettingZsLsCheck(deg, role){
+  try {
+    if (!isFinite(deg)) return null;
+    var slot = (typeof fsSlotForDeg === 'function') ? fsSlotForDeg(deg) : null;
+    if (!slot) return null;
+    var ok = (role === 'LS') ? fsIsLingShen(slot.yun) : fsIsZhengShen(slot.yun);
+    var better = null;
+    if (!ok) better = (role === 'LS') ? fsNearestLingShen(deg) : fsNearestZhengShen(deg);
+    return { ok: ok, role: role, slot: slot, better: better };
+  } catch(e){ return null; }
+}
+
 // Open the satellite "measure facing" tool and write the MAGNETIC facing into targetId.
 function fsFacingFromMap(targetId){
   try {
@@ -4006,63 +4095,72 @@ function fsRenderHouseProfiles(){
     // ── QFS ZONES removed — the PURPOSE ACTIVATION block (Target → Water palaces /
     //    specific star) now covers what custom zones used to do. ──
 
-    // ── Saved settings (Water / Bed / Desk) — names block only when some exist ──
+    // ── Saved settings — no longer a separate block: each zone's chips are built
+    //    here and shown INSIDE its competence group below (XKDG / Flying Stars). ──
     var _st = f.settings || { water: [], bed: [], desk: [] };
     var _zlbl = { water: '💧 Water', bed: '🛏 Bed', desk: '🪑 Desk' };
-    var _anySt = ['water', 'bed', 'desk'].some(function(z){ return (_st[z] || []).length; });
-    if (_anySt){
-      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #8a6a1f;">';
-      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">💾 Saved settings (Water / Bed / Desk)</div>';
-      ['water', 'bed', 'desk'].forEach(function(z){
-        var arr = _st[z] || [];
-        if (!arr.length) return;
-        var PAL  = ['N','NE','E','SE','S','SW','W','NW'];
-        var PALL = {N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
-        html += '<div style="font-size:11px;color:#5a4410;padding:1px 0;"><strong>' + _zlbl[z] + ':</strong> ';
-        arr.forEach(function(s, sidx){
-          var eid    = 'fs-set-edit-' + hi + '-' + z + '-' + sidx;
-          var nameId = 'fs-setname-' + hi + '-' + z + '-' + sidx;
-          var palId  = 'fs-setpal-'  + hi + '-' + z + '-' + sidx;
-          // Clickable chip → toggles the inline view/edit/scan panel below.
-          html += '<span onclick="fsToggleSavedEdit(' + hi + ',\'' + z + '\',' + sidx + ')" '
-            + 'style="cursor:pointer;color:#1565c0;text-decoration:underline dotted;margin-right:6px;" title="View / edit / scan dates">'
-            + '⚙ ' + escHtml(s.name) + (s.palace ? (' (' + escHtml(s.palace) + ')') : '') + '</span>';
-          // Inline view/edit panel (hidden until the chip is clicked)
-          var ed = '<div id="' + eid + '" style="display:none;margin:4px 0 8px;padding:8px;background:#fff;border:1px solid #c9a84c;border-radius:6px;">';
-          ed += '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">';
-          ed += '<label style="font-size:10px;color:#888;">Name</label>';
-          ed += '<input id="' + nameId + '" value="' + escHtml(s.name || '') + '" style="flex:1;min-width:110px;padding:4px 6px;border:1px solid #c9a84c;border-radius:4px;font-size:12px;">';
-          if (s.palace){
-            ed += '<label style="font-size:10px;color:#888;">Palace</label>';
-            ed += '<select id="' + palId + '" style="padding:4px 6px;border:1px solid #00897b;border-radius:4px;font-size:12px;">';
-            PAL.forEach(function(p){ ed += '<option value="' + p + '"' + (p === s.palace ? ' selected' : '') + '>' + PALL[p] + '</option>'; });
-            ed += '</select>';
-          } else {
-            var bits = [];
-            if (s.houseFacing != null && s.houseFacing !== '') bits.push('Facing ' + s.houseFacing + '°');
-            if (s.period      != null && s.period      !== '') bits.push('P' + s.period);
-            if (s.doorFacing  != null && s.doorFacing  !== '') bits.push('Door ' + s.doorFacing + '°');
-            if (s.water       != null && s.water       !== '') bits.push('Water ' + s.water + '°');
-            if (s.bedPalace)  bits.push('Bed ' + s.bedPalace);
-            if (s.bedSitting) bits.push('Sit ' + s.bedSitting);
-            if (s.deskFacing) bits.push('Desk ' + s.deskFacing + '°');
-            if (bits.length) ed += '<span style="font-size:10px;color:#777;">' + bits.join(' · ') + '</span>';
-          }
-          ed += '</div>';
-          ed += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
-          ed += '<button onclick="fsSaveSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✓ Save</button>';
-          ed += '<button onclick="fsActivateSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#5e35b1;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🔎 Scan dates</button>';
-          if (!s.palace){
-            ed += '<button onclick="fsOpenSavedForEdit(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✏️ Open to edit</button>';
-          }
-          ed += '<button onclick="fsDeleteSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#c0392b;border:1px solid #e09a9a;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🗑 Remove</button>';
-          ed += '</div></div>';
-          html += ed;
-        });
-        html += '</div>';
+    var _zoneChips = { water: '', bed: '', desk: '' };   // clickable chips per zone
+    var _zonePanels = '';                                // inline edit panels (rendered after the groups)
+    ['water', 'bed', 'desk'].forEach(function(z){
+      var arr = _st[z] || [];
+      if (!arr.length) return;
+      var PAL  = ['N','NE','E','SE','S','SW','W','NW'];
+      var PALL = {N:'N 坎',NE:'NE 艮',E:'E 震',SE:'SE 巽',S:'S 離',SW:'SW 坤',W:'W 兌',NW:'NW 乾'};
+      arr.forEach(function(s, sidx){
+        var eid    = 'fs-set-edit-' + hi + '-' + z + '-' + sidx;
+        var nameId = 'fs-setname-' + hi + '-' + z + '-' + sidx;
+        var palId  = 'fs-setpal-'  + hi + '-' + z + '-' + sidx;
+        // Clickable chip → toggles the inline view/edit/scan panel below.
+        _zoneChips[z] += '<span onclick="fsToggleSavedEdit(' + hi + ',\'' + z + '\',' + sidx + ')" '
+          + 'style="cursor:pointer;color:#1565c0;text-decoration:underline dotted;margin-right:6px;" title="View / edit / scan dates">'
+          + '⚙ ' + escHtml(s.name) + (s.palace ? (' (' + escHtml(s.palace) + ')') : '') + '</span>';
+        // Inline view/edit panel (hidden until the chip is clicked)
+        var ed = '<div id="' + eid + '" style="display:none;margin:4px 0 8px;padding:8px;background:#fff;border:1px solid #c9a84c;border-radius:6px;">';
+        ed += '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">';
+        ed += '<label style="font-size:10px;color:#888;">Name</label>';
+        ed += '<input id="' + nameId + '" value="' + escHtml(s.name || '') + '" style="flex:1;min-width:110px;padding:4px 6px;border:1px solid #c9a84c;border-radius:4px;font-size:12px;">';
+        if (s.palace){
+          ed += '<label style="font-size:10px;color:#888;">Palace</label>';
+          ed += '<select id="' + palId + '" style="padding:4px 6px;border:1px solid #00897b;border-radius:4px;font-size:12px;">';
+          PAL.forEach(function(p){ ed += '<option value="' + p + '"' + (p === s.palace ? ' selected' : '') + '>' + PALL[p] + '</option>'; });
+          ed += '</select>';
+        } else {
+          var bits = [];
+          if (s.houseFacing != null && s.houseFacing !== '') bits.push('Facing ' + s.houseFacing + '°');
+          if (s.period      != null && s.period      !== '') bits.push('P' + s.period);
+          if (s.doorFacing  != null && s.doorFacing  !== '') bits.push('Door ' + s.doorFacing + '°');
+          if (s.water       != null && s.water       !== '') bits.push('Water ' + s.water + '°');
+          if (s.bedPalace)  bits.push('Bed ' + s.bedPalace);
+          if (s.bedSitting) bits.push('Sit ' + s.bedSitting);
+          if (s.deskFacing) bits.push('Desk ' + s.deskFacing + '°');
+          if (s.bedWater)   bits.push('Bed 💧 ' + s.bedWater + '°');
+          if (s.deskWater)  bits.push('Desk 💧 ' + s.deskWater + '°');
+          if (bits.length) ed += '<span style="font-size:10px;color:#777;">' + bits.join(' · ') + '</span>';
+        }
+        ed += '</div>';
+        ed += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+        ed += '<button onclick="fsSaveSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✓ Save</button>';
+        ed += '<button onclick="fsActivateSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#5e35b1;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🔎 Scan dates</button>';
+        if (!s.palace){
+          ed += '<button onclick="fsOpenSavedForEdit(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✏️ Open to edit</button>';
+        }
+        ed += '<button onclick="fsDeleteSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#c0392b;border:1px solid #e09a9a;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🗑 Remove</button>';
+        ed += '</div></div>';
+        _zonePanels += ed;
       });
-      html += '</div>';
-    }
+    });
+    // "Saved: 🛏 Bed: yes ⚙name · 🪑 Desk: none" line for one competence group.
+    var _savedLine = function(zones){
+      var out = '<span style="font-size:10px;color:#999;">Saved:</span> ';
+      zones.forEach(function(z){
+        var has = !!_zoneChips[z];
+        out += '<span style="font-size:10px;color:#5a4410;margin-right:8px;"><strong>' + _zlbl[z] + ':</strong> '
+             + (has ? '<span style="color:#2e7d32;font-weight:bold;">yes</span> ' + _zoneChips[z]
+                    : '<span style="color:#bbb;">none</span>')
+             + '</span>';
+      });
+      return out;
+    };
 
     // ── Bottom "Add" row: empty sections collapse to horizontal Add buttons here
     //    (no point in a full vertical block when there is nothing inside). ──
@@ -4088,8 +4186,18 @@ function fsRenderHouseProfiles(){
     var _lblXk = '<span style="font-size:10px;font-weight:bold;color:#8a6a1f;background:#f3ecd6;border-radius:3px;padding:1px 6px;">🚪 XKDG</span>';
     var _lblFs = '<span style="font-size:10px;font-weight:bold;color:#00695c;background:#d8f0ec;border-radius:3px;padding:1px 6px;">⭐ Flying Stars</span>';
     html += '<div style="margin-top:6px;padding-top:5px;border-top:1px dashed #ccc;">';
-    html += '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblXk + _xkAdd + '</div>';
-    html += '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblFs + _fsAdd + '</div>';
+    // ── XKDG box: row 1 = add buttons, row 2 = saved settings (bed / desk) ──
+    html += '<div style="border-left:3px solid #c9a84c;background:#fbf7ec;border-radius:4px;padding:5px 8px;margin-bottom:5px;">';
+    html +=   '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblXk + _xkAdd + '</div>';
+    html +=   '<div style="' + _rowStyle + '">' + _savedLine(['bed', 'desk']) + '</div>';
+    html += '</div>';
+    // ── Flying Stars box: row 1 = add buttons, row 2 = saved settings (water) ──
+    html += '<div style="border-left:3px solid #4db6ac;background:#eef8f7;border-radius:4px;padding:5px 8px;margin-bottom:5px;">';
+    html +=   '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblFs + _fsAdd + '</div>';
+    html +=   '<div style="' + _rowStyle + '">' + _savedLine(['water']) + '</div>';
+    html += '</div>';
+    // Inline edit/scan panels for the chips above (hidden until a chip is clicked).
+    html += _zonePanels;
     html += '<div style="' + _rowStyle + '">' + _fpBtns + _guestBtn + '</div>';
     html += '</div>';
 
