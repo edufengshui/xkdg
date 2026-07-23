@@ -286,18 +286,21 @@
       bar = document.createElement('div');
       bar.id = 'fs-dlr-controls';
       bar.setAttribute('style',
-        'position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:7;display:flex;gap:6px;align-items:center;' +
-        'background:rgba(255,255,255,.94);border:1px solid #5d4037;border-radius:8px;padding:4px 6px;box-shadow:0 1px 4px rgba(0,0,0,.3);');
+        // Session 24: was centred at the bottom, where it sat right on top of the
+        // wheel. Parked in the bottom-left corner instead — stacked just above the
+        // "DLR ON" toggle (bottom:8px), in the dead space outside the circle.
+        'position:absolute;bottom:52px;left:8px;z-index:7;display:flex;gap:5px;align-items:center;' +
+        'background:rgba(255,255,255,.94);border:1px solid #5d4037;border-radius:8px;padding:3px 5px;box-shadow:0 1px 4px rgba(0,0,0,.3);');
       var mk = function (txt, title) {
         var e = document.createElement('button'); e.type = 'button'; e.textContent = txt; if (title) e.title = title;
-        e.setAttribute('style', 'background:#f6f1ea;color:#5d4037;border:1px solid #cbb;border-radius:6px;padding:4px 9px;font-size:13px;font-weight:bold;cursor:pointer;');
+        e.setAttribute('style', 'background:#f6f1ea;color:#5d4037;border:1px solid #cbb;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:bold;cursor:pointer;');
         return e;
       };
       var prev = mk('\u25C0', 'Previous year');
       var ylabel = document.createElement('span'); ylabel.id = 'fs-dlr-year';
-      ylabel.setAttribute('style', 'min-width:44px;text-align:center;font-size:13px;font-weight:bold;color:#5d4037;');
+      ylabel.setAttribute('style', 'min-width:40px;text-align:center;font-size:12px;font-weight:bold;color:#5d4037;');
       var next = mk('\u25B6', 'Next year');
-      var plan = mk('\uD83C\uDFE0 On floor plan', 'Overlay the DLR chart on the saved floor plan (stars visible)');
+      var plan = mk('\uD83C\uDFE0 Plan', 'Overlay the DLR chart on the saved floor plan (stars visible)');
       plan.style.background = '#5d4037'; plan.style.color = '#fff'; plan.style.border = 'none';
       prev.addEventListener('click', function () { st.year = clampYear(st.year - 1); _refreshYear(); var rd = host('fsRedraw'); if (rd) rd(); });
       next.addEventListener('click', function () { st.year = clampYear(st.year + 1); _refreshYear(); var rd = host('fsRedraw'); if (rd) rd(); });
