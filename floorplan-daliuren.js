@@ -150,6 +150,9 @@
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = spCol; ctx.font = 'bold ' + fs + 'px sans-serif';
     ctx.fillText(l1, x, y - fs * 1.1);
+    // Status dot (filled green / red / hollow green) INSIDE the card — at the old
+    // radius it ended up under the opaque box and was invisible (session 24).
+    drawDot(ctx, x - w / 2 + 8, y - fs * 1.1, net);
     ctx.fillStyle = '#7a5a2a'; ctx.font = (fs - 1) + 'px serif';
     ctx.fillText(l2, x, y + fs * 0.1);
     ctx.fillStyle = INK; ctx.font = 'bold ' + (fs - 1) + 'px serif';
@@ -233,9 +236,7 @@
         var mid = branchDeg(s.earth) - SECT_BACK + 15;    // middle of the 30° sector
         var a = ang(mid);
         var bx = cx + Math.cos(a) * rBox, by = cy + Math.sin(a) * rBox;
-        // colour dot on the wheel edge, pointing at the sector
-        var dx = cx + Math.cos(a) * (outerR + 40), dy = cy + Math.sin(a) * (outerR + 40);
-        drawDot(ctx, dx, dy, s.net);
+        // (the status dot now lives inside the card — see drawSectorBox)
         drawSectorBox(ctx, bx, by, s, 11);
       });
       // small caption at the top of the canvas
@@ -312,11 +313,13 @@
       ylabel.setAttribute('style', 'min-width:40px;text-align:center;font-size:12px;font-weight:bold;color:#5d4037;');
       var next = mk('\u25B6', 'Next year');
       var plan = mk('\uD83C\uDFE0 Plan', 'Overlay the DLR chart on the saved floor plan (stars visible)');
+      var tbl = mk('\uD83D\uDCCB', 'Positives / negatives table for the 12 sectors');
       plan.style.background = '#5d4037'; plan.style.color = '#fff'; plan.style.border = 'none';
       prev.addEventListener('click', function () { st.year = clampYear(st.year - 1); _refreshYear(); var rd = host('fsRedraw'); if (rd) rd(); });
       next.addEventListener('click', function () { st.year = clampYear(st.year + 1); _refreshYear(); var rd = host('fsRedraw'); if (rd) rd(); });
       plan.addEventListener('click', function () { openOnPlan(); });
-      bar.appendChild(prev); bar.appendChild(ylabel); bar.appendChild(next); bar.appendChild(plan);
+      tbl.addEventListener('click', function () { openTable(); });
+      bar.appendChild(prev); bar.appendChild(ylabel); bar.appendChild(next); bar.appendChild(tbl); bar.appendChild(plan);
       wrap.appendChild(bar);
       _makeDraggable(bar, wrap, grip);
     }
@@ -329,8 +332,8 @@
   // arrows and "Plan" keep working normally. Position is clamped inside the luopan
   // wrapper and remembered in localStorage, per device.
   var DRAG_KEY = 'xkdg_dlr_bar_pos';
-  function _savePos(l, t) { try { localStorage.setItem(DRAG_KEY, JSON.stringify({ l: Math.round(l), t: Math.round(t) })); } catch (e) {} }
-  function _loadPos() { try { var v = JSON.parse(localStorage.getItem(DRAG_KEY) || 'null'); return (v && isFinite(v.l) && isFinite(v.t)) ? v : null; } catch (e) { return null; } }
+  function _savePos(l, t, key) { try { localStorage.setItem(key || DRAG_KEY, JSON.stringify({ l: Math.round(l), t: Math.round(t) })); } catch (e) {} }
+  function _loadPos(key) { try { var v = JSON.parse(localStorage.getItem(key || DRAG_KEY) || 'null'); return (v && isFinite(v.l) && isFinite(v.t)) ? v : null; } catch (e) { return null; } }
   function _applyPos(bar, wrap, p) {
     if (!p) return;
     var wr = wrap.getBoundingClientRect(), br = bar.getBoundingClientRect();
@@ -339,8 +342,8 @@
     bar.style.top = Math.max(0, Math.min(maxT, p.t)) + 'px';
     bar.style.bottom = 'auto';
   }
-  function _makeDraggable(bar, wrap, grip) {
-    var saved = _loadPos();
+  function _makeDraggable(bar, wrap, grip, key) {
+    var saved = _loadPos(key);
     if (saved) { setTimeout(function () { _applyPos(bar, wrap, saved); }, 0); }
     var dragging = false, sx = 0, sy = 0, sl = 0, stp = 0;
     function down(e) {
@@ -369,7 +372,7 @@
       dragging = false;
       if (grip) grip.style.cursor = 'grab';
       try { bar.releasePointerCapture(e.pointerId); } catch (er) {}
-      _savePos(parseFloat(bar.style.left) || 0, parseFloat(bar.style.top) || 0);
+      _savePos(parseFloat(bar.style.left) || 0, parseFloat(bar.style.top) || 0, key);
     }
     bar.addEventListener('pointerdown', down);
     bar.addEventListener('pointermove', move);
@@ -377,9 +380,66 @@
     bar.addEventListener('pointercancel', up);
     // double-tap the grip → back to the default corner
     if (grip) grip.addEventListener('dblclick', function () {
-      try { localStorage.removeItem(DRAG_KEY); } catch (er) {}
+      try { localStorage.removeItem(key || DRAG_KEY); } catch (er) {}
       bar.style.left = '8px'; bar.style.top = 'auto'; bar.style.bottom = '52px';
     });
+  }
+
+  // ── Positives / negatives TABLE (session 24) ────────────────────────
+  // A floating, draggable panel listing the 12 sectors with everything that made
+  // them green or red, so the reasons behind each dot are visible at a glance.
+  function openTable() {
+    var wrap = document.getElementById('fs-luopan-wrap') || document.body;
+    var old = document.getElementById('fs-dlr-table');
+    if (old) { old.parentNode.removeChild(old); return; }        // toggle off
+    var r = st.result;
+    if (!r || !r.sectors) { alert('Turn the DLR ring on first.'); return; }
+    var box = document.createElement('div');
+    box.id = 'fs-dlr-table';
+    box.setAttribute('style',
+      'position:absolute;top:10px;right:10px;z-index:40;width:min(360px,92vw);max-height:78%;overflow:auto;' +
+      'background:#fffdf7;border:2px solid #5d4037;border-radius:10px;box-shadow:0 3px 14px rgba(0,0,0,.35);' +
+      'padding:8px 10px;font-size:12px;color:#3b2b1a;touch-action:none;user-select:none;-webkit-user-select:none;');
+    var DOT = { green: '#1b8a3a', red: '#c62828', green_hollow: '#1b8a3a', cancel: '#9e9e9e', neutral: '#bdbdbd' };
+    var h = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+      + '<span id="fs-dlr-table-grip" style="cursor:grab;color:#8d6e63;font-size:15px;font-weight:bold;">\u2237</span>'
+      + '<strong style="flex:1;">\u5927\u516D\u58EC \u00b7 ' + st.year + ' ' + (r.yearPillar ? r.yearPillar.gz : '') + '</strong>'
+      + '<button id="fs-dlr-table-x" style="background:#5d4037;color:#fff;border:none;border-radius:6px;padding:2px 8px;cursor:pointer;font-weight:bold;">\u2715</button></div>';
+    h += '<div style="font-size:10px;color:#7a5a2a;margin-bottom:6px;">Day ' + (r.chosenDay ? String(r.chosenDay.date).slice(0, 15) : '?')
+      + ' \u00b7 \u6708\u5C07 ' + (r.chosenDay ? r.chosenDay.monthGeneral : '?')
+      + ' \u00b7 mode ' + (r.chosenDay ? r.chosenDay.mode : '?') + '</div>';
+    h += '<table style="width:100%;border-collapse:collapse;">';
+    h += '<tr style="background:#f1e7d4;font-size:10px;text-align:left;">'
+      + '<th style="padding:3px;">Sector</th><th style="padding:3px;">General</th><th style="padding:3px;">+ / \u2212</th></tr>';
+    r.sectors.forEach(function (s) {
+      var col = DOT[s.net] || '#bdbdbd';
+      var mark = (s.net === 'green_hollow') ? '\u25CB' : (s.net === 'cancel' ? '\u2298' : '\u25CF');
+      var pos = (s.greens || []).join(', ');
+      var neg = (s.reds || []).join(', ');
+      var vir = (s.virtues || []).join(', ');
+      h += '<tr style="border-top:1px solid #e6dcc8;">';
+      h += '<td style="padding:4px 3px;white-space:nowrap;"><span style="color:' + col + ';font-size:13px;">' + mark + '</span> '
+        + '<strong>' + branchLabel(s.earth) + '</strong><br><span style="font-size:10px;color:#7a5a2a;">' + branchLabel(s.heaven) + ' \u2191</span></td>';
+      h += '<td style="padding:4px 3px;white-space:nowrap;">' + ((s.general && s.general.cn) || '') + '<br>'
+        + '<span style="font-size:10px;color:#666;">' + (SPIRIT_EN[s.general && s.general.cn] || '') + '</span></td>';
+      h += '<td style="padding:4px 3px;font-size:11px;">';
+      if (pos) h += '<div style="color:#1b8a3a;">+ ' + pos + '</div>';
+      if (neg) h += '<div style="color:#c62828;">\u2212 ' + neg + '</div>';
+      if (vir) h += '<div style="color:#8d6e63;font-size:10px;">' + vir + '</div>';
+      if (!pos && !neg && !vir) h += '<span style="color:#bbb;">\u2014</span>';
+      h += '</td></tr>';
+    });
+    h += '</table>';
+    h += '<div style="margin-top:6px;font-size:10px;color:#777;line-height:1.5;">'
+      + '<span style="color:#1b8a3a;">\u25CF</span> auspicious \u00b7 <span style="color:#c62828;">\u25CF</span> inauspicious \u00b7 '
+      + '<span style="color:#1b8a3a;">\u25CB</span> Heavenly Doctor with a negative \u00b7 <span style="color:#9e9e9e;">\u2298</span> cancelled'
+      + '<br>Top branch = \u5929\u76E4 tianpan \u00b7 bottom = \u5730\u76E4 dipan (the sector position)</div>';
+    box.innerHTML = h;
+    wrap.appendChild(box);
+    document.getElementById('fs-dlr-table-x').addEventListener('click', function () {
+      if (box.parentNode) box.parentNode.removeChild(box);
+    });
+    try { _makeDraggable(box, wrap, document.getElementById('fs-dlr-table-grip'), 'xkdg_dlr_table_pos'); } catch (e) {}
   }
 
   function _refreshYear() {
@@ -735,7 +795,7 @@
   }
 
   var API = { open: open, openOnPlan: openOnPlan, toggleRing: toggleRing, drawIfOn: drawIfOn, mount: mount,
-              isRingOn: function () { return !!st.ringOn; } };
+              isRingOn: function () { return !!st.ringOn; }, openTable: openTable };
   if (typeof window !== 'undefined') window.FloorPlanDLR = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   if (typeof document !== 'undefined') {
