@@ -234,9 +234,11 @@
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a) * rLineIn, cy + Math.sin(a) * rLineIn);
         ctx.lineTo(cx + Math.cos(a) * rLineOut, cy + Math.sin(a) * rLineOut);
-        ctx.lineWidth = coincides ? 2.6 : 1.2;
-        ctx.strokeStyle = coincides ? 'rgba(120,80,20,0.85)' : 'rgba(150,120,60,0.5)';
-        if (!coincides) { ctx.setLineDash([5, 4]); } else { ctx.setLineDash([]); }
+        // All 12 read clearly; the 4 that meet the palace edges differ by COLOUR,
+        // not by fading the other 8 (same rule as the floor-plan view).
+        ctx.lineWidth = coincides ? 3 : 2;
+        ctx.strokeStyle = coincides ? 'rgba(198,40,40,0.92)' : 'rgba(90,55,20,0.85)';
+        ctx.setLineDash([]);
         ctx.stroke();
       });
       ctx.setLineDash([]);
@@ -523,7 +525,14 @@
     var maxH = Math.max(360, (typeof window !== 'undefined' ? window.innerHeight : 700) - (_fs ? 150 : 210));
     if (st.img) {
       var nW = st.img.naturalWidth || st.img.width, nH = st.img.naturalHeight || st.img.height;
-      var scale = Math.min(1, maxW / nW, maxH / nH);
+      // Session 24: the old cap at 1 meant a small photo was NEVER enlarged, so a
+      // bigger window changed nothing. Allow upscaling (a plan is line art, it
+      // survives it well), capped at 4x so it can't get absurdly soft.
+      // In full screen use the whole WIDTH and allow up to ~1.9 viewport heights,
+      // letting the overlay scroll vertically — otherwise the window height caps
+      // the plan and enlarging the window changes almost nothing.
+      var hBudget = _fs ? maxH * 1.9 : maxH;
+      var scale = Math.min(maxW / nW, hBudget / nH, 4);
       st.drawW = Math.max(1, Math.round(nW * scale)); st.drawH = Math.max(1, Math.round(nH * scale));
     } else { var side = Math.max(420, Math.min(maxW, maxH, _fs ? 3000 : 1400)); st.drawW = side; st.drawH = side; }
     c.width = st.drawW; c.height = st.drawH;
@@ -572,9 +581,12 @@
       var coin = PALACE_EDGES_FP.some(function (p) { return Math.abs(p - edg) < 0.01; });
       var a = canvasAngle(edg);
       ctx.beginPath(); ctx.moveTo(ctr.x, ctr.y); ctx.lineTo(ctr.x + R * Math.cos(a), ctr.y + R * Math.sin(a));
-      ctx.lineWidth = coin ? 2.6 : 1.1;
-      ctx.strokeStyle = coin ? 'rgba(120,80,20,0.9)' : 'rgba(150,120,60,0.5)';
-      if (coin) { ctx.setLineDash([]); } else { ctx.setLineDash([5, 4]); }
+      // All 12 must read clearly — they are the sectors of the chart. The 4 that
+      // coincide with the palace edges are told apart by COLOUR, not by making the
+      // other 8 faint (Edu, session 24: it was the wrong way round).
+      ctx.lineWidth = coin ? 3 : 2;
+      ctx.strokeStyle = coin ? 'rgba(198,40,40,0.92)' : 'rgba(90,55,20,0.85)';
+      ctx.setLineDash([]);
       ctx.stroke();
     }
     ctx.setLineDash([]);
