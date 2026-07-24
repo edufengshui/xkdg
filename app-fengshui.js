@@ -1335,12 +1335,36 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
 
     // ── 2) Live zone panels (bed / desk) — fountain optional ──
     var g = function(id){ var el = document.getElementById(id); return el ? num(el.value) : null; };
+    var PAL_DEG_L = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
+    // The BED has TWO independent facts (Edu, session 24): the PALACE says WHERE it
+    // stands, the sitting degree says WHICH WAY the headboard looks. A bed can sit
+    // in SE and still face East — walls are square. The icon therefore goes on the
+    // PALACE; the sitting degree is reported in the caption (and already drawn as
+    // the "Sitting" arrow by the section luopan). Placing the icon at the sitting
+    // degree, as before, put a SE bed in the East palace.
+    var bedPal = (document.getElementById('fs-bed-palace') || {}).value || '';
     var bedSit = g('fs-bed-sitting');
-    if (bedSit !== null) items.push({ deg: bedSit, icon: '\uD83D\uDECF', color: '#9c27b0', tag: 'Bed', name: 'Bed' });
+    if (bedPal && PAL_DEG_L[bedPal] != null) {
+      items.push({ deg: PAL_DEG_L[bedPal], icon: '\uD83D\uDECF', color: '#9c27b0',
+                   tag: 'Bed ' + bedPal + (bedSit !== null ? (' \u00b7 sit ' + bedSit.toFixed(0) + '\u00b0') : ''),
+                   name: 'Bed', noDeg: true });
+    } else if (bedSit !== null) {
+      // no palace chosen yet → fall back to the sitting direction, clearly labelled
+      items.push({ deg: bedSit, icon: '\uD83D\uDECF', color: '#9c27b0', tag: 'Bed sitting', name: 'Bed' });
+    }
     var bedW = g('fs-bed-water');
     if (bedW !== null) items.push({ deg: bedW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Bed fountain', role: 'LS', name: 'Bed fountain', src: 'fs-bed-water' });
+    // Desk: same distinction as the bed — the palace is WHERE it stands, the
+    // facing is WHICH WAY it looks. Icon on the palace, facing in the caption.
+    var deskPal = (document.getElementById('fs-desk-palace') || {}).value || '';
     var deskF = g('fs-desk-facing');
-    if (deskF !== null) items.push({ deg: deskF, icon: '\uD83E\uDE91', color: '#6a1b9a', tag: 'Desk', name: 'Desk' });
+    if (deskPal && PAL_DEG_L[deskPal] != null) {
+      items.push({ deg: PAL_DEG_L[deskPal], icon: '\uD83E\uDE91', color: '#6a1b9a',
+                   tag: 'Desk ' + deskPal + (deskF !== null ? (' \u00b7 face ' + deskF.toFixed(0) + '\u00b0') : ''),
+                   name: 'Desk', noDeg: true });
+    } else if (deskF !== null) {
+      items.push({ deg: deskF, icon: '\uD83E\uDE91', color: '#6a1b9a', tag: 'Desk facing', name: 'Desk' });
+    }
     var deskW = g('fs-desk-water');
     if (deskW !== null) items.push({ deg: deskW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Desk fountain', role: 'LS', name: 'Desk fountain', src: 'fs-desk-water' });
 
@@ -1404,7 +1428,7 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
       ctx.font = 'bold ' + (it.big ? 12 : 10) + 'px sans-serif';
       ctx.fillStyle = col;
       ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3;
-      var cap = (it.bad ? '\u26a0 ' : '') + it.tag + ' ' + it.deg.toFixed(0) + '\u00b0';
+      var cap = (it.bad ? '\u26a0 ' : '') + it.tag + (it.noDeg ? '' : (' ' + it.deg.toFixed(0) + '\u00b0'));
       ctx.strokeText(cap, x, y + R0 + 9);
       ctx.fillText(cap, x, y + R0 + 9);
       ctx.restore();
@@ -4187,7 +4211,8 @@ function fsRenderHouseProfiles(){
           if (s.water       != null && s.water       !== '') bits.push('Water ' + s.water + '°');
           if (s.bedPalace)  bits.push('Bed ' + s.bedPalace);
           if (s.bedSitting) bits.push('Sit ' + s.bedSitting);
-          if (s.deskFacing) bits.push('Desk ' + s.deskFacing + '°');
+          if (s.deskPalace) bits.push('Desk ' + s.deskPalace);
+          if (s.deskFacing) bits.push('Desk facing ' + s.deskFacing + '°');
           if (s.bedWater)   bits.push('Bed 💧 ' + s.bedWater + '°');
           if (s.deskWater)  bits.push('Desk 💧 ' + s.deskWater + '°');
           if (bits.length) ed += '<span style="font-size:10px;color:#777;">' + bits.join(' · ') + '</span>';
@@ -7574,13 +7599,14 @@ function fsSaveZoneSetting(){
     var bedPalace  = (document.getElementById('fs-bed-palace')  || {}).value || '';
     var bedSitting = (document.getElementById('fs-bed-sitting') || {}).value || '';
     var deskFacing = (document.getElementById('fs-desk-facing') || {}).value || '';
+    var deskPalace = (document.getElementById('fs-desk-palace') || {}).value || '';
     // Optional fountain per zone (may be left empty — never mandatory).
     var bedWater   = (document.getElementById('fs-bed-water')   || {}).value || '';
     var deskWater  = (document.getElementById('fs-desk-water')  || {}).value || '';
     var s = {
       name: name.trim(), ts: Date.now(),
       houseFacing: hf, period: pd, doorFacing: df, water: wt,
-      bedPalace: bedPalace, bedSitting: bedSitting, deskFacing: deskFacing,
+      bedPalace: bedPalace, bedSitting: bedSitting, deskFacing: deskFacing, deskPalace: deskPalace,
       bedWater: bedWater, deskWater: deskWater,
       manualChart: window._fsManualChart ? JSON.parse(JSON.stringify(window._fsManualChart)) : null
     };
@@ -7614,6 +7640,7 @@ function fsLoadZoneSetting(idx){
       if (typeof fsBedReadChart === 'function') fsBedReadChart();
     } else if (zone === 'desk'){
       _fsSetVal('fs-desk-facing', s.deskFacing);
+      _fsSetVal('fs-desk-palace', s.deskPalace);
       _fsSetVal('fs-desk-water', s.deskWater);
       if (typeof fsDeskReadChart === 'function') fsDeskReadChart();
     }
@@ -8154,6 +8181,12 @@ function fsBuildDeskPanel(){
     '<div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:10px;padding:12px;">'
     + '<div style="font-weight:bold;color:#6a1b9a;font-size:15px;margin-bottom:8px;">🪑 Desk — facing &amp; water for the person who sits</div>'
     + '<div id="fs-desk-person" style="margin-bottom:8px;"></div>'
+    + '<label style="font-size:12px;color:#555;">Desk palace (where the desk is)</label>'
+    + '<select id="fs-desk-palace" onchange="fsDeskReadChart();if(typeof fsRedraw===\'function\')fsRedraw();" '
+    + 'style="width:100%;padding:8px;margin:4px 0 8px;border:1px solid #ce93d8;border-radius:6px;font-size:14px;box-sizing:border-box;">'
+    + '<option value="">— choose —</option>'
+    + ['N','NE','E','SE','S','SW','W','NW'].map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join('')
+    + '</select>'
     + '<label style="font-size:12px;color:#555;">Desk Facing (°)</label>'
     + '<input id="fs-desk-facing" type="number" step="0.1" min="0" max="360" placeholder="e.g. 175.5" '
     + 'oninput="fsDeskReadChart()" style="width:100%;padding:8px;margin:4px 0 8px;border:1px solid #ce93d8;border-radius:6px;font-size:14px;box-sizing:border-box;" />'
