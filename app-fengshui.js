@@ -1345,26 +1345,24 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
     if (deskW !== null) items.push({ deg: deskW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Desk fountain', role: 'LS', name: 'Desk fountain', src: 'fs-desk-water' });
 
     // ── 3) SAVED settings stored by PALACE (water / bed / desk) ──
-    // These have no degree, so the icon goes at the CENTRE of their palace. The one
-    // whose panel is currently open is highlighted (bigger + ring).
+    // ON DEMAND ONLY (Edu, session 24): a saved setting is drawn just when you click
+    // its underlined name in House Profiles — otherwise the wheel fills up with every
+    // setting at once. Clicking again hides it. The icon goes at the palace centre.
     try {
-      var refS = (typeof _fsSettingRef === 'function') ? _fsSettingRef() : null;
-      var flS = refS && refS.floor;
-      var PAL_DEG = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
-      var ZI = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF', desk: '\uD83E\uDE91' };
-      var ZC = { water: '#4db6ac', bed: '#9c27b0', desk: '#6a1b9a' };
       var hl = window._fsHighlightSaved || null;
-      if (flS && flS.settings){
-        ['water', 'bed', 'desk'].forEach(function(z){
-          (flS.settings[z] || []).forEach(function(st, si){
-            if (!st || !st.palace) return;                     // degree-based ones handled above
-            var pd = PAL_DEG[st.palace];
-            if (pd == null) return;
-            items.push({ deg: pd, icon: ZI[z], color: ZC[z], tag: (st.name || z),
-                         role: (z === 'water') ? 'LS' : null, name: st.name || z,
-                         big: !!(hl && hl.zone === z && hl.idx === si) });
-          });
-        });
+      if (hl) {
+        var refS = (typeof _fsSettingRef === 'function') ? _fsSettingRef() : null;
+        var flS = refS && refS.floor;
+        var PAL_DEG = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
+        var ZI = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF', desk: '\uD83E\uDE91' };
+        var ZC = { water: '#4db6ac', bed: '#9c27b0', desk: '#6a1b9a' };
+        var st = flS && flS.settings && flS.settings[hl.zone] && flS.settings[hl.zone][hl.idx];
+        if (st && st.palace) {
+          var pd = PAL_DEG[st.palace];
+          if (pd != null) items.push({ deg: pd, icon: ZI[hl.zone], color: ZC[hl.zone],
+                                       tag: (st.name || hl.zone), role: (hl.zone === 'water') ? 'LS' : null,
+                                       name: st.name || hl.zone, big: true });
+        }
       }
     } catch(e){}
 
@@ -4161,9 +4159,13 @@ function fsRenderHouseProfiles(){
         var nameId = 'fs-setname-' + hi + '-' + z + '-' + sidx;
         var palId  = 'fs-setpal-'  + hi + '-' + z + '-' + sidx;
         // Clickable chip → toggles the inline view/edit/scan panel below.
+        var _isShown = !!(window._fsHighlightSaved && window._fsHighlightSaved.zone === z && window._fsHighlightSaved.idx === sidx);
         _zoneChips[z] += '<span onclick="fsToggleSavedEdit(' + hi + ',\'' + z + '\',' + sidx + ')" '
-          + 'style="cursor:pointer;color:#1565c0;text-decoration:underline dotted;margin-right:6px;" title="View / edit / scan dates">'
-          + '⚙ ' + escHtml(s.name) + (s.palace ? (' (' + escHtml(s.palace) + ')') : '') + '</span>';
+          + 'style="cursor:pointer;margin-right:6px;' + (_isShown
+              ? 'color:#fff;background:#1565c0;border-radius:4px;padding:1px 6px;font-weight:bold;'
+              : 'color:#1565c0;text-decoration:underline dotted;')
+          + '" title="Click to show it on the luopan / edit it">'
+          + (_isShown ? '\uD83D\uDC41 ' : '\u2699 ') + escHtml(s.name) + (s.palace ? (' (' + escHtml(s.palace) + ')') : '') + '</span>';
         // Inline view/edit panel (hidden until the chip is clicked)
         var ed = '<div id="' + eid + '" style="display:none;margin:4px 0 8px;padding:8px;background:#fff;border:1px solid #c9a84c;border-radius:6px;">';
         ed += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:5px;">'
