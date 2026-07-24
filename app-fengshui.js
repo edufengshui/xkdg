@@ -1381,11 +1381,21 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
         var ZI = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF', desk: '\uD83E\uDE91' };
         var ZC = { water: '#4db6ac', bed: '#9c27b0', desk: '#6a1b9a' };
         var st = flS && flS.settings && flS.settings[hl.zone] && flS.settings[hl.zone][hl.idx];
-        if (st && st.palace) {
-          var pd = PAL_DEG[st.palace];
+        // Each zone stores its position under a DIFFERENT key: water uses `palace`,
+        // bed uses `bedPalace`, desk uses `deskPalace`. Checking only `palace` (as
+        // before) meant bed and desk settings drew nothing at all. (Edu, session 24)
+        var pKey = (hl.zone === 'bed') ? 'bedPalace' : (hl.zone === 'desk') ? 'deskPalace' : 'palace';
+        var pName = st && (st[pKey] || st.palace);
+        if (st && pName) {
+          var pd = PAL_DEG[pName];
+          // orientation, when the setting carries one
+          var orient = (hl.zone === 'bed') ? st.bedSitting : (hl.zone === 'desk') ? st.deskFacing : null;
+          var oTxt = (orient !== undefined && orient !== null && orient !== '')
+                     ? (' \u00b7 ' + (hl.zone === 'bed' ? 'sit ' : 'face ') + parseFloat(orient).toFixed(0) + '\u00b0') : '';
           if (pd != null) items.push({ deg: pd, icon: ZI[hl.zone], color: ZC[hl.zone],
-                                       tag: (st.name || hl.zone), role: (hl.zone === 'water') ? 'LS' : null,
-                                       name: st.name || hl.zone, big: true });
+                                       tag: (st.name || hl.zone) + ' ' + pName + oTxt,
+                                       role: (hl.zone === 'water') ? 'LS' : null,
+                                       name: st.name || hl.zone, big: true, noDeg: true });
         }
       }
     } catch(e){}
