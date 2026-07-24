@@ -519,6 +519,10 @@
   }
   function fitCanvas() {
     var c = els.canvas;
+    // Session 24: st.center is kept in PIXELS. Whenever the canvas is resized we
+    // must move it proportionally, otherwise the rays, the arrow and the labels
+    // are drawn around a stale point (they used to drift apart in full screen).
+    var _oldW = st.drawW, _oldH = st.drawH, _oldC = st.center;
     // Session 24: roughly double the old drawing area, and unlimited in full screen.
     var _fs = !!st.fullscreen;
     var maxW = Math.min((typeof window !== 'undefined' ? window.innerWidth : 800) - (_fs ? 24 : 40), _fs ? 4000 : 1900);
@@ -531,10 +535,13 @@
       // In full screen use the whole WIDTH and allow up to ~1.9 viewport heights,
       // letting the overlay scroll vertically — otherwise the window height caps
       // the plan and enlarging the window changes almost nothing.
-      var hBudget = _fs ? maxH * 1.9 : maxH;
-      var scale = Math.min(maxW / nW, hBudget / nH, 4);
+      var hBudget = _fs ? maxH * 1.25 : maxH;
+      var scale = Math.min(maxW / nW, hBudget / nH, 2);
       st.drawW = Math.max(1, Math.round(nW * scale)); st.drawH = Math.max(1, Math.round(nH * scale));
     } else { var side = Math.max(420, Math.min(maxW, maxH, _fs ? 3000 : 1400)); st.drawW = side; st.drawH = side; }
+    if (_oldC && _oldW > 0 && _oldH > 0 && (st.drawW !== _oldW || st.drawH !== _oldH)) {
+      st.center = { x: _oldC.x * (st.drawW / _oldW), y: _oldC.y * (st.drawH / _oldH) };
+    }
     c.width = st.drawW; c.height = st.drawH;
     c.style.setProperty('width', '100%', 'important');
     c.style.setProperty('height', 'auto', 'important');
@@ -782,7 +789,7 @@
 
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', function () {
-        if (document.getElementById('fpd-overlay')) { var cc = st.center; fitCanvas(); if (cc && st.img) st.center = cc; redraw(); }
+        if (document.getElementById('fpd-overlay')) { fitCanvas(); redraw(); }   // fitCanvas rescales the centre
       });
     }
   }
