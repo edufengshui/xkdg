@@ -517,13 +517,15 @@
   }
   function fitCanvas() {
     var c = els.canvas;
-    var maxW = Math.min((typeof window !== 'undefined' ? window.innerWidth : 800) - 40, 1040);
-    var maxH = Math.max(260, (typeof window !== 'undefined' ? window.innerHeight : 700) - 260);
+    // Session 24: roughly double the old drawing area, and unlimited in full screen.
+    var _fs = !!st.fullscreen;
+    var maxW = Math.min((typeof window !== 'undefined' ? window.innerWidth : 800) - (_fs ? 24 : 40), _fs ? 4000 : 1900);
+    var maxH = Math.max(360, (typeof window !== 'undefined' ? window.innerHeight : 700) - (_fs ? 150 : 210));
     if (st.img) {
       var nW = st.img.naturalWidth || st.img.width, nH = st.img.naturalHeight || st.img.height;
       var scale = Math.min(1, maxW / nW, maxH / nH);
       st.drawW = Math.max(1, Math.round(nW * scale)); st.drawH = Math.max(1, Math.round(nH * scale));
-    } else { var side = Math.max(280, Math.min(maxW, maxH, 760)); st.drawW = side; st.drawH = side; }
+    } else { var side = Math.max(420, Math.min(maxW, maxH, _fs ? 3000 : 1400)); st.drawW = side; st.drawH = side; }
     c.width = st.drawW; c.height = st.drawH;
     c.style.setProperty('width', '100%', 'important');
     c.style.setProperty('height', 'auto', 'important');
@@ -558,24 +560,35 @@
       ctx.restore();
     }
     var ctr = centerPoint();
-    var R = st.img ? 0.5 * Math.min(st.drawW, st.drawH) : 0.44 * Math.min(st.drawW, st.drawH);
-    // 12 boundary rays
+    // 12 Double-Mountain boundary rays. They sit at branch + 7.5° (NOT k*30-15,
+    // which was the old bug: with that offset NONE of them met the Eight-Palace
+    // edges). At branch+7.5 exactly four — 67.5 / 157.5 / 247.5 / 337.5 — coincide
+    // with the 45° palace boundaries, and those are drawn heavier. (Edu, session 24)
+    var R = (st.img ? 0.70 : 0.62) * Math.min(st.drawW, st.drawH);   // protrude further
+    var PALACE_EDGES_FP = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5];
     ctx.save();
-    ctx.strokeStyle = st.img ? 'rgba(90,55,20,0.7)' : 'rgba(90,55,20,0.45)'; ctx.lineWidth = 1.25;
     for (var k = 0; k < 12; k++) {
-      var a = canvasAngle(k * 30 - 15);
-      ctx.beginPath(); ctx.moveTo(ctr.x, ctr.y); ctx.lineTo(ctr.x + R * Math.cos(a), ctr.y + R * Math.sin(a)); ctx.stroke();
+      var edg = ((k * 30 + 7.5) % 360 + 360) % 360;
+      var coin = PALACE_EDGES_FP.some(function (p) { return Math.abs(p - edg) < 0.01; });
+      var a = canvasAngle(edg);
+      ctx.beginPath(); ctx.moveTo(ctr.x, ctr.y); ctx.lineTo(ctr.x + R * Math.cos(a), ctr.y + R * Math.sin(a));
+      ctx.lineWidth = coin ? 2.6 : 1.1;
+      ctx.strokeStyle = coin ? 'rgba(120,80,20,0.9)' : 'rgba(150,120,60,0.5)';
+      if (coin) { ctx.setLineDash([]); } else { ctx.setLineDash([5, 4]); }
+      ctx.stroke();
     }
+    ctx.setLineDash([]);
     ctx.restore();
 
     if (st.result && !st.result.error && st.result.sectors) {
-      var rLabel = (st.img ? 0.36 : 0.32) * Math.min(st.drawW, st.drawH);
+      var rLabel = (st.img ? 0.40 : 0.36) * Math.min(st.drawW, st.drawH);
+      var _lf = Math.max(14, Math.round(Math.min(st.drawW, st.drawH) / 46));   // label size follows the canvas
       st.result.sectors.forEach(function (s) {
         var ang = canvasAngle(branchDeg(s.earth));
         var lx = ctr.x + rLabel * Math.cos(ang), ly = ctr.y + rLabel * Math.sin(ang);
         lx = Math.max(46, Math.min(st.drawW - 46, lx));
         ly = Math.max(34, Math.min(st.drawH - 34, ly));
-        drawLabelBlock(ctx, lx, ly, s, 14);
+        drawLabelBlock(ctx, lx, ly, s, _lf);
       });
       drawFacingArrow(ctx, ctr);
     }
@@ -648,16 +661,26 @@
     var old = document.getElementById('fpd-overlay'); if (old) old.remove();
     var ov = el('div', { id: 'fpd-overlay', style:
       'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;' });
-    var box = el('div', { style:
-      'background:#fff;border-radius:12px;max-width:1080px;width:100%;margin:auto;padding:14px 14px 18px;box-shadow:0 10px 40px rgba(0,0,0,.4);' });
+    var box = el('div', { id: 'fpd-box', style:
+      'background:#fff;border-radius:12px;max-width:1980px;width:100%;margin:auto;padding:14px 14px 18px;box-shadow:0 10px 40px rgba(0,0,0,.4);' });
     ov.appendChild(box);
 
     var head = el('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;' });
     head.appendChild(el('div', { style: 'font-size:15px;font-weight:bold;color:#5d4037;' },
       '\uD83C\uDC04 Da Liu Ren \u2014 Annual chart' + (st.houseName ? ('  \u00B7  ' + st.houseName) : '')));
+    var fsBtn = el('button', { title: 'Full screen', style: 'background:#eee;border:none;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer;margin-right:6px;' }, '\u26F6');
+    fsBtn.addEventListener('click', function () {
+      st.fullscreen = !st.fullscreen;
+      fsBtn.textContent = st.fullscreen ? '\u2715\uFE0E' : '\u26F6';
+      fsBtn.title = st.fullscreen ? 'Exit full screen' : 'Full screen';
+      box.style.maxWidth = st.fullscreen ? 'none' : '1980px';
+      box.style.borderRadius = st.fullscreen ? '0' : '12px';
+      ov.style.padding = st.fullscreen ? '0' : '14px';
+      try { fitCanvas(); draw(); } catch (e) {}
+    });
     var x = el('button', { style: 'background:#eee;border:none;border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer;' }, '\u2715');
-    x.addEventListener('click', function () { ov.remove(); });
-    head.appendChild(x); box.appendChild(head);
+    x.addEventListener('click', function () { st.fullscreen = false; ov.remove(); });
+    head.appendChild(fsBtn); head.appendChild(x); box.appendChild(head);
 
     var ctlWrap = el('div', { style: 'display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:10px;' });
     var yearCol = el('div', { style: 'display:flex;flex-direction:column;gap:2px;' });
@@ -700,7 +723,7 @@
     box.appendChild(ctlWrap);
 
     var canWrap = el('div', { style: 'display:flex;justify-content:center;background:#faf7f1;border:1px solid #eee;border-radius:8px;padding:6px;overflow:auto;' });
-    els.canvas = el('canvas', { width: '760', height: '760', style: 'display:block;' });
+    els.canvas = el('canvas', { width: '1400', height: '1400', style: 'display:block;' });
     canWrap.appendChild(els.canvas); box.appendChild(canWrap);
 
     var legend = el('div', { style: 'display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:8px 0 4px;font-size:11px;color:#444;' });
