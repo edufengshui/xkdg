@@ -490,6 +490,65 @@
     '- If a capability genuinely has no tool, say so briefly and point to the on-screen panel to use.';
 
   // ---- Tool catalogue (Phase E2, increment 1) ----------------------------
+
+  // ═══ TOOL GROUPS — "specialist" assistants (Edu, session 24) ═════════
+  // All 52 tool descriptions used to travel with EVERY question (~16k tokens of
+  // the ~29k fixed prefix), even when the whole conversation was about travel.
+  // Grouping them lets the app send only the relevant set: fewer tokens, a faster
+  // answer and a model that is not distracted by 40 irrelevant options.
+  // No routing model is needed — the app already knows which area you are in, and
+  // the AI can pull another group itself with the load_tools escape hatch below.
+  var TOOL_AREAS = {
+    travel: ['plan_travel','search_travel','plan_lucky_day_trip','plan_lucky_chain','plan_lucky_multiday',
+             'plan_mobile_tour','plan_city_tour','plan_lucky_events','plan_arrive_by','open_travel_planner',
+             'open_itinerary_in_maps','start_compass','control_compass','analyze_direction','get_trip_itinerary',
+             'find_lodging','find_lucky_charge_day','scan_flights','open_direction_calculator',
+             'find_purpose_direction','find_qimen_hours_for_star','diagnose_maps_export'],
+    fengshui: ['find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
+               'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
+               'list_houses','get_house_setup','set_active_house','load_house','load_placement',
+               'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section'],
+    dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
+            'find_divination_chart','get_hexagram_info'],
+    home:  ['configure_shelly','program_aquarium_light','aquarium_light']
+  };
+  // Always sent, whatever the area — they are tiny and needed everywhere.
+  var TOOL_ALWAYS = ['get_app_state','list_source','read_source'];
+
+  var AREA_LABELS = { all: '\u2699 All tools', travel: '\uD83E\uDDED Travel & directions',
+                      fengshui: '\uD83C\uDFE0 Feng Shui', dates: '\uD83D\uDCC5 Dates & divination',
+                      home: '\uD83D\uDD0C Home devices' };
+
+  function getToolArea(){ try { return localStorage.getItem('xkdg_ai_area') || 'all'; } catch(e){ return 'all'; } }
+  function setToolArea(a){ try { localStorage.setItem('xkdg_ai_area', a || 'all'); } catch(e){} _extraAreas = []; }
+  var _extraAreas = [];        // groups pulled in by load_tools during this conversation
+
+  // The tool list actually sent with the next request.
+  function activeTools(){
+    try {
+      var area = getToolArea();
+      if (area === 'all') return TOOLS;
+      var wanted = {};
+      TOOL_ALWAYS.forEach(function(n){ wanted[n] = 1; });
+      [area].concat(_extraAreas).forEach(function(a){
+        (TOOL_AREAS[a] || []).forEach(function(n){ wanted[n] = 1; });
+      });
+      var out = TOOLS.filter(function(t){ return wanted[t.name]; });
+      // escape hatch: let the model ask for another group instead of failing
+      out.push({
+        name: 'load_tools',
+        description: 'Load the tools of another area when the question falls outside the current one. '
+          + 'Areas: travel (trips, directions, compass, lodging), fengshui (houses, water, bed/desk, flying stars), '
+          + 'dates (date selection, divination, hexagrams), home (aquarium light, Shelly). '
+          + 'Call this, then answer using the newly available tools.',
+        input_schema: { type: 'object',
+          properties: { area: { type: 'string', enum: ['travel','fengshui','dates','home'] } },
+          required: ['area'] }
+      });
+      return out;
+    } catch(e){ return TOOLS; }
+  }
+
   var TOOLS = [
     {
       name: 'find_good_dates',
@@ -1826,6 +1885,13 @@
       if (name === 'start_compass') return toolStartCompass(input || {});
       if (name === 'control_compass') return toolControlCompass(input || {});
       if (name === 'open_qimen_for_flying_stars') return toolOpenQimenFS(input || {});
+      if (name === 'load_tools') {
+        var _a = (input && input.area) || '';
+        if (!TOOL_AREAS[_a]) return { ok: false, error: 'Unknown area: ' + _a };
+        if (_extraAreas.indexOf(_a) < 0) _extraAreas.push(_a);
+        return { ok: true, area: _a, loaded: TOOL_AREAS[_a].length,
+                 note: 'Tools for "' + _a + '" are now available. Continue and use them to answer.' };
+      }
       if (name === 'get_app_state') return toolGetAppState();
       if (name === 'get_trip_itinerary') return toolGetTripItinerary();
       if (name === 'analyze_direction') return toolAnalyzeDirection(input || {});
@@ -5224,6 +5290,30 @@
 
       card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
 
+      // ── Specialist area (session 24): send only the tools of one area ──
+      card.appendChild(elc('div', { style: 'font-size:13px;font-weight:700;color:#e65100;margin:0 0 3px;' }, '\uD83C\uDFAF Assistant area'));
+      card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:6px;line-height:1.5;' },
+        'Pick one area and the assistant only carries the tools it needs \u2014 faster answers and a much cheaper request. '
+        + 'It can still pull another area in by itself if your question goes elsewhere. "All tools" is the old behaviour.'));
+      var areaSel = elc('select', { style: 'width:100%;padding:8px;border:1px solid #ffb74d;border-radius:6px;font-size:13px;' });
+      ['all','travel','fengshui','dates','home'].forEach(function(a){
+        var o = elc('option', { value: a }, AREA_LABELS[a]);
+        if (a === getToolArea()) o.selected = true;
+        areaSel.appendChild(o);
+      });
+      var areaNote = elc('div', { style: 'font-size:10px;color:#999;margin-top:4px;' }, '');
+      function _syncAreaNote(){
+        var a = areaSel.value;
+        var n = (a === 'all') ? TOOLS.length : (TOOL_ALWAYS.length + (TOOL_AREAS[a] || []).length + 1);
+        areaNote.textContent = n + ' of ' + TOOLS.length + ' tools sent with every question'
+          + (a === 'all' ? '' : ' \u2014 about ' + Math.round((1 - n / TOOLS.length) * 100) + '% fewer.');
+      }
+      areaSel.addEventListener('change', function(){ setToolArea(areaSel.value); _syncAreaNote(); });
+      _syncAreaNote();
+      card.appendChild(areaSel); card.appendChild(areaNote);
+
+      card.appendChild(elc('hr', { style: 'border:0;border-top:1px solid #eee;margin:14px 0;' }));
+
       // BYOK — bring your own Anthropic API key (session 23)
       card.appendChild(elc('div', { style: 'font-size:13px;font-weight:700;color:#00695c;margin:0 0 3px;' }, '\ud83d\udd11 My own Anthropic API key'));
       card.appendChild(elc('div', { style: 'font-size:11px;color:#777;margin-bottom:6px;line-height:1.5;' },
@@ -6924,7 +7014,7 @@
       return fetch(_target, {
         method: 'POST',
         headers: _headers,
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + uiButtonsRule() + aquariumSafetyRule() + replyLangDirective(), tools: noTools ? undefined : TOOLS, messages: history })
+        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: SYSTEM_PROMPT + '\n\nToday is ' + todayIso() + '.' + currentMomentContext() + stateReadingRule() + uiButtonsRule() + aquariumSafetyRule() + replyLangDirective(), tools: noTools ? undefined : activeTools(), messages: history })
       }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
     }
 
