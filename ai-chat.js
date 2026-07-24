@@ -5244,6 +5244,31 @@
     btn.addEventListener('click', function () { panel.style.display === 'flex' ? closePanel() : openPanel(); });
     closeBtn.addEventListener('click', closePanel);
     fsBtn.addEventListener('click', toggleFullscreen);
+    // Visible area badge (session 24): the assistant is ALWAYS this one chat — the
+    // area only decides which tools it carries. Keeping that invisible in Settings
+    // made it look as if there were separate assistants somewhere else.
+    var areaBtn = elc('button', { id: 'xkdg-ai-area-btn', title: 'Which tools the assistant carries \u2014 tap to change',
+      style: 'border:0;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.22);color:#fff;white-space:nowrap;' }, '');
+    function _refreshAreaBtn(){
+      try {
+        var a = getToolArea();
+        var short = { all: '\u2699 All', travel: '\uD83E\uDDED Travel', fengshui: '\uD83C\uDFE0 Feng Shui',
+                      dates: '\uD83D\uDCC5 Dates', home: '\uD83D\uDD0C Home' };
+        areaBtn.textContent = short[a] || short.all;
+        areaBtn.style.background = (a === 'all') ? 'rgba(255,255,255,.22)' : '#ffb300';
+        areaBtn.style.color = (a === 'all') ? '#fff' : '#3a2600';
+      } catch(e){}
+    }
+    _refreshAreaBtn();
+    window._xkdgRefreshAreaBtn = _refreshAreaBtn;
+    areaBtn.addEventListener('click', function () {
+      var order = ['all','travel','fengshui','dates','home'];
+      var i = order.indexOf(getToolArea());
+      setToolArea(order[(i + 1) % order.length]);
+      _refreshAreaBtn();
+    });
+    try { gear.parentNode && gear.parentNode.insertBefore(areaBtn, gear); } catch(e){}
+
     gear.addEventListener('click', openSettings);
     clearBtn.addEventListener('click', function () { history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); });
     saveBtn.addEventListener('click', function () { saveCurrentConversation(false); });
@@ -5308,7 +5333,7 @@
         areaNote.textContent = n + ' of ' + TOOLS.length + ' tools sent with every question'
           + (a === 'all' ? '' : ' \u2014 about ' + Math.round((1 - n / TOOLS.length) * 100) + '% fewer.');
       }
-      areaSel.addEventListener('change', function(){ setToolArea(areaSel.value); _syncAreaNote(); });
+      areaSel.addEventListener('change', function(){ setToolArea(areaSel.value); _syncAreaNote(); try { window._xkdgRefreshAreaBtn && window._xkdgRefreshAreaBtn(); } catch(e){} });
       _syncAreaNote();
       card.appendChild(areaSel); card.appendChild(areaNote);
 
