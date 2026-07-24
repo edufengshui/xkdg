@@ -1344,6 +1344,30 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
     var deskW = g('fs-desk-water');
     if (deskW !== null) items.push({ deg: deskW, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Desk fountain', role: 'LS', name: 'Desk fountain', src: 'fs-desk-water' });
 
+    // ── 3) SAVED settings stored by PALACE (water / bed / desk) ──
+    // These have no degree, so the icon goes at the CENTRE of their palace. The one
+    // whose panel is currently open is highlighted (bigger + ring).
+    try {
+      var refS = (typeof _fsSettingRef === 'function') ? _fsSettingRef() : null;
+      var flS = refS && refS.floor;
+      var PAL_DEG = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
+      var ZI = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF', desk: '\uD83E\uDE91' };
+      var ZC = { water: '#4db6ac', bed: '#9c27b0', desk: '#6a1b9a' };
+      var hl = window._fsHighlightSaved || null;
+      if (flS && flS.settings){
+        ['water', 'bed', 'desk'].forEach(function(z){
+          (flS.settings[z] || []).forEach(function(st, si){
+            if (!st || !st.palace) return;                     // degree-based ones handled above
+            var pd = PAL_DEG[st.palace];
+            if (pd == null) return;
+            items.push({ deg: pd, icon: ZI[z], color: ZC[z], tag: (st.name || z),
+                         role: (z === 'water') ? 'LS' : null, name: st.name || z,
+                         big: !!(hl && hl.zone === z && hl.idx === si) });
+          });
+        });
+      }
+    } catch(e){}
+
     if (!items.length) { window._fsSettingAdvice = []; fsRenderSettingAdvice(); return; }
 
     // Zheng Shen / Ling Shen verdict per item (only where a role applies).
@@ -1364,22 +1388,27 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
       var a = (it.deg - 270 + ROT) * Math.PI / 180;
       var x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
       var col = it.bad ? '#c62828' : it.color;      // RED when ZS/LS says the spot is wrong
+      var R0 = it.big ? 30 : 21;                    // highlighted (panel open) = bigger
       ctx.save();
+      if (it.big) {                                 // attention ring around the open one
+        ctx.beginPath(); ctx.arc(x, y, R0 + 7, 0, Math.PI * 2);
+        ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.globalAlpha = 0.55; ctx.stroke(); ctx.globalAlpha = 1;
+      }
       ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 5;
-      ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(x, y, R0, 0, Math.PI * 2);
       ctx.fillStyle = it.bad ? 'rgba(255,235,235,0.95)' : 'rgba(255,255,255,0.92)'; ctx.fill();
       ctx.shadowBlur = 0;
       ctx.lineWidth = it.bad ? 4 : 3; ctx.strokeStyle = col; ctx.stroke();
-      ctx.font = '24px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = (it.big ? 34 : 24) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#000';
       ctx.fillText(it.icon, x, y + 1);
       // Small caption + degree (+ warning mark), so you know which section you are in.
-      ctx.font = 'bold 10px sans-serif';
+      ctx.font = 'bold ' + (it.big ? 12 : 10) + 'px sans-serif';
       ctx.fillStyle = col;
       ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 3;
       var cap = (it.bad ? '\u26a0 ' : '') + it.tag + ' ' + it.deg.toFixed(0) + '\u00b0';
-      ctx.strokeText(cap, x, y + 30);
-      ctx.fillText(cap, x, y + 30);
+      ctx.strokeText(cap, x, y + R0 + 9);
+      ctx.fillText(cap, x, y + R0 + 9);
       ctx.restore();
     });
   } catch(e){ console.warn('fsDrawSettingIcons', e); }
@@ -3278,7 +3307,12 @@ function fsToggleSavedEdit(hi, zone, idx){
   try {
     var el = document.getElementById('fs-set-edit-' + hi + '-' + zone + '-' + idx);
     if (!el) return;
-    el.style.display = (!el.style.display || el.style.display === 'none') ? 'block' : 'none';
+    var opening = (!el.style.display || el.style.display === 'none');
+    el.style.display = opening ? 'block' : 'none';
+    // Session 24: opening a saved setting highlights it on the luopan (bigger icon
+    // + ring), so you can see WHERE it sits instead of only reading its name.
+    window._fsHighlightSaved = opening ? { zone: zone, idx: idx } : null;
+    if (typeof fsRedraw === 'function') fsRedraw();
   } catch(e){ console.warn('fsToggleSavedEdit', e); }
 }
 
@@ -4132,6 +4166,9 @@ function fsRenderHouseProfiles(){
           + '⚙ ' + escHtml(s.name) + (s.palace ? (' (' + escHtml(s.palace) + ')') : '') + '</span>';
         // Inline view/edit panel (hidden until the chip is clicked)
         var ed = '<div id="' + eid + '" style="display:none;margin:4px 0 8px;padding:8px;background:#fff;border:1px solid #c9a84c;border-radius:6px;">';
+        ed += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:5px;">'
+            + '\u270F\uFE0F Editing the saved ' + _zlbl[z].replace(/^[^ ]+ /, '') + ' \u201C' + escHtml(s.name) + '\u201D'
+            + ' <span style="font-weight:normal;color:#999;">\u2014 shown on the luopan. This does not create a new one.</span></div>';
         ed += '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">';
         ed += '<label style="font-size:10px;color:#888;">Name</label>';
         ed += '<input id="' + nameId + '" value="' + escHtml(s.name || '') + '" style="flex:1;min-width:110px;padding:4px 6px;border:1px solid #c9a84c;border-radius:4px;font-size:12px;">';
