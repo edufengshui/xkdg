@@ -1462,6 +1462,34 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
         ctx.beginPath(); ctx.arc(mx, my, 6, 0, Math.PI * 2);
         ctx.fillStyle = '#000'; ctx.fill();
         ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+        // ── Valid FOUNTAIN cells for this piece (Edu, session 24) ──────────
+        // Same engine as the Bed/Desk section view: water is 零神 Ling Shen within
+        // ±FS_WATER_MAX_DEG of the FACING (never the sitting — that is the wall).
+        // Shown here too, so the main luopan answers "where can the fountain go?"
+        // without having to open the section panel.
+        try {
+          var faceDeg = (it.orientLbl === 'sitting') ? ((it.orient + 180) % 360) : it.orient;
+          var faceSlot = fsSlotForDeg(faceDeg);
+          if (faceSlot && fsIsZhengShen(faceSlot.yun) && typeof _fsDeskWaterList === 'function') {
+            var pers = (typeof _fsDeskPerson === 'function') ? _fsDeskPerson() : null;
+            _fsDeskWaterList(faceSlot, pers).forEach(function (w) {
+              var wc0 = Math.floor((((w.slot.centerDeg % 360) + 360) % 360) / cellW) * cellW;
+              var wa0 = (wc0 - 270 + ROT) * Math.PI / 180, wa1 = (wc0 + cellW - 270 + ROT) * Math.PI / 180;
+              ctx.beginPath();
+              ctx.arc(cx, cy, rOut, wa0, wa1);
+              ctx.arc(cx, cy, rIn, wa1, wa0, true);
+              ctx.closePath();
+              ctx.fillStyle = 'rgba(0,200,255,0.55)'; ctx.fill();
+              ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,120,180,0.9)'; ctx.stroke();
+            });
+            // little legend next to the piece
+            ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            var lg = '\uD83D\uDCA7 fountain options (\u96F6\u795E)';
+            var lgx = x, lgy = y + R0 + 24;
+            ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3;
+            ctx.strokeText(lg, lgx, lgy); ctx.fillStyle = '#0277bd'; ctx.fillText(lg, lgx, lgy);
+          }
+        } catch (eW) {}
         // label on the cell
         ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3;
