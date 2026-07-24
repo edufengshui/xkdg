@@ -1440,18 +1440,34 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
         ctx.closePath();
         ctx.fillStyle = col; ctx.globalAlpha = 0.42; ctx.fill();
         ctx.globalAlpha = 1; ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
-        // thread from the icon to the middle of that cell
+        // Leader routed OUTSIDE the wheel (Edu, session 24): a straight chord across
+        // the luopan was unreadable over all the rings. So: out from the icon to a
+        // ring beyond the wheel, around it to the sitting angle, then back in to the
+        // hexagram cell, ending on a black dot.
         var aM = (c0 + cellW / 2 - 270 + ROT) * Math.PI / 180;
         var mx = cx + Math.cos(aM) * (rIn + rOut) / 2, my = cy + Math.sin(aM) * (rIn + rOut) / 2;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(mx, my);
-        ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.globalAlpha = 0.75;
-        ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
+        var rRing = outerR * 1.045;                       // the detour ring, just outside
+        var aI = (it.deg - 270 + ROT) * Math.PI / 180;    // where the icon sits
+        // shortest way round
+        var d = aM - aI; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(cx + Math.cos(aI) * rRing, cy + Math.sin(aI) * rRing);     // out
+        ctx.arc(cx, cy, rRing, aI, aI + d, d < 0);                            // around
+        ctx.lineTo(mx, my);                                                   // back in
+        ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.globalAlpha = 0.9;
+        ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]);
         ctx.globalAlpha = 1;
+        // black dot landing on the hexagram cell
+        ctx.beginPath(); ctx.arc(mx, my, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#000'; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
         // label on the cell
         ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3;
         var oc = (it.orientLbl || 'sitting') + ' ' + it.orient.toFixed(0) + '\u00b0';
-        ctx.strokeText(oc, mx, my); ctx.fillStyle = col; ctx.fillText(oc, mx, my);
+        var lx2 = cx + Math.cos(aM) * (rOut + 16), ly2 = cy + Math.sin(aM) * (rOut + 16);
+        ctx.strokeText(oc, lx2, ly2); ctx.fillStyle = col; ctx.fillText(oc, lx2, ly2);
         ctx.restore();
       }
       ctx.save();
