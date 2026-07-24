@@ -7922,11 +7922,43 @@ function getAllowedDateRange(tier) {
     };
 }
 
+// Backfill the per-student id for people who unlocked BEFORE the tracking existed
+// (Edu, session 24: "i PIN li ho già dati al momento della consegna"). The id was
+// only written while typing the PIN, so those users landed in the "anon" bucket.
+// We recover it WITHOUT asking them anything: the stored licence keeps tier +
+// expiry, and for most rows that pair is unique in the table, which points at
+// exactly one hash. When it is ambiguous (several unlimited licences share
+// tier 0 / no expiry) we fall back to a stable per-device id, so at least distinct
+// users stop being lumped together. Typing the PIN again always overwrites it with
+// the real hash. Fully additive and wrapped in try/catch.
+function _xkdgBackfillStudentId(lic) {
+    try {
+        if (localStorage.getItem('xkdg_student_id')) return;      // already known
+        if (!lic || typeof _HASHED_CODES === 'undefined') return;
+        var hit = _HASHED_CODES.filter(function (r) {
+            var sameTier = (r.t === lic.tier);
+            var sameExp  = ((r.e || null) === (lic.expiry || null));
+            return sameTier && sameExp;
+        });
+        if (hit.length === 1) {
+            localStorage.setItem('xkdg_student_id', hit[0].h);     // uniquely identified
+            return;
+        }
+        var dev = localStorage.getItem('xkdg_device_id');
+        if (!dev) {
+            dev = 'dev_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+            localStorage.setItem('xkdg_device_id', dev);
+        }
+        localStorage.setItem('xkdg_student_id', dev);              // distinct, not yet named
+    } catch (e) { /* never block the licence check */ }
+}
+
 function checkLicense() {
     const stored = localStorage.getItem('xkdg_license');
     if (!stored) { showLicenseOverlay(); return; }
     try {
         const lic = JSON.parse(stored);
+        try { _xkdgBackfillStudentId(lic); } catch (e) {}
         if (lic.expiry) {
             const today = new Date().toISOString().split('T')[0];
             if (today > lic.expiry) {
