@@ -6521,8 +6521,8 @@ function _fsZoneBadge(zone){
     wrap.appendChild(el);
   }
   el.innerHTML = '<strong>' + lbl + '</strong>'
-    + '<span style="color:#8a6a1f;">this wheel shows the section data \u2014 Flying Stars are hidden</span>'
-    + '<button onclick="fsExitZone()" style="border:2px solid #b71c1c;background:#fff;color:#b71c1c;border-radius:7px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">\u2190 Back to Flying Stars</button>';
+    + '<span style="color:#8a6a1f;">the wheel is showing this section \u2014 Flying Stars are drawn too</span>'
+    + '<button onclick="fsExitZone()" style="border:2px solid #b71c1c;background:#fff;color:#b71c1c;border-radius:7px;padding:3px 10px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">\u2190 Back to main view</button>';
 }
 
 function fsRenderZoneGate(){
@@ -8555,6 +8555,14 @@ function fsDrawSectionLuopan(){
         window.FloorPlanDLR.drawIfOn(ctx, cx, cy, outerR, _srot);
       }
     } catch (eDLR) { console.warn('FloorPlanDLR overlay (section)', eDLR); }
+    // Flying Stars in the section view too (Edu, session 24): the bed relates to the
+    // mountain star 山星, so hiding them here made no sense. Same geometry and the
+    // same rotation as the main luopan, so they line up exactly. Drawn before the
+    // setting icons so those stay on top.
+    try { if (typeof fsDrawFlyingStars === 'function') fsDrawFlyingStars(ctx, cx, cy, outerR); }
+    catch (eFS) { console.warn('FlyingStars overlay (section)', eFS); }
+    try { if (typeof fsDrawSettingIcons === 'function') fsDrawSettingIcons(ctx, cx, cy, outerR, _srot); }
+    catch (eIC) { console.warn('setting icons (section)', eIC); }
   } catch(err){ console.warn('fsDrawSectionLuopan', err); }
 }
 
