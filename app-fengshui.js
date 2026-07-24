@@ -1347,7 +1347,7 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
     if (bedPal && PAL_DEG_L[bedPal] != null) {
       items.push({ deg: PAL_DEG_L[bedPal], icon: '\uD83D\uDECF', color: '#9c27b0',
                    tag: 'Bed ' + bedPal + (bedSit !== null ? (' \u00b7 sit ' + bedSit.toFixed(0) + '\u00b0') : ''),
-                   name: 'Bed', noDeg: true });
+                   name: 'Bed', noDeg: true, big: true, orient: bedSit, orientLbl: 'sitting' });
     } else if (bedSit !== null) {
       // no palace chosen yet → fall back to the sitting direction, clearly labelled
       items.push({ deg: bedSit, icon: '\uD83D\uDECF', color: '#9c27b0', tag: 'Bed sitting', name: 'Bed' });
@@ -1361,7 +1361,7 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
     if (deskPal && PAL_DEG_L[deskPal] != null) {
       items.push({ deg: PAL_DEG_L[deskPal], icon: '\uD83E\uDE91', color: '#6a1b9a',
                    tag: 'Desk ' + deskPal + (deskF !== null ? (' \u00b7 face ' + deskF.toFixed(0) + '\u00b0') : ''),
-                   name: 'Desk', noDeg: true });
+                   name: 'Desk', noDeg: true, big: true, orient: deskF, orientLbl: 'facing' });
     } else if (deskF !== null) {
       items.push({ deg: deskF, icon: '\uD83E\uDE91', color: '#6a1b9a', tag: 'Desk facing', name: 'Desk' });
     }
@@ -1392,10 +1392,13 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
           var orient = (hl.zone === 'bed') ? st.bedSitting : (hl.zone === 'desk') ? st.deskFacing : null;
           var oTxt = (orient !== undefined && orient !== null && orient !== '')
                      ? (' \u00b7 ' + (hl.zone === 'bed' ? 'sit ' : 'face ') + parseFloat(orient).toFixed(0) + '\u00b0') : '';
+          var oNum = (orient !== undefined && orient !== null && orient !== '') ? parseFloat(orient) : null;
           if (pd != null) items.push({ deg: pd, icon: ZI[hl.zone], color: ZC[hl.zone],
                                        tag: (st.name || hl.zone) + ' ' + pName + oTxt,
                                        role: (hl.zone === 'water') ? 'LS' : null,
-                                       name: st.name || hl.zone, big: true, noDeg: true });
+                                       name: st.name || hl.zone, big: true, noDeg: true,
+                                       orient: (isFinite(oNum) ? oNum : null),
+                                       orientLbl: (hl.zone === 'bed') ? 'sitting' : 'facing' });
         }
       }
     } catch(e){}
@@ -1420,7 +1423,37 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
       var a = (it.deg - 270 + ROT) * Math.PI / 180;
       var x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R;
       var col = it.bad ? '#c62828' : it.color;      // RED when ZS/LS says the spot is wrong
-      var R0 = it.big ? 30 : 21;                    // highlighted (panel open) = bigger
+      var R0 = it.big ? 40 : 26;                    // highlighted (panel open) = bigger
+      // ── Link the piece to the hexagram it sits/faces (Edu, session 24) ──
+      // The icon says WHERE the bed is; on its own you still could not tell WHICH
+      // hexagram it sits on. So we paint that hexagram cell in the same colour and
+      // draw a thread from the icon to it: position and orientation, seen together.
+      if (it.orient !== undefined && it.orient !== null && isFinite(it.orient)) {
+        var rIn = outerR * 0.660, rOut = outerR * 0.805;      // the hexagram ring
+        var cellW = 360 / 64;                                  // 5.625° per hexagram
+        var c0 = Math.floor(((it.orient % 360) + 360) % 360 / cellW) * cellW;
+        var a0 = (c0 - 270 + ROT) * Math.PI / 180, a1 = (c0 + cellW - 270 + ROT) * Math.PI / 180;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, rOut, a0, a1);
+        ctx.arc(cx, cy, rIn, a1, a0, true);
+        ctx.closePath();
+        ctx.fillStyle = col; ctx.globalAlpha = 0.42; ctx.fill();
+        ctx.globalAlpha = 1; ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
+        // thread from the icon to the middle of that cell
+        var aM = (c0 + cellW / 2 - 270 + ROT) * Math.PI / 180;
+        var mx = cx + Math.cos(aM) * (rIn + rOut) / 2, my = cy + Math.sin(aM) * (rIn + rOut) / 2;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(mx, my);
+        ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.globalAlpha = 0.75;
+        ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        // label on the cell
+        ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 3;
+        var oc = (it.orientLbl || 'sitting') + ' ' + it.orient.toFixed(0) + '\u00b0';
+        ctx.strokeText(oc, mx, my); ctx.fillStyle = col; ctx.fillText(oc, mx, my);
+        ctx.restore();
+      }
       ctx.save();
       if (it.big) {                                 // attention ring around the open one
         ctx.beginPath(); ctx.arc(x, y, R0 + 7, 0, Math.PI * 2);
@@ -1431,7 +1464,7 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
       ctx.fillStyle = it.bad ? 'rgba(255,235,235,0.95)' : 'rgba(255,255,255,0.92)'; ctx.fill();
       ctx.shadowBlur = 0;
       ctx.lineWidth = it.bad ? 4 : 3; ctx.strokeStyle = col; ctx.stroke();
-      ctx.font = (it.big ? 34 : 24) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = (it.big ? 44 : 30) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#000';
       ctx.fillText(it.icon, x, y + 1);
       // Small caption + degree (+ warning mark), so you know which section you are in.
