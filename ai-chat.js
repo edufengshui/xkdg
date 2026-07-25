@@ -3253,41 +3253,63 @@
             'Explain this plainly and offer to try tomorrow (call again with date=' + tmrStr + ') or to allow more legs.'
         };
       }
-      // ONE Maps link per loop — the whole ring, not a single leg (session 25).
-      // Built by the planner (it owns every Maps export), attached to each chain,
-      // then shown as a card with a tappable button: a real tap is never pop-up
-      // blocked, and the model must not paste raw links.
+      // Snap each turning point to a REAL place you can pull into — charger if the car
+      // needs charging, else a POI in the ticked categories (nature by default), else a
+      // plain stopover. Only THEN build the link, so the button never lands in a field.
       var _chains = r.chains || [];
+      var _evRange = 0, _ocmKey = '';
+      try { var _rEl = document.getElementById('tp-range'); _evRange = _rEl ? (parseFloat(_rEl.value) || 0) : 0; } catch (eR) {}
       try {
-        if (window.TravelPlanner && typeof window.TravelPlanner.buildChainMapsUrl === 'function') {
-          _chains.forEach(function (c) {
-            try { c.maps_url = window.TravelPlanner.buildChainMapsUrl(c, r.origin) || undefined; } catch (eU) {}
+        var _ek = document.getElementById('tp-ocm-key-edit'), _rk = document.getElementById('tp-ocm-key');
+        _ocmKey = (_ek && _ek.style.display !== 'none' && (_ek.value || '').trim()) ? _ek.value.trim() : ((_rk && _rk.value) || '').trim();
+      } catch (eK) {}
+      var _snapOpts = { evRangeKm: _evRange, ocmKey: _ocmKey };
+
+      function _finish() {
+        try {
+          if (window.TravelPlanner && typeof window.TravelPlanner.buildChainMapsUrl === 'function') {
+            _chains.forEach(function (c) {
+              try { c.maps_url = window.TravelPlanner.buildChainMapsUrl(c, r.origin) || undefined; } catch (eU) {}
+            });
+          }
+        } catch (eB) {}
+        var _shown = false;
+        try {
+          if (window.XKDGChat && typeof window.XKDGChat.addChainTrips === 'function') {
+            window.XKDGChat.addChainTrips({ origin: input.origin_name || (r.origin && r.origin.name) || null,
+              date: r.date, chains: _chains });
+            _shown = true;
+          }
+        } catch (eC) {}
+        return {
+          ok: true, date: r.date, maps_shown: _shown || undefined,
+          instructions: 'These are CHAINED lucky trips: each loop is a sequence of legs, ONE per consecutive Chinese double-hour, ' +
+            'and the polygon RETURNS EXACTLY to the origin (resid km is ~0). Present EACH chain as a numbered option, then its ordered ' +
+            'itinerary leg by leg. For every leg show: the leg number, the DIRECTION (dir), the favourable DOOR (doorLabel, e.g. ' +
+            '"Open 开"), the double-hour (brPy + br, e.g. "Si 巳"), the distance (km), and — when the leg has a "stop" — the NAME of the ' +
+            'real place you stop at (stop.name) and what it is (stop.kind: charger / poi / stopover). A leg with stopUnsnapped:true has ' +
+            'no real place nearby that kept its favourable direction: say so plainly instead of inventing one. ' +
+            'Also show departCn/arriveCn (the Chinese double-hour of leaving/arriving each leg) VERBATIM ' +
+            '— they are already on compensated true-solar-time, never recompute or shift them. State clearly that the trip closes back ' +
+            'on the start within "resid" km. "score" (0-5) is the overall luck of the loop; "sanqiCount" = how many legs carry San Qi. ' +
+            'Do NOT invent directions, doors, times or place names — show only what the tool provides. The final leg returns to the origin.' +
+            (_shown ? ' A card listing every loop, each with a tappable "Open in Google Maps" button carrying the WHOLE ring ' +
+              '(start + every stop + back to the start), HAS ALREADY been shown to the user — tell them to tap the ' +
+              'loop they want; do NOT paste a raw link.' : ''),
+          origin: r.origin, chains: _chains
+        };
+      }
+
+      if (window.TravelPlanner && typeof window.TravelPlanner.snapChainStops === 'function') {
+        var _seq = Promise.resolve();
+        _chains.forEach(function (c) {
+          _seq = _seq.then(function () {
+            return window.TravelPlanner.snapChainStops(c, r.origin, _snapOpts).catch(function () { return c; });
           });
-        }
-      } catch (eB) {}
-      var _shown = false;
-      try {
-        if (window.XKDGChat && typeof window.XKDGChat.addChainTrips === 'function') {
-          window.XKDGChat.addChainTrips({ origin: input.origin_name || (r.origin && r.origin.name) || null,
-            date: r.date, chains: _chains });
-          _shown = true;
-        }
-      } catch (eC) {}
-      return {
-        ok: true, date: r.date, maps_shown: _shown || undefined,
-        instructions: 'These are CHAINED lucky trips: each loop is a sequence of legs, ONE per consecutive Chinese double-hour, ' +
-          'and the polygon RETURNS EXACTLY to the origin (resid km is ~0). Present EACH chain as a numbered option, then its ordered ' +
-          'itinerary leg by leg. For every leg show: the leg number, the DIRECTION (dir), the favourable DOOR (doorLabel, e.g. ' +
-          '"Open 开"), the double-hour (brPy + br, e.g. "Si 巳"), the distance (km), and the leg END coordinates (to.lat, to.lon) so ' +
-          'the user can open it on a map. Also show departCn/arriveCn (the Chinese double-hour of leaving/arriving each leg) VERBATIM ' +
-          '— they are already on compensated true-solar-time, never recompute or shift them. State clearly that the trip closes back ' +
-          'on the start within "resid" km. "score" (0-5) is the overall luck of the loop; "sanqiCount" = how many legs carry San Qi. ' +
-          'Do NOT invent directions, doors or times — show only what the tool provides. The final leg returns to the origin.' +
-          (_shown ? ' A card listing every loop, each with a tappable "Open in Google Maps" button carrying the WHOLE ring ' +
-            '(start + every turning point + back to the start), HAS ALREADY been shown to the user — tell them to tap the ' +
-            'loop they want; do NOT paste a raw link.' : ''),
-        origin: r.origin, chains: _chains
-      };
+        });
+        return _seq.then(_finish).catch(_finish);
+      }
+      return _finish();
     } catch (e) { return { error: 'Chain planning failed: ' + ((e && e.message) || e) }; }
   }
 
@@ -6435,6 +6457,14 @@
           if (lg.brPy) bits.push(lg.brPy + (lg.br ? (' ' + lg.br) : ''));
           box.appendChild(elc('div', { style: 'margin:2px 0 0 4px;color:#555;font-size:12px;' },
             letter(k) + '\u2192' + toL + ' \u00b7 ' + bits.join(' \u00b7 ')));
+          if (lg.stop && lg.stop.name) {
+            var ico = lg.stop.kind === 'charger' ? '\u26A1' : (lg.stop.kind === 'poi' ? '\uD83C\uDF3F' : '\uD83C\uDD7F\uFE0F');
+            box.appendChild(elc('div', { style: 'margin:0 0 2px 20px;color:#2e7d32;font-size:11px;font-weight:600;' },
+              ico + ' ' + lg.stop.name + (lg.stop.power ? (' \u00b7 ' + lg.stop.power + ' kW') : '')));
+          } else if (lg.stopUnsnapped) {
+            box.appendChild(elc('div', { style: 'margin:0 0 2px 20px;color:#b26a00;font-size:11px;' },
+              '\u26A0 no place nearby kept this direction \u2014 open country'));
+          }
           if (lg.departCn) box.appendChild(elc('div', { style: 'margin:0 0 2px 20px;color:#999;font-size:11px;' }, lg.departCn));
         });
 

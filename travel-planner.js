@@ -149,6 +149,37 @@
     dest: { name: 'Rome', lat: 41.9028, lon: 12.4964 }
   };
 
+  // Trip category families shown in the Lucky Trip panel. Module-level (was local to
+  // the panel) so what the user ticks can be read by other features — the chain stop
+  // snapping needs to know what kind of place is worth stopping at.
+  // [icon, label, place-search query]
+  var TP_FAMILIES = [
+    ['\uD83C\uDF3F', 'Sacred nature / off the crowd', 'sacred nature off the crowd'],
+    ['\uD83D\uDD2E', 'Mysterious / energetic', 'mysterious symbolic energetic places'],
+    ['\uD83D\uDED5', 'Spiritual / sacred', 'spiritual places hermitages abbeys sanctuaries'],
+    ['\uD83C\uDF38', 'Healing / wellbeing', 'thermal baths wellness natural healing'],
+    ['\uD83C\uDFDB', 'Deep culture', 'deep culture medieval villages ruins'],
+    ['\uD83C\uDF77', 'Land & tradition', 'organic wineries farms local products'],
+    ['\uD83C\uDFD6', 'Secluded / exclusive beauty', 'secluded beaches alpine lakes hiking exclusive places'],
+    ['\uD83C\uDFAD', 'Events / festivals', 'events festivals'],
+    ['\uD83D\uDDFA', 'Popular classics', 'castles museums villages main attractions']
+  ];
+  var TP_FAMILIES_KEY = 'xkdg_tp_families';
+  // The families the user ticked, as search queries. [] when nothing is ticked.
+  function tpGetTripFamilies() {
+    try {
+      var a = JSON.parse(localStorage.getItem(TP_FAMILIES_KEY) || '[]');
+      if (!Array.isArray(a)) return [];
+      return a.map(function (i) { return TP_FAMILIES[i] && TP_FAMILIES[i][2]; }).filter(Boolean);
+    } catch (e) { return []; }
+  }
+  // Nothing ticked → NATURE first, and a plain one: somewhere you can PARK and WALK —
+  // woods, a lake, a mountain. Not a sacred site (Edu, session 25: "basta anche un posto
+  // dove posso fermarmi con la macchina e fare una bella camminata nel bosco o intorno
+  // ad un lago o in montagna"). The 🌿 family's own query is deliberately narrower and
+  // is used only when the user actually ticks it.
+  var TP_CHAIN_NATURE_QUERY = 'lake forest park nature trail viewpoint with car park';
+
   // Cloudflare Worker proxy (Routes API). Editable in the panel; persisted in localStorage.
   var TP_DEFAULT_WORKER = 'https://xkdg-proxy.decumano16.workers.dev/';
   // Google Places (New) proxy — turns a point+category into a REAL named place.
@@ -1132,7 +1163,135 @@
     if (wps.length > TP_MAPS_MAX_WAYPOINTS) wps = wps.slice(0, TP_MAPS_MAX_WAYPOINTS);
     return tpBuildMapsUrl({ lat: start.lat, lon: start.lon }, dest, wps, null);
   }
-  // ---- Crowd de-emphasis (opt-in "off the beaten path") -----------------------
+  // ── CHAIN STOPS → REAL PLACES ───────────────────────────────────────────────
+  // A chain vertex is where you actually STOP for a whole double-hour, so it must be
+  // a place you can pull into: an EV charger when the car needs charging, otherwise a
+  // POI worth visiting in the categories the user ticked (nature by default), and only
+  // as a last resort a plain stopover so nobody is ever left in the middle of a field
+  // (Edu, session 25: "Non posso fermarmi in mezzo alla strada!").
+  //
+  // The hard constraint: moving a vertex changes the bearing of the leg that ARRIVES
+  // there AND of the leg that LEAVES it, and every leg must keep the favourable
+  // direction it was planned for — measured on the MAGNETIC compass, never the
+  // geographic one. A candidate that breaks any leg is discarded and the next one is
+  // tried; if none fits, the vertex stays where the geometry put it.
+  //
+  // The LAST vertex is home and is never moved.
+  var TP_CHAIN_SNAP_RADII = [5, 12, 25];   // km, widened only if nothing usable is found
+
+  function tpChainMagDir(from, to, decl) {
+    var t = tpBearing(from.lat, from.lon, to.lat, to.lon);   // true bearing
+    return tpSnapDir((t - decl + 360) % 360);                // magnetic → 8-point octant
+  }
+  // Every leg still pointing where it was planned to point?
+  function tpChainLegsHold(legs, decl) {
+    for (var i = 0; i < legs.length; i++) {
+      if (tpChainMagDir(legs[i].from, legs[i].to, decl) !== legs[i].dir) return false;
+    }
+    return true;
+  }
+
+  function tpSnapChainStops(chain, origin, opts) {
+    opts = opts || {};
+    if (!chain || !chain.legs || chain.legs.length < 2) return Promise.resolve(chain);
+    var legs = chain.legs;
+    var start = origin || legs[0].from;
+    var decl = 0;
+    try { decl = tpMagDeclination(start.lat, start.lon) || 0; } catch (e) { decl = 0; }
+
+    var fams = tpGetTripFamilies();
+    var queries = fams.length ? fams : [TP_CHAIN_NATURE_QUERY];
+    var wantCharge = !!opts.evRangeKm;
+
+    // Candidates around a vertex, nearest first: chargers when charging is needed,
+    // then the POI families, then a plain stopover.
+    function candidates(v) {
+      var out = [];
+      var chain1 = wantCharge
+        ? tpFetchChargersMerged({ key: opts.ocmKey || '', lat: v.lat, lon: v.lon, radiusKm: 30, maxResults: 60 })
+            .then(function (st) {
+              (st || []).forEach(function (s) {
+                if (isFinite(s.lat) && isFinite(s.lon)) out.push({ lat: s.lat, lon: s.lon, name: s.name || 'Charger', kind: 'charger', power: s.maxKW, operator: s.operator });
+              });
+            }).catch(function () {})
+        : Promise.resolve();
+      return chain1.then(function () {
+        var seq = Promise.resolve();
+        TP_CHAIN_SNAP_RADII.forEach(function (rad) {
+          queries.forEach(function (q) {
+            seq = seq.then(function () {
+              if (out.length >= 12) return null;
+              return tpFindPlacesList(v.lat, v.lon, rad, null, 8, q).then(function (list) {
+                (list || []).forEach(function (p) {
+                  if (isFinite(p.lat) && isFinite(p.lon)) out.push({ lat: p.lat, lon: p.lon, name: p.name || 'Place', kind: 'poi', query: q });
+                });
+              }).catch(function () {});
+            });
+          });
+        });
+        return seq;
+      }).then(function () {
+        if (out.length) return out;
+        return tpFindStopover(v.lat, v.lon, wantCharge).then(function (s) {
+          if (s && isFinite(s.lat) && isFinite(s.lon)) out.push({ lat: s.lat, lon: s.lon, name: s.name || 'Stopover', kind: s.kind || 'stopover' });
+          return out;
+        }).catch(function () { return out; });
+      }).then(function (list) {
+        // nearest first, and never the same spot twice
+        var seen = {};
+        return list.filter(function (p) {
+          var k = p.lat.toFixed(4) + ',' + p.lon.toFixed(4);
+          if (seen[k]) return false; seen[k] = true; return true;
+        }).sort(function (a, b) {
+          return tpHaversineKm(v.lat, v.lon, a.lat, a.lon) - tpHaversineKm(v.lat, v.lon, b.lat, b.lon);
+        });
+      });
+    }
+
+    // Vertices to move: every leg END except the last (the last one is home).
+    var seq = Promise.resolve();
+    for (var i = 0; i < legs.length - 1; i++) {
+      (function (idx) {
+        seq = seq.then(function () {
+          var geo = { lat: legs[idx].to.lat, lon: legs[idx].to.lon };
+          return candidates(geo).then(function (cands) {
+            for (var c = 0; c < cands.length; c++) {
+              var p = cands[c];
+              // Both adjacent legs must still hold their planned magnetic direction.
+              if (tpChainMagDir(legs[idx].from, p, decl) !== legs[idx].dir) continue;
+              if (tpChainMagDir(p, legs[idx + 1].to, decl) !== legs[idx + 1].dir) continue;
+              legs[idx].to = { lat: p.lat, lon: p.lon };
+              legs[idx + 1].from = { lat: p.lat, lon: p.lon };
+              legs[idx].km = Math.round(tpHaversineKm(legs[idx].from.lat, legs[idx].from.lon, p.lat, p.lon));
+              legs[idx + 1].km = Math.round(tpHaversineKm(p.lat, p.lon, legs[idx + 1].to.lat, legs[idx + 1].to.lon));
+              legs[idx].stop = { name: p.name, kind: p.kind, power: p.power || undefined, operator: p.operator || undefined };
+              return;
+            }
+            legs[idx].stopUnsnapped = true;   // nothing nearby kept the direction
+          });
+        });
+      })(i);
+    }
+    return seq.then(function () {
+      // Final pass: snapping a later vertex can spoil a leg validated earlier. Any leg
+      // that no longer holds → put its END vertex back where the geometry had it. The
+      // fully geometric chain is valid by construction, so this always converges.
+      for (var pass = 0; pass < legs.length; pass++) {
+        if (tpChainLegsHold(legs, decl)) break;
+        for (var i2 = 0; i2 < legs.length; i2++) {
+          if (tpChainMagDir(legs[i2].from, legs[i2].to, decl) === legs[i2].dir) continue;
+          if (i2 >= legs.length - 1) break;                      // last leg ends at home
+          var back = tpDestPoint(legs[i2].from, TP_DIR_DEG[legs[i2].dir] + decl, legs[i2].km || 1);
+          legs[i2].to = { lat: back.lat, lon: back.lon };
+          legs[i2 + 1].from = { lat: back.lat, lon: back.lon };
+          delete legs[i2].stop; legs[i2].stopUnsnapped = true;
+        }
+      }
+      chain.resid = Math.round(tpHaversineKm(legs[legs.length - 1].to.lat, legs[legs.length - 1].to.lon, start.lat, start.lon) * 10) / 10;
+      chain.stopsSnapped = legs.filter(function (l) { return l.stop; }).length;
+      return chain;
+    });
+  }
   // When the traveller wants to stay away from the crowds, a place with very many
   // reviews is treated as slightly "farther" (a mild multiplier on its effective
   // distance) or scored slightly lower. It NEVER overrides the direction/door rule —
@@ -4097,23 +4256,27 @@
 
     // category families (multi-select)
     card.appendChild(el('div', { style: 'font-size:11px;color:#555;margin:6px 0 5px;font-weight:600;' }, 'Categories (pick one or more)'));
-    var FAMILIES = [
-      ['\uD83C\uDF3F', 'Sacred nature / off the crowd', 'sacred nature off the crowd'],
-      ['\uD83D\uDD2E', 'Mysterious / energetic', 'mysterious symbolic energetic places'],
-      ['\uD83D\uDED5', 'Spiritual / sacred', 'spiritual places hermitages abbeys sanctuaries'],
-      ['\uD83C\uDF38', 'Healing / wellbeing', 'thermal baths wellness natural healing'],
-      ['\uD83C\uDFDB', 'Deep culture', 'deep culture medieval villages ruins'],
-      ['\uD83C\uDF77', 'Land & tradition', 'organic wineries farms local products'],
-      ['\uD83C\uDFD6', 'Secluded / exclusive beauty', 'secluded beaches alpine lakes hiking exclusive places'],
-      ['\uD83C\uDFAD', 'Events / festivals', 'events festivals'],
-      ['\uD83D\uDDFA', 'Popular classics', 'castles museums villages main attractions']
-    ];
+    var FAMILIES = TP_FAMILIES;
     var picked = {};
+    // Restore what was ticked last time and persist every change, so the choice
+    // survives the panel closing and can be read by the chain stop snapping.
+    try {
+      var _savedFam = JSON.parse(localStorage.getItem(TP_FAMILIES_KEY) || '[]');
+      if (Array.isArray(_savedFam)) _savedFam.forEach(function (i) { picked[i] = true; });
+    } catch (e) {}
+    function saveFamilies() {
+      try {
+        var out = [];
+        FAMILIES.forEach(function (f, i) { if (picked[i]) out.push(i); });
+        localStorage.setItem(TP_FAMILIES_KEY, JSON.stringify(out));
+      } catch (e) {}
+    }
     var grid = el('div', { style: 'display:flex;flex-direction:column;gap:5px;margin-bottom:12px;' });
     FAMILIES.forEach(function (f, i) {
       var row = el('label', { style: 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;font-size:12px;' });
       var cb = el('input', { type: 'checkbox' });
-      cb.addEventListener('change', function () { picked[i] = cb.checked; });
+      cb.checked = !!picked[i];
+      cb.addEventListener('change', function () { picked[i] = cb.checked; saveFamilies(); });
       row.appendChild(cb);
       row.appendChild(el('span', { style: 'font-size:16px;' }, f[0]));
       row.appendChild(el('span', null, f[1]));
@@ -7619,11 +7782,15 @@
   }
   // LIST variant: returns an array of named places (for a city tour). Best-effort,
   // never throws; [] on any failure so callers degrade gracefully.
-  function tpFindPlacesList(lat, lon, radiusKm, category, max) {
+  function tpFindPlacesList(lat, lon, radiusKm, category, max, rawQuery) {
     try {
       var base = tpPlacesWorkerUrl();
       if (!base) return Promise.resolve([]);
-      var q = tpPlacesQueryFor(category);
+      // rawQuery = a search string already written for the Places worker (the trip
+      // category families are exactly that). Without it the word goes through
+      // tpPlacesQueryFor, which would fall back to 'tourist attraction' for a phrase
+      // that matches no pattern — silently losing the user's chosen kind of place.
+      var q = rawQuery ? String(rawQuery) : tpPlacesQueryFor(category);
       var k = tpPlacesAccessKey();
       var url = base + (base.indexOf('?') >= 0 ? '&' : '?') +
         'q=' + encodeURIComponent(q) + '&lat=' + lat + '&lon=' + lon +
@@ -7880,6 +8047,11 @@
     var hours = tpDayHourSlots(O, dateStr, utc, dstOn, nowMs, marginMs);
     if (hours.length < 2) return { ok: false, reason: 'not_enough_hours', date: dateStr };
 
+    // Local magnetic declination at the loop's start, computed ONCE: every leg is
+    // rotated by the same angle, so the closed polygon stays closed (see the leg loop).
+    var chainDecl = 0;
+    try { chainDecl = tpMagDeclination(O.lat, O.lon) || 0; } catch (eDecl) { chainDecl = 0; }
+
     var chains = [];
     for (var si = 0; si < hours.length; si++) {
       for (var N = 2; N <= maxLegs && si + N <= hours.length; N++) {
@@ -7907,7 +8079,15 @@
               var km = lens[L], durH = km / speed;
               if (durH > 2.2) { ok = false; break; }      // a leg must fit inside its ~2h double-hour
               var from = pts[pts.length - 1];
-              var to = tpDestPoint(from, dirsDeg[L], km);
+              // MAGNETIC → TRUE before projecting on the ground. dirsDeg are compass
+              // directions (N=0, NE=45…) and a compass direction in this method is always
+              // MAGNETIC (Edu, session 23: "le direzioni dei palazzi sono SEMPRE in base
+              // alla bussola magnetica"); tpDestPoint projects on TRUE bearings. The
+              // planner's own convention is magnetic = true − declination, so true =
+              // magnetic + declination. ONE declination for the whole loop (taken at the
+              // origin) makes this a RIGID ROTATION of the polygon, so a chain that closed
+              // before still closes exactly — it is simply turned onto the real compass.
+              var to = tpDestPoint(from, dirsDeg[L] + chainDecl, km);
               var depMs = win[L].startMs, arrMs = depMs + durH * 3600000;
               legs.push({
                 n: L + 1, dir: combo[L].dir, deg: dirsDeg[L], km: Math.round(km),
@@ -8442,6 +8622,8 @@
     openInMaps: function (navigate) { return tpOpenInMaps(!!navigate); },
     buildTourMapsUrl: function (origin, stops, mode) { return tpBuildTourMapsUrl(origin, stops, mode); },
     buildChainMapsUrl: function (chain, origin) { return tpBuildChainMapsUrl(chain, origin); },
+    snapChainStops: function (chain, origin, opts) { return tpSnapChainStops(chain, origin, opts); },
+    getTripFamilies: tpGetTripFamilies,
     diagnoseMapsExport: function () { return tpDiagnoseMapsExport(); },
     getAutoMaps: tpAutoMapsOn,
     setAutoMaps: tpSetAutoMaps,
