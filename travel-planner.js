@@ -1098,6 +1098,40 @@
     parts.push('travelmode=' + m);
     return parts.join('&');
   }
+  // Build ONE driving link for a CLOSED CHAIN loop (plan_lucky_chain). A chain is
+  // origin → leg1.to → leg2.to → … → lastLeg.to, and the last leg lands back on the
+  // origin (within chain.resid km). So: origin = the start, one waypoint per leg END
+  // except the last, destination = the last leg's end. Google letters them A, B, C…
+  // and the ring reads A→B→C→D→E with E on top of A — the loop the user planned,
+  // every turning point pinned, in one link.
+  //
+  // COORDINATES on purpose. A leg end is a GEOMETRIC point: it was chosen so the loop
+  // closes AND each leg keeps its favourable direction inside its own double-hour.
+  // Snapping it to a nearby named POI would MOVE it and could change that leg's
+  // bearing — the direction rule outranks a prettier pin. Google labels each
+  // coordinate with the nearest place on its own; the route still runs through the
+  // exact point we computed.
+  //
+  // Separate from every other Maps export so the single-leg driving link is untouched.
+  function tpBuildChainMapsUrl(chain, origin) {
+    if (!chain || !chain.legs || !chain.legs.length) return null;
+    var legs = chain.legs;
+    var start = origin || legs[0].from;
+    if (!start || !isFinite(start.lat) || !isFinite(start.lon)) return null;
+    var ends = [];
+    for (var i = 0; i < legs.length; i++) {
+      var t = legs[i] && legs[i].to;
+      if (!t || !isFinite(t.lat) || !isFinite(t.lon)) return null;   // incomplete chain → no link at all
+      ends.push({ lat: t.lat, lon: t.lon });
+    }
+    var dest = ends[ends.length - 1];
+    var wps = ends.slice(0, ends.length - 1);
+    // Maps keeps a limited number of waypoints. A chain has at most 5 legs, so this
+    // can only bite on malformed input; trimming from the far end keeps the first
+    // turning points (the ones reached first).
+    if (wps.length > TP_MAPS_MAX_WAYPOINTS) wps = wps.slice(0, TP_MAPS_MAX_WAYPOINTS);
+    return tpBuildMapsUrl({ lat: start.lat, lon: start.lon }, dest, wps, null);
+  }
   // ---- Crowd de-emphasis (opt-in "off the beaten path") -----------------------
   // When the traveller wants to stay away from the crowds, a place with very many
   // reviews is treated as slightly "farther" (a mild multiplier on its effective
@@ -8407,6 +8441,7 @@
     getLastResult: function () { return window._tpLastResult || null; },
     openInMaps: function (navigate) { return tpOpenInMaps(!!navigate); },
     buildTourMapsUrl: function (origin, stops, mode) { return tpBuildTourMapsUrl(origin, stops, mode); },
+    buildChainMapsUrl: function (chain, origin) { return tpBuildChainMapsUrl(chain, origin); },
     diagnoseMapsExport: function () { return tpDiagnoseMapsExport(); },
     getAutoMaps: tpAutoMapsOn,
     setAutoMaps: tpSetAutoMaps,

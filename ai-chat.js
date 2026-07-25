@@ -3253,8 +3253,28 @@
             'Explain this plainly and offer to try tomorrow (call again with date=' + tmrStr + ') or to allow more legs.'
         };
       }
+      // ONE Maps link per loop — the whole ring, not a single leg (session 25).
+      // Built by the planner (it owns every Maps export), attached to each chain,
+      // then shown as a card with a tappable button: a real tap is never pop-up
+      // blocked, and the model must not paste raw links.
+      var _chains = r.chains || [];
+      try {
+        if (window.TravelPlanner && typeof window.TravelPlanner.buildChainMapsUrl === 'function') {
+          _chains.forEach(function (c) {
+            try { c.maps_url = window.TravelPlanner.buildChainMapsUrl(c, r.origin) || undefined; } catch (eU) {}
+          });
+        }
+      } catch (eB) {}
+      var _shown = false;
+      try {
+        if (window.XKDGChat && typeof window.XKDGChat.addChainTrips === 'function') {
+          window.XKDGChat.addChainTrips({ origin: input.origin_name || (r.origin && r.origin.name) || null,
+            date: r.date, chains: _chains });
+          _shown = true;
+        }
+      } catch (eC) {}
       return {
-        ok: true, date: r.date,
+        ok: true, date: r.date, maps_shown: _shown || undefined,
         instructions: 'These are CHAINED lucky trips: each loop is a sequence of legs, ONE per consecutive Chinese double-hour, ' +
           'and the polygon RETURNS EXACTLY to the origin (resid km is ~0). Present EACH chain as a numbered option, then its ordered ' +
           'itinerary leg by leg. For every leg show: the leg number, the DIRECTION (dir), the favourable DOOR (doorLabel, e.g. ' +
@@ -3262,8 +3282,11 @@
           'the user can open it on a map. Also show departCn/arriveCn (the Chinese double-hour of leaving/arriving each leg) VERBATIM ' +
           '— they are already on compensated true-solar-time, never recompute or shift them. State clearly that the trip closes back ' +
           'on the start within "resid" km. "score" (0-5) is the overall luck of the loop; "sanqiCount" = how many legs carry San Qi. ' +
-          'Do NOT invent directions, doors or times — show only what the tool provides. The final leg returns to the origin.',
-        origin: r.origin, chains: r.chains
+          'Do NOT invent directions, doors or times — show only what the tool provides. The final leg returns to the origin.' +
+          (_shown ? ' A card listing every loop, each with a tappable "Open in Google Maps" button carrying the WHOLE ring ' +
+            '(start + every turning point + back to the start), HAS ALREADY been shown to the user — tell them to tap the ' +
+            'loop they want; do NOT paste a raw link.' : ''),
+        origin: r.origin, chains: _chains
       };
     } catch (e) { return { error: 'Chain planning failed: ' + ((e && e.message) || e) }; }
   }
@@ -6364,6 +6387,75 @@
       return out.join('\n');
     }
 
+    // Injected after plan_lucky_chain: one box per closed loop, its legs in order,
+    // and ONE "Open in Google Maps" button per loop carrying the WHOLE ring
+    // (start + every turning point + back to the start). The tap is a real user
+    // gesture, so the pop-up is not blocked.
+    function addChainBubble(payload) {
+      payload = payload || {};
+      var chains = payload.chains || [];
+      if (!chains.length) return null;
+      var L = ITIN_LBL[chatLang()] || ITIN_LBL.en;
+      var wrap = elc('div', { style:
+        'max-width:92%;align-self:flex-start;background:#fff;border:1px solid #cfe6d2;color:#222;' +
+        'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:13px;line-height:1.5;word-wrap:break-word;' });
+      wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:5px;color:#2e7d32;' },
+        '\uD83D\uDD01 Lucky chain' + (payload.origin ? (' \u00b7 ' + payload.origin) : '') +
+        (payload.date ? (' \u00b7 ' + payload.date) : '')));
+
+      function openUrl(u, btn) {
+        var w = null;
+        try { w = window.open(u, '_blank'); } catch (e) {}
+        if (!w) { try { window.location.href = u; } catch (e) {} }
+        if (btn) btn.textContent = L.opened;
+      }
+      function letter(i) { return String.fromCharCode(65 + (i % 25)); }
+
+      chains.forEach(function (c, ci) {
+        var legs = c.legs || [];
+        if (!legs.length) return;
+        var box = elc('div', { style: 'margin:6px 0;padding:6px 8px;background:#f5faf5;border:1px solid #e0efe1;border-radius:9px;' });
+
+        var head = elc('div', { style: 'display:flex;align-items:center;gap:7px;' });
+        head.appendChild(elc('span', { style: 'flex:1;min-width:0;font-weight:600;' },
+          '#' + (ci + 1) + ' \u00b7 ' + legs.length + ' legs \u00b7 ' +
+          legs.map(function (lg) { return lg.dir; }).join('\u2192') + '\u2192home'));
+        if (c.score != null) head.appendChild(elc('span', { style:
+          'background:#e0efe1;color:#2e7d32;font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 7px;flex:none;' },
+          'score ' + c.score));
+        box.appendChild(head);
+
+        // One line per leg: the map letter it drives TO (the last one returns to A),
+        // the direction, the door and the double-hour — the same fields the text answer uses.
+        legs.forEach(function (lg, k) {
+          var toL = (k === legs.length - 1) ? 'A' : letter(k + 1);
+          var bits = [lg.dir];
+          if (lg.km != null) bits.push(lg.km + ' km');
+          if (lg.doorLabel) bits.push('\uD83D\uDEAA ' + lg.doorLabel);
+          if (lg.brPy) bits.push(lg.brPy + (lg.br ? (' ' + lg.br) : ''));
+          box.appendChild(elc('div', { style: 'margin:2px 0 0 4px;color:#555;font-size:12px;' },
+            letter(k) + '\u2192' + toL + ' \u00b7 ' + bits.join(' \u00b7 ')));
+          if (lg.departCn) box.appendChild(elc('div', { style: 'margin:0 0 2px 20px;color:#999;font-size:11px;' }, lg.departCn));
+        });
+
+        if (c.resid != null) box.appendChild(elc('div', { style: 'margin:3px 0 0 4px;color:#2e7d32;font-size:11px;' },
+          '\u21BB closes on the start (' + c.resid + ' km)'));
+
+        if (c.maps_url) {
+          var b = elc('button', { style:
+            'margin:6px 0 0 4px;background:#2e7d32;color:#fff;border:0;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;' },
+            L.openMaps);   // L.openMaps already carries the 📍 — do not prefix another one
+          b._u = c.maps_url;
+          b.addEventListener('click', function () { openUrl(b._u, b); });
+          box.appendChild(b);
+        }
+        wrap.appendChild(box);
+      });
+
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
     // Injected after a single-day LUCKY TRIP: one row per option (direction + real
     // place + times + score) with a per-option map button, plus a share button.
     function addDayTripBubble(payload) {
@@ -7248,6 +7340,7 @@
     window.XKDGChat = {
       open: openPanel, close: closePanel, setUrl: setUrl, getUrl: getUrl,
       addItinerary: function (payload) { try { openPanel(); return addItineraryBubble(payload); } catch (e) { return null; } },
+      addChainTrips: function (payload) { try { openPanel(); return addChainBubble(payload); } catch (e) { return null; } },
       addCityTour: function (payload) { try { openPanel(); return addCityTourBubble(payload); } catch (e) { return null; } },
       addMultiDay: function (payload) { try { openPanel(); return addMultiDayBubble(payload); } catch (e) { return null; } },
       addMobileTour: function (payload) { try { openPanel(); return addMobileTourBubble(payload); } catch (e) { return null; } },
