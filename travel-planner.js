@@ -1200,8 +1200,25 @@
     try { decl = tpMagDeclination(start.lat, start.lon) || 0; } catch (e) { decl = 0; }
 
     var fams = tpGetTripFamilies();
-    var queries = fams.length ? fams : [TP_CHAIN_NATURE_QUERY];
-    var wantCharge = !!opts.evRangeKm;
+    // Per-run override (the user asking "redo it with castles only"), else what is ticked
+    // in the panel, else nature.
+    var queries = (opts.categories && opts.categories.length) ? opts.categories
+                : (fams.length ? fams : [TP_CHAIN_NATURE_QUERY]);
+
+    // WHEN is a charger the right stop? Only when the loop does NOT fit in what is left
+    // in the battery (Edu, session 25: "I punti di sosta DEVONO coincidere con le aree di
+    // ricarica elettrica e, se non c'è bisogno di ricaricare DEVONO coincidere con dei POI
+    // che vale la pena visitare"). Having a range CONFIGURED is not a reason to charge —
+    // an electric car with a full battery on a 150 km loop needs a walk, not a plug.
+    var loopKm = 0;
+    for (var lk = 0; lk < legs.length; lk++) loopKm += (legs[lk].km || 0);
+    var rangeKm = (opts.rangeKm > 0) ? opts.rangeKm : 0;              // km left RIGHT NOW
+    var reservePct = (opts.reservePct >= 0 && opts.reservePct < 90) ? opts.reservePct : 15;
+    var usableKm = rangeKm > 0 ? rangeKm * (1 - reservePct / 100) : 0;
+    var wantCharge = !opts.noCharging && rangeKm > 0 && loopKm > usableKm;
+    chain.chargeNeeded = wantCharge;
+    chain.loopKm = Math.round(loopKm);
+    chain.usableKm = Math.round(usableKm);
 
     // Candidates around a vertex, nearest first: chargers when charging is needed,
     // then the POI families, then a plain stopover.

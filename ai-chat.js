@@ -756,7 +756,9 @@
           date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
           max_legs: { type: 'integer', description: 'Maximum legs before returning home (2-5, default 5).' },
           max_leg_km: { type: 'number', description: 'Maximum length of a single leg in km (default 140).' },
-          count: { type: 'integer', description: 'How many distinct loops to return (2-6, default 5).' }
+          count: { type: 'integer', description: 'How many distinct loops to return (2-6, default 5).' },
+          no_charging: { type: 'boolean', description: 'Set TRUE when the user does not want charging stops ("without the chargers", "senza le colonnine", "the car is full"). The loop is then rebuilt with places worth visiting at every stop. NEVER hand-build or hand-edit a Google Maps link and NEVER tell the user to edit the route in Maps: call this tool again with no_charging:true and a fresh card with a correct link is shown. By default a charger is proposed ONLY when the loop does not fit in the range left in the battery.' },
+          categories: { type: 'array', items: { type: 'string' }, description: 'OPTIONAL kinds of place to stop at, in the user\'s own words ("castles", "thermal baths", "lakes and woods", "medieval villages"). Overrides the categories ticked in the Lucky Trip panel FOR THIS RUN. Use it whenever the user asks to redo the loop with different stops — an itinerary that no longer suits them is simply rebuilt, never patched.' }
         },
         required: []
       }
@@ -3257,13 +3259,19 @@
       // needs charging, else a POI in the ticked categories (nature by default), else a
       // plain stopover. Only THEN build the link, so the button never lands in a field.
       var _chains = r.chains || [];
-      var _evRange = 0, _ocmKey = '';
-      try { var _rEl = document.getElementById('tp-range'); _evRange = _rEl ? (parseFloat(_rEl.value) || 0) : 0; } catch (eR) {}
+      var _range = 0, _reserve = 15, _ocmKey = '';
+      try { var _rEl = document.getElementById('tp-range'); _range = _rEl ? (parseFloat(_rEl.value) || 0) : 0; } catch (eR) {}
+      try { var _resEl = document.getElementById('tp-reserve'); var _rv = _resEl ? parseFloat(_resEl.value) : NaN; if (isFinite(_rv)) _reserve = _rv; } catch (eRs) {}
       try {
         var _ek = document.getElementById('tp-ocm-key-edit'), _rk = document.getElementById('tp-ocm-key');
         _ocmKey = (_ek && _ek.style.display !== 'none' && (_ek.value || '').trim()) ? _ek.value.trim() : ((_rk && _rk.value) || '').trim();
       } catch (eK) {}
-      var _snapOpts = { evRangeKm: _evRange, ocmKey: _ocmKey };
+      // rangeKm is what is LEFT in the battery right now (the SoC worker writes it), so a
+      // charger is only ever proposed when the loop does not fit in it. no_charging lets
+      // the user say "without the chargers" and get a REBUILT itinerary, instead of being
+      // told to edit the link by hand.
+      var _snapOpts = { rangeKm: _range, reservePct: _reserve, ocmKey: _ocmKey, noCharging: !!input.no_charging,
+        categories: Array.isArray(input.categories) ? input.categories.map(function (s) { return String(s || '').trim(); }).filter(Boolean) : null };
 
       function _finish() {
         try {
@@ -3289,6 +3297,9 @@
             '"Open 开"), the double-hour (brPy + br, e.g. "Si 巳"), the distance (km), and — when the leg has a "stop" — the NAME of the ' +
             'real place you stop at (stop.name) and what it is (stop.kind: charger / poi / stopover). A leg with stopUnsnapped:true has ' +
             'no real place nearby that kept its favourable direction: say so plainly instead of inventing one. ' +
+            'A chain carries chargeNeeded/loopKm/usableKm: chargers are proposed ONLY when the loop does not fit in the range ' +
+            'left in the battery. If the user does not want charging stops, or says the car is full, call this tool AGAIN with ' +
+            'no_charging:true — do NOT tell them to edit the route inside Google Maps and do NOT write a Maps link yourself. ' +
             'Also show departCn/arriveCn (the Chinese double-hour of leaving/arriving each leg) VERBATIM ' +
             '— they are already on compensated true-solar-time, never recompute or shift them. State clearly that the trip closes back ' +
             'on the start within "resid" km. "score" (0-5) is the overall luck of the loop; "sanqiCount" = how many legs carry San Qi. ' +
