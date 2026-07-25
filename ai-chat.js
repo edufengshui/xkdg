@@ -662,7 +662,7 @@
           dest_lat: { type: 'number', description: 'Destination latitude.' },
           dest_lon: { type: 'number', description: 'Destination longitude.' },
           dest_name: { type: 'string', description: 'Destination place name (for labels).' },
-          origin_lat: { type: 'number', description: 'Origin latitude (defaults to saved GPS if omitted).' },
+          origin_lat: { type: 'number', description: 'Origin latitude (defaults to a FRESH GPS fix if omitted).' },
           origin_lon: { type: 'number', description: 'Origin longitude.' },
           origin_name: { type: 'string', description: 'Origin place name (for labels).' },
           depart_date: { type: 'string', description: 'Departure date YYYY-MM-DD (default today).' },
@@ -694,7 +694,7 @@
           dest_lat: { type: 'number', description: 'Destination latitude.' },
           dest_lon: { type: 'number', description: 'Destination longitude.' },
           dest_name: { type: 'string', description: 'Destination place name.' },
-          origin_lat: { type: 'number', description: 'Origin latitude (defaults to saved GPS if omitted).' },
+          origin_lat: { type: 'number', description: 'Origin latitude (defaults to a FRESH GPS fix if omitted).' },
           origin_lon: { type: 'number', description: 'Origin longitude.' },
           origin_name: { type: 'string', description: 'Origin place name.' },
           start_date: { type: 'string', description: 'First day to consider, YYYY-MM-DD (default today).' },
@@ -720,7 +720,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          origin_lat: { type: 'number', description: 'Start latitude (defaults to saved GPS, else the app default).' },
+          origin_lat: { type: 'number', description: 'Start latitude (defaults to a FRESH GPS fix, else the app default).' },
           origin_lon: { type: 'number', description: 'Start longitude.' },
           origin_name: { type: 'string', description: 'Start place name (for labels).' },
           date: { type: 'string', description: 'Day YYYY-MM-DD (default today). PAST dates ARE allowed here, to REVIEW/ANALYSE a lucky trip that already happened.' },
@@ -750,7 +750,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          origin_lat: { type: 'number', description: 'Start latitude (defaults to saved GPS, else the app default).' },
+          origin_lat: { type: 'number', description: 'Start latitude (defaults to a FRESH GPS fix, else the app default).' },
           origin_lon: { type: 'number', description: 'Start longitude.' },
           origin_name: { type: 'string', description: 'Start place name (for labels).' },
           date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
@@ -774,7 +774,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          origin_lat: { type: 'number', description: 'Base latitude (defaults to saved GPS, else the app default).' },
+          origin_lat: { type: 'number', description: 'Base latitude (defaults to a FRESH GPS fix, else the app default).' },
           origin_lon: { type: 'number', description: 'Base longitude.' },
           origin_name: { type: 'string', description: 'Base place name (for labels).' },
           start_date: { type: 'string', description: 'First day YYYY-MM-DD (default today).' },
@@ -825,7 +825,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          origin_lat: { type: 'number', description: 'City centre / hotel latitude (defaults to saved GPS).' },
+          origin_lat: { type: 'number', description: 'City centre / hotel latitude (defaults to a FRESH GPS fix).' },
           origin_lon: { type: 'number', description: 'City centre / hotel longitude.' },
           origin_name: { type: 'string', description: 'City / base name (for labels).' },
           date: { type: 'string', description: 'Day YYYY-MM-DD (default today).' },
@@ -851,7 +851,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          origin_lat: { type: 'number', description: 'Base latitude (defaults to saved GPS).' },
+          origin_lat: { type: 'number', description: 'Base latitude (defaults to a FRESH GPS fix).' },
           origin_lon: { type: 'number', description: 'Base longitude.' },
           origin_name: { type: 'string', description: 'Base name (for labels).' },
           date_from: { type: 'string', description: 'Window start YYYY-MM-DD (default today).' },
@@ -878,7 +878,7 @@
           dest_lat: { type: 'number', description: 'Destination latitude.' },
           dest_lon: { type: 'number', description: 'Destination longitude.' },
           dest_name: { type: 'string', description: 'Destination place name.' },
-          origin_lat: { type: 'number', description: 'Origin latitude (defaults to saved GPS if omitted).' },
+          origin_lat: { type: 'number', description: 'Origin latitude (defaults to a FRESH GPS fix if omitted).' },
           origin_lon: { type: 'number', description: 'Origin longitude.' },
           origin_name: { type: 'string', description: 'Origin place name.' },
           arrive_date: { type: 'string', description: 'Target arrival date YYYY-MM-DD (default today).' },
@@ -1861,6 +1861,31 @@
         return window.TravelPlanner.diagnoseMapsExport();
       return { error: 'The travel planner is not available on this page.' };
     } catch (e) { return { error: String((e && e.message) || e) }; }
+  }
+
+  // ── UNSTATED ORIGIN → FRESH GPS (Edu, session 25) ──────────────────────────
+  // "se non scrivo niente l'origine deve essere il GPS fresco". Until now a travel
+  // tool called without origin coordinates fell back to the SAVED position, and if
+  // there was none the planner used TP_DEFAULT.origin — Vienna's Stephansplatz
+  // (48.2082/16.3738), i.e. a trip that never started where the user was.
+  // Rather than editing the nine tools that each read window._lastGpsLat, the fix
+  // takes the fresh fix HERE, before dispatch: freshGps() updates _lastGpsLat/_lastGpsLng
+  // on success, so every tool below reads the fresh value through its existing code.
+  // An explicit origin always wins, and a tool that already takes its own fix
+  // (from_current_position) is left alone so the GPS is never asked twice.
+  var GPS_ORIGIN_TOOLS = {
+    plan_travel: 1, search_travel: 1, plan_lucky_day_trip: 1, plan_lucky_chain: 1,
+    plan_lucky_multiday: 1, plan_mobile_tour: 1, plan_city_tour: 1, plan_lucky_events: 1,
+    plan_arrive_by: 1
+  };
+  function ensureFreshOrigin(name, input) {
+    try {
+      if (!GPS_ORIGIN_TOOLS[name]) return Promise.resolve(null);
+      var i = input || {};
+      if (i.origin_lat != null && i.origin_lon != null) return Promise.resolve(null);  // explicit origin wins
+      if (i.from_current_position) return Promise.resolve(null);                        // tool takes its own fix
+      return freshGps(10000);   // never rejects: falls back to the saved fix, else null
+    } catch (e) { return Promise.resolve(null); }
   }
 
   function execTool(name, input) {
@@ -3246,7 +3271,7 @@
   // Acquire a FRESH GPS fix (for "replan from here"). Resolves { lat, lon, fresh } —
   // fresh:false means the fix timed out/failed and we fell back to the SAVED position;
   // resolves null when no position at all is available. Never rejects. A good fix also
-  // updates the saved GPS so every later "defaults to saved GPS" tool sees the real spot.
+  // updates the saved GPS so every later "defaults to a FRESH GPS fix" tool sees the real spot.
   function freshGps(timeoutMs) {
     var TO = timeoutMs || 12000;
     return new Promise(function (resolve) {
@@ -7148,7 +7173,8 @@
                   resolve({ type: 'tool_result', tool_use_id: tu.id,
                     content: JSON.stringify({ error: 'Tool "' + tu.name + '" timed out — try a smaller request (fewer themes/days or a smaller radius).' }) });
                 }, TIMEOUT_MS);
-                Promise.resolve().then(function () { return execTool(tu.name, tu.input); })
+                Promise.resolve().then(function () { return ensureFreshOrigin(tu.name, tu.input); })
+                  .then(function () { return execTool(tu.name, tu.input); })
                   .catch(function (e) { return { error: String((e && e.message) || e) }; })
                   .then(function (out) {
                     if (settled) return; settled = true; clearTimeout(timer);
