@@ -3821,10 +3821,15 @@
     purWrap.appendChild(el('div', { style: 'font-size:11px;font-weight:700;color:#6a1b9a;margin-bottom:5px;' }, '\ud83c\udfaf PURPOSE (applies to all sections below)'));
     var purSel = el('select', { id: 'xkdg-dir-purpose-select', style: 'width:100%;padding:6px 8px;border-radius:4px;border:1px solid #6a1b9a;font-size:12px;font-weight:bold;color:#6a1b9a;' });
     [['', '\u2014 Any \u2014'], ['health', '\ud83c\udfe5 Health'], ['career', '\ud83d\udcbc Career'], ['wealth', '\ud83d\udcb0 Wealth'],
-     ['relationship', '\u2764\ufe0f Relationship'], ['journey', '\u2708\ufe0f Journey'], ['speak', '\ud83c\udfa4 Speak'], ['legal', '\u2696\ufe0f Legal']]
+     ['relationship', '\u2764\ufe0f Relationship'], ['journey', '\u2708\ufe0f Journey'], ['speak', '\ud83c\udfa4 Speak'], ['legal', '\u2696\ufe0f Legal'],
+     ['test', '\ud83e\uddea TEST \u2014 Injury \u50b7 only']]
       .forEach(function (opt) { purSel.appendChild(el('option', { value: opt[0] }, opt[1])); });
     try { var _mainPur = document.getElementById('purpose-select'); if (_mainPur) purSel.value = _mainPur.value || ''; } catch (e) {}
     purSel.addEventListener('change', function () {
+      // 'test' exists ONLY in this menu (Edu: "nei Purposes dentro Direction"). Writing it
+      // into #purpose-select would silently blank that select, so the sync is skipped for it
+      // and the main Purpose keeps whatever it had.
+      if (purSel.value === 'test') return;
       try { var _mp = document.getElementById('purpose-select'); if (_mp) _mp.value = purSel.value; } catch (e) {}
     });
     purWrap.appendChild(purSel);
@@ -3855,9 +3860,25 @@
           }
           var html = '';
           rows.slice(0, 25).forEach(function (r) {
-            html += '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 4px;border-bottom:1px solid #f0f0f0;font-size:12px;">' +
-              '<span>' + r.date + ' \u00b7 ' + r.weekday + ' \u00b7 ' + r.hourHan + '</span>' +
+            // Detail line (added session 25): the stem pair, door, spirit and star of the
+            // matched palace, so a result can be checked against the chart without opening it.
+            var det = '';
+            try {
+              var c = r.cell || {}, bits = [];
+              if (c.tiH || c.diH) bits.push((c.tiH || '') + '\u2191' + (c.diH || ''));
+              if (c.doorName) bits.push(c.doorName);
+              if (c.deity) bits.push(c.deity);
+              if (c.star) bits.push(c.star);
+              det = bits.join(' \u00b7 ');
+            } catch (eD) {}
+            var starred = !!r.wuBingStar;
+            html += '<div style="padding:6px 4px;border-bottom:1px solid #f0f0f0;font-size:12px;' +
+              (starred ? 'background:#fff8e1;border-left:3px solid #f9a825;padding-left:6px;' : '') + '">' +
+              '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+              '<span>' + (starred ? '\u2605 ' : '') + r.date + ' \u00b7 ' + r.weekday + ' \u00b7 ' + r.hourHan + '</span>' +
               '<span style="font-weight:700;color:#6a1b9a;">' + r.dir + '</span>' +
+              '</div>' +
+              (det ? '<div style="font-size:10px;color:#777;margin-top:2px;">' + det + '</div>' : '') +
               '</div>';
           });
           scanBox.innerHTML = html;

@@ -190,7 +190,15 @@
     journey:      { doors:['Xiu'],          allowNonFav:false, label:'Journey',      mainPurpose:'journey' },
     speak:        { doors:['JingS'],        allowNonFav:false, label:'Speak',        mainPurpose:'speak' },
     legal:        { doors:['JingF'],        allowNonFav:true,  label:'Legal',        mainPurpose:'legal' },  // JingF 驚 redento dal San Qi
-    water:        { doors:null,             allowNonFav:false, wuBonus:true, label:'Water',        mainPurpose:'',     isWater:true }  // any fav door; palace from house profile
+    water:        { doors:null,             allowNonFav:false, wuBonus:true, label:'Water',        mainPurpose:'',     isWater:true },  // any fav door; palace from house profile
+    // TEST (Edu, session 25) — EXCLUSIVELY the Injury door 傷門, redeemed by San Qi
+    // 乙丙丁 OR Wu 戊 (the standard travel redemption already in directionGate §2).
+    // Spirits: nothing new to add — Warrior 玄武 is already excluded everywhere by
+    // formationFlags §1, Tiger 白虎 self-excludes here (it needs a FAVOURABLE door and
+    // 傷 is not one), Snake 螣蛇 is admitted by Edu's explicit choice.
+    // `wuBingStar` era il flag che limitava la stella 戊丙 a questo purpose; ora la stella
+    // vale per tutti (Edu, session 25), il flag resta solo come documentazione.
+    test:         { doors:['Shang'],        allowNonFav:true,  wuBingStar:true, label:'TEST Injury 傷', mainPurpose:'' }
   };
 
   function jiaZiIdx(stem, branch){
@@ -510,7 +518,21 @@
 
     var hits = checkRotatingPalace(chart, palace) || [];
     var score = hits.length + (gate.reasons.length ? 0.5 : 0);   // same shape as the flying score, redemptions count as a soft plus
+
+    // 戊↑丙 / 丙↑戊 (青龍返首 / 飛鳥跌穴) — the flying-chart path already stars this pair;
+    // the rotating path did not. Added here for EVERY purpose (Edu, session 25: "il bonus
+    // Wu e Bing o il contrario deve valere per tutti i purposes"), including the unfiltered
+    // "Any" scan. +10 puts these on top of the sorted list.
+    var wuBingStar = false;
+    if((cellInfo.ti === 'Wu' && cellInfo.di === 'Bing') || (cellInfo.ti === 'Bing' && cellInfo.di === 'Wu')){
+      wuBingStar = true;
+      score += 10;
+      hits = hits.concat([{ cat:'combo',
+        label: (cellInfo.ti === 'Wu' ? '\u620a\u2191\u4e19' : '\u4e19\u2191\u620a') + ' \u2605' }]);
+    }
+
     return { matched: true, hits: hits, score: score, cell: cellInfo, flags: flags.reasons,
+             wuBingStar: wuBingStar,
              purposeDoor: purpose ? cellInfo.doorCode : null };
   }
 
@@ -549,6 +571,7 @@
               cell: res.cell,
               palace: pal,
               dir: _PAL_DIR[pal] || '?',
+              wuBingStar: !!res.wuBingStar,
               purposeDoor: res.purposeDoor || null
             });
           }
