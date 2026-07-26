@@ -551,6 +551,23 @@
 
   var TOOLS = [
     {
+      name: 'export_lucky_calendar',
+      description: 'Build a .ics calendar file of the ABSOLUTE best hours over the next months and download it, so the user can ' +
+        'add it to Google Calendar on the phone. Three separate sectors, each with its own maximum computed independently: ' +
+        'WATER (both aquariums, from the saved house profiles \u2014 only the highest Tier that occurs in the period), ' +
+        'XKDG tied to the loaded person (only the top score of the period), and DIRECTIONS (only the top score of the period). ' +
+        'The three scales are NOT comparable and are never added together. Every event carries its sector in the title and an ' +
+        'alarm the evening before at 21:00. Use when the user asks for a calendar, an .ics, or to be warned in advance about the ' +
+        'best hours. After it runs, report by_sector honestly, including any sector that produced nothing.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          days: { type: 'integer', description: 'How far ahead to look, in days. Default 90 (three months).' },
+          start_date: { type: 'string', description: 'YYYY-MM-DD, defaults to today.' }
+        }
+      }
+    },
+    {
       name: 'find_good_dates',
       description: 'Run the app\'s date scan for the currently loaded person(s) and return the best day/hours, ' +
         'best score first. Use for "what is a good date in the next days" or "list positive dates for ' +
@@ -1930,9 +1947,199 @@
     } catch (e) { return null; }
   }
 
+  // ── LUCKY CALENDAR (.ics) ───────────────────────────────────────────────────
+  // Edu, session 25: a calendar on the phone that flags the ABSOLUTE best hours over
+  // three months, in three separate worlds, each event saying which world it belongs to.
+  //
+  // The three scales are NOT comparable and are never mixed (that was the old
+  // combined_score mistake): water has real Tiers 1-4, the person's XKDG scan has its own
+  // score, the direction scan has another. So the maximum is computed SEPARATELY inside
+  // each world, over the whole period, and only the hours that reach their own maximum
+  // become events. That is "solo il massimo assoluto", not "the best of each month".
+  //
+  // Every time is converted from TRUE SOLAR to CIVIL through the same _solarToEpoch used
+  // by the aquarium scheduler — a calendar entry at the wrong clock time is worse than no
+  // calendar at all. The alarm fires the evening before at 21:00 civil.
+  var _ICS_BRANCHES = ['\u5b50','\u4e11','\u5bc5','\u536f','\u8fb0','\u5df3','\u5348','\u672a','\u7533','\u9149','\u620c','\u4ea5'];
+
+  function _icsEsc(s) {
+    return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;')
+      .replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  }
+  function _icsUtc(ms) {
+    var d = new Date(ms), p = function (n) { return String(n).length < 2 ? '0' + n : String(n); };
+    return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + 'T' +
+           p(d.getUTCHours()) + p(d.getUTCMinutes()) + '00Z';
+  }
+  // RFC 5545 wants lines under 75 octets, continued with a leading space.
+  function _icsFold(line) {
+    if (line.length <= 73) return line;
+    var out = line.slice(0, 73), rest = line.slice(73);
+    while (rest.length) { out += '\r\n ' + rest.slice(0, 72); rest = rest.slice(72); }
+    return out;
+  }
+  function _icsPrevEvening(iso, utc) {
+    try {
+      var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - 1);
+      var prev = d.getFullYear() + '-' + (d.getMonth() + 1 < 10 ? '0' : '') + (d.getMonth() + 1) +
+                 '-' + (d.getDate() < 10 ? '0' : '') + d.getDate();
+      return _civilToEpoch(prev, 21 * 60, utc);
+    } catch (e) { return NaN; }
+  }
+
+  function toolExportLuckyCalendar(input) {
+    input = input || {};
+    var days = parseInt(input.days, 10) || 90;
+    var start = input.start_date || todayIso();
+    var lon = 12.49, utc = 1;
+    try { var lEl = document.getElementById('longitude'); if (lEl && isFinite(parseFloat(lEl.value))) lon = parseFloat(lEl.value); } catch (e) {}
+    try { var uEl = document.getElementById('utc-offset'); if (uEl && isFinite(parseFloat(uEl.value))) utc = parseFloat(uEl.value); } catch (e) {}
+
+    var events = [], report = {};
+
+    function push(kind, iso, branch, label, detail, evLon, evUtc) {
+      var sm = _BRANCH_SOLAR_MIN[branch];
+      if (sm == null) return;
+      var on = _solarToEpoch(iso, sm, evLon, evUtc);
+      if (!isFinite(on)) return;
+      events.push({ kind: kind, date: iso, branch: branch, title: label, detail: detail,
+                    start: on, end: on + 120 * 60000, utc: evUtc });
+    }
+
+    // (1) WATER — both aquariums, from the saved house profiles. Only the highest tier
+    //     that actually occurs in the period, across both houses.
+    try {
+      var waterRows = [];
+      ['vienna', 'tuoro'].forEach(function (hn) {
+        try {
+          var rh = _resolveShellyHouse(hn); if (!rh) return;
+          try { if (window.XKDGHouse && window.XKDGHouse.resolveByName) { var rb = window.XKDGHouse.resolveByName(rh.name); if (rb && window.XKDGHouse.activate) window.XKDGHouse.activate(rb); } } catch (eA) {}
+          var setup = toolGetHouseSetup({ house_name: rh.name });
+          if (!setup || setup.error) return;
+          var floor = (setup.floors || []).filter(function (f) { return f.active; })[0] || (setup.floors || [])[0];
+          if (!floor) return;
+          var aq = (floor.aquariums || [])[0];
+          if (!aq || !aq.direction || aq.water_star == null) return;
+          var sc = toolFindWaterActivationFull({
+            direction: aq.direction, star_type: 'water', star_num: aq.water_star,
+            facing_deg: floor.facing, period: floor.period,
+            start_date: start, days: days, full: true
+          });
+          ((sc && sc.results) || []).forEach(function (r) {
+            if (!r.date || !r.branch || !r.tier) return;
+            waterRows.push({ r: r, house: rh.name, dir: aq.direction,
+                             lon: (rh.cfg && rh.cfg.lon != null) ? rh.cfg.lon : lon,
+                             utc: (rh.cfg && rh.cfg.utc != null) ? rh.cfg.utc : utc });
+          });
+        } catch (eH) {}
+      });
+      if (waterRows.length) {
+        var maxTier = Math.max.apply(null, waterRows.map(function (x) { return x.r.tier; }));
+        waterRows.filter(function (x) { return x.r.tier === maxTier; }).forEach(function (x) {
+          push('water', x.r.date, x.r.branch,
+               '\uD83D\uDCA7 Water ' + x.dir + ' \u00b7 Tier ' + x.r.tier,
+               'Aquarium sector ' + x.dir + ' \u2014 ' + x.house + '. ' + (x.r.why || ''), x.lon, x.utc);
+        });
+        report.water = { rows_scanned: waterRows.length, max_tier: maxTier,
+                         events: waterRows.filter(function (x) { return x.r.tier === maxTier; }).length };
+      } else { report.water = { rows_scanned: 0, note: 'no aquarium hour passed the QMDJ veto in the period' }; }
+    } catch (eW) { report.water = { error: String((eW && eW.message) || eW) }; }
+
+    // (2) XKDG tied to the person — the top score reached in the period.
+    try {
+      var gd = toolFindGoodDates({ days: days, start_date: start });
+      var rowsX = (gd && gd.results) || [];
+      var raw = (window._scanResults || []).filter(function (r) { return r.isoDate && r.hourIndex != null; });
+      if (raw.length) {
+        var maxX = Math.max.apply(null, raw.map(function (r) { return r.score || 0; }));
+        raw.filter(function (r) { return (r.score || 0) === maxX; }).forEach(function (r) {
+          push('xkdg', r.isoDate, _ICS_BRANCHES[r.hourIndex],
+               '\u2B21 XKDG \u00b7 your chart',
+               'XKDG hour connected to your pillars \u2014 score ' + (r.score || 0) +
+               (r.nayinLabel ? (' \u00b7 Nayin ' + r.nayinLabel) : ''), lon, utc);
+        });
+        report.xkdg = { rows_scanned: raw.length, max_score: maxX,
+                        events: raw.filter(function (r) { return (r.score || 0) === maxX; }).length };
+      } else { report.xkdg = { rows_scanned: 0, note: 'the date scanner returned nothing \u2014 check the filter chips' }; }
+    } catch (eX) { report.xkdg = { error: String((eX && eX.message) || eX) }; }
+
+    // (3) DIRECTIONS — every direction, the top score reached in the period.
+    try {
+      var dr = (window.QMDJWaterScanner && window.QMDJWaterScanner.scanTravelPurpose)
+        ? (window.QMDJWaterScanner.scanTravelPurpose('', start, days, null) || []) : [];
+      if (dr.length) {
+        var maxD = Math.max.apply(null, dr.map(function (r) { return r.score || 0; }));
+        dr.filter(function (r) { return (r.score || 0) === maxD; }).forEach(function (r) {
+          var br = _branchOfHan(r.hourHan); if (!br) return;
+          push('direction', r.date, br,
+               '\uD83E\uDDED Direction ' + r.dir,
+               'Favourable direction ' + r.dir + ' \u2014 score ' + (r.score || 0) +
+               ((r.hits || []).length ? (' \u00b7 ' + r.hits.map(function (h) { return h.label; }).join(', ')) : ''), lon, utc);
+        });
+        report.directions = { rows_scanned: dr.length, max_score: maxD,
+                              events: dr.filter(function (r) { return (r.score || 0) === maxD; }).length };
+      } else { report.directions = { rows_scanned: 0 }; }
+    } catch (eD) { report.directions = { error: String((eD && eD.message) || eD) }; }
+
+    if (!events.length) {
+      return { error: 'Nothing reached the maximum in any of the three sectors over ' + days + ' days.', report: report };
+    }
+    events.sort(function (a, b) { return a.start - b.start; });
+
+    var now = _icsUtc(Date.now());
+    var L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//XKDG//Lucky Calendar//EN',
+             'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:XKDG \u2014 Lucky hours'];
+    events.forEach(function (e, i) {
+      var uid = 'xkdg-' + e.kind + '-' + e.date + '-' + i + '@fsadvisor.org';
+      L.push('BEGIN:VEVENT');
+      L.push('UID:' + uid);
+      L.push('DTSTAMP:' + now);
+      L.push('DTSTART:' + _icsUtc(e.start));
+      L.push('DTEND:' + _icsUtc(e.end));
+      L.push(_icsFold('SUMMARY:' + _icsEsc(e.title)));
+      L.push(_icsFold('DESCRIPTION:' + _icsEsc(e.detail)));
+      var al = _icsPrevEvening(e.date, e.utc);
+      if (isFinite(al)) {
+        L.push('BEGIN:VALARM');
+        L.push('ACTION:DISPLAY');
+        L.push(_icsFold('DESCRIPTION:' + _icsEsc('Tomorrow: ' + e.title)));
+        L.push('TRIGGER;VALUE=DATE-TIME:' + _icsUtc(al));
+        L.push('END:VALARM');
+      }
+      L.push('END:VEVENT');
+    });
+    L.push('END:VCALENDAR');
+    var ics = L.join('\r\n') + '\r\n';
+
+    var fname = 'xkdg-lucky-' + start + '.ics';
+    var downloaded = false;
+    try {
+      var blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+      downloaded = true;
+    } catch (eDl) {}
+
+    return {
+      ok: true, file: fname, downloaded: downloaded, days: days, from: start,
+      events: events.length, by_sector: report,
+      first_events: events.slice(0, 8).map(function (e) {
+        return { when: new Date(e.start).toString().slice(0, 24), what: e.title };
+      }),
+      instructions: 'The .ics file has been downloaded. Tell the user to open it and let the phone add it to Google Calendar; ' +
+        'every event carries the sector in its title and an alarm the evening before at 21:00. Report by_sector: it says how many ' +
+        'rows were scanned and what the maximum reached was in EACH world separately \u2014 the three scales are not comparable and ' +
+        'are never summed. If a sector produced no event, say which and why.'
+    };
+  }
+
   function execTool(name, input) {
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
+      if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
       if (name === 'explain_purpose') return toolExplainPurpose(input || {});
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
       if (name === 'show_verify_button') return toolShowVerifyButton(input || {});
