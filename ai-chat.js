@@ -2049,7 +2049,12 @@
     try {
       var gd = toolFindGoodDates({ days: days, start_date: start });
       var rowsX = (gd && gd.results) || [];
-      var raw = (window._scanResults || []).filter(function (r) { return r.isoDate && r.hourIndex != null; });
+      // The scanner writes its rows to window._lastScanResults (same source toolFindGoodDates
+      // and the aquarium scanner read). An earlier draft read window._scanResults here — a
+      // different, internal variable that is never exposed — so this sector always came back
+      // empty even with a person loaded and no filters. toolFindGoodDates ran just above, so
+      // the rows are fresh.
+      var raw = (window._lastScanResults || []).filter(function (r) { return r.isoDate && r.hourIndex != null; });
       if (raw.length) {
         var maxX = Math.max.apply(null, raw.map(function (r) { return r.score || 0; }));
         raw.filter(function (r) { return (r.score || 0) === maxX; }).forEach(function (r) {
