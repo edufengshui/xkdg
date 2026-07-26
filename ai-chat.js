@@ -127,7 +127,13 @@
       'cite the file (and line if useful), and never guess about internals you have not read. This reading is ' +
       'on-demand: you see changes once they are pushed (GitHub may lag a few minutes right after a push), not local ' +
       'unpushed edits. For "what can you do?" you may also summarise your available tools. Do NOT read source for ' +
-      'ordinary date/Feng-Shui questions — use the dedicated tools and explain_purpose for those.\n'
+      'ordinary date/Feng-Shui questions — use the dedicated tools and explain_purpose for those.\n' +
+      '  \u2022 LIMITS OF READING THE SOURCE (absolute): it shows only the app\u2019s own root files. It can NEVER ' +
+      'show the state of a device, a stored schedule, or anything living in a Cloudflare Worker \u2014 and a rule you ' +
+      'cannot find there may simply sit in a tool you are not currently carrying. So NEVER conclude from the source ' +
+      'that a feature does not exist or never happens. If the question is about a capability of ANOTHER area ' +
+      '(aquarium light, trips, water, dates), call load_tools for that area FIRST and answer with its tools; the ' +
+      'source is the last resort, not the first.\n'
     ],
     ["travel",
       '- WHY GOOGLE MAPS DIFFERS / what the A,B,C pins are / a planned stop is missing in Maps: the PLANNED ' +
@@ -604,6 +610,30 @@
     _extraAreas = [];
   }
   var _extraAreas = [];        // groups pulled in by load_tools during this conversation
+
+  // Words that unmistakably belong to one area. When the question names one and that area
+  // is NOT loaded, it is pulled in BEFORE the request instead of hoping the model calls
+  // load_tools by itself. Session 26: asked in the Feng Shui area whether the aquariums
+  // switch off at 23:00, the assistant had no home-area tool (the whole ON/OFF doctrine
+  // lives in program_aquarium_light's description), fell back to reading the source, and
+  // wrongly answered that the app never switches the light off.
+  var AREA_HINTS = {
+    home: /acquari|aquarium|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)/i,
+    travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
+    fengshui: /fontan|fountain|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
+    dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
+  };
+  function autoPullAreas(text) {
+    try {
+      if (!text) return [];
+      var cur = getToolArea(), added = [];
+      AREA_ORDER.forEach(function (a) {
+        if (a === cur || _extraAreas.indexOf(a) >= 0) return;
+        if (AREA_HINTS[a] && AREA_HINTS[a].test(text)) { _extraAreas.push(a); added.push(a); }
+      });
+      return added;
+    } catch (e) { return []; }
+  }
 
   // Areas whose TOOLS **and** PROMPT SECTIONS travel with the next request.
   function activeAreas(){
@@ -1568,9 +1598,11 @@
     {
       name: 'list_source',
       description: 'List the app\'s own source files (the live published version on GitHub, branch main). Use this ' +
-        'as the FIRST step when the user asks how something is implemented, how a feature really works under the ' +
-        'hood, the current status/version of a part of the app, or to look something up in the actual code. Returns ' +
-        'each file name with its size. After listing, pick the relevant file(s) and call read_source to read them.',
+        'when the user asks how something is IMPLEMENTED, how a feature works under the hood, or to look something ' +
+        'up in the actual code. It lists SOURCE FILES ONLY: it cannot tell you the state of a device, a stored ' +
+        'schedule, a Worker, or whether something is scheduled to happen \u2014 for that use the tools of the area ' +
+        'concerned (load_tools first if you are not carrying them). Returns each file name with its size. After ' +
+        'listing, pick the relevant file(s) and call read_source to read them.',
       input_schema: { type: 'object', properties: {}, required: [] }
     },
     {
@@ -7934,11 +7966,21 @@
       var toSend = hasOverride ? overrideToSend : (macro ? macro.text : text);
 
       input.value = '';
+      // session 26: bring in another area's tools when the question plainly needs them.
+      var pulled = autoPullAreas(toSend);
       history.push({ role: 'user', content: toSend });
       var bubble = (typeof overrideBubble === 'string' && overrideBubble.length)
         ? overrideBubble
         : (macro ? ('\u26A1 ' + text + (macro.label ? ' \u2014 ' + macro.label : '')) : text);
       addBubble('user', bubble);
+      if (pulled.length) {
+        try {
+          msgs.appendChild(elc('div', { style:
+            'align-self:center;font-size:11px;color:#8a6d00;background:#fff8e1;border:1px solid #ffe082;' +
+            'border-radius:10px;padding:3px 9px;margin:2px 0;text-align:center;' },
+            '\u2795 ' + pulled.map(function (a) { return AREA_LABELS[a]; }).join(' + ') + ' added for this question'));
+        } catch (e) {}
+      }
       sending = true; setStatus('Thinking…');
       send.disabled = true; send.style.opacity = '0.6';
 
