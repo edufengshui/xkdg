@@ -1232,7 +1232,9 @@
         'hour. Window: 2nd half of Zi (solar 00:00) through the end of SHEN (solar 17:00); the light then stays ON until ' +
         '23:00 CIVIL clock. EXTENSION: a Tier 4 day stays on until 23:00 of D+2 unless the next day is Tier 3 or better; ' +
         'a Tier 3 day stays on until 23:00 of D+1 unless the next day is Tier 2 or better; Tier 2 and Tier 1 always switch ' +
-        'off at 23:00 of their own day. COVER THE HOLE: whatever its tier, a day stays on one extra day when the NEXT day ' +
+        'off at 23:00 of their own day. TIER 4 / TIER 3 STRETCH: a strong block runs to the end of the empty stretch that follows it, ' +
+        'up to 5 extra days \\u2014 a structure that strong is switched on and not switched off while the next days have nothing; ' +
+        'it is NOT always 5 days, only as far as the holes go. COVER THE HOLE: whatever its tier, a day stays on one extra day when the NEXT day ' +
         'has no favourable hour; if TWO days in a row have none, the second switches on anyway on a tier 0 hour that still ' +
         'passed the QMDJ water veto (flagged reserve_tier0 \\u2014 say so: less lucky, still valid). A LATE hour (You/Xu/Hai) is used only when its block runs past 23:00 of the same ' +
         'day, otherwise the day falls back to its best in-window hour (lower tier), or stays dark. NOTHING is ever asked ' +
@@ -4611,6 +4613,12 @@
   var _BRANCH_SOLAR_MIN = { '\u5b50': 0, '\u4e11': 60, '\u5bc5': 180, '\u536f': 300, '\u8fb0': 420, '\u5df3': 540, '\u5348': 660, '\u672a': 780, '\u7533': 900, '\u9149': 1020, '\u620c': 1140, '\u4ea5': 1260 };
   var _WINDOW_BRANCHES = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1, '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1, '\u7533': 1 };
   var _LATE_BRANCHES   = { '\u9149': 1, '\u620c': 1, '\u4ea5': 1 };
+  // How far a strong block may stretch over consecutive empty days (extra days after its
+  // own). Edu, session 25: a really strong structure is switched on and left on while the
+  // following days have nothing. These are CEILINGS, not defaults — the block only runs as
+  // far as the holes actually go. Weaker tiers still cover a single empty day (see _spanOf).
+  var TIER4_MAX_STRETCH = 5;
+  var TIER3_MAX_STRETCH = 3;
 
   function _shellyCfg() {
     try { var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || '{}'); return (c && c.url && c.token) ? c : null; }
@@ -4773,6 +4781,21 @@
       // scanned day there is simply no data, and an unknown day is not a hole to cover.
       var lastIso = _isoPlus(start, days - 1);
       if (nextIso <= lastIso && !bestByDate[nextIso] && span < 1) span = 1;
+      // STRONG BLOCKS STRETCH OVER THE EMPTY DAYS (Edu, session 25). A Tier 4 runs to the
+      // end of the empty stretch that follows it, up to 5 extra days; a Tier 3 up to 3.
+      // Not "always" that many — only as far as the holes actually go. A day with a real
+      // hour ends the stretch: it gets its own switch-on, as usual. Weaker tiers keep the
+      // single-day hole cover above.
+      var stretchCap = (t === 4) ? TIER4_MAX_STRETCH : (t === 3 ? TIER3_MAX_STRETCH : 0);
+      if (stretchCap > 0) {
+        var k = 0;
+        while (k < stretchCap) {
+          var nIso = _isoPlus(iso, k + 1);
+          if (nIso > lastIso || bestByDate[nIso]) break;
+          k++;
+        }
+        if (k > span) span = k;
+      }
       return span;
     }
 
