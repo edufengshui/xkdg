@@ -1232,7 +1232,9 @@
         'hour. Window: 2nd half of Zi (solar 00:00) through the end of SHEN (solar 17:00); the light then stays ON until ' +
         '23:00 CIVIL clock. EXTENSION: a Tier 4 day stays on until 23:00 of D+2 unless the next day is Tier 3 or better; ' +
         'a Tier 3 day stays on until 23:00 of D+1 unless the next day is Tier 2 or better; Tier 2 and Tier 1 always switch ' +
-        'off at 23:00 of their own day. A LATE hour (You/Xu/Hai) is used only when its block runs past 23:00 of the same ' +
+        'off at 23:00 of their own day. COVER THE HOLE: whatever its tier, a day stays on one extra day when the NEXT day ' +
+        'has no favourable hour; if TWO days in a row have none, the second switches on anyway on a tier 0 hour that still ' +
+        'passed the QMDJ water veto (flagged reserve_tier0 \\u2014 say so: less lucky, still valid). A LATE hour (You/Xu/Hai) is used only when its block runs past 23:00 of the same ' +
         'day, otherwise the day falls back to its best in-window hour (lower tier), or stays dark. NOTHING is ever asked ' +
         'day by day \u2014 only the final Procedi/Annulla. Times are in the ' +
         'HOUSE\u2019s True Solar Time. After running, show the scheduled dates (on_local/off_local). Night ON times (the Zi hour) are normal \u2014 do NOT flag them or ask about them.',
@@ -1890,6 +1892,42 @@
     } catch (e) { return Promise.resolve(null); }
   }
 
+  // Runs the panel's date scanner WITHOUT its modal dialogs. runScanner() was written for
+  // someone standing in front of the panel: when a scan came back empty it fired an
+  // alert(), which landed on top of the conversation while the assistant was answering
+  // (Edu, session 25). The flag makes it silent; the outcome comes back on
+  // window._scanEmpty / window._scanError so the caller can put it into words.
+  function runScannerQuiet(arg) {
+    try { window._scanSilent = true; } catch (e) {}
+    try { return arg ? window.runScanner(arg) : window.runScanner(); }
+    finally { try { window._scanSilent = false; } catch (e2) {} }
+  }
+  // What the panel is currently filtering on — the reason an assistant-launched scan
+  // most often comes back empty.
+  function activeChipNames() {
+    try {
+      var out = [];
+      document.querySelectorAll('.filter-chip.active').forEach(function (c) {
+        out.push((c.dataset && c.dataset.filter) || (c.textContent || '').trim());
+      });
+      return out.filter(Boolean);
+    } catch (e) { return []; }
+  }
+  // Empty-scan report for a tool result, or null when the scan produced something.
+  function emptyScanNote() {
+    try {
+      if (window._scanError) return { scan_failed: window._scanError };
+      if (!window._scanEmpty) return null;
+      var chips = activeChipNames();
+      return {
+        no_dates_found: true,
+        active_filter_chips: chips.length ? chips : undefined,
+        note: 'The date scan returned nothing' + (chips.length ? ' with the filter chips currently active in the panel (' + chips.join(', ') + ')' : ' for this range') +
+              '. Tell the user plainly, and offer to widen the range or drop the chips. Do NOT invent dates.'
+      };
+    } catch (e) { return null; }
+  }
+
   function execTool(name, input) {
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
@@ -2449,7 +2487,7 @@
     var both = pl.a && pl.b;
     function runWith(pv) {
       if (ps) { ps.value = pv; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
-      window.runScanner();
+      runScannerQuiet();
       return (window._lastScanResults || []).slice();
     }
     function keyOf(r) { return r.isoDate + '#' + r.hourIndex; }
@@ -2462,7 +2500,8 @@
 
     if (!soft) {
       var res = runWith(purpose).filter(function (r) { return wkOk(r.isoDate); });
-      return {
+      var _emptyS = res.length ? null : emptyScanNote();
+      var _outS = {
         strictness: purpose ? 'strict' : 'general',
         purpose: purpose || '(general)', days: days, from: start,
         weekday_filtered: !!wkSet,
@@ -2470,6 +2509,8 @@
         count: res.length,
         results: res.slice(0, 15).map(function (r, i) { return row(r, i); })
       };
+      if (_emptyS) for (var _kS in _emptyS) if (Object.prototype.hasOwnProperty.call(_emptyS, _kS)) _outS[_kS] = _emptyS[_kS];
+      return _outS;
     }
 
     // SOFT scan: keep the strict purpose matches on top (their own score), then add the nearer
@@ -3411,7 +3452,7 @@
     // Warm the XKDG hour-score cache for the trip day(s) so the itinerary's Hours rows
     // can show the XKDG marker. That cache is filled by the Bazi scanner, which a direct
     // plan_travel would otherwise never run. Headless (no rendering), best-effort, never blocks.
-    try { if (typeof window.runScanner === 'function') window.runScanner({ startDate: dateStr, days: 2 }); } catch (e) {}
+    try { if (typeof window.runScanner === 'function') runScannerQuiet({ startDate: dateStr, days: 2 }); } catch (e) {}
     var plan;
     try { plan = window.TravelPlanner.plan(opts); }
     catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
@@ -4150,7 +4191,7 @@
         if (sd) sd.value = String(days);
         if (ps) { ps.value = ''; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
         try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
-        window.runScanner();
+        runScannerQuiet();
         (window._lastScanResults || []).forEach(function (r) {
           if (!r.isoDate) return;
           if (xkdgByDate[r.isoDate] == null || r.score > xkdgByDate[r.isoDate]) xkdgByDate[r.isoDate] = r.score;
@@ -4229,7 +4270,7 @@
         if (sd) sd.value = String(days);
         if (ps) { ps.value = ''; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
         try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
-        window.runScanner();
+        runScannerQuiet();
         (window._lastScanResults || []).forEach(function (r) {
           if (!r.isoDate) return;
           var br = _BRANCHES_IDX[r.hourIndex]; if (!br) return;
@@ -4351,7 +4392,7 @@
         why: why.join(' · '),
         hits: _hits
       };
-    }).filter(function (r) { return r.tier >= 1; })
+    }).filter(function (r) { return r.tier >= ((input.min_tier != null) ? input.min_tier : 1); })
       .filter(function (r) { return r.qimen_quadrant_score != null; });   // WATER VETO: the water palace MUST pass the QMDJ gate (a favourable door: Open/Rest/Birth/View). Hours whose water sector has Death/Injury/no-favourable-door get qimen_quadrant_score = null and are dropped here, so a bad-formation hour is NEVER recommended, whatever its XKDG tier.
     // Ranking (Edu): the Tier comes first because a structure that connects to the person
     // ALWAYS outranks one that does not; inside a Tier the graduatoria follows the XKDG
@@ -4668,16 +4709,48 @@
       altByDate[d] = list.slice(1).filter(function (r) { return r.tier === topTier; })
         .map(function (r) { return { branch: r.branch, hour: r.hour, tier: r.tier, xkdg_score: r.xkdg_score, qimen_score: r.qimen_score }; });
     });
+
+    // TIER 0 RESERVE (Edu, session 25). A day with no tier>=1 hour is not necessarily a
+    // day with nothing: toolFindWaterActivationFull drops tier 0 upstream. A tier 0 hour
+    // HAS passed the absolute QMDJ water veto — favourable door at the aquarium sector,
+    // no negative formation — it simply misses the quality floor (not connected to the
+    // person, XKDG below 16, Qimen quadrant below 3). That is the "less lucky but still
+    // valid" switch-on. Fetched once and used ONLY for a second consecutive empty day.
+    var reserveByDate = {};
+    try {
+      var scan0 = toolFindWaterActivationFull({
+        direction: aq.direction, star_type: 'water', star_num: aq.water_star,
+        facing_deg: floor.facing, period: floor.period, start_date: start, days: days, full: true,
+        purpose: wantPurpose || undefined, min_tier: 0
+      });
+      ((scan0 && scan0.results) || [])
+        .filter(function (r) { return r.qimen_quadrant_score != null && !r.tier && r.date && _WINDOW_BRANCHES[r.branch]; })
+        .forEach(function (r) {
+          var cur = reserveByDate[r.date];
+          if (!cur || (r.qimen_score || 0) > (cur.qimen_score || 0) || (r.xkdg_score || 0) > (cur.xkdg_score || 0)) reserveByDate[r.date] = r;
+        });
+    } catch (eRes) {}
     function _tierOn(iso) { var b = bestByDate[iso]; return b ? (b.tier || 0) : 0; }
     // How far a block starting on `iso` with tier `t` runs, in whole days (0 = same day).
     // Tier 4 -> +2 days unless the next day is Tier 3 or better.
     // Tier 3 -> +1 day  unless the next day is Tier 2 or better.
     // A stronger day is never swallowed by a weaker one's block.
+    // COVER THE HOLE (Edu, session 25): whatever its tier, a block is extended by one day
+    // when the NEXT day has no favourable hour at all — better to leave the light on than
+    // to leave the aquarium dark. An empty day is never "stronger", so this can't swallow
+    // a good day. Two empty days in a row: this covers the first, and the second gets a
+    // tier 0 switch-on from the reserve below.
     function _spanOf(iso, t) {
-      var next = _tierOn(_isoPlus(iso, 1));
-      if (t === 4 && next < 3) return 2;
-      if (t === 3 && next < 2) return 1;
-      return 0;
+      var nextIso = _isoPlus(iso, 1);
+      var next = _tierOn(nextIso);
+      var span = 0;
+      if (t === 4 && next < 3) span = 2;
+      else if (t === 3 && next < 2) span = 1;
+      // Only a day INSIDE the scanned window can be known to be empty: beyond the last
+      // scanned day there is simply no data, and an unknown day is not a hole to cover.
+      var lastIso = _isoPlus(start, days - 1);
+      if (nextIso <= lastIso && !bestByDate[nextIso] && span < 1) span = 1;
+      return span;
     }
 
     var scheduled = [], skipped = [];
@@ -4686,7 +4759,15 @@
       var iso = _isoPlus(start, i);
       if (coveredUntil && iso <= coveredUntil) continue;   // the light is already on from an earlier block
       var best = bestByDate[iso];
-      if (!best) { skipped.push({ date: iso, reason: 'no favourable hour' }); continue; }
+      var usedReserve = false;
+      if (!best) {
+        // Not covered by the previous block => this is the SECOND empty day in a row
+        // (the first is always absorbed by _spanOf). Switch on anyway, on the best
+        // tier 0 hour that passed the QMDJ veto: less lucky, still valid.
+        best = reserveByDate[iso] || null;
+        if (!best) { skipped.push({ date: iso, reason: 'no favourable hour, and no tier 0 reserve hour either' }); continue; }
+        usedReserve = true;
+      }
       var chosen = best, fallbackFrom = null, span = _spanOf(iso, best.tier);
       // LATE rule: a late hour is only worth taking when the block outlives the 23:00 off.
       if (_LATE_BRANCHES[best.branch] && span === 0) {
@@ -4705,6 +4786,7 @@
       var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[chosen.branch], rh.cfg.lon, rh.cfg.utc);
       var offTs = _civilToEpoch(endIso, 23 * 60, rh.cfg.utc);     // 23:00 CIVIL clock on the block's LAST day
       scheduled.push({ date: iso, branch: chosen.branch, hour: chosen.hour, tier: chosen.tier,
+                       reserve_tier0: usedReserve || undefined,
                        person_connected: chosen.person_connected, xkdg_score: chosen.xkdg_score,
                        qimen_score: chosen.qimen_score, why: chosen.why,
                        also_good_for: chosen.also_good_for || undefined,

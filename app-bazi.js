@@ -7365,6 +7365,10 @@ function setScanOffset(days) {
 }
 
 function runScanner() {
+    // Outcome flags for callers that are NOT the panel (the assistant). Reset here so a
+    // previous run can never be mistaken for this one. Edu, session 25: a scan launched
+    // from the chat must not interrupt the answer with a modal.
+    try { window._scanEmpty = false; window._scanError = null; } catch (eFlags) {}
     _fsBadgeCache = {}; // clear FS badge cache for new scan
     const birthDate  = (document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none') ? document.getElementById('person-date').value : '';
     const birthTime  = document.getElementById('person-time').value || '12:00';
@@ -7822,13 +7826,17 @@ function runScanner() {
     }
 
     } catch(scanErr) {
-        alert('Scanner error: ' + scanErr.message + '\n' + scanErr.stack);
+        try { window._scanError = String((scanErr && scanErr.message) || scanErr); } catch (eSE) {}
+        if (!window._scanSilent) alert('Scanner error: ' + scanErr.message + '\n' + scanErr.stack);
         return;
     }
 
 
     if (results.length === 0) {
-        alert('No results found. Try removing filter chips or extending the scan range.');
+        try { window._scanEmpty = true; } catch (eSE2) {}
+        // Silent when the assistant launched the scan: it reads window._scanEmpty and
+        // says it in words, instead of a dialog popping over the conversation.
+        if (!window._scanSilent) alert('No results found. Try removing filter chips or extending the scan range.');
         return;
     }
 
