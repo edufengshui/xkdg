@@ -1236,7 +1236,7 @@
         'up to 5 extra days \\u2014 a structure that strong is switched on and not switched off while the next days have nothing; ' +
         'it is NOT always 5 days, only as far as the holes go. COVER THE HOLE: whatever its tier, a day stays on one extra day when the NEXT day ' +
         'has no favourable hour; if TWO days in a row have none, the second switches on anyway on a tier 0 hour that still ' +
-        'passed the QMDJ water veto (flagged reserve_tier0 \\u2014 say so: less lucky, still valid). A LATE hour (You/Xu/Hai) is used only when its block runs past 23:00 of the same ' +
+        'passed the QMDJ water veto (flagged reserve_tier0 \\u2014 say so: less lucky, still valid). A LATE hour (Xu/Hai) is used only when its block runs past 23:00 of the same ' +
         'day, otherwise the day falls back to its best in-window hour (lower tier), or stays dark. NOTHING is ever asked ' +
         'day by day \u2014 only the final Procedi/Annulla. Times are in the ' +
         'HOUSE\u2019s True Solar Time. After running, show the scheduled dates (on_local/off_local). Night ON times (the Zi hour) are normal \u2014 do NOT flag them or ask about them.',
@@ -4589,7 +4589,7 @@
   //  RULES (Edu, session 22 — these REPLACE every earlier aquarium rule):
   //   • ON at the START of the day's BEST hour (highest Tier; ties by XKDG then Qimen).
   //   • Window = 2nd-half-of-Zi (solar 00:00) .. end of SHEN (solar 17:00).
-  //   • LATE hour (You/Xu/Hai): taken ONLY if its block runs past 23:00 of the same day
+  //   • LATE hour (Xu/Hai): taken ONLY if its block runs past 23:00 of the same day
   //     — i.e. only if the extension below actually fires. Otherwise fall back to the
   //     day's best IN-WINDOW hour, accepting a lower Tier. No in-window hour -> the day
   //     stays dark (one hour of light before the 23:00 off is worth nothing).
@@ -4607,12 +4607,16 @@
   // Solar minute (from solar midnight) at which the light turns ON for each branch.
   // Zi uses its SECOND half (solar 00:00); the others use their normal solar start.
   // _WINDOW_BRANCHES marks the ALLOWED window: 2nd-half-Zi .. end of SHEN (solar 17:00).
-  // Shen 申 is a normal in-window hour. _LATE_BRANCHES (You/Xu/Hai) are "late": switching
+  // Shen 申 is a normal in-window hour. _LATE_BRANCHES (Xu/Hai) are "late": switching
   // on at e.g. 21:00 only to switch off at 23:00 is a pointless blip, so a late hour is
   // taken ONLY when its block runs past 23:00 of the same day (see the rule below).
   var _BRANCH_SOLAR_MIN = { '\u5b50': 0, '\u4e11': 60, '\u5bc5': 180, '\u536f': 300, '\u8fb0': 420, '\u5df3': 540, '\u5348': 660, '\u672a': 780, '\u7533': 900, '\u9149': 1020, '\u620c': 1140, '\u4ea5': 1260 };
-  var _WINDOW_BRANCHES = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1, '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1, '\u7533': 1 };
-  var _LATE_BRANCHES   = { '\u9149': 1, '\u620c': 1, '\u4ea5': 1 };
+  // Hours whose block is worth switching on for. You 酉 moved in here (Edu, session 25):
+  // it starts around 17:54 in true solar time and the light goes off at 23:00, so it gives
+  // over five hours — not the two-hour blip the late rule was written to avoid. Xu 戌 and
+  // Hai 亥 stay "late": they are taken only when the block outlives 23:00 anyway.
+  var _WINDOW_BRANCHES = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1, '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1, '\u7533': 1, '\u9149': 1 };
+  var _LATE_BRANCHES   = { '\u620c': 1, '\u4ea5': 1 };
   // How far a strong block may stretch over consecutive empty days (extra days after its
   // own). Edu, session 25: a really strong structure is switched on and left on while the
   // following days have nothing. These are CEILINGS, not defaults — the block only runs as
@@ -4731,13 +4735,22 @@
           || (b.xkdg_score || 0) - (a.xkdg_score || 0)
           || (b.qimen_score || 0) - (a.qimen_score || 0);
     }
-    var bestByDate = {}, bestInWindowByDate = {}, altByDate = {};
+    var bestByDate = {}, bestInWindowByDate = {}, altByDate = {}, youByDate = {};
     Object.keys(byDate).forEach(function (d) {
       var list = byDate[d].slice().sort(_cmpHour);
-      bestByDate[d] = list[0];
-      bestInWindowByDate[d] = list.filter(function (r) { return !!_WINDOW_BRANCHES[r.branch]; })[0] || null;
-      var topTier = list[0].tier;
-      altByDate[d] = list.slice(1).filter(function (r) { return r.tier === topTier; })
+      // You 酉 is the LAST RESORT only when it is WEAK (Edu, session 25). A late hour that
+      // is Tier 4 or Tier 3 follows the usual rule: it anchors its day like any other and
+      // can open a stretch over the empty days that follow — a structure that strong is not
+      // demoted for being late. Below that, 酉 steps aside and is picked up at the very end
+      // of the ladder, after the tier 0 reserve: that is the case Edu meant, an empty day
+      // followed by tier 2, 1 or 0.
+      var early = list.filter(function (r) { return r.branch !== '\u9149' || r.tier >= 3; });
+      bestByDate[d] = early[0];
+      if (!early[0]) delete bestByDate[d];
+      youByDate[d] = list.filter(function (r) { return r.branch === '\u9149' && r.tier < 3; })[0] || null;
+      bestInWindowByDate[d] = early.filter(function (r) { return !!_WINDOW_BRANCHES[r.branch]; })[0] || youByDate[d] || null;
+      var topTier = early.length ? early[0].tier : null;
+      altByDate[d] = topTier == null ? [] : early.slice(1).filter(function (r) { return r.tier === topTier; })
         .map(function (r) { return { branch: r.branch, hour: r.hour, tier: r.tier, xkdg_score: r.xkdg_score, qimen_score: r.qimen_score }; });
     });
 
@@ -4805,15 +4818,21 @@
       var iso = _isoPlus(start, i);
       if (coveredUntil && iso <= coveredUntil) continue;   // the light is already on from an earlier block
       var best = bestByDate[iso];
-      var usedReserve = false;
+      var usedReserve = false, usedYouLastResort = false;
       if (!best) {
         // Not covered by the previous block => this is the SECOND empty day in a row
         // (the first is always absorbed by _spanOf). Switch on anyway, on the best
         // tier 0 hour that passed the QMDJ veto: less lucky, still valid.
         best = reserveByDate[iso] || null;
-        if (!best) { skipped.push({ date: iso, reason: 'no favourable hour, and no tier 0 reserve hour either' }); continue; }
-        usedReserve = true;
+        if (best) usedReserve = true;
       }
+      if (!best) {
+        // LAST RESORT: a You 酉 hour. Nothing earlier in the day and no tier 0 reserve —
+        // five hours of light beat none.
+        best = youByDate[iso] || null;
+        if (best) usedYouLastResort = true;
+      }
+      if (!best) { skipped.push({ date: iso, reason: 'no favourable hour, no tier 0 reserve and no You \u9149 hour either' }); continue; }
       var chosen = best, fallbackFrom = null, span = _spanOf(iso, best.tier);
       // LATE rule: a late hour is only worth taking when the block outlives the 23:00 off.
       if (_LATE_BRANCHES[best.branch] && span === 0) {
@@ -4832,7 +4851,7 @@
       var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[chosen.branch], rh.cfg.lon, rh.cfg.utc);
       var offTs = _civilToEpoch(endIso, 23 * 60, rh.cfg.utc);     // 23:00 CIVIL clock on the block's LAST day
       scheduled.push({ date: iso, branch: chosen.branch, hour: chosen.hour, tier: chosen.tier,
-                       reserve_tier0: usedReserve || undefined,
+                       reserve_tier0: usedReserve || undefined, you_last_resort: usedYouLastResort || undefined,
                        person_connected: chosen.person_connected, xkdg_score: chosen.xkdg_score,
                        qimen_score: chosen.qimen_score, why: chosen.why,
                        also_good_for: chosen.also_good_for || undefined,
@@ -4881,7 +4900,7 @@
       mode: commit ? 'committed' : 'preview',
       aquarium: { direction: aq.direction, water_star: aq.water_star },
       purpose_filter: wantPurpose || null,
-      window: '2nd half of Zi (solar 00:00) .. end of Shen (solar 17:00); OFF at 23:00 civil. A late hour (You/Xu/Hai) is taken only when its block runs past 23:00 of the same day.',
+      window: '2nd half of Zi (solar 00:00) .. end of You (solar 19:00); OFF at 23:00 civil. A late hour (Xu/Hai) is taken only when its block runs past 23:00 of the same day.',
       scheduled_days: scheduled.length, scheduled: scheduled, deposit_rows: _rows.length,
       skipped: skipped,
       deposited: commit ? !workerErr : false,
