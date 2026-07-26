@@ -563,7 +563,8 @@
         type: 'object',
         properties: {
           days: { type: 'integer', description: 'How far ahead to look, in days. Default 90 (three months).' },
-          start_date: { type: 'string', description: 'YYYY-MM-DD, defaults to today.' }
+          start_date: { type: 'string', description: 'YYYY-MM-DD, defaults to today.' },
+          include_night: { type: 'boolean', description: 'Keep night hours 23:00-05:00 (Zi/Chou/Yin). Default false: nobody does an activation at 2am, so night hours are dropped unless the user explicitly asks ("include the night hours", "anche di notte").' }
         }
       }
     },
@@ -1961,6 +1962,42 @@
   // by the aquarium scheduler — a calendar entry at the wrong clock time is worse than no
   // calendar at all. The alarm fires the evening before at 21:00 civil.
   var _ICS_BRANCHES = ['\u5b50','\u4e11','\u5bc5','\u536f','\u8fb0','\u5df3','\u5348','\u672a','\u7533','\u9149','\u620c','\u4ea5'];
+  // Night hours, excluded by default (Edu, session 25: "chi si alza alle 2 di notte per
+  // fare un'attivazione?"). 23:00-05:00 solar = Zi 子 (23-01), Chou 丑 (01-03), Yin 寅
+  // (03-05). include_night:true keeps them. Every event title carries the pinyin name of
+  // the hour so it is unambiguous (Chou, not just 丑).
+  var _ICS_NIGHT = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1 };
+  var _ICS_DIR_PAL = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 };
+  var _ICS_PIN = { '\u5b50':'Zi', '\u4e11':'Chou', '\u5bc5':'Yin', '\u536f':'Mao', '\u8fb0':'Chen',
+                   '\u5df3':'Si', '\u5348':'Wu', '\u672a':'Wei', '\u7533':'Shen', '\u9149':'You',
+                   '\u620c':'Xu', '\u4ea5':'Hai' };
+  function _icsHourLabel(branch) { return branch + (_ICS_PIN[branch] ? (' ' + _ICS_PIN[branch]) : ''); }
+
+  // Which purposes an hour serves, by scanning every purpose once over the whole period and
+  // indexing by date+palace+branch. The direction/water events then look themselves up here
+  // instead of re-scanning. Same source of truth as find_purpose_activation: an hour serves
+  // a purpose when scanTravelPurpose for that purpose returns it. Built lazily, cached.
+  function _icsPurposeIndex(start, days) {
+    var idx = {};
+    try {
+      var KEYS = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
+      KEYS.forEach(function (pk) {
+        var rows = (window.QMDJWaterScanner && window.QMDJWaterScanner.scanTravelPurpose)
+          ? (window.QMDJWaterScanner.scanTravelPurpose('', start, days, pk) || []) : [];
+        rows.forEach(function (r) {
+          if (!r.date || r.palace == null || (r.score || 0) <= 0) return;   // only hours that actually serve it
+          var k = r.date + '|' + r.palace;
+          (idx[k] = idx[k] || []).push(pk);
+        });
+      });
+    } catch (e) {}
+    return idx;
+  }
+  function _icsPurposeLabel(k) {
+    return ({ health: '\uD83C\uDFE5 Health', career: '\uD83D\uDCBC Career', wealth: '\uD83D\uDCB0 Wealth',
+      relationship: '\u2764\uFE0F Relationship', journey: '\u2708\uFE0F Journey', speak: '\uD83C\uDFA4 Speak',
+      legal: '\u2696\uFE0F Legal' })[k] || k;
+  }
 
   function _icsEsc(s) {
     return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;')
@@ -1995,9 +2032,16 @@
     try { var lEl = document.getElementById('longitude'); if (lEl && isFinite(parseFloat(lEl.value))) lon = parseFloat(lEl.value); } catch (e) {}
     try { var uEl = document.getElementById('utc-offset'); if (uEl && isFinite(parseFloat(uEl.value))) utc = parseFloat(uEl.value); } catch (e) {}
 
-    var events = [], report = {};
+    var events = [], report = {}, nightSkipped = 0;
+    var keepNight = !!input.include_night;
+    var purposeIdx = _icsPurposeIndex(start, days);   // date|palace -> [purposes served]
 
-    function push(kind, iso, branch, label, detail, evLon, evUtc) {
+    // manualAction = the user has to be there at that hour (walk a direction, sit for an
+    // XKDG hour). Water does NOT: it is programmed on the Shelly plug, so a 2am aquarium
+    // switch-on is fine and night is NOT excluded for it (Edu, session 25). Night is
+    // dropped only for manual-action sectors.
+    function push(kind, iso, branch, label, detail, evLon, evUtc, manualAction) {
+      if (manualAction && !keepNight && _ICS_NIGHT[branch]) { nightSkipped++; return; }
       var sm = _BRANCH_SOLAR_MIN[branch];
       if (sm == null) return;
       var on = _solarToEpoch(iso, sm, evLon, evUtc);
@@ -2036,9 +2080,12 @@
       if (waterRows.length) {
         var maxTier = Math.max.apply(null, waterRows.map(function (x) { return x.r.tier; }));
         waterRows.filter(function (x) { return x.r.tier === maxTier; }).forEach(function (x) {
+          var pal = _ICS_DIR_PAL[x.dir];
+          var ps = (pal != null && purposeIdx[x.r.date + '|' + pal]) || [];
+          var pTxt = ps.length ? (' \u00b7 for ' + ps.map(_icsPurposeLabel).join(', ')) : '';
           push('water', x.r.date, x.r.branch,
-               '\uD83D\uDCA7 Water ' + x.dir + ' \u00b7 Tier ' + x.r.tier,
-               'Aquarium sector ' + x.dir + ' \u2014 ' + x.house + '. ' + (x.r.why || ''), x.lon, x.utc);
+               '\uD83D\uDCA7 Water ' + x.dir + ' \u00b7 ' + _icsHourLabel(x.r.branch) + ' \u00b7 Tier ' + x.r.tier,
+               'Aquarium sector ' + x.dir + ' \u2014 ' + x.house + ' \u00b7 hour ' + _icsHourLabel(x.r.branch) + (x.r.hour ? (' (' + x.r.hour + ')') : '') + pTxt + '. ' + (x.r.why || ''), x.lon, x.utc, false);
         });
         report.water = { rows_scanned: waterRows.length, max_tier: maxTier,
                          events: waterRows.filter(function (x) { return x.r.tier === maxTier; }).length };
@@ -2059,9 +2106,9 @@
         var maxX = Math.max.apply(null, raw.map(function (r) { return r.score || 0; }));
         raw.filter(function (r) { return (r.score || 0) === maxX; }).forEach(function (r) {
           push('xkdg', r.isoDate, _ICS_BRANCHES[r.hourIndex],
-               '\u2B21 XKDG \u00b7 your chart',
-               'XKDG hour connected to your pillars \u2014 score ' + (r.score || 0) +
-               (r.nayinLabel ? (' \u00b7 Nayin ' + r.nayinLabel) : ''), lon, utc);
+               '\u2B21 XKDG \u00b7 your chart \u00b7 ' + _icsHourLabel(_ICS_BRANCHES[r.hourIndex]),
+               'XKDG hour connected to your pillars at hour ' + _icsHourLabel(_ICS_BRANCHES[r.hourIndex]) + ' \u2014 score ' + (r.score || 0) +
+               (r.nayinLabel ? (' \u00b7 Nayin ' + r.nayinLabel) : ''), lon, utc, true);
         });
         report.xkdg = { rows_scanned: raw.length, max_score: maxX,
                         events: raw.filter(function (r) { return (r.score || 0) === maxX; }).length };
@@ -2076,10 +2123,14 @@
         var maxD = Math.max.apply(null, dr.map(function (r) { return r.score || 0; }));
         dr.filter(function (r) { return (r.score || 0) === maxD; }).forEach(function (r) {
           var br = _branchOfHan(r.hourHan); if (!br) return;
+          var door = (r.cell && (r.cell.doorName || r.cell.doorCode)) || '';
+          var ps = (r.palace != null && purposeIdx[r.date + '|' + r.palace]) || [];
+          var pTxt = ps.length ? (' \u00b7 for ' + ps.map(_icsPurposeLabel).join(', ')) : '';
           push('direction', r.date, br,
-               '\uD83E\uDDED Direction ' + r.dir,
-               'Favourable direction ' + r.dir + ' \u2014 score ' + (r.score || 0) +
-               ((r.hits || []).length ? (' \u00b7 ' + r.hits.map(function (h) { return h.label; }).join(', ')) : ''), lon, utc);
+               '\uD83E\uDDED Direction ' + r.dir + ' \u00b7 ' + _icsHourLabel(br) + (door ? (' \u00b7 ' + door) : ''),
+               'Favourable direction ' + r.dir + ' at hour ' + _icsHourLabel(br) + ' (' + (r.hourTime || '') + ')' +
+               (door ? (' \u2014 door ' + door) : '') + ' \u00b7 score ' + (r.score || 0) + pTxt +
+               ((r.hits || []).length ? (' \u00b7 ' + r.hits.map(function (h) { return h.label; }).join(', ')) : ''), lon, utc, true);
         });
         report.directions = { rows_scanned: dr.length, max_score: maxD,
                               events: dr.filter(function (r) { return (r.score || 0) === maxD; }).length };
@@ -2087,7 +2138,9 @@
     } catch (eD) { report.directions = { error: String((eD && eD.message) || eD) }; }
 
     if (!events.length) {
-      return { error: 'Nothing reached the maximum in any of the three sectors over ' + days + ' days.', report: report };
+      return { error: 'Nothing reached the maximum in any of the three sectors over ' + days + ' days.' +
+        (nightSkipped ? (' ' + nightSkipped + ' night hour(s) (23:00-05:00) were excluded \u2014 ask with include_night to keep them.') : ''),
+        night_hours_excluded: nightSkipped || undefined, report: report };
     }
     events.sort(function (a, b) { return a.start - b.start; });
 
@@ -2130,14 +2183,16 @@
 
     return {
       ok: true, file: fname, downloaded: downloaded, days: days, from: start,
-      events: events.length, by_sector: report,
+      events: events.length, by_sector: report, night_hours_excluded: nightSkipped || undefined,
       first_events: events.slice(0, 8).map(function (e) {
         return { when: new Date(e.start).toString().slice(0, 24), what: e.title };
       }),
       instructions: 'The .ics file has been downloaded. Tell the user to open it and let the phone add it to Google Calendar; ' +
-        'every event carries the sector in its title and an alarm the evening before at 21:00. Report by_sector: it says how many ' +
-        'rows were scanned and what the maximum reached was in EACH world separately \u2014 the three scales are not comparable and ' +
-        'are never summed. If a sector produced no event, say which and why.'
+        'every event carries the sector AND the hour (branch + pinyin, e.g. "Chou") in its title, and an alarm the evening before ' +
+        'at 21:00. Night hours 23:00-05:00 (Zi/Chou/Yin) are EXCLUDED by default; night_hours_excluded says how many were dropped \u2014 ' +
+        'mention it, and if the user wants them, call again with include_night:true. Report by_sector: it says how many rows were ' +
+        'scanned and what the maximum reached was in EACH world separately \u2014 the three scales are not comparable and are never ' +
+        'summed. If a sector produced no event, say which and why.'
     };
   }
 
