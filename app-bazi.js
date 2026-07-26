@@ -8082,6 +8082,32 @@ function showLicenseBar(msg, bg, color) {
         bar.textContent = msg;
         const mc = document.getElementById('main-container');
         if (mc) mc.style.marginTop = '26px';
+        // RE-ENTER PIN (Edu, session 25). Without this the only way to be asked for the
+        // code again is deleting the stored licence by hand from the browser console —
+        // impossible on a phone, where the only reachable alternative ("clear site data")
+        // also wipes house profiles, Shelly config, saved itineraries and everything else.
+        // It matters for usage tracking: a device that unlocked before tracking existed
+        // reports a random dev_... id, and only typing the PIN again writes the real one.
+        // Fully additive, wrapped in try/catch, never blocks the bar from showing.
+        try {
+            if (!bar.querySelector('#license-repin')) {
+                const k = document.createElement('span');
+                k.id = 'license-repin';
+                k.textContent = '\uD83D\uDD11';
+                k.title = 'Enter the licence code again';
+                k.style.cssText = 'float:right;cursor:pointer;padding:0 8px;opacity:.65;';
+                k.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    if (!confirm('Enter your licence code again?\n\nNothing else is deleted — your house profiles, settings and saved data stay untouched.')) return;
+                    try {
+                        localStorage.removeItem('xkdg_license');
+                        localStorage.removeItem('xkdg_student_id');
+                    } catch (e) {}
+                    try { showLicenseOverlay(); } catch (e) { location.reload(); }
+                });
+                bar.appendChild(k);
+            }
+        } catch (e) { /* the bar must show even if the key cannot be added */ }
     }
 }
 
