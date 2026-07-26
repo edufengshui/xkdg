@@ -587,7 +587,7 @@
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
-    home:  ['configure_shelly','program_aquarium_light','aquarium_light']
+    home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan']
   };
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
@@ -1447,6 +1447,28 @@
         },
         required: ['house']
       }
+    },
+    {
+      name: 'aquarium_plan',
+      description: 'Read, cancel or pause the aquarium-light plan ACTUALLY stored in the Shelly Worker for a house. '
+        + 'action:"get" is the ONLY way to know what is really scheduled \u2014 whether the light comes on tomorrow, or '
+        + 'whether it switches off at 23:00 tonight. aquarium_light only reports whether the plug is on RIGHT NOW, and '
+        + 'program_aquarium_light only computes a plan without reading the stored one. So NEVER answer a question about '
+        + 'what is scheduled from memory, from the rules, or from the source code \u2014 call this. action:"cancel" empties '
+        + 'the stored plan (the light then never switches by itself until a new plan is deposited); note that depositing '
+        + 'a new plan with program_aquarium_light(commit:true) ALREADY replaces the old one, so cancel is only needed to '
+        + 'leave a house with no plan at all. Because cancel is destructive, first show what is stored with action:"get" '
+        + 'and ask for confirmation with [[BTN]] Procedi=procedi | Annulla=annulla, then call with action:"cancel". '
+        + 'action:"pause" keeps the plan but stops the automation; action:"resume" starts it again. Manual on/off via '
+        + 'aquarium_light always works regardless. Times come back as the house\u2019s own wall clock: report them exactly '
+        + 'as returned and never recompute them.',
+      input_schema: { type: 'object',
+        properties: {
+          house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug.' },
+          action: { type: 'string', enum: ['get', 'cancel', 'pause', 'resume'],
+            description: 'get (default) = read the stored plan; cancel = empty it; pause/resume = automation master switch.' }
+        },
+        required: ['house'] }
     },
     {
       name: 'find_qimen_hours_for_star',
@@ -2372,6 +2394,7 @@
       if (name === 'configure_shelly') return toolConfigureShelly(input || {});
       if (name === 'program_aquarium_light') return toolProgramAquariumLight(input || {});
       if (name === 'aquarium_light') return toolAquariumLight(input || {});
+      if (name === 'aquarium_plan') return toolAquariumPlan(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
@@ -5036,6 +5059,18 @@
     var base = Date.UTC(p.y, p.mo - 1, p.d, 0, 0, 0) - (utc + (dst ? 1 : 0)) * 3600000;
     return base + clockMin * 60000;
   }
+  // Inverse of _civilToEpoch: absolute epoch ms -> the house's own wall clock.
+  // The Worker stores onTs/offTs in UTC ms; the assistant must NEVER convert them by hand.
+  function _epochToLocal(ts, utc) {
+    ts = +ts;
+    if (!isFinite(ts)) return null;
+    var dst = false; try { dst = dstActiveOn(new Date(ts)); } catch (e) {}
+    var d = new Date(ts + (utc + (dst ? 1 : 0)) * 3600000);
+    function p2(n) { return String(n).padStart(2, '0'); }
+    return d.getUTCFullYear() + '-' + p2(d.getUTCMonth() + 1) + '-' + p2(d.getUTCDate()) +
+           ' ' + p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes());
+  }
+
   function _resolveShellyHouse(nameOrDevice) {
     var key = String(nameOrDevice || '').trim().toLowerCase();
     if (SHELLY_HOUSES[key]) return { name: key, cfg: SHELLY_HOUSES[key] };
@@ -5065,6 +5100,59 @@
       var res = await fetch(cfg.url + '?turn=' + turn + '&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token), { method: 'POST' });
       var data = await res.json().catch(function () { return null; });
       return { device: rh.cfg.device, turn: turn, http: res.status, result: data };
+    } catch (e) { return { error: 'Shelly request failed: ' + ((e && e.message) || e) }; }
+  }
+
+  // Read / cancel / pause the plan ACTUALLY stored in the Shelly Worker. Session 26: asked
+  // whether the aquariums switch off at 23:00, the assistant had no way to look — aquarium_light
+  // only reports the plug right now, program_aquarium_light only computes a plan without
+  // reading the deposited one. The Worker's ?get_plan / ?clear_plan / ?auto were unreachable.
+  async function toolAquariumPlan(input) {
+    input = input || {};
+    var cfg = _shellyCfg();
+    if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
+    var rh = _resolveShellyHouse(input.house || input.device);
+    if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
+    var action = String(input.action || 'get').toLowerCase();
+    var q = { get: '?get_plan', cancel: '?clear_plan', pause: '?auto=off', resume: '?auto=on' }[action];
+    if (!q) return { error: 'action must be get, cancel, pause or resume.' };
+    try {
+      var res = await fetch(cfg.url + q + '&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
+        { method: 'POST' });
+      var data = await res.json().catch(function () { return null; });
+      if (!res.ok) return { error: 'Shelly Worker returned HTTP ' + res.status, result: data };
+      var out = { house: rh.name, device: rh.cfg.device, action: action };
+      if (data && data.automation) out.automation = data.automation;
+      if (action !== 'get') {
+        out.ok = true;
+        out.note = (action === 'cancel')
+          ? 'The stored plan is now EMPTY: the light will not switch on or off by itself until a new plan is deposited. Manual on/off still works.'
+          : (action === 'pause'
+            ? 'Automation PAUSED: the plan is still stored but nothing will fire until it is resumed. Manual on/off still works.'
+            : 'Automation RESUMED: the stored plan fires again.');
+        return out;
+      }
+      var days = (data && data.plan && Array.isArray(data.plan.days)) ? data.plan.days : [];
+      var now = Date.now(), next = null;
+      out.scheduled_days = days.length;
+      out.days = days.map(function (d) {
+        [{ ts: +d.onTs, turn: 'on' }, { ts: +d.offTs, turn: 'off' }].forEach(function (c) {
+          if (isFinite(c.ts) && c.ts > now && (!next || c.ts < next.ts)) next = c;
+        });
+        return { date: d.date,
+                 on_local: _epochToLocal(d.onTs, rh.cfg.utc),
+                 off_local: _epochToLocal(d.offTs, rh.cfg.utc),
+                 already_past: (+d.offTs < now) };
+      });
+      out.next_switch = next ? { turn: next.turn, at_local: _epochToLocal(next.ts, rh.cfg.utc) } : null;
+      out.deposited_at = (data && data.plan && data.plan.savedAt) ? _epochToLocal(data.plan.savedAt, rh.cfg.utc) : null;
+      out.last_switch = (data && data.lastFire)
+        ? { turn: data.lastFire.turn, at_local: _epochToLocal(data.lastFire.ts, rh.cfg.utc), ok: !!data.lastFire.ok }
+        : null;
+      out.note = 'This is the plan REALLY stored in the Worker, not a recomputation. All times are the house\u2019s own '
+        + 'wall clock \u2014 report them exactly as given, never convert them. If scheduled_days is 0 there is no plan at '
+        + 'all. If automation is PAUSED nothing will fire even though days are listed \u2014 say so.';
+      return out;
     } catch (e) { return { error: 'Shelly request failed: ' + ((e && e.message) || e) }; }
   }
 
