@@ -8093,17 +8093,20 @@ function showLicenseBar(msg, bg, color) {
 // typing the PIN again writes the real one.
 // NOTE: it deliberately does NOT hang off showLicenseBar — #license-bar and
 // #main-container do not exist in index.html any more (lost in the modularisation), so
-// that function has been a no-op for a while. The key goes next to the version tag,
-// which is always there; if even that is missing it falls back to a floating corner
-// button, so the control can never become unreachable again.
+// that function has been a no-op for a while. It is also NOT placed INSIDE #version-tag:
+// version.js overwrites that element with `tag.textContent = label` asynchronously, after
+// its GitHub API call, which wipes every child. The key therefore goes in its own row
+// right AFTER the version tag, where nothing else writes; if the tag is missing it falls
+// back to a floating corner button, so the control can never become unreachable again.
 function _xkdgAddRepinKey() {
     try {
         if (document.getElementById('license-repin')) return;
         var k = document.createElement('span');
         k.id = 'license-repin';
-        k.textContent = '\uD83D\uDD11';
+        k.textContent = '\uD83D\uDD11 licence code';
         k.title = 'Enter the licence code again';
-        k.style.cssText = 'cursor:pointer;padding:0 6px;opacity:.5;font-size:14px;';
+        k.style.cssText = 'cursor:pointer;font-size:12px;color:#999;padding:4px 10px;' +
+                          'border:1px solid #ddd;border-radius:12px;display:inline-block;';
         k.addEventListener('click', function (ev) {
             ev.stopPropagation();
             if (!confirm('Enter your licence code again?\n\nNothing else is deleted \u2014 your house profiles, settings and saved data stay untouched.')) return;
@@ -8114,8 +8117,15 @@ function _xkdgAddRepinKey() {
             try { showLicenseOverlay(); } catch (e) { location.reload(); }
         });
         var tag = document.getElementById('version-tag');
-        if (tag) { tag.appendChild(k); return; }
-        k.style.cssText += 'position:fixed;right:6px;bottom:6px;z-index:9998;opacity:.35;';
+        if (tag && tag.parentNode) {
+            var row = document.createElement('div');
+            row.id = 'license-repin-row';
+            row.style.cssText = 'text-align:center;margin:0 0 22px;';
+            row.appendChild(k);
+            tag.parentNode.insertBefore(row, tag.nextSibling);
+            return;
+        }
+        k.style.cssText += 'position:fixed;right:6px;bottom:6px;z-index:9998;background:#fff;';
         document.body.appendChild(k);
     } catch (e) { /* never block startup */ }
 }
