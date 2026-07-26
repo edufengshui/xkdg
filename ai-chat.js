@@ -4392,17 +4392,39 @@
         why: why.join(' · '),
         hits: _hits
       };
-    }).filter(function (r) { return r.tier >= ((input.min_tier != null) ? input.min_tier : 1); })
+    });
+    // How many hours were thrown away, and by WHICH of the two filters. Without this the
+    // list just looks sparse and there is no way to tell a genuinely bad stretch from an
+    // over-strict threshold (Edu, session 25: "vedo troppi buchi, sta scartando qualcosa").
+    var _minTier = (input.min_tier != null) ? input.min_tier : 1;
+    var _dropVeto = 0, _dropTier = 0, _kept = 0, _daysKept = {}, _daysVetoOnly = {};
+    rows.forEach(function (r) {
+      if (r.qimen_quadrant_score == null) { _dropVeto++; return; }          // no favourable door at the water palace
+      if (r.tier < _minTier) { _dropTier++; if (r.date) _daysVetoOnly[r.date] = (_daysVetoOnly[r.date] || 0) + 1; return; }
+      _kept++; if (r.date) _daysKept[r.date] = 1;
+    });
+    rows = rows.filter(function (r) { return r.tier >= _minTier; })
       .filter(function (r) { return r.qimen_quadrant_score != null; });   // WATER VETO: the water palace MUST pass the QMDJ gate (a favourable door: Open/Rest/Birth/View). Hours whose water sector has Death/Injury/no-favourable-door get qimen_quadrant_score = null and are dropped here, so a bad-formation hour is NEVER recommended, whatever its XKDG tier.
-    // Ranking (Edu): the Tier comes first because a structure that connects to the person
-    // ALWAYS outranks one that does not; inside a Tier the graduatoria follows the XKDG
-    // score, and the Qimen energy at the palace only breaks remaining ties. (The old
-    // combined_score summed XKDG and Qimen — two incompatible scales — and is gone.)
+    var _filterReport = {
+      hours_kept: _kept,
+      dropped_no_favourable_door: _dropVeto,
+      dropped_below_tier_floor: _dropTier,
+      tier_floor: _minTier,
+      days_with_an_hour: Object.keys(_daysKept).length,
+      days_lost_only_to_the_tier_floor: Object.keys(_daysVetoOnly).filter(function (d) { return !_daysKept[d]; }).length
+    };
+    // Ranking: the Tier still comes first — a structure that connects to the person always
+    // outranks one that does not — but INSIDE a tier the order is now CHRONOLOGICAL
+    // (Edu, session 25: "le date di accensione non sono in ordine cronologico, dovrebbero
+    // esserlo"). This replaces the old xkdg_score/qimen_score order inside a tier; the
+    // scores are still shown on every row, so nothing is lost, it just reads as a diary
+    // instead of a league table. The branch order (Zi first) breaks same-date ties.
+    var _BR_ORDER = '\u5b50\u4e11\u5bc5\u536f\u8fb0\u5df3\u5348\u672a\u7533\u9149\u620c\u4ea5';
+    function _chrono(r) { return (r.date || '') + '#' + String(_BR_ORDER.indexOf(r.branch || '') + 1).padStart(2, '0'); }
     rows.sort(function (a, b) {
-      return (b.tier - a.tier)
-          || ((b.xkdg_score || 0) - (a.xkdg_score || 0))
-          || ((b.qimen_score || 0) - (a.qimen_score || 0))
-          || (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));   // consistent: equal dates -> 0 (no Zi-by-insertion bias)
+      if (b.tier !== a.tier) return b.tier - a.tier;
+      var ka = _chrono(a), kb = _chrono(b);
+      return ka < kb ? -1 : (ka > kb ? 1 : 0);
     });
 
     // Which PURPOSES does each surviving hour also serve? Water is the means, not the
@@ -4431,7 +4453,8 @@
       start: start, days: days, scans_run: ran,
       person_loaded: pl.any ? (pl.a && pl.b ? 'A+B' : (pl.a ? 'A' : 'B')) : 'none',
       count: rows.length, results: (input && input.full ? rows : rows.slice(0, 20)), scan_notes: notes,
-      note: 'Quadruple scan merged by date+hour. TIER is a QUALITY GRADE, not a count. An hour that CONNECTS to the person\'s birth year always outranks one that does not: tier 4 = connected, XKDG score >= 18 (rare — roughly one every six days at a single palace); tier 3 = connected, 12-17; tier 2 = connected, below 12; tier 1 = NOT connected to the person but still good on its own — either an XKDG structure strong enough to stand alone (Nayin Power, score >= 16) or a genuinely good Qimen at the palace (quadrant score >= 3). Anything weaker is not in the list at all. Read person_connected and the why field to explain each hour. Tier 1 is normally the MOST COMMON tier, not an exception: a real connection to the person is rare, a good Qimen is not — so most days the water is activated on a tier 1 hour, and that is correct, not a fallback. PRESENT higher tiers first. Inside a tier the order follows xkdg_score, then qimen_score. Never claim an hour is the "only" good one just because it is the only one that connects to the person.',
+      filter_report: _filterReport,
+      note: 'Quadruple scan merged by date+hour. TIER is a QUALITY GRADE, not a count. An hour that CONNECTS to the person\'s birth year always outranks one that does not: tier 4 = connected, XKDG score >= 18 (rare — roughly one every six days at a single palace); tier 3 = connected, 12-17; tier 2 = connected, below 12; tier 1 = NOT connected to the person but still good on its own — either an XKDG structure strong enough to stand alone (Nayin Power, score >= 16) or a genuinely good Qimen at the palace (quadrant score >= 3). Anything weaker is not in the list at all. Read person_connected and the why field to explain each hour. Tier 1 is normally the MOST COMMON tier, not an exception: a real connection to the person is rare, a good Qimen is not — so most days the water is activated on a tier 1 hour, and that is correct, not a fallback. PRESENT higher tiers first; INSIDE a tier the rows are already in CHRONOLOGICAL order — keep that order, never re-sort them by score. filter_report says how many hours were discarded and by which filter: if days_lost_only_to_the_tier_floor is high, the gaps in the list are the quality threshold at work, NOT bad days — say so plainly when the user asks why there are holes.',
       time_note: 'hour = real local clock window (true solar time, DST-adjusted).'
     };
   }
