@@ -8082,34 +8082,47 @@ function showLicenseBar(msg, bg, color) {
         bar.textContent = msg;
         const mc = document.getElementById('main-container');
         if (mc) mc.style.marginTop = '26px';
-        // RE-ENTER PIN (Edu, session 25). Without this the only way to be asked for the
-        // code again is deleting the stored licence by hand from the browser console —
-        // impossible on a phone, where the only reachable alternative ("clear site data")
-        // also wipes house profiles, Shelly config, saved itineraries and everything else.
-        // It matters for usage tracking: a device that unlocked before tracking existed
-        // reports a random dev_... id, and only typing the PIN again writes the real one.
-        // Fully additive, wrapped in try/catch, never blocks the bar from showing.
-        try {
-            if (!bar.querySelector('#license-repin')) {
-                const k = document.createElement('span');
-                k.id = 'license-repin';
-                k.textContent = '\uD83D\uDD11';
-                k.title = 'Enter the licence code again';
-                k.style.cssText = 'float:right;cursor:pointer;padding:0 8px;opacity:.65;';
-                k.addEventListener('click', function (ev) {
-                    ev.stopPropagation();
-                    if (!confirm('Enter your licence code again?\n\nNothing else is deleted — your house profiles, settings and saved data stay untouched.')) return;
-                    try {
-                        localStorage.removeItem('xkdg_license');
-                        localStorage.removeItem('xkdg_student_id');
-                    } catch (e) {}
-                    try { showLicenseOverlay(); } catch (e) { location.reload(); }
-                });
-                bar.appendChild(k);
-            }
-        } catch (e) { /* the bar must show even if the key cannot be added */ }
     }
 }
+
+// RE-ENTER PIN (Edu, session 25). The only other way to be asked for the code again is
+// deleting the stored licence by hand from the browser console — impossible on a phone,
+// where the reachable alternative ("clear site data") also wipes house profiles, Shelly
+// config, saved itineraries and everything else. It matters for usage tracking too: a
+// device that unlocked before tracking existed reports a random dev_... id, and only
+// typing the PIN again writes the real one.
+// NOTE: it deliberately does NOT hang off showLicenseBar — #license-bar and
+// #main-container do not exist in index.html any more (lost in the modularisation), so
+// that function has been a no-op for a while. The key goes next to the version tag,
+// which is always there; if even that is missing it falls back to a floating corner
+// button, so the control can never become unreachable again.
+function _xkdgAddRepinKey() {
+    try {
+        if (document.getElementById('license-repin')) return;
+        var k = document.createElement('span');
+        k.id = 'license-repin';
+        k.textContent = '\uD83D\uDD11';
+        k.title = 'Enter the licence code again';
+        k.style.cssText = 'cursor:pointer;padding:0 6px;opacity:.5;font-size:14px;';
+        k.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            if (!confirm('Enter your licence code again?\n\nNothing else is deleted \u2014 your house profiles, settings and saved data stay untouched.')) return;
+            try {
+                localStorage.removeItem('xkdg_license');
+                localStorage.removeItem('xkdg_student_id');
+            } catch (e) {}
+            try { showLicenseOverlay(); } catch (e) { location.reload(); }
+        });
+        var tag = document.getElementById('version-tag');
+        if (tag) { tag.appendChild(k); return; }
+        k.style.cssText += 'position:fixed;right:6px;bottom:6px;z-index:9998;opacity:.35;';
+        document.body.appendChild(k);
+    } catch (e) { /* never block startup */ }
+}
+try {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _xkdgAddRepinKey);
+    else _xkdgAddRepinKey();
+} catch (e) {}
 
 async function submitPin() {
     const pin = document.getElementById('pin-input').value.trim();
