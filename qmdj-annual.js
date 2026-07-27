@@ -265,7 +265,12 @@
   // so they carry the chart's exact colours, fonts and layout, and follow it if it ever
   // changes. Positions are expressed in % of the canvas box, because the canvas is
   // displayed scaled (width:100%), so canvas pixels are not CSS pixels.
-  var BOX_PX = 104;                       // side of a palace box, in canvas pixels
+  // The palace boxes are the CHART'S OWN CELLS pasted around the wheel. Their height is
+  // decided by their content (the cell uses fixed font sizes), NOT by the width we give
+  // them — assuming a square put them back on the star blocks. So they are inserted,
+  // MEASURED, and only then placed: for a rectangle w×h at angle θ the inward reach is
+  // (w/2)|cosθ| + (h/2)|sinθ|, which is what has to clear the stars.
+  var BOX_SCALE = 0.78;                   // cells shrunk a little so they sit comfortably
   var CANVAS_W = 1100, CANVAS_H = 1130;
 
   function boxHost() {
@@ -288,10 +293,10 @@
   function syncBoxes(cx, cy, outerR, ROT) {
     var host = boxHost();
     if (!host) return;
+    var wrap = host.parentNode;
     var r = current();
     if (!r || !r.ok) { host.innerHTML = ''; return; }
 
-    // the chart's own cells
     var cells = null;
     try {
       if (typeof window.showQimenChart === 'function') {
@@ -302,32 +307,49 @@
     } catch (e) {}
     if (!cells) { host.innerHTML = ''; return; }
 
-    // The star blocks are shrunk to 46 at offset 30 while this ring is up, so they end at
-    // outerR+53. The boxes sit just beyond, at a radius that keeps them on the canvas.
-    // A SQUARE box at a diagonal reaches inward by half its DIAGONAL, not half its side:
-    // at 45 degrees the nearest corner is ~73px closer to the centre than the box centre.
-    // Sizing on the side alone put NE/SE/SW/NW straight back on the star blocks.
-    var rBox = outerR + 53 + (BOX_PX / 2) * Math.SQRT2 + 12;
+    // ---- pass 1: insert, hidden, so the browser lays them out ----------
     var html = '';
     RING.forEach(function (sec) {
       var cell = cells[sec.p];
       if (!cell) return;
-      var a2 = (sec.deg - 270 + (ROT || 0)) * Math.PI / 180;
-      var bx = cx + rBox * Math.cos(a2), by = cy + rBox * Math.sin(a2);
-      var half = BOX_PX / 2;
-      if (bx < half) bx = half; else if (bx > CANVAS_W - half) bx = CANVAS_W - half;
-      if (by < half) by = half; else if (by > CANVAS_H - half) by = CANVAS_H - half;
-      var L = ((bx - half) / CANVAS_W * 100).toFixed(3);
-      var T = ((by - half) / CANVAS_H * 100).toFixed(3);
-      var Wp = (BOX_PX / CANVAS_W * 100).toFixed(3);
-      html += '<div style="position:absolute;left:' + L + '%;top:' + T + '%;width:' + Wp + '%;">'
-            +   '<div style="font:700 9px system-ui;color:#1b5e20;text-align:center;'
-            +   'text-shadow:0 0 3px #fff,0 0 3px #fff;">' + sec.d + '</div>'
-            +   '<table style="border-collapse:collapse;width:100%;background:#0d5e2c;'
-            +   'box-shadow:0 1px 5px rgba(0,0,0,.35);"><tr>' + cell + '</tr></table>'
+      html += '<div class="qmdj-pal" data-deg="' + sec.deg + '" data-dir="' + sec.d + '"'
+            +   ' style="position:absolute;left:0;top:0;visibility:hidden;">'
+            +   '<div style="transform:scale(' + BOX_SCALE + ');transform-origin:top left;">'
+            +     '<div style="font:700 10px system-ui;color:#1b5e20;text-align:center;'
+            +     'text-shadow:0 0 3px #fff,0 0 3px #fff;">' + sec.d + '</div>'
+            +     '<table style="border-collapse:collapse;background:#0d5e2c;'
+            +     'box-shadow:0 1px 5px rgba(0,0,0,.35);"><tr>' + cell + '</tr></table>'
+            +   '</div>'
             + '</div>';
     });
     host.innerHTML = html;
+
+    // ---- pass 2: measure and place -------------------------------------
+    // CSS pixels -> canvas pixels: the canvas is displayed scaled (width:100%).
+    var cssW = (wrap && wrap.clientWidth) || CANVAS_W;
+    var k = CANVAS_W / (cssW || CANVAS_W);
+    var starOuter = outerR + 53;            // shrunk star blocks end here
+    var nodes = host.querySelectorAll('.qmdj-pal');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var inner = el.firstChild;
+      var w = (inner.offsetWidth || 120) * BOX_SCALE * k;
+      var h = (inner.offsetHeight || 120) * BOX_SCALE * k;
+      var deg = parseFloat(el.getAttribute('data-deg')) || 0;
+      var ang = (deg - 270 + (ROT || 0)) * Math.PI / 180;
+      var ca = Math.cos(ang), sa = Math.sin(ang);
+      // how far this rectangle reaches back towards the centre, at this angle
+      var reach = (w / 2) * Math.abs(ca) + (h / 2) * Math.abs(sa);
+      var rBox = starOuter + 14 + reach;
+      var bx = cx + rBox * ca, by = cy + rBox * sa;
+      if (bx < w / 2) bx = w / 2; else if (bx > CANVAS_W - w / 2) bx = CANVAS_W - w / 2;
+      if (by < h / 2) by = h / 2; else if (by > CANVAS_H - h / 2) by = CANVAS_H - h / 2;
+      el.style.left = (((bx - w / 2) / CANVAS_W) * 100).toFixed(3) + '%';
+      el.style.top = (((by - h / 2) / CANVAS_H) * 100).toFixed(3) + '%';
+      el.style.visibility = 'visible';
+      el.setAttribute('data-w', Math.round(w));
+      el.setAttribute('data-h', Math.round(h));
+    }
   }
 
   function drawIfOn(ctx, cx, cy, outerR, ROT) {
