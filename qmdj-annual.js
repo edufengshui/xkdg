@@ -225,8 +225,111 @@
 
   window.QMDJAnnual = {
     compute: compute, cardHtml: cardHtml, open: open, close: close, toggle: toggle,
+    _activeInputs: activeInputs,
     mountainFromDeg: mountainFromDeg, branchOfMountain: branchOfMountain,
     hourStemFor: hourStemFor, yearStemOf: yearStemOf,
     M24: M24, DAY_GROUP: DAY_GROUP
   };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  RING ON THE LUOPAN (session 26)
+//  Hooked into the same place FloorPlanDLR uses: fsRedraw calls drawIfOn LAST,
+//  with absolute (untransformed) coordinates. Same conventions: ang() maps a
+//  compass degree to canvas angle honouring the luopan rotation ROT.
+// ═══════════════════════════════════════════════════════════════════════════
+(function () {
+  var A = window.QMDJAnnual;
+  if (!A) return;
+
+  var st = { ringOn: false, key: '', cached: null };
+  // The eight outer palaces at their compass centres. Centre palace 5 has no direction.
+  var RING = [{ p: 1, deg: 0, d: 'N' }, { p: 8, deg: 45, d: 'NE' }, { p: 3, deg: 90, d: 'E' },
+              { p: 4, deg: 135, d: 'SE' }, { p: 9, deg: 180, d: 'S' }, { p: 2, deg: 225, d: 'SW' },
+              { p: 7, deg: 270, d: 'W' }, { p: 6, deg: 315, d: 'NW' }];
+  var FAV = { Open: 1, Rest: 1, Birth: 1, View: 1 };
+
+  function current() {
+    var inp = A._activeInputs();
+    var key = (inp.facingDeg == null ? '?' : inp.facingDeg) + '@' + (window.QMDJAnnualPeriod || 9);
+    if (st.key === key && st.cached) return st.cached;
+    var r = A.compute({ period: window.QMDJAnnualPeriod || 9, facingDeg: inp.facingDeg, house: inp.house });
+    st.key = key; st.cached = r;
+    return r;
+  }
+  function invalidate() { st.key = ''; st.cached = null; }
+
+  function drawIfOn(ctx, cx, cy, outerR, ROT) {
+    if (!st.ringOn || !ctx) return;
+    // Belt and braces: if the DLR ring came up through some other path, the annual ring
+    // stands down rather than letting the two overlap on the luopan.
+    try {
+      if (window.FloorPlanDLR && typeof window.FloorPlanDLR.isRingOn === 'function'
+          && window.FloorPlanDLR.isRingOn()) {
+        st.ringOn = false; window.__qmdjAnnualRingOn = false;
+        try { if (typeof window.fsLuopanMenuSync === 'function') window.fsLuopanMenuSync(); } catch (e2) {}
+        return;
+      }
+    } catch (e) {}
+    var canReset = (typeof ctx.setTransform === 'function');
+    try { ctx.save(); if (canReset) ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; } catch (e) {}
+    try {
+      var r = current();
+      if (!r || !r.ok) {
+        ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        var msg = '\u26a0 QMDJ annual: ' + ((r && r.reason) || 'chart unavailable');
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(msg, cx, 6);
+        ctx.fillStyle = '#c62828'; ctx.fillText(msg, cx, 6);
+        return;
+      }
+      var ang = function (deg) { return (deg - 270 + (ROT || 0)) * Math.PI / 180; };
+      var rLab = outerR + 74;
+
+      // Heading, so the ring always says which chart it is.
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.font = 'bold 15px sans-serif';
+      var head = 'QMDJ annual \u00b7 Yang J\u00fa ' + r.ju + ' \u00b7 ' + r.hourGanZhi +
+                 ' \u00b7 facing ' + Math.round(r.facingDeg) + '\u00b0';
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.strokeText(head, cx, 4);
+      ctx.fillStyle = '#1b5e20'; ctx.fillText(head, cx, 4);
+
+      RING.forEach(function (s) {
+        var c = r.palaces[s.p] || {};
+        var a = ang(s.deg);
+        var x = cx + rLab * Math.cos(a), y = cy + rLab * Math.sin(a);
+        var door = c.doorName || c.door || '';
+        var lines = [
+          { t: s.d + ' \u00b7 ' + (c.ti || ''), f: 'bold 13px sans-serif', col: '#1b5e20' },
+          { t: door, f: 'bold 14px sans-serif', col: FAV[door] ? '#0d5e2c' : '#b71c1c' },
+          { t: (c.star || '') + ' \u00b7 ' + (c.deity || ''), f: '11px sans-serif', col: '#4a148c' }
+        ];
+        var h = 15, y0 = y - h;
+        lines.forEach(function (L, i) {
+          if (!L.t) return;
+          ctx.font = L.f; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.95)';
+          ctx.strokeText(L.t, x, y0 + i * h);
+          ctx.fillStyle = L.col; ctx.fillText(L.t, x, y0 + i * h);
+        });
+      });
+    } catch (e) {
+      try { console.warn('QMDJAnnual ring', e); } catch (e2) {}
+    } finally {
+      try { ctx.restore(); } catch (e3) {}
+    }
+  }
+
+  function toggleRing() {
+    st.ringOn = !st.ringOn;
+    invalidate();
+    window.__qmdjAnnualRingOn = st.ringOn;
+    try { if (typeof window.fsRedraw === 'function') window.fsRedraw(); } catch (e) {}
+    try { if (typeof window.fsLuopanMenuSync === 'function') window.fsLuopanMenuSync(); } catch (e) {}
+    return st.ringOn;
+  }
+
+  A.drawIfOn = drawIfOn;
+  A.toggleRing = toggleRing;
+  A.isRingOn = function () { return st.ringOn; };
+  A.invalidate = invalidate;
 })();

@@ -751,8 +751,10 @@ var FS_LUOPAN_MENU = [
       // Edu: the name "Card" goes. On = the button offers the way back to the luopan.
       var on = b && b.textContent.indexOf('Luopan') >= 0;
       return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
-  { v: 'qmdj',   btn: null,                 label: function () {
-      return window.__qmdjAnnualOpen ? '\ud83e\udded Back to Luopan' : '\ud83e\udded QMDJ annual'; } }
+  { v: 'qmdj',     btn: null, label: function () {
+      return window.__qmdjAnnualOpen ? '\ud83e\udded Back to Luopan' : '\ud83e\udded QMDJ annual \u00b7 card'; } },
+  { v: 'qmdjring', btn: null, label: function () {
+      return window.__qmdjAnnualRingOn ? '\ud83e\udded QMDJ annual ring ON' : '\ud83e\udded QMDJ annual \u00b7 ring'; } }
 ];
 
 // Rebuilds the entries so each one shows the CURRENT state of its button.
@@ -771,11 +773,34 @@ function fsLuopanMenuSync(){
   } catch (e) { /* the menu must never break the luopan */ }
 }
 
+// Switches the DLR ring off if it is up, through its own module so its button, its
+// styling and its floor-plan state all stay in step. No-op when it is already off.
+function _fsTurnOffDlrRing(){
+  try {
+    if (window.FloorPlanDLR && typeof window.FloorPlanDLR.isRingOn === 'function'
+        && window.FloorPlanDLR.isRingOn() && typeof window.FloorPlanDLR.toggleRing === 'function') {
+      window.FloorPlanDLR.toggleRing();
+    }
+  } catch (e) {}
+}
+
 function fsLuopanMenuAct(v){
   try {
     var sel = document.getElementById('fs-luopan-menu');
     if (sel) sel.value = '';                    // snap back to the "Views" label
     if (!v) return;
+    if (v === 'qmdjring'){
+      if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggleRing !== 'function'){
+        alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
+        return;
+      }
+      // Edu, session 26: around the luopan the QMDJ annual ring and the DLR ring are
+      // MUTUALLY EXCLUSIVE \u2014 with the annual ring up the luopan must carry the Flying
+      // Stars chart and nothing else. Switching one on switches the other off.
+      if (!window.QMDJAnnual.isRingOn()) _fsTurnOffDlrRing();
+      window.QMDJAnnual.toggleRing();
+      return;
+    }
     if (v === 'qmdj'){
       if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggle !== 'function'){
         alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
@@ -784,6 +809,11 @@ function fsLuopanMenuAct(v){
       window.QMDJAnnual.toggle();
       setTimeout(fsLuopanMenuSync, 60);
       return;
+    }
+    // ...and the other way round: the DLR takes over the luopan, so the annual ring goes.
+    if (v === 'dlr' && window.QMDJAnnual && typeof window.QMDJAnnual.isRingOn === 'function'
+        && window.QMDJAnnual.isRingOn()) {
+      try { window.QMDJAnnual.toggleRing(); } catch (e) {}
     }
     var it = FS_LUOPAN_MENU.filter(function (x) { return x.v === v; })[0];
     if (!it || !it.btn) return;
@@ -1375,6 +1405,11 @@ function fsRedraw(){
   try {
     if (window.FloorPlanDLR && typeof window.FloorPlanDLR.drawIfOn === 'function') {
       window.FloorPlanDLR.drawIfOn(ctx, cx, cy, outerR, ROT);
+    }
+    // QMDJ Feng Shui annual ring (session 26) — same contract as the DLR overlay:
+    // draws last, on absolute coordinates, and does nothing while it is switched off.
+    if (window.QMDJAnnual && typeof window.QMDJAnnual.drawIfOn === 'function') {
+      window.QMDJAnnual.drawIfOn(ctx, cx, cy, outerR, ROT);
     }
   } catch (e) { console.warn('FloorPlanDLR overlay', e); }
 
@@ -8869,6 +8904,9 @@ function fsDrawSectionLuopan(){
     try {
       if (window.FloorPlanDLR && typeof window.FloorPlanDLR.drawIfOn === 'function') {
         window.FloorPlanDLR.drawIfOn(ctx, cx, cy, outerR, _srot);
+      }
+      if (window.QMDJAnnual && typeof window.QMDJAnnual.drawIfOn === 'function') {
+        window.QMDJAnnual.drawIfOn(ctx, cx, cy, outerR, _srot);
       }
     } catch (eDLR) { console.warn('FloorPlanDLR overlay (section)', eDLR); }
     // Flying Stars in the section view too (Edu, session 24): the bed relates to the
