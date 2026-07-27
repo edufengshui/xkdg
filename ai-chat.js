@@ -673,7 +673,8 @@
       description: 'Build a .ics calendar file of the ABSOLUTE best hours over the next months and download it, so the user can ' +
         'add it to Google Calendar on the phone. Three separate sectors, each with its own maximum computed independently: ' +
         'WATER (both aquariums, from the saved house profiles \u2014 only the highest Tier that occurs in the period), ' +
-        'XKDG tied to the loaded person (only the top score of the period), and DIRECTIONS (only the top score of the period). ' +
+        'XKDG tied to the loaded person (every hour scoring at least xkdg_min_score, default 15, that carries a real XKDG '
+        + 'relation \u2014 hours riding on season/Nayin alone are dropped), and DIRECTIONS (only the top score of the period). ' +
         'The three scales are NOT comparable and are never added together. Every event carries its sector in the title and an ' +
         'alarm the evening before at 21:00. Use when the user asks for a calendar, an .ics, or to be warned in advance about the ' +
         'best hours. After it runs, report by_sector honestly, including any sector that produced nothing.',
@@ -682,6 +683,7 @@
         properties: {
           days: { type: 'integer', description: 'How far ahead to look, in days. Default 90 (three months).' },
           start_date: { type: 'string', description: 'YYYY-MM-DD, defaults to today.' },
+          xkdg_min_score: { type: 'integer', description: 'Minimum XKDG score kept in the calendar. Default 15. Only hours that ALSO carry a real XKDG relation are kept, whatever the score. Raise it for a leaner calendar: measured on six months, 15 gives about 125 hours over 61 days, 18 gives 79 over 40, 20 gives 52 over 27, 25 gives 14 over 9.' },
           include_night: { type: 'boolean', description: 'Keep night hours 23:00-05:00 (Zi/Chou/Yin). Default false: nobody does an activation at 2am, so night hours are dropped unless the user explicitly asks ("include the night hours", "anche di notte").' }
         }
       }
@@ -2110,6 +2112,21 @@
   // the hour so it is unambiguous (Chou, not just 丑).
   var _ICS_NIGHT = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1 };
   var _ICS_DIR_PAL = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 };
+  // Session 26 \u2014 the XKDG relation class of a scan row, read from blueLabels.
+  // These are the six natural steps of the score (the relationFloor ladder in
+  // calcHourScore). null = the hour carries NO XKDG relation at all: it only scores
+  // through season, Nayin and personal stars, and Edu keeps those out of the calendar.
+  // Order matters: "Two-Family Bond" also contains the word Family.
+  function _icsXkdgClass(labels) {
+    var L = (labels || []).join(' | ');
+    if (!L) return null;
+    if (/Two-Family Bond/.test(L)) return 'Two-Family Bond';
+    if (/Family/.test(L)) return 'Blood Link';
+    if (/Pure Qi/.test(L)) return 'Pure Qi';
+    if (/Pure Adding|Pure Hetu/.test(L)) return 'Pure Adding';
+    if (/Adding|Hetu|Inverse Hex/.test(L)) return 'Adding';
+    return 'XKDG';   // a relation we do not recognise is still a relation: keep it
+  }
   var _ICS_PIN = { '\u5b50':'Zi', '\u4e11':'Chou', '\u5bc5':'Yin', '\u536f':'Mao', '\u8fb0':'Chen',
                    '\u5df3':'Si', '\u5348':'Wu', '\u672a':'Wei', '\u7533':'Shen', '\u9149':'You',
                    '\u620c':'Xu', '\u4ea5':'Hai' };
@@ -2245,15 +2262,36 @@
       // the rows are fresh.
       var raw = (window._lastScanResults || []).filter(function (r) { return r.isoDate && r.hourIndex != null; });
       if (raw.length) {
+        // Session 26 \u2014 Edu, measured on 180 real days: the old rule kept ONLY the single
+        // highest score, and the maximum occurs exactly once in six months, so this sector
+        // produced one event per export. The score is a fine-grained integer (38 distinct
+        // values from -2 to 43), not a tier ladder, so "the maximum" is not a useful cut.
+        // New rule: every hour scoring at least xkdg_min_score AND carrying a real XKDG
+        // relation. Hours with no relation are dropped even when they score high: they ride
+        // on season/Nayin/personal stars alone. Night hours are dropped by push() already.
+        var minX = parseInt(input.xkdg_min_score, 10);
+        if (!isFinite(minX)) minX = 15;
         var maxX = Math.max.apply(null, raw.map(function (r) { return r.score || 0; }));
-        raw.filter(function (r) { return (r.score || 0) === maxX; }).forEach(function (r) {
+        var byClass = {}, keptX = 0, noRelation = 0, belowMin = 0;
+        raw.forEach(function (r) {
+          var sc = r.score || 0;
+          if (sc < minX) { belowMin++; return; }
+          var cls = _icsXkdgClass(r.blueLabels);
+          if (!cls) { noRelation++; return; }
+          keptX++; byClass[cls] = (byClass[cls] || 0) + 1;
+          var hr = _icsHourLabel(_ICS_BRANCHES[r.hourIndex]);
           push('xkdg', r.isoDate, _ICS_BRANCHES[r.hourIndex],
-               '\u2B21 XKDG \u00b7 your chart \u00b7 ' + _icsHourLabel(_ICS_BRANCHES[r.hourIndex]),
-               'XKDG hour connected to your pillars at hour ' + _icsHourLabel(_ICS_BRANCHES[r.hourIndex]) + ' \u2014 score ' + (r.score || 0) +
-               (r.nayinLabel ? (' \u00b7 Nayin ' + r.nayinLabel) : ''), lon, utc, true);
+               '\u2B21 XKDG \u00b7 ' + hr + ' \u00b7 ' + cls + ' \u00b7 ' + sc,
+               'XKDG hour connected to your pillars at hour ' + hr + ' \u2014 ' + cls + ' \u00b7 score ' + sc +
+               (r.nayinLabel ? (' \u00b7 Nayin ' + r.nayinLabel) : '') +
+               ((r.blueLabels && r.blueLabels.length) ? (' \u00b7 ' + r.blueLabels.join(' + ')) : ''), lon, utc, true);
         });
-        report.xkdg = { rows_scanned: raw.length, max_score: maxX,
-                        events: raw.filter(function (r) { return (r.score || 0) === maxX; }).length };
+        report.xkdg = { rows_scanned: raw.length, min_score: minX, max_score: maxX, events: keptX,
+                        by_class: byClass, dropped_below_min: belowMin, dropped_no_relation: noRelation,
+                        note: 'Kept every hour scoring ' + minX + ' or more that carries a real XKDG relation. '
+                          + 'Hours with no relation were dropped even when they scored high. Night hours are '
+                          + 'excluded unless include_night was set. Say the threshold when reporting, and say '
+                          + 'that it can be moved with xkdg_min_score.' };
       } else { report.xkdg = { rows_scanned: 0, note: 'the date scanner returned nothing \u2014 check the filter chips' }; }
     } catch (eX) { report.xkdg = { error: String((eX && eX.message) || eX) }; }
 
