@@ -103,17 +103,23 @@
   // (o viceversa a seconda della tradizione).
   // Li includiamo tutti: quelli non presenti nei dati semplicemente
   // non produrranno mai match.
+  // The Nine Spirits 九神, in Luo Shu order. Positions 5 and 7 differ between the two dun:
+  // Yang carries 勾陳 Pole Star and 朱雀 Crimson Bird, Yin carries 白虎 White Tiger and 玄武
+  // Dark Warrior. The embedded charts already store the right one for each dun; before
+  // session 26 this list had NO entry for 勾陳 at all (so a Yang chart showed a spirit the
+  // app could not name) and labelled 太常 Supreme Norm as 勾陳. `dun` marks the two pairs.
   var QM_SPIRITS = [
-    {key:'Commander', han:'值符', label:'值符 Commander'},
-    {key:'Snake',     han:'螣蛇', label:'螣蛇 Snake'},
-    {key:'Yin',       han:'太陰', label:'太陰 Yin'},
-    {key:'Harmonies', han:'六合', label:'六合 Harmonies'},
-    {key:'Tiger',     han:'白虎', label:'白虎 Tiger'},
-    {key:'Warrior',   han:'玄武', label:'玄武 Warrior'},
-    {key:'Earth',     han:'九地', label:'九地 Earth'},
-    {key:'Heaven',    han:'九天', label:'九天 Heaven'},
-    {key:'Norm',      han:'勾陳', label:'勾陳 Norm'},
-    {key:'Bird',      han:'朱雀', label:'朱雀 Bird'}
+    {key:'Commander',  han:'值符', label:'值符 Commander on Duty'},
+    {key:'Snake',      han:'螣蛇', label:'螣蛇 Flying Snake'},
+    {key:'Yin',        han:'太陰', label:'太陰 Supreme Yin'},
+    {key:'Harmonies',  han:'六合', label:'六合 Six Harmonies'},
+    {key:'Polaris',    han:'勾陳', label:'勾陳 Pole Star', dun:'yang'},
+    {key:'Tiger',      han:'白虎', label:'白虎 White Tiger', dun:'yin'},
+    {key:'Norm',       han:'太常', label:'太常 Supreme Norm'},
+    {key:'Bird',       han:'朱雀', label:'朱雀 Crimson Bird', dun:'yang'},
+    {key:'Warrior',    han:'玄武', label:'玄武 Dark Warrior', dun:'yin'},
+    {key:'Earth',      han:'九地', label:'九地 Nine Earth'},
+    {key:'Heaven',     han:'九天', label:'九天 Nine Heaven'}
   ];
 
   // 17 configurazioni Qimen (profili). Le etichette DEVONO coincidere
@@ -677,9 +683,11 @@
     if(starKey && wanted.stars.has(starKey)){
       hits.push({cat:'star', key:starKey, label:palaceData.star + ' Star'});
     }
-    // Spirits (八神)
+    // Spirits (九神) — the label carries the character, so a Yang chart no longer shows
+    // a bare English key the reader cannot place.
     if(palaceData.deity && wanted.spirits.has(palaceData.deity)){
-      hits.push({cat:'spirit', key:palaceData.deity, label:palaceData.deity + ' 神'});
+      var _sp = QM_SPIRITS.filter(function(s){ return s.key === palaceData.deity; })[0];
+      hits.push({cat:'spirit', key:palaceData.deity, label: _sp ? _sp.label : (palaceData.deity + ' 神')});
     }
     return hits;
   }

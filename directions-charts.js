@@ -23,7 +23,11 @@
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
 
   // ── Display maps (mirror the Tai-Yi rotating card) ──
-  var DEITY_CN = { Commander: '值符', Snake: '螣蛇', Yin: '太陰', Harmonies: '六合', Tiger: '白虎', Warrior: '玄武', Earth: '九地', Heaven: '九天' };
+  // Nine Spirits 九神. Polaris 勾陳 and Norm 太常 were missing, so on every Yang chart two
+  // palaces printed an empty character (session 26).
+  var DEITY_CN = { Commander: '值符', Snake: '螣蛇', Yin: '太陰', Harmonies: '六合', Polaris: '勾陳', Tiger: '白虎', Norm: '太常', Bird: '朱雀', Warrior: '玄武', Earth: '九地', Heaven: '九天' };
+  // English wording as taught, so the cell shows Pole Star rather than the internal key.
+  var DEITY_EN = { Commander: 'Commander on Duty', Snake: 'Flying Snake', Yin: 'Supreme Yin', Harmonies: 'Six Harmonies', Polaris: 'Pole Star', Tiger: 'White Tiger', Norm: 'Supreme Norm', Bird: 'Crimson Bird', Warrior: 'Dark Warrior', Earth: 'Nine Earth', Heaven: 'Nine Heaven' };
   var STAR_CN = { Grass: '天蓬', Rice: '天芮', Aggressor: '天沖', Assistant: '天輔', Fowl: '天禽', Heart: '天心', Pillar: '天柱', Official: '天任', Hero: '天英' };
   var DOOR_CN = { Open: '開', Rest: '休', Birth: '生', Injury: '傷', Delusion: '杜', View: '景', Death: '死', Shocking: '驚' };
   var DOOR_EN_FROM_KEY = { Kai: 'Open', Xiu: 'Rest', Sheng: 'Birth', Shang: 'Injury', Du: 'Delusion', JingS: 'View', Si: 'Death', JingF: 'Shocking' };
@@ -126,7 +130,8 @@
     var isC = (p === 5);
     var hs = c.tiH || '', es = c.diH || '';
     var fu = !!c.zhiFu, zs = !!c.zhiShi;
-    var deEN = c.deity || '', deCN = DEITY_CN[deEN] || '';
+    var _dk = c.deity || '';
+    var deEN = DEITY_EN[_dk] || _dk, deCN = DEITY_CN[_dk] || '';
     var stEN = c.star || '', stCN = STAR_CN[stEN] || '';
     var doEN = c.doorName || DOOR_EN_FROM_KEY[c.door] || '', doCN = DOOR_CN[doEN] || '';
     var palabel = '<div class="dc-palabel">' + (PDIR[p] !== '·' ? PDIR[p] + ' &middot; ' : '') +

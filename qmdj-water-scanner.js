@@ -47,7 +47,10 @@
 
   // Purpose-specific QMDJ boosters — ADD to effectiveness/score, never gate.
   // Star names use STAR_NAME English values (cell star). Spirits use the raw
-  // deity key (cell[3]): Bird=朱雀, Norm=勾陳.
+  // deity key (cell[3]): Bird=朱雀 Crimson Bird, Norm=太常 Supreme Norm.
+  // NB (session 26): Norm is 太常, NOT 勾陳. 勾陳 Pole Star is the key 'Polaris', which
+  // occurs ONLY in Yang Dun charts — the counterpart of 白虎 Tiger. Likewise 朱雀 Bird is
+  // Yang-only, the counterpart of 玄武 Warrior.
   const PURPOSE_QM_STARS   = { health:['Heart'], speak:['Pillar','Assistant'], career:['Hero','Official'] };
   const PURPOSE_QM_SPIRITS = { legal:['Bird'], career:['Norm'] };
 
