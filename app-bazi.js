@@ -7884,15 +7884,18 @@ function runScanner() {
 // Obfuscated as base64
 // SHA-256 hashed PINs — original PINs are NOT stored in source code
 const _HASHED_CODES = [
-    { h: '0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5a150c', t: 1, e: '2027-01-28' },
-    { h: 'edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9', t: 2, e: '2027-01-28' },
-    { h: '318aee3fed8c9d040d35a7fc1fa776fb31303833aa2de885354ddf3d44d8fb69', t: 4, e: '2028-01-27' },
-    { h: '888df25ae35772424a560c7152a1de794440e0ea5cfee62828333a456a506e05', t: 0, e: null },
-    { h: 'bf1889006d18a1b40d0791c50436d7eaa119bb3456e3f6300c17127ae10e7715', t: 0, e: null },
-    { h: 'b0ff7bdc481ed43adf5168e51d73264887136b603fd0fb372530a689e15a29e7', t: 0, e: null }, // Chee
-    { h: '1b8c0f70737fd82ae7f9a852851003ce7a567ed20cf8674d1781c22bb5d8523d', t: 0, e: null },
-    { h: '38a8a3d7680c6ee9b31c99bca343c76cbb47d912b1e683d229fd629f9b28684f', t: 1, e: '2027-02-03' }, // Student 9316 — Wei year
-    { h: '29e3ab78dfb38ec35c420a18e3cf5ee8b69de22b308545738c64982c980eccd1', t: 2, e: '2027-02-04', dmax: '2027-02-04' }, // Student 020620 — capped to 4 Feb 2027 (inclusive)
+    // Session 26 — full rotation: all nine previous codes withdrawn, these are the only ones live.
+    // t = how many Chinese years the licence opens, counted from the CURRENT one (0 = unlimited).
+    // e = date the licence lapses. Current Chinese year 丙午 runs 2026-02-04 → 2027-02-03,
+    // the next 丁未 runs 2027-02-04 → 2028-02-03.
+    { h: '0a33fff238696a9d3b93251b09fb90654dbd47d2da65f80ee1f4206d56389ab2', t: 0, e: null }, // Raymond
+    { h: '5972b901807fac6a70720fd1b4bf15bc9c00a41c1ffbf53d4038924c54cbcd2a', t: 2, e: '2028-02-03' }, // Margherita
+    { h: '02ff9a4302ba484aadf06cf115b5e98a1271151dfd9191a42fe188a2b13dae92', t: 0, e: null }, // Nicolas
+    { h: '3211ef64ad052c3626ad80b36d7644dde81f91c8a80addd3cc89f36ce75a3426', t: 0, e: null }, // Claire
+    { h: '4b499d5423839527497bca679ab3f20b62a1c7f1373544a8f689f55ed96a7dbf', t: 0, e: null }, // Chee
+    { h: '6f030729a19c3912e3ac9874e8b96894d168a32e6a6eb849469dbfa6f276e099', t: 1, e: '2027-02-03' }, // Vic
+    { h: '8a1436e96efc3f62ee65687e4742d8bace0bad8d7f0b58c145f9c090b4635139', t: 0, e: null }, // Yuliya
+    { h: '1cf48271e12d3b2d330f67c58ed6735dfde8b8f7094ffb7792ca4a7d00e11e83', t: 0, e: null }, // Edu
 ];
 
 async function hashPin(pin) {
@@ -7961,11 +7964,35 @@ function _xkdgBackfillStudentId(lic) {
     } catch (e) { /* never block the licence check */ }
 }
 
+// Is the licence sitting in localStorage still backed by a live code?
+// Session 26 — Edu withdrew every previous PIN and wanted everybody actually moved
+// onto the new one. Two cases send the user back to the PIN screen:
+//   • the licence carries a codeHash that is no longer in _HASHED_CODES (code withdrawn);
+//   • the licence carries NO codeHash at all — it was stored before this change, so it
+//     cannot be checked and its owner types the new PIN once.
+// Deliberately conservative: on any unexpected error the licence is KEPT, so a bug here
+// can never lock a paying student out.
+function _xkdgLicenceStillValid(lic) {
+    try {
+        if (typeof _HASHED_CODES === 'undefined' || !Array.isArray(_HASHED_CODES)) return true;
+        if (!lic || !lic.codeHash) return false;          // pre-session-26 licence
+        return _HASHED_CODES.some(function (c) { return c.h === lic.codeHash; });
+    } catch (e) { return true; }
+}
+
 function checkLicense() {
     const stored = localStorage.getItem('xkdg_license');
     if (!stored) { showLicenseOverlay(); return; }
     try {
         const lic = JSON.parse(stored);
+        if (!_xkdgLicenceStillValid(lic)) {
+            try {
+                localStorage.removeItem('xkdg_license');
+                localStorage.removeItem('xkdg_student_id');
+            } catch (e) {}
+            showLicenseOverlay();
+            return;
+        }
         try { _xkdgBackfillStudentId(lic); } catch (e) {}
         if (lic.expiry) {
             const today = new Date().toISOString().split('T')[0];
@@ -8161,7 +8188,11 @@ async function submitPin() {
     }
 
     if (validated) {
-        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate }));
+        // `codeHash` (session 26) makes the stored licence traceable back to the code
+        // that opened it, so checkLicense() can drop it the day that code is withdrawn.
+        // Before this, removing a hash from _HASHED_CODES only blocked NEW activations:
+        // anyone already unlocked kept working forever on the old code.
+        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate, codeHash: hashed }));
         // Per-student identifier (Edu, session 23: "si può sapere quale studente fa
         // più domande?"). Reuses the SAME hash already computed to check the PIN —
         // no new student-management system, no new data collected beyond what the
