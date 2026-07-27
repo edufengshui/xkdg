@@ -674,7 +674,8 @@
         'add it to Google Calendar on the phone. Three separate sectors, each with its own maximum computed independently: ' +
         'WATER (both aquariums, from the saved house profiles \u2014 only the highest Tier that occurs in the period), ' +
         'XKDG tied to the loaded person (every hour scoring at least xkdg_min_score, default 15, that carries a real XKDG '
-        + 'relation \u2014 hours riding on season/Nayin alone are dropped), and DIRECTIONS (only the top score of the period). ' +
+        + 'relation \u2014 hours riding on season/Nayin alone are dropped), and DIRECTIONS (every hour scoring at least '
+        + 'direction_min_score, default 10, which is where the method\u2019s own gap falls). ' +
         'The three scales are NOT comparable and are never added together. Every event carries its sector in the title and an ' +
         'alarm the evening before at 21:00. Use when the user asks for a calendar, an .ics, or to be warned in advance about the ' +
         'best hours. After it runs, report by_sector honestly, including any sector that produced nothing.',
@@ -684,6 +685,7 @@
           days: { type: 'integer', description: 'How far ahead to look, in days. Default 90 (three months).' },
           start_date: { type: 'string', description: 'YYYY-MM-DD, defaults to today.' },
           xkdg_min_score: { type: 'integer', description: 'Minimum XKDG score kept in the calendar. Default 15. Only hours that ALSO carry a real XKDG relation are kept, whatever the score. Raise it for a leaner calendar: measured on six months, 15 gives about 125 hours over 61 days, 18 gives 79 over 40, 20 gives 52 over 27, 25 gives 14 over 9.' },
+          direction_min_score: { type: 'number', description: 'Minimum direction score kept in the calendar. Default 10. The score has only ten values (0, 0.5, 1, 1.5, 2, 3, 10, 10.5, 11, 12) with nothing between 3 and 10, so 10 is the natural cut: measured on six months it gives about 179 hours over 115 days, of which 141 outside the night hours.' },
           include_night: { type: 'boolean', description: 'Keep night hours 23:00-05:00 (Zi/Chou/Yin). Default false: nobody does an activation at 2am, so night hours are dropped unless the user explicitly asks ("include the night hours", "anche di notte").' }
         }
       }
@@ -2117,6 +2119,15 @@
   // calcHourScore). null = the hour carries NO XKDG relation at all: it only scores
   // through season, Nayin and personal stars, and Edu keeps those out of the calendar.
   // Order matters: "Two-Family Bond" also contains the word Family.
+  // Door label with its Chinese character, same wording as DOOR_TAG_LABELS in
+  // qmdj-water-scanner.js. Kept as a lookup so a missing code degrades to the name.
+  var _ICS_DOOR = { Kai: 'Open \u958b', Xiu: 'Rest \u4f11', Sheng: 'Birth \u751f', JingS: 'View \u666f',
+                    Du: 'Delusion \u675c', Shang: 'Injury \u50b7', Si: 'Death \u6b7b', JingF: 'Shocking \u9a5a' };
+  function _icsDoorLabel(cell) {
+    if (!cell) return '';
+    return _ICS_DOOR[cell.doorCode] || cell.doorName || cell.doorCode || '';
+  }
+
   function _icsXkdgClass(labels) {
     var L = (labels || []).join(' | ');
     if (!L) return null;
@@ -2193,14 +2204,23 @@
 
     var events = [], report = {}, nightSkipped = 0;
     var keepNight = !!input.include_night;
+    var dupSkipped = 0;
     var purposeIdx = _icsPurposeIndex(start, days);   // date|palace -> [purposes served]
 
     // manualAction = the user has to be there at that hour (walk a direction, sit for an
     // XKDG hour). Water does NOT: it is programmed on the Shelly plug, so a 2am aquarium
     // switch-on is fine and night is NOT excluded for it (Edu, session 25). Night is
     // dropped only for manual-action sectors.
+    // Session 26 \u2014 duplicate guard. The scanners walk their day loop with a fixed
+    // 86400000 ms step from local midnight, so on the autumn DST day (25 Oct 2026 in
+    // Europe, a 25-hour day) the SAME date comes out twice and every row of that day is
+    // emitted twice. Rather than let it reach the calendar, drop the repeat here.
+    var _pushSeen = {};
     function push(kind, iso, branch, label, detail, evLon, evUtc, manualAction) {
       if (manualAction && !keepNight && _ICS_NIGHT[branch]) { nightSkipped++; return; }
+      var _k = kind + '|' + iso + '|' + branch + '|' + label;
+      if (_pushSeen[_k]) { dupSkipped++; return; }
+      _pushSeen[_k] = 1;
       var sm = _BRANCH_SOLAR_MIN[branch];
       if (sm == null) return;
       var on = _solarToEpoch(iso, sm, evLon, evUtc);
@@ -2243,7 +2263,8 @@
           var ps = (pal != null && purposeIdx[x.r.date + '|' + pal]) || [];
           var pTxt = ps.length ? (' \u00b7 for ' + ps.map(_icsPurposeLabel).join(', ')) : '';
           push('water', x.r.date, x.r.branch,
-               '\uD83D\uDCA7 Water ' + x.dir + ' \u00b7 ' + _icsHourLabel(x.r.branch) + ' \u00b7 Tier ' + x.r.tier,
+               '\uD83D\uDCA7 Aquarium ' + x.dir + ' \u00b7 ' + _icsHourLabel(x.r.branch) + ' \u00b7 Tier ' + x.r.tier +
+               ' \u00b7 ' + (x.house ? (x.house.charAt(0).toUpperCase() + x.house.slice(1)) : ''),
                'Aquarium sector ' + x.dir + ' \u2014 ' + x.house + ' \u00b7 hour ' + _icsHourLabel(x.r.branch) + (x.r.hour ? (' (' + x.r.hour + ')') : '') + pTxt + '. ' + (x.r.why || ''), x.lon, x.utc, false);
         });
         report.water = { rows_scanned: waterRows.length, max_tier: maxTier,
@@ -2300,26 +2321,48 @@
       var dr = (window.QMDJWaterScanner && window.QMDJWaterScanner.scanTravelPurpose)
         ? (window.QMDJWaterScanner.scanTravelPurpose('', start, days, null) || []) : [];
       if (dr.length) {
+        // Session 26 \u2014 Edu, measured on 180 real days: 5051 rows but only TEN distinct
+        // scores (0, 0.5, 1, 1.5, 2, 3, 10, 10.5, 11, 12) with nothing at all between 3 and
+        // 10. That gap is the method's own cut: at 10 and above sit the strong Dun escapes
+        // and the \u4e19/\u620a pairings, below it only Pretenses and empty palaces. The old rule kept
+        // just the maximum (10 hours in six months). Doors need no filtering here: the
+        // scanner already applies the canonical directionGate(travel:true) upstream, so
+        // Death/Delusion/Shocking never appear and an Injury \u50b7 that survives is one
+        // redeemed by San Qi \u2014 Edu keeps those (they only occur above 10).
+        var minD = parseFloat(input.direction_min_score);
+        if (!isFinite(minD)) minD = 10;
         var maxD = Math.max.apply(null, dr.map(function (r) { return r.score || 0; }));
-        dr.filter(function (r) { return (r.score || 0) === maxD; }).forEach(function (r) {
+        var keptD = 0, byDir = {}, byDoor = {};
+        dr.forEach(function (r) {
+          var sc = r.score || 0;
+          if (sc < minD) return;
           var br = _branchOfHan(r.hourHan); if (!br) return;
-          var door = (r.cell && (r.cell.doorName || r.cell.doorCode)) || '';
+          var door = _icsDoorLabel(r.cell);
+          var forms = (r.hits || []).map(function (h) { return h.label; });
           var ps = (r.palace != null && purposeIdx[r.date + '|' + r.palace]) || [];
           var pTxt = ps.length ? (' \u00b7 for ' + ps.map(_icsPurposeLabel).join(', ')) : '';
+          keptD++; byDir[r.dir] = (byDir[r.dir] || 0) + 1;
+          if (door) byDoor[door] = (byDoor[door] || 0) + 1;
           push('direction', r.date, br,
-               '\uD83E\uDDED Direction ' + r.dir + ' \u00b7 ' + _icsHourLabel(br) + (door ? (' \u00b7 ' + door) : ''),
-               'Favourable direction ' + r.dir + ' at hour ' + _icsHourLabel(br) + ' (' + (r.hourTime || '') + ')' +
-               (door ? (' \u2014 door ' + door) : '') + ' \u00b7 score ' + (r.score || 0) + pTxt +
-               ((r.hits || []).length ? (' \u00b7 ' + r.hits.map(function (h) { return h.label; }).join(', ')) : ''), lon, utc, true);
+               '\uD83E\uDDED Direction ' + r.dir + ' \u00b7 ' + _icsHourLabel(br) +
+               (door ? (' \u00b7 ' + door) : '') + (forms.length ? (' \u00b7 ' + forms[0]) : '') + ' \u00b7 ' + sc,
+               'Walk or travel towards ' + r.dir + ' at hour ' + _icsHourLabel(br) + ' (' + (r.hourTime || '') + ')' +
+               (door ? (' \u2014 door ' + door) : '') + ' \u00b7 score ' + sc + pTxt +
+               (forms.length ? (' \u00b7 ' + forms.join(', ')) : ''), lon, utc, true);
         });
-        report.directions = { rows_scanned: dr.length, max_score: maxD,
-                              events: dr.filter(function (r) { return (r.score || 0) === maxD; }).length };
+        report.directions = { rows_scanned: dr.length, min_score: minD, max_score: maxD, events: keptD,
+                              by_direction: byDir, by_door: byDoor,
+                              note: 'Kept every hour scoring ' + minD + ' or more. The direction score has only ten '
+                                + 'values with a gap between 3 and 10, so 10 is the method\u2019s own threshold; it can be '
+                                + 'moved with direction_min_score. Night hours (Zi/Chou/Yin) are excluded unless '
+                                + 'include_night was set.' };
       } else { report.directions = { rows_scanned: 0 }; }
     } catch (eD) { report.directions = { error: String((eD && eD.message) || eD) }; }
 
     if (!events.length) {
       return { error: 'Nothing reached the maximum in any of the three sectors over ' + days + ' days.' +
         (nightSkipped ? (' ' + nightSkipped + ' night hour(s) (23:00-05:00) were excluded \u2014 ask with include_night to keep them.') : ''),
+        duplicates_dropped: dupSkipped || undefined,
         night_hours_excluded: nightSkipped || undefined, report: report };
     }
     events.sort(function (a, b) { return a.start - b.start; });
