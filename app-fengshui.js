@@ -7297,7 +7297,7 @@ var PURPOSE_GUIDE = {
     date:['Structure: a <b>Parent (印 Resource)</b> present (best on the <b>day pillar</b>) <b>and</b> a <b>Noble 貴人</b>.',
           'Especially favoured: <b>Bright Hall 明堂</b>, <b>Fate Master 司命</b>, <b>Lu 祿</b>.',
           'Timely formations: <b>Heaven Dun 天遁</b>, <b>Wind Dun 風遁</b>, <b>Dragon Dun 龍遁</b>, <b>Cloud Dun 云遁</b>.'],
-    fs:['Door: <b>Open 開 (Kai)</b> or <b>View 景 (JingS)</b>.','QMDJ stars: <b>Hero 天英</b>, <b>Official 天任</b>.','QMDJ spirit: <b>Norm 勾陳</b>.','Flying Stars: <b>6</b> (and 9).'] },
+    fs:['Door: <b>Open 開 (Kai)</b> or <b>View 景 (JingS)</b>.','QMDJ stars: <b>Hero 天英</b>, <b>Official 天任</b>.','QMDJ spirit: <b>Norm 太常</b>.','Flying Stars: <b>6</b> (and 9).'] },
   wealth: { name:'💰 Wealth',
     date:['Structure: <b>day pillar in the Child role + a Parent present</b> (Child + Parent).',
           'Wealth ✦ (controlling / 克): person\u2019s day stem controls the date\u2019s day stem; the date\u2019s day stem controls the hour / month / year stems; same on the Nayin (Qi) level. Each adds a point.',
