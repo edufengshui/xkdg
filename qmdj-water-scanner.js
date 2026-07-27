@@ -1546,8 +1546,8 @@
     getHourChart: function(year, month, day, hourStem, hourBranch, bjInstant){
       return getHourChart(year, month, day, hourStem, hourBranch, bjInstant);
     },
-    getRotatingHourChart: function(year, month, day, hourStem, hourBranch, bjInstant){
-      return getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant);
+    getRotatingHourChart: function(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun){
+      return getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun);
     },
     checkRotatingPalace: function(chart, palace){
       return checkRotatingPalace(chart, palace);

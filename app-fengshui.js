@@ -3104,8 +3104,12 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   // opts.bjInstant (Beijing-naive {y,mo,d,h,mi,s}) lets the engine decide Jie Qi / Jú at
   // INSTANT level in TST, not just day granularity. Optional: callers without a clock instant
   // (e.g. the dice tool, which only has a date) simply omit it — day-granular as before.
+  // opts.forceJuDun {ju,dun} (session 26) — the QMDJ Feng Shui ANNUAL chart has no date:
+  // its Ju is the Flying-Stars period we are in and its hour comes from the house facing.
+  // Passing it makes THIS renderer draw that chart, so the annual view is pixel-identical
+  // to the 🎲 dice chart instead of being a second, look-alike table.
   var chart = isRot
-    ? window.QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi, opts.bjInstant)
+    ? window.QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi, opts.bjInstant, opts.forceJuDun)
     : window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi, opts.bjInstant);
   if (!chart) { if (opts.returnHtml) return ''; alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
 

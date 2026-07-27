@@ -125,6 +125,7 @@
     out.yearStem = yearStem;
     out.dayGroup = DAY_GROUP[yearStem] || '';
     out.facingDeg = deg;
+    out.house = opt.house || '';
     out.mountain = mountain;
     out.branch = branch;
     out.hourStem = hourStem;
@@ -141,40 +142,35 @@
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
     });
   }
+  // The chart itself is drawn by the app's OWN QMDJ renderer — the same showQimenChart()
+  // behind the 🎲 dice icon — so the annual view is not a look-alike copy but literally the
+  // same table, with the same colours, hexagrams and layout. We only add the heading that
+  // says where its three ingredients came from.
   function cardHtml(r) {
     if (!r || !r.ok) {
       return '<div style="padding:18px;font:13px system-ui;color:#c62828;">Could not build the annual chart' +
              (r && r.reason ? (' \u2014 ' + esc(r.reason)) : '') + '.</div>';
     }
-    var head = '<div style="text-align:center;font:600 13px system-ui;color:#1b5e20;margin-bottom:2px;">' +
-      'QMDJ Feng Shui \u00b7 Annual chart</div>' +
+    var head = '<div style="text-align:center;font:600 14px system-ui;color:#1b5e20;margin-bottom:2px;">' +
+      'QMDJ Feng Shui \u00b7 Annual chart' + (r.house ? (' \u00b7 ' + esc(r.house)) : '') + '</div>' +
       '<div style="text-align:center;font:11px system-ui;color:#555;margin-bottom:8px;">' +
-      'Yang Ju ' + r.ju + ' \u00b7 Day ' + esc(r.dayGroup) + ' \u00b7 Hour ' + esc(r.hourGanZhi) +
-      ' (' + esc(r.hourEn) + ')<br>facing ' + Math.round(r.facingDeg) + '\u00b0 \u2014 mountain ' +
-      esc(r.mountain) + ' \u2192 branch ' + esc(r.branch) + ' (double mountain)</div>';
+      'Yang Ju ' + r.ju + ' \u00b7 Day ' + esc(r.dayGroup) + ' \u00b7 Hour ' + esc(r.hourGanZhi) + '<br>' +
+      'facing ' + Math.round(r.facingDeg) + '\u00b0 \u2014 mountain ' + esc(r.mountain) +
+      ' \u2192 branch ' + esc(r.branch) + ' (double mountain)</div>';
 
-    var cells = GRID.map(function (p) {
-      var c = r.palaces[p] || {};
-      var centre = (p === 5);
-      var dir = PAL_DIR[p] || '';
-      var ti = c.tiH || c.ti || '', di = c.diH || c.di || '';
-      var body = centre
-        ? '<div style="font:600 15px system-ui;color:#1b5e20;">' + esc(ti) + '</div>'
-        : '<div style="font:600 11px system-ui;color:#4a148c;">' + esc(c.deity || '') + '</div>' +
-          '<div style="font:11px system-ui;color:#0d47a1;">' + esc(c.star || '') + '</div>' +
-          '<div style="font:700 12px system-ui;color:#b71c1c;">' + esc(c.doorName || c.door || '') + '</div>' +
-          '<div style="font:600 13px system-ui;color:#1b5e20;margin-top:2px;">' +
-          esc(ti) + (di && di !== ti ? (' <span style="color:#777;font-weight:400;">' + esc(di) + '</span>') : '') + '</div>';
-      return '<div style="border:1px solid #1b5e20;border-radius:6px;padding:6px 4px;text-align:center;' +
-             'background:' + (centre ? '#f1f8e9' : '#fff') + ';min-height:76px;">' +
-             '<div style="font:10px system-ui;color:#888;">' + esc(dir) + (dir ? ' \u00b7 ' : '') + p + '</div>' +
-             body + '</div>';
-    }).join('');
-
-    return head + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:420px;margin:0 auto;">' +
-           cells + '</div>' +
-           '<div style="text-align:center;font:10px system-ui;color:#888;margin-top:8px;">South at the top</div>';
+    var body = '';
+    try {
+      if (typeof window.showQimenChart === 'function') {
+        body = window.showQimenChart('2000-01-01', r.hourStem, r.branch, null, {
+          mode: 'rotating', returnHtml: true, forceJuDun: { ju: r.ju, dun: r.dun }
+        }) || '';
+      }
+    } catch (e) { body = ''; }
+    if (!body) body = '<div style="padding:14px;font:12px system-ui;color:#c62828;">' +
+      'The QMDJ chart renderer is not available on this page.</div>';
+    return head + body;
   }
+
 
   // ── what the menu calls ───────────────────────────────────────────────
   // Reads the active house/floor through the app's own accessors, so there is no
@@ -210,7 +206,7 @@
   function open() {
     var inp = activeInputs();
     // The Ju is the period we are IN, not the period the house was built in.
-    var r = compute({ period: window.QMDJAnnualPeriod || 9, facingDeg: inp.facingDeg });
+    var r = compute({ period: window.QMDJAnnualPeriod || 9, facingDeg: inp.facingDeg, house: inp.house });
     var host = document.getElementById('fs-cardview-html');
     if (!host) { alert('Card area not found.'); return; }
     host.innerHTML = '<div style="width:100%;">' + cardHtml(r) + '</div>';
