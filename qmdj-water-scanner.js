@@ -440,7 +440,13 @@
     var parts = startDateStr.split('-');
     var startDate = new Date(+parts[0], +parts[1]-1, +parts[2]);
     for(var d=0; d<numDays; d++){
-      var date = new Date(startDate.getTime() + d*86400000);
+      // Session 26 (Edu): walk the CALENDAR, not a fixed 24h step. Adding 86400000 ms
+      // from local midnight lands inside the SAME day on the autumn DST change (25 Oct
+      // 2026 in Europe is 25 hours long), so that date was scanned twice and the last
+      // day of the range was lost. The Chinese hour is unaffected by civil DST — the two
+      // rows were byte-identical duplicates. Building the date from y/m/d+d is DST-proof
+      // and gives exactly the same days as before everywhere else.
+      var date = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + d);
       var Y = date.getFullYear(), M = date.getMonth()+1, D = date.getDate();
       var info = getDunJuForDate(Y, M, D);
       if(!info) continue;
@@ -548,7 +554,13 @@
     var parts = startDateStr.split('-');
     var startDate = new Date(+parts[0], +parts[1]-1, +parts[2]);
     for(var d=0; d<numDays; d++){
-      var date = new Date(startDate.getTime() + d*86400000);
+      // Session 26 (Edu): walk the CALENDAR, not a fixed 24h step. Adding 86400000 ms
+      // from local midnight lands inside the SAME day on the autumn DST change (25 Oct
+      // 2026 in Europe is 25 hours long), so that date was scanned twice and the last
+      // day of the range was lost. The Chinese hour is unaffected by civil DST — the two
+      // rows were byte-identical duplicates. Building the date from y/m/d+d is DST-proof
+      // and gives exactly the same days as before everywhere else.
+      var date = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + d);
       var Y = date.getFullYear(), M = date.getMonth()+1, D = date.getDate();
       var info = getDunJuForDate(Y, M, D);
       if(!info) continue;
@@ -594,7 +606,13 @@
     var parts = startDateStr.split('-');
     var startDate = new Date(+parts[0], +parts[1]-1, +parts[2]);
     for(var d=0; d<numDays; d++){
-      var date = new Date(startDate.getTime() + d*86400000);
+      // Session 26 (Edu): walk the CALENDAR, not a fixed 24h step. Adding 86400000 ms
+      // from local midnight lands inside the SAME day on the autumn DST change (25 Oct
+      // 2026 in Europe is 25 hours long), so that date was scanned twice and the last
+      // day of the range was lost. The Chinese hour is unaffected by civil DST — the two
+      // rows were byte-identical duplicates. Building the date from y/m/d+d is DST-proof
+      // and gives exactly the same days as before everywhere else.
+      var date = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + d);
       var Y = date.getFullYear(), M = date.getMonth()+1, D = date.getDate();
       var info = getDunJuForDate(Y, M, D);
       if(!info) continue;

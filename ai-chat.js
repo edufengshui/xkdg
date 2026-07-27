@@ -2303,7 +2303,8 @@
           var hr = _icsHourLabel(_ICS_BRANCHES[r.hourIndex]);
           push('xkdg', r.isoDate, _ICS_BRANCHES[r.hourIndex],
                '\u2B21 XKDG \u00b7 ' + hr + ' \u00b7 ' + cls + ' \u00b7 ' + sc,
-               'XKDG hour connected to your pillars at hour ' + hr + ' \u2014 ' + cls + ' \u00b7 score ' + sc +
+               'Strong personal date \u2014 nothing to activate, no direction to face: use the hour for whatever '
+             + 'action you choose. XKDG hour connected to your pillars at hour ' + hr + ' \u2014 ' + cls + ' \u00b7 score ' + sc +
                (r.nayinLabel ? (' \u00b7 Nayin ' + r.nayinLabel) : '') +
                ((r.blueLabels && r.blueLabels.length) ? (' \u00b7 ' + r.blueLabels.join(' + ')) : ''), lon, utc, true);
         });
