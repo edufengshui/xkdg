@@ -742,7 +742,11 @@ function fsRenderCardView(){
   try {
     var wrapEl = document.getElementById('fs-canvas-wrap');
     var W = (wrapEl && wrapEl.clientWidth > 0) ? wrapEl.clientWidth : (box.clientWidth || 480);
-    box.innerHTML = flyingStarsChartHtml(chart, W);
+    // Session 26 (Edu): the card filled the whole wrap and read far too large. Every size
+    // inside flyingStarsChartHtml is a fraction of the width it is given, so handing it two
+    // thirds shrinks the card as a whole — cells, fonts and gaps stay in proportion.
+    // It stays centred because #fs-cardview-html is a centring flex box.
+    box.innerHTML = flyingStarsChartHtml(chart, Math.round(W * 2 / 3));
   }
   catch (e) { console.warn('flyingStarsChartHtml', e); box.innerHTML = ''; }
 }
