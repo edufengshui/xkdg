@@ -7883,20 +7883,75 @@ function runScanner() {
 // Codes: { pin, tier (1/2/4/0=unlimited), expiry (YYYY-MM-DD or null) }
 // Obfuscated as base64
 // SHA-256 hashed PINs — original PINs are NOT stored in source code
-const _HASHED_CODES = [
-    // Session 26 — full rotation: all nine previous codes withdrawn, these are the only ones live.
-    // t = how many Chinese years the licence opens, counted from the CURRENT one (0 = unlimited).
-    // e = date the licence lapses. Current Chinese year 丙午 runs 2026-02-04 → 2027-02-03,
-    // the next 丁未 runs 2027-02-04 → 2028-02-03.
-    { h: '0a33fff238696a9d3b93251b09fb90654dbd47d2da65f80ee1f4206d56389ab2', t: 0, e: null }, // Raymond
-    { h: '5972b901807fac6a70720fd1b4bf15bc9c00a41c1ffbf53d4038924c54cbcd2a', t: 2, e: '2028-02-03' }, // Margherita
-    { h: '02ff9a4302ba484aadf06cf115b5e98a1271151dfd9191a42fe188a2b13dae92', t: 0, e: null }, // Nicolas
-    { h: '3211ef64ad052c3626ad80b36d7644dde81f91c8a80addd3cc89f36ce75a3426', t: 0, e: null }, // Claire
-    { h: '4b499d5423839527497bca679ab3f20b62a1c7f1373544a8f689f55ed96a7dbf', t: 0, e: null }, // Chee
-    { h: '6f030729a19c3912e3ac9874e8b96894d168a32e6a6eb849469dbfa6f276e099', t: 1, e: '2027-02-03' }, // Vic
-    { h: '8a1436e96efc3f62ee65687e4742d8bace0bad8d7f0b58c145f9c090b4635139', t: 0, e: null }, // Yuliya
-    { h: '1cf48271e12d3b2d330f67c58ed6735dfde8b8f7094ffb7792ca4a7d00e11e83', t: 0, e: null }, // Edu
-];
+// ── LICENCES (session 26) ────────────────────────────────────────────────
+// The table of codes USED to live here, in a public repository. A 4-digit PIN is only
+// 10.000 candidates, so anyone could hash them all offline in a tenth of a second and
+// read every student’s code. It now lives in the xkdg-ai Worker, which answers yes or
+// no and throttles guessing. Nothing secret is left in this file.
+//
+// OFFLINE: the app is a PWA and must keep working on a plane. A licence confirmed by
+// the Worker is trusted for LICENCE_GRACE_DAYS without any network at all; while online
+// it is re-checked quietly once a day. Only an explicit "unknown code" answer revokes —
+// a failed request never does, so a Worker outage cannot lock a paying student out.
+const LICENCE_URL = 'https://xkdg-ai.decumano16.workers.dev';
+const LICENCE_GRACE_DAYS = 30;   // how long the app runs with no successful check
+const LICENCE_RECHECK_H  = 24;   // how often to re-check quietly when online
+
+// Asks the Worker. Returns the parsed answer, or null when it could not be reached
+// (which is NOT a refusal — callers must treat null as "unknown, carry on").
+async function _xkdgLicenceAsk(payload) {
+    try {
+        let base = LICENCE_URL;
+        try { base = localStorage.getItem('xkdg_ai_url') || LICENCE_URL; } catch (e) {}
+        const res = await fetch(base.replace(/\/+$/, '') + '/?licence', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok && res.status !== 200 && res.status !== 429) return null;
+        return await res.json();
+    } catch (e) { return null; }
+}
+
+// Days since the licence was last confirmed by the Worker (Infinity if never).
+function _xkdgLicenceAge(lic) {
+    try {
+        if (!lic || !lic.checkedAt) return Infinity;
+        const t = Date.parse(lic.checkedAt);
+        if (!isFinite(t)) return Infinity;
+        return (Date.now() - t) / 86400000;
+    } catch (e) { return Infinity; }
+}
+
+// Quiet re-check, fire and forget. Runs only when the stored licence is older than
+// LICENCE_RECHECK_H. Refreshes tier/expiry too, so changing somebody’s licence on the
+// Worker reaches them without an app push.
+async function _xkdgLicenceRefresh() {
+    try {
+        const raw = localStorage.getItem('xkdg_license');
+        if (!raw) return;
+        const lic = JSON.parse(raw);
+        if (!lic || !lic.codeHash) return;
+        if (_xkdgLicenceAge(lic) * 24 < LICENCE_RECHECK_H) return;
+        const ans = await _xkdgLicenceAsk({ hash: lic.codeHash });
+        if (!ans) return;                                   // offline: keep going
+        if (ans.ok === false && ans.reason === 'unknown code') {
+            try {
+                localStorage.removeItem('xkdg_license');
+                localStorage.removeItem('xkdg_student_id');
+            } catch (e) {}
+            showLicenseOverlay();
+            return;
+        }
+        if (ans.ok) {
+            lic.tier = ans.tier || 0;
+            lic.expiry = ans.expiry || null;
+            lic.maxDate = ans.maxDate || null;
+            lic.checkedAt = new Date().toISOString();
+            localStorage.setItem('xkdg_license', JSON.stringify(lic));
+        }
+    } catch (e) { /* never block the app on the licence refresh */ }
+}
 
 async function hashPin(pin) {
     const encoder = new TextEncoder();
@@ -7945,39 +8000,27 @@ function getAllowedDateRange(tier) {
 function _xkdgBackfillStudentId(lic) {
     try {
         if (localStorage.getItem('xkdg_student_id')) return;      // already known
-        if (!lic || typeof _HASHED_CODES === 'undefined') return;
-        var hit = _HASHED_CODES.filter(function (r) {
-            var sameTier = (r.t === lic.tier);
-            var sameExp  = ((r.e || null) === (lic.expiry || null));
-            return sameTier && sameExp;
-        });
-        if (hit.length === 1) {
-            localStorage.setItem('xkdg_student_id', hit[0].h);     // uniquely identified
-            return;
-        }
-        var dev = localStorage.getItem('xkdg_device_id');
-        if (!dev) {
-            dev = 'dev_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-            localStorage.setItem('xkdg_device_id', dev);
-        }
-        localStorage.setItem('xkdg_student_id', dev);              // distinct, not yet named
+        // Session 26: the code table left this file, so there is nothing to match a licence
+        // against any more — and nothing to guess: every licence confirmed by the Worker
+        // carries its own codeHash, which IS the student id. Licences without one are
+        // pre-session-26 and are sent back to the PIN screen by checkLicense() anyway.
+        if (lic && lic.codeHash) localStorage.setItem('xkdg_student_id', lic.codeHash);
     } catch (e) { /* never block the licence check */ }
 }
 
 // Is the licence sitting in localStorage still backed by a live code?
 // Session 26 — Edu withdrew every previous PIN and wanted everybody actually moved
 // onto the new one. Two cases send the user back to the PIN screen:
-//   • the licence carries a codeHash that is no longer in _HASHED_CODES (code withdrawn);
+//   • the Worker answers that the code is unknown (withdrawn) during the daily re-check;
 //   • the licence carries NO codeHash at all — it was stored before this change, so it
 //     cannot be checked and its owner types the new PIN once.
 // Deliberately conservative: on any unexpected error the licence is KEPT, so a bug here
 // can never lock a paying student out.
 function _xkdgLicenceStillValid(lic) {
     try {
-        if (typeof _HASHED_CODES === 'undefined' || !Array.isArray(_HASHED_CODES)) return true;
-        if (!lic || !lic.codeHash) return false;          // pre-session-26 licence
-        return _HASHED_CODES.some(function (c) { return c.h === lic.codeHash; });
-    } catch (e) { return true; }
+        if (!lic || !lic.codeHash || !lic.checkedAt) return false;   // never confirmed by the Worker
+        return _xkdgLicenceAge(lic) <= LICENCE_GRACE_DAYS;           // offline is fine, within grace
+    } catch (e) { return true; }   // on any doubt, KEEP the licence
 }
 
 function checkLicense() {
@@ -7985,6 +8028,9 @@ function checkLicense() {
     if (!stored) { showLicenseOverlay(); return; }
     try {
         const lic = JSON.parse(stored);
+        // Quiet daily re-check, in the background: it never delays the app and never
+        // revokes on a failed request — only on an explicit refusal from the Worker.
+        try { _xkdgLicenceRefresh(); } catch (e) {}
         if (!_xkdgLicenceStillValid(lic)) {
             try {
                 localStorage.removeItem('xkdg_license');
@@ -8176,23 +8222,31 @@ async function submitPin() {
     let expiry = null;
     let maxDate = null;
 
-    // Validation is LOCAL (SHA-256). The old Netlify server endpoint is no
-    // longer used — the site is served directly from GitHub Pages.
-    const hashed = await hashPin(pin);
-    const match = _HASHED_CODES.find(c => c.h === hashed);
-    if (match) {
+    // Validation happens on the Worker (session 26): the code table is no longer in
+    // this file, so the PIN cannot be recovered by reading the published source.
+    let hashed = '';
+    let netProblem = false, throttled = false;
+    const ans = await _xkdgLicenceAsk({ pin: pin });
+    if (!ans) {
+        netProblem = true;
+    } else if (ans.ok) {
         validated = true;
-        tier = match.t;
-        expiry = match.e;
-        maxDate = match.dmax || null;
+        tier = ans.tier || 0;
+        expiry = ans.expiry || null;
+        maxDate = ans.maxDate || null;
+        hashed = ans.codeHash || await hashPin(pin);
+    } else if (ans.reason === 'too many attempts') {
+        throttled = true;
     }
 
     if (validated) {
         // `codeHash` (session 26) makes the stored licence traceable back to the code
         // that opened it, so checkLicense() can drop it the day that code is withdrawn.
-        // Before this, removing a hash from _HASHED_CODES only blocked NEW activations:
-        // anyone already unlocked kept working forever on the old code.
-        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate, codeHash: hashed }));
+        // Before this, withdrawing a code only blocked NEW activations: anyone already
+        // unlocked kept working forever on the old one. `checkedAt` is the last time the
+        // Worker confirmed this licence — the offline grace is counted from there.
+        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate, codeHash: hashed,
+                                                              checkedAt: new Date().toISOString() }));
         // Per-student identifier (Edu, session 23: "si può sapere quale studente fa
         // più domande?"). Reuses the SAME hash already computed to check the PIN —
         // no new student-management system, no new data collected beyond what the
@@ -8204,6 +8258,10 @@ async function submitPin() {
         checkLicense();
         setNow();
         try { _xkdgConsultRestore(); } catch(e){}
+    } else if (netProblem) {
+        errorEl.textContent = 'No connection. The first unlock needs the internet — try again once you are online.';
+    } else if (throttled) {
+        errorEl.textContent = 'Too many wrong attempts. Please wait about ten minutes and try again.';
     } else {
         errorEl.textContent = 'Invalid PIN. Please try again.';
     }
