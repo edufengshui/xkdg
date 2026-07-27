@@ -458,7 +458,7 @@ function buildFengShuiView(){
         </style>
         <button id="fs-luopan-size" onclick="fsToggleLuopanSize()"
           title="Full-size luopan / compact"
-          style="position:absolute;top:50%;left:4px;transform:translateY(-50%);z-index:31;background:#fff;
+          style="position:absolute;bottom:8px;left:8px;z-index:31;background:#fff;
                  color:#4527a0;border:1px solid #4527a0;border-radius:6px;padding:8px 6px;font-size:15px;
                  font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;">\u2922</button>
         <select id="fs-luopan-menu" onchange="fsLuopanMenuAct(this.value)" onfocus="fsLuopanMenuSync()"
