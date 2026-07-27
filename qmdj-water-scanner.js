@@ -1334,8 +1334,11 @@
     return dp;
   }
 
-  function getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant){
-    var info = getDunJuForDate(year, month, day, bjInstant);
+  // `forceJuDun` (session 26) lets the QMDJ Feng Shui ANNUAL chart drive this same engine
+  // without a date: there the Ju is the current Flying-Stars period and the hour comes from
+  // the house facing, so there is no day to look up. Omit it and nothing changes.
+  function getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun){
+    var info = forceJuDun || getDunJuForDate(year, month, day, bjInstant);
     if(!info) return null;
     var hs = STEM_H2P[hourStem] || hourStem;
     var hb = BR_H2P[hourBranch] || hourBranch;
@@ -1526,6 +1529,11 @@
     // Same purpose scan, but for TRAVEL/movement directions on the ROTATING chart
     // (session 23) — no embedded charts needed, getRotatingHourChart builds each
     // hour's chart on the fly (same engine travel-planner.js already uses).
+    // Session 26 — one rotating chart from Ju + hour alone, for the annual Feng Shui chart.
+    rotatingChartFor: function(ju, dun, hourStem, hourBranch){
+      try { return getRotatingHourChart(2000, 1, 1, hourStem, hourBranch, null, { ju: ju, dun: dun }); }
+      catch (e) { return null; }
+    },
     scanTravelPurpose: function(dir, start, days, purposeKey){
       return scanTravelPurpose(dir, start, days, purposeKey);
     },

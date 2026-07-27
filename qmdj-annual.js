@@ -1,0 +1,236 @@
+/**
+ * qmdj-annual.js — QMDJ Feng Shui ANNUAL chart (session 26)
+ * ---------------------------------------------------------------------------
+ * Edu's method, in three steps:
+ *
+ *   PERIOD → JU     The Flying-Stars period we are IN (9 until 2044) is the Ju.
+ *                   Yang Zhai Feng Shui uses Yang Dun only, so: Yang Ju <period>.
+ *   YEAR   → DAY    The stem of the current solar year picks the day-stem GROUP of
+ *                   the 60 rotating charts. 2026 is 丙午 → the Bing-Xin group.
+ *   FACING → HOUR   The house facing, reduced to its branch through the DOUBLE
+ *                   MOUNTAIN, is the hour branch. The hour STEM follows from the
+ *                   day group by the Five Rats rule (五鼠遁): a Bing/Xin day opens
+ *                   at 戊子, so the 午 hour is 甲午.
+ *
+ * DOUBLE MOUNTAIN (雙山), confirmed by Edu: the 24 mountains pair off two by two
+ * starting at 壬 — 壬子 癸丑 艮寅 甲卯 乙辰 巽巳 丙午 丁未 坤申 庚酉 辛戌 乾亥 — and
+ * ANY facing landing in a pair is attributed to the branch, i.e. the second of the two.
+ *
+ * The chart itself is NOT computed here: it is the app's own rotating-pan engine
+ * (qmdj-water-scanner.js) driven by Ju + hour instead of by a date. Verified palace
+ * by palace against Edu's reference chart for Vienna — Yang Ju 9, day Bing-Xin,
+ * hour 甲午 — all nine palaces identical, stems, stars, doors and spirits.
+ *
+ * NOTE ON SPIRITS: this is the ROTATING pan, which carries 白虎 Tiger and 玄武
+ * Warrior in both dun. The Yang-only 勾陳/朱雀 pair belongs to the FLYING charts
+ * (Edu, session 26) and must NOT be applied here.
+ */
+(function () {
+  'use strict';
+
+  // 24 mountains from 壬, in compass order. Pairs of two = the double mountains.
+  var M24 = ['\u58EC', '\u5B50', '\u7678', '\u4E11', '\u826E', '\u5BC5',
+             '\u7532', '\u536F', '\u4E59', '\u8FB0', '\u5DFD', '\u5DF3',
+             '\u4E19', '\u5348', '\u4E01', '\u672A', '\u5764', '\u7533',
+             '\u5E9A', '\u9149', '\u8F9B', '\u620C', '\u4E7E', '\u4EA5'];
+
+  var STEMS = ['\u7532', '\u4E59', '\u4E19', '\u4E01', '\u620A',
+               '\u5DF1', '\u5E9A', '\u8F9B', '\u58EC', '\u7678'];
+  var STEM_EN = { '\u7532': 'Jia', '\u4E59': 'Yi', '\u4E19': 'Bing', '\u4E01': 'Ding', '\u620A': 'Wu',
+                  '\u5DF1': 'Ji', '\u5E9A': 'Geng', '\u8F9B': 'Xin', '\u58EC': 'Ren', '\u7678': 'Gui' };
+  var BRANCHES = ['\u5B50', '\u4E11', '\u5BC5', '\u536F', '\u8FB0', '\u5DF3',
+                  '\u5348', '\u672A', '\u7533', '\u9149', '\u620C', '\u4EA5'];
+  var BRANCH_EN = { '\u5B50': 'Zi', '\u4E11': 'Chou', '\u5BC5': 'Yin', '\u536F': 'Mao', '\u8FB0': 'Chen',
+                    '\u5DF3': 'Si', '\u5348': 'Wu', '\u672A': 'Wei', '\u7533': 'Shen', '\u9149': 'You',
+                    '\u620C': 'Xu', '\u4EA5': 'Hai' };
+
+  // Five Rats Escaping: which stem opens the 子 hour, per day stem.
+  //   甲/己 → 甲子   乙/庚 → 丙子   丙/辛 → 戊子   丁/壬 → 庚子   戊/癸 → 壬子
+  var ZI_STEM = { '\u7532': '\u7532', '\u5DF1': '\u7532', '\u4E59': '\u4E19', '\u5E9A': '\u4E19',
+                  '\u4E19': '\u620A', '\u8F9B': '\u620A', '\u4E01': '\u5E9A', '\u58EC': '\u5E9A',
+                  '\u620A': '\u58EC', '\u7678': '\u58EC' };
+  // The five day-stem GROUPS of the 60 rotating charts, as the reference tables name them.
+  var DAY_GROUP = { '\u7532': 'Jia-Ji', '\u5DF1': 'Jia-Ji', '\u4E59': 'Yi-Geng', '\u5E9A': 'Yi-Geng',
+                    '\u4E19': 'Bing-Xin', '\u8F9B': 'Bing-Xin', '\u4E01': 'Ding-Ren', '\u58EC': 'Ding-Ren',
+                    '\u620A': 'Wu-Gui', '\u7678': 'Wu-Gui' };
+
+  // Palace → compass label, and the grid order the app uses everywhere: SOUTH ON TOP.
+  var PAL_DIR = { 1: 'N', 2: 'SW', 3: 'E', 4: 'SE', 5: '', 6: 'NW', 7: 'W', 8: 'NE', 9: 'S' };
+  var GRID = [4, 9, 2, 3, 5, 7, 8, 1, 6];        // SE S SW / E C W / NE N NW
+
+  // ── the three inputs ──────────────────────────────────────────────────
+  function mountainFromDeg(deg) {
+    var d = ((+deg % 360) + 360) % 360;
+    // 壬 is centred on 345°, i.e. it starts at 337.5°.
+    var i = Math.floor((((d - 337.5) % 360) + 360) % 360 / 15);
+    return M24[i % 24];
+  }
+  // Double mountain: the branch is the second of each pair.
+  function branchOfMountain(m) {
+    var i = M24.indexOf(m);
+    if (i < 0) return null;
+    return M24[i % 2 === 0 ? i + 1 : i];
+  }
+  function hourStemFor(dayStem, branch) {
+    var z = ZI_STEM[dayStem];
+    if (!z) return null;
+    var si = STEMS.indexOf(z), bi = BRANCHES.indexOf(branch);
+    if (si < 0 || bi < 0) return null;
+    return STEMS[(si + bi) % 10];
+  }
+
+  // The stem of the current SOLAR year (Lichun to Lichun). Uses the app's own year
+  // table when present so there is a single source of truth for the boundary.
+  function yearStemOf(dateIso) {
+    try {
+      var iso = dateIso || new Date().toISOString().slice(0, 10);
+      if (typeof CHINESE_YEAR_STARTS !== 'undefined' && Array.isArray(CHINESE_YEAR_STARTS)) {
+        for (var i = 0; i < CHINESE_YEAR_STARTS.length; i++) {
+          var y = CHINESE_YEAR_STARTS[i];
+          if (iso >= y.start && iso <= y.end) return y.year.charAt(0);
+        }
+      }
+      // Fallback: 1984 was 甲子, and the year turns at Lichun (4 Feb, near enough).
+      var p = iso.split('-'), yr = +p[0];
+      if (iso < (yr + '-02-04')) yr -= 1;
+      return STEMS[(((yr - 1984) % 10) + 10) % 10];
+    } catch (e) { return null; }
+  }
+
+  // ── the chart ─────────────────────────────────────────────────────────
+  function compute(opt) {
+    opt = opt || {};
+    var out = { ok: false, reason: '' };
+    var period = parseInt(opt.period, 10);
+    if (!isFinite(period) || period < 1 || period > 9) { out.reason = 'no period'; return out; }
+    var deg = parseFloat(opt.facingDeg);
+    if (!isFinite(deg)) { out.reason = 'no facing'; return out; }
+
+    var yearStem = opt.yearStem || yearStemOf(opt.date);
+    if (!yearStem) { out.reason = 'no year'; return out; }
+
+    var mountain = mountainFromDeg(deg);
+    var branch = branchOfMountain(mountain);
+    var hourStem = hourStemFor(yearStem, branch);
+    if (!branch || !hourStem) { out.reason = 'facing/hour'; return out; }
+
+    var api = (typeof window !== 'undefined') && window.QMDJWaterScanner;
+    if (!api || typeof api.rotatingChartFor !== 'function') { out.reason = 'engine missing'; return out; }
+    var chart = api.rotatingChartFor(period, 'yang', STEM_EN[hourStem], BRANCH_EN[branch]);
+    if (!chart || !chart.palaces) { out.reason = 'engine returned nothing'; return out; }
+
+    out.ok = true;
+    out.ju = period;
+    out.dun = 'yang';
+    out.yearStem = yearStem;
+    out.dayGroup = DAY_GROUP[yearStem] || '';
+    out.facingDeg = deg;
+    out.mountain = mountain;
+    out.branch = branch;
+    out.hourStem = hourStem;
+    out.hourGanZhi = hourStem + branch;
+    out.hourEn = STEM_EN[hourStem] + '-' + BRANCH_EN[branch];
+    out.palaces = chart.palaces;
+    out.chart = chart;
+    return out;
+  }
+
+  // ── the card ──────────────────────────────────────────────────────────
+  function esc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+    });
+  }
+  function cardHtml(r) {
+    if (!r || !r.ok) {
+      return '<div style="padding:18px;font:13px system-ui;color:#c62828;">Could not build the annual chart' +
+             (r && r.reason ? (' \u2014 ' + esc(r.reason)) : '') + '.</div>';
+    }
+    var head = '<div style="text-align:center;font:600 13px system-ui;color:#1b5e20;margin-bottom:2px;">' +
+      'QMDJ Feng Shui \u00b7 Annual chart</div>' +
+      '<div style="text-align:center;font:11px system-ui;color:#555;margin-bottom:8px;">' +
+      'Yang Ju ' + r.ju + ' \u00b7 Day ' + esc(r.dayGroup) + ' \u00b7 Hour ' + esc(r.hourGanZhi) +
+      ' (' + esc(r.hourEn) + ')<br>facing ' + Math.round(r.facingDeg) + '\u00b0 \u2014 mountain ' +
+      esc(r.mountain) + ' \u2192 branch ' + esc(r.branch) + ' (double mountain)</div>';
+
+    var cells = GRID.map(function (p) {
+      var c = r.palaces[p] || {};
+      var centre = (p === 5);
+      var dir = PAL_DIR[p] || '';
+      var ti = c.tiH || c.ti || '', di = c.diH || c.di || '';
+      var body = centre
+        ? '<div style="font:600 15px system-ui;color:#1b5e20;">' + esc(ti) + '</div>'
+        : '<div style="font:600 11px system-ui;color:#4a148c;">' + esc(c.deity || '') + '</div>' +
+          '<div style="font:11px system-ui;color:#0d47a1;">' + esc(c.star || '') + '</div>' +
+          '<div style="font:700 12px system-ui;color:#b71c1c;">' + esc(c.doorName || c.door || '') + '</div>' +
+          '<div style="font:600 13px system-ui;color:#1b5e20;margin-top:2px;">' +
+          esc(ti) + (di && di !== ti ? (' <span style="color:#777;font-weight:400;">' + esc(di) + '</span>') : '') + '</div>';
+      return '<div style="border:1px solid #1b5e20;border-radius:6px;padding:6px 4px;text-align:center;' +
+             'background:' + (centre ? '#f1f8e9' : '#fff') + ';min-height:76px;">' +
+             '<div style="font:10px system-ui;color:#888;">' + esc(dir) + (dir ? ' \u00b7 ' : '') + p + '</div>' +
+             body + '</div>';
+    }).join('');
+
+    return head + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:420px;margin:0 auto;">' +
+           cells + '</div>' +
+           '<div style="text-align:center;font:10px system-ui;color:#888;margin-top:8px;">South at the top</div>';
+  }
+
+  // ── what the menu calls ───────────────────────────────────────────────
+  // Reads the active house/floor through the app's own accessors, so there is no
+  // second copy of "which house am I looking at".
+  // The active house/floor, read through the app's own accessor (window.XKDGHouse),
+  // so there is no second copy of "which house am I looking at". Falls back to the
+  // facing box on the page when no house profile is active.
+  function activeInputs() {
+    var o = { period: null, facingDeg: null, house: '' };
+    try {
+      if (window.XKDGHouse && typeof window.XKDGHouse.active === 'function') {
+        var act = window.XKDGHouse.active();
+        var h = act && (act.house || act);
+        if (h) {
+          o.house = h.name || '';
+          var fl = null;
+          if (h.floors && h.floors.length) fl = h.floors[h.activeFloor || 0] || h.floors[0];
+          o.facingDeg = (fl && fl.facing != null) ? fl.facing : h.houseFacing;
+          o.period = (fl && fl.period != null) ? fl.period : h.period;
+        }
+      }
+    } catch (e) {}
+    try {
+      if (o.facingDeg == null || !isFinite(o.facingDeg)) {
+        var fd = document.getElementById('facing-degree') || document.getElementById('fs-facing-deg');
+        if (fd && fd.value !== '') o.facingDeg = parseFloat(fd.value);
+      }
+    } catch (e) {}
+    return o;
+  }
+
+
+  function open() {
+    var inp = activeInputs();
+    // The Ju is the period we are IN, not the period the house was built in.
+    var r = compute({ period: window.QMDJAnnualPeriod || 9, facingDeg: inp.facingDeg });
+    var host = document.getElementById('fs-cardview-html');
+    if (!host) { alert('Card area not found.'); return; }
+    host.innerHTML = '<div style="width:100%;">' + cardHtml(r) + '</div>';
+    host.style.display = 'flex';
+    var cv = document.getElementById('fs-canvas'); if (cv) cv.style.display = 'none';
+    window.__qmdjAnnualOpen = true;
+    return r;
+  }
+  function close() {
+    var host = document.getElementById('fs-cardview-html');
+    if (host) { host.innerHTML = ''; host.style.display = 'none'; }
+    var cv = document.getElementById('fs-canvas'); if (cv) cv.style.display = '';
+    window.__qmdjAnnualOpen = false;
+  }
+  function toggle() { return window.__qmdjAnnualOpen ? close() : open(); }
+
+  window.QMDJAnnual = {
+    compute: compute, cardHtml: cardHtml, open: open, close: close, toggle: toggle,
+    mountainFromDeg: mountainFromDeg, branchOfMountain: branchOfMountain,
+    hourStemFor: hourStemFor, yearStemOf: yearStemOf,
+    M24: M24, DAY_GROUP: DAY_GROUP
+  };
+})();

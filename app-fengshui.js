@@ -445,6 +445,23 @@ function buildFengShuiView(){
         <button id="fs-orient-toggle" onclick="fsToggleLuopanOrient()" title="Rotate the luopan so the house facing is at the top" style="position:absolute;top:8px;right:8px;z-index:6;background:#0d47a1;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">⤴ Facing up</button>
         <button id="fs-sunmoon-toggle" onclick="(typeof SunMoonMountain!=='undefined') ? SunMoonMountain.toggle() : alert('sun-moon.js not loaded')" title="Show where the Sun ☀️ and Moon 🌙 currently sit on the 24-mountain wheel, and their trine (三合, ±8 mountains) partners" style="position:absolute;top:8px;left:8px;z-index:6;background:#fff;color:#4527a0;border:1px solid #4527a0;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">☀️🌙 Time</button>
         <button id="fs-cardview-toggle" onclick="fsToggleCardView()" title="Flat Flying Stars card (facing/period already selected)" style="position:absolute;bottom:8px;right:8px;z-index:6;background:#fff;color:#6a1b9a;border:1px solid #6a1b9a;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">📄 Card</button>
+        <!-- Session 26 (Edu): the four corner buttons are replaced by ONE drop-down.
+             The buttons themselves are KEPT in the DOM, only hidden: every module that
+             drives them keeps working untouched (floorplan-daliuren.js creates and styles
+             its own DLR button, fsToggleCardView/fsToggleLuopanOrient rewrite their
+             labels). The menu is a thin façade that clicks them and reads their state. -->
+        <style>
+          #fs-canvas-wrap > #fs-sunmoon-toggle,
+          #fs-canvas-wrap > #fs-orient-toggle,
+          #fs-canvas-wrap > #fs-cardview-toggle,
+          #fs-canvas-wrap > #fs-dlr-toggle { display: none !important; }
+        </style>
+        <select id="fs-luopan-menu" onchange="fsLuopanMenuAct(this.value)" onfocus="fsLuopanMenuSync()"
+          title="Luopan views and overlays"
+          style="position:absolute;top:8px;right:8px;z-index:31;background:#fff;color:#4527a0;
+                 border:1px solid #4527a0;border-radius:6px;padding:6px 10px;font-size:12px;
+                 font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);max-width:190px;">
+        </select>
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
         <button id="fs-floorplan-del" onclick="fsRemoveActiveFloorplan()" title="Remove this floor plan" style="display:none;position:absolute;top:8px;left:8px;z-index:6;background:#c62828;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🗑 Remove plan</button>
@@ -722,6 +739,73 @@ function fsRenderCardView(){
   catch (e) { console.warn('flyingStarsChartHtml', e); box.innerHTML = ''; }
 }
 
+// ── Luopan drop-down (session 26) ────────────────────────────────────────
+// One menu instead of four corner buttons. Every entry acts by CLICKING the real
+// button, so the existing handlers, state and styling stay the single source of
+// truth — nothing here duplicates their logic.
+var FS_LUOPAN_MENU = [
+  { v: 'time',   btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Time'; } },
+  { v: 'orient', btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
+  { v: 'dlr',    btn: 'fs-dlr-toggle',      label: function (b) { return b ? b.textContent.trim() : '\ud83c\udc04 DLR'; } },
+  { v: 'card',   btn: 'fs-cardview-toggle', label: function (b) {
+      // Edu: the name "Card" goes. On = the button offers the way back to the luopan.
+      var on = b && b.textContent.indexOf('Luopan') >= 0;
+      return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
+  { v: 'qmdj',   btn: null,                 label: function () {
+      return window.__qmdjAnnualOpen ? '\ud83e\udded Back to Luopan' : '\ud83e\udded QMDJ annual'; } }
+];
+
+// Rebuilds the entries so each one shows the CURRENT state of its button.
+function fsLuopanMenuSync(){
+  try {
+    var sel = document.getElementById('fs-luopan-menu');
+    if (!sel) return;
+    var html = '<option value="">\u2630 Views</option>';
+    FS_LUOPAN_MENU.forEach(function (it) {
+      var b = it.btn ? document.getElementById(it.btn) : null;
+      if (it.btn && !b) return;                 // its module has not created it yet
+      html += '<option value="' + it.v + '">' + it.label(b) + '</option>';
+    });
+    if (sel.innerHTML !== html) sel.innerHTML = html;
+    sel.value = '';
+  } catch (e) { /* the menu must never break the luopan */ }
+}
+
+function fsLuopanMenuAct(v){
+  try {
+    var sel = document.getElementById('fs-luopan-menu');
+    if (sel) sel.value = '';                    // snap back to the "Views" label
+    if (!v) return;
+    if (v === 'qmdj'){
+      if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggle !== 'function'){
+        alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
+        return;
+      }
+      window.QMDJAnnual.toggle();
+      setTimeout(fsLuopanMenuSync, 60);
+      return;
+    }
+    var it = FS_LUOPAN_MENU.filter(function (x) { return x.v === v; })[0];
+    if (!it || !it.btn) return;
+    var b = document.getElementById(it.btn);
+    if (b) { b.click(); }
+    else if (v === 'dlr' && window.FloorPlanDLR && typeof window.FloorPlanDLR.toggleRing === 'function'){
+      window.FloorPlanDLR.toggleRing();          // DLR button not built yet
+    }
+    setTimeout(fsLuopanMenuSync, 60);            // let the handler rewrite its label first
+  } catch (e) { /* never block the luopan */ }
+}
+
+// The DLR button is created by floorplan-daliuren.js some time after this panel is
+// built, so the menu refreshes itself for a while after load and whenever it is opened.
+try {
+  var _fsMenuTries = 0;
+  var _fsMenuTimer = setInterval(function () {
+    fsLuopanMenuSync();
+    if (++_fsMenuTries > 40) clearInterval(_fsMenuTimer);   // ~20 s, then stop
+  }, 500);
+} catch (e) {}
+
 function fsToggleCardView(){
   _fsCardViewOn = !_fsCardViewOn;
   var btn = document.getElementById('fs-cardview-toggle');
@@ -811,6 +895,7 @@ function fsToggleFloorplanView(){
       var orb0 = document.getElementById('fs-orient-toggle'); if (orb0) orb0.style.display = 'none';
       var smb0 = document.getElementById('fs-sunmoon-toggle'); if (smb0) smb0.style.display = 'none';
       var cvb0 = document.getElementById('fs-cardview-toggle'); if (cvb0) cvb0.style.display = 'none';
+      var mn0 = document.getElementById('fs-luopan-menu'); if (mn0) mn0.style.display = 'none';
       var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
@@ -853,6 +938,7 @@ function _fsRestoreLuopanView(){
     var orb1 = document.getElementById('fs-orient-toggle'); if (orb1) orb1.style.display = 'block';
     var smb1 = document.getElementById('fs-sunmoon-toggle'); if (smb1) smb1.style.display = 'block';
     var cvb1 = document.getElementById('fs-cardview-toggle'); if (cvb1) cvb1.style.display = 'block';
+    var mn1 = document.getElementById('fs-luopan-menu'); if (mn1) { mn1.style.display = 'block'; fsLuopanMenuSync(); }
     var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'none';
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
