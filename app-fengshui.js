@@ -3110,7 +3110,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   // to the 🎲 dice chart instead of being a second, look-alike table.
   var chart = isRot
     ? window.QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi, opts.bjInstant, opts.forceJuDun)
-    : window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi, opts.bjInstant);
+    : window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi, opts.bjInstant, opts.forceJuDun);
   if (!chart) { if (opts.returnHtml) return ''; alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
 
   // Direction info (label, hanzi, di-pan trigram)
@@ -3291,6 +3291,83 @@ function _qmdjChartPopulateHours(selectCurrent){
     sel.value = String(Math.floor(((h + 1) % 24) / 2));   // current double-hour (子=0 … 亥=11)
   } else if(prev){ sel.value = prev; }
 }
+// ── Manual Jú / day / hour for the 🎲 chart tool (session 26, Edu) ─────────
+// The two engines use the date ONLY to look up dun + Jú, so once the user states them
+// there is nothing left to read from the calendar. The day stem is not an engine input
+// either: it decides the hour STEM through the Five Rats (五鼠遞), exactly as in the
+// printed 1080-Jú tables. So: Jú -> which chart set, day+hour -> which of the 60.
+var _QMDJ_STEMS = ['\u7532','\u4e59','\u4e19','\u4e01','\u620a','\u5df1','\u5e9a','\u8f9b','\u58ec','\u7678'];
+var _QMDJ_BR = ['\u5b50','\u4e11','\u5bc5','\u536f','\u8fb0','\u5df3','\u5348','\u672a','\u7533','\u9149','\u620c','\u4ea5'];
+var _QMDJ_BR_PY = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+// Five Rats: the stem that opens the \u5b50 hour, per day stem.
+var _QMDJ_ZI = { '\u7532':'\u7532', '\u5df1':'\u7532', '\u4e59':'\u4e19', '\u5e9a':'\u4e19',
+                 '\u4e19':'\u620a', '\u8f9b':'\u620a', '\u4e01':'\u5e9a', '\u58ec':'\u5e9a',
+                 '\u620a':'\u58ec', '\u7678':'\u58ec' };
+// The five day-stem GROUPS, as the reference tables label them.
+var _QMDJ_GROUPS = [['\u7532','\u5df1','Jia-Ji'], ['\u4e59','\u5e9a','Yi-Geng'],
+                    ['\u4e19','\u8f9b','Bing-Xin'], ['\u4e01','\u58ec','Ding-Ren'],
+                    ['\u620a','\u7678','Wu-Gui']];
+
+function _qmdjManualToggle(){
+  var on = !!(document.getElementById('qmdj-tool-manual') || {}).checked;
+  var row = document.getElementById('qmdj-tool-manual-row');
+  if (row) row.style.display = on ? 'flex' : 'none';
+  if (on) _qmdjManualFill();
+  try { qmdjChartShow(); } catch (e) {}
+}
+
+function _qmdjManualFill(){
+  var ju = document.getElementById('qmdj-man-ju');
+  if (ju && !ju.options.length) {
+    var h = '';
+    ['yang','yin'].forEach(function (d) {
+      for (var n = 1; n <= 9; n++) {
+        h += '<option value="' + d + ':' + n + '"' + (d === 'yang' && n === 9 ? ' selected' : '') + '>' +
+             (d === 'yang' ? 'Yang' : 'Yin') + ' J\u00fa ' + n + '</option>';
+      }
+    });
+    ju.innerHTML = h;
+  }
+  var day = document.getElementById('qmdj-man-day');
+  if (day && !day.options.length) {
+    day.innerHTML = _QMDJ_GROUPS.map(function (g) {
+      return '<option value="' + g[0] + '">' + g[0] + '/' + g[1] + ' \u00b7 ' + g[2] + '</option>';
+    }).join('');
+  }
+  _qmdjManualHours();
+}
+
+// The 12 hours of the chosen day group, each with its own stem from the Five Rats.
+function _qmdjManualHours(){
+  var day = document.getElementById('qmdj-man-day');
+  var hr = document.getElementById('qmdj-man-hour');
+  if (!day || !hr) return;
+  var ds = day.value || '\u7532';
+  var zi = _QMDJ_ZI[ds]; if (!zi) return;
+  var si = _QMDJ_STEMS.indexOf(zi);
+  var keep = hr.value;
+  hr.innerHTML = _QMDJ_BR.map(function (b, i) {
+    var st = _QMDJ_STEMS[(si + i) % 10];
+    return '<option value="' + st + '|' + b + '">' + st + b + ' \u00b7 ' + _QMDJ_BR_PY[i] + '</option>';
+  }).join('');
+  if (keep) hr.value = keep;
+}
+
+// What qmdjChartShow() needs: null when manual entry is off.
+function _qmdjManualPick(){
+  try {
+    if (!(document.getElementById('qmdj-tool-manual') || {}).checked) return null;
+    var ju = (document.getElementById('qmdj-man-ju') || {}).value || '';
+    var hv = (document.getElementById('qmdj-man-hour') || {}).value || '';
+    var p = ju.split(':'), q = hv.split('|');
+    if (p.length !== 2 || q.length !== 2) return null;
+    var day = (document.getElementById('qmdj-man-day') || {}).value || '';
+    var grp = _QMDJ_GROUPS.filter(function (g) { return g[0] === day; })[0];
+    return { dun: p[0], ju: parseInt(p[1], 10), hGan: q[0], hZhi: q[1],
+             dayStem: day, dayGroup: grp ? grp[2] : '' };
+  } catch (e) { return null; }
+}
+
 function qmdjChartShow(){
   var dEl = document.getElementById('qmdj-tool-date');
   var sel = document.getElementById('qmdj-tool-hour');
@@ -3301,6 +3378,22 @@ function qmdjChartShow(){
   var hGan = opt.getAttribute('data-gan'), hZhi = opt.getAttribute('data-zhi');
   var modeEl = document.querySelector('input[name="qmdj-tool-mode"]:checked');
   var rotating = !!(modeEl && modeEl.value === 'rotating');
+  // Manual entry (session 26): the stated J\u00fa and hour win over the date entirely.
+  var _man = (typeof _qmdjManualPick === 'function') ? _qmdjManualPick() : null;
+  if (_man) {
+    var _h = window.showQimenChart('2000-01-01', _man.hGan, _man.hZhi, null,
+      { mode: (rotating ? 'rotating' : undefined), returnHtml: true,
+        forceJuDun: { ju: _man.ju, dun: _man.dun } });
+    box.innerHTML =
+      '<div style="text-align:center;font:600 12px system-ui;color:#4527a0;margin-bottom:6px;">' +
+      (_man.dun === 'yang' ? 'Yang' : 'Yin') + ' J\u00fa ' + _man.ju +
+      ' \u00b7 Day ' + _man.dayStem + (_man.dayGroup ? (' (' + _man.dayGroup + ')') : '') +
+      ' \u00b7 Hour ' + _man.hGan + _man.hZhi +
+      ' \u00b7 ' + (rotating ? 'Rotating \u8f49\u76e4' : 'Flying \u98db\u76e4') +
+      '<br><span style="font-weight:400;color:#888;">set by hand \u2014 the date above is ignored</span></div>' +
+      (_h || '<div style="color:#c0392b;font-size:12px;">No chart for this J\u00fa / hour.</div>');
+    return;
+  }
   if(typeof showQimenChart !== 'function'){ box.innerHTML = '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>'; return; }
   var html = '';
   try {
@@ -3355,6 +3448,19 @@ function openQmdjChartPanel(){
     +       '<label style="font-size:13px;margin-right:10px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="flying" checked> Flying \u98db\u76e4</label>'
     +       '<label style="font-size:13px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="rotating"> Rotating \u8f49\u76e4</label></div>'
     +     '<button onclick="qmdjChartShow()" style="background:#5e35b1;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-weight:bold;cursor:pointer;font-size:13px;">Show chart</button>'
+    +   '</div>'
+    +   '<div style="border-top:1px dashed #d1c4e9;padding-top:8px;margin-bottom:8px;">'
+    +     '<label style="font-size:13px;cursor:pointer;font-weight:bold;color:#4527a0;">'
+    +       '<input type="checkbox" id="qmdj-tool-manual" onchange="_qmdjManualToggle()"> Set J\u00fa / day / hour by hand</label>'
+    +     '<div style="font-size:11px;color:#888;margin:2px 0 6px;">Ignores the date above and draws the chart you ask for \u2014 both Flying and Rotating.</div>'
+    +     '<div id="qmdj-tool-manual-row" style="display:none;gap:12px;flex-wrap:wrap;align-items:flex-end;">'
+    +       '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">J\u00fa \u5c40</label>'
+    +         '<select id="qmdj-man-ju" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></select></div>'
+    +       '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Day stem \u65e5\u5e72</label>'
+    +         '<select id="qmdj-man-day" onchange="_qmdjManualHours()" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></select></div>'
+    +       '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Hour \u6642\u8fb0</label>'
+    +         '<select id="qmdj-man-hour" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></select></div>'
+    +     '</div>'
     +   '</div>'
     +   '<div style="font-size:11px;color:#888;font-style:italic;margin-bottom:10px;">Rotating \u8f49\u76e4 = human directional actions &amp; divination. Flying \u98db\u76e4 = Feng Shui stimulators. South is at the top.</div>'
     +   '<div id="qmdj-tool-chart"></div>'

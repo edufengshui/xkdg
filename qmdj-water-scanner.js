@@ -1241,10 +1241,13 @@
   // ── getHourChart: returns full 9-palace chart data for rendering ──
   // Returns { palaces: {1:{ti,tiH,di,diH,star,deity,door,zhiFu,zhiShi,jiaName}, ...}, dun, ju }
   // or null if chart not found.
-  function getHourChart(year, month, day, hourStem, hourBranch, bjInstant){
+  // `forceJuDun` (session 26) — same override as the rotating engine: the date is used
+  // ONLY to find dun + ju, so a caller that already knows them can skip the calendar.
+  // Used by the manual Ju / day / hour entry in the \uD83C\uDFB2 chart tool.
+  function getHourChart(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun){
     var charts = _charts || EMBEDDED_CHARTS;
     if(!charts) return null;
-    var info = getDunJuForDate(year, month, day, bjInstant);
+    var info = forceJuDun || getDunJuForDate(year, month, day, bjInstant);
     if(!info) return null;
     var hs = hourStem, hb = hourBranch;
     if(STEM_H2P[hs]) hs = STEM_H2P[hs];
@@ -1543,8 +1546,8 @@
     checkHourAtPalace: function(year, month, day, hourStem, hourBranch, palace, opts){
       return checkHourAtPalace(year, month, day, hourStem, hourBranch, palace, opts);
     },
-    getHourChart: function(year, month, day, hourStem, hourBranch, bjInstant){
-      return getHourChart(year, month, day, hourStem, hourBranch, bjInstant);
+    getHourChart: function(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun){
+      return getHourChart(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun);
     },
     getRotatingHourChart: function(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun){
       return getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun);
