@@ -456,6 +456,11 @@ function buildFengShuiView(){
           #fs-canvas-wrap > #fs-cardview-toggle,
           #fs-canvas-wrap > #fs-dlr-toggle { display: none !important; }
         </style>
+        <button id="fs-luopan-size" onclick="fsToggleLuopanSize()"
+          title="Full-size luopan / compact"
+          style="position:absolute;top:50%;left:4px;transform:translateY(-50%);z-index:31;background:#fff;
+                 color:#4527a0;border:1px solid #4527a0;border-radius:6px;padding:8px 6px;font-size:15px;
+                 font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;">\u2922</button>
         <select id="fs-luopan-menu" onchange="fsLuopanMenuAct(this.value)" onfocus="fsLuopanMenuSync()"
           title="Luopan views and overlays"
           style="position:absolute;top:8px;right:8px;z-index:31;background:#fff;color:#4527a0;
@@ -615,6 +620,9 @@ function fsTogglePeriod(){
 
 // ── Flying Stars (玄空飛星) toggle state ───────────────────────────
 let FS_STARS_ON = true;
+// Compact luopan is the DEFAULT (Edu, session 26). Remembered per device.
+let _fsLuopanCompact = true;
+try { _fsLuopanCompact = (localStorage.getItem('xkdg_luopan_full') !== '1'); } catch (e) {}
 // ── Luopan orientation ───────────────────────────────────────────────────────
 // 'regular' = South at top (DEFAULT — the app's absolute display rule, never
 //             changes the maths). 'top' = the whole luopan (image + stars +
@@ -835,6 +843,25 @@ try {
     if (++_fsMenuTries > 40) clearInterval(_fsMenuTimer);   // ~20 s, then stop
   }, 500);
 } catch (e) {}
+
+// Compact \u2194 full-size luopan (session 26, Edu). Compact is the default; the choice is
+// remembered per device. Only the SCALE changes: every angle, every ring and every star
+// keeps its place, because the whole geometry is derived from the same factor.
+function fsIsLuopanCompact(){ return !!_fsLuopanCompact; }
+
+function fsToggleLuopanSize(){
+  _fsLuopanCompact = !_fsLuopanCompact;
+  try { localStorage.setItem('xkdg_luopan_full', _fsLuopanCompact ? '0' : '1'); } catch (e) {}
+  var b = document.getElementById('fs-luopan-size');
+  if (b) {
+    b.textContent = _fsLuopanCompact ? '\u2922' : '\u2921';
+    b.title = _fsLuopanCompact ? 'Show the full-size luopan' : 'Back to the compact luopan';
+    b.style.background = _fsLuopanCompact ? '#fff' : '#4527a0';
+    b.style.color = _fsLuopanCompact ? '#4527a0' : '#fff';
+  }
+  try { if (window.QMDJAnnual && QMDJAnnual.invalidate) QMDJAnnual.invalidate(); } catch (e) {}
+  try { fsRedraw(); } catch (e) {}
+}
 
 function fsToggleCardView(){
   _fsCardViewOn = !_fsCardViewOn;
@@ -1227,9 +1254,17 @@ function fsRedraw(){
   ctx.clearRect(0,0,W,H);
   // Transparent background — the page/wrap background shows through (no more beige frame around the luopan).
 
-  const PAD = 100, IMG_W = 900, IMG_H = 930;
-  const cx = PAD + 450, cy = PAD + 464;
-  const outerR = 447, rHexOut = 360, rHexIn = 295;
+  // ── Luopan size (session 26, Edu) ───────────────────────────────────────
+  // The wheel used to fill the canvas edge to edge, leaving no room outside it and
+  // showing rings that are rarely needed. COMPACT is now the default: the same wheel
+  // drawn at two thirds, centred, which frees a wide outer band for the star blocks
+  // and the overlay rings. The \u2922 button restores the full size.
+  // At scale 1 every number below is exactly what it was before.
+  const _S = _fsLuopanCompact ? (2 / 3) : 1;
+  const IMG_W = Math.round(900 * _S), IMG_H = Math.round(930 * _S);
+  const PADX = Math.round((W - IMG_W) / 2), PADY = Math.round((H - IMG_H) / 2);
+  const cx = PADX + Math.round(450 * _S), cy = PADY + Math.round(464 * _S);
+  const outerR = Math.round(447 * _S), rHexOut = Math.round(360 * _S), rHexIn = Math.round(295 * _S);
 
   // ── Luopan orientation ──────────────────────────────────────────────────
   // Regular (default): ROT = 0 → every angle below is IDENTICAL to before.
@@ -1246,10 +1281,10 @@ function fsRedraw(){
       ctx.translate(cx, cy);
       ctx.rotate(ROT * Math.PI / 180);
       ctx.translate(-cx, -cy);
-      ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+      ctx.drawImage(FS_LUOPAN_IMG, PADX, PADY, IMG_W, IMG_H);
       ctx.restore();
     } else {
-      ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+      ctx.drawImage(FS_LUOPAN_IMG, PADX, PADY, IMG_W, IMG_H);
     }
   }
 
@@ -1698,15 +1733,12 @@ function fsRenderSettingAdvice(){
 function _fsStarOpts(rot){
   var o = { rotateDeg: rot };
   try {
-    var _needBand = false;
-    if (window.FloorPlanDLR && typeof FloorPlanDLR.isRingOn === 'function' && FloorPlanDLR.isRingOn()) _needBand = true;
-    // Session 26: the QMDJ annual ring needs the same outer band as the DLR — without
-    // this its labels land straight on top of the star blocks (Edu saw it immediately).
-    if (window.QMDJAnnual && typeof QMDJAnnual.isRingOn === 'function' && QMDJAnnual.isRingOn()) _needBand = true;
-    if (_needBand){
+    if (window.FloorPlanDLR && typeof FloorPlanDLR.isRingOn === 'function' && FloorPlanDLR.isRingOn()){
       o.blockSize = 32;        // was 80 — shrunk to free the outer band
       o.radiusOffset = 18;     // was 55 — tucked close to the wheel
     }
+    // The QMDJ annual ring does NOT touch the star blocks (Edu, session 26: "lascia i box
+    // come sono dalla carta"). It gets its room from the compact luopan instead.
   } catch(e){}
   return o;
 }
@@ -8772,10 +8804,10 @@ function fsDrawSectionLuopan(){
       if (_srot){
         ctx.save();
         ctx.translate(cx, cy); ctx.rotate(_srot * Math.PI / 180); ctx.translate(-cx, -cy);
-        ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+        ctx.drawImage(FS_LUOPAN_IMG, PADX, PADY, IMG_W, IMG_H);
         ctx.restore();
       } else {
-        ctx.drawImage(FS_LUOPAN_IMG, PAD, PAD, IMG_W, IMG_H);
+        ctx.drawImage(FS_LUOPAN_IMG, PADX, PADY, IMG_W, IMG_H);
       }
     }
 

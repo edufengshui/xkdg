@@ -283,10 +283,10 @@
         return;
       }
       var ang = function (deg) { return (deg - 270 + (ROT || 0)) * Math.PI / 180; };
-      // The star blocks shrink to blockSize 32 at radiusOffset 18 while this ring is up
-      // (see _fsStarOpts), so they end at outerR+34. Labels sit clear of that, and are
-      // clamped inside the canvas: at E/W the band nearly touches the edge.
-      var rLab = outerR + 72;
+      // The star blocks keep their normal format (Edu: do not touch them): radiusOffset 55,
+      // blockSize 80, so they end at outerR+95. The labels sit beyond that. There is room
+      // for this only with the COMPACT luopan \u2014 toggleRing() switches to it.
+      var rLab = outerR + 128;
       var CW = (ctx.canvas && ctx.canvas.width) || (cx * 2);
       var CH = (ctx.canvas && ctx.canvas.height) || (cy * 2);
 
@@ -340,6 +340,17 @@
 
   function toggleRing() {
     st.ringOn = !st.ringOn;
+    // The ring lives in the band outside the star blocks, which only exists with the
+    // compact luopan: at full size the wheel reaches the canvas edge and there is
+    // nowhere to put it. So switching the ring on switches the luopan to compact.
+    if (st.ringOn) {
+      try {
+        if (typeof window.fsIsLuopanCompact === 'function' && !window.fsIsLuopanCompact()
+            && typeof window.fsToggleLuopanSize === 'function') {
+          window.fsToggleLuopanSize();
+        }
+      } catch (e) {}
+    }
     invalidate();
     window.__qmdjAnnualRingOn = st.ringOn;
     try { if (typeof window.fsRedraw === 'function') window.fsRedraw(); } catch (e) {}
