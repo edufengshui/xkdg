@@ -259,87 +259,120 @@
   }
   function invalidate() { st.key = ''; st.cached = null; }
 
+  // The palaces around the wheel are the CHART'S OWN CELLS (Edu, session 26: "take the
+  // box as it appears in the qimen chart and paste it in the palace"). They are real DOM
+  // nodes laid over the canvas inside #fs-canvas-wrap, not shapes redrawn on the canvas —
+  // so they carry the chart's exact colours, fonts and layout, and follow it if it ever
+  // changes. Positions are expressed in % of the canvas box, because the canvas is
+  // displayed scaled (width:100%), so canvas pixels are not CSS pixels.
+  var BOX_PX = 104;                       // side of a palace box, in canvas pixels
+  var CANVAS_W = 1100, CANVAS_H = 1130;
+
+  function boxHost() {
+    var wrap = document.getElementById('fs-canvas-wrap');
+    if (!wrap) return null;
+    var host = document.getElementById('qmdj-annual-boxes');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'qmdj-annual-boxes';
+      host.style.cssText = 'position:absolute;inset:0;z-index:20;pointer-events:none;';
+      wrap.appendChild(host);
+    }
+    return host;
+  }
+  function clearBoxes() {
+    var host = document.getElementById('qmdj-annual-boxes');
+    if (host && host.parentNode) host.parentNode.removeChild(host);
+  }
+
+  function syncBoxes(cx, cy, outerR, ROT) {
+    var host = boxHost();
+    if (!host) return;
+    var r = current();
+    if (!r || !r.ok) { host.innerHTML = ''; return; }
+
+    // the chart's own cells
+    var cells = null;
+    try {
+      if (typeof window.showQimenChart === 'function') {
+        var res = window.showQimenChart('2000-01-01', r.hourStem, r.branch, null,
+          { mode: 'rotating', cellsOnly: true, forceJuDun: { ju: r.ju, dun: r.dun } });
+        cells = res && res.cells;
+      }
+    } catch (e) {}
+    if (!cells) { host.innerHTML = ''; return; }
+
+    // The star blocks are shrunk to 46 at offset 30 while this ring is up, so they end at
+    // outerR+53. The boxes sit just beyond, at a radius that keeps them on the canvas.
+    // A SQUARE box at a diagonal reaches inward by half its DIAGONAL, not half its side:
+    // at 45 degrees the nearest corner is ~73px closer to the centre than the box centre.
+    // Sizing on the side alone put NE/SE/SW/NW straight back on the star blocks.
+    var rBox = outerR + 53 + (BOX_PX / 2) * Math.SQRT2 + 12;
+    var html = '';
+    RING.forEach(function (sec) {
+      var cell = cells[sec.p];
+      if (!cell) return;
+      var a2 = (sec.deg - 270 + (ROT || 0)) * Math.PI / 180;
+      var bx = cx + rBox * Math.cos(a2), by = cy + rBox * Math.sin(a2);
+      var half = BOX_PX / 2;
+      if (bx < half) bx = half; else if (bx > CANVAS_W - half) bx = CANVAS_W - half;
+      if (by < half) by = half; else if (by > CANVAS_H - half) by = CANVAS_H - half;
+      var L = ((bx - half) / CANVAS_W * 100).toFixed(3);
+      var T = ((by - half) / CANVAS_H * 100).toFixed(3);
+      var Wp = (BOX_PX / CANVAS_W * 100).toFixed(3);
+      html += '<div style="position:absolute;left:' + L + '%;top:' + T + '%;width:' + Wp + '%;">'
+            +   '<div style="font:700 9px system-ui;color:#1b5e20;text-align:center;'
+            +   'text-shadow:0 0 3px #fff,0 0 3px #fff;">' + sec.d + '</div>'
+            +   '<table style="border-collapse:collapse;width:100%;background:#0d5e2c;'
+            +   'box-shadow:0 1px 5px rgba(0,0,0,.35);"><tr>' + cell + '</tr></table>'
+            + '</div>';
+    });
+    host.innerHTML = html;
+  }
+
   function drawIfOn(ctx, cx, cy, outerR, ROT) {
-    if (!st.ringOn || !ctx) return;
+    if (!st.ringOn || !ctx) { clearBoxes(); return; }
     // Belt and braces: if the DLR ring came up through some other path, the annual ring
     // stands down rather than letting the two overlap on the luopan.
     try {
       if (window.FloorPlanDLR && typeof window.FloorPlanDLR.isRingOn === 'function'
           && window.FloorPlanDLR.isRingOn()) {
-        st.ringOn = false; window.__qmdjAnnualRingOn = false;
+        st.ringOn = false; window.__qmdjAnnualRingOn = false; clearBoxes();
         try { if (typeof window.fsLuopanMenuSync === 'function') window.fsLuopanMenuSync(); } catch (e2) {}
         return;
       }
     } catch (e) {}
+
     var canReset = (typeof ctx.setTransform === 'function');
     try { ctx.save(); if (canReset) ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; } catch (e) {}
     try {
       var r = current();
       if (!r || !r.ok) {
+        clearBoxes();
         ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
         var msg = '\u26a0 QMDJ annual: ' + ((r && r.reason) || 'chart unavailable');
         ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(msg, cx, 6);
         ctx.fillStyle = '#c62828'; ctx.fillText(msg, cx, 6);
         return;
       }
-      var ang = function (deg) { return (deg - 270 + (ROT || 0)) * Math.PI / 180; };
-      // The star blocks keep their normal format (Edu: do not touch them): radiusOffset 55,
-      // blockSize 80, so they end at outerR+95. The labels sit beyond that. There is room
-      // for this only with the COMPACT luopan \u2014 toggleRing() switches to it.
-      var rLab = outerR + 128;
-      var CW = (ctx.canvas && ctx.canvas.width) || (cx * 2);
-      var CH = (ctx.canvas && ctx.canvas.height) || (cy * 2);
-
-      // Heading, so the ring always says which chart it is.
+      // Only the heading is painted on the canvas; the palaces are DOM boxes.
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.font = 'bold 15px sans-serif';
       var head = 'QMDJ annual \u00b7 Yang J\u00fa ' + r.ju + ' \u00b7 ' + r.hourGanZhi +
                  ' \u00b7 facing ' + Math.round(r.facingDeg) + '\u00b0';
       ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.strokeText(head, cx, 4);
       ctx.fillStyle = '#1b5e20'; ctx.fillText(head, cx, 4);
-
-      RING.forEach(function (s) {
-        var c = r.palaces[s.p] || {};
-        var a = ang(s.deg);
-        var x = cx + rLab * Math.cos(a), y = cy + rLab * Math.sin(a);
-        var halfH = 30;
-        if (y < halfH) y = halfH; else if (y > CH - halfH) y = CH - halfH;
-        var door = c.doorName || c.door || '';
-        // FOUR short lines rather than three longer ones: at E and W the free band runs
-        // within ~30px of the canvas edge, and "Aggressor \u00b7 Commander" on one line does
-        // not fit there \u2014 clamping it sideways pushed it back over the star blocks.
-        // A narrow, taller block fits, because vertically there is plenty of room.
-        var lines = [
-          { t: s.d + ' \u00b7 ' + (c.ti || ''), f: 'bold 12px sans-serif', col: '#1b5e20' },
-          { t: door, f: 'bold 14px sans-serif', col: FAV[door] ? '#0d5e2c' : '#b71c1c' },
-          { t: c.star || '', f: '11px sans-serif', col: '#0d47a1' },
-          { t: c.deity || '', f: '11px sans-serif', col: '#4a148c' }
-        ];
-        var h = 14, y0 = y - 21;
-        lines.forEach(function (L, i) {
-          if (!L.t) return;
-          ctx.font = L.f; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          // Each line is clamped on its OWN measured width: at E and W the band runs
-          // within a few pixels of the canvas edge, and the longest line here
-          // ("Aggressor \u00b7 Commander") is far wider than the shortest.
-          var hw = 8;
-          try { hw = (ctx.measureText(L.t).width / 2) + 4; } catch (eM) {}
-          var lx = x;
-          if (lx < hw) lx = hw; else if (lx > CW - hw) lx = CW - hw;
-          ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.95)';
-          ctx.strokeText(L.t, lx, y0 + i * h);
-          ctx.fillStyle = L.col; ctx.fillText(L.t, lx, y0 + i * h);
-        });
-      });
     } catch (e) {
       try { console.warn('QMDJAnnual ring', e); } catch (e2) {}
     } finally {
       try { ctx.restore(); } catch (e3) {}
     }
+    try { syncBoxes(cx, cy, outerR, ROT); } catch (e4) { try { console.warn('QMDJAnnual boxes', e4); } catch (e5) {} }
   }
 
   function toggleRing() {
     st.ringOn = !st.ringOn;
+    if (!st.ringOn) clearBoxes();
     // The ring lives in the band outside the star blocks, which only exists with the
     // compact luopan: at full size the wheel reaches the canvas edge and there is
     // nowhere to put it. So switching the ring on switches the luopan to compact.

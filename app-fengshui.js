@@ -1737,8 +1737,13 @@ function _fsStarOpts(rot){
       o.blockSize = 32;        // was 80 — shrunk to free the outer band
       o.radiusOffset = 18;     // was 55 — tucked close to the wheel
     }
-    // The QMDJ annual ring does NOT touch the star blocks (Edu, session 26: "lascia i box
-    // come sono dalla carta"). It gets its room from the compact luopan instead.
+    // Session 26, Edu: the QMDJ boxes are the chart's own cells and must keep their format,
+    // so it is the STARS that give way — smaller blocks, tucked in, leaving the outer band
+    // to the qimen palaces.
+    if (window.QMDJAnnual && typeof QMDJAnnual.isRingOn === 'function' && QMDJAnnual.isRingOn()){
+      o.blockSize = 46;
+      o.radiusOffset = 30;
+    }
   } catch(e){}
   return o;
 }
@@ -3249,6 +3254,15 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
       +   '</div>'
       + '</div>'
       + '</td>';
+  }
+
+  // opts.cellsOnly (session 26) — hand back the nine cells one by one, exactly as they
+  // are drawn inside the chart. The QMDJ annual ring places them around the luopan, so
+  // the palaces on the wheel ARE the chart's own boxes, not a look-alike redrawn by hand.
+  if (opts.cellsOnly) {
+    var _cells = {};
+    [1,2,3,4,5,6,7,8,9].forEach(function(_p){ _cells[_p] = cellHtml(_p); });
+    return { cells: _cells, chart: chart };
   }
 
   // Branch labels around the perimeter (each side has 3 cells)
