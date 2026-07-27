@@ -283,7 +283,12 @@
         return;
       }
       var ang = function (deg) { return (deg - 270 + (ROT || 0)) * Math.PI / 180; };
-      var rLab = outerR + 74;
+      // The star blocks shrink to blockSize 32 at radiusOffset 18 while this ring is up
+      // (see _fsStarOpts), so they end at outerR+34. Labels sit clear of that, and are
+      // clamped inside the canvas: at E/W the band nearly touches the edge.
+      var rLab = outerR + 72;
+      var CW = (ctx.canvas && ctx.canvas.width) || (cx * 2);
+      var CH = (ctx.canvas && ctx.canvas.height) || (cy * 2);
 
       // Heading, so the ring always says which chart it is.
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -297,19 +302,33 @@
         var c = r.palaces[s.p] || {};
         var a = ang(s.deg);
         var x = cx + rLab * Math.cos(a), y = cy + rLab * Math.sin(a);
+        var halfH = 30;
+        if (y < halfH) y = halfH; else if (y > CH - halfH) y = CH - halfH;
         var door = c.doorName || c.door || '';
+        // FOUR short lines rather than three longer ones: at E and W the free band runs
+        // within ~30px of the canvas edge, and "Aggressor \u00b7 Commander" on one line does
+        // not fit there \u2014 clamping it sideways pushed it back over the star blocks.
+        // A narrow, taller block fits, because vertically there is plenty of room.
         var lines = [
-          { t: s.d + ' \u00b7 ' + (c.ti || ''), f: 'bold 13px sans-serif', col: '#1b5e20' },
+          { t: s.d + ' \u00b7 ' + (c.ti || ''), f: 'bold 12px sans-serif', col: '#1b5e20' },
           { t: door, f: 'bold 14px sans-serif', col: FAV[door] ? '#0d5e2c' : '#b71c1c' },
-          { t: (c.star || '') + ' \u00b7 ' + (c.deity || ''), f: '11px sans-serif', col: '#4a148c' }
+          { t: c.star || '', f: '11px sans-serif', col: '#0d47a1' },
+          { t: c.deity || '', f: '11px sans-serif', col: '#4a148c' }
         ];
-        var h = 15, y0 = y - h;
+        var h = 14, y0 = y - 21;
         lines.forEach(function (L, i) {
           if (!L.t) return;
           ctx.font = L.f; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          // Each line is clamped on its OWN measured width: at E and W the band runs
+          // within a few pixels of the canvas edge, and the longest line here
+          // ("Aggressor \u00b7 Commander") is far wider than the shortest.
+          var hw = 8;
+          try { hw = (ctx.measureText(L.t).width / 2) + 4; } catch (eM) {}
+          var lx = x;
+          if (lx < hw) lx = hw; else if (lx > CW - hw) lx = CW - hw;
           ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.95)';
-          ctx.strokeText(L.t, x, y0 + i * h);
-          ctx.fillStyle = L.col; ctx.fillText(L.t, x, y0 + i * h);
+          ctx.strokeText(L.t, lx, y0 + i * h);
+          ctx.fillStyle = L.col; ctx.fillText(L.t, lx, y0 + i * h);
         });
       });
     } catch (e) {

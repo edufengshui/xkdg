@@ -1698,7 +1698,12 @@ function fsRenderSettingAdvice(){
 function _fsStarOpts(rot){
   var o = { rotateDeg: rot };
   try {
-    if (window.FloorPlanDLR && typeof FloorPlanDLR.isRingOn === 'function' && FloorPlanDLR.isRingOn()){
+    var _needBand = false;
+    if (window.FloorPlanDLR && typeof FloorPlanDLR.isRingOn === 'function' && FloorPlanDLR.isRingOn()) _needBand = true;
+    // Session 26: the QMDJ annual ring needs the same outer band as the DLR — without
+    // this its labels land straight on top of the star blocks (Edu saw it immediately).
+    if (window.QMDJAnnual && typeof QMDJAnnual.isRingOn === 'function' && QMDJAnnual.isRingOn()) _needBand = true;
+    if (_needBand){
       o.blockSize = 32;        // was 80 — shrunk to free the outer band
       o.radiusOffset = 18;     // was 55 — tucked close to the wheel
     }
