@@ -138,8 +138,8 @@
     var l3 = branchLabel(s.earth);                                 // 地盤 dipan (position)
     ctx.save();
     ctx.font = 'bold ' + fs + 'px sans-serif';
-    var w = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width, ctx.measureText(l3).width) + 18;
-    var h = fs * 3.6 + 10;
+    var w = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width, ctx.measureText(l3).width) + 10;
+    var h = fs * 3.2 + 6;
     // card
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') ctx.roundRect(x - w / 2, y - h / 2, w, h, 7);
@@ -257,7 +257,8 @@
                 (r.chosenDay ? r.chosenDay.monthGeneral : '?') + '  \u00B7  DLR annual';
       ctx.save();
       ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(cap, cx, 6);
+      var _capCol = els.caption;
+      if (!_capCol) { ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(cap, cx, 6); }
       // The caption now lives in the right-hand strip (session 26), not over the plan.
       try {
         if (els.caption) {
@@ -608,7 +609,10 @@
 
     if (st.result && !st.result.error && st.result.sectors) {
       var rLabel = (st.img ? 0.40 : 0.36) * Math.min(st.drawW, st.drawH);
-      var _lf = Math.max(14, Math.round(Math.min(st.drawW, st.drawH) / 46));   // label size follows the canvas
+      // Edu, session 26: at /46 the cards were wider than the 30\u00b0 sector they belong to
+      // and ran into each other. The arc available to a sector at rLabel is about 0.21\u00b7D,
+      // so the font has to stay well under that.
+      var _lf = Math.max(9, Math.round(Math.min(st.drawW, st.drawH) / 78));
       st.result.sectors.forEach(function (s) {
         var ang = canvasAngle(branchDeg(s.earth));
         var lx = ctr.x + rLabel * Math.cos(ang), ly = ctr.y + rLabel * Math.sin(ang);
