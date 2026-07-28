@@ -770,6 +770,8 @@ var FS_LUOPAN_MENU = [
       return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
   { v: 'qmdj',     btn: null, label: function () {
       return window.__qmdjAnnualOpen ? '\ud83e\udded Back to Luopan' : '\ud83e\udded QMDJ annual \u00b7 card'; } },
+  { v: 'qmdjtool', btn: null, label: function () { return '\ud83c\udfb2 QMDJ chart \u00b7 any J\u00fa / hour'; } },
+  { v: 'dlrtool',  btn: null, label: function () { return '\ud83c\udc04 DLR chart \u00b7 any date'; } },
   { v: 'qmdjring', btn: null, label: function () {
       return window.__qmdjAnnualRingOn ? '\ud83e\udded QMDJ annual ring ON' : '\ud83e\udded QMDJ annual \u00b7 ring'; } }
 ];
@@ -829,6 +831,21 @@ function fsLuopanMenuAct(v){
     if (!v) return;
     // Anything that lives on the canvas needs the canvas visible.
     if (v === 'time' || v === 'orient' || v === 'dlr' || v === 'qmdjring') _fsCloseAnyCard();
+    if (v === 'qmdjtool'){
+      try {
+        openQmdjChartPanel();
+        // open it straight in manual mode: that is the point of this entry
+        setTimeout(function () {
+          var cb = document.getElementById('qmdj-tool-manual');
+          if (cb && !cb.checked) { cb.checked = true; _qmdjManualToggle(); }
+        }, 80);
+      } catch (e) { alert('Chart tool not available.'); }
+      return;
+    }
+    if (v === 'dlrtool'){
+      try { openDlrChartPanel(); } catch (e) { alert('DLR chart tool not available.'); }
+      return;
+    }
     if (v === 'qmdjring'){
       if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggleRing !== 'function'){
         alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
@@ -3571,6 +3588,159 @@ function qmdjChartShow(){
   catch(e){ html = ''; }
   box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Cannot load chart for ' + dEl.value + ' ' + hGan + hZhi + '.</div>';
 }
+// ── DLR chart for ANY date (session 26, Edu) ─────────────────────────────
+// Same shape as the \uD83C\uDFB2 QMDJ chart tool: a floating panel with its own
+// selectors. The engine (XKDGDaLiuRen.buildChartFromInstant) already casts any
+// moment \u2014 the app simply had no door to it outside the annual chart.
+var _DLR_BR = ['\u5b50','\u4e11','\u5bc5','\u536f','\u8fb0','\u5df3','\u5348','\u672a','\u7533','\u9149','\u620c','\u4ea5'];
+var _DLR_PY = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+var _DLR_HOURS = ['23:30','01:30','03:30','05:30','07:30','09:30','11:30','13:30','15:30','17:30','19:30','21:30'];
+
+function openDlrChartPanel(){
+  var box = document.getElementById('dlr-tool-panel');
+  if (box){ box.style.display = 'block'; return; }
+  box = document.createElement('div');
+  box.id = 'dlr-tool-panel';
+  box.style.cssText = 'position:fixed;top:8%;left:50%;transform:translateX(-50%);z-index:10050;' +
+    'width:min(560px,94vw);max-height:84vh;overflow:auto;background:#fffdf7;border:2px solid #5d4037;' +
+    'border-radius:12px;box-shadow:0 6px 26px rgba(0,0,0,.4);padding:12px 14px;';
+  var today = new Date();
+  var iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+  var hopts = _DLR_BR.map(function (b, i) {
+    return '<option value="' + i + '">' + b + ' ' + _DLR_PY[i] + ' \u00b7 ' + _DLR_HOURS[i] + '</option>';
+  }).join('');
+  box.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+    +   '<div style="font-size:16px;font-weight:bold;color:#5d4037;flex:1;">\uD83C\uDC04 Da Liu Ren chart</div>'
+    +   '<button onclick="dlrChartClose()" style="background:#5d4037;color:#fff;border:none;border-radius:6px;'
+    +   'padding:4px 10px;cursor:pointer;font-weight:bold;">\u2715</button></div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;">'
+    +   '<div><label style="font-size:11px;color:#666;display:block;">Date</label>'
+    +     '<input type="date" id="dlr-tool-date" value="' + iso + '" style="padding:6px;border:1px solid #cbb;border-radius:5px;font-size:13px;"></div>'
+    +   '<div><label style="font-size:11px;color:#666;display:block;">Hour \u6642\u8fb0</label>'
+    +     '<select id="dlr-tool-hour" style="padding:6px;border:1px solid #cbb;border-radius:5px;font-size:13px;">' + hopts + '</select></div>'
+    +   '<button onclick="dlrChartShow()" style="background:#5d4037;color:#fff;border:none;border-radius:6px;'
+    +   'padding:8px 16px;font-weight:bold;cursor:pointer;font-size:13px;">Draw chart</button>'
+    + '</div>'
+    + '<div id="dlr-tool-chart"></div>';
+  document.body.appendChild(box);
+  try {
+    var now = new Date(), hb = Math.floor(((now.getHours() + 1) % 24) / 2);
+    var hsel = document.getElementById('dlr-tool-hour'); if (hsel) hsel.value = String(hb);
+  } catch (e) {}
+  dlrChartShow();
+}
+function dlrChartClose(){
+  var b = document.getElementById('dlr-tool-panel'); if (b) b.style.display = 'none';
+}
+
+function dlrChartShow(){
+  var out = document.getElementById('dlr-tool-chart');
+  if (!out) return;
+  var API = window.XKDGDaLiuRen;
+  if (!API || typeof API.buildChartFromInstant !== 'function'){
+    out.innerHTML = '<div style="color:#c0392b;font-size:12px;">daliuren.js is not loaded.</div>'; return;
+  }
+  var d = (document.getElementById('dlr-tool-date') || {}).value || '';
+  var hi = parseInt((document.getElementById('dlr-tool-hour') || {}).value, 10);
+  if (!d || !isFinite(hi)){ out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Pick a date and an hour.</div>'; return; }
+  var p = d.split('-');
+  var hh = parseInt(_DLR_HOURS[hi].split(':')[0], 10), mm = 30;
+  var day = +p[2] + ((hi === 0) ? 0 : 0);          // 23:30 belongs to the date shown
+  var local = new Date(+p[0], +p[1] - 1, day, hh, mm, 0);
+  var lon = 12.1;
+  try {
+    var lel = document.getElementById('longitude');
+    if (lel && lel.value !== '') lon = parseFloat(String(lel.value).replace(',', '.'));
+  } catch (e) {}
+  // buildChartFromInstant() needs XKDGJieQiGMT, which no file in the app defines, so it
+  // always fails. The annual chart never used it: it computes the month general itself
+  // (XKDGDaLiuRenFS.monthGeneralFor) and calls buildChartFromPrimitives. Same road here.
+  var r = null;
+  try {
+    var FSAPI = window.XKDGDaLiuRenFS;
+    var mg = (FSAPI && typeof FSAPI.monthGeneralFor === 'function') ? FSAPI.monthGeneralFor(local) : null;
+    if (!mg) { r = { error: 'month general unavailable (daliuren-fengshui.js not loaded)' }; }
+    else {
+      var L = window.Lunar && window.Solar
+        ? window.Solar.fromYmdHms(local.getFullYear(), local.getMonth() + 1, local.getDate(),
+            local.getHours(), local.getMinutes(), 0).getLunar()
+        : null;
+      if (!L) { r = { error: 'lunar-javascript not loaded' }; }
+      else {
+        var dayGz = L.getDayInGanZhi(), hourGz = L.getTimeInGanZhi();
+        r = API.buildChartFromPrimitives(dayGz.charAt(0), dayGz.charAt(1),
+                                         hourGz.charAt(1), mg, hourGz.charAt(0));
+        if (r && !r.error) {
+          r.monthGeneral = mg;
+          r.source = { dayPillar: dayGz, hourPillar: hourGz };
+        }
+      }
+    }
+  } catch (e) { r = { error: e.message }; }
+  if (!r || r.error){
+    out.innerHTML = '<div style="color:#c0392b;font-size:12px;">\u26a0 ' + ((r && r.error) || 'chart failed') + '</div>'; return;
+  }
+  out.innerHTML = dlrChartHtml(r, d, hi, lon);
+}
+
+// Same visual language as the QMDJ chart: dark-green frame, white cells.
+function dlrChartHtml(r, dateIso, hourIdx, lon){
+  var G = '#0d5e2c';
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>]/g, function(c){
+    return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' })[c]; }); }
+  var src = r.source || {};
+  var head = '<div style="text-align:center;font:600 13px system-ui;color:' + G + ';margin-bottom:2px;">'
+    + '\u5927\u516d\u58ec \u00b7 Da Liu Ren</div>'
+    + '<div style="text-align:center;font:11px system-ui;color:#555;margin-bottom:8px;">'
+    + esc(dateIso) + ' \u00b7 ' + esc(_DLR_BR[hourIdx]) + ' ' + esc(_DLR_PY[hourIdx])
+    + ' \u00b7 day ' + esc(src.dayPillar || '') + ' \u00b7 hour ' + esc(src.hourPillar || '')
+    + '<br>\u6708\u5c07 ' + esc(r.monthGeneral || '') + ' \u00b7 longitude ' + lon + '\u00b0</div>';
+
+  // three transmissions + four lessons
+  var t = (r.transmission && r.transmission.threeDetailed) || null;
+  var box = '';
+  if (t){
+    box += '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">';
+    [['\u521d', t.chu], ['\u4e2d', t.zhong], ['\u672b', t.mo]].forEach(function (x){
+      var v = x[1] || {};
+      box += '<div style="border:1px solid ' + G + ';border-radius:6px;padding:4px 10px;text-align:center;min-width:64px;">'
+           +   '<div style="font:10px system-ui;color:#888;">' + x[0] + '</div>'
+           +   '<div style="font:700 15px serif;color:' + G + ';">' + esc(v.branch || '') + '</div>'
+           +   '<div style="font:10px system-ui;color:#4a148c;">' + esc((v.general && v.general.cn) || '') + '</div>'
+           + '</div>';
+    });
+    box += '</div>';
+  }
+  if (r.fourLessons && r.fourLessons.length){
+    box += '<div style="display:flex;gap:5px;justify-content:center;margin-bottom:10px;">';
+    r.fourLessons.slice().reverse().forEach(function (L, i){
+      box += '<div style="border:1px solid #b9c9b9;border-radius:6px;padding:3px 8px;text-align:center;min-width:52px;">'
+           +   '<div style="font:700 14px serif;color:' + G + ';">' + esc((L.top && L.top.branch) || L.top || '') + '</div>'
+           +   '<div style="font:12px serif;color:#7a5a2a;">' + esc(L.bottom || '') + '</div>'
+           +   '<div style="font:9px system-ui;color:#999;">' + (4 - i) + '</div>'
+           + '</div>';
+    });
+    box += '</div>';
+  }
+
+  // the twelve palaces: tianpan above, dipan below
+  var rows = ((r.generals && r.generals.palaces) || []).map(function (p){
+    return '<td style="border:1px solid ' + G + ';padding:5px 3px;text-align:center;background:#fff;">'
+         +   '<div style="font:10px system-ui;color:#4a148c;">' + esc((p.general && p.general.cn) || '') + '</div>'
+         +   '<div style="font:700 14px serif;color:' + G + ';">' + esc(p.heaven || '') + '</div>'
+         +   '<div style="font:12px serif;color:#7a5a2a;">' + esc(p.earth || '') + '</div>'
+         +   (p.isVoid ? '<div style="font:9px system-ui;color:#c62828;">\u7a7a</div>' : '')
+         + '</td>';
+  });
+  var tbl = '<table style="border-collapse:collapse;width:100%;"><tr>' + rows.slice(0, 6).join('') + '</tr>'
+          + '<tr>' + rows.slice(6).join('') + '</tr></table>';
+  return head + box + tbl
+       + '<div style="text-align:center;font:10px system-ui;color:#888;margin-top:6px;">'
+       + 'tianpan above \u00b7 dipan below \u00b7 \u7a7a = void</div>';
+}
+
 function openQmdjChartPanel(){
   var ov = document.getElementById('qmdj-tool-overlay');
   if(ov){ ov.style.display = 'flex'; _qmdjChartPopulateHours(true); return; }
@@ -3623,6 +3793,9 @@ function _injectQmdjChartLauncher(){
     b.type = 'button';
     b.title = 'QMDJ Chart (Rotating / Flying)';
     b.textContent = '\ud83c\udfb2';   // 🎲 — distinct from the 🧭 directional compass and the 🌀 water/Qimen spiral
+    // Session 26 (Edu): the floating dice is gone — the chart tool is a Views entry now.
+    // The button itself stays (hidden) so everything that opens it keeps working.
+    b.style.display = 'none';
     b.onclick = openQmdjChartPanel;
     // Circular FAB sitting right beside the compass FAB (compass is at left:14, width 46).
     b.style.cssText = 'position:fixed;left:70px;bottom:14px;z-index:99994;width:46px;height:46px;border:0;border-radius:50%;background:#5e35b1;color:#fff;font-size:21px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);';
