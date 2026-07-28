@@ -757,23 +757,23 @@ function fsRenderCardView(){
 // button, so the existing handlers, state and styling stay the single source of
 // truth — nothing here duplicates their logic.
 var FS_LUOPAN_MENU = [
-  { v: 'time',   btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
-  { v: 'orient', btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
-  // The DLR button writes its own text ('\ud83c\udc04 DLR' / '\ud83c\udc04 DLR ON') and belongs to
-  // floorplan-daliuren.js, which we do not touch: the menu renames it for display only.
-  { v: 'dlr',    btn: 'fs-dlr-toggle',      label: function (b) {
-      var on = b && /\bON\b/.test(b.textContent);
-      return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } },
-  { v: 'card',   btn: 'fs-cardview-toggle', label: function (b) {
-      // Edu: the name "Card" goes. On = the button offers the way back to the luopan.
+  { v: 'orient',   btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
+  { v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
+  { v: 'card',     btn: 'fs-cardview-toggle', label: function (b) {
       var on = b && b.textContent.indexOf('Luopan') >= 0;
       return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
   { v: 'qmdj',     btn: null, label: function () {
-      return window.__qmdjAnnualOpen ? '\ud83e\udded Back to Luopan' : '\ud83e\udded QMDJ annual \u00b7 card'; } },
-  { v: 'qmdjtool', btn: null, label: function () { return '\ud83c\udfb2 QMDJ chart \u00b7 any J\u00fa / hour'; } },
-  { v: 'dlrtool',  btn: null, label: function () { return '\ud83c\udc04 DLR chart \u00b7 any date'; } },
+      return window.__qmdjAnnualOpen ? '\ud83e\udded Back to Luopan' : '\ud83e\udded QMDJ annual chart'; } },
   { v: 'qmdjring', btn: null, label: function () {
-      return window.__qmdjAnnualRingOn ? '\ud83e\udded QMDJ annual ring ON' : '\ud83e\udded QMDJ annual \u00b7 ring'; } }
+      return window.__qmdjAnnualRingOn ? '\ud83e\udded QMDJ annual ring ON' : '\ud83e\udded QMDJ annual chart \u00b7 ring'; } },
+  // The DLR button belongs to floorplan-daliuren.js and writes its own text ('\ud83c\udc04 DLR' /
+  // '\ud83c\udc04 DLR ON'); that module is untouched, the menu renames it for display only.
+  { v: 'dlr',      btn: 'fs-dlr-toggle', label: function (b) {
+      var on = b && /\bON\b/.test(b.textContent);
+      return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } },
+  { v: '_sep',     btn: null, label: function () { return '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500'; } },
+  { v: 'qmdjtool', btn: null, label: function () { return '\ud83c\udfb2 QMDJ any date'; } },
+  { v: 'dlrtool',  btn: null, label: function () { return '\ud83c\udc04 DLR any date'; } }
 ];
 
 // Rebuilds the entries so each one shows the CURRENT state of its button.
@@ -828,7 +828,7 @@ function fsLuopanMenuAct(v){
   try {
     var sel = document.getElementById('fs-luopan-menu');
     if (sel) sel.value = '';                    // snap back to the "Views" label
-    if (!v) return;
+    if (!v || v === '_sep') return;
     // Anything that lives on the canvas needs the canvas visible.
     if (v === 'time' || v === 'orient' || v === 'dlr' || v === 'qmdjring') _fsCloseAnyCard();
     if (v === 'qmdjtool'){
