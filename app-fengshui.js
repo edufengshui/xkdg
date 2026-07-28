@@ -3857,7 +3857,7 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
   if (r.spirits && r.spirits.length){
     gd = sect('Gods and Devils')
       + '<table style="border-collapse:collapse;width:100%;">'
-      + '<tr><th style="' + TH + '">Sector</th><th style="' + TH + '">Heaven</th>'
+      + '<tr><th style="' + TH + '">\u5929\u76e4 \u00b7 sector</th>'
       + '<th style="' + TH + '">Spirits</th></tr>';
     r.spirits.forEach(function (s){
       var dot = '';
@@ -3868,15 +3868,18 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
       s.greens.forEach(function (g){ list.push('<span style="color:#2e7d32;">\u25cf ' + esc(g) + '</span>'); });
       s.reds.forEach(function (g){ list.push('<span style="color:#c62828;">\u25cf ' + esc(g) + '</span>'); });
       s.context.forEach(function (g){ list.push('<span style="color:#777;">' + esc(g) + '</span>'); });
-      gd += '<tr><td style="' + TD + '">' + dot + '<b style="font:700 13px serif;color:#7a5a2a;">' + esc(s.earth) + '</b></td>'
-        + '<td style="' + TD + '"><b style="font:700 13px serif;color:' + G + ';">' + esc(s.heaven) + '</b> '
-        + esc(brShort(s.heaven)) + '</td>'
+      gd += '<tr><td style="' + TD + 'white-space:nowrap;">' + dot
+        + '<b style="font:700 14px serif;color:' + G + ';">' + esc(s.heaven) + '</b> '
+        + esc(brShort(s.heaven))
+        + '<div style="font:9px system-ui;color:#7a5a2a;">over ' + esc(s.earth) + ' '
+        + esc((_DLR_BRINFO[s.earth] || [''])[0]) + '</div></td>'
         + '<td style="' + TD + '">' + (list.length ? list.join(' \u00b7 ') : '<span style="color:#bbb;">\u2014</span>') + '</td></tr>';
     });
     gd += '</table>'
       + '<div style="font:10px system-ui;color:#888;margin-top:3px;">'
       + '\u25cf green = favourable \u00b7 \u25cf red = unfavourable \u00b7 \u25cb hollow = a green sharing the sector with a red.'
-      + '<br>Sector = earth palace; the reading is made on the heaven branch above it.'
+      + '<br>Big branch = \u5929\u76e4 tianpan \u2014 the general and the spirits are read on it.'
+      + '<br>\u201cover \u2026\u201d = \u5730\u76e4 dipan, the sector it lands on.'
       + '<br>Heaven Virtue and Month Virtue are read from the month branch \u6708\u652f '
       + esc(String(src.monthPillar || '').charAt(1)) + '.</div>';
   }

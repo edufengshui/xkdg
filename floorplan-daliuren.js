@@ -430,12 +430,20 @@
       + '<span id="fs-dlr-table-grip" style="cursor:grab;color:#8d6e63;font-size:15px;font-weight:bold;">\u2237</span>'
       + '<strong style="flex:1;">\u5927\u516D\u58EC \u00b7 ' + st.year + ' ' + (r.yearPillar ? r.yearPillar.gz : '') + '</strong>'
       + '<button id="fs-dlr-table-x" style="background:#5d4037;color:#fff;border:none;border-radius:6px;padding:2px 8px;cursor:pointer;font-weight:bold;">\u2715</button></div>';
+    var _mb = '';
+    try {
+      var _eng = DLR();
+      if (_eng && typeof _eng.monthBranchFor === 'function' && r.chosenDay && r.chosenDay.date) {
+        _mb = _eng.monthBranchFor(r.chosenDay.date) || '';
+      }
+    } catch (e) {}
     h += '<div style="font-size:10px;color:#7a5a2a;margin-bottom:6px;">Day ' + (r.chosenDay ? String(r.chosenDay.date).slice(0, 15) : '?')
       + ' \u00b7 \u6708\u5C07 ' + (r.chosenDay ? r.chosenDay.monthGeneral : '?')
+      + (_mb ? (' \u00b7 \u6708\u652F ' + _mb) : '')
       + ' \u00b7 mode ' + (r.chosenDay ? r.chosenDay.mode : '?') + '</div>';
     h += '<table style="width:100%;border-collapse:collapse;">';
     h += '<tr style="background:#f1e7d4;font-size:10px;text-align:left;">'
-      + '<th style="padding:3px;">Sector</th><th style="padding:3px;">General</th><th style="padding:3px;">+ / \u2212</th></tr>';
+      + '<th style="padding:3px;">\u5929\u76E4 \u00b7 sector</th><th style="padding:3px;">General</th><th style="padding:3px;">+ / \u2212</th></tr>';
     r.sectors.forEach(function (s) {
       var col = DOT[s.net] || '#bdbdbd';
       var mark = (s.net === 'green_hollow') ? '\u25CB' : (s.net === 'cancel' ? '\u2298' : '\u25CF');
@@ -444,7 +452,7 @@
       var vir = (s.virtues || []).join(', ');
       h += '<tr style="border-top:1px solid #e6dcc8;">';
       h += '<td style="padding:4px 3px;white-space:nowrap;"><span style="color:' + col + ';font-size:13px;">' + mark + '</span> '
-        + '<strong>' + branchLabel(s.earth) + '</strong><br><span style="font-size:10px;color:#7a5a2a;">' + branchLabel(s.heaven) + ' \u2191</span></td>';
+        + '<strong>' + branchLabel(s.heaven) + '</strong><br><span style="font-size:10px;color:#7a5a2a;">over ' + branchLabel(s.earth) + '</span></td>';
       h += '<td style="padding:4px 3px;white-space:nowrap;">' + ((s.general && s.general.cn) || '') + '<br>'
         + '<span style="font-size:10px;color:#666;">' + (SPIRIT_EN[s.general && s.general.cn] || '') + '</span></td>';
       h += '<td style="padding:4px 3px;font-size:11px;">';
@@ -458,7 +466,8 @@
     h += '<div style="margin-top:6px;font-size:10px;color:#777;line-height:1.5;">'
       + '<span style="color:#1b8a3a;">\u25CF</span> auspicious \u00b7 <span style="color:#c62828;">\u25CF</span> inauspicious \u00b7 '
       + '<span style="color:#1b8a3a;">\u25CB</span> Heavenly Doctor with a negative \u00b7 <span style="color:#9e9e9e;">\u2298</span> cancelled'
-      + '<br>Top branch = \u5929\u76E4 tianpan \u00b7 bottom = \u5730\u76E4 dipan (the sector position)</div>';
+      + '<br>Big branch = \u5929\u76E4 tianpan \u2014 the general and the spirits are read on it.'
+      + '<br>\u201cover \u2026\u201d = \u5730\u76E4 dipan, the sector of the house it lands on.</div>';
     box.innerHTML = h;
     wrap.appendChild(box);
     document.getElementById('fs-dlr-table-x').addEventListener('click', function () {
