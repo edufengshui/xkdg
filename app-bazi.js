@@ -3092,7 +3092,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — activate stimulator at '+pq.dir+'" onclick="event.stopPropagation();showQimenPopup(\''+pq.label.replace(/'/g,'').replace(/'/g,'')+'\')"'+'>🌀⭐'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${(r.purposeQimenR||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — act towards '+pq.dir+' direction" onclick="event.stopPropagation();showQimenPopup(\''+pq.label.replace(/'/g,'').replace(/'/g,'')+'\')">→'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — activate stimulator at '+pq.dir+'" onclick="event.stopPropagation();'+_pqPopupCall(pq)+'"'+'>🌀⭐'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${(r.purposeQimenR||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — act towards '+pq.dir+' direction" onclick="event.stopPropagation();'+_pqPopupCall(pq)+'">→'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -3688,6 +3688,7 @@ function fsScanPurposeQimen(qmParams, purpose){
   if (!validLabels || !validLabels.length) return [];
   if (typeof QMDJWaterScanner === 'undefined') return [];
   var results = [];
+  var _iso = qmParams.Y + '-' + String(qmParams.M).padStart(2,'0') + '-' + String(qmParams.D).padStart(2,'0');
   for (var p = 1; p <= 9; p++){
     if (p === 5) continue; // skip center
     var res = QMDJWaterScanner.checkHourAtPalace(qmParams.Y, qmParams.M, qmParams.D,
@@ -3695,7 +3696,8 @@ function fsScanPurposeQimen(qmParams, purpose){
     if (!res || !res.hits) continue;
     res.hits.forEach(function(h){
       if (validLabels.indexOf(h.label) !== -1){
-        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?', method: 'flying' });
+        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?', method: 'flying',
+                       iso: _iso, hGan: qmParams.hGan, hZhi: qmParams.hZhi });
       }
     });
   }
@@ -3713,17 +3715,31 @@ function fsScanPurposeQimenRotating(qmParams, purpose){
                                                      qmParams.hGan, qmParams.hZhi);
   if (!chart) return [];
   var results = [];
+  var _iso = qmParams.Y + '-' + String(qmParams.M).padStart(2,'0') + '-' + String(qmParams.D).padStart(2,'0');
   for (var p = 1; p <= 9; p++){
     if (p === 5) continue;
     var hits = QMDJWaterScanner.checkRotatingPalace(chart, p);
     if (!hits || !hits.length) continue;
     hits.forEach(function(h){
       if (validLabels.indexOf(h.label) !== -1){
-        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?', method: 'rotating' });
+        results.push({ label: h.label, palace: p, dir: _PALACE_DIR[p] || '?', method: 'rotating',
+                       iso: _iso, hGan: qmParams.hGan, hZhi: qmParams.hZhi });
       }
     });
   }
   return results;
+}
+
+/** onclick for a Purpose-Qimen badge: opens the description card, and hands it the
+ *  exact chart coordinates of THIS hour so the card can draw the chart the hit was
+ *  found on — flying for the 🌀⭐ stimulator hits, rotating for the → directional
+ *  ones. Older calls with no context still work: the card simply has no button. */
+function _pqPopupCall(pq){
+  var lab = String(pq && pq.label || '').replace(/['"\\]/g, '');
+  if (!pq || !pq.iso || !pq.hGan || !pq.hZhi) return "showQimenPopup('" + lab + "')";
+  return "showQimenPopup('" + lab + "',{iso:'" + pq.iso + "',hGan:'" + pq.hGan + "',hZhi:'" + pq.hZhi
+       + "',mode:'" + (pq.method || 'flying') + "',palace:" + (pq.palace || 0)
+       + ",dir:'" + (pq.dir || '') + "',label:'" + lab + "'})";
 }
 var _scoreModeBalanced = false; // false = A Priority, true = Balanced (average of A and B)
 var _listSortByScore   = false; // false = chronological, true = best hour first per day
@@ -5992,11 +6008,11 @@ function buildMonthView() {
             const pqHitsLV = fsScanPurposeQimen(
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
                 getPurpose());
-            const pqHTMLLV = pqHitsLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — activate stimulator at ' + pq.dir + '" onclick="event.stopPropagation();showQimenPopup(\'' + pq.label.replace(/'/g,'') + '\')"' + '>🌀⭐' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
+            const pqHTMLLV = pqHitsLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — activate stimulator at ' + pq.dir + '" onclick="event.stopPropagation();' + _pqPopupCall(pq) + '"' + '>🌀⭐' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
             const pqRotLV = fsScanPurposeQimenRotating(
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
                 getPurpose());
-            const pqRotHTMLLV = pqRotLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — act towards ' + pq.dir + ' direction" onclick="event.stopPropagation();showQimenPopup(\'' + pq.label.replace(/'/g,'') + '\')"' + '>→' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
+            const pqRotHTMLLV = pqRotLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — act towards ' + pq.dir + ' direction" onclick="event.stopPropagation();' + _pqPopupCall(pq) + '"' + '>→' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
             // Unified score-based row coloring: green for positive, red for negative
             const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
                             : listScore >= 8  ? '#c8e6c9'   // medium green

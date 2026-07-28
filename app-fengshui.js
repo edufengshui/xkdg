@@ -2795,13 +2795,24 @@ var _qimenDescriptions = {
   'Ghost Borrows 鬼假':
     'GHOST BORROW (Gui Jia 鬼假)\nConfiguration: The Marvel Ding (丁) + the Du Gate (杜 Hidden) + the Spirit Jiu Di (九地 Nine Earths). Often forming when the Palace interacts with specific Grave/Tomb branches.\n\nYou are borrowing the hidden, unseen, or "spectral" forces of the shadow world.\n\nBest for: Stealth maneuvers, psychological warfare, planting rumors to confuse an opponent, conducting secret audits, or executing a strategy where you want competitors to chase ghosts while you take the prize.\n\n⚠️ WARNING: Use ONLY for the intended purpose described above, or it can even be harmful.'
 };
-function showQimenPopup(label){
+// Chart coordinates of the hit whose card is open, so the button can draw the
+// very chart the configuration was found on. Null when the caller gave none.
+var _qimenPopupCtx = null;
+function showQimenPopup(label, ctx){
   var old = document.getElementById('qimen-popup-overlay');
   if(old) old.remove();
   old = document.getElementById('qimen-popup');
   if(old) old.remove();
   var desc = _qimenDescriptions[label] || '';
   if(!desc) return;
+  _qimenPopupCtx = (ctx && ctx.iso && ctx.hGan && ctx.hZhi) ? ctx : null;
+  var chartBtn = '';
+  if(_qimenPopupCtx){
+    var _isRot = (_qimenPopupCtx.mode === 'rotating');
+    chartBtn = '<button onclick="showQimenChartFromPopup()" style="background:#5e35b1;color:#fff;border:none;padding:5px 14px;'
+      + 'border-radius:6px;font-size:11px;cursor:pointer;margin-right:6px;">\ud83c\udfb2 '
+      + (_isRot ? '\u8f49\u76e4 Rotating' : '\u98db\u76e4 Flying') + ' chart</button>';
+  }
   var overlay = document.createElement('div');
   overlay.id = 'qimen-popup-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:9998;';
@@ -2809,12 +2820,49 @@ function showQimenPopup(label){
   div.id = 'qimen-popup';
   div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:2px solid #00695c;border-radius:10px;padding:14px 18px;max-width:300px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
   div.innerHTML = '<div style="font-weight:bold;color:#00695c;font-size:14px;margin-bottom:6px;">' + label + '</div>'
+    + (_qimenPopupCtx ? ('<div style="font-size:11px;color:#666;margin-bottom:6px;">' + _qimenPopupCtx.iso + ' \u00b7 '
+        + _qimenPopupCtx.hGan + _qimenPopupCtx.hZhi + ' hour'
+        + (_qimenPopupCtx.dir ? (' \u00b7 palace ' + _qimenPopupCtx.palace + ' ' + _qimenPopupCtx.dir) : '') + '</div>') : '')
     + '<div style="color:#333;font-size:12px;line-height:1.5;white-space:pre-line;">' + desc + '</div>'
-    + '<div style="background:#fff3e0;border:1px solid #ff9800;border-radius:6px;padding:8px;margin-top:10px;font-size:11px;color:#e65100;line-height:1.4;">⚠️ <strong>IMPORTANT:</strong> Your intended action MUST align with this configuration\'s expertise. Using it for a different purpose will not produce the desired result, or can even be harmful.</div>'
-    + '<div style="text-align:right;margin-top:10px;"><button onclick="document.getElementById(\'qimen-popup\').remove();document.getElementById(\'qimen-popup-overlay\').remove()" style="background:#00695c;color:#fff;border:none;padding:5px 16px;border-radius:6px;font-size:11px;cursor:pointer;">OK</button></div>';
+    + '<div style="background:#fff3e0;border:1px solid #ff9800;border-radius:6px;padding:8px;margin-top:10px;font-size:11px;color:#e65100;line-height:1.4;">\u26a0\ufe0f <strong>IMPORTANT:</strong> Your intended action MUST align with this configuration\'s expertise. Using it for a different purpose will not produce the desired result, or can even be harmful.</div>'
+    + '<div style="text-align:right;margin-top:10px;">' + chartBtn + '<button onclick="document.getElementById(\'qimen-popup\').remove();document.getElementById(\'qimen-popup-overlay\').remove()" style="background:#00695c;color:#fff;border:none;padding:5px 16px;border-radius:6px;font-size:11px;cursor:pointer;">OK</button></div>';
   overlay.onclick = function(){ div.remove(); overlay.remove(); };
   document.body.appendChild(overlay);
   document.body.appendChild(div);
+}
+
+// Draw the chart the open configuration card was found on. The stems come from the
+// scan itself, so no date/hour is recomputed here — no chance of landing on the
+// neighbouring hour pillar. The palace that produced the hit is highlighted.
+function showQimenChartFromPopup(){
+  var c = _qimenPopupCtx;
+  if(!c || typeof showQimenChart !== 'function') return;
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(ch){
+    return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' })[ch]; }); }
+  var isRot = (c.mode === 'rotating');
+  var html = '';
+  try { html = showQimenChart(c.iso, c.hGan, c.hZhi, c.palace || null, { mode: (isRot ? 'rotating' : undefined), returnHtml: true }) || ''; }
+  catch(e){ html = ''; }
+  var prev = document.getElementById('qimen-popup-chart');
+  if(prev) prev.remove();
+  var ov = document.createElement('div');
+  ov.id = 'qimen-popup-chart';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100002;background:rgba(20,8,30,.6);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto;';
+  ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+  ov.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:780px;width:100%;padding:14px;box-shadow:0 12px 44px rgba(0,0,0,.35);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;">'
+    +   '<div style="font-size:15px;font-weight:bold;color:#5e35b1;">'
+    +     (isRot ? '\u8f49\u76e4 Rotating' : '\u98db\u76e4 Flying') + ' \u00b7 ' + esc(c.label || '') + '</div>'
+    +   '<button onclick="document.getElementById(\'qimen-popup-chart\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">\u2715</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:#666;margin-bottom:10px;">'
+    +   esc(c.iso) + ' \u00b7 ' + esc(String(c.hGan) + String(c.hZhi)) + ' hour'
+    +   (c.palace ? (' \u00b7 palace ' + c.palace + ' ' + esc(c.dir || '')) : '')
+    +   ' \u00b7 ' + (isRot ? 'human directional actions' : 'Feng Shui stimulators')
+    +   '. South is at the top.</div>'
+    + (html || '<div style="color:#c0392b;font-size:12px;">Cannot draw this chart.</div>')
+    + '</div>';
+  document.body.appendChild(ov);
 }
 
 // ── Jia hiding (六甲遁) and Zhi Fu/Zhi Shi popups ──
