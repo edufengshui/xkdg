@@ -256,15 +256,31 @@
     var lu   = yearLu(yp.stem);
     var tomb = tombSha(yp.stem);
     var hd   = heavenlyDoctor(yp.stem);
+    // Session 26: a branch can carry MORE THAN ONE virtue (this year 亥 is both Heaven
+    // and Branch Virtue). The old single-value map silently overwrote them.
     var virtues = {};
-    virtues[HEAVEN_VIRTUE[monthBranch]] = 'Heaven';
-    virtues[monthVirtue(monthBranch)]   = 'Month';
-    virtues[DAY_VIRTUE[yp.stem]]        = 'Day';
-    virtues[branchVirtue(yp.branch)]    = 'Branch';
+    function _addVirtue(br, name){ if (!br) return; (virtues[br] = virtues[br] || []).push(name); }
+    _addVirtue(HEAVEN_VIRTUE[monthBranch], 'Heaven');
+    _addVirtue(monthVirtue(monthBranch),   'Month');
+    _addVirtue(DAY_VIRTUE[yp.stem],        'Day');
+    _addVirtue(branchVirtue(yp.branch),    'Branch');
     var dayVoid = E.xunKong(sIdx(yp.stem), bIdx(yp.branch)); // Void OF THE DAY (= year pillar)
 
-    var GREEN_GEN = { '貴人':1, '青龍':1, '六合':1 };
-    var RED_GEN   = { '白虎':1, '玄武':1, '勾陳':1, '天空':1 };
+    // Session 26 \u2014 spirit list set by Edu. GREEN dot: Nobleman, Green Dragon, Lu,
+    // Proper/Unproper Wealth, the four Virtues, Heavenly Doctor. RED dot: Tomb Sha,
+    // Ghost Sha, Tiger, Empty Sky. NO dot: Post Horse, Ding Spirit, Brothers.
+    var GREEN_GEN = { '貴人':1, '青龍':1 };
+    var RED_GEN   = { '白虎':1, '天空':1 };
+    // Ding Spirit: inside the decade (旬) of the day/year pillar, the branch carrying
+    // the 丁 stem. 2026 丙午 sits in the 甲辰 decade, whose \u4e01 member is 丁未 \u2192 未 all year.
+    var _dingSpirit = (function () {
+      var idx = (bIdx(yp.branch) - sIdx(yp.stem) + 12) % 12;      // decade head branch index
+      return E.BRANCHES[(idx + 3) % 12];                          // 甲 +3 = 丁
+    })();
+    var _postHorse = E.postHorse ? E.postHorse(yp.branch) : null;
+    // Wealth = what the day stem controls. Opposite polarity = Proper, same = Unproper.
+    var _stemYang = ('甲丙戊庚壬'.indexOf(yp.stem) >= 0);
+    function _branchYang(b) { return bIdx(b) % 2 === 0; }
 
     // per EARTH sector (12 double-mountain palaces): judge on the HEAVEN branch + general
     var sectors = chart.generals.palaces.map(function (p) {
@@ -273,15 +289,19 @@
       if (GREEN_GEN[genCn]) greens.push(p.general.en);
       if (RED_GEN[genCn])   reds.push(p.general.en);
       if (H === lu)     greens.push('Lu');
-      if (wealth[H])    greens.push('Wealth');
+      if (wealth[H])    greens.push(_branchYang(H) === _stemYang ? 'Unproper Wealth' : 'Proper Wealth');
       if (H === hd)     greens.push('Heavenly Doctor');
+      if (virtues[H])   virtues[H].forEach(function (v) { greens.push(v + ' Virtue'); });
       if (H === ghost || ghost[H]) reds.push('Ghost Sha');
       if (H === tomb)   reds.push('Tomb Sha');
-      if (brothers[H])  reds.push('Brothers');
+      // no dot, listed only
+      if (brothers[H])  ctx.push('Brothers');
+      if (H === _postHorse)  ctx.push('Post Horse');
+      if (H === _dingSpirit) ctx.push('Ding Spirit');
       if (parents[H])   ctx.push('Parent (bedroom)');
       if (children[H])  ctx.push('Children (recreation)');
       // Virtues "help what is there" — modifiers, not standalone greens.
-      if (virtues[H])   mods.push(virtues[H] + ' Virtue');
+
       // 空亡: the void falls on the EARTH palace of the void branches. Voids are
       // NOT significant in the annual DLR Feng Shui reading (Edu) — kept as data
       // only, shown as a small note in the centre panel, never as a sector mark.
@@ -290,11 +310,12 @@
       // the Heavenly Doctor (天醫) is always counted and never simply cancelled:
       // if it meets a negative on the same sector the result is a HOLLOW green
       // circle (green outline, not filled), not a neutral cancel (Edu).
-      var hasHD = greens.indexOf('Heavenly Doctor') >= 0;
+      // Edu, session 26: ANY green landing on a sector that also carries a red shows a
+      // hollow circle \u2014 not just the Heavenly Doctor, as it was before.
       var net = 'neutral';
       if (greens.length && !reds.length) net = 'green';
       else if (reds.length && !greens.length) net = 'red';
-      else if (greens.length && reds.length) net = hasHD ? 'green_hollow' : 'cancel';
+      else if (greens.length && reds.length) net = 'green_hollow';
       return { earth: p.earth, heaven: H, general: p.general, relation: p.relation,
                greens: greens, reds: reds, context: ctx, virtues: mods, isVoid: isVoid, net: net };
     });
