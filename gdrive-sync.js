@@ -24,6 +24,15 @@
   var K_DRIVE_MTIME = 'xkdg_gdrive_drive_mtime';   // Drive file modifiedTime as last seen by THIS device (server clock)
   var K_AUTOSYNC = 'xkdg_gdrive_autosync';         // '1' when auto-sync is ON for THIS device
   var EXCLUDE_PREFIX = 'xkdg_gdrive_';   // never sync the sync config itself
+  // Derived caches: big, device-local, and rebuilt on demand. They must never
+  // travel to Drive — a single long road shape is hundreds of KB, and carrying
+  // them both ways filled the browser storage and broke the restore.
+  var SKIP_PREFIXES = ['xkdg_gdrive_', 'xkdg_tp_route_'];
+  function skipKey(k){
+    if (!k) return true;
+    for (var i = 0; i < SKIP_PREFIXES.length; i++) { if (k.indexOf(SKIP_PREFIXES[i]) === 0) return true; }
+    return false;
+  }
 
   var tokenClient = null, pendingAction = null;
   var pendingOnToken = null, pendingOnFail = null, pendingSilent = false;
@@ -39,7 +48,7 @@
     var data = {};
     for (var i = 0; i < localStorage.length; i++){
       var k = localStorage.key(i);
-      if (!k || k.indexOf(EXCLUDE_PREFIX) === 0) continue;
+      if (!k || skipKey(k)) continue;
       data[k] = localStorage.getItem(k);
     }
     return JSON.stringify({ __xkdg_sync: 1, ts: new Date().toISOString(), data: data });
@@ -48,10 +57,19 @@
     var obj = JSON.parse(text);
     if (!obj || !obj.__xkdg_sync || !obj.data) throw new Error('Not an XKDG sync file.');
     var keys = Object.keys(obj.data);
+    var written = 0, failed = [];
     suppressDirty = true;
-    try { keys.forEach(function (k){ if (k.indexOf(EXCLUDE_PREFIX) !== 0) localStorage.setItem(k, obj.data[k]); }); }
+    // One key that will not fit must not abort the whole restore: write what we
+    // can and report the rest, so the user knows exactly what is missing.
+    try {
+      keys.forEach(function (k){
+        if (skipKey(k)) return;
+        try { localStorage.setItem(k, obj.data[k]); written++; }
+        catch (e) { failed.push(k); }
+      });
+    }
     finally { suppressDirty = false; }
-    return { count: keys.length, ts: obj.ts };
+    return { count: keys.length, written: written, failed: failed, ts: obj.ts };
   }
 
   // ---- Google auth (GIS token model) ----
@@ -193,7 +211,13 @@
             localStorage.setItem(K_LASTSYNC, new Date().toISOString());
             if (f.modifiedTime) localStorage.setItem(K_DRIVE_MTIME, f.modifiedTime);
           } catch(e){}
-          setStatus('✓ Loaded ' + r.count + ' items. Reloading…', '#7CFC9A');
+          if (r.failed && r.failed.length) {
+            setStatus('\u26a0 Loaded ' + r.written + ' items, ' + r.failed.length
+              + ' did not fit (storage full): ' + r.failed.slice(0, 3).join(', ')
+              + (r.failed.length > 3 ? '\u2026' : '') + '. Free space and load again.', '#ffd479');
+            return;
+          }
+          setStatus('\u2713 Loaded ' + r.written + ' items. Reloading\u2026', '#7CFC9A');
           setTimeout(function (){ location.reload(); }, 800);
         });
       }).catch(function (e){ setStatus('✗ ' + e.message, '#ff6b6b'); });
@@ -281,7 +305,7 @@
       store.setItem = function (k, v){
         orig(k, v);
         try {
-          if (!suppressDirty && k && k.indexOf(EXCLUDE_PREFIX) !== 0 && autoOn()) scheduleAutoSave();
+          if (!suppressDirty && k && !skipKey(k) && autoOn()) scheduleAutoSave();
         } catch(e){}
       };
       store.__xkdgHook = true;

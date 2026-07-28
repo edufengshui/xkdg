@@ -679,22 +679,85 @@
     function r(n){ return Math.round(parseFloat(n) * 1000) / 1000; }   // ~111 m bucket
     return 'xkdg_tp_route_' + r(O.lat) + '_' + r(O.lng) + '_' + r(D.lat) + '_' + r(D.lng);
   }
+  /* Space budget for the road cache. The browser gives the whole app ~5 MB of
+   * localStorage; road shapes are by far the biggest thing in it (a 900 km road
+   * is a few hundred KB, a city hop a handful of KB). We keep them under a fixed
+   * budget instead of a fixed COUNT, so long trips and short ones both behave
+   * sensibly, and we drop the road that has gone unused the longest — the roads
+   * actually driven keep themselves alive. */
+  var TP_ROUTE_BUDGET = 1500 * 1024;        // ~1.5 MB for all saved road shapes
+  var TP_ROUTE_TOUCH_MS = 12 * 3600 * 1000; // refresh "last used" at most twice a day
+
+  // Every saved road with its size and last-use stamp, oldest use first.
+  function tpRouteCacheEntries() {
+    var out = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf('xkdg_tp_route_') !== 0) continue;
+        var raw = localStorage.getItem(k) || '';
+        var used = 0;
+        try { var o = JSON.parse(raw); used = o.used || o.saved || 0; } catch (e) { used = 0; }
+        out.push({ key: k, bytes: raw.length, used: used });
+      }
+    } catch (e) {}
+    out.sort(function (a, b) { return (a.used || 0) - (b.used || 0); });   // least recently used first
+    return out;
+  }
+  // Drop least-recently-used roads until the cache fits. keepKey is never dropped.
+  // Returns how many were removed.
+  function tpTrimRouteCache(budget, keepKey) {
+    var gone = 0;
+    try {
+      var list = tpRouteCacheEntries();
+      var total = 0, i;
+      for (i = 0; i < list.length; i++) total += list[i].bytes;
+      for (i = 0; i < list.length && total > budget; i++) {
+        if (keepKey && list[i].key === keepKey) continue;
+        try { localStorage.removeItem(list[i].key); total -= list[i].bytes; gone++; } catch (e) {}
+      }
+    } catch (e) {}
+    return gone;
+  }
+
   function tpSaveRouteShape(route, names) {
     try {
       if (!route || !route.origin || !route.dest || !route.coords || !route.coords.length) return;
       var key = tpRouteShapeKey({ lat: route.origin.lat, lng: route.origin.lng }, { lat: route.dest.lat, lng: route.dest.lng });
       var rec = { origin: route.origin, dest: route.dest,
-        distanceMeters: route.distanceMeters, durationSec: route.durationSec, coords: route.coords, saved: Date.now() };
+        distanceMeters: route.distanceMeters, durationSec: route.durationSec, coords: route.coords,
+        saved: Date.now(), used: Date.now() };
       if (names && (names.origin || names.dest)) rec.names = { o: names.origin || '', d: names.dest || '' };
-      localStorage.setItem(key, JSON.stringify(rec));
+      var txt = JSON.stringify(rec);
+      // A single road that would eat half the budget is not worth caching: it
+      // would evict everything else to make room. Better to refetch it.
+      if (txt.length > TP_ROUTE_BUDGET / 2) return;
+      try {
+        localStorage.setItem(key, txt);
+      } catch (quota) {
+        // Storage full: make room by dropping the roads unused the longest, retry once.
+        tpTrimRouteCache(Math.max(0, TP_ROUTE_BUDGET - txt.length), key);
+        try { localStorage.setItem(key, txt); } catch (e2) { return; }
+      }
+      tpTrimRouteCache(TP_ROUTE_BUDGET, key);
     } catch (e) {}
   }
   function tpLoadRouteShape(O, D) {
     try {
-      var raw = localStorage.getItem(tpRouteShapeKey(O, D));
+      var key = tpRouteShapeKey(O, D);
+      var raw = localStorage.getItem(key);
       if (!raw) return null;
       var r = JSON.parse(raw);
       if (!r || !r.coords || !r.coords.length) return null;
+      // Mark it as used so the trim keeps the roads actually driven. Throttled,
+      // and never allowed to break the read if the write fails.
+      try {
+        var now = Date.now();
+        if (!r.used || (now - r.used) > TP_ROUTE_TOUCH_MS) {
+          r.used = now;
+          localStorage.setItem(key, JSON.stringify(r));
+        }
+      } catch (e3) {}
       r._fromCache = true; return r;
     } catch (e) { return null; }
   }
@@ -722,14 +785,17 @@
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
         if (!k || k.indexOf('xkdg_tp_route_') !== 0) continue;
-        var r; try { r = JSON.parse(localStorage.getItem(k)); } catch (e) { continue; }
+        var raw = localStorage.getItem(k) || '';
+        var r; try { r = JSON.parse(raw); } catch (e) { continue; }
         if (!r || !r.origin || !r.dest) continue;
         out.push({ key: k, origin: r.origin, dest: r.dest, names: r.names || null,
+          bytes: raw.length, points: (r.coords && r.coords.length) || 0,
+          used: r.used || r.saved || null,
           km: r.distanceMeters ? Math.round(r.distanceMeters / 1000) : null,
           min: r.durationSec ? Math.round(r.durationSec / 60) : null, saved: r.saved || null });
       }
     } catch (e) {}
-    out.sort(function (a, b) { return (b.saved || 0) - (a.saved || 0); });
+    out.sort(function (a, b) { return (b.used || b.saved || 0) - (a.used || a.saved || 0); });
     return out;
   }
   function tpClearSavedRoute(key) { try { localStorage.removeItem(key); } catch (e) {} }
@@ -749,7 +815,11 @@
     results.innerHTML = '';
     var box = el('div', { style: 'border:1px solid #cdd7e0;border-radius:10px;padding:10px;background:#f7f9fb;' });
     var top = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:8px;' });
-    top.appendChild(el('div', { style: 'flex:1;font-weight:700;color:#1f3a5f;font-size:14px;' }, '\uD83D\uDDFA Saved roads (' + rows.length + ')'));
+    var _tot = 0;
+    rows.forEach(function (x) { _tot += (x.bytes || 0); });
+    var _totTxt = rows.length ? ('  \u00b7  ' + (Math.round(_tot / 1024 / 102.4) / 10) + ' / '
+      + (Math.round(TP_ROUTE_BUDGET / 1024 / 102.4) / 10) + ' MB') : '';
+    top.appendChild(el('div', { style: 'flex:1;font-weight:700;color:#1f3a5f;font-size:14px;' }, '\uD83D\uDDFA Saved roads (' + rows.length + ')' + _totTxt));
     if (rows.length) {
       var clrAll = el('button', { type: 'button', style: 'padding:5px 9px;border:1px solid #b00;border-radius:6px;background:#fff;color:#b00;font-size:12px;font-weight:600;cursor:pointer;' }, 'Clear all');
       clrAll.addEventListener('click', function () { if (window.confirm('Delete all saved road shapes?')) { tpClearAllSavedRoutes(); tpShowSavedRoads(); } });
@@ -765,7 +835,8 @@
         var meta = [];
         if (it.km != null) meta.push(it.km + ' km');
         if (it.min != null) meta.push('~' + (Math.round(it.min / 6) / 10) + 'h');
-        if (it.saved) { try { meta.push('saved ' + new Date(it.saved).toLocaleDateString()); } catch (e) {} }
+        if (it.bytes) meta.push(Math.round(it.bytes / 1024) + ' KB');
+        if (it.used || it.saved) { try { meta.push('used ' + new Date(it.used || it.saved).toLocaleDateString()); } catch (e) {} }
         var row = el('div', { style: 'display:flex;align-items:center;gap:8px;margin:4px 0;padding:7px 9px;border-radius:8px;border:1px solid #e2e8ee;background:#fff;' });
         var left = el('div', { style: 'flex:1;min-width:0;' });
         left.appendChild(el('div', { style: 'font-weight:600;font-size:13px;color:#222;overflow:hidden;text-overflow:ellipsis;' }, label));
@@ -776,9 +847,14 @@
         row.appendChild(del);
         box.appendChild(row);
       });
-      box.appendChild(el('div', { style: 'font-size:11px;color:#888;margin-top:6px;' }, 'Clearing a road forces a fresh fetch from the Worker next time (use it if a route really changed).'));
+      box.appendChild(el('div', { style: 'font-size:11px;color:#888;margin-top:6px;' }, 'Clearing a road forces a fresh fetch from the Worker next time (use it if a route really changed). When the cache goes over budget, the road unused the longest is dropped on its own.'));
     }
     results.appendChild(box);
+    // The results container sits at the very bottom of a long panel: without this
+    // the list is drawn off-screen and the button looks dead.
+    try { results.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {
+      try { results.scrollIntoView(); } catch (e2) {}
+    }
   }
 
   /* ===== PHASE 2 — active detour engine ================================= *
@@ -4886,7 +4962,10 @@
     var roadsBtn = el('button', { id: 'tp-savedroads', type: 'button',
       style: 'width:100%;margin-top:6px;padding:8px;border:1px solid #1f3a5f;border-radius:8px;background:#fff;color:#1f3a5f;font-size:12px;font-weight:600;cursor:pointer;' },
       '\uD83D\uDDFA Saved roads');
-    roadsBtn.addEventListener('click', function(){ try { tpShowSavedRoads(); } catch(e){} });
+    roadsBtn.addEventListener('click', function(){
+      try { tpShowSavedRoads(); }
+      catch(e){ try { window.alert('Saved roads failed: ' + ((e && e.message) || e)); } catch(e2){} }
+    });
     panel.appendChild(roadsBtn);
 
     // ---- ARRIVE-BY: fixed arrival, flexible departure ---------------------
