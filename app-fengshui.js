@@ -786,7 +786,8 @@ function fsLuopanMenuSync(){
     FS_LUOPAN_MENU.forEach(function (it) {
       var b = it.btn ? document.getElementById(it.btn) : null;
       if (it.btn && !b) return;                 // its module has not created it yet
-      html += '<option value="' + it.v + '">' + it.label(b) + '</option>';
+      html += '<option value="' + it.v + '" style="text-align:left;font-size:12px;">'
+            + it.label(b) + '</option>';
     });
     if (sel.innerHTML !== html) sel.innerHTML = html;
     sel.value = '';
@@ -890,6 +891,22 @@ try {
 // remembered per device. Only the SCALE changes: every angle, every ring and every star
 // keeps its place, because the whole geometry is derived from the same factor.
 function fsIsLuopanCompact(){ return !!_fsLuopanCompact; }
+
+// The legend explains the HEXAGRAM layer (\u6b63\u795e / \u96f6\u795e bands, door facing, water
+// zones), and hexagrams only come into play in XKDG. Edu, session 26: a plain placement
+// inside a 45\u00b0 palace works on the flying stars alone, so the legend there just confuses.
+// It therefore follows the XKDG LAYER ITSELF, not the section: shown exactly when that
+// layer is drawn on the wheel. If a water placement is one day set up with XKDG, the
+// legend will appear there too, with no further change here.
+function fsSyncLegend(on){
+  try {
+    var lg = document.getElementById('fs-legend');
+    if (!lg) return;
+    if (typeof on !== 'boolean') on = !!window._fsXkdgLayerOn;
+    window._fsXkdgLayerOn = on;
+    lg.style.display = on ? '' : 'none';
+  } catch (e) {}
+}
 
 function fsToggleLuopanSize(){
   _fsLuopanCompact = !_fsLuopanCompact;
@@ -1488,6 +1505,7 @@ function fsRedraw(){
     if (window.QMDJAnnual && typeof window.QMDJAnnual.drawIfOn === 'function') {
       window.QMDJAnnual.drawIfOn(ctx, cx, cy, outerR, ROT);
     }
+    try { fsSyncLegend(showXKDG); } catch (e) {}
   } catch (e) { console.warn('FloorPlanDLR overlay', e); }
 
   // ═══ SETTING ICONS (🚪 doors · 🛏 bed · 🪑 desk · 💧 fountains) ═══
