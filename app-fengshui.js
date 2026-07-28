@@ -464,8 +464,9 @@ function buildFengShuiView(){
         <select id="fs-luopan-menu" onchange="fsLuopanMenuAct(this.value)" onfocus="fsLuopanMenuSync()"
           title="Luopan views and overlays"
           style="position:absolute;top:8px;right:8px;z-index:31;background:#fff;color:#4527a0;
-                 border:1px solid #4527a0;border-radius:6px;padding:6px 10px;font-size:12px;
-                 font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);max-width:190px;">
+                 border:1px solid #4527a0;border-radius:6px;padding:6px 2px;font-size:16px;
+                 font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);width:46px;
+                 min-width:46px;text-align:center;text-align-last:center;appearance:none;-webkit-appearance:none;">
         </select>
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
@@ -756,9 +757,13 @@ function fsRenderCardView(){
 // button, so the existing handlers, state and styling stay the single source of
 // truth — nothing here duplicates their logic.
 var FS_LUOPAN_MENU = [
-  { v: 'time',   btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Time'; } },
+  { v: 'time',   btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
   { v: 'orient', btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
-  { v: 'dlr',    btn: 'fs-dlr-toggle',      label: function (b) { return b ? b.textContent.trim() : '\ud83c\udc04 DLR'; } },
+  // The DLR button writes its own text ('\ud83c\udc04 DLR' / '\ud83c\udc04 DLR ON') and belongs to
+  // floorplan-daliuren.js, which we do not touch: the menu renames it for display only.
+  { v: 'dlr',    btn: 'fs-dlr-toggle',      label: function (b) {
+      var on = b && /\bON\b/.test(b.textContent);
+      return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } },
   { v: 'card',   btn: 'fs-cardview-toggle', label: function (b) {
       // Edu: the name "Card" goes. On = the button offers the way back to the luopan.
       var on = b && b.textContent.indexOf('Luopan') >= 0;
@@ -774,7 +779,10 @@ function fsLuopanMenuSync(){
   try {
     var sel = document.getElementById('fs-luopan-menu');
     if (!sel) return;
-    var html = '<option value="">\u2630 Views</option>';
+    // Just the icon on the closed control: with the labels in it the select sized itself
+    // on the longest one and covered the palace boxes (Edu, session 26). The native list
+    // still shows every entry in full when it opens.
+    var html = '<option value="">\u2630</option>';
     FS_LUOPAN_MENU.forEach(function (it) {
       var b = it.btn ? document.getElementById(it.btn) : null;
       if (it.btn && !b) return;                 // its module has not created it yet
@@ -787,6 +795,23 @@ function fsLuopanMenuSync(){
 
 // Switches the DLR ring off if it is up, through its own module so its button, its
 // styling and its floor-plan state all stay in step. No-op when it is already off.
+// A card view (Flying stars, QMDJ annual) fills #fs-cardview-html and HIDES the canvas.
+// While one is open, every canvas overlay \u2014 DLR, annual ring, Sun & Moon \u2014 draws
+// underneath it, invisibly, which is why one had to go "back to Luopan" first (Edu,
+// session 26). Now picking a canvas view closes whichever card is open.
+function _fsCloseAnyCard(){
+  try {
+    if (window.__qmdjAnnualOpen && window.QMDJAnnual && typeof QMDJAnnual.close === 'function') {
+      QMDJAnnual.close();
+    }
+  } catch (e) {}
+  try {
+    if (typeof _fsCardViewOn !== 'undefined' && _fsCardViewOn && typeof fsToggleCardView === 'function') {
+      fsToggleCardView();          // its own handler restores the canvas and its label
+    }
+  } catch (e) {}
+}
+
 function _fsTurnOffDlrRing(){
   try {
     if (window.FloorPlanDLR && typeof window.FloorPlanDLR.isRingOn === 'function'
@@ -801,6 +826,8 @@ function fsLuopanMenuAct(v){
     var sel = document.getElementById('fs-luopan-menu');
     if (sel) sel.value = '';                    // snap back to the "Views" label
     if (!v) return;
+    // Anything that lives on the canvas needs the canvas visible.
+    if (v === 'time' || v === 'orient' || v === 'dlr' || v === 'qmdjring') _fsCloseAnyCard();
     if (v === 'qmdjring'){
       if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggleRing !== 'function'){
         alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
@@ -814,6 +841,11 @@ function fsLuopanMenuAct(v){
       return;
     }
     if (v === 'qmdj'){
+      // Both cards share #fs-cardview-html: close the Flying Stars one first, or its
+      // state flag stays on and its label keeps offering "back to Luopan".
+      try {
+        if (!window.__qmdjAnnualOpen && typeof _fsCardViewOn !== 'undefined' && _fsCardViewOn) fsToggleCardView();
+      } catch (e) {}
       if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggle !== 'function'){
         alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
         return;
@@ -821,6 +853,12 @@ function fsLuopanMenuAct(v){
       window.QMDJAnnual.toggle();
       setTimeout(fsLuopanMenuSync, 60);
       return;
+    }
+    // Flying Stars card: close the annual card first, same shared container.
+    if (v === 'card') {
+      try {
+        if (window.__qmdjAnnualOpen && window.QMDJAnnual && typeof QMDJAnnual.close === 'function') QMDJAnnual.close();
+      } catch (e) {}
     }
     // ...and the other way round: the DLR takes over the luopan, so the annual ring goes.
     if (v === 'dlr' && window.QMDJAnnual && typeof window.QMDJAnnual.isRingOn === 'function'
