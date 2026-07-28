@@ -258,7 +258,14 @@
       ctx.save();
       ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(cap, cx, 6);
-      ctx.fillStyle = '#5d4037'; ctx.fillText(cap, cx, 6);
+      // The caption now lives in the right-hand strip (session 26), not over the plan.
+      try {
+        if (els.caption) {
+          els.caption.innerHTML = String(cap).split('\u00b7').map(function (p) {
+            return '<div>' + p.trim() + '</div>';
+          }).join('');
+        } else { ctx.fillStyle = '#5d4037'; ctx.fillText(cap, cx, 6); }
+      } catch (eCap) { ctx.fillStyle = '#5d4037'; ctx.fillText(cap, cx, 6); }
       ctx.restore();
     } catch (e) { console.warn('FloorPlanDLR drawIfOn', e); /* never break the luopan — but never hide the reason either (session 23: this silent catch cost a whole debugging session) */ }
     try { ctx.restore(); } catch (ePost) {}
@@ -607,7 +614,9 @@
         var lx = ctr.x + rLabel * Math.cos(ang), ly = ctr.y + rLabel * Math.sin(ang);
         lx = Math.max(46, Math.min(st.drawW - 46, lx));
         ly = Math.max(34, Math.min(st.drawH - 34, ly));
-        drawLabelBlock(ctx, lx, ly, s, _lf);
+        // Edu, session 26: over a floor plan the plain outlined text was unreadable.
+        // Same boxed card the luopan ring uses \u2014 opaque, colour-coded border.
+        drawSectorBox(ctx, lx, ly, s, _lf);
       });
       drawFacingArrow(ctx, ctr);
     }
@@ -739,11 +748,24 @@
     var saveBtn = el('button', { style: 'background:#1b8a3f;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:bold;cursor:pointer;' }, '\uD83D\uDCBE Save to house');
     drawBtn.addEventListener('click', draw); saveBtn.addEventListener('click', doSave);
     actCol.appendChild(drawBtn); actCol.appendChild(saveBtn); ctlWrap.appendChild(actCol);
-    box.appendChild(ctlWrap);
+    // Edu, session 26: the controls used to eat a full band across the top and the
+    // chart caption another one. Both now sit in narrow side columns, so the plan
+    // itself gets the height. On a narrow screen the row wraps back to stacked.
+    ctlWrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;align-items:stretch;' +
+      'flex:0 0 150px;min-width:130px;';
+    var row = el('div', { style: 'display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;' });
+    row.appendChild(ctlWrap);
 
-    var canWrap = el('div', { style: 'display:flex;justify-content:center;background:#faf7f1;border:1px solid #eee;border-radius:8px;padding:6px;overflow:auto;' });
-    els.canvas = el('canvas', { width: '1400', height: '1400', style: 'display:block;' });
-    canWrap.appendChild(els.canvas); box.appendChild(canWrap);
+    var canWrap = el('div', { style: 'flex:1 1 420px;min-width:280px;display:flex;justify-content:center;' +
+      'background:#faf7f1;border:1px solid #eee;border-radius:8px;padding:6px;overflow:auto;' });
+    els.canvas = el('canvas', { width: '1400', height: '1400', style: 'display:block;max-width:100%;height:auto;' });
+    canWrap.appendChild(els.canvas); row.appendChild(canWrap);
+
+    // right-hand strip: the year / season / general / void caption, off the canvas
+    els.caption = el('div', { style: 'flex:0 0 120px;min-width:110px;font-size:12px;line-height:1.6;' +
+      'color:#4a2f10;background:#fffdf6;border:1px solid #e6dcc4;border-radius:8px;padding:8px 9px;' });
+    row.appendChild(els.caption);
+    box.appendChild(row);
 
     var legend = el('div', { style: 'display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:8px 0 4px;font-size:11px;color:#444;' });
     legend.innerHTML =
