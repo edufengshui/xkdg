@@ -572,12 +572,6 @@
     ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
-  function seasonOf(d) {
-    if (!(d instanceof Date)) return '';
-    var m = d.getMonth() + 1;
-    if (m >= 3 && m <= 5) return 'Spring'; if (m >= 6 && m <= 8) return 'Summer';
-    if (m >= 9 && m <= 11) return 'Autumn'; return 'Winter';
-  }
 
   function redraw() {
     var c = els.canvas, ctx = c.getContext('2d');
@@ -654,19 +648,42 @@
     ctx.restore();
   }
 
+  // The chart labels are the point of the drawing; the info block must not eat into
+  // it. So it is stacked as a narrow COLUMN pinned to the left edge, never a wide
+  // strip across the top (Edu).
   function drawInfoPanel(ctx) {
-    var r = st.result, line;
-    if (!r || r.error) line = r && r.error ? ('DLR: ' + r.error) : ('Da Liu Ren \u2014 year ' + st.year + ' \u2014 press \u201CDraw chart\u201D');
-    else line = st.year + ' ' + r.yearPillar.gz + '  \u00B7  ' + seasonOf(r.chosenDay && r.chosenDay.date) +
-                '  \u00B7  \u6708\u5C07 ' + (r.chosenDay ? r.chosenDay.monthGeneral : '?') +
-                '  \u00B7  Void ' + (r.dayVoid ? r.dayVoid.join('') : '');
+    var r = st.result, lines;
+    if (!r || r.error) {
+      lines = r && r.error ? ['DLR: ' + r.error] : ['Da Liu Ren', 'year ' + st.year, 'press \u201CDraw chart\u201D'];
+    } else {
+      // The month BRANCH the Virtues are read from (session 27), not the calendar
+      // season of the chosen day: that day is whichever Tai Sui day satisfies the
+      // riding rule, so its season says nothing about the chart.
+      var mb = '';
+      try {
+        var eng = DLR();
+        if (eng && typeof eng.monthBranchFor === 'function' && r.chosenDay && r.chosenDay.date) {
+          mb = eng.monthBranchFor(r.chosenDay.date) || '';
+        }
+      } catch (e) {}
+      lines = [st.year + ' ' + r.yearPillar.gz,
+               '\u6708\u5C07 ' + (r.chosenDay ? r.chosenDay.monthGeneral : '?')];
+      if (mb) lines.push('\u6708\u652F ' + mb);
+      lines.push('Void ' + (r.dayVoid ? r.dayVoid.join('') : ''));
+    }
     ctx.save();
     ctx.font = 'bold 13px sans-serif';
-    var w = ctx.measureText(line).width + 20, x = st.drawW / 2, y = 16;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255,255,255,0.88)'; roundRect(ctx, x - w / 2, y - 12, w, 24, 6); ctx.fill();
+    var wMax = 0;
+    lines.forEach(function (t) { wMax = Math.max(wMax, ctx.measureText(t).width); });
+    var padX = 8, padY = 6, lh = 17;
+    var w = wMax + padX * 2, h = lines.length * lh + padY * 2;
+    var x = 8, y = 8;                       // pinned to the LEFT edge
+    ctx.fillStyle = 'rgba(255,255,255,0.88)'; roundRect(ctx, x, y, w, h, 6); ctx.fill();
     ctx.strokeStyle = 'rgba(90,55,20,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = '#4a2f10'; ctx.fillText(line, x, y); ctx.restore();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#4a2f10';
+    lines.forEach(function (t, i) { ctx.fillText(t, x + padX, y + padY + lh * i + lh / 2); });
+    ctx.restore();
   }
 
   function el(tag, attrs, txt) {
