@@ -396,8 +396,96 @@
     catch (e) { try { return cv.toDataURL(); } catch (e2) { return null; } }
   }
 
+  /* ===== EXPORT: save as PNG / print ====================================
+   * The chart is only useful to a student if it can leave the screen. Both go
+   * through a white sheet first: the canvas may be transparent, and a
+   * transparent PNG prints as a black page. No PDF library — every browser's
+   * print dialog, phones included, offers "Save as PDF" on its own. */
+  function _expSheet() {
+    var cv = els.canvas;
+    if (!cv || !cv.width || !cv.height) { alert('Draw the chart first.'); return null; }
+    var out = document.createElement('canvas');
+    out.width = cv.width; out.height = cv.height;
+    var cx = out.getContext('2d');
+    cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, out.width, out.height);
+    cx.drawImage(cv, 0, 0);
+    return out;
+  }
+  function _expSafeName(s) {
+    return String(s == null ? '' : s).replace(/[\\\/:*?"<>|\u0000-\u001f]+/g, '-')
+      .replace(/\s+/g, ' ').trim().slice(0, 80);
+  }
+  function _expEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
+  }
+  function exportPlanImage(defaultName) {
+    var cv = _expSheet(); if (!cv) return;
+    var fallback = _expSafeName(defaultName) || 'chart';
+    var name = window.prompt('File name', fallback);
+    if (name === null) return;                      // user cancelled
+    name = _expSafeName(name) || fallback;
+    if (!/\.png$/i.test(name)) name += '.png';
+    function grab(url, revoke) {
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () {
+        try { document.body.removeChild(a); } catch (e) {}
+        if (revoke) { try { URL.revokeObjectURL(url); } catch (e2) {} }
+      }, 500);
+    }
+    function viaDataUrl() {
+      try { grab(cv.toDataURL('image/png'), false); }
+      catch (e) { alert('Could not build the image.'); }
+    }
+    if (typeof cv.toBlob === 'function' && typeof URL !== 'undefined' && URL.createObjectURL) {
+      try {
+        cv.toBlob(function (b) { if (b) grab(URL.createObjectURL(b), true); else viaDataUrl(); }, 'image/png');
+      } catch (e) { viaDataUrl(); }
+    } else viaDataUrl();
+  }
+  function printPlan(title) {
+    var cv = _expSheet(); if (!cv) return;
+    var url;
+    try { url = cv.toDataURL('image/png'); }
+    catch (e) { alert('Could not build the image.'); return; }
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>' + _expEsc(title || 'Chart') + '</title>'
+      + '<style>@page{margin:10mm;}html,body{margin:0;padding:0;background:#fff;}'
+      + 'img{width:100%;height:auto;display:block;}</style></head>'
+      + '<body><img src="' + url + '"></body></html>';
+    var win = null;
+    try { win = window.open('', '_blank'); } catch (e) { win = null; }
+    if (win && win.document) {
+      try {
+        win.document.open(); win.document.write(html); win.document.close();
+        var go = function () { try { win.focus(); win.print(); } catch (e2) {} };
+        if (win.document.readyState === 'complete') setTimeout(go, 350);
+        else win.onload = go;
+        return;
+      } catch (e3) { try { win.close(); } catch (e4) {} }
+    }
+    // Popup blocked (common on phones): print from a hidden frame instead.
+    var fr = document.createElement('iframe');
+    fr.setAttribute('aria-hidden', 'true');
+    fr.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+    document.body.appendChild(fr);
+    try {
+      var d = fr.contentWindow.document;
+      d.open(); d.write(html); d.close();
+      setTimeout(function () {
+        try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e5) {}
+        setTimeout(function () { try { document.body.removeChild(fr); } catch (e6) {} }, 60000);
+      }, 600);
+    } catch (e7) {
+      try { document.body.removeChild(fr); } catch (e8) {}
+      alert('Printing was blocked by the browser. Use 📥 Save image and print the file.');
+    }
+  }
+
   function open(opts) {
     opts = opts || {};
+    st.houseName = opts.houseName || st.houseName || '';
     if (typeof opts.facingDeg === 'number') st.facingDeg = clampDeg(opts.facingDeg);
     if (typeof opts.period === 'number') st.period = clampPeriod(opts.period);
     if (opts.facingSide && SIDE_OFFSET.hasOwnProperty(opts.facingSide)) st.facingSide = opts.facingSide;
@@ -495,6 +583,15 @@
     var drawBtn = el('button', { style: 'padding:7px 14px;border:0;border-radius:6px;background:#2e7d32;color:#fff;font-size:13px;font-weight:700;cursor:pointer;' }, 'Draw chart');
     drawBtn.addEventListener('click', draw);
     row3.appendChild(findBtn); row3.appendChild(undo); row3.appendChild(clr); row3.appendChild(drawBtn);
+    var imgBtn = el('button', { style: 'padding:7px 12px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:700;cursor:pointer;' }, '\uD83D\uDCE5 Save image');
+    imgBtn.addEventListener('click', function () {
+      exportPlanImage((st.houseName ? (st.houseName + ' ') : '') + 'flying stars');
+    });
+    var prnBtn = el('button', { style: 'padding:7px 12px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:700;cursor:pointer;' }, '\uD83D\uDDA8 Print');
+    prnBtn.addEventListener('click', function () {
+      printPlan((st.houseName ? (st.houseName + ' \u00b7 ') : '') + 'Flying Stars');
+    });
+    row3.appendChild(imgBtn); row3.appendChild(prnBtn);
     if (typeof opts.onSave === 'function') {
       var saveBtn = el('button', { style: 'padding:7px 14px;border:0;border-radius:6px;background:#5d4037;color:#fff;font-size:13px;font-weight:700;cursor:pointer;' }, '💾 Save to house');
       saveBtn.addEventListener('click', doSave);

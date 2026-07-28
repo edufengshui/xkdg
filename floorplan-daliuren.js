@@ -651,6 +651,93 @@
   // The chart labels are the point of the drawing; the info block must not eat into
   // it. So it is stacked as a narrow COLUMN pinned to the left edge, never a wide
   // strip across the top (Edu).
+  /* ===== EXPORT: save as PNG / print ====================================
+   * The chart is only useful to a student if it can leave the screen. Both go
+   * through a white sheet first: the canvas may be transparent, and a
+   * transparent PNG prints as a black page. No PDF library — every browser's
+   * print dialog, phones included, offers "Save as PDF" on its own. */
+  function _expSheet() {
+    var cv = els.canvas;
+    if (!cv || !cv.width || !cv.height) { alert('Draw the chart first.'); return null; }
+    var out = document.createElement('canvas');
+    out.width = cv.width; out.height = cv.height;
+    var cx = out.getContext('2d');
+    cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, out.width, out.height);
+    cx.drawImage(cv, 0, 0);
+    return out;
+  }
+  function _expSafeName(s) {
+    return String(s == null ? '' : s).replace(/[\\\/:*?"<>|\u0000-\u001f]+/g, '-')
+      .replace(/\s+/g, ' ').trim().slice(0, 80);
+  }
+  function _expEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
+  }
+  function exportPlanImage(defaultName) {
+    var cv = _expSheet(); if (!cv) return;
+    var fallback = _expSafeName(defaultName) || 'chart';
+    var name = window.prompt('File name', fallback);
+    if (name === null) return;                      // user cancelled
+    name = _expSafeName(name) || fallback;
+    if (!/\.png$/i.test(name)) name += '.png';
+    function grab(url, revoke) {
+      var a = document.createElement('a');
+      a.href = url; a.download = name; a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () {
+        try { document.body.removeChild(a); } catch (e) {}
+        if (revoke) { try { URL.revokeObjectURL(url); } catch (e2) {} }
+      }, 500);
+    }
+    function viaDataUrl() {
+      try { grab(cv.toDataURL('image/png'), false); }
+      catch (e) { alert('Could not build the image.'); }
+    }
+    if (typeof cv.toBlob === 'function' && typeof URL !== 'undefined' && URL.createObjectURL) {
+      try {
+        cv.toBlob(function (b) { if (b) grab(URL.createObjectURL(b), true); else viaDataUrl(); }, 'image/png');
+      } catch (e) { viaDataUrl(); }
+    } else viaDataUrl();
+  }
+  function printPlan(title) {
+    var cv = _expSheet(); if (!cv) return;
+    var url;
+    try { url = cv.toDataURL('image/png'); }
+    catch (e) { alert('Could not build the image.'); return; }
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>' + _expEsc(title || 'Chart') + '</title>'
+      + '<style>@page{margin:10mm;}html,body{margin:0;padding:0;background:#fff;}'
+      + 'img{width:100%;height:auto;display:block;}</style></head>'
+      + '<body><img src="' + url + '"></body></html>';
+    var win = null;
+    try { win = window.open('', '_blank'); } catch (e) { win = null; }
+    if (win && win.document) {
+      try {
+        win.document.open(); win.document.write(html); win.document.close();
+        var go = function () { try { win.focus(); win.print(); } catch (e2) {} };
+        if (win.document.readyState === 'complete') setTimeout(go, 350);
+        else win.onload = go;
+        return;
+      } catch (e3) { try { win.close(); } catch (e4) {} }
+    }
+    // Popup blocked (common on phones): print from a hidden frame instead.
+    var fr = document.createElement('iframe');
+    fr.setAttribute('aria-hidden', 'true');
+    fr.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+    document.body.appendChild(fr);
+    try {
+      var d = fr.contentWindow.document;
+      d.open(); d.write(html); d.close();
+      setTimeout(function () {
+        try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e5) {}
+        setTimeout(function () { try { document.body.removeChild(fr); } catch (e6) {} }, 60000);
+      }, 600);
+    } catch (e7) {
+      try { document.body.removeChild(fr); } catch (e8) {}
+      alert('Printing was blocked by the browser. Use 📥 Save image and print the file.');
+    }
+  }
+
   function drawInfoPanel(ctx) {
     var r = st.result, lines;
     if (!r || r.error) {
@@ -777,7 +864,17 @@
     var drawBtn = el('button', { style: 'background:#5d4037;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:bold;cursor:pointer;' }, 'Draw chart');
     var saveBtn = el('button', { style: 'background:#1b8a3f;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:bold;cursor:pointer;' }, '\uD83D\uDCBE Save to house');
     drawBtn.addEventListener('click', draw); saveBtn.addEventListener('click', doSave);
-    actCol.appendChild(drawBtn); actCol.appendChild(saveBtn); ctlWrap.appendChild(actCol);
+    actCol.appendChild(drawBtn); actCol.appendChild(saveBtn);
+    var imgBtn = el('button', { style: 'background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;' }, '\uD83D\uDCE5 Save image');
+    imgBtn.addEventListener('click', function () {
+      exportPlanImage((st.houseName ? (st.houseName + ' ') : '') + st.year + ' DLR');
+    });
+    var prnBtn = el('button', { style: 'background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer;' }, '\uD83D\uDDA8 Print');
+    prnBtn.addEventListener('click', function () {
+      printPlan((st.houseName ? (st.houseName + ' \u00b7 ') : '') + st.year + ' Da Liu Ren');
+    });
+    actCol.appendChild(imgBtn); actCol.appendChild(prnBtn);
+    ctlWrap.appendChild(actCol);
     // Edu, session 26: the controls used to eat a full band across the top and the
     // chart caption another one. Both now sit in narrow side columns, so the plan
     // itself gets the height. On a narrow screen the row wraps back to stacked.
