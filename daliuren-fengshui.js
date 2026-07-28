@@ -174,6 +174,73 @@
     return null;
   }
 
+  // ── month branch 月支 (節-based solar month) for a date ──
+  // Session 27 (Edu): Heaven Virtue and Month Virtue are read from the MONTH
+  // BRANCH 月支 — not from the month general 月將, as the code did before.
+  function monthBranchFor(dt){
+    try {
+      var L = LUN(); if (!L || typeof L.fromDate !== 'function') return null;
+      var lun = L.fromDate(dt), gz = '';
+      try { gz = lun.getMonthInGanZhiExact(); } catch (e1) { gz = ''; }
+      if (!gz) { try { gz = lun.getMonthInGanZhi(); } catch (e2) { gz = ''; } }
+      return (gz && gz.length >= 2) ? gz.charAt(1) : null;
+    } catch (e) { return null; }
+  }
+
+  // ── Gods and Devils for ANY chart (session 27) ──
+  // Same spirit list Edu set in session 26 for the annual chart, but keyed on
+  // the chart's own DAY pillar (in the annual chart the day pillar is the year
+  // pillar, so the two agree there). monthBranch drives Heaven / Month Virtue.
+  // GREEN: Nobleman, Green Dragon, Lu, Proper/Unproper Wealth, the four
+  // Virtues, Heavenly Doctor. RED: Tomb Sha, Ghost Sha, Tiger, Empty Sky.
+  // NO DOT (listed only): Post Horse, Ding Spirit, Brothers.
+  function spiritsForChart(chart, monthBranch){
+    var E = ENG();
+    if (!E || !chart || !chart.generals || !chart.generals.palaces) return null;
+    var ds = chart.dayStem, db = chart.dayBranch;
+    if (!ds || !db) return null;
+    var wealth = {}, brothers = {}, ghost = {};
+    BRANCHES.forEach(function (b) {
+      var rel = E.sixRelation(ds, b).en;
+      if (rel === 'Wealth')   wealth[b] = 1;
+      if (rel === 'Brothers') brothers[b] = 1;
+      if (rel === 'Ghost')    ghost[b] = 1;
+    });
+    var lu = yearLu(ds), tomb = tombSha(ds), hd = heavenlyDoctor(ds);
+    var virtues = {};
+    function _add(br, name){ if (!br) return; (virtues[br] = virtues[br] || []).push(name); }
+    if (monthBranch) { _add(HEAVEN_VIRTUE[monthBranch], 'Heaven'); _add(monthVirtue(monthBranch), 'Month'); }
+    _add(DAY_VIRTUE[ds], 'Day');
+    _add(branchVirtue(db), 'Branch');
+    // Ding Spirit: inside the decade (旬) of the day pillar, the branch carrying 丁.
+    var ding = BRANCHES[((((bIdx(db) - sIdx(ds) + 12) % 12) + 3) % 12)];
+    var ph = (typeof E.postHorse === 'function') ? E.postHorse(db) : null;
+    var stemYang = ('甲丙戊庚壬'.indexOf(ds) >= 0);
+    var GREEN_GEN = { '貴人':1, '青龍':1 };
+    var RED_GEN   = { '白虎':1, '天空':1 };
+    return chart.generals.palaces.map(function (p) {
+      var H = p.heaven, genCn = p.general ? p.general.cn : '';
+      var greens = [], reds = [], ctx = [];
+      if (GREEN_GEN[genCn]) greens.push(p.general.en);
+      if (RED_GEN[genCn])   reds.push(p.general.en);
+      if (H === lu)  greens.push('Lu');
+      if (wealth[H]) greens.push((bIdx(H) % 2 === 0) === stemYang ? 'Unproper Wealth' : 'Proper Wealth');
+      if (H === hd)  greens.push('Heavenly Doctor');
+      if (virtues[H]) virtues[H].forEach(function (v) { greens.push(v + ' Virtue'); });
+      if (ghost[H])  reds.push('Ghost Sha');
+      if (H === tomb) reds.push('Tomb Sha');
+      if (brothers[H]) ctx.push('Brothers');
+      if (H === ph)    ctx.push('Post Horse');
+      if (H === ding)  ctx.push('Ding Spirit');
+      var net = 'neutral';
+      if (greens.length && !reds.length) net = 'green';
+      else if (reds.length && !greens.length) net = 'red';
+      else if (greens.length && reds.length) net = 'green_hollow';
+      return { earth: p.earth, heaven: H, general: p.general, relation: p.relation,
+               greens: greens, reds: reds, context: ctx, net: net };
+    });
+  }
+
   // ── main: build the annual chart for a house ──
   // opts = { year:Number, facingDeg:Number }
   function build(opts){
@@ -240,7 +307,8 @@
     }
     if (!chosen) return { error: 'no Tai Sui day satisfies the riding rule', candidates: candidates, yearPillar: yp };
 
-    var monthBranch = chosen.monthGeneral;
+    // Session 27 (Edu): the month BRANCH 月支, not the month general 月將.
+    var monthBranch = monthBranchFor(chosen.date) || chosen.monthGeneral;
     var chart = E.buildChartFromPrimitives(yp.stem, yp.branch, facBr, chosen.monthGeneral, hourStem);
 
     // ── build the trigger sets for the annual judgement ──
@@ -339,6 +407,8 @@
   var API = {
     build: build,
     yearPillar: yearPillar, taiSuiDays: taiSuiDays, monthGeneralFor: monthGeneralFor,
+    monthBranchFor: monthBranchFor, spiritsForChart: spiritsForChart,
+    monthVirtue: monthVirtue, branchVirtue: branchVirtue, DAY_VIRTUE: DAY_VIRTUE,
     yearLu: yearLu, tombSha: tombSha, heavenlyDoctor: heavenlyDoctor,
     facingBranch: facingBranch, mountainFromDeg: mountainFromDeg,
     HEAVEN_VIRTUE: HEAVEN_VIRTUE

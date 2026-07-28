@@ -3639,7 +3639,7 @@ function dlrChartShow(){
   var out = document.getElementById('dlr-tool-chart');
   if (!out) return;
   var API = window.XKDGDaLiuRen;
-  if (!API || typeof API.buildChartFromInstant !== 'function'){
+  if (!API || typeof API.buildChartFromPrimitives !== 'function'){
     out.innerHTML = '<div style="color:#c0392b;font-size:12px;">daliuren.js is not loaded.</div>'; return;
   }
   var d = (document.getElementById('dlr-tool-date') || {}).value || '';
@@ -3647,8 +3647,7 @@ function dlrChartShow(){
   if (!d || !isFinite(hi)){ out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Pick a date and an hour.</div>'; return; }
   var p = d.split('-');
   var hh = parseInt(_DLR_HOURS[hi].split(':')[0], 10), mm = 30;
-  var day = +p[2] + ((hi === 0) ? 0 : 0);          // 23:30 belongs to the date shown
-  var local = new Date(+p[0], +p[1] - 1, day, hh, mm, 0);
+  var local = new Date(+p[0], +p[1] - 1, +p[2], hh, mm, 0);   // 23:30 belongs to the date shown
   var lon = 12.1;
   try {
     var lel = document.getElementById('longitude');
@@ -3670,11 +3669,20 @@ function dlrChartShow(){
       if (!L) { r = { error: 'lunar-javascript not loaded' }; }
       else {
         var dayGz = L.getDayInGanZhi(), hourGz = L.getTimeInGanZhi();
+        var monGz = '', yeaGz = '';
+        try { monGz = L.getMonthInGanZhiExact(); } catch (e4) { try { monGz = L.getMonthInGanZhi(); } catch (e5) { monGz = ''; } }
+        try { yeaGz = L.getYearInGanZhiExact(); }  catch (e6) { try { yeaGz = L.getYearInGanZhi(); }  catch (e7) { yeaGz = ''; } }
         r = API.buildChartFromPrimitives(dayGz.charAt(0), dayGz.charAt(1),
                                          hourGz.charAt(1), mg, hourGz.charAt(0));
         if (r && !r.error) {
           r.monthGeneral = mg;
-          r.source = { dayPillar: dayGz, hourPillar: hourGz };
+          r.source = { dayPillar: dayGz, hourPillar: hourGz, monthPillar: monGz, yearPillar: yeaGz };
+          // Gods and Devils: same spirit list as the annual chart, keyed on THIS
+          // day pillar. Heaven/Month Virtue from the month BRANCH 月支 (Edu, s.27).
+          try {
+            r.spirits = (FSAPI && typeof FSAPI.spiritsForChart === 'function')
+              ? FSAPI.spiritsForChart(r, monGz ? monGz.charAt(1) : null) : null;
+          } catch (e8) { r.spirits = null; }
         }
       }
     }
@@ -3685,47 +3693,130 @@ function dlrChartShow(){
   out.innerHTML = dlrChartHtml(r, d, hi, lon);
 }
 
+// ── naming tables for the readable (English) chart ────────────────────────────
+var _DLR_STEM = {
+  '\u7532': ['Jia', '+Wood'],  '\u4e59': ['Yi', '-Wood'],
+  '\u4e19': ['Bing', '+Fire'], '\u4e01': ['Ding', '-Fire'],
+  '\u620a': ['Wu', '+Earth'],  '\u5df1': ['Ji', '-Earth'],
+  '\u5e9a': ['Geng', '+Metal'],'\u8f9b': ['Xin', '-Metal'],
+  '\u58ec': ['Ren', '+Water'], '\u7678': ['Gui', '-Water']
+};
+var _DLR_BRINFO = {
+  '\u5b50': ['Zi', 'Rat', '+Water'],   '\u4e11': ['Chou', 'Ox', '-Earth'],
+  '\u5bc5': ['Yin', 'Tiger', '+Wood'], '\u536f': ['Mao', 'Rabbit', '-Wood'],
+  '\u8fb0': ['Chen', 'Dragon', '+Earth'], '\u5df3': ['Si', 'Snake', '-Fire'],
+  '\u5348': ['Wu', 'Horse', '+Fire'],  '\u672a': ['Wei', 'Goat', '-Earth'],
+  '\u7533': ['Shen', 'Monkey', '+Metal'], '\u9149': ['You', 'Rooster', '-Metal'],
+  '\u620c': ['Xu', 'Dog', '+Earth'],   '\u4ea5': ['Hai', 'Pig', '-Water']
+};
+// The twelve generals in their fixed order, with the stem each one carries —
+// that stem is what makes the general Yang or Yin.
+var _DLR_GEN_YY = {
+  '\u8cb4\u4eba': ['Nobleman', '\u5df1', 'Yin'],
+  '\u87a3\u86c7': ['Flying Snake', '\u4e01', 'Yin'],
+  '\u6731\u96c0': ['Red Bird', '\u4e19', 'Yang'],
+  '\u516d\u5408': ['Six Harmonies', '\u4e59', 'Yin'],
+  '\u52fe\u9673': ['Polaris', '\u620a', 'Yang'],
+  '\u9752\u9f8d': ['Green Dragon', '\u7532', 'Yang'],
+  '\u5929\u7a7a': ['Empty Sky', '\u620a', 'Yang'],
+  '\u767d\u864e': ['White Tiger', '\u5e9a', 'Yang'],
+  '\u592a\u5e38': ['Supreme Norm', '\u5df1', 'Yin'],
+  '\u7384\u6b66': ['Black Warrior', '\u7678', 'Yin'],
+  '\u592a\u9670': ['Moon', '\u8f9b', 'Yin'],
+  '\u5929\u540e': ['Heaven Queen', '\u58ec', 'Yang']
+};
+var _DLR_GEN_ORDER = ['\u8cb4\u4eba','\u87a3\u86c7','\u6731\u96c0','\u516d\u5408','\u52fe\u9673','\u9752\u9f8d',
+                      '\u5929\u7a7a','\u767d\u864e','\u592a\u5e38','\u7384\u6b66','\u592a\u9670','\u5929\u540e'];
+
 // Same visual language as the QMDJ chart: dark-green frame, white cells.
 function dlrChartHtml(r, dateIso, hourIdx, lon){
   var G = '#0d5e2c';
   function esc(t){ return String(t == null ? '' : t).replace(/[&<>]/g, function(c){
     return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' })[c]; }); }
+  function stemTxt(s){ var v = _DLR_STEM[s]; return v ? (v[0] + ' ' + v[1]) : ''; }
+  function brTxt(b){ var v = _DLR_BRINFO[b]; return v ? (v[0] + ' ' + v[1] + ' ' + v[2]) : ''; }
+  function brShort(b){ var v = _DLR_BRINFO[b]; return v ? (v[0] + ' ' + v[1]) : ''; }
+  function brElem(b){ var v = _DLR_BRINFO[b]; return v ? v[2] : ''; }
+  function genTxt(g){ return g ? (g.cn + ' ' + g.en) : '\u2014'; }
+  function relTxt(x){ return (x && x.relation) ? x.relation.en : '\u2014'; }
+
   var src = r.source || {};
+  var TH = 'font:600 10px system-ui;color:#fff;background:' + G + ';padding:3px 4px;text-align:left;';
+  var TD = 'font:11px system-ui;color:#333;padding:3px 4px;border-bottom:1px solid #e2e8e2;';
+  function sect(t){ return '<div style="font:700 11px system-ui;color:' + G
+    + ';margin:12px 0 4px;letter-spacing:.4px;text-transform:uppercase;">' + t + '</div>'; }
+
   var head = '<div style="text-align:center;font:600 13px system-ui;color:' + G + ';margin-bottom:2px;">'
     + '\u5927\u516d\u58ec \u00b7 Da Liu Ren</div>'
     + '<div style="text-align:center;font:11px system-ui;color:#555;margin-bottom:8px;">'
-    + esc(dateIso) + ' \u00b7 ' + esc(_DLR_BR[hourIdx]) + ' ' + esc(_DLR_PY[hourIdx])
-    + ' \u00b7 day ' + esc(src.dayPillar || '') + ' \u00b7 hour ' + esc(src.hourPillar || '')
-    + '<br>\u6708\u5c07 ' + esc(r.monthGeneral || '') + ' \u00b7 longitude ' + lon + '\u00b0</div>';
+    + esc(dateIso) + ' \u00b7 ' + esc(_DLR_HOURS[hourIdx]) + ' \u00b7 '
+    + esc(_DLR_BR[hourIdx]) + ' ' + esc(_DLR_PY[hourIdx]) + ' hour'
+    + '<br>\u6708\u5c07 month general ' + esc(r.monthGeneral || '') + ' '
+    + esc(brShort(r.monthGeneral)) + ' \u00b7 longitude ' + lon + '\u00b0'
+    + ' \u00b7 ' + esc((r.generals && r.generals.dayNight) || '') + '</div>';
 
-  // three transmissions + four lessons
+  // ── the four pillars: hour · day · month · year ──
+  var pill = [['Hour', src.hourPillar], ['Day', src.dayPillar],
+              ['Month', src.monthPillar], ['Year', src.yearPillar]];
+  var pillHtml = '<div style="display:flex;gap:4px;justify-content:center;">';
+  pill.forEach(function (x){
+    var gz = x[1] || '', s = gz.charAt(0), b = gz.charAt(1);
+    pillHtml += '<div style="flex:1;border:1px solid ' + G + ';border-radius:6px;padding:4px 2px;text-align:center;background:#fff;">'
+      + '<div style="font:600 9px system-ui;color:#888;text-transform:uppercase;">' + x[0] + '</div>'
+      + '<div style="font:700 17px serif;color:' + G + ';line-height:1.1;">' + esc(s) + '</div>'
+      + '<div style="font:9px system-ui;color:#555;">' + esc(stemTxt(s)) + '</div>'
+      + '<div style="height:1px;background:#e2e8e2;margin:3px 4px;"></div>'
+      + '<div style="font:700 17px serif;color:#7a5a2a;line-height:1.1;">' + esc(b) + '</div>'
+      + '<div style="font:9px system-ui;color:#555;">' + esc(brShort(b)) + '</div>'
+      + '<div style="font:9px system-ui;color:#555;">' + esc(brElem(b)) + '</div>'
+      + '</div>';
+  });
+  pillHtml += '</div>';
+
+  // ── Three Messages (三傳) ──
   var t = (r.transmission && r.transmission.threeDetailed) || null;
-  var box = '';
+  var three = '';
   if (t){
-    box += '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;">';
-    [['\u521d', t.chu], ['\u4e2d', t.zhong], ['\u672b', t.mo]].forEach(function (x){
+    three = sect('Three Messages \u4e09\u50b3')
+      + '<table style="border-collapse:collapse;width:100%;">'
+      + '<tr><th style="' + TH + '">&nbsp;</th><th style="' + TH + '">Spirit</th>'
+      + '<th style="' + TH + '">Relation</th><th style="' + TH + '">Branch</th></tr>';
+    [['Initial \u521d\u50b3', t.chu], ['Middle \u4e2d\u50b3', t.zhong], ['Final \u672b\u50b3', t.mo]].forEach(function (x){
       var v = x[1] || {};
-      box += '<div style="border:1px solid ' + G + ';border-radius:6px;padding:4px 10px;text-align:center;min-width:64px;">'
-           +   '<div style="font:10px system-ui;color:#888;">' + x[0] + '</div>'
-           +   '<div style="font:700 15px serif;color:' + G + ';">' + esc(v.branch || '') + '</div>'
-           +   '<div style="font:10px system-ui;color:#4a148c;">' + esc((v.general && v.general.cn) || '') + '</div>'
-           + '</div>';
+      three += '<tr><td style="' + TD + 'font-weight:600;color:' + G + ';">' + x[0] + '</td>'
+        + '<td style="' + TD + '">' + esc(genTxt(v.general)) + '</td>'
+        + '<td style="' + TD + '">' + esc(relTxt(v)) + '</td>'
+        + '<td style="' + TD + '"><b style="font:700 14px serif;color:' + G + ';">' + esc(v.branch || '')
+        + '</b> ' + esc(brShort(v.branch)) + (v.isVoid ? ' <span style="color:#c62828;">\u7a7a</span>' : '') + '</td></tr>';
     });
-    box += '</div>';
-  }
-  if (r.fourLessons && r.fourLessons.length){
-    box += '<div style="display:flex;gap:5px;justify-content:center;margin-bottom:10px;">';
-    r.fourLessons.slice().reverse().forEach(function (L, i){
-      box += '<div style="border:1px solid #b9c9b9;border-radius:6px;padding:3px 8px;text-align:center;min-width:52px;">'
-           +   '<div style="font:700 14px serif;color:' + G + ';">' + esc((L.top && L.top.branch) || L.top || '') + '</div>'
-           +   '<div style="font:12px serif;color:#7a5a2a;">' + esc(L.bottom || '') + '</div>'
-           +   '<div style="font:9px system-ui;color:#999;">' + (4 - i) + '</div>'
-           + '</div>';
-    });
-    box += '</div>';
+    three += '</table>'
+      + '<div style="font:10px system-ui;color:#888;margin-top:3px;">Method: '
+      + esc((r.transmission && r.transmission.method) || '') + '</div>';
   }
 
-  // the twelve palaces: tianpan above, dipan below
+  // ── Four Readings (四課) ──
+  var four = '';
+  if (r.fourLessons && r.fourLessons.length){
+    four = sect('Four Readings \u56db\u8ab2')
+      + '<table style="border-collapse:collapse;width:100%;">'
+      + '<tr><th style="' + TH + '">&nbsp;</th><th style="' + TH + '">Spirit</th>'
+      + '<th style="' + TH + '">Relation</th><th style="' + TH + '">Branch</th></tr>';
+    var ORD = ['1st Ke', '2nd Ke', '3rd Ke', '4th Ke'];
+    r.fourLessons.forEach(function (Ls, i){
+      var top = Ls.top || {};
+      four += '<tr><td style="' + TD + 'font-weight:600;color:' + G + ';">' + ORD[i] + '</td>'
+        + '<td style="' + TD + '">' + esc(genTxt(top.general)) + '</td>'
+        + '<td style="' + TD + '">' + esc(relTxt(top)) + '</td>'
+        + '<td style="' + TD + '"><b style="font:700 14px serif;color:' + G + ';">' + esc(top.branch || '')
+        + '</b> <span style="color:#7a5a2a;">/ ' + esc(Ls.bottom || '') + '</span> '
+        + esc(brShort(top.branch)) + (top.isVoid ? ' <span style="color:#c62828;">\u7a7a</span>' : '')
+        + '</td></tr>';
+    });
+    four += '</table>'
+      + '<div style="font:10px system-ui;color:#888;margin-top:3px;">Branch column: heaven / earth.</div>';
+  }
+
+  // ── the twelve palaces: tianpan above, dipan below ──
   var rows = ((r.generals && r.generals.palaces) || []).map(function (p){
     return '<td style="border:1px solid ' + G + ';padding:5px 3px;text-align:center;background:#fff;">'
          +   '<div style="font:10px system-ui;color:#4a148c;">' + esc((p.general && p.general.cn) || '') + '</div>'
@@ -3734,11 +3825,63 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
          +   (p.isVoid ? '<div style="font:9px system-ui;color:#c62828;">\u7a7a</div>' : '')
          + '</td>';
   });
-  var tbl = '<table style="border-collapse:collapse;width:100%;"><tr>' + rows.slice(0, 6).join('') + '</tr>'
-          + '<tr>' + rows.slice(6).join('') + '</tr></table>';
-  return head + box + tbl
-       + '<div style="text-align:center;font:10px system-ui;color:#888;margin-top:6px;">'
-       + 'tianpan above \u00b7 dipan below \u00b7 \u7a7a = void</div>';
+  var tbl = sect('Plate \u5929\u5730\u76e4')
+          + '<table style="border-collapse:collapse;width:100%;"><tr>' + rows.slice(0, 6).join('') + '</tr>'
+          + '<tr>' + rows.slice(6).join('') + '</tr></table>'
+          + '<div style="text-align:center;font:10px system-ui;color:#888;margin-top:4px;">'
+          + 'tianpan above \u00b7 dipan below \u00b7 \u7a7a = void</div>';
+
+  // ── the twelve Heaven Generals ──
+  var byCn = {};
+  ((r.generals && r.generals.palaces) || []).forEach(function (p){
+    if (p.general && p.general.cn) byCn[p.general.cn] = p;
+  });
+  var gens = sect('12 Heaven Generals \u5341\u4e8c\u5929\u5c07')
+    + '<table style="border-collapse:collapse;width:100%;">'
+    + '<tr><th style="' + TH + '">General</th><th style="' + TH + '">Yang/Yin</th>'
+    + '<th style="' + TH + '">Heaven</th><th style="' + TH + '">Earth</th></tr>';
+  _DLR_GEN_ORDER.forEach(function (cn){
+    var meta = _DLR_GEN_YY[cn] || ['', '', ''], p = byCn[cn] || {};
+    var yy = meta[2];
+    gens += '<tr><td style="' + TD + '"><b style="color:' + G + ';">' + esc(cn) + '</b> ' + esc(meta[0]) + '</td>'
+      + '<td style="' + TD + 'color:' + (yy === 'Yang' ? '#b7791f' : '#4a148c') + ';">' + esc(yy)
+      + ' <span style="color:#999;">' + esc(meta[1]) + '</span></td>'
+      + '<td style="' + TD + '"><b style="font:700 13px serif;">' + esc(p.heaven || '\u2014') + '</b> '
+      + esc(brShort(p.heaven)) + '</td>'
+      + '<td style="' + TD + '"><b style="font:700 13px serif;color:#7a5a2a;">' + esc(p.earth || '\u2014') + '</b></td></tr>';
+  });
+  gens += '</table>';
+
+  // ── Gods and Devils ──
+  var gd = '';
+  if (r.spirits && r.spirits.length){
+    gd = sect('Gods and Devils')
+      + '<table style="border-collapse:collapse;width:100%;">'
+      + '<tr><th style="' + TH + '">Sector</th><th style="' + TH + '">Heaven</th>'
+      + '<th style="' + TH + '">Spirits</th></tr>';
+    r.spirits.forEach(function (s){
+      var dot = '';
+      if (s.net === 'green')        dot = '<span style="color:#2e7d32;">\u25cf</span> ';
+      else if (s.net === 'red')     dot = '<span style="color:#c62828;">\u25cf</span> ';
+      else if (s.net === 'green_hollow') dot = '<span style="color:#2e7d32;">\u25cb</span> ';
+      var list = [];
+      s.greens.forEach(function (g){ list.push('<span style="color:#2e7d32;">\u25cf ' + esc(g) + '</span>'); });
+      s.reds.forEach(function (g){ list.push('<span style="color:#c62828;">\u25cf ' + esc(g) + '</span>'); });
+      s.context.forEach(function (g){ list.push('<span style="color:#777;">' + esc(g) + '</span>'); });
+      gd += '<tr><td style="' + TD + '">' + dot + '<b style="font:700 13px serif;color:#7a5a2a;">' + esc(s.earth) + '</b></td>'
+        + '<td style="' + TD + '"><b style="font:700 13px serif;color:' + G + ';">' + esc(s.heaven) + '</b> '
+        + esc(brShort(s.heaven)) + '</td>'
+        + '<td style="' + TD + '">' + (list.length ? list.join(' \u00b7 ') : '<span style="color:#bbb;">\u2014</span>') + '</td></tr>';
+    });
+    gd += '</table>'
+      + '<div style="font:10px system-ui;color:#888;margin-top:3px;">'
+      + '\u25cf green = favourable \u00b7 \u25cf red = unfavourable \u00b7 \u25cb hollow = a green sharing the sector with a red.'
+      + '<br>Sector = earth palace; the reading is made on the heaven branch above it.'
+      + '<br>Heaven Virtue and Month Virtue are read from the month branch \u6708\u652f '
+      + esc(String(src.monthPillar || '').charAt(1)) + '.</div>';
+  }
+
+  return head + pillHtml + three + four + tbl + gens + gd;
 }
 
 function openQmdjChartPanel(){
