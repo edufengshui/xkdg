@@ -3795,10 +3795,13 @@ function _injectQmdjChartLauncher(){
     b.textContent = '\ud83c\udfb2';   // 🎲 — distinct from the 🧭 directional compass and the 🌀 water/Qimen spiral
     // Session 26 (Edu): the floating dice is gone — the chart tool is a Views entry now.
     // The button itself stays (hidden) so everything that opens it keeps working.
-    b.style.display = 'none';
     b.onclick = openQmdjChartPanel;
     // Circular FAB sitting right beside the compass FAB (compass is at left:14, width 46).
     b.style.cssText = 'position:fixed;left:70px;bottom:14px;z-index:99994;width:46px;height:46px;border:0;border-radius:50%;background:#5e35b1;color:#fff;font-size:21px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+    // Session 26 (Edu): the floating dice is gone — the chart tool is a Views entry.
+    // Hidden AFTER cssText, which would otherwise wipe the rule. Kept in the DOM so
+    // anything that opens it keeps working.
+    b.style.display = 'none';
     document.body.appendChild(b);
   } catch(e){}
 }
