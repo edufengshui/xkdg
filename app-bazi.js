@@ -3092,7 +3092,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — activate stimulator at '+pq.dir+'" onclick="event.stopPropagation();'+_pqPopupCall(pq)+'"'+'>🌀⭐'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${(r.purposeQimenR||[]).map(pq=>'<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="'+pq.label+' — act towards '+pq.dir+' direction" onclick="event.stopPropagation();'+_pqPopupCall(pq)+'">→'+pq.dir+' '+pq.label.split(' ')[0]+'</span>').join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -3734,6 +3734,26 @@ function fsScanPurposeQimenRotating(qmParams, purpose){
  *  exact chart coordinates of THIS hour so the card can draw the chart the hit was
  *  found on — flying for the 🌀⭐ stimulator hits, rotating for the → directional
  *  ones. Older calls with no context still work: the card simply has no button. */
+/** The two Purpose-Qimen badges, built in ONE place so BEST and LIST cannot drift
+ *  apart. Edu: they carry a direction, so they must read at a glance — pill shape
+ *  with a coloured background, and a glyph big enough to spot while scrolling. */
+function _pqBadge(pq, rotating){
+  var col = rotating ? '#0d47a1' : '#6a1b9a';
+  var bg  = rotating ? '#e3f2fd' : '#f3e5f5';
+  var brd = rotating ? '#64b5f6' : '#ba68c8';
+  var icon = rotating ? '\u2192' : '\uD83C\uDF00\u2B50';
+  var lab = String(pq && pq.label || '');
+  var tip = (lab + (rotating ? (' \u2014 act towards ' + pq.dir + ' direction')
+                             : (' \u2014 activate stimulator at ' + pq.dir))).replace(/"/g, '');
+  return '<span style="display:inline-block;font-size:12px;font-weight:700;line-height:1.35;'
+       + 'color:' + col + ';background:' + bg + ';border:1px solid ' + brd + ';border-radius:11px;'
+       + 'padding:1px 8px;margin:1px 1px;white-space:nowrap;cursor:pointer;vertical-align:middle;" '
+       + 'title="' + tip + '" onclick="event.stopPropagation();' + _pqPopupCall(pq) + '">'
+       + '<span style="font-size:15px;vertical-align:-1px;letter-spacing:-1px;">' + icon + '</span> '
+       + '<span style="font-size:13px;">' + (pq.dir || '') + '</span> '
+       + lab.split(' ')[0] + '</span>';
+}
+
 function _pqPopupCall(pq){
   var lab = String(pq && pq.label || '').replace(/['"\\]/g, '');
   if (!pq || !pq.iso || !pq.hGan || !pq.hZhi) return "showQimenPopup('" + lab + "')";
@@ -6008,11 +6028,11 @@ function buildMonthView() {
             const pqHitsLV = fsScanPurposeQimen(
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
                 getPurpose());
-            const pqHTMLLV = pqHitsLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#7b1fa2;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — activate stimulator at ' + pq.dir + '" onclick="event.stopPropagation();' + _pqPopupCall(pq) + '"' + '>🌀⭐' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
+            const pqHTMLLV = pqHitsLV.map(function(pq){ return _pqBadge(pq, false); }).join(' ');
             const pqRotLV = fsScanPurposeQimenRotating(
                 { Y: solarDate.getFullYear(), M: solarDate.getMonth()+1, D: solarDate.getDate(), hGan: hGanDirect, hZhi: hZhiDirect },
                 getPurpose());
-            const pqRotHTMLLV = pqRotLV.map(function(pq){ return '<span style="font-size:10px;font-weight:bold;color:#1565c0;white-space:nowrap;cursor:pointer;" title="' + pq.label + ' — act towards ' + pq.dir + ' direction" onclick="event.stopPropagation();' + _pqPopupCall(pq) + '"' + '>→' + pq.dir + ' ' + pq.label.split(' ')[0] + '</span>'; }).join(' ');
+            const pqRotHTMLLV = pqRotLV.map(function(pq){ return _pqBadge(pq, true); }).join(' ');
             // Unified score-based row coloring: green for positive, red for negative
             const lvScoreBg = listScore >= 10 ? '#a5d6a7'   // deep green
                             : listScore >= 8  ? '#c8e6c9'   // medium green
