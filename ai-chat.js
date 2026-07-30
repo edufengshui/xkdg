@@ -1392,6 +1392,26 @@
       }
     },
     {
+      name: 'refresh_alexa_digest',
+      description: 'Refresh the 7-day SUMMARY that the Alexa skill reads out loud (the lucky XKDG hours of the '
+        + 'loaded person + the lucky travel directions), and deposit it into the Shelly Worker. This is the same '
+        + 'summary that program_aquarium_light refreshes as a side effect when it commits a plan: use THIS tool when '
+        + 'the user wants the summary brought up to date WITHOUT touching the aquarium light - e.g. "aggiorna il '
+        + 'riassunto", "rinfresca quello che dice Alexa". Sources and thresholds are the calendar export\'s own '
+        + '(XKDG score >= 15 with a real XKDG relation, direction score >= 10); night hours Zi/Chou/Yin are excluded. '
+        + 'It uses whichever person is loaded BY HAND and never loads or switches one: with nobody loaded the summary '
+        + 'carries the directions only, and you must say so. The purpose is generic unless one is passed, and purpose '
+        + 'names stay in ENGLISH everywhere, Alexa included.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          days: { type: 'integer', description: 'Window in days (default 7 - the same window as the aquarium plan and the summary\'s own life span).' },
+          start_date: { type: 'string', description: 'YYYY-MM-DD, today or later. Defaults to today.' },
+          purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Restrict the summary to this purpose. Omit it for a generic summary (the default). Keep the key in English.' }
+        }
+      }
+    },
+    {
       name: 'find_purpose_direction',
       description: 'The PURPOSE ACTIVATION calculator, headless \u2014 for TRAVEL/MOVEMENT directions (the ROTATING chart ' +
         '\u8f49\u76e4, e.g. driving, walking, a trip), NOT for a house palace. Same seven purposes as find_purpose_activation ' +
@@ -2477,6 +2497,7 @@
       if (name === 'program_aquarium_light') return toolProgramAquariumLight(input || {});
       if (name === 'aquarium_light') return toolAquariumLight(input || {});
       if (name === 'aquarium_plan') return toolAquariumPlan(input || {});
+      if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
@@ -5238,6 +5259,183 @@
     } catch (e) { return { error: 'Shelly request failed: ' + ((e && e.message) || e) }; }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════════
+  // ALEXA DIGEST (piece 2 of 3) — the app deposits a 7-day summary of the two
+  // MANUAL sectors into the Shelly Worker (?set_digest, KV key `digest`, one per
+  // account, independent of the device). The skill reads it back with ?get_digest.
+  //
+  // The two sources are EXACTLY the ones the .ics export uses — toolFindGoodDates
+  // for the person's XKDG hours and scanTravelPurpose for the directions — so
+  // Alexa and the calendar can never disagree about the same hour. Thresholds are
+  // the calendar's own: XKDG score >= 15 with a real XKDG relation, direction
+  // score >= 10 (the method's natural cut: nothing exists between 3 and 10).
+  // Night hours Zi/Chou/Yin are dropped: both sectors need the user to be there.
+  //
+  // The clock time is derived the same way the .ics derives an event start — the
+  // START of the Chinese hour in the person's true solar time, converted to the
+  // wall clock — so a time spoken by Alexa matches the calendar entry minute for
+  // minute.
+  //
+  // Edu, session 28: the summary follows the MANUALLY loaded person. Nothing here
+  // loads or switches a person; if none is loaded there are no XKDG hours and the
+  // digest carries the directions alone (they do not depend on a person).
+  // The purpose is GENERIC unless one is asked for, and its key stays ENGLISH
+  // (health/career/wealth/relationship/journey/speak/legal) all the way to Alexa's
+  // voice — the skill speaks the English word, it does not translate it.
+  // ══════════════════════════════════════════════════════════════════════════════
+  var DIGEST_XKDG_MIN = 15;    // same as the .ics default xkdg_min_score
+  var DIGEST_DIR_MIN  = 10;    // same as the .ics default direction_min_score
+  var DIGEST_DAYS     = 7;     // the aquarium plan's own window
+  var DIGEST_MAX_ROWS = 60;    // keep the KV body small: the best N of each sector
+  var _DIGEST_PURPOSES = { health: 1, career: 1, wealth: 1, relationship: 1,
+                           journey: 1, speak: 1, legal: 1 };
+
+  function _digestLonUtc() {
+    var lon = 12.49, utc = 1;
+    try { var lEl = document.getElementById('longitude'); if (lEl && isFinite(parseFloat(lEl.value))) lon = parseFloat(lEl.value); } catch (e) {}
+    try { var uEl = document.getElementById('utc-offset'); if (uEl && isFinite(parseFloat(uEl.value))) utc = parseFloat(uEl.value); } catch (e) {}
+    return { lon: lon, utc: utc };
+  }
+  // Wall-clock HH:MM of the START of a Chinese hour, identical to the .ics event start.
+  function _digestClock(iso, branch, lon, utc) {
+    var sm = _BRANCH_SOLAR_MIN[branch];
+    if (sm == null) return null;
+    var ts = _solarToEpoch(iso, sm, lon, utc);
+    if (!isFinite(ts)) return null;
+    var s = _epochToLocal(ts, utc);
+    return s ? s.slice(11) : null;
+  }
+  // Chronological order, but when a sector overflows DIGEST_MAX_ROWS keep the
+  // strongest rows and put those back in chronological order.
+  function _digestTrim(list) {
+    var out = list;
+    if (out.length > DIGEST_MAX_ROWS) {
+      out = out.slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, DIGEST_MAX_ROWS);
+    }
+    return out.sort(function (a, b) {
+      return (a.date < b.date ? -1 : a.date > b.date ? 1 : 0) || (a.hour < b.hour ? -1 : a.hour > b.hour ? 1 : 0);
+    });
+  }
+
+  // Builds the digest body. Returns { body, report } or { error }.
+  function _buildAlexaDigest(input) {
+    input = input || {};
+    var days = parseInt(input.days, 10) || DIGEST_DAYS;
+    var today = todayIso();
+    var start = today;
+    if (input.start_date && /^\d{4}-\d{2}-\d{2}$/.test(input.start_date) && input.start_date >= today) start = input.start_date;
+    var purpose = String(input.purpose || '').toLowerCase();
+    if (purpose && !_DIGEST_PURPOSES[purpose])
+      return { error: 'Unknown purpose "' + purpose + '". Use one of: health, career, wealth, relationship, journey, speak, legal — or omit it for a generic summary.' };
+    var lu = _digestLonUtc();
+    var person = null;
+    try { person = _activeHousePerson(); } catch (e) {}
+    var report = {};
+
+    // (1) XKDG hours of the loaded person. toolFindGoodDates runs the scan itself and
+    //     writes its rows to window._lastScanResults, so no manual scan is required;
+    //     it returns an error only when NO person is loaded, and that is the one case
+    //     where this sector is legitimately empty.
+    var hours = [];
+    try {
+      var gd = toolFindGoodDates({ days: days, start_date: start, purpose: purpose || undefined });
+      if (gd && gd.error) {
+        report.xkdg = { skipped: gd.error, no_person: true };
+      } else {
+        var raw = (window._lastScanResults || []).filter(function (r) { return r.isoDate && r.hourIndex != null; });
+        var belowMin = 0, noRelation = 0, nightDropped = 0;
+        raw.forEach(function (r) {
+          var sc = r.score || 0;
+          if (sc < DIGEST_XKDG_MIN) { belowMin++; return; }
+          var cls = _icsXkdgClass(r.blueLabels);
+          if (!cls) { noRelation++; return; }
+          var br = _ICS_BRANCHES[r.hourIndex];
+          if (_ICS_NIGHT[br]) { nightDropped++; return; }
+          var hh = _digestClock(r.isoDate, br, lu.lon, lu.utc);
+          if (!hh) return;
+          hours.push({ date: r.isoDate, hour: hh, hour_name: _ICS_PIN[br] || br, score: sc, kind: cls });
+        });
+        hours = _digestTrim(hours);
+        report.xkdg = { rows_scanned: raw.length, kept: hours.length, min_score: DIGEST_XKDG_MIN,
+                        dropped_below_min: belowMin, dropped_no_relation: noRelation, dropped_night: nightDropped };
+      }
+    } catch (eX) { report.xkdg = { error: String((eX && eX.message) || eX) }; }
+
+    // (2) Directions — no person involved, so this sector stands even with nobody loaded.
+    var directions = [];
+    try {
+      var dr = (window.QMDJWaterScanner && window.QMDJWaterScanner.scanTravelPurpose)
+        ? (window.QMDJWaterScanner.scanTravelPurpose('', start, days, purpose || null) || []) : [];
+      var dBelow = 0, dNight = 0;
+      dr.forEach(function (r) {
+        var sc = r.score || 0;
+        if (sc < DIGEST_DIR_MIN) { dBelow++; return; }
+        var br = _branchOfHan(r.hourHan); if (!br) return;
+        if (_ICS_NIGHT[br]) { dNight++; return; }
+        var hh = _digestClock(r.date, br, lu.lon, lu.utc);
+        if (!hh) return;
+        directions.push({ date: r.date, hour: hh, hour_name: _ICS_PIN[br] || br,
+                          dir: r.dir, door: _icsDoorLabel(r.cell) || null, score: sc });
+      });
+      directions = _digestTrim(directions);
+      report.directions = { rows_scanned: dr.length, kept: directions.length, min_score: DIGEST_DIR_MIN,
+                            dropped_below_min: dBelow, dropped_night: dNight };
+    } catch (eD) { report.directions = { error: String((eD && eD.message) || eD) }; }
+
+    return {
+      body: {
+        from: start, days: days,
+        person: (person && person.name) || null,
+        purpose: purpose || null,
+        xkdg_min: DIGEST_XKDG_MIN, direction_min: DIGEST_DIR_MIN,
+        hours: hours, directions: directions
+      },
+      report: report
+    };
+  }
+
+  // Sends a built digest to the Worker. Never throws: the caller reports what came back.
+  async function _depositAlexaDigest(built) {
+    if (!built || built.error) return { deposited: false, error: (built && built.error) || 'The digest could not be built.' };
+    var b = built.body;
+    var noPerson = !!(built.report && built.report.xkdg && built.report.xkdg.no_person);
+    var out = { from: b.from, days: b.days, person: b.person, purpose: b.purpose || '(generic)',
+                hours: b.hours.length, directions: b.directions.length,
+                no_person: noPerson || undefined, report: built.report };
+    var cfg = _shellyCfg();
+    if (!cfg) { out.deposited = false; out.error = 'Shelly Worker not configured — call configure_shelly with url + token first.'; return out; }
+    if (!b.hours.length && !b.directions.length) {
+      out.deposited = false; out.empty = true;
+      out.error = 'Nothing reached the thresholds over ' + b.days + ' days, so nothing was deposited (the old summary is left as it was).';
+      return out;
+    }
+    try {
+      var res = await fetch(cfg.url + '?set_digest&token=' + encodeURIComponent(cfg.token),
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+      out.worker = await res.json().catch(function () { return null; });
+      out.deposited = !!res.ok;
+      if (!res.ok) out.error = 'HTTP ' + res.status;
+    } catch (e) { out.deposited = false; out.error = 'Digest request failed: ' + ((e && e.message) || e); }
+    return out;
+  }
+
+  async function toolRefreshAlexaDigest(input) {
+    input = input || {};
+    var dep = await _depositAlexaDigest(_buildAlexaDigest(input));
+    dep.scanner = 'alexa_digest';
+    dep.note = 'This is the summary Alexa reads. Tell the user plainly: how many lucky hours and how many '
+      + 'directions were deposited, the window (from + days), and which person they belong to. '
+      + (dep.no_person
+          ? 'NO PERSON IS LOADED, so the summary carries the DIRECTIONS ONLY and has no XKDG hours — SAY THIS '
+          + 'EXPLICITLY and tell the user to load Person A or B and ask again if they want the hours too. '
+          : '')
+      + (dep.purpose === '(generic)'
+          ? 'The summary is GENERIC (no purpose). '
+          : 'The summary is restricted to the purpose "' + dep.purpose + '"; keep the purpose name in ENGLISH — Alexa says it in English too. ')
+      + 'The summary lives for ' + dep.days + ' days: after that Alexa will say it is stale and to open the app.';
+    return dep;
+  }
+
   async function toolProgramAquariumLight(input) {
     input = input || {};
     var cfg = _shellyCfg();
@@ -5442,7 +5640,7 @@
       }
     });
     var body = { days: _rows };
-    var workerResp = null, workerErr = null;
+    var workerResp = null, workerErr = null, digestOut = null;
     if (commit) {
       try {
         var res2 = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
@@ -5450,6 +5648,14 @@
         workerResp = await res2.json().catch(function () { return null; });
         if (!res2.ok) workerErr = 'HTTP ' + res2.status;
       } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
+      // Piece 2 of 3 (Edu, session 28): the Alexa summary has the same 7-day life cycle
+      // as the aquarium plan, so it is deposited together with it and stays fresh as a
+      // side effect. It follows the MANUALLY loaded person - nothing here switches person -
+      // and inherits this call's purpose filter, staying generic when there is none.
+      // The summary's window is fixed at 7 days by rule (Edu), so it does NOT follow this
+      // call's `days`: a 14-day light plan still deposits a 7-day summary.
+      try { digestOut = await _depositAlexaDigest(_buildAlexaDigest({ days: DIGEST_DAYS, start_date: start, purpose: wantPurpose || undefined })); }
+      catch (eDg) { digestOut = { deposited: false, error: 'Digest failed: ' + ((eDg && eDg.message) || eDg) }; }
     }
 
     return {
@@ -5462,6 +5668,13 @@
       skipped: skipped,
       deposited: commit ? !workerErr : false,
       worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
+      alexa_digest: digestOut || undefined,
+      alexa_digest_note: digestOut
+        ? ('The 7-day summary Alexa reads was refreshed together with the plan. Mention it in ONE short line '
+           + '(how many lucky hours and directions, for which person)'
+           + (digestOut.no_person ? ', and SAY that it has NO XKDG hours because no person is loaded - only directions' : '')
+           + (digestOut.deposited ? '.' : ', and SAY it was NOT saved: ' + (digestOut.error || 'unknown error')))
+        : undefined,
       note: commit
         ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local, and for any day with stays_on_until_date say the light does NOT switch off at 23:00 that day).'
         : 'PREVIEW ONLY \u2014 nothing was deposited. NEVER ask the user to approve individual dates: every day is decided by the rules, there is nothing to confirm day by day. Show the scheduled list (date, hour, tier, on_local/off_local). For every day that carries also_good_for, SAY SO explicitly \u2014 e.g. "questa data e anche buona per Wealth e Career" \u2014 it is the same Purpose Activation calculator as the app\u2019s panel and the user wants to know. If purpose_filter is set, say the plan was restricted to that purpose and that days without it were left out. For a day with stays_on_until_date, say plainly that the light stays on until 23:00 of that later date and why (its tier is high and no stronger day follows). For a day with fallback_from, say the best hour was too late to be useful and the in-window hour was taken instead. For a skipped day, say it stays dark and why. Then ask ONLY for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit until the user confirms; then call again with commit:true.'
