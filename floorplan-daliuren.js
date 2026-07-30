@@ -139,12 +139,13 @@
     ctx.save();
     ctx.font = 'bold ' + fs + 'px sans-serif';
     var w = Math.max(ctx.measureText(name).width, ctx.measureText(l2).width,
-                     ctx.measureText(l3).width) + 10;
+                     ctx.measureText(l3).width) + 10 + (fs + 8);   // + the dot lane
     ctx.restore();
     return { w: w, h: fs * 3.2 + 6 };
   }
-  function layoutSectorCards(ctx, ctr, sectors, fs) {
+  function layoutSectorCards(ctx, ctr, sectors, fs, blocks) {
     var W = st.drawW, H = st.drawH;
+    blocks = blocks || [];
     var rAnchor = 0.34 * Math.min(W, H);          // the leader starts inside the sector
     var out = sectors.map(function (s) {
       var a = canvasAngle(branchDeg(s.earth));
@@ -170,6 +171,44 @@
       var L = Math.hypot(vx, vy) || 1;
       return { x: -vy / L, y: vx / L };
     }
+    // A card sitting on a fixed obstacle is slid out of it first, along the ring.
+    // Sliding on one axis is not enough: on a small or narrow sheet the only way out
+    // of the panel may be the other side, and a blind push just gets clamped straight
+    // back underneath it (measured, session 28). So all four ways out are costed and
+    // the nearest one that actually fits the sheet is taken.
+    function insideSheet(x, y, c) {
+      return x - c.w / 2 >= 3 && x + c.w / 2 <= W - 3 &&
+             y - c.h / 2 >= 3 && y + c.h / 2 <= H - 3;
+    }
+    function overlapsBlock(x, y, c, b) {
+      return Math.abs(x - (b.x + b.w / 2)) < (c.w + b.w) / 2 + 6 &&
+             Math.abs(y - (b.y + b.h / 2)) < (c.h + b.h) / 2 + 6;
+    }
+    function clearBlocks() {
+      var any = false;
+      out.forEach(function (c) {
+        blocks.forEach(function (b) {
+          if (!overlapsBlock(c.x, c.y, c, b)) return;
+          any = true;
+          var cand = [
+            { x: b.x + b.w + c.w / 2 + 7, y: c.y },     // to the right of it
+            { x: b.x - c.w / 2 - 7,       y: c.y },     // to the left of it
+            { x: c.x, y: b.y + b.h + c.h / 2 + 7 },     // below it
+            { x: c.x, y: b.y - c.h / 2 - 7 }            // above it
+          ].filter(function (q) {
+            return insideSheet(q.x, q.y, c) && !overlapsBlock(q.x, q.y, c, b);
+          });
+          if (!cand.length) return;
+          cand.sort(function (p, q) {
+            return Math.hypot(p.x - c.x, p.y - c.y) - Math.hypot(q.x - c.x, q.y - c.y);
+          });
+          c.x = cand[0].x; c.y = cand[0].y;
+          clamp(c);
+        });
+      });
+      return any;
+    }
+    for (var bp = 0; bp < 6; bp++) { if (!clearBlocks()) break; }
     for (var pass = 0; pass < 24; pass++) {
       var moved = false;
       for (var i = 0; i < out.length; i++) {
@@ -187,8 +226,10 @@
           clamp(A); clamp(B);
         }
       }
+      if (moved) clearBlocks();
       if (!moved) break;
     }
+    for (var bp2 = 0; bp2 < 6; bp2++) { if (!clearBlocks()) break; }
     // Final settle: every card is pushed as far out along its own direction as the
     // sheet and its neighbours allow, so none is left sitting over the drawing when
     // there was room outside it.
@@ -198,6 +239,11 @@
         var O = out[q];
         if (Math.abs(c.x - O.x) < (c.w + O.w) / 2 + 4 &&
             Math.abs(c.y - O.y) < (c.h + O.h) / 2 + 4) return true;
+      }
+      for (var z = 0; z < blocks.length; z++) {
+        var b = blocks[z];
+        if (Math.abs(c.x - (b.x + b.w / 2)) < (c.w + b.w) / 2 + 6 &&
+            Math.abs(c.y - (b.y + b.h / 2)) < (c.h + b.h) / 2 + 6) return true;
       }
       return false;
     }
@@ -232,8 +278,15 @@
     var l3 = branchLabel(s.earth);                                 // 地盤 dipan (position)
     ctx.save();
     ctx.font = 'bold ' + fs + 'px sans-serif';
-    var w = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width, ctx.measureText(l3).width) + 10;
+    // Session 28 (Edu): the status dot is drawn inside the card at the left, but the
+    // three lines were centred on the whole card, so the dot sat ON the first letters
+    // ("Nobleman" read "obleman", "Snake" read "inake"). The card now reserves a lane
+    // for the dot and the text is centred in what is left.
+    var DOT_LANE = fs + 8;
+    var w = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width, ctx.measureText(l3).width)
+          + 10 + DOT_LANE;
     var h = fs * 3.2 + 6;
+    var tx = x + DOT_LANE / 2;
     // card
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') ctx.roundRect(x - w / 2, y - h / 2, w, h, 7);
@@ -243,14 +296,14 @@
     ctx.lineWidth = 2; ctx.strokeStyle = spCol; ctx.stroke();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = spCol; ctx.font = 'bold ' + fs + 'px sans-serif';
-    ctx.fillText(l1, x, y - fs * 1.1);
+    ctx.fillText(l1, tx, y - fs * 1.1);
     // Status dot (filled green / red / hollow green) INSIDE the card — at the old
     // radius it ended up under the opaque box and was invisible (session 24).
     drawDot(ctx, x - w / 2 + 8, y - fs * 1.1, net);
     ctx.fillStyle = '#7a5a2a'; ctx.font = (fs - 1) + 'px serif';
-    ctx.fillText(l2, x, y + fs * 0.1);
+    ctx.fillText(l2, tx, y + fs * 0.1);
     ctx.fillStyle = INK; ctx.font = 'bold ' + (fs - 1) + 'px serif';
-    ctx.fillText(l3, x, y + fs * 1.25);
+    ctx.fillText(l3, tx, y + fs * 1.25);
     ctx.restore();
   }
 
@@ -732,7 +785,7 @@
       // in a ring around the drawing, each tied to its own sector by a thin leader.
       // Nothing is written over the plan any more.
       var _lf = Math.max(9, Math.round(Math.min(st.drawW, st.drawH) / 78));
-      var cards = layoutSectorCards(ctx, ctr, st.result.sectors, _lf);
+      var cards = layoutSectorCards(ctx, ctr, st.result.sectors, _lf, [infoPanelRect(ctx)]);
       // leaders first, so every card sits ON TOP of its own line
       ctx.save();
       cards.forEach(function (c) {
@@ -863,7 +916,22 @@
     }
   }
 
-  function drawInfoPanel(ctx) {
+  // Session 28 (Edu): this panel is pinned to the top-left corner of the sheet.
+  // Once the sector cards moved out to the margin they landed underneath it and it
+  // painted over them, because nothing told the layout that the corner was taken.
+  // The rectangle is now measured on its own and handed to the card layout as an
+  // obstacle, so the cards keep clear of it instead of hiding under it.
+  function infoPanelRect(ctx) {
+    var lines = infoPanelLines();
+    ctx.save();
+    ctx.font = 'bold 13px sans-serif';
+    var wMax = 0;
+    lines.forEach(function (t) { wMax = Math.max(wMax, ctx.measureText(t).width); });
+    ctx.restore();
+    var padX = 8, padY = 6, lh = 17;
+    return { x: 8, y: 8, w: wMax + padX * 2, h: lines.length * lh + padY * 2 };
+  }
+  function infoPanelLines() {
     var r = st.result, lines;
     if (!r || r.error) {
       lines = r && r.error ? ['DLR: ' + r.error] : ['Da Liu Ren', 'year ' + st.year, 'press \u201CDraw chart\u201D'];
@@ -883,13 +951,15 @@
       if (mb) lines.push('\u6708\u652F ' + mb);
       lines.push('Void ' + (r.dayVoid ? r.dayVoid.join('') : ''));
     }
+    return lines;
+  }
+  function drawInfoPanel(ctx) {
+    var lines = infoPanelLines();
+    var rect = infoPanelRect(ctx);
     ctx.save();
     ctx.font = 'bold 13px sans-serif';
-    var wMax = 0;
-    lines.forEach(function (t) { wMax = Math.max(wMax, ctx.measureText(t).width); });
     var padX = 8, padY = 6, lh = 17;
-    var w = wMax + padX * 2, h = lines.length * lh + padY * 2;
-    var x = 8, y = 8;                       // pinned to the LEFT edge
+    var w = rect.w, h = rect.h, x = rect.x, y = rect.y;
     ctx.fillStyle = 'rgba(255,255,255,0.88)'; roundRect(ctx, x, y, w, h, 6); ctx.fill();
     ctx.strokeStyle = 'rgba(90,55,20,0.4)'; ctx.lineWidth = 1; ctx.stroke();
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
@@ -972,7 +1042,10 @@
 
     var sideCol = el('div', { style: 'display:flex;flex-direction:column;gap:2px;' });
     sideCol.appendChild(el('label', { style: 'font-size:11px;color:#666;' }, 'Facing side of photo'));
-    var sideRow = el('div', { style: 'display:flex;gap:4px;' });
+    // Session 28 (Edu): four side buttons in ONE row are about 240px wide, but the
+    // control column is 150. The overflow was painted UNDER the canvas panel, which
+    // is why 'Bottom' was clipped and 'Left' could not be seen or clicked at all.
+    var sideRow = el('div', { style: 'display:flex;flex-wrap:wrap;gap:4px;' });
     els.sideBtns = {};
     ['top', 'right', 'bottom', 'left'].forEach(function (side) {
       var b = el('button', { style: sideBtnStyle(st.facingSide === side) }, side.charAt(0).toUpperCase() + side.slice(1));
@@ -985,7 +1058,9 @@
     });
     sideCol.appendChild(sideRow); ctlWrap.appendChild(sideCol);
 
-    var actCol = el('div', { style: 'display:flex;gap:8px;align-items:center;margin-left:auto;' });
+    // Same reason: side by side these two ran past the column and disappeared under
+    // the drawing. Stacked, they always fit whatever the column width is.
+    var actCol = el('div', { style: 'display:flex;flex-direction:column;gap:8px;align-items:stretch;' });
     var drawBtn = el('button', { style: 'background:#5d4037;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:bold;cursor:pointer;' }, 'Draw chart');
     var saveBtn = el('button', { style: 'background:#1b8a3f;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:bold;cursor:pointer;' }, '\uD83D\uDCBE Save to house');
     drawBtn.addEventListener('click', draw); saveBtn.addEventListener('click', doSave);
@@ -1004,7 +1079,7 @@
     // chart caption another one. Both now sit in narrow side columns, so the plan
     // itself gets the height. On a narrow screen the row wraps back to stacked.
     ctlWrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;align-items:stretch;' +
-      'flex:0 0 150px;min-width:130px;';
+      'flex:0 0 168px;min-width:168px;overflow:visible;';
     var row = el('div', { style: 'display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;' });
     row.appendChild(ctlWrap);
 
