@@ -124,6 +124,100 @@
 
   // Bigger, boxed label for the DLR format: opaque card so it stays readable even
   // over the wheel, with the spirit name, the earth branch and the heaven branch.
+  // Where each sector card goes. Kept apart from the drawing so it can be measured
+  // on its own: it returns pure geometry, one entry per sector.
+  //   ax, ay = anchor, a point inside the sector, where the leader starts
+  //   x,  y  = card centre, out in the margin of the sheet
+  // The card is pushed as far out as the sheet allows along its sector's direction,
+  // then held fully inside the canvas. A few relaxation passes separate any two
+  // cards that still overlap, so none is ever hidden under another.
+  function cardSize(ctx, s, fs) {
+    var name = SPIRIT_EN[s.general && s.general.cn] || (s.general && s.general.cn) || '';
+    var num = SPIRIT_NUM[s.general && s.general.cn];
+    var l2 = branchLabel(s.heaven) + (num ? ('  ' + num) : '');
+    var l3 = branchLabel(s.earth);
+    ctx.save();
+    ctx.font = 'bold ' + fs + 'px sans-serif';
+    var w = Math.max(ctx.measureText(name).width, ctx.measureText(l2).width,
+                     ctx.measureText(l3).width) + 10;
+    ctx.restore();
+    return { w: w, h: fs * 3.2 + 6 };
+  }
+  function layoutSectorCards(ctx, ctr, sectors, fs) {
+    var W = st.drawW, H = st.drawH;
+    var rAnchor = 0.34 * Math.min(W, H);          // the leader starts inside the sector
+    var out = sectors.map(function (s) {
+      var a = canvasAngle(branchDeg(s.earth));
+      var dx = Math.cos(a), dy = Math.sin(a);
+      var sz = cardSize(ctx, s, fs);
+      // distance at which the CARD EDGE would touch the sheet border
+      var reach = reachToEdge(ctr.x, ctr.y, dx, dy, W, H, 6);
+      var r = Math.max(rAnchor + 24, reach - Math.max(sz.w, sz.h) * 0.5 - 4);
+      return { s: s, w: sz.w, h: sz.h,
+               ax: ctr.x + rAnchor * dx, ay: ctr.y + rAnchor * dy,
+               x: ctr.x + r * dx, y: ctr.y + r * dy };
+    });
+    function clamp(c) {
+      c.x = Math.max(c.w / 2 + 4, Math.min(W - c.w / 2 - 4, c.x));
+      c.y = Math.max(c.h / 2 + 4, Math.min(H - c.h / 2 - 4, c.y));
+    }
+    out.forEach(clamp);
+    // Two cards that overlap are slid ALONG the ring, never towards the middle:
+    // pushing on the x/y axes dragged them back over the plan whenever the centre
+    // had been dragged off the middle of the sheet (measured, session 28).
+    function tangent(c) {
+      var vx = c.x - ctr.x, vy = c.y - ctr.y;
+      var L = Math.hypot(vx, vy) || 1;
+      return { x: -vy / L, y: vx / L };
+    }
+    for (var pass = 0; pass < 24; pass++) {
+      var moved = false;
+      for (var i = 0; i < out.length; i++) {
+        for (var j = i + 1; j < out.length; j++) {
+          var A = out[i], B = out[j];
+          var ox = (A.w + B.w) / 2 + 4 - Math.abs(A.x - B.x);
+          var oy = (A.h + B.h) / 2 + 4 - Math.abs(A.y - B.y);
+          if (ox <= 0 || oy <= 0) continue;        // not overlapping
+          moved = true;
+          var push = Math.min(ox, oy) / 2 + 0.5;
+          var tA = tangent(A), tB = tangent(B);
+          var sgn = ((A.x - B.x) * tA.x + (A.y - B.y) * tA.y) >= 0 ? 1 : -1;
+          A.x += sgn * push * tA.x; A.y += sgn * push * tA.y;
+          B.x -= sgn * push * tB.x; B.y -= sgn * push * tB.y;
+          clamp(A); clamp(B);
+        }
+      }
+      if (!moved) break;
+    }
+    // Final settle: every card is pushed as far out along its own direction as the
+    // sheet and its neighbours allow, so none is left sitting over the drawing when
+    // there was room outside it.
+    function hits(c, k) {
+      for (var q = 0; q < out.length; q++) {
+        if (q === k) continue;
+        var O = out[q];
+        if (Math.abs(c.x - O.x) < (c.w + O.w) / 2 + 4 &&
+            Math.abs(c.y - O.y) < (c.h + O.h) / 2 + 4) return true;
+      }
+      return false;
+    }
+    out.forEach(function (c, k) {
+      var vx = c.x - ctr.x, vy = c.y - ctr.y;
+      var L = Math.hypot(vx, vy);
+      if (L < 1) return;
+      var ux = vx / L, uy = vy / L;
+      for (var step = 0; step < 40; step++) {
+        var bx = c.x, by = c.y;
+        c.x += ux * 6; c.y += uy * 6;
+        clamp(c);
+        if (hits(c, k) || (Math.abs(c.x - bx) < 0.01 && Math.abs(c.y - by) < 0.01)) {
+          c.x = bx; c.y = by; break;
+        }
+      }
+    });
+    return out;
+  }
+
   function drawSectorBox(ctx, x, y, s, fs) {
     var net = s.net;
     var spCol = (net === 'green' || net === 'green_hollow') ? GREEN : (net === 'red' ? RED : GREY);
@@ -593,38 +687,69 @@
     // with the 45° palace boundaries, and those are drawn heavier. (Edu, session 24)
     var R = (st.img ? 0.70 : 0.62) * Math.min(st.drawW, st.drawH);   // protrude further
     var PALACE_EDGES_FP = [22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5];
+
+    // Session 28 (Edu): the plan used to draw ONE set of twelve rays, colouring red
+    // the four that happen to fall on a palace edge. The other FOUR palace edges
+    // (22.5 / 112.5 / 202.5 / 292.5) were never drawn at all, so the Eight Palaces
+    // were simply not on the plan and no reading could tell the two systems apart.
+    // They are now two distinct systems, told apart by WEIGHT and DASH rather than
+    // by hue: green and red already mean auspicious/inauspicious on the cards and
+    // blue is the facing arrow, so a third colour would have muddled the key.
+    //   Eight Palaces (45 deg)  : heavy, solid, dark
+    //   Twelve Sectors (30 deg) : light, dashed, pale
+    // Where a boundary belongs to BOTH, the dashes ride on the solid line, so it
+    // reads as what it is: a palace edge that is also a sector edge.
     ctx.save();
-    for (var k = 0; k < 12; k++) {
-      var edg = ((k * 30 + 7.5) % 360 + 360) % 360;
-      var coin = PALACE_EDGES_FP.some(function (p) { return Math.abs(p - edg) < 0.01; });
+    PALACE_EDGES_FP.forEach(function (edg) {
       var a = canvasAngle(edg);
-      ctx.beginPath(); ctx.moveTo(ctr.x, ctr.y); ctx.lineTo(ctr.x + R * Math.cos(a), ctr.y + R * Math.sin(a));
-      // All 12 must read clearly — they are the sectors of the chart. The 4 that
-      // coincide with the palace edges are told apart by COLOUR, not by making the
-      // other 8 faint (Edu, session 24: it was the wrong way round).
-      ctx.lineWidth = coin ? 3 : 2;
-      ctx.strokeStyle = coin ? 'rgba(198,40,40,0.92)' : 'rgba(90,55,20,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(ctr.x, ctr.y);
+      ctx.lineTo(ctr.x + R * Math.cos(a), ctr.y + R * Math.sin(a));
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(52,34,10,0.92)';
       ctx.setLineDash([]);
+      ctx.stroke();
+    });
+    for (var k = 0; k < 12; k++) {
+      var edg2 = ((k * 30 + 7.5) % 360 + 360) % 360;
+      var a2 = canvasAngle(edg2);
+      ctx.beginPath();
+      ctx.moveTo(ctr.x, ctr.y);
+      ctx.lineTo(ctr.x + R * Math.cos(a2), ctr.y + R * Math.sin(a2));
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(150,110,60,0.95)';
+      ctx.setLineDash([13, 9]);
       ctx.stroke();
     }
     ctx.setLineDash([]);
     ctx.restore();
 
     if (st.result && !st.result.error && st.result.sectors) {
-      var rLabel = (st.img ? 0.40 : 0.36) * Math.min(st.drawW, st.drawH);
-      // Edu, session 26: at /46 the cards were wider than the 30\u00b0 sector they belong to
-      // and ran into each other. The arc available to a sector at rLabel is about 0.21\u00b7D,
-      // so the font has to stay well under that.
+      // Session 28 (Edu): the cards used to sit at 0.40 of the plan, i.e. INSIDE the
+      // building, and they kept landing on the flying-star numbers. They cannot dodge
+      // them: the stars are part of the uploaded image, so the code has no idea where
+      // they are. The cards therefore move OUT to the margin of the sheet, arranged
+      // in a ring around the drawing, each tied to its own sector by a thin leader.
+      // Nothing is written over the plan any more.
       var _lf = Math.max(9, Math.round(Math.min(st.drawW, st.drawH) / 78));
-      st.result.sectors.forEach(function (s) {
-        var ang = canvasAngle(branchDeg(s.earth));
-        var lx = ctr.x + rLabel * Math.cos(ang), ly = ctr.y + rLabel * Math.sin(ang);
-        lx = Math.max(46, Math.min(st.drawW - 46, lx));
-        ly = Math.max(34, Math.min(st.drawH - 34, ly));
-        // Edu, session 26: over a floor plan the plain outlined text was unreadable.
-        // Same boxed card the luopan ring uses \u2014 opaque, colour-coded border.
-        drawSectorBox(ctx, lx, ly, s, _lf);
+      var cards = layoutSectorCards(ctx, ctr, st.result.sectors, _lf);
+      // leaders first, so every card sits ON TOP of its own line
+      ctx.save();
+      cards.forEach(function (c) {
+        ctx.beginPath();
+        ctx.moveTo(c.ax, c.ay);
+        ctx.lineTo(c.x, c.y);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(120,90,50,0.75)';
+        ctx.setLineDash([]);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(c.ax, c.ay, 3, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(120,90,50,0.9)';
+        ctx.fill();
       });
+      ctx.restore();
+      cards.forEach(function (c) { drawSectorBox(ctx, c.x, c.y, c.s, _lf); });
       drawFacingArrow(ctx, ctr);
     }
     drawInfoPanel(ctx);
@@ -899,7 +1024,9 @@
       '<span><b style="color:' + GREEN + ';">\u25CF</b> auspicious</span>' +
       '<span><b style="color:' + RED + ';">\u25CF</b> inauspicious</span>' +
       '<span><b style="color:' + GREEN + ';">\u25CB</b> Heavenly Doctor w/ negative</span>' +
-      '<span>no dot = neutral / cancelled</span>';
+      '<span>no dot = neutral / cancelled</span>' +
+      '<span><b style="color:#34220a;">\u2501\u2501</b> Eight Palaces 45\u00b0</span>' +
+      '<span><b style="color:#966e3c;">\u2504\u2504</b> Twelve Sectors 30\u00b0</span>';
     box.appendChild(legend);
     els.status = el('div', { style: 'text-align:center;font-size:12px;color:#555;min-height:16px;margin-top:2px;' });
     box.appendChild(els.status);
