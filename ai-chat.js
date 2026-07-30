@@ -2268,7 +2268,11 @@
       ['vienna', 'tuoro'].forEach(function (hn) {
         try {
           var rh = _resolveShellyHouse(hn); if (!rh) return;
-          try { if (window.XKDGHouse && window.XKDGHouse.resolveByName) { var rb = window.XKDGHouse.resolveByName(rh.name); if (rb && window.XKDGHouse.activate) window.XKDGHouse.activate(rb); } } catch (eA) {}
+          // Session 28 (Edu): this line used to call window.XKDGHouse.activate(), a function
+          // that does not exist on XKDGHouse - so it silently did nothing on every export.
+          // It is NOT replaced by a real house switch: a person loaded by hand always wins,
+          // and an export must never move the app's persons under the user. The water tiers
+          // therefore follow whoever is loaded, and the report says so plainly below.
           var setup = toolGetHouseSetup({ house_name: rh.name });
           if (!setup || setup.error) return;
           var floor = (setup.floors || []).filter(function (f) { return f.active; })[0] || (setup.floors || [])[0];
@@ -2300,7 +2304,11 @@
                'Aquarium sector ' + x.dir + ' \u2014 ' + x.house + ' \u00b7 hour ' + _icsHourLabel(x.r.branch) + (x.r.hour ? (' (' + x.r.hour + ')') : '') + pTxt + '. ' + (x.r.why || ''), x.lon, x.utc, false);
         });
         report.water = { rows_scanned: waterRows.length, max_tier: maxTier,
-                         events: waterRows.filter(function (x) { return x.r.tier === maxTier; }).length };
+                         events: waterRows.filter(function (x) { return x.r.tier === maxTier; }).length,
+                         persons_used: _digestPersonNames().label,
+                         note: 'The water TIERS are the connection to the loaded person(s), listed in persons_used. '
+                           + 'The export never switches person: a manual load always wins. With nobody loaded only '
+                           + 'tier 1 (Qimen alone) can appear - say so if persons_used is null.' };
       } else { report.water = { rows_scanned: 0, note: 'no aquarium hour passed the QMDJ veto in the period' }; }
     } catch (eW) { report.water = { error: String((eW && eW.message) || eW) }; }
 
@@ -5477,11 +5485,25 @@
     // that also open that purpose's Qimen door ("program only Wealth activations").
     var wantPurpose = (input.purpose || '').toLowerCase();
 
-    // 1) make the house active (loads its person) and read its single aquarium
+    // 1) make the house active (loads its occupants) and read its single aquarium.
+    //
+    // Session 28 (Edu) - A PERSON LOADED BY HAND ALWAYS WINS. The house loads its own
+    // occupants ONLY when nobody is loaded at all. That gap is what this repairs: the
+    // old line called fsSetActiveHouse(rb.person.name, ...), but resolveByName returns
+    // the person NAME as a plain string, so `.name` was undefined, the call did nothing,
+    // and the failure was swallowed by the catch. Nobody ever saw an error - the scan
+    // simply ran with whatever was loaded, or with no person at all.
+    // Activating a house loads occupant #1 into Person A and occupant #2 into Person B
+    // (fsSetActiveHouse -> fsLoadHouse -> _fsLoadHouseOccupants), so one call is enough.
+    var personAutoLoaded = false;
     try {
-      if (window.XKDGHouse && typeof window.XKDGHouse.resolveByName === 'function') {
+      var _plBefore = personLoaded();
+      if (!_plBefore.any && window.XKDGHouse && typeof window.XKDGHouse.resolveByName === 'function') {
         var rb = window.XKDGHouse.resolveByName(rh.name);
-        if (rb && rb.person && typeof window.fsSetActiveHouse === 'function') window.fsSetActiveHouse(rb.person.name, rb.index);
+        if (rb && rb.person && typeof window.fsSetActiveHouse === 'function') {
+          window.fsSetActiveHouse(rb.person, rb.index);
+          personAutoLoaded = personLoaded().any;
+        }
       }
     } catch (e) {}
     var setup = toolGetHouseSetup({ house_name: rh.name });
@@ -5692,6 +5714,12 @@
       mode: commit ? 'committed' : 'preview',
       aquarium: { direction: aq.direction, water_star: aq.water_star },
       purpose_filter: wantPurpose || null,
+      persons_used: _digestPersonNames().label,
+      person_auto_loaded: personAutoLoaded || undefined,
+      person_note: personAutoLoaded
+        ? 'Nobody was loaded, so the occupants of this house were loaded for the scan. SAY SO in one line.'
+        : 'The scan used the person(s) already loaded by hand - a manual load always wins over the house. '
+          + 'If persons_used is null, NO person was loaded and only tier 1 hours (Qimen alone) could appear: say that too.',
       window: '2nd half of Zi (solar 00:00) .. end of You (solar 19:00); OFF at 23:00 civil. A late hour (Xu/Hai) is taken only when its block runs past 23:00 of the same day.',
       scheduled_days: scheduled.length, scheduled: scheduled, deposit_rows: _rows.length,
       skipped: skipped,
