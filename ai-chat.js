@@ -544,6 +544,18 @@
       'a good hour. ALSO: if a result is flagged isVoid (the palace is in Void \u7a7a\u4ea1 that hour), HIGHLIGHT it to the user ' +
       '(a void hour is weak/empty even if otherwise favourable).\n'
     ],
+    ["home",
+      '- ALEXA SUMMARY: an Alexa skill reads out loud a 7-day SUMMARY of the lucky XKDG hours of the loaded '
+    + 'person plus the lucky travel directions. ALEXA IS A VOICE ASSISTANT, NOT A PERSON: never try to load '
+    + '"Alexa" as Person A or B, and never ask the user to. refresh_alexa_digest rebuilds that summary and '
+    + 'deposits it. Call it for "aggiorna il riassunto", "rinfresca il riassunto", "aggiorna quello che dice '
+    + 'Alexa", "update the summary" and the like: such a request is NEVER a request to summarise the state of '
+    + 'the app, so do NOT answer it with get_app_state. program_aquarium_light already refreshes the same '
+    + 'summary as a side effect whenever it commits a plan, so use refresh_alexa_digest when the user does NOT '
+    + 'want to touch the aquarium light. The summary follows whichever person is loaded BY HAND: never load or '
+    + 'switch a person for it, and if none is loaded say plainly that the summary carries the directions only. '
+    + 'Purpose names stay in ENGLISH (wealth, health, career...) everywhere, Alexa included.\n'
+    ],
     ["core",
       '- VERIFY BUTTON: whenever you recommend a specific DATE + HOUR (water activation, date selection, etc.), also call ' +
       'show_verify_button(date, hour branch, direction if any) so the user gets a one-tap button to open the XKDG date and ' +
@@ -587,7 +599,7 @@
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
-    home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan']
+    home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
   };
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
@@ -618,7 +630,7 @@
   // lives in program_aquarium_light's description), fell back to reading the source, and
   // wrongly answered that the app never switches the light off.
   var AREA_HINTS = {
-    home: /acquari|aquarium|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)/i,
+    home: /acquari|aquarium|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
     travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
     fengshui: /fontan|fountain|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
     dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
@@ -5317,6 +5329,22 @@
     });
   }
 
+  // Edu, session 28 (option 3): when two people are loaded the scan MIXES both, so the
+  // summary carries BOTH names instead of silently attributing every hour to Person A.
+  // The hours themselves are not labelled per person - that was option 2, not chosen.
+  function _digestPersonNames() {
+    var pl = { a: false, b: false };
+    try { pl = personLoaded(); } catch (e) {}
+    function nm(id) {
+      try { var el = document.getElementById(id); return (el && el.value) ? String(el.value).trim() : ''; }
+      catch (e) { return ''; }
+    }
+    var out = [];
+    if (pl.a) out.push(nm('person-name') || 'Person A');
+    if (pl.b) out.push(nm('person-name-b') || 'Person B');
+    return { list: out, label: out.length ? out.join(' + ') : null };
+  }
+
   // Builds the digest body. Returns { body, report } or { error }.
   function _buildAlexaDigest(input) {
     input = input || {};
@@ -5328,8 +5356,7 @@
     if (purpose && !_DIGEST_PURPOSES[purpose])
       return { error: 'Unknown purpose "' + purpose + '". Use one of: health, career, wealth, relationship, journey, speak, legal — or omit it for a generic summary.' };
     var lu = _digestLonUtc();
-    var person = null;
-    try { person = _activeHousePerson(); } catch (e) {}
+    var persons = _digestPersonNames();
     var report = {};
 
     // (1) XKDG hours of the loaded person. toolFindGoodDates runs the scan itself and
@@ -5385,7 +5412,7 @@
     return {
       body: {
         from: start, days: days,
-        person: (person && person.name) || null,
+        person: persons.label,
         purpose: purpose || null,
         xkdg_min: DIGEST_XKDG_MIN, direction_min: DIGEST_DIR_MIN,
         hours: hours, directions: directions
@@ -5424,7 +5451,9 @@
     var dep = await _depositAlexaDigest(_buildAlexaDigest(input));
     dep.scanner = 'alexa_digest';
     dep.note = 'This is the summary Alexa reads. Tell the user plainly: how many lucky hours and how many '
-      + 'directions were deposited, the window (from + days), and which person they belong to. '
+      + 'directions were deposited, the window (from + days), and WHICH PERSON they belong to - when two people '
+      + 'are loaded the field carries BOTH names joined by " + " because the scan mixes both, and the hours are NOT '
+      + 'split per person: say the summary covers both, do not attribute an hour to one of them. '
       + (dep.no_person
           ? 'NO PERSON IS LOADED, so the summary carries the DIRECTIONS ONLY and has no XKDG hours — SAY THIS '
           + 'EXPLICITLY and tell the user to load Person A or B and ask again if they want the hours too. '
