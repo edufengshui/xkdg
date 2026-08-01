@@ -8665,6 +8665,245 @@
     }).catch(function (e) { return { ok: false, reason: 'error', error: (e && e.message) || String(e) }; });
   }
 
+
+  /* ═══ DIRECTIONAL DETOUR (session 28, Edu) ════════════════════════════════
+   * "The outlet is 150 km NW but NW has no usable hour today. Could I go W
+   *  first and then N?"
+   *
+   * This is NOT the chain trip (a wandering loop with no destination) and NOT
+   * the existing detour engine (which deviates to CASH a favourable direction
+   * and then resumes on whatever bearing the resumption happens to be). Here
+   * the destination is FIXED and EVERY leg must be favourable in its own hour.
+   *
+   * Edu's rules, confirmed this session:
+   *  1. A leg's direction is the STRAIGHT-LINE bearing from where the leg
+   *     starts to where it ends — for the second leg, from the pivot to the
+   *     FINAL destination, whatever road is actually driven.
+   *  2. A direction counts when that bearing falls inside its 45 deg octant.
+   *  3. Bearings are MAGNETIC. tpBearing already applies the declination at
+   *     source, so every comparison below is magnetic by construction — this
+   *     is exactly why the function lives in this file and not in ai-chat.js.
+   *  4. Timing: both legs may run inside the SAME Chinese hour; or leg 1 late
+   *     in one hour and leg 2 early in the next, with no real wait. Only when
+   *     a gap remains does one WAIT AT THE PIVOT for the new 时辰 to open.
+   *  5. The pivot must be somewhere one can actually stop: a real place if one
+   *     is near, otherwise a layby — never the middle of the road.
+   *
+   * Geometry note (measured, session 28): valid pivots are NOT a narrow spot.
+   * They fill the intersection of two 45 deg cones, one opening from home
+   * along leg 1 and one closing on the destination along leg 2, and that
+   * region GROWS with distance. For a 150 km target the corridor ran from
+   * about 60 to 200 km out. So the search below samples it rather than
+   * solving for a single point.
+   * ---------------------------------------------------------------------- */
+  var TP_DETOUR_SAMPLE_KM = 12;      // step along a leg-1 bearing while sampling
+  var TP_DETOUR_MAX_FACTOR = 1.6;    // never sample further out than 1.6x the direct distance
+  var TP_DETOUR_PIVOT_RADIUS_KM = 6; // how far from the ideal pivot a real stop may sit
+  // Measured on the first run (session 28): without these three the search returns
+  // proposals that are technically valid and practically useless.
+  //  - a 12 km hop "to activate W" before 139 km of the real direction is a token leg;
+  //  - a pivot reached at 11:00 for a leg that opens at 18:00 is a seven-hour wait;
+  //  - and if leg 1 already runs in the DIRECT octant it is not a detour at all, it is
+  //    the ordinary journey with a bend in it - one would simply drive straight there.
+  var TP_DETOUR_MIN_LEG_FRAC = 0.15;  // each leg >= 15% of the direct distance
+  var TP_DETOUR_MAX_WAIT_MIN = 120;   // default cap on waiting at the pivot
+
+  function tpDetourOctantOf(bearing) {
+    var best = null, bd = 999;
+    TP_DIR_ORDER.forEach(function (d) {
+      var diff = Math.abs(((TP_DIR_DEG[d] - bearing + 540) % 360) - 180);
+      if (diff < bd) { bd = diff; best = d; }
+    });
+    return { dir: best, off: bd, inside: bd <= 22.5 };
+  }
+
+  // Favourable octants for the Chinese hour containing `ms`, at longitude `lon`.
+  function tpDetourHourDirs(ms, lon) {
+    try {
+      var y = new Date(ms).getFullYear();
+      var utc = -Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()) / 60;
+      var dstOn = tpDstActiveOn(new Date(ms));
+      var hp = tpFullHourAt(ms, lon, utc, dstOn);
+      if (!hp) return null;
+      var dirs = tpScanDirs(hp.Y, hp.M, hp.D, hp.gan, hp.zhi, null, false) || [];
+      var ok = {};
+      dirs.forEach(function (d) { if (d.eval && d.eval.ok) ok[d.dir] = d.eval; });
+      return { zhi: hp.zhi, ok: ok };
+    } catch (e) { return null; }
+  }
+
+  // Wall-clock start and end of the Chinese hour containing `ms`, at `lon`.
+  function tpDetourHourSpan(ms, lon) {
+    try {
+      var y = new Date(ms).getFullYear();
+      var utc = -Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()) / 60;
+      var dstOn = tpDstActiveOn(new Date(ms));
+      var off = tpOffsetMin(lon, utc, dstOn, ms);
+      var sd = new Date(ms + off * 60000);
+      var H = sd.getHours();
+      var startOdd = (H % 2 === 0) ? (H - 1) : H;                 // 23,01,03,...
+      var s = new Date(sd.getFullYear(), sd.getMonth(), sd.getDate(), startOdd, 0, 0, 0).getTime();
+      if (startOdd < 0) s = new Date(sd.getFullYear(), sd.getMonth(), sd.getDate() - 1, 23, 0, 0, 0).getTime();
+      return { start: s - off * 60000, end: s - off * 60000 + 2 * 3600000 };
+    } catch (e) { return null; }
+  }
+
+  /* Plan a two-leg approach to a fixed destination.
+   *   opts = { origin:{lat,lon,name}, dest:{lat,lon,name},
+   *            fromMs, untilMs,          // the window one may travel in
+   *            speedKmh,                 // road speed estimate, default 70
+   *            snapPlaces }              // true -> look for a real stop at the pivot
+   * Returns a Promise of { direct, options[], reason }.
+   */
+  function tpPlanDirectionalDetour(opts) {
+    opts = opts || {};
+    var O = opts.origin, D = opts.dest;
+    if (!O || !D || !isFinite(O.lat) || !isFinite(D.lat)) {
+      return Promise.resolve({ error: 'Origin and destination are both required.' });
+    }
+    var speed = opts.speedKmh || 70;
+    var maxWait = (opts.maxWaitMin != null) ? opts.maxWaitMin : TP_DETOUR_MAX_WAIT_MIN;
+    var fromMs = opts.fromMs || Date.now();
+    var untilMs = opts.untilMs || (fromMs + 14 * 3600000);
+    var directKm = tpHaversineKm(O.lat, O.lon, D.lat, D.lon);
+    var directBr = tpBearing(O.lat, O.lon, D.lat, D.lon);          // MAGNETIC
+    var directOct = tpDetourOctantOf(directBr);
+
+    // Which Chinese hours fall in the window, and what is favourable in each.
+    var hours = [], cursor = fromMs, guard = 0;
+    while (cursor < untilMs && guard++ < 24) {
+      var span = tpDetourHourSpan(cursor, O.lon);
+      if (!span) break;
+      var dirs = tpDetourHourDirs(cursor, O.lon);
+      hours.push({ start: Math.max(span.start, fromMs), end: span.end,
+                   zhi: dirs ? dirs.zhi : '?', ok: dirs ? dirs.ok : {} });
+      cursor = span.end + 60000;
+    }
+    if (!hours.length) return Promise.resolve({ error: 'Could not read the hours for this window.' });
+
+    // Is the direct run already possible? Then say so and stop.
+    var directWindows = hours.filter(function (h) { return h.ok[directOct.dir]; });
+    var out = {
+      direct: {
+        dir: directOct.dir, bearing: Math.round(directBr), km: Math.round(directKm),
+        hours: directWindows.map(function (h) {
+          return { zhi: h.zhi, from: h.start, to: h.end,
+                   door: tpDoorLabel(h.ok[directOct.dir].door), score: h.ok[directOct.dir].score || 0 };
+        })
+      },
+      options: []
+    };
+
+    // Candidate pivots: sample every leg-1 octant that is favourable in some hour,
+    // walking outward along its bearings and keeping the points from which the
+    // destination falls inside a leg-2 octant favourable in a compatible hour.
+    var cands = [];
+    var maxKm = directKm * TP_DETOUR_MAX_FACTOR;
+    TP_DIR_ORDER.forEach(function (d1) {
+      var h1s = hours.filter(function (h) { return h.ok[d1]; });
+      if (!h1s.length) return;
+      if (d1 === directOct.dir) return;          // that is the direct run, not a detour
+      // sample the whole 45 deg fan of leg 1, not just its centre line
+      for (var da = -20; da <= 20; da += 10) {
+        var br1 = (TP_DIR_DEG[d1] + da + 360) % 360;
+        for (var km = TP_DETOUR_SAMPLE_KM; km <= maxKm; km += TP_DETOUR_SAMPLE_KM) {
+          var P = tpProject(O.lat, O.lon, br1, km);
+          // leg 1 must really be in d1 once magnetic declination is applied
+          var realBr1 = tpBearing(O.lat, O.lon, P.lat, P.lon);
+          if (tpDetourOctantOf(realBr1).dir !== d1) continue;
+          var br2 = tpBearing(P.lat, P.lon, D.lat, D.lon);          // pivot -> FINAL dest
+          var oct2 = tpDetourOctantOf(br2);
+          if (!oct2.inside) continue;
+          var d2 = oct2.dir;
+          if (d2 === d1) continue;                                   // that is just the direct run
+          var leg2Km = tpHaversineKm(P.lat, P.lon, D.lat, D.lon);
+          var totalKm = km + leg2Km;
+          if (totalKm > directKm * TP_DETOUR_MAX_FACTOR) continue;
+          var minLeg = directKm * TP_DETOUR_MIN_LEG_FRAC;
+          if (km < minLeg || leg2Km < minLeg) continue;   // no token legs
+          // timing: leg 1 departs in an hour where d1 is open, leg 2 in one where d2 is
+          h1s.forEach(function (h1) {
+            var driveMs = (km / speed) * 3600000;
+            var arriveMs = Math.max(h1.start, fromMs) + driveMs;
+            hours.forEach(function (h2) {
+              if (!h2.ok[d2]) return;
+              if (h2.end <= arriveMs) return;                        // that hour is already gone
+              var goMs = Math.max(h2.start, arriveMs);
+              if (goMs > untilMs) return;
+              var waitMin = Math.round(Math.max(0, h2.start - arriveMs) / 60000);
+              if (waitMin > maxWait) return;                         // waiting half a day is not a plan
+              var sameHour = (h1.zhi === h2.zhi && h1.start === h2.start);
+              cands.push({
+                pivot: { lat: P.lat, lon: P.lon },
+                leg1: { dir: d1, km: Math.round(km), bearing: Math.round(realBr1),
+                        zhi: h1.zhi, departFrom: Math.max(h1.start, fromMs), departBy: h1.end,
+                        door: tpDoorLabel(h1.ok[d1].door), score: h1.ok[d1].score || 0 },
+                leg2: { dir: d2, km: Math.round(leg2Km), bearing: Math.round(br2),
+                        zhi: h2.zhi, departFrom: goMs, departBy: h2.end,
+                        door: tpDoorLabel(h2.ok[d2].door), score: h2.ok[d2].score || 0 },
+                waitMin: waitMin, sameHour: sameHour,
+                totalKm: Math.round(totalKm), extraKm: Math.round(totalKm - directKm),
+                score: (h1.ok[d1].score || 0) + (h2.ok[d2].score || 0)
+              });
+            });
+          });
+        }
+      }
+    });
+
+    if (!cands.length) {
+      out.reason = 'No pivot exists in this window: no pair of favourable hours lines up with a '
+                 + 'geometry that still reaches the destination, within ' + maxWait + ' minutes of waiting '
+                 + 'and with both legs long enough to count.'
+                 + (out.direct.hours.length ? ' The direct run does have usable hours, listed above.' : '');
+      return Promise.resolve(out);
+    }
+
+    // Best first: highest combined score, then least waiting, then least extra road.
+    cands.sort(function (a, b) {
+      return (b.score - a.score) || (a.waitMin - b.waitMin) || (a.extraKm - b.extraKm);
+    });
+    // Keep a spread: at most one per (leg1 dir + leg2 dir + leg2 hour) pair.
+    var seen = {}, keep = [];
+    cands.forEach(function (c) {
+      var k = c.leg1.dir + '>' + c.leg2.dir + '|' + c.leg2.zhi;
+      if (seen[k]) return; seen[k] = 1;
+      if (keep.length < 6) keep.push(c);
+    });
+    out.options = keep;
+
+    // Rule 5: give each pivot a real place to stop, when one is near.
+    if (opts.snapPlaces === false) return Promise.resolve(out);
+    return Promise.all(keep.map(function (c) {
+      return tpFindPOI(c.pivot.lat, c.pivot.lon, TP_DETOUR_PIVOT_RADIUS_KM, 'any')
+        .then(function (list) {
+          var best = null, bd = 1e9;
+          (list || []).forEach(function (p) {
+            if (!isFinite(p.lat) || !isFinite(p.lon)) return;
+            // a real stop is only usable if it does not break either octant
+            var b1 = tpBearing(O.lat, O.lon, p.lat, p.lon);
+            if (tpDetourOctantOf(b1).dir !== c.leg1.dir) return;
+            var b2 = tpBearing(p.lat, p.lon, D.lat, D.lon);
+            if (tpDetourOctantOf(b2).dir !== c.leg2.dir) return;
+            var d = tpHaversineKm(c.pivot.lat, c.pivot.lon, p.lat, p.lon);
+            if (d < bd) { bd = d; best = p; }
+          });
+          if (best) {
+            c.stop = { name: best.name || best.title || 'stop', lat: best.lat, lon: best.lon,
+                       kind: best.kind || best.category || null, offKm: Math.round(bd * 10) / 10 };
+            c.leg1.bearing = Math.round(tpBearing(O.lat, O.lon, best.lat, best.lon));
+            c.leg2.bearing = Math.round(tpBearing(best.lat, best.lon, D.lat, D.lon));
+          } else {
+            c.stop = null;
+            c.stopNote = 'No place found within ' + TP_DETOUR_PIVOT_RADIUS_KM
+                       + ' km that keeps both octants: pull into a layby near the pivot, never stop on the road.';
+          }
+          return c;
+        })
+        .catch(function () { c.stop = null; return c; });
+    })).then(function () { return out; });
+  }
+
   window.TravelPlanner = {
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
@@ -8723,7 +8962,11 @@
     diagnoseMapsExport: function () { return tpDiagnoseMapsExport(); },
     getAutoMaps: tpAutoMapsOn,
     setAutoMaps: tpSetAutoMaps,
-    config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); }
+    config: function (favDoors) { if (favDoors) TP_FAV_DOORS = favDoors; return TP_FAV_DOORS.slice(); },
+    // Session 28: two-leg approach to a FIXED destination when the direct octant
+    // has no usable hour. Lives here, not in ai-chat.js, so every bearing goes
+    // through tpBearing and is magnetic by construction.
+    planDirectionalDetour: function (o) { return tpPlanDirectionalDetour(o); }
   };
   // Expose tpOpen as a global so the TRAVEL PLANNER tab button (onclick="tpOpen()") works.
   window.tpOpen = tpOpen;

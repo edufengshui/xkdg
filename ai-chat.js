@@ -591,7 +591,7 @@
              'plan_mobile_tour','plan_city_tour','plan_lucky_events','plan_arrive_by','open_travel_planner',
              'open_itinerary_in_maps','start_compass','control_compass','analyze_direction','get_trip_itinerary',
              'find_lodging','find_lucky_charge_day','scan_flights','open_direction_calculator',
-             'find_purpose_direction','find_qimen_hours_for_star','diagnose_maps_export',
+             'find_purpose_direction','plan_directional_detour','find_qimen_hours_for_star','diagnose_maps_export',
              'find_good_dates'],   // session 26: the flight/travel DATE rules live in this area
     fengshui: ['find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
@@ -1421,6 +1421,33 @@
           start_date: { type: 'string', description: 'YYYY-MM-DD, today or later. Defaults to today.' },
           purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Restrict the summary to this purpose. Omit it for a generic summary (the default). Keep the key in English.' }
         }
+      }
+    },
+    {
+      name: 'plan_directional_detour',
+      description: 'Reach a FIXED destination in two legs when the direct direction has no usable hour - '
+        + '"the outlet is 150 km NW but NW is no good today, could I go W first and then turn N?". Use it whenever '
+        + 'the user names a place they want to reach and asks about going there indirectly, by a detour, in two '
+        + 'stages, or "first X then Y". This is NOT find_lucky_chain: a chain wanders with no destination, this one '
+        + 'has a fixed target and requires BOTH legs to be favourable in their own hour. Every leg is judged on the '
+        + 'straight-line MAGNETIC bearing from its start to its end - leg 2 from the pivot to the final destination - '
+        + 'and the pivot is snapped to a real place to stop when one is near.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          destination: { type: 'string', description: 'Where the user actually wants to end up: a place name or address.' },
+          dest_lat: { type: 'number', description: 'Optional, instead of the name.' },
+          dest_lon: { type: 'number', description: 'Optional, instead of the name.' },
+          origin_name: { type: 'string', description: 'Starting point if it is not the current GPS position.' },
+          origin_lat: { type: 'number' },
+          origin_lon: { type: 'number' },
+          date: { type: 'string', description: 'YYYY-MM-DD. Defaults to today.' },
+          from_time: { type: 'string', description: 'HH:MM - the earliest the user can leave. Defaults to now.' },
+          window_hours: { type: 'integer', description: 'How many hours ahead to search (default 14).' },
+          max_wait_min: { type: 'integer', description: 'Longest acceptable wait at the pivot, in minutes (default 120).' },
+          speed_kmh: { type: 'number', description: 'Road speed estimate for the timing (default 70).' }
+        },
+        required: ['destination']
       }
     },
     {
@@ -2516,6 +2543,7 @@
       if (name === 'configure_shelly') return toolConfigureShelly(input || {});
       if (name === 'program_aquarium_light') return toolProgramAquariumLight(input || {});
       if (name === 'aquarium_light') return toolAquariumLight(input || {});
+      if (name === 'plan_directional_detour') return toolPlanDirectionalDetour(input || {});
       if (name === 'aquarium_plan') return toolAquariumPlan(input || {});
       if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
@@ -3307,6 +3335,97 @@
   // reached by a favourable-direction transfer from the previous one. Greedy chain:
   // per day, ask the engine for a favourable destination inside the area & leg range,
   // then find a real place of character to sleep near it. Serial (never parallel).
+  // ── DIRECTIONAL DETOUR (session 28, Edu) ───────────────────────────────────
+  // "The outlet is 150 km NW but NW has no usable hour today - could I go W first
+  // and then N?" The geometry and the hour reading both live in travel-planner.js,
+  // because every bearing must pass through tpBearing, which applies the magnetic
+  // declination at source. Nothing here recomputes a direction.
+  function toolPlanDirectionalDetour(input) {
+    input = input || {};
+    if (!window.TravelPlanner || typeof window.TravelPlanner.planDirectionalDetour !== 'function')
+      return Promise.resolve({ error: 'The Travel Planner is not available on this page.' });
+    var destName = input.destination ? String(input.destination).trim() : '';
+    if (!destName && (input.dest_lat == null || input.dest_lon == null))
+      return Promise.resolve({ error: 'A destination is required: a place name, or dest_lat + dest_lon.' });
+
+    function _gps() {
+      if (input.origin_lat != null && input.origin_lon != null)
+        return { lat: +input.origin_lat, lon: +input.origin_lon, name: input.origin_name || 'origin' };
+      if (window._lastGpsLat != null && window._lastGpsLng != null)
+        return { lat: window._lastGpsLat, lon: window._lastGpsLng, name: 'current position' };
+      return null;
+    }
+    var jobs = [], origin = _gps(), dest = null;
+    if (input.dest_lat != null && input.dest_lon != null)
+      dest = { lat: +input.dest_lat, lon: +input.dest_lon, name: destName || 'destination' };
+    if (!dest && typeof window.TravelPlanner.resolvePlace === 'function') {
+      jobs.push(window.TravelPlanner.resolvePlace(destName, origin && origin.lat, origin && origin.lon)
+        .then(function (d) { if (d && isFinite(d.lat)) dest = { lat: d.lat, lon: d.lon, name: d.name || destName }; })
+        .catch(function () {}));
+    }
+    if (!origin && input.origin_name && typeof window.TravelPlanner.resolvePlace === 'function') {
+      jobs.push(window.TravelPlanner.resolvePlace(String(input.origin_name), null, null)
+        .then(function (o) { if (o && isFinite(o.lat)) origin = { lat: o.lat, lon: o.lon, name: o.name || input.origin_name }; })
+        .catch(function () {}));
+    }
+
+    return Promise.all(jobs).then(function () {
+      if (!origin) return { error: 'No starting point: turn GPS on, or pass origin_name / origin_lat + origin_lon.' };
+      if (!dest) return { error: 'Could not find "' + destName + '". Try a fuller address, or give dest_lat + dest_lon.' };
+      var fromMs = Date.now();
+      if (input.from_time && /^\d{1,2}:\d{2}$/.test(input.from_time)) {
+        var hm = input.from_time.split(':');
+        var base = input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date)
+          ? new Date(input.date + 'T00:00:00') : new Date();
+        base.setHours(+hm[0], +hm[1], 0, 0);
+        if (base.getTime() > fromMs || input.date) fromMs = base.getTime();
+      } else if (input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+        var d0 = new Date(input.date + 'T06:00:00');
+        if (d0.getTime() > fromMs) fromMs = d0.getTime();
+      }
+      var untilMs = fromMs + (Math.max(2, Math.min(24, parseInt(input.window_hours, 10) || 14)) * 3600000);
+      return window.TravelPlanner.planDirectionalDetour({
+        origin: origin, dest: dest, fromMs: fromMs, untilMs: untilMs,
+        speedKmh: input.speed_kmh || 70,
+        maxWaitMin: (input.max_wait_min != null) ? +input.max_wait_min : undefined,
+        snapPlaces: input.snap_places !== false
+      }).then(function (r) {
+        if (r && r.error) return r;
+        var clock = function (ms) { var d = new Date(ms); return _2(d.getHours()) + ':' + _2(d.getMinutes()); };
+        function _2(n) { return (n < 10 ? '0' : '') + n; }
+        // As with the direction scanner: the pairing is written HERE, so the model
+        // cannot attach a leg's direction, door or hour to the wrong leg.
+        (r.options || []).forEach(function (c) {
+          c.line = 'leg 1: ' + c.leg1.dir + ' ' + c.leg1.km + ' km, hour ' + c.leg1.zhi
+                 + ', leave ' + clock(c.leg1.departFrom) + '-' + clock(c.leg1.departBy)
+                 + ', door ' + c.leg1.door
+                 + ' \u2192 ' + (c.stop ? ('stop at ' + c.stop.name) : 'pivot (no place found - use a layby)')
+                 + ' \u2192 leg 2: ' + c.leg2.dir + ' ' + c.leg2.km + ' km, hour ' + c.leg2.zhi
+                 + ', leave ' + clock(c.leg2.departFrom) + '-' + clock(c.leg2.departBy)
+                 + ', door ' + c.leg2.door
+                 + ' \u00b7 ' + (c.waitMin ? ('wait ' + c.waitMin + ' min at the stop') : (c.sameHour ? 'no wait, same Chinese hour' : 'no wait'))
+                 + ' \u00b7 total ' + c.totalKm + ' km (+' + c.extraKm + ')';
+        });
+        r.direct.line = 'direct: ' + r.direct.dir + ', ' + r.direct.km + ' km'
+          + (r.direct.hours.length
+              ? ' \u2014 usable hours: ' + r.direct.hours.map(function (h) {
+                  return h.zhi + ' ' + clock(h.from) + '-' + clock(h.to) + ' (' + h.door + ')'; }).join('; ')
+              : ' \u2014 NO usable hour in this window');
+        r.scanner = 'directional_detour';
+        r.origin = origin.name; r.destination = dest.name;
+        r.pairing_rule = 'EVERY option carries a finished sentence in `line`, and so does `direct`. Reproduce those '
+          + 'lines and do NOT rebuild them from the separate fields: never pair a leg with a direction, an hour, a '
+          + 'door or a stop yourself. If `direct` already has usable hours, SAY THAT FIRST - a detour is only worth '
+          + 'proposing when the direct octant has none, or when its door is much worse.';
+        r.method_note = 'Each leg is judged on the STRAIGHT-LINE bearing from where it starts to where it ends '
+          + '(leg 2 from the pivot to the FINAL destination, whatever road is driven), it counts when that bearing '
+          + 'falls inside the 45\u00b0 octant, and all bearings are MAGNETIC. Both legs may run inside one Chinese '
+          + 'hour, or leg 1 late in one and leg 2 early in the next; only a real gap means waiting at the pivot.';
+        return r;
+      });
+    }).catch(function (e) { return { error: 'Detour planning failed: ' + ((e && e.message) || e) }; });
+  }
+
   function toolPlanMobileTour(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.proposeLuckyTrips !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
