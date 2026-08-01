@@ -5056,6 +5056,32 @@
       return (b.purposes.length - a.purposes.length) || (b.score - a.score)
           || (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));
     });
+
+    // Session 28 (Edu) - THE PAIRING IS BUILT HERE, IN CODE, NEVER BY THE MODEL.
+    // Measured failure: asked for the Injury door on 1 Aug 2026 the model returned two
+    // rows that were each internally plausible but had their DIRECTION and STEM PAIR
+    // exchanged (hour Yin was given SE / Bing-Wu, which belong to hour Hai, and hour Hai
+    // was given NW / Wu-Bing, which belong to hour Yin). The scanner was right both
+    // times: every field existed, they were simply attached to the wrong hour. Sending
+    // loose fields invites exactly that. Each row now carries ONE finished sentence with
+    // hour, direction, door, stems and score already bound together, and the model is
+    // told to reproduce it and nothing else - the same rule that already governs
+    // itinerary prose.
+    rows.forEach(function (m) {
+      var ds = [];
+      (m.purposes || []).forEach(function (p) {
+        var lbl = (p.door && _ICS_DOOR[p.door]) || p.door || '';
+        if (lbl && ds.indexOf(lbl) < 0) ds.push(lbl);
+      });
+      m.line = m.date
+        + ' \u00b7 ' + (m.hour || '?')
+        + ' \u00b7 ' + ((_ICS_PIN[m.branch] || '') + ' ' + m.branch).trim()
+        + ' \u00b7 direction ' + (m.dir || '?')
+        + (ds.length ? ' \u00b7 door ' + ds.join(' / ') : '')
+        + ((m.hits && m.hits.length) ? ' \u00b7 ' + m.hits.join(' ') : '')
+        + ' \u00b7 score ' + m.score;
+    });
+
     return {
       scanner: 'purpose_direction',
       chart: 'rotating (\u8f49\u76e4)',
@@ -5063,6 +5089,11 @@
       start: start, days: days, count: rows.length,
       results: (input && input.full ? rows : rows.slice(0, 20)),
       scan_notes: notes,
+      pairing_rule: 'EACH ROW CARRIES A FINISHED SENTENCE IN `line`. Reproduce `line` AS IT IS, one row per line, and do '
+        + 'NOT rebuild it from the separate fields. NEVER pair an hour with a direction, a door or a stem pair yourself, '
+        + 'and never carry a value from one row over to another: direction, door and stems belong to the hour printed in '
+        + 'the SAME `line` and to no other. You may translate the fixed words (direction, door, score) and add commentary '
+        + 'around the list, but the values inside a line must stay bound together exactly as given.',
       note: 'Every hour here already passed the canonical QMDJ gate (\u00a71 exclusions + San Qi/Wu + a favourable door, travel ' +
         'mode) for that TRAVEL direction, on the ROTATING chart \u2014 this is about heading that way, not a fixed house palace. ' +
         '`purposes` lists which purposes that hour/direction serves and through which door. When the user asks for a single ' +
