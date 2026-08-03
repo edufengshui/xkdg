@@ -1003,20 +1003,47 @@
   function directionGate(cell, opts){
     opts = opts || {};
     if(!cell) return { eligible:false, reasons:['no cell'] };
-    if(!_qmHasSanQiWu(cell)) return { eligible:false, reasons:['no San Qi/Wu \u4e59\u4e19\u4e01/\u620a'] };
+    // Session 28 (Edu), AUTHORITATIVE: "il San Qi per le direzioni conta solo se e' nel
+    // Tien Pan" - and it holds ALWAYS, not only when travelling. A direction is judged
+    // on the heaven plate: the Tien Pan is Yang, the Di Pan is Yin, and a San Qi lying
+    // in the Di Pan does not count towards a direction at all. The old code tested
+    // `ti || di` throughout, which is why 3 Aug 2026 hour Wei reported a favourable
+    // North on a palace holding Xin over Ding - the Ding sat in the Di Pan.
+    // Wu 戊 is NOT San Qi and is left as it was, accepted from either plate: Edu's rule
+    // named the San Qi. It never redeems a door on its own in any case.
+    var sanQiTien = SAN_QI.indexOf(cell.ti) !== -1;
+    var wuEither = (cell.ti === 'Wu') || (cell.di === 'Wu');
     var fav = _qmFavDoor(cell);
-    var injuryTravel = !!opts.travel && cell.doorCode === 'Shang';   // San Qi already required above
+    // Session 28 (Edu) - THE COMMANDER 值符 STANDS ON ITS OWN. Unlike the San Qi it
+    // counts from EITHER plate, and together with a favourable door it qualifies the
+    // palace even with no San Qi and no Wu present. The exception: if Geng 庚 or Xin 辛
+    // sit in that palace WITHOUT being the Commander stem themselves - that is, without
+    // hiding the Commander - the Commander no longer carries the palace.
+    // This was missing entirely: the Commander appeared only in the §1 exclusions, so a
+    // Commander palace with a clean door but no San Qi was being turned away.
+    var _cmd = _qmIsCommander(cell);
+    var _gengXinHere = (cell.ti === 'Geng' || cell.di === 'Geng' ||
+                        cell.ti === 'Xin'  || cell.di === 'Xin');
+    var _gengXinIsCmd = _cmd && (cell.cmdStem === 'Geng' || cell.cmdStem === 'Xin');
+    var commanderOK = _cmd && fav && (!_gengXinHere || _gengXinIsCmd);
+    if(!sanQiTien && !wuEither && !commanderOK)
+      return { eligible:false, reasons:['no San Qi in the Tien Pan, no Wu, no Commander \u503c\u7b26'] };
+    // Wu never redeems a non-favourable door: it is acceptable only alongside a
+    // door that is already favourable.
+    var injuryTravel = !!opts.travel && cell.doorCode === 'Shang' && sanQiTien;
     // FS Purpose: a purpose may redeem its NON-favourable primary door, but a
     // non-favourable door (e.g. Legal → JingF 驚) is redeemed by San Qi 三奇 (乙丙丁)
     // ONLY — not by Wu 戊. (Wu is acceptable only together with a FAVOURABLE door.)
     var purposeRedeem = false;
     if(opts.purpose && opts.purpose.allowNonFav && opts.purpose.doors &&
        opts.purpose.doors.indexOf(cell.doorCode) !== -1){
-      purposeRedeem = (SAN_QI.indexOf(cell.ti) !== -1 || SAN_QI.indexOf(cell.di) !== -1);
+      purposeRedeem = sanQiTien;      // same plate rule, moving or standing still
     }
     if(!fav && !injuryTravel && !purposeRedeem) return { eligible:false, reasons:['no favourable door'] };
     var rs = [];
-    if(injuryTravel)              rs.push('Injury \u50b7 redeemed by San Qi (travel)');
+    if(sanQiTien)                 rs.push('San Qi \u4e09\u5947 in the Tien Pan');
+    if(commanderOK && !sanQiTien && !wuEither) rs.push('Commander \u503c\u7b26 + favourable door');
+    if(injuryTravel)              rs.push('Injury \u50b7 redeemed by San Qi in the Tien Pan (travel)');
     if(purposeRedeem && !fav)     rs.push((DOOR_TAG_LABELS[cell.doorCode]||cell.doorCode) + ' redeemed by San Qi (' + (opts.purpose.label||'purpose') + ')');
     return { eligible:true, reasons: rs };
   }

@@ -1705,14 +1705,22 @@
 
     // ── CANONICAL rules (single source: QMDJWaterScanner). No local rule logic. ──
     // Display flags for the returned object / UI — NOT the gate authority.
-    var hasSanQi = (TP_SAN_QI.indexOf(ti) !== -1) || (TP_SAN_QI.indexOf(di) !== -1)
-                 || (ti === 'Wu') || (di === 'Wu');            // Wu 戊 ranks with San Qi
+    // Session 28 (Edu): for a DIRECTION the San Qi counts ONLY from the Tien Pan (Yang);
+    // one in the Di Pan does not count at all. Wu 戊 is not San Qi and is still read
+    // from either plate. The gate authority is QMDJWaterScanner.directionGate - this
+    // flag feeds the display and the fallback, and must not contradict it.
+    var sanQiTien = (TP_SAN_QI.indexOf(ti) !== -1);
+    var hasSanQi = sanQiTien || (ti === 'Wu') || (di === 'Wu');
     var favDoor = TP_FAV_DOORS.indexOf(door) !== -1;
     var clash = (TP_STEM_CLASHES[ti] === di);
     var isWarrior = (deity === 'Warrior');
     var isTiger = (deity === 'Tiger');
-    // Injury door 傷 redeemed by San Qi/Wu (travel only) — handled inside directionGate.
-    var injuryRescue = (door === 'Shang') && hasSanQi;
+    // Injury door 傷 redeemed by San Qi (travel only) — handled inside directionGate.
+    // Session 28 (Edu): the redemption must come from the TIEN PAN. Travel is movement,
+    // movement is Yang, the Yang plate is the Tien Pan; a San Qi in the Di Pan (Yin,
+    // staying put) redeems nothing here. This local copy is only the fallback used when
+    // the canonical scanner is absent, but it must not contradict it.
+    var injuryRescue = (door === 'Shang') && sanQiTien;
 
     // §1 exclusions + §2 mandatory gate — DELEGATED to the canonical predicate so
     // travel/directions, Water/FS activation and the special scan share one rule set.

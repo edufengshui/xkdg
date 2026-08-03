@@ -4226,7 +4226,17 @@
       duration_hours: durH,
       window_times: 'LOCAL CLOCK time, already adjusted for daylight saving (DST ' + (dstOn ? 'on' : 'off') + '). Present these times as-is; do NOT add or subtract an hour.',
       favorable_windows_count: windows.length,
-      favorable_windows: windows.slice(0, 12)
+      favorable_windows: windows.slice(0, 12),
+      // Session 28 (Edu): "non me li presenta automaticamente, deve farlo". The model
+      // used to mention that other windows existed and then ASK whether to show them.
+      // The alternatives are written out here so there is nothing left to ask about.
+      favorable_windows_lines: windows.slice(0, 6).map(function (w, i) {
+        return (i + 1) + '. ' + w.from + '-' + w.to + ' - hour ' + (w.double_hour || w.double_hour_han)
+             + ' - ' + w.directions.map(function (d) { return d.dir + ' (' + d.door + ')'; }).join(', ');
+      }),
+      windows_rule: 'ALWAYS print favorable_windows_lines in full, exactly as given, straight after the departure '
+        + 'you recommend. NEVER merely say that other windows exist and NEVER ask whether to show them - listing '
+        + 'them IS the answer. Keep it to those lines: no commentary, no scores, no explanation of the method.'
     };
     // Session 28 (Edu): "quando la tratta diretta non e' fortunata le alternative
     // devono arrivare da sole". Leaving that to the model meant it offered a detour
