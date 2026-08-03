@@ -3395,17 +3395,8 @@
         function _2(n) { return (n < 10 ? '0' : '') + n; }
         // As with the direction scanner: the pairing is written HERE, so the model
         // cannot attach a leg's direction, door or hour to the wrong leg.
-        (r.options || []).forEach(function (c) {
-          c.line = 'leg 1: ' + c.leg1.dir + ' ' + c.leg1.km + ' km, hour ' + c.leg1.zhi
-                 + ', leave ' + clock(c.leg1.departFrom) + '-' + clock(c.leg1.departBy)
-                 + ', door ' + c.leg1.door
-                 + ' \u2192 ' + (c.stop ? ('stop at ' + c.stop.name) : 'pivot (no place found - use a layby)')
-                 + ' \u2192 leg 2: ' + c.leg2.dir + ' ' + c.leg2.km + ' km, hour ' + c.leg2.zhi
-                 + ', leave ' + clock(c.leg2.departFrom) + '-' + clock(c.leg2.departBy)
-                 + ', door ' + c.leg2.door
-                 + ' \u00b7 ' + (c.waitMin ? ('wait ' + c.waitMin + ' min at the stop') : (c.sameHour ? 'no wait, same Chinese hour' : 'no wait'))
-                 + ' \u00b7 total ' + c.totalKm + ' km (+' + c.extraKm + ')';
-        });
+        (r.options || []).forEach(function (c) { c.steps = _detourSteps(c, clock); });
+        r.options = (r.options || []).slice(0, 3);
         r.direct.line = 'direct: ' + r.direct.dir + ', ' + r.direct.km + ' km'
           + (r.direct.hours.length
               ? ' \u2014 usable hours: ' + r.direct.hours.map(function (h) {
@@ -3413,14 +3404,11 @@
               : ' \u2014 NO usable hour in this window');
         r.scanner = 'directional_detour';
         r.origin = origin.name; r.destination = dest.name;
-        r.pairing_rule = 'EVERY option carries a finished sentence in `line`, and so does `direct`. Reproduce those '
-          + 'lines and do NOT rebuild them from the separate fields: never pair a leg with a direction, an hour, a '
-          + 'door or a stop yourself. If `direct` already has usable hours, SAY THAT FIRST - a detour is only worth '
-          + 'proposing when the direct octant has none, or when its door is much worse.';
-        r.method_note = 'Each leg is judged on the STRAIGHT-LINE bearing from where it starts to where it ends '
-          + '(leg 2 from the pivot to the FINAL destination, whatever road is driven), it counts when that bearing '
-          + 'falls inside the 45\u00b0 octant, and all bearings are MAGNETIC. Both legs may run inside one Chinese '
-          + 'hour, or leg 1 late in one and leg 2 early in the next; only a real gap means waiting at the pivot.';
+        r.pairing_rule = 'If `direct` has usable hours, SAY THAT FIRST in one line and stop - a detour is only worth '
+          + 'proposing when the direct octant has none. Otherwise answer with the five numbered `steps` of each '
+          + 'option, reproduced EXACTLY (translated, values untouched), after one opening line saying there is no '
+          + 'favourable direct direction and that you are using a detour. BE BRIEF: no commentary, no scores, no '
+          + 'bearings, no per-leg kilometres, no method explanation, no closing paragraph.';
         return r;
       });
     }).catch(function (e) { return { error: 'Detour planning failed: ' + ((e && e.message) || e) }; });
@@ -4048,6 +4036,37 @@
     });
   }
 
+  // Session 28 (Edu): "poche informazioni ma essenziali e chiare". The detour is
+  // returned as a fixed NUMBERED block built here, not as loose fields: the model
+  // prints the five steps and adds nothing. This also keeps every direction, door
+  // and hour welded to its own leg.
+  function _detourSteps(c, ck) {
+    function qual(leg) {
+      var bits = [leg.door];
+      if (leg.sanQi) bits.push('San Qi');
+      if (leg.configs && leg.configs.length) bits = bits.concat(leg.configs.slice(0, 2));
+      return bits.filter(Boolean).join(', ');
+    }
+    return [
+      '1. Leave at ' + ck(c.leg1.departFrom) + (c.leg1.departBy ? (' (by ' + ck(c.leg1.departBy) + ')') : ''),
+      '2. Head ' + c.leg1.dir + ' for ' + c.leg1.km + ' km - ' + qual(c.leg1) + ' (hour ' + c.leg1.zhi + ')',
+      '3. Stop at ' + ck(c.leg1.arriveMs) + (c.stop ? (' - ' + c.stop.name) : ' - no place found nearby, use a layby'),
+      '4. Set off again at ' + ck(c.leg2.departFrom) + ' heading ' + c.leg2.dir
+        + ' - ' + qual(c.leg2) + ' (hour ' + c.leg2.zhi + ')',
+      '5. Arrive at ' + ck(c.leg2.arriveMs) + ' - ' + c.totalKm + ' km, about +' + c.extraTotalMin + ' min versus going straight'
+    ];
+  }
+  var _DETOUR_FORMAT =
+      'THE DIRECT DIRECTION HAS NO FAVOURABLE WINDOW and two-leg alternatives were computed automatically. '
+    + 'ANSWER IN THIS SHAPE AND NOTHING ELSE:\n'
+    + 'one opening line saying there is no favourable direct direction and that you are using a detour; '
+    + 'then, for each alternative, its five numbered steps REPRODUCED EXACTLY as they appear in `steps` '
+    + '(translated into the user\'s language, values untouched).\n'
+    + 'BE BRIEF. Do not add commentary, scores, bearings, kilometres per leg, Chinese characters, explanations '
+    + 'of the method, or a closing paragraph. Do not rebuild a step from the separate fields and never pair a '
+    + 'leg with a direction, hour or door yourself. If there is more than one alternative, number them and keep '
+    + 'each to its five lines.';
+
   function toolPlanTravel(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.plan !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
@@ -4095,7 +4114,14 @@
     if (isNaN(dep.getTime())) return { error: 'Invalid departure date/time.' };
     // When the time is auto-picked, scan the whole day for the favourable-windows summary.
     var durH = parseInt(input.duration_h, 10) || (autoDepart ? 16 : 12);
-    if (autoDepart) dep = new Date(dateStr + 'T05:00:00');
+    // Session 28 (Edu): at 10:06 the planner proposed leaving at 06:19 - four hours
+    // earlier. The auto-departure scan starts at 05:00 of the chosen day, and for
+    // TODAY that start was never clamped to the present, so an hour already gone
+    // could win. One cannot depart in the past.
+    if (autoDepart) {
+      dep = new Date(dateStr + 'T05:00:00');
+      if (dateStr === todayIso() && dep.getTime() < Date.now()) dep = new Date();
+    }
     var utc = parseFloat((document.getElementById('utc-offset') || {}).value);
     if (isNaN(utc)) utc = 1;
     var dstOn = dstActiveOn(dep);   // auto-detect daylight saving for the departure date (device timezone)
@@ -4224,23 +4250,10 @@
         function _2(n) { return (n < 10 ? '0' : '') + n; }
         function ck(ms) { var d = new Date(ms); return _2(d.getHours()) + ':' + _2(d.getMinutes()); }
         if (!r || r.error) { out.detour_note = 'No favourable window toward the destination, and the alternatives could not be computed.'; return out; }
-        (r.options || []).forEach(function (c) {
-          c.line = 'leg 1: ' + c.leg1.dir + ' ' + c.leg1.km + ' km, hour ' + c.leg1.zhi
-                 + ', leave ' + ck(c.leg1.departFrom) + '-' + ck(c.leg1.departBy) + ', door ' + c.leg1.door
-                 + ' \u2192 ' + (c.stop ? ('stop at ' + c.stop.name) : 'pivot (no place found - use a layby)')
-                 + ' \u2192 leg 2: ' + c.leg2.dir + ' ' + c.leg2.km + ' km, hour ' + c.leg2.zhi
-                 + ', leave ' + ck(c.leg2.departFrom) + '-' + ck(c.leg2.departBy) + ', door ' + c.leg2.door
-                 + ' \u00b7 ' + (c.waitMin ? ('wait ' + c.waitMin + ' min') : (c.sameHour ? 'no wait, same Chinese hour' : 'no wait'))
-                 + ' \u00b7 +' + c.extraKm + ' km, about +' + c.extraTotalMin + ' min on the day';
-        });
-        out.detour_alternatives = (r.options || []).slice(0, 4);
+        (r.options || []).forEach(function (c) { c.steps = _detourSteps(c, ck); });
+        out.detour_alternatives = (r.options || []).slice(0, 3);
         out.detour_note = (r.options && r.options.length)
-          ? 'THE DIRECT DIRECTION HAS NO FAVOURABLE WINDOW, so two-leg alternatives were computed automatically. '
-            + 'YOU MUST OFFER THEM: say plainly that going straight there is not favourable in this window, then list '
-            + 'the alternatives by reproducing each `line` AS IT IS, including the extra time. Never rebuild a line '
-            + 'from the separate fields and never pair a leg with a direction, hour, door or stop yourself. '
-            + 'Each leg is judged on the straight-line magnetic bearing from its start to its end, leg 2 from the '
-            + 'pivot to the FINAL destination.'
+          ? _DETOUR_FORMAT
           : ('The direct direction has no favourable window, and no two-leg alternative works either' + (r.reason ? (': ' + r.reason) : '.')
             + ' Say so plainly and do not invent one.');
         return out;
