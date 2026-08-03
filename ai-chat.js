@@ -4349,7 +4349,12 @@
           });
         }
       } catch (e) {}
-      return {
+      // Session 28 (Edu): the detour hook was added to plan_travel only, but THIS is the
+      // tool that answers "which departure should I take" - and when every itinerary
+      // cashes ZERO favourable hours it was reporting "none of them is favourable" and
+      // stopping there. The alternatives must arrive on their own here too.
+      var _noLuck = !(res.top || []).some(function (c) { return (c.total_cash || 0) > 0; });
+      var _base = {
         search_done: true, days: days, optimize_arrival: optArr,
         score_method: 'total_cash' + (optArr ? ' + arrival favourability' : ''),
         km: res.km, driving_h: res.driving_h, driving_min: res.driving_min, total_evaluated: res.total_evaluated,
@@ -4366,6 +4371,25 @@
           'days by total cashed luck' + (optArr ? ' (and favourable arrival)' : '') + ', they can pick one from ' +
           'the card, and can sort it by date if they prefer. Do NOT paste the list, do NOT invent times.'
       };
+      if (!_noLuck || typeof window.TravelPlanner.planDirectionalDetour !== 'function') return _base;
+      var _f = Date.now(), _sd = startDate || todayIso();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(_sd) && _sd > todayIso()) _f = new Date(_sd + 'T06:00:00').getTime();
+      return window.TravelPlanner.planDirectionalDetour({
+        origin: { lat: origin.lat, lon: origin.lon, name: input.origin_name || 'origin' },
+        dest: { lat: dest.lat, lon: dest.lon, name: input.dest_name || 'destination' },
+        fromMs: _f, untilMs: _f + 14 * 3600000
+      }).then(function (r) {
+        function _p2(n) { return (n < 10 ? '0' : '') + n; }
+        function _ck(ms) { var d = new Date(ms); return _p2(d.getHours()) + ':' + _p2(d.getMinutes()); }
+        if (!r || r.error) return _base;
+        (r.options || []).forEach(function (c) { c.steps = _detourSteps(c, _ck); });
+        _base.detour_alternatives = (r.options || []).slice(0, 3);
+        _base.detour_note = (r.options && r.options.length)
+          ? _DETOUR_FORMAT + ' The ranked departure card stays on screen; mention it in one line only.'
+          : ('No itinerary catches a favourable hour and no two-leg alternative works either'
+             + (r.reason ? (': ' + r.reason) : '.') + ' Say so plainly and do not invent one.');
+        return _base;
+      }).catch(function () { return _base; });
     }).catch(function (err) { return { error: 'Search failed: ' + ((err && err.message) || err) }; });
   }
   function toolPlanArriveBy(input) {
@@ -4418,6 +4442,31 @@
           favorable_dirs_cashed: s.dirsCashed, favorable_hours: s.favHours, stops: s.nCashStops,
           charge_needed: s.chargeNeeded };
       });
+      // Session 28 (Edu): third and last entry point for an A->B question. When not one
+      // solution cashes a favourable direction, the two-leg alternatives are computed
+      // here as well, so the answer never stops at "nothing is favourable".
+      function _finishAB(o) {
+        var any = sols.some(function (x) { return (x.favorable_dirs_cashed || 0) > 0; });
+        if (any || typeof TP.planDirectionalDetour !== 'function') return o;
+        var _f = Date.now();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr) && dateStr > todayIso()) _f = new Date(dateStr + 'T06:00:00').getTime();
+        return TP.planDirectionalDetour({
+          origin: { lat: origin.lat, lon: origin.lon, name: input.origin_name || 'origin' },
+          dest: { lat: dest.lat, lon: dest.lon, name: input.dest_name || 'destination' },
+          fromMs: _f, untilMs: _f + 14 * 3600000
+        }).then(function (r) {
+          function _p2(n) { return (n < 10 ? '0' : '') + n; }
+          function _ck(ms) { var d = new Date(ms); return _p2(d.getHours()) + ':' + _p2(d.getMinutes()); }
+          if (!r || r.error) return o;
+          (r.options || []).forEach(function (c) { c.steps = _detourSteps(c, _ck); });
+          o.detour_alternatives = (r.options || []).slice(0, 3);
+          o.detour_note = (r.options && r.options.length)
+            ? _DETOUR_FORMAT
+            : ('No solution cashes a favourable direction and no two-leg alternative works either'
+               + (r.reason ? (': ' + r.reason) : '.') + ' Say so plainly and do not invent one.');
+          return o;
+        }).catch(function () { return o; });
+      }
       var baseOut = {
         target_arrival: dateStr + ' ' + timeStr + ' (\u00b1' + tolMin + ' min)',
         distance_km: out.km, drive_time_h: out.driveH, used_real_route: out.usedRealRoute,
@@ -4450,11 +4499,11 @@
           'departure clock time and arrival, then briefly mention there are also longer options through more favourable ' +
           'directions if they want. Do NOT paste the itinerary; do NOT call open_itinerary_in_maps on your own ' +
           '(Maps opens only when the user taps the card button or asks for it).';
-        return baseOut;
+        return _finishAB(baseOut);
       }
       baseOut.planner_opened = false;
       baseOut.note = 'Present the solutions shortest-first. To open one, the user can pick it and you can open the planner.';
-      return baseOut;
+      return _finishAB(baseOut);
     }
 
     // 1) geocode the place names (reliable coords) → 2) fetch the REAL road
