@@ -8884,13 +8884,23 @@
     cands.forEach(function (c) {
       var k = c.leg1.dir + '>' + c.leg2.dir + '|' + c.leg2.zhi;
       if (seen[k]) return; seen[k] = 1;
-      if (keep.length < 6) keep.push(c);
+      if (keep.length < 3) keep.push(c);      // only three are ever shown
     });
     out.options = keep;
 
     // Rule 5: give each pivot a real place to stop, when one is near.
+    //
+    // Session 28 (Edu): this is where the tool used to hang. The geometry above costs
+    // about a tenth of a second, but each pivot then asked Overpass for nearby places,
+    // one request per pivot with a 13 s timeout of its own - enough to blow the tool's
+    // whole budget and leave the chat stuck on "Running...". The lookups now run under
+    // a single deadline: whatever has come back when it expires is used, the rest fall
+    // back to the layby wording. An answer slightly poorer is always better than none.
     if (opts.snapPlaces === false) return Promise.resolve(out);
-    return Promise.all(keep.map(function (c) {
+    var _deadline = new Promise(function (res) {
+      setTimeout(function () { res('__timeout__'); }, opts.snapTimeoutMs || 5000);
+    });
+    var _snaps = Promise.all(keep.map(function (c) {
       return tpFindPOI(c.pivot.lat, c.pivot.lon, TP_DETOUR_PIVOT_RADIUS_KM, 'any')
         .then(function (list) {
           var best = null, bd = 1e9;
@@ -8917,7 +8927,19 @@
           return c;
         })
         .catch(function () { c.stop = null; return c; });
-    })).then(function () { return out; });
+    }));
+    return Promise.race([_snaps, _deadline]).then(function (what) {
+      if (what === '__timeout__') {
+        keep.forEach(function (c) {
+          if (c.stop === undefined) {
+            c.stop = null;
+            c.stopNote = 'The search for a place to stop took too long, so none is named: '
+                       + 'pull into a layby near the pivot, never stop on the road.';
+          }
+        });
+      }
+      return out;
+    });
   }
 
   window.TravelPlanner = {

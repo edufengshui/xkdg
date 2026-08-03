@@ -4255,7 +4255,9 @@
       return window.TravelPlanner.planDirectionalDetour({
         origin: { lat: origin.lat, lon: origin.lon, name: input.origin_name || 'origin' },
         dest: { lat: dest.lat, lon: dest.lon, name: input.dest_name || 'destination' },
-        fromMs: _fromMs, untilMs: _fromMs + durH * 3600000
+        fromMs: _fromMs, untilMs: _fromMs + durH * 3600000,
+        // the host tool has already spent part of its budget: keep the stop lookup short
+        snapTimeoutMs: 4000
       }).then(function (r) {
         function _2(n) { return (n < 10 ? '0' : '') + n; }
         function ck(ms) { var d = new Date(ms); return _2(d.getHours()) + ':' + _2(d.getMinutes()); }
@@ -4377,7 +4379,7 @@
       return window.TravelPlanner.planDirectionalDetour({
         origin: { lat: origin.lat, lon: origin.lon, name: input.origin_name || 'origin' },
         dest: { lat: dest.lat, lon: dest.lon, name: input.dest_name || 'destination' },
-        fromMs: _f, untilMs: _f + 14 * 3600000
+        fromMs: _f, untilMs: _f + 14 * 3600000, snapTimeoutMs: 4000
       }).then(function (r) {
         function _p2(n) { return (n < 10 ? '0' : '') + n; }
         function _ck(ms) { var d = new Date(ms); return _p2(d.getHours()) + ':' + _p2(d.getMinutes()); }
@@ -4453,7 +4455,7 @@
         return TP.planDirectionalDetour({
           origin: { lat: origin.lat, lon: origin.lon, name: input.origin_name || 'origin' },
           dest: { lat: dest.lat, lon: dest.lon, name: input.dest_name || 'destination' },
-          fromMs: _f, untilMs: _f + 14 * 3600000
+          fromMs: _f, untilMs: _f + 14 * 3600000, snapTimeoutMs: 4000
         }).then(function (r) {
           function _p2(n) { return (n < 10 ? '0' : '') + n; }
           function _ck(ms) { var d = new Date(ms); return _p2(d.getHours()) + ':' + _p2(d.getMinutes()); }
