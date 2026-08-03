@@ -4202,6 +4202,53 @@
       favorable_windows_count: windows.length,
       favorable_windows: windows.slice(0, 12)
     };
+    // Session 28 (Edu): "quando la tratta diretta non e' fortunata le alternative
+    // devono arrivare da sole". Leaving that to the model meant it offered a detour
+    // sometimes and forgot it other times, because calling a second tool was ITS
+    // choice. It is not a choice any more: when NO favourable window exists toward
+    // the destination, the two-leg alternatives are computed HERE and travel back
+    // with the answer, each with the extra time it costs.
+    function _finish(out) {
+      if (windows.length) return out;                       // the direct run works: nothing to add
+      if (!origin || !window.TravelPlanner || typeof window.TravelPlanner.planDirectionalDetour !== 'function') {
+        out.detour_note = 'No favourable window toward the destination, and the detour planner is not available here.';
+        return out;
+      }
+      var _fromMs = dep.getTime();
+      if (_fromMs < Date.now() && dateStr === todayIso()) _fromMs = Date.now();
+      return window.TravelPlanner.planDirectionalDetour({
+        origin: { lat: origin.lat, lon: origin.lon, name: input.origin_name || 'origin' },
+        dest: { lat: dest.lat, lon: dest.lon, name: input.dest_name || 'destination' },
+        fromMs: _fromMs, untilMs: _fromMs + durH * 3600000
+      }).then(function (r) {
+        function _2(n) { return (n < 10 ? '0' : '') + n; }
+        function ck(ms) { var d = new Date(ms); return _2(d.getHours()) + ':' + _2(d.getMinutes()); }
+        if (!r || r.error) { out.detour_note = 'No favourable window toward the destination, and the alternatives could not be computed.'; return out; }
+        (r.options || []).forEach(function (c) {
+          c.line = 'leg 1: ' + c.leg1.dir + ' ' + c.leg1.km + ' km, hour ' + c.leg1.zhi
+                 + ', leave ' + ck(c.leg1.departFrom) + '-' + ck(c.leg1.departBy) + ', door ' + c.leg1.door
+                 + ' \u2192 ' + (c.stop ? ('stop at ' + c.stop.name) : 'pivot (no place found - use a layby)')
+                 + ' \u2192 leg 2: ' + c.leg2.dir + ' ' + c.leg2.km + ' km, hour ' + c.leg2.zhi
+                 + ', leave ' + ck(c.leg2.departFrom) + '-' + ck(c.leg2.departBy) + ', door ' + c.leg2.door
+                 + ' \u00b7 ' + (c.waitMin ? ('wait ' + c.waitMin + ' min') : (c.sameHour ? 'no wait, same Chinese hour' : 'no wait'))
+                 + ' \u00b7 +' + c.extraKm + ' km, about +' + c.extraTotalMin + ' min on the day';
+        });
+        out.detour_alternatives = (r.options || []).slice(0, 4);
+        out.detour_note = (r.options && r.options.length)
+          ? 'THE DIRECT DIRECTION HAS NO FAVOURABLE WINDOW, so two-leg alternatives were computed automatically. '
+            + 'YOU MUST OFFER THEM: say plainly that going straight there is not favourable in this window, then list '
+            + 'the alternatives by reproducing each `line` AS IT IS, including the extra time. Never rebuild a line '
+            + 'from the separate fields and never pair a leg with a direction, hour, door or stop yourself. '
+            + 'Each leg is judged on the straight-line magnetic bearing from its start to its end, leg 2 from the '
+            + 'pivot to the FINAL destination.'
+          : ('The direct direction has no favourable window, and no two-leg alternative works either' + (r.reason ? (': ' + r.reason) : '.')
+            + ' Say so plainly and do not invent one.');
+        return out;
+      }).catch(function () {
+        out.detour_note = 'No favourable window toward the destination, and the alternatives could not be computed.';
+        return out;
+      });
+    }
     if (openPlanner && origin && window.TravelPlanner && typeof window.TravelPlanner.openPrefilled === 'function') {
       var _openErr = null;
       try {
@@ -4225,7 +4272,7 @@
         baseOut.planner_error = _openErr || 'openPrefilled ran but the tp-overlay panel did not appear.';
         baseOut.note = 'The Travel Planner did NOT open (' + baseOut.planner_error + '). Tell the user plainly that the ' +
           'planner could not be opened and to report this — do NOT claim it is open, do NOT invent an itinerary.';
-        return baseOut;
+        return _finish(baseOut);
       }
       baseOut.planner_opened = true;
       baseOut.note = 'The planner is open and computing the real road route' +
@@ -4239,11 +4286,11 @@
         '"I am calculating", do NOT tell the user to fill anything, and do NOT call open_itinerary_in_maps on your ' +
         'own. Google Maps does not auto-open; the user opens it by tapping the card button or by asking ("open in ' +
         'Maps") — you may mention this in your one line.';
-      return baseOut;
+      return _finish(baseOut);
     }
     baseOut.planner_opened = false;
     baseOut.note = 'Straight-line estimate. For the real road route + Google Maps export, open the Travel Planner.';
-    return baseOut;
+    return _finish(baseOut);
   }
   function toolSearchTravel(input) {
     input = input || {};

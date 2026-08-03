@@ -8843,6 +8843,10 @@
                         door: tpDoorLabel(h2.ok[d2].door), score: h2.ok[d2].score || 0 },
                 waitMin: waitMin, sameHour: sameHour,
                 totalKm: Math.round(totalKm), extraKm: Math.round(totalKm - directKm),
+                // Edu asks for the cost in TIME, not only in km: the extra road plus the
+                // wait at the pivot is what actually lengthens the day.
+                extraDriveMin: Math.round(((totalKm - directKm) / speed) * 60),
+                extraTotalMin: Math.round(((totalKm - directKm) / speed) * 60) + waitMin,
                 score: (h1.ok[d1].score || 0) + (h2.ok[d2].score || 0)
               });
             });
