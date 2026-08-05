@@ -456,9 +456,14 @@ function buildFengShuiView(){
           #fs-canvas-wrap > #fs-cardview-toggle,
           #fs-canvas-wrap > #fs-dlr-toggle { display: none !important; }
         </style>
+        <button id="fs-qimen-dice" onclick="fsLuopanMenuAct('qmdjtool')"
+          title="QMDJ chart for any date"
+          style="position:absolute;bottom:8px;left:8px;z-index:31;background:#fff;color:#4527a0;
+                 border:1px solid #4527a0;border-radius:6px;padding:8px 6px;font-size:15px;
+                 font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;">\ud83c\udfb2</button>
         <button id="fs-luopan-size" onclick="fsToggleLuopanSize()"
           title="Full-size luopan / compact"
-          style="position:absolute;bottom:8px;left:8px;z-index:31;background:#fff;
+          style="position:absolute;bottom:8px;right:8px;z-index:31;background:#fff;
                  color:#4527a0;border:1px solid #4527a0;border-radius:6px;padding:8px 6px;font-size:15px;
                  font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;">\u2922</button>
         <select id="fs-luopan-menu" onchange="fsLuopanMenuAct(this.value)" onfocus="fsLuopanMenuSync()"
@@ -756,6 +761,11 @@ function fsRenderCardView(){
 // One menu instead of four corner buttons. Every entry acts by CLICKING the real
 // button, so the existing handlers, state and styling stay the single source of
 // truth — nothing here duplicates their logic.
+// Session 28 (Edu): ONLY "QMDJ any date" goes back to where it was before session 26 -
+// its own dice button in the BOTTOM-LEFT corner. It is a single action, so it is a plain
+// button rather than a drop-down, and it calls fsLuopanMenuAct like everything else, so
+// the behaviour is unchanged. Everything else, the two annual charts included, stays in
+// the hamburger.
 var FS_LUOPAN_MENU = [
   { v: 'orient',   btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
   { v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
@@ -763,16 +773,15 @@ var FS_LUOPAN_MENU = [
       var on = b && b.textContent.indexOf('Luopan') >= 0;
       return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
   { v: 'qmdj',     btn: null, label: function () {
-      return window.__qmdjAnnualOpen ? '\ud83e\udded Back to Luopan' : '\ud83e\udded QMDJ annual chart'; } },
+      return (window.FlyingStarsQimen && window.FlyingStarsQimen.isAnnualOn && window.FlyingStarsQimen.isAnnualOn())
+        ? '\u2733\ufe0f QMDJ annual chart \u00b7 ON' : '\u2733\ufe0f QMDJ annual chart'; } },
   { v: 'qmdjring', btn: null, label: function () {
-      return window.__qmdjAnnualRingOn ? '\ud83e\udded QMDJ annual ring ON' : '\ud83e\udded QMDJ annual chart \u00b7 ring'; } },
-  // The DLR button belongs to floorplan-daliuren.js and writes its own text ('\ud83c\udc04 DLR' /
-  // '\ud83c\udc04 DLR ON'); that module is untouched, the menu renames it for display only.
+      return (window.QMDJAnnual && window.QMDJAnnual.isRingOn && window.QMDJAnnual.isRingOn())
+        ? '\u2733\ufe0f QMDJ annual chart \u00b7 ring ON' : '\u2733\ufe0f QMDJ annual chart \u00b7 ring'; } },
   { v: 'dlr',      btn: 'fs-dlr-toggle', label: function (b) {
       var on = b && /\bON\b/.test(b.textContent);
       return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } },
   { v: '_sep',     btn: null, label: function () { return '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500'; } },
-  { v: 'qmdjtool', btn: null, label: function () { return '\ud83c\udfb2 QMDJ any date'; } },
   { v: 'dlrtool',  btn: null, label: function () { return '\ud83c\udc04 DLR any date'; } }
 ];
 
@@ -834,18 +843,23 @@ function fsLuopanMenuAct(v){
     if (v === 'qmdjtool'){
       try {
         openQmdjChartPanel();
-        // open it straight in manual mode: that is the point of this entry
+        // Session 28 (Edu): the dice follows the MAIN calendar - its date and its time -
+        // so moving the calendar moves the chart. It never forces the manual mode, and it
+        // opens on Rotating, already drawn.
         setTimeout(function () {
-          var cb = document.getElementById('qmdj-tool-manual');
-          if (cb && !cb.checked) { cb.checked = true; _qmdjManualToggle(); }
+          try {
+            var cb = document.getElementById('qmdj-tool-manual');
+            if (cb && cb.checked) { cb.checked = false; _qmdjManualToggle(); }
+            var rot = document.querySelector('input[name="qmdj-tool-mode"][value="rotating"]');
+            if (rot && !rot.checked) rot.checked = true;
+            _qmdjSyncToMain();
+            if (typeof qmdjChartShow === 'function') qmdjChartShow();
+          } catch (e2) {}
         }, 80);
-      } catch (e) { alert('Chart tool not available.'); }
+      } catch (e) {}
       return;
     }
-    if (v === 'dlrtool'){
-      try { openDlrChartPanel(); } catch (e) { alert('DLR chart tool not available.'); }
-      return;
-    }
+
     if (v === 'qmdjring'){
       if (!window.QMDJAnnual || typeof window.QMDJAnnual.toggleRing !== 'function'){
         alert('qmdj-annual.js is not loaded \u2014 add it to index.html.');
@@ -1029,6 +1043,7 @@ function fsToggleFloorplanView(){
       var smb0 = document.getElementById('fs-sunmoon-toggle'); if (smb0) smb0.style.display = 'none';
       var cvb0 = document.getElementById('fs-cardview-toggle'); if (cvb0) cvb0.style.display = 'none';
       var mn0 = document.getElementById('fs-luopan-menu'); if (mn0) mn0.style.display = 'none';
+      var dc0 = document.getElementById('fs-qimen-dice'); if (dc0) dc0.style.display = 'none';
       var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
       if (btn) btn.style.background = '#1b8a3f';
@@ -1072,6 +1087,7 @@ function _fsRestoreLuopanView(){
     var smb1 = document.getElementById('fs-sunmoon-toggle'); if (smb1) smb1.style.display = 'block';
     var cvb1 = document.getElementById('fs-cardview-toggle'); if (cvb1) cvb1.style.display = 'block';
     var mn1 = document.getElementById('fs-luopan-menu'); if (mn1) { mn1.style.display = 'block'; fsLuopanMenuSync(); }
+    var dc1 = document.getElementById('fs-qimen-dice'); if (dc1) dc1.style.display = 'block';
     var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'none';
     if (canvas) canvas.style.display = 'block';
     _fsFloorplanShown = false;
@@ -3498,8 +3514,26 @@ function _qmdjChartPopulateHours(selectCurrent){
          + p.branchHan + '\u6642 ' + (p.time || '') + ' \u00b7 ' + p.stemHan + p.branchHan + '</option>';
   }).join('');
   if(selectCurrent){
-    var h = new Date().getHours();
-    sel.value = String(Math.floor(((h + 1) % 24) / 2));   // current double-hour (子=0 … 亥=11)
+    // Session 28 (Edu): the current 時辰 must be read in TRUE SOLAR TIME, as everywhere
+    // else in the app. Deriving it from the civil clock, as this did, put the chart in
+    // the neighbouring double-hour for the whole width of the solar offset - about an
+    // hour and a quarter at Tuoro - so "the chart of the moment" was often the wrong one.
+    var _bi = null;
+    try {
+      var _lt = (typeof XKDGSolarTime !== 'undefined' && XKDGSolarTime.currentLonTz) ? XKDGSolarTime.currentLonTz() : null;
+      if (_lt && isFinite(_lt.lonDeg) && typeof XKDGSolarTime.hourPillarFromCivil === 'function') {
+        var _n = new Date();
+        var _p = XKDGSolarTime.hourPillarFromCivil(_n.getFullYear(), _n.getMonth() + 1, _n.getDate(),
+                   _n.getHours(), _n.getMinutes(), 0, _lt.lonDeg, _lt.tzOffsetMin);
+        if (_p && _p.zhi) {
+          for (var _k = 0; _k < sel.options.length; _k++) {
+            if (sel.options[_k].getAttribute('data-zhi') === _p.zhi) { _bi = _k; break; }
+          }
+        }
+      }
+    } catch (e3) { /* fall back to the civil clock below */ }
+    if (_bi == null) { var h = new Date().getHours(); _bi = Math.floor(((h + 1) % 24) / 2); }
+    sel.value = String(_bi);
   } else if(prev){ sel.value = prev; }
 }
 // ── Manual Jú / day / hour for the 🎲 chart tool (session 26, Edu) ─────────
@@ -3577,6 +3611,73 @@ function _qmdjManualPick(){
     return { dun: p[0], ju: parseInt(p[1], 10), hGan: q[0], hZhi: q[1],
              dayStem: day, dayGroup: grp ? grp[2] : '' };
   } catch (e) { return null; }
+}
+
+// Session 28 (Edu). Two jobs, both about "the chart of the moment":
+//  _qmdjSyncToMain  - copies the MAIN calendar's date and time into the chart panel, so
+//                     the dice shows whatever instant the calendar is sitting on. The
+//                     double-hour is resolved in TRUE SOLAR TIME, never off the civil clock.
+//  qmdjChartStep    - the two arrows: one Chinese hour forward or back without going near
+//                     the hour menu, rolling over to the next or previous day at the ends.
+function _qmdjSyncToMain(){
+  try {
+    var dEl = document.getElementById('qmdj-tool-date');
+    var sel = document.getElementById('qmdj-tool-hour');
+    if (!dEl || !sel) return;
+    var mainD = (document.getElementById('date') || {}).value || '';
+    var mainT = (document.getElementById('time') || {}).value || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(mainD)) return;
+    dEl.value = mainD;
+    _qmdjChartPopulateHours(false);
+    var bi = null;
+    try {
+      var lt = (typeof XKDGSolarTime !== 'undefined' && XKDGSolarTime.currentLonTz) ? XKDGSolarTime.currentLonTz() : null;
+      var hm = /^(\d{1,2}):(\d{2})$/.exec(mainT);
+      if (lt && isFinite(lt.lonDeg) && hm && typeof XKDGSolarTime.hourPillarFromCivil === 'function') {
+        var dp = mainD.split('-');
+        var pk = XKDGSolarTime.hourPillarFromCivil(+dp[0], +dp[1], +dp[2], +hm[1], +hm[2], 0, lt.lonDeg, lt.tzOffsetMin);
+        if (pk && pk.zhi) {
+          for (var k = 0; k < sel.options.length; k++) {
+            if (sel.options[k].getAttribute('data-zhi') === pk.zhi) { bi = k; break; }
+          }
+        }
+      }
+      if (bi == null && hm) bi = Math.floor(((+hm[1] + 1) % 24) / 2);
+    } catch (e) {}
+    if (bi != null) sel.value = String(bi);
+  } catch (e) { /* the panel must never break */ }
+}
+
+function qmdjChartStep(delta){
+  try {
+    var dEl = document.getElementById('qmdj-tool-date');
+    var sel = document.getElementById('qmdj-tool-hour');
+    if (!dEl || !sel) return;
+    var man = document.getElementById('qmdj-tool-manual');
+    if (man && man.checked) {                       // in manual mode the hour menu owns the state
+      var mh = document.getElementById('qmdj-man-hour');
+      if (mh && mh.options.length) {
+        mh.selectedIndex = (mh.selectedIndex + delta + mh.options.length) % mh.options.length;
+      }
+      if (typeof qmdjChartShow === 'function') qmdjChartShow();
+      return;
+    }
+    var i = parseInt(sel.value, 10); if (!isFinite(i)) i = 0;
+    var n = sel.options.length || 12;
+    var next = i + delta;
+    if (next < 0 || next >= n) {                    // past either end: roll the day over
+      var dp = String(dEl.value).split('-');
+      var d = new Date(+dp[0], +dp[1] - 1, +dp[2]);
+      d.setDate(d.getDate() + (next < 0 ? -1 : 1));
+      dEl.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+                + '-' + String(d.getDate()).padStart(2, '0');
+      _qmdjChartPopulateHours(false);
+      n = sel.options.length || 12;
+      next = (next < 0) ? (n - 1) : 0;
+    }
+    sel.value = String(next);
+    if (typeof qmdjChartShow === 'function') qmdjChartShow();
+  } catch (e) {}
 }
 
 function qmdjChartShow(){
@@ -3955,8 +4056,8 @@ function openQmdjChartPanel(){
     +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Hour \u6642\u8fb0</label>'
     +       '<select id="qmdj-tool-hour" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></select></div>'
     +     '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:2px;">Chart</label>'
-    +       '<label style="font-size:13px;margin-right:10px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="flying" checked> Flying \u98db\u76e4</label>'
-    +       '<label style="font-size:13px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="rotating"> Rotating \u8f49\u76e4</label></div>'
+    +       '<label style="font-size:13px;margin-right:10px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="flying"> Flying \u98db\u76e4</label>'
+    +       '<label style="font-size:13px;cursor:pointer;"><input type="radio" name="qmdj-tool-mode" value="rotating" checked> Rotating \u8f49\u76e4</label></div>'
     +     '<button onclick="qmdjChartShow()" style="background:#5e35b1;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-weight:bold;cursor:pointer;font-size:13px;">Show chart</button>'
     +   '</div>'
     +   '<div style="border-top:1px dashed #d1c4e9;padding-top:8px;margin-bottom:8px;">'
@@ -3974,6 +4075,17 @@ function openQmdjChartPanel(){
     +   '</div>'
     +   '<div style="font-size:11px;color:#888;font-style:italic;margin-bottom:10px;">Rotating \u8f49\u76e4 = human directional actions &amp; divination. Flying \u98db\u76e4 = Feng Shui stimulators. South is at the top.</div>'
     +   '<div id="qmdj-tool-chart"></div>'
+    // Session 28 (Edu): step one Chinese hour at a time without opening the hour menu.
+    // Placed UNDER the chart so it stays reachable however tall the chart grows.
+    +   '<div style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:10px;">'
+    +     '<button onclick="qmdjChartStep(-1)" title="Previous Chinese hour"'
+    +       ' style="background:#ede7f6;color:#4527a0;border:1px solid #b39ddb;border-radius:6px;'
+    +              'padding:6px 16px;font-size:16px;font-weight:bold;cursor:pointer;line-height:1;">\u25c0</button>'
+    +     '<span style="font-size:11px;color:#888;">1 \u6642\u8fb0</span>'
+    +     '<button onclick="qmdjChartStep(1)" title="Next Chinese hour"'
+    +       ' style="background:#ede7f6;color:#4527a0;border:1px solid #b39ddb;border-radius:6px;'
+    +              'padding:6px 16px;font-size:16px;font-weight:bold;cursor:pointer;line-height:1;">\u25b6</button>'
+    +   '</div>'
     + '</div>';
   document.body.appendChild(ov);
   _qmdjChartPopulateHours(true);
