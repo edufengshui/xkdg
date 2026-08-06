@@ -1355,7 +1355,26 @@ function getGPS() {
             const utcReal = getRealUtcOffset(lat, lon);
             const utcClamped = Math.max(-12, Math.min(14, utcReal));
             document.getElementById('utc-offset').value = utcClamped;
-            calculateBazi();
+            // Session 28 (Edu): getRealUtcOffset is a guess from longitude with a table of
+            // exceptions, and it knows nothing about the DATE - so a historical date, or a
+            // country that has changed zone, comes out wrong. Ask the xkdg-tz Worker for the
+            // offset that really applied at this position on the date on the form, and
+            // recalculate when it answers. If it cannot be reached the guess stays and the
+            // user is told; nothing is silently assumed.
+            if (typeof xkdgResolveTZ === 'function') {
+                xkdgResolveTZ(lat, lon).then(function (j) {
+                    if (!j || !j.ok) {
+                        try {
+                            var sd = document.getElementById('solar-time-display');
+                            if (sd) sd.title = 'Time zone not verified: ' + ((j && j.error) || 'lookup failed')
+                                             + ' \u2014 check the UTC field by hand.';
+                        } catch (e) {}
+                    }
+                    calculateBazi();
+                });
+            } else {
+                calculateBazi();
+            }
         }, (err) => {
             alert('GPS error: ' + err.message);
         }, {
