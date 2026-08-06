@@ -1376,6 +1376,28 @@ function calculateBazi() {
     
     if (!dVal) return;
 
+    // Session 28 (Edu): a BLANK UTC field used to become NaN and then 0, so the clock
+    // time was read as if it were Greenwich. On a Singapore birth that is seven and a
+    // half hours out and moves the hour pillar. Nothing is guessed any more: the
+    // calculation stops and says what is missing.
+    if (!isFinite(utc)) {
+      try {
+        var _u = document.getElementById('utc-offset');
+        if (_u) { _u.style.background = '#ffebee'; _u.style.border = '2px solid #c62828'; _u.focus(); }
+        var _sd = document.getElementById('solar-time-display');
+        if (_sd) { _sd.textContent = 'UTC missing'; _sd.style.color = '#c62828'; }
+        alert('Il fuso orario (UTC) \u00e8 vuoto.\n\nSenza di esso l\u2019ora inserita non identifica un istante '
+            + 'e la carta sarebbe sbagliata. Scegli la citt\u00e0 dall\u2019elenco per compilarlo, oppure inseriscilo a mano.');
+      } catch (e) {}
+      return;
+    }
+    try {
+      var _u2 = document.getElementById('utc-offset');
+      if (_u2) { _u2.style.background = ''; _u2.style.border = ''; }
+      var _sd2 = document.getElementById('solar-time-display');
+      if (_sd2) _sd2.style.color = '';
+    } catch (e) {}
+
     // 1. TRUE SOLAR TIME — full TST (longitude + Equation of Time); day rolls at TST midnight.
     const _bzD = dVal.split('-').map(Number);
     const _bzT = (tVal || '00:00').split(':').map(Number);

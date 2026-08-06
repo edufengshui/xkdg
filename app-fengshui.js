@@ -6287,6 +6287,67 @@ function checkHalfHourTimezone(lat, lon){
 
 // Wrap the original getGPS to inject the half-hour-timezone check
 const _getGPSOrig = getGPS;
+// ── TIME ZONE FROM THE xkdg-tz WORKER (session 28, Edu) ───────────────────────
+// The city picker already resolves the offset for cities in CITY_LIST, using the
+// browser's own IANA rules. This covers what it cannot: a position from GPS, or
+// any place that is not on that list. Same principle either way - the offset is
+// resolved FOR THE DATE ON THE FORM, because it changes over the years (Singapore
+// was +7:30 until 1982) and with the season.
+// It never guesses: if the Worker cannot answer, the fields are left alone and the
+// user is told, so the Bazi guard can stop the calculation rather than assume zero.
+var XKDG_TZ_URL = 'https://xkdg-tz.decumano16.workers.dev';
+
+function xkdgResolveTZ(lat, lon, opts){
+  opts = opts || {};
+  return new Promise(function (resolve) {
+    try {
+      var dEl = document.getElementById('date'), tEl = document.getElementById('time');
+      var dv = (dEl && dEl.value) || '', tv = (tEl && tEl.value) || '12:00';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dv)) { resolve({ ok:false, error:'no date on the form' }); return; }
+      if (!/^\d{1,2}:\d{2}$/.test(tv)) tv = '12:00';
+      var tok = '';
+      try { tok = (window._shellyToken || (JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || '{}').token) || ''); } catch (e) {}
+      var url = XKDG_TZ_URL + '/?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon)
+              + '&local=' + encodeURIComponent(dv + 'T' + tv)
+              + (tok ? ('&token=' + encodeURIComponent(tok)) : '');
+      var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+      var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, 6000);
+      fetch(url, ctl ? { signal: ctl.signal } : undefined)
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          clearTimeout(timer);
+          if (!j || !j.ok) { resolve({ ok:false, error:(j && j.error) || 'time zone lookup failed' }); return; }
+          if (opts.apply !== false) xkdgApplyTZ(j);
+          resolve(j);
+        })
+        .catch(function(e){
+          clearTimeout(timer);
+          resolve({ ok:false, error:'time zone lookup unreachable' });
+        });
+    } catch (e) { resolve({ ok:false, error:String((e && e.message) || e) }); }
+  });
+}
+
+// Writes the answer into the UTC field and the DST toggle. The UTC field carries the
+// STANDARD offset and the toggle carries the summer hour, matching how the city picker
+// has always filled them, so nothing downstream has to change.
+function xkdgApplyTZ(j){
+  try {
+    var std = (j.rawOffsetHours != null) ? j.rawOffsetHours : (j.utcOffsetHours - (j.dstOffsetHours || 0));
+    var u = document.getElementById('utc-offset');
+    if (u) {
+      u.value = std;
+      u.style.background = ''; u.style.border = '';
+      u.dispatchEvent(new Event('input',  { bubbles: true }));
+      u.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (typeof _dstOn !== 'undefined' && typeof toggleDST === 'function') {
+      if (j.dstOn && !_dstOn) toggleDST();
+      else if (!j.dstOn && _dstOn) toggleDST();
+    }
+  } catch (e) {}
+}
+
 getGPS = function(){
   if (!navigator.geolocation){
     alert('Geolocation not supported by this browser.');
@@ -6301,7 +6362,20 @@ getGPS = function(){
     const utcClamped = Math.max(-12, Math.min(14, utcReal));
     document.getElementById('utc-offset').value = utcClamped;
     checkHalfHourTimezone(lat, lon);
-    if (typeof calculateBazi === 'function') calculateBazi();
+    // Session 28 (Edu): the rough guess above (longitude / 15, with a table of
+    // exceptions) is only a stop-gap. Ask the Worker for the offset that really applied
+    // at this position ON THE DATE OF THE FORM, and recalculate once it answers. If it
+    // cannot be reached the guess stays and the user is told, so nothing is silently wrong.
+    xkdgResolveTZ(lat, lon).then(function (j) {
+      if (!j || !j.ok) {
+        try {
+          var sd = document.getElementById('solar-time-display');
+          if (sd) sd.title = 'Time zone not verified: ' + ((j && j.error) || 'lookup failed')
+                           + ' — check the UTC field by hand.';
+        } catch (e) {}
+      }
+      if (typeof calculateBazi === 'function') calculateBazi();
+    });
   }, (err) => {
     alert('GPS error: ' + err.message);
   }, {
@@ -7112,15 +7186,43 @@ if (typeof buildCalView === 'function') {
             var utcInput = document.getElementById('utc-offset');
             var dEl = document.getElementById('date'), tEl = document.getElementById('time');
             var p2 = function(n){ return (n < 10 ? '0' : '') + n; };
-            var now = new Date();
+            // Session 28 (Edu) - THE OFFSET BELONGS TO THE DATE ON THE FORM, NOT TO TODAY.
+            // This read new Date(), so a birth in Singapore in 1974 was given today's +8
+            // instead of the +7:30 that was actually in force until 1982, and the DST
+            // toggle was set from today's season rather than the birth's. Seven and a
+            // half hours of error, silently. The instant is now taken from the date and
+            // time fields, falling back to today only when the form is still empty.
+            var now = (function () {
+              try {
+                var dv = dEl && dEl.value, tv = (tEl && tEl.value) || '12:00';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dv)) {
+                  var dp = dv.split('-'), hm = tv.split(':');
+                  return new Date(Date.UTC(+dp[0], +dp[1] - 1, +dp[2], +hm[0] || 12, +hm[1] || 0));
+                }
+              } catch (e) {}
+              return new Date();
+            })();
             var doneViaTz = false;
+
+            // Session 28 (Edu): a city on the list with no IANA zone falls through to a
+            // rough guess below. Ask the Worker instead - it resolves the offset for this
+            // position on the FORM'S date, historical rules included - and leave the guess
+            // as the fallback if it cannot answer.
+            if (!picked.tz && picked.lat != null && picked.lng != null) {
+                try {
+                    xkdgResolveTZ(picked.lat, picked.lng).then(function (j) {
+                        if (j && j.ok && typeof calculateBazi === 'function') calculateBazi();
+                    });
+                } catch (e) {}
+            }
 
             // Preferred: use the city's IANA timezone (browser's built-in DST rules).
             if (picked.tz) {
                 try {
+                    var _yr = now.getUTCFullYear();
                     var cur = _tzOffH(picked.tz, now);
-                    var jan = _tzOffH(picked.tz, new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 12)));
-                    var jul = _tzOffH(picked.tz, new Date(Date.UTC(now.getUTCFullYear(), 6, 1, 12)));
+                    var jan = _tzOffH(picked.tz, new Date(Date.UTC(_yr, 0, 1, 12)));
+                    var jul = _tzOffH(picked.tz, new Date(Date.UTC(_yr, 6, 1, 12)));
                     if (cur != null && jan != null && jul != null) {
                         var std = Math.min(jan, jul);          // winter standard offset
                         var isDst = cur > std + 0.01;          // DST currently active?
