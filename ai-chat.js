@@ -545,7 +545,13 @@
       '(a void hour is weak/empty even if otherwise favourable).\n'
     ],
     ["home",
-      '- ALEXA SUMMARY: an Alexa skill reads out loud a 7-day SUMMARY of the lucky XKDG hours of the loaded '
+      '- MISSED SWITCH-ONS: the Shelly Worker retries a scheduled switch until it can verify the plug '
+    + 'really changed state, and records the ones it never managed. Whenever a result carries `alerts` or '
+    + '`missed_switches`, REPORT THEM FIRST, before anything else, reproducing each line as given: they mean '
+    + 'the aquarium light did not come on at the auspicious hour. Never bury them under the rest of the '
+    + 'answer and never summarise them away. aquarium_plan with action "clear_alerts" empties the list once '
+    + 'the user has seen them.\n'
+    + '- ALEXA SUMMARY: an Alexa skill reads out loud a 7-day SUMMARY of the lucky XKDG hours of the loaded '
     + 'person plus the lucky travel directions. ALEXA IS A VOICE ASSISTANT, NOT A PERSON: never try to load '
     + '"Alexa" as Person A or B, and never ask the user to. refresh_alexa_digest rebuilds that summary and '
     + 'deposits it. Call it for "aggiorna il riassunto", "rinfresca il riassunto", "aggiorna quello che dice '
@@ -1528,7 +1534,7 @@
       input_schema: { type: 'object',
         properties: {
           house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug.' },
-          action: { type: 'string', enum: ['get', 'cancel', 'pause', 'resume'],
+          action: { type: 'string', enum: ['get', 'cancel', 'pause', 'resume', 'clear_alerts'],
             description: 'get (default) = read the stored plan; cancel = empty it; pause/resume = automation master switch.' }
         },
         required: ['house'] }
@@ -5493,7 +5499,12 @@
     try {
       var res = await fetch(cfg.url + '?turn=' + turn + '&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token), { method: 'POST' });
       var data = await res.json().catch(function () { return null; });
-      return { device: rh.cfg.device, turn: turn, http: res.status, result: data };
+      var out = { device: rh.cfg.device, turn: turn, http: res.status, result: data };
+      // The Worker's status now carries the verified relay state and any missed switches.
+      if (data && data.relay_on != null) out.light_is_on = !!data.relay_on;
+      var _al = _shellyAlerts(data, rh.cfg.utc);
+      if (_al) { out.alerts = _al.list; out.alerts_count = _al.count; out.alerts_rule = _ALERTS_RULE; }
+      return out;
     } catch (e) { return { error: 'Shelly request failed: ' + ((e && e.message) || e) }; }
   }
 
@@ -5501,6 +5512,26 @@
   // whether the aquariums switch off at 23:00, the assistant had no way to look — aquarium_light
   // only reports the plug right now, program_aquarium_light only computes a plan without
   // reading the deposited one. The Worker's ?get_plan / ?clear_plan / ?auto were unreachable.
+  // Session 28 (Edu) — MISSED SWITCH-ONS. The Worker (v5) retries a scheduled switch
+  // until the plug is verified in the wanted state, and writes down the ones it never
+  // managed. Those must reach the user without being asked for: the light failing to
+  // come on was being discovered by chance, days later.
+  function _shellyAlerts(data, utc) {
+    var raw = (data && Array.isArray(data.alerts)) ? data.alerts : [];
+    if (!raw.length) return null;
+    return {
+      count: (data.alerts_total != null) ? data.alerts_total : raw.length,
+      list: raw.map(function (a) {
+        return (a.turn === 'on' ? 'switch-ON' : 'switch-OFF') + ' scheduled for '
+             + _epochToLocal(a.scheduledTs, utc) + ' NEVER HAPPENED after '
+             + (a.attempts || 1) + ' attempts \u2014 ' + (a.reason || 'unknown reason');
+      })
+    };
+  }
+  var _ALERTS_RULE = 'THERE ARE MISSED SWITCH-ONS/OFFS in `alerts`. Report them FIRST, before anything '
+    + 'else, reproducing each line as given. They mean the aquarium light did not come on (or off) at '
+    + 'the auspicious hour despite the Worker retrying. Tell the user they can clear the list once seen.';
+
   async function toolAquariumPlan(input) {
     input = input || {};
     var cfg = _shellyCfg();
@@ -5508,8 +5539,9 @@
     var rh = _resolveShellyHouse(input.house || input.device);
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
     var action = String(input.action || 'get').toLowerCase();
-    var q = { get: '?get_plan', cancel: '?clear_plan', pause: '?auto=off', resume: '?auto=on' }[action];
-    if (!q) return { error: 'action must be get, cancel, pause or resume.' };
+    var q = { get: '?get_plan', cancel: '?clear_plan', pause: '?auto=off', resume: '?auto=on',
+              clear_alerts: '?clear_alerts' }[action];
+    if (!q) return { error: 'action must be get, cancel, pause, resume or clear_alerts.' };
     try {
       var res = await fetch(cfg.url + q + '&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
         { method: 'POST' });
@@ -5519,7 +5551,9 @@
       if (data && data.automation) out.automation = data.automation;
       if (action !== 'get') {
         out.ok = true;
-        out.note = (action === 'cancel')
+        out.note = (action === 'clear_alerts')
+          ? 'The list of missed switch-ons has been emptied.'
+          : (action === 'cancel')
           ? 'The stored plan is now EMPTY: the light will not switch on or off by itself until a new plan is deposited. Manual on/off still works.'
           : (action === 'pause'
             ? 'Automation PAUSED: the plan is still stored but nothing will fire until it is resumed. Manual on/off still works.'
@@ -5543,6 +5577,8 @@
       out.last_switch = (data && data.lastFire)
         ? { turn: data.lastFire.turn, at_local: _epochToLocal(data.lastFire.ts, rh.cfg.utc), ok: !!data.lastFire.ok }
         : null;
+      var _al = _shellyAlerts(data, rh.cfg.utc);
+      if (_al) { out.alerts = _al.list; out.alerts_count = _al.count; out.alerts_rule = _ALERTS_RULE; }
       out.note = 'This is the plan REALLY stored in the Worker, not a recomputation. All times are the house\u2019s own '
         + 'wall clock \u2014 report them exactly as given, never convert them. If scheduled_days is 0 there is no plan at '
         + 'all. If automation is PAUSED nothing will fire even though days are listed \u2014 say so.';
@@ -6019,6 +6055,15 @@
         : undefined,
       worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
       alexa_digest: digestOut || undefined,
+      missed_switches: (commit && workerResp && Array.isArray(workerResp.alerts) && workerResp.alerts.length)
+        ? workerResp.alerts.map(function (a) {
+            return (a.turn === 'on' ? 'switch-ON' : 'switch-OFF') + ' scheduled for '
+                 + _epochToLocal(a.scheduledTs, rh.cfg.utc) + ' never happened \u2014 '
+                 + (a.reason || 'unknown reason'); })
+        : undefined,
+      missed_switches_rule: (commit && workerResp && Array.isArray(workerResp.alerts) && workerResp.alerts.length)
+        ? 'PAST SWITCH-ONS WERE MISSED. Say so FIRST, before reporting the new plan, reproducing each line.'
+        : undefined,
       alexa_digest_note: digestOut
         ? ('The 7-day summary Alexa reads was refreshed together with the plan. Mention it in ONE short line '
            + '(how many lucky hours and directions, for which person)'
