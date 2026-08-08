@@ -5976,7 +5976,22 @@
       // and inherits this call's purpose filter, staying generic when there is none.
       // The summary's window is fixed at 7 days by rule (Edu), so it does NOT follow this
       // call's `days`: a 14-day light plan still deposits a 7-day summary.
-      try { digestOut = await _depositAlexaDigest(_buildAlexaDigest({ days: DIGEST_DAYS, start_date: start, purpose: wantPurpose || undefined })); }
+      // Session 28, second pass (Edu): building the digest runs a full 7-day XKDG scan
+      // and a direction scan, THEN a second network call - all inside the same tool turn
+      // as the aquarium plan. On a phone that was enough to run the turn out of time, and
+      // the plan itself came back reported as failed even though the Worker had stored it.
+      // The plan now always wins: the digest is given a hard ceiling of its own and, if it
+      // overruns, the answer goes out with the plan's result and the digest simply skipped.
+      try {
+        digestOut = await Promise.race([
+          _depositAlexaDigest(_buildAlexaDigest({ days: DIGEST_DAYS, start_date: start, purpose: wantPurpose || undefined })),
+          new Promise(function (res) { setTimeout(function () {
+            res({ deposited: false, timedOut: true,
+                  error: 'The summary took too long and was skipped. The aquarium plan was saved. '
+                       + 'Say \"aggiorna il riassunto\" to refresh it on its own.' });
+          }, 8000); })
+        ]);
+      }
       catch (eDg) { digestOut = { deposited: false, error: 'Digest failed: ' + ((eDg && eDg.message) || eDg) }; }
     }
 
@@ -5995,6 +6010,13 @@
       scheduled_days: scheduled.length, scheduled: scheduled, deposit_rows: _rows.length,
       skipped: skipped,
       deposited: commit ? !workerErr : false,
+      // The two are independent: a failed summary must never be read as a failed plan.
+      plan_vs_digest_note: commit
+        ? 'IMPORTANT: `deposited` refers ONLY to the aquarium plan. The summary has its own '
+          + 'field `alexa_digest`. If the plan was saved and the summary was not, say so in '
+          + 'those words - never report the whole thing as failed. If `worker_error` is set, '
+          + 'quote it VERBATIM instead of guessing at a cause.'
+        : undefined,
       worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
       alexa_digest: digestOut || undefined,
       alexa_digest_note: digestOut
