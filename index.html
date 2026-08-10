@@ -153,8 +153,34 @@
         <div id="person-panel-a" style="display:block;">
         <div class="person-header" style="background:#e8f5e9; color:#1b5e20; border-top:none; padding-top:4px;">
             <div><label>NAME:</label><input type="text" id="person-name" placeholder="Name..." style="width:100px;" oninput="document.getElementById('person-name-display-a').textContent=this.value"></div>
-            <div><label>BIRTH DATE:</label> <input type="date" id="person-date"></div>
-            <div><label>HOUR:</label> <input type="time" id="person-time" value="12:00" style="width:85px;"></div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <label>PILLARS:</label>
+                <select id="person-pillars-a" onchange="onPersonAPillarsChange()" style="padding:3px 6px;border-radius:6px;border:1px solid #a5d6a7;font-size:12px;color:#1b5e20;background:#f1f8e9;">
+                    <option value="4">4 — Year·Month·Day·Hour</option>
+                    <option value="3">3 — Year·Month·Day</option>
+                    <option value="2">2 — Year·Month</option>
+                    <option value="1">1 — Year only</option>
+                </select>
+            </div>
+            <div id="person-a-date-row"><label>BIRTH DATE:</label> <input type="date" id="person-date"></div>
+            <div id="person-a-year-row" style="display:none;"><label>YEAR PILLAR:</label>
+                <select id="person-year-a" style="padding:3px 6px;border-radius:6px;border:1px solid #a5d6a7;font-size:13px;color:#1b5e20;background:#f1f8e9;">
+                    <option value="">— select —</option>
+                    <option value="甲子">甲子 Jiǎ Zǐ</option><option value="乙丑">乙丑 Yǐ Chǒu</option><option value="丙寅">丙寅 Bǐng Yín</option><option value="丁卯">丁卯 Dīng Mǎo</option><option value="戊辰">戊辰 Wù Chén</option>
+                    <option value="己巳">己巳 Jǐ Sì</option><option value="庚午">庚午 Gēng Wǔ</option><option value="辛未">辛未 Xīn Wèi</option><option value="壬申">壬申 Rén Shēn</option><option value="癸酉">癸酉 Guǐ Yǒu</option>
+                    <option value="甲戌">甲戌 Jiǎ Xū</option><option value="乙亥">乙亥 Yǐ Hài</option><option value="丙子">丙子 Bǐng Zǐ</option><option value="丁丑">丁丑 Dīng Chǒu</option><option value="戊寅">戊寅 Wù Yín</option>
+                    <option value="己卯">己卯 Jǐ Mǎo</option><option value="庚辰">庚辰 Gēng Chén</option><option value="辛巳">辛巳 Xīn Sì</option><option value="壬午">壬午 Rén Wǔ</option><option value="癸未">癸未 Guǐ Wèi</option>
+                    <option value="甲申">甲申 Jiǎ Shēn</option><option value="乙酉">乙酉 Yǐ Yǒu</option><option value="丙戌">丙戌 Bǐng Xū</option><option value="丁亥">丁亥 Dīng Hài</option><option value="戊子">戊子 Wù Zǐ</option>
+                    <option value="己丑">己丑 Jǐ Chǒu</option><option value="庚寅">庚寅 Gēng Yín</option><option value="辛卯">辛卯 Xīn Mǎo</option><option value="壬辰">壬辰 Rén Chén</option><option value="癸巳">癸巳 Guǐ Sì</option>
+                    <option value="甲午">甲午 Jiǎ Wǔ</option><option value="乙未">乙未 Yǐ Wèi</option><option value="丙申">丙申 Bǐng Shēn</option><option value="丁酉">丁酉 Dīng Yǒu</option><option value="戊戌">戊戌 Wù Xū</option>
+                    <option value="己亥">己亥 Jǐ Hài</option><option value="庚子">庚子 Gēng Zǐ</option><option value="辛丑">辛丑 Xīn Chǒu</option><option value="壬寅">壬寅 Rén Yín</option><option value="癸卯">癸卯 Guǐ Mǎo</option>
+                    <option value="甲辰">甲辰 Jiǎ Chén</option><option value="乙巳">乙巳 Yǐ Sì</option><option value="丙午">丙午 Bǐng Wǔ</option><option value="丁未">丁未 Dīng Wèi</option><option value="戊申">戊申 Wù Shēn</option>
+                    <option value="己酉">己酉 Jǐ Yǒu</option><option value="庚戌">庚戌 Gēng Xū</option><option value="辛亥">辛亥 Xīn Hài</option><option value="壬子">壬子 Rén Zǐ</option><option value="癸丑">癸丑 Guǐ Chǒu</option>
+                    <option value="甲寅">甲寅 Jiǎ Yín</option><option value="乙卯">乙卯 Yǐ Mǎo</option><option value="丙辰">丙辰 Bǐng Chén</option><option value="丁巳">丁巳 Dīng Sì</option><option value="戊午">戊午 Wù Wǔ</option>
+                    <option value="己未">己未 Jǐ Wèi</option><option value="庚申">庚申 Gēng Shēn</option><option value="辛酉">辛酉 Xīn Yǒu</option><option value="壬戌">壬戌 Rén Xū</option><option value="癸亥">癸亥 Guǐ Hài</option>
+                </select>
+            </div>
+            <div id="person-a-time-row"><label>HOUR:</label> <input type="time" id="person-time" value="12:00" style="width:85px;"></div>
             <button id="dst-btn-a" onclick="toggleDSTperson('A')" style="padding:4px 10px; border-radius:15px; border:1px solid #bbb; font-size:12px; font-weight:bold; background:#fff; cursor:pointer; color:#333;">DST: OFF</button>
             <button class="btn-person" onclick="calculateBazi();calculatePerson('A')">CALCULATE</button>
             <button class="btn-person" onclick="savePerson('A')" style="background:#558b2f;">SAVE</button>

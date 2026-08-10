@@ -2183,12 +2183,13 @@ function loadPersonFromDB(targetPanel, name) {
         document.getElementById(nameId).value = name;
         document.getElementById(dateId).value = p.date;
         document.getElementById(timeId).value = p.time || '12:00';
-        // Restore pillar depth for Person B
-        if (targetPanel === 'B') {
-            const sel = document.getElementById('person-pillars-b');
-            if (sel) { sel.value = p.depth || 4; onPersonBPillarsChange(); }
+        // Restore pillar depth (both persons)
+        {
+            const _isB = targetPanel === 'B';
+            const sel = document.getElementById(_isB ? 'person-pillars-b' : 'person-pillars-a');
+            if (sel) { sel.value = p.depth || 4; if (_isB) onPersonBPillarsChange(); else onPersonAPillarsChange(); }
             if (p.depth === 1 && p.jiaZiYear) {
-                const yr = document.getElementById('person-year-b');
+                const yr = document.getElementById(_isB ? 'person-year-b' : 'person-year-a');
                 if (yr) yr.value = p.jiaZiYear;
             }
         }
@@ -2248,8 +2249,8 @@ function savePerson(person) {
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const archive = loadArchive(key);
     const isB     = person === 'B';
-    const depth = isB ? (parseInt(document.getElementById('person-pillars-b')?.value) || 4) : 4;
-    const jiaZiYear = (isB && depth === 1) ? (document.getElementById('person-year-b')?.value || '') : '';
+    const depth = _personDepth(person);
+    const jiaZiYear = (depth === 1) ? (document.getElementById(isB ? 'person-year-b' : 'person-year-a')?.value || '') : '';
     // Freeze the BIRTH location: capture the longitude / UTC / DST currently in
     // effect (the city the user simulated for this person) so the saved chart
     // never drifts when they return to their own GPS.
@@ -2306,6 +2307,25 @@ function deletePerson(e, person, name) {
     hidePerson(e, person, name);
 }
 
+// Read the pillar depth (4/3/2/1) for either person from its dropdown; default 4.
+function _personDepth(person) {
+    var isB = (person === 'B' || person === 'b');
+    var el = document.getElementById(isB ? 'person-pillars-b' : 'person-pillars-a');
+    return el ? (parseInt(el.value, 10) || 4) : 4;
+}
+
+function onPersonAPillarsChange() {
+    const depth = parseInt(document.getElementById('person-pillars-a').value);
+    const dateRow = document.getElementById('person-a-date-row');
+    const yearRow = document.getElementById('person-a-year-row');
+    const timeRow = document.getElementById('person-a-time-row');
+    const dstBtn  = document.getElementById('dst-btn-a');
+    if (dateRow) dateRow.style.display = depth >= 2 ? '' : 'none';
+    if (yearRow) yearRow.style.display = depth === 1 ? '' : 'none';
+    if (timeRow) timeRow.style.display = depth >= 4 ? '' : 'none';
+    if (dstBtn)  dstBtn.style.display  = depth >= 4 ? '' : 'none';
+}
+
 function onPersonBPillarsChange() {
     const depth = parseInt(document.getElementById('person-pillars-b').value);
     const dateRow = document.getElementById('person-b-date-row');
@@ -2341,7 +2361,7 @@ function fsClearPersonB(){
 
 function calculatePerson(person) {
     const isB    = person === 'B';
-    const depth  = isB ? (parseInt(document.getElementById('person-pillars-b')?.value) || 4) : 4;
+    const depth  = _personDepth(person);
     const dateId = isB ? 'person-date-b' : 'person-date';
     const timeId = isB ? 'person-time-b' : 'person-time';
 
@@ -2349,29 +2369,38 @@ function calculatePerson(person) {
     let dVal = document.getElementById(dateId).value;
     const tVal = depth >= 4 ? (document.getElementById(timeId).value || '12:00') : '12:00';
 
-    if (isB && depth === 1) {
-        const sel = document.getElementById('person-year-b');
+    if (depth === 1) {
+        const sel = document.getElementById(isB ? 'person-year-b' : 'person-year-a');
         const jz  = sel ? sel.value.trim() : '';
         if (!jz || jz.length < 2) return;
         const yStem   = jz[0];
         const yBranch = jz[1];
         const yData   = getXkdgData(yStem, yBranch);
+        const _pfx    = isB ? 'pb' : 'pp';
         // Set globals for year pillar only
-        _personBYear = yData || null; _personBMonth = null; _personBDay = null; _personBHour = null;
-        _personBPillars = { hour: null, day: null, month: null, year: yData || null };
-        _personBStem = yStem; _personBBranch = yBranch;
-        _personBDayStem = null; _personBDayBranch = null;
-        _personBMonthBranch = null; _personBDayBranchXkdg = null; _personBRelations = [];
+        if (isB) {
+            _personBYear = yData || null; _personBMonth = null; _personBDay = null; _personBHour = null;
+            _personBPillars = { hour: null, day: null, month: null, year: yData || null };
+            _personBStem = yStem; _personBBranch = yBranch;
+            _personBDayStem = null; _personBDayBranch = null;
+            _personBMonthBranch = null; _personBDayBranchXkdg = null; _personBRelations = [];
+        } else {
+            _personAYear = yData || null; _personAMonth = null; _personADay = null; _personAHour = null;
+            _personAPillars = { hour: null, day: null, month: null, year: yData || null };
+            _personAStem = yStem; _personABranch = yBranch;
+            _personADayStem = null; _personADayBranch = null;
+            _personAMonthBranch = null; _personADayBranchXkdg = null; _personARelations = [];
+        }
         // Show chart, fade unused pillars
-        const chartEl = document.getElementById('person-chart-b');
+        const chartEl = document.getElementById(isB ? 'person-chart-b' : 'person-chart');
         if (chartEl) chartEl.style.display = 'grid';
-        const wrapEl = document.getElementById('pillar-toggle-b-wrap');
+        const wrapEl = document.getElementById(isB ? 'pillar-toggle-b-wrap' : 'pillar-toggle-a-wrap');
         if (wrapEl) wrapEl.style.display = 'block';
-        ['pb-hour','pb-day','pb-month'].forEach(id => { const el = document.getElementById(id); if (el) el.style.opacity = '0.15'; });
-        const yrEl = document.getElementById('pb-year'); if (yrEl) yrEl.style.opacity = '1';
-        updatePillar('pb-year', yStem, yBranch, yData, NAYIN[yStem + yBranch] || '');
-        checkFavourable(yData, yStem, yBranch, 'B');
-        const aSection = document.getElementById('person-analysis-container-b');
+        [_pfx+'-hour', _pfx+'-day', _pfx+'-month'].forEach(id => { const el = document.getElementById(id); if (el) el.style.opacity = '0.15'; });
+        const yrEl = document.getElementById(_pfx+'-year'); if (yrEl) yrEl.style.opacity = '1';
+        updatePillar(_pfx+'-year', yStem, yBranch, yData, NAYIN[yStem + yBranch] || '');
+        checkFavourable(yData, yStem, yBranch, isB ? 'B' : 'A');
+        const aSection = document.getElementById(isB ? 'person-analysis-container-b' : 'person-analysis-container-a');
         if (aSection) aSection.style.display = 'none';
         updateScoreModeBtn();
         try { applyPersonDetailsVisibility(person); } catch(e) {}
@@ -2435,9 +2464,10 @@ function calculatePerson(person) {
         };
     }
 
-    // Hide/show chart pillar columns based on depth (Person B only)
-    if (isB) {
-        ['pb-hour','pb-day','pb-month'].forEach((id, i) => {
+    // Hide/show chart pillar columns based on depth (both persons)
+    {
+        const _pfx = isB ? 'pb' : 'pp';
+        [_pfx+'-hour', _pfx+'-day', _pfx+'-month'].forEach((id, i) => {
             const el = document.getElementById(id);
             if (el) el.style.opacity = (depth >= 4-i) ? '1' : '0.15';
         });
@@ -2491,10 +2521,10 @@ function calculatePerson(person) {
         _personAStem      = pillarKeys.year.stem;
         _personABranch    = pillarKeys.year.branch;
         _personADay       = xkdgData.day;
-        _personADayStem   = pillarKeys.day.stem;
-        _personADayBranch = pillarKeys.day.branch;
-        _personAMonthBranch   = pillarKeys.month.branch;
-        _personADayBranchXkdg = pillarKeys.day.branch;
+        _personADayStem   = pillarKeys.day   ? pillarKeys.day.stem   : null;
+        _personADayBranch = pillarKeys.day   ? pillarKeys.day.branch : null;
+        _personAMonthBranch   = pillarKeys.month ? pillarKeys.month.branch : null;
+        _personADayBranchXkdg = pillarKeys.day   ? pillarKeys.day.branch  : null;
         checkFavourable(xkdgData.year, pillarKeys.year.stem, pillarKeys.year.branch, 'A');
     }
 
@@ -7466,7 +7496,17 @@ function runScanner() {
     let pYStem = null, pYBranch = null, personAYear = null;
     let pDayStemA = null, pDayBranchA = null, pMthBranchA = null;
     let pNobleA = [], pLuA = null, pHVA = null, pBVA = null, pMVA = null, pTYA = null;
-    if (birthDate) {
+    const depthA = parseInt(document.getElementById('person-pillars-a')?.value || '4');
+    const panelAVisible = document.getElementById('person-panel-a') && document.getElementById('person-panel-a').style.display !== 'none';
+    if (depthA === 1 && panelAVisible) {
+        // Year-only: read directly from JiaZi dropdown
+        const jzA = document.getElementById('person-year-a')?.value?.trim() || '';
+        if (jzA.length >= 2) {
+            pYStem = jzA[0]; pYBranch = jzA[1];
+            const pYDataA = getXkdgData(pYStem, pYBranch);
+            if (pYDataA) personAYear = { ...pYDataA, stem: pYStem, branch: pYBranch };
+        }
+    } else if (birthDate) {
     const bBase   = new Date(`${birthDate}T${birthTime}`);
     const bSolar  = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
     const bEC     = bSolar.getLunar().getEightChar();
@@ -8393,13 +8433,11 @@ function _xkdgSnapshotPerson(person){
     var time = (document.getElementById(isB ? 'person-time-b' : 'person-time') || {}).value;
     name = (name || '').trim(); date = date || ''; time = time || '';
     var snap = { name:name, date:date, time:time };
-    if (isB){
-      var depthEl = document.getElementById('person-pillars-b');
-      var yearEl  = document.getElementById('person-year-b');
-      if (depthEl) snap.depth = parseInt(depthEl.value, 10) || 4;
-      if (yearEl)  snap.year  = yearEl.value || '';
-    }
-    if (!name || !(date || (isB && snap.year))) return;        // need name + (date or year)
+    var depthEl = document.getElementById(isB ? 'person-pillars-b' : 'person-pillars-a');
+    var yearEl  = document.getElementById(isB ? 'person-year-b' : 'person-year-a');
+    if (depthEl) snap.depth = parseInt(depthEl.value, 10) || 4;
+    if (yearEl)  snap.year  = yearEl.value || '';
+    if (!name || !(date || snap.year)) return;                 // need name + (date or year)
     localStorage.setItem(isB ? 'xkdg_last_person_b' : 'xkdg_last_person_a', JSON.stringify(snap));
   } catch(e){}
 }
@@ -8422,12 +8460,10 @@ function _xkdgApplyPersonSnap(person, snap){
     if (nameEl) nameEl.value = snap.name;
     if (dateEl && snap.date) dateEl.value = snap.date;          // restores the birth date explicitly
     if (timeEl && snap.time) timeEl.value = snap.time;
-    if (isB){
-      var depthEl = document.getElementById('person-pillars-b');
-      if (depthEl && snap.depth){ depthEl.value = snap.depth; if (typeof onPersonBPillarsChange === 'function') onPersonBPillarsChange(); }
-      var yearEl = document.getElementById('person-year-b');
-      if (yearEl && snap.year) yearEl.value = snap.year;
-    }
+    var depthEl2 = document.getElementById(isB ? 'person-pillars-b' : 'person-pillars-a');
+    if (depthEl2 && snap.depth){ depthEl2.value = snap.depth; var _ch = isB ? (typeof onPersonBPillarsChange === 'function' ? onPersonBPillarsChange : null) : (typeof onPersonAPillarsChange === 'function' ? onPersonAPillarsChange : null); if (_ch) _ch(); }
+    var yearEl2 = document.getElementById(isB ? 'person-year-b' : 'person-year-a');
+    if (yearEl2 && snap.year) yearEl2.value = snap.year;
     if (typeof calculateBazi === 'function') calculateBazi();
     if (typeof calculatePerson === 'function') calculatePerson(person);
     if (typeof fsAutoLoadHouse === 'function') fsAutoLoadHouse(snap.name);
@@ -8485,7 +8521,7 @@ function _xkdgAttachPersonAutosave(){
   try {
     if (window._xkdgAutosaveAttached) return;
     window._xkdgAutosaveAttached = true;
-    ['person-name','person-date','person-time'].forEach(function(id){
+    ['person-name','person-date','person-time','person-pillars-a','person-year-a'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) el.addEventListener('change', function(){ try { _xkdgSnapshotPerson('A'); } catch(e){} });
     });
