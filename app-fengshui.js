@@ -458,7 +458,7 @@ function buildFengShuiView(){
         </style>
         <button id="fs-qimen-dice" onclick="fsLuopanMenuAct('qmdjtool')"
           title="QMDJ chart for any date"
-          style="position:absolute;bottom:8px;left:8px;z-index:31;background:#fff;color:#4527a0;
+          style="position:absolute;top:8px;left:8px;z-index:32;background:#fff;color:#4527a0;
                  border:1px solid #4527a0;border-radius:6px;padding:8px 6px;font-size:15px;
                  font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;">\ud83c\udfb2</button>
         <button id="fs-luopan-size" onclick="fsToggleLuopanSize()"
