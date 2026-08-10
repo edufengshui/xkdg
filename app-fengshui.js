@@ -4533,6 +4533,7 @@ function _fsHousesLoad(){
           if (!h.doors){ dirty = true; h = _fsHouseMigrate(h); }
           dirty = true; h = _fsHouseAddFloors(h);
         }
+        if (!Array.isArray(h.guests)){ h.guests = []; dirty = true; }   // house guests (extra occupants for scans)
         return h;
       });
     });
@@ -4558,7 +4559,10 @@ function _fsHouseAddFloors(h){
     houseFacing: (h.houseFacing != null ? h.houseFacing : null),
     period:      (h.period != null ? h.period : null),
     floors:      [floor0],
-    activeFloor: 0
+    activeFloor: 0,
+    guests:      (Array.isArray(h.guests) ? h.guests : []),
+    guest:       (h.guest || null),          // preserve legacy occupant #2
+    ownerAway:   (h.ownerAway || false)
   };
 }
 
@@ -4581,6 +4585,112 @@ function _fsActiveFloor(h){
 function _fsFloorFacing(h, f){ return (h && h.sameFacing) ? h.houseFacing : (f ? f.facing : null); }
 function _fsFloorPeriod(h, f){ return (h && h.sameFacing) ? h.period : (f ? f.period : null); }
 function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
+
+// ── House EXTRA MEMBERS (year-only) ──────────────────────────────────
+// A house always has its OWNER (Person A) and may have ONE guest #2 (Person B,
+// the legacy house.guest — untouched here). On TOP of those, `house.guests[]`
+// holds additional saved persons whose BIRTH YEAR only is folded into the
+// date/hour scan (aquarium activation and any other operation).
+// Six people total: owner + guest#2 (if any) + extra members ≤ 6.
+// Rule: owner + guest#2 + every extra member must connect with the day (AND).
+var FS_HOUSE_TOTAL_CAP = 6;   // owner + guest#2 + extra members
+
+// How many extra members this house may still hold (owner + guest#2 count too).
+function _fsHouseExtraSlots(h){
+  var used = 1 + ((h && h.guest && h.guest.name) ? 1 : 0);   // owner + guest#2
+  return Math.max(0, FS_HOUSE_TOTAL_CAP - used - ((h && Array.isArray(h.guests)) ? h.guests.length : 0));
+}
+
+// Union of saved person names from both A and B archives.
+function _fsAllSavedPersonNames(){
+  var out = {};
+  try { Object.keys(loadArchive('xkdg_persons_a') || {}).forEach(function(n){ out[n] = true; }); } catch(e){}
+  try { Object.keys(loadArchive('xkdg_persons_b') || {}).forEach(function(n){ out[n] = true; }); } catch(e){}
+  return Object.keys(out);
+}
+
+// Resolve a saved person's YEAR pillar → { qi, yun, stem, branch, name } | null.
+// Year-only records use their JiaZi; dated records derive the year gan/zhi from
+// the frozen birth location when available (falls back to the live longitude).
+function _fsResolvePersonYear(name){
+  try {
+    var a = loadArchive('xkdg_persons_a') || {};
+    var b = loadArchive('xkdg_persons_b') || {};
+    var rec = a[name] || b[name];
+    if (!rec) return null;
+    var stem = null, branch = null;
+    if ((rec.depth === 1 || (!rec.date && rec.jiaZiYear)) && rec.jiaZiYear && rec.jiaZiYear.length >= 2){
+      stem = rec.jiaZiYear[0]; branch = rec.jiaZiYear[1];
+    } else if (rec.date && typeof Solar !== 'undefined'){
+      var lon = isFinite(rec.birthLon) ? rec.birthLon : parseFloat((document.getElementById('longitude') || {}).value);
+      var utc = isFinite(rec.birthUtc) ? rec.birthUtc : parseFloat((document.getElementById('utc-offset') || {}).value);
+      var dst = !!rec.birthDst;
+      var t   = rec.time || '12:00';
+      var base = new Date(rec.date + 'T' + t);
+      var off  = 0;
+      if (isFinite(lon) && isFinite(utc)) off = ((lon - utc * 15) * 4) - (dst ? 60 : 0);
+      var solar = Solar.fromDate(new Date(base.getTime() + off * 60000));
+      var ec = solar.getLunar().getEightChar();
+      stem = ec.getYearGan(); branch = ec.getYearZhi();
+    } else { return null; }
+    var xk = (typeof getXkdgData === 'function') ? getXkdgData(stem, branch) : null;
+    if (!xk) return null;
+    return { qi: xk.qi, yun: xk.yun, stem: stem, branch: branch, name: name };
+  } catch(e){ return null; }
+}
+
+// The active house's EXTRA-MEMBER years (owner + guest#2 excluded — those are
+// already gated via Person A / Person B). Returns [] when no person / house /
+// extra members. Used by runScanner() for the year-only AND-gate.
+function fsActiveHouseGuestYears(){
+  try {
+    var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+    if (!person) return [];
+    var all = _fsHousesLoad();
+    var houses = all[person.name] || [];
+    var idx = (typeof _fsActiveHouseGet === 'function') ? _fsActiveHouseGet(person.name) : 0;
+    if (idx >= houses.length) idx = 0;
+    var h = houses[idx];
+    if (!h || !Array.isArray(h.guests) || !h.guests.length) return [];
+    var g2 = (h.guest && h.guest.name) ? h.guest.name : null;   // guest#2 already in Person B
+    var out = [];
+    h.guests.forEach(function(gn){
+      if (gn === person.name || gn === g2) return;              // never double-count owner / guest#2
+      var y = _fsResolvePersonYear(gn); if (y) out.push(y);
+    });
+    return out;
+  } catch(e){ return []; }
+}
+if (typeof window !== 'undefined') window.fsActiveHouseGuestYears = fsActiveHouseGuestYears;
+
+// Add an extra member (from the picker) to a house's guests[] list.
+function fsHouseAddMember(personName, hi, guestName){
+  try {
+    if (!guestName) return;
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][hi]; if (!h) return;
+    if (!Array.isArray(h.guests)) h.guests = [];
+    if (guestName === personName){ alert('The owner is always a member of this house.'); return; }
+    if (h.guest && h.guest.name === guestName){ alert(guestName + ' is already guest #2 of this house.'); return; }
+    if (h.guests.indexOf(guestName) !== -1) return;                     // already an extra member
+    if (_fsHouseExtraSlots(h) <= 0){ alert('Six people maximum per house (owner + guest #2 + extra members).'); return; }
+    h.guests.push(guestName);
+    _fsHousesSave(all);
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsHouseAddMember', e); }
+}
+
+// Remove an extra member from a house's guests[] list.
+function fsHouseRemoveMember(personName, hi, guestName){
+  try {
+    var all = _fsHousesLoad();
+    var h = all[personName] && all[personName][hi]; if (!h || !Array.isArray(h.guests)) return;
+    var i = h.guests.indexOf(guestName); if (i === -1) return;
+    h.guests.splice(i, 1);
+    _fsHousesSave(all);
+    if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+  } catch(e){ console.warn('fsHouseRemoveMember', e); }
+}
 
 // ── Backup / Restore (all localStorage: houses, persons, archives, settings) ──
 function fsExportBackup(){
@@ -4974,6 +5084,34 @@ function fsRenderHouseProfiles(){
 
     html += '</div>';
     html += '<div class="fs-house-body" id="fs-house-body-' + hi + '" style="display:' + (_exp ? 'block' : 'none') + ';">';
+
+    // ── Extra members (year-only; on top of owner → A and guest #2 → B) ──
+    (function(){
+      var guests = Array.isArray(h.guests) ? h.guests : [];
+      var g2 = (h.guest && h.guest.name) ? h.guest.name : null;
+      html += '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11px;color:#555;margin:2px 0 6px;">';
+      html += '<span title="Extra members. Only their BIRTH YEAR enters the date/hour scan (aquarium activation and other operations). Owner + guest #2 + every extra member must connect (AND). Six people maximum.">➕ Extra members <span style="color:#888;">(year only)</span>:</span>';
+      // Extra-member chips
+      guests.forEach(function(gn){
+        html += '<span style="display:inline-flex;align-items:center;gap:3px;background:#fff;border:1px solid #a5d6a7;border-radius:10px;padding:1px 6px 1px 8px;color:#33691e;">' + escHtml(gn)
+             + '<span onclick="fsHouseRemoveMember(\'' + escJs(person.name) + '\',' + hi + ',\'' + escJs(gn) + '\')" title="Remove member" style="cursor:pointer;color:#c62828;font-weight:bold;padding:0 2px;">×</span></span>';
+      });
+      // Picker (available = saved persons minus owner, guest#2, current members)
+      var avail = (typeof _fsAllSavedPersonNames === 'function' ? _fsAllSavedPersonNames() : [])
+                    .filter(function(n){ return n !== person.name && n !== g2 && guests.indexOf(n) === -1; })
+                    .sort(function(a,b){ return a.localeCompare(b); });
+      if (_fsHouseExtraSlots(h) <= 0){
+        html += '<span style="color:#999;font-style:italic;">6 people max</span>';
+      } else if (!avail.length){
+        html += '<span style="color:#999;font-style:italic;">no other saved persons</span>';
+      } else {
+        html += '<select onchange="if(this.value){fsHouseAddMember(\'' + escJs(person.name) + '\',' + hi + ',this.value);this.value=\'\';}" style="font-size:11px;padding:2px 6px;border:1px solid #2e7d32;border-radius:10px;background:#f1f8e9;color:#1b5e20;cursor:pointer;">';
+        html += '<option value="">➕ Add member…</option>';
+        avail.forEach(function(n){ html += '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'; });
+        html += '</select>';
+      }
+      html += '</div>';
+    })();
 
     // ── Address (left) + Floor selector (right) on one line ──
     var f = _fsActiveFloor(h);

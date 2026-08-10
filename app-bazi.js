@@ -7555,6 +7555,10 @@ function runScanner() {
     const activeYear   = personAYear   || personBYear   || null;
     const activeYStem  = pYStem        || pBYStem       || null;
     const activeYBranch= pYBranch      || pBYBranch     || null;
+
+    // House GUESTS: birth years of the active house's guests (owner is gated
+    // separately above). Every guest must also connect with the day (AND).
+    const _houseGuestYears = (typeof fsActiveHouseGuestYears === 'function') ? (fsActiveHouseGuestYears() || []) : [];
     const activeDayStem  = pDayStemA   || pDayStemB     || null;
     const activeMthBranch= pMthBranchA || pMthBranchB   || null;
     const activeDayBranch= pDayBranchA || pDayBranchB   || null;
@@ -7749,6 +7753,20 @@ function runScanner() {
                 }
             }
 
+
+            // House guests: every guest's birth YEAR must connect too (AND), using
+            // the same broad-connect test as owner A/B. Skipped in Negatives mode.
+            if (!hasNegativesBST && _houseGuestYears.length) {
+                let _allGuestsConnect = true;
+                for (let _gi = 0; _gi < _houseGuestYears.length; _gi++) {
+                    const _g = _houseGuestYears[_gi];
+                    const _gc = isHetuPair(_g.qi, dQi) || [5,10,15].includes(_g.qi + dQi) ||
+                                isHetuPair(_g.yun, dYun) || [5,10,15].includes(_g.yun + dYun) ||
+                                getJiaZiFamilies(_g.stem, _g.branch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                    if (!_gc) { _allGuestsConnect = false; break; }
+                }
+                if (!_allGuestsConnect) continue;
+            }
 
             const scoreA = _personConnectsBroadly ?
                 getMatchScore(personAYear, pYStem, pYBranch, dayXkdg, dGan, dZhi) : 1;
