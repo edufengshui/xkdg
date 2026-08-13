@@ -2933,6 +2933,7 @@
     'At least one XKDG relation must connect: Adding, Hetu, Pure Qi, Family, or Inverse Hexagram ("the loop closes").',
     '"Very Weak" dates are excluded from every purpose.',
     'A year-branch clash excludes the date, UNLESS Blood Link Family or Pure Qi is present (these override the clash).',
+    'Blood Link (Family) is one of the STRONGEST POSITIVE XKDG activations \u2014 same-family hexagrams, a powerful cohesive setting. It OVERRIDES branch clashes and RESCUES hours from Kong Wang void. It is NEVER a "critical/blood day", NEVER auto-excluded, and has nothing to do with \u8840\u5203 (which does not exist in this system). Never describe Blood Link hours as excluded. On the contrary, actively PREFER Blood Link dates whose aquarium palace is positive: in any month that contains Blood Link dates, a Blood Link date with a positive aquarium palace takes ABSOLUTE PRIORITY for water activation over any non-Blood-Link date.',
     'Auspicious spirits each add +2 to the score: Cerulean Dragon, Golden Box, Tian De, Fate Master, Lu.'
   ];
   var PURPOSE_RULES = {
@@ -5035,7 +5036,7 @@
     var map = {};   // 'date|branch' -> {date, branch, x, q, s, qhits, shits}
     function slot(date, branch) {
       var k = date + '|' + branch;
-      if (!map[k]) map[k] = { date: date, branch: branch, x: null, xNayin: false, xWhy: null, q: null, s: null, h: null, hlabel: null, qhits: [], shits: [] };
+      if (!map[k]) map[k] = { date: date, branch: branch, x: null, xNayin: false, xWhy: null, blue: [], q: null, s: null, h: null, hlabel: null, qhits: [], shits: [] };
       return map[k];
     }
     var ran = { xkdg: false, quadrant: false, special: false, bond: false };
@@ -5064,6 +5065,7 @@
             sl.x = r.score;
             sl.xNayin = !!r.rescuedByNayin;
             sl.xWhy = r.rescuedByNayin ? (r.nayinLabel || 'Nayin Power') : ((r.blueLabels || [])[0] || null);
+            sl.blue = r.blueLabels || sl.blue;
           }
         });
         ran.xkdg = true;
@@ -5171,7 +5173,8 @@
         hex_bond: m.h != null ? (m.hlabel || 'bond') : null,
         qimen_score: (m.q || 0) + (m.s || 0),                 // activation energy AT the palace (what you stimulate)
         why: why.join(' · '),
-        hits: _hits
+        hits: _hits,
+        _blue: (m.blue || [])
       };
     });
     // How many hours were thrown away, and by WHICH of the two filters. Without this the
@@ -5194,6 +5197,51 @@
       days_with_an_hour: Object.keys(_daysKept).length,
       days_lost_only_to_the_tier_floor: Object.keys(_daysVetoOnly).filter(function (d) { return !_daysKept[d]; }).length
     };
+    // ── BLOOD LINK PRIORITY (Edu, session 29) ───────────────────────────────
+    // A Blood Link date is the strongest positive XKDG activation. In any MONTH
+    // that contains a Blood Link date whose water palace is positive, Blood Link
+    // dates take ABSOLUTE priority: door + San Qi (grade 2) first, door only
+    // (grade 1) next, then non-Blood-Link dates fill the rest. "Any member"
+    // counts — the loaded owner (from the scan's own Family relation) OR any house
+    // guest whose birth-year hexagram shares a family with the day.
+    var _guestYears = (typeof window.fsActiveHouseGuestYears === 'function') ? (window.fsActiveHouseGuestYears() || []) : [];
+    var _dayGZCache = {};
+    function _dayGZ(iso) {
+      if (_dayGZCache[iso] !== undefined) return _dayGZCache[iso];
+      var gz = null;
+      try {
+        if (typeof Solar !== 'undefined') {
+          var pp = iso.split('-').map(Number);
+          var ec = Solar.fromYmd(pp[0], pp[1], pp[2]).getLunar().getEightChar();
+          gz = { gan: ec.getDayGan(), zhi: ec.getDayZhi() };
+        }
+      } catch (e) { gz = null; }
+      _dayGZCache[iso] = gz; return gz;
+    }
+    function _shareFam(st, br, dg, dz) {
+      try {
+        if (typeof window.getJiaZiFamilies !== 'function') return false;
+        var A = window.getJiaZiFamilies(st, br) || [], B = window.getJiaZiFamilies(dg, dz) || [];
+        return A.some(function (f) { return f != null && B.indexOf(f) >= 0; });
+      } catch (e) { return false; }
+    }
+    function _isSanQiLabel(l) { return /\u4e59|\u4e19|\u4e01|SanQi|San Qi/.test(String(l)); }
+    var _blMonths = {};
+    rows.forEach(function (r) {
+      var ownerBL = (r._blue || []).some(function (l) { return /Family/.test(String(l)) && !/Two-Family/.test(String(l)); });
+      var guestBL = false;
+      if (!ownerBL && _guestYears.length) {
+        var gz = _dayGZ(r.date);
+        if (gz) guestBL = _guestYears.some(function (g) { return _shareFam(g.stem, g.branch, gz.gan, gz.zhi); });
+      }
+      r.blood_link = !!(ownerBL || guestBL);
+      var _sanQi = (r.hits || []).some(_isSanQiLabel);
+      r.blood_link_grade = r.blood_link ? (_sanQi ? 2 : 1) : 0;   // 2 = door + San Qi, 1 = favourable door only
+      if (r.blood_link) { var mo = (r.date || '').slice(0, 7); if (mo) _blMonths[mo] = 1; }
+      delete r._blue;
+    });
+    function _blRank(r) { return (_blMonths[(r.date || '').slice(0, 7)] && r.blood_link) ? r.blood_link_grade : 0; }
+
     // Ranking: the Tier still comes first — a structure that connects to the person always
     // outranks one that does not — but INSIDE a tier the order is now CHRONOLOGICAL
     // (Edu, session 25: "le date di accensione non sono in ordine cronologico, dovrebbero
@@ -5203,6 +5251,8 @@
     var _BR_ORDER = '\u5b50\u4e11\u5bc5\u536f\u8fb0\u5df3\u5348\u672a\u7533\u9149\u620c\u4ea5';
     function _chrono(r) { return (r.date || '') + '#' + String(_BR_ORDER.indexOf(r.branch || '') + 1).padStart(2, '0'); }
     rows.sort(function (a, b) {
+      var ra = _blRank(a), rb = _blRank(b);
+      if (rb !== ra) return rb - ra;                 // Blood Link months: BL dates first (San Qi grade 2, then door-only grade 1)
       if (b.tier !== a.tier) return b.tier - a.tier;
       var ka = _chrono(a), kb = _chrono(b);
       return ka < kb ? -1 : (ka > kb ? 1 : 0);
@@ -5844,7 +5894,8 @@
     var byDate = {};
     rows.forEach(function (r) { if (!r.date) return; (byDate[r.date] = byDate[r.date] || []).push(r); });
     function _cmpHour(a, b) {
-      return (b.tier || 0) - (a.tier || 0)
+      return (b.blood_link_grade || 0) - (a.blood_link_grade || 0)   // Blood Link (San Qi first) wins the day's hour
+          || (b.tier || 0) - (a.tier || 0)
           || (b.xkdg_score || 0) - (a.xkdg_score || 0)
           || (b.qimen_score || 0) - (a.qimen_score || 0);
     }
@@ -5964,6 +6015,8 @@
       var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[chosen.branch], rh.cfg.lon, rh.cfg.utc);
       var offTs = _civilToEpoch(endIso, 23 * 60, rh.cfg.utc);     // 23:00 CIVIL clock on the block's LAST day
       scheduled.push({ date: iso, branch: chosen.branch, hour: chosen.hour, tier: chosen.tier,
+                       blood_link: chosen.blood_link || undefined,
+                       blood_link_grade: chosen.blood_link ? chosen.blood_link_grade : undefined,
                        reserve_tier0: usedReserve || undefined, you_last_resort: usedYouLastResort || undefined,
                        person_connected: chosen.person_connected, xkdg_score: chosen.xkdg_score,
                        qimen_score: chosen.qimen_score, why: chosen.why,
