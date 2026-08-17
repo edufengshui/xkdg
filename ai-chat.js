@@ -605,7 +605,7 @@
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
-    home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest','connect_calendar']
+    home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
   };
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
@@ -1428,15 +1428,6 @@
           purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Restrict the summary to this purpose. Omit it for a generic summary (the default). Keep the key in English.' }
         }
       }
-    },
-    {
-      name: 'connect_calendar',
-      description: 'Authorize Google Calendar ONCE so the app can drop a reminder two days before each aquarium plan '
-        + 'runs out. Use it when the user says "collega il calendario", "autorizza il calendario", or when a plan reports '
-        + 'that the calendar reminder could not be set because Calendar is not authorized. It opens the Google consent '
-        + 'popup (same login as Drive). After this, program_aquarium_light sets/updates the reminder automatically on '
-        + 'every committed plan - the user never needs to run this again.',
-      input_schema: { type: 'object', properties: {} }
     },
     {
       name: 'plan_directional_detour',
@@ -2268,7 +2259,7 @@
     } catch (e) { return NaN; }
   }
 
-  function toolExportLuckyCalendar(input) {
+  async function toolExportLuckyCalendar(input) {
     input = input || {};
     var days = parseInt(input.days, 10) || 90;
     var start = input.start_date || todayIso();
@@ -2442,6 +2433,42 @@
       } else { report.directions = { rows_scanned: 0 }; }
     } catch (eD) { report.directions = { error: String((eD && eD.message) || eD) }; }
 
+    // (4) AQUARIUM PLAN ENDING — one reminder per aquarium, warning TWO DAYS BEFORE the
+    //     deposited plan runs out, so the same .ics the user already imports also carries
+    //     the "regenerate the plan" note (Edu, session 29). Read from the Worker's real
+    //     stored plan (?get_plan), not a fresh computation.
+    try {
+      var _cfg = (typeof _shellyCfg === 'function') ? _shellyCfg() : null;
+      if (_cfg && _cfg.url && _cfg.token) {
+        var _devs = [{ id: 'tuoro', name: 'Tuoro', utc: 1 }, { id: 'vienna', name: 'Vienna', utc: 1 }];
+        report.plan_ending = {};
+        for (var _di = 0; _di < _devs.length; _di++) {
+          var _dv = _devs[_di];
+          try {
+            var _r = await fetch(_cfg.url + '?get_plan&device=' + _dv.id + '&token=' + encodeURIComponent(_cfg.token));
+            var _j = _r.ok ? await _r.json() : null;
+            var _days = (_j && _j.plan && Array.isArray(_j.plan.days)) ? _j.plan.days : [];
+            var _endTs = 0;
+            _days.forEach(function (d) { if (d && isFinite(d.offTs) && d.offTs > _endTs) _endTs = d.offTs; });
+            if (!_endTs) { report.plan_ending[_dv.id] = 'no plan'; continue; }
+            var _off = new Date(_endTs + _dv.utc * 3600000);       // civil datetime of the last OFF
+            var _y = _off.getUTCFullYear(), _m = _off.getUTCMonth(), _d = _off.getUTCDate();
+            var _endIso = _y + '-' + String(_m + 1).padStart(2, '0') + '-' + String(_d).padStart(2, '0');
+            var _evStart = Date.UTC(_y, _m, _d, 20, 0) - _dv.utc * 3600000;   // 20:00 last day, civil
+            var _alarm   = Date.UTC(_y, _m, _d - 2, 9, 0) - _dv.utc * 3600000; // 09:00, two days before
+            events.push({
+              kind: 'planend', date: _endIso, branch: '',
+              title: '\uD83D\uDC1F Acquario ' + _dv.name + ' \u2014 la programmazione finisce (rigenera)',
+              detail: 'Il piano di accensione dell\u2019acquario ' + _dv.name + ' termina il ' + _endIso + '. Rigeneralo per i giorni successivi.',
+              start: _evStart, end: _evStart + 15 * 60000, utc: _dv.utc,
+              alarmTs: _alarm, alarmText: 'Fra 2 giorni finisce la programmazione dell\u2019acquario ' + _dv.name + ' \u2014 rigenera il piano'
+            });
+            report.plan_ending[_dv.id] = { ends: _endIso, reminder: 'two days before' };
+          } catch (ePlan) { report.plan_ending[_dv.id] = 'error'; }
+        }
+      }
+    } catch (ePE) { /* plan-ending reminder is best-effort; never blocks the calendar */ }
+
     if (!events.length) {
       return { error: 'Nothing reached the maximum in any of the three sectors over ' + days + ' days.' +
         (nightSkipped ? (' ' + nightSkipped + ' night hour(s) (23:00-05:00) were excluded \u2014 ask with include_night to keep them.') : ''),
@@ -2462,11 +2489,11 @@
       L.push('DTEND:' + _icsUtc(e.end));
       L.push(_icsFold('SUMMARY:' + _icsEsc(e.title)));
       L.push(_icsFold('DESCRIPTION:' + _icsEsc(e.detail)));
-      var al = _icsPrevEvening(e.date, e.utc);
+      var al = isFinite(e.alarmTs) ? e.alarmTs : _icsPrevEvening(e.date, e.utc);
       if (isFinite(al)) {
         L.push('BEGIN:VALARM');
         L.push('ACTION:DISPLAY');
-        L.push(_icsFold('DESCRIPTION:' + _icsEsc('Tomorrow: ' + e.title)));
+        L.push(_icsFold('DESCRIPTION:' + _icsEsc(e.alarmText || ('Tomorrow: ' + e.title))));
         L.push('TRIGGER;VALUE=DATE-TIME:' + _icsUtc(al));
         L.push('END:VALARM');
       }
@@ -2561,15 +2588,6 @@
       if (name === 'plan_directional_detour') return toolPlanDirectionalDetour(input || {});
       if (name === 'aquarium_plan') return toolAquariumPlan(input || {});
       if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
-      if (name === 'connect_calendar') {
-        if (typeof window === 'undefined' || !window.XKDGCalendar || typeof window.XKDGCalendar.connect !== 'function')
-          return { ok: false, error: 'Calendar module not available on this page.' };
-        return window.XKDGCalendar.connect().then(function (_cc) {
-          return (_cc && _cc.ok)
-            ? { ok: true, note: 'Google Calendar authorized. From now on every committed aquarium plan drops a reminder 2 days before it ends.' }
-            : { ok: false, reason: (_cc && _cc.reason) || 'cancelled', note: 'Authorization was not completed. Try again when ready.' };
-        }).catch(function (e) { return { ok: false, error: (e && e.message) || String(e) }; });
-      }
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
@@ -6102,19 +6120,6 @@
       catch (eDg) { digestOut = { deposited: false, error: 'Digest failed: ' + ((eDg && eDg.message) || eDg) }; }
     }
 
-    // Calendar reminder (Edu, session 29): drop/refresh a note in the user's Google
-    // calendar so it warns TWO DAYS BEFORE this aquarium's plan runs out. Committed
-    // plans only; the plan's END is the last day the light is scheduled to stay on.
-    var calResult = null;
-    if (commit && !workerErr) {
-      var _endIso = null;
-      scheduled.forEach(function (s) { var e = s.stays_on_until_date || s.date; if (e && (!_endIso || e > _endIso)) _endIso = e; });
-      if (_endIso && typeof window !== 'undefined' && window.XKDGCalendar && typeof window.XKDGCalendar.upsertAquariumReminder === 'function') {
-        try { calResult = await window.XKDGCalendar.upsertAquariumReminder({ device: rh.cfg.device, endIso: _endIso, label: rh.name }); }
-        catch (eCal) { calResult = { ok: false, reason: 'exception' }; }
-      }
-    }
-
     return {
       scanner: 'aquarium_light_plan', house: rh.name, device: rh.cfg.device,
       mode: commit ? 'committed' : 'preview',
@@ -6138,14 +6143,6 @@
           + 'quote it VERBATIM instead of guessing at a cause.'
         : undefined,
       worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
-      calendar_reminder: calResult || undefined,
-      calendar_note: (commit && calResult && !calResult.ok)
-        ? (calResult.reason === 'no-auth' || calResult.reason === 'gis-not-ready' || calResult.reason === 'no-token'
-            ? 'The 2-days-before calendar reminder could NOT be set because Google Calendar is not authorized yet. Tell the user to authorize it once (Google panel / say "collega il calendario"); after that every plan sets the reminder automatically.'
-            : 'The calendar reminder could not be set (' + (calResult.reason || 'unknown') + '). The plan itself was saved.')
-        : (commit && calResult && calResult.ok
-            ? 'A calendar reminder was ' + (calResult.updated ? 'updated' : 'created') + ' — it warns 2 days before this plan ends. Mention it in one line.'
-            : undefined),
       alexa_digest: digestOut || undefined,
       missed_switches: (commit && workerResp && Array.isArray(workerResp.alerts) && workerResp.alerts.length)
         ? workerResp.alerts.map(function (a) {
