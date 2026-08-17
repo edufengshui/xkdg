@@ -16,7 +16,7 @@
 (function () {
   'use strict';
 
-  var SCOPE = 'https://www.googleapis.com/auth/drive.file';
+  var SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events';
   var FILE_NAME = 'xkdg-sync.json';
   var K_CLIENT = 'xkdg_gdrive_client_id';
   var K_FILEID = 'xkdg_gdrive_fileid';
@@ -394,4 +394,81 @@
   }
 
   window.XKDGDriveSync = { open: openPanel, save: doSave, load: doLoad };
+
+  // ── Google Calendar reminder (Edu, session 29) ──────────────────────────────
+  // When an aquarium plan is (re)generated, drop ONE reminder per aquarium in the
+  // user's primary calendar. The event sits on the plan's END date at 09:00 with a
+  // popup reminder 2 DAYS BEFORE — so the notification fires two days before the
+  // plan runs out. Re-running a plan UPDATES the same event (found by a private
+  // extended property) instead of piling up duplicates. Uses the same Google login
+  // as Drive; the calendar.events scope is now part of SCOPE, so one consent covers
+  // both. Silent by design: if calendar was never authorized it no-ops and reports
+  // it, and connectCalendar() triggers the one-time consent.
+  function _calTz(device){ return device === 'vienna' ? 'Europe/Vienna' : 'Europe/Rome'; }
+  function _calPretty(device){ return device === 'vienna' ? 'Vienna' : 'Tuoro'; }
+
+  function _calFindExisting(token, device){
+    var url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+            + '?privateExtendedProperty=' + encodeURIComponent('xkdgAquarium=' + device)
+            + '&showDeleted=false&singleEvents=true&maxResults=5&orderBy=updated';
+    return fetch(url, { headers: { Authorization: 'Bearer ' + token } })
+      .then(function(r){ return r.ok ? r.json() : { items: [] }; })
+      .then(function(j){ return (j.items || [])[0] || null; })
+      .catch(function(){ return null; });
+  }
+
+  function _calEventBody(device, endIso, label){
+    var tz = _calTz(device), pretty = _calPretty(device);
+    return {
+      summary: '\uD83D\uDC1F Acquario ' + pretty + ' \u2014 la programmazione finisce oggi (rigenera)',
+      description: (label ? (label + '\n') : '')
+                 + 'Promemoria XKDG: il piano di accensione dell\u2019acquario termina oggi. '
+                 + 'Rigeneralo per i prossimi giorni.',
+      start: { dateTime: endIso + 'T09:00:00', timeZone: tz },
+      end:   { dateTime: endIso + 'T09:15:00', timeZone: tz },
+      reminders: { useDefault: false, overrides: [ { method: 'popup', minutes: 2 * 24 * 60 } ] },
+      extendedProperties: { private: { xkdgAquarium: device } },
+      transparency: 'transparent'
+    };
+  }
+
+  // upsertAquariumReminder({device, endIso, label}) -> Promise<{ok, updated?, reason?}>
+  function upsertAquariumReminder(opts){
+    opts = opts || {};
+    var device = (opts.device === 'vienna') ? 'vienna' : 'tuoro';
+    var endIso = opts.endIso;
+    if (!endIso || !/^\d{4}-\d{2}-\d{2}$/.test(endIso)) return Promise.resolve({ ok:false, reason:'no-end' });
+    return new Promise(function(resolve){
+      requestToken({ silent: (opts.silent === false) ? false : true,
+        onToken: function(token){
+          _calFindExisting(token, device).then(function(existing){
+            var body = _calEventBody(device, endIso, opts.label);
+            var url, method;
+            if (existing && existing.id){
+              url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + encodeURIComponent(existing.id);
+              method = 'PATCH';
+            } else {
+              url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+              method = 'POST';
+            }
+            fetch(url, { method: method, headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+              .then(function(r){ resolve({ ok: r.ok, updated: !!(existing && existing.id), http: r.status }); })
+              .catch(function(){ resolve({ ok:false, reason:'network' }); });
+          });
+        },
+        onFail: function(reason){ resolve({ ok:false, reason: reason || 'no-auth' }); }
+      });
+    });
+  }
+
+  // One-time interactive consent for the calendar scope (also (re)grants Drive).
+  function connectCalendar(){
+    return new Promise(function(resolve){
+      requestToken({ silent:false,
+        onToken: function(){ resolve({ ok:true }); },
+        onFail:  function(reason){ resolve({ ok:false, reason: reason || 'cancelled' }); } });
+    });
+  }
+
+  window.XKDGCalendar = { upsertAquariumReminder: upsertAquariumReminder, connect: connectCalendar };
 })();
