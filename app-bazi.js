@@ -46,8 +46,10 @@ function _add(jz, family, role) {
 _add('甲午','Qian-Kun','father'); _add('甲子','Qian-Kun','mother');
 _add('壬寅','Qian-Kun','daughter'); _add('戊辰','Qian-Kun','daughter');
 _add('丁巳','Qian-Kun','daughter'); _add('辛巳','Qian-Kun','daughter'); _add('癸巳','Qian-Kun','daughter');
+_add('壬午','Qian-Kun','daughter');   // 巽 Xun (hex 57) — eldest daughter of Qian-Kun (reciprocal of 甲子 in Zhen-Xun)
 _add('壬申','Qian-Kun','son'); _add('戊戌','Qian-Kun','son');
 _add('丁亥','Qian-Kun','son'); _add('辛亥','Qian-Kun','son'); _add('癸亥','Qian-Kun','son');
+_add('壬子','Qian-Kun','son');        // 震 Zhen (hex 51) — eldest son of Qian-Kun (reciprocal of 甲午 in Zhen-Xun)
 // ── Kan-Li ──
 _add('庚申','Kan-Li','father'); _add('庚寅','Kan-Li','mother');
 _add('己卯','Kan-Li','daughter'); _add('辛亥','Kan-Li','daughter'); _add('乙未','Kan-Li','daughter');
@@ -91,54 +93,33 @@ _add('甲辰','Sun-Xian','daughter'); _add('辛卯','Sun-Xian','daughter'); _add
 _add('庚寅','Sun-Xian','son'); _add('丙午','Sun-Xian','son'); _add('壬戌','Sun-Xian','son');
 _add('甲戌','Sun-Xian','son'); _add('辛酉','Sun-Xian','son'); _add('乙酉','Sun-Xian','son');
 
-// Get family label with per-family role sign for children, plain for parents
+// Show BOTH families a hexagram belongs to: the PARENT family on top (plain),
+// then the CHILD family/families below with the +/- sign (son = +, daughter = -).
+// Every hexagram has two families; the four double parents used to show only the
+// parent — now the child family is listed underneath it too.
 function getHexFamilyLabel(stem, branch, hexNum) {
     const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
-    if (!hexNum || entries.length <= 1) {
-        return entries.map(e => {
-            if (e.role === 'father' || e.role === 'mother') return e.family;
-            return `${e.family} ${e.role === 'son' ? '+' : '-'}`;
-        }).join('<br>');
-    }
-    // Dual entry: find which hex is primary and which is alt
-    const jz = stem + branch;
-    const raw = XKDG_TABLE[jz];
-    if (!raw || !raw.alt) {
-        return entries.map(e => {
-            if (e.role === 'father' || e.role === 'mother') return e.family;
-            return `${e.family} ${e.role === 'son' ? '+' : '-'}`;
-        }).join('<br>');
-    }
-    const isPrimary = raw.hex === hexNum;
-    // Primary hex: show parent family only (no children families)
-    // Alt hex: show children families only (no parent family)
-    const filtered = entries.filter(e => {
-        if (e.role === 'father' || e.role === 'mother') return isPrimary;
-        return !isPrimary; // children only for alt hex
-    });
-    return filtered.map(e => {
-        if (e.role === 'father' || e.role === 'mother') return e.family;
-        return `${e.family} ${e.role === 'son' ? '+' : '-'}`;
-    }).join('<br>');
+    if (!entries.length) return '';
+    const parents  = entries.filter(e => e.role === 'father' || e.role === 'mother');
+    const children = entries.filter(e => e.role === 'son'    || e.role === 'daughter');
+    const lines = [];
+    parents.forEach(e => lines.push(e.family));
+    children.forEach(e => lines.push(`${e.family} ${e.role === 'son' ? '+' : '-'}`));
+    return lines.join('<br>');
 }
 
-// Get role label (P or C only, no gender mark)
+// Role marker: P (parent) when the hexagram is a father/mother in its family and
+// is NOT sitting on its child-form (alt) hex; C (child) otherwise.
 function getRoleLabel(stem, branch, hexNum) {
     const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
     if (entries.length === 0) return '';
-    // For dual entries, check if this hex is the primary (parent) one
-    if (hexNum && entries.length > 1) {
-        const jz = stem + branch;
-        const raw = XKDG_TABLE[jz];
-        if (raw && raw.hex !== hexNum) {
-            // This is the alt hex — role is child
-            return '<span style="color:#0044cc;font-size:15px;font-weight:bold;">C</span>';
-        }
-    }
-    const role = entries[0].role;
-    if (role === 'father' || role === 'mother')
-        return '<span style="color:#d40000;font-size:15px;font-weight:bold;">P</span>';
-    return '<span style="color:#0044cc;font-size:15px;font-weight:bold;">C</span>';
+    const hasParent = entries.some(e => e.role === 'father' || e.role === 'mother');
+    const raw = XKDG_TABLE[stem + branch];
+    const onAltHex = !!(hexNum && raw && raw.alt && raw.hex !== hexNum);   // child-form hex
+    const isParent = hasParent && !onAltHex;
+    return isParent
+        ? '<span style="color:#d40000;font-size:15px;font-weight:bold;">P</span>'
+        : '<span style="color:#0044cc;font-size:15px;font-weight:bold;">C</span>';
 }
 
 // Get family array for analysis
