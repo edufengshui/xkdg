@@ -8647,10 +8647,50 @@
       function staticSystem() {
         return systemPromptFor(activeAreas()) + stateReadingRule() + uiButtonsRule() + aquariumSafetyRule();
       }
+      // ---- Fresh-in reducer (session 29) --------------------------------------
+      // Tool RESULTS (scan/travel JSON) live in history forever and are re-sent
+      // every turn as un-cached "fresh in" input — the dominant API cost on long,
+      // tool-heavy chats. Once a result is a couple of exchanges old, Claude has
+      // already read it and answered, so we replace OLD large tool_results with a
+      // short stub before sending. The real `history` is untouched (needed for
+      // repairHistory and the on-screen record); only the sent copy is compacted.
+      // tool_use_ids are preserved, so the API still sees a result for every call.
+      function compactHistory() {
+        var KEEP_FULL = 2;   // most recent N tool-result batches stay verbatim
+        var nameById = {};
+        history.forEach(function (m) {
+          if (m && m.role === 'assistant' && Array.isArray(m.content))
+            m.content.forEach(function (c) { if (c && c.type === 'tool_use') nameById[c.id] = c.name; });
+        });
+        var batches = [];
+        history.forEach(function (m, i) {
+          if (m && m.role === 'user' && Array.isArray(m.content)
+              && m.content.some(function (c) { return c && c.type === 'tool_result'; }))
+            batches.push(i);
+        });
+        var stubUpTo = batches.length - KEEP_FULL;
+        if (stubUpTo <= 0) return history.slice();
+        var stubSet = {};
+        for (var k = 0; k < stubUpTo; k++) stubSet[batches[k]] = 1;
+        return history.map(function (m, i) {
+          if (!stubSet[i]) return m;
+          var nc = m.content.map(function (c) {
+            if (c && c.type === 'tool_result') {
+              var cur = (typeof c.content === 'string') ? c.content : JSON.stringify(c.content || '');
+              if (cur.length <= 400) return c;   // small/error results are cheap — keep them
+              var nm = nameById[c.tool_use_id] || 'tool';
+              return { type: 'tool_result', tool_use_id: c.tool_use_id,
+                       content: '[' + nm + ' result from earlier in this chat \u2014 omitted to save context; ask again to re-run it]' };
+            }
+            return c;
+          });
+          return { role: 'user', content: nc };
+        });
+      }
       function messagesWithMoment() {
         var vol = '[CONTEXT FROM THE APP \u2014 not typed by the user]\n\nToday is ' + todayIso() + '.'
                 + currentMomentContext() + replyLangDirective();
-        var out = history.slice();
+        var out = compactHistory();
         var last = out[out.length - 1];
         if (!last || last.role !== 'user') return out;
         var content = (typeof last.content === 'string') ? [{ type: 'text', text: last.content }]
