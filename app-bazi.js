@@ -653,6 +653,29 @@ function _tstPillarsFor(dateStr, timeStr, geo) {
     } catch (e) { return null; }
 }
 
+/* YEAR + MONTH pillars at the ABSOLUTE instant of one scan row.
+ * Scan views (LIST / CAL / BEST / TABLE) used to read year+month from
+ * Solar.fromDate(civilTime + offsetMin), which compares a TRUE SOLAR wall clock against
+ * lunar-javascript's BEIJING-based jieqi. The two clocks differ by hours, so a 节 falling
+ * inside a day never switched the month for the hours after it (bug: 5 Jan 2027, 小寒 at
+ * 14:53 TST in Tuoro — every hour still showed 庚子 instead of 辛丑 from that hour on).
+ * XKDGSolarTime resolves the boundary at INSTANT level, which is the confirmed house rule:
+ * day / month / year changes always happen in True Local Solar Time, never Beijing.
+ * `dayDate` is a civil Date in the app's configured zone (lon / utc-offset / DST), so the
+ * browser timezone never enters the result. Returns {yGan,yZhi,mGan,mZhi} or null.
+ */
+function _scanYearMonthGZ(dayDate, hour, minute, lon, utc, dstOn) {
+    try {
+        if (typeof XKDGSolarTime === 'undefined') return null;
+        const p = XKDGSolarTime.pillarsFromCivil(
+            dayDate.getFullYear(), dayDate.getMonth() + 1, dayDate.getDate(),
+            hour, minute || 0, 0, lon, -(((utc || 0) * 60) + (dstOn ? 60 : 0)));
+        if (!p) return null;
+        return { yGan: p.year.charAt(0), yZhi: p.year.charAt(1),
+                 mGan: p.month.charAt(0), mZhi: p.month.charAt(1) };
+    } catch (e) { return null; }
+}
+
 function getPersonMonthBranch(birthDate, birthTime, offsetMin, geo) {
     if (!birthDate) return null;
     const P = _tstPillarsFor(birthDate, birthTime, geo);
@@ -4523,8 +4546,11 @@ function buildTableView() {
             const ziMidEC2 = Solar.fromDate(new Date(dayDate.getTime() + 12*3600000 + offsetMin*60000)).getLunar().getEightChar();
             const ziDGan2 = ziMidEC2.getDayGan(), ziDZhi2 = ziMidEC2.getDayZhi();
             const ziFullEC2 = Solar.fromDate(ziSD2).getLunar().getEightChar();
-            const ziYGan2 = ziFullEC2.getYearGan(), ziYZhi2 = ziFullEC2.getYearZhi();
-            const ziMGan2 = ziFullEC2.getMonthGan(), ziMZhi2 = ziFullEC2.getMonthZhi();
+            const _ymZi2TV = _scanYearMonthGZ(dayDate, 0, 30, lon, utc, _dstOn);
+            const ziYGan2 = _ymZi2TV ? _ymZi2TV.yGan : ziFullEC2.getYearGan();
+            const ziYZhi2 = _ymZi2TV ? _ymZi2TV.yZhi : ziFullEC2.getYearZhi();
+            const ziMGan2 = _ymZi2TV ? _ymZi2TV.mGan : ziFullEC2.getMonthGan();
+            const ziMZhi2 = _ymZi2TV ? _ymZi2TV.mZhi : ziFullEC2.getMonthZhi();
             const ziPillars2 = buildResolvedPillars(ziYGan2, ziYZhi2, ziMGan2, ziMZhi2, ziDGan2, ziDZhi2, ziHGan2, ziHZhi2);
             const { strong: ziSS2, growing: ziSG2 } = getJieqiSeason(ziBD2);
             const { items: ziItems2 } = analyzeXkdg(ziPillars2, ziSS2, ziSG2);
@@ -4574,8 +4600,9 @@ function buildTableView() {
         }
         for (const h of HOUR_ORDER) {
             const hs = HOUR_STARTS[h];
+            // Day boundary is TST MIDNIGHT: the 子 row of this day is 23:00-00:00 OF THIS
+            // day, so no shift back to the previous day (confirmed rule — no 23:00 boundary).
             let bd = new Date(dayDate);
-            if (hs === 23) bd = new Date(dayDate.getTime() - 86400000);
             bd.setHours(hs, 30, 0, 0);
             const sd = new Date(bd.getTime() + offsetMin * 60000);
             // For hour pillar: always use dayDate at the hour midpoint (no day subtraction)
@@ -4586,15 +4613,16 @@ function buildTableView() {
             const hGan = ec.getTimeGan();
             const hZhi = ec.getTimeZhi();
 
-            // For Zi hour (23:00): Chinese day changes at 23:00 — use next day's stem
-            let rowDGan = dGan, rowDZhi = dZhi;
-            if (hs === 23) {
-                const nextMid = Solar.fromDate(new Date(dayDate.getTime() + 12*3600000 + offsetMin*60000));
-                rowDGan = nextMid.getLunar().getEightChar().getDayGan();
-                rowDZhi = nextMid.getLunar().getEightChar().getDayZhi();
-            }
+            // Day pillar rolls at TST midnight, so every row of this day — 子 included —
+            // carries THIS day's pillar.
+            const rowDGan = dGan, rowDZhi = dZhi;
 
-            const pillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, rowDGan, rowDZhi, hGan, hZhi);
+            // Year + month at the TST instant of THIS hour: a 节 falling inside the day
+            // moves the later hours into the NEW month (and, at 立春, the new year).
+            const _ymTV  = _scanYearMonthGZ(bd, hs, 30, lon, utc, _dstOn);
+            const mGanR = _ymTV ? _ymTV.mGan : mGan, mZhiR = _ymTV ? _ymTV.mZhi : mZhi;
+            const yGanR = _ymTV ? _ymTV.yGan : yGan, yZhiR = _ymTV ? _ymTV.yZhi : yZhi;
+            const pillars = buildResolvedPillars(yGanR, yZhiR, mGanR, mZhiR, rowDGan, rowDZhi, hGan, hZhi);
             const { strong: tSS, growing: tSG } = getJieqiSeason(sd);
             const { items } = analyzeXkdg(pillars, tSS, tSG);
 
@@ -4605,8 +4633,8 @@ function buildTableView() {
             if (nobleBranches.includes(hZhi)) items.push({ text: 'Noble',   tag: 'noble' });
 
             // Heaven Virtue, Branch Virtue, Month Virtue, Lu
-            const hvBranch = HEAVEN_VIRTUE ? HEAVEN_VIRTUE[mZhi] : null;
-            const bvBranch = BRANCH_VIRTUE ? BRANCH_VIRTUE[mZhi] : null;
+            const hvBranch = HEAVEN_VIRTUE ? HEAVEN_VIRTUE[mZhiR] : null;
+            const bvBranch = BRANCH_VIRTUE ? BRANCH_VIRTUE[mZhiR] : null;
             if (hvBranch && hvBranch === hZhi) items.push({ text: 'Heaven Virtue', tag: 'hv' });
             if (bvBranch && bvBranch === hZhi) items.push({ text: 'Branch Virtue', tag: 'bv' });
             const luBranch = LU_BRANCH ? LU_BRANCH[rowDGan] : null;
@@ -4651,7 +4679,7 @@ function buildTableView() {
             const tvTY          = tvDayStem   ? (TIAN_YI[tvDayStem] || null) : null;
 
             // Score via unified calcHourScore
-            const tvScore = calcHourScore(rowDGan, rowDZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, items, hourSpirit, tSS, tSG, tvPersonYear, tvPStem, tvPBranch, tvNobles, tvLu, tvHV, tvBV, tvMV, tvTY, pillars);
+            const tvScore = calcHourScore(rowDGan, rowDZhi, hGan, hZhi, mGanR, mZhiR, yGanR, yZhiR, items, hourSpirit, tSS, tSG, tvPersonYear, tvPStem, tvPBranch, tvNobles, tvLu, tvHV, tvBV, tvMV, tvTY, pillars);
             const tvScoreColor = tvScore >= 12 ? '#1b5e20' : tvScore >= 9 ? '#2e7d32' : tvScore >= 6 ? '#388e3c' : tvScore >= 4 ? '#558b2f' : '#888';
 
             // A/B markers
@@ -4698,13 +4726,13 @@ function buildTableView() {
                         <div style="color:#0d47a1;font-size:9px;font-weight:bold;">${pillars.day.yun}</div>
                     </div>
                     <div style="text-align:center;">
-                        <div style="font-size:8px;color:#555;">${mGan}${mZhi}</div>
+                        <div style="font-size:8px;color:#555;">${mGanR}${mZhiR}</div>
                         <div style="color:#c62828;font-size:10px;font-weight:bold;">${pillars.month.qi}</div>
                         ${drawHex(pillars.month.hex, 20)}
                         <div style="color:#0d47a1;font-size:9px;font-weight:bold;">${pillars.month.yun}</div>
                     </div>
                     <div style="text-align:center;">
-                        <div style="font-size:8px;color:#555;">${yGan}${yZhi}</div>
+                        <div style="font-size:8px;color:#555;">${yGanR}${yZhiR}</div>
                         <div style="color:#c62828;font-size:10px;font-weight:bold;">${pillars.year.qi}</div>
                         ${drawHex(pillars.year.hex, 20)}
                         <div style="color:#0d47a1;font-size:9px;font-weight:bold;">${pillars.year.yun}</div>
@@ -4751,7 +4779,7 @@ function buildTableView() {
                 ? `<div style="font-size:9px;font-weight:bold;color:#d40000;">⚡ Tomb Sha 墓煞</div>` : '';
 
             // Nayin for TABLE view
-            const nayinTV = analyzeNayin(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi, tvConnectsA ? _personAStem : (tvConnectsB ? _personBStem : null), tvConnectsA ? _personABranch : (tvConnectsB ? _personBBranch : null), tvConnectsA ? _personADayStem : (tvConnectsB ? _personBDayStem : null), tvConnectsA ? _personADayBranch : (tvConnectsB ? _personBDayBranch : null));
+            const nayinTV = analyzeNayin(dGan, dZhi, hGan, hZhi, mGanR, mZhiR, yGanR, yZhiR, tvConnectsA ? _personAStem : (tvConnectsB ? _personBStem : null), tvConnectsA ? _personABranch : (tvConnectsB ? _personBBranch : null), tvConnectsA ? _personADayStem : (tvConnectsB ? _personBDayStem : null), tvConnectsA ? _personADayBranch : (tvConnectsB ? _personBDayBranch : null));
             const nayinHtmlTV = nayinTV.label === 'Nayin Power' ? `<div style="font-size:9px;font-weight:bold;color:#1b5e20;">☯ Nayin Power</div>`
                               : nayinTV.label === 'Nayin'       ? `<div style="font-size:9px;font-weight:bold;color:#2e7d32;">Nayin</div>`
                               : nayinTV.label === 'Nayin Weak'  ? `<div style="font-size:9px;font-weight:bold;color:#b71c1c;">✕ Nayin Weak</div>`
@@ -5032,8 +5060,13 @@ function buildCalView() {
                 continue;
             }
 
-            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
-            const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
+            // Day-level year+month, TST-resolved at local noon. The hour loop below
+            // re-resolves them per hour, so a 节 inside the day is handled correctly.
+            const _ymDayCAL = _scanYearMonthGZ(dayDate, 12, 0, lon, utc, _dstOn);
+            const mGan = _ymDayCAL ? _ymDayCAL.mGan : eightChar.getMonthGan();
+            const mZhi = _ymDayCAL ? _ymDayCAL.mZhi : eightChar.getMonthZhi();
+            const yGan = _ymDayCAL ? _ymDayCAL.yGan : eightChar.getYearGan();
+            const yZhi = _ymDayCAL ? _ymDayCAL.yZhi : eightChar.getYearZhi();
 
             // Check best hour of the day
             let dayIsPositive = false, dayIsFavourable = false, dayIsFamily = false;
@@ -5064,22 +5097,26 @@ function buildCalView() {
                 const hDZi2 = getXkdgData(hGZi2, hZZi2);
                 if (hDZi2) {
                     const { strong: ziSS, growing: ziSG } = getJieqiSeason(sdZi2);
-                    const ziPillarsCAL = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGZi2, hZZi2);
+                    // Year + month at the TST instant of 00:30 (00:00-01:00 Zi second half)
+                    const _ymZi2CAL = _scanYearMonthGZ(dayDate, 0, 30, lon, utc, _dstOn);
+                    const mGanZ2 = _ymZi2CAL ? _ymZi2CAL.mGan : mGan, mZhiZ2 = _ymZi2CAL ? _ymZi2CAL.mZhi : mZhi;
+                    const yGanZ2 = _ymZi2CAL ? _ymZi2CAL.yGan : yGan, yZhiZ2 = _ymZi2CAL ? _ymZi2CAL.yZhi : yZhi;
+                    const ziPillarsCAL = buildResolvedPillars(yGanZ2, yZhiZ2, mGanZ2, mZhiZ2, dGan, dZhi, hGZi2, hZZi2);
                     const { items: ziItemsCAL } = analyzeXkdg(ziPillarsCAL, ziSS, ziSG);
                     const ziBlueCAL = ziItemsCAL.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
                     const ziSpiritCAL = getSpiritForHour(dZhi, hZZi2);
                     let ziScoreCAL;
                     if (personAYear && personBYear_CAL && _scoreModeBalanced) {
-                        const sA_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
-                        const sB_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, ziPillarsCAL);
+                        const sA_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGanZ2, mZhiZ2, yGanZ2, yZhiZ2, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, ziPillarsCAL);
+                        const sB_zi = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGanZ2, mZhiZ2, yGanZ2, yZhiZ2, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, ziPillarsCAL);
                         ziScoreCAL = Math.round((sA_zi + sB_zi) / 2);
                     } else {
-                        ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, ziPillarsCAL);
+                        ziScoreCAL = calcHourScore(dGan, dZhi, hGZi2, hZZi2, mGanZ2, mZhiZ2, yGanZ2, yZhiZ2, ziItemsCAL, ziSpiritCAL, ziSS, ziSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, ziPillarsCAL);
                     }
-                    const ziNayinCAL = analyzeNayin(dGan, dZhi, hGZi2, hZZi2, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
+                    const ziNayinCAL = analyzeNayin(dGan, dZhi, hGZi2, hZZi2, mGanZ2, mZhiZ2, yGanZ2, yZhiZ2, pYStem, pYBranch, null, null);
                     const ziNegScoreCAL = calcNegativeScore({
                         dGan, dZhi, hGan: hGZi2, hZhi: hZZi2,
-                        mGan, mZhi, yGan, yZhi,
+                        mGan: mGanZ2, mZhi: mZhiZ2, yGan: yGanZ2, yZhi: yZhiZ2,
                         analysisItems: ziItemsCAL, dayClashType: _dayClashTypeForScore,
                         seasonStrong: ziSS, seasonGrowing: ziSG,
                         nayinLabel: ziNayinCAL.label,
@@ -5107,7 +5144,7 @@ function buildCalView() {
             for (let h = 0; h < 12; h++) {
                 const hs = HOUR_STARTS[h];
                 let bd = new Date(dayDate);
-                if (hs === 23) bd = new Date(dayDate.getTime() - 86400000);
+                // Day rolls at TST midnight: no shift back to the previous day for 子.
                 bd.setHours(hs, 30, 0, 0);
                 const sd = new Date(bd.getTime() + offsetMin * 60000);
                 let bdForHourCAL = new Date(dayDate);
@@ -5117,8 +5154,13 @@ function buildCalView() {
                 const hZ = ec.getTimeZhi();
                 const hD = getXkdgData(hG, hZ);
                 if (!hD) continue;
+                // Year + month at the TST instant of THIS hour, not once per day at noon:
+                // when a 节 falls inside the day the later hours belong to the NEW month.
+                const _ymH  = _scanYearMonthGZ(bd, hs, 30, lon, utc, _dstOn);
+                const mGanH = _ymH ? _ymH.mGan : mGan, mZhiH = _ymH ? _ymH.mZhi : mZhi;
+                const yGanH = _ymH ? _ymH.yGan : yGan, yZhiH = _ymH ? _ymH.yZhi : yZhi;
                 const { strong: hSS, growing: hSG } = getJieqiSeason(sd);
-                const hPillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hG, hZ);
+                const hPillars = buildResolvedPillars(yGanH, yZhiH, mGanH, mZhiH, dGan, dZhi, hG, hZ);
                 const { items: hItems } = analyzeXkdg(hPillars, hSS, hSG);
                 const hBlue = hItems.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
                 const hSpirit = getSpiritForHour(dZhi, hZ);
@@ -5126,17 +5168,17 @@ function buildCalView() {
                 // Score the hour — balanced mode uses average(A,B), else active person
                 let hScore;
                 if (personAYear && personBYear_CAL && _scoreModeBalanced) {
-                    const sA_h = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
-                    const sB_h = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, hPillars);
+                    const sA_h = calcHourScore(dGan, dZhi, hG, hZ, mGanH, mZhiH, yGanH, yZhiH, hItems, hSpirit, hSS, hSG, personAYear, pYStem, pYBranch, pNobleCAL, pLuCAL, pHVCAL, pBVCAL, pMVCAL, pTYCAL, hPillars);
+                    const sB_h = calcHourScore(dGan, dZhi, hG, hZ, mGanH, mZhiH, yGanH, yZhiH, hItems, hSpirit, hSS, hSG, personBYear_CAL, pBYStem_CAL, pBYBranch_CAL, pNobleBCAL, pLuBCAL, pHVBCAL, pBVBCAL, pMVBCAL, pTYBCAL, hPillars);
                     hScore = Math.round((sA_h + sB_h) / 2);
                 } else {
-                    hScore = calcHourScore(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, hItems, hSpirit, hSS, hSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, hPillars);
+                    hScore = calcHourScore(dGan, dZhi, hG, hZ, mGanH, mZhiH, yGanH, yZhiH, hItems, hSpirit, hSS, hSG, activeYearCAL, activeStemCAL, activeBranchCAL, activeNobleCAL, activeLuCAL, activeHVCAL, activeBVCAL, activeMVCAL, activeTYCAL, hPillars);
                 }
                 // Negative score (higher = worse, > 0 means NEGATIVES chip would catch it)
-                const hNayin = analyzeNayin(dGan, dZhi, hG, hZ, mGan, mZhi, yGan, yZhi, pYStem, pYBranch, null, null);
+                const hNayin = analyzeNayin(dGan, dZhi, hG, hZ, mGanH, mZhiH, yGanH, yZhiH, pYStem, pYBranch, null, null);
                 const hNegScore = calcNegativeScore({
                     dGan, dZhi, hGan: hG, hZhi: hZ,
-                    mGan, mZhi, yGan, yZhi,
+                    mGan: mGanH, mZhi: mZhiH, yGan: yGanH, yZhi: yZhiH,
                     analysisItems: hItems, dayClashType: _dayClashTypeForScore,
                     seasonStrong: hSS, seasonGrowing: hSG,
                     nayinLabel: hNayin.label,
@@ -5468,8 +5510,20 @@ function buildMonthView() {
         const midSolar  = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000));
         const midEC     = midSolar.getLunar().getEightChar();
         let dGanDay = midEC.getDayGan(), dZhiDay = midEC.getDayZhi();
-        const yGanDay = midEC.getYearGan(),  yZhiDay = midEC.getYearZhi();
-        const mGanDay = midEC.getMonthGan(), mZhiDay = midEC.getMonthZhi();
+        // Header year+month resolved in TST at local noon (same engine as the rows).
+        const _ymHdr = _scanYearMonthGZ(dayDate, 12, 0, lon, utc, _dstOn);
+        const yGanDay = _ymHdr ? _ymHdr.yGan : midEC.getYearGan();
+        const yZhiDay = _ymHdr ? _ymHdr.yZhi : midEC.getYearZhi();
+        const mGanDay = _ymHdr ? _ymHdr.mGan : midEC.getMonthGan();
+        const mZhiDay = _ymHdr ? _ymHdr.mZhi : midEC.getMonthZhi();
+        // A 节 can fall INSIDE the day: then the first and last hours carry different
+        // month (and, at 立春, year) pillars and the single header no longer describes
+        // the whole day. Measured at the first (00:30) and last (23:30) hour of the day.
+        const _ymFirstH = _scanYearMonthGZ(dayDate, 0, 30, lon, utc, _dstOn);
+        const _ymLastH  = _scanYearMonthGZ(dayDate, 23, 30, lon, utc, _dstOn);
+        const _daySplit = !!(_ymFirstH && _ymLastH &&
+            (_ymFirstH.mGan + _ymFirstH.mZhi !== _ymLastH.mGan + _ymLastH.mZhi ||
+             _ymFirstH.yGan + _ymFirstH.yZhi !== _ymLastH.yGan + _ymLastH.yZhi));
 
         const jieqiDay = jieqiMap[localISODate(dayDate)] || [];
         const jieqiDayHTML = jieqiDay.map(j => `<span style="font-size:10px;color:#e65100;font-weight:bold;"> ⟐ ${j.name} ${j.wall||j.time}${j.wall?' (TST '+j.time+')':''}</span>`).join('');
@@ -5552,8 +5606,12 @@ function buildMonthView() {
             const ziHourBase2 = new Date(dayDate); ziHourBase2.setHours(0, 30, 0, 0);
             const ziHGan2   = Solar.fromDate(ziHourBase2).getLunar().getEightChar().getTimeGan();
             const ziHZhi2  = '子';
-            const ziYGan2 = ziEC2.getYearGan(), ziYZhi2 = ziEC2.getYearZhi();
-            const ziMGan2 = ziEC2.getMonthGan(), ziMZhi2 = ziEC2.getMonthZhi();
+            // Year + month at the TST instant of 00:30 on this day (TST-resolved 节 boundary)
+            const _ymZi2 = _scanYearMonthGZ(dayDate, 0, 30, lon, utc, _dstOn);
+            const ziYGan2 = _ymZi2 ? _ymZi2.yGan : ziEC2.getYearGan();
+            const ziYZhi2 = _ymZi2 ? _ymZi2.yZhi : ziEC2.getYearZhi();
+            const ziMGan2 = _ymZi2 ? _ymZi2.mGan : ziEC2.getMonthGan();
+            const ziMZhi2 = _ymZi2 ? _ymZi2.mZhi : ziEC2.getMonthZhi();
             const ziYData2 = getXkdgData(ziYGan2, ziYZhi2);
             const ziMData2 = getXkdgData(ziMGan2, ziMZhi2);
             const ziDData2 = getXkdgData(ziDGan2, ziDZhi2);
@@ -5698,8 +5756,14 @@ function buildMonthView() {
                 dZhi = yest.getLunar().getEightChar().getDayZhi();
             }
 
-            const yGan = eightChar.getYearGan(),  yZhi = eightChar.getYearZhi();
-            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
+            // Year + month at the TST instant of THIS hour: when a 节 falls inside the day,
+            // the hours after it carry the NEW month (and, at 立春, the new year).
+            // Falls back to the legacy reading only if the TST engine is unavailable.
+            const _ymRow = _scanYearMonthGZ(dayDate, isZiFirst ? 23 : hourStart, 30, lon, utc, _dstOn);
+            const yGan = _ymRow ? _ymRow.yGan : eightChar.getYearGan();
+            const yZhi = _ymRow ? _ymRow.yZhi : eightChar.getYearZhi();
+            const mGan = _ymRow ? _ymRow.mGan : eightChar.getMonthGan();
+            const mZhi = _ymRow ? _ymRow.mZhi : eightChar.getMonthZhi();
             const hGan = eightChar.getTimeGan(),  hZhi = eightChar.getTimeZhi();
 
             const yData = getXkdgData(yGan, yZhi);
@@ -5709,10 +5773,12 @@ function buildMonthView() {
 
             // ── ZI FIRST HALF: build row at 23:30 of THIS day — library gives correct next-day stem ──
             if (isZiFirst) {
-                // At 23:30, library returns the new Chinese day stem (correct for Zi hour)
-                const ziDGan = eightChar.getDayGan(), ziDZhi = eightChar.getDayZhi();
-                const ziYGan = eightChar.getYearGan(), ziYZhi = eightChar.getYearZhi();
-                const ziMGan = eightChar.getMonthGan(), ziMZhi = eightChar.getMonthZhi();
+                // Day pillar rolls at TST midnight: 23:00-00:00 still belongs to THIS day.
+                // (dGan/dZhi were resolved above from this day's noon.)
+                const ziDGan = dGan, ziDZhi = dZhi;
+                // 23:30 of THIS day — year/month already resolved in TST above (_ymRow)
+                const ziYGan = yGan, ziYZhi = yZhi;
+                const ziMGan = mGan, ziMZhi = mZhi;
                 // Use dayDate at 23:30 for hour pillar (continuous 60 JiaZi cycle)
                 const ziHourBase = new Date(dayDate); ziHourBase.setHours(23, 30, 0, 0);
                 const ziHourEC = Solar.fromDate(ziHourBase).getLunar().getEightChar();
@@ -7567,7 +7633,7 @@ function runScanner() {
             // Solar time for this hour slot
             const hourLocal = HOUR_STARTS[h];
             let baseDate = new Date(dayDate);
-            if (hourLocal === 23) baseDate = new Date(dayDate.getTime() - 86400000);
+            // Day rolls at TST midnight: the 23:00 slot belongs to THIS day, no day-back shift.
             baseDate.setHours(hourLocal, 30, 0, 0); // midpoint of hour
             const solarDate = new Date(baseDate.getTime() + offsetMin * 60000);
 
@@ -7597,15 +7663,22 @@ function runScanner() {
             if (!hourData) {
                 if (!getActiveFilters().has('nayin')) continue;
                 // NaYin filter: check if hour has Nayin label before proceeding
-                const yGanPre = eightChar.getYearGan(), yZhiPre = eightChar.getYearZhi();
-                const mGanPre = eightChar.getMonthGan(), mZhiPre = eightChar.getMonthZhi();
+                const _ymPre  = _scanYearMonthGZ(baseDate, hourLocal, 30, lon, utc, _dstOn);
+                const yGanPre = _ymPre ? _ymPre.yGan : eightChar.getYearGan();
+                const yZhiPre = _ymPre ? _ymPre.yZhi : eightChar.getYearZhi();
+                const mGanPre = _ymPre ? _ymPre.mGan : eightChar.getMonthGan();
+                const mZhiPre = _ymPre ? _ymPre.mZhi : eightChar.getMonthZhi();
                 const nayinPre = analyzeNayin(dGan, dZhi, hGan, hZhi, mGanPre, mZhiPre, yGanPre, yZhiPre, null, null);
                 if (!nayinPre.label) continue;
             }
 
             // Build all 4 pillars for analysis with dual hexagram resolution
-            const yGan = eightChar.getYearGan(), yZhi = eightChar.getYearZhi();
-            const mGan = eightChar.getMonthGan(), mZhi = eightChar.getMonthZhi();
+            // Year + month at the TST instant of THIS hour (节 boundary inside the day)
+            const _ymBST = _scanYearMonthGZ(baseDate, hourLocal, 30, lon, utc, _dstOn);
+            const yGan = _ymBST ? _ymBST.yGan : eightChar.getYearGan();
+            const yZhi = _ymBST ? _ymBST.yZhi : eightChar.getYearZhi();
+            const mGan = _ymBST ? _ymBST.mGan : eightChar.getMonthGan();
+            const mZhi = _ymBST ? _ymBST.mZhi : eightChar.getMonthZhi();
             const pillars = buildResolvedPillars(yGan, yZhi, mGan, mZhi, dGan, dZhi, hGan, hZhi);
             if (!pillars.year.hex || !pillars.month.hex) {
                 // No XKDG data — only show if Nayin Weak filter active and this hour is Nayin Weak
