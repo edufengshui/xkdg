@@ -1402,6 +1402,7 @@
         type: 'object',
         properties: {
           house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug to program.' },
+          mode: { type: 'string', enum: ['block', 'windows'], description: 'How the light is scheduled. "block" (DEFAULT, the long-standing behaviour) = ONE hour per day, light stays ON until 23:00, blocks can span several days. "windows" = the light is ON only for the two hours of EACH favourable hour of the day and is switched off in between; several windows a day are normal, and consecutive favourable hours are merged into one longer window. Use "windows" only when the user asks for it for that house.' },
           days: { type: 'integer', description: 'How many days ahead to plan (default 7).' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
           purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Plan ONLY on hours that also serve this purpose \u2014 use it for "program only Wealth activations for next week". Water is not a purpose: it is the MEANS by which a purpose is activated. Omit it and every scheduled day is annotated with the purposes it serves (also_good_for).' }
@@ -5538,6 +5539,39 @@
     var base = Date.UTC(p.y, p.mo - 1, p.d, 0, 0, 0) - (utc + (dst ? 1 : 0)) * 3600000;
     return base + Math.round(civilClockMin * 60000);
   }
+  // The two-hour span of an earthly branch, as absolute epoch ms, in the house's TRUE
+  // SOLAR time. Each branch owns 120 solar minutes CENTRED on _BRANCH_SOLAR_MIN's hour:
+  // 丑 starts at solar 01:00, 寅 at 03:00 ... 亥 at 21:00. 子 is the one that straddles
+  // midnight (solar 23:00 -> 01:00 of the next day), so its window is opened on the
+  // previous civil evening and closed after midnight — never clipped to 00:00-02:00.
+  function _branchWindow(iso, branch, lon, utc) {
+    var startMin = _BRANCH_SOLAR_MIN[branch];
+    if (startMin == null) return null;
+    if (branch === '\u5b50') {                                  // 子 — begins at solar 23:00
+      var on = _solarToEpoch(iso, 23 * 60, lon, utc);
+      return { onTs: on, offTs: on + 120 * 60000 };
+    }
+    var onTs = _solarToEpoch(iso, startMin, lon, utc);
+    return { onTs: onTs, offTs: onTs + 120 * 60000 };
+  }
+  // Merge windows that touch or overlap: two consecutive favourable hours become ONE
+  // uninterrupted lit stretch instead of an off/on pair at the very same instant — which
+  // the Worker's cron cannot resolve (equal distance from "now", arbitrary winner).
+  function _mergeWindows(wins) {
+    var xs = (wins || []).filter(function (w) { return w && isFinite(w.onTs) && isFinite(w.offTs) && w.offTs > w.onTs; })
+                         .sort(function (a, b) { return a.onTs - b.onTs; });
+    var out = [];
+    xs.forEach(function (w) {
+      var last = out[out.length - 1];
+      if (last && w.onTs <= last.offTs) {
+        if (w.offTs > last.offTs) last.offTs = w.offTs;
+        last.parts = (last.parts || []).concat(w.parts || [w]);
+      } else {
+        out.push({ date: w.date, onTs: w.onTs, offTs: w.offTs, parts: (w.parts || [w]).slice() });
+      }
+    });
+    return out;
+  }
   // Absolute epoch ms for a CIVIL wall-clock time (minutes past midnight) on `iso` at utc.
   function _civilToEpoch(iso, clockMin, utc) {
     var p = _dateParts(iso); if (!p) return NaN;
@@ -5874,6 +5908,9 @@
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
     var days = parseInt(input.days, 10) || 7;
     var commit = (input.commit === true);
+    // 'block' (default) keeps the historical behaviour; 'windows' lights only the two
+    // hours of each favourable hour. Per-house, so one house can move without the other.
+    var windowsMode = (String(input.mode || 'block').toLowerCase() === 'windows');
     // Water is the MEANS, not the purpose: an optional purpose narrows the plan to hours
     // that also open that purpose's Qimen door ("program only Wealth activations").
     var wantPurpose = (input.purpose || '').toLowerCase();
@@ -5924,150 +5961,197 @@
     //  criteria (XKDG, hexagram\u2026) can NEVER schedule an hour with a negative water sector.
     rows = rows.filter(function (r) { return r.qimen_quadrant_score != null; });
 
-    // 3) best hour per date. First choice = the MAX-tier hour (ties by XKDG score, then
-    // Qimen). We also keep the best IN-WINDOW hour separately: a late first choice falls
-    // back to it when its block would not run past 23:00.
-    var byDate = {};
-    rows.forEach(function (r) { if (!r.date) return; (byDate[r.date] = byDate[r.date] || []).push(r); });
-    function _cmpHour(a, b) {
-      return (b.blood_link_grade || 0) - (a.blood_link_grade || 0)   // Blood Link (San Qi first) wins the day's hour
-          || (b.tier || 0) - (a.tier || 0)
-          || (b.xkdg_score || 0) - (a.xkdg_score || 0)
-          || (b.qimen_score || 0) - (a.qimen_score || 0);
-    }
-    var bestByDate = {}, bestInWindowByDate = {}, altByDate = {}, youByDate = {};
-    Object.keys(byDate).forEach(function (d) {
-      var list = byDate[d].slice().sort(_cmpHour);
-      // You 酉 is the LAST RESORT only when it is WEAK (Edu, session 25). A late hour that
-      // is Tier 4 or Tier 3 follows the usual rule: it anchors its day like any other and
-      // can open a stretch over the empty days that follow — a structure that strong is not
-      // demoted for being late. Below that, 酉 steps aside and is picked up at the very end
-      // of the ladder, after the tier 0 reserve: that is the case Edu meant, an empty day
-      // followed by tier 2, 1 or 0.
-      var early = list.filter(function (r) { return r.branch !== '\u9149' || r.tier >= 3; });
-      bestByDate[d] = early[0];
-      if (!early[0]) delete bestByDate[d];
-      youByDate[d] = list.filter(function (r) { return r.branch === '\u9149' && r.tier < 3; })[0] || null;
-      bestInWindowByDate[d] = early.filter(function (r) { return !!_WINDOW_BRANCHES[r.branch]; })[0] || youByDate[d] || null;
-      var topTier = early.length ? early[0].tier : null;
-      altByDate[d] = topTier == null ? [] : early.slice(1).filter(function (r) { return r.tier === topTier; })
-        .map(function (r) { return { branch: r.branch, hour: r.hour, tier: r.tier, xkdg_score: r.xkdg_score, qimen_score: r.qimen_score }; });
-    });
-
-    // TIER 0 RESERVE (Edu, session 25). A day with no tier>=1 hour is not necessarily a
-    // day with nothing: toolFindWaterActivationFull drops tier 0 upstream. A tier 0 hour
-    // HAS passed the absolute QMDJ water veto — favourable door at the aquarium sector,
-    // no negative formation — it simply misses the quality floor (not connected to the
-    // person, XKDG below 16, Qimen quadrant below 3). That is the "less lucky but still
-    // valid" switch-on. Fetched once and used ONLY for a second consecutive empty day.
-    var reserveByDate = {};
-    try {
-      var scan0 = toolFindWaterActivationFull({
-        direction: aq.direction, star_type: 'water', star_num: aq.water_star,
-        facing_deg: floor.facing, period: floor.period, start_date: start, days: days, full: true,
-        purpose: wantPurpose || undefined, min_tier: 0
-      });
-      ((scan0 && scan0.results) || [])
-        .filter(function (r) { return r.qimen_quadrant_score != null && !r.tier && r.date && _WINDOW_BRANCHES[r.branch]; })
-        .forEach(function (r) {
-          var cur = reserveByDate[r.date];
-          if (!cur || (r.qimen_score || 0) > (cur.qimen_score || 0) || (r.xkdg_score || 0) > (cur.xkdg_score || 0)) reserveByDate[r.date] = r;
-        });
-    } catch (eRes) {}
-    function _tierOn(iso) { var b = bestByDate[iso]; return b ? (b.tier || 0) : 0; }
-    // How far a block starting on `iso` with tier `t` runs, in whole days (0 = same day).
-    // Tier 4 -> +2 days unless the next day is Tier 3 or better.
-    // Tier 3 -> +1 day  unless the next day is Tier 2 or better.
-    // A stronger day is never swallowed by a weaker one's block.
-    // COVER THE HOLE (Edu, session 25): whatever its tier, a block is extended by one day
-    // when the NEXT day has no favourable hour at all — better to leave the light on than
-    // to leave the aquarium dark. An empty day is never "stronger", so this can't swallow
-    // a good day. Two empty days in a row: this covers the first, and the second gets a
-    // tier 0 switch-on from the reserve below.
-    function _spanOf(iso, t) {
-      var nextIso = _isoPlus(iso, 1);
-      var next = _tierOn(nextIso);
-      var span = 0;
-      if (t === 4 && next < 3) span = 2;
-      else if (t === 3 && next < 2) span = 1;
-      // Only a day INSIDE the scanned window can be known to be empty: beyond the last
-      // scanned day there is simply no data, and an unknown day is not a hole to cover.
-      var lastIso = _isoPlus(start, days - 1);
-      if (nextIso <= lastIso && !bestByDate[nextIso] && span < 1) span = 1;
-      // STRONG BLOCKS STRETCH OVER THE EMPTY DAYS (Edu, session 25). A Tier 4 runs to the
-      // end of the empty stretch that follows it, up to 5 extra days; a Tier 3 up to 3.
-      // Not "always" that many — only as far as the holes actually go. A day with a real
-      // hour ends the stretch: it gets its own switch-on, as usual. Weaker tiers keep the
-      // single-day hole cover above.
-      var stretchCap = (t === 4) ? TIER4_MAX_STRETCH : (t === 3 ? TIER3_MAX_STRETCH : 0);
-      if (stretchCap > 0) {
-        var k = 0;
-        while (k < stretchCap) {
-          var nIso = _isoPlus(iso, k + 1);
-          if (nIso > lastIso || bestByDate[nIso]) break;
-          k++;
-        }
-        if (k > span) span = k;
-      }
-      return span;
-    }
-
+    // ── MODE: windows (Edu, session 30) ─────────────────────────────────────────
+    // The light is ON only for the two hours of EACH favourable hour of the day and is
+    // switched OFF in between — instead of one hour a day opening a block that runs to
+    // 23:00 (and possibly over the days that follow). Every row that survived the QMDJ
+    // water veto above counts: no tier threshold, no "best of the day", no reserve or
+    // last-resort rules, because nothing has to cover a hole any more.
+    // Consecutive hours are MERGED (see _mergeWindows): two touching windows would
+    // otherwise put an OFF and an ON at the very same instant, which the Worker's cron
+    // resolves arbitrarily and can leave the light off.
     var scheduled = [], skipped = [];
-    var coveredUntil = null;                    // ISO of the last day covered by a running block
-    for (var i = 0; i < days; i++) {
-      var iso = _isoPlus(start, i);
-      if (coveredUntil && iso <= coveredUntil) continue;   // the light is already on from an earlier block
-      var best = bestByDate[iso];
-      var usedReserve = false, usedYouLastResort = false;
-      if (!best) {
-        // Not covered by the previous block => this is the SECOND empty day in a row
-        // (the first is always absorbed by _spanOf). Switch on anyway, on the best
-        // tier 0 hour that passed the QMDJ veto: less lucky, still valid.
-        best = reserveByDate[iso] || null;
-        if (best) usedReserve = true;
-      }
-      if (!best) {
-        // LAST RESORT: a You 酉 hour. Nothing earlier in the day and no tier 0 reserve —
-        // five hours of light beat none.
-        best = youByDate[iso] || null;
-        if (best) usedYouLastResort = true;
-      }
-      if (!best) { skipped.push({ date: iso, reason: 'no favourable hour, no tier 0 reserve and no You \u9149 hour either' }); continue; }
-      var chosen = best, fallbackFrom = null, span = _spanOf(iso, best.tier);
-      // LATE rule: a late hour is only worth taking when the block outlives the 23:00 off.
-      if (_LATE_BRANCHES[best.branch] && span === 0) {
-        var alt = bestInWindowByDate[iso];
-        if (!alt) {
-          skipped.push({ date: iso, reason: 'best hour is late (' + best.branch + ' ' + best.hour + ', tier ' + best.tier +
-                         ') and its block would end at 23:00 the same day; no in-window alternative that day' });
-          continue;
+    if (windowsMode) {
+      var _wins = [];
+      rows.forEach(function (r) {
+        if (!r || !r.date || !r.branch) return;
+        var w = _branchWindow(r.date, r.branch, rh.cfg.lon, rh.cfg.utc);
+        if (!w || !isFinite(w.onTs)) { skipped.push({ date: r.date, reason: 'unknown branch ' + r.branch }); return; }
+        _wins.push({ date: r.date, onTs: w.onTs, offTs: w.offTs, parts: [r] });
+      });
+      _mergeWindows(_wins).forEach(function (w) {
+        var parts = w.parts || [];
+        var lead = parts.slice().sort(function (a, b) {
+          return (b.blood_link_grade || 0) - (a.blood_link_grade || 0)
+              || (b.tier || 0) - (a.tier || 0)
+              || (b.xkdg_score || 0) - (a.xkdg_score || 0)
+              || (b.qimen_score || 0) - (a.qimen_score || 0);
+        })[0] || {};
+        scheduled.push({
+          date: w.date, branch: lead.branch, hour: lead.hour, tier: lead.tier,
+          blood_link: lead.blood_link || undefined,
+          blood_link_grade: lead.blood_link ? lead.blood_link_grade : undefined,
+          person_connected: lead.person_connected, xkdg_score: lead.xkdg_score,
+          qimen_score: lead.qimen_score, why: lead.why,
+          also_good_for: lead.also_good_for || undefined,
+          onTs: w.onTs, offTs: w.offTs,
+          on_local: new Date(w.onTs).toString(), off_local: new Date(w.offTs).toString(),
+          window_hours: Math.round((w.offTs - w.onTs) / 3600000),
+          merged_from: parts.length > 1
+            ? parts.map(function (x) { return x.branch + ' ' + x.hour + ' (tier ' + x.tier + ')'; })
+            : undefined,
+          merged_note: parts.length > 1
+            ? (parts.length + ' consecutive favourable hours \u2014 one uninterrupted window, no switch-off in between')
+            : undefined
+        });
+      });
+      scheduled.sort(function (a, b) { return a.onTs - b.onTs; });
+    } else {
+        // 3) best hour per date. First choice = the MAX-tier hour (ties by XKDG score, then
+        // Qimen). We also keep the best IN-WINDOW hour separately: a late first choice falls
+        // back to it when its block would not run past 23:00.
+        var byDate = {};
+        rows.forEach(function (r) { if (!r.date) return; (byDate[r.date] = byDate[r.date] || []).push(r); });
+        function _cmpHour(a, b) {
+          return (b.blood_link_grade || 0) - (a.blood_link_grade || 0)   // Blood Link (San Qi first) wins the day's hour
+              || (b.tier || 0) - (a.tier || 0)
+              || (b.xkdg_score || 0) - (a.xkdg_score || 0)
+              || (b.qimen_score || 0) - (a.qimen_score || 0);
         }
-        fallbackFrom = { branch: best.branch, hour: best.hour, tier: best.tier };
-        chosen = alt;
-        span = _spanOf(iso, chosen.tier);
-      }
-      if (_BRANCH_SOLAR_MIN[chosen.branch] == null) { skipped.push({ date: iso, reason: 'unknown branch ' + chosen.branch }); continue; }
-      var endIso = _isoPlus(iso, span);
-      var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[chosen.branch], rh.cfg.lon, rh.cfg.utc);
-      var offTs = _civilToEpoch(endIso, 23 * 60, rh.cfg.utc);     // 23:00 CIVIL clock on the block's LAST day
-      scheduled.push({ date: iso, branch: chosen.branch, hour: chosen.hour, tier: chosen.tier,
-                       blood_link: chosen.blood_link || undefined,
-                       blood_link_grade: chosen.blood_link ? chosen.blood_link_grade : undefined,
-                       reserve_tier0: usedReserve || undefined, you_last_resort: usedYouLastResort || undefined,
-                       person_connected: chosen.person_connected, xkdg_score: chosen.xkdg_score,
-                       qimen_score: chosen.qimen_score, why: chosen.why,
-                       also_good_for: chosen.also_good_for || undefined,
-                       onTs: onTs, offTs: offTs,
-                       on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString(),
-                       stays_on_until_date: span > 0 ? endIso : undefined,
-                       stay_on_note: span > 0
-                         ? ('Tier ' + chosen.tier + ': stays ON until 23:00 of ' + endIso + ' (' + span + ' extra day' + (span > 1 ? 's' : '') + ') \u2014 no stronger day follows'
-                            + (span === 2 ? '; two lit nights, accepted for a Tier 4' : ''))
-                         : undefined,
-                       late_taken: _LATE_BRANCHES[chosen.branch] ? true : undefined,
-                       fallback_from: fallbackFrom || undefined,
-                       alternatives_same_tier: (altByDate[iso] && altByDate[iso].length) ? altByDate[iso] : undefined });
-      if (span > 0) coveredUntil = endIso;
+        var bestByDate = {}, bestInWindowByDate = {}, altByDate = {}, youByDate = {};
+        Object.keys(byDate).forEach(function (d) {
+          var list = byDate[d].slice().sort(_cmpHour);
+          // You 酉 is the LAST RESORT only when it is WEAK (Edu, session 25). A late hour that
+          // is Tier 4 or Tier 3 follows the usual rule: it anchors its day like any other and
+          // can open a stretch over the empty days that follow — a structure that strong is not
+          // demoted for being late. Below that, 酉 steps aside and is picked up at the very end
+          // of the ladder, after the tier 0 reserve: that is the case Edu meant, an empty day
+          // followed by tier 2, 1 or 0.
+          var early = list.filter(function (r) { return r.branch !== '\u9149' || r.tier >= 3; });
+          bestByDate[d] = early[0];
+          if (!early[0]) delete bestByDate[d];
+          youByDate[d] = list.filter(function (r) { return r.branch === '\u9149' && r.tier < 3; })[0] || null;
+          bestInWindowByDate[d] = early.filter(function (r) { return !!_WINDOW_BRANCHES[r.branch]; })[0] || youByDate[d] || null;
+          var topTier = early.length ? early[0].tier : null;
+          altByDate[d] = topTier == null ? [] : early.slice(1).filter(function (r) { return r.tier === topTier; })
+            .map(function (r) { return { branch: r.branch, hour: r.hour, tier: r.tier, xkdg_score: r.xkdg_score, qimen_score: r.qimen_score }; });
+        });
+
+        // TIER 0 RESERVE (Edu, session 25). A day with no tier>=1 hour is not necessarily a
+        // day with nothing: toolFindWaterActivationFull drops tier 0 upstream. A tier 0 hour
+        // HAS passed the absolute QMDJ water veto — favourable door at the aquarium sector,
+        // no negative formation — it simply misses the quality floor (not connected to the
+        // person, XKDG below 16, Qimen quadrant below 3). That is the "less lucky but still
+        // valid" switch-on. Fetched once and used ONLY for a second consecutive empty day.
+        var reserveByDate = {};
+        try {
+          var scan0 = toolFindWaterActivationFull({
+            direction: aq.direction, star_type: 'water', star_num: aq.water_star,
+            facing_deg: floor.facing, period: floor.period, start_date: start, days: days, full: true,
+            purpose: wantPurpose || undefined, min_tier: 0
+          });
+          ((scan0 && scan0.results) || [])
+            .filter(function (r) { return r.qimen_quadrant_score != null && !r.tier && r.date && _WINDOW_BRANCHES[r.branch]; })
+            .forEach(function (r) {
+              var cur = reserveByDate[r.date];
+              if (!cur || (r.qimen_score || 0) > (cur.qimen_score || 0) || (r.xkdg_score || 0) > (cur.xkdg_score || 0)) reserveByDate[r.date] = r;
+            });
+        } catch (eRes) {}
+        function _tierOn(iso) { var b = bestByDate[iso]; return b ? (b.tier || 0) : 0; }
+        // How far a block starting on `iso` with tier `t` runs, in whole days (0 = same day).
+        // Tier 4 -> +2 days unless the next day is Tier 3 or better.
+        // Tier 3 -> +1 day  unless the next day is Tier 2 or better.
+        // A stronger day is never swallowed by a weaker one's block.
+        // COVER THE HOLE (Edu, session 25): whatever its tier, a block is extended by one day
+        // when the NEXT day has no favourable hour at all — better to leave the light on than
+        // to leave the aquarium dark. An empty day is never "stronger", so this can't swallow
+        // a good day. Two empty days in a row: this covers the first, and the second gets a
+        // tier 0 switch-on from the reserve below.
+        function _spanOf(iso, t) {
+          var nextIso = _isoPlus(iso, 1);
+          var next = _tierOn(nextIso);
+          var span = 0;
+          if (t === 4 && next < 3) span = 2;
+          else if (t === 3 && next < 2) span = 1;
+          // Only a day INSIDE the scanned window can be known to be empty: beyond the last
+          // scanned day there is simply no data, and an unknown day is not a hole to cover.
+          var lastIso = _isoPlus(start, days - 1);
+          if (nextIso <= lastIso && !bestByDate[nextIso] && span < 1) span = 1;
+          // STRONG BLOCKS STRETCH OVER THE EMPTY DAYS (Edu, session 25). A Tier 4 runs to the
+          // end of the empty stretch that follows it, up to 5 extra days; a Tier 3 up to 3.
+          // Not "always" that many — only as far as the holes actually go. A day with a real
+          // hour ends the stretch: it gets its own switch-on, as usual. Weaker tiers keep the
+          // single-day hole cover above.
+          var stretchCap = (t === 4) ? TIER4_MAX_STRETCH : (t === 3 ? TIER3_MAX_STRETCH : 0);
+          if (stretchCap > 0) {
+            var k = 0;
+            while (k < stretchCap) {
+              var nIso = _isoPlus(iso, k + 1);
+              if (nIso > lastIso || bestByDate[nIso]) break;
+              k++;
+            }
+            if (k > span) span = k;
+          }
+          return span;
+        }
+
+        var scheduled = [], skipped = [];
+        var coveredUntil = null;                    // ISO of the last day covered by a running block
+        for (var i = 0; i < days; i++) {
+          var iso = _isoPlus(start, i);
+          if (coveredUntil && iso <= coveredUntil) continue;   // the light is already on from an earlier block
+          var best = bestByDate[iso];
+          var usedReserve = false, usedYouLastResort = false;
+          if (!best) {
+            // Not covered by the previous block => this is the SECOND empty day in a row
+            // (the first is always absorbed by _spanOf). Switch on anyway, on the best
+            // tier 0 hour that passed the QMDJ veto: less lucky, still valid.
+            best = reserveByDate[iso] || null;
+            if (best) usedReserve = true;
+          }
+          if (!best) {
+            // LAST RESORT: a You 酉 hour. Nothing earlier in the day and no tier 0 reserve —
+            // five hours of light beat none.
+            best = youByDate[iso] || null;
+            if (best) usedYouLastResort = true;
+          }
+          if (!best) { skipped.push({ date: iso, reason: 'no favourable hour, no tier 0 reserve and no You \u9149 hour either' }); continue; }
+          var chosen = best, fallbackFrom = null, span = _spanOf(iso, best.tier);
+          // LATE rule: a late hour is only worth taking when the block outlives the 23:00 off.
+          if (_LATE_BRANCHES[best.branch] && span === 0) {
+            var alt = bestInWindowByDate[iso];
+            if (!alt) {
+              skipped.push({ date: iso, reason: 'best hour is late (' + best.branch + ' ' + best.hour + ', tier ' + best.tier +
+                             ') and its block would end at 23:00 the same day; no in-window alternative that day' });
+              continue;
+            }
+            fallbackFrom = { branch: best.branch, hour: best.hour, tier: best.tier };
+            chosen = alt;
+            span = _spanOf(iso, chosen.tier);
+          }
+          if (_BRANCH_SOLAR_MIN[chosen.branch] == null) { skipped.push({ date: iso, reason: 'unknown branch ' + chosen.branch }); continue; }
+          var endIso = _isoPlus(iso, span);
+          var onTs = _solarToEpoch(iso, _BRANCH_SOLAR_MIN[chosen.branch], rh.cfg.lon, rh.cfg.utc);
+          var offTs = _civilToEpoch(endIso, 23 * 60, rh.cfg.utc);     // 23:00 CIVIL clock on the block's LAST day
+          scheduled.push({ date: iso, branch: chosen.branch, hour: chosen.hour, tier: chosen.tier,
+                           blood_link: chosen.blood_link || undefined,
+                           blood_link_grade: chosen.blood_link ? chosen.blood_link_grade : undefined,
+                           reserve_tier0: usedReserve || undefined, you_last_resort: usedYouLastResort || undefined,
+                           person_connected: chosen.person_connected, xkdg_score: chosen.xkdg_score,
+                           qimen_score: chosen.qimen_score, why: chosen.why,
+                           also_good_for: chosen.also_good_for || undefined,
+                           onTs: onTs, offTs: offTs,
+                           on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString(),
+                           stays_on_until_date: span > 0 ? endIso : undefined,
+                           stay_on_note: span > 0
+                             ? ('Tier ' + chosen.tier + ': stays ON until 23:00 of ' + endIso + ' (' + span + ' extra day' + (span > 1 ? 's' : '') + ') \u2014 no stronger day follows'
+                                + (span === 2 ? '; two lit nights, accepted for a Tier 4' : ''))
+                             : undefined,
+                           late_taken: _LATE_BRANCHES[chosen.branch] ? true : undefined,
+                           fallback_from: fallbackFrom || undefined,
+                           alternatives_same_tier: (altByDate[iso] && altByDate[iso].length) ? altByDate[iso] : undefined });
+          if (span > 0) coveredUntil = endIso;
+        }
     }
 
     // 4) deposit the scheduled days ONLY on commit; otherwise this is a PREVIEW (await the user's OK).
