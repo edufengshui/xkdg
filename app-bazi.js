@@ -2262,7 +2262,12 @@ function savePerson(person) {
     try { birthLon = parseFloat(document.getElementById('longitude').value); } catch (e) {}
     try { birthUtc = parseFloat(document.getElementById('utc-offset').value); } catch (e) {}
     try { birthDst = (person === 'B') ? !!_dstOnB : !!_dstOnA; } catch (e) {}
+    // Re-saving must not wipe fields this form does not own. `category` (the archive
+    // folder) is set elsewhere — from a house, or from the DB panel — and a plain
+    // re-save used to drop it silently, emptying folders on its own.
+    const _prev = archive[name] || {};
     archive[name] = {
+        ..._prev,
         date, time, savedAt: Date.now(), depth, jiaZiYear,
         birthLon: isFinite(birthLon) ? birthLon : undefined,
         birthUtc: isFinite(birthUtc) ? birthUtc : undefined,
