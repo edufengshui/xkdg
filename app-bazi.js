@@ -2049,16 +2049,170 @@ function loadArchive(key) {
 }
 function saveArchiveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 
+// ── Archive folders ──────────────────────────────────────────
+// A person's folder is its `category`, now a PATH with "/" for subfolders
+// ("Clients/Rossi"). Old one-level categories are already valid paths, so no
+// migration. Houses ALWAYS follow their person: the folder lives on the person
+// record; house.category is only kept in sync (and read as a legacy fallback).
+// Each list (row A, row B, DB, house member picker) has its OWN folder menu —
+// deliberately no global "active folder": students compare people across folders.
+const XKDG_FOLDER_DEFAULTS = ['Mine', 'Students', 'Clients', 'Friends'];
+
+function xkdgNormFolder(p) {
+    return String(p || '').split('/').map(s => s.trim()).filter(Boolean).join('/');
+}
+function _xkdgFolderSaved() {
+    try {
+        const c = JSON.parse(localStorage.getItem('xkdg_house_categories') || 'null');
+        return (Array.isArray(c) && c.length) ? c : XKDG_FOLDER_DEFAULTS.slice();
+    } catch (e) { return XKDG_FOLDER_DEFAULTS.slice(); }
+}
+function xkdgAddFolder(path) {
+    path = xkdgNormFolder(path);
+    if (!path) return '';
+    const list = _xkdgFolderSaved();
+    if (list.indexOf(path) < 0) { list.push(path); localStorage.setItem('xkdg_house_categories', JSON.stringify(list)); }
+    return path;
+}
+function _xkdgHousesRaw() {
+    try { return JSON.parse(localStorage.getItem('xkdg_houses') || '{}') || {}; } catch (e) { return {}; }
+}
+// Folder of a saved person ('' = unfiled). Legacy fallback: a house's category.
+function xkdgPersonFolder(name) {
+    const a = loadArchive('xkdg_persons_a'), b = loadArchive('xkdg_persons_b');
+    const r = a[name] || b[name];
+    if (r && r.category) return xkdgNormFolder(r.category);
+    const hs = _xkdgHousesRaw()[name];
+    if (Array.isArray(hs)) for (const h of hs) if (h && h.category) return xkdgNormFolder(h.category);
+    return '';
+}
+// Every known folder (saved list + used by people/houses + all parent paths), tree-sorted.
+function xkdgFolderList() {
+    const set = {};
+    const add = p => {
+        p = xkdgNormFolder(p); if (!p) return;
+        const parts = p.split('/');
+        for (let i = 1; i <= parts.length; i++) set[parts.slice(0, i).join('/')] = true;
+    };
+    _xkdgFolderSaved().forEach(add);
+    [loadArchive('xkdg_persons_a'), loadArchive('xkdg_persons_b')].forEach(arch =>
+        Object.keys(arch).forEach(n => add(arch[n] && arch[n].category)));
+    const houses = _xkdgHousesRaw();
+    Object.keys(houses).forEach(k => (Array.isArray(houses[k]) ? houses[k] : []).forEach(h => add(h && h.category)));
+    return Object.keys(set).sort((x, y) => {
+        const a = x.split('/'), b = y.split('/');
+        for (let i = 0; i < Math.min(a.length, b.length); i++) {
+            const c = a[i].localeCompare(b[i]); if (c) return c;
+        }
+        return a.length - b.length;
+    });
+}
+// Does a person's folder fall under the filter? ('' = all, '__none__' = unfiled)
+function xkdgFolderMatch(folder, filter) {
+    if (!filter) return true;
+    if (filter === '__none__') return !folder;
+    return folder === filter || folder.indexOf(filter + '/') === 0;
+}
+// Per-list folder view, remembered on this device. listId: 'A' | 'B' | 'DB' | 'members'
+function xkdgFolderViewGet(listId) {
+    try { return (JSON.parse(localStorage.getItem('xkdg_folder_view') || '{}') || {})[listId] || ''; } catch (e) { return ''; }
+}
+function xkdgSetFolderView(listId, val) {
+    let v = {};
+    try { v = JSON.parse(localStorage.getItem('xkdg_folder_view') || '{}') || {}; } catch (e) {}
+    v[listId] = val || '';
+    localStorage.setItem('xkdg_folder_view', JSON.stringify(v));
+    if (listId === 'A' || listId === 'B') renderArchive(listId);
+    else if (listId === 'DB') renderDB();
+    else if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles();
+}
+function _xkdgEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+function _xkdgFolderLabel(path) {
+    const parts = path.split('/');
+    return (parts.length > 1 ? '\u00a0\u00a0\u00a0'.repeat(parts.length - 1) + '└ ' : '') + parts[parts.length - 1];
+}
+// Filter menu for a list. `folders` = folder of each person in that list (for counts).
+function xkdgFolderFilterHtml(listId, folders, style) {
+    const cur = xkdgFolderViewGet(listId);
+    const count = f => folders.filter(x => xkdgFolderMatch(x, f)).length;
+    let h = `<select onchange="xkdgSetFolderView('${listId}',this.value)" title="Show only one folder (and its subfolders)" style="${style || 'font-size:11px;padding:2px 4px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;'}">`;
+    h += `<option value=""${!cur ? ' selected' : ''}>📁 All (${folders.length})</option>`;
+    xkdgFolderList().forEach(p => {
+        h += `<option value="${_xkdgEsc(p)}"${cur === p ? ' selected' : ''}>${_xkdgEsc(_xkdgFolderLabel(p))} (${count(p)})</option>`;
+    });
+    h += `<option value="__none__"${cur === '__none__' ? ' selected' : ''}>— Unfiled (${count('__none__')})</option>`;
+    return h + '</select>';
+}
+// Menu to put ONE person in a folder (DB card, house card).
+function xkdgFolderAssignHtml(name, style) {
+    const cur = xkdgPersonFolder(name);
+    let h = `<select data-name="${_xkdgEsc(name)}" onchange="xkdgPickFolderForPerson(this.dataset.name,this.value)" title="Folder of this person (their houses follow)" style="${style || 'font-size:11px;padding:2px 4px;border:1px solid #c9a84c;border-radius:6px;background:#fff;'}">`;
+    h += `<option value=""${!cur ? ' selected' : ''}>📁 — no folder —</option>`;
+    xkdgFolderList().forEach(p => {
+        h += `<option value="${_xkdgEsc(p)}"${cur === p ? ' selected' : ''}>${_xkdgEsc(_xkdgFolderLabel(p))}</option>`;
+    });
+    h += `<option value="__new__">➕ New folder…</option>`;
+    if (cur) h += `<option value="__newsub__">➕ New subfolder in "${_xkdgEsc(cur)}"…</option>`;
+    return h + '</select>';
+}
+function xkdgPickFolderForPerson(name, val) {
+    if (val === '__new__' || val === '__newsub__') {
+        const parent = (val === '__newsub__') ? xkdgPersonFolder(name) : '';
+        const typed = prompt(parent
+            ? `New subfolder inside "${parent}":`
+            : 'New folder name.\nUse / for subfolders, e.g. "Clients/Rossi".');
+        if (!typed || !xkdgNormFolder(typed)) { xkdgRefreshFolderViews(); return; }
+        val = xkdgAddFolder(parent ? parent + '/' + typed : typed);
+    }
+    xkdgSetPersonFolder(name, val);
+}
+// Write the folder on the PERSON (both archives if present) and keep that
+// person's houses in sync, so no older code path can resurrect a stale value.
+function xkdgSetPersonFolder(name, path) {
+    if (!name) return;
+    path = xkdgNormFolder(path);
+    if (path) xkdgAddFolder(path);
+    ['xkdg_persons_a', 'xkdg_persons_b'].forEach(key => {
+        const arch = loadArchive(key);
+        if (!arch[name]) return;
+        if (path) arch[name].category = path; else delete arch[name].category;
+        saveArchiveData(key, arch);
+    });
+    try {
+        const houses = _xkdgHousesRaw();
+        let changed = false;
+        Object.keys(houses).forEach(k => (Array.isArray(houses[k]) ? houses[k] : []).forEach(h => {
+            if (!h) return;
+            if (k === name || h.personName === name) { h.category = path || null; changed = true; }
+        }));
+        if (changed) localStorage.setItem('xkdg_houses', JSON.stringify(houses));
+    } catch (e) { console.warn('folder → houses', e); }
+    xkdgRefreshFolderViews();
+}
+function xkdgRefreshFolderViews() {
+    try { renderArchive('A'); } catch (e) {}
+    try { renderArchive('B'); } catch (e) {}
+    try { const m = document.getElementById('db-modal'); if (m && m.style.display !== 'none') renderDB(); } catch (e) {}
+    try { if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles(); } catch (e) {}
+}
+
 function renderArchive(person) {
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const divId   = person === 'B' ? 'person-archive-b' : 'person-archive';
     const archive = loadArchive(key);
     const hidden  = loadArchive('xkdg_persons_hidden') || {};
-    const keys    = Object.keys(archive).filter(name => !hidden[name]);
+    const all     = Object.keys(archive).filter(name => !hidden[name]);
     const div     = document.getElementById(divId);
-    if (keys.length === 0) { div.style.display = 'none'; return; }
+    if (all.length === 0) { div.style.display = 'none'; return; }
     div.style.display = 'flex';
-    div.innerHTML = keys.map(name =>
+    // Folder menu for THIS row only (A and B are independent).
+    const folderOf = {};
+    all.forEach(n => { folderOf[n] = xkdgPersonFolder(n); });
+    const view = xkdgFolderViewGet(person);
+    const keys = all.filter(n => xkdgFolderMatch(folderOf[n], view));
+    div.innerHTML = xkdgFolderFilterHtml(person, all.map(n => folderOf[n])) +
+        (keys.length ? '' : '<span style="font-size:11px;color:#888;font-style:italic;">nobody in this folder</span>') +
+        keys.map(name =>
         `<span style="display:inline-flex;align-items:center;gap:3px;margin:2px;">
             <span class="archive-btn" onclick="loadPerson('${person}','${name}')">${name}</span>
             <span class="archive-del" onclick="hidePerson(event,'${person}','${name}')" title="Hide from label row" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
@@ -2116,7 +2270,17 @@ function renderDB() {
         return;
     }
 
-    document.getElementById('db-list').innerHTML = entries.map(({ name, data, panel }) => {
+    // Folder filter for the DB list (independent from rows A / B).
+    entries.forEach(e => { e.folder = xkdgPersonFolder(e.name); });
+    const _dbView = xkdgFolderViewGet('DB');
+    const _dbBar = `<div style="display:flex;align-items:center;gap:8px;padding:4px 2px 6px;font-size:12px;color:#555;">Folder: ${xkdgFolderFilterHtml('DB', entries.map(e => e.folder), 'font-size:12px;padding:3px 6px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;')}</div>`;
+    const _shown = entries.filter(e => xkdgFolderMatch(e.folder, _dbView));
+    if (_shown.length === 0) {
+        document.getElementById('db-list').innerHTML = _dbBar + '<div style="padding:20px;text-align:center;color:#888;">Nobody in this folder.</div>';
+        return;
+    }
+
+    document.getElementById('db-list').innerHTML = _dbBar + _shown.map(({ name, data, panel }) => {
         const note = notes[name] || '';
         const dateStr = data.date ? data.date : '';
         const isHidden = !!hidden[name];
@@ -2140,9 +2304,12 @@ function renderDB() {
                 <button onclick="loadPersonFromDB('B', this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #6a1b9a;background:#f3e5f5;color:#6a1b9a;cursor:pointer;">→ B</button>
                 <span onclick="deleteFromDB(this.dataset.panel, this.dataset.name)" data-panel="${panel}" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
             </div>
-            <input type="text" placeholder="Note about this person…" value="${note.replace(/"/g,'&quot;')}"
-                onchange="saveDBNote(this.dataset.name, this.value)" data-name="${name.replace(/"/g,'&quot;')}"
-                style="width:100%;box-sizing:border-box;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333;">
+            <div style="display:flex;gap:6px;align-items:center;">
+                ${xkdgFolderAssignHtml(name, 'font-size:12px;padding:3px 4px;border:1px solid #c9a84c;border-radius:6px;background:#fff;max-width:45%;')}
+                <input type="text" placeholder="Note about this person…" value="${note.replace(/"/g,'&quot;')}"
+                    onchange="saveDBNote(this.dataset.name, this.value)" data-name="${name.replace(/"/g,'&quot;')}"
+                    style="flex:1;min-width:0;box-sizing:border-box;font-size:12px;padding:4px 8px;border:1px solid #ddd;border-radius:6px;background:#fff;color:#333;">
+            </div>
         </div>`;
     }).join('');
 }
