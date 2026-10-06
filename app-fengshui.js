@@ -5015,20 +5015,9 @@ function fsRenderHouseProfiles(){
   var activeIdx = _fsActiveHouseGet(person.name);
   if (activeIdx >= houses.length) activeIdx = 0;
 
-  var cats = _fsCatsLoad();
-  var filter = window._fsHouseFilter || null;
 
   var html = '';
-  // Category filter (only if categories exist)
-  if (cats.length){
-    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11px;color:#555;">';
-    html += '<span>🔎 Filter:</span><select onchange="fsFilterHouses(this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
-    html += '<option value="__all__"' + (!filter ? ' selected' : '') + '>All categories</option>';
-    cats.forEach(function(c){ html += '<option value="' + escHtml(c) + '"' + (filter === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; });
-    html += '</select></div>';
-  }
   houses.forEach(function(h, hi){
-    if (filter && (h.category || null) !== filter) return;   // hidden by filter
     var isActive = (hi === activeIdx);
     var borderColor = isActive ? '#2e7d32' : '#a5d6a7';
     var bgColor = isActive ? '#f1f8e9' : '#fff';
@@ -5052,12 +5041,9 @@ function fsRenderHouseProfiles(){
     html += '<strong style="color:' + (isActive ? '#2e7d32' : '#666') + ';">' + escHtml(h.name) + '</strong>';
     if (_sumBits.length) html += '<span style="font-size:11px;color:#777;white-space:nowrap;">' + _sumBits.join(' · ') + '</span>';
     html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" title="' + (_exp ? 'Hide details' : 'Open details & tools (Add water / bed / desk / floor…)') + '" style="background:' + (_exp ? '#2e7d32' : '#eef5ee') + ';color:' + (_exp ? '#fff' : '#2e7d32') + ';border:1px solid #2e7d32;font-size:14px;font-weight:bold;line-height:1;cursor:pointer;padding:5px 12px;border-radius:6px;white-space:nowrap;">' + (_exp ? '▾ Hide' : '▸ Open') + '</button>';
-    // Category selector — on the same line (the owner name sits on the Facing/Period line inside the house)
-    html += '<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#555;">🏷<select onchange="fsSetHouseCategory(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:1px 4px;border:1px solid #c9a84c;border-radius:4px;">';
-    html += '<option value=""' + (!h.category ? ' selected' : '') + '>— category —</option>';
-    cats.forEach(function(c){ html += '<option value="' + escHtml(c) + '"' + (h.category === c ? ' selected' : '') + '>' + escHtml(c) + '</option>'; });
-    html += '<option value="__new__">➕ New…</option>';
-    html += '</select></span>';
+    // Folder selector — the folder belongs to the PERSON (houses always follow it).
+    html += '<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#555;">' +
+            (typeof xkdgFolderAssignHtml === 'function' ? xkdgFolderAssignHtml(h.personName || person.name) : '') + '</span>';
     html += '</div>';
 
     // RIGHT (top-right corner): Load · Rename · Delete · Archive
@@ -5097,13 +5083,20 @@ function fsRenderHouseProfiles(){
              + '<span onclick="fsHouseRemoveMember(\'' + escJs(person.name) + '\',' + hi + ',\'' + escJs(gn) + '\')" title="Remove member" style="cursor:pointer;color:#c62828;font-weight:bold;padding:0 2px;">×</span></span>';
       });
       // Picker (available = saved persons minus owner, guest#2, current members)
-      var avail = (typeof _fsAllSavedPersonNames === 'function' ? _fsAllSavedPersonNames() : [])
+      var availAll = (typeof _fsAllSavedPersonNames === 'function' ? _fsAllSavedPersonNames() : [])
                     .filter(function(n){ return n !== person.name && n !== g2 && guests.indexOf(n) === -1; })
                     .sort(function(a,b){ return a.localeCompare(b); });
+      // Own folder menu for this picker (students' clients can be many).
+      var _hasFolders = (typeof xkdgPersonFolder === 'function');
+      var _mView = _hasFolders ? xkdgFolderViewGet('members') : '';
+      var avail = _hasFolders ? availAll.filter(function(n){ return xkdgFolderMatch(xkdgPersonFolder(n), _mView); }) : availAll;
+      if (_hasFolders && availAll.length && _fsHouseExtraSlots(h) > 0)
+        html += xkdgFolderFilterHtml('members', availAll.map(function(n){ return xkdgPersonFolder(n); }),
+                'font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:10px;background:#fff;color:#1b5e20;');
       if (_fsHouseExtraSlots(h) <= 0){
         html += '<span style="color:#999;font-style:italic;">6 people max</span>';
       } else if (!avail.length){
-        html += '<span style="color:#999;font-style:italic;">no other saved persons</span>';
+        html += '<span style="color:#999;font-style:italic;">' + (availAll.length ? 'nobody in this folder' : 'no other saved persons') + '</span>';
       } else {
         html += '<select onchange="if(this.value){fsHouseAddMember(\'' + escJs(person.name) + '\',' + hi + ',this.value);this.value=\'\';}" style="font-size:11px;padding:2px 6px;border:1px solid #2e7d32;border-radius:10px;background:#f1f8e9;color:#1b5e20;cursor:pointer;">';
         html += '<option value="">➕ Add member…</option>';
@@ -5451,21 +5444,12 @@ function _fsCatsLoad(){ try { var c = JSON.parse(localStorage.getItem('xkdg_hous
 function _fsCatsSave(arr){ try { localStorage.setItem('xkdg_house_categories', JSON.stringify(arr)); } catch(e){} }
 
 function fsSetHouseCategory(personName, houseIdx, val){
+  // Kept for compatibility: the folder now lives on the PERSON, houses follow.
   try {
-    if (val === '__new__'){
-      var nc = prompt('New category (e.g. "My clients", "My students"):');
-      if (!nc || !nc.trim()){ fsRenderHouseProfiles(); return; }
-      nc = nc.trim();
-      var cats = _fsCatsLoad();
-      if (cats.indexOf(nc) < 0){ cats.push(nc); _fsCatsSave(cats); }
-      val = nc;
-    }
     var all = _fsHousesLoad();
-    var h = all[personName] && all[personName][houseIdx]; if (!h) return;
-    h.category = (val === '' ? null : val);
-    _fsHousesSave(all);
-    if (h.personName) _fsUpsertPersonDB(h.personName, h.birthDate, h.birthTime, h.category, false);
-    fsRenderHouseProfiles();
+    var h = all[personName] && all[personName][houseIdx];
+    var owner = (h && h.personName) || personName;
+    if (typeof xkdgPickFolderForPerson === 'function') xkdgPickFolderForPerson(owner, val);
   } catch(e){ console.warn('fsSetHouseCategory', e); }
 }
 function fsEditHouseAddress(personName, houseIdx){
@@ -5525,7 +5509,9 @@ function _fsUpsertPersonDB(name, birthDate, birthTime, category, force){
     if (birthDate) rec.date = force ? birthDate : (rec.date || birthDate);
     if (birthTime && !rec.time) rec.time = birthTime;
     if (!rec.time) rec.time = '12:00';
-    if (category) rec.category = category;
+    // A house only SEEDS the folder of a person who has none: the person's own
+    // folder wins (it may have been changed from the DB after the house was made).
+    if (category && !rec.category) rec.category = category;
     if (!rec.savedAt) rec.savedAt = Date.now();
     arch[name] = rec;
     localStorage.setItem(key, JSON.stringify(arch));
