@@ -2064,7 +2064,7 @@ function xkdgNormFolder(p) {
 function _xkdgFolderSaved() {
     try {
         const c = JSON.parse(localStorage.getItem('xkdg_house_categories') || 'null');
-        return (Array.isArray(c) && c.length) ? c : XKDG_FOLDER_DEFAULTS.slice();
+        return Array.isArray(c) ? c : XKDG_FOLDER_DEFAULTS.slice();
     } catch (e) { return XKDG_FOLDER_DEFAULTS.slice(); }
 }
 function xkdgAddFolder(path) {
@@ -2196,6 +2196,103 @@ function xkdgRefreshFolderViews() {
     try { if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles(); } catch (e) {}
 }
 
+// ── Folder manager (DB modal → "⚙ Manage folders") ───────────
+// Rename/move and delete act on a folder AND its subfolders, everywhere a
+// folder is stored: people, houses, the saved list, and each list's filter.
+// Deleting never deletes people: they move up to the parent folder (or Unfiled).
+let _dbFoldersOpen = false;
+function toggleDBFolders() { _dbFoldersOpen = !_dbFoldersOpen; renderDB(); }
+
+// Apply fn(path) → newPath ('' = unfiled) to every stored folder under `root`.
+function _xkdgRemapFolders(root, fn) {
+    const under = p => { p = xkdgNormFolder(p); return p === root || p.indexOf(root + '/') === 0; };
+    ['xkdg_persons_a', 'xkdg_persons_b'].forEach(key => {
+        const arch = loadArchive(key); let ch = false;
+        Object.keys(arch).forEach(n => {
+            const r = arch[n]; if (!r || !r.category || !under(r.category)) return;
+            const np = fn(xkdgNormFolder(r.category));
+            if (np) r.category = np; else delete r.category;
+            ch = true;
+        });
+        if (ch) saveArchiveData(key, arch);
+    });
+    try {
+        const houses = _xkdgHousesRaw(); let ch = false;
+        Object.keys(houses).forEach(k => (Array.isArray(houses[k]) ? houses[k] : []).forEach(h => {
+            if (!h || !h.category || !under(h.category)) return;
+            h.category = fn(xkdgNormFolder(h.category)) || null; ch = true;
+        }));
+        if (ch) localStorage.setItem('xkdg_houses', JSON.stringify(houses));
+    } catch (e) { console.warn('remap houses', e); }
+    const out = [];
+    _xkdgFolderSaved().forEach(p => {
+        const np = under(p) ? fn(xkdgNormFolder(p)) : xkdgNormFolder(p);
+        if (np && out.indexOf(np) < 0) out.push(np);
+    });
+    localStorage.setItem('xkdg_house_categories', JSON.stringify(out));
+    try {
+        const v = JSON.parse(localStorage.getItem('xkdg_folder_view') || '{}') || {};
+        Object.keys(v).forEach(k => { if (v[k] && v[k] !== '__none__' && under(v[k])) v[k] = fn(xkdgNormFolder(v[k])); });
+        localStorage.setItem('xkdg_folder_view', JSON.stringify(v));
+    } catch (e) {}
+}
+function _xkdgPeopleUnder(root) {
+    const names = {};
+    [loadArchive('xkdg_persons_a'), loadArchive('xkdg_persons_b')].forEach(arch =>
+        Object.keys(arch).forEach(n => { if (xkdgFolderMatch(xkdgPersonFolder(n), root)) names[n] = true; }));
+    return Object.keys(names).length;
+}
+function xkdgNewFolderPrompt(parent) {
+    const typed = prompt(parent ? `New subfolder inside "${parent}":` : 'New folder name.\nUse / for subfolders, e.g. "Clients/Rossi".');
+    if (!typed || !xkdgNormFolder(typed)) return;
+    xkdgAddFolder(parent ? parent + '/' + typed : typed);
+    xkdgRefreshFolderViews();
+}
+function xkdgRenameFolder(oldPath) {
+    const typed = prompt(`Rename or move "${oldPath}".\nWrite the full path; use / for subfolders (e.g. "Clients/2026/Rossi").\nSubfolders and people move with it.`, oldPath);
+    if (typed === null) return;
+    const np = xkdgNormFolder(typed);
+    if (!np) { alert('The name cannot be empty. Use Delete to remove a folder.'); return; }
+    if (np === oldPath) return;
+    if (np.indexOf(oldPath + '/') === 0 && !confirm(`"${np}" is inside "${oldPath}" itself. Continue?`)) return;
+    if (xkdgFolderList().indexOf(np) >= 0 && !confirm(`"${np}" already exists. Merge the two folders?`)) return;
+    _xkdgRemapFolders(oldPath, p => np + p.slice(oldPath.length));
+    xkdgRefreshFolderViews();
+}
+function xkdgDeleteFolder(path) {
+    const parent = path.indexOf('/') >= 0 ? path.slice(0, path.lastIndexOf('/')) : '';
+    const n = _xkdgPeopleUnder(path);
+    const dest = parent ? `"${parent}"` : 'Unfiled';
+    const msg = n
+        ? `Delete folder "${path}" and its subfolders?\n\n${n} ${n === 1 ? 'person' : 'people'} inside will NOT be deleted: they move to ${dest}.`
+        : `Delete the empty folder "${path}" and its subfolders?`;
+    if (!confirm(msg)) return;
+    _xkdgRemapFolders(path, () => parent);
+    xkdgRefreshFolderViews();
+}
+function _xkdgFolderManagerHtml() {
+    const folders = xkdgFolderList();
+    const btn = 'font-size:11px;padding:2px 8px;border-radius:8px;cursor:pointer;';
+    let h = `<div style="border:1px solid #c9a84c;border-radius:8px;background:#fffbf0;padding:8px 10px;margin:0 0 8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <strong style="font-size:13px;color:#6d4c00;flex:1;">📁 Folders</strong>
+            <button onclick="xkdgNewFolderPrompt('')" style="${btn}border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;">➕ New folder</button>
+        </div>`;
+    if (!folders.length) h += '<div style="font-size:12px;color:#888;font-style:italic;">No folders yet.</div>';
+    folders.forEach(p => {
+        const depth = p.split('/').length - 1;
+        const n = _xkdgPeopleUnder(p);
+        const ep = _xkdgEsc(p);
+        h += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0 3px ${depth * 18}px;border-top:1px solid #f0e6c8;">
+            <span style="flex:1;font-size:13px;">${depth ? '└ ' : ''}${_xkdgEsc(p.split('/').pop())} <span style="color:#888;font-size:11px;">(${n})</span></span>
+            <button data-p="${ep}" onclick="xkdgNewFolderPrompt(this.dataset.p)" title="New subfolder" style="${btn}border:1px solid #2e7d32;background:#fff;color:#1b5e20;">➕ Sub</button>
+            <button data-p="${ep}" onclick="xkdgRenameFolder(this.dataset.p)" title="Rename or move" style="${btn}border:1px solid #1565c0;background:#fff;color:#1565c0;">✏️ Rename</button>
+            <button data-p="${ep}" onclick="xkdgDeleteFolder(this.dataset.p)" title="Delete folder (people are kept)" style="${btn}border:1px solid #ffcdd2;background:#fff0f0;color:#c62828;">🗑</button>
+        </div>`;
+    });
+    return h + '</div>';
+}
+
 function renderArchive(person) {
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const divId   = person === 'B' ? 'person-archive-b' : 'person-archive';
@@ -2266,14 +2363,17 @@ function renderDB() {
     });
 
     if (entries.length === 0) {
-        document.getElementById('db-list').innerHTML = '<div style="padding:20px;text-align:center;color:#888;">No persons saved yet.</div>';
+        document.getElementById('db-list').innerHTML = (_dbFoldersOpen ? _xkdgFolderManagerHtml() : '') +
+            '<div style="padding:20px;text-align:center;color:#888;">No persons saved yet.</div>';
         return;
     }
 
     // Folder filter for the DB list (independent from rows A / B).
     entries.forEach(e => { e.folder = xkdgPersonFolder(e.name); });
     const _dbView = xkdgFolderViewGet('DB');
-    const _dbBar = `<div style="display:flex;align-items:center;gap:8px;padding:4px 2px 6px;font-size:12px;color:#555;">Folder: ${xkdgFolderFilterHtml('DB', entries.map(e => e.folder), 'font-size:12px;padding:3px 6px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;')}</div>`;
+    const _dbBar = `<div style="display:flex;align-items:center;gap:8px;padding:4px 2px 6px;font-size:12px;color:#555;">Folder: ${xkdgFolderFilterHtml('DB', entries.map(e => e.folder), 'font-size:12px;padding:3px 6px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;')}
+        <button onclick="toggleDBFolders()" style="margin-left:auto;font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid #c9a84c;background:${_dbFoldersOpen ? '#c9a84c' : '#fffbf0'};color:${_dbFoldersOpen ? '#fff' : '#6d4c00'};cursor:pointer;">⚙ Manage folders</button></div>` +
+        (_dbFoldersOpen ? _xkdgFolderManagerHtml() : '');
     const _shown = entries.filter(e => xkdgFolderMatch(e.folder, _dbView));
     if (_shown.length === 0) {
         document.getElementById('db-list').innerHTML = _dbBar + '<div style="padding:20px;text-align:center;color:#888;">Nobody in this folder.</div>';
