@@ -163,19 +163,21 @@ function hexDateConnectionLabels(srcHex, srcQi, srcYun, dayHex, dayQi, dayYun, s
 
 // ── waterMatchVsFacing — water ↔ facing pairing rules ─────────────
 // Yun-line Hetu/Adding only (no Pure Qi, no Inverse, no qi-line).
-// Family path: date is bound to a family AND water hex is in that
-// family (independent of facing — facing has its own family path).
+// Adding: ONLY to 10 (Edu, session 31). Adding to 5 or 15 pairs two hexagrams of
+// the same kind (both Zheng Shen or both Ling Shen); only 10 guarantees one ZS and
+// one LS. (Dates and persons keep 5/10/15 — this rule is facing/water only.)
+// Family path: the water and the FACING share a family — "all in family"
+// (facing, water, persons) is the preferred option. The date may communicate
+// in any other way; it no longer gates the family path here.
 function fsWaterMatchVsFacing(facing, water){
   const labels = [];
   if (isHetuPair(water.yun, facing.yun))                  labels.push('Hetu (yun)');
   const yS = water.yun + facing.yun;
-  if ([5,10,15].includes(yS))                             labels.push('Adding yun='+yS);
-  const dateFams = fsGetDateFamilies();
-  if (dateFams.length > 0){
-    const wFams = getHexFamilies(water.hexNum);
-    const shared = dateFams.filter(f => wFams.includes(f));
-    if (shared.length) labels.push('Family: ' + shared.join(','));
-  }
+  if (yS === 10)                                          labels.push('Adding yun=10');
+  const fFams = getHexFamilies(facing.hexNum);
+  const wFams = getHexFamilies(water.hexNum);
+  const shared = fFams.filter(f => wFams.includes(f));
+  if (shared.length) labels.push('Family: ' + shared.join(','));
   return labels;
 }
 
@@ -189,6 +191,10 @@ function fsWaterScore(facing, water){
   // Yin/Yang mountain match (Di Pan facing ↔ Tien Pan water): heavy bonus
   // so YY-aligned pairs always rank above non-aligned ones.
   if (fsYinYangMatch(facing.startDeg + 2.8125, water.centerDeg)) score += 3;
+  // Same family as the facing: the preferred option ("all in family"), so it
+  // outranks every other bonus.
+  const fF = getHexFamilies(facing.hexNum), wF = getHexFamilies(water.hexNum);
+  if (fF.some(f => wF.includes(f))) score += 5;
   return score;
 }
 

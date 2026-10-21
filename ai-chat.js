@@ -489,9 +489,11 @@
     ["fengshui",
       '- WATER PLACEMENT PLAYBOOK (fountain / aquarium POSITION for a given facing) - do it all, in this order, ' +
       'WITHOUT waiting to be told each step: (1) find_water_positions with the facing: it applies the app\'s own ' +
-      'rules (Ling Shen only, within the allowed angle from the facing, the period/yun link to the facing first - Hetu ' +
-      'or adding to 5/10/15 - then qi links, Yin/Yang mountain match, families) AND checks every loaded person\'s ' +
-      'pillars. Report ALL link channels (family, adding, Hetu - on yun AND on qi), yun links ranked above qi links. ' +
+      'rules (Ling Shen only, within +/-70 deg of the facing; the PREFERRED option is "all in family" - facing, water ' +
+      'and the people in one family; otherwise a yun link to the facing - Hetu, or adding to EXACTLY 10, never 5 or 15 ' +
+      'for facing/water, since those pair two ZS or two LS - then qi links and the Yin/Yang mountain match) AND checks ' +
+      'every loaded person\'s pillars. Report ALL link channels (family, adding, Hetu - on yun AND on qi). For the ' +
+      'DATE and the PEOPLE any channel counts, adding to 5/10/15 included. ' +
       '(2) The people are the loaded Person A / B: their pillars and hexagrams are in get_app_state.persons - never ' +
       'ask the user for data that is already loaded. Keep only positions that communicate with the people; if no ' +
       'position fits everyone, say so and propose the best compromise. (3) For WHEN to place it: a complete activation ' +
@@ -1647,16 +1649,17 @@
       name: 'find_water_positions',
       description: 'WHERE to place moving water (fountain, aquarium) for a given FACING (door, bed, house), using the ' +
         'app\'s own water rules: every Ling Shen hexagram within the allowed angle of the facing (default the app\'s ' +
-        '+/-70 deg), with its links to the facing hexagram (yun Hetu / adding = the primary path; qi Hetu / adding; ' +
-        'shared family), the Yin/Yang mountain match, the app\'s pair score, AND its links to every pillar of each ' +
-        'loaded person. Sorted best first. Use this FIRST for any "where can I put water / a fountain / an aquarium" ' +
+        '+/-70 deg), with all_in_family (facing, water and every loaded person in one family - the preferred option), ' +
+        'its links to the facing (shared family; yun Hetu or adding to exactly 10; qi Hetu / adding), the Yin/Yang ' +
+        'mountain match, the app\'s pair score, AND its links to every pillar of each loaded person. Sorted best ' +
+        'first. Use this FIRST for any "where can I put water / a fountain / an aquarium" ' +
         'question - never enumerate hexagrams one by one.',
       input_schema: {
         type: 'object',
         properties: {
           facing: { type: 'number', description: 'Facing in degrees 0-360.' },
-          max_angle: { type: 'number', description: 'Optional max angle each side of the facing, in degrees. Default: the app setting (70). Use it when the user gives a different visual angle (a 120 deg cone = 60).' },
-          include_unlinked: { type: 'boolean', description: 'Also list Ling Shen positions in range with NO link to the facing. Default false.' }
+          max_angle: { type: 'number', description: 'Optional max angle each side of the facing, in degrees. Default and normal value: the app setting (70). Change it only if the user explicitly asks.' },
+          include_unlinked: { type: 'boolean', description: 'Also list Ling Shen positions in range that fail the facing/water rule (no yun link and no shared family; valid_for_water=false). Default false.' }
         },
         required: ['facing']
       }
@@ -2076,12 +2079,14 @@
   // uses for water/facing (Hetu 1-6 2-7 3-8 4-9; adding to 5/10/15) on yun and qi,
   // plus the families both hexagrams belong to.
   function _hexQY(h) { try { return (typeof fsQiYun === 'function') ? fsQiYun(h) : null; } catch (e) { return null; } }
-  function _hexLinks(h1, h2) {
+  // facingWater=true: facing/water pairing, where yun adding counts ONLY at 10 (5/15
+  // would pair two Zheng Shen or two Ling Shen). Dates and persons keep 5/10/15.
+  function _hexLinks(h1, h2, facingWater) {
     var a = _hexQY(h1), b = _hexQY(h2), out = [];
     if (!a || !b) return out;
     var hetu = (typeof isHetuPair === 'function') ? isHetuPair : function () { return false; };
     if (hetu(a.yun, b.yun)) out.push('Hetu yun ' + a.yun + '-' + b.yun);
-    if ([5, 10, 15].indexOf(a.yun + b.yun) >= 0) out.push('Adding yun=' + (a.yun + b.yun));
+    if (facingWater ? (a.yun + b.yun === 10) : ([5, 10, 15].indexOf(a.yun + b.yun) >= 0)) out.push('Adding yun=' + (a.yun + b.yun));
     if (hetu(a.qi, b.qi)) out.push('Hetu qi ' + a.qi + '-' + b.qi);
     if ([5, 10, 15].indexOf(a.qi + b.qi) >= 0) out.push('Adding qi=' + (a.qi + b.qi));
     try {
@@ -2122,9 +2127,12 @@
       if (!fsIsLingShen(ws.yun)) return;
       var ang = fsAngularDist(fCenter, ws.centerDeg);
       if (ang > maxA) return;
-      var links = _hexLinks(ws.hexNum, fs.hexNum);
+      var links = _hexLinks(ws.hexNum, fs.hexNum, true);
       var yunLink = links.some(function (l) { return /yun/.test(l); });
-      if (!links.length && !input.include_unlinked) return;
+      // Same gate as the app's Water section: a yun link or a shared family. A qi-only
+      // link is not enough for facing/water.
+      var valid = yunLink || links.some(function (l) { return /^Family/.test(l); });
+      if (!valid && !input.include_unlinked) return;
       var row = {
         hex: ws.hexNum, center_deg: Math.round(ws.centerDeg * 100) / 100,
         from_deg: Math.round(ws.startDeg * 1000) / 1000, to_deg: Math.round(ws.endDeg * 1000) / 1000,
@@ -2132,11 +2140,25 @@
         mountain: (typeof fsMountainCharFromDeg === 'function') ? fsMountainCharFromDeg(ws.centerDeg) : undefined,
         qi: ws.qi, yun: ws.yun,
         links_to_facing: links.length ? links : 'none',
+        valid_for_water: valid,
         yun_link_to_facing: yunLink,
         yin_yang_match: (typeof fsYinYangMatch === 'function') ? !!fsYinYangMatch(fCenter, ws.centerDeg) : undefined,
         app_pair_score: (typeof fsWaterScore === 'function') ? fsWaterScore(fs, ws) : undefined
       };
       var pk = Object.keys(persons);
+      // "All in family": a family holding the facing, the water AND at least one pillar of
+      // every loaded person — the preferred option for facing/water (Edu, session 31).
+      try {
+        var fwF = (getHexFamilies(fs.hexNum) || []).filter(function (f) { return (getHexFamilies(ws.hexNum) || []).indexOf(f) >= 0; });
+        row.family_with_facing = fwF.length ? fwF : undefined;
+        var allF = fwF.filter(function (f) {
+          return pk.every(function (who) {
+            var P = persons[who];
+            return Object.keys(P.pillars).some(function (k) { return (getHexFamilies(P.pillars[k].hex) || []).indexOf(f) >= 0; });
+          });
+        });
+        row.all_in_family = allF.length ? allF : false;
+      } catch (e) {}
       if (pk.length) {
         row.links_to_persons = {};
         pk.forEach(function (who) {
@@ -2151,7 +2173,9 @@
       rows.push(row);
     });
     rows.sort(function (a, b) {
-      return (b.yun_link_to_facing - a.yun_link_to_facing) || ((b.app_pair_score || 0) - (a.app_pair_score || 0)) || (a.angle_from_facing - b.angle_from_facing);
+      return ((b.all_in_family ? 1 : 0) - (a.all_in_family ? 1 : 0)) ||
+             ((b.family_with_facing ? 1 : 0) - (a.family_with_facing ? 1 : 0)) ||
+             (b.yun_link_to_facing - a.yun_link_to_facing) || ((b.app_pair_score || 0) - (a.app_pair_score || 0)) || (a.angle_from_facing - b.angle_from_facing);
     });
     var fq = _hexQY(fs.hexNum) || {};
     return {
@@ -2162,7 +2186,8 @@
       count: rows.length,
       positions: rows,
       note: (fsIsZhengShen(fq.yun) ? '' : 'The facing hexagram is NOT Zheng Shen in this period - say so. ') +
-            'Ranked: yun link to the facing first, then the app pair score (qi links + Yin/Yang match), then the smaller angle. ' +
+            'Ranked: ALL IN FAMILY first (facing, water and every person in one family - the preferred option), then same ' +
+            'family as the facing, then a yun link to the facing (Hetu, or adding to exactly 10), then the app pair score, then the smaller angle. ' +
             'links_to_persons lists, per person and pillar, the channels that connect; "none" = no link to that person.'
     };
   }
