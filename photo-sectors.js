@@ -268,8 +268,10 @@
     // traced wall edges, extended to their vanishing point
     S.refs.forEach(function (r) {
       if (!r.wall) return;
-      ctx.lineWidth = 2.5 * u; ctx.strokeStyle = 'rgba(21,101,192,0.9)';
+      ctx.lineWidth = 2.5 * u; ctx.strokeStyle = r.ai ? 'rgba(255,111,0,0.95)' : 'rgba(21,101,192,0.9)';
+      if (r.ai) ctx.setLineDash([12 * u, 8 * u]);
       r.lines.forEach(function (L) { ctx.beginPath(); ctx.moveTo(L[0].x, L[0].y); ctx.lineTo(r.x, r.y); ctx.stroke(); });
+      ctx.setLineDash([]);
     });
     S.wallPts.forEach(function (p) { ctx.fillStyle = '#1565c0'; ctx.beginPath(); ctx.arc(p.x, p.y, 7 * u, 0, 2 * Math.PI); ctx.fill(); });
     if (S.wallPts.length >= 2) { ctx.lineWidth = 2.5 * u; ctx.strokeStyle = '#1565c0'; ctx.beginPath(); ctx.moveTo(S.wallPts[0].x, S.wallPts[0].y); ctx.lineTo(S.wallPts[1].x, S.wallPts[1].y); ctx.stroke(); }
@@ -277,7 +279,7 @@
     S.refs.forEach(function (r) {
       ctx.lineWidth = 1.5 * u; ctx.strokeStyle = 'rgba(21,101,192,0.6)'; ctx.setLineDash([6 * u, 6 * u]);
       ctx.beginPath(); ctx.moveTo(r.x, 30 * u); ctx.lineTo(r.x, S.H); ctx.stroke(); ctx.setLineDash([]);
-      if (r.x >= 0 && r.x <= S.W) tag(ctx, u, r.x, 8 * u, (r.wall ? 'wall ' : (r.raw != null && r.raw !== r.deg ? 'compass ' + r1(r.raw) + '→' : 'ref ')) + r1(r.deg) + '°', '#1565c0', '#fff');
+      if (r.x >= 0 && r.x <= S.W) tag(ctx, u, r.x, 8 * u, (r.wall ? (r.ai ? 'AI wall ' : 'wall ') : (r.raw != null && r.raw !== r.deg ? 'compass ' + r1(r.raw) + '→' : 'ref ')) + r1(r.deg) + '°', '#1565c0', '#fff');
     });
     // measured point
     if (S.measure != null) {
@@ -322,7 +324,7 @@
   function open(personKey, houseIdx) {
     var all = (typeof _fsHousesLoad === 'function') ? _fsHousesLoad() : {};
     var h = all[personKey] && all[personKey][houseIdx];
-    if (!h) { alert('House not found.'); return; }
+    if (!h) { alert('House not found.'); return false; }
     var f = (typeof _fsActiveFloor === 'function') ? _fsActiveFloor(h) : null;
     var facings = [];
     var hf = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(h, f) : h.houseFacing;
@@ -334,8 +336,87 @@
           sel: {}, boxTop: 0.38, boxBottom: 0.62, measure: null, wallPts: [], compassOffset: 0,
           wallBase: (hf != null ? norm(+hf) : null) };
     S.centre = S.facing;
+    S.personKey = personKey; S.houseIdx = houseIdx;
     build();
     setFacing(S.facing);
+    return true;
+  }
+
+  // ── programmatic API (AI assistant, option C) ───────────────
+  // Normalised coordinates (0..1 of width / height) so the caller never needs pixels.
+  function apiOpenWithPhoto(personKey, houseIdx, file, o) {
+    o = o || {};
+    if (!open(personKey, houseIdx)) return Promise.resolve({ error: 'House not found.' });
+    if (o.facing != null && isFinite(+o.facing)) setFacing(+o.facing);
+    return loadFile(file).then(function (ok) {
+      if (!ok) return { error: 'Could not read the photo.' };
+      if (o.lens_mm > 0 && !S.f35Locked) { S.f35 = +o.lens_mm; S.f35Locked = true; S.f35Source = '(lens given)'; el('xps-f35').value = r1(S.f35); }
+      if (o.compass_correction != null && isFinite(+o.compass_correction)) { S.compassOffset = +o.compass_correction; el('xps-coff').value = S.compassOffset; }
+      (o.wall_lines || []).forEach(function (w) { apiWall(w.lines, w.direction, true); });
+      (o.references || []).forEach(function (r) {
+        if (r && isFinite(+r.x) && isFinite(+r.deg)) S.refs.push({ x: +r.x * S.W, deg: norm(+r.deg + (r.compass ? (S.compassOffset || 0) : 0)), raw: r.compass ? +r.deg : undefined });
+      });
+      (o.highlight || []).forEach(function (h) { h = parseInt(h, 10); if (h >= 1 && h <= 64) S.sel[h] = true; });
+      if (Array.isArray(o.only) && o.only.length) { S.sel = {}; o.only.forEach(function (h) { S.sel[parseInt(h, 10)] = true; }); renderList(); }
+      if (o.measure_x != null && isFinite(+o.measure_x)) S.measure = +o.measure_x * S.W;
+      draw(); hint();
+      return apiState();
+    });
+  }
+  // lines: [[x1,y1,x2,y2],[x3,y3,x4,y4]] normalised; direction: degree, or null = closest wall direction
+  function apiWall(lines, direction, proposedByAi) {
+    if (!S || !S.img || !Array.isArray(lines) || lines.length < 2) return false;
+    var P = [lines[0][0], lines[0][1], lines[0][2], lines[0][3], lines[1][0], lines[1][1], lines[1][2], lines[1][3]].map(Number);
+    if (P.some(function (v) { return !isFinite(v); })) return false;
+    var x1 = P[0] * S.W, y1 = P[1] * S.H, x2 = P[2] * S.W, y2 = P[3] * S.H, x3 = P[4] * S.W, y3 = P[5] * S.H, x4 = P[6] * S.W, y4 = P[7] * S.H;
+    var den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (Math.abs(den) < 1e-6 * S.W * S.W) return false;
+    var a = x1 * y2 - y1 * x2, b = x3 * y4 - y3 * x4;
+    var vx = (a * (x3 - x4) - (x1 - x2) * b) / den, vy = (a * (y3 - y4) - (y1 - y2) * b) / den;
+    calibrate();
+    var base = (S.wallBase != null) ? S.wallBase : S.facing, est = bearing(vx), deg = direction;
+    if (deg == null || !isFinite(+deg)) {
+      deg = [0, 90, 180, 270].map(function (k) { return norm(base + k); })
+        .sort(function (p, q) { return Math.abs(angDiff(p, est)) - Math.abs(angDiff(q, est)); })[0];
+    }
+    S.refs.push({ x: vx, y: vy, deg: norm(+deg), wall: true, ai: !!proposedByAi,
+                  lines: [[{ x: x1, y: y1 }, { x: x2, y: y2 }], [{ x: x3, y: y3 }, { x: x4, y: y4 }]] });
+    return true;
+  }
+  function apiState() {
+    if (!S) return { open: false };
+    var st = { open: true, house: S.house.name, facing: r1(S.facing), facing_hex: S.cand.facingHex,
+               walls_follow_house_facing: S.wallBase != null ? r1(S.wallBase) : null, photo_loaded: !!S.img,
+               people: S.people.map(function (p) { return p.name + ' (year ' + p.year + ', day ' + (p.day || '?') + ')'; }) };
+    if (!S.img) return st;
+    calibrate();
+    st.calibrated = S.refs.length > 0;
+    st.calibration = { photo_centre_deg: r1(S.cal.centre), focal_35mm: r1(S.cal.f35), note: S.cal.note,
+                       references: S.refs.map(function (r) { return { kind: r.wall ? (r.ai ? 'wall (proposed by the assistant)' : 'wall (traced by the user)') : 'compass point', deg: r1(r.deg) }; }) };
+    var half = Math.atan((S.W / 2) / S.cal.f) * 180 / Math.PI;
+    st.visible_range_deg = [r1(norm(S.cal.centre - half)), r1(norm(S.cal.centre + half))];
+    st.sectors_drawn = [];
+    Object.keys(S.sel).forEach(function (h) {
+      h = +h; var r = S.cand.rows.filter(function (x) { return x.hex === h; })[0] || sectorOf(h); if (!r) return;
+      var xa = X(r.from), xb = X(r.to);
+      var o = { hex: h, from_deg: r1(r.from), to_deg: r1(r.to) };
+      if (xa === null || xb === null || xb < 0 || xa > S.W) o.in_photo = false;
+      else { o.in_photo = true; o.x_from = r2(Math.max(0, xa) / S.W); o.x_to = r2(Math.min(S.W, xb) / S.W); }
+      if (r.yy) o[r.yy.kind.replace(' ', '_').toLowerCase()] = r.yy.full ? 'whole sector' : (r1(r.yy.from) + '-' + r1(r.yy.to));
+      if (r.people) o.people = r.people.map(function (p) { return p.name + ': ' + (p.year.length ? 'year ' + p.year.join('/') : (p.day.length ? 'day ' + p.day.join('/') : 'no link')); });
+      if (r.allInFamily) o.all_in_family = r.allInFamily;
+      st.sectors_drawn.push(o);
+    });
+    if (S.measure != null) {
+      var b = bearing(S.measure);
+      st.measured_point = { x: r2(S.measure / S.W), deg: r1(b), hex: fsSlotForDeg(b).hexNum };
+    }
+    return st;
+  }
+  function apiMeasure(xNorm) {
+    if (!S || !S.img) return { error: 'No photo open.' };
+    S.measure = +xNorm * S.W; draw();
+    return apiState().measured_point;
   }
   function setFacing(deg) {
     S.facing = norm(+deg); if (!S.refs.length) { S.centre = S.facing; var c = el('xps-centre'); if (c) c.value = r1(S.centre); }
@@ -371,7 +452,9 @@
           '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;">' +
             '<span>Photo centre <input id="xps-centre" type="number" step="0.1" style="width:70px;font-size:12px;" onchange="XKDGPhotoSectors._centre(this.value)">°</span>' +
             '<span>Lens <select id="xps-lens" onchange="XKDGPhotoSectors._lens(this.value)" style="font-size:12px;">' +
-              '<option value="13">wide 0.5× (~13 mm)</option><option value="24">main 1× (~24 mm)</option><option value="48">2× (~48 mm)</option><option value="">other…</option></select> ' +
+              '<option value="12">wide 0.5× · 12 mm (Xiaomi 14 Ultra)</option><option value="13">wide 0.5× · 13 mm (iPhone)</option>' +
+              '<option value="23">main 1× · 23 mm (Xiaomi 14 Ultra)</option><option value="24">main 1× · 24 mm</option><option value="26">main 1× · 26 mm (iPhone)</option>' +
+              '<option value="48">2× · ~48 mm</option><option value="">other…</option></select> ' +
               '<input id="xps-f35" type="number" step="0.5" style="width:56px;font-size:12px;" onchange="XKDGPhotoSectors._f35(this.value)"> mm</span>' +
           '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px;">' +
@@ -462,8 +545,10 @@
     else h.textContent = S.refs.length ? '' : 'Calibrate first: 🧱 Align to a wall (the walls follow the house facing).';
   }
   function loadFile(file) {
-    if (!file) return;
+    if (!file) return Promise.resolve(false);
+    return new Promise(function (resolve) {
     var fr = new FileReader();
+    fr.onerror = function () { resolve(false); };
     fr.onload = function () {
       var ex = readExif(fr.result);
       if (ex && ex.f35) { S.f35 = ex.f35; S.f35Locked = true; S.f35Source = '(from photo data' + (ex.model ? ', ' + ex.model : '') + ')'; }
@@ -475,12 +560,15 @@
         S.refs = []; S.measure = null; S.centre = S.facing;
         el('xps-photo-tools').style.display = 'block'; hint();
         el('xps-centre').value = r1(S.centre); el('xps-f35').value = r1(S.f35);
-        var ls = el('xps-lens'); ls.value = [13, 24, 48].indexOf(Math.round(S.f35)) >= 0 ? String(Math.round(S.f35)) : '';
+        var ls = el('xps-lens'); ls.value = [12, 13, 23, 24, 26, 48].indexOf(Math.round(S.f35)) >= 0 ? String(Math.round(S.f35)) : '';
         draw();
+        resolve(true);
       };
+      img.onerror = function () { resolve(false); };
       img.src = url;
     };
     fr.readAsArrayBuffer(file);
+    });
   }
   function save() {
     var cv = el('xps-canvas'); if (!cv) return;
@@ -501,6 +589,8 @@
     open: open, close: close,
     // pure helpers, reusable by the AI assistant (option C)
     candidates: candidates, readExif: readExif, yinYangRange: yinYangRange,
+    openWithPhoto: apiOpenWithPhoto, addWall: function (l, d) { var ok = apiWall(l, d, true); if (ok) draw(); return ok; },
+    state: apiState, measure: apiMeasure, isOpen: function () { return !!S; },
     _file: loadFile, _save: save,
     _facing: function (v) { if (v === '' || v == null) { var fi = el('xps-facing'); if (fi) fi.focus(); return; } setFacing(v); },
     _centre: function (v) { if (!isFinite(parseFloat(v))) return; S.refs = []; S.centre = norm(parseFloat(v)); draw(); },
