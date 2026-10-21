@@ -487,6 +487,11 @@
       'never fill it in from your own arithmetic.\n'
     ],
     ["fengshui",
+      '- PHOTOS OF A ROOM: when the user attaches a photo for water placement, call photo_sectors (it opens the house\'s ' +
+      'Photo-sectors view with the red sector boxes). Propose wall_lines only on a wall you can clearly see running away ' +
+      'from the camera, and always ask the user to confirm or retrace them. Read positions from the tool (x_from/x_to, ' +
+      'measured_point), never from your own visual guess; describe them with the objects you see at those x positions. ' +
+      'After the user calibrates or taps an object, call photo_sectors_state.\n' +
       '- WATER PLACEMENT PLAYBOOK (fountain / aquarium POSITION for a given facing) - do it all, in this order, ' +
       'WITHOUT waiting to be told each step: (1) find_water_positions with the facing: it applies the app\'s own ' +
       'rules (Ling Shen only, within +/-70 deg of the facing; the PREFERRED option is "all in family" - facing, water ' +
@@ -634,7 +639,8 @@
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
   // so from session 26 it travels with EVERY area, not only with 'dates'.
-  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars'];
+  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars',
+                     'photo_sectors','photo_sectors_state'];
 
   var AREA_LABELS = { travel: '\uD83E\uDDED Travel & directions',
                       fengshui: '\uD83C\uDFE0 Feng Shui', dates: '\uD83D\uDCC5 Dates & divination',
@@ -1649,6 +1655,41 @@
       }
     },
     {
+      name: 'photo_sectors',
+      description: 'Open a photo the user attached in the house\'s "Photo sectors" view: the app draws the hexagram sectors ' +
+        '(water candidates of the facing, ranked by the app\'s rules, with their links to the house\'s people and the Pure ' +
+        'Yin/Yang part) as red boxes on the photo, and returns the calibration and where each sector falls (x_from/x_to as ' +
+        'fractions of the photo width). The photo must be taken FROM the facing point (bed head, door centre), straight ahead. ' +
+        'CALIBRATION: the only reliable degree is the HOUSE facing; every wall runs on it or +/-90/180. Look at the photo and, ' +
+        'when you can clearly see a wall running away from the camera, pass wall_lines: two horizontal edges of THAT wall ' +
+        '(e.g. skirting board and ceiling line), each as [x1,y1,x2,y2] in fractions 0-1 of width/height, with the two points ' +
+        'far apart. Your lines are drawn dashed orange and marked as proposed: ALWAYS ask the user to check they lie on the ' +
+        'edges, or to retrace them with the wall button. Without a wall the photo is NOT calibrated - say so. Never claim a ' +
+        'sector position as exact from your own visual estimate.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          photo_id: { type: 'integer', description: 'The photo number from the [photo #N attached] note. Default: the last photo.' },
+          house_name: { type: 'string', description: 'Optional house name; default the active house of the loaded person.' },
+          facing: { type: 'number', description: 'Facing in degrees for the water candidates (a door or bed facing). Default: the house\'s first door facing, else the house facing.' },
+          lens_mm: { type: 'number', description: 'Optional 35mm-equivalent focal length when the photo has no lens data. It varies by phone (wide 0.5x: Xiaomi 14 Ultra 12, iPhone 13; main 1x: 23-26; 2x ~48) and changes the result by 1-2 degrees near the edges: ask the user which phone and lens, or calibrate with two perpendicular walls (that also solves the focal).' },
+          wall_lines: { type: 'array', items: { type: 'object', properties: {
+              lines: { type: 'array', items: { type: 'array', items: { type: 'number' } }, description: '[[x1,y1,x2,y2],[x3,y3,x4,y4]] fractions 0-1: two horizontal edges of the same wall.' },
+              direction: { type: 'number', description: 'Optional direction of that wall in degrees; omit to take the house-facing ±90 direction closest to the estimate.' } } },
+            description: 'Optional wall alignments (see description). One wall fixes the photo centre; two perpendicular walls also fix the focal.' },
+          only: { type: 'array', items: { type: 'integer' }, description: 'Optional: draw only these hexagram numbers.' },
+          measure_x: { type: 'number', description: 'Optional x (fraction 0-1) of an object to measure (e.g. where the user wants to put the water).' }
+        }
+      }
+    },
+    {
+      name: 'photo_sectors_state',
+      description: 'Read the open Photo-sectors view after the user calibrated it (traced a wall, added compass points) or ' +
+        'tapped an object: calibration, sectors and their x position in the photo, the measured point (degree + hexagram). ' +
+        'Pass measure_x (0-1) to measure a point yourself.',
+      input_schema: { type: 'object', properties: { measure_x: { type: 'number' } } }
+    },
+    {
       name: 'find_water_positions',
       description: 'WHERE to place moving water (fountain, aquarium) for a given FACING (door, bed, house), using the ' +
         'app\'s own water rules: every Ling Shen hexagram within the allowed angle of the facing (default the app\'s ' +
@@ -2202,6 +2243,53 @@
             'links_to_persons lists, per person, the channels from the YEAR pillar (first) and the DAY pillar (second ' +
             'choice); month and hour pillars never count. "none" = no link to that person.'
     };
+  }
+
+  // ── Photo sectors bridge (session 31, option C) ──────────────
+  function _findHouse(name) {
+    var all = (typeof _fsHousesLoad === 'function') ? _fsHousesLoad() : {};
+    var want = name ? String(name).trim().toLowerCase() : '';
+    var keys = Object.keys(all);
+    if (want) {
+      for (var i = 0; i < keys.length; i++) {
+        var arr = all[keys[i]] || [];
+        for (var j = 0; j < arr.length; j++) if (arr[j] && String(arr[j].name || '').trim().toLowerCase() === want) return { key: keys[i], idx: j, house: arr[j] };
+      }
+      return null;
+    }
+    try {
+      var p = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
+      if (p && all[p.name] && all[p.name].length) {
+        var a = (typeof _fsActiveHouseGet === 'function') ? _fsActiveHouseGet(p.name) : 0;
+        if (!(a < all[p.name].length)) a = 0;
+        return { key: p.name, idx: a, house: all[p.name][a] };
+      }
+    } catch (e) {}
+    return null;
+  }
+  function toolPhotoSectors(input) {
+    if (!window.XKDGPhotoSectors || !XKDGPhotoSectors.openWithPhoto) return { error: 'The Photo-sectors tool is not loaded.' };
+    var photos = window._xkdgChatPhotos || [];
+    var ph = input.photo_id ? photos.filter(function (p) { return p.id === +input.photo_id; })[0] : photos[photos.length - 1];
+    if (!ph) return { error: 'No photo in this chat. Ask the user to attach one with the camera button.' };
+    var hs = _findHouse(input.house_name);
+    if (!hs) return { error: input.house_name ? 'No house named "' + input.house_name + '".' : 'No active house: ask the user to load the person and pick the house, or give house_name.' };
+    var walls = (Array.isArray(input.wall_lines) ? input.wall_lines : []).filter(function (w) { return w && Array.isArray(w.lines) && w.lines.length >= 2; });
+    return XKDGPhotoSectors.openWithPhoto(hs.key, hs.idx, ph.file, {
+      facing: input.facing, lens_mm: input.lens_mm, wall_lines: walls, only: input.only, measure_x: input.measure_x
+    }).then(function (st) {
+      if (st && !st.error) {
+        st.note = st.calibrated
+          ? 'Dialog open on screen. ' + (walls.length ? 'Your wall lines are drawn dashed orange: ask the user to confirm they lie on the wall edges, or to retrace with the wall button.' : '')
+          : 'Dialog open on screen but NOT calibrated: ask the user to tap "Align to a wall" and trace two horizontal edges of a wall, then call photo_sectors_state.';
+      }
+      return st;
+    });
+  }
+  function toolPhotoSectorsState(input) {
+    if (!window.XKDGPhotoSectors || !XKDGPhotoSectors.isOpen || !XKDGPhotoSectors.isOpen()) return { error: 'The Photo-sectors view is not open.' };
+    if (input.measure_x != null && isFinite(+input.measure_x)) XKDGPhotoSectors.measure(+input.measure_x);
+    return XKDGPhotoSectors.state();
   }
 
   function toolGetPillars(input) {
@@ -2851,6 +2939,8 @@
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'get_pillars') return toolGetPillars(input || {});
       if (name === 'find_water_positions') return toolFindWaterPositions(input || {});
+      if (name === 'photo_sectors') return toolPhotoSectors(input || {});
+      if (name === 'photo_sectors_state') return toolPhotoSectorsState(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
       if (name === 'list_source') return toolListSource();
@@ -6666,11 +6756,30 @@
     catch (e) { return false; } // quota exceeded or storage blocked
   }
   // Build a short title from the first typed user message in a history array.
+  // ── Photos in the chat (session 31, option C) ─────────────────
+  // The user can attach a photo; it travels as an image block in THAT user turn only.
+  // Older images are replaced by a short stub before sending (cost), and are never
+  // written to the archive (storage). The original file stays in memory so the
+  // photo_sectors tool can open it in the Photo-sectors dialog at full quality.
+  window._xkdgChatPhotos = window._xkdgChatPhotos || [];
+  function msgText(m) {
+    if (!m) return '';
+    if (typeof m.content === 'string') return m.content;
+    if (Array.isArray(m.content)) return m.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n');
+    return '';
+  }
+  function hasImage(m) { return !!(m && Array.isArray(m.content) && m.content.some(function (c) { return c && c.type === 'image'; })); }
+  function stripImages(m) {
+    if (!hasImage(m)) return m;
+    return { role: m.role, content: m.content.map(function (c) {
+      return (c && c.type === 'image') ? { type: 'text', text: '[photo sent earlier in this chat - image omitted to save cost; the app still holds it for photo_sectors]' } : c;
+    }) };
+  }
   function convTitle(h) {
     try {
       for (var i = 0; i < h.length; i++) {
-        if (h[i] && h[i].role === 'user' && typeof h[i].content === 'string') {
-          var t = h[i].content.trim().replace(/\s+/g, ' ');
+        if (h[i] && h[i].role === 'user' && (typeof h[i].content === 'string' || hasImage(h[i]))) {
+          var t = msgText(h[i]).replace(/\n?\[photo #\d+[^\]]*\]/g, '').trim().replace(/\s+/g, ' ') || '\uD83D\uDCF7 Photo';
           if (t) return t.length > 48 ? t.slice(0, 48) + '…' : t;
         }
       }
@@ -6773,8 +6882,53 @@
       style: 'border:0;border-radius:8px;background:#ede7f3;color:#6a1b9a;font-size:18px;padding:8px 12px;cursor:pointer;' }, '🎤');
     var send = elc('button', { id: 'xkdg-ai-send',
       style: 'border:0;border-radius:8px;background:#6a1b9a;color:#fff;font-size:14px;font-weight:600;padding:8px 14px;cursor:pointer;' }, 'Send');
-    inputRow.appendChild(input); inputRow.appendChild(mic); inputRow.appendChild(send);
+    var camBtn = elc('button', { id: 'xkdg-ai-cam', title: 'Attach a photo (e.g. a room seen from the bed or the door)',
+      style: 'border:0;border-radius:8px;background:#ede7f3;color:#6a1b9a;font-size:18px;padding:8px 10px;cursor:pointer;' }, '\uD83D\uDCF7');
+    var camFile = elc('input', { type: 'file', accept: 'image/*', style: 'display:none' });
+    inputRow.appendChild(input); inputRow.appendChild(camBtn); inputRow.appendChild(camFile); inputRow.appendChild(mic); inputRow.appendChild(send);
     panel.appendChild(inputRow);
+    var photoChip = elc('div', { id: 'xkdg-ai-photo-chip', style: 'display:none;align-items:center;gap:8px;padding:6px 12px 0;font-size:12px;color:#4a148c;' });
+    panel.insertBefore(photoChip, inputRow);
+    var pendingPhoto = null;   // { id, file, b64, w, h, exif }
+    camBtn.addEventListener('click', function () { camFile.value = ''; camFile.click(); });
+    camFile.addEventListener('change', function () {
+      var file = camFile.files && camFile.files[0]; if (!file) return;
+      setStatus('Preparing the photo…');
+      preparePhoto(file).then(function (ph) {
+        pendingPhoto = ph; setStatus('');
+        photoChip.innerHTML = '';
+        var th = elc('img', { src: 'data:image/jpeg;base64,' + ph.b64, style: 'height:44px;border-radius:6px;border:1px solid #ce93d8;' });
+        var x = elc('button', { title: 'Remove the photo', style: 'border:0;background:none;color:#c62828;font-size:16px;cursor:pointer;' }, '\u2715');
+        x.addEventListener('click', function () { pendingPhoto = null; photoChip.style.display = 'none'; });
+        photoChip.appendChild(th); photoChip.appendChild(elc('span', {}, '\uD83D\uDCF7 photo ready \u2014 add a question and Send'));
+        photoChip.appendChild(x); photoChip.style.display = 'flex';
+        try { input.focus(); } catch (e) {}
+      }).catch(function () { setStatus('Could not read that photo.', '#b00'); });
+    });
+    // Downscale to 1568 px (the model's useful maximum) as JPEG; keep the original file.
+    function preparePhoto(file) {
+      return new Promise(function (resolve, reject) {
+        var fr = new FileReader();
+        fr.onerror = reject;
+        fr.onload = function () {
+          var exif = null; try { exif = (window.XKDGPhotoSectors && XKDGPhotoSectors.readExif) ? XKDGPhotoSectors.readExif(fr.result) : null; } catch (e) {}
+          var img = new Image(), url = URL.createObjectURL(file);
+          img.onerror = reject;
+          img.onload = function () {
+            var k = Math.min(1, 1568 / Math.max(img.naturalWidth, img.naturalHeight));
+            var cv = document.createElement('canvas'); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+            cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+            var b64 = cv.toDataURL('image/jpeg', 0.85).split(',')[1];
+            try { URL.revokeObjectURL(url); } catch (e) {}
+            var ph = { id: window._xkdgChatPhotos.length + 1, file: file, b64: b64, w: cv.width, h: cv.height, exif: exif };
+            window._xkdgChatPhotos.push(ph);
+            resolve(ph);
+          };
+          img.src = url;
+        };
+        fr.readAsArrayBuffer(file);
+      });
+    }
 
     // Quick-launch chips for macros (tap a chip instead of typing its trigger).
     var chipRow = elc('div', { id: 'xkdg-ai-chips', style: 'display:flex;flex-wrap:wrap;gap:6px;padding:6px 12px 0;' });
@@ -7295,7 +7449,7 @@
       var rec = {
         id: currentConvId || ('c' + Date.now() + Math.floor(Math.random() * 1000)),
         title: convTitle(history), ts: Date.now(), lang: chatLang(),
-        history: JSON.parse(JSON.stringify(history))
+        history: JSON.parse(JSON.stringify(history.map(stripImages)))
       };
       var idx = -1, i;
       for (i = 0; i < arr.length; i++) { if (arr[i] && arr[i].id === rec.id) { idx = i; break; } }
@@ -7318,6 +7472,8 @@
         if (!m) return;
         if (m.role === 'user') {
           if (typeof m.content === 'string' && m.content.trim()) addBubble('user', m.content, true);
+          else if (Array.isArray(m.content) && m.content.some(function (c) { return c && (c.type === 'image' || (c.type === 'text' && /\[photo/.test(c.text))); }))
+            addBubble('user', '\uD83D\uDCF7 ' + msgText(m).replace(/\n?\[photo[^\]]*\]/g, '').trim(), true);
         } else if (m.role === 'assistant') {
           var t = (typeof m.content === 'string') ? m.content : extractText({ content: m.content });
           if (t && t.trim()) addBubble('assistant', t, true);
@@ -8980,8 +9136,8 @@
         try {
           for (var i = history.length - 1; i >= 0; i--) {
             var m = history[i];
-            if (m && m.role === 'user' && typeof m.content === 'string') {
-              var d = detectLang(m.content);
+            if (m && m.role === 'user' && (typeof m.content === 'string' || hasImage(m))) {
+              var d = detectLang(msgText(m));
               if (d) { lang = d; break; }   // most recent DETECTABLE user message wins (don't stop on a null)
             }
           }
@@ -9024,11 +9180,14 @@
               && m.content.some(function (c) { return c && c.type === 'tool_result'; }))
             batches.push(i);
         });
+        var lastImg = -1;
+        history.forEach(function (m, i) { if (m && m.role === 'user' && hasImage(m)) lastImg = i; });
+        var base = history.map(function (m, i) { return (i !== lastImg) ? stripImages(m) : m; });
         var stubUpTo = batches.length - KEEP_FULL;
-        if (stubUpTo <= 0) return history.slice();
+        if (stubUpTo <= 0) return base;
         var stubSet = {};
         for (var k = 0; k < stubUpTo; k++) stubSet[batches[k]] = 1;
-        return history.map(function (m, i) {
+        return base.map(function (m, i) {
           if (!stubSet[i]) return m;
           var nc = m.content.map(function (c) {
             if (c && c.type === 'tool_result') {
@@ -9216,7 +9375,8 @@
       stopSpeaking();
       var hasOverride = (typeof overrideToSend === 'string' && overrideToSend.length > 0);
       var text = (input.value || '').trim();
-      if (!hasOverride && !text) return;
+      if (!hasOverride && !text && !pendingPhoto) return;
+      if (!text && pendingPhoto) text = 'What do you see? If it is a room, where can water be placed?';
       var url = getUrl();
       if (!url) { promptUrl(); if (!getUrl()) return; }
       // session 26: nothing leaves the app until an area is chosen (no more "all tools").
@@ -9231,10 +9391,19 @@
       input.value = '';
       // session 26: bring in another area's tools when the question plainly needs them.
       var pulled = autoPullAreas(toSend);
-      history.push({ role: 'user', content: toSend });
+      var _ph = pendingPhoto; pendingPhoto = null; photoChip.style.display = 'none';
+      if (_ph) {
+        var _ex = _ph.exif || {};
+        history.push({ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: _ph.b64 } },
+          { type: 'text', text: toSend + '\n[photo #' + _ph.id + ' attached (' + _ph.w + 'x' + _ph.h + (_ex.f35 ? ', 35mm-equivalent focal ' + _ex.f35 + ' mm' : ', no lens data') +
+            (_ex.model ? ', ' + _ex.model : '') + ') - for water/sector placement call photo_sectors with photo_id ' + _ph.id + ']' }
+        ] });
+      } else history.push({ role: 'user', content: toSend });
       var bubble = (typeof overrideBubble === 'string' && overrideBubble.length)
         ? overrideBubble
         : (macro ? ('\u26A1 ' + text + (macro.label ? ' \u2014 ' + macro.label : '')) : text);
+      if (_ph) bubble = '\uD83D\uDCF7 ' + bubble;
       addBubble('user', bubble);
       if (pulled.length) {
         try {
