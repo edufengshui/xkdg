@@ -477,7 +477,14 @@
       'yun, family/role, or Zheng Shen / Ling Shen (e.g. "which family does Kun over Kan belong to?", "qi and yun of ' +
       'hexagram 7?", "is this hexagram Zheng Shen now?"), CALL get_hexagram_info (by hex number, or by upper + lower ' +
       'trigram) and answer from it. NEVER say hexagrams/families are out of scope and NEVER send the user to an ' +
-      'external I Ching book - the answer is in the app.\n'
+      'external I Ching book - the answer is in the app.\n' +
+      '- NEVER COMPUTE A GAN-ZHI OR LOOK UP A HEXAGRAM BY HAND (CRITICAL): no counting through the 60-cycle, no ' +
+      'stem/branch arithmetic, no guessing which hexagram sits at a degree. Pillars of ANY date/time (year, month, ' +
+      'day, hour, in true solar time, each with its hexagram) come from get_pillars - one call per date, several calls ' +
+      'in parallel for several dates. find_good_dates rows and open_scan_result ALREADY carry the four pillars and ' +
+      'their hexagrams: read them, do not recompute. A luopan degree (e.g. a facing of 265) goes to get_hexagram_info ' +
+      'with degree; a gan-zhi goes to get_hexagram_info with ganzhi. If a tool does not give you a value, say so - ' +
+      'never fill it in from your own arithmetic.\n'
     ],
     ["fengshui",
       '- FLYING-STAR GROUNDING (CRITICAL - NEVER GUESS): NEVER state which flying star sits in a direction from your own ' +
@@ -610,7 +617,7 @@
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
   // so from session 26 it travels with EVERY area, not only with 'dates'.
-  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button'];
+  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars'];
 
   var AREA_LABELS = { travel: '\uD83E\uDDED Travel & directions',
                       fengshui: '\uD83C\uDFE0 Feng Shui', dates: '\uD83D\uDCC5 Dates & divination',
@@ -715,7 +722,10 @@
         'Legal/Speak/Health/Wealth/Career/Relationship/Journey in the next N days". Honors whichever person(s) ' +
         'are loaded (A, B, or both). Omit purpose for a general scan. With a purpose, strictness="soft" returns ' +
         'the strict purpose matches on top (best/highest score) PLUS nearer dates that are still positive but only ' +
-        'partly fit the purpose - use it only after the user accepts a softer search.',
+        'partly fit the purpose - use it only after the user accepts a softer search. Each row carries its four pillars ' +
+        '(year/month/day/hour gan-zhi with hexagram numbers, true solar time) - use them, never recompute. "date" is the ' +
+        'solar day; when the hour falls after civil midnight (Zi hour) the row also has civil_date, the calendar day the ' +
+        'user\'s clock will show.',
       input_schema: {
         type: 'object',
         properties: {
@@ -749,7 +759,7 @@
     {
       name: 'open_scan_result',
       description: 'Open one date from the most recent find_good_dates list in the main calculator so the user can ' +
-        'see the full chart. Provide the 1-based rank from that list.',
+        'see the full chart. Provide the 1-based rank from that list. Returns that row\'s four pillars with their hexagrams.',
       input_schema: {
         type: 'object',
         properties: { rank: { type: 'integer', description: '1-based position in the last results list.' } },
@@ -1585,7 +1595,9 @@
     {
       name: 'get_hexagram_info',
       description: 'XKDG hexagram lookup (CORE in-app knowledge, NOT external I Ching). Given a hexagram by number ' +
-        '(1-64) OR by its two trigrams (upper + lower, e.g. upper "Kun", lower "Kan"), return the app\'s own data: ' +
+        '(1-64), by its two trigrams (upper + lower, e.g. upper "Kun", lower "Kan"), by a LUOPAN DEGREE 0-360 (e.g. a ' +
+        'door facing of 265 - returns the hexagram whose sector contains it, with the sector bounds) or by a GAN-ZHI ' +
+        '(e.g. "\u5df1\u4e11" - the hexagram of that pillar), return the app\'s own data: ' +
         'hexagram number, upper/lower trigrams, qi (1-9), yun (1-9), whether it is Zheng Shen 正神 or Ling Shen 零神 ' +
         'for the current period, its luopan centre degree, and the family/families it belongs to WITH the role ' +
         '(father/mother/son/daughter) via its gan-zhi. Use for ANY question about hexagrams, trigrams, gua, qi, yun, ' +
@@ -1595,8 +1607,26 @@
         properties: {
           hex_number: { type: 'integer', description: 'Hexagram number 1-64 (King Wen).' },
           upper_trigram: { type: 'string', description: 'Upper trigram name (Qian/Dui/Li/Zhen/Xun/Kan/Gen/Kun).' },
-          lower_trigram: { type: 'string', description: 'Lower trigram name (Qian/Dui/Li/Zhen/Xun/Kan/Gen/Kun).' }
+          lower_trigram: { type: 'string', description: 'Lower trigram name (Qian/Dui/Li/Zhen/Xun/Kan/Gen/Kun).' },
+          degree: { type: 'number', description: 'Luopan degree 0-360 (a facing, a sitting, a water position). NOT a hexagram number.' },
+          ganzhi: { type: 'string', description: 'A gan-zhi pair in Chinese characters, e.g. "\u620a\u8fb0". Returns its hexagram (and the alternative one for dual Jia Zi).' }
         }
+      }
+    },
+    {
+      name: 'get_pillars',
+      description: 'The four pillars (year, month, day, hour) of a date and time, computed by the app\'s own engine in ' +
+        'TRUE LOCAL SOLAR TIME at the current location (day rolls at TST midnight, month at the TST jie), each pillar ' +
+        'WITH its XKDG hexagram number, qi and yun. Use it for ANY date whose pillars you need - never count the 60-cycle ' +
+        'yourself. Omit time for the day only (noon is used, so the day pillar is safe). Call it once per date; for ' +
+        'several dates make the calls in parallel.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'YYYY-MM-DD.' },
+          time: { type: 'string', description: 'Optional civil (wall-clock) time HH:MM. Default 12:00.' }
+        },
+        required: ['date']
       }
     },
     {
@@ -1966,6 +1996,60 @@
       return { ok: true, note: 'Manual editor opened and pre-filled. ' + srcNote + ' The user must review it and press Apply \u2014 nothing has been applied.' };
     } catch (e) { return { error: String((e && e.message) || e) }; }
   }
+  // ── Pillars + hexagrams from the app's own engine (session 31) ─────────────
+  // The assistant used to count the 60-cycle by hand and got it wrong; every
+  // gan-zhi it needs now comes from here.
+  function _gzHex(gz) {
+    if (!gz || typeof XKDG_TABLE === 'undefined') return null;
+    var r = XKDG_TABLE[gz]; if (!r) return null;
+    var o = { ganzhi: gz, hex: r.hex, qi: r.qi, yun: r.yun };
+    if (r.alt) o.alt = { hex: r.alt.hex, qi: r.alt.qi, yun: r.alt.yun };
+    return o;
+  }
+  function _pillarsCivil(y, mo, d, h, mi) {
+    if (typeof XKDGSolarTime === 'undefined') return null;
+    var lt = XKDGSolarTime.currentLonTz();
+    if (!lt || !isFinite(lt.lonDeg)) return null;
+    var p = XKDGSolarTime.pillarsFromCivil(y, mo, d, h, mi || 0, 0, lt.lonDeg, lt.tzOffsetMin);
+    if (!p) return null;
+    return { year: _gzHex(p.year) || { ganzhi: p.year }, month: _gzHex(p.month) || { ganzhi: p.month },
+             day: _gzHex(p.day) || { ganzhi: p.day }, hour: _gzHex(p.hour) || { ganzhi: p.hour } };
+  }
+  // Pillars of a scan row (TST date + double-hour index), via its civil wall clock.
+  function _pillarsForScanRow(isoDate, hourIndex) {
+    try {
+      if (typeof XKDGSolarTime === 'undefined' || typeof HOUR_STARTS === 'undefined') return null;
+      var lt = XKDGSolarTime.currentLonTz(); if (!lt || !isFinite(lt.lonDeg)) return null;
+      var dp = String(isoDate).split('-').map(Number);
+      var w = XKDGSolarTime.wallClockFromTST(dp[0], dp[1], dp[2], HOUR_STARTS[hourIndex], 30, lt.lonDeg, lt.tzOffsetMin);
+      var P = _pillarsCivil(w.y, w.mo, w.d, w.h, w.mi);
+      // The Zi row of day D (23:00-01:00 TST) often falls after civil midnight: the row's
+      // "time" then belongs to the NEXT calendar day. Say so, or the model mis-dates it.
+      if (P) P.civil_date = w.y + '-' + String(w.mo).padStart(2, '0') + '-' + String(w.d).padStart(2, '0');
+      return P;
+    } catch (e) { return null; }
+  }
+  // Compact form for list rows: "己丑#46" style would be cryptic, so keep named fields.
+  function _pillarsCompact(P) {
+    if (!P) return undefined;
+    var o = {};
+    ['year', 'month', 'day', 'hour'].forEach(function (k) {
+      var x = P[k]; if (!x) return;
+      o[k] = x.ganzhi + (x.hex != null ? ' hex ' + x.hex + (x.alt ? '/' + x.alt.hex : '') : '');
+    });
+    return o;
+  }
+  function toolGetPillars(input) {
+    var m = String(input.date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return { error: 'date must be YYYY-MM-DD.' };
+    var t = String(input.time || '12:00').match(/^(\d{1,2}):(\d{2})$/);
+    if (!t) return { error: 'time must be HH:MM.' };
+    var P = _pillarsCivil(+m[1], +m[2], +m[3], +t[1], +t[2]);
+    if (!P) return { error: 'The solar-time engine or the location is not available.' };
+    return { date: input.date, time: (input.time || '12:00'), basis: 'true local solar time at the current location',
+             pillars: P, note: input.time ? undefined : 'No time given: noon used. Year/month/day are valid for the day unless a jie falls that day.' };
+  }
+
   function toolHexagramInfo(input) {
     try {
       var TRIG = ['Qian', 'Dui', 'Li', 'Zhen', 'Xun', 'Kan', 'Gen', 'Kun'];
@@ -1976,8 +2060,16 @@
         return null;
       }
       if (typeof fsQiYun !== 'function') return { error: 'Hexagram tables not loaded.' };
-      var num = null;
-      if (input.hex_number != null && isFinite(parseInt(input.hex_number, 10))) {
+      var num = null, sector = null, fromGz = null;
+      if (input.degree != null && isFinite(parseFloat(input.degree)) && typeof fsSlotForDeg === 'function') {
+        var sl = fsSlotForDeg(parseFloat(input.degree));
+        num = sl.hexNum;
+        sector = { degree: parseFloat(input.degree), from_deg: Math.round(sl.startDeg * 1000) / 1000, to_deg: Math.round(sl.endDeg * 1000) / 1000 };
+      } else if (input.ganzhi) {
+        var gzi = _gzHex(String(input.ganzhi).trim());
+        if (!gzi) return { error: 'Unknown gan-zhi "' + input.ganzhi + '". Use the two Chinese characters, e.g. \u620a\u8fb0.' };
+        num = gzi.hex; fromGz = gzi;
+      } else if (input.hex_number != null && isFinite(parseInt(input.hex_number, 10))) {
         num = parseInt(input.hex_number, 10);
         if (num < 1 || num > 64) return { error: 'hex_number must be 1-64.' };
       } else {
@@ -2006,6 +2098,8 @@
       }
       return {
         hexagram: num,
+        sector: sector || undefined,
+        from_ganzhi: fromGz || undefined,
         upper_trigram: qy.upper,
         lower_trigram: qy.lower,
         qi: qy.qi,
@@ -2590,6 +2684,7 @@
       if (name === 'aquarium_plan') return toolAquariumPlan(input || {});
       if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
+      if (name === 'get_pillars') return toolGetPillars(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
       if (name === 'list_source') return toolListSource();
@@ -3101,6 +3196,10 @@
     function row(r, i, score, meets) {
       var o = { rank: i + 1, date: r.isoDate, time: r.time, score: (score != null ? score : r.score) };
       if (meets != null) o.meets_purpose = meets;
+      var _pr = _pillarsForScanRow(r.isoDate, r.hourIndex);
+      var _pc = _pillarsCompact(_pr);
+      if (_pc) o.pillars = _pc;
+      if (_pr && _pr.civil_date && _pr.civil_date !== r.isoDate) o.civil_date = _pr.civil_date;
       if (both) { o.forA = r.scoreA > 0; o.forB = r.scoreB > 0; }
       return o;
     }
@@ -3129,10 +3228,10 @@
     var merged = generalRes.map(function (r) {
       var k = keyOf(r); seen[k] = true;
       var meets = Object.prototype.hasOwnProperty.call(strictScore, k);
-      return { isoDate: r.isoDate, time: r.time, scoreA: r.scoreA, scoreB: r.scoreB,
+      return { isoDate: r.isoDate, hourIndex: r.hourIndex, time: r.time, scoreA: r.scoreA, scoreB: r.scoreB,
         score: meets ? strictScore[k] : r.score, meets_purpose: meets };
     });
-    strictRes.forEach(function (r) { var k = keyOf(r); if (!seen[k]) merged.push({ isoDate: r.isoDate, time: r.time, scoreA: r.scoreA, scoreB: r.scoreB, score: r.score, meets_purpose: true }); });
+    strictRes.forEach(function (r) { var k = keyOf(r); if (!seen[k]) merged.push({ isoDate: r.isoDate, hourIndex: r.hourIndex, time: r.time, scoreA: r.scoreA, scoreB: r.scoreB, score: r.score, meets_purpose: true }); });
     merged.sort(function (a, b) {
       if (a.meets_purpose !== b.meets_purpose) return a.meets_purpose ? -1 : 1; // strict/best first
       if (b.score !== a.score) return b.score - a.score;                         // then higher score
@@ -3157,7 +3256,7 @@
     if (i < 0 || i >= res.length) return { error: 'No result at that rank (there are ' + res.length + ').' };
     if (typeof window.loadDateIntoMain !== 'function') return { error: 'Cannot open the date on this page.' };
     window.loadDateIntoMain(res[i].isoDate, res[i].hourIndex);
-    return { opened: { date: res[i].isoDate, time: res[i].time } };
+    return { opened: { date: res[i].isoDate, time: res[i].time }, pillars: _pillarsForScanRow(res[i].isoDate, res[i].hourIndex) || undefined };
   }
 
   // ── Feng Shui Bed / Desk lucky-date tools (wired to app-fengshui.js) ──
