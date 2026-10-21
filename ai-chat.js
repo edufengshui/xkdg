@@ -487,6 +487,17 @@
       'never fill it in from your own arithmetic.\n'
     ],
     ["fengshui",
+      '- WATER PLACEMENT PLAYBOOK (fountain / aquarium POSITION for a given facing) - do it all, in this order, ' +
+      'WITHOUT waiting to be told each step: (1) find_water_positions with the facing: it applies the app\'s own ' +
+      'rules (Ling Shen only, within the allowed angle from the facing, the period/yun link to the facing first - Hetu ' +
+      'or adding to 5/10/15 - then qi links, Yin/Yang mountain match, families) AND checks every loaded person\'s ' +
+      'pillars. Report ALL link channels (family, adding, Hetu - on yun AND on qi), yun links ranked above qi links. ' +
+      '(2) The people are the loaded Person A / B: their pillars and hexagrams are in get_app_state.persons - never ' +
+      'ask the user for data that is already loaded. Keep only positions that communicate with the people; if no ' +
+      'position fits everyone, say so and propose the best compromise. (3) For WHEN to place it: a complete activation ' +
+      'needs TIME, SPACE and PEOPLE all communicating - find_good_dates with check_hexagrams = [facing hex, water ' +
+      'hex]; each row then says how its day pillar links to them, and forA/forB say whether it suits the people. ' +
+      'Propose dates that satisfy all three, and offer the verify button.\n' +
       '- FLYING-STAR GROUNDING (CRITICAL - NEVER GUESS): NEVER state which flying star sits in a direction from your own ' +
       'reasoning or memory, and NEVER compute a chart in your head. The ONLY source of truth is get_house_setup → each ' +
       'floor\u2019s flying_stars object (palaces{DIR:{water,mountain}}, center, imprisoned, liberation, imprisonment_note), ' +
@@ -609,7 +620,8 @@
     fengshui: ['find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
                'list_houses','get_house_setup','set_active_house','load_house','load_placement',
-               'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section'],
+               'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
+               'find_water_positions','find_good_dates','open_scan_result'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -736,7 +748,9 @@
           strictness: { type: 'string', enum: ['strict', 'soft'],
             description: 'strict (default) = only dates that fully meet the purpose. soft = strict matches on top, then nearer still-positive dates that only partly fit. Use soft only after the user agrees to a softer search.' },
           weekdays: { type: 'array', items: { type: 'string', enum: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] },
-            description: 'Optional: keep only these weekdays. Use for trips limited to certain flight/travel days (e.g. ["sun","tue","thu","sat"] for Scoot flights).' }
+            description: 'Optional: keep only these weekdays. Use for trips limited to certain flight/travel days (e.g. ["sun","tue","thu","sat"] for Scoot flights).' },
+          check_hexagrams: { type: 'array', items: { type: 'integer' },
+            description: 'Optional hexagram numbers (e.g. the facing and the water hexagram). Each row then gets day_links: how its DAY pillar communicates with each (family, Hetu, adding - on yun and qi). Use it for activations, where time must link with the space.' }
         },
         required: []
       }
@@ -1630,6 +1644,24 @@
       }
     },
     {
+      name: 'find_water_positions',
+      description: 'WHERE to place moving water (fountain, aquarium) for a given FACING (door, bed, house), using the ' +
+        'app\'s own water rules: every Ling Shen hexagram within the allowed angle of the facing (default the app\'s ' +
+        '+/-70 deg), with its links to the facing hexagram (yun Hetu / adding = the primary path; qi Hetu / adding; ' +
+        'shared family), the Yin/Yang mountain match, the app\'s pair score, AND its links to every pillar of each ' +
+        'loaded person. Sorted best first. Use this FIRST for any "where can I put water / a fountain / an aquarium" ' +
+        'question - never enumerate hexagrams one by one.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          facing: { type: 'number', description: 'Facing in degrees 0-360.' },
+          max_angle: { type: 'number', description: 'Optional max angle each side of the facing, in degrees. Default: the app setting (70). Use it when the user gives a different visual angle (a 120 deg cone = 60).' },
+          include_unlinked: { type: 'boolean', description: 'Also list Ling Shen positions in range with NO link to the facing. Default false.' }
+        },
+        required: ['facing']
+      }
+    },
+    {
       name: 'find_lucky_charge_day',
       description: 'For a LONG EV trip that needs charging stops: search across departure DAYS for one where MORE ' +
         'THAN HALF the trip\'s stops (cash stops + charging stops together) land inside a fortunate window. Reuses ' +
@@ -2039,6 +2071,102 @@
     });
     return o;
   }
+  // ── Hexagram ↔ hexagram links, persons' pillars, water positions (session 31) ──
+  // Labels only: which channels connect two hexagrams. Same arithmetic the app
+  // uses for water/facing (Hetu 1-6 2-7 3-8 4-9; adding to 5/10/15) on yun and qi,
+  // plus the families both hexagrams belong to.
+  function _hexQY(h) { try { return (typeof fsQiYun === 'function') ? fsQiYun(h) : null; } catch (e) { return null; } }
+  function _hexLinks(h1, h2) {
+    var a = _hexQY(h1), b = _hexQY(h2), out = [];
+    if (!a || !b) return out;
+    var hetu = (typeof isHetuPair === 'function') ? isHetuPair : function () { return false; };
+    if (hetu(a.yun, b.yun)) out.push('Hetu yun ' + a.yun + '-' + b.yun);
+    if ([5, 10, 15].indexOf(a.yun + b.yun) >= 0) out.push('Adding yun=' + (a.yun + b.yun));
+    if (hetu(a.qi, b.qi)) out.push('Hetu qi ' + a.qi + '-' + b.qi);
+    if ([5, 10, 15].indexOf(a.qi + b.qi) >= 0) out.push('Adding qi=' + (a.qi + b.qi));
+    try {
+      if (typeof getHexFamilies === 'function') {
+        var fb = getHexFamilies(h2) || [];
+        (getHexFamilies(h1) || []).forEach(function (f) { if (fb.indexOf(f) >= 0) out.push('Family ' + f); });
+      }
+    } catch (e) {}
+    return out;
+  }
+  // The loaded persons' pillars with hexagrams, straight from the calculated panels.
+  function _loadedPersonsPillars() {
+    var pl = personLoaded(), out = {};
+    var keysAll = window._xkdgPersonKeys || {};
+    [['A', pl.a, 'person-name', (typeof _personAPillars !== 'undefined') ? _personAPillars : null],
+     ['B', pl.b, 'person-name-b', (typeof _personBPillars !== 'undefined') ? _personBPillars : null]].forEach(function (x) {
+      if (!x[1] || !x[3]) return;
+      var nm = (document.getElementById(x[2]) || {}).value || null;
+      var keys = keysAll[x[0]] || {}, pil = {};
+      ['year', 'month', 'day', 'hour'].forEach(function (k) {
+        var d = x[3][k]; if (!d) return;
+        var kk = keys[k];
+        pil[k] = { ganzhi: kk ? (kk.stem + kk.branch) : null, hex: d.hex, qi: d.qi, yun: d.yun };
+      });
+      out[x[0]] = { name: nm, pillars: pil, year_only: !x[3].day };
+    });
+    return out;
+  }
+  function toolFindWaterPositions(input) {
+    if (typeof fsSlotForDeg !== 'function' || typeof FS_SLOTS === 'undefined') return { error: 'The Feng Shui tables are not loaded.' };
+    var fDeg = parseFloat(input.facing);
+    if (!isFinite(fDeg)) return { error: 'I need the facing in degrees (0-360).' };
+    var maxA = isFinite(parseFloat(input.max_angle)) ? parseFloat(input.max_angle) : ((typeof FS_WATER_MAX_DEG !== 'undefined') ? FS_WATER_MAX_DEG : 70);
+    var fs = fsSlotForDeg(fDeg), fCenter = fs.startDeg + 2.8125;
+    var persons = _loadedPersonsPillars();
+    var rows = [];
+    FS_SLOTS.forEach(function (ws) {
+      if (!fsIsLingShen(ws.yun)) return;
+      var ang = fsAngularDist(fCenter, ws.centerDeg);
+      if (ang > maxA) return;
+      var links = _hexLinks(ws.hexNum, fs.hexNum);
+      var yunLink = links.some(function (l) { return /yun/.test(l); });
+      if (!links.length && !input.include_unlinked) return;
+      var row = {
+        hex: ws.hexNum, center_deg: Math.round(ws.centerDeg * 100) / 100,
+        from_deg: Math.round(ws.startDeg * 1000) / 1000, to_deg: Math.round(ws.endDeg * 1000) / 1000,
+        angle_from_facing: Math.round(ang * 10) / 10,
+        mountain: (typeof fsMountainCharFromDeg === 'function') ? fsMountainCharFromDeg(ws.centerDeg) : undefined,
+        qi: ws.qi, yun: ws.yun,
+        links_to_facing: links.length ? links : 'none',
+        yun_link_to_facing: yunLink,
+        yin_yang_match: (typeof fsYinYangMatch === 'function') ? !!fsYinYangMatch(fCenter, ws.centerDeg) : undefined,
+        app_pair_score: (typeof fsWaterScore === 'function') ? fsWaterScore(fs, ws) : undefined
+      };
+      var pk = Object.keys(persons);
+      if (pk.length) {
+        row.links_to_persons = {};
+        pk.forEach(function (who) {
+          var P = persons[who], lp = {}, anyL = false;
+          Object.keys(P.pillars).forEach(function (k) {
+            var l = _hexLinks(ws.hexNum, P.pillars[k].hex);
+            if (l.length) { lp[k] = l; anyL = true; }
+          });
+          row.links_to_persons[(P.name || who)] = anyL ? lp : 'none';
+        });
+      }
+      rows.push(row);
+    });
+    rows.sort(function (a, b) {
+      return (b.yun_link_to_facing - a.yun_link_to_facing) || ((b.app_pair_score || 0) - (a.app_pair_score || 0)) || (a.angle_from_facing - b.angle_from_facing);
+    });
+    var fq = _hexQY(fs.hexNum) || {};
+    return {
+      facing: { degree: fDeg, hex: fs.hexNum, qi: fq.qi, yun: fq.yun, zheng_shen: fsIsZhengShen(fq.yun),
+                mountain: (typeof fsMountainCharFromDeg === 'function') ? fsMountainCharFromDeg(fDeg) : undefined },
+      max_angle_each_side: maxA,
+      persons: persons,
+      count: rows.length,
+      positions: rows,
+      note: (fsIsZhengShen(fq.yun) ? '' : 'The facing hexagram is NOT Zheng Shen in this period - say so. ') +
+            'Ranked: yun link to the facing first, then the app pair score (qi links + Yin/Yang match), then the smaller angle. ' +
+            'links_to_persons lists, per person and pillar, the channels that connect; "none" = no link to that person.'
+    };
+  }
+
   function toolGetPillars(input) {
     var m = String(input.date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return { error: 'date must be YYYY-MM-DD.' };
@@ -2685,6 +2813,7 @@
       if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'get_pillars') return toolGetPillars(input || {});
+      if (name === 'find_water_positions') return toolFindWaterPositions(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
       if (name === 'list_source') return toolListSource();
@@ -3187,6 +3316,8 @@
     // This is a date scan, not a flight: make sure no direction filter is active.
     try { if (fsPalaceActive() && typeof window.fsClearDirectionFilter === 'function') window.fsClearDirectionFilter(); } catch (e) {}
     var both = pl.a && pl.b;
+    var _checkHex = (Array.isArray(input.check_hexagrams) ? input.check_hexagrams : [])
+      .map(function (h) { return parseInt(h, 10); }).filter(function (h) { return h >= 1 && h <= 64; });
     function runWith(pv) {
       if (ps) { ps.value = pv; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
       runScannerQuiet();
@@ -3200,6 +3331,10 @@
       var _pc = _pillarsCompact(_pr);
       if (_pc) o.pillars = _pc;
       if (_pr && _pr.civil_date && _pr.civil_date !== r.isoDate) o.civil_date = _pr.civil_date;
+      if (_checkHex.length && _pr && _pr.day && _pr.day.hex) {
+        o.day_links = {};
+        _checkHex.forEach(function (h) { var l = _hexLinks(_pr.day.hex, h); o.day_links['hex ' + h] = l.length ? l : 'none'; });
+      }
       if (both) { o.forA = r.scoreA > 0; o.forB = r.scoreB > 0; }
       return o;
     }
@@ -4856,6 +4991,7 @@
     return {
       persons_loaded: (pl.a && pl.b) ? 'A+B' : (pl.a ? 'A' : (pl.b ? 'B' : 'none')),
       personA: v('person-name'), personB: v('person-name-b'),
+      persons: _loadedPersonsPillars(),
       selectedDate: v('date'), scanStart: v('scan-start'), scanDays: v('scan-days'),
       purpose: v('purpose-select'),
       expanded_view: (function () { try { return localStorage.getItem('xkdg_expanded_view') === '1'; } catch (e) { return false; } })(),

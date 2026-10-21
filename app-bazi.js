@@ -2657,12 +2657,14 @@ function calculatePerson(person) {
         if (isB) {
             _personBYear = yData || null; _personBMonth = null; _personBDay = null; _personBHour = null;
             _personBPillars = { hour: null, day: null, month: null, year: yData || null };
+            try { (window._xkdgPersonKeys = window._xkdgPersonKeys || {}).B = { year: { stem: yStem, branch: yBranch } }; } catch (e) {}
             _personBStem = yStem; _personBBranch = yBranch;
             _personBDayStem = null; _personBDayBranch = null;
             _personBMonthBranch = null; _personBDayBranchXkdg = null; _personBRelations = [];
         } else {
             _personAYear = yData || null; _personAMonth = null; _personADay = null; _personAHour = null;
             _personAPillars = { hour: null, day: null, month: null, year: yData || null };
+            try { (window._xkdgPersonKeys = window._xkdgPersonKeys || {}).A = { year: { stem: yStem, branch: yBranch } }; } catch (e) {}
             _personAStem = yStem; _personABranch = yBranch;
             _personADayStem = null; _personADayBranch = null;
             _personAMonthBranch = null; _personADayBranchXkdg = null; _personARelations = [];
@@ -2781,6 +2783,7 @@ function calculatePerson(person) {
         _personBDay       = xkdgData.day   || null;
         _personBHour      = xkdgData.hour  || null;
         _personBPillars   = { hour: xkdgData.hour||null, day: xkdgData.day||null, month: xkdgData.month||null, year: xkdgData.year };
+        try { (window._xkdgPersonKeys = window._xkdgPersonKeys || {}).B = pillarKeys; } catch (e) {}
         _personBStem      = pillarKeys.year.stem;
         _personBBranch    = pillarKeys.year.branch;
         _personBDayStem   = pillarKeys.day   ? pillarKeys.day.stem   : null;
@@ -2794,6 +2797,7 @@ function calculatePerson(person) {
         _personADay       = xkdgData.day;
         _personAHour      = xkdgData.hour;
         _personAPillars   = { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year };
+        try { (window._xkdgPersonKeys = window._xkdgPersonKeys || {}).A = pillarKeys; } catch (e) {}
         _personAStem      = pillarKeys.year.stem;
         _personABranch    = pillarKeys.year.branch;
         _personADay       = xkdgData.day;
