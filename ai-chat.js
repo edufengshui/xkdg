@@ -2177,9 +2177,14 @@
       rows.push(row);
     });
     var _aif = function (r) { return !r.all_in_family ? 0 : (r.all_in_family_via === 'year' ? 2 : 1); };
+    var _pc = function (r, k) {
+      var lp = r.links_to_persons || {};
+      return Object.keys(lp).filter(function (n) { var x = lp[n]; return x !== 'none' && (x.year || (k === 'day' && x.day)); }).length;
+    };
     rows.sort(function (a, b) {
       return (_aif(b) - _aif(a)) ||
              ((b.family_with_facing ? 1 : 0) - (a.family_with_facing ? 1 : 0)) ||
+             (_pc(b, 'year') - _pc(a, 'year')) || (_pc(b, 'day') - _pc(a, 'day')) ||
              (b.yun_link_to_facing - a.yun_link_to_facing) || ((b.app_pair_score || 0) - (a.app_pair_score || 0)) || (a.angle_from_facing - b.angle_from_facing);
     });
     var fq = _hexQY(fs.hexNum) || {};
@@ -2192,7 +2197,8 @@
       positions: rows,
       note: (fsIsZhengShen(fq.yun) ? '' : 'The facing hexagram is NOT Zheng Shen in this period - say so. ') +
             'Ranked: ALL IN FAMILY first (facing, water and every person in one family - the preferred option), then same ' +
-            'family as the facing, then a yun link to the facing (Hetu, or adding to exactly 10), then the app pair score, then the smaller angle. ' +
+            'family as the facing, then the number of people linked by their YEAR pillar (then by the day), then a yun link to the facing ' +
+            '(Hetu, or adding to exactly 10), then the app pair score, then the smaller angle. ' +
             'links_to_persons lists, per person, the channels from the YEAR pillar (first) and the DAY pillar (second ' +
             'choice); month and hour pillars never count. "none" = no link to that person.'
     };
