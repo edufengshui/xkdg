@@ -1678,6 +1678,8 @@
               direction: { type: 'number', description: 'Optional direction of that wall in degrees; omit to take the house-facing ±90 direction closest to the estimate.' } } },
             description: 'Optional wall alignments (see description). One wall fixes the photo centre; two perpendicular walls also fix the focal.' },
           only: { type: 'array', items: { type: 'integer' }, description: 'Optional: draw only these hexagram numbers.' },
+          layers: { type: 'object', properties: { water: { type: 'boolean' }, dir8: { type: 'boolean' }, mtn24: { type: 'boolean' } },
+            description: 'What to draw: water hexagram boxes (default on), the 8 direction boundaries (dir8, Later-Heaven trigrams; ONLY meaningful for a photo taken from the CENTRE of the house - ask), the 24 mountains (mtn24).' },
           measure_x: { type: 'number', description: 'Optional x (fraction 0-1) of an object to measure (e.g. where the user wants to put the water).' }
         }
       }
@@ -2276,7 +2278,7 @@
     if (!hs) return { error: input.house_name ? 'No house named "' + input.house_name + '".' : 'No active house: ask the user to load the person and pick the house, or give house_name.' };
     var walls = (Array.isArray(input.wall_lines) ? input.wall_lines : []).filter(function (w) { return w && Array.isArray(w.lines) && w.lines.length >= 2; });
     return XKDGPhotoSectors.openWithPhoto(hs.key, hs.idx, ph.file, {
-      facing: input.facing, lens_mm: input.lens_mm, wall_lines: walls, only: input.only, measure_x: input.measure_x
+      facing: input.facing, lens_mm: input.lens_mm, wall_lines: walls, only: input.only, measure_x: input.measure_x, layers: input.layers
     }).then(function (st) {
       if (st && !st.error) {
         st.note = st.calibrated
