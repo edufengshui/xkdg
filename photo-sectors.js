@@ -23,6 +23,9 @@
 // Ling Shen only, within ±FS_WATER_MAX_DEG of the facing, a yun link (Hetu or
 // adding to exactly 10) or a family shared with the facing. People count by the
 // YEAR pillar, then the DAY pillar; month and hour never count (Edu).
+// Layers (session 31): water hexagram boxes, the EIGHT directions (boundaries at
+// 22.5° + k·45°, Later-Heaven trigrams) and the 24 mountains (boundaries at 7.5° + k·15°).
+// For the 8 directions the photo must be taken from the CENTRE of the house.
 // window.XKDGPhotoSectors is also the hook for the AI assistant (option C).
 // ============================================================
 (function () {
@@ -224,9 +227,10 @@
     ctx.drawImage(S.img, 0, 0, S.W, S.H);
     var u = Math.max(S.W, S.H) / 1000;                     // drawing unit
     var y0 = S.H * S.boxTop, y1 = S.H * S.boxBottom;
-    var list = S.cand.rows.filter(function (r) { return S.sel[r.hex]; });
+    drawDirections(ctx, u);
+    var list = !S.layers.water ? [] : S.cand.rows.filter(function (r) { return S.sel[r.hex]; });
     Object.keys(S.sel).forEach(function (h) {               // manually added hexagrams
-      h = +h; if (S.sel[h] && !list.some(function (r) { return r.hex === h; })) { var s = sectorOf(h); if (s) list.push(s); }
+      h = +h; if (S.layers.water && S.sel[h] && !list.some(function (r) { return r.hex === h; })) { var s = sectorOf(h); if (s) list.push(s); }
     });
     var labels = [];
     list.forEach(function (r) {
@@ -279,7 +283,7 @@
     S.refs.forEach(function (r) {
       ctx.lineWidth = 1.5 * u; ctx.strokeStyle = 'rgba(21,101,192,0.6)'; ctx.setLineDash([6 * u, 6 * u]);
       ctx.beginPath(); ctx.moveTo(r.x, 30 * u); ctx.lineTo(r.x, S.H); ctx.stroke(); ctx.setLineDash([]);
-      if (r.x >= 0 && r.x <= S.W) tag(ctx, u, r.x, 8 * u, (r.wall ? (r.ai ? 'AI wall ' : 'wall ') : (r.raw != null && r.raw !== r.deg ? 'compass ' + r1(r.raw) + '→' : 'ref ')) + r1(r.deg) + '°', '#1565c0', '#fff');
+      if (r.x >= 0 && r.x <= S.W) tag(ctx, u, r.x, (S.layers.dir8 || S.layers.mtn24) ? S.H * 0.06 + 70 * u : 8 * u, (r.wall ? (r.ai ? 'AI wall ' : 'wall ') : (r.raw != null && r.raw !== r.deg ? 'compass ' + r1(r.raw) + '→' : 'ref ')) + r1(r.deg) + '°', '#1565c0', '#fff');
     });
     // measured point
     if (S.measure != null) {
@@ -289,6 +293,45 @@
       tag(ctx, u, S.measure, S.H - 40 * u, r1(b) + '° · Hex ' + hx + (yyM ? ' · ' + yyM.kind : ''), '#ffd600', '#000');
     }
     el('xps-cal').textContent = 'Photo centre ' + r1(S.cal.centre) + '°. ' + S.cal.note;
+  }
+  // ── 8 directions / 24 mountains: boundary lines + labels ──
+  var DIR8 = [['N', 'Kan \u574E'], ['NE', 'Gen \u826E'], ['E', 'Zhen \u9707'], ['SE', 'Xun \u5DFD'],
+              ['S', 'Li \u79BB'], ['SW', 'Kun \u5764'], ['W', 'Dui \u5151'], ['NW', 'Qian \u4E7E']];
+  function drawDirections(ctx, u) {
+    var yTop = S.H * 0.06;
+    if (S.layers.mtn24) {
+      for (var m = 0; m < 24; m++) {
+        var bd = norm(7.5 + m * 15), x = X(bd);
+        if (x !== null && x >= 0 && x <= S.W && (!S.layers.dir8 || (bd - 22.5) % 45 !== 0)) {
+          ctx.lineWidth = 1.5 * u; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.setLineDash([5 * u, 5 * u]);
+          ctx.beginPath(); ctx.moveTo(x, yTop + 30 * u); ctx.lineTo(x, S.H); ctx.stroke(); ctx.setLineDash([]);
+        }
+        var cd = norm(m * 15), xc = X(cd);                       // mountain centred at k·15°
+        if (xc !== null && xc >= 0 && xc <= S.W && typeof fsMountainCharFromDeg === 'function')
+          tag(ctx, u, xc, yTop + 34 * u, fsMountainCharFromDeg(cd) + ' ' + r1(cd) + '\u00b0', 'rgba(255,255,255,0.85)', '#333');
+      }
+    }
+    if (S.layers.dir8) {
+      for (var k = 0; k < 8; k++) {
+        var b = norm(22.5 + k * 45), xb = X(b);
+        if (xb !== null && xb >= 0 && xb <= S.W) {
+          ctx.lineWidth = 4 * u; ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); ctx.moveTo(xb, 0); ctx.lineTo(xb, S.H); ctx.stroke();
+          ctx.lineWidth = 2.5 * u; ctx.strokeStyle = '#7b1fa2'; ctx.beginPath(); ctx.moveTo(xb, 0); ctx.lineTo(xb, S.H); ctx.stroke();
+          tag(ctx, u, xb, S.H * 0.93, r1(b) + '\u00b0', '#7b1fa2', '#fff');
+        }
+        var c = k * 45, xc2 = X(c);
+        if (xc2 !== null && xc2 >= -S.W * 0.02 && xc2 <= S.W * 1.02) {
+          ctx.font = 'bold ' + 30 * u + 'px sans-serif';
+          var t1 = DIR8[k][0], t2 = DIR8[k][1];
+          var w = Math.max(ctx.measureText(t1).width, (ctx.font = 'bold ' + 16 * u + 'px sans-serif', ctx.measureText(t2).width)) + 20 * u;
+          var x0 = Math.max(2, Math.min(S.W - w - 2, xc2 - w / 2));
+          ctx.fillStyle = 'rgba(123,31,162,0.88)'; ctx.fillRect(x0, yTop - 26 * u, w, 58 * u);
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.font = 'bold ' + 30 * u + 'px sans-serif'; ctx.fillText(t1, x0 + w / 2, yTop - 24 * u);
+          ctx.font = 'bold ' + 16 * u + 'px sans-serif'; ctx.fillText(t2, x0 + w / 2, yTop + 10 * u);
+        }
+      }
+    }
   }
   function tag(ctx, u, x, y, t, bg, fg) {
     ctx.font = 'bold ' + 15 * u + 'px sans-serif'; var w = ctx.measureText(t).width + 12 * u;
@@ -333,7 +376,7 @@
     var people = housePeople(h, personKey);
     S = { house: h, people: people, facings: facings, facing: facings.length ? facings[facings.length > 1 ? 1 : 0].deg : 180,
           img: null, W: 0, H: 0, f35: 24, f35Source: '(default)', centre: null, refs: [], mode: 'measure',
-          sel: {}, boxTop: 0.38, boxBottom: 0.62, measure: null, wallPts: [], compassOffset: 0,
+          sel: {}, layers: { water: true, dir8: false, mtn24: false }, boxTop: 0.38, boxBottom: 0.62, measure: null, wallPts: [], compassOffset: 0,
           wallBase: (hf != null ? norm(+hf) : null) };
     S.centre = S.facing;
     S.personKey = personKey; S.houseIdx = houseIdx;
@@ -358,6 +401,7 @@
       });
       (o.highlight || []).forEach(function (h) { h = parseInt(h, 10); if (h >= 1 && h <= 64) S.sel[h] = true; });
       if (Array.isArray(o.only) && o.only.length) { S.sel = {}; o.only.forEach(function (h) { S.sel[parseInt(h, 10)] = true; }); renderList(); }
+      if (o.layers && typeof o.layers === 'object') ['water', 'dir8', 'mtn24'].forEach(function (k) { if (k in o.layers) S.layers[k] = !!o.layers[k]; });
       if (o.measure_x != null && isFinite(+o.measure_x)) S.measure = +o.measure_x * S.W;
       draw(); hint();
       return apiState();
@@ -407,9 +451,19 @@
       if (r.allInFamily) o.all_in_family = r.allInFamily;
       st.sectors_drawn.push(o);
     });
+    st.layers = JSON.parse(JSON.stringify(S.layers));
+    if (S.layers.dir8) {
+      st.direction_boundaries = [];
+      for (var k = 0; k < 8; k++) {
+        var bd = norm(22.5 + k * 45), xb = X(bd);
+        if (xb !== null && xb >= 0 && xb <= S.W) st.direction_boundaries.push({ deg: bd, between: DIR8[k][0] + '|' + DIR8[(k + 1) % 8][0], x: r2(xb / S.W) });
+      }
+      st.direction_note = 'Valid only if the photo was taken from the centre of the house.';
+    }
     if (S.measure != null) {
       var b = bearing(S.measure);
-      st.measured_point = { x: r2(S.measure / S.W), deg: r1(b), hex: fsSlotForDeg(b).hexNum };
+      st.measured_point = { x: r2(S.measure / S.W), deg: r1(b), hex: fsSlotForDeg(b).hexNum, direction: DIR8[Math.round(norm(b) / 45) % 8][0],
+                            mountain: (typeof fsMountainCharFromDeg === 'function') ? fsMountainCharFromDeg(b) : undefined };
     }
     return st;
   }
@@ -470,6 +524,10 @@
             '<button onclick="XKDGPhotoSectors._coffFromFacing()" style="' + btn + 'border:1px solid #1565c0;background:#fff;color:#1565c0;">Set it from the facing</button>' +
           '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px;">' +
+            '<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">Show: ' +
+              '<label><input type="checkbox" checked onchange="XKDGPhotoSectors._layer(\'water\',this.checked)"> water hexagrams</label>' +
+              '<label title="Take the photo from the CENTRE of the house"><input type="checkbox" onchange="XKDGPhotoSectors._layer(\'dir8\',this.checked)"> 8 directions</label>' +
+              '<label><input type="checkbox" onchange="XKDGPhotoSectors._layer(\'mtn24\',this.checked)"> 24 mountains</label></span>' +
             '<span>Boxes top <input type="range" min="0" max="95" value="38" oninput="XKDGPhotoSectors._box(\'t\',this.value)"></span>' +
             '<span>bottom <input type="range" min="5" max="100" value="62" oninput="XKDGPhotoSectors._box(\'b\',this.value)"></span>' +
             '<span>Add hexagram <input id="xps-add" type="number" min="1" max="64" style="width:50px;font-size:12px;"> <button onclick="XKDGPhotoSectors._add()" style="' + btn + 'border:1px solid #2e7d32;background:#fff;color:#2e7d32;">+</button></span>' +
@@ -603,6 +661,13 @@
       S.compassOffset = r1(angDiff(S.facing, parseFloat(r)));
       el('xps-coff').value = S.compassOffset;
       alert('Compass correction ' + (S.compassOffset > 0 ? '+' : '') + S.compassOffset + '°: every compass reading you type is corrected by this amount.');
+    },
+    _layer: function (k, on) {
+      S.layers[k] = !!on;
+      if ((k === 'dir8' || k === 'mtn24') && on) {
+        var h = el('xps-hint'); if (h) h.textContent = '8 directions / 24 mountains: valid only if the photo is taken from the CENTRE of the house, phone upright, calibrated on a wall.';
+      }
+      draw();
     },
     _mode: function (m) { S.mode = m; S.wallPts = []; modeButtons(); hint(); if (S.img) draw(); },
     _clearRefs: function () { S.refs = []; S.wallPts = []; S.centre = parseFloat(el('xps-centre').value) || S.facing; draw(); },
