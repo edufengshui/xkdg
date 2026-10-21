@@ -10,8 +10,12 @@
 //   bearing   = centre + atan((x - W/2) / f_px)
 //   x(bearing)= W/2 + f_px * tan(bearing - centre)
 // The photo CENTRE direction is the weak point (indoor compasses drift), so it
-// can be calibrated by tapping reference points of known degree: 1 point fixes
-// the centre, 2+ points fix centre AND focal length (no EXIF needed).
+// can be calibrated. The only reliable data is the HOUSE facing, and every wall is
+// that degree or ±90/180 (Edu). So the main calibration is "align to a wall": the
+// user traces two horizontal edges of one wall (skirting + ceiling line); their
+// vanishing point is the wall's direction, i.e. house facing + k·90°. One wall
+// fixes the centre; two walls at 90° (or any 2+ references) also fix the focal.
+// A tapped point of known compass degree is still accepted as a reference.
 //
 // Water rules come from app-fengshui.js (fsWaterMatchVsFacing / fsWaterScore):
 // Ling Shen only, within ±FS_WATER_MAX_DEG of the facing, a yun link (Hetu or
@@ -187,12 +191,12 @@
         if (!best || sp < best.sp) best = { sp: sp, f: f, c: m };
       }
       f35 = best.f; centre = best.c;
-      note = refs.length + ' reference points → focal ' + r1(f35) + ' mm, max error ' + r2(best.sp) + '°';
+      note = refs.length + ' references → focal ' + r1(f35) + ' mm, max error ' + r2(best.sp) + '°';
     } else if (refs.length === 1) {
       centre = norm(cOf(refs[0], fpx(f35)));
-      note = '1 reference point fixes the centre (focal ' + r1(f35) + ' mm ' + S.f35Source + ')';
+      note = (refs[0].wall ? 'Aligned to a wall (' + r1(refs[0].deg) + '°)' : '1 reference point') + ' → centre fixed (focal ' + r1(f35) + ' mm ' + S.f35Source + '). A second wall at 90° also fixes the focal.';
     } else {
-      note = 'Centre from the direction field (focal ' + r1(f35) + ' mm ' + S.f35Source + '). Tap 1–2 points of known degree to calibrate.';
+      note = 'NOT calibrated: centre taken from the direction field (focal ' + r1(f35) + ' mm ' + S.f35Source + '). Use 🧱 Align to a wall.';
     }
     S.cal = { f: fpx(f35), f35: f35, centre: norm(centre), note: note };
   }
@@ -252,11 +256,19 @@
       ctx.beginPath(); ctx.moveTo(xf, y1 + 6 * u); ctx.lineTo(xf, S.H); ctx.stroke(); ctx.setLineDash([]);
       tag(ctx, u, xf, y1 + 14 * u, 'Facing ' + r1(S.facing) + '°', 'rgba(0,0,0,0.65)', '#fff');
     }
+    // traced wall edges, extended to their vanishing point
+    S.refs.forEach(function (r) {
+      if (!r.wall) return;
+      ctx.lineWidth = 2.5 * u; ctx.strokeStyle = 'rgba(21,101,192,0.9)';
+      r.lines.forEach(function (L) { ctx.beginPath(); ctx.moveTo(L[0].x, L[0].y); ctx.lineTo(r.x, r.y); ctx.stroke(); });
+    });
+    S.wallPts.forEach(function (p) { ctx.fillStyle = '#1565c0'; ctx.beginPath(); ctx.arc(p.x, p.y, 7 * u, 0, 2 * Math.PI); ctx.fill(); });
+    if (S.wallPts.length >= 2) { ctx.lineWidth = 2.5 * u; ctx.strokeStyle = '#1565c0'; ctx.beginPath(); ctx.moveTo(S.wallPts[0].x, S.wallPts[0].y); ctx.lineTo(S.wallPts[1].x, S.wallPts[1].y); ctx.stroke(); }
     // reference points
     S.refs.forEach(function (r) {
       ctx.lineWidth = 1.5 * u; ctx.strokeStyle = 'rgba(21,101,192,0.6)'; ctx.setLineDash([6 * u, 6 * u]);
       ctx.beginPath(); ctx.moveTo(r.x, 30 * u); ctx.lineTo(r.x, S.H); ctx.stroke(); ctx.setLineDash([]);
-      tag(ctx, u, r.x, 8 * u, 'ref ' + r1(r.deg) + '°', '#1565c0', '#fff');
+      if (r.x >= 0 && r.x <= S.W) tag(ctx, u, r.x, 8 * u, (r.wall ? 'wall ' : 'ref ') + r1(r.deg) + '°', '#1565c0', '#fff');
     });
     // measured point
     if (S.measure != null) {
@@ -310,7 +322,8 @@
     var people = housePeople(h, personKey);
     S = { house: h, people: people, facings: facings, facing: facings.length ? facings[facings.length > 1 ? 1 : 0].deg : 180,
           img: null, W: 0, H: 0, f35: 24, f35Source: '(default)', centre: null, refs: [], mode: 'measure',
-          sel: {}, boxTop: 0.38, boxBottom: 0.62, measure: null };
+          sel: {}, boxTop: 0.38, boxBottom: 0.62, measure: null, wallPts: [],
+          wallBase: (hf != null ? norm(+hf) : null) };
     S.centre = S.facing;
     build();
     setFacing(S.facing);
@@ -321,7 +334,8 @@
     S.cand.rows.forEach(function (r) { if (r.valid) S.sel[r.hex] = true; });
     var fi = el('xps-facing'); if (fi) fi.value = r1(S.facing);
     el('xps-facing-hex').textContent = 'Facing hexagram ' + S.cand.facingHex + ' · ' + S.people.length + ' people: ' +
-      (S.people.map(function (p) { return p.name; }).join(', ') || 'none saved — links to people not checked');
+      (S.people.map(function (p) { return p.name; }).join(', ') || 'none saved — links to people not checked') +
+      (S.wallBase != null ? ' · walls follow the house facing ' + r1(S.wallBase) + '° (±90°)' : ' · no house facing saved: walls assumed on this facing');
     renderList(); if (S.img) draw();
   }
   function build() {
@@ -354,7 +368,8 @@
           '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px;">' +
             '<span>Tap on the photo to:</span>' +
             '<button id="xps-m-measure" onclick="XKDGPhotoSectors._mode(\'measure\')" style="' + btn + '">📍 Measure a point</button>' +
-            '<button id="xps-m-ref" onclick="XKDGPhotoSectors._mode(\'ref\')" style="' + btn + '">🎯 Add a reference (known degree)</button>' +
+            '<button id="xps-m-wall" onclick="XKDGPhotoSectors._mode(\'wall\')" style="' + btn + '">🧱 Align to a wall</button>' +
+            '<button id="xps-m-ref" onclick="XKDGPhotoSectors._mode(\'ref\')" style="' + btn + '">🎯 Point of known degree</button>' +
             '<button onclick="XKDGPhotoSectors._clearRefs()" style="' + btn + 'border:1px solid #ccc;background:#fff;">Clear references</button>' +
           '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px;">' +
@@ -363,6 +378,7 @@
             '<span>Add hexagram <input id="xps-add" type="number" min="1" max="64" style="width:50px;font-size:12px;"> <button onclick="XKDGPhotoSectors._add()" style="' + btn + 'border:1px solid #2e7d32;background:#fff;color:#2e7d32;">+</button></span>' +
             '<button onclick="XKDGPhotoSectors._save()" style="' + btn + 'background:#1565c0;color:#fff;border:none;">⬇ Save / share image</button>' +
           '</div>' +
+          '<div id="xps-hint" style="font-size:12px;color:#b45309;font-weight:bold;margin-bottom:4px;"></div>' +
           '<div id="xps-cal" style="font-size:11px;color:#1565c0;margin-bottom:6px;"></div>' +
           '<canvas id="xps-canvas" style="width:100%;height:auto;border:1px solid #ddd;border-radius:6px;touch-action:manipulation;cursor:crosshair;"></canvas>' +
         '</div>' +
@@ -375,13 +391,16 @@
     modeButtons();
   }
   function modeButtons() {
-    var a = el('xps-m-measure'), b = el('xps-m-ref'); if (!a) return;
+    var a = el('xps-m-measure'), b = el('xps-m-ref'), w = el('xps-m-wall'); if (!a) return;
+    w.style.background = S.mode === 'wall' ? '#1565c0' : '#fff'; w.style.color = S.mode === 'wall' ? '#fff' : '#1565c0'; w.style.border = '1px solid #1565c0';
     a.style.background = S.mode === 'measure' ? '#ffd600' : '#fff'; a.style.border = '1px solid #c9a800';
     b.style.background = S.mode === 'ref' ? '#1565c0' : '#fff'; b.style.color = S.mode === 'ref' ? '#fff' : '#1565c0'; b.style.border = '1px solid #1565c0';
   }
   function onTap(e) {
     var cv = el('xps-canvas'), rc = cv.getBoundingClientRect();
     var x = (e.clientX - rc.left) * (S.W / rc.width);
+    var y = (e.clientY - rc.top) * (S.H / rc.height);
+    if (S.mode === 'wall') { wallTap(x, y); return; }
     if (S.mode === 'ref') {
       var d = prompt('Compass degree of the point you tapped (0-360).\nMeasure it from the SAME spot the photo was taken.');
       if (d === null || !isFinite(parseFloat(d))) return;
@@ -390,6 +409,41 @@
     draw();
     var c = el('xps-centre'); if (c) c.value = r1(S.cal.centre);
     var fi = el('xps-f35'); if (fi && S.refs.length >= 2) fi.value = r1(S.cal.f35);
+  }
+  // ── align to a wall: 2 taps on one horizontal edge, 2 on another edge of the same wall ──
+  function wallTap(x, y) {
+    S.wallPts.push({ x: x, y: y });
+    hint();
+    if (S.wallPts.length < 4) { draw(); return; }
+    var P = S.wallPts; S.wallPts = [];
+    var x1 = P[0].x, y1 = P[0].y, x2 = P[1].x, y2 = P[1].y, x3 = P[2].x, y3 = P[2].y, x4 = P[3].x, y4 = P[3].y;
+    var den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (Math.abs(den) < 1e-6 * S.W * S.W) { alert('The two lines are parallel in the photo: trace two edges that clearly converge (skirting board and ceiling line of a wall running away from you).'); hint(); draw(); return; }
+    var a = x1 * y2 - y1 * x2, b = x3 * y4 - y3 * x4;
+    var vx = (a * (x3 - x4) - (x1 - x2) * b) / den, vy = (a * (y3 - y4) - (y1 - y2) * b) / den;
+    var base = (S.wallBase != null) ? S.wallBase : S.facing;
+    var est = bearing(vx);
+    var dirs = [0, 90, 180, 270].map(function (k) { return norm(base + k); })
+      .sort(function (p, q) { return Math.abs(angDiff(p, est)) - Math.abs(angDiff(q, est)); });
+    var ans = prompt('This wall runs toward which direction?\n(walls are the house facing ' + r1(base) + '° or ±90°/180°)\n\n' +
+      dirs.map(function (d, i) { return (i + 1) + ' = ' + r1(d) + '°' + (i === 0 ? '   ← most likely' : ''); }).join('\n'), '1');
+    if (ans === null) { hint(); draw(); return; }
+    var i = parseInt(ans, 10); var deg = (i >= 1 && i <= 4) ? dirs[i - 1] : parseFloat(ans);
+    if (!isFinite(deg)) { hint(); draw(); return; }
+    S.refs.push({ x: vx, y: vy, deg: norm(deg), wall: true, lines: [[P[0], P[1]], [P[2], P[3]]] });
+    S.mode = 'measure'; modeButtons(); hint(); draw();
+    var c = el('xps-centre'); if (c) c.value = r1(S.cal.centre);
+    var fi = el('xps-f35'); if (fi && S.refs.length >= 2) fi.value = r1(S.cal.f35);
+  }
+  function hint() {
+    var h = el('xps-hint'); if (!h) return;
+    var n = S.wallPts.length;
+    if (S.mode === 'wall') h.innerHTML = ['Tap 2 points along a <b>horizontal edge</b> of a wall that runs away from you (e.g. the skirting board).',
+      'Now the second point of that edge.',
+      'Now 2 points along <b>another horizontal edge of the same wall</b> (e.g. where it meets the ceiling).',
+      'Now the last point.'][n] || '';
+    else if (S.mode === 'ref') h.textContent = 'Tap a point whose compass degree you know (measured from the photo spot).';
+    else h.textContent = S.refs.length ? '' : 'Calibrate first: 🧱 Align to a wall (the walls follow the house facing).';
   }
   function loadFile(file) {
     if (!file) return;
@@ -403,7 +457,7 @@
         var k = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
         S.img = img; S.W = Math.round(img.naturalWidth * k); S.H = Math.round(img.naturalHeight * k);
         S.refs = []; S.measure = null; S.centre = S.facing;
-        el('xps-photo-tools').style.display = 'block';
+        el('xps-photo-tools').style.display = 'block'; hint();
         el('xps-centre').value = r1(S.centre); el('xps-f35').value = r1(S.f35);
         var ls = el('xps-lens'); ls.value = [13, 24, 48].indexOf(Math.round(S.f35)) >= 0 ? String(Math.round(S.f35)) : '';
         draw();
@@ -436,8 +490,8 @@
     _centre: function (v) { if (!isFinite(parseFloat(v))) return; S.refs = []; S.centre = norm(parseFloat(v)); draw(); },
     _lens: function (v) { if (!v) { el('xps-f35').focus(); return; } S.f35 = +v; S.f35Source = '(lens setting)'; el('xps-f35').value = v; draw(); },
     _f35: function (v) { if (!(+v > 0)) return; S.f35 = +v; S.f35Source = '(typed)'; draw(); },
-    _mode: function (m) { S.mode = m; modeButtons(); },
-    _clearRefs: function () { S.refs = []; S.centre = parseFloat(el('xps-centre').value) || S.facing; draw(); },
+    _mode: function (m) { S.mode = m; S.wallPts = []; modeButtons(); hint(); if (S.img) draw(); },
+    _clearRefs: function () { S.refs = []; S.wallPts = []; S.centre = parseFloat(el('xps-centre').value) || S.facing; draw(); },
     _box: function (w, v) { if (w === 't') S.boxTop = Math.min(+v / 100, S.boxBottom - 0.03); else S.boxBottom = Math.max(+v / 100, S.boxTop + 0.03); draw(); },
     _toggle: function (hex, on) { if (on) S.sel[hex] = true; else delete S.sel[hex]; draw(); },
     _add: function () { var n = parseInt(el('xps-add').value, 10); if (n >= 1 && n <= 64) { S.sel[n] = true; draw(); } }
