@@ -487,6 +487,16 @@
       'never fill it in from your own arithmetic.\n'
     ],
     ["fengshui",
+      '- SUN FACING (guided interview, no compass): when the user wants to measure a facing with the sun, lead step by ' +
+      'step, ONE instruction at a time: (1) a sunny window - is it on the facade, the back or a side wall? (2) lay a card ' +
+      'LEVEL on the sill (check with a level or the phone), one straight edge flush against the wall plane - the frame or ' +
+      'the glass, NOT a splayed reveal; (3) stand a vertical object on it (a book opened in a V, a plumb line) and trace ' +
+      'the shadow line; (4) note the time at that exact moment; (5) measure the acute angle between the shadow line and ' +
+      'the card edge with a protractor; (6) standing inside looking out, does the shadow lean left or right? Call ' +
+      'sun_facing, then ask for 1-2 more readings a few minutes apart and call it with all of them; report the magnetic ' +
+      'facing, the spread and the comparison with the saved house facing. Better in the morning or afternoon (sun low, ' +
+      'long shadow) than at a summer noon. Save it as the house facing (save_as) only after the user confirms which wall ' +
+      'the window is on; for a side wall ask which side and add or subtract 90.\n' +
       '- FLOOR PLAN BUILDER (guided interview): when the user wants a floor plan, YOU lead with short questions, ONE ' +
       'measurement at a time, and record each answer with plan_room right away. Order: (1) plan_status (house facing, ' +
       'side directions); (2) the internal wall thickness, measured once with the laser on a door jamb (plan_settings); ' +
@@ -654,7 +664,7 @@
                'list_houses','get_house_setup','set_active_house','load_house','load_placement',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
-               'plan_status','plan_room','plan_settings','plan_show'],
+               'plan_status','plan_room','plan_settings','plan_show','sun_facing'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -1704,6 +1714,29 @@
           layers: { type: 'object', properties: { water: { type: 'boolean' }, dir8: { type: 'boolean' }, mtn24: { type: 'boolean' } },
             description: 'What to draw: water hexagram boxes (default on), the 8 direction boundaries (dir8, Later-Heaven trigrams; ONLY meaningful for a photo taken from the CENTRE of the house - ask), the 24 mountains (mtn24).' },
           measure_x: { type: 'number', description: 'Optional x (fraction 0-1) of an object to measure (e.g. where the user wants to put the water).' }
+        }
+      }
+    },
+    {
+      name: 'sun_facing',
+      description: 'Measure a house facing with the SUN instead of a compass: a card level on a window sill, one edge flush ' +
+        'against the wall plane, a vertical object casting a shadow line; the user gives the exact local time, the acute ' +
+        'angle alpha between the shadow line and the card edge, and whether the shadow leans LEFT or RIGHT for someone ' +
+        'inside looking out. Returns the sun azimuth/altitude, the window facing true and MAGNETIC (WMM declination ' +
+        'removed; the app\'s facings are magnetic), warnings, the average of several readings with their spread, and the ' +
+        'comparison with the saved house facing. save_as: "facade" (the window is on the facade) or "back" (facing = ' +
+        'window + 180) or a degree, to store it as the house facing - ONLY after the user confirms.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          date_time: { type: 'string', description: 'Local time of the reading, "YYYY-MM-DD HH:MM:SS".' },
+          alpha_deg: { type: 'number', description: 'Acute angle between the shadow line and the card edge, 0-90.' },
+          shadow_side: { type: 'string', enum: ['left', 'right'] },
+          measurements: { type: 'array', items: { type: 'object', properties: { date_time: { type: 'string' }, alpha_deg: { type: 'number' }, shadow_side: { type: 'string' } } },
+            description: 'Several readings at once (preferred: 2-3 readings a few minutes apart).' },
+          lat: { type: 'number' }, lon: { type: 'number' },
+          house_name: { type: 'string' },
+          save_as: { type: 'string', description: '"facade", "back" or a degree. Only after the user confirms.' }
         }
       }
     },
@@ -3010,6 +3043,10 @@
       if (name === 'get_pillars') return toolGetPillars(input || {});
       if (name === 'find_water_positions') return toolFindWaterPositions(input || {});
       if (name === 'photo_sectors') return toolPhotoSectors(input || {});
+      if (name === 'sun_facing') {
+        if (!window.XKDGSunFacing) return { error: 'The sun-facing tool is not loaded.' };
+        return XKDGSunFacing.measure(input || {});
+      }
       if (name === 'plan_status' || name === 'plan_room' || name === 'plan_settings' || name === 'plan_show') {
         if (!window.XKDGPlanBuilder) return { error: 'The plan builder is not loaded.' };
         var _pi = input || {};

@@ -5133,6 +5133,7 @@ function fsRenderHouseProfiles(){
       html += '<span style="color:#999;">No address</span>';
     }
     html += '<button onclick="fsFacingFromMap(\'fs-house-facing\')" title="Measure facing from satellite map (magnetic)" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">📍 Measure facing</button>';
+    html += '<button onclick="if(window.XKDGSunFacing)XKDGSunFacing.openForHouse(\'' + escJs(person.name) + '\',' + hi + ')" title="Measure the facing with the sun: shadow on a card at a window (no compass)" style="background:#fffde7;color:#8a6a1f;border:1px solid #f9a825;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">☀️ Sun facing</button>';
     html += '<button onclick="fsEditHouseAddress(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Address</button>';
     html += '</div>';
     // Floor (right) — facing/period inline next to the selector; click the value to edit it.
