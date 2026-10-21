@@ -487,6 +487,15 @@
       'never fill it in from your own arithmetic.\n'
     ],
     ["fengshui",
+      '- FLOOR PLAN BUILDER (guided interview): when the user wants a floor plan, YOU lead with short questions, ONE ' +
+      'measurement at a time, and record each answer with plan_room right away. Order: (1) plan_status (house facing, ' +
+      'side directions); (2) the internal wall thickness, measured once with the laser on a door jamb (plan_settings); ' +
+      '(3) the first room - usually the entrance - its two sizes, naming the walls by their direction (e.g. "from the ' +
+      'wall toward 175 to the opposite wall"); (4) each next room: which room it touches and on which side, how far ' +
+      'along that wall it starts, its two sizes. Tell the user to hold the laser\'s back edge against one wall and aim ' +
+      'square at the opposite wall. After every 2-3 rooms call plan_show so the user can check the drawing; read the ' +
+      'overlap warnings and fix with action update. When all rooms are in, plan_show with to_floorplan = true. L-shaped ' +
+      'rooms = two rectangles attached with wall_m 0.\n' +
       '- PHOTOS OF A ROOM: when the user attaches a photo for water placement, call photo_sectors (it opens the house\'s ' +
       'Photo-sectors view with the red sector boxes). Propose wall_lines only on a wall you can clearly see running away ' +
       'from the camera, and always ask the user to confirm or retrace them. Read positions from the tool (x_from/x_to, ' +
@@ -631,7 +640,8 @@
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
                'list_houses','get_house_setup','set_active_house','load_house','load_placement',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
-               'find_water_positions','find_good_dates','open_scan_result'],
+               'find_water_positions','find_good_dates','open_scan_result',
+               'plan_status','plan_room','plan_settings','plan_show'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -1683,6 +1693,51 @@
           measure_x: { type: 'number', description: 'Optional x (fraction 0-1) of an object to measure (e.g. where the user wants to put the water).' }
         }
       }
+    },
+    {
+      name: 'plan_status',
+      description: 'Floor-plan builder: the current plan of a house floor (rooms with their two sizes and position, internal ' +
+        'wall thickness, the direction each room side points to, centre, overlap warnings). Call it first when building ' +
+        'or checking a plan.',
+      input_schema: { type: 'object', properties: { house_name: { type: 'string' } } }
+    },
+    {
+      name: 'plan_room',
+      description: 'Floor-plan builder: add / update / remove a room. All walls follow the house facing or its ' +
+        'perpendiculars, so a room is a rectangle given by two laser measurements: size_along_facing_axis_m (wall to ' +
+        'wall in the facing direction, e.g. from the wall toward the street to the opposite wall) and size_across_m (the ' +
+        'other way). The FIRST room needs no position. Every other room is attached to a room already in the plan: ' +
+        'attach_to (that room) + side_deg (the direction of the side of THAT room where the new one lies - one of the four ' +
+        'side_directions from plan_status) + offset_m (how far along that shared wall the new room starts, measured from ' +
+        'the corner of the existing room toward offset_from_deg; default corner: toward facing+90 for the facing/back ' +
+        'sides, toward the back for the other two). The internal wall thickness is put in between automatically ' +
+        '(override with wall_m, e.g. 0 for an open passage, 0.3 for a load-bearing wall).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          house_name: { type: 'string' },
+          action: { type: 'string', enum: ['add', 'update', 'remove'] },
+          name: { type: 'string' }, new_name: { type: 'string' },
+          size_along_facing_axis_m: { type: 'number' }, size_across_m: { type: 'number' },
+          attach_to: { type: 'string' }, side_deg: { type: 'number' },
+          offset_m: { type: 'number' }, offset_from_deg: { type: 'number' }, wall_m: { type: 'number' },
+          x_m: { type: 'number' }, y_m: { type: 'number' }
+        },
+        required: ['name']
+      }
+    },
+    {
+      name: 'plan_settings',
+      description: 'Floor-plan builder settings: wall_m = internal wall thickness in metres (measure it once on a door ' +
+        'jamb; default 0.12), clear = true to start the plan again.',
+      input_schema: { type: 'object', properties: { house_name: { type: 'string' }, wall_m: { type: 'number' }, clear: { type: 'boolean' } } }
+    },
+    {
+      name: 'plan_show',
+      description: 'Show the plan drawing to the user (dialog with the rooms, sizes and side directions). With ' +
+        'to_floorplan = true it saves the drawing as the floor\'s floor plan and opens the floor-plan tool with the rooms ' +
+        'and the centre already set, so the 8 palaces / flying stars are drawn.',
+      input_schema: { type: 'object', properties: { house_name: { type: 'string' }, to_floorplan: { type: 'boolean' } } }
     },
     {
       name: 'photo_sectors_state',
@@ -2942,6 +2997,16 @@
       if (name === 'get_pillars') return toolGetPillars(input || {});
       if (name === 'find_water_positions') return toolFindWaterPositions(input || {});
       if (name === 'photo_sectors') return toolPhotoSectors(input || {});
+      if (name === 'plan_status' || name === 'plan_room' || name === 'plan_settings' || name === 'plan_show') {
+        if (!window.XKDGPlanBuilder) return { error: 'The plan builder is not loaded.' };
+        var _pi = input || {};
+        if (name === 'plan_status') return XKDGPlanBuilder.status(_pi.house_name);
+        if (name === 'plan_room') return XKDGPlanBuilder.room(_pi);
+        if (name === 'plan_settings') return XKDGPlanBuilder.settings(_pi);
+        if (_pi.to_floorplan) return XKDGPlanBuilder.toFloorplan(_pi.house_name);
+        var _ps = XKDGPlanBuilder.status(_pi.house_name); if (!_ps.error) XKDGPlanBuilder.open(_pi.house_name);
+        return _ps;
+      }
       if (name === 'photo_sectors_state') return toolPhotoSectorsState(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});

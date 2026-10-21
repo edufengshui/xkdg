@@ -5065,6 +5065,7 @@ function fsRenderHouseProfiles(){
     }
     // 📷 Photo sectors — draw the water hexagram sectors on a photo taken from the facing point (session 31).
     html += '<button onclick="if(window.XKDGPhotoSectors)XKDGPhotoSectors.open(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Take a photo from the facing point and see where each water hexagram falls">📷 Photo sectors</button>';
+    html += '<button onclick="if(window.XKDGPlanBuilder)XKDGPlanBuilder.openForHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Build the floor plan from laser measurements (best with the assistant)">📏 Plan builder</button>';
     html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';
     html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑 House</button>';
     // 📁 Archive = the client\'s Google Drive folder (photos, written consultations, etc.)
