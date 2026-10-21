@@ -490,11 +490,14 @@
       '- WATER PLACEMENT PLAYBOOK (fountain / aquarium POSITION for a given facing) - do it all, in this order, ' +
       'WITHOUT waiting to be told each step: (1) find_water_positions with the facing: it applies the app\'s own ' +
       'rules (Ling Shen only, within +/-70 deg of the facing; the PREFERRED option is "all in family" - facing, water ' +
-      'and the people in one family; otherwise a yun link to the facing - Hetu, or adding to EXACTLY 10, never 5 or 15 ' +
+      'and the people in one family, a person counting by the YEAR pillar first and the DAY pillar second, never ' +
+      'month or hour; otherwise a yun link to the facing - Hetu, or adding to EXACTLY 10, never 5 or 15 ' +
       'for facing/water, since those pair two ZS or two LS - then qi links and the Yin/Yang mountain match) AND checks ' +
       'every loaded person\'s pillars. Report ALL link channels (family, adding, Hetu - on yun AND on qi). For the ' +
       'DATE and the PEOPLE any channel counts, adding to 5/10/15 included. ' +
-      '(2) The people are the loaded Person A / B: their pillars and hexagrams are in get_app_state.persons - never ' +
+      '(2) The people are the loaded Person A / B: their pillars and hexagrams are in get_app_state.persons (for ' +
+      'facing/water a person communicates by the YEAR pillar, second choice the DAY pillar; month and hour do not ' +
+      'count) - never ' +
       'ask the user for data that is already loaded. Keep only positions that communicate with the people; if no ' +
       'position fits everyone, say so and propose the best compromise. (3) For WHEN to place it: a complete activation ' +
       'needs TIME, SPACE and PEOPLE all communicating - find_good_dates with check_hexagrams = [facing hex, water ' +
@@ -2146,24 +2149,25 @@
         app_pair_score: (typeof fsWaterScore === 'function') ? fsWaterScore(fs, ws) : undefined
       };
       var pk = Object.keys(persons);
-      // "All in family": a family holding the facing, the water AND at least one pillar of
-      // every loaded person — the preferred option for facing/water (Edu, session 31).
+      // "All in family": a family holding the facing, the water AND every loaded person —
+      // the preferred option for facing/water (Edu, session 31). A person counts by the
+      // YEAR pillar; the DAY pillar is the second choice; month and hour never count.
       try {
         var fwF = (getHexFamilies(fs.hexNum) || []).filter(function (f) { return (getHexFamilies(ws.hexNum) || []).indexOf(f) >= 0; });
         row.family_with_facing = fwF.length ? fwF : undefined;
-        var allF = fwF.filter(function (f) {
-          return pk.every(function (who) {
-            var P = persons[who];
-            return Object.keys(P.pillars).some(function (k) { return (getHexFamilies(P.pillars[k].hex) || []).indexOf(f) >= 0; });
-          });
-        });
-        row.all_in_family = allF.length ? allF : false;
+        var inFam = function (P, k, f) { return !!(P.pillars[k] && (getHexFamilies(P.pillars[k].hex) || []).indexOf(f) >= 0); };
+        var byYear = fwF.filter(function (f) { return pk.every(function (who) { return inFam(persons[who], 'year', f); }); });
+        var byYearOrDay = fwF.filter(function (f) { return pk.every(function (who) { return inFam(persons[who], 'year', f) || inFam(persons[who], 'day', f); }); });
+        if (byYear.length) { row.all_in_family = byYear; row.all_in_family_via = 'year'; }
+        else if (byYearOrDay.length) { row.all_in_family = byYearOrDay; row.all_in_family_via = 'year/day (second choice)'; }
+        else row.all_in_family = false;
       } catch (e) {}
       if (pk.length) {
         row.links_to_persons = {};
         pk.forEach(function (who) {
           var P = persons[who], lp = {}, anyL = false;
-          Object.keys(P.pillars).forEach(function (k) {
+          ['year', 'day'].forEach(function (k) {   // month and hour do not count (Edu)
+            if (!P.pillars[k]) return;
             var l = _hexLinks(ws.hexNum, P.pillars[k].hex);
             if (l.length) { lp[k] = l; anyL = true; }
           });
@@ -2172,8 +2176,9 @@
       }
       rows.push(row);
     });
+    var _aif = function (r) { return !r.all_in_family ? 0 : (r.all_in_family_via === 'year' ? 2 : 1); };
     rows.sort(function (a, b) {
-      return ((b.all_in_family ? 1 : 0) - (a.all_in_family ? 1 : 0)) ||
+      return (_aif(b) - _aif(a)) ||
              ((b.family_with_facing ? 1 : 0) - (a.family_with_facing ? 1 : 0)) ||
              (b.yun_link_to_facing - a.yun_link_to_facing) || ((b.app_pair_score || 0) - (a.app_pair_score || 0)) || (a.angle_from_facing - b.angle_from_facing);
     });
@@ -2188,7 +2193,8 @@
       note: (fsIsZhengShen(fq.yun) ? '' : 'The facing hexagram is NOT Zheng Shen in this period - say so. ') +
             'Ranked: ALL IN FAMILY first (facing, water and every person in one family - the preferred option), then same ' +
             'family as the facing, then a yun link to the facing (Hetu, or adding to exactly 10), then the app pair score, then the smaller angle. ' +
-            'links_to_persons lists, per person and pillar, the channels that connect; "none" = no link to that person.'
+            'links_to_persons lists, per person, the channels from the YEAR pillar (first) and the DAY pillar (second ' +
+            'choice); month and hour pillars never count. "none" = no link to that person.'
     };
   }
 
