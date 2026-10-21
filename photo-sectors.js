@@ -15,7 +15,9 @@
 // user traces two horizontal edges of one wall (skirting + ceiling line); their
 // vanishing point is the wall's direction, i.e. house facing + k·90°. One wall
 // fixes the centre; two walls at 90° (or any 2+ references) also fix the focal.
-// A tapped point of known compass degree is still accepted as a reference.
+// A tapped point read with a compass is accepted too, CORRECTED by the compass's
+// indoor error (Edu): read the facing with the same compass from the same spot,
+// the difference from the real facing is the correction applied to every reading.
 //
 // Water rules come from app-fengshui.js (fsWaterMatchVsFacing / fsWaterScore):
 // Ling Shen only, within ±FS_WATER_MAX_DEG of the facing, a yun link (Hetu or
@@ -183,7 +185,7 @@
       var sx = 0, sy = 0; arr.forEach(function (d) { sx += Math.cos(d * Math.PI / 180); sy += Math.sin(d * Math.PI / 180); });
       return norm(Math.atan2(sy, sx) * 180 / Math.PI);
     };
-    if (refs.length >= 2) {
+    if (refs.length >= 2 && !S.f35Locked) {
       var best = null;
       for (var f = 8; f <= 160; f += 0.25) {
         var cs = refs.map(function (r) { return cOf(r, fpx(f)); }), m = circMean(cs);
@@ -192,9 +194,16 @@
       }
       f35 = best.f; centre = best.c;
       note = refs.length + ' references → focal ' + r1(f35) + ' mm, max error ' + r2(best.sp) + '°';
+    } else if (refs.length >= 2) {
+      // Focal known (photo data or lens chosen): keep it, average the centre and show
+      // how well the references agree — a large spread means one of them is off.
+      var cs2 = refs.map(function (r) { return cOf(r, fpx(f35)); }); centre = circMean(cs2);
+      var sp2 = Math.max.apply(null, cs2.map(function (c) { return Math.abs(angDiff(c, centre)); }));
+      note = refs.length + ' references agree within ±' + r1(sp2) + '° (focal ' + r1(f35) + ' mm ' + S.f35Source + ')' +
+             (sp2 > 2 ? ' — WARNING: they disagree, check the readings or the lens' : '');
     } else if (refs.length === 1) {
       centre = norm(cOf(refs[0], fpx(f35)));
-      note = (refs[0].wall ? 'Aligned to a wall (' + r1(refs[0].deg) + '°)' : '1 reference point') + ' → centre fixed (focal ' + r1(f35) + ' mm ' + S.f35Source + '). A second wall at 90° also fixes the focal.';
+      note = (refs[0].wall ? 'Aligned to a wall (' + r1(refs[0].deg) + '°)' : '1 reference point') + ' → centre fixed (focal ' + r1(f35) + ' mm ' + S.f35Source + ').';
     } else {
       note = 'NOT calibrated: centre taken from the direction field (focal ' + r1(f35) + ' mm ' + S.f35Source + '). Use 🧱 Align to a wall.';
     }
@@ -268,7 +277,7 @@
     S.refs.forEach(function (r) {
       ctx.lineWidth = 1.5 * u; ctx.strokeStyle = 'rgba(21,101,192,0.6)'; ctx.setLineDash([6 * u, 6 * u]);
       ctx.beginPath(); ctx.moveTo(r.x, 30 * u); ctx.lineTo(r.x, S.H); ctx.stroke(); ctx.setLineDash([]);
-      if (r.x >= 0 && r.x <= S.W) tag(ctx, u, r.x, 8 * u, (r.wall ? 'wall ' : 'ref ') + r1(r.deg) + '°', '#1565c0', '#fff');
+      if (r.x >= 0 && r.x <= S.W) tag(ctx, u, r.x, 8 * u, (r.wall ? 'wall ' : (r.raw != null && r.raw !== r.deg ? 'compass ' + r1(r.raw) + '→' : 'ref ')) + r1(r.deg) + '°', '#1565c0', '#fff');
     });
     // measured point
     if (S.measure != null) {
@@ -322,7 +331,7 @@
     var people = housePeople(h, personKey);
     S = { house: h, people: people, facings: facings, facing: facings.length ? facings[facings.length > 1 ? 1 : 0].deg : 180,
           img: null, W: 0, H: 0, f35: 24, f35Source: '(default)', centre: null, refs: [], mode: 'measure',
-          sel: {}, boxTop: 0.38, boxBottom: 0.62, measure: null, wallPts: [],
+          sel: {}, boxTop: 0.38, boxBottom: 0.62, measure: null, wallPts: [], compassOffset: 0,
           wallBase: (hf != null ? norm(+hf) : null) };
     S.centre = S.facing;
     build();
@@ -369,8 +378,13 @@
             '<span>Tap on the photo to:</span>' +
             '<button id="xps-m-measure" onclick="XKDGPhotoSectors._mode(\'measure\')" style="' + btn + '">📍 Measure a point</button>' +
             '<button id="xps-m-wall" onclick="XKDGPhotoSectors._mode(\'wall\')" style="' + btn + '">🧱 Align to a wall</button>' +
-            '<button id="xps-m-ref" onclick="XKDGPhotoSectors._mode(\'ref\')" style="' + btn + '">🎯 Point of known degree</button>' +
+            '<button id="xps-m-ref" onclick="XKDGPhotoSectors._mode(\'ref\')" style="' + btn + '">🎯 Point read with the compass</button>' +
             '<button onclick="XKDGPhotoSectors._clearRefs()" style="' + btn + 'border:1px solid #ccc;background:#fff;">Clear references</button>' +
+          '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px;">' +
+            '<span title="Indoor compasses are off by several degrees. Read the facing (e.g. the door) with your compass from the photo spot: the difference from the real facing corrects every other reading.">Compass correction ' +
+            '<input id="xps-coff" type="number" step="0.1" value="0" style="width:60px;font-size:12px;" onchange="XKDGPhotoSectors._coff(this.value)">°</span>' +
+            '<button onclick="XKDGPhotoSectors._coffFromFacing()" style="' + btn + 'border:1px solid #1565c0;background:#fff;color:#1565c0;">Set it from the facing</button>' +
           '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px;">' +
             '<span>Boxes top <input type="range" min="0" max="95" value="38" oninput="XKDGPhotoSectors._box(\'t\',this.value)"></span>' +
@@ -402,9 +416,11 @@
     var y = (e.clientY - rc.top) * (S.H / rc.height);
     if (S.mode === 'wall') { wallTap(x, y); return; }
     if (S.mode === 'ref') {
-      var d = prompt('Compass degree of the point you tapped (0-360).\nMeasure it from the SAME spot the photo was taken.');
+      var off = S.compassOffset || 0;
+      var d = prompt('Compass reading of the point you tapped (0-360), taken from the SAME spot as the photo.' +
+        (off ? '\nIt will be corrected by ' + (off > 0 ? '+' : '') + r1(off) + '° (compass correction).' : '\nTip: set the compass correction first (read the facing with the same compass).'));
       if (d === null || !isFinite(parseFloat(d))) return;
-      S.refs.push({ x: x, deg: norm(parseFloat(d)) });
+      S.refs.push({ x: x, deg: norm(parseFloat(d) + off), raw: parseFloat(d) });
     } else S.measure = x;
     draw();
     var c = el('xps-centre'); if (c) c.value = r1(S.cal.centre);
@@ -442,7 +458,7 @@
       'Now the second point of that edge.',
       'Now 2 points along <b>another horizontal edge of the same wall</b> (e.g. where it meets the ceiling).',
       'Now the last point.'][n] || '';
-    else if (S.mode === 'ref') h.textContent = 'Tap a point whose compass degree you know (measured from the photo spot).';
+    else if (S.mode === 'ref') h.textContent = 'Tap a point you have read with the compass from the photo spot (set the compass correction first).';
     else h.textContent = S.refs.length ? '' : 'Calibrate first: 🧱 Align to a wall (the walls follow the house facing).';
   }
   function loadFile(file) {
@@ -450,8 +466,8 @@
     var fr = new FileReader();
     fr.onload = function () {
       var ex = readExif(fr.result);
-      if (ex && ex.f35) { S.f35 = ex.f35; S.f35Source = '(from photo data' + (ex.model ? ', ' + ex.model : '') + ')'; }
-      else { S.f35Source = '(lens setting — choose the lens you used)'; }
+      if (ex && ex.f35) { S.f35 = ex.f35; S.f35Locked = true; S.f35Source = '(from photo data' + (ex.model ? ', ' + ex.model : '') + ')'; }
+      else { S.f35Locked = false; S.f35Source = '(lens unknown — choose the lens you used, or calibrate with 2 walls)'; }
       var url = URL.createObjectURL(file), img = new Image();
       img.onload = function () {
         var k = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
@@ -488,8 +504,16 @@
     _file: loadFile, _save: save,
     _facing: function (v) { if (v === '' || v == null) { var fi = el('xps-facing'); if (fi) fi.focus(); return; } setFacing(v); },
     _centre: function (v) { if (!isFinite(parseFloat(v))) return; S.refs = []; S.centre = norm(parseFloat(v)); draw(); },
-    _lens: function (v) { if (!v) { el('xps-f35').focus(); return; } S.f35 = +v; S.f35Source = '(lens setting)'; el('xps-f35').value = v; draw(); },
-    _f35: function (v) { if (!(+v > 0)) return; S.f35 = +v; S.f35Source = '(typed)'; draw(); },
+    _lens: function (v) { if (!v) { el('xps-f35').focus(); return; } S.f35 = +v; S.f35Locked = true; S.f35Source = '(lens setting)'; el('xps-f35').value = v; draw(); },
+    _f35: function (v) { if (!(+v > 0)) return; S.f35 = +v; S.f35Locked = true; S.f35Source = '(typed)'; draw(); },
+    _coff: function (v) { S.compassOffset = isFinite(parseFloat(v)) ? parseFloat(v) : 0; },
+    _coffFromFacing: function () {
+      var r = prompt('Point your compass along the facing (' + r1(S.facing) + '°), from the spot where you take the photo.\nWhat does it read?');
+      if (r === null || !isFinite(parseFloat(r))) return;
+      S.compassOffset = r1(angDiff(S.facing, parseFloat(r)));
+      el('xps-coff').value = S.compassOffset;
+      alert('Compass correction ' + (S.compassOffset > 0 ? '+' : '') + S.compassOffset + '°: every compass reading you type is corrected by this amount.');
+    },
     _mode: function (m) { S.mode = m; S.wallPts = []; modeButtons(); hint(); if (S.img) draw(); },
     _clearRefs: function () { S.refs = []; S.wallPts = []; S.centre = parseFloat(el('xps-centre').value) || S.facing; draw(); },
     _box: function (w, v) { if (w === 't') S.boxTop = Math.min(+v / 100, S.boxBottom - 0.03); else S.boxBottom = Math.max(+v / 100, S.boxTop + 0.03); draw(); },
