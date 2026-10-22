@@ -17,20 +17,25 @@ const T = {
   it: { subj: 'XKDG · Ore positive', sub: 'Ore positive di oggi e dei prossimi 7 giorni', best: 'Le migliori della settimana', none: 'Nessuna ora positiva',
         general: 'Generale', night: 'notte', note: 'Calcolato con lo scanner dell’app, in ora solare vera di', note2: 'Ora legale/solare gestita giorno per giorno.',
         days: ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'], months: ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'],
-        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Apri l’app', day: 'giorno', fs: 'Feng Shui', fsDetail: 'Dettaglio Feng Shui', fsSkip: 'non calcolato', fsDoor: 'Porta con il giorno', fsWater: 'Acqua con il giorno', fsBL: 'Full Blood Link', fsBest: 'Ora migliore', fsPl: 'Posizione con il giorno', fsWith: 'con la posizione', fsDate: 'con il giorno', detail: 'Dettaglio di ogni ora', relH: 'Ora con te', relD: 'Giorno con te', qual: 'Qualità', spirit: 'Spirito dell’ora', nayin: 'Nayin', purposes: 'Scopi', noble: 'Nobile', ty: 'Tian Yi', rescued: 'non comunica con te: salvata dal Nayin Power', onlyGeneral: 'solo generale (nessuno scopo)', goodSp: 'favorevole', badSp: 'sfavorevole', see: 'Il dettaglio di ogni ora è in fondo.' },
+        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Apri l’app', day: 'giorno', fs: 'Feng Shui', fsDetail: 'Dettaglio Feng Shui', aqTier: 'Livello', local: 'ora locale', aqConn: 'comunica con te', aqNot: 'non comunica con te (buona per Qimen/Nayin)', aqWhy: 'Perché', fsSkip: 'non calcolato', fsDoor: 'Porta con il giorno', fsWater: 'Acqua con il giorno', fsBL: 'Full Blood Link', fsBest: 'Ora migliore', fsPl: 'Posizione con il giorno', fsWith: 'con la posizione', fsDate: 'con il giorno', detail: 'Dettaglio di ogni ora', relH: 'Ora con te', relD: 'Giorno con te', qual: 'Qualità', spirit: 'Spirito dell’ora', nayin: 'Nayin', purposes: 'Scopi', noble: 'Nobile', ty: 'Tian Yi', rescued: 'non comunica con te: salvata dal Nayin Power', onlyGeneral: 'solo generale (nessuno scopo)', goodSp: 'favorevole', badSp: 'sfavorevole', see: 'Il dettaglio di ogni ora è in fondo.' },
   en: { subj: 'XKDG · Positive hours', sub: 'Positive hours today and the next 7 days', best: 'Best of the week', none: 'No positive hour',
         general: 'General', night: 'night', note: 'Computed with the app’s scanner, in true solar time of', note2: 'Daylight saving handled day by day.',
         days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Open the app', day: 'day', fs: 'Feng Shui', fsDetail: 'Feng Shui detail', fsSkip: 'not scanned', fsDoor: 'Door with the day', fsWater: 'Water with the day', fsBL: 'Full Blood Link', fsBest: 'Best hour', fsPl: 'Placement with the day', fsWith: 'with the placement', fsDate: 'with the day', detail: 'Detail of every hour', relH: 'Hour with you', relD: 'Day with you', qual: 'Quality', spirit: 'Hour spirit', nayin: 'Nayin', purposes: 'Purposes', noble: 'Noble', ty: 'Tian Yi', rescued: 'does not connect with you: rescued by Nayin Power', onlyGeneral: 'general only (no purpose)', goodSp: 'auspicious', badSp: 'inauspicious', see: 'The detail of every hour is at the end.' },
+        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Open the app', day: 'day', fs: 'Feng Shui', fsDetail: 'Feng Shui detail', aqTier: 'Tier', local: 'local time', aqConn: 'connects with you', aqNot: 'does not connect with you (good by Qimen/Nayin)', aqWhy: 'Why', fsSkip: 'not scanned', fsDoor: 'Door with the day', fsWater: 'Water with the day', fsBL: 'Full Blood Link', fsBest: 'Best hour', fsPl: 'Placement with the day', fsWith: 'with the placement', fsDate: 'with the day', detail: 'Detail of every hour', relH: 'Hour with you', relD: 'Day with you', qual: 'Quality', spirit: 'Hour spirit', nayin: 'Nayin', purposes: 'Purposes', noble: 'Noble', ty: 'Tian Yi', rescued: 'does not connect with you: rescued by Nayin Power', onlyGeneral: 'general only (no purpose)', goodSp: 'auspicious', badSp: 'inauspicious', see: 'The detail of every hour is at the end.' },
   fr: { subj: 'XKDG · Heures positives', sub: 'Heures positives d’aujourd’hui et des 7 prochains jours', best: 'Les meilleures de la semaine', none: 'Aucune heure positive',
         general: 'Général', night: 'nuit', note: 'Calculé avec le scanner de l’app, en heure solaire vraie de', note2: 'Heure d’été/hiver gérée jour par jour.',
         days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'], months: ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'],
-        P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour', fs: 'Feng Shui', fsDetail: 'Détail Feng Shui', fsSkip: 'non calculé', fsDoor: 'Porte avec le jour', fsWater: 'Eau avec le jour', fsBL: 'Full Blood Link', fsBest: 'Meilleure heure', fsPl: 'Emplacement avec le jour', fsWith: 'avec l’emplacement', fsDate: 'avec le jour', detail: 'Détail de chaque heure', relH: 'Heure avec vous', relD: 'Jour avec vous', qual: 'Qualité', spirit: 'Esprit de l’heure', nayin: 'Nayin', purposes: 'Objectifs', noble: 'Noble', ty: 'Tian Yi', rescued: 'ne communique pas avec vous : sauvée par le Nayin Power', onlyGeneral: 'général seulement (aucun objectif)', goodSp: 'favorable', badSp: 'défavorable', see: 'Le détail de chaque heure est à la fin.' }
+        P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour', fs: 'Feng Shui', fsDetail: 'Détail Feng Shui', aqTier: 'Niveau', local: 'heure locale', aqConn: 'communique avec vous', aqNot: 'ne communique pas avec vous (bonne par Qimen/Nayin)', aqWhy: 'Pourquoi', fsSkip: 'non calculé', fsDoor: 'Porte avec le jour', fsWater: 'Eau avec le jour', fsBL: 'Full Blood Link', fsBest: 'Meilleure heure', fsPl: 'Emplacement avec le jour', fsWith: 'avec l’emplacement', fsDate: 'avec le jour', detail: 'Détail de chaque heure', relH: 'Heure avec vous', relD: 'Jour avec vous', qual: 'Qualité', spirit: 'Esprit de l’heure', nayin: 'Nayin', purposes: 'Objectifs', noble: 'Noble', ty: 'Tian Yi', rescued: 'ne communique pas avec vous : sauvée par le Nayin Power', onlyGeneral: 'général seulement (aucun objectif)', goodSp: 'favorable', badSp: 'défavorable', see: 'Le détail de chaque heure est à la fin.' }
 };
 const ICON = { health: '🩺', career: '🏆', wealth: '💰', relationship: '❤️', journey: '✈️', speak: '🗣️', legal: '⚖️' };
-const FSICON = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF\uFE0F', desk: '\uD83E\uDE91' };
+const FSICON = { aquarium: '\uD83D\uDC20', water: '\uD83D\uDCA7', bed: '\uD83D\uDECF\uFE0F', desk: '\uD83E\uDE91' };
 const PORDER = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
 
+// Two zones are interchangeable when their UTC offsets match all year (Vienna = Rome).
+function tzSig(tz) {
+  const y = new Date().getUTCFullYear();
+  return [0, 3, 6, 9].map(m => new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).format(new Date(Date.UTC(y, m, 15, 12)))).join('|').replace(/[^+\-\d:|GMT]/g, '');
+}
 function todayIn(tz) {
   const p = {}; new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).forEach(x => { p[x.type] = x.value; });
   return p.year + '-' + p.month + '-' + p.day;
@@ -67,7 +72,12 @@ function build(rec, data, loc) {
       (gz ? ' <span style="color:#888;font-weight:normal;font-size:13px;">' + esc(t.day) + ' ' + esc(gz) + '</span>' : '') + '</h3>';
     X += dlabel(dd.date, t) + (gz ? ' (' + gz + ')' : '') + '\n';
     const fsToday = (data.fs || []).map(r => ({ r: r, d: (r.dates || []).filter(x => x.date === dd.date)[0] })).filter(o => o.d);
-    const fsLine = fsToday.map(o => FSICON[o.r.kind] + ' ' + o.r.house + ' \u00b7 ' + o.r.name + (o.d.score != null ? ' (' + o.d.score + (o.d.full_blood_link ? ' BL' : '') + ')' : '')).join('  \u2022  ');
+    const fsToday2 = [];
+    fsToday.forEach(o => { if (o.r.kind !== 'aquarium' || !fsToday2.some(p => p.r === o.r)) fsToday2.push(o); });
+    const aqHours = r => (r.dates || []).filter(x => x.date === dd.date).sort((a, b) => (a.window || '').localeCompare(b.window || ''))
+      .map(x => (x.window || x.branch).split('\u2013')[0] + ' T' + x.tier + (x.tier >= 3 ? '\u2B50' : '')).join(', ');
+    const fsLine = fsToday2.map(o => FSICON[o.r.kind] + ' ' + o.r.house + (o.r.local_time ? ' (' + t.local + ')' : '') + ' \u00b7 ' + o.r.name +
+      (o.r.kind === 'aquarium' ? ': ' + aqHours(o.r) : (o.d.score != null ? ' (' + o.d.score + (o.d.full_blood_link ? ' BL' : '') + ')' : ''))).join('  \u2022  ');
     const fsHtml = fsToday.length ? '<div style="margin:4px 0 2px;padding:4px 8px;background:#e8f5e9;border-radius:6px;font-size:13px;"><b style="color:#1b5e20;">\uD83C\uDFE0 ' + esc(t.fs) + ':</b> ' + esc(fsLine) + '</div>' : '';
     if (fsToday.length) X += '  [' + t.fs + '] ' + fsLine + '\n';
     if (!dd.hours.length) { H += '<div style="color:#999;font-size:13px;">' + esc(t.none) + '</div>' + fsHtml; X += '  ' + t.none + '\n'; return; }
@@ -111,12 +121,17 @@ function build(rec, data, loc) {
   (data.fs || []).forEach(r => (r.dates || []).forEach(d => fsAll.push({ r: r, d: d })));
   const fsSkipped = (data.fs || []).filter(r => r.note);
   if (fsAll.length || fsSkipped.length) {
-    fsAll.sort((a, b) => a.d.date.localeCompare(b.d.date));
+    fsAll.sort((a, b) => (a.d.date + (a.d.window || '')).localeCompare(b.d.date + (b.d.window || '')));
     H += '<h2 style="margin:22px 0 6px;color:#1b5e20;border-top:2px solid #c8e6c9;padding-top:10px;">\uD83C\uDFE0 ' + esc(t.fsDetail) + '</h2>';
     X += '\n==== ' + t.fsDetail + ' ====\n';
     fsAll.forEach(o => {
       const r = o.r, d = o.d, parts = [];
-      if (r.kind === 'water') {
+      if (r.kind === 'aquarium') {
+        parts.push([t.aqTier, 'T' + d.tier + ' \u00b7 ' + (d.person_connected ? t.aqConn : t.aqNot)]);
+        parts.push([t.aqWhy, d.why || '\u2014']);
+        if (d.hits && d.hits.length) parts.push(['Qimen', d.hits.join(' \u00b7 ')]);
+        if (d.also_good_for && d.also_good_for.length) parts.push([t.purposes, d.also_good_for.join(' \u00b7 ')]);
+      } else if (r.kind === 'water') {
         parts.push([t.fsDoor, (d.facing_links || []).join(' \u00b7 ') || '\u2014']);
         parts.push([t.fsWater, (d.water_links || []).join(' \u00b7 ') || '\u2014']);
         if (d.full_blood_link) parts.push(['\u2B50', t.fsBL]);
@@ -125,7 +140,7 @@ function build(rec, data, loc) {
         parts.push([t.fsPl, (d.date_link || []).join(' \u00b7 ') || '\u2014']);
         (d.people || []).forEach(p => parts.push([p.who, t.fsWith + ': ' + ((p.with_placement || []).join(', ') || '\u2014') + ' \u00b7 ' + t.fsDate + ': ' + ((p.with_date || []).join(', ') || '\u2014')]));
       }
-      const hx = r.hex ? (r.kind === 'water' ? ' (hex ' + r.hex.facing + ' / ' + r.hex.water + ')' : ' (hex ' + r.hex.placement + ')') : '';
+      const hx = r.kind === 'aquarium' ? ' (' + r.direction + (r.water_star != null ? ', water star ' + r.water_star : '') + ')' + (d.window ? ' \u00b7 ' + d.branch + ' ' + d.window : '') : r.hex ? (r.kind === 'water' ? ' (hex ' + r.hex.facing + ' / ' + r.hex.water + ')' : ' (hex ' + r.hex.placement + ')') : '';
       const head = FSICON[r.kind] + ' ' + r.house + ' \u00b7 ' + r.name + hx + (d.score != null ? ' \u00b7 ' + d.score : '');
       H += '<div style="margin:8px 0;padding:6px 10px;border-left:3px solid #81c784;background:#f1f8e9;font-size:12px;">' +
         '<span style="display:inline-block;background:#1b5e20;color:#fff;font-weight:bold;border-radius:5px;padding:1px 7px;margin-right:6px;font-size:12px;">' + esc(dlabel(d.date, t)) + '</span>' +
@@ -164,10 +179,20 @@ async function main() {
       const loc = { lat: rec.lat != null ? +rec.lat : c.lat, lon: rec.lon != null ? +rec.lon : c.lon, tz: rec.tz || c.tz || 'Europe/Vienna', label: rec.city_label || c.label || rec.city || '' };
       if (!isFinite(loc.lat) || !isFinite(loc.lon)) throw new Error('unknown location');
       if (!rec.email || !(rec.birth_date || rec.jiazi)) throw new Error('email and birth_date (or jiazi) are required');
-      const arg = JSON.stringify({ birth_date: rec.birth_date, birth_time: rec.birth_time, jiazi: rec.jiazi, lat: loc.lat, lon: loc.lon, tz: loc.tz, start: todayIn(loc.tz), days: 8, houses: rec.houses || [] });
-      const raw = execFileSync(process.execPath, [path.join(__dirname, 'scan.js'), arg], { env: Object.assign({}, process.env, { TZ: loc.tz }), maxBuffer: 20e6, timeout: 600000 });
-      const data = JSON.parse(raw.toString());
+      // each house at its own place; houses in another time zone run in their own process
+      const houses = (rec.houses || []).map(h => {
+        const hc = CITIES[String(h.city || '').toLowerCase()] || {};
+        return Object.assign({}, h, { lat: h.lat != null ? +h.lat : (hc.lat != null ? hc.lat : loc.lat), lon: h.lon != null ? +h.lon : (hc.lon != null ? hc.lon : loc.lon), tz: h.tz || hc.tz || loc.tz });
+      });
+      const sameTz = (a, b) => tzSig(a) === tzSig(b);
+      const run = (zone, extra) => JSON.parse(execFileSync(process.execPath, [path.join(__dirname, 'scan.js'), JSON.stringify(Object.assign({
+        birth_date: rec.birth_date, birth_time: rec.birth_time, jiazi: rec.jiazi, lat: loc.lat, lon: loc.lon, tz: zone, start: todayIn(loc.tz), days: 8 }, extra))],
+        { env: Object.assign({}, process.env, { TZ: zone }), maxBuffer: 20e6, timeout: 600000 }).toString());
+      const data = run(loc.tz, { houses: houses.filter(h => sameTz(h.tz, loc.tz)) });
       if (data.error) throw new Error(data.error);
+      const others = {};
+      houses.filter(h => !sameTz(h.tz, loc.tz)).forEach(h => { (others[h.tz] = others[h.tz] || []).push(h); });
+      Object.keys(others).forEach(z => { const d2 = run(z, { houses: others[z], skip_hours: true }); (d2.fs || []).forEach(r => { r.local_time = true; }); data.fs = (data.fs || []).concat(d2.fs || []); });
       const msg = build(rec, data, loc);
       const n = data.days.reduce((s, d) => s + d.hours.length, 0);
       if (dry) {

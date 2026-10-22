@@ -52,9 +52,29 @@
           ops.push({ kind: 'water', name: fl + (s.name || 'Desk') + ' fountain', facing: num(s.deskFacing), water: num(s.deskWater) });
       });
     });
+    // aquariums and palace waters (no degree): activated by DIRECTION with the assistant's
+    // aquarium tool (XKDG + Qimen at the palace), using the floor's flying-star chart
+    try {
+      var N = (window.XKDGHouse && XKDGHouse.normalize) ? XKDGHouse.normalize(h) : null;
+      (N ? N.floors : []).forEach(function (f, fi) {
+        var fl = (N.floors.length > 1) ? (f.label || ('Floor ' + (fi + 1))) + ' · ' : '';
+        (f.water_features || []).forEach(function (wf) {
+          if (!wf.direction || wf.direction === 'C') return;
+          ops.push({ kind: 'aquarium', name: fl + (wf.name || ('Water ' + wf.direction)), direction: wf.direction,
+                     facing: num(f.facing), period: f.period != null ? +f.period : null, star_num: wf.water_star != null ? wf.water_star : null });
+        });
+      });
+    } catch (e) {}
     // de-duplicate identical placements
     var seen = {};
-    return ops.filter(function (o) { var k = JSON.stringify([o.kind, o.facing, o.water, o.sitting]); if (seen[k]) return false; seen[k] = 1; return true; });
+    return ops.filter(function (o) { var k = JSON.stringify([o.kind, o.facing, o.water, o.sitting, o.direction]); if (seen[k]) return false; seen[k] = 1; return true; });
+  }
+  // Where the house is: from its address or name (the email computes each house at its own longitude).
+  function cityOf(h) {
+    var t = ((h.address || '') + ' ' + (h.name || '')).toLowerCase();
+    if (/wien|vienna|vienne/.test(t)) return 'Vienna';
+    if (/tuoro|trasimeno/.test(t)) return 'Tuoro';
+    return null;
   }
   function housesOf(name) {
     var all = (typeof _fsHousesLoad === 'function') ? _fsHousesLoad() : {};
@@ -69,7 +89,9 @@
         // the bed is for owner + guest #2 (the app's Person A + B)
         var bedPeople = [owner, guest].filter(function (n) { return n && n !== name; })
           .map(function (n) { var j = yearJiazi(n); return j ? { name: n, jiazi: j } : null; }).filter(Boolean);
-        out.push({ name: h.name || 'House', ops: ops, bed_with: bedPeople });
+        var hh = { name: h.name || 'House', ops: ops, bed_with: bedPeople };
+        var c = cityOf(h); if (c) hh.city = c;
+        out.push(hh);
       });
     });
     return out;

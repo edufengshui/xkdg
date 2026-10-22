@@ -2980,6 +2980,8 @@
     };
   }
 
+  // The daily digest (digest/scan.js) runs these same tools headless on GitHub.
+  try { window.XKDGAITools = { exec: function (n, i) { return execTool(n, i); } }; } catch (e) {}
   function execTool(name, input) {
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
