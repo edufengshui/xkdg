@@ -44,6 +44,17 @@ function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').repla
 function dlabel(iso, t) { const d = new Date(iso + 'T12:00:00Z'); return t.days[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + t.months[d.getUTCMonth()]; }
 function isNight(from) { const h = +from.slice(0, 2); return h >= 23 || h < 5; }
 
+// Aquarium hours worth showing on a day (Edu): the best only.
+//   2+ hours of tier 3-4 -> only those; exactly one -> that one + the tier 2;
+//   none -> the tier 2; no tier 2 either -> the tier 1.
+function aqVisible(r, date) {
+  const all = (r.dates || []).filter(x => x.date === date);
+  const t3 = all.filter(x => x.tier >= 3), t2 = all.filter(x => x.tier === 2);
+  if (t3.length >= 2) return t3;
+  if (t3.length === 1) return t3.concat(t2);
+  if (t2.length) return t2;
+  return all.filter(x => x.tier === 1);
+}
 function build(rec, data, loc) {
   const t = T[rec.lang] || T.en;
   const all = [];
@@ -79,7 +90,7 @@ function build(rec, data, loc) {
       const r = o.r, where = FSICON[r.kind] + ' ' + r.house + (r.local_time ? ' (' + t.local + ')' : '') + ' \u00b7 ' + r.name;
       if (r.kind === 'aquarium') {
         if (seenR.has(r)) return; seenR.add(r);
-        (r.dates || []).filter(x => x.date === dd.date).forEach(x => fsRows.push({
+        aqVisible(r, dd.date).forEach(x => fsRows.push({
           time: x.window || '', branch: x.branch || '', where: where, grade: 'T' + x.tier, strong: x.tier >= 3,
           note: '', house: r.house }));   // T1 = not connected by definition: the detail says why
       } else {
@@ -137,7 +148,11 @@ function build(rec, data, loc) {
     });
   }
   const fsAll = [];
-  (data.fs || []).forEach(r => (r.dates || []).forEach(d => fsAll.push({ r: r, d: d })));
+  (data.fs || []).forEach(r => {
+    if (r.kind !== 'aquarium') { (r.dates || []).forEach(d => fsAll.push({ r: r, d: d })); return; }
+    const days = [...new Set((r.dates || []).map(x => x.date))];
+    days.forEach(day => aqVisible(r, day).forEach(d => fsAll.push({ r: r, d: d })));
+  });
   const fsSkipped = (data.fs || []).filter(r => r.note);
   if (fsAll.length || fsSkipped.length) {
     fsAll.sort((a, b) => (a.d.date + (a.d.window || '')).localeCompare(b.d.date + (b.d.window || '')));
