@@ -16,12 +16,12 @@ recipient's city, with daylight saving handled day by day.
 
 ```json
 [
-  {"name": "Edu", "email": "someone@gmail.com", "birth_date": "1960-06-15", "birth_time": "10:00", "city": "Vienna", "lang": "it"}
+  {"name": "Edu", "email": "someone@gmail.com", "birth_date": "1960-06-15", "birth_time": "10:00", "city": "Vienna", "lang": "en"}
 ]
 ```
 
 - `city`: `Vienna` or `Tuoro`, or give `lat`, `lon`, `tz` (IANA zone, e.g. `Europe/London`) and `city_label`.
-- `lang`: `it`, `en` or `fr`.
+- `lang`: `en` (default), `it` or `fr`.
 - `birth_time` optional (12:00 if missing). For a year-only person use `"jiazi": "庚子"` instead of `birth_date`.
 - `"active": false` pauses one person without removing them.
 - One object per person, separated by commas.
