@@ -373,6 +373,7 @@ function buildFengShuiView(){
           <button onclick="fsExportBackup()" title="Download a .json backup of all houses, persons and settings" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">⬇ Backup</button>
           <button onclick="document.getElementById('fs-restore-input').click()" title="Restore everything from a .json backup file" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">⬆ Restore</button>
           <input type="file" id="fs-restore-input" accept="application/json,.json" style="display:none;" onchange="fsImportBackup(this)">
+          <button onclick="if(window.XKDGDigestSetup)XKDGDigestSetup.open()" title="Settings for the daily email (hours + Feng Shui dates of these houses)" style="background:#fff;color:#4a148c;border:1px solid #4a148c;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">📧 Daily email</button>
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
         <div style="font-size:11px;color:#888;font-style:italic;margin-bottom:8px;">Pick a house to edit its chart and settings. New house → press “+ Add a new house”, then fill the Flying Stars data and read the luopan below.</div>

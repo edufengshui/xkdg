@@ -108,4 +108,62 @@ for (let i = 0; i < P.days; i++) {
   try { const [yy, mm, d2] = day.split('-').map(Number); const pn = ST.pillarsFromCivil(yy, mm, d2, 12, 0, 0, P.lon, tzMin); dayGz = pn ? pn.day : ''; } catch (e) {}
   out.days.push({ date: day, dst: dst, day_gz: dayGz, hours: list });
 }
+// ── Feng Shui placements of the person's houses: the app's own DAY scans ──
+// water = fsFindMatchingDatesForSetup (door facing ZS + water LS, Person A),
+// bed = _fsScanLuckyDates(owner + guest #2), desk = _fsScanLuckyDates(person).
+out.fs = [];
+if (Array.isArray(P.houses) && P.houses.length) {
+  const dst0 = tzOffsetMin(P.tz, new Date(P.start + 'T12:00:00Z')) > stdOff;
+  G('(_dstOn=' + (dst0 ? 'true' : 'false') + ')');
+  $('date').value = P.start;
+  try { w.calculateBazi(); } catch (e) {}
+  try { w.calculatePerson('A'); } catch (e) {}
+  $('scan-start').value = P.start; $('scan-days').value = String(P.days); w._fsRangeDays = P.days;
+  const me = G('_personAYear');
+  const bestWindow = (iso, idx) => {
+    try {
+      const HS = G('HOUR_STARTS'), ST = w.XKDGSolarTime, [y, m, dd] = iso.split('-').map(Number);
+      const dst = tzOffsetMin(P.tz, new Date(iso + 'T12:00:00Z')) > stdOff, tzMin = -(stdOff + (dst ? 60 : 0));
+      const a = ST.wallClockFromTST(y, m, dd, HS[idx], 0, P.lon, tzMin), b = ST.wallClockFromTST(y, m, dd, HS[idx] + 2, 0, P.lon, tzMin);
+      const f = t => String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
+      return ' ' + f(a) + '\u2013' + f(b);
+    } catch (e) { return ''; }
+  };
+  const inRange = iso => iso >= P.start && iso <= addDays(P.start, P.days - 1);
+  const yearPerson = (label, jz) => { const x = jz && w.getXkdgData(jz[0], jz[1]); return x ? { who: label, label: label, hex: x.hex, qi: x.qi, yun: x.yun } : null; };
+  P.houses.forEach(h => {
+    (h.ops || []).forEach(op => {
+      const rec = { house: h.name || '', name: op.name || op.kind, kind: op.kind, dates: [], note: null };
+      try {
+        if (op.kind === 'water') {
+          const f = w.fsSlotForDeg(+op.facing), wt = w.fsSlotForDeg(+op.water);
+          if (!w.fsIsZhengShen(f.yun)) rec.note = 'door facing not Zheng Shen';
+          else if (!w.fsIsLingShen(wt.yun)) rec.note = 'water not Ling Shen';
+          else (w.fsFindMatchingDatesForSetup(f, wt) || []).forEach(m => {
+            if (!inRange(m.isoDate)) return;
+            rec.dates.push({ date: m.isoDate, score: m.score, day_gz: (m.dGan || '') + (m.dZhi || ''),
+              facing_links: m.facingLabels || [], water_links: m.waterLabels || [], full_blood_link: !!m.isBL,
+              best_hour: m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi + bestWindow(m.isoDate, m.bestHour.idx)) : null });
+          });
+          rec.hex = { facing: f.hexNum, water: wt.hexNum };
+        } else if (op.kind === 'bed' || op.kind === 'desk') {
+          const slot = w.fsSlotForDeg(op.kind === 'bed' ? +op.sitting : +op.facing);
+          const persons = [me ? { who: 'you', label: 'you', hex: me.hex, qi: me.qi, yun: me.yun } : null];
+          if (op.kind === 'bed') (h.bed_with || []).forEach(o => persons.push(yearPerson(o.name, o.jiazi)));
+          const ps = persons.filter(Boolean);
+          if (!w.fsIsZhengShen(slot.yun)) rec.note = (op.kind === 'bed' ? 'bed sitting' : 'desk facing') + ' not Zheng Shen';
+          else if (!ps.length) rec.note = 'no person data';
+          else (w._fsScanLuckyDates(ps, slot, 120) || []).forEach(m => {
+            if (!inRange(m.iso)) return;
+            rec.dates.push({ date: m.iso, day_gz: m.dGan + m.dZhi,
+              date_link: (m.eval && m.eval.dateLink && m.eval.dateLink.labels) || [],
+              people: ((m.eval && m.eval.perPerson) || []).map(pp => ({ who: pp.label || pp.who, with_placement: pp.ps.labels, with_date: pp.pd.labels })) });
+          });
+          rec.hex = { placement: slot.hexNum };
+        }
+      } catch (e) { rec.note = 'scan failed'; }
+      out.fs.push(rec);
+    });
+  });
+}
 process.stdout.write(JSON.stringify(out));

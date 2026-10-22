@@ -24,6 +24,10 @@ recipient's city, with daylight saving handled day by day.
 - `lang`: `en` (default), `it` or `fr`.
 - `birth_time` optional (12:00 if missing). For a year-only person use `"jiazi": "庚子"` instead of `birth_date`.
 - `"active": false` pauses one person without removing them.
+- `houses` (optional): the Feng Shui placements of the person's houses. Do not write it by hand: in the app,
+  **House Profiles → 📧 Daily email** builds the whole line of a person (birth data + houses: door fountains,
+  bed sitting, desk facing) ready to paste. The email then adds, day by day, the dates the app's own Water /
+  Bed / Desk scans find for each placement, with the detail at the end.
 - One object per person, separated by commas.
 
 ## Test now
