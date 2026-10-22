@@ -1,0 +1,33 @@
+# Daily XKDG digest: every morning an email with the positive hours of today and the
+# next 7 days (general scan + every purpose), computed with the app's own scanner.
+# Setup and recipients: see digest/README.md. Logs are public: the scripts never print
+# names, emails or birth data.
+name: Daily XKDG digest
+
+on:
+  schedule:
+    - cron: '17 3 * * *'      # 05:17 Vienna in summer, 04:17 in winter (GitHub may start it a bit later)
+  workflow_dispatch:          # "Run workflow" button, for a test
+
+permissions:
+  contents: read
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        working-directory: digest
+        run: npm install --no-audit --no-fund --silent
+      - name: Compute and send
+        working-directory: digest
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          XKDG_DIGEST_RECIPIENTS: ${{ secrets.XKDG_DIGEST_RECIPIENTS }}
+        run: node digest.js

@@ -1,0 +1,10 @@
+{
+  "name": "xkdg-daily-digest",
+  "private": true,
+  "description": "Daily email with the positive XKDG hours, computed with the app's own scanner.",
+  "dependencies": {
+    "jsdom": "^24.1.3",
+    "lunar-javascript": "^1.7.3",
+    "nodemailer": "^6.9.16"
+  }
+}
