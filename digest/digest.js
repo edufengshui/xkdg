@@ -17,15 +17,15 @@ const T = {
   it: { subj: 'XKDG · Ore positive', sub: 'Ore positive di oggi e dei prossimi 7 giorni', best: 'Le migliori della settimana', none: 'Nessuna ora positiva',
         general: 'Generale', night: 'notte', note: 'Calcolato con lo scanner dell’app, in ora solare vera di', note2: 'Ora legale/solare gestita giorno per giorno.',
         days: ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'], months: ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'],
-        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Apri l’app', day: 'giorno' },
+        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Apri l’app', day: 'giorno', detail: 'Dettaglio di ogni ora', relH: 'Ora con te', relD: 'Giorno con te', qual: 'Qualità', spirit: 'Spirito dell’ora', nayin: 'Nayin', purposes: 'Scopi', noble: 'Nobile', ty: 'Tian Yi', rescued: 'non comunica con te: salvata dal Nayin Power', onlyGeneral: 'solo generale (nessuno scopo)', goodSp: 'favorevole', badSp: 'sfavorevole', see: 'Il dettaglio di ogni ora è in fondo.' },
   en: { subj: 'XKDG · Positive hours', sub: 'Positive hours today and the next 7 days', best: 'Best of the week', none: 'No positive hour',
         general: 'General', night: 'night', note: 'Computed with the app’s scanner, in true solar time of', note2: 'Daylight saving handled day by day.',
         days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Open the app', day: 'day' },
+        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Open the app', day: 'day', detail: 'Detail of every hour', relH: 'Hour with you', relD: 'Day with you', qual: 'Quality', spirit: 'Hour spirit', nayin: 'Nayin', purposes: 'Purposes', noble: 'Noble', ty: 'Tian Yi', rescued: 'does not connect with you: rescued by Nayin Power', onlyGeneral: 'general only (no purpose)', goodSp: 'auspicious', badSp: 'inauspicious', see: 'The detail of every hour is at the end.' },
   fr: { subj: 'XKDG · Heures positives', sub: 'Heures positives d’aujourd’hui et des 7 prochains jours', best: 'Les meilleures de la semaine', none: 'Aucune heure positive',
         general: 'Général', night: 'nuit', note: 'Calculé avec le scanner de l’app, en heure solaire vraie de', note2: 'Heure d’été/hiver gérée jour par jour.',
         days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'], months: ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'],
-        P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour' }
+        P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour', detail: 'Détail de chaque heure', relH: 'Heure avec vous', relD: 'Jour avec vous', qual: 'Qualité', spirit: 'Esprit de l’heure', nayin: 'Nayin', purposes: 'Objectifs', noble: 'Noble', ty: 'Tian Yi', rescued: 'ne communique pas avec vous : sauvée par le Nayin Power', onlyGeneral: 'général seulement (aucun objectif)', goodSp: 'favorable', badSp: 'défavorable', see: 'Le détail de chaque heure est à la fin.' }
 };
 const ICON = { health: '🩺', career: '🏆', wealth: '💰', relationship: '❤️', journey: '✈️', speak: '🗣️', legal: '⚖️' };
 const PORDER = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
@@ -73,6 +73,29 @@ function build(rec, data, loc) {
     });
     H += '</table>';
   });
+  // second section: the WHY of every hour (the glance stays at the top)
+  if (all.length) {
+    H += '<div style="color:#888;font-size:12px;margin-top:10px;">' + esc(t.see) + '</div>' +
+      '<h2 style="margin:22px 0 6px;color:#4a148c;border-top:2px solid #e1bee7;padding-top:10px;">' + esc(t.detail) + '</h2>';
+    X += '\n==== ' + t.detail + ' ====\n';
+    all.forEach(h => {
+      const D = h.detail || {}, parts = [];
+      if (D.rescued_by_nayin) parts.push(['⚠', t.rescued]);
+      if (D.hour_links && D.hour_links.length) parts.push([t.relH, D.hour_links.join(' · ')]);
+      if (D.day_links && D.day_links.length) parts.push([t.relD, D.day_links.join(' · ')]);
+      if (D.quality && D.quality.length) parts.push([t.qual, D.quality.join(' · ')]);
+      if (D.spirit) parts.push([t.spirit, D.spirit + ' (' + (D.spirit_good === false ? t.badSp : (D.spirit_good ? t.goodSp : '?')) + ')']);
+      const nt = [D.noble ? t.noble : '', D.tian_yi ? t.ty : ''].filter(Boolean); if (nt.length) parts.push(['✨', nt.join(' · ')]);
+      if (D.nayin && D.nayin.length) parts.push([t.nayin, D.nayin.join(' · ')]);
+      const ps = PORDER.filter(p => h.scores[p] != null).map(p => t.P[p] + ' ' + h.scores[p] + (h.qimen && h.qimen[p] ? ' (Qimen: ' + h.qimen[p].join(', ') + ')' : ''));
+      parts.push([t.purposes, ps.length ? ps.join(' · ') : t.onlyGeneral]);
+      const head = dlabel(h.civil_date, t) + ' · ' + h.from + '–' + h.to + ' ' + h.branch + ' (' + h.hour_gz + ')' + (isNight(h.from) ? ' 🌙' : '') +
+        ' · ' + (h.scores.general != null ? h.scores.general : '');
+      H += '<div style="margin:8px 0;padding:6px 10px;border-left:3px solid #ce93d8;background:#faf7fc;font-size:12px;">' +
+        '<b style="font-size:13px;">' + esc(head) + '</b><br>' + parts.map(p => '<span style="color:#777;">' + esc(p[0]) + ':</span> ' + esc(p[1])).join('<br>') + '</div>';
+      X += '\n' + head + '\n' + parts.map(p => '   ' + p[0] + ': ' + p[1]).join('\n') + '\n';
+    });
+  }
   H += '<div style="color:#888;font-size:12px;margin-top:16px;">' + esc(t.note) + ' ' + esc(loc.label) + '. ' + esc(t.note2) +
     '<br><a href="https://fsadvisor.org/xkdg/">' + esc(t.open) + '</a></div></div>';
   const first = data.days[0].date, last = data.days[data.days.length - 1].date;
