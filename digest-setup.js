@@ -96,7 +96,7 @@
     });
     return out;
   }
-  function build(name, email, city, lang) {
+  function build(name, email, city, lang, noFs) {
     var rec = archiveRec(name);
     if (!rec) return { error: '"' + name + '" is not a saved person.' };
     var o = { name: name, email: email || 'EMAIL', city: city || 'Vienna' };
@@ -104,7 +104,7 @@
     else if (rec.jiaZiYear) o.jiazi = rec.jiaZiYear.slice(0, 2);
     else return { error: 'No birth data for "' + name + '".' };
     if (lang && lang !== 'en') o.lang = lang;
-    var hs = housesOf(name); if (hs.length) o.houses = hs;
+    var hs = noFs ? [] : housesOf(name); if (hs.length) o.houses = hs;   // noFs: hours only (Edu: Feng Shui only for the house's owner)
     return o;
   }
 
@@ -122,6 +122,7 @@
       'Person <input id="xdg-name" value="' + nm.replace(/"/g, '&quot;') + '" style="width:120px;"> ' +
       'Email <input id="xdg-email" type="email" placeholder="name@example.com" style="width:180px;"> ' +
       'City <select id="xdg-city"><option>Vienna</option><option>Tuoro</option></select> ' +
+      '<label><input type="checkbox" id="xdg-fs" checked> include Feng Shui dates (houses)</label> ' +
       'Language <select id="xdg-lang"><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option></select> ' +
       '<button onclick="XKDGDigestSetup._go()" style="padding:4px 10px;border-radius:6px;border:none;background:#4a148c;color:#fff;cursor:pointer;">Build</button>' +
       '<textarea id="xdg-out" readonly style="width:100%;height:150px;margin-top:8px;font-family:monospace;font-size:11px;"></textarea>' +
@@ -137,7 +138,7 @@
   window.XKDGDigestSetup = {
     build: build, housesOf: housesOf, open: open, close: close,
     _go: function () {
-      var o = build((el('xdg-name').value || '').trim(), (el('xdg-email').value || '').trim(), el('xdg-city').value, el('xdg-lang').value);
+      var o = build((el('xdg-name').value || '').trim(), (el('xdg-email').value || '').trim(), el('xdg-city').value, el('xdg-lang').value, !el('xdg-fs').checked);
       if (o.error) { el('xdg-out').value = ''; el('xdg-info').textContent = o.error; return; }
       el('xdg-out').value = JSON.stringify(o);
       var n = (o.houses || []).reduce(function (s, h) { return s + h.ops.length; }, 0);
