@@ -122,6 +122,7 @@ if (Array.isArray(P.houses) && P.houses.length) {
   const me = G('_personAYear');
   const bestWindow = (iso, idx) => {
     try {
+      if (!(idx >= 0)) return '';
       const HS = G('HOUR_STARTS'), ST = w.XKDGSolarTime, [y, m, dd] = iso.split('-').map(Number);
       const dst = tzOffsetMin(P.tz, new Date(iso + 'T12:00:00Z')) > stdOff, tzMin = -(stdOff + (dst ? 60 : 0));
       const a = ST.wallClockFromTST(y, m, dd, HS[idx], 0, P.lon, tzMin), b = ST.wallClockFromTST(y, m, dd, HS[idx] + 2, 0, P.lon, tzMin);
@@ -143,7 +144,8 @@ if (Array.isArray(P.houses) && P.houses.length) {
             if (!inRange(m.isoDate)) return;
             rec.dates.push({ date: m.isoDate, score: m.score, day_gz: (m.dGan || '') + (m.dZhi || ''),
               facing_links: m.facingLabels || [], water_links: m.waterLabels || [], full_blood_link: !!m.isBL,
-              best_hour: m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi + bestWindow(m.isoDate, m.bestHour.idx)) : null });
+              // the water scan samples CIVIL clock times: derive the window from the hour BRANCH (TST), not from its index
+              best_hour: m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi + bestWindow(m.isoDate, '子丑寅卯辰巳午未申酉戌亥'.indexOf(m.bestHour.hZhi))) : null });
           });
           rec.hex = { facing: f.hexNum, water: wt.hexNum };
         } else if (op.kind === 'bed' || op.kind === 'desk') {
