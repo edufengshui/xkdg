@@ -35,6 +35,8 @@ w.console.error = () => {}; w.console.warn = () => {}; w.console.log = () => {};
 w.onload = null;
 const G = code => { const s = d.createElement('script'); s.textContent = 'window.__r=(function(){return (' + code + ');})();'; d.body.appendChild(s); return w.__r; };
 const $ = id => d.getElementById(id);
+// Capture the scanner's RAW rows (the labels the BEST list shows), not only the AI summary.
+G('(function(){var o=renderScanResults; renderScanResults=function(r){ window.__raw=r||[]; return o.apply(this, arguments); }; return 1;})()');
 
 const stdOff = stdOffsetMin(P.tz, +P.start.slice(0, 4));
 $('longitude').value = String(P.lon); if ($('latitude')) $('latitude').value = String(P.lat);
@@ -62,14 +64,32 @@ for (let i = 0; i < P.days; i++) {
     $('purpose-select').value = pur;
     try { if (w.onPurposeChange) w.onPurposeChange(); } catch (e) {}
     $('scan-start').value = day; $('scan-days').value = '1';
-    w._lastScanResults = [];
+    w._lastScanResults = []; w.__raw = [];
     try { w._scanSilent = true; w.runScanner(); } catch (e) { out.error = out.error || ('scan failed: ' + e.message); }
+    const rawBy = {};
+    (w.__raw || []).forEach(x => { if (x && x.isoDate === day) rawBy[x.hourIndex] = x; });
     (w._lastScanResults || []).forEach(r => {
       if (r.isoDate !== day) return;
       const k = r.hourIndex;
       if (!rows[k]) rows[k] = { hourIndex: k, scores: {} };
       rows[k].scores[pur || 'general'] = r.score;
-      if (!pur) { rows[k].nayin = r.rescuedByNayin ? (r.nayinLabel || 'Nayin') : null; rows[k].labels = r.blueLabels || []; }
+      const x = rawBy[k] || {};
+      if (!pur) {
+        rows[k].nayin = r.rescuedByNayin ? (r.nayinLabel || 'Nayin') : null;
+        const uniq = a => a.filter((v, i) => v && a.indexOf(v) === i);
+        rows[k].detail = {
+          day_links: uniq(x.matchLabels || []),            // the DAY's link with the person (getMatchLabels)
+          hour_links: uniq(x.blueLabels || r.blueLabels || []), // the HOUR's links (empty when rescued by Nayin)
+          quality: uniq(x.qualLabels || []),
+          spirit: x.spiritLabel || '', spirit_good: x.spiritAuspicious,
+          noble: !!x.hasNoble, tian_yi: !!x.hasTY,
+          nayin: uniq([x.nayinLabel, x.nayinPersonLabel]),
+          rescued_by_nayin: !!r.rescuedByNayin
+        };
+      } else {
+        const q = (x.purposeQimen || []).concat(x.purposeQimenR || []).map(p => (p.label || '') + (p.dir ? ' ' + p.dir : '')).filter(Boolean);
+        if (q.length) { rows[k].qimen = rows[k].qimen || {}; rows[k].qimen[pur] = q.filter((v, i) => q.indexOf(v) === i); }
+      }
     });
   });
   const ST = w.XKDGSolarTime, HS = G('HOUR_STARTS');
