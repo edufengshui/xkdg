@@ -52,7 +52,12 @@ function build(rec, data, loc) {
   let X = t.sub + '\n' + (rec.name || '') + ' - ' + loc.label + '\n\n';
   if (best.length) {
     H += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;margin-bottom:14px;"><b>⭐ ' + esc(t.best) + '</b><br>' +
-      best.map(h => esc(line(h, true))).join('<br>') + '</div>';
+      best.map(h => '<div style="margin:7px 0 0;">' +
+        '<span style="display:inline-block;background:#4a148c;color:#fff;font-weight:bold;border-radius:5px;padding:2px 8px;margin-right:6px;white-space:nowrap;">' +
+        esc(dlabel(h.civil_date, t)) + '</span>' +
+        '<b style="white-space:nowrap;">' + esc(h.from) + '\u2013' + esc(h.to) + ' ' + esc(h.branch) + (isNight(h.from) ? ' \uD83C\uDF19' : '') + '</b>' +
+        ' \u00b7 <b style="color:#2e7d32;">' + esc(h.scores.general != null ? h.scores.general : '') + '</b>' +
+        (pur(h) ? '<br><span style="color:#555;">' + esc(pur(h)) + '</span>' : '') + '</div>').join('') + '</div>';
     X += '* ' + t.best + '\n' + best.map(h => '  ' + line(h, true)).join('\n') + '\n\n';
   }
   data.days.forEach((dd, i) => {
@@ -92,7 +97,8 @@ function build(rec, data, loc) {
       const head = dlabel(h.civil_date, t) + ' · ' + h.from + '–' + h.to + ' ' + h.branch + ' (' + h.hour_gz + ')' + (isNight(h.from) ? ' 🌙' : '') +
         ' · ' + (h.scores.general != null ? h.scores.general : '');
       H += '<div style="margin:8px 0;padding:6px 10px;border-left:3px solid #ce93d8;background:#faf7fc;font-size:12px;">' +
-        '<b style="font-size:13px;">' + esc(head) + '</b><br>' + parts.map(p => '<span style="color:#777;">' + esc(p[0]) + ':</span> ' + esc(p[1])).join('<br>') + '</div>';
+        '<span style="display:inline-block;background:#4a148c;color:#fff;font-weight:bold;border-radius:5px;padding:1px 7px;margin-right:6px;font-size:12px;">' + esc(dlabel(h.civil_date, t)) + '</span>' +
+        '<b style="font-size:13px;">' + esc(head.slice(dlabel(h.civil_date, t).length + 3)) + '</b><br>' + parts.map(p => '<span style="color:#777;">' + esc(p[0]) + ':</span> ' + esc(p[1])).join('<br>') + '</div>';
       X += '\n' + head + '\n' + parts.map(p => '   ' + p[0] + ': ' + p[1]).join('\n') + '\n';
     });
   }
