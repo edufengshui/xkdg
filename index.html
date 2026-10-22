@@ -66,6 +66,13 @@
                 style="width:100%;padding:10px;font-size:18px;border:2px solid #ddd;border-radius:8px;text-align:center;box-sizing:border-box;letter-spacing:4px;">
             <div id="pin-error" style="color:#d40000;font-size:12px;margin-top:8px;min-height:16px;"></div>
             <button onclick="submitPin()" style="margin-top:12px;width:100%;padding:12px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;">UNLOCK</button>
+            <details style="margin-top:14px;text-align:left;font-size:12px;color:#555;">
+                <summary style="cursor:pointer;color:#1565c0;text-align:center;">Have a transfer code from another device?</summary>
+                <p style="margin:8px 0;">On a device where the app is already unlocked, tap <b>📤 transfer licence</b> at the bottom of the page, then paste the code here.</p>
+                <textarea id="transfer-input" rows="3" placeholder="XKDG-..." autocomplete="off" spellcheck="false"
+                    style="width:100%;padding:8px;font-size:12px;font-family:monospace;border:2px solid #ddd;border-radius:8px;box-sizing:border-box;word-break:break-all;"></textarea>
+                <button id="transfer-btn" onclick="submitTransferCode()" style="margin-top:8px;width:100%;padding:10px;background:#fff;color:#1565c0;border:2px solid #1565c0;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;">USE TRANSFER CODE</button>
+            </details>
             <p style="font-size:11px;color:#aaa;margin-top:16px 0 0;">Contact your instructor for access</p>
         </div>
     </div>

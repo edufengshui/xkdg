@@ -8418,6 +8418,93 @@ async function _xkdgLicenceRefresh() {
     } catch (e) { /* never block the app on the licence refresh */ }
 }
 
+// Grace expired → re-confirm with the stored codeHash (see checkLicense). The overlay is
+// shown meanwhile with a short note, so the app is never usable on an unconfirmed licence.
+async function _xkdgLicenceRevive(lic) {
+    var errorEl = null;
+    try {
+        showLicenseOverlay();
+        errorEl = document.getElementById('pin-error');
+        if (errorEl) { errorEl.style.color = '#1565c0'; errorEl.textContent = 'Checking your licence…'; }
+    } catch (e) {}
+    var ans = await _xkdgLicenceAsk({ hash: lic.codeHash });
+    if (errorEl) errorEl.style.color = '#d40000';
+    if (ans && ans.ok) {
+        _xkdgLicenceStore(ans, lic.codeHash);
+        return;
+    }
+    if (ans && ans.ok === false && ans.reason === 'unknown code') {
+        try {
+            localStorage.removeItem('xkdg_license');
+            localStorage.removeItem('xkdg_student_id');
+        } catch (e) {}
+        if (errorEl) errorEl.textContent = 'This licence code has been withdrawn. Please enter your PIN.';
+        return;
+    }
+    if (errorEl) errorEl.textContent = ans ? '' :
+        'No connection. Your licence needs a quick online check — connect to the internet and reload.';
+}
+
+// Shared by PIN, revive and transfer code: store a licence the Worker has just confirmed
+// and open the app. Same record submitPin() writes.
+function _xkdgLicenceStore(ans, hashed) {
+    localStorage.setItem('xkdg_license', JSON.stringify({
+        tier: ans.tier || 0, expiry: ans.expiry || null, maxDate: ans.maxDate || null,
+        codeHash: hashed, checkedAt: new Date().toISOString() }));
+    localStorage.setItem('xkdg_student_id', hashed);
+    try { document.getElementById('pin-error').textContent = ''; } catch (e) {}
+    document.getElementById('license-overlay').style.display = 'none';
+    checkLicense();
+    setNow();
+    try { _xkdgConsultRestore(); } catch (e) {}
+}
+
+// TRANSFER CODE (Edu, session 31: "il mio computer non può leggere un QR code, meglio un
+// codice da incollare"). An unlocked device shows "XKDG-" + the licence's codeHash; pasted
+// on another device it is checked by the Worker exactly like the daily re-check, so a
+// withdrawn code stops working everywhere. The PIN itself is never stored, so it can't be
+// shown — the hash is what moves. It unlocks like the PIN, so it is as private as the PIN.
+function _xkdgTransferCode() {
+    try {
+        var lic = JSON.parse(localStorage.getItem('xkdg_license') || 'null');
+        return (lic && lic.codeHash) ? 'XKDG-' + lic.codeHash : '';
+    } catch (e) { return ''; }
+}
+
+async function showTransferCode() {
+    var code = _xkdgTransferCode();
+    if (!code) {
+        alert('This device has no confirmed licence to transfer.\n\nEnter your PIN once here, then try again.');
+        return;
+    }
+    var note = 'Transfer code for the XKDG app.\n' +
+               'On the other device: on the PIN screen open "Have a transfer code?" and paste it.\n' +
+               'Keep it private — it unlocks the app like your PIN.';
+    try { if (navigator.clipboard) await navigator.clipboard.writeText(code); } catch (e) {}
+    if (navigator.share) {
+        try { await navigator.share({ title: 'XKDG transfer code', text: code }); return; }
+        catch (e) { if (e && e.name === 'AbortError') { /* fall through to the box */ } }
+    }
+    prompt(note + '\n\n(Already copied, if your browser allows it.)', code);
+}
+
+async function submitTransferCode() {
+    var box = document.getElementById('transfer-input');
+    var errorEl = document.getElementById('pin-error');
+    var btn = document.getElementById('transfer-btn');
+    var m = ((box && box.value) || '').replace(/\s+/g, '').match(/XKDG-([0-9a-f]{64})/i);
+    if (!m) { errorEl.textContent = 'That is not a transfer code. It starts with XKDG- followed by 64 letters/digits.'; return; }
+    var hashed = m[1].toLowerCase();
+    if (btn) { btn.textContent = 'Checking...'; btn.disabled = true; }
+    errorEl.textContent = '';
+    var ans = await _xkdgLicenceAsk({ hash: hashed });
+    if (btn) { btn.textContent = 'USE TRANSFER CODE'; btn.disabled = false; }
+    if (!ans) { errorEl.textContent = 'No connection. The transfer needs the internet — try again once you are online.'; return; }
+    if (ans.ok) { box.value = ''; _xkdgLicenceStore(ans, hashed); return; }
+    if (ans.reason === 'too many attempts') { errorEl.textContent = 'Too many wrong attempts. Please wait about ten minutes and try again.'; return; }
+    errorEl.textContent = 'This transfer code is not valid (any more). Please use your PIN.';
+}
+
 async function hashPin(pin) {
     const encoder = new TextEncoder();
     const data = encoder.encode(pin);
@@ -8497,6 +8584,12 @@ function checkLicense() {
         // revokes on a failed request — only on an explicit refusal from the Worker.
         try { _xkdgLicenceRefresh(); } catch (e) {}
         if (!_xkdgLicenceStillValid(lic)) {
+            // Session 31 (Edu: a computer left unused for a month asked for the PIN again).
+            // The offline grace running out is NOT a refusal: if the licence carries its
+            // codeHash, ask the Worker once with it and unlock again on a yes. Only an
+            // explicit "unknown code" deletes it; offline, the licence is KEPT so the next
+            // start online revives it without any PIN.
+            if (lic && lic.codeHash) { _xkdgLicenceRevive(lic); return; }
             try {
                 localStorage.removeItem('xkdg_license');
                 localStorage.removeItem('xkdg_student_id');
@@ -8660,6 +8753,14 @@ function _xkdgAddRepinKey() {
             row.id = 'license-repin-row';
             row.style.cssText = 'text-align:center;margin:0 0 22px;';
             row.appendChild(k);
+            // Session 31: transfer the licence to another device without the PIN.
+            var t = document.createElement('span');
+            t.id = 'license-transfer';
+            t.textContent = '\uD83D\uDCE4 transfer licence';
+            t.title = 'Get a code to unlock this app on another device';
+            t.style.cssText = k.style.cssText + 'margin-left:8px;';
+            t.addEventListener('click', function (ev) { ev.stopPropagation(); showTransferCode(); });
+            row.appendChild(t);
             tag.parentNode.insertBefore(row, tag.nextSibling);
             return;
         }
