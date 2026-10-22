@@ -39,7 +39,7 @@ function dlabel(iso, t) { const d = new Date(iso + 'T12:00:00Z'); return t.days[
 function isNight(from) { const h = +from.slice(0, 2); return h >= 23 || h < 5; }
 
 function build(rec, data, loc) {
-  const t = T[rec.lang] || T.it;
+  const t = T[rec.lang] || T.en;
   const all = [];
   data.days.forEach(dd => dd.hours.forEach(h => all.push(Object.assign({ day: dd.date }, h))));
   const best = all.slice().sort((a, b) => (b.scores.general || 0) - (a.scores.general || 0)).slice(0, 3);
