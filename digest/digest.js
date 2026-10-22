@@ -17,17 +17,18 @@ const T = {
   it: { subj: 'XKDG · Ore positive', sub: 'Ore positive di oggi e dei prossimi 7 giorni', best: 'Le migliori della settimana', none: 'Nessuna ora positiva',
         general: 'Generale', night: 'notte', note: 'Calcolato con lo scanner dell’app, in ora solare vera di', note2: 'Ora legale/solare gestita giorno per giorno.',
         days: ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'], months: ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'],
-        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Apri l’app', day: 'giorno', detail: 'Dettaglio di ogni ora', relH: 'Ora con te', relD: 'Giorno con te', qual: 'Qualità', spirit: 'Spirito dell’ora', nayin: 'Nayin', purposes: 'Scopi', noble: 'Nobile', ty: 'Tian Yi', rescued: 'non comunica con te: salvata dal Nayin Power', onlyGeneral: 'solo generale (nessuno scopo)', goodSp: 'favorevole', badSp: 'sfavorevole', see: 'Il dettaglio di ogni ora è in fondo.' },
+        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Apri l’app', day: 'giorno', fs: 'Feng Shui', fsDetail: 'Dettaglio Feng Shui', fsSkip: 'non calcolato', fsDoor: 'Porta con il giorno', fsWater: 'Acqua con il giorno', fsBL: 'Full Blood Link', fsBest: 'Ora migliore', fsPl: 'Posizione con il giorno', fsWith: 'con la posizione', fsDate: 'con il giorno', detail: 'Dettaglio di ogni ora', relH: 'Ora con te', relD: 'Giorno con te', qual: 'Qualità', spirit: 'Spirito dell’ora', nayin: 'Nayin', purposes: 'Scopi', noble: 'Nobile', ty: 'Tian Yi', rescued: 'non comunica con te: salvata dal Nayin Power', onlyGeneral: 'solo generale (nessuno scopo)', goodSp: 'favorevole', badSp: 'sfavorevole', see: 'Il dettaglio di ogni ora è in fondo.' },
   en: { subj: 'XKDG · Positive hours', sub: 'Positive hours today and the next 7 days', best: 'Best of the week', none: 'No positive hour',
         general: 'General', night: 'night', note: 'Computed with the app’s scanner, in true solar time of', note2: 'Daylight saving handled day by day.',
         days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Open the app', day: 'day', detail: 'Detail of every hour', relH: 'Hour with you', relD: 'Day with you', qual: 'Quality', spirit: 'Hour spirit', nayin: 'Nayin', purposes: 'Purposes', noble: 'Noble', ty: 'Tian Yi', rescued: 'does not connect with you: rescued by Nayin Power', onlyGeneral: 'general only (no purpose)', goodSp: 'auspicious', badSp: 'inauspicious', see: 'The detail of every hour is at the end.' },
+        P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Open the app', day: 'day', fs: 'Feng Shui', fsDetail: 'Feng Shui detail', fsSkip: 'not scanned', fsDoor: 'Door with the day', fsWater: 'Water with the day', fsBL: 'Full Blood Link', fsBest: 'Best hour', fsPl: 'Placement with the day', fsWith: 'with the placement', fsDate: 'with the day', detail: 'Detail of every hour', relH: 'Hour with you', relD: 'Day with you', qual: 'Quality', spirit: 'Hour spirit', nayin: 'Nayin', purposes: 'Purposes', noble: 'Noble', ty: 'Tian Yi', rescued: 'does not connect with you: rescued by Nayin Power', onlyGeneral: 'general only (no purpose)', goodSp: 'auspicious', badSp: 'inauspicious', see: 'The detail of every hour is at the end.' },
   fr: { subj: 'XKDG · Heures positives', sub: 'Heures positives d’aujourd’hui et des 7 prochains jours', best: 'Les meilleures de la semaine', none: 'Aucune heure positive',
         general: 'Général', night: 'nuit', note: 'Calculé avec le scanner de l’app, en heure solaire vraie de', note2: 'Heure d’été/hiver gérée jour par jour.',
         days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'], months: ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'],
-        P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour', detail: 'Détail de chaque heure', relH: 'Heure avec vous', relD: 'Jour avec vous', qual: 'Qualité', spirit: 'Esprit de l’heure', nayin: 'Nayin', purposes: 'Objectifs', noble: 'Noble', ty: 'Tian Yi', rescued: 'ne communique pas avec vous : sauvée par le Nayin Power', onlyGeneral: 'général seulement (aucun objectif)', goodSp: 'favorable', badSp: 'défavorable', see: 'Le détail de chaque heure est à la fin.' }
+        P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour', fs: 'Feng Shui', fsDetail: 'Détail Feng Shui', fsSkip: 'non calculé', fsDoor: 'Porte avec le jour', fsWater: 'Eau avec le jour', fsBL: 'Full Blood Link', fsBest: 'Meilleure heure', fsPl: 'Emplacement avec le jour', fsWith: 'avec l’emplacement', fsDate: 'avec le jour', detail: 'Détail de chaque heure', relH: 'Heure avec vous', relD: 'Jour avec vous', qual: 'Qualité', spirit: 'Esprit de l’heure', nayin: 'Nayin', purposes: 'Objectifs', noble: 'Noble', ty: 'Tian Yi', rescued: 'ne communique pas avec vous : sauvée par le Nayin Power', onlyGeneral: 'général seulement (aucun objectif)', goodSp: 'favorable', badSp: 'défavorable', see: 'Le détail de chaque heure est à la fin.' }
 };
 const ICON = { health: '🩺', career: '🏆', wealth: '💰', relationship: '❤️', journey: '✈️', speak: '🗣️', legal: '⚖️' };
+const FSICON = { water: '\uD83D\uDCA7', bed: '\uD83D\uDECF\uFE0F', desk: '\uD83E\uDE91' };
 const PORDER = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
 
 function todayIn(tz) {
@@ -65,7 +66,11 @@ function build(rec, data, loc) {
     H += '<h3 style="margin:14px 0 4px;color:' + (i === 0 ? '#c62828' : '#333') + ';border-bottom:1px solid #eee;">' + esc(dlabel(dd.date, t)) +
       (gz ? ' <span style="color:#888;font-weight:normal;font-size:13px;">' + esc(t.day) + ' ' + esc(gz) + '</span>' : '') + '</h3>';
     X += dlabel(dd.date, t) + (gz ? ' (' + gz + ')' : '') + '\n';
-    if (!dd.hours.length) { H += '<div style="color:#999;font-size:13px;">' + esc(t.none) + '</div>'; X += '  ' + t.none + '\n'; return; }
+    const fsToday = (data.fs || []).map(r => ({ r: r, d: (r.dates || []).filter(x => x.date === dd.date)[0] })).filter(o => o.d);
+    const fsLine = fsToday.map(o => FSICON[o.r.kind] + ' ' + o.r.house + ' \u00b7 ' + o.r.name + (o.d.score != null ? ' (' + o.d.score + (o.d.full_blood_link ? ' BL' : '') + ')' : '')).join('  \u2022  ');
+    const fsHtml = fsToday.length ? '<div style="margin:4px 0 2px;padding:4px 8px;background:#e8f5e9;border-radius:6px;font-size:13px;"><b style="color:#1b5e20;">\uD83C\uDFE0 ' + esc(t.fs) + ':</b> ' + esc(fsLine) + '</div>' : '';
+    if (fsToday.length) X += '  [' + t.fs + '] ' + fsLine + '\n';
+    if (!dd.hours.length) { H += '<div style="color:#999;font-size:13px;">' + esc(t.none) + '</div>' + fsHtml; X += '  ' + t.none + '\n'; return; }
     H += '<table style="border-collapse:collapse;font-size:13px;width:100%;">';
     dd.hours.forEach(h => {
       const s = h.scores.general != null ? h.scores.general : '';
@@ -76,7 +81,7 @@ function build(rec, data, loc) {
         '<td style="padding:3px 6px;color:#555;">' + esc(pur(h)) + (h.nayin ? ' <span style="color:#8a6d00;">· ' + esc(h.nayin) + '</span>' : '') + '</td></tr>';
       X += '  ' + line(h, false) + (h.nayin ? ' (' + h.nayin + ')' : '') + '\n';
     });
-    H += '</table>';
+    H += '</table>' + fsHtml;
   });
   // second section: the WHY of every hour (the glance stays at the top)
   if (all.length) {
@@ -100,6 +105,37 @@ function build(rec, data, loc) {
         '<span style="display:inline-block;background:#4a148c;color:#fff;font-weight:bold;border-radius:5px;padding:1px 7px;margin-right:6px;font-size:12px;">' + esc(dlabel(h.civil_date, t)) + '</span>' +
         '<b style="font-size:13px;">' + esc(head.slice(dlabel(h.civil_date, t).length + 3)) + '</b><br>' + parts.map(p => '<span style="color:#777;">' + esc(p[0]) + ':</span> ' + esc(p[1])).join('<br>') + '</div>';
       X += '\n' + head + '\n' + parts.map(p => '   ' + p[0] + ': ' + p[1]).join('\n') + '\n';
+    });
+  }
+  const fsAll = [];
+  (data.fs || []).forEach(r => (r.dates || []).forEach(d => fsAll.push({ r: r, d: d })));
+  const fsSkipped = (data.fs || []).filter(r => r.note);
+  if (fsAll.length || fsSkipped.length) {
+    fsAll.sort((a, b) => a.d.date.localeCompare(b.d.date));
+    H += '<h2 style="margin:22px 0 6px;color:#1b5e20;border-top:2px solid #c8e6c9;padding-top:10px;">\uD83C\uDFE0 ' + esc(t.fsDetail) + '</h2>';
+    X += '\n==== ' + t.fsDetail + ' ====\n';
+    fsAll.forEach(o => {
+      const r = o.r, d = o.d, parts = [];
+      if (r.kind === 'water') {
+        parts.push([t.fsDoor, (d.facing_links || []).join(' \u00b7 ') || '\u2014']);
+        parts.push([t.fsWater, (d.water_links || []).join(' \u00b7 ') || '\u2014']);
+        if (d.full_blood_link) parts.push(['\u2B50', t.fsBL]);
+        if (d.best_hour) parts.push([t.fsBest, d.best_hour]);
+      } else {
+        parts.push([t.fsPl, (d.date_link || []).join(' \u00b7 ') || '\u2014']);
+        (d.people || []).forEach(p => parts.push([p.who, t.fsWith + ': ' + ((p.with_placement || []).join(', ') || '\u2014') + ' \u00b7 ' + t.fsDate + ': ' + ((p.with_date || []).join(', ') || '\u2014')]));
+      }
+      const hx = r.hex ? (r.kind === 'water' ? ' (hex ' + r.hex.facing + ' / ' + r.hex.water + ')' : ' (hex ' + r.hex.placement + ')') : '';
+      const head = FSICON[r.kind] + ' ' + r.house + ' \u00b7 ' + r.name + hx + (d.score != null ? ' \u00b7 ' + d.score : '');
+      H += '<div style="margin:8px 0;padding:6px 10px;border-left:3px solid #81c784;background:#f1f8e9;font-size:12px;">' +
+        '<span style="display:inline-block;background:#1b5e20;color:#fff;font-weight:bold;border-radius:5px;padding:1px 7px;margin-right:6px;font-size:12px;">' + esc(dlabel(d.date, t)) + '</span>' +
+        '<b style="font-size:13px;">' + esc(head) + '</b>' + (d.day_gz ? ' <span style="color:#888;">' + esc(t.day) + ' ' + esc(d.day_gz) + '</span>' : '') + '<br>' +
+        parts.map(p => '<span style="color:#777;">' + esc(p[0]) + ':</span> ' + esc(p[1])).join('<br>') + '</div>';
+      X += '\n' + dlabel(d.date, t) + ' ' + head + '\n' + parts.map(p => '   ' + p[0] + ': ' + p[1]).join('\n') + '\n';
+    });
+    fsSkipped.forEach(r => {
+      H += '<div style="color:#999;font-size:12px;">' + esc(FSICON[r.kind] + ' ' + r.house + ' \u00b7 ' + r.name + ': ' + t.fsSkip + ' (' + r.note + ')') + '</div>';
+      X += FSICON[r.kind] + ' ' + r.house + ' - ' + r.name + ': ' + t.fsSkip + ' (' + r.note + ')\n';
     });
   }
   H += '<div style="color:#888;font-size:12px;margin-top:16px;">' + esc(t.note) + ' ' + esc(loc.label) + '. ' + esc(t.note2) +
@@ -128,7 +164,7 @@ async function main() {
       const loc = { lat: rec.lat != null ? +rec.lat : c.lat, lon: rec.lon != null ? +rec.lon : c.lon, tz: rec.tz || c.tz || 'Europe/Vienna', label: rec.city_label || c.label || rec.city || '' };
       if (!isFinite(loc.lat) || !isFinite(loc.lon)) throw new Error('unknown location');
       if (!rec.email || !(rec.birth_date || rec.jiazi)) throw new Error('email and birth_date (or jiazi) are required');
-      const arg = JSON.stringify({ birth_date: rec.birth_date, birth_time: rec.birth_time, jiazi: rec.jiazi, lat: loc.lat, lon: loc.lon, tz: loc.tz, start: todayIn(loc.tz), days: 8 });
+      const arg = JSON.stringify({ birth_date: rec.birth_date, birth_time: rec.birth_time, jiazi: rec.jiazi, lat: loc.lat, lon: loc.lon, tz: loc.tz, start: todayIn(loc.tz), days: 8, houses: rec.houses || [] });
       const raw = execFileSync(process.execPath, [path.join(__dirname, 'scan.js'), arg], { env: Object.assign({}, process.env, { TZ: loc.tz }), maxBuffer: 20e6, timeout: 600000 });
       const data = JSON.parse(raw.toString());
       if (data.error) throw new Error(data.error);
