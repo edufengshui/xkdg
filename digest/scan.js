@@ -30,8 +30,13 @@ Object.assign(w, { Solar: L.Solar, Lunar: L.Lunar });
 w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.scrollTo = () => {};
 w.fetch = () => Promise.reject(new Error('offline'));
 w.console.error = () => {}; w.console.warn = () => {}; w.console.log = () => {};
-['cities.js', 'solar-time.js', 'app-bazi.js', 'qmdj-water-scanner-data.js', 'qmdj-water-scanner.js', 'qmdj-annual.js', 'app-fengshui.js']
-  .forEach(f => { const s = d.createElement('script'); s.textContent = fs.readFileSync(path.join(ROOT, f), 'utf8'); d.body.appendChild(s); });
+// Every LOCAL script of index.html, in its order (CDN ones and sync/version helpers skipped),
+// so the assistant's tools (aquarium activation) run with all their engines.
+const SKIP = { 'gdrive-sync.js': 1, 'version.js': 1, 'register-sw.js': 1, 'index.js': 1 };
+fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/<script src="([^"]+)"/g, (m, src) => {
+  if (/^https?:/.test(src) || SKIP[src] || !fs.existsSync(path.join(ROOT, src))) return m;
+  const s = d.createElement('script'); s.textContent = fs.readFileSync(path.join(ROOT, src), 'utf8'); d.body.appendChild(s); return m;
+});
 w.onload = null;
 const G = code => { const s = d.createElement('script'); s.textContent = 'window.__r=(function(){return (' + code + ');})();'; d.body.appendChild(s); return w.__r; };
 const $ = id => d.getElementById(id);
@@ -51,7 +56,7 @@ if (P.jiazi && !P.birth_date) {
 }
 
 const out = { days: [] };
-for (let i = 0; i < P.days; i++) {
+for (let i = 0; i < (P.skip_hours ? 0 : P.days); i++) {
   const day = addDays(P.start, i);
   const dst = tzOffsetMin(P.tz, new Date(day + 'T12:00:00Z')) > stdOff;
   G('(_dstOn=' + (dst ? 'true' : 'false') + ')');
@@ -112,6 +117,7 @@ for (let i = 0; i < P.days; i++) {
 // water = fsFindMatchingDatesForSetup (door facing ZS + water LS, Person A),
 // bed = _fsScanLuckyDates(owner + guest #2), desk = _fsScanLuckyDates(person).
 out.fs = [];
+(async function () {
 if (Array.isArray(P.houses) && P.houses.length) {
   const dst0 = tzOffsetMin(P.tz, new Date(P.start + 'T12:00:00Z')) > stdOff;
   G('(_dstOn=' + (dst0 ? 'true' : 'false') + ')');
@@ -130,10 +136,25 @@ if (Array.isArray(P.houses) && P.houses.length) {
       return ' ' + f(a) + '\u2013' + f(b);
     } catch (e) { return ''; }
   };
+  const winOfBranch = (iso, br, lon) => {
+    try {
+      const idx = '子丑寅卯辰巳午未申酉戌亥'.indexOf(br); if (idx < 0) return '';
+      const HS = G('HOUR_STARTS'), ST = w.XKDGSolarTime, [y, m, dd] = iso.split('-').map(Number);
+      const dst = tzOffsetMin(P.tz, new Date(iso + 'T12:00:00Z')) > stdOff, tzMin = -(stdOff + (dst ? 60 : 0));
+      const a = ST.wallClockFromTST(y, m, dd, HS[idx], 0, lon, tzMin), b = ST.wallClockFromTST(y, m, dd, HS[idx] + 2, 0, lon, tzMin);
+      const f = t => String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
+      return f(a) + '\u2013' + f(b);
+    } catch (e) { return ''; }
+  };
   const inRange = iso => iso >= P.start && iso <= addDays(P.start, P.days - 1);
   const yearPerson = (label, jz) => { const x = jz && w.getXkdgData(jz[0], jz[1]); return x ? { who: label, label: label, hex: x.hex, qi: x.qi, yun: x.yun } : null; };
-  P.houses.forEach(h => {
-    (h.ops || []).forEach(op => {
+  for (const h of P.houses) {
+    // the house's own place (Tuoro aquarium at Tuoro longitude); same time zone as this process
+    const hLon = isFinite(+h.lon) ? +h.lon : P.lon, hLat = isFinite(+h.lat) ? +h.lat : P.lat;
+    $('longitude').value = String(hLon); if ($('latitude')) $('latitude').value = String(hLat);
+    try { w.calculateBazi(); } catch (e) {}
+    try { w.calculatePerson('A'); } catch (e) {}
+    for (const op of (h.ops || [])) {
       const rec = { house: h.name || '', name: op.name || op.kind, kind: op.kind, dates: [], note: null };
       try {
         if (op.kind === 'water') {
@@ -148,6 +169,30 @@ if (Array.isArray(P.houses) && P.houses.length) {
               best_hour: m.bestHour ? (m.bestHour.hGan + m.bestHour.hZhi + bestWindow(m.isoDate, '子丑寅卯辰巳午未申酉戌亥'.indexOf(m.bestHour.hZhi))) : null });
           });
           rec.hex = { facing: f.hexNum, water: wt.hexNum };
+        } else if (op.kind === 'aquarium') {
+          // the assistant's aquarium tool: XKDG (person) + Qimen at the palace (veto) + special
+          // configurations at the water star + 4-pillar bond, graded in tiers
+          const T = w.XKDGAITools;
+          if (!T) rec.note = 'activation engine not available';
+          else {
+            if (op.star_num == null && op.facing != null && op.period != null && w.XKDGHouse) {
+              try { op.star_num = w.XKDGHouse.starAt(w.XKDGHouse.chartFor(op.facing, op.period), op.direction, 'water'); } catch (e) {}
+            }
+            const inp = { direction: op.direction, days: P.days, start_date: P.start, full: true };
+            if (op.star_num != null) { inp.star_type = 'water'; inp.star_num = op.star_num; }
+            if (op.facing != null && op.period != null) { inp.facing_deg = op.facing; inp.period = op.period; }
+            let r = T.exec('find_water_activation_full', inp);
+            if (r && typeof r.then === 'function') r = await r;
+            if (!r || r.error) rec.note = (r && r.error) || 'no result';
+            else (r.results || []).forEach(x => {
+              if (!inRange(x.date)) return;
+              rec.dates.push({ date: x.date, branch: x.branch, window: winOfBranch(x.date, x.branch, hLon), tier: x.tier,
+                person_connected: !!x.person_connected, why: x.why || '', hits: x.hits || [],
+                also_good_for: (x.also_good_for || []).map(a => a.label || a.purpose) });
+            });
+            if (r && r.imprisonment_note) rec.imprisoned = r.imprisonment_note;
+          }
+          rec.direction = op.direction; rec.water_star = op.star_num;
         } else if (op.kind === 'bed' || op.kind === 'desk') {
           const slot = w.fsSlotForDeg(op.kind === 'bed' ? +op.sitting : +op.facing);
           const persons = [me ? { who: 'you', label: 'you', hex: me.hex, qi: me.qi, yun: me.yun } : null];
@@ -165,7 +210,8 @@ if (Array.isArray(P.houses) && P.houses.length) {
         }
       } catch (e) { rec.note = 'scan failed'; }
       out.fs.push(rec);
-    });
-  });
+    }
+  }
 }
-process.stdout.write(JSON.stringify(out));
+})().then(() => process.stdout.write(JSON.stringify(out), () => process.exit(0)))   // the app sets timers: exit explicitly
+.catch(e => { out.error = out.error || ('fs: ' + e.message); process.stdout.write(JSON.stringify(out), () => process.exit(0)); });
