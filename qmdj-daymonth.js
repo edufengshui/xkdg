@@ -102,6 +102,95 @@
     return { ju: 9 - (((block % 9) + 9) % 9), blockStart: bs };
   }
 
+
+  // ── Day + hour: the same palace positive in the DAY chart and in an HOUR chart ──
+  // (session 32, Edu). "Positive" = the app's canonical QMDJ rules (QMDJ-RULES.md):
+  // no §1 exclusion (formationFlags) and the §2 gate passed (directionGate: San Qi in the
+  // Tien Pan, or Wu, or the Commander, with a favourable door). The purpose picked in the
+  // main panel, when there is one, also requires its door in both charts. Hours are the 12
+  // double-hours of that day in LOCAL TRUE SOLAR TIME, each with its own instant-level Jú.
+  var PAL_NAME = { 1: 'Kan N', 8: 'Gen NE', 3: 'Zhen E', 4: 'Xun SE', 9: 'Li S', 2: 'Kun SW', 7: 'Dui W', 6: 'Qian NW' };
+  function purposeEntry() {
+    try {
+      var k = (document.getElementById('purpose-select') || {}).value || '';
+      var all = window.QMDJWaterScanner && QMDJWaterScanner.fsPurposeDoors ? QMDJWaterScanner.fsPurposeDoors() : null;
+      return (k && all && all[k] && all[k].doors) ? { key: k, entry: all[k] } : null;
+    } catch (e) { return null; }
+  }
+  function positive(cell, pur) {
+    if (!cell || !cell.doorCode) return false;
+    var W = window.QMDJWaterScanner;
+    if (W.formationFlags(cell).disqualified) return false;
+    if (!W.directionGate(cell, pur ? { purpose: pur.entry } : {}).eligible) return false;
+    if (pur && pur.entry.doors.indexOf(cell.doorCode) === -1) return false;
+    return true;
+  }
+  function cellText(c) {
+    return (c.tiH || '') + '/' + (c.diH || '') + ' · ' + (c.doorName || c.door || '') + ' · ' + (c.star || '') + ' · ' + (c.deity || '');
+  }
+  function dayHourMatches(isoDate, dayChart, rot, pur) {
+    var W = window.QMDJWaterScanner, p = isoDate.split('-'), lt = lonTz(), out = {};
+    var good = [];
+    [1, 8, 3, 4, 9, 2, 7, 6].forEach(function (n) { if (positive(dayChart.palaces[n], pur)) good.push(n); });
+    if (!good.length) return { good: good, hits: out };
+    for (var bi = 0; bi < 12; bi++) {
+      var h = bi === 0 ? 0 : bi * 2, mi = bi === 0 ? 30 : 0;      // 子 = early Zi, centre of each double-hour after
+      var wc = XKDGSolarTime.wallClockFromTST(+p[0], +p[1], +p[2], h, mi, lt.lonDeg, lt.tzOffsetMin);
+      var hp = XKDGSolarTime.hourPillarFromCivil(wc.y, wc.mo, wc.d, wc.h, wc.mi, 0, lt.lonDeg, lt.tzOffsetMin);
+      if (!hp || !hp.tst) continue;
+      var c = rot ? W.getRotatingHourChart(hp.tst.y, hp.tst.mo, hp.tst.d, hp.gan, hp.zhi, hp.bj)
+                  : W.getHourChart(hp.tst.y, hp.tst.mo, hp.tst.d, hp.gan, hp.zhi, hp.bj);
+      if (!c || !c.palaces) continue;
+      var civ = String(wc.h).padStart(2, '0') + ':' + String(wc.mi).padStart(2, '0');
+      good.forEach(function (n) {
+        if (positive(c.palaces[n], pur)) (out[n] = out[n] || []).push({ gan: hp.gan, zhi: hp.zhi, civ: civ, cell: c.palaces[n], ju: c.ju, dun: c.dun });
+      });
+    }
+    return { good: good, hits: out };
+  }
+  function renderMatches(isoDate, dayChart, rot) {
+    var el = document.getElementById('dm-match'); if (!el) return;
+    if (_kind !== 'day') { el.innerHTML = ''; return; }
+    var pur = purposeEntry(), R;
+    try { R = dayHourMatches(isoDate, dayChart, rot, pur); } catch (e) { el.innerHTML = ''; return; }
+    var h = '<div style="font:600 13px system-ui;color:#4527a0;margin:12px 0 4px;">✨ Day + hour in the same palace'
+          + (pur ? ' · purpose ' + pur.entry.label : '') + ' · ' + (rot ? 'Rotating' : 'Flying') + '</div>';
+    if (!R.good.length) { el.innerHTML = h + '<div style="font-size:12px;color:#888;">No positive palace in the day chart.</div>'; return; }
+    R.good.forEach(function (n) {
+      var dc = dayChart.palaces[n], hs = R.hits[n] || [];
+      h += '<div style="border:1px solid #d1c4e9;border-radius:8px;padding:6px 8px;margin-bottom:6px;font-size:12px;">'
+        + '<b>' + PAL_NAME[n] + '</b> <span style="color:#666;">day: ' + cellText(dc) + '</span><div style="margin-top:4px;">';
+      if (!hs.length) h += '<span style="color:#999;">no hour of this day is positive here</span>';
+      hs.forEach(function (x) {
+        h += '<button onclick="xkdgDMOpenHour(\'' + isoDate + '\',\'' + x.gan + '\',\'' + x.zhi + '\',' + (rot ? 1 : 0) + ')" '
+          + 'title="' + cellText(x.cell).replace(/"/g, '') + '" '
+          + 'style="margin:2px 4px 2px 0;padding:3px 8px;border:1px solid #66bb6a;background:#e8f5e9;color:#1b5e20;border-radius:12px;font-size:12px;cursor:pointer;">'
+          + x.gan + x.zhi + ' · ' + x.civ + ' · ' + (x.cell.doorName || '') + '</button>';
+      });
+      h += '</div></div>';
+    });
+    el.innerHTML = h + '<div style="font-size:10px;color:#999;">Positive = no excluding formation and San Qi (Tien Pan) / Wu / Commander with a favourable door. '
+      + 'Hours in local true solar time; the time shown is the clock time at the centre of the hour. Tap an hour to open its chart.</div>';
+  }
+  // Open the 🎲 hour chart on that date and hour, in the same mode.
+  function openHour(isoDate, gan, zhi, rot) {
+    try {
+      document.getElementById('dm-overlay').style.display = 'none';
+      openQmdjChartPanel();
+      setTimeout(function () {
+        try {
+          var cb = document.getElementById('qmdj-tool-manual'); if (cb && cb.checked) { cb.checked = false; _qmdjManualToggle(); }
+          document.getElementById('qmdj-tool-date').value = isoDate;
+          _qmdjChartPopulateHours(false);
+          var sel = document.getElementById('qmdj-tool-hour');
+          for (var k = 0; k < sel.options.length; k++) if (sel.options[k].getAttribute('data-zhi') === zhi) { sel.selectedIndex = k; break; }
+          var r = document.querySelector('input[name="qmdj-tool-mode"][value="' + (rot ? 'rotating' : 'flying') + '"]'); if (r) r.checked = true;
+          qmdjChartShow();
+        } catch (e2) {}
+      }, 80);
+    } catch (e) {}
+  }
+
   // ── UI ────────────────────────────────────────────────────────────────────
   var _kind = 'day';
   function open(kind) {
@@ -131,6 +220,7 @@
         +   '</div>'
         +   '<div id="dm-info" style="font-size:12px;color:#333;margin-bottom:8px;line-height:1.5;"></div>'
         +   '<div id="dm-chart"></div>'
+        +   '<div id="dm-match"></div>'
         +   '<div style="display:flex;justify-content:center;align-items:center;gap:14px;margin-top:10px;">'
         +     '<button onclick="xkdgDMStep(-1)" style="' + B + '">◀</button>'
         +     '<span id="dm-step-lbl" style="font-size:11px;color:#888;"></span>'
@@ -206,10 +296,17 @@
       html = html.replace(/2000-01-01\s*·\s*/g, '').replace('Hour Rotating Chart', lbl + ' Rotating Chart').replace('Hour Flying Chart', lbl + ' Flying Chart');
     } catch (e) { html = ''; }
     box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>';
+    try {
+      var dc = rot ? window.QMDJWaterScanner.getRotatingHourChart(2000, 1, 1, g, z, null, { ju: ju, dun: dun })
+                   : window.QMDJWaterScanner.getHourChart(2000, 1, 1, g, z, null, { ju: ju, dun: dun });
+      if (_kind === 'day' && dc) { var dd = (P.meta && P.meta.tst) ? P.meta.tst : null;
+        renderMatches(dd ? (dd.y + '-' + String(dd.mo).padStart(2, '0') + '-' + String(dd.d).padStart(2, '0')) : v, dc, rot); }
+      else renderMatches(v, null, rot);
+    } catch (e) {}
   }
 
   window.XKDGDayMonth = { dayChartJu: dayChartJu, monthChartJu: monthChartJu, open: open };
-  window.xkdgDMShow = show; window.xkdgDMStep = step; window.xkdgDMKind = setKind;
+  window.xkdgDMShow = show; window.xkdgDMOpenHour = openHour; window.xkdgDMStep = step; window.xkdgDMKind = setKind;
   window.openQmdjDayChart = function () { open('day'); };
   window.openQmdjMonthChart = function () { open('month'); };
 })();
