@@ -595,7 +595,10 @@
       '"quale giorno per cambiare l\'acqua a S") - use="travel" (rotating) for going towards a direction, use="water" ' +
       '(flying) for Feng Shui actions in a sector. Best practice for a trip: first find_qimen_days(use=travel) to pick ' +
       'the DAY, then the hours it lists (or search_travel on that date) to pick the HOUR - day and hour positive in ' +
-      'the same palace is the strongest combination. Never invent day-chart results.\n'
+      'the same palace is the strongest combination. Never invent day-chart results. ' +
+      'When the user names a destination ("andare a Tuoro"), call find_qimen_days with use="travel" and destination ONLY: ' +
+      'origin (GPS), magnetic direction and driving time are found by the tool - NEVER ask the user for direction, ' +
+      'duration or coordinates. Then present each day with its trip_windows (departure times -> arrival times).\n'
     ],
     ["fengshui",
       '- IMPRISONED STAR (\u5165\u56da): when the CURRENT-PERIOD water star (now ws9) sits in the CENTRE of the flying-star ' +
@@ -1402,17 +1405,17 @@
       input_schema: {
         type: 'object',
         properties: {
-          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] },
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'Optional when a destination is given (it is then computed from the magnetic bearing).' },
           use: { type: 'string', enum: ['travel', 'water'], description: 'travel = Rotating chart (directions); water = Flying chart (Feng Shui).' },
           purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal', 'water'], description: 'Optional purpose: its door is required in the day and in the hour.' },
           start: { type: 'string', description: 'Start date YYYY-MM-DD (default today).' },
           days: { type: 'integer', description: 'How many days ahead to look (default 30, max 180).' },
           max_results: { type: 'integer', description: 'How many positive days to return (default 5).' },
-          duration_hours: { type: 'number', description: 'LONG TRIP (use=travel): travel time in hours. Then each day also gets trip_windows: departure times whose HOUR chart is positive in the travel palace at the origin AND whose arrival HOUR chart is positive in the OPPOSITE palace at the destination (e.g. Vienna→Tuoro SW: depart SW, arrive NE), both in local true solar time. Only days with at least one such window are returned.' },
-          origin: { type: 'string', description: 'Departure place name (with duration_hours); default = the app location.' },
-          destination: { type: 'string', description: 'Destination place name, for the arrival true solar time (with duration_hours).' }
+          duration_hours: { type: 'number', description: 'LONG TRIP (use=travel): travel time in hours - NOT needed when a destination is given (the driving time is computed). Then each day also gets trip_windows: departure times whose HOUR chart is positive in the travel palace at the origin AND whose arrival HOUR chart is positive in the OPPOSITE palace at the destination (e.g. Vienna→Tuoro SW: depart SW, arrive NE), both in local true solar time. Only days with at least one such window are returned.' },
+          origin: { type: 'string', description: 'Departure place name; default = GPS position, else the app city. Do NOT ask the user for it.' },
+          destination: { type: 'string', description: 'Destination place name. Give it whenever the user names a place: direction, driving time and arrival solar time are then found automatically. Never ask the user for direction or duration.' }
         },
-        required: ['direction', 'use']
+        required: ['use']
       }
     },
     {
@@ -5470,46 +5473,81 @@
   }
 
   // QMDJ DAY charts: next positive days for a direction, with the matching hours (session 32).
+  // Self-sufficient (Edu): with only a destination it finds the origin (GPS, else the
+  // app location / origin name), the MAGNETIC direction (TravelPlanner.bearing) and the
+  // driving time (route service), and then applies the long-trip rule.
   function toolFindQimenDays(input) {
     if (!window.XKDGDayMonth || typeof window.XKDGDayMonth.scanDays !== 'function')
       return { error: 'The QMDJ day-chart module (qmdj-daymonth.js) is not loaded.' };
     var P = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 };
-    var dir = String(input.direction || '').toUpperCase();
-    if (!P[dir]) return { error: 'direction must be one of N, NE, E, SE, S, SW, W, NW.' };
+    var TP = window.TravelPlanner;
     var use = input.use === 'water' ? 'water' : 'travel';
     var start = input.start || todayIso();
-    var dur = (use === 'travel' && +input.duration_hours > 0) ? +input.duration_hours : 0;
-    function run(destLon, destName, originLon, originName) {
-    var res;
-    try {
-      res = window.XKDGDayMonth.scanDays({ palace: P[dir], mode: use === 'water' ? 'flying' : 'rotating',
-        start: start, days: input.days || (dur ? 60 : 30), purpose: input.purpose || null, max: input.max_results || 5,
-        durationH: dur, destLon: destLon, originLon: originLon, requireTrip: !!dur });
-    } catch (e) { return { error: 'Day-chart scan failed: ' + ((e && e.message) || e) }; }
-    return { scanner: 'qmdj_day_charts', direction: dir, use: use,
-             trip: dur ? { duration_hours: dur, origin: originName || 'app location', origin_lon: originLon, destination: destName || null, destination_lon: destLon,
-                           rule: 'day chart positive in the travel palace; departure HOUR positive in the travel palace (origin); arrival HOUR positive in the OPPOSITE palace (destination); local true solar time' } : null,
-             chart: use === 'water' ? 'Flying (Feng Shui)' : 'Rotating (directions / travel)',
-             purpose: input.purpose || null, start: start, days_scanned: input.days || 30,
-             count: res.length, results: res,
-             note: res.length ? 'Each day lists the hours of that same day positive in the same palace; a day with no such hour is still a positive day.'
-                              : 'No positive day in the period: suggest a longer period or another direction.' };
+    var dir = String(input.direction || '').toUpperCase();
+
+    function run(dirX, dur, O, D, how) {
+      if (!P[dirX]) return { error: 'direction must be one of N, NE, E, SE, S, SW, W, NW (or give a destination).' };
+      var res;
+      try {
+        res = window.XKDGDayMonth.scanDays({ palace: P[dirX], mode: use === 'water' ? 'flying' : 'rotating',
+          start: start, days: input.days || (dur ? 60 : 30), purpose: input.purpose || null, max: input.max_results || 5,
+          durationH: dur, destLon: D ? D.lon : null, originLon: O ? O.lon : null, requireTrip: !!dur });
+      } catch (e) { return { error: 'Day-chart scan failed: ' + ((e && e.message) || e) }; }
+      return { scanner: 'qmdj_day_charts', direction: dirX, use: use,
+               chart: use === 'water' ? 'Flying (Feng Shui)' : 'Rotating (directions / travel)',
+               trip: dur ? { duration_hours: Math.round(dur * 100) / 100, origin: O ? O.name : 'app location',
+                             destination: D ? D.name : null, found_by: how,
+                             rule: 'day chart positive in the travel palace; departure HOUR positive in the travel palace (origin); arrival HOUR positive in the OPPOSITE palace (destination); local true solar time' } : null,
+               purpose: input.purpose || null, start: start, count: res.length, results: res,
+               note: res.length ? (dur ? 'trip_windows = departure start times (local clock, 15-min steps) and the matching arrival times.'
+                                       : 'Each day lists the hours of that same day positive in the same palace.')
+                                : 'No positive day in the period: suggest a longer period or another direction.' };
     }
-    function geo(q) {
-      if (!q) return Promise.resolve(null);
-      return fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1',
-                   { headers: { 'Accept-Language': 'en' } })
-        .then(function (r) { return r.json(); })
-        .then(function (d) { return (d && d.length) ? { lon: parseFloat(d[0].lon), name: d[0].display_name } : null; })
+
+    var wantTrip = use === 'travel' && (input.destination || +input.duration_hours > 0);
+    if (!wantTrip) return run(dir, 0, null, null, null);
+
+    function place(name) {
+      if (!name || !TP || typeof TP.resolvePlace !== 'function') return Promise.resolve(null);
+      return TP.resolvePlace(String(name), null, null)
+        .then(function (p) { return (p && isFinite(p.lat)) ? { lat: p.lat, lon: p.lon, name: String(name) } : null; })
         .catch(function () { return null; });
     }
-    if (dur) {
-      return Promise.all([geo(input.origin), geo(input.destination)]).then(function (g) {
-        return run(g[1] ? g[1].lon : null, g[1] ? g[1].name : (input.destination || null),
-                   g[0] ? g[0].lon : null, g[0] ? g[0].name : (input.origin || null));
-      });
-    }
-    return run(null, null, null, null);
+    var O = null;
+    if (input.origin) O = null;
+    else if (window._lastGpsLat != null && window._lastGpsLng != null) O = { lat: window._lastGpsLat, lon: window._lastGpsLng, name: 'current position (GPS)' };
+    return Promise.all([input.origin ? place(input.origin) : Promise.resolve(O), place(input.destination)]).then(function (g) {
+      var Og = g[0], Dg = g[1], how = [];
+      if (!Og) {
+        // fall back to the app location: saved GPS, else the latitude/longitude fields
+        try {
+          var gp = JSON.parse(localStorage.getItem('xkdg_gps') || '{}');
+          if (isFinite(+gp.lat) && isFinite(+gp.lng)) Og = { lat: +gp.lat, lon: +gp.lng, name: 'saved position' };
+        } catch (e) {}
+        if (!Og) {
+          var la = parseFloat((document.getElementById('latitude') || {}).value), lo = parseFloat((document.getElementById('longitude') || {}).value);
+          if (isFinite(la) && isFinite(lo)) Og = { lat: la, lon: lo, name: 'app location' };
+        }
+      }
+      return [Og, Dg];
+    }).then(function (g) {
+      var Og = g[0], Dg = g[1], how = [];
+      var dirX = dir;
+      if (!P[dirX] && Og && Dg && TP && typeof TP.bearing === 'function') {
+        dirX = TP.snapDir(TP.bearing(Og.lat, Og.lon, Dg.lat, Dg.lon)); how.push('direction from the magnetic bearing');
+      }
+      var dur = +input.duration_hours > 0 ? +input.duration_hours : 0;
+      if (dur || !(Og && Dg) || !TP || typeof TP.fetchRoute !== 'function') {
+        if (!dur && !(Og && Dg)) return { error: 'Need the starting point and the destination (turn GPS on, or give origin / destination), or give direction + duration_hours.' };
+        return run(dirX, dur, Og, Dg, how.join(', ') || 'given');
+      }
+      return TP.fetchRoute({ lat: Og.lat, lng: Og.lon }, { lat: Dg.lat, lng: Dg.lon }).then(function (r) {
+        var h = (r && r.durationSec) ? r.durationSec / 3600 : 0;
+        if (!h) return { error: 'Could not compute the driving time: give duration_hours.' };
+        how.push('driving time from the route service');
+        return run(dirX, h, Og, Dg, how.join(', '));
+      }).catch(function () { return { error: 'Route service not reachable: give duration_hours.' }; });
+    });
   }
 
   function toolFindWaterHours(input) {

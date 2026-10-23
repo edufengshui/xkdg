@@ -8973,6 +8973,9 @@
       return tpFetchRoute(tpGetWorkerUrl(), origin, dest).then(function (r) { TP_LAST_ROUTE = r; return r; });
     },
     resolvePlace: function (name, lat, lon) { return _tpResolvePlace(name, lat, lon); },
+    // session 32: magnetic bearing (declination applied) + 8-point octant, for the AI day-chart tool
+    bearing: function (lat1, lon1, lat2, lon2) { return tpBearing(lat1, lon1, lat2, lon2); },
+    snapDir: function (deg) { return tpSnapDir(deg); },
     resolveArea: function (name) {
       if (!name || !String(name).trim()) return Promise.resolve(null);
       return tpGeocodeArea(String(name).trim()).then(function (a) { return a; }).catch(function () { return null; });
