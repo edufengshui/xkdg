@@ -116,6 +116,40 @@ for (let i = 0; i < (P.skip_hours ? 0 : P.days); i++) {
 // ── Feng Shui placements of the person's houses: the app's own DAY scans ──
 // water = fsFindMatchingDatesForSetup (door facing ZS + water LS, Person A),
 // bed = _fsScanLuckyDates(owner + guest #2), desk = _fsScanLuckyDates(person).
+// ── QMDJ DAY chart of the first day (session 32): Rotating (directions) + Flying (Feng Shui),
+// in the true solar time of the recipient's city, with the hours of that same day positive
+// in the same palace. Uses the app's own qmdj-daymonth.js. No personal data.
+try {
+  const DM = w.XKDGDayMonth, QW = w.QMDJWaterScanner;
+  if (DM && QW) {
+    const dst0 = tzOffsetMin(P.tz, new Date(P.start + 'T12:00:00Z')) > stdOff;
+    G('(_dstOn=' + (dst0 ? 'true' : 'false') + ')');
+    const [y0, m0, d0] = P.start.split('-').map(Number);
+    const R = DM.dayChartJu(y0, m0, d0, P.lon);
+    if (R) {
+      const g = R.dayGz.charAt(0), z = R.dayGz.charAt(1);
+      const pack = (c) => {
+        const o = {};
+        Object.keys(c.palaces).forEach(k => { const q = c.palaces[k];
+          o[k] = { ti: q.tiH || '', di: q.diH || '', ti2: q.ti2H || '', di2: q.di2H || '', star: q.star || '',
+                   door: q.doorName || q.door || '', spirit: q.deity || '', zf: !!q.zhiFu, zs: !!q.zhiShi }; });
+        return o;
+      };
+      const one = (rot) => {
+        const c = rot ? QW.getRotatingHourChart(2000, 1, 1, g, z, null, { ju: R.ju, dun: R.dun })
+                      : QW.getHourChart(2000, 1, 1, g, z, null, { ju: R.ju, dun: R.dun });
+        if (!c) return null;
+        let m = { good: [], hits: {} };
+        try { m = DM.dayHourMatches(P.start, c, rot, null); } catch (e) {}
+        const matches = (m.good || []).map(n => ({ palace: n,
+          hours: (m.hits[n] || []).map(x => ({ gz: x.gan + x.zhi, clock: x.civ, door: x.cell.doorName || x.cell.door || '' })) }));
+        return { palaces: pack(c), matches: matches };
+      };
+      out.qmdj_day = { date: P.start, day_gz: R.dayGz, dun: R.dun, ju: R.ju, rotating: one(true), flying: one(false) };
+    }
+  }
+} catch (e) { out.qmdj_day_error = String(e && e.message || e); }
+
 out.fs = [];
 (async function () {
 if (Array.isArray(P.houses) && P.houses.length) {
