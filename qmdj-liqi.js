@@ -154,7 +154,7 @@
     '- Match the qi to the USE of each area: doors and stars suit some functions and not others. E.g. Open door is unsuitable for storage, archives or a closed area; Rest door suits relaxation, bedrooms, lifts after a long day; View door suits trading, scenic views, display; Shocking door suits signs, restaurants and talk; Death door suits storage, fabrics, stable/conservative work; Birth door is money-making; Delusion door gives confusion or hides things (but can help creative ideas); Injury brings fighting energy.',
     '- Stars: Pillar = eating, restaurants, speech, also destructive/renovation force; Rice = penny saver, sickness star, cheap furniture; Official = traditional, health; Hero = fire, status, display; Grass = planner, talkative, water collecting; Heart = medicine, interviews, selection; Assistant = creativity, art, sales; Fowl = importance, dignity, golden colours; Aggressor = action, conflict.',
     '- Spirits: Commander/Zhi Fu = prominent, protected; Snake = winding paths, cables, strange shapes, spaghetti-like forms; Yin = refined, high class; Harmonies = socialising, gathering people (but arguments affect family); Polaris (= Gou Chen = Qilin) = rough ground, obstacles, renovation; Bird = arguments, talk, indices, documents; Earth (Nine Earth) = calm, stable, flat ground, reliability; Heaven (Nine Heaven) = high, bright, appearance, expansion; Norm (Supreme Norm) = comfort, good food, appearance.',
-    '- Each palace also has a Di Pan (earth-plate) spirit, the spirit of the Fu Yin chart: read it together with the heaven spirit (e.g. Bird over Zhi Fu in the Di Pan = spacious, comfortable, good for meetings; Gou Chen in the Di Pan = rough, dusty ground; Nine Earth in the Di Pan = calm, but obstacles in the centre).',
+    '- Each palace also has a Di Pan (earth-plate) spirit: the heaven spirit of the palace where its earth stem sits on the heaven plate: read it together with the heaven spirit (e.g. Bird over Zhi Fu in the Di Pan = spacious, comfortable, good for meetings; Gou Chen in the Di Pan = rough, dusty ground; Nine Earth in the Di Pan = calm, but obstacles in the centre).',
     '- Known formations used in the chapter: 甲 over 丙 "Cerulean Dragon turns its head" (fortunate at a door); 乙 over 辛 "Cerulean Dragon flees" (not attractive, people do not stay); 甲 hiding behind 辛 "Creeper twining on a tree"; 丁 wonder at birth/stage 2 "Star Wonder rises the Hall"; 乙 wonder "Moon/Sun wonder rises the hall" when strong; 丙 over 己 "Fire Star into imprisonment"; 庚 over 癸 or 癸 over 庚 a clash (White Tiger over water: metallic, sharp structures, confrontation); 戊/辛, 壬/己, 丙/壬, 丙/庚, 辛/乙 clashes; double 辛 or double 壬 self-penalty; Fu Yin (same stem above and below) = calm and stable but stagnant; Fan Yin between star and door = reversal, arguments; stem combinations (e.g. 甲 with 己, 丁 with 壬) and branch frames formed with the palace branches or the door branches (fire frame, water frame) soften clashes or make the palace too hot / too cold.',
     '- Growth stages of 乙丙丁 in the palace: Birth / Lu / stage 1-4 strong; Tomb or Vanishing (stage 10+) weak: e.g. 丙 in tomb in Qian = energy not received inside, keep the area bright.',
     '- Combine with the forms: a feature in the area (stairs, roads, water, a pergola, a statue) often mirrors the chart; read with flexibility, some qi is represented, some is not. Suggest cures: colour schemes by element, objects, lighting, better use of the area, moving desks or functions.',
@@ -261,17 +261,18 @@
       .then(function () { if (btn) btn.disabled = false; });
   }
 
-  // Di Pan spirits (session 32, Edu): the spirits of the Fu Yin chart of the same Fu Shou,
-  // i.e. the Xun-head (Jia) hour, where the Commander sits on the palace of the Fu Shou's
-  // Yi stem. Checked on the case studies: restaurant (Gou Chen in Kun, Norm in Zhen, Bird
-  // in Xun), trading office (Nine Earth in Li, Bird in Gen), model agency (Zhi Fu in Dui,
-  // Nine Earth in the centre).
+  // Di Pan spirits (session 32, Edu): the Di Pan spirit of a palace is the heaven spirit
+  // that goes with that palace's EARTH stem, i.e. the spirit of the palace where that same
+  // stem sits on the heaven plate. (Same result as the spirits of the Fu Yin chart of the
+  // Fu Shou: checked on all 540 Yang charts.) Matches case studies 1, 2 and 4.
   function dipanDeities(r) {
     try {
-      var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, r.xunHead.charAt(0), r.xunHead.charAt(1), null,
-                                                   { ju: r.ju, dun: 'yang' });
+      var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, r.hGan, r.hZhi, null, { ju: r.ju, dun: 'yang' });
+      var byHeaven = {};
+      Object.keys(c.palaces).forEach(function (k) { var q = c.palaces[k]; if (q.tiH) byHeaven[q.tiH] = q.deity; });
       var m = {};
-      Object.keys(c.palaces).forEach(function (k) { if (c.palaces[k].deity) m[k] = c.palaces[k].deity; });
+      Object.keys(c.palaces).forEach(function (k) {
+        var d = byHeaven[c.palaces[k].diH]; if (d) m[k] = d; });
       return m;
     } catch (e) { return null; }
   }
