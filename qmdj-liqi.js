@@ -98,19 +98,42 @@
         +     '<button onclick="document.getElementById(\'liqi-overlay\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button>'
         +   '</div>'
         +   '<div id="liqi-house" style="font-size:12px;color:#555;margin-bottom:6px;"></div>'
-        +   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:13px;">'
-        +     '<span><label style="cursor:pointer;margin-right:8px;"><input type="radio" name="liqi-kind" value="house" checked onchange="liqiShow()"> House</label>'
-        +       '<label style="cursor:pointer;"><input type="radio" name="liqi-kind" value="business" onchange="liqiShow()"> Business</label></span>'
-        +     '<span id="liqi-qi-wrap">Qi mouth <select id="liqi-qi" onchange="liqiPickQi(this.value)" style="' + IN + '"></select></span>'
+        // Step 1 (Edu, session 32): House or Business BEFORE the chart is drawn. House is the default.
+        +   '<div id="liqi-step1" style="padding:6px 0 4px;">'
+        +     '<div style="font-size:13px;color:#555;margin-bottom:8px;">This space is a:</div>'
+        +     '<div style="display:flex;gap:10px;">'
+        +       '<button id="liqi-btn-house" onclick="liqiKind(\'house\')" style="flex:1;padding:14px;border:3px solid #4527a0;border-radius:8px;background:#5e35b1;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;">🏠 House</button>'
+        +       '<button onclick="liqiKind(\'business\')" style="flex:1;padding:14px;border:3px solid transparent;border-radius:8px;background:#8a6a1f;color:#fff;font-size:15px;font-weight:bold;cursor:pointer;">🏢 Business</button>'
+        +     '</div>'
         +   '</div>'
-        +   '<div id="liqi-info" style="font-size:12px;color:#333;margin-bottom:8px;line-height:1.5;"></div>'
-        +   '<div id="liqi-chart"></div>'
+        +   '<div id="liqi-step2" style="display:none;">'
+        +     '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:13px;">'
+        +       '<span><b id="liqi-kind-lbl"></b> <a href="#" onclick="liqiBack();return false;" style="font-size:11px;color:#5e35b1;">change</a></span>'
+        +       '<span id="liqi-qi-wrap">Qi mouth <select id="liqi-qi" onchange="liqiPickQi(this.value)" style="' + IN + '"></select></span>'
+        +     '</div>'
+        +     '<div id="liqi-info" style="font-size:12px;color:#333;margin-bottom:8px;line-height:1.5;"></div>'
+        +     '<div id="liqi-chart"></div>'
+        +   '</div>'
         + '</div>';
       document.body.appendChild(ov);
     }
     _qiManual = null;          // every opening starts again from the saved door
+    back();
     ov.style.display = 'flex';
+    try { document.getElementById('liqi-btn-house').focus(); } catch (e) {}
+  }
+
+  var _kind = 'house';
+  function setKind(k) {
+    _kind = (k === 'business') ? 'business' : 'house';
+    document.getElementById('liqi-step1').style.display = 'none';
+    document.getElementById('liqi-step2').style.display = '';
+    document.getElementById('liqi-kind-lbl').textContent = (_kind === 'business') ? '🏢 Business' : '🏠 House';
     show();
+  }
+  function back() {
+    var a = document.getElementById('liqi-step1'), b = document.getElementById('liqi-step2');
+    if (a) a.style.display = ''; if (b) b.style.display = 'none';
   }
 
   function pickQi(v) { _qiManual = v ? parseInt(v, 10) : null; show(); }
@@ -127,8 +150,7 @@
     }
     hEl.innerHTML = '<b>' + (H.name || 'House') + '</b> · Facing ' + (H.facing != null ? H.facing + '°' : '—')
       + ' · Period ' + (H.period != null ? H.period : '—');
-    var kEl = document.querySelector('input[name="liqi-kind"]:checked');
-    var kind = kEl ? kEl.value : 'house';
+    var kind = _kind;
     document.getElementById('liqi-qi-wrap').style.display = (kind === 'business') ? 'none' : '';
     // Qi mouth menu: the saved door first (when there is one), then every palace by hand.
     var qi = _qiManual || H.doorPalace || null;
@@ -168,4 +190,6 @@
   window.openLiQiPanel = open;
   window.liqiShow = show;
   window.liqiPickQi = pickQi;
+  window.liqiKind = setKind;
+  window.liqiBack = back;
 })();
