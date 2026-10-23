@@ -48,8 +48,11 @@
     var zf = (kind === 'business') ? palaceOf(facing)[0] : parseInt(qiPalace, 10);
     if (!(zf >= 1 && zf <= 9) || zf === 5) return { error: 'Pick the palace of the Qi mouth.' };
     var target = earthStem(ju, zf);
-    // Jia hides under its own Yi: when the Zhi Fu palace holds that Yi, the hour is the Xun head.
-    var hourIdx = (target === jia[1]) ? jia[0] : jia[0] + ST.indexOf(target);
+    // When the Zhi Fu palace holds the Fu Shou's own Yi, two hours fit: the Jia hour (Xun head,
+    // full Fu Yin - stars AND doors at home) and the hour of that Yi stem (e.g. 戊辰). Edu,
+    // session 32: the Fu Yin chart is discarded, so the Yi-stem hour is used. The general
+    // formula already gives it.
+    var hourIdx = jia[0] + ST.indexOf(target);
     var h = gz(hourIdx);
     var pal = PAL.filter(function (x) { return x[0] === zf; })[0];
     var off = norm(fsDeg + 22.5) % 30, edge = Math.min(off, 30 - off);
