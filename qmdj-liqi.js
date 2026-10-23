@@ -62,6 +62,26 @@
              hGan: h.charAt(0), hZhi: h.charAt(1), nearEdge: edge < 1.5 };
   }
 
+  // The house loaded in House Profiles (like every other Feng Shui chart): facing and period
+  // of its active floor, and the palace of its first EXTERNAL door that has one (the Qi mouth).
+  function houseData() {
+    try {
+      var L = window._fsLoadedHouse;
+      if (!L || typeof _fsHousesLoad !== 'function') return null;
+      var all = _fsHousesLoad(), h = (all[L.personName] || [])[L.houseIdx];
+      if (!h) return null;
+      var f = _fsActiveFloor(h);
+      var door = null;
+      (f.doors || []).some(function (d) {
+        if (d.kind !== 'internal' && d.palace) { door = d; return true; } return false; });
+      return { name: h.name || '', person: L.personName,
+               facing: _fsFloorFacing(h, f), period: _fsFloorPeriod(h, f),
+               doorPalace: door ? door.palace : null, doorName: door ? door.name : '' };
+    } catch (e) { return null; }
+  }
+
+  var _qiManual = null;      // palace picked by hand; null = take it from the door
+
   function open() {
     var ov = document.getElementById('liqi-overlay');
     if (!ov) {
@@ -70,58 +90,63 @@
       ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,8,30,.55);display:flex;'
         + 'align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
       ov.addEventListener('click', function (e) { if (e.target === ov) ov.style.display = 'none'; });
-      var IN = 'padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;';
-      var LB = 'font-size:11px;color:#666;display:block;margin-bottom:2px;';
-      var pals = PAL.map(function (x) {
-        return '<option value="' + x[0] + '">' + x[1] + ' ' + x[0] + ' · ' + x[2] + '</option>';
-      }).join('');
+      var IN = 'padding:5px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;';
       ov.innerHTML =
           '<div style="background:#fff;border-radius:12px;max-width:780px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);">'
-        +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+        +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
         +     '<div style="font-size:16px;font-weight:bold;color:#5e35b1;">🏠 QMDJ Li Qi · Flying Pan</div>'
         +     '<button onclick="document.getElementById(\'liqi-overlay\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button>'
         +   '</div>'
-        +   '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">'
-        +     '<div><label style="' + LB + '">Space</label>'
-        +       '<label style="font-size:13px;margin-right:10px;cursor:pointer;"><input type="radio" name="liqi-kind" value="house" checked onchange="liqiShow()"> House</label>'
-        +       '<label style="font-size:13px;cursor:pointer;"><input type="radio" name="liqi-kind" value="business" onchange="liqiShow()"> Business</label></div>'
-        +     '<div><label style="' + LB + '">Facing °</label>'
-        +       '<input type="number" id="liqi-facing" step="0.1" min="0" max="360" oninput="liqiShow()" style="' + IN + 'width:80px;"></div>'
-        +     '<div><label style="' + LB + '">Period (built / moved in)</label>'
-        +       '<input type="number" id="liqi-period" min="1" max="9" step="1" oninput="liqiShow()" style="' + IN + 'width:60px;"></div>'
-        +     '<div id="liqi-qi-wrap"><label style="' + LB + '">Qi mouth (door) palace</label>'
-        +       '<select id="liqi-qi" onchange="liqiShow()" style="' + IN + '">' + pals + '</select></div>'
+        +   '<div id="liqi-house" style="font-size:12px;color:#555;margin-bottom:6px;"></div>'
+        +   '<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:13px;">'
+        +     '<span><label style="cursor:pointer;margin-right:8px;"><input type="radio" name="liqi-kind" value="house" checked onchange="liqiShow()"> House</label>'
+        +       '<label style="cursor:pointer;"><input type="radio" name="liqi-kind" value="business" onchange="liqiShow()"> Business</label></span>'
+        +     '<span id="liqi-qi-wrap">Qi mouth <select id="liqi-qi" onchange="liqiPickQi(this.value)" style="' + IN + '"></select></span>'
         +   '</div>'
-        +   '<div style="font-size:11px;color:#888;font-style:italic;margin-bottom:10px;">'
-        +     'Only Yang Dun. House: sitting = Fu Shou, Qi mouth = Zhi Fu. Business: facing = Fu Shou, facing palace = Zhi Fu. South is at the top.</div>'
         +   '<div id="liqi-info" style="font-size:12px;color:#333;margin-bottom:8px;line-height:1.5;"></div>'
         +   '<div id="liqi-chart"></div>'
         + '</div>';
       document.body.appendChild(ov);
     }
-    // Prefill from the active house every time it opens.
-    try {
-      var f = (document.getElementById('fs-facing') || {}).value;
-      var pr = (document.getElementById('fs-period') || {}).value;
-      if (f) document.getElementById('liqi-facing').value = f;
-      if (pr) document.getElementById('liqi-period').value = pr;
-    } catch (e) {}
+    _qiManual = null;          // every opening starts again from the saved door
     ov.style.display = 'flex';
     show();
   }
 
+  function pickQi(v) { _qiManual = v ? parseInt(v, 10) : null; show(); }
+
   function show() {
     var info = document.getElementById('liqi-info'), box = document.getElementById('liqi-chart');
+    var hEl = document.getElementById('liqi-house'), sel = document.getElementById('liqi-qi');
     if (!info || !box) return;
+    var H = houseData();
+    if (!H) {
+      hEl.innerHTML = '';
+      info.innerHTML = '<span style="color:#c0392b;">Load a house in House Profiles first.</span>';
+      box.innerHTML = ''; return;
+    }
+    hEl.innerHTML = '<b>' + (H.name || 'House') + '</b> · Facing ' + (H.facing != null ? H.facing + '°' : '—')
+      + ' · Period ' + (H.period != null ? H.period : '—');
     var kEl = document.querySelector('input[name="liqi-kind"]:checked');
     var kind = kEl ? kEl.value : 'house';
-    var wrap = document.getElementById('liqi-qi-wrap');
-    if (wrap) wrap.style.display = (kind === 'business') ? 'none' : '';
-    var facing = parseFloat(String((document.getElementById('liqi-facing') || {}).value || '').replace(',', '.'));
-    var period = (document.getElementById('liqi-period') || {}).value;
-    var qi = (document.getElementById('liqi-qi') || {}).value;
-    var r = compute(kind, facing, period, qi);
-    if (r.error) { info.innerHTML = '<span style="color:#c0392b;">' + r.error + '</span>'; box.innerHTML = ''; return; }
+    document.getElementById('liqi-qi-wrap').style.display = (kind === 'business') ? 'none' : '';
+    // Qi mouth menu: the saved door first (when there is one), then every palace by hand.
+    var qi = _qiManual || H.doorPalace || null;
+    var opts = '<option value="">' + (H.doorPalace
+        ? ('🚪 ' + (H.doorName || 'door') + ' · ' + PAL.filter(function (x) { return x[0] === H.doorPalace; })[0][1])
+        : '— pick by hand —') + '</option>';
+    PAL.forEach(function (x) {
+      opts += '<option value="' + x[0] + '"' + (_qiManual === x[0] ? ' selected' : '') + '>'
+            + x[1] + ' ' + x[0] + ' · ' + x[2] + '</option>';
+    });
+    sel.innerHTML = opts;
+    var r = compute(kind, parseFloat(H.facing), H.period, qi);
+    if (r.error) {
+      var msg = r.error;
+      if (/Qi mouth/.test(msg)) msg = 'No door palace saved for this house: pick the Qi mouth above, '
+        + 'or add it to the external door in House Profiles (✏).';
+      info.innerHTML = '<span style="color:#c0392b;">' + msg + '</span>'; box.innerHTML = ''; return;
+    }
     var dir = (kind === 'business') ? 'Facing' : 'Sitting';
     info.innerHTML =
         '<b>Yang Jú ' + r.ju + '</b> · ' + dir + ' ' + (Math.round(r.fsDeg * 10) / 10) + '° = <b>' + r.mountain + '</b>'
@@ -142,4 +167,5 @@
   window.qmdjLiQiCompute = compute;
   window.openLiQiPanel = open;
   window.liqiShow = show;
+  window.liqiPickQi = pickQi;
 })();
