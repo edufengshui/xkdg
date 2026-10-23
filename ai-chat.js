@@ -6863,6 +6863,34 @@
   function getOwnKey() { try { return (localStorage.getItem(OWN_KEY_KEY) || '').trim(); } catch (e) { return ''; } }
   function setOwnKey(k) { try { localStorage.setItem(OWN_KEY_KEY, (k || '').trim()); } catch (e) {} }
 
+  // One-shot request (session 32): a system prompt + one user message, no tools, no chat
+  // history. Same route as the chat (the student's own key if set, else the worker), so
+  // other modules (e.g. the QMDJ Li Qi interpretation) can ask the model without touching
+  // the conversation. Resolves with the reply text; rejects on any failure.
+  try {
+    window.XKDGAIOneShot = function (system, text, maxTokens) {
+      var own = getOwnKey();
+      var target = own ? 'https://api.anthropic.com/v1/messages' : getUrl();
+      var headers = own
+        ? { 'Content-Type': 'application/json', 'x-api-key': own, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
+        : _aiHeaders();
+      return fetch(target, {
+        method: 'POST', headers: headers,
+        body: JSON.stringify({ model: MODEL, max_tokens: maxTokens || 3000, system: system, tools: [],
+                               messages: [{ role: 'user', content: text }] })
+      }).then(function (r) {
+        return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; });
+      }).then(function (d) {
+        if (!d) throw new Error('No response');
+        if (d.error) throw new Error(d.error.message || d.error);
+        var t = Array.isArray(d.content)
+          ? d.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n') : '';
+        if (!t) throw new Error('Empty reply');
+        return t;
+      });
+    };
+  } catch (e) {}
+
   // ── Conversation archive (saved manually, kept in localStorage on THIS device) ──
   var ARCHIVE_KEY = 'xkdg_ai_archive';
   var ARCHIVE_MAX = 50; // cap number of stored conversations to stay within localStorage quota
