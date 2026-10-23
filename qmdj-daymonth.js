@@ -405,7 +405,8 @@
     } catch (e) {}
   }
 
-  window.XKDGDayMonth = { dayChartJu: dayChartJu, monthChartJu: monthChartJu, open: open, scanDays: scanDays };
+  window.XKDGDayMonth = { dayChartJu: dayChartJu, monthChartJu: monthChartJu, open: open, scanDays: scanDays,
+                         dayHourMatches: dayHourMatches, positive: positive };
   window.xkdgDMShow = show; window.xkdgDMOpenHour = openHour; window.xkdgDMStep = step; window.xkdgDMKind = setKind;
   window.openQmdjDayChart = function () { open('day'); };
   window.openQmdjMonthChart = function () { open('month'); };

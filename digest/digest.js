@@ -14,15 +14,15 @@ const CITIES = {
   tuoro: { lat: 43.2079, lon: 12.0753, tz: 'Europe/Rome', label: 'Tuoro sul Trasimeno' }
 };
 const T = {
-  it: { subj: 'XKDG · Ore positive', sub: 'Ore positive di oggi e dei prossimi 7 giorni', best: 'Le migliori della settimana', none: 'Nessuna ora positiva',
+  it: { qd: 'Carta Qimen del giorno', qdRot: 'Rotating · direzioni', qdFly: 'Flying · Feng Shui', qdMatch: 'Palazzi positivi del giorno con le ore positive nello stesso palazzo', qdNoHour: 'nessuna ora', qdNone: 'nessun palazzo positivo', subj: 'XKDG · Ore positive', sub: 'Ore positive di oggi e dei prossimi 7 giorni', best: 'Le migliori della settimana', none: 'Nessuna ora positiva',
         general: 'Generale', night: 'notte', note: 'Calcolato con lo scanner dell’app, in ora solare vera di', note2: 'Ora legale/solare gestita giorno per giorno.',
         days: ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'], months: ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'],
         P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Apri l’app', day: 'giorno', fs: 'Feng Shui', fsDetail: 'Dettaglio Feng Shui', aqTier: 'Livello', local: 'ora locale', allDay: 'tutto il giorno', aqShort: 'non comunica con te', aqConn: 'comunica con te', aqNot: 'non comunica con te (buona per Qimen/Nayin)', aqWhy: 'Perché', fsSkip: 'non calcolato', fsDoor: 'Porta con il giorno', fsWater: 'Acqua con il giorno', fsBL: 'Full Blood Link', fsBest: 'Ora migliore', fsPl: 'Posizione con il giorno', fsWith: 'con la posizione', fsDate: 'con il giorno', detail: 'Dettaglio di ogni ora', relH: 'Ora con te', relD: 'Giorno con te', qual: 'Qualità', spirit: 'Spirito dell’ora', nayin: 'Nayin', purposes: 'Scopi', noble: 'Nobile', ty: 'Tian Yi', rescued: 'non comunica con te: salvata dal Nayin Power', onlyGeneral: 'solo generale (nessuno scopo)', goodSp: 'favorevole', badSp: 'sfavorevole', see: 'Il dettaglio di ogni ora è in fondo.' },
-  en: { subj: 'XKDG · Positive hours', sub: 'Positive hours today and the next 7 days', best: 'Best of the week', none: 'No positive hour',
+  en: { qd: 'Qimen day chart', qdRot: 'Rotating · directions', qdFly: 'Flying · Feng Shui', qdMatch: 'Positive palaces of the day with the hours positive in the same palace', qdNoHour: 'no hour', qdNone: 'no positive palace', subj: 'XKDG · Positive hours', sub: 'Positive hours today and the next 7 days', best: 'Best of the week', none: 'No positive hour',
         general: 'General', night: 'night', note: 'Computed with the app’s scanner, in true solar time of', note2: 'Daylight saving handled day by day.',
         days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         P: { health: 'Health', career: 'Career', wealth: 'Wealth', relationship: 'Relationship', journey: 'Journey', speak: 'Speak', legal: 'Legal' }, open: 'Open the app', day: 'day', fs: 'Feng Shui', fsDetail: 'Feng Shui detail', aqTier: 'Tier', local: 'local time', allDay: 'all day', aqShort: 'not connected to you', aqConn: 'connects with you', aqNot: 'does not connect with you (good by Qimen/Nayin)', aqWhy: 'Why', fsSkip: 'not scanned', fsDoor: 'Door with the day', fsWater: 'Water with the day', fsBL: 'Full Blood Link', fsBest: 'Best hour', fsPl: 'Placement with the day', fsWith: 'with the placement', fsDate: 'with the day', detail: 'Detail of every hour', relH: 'Hour with you', relD: 'Day with you', qual: 'Quality', spirit: 'Hour spirit', nayin: 'Nayin', purposes: 'Purposes', noble: 'Noble', ty: 'Tian Yi', rescued: 'does not connect with you: rescued by Nayin Power', onlyGeneral: 'general only (no purpose)', goodSp: 'auspicious', badSp: 'inauspicious', see: 'The detail of every hour is at the end.' },
-  fr: { subj: 'XKDG · Heures positives', sub: 'Heures positives d’aujourd’hui et des 7 prochains jours', best: 'Les meilleures de la semaine', none: 'Aucune heure positive',
+  fr: { qd: 'Carte Qimen du jour', qdRot: 'Rotating · directions', qdFly: 'Flying · Feng Shui', qdMatch: 'Palais positifs du jour avec les heures positives dans le même palais', qdNoHour: 'aucune heure', qdNone: 'aucun palais positif', subj: 'XKDG · Heures positives', sub: 'Heures positives d’aujourd’hui et des 7 prochains jours', best: 'Les meilleures de la semaine', none: 'Aucune heure positive',
         general: 'Général', night: 'nuit', note: 'Calculé avec le scanner de l’app, en heure solaire vraie de', note2: 'Heure d’été/hiver gérée jour par jour.',
         days: ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'], months: ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'],
         P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour', fs: 'Feng Shui', fsDetail: 'Détail Feng Shui', aqTier: 'Niveau', local: 'heure locale', allDay: 'toute la journée', aqShort: 'ne communique pas avec vous', aqConn: 'communique avec vous', aqNot: 'ne communique pas avec vous (bonne par Qimen/Nayin)', aqWhy: 'Pourquoi', fsSkip: 'non calculé', fsDoor: 'Porte avec le jour', fsWater: 'Eau avec le jour', fsBL: 'Full Blood Link', fsBest: 'Meilleure heure', fsPl: 'Emplacement avec le jour', fsWith: 'avec l’emplacement', fsDate: 'avec le jour', detail: 'Détail de chaque heure', relH: 'Heure avec vous', relD: 'Jour avec vous', qual: 'Qualité', spirit: 'Esprit de l’heure', nayin: 'Nayin', purposes: 'Objectifs', noble: 'Noble', ty: 'Tian Yi', rescued: 'ne communique pas avec vous : sauvée par le Nayin Power', onlyGeneral: 'général seulement (aucun objectif)', goodSp: 'favorable', badSp: 'défavorable', see: 'Le détail de chaque heure est à la fin.' }
@@ -55,6 +55,40 @@ function aqVisible(r, date) {
   if (t2.length) return t2;
   return all.filter(x => x.tier === 1);
 }
+// QMDJ day chart of today, as an email-safe 3×3 table (session 32). South on top, like the app.
+const QPAL = { 1: 'Kan N', 8: 'Gen NE', 3: 'Zhen E', 4: 'Xun SE', 9: 'Li S', 2: 'Kun SW', 7: 'Dui W', 6: 'Qian NW', 5: '' };
+const QCOL = s => ('甲乙'.includes(s) ? '#2e7d32' : '丙丁'.includes(s) ? '#c62828' : '戊己'.includes(s) ? '#bf6c00' : '庚辛'.includes(s) ? '#424242' : '壬癸'.includes(s) ? '#1565c0' : '#333');
+function qStems(a, b) { return [a, b].filter(Boolean).map(x => '<span style="color:' + QCOL(x) + ';">' + esc(x) + '</span>').join(''); }
+function qdGrid(ch) {
+  const order = [[4, 9, 2], [3, 5, 7], [8, 1, 6]];
+  return '<table style="border-collapse:collapse;font-size:11px;width:100%;max-width:330px;background:#fff;">' + order.map(row => '<tr>' + row.map(n => {
+    const c = ch.palaces[n] || {};
+    return '<td style="border:1px solid #1b5e20;padding:3px 4px;vertical-align:top;width:33%;">' +
+      '<div style="text-align:center;font-weight:bold;">' + esc(c.spirit || '') + '</div>' +
+      '<div><b style="font-size:14px;">' + qStems(c.ti, c.ti2) + '</b> <span style="float:right;color:#555;">' + esc(c.star || '') + '</span></div>' +
+      '<div style="text-align:center;font-weight:bold;color:#1b5e20;">' + esc(c.door || '') + (c.zs ? ' <span style="color:#e65100;font-size:9px;">ZS</span>' : '') + '</div>' +
+      '<div><b style="font-size:14px;">' + qStems(c.di, c.di2) + '</b> <span style="float:right;color:#999;font-size:9px;">' + esc(QPAL[n]) + '</span></div></td>';
+  }).join('') + '</tr>').join('') + '</table>';
+}
+function qdBlock(q, t) {
+  if (!q || !q.rotating || !q.flying) return { h: '', x: '' };
+  const part = (ch, title) => {
+    const m = (ch.matches || []);
+    const list = m.length ? m.map(x => '<div style="margin-top:3px;"><b>' + esc(QPAL[x.palace]) + '</b> · ' +
+      (x.hours.length ? x.hours.map(h => esc(h.clock + ' ' + h.gz + ' ' + h.door)).join(' · ') : '<span style="color:#999;">' + esc(t.qdNoHour) + '</span>') + '</div>').join('')
+      : '<div style="color:#999;margin-top:3px;">' + esc(t.qdNone) + '</div>';
+    return '<div style="margin:8px 0;"><div style="font-weight:bold;color:#4a148c;margin-bottom:3px;">' + esc(title) + '</div>' + qdGrid(ch) +
+      '<div style="font-size:12px;color:#333;margin-top:4px;">' + list + '</div></div>';
+  };
+  const head = '📅 ' + t.qd + ' · ' + q.day_gz + ' · ' + (q.dun === 'yang' ? 'Yang' : 'Yin') + ' Jú ' + q.ju;
+  const h = '<div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:8px;padding:8px 10px;margin:0 0 14px;">' +
+    '<b style="color:#4a148c;">' + esc(head) + '</b><div style="font-size:11px;color:#666;">' + esc(t.qdMatch) + '</div>' +
+    part(q.rotating, t.qdRot) + part(q.flying, t.qdFly) + '</div>';
+  const tx = (ch, title) => '  ' + title + ': ' + ((ch.matches || []).map(x => QPAL[x.palace] + ' [' + x.hours.map(hh => hh.clock + ' ' + hh.gz + ' ' + hh.door).join(', ') + ']').join('; ') || t.qdNone);
+  const x = head + '\n' + tx(q.rotating, t.qdRot) + '\n' + tx(q.flying, t.qdFly) + '\n\n';
+  return { h: h, x: x };
+}
+
 function build(rec, data, loc) {
   const t = T[rec.lang] || T.en;
   const all = [];
@@ -67,6 +101,7 @@ function build(rec, data, loc) {
     '<h2 style="margin:0 0 4px;color:#4a148c;">' + esc(t.sub) + '</h2>' +
     '<div style="color:#666;font-size:13px;margin-bottom:12px;">' + esc(rec.name || '') + ' · ' + esc(loc.label) + '</div>';
   let X = t.sub + '\n' + (rec.name || '') + ' - ' + loc.label + '\n\n';
+  { const qb = qdBlock(data.qmdj_day, t); H += qb.h; X += qb.x; }
   if (best.length) {
     H += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;margin-bottom:14px;"><b>⭐ ' + esc(t.best) + '</b><br>' +
       best.map(h => '<div style="margin:7px 0 0;">' +
