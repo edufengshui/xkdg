@@ -5286,7 +5286,8 @@ function fsRenderHouseProfiles(){
         var _typeBadge = '<span style="font-size:9px;font-weight:bold;color:#fff;background:' + (_isInt ? '#8e6a3f' : '#c9a84c') + ';border-radius:3px;padding:0 5px;margin-right:4px;">' + (_isInt ? 'INTERNAL' : 'EXTERNAL') + '</span>';
         var _waterLbl = _isInt ? 'Fountain' : 'Water';
         html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">🚪 ' + _typeBadge + '<strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr + '</span>';
+        html += '<span style="font-size:11px;">🚪 ' + _typeBadge + '<strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
+          + (d.palace ? ' · in ' + (_FS_DOOR_PAL_NAME[d.palace] || d.palace) : '') + '</span>';
         html += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
         html += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
         if (d.facing != null) {
@@ -5957,6 +5958,21 @@ function fsDeleteHouse(personName, houseIdx){
   fsRenderHouseProfiles();
 }
 
+// Session 32 (Edu): an EXTERNAL door can store the PALACE it sits in (its location seen from
+// the centre of the house, not the way it faces). The QMDJ Li Qi chart uses it as the Qi
+// mouth. Accepts N/NE/E/SE/S/SW/W/NW, Kan/Gen/Zhen/Xun/Li/Kun/Dui/Qian or the Luo Shu number.
+var _FS_DOOR_PAL = { n:1, kan:1, '1':1, ne:8, gen:8, '8':8, e:3, zhen:3, '3':3, se:4, xun:4, '4':4,
+                     s:9, li:9, '9':9, sw:2, kun:2, '2':2, w:7, dui:7, '7':7, nw:6, qian:6, '6':6 };
+var _FS_DOOR_PAL_NAME = { 1:'Kan N', 8:'Gen NE', 3:'Zhen E', 4:'Xun SE', 9:'Li S', 2:'Kun SW', 7:'Dui W', 6:'Qian NW' };
+function _fsParseDoorPalace(str){
+  if (str == null) return null;
+  var k = String(str).trim().toLowerCase();
+  if (!k) return null;
+  return _FS_DOOR_PAL.hasOwnProperty(k) ? _FS_DOOR_PAL[k] : undefined;   // undefined = invalid
+}
+var _FS_DOOR_PAL_ASK = 'Palace where this door IS (seen from the centre of the house - not where it faces).\n'
+  + 'N, NE, E, SE, S, SW, W, NW (or Kan, Gen...). Used as the Qi mouth by QMDJ Li Qi.\nLeave empty if unknown:';
+
 // ── DOOR CRUD ───────────────────────────────────────────────────
 
 function fsAddDoor(personName, houseIdx, kind){
@@ -5973,11 +5989,19 @@ function fsAddDoor(personName, houseIdx, kind){
                         (isInt ? 'room' : 'door') + '\n(leave empty if none):');
   var water = (waterStr && waterStr.trim()) ? parseFloat(waterStr) : null;
   if (water !== null && isNaN(water)){ alert('Invalid water degree.'); return; }
+  var palace = null;
+  if (!isInt){
+    var palStr = prompt(_FS_DOOR_PAL_ASK);
+    palace = _fsParseDoorPalace(palStr);
+    if (palace === undefined){ alert('Palace not recognised - left empty. Edit the door (\u270f) to set it.'); palace = null; }
+  }
 
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
   var _f = _fsActiveFloor(all[personName][houseIdx]);
-  _f.doors.push({ name: dName.trim(), facing: facing, water: water, kind: kind });
+  var _nd = { name: dName.trim(), facing: facing, water: water, kind: kind };
+  if (palace) _nd.palace = palace;
+  _f.doors.push(_nd);
   _fsHousesSave(all);
   fsRenderHouseProfiles();
 }
@@ -6001,6 +6025,13 @@ function fsEditDoor(personName, houseIdx, doorIdx){
   if (facing !== null && isNaN(facing)){ alert('Invalid facing degree.'); return; }
   if (water  !== null && isNaN(water)){ alert('Invalid water degree.'); return; }
 
+  if (d.kind !== 'internal'){
+    var palStr = prompt(_FS_DOOR_PAL_ASK, d.palace ? (_FS_DOOR_PAL_NAME[d.palace] || '').split(' ')[1] : '');
+    if (palStr === null) return;
+    var pal = _fsParseDoorPalace(palStr);
+    if (pal === undefined){ alert('Invalid palace.'); return; }
+    if (pal) d.palace = pal; else delete d.palace;
+  }
   d.name   = (newName && newName.trim()) ? newName.trim() : d.name;
   d.facing = facing;
   d.water  = water;
