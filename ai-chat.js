@@ -658,13 +658,13 @@
              'open_itinerary_in_maps','start_compass','control_compass','analyze_direction','get_trip_itinerary',
              'find_lodging','find_lucky_charge_day','scan_flights','open_direction_calculator',
              'find_purpose_direction','plan_directional_detour','find_qimen_hours_for_star','diagnose_maps_export',
-             'find_good_dates'],   // session 26: the flight/travel DATE rules live in this area
+             'find_good_dates','find_qimen_days'],   // session 26: the flight/travel DATE rules live in this area
     fengshui: ['find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
                'list_houses','get_house_setup','set_active_house','load_house','load_placement',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
-               'plan_status','plan_room','plan_settings','plan_show','sun_facing'],
+               'plan_status','plan_room','plan_settings','plan_show','sun_facing','find_qimen_days'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -1377,6 +1377,28 @@
           placement_index: { type: 'integer' }
         },
         required: ['house_index', 'section', 'placement_index']
+      }
+    },
+    {
+      name: 'find_qimen_days',
+      description: 'QMDJ DAY charts (session 32): find the next DAYS whose Qimen DAY chart is positive in the palace of a ' +
+        'compass direction, and inside each day the HOURS of that same day positive in the same palace. ' +
+        'Use use="travel" (ROTATING day chart) for going / travelling towards a direction within one day; ' +
+        'use="water" (FLYING day chart) for Feng Shui actions in a sector, e.g. changing or activating water at S or NE. ' +
+        'Positive = the app’s canonical QMDJ rules (no excluding formation; San Qi in the Tien Pan, Wu or the Commander ' +
+        'with a favourable door); a purpose also requires its door. Day Ju: 8 seasonal points + day decades + Rule of the Six, ' +
+        'all in local true solar time. Present the days first, then the best hours of each day (clock = local clock time at the centre of the double-hour).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] },
+          use: { type: 'string', enum: ['travel', 'water'], description: 'travel = Rotating chart (directions); water = Flying chart (Feng Shui).' },
+          purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal', 'water'], description: 'Optional purpose: its door is required in the day and in the hour.' },
+          start: { type: 'string', description: 'Start date YYYY-MM-DD (default today).' },
+          days: { type: 'integer', description: 'How many days ahead to look (default 30, max 180).' },
+          max_results: { type: 'integer', description: 'How many positive days to return (default 5).' }
+        },
+        required: ['direction', 'use']
       }
     },
     {
@@ -3031,6 +3053,7 @@
       if (name === 'set_active_house') return toolSetActiveHouse(input || {});
       if (name === 'load_house') return toolLoadHouse(input || {});
       if (name === 'load_placement') return toolLoadPlacement(input || {});
+      if (name === 'find_qimen_days') return toolFindQimenDays(input || {});
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
       if (name === 'find_lodging') return toolFindLodging(input || {});
@@ -5430,6 +5453,28 @@
       return { error: 'Provide house_index, section (water/bed/desk) and placement_index (from list_houses).' };
     window.fsLoadPlacement(person.name, hi, zone, pi);
     return { loaded_placement: { house_index: hi, section: zone, placement_index: pi } };
+  }
+
+  // QMDJ DAY charts: next positive days for a direction, with the matching hours (session 32).
+  function toolFindQimenDays(input) {
+    if (!window.XKDGDayMonth || typeof window.XKDGDayMonth.scanDays !== 'function')
+      return { error: 'The QMDJ day-chart module (qmdj-daymonth.js) is not loaded.' };
+    var P = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 };
+    var dir = String(input.direction || '').toUpperCase();
+    if (!P[dir]) return { error: 'direction must be one of N, NE, E, SE, S, SW, W, NW.' };
+    var use = input.use === 'water' ? 'water' : 'travel';
+    var start = input.start || todayIso();
+    var res;
+    try {
+      res = window.XKDGDayMonth.scanDays({ palace: P[dir], mode: use === 'water' ? 'flying' : 'rotating',
+        start: start, days: input.days || 30, purpose: input.purpose || null, max: input.max_results || 5 });
+    } catch (e) { return { error: 'Day-chart scan failed: ' + ((e && e.message) || e) }; }
+    return { scanner: 'qmdj_day_charts', direction: dir, use: use,
+             chart: use === 'water' ? 'Flying (Feng Shui)' : 'Rotating (directions / travel)',
+             purpose: input.purpose || null, start: start, days_scanned: input.days || 30,
+             count: res.length, results: res,
+             note: res.length ? 'Each day lists the hours of that same day positive in the same palace; a day with no such hour is still a positive day.'
+                              : 'No positive day in the period: suggest a longer period or another direction.' };
   }
 
   function toolFindWaterHours(input) {

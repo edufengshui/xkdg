@@ -122,16 +122,17 @@
     var W = window.QMDJWaterScanner;
     if (W.formationFlags(cell).disqualified) return false;
     if (!W.directionGate(cell, pur ? { purpose: pur.entry } : {}).eligible) return false;
-    if (pur && pur.entry.doors.indexOf(cell.doorCode) === -1) return false;
+    if (pur && pur.entry.doors && pur.entry.doors.indexOf(cell.doorCode) === -1) return false;
     return true;
   }
   function cellText(c) {
     return (c.tiH || '') + '/' + (c.diH || '') + ' · ' + (c.doorName || c.door || '') + ' · ' + (c.star || '') + ' · ' + (c.deity || '');
   }
-  function dayHourMatches(isoDate, dayChart, rot, pur) {
+  function dayHourMatches(isoDate, dayChart, rot, pur, onlyPalace) {
     var W = window.QMDJWaterScanner, p = isoDate.split('-'), lt = lonTz(), out = {};
     var good = [];
-    [1, 8, 3, 4, 9, 2, 7, 6].forEach(function (n) { if (positive(dayChart.palaces[n], pur)) good.push(n); });
+    [1, 8, 3, 4, 9, 2, 7, 6].forEach(function (n) {
+      if ((!onlyPalace || n === onlyPalace) && positive(dayChart.palaces[n], pur)) good.push(n); });
     if (!good.length) return { good: good, hits: out };
     for (var bi = 0; bi < 12; bi++) {
       var h = bi === 0 ? 0 : bi * 2, mi = bi === 0 ? 30 : 0;      // 子 = early Zi, centre of each double-hour after
@@ -165,13 +166,55 @@
         h += '<button onclick="xkdgDMOpenHour(\'' + isoDate + '\',\'' + x.gan + '\',\'' + x.zhi + '\',' + (rot ? 1 : 0) + ')" '
           + 'title="' + cellText(x.cell).replace(/"/g, '') + '" '
           + 'style="margin:2px 4px 2px 0;padding:3px 8px;border:1px solid #66bb6a;background:#e8f5e9;color:#1b5e20;border-radius:12px;font-size:12px;cursor:pointer;">'
-          + x.gan + x.zhi + ' · ' + x.civ + ' · ' + (x.cell.doorName || '') + '</button>';
+          + x.gan + x.zhi + ' · ' + x.civ + ' · ' + (x.cell.doorName || x.cell.door || '') + '</button>';
       });
       h += '</div></div>';
     });
     el.innerHTML = h + '<div style="font-size:10px;color:#999;">Positive = no excluding formation and San Qi (Tien Pan) / Wu / Commander with a favourable door. '
       + 'Hours in local true solar time; the time shown is the clock time at the centre of the hour. Tap an hour to open its chart.</div>';
   }
+
+  // ── Scan forward for DAYS whose day chart is positive in one palace (session 32) ──
+  // opts: {palace 1-9, mode 'rotating' (directions, travel within the day) | 'flying'
+  // (Feng Shui, e.g. water), start 'YYYY-MM-DD', days (default 30), purpose key, withHours,
+  // max (results, default 10)}. Each result also lists the hours of that same day that are
+  // positive in the same palace (same mode). Used by the AI tool find_qimen_days.
+  function scanDays(o) {
+    o = o || {};
+    var n = +o.palace, rot = o.mode !== 'flying', days = Math.min(Math.max(+o.days || 30, 1), 180);
+    var max = Math.min(Math.max(+o.max || 10, 1), 40), pur = null;
+    try {
+      var all = window.QMDJWaterScanner.fsPurposeDoors();
+      if (o.purpose && all[o.purpose]) pur = { key: o.purpose, entry: all[o.purpose] };
+    } catch (e) {}
+    var st = String(o.start || new Date().toISOString().slice(0, 10)).split('-');
+    var t0 = dayNum(+st[0], +st[1], +st[2]), out = [];
+    for (var i = 0; i < days && out.length < max; i++) {
+      var a = ymd(t0 + i), R = dayChartJu(a[0], a[1], a[2]);
+      if (!R) continue;
+      var g = R.dayGz.charAt(0), z = R.dayGz.charAt(1);
+      var c = rot ? window.QMDJWaterScanner.getRotatingHourChart(2000, 1, 1, g, z, null, { ju: R.ju, dun: R.dun })
+                  : window.QMDJWaterScanner.getHourChart(2000, 1, 1, g, z, null, { ju: R.ju, dun: R.dun });
+      if (!c || !positive(c.palaces[n], pur)) continue;
+      var cell = c.palaces[n], hours = [];
+      if (o.withHours !== false) {
+        try {
+          var M = dayHourMatches(iso(t0 + i), c, rot, pur, n);
+          hours = (M.hits[n] || []).map(function (x) {
+            return { ganzhi: x.gan + x.zhi, clock: x.civ, door: x.cell.doorName || x.cell.door || '', star: x.cell.star || '',
+                     spirit: x.cell.deity || '', stems: (x.cell.tiH || '') + '/' + (x.cell.diH || '') };
+          });
+        } catch (e) {}
+      }
+      out.push({ date: iso(t0 + i), day: R.dayGz, dun: R.dun, ju: R.ju,
+                 palace: PAL_NAME[n] || n, stems: (cell.tiH || '') + '/' + (cell.diH || ''),
+                 door: cell.doorName || cell.door || '', star: cell.star || '', spirit: cell.deity || '',
+                 reasons: (window.QMDJWaterScanner.directionGate(cell, pur ? { purpose: pur.entry } : {}).reasons || []),
+                 hours: hours });
+    }
+    return out;
+  }
+
   // Open the 🎲 hour chart on that date and hour, in the same mode.
   function openHour(isoDate, gan, zhi, rot) {
     try {
@@ -305,7 +348,7 @@
     } catch (e) {}
   }
 
-  window.XKDGDayMonth = { dayChartJu: dayChartJu, monthChartJu: monthChartJu, open: open };
+  window.XKDGDayMonth = { dayChartJu: dayChartJu, monthChartJu: monthChartJu, open: open, scanDays: scanDays };
   window.xkdgDMShow = show; window.xkdgDMOpenHour = openHour; window.xkdgDMStep = step; window.xkdgDMKind = setKind;
   window.openQmdjDayChart = function () { open('day'); };
   window.openQmdjMonthChart = function () { open('month'); };
