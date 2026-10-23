@@ -3809,6 +3809,9 @@ function xkdgChartsToggle(){
   ov.innerHTML = h + '</div>';
   ov.style.display = 'flex';
 }
+// New name (session 32): index.html reloads the page if it does not find it, which
+// happens when a fresh index.html meets a cached, older app-fengshui.js.
+window.xkdgOpenChartsTab = xkdgChartsToggle;
 function xkdgChartsPick(v){
   var ov = document.getElementById('charts-overlay'); if (ov) ov.style.display = 'none';
   if (v === 'qmdjtool') { xkdgOpenQmdjChart(); return; }
