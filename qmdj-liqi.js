@@ -138,6 +138,126 @@
 
   function pickQi(v) { _qiManual = v ? parseInt(v, 10) : null; show(); }
 
+  // ── AI interpretation (session 32, Edu) ────────────────────────────────────
+  // The reading method distilled from the chapter's Guidelines (slides 16-18) and its five
+  // case studies (restaurant, trading office, family house, model agency, hotel lobby).
+  var READ_GUIDE = [
+    'You interpret a QMDJ Li Qi PERMANENT chart (Qi Men Dun Jia Feng Shui, Flying Pan method, school of Master Eduardo Hess / Joseph Yu).',
+    'The chart is built from the period of construction or move-in (Yang Dun only). House: sitting double mountain = Fu Shou, palace of the Qi mouth (door) = Zhi Fu. Business: facing double mountain = Fu Shou, facing palace = Zhi Fu.',
+    'It is superimposed on the floor plan: each of the 8 palaces is an area of the space, read on four levels: earth (doors), man (stems), heaven (stars), spirits (deities).',
+    '',
+    'HOW TO READ (from the chapter guidelines):',
+    '- Read each palace like the QMDJ Annual chart: heaven stem over earth stem (formations, combinations, clashes, penalties), the door, the star, the spirit, and the palace element (whether door / star / stem suit the palace, 12 growth stages of the wonders 乙丙丁).',
+    '- The Qi mouth / door palace and the facing palace matter most: they show the quality of the qi entering the space. The sitting palace shows the support behind.',
+    '- Zhi Fu (Commander) and Zhi Shi (the door of the Commander) are key points.',
+    '- Birth YEAR stem of the occupants: find the palace where that stem sits on the HEAVEN plate; that area affects the person most (positively or negatively). A stem clashed or penalised there warns of trouble for that person.',
+    '- Match the qi to the USE of each area: doors and stars suit some functions and not others. E.g. Open door is unsuitable for storage, archives or a closed area; Rest door suits relaxation, bedrooms, lifts after a long day; View door suits trading, scenic views, display; Shocking door suits signs, restaurants and talk; Death door suits storage, fabrics, stable/conservative work; Birth door is money-making; Delusion door gives confusion or hides things (but can help creative ideas); Injury brings fighting energy.',
+    '- Stars: Pillar = eating, restaurants, speech, also destructive/renovation force; Rice = penny saver, sickness star, cheap furniture; Official = traditional, health; Hero = fire, status, display; Grass = planner, talkative, water collecting; Heart = medicine, interviews, selection; Assistant = creativity, art, sales; Fowl = importance, dignity, golden colours; Aggressor = action, conflict.',
+    '- Spirits: Commander/Zhi Fu = prominent, protected; Snake = winding paths, cables, strange shapes, spaghetti-like forms; Yin = refined, high class; Harmonies = socialising, gathering people (but arguments affect family); Polaris (= Gou Chen = Qilin) = rough ground, obstacles, renovation; Bird = arguments, talk, indices, documents; Earth (Nine Earth) = calm, stable, flat ground, reliability; Heaven (Nine Heaven) = high, bright, appearance, expansion; Norm (Supreme Norm) = comfort, good food, appearance.',
+    '- Known formations used in the chapter: 甲 over 丙 "Cerulean Dragon turns its head" (fortunate at a door); 乙 over 辛 "Cerulean Dragon flees" (not attractive, people do not stay); 甲 hiding behind 辛 "Creeper twining on a tree"; 丁 wonder at birth/stage 2 "Star Wonder rises the Hall"; 乙 wonder "Moon/Sun wonder rises the hall" when strong; 丙 over 己 "Fire Star into imprisonment"; 庚 over 癸 or 癸 over 庚 a clash (White Tiger over water: metallic, sharp structures, confrontation); 戊/辛, 壬/己, 丙/壬, 丙/庚, 辛/乙 clashes; double 辛 or double 壬 self-penalty; Fu Yin (same stem above and below) = calm and stable but stagnant; Fan Yin between star and door = reversal, arguments; stem combinations (e.g. 甲 with 己, 丁 with 壬) and branch frames formed with the palace branches or the door branches (fire frame, water frame) soften clashes or make the palace too hot / too cold.',
+    '- Growth stages of 乙丙丁 in the palace: Birth / Lu / stage 1-4 strong; Tomb or Vanishing (stage 10+) weak: e.g. 丙 in tomb in Qian = energy not received inside, keep the area bright.',
+    '- Combine with the forms: a feature in the area (stairs, roads, water, a pergola, a statue) often mirrors the chart; read with flexibility, some qi is represented, some is not. Suggest cures: colour schemes by element, objects, lighting, better use of the area, moving desks or functions.',
+    '',
+    'OUTPUT:',
+    '- Start with 2-3 sentences on the overall quality of the space and the qi entering at the Qi mouth.',
+    '- Then one short paragraph per palace (in the order Qi mouth palace, facing palace, sitting palace, then the others), naming the palace and direction, the key factors you read, what the area is good or not good for, and a practical suggestion.',
+    '- Then a short paragraph on each occupant whose birth year stem is given.',
+    '- Be concrete and concise, like the case studies. Do not invent forms you were not told about: when the use of a room would matter, say what use suits the palace.',
+    '- Plain text with **bold** palace names; no tables.'
+  ].join('\n');
+
+  var PAL_INFO = { 1:'Kan · N · Water', 8:'Gen · NE · Earth', 3:'Zhen · E · Wood', 4:'Xun · SE · Wood',
+                   9:'Li · S · Fire', 2:'Kun · SW · Earth', 7:'Dui · W · Metal', 6:'Qian · NW · Metal', 5:'Centre · Earth' };
+
+  // Birth YEAR pillars of the people of the house (owner + guest #2), by Li Chun.
+  function occupants() {
+    var out = [];
+    try {
+      var L = window._fsLoadedHouse, all = _fsHousesLoad(), h = (all[L.personName] || [])[L.houseIdx];
+      var list = [];
+      if (h && !h.ownerAway) list.push({ who: h.personName || L.personName || 'Owner', date: h.birthDate || '' });
+      if (h && h.guest && h.guest.birthDate) list.push({ who: h.guest.name || 'Occupant 2', date: h.guest.birthDate });
+      if (h && !h.ownerAway && !h.birthDate) {        // owner stored as the person card
+        var pd = (document.getElementById('person-date') || {}).value || '';
+        if (pd && list.length) list[0].date = pd;
+      }
+      list.forEach(function (o) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(o.date || '');
+        if (!m || !window.Solar) return;
+        var y = window.Solar.fromYmd(+m[1], +m[2], +m[3]).getLunar().getYearInGanZhiExact();
+        out.push({ who: o.who, year: y });
+      });
+    } catch (e) {}
+    return out;
+  }
+
+  var _last = null;          // { r, kind, H } of the chart on screen
+
+  function describe() {
+    var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, _last.r.hGan, _last.r.hZhi, null,
+                                                 { ju: _last.r.ju, dun: 'yang' });
+    if (!c || !c.palaces) return null;
+    var r = _last.r, H = _last.H, kind = _last.kind;
+    var facePal = PAL.filter(function (x) { return x[0] === palaceOf(r.facing)[0]; })[0][0];
+    var sitPal = palaceOf(r.sitting)[0];
+    var lines = [];
+    lines.push('Space: ' + (kind === 'business' ? 'BUSINESS' : 'HOUSE') + (H.name ? ' "' + H.name + '"' : ''));
+    lines.push('Period ' + r.ju + ' -> Yang Ju ' + r.ju + '. Facing ' + r.facing + ' deg (palace ' + facePal + '), sitting ' + r.sitting + ' deg (palace ' + sitPal + ').');
+    lines.push('Fu Shou ' + r.xunHead + ' ' + r.yi + ' (' + r.mountain + '). Zhi Fu palace = ' + r.zhiFu + (kind === 'house' ? ' (Qi mouth / door)' : ' (facing palace)') + '. Chart hour ' + r.hGan + r.hZhi + '.');
+    if (c.voidBranches && c.voidBranches.length) lines.push('Void (Kong Wang) branches: ' + c.voidBranches.join(' ') + ' (palaces ' + (c.voidPalaces || []).join(', ') + ').');
+    lines.push('');
+    lines.push('PALACES (heaven stem / earth stem, star, door, spirit):');
+    [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n) {
+      var p = c.palaces[n]; if (!p) return;
+      var tags = [];
+      if (n === r.zhiFu) tags.push(kind === 'house' ? 'QI MOUTH' : 'FACING / QI MOUTH');
+      if (n === facePal && kind === 'house') tags.push('FACING PALACE');
+      if (n === sitPal) tags.push('SITTING PALACE');
+      if (p.zhiFu) tags.push('Zhi Fu');
+      if (p.zhiShi) tags.push('Zhi Shi');
+      lines.push(n + ' ' + PAL_INFO[n] + ': ' + p.tiH + ' over ' + p.diH + ', star ' + p.star
+        + (p.door ? ', door ' + p.door : '') + ', spirit ' + p.deity + (tags.length ? '  [' + tags.join(', ') + ']' : ''));
+    });
+    var occ = occupants();
+    if (occ.length) {
+      lines.push('');
+      lines.push('OCCUPANTS (birth year pillar): ' + occ.map(function (o) { return o.who + ' ' + o.year; }).join('; '));
+    }
+    return lines.join('\n');
+  }
+
+  function replyLang() {
+    var l = 'auto';
+    try { l = localStorage.getItem('xkdg_ai_lang') || 'auto'; } catch (e) {}
+    if (l === 'it') return 'Write the interpretation in Italian.';
+    if (l === 'fr') return 'Write the interpretation in French.';
+    if (l === 'en') return 'Write the interpretation in English.';
+    var n = (navigator.language || 'en').slice(0, 2);
+    return n === 'it' ? 'Write the interpretation in Italian.' : n === 'fr' ? 'Write the interpretation in French.' : 'Write the interpretation in English.';
+  }
+
+  function md(t) {
+    var e = String(t).replace(/[&<>]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]; });
+    e = e.replace(/^#{1,4}\s*(.+)$/gm, '<b>$1</b>').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    return e.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
+  }
+
+  function interpret() {
+    var out = document.getElementById('liqi-ai-out'), btn = document.getElementById('liqi-ai-btn');
+    if (!out || !_last) return;
+    if (typeof window.XKDGAIOneShot !== 'function') {
+      out.innerHTML = '<span style="color:#c0392b;">The AI assistant is not available in this app.</span>'; return;
+    }
+    var data = describe();
+    if (!data) { out.innerHTML = '<span style="color:#c0392b;">Chart data not available.</span>'; return; }
+    if (btn) btn.disabled = true;
+    out.innerHTML = '<span style="color:#888;">⏳ Interpreting the chart…</span>';
+    window.XKDGAIOneShot(READ_GUIDE, 'Interpret this QMDJ Li Qi permanent chart.\n\n' + data + '\n\n' + replyLang(), 3500)
+      .then(function (t) { out.innerHTML = md(t); })
+      .catch(function (e) { out.innerHTML = '<span style="color:#c0392b;">⚠ ' + String(e && e.message || e) + '</span>'; })
+      .then(function () { if (btn) btn.disabled = false; });
+  }
+
   function show() {
     var info = document.getElementById('liqi-info'), box = document.getElementById('liqi-chart');
     var hEl = document.getElementById('liqi-house'), sel = document.getElementById('liqi-qi');
@@ -183,7 +303,13 @@
         { returnHtml: true, forceJuDun: { ju: r.ju, dun: 'yang' } }) || '';
       html = html.replace(/2000-01-01\s*·\s*/g, '');               // a permanent chart has no date
     } catch (e) { html = ''; }
-    box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>';
+    _last = html ? { r: r, kind: kind, H: H } : null;
+    box.innerHTML = (html || '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>')
+      + (html ? '<div style="margin-top:12px;text-align:center;">'
+          + '<button id="liqi-ai-btn" onclick="liqiInterpret()" style="background:#5e35b1;color:#fff;border:none;border-radius:6px;'
+          + 'padding:9px 20px;font-size:14px;font-weight:bold;cursor:pointer;">✨ Interpretation</button>'
+          + '<div style="font-size:10px;color:#999;margin-top:4px;">AI reading, indicative only: it is not a substitute for a consultation.</div>'
+          + '</div><div id="liqi-ai-out" style="margin-top:10px;font-size:13px;line-height:1.55;color:#333;"></div>' : '');
   }
 
   window.qmdjLiQiCompute = compute;
@@ -192,4 +318,5 @@
   window.liqiPickQi = pickQi;
   window.liqiKind = setKind;
   window.liqiBack = back;
+  window.liqiInterpret = interpret;
 })();
