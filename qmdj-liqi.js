@@ -154,6 +154,7 @@
     '- Match the qi to the USE of each area: doors and stars suit some functions and not others. E.g. Open door is unsuitable for storage, archives or a closed area; Rest door suits relaxation, bedrooms, lifts after a long day; View door suits trading, scenic views, display; Shocking door suits signs, restaurants and talk; Death door suits storage, fabrics, stable/conservative work; Birth door is money-making; Delusion door gives confusion or hides things (but can help creative ideas); Injury brings fighting energy.',
     '- Stars: Pillar = eating, restaurants, speech, also destructive/renovation force; Rice = penny saver, sickness star, cheap furniture; Official = traditional, health; Hero = fire, status, display; Grass = planner, talkative, water collecting; Heart = medicine, interviews, selection; Assistant = creativity, art, sales; Fowl = importance, dignity, golden colours; Aggressor = action, conflict.',
     '- Spirits: Commander/Zhi Fu = prominent, protected; Snake = winding paths, cables, strange shapes, spaghetti-like forms; Yin = refined, high class; Harmonies = socialising, gathering people (but arguments affect family); Polaris (= Gou Chen = Qilin) = rough ground, obstacles, renovation; Bird = arguments, talk, indices, documents; Earth (Nine Earth) = calm, stable, flat ground, reliability; Heaven (Nine Heaven) = high, bright, appearance, expansion; Norm (Supreme Norm) = comfort, good food, appearance.',
+    '- Each palace also has a Di Pan (earth-plate) spirit, the spirit of the Fu Yin chart: read it together with the heaven spirit (e.g. Bird over Zhi Fu in the Di Pan = spacious, comfortable, good for meetings; Gou Chen in the Di Pan = rough, dusty ground; Nine Earth in the Di Pan = calm, but obstacles in the centre).',
     '- Known formations used in the chapter: 甲 over 丙 "Cerulean Dragon turns its head" (fortunate at a door); 乙 over 辛 "Cerulean Dragon flees" (not attractive, people do not stay); 甲 hiding behind 辛 "Creeper twining on a tree"; 丁 wonder at birth/stage 2 "Star Wonder rises the Hall"; 乙 wonder "Moon/Sun wonder rises the hall" when strong; 丙 over 己 "Fire Star into imprisonment"; 庚 over 癸 or 癸 over 庚 a clash (White Tiger over water: metallic, sharp structures, confrontation); 戊/辛, 壬/己, 丙/壬, 丙/庚, 辛/乙 clashes; double 辛 or double 壬 self-penalty; Fu Yin (same stem above and below) = calm and stable but stagnant; Fan Yin between star and door = reversal, arguments; stem combinations (e.g. 甲 with 己, 丁 with 壬) and branch frames formed with the palace branches or the door branches (fire frame, water frame) soften clashes or make the palace too hot / too cold.',
     '- Growth stages of 乙丙丁 in the palace: Birth / Lu / stage 1-4 strong; Tomb or Vanishing (stage 10+) weak: e.g. 丙 in tomb in Qian = energy not received inside, keep the area bright.',
     '- Combine with the forms: a feature in the area (stairs, roads, water, a pergola, a statue) often mirrors the chart; read with flexibility, some qi is represented, some is not. Suggest cures: colour schemes by element, objects, lighting, better use of the area, moving desks or functions.',
@@ -200,13 +201,14 @@
     var r = _last.r, H = _last.H, kind = _last.kind;
     var facePal = PAL.filter(function (x) { return x[0] === palaceOf(r.facing)[0]; })[0][0];
     var sitPal = palaceOf(r.sitting)[0];
+    var dp = dipanDeities(r);
     var lines = [];
     lines.push('Space: ' + (kind === 'business' ? 'BUSINESS' : 'HOUSE') + (H.name ? ' "' + H.name + '"' : ''));
     lines.push('Period ' + r.ju + ' -> Yang Ju ' + r.ju + '. Facing ' + r.facing + ' deg (palace ' + facePal + '), sitting ' + r.sitting + ' deg (palace ' + sitPal + ').');
     lines.push('Fu Shou ' + r.xunHead + ' ' + r.yi + ' (' + r.mountain + '). Zhi Fu palace = ' + r.zhiFu + (kind === 'house' ? ' (Qi mouth / door)' : ' (facing palace)') + '. Chart hour ' + r.hGan + r.hZhi + '.');
     if (c.voidBranches && c.voidBranches.length) lines.push('Void (Kong Wang) branches: ' + c.voidBranches.join(' ') + ' (palaces ' + (c.voidPalaces || []).join(', ') + ').');
     lines.push('');
-    lines.push('PALACES (heaven stem / earth stem, star, door, spirit):');
+    lines.push('PALACES (heaven stem / earth stem, star, door, spirit, Di Pan spirit):');
     [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n) {
       var p = c.palaces[n]; if (!p) return;
       var tags = [];
@@ -216,7 +218,8 @@
       if (p.zhiFu) tags.push('Zhi Fu');
       if (p.zhiShi) tags.push('Zhi Shi');
       lines.push(n + ' ' + PAL_INFO[n] + ': ' + p.tiH + ' over ' + p.diH + ', star ' + p.star
-        + (p.door ? ', door ' + p.door : '') + ', spirit ' + p.deity + (tags.length ? '  [' + tags.join(', ') + ']' : ''));
+        + (p.door ? ', door ' + p.door : '') + ', spirit ' + p.deity
+        + (dp && dp[n] ? ', Di Pan spirit ' + dp[n] : '') + (tags.length ? '  [' + tags.join(', ') + ']' : ''));
     });
     var occ = occupants();
     if (occ.length) {
@@ -256,6 +259,21 @@
       .then(function (t) { out.innerHTML = md(t); })
       .catch(function (e) { out.innerHTML = '<span style="color:#c0392b;">⚠ ' + String(e && e.message || e) + '</span>'; })
       .then(function () { if (btn) btn.disabled = false; });
+  }
+
+  // Di Pan spirits (session 32, Edu): the spirits of the Fu Yin chart of the same Fu Shou,
+  // i.e. the Xun-head (Jia) hour, where the Commander sits on the palace of the Fu Shou's
+  // Yi stem. Checked on the case studies: restaurant (Gou Chen in Kun, Norm in Zhen, Bird
+  // in Xun), trading office (Nine Earth in Li, Bird in Gen), model agency (Zhi Fu in Dui,
+  // Nine Earth in the centre).
+  function dipanDeities(r) {
+    try {
+      var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, r.xunHead.charAt(0), r.xunHead.charAt(1), null,
+                                                   { ju: r.ju, dun: 'yang' });
+      var m = {};
+      Object.keys(c.palaces).forEach(function (k) { if (c.palaces[k].deity) m[k] = c.palaces[k].deity; });
+      return m;
+    } catch (e) { return null; }
   }
 
   function show() {
@@ -300,7 +318,7 @@
     var html = '';
     try {
       html = window.showQimenChart('2000-01-01', r.hGan, r.hZhi, null,
-        { returnHtml: true, forceJuDun: { ju: r.ju, dun: 'yang' } }) || '';
+        { returnHtml: true, forceJuDun: { ju: r.ju, dun: 'yang' }, dipanDeities: dipanDeities(r) }) || '';
       html = html.replace(/2000-01-01\s*·\s*/g, '');               // a permanent chart has no date
     } catch (e) { html = ''; }
     _last = html ? { r: r, kind: kind, H: H } : null;

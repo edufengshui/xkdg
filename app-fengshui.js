@@ -3333,6 +3333,12 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
     ? window.QMDJWaterScanner.getRotatingHourChart(Y, M, D, hGan, hZhi, opts.bjInstant, opts.forceJuDun)
     : window.QMDJWaterScanner.getHourChart(Y, M, D, hGan, hZhi, opts.bjInstant, opts.forceJuDun);
   if (!chart) { if (opts.returnHtml) return ''; alert('Cannot load chart for ' + isoDate + ' ' + hGan + hZhi); return; }
+  // opts.dipanDeities {palace: name} (session 32, QMDJ Li Qi): the Di Pan spirit of each
+  // palace, shown small under the heaven spirit. Absent for every other chart.
+  function _dpDeity(p){
+    var n = opts.dipanDeities && opts.dipanDeities[p];
+    return n ? '<div style="text-align:center;color:#8d6e63;font-size:10px;line-height:1.1;font-style:italic;">\u5730 ' + n + '</div>' : '';
+  }
 
   // Direction info (label, hanzi, di-pan trigram)
   var DIR = {
@@ -3376,6 +3382,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
       return '<td style="background:'+bg+';padding:8px 7px;text-align:center;border:'+border+';width:33%;height:1px;">'
         + '<div style="display:flex;flex-direction:column;height:100%;min-height:90px;">'
         +   '<div style="color:#222;font-size:13px;font-weight:bold;">' + (d.deity||'Center') + '</div>'
+        +   _dpDeity(5)
         +   '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;">'
         +     '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;">' + (d.tiH||'') + '</div>'
         +     '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
@@ -3388,6 +3395,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
     return '<td style="background:'+bg+';padding:6px 7px;border:'+border+';width:33%;height:1px;">'
       + '<div style="display:flex;flex-direction:column;height:100%;min-height:90px;">'
       +   '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
+      +   _dpDeity(d.palace || p)
       +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
       +     '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
       +     '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
