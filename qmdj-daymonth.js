@@ -174,6 +174,58 @@
       + 'Hours in local true solar time; the time shown is the clock time at the centre of the hour. Tap an hour to open its chart.</div>';
   }
 
+
+  // ── Long trips (session 32, Edu): the conditions sit on the HOUR charts only ──
+  // Departure: the hour chart at DEPARTURE (origin, local true solar time) positive in
+  // the travel palace. Arrival: the hour chart at ARRIVAL (destination, its own local true
+  // solar time) positive in the OPPOSITE palace (Vienna → Tuoro = SW: depart SW, arrive NE).
+  // Departure times are tried every 15 minutes; consecutive good starts are merged.
+  var OPP = { 1: 9, 9: 1, 8: 2, 2: 8, 3: 7, 7: 3, 4: 6, 6: 4 };
+  function tripWindows(isoDate, palace, durationH, destLon, pur, originLon) {
+    var W = window.QMDJWaterScanner, lt = lonTz(), p = isoDate.split('-'), cache = {};
+    if (originLon == null || !isFinite(originLon)) originLon = lt.lonDeg;
+    if (destLon == null || !isFinite(destLon)) destLon = originLon;
+    // Clock offset of THAT date on this device (summer / winter time handled per date).
+    function tzAt(y, mo, d, h) { try { return new Date(y, mo - 1, d, h || 12).getTimezoneOffset(); } catch (e) { return lt.tzOffsetMin; } }
+    function chartAt(y, mo, d, h, mi, lon) {
+      var hp = XKDGSolarTime.hourPillarFromCivil(y, mo, d, h, mi, 0, lon, tzAt(y, mo, d, h));
+      if (!hp || !hp.tst) return null;
+      var k = hp.tst.y + '-' + hp.tst.mo + '-' + hp.tst.d + hp.gan + hp.zhi + '@' + lon;
+      if (!cache[k]) cache[k] = { hp: hp, c: W.getRotatingHourChart(hp.tst.y, hp.tst.mo, hp.tst.d, hp.gan, hp.zhi, hp.bj) };
+      return cache[k];
+    }
+    var out = [], cur = null;
+    for (var m = 0; m < 24 * 60; m += 15) {
+      var dep = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2], 0, m));            // civil clock of the origin
+      var a = chartAt(dep.getUTCFullYear(), dep.getUTCMonth() + 1, dep.getUTCDate(), dep.getUTCHours(), dep.getUTCMinutes(), originLon);
+      var okDep = a && a.c && positive(a.c.palaces[palace], pur);
+      var arr = new Date(dep.getTime() + durationH * 3600000), b = null, okArr = false;
+      if (okDep) {
+        b = chartAt(arr.getUTCFullYear(), arr.getUTCMonth() + 1, arr.getUTCDate(), arr.getUTCHours(), arr.getUTCMinutes(), destLon);
+        okArr = b && b.c && positive(b.c.palaces[OPP[palace]], pur);
+      }
+      var hm = function (d) { return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
+      if (okDep && okArr) {
+        var key = a.hp.gan + a.hp.zhi + '|' + b.hp.gan + b.hp.zhi;
+        if (cur && cur.key === key && cur.lastM === m - 15) { cur.depTo = hm(dep); cur.arrTo = hm(arr); cur.lastM = m; }
+        else {
+          cur = { key: key, lastM: m, depFrom: hm(dep), depTo: hm(dep), arrFrom: hm(arr), arrTo: hm(arr),
+                  arriveNextDay: arr.getUTCDate() !== dep.getUTCDate(),
+                  departHour: a.hp.gan + a.hp.zhi, departCell: a.c.palaces[palace],
+                  arriveHour: b.hp.gan + b.hp.zhi, arriveCell: b.c.palaces[OPP[palace]] };
+          out.push(cur);
+        }
+      } else cur = null;
+    }
+    return out.map(function (w) {
+      function cfg(c) { return (c.tiH || '') + '/' + (c.diH || '') + ' ' + (c.doorName || c.door || '') + ' ' + (c.deity || ''); }
+      return { depart: w.depFrom === w.depTo ? w.depFrom : w.depFrom + '–' + w.depTo,
+               arrive: (w.arrFrom === w.arrTo ? w.arrFrom : w.arrFrom + '–' + w.arrTo) + (w.arriveNextDay ? ' (+1 day)' : ''),
+               depart_hour: w.departHour + ' · ' + (PAL_NAME[palace] || palace) + ' ' + cfg(w.departCell),
+               arrive_hour: w.arriveHour + ' · ' + (PAL_NAME[OPP[palace]] || OPP[palace]) + ' ' + cfg(w.arriveCell) };
+    });
+  }
+
   // ── Scan forward for DAYS whose day chart is positive in one palace (session 32) ──
   // opts: {palace 1-9, mode 'rotating' (directions, travel within the day) | 'flying'
   // (Feng Shui, e.g. water), start 'YYYY-MM-DD', days (default 30), purpose key, withHours,
@@ -206,7 +258,12 @@
           });
         } catch (e) {}
       }
-      out.push({ date: iso(t0 + i), day: R.dayGz, dun: R.dun, ju: R.ju,
+      var trips = null;
+      if (rot && +o.durationH > 0) {
+        try { trips = tripWindows(iso(t0 + i), n, +o.durationH, o.destLon, pur, o.originLon); } catch (e) { trips = []; }
+        if (o.requireTrip && !trips.length) continue;
+      }
+      out.push({ date: iso(t0 + i), day: R.dayGz, dun: R.dun, ju: R.ju, trip_windows: trips,
                  palace: PAL_NAME[n] || n, stems: (cell.tiH || '') + '/' + (cell.diH || ''),
                  door: cell.doorName || cell.door || '', star: cell.star || '', spirit: cell.deity || '',
                  reasons: (window.QMDJWaterScanner.directionGate(cell, pur ? { purpose: pur.entry } : {}).reasons || []),

@@ -1407,7 +1407,10 @@
           purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal', 'water'], description: 'Optional purpose: its door is required in the day and in the hour.' },
           start: { type: 'string', description: 'Start date YYYY-MM-DD (default today).' },
           days: { type: 'integer', description: 'How many days ahead to look (default 30, max 180).' },
-          max_results: { type: 'integer', description: 'How many positive days to return (default 5).' }
+          max_results: { type: 'integer', description: 'How many positive days to return (default 5).' },
+          duration_hours: { type: 'number', description: 'LONG TRIP (use=travel): travel time in hours. Then each day also gets trip_windows: departure times whose HOUR chart is positive in the travel palace at the origin AND whose arrival HOUR chart is positive in the OPPOSITE palace at the destination (e.g. Vienna→Tuoro SW: depart SW, arrive NE), both in local true solar time. Only days with at least one such window are returned.' },
+          origin: { type: 'string', description: 'Departure place name (with duration_hours); default = the app location.' },
+          destination: { type: 'string', description: 'Destination place name, for the arrival true solar time (with duration_hours).' }
         },
         required: ['direction', 'use']
       }
@@ -5475,17 +5478,38 @@
     if (!P[dir]) return { error: 'direction must be one of N, NE, E, SE, S, SW, W, NW.' };
     var use = input.use === 'water' ? 'water' : 'travel';
     var start = input.start || todayIso();
+    var dur = (use === 'travel' && +input.duration_hours > 0) ? +input.duration_hours : 0;
+    function run(destLon, destName, originLon, originName) {
     var res;
     try {
       res = window.XKDGDayMonth.scanDays({ palace: P[dir], mode: use === 'water' ? 'flying' : 'rotating',
-        start: start, days: input.days || 30, purpose: input.purpose || null, max: input.max_results || 5 });
+        start: start, days: input.days || (dur ? 60 : 30), purpose: input.purpose || null, max: input.max_results || 5,
+        durationH: dur, destLon: destLon, originLon: originLon, requireTrip: !!dur });
     } catch (e) { return { error: 'Day-chart scan failed: ' + ((e && e.message) || e) }; }
     return { scanner: 'qmdj_day_charts', direction: dir, use: use,
+             trip: dur ? { duration_hours: dur, origin: originName || 'app location', origin_lon: originLon, destination: destName || null, destination_lon: destLon,
+                           rule: 'day chart positive in the travel palace; departure HOUR positive in the travel palace (origin); arrival HOUR positive in the OPPOSITE palace (destination); local true solar time' } : null,
              chart: use === 'water' ? 'Flying (Feng Shui)' : 'Rotating (directions / travel)',
              purpose: input.purpose || null, start: start, days_scanned: input.days || 30,
              count: res.length, results: res,
              note: res.length ? 'Each day lists the hours of that same day positive in the same palace; a day with no such hour is still a positive day.'
                               : 'No positive day in the period: suggest a longer period or another direction.' };
+    }
+    function geo(q) {
+      if (!q) return Promise.resolve(null);
+      return fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1',
+                   { headers: { 'Accept-Language': 'en' } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { return (d && d.length) ? { lon: parseFloat(d[0].lon), name: d[0].display_name } : null; })
+        .catch(function () { return null; });
+    }
+    if (dur) {
+      return Promise.all([geo(input.origin), geo(input.destination)]).then(function (g) {
+        return run(g[1] ? g[1].lon : null, g[1] ? g[1].name : (input.destination || null),
+                   g[0] ? g[0].lon : null, g[0] ? g[0].name : (input.origin || null));
+      });
+    }
+    return run(null, null, null, null);
   }
 
   function toolFindWaterHours(input) {
