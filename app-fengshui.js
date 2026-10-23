@@ -3797,9 +3797,8 @@ function xkdgChartsToggle(){
         + sect('Any date · follows the main calendar')
         + '<button onclick="xkdgChartsPick(\'qmdjtool\')" style="' + BTN + 'background:#4527a0;">🎲 QMDJ chart</button>'
         + '<button onclick="xkdgChartsPick(\'dlrtool\')" style="' + BTN + 'background:#5d4037;">🀄 Da Liu Ren chart</button>'
-        + sect('Current house')
-        + '<button onclick="xkdgChartsPick(\'liqi\')" style="' + BTN + 'background:#6a1b9a;">\ud83c\udfe0 QMDJ Li Qi \u00b7 Flying Pan</button>'
-        + sect('On the luopan · current house');
+        + sect('On the luopan · current house')
+        + '<button onclick="xkdgChartsPick(\'liqi\')" style="' + BTN + 'background:#8a6a1f;">\ud83c\udfe0 QMDJ Li Qi \u00b7 Flying Pan</button>';
   try {
     FS_LUOPAN_MENU.forEach(function (it){
       if (!it.chart) return;
