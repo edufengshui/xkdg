@@ -584,7 +584,18 @@
       'using the "rotating chart", and never present rotating-chart results for an FS-stimulator question. If a star has ' +
       'no Qimen configuration, explain the REAL reason from the tool result (e.g. the star sits in the CENTRE palace this ' +
       'period, so it has no outer palace to activate; or no favourable Door / San Qi reached its palace this date) - do ' +
-      'NOT say "rotating chart".\n'
+      'NOT say "rotating chart".\n' +
+      // Session 32 (Edu): the assistant claimed search_travel used the DAY chart. It does not.
+      '- HOUR charts vs DAY charts (CRITICAL): EVERY tool except find_qimen_days works on QMDJ HOUR charts ' +
+      '(search_travel, plan_travel and all plan_* trips, analyze_direction, find_purpose_direction, find_water_hours, ' +
+      'find_water_activation*, find_qimen_hours_for_star, find_divination_chart). The QMDJ DAY chart (one Ju per decade of ' +
+      'days, day pillar as the "hour") is used ONLY by find_qimen_days. If the user asks whether you use the day chart, ' +
+      'say plainly that the trip / water tools use HOUR charts and offer find_qimen_days. Call find_qimen_days whenever ' +
+      'the user mentions the day chart ("carta del giorno", "day chart", "giorno positivo per andare verso X", ' +
+      '"quale giorno per cambiare l\'acqua a S") - use="travel" (rotating) for going towards a direction, use="water" ' +
+      '(flying) for Feng Shui actions in a sector. Best practice for a trip: first find_qimen_days(use=travel) to pick ' +
+      'the DAY, then the hours it lists (or search_travel on that date) to pick the HOUR - day and hour positive in ' +
+      'the same palace is the strongest combination. Never invent day-chart results.\n'
     ],
     ["fengshui",
       '- IMPRISONED STAR (\u5165\u56da): when the CURRENT-PERIOD water star (now ws9) sits in the CENTRE of the flying-star ' +
