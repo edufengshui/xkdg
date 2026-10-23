@@ -211,7 +211,28 @@
     return -1;
   }
 
-  function getDunJuForDate(year, month, day, bjInstant){
+  // Session 32 (Edu, ABSOLUTE RULE): the Jie Qi is ALWAYS read at the hour's own instant in
+  // the TRUE SOLAR TIME of the GPS position - never by the Beijing calendar day. When a caller
+  // gives only the date and the hour branch, the instant is rebuilt here: the centre of that
+  // double-hour in local true solar time (子 = the early Zi of the date, 00:30), turned into
+  // the Beijing-naive instant lunar-javascript compares its terms against.
+  function _bjFromTST(year, month, day, hourBranch){
+    try {
+      if(typeof XKDGSolarTime === 'undefined' || !XKDGSolarTime.currentLonTz) return null;
+      var br = BR_H2P[hourBranch] || hourBranch;
+      var bi = BR_SEQ.indexOf(br);
+      if(bi < 0) return null;
+      var lt = XKDGSolarTime.currentLonTz();
+      if(!lt || !isFinite(lt.lonDeg)) return null;
+      var h = bi === 0 ? 0 : bi * 2, mi = bi === 0 ? 30 : 0;
+      var wc = XKDGSolarTime.wallClockFromTST(year, month, day, h, mi, lt.lonDeg, lt.tzOffsetMin);
+      var p = XKDGSolarTime.pillarsFromCivil(wc.y, wc.mo, wc.d, wc.h, wc.mi, 0, lt.lonDeg, lt.tzOffsetMin);
+      return (p && p.meta && p.meta.beijing) ? p.meta.beijing : null;
+    } catch(e){ return null; }
+  }
+
+  function getDunJuForDate(year, month, day, bjInstant, hourBranch){
+    if(!(bjInstant && bjInstant.y) && hourBranch != null) bjInstant = _bjFromTST(year, month, day, hourBranch);
     var solar = Solar.fromYmd(year, month, day);
     var lunar = solar.getLunar();
     var bazi  = lunar.getEightChar();
@@ -456,6 +477,7 @@
       var hourPillars = getHourPillarsForDay(info.dayStem);
       for(var h=0; h<hourPillars.length; h++){
         var hp = hourPillars[h];
+        info = getDunJuForDate(Y, M, D, null, hp.branch) || info;   // session 32: Jie Qi at the hour, GPS true solar time
         var chart = _charts[info.dun][info.ju][hp.idx60];
         if(!chart) continue;
         var hits = extractHits(chart, targetPalace);
@@ -570,6 +592,7 @@
       var hourPillars = getHourPillarsForDay(info.dayStem);
       for(var h=0; h<hourPillars.length; h++){
         var hp = hourPillars[h];
+        info = getDunJuForDate(Y, M, D, null, hp.branch) || info;   // session 32: Jie Qi at the hour, GPS true solar time
         for(var pi=0; pi<palaces.length; pi++){
           var pal = palaces[pi];
           var res = checkRotatingHourAtPalace(Y, M, D, hp.stem, hp.branch, pal, { purpose: purpose });
@@ -622,6 +645,7 @@
       var hourPillars = getHourPillarsForDay(info.dayStem);
       for(var h=0; h<hourPillars.length; h++){
         var hp = hourPillars[h];
+        info = getDunJuForDate(Y, M, D, null, hp.branch) || info;   // session 32: Jie Qi at the hour, GPS true solar time
         for(var pi=0; pi<palaces.length; pi++){
           var pal = palaces[pi];
           var res = checkHourAtPalace(Y, M, D, hp.stem, hp.branch, pal, { purpose: purpose });
@@ -1105,7 +1129,7 @@
     if(STEM_H2P[hourStem])   hourStem   = STEM_H2P[hourStem];
     if(BR_H2P[hourBranch])   hourBranch = BR_H2P[hourBranch];
 
-    var info = getDunJuForDate(year, month, day);
+    var info = getDunJuForDate(year, month, day, null, hourBranch);
     if(!info) return null;
 
     var idx60 = jiaZiIdx(hourStem, hourBranch);
@@ -1274,7 +1298,7 @@
   function getHourChart(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun){
     var charts = _charts || EMBEDDED_CHARTS;
     if(!charts) return null;
-    var info = forceJuDun || getDunJuForDate(year, month, day, bjInstant);
+    var info = forceJuDun || getDunJuForDate(year, month, day, bjInstant, hourBranch);
     if(!info) return null;
     var hs = hourStem, hb = hourBranch;
     if(STEM_H2P[hs]) hs = STEM_H2P[hs];
@@ -1368,7 +1392,7 @@
   // without a date: there the Ju is the current Flying-Stars period and the hour comes from
   // the house facing, so there is no day to look up. Omit it and nothing changes.
   function getRotatingHourChart(year, month, day, hourStem, hourBranch, bjInstant, forceJuDun){
-    var info = forceJuDun || getDunJuForDate(year, month, day, bjInstant);
+    var info = forceJuDun || getDunJuForDate(year, month, day, bjInstant, hourBranch);
     if(!info) return null;
     var hs = STEM_H2P[hourStem] || hourStem;
     var hb = BR_H2P[hourBranch] || hourBranch;
