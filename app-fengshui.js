@@ -771,17 +771,17 @@ function fsRenderCardView(){
 // the hamburger.
 var FS_LUOPAN_MENU = [
   { v: 'orient',   btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
-  { v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
-  { v: 'card',     btn: 'fs-cardview-toggle', label: function (b) {
+  { chart: true, v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
+  { chart: true, v: 'card',     btn: 'fs-cardview-toggle', label: function (b) {
       var on = b && b.textContent.indexOf('Luopan') >= 0;
       return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
-  { v: 'qmdj',     btn: null, label: function () {
+  { chart: true, v: 'qmdj',     btn: null, label: function () {
       return (window.FlyingStarsQimen && window.FlyingStarsQimen.isAnnualOn && window.FlyingStarsQimen.isAnnualOn())
         ? '\u2733\ufe0f QMDJ annual chart \u00b7 ON' : '\u2733\ufe0f QMDJ annual chart'; } },
-  { v: 'qmdjring', btn: null, label: function () {
+  { chart: true, v: 'qmdjring', btn: null, label: function () {
       return (window.QMDJAnnual && window.QMDJAnnual.isRingOn && window.QMDJAnnual.isRingOn())
         ? '\u2733\ufe0f QMDJ annual chart \u00b7 ring ON' : '\u2733\ufe0f QMDJ annual chart \u00b7 ring'; } },
-  { v: 'dlr',      btn: 'fs-dlr-toggle', label: function (b) {
+  { chart: true, v: 'dlr',      btn: 'fs-dlr-toggle', label: function (b) {
       var on = b && /\bON\b/.test(b.textContent);
       return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } }
   // Session 32 (Edu): 'DLR any date' moved to the main CHARTS button.
@@ -797,6 +797,7 @@ function fsLuopanMenuSync(){
     // still shows every entry in full when it opens.
     var html = '<option value="">\u2630</option>';
     FS_LUOPAN_MENU.forEach(function (it) {
+      if (it.chart) return;                     // session 32: charts live in the CHARTS tab
       var b = it.btn ? document.getElementById(it.btn) : null;
       if (it.btn && !b) return;                 // its module has not created it yet
       html += '<option value="' + it.v + '" style="text-align:left;font-size:12px;">'
@@ -3769,11 +3770,58 @@ function _qmdjBaziBox(p){
   el.innerHTML = h + '</div>';
 }
 
-// Session 32 (Edu): the CHARTS button next to FENG SHUI opens a small row with the two
-// "any date" chart tools (QMDJ and Da Liu Ren), which used to live on the luopan.
+// Session 32 (Edu): the CHARTS button next to FENG SHUI opens a tab with every chart:
+// the two "any date" tools (QMDJ, Da Liu Ren) and the luopan charts that used to be in
+// the luopan's ☰ menu. A luopan chart switches to FENG SHUI first, then acts through
+// fsLuopanMenuAct, exactly as the menu did.
 function xkdgChartsToggle(){
-  var row = document.getElementById('charts-row');
-  if (row) row.style.display = (row.style.display === 'none') ? 'flex' : 'none';
+  var ov = document.getElementById('charts-overlay');
+  if (!ov){
+    ov = document.createElement('div');
+    ov.id = 'charts-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,8,30,.55);display:flex;'
+      + 'align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
+    ov.addEventListener('click', function (e){ if (e.target === ov) ov.style.display = 'none'; });
+    document.body.appendChild(ov);
+  }
+  var BTN = 'display:block;width:100%;text-align:left;border:none;border-radius:8px;padding:12px 14px;'
+          + 'margin-bottom:8px;font-size:15px;font-weight:bold;color:#fff;cursor:pointer;';
+  function sect(t){ return '<div style="font:600 11px system-ui;color:#888;text-transform:uppercase;'
+                         + 'letter-spacing:1px;margin:12px 0 6px;">' + t + '</div>'; }
+  var h = '<div style="background:#fff;border-radius:12px;max-width:440px;width:100%;padding:16px;'
+        + 'box-shadow:0 12px 44px rgba(0,0,0,.32);">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        + '<div style="font-size:17px;font-weight:bold;color:#5e35b1;">📊 Charts</div>'
+        + '<button onclick="document.getElementById(\'charts-overlay\').style.display=\'none\'" '
+        + 'style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button></div>'
+        + sect('Any date · follows the main calendar')
+        + '<button onclick="xkdgChartsPick(\'qmdjtool\')" style="' + BTN + 'background:#4527a0;">🎲 QMDJ chart</button>'
+        + '<button onclick="xkdgChartsPick(\'dlrtool\')" style="' + BTN + 'background:#5d4037;">🀄 Da Liu Ren chart</button>'
+        + sect('On the luopan · current house');
+  try {
+    FS_LUOPAN_MENU.forEach(function (it){
+      if (!it.chart) return;
+      var b = it.btn ? document.getElementById(it.btn) : null;
+      h += '<button onclick="xkdgChartsPick(\'' + it.v + '\')" style="' + BTN + 'background:#8a6a1f;">'
+         + it.label(b) + '</button>';
+    });
+  } catch (e) {}
+  ov.innerHTML = h + '</div>';
+  ov.style.display = 'flex';
+}
+function xkdgChartsPick(v){
+  var ov = document.getElementById('charts-overlay'); if (ov) ov.style.display = 'none';
+  if (v === 'qmdjtool') { xkdgOpenQmdjChart(); return; }
+  if (v === 'dlrtool')  { xkdgOpenDlrChart();  return; }
+  try {
+    var fv = document.getElementById('fengshui-view');
+    if (!fv || fv.style.display === 'none') { if (typeof setMode === 'function') setMode('fengshui'); }
+  } catch (e) {}
+  setTimeout(function (){
+    try { if (typeof _fsRestoreLuopanView === 'function') _fsRestoreLuopanView(); } catch (e) {}
+    try { fsLuopanMenuAct(v); } catch (e) {}
+    try { var w = document.getElementById('fs-canvas-wrap'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+  }, 150);
 }
 function xkdgOpenQmdjChart(){
   try { fsLuopanMenuAct('qmdjtool'); } catch (e) { try { openQmdjChartPanel(); } catch (e2) {} }
