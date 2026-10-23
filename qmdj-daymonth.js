@@ -125,6 +125,9 @@
         +       '<input type="date" id="dm-date" onchange="xkdgDMShow()" style="padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;"></div>'
         +     '<div style="font-size:12px;"><label style="cursor:pointer;margin-right:8px;"><input type="radio" name="dm-kind" value="day" onchange="xkdgDMKind(this.value)"> Day 日</label>'
         +       '<label style="cursor:pointer;"><input type="radio" name="dm-kind" value="month" onchange="xkdgDMKind(this.value)"> Month 月</label></div>'
+        // Session 32 (Edu): both kinds can be drawn Flying or Rotating; same Jú, same pillar.
+        +     '<div style="font-size:12px;"><label style="cursor:pointer;margin-right:8px;"><input type="radio" name="dm-mode" value="rotating" checked onchange="xkdgDMShow()"> Rotating 轉盤</label>'
+        +       '<label style="cursor:pointer;"><input type="radio" name="dm-mode" value="flying" onchange="xkdgDMShow()"> Flying 飛盤</label></div>'
         +   '</div>'
         +   '<div id="dm-info" style="font-size:12px;color:#333;margin-bottom:8px;line-height:1.5;"></div>'
         +   '<div id="dm-chart"></div>'
@@ -196,8 +199,11 @@
       st.innerHTML = R.steps.map(function (s) { return s.date + ' · ' + s.what + ' → <b>' + s.ju + '</b>'; }).join('<br>');
     }
     try {
-      html = window.showQimenChart('2000-01-01', g, z, null, { mode: 'rotating', returnHtml: true, forceJuDun: { ju: ju, dun: dun } }) || '';
-      html = html.replace(/2000-01-01\s*·\s*/g, '').replace('Hour Rotating Chart', (_kind === 'month' ? 'Month' : 'Day') + ' Rotating Chart');
+      var mEl = document.querySelector('input[name="dm-mode"]:checked');
+      var rot = !mEl || mEl.value !== 'flying';
+      html = window.showQimenChart('2000-01-01', g, z, null, { mode: rot ? 'rotating' : undefined, returnHtml: true, forceJuDun: { ju: ju, dun: dun } }) || '';
+      var lbl = (_kind === 'month' ? 'Month' : 'Day');
+      html = html.replace(/2000-01-01\s*·\s*/g, '').replace('Hour Rotating Chart', lbl + ' Rotating Chart').replace('Hour Flying Chart', lbl + ' Flying Chart');
     } catch (e) { html = ''; }
     box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>';
   }
