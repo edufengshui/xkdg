@@ -463,11 +463,7 @@ function buildFengShuiView(){
           #fs-canvas-wrap > #fs-cardview-toggle,
           #fs-canvas-wrap > #fs-dlr-toggle { display: none !important; }
         </style>
-        <button id="fs-qimen-dice" onclick="fsLuopanMenuAct('qmdjtool')"
-          title="QMDJ chart for any date"
-          style="position:absolute;top:8px;left:8px;z-index:32;background:#fff;color:#4527a0;
-                 border:1px solid #4527a0;border-radius:6px;padding:8px 6px;font-size:15px;
-                 font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;">\ud83c\udfb2</button>
+        <!-- Session 32 (Edu): the dice moved to the main CHARTS button. -->
         <button id="fs-luopan-size" onclick="fsToggleLuopanSize()"
           title="Full-size luopan / compact"
           style="position:absolute;bottom:8px;right:8px;z-index:31;background:#fff;
@@ -787,9 +783,8 @@ var FS_LUOPAN_MENU = [
         ? '\u2733\ufe0f QMDJ annual chart \u00b7 ring ON' : '\u2733\ufe0f QMDJ annual chart \u00b7 ring'; } },
   { v: 'dlr',      btn: 'fs-dlr-toggle', label: function (b) {
       var on = b && /\bON\b/.test(b.textContent);
-      return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } },
-  { v: '_sep',     btn: null, label: function () { return '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500'; } },
-  { v: 'dlrtool',  btn: null, label: function () { return '\ud83c\udc04 DLR any date'; } }
+      return '\ud83c\udc04 DLR annual chart' + (on ? ' ON' : ''); } }
+  // Session 32 (Edu): 'DLR any date' moved to the main CHARTS button.
 ];
 
 // Rebuilds the entries so each one shows the CURRENT state of its button.
@@ -3699,6 +3694,7 @@ function qmdjChartShow(){
   var rotating = !!(modeEl && modeEl.value === 'rotating');
   // Manual entry (session 26): the stated J\u00fa and hour win over the date entirely.
   var _man = (typeof _qmdjManualPick === 'function') ? _qmdjManualPick() : null;
+  _qmdjBaziBox(null);
   if (_man) {
     var _h = window.showQimenChart('2000-01-01', _man.hGan, _man.hZhi, null,
       { mode: (rotating ? 'rotating' : undefined), returnHtml: true,
@@ -3736,6 +3732,7 @@ function qmdjChartShow(){
           _iso = _hp.tst.y + '-' + String(_hp.tst.mo).padStart(2, '0') + '-' + String(_hp.tst.d).padStart(2, '0');
           _g = _hp.gan; _z = _hp.zhi;      // stems from the same TST computation (kept consistent)
           _opts.bjInstant = _hp.bj;
+          try { _qmdjBaziBox(XKDGSolarTime.pillarsFromCivil(+_dp[0], +_dp[1], +_dp[2], _hCiv, 30, 0, _lt.lonDeg, _lt.tzOffsetMin)); } catch (e3) {}
         }
       }
     } catch (e2) { /* no TST/longitude available → fall back to selector values */ }
@@ -3743,6 +3740,57 @@ function qmdjChartShow(){
   }
   catch(e){ html = ''; }
   box.innerHTML = html || '<div style="color:#c0392b;font-size:12px;">Cannot load chart for ' + dEl.value + ' ' + hGan + hZhi + '.</div>';
+}
+// Session 32 (Edu): the Bazi of the chart's moment, small, top-right of the QMDJ panel.
+// Same four pillars as the app (true solar time, year/month at the Jie Qi instant).
+// Empty in manual mode, where there is no real date.
+function _qmdjBaziBox(p){
+  var el = document.getElementById('qmdj-tool-bazi');
+  if (!el) return;
+  if (!p || !p.hour) { el.innerHTML = ''; return; }
+  var EL = { '甲':'w','乙':'w','寅':'w','卯':'w',
+             '丙':'f','丁':'f','巳':'f','午':'f',
+             '戊':'e','己':'e','辰':'e','戌':'e','丑':'e','未':'e',
+             '庚':'m','辛':'m','申':'m','酉':'m',
+             '壬':'a','癸':'a','亥':'a','子':'a' };
+  var COL = { w:'#2e7d32', f:'#c62828', e:'#bf6c00', m:'#424242', a:'#1565c0' };
+  function c(ch){ return COL[EL[ch]] || '#333'; }
+  var cols = [['時', p.hour], ['日', p.day], ['月', p.month], ['年', p.year]];
+  var h = '<div title="Bazi of this moment (true solar time)" style="display:flex;gap:2px;'
+        + 'border:1px solid #d1c4e9;border-radius:6px;padding:2px 4px;background:#faf8ff;">';
+  cols.forEach(function (x, i){
+    var gz = x[1] || '';
+    h += '<div style="text-align:center;min-width:20px;' + (i === 1 ? 'background:#ede7f6;border-radius:4px;' : '') + '">'
+      +  '<div style="font:9px system-ui;color:#999;line-height:1.2;">' + x[0] + '</div>'
+      +  '<div style="font:700 15px serif;line-height:1.1;color:' + c(gz.charAt(0)) + ';">' + gz.charAt(0) + '</div>'
+      +  '<div style="font:700 15px serif;line-height:1.1;color:' + c(gz.charAt(1)) + ';">' + gz.charAt(1) + '</div>'
+      +  '</div>';
+  });
+  el.innerHTML = h + '</div>';
+}
+
+// Session 32 (Edu): the CHARTS button next to FENG SHUI opens a small row with the two
+// "any date" chart tools (QMDJ and Da Liu Ren), which used to live on the luopan.
+function xkdgChartsToggle(){
+  var row = document.getElementById('charts-row');
+  if (row) row.style.display = (row.style.display === 'none') ? 'flex' : 'none';
+}
+function xkdgOpenQmdjChart(){
+  try { fsLuopanMenuAct('qmdjtool'); } catch (e) { try { openQmdjChartPanel(); } catch (e2) {} }
+}
+function xkdgOpenDlrChart(){
+  try {
+    openDlrChartPanel();
+    // Follow the main calendar, like the QMDJ chart does.
+    var mainD = (document.getElementById('date') || {}).value || '';
+    var mainT = (document.getElementById('time') || {}).value || '';
+    var dEl = document.getElementById('dlr-tool-date');
+    if (dEl && /^\d{4}-\d{2}-\d{2}$/.test(mainD)) dEl.value = mainD;
+    var hm = /^(\d{1,2}):(\d{2})$/.exec(mainT);
+    var hs = document.getElementById('dlr-tool-hour');
+    if (hs && hm) hs.value = String(Math.floor(((+hm[1] + 1) % 24) / 2));
+    dlrChartShow();
+  } catch (e) {}
 }
 // ── DLR chart for ANY date (session 26, Edu) ─────────────────────────────
 // Same shape as the \uD83C\uDFB2 QMDJ chart tool: a floating panel with its own
@@ -4055,6 +4103,7 @@ function openQmdjChartPanel(){
       '<div style="background:#fff;border-radius:12px;max-width:780px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);">'
     +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
     +     '<div style="font-size:16px;font-weight:bold;color:#5e35b1;">\ud83c\udfb2 QMDJ Chart</div>'
+    +     '<div id="qmdj-tool-bazi" style="margin-left:auto;margin-right:12px;"></div>'
     +     '<button onclick="document.getElementById(\'qmdj-tool-overlay\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">\u2715</button>'
     +   '</div>'
     +   '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">'
