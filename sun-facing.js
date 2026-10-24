@@ -128,8 +128,11 @@
   function saveHouseFacing(key, idx, deg) {
     var R = houseRef(key, idx); if (!R) return false;
     deg = Math.round(norm(deg) * 10) / 10;
+    var oldF = R.facing;
     R.h.houseFacing = deg;
     (R.h.floors || []).forEach(function (fl, i) { if (R.h.sameFacing || fl === R.f) fl.facing = deg; });
+    // walls follow the facing: doors / items / bed / desk turn with it (app-fengshui.js)
+    try { if (typeof fsAlignFloorsToFacing === 'function') fsAlignFloorsToFacing(R.h, R.h.sameFacing ? R.h.floors : [R.f], oldF, deg); } catch (e) {}
     _fsHousesSave(R.all);
     try { if (typeof fsRenderHouseProfiles === 'function') fsRenderHouseProfiles(); } catch (e) {}
     return deg;
