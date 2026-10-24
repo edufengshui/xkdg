@@ -117,7 +117,7 @@
     if (isHetuPair(a.yun, b.yun)) out.push('Hetu yun');
     if (facingWater ? a.yun + b.yun === 10 : [5, 10, 15].indexOf(a.yun + b.yun) >= 0) out.push('Adding yun ' + (a.yun + b.yun));
     if (isHetuPair(a.qi, b.qi)) out.push('Hetu qi');
-    if ([5, 10, 15].indexOf(a.qi + b.qi) >= 0) out.push('Adding qi ' + (a.qi + b.qi));
+    if (facingWater ? a.qi + b.qi === 10 : [5, 10, 15].indexOf(a.qi + b.qi) >= 0) out.push('Adding qi ' + (a.qi + b.qi));   // FS pairs: only 10
     var fb = fams(h2); fams(h1).forEach(function (f) { if (fb.indexOf(f) >= 0) out.push('Family ' + f); });
     return out;
   }
@@ -147,7 +147,7 @@
       var famF = fams(fs.hexNum).filter(function (f) { return fams(ws.hexNum).indexOf(f) >= 0; });
       var valid = yun || famF.length > 0;
       var per = people.map(function (p) {
-        var ly = links(ws.hexNum, p.yearHex), ld = p.dayHex ? links(ws.hexNum, p.dayHex) : [];
+        var ly = links(ws.hexNum, p.yearHex, true), ld = p.dayHex ? links(ws.hexNum, p.dayHex, true) : [];
         return { name: p.name, year: ly, day: ld };
       });
       var inFam = function (p, k, f) { return p[k + 'Hex'] && fams(p[k + 'Hex']).indexOf(f) >= 0; };

@@ -88,15 +88,17 @@ function getHexFamilies(hexNum){
 // Direct check (no setting prerequisite). Used for hex↔hex pairings
 // like facing↔water and facing↔person, where neither side has a
 // 4-pillar context.
-function hexConnectionLabels(srcHex, srcQi, srcYun, dstHex, dstQi, dstYun){
+function hexConnectionLabels(srcHex, srcQi, srcYun, dstHex, dstQi, dstYun, opts){
   const out = [];
+  // Feng Shui (opts.fs): Adding ONLY to 10 (Edu, session 32). 5/15 are for dates only.
+  const sums = (opts && opts.fs) ? [10] : [5,10,15];
   // 1. Hetu — qi or yun
   if (isHetuPair(srcQi, dstQi))   out.push('Hetu (qi)');
   if (isHetuPair(srcYun, dstYun)) out.push('Hetu (yun)');
   // 2. Adding — qi or yun sums to 5, 10, or 15
   const qSum = srcQi + dstQi, yS = srcYun + dstYun;
-  if ([5,10,15].includes(qSum))  out.push('Adding qi='+qSum);
-  if ([5,10,15].includes(yS))    out.push('Adding yun='+yS);
+  if (sums.includes(qSum))  out.push('Adding qi='+qSum);
+  if (sums.includes(yS))    out.push('Adding yun='+yS);
   // 3. Pure Qi — same qi or same yun
   if (srcQi  === dstQi)  out.push('Pure Qi (qi)');
   if (srcYun === dstYun) out.push('Pure Qi (yun)');
@@ -165,7 +167,7 @@ function hexDateConnectionLabels(srcHex, srcQi, srcYun, dayHex, dayQi, dayYun, s
 // Yun-line Hetu/Adding only (no Pure Qi, no Inverse, no qi-line).
 // Adding: ONLY to 10 (Edu, session 31). Adding to 5 or 15 pairs two hexagrams of
 // the same kind (both Zheng Shen or both Ling Shen); only 10 guarantees one ZS and
-// one LS. (Dates and persons keep 5/10/15 — this rule is facing/water only.)
+// one LS. Session 32: every Feng Shui pair uses only 10; 5/15 only when one side is a date.
 // Family path: the water and the FACING share a family — "all in family"
 // (facing, water, persons) is the preferred option. The date may communicate
 // in any other way; it no longer gates the family path here.
@@ -187,7 +189,7 @@ function fsWaterScore(facing, water){
   let score = 0;
   if (isHetuPair(water.qi, facing.qi))         score += 1;
   const qSum = water.qi + facing.qi;
-  if ([5,10,15].includes(qSum))                score += 1;
+  if (qSum === 10)                             score += 1;   // FS: Adding only to 10
   // Yin/Yang mountain match (Di Pan facing ↔ Tien Pan water): heavy bonus
   // so YY-aligned pairs always rank above non-aligned ones.
   if (fsYinYangMatch(facing.startDeg + 2.8125, water.centerDeg)) score += 3;
@@ -1933,7 +1935,7 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
   if (wInput){
     const fSlot = facingSlot;
     const isLS = fsIsLingShen(wInput.yun);
-    const lbls = fSlot ? hexConnectionLabels(wInput.hexNum, wInput.qi, wInput.yun, fSlot.hexNum, fSlot.qi, fSlot.yun) : [];
+    const lbls = fSlot ? fsWaterMatchVsFacing(fSlot, wInput) : [];
     const dist = fSlot ? fsAngularDist(fSlot.startDeg + 2.8125, wInput.centerDeg) : null;
     const distOk = dist === null || dist <= FS_WATER_MAX_DEG;
     const valid = isLS && distOk && lbls.length > 0;
@@ -1989,7 +1991,7 @@ function fsRenderXkdgDetail(fInput, wInput, facingSlot){
       html += distOk
         ? '<span style="color:#2e7d32;">[±' + FS_WATER_MAX_DEG + '° ✓]</span>'
         : '<span style="color:#c0392b;">[exceeds ±' + FS_WATER_MAX_DEG + '° ✗]</span>';
-      var lbls = hexConnectionLabels(wInput.hexNum, wInput.qi, wInput.yun, facingSlot.hexNum, facingSlot.qi, facingSlot.yun);
+      var lbls = fsWaterMatchVsFacing(facingSlot, wInput);
       html += '<br>vs Door: ' + (lbls.length ? '<strong>' + lbls.join(' · ') + '</strong>' : '<span style="color:#888;">no connection</span>');
     }
     html += '</div>';
@@ -2048,7 +2050,7 @@ function fsFindDates(){
     if (dist > FS_WATER_MAX_DEG){
       alert('Water is '+dist.toFixed(1)+'° from facing — exceeds the ±'+FS_WATER_MAX_DEG+'° limit.'); return;
     }
-    const lbls = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, fSlot.hexNum, fSlot.qi, fSlot.yun);
+    const lbls = fsWaterMatchVsFacing(fSlot, wSlot);
     if (lbls.length === 0){
       alert('Water hex does not communicate with facing hex via any rule. Pick a compatible water.'); return;
     }
@@ -3171,7 +3173,12 @@ function fsDirectionCalc(){
   if(isNaN(lat2)||isNaN(lng2)){ alert('Enter Destination address and click Find.'); return; }
   try { _fsDirSave(); } catch(e){}
 
-  var deg = _fsBearing(lat1, lng1, lat2, lng2);
+  var degTrue = _fsBearing(lat1, lng1, lat2, lng2);
+  // Directions are MAGNETIC (Edu), like the Travel Planner and the compass:
+  // magnetic = true − declination (WMM, East positive), declination at the origin.
+  var decl = 0;
+  try { if (window.XKDGGeoMag && typeof window.XKDGGeoMag.declination === 'function') decl = window.XKDGGeoMag.declination(lat1, lng1, new Date()) || 0; } catch(e){ decl = 0; }
+  var deg = ((degTrue - decl) % 360 + 360) % 360;
   var dir = _fsBearingToDir8(deg);
   var arrow = _fsDirectionArrows[dir] || '→';
 
@@ -3185,7 +3192,7 @@ function fsDirectionCalc(){
   box.innerHTML = ''
     + '<div style="font-size:48px;line-height:1;">' + arrow + '</div>'
     + '<div style="font-size:28px;font-weight:bold;color:#1565c0;margin:6px 0;">Direction: ' + dir + ' (Palace ' + _fsActionPalace + ')</div>'
-    + '<div style="font-size:13px;color:#666;">Bearing: ' + deg.toFixed(1) + '°</div>'
+    + '<div style="font-size:13px;color:#666;">Magnetic bearing: ' + deg.toFixed(1) + '° <span style="color:#999;">(true ' + degTrue.toFixed(1) + '°, declination ' + (decl >= 0 ? '+' : '') + decl.toFixed(1) + '°)</span></div>'
     + '<div style="margin-top:10px;padding:8px;background:#e8f5e9;border-radius:6px;font-size:12px;color:#2e7d32;">'
     + '✓ <strong>Direction filter active!</strong> Purpose scans will now show ONLY hours with a matching Qimen configuration towards ' + dir + '.'
     + '</div>'
@@ -3843,6 +3850,18 @@ function xkdgChartsPick(v){
 function xkdgOpenQmdjChart(){
   try { fsLuopanMenuAct('qmdjtool'); } catch (e) { try { openQmdjChartPanel(); } catch (e2) {} }
 }
+// Civil wall clock → {iso, hb} of the TRUE SOLAR double-hour at the GPS position.
+function _dlrTstFromCivil(y, mo, d, h, mi){
+  try {
+    var ST = window.XKDGSolarTime; if (!ST) return null;
+    var lt = ST.currentLonTz(); var lon = isFinite(lt.lonDeg) ? lt.lonDeg : 12.1;
+    var hp = ST.hourPillarFromCivil(y, mo, d, h, mi, 0, lon, lt.tzOffsetMin);
+    if (!hp || !hp.tst) return null;
+    var t = hp.tst;
+    return { iso: t.y + '-' + String(t.mo).padStart(2, '0') + '-' + String(t.d).padStart(2, '0'),
+             hb: _DLR_BR.indexOf(hp.zhi) };
+  } catch (e) { return null; }
+}
 function xkdgOpenDlrChart(){
   try {
     openDlrChartPanel();
@@ -3854,6 +3873,11 @@ function xkdgOpenDlrChart(){
     var hm = /^(\d{1,2}):(\d{2})$/.exec(mainT);
     var hs = document.getElementById('dlr-tool-hour');
     if (hs && hm) hs.value = String(Math.floor(((+hm[1] + 1) % 24) / 2));
+    // Always TRUE SOLAR TIME of the GPS position (Edu): read the double-hour in TST.
+    if (hm && /^\d{4}-\d{2}-\d{2}$/.test(mainD)) {
+      var q = mainD.split('-'), ts = _dlrTstFromCivil(+q[0], +q[1], +q[2], +hm[1], +hm[2]);
+      if (ts && ts.hb >= 0) { if (dEl) dEl.value = ts.iso; if (hs) hs.value = String(ts.hb); }
+    }
     dlrChartShow();
   } catch (e) {}
 }
@@ -3897,6 +3921,11 @@ function openDlrChartPanel(){
   try {
     var now = new Date(), hb = Math.floor(((now.getHours() + 1) % 24) / 2);
     var hsel = document.getElementById('dlr-tool-hour'); if (hsel) hsel.value = String(hb);
+    var ts0 = _dlrTstFromCivil(now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes());
+    if (ts0 && ts0.hb >= 0) {
+      if (hsel) hsel.value = String(ts0.hb);
+      var del0 = document.getElementById('dlr-tool-date'); if (del0) del0.value = ts0.iso;
+    }
   } catch (e) {}
   dlrChartShow();
 }
@@ -3917,6 +3946,21 @@ function dlrChartShow(){
   var p = d.split('-');
   var hh = parseInt(_DLR_HOURS[hi].split(':')[0], 10), mm = 30;
   var local = new Date(+p[0], +p[1] - 1, +p[2], hh, mm, 0);   // 23:30 belongs to the date shown
+  // Date + hour menu are TRUE SOLAR TIME of the GPS position (Edu: always TST). Turn that
+  // moment into the real instant: pillars from TST, solar terms / month general at the instant.
+  var tstP = null, bjDate = null;
+  try {
+    var ST = window.XKDGSolarTime;
+    if (ST) {
+      var lt = ST.currentLonTz(), lonT = isFinite(lt.lonDeg) ? lt.lonDeg : 12.1;
+      var wc = ST.wallClockFromTST(+p[0], +p[1], +p[2], hh, mm, lonT, lt.tzOffsetMin);
+      tstP = ST.pillarsFromCivil(wc.y, wc.mo, wc.d, wc.h, wc.mi, 0, lonT, lt.tzOffsetMin);
+      if (tstP && tstP.meta && tstP.meta.beijing) {
+        var bj = tstP.meta.beijing;
+        bjDate = new Date(bj.y, bj.mo - 1, bj.d, bj.h, bj.mi, 0);
+      }
+    }
+  } catch (eT) { tstP = null; }
   var lon = 12.1;
   try {
     var lel = document.getElementById('longitude');
@@ -3928,7 +3972,8 @@ function dlrChartShow(){
   var r = null;
   try {
     var FSAPI = window.XKDGDaLiuRenFS;
-    var mg = (FSAPI && typeof FSAPI.monthGeneralFor === 'function') ? FSAPI.monthGeneralFor(local) : null;
+    var mg = (FSAPI && typeof FSAPI.monthGeneralFor === 'function')
+      ? (bjDate ? FSAPI.monthGeneralFor(bjDate, true) : FSAPI.monthGeneralFor(local)) : null;
     if (!mg) { r = { error: 'month general unavailable (daliuren-fengshui.js not loaded)' }; }
     else {
       var L = window.Lunar && window.Solar
@@ -3941,6 +3986,7 @@ function dlrChartShow(){
         var monGz = '', yeaGz = '';
         try { monGz = L.getMonthInGanZhiExact(); } catch (e4) { try { monGz = L.getMonthInGanZhi(); } catch (e5) { monGz = ''; } }
         try { yeaGz = L.getYearInGanZhiExact(); }  catch (e6) { try { yeaGz = L.getYearInGanZhi(); }  catch (e7) { yeaGz = ''; } }
+        if (tstP) { dayGz = tstP.day; hourGz = tstP.hour; monGz = tstP.month; yeaGz = tstP.year; }
         r = API.buildChartFromPrimitives(dayGz.charAt(0), dayGz.charAt(1),
                                          hourGz.charAt(1), mg, hourGz.charAt(0));
         if (r && !r.error) {
@@ -4463,7 +4509,7 @@ function fsSuggestWater(){
     if (!fsIsLingShen(s.yun)) continue;
     const distFromFacing = fsAngularDist(fCenter, s.centerDeg);
     if (distFromFacing > FS_WATER_MAX_DEG) continue;
-    const lbls = hexConnectionLabels(s.hexNum, s.qi, s.yun, fSlot.hexNum, fSlot.qi, fSlot.yun);
+    const lbls = fsWaterMatchVsFacing(fSlot, s);
     if (!lbls.length) continue;
     const wTri = fsMountainTrigramTien(s.centerDeg);
     const pyy  = fsPureYYStarInfo(fTri, wTri);
@@ -6075,7 +6121,7 @@ function fsScanDoorDates(personName, houseIdx, doorIdx){
     var facingCenter = fSlot.startDeg + 2.8125;
     var dist = fsAngularDist(facingCenter, wSlot.centerDeg);
     if (dist > FS_WATER_MAX_DEG) { alert('Water is ' + dist.toFixed(1) + '\u00b0 from facing \u2014 exceeds the \u00b1' + FS_WATER_MAX_DEG + '\u00b0 limit.'); return; }
-    var lbls = hexConnectionLabels(wSlot.hexNum, wSlot.qi, wSlot.yun, fSlot.hexNum, fSlot.qi, fSlot.yun);
+    var lbls = fsWaterMatchVsFacing(fSlot, wSlot);
     if (lbls.length === 0) { alert('Water hex does not communicate with the facing hex via any rule \u2014 pick a compatible water.'); return; }
   }
 
@@ -7210,7 +7256,7 @@ fsRenderPairsTable = function(){
       // XKDG Relations: split into element (red, top) and period (blue, bottom) sections
       const qiHetu  = _fsIsHetuPair(f.qi, w.qi);
       const qiSum   = f.qi + w.qi;
-      const qiAdd   = [5,10,15].includes(qiSum);
+      const qiAdd   = qiSum === 10;   // FS: Adding only to 10
       const yunLbls = Array.isArray(p.waterLabels) ? p.waterLabels : [];
       const elemRels = []; // red, top row
       const yunRels = [];  // blue, bottom row
@@ -9147,7 +9193,7 @@ function fsBedReadChart(){
 //  verdict + lucky dates, incl. the crossed rule, are SCAN / piece 3.)
 // ═══════════════════════════════════════════════════════════════
 function _fsHexConnect(qi1, yun1, qi2, yun2){
-  var add = function(a, b){ var s = a + b; return s === 5 || s === 10 || s === 15; };
+  var add = function(a, b){ return a + b === 10; };   // FS: Adding only to 10
   return {
     periodLink:  (typeof isHetuPair === 'function' && isHetuPair(yun1, yun2)) || add(yun1, yun2),
     elementLink: (typeof isHetuPair === 'function' && isHetuPair(qi1, qi2))  || add(qi1, qi2)
@@ -9159,9 +9205,11 @@ function _fsHexConnect(qi1, yun1, qi2, yun2){
 // Hetu (qi/yun), Adding (qi/yun), Pure Qi, Family, Inverse Hex. Returns
 // { connected, labels } where labels names the mechanism(s) for display.
 // (Replaces the reduced _fsHexConnect, which only saw Hetu/Adding on qi/yun.)
-function _fsCommunicate(hexA, qiA, yunA, hexB, qiB, yunB){
+// mode 'date' = one side is a date/hour → Adding 5/10/15; otherwise Feng Shui
+// (person ↔ placement) → Adding only to 10.
+function _fsCommunicate(hexA, qiA, yunA, hexB, qiB, yunB, mode){
   var labels = (typeof hexConnectionLabels === 'function')
-    ? hexConnectionLabels(hexA, qiA, yunA, hexB, qiB, yunB) : [];
+    ? hexConnectionLabels(hexA, qiA, yunA, hexB, qiB, yunB, { fs: mode !== 'date' }) : [];
   return { connected: labels.length > 0, labels: labels };
 }
 // Compact, human-readable rendering of communication labels.
@@ -9329,13 +9377,13 @@ function _fsIsoLocal(dt){
 // matter, only that it exists. Returns
 // { pass, dateLink, perPerson:[{who,label,ps,pd,ok}] }.
 function _fsEvalDateForPlacement(persons, slot, dayHex, dayQi, dayYun){
-  var dl = _fsCommunicate(slot.hexNum, slot.qi, slot.yun, dayHex, dayQi, dayYun);  // date ↔ placement
+  var dl = _fsCommunicate(slot.hexNum, slot.qi, slot.yun, dayHex, dayQi, dayYun, 'date');  // date ↔ placement
   var res = { pass: false, dateLink: dl, perPerson: [] };
   if (!dl.connected) return res;                                // date must communicate with the placement
   var allOk = (persons.length > 0);
   persons.forEach(function(p){
     var ps = _fsCommunicate(p.hex, p.qi, p.yun, slot.hexNum, slot.qi, slot.yun);   // person ↔ placement (fixed)
-    var pd = _fsCommunicate(p.hex, p.qi, p.yun, dayHex, dayQi, dayYun);            // person ↔ date (varies)
+    var pd = _fsCommunicate(p.hex, p.qi, p.yun, dayHex, dayQi, dayYun, 'date');            // person ↔ date (varies)
     var ok = ps.connected && pd.connected;                       // person must communicate with BOTH
     if (!ok) allOk = false;
     res.perPerson.push({ who: p.who, label: p.label, ps: ps, pd: pd, ok: ok });
@@ -9417,7 +9465,7 @@ function _fsLuckyLegend(kind){
   var who   = (kind === 'desk') ? 'the person who sits' : 'each loaded person (A and/or B)';
   return '<div style="background:#faf3ff;border:1px solid #e1bee7;border-radius:6px;padding:8px;font-size:11px;color:#4a148c;line-height:1.5;margin-bottom:8px;">'
     + '<b>What makes a date lucky?</b> What matters is that the hexagrams <b>communicate</b> — not how. '
-    + 'Two hexagrams communicate when they share <u>any</u> of these links: Hetu pair, Adding (sum 5/10/15), '
+    + 'Two hexagrams communicate when they share <u>any</u> of these links: Hetu pair, Adding (sum 10), '
     + 'Pure Qi (same number), same Family, or Inverse hexagram (運 = period numbers, 氣 = element numbers).<br>'
     + 'A day passes when the loop closes: ① the <b>date</b> communicates with the <b>' + place + '</b>; and for ' + who + ' — '
     + '② the person communicates with the <b>' + place + '</b> (the fixed link) <b>and</b> ③ the person communicates with the <b>date</b> (this is the part that changes day to day). '

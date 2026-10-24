@@ -153,7 +153,9 @@
 
   // ── month general 月將 (中氣-based) for a date ──
   var ROMAN2CN = { DA_XUE:'大雪', DONG_ZHI:'冬至', XIAO_HAN:'小寒', DA_HAN:'大寒', LI_CHUN:'立春', YU_SHUI:'雨水', JING_ZHE:'惊蛰' };
-  function monthGeneralFor(dt){
+  // exact=true: dt is the Beijing-naive INSTANT (from XKDGSolarTime) → the term is decided
+  // at that instant (TST-correct), not at noon of the date.
+  function monthGeneralFor(dt, exact){
     var L = LUN(), E = ENG(); if (!L || !E) return null;
     var ZQ = E.MONTH_GENERAL_BY_ZHONGQI;
     var y = dt.getFullYear();
@@ -166,7 +168,7 @@
       }
     });
     events.sort(function (a, b) { return a.ts - b.ts; });
-    var refTs = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 12, 0).getTime();
+    var refTs = exact ? dt.getTime() : new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 12, 0).getTime();
     var cur = null;
     for (var i = 0; i < events.length; i++) { if (events[i].ts <= refTs) cur = events[i]; else break; }
     // step back to the latest 中氣 (a name present in ZQ)
