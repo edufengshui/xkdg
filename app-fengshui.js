@@ -9802,6 +9802,7 @@ function fsDrawSectionLuopan(){
     ctx.clearRect(0, 0, W, H);
 
     var PAD = 100, IMG_W = 900, IMG_H = 930;
+    var PADX = PAD, PADY = PAD;   // were undefined here → ReferenceError → blank wheel in Bed/Desk
     var cx = PAD + 450, cy = PAD + 464;
     var outerR = 447, rHexOut = 360, rHexIn = 295;
 
