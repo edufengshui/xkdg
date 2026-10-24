@@ -5045,6 +5045,51 @@ function fsToggleSameFacing(personName, houseIdx, checked){
     fsRenderHouseProfiles();
   } catch(e){ console.warn('fsToggleSameFacing', e); }
 }
+// ── Walls follow the facing (Edu, s.32): when the house facing changes, everything that
+//    stands on a wall — doors, items, bed sitting, desk facing — turns with it (facing,
+//    ±90, 180). An element within 10° of a wall direction of the OLD facing is snapped to
+//    the same wall of the NEW facing. Saved snapshots get the new house facing too.
+//    Water / fountain degrees are target positions (chosen hexagrams): left unchanged.
+function _fsSnapWall(deg, oldF, newF){
+  if (deg == null || deg === '' || !isFinite(+deg) || oldF == null || newF == null) return null;
+  for (var k = 0; k < 4; k++){
+    var w = (+oldF + k * 90) % 360, d = Math.abs((((+deg - w) % 360) + 540) % 360 - 180);
+    if (d <= 10) return Math.round(((+newF + k * 90) % 360) * 10) / 10;
+  }
+  return null;
+}
+function fsAlignFloorsToFacing(h, floors, oldF, newF){
+  var n = 0;
+  if (newF == null || !isFinite(+newF)) return 0;
+  if (oldF == null || !isFinite(+oldF)) oldF = newF;
+  (floors || []).forEach(function(f){
+    if (!f) return;
+    (f.doors || []).forEach(function(d){ var v = _fsSnapWall(d.facing, oldF, newF); if (v != null && v !== +d.facing){ d.facing = v; n++; } });
+    var st = f.settings || {};
+    ['water', 'bed', 'desk'].forEach(function(z){
+      (st[z] || []).forEach(function(s){
+        if (s.houseFacing != null && s.houseFacing !== '' && +s.houseFacing !== +newF){ s.houseFacing = +newF; n++; }
+        ['bedSitting', 'deskFacing', 'doorFacing'].forEach(function(k){
+          var v = _fsSnapWall(s[k], oldF, newF); if (v != null && v !== +s[k]){ s[k] = v; n++; }
+        });
+      });
+    });
+  });
+  return n;
+}
+// ☰ Floor → "📐 Align to the walls": snap doors / items / bed / desk of this house to the
+// current facing (fixes data saved before the facing was corrected).
+function fsAlignHouseToWalls(personName, houseIdx){
+  var all = _fsHousesLoad(), h = all[personName] && all[personName][houseIdx]; if (!h) return;
+  var floors = h.sameFacing ? h.floors : [_fsActiveFloor(h)];
+  var F = _fsFloorFacing(h, _fsActiveFloor(h));
+  if (F == null){ alert('Set the facing first.'); return; }
+  var n = fsAlignFloorsToFacing(h, floors, F, F);
+  _fsHousesSave(all);
+  if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
+  fsRenderHouseProfiles();
+  alert(n ? ('Aligned ' + n + ' value(s) to the walls of facing ' + F + '° (±90 / 180).') : 'Everything is already on the walls of facing ' + F + '°.');
+}
 function fsEditFloorFacing(personName, houseIdx){
   try {
     var all = _fsHousesLoad();
@@ -5057,17 +5102,22 @@ function fsEditFloorFacing(personName, houseIdx){
       if (hfac === null) return;
       var hper = prompt('Period (1-9) — applies to all floors:', h.period != null ? h.period : '');
       if (hper === null) return;
+      var _oldH = h.houseFacing;
       h.houseFacing = (String(hfac).trim() === '') ? null : parseFloat(hfac);
       h.period = (String(hper).trim() === '') ? null : parseInt(hper, 10);
+      var _nA = fsAlignFloorsToFacing(h, h.floors, _oldH, h.houseFacing);
     } else {
       var fac = prompt('Facing (\u00b0) for floor "' + (f.label || '') + '":', f.facing != null ? f.facing : '');
       if (fac === null) return;
       var per = prompt('Period (1-9) for floor "' + (f.label || '') + '":', f.period != null ? f.period : '');
       if (per === null) return;
+      var _oldF = f.facing;
       f.facing = (String(fac).trim() === '') ? null : parseFloat(fac);
       f.period = (String(per).trim() === '') ? null : parseInt(per, 10);
+      var _nA = fsAlignFloorsToFacing(h, [f], _oldF, f.facing);
     }
     _fsHousesSave(all);
+    if (_nA) setTimeout(function(){ alert('Doors, items, bed and desk turned with the new facing (' + _nA + ' value(s) updated).'); }, 50);
     if (_fsActiveHouseGet(personName) === houseIdx) fsLoadHouse(personName, houseIdx);
     fsRenderHouseProfiles();
   } catch(e){ console.warn('fsEditFloorFacing', e); }
@@ -5472,6 +5522,7 @@ function fsRenderHouseProfiles(){
     ]), _addrBody);
     html += _S('🏢 Floor', '#2e7d32', _M('fs-hm-floor', [
       { label: '✎ Facing / period', act: 'fsEditFloorFacing(' + _pq + ')', help: 'floor_facing' },
+      { label: '📐 Align to the walls', act: 'fsAlignHouseToWalls(' + _pq + ')', help: 'align_walls' },
       { label: '✏ Rename floor', act: 'fsRenameFloor(' + _pq + ')', help: 'rename_floor' },
       { label: '+ Add floor', act: 'fsAddFloor(' + _pq + ')', help: 'add_floor' },
       h.floors.length > 1 ? { label: '🗑 Delete floor', act: 'fsDeleteFloor(' + _pq + ')', help: 'delete_floor', danger: true } : null
@@ -5814,11 +5865,13 @@ function fsSaveHouse(){
   // Write the chart (facing / period / main door) into the chosen floor.
   var facingNum = hfVal  ? parseFloat(hfVal) : null;
   var periodNum = perVal ? parseInt(perVal, 10) : null;
+  var _oldFac = _fsFloorFacing(h, floor);
   if (h.sameFacing){
     if (facingNum != null) h.houseFacing = facingNum;     // shared across floors
     if (periodNum != null) h.period = periodNum;
   }
   if (facingNum != null) floor.facing = facingNum;
+  if (facingNum != null) fsAlignFloorsToFacing(h, h.sameFacing ? h.floors : [floor], _oldFac, facingNum);
   if (periodNum != null) floor.period = periodNum;
   if (facingVal){
     var door = { name: 'Main door', facing: parseFloat(facingVal), water: (xkdgWVal ? parseFloat(xkdgWVal) : null) };
