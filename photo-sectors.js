@@ -116,6 +116,7 @@
     var a = qy(h1), b = qy(h2), out = []; if (!a || !b) return out;
     if (isHetuPair(a.yun, b.yun)) out.push('Hetu yun');
     if (facingWater ? a.yun + b.yun === 10 : [5, 10, 15].indexOf(a.yun + b.yun) >= 0) out.push('Adding yun ' + (a.yun + b.yun));
+    else if (facingWater && (b.yun === 1 || b.yun === 9) && (a.yun + b.yun === 5 || a.yun + b.yun === 15)) out.push('Adding yun ' + (a.yun + b.yun) + ' (1/9 exception)');
     if (isHetuPair(a.qi, b.qi)) out.push('Hetu qi');
     if (facingWater ? a.qi + b.qi === 10 : [5, 10, 15].indexOf(a.qi + b.qi) >= 0) out.push('Adding qi ' + (a.qi + b.qi));   // FS pairs: only 10
     var fb = fams(h2); fams(h1).forEach(function (f) { if (fb.indexOf(f) >= 0) out.push('Family ' + f); });
