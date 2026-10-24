@@ -73,7 +73,7 @@
       var f = _fsActiveFloor(h);
       var door = null;
       (f.doors || []).some(function (d) {
-        if (d.kind !== 'internal' && d.palace) { door = d; return true; } return false; });
+        if (d.kind !== 'internal' && d.kind !== 'item' && d.palace) { door = d; return true; } return false; });
       return { name: h.name || '', person: L.personName,
                facing: _fsFloorFacing(h, f), period: _fsFloorPeriod(h, f),
                doorPalace: door ? door.palace : null, doorName: door ? door.name : '' };

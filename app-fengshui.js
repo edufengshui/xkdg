@@ -1589,9 +1589,10 @@ function fsDrawSettingIcons(ctx, cx, cy, outerR, ROT){
           if (!d) return;
           var isInt = (d.kind === 'internal');
           var fdeg = num(d.facing);
-          if (fdeg !== null) items.push({ deg: fdeg, icon: '\uD83D\uDEAA', color: isInt ? '#8e6a3f' : '#c9a84c', tag: (isInt ? 'Int door' : 'Ext door'), role: 'ZS', name: d.name });
+          var isItm = (d.kind === 'item');
+          if (fdeg !== null) items.push({ deg: fdeg, icon: isItm ? '\uD83D\uDD36' : '\uD83D\uDEAA', color: isItm ? '#6d4c41' : isInt ? '#8e6a3f' : '#c9a84c', tag: (isItm ? 'Item' : isInt ? 'Int door' : 'Ext door'), role: 'ZS', name: d.name });
           var wdeg = num(d.water);
-          if (wdeg !== null) items.push({ deg: wdeg, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: 'Fountain', role: 'LS', name: (d.name || '') + ' fountain' });
+          if (wdeg !== null) items.push({ deg: wdeg, icon: '\uD83D\uDCA7', color: '#4db6ac', tag: isItm ? 'Yang source' : 'Fountain', role: 'LS', name: (d.name || '') + (isItm ? ' source' : ' fountain') });
         });
       }
     } catch(e){}
@@ -5339,7 +5340,8 @@ function fsRenderHouseProfiles(){
       var waterStr  = d.water  != null ? d.water  + '°' : '—';
       var _isInt = (d.kind === 'internal');
       var _typeBadge = '<span style="font-size:9px;font-weight:bold;color:#fff;background:' + (_isInt ? '#8e6a3f' : '#c9a84c') + ';border-radius:3px;padding:0 5px;margin-right:4px;">' + (_isInt ? 'INTERNAL' : 'EXTERNAL') + '</span>';
-      var _waterLbl = _isInt ? 'Fountain' : 'Water';
+      var _isItm = (d.kind === 'item');
+      var _waterLbl = _isItm ? 'Yang source' : _isInt ? 'Fountain' : 'Water';
       _row += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap;">';
       // No INTERNAL/EXTERNAL badge (Edu, s.32): "Fountain" (internal) / "Water" (external) already says it.
       _row += '<span style="font-size:11px;flex:1 1 180px;" title="' + (_isInt ? 'Internal door' : 'External door') + '">🚪 <strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
@@ -5358,8 +5360,9 @@ function fsRenderHouseProfiles(){
       }
       // Details hidden: opened from the ☰ menu (Edu, s.32: only locations on the card).
       _doorDetails += '<div id="fs-dd-' + hi + '-' + di + '" style="display:none;margin:4px 0;padding:6px;border:1px solid #e0d3b0;border-radius:6px;background:#fffdf6;">' + _row + '</div>';
-      if (d.palace) _locLines.push('🚪 ' + escHtml(d.name) + ' in ' + escHtml(d.palace));
-      _doorMenu.push({ label: '🚪 ' + escHtml(d.name) + (d.kind === 'internal' ? ' (internal)' : ' (external)'), act: 'fsToggleDoorDetail(' + hi + ',' + di + ')', help: d.kind === 'internal' ? 'int_door' : 'ext_door' });
+      var _ic = _isItm ? '🔶' : '🚪';
+      if (d.palace) _locLines.push(_ic + ' ' + escHtml(d.name) + ' in ' + escHtml(_FS_DOOR_DIR[d.palace] || d.palace));
+      _doorMenu.push({ label: _ic + ' ' + escHtml(d.name) + (_isItm ? ' (item)' : d.kind === 'internal' ? ' (internal)' : ' (external)'), act: 'fsToggleDoorDetail(' + hi + ',' + di + ')', help: _isItm ? 'add_item' : d.kind === 'internal' ? 'int_door' : 'ext_door' });
     });
 
 
@@ -5488,11 +5491,12 @@ function fsRenderHouseProfiles(){
                           : '<div style="font-size:11px;color:#aaa;">—</div>';
     };
     var _sep = { html: '<span style="font-size:10px;color:#999;">ADD</span>' };
-    html += _S('🚪 XKDG — doors, bed, desk', '#8a6a1f', _M('fs-hm-xkdg', [].concat(
+    html += _S('🚪 XKDG — doors, items, bed, desk', '#8a6a1f', _M('fs-hm-xkdg', [].concat(
       _doorMenu, _setMenu.bed, _setMenu.desk,
       (_doorMenu.length || _setMenu.bed.length || _setMenu.desk.length) ? [_sep] : [],
       [{ label: '+ External Door', act: 'fsAddDoor(' + _pq + ',\'external\')', help: 'ext_door' },
        { label: '+ Internal Door', act: 'fsAddDoor(' + _pq + ',\'internal\')', help: 'int_door' },
+       { label: '🔶 Add item', act: 'fsAddDoor(' + _pq + ',\'item\')', help: 'add_item' },
        { label: '🛏 Add Bed', act: 'fsOpenZoneForHouse(' + _pq + ',\'bed\')', help: 'add_bed' },
        { label: '🪑 Add Desk', act: 'fsOpenZoneForHouse(' + _pq + ',\'desk\')', help: 'add_desk' }]
     )), _locHtml(_locLines.concat(_setLoc.bed, _setLoc.desk)) + _doorDetails);
@@ -6039,31 +6043,36 @@ function _fsParseDoorPalace(str){
   if (!k) return null;
   return _FS_DOOR_PAL.hasOwnProperty(k) ? _FS_DOOR_PAL[k] : undefined;   // undefined = invalid
 }
+var _FS_ITEM_PAL_ASK = 'Palace where it IS (seen from the centre of the house).\n'
+  + 'N, NE, E, SE, S, SW, W, NW (or Kan, Gen...). Leave empty if unknown:';
+var _FS_DOOR_DIR = { 1:'N', 8:'NE', 3:'E', 4:'SE', 9:'S', 2:'SW', 7:'W', 6:'NW' };
 var _FS_DOOR_PAL_ASK = 'Palace where this door IS (seen from the centre of the house - not where it faces).\n'
   + 'N, NE, E, SE, S, SW, W, NW (or Kan, Gen...). Used as the Qi mouth by QMDJ Li Qi.\nLeave empty if unknown:';
 
 // ── DOOR CRUD ───────────────────────────────────────────────────
 
 function fsAddDoor(personName, houseIdx, kind){
-  kind = (kind === 'internal') ? 'internal' : 'external';
-  var isInt = (kind === 'internal');
-  var dName = prompt('Name for this ' + (isInt ? 'INTERNAL door / room' : 'EXTERNAL door / facade') +
-                     '\n(e.g. "' + (isInt ? 'Study door' : 'Garage door, South facade') + '"):');
+  kind = (kind === 'internal' || kind === 'item') ? kind : 'external';
+  var isInt = (kind === 'internal'), isItem = (kind === 'item');
+  // Session 32 (Edu): "Add item" = ANY object whose ZS facing you measure (altar, sofa,
+  // cash desk, statue…), optionally with a yang LS source. Stored like a door (kind 'item').
+  var dName = prompt(isItem ? 'Name of the item\n(e.g. "Altar", "Sofa", "Cash desk"):'
+                            : 'Name for this ' + (isInt ? 'INTERNAL door / room' : 'EXTERNAL door / facade') +
+                              '\n(e.g. "' + (isInt ? 'Study door' : 'Garage door, South facade') + '"):');
   if (!dName || !dName.trim()) return;
-  var facingStr = prompt('XKDG Facing degree (\u00b0) for this ' + (isInt ? 'internal door' : 'door') + ':');
+  var facingStr = prompt('XKDG Facing degree (\u00b0) for this ' + (isItem ? 'item (\u6b63\u795e Zheng Shen)' : isInt ? 'internal door' : 'door') + ':');
   if (!facingStr) return;
   var facing = parseFloat(facingStr);
   if (isNaN(facing)){ alert('Invalid degree.'); return; }
-  var waterStr = prompt('XKDG ' + (isInt ? 'Fountain' : 'Water') + ' degree (\u00b0) for this ' +
+  var waterStr = prompt(isItem ? 'Yang source degree (\u00b0) \u2014 \u96f6\u795e Ling Shen (water, light\u2026)\n(leave empty if none):'
+                        : 'XKDG ' + (isInt ? 'Fountain' : 'Water') + ' degree (\u00b0) for this ' +
                         (isInt ? 'room' : 'door') + '\n(leave empty if none):');
   var water = (waterStr && waterStr.trim()) ? parseFloat(waterStr) : null;
   if (water !== null && isNaN(water)){ alert('Invalid water degree.'); return; }
   var palace = null;
-  if (!isInt){
-    var palStr = prompt(_FS_DOOR_PAL_ASK);
-    palace = _fsParseDoorPalace(palStr);
-    if (palace === undefined){ alert('Palace not recognised - left empty. Edit the door (\u270f) to set it.'); palace = null; }
-  }
+  var palStr = prompt(kind === 'external' ? _FS_DOOR_PAL_ASK : _FS_ITEM_PAL_ASK);
+  palace = _fsParseDoorPalace(palStr);
+  if (palace === undefined){ alert('Palace not recognised - left empty. Edit it (\u270f) to set it.'); palace = null; }
 
   var all = _fsHousesLoad();
   if (!all[personName] || !all[personName][houseIdx]) return;
@@ -6082,11 +6091,12 @@ function fsEditDoor(personName, houseIdx, doorIdx){
   var d = doors[doorIdx];
   if (!d) return;
 
-  var newName = prompt('Door name:', d.name);
+  var _isItem = (d.kind === 'item');
+  var newName = prompt(_isItem ? 'Item name:' : 'Door name:', d.name);
   if (newName === null) return;  // cancelled
   var facingStr = prompt('XKDG Facing degree (°):', d.facing != null ? String(d.facing) : '');
   if (facingStr === null) return;
-  var waterStr = prompt('XKDG Water degree (°) (leave empty if none):', d.water != null ? String(d.water) : '');
+  var waterStr = prompt(_isItem ? 'Yang source degree (°) — Ling Shen (leave empty if none):' : 'XKDG Water degree (°) (leave empty if none):', d.water != null ? String(d.water) : '');
   if (waterStr === null) return;
 
   var facing = facingStr.trim() ? parseFloat(facingStr) : null;
@@ -6094,8 +6104,8 @@ function fsEditDoor(personName, houseIdx, doorIdx){
   if (facing !== null && isNaN(facing)){ alert('Invalid facing degree.'); return; }
   if (water  !== null && isNaN(water)){ alert('Invalid water degree.'); return; }
 
-  if (d.kind !== 'internal'){
-    var palStr = prompt(_FS_DOOR_PAL_ASK, d.palace ? (_FS_DOOR_PAL_NAME[d.palace] || '').split(' ')[1] : '');
+  {
+    var palStr = prompt((d.kind === 'internal' || _isItem) ? _FS_ITEM_PAL_ASK : _FS_DOOR_PAL_ASK, d.palace ? (_FS_DOOR_PAL_NAME[d.palace] || '').split(' ')[1] : '');
     if (palStr === null) return;
     var pal = _fsParseDoorPalace(palStr);
     if (pal === undefined){ alert('Invalid palace.'); return; }

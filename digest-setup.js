@@ -34,7 +34,7 @@
       var fl = (h.floors.length > 1) ? (f.label || ('Floor ' + (fi + 1))) + ' · ' : '';
       (f.doors || []).forEach(function (d) {
         if (d && num(d.facing) != null && num(d.water) != null)
-          ops.push({ kind: 'water', name: fl + (d.name || 'Door') + ' fountain', facing: num(d.facing), water: num(d.water) });
+          ops.push({ kind: 'water', name: fl + (d.name || 'Door') + (d.kind === 'item' ? ' yang source' : ' fountain'), facing: num(d.facing), water: num(d.water) });
       });
       var st = f.settings || {};
       (st.water || []).forEach(function (s) {
