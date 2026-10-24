@@ -106,6 +106,32 @@
     return g;
   }
 
+  // A furniture item placed in the plan frame (3D X = plan x, Z = plan y). Trial items
+  // ("in prova") are semi-transparent; it.color tints the main body.
+  function placedItem(G, it, opts) {
+    var r = G.findRoom(it.room); if (!r) return new THREE.Group();
+    var grp = furniture(it.kind, it.width, it.depth, it.height || DEF_H[it.kind]);
+    // local → plan: origin at the start corner of the wall (inward by gap), x along wall, z into room
+    var a = G.wallPoint(r, it.side, it.offset, it.gap || 0);
+    var ex = G.wallPoint(r, it.side, it.offset + 1, it.gap || 0), ez = G.wallPoint(r, it.side, it.offset, (it.gap || 0) + 1);
+    var m4 = new THREE.Matrix4().set(ex.x - a.x, 0, ez.x - a.x, a.x,
+                                     0, 1, 0, 0,
+                                     ex.y - a.y, 0, ez.y - a.y, a.y,
+                                     0, 0, 0, 1);
+    grp.applyMatrix4(m4);
+    var tint = it.color ? new THREE.Color(it.color) : null, first = true;
+    var alpha = (opts && opts.opacity != null) ? opts.opacity : (it.trial ? 0.55 : 1);
+    grp.traverse(function (o) {
+      if (!o.material) return;
+      o.material = o.material.clone();
+      o.material.side = THREE.DoubleSide;
+      var hx = o.material.color.getHex();
+      if (tint && hx !== 0xfafafa && hx !== 0x212121 && hx !== 0xb0bec5) { o.material.color = tint.clone(); }
+      first = false;
+      if (alpha < 1) { o.material.transparent = true; o.material.opacity = alpha; }
+    });
+    return grp;
+  }
   function build(G) {
     var scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf4f1ea);
@@ -154,17 +180,7 @@
     // furniture
     (p.items || []).forEach(function (it) {
       var r = G.findRoom(it.room); if (!r) return;
-      var grp = furniture(it.kind, it.width, it.depth, it.height || DEF_H[it.kind]);
-      // local → plan: origin at the start corner of the wall (inward by gap), x along wall, z into room
-      var a = G.wallPoint(r, it.side, it.offset, it.gap || 0);
-      var ex = G.wallPoint(r, it.side, it.offset + 1, it.gap || 0), ez = G.wallPoint(r, it.side, it.offset, (it.gap || 0) + 1);
-      var m4 = new THREE.Matrix4().set(ex.x - a.x, 0, ez.x - a.x, a.x,
-                                       0, 1, 0, 0,
-                                       ex.y - a.y, 0, ez.y - a.y, a.y,
-                                       0, 0, 0, 1);
-      grp.applyMatrix4(m4);
-      grp.traverse(function (o) { if (o.material) o.material.side = THREE.DoubleSide; });
-      scene.add(grp);
+      scene.add(placedItem(G, it));
       var c = G.wallPoint(r, it.side, it.offset + it.width / 2, (it.gap || 0) + it.depth / 2);
       var lb = label(it.name, '#3e2723', 0.22); lb.position.set(c.x, (it.height || DEF_H[it.kind] || 0.8) + 0.35, c.y); scene.add(lb);
     });
@@ -246,6 +262,6 @@
     if (S) { try { window.removeEventListener('resize', S.onResize); S.renderer && S.renderer.dispose(); } catch (e) {} }
     S = null;
   }
-  window.XKDGPlan3D = { open: open, close: close,
+  window.XKDGPlan3D = { open: open, close: close, ensureThree: ensureThree, placedItem: placedItem, label: function (a, b, c) { return label(a, b, c); },
     openForHouse: function (key, idx) { var all = (typeof _fsHousesLoad === 'function') ? _fsHousesLoad() : {}; var h = all[key] && all[key][idx]; return open(h ? h.name : null); } };
 })();
