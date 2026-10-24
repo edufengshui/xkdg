@@ -520,6 +520,16 @@
       'If no stretch exists on that wall, say so and use other_walls. Never invent a number the user did not measure. ' +
       'For the 3D view ask once the ceiling height (plan_settings height_m), and door/window heights and window sill ' +
       'when the user measures them (else defaults); item heights are optional. plan_3d opens the 3D view.\n' +
+      '- NEW FURNITURE FROM A SHOP PHOTO (e.g. IKEA): read the sizes from the price tag / label in the photo (W x D x H; ask ' +
+      'if unreadable - never guess), recognise the kind (table, desk, bed, sofa...) and take its main colour as #rrggbb. ' +
+      'Ask in which room, against which wall and at what distance from the start corner it would go, then plan_item with ' +
+      'trial = true and color. If it has a sitting (bed, desk, sofa) offer plan_optimize against the room door to find the ' +
+      'best place. Then room_photo for that room: if the room has no calibrated photo yet, guide the user step by step - ' +
+      '(1) photo standing still, phone upright and level, ideally wide lens, showing two corners or a door; (2) the two ' +
+      'laser distances from where they stood to two walls (by direction) and the phone height; (3) in the view pick a ' +
+      'known point (a corner, a door edge) and tap it in the photo, then a second one on the other side; (4) check that ' +
+      'the cyan lines lie on the real floor edges, fine-tune turn / tilt / height. Then the piece appears in the real room; ' +
+      'it can be moved 5 cm at a time and the image saved. When the user decides to buy it, plan_item update trial = false.\n' +
       '- PHOTOS OF A ROOM: when the user attaches a photo for water placement, call photo_sectors (it opens the house\'s ' +
       'Photo-sectors view with the red sector boxes). Propose wall_lines only on a wall you can clearly see running away ' +
       'from the camera, and always ask the user to confirm or retrace them. Read positions from the tool (x_from/x_to, ' +
@@ -692,7 +702,7 @@
                'list_houses','get_house_setup','set_active_house','load_house','load_placement',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
-               'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','sun_facing','find_qimen_days'],
+               'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -1893,7 +1903,17 @@
         kind: { type: 'string', enum: ['bed', 'desk', 'sofa', 'table', 'kitchen', 'stove', 'altar', 'other'] },
         room: { type: 'string' }, side_deg: { type: 'number' }, offset_m: { type: 'number' }, offset_from_deg: { type: 'number' },
         width_m: { type: 'number' }, depth_m: { type: 'number' }, gap_m: { type: 'number' },
-        height_m: { type: 'number', description: 'Height (for the 3D view). Optional: typical values are used if missing.' } }, required: ['name'] }
+        height_m: { type: 'number', description: 'Height (for the 3D view). Optional: typical values are used if missing.' },
+        trial: { type: 'boolean', description: 'true = a piece the user is only CONSIDERING (e.g. seen in a shop): drawn semi-transparent, "in prova".' },
+        color: { type: 'string', description: 'Colour of the piece as #rrggbb (take it from the product photo).' } }, required: ['name'] }
+    },
+    {
+      name: 'room_photo',
+      description: 'Open the Room-photo view of a room: the user\'s real photo of that room with the plan furniture drawn ' +
+        'into it in true perspective and size (trial pieces semi-transparent). Without a photo yet it asks the user to load ' +
+        'one. Returns has_photo / calibrated. With state_only = true it only reports the saved photos (where the user stood, ' +
+        'calibration) without opening anything.',
+      input_schema: { type: 'object', properties: { house_name: { type: 'string' }, room: { type: 'string' }, state_only: { type: 'boolean' } } }
     },
     {
       name: 'plan_3d',
@@ -3239,12 +3259,13 @@
         return XKDGSunFacing.measure(input || {});
       }
       if (name === 'plan_status' || name === 'plan_room' || name === 'plan_settings' || name === 'plan_show' ||
-          name === 'plan_opening' || name === 'plan_item' || name === 'plan_optimize' || name === 'plan_3d') {
+          name === 'plan_opening' || name === 'plan_item' || name === 'plan_optimize' || name === 'plan_3d' || name === 'room_photo') {
         if (!window.XKDGPlanBuilder) return { error: 'The plan builder is not loaded.' };
         var _pi = input || {};
         if (name === 'plan_opening') return XKDGPlanBuilder.opening(_pi);
         if (name === 'plan_item') return XKDGPlanBuilder.item(_pi);
         if (name === 'plan_optimize') return XKDGPlanBuilder.optimize(_pi);
+        if (name === 'room_photo') { if (!window.XKDGRoomPhoto) return { error: 'Room photo not loaded.' }; return _pi.state_only ? XKDGRoomPhoto.state(_pi.house_name || null, _pi.room) : XKDGRoomPhoto.open(_pi.house_name || null, _pi.room); }
         if (name === 'plan_3d') { if (!window.XKDGPlan3D) return { error: '3D view not loaded.' }; XKDGPlan3D.open(_pi.house_name || null); return { open: true, note: 'The 3D view is open: one finger rotates, two fingers zoom; Top = view from above; Low walls = see inside.' }; }
         if (name === 'plan_status') return XKDGPlanBuilder.status(_pi.house_name);
         if (name === 'plan_room') return XKDGPlanBuilder.room(_pi);

@@ -141,7 +141,7 @@
       outer_size_m: b ? { along_facing_axis: r2(b.y1 - b.y0), across: r2(b.x1 - b.x0) } : null,
       centre_m: cen ? { x: r2(cen.x), y: r2(cen.y), inside_the_plan: inside(cen, fp) } : null,
       openings: (p.openings || []).map(function (op) { return { name: op.name, kind: op.kind, room: op.room, wall_deg: sideDirs(c.facing)[op.side], offset_m: r2(op.offset), width_m: r2(op.width) }; }),
-      items: (p.items || []).map(function (it) { return { name: it.name, kind: it.kind, room: it.room, back_wall_deg: sideDirs(c.facing)[it.side], sitting_deg: sideDirs(c.facing)[it.side], offset_m: r2(it.offset), width_m: r2(it.width), depth_m: r2(it.depth), gap_m: r2(it.gap || 0) }; }),
+      items: (p.items || []).map(function (it) { return { name: it.name, kind: it.kind, trial: !!it.trial, color: it.color || null, room: it.room, back_wall_deg: sideDirs(c.facing)[it.side], sitting_deg: sideDirs(c.facing)[it.side], offset_m: r2(it.offset), width_m: r2(it.width), depth_m: r2(it.depth), gap_m: r2(it.gap || 0) }; }),
       offset_rule: 'offset_m along a wall is measured from its START corner: on the walls toward ' + sideDirs(c.facing).facing + '° and ' + sideDirs(c.facing).back + '° from the corner toward ' + sideDirs(c.facing).xmin + '° (' + d8(sideDirs(c.facing).xmin) + '); on the walls toward ' + sideDirs(c.facing).xmax + '° and ' + sideDirs(c.facing).xmin + '° from the corner toward ' + sideDirs(c.facing).back + '° (' + d8(sideDirs(c.facing).back) + '). Pass offset_from_deg to measure from the other corner.',
       warnings: overlaps(p),
       saved_as_floorplan: !!(c.f.floorplan && c.f.floorplan.fromPlanBuilder)
@@ -277,6 +277,8 @@
       if (o.kind) cur.kind = String(o.kind).toLowerCase();
       if (!cur.kind) cur.kind = 'other';
       if (o.height_m != null) cur.height = +o.height_m;
+      if (o.trial != null) { if (o.trial) cur.trial = true; else delete cur.trial; }
+      if (o.color) cur.color = String(o.color);
       return placeOnWall(c, cur, o, true);
     });
   }
@@ -503,6 +505,14 @@
     openForHouse: function (key, idx) {
       var all = (typeof _fsHousesLoad === 'function') ? _fsHousesLoad() : {};
       var h = all[key] && all[key][idx]; return open(h ? h.name : null);
+    },
+    // room-photo.js: store / replace the photo record of one room (image itself lives in IndexedDB)
+    savePhoto: function (houseName, rec) {
+      var c = ctx(houseName); if (!c || !rec || !rec.room) return false;
+      if (!c.plan.photos) c.plan.photos = [];
+      var L = c.plan.photos, i = -1; for (var k = 0; k < L.length; k++) if (L[k].room === rec.room) i = k;
+      if (i >= 0) L[i] = rec; else L.push(rec);
+      c.save(); return true;
     },
     _house: function () { return currentHouseName(); },
     _del: function (n) { if (!confirm('Delete room "' + n + '"?')) return; var hn = currentHouseName(); roomOp({ house_name: hn, action: 'remove', name: n }); open(hn); },
