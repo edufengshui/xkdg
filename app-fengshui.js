@@ -4411,6 +4411,14 @@ function fsGenWaterSaveToHouse(){
 
 // ── Saved settings (Water/Bed/Desk) — view / edit / scan / remove from the card ──
 // Toggle the inline view-edit panel under a saved setting chip.
+// Door details / aquarium list on the house card open from the ☰ menu (s.32).
+function fsToggleDoorDetail(hi, di){ fsToggleEl('fs-dd-' + hi + '-' + di); }
+function fsToggleEl(id){
+  var el = document.getElementById(id); if (!el) return;
+  var open = (!el.style.display || el.style.display === 'none');
+  el.style.display = open ? 'block' : 'none';
+  if (open) try { el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){}
+}
 function fsToggleSavedEdit(hi, zone, idx){
   try {
     var el = document.getElementById('fs-set-edit-' + hi + '-' + zone + '-' + idx);
@@ -5318,7 +5326,7 @@ function fsRenderHouseProfiles(){
 
     // ── 🚪 Doors list ──
     var doors = f.doors;
-    var _doorsBody = '', _extBody = '', _intBody = '';
+    var _doorsBody = '', _doorDetails = '', _locLines = [], _doorMenu = [];
     doors.forEach(function(d, di){
       var _row = '';
       var facingStr = d.facing != null ? d.facing + '°' : '—';
@@ -5342,21 +5350,21 @@ function fsRenderHouseProfiles(){
       if (d.facing != null) {
         _row += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
       }
-      if (d.kind === 'internal') _intBody += _row; else _extBody += _row;
+      // Details hidden: opened from the ☰ menu (Edu, s.32: only locations on the card).
+      _doorDetails += '<div id="fs-dd-' + hi + '-' + di + '" style="display:none;margin:4px 0;padding:6px;border:1px solid #e0d3b0;border-radius:6px;background:#fffdf6;">' + _row + '</div>';
+      if (d.palace) _locLines.push('🚪 ' + escHtml(d.name) + ' in ' + escHtml(d.palace));
+      _doorMenu.push({ label: '🚪 ' + escHtml(d.name) + (d.kind === 'internal' ? ' (internal)' : ' (external)'), act: 'fsToggleDoorDetail(' + hi + ',' + di + ')', help: d.kind === 'internal' ? 'int_door' : 'ext_door' });
     });
 
-    var _hd = function(lbl, c){ return '<div style="font-size:11px;font-weight:bold;color:' + c + ';margin:4px 0 1px;border-bottom:1px solid #eee;">' + lbl + '</div>'; };
-    var _none = function(txt){ return '<div style="font-size:11px;color:#aaa;">' + txt + '</div>'; };
-    _doorsBody = _hd('🚪 External doors', '#c9a84c') + (_extBody || _none('none — ☰ → + External Door'))
-               + _hd('🚪 Internal doors', '#8e6a3f') + (_intBody || _none('none — ☰ → + Internal Door'));
 
     // ── 🐟 Star waters (aquariums) list ──
     var hasWaters = !!(f.waters && f.waters.length);
-    var _watersBody = '';
+    var _watersBody = '', _wLocLines = [];
     if (hasWaters){
       f.waters.forEach(function(w, wi){
         var dirLabel = w.dir ? w.dir : (w.deg != null ? w.deg + '°' : '?');
         var palaceLabel = w.palace ? ' (Palace ' + w.palace + ')' : '';
+        if (w.dir || w.palace) _wLocLines.push('🐟 ' + escHtml(w.name) + ' in ' + escHtml(w.dir || ('palace ' + w.palace)));
         _watersBody += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
         _watersBody += '<span style="font-size:11px;">🐟 <strong>' + escHtml(w.name) + '</strong> — ' + dirLabel + palaceLabel + '</span>';
         _watersBody += '<button onclick="fsRemoveWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove this aquarium">✕</button>';
@@ -5459,16 +5467,36 @@ function fsRenderHouseProfiles(){
       { label: '+ Add floor', act: 'fsAddFloor(' + _pq + ')', help: 'add_floor' },
       h.floors.length > 1 ? { label: '🗑 Delete floor', act: 'fsDeleteFloor(' + _pq + ')', help: 'delete_floor', danger: true } : null
     ]), _floorBody);
-    html += _S('🚪 XKDG — doors, bed, desk', '#8a6a1f', _M('fs-hm-xkdg', [
-      { label: '+ External Door', act: 'fsAddDoor(' + _pq + ',\'external\')', help: 'ext_door' },
-      { label: '+ Internal Door', act: 'fsAddDoor(' + _pq + ',\'internal\')', help: 'int_door' },
-      { label: '🛏 Add Bed', act: 'fsOpenZoneForHouse(' + _pq + ',\'bed\')', help: 'add_bed' },
-      { label: '🪑 Add Desk', act: 'fsOpenZoneForHouse(' + _pq + ',\'desk\')', help: 'add_desk' }
-    ]), _doorsBody
-       + '<div style="margin-top:3px;">' + _savedLine(['bed', 'desk']) + '</div>');
-    html += _S('⭐ Flying Stars — water', '#00897b', _M('fs-hm-fs', [
-      { label: '💧 Add Water', act: 'fsOpenZoneForHouse(' + _pq + ',\'water\')', help: 'add_water' }
-    ]), _watersBody + '<div style="margin-top:3px;">' + _savedLine(['water']) + '</div>');
+    // Saved Bed / Desk / Water: menu entries + location lines (details open from ☰).
+    var _setMenu = { water: [], bed: [], desk: [] }, _setLoc = { water: [], bed: [], desk: [] };
+    var _zIcon = { water: '💧', bed: '🛏', desk: '🪑' };
+    ['water', 'bed', 'desk'].forEach(function(z){
+      (_st[z] || []).forEach(function(s, sidx){
+        var loc = z === 'bed' ? (s.bedPalace || s.palace) : z === 'desk' ? (s.deskPalace || s.palace) : s.palace;
+        if (loc) _setLoc[z].push(_zIcon[z] + ' ' + escHtml(s.name || z) + ' in ' + escHtml(loc));
+        _setMenu[z].push({ label: _zIcon[z] + ' ' + escHtml(s.name || z), act: 'fsToggleSavedEdit(' + hi + ',\'' + z + '\',' + sidx + ')', help: z === 'water' ? 'add_water' : (z === 'bed' ? 'add_bed' : 'add_desk') });
+      });
+    });
+    var _locHtml = function(lines){
+      return lines.length ? '<div style="font-size:12px;color:#444;line-height:1.6;">' + lines.join('<br>') + '</div>'
+                          : '<div style="font-size:11px;color:#aaa;">—</div>';
+    };
+    var _sep = { html: '<span style="font-size:10px;color:#999;">ADD</span>' };
+    html += _S('🚪 XKDG — doors, bed, desk', '#8a6a1f', _M('fs-hm-xkdg', [].concat(
+      _doorMenu, _setMenu.bed, _setMenu.desk,
+      (_doorMenu.length || _setMenu.bed.length || _setMenu.desk.length) ? [_sep] : [],
+      [{ label: '+ External Door', act: 'fsAddDoor(' + _pq + ',\'external\')', help: 'ext_door' },
+       { label: '+ Internal Door', act: 'fsAddDoor(' + _pq + ',\'internal\')', help: 'int_door' },
+       { label: '🛏 Add Bed', act: 'fsOpenZoneForHouse(' + _pq + ',\'bed\')', help: 'add_bed' },
+       { label: '🪑 Add Desk', act: 'fsOpenZoneForHouse(' + _pq + ',\'desk\')', help: 'add_desk' }]
+    )), _locHtml(_locLines.concat(_setLoc.bed, _setLoc.desk)) + _doorDetails);
+    var _aqDetail = _watersBody ? '<div id="fs-aq-' + hi + '" style="display:none;margin:4px 0;padding:6px;border:1px solid #b2dfdb;border-radius:6px;background:#f6fbfa;">' + _watersBody + '</div>' : '';
+    html += _S('⭐ Flying Stars — water', '#00897b', _M('fs-hm-fs', [].concat(
+      _watersBody ? [{ label: '🐟 Aquariums', act: 'fsToggleEl(\'fs-aq-' + hi + '\')', help: 'add_water' }] : [],
+      _setMenu.water,
+      (_watersBody || _setMenu.water.length) ? [_sep] : [],
+      [{ label: '💧 Add Water', act: 'fsOpenZoneForHouse(' + _pq + ',\'water\')', help: 'add_water' }]
+    )), _locHtml(_wLocLines.concat(_setLoc.water)) + _aqDetail);
     // Inline edit/scan panels for the saved chips (hidden until a chip is clicked).
     html += _zonePanels;
     html += '</div>'; // close .fs-house-body (collapsible)
