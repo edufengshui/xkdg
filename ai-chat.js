@@ -687,7 +687,7 @@
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
   // so from session 26 it travels with EVERY area, not only with 'dates'.
   var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars',
-                     'photo_sectors','photo_sectors_state'];
+                     'photo_sectors','photo_sectors_state','add_calendar_reminder'];
 
   var AREA_LABELS = { travel: '\uD83E\uDDED Travel & directions',
                       fengshui: '\uD83C\uDFE0 Feng Shui', dates: '\uD83D\uDCC5 Dates & divination',
@@ -763,6 +763,32 @@
   }
 
   var TOOLS = [
+    {
+      name: 'add_calendar_reminder',
+      description: 'Put one or more CHOSEN dates/hours in the phone calendar as reminders (event + alarms). Use when the user ' +
+        'says "remind me", "ricordamelo", "mettilo in calendario", "promemoria", "add it to my calendar", or picks a date from ' +
+        'a list you gave (water/aquarium/fountain activation, bed, desk, a trip departure, any good hour). Pass the hour EXACTLY ' +
+        'as the scan gave it (real local clock window, e.g. 09:54-11:54) — never recompute it. Each event gets an alarm the ' +
+        'evening before at 21:00 and one N minutes before the start (default 15). It downloads a .ics file (all events, with ' +
+        'alarms) and prepares a Google Calendar button. After it runs, ALWAYS end your reply with the line ' +
+        '"[[BTN]] \uD83D\uDCC5 Google Calendar=apri google calendar" and tell the user: open the downloaded .ics to add the ' +
+        'events with both alarms, OR tap the button to add the first event directly in Google Calendar.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          events: { type: 'array', description: 'The reminders to create.', items: { type: 'object', properties: {
+            date:  { type: 'string', description: 'YYYY-MM-DD (the civil date of the start).' },
+            start: { type: 'string', description: 'HH:MM local clock start, e.g. "09:54".' },
+            end:   { type: 'string', description: 'HH:MM local clock end, e.g. "11:54". Optional (default start + 2h).' },
+            title: { type: 'string', description: 'Short title, e.g. "\uD83D\uDCA7 Water at 222\u00b0 (hex 46) \u2014 Si hour".' },
+            details: { type: 'string', description: 'Why this hour (tier, score, relation, Qimen), house, degree, persons.' }
+          }, required: ['date', 'start', 'title'] } },
+          minutes_before: { type: 'integer', description: 'Second alarm, minutes before the start. Default 15.' },
+          evening_before: { type: 'boolean', description: 'Alarm the evening before at 21:00. Default true.' }
+        },
+        required: ['events']
+      }
+    },
     {
       name: 'export_lucky_calendar',
       description: 'Build a .ics calendar file of the ABSOLUTE best hours over the next months and download it, so the user can ' +
@@ -2753,6 +2779,58 @@
     } catch (e) { return NaN; }
   }
 
+  // ── add_calendar_reminder (session 32, Edu: reminders go to the phone calendar) ──
+  function toolAddCalendarReminder(input) {
+    input = input || {};
+    var evs = Array.isArray(input.events) ? input.events : [];
+    if (!evs.length) return { error: 'No events given.' };
+    var minB = isFinite(parseInt(input.minutes_before, 10)) ? parseInt(input.minutes_before, 10) : 15;
+    var eve = input.evening_before !== false;
+    function local(iso, hm) {
+      var d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || '')), h = /^(\d{1,2}):(\d{2})/.exec(String(hm || ''));
+      if (!d || !h) return NaN;
+      return new Date(+d[1], +d[2] - 1, +d[3], +h[1], +h[2], 0).getTime();
+    }
+    var now = _icsUtc(Date.now()), L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//XKDG//Reminder//EN',
+      'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'], made = [], bad = [], gcal = [];
+    evs.forEach(function (e, i) {
+      var s = local(e.date, e.start);
+      if (!isFinite(s)) { bad.push(e); return; }
+      var en = local(e.date, e.end); if (!isFinite(en) || en <= s) en = isFinite(en) && en <= s ? en + 86400000 : s + 2 * 3600000;
+      var title = String(e.title || 'XKDG reminder'), det = String(e.details || '');
+      L.push('BEGIN:VEVENT', 'UID:xkdg-rem-' + e.date + '-' + String(e.start).replace(':', '') + '-' + i + '@fsadvisor.org',
+             'DTSTAMP:' + now, 'DTSTART:' + _icsUtc(s), 'DTEND:' + _icsUtc(en),
+             _icsFold('SUMMARY:' + _icsEsc(title)), _icsFold('DESCRIPTION:' + _icsEsc(det)));
+      if (eve) {
+        var pe = new Date(s); pe.setDate(pe.getDate() - 1); pe.setHours(21, 0, 0, 0);
+        if (pe.getTime() < s - 3600000) L.push('BEGIN:VALARM', 'ACTION:DISPLAY', _icsFold('DESCRIPTION:' + _icsEsc('Tomorrow ' + e.start + ': ' + title)),
+                                                'TRIGGER;VALUE=DATE-TIME:' + _icsUtc(pe.getTime()), 'END:VALARM');
+      }
+      if (minB > 0) L.push('BEGIN:VALARM', 'ACTION:DISPLAY', _icsFold('DESCRIPTION:' + _icsEsc('In ' + minB + ' min: ' + title)),
+                           'TRIGGER:-PT' + minB + 'M', 'END:VALARM');
+      L.push('END:VEVENT');
+      gcal.push('https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) +
+                '&dates=' + _icsUtc(s) + '/' + _icsUtc(en) + '&details=' + encodeURIComponent(det));
+      made.push({ when: new Date(s).toString().slice(0, 21), until: new Date(en).toString().slice(16, 21), title: title });
+    });
+    if (!made.length) return { error: 'No valid date/start (use YYYY-MM-DD and HH:MM).', invalid: bad };
+    L.push('END:VCALENDAR');
+    var ics = L.join('\r\n') + '\r\n', fname = 'xkdg-reminder-' + evs[0].date + '.ics', downloaded = false;
+    try {
+      var blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' }), url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+      downloaded = true;
+    } catch (eDl) {}
+    try { window._XKDGLastReminderGcal = gcal; } catch (e) {}
+    return { ok: true, file: fname, downloaded: downloaded, events: made, invalid: bad.length ? bad : undefined,
+      alarms: (eve ? 'evening before at 21:00 + ' : '') + (minB > 0 ? minB + ' min before' : ''),
+      instructions: 'Say the .ics was downloaded: open it to add ALL events with their alarms. The Google Calendar button adds ' +
+        (gcal.length > 1 ? 'the FIRST event only (tap again for the next ones)' : 'the event') +
+        ' (alarm = the calendar default). End with: [[BTN]] \uD83D\uDCC5 Google Calendar=apri google calendar' };
+  }
+
   async function toolExportLuckyCalendar(input) {
     input = input || {};
     var days = parseInt(input.days, 10) || 90;
@@ -3029,6 +3107,7 @@
     try {
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
+      if (name === 'add_calendar_reminder') return toolAddCalendarReminder(input || {});
       if (name === 'explain_purpose') return toolExplainPurpose(input || {});
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
       if (name === 'show_verify_button') return toolShowVerifyButton(input || {});
@@ -7828,6 +7907,14 @@
             // message when no plan has been stashed (e.g. the button came from an
             // older conversation).
             var _pl = String(spec.payload || '').toLowerCase();
+            // Google Calendar reminder button (add_calendar_reminder): opened locally, in the tap.
+            if (_pl.indexOf('google calendar') >= 0 && Array.isArray(window._XKDGLastReminderGcal) && window._XKDGLastReminderGcal.length) {
+              var _gq = window._XKDGLastReminderGcal, _gu = _gq.shift();
+              try { window.open(_gu, '_blank'); } catch (e) {}
+              if (_gq.length) { try { var bs2 = row.querySelectorAll('button'); for (var j = 0; j < bs2.length; j++) { bs2[j].disabled = false; bs2[j].style.opacity = '1'; bs2[j].style.cursor = 'pointer'; } } catch (e) {} }
+              addBubble('assistant', '\uD83D\uDCC5 Google Calendar aperto' + (_gq.length ? (' \u2014 ancora ' + _gq.length + ': tocca di nuovo il pulsante.') : '.'), true);
+              return;
+            }
             if (_pl.indexOf('travel planner') >= 0 && _pl.indexOf('apri') >= 0 &&
                 window._XKDGChatLastPlan && window.TravelPlanner &&
                 typeof window.TravelPlanner.openPrefilled === 'function') {
