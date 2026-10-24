@@ -100,6 +100,20 @@
     var rec = archiveRec(name);
     if (!rec) return { error: '"' + name + '" is not a saved person.' };
     var o = { name: name, email: email || 'EMAIL', city: city || 'Vienna' };
+    // Session 32 (Edu): a student anywhere in the world - the email is computed at HIS
+    // position (true solar time) and in HIS time zone. digest.js accepts lat/lon/tz/city_label.
+    if (city === 'GPS') {
+      var g = null;
+      try { g = JSON.parse(localStorage.getItem('xkdg_gps') || 'null'); } catch (e) {}
+      var lat = g && isFinite(+g.lat) ? +g.lat : (window._lastGpsLat != null ? +window._lastGpsLat : NaN);
+      var lon = g && isFinite(+g.lng) ? +g.lng : (window._lastGpsLng != null ? +window._lastGpsLng : NaN);
+      if (!isFinite(lat) || !isFinite(lon)) return { error: 'No GPS position yet: allow location in the app (or open the compass once), then Build again.' };
+      var tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+      var label = ((el('xdg-place') || {}).value || '').trim();
+      delete o.city;
+      o.lat = Math.round(lat * 10000) / 10000; o.lon = Math.round(lon * 10000) / 10000;
+      o.tz = tz || 'UTC'; o.city_label = label || 'My location';
+    }
     if (rec.date && rec.depth !== 1) { o.birth_date = rec.date; o.birth_time = rec.time || '12:00'; }
     else if (rec.jiaZiYear) o.jiazi = rec.jiaZiYear.slice(0, 2);
     else return { error: 'No birth data for "' + name + '".' };
@@ -121,7 +135,8 @@
       'so the daily email can add the Feng Shui dates.<br>' +
       'Person <input id="xdg-name" value="' + nm.replace(/"/g, '&quot;') + '" style="width:120px;"> ' +
       'Email <input id="xdg-email" type="email" placeholder="name@example.com" style="width:180px;"> ' +
-      'City <select id="xdg-city"><option>Vienna</option><option>Tuoro</option></select> ' +
+      'City <select id="xdg-city" onchange="document.getElementById(\'xdg-place\').style.display=this.value===\'GPS\'?\'\':\'none\'"><option>Vienna</option><option>Tuoro</option><option value="GPS">My location (GPS)</option></select> ' +
+      '<input id="xdg-place" placeholder="place name, e.g. Kuala Lumpur" style="width:170px;display:none;"> ' +
       '<label><input type="checkbox" id="xdg-fs" checked> include Feng Shui dates (houses)</label> ' +
       'Language <select id="xdg-lang"><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option></select> ' +
       '<button onclick="XKDGDigestSetup._go()" style="padding:4px 10px;border-radius:6px;border:none;background:#4a148c;color:#fff;cursor:pointer;">Build</button>' +
