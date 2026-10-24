@@ -43,7 +43,7 @@
     add_desk: ['🪑 Add Desk', 'Opens the Desk section: who sits, the <b>desk palace</b> and the <b>desk facing</b> (Zheng Shen, communicating with the person), optionally a fountain among the propitious water positions, then 🔎 SCAN lucky dates. Save it with 💾 Save current.', FS],
     add_water: ['💧 Add Water', 'Opens the Water section: ① a water feature (aquarium / fountain) <b>by palace</b> with the Flying-Star dates, or ② a water for a door facing in degrees (💡 Suggest proposes the best Ling Shen water). Save it in the house with 💾 Save to house / 💾 Save current.', FS],
     hide_house: ['🙈 Hide house', 'Takes the house off this list without deleting it. It stays in <b>🗄 Houses DB</b> (button at the top of House Profiles), where <b>👁 Show</b> brings it back and <b>🗑 Delete</b> removes it for good.', FS],
-    houses_db: ['🗄 Houses DB', 'All your saved houses, grouped by person. <b>🙈 Hide</b> takes a house off the House Profiles list but keeps it; <b>👁 Show</b> brings it back; <b>🗑</b> deletes it <b>permanently</b> (asks first). Use the filters All / Visible / Hidden and the search box. Tip: make a <b>⬇ Backup</b> before deleting.', FS],
+    houses_db: ['🗄 Houses DB', 'All your saved houses, grouped by person. <b>🙈 Hide</b> takes a house off the House Profiles list but keeps it; <b>👁 Show</b> brings it back; <b>🗑</b> deletes it <b>permanently</b> (asks first). Each house has its own <b>category</b> (Mine, Friends, Clients…): pick it in the 📁 menu under the house, or <b>➕ New category…</b> to add one. Filter by category, by All / Visible / Hidden, or search. Tip: make a <b>⬇ Backup</b> before deleting.', FS],
     door_scan: ['🔎 SCAN', 'Finds the dates that match this door: Zheng Shen facing, Ling Shen water within ±70°, and the people of the house. Uses FROM / DAYS of the toolbar.', FS]
   };
 
@@ -115,7 +115,7 @@
   window.fsHouseDB = function () {
     var all = _fsHousesLoad();
     var cur = null; try { var ap = fsGetActivePersonForHouse(); cur = ap && ap.name; } catch (e) {}
-    var view = window._fsHdbView || 'all', q = (window._fsHdbQ || '').toLowerCase();
+    var view = window._fsHdbView || 'all', q = (window._fsHdbQ || '').toLowerCase(), cat = window._fsHdbCat || '';
     var names = Object.keys(all).sort(function (a, b) { return a === cur ? -1 : b === cur ? 1 : a.localeCompare(b); });
     var rows = '', count = 0, hidN = 0;
     names.forEach(function (pn) {
@@ -124,14 +124,17 @@
         if (h.hidden) hidN++;
         if (view === 'visible' && h.hidden) return;
         if (view === 'hidden' && !h.hidden) return;
-        if (q && (String(h.name || '') + ' ' + pn + ' ' + String(h.address || '')).toLowerCase().indexOf(q) < 0) return;
+        var hc = (typeof xkdgHouseCat === 'function') ? xkdgHouseCat(h, pn) : '';
+        if (cat && !(typeof xkdgFolderMatch === 'function' ? xkdgFolderMatch(hc, cat) : hc === cat)) return;
+        if (q && (String(h.name || '') + ' ' + pn + ' ' + String(h.address || '') + ' ' + hc).toLowerCase().indexOf(q) < 0) return;
         count++;
         var fl = null, fc = null, pe = null;
         try { fl = _fsActiveFloor(h); fc = _fsFloorFacing(h, fl); pe = _fsFloorPeriod(h, fl); } catch (e) {}
         var pq = '\'' + String(pn).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\',' + i;
         block += '<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid #eee;' + (h.hidden ? 'opacity:.6;' : '') + '">' +
           '<div style="flex:1;min-width:0;"><b>' + esc(h.name || '—') + '</b> ' + (h.hidden ? '<span style="font-size:10px;color:#888;">🙈 hidden</span>' : '') +
-          '<div style="font-size:11px;color:#777;">' + (fc != null ? 'Facing ' + fc + '°' : '') + (pe != null ? ' · Period ' + pe : '') + (h.address ? ' · ' + esc(h.address) : '') + '</div></div>' +
+          '<div style="font-size:11px;color:#777;">' + (fc != null ? 'Facing ' + fc + '°' : '') + (pe != null ? ' · Period ' + pe : '') + (h.address ? ' · ' + esc(h.address) : '') + '</div>' +
+          (typeof xkdgHouseCatAssignHtml === 'function' ? '<div style="margin-top:3px;">' + xkdgHouseCatAssignHtml(pn, i, h, 'font-size:11px;padding:2px 4px;border:1px solid #c9a84c;border-radius:10px;background:#fffdf5;') + '</div>' : '') + '</div>' +
           (h.hidden
             ? '<button onclick="fsHouseSetHidden(' + pq + ',false)" style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer;">👁 Show</button>'
             : '<button onclick="fsHouseSetHidden(' + pq + ',true)" style="background:#fff;color:#555;border:1px solid #999;border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer;">🙈 Hide</button>') +
@@ -151,6 +154,9 @@
       '<button onclick="document.getElementById(\'fs-hdb-ov\').remove()" style="background:#fff;color:#2e7d32;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;font-weight:bold;">✕</button></div>' +
       '<div style="padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #eee;">' +
       btn('all', 'All') + btn('visible', 'Visible') + btn('hidden', 'Hidden' + (hidN ? ' (' + hidN + ')' : '')) +
+      (typeof xkdgFolderList === 'function' ? '<select onchange="window._fsHdbCat=this.value;fsHouseDB()" style="font-size:12px;padding:3px 6px;border:1px solid #c9a84c;border-radius:12px;"><option value="">📁 All categories</option>' +
+        xkdgFolderList().map(function (f) { return '<option value="' + esc(f) + '"' + (cat === f ? ' selected' : '') + '>' + esc(f) + '</option>'; }).join('') +
+        '<option value="__none__"' + (cat === '__none__' ? ' selected' : '') + '>— no category</option></select>' : '') +
       '<input id="fs-hdb-q" placeholder="🔍 search" value="' + esc(window._fsHdbQ || '') + '" oninput="window._fsHdbQ=this.value;clearTimeout(window._fsHdbT);window._fsHdbT=setTimeout(function(){fsHouseDB();var e=document.getElementById(\'fs-hdb-q\');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},300)" style="flex:1;min-width:110px;padding:4px 8px;border:1px solid #ccc;border-radius:12px;font-size:12px;"></div>' +
       '<div class="fs-hdb-list" style="overflow:auto;padding:0 14px 12px;">' + rows + '</div>' +
       '<div style="padding:6px 14px;font-size:11px;color:#888;border-top:1px solid #eee;">' + count + ' shown · 🙈 Hide keeps the house (not in the list) · 🗑 deletes it for good</div></div>';

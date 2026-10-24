@@ -5232,8 +5232,9 @@ function fsRenderHouseProfiles(){
     if (_sumBits.length) html += '<span style="font-size:11px;color:#777;white-space:nowrap;">' + _sumBits.join(' · ') + '</span>';
     html += '<button onclick="fsToggleHouseDetails(\'' + escJs(person.name) + '\',' + hi + ',this)" title="' + (_exp ? 'Hide details' : 'Open details & tools (Add water / bed / desk / floor…)') + '" style="background:' + (_exp ? '#2e7d32' : '#eef5ee') + ';color:' + (_exp ? '#fff' : '#2e7d32') + ';border:1px solid #2e7d32;font-size:14px;font-weight:bold;line-height:1;cursor:pointer;padding:5px 12px;border-radius:6px;white-space:nowrap;">' + (_exp ? '▾ Hide' : '▸ Open') + '</button>';
     // Folder selector — the folder belongs to the PERSON (houses always follow it).
+    // Category of THIS house (Mine / Friends / Clients…), independent of the person's folder.
     html += '<span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#555;">' +
-            (typeof xkdgFolderAssignHtml === 'function' ? xkdgFolderAssignHtml(h.personName || person.name) : '') + '</span>';
+            (typeof xkdgHouseCatAssignHtml === 'function' ? xkdgHouseCatAssignHtml(person.name, hi, h) : '') + '</span>';
     html += '</div>';
 
     // RIGHT (top-right corner): 📂 Load + ☰ house menu (session 32: every action in a

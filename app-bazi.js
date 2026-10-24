@@ -2098,7 +2098,7 @@ function xkdgFolderList() {
     [loadArchive('xkdg_persons_a'), loadArchive('xkdg_persons_b')].forEach(arch =>
         Object.keys(arch).forEach(n => add(arch[n] && arch[n].category)));
     const houses = _xkdgHousesRaw();
-    Object.keys(houses).forEach(k => (Array.isArray(houses[k]) ? houses[k] : []).forEach(h => add(h && h.category)));
+    Object.keys(houses).forEach(k => (Array.isArray(houses[k]) ? houses[k] : []).forEach(h => { add(h && h.category); add(h && h.houseCat); }));
     return Object.keys(set).sort((x, y) => {
         const a = x.split('/'), b = y.split('/');
         for (let i = 0; i < Math.min(a.length, b.length); i++) {
@@ -2189,6 +2189,33 @@ function xkdgSetPersonFolder(name, path) {
     } catch (e) { console.warn('folder → houses', e); }
     xkdgRefreshFolderViews();
 }
+// ── Category of ONE house (session 32, Edu): Mine / Friends / Clients… per house, independent
+//    of the person's folder. h.houseCat; when empty the house shows the person's folder.
+function xkdgHouseCat(h, personName) { return xkdgNormFolder((h && h.houseCat) || '') || xkdgPersonFolder((h && h.personName) || personName || ''); }
+function xkdgHouseCatAssignHtml(personName, idx, h, style) {
+    const cur = xkdgNormFolder((h && h.houseCat) || ''), inh = xkdgPersonFolder((h && h.personName) || personName);
+    let s = `<select data-p="${_xkdgEsc(personName)}" data-i="${idx}" onclick="event.stopPropagation()" onchange="xkdgPickHouseCat(this.dataset.p,+this.dataset.i,this.value)" title="Category of this house" style="${style || 'font-size:11px;padding:2px 4px;border:1px solid #c9a84c;border-radius:6px;background:#fff;'}">`;
+    s += `<option value=""${!cur ? ' selected' : ''}>📁 ${inh ? _xkdgEsc(inh) + ' (person)' : '— no category —'}</option>`;
+    xkdgFolderList().forEach(p => { s += `<option value="${_xkdgEsc(p)}"${cur === p ? ' selected' : ''}>${_xkdgEsc(_xkdgFolderLabel(p))}</option>`; });
+    s += `<option value="__new__">➕ New category…</option>`;
+    return s + '</select>';
+}
+function xkdgPickHouseCat(personName, idx, val) {
+    if (val === '__new__') {
+        const typed = prompt('New category name (e.g. "Clients").\nUse / for subcategories, e.g. "Clients/2026".');
+        if (!typed || !xkdgNormFolder(typed)) { xkdgRefreshFolderViews(); return; }
+        val = xkdgAddFolder(typed);
+    }
+    try {
+        const houses = _xkdgHousesRaw(), h = houses[personName] && houses[personName][idx];
+        if (!h) return;
+        val = xkdgNormFolder(val);
+        if (val) { h.houseCat = val; xkdgAddFolder(val); } else delete h.houseCat;
+        localStorage.setItem('xkdg_houses', JSON.stringify(houses));
+    } catch (e) { console.warn('house category', e); }
+    xkdgRefreshFolderViews();
+    try { if (document.getElementById('fs-hdb-ov') && window.fsHouseDB) fsHouseDB(); } catch (e) {}
+}
 function xkdgRefreshFolderViews() {
     try { renderArchive('A'); } catch (e) {}
     try { renderArchive('B'); } catch (e) {}
@@ -2219,7 +2246,9 @@ function _xkdgRemapFolders(root, fn) {
     try {
         const houses = _xkdgHousesRaw(); let ch = false;
         Object.keys(houses).forEach(k => (Array.isArray(houses[k]) ? houses[k] : []).forEach(h => {
-            if (!h || !h.category || !under(h.category)) return;
+            if (!h) return;
+            if (h.houseCat && under(h.houseCat)) { h.houseCat = fn(xkdgNormFolder(h.houseCat)) || null; ch = true; }
+            if (!h.category || !under(h.category)) return;
             h.category = fn(xkdgNormFolder(h.category)) || null; ch = true;
         }));
         if (ch) localStorage.setItem('xkdg_houses', JSON.stringify(houses));
