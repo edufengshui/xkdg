@@ -5224,174 +5224,137 @@ function fsRenderHouseProfiles(){
             (typeof xkdgFolderAssignHtml === 'function' ? xkdgFolderAssignHtml(h.personName || person.name) : '') + '</span>';
     html += '</div>';
 
-    // RIGHT (top-right corner): Load · Rename · Delete · Archive
-    html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:1 1 auto;min-width:0;">';
-    html += '<button onclick="fsLoadHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Load into FS inputs to edit">📂 Load</button>';
-    // 🖼 Floor plan — VIEW the saved plan. Square icon to distinguish it from the
-    // 📐 "Import a floorplan" button below; same brown colour. Remove (🗑) sits
-    // right beside it (deletion lives with the floor-plan, not in the Add row).
-    if (_sf && _sf.floorplan && _sf.floorplan.imgData){
-      html += '<button onclick="fsViewFloorplanInPlace(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Show the saved plan with its flying stars, large, in place of the luopan">🖼 Floor plan</button>';
-      html += '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#5d4037;border:1px solid #5d4037;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Edit the floor plan in the editor">✏</button>';
-      html += '<button onclick="fsHouseRemoveFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:3px 7px;font-size:10px;cursor:pointer;" title="Remove the saved floor plan">🗑 Plan</button>';
-    }
-    // 📷 Photo sectors — draw the water hexagram sectors on a photo taken from the facing point (session 31).
-    html += '<button onclick="if(window.XKDGPhotoSectors)XKDGPhotoSectors.open(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Take a photo from the facing point and see where each water hexagram falls">📷 Photo sectors</button>';
-    html += '<button onclick="if(window.XKDGPlanBuilder)XKDGPlanBuilder.openForHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Build the floor plan from laser measurements (best with the assistant)">📏 Plan builder</button>';
-    html += '<button onclick="fsRenameHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Rename house">✏ Rename</button>';
-    html += '<button onclick="fsDeleteHouse(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#c62828;color:#fff;border:none;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Delete house">🗑 House</button>';
-    // 📁 Archive = the client\'s Google Drive folder (photos, written consultations, etc.)
-    if (h.driveUrl){
-      html += '<a href="' + escHtml(h.driveUrl) + '" target="_blank" rel="noopener" style="background:#0f9d58;color:#fff;border-radius:3px;padding:3px 8px;font-size:10px;text-decoration:none;" title="Open the Google Drive archive (photos, consultations)">📁 Archive</a>';
-      html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:3px 6px;font-size:10px;cursor:pointer;" title="Edit the archive link">✏</button>';
-    } else {
-      html += '<button onclick="fsEditHouseDrive(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#0f9d58;border:1px solid #0f9d58;border-radius:3px;padding:3px 8px;font-size:10px;cursor:pointer;" title="Set the Google Drive archive link (photos, consultations)">📁 Archive</button>';
+    // RIGHT (top-right corner): 📂 Load + ☰ house menu (session 32: every action in a
+    // ☰ menu, each with a 📖 guide — see house-menus.js).
+    var _HM = window.XKDGHouseMenus;
+    var _pq = '\'' + escJs(person.name) + '\',' + hi;   // "'name',hi" for the actions
+    html += '<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;flex:0 0 auto;">';
+    html += '<button onclick="fsLoadHouse(' + _pq + ')" style="background:#1565c0;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;" title="Put this house on the luopan">📂 Load</button>';
+    if (_HM) {
+      var _hasPlan = !!(_sf && _sf.floorplan && _sf.floorplan.imgData);
+      html += _HM.menu('fs-hm-house-' + hi, [
+        { label: '📂 Load', act: 'fsLoadHouse(' + _pq + ')', help: 'load' },
+        _hasPlan ? { label: '🖼 Floor plan', act: 'fsViewFloorplanInPlace(' + _pq + ')', help: 'floorplan_view' } : null,
+        _hasPlan ? { label: '✏ Edit floor plan', act: 'fsHouseImportFloorplan(' + _pq + ')', help: 'floorplan_edit' } : null,
+        _hasPlan ? { label: '🗑 Remove floor plan', act: 'fsHouseRemoveFloorplan(' + _pq + ')', help: 'floorplan_remove', danger: true } : null,
+        !_hasPlan ? { label: '📐 Import a floorplan', act: 'fsHouseImportFloorplan(' + _pq + ')', help: 'floorplan_import' } : null,
+        { label: '📷 Photo sectors', act: 'if(window.XKDGPhotoSectors)XKDGPhotoSectors.open(' + _pq + ')', help: 'photo_sectors' },
+        { label: '📏 Plan builder', act: 'if(window.XKDGPlanBuilder)XKDGPlanBuilder.openForHouse(' + _pq + ')', help: 'plan_builder' },
+        h.driveUrl ? { label: '📁 Open archive', act: 'window.open(\'' + escJs(h.driveUrl) + '\',\'_blank\')', help: 'archive_open' } : null,
+        { label: h.driveUrl ? '✏ Archive link' : '📁 Set archive link', act: 'fsEditHouseDrive(' + _pq + ')', help: 'archive_set' },
+        { label: '✏ Rename house', act: 'fsRenameHouse(' + _pq + ')', help: 'rename_house' },
+        { label: '🗑 Delete house', act: 'fsDeleteHouse(' + _pq + ')', help: 'delete_house', danger: true }
+      ]);
     }
     html += '</div>';
 
     html += '</div>';
     html += '<div class="fs-house-body" id="fs-house-body-' + hi + '" style="display:' + (_exp ? 'block' : 'none') + ';">';
 
-    // ── Extra members (year-only; on top of owner → A and guest #2 → B) ──
+    // ── 👥 People: extra members (year-only) + guest #2 ──
+    var _memBody = '', _memPicker = '';
     (function(){
       var guests = Array.isArray(h.guests) ? h.guests : [];
       var g2 = (h.guest && h.guest.name) ? h.guest.name : null;
-      html += '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11px;color:#555;margin:2px 0 6px;">';
-      html += '<span title="Extra members. Only their BIRTH YEAR enters the date/hour scan (aquarium activation and other operations). Owner + guest #2 + every extra member must connect (AND). Six people maximum.">➕ Extra members <span style="color:#888;">(year only)</span>:</span>';
-      // Extra-member chips
+      var chips = '';
       guests.forEach(function(gn){
-        html += '<span style="display:inline-flex;align-items:center;gap:3px;background:#fff;border:1px solid #a5d6a7;border-radius:10px;padding:1px 6px 1px 8px;color:#33691e;">' + escHtml(gn)
+        chips += '<span style="display:inline-flex;align-items:center;gap:3px;background:#fff;border:1px solid #a5d6a7;border-radius:10px;padding:1px 6px 1px 8px;color:#33691e;">' + escHtml(gn)
              + '<span onclick="fsHouseRemoveMember(\'' + escJs(person.name) + '\',' + hi + ',\'' + escJs(gn) + '\')" title="Remove member" style="cursor:pointer;color:#c62828;font-weight:bold;padding:0 2px;">×</span></span>';
       });
-      // Picker (available = saved persons minus owner, guest#2, current members)
+      _memBody += '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:11px;color:#555;">';
+      _memBody += '<span>👤 Owner: <b>' + escHtml(_pn) + '</b></span>';
+      if (chips) _memBody += '<span style="color:#888;">· ➕ Extra (year only):</span>' + chips;
+      _memBody += '</div>';
+      if (g2){
+        _memBody += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#1565c0;margin-top:3px;">'
+          + '<span>👥 Guest #2: <strong>' + escHtml(g2) + '</strong></span>'
+          + '<span style="color:#888;">🎂 ' + (h.guest.birthDate ? escHtml(h.guest.birthDate) : 'no date') + '</span>'
+          + '<select onchange="fsSetGuestAway(\'' + escJs(person.name) + '\',' + hi + ',this.value===\'1\')" style="font-size:10px;padding:1px 4px;border:1px solid #1565c0;border-radius:4px;">'
+          +   '<option value="0"' + (!h.ownerAway ? ' selected' : '') + '>Cohabit (owner + guest)</option>'
+          +   '<option value="1"' + (h.ownerAway ? ' selected' : '') + '>Guest as #1 (owner away)</option>'
+          + '</select></div>';
+      }
+      // Picker (available = saved persons minus owner, guest#2, current members) — lives in the ☰ menu.
       var availAll = (typeof _fsAllSavedPersonNames === 'function' ? _fsAllSavedPersonNames() : [])
                     .filter(function(n){ return n !== person.name && n !== g2 && guests.indexOf(n) === -1; })
                     .sort(function(a,b){ return a.localeCompare(b); });
-      // Own folder menu for this picker (students' clients can be many).
       var _hasFolders = (typeof xkdgPersonFolder === 'function');
       var _mView = _hasFolders ? xkdgFolderViewGet('members') : '';
       var avail = _hasFolders ? availAll.filter(function(n){ return xkdgFolderMatch(xkdgPersonFolder(n), _mView); }) : availAll;
       if (_hasFolders && availAll.length && _fsHouseExtraSlots(h) > 0)
-        html += xkdgFolderFilterHtml('members', availAll.map(function(n){ return xkdgPersonFolder(n); }),
+        _memPicker += xkdgFolderFilterHtml('members', availAll.map(function(n){ return xkdgPersonFolder(n); }),
                 'font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:10px;background:#fff;color:#1b5e20;');
       if (_fsHouseExtraSlots(h) <= 0){
-        html += '<span style="color:#999;font-style:italic;">6 people max</span>';
+        _memPicker += '<span style="color:#999;font-style:italic;font-size:12px;">Extra members: 6 people max</span>';
       } else if (!avail.length){
-        html += '<span style="color:#999;font-style:italic;">' + (availAll.length ? 'nobody in this folder' : 'no other saved persons') + '</span>';
+        _memPicker += '<span style="color:#999;font-style:italic;font-size:12px;">' + (availAll.length ? 'nobody in this folder' : 'no other saved persons') + '</span>';
       } else {
-        html += '<select onchange="if(this.value){fsHouseAddMember(\'' + escJs(person.name) + '\',' + hi + ',this.value);this.value=\'\';}" style="font-size:11px;padding:2px 6px;border:1px solid #2e7d32;border-radius:10px;background:#f1f8e9;color:#1b5e20;cursor:pointer;">';
-        html += '<option value="">➕ Add member…</option>';
-        avail.forEach(function(n){ html += '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'; });
-        html += '</select>';
+        _memPicker += '<select onclick="event.stopPropagation()" onchange="if(this.value){fsHMClose();fsHouseAddMember(\'' + escJs(person.name) + '\',' + hi + ',this.value);this.value=\'\';}" style="font-size:12px;padding:3px 6px;border:1px solid #2e7d32;border-radius:10px;background:#f1f8e9;color:#1b5e20;cursor:pointer;">';
+        _memPicker += '<option value="">➕ Add extra member…</option>';
+        avail.forEach(function(n){ _memPicker += '<option value="' + escHtml(n) + '">' + escHtml(n) + '</option>'; });
+        _memPicker += '</select>';
       }
-      html += '</div>';
     })();
 
-    // ── Address (left) + Floor selector (right) on one line ──
+    // ── 📍 Address & facing ──
     var f = _fsActiveFloor(h);
     var fIdx = h.activeFloor || 0; if (fIdx >= h.floors.length) fIdx = 0;
     var effFacing = _fsFloorFacing(h, f);
     var effPeriod = _fsFloorPeriod(h, f);
+    var _addrBody = '<div style="font-size:11px;color:#555;">' + (h.address ? escHtml(h.address) : '<span style="color:#999;">No address</span>') + '</div>';
+    var _mapsUrl = h.address ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(h.address) : '';
 
-    html += '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;margin:2px 0 4px;">';
-    // Address (left)
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#555;">';
-    html += '<span>📍</span>';
-    if (h.address){
-      var mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(h.address);
-      html += '<span>' + escHtml(h.address) + '</span>';
-      html += '<a href="' + mapsUrl + '" target="_blank" rel="noopener" style="background:#1565c0;color:#fff;border-radius:3px;padding:1px 8px;font-size:10px;text-decoration:none;">🗺 Map</a>';
-    } else {
-      html += '<span style="color:#999;">No address</span>';
-    }
-    html += '<button onclick="fsFacingFromMap(\'fs-house-facing\')" title="Measure facing from satellite map (magnetic)" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">📍 Measure facing</button>';
-    html += '<button onclick="if(window.XKDGSunFacing)XKDGSunFacing.openForHouse(\'' + escJs(person.name) + '\',' + hi + ')" title="Measure the facing with the sun: shadow on a card at a window (no compass)" style="background:#fffde7;color:#8a6a1f;border:1px solid #f9a825;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">☀️ Sun facing</button>';
-    html += '<button onclick="fsEditHouseAddress(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">✏ Address</button>';
-    html += '</div>';
-    // Floor (right) — facing/period inline next to the selector; click the value to edit it.
-    html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;">';
-    html += '<span style="font-weight:bold;color:#2e7d32;">🏢 Floor:</span>';
-    html += '<select onchange="fsSwitchFloor(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
-    h.floors.forEach(function(fl, fi){ html += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>'; });
-    html += '</select>';
+    // ── 🏢 Floor ──
+    var _floorBody = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;">';
+    _floorBody += '<select onchange="fsSwitchFloor(\'' + escJs(person.name) + '\',' + hi + ',this.value)" style="font-size:11px;padding:2px 4px;border:1px solid #2e7d32;border-radius:4px;">';
+    h.floors.forEach(function(fl, fi){ _floorBody += '<option value="' + fi + '"' + (fi === fIdx ? ' selected' : '') + '>' + escHtml(fl.label || ('Floor ' + (fi + 1))) + '</option>'; });
+    _floorBody += '</select>';
     var _fpTxt = '';
-    if (effFacing != null) _fpTxt += 'Facing ' + effFacing + '\u00b0';
-    if (effPeriod != null) _fpTxt += (_fpTxt ? ' \u00b7 ' : '') + 'Period ' + effPeriod;
+    if (effFacing != null) _fpTxt += 'Facing ' + effFacing + '°';
+    if (effPeriod != null) _fpTxt += (_fpTxt ? ' · ' : '') + 'Period ' + effPeriod;
     if (!_fpTxt) _fpTxt = '<span style="color:#e65100;">no facing/period</span>';
-    html += '<span onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" title="Edit this floor\'s facing / period" style="font-size:11px;color:#555;white-space:nowrap;cursor:pointer;border-bottom:1px dotted #aaa;">' + _fpTxt + ' \u270E</span>';
-    html += '<button onclick="fsRenameFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;">✏ Rename</button>';
-    if (h.floors.length > 1) html += '<button onclick="fsDeleteFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:3px;padding:2px 7px;font-size:10px;cursor:pointer;" title="Delete this floor">🗑</button>';
-    html += '</div>';
-    html += '</div>';
-    // + Add floor on its own row below (facing/period & same-for-all options are asked there)
-    html += '<div style="margin:0 0 6px;"><button onclick="fsAddFloor(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:3px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;">+ Add floor</button></div>';
+    _floorBody += '<span onclick="fsEditFloorFacing(\'' + escJs(person.name) + '\',' + hi + ')" title="Edit this floor\'s facing / period" style="font-size:11px;color:#555;white-space:nowrap;cursor:pointer;border-bottom:1px dotted #aaa;">' + _fpTxt + ' ✎</span>';
+    _floorBody += '</div>';
 
-    // ── Guest (occupant #2) — cohabit (owner+guest) or guest-as-#1 (owner away) ──
-    if (h.guest && h.guest.name){
-      html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:#1565c0;margin-bottom:4px;padding-left:8px;border-left:2px solid #90caf9;">'
-        + '<span>👥 Guest #2: <strong>' + escHtml(h.guest.name) + '</strong></span>'
-        + '<span style="color:#888;">🎂 ' + (h.guest.birthDate ? escHtml(h.guest.birthDate) : 'no date') + '</span>'
-        + (h.ownerAway ? '<span style="color:#8a6a1f;">· owner #1 hidden</span>' : '')
-        + '<select onchange="fsSetGuestAway(\'' + escJs(person.name) + '\',' + hi + ',this.value===\'1\')" style="font-size:10px;padding:1px 4px;border:1px solid #1565c0;border-radius:4px;">'
-        +   '<option value="0"' + (!h.ownerAway ? ' selected' : '') + '>Cohabit (owner + guest)</option>'
-        +   '<option value="1"' + (h.ownerAway ? ' selected' : '') + '>Guest as #1 (owner away)</option>'
-        + '</select>'
-        + '<button onclick="fsRemoveGuest(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#fff;color:#c0392b;border:1px solid #e09a9a;border-radius:3px;padding:1px 8px;font-size:10px;cursor:pointer;">🗑 Remove guest</button>'
-        + '</div>';
-    }
-
-    // (Facing/Period now shown inline next to the Floor selector above; the owner
-    // is implicit — every House Profile follows the active person — so no 👤 label.)
-
-    // ── DOORS (🚪) — labeled block only when there are doors ──
+    // ── 🚪 Doors list ──
     var doors = f.doors;
-    if (doors.length){
-      html += '<div style="margin-top:6px;padding-left:8px;border-left:2px solid #c9a84c;">';
-      html += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:3px;">🚪 XKDG Doors</div>';
-      doors.forEach(function(d, di){
-        var facingStr = d.facing != null ? d.facing + '°' : '—';
-        var waterStr  = d.water  != null ? d.water  + '°' : '—';
-        var _isInt = (d.kind === 'internal');
-        var _typeBadge = '<span style="font-size:9px;font-weight:bold;color:#fff;background:' + (_isInt ? '#8e6a3f' : '#c9a84c') + ';border-radius:3px;padding:0 5px;margin-right:4px;">' + (_isInt ? 'INTERNAL' : 'EXTERNAL') + '</span>';
-        var _waterLbl = _isInt ? 'Fountain' : 'Water';
-        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">🚪 ' + _typeBadge + '<strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
-          + (d.palace ? ' · in ' + (_FS_DOOR_PAL_NAME[d.palace] || d.palace) : '') + '</span>';
-        html += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
-        html += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
-        if (d.facing != null) {
-          html += '<button onclick="fsScanDoorDates(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 8px;font-size:10px;font-weight:bold;cursor:pointer;" title="Scan for dates matching this door\'s Zheng Shen facing + Ling Shen water, and this person\'s Bazi">🔎 SCAN</button>';
-        }
-        html += '</div>';
-        if (d.facing != null) {
-          html += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
-        }
-      });
-      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'external\')" style="background:#c9a84c;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">+ External Door</button>';
-      html += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'internal\')" style="background:#8e6a3f;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;margin-left:4px;">+ Internal Door</button>';
-      html += '</div>';
-    }
+    var _doorsBody = '';
+    doors.forEach(function(d, di){
+      var facingStr = d.facing != null ? d.facing + '°' : '—';
+      var waterStr  = d.water  != null ? d.water  + '°' : '—';
+      var _isInt = (d.kind === 'internal');
+      var _typeBadge = '<span style="font-size:9px;font-weight:bold;color:#fff;background:' + (_isInt ? '#8e6a3f' : '#c9a84c') + ';border-radius:3px;padding:0 5px;margin-right:4px;">' + (_isInt ? 'INTERNAL' : 'EXTERNAL') + '</span>';
+      var _waterLbl = _isInt ? 'Fountain' : 'Water';
+      _doorsBody += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap;">';
+      _doorsBody += '<span style="font-size:11px;flex:1 1 180px;">🚪 ' + _typeBadge + '<strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
+        + (d.palace ? ' · in ' + (_FS_DOOR_PAL_NAME[d.palace] || d.palace) : '') + '</span>';
+      _doorsBody += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
+      _doorsBody += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
+      if (d.facing != null) {
+        _doorsBody += '<span style="display:inline-flex;align-items:center;white-space:nowrap;">';
+        _doorsBody += '<button onclick="fsScanDoorDates(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 8px;font-size:10px;font-weight:bold;cursor:pointer;" title="Scan for dates matching this door\'s Zheng Shen facing + Ling Shen water, and this person\'s Bazi">🔎 SCAN</button>';
+        _doorsBody += '<button onclick="fsHelp(\'door_scan\',event)" title="Guide" style="background:none;border:none;font-size:14px;cursor:pointer;padding:0 2px;">📖</button>';
+        _doorsBody += '</span>';
+      }
+      _doorsBody += '</div>';
+      if (d.facing != null) {
+        _doorsBody += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
+      }
+    });
 
-    // ── STAR WATERS (🐟) — labeled block only when there are aquariums ──
+    // ── 🐟 Star waters (aquariums) list ──
     var hasWaters = !!(f.waters && f.waters.length);
+    var _watersBody = '';
     if (hasWaters){
-      html += '<div style="margin-top:4px;padding-left:8px;border-left:2px solid #4db6ac;">';
-      html += '<div style="font-size:11px;font-weight:bold;color:#00897b;margin-bottom:3px;">🐟 Star Waters (aquariums)</div>';
       f.waters.forEach(function(w, wi){
         var dirLabel = w.dir ? w.dir : (w.deg != null ? w.deg + '°' : '?');
         var palaceLabel = w.palace ? ' (Palace ' + w.palace + ')' : '';
-        html += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
-        html += '<span style="font-size:11px;">🐟 <strong>' + escHtml(w.name) + '</strong> — ' + dirLabel + palaceLabel + '</span>';
-        html += '<button onclick="fsRemoveWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove this aquarium">✕</button>';
-        html += '</div>';
+        _watersBody += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">';
+        _watersBody += '<span style="font-size:11px;">🐟 <strong>' + escHtml(w.name) + '</strong> — ' + dirLabel + palaceLabel + '</span>';
+        _watersBody += '<button onclick="fsRemoveWater(\'' + escJs(person.name) + '\',' + hi + ',' + wi + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove this aquarium">✕</button>';
+        _watersBody += '</div>';
       });
-      html += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;margin-top:2px;">💧 Add Water</button>';
-      html += '</div>';
     }
-
-    // ── QFS ZONES removed — the PURPOSE ACTIVATION block (Target → Water palaces /
-    //    specific star) now covers what custom zones used to do. ──
-
     // ── Saved settings — no longer a separate block: each zone's chips are built
     //    here and shown INSIDE its competence group below (XKDG / Flying Stars). ──
     var _st = f.settings || { water: [], bed: [], desk: [] };
@@ -5467,45 +5430,39 @@ function fsRenderHouseProfiles(){
       return out;
     };
 
-    // ── Bottom "Add" row: empty sections collapse to horizontal Add buttons here
-    //    (no point in a full vertical block when there is nothing inside). ──
-    //    Now split into two labeled competence groups: XKDG (doors/bed/desk) and
-    //    Flying Stars (generic water). The division is shown right here in the box. ──
-    var _bStyle = 'color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;';
-    // ── XKDG group: external door, internal door, bed, desk ──
-    var _xkAdd = '';
-    if (!doors.length) _xkAdd += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'external\')" style="background:#c9a84c;' + _bStyle + '">+ External Door</button>';
-    _xkAdd += '<button onclick="fsAddDoor(\'' + escJs(person.name) + '\',' + hi + ',\'internal\')" style="background:#8e6a3f;' + _bStyle + '">+ Internal Door</button>';
-    _xkAdd += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'bed\')" style="background:#8a6a1f;' + _bStyle + '">🛏 Add Bed</button>';
-    _xkAdd += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'desk\')" style="background:#8a6a1f;' + _bStyle + '">🪑 Add Desk</button>';
-    // ── Flying Stars group: generic water placement ──
-    var _fsAdd = '';
-    if (!hasWaters) _fsAdd += '<button onclick="fsOpenZoneForHouse(\'' + escJs(person.name) + '\',' + hi + ',\'water\')" style="background:#4db6ac;' + _bStyle + '">💧 Add Water</button>';
-    else _fsAdd += '<span style="font-size:10px;color:#999;font-style:italic;">water placed above</span>';
-    // ── Guest + floorplan (neither group) ──
-    var _guestBtn = (!(h.guest && h.guest.name)) ? '<button onclick="fsAddGuest(\'' + escJs(person.name) + '\',' + hi + ')" title="Invite a guest as occupant #2 (considered in every scan, like Person B)" style="margin-left:auto;background:#0d47a1;color:#fff;border:1px solid #82b1ff;border-radius:4px;padding:3px 12px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 1px 3px rgba(13,71,161,.3);">👥 Add a new guest</button>' : '';
-    var _fpBtns = (f && f.floorplan && f.floorplan.imgData)
-      ? ''
-      : '<button onclick="fsHouseImportFloorplan(\'' + escJs(person.name) + '\',' + hi + ')" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">📐 Import a floorplan</button>';
-    var _rowStyle = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;';
-    var _lblXk = '<span style="font-size:10px;font-weight:bold;color:#8a6a1f;background:#f3ecd6;border-radius:3px;padding:1px 6px;">🚪 XKDG</span>';
-    var _lblFs = '<span style="font-size:10px;font-weight:bold;color:#00695c;background:#d8f0ec;border-radius:3px;padding:1px 6px;">⭐ Flying Stars</span>';
-    html += '<div style="margin-top:6px;padding-top:5px;border-top:1px dashed #ccc;">';
-    // ── XKDG box: row 1 = add buttons, row 2 = saved settings (bed / desk) ──
-    html += '<div style="border-left:3px solid #c9a84c;background:#fbf7ec;border-radius:4px;padding:5px 8px;margin-bottom:5px;">';
-    html +=   '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblXk + _xkAdd + '</div>';
-    html +=   '<div style="' + _rowStyle + '">' + _savedLine(['bed', 'desk']) + '</div>';
-    html += '</div>';
-    // ── Flying Stars box: row 1 = add buttons, row 2 = saved settings (water) ──
-    html += '<div style="border-left:3px solid #4db6ac;background:#eef8f7;border-radius:4px;padding:5px 8px;margin-bottom:5px;">';
-    html +=   '<div style="' + _rowStyle + 'margin-bottom:4px;">' + _lblFs + _fsAdd + '</div>';
-    html +=   '<div style="' + _rowStyle + '">' + _savedLine(['water']) + '</div>';
-    html += '</div>';
-    // Inline edit/scan panels for the chips above (hidden until a chip is clicked).
+    // ── Assemble the sub-sections, each with its ☰ menu (session 32) ──
+    var _M = function(id, items){ return _HM ? _HM.menu(id + '-' + hi, items) : ''; };
+    var _S = function(t, c, m, b){ return _HM ? _HM.section(t, c, m, b) : ('<div>' + t + b + '</div>'); };
+    var _g = h.guest && h.guest.name;
+    html += _S('👥 People', '#2e7d32', _M('fs-hm-ppl', [
+      { html: _memPicker, help: 'add_member' },
+      !_g ? { label: '👥 Add a new guest', act: 'fsAddGuest(' + _pq + ')', help: 'add_guest' } : null,
+      _g ? { label: '🗑 Remove guest', act: 'fsRemoveGuest(' + _pq + ')', help: 'remove_guest', danger: true } : null
+    ]), _memBody);
+    html += _S('📍 Address & facing', '#1565c0', _M('fs-hm-addr', [
+      h.address ? { label: '🗺 Map', act: 'window.open(\'' + escJs(_mapsUrl) + '\',\'_blank\')', help: 'map' } : null,
+      { label: '✏ Address', act: 'fsEditHouseAddress(' + _pq + ')', help: 'address' },
+      { label: '📍 Measure facing (map)', act: 'fsFacingFromMap(\'fs-house-facing\')', help: 'measure_facing' },
+      { label: '☀️ Sun facing', act: 'if(window.XKDGSunFacing)XKDGSunFacing.openForHouse(' + _pq + ')', help: 'sun_facing' }
+    ]), _addrBody);
+    html += _S('🏢 Floor', '#2e7d32', _M('fs-hm-floor', [
+      { label: '✎ Facing / period', act: 'fsEditFloorFacing(' + _pq + ')', help: 'floor_facing' },
+      { label: '✏ Rename floor', act: 'fsRenameFloor(' + _pq + ')', help: 'rename_floor' },
+      { label: '+ Add floor', act: 'fsAddFloor(' + _pq + ')', help: 'add_floor' },
+      h.floors.length > 1 ? { label: '🗑 Delete floor', act: 'fsDeleteFloor(' + _pq + ')', help: 'delete_floor', danger: true } : null
+    ]), _floorBody);
+    html += _S('🚪 XKDG — doors, bed, desk', '#8a6a1f', _M('fs-hm-xkdg', [
+      { label: '+ External Door', act: 'fsAddDoor(' + _pq + ',\'external\')', help: 'ext_door' },
+      { label: '+ Internal Door', act: 'fsAddDoor(' + _pq + ',\'internal\')', help: 'int_door' },
+      { label: '🛏 Add Bed', act: 'fsOpenZoneForHouse(' + _pq + ',\'bed\')', help: 'add_bed' },
+      { label: '🪑 Add Desk', act: 'fsOpenZoneForHouse(' + _pq + ',\'desk\')', help: 'add_desk' }
+    ]), (_doorsBody || '<div style="font-size:11px;color:#999;">No doors yet — ☰ → + External Door</div>')
+       + '<div style="margin-top:3px;">' + _savedLine(['bed', 'desk']) + '</div>');
+    html += _S('⭐ Flying Stars — water', '#00897b', _M('fs-hm-fs', [
+      { label: '💧 Add Water', act: 'fsOpenZoneForHouse(' + _pq + ',\'water\')', help: 'add_water' }
+    ]), _watersBody + '<div style="margin-top:3px;">' + _savedLine(['water']) + '</div>');
+    // Inline edit/scan panels for the saved chips (hidden until a chip is clicked).
     html += _zonePanels;
-    html += '<div style="' + _rowStyle + '">' + _fpBtns + _guestBtn + '</div>';
-    html += '</div>';
-
     html += '</div>'; // close .fs-house-body (collapsible)
     html += '</div>';
   });
