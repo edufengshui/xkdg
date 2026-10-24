@@ -383,6 +383,7 @@ function buildFengShuiView(){
           <button onclick="fsExportBackup()" title="Download a .json backup of all houses, persons and settings" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">⬇ Backup</button>
           <button onclick="document.getElementById('fs-restore-input').click()" title="Restore everything from a .json backup file" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">⬆ Restore</button>
           <input type="file" id="fs-restore-input" accept="application/json,.json" style="display:none;" onchange="fsImportBackup(this)">
+          <button onclick="fsHouseDB()" title="All saved houses: show, hide or delete them permanently" style="background:#fff;color:#2e7d32;border:1px solid #2e7d32;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">🗄 Houses DB</button>
           <button onclick="if(window.XKDGDigestSetup)XKDGDigestSetup.open()" title="Settings for the daily email (hours + Feng Shui dates of these houses)" style="background:#fff;color:#4a148c;border:1px solid #4a148c;border-radius:5px;padding:5px 10px;font-size:11px;font-weight:bold;cursor:pointer;">📧 Daily email</button>
         </div>
         <div id="fs-house-person-label" style="font-size:11px;color:#666;margin-bottom:6px;"></div>
@@ -5203,7 +5204,10 @@ function fsRenderHouseProfiles(){
 
 
   var html = '';
+  var _hiddenN = 0;
   houses.forEach(function(h, hi){
+    // Hidden houses (🗄 Houses DB) are kept but not listed; their index stays the same.
+    if (h.hidden) { _hiddenN++; return; }
     var isActive = (hi === activeIdx);
     var borderColor = isActive ? '#2e7d32' : '#a5d6a7';
     var bgColor = isActive ? '#f1f8e9' : '#fff';
@@ -5251,6 +5255,7 @@ function fsRenderHouseProfiles(){
         h.driveUrl ? { label: '📁 Open archive', act: 'window.open(\'' + escJs(h.driveUrl) + '\',\'_blank\')', help: 'archive_open' } : null,
         { label: h.driveUrl ? '✏ Archive link' : '📁 Set archive link', act: 'fsEditHouseDrive(' + _pq + ')', help: 'archive_set' },
         { label: '✏ Rename house', act: 'fsRenameHouse(' + _pq + ')', help: 'rename_house' },
+        { label: '🙈 Hide house', act: 'fsHouseSetHidden(' + _pq + ',true)', help: 'hide_house' },
         { label: '🗑 Delete house', act: 'fsDeleteHouse(' + _pq + ')', help: 'delete_house', danger: true }
       ]);
     }
@@ -5502,6 +5507,7 @@ function fsRenderHouseProfiles(){
     html += '</div>'; // close .fs-house-body (collapsible)
     html += '</div>';
   });
+  if (_hiddenN) html += '<div style="font-size:11px;color:#777;margin:4px 2px;">🙈 ' + _hiddenN + ' hidden house' + (_hiddenN > 1 ? 's' : '') + ' — <a href="#" onclick="fsHouseDB();return false;" style="color:#2e7d32;font-weight:bold;">🗄 Houses DB</a></div>';
   list.innerHTML = html;
 }
 
@@ -6004,8 +6010,8 @@ function fsClearHouseInputs(){
   if (typeof fsRedraw === 'function') fsRedraw();
 }
 
-function fsDeleteHouse(personName, houseIdx){
-  if (!confirm('Delete this house profile?')) return;
+function fsDeleteHouse(personName, houseIdx, skipConfirm){
+  if (!skipConfirm && !confirm('Delete this house profile?')) return;
   const all = _fsHousesLoad();
   if (!all[personName]) return;
   all[personName].splice(houseIdx, 1);

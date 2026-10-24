@@ -42,6 +42,8 @@
     add_bed: ['🛏 Add Bed', 'Opens the Bed section: choose the <b>bed palace</b>, type the <b>sitting</b> (headboard) — it must be Zheng Shen — check that it communicates with the people, optionally a <b>fountain</b> in front of the bed, then 🔎 SCAN lucky dates. Save it with 💾 Save current.', FS],
     add_desk: ['🪑 Add Desk', 'Opens the Desk section: who sits, the <b>desk palace</b> and the <b>desk facing</b> (Zheng Shen, communicating with the person), optionally a fountain among the propitious water positions, then 🔎 SCAN lucky dates. Save it with 💾 Save current.', FS],
     add_water: ['💧 Add Water', 'Opens the Water section: ① a water feature (aquarium / fountain) <b>by palace</b> with the Flying-Star dates, or ② a water for a door facing in degrees (💡 Suggest proposes the best Ling Shen water). Save it in the house with 💾 Save to house / 💾 Save current.', FS],
+    hide_house: ['🙈 Hide house', 'Takes the house off this list without deleting it. It stays in <b>🗄 Houses DB</b> (button at the top of House Profiles), where <b>👁 Show</b> brings it back and <b>🗑 Delete</b> removes it for good.', FS],
+    houses_db: ['🗄 Houses DB', 'All your saved houses, grouped by person. <b>🙈 Hide</b> takes a house off the House Profiles list but keeps it; <b>👁 Show</b> brings it back; <b>🗑</b> deletes it <b>permanently</b> (asks first). Use the filters All / Visible / Hidden and the search box. Tip: make a <b>⬇ Backup</b> before deleting.', FS],
     door_scan: ['🔎 SCAN', 'Finds the dates that match this door: Zheng Shen facing, Ling Shen water within ±70°, and the people of the house. Uses FROM / DAYS of the toolbar.', FS]
   };
 
@@ -94,6 +96,67 @@
       '<div style="margin-top:12px;text-align:right;"><a href="' + h[2] + '" target="_blank" rel="noopener" style="color:#00695c;font-weight:bold;">📘 Full guide →</a></div></div>';
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
+  };
+
+  // ── 🗄 Houses DB: every saved house (all people), show / hide / delete for good ──
+  function save(all) { _fsHousesSave(all); try { fsRenderHouseProfiles(); } catch (e) {} }
+  window.fsHouseSetHidden = function (pn, i, hide) {
+    var all = _fsHousesLoad(), h = all[pn] && all[pn][i]; if (!h) return;
+    if (hide) h.hidden = true; else delete h.hidden;
+    save(all);
+    if (document.getElementById('fs-hdb-ov')) window.fsHouseDB();
+  };
+  window.fsHouseDeleteForever = function (pn, i) {
+    var all = _fsHousesLoad(), h = all[pn] && all[pn][i]; if (!h) return;
+    if (!confirm('Delete "' + (h.name || 'house') + '" (' + pn + ') PERMANENTLY?\n\nFloors, doors, settings and floor plans are lost. This cannot be undone.')) return;
+    fsDeleteHouse(pn, i, true);
+    if (document.getElementById('fs-hdb-ov')) window.fsHouseDB();
+  };
+  window.fsHouseDB = function () {
+    var all = _fsHousesLoad();
+    var cur = null; try { var ap = fsGetActivePersonForHouse(); cur = ap && ap.name; } catch (e) {}
+    var view = window._fsHdbView || 'all', q = (window._fsHdbQ || '').toLowerCase();
+    var names = Object.keys(all).sort(function (a, b) { return a === cur ? -1 : b === cur ? 1 : a.localeCompare(b); });
+    var rows = '', count = 0, hidN = 0;
+    names.forEach(function (pn) {
+      var hs = all[pn] || [], block = '';
+      hs.forEach(function (h, i) {
+        if (h.hidden) hidN++;
+        if (view === 'visible' && h.hidden) return;
+        if (view === 'hidden' && !h.hidden) return;
+        if (q && (String(h.name || '') + ' ' + pn + ' ' + String(h.address || '')).toLowerCase().indexOf(q) < 0) return;
+        count++;
+        var fl = null, fc = null, pe = null;
+        try { fl = _fsActiveFloor(h); fc = _fsFloorFacing(h, fl); pe = _fsFloorPeriod(h, fl); } catch (e) {}
+        var pq = '\'' + String(pn).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\',' + i;
+        block += '<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px solid #eee;' + (h.hidden ? 'opacity:.6;' : '') + '">' +
+          '<div style="flex:1;min-width:0;"><b>' + esc(h.name || '—') + '</b> ' + (h.hidden ? '<span style="font-size:10px;color:#888;">🙈 hidden</span>' : '') +
+          '<div style="font-size:11px;color:#777;">' + (fc != null ? 'Facing ' + fc + '°' : '') + (pe != null ? ' · Period ' + pe : '') + (h.address ? ' · ' + esc(h.address) : '') + '</div></div>' +
+          (h.hidden
+            ? '<button onclick="fsHouseSetHidden(' + pq + ',false)" style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer;">👁 Show</button>'
+            : '<button onclick="fsHouseSetHidden(' + pq + ',true)" style="background:#fff;color:#555;border:1px solid #999;border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer;">🙈 Hide</button>') +
+          '<button onclick="fsHouseDeleteForever(' + pq + ')" title="Delete permanently" style="background:#fff;color:#c62828;border:1px solid #c62828;border-radius:5px;padding:4px 8px;font-size:12px;cursor:pointer;">🗑</button></div>';
+      });
+      if (block) rows += '<div style="margin-top:8px;font-size:12px;font-weight:bold;color:#2e7d32;">👤 ' + esc(pn) + (pn === cur ? ' <span style="font-weight:normal;color:#888;">(loaded)</span>' : '') + '</div>' + block;
+    });
+    if (!rows) rows = '<div style="color:#999;font-size:13px;padding:12px 4px;">No houses.</div>';
+    var btn = function (v, l) { return '<button onclick="window._fsHdbView=\'' + v + '\';fsHouseDB()" style="border:1px solid #2e7d32;border-radius:12px;padding:3px 10px;font-size:12px;cursor:pointer;background:' + (view === v ? '#2e7d32;color:#fff' : '#fff;color:#2e7d32') + ';">' + l + '</button>'; };
+    var old = document.getElementById('fs-hdb-ov'), keepScroll = 0;
+    if (old) { var lb = old.querySelector('.fs-hdb-list'); keepScroll = lb ? lb.scrollTop : 0; old.remove(); }
+    var ov = document.createElement('div'); ov.id = 'fs-hdb-ov';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100040;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:12px;';
+    ov.innerHTML = '<div style="background:#fff;border-radius:10px;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 6px 24px rgba(0,0,0,.35);">' +
+      '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#2e7d32;color:#fff;border-radius:10px 10px 0 0;"><b style="flex:1;">🗄 Houses DB</b>' +
+      '<button onclick="fsHelp(\'houses_db\',event)" style="background:none;border:none;font-size:18px;cursor:pointer;">📖</button>' +
+      '<button onclick="document.getElementById(\'fs-hdb-ov\').remove()" style="background:#fff;color:#2e7d32;border:none;border-radius:6px;padding:3px 10px;cursor:pointer;font-weight:bold;">✕</button></div>' +
+      '<div style="padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #eee;">' +
+      btn('all', 'All') + btn('visible', 'Visible') + btn('hidden', 'Hidden' + (hidN ? ' (' + hidN + ')' : '')) +
+      '<input id="fs-hdb-q" placeholder="🔍 search" value="' + esc(window._fsHdbQ || '') + '" oninput="window._fsHdbQ=this.value;clearTimeout(window._fsHdbT);window._fsHdbT=setTimeout(function(){fsHouseDB();var e=document.getElementById(\'fs-hdb-q\');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},300)" style="flex:1;min-width:110px;padding:4px 8px;border:1px solid #ccc;border-radius:12px;font-size:12px;"></div>' +
+      '<div class="fs-hdb-list" style="overflow:auto;padding:0 14px 12px;">' + rows + '</div>' +
+      '<div style="padding:6px 14px;font-size:11px;color:#888;border-top:1px solid #eee;">' + count + ' shown · 🙈 Hide keeps the house (not in the list) · 🗑 deletes it for good</div></div>';
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+    var lb2 = ov.querySelector('.fs-hdb-list'); if (lb2) lb2.scrollTop = keepScroll;
   };
 
   window.XKDGHouseMenus = { menu: menu, section: section, HELP: HELP };
