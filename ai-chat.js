@@ -517,7 +517,9 @@
       '-> plan_item. (5) plan_show so the user checks the drawing. (6) For the bed (and any item the user asks): ' +
       'plan_optimize with the room door. Explain: the sitting and whether it is Zheng Shen; the hexagram the door ' +
       'centre falls on now; the good stretches; the advice in cm and direction; then plan_show again (green/red line). ' +
-      'If no stretch exists on that wall, say so and use other_walls. Never invent a number the user did not measure.\n' +
+      'If no stretch exists on that wall, say so and use other_walls. Never invent a number the user did not measure. ' +
+      'For the 3D view ask once the ceiling height (plan_settings height_m), and door/window heights and window sill ' +
+      'when the user measures them (else defaults); item heights are optional. plan_3d opens the 3D view.\n' +
       '- PHOTOS OF A ROOM: when the user attaches a photo for water placement, call photo_sectors (it opens the house\'s ' +
       'Photo-sectors view with the red sector boxes). Propose wall_lines only on a wall you can clearly see running away ' +
       'from the camera, and always ask the user to confirm or retrace them. Read positions from the tool (x_from/x_to, ' +
@@ -690,7 +692,7 @@
                'list_houses','get_house_setup','set_active_house','load_house','load_placement',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
-               'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','sun_facing','find_qimen_days'],
+               'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','sun_facing','find_qimen_days'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -1853,7 +1855,7 @@
       name: 'plan_settings',
       description: 'Floor-plan builder settings: wall_m = internal wall thickness in metres (measure it once on a door ' +
         'jamb; default 0.12), clear = true to start the plan again.',
-      input_schema: { type: 'object', properties: { house_name: { type: 'string' }, wall_m: { type: 'number' }, clear: { type: 'boolean' } } }
+      input_schema: { type: 'object', properties: { house_name: { type: 'string' }, wall_m: { type: 'number' }, height_m: { type: 'number', description: 'Ceiling height (m), for the 3D view.' }, clear: { type: 'boolean' } } }
     },
     {
       name: 'plan_show',
@@ -1873,7 +1875,8 @@
         house_name: { type: 'string' }, action: { type: 'string', enum: ['add', 'update', 'remove'] },
         name: { type: 'string' }, new_name: { type: 'string' }, kind: { type: 'string', enum: ['door', 'window'] },
         room: { type: 'string' }, side_deg: { type: 'number' }, offset_m: { type: 'number' }, offset_from_deg: { type: 'number' },
-        width_m: { type: 'number' } }, required: ['name'] }
+        width_m: { type: 'number' }, height_m: { type: 'number', description: 'Height of the opening (door default 2.1, window default 1.2).' },
+        sill_m: { type: 'number', description: 'Window sill height from the floor (default 0.9).' } }, required: ['name'] }
     },
     {
       name: 'plan_item',
@@ -1889,7 +1892,15 @@
         name: { type: 'string' }, new_name: { type: 'string' },
         kind: { type: 'string', enum: ['bed', 'desk', 'sofa', 'table', 'kitchen', 'stove', 'altar', 'other'] },
         room: { type: 'string' }, side_deg: { type: 'number' }, offset_m: { type: 'number' }, offset_from_deg: { type: 'number' },
-        width_m: { type: 'number' }, depth_m: { type: 'number' }, gap_m: { type: 'number' } }, required: ['name'] }
+        width_m: { type: 'number' }, depth_m: { type: 'number' }, gap_m: { type: 'number' },
+        height_m: { type: 'number', description: 'Height (for the 3D view). Optional: typical values are used if missing.' } }, required: ['name'] }
+    },
+    {
+      name: 'plan_3d',
+      description: 'Open the 3D view of the floor plan (rooms, walls with doors/windows, furniture as real shapes, the 8 ' +
+        'palaces on the floor from the centre, facing arrow, last bed-door check line). Use when the user asks to see the ' +
+        'plan in 3D, or after an optimisation.',
+      input_schema: { type: 'object', properties: { house_name: { type: 'string' } } }
     },
     {
       name: 'plan_optimize',
@@ -3228,12 +3239,13 @@
         return XKDGSunFacing.measure(input || {});
       }
       if (name === 'plan_status' || name === 'plan_room' || name === 'plan_settings' || name === 'plan_show' ||
-          name === 'plan_opening' || name === 'plan_item' || name === 'plan_optimize') {
+          name === 'plan_opening' || name === 'plan_item' || name === 'plan_optimize' || name === 'plan_3d') {
         if (!window.XKDGPlanBuilder) return { error: 'The plan builder is not loaded.' };
         var _pi = input || {};
         if (name === 'plan_opening') return XKDGPlanBuilder.opening(_pi);
         if (name === 'plan_item') return XKDGPlanBuilder.item(_pi);
         if (name === 'plan_optimize') return XKDGPlanBuilder.optimize(_pi);
+        if (name === 'plan_3d') { if (!window.XKDGPlan3D) return { error: '3D view not loaded.' }; XKDGPlan3D.open(_pi.house_name || null); return { open: true, note: 'The 3D view is open: one finger rotates, two fingers zoom; Top = view from above; Low walls = see inside.' }; }
         if (name === 'plan_status') return XKDGPlanBuilder.status(_pi.house_name);
         if (name === 'plan_room') return XKDGPlanBuilder.room(_pi);
         if (name === 'plan_settings') return XKDGPlanBuilder.settings(_pi);

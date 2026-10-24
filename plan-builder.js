@@ -131,7 +131,7 @@
     var p = c.plan, b = bbox(p), fp = footprint(p), cen = fp.length ? centroid(fp) : null;
     return {
       house: c.h.name, floor: c.f.label || ('Floor ' + ((c.h.activeFloor || 0) + 1)), house_facing: c.facing,
-      wall_thickness_m: p.wall_m,
+      wall_thickness_m: p.wall_m, ceiling_height_m: p.height_m || null,
       side_directions: sidesText(c.facing),
       rooms: p.rooms.map(function (r) {
         return { name: r.name, size_along_facing_axis_m: r2(r.d), size_across_m: r2(r.w), area_m2: r2(r.w * r.d),
@@ -196,7 +196,8 @@
   function settings(o) {
     var c = ctx(o.house_name); if (!c) return { error: 'No house found.' };
     if (o.wall_m != null) { if (!(+o.wall_m >= 0 && +o.wall_m < 1)) return { error: 'wall_m must be between 0 and 1 m.' }; c.plan.wall_m = +o.wall_m; }
-    if (o.clear === true) c.plan.rooms = [];
+    if (o.height_m != null) { if (!(+o.height_m > 1.5 && +o.height_m < 10)) return { error: 'height_m (ceiling) must be between 1.5 and 10 m.' }; c.plan.height_m = +o.height_m; }
+    if (o.clear === true) { c.plan.rooms = []; c.plan.items = []; c.plan.openings = []; }
     c.save(); return status(o.house_name);
   }
 
@@ -266,6 +267,8 @@
     return listOp(o, 'openings', function (c, cur, o) {
       if (o.kind) cur.kind = o.kind === 'window' ? 'window' : 'door';
       if (!cur.kind) cur.kind = 'door';
+      if (o.height_m != null) cur.height = +o.height_m;
+      if (o.sill_m != null) cur.sill = +o.sill_m;
       return placeOnWall(c, cur, o, false);
     });
   }
@@ -273,6 +276,7 @@
     return listOp(o, 'items', function (c, cur, o) {
       if (o.kind) cur.kind = String(o.kind).toLowerCase();
       if (!cur.kind) cur.kind = 'other';
+      if (o.height_m != null) cur.height = +o.height_m;
       return placeOnWall(c, cur, o, true);
     });
   }
@@ -473,7 +477,8 @@
       (rows ? '<table style="border-collapse:collapse;margin-top:8px;font-size:12px;"><tr style="background:#efebe9;"><th style="padding:3px 6px;">Room</th><th>along facing (m)</th><th>across (m)</th><th>m²</th><th></th></tr>' + rows + '</table>' : '') +
       (st.warnings && st.warnings.length ? '<div style="color:#c62828;margin-top:6px;">⚠ ' + esc(st.warnings.join(' · ')) + '</div>' : '') +
       (st.centre_m && !st.centre_m.inside_the_plan ? '<div style="color:#c62828;margin-top:6px;">⚠ The centre falls outside the rooms (irregular plan): check the missing sectors.</div>' : '') +
-      (R ? '<div style="margin-top:10px;"><button onclick="XKDGPlanBuilder._toFp()" style="padding:6px 12px;border-radius:6px;border:none;background:#5d4037;color:#fff;cursor:pointer;">🖼 Use as floor plan (8 palaces)</button></div>' : '') +
+      (R ? '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"><button onclick="XKDGPlanBuilder._toFp()" style="padding:6px 12px;border-radius:6px;border:none;background:#5d4037;color:#fff;cursor:pointer;">🖼 Use as floor plan (8 palaces)</button>' +
+           '<button onclick="if(window.XKDGPlan3D)XKDGPlan3D.open(XKDGPlanBuilder._house())" style="padding:6px 12px;border-radius:6px;border:none;background:#283593;color:#fff;cursor:pointer;">🧊 3D view</button></div>' : '') +
       '</div></div>';
     m.addEventListener('click', function (e) { if (e.target === m) close(); });
     document.body.appendChild(m);
@@ -487,10 +492,19 @@
   window.XKDGPlanBuilder = {
     status: status, room: roomOp, settings: settings, open: open, close: close, toFloorplan: toFloorplan,
     opening: openingOp, item: itemOp, optimize: optimize,
+    // geometry for the 3D view (plan-3d.js)
+    geom: function (houseName) {
+      var c = ctx(houseName); if (!c || c.facing == null) return null;
+      var fp = footprint(c.plan), cen = fp.length ? centroid(fp) : null;
+      return { house: c.h.name, facing: c.facing, plan: c.plan, centre: cen, sideDirs: sideDirs(c.facing),
+               wallPoint: wallPoint, findRoom: function (n) { return c.plan.rooms[findRoom(c.plan, n)] || null; },
+               lastOpt: window._xpbLastOpt || null };
+    },
     openForHouse: function (key, idx) {
       var all = (typeof _fsHousesLoad === 'function') ? _fsHousesLoad() : {};
       var h = all[key] && all[key][idx]; return open(h ? h.name : null);
     },
+    _house: function () { return currentHouseName(); },
     _del: function (n) { if (!confirm('Delete room "' + n + '"?')) return; var hn = currentHouseName(); roomOp({ house_name: hn, action: 'remove', name: n }); open(hn); },
     _toFp: function () { var hn = currentHouseName(); var r = toFloorplan(hn); if (r && r.error) alert(r.error); else close(); }
   };

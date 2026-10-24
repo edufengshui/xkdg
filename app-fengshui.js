@@ -5304,6 +5304,7 @@ function fsRenderHouseProfiles(){
         !_hasPlan ? { label: '📐 Import a floorplan', act: 'fsHouseImportFloorplan(' + _pq + ')', help: 'floorplan_import' } : null,
         { label: '📷 Photo sectors', act: 'if(window.XKDGPhotoSectors)XKDGPhotoSectors.open(' + _pq + ')', help: 'photo_sectors' },
         { label: '📏 Plan builder', act: 'if(window.XKDGPlanBuilder)XKDGPlanBuilder.openForHouse(' + _pq + ')', help: 'plan_builder' },
+        { label: '🧊 3D view', act: 'if(window.XKDGPlan3D)XKDGPlan3D.openForHouse(' + _pq + ')', help: 'plan_3d' },
         h.driveUrl ? { label: '📁 Open archive', act: 'window.open(\'' + escJs(h.driveUrl) + '\',\'_blank\')', help: 'archive_open' } : null,
         { label: h.driveUrl ? '✏ Archive link' : '📁 Set archive link', act: 'fsEditHouseDrive(' + _pq + ')', help: 'archive_set' },
         { label: '✏ Rename house', act: 'fsRenameHouse(' + _pq + ')', help: 'rename_house' },
