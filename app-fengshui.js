@@ -5326,7 +5326,8 @@ function fsRenderHouseProfiles(){
       var _typeBadge = '<span style="font-size:9px;font-weight:bold;color:#fff;background:' + (_isInt ? '#8e6a3f' : '#c9a84c') + ';border-radius:3px;padding:0 5px;margin-right:4px;">' + (_isInt ? 'INTERNAL' : 'EXTERNAL') + '</span>';
       var _waterLbl = _isInt ? 'Fountain' : 'Water';
       _doorsBody += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap;">';
-      _doorsBody += '<span style="font-size:11px;flex:1 1 180px;">🚪 ' + _typeBadge + '<strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
+      // No INTERNAL/EXTERNAL badge (Edu, s.32): "Fountain" (internal) / "Water" (external) already says it.
+      _doorsBody += '<span style="font-size:11px;flex:1 1 180px;" title="' + (_isInt ? 'Internal door' : 'External door') + '">🚪 <strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
         + (d.palace ? ' · in ' + (_FS_DOOR_PAL_NAME[d.palace] || d.palace) : '') + '</span>';
       _doorsBody += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
       _doorsBody += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
