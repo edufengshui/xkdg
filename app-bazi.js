@@ -2452,7 +2452,7 @@ function loadPersonFromDB(targetPanel, name) {
         const dateId = targetPanel === 'B' ? 'person-date-b' : 'person-date';
         const timeId = targetPanel === 'B' ? 'person-time-b' : 'person-time';
         document.getElementById(nameId).value = name;
-        document.getElementById(dateId).value = p.date;
+        document.getElementById(dateId).value = p.date || '';
         document.getElementById(timeId).value = p.time || '12:00';
         // Restore pillar depth (both persons)
         {
@@ -2516,12 +2516,15 @@ function savePerson(person) {
     const date   = document.getElementById(dateId).value;
     const time   = document.getElementById(timeId).value || '12:00';
     if (!name) { alert('Please enter a name.'); return; }
-    if (!date) { alert('Please enter a birth date.'); return; }
     const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const archive = loadArchive(key);
     const isB     = person === 'B';
     const depth = _personDepth(person);
     const jiaZiYear = (depth === 1) ? (document.getElementById(isB ? 'person-year-b' : 'person-year-a')?.value || '') : '';
+    // "1 — Year only": the birth date field is hidden, so the YEAR PILLAR is what
+    // must be filled in; a date is required only for the other modes.
+    if (depth === 1) { if (!jiaZiYear) { alert('Please choose the year pillar.'); return; } }
+    else if (!date) { alert('Please enter a birth date.'); return; }
     // Freeze the BIRTH location: capture the longitude / UTC / DST currently in
     // effect (the city the user simulated for this person) so the saved chart
     // never drifts when they return to their own GPS.
@@ -2560,8 +2563,19 @@ function loadPerson(person, name) {
     const dateId = person === 'B' ? 'person-date-b' : 'person-date';
     const timeId = person === 'B' ? 'person-time-b' : 'person-time';
     document.getElementById(nameId).value = name;
-    document.getElementById(dateId).value = p.date;
+    document.getElementById(dateId).value = p.date || '';
     document.getElementById(timeId).value = p.time || '12:00';
+    // Restore pillar depth + Jia Zi year (same as loading from 📋 DB), so a
+    // year-only person loaded from the name chips keeps its year pillar.
+    try {
+        const _isB = person === 'B';
+        const sel = document.getElementById(_isB ? 'person-pillars-b' : 'person-pillars-a');
+        if (sel) { sel.value = p.depth || 4; if (_isB) onPersonBPillarsChange(); else onPersonAPillarsChange(); }
+        if (p.depth === 1 && p.jiaZiYear) {
+            const yr = document.getElementById(_isB ? 'person-year-b' : 'person-year-a');
+            if (yr) yr.value = p.jiaZiYear;
+        }
+    } catch (e) {}
     // Always recalculate main chart first to ensure fresh connection check
     calculateBazi();
     calculatePerson(person);
@@ -6826,7 +6840,7 @@ function _fsXkdgHoursForDay(iso){
             if (!hx || hx.hex == null) continue;
             let okCount = 0;
             persons.forEach(function(p){
-                if (_fsCommunicate(p.hex, p.qi, p.yun, hx.hex, hx.qi, hx.yun).connected) okCount++;
+                if (_fsCommunicate(p.hex, p.qi, p.yun, hx.hex, hx.qi, hx.yun, 'date').connected) okCount++;
             });
             if (both ? (okCount === persons.length) : (okCount >= 1)) set[h] = true;
         }

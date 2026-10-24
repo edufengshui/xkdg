@@ -2272,9 +2272,11 @@
     if (!a || !b) return out;
     var hetu = (typeof isHetuPair === 'function') ? isHetuPair : function () { return false; };
     if (hetu(a.yun, b.yun)) out.push('Hetu yun ' + a.yun + '-' + b.yun);
+    // facingWater = any Feng Shui pair (water/facing, person/placement): Adding ONLY to 10
+    // on yun and qi (Edu, session 32). 5/15 count only when one side is a date.
     if (facingWater ? (a.yun + b.yun === 10) : ([5, 10, 15].indexOf(a.yun + b.yun) >= 0)) out.push('Adding yun=' + (a.yun + b.yun));
     if (hetu(a.qi, b.qi)) out.push('Hetu qi ' + a.qi + '-' + b.qi);
-    if ([5, 10, 15].indexOf(a.qi + b.qi) >= 0) out.push('Adding qi=' + (a.qi + b.qi));
+    if (facingWater ? (a.qi + b.qi === 10) : ([5, 10, 15].indexOf(a.qi + b.qi) >= 0)) out.push('Adding qi=' + (a.qi + b.qi));
     try {
       if (typeof getHexFamilies === 'function') {
         var fb = getHexFamilies(h2) || [];
@@ -2351,7 +2353,7 @@
           var P = persons[who], lp = {}, anyL = false;
           ['year', 'day'].forEach(function (k) {   // month and hour do not count (Edu)
             if (!P.pillars[k]) return;
-            var l = _hexLinks(ws.hexNum, P.pillars[k].hex);
+            var l = _hexLinks(ws.hexNum, P.pillars[k].hex, true);
             if (l.length) { lp[k] = l; anyL = true; }
           });
           row.links_to_persons[(P.name || who)] = anyL ? lp : 'none';
@@ -3119,81 +3121,13 @@
   function loadMacros() {
     var arr = null;
     try { var a = JSON.parse(localStorage.getItem('xkdg_ai_macros') || 'null'); if (Array.isArray(a)) arr = a; } catch (e) {}
-    if (!arr) {
-      arr = [{
-        trigger: 'aq',
-        label: 'Aquarium — both houses, tomorrow',
-        text: 'For TOMORROW\u2019s date, find the best hours to activate the aquarium in EVERY saved house of the active person. ' +
-              'For each house use ITS saved water position (direction) and its water star (facing), on ITS flying chart. ' +
-              'Proceed one house at a time: make the house active (set_active_house), read its setup, run find_water_activation_full for that house, ' +
-              'and give me ONE best hour FOR EACH house (a separate result for each), with the date and the reason. At the end, restore the house that was active at the start.'
-      }];
-    }
-    // Seed / refresh the built-in macros (aquarium "aq" + Vienna<->Tuoro travel tests VT / TV
-    // + GPS-origin variants GT / GV: same destinations, but departing from the CURRENT position).
-    // Bumping the version below re-seeds them in English, replacing any older copies (now v6).
+    if (!arr) arr = [];
+    // Session 32 (Edu): NO built-in macros any more, for anyone. Remove once the old
+    // seeded ones (aq, luce, qui, VT, TV, GT, GV); macros the user made with ⚡ stay.
     try {
-      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== '10') {
-        var seed = [
-          {
-            trigger: 'aq',
-            label: 'Aquarium — both houses, tomorrow',
-            text: 'For TOMORROW\u2019s date, find the best hours to activate the aquarium in EVERY saved house of the active person. ' +
-                  'For each house use ITS saved water position (direction) and its water star (facing), on ITS flying chart. ' +
-                  'Proceed one house at a time: make the house active (set_active_house), read its setup, run find_water_activation_full for that house, ' +
-                  'and give me ONE best hour FOR EACH house (a separate result for each), with the date and the reason. At the end, restore the house that was active at the start.'
-          },
-          {
-            trigger: 'luce', icon: '\uD83D\uDCA1',
-            label: 'Program aquarium light \u2014 7 days (both houses)',
-            text: 'Program the aquarium light for the NEXT 7 DAYS for BOTH houses (Tuoro and Vienna), WITH my confirmation, in TWO phases. ' +
-                  'PHASE 1 \u2014 PREVIEW, deposit NOTHING: for Tuoro first, then Vienna, call program_aquarium_light with commit:false. ' +
-                  'For each house present the days it will ACTIVATE: date, the double-hour with its clock window (on_local \u2192 off_local) and tier. ' +
-                  'Mark any day that stays_on_until_date \u2014 say the light does NOT switch off at 23:00 and until when. Mark any day with fallback_from \u2014 say the best hour was too late to be useful. Say which days stay dark and why. ' +
-                  'Do NOT ask me to approve individual dates: the rules decide every day, there is nothing to confirm day by day. Night ON times (the Zi hour) are NORMAL \u2014 do NOT flag them. ' +
-                  'Then ask for my final go-ahead with buttons:  [[BTN]] Procedi=procedi | Annulla=annulla . Do NOT deposit anything yet. ' +
-                  'PHASE 2 \u2014 only AFTER I say OK: call program_aquarium_light again for each house with commit:true. Then tell me exactly what was deposited for each house.'
-          },
-          {
-            trigger: 'qui', icon: '\uD83D\uDCCD',
-            label: 'Start from here (GPS)',
-            text: 'Plan a LUCKY TRIP starting FROM MY CURRENT GPS POSITION, right now. Use from_current_position:true so the app takes a FRESH GPS fix as the origin \u2014 do NOT pass origin coordinates and do NOT invent a city or a "centre"/proxy. Depart NOW. Present the proposals; when I pick one, open it in Google Maps with navigate=true so I can follow it from the car (a real GPS origin is what lets the car recognise the route). If the GPS fix fails (gps_fresh:false), tell me and fall back to my saved position \u2014 never a made-up point.'
-          },
-          {
-            trigger: 'VT', icon: '🚗', askDepart: true,
-            label: 'Vienna → Tuoro (travel-planner test)',
-            text: 'Car trip from Vienna (Austria) to Tuoro sul Trasimeno (Italy). ' +
-                  'Use these EXACT coordinates and names: ' +
-                  'origin_name "Vienna", origin_lat 48.2082, origin_lon 16.3738; ' +
-                  'dest_name "Tuoro sul Trasimeno", dest_lat 43.2074, dest_lon 12.0772.'
-          },
-          {
-            trigger: 'TV', icon: '🚗', askDepart: true,
-            label: 'Tuoro → Vienna (travel-planner test)',
-            text: 'Car trip from Tuoro sul Trasimeno (Italy) to Vienna (Austria). ' +
-                  'Use these EXACT coordinates and names: ' +
-                  'origin_name "Tuoro sul Trasimeno", origin_lat 43.2074, origin_lon 12.0772; ' +
-                  'dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738.'
-          },
-          {
-            trigger: 'GT', icon: '🛰', askDepart: true,
-            label: 'My position → Tuoro (GPS origin)',
-            text: 'Car trip from MY CURRENT POSITION to Tuoro sul Trasimeno (Italy). ' +
-                  'In plan_travel set from_current_position: true (acquire a FRESH GPS fix as the origin; do NOT use a saved or generic origin). ' +
-                  'Destination EXACT: dest_name "Tuoro sul Trasimeno", dest_lat 43.2074, dest_lon 12.0772.'
-          },
-          {
-            trigger: 'GV', icon: '🛰', askDepart: true,
-            label: 'My position → Vienna (GPS origin)',
-            text: 'Car trip from MY CURRENT POSITION to Vienna (Austria). ' +
-                  'In plan_travel set from_current_position: true (acquire a FRESH GPS fix as the origin; do NOT use a saved or generic origin). ' +
-                  'Destination EXACT: dest_name "Vienna", dest_lat 48.2082, dest_lon 16.3738.'
-          }
-        ];
-        // Replace any earlier aq/VT/TV/GT/GV, then append the current English definitions.
-        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return t !== 'vt' && t !== 'tv' && t !== 'aq' && t !== 'gt' && t !== 'gv' && t !== 'luce' && t !== 'qui'; });
-        seed.forEach(function (m) { arr.push(m); });
-        localStorage.setItem('xkdg_ai_macros_vt_tv', '10');
+      if (localStorage.getItem('xkdg_ai_macros_vt_tv') !== 'none') {
+        arr = arr.filter(function (x) { var t = (x.trigger || '').toLowerCase(); return ['vt', 'tv', 'aq', 'gt', 'gv', 'luce', 'qui'].indexOf(t) < 0; });
+        localStorage.setItem('xkdg_ai_macros_vt_tv', 'none');
       }
     } catch (e) {}
     try { localStorage.setItem('xkdg_ai_macros', JSON.stringify(arr)); } catch (e) {}
