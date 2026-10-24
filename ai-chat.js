@@ -506,6 +506,18 @@
       'square at the opposite wall. After every 2-3 rooms call plan_show so the user can check the drawing; read the ' +
       'overlap warnings and fix with action update. When all rooms are in, plan_show with to_floorplan = true. L-shaped ' +
       'rooms = two rectangles attached with wall_m 0.\n' +
+      '- FURNITURE & ZS/LS OPTIMISATION (guided interview, after the rooms exist): YOU lead, ONE measurement per ' +
+      'question, and record each answer at once. Steps: (1) plan_status - read offset_rule and side_directions; if the ' +
+      'room is missing, build it first. (2) Ask the user to photograph the room (optional, 📷): use the photo only to ' +
+      'recognise the furniture, the doors and on which wall each stands - never to read sizes. (3) DOORS of the room: ' +
+      'for each one, which wall (say it by direction, e.g. "the wall toward 265 W"), the laser distance from the start ' +
+      'corner named in offset_rule (tell the user which physical corner that is) to the near jamb, and the clear width ' +
+      'jamb to jamb -> plan_opening. (4) FURNITURE: for each item, which wall its back touches (bed = headboard wall), ' +
+      'distance from the same start corner to its near side, its width along the wall, its depth, any gap from the wall ' +
+      '-> plan_item. (5) plan_show so the user checks the drawing. (6) For the bed (and any item the user asks): ' +
+      'plan_optimize with the room door. Explain: the sitting and whether it is Zheng Shen; the hexagram the door ' +
+      'centre falls on now; the good stretches; the advice in cm and direction; then plan_show again (green/red line). ' +
+      'If no stretch exists on that wall, say so and use other_walls. Never invent a number the user did not measure.\n' +
       '- PHOTOS OF A ROOM: when the user attaches a photo for water placement, call photo_sectors (it opens the house\'s ' +
       'Photo-sectors view with the red sector boxes). Propose wall_lines only on a wall you can clearly see running away ' +
       'from the camera, and always ask the user to confirm or retrace them. Read positions from the tool (x_from/x_to, ' +
@@ -678,7 +690,7 @@
                'list_houses','get_house_setup','set_active_house','load_house','load_placement',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
-               'plan_status','plan_room','plan_settings','plan_show','sun_facing','find_qimen_days'],
+               'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','sun_facing','find_qimen_days'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -1849,6 +1861,49 @@
         'to_floorplan = true it saves the drawing as the floor\'s floor plan and opens the floor-plan tool with the rooms ' +
         'and the centre already set, so the 8 palaces / flying stars are drawn.',
       input_schema: { type: 'object', properties: { house_name: { type: 'string' }, to_floorplan: { type: 'boolean' } } }
+    },
+    {
+      name: 'plan_opening',
+      description: 'Floor-plan builder: add / update / remove a DOOR or WINDOW of a room (needed to optimise furniture). ' +
+        'room = the room name; side_deg = the direction the wall faces (one of the four side_directions of plan_status); ' +
+        'offset_m = laser distance along that wall from the corner given by plan_status.offset_rule (or pass offset_from_deg ' +
+        'to measure from the other corner) to the near edge of the opening; width_m = width of the opening (the clear ' +
+        'doorway, jamb to jamb). kind = door | window.',
+      input_schema: { type: 'object', properties: {
+        house_name: { type: 'string' }, action: { type: 'string', enum: ['add', 'update', 'remove'] },
+        name: { type: 'string' }, new_name: { type: 'string' }, kind: { type: 'string', enum: ['door', 'window'] },
+        room: { type: 'string' }, side_deg: { type: 'number' }, offset_m: { type: 'number' }, offset_from_deg: { type: 'number' },
+        width_m: { type: 'number' } }, required: ['name'] }
+    },
+    {
+      name: 'plan_item',
+      description: 'Floor-plan builder: add / update / remove a piece of FURNITURE in a room (bed, desk, sofa, table, ' +
+        'kitchen, stove, altar, other). It stands with its BACK against a wall: side_deg = the direction of that wall ' +
+        '(for a bed: the HEADBOARD wall, so the sitting = side_deg; for a desk/sofa: the wall behind the person sitting). ' +
+        'offset_m = laser distance along that wall from the corner given by plan_status.offset_rule (or offset_from_deg) ' +
+        'to the near side of the item; width_m = size along the wall; depth_m = size out from the wall (bed length); ' +
+        'gap_m = space between the wall and the item (default 0). Photos help you recognise the items; the numbers ' +
+        'always come from the laser.',
+      input_schema: { type: 'object', properties: {
+        house_name: { type: 'string' }, action: { type: 'string', enum: ['add', 'update', 'remove'] },
+        name: { type: 'string' }, new_name: { type: 'string' },
+        kind: { type: 'string', enum: ['bed', 'desk', 'sofa', 'table', 'kitchen', 'stove', 'altar', 'other'] },
+        room: { type: 'string' }, side_deg: { type: 'number' }, offset_m: { type: 'number' }, offset_from_deg: { type: 'number' },
+        width_m: { type: 'number' }, depth_m: { type: 'number' }, gap_m: { type: 'number' } }, required: ['name'] }
+    },
+    {
+      name: 'plan_optimize',
+      description: 'ZS/LS optimisation of a piece of furniture against a door (Edu): the item\'s sitting is its back wall ' +
+        '(must be Zheng Shen, or period 1/9); from the reference point (centre of the headboard / backrest, or reference_m ' +
+        'metres in front of it) the CENTRE of the door opening must fall on a Ling Shen hexagram, within +/-70 deg of the ' +
+        'item\'s facing, that communicates with the facing hexagram (Hetu yun, adding to exactly 10, family; 1/9 exception). ' +
+        'It slides the item along its wall in 1 cm steps and returns: now (the hexagram the door falls on now), ' +
+        'good_stretches (offset ranges that work), advice (how many cm to move, toward which direction), other_walls. ' +
+        'After it runs call plan_show: the drawing shows the line item → door (green good, red not).',
+      input_schema: { type: 'object', properties: {
+        house_name: { type: 'string' }, item: { type: 'string' }, opening: { type: 'string' },
+        reference_m: { type: 'number', description: 'Distance of the reference point from the back wall, along the centre line. Default 0 = centre of the headboard.' } },
+        required: ['item', 'opening'] }
     },
     {
       name: 'photo_sectors_state',
@@ -3172,9 +3227,13 @@
         if (!window.XKDGSunFacing) return { error: 'The sun-facing tool is not loaded.' };
         return XKDGSunFacing.measure(input || {});
       }
-      if (name === 'plan_status' || name === 'plan_room' || name === 'plan_settings' || name === 'plan_show') {
+      if (name === 'plan_status' || name === 'plan_room' || name === 'plan_settings' || name === 'plan_show' ||
+          name === 'plan_opening' || name === 'plan_item' || name === 'plan_optimize') {
         if (!window.XKDGPlanBuilder) return { error: 'The plan builder is not loaded.' };
         var _pi = input || {};
+        if (name === 'plan_opening') return XKDGPlanBuilder.opening(_pi);
+        if (name === 'plan_item') return XKDGPlanBuilder.item(_pi);
+        if (name === 'plan_optimize') return XKDGPlanBuilder.optimize(_pi);
         if (name === 'plan_status') return XKDGPlanBuilder.status(_pi.house_name);
         if (name === 'plan_room') return XKDGPlanBuilder.room(_pi);
         if (name === 'plan_settings') return XKDGPlanBuilder.settings(_pi);
