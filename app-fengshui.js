@@ -4518,7 +4518,8 @@ function fsSuggestWater(){
       slot: s,
       distFromCurrent: fsAngularDist(refDeg, s.centerDeg),
       labels: lbls,
-      pyy: pyy
+      pyy: pyy,
+      yy: (typeof fsYinYangMatch === 'function') ? !!fsYinYangMatch(fCenter, s.centerDeg) : false
     });
   }
 
@@ -4527,8 +4528,9 @@ function fsSuggestWater(){
     return;
   }
 
-  // Sort by distance from current water (ascending)
-  candidates.sort((a, b) => a.distFromCurrent - b.distFromCurrent);
+  // Pure Yin / Pure Yang (facing ↔ water mountain match) counts WHEN AVAILABLE (Edu,
+  // session 32): if any candidate has it, those come first; then distance.
+  candidates.sort((a, b) => (a.yy !== b.yy ? (a.yy ? -1 : 1) : a.distFromCurrent - b.distFromCurrent));
   const best = candidates[0];
 
   // Build popup
@@ -4552,7 +4554,7 @@ function fsSuggestWater(){
     for (let i = 1; i < altCount; i++){
       const c = candidates[i];
       altHtml += '<div style="margin:3px 0;">• <b>' + c.slot.centerDeg.toFixed(1) + '°</b> · hex ' + c.slot.hexNum
-              + ' · ' + c.pyy.name + ' · ' + c.labels[0]
+              + ' · ' + c.pyy.name + ' · ' + c.labels[0] + (c.yy ? ' · ☯ Pure Yin/Yang' : '')
               + ' · dist ' + c.distFromCurrent.toFixed(1) + '°</div>';
     }
     altHtml += '</div>';
@@ -4563,6 +4565,7 @@ function fsSuggestWater(){
     + '<div style="margin-bottom:6px;"><b>Position:</b> <span style="color:#4a9ead;font-size:16px;font-weight:bold;">' + best.slot.centerDeg.toFixed(2) + '°</span> (hex ' + best.slot.hexNum + ', qi ' + best.slot.qi + ', yun ' + best.slot.yun + ')</div>'
     + '<div style="margin-bottom:4px;"><b>XKDG:</b> <span style="color:#c0392b;">' + best.labels.join(' · ') + '</span></div>'
     + '<div style="margin-bottom:4px;"><b>Pure YY:</b> <span style="color:#1b5e20;">✓ ' + best.pyy.name + '</span></div>'
+    + '<div style="margin-bottom:4px;"><b>☯ Pure Yin/Yang:</b> ' + (best.yy ? '<span style="color:#1b5e20;">✓ facing and water match</span>' : '<span style="color:#888;">— not available for this facing</span>') + '</div>'
     + '<div style="margin-bottom:8px;"><b>Distance from current Water:</b> ' + best.distFromCurrent.toFixed(1) + '°</div>'
     + altHtml
     + '<div style="text-align:right;margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">'
@@ -6135,6 +6138,12 @@ function fsScanDoorDates(personName, houseIdx, doorIdx){
   if (matches === null) { box.innerHTML = ''; return; }   // alert already shown by fsFindMatchingDatesForSetup
   window._fsShowingMatching = true;
   fsRenderMatchingDatesTable(fSlot, wSlot, matches, boxId);
+  // Pure Yin / Pure Yang of this door's facing + water (considered when available).
+  if (wSlot && typeof fsYinYangMatch === 'function') {
+    var _yy = !!fsYinYangMatch(fSlot.startDeg + 2.8125, wSlot.centerDeg);
+    box.insertAdjacentHTML('afterbegin', '<div style="font-size:11px;margin:2px 0 6px;color:' + (_yy ? '#2e7d32' : '#888') + ';">'
+      + (_yy ? '☯ Pure Yin / Pure Yang: <b>✓ facing and water match</b>' : '☯ Pure Yin / Pure Yang: — not available for this facing/water') + '</div>');
+  }
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
