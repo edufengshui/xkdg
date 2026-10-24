@@ -5318,30 +5318,37 @@ function fsRenderHouseProfiles(){
 
     // ── 🚪 Doors list ──
     var doors = f.doors;
-    var _doorsBody = '';
+    var _doorsBody = '', _extBody = '', _intBody = '';
     doors.forEach(function(d, di){
+      var _row = '';
       var facingStr = d.facing != null ? d.facing + '°' : '—';
       var waterStr  = d.water  != null ? d.water  + '°' : '—';
       var _isInt = (d.kind === 'internal');
       var _typeBadge = '<span style="font-size:9px;font-weight:bold;color:#fff;background:' + (_isInt ? '#8e6a3f' : '#c9a84c') + ';border-radius:3px;padding:0 5px;margin-right:4px;">' + (_isInt ? 'INTERNAL' : 'EXTERNAL') + '</span>';
       var _waterLbl = _isInt ? 'Fountain' : 'Water';
-      _doorsBody += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap;">';
+      _row += '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap;">';
       // No INTERNAL/EXTERNAL badge (Edu, s.32): "Fountain" (internal) / "Water" (external) already says it.
-      _doorsBody += '<span style="font-size:11px;flex:1 1 180px;" title="' + (_isInt ? 'Internal door' : 'External door') + '">🚪 <strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
+      _row += '<span style="font-size:11px;flex:1 1 180px;" title="' + (_isInt ? 'Internal door' : 'External door') + '">🚪 <strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
         + (d.palace ? ' · in ' + (_FS_DOOR_PAL_NAME[d.palace] || d.palace) : '') + '</span>';
-      _doorsBody += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
-      _doorsBody += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
+      _row += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
+      _row += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
       if (d.facing != null) {
-        _doorsBody += '<span style="display:inline-flex;align-items:center;white-space:nowrap;">';
-        _doorsBody += '<button onclick="fsScanDoorDates(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 8px;font-size:10px;font-weight:bold;cursor:pointer;" title="Scan for dates matching this door\'s Zheng Shen facing + Ling Shen water, and this person\'s Bazi">🔎 SCAN</button>';
-        _doorsBody += '<button onclick="fsHelp(\'door_scan\',event)" title="Guide" style="background:none;border:none;font-size:14px;cursor:pointer;padding:0 2px;">📖</button>';
-        _doorsBody += '</span>';
+        _row += '<span style="display:inline-flex;align-items:center;white-space:nowrap;">';
+        _row += '<button onclick="fsScanDoorDates(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 8px;font-size:10px;font-weight:bold;cursor:pointer;" title="Scan for dates matching this door\'s Zheng Shen facing + Ling Shen water, and this person\'s Bazi">🔎 SCAN</button>';
+        _row += '<button onclick="fsHelp(\'door_scan\',event)" title="Guide" style="background:none;border:none;font-size:14px;cursor:pointer;padding:0 2px;">📖</button>';
+        _row += '</span>';
       }
-      _doorsBody += '</div>';
+      _row += '</div>';
       if (d.facing != null) {
-        _doorsBody += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
+        _row += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
       }
+      if (d.kind === 'internal') _intBody += _row; else _extBody += _row;
     });
+
+    var _hd = function(lbl, c){ return '<div style="font-size:11px;font-weight:bold;color:' + c + ';margin:4px 0 1px;border-bottom:1px solid #eee;">' + lbl + '</div>'; };
+    var _none = function(txt){ return '<div style="font-size:11px;color:#aaa;">' + txt + '</div>'; };
+    _doorsBody = _hd('🚪 External doors', '#c9a84c') + (_extBody || _none('none — ☰ → + External Door'))
+               + _hd('🚪 Internal doors', '#8e6a3f') + (_intBody || _none('none — ☰ → + Internal Door'));
 
     // ── 🐟 Star waters (aquariums) list ──
     var hasWaters = !!(f.waters && f.waters.length);
@@ -5457,7 +5464,7 @@ function fsRenderHouseProfiles(){
       { label: '+ Internal Door', act: 'fsAddDoor(' + _pq + ',\'internal\')', help: 'int_door' },
       { label: '🛏 Add Bed', act: 'fsOpenZoneForHouse(' + _pq + ',\'bed\')', help: 'add_bed' },
       { label: '🪑 Add Desk', act: 'fsOpenZoneForHouse(' + _pq + ',\'desk\')', help: 'add_desk' }
-    ]), (_doorsBody || '<div style="font-size:11px;color:#999;">No doors yet — ☰ → + External Door</div>')
+    ]), _doorsBody
        + '<div style="margin-top:3px;">' + _savedLine(['bed', 'desk']) + '</div>');
     html += _S('⭐ Flying Stars — water', '#00897b', _M('fs-hm-fs', [
       { label: '💧 Add Water', act: 'fsOpenZoneForHouse(' + _pq + ',\'water\')', help: 'add_water' }
