@@ -2275,6 +2275,8 @@
     // facingWater = any Feng Shui pair (water/facing, person/placement): Adding ONLY to 10
     // on yun and qi (Edu, session 32). 5/15 count only when one side is a date.
     if (facingWater ? (a.yun + b.yun === 10) : ([5, 10, 15].indexOf(a.yun + b.yun) >= 0)) out.push('Adding yun=' + (a.yun + b.yun));
+    // 1/9 exception: h2 = the FACING of a water/facing pair; facing yun 1 or 9 pairs by adding to 5/15.
+    else if (facingWater && (b.yun === 1 || b.yun === 9) && (a.yun + b.yun === 5 || a.yun + b.yun === 15)) out.push('Adding yun=' + (a.yun + b.yun) + ' (1/9 exception)');
     if (hetu(a.qi, b.qi)) out.push('Hetu qi ' + a.qi + '-' + b.qi);
     if (facingWater ? (a.qi + b.qi === 10) : ([5, 10, 15].indexOf(a.qi + b.qi) >= 0)) out.push('Adding qi=' + (a.qi + b.qi));
     try {
@@ -2476,7 +2478,7 @@
         if (num == null) return { error: 'No hexagram has upper ' + U + ' over lower ' + L + '.' };
       }
       var qy = fsQiYun(num);
-      var zs = (typeof fsIsZhengShen === 'function') ? fsIsZhengShen(qy.yun) : null;
+      var zs = (typeof fsIsZhengShenStrict === 'function') ? fsIsZhengShenStrict(qy.yun) : ((typeof fsIsZhengShen === 'function') ? fsIsZhengShen(qy.yun) : null);
       var ls = (typeof fsIsLingShen === 'function') ? fsIsLingShen(qy.yun) : null;
       var post2044 = (typeof FS_POST_2044 !== 'undefined') ? FS_POST_2044 : false;
       var centerDeg = null;

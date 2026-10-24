@@ -55,7 +55,11 @@ function fsQiYun(num){
 
 // ── Period system (Zheng Shen / Ling Shen) ─────────────────────
 let FS_POST_2044 = false;
-function fsIsZhengShen(yun){ return FS_POST_2044 ? yun<=4 : yun>=6; }
+// Strict period classification (luopan colouring, hexagram info).
+function fsIsZhengShenStrict(yun){ return FS_POST_2044 ? yun<=4 : yun>=6; }
+// Role check for facings/sittings: XKDG exception (Edu, session 32) — period 1 and 9
+// hexagrams are ALWAYS good, also as facings, in either cycle.
+function fsIsZhengShen(yun){ return yun === 1 || yun === 9 || fsIsZhengShenStrict(yun); }
 function fsIsLingShen(yun){  return FS_POST_2044 ? yun>=6 : yun<=4; }
 
 // ── getHexFamilies — derived from JIAZI_FAMILY_DATA + XKDG_TABLE ──
@@ -176,6 +180,10 @@ function fsWaterMatchVsFacing(facing, water){
   if (isHetuPair(water.yun, facing.yun))                  labels.push('Hetu (yun)');
   const yS = water.yun + facing.yun;
   if (yS === 10)                                          labels.push('Adding yun=10');
+  // XKDG exception (Edu, session 32): a period 1 or 9 FACING is always good, and pairs
+  // with its Ling Shen water by adding to 5 or 15 (lower cycle now: facing 1 + water 4).
+  else if ((facing.yun === 1 || facing.yun === 9) && (yS === 5 || yS === 15))
+                                                          labels.push('Adding yun=' + yS + ' (1/9 exception)');
   const fFams = getHexFamilies(facing.hexNum);
   const wFams = getHexFamilies(water.hexNum);
   const shared = fFams.filter(f => wFams.includes(f));
@@ -1417,7 +1425,7 @@ function fsRedraw(){
   // Pass 1: Zheng/Ling tint (only in XKDG or Both mode)
   if (showXKDG) {
   FS_SLOTS.forEach(s => {
-    paintCell(s, fsIsZhengShen(s.yun) ? 'rgba(180,40,40,0.18)' : 'rgba(40,80,180,0.18)');
+    paintCell(s, fsIsZhengShenStrict(s.yun) ? 'rgba(180,40,40,0.18)' : 'rgba(40,80,180,0.18)');
   });
 
   // Pass 1b: when a facing is set, draw subtle ±70° water-zone band just outside hex ring
@@ -1928,7 +1936,7 @@ function fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx){
     const isZS = fsIsZhengShen(fInput.yun);
     html += `<div style="background:#fff8e1;border:1px solid #c9a84c;padding:8px;border-radius:4px;margin-bottom:6px;font-size:12px;">`;
     html += `<strong>Door Facing:</strong> hex ${fInput.hexNum}, qi ${fInput.qi}, yun ${fInput.yun} `;
-    html += isZS ? '<span style="color:#c0392b;font-weight:bold;">[正神 ✓]</span>'
+    html += isZS ? (fsIsZhengShenStrict(fInput.yun) ? '<span style="color:#c0392b;font-weight:bold;">[正神 ✓]</span>' : '<span style="color:#c0392b;font-weight:bold;">[✓ period ' + fInput.yun + ' · always good (1/9)]</span>')
                  : '<span style="color:#c0392b;font-weight:bold;">[NOT Zheng Shen ✗ — pick a Zheng Shen facing]</span>';
     html += `</div>`;
   }
@@ -1967,7 +1975,7 @@ function fsRenderXkdgDetail(fInput, wInput, facingSlot){
   if (fInput){
     var isZS = fsIsZhengShen(fInput.yun);
     var zsHtml = isZS
-      ? '<span style="color:#2e7d32;font-weight:bold;">[正神 Zheng Shen ✓]</span>'
+      ? (fsIsZhengShenStrict(fInput.yun) ? '<span style="color:#2e7d32;font-weight:bold;">[正神 Zheng Shen ✓]</span>' : '<span style="color:#2e7d32;font-weight:bold;">[✓ period ' + fInput.yun + ' · always good (1/9)]</span>')
       : '<span style="color:#c0392b;font-weight:bold;">[NOT Zheng Shen ✗]</span>';
     html += '<div style="background:#fff8e1;border:1px solid #c9a84c;padding:6px 8px;border-radius:4px;margin-bottom:4px;">';
     html += '<strong>🚪 Door Facing:</strong> Hex ' + fInput.hexNum + ', qi ' + fInput.qi + ', yun ' + fInput.yun + ' ' + zsHtml;
@@ -9839,7 +9847,7 @@ function fsDrawSectionLuopan(){
 
     // Zheng/Ling tint (sections care about Zheng Shen / Ling Shen zones)
     if (Array.isArray(FS_SLOTS)) FS_SLOTS.forEach(function(s){
-      paintCell(s, fsIsZhengShen(s.yun) ? 'rgba(180,40,40,0.18)' : 'rgba(40,80,180,0.18)');
+      paintCell(s, fsIsZhengShenStrict(s.yun) ? 'rgba(180,40,40,0.18)' : 'rgba(40,80,180,0.18)');
     });
 
     if (zone === 'bed'){
