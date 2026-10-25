@@ -5,9 +5,9 @@
 name: Daily XKDG digest
 
 on:
-  schedule:
-    - cron: '17 3 * * *'      # 05:17 Vienna in summer, 04:17 in winter (GitHub may start it a bit later)
-  workflow_dispatch:          # "Run workflow" button, for a test
+  # Started every morning by the Cloudflare Worker cron (digest/cron-worker.js, 04:15 UTC):
+  # GitHub's own schedule was late or skipped, so it is removed (no duplicate emails).
+  workflow_dispatch:          # the Worker + the "Run workflow" button
 
 permissions:
   contents: read
