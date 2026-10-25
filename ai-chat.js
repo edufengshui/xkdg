@@ -1882,14 +1882,16 @@
       name: 'find_dlr_general_match',
       description: 'Da Liu Ren: read where a Heaven General (default the Nobleman 貴人) stands in the ANNUAL DLR chart of a ' +
         'house (year + house facing, the same chart as CHARTS → DLR annual chart), then find the DATES and HOURS whose hour ' +
-        'DLR chart has that general in the SAME position. match = earth (same earth palace / direction, default), heaven ' +
-        '(same heaven branch) or both. Hours in local TRUE SOLAR TIME, with the real clock window. Use for questions like ' +
+        'DLR chart has that general in the SAME position. Terms (Edu): the heaven plate is the TIEN PAN, the earth plate the ' +
+        'DI PAN - always use these two words, never "earth palace" / "heaven palace". match = tien_pan (DEFAULT, always ' +
+        'unless the user explicitly asks otherwise: the general carries the same Tien Pan branch), di_pan (same Di Pan ' +
+        'branch / direction, only if asked) or both. Hours in local TRUE SOLAR TIME, with the real clock window. Use for questions like ' +
         '"find a date when the Nobleman is where it is in the annual DLR chart of Vienna". Never ask the user where the ' +
         'general is: this tool reads it.',
       input_schema: { type: 'object', properties: {
         house_name: { type: 'string' }, year: { type: 'integer', description: 'Year of the annual chart (default: this year).' },
         general: { type: 'string', description: 'Nobleman (default), Snake, Bird, Harmony, Polaris, Dragon, EmptySky, Tiger, Norm, Warrior, Moon, Queen — or the Chinese name.' },
-        match: { type: 'string', enum: ['earth', 'heaven', 'both'] },
+        match: { type: 'string', enum: ['tien_pan', 'di_pan', 'both'], description: 'Default tien_pan. di_pan or both ONLY when the user says so explicitly.' },
         start_date: { type: 'string' }, days: { type: 'integer', description: 'Days to scan (default 30, max 120).' },
         include_night: { type: 'boolean', description: 'Keep hours 23:00-05:00 (default false).' } },
         required: ['house_name'] }
@@ -5565,7 +5567,7 @@
     if (!ann || ann.error || !ann.chart) return { error: 'Annual DLR chart failed: ' + ((ann && ann.error) || '?') };
     var findGen = function (ch) { var ps = (ch.generals && ch.generals.palaces) || []; for (var i = 0; i < ps.length; i++) if (ps[i].general && ps[i].general.cn === gCn) return ps[i]; return null; };
     var aP = findGen(ann.chart); if (!aP) return { error: 'General "' + gIn + '" not found (use e.g. Nobleman, Dragon, Tiger…).' };
-    var match = input.match || 'earth', days = Math.min(120, parseInt(input.days, 10) || 30);
+    var match = input.match === 'di_pan' || input.match === 'earth' ? 'di_pan' : (input.match === 'both' ? 'both' : 'tien_pan'), days = Math.min(120, parseInt(input.days, 10) || 30);
     var start = input.start_date || todayIso(), p = start.split('-').map(Number);
     var lt = ST.currentLonTz(), lon = isFinite(lt.lonDeg) ? lt.lonDeg : 12.49;
     var BR = '子丑寅卯辰巳午未申酉戌亥', out = [], night = !!input.include_night;
@@ -5584,23 +5586,23 @@
         var ch = E.buildChartFromPrimitives(pl.day.charAt(0), pl.day.charAt(1), pl.hour.charAt(1), mg, pl.hour.charAt(0));
         if (!ch || ch.error) continue;
         var g = findGen(ch); if (!g) continue;
-        var ok = match === 'heaven' ? g.heaven === aP.heaven : match === 'both' ? (g.heaven === aP.heaven && g.earth === aP.earth) : g.earth === aP.earth;
+        var ok = match === 'tien_pan' ? g.heaven === aP.heaven : match === 'both' ? (g.heaven === aP.heaven && g.earth === aP.earth) : g.earth === aP.earth;
         if (!ok) continue;
         var s = ST.wallClockFromTST(Y, M, D, hb === 0 ? 23 : tstH, 0, lon, lt.tzOffsetMin), e = ST.wallClockFromTST(Y, M, D, hb === 0 ? 23 : tstH, 0, lon, lt.tzOffsetMin);
         var eMs = Date.UTC(e.y, e.mo - 1, e.d, e.h, e.mi) + 120 * 60000, eD = new Date(eMs);
         var pad = function (n) { return (n < 10 ? '0' : '') + n; };
         out.push({ date: Y + '-' + pad(M) + '-' + pad(D), hour: BR[hb], clock: pad(s.h) + ':' + pad(s.mi) + '–' + pad(eD.getUTCHours()) + ':' + pad(eD.getUTCMinutes()),
-                   day_pillar: pl.day, hour_pillar: pl.hour, heaven: g.heaven, earth: g.earth, day_night: ch.generals.dayNight });
+                   day_pillar: pl.day, hour_pillar: pl.hour, tien_pan: g.heaven, di_pan: g.earth + ' (' + _DLR_DIR[g.earth] + ')', day_night: ch.generals.dayNight });
         if (out.length >= 60) break;
       }
       if (out.length >= 60) break;
     }
     return { house: R.h.name, year: year, house_facing: R.facing, general: gCn,
-             annual_position: { earth_palace: aP.earth + ' (' + _DLR_DIR[aP.earth] + ')', heaven_branch: aP.heaven },
+             annual_position: { tien_pan: aP.heaven, di_pan: aP.earth + ' (' + _DLR_DIR[aP.earth] + ')' },
              match: match, from: start, days: days, count: out.length, results: out,
              note: 'Annual chart = CHARTS → DLR annual chart of this house/year. Hours are true solar double-hours; clock = real local time. ' +
                    (night ? '' : 'Night hours 23:00-05:00 skipped (include_night to keep them). ') +
-                   'match earth = the general stands on the same earth palace (direction) as in the annual chart.' };
+                   'match tien_pan = the general carries the same Tien Pan branch as in the annual chart (default); di_pan = it stands on the same Di Pan branch. Say Tien Pan / Di Pan, never earth/heaven palace.' };
   }
   // ── House writes by the assistant (session 32, Edu: "può farlo da solo senza menù") ──
   function _hsRef(input) {
