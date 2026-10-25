@@ -497,6 +497,10 @@
       'facing, the spread and the comparison with the saved house facing. Better in the morning or afternoon (sun low, ' +
       'long shadow) than at a summer noon. Save it as the house facing (save_as) only after the user confirms which wall ' +
       'the window is on; for a side wall ask which side and add or subtract 90.\n' +
+      '- SAVING INTO A HOUSE: when the user asks to add / save / change a door, fountain, item, bed or desk in a house, ' +
+      'DO IT YOURSELF with house_save_door / house_save_placement (after the usual checks) - NEVER tell the user to open a ' +
+      'section or a menu and type the values. A fountain for a door = the water degree of that door. Report what was ' +
+      'saved; if a check fails, say why and propose a valid value.\n' +
       '- FLOOR PLAN BUILDER (guided interview): when the user wants a floor plan, YOU lead with short questions, ONE ' +
       'measurement at a time, and record each answer with plan_room right away. Order: (1) plan_status (house facing, ' +
       'side directions); (2) the internal wall thickness, measured once with the laser on a door jamb (plan_settings); ' +
@@ -699,7 +703,7 @@
              'find_good_dates','find_qimen_days'],   // session 26: the flight/travel DATE rules live in this area
     fengshui: ['find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
-               'list_houses','get_house_setup','set_active_house','load_house','load_placement',
+               'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days'],
@@ -1873,6 +1877,36 @@
         'to_floorplan = true it saves the drawing as the floor\'s floor plan and opens the floor-plan tool with the rooms ' +
         'and the centre already set, so the 8 palaces / flying stars are drawn.',
       input_schema: { type: 'object', properties: { house_name: { type: 'string' }, to_floorplan: { type: 'boolean' } } }
+    },
+    {
+      name: 'house_save_door',
+      description: 'SAVE into a house profile (no need for the user to open any menu): add / update / remove an external door, ' +
+        'an internal door or an item (any object with a Zheng Shen facing), with its optional water / fountain / yang source ' +
+        'degree and the palace where it is. Checks first: the facing must be Zheng Shen (or period 1/9); the water must be ' +
+        'Ling Shen, within +/-70 deg of the facing and communicate with it - otherwise nothing is saved and the reason is ' +
+        'returned. update matches the name (case-insensitive); only the fields you pass change. Use whenever the user asks ' +
+        'to add / save / change / put a door, fountain, item in a house.',
+      input_schema: { type: 'object', properties: {
+        house_name: { type: 'string' }, floor: { type: 'string', description: 'Floor label; default the active floor.' },
+        action: { type: 'string', enum: ['add', 'update', 'remove'] }, name: { type: 'string' }, new_name: { type: 'string' },
+        kind: { type: 'string', enum: ['external', 'internal', 'item'] },
+        facing: { type: 'number' }, water: { type: 'number', description: 'Water / fountain / yang source degree; null to clear.' },
+        palace: { type: 'string', description: 'Where it IS seen from the centre: N, NE, E, SE, S, SW, W, NW.' } },
+        required: ['house_name', 'name'] }
+    },
+    {
+      name: 'house_save_placement',
+      description: 'SAVE a BED or DESK placement into a house profile (no menus): bed = palace where the bed is + sitting ' +
+        '(headboard direction, must be Zheng Shen) + optional fountain (Ling Shen, measured from the bed facing = sitting+180, ' +
+        'within +/-70); desk = palace + desk facing (Zheng Shen) + optional fountain. Checks like the app; nothing is saved ' +
+        'when a check fails. update matches the name; add creates a new one.',
+      input_schema: { type: 'object', properties: {
+        house_name: { type: 'string' }, floor: { type: 'string' }, zone: { type: 'string', enum: ['bed', 'desk'] },
+        action: { type: 'string', enum: ['add', 'update', 'remove'] }, name: { type: 'string' },
+        palace: { type: 'string', description: 'N, NE, E, SE, S, SW, W, NW' },
+        sitting: { type: 'number', description: 'Bed sitting (headboard) degree.' }, facing: { type: 'number', description: 'Desk facing degree.' },
+        fountain: { type: 'number', description: 'Fountain degree (optional; null to clear).' } },
+        required: ['house_name', 'zone', 'name'] }
     },
     {
       name: 'plan_opening',
@@ -3194,6 +3228,8 @@
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
       if (name === 'add_calendar_reminder') return toolAddCalendarReminder(input || {});
+      if (name === 'house_save_door') return toolHouseSaveDoor(input || {});
+      if (name === 'house_save_placement') return toolHouseSavePlacement(input || {});
       if (name === 'explain_purpose') return toolExplainPurpose(input || {});
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
       if (name === 'show_verify_button') return toolShowVerifyButton(input || {});
@@ -5495,6 +5531,88 @@
   // Full setup of one house, resolved by name — everything converges here:
   // facing/period, doors, aquariums (+ the water star at each), and the
   // saved Water/Bed/Desk settings.
+  // ── House writes by the assistant (session 32, Edu: "può farlo da solo senza menù") ──
+  function _hsRef(input) {
+    if (!window.XKDGHouse) return { error: 'House profiles not available.' };
+    var res = window.XKDGHouse.resolveByName(String(input.house_name || '').trim());
+    if (!res) return { error: 'No house matching "' + input.house_name + '".', available_houses: window.XKDGHouse.availableHouses() };
+    var all = _fsHousesLoad(), key = res.person, arr = all[key] || [], idx = res.index, h = arr[idx];
+    if (!h) { // fall back: find by name
+      Object.keys(all).forEach(function (k) { (all[k] || []).forEach(function (x, i) { if (!h && x && x.name === res.house.name) { h = x; key = k; idx = i; } }); });
+    }
+    if (!h) return { error: 'House not found in storage.' };
+    var f = _fsActiveFloor(h);
+    if (input.floor) { var want = String(input.floor).trim().toLowerCase(); var ff = (h.floors || []).filter(function (x) { return String(x.label || '').toLowerCase() === want; })[0]; if (!ff) return { error: 'No floor "' + input.floor + '".', floors: (h.floors || []).map(function (x) { return x.label; }) }; f = ff; }
+    return { all: all, key: key, idx: idx, h: h, f: f, facing: _fsFloorFacing(h, f), period: _fsFloorPeriod(h, f) };
+  }
+  function _hsSave(R) { _fsHousesSave(R.all); try { if (_fsActiveHouseGet(R.key) === R.idx) fsLoadHouse(R.key, R.idx); } catch (e) {} try { fsRenderHouseProfiles(); } catch (e) {} }
+  function _hsCheckZS(deg, what) {
+    var s = fsSlotForDeg(+deg);
+    return fsIsZhengShen(s.yun) ? null : (what + ' ' + deg + '° is hex ' + s.hexNum + ' (yun ' + s.yun + '): NOT Zheng Shen.');
+  }
+  function _hsCheckWater(facingDeg, waterDeg, what) {
+    var f = fsSlotForDeg(+facingDeg), w = fsSlotForDeg(+waterDeg);
+    if (!fsIsLingShen(w.yun)) return what + ' ' + waterDeg + '° is hex ' + w.hexNum + ' (yun ' + w.yun + '): NOT Ling Shen.';
+    var dist = fsAngularDist(f.startDeg + 2.8125, w.centerDeg);
+    if (dist > FS_WATER_MAX_DEG) return what + ' ' + waterDeg + '° is ' + dist.toFixed(1) + '° from the facing (max ±' + FS_WATER_MAX_DEG + '°).';
+    if (!fsWaterMatchVsFacing(f, w).length) return what + ' ' + waterDeg + '° (hex ' + w.hexNum + ') does not communicate with the facing hex ' + f.hexNum + '.';
+    return null;
+  }
+  var _HS_PAL = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 };
+  function toolHouseSaveDoor(input) {
+    var R = _hsRef(input); if (R.error) return R;
+    var doors = R.f.doors || (R.f.doors = []), act = input.action || 'update', nm = String(input.name || '').trim().toLowerCase();
+    var i = -1; doors.forEach(function (d, k) { if (String(d.name || '').trim().toLowerCase() === nm) i = k; });
+    if (act === 'update' && i < 0) act = 'add';
+    if (act === 'remove') { if (i < 0) return { error: 'No door / item named "' + input.name + '".' }; var rm = doors.splice(i, 1)[0]; _hsSave(R); return { ok: true, removed: rm.name }; }
+    if (act === 'add' && i >= 0) return { error: '"' + input.name + '" already exists: use action update.' };
+    var d = act === 'add' ? { name: String(input.name).trim(), kind: input.kind || 'external', facing: null, water: null } : JSON.parse(JSON.stringify(doors[i]));
+    if (input.kind) d.kind = input.kind;
+    if (input.new_name) d.name = String(input.new_name).trim();
+    if (input.facing != null) d.facing = Math.round(+input.facing * 10) / 10;
+    if ('water' in input) d.water = (input.water == null || input.water === '') ? null : Math.round(+input.water * 10) / 10;
+    if (input.palace) { var pc = _HS_PAL[String(input.palace).trim().toUpperCase()]; if (!pc) return { error: 'palace must be N, NE, E, SE, S, SW, W or NW.' }; d.palace = pc; }
+    if (d.facing == null) return { error: 'The facing degree is needed.' };
+    var e1 = _hsCheckZS(d.facing, 'Facing'); if (e1) return { error: e1 + ' Nothing saved.' };
+    if (d.water != null) { var e2 = _hsCheckWater(d.facing, d.water, d.kind === 'item' ? 'Yang source' : d.kind === 'internal' ? 'Fountain' : 'Water'); if (e2) return { error: e2 + ' Nothing saved.' }; }
+    if (act === 'add') doors.push(d); else doors[i] = d;
+    _hsSave(R);
+    var w = d.water != null ? fsSlotForDeg(d.water) : null;
+    return { ok: true, saved: act === 'add' ? 'added' : 'updated', house: R.h.name, floor: R.f.label || 'Floor 1',
+             door: { name: d.name, kind: d.kind, facing: d.facing, facing_hex: fsSlotForDeg(d.facing).hexNum, water: d.water,
+                     water_hex: w ? w.hexNum : null, links: w ? fsWaterMatchVsFacing(fsSlotForDeg(d.facing), w) : null,
+                     palace: d.palace ? Object.keys(_HS_PAL).filter(function (k) { return _HS_PAL[k] === d.palace; })[0] : null },
+             note: 'Saved in the house profile. The door SCAN and the daily email (after rebuilding the 📧 line) use it.' };
+  }
+  function toolHouseSavePlacement(input) {
+    var R = _hsRef(input); if (R.error) return R;
+    var zone = input.zone === 'desk' ? 'desk' : 'bed';
+    if (!R.f.settings) R.f.settings = { water: [], bed: [], desk: [] };
+    var L = R.f.settings[zone] || (R.f.settings[zone] = []), act = input.action || 'update', nm = String(input.name || '').trim().toLowerCase();
+    var i = -1; L.forEach(function (s, k) { if (String(s.name || '').trim().toLowerCase() === nm) i = k; });
+    if (act === 'update' && i < 0) act = 'add';
+    if (act === 'remove') { if (i < 0) return { error: 'Nothing named "' + input.name + '".' }; L.splice(i, 1); _hsSave(R); return { ok: true, removed: input.name }; }
+    var s = act === 'add' ? { name: String(input.name).trim(), ts: Date.now() } : JSON.parse(JSON.stringify(L[i]));
+    s.houseFacing = R.facing != null ? String(R.facing) : (s.houseFacing || ''); s.period = R.period != null ? String(R.period) : (s.period || '');
+    var pal = input.palace ? String(input.palace).trim().toUpperCase() : null;
+    if (pal && !_HS_PAL[pal]) return { error: 'palace must be N, NE, E, SE, S, SW, W or NW.' };
+    var orient, fKey = zone === 'bed' ? 'bedSitting' : 'deskFacing', wKey = zone === 'bed' ? 'bedWater' : 'deskWater', pKey = zone === 'bed' ? 'bedPalace' : 'deskPalace';
+    if (pal) s[pKey] = pal;
+    if (zone === 'bed' && input.sitting != null) s.bedSitting = String(Math.round(+input.sitting * 10) / 10);
+    if (zone === 'desk' && input.facing != null) s.deskFacing = String(Math.round(+input.facing * 10) / 10);
+    if ('fountain' in input) s[wKey] = (input.fountain == null || input.fountain === '') ? '' : String(Math.round(+input.fountain * 10) / 10);
+    orient = s[fKey];
+    if (orient === '' || orient == null) return { error: (zone === 'bed' ? 'The bed sitting' : 'The desk facing') + ' degree is needed.' };
+    var e1 = _hsCheckZS(+orient, zone === 'bed' ? 'Bed sitting' : 'Desk facing'); if (e1) return { error: e1 + ' Nothing saved.' };
+    if (s[wKey] !== '' && s[wKey] != null) {
+      var faceDir = zone === 'bed' ? ((+orient + 180) % 360) : +orient;
+      var e2 = _hsCheckWater(faceDir, +s[wKey], 'Fountain'); if (e2) return { error: e2 + ' Nothing saved.' };
+    }
+    if (act === 'add') L.push(s); else L[i] = s;
+    _hsSave(R);
+    return { ok: true, saved: act === 'add' ? 'added' : 'updated', house: R.h.name, floor: R.f.label || 'Floor 1', zone: zone,
+             placement: { name: s.name, palace: s[pKey] || null, orientation: +orient, orientation_hex: fsSlotForDeg(+orient).hexNum, fountain: s[wKey] || null } };
+  }
   function toolGetHouseSetup(input) {
     input = input || {};
     if (!window.XKDGHouse) return { error: 'House profiles not available on this page.' };
