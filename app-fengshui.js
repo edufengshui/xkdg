@@ -3997,10 +3997,22 @@ function dlrChartShow(){
         try { monGz = L.getMonthInGanZhiExact(); } catch (e4) { try { monGz = L.getMonthInGanZhi(); } catch (e5) { monGz = ''; } }
         try { yeaGz = L.getYearInGanZhiExact(); }  catch (e6) { try { yeaGz = L.getYearInGanZhi(); }  catch (e7) { yeaGz = ''; } }
         if (tstP) { dayGz = tstP.day; hourGz = tstP.hour; monGz = tstP.month; yeaGz = tstP.year; }
+        // Season = the solar term in force at this instant (Beijing-naive instant = jieqi frame)
+        var seasonCn = '';
+        try {
+          var Ls = bjDate ? window.Solar.fromYmdHms(bjDate.getFullYear(), bjDate.getMonth() + 1, bjDate.getDate(), bjDate.getHours(), bjDate.getMinutes(), 0).getLunar() : L;
+          var pj = Ls.getPrevJieQi(false); seasonCn = pj ? pj.getName() : '';
+        } catch (eS) { seasonCn = ''; }
         r = API.buildChartFromPrimitives(dayGz.charAt(0), dayGz.charAt(1),
                                          hourGz.charAt(1), mg, hourGz.charAt(0));
         if (r && !r.error) {
           r.monthGeneral = mg;
+          var _JQ = { '立春':'Spring Begins','雨水':'Rain Water','惊蛰':'Insects Awaken','驚蟄':'Insects Awaken','春分':'Spring Equinox','清明':'Clear and Bright','谷雨':'Grain Rain','穀雨':'Grain Rain',
+                      '立夏':'Summer Begins','小满':'Grain Buds','小滿':'Grain Buds','芒种':'Grain in Ear','芒種':'Grain in Ear','夏至':'Summer Solstice','小暑':'Minor Heat','大暑':'Major Heat',
+                      '立秋':'Autumn Begins','处暑':'End of Heat','處暑':'End of Heat','白露':'White Dew','秋分':'Autumn Equinox','寒露':'Cold Dew','霜降':'Frost Falls',
+                      '立冬':'Winter Begins','小雪':'Minor Snow','大雪':'Major Snow','冬至':'Winter Solstice','小寒':'Minor Cold','大寒':'Major Cold',
+                      'DONG_ZHI':'Winter Solstice','XIAO_HAN':'Minor Cold','DA_HAN':'Major Cold','LI_CHUN':'Spring Begins','YU_SHUI':'Rain Water','JING_ZHE':'Insects Awaken','DA_XUE':'Major Snow' };
+          r.season = _JQ[seasonCn] || seasonCn;
           r.source = { dayPillar: dayGz, hourPillar: hourGz, monthPillar: monGz, yearPillar: yeaGz };
           // Gods and Devils: same spirit list as the annual chart, keyed on THIS
           // day pillar. Heaven/Month Virtue from the month BRANCH 月支 (Edu, s.27).
@@ -4098,63 +4110,87 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
   });
   pillHtml += '</div>';
 
-  // ── Three Messages (三傳) ──
+  // ── Session 32 (Edu): Three Messages / Four Readings / Plate drawn like the reference
+  //    chart: short English general names, relation, the 旬 stem hidden in each branch,
+  //    four readings in columns 4th→1st, the 12 palaces as a ring with Season / Month
+  //    General / Day Void in the centre, each palace numbered from the DAY branch (= 1).
+  var GEN_EN = { '貴人':'Nobleman','螣蛇':'Snake','朱雀':'Bird','六合':'Harmony','勾陳':'Polaris','青龍':'Dragon',
+                 '天空':'EmptySky','白虎':'Tiger','太常':'Norm','玄武':'Warrior','太陰':'Moon','天后':'Queen' };
+  function gShort(g){ return g ? (GEN_EN[g.cn] || g.en || g.cn || '') : ''; }
+  var BR12 = '子丑寅卯辰巳午未申酉戌亥', ST10 = '甲乙丙丁戊己庚辛壬癸';
+  var STPY = ['Jia','Yi','Bing','Ding','Wu','Ji','Geng','Xin','Ren','Gui'];
+  var BRPY = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+  function brPy(b){ var i = BR12.indexOf(b); return i < 0 ? '' : (BRPY[i] + ' ' + b); }
+  var dGz = src.dayPillar || '', dS = ST10.indexOf(dGz.charAt(0)), dB = BR12.indexOf(dGz.charAt(1));
+  var xunHead = (dS >= 0 && dB >= 0) ? ((dB - dS + 12) % 12) : -1;     // branch of 甲 in this 旬
+  function xunStem(b){ var i = BR12.indexOf(b); if (i < 0 || xunHead < 0) return ''; var k = (i - xunHead + 12) % 12; return k < 10 ? (STPY[k] + ' ' + ST10[k]) : ''; }
+  var voids = (xunHead >= 0) ? [BR12[(xunHead + 10) % 12], BR12[(xunHead + 11) % 12]] : [];
+  var METH = { '元首':'Controlling: Head of State', '重審':'Controlling: Re-examination', '比用':'Comparing',
+               '涉害':'Wading through Harm', '蒿矢':'Remote: Arrow', '彈射':'Remote: Shooting', '昴星':'Pleiades',
+               '別責':'Separate Duty', '八專':'Eight Specials', '伏吟':'Hidden Chant (Fu Yin)', '返吟':'Return Chant (Fan Yin)' };
+  var mRaw = (r.transmission && r.transmission.method) || '';
+  var mTxt = mRaw.split(/[·・]/).map(function (x){ x = x.trim(); return METH[x] || x; }).filter(Boolean).join(' · ');
+  var HB = '#353b45', TEAL = '#17a2b8', GOLD = '#fdc010', LG = '#f5f6f8';
+  var cellC = 'border:2px solid #fff;background:' + LG + ';text-align:center;padding:6px 4px;font:15px system-ui;color:#222;';
+  var dim = 'color:#888;';
+  var head2 = function (txt){ return '<div style="background:' + HB + ';color:#fff;text-align:center;font:600 15px system-ui;padding:7px;margin-top:12px;">' + txt + '</div>'; };
+
   var t = (r.transmission && r.transmission.threeDetailed) || null;
   var three = '';
   if (t){
-    three = sect('Three Messages \u4e09\u50b3')
-      + '<table style="border-collapse:collapse;width:100%;">'
-      + '<tr><th style="' + TH + '">&nbsp;</th><th style="' + TH + '">Spirit</th>'
-      + '<th style="' + TH + '">Relation</th><th style="' + TH + '">Branch</th></tr>';
-    [['Initial \u521d\u50b3', t.chu], ['Middle \u4e2d\u50b3', t.zhong], ['Final \u672b\u50b3', t.mo]].forEach(function (x){
+    three = head2('Three Messages') + '<table style="border-collapse:collapse;width:100%;table-layout:fixed;">';
+    [['Initial<br>Message', t.chu], ['Middle<br>Message', t.zhong], ['Final<br>Message', t.mo]].forEach(function (x){
       var v = x[1] || {};
-      three += '<tr><td style="' + TD + 'font-weight:600;color:' + G + ';">' + x[0] + '</td>'
-        + '<td style="' + TD + '">' + esc(genTxt(v.general)) + '</td>'
-        + '<td style="' + TD + '">' + esc(relTxt(v)) + '</td>'
-        + '<td style="' + TD + '"><b style="font:700 14px serif;color:' + G + ';">' + esc(v.branch || '')
-        + '</b> ' + esc(brShort(v.branch)) + (v.isVoid ? ' <span style="color:#c62828;">\u7a7a</span>' : '') + '</td></tr>';
+      three += '<tr><td style="' + cellC + 'background:' + TEAL + ';color:#fff;font-style:italic;">' + x[0] + '</td>'
+        + '<td style="' + cellC + '"><div style="' + dim + '">' + esc(gShort(v.general)) + '</div><div>' + esc(relTxt(v)) + '</div></td>'
+        + '<td style="' + cellC + '"><div style="' + dim + '">' + esc(xunStem(v.branch)) + '&nbsp;</div><div>' + esc(brPy(v.branch))
+        + (voids.indexOf(v.branch) >= 0 ? ' <span style="color:#c62828;">空</span>' : '') + '</div></td></tr>';
     });
-    three += '</table>'
-      + '<div style="font:10px system-ui;color:#888;margin-top:3px;">Method: '
-      + esc((r.transmission && r.transmission.method) || '') + '</div>';
+    three += '</table>';
   }
 
-  // ── Four Readings (四課) ──
   var four = '';
   if (r.fourLessons && r.fourLessons.length){
-    four = sect('Four Readings \u56db\u8ab2')
-      + '<table style="border-collapse:collapse;width:100%;">'
-      + '<tr><th style="' + TH + '">&nbsp;</th><th style="' + TH + '">Spirit</th>'
-      + '<th style="' + TH + '">Relation</th><th style="' + TH + '">Branch</th></tr>';
-    var ORD = ['1st Ke', '2nd Ke', '3rd Ke', '4th Ke'];
-    r.fourLessons.forEach(function (Ls, i){
-      var top = Ls.top || {};
-      four += '<tr><td style="' + TD + 'font-weight:600;color:' + G + ';">' + ORD[i] + '</td>'
-        + '<td style="' + TD + '">' + esc(genTxt(top.general)) + '</td>'
-        + '<td style="' + TD + '">' + esc(relTxt(top)) + '</td>'
-        + '<td style="' + TD + '"><b style="font:700 14px serif;color:' + G + ';">' + esc(top.branch || '')
-        + '</b> <span style="color:#7a5a2a;">/ ' + esc(Ls.bottom || '') + '</span> '
-        + esc(brShort(top.branch)) + (top.isVoid ? ' <span style="color:#c62828;">\u7a7a</span>' : '')
-        + '</td></tr>';
-    });
-    four += '</table>'
-      + '<div style="font:10px system-ui;color:#888;margin-top:3px;">Branch column: heaven / earth.</div>';
+    var L4 = r.fourLessons.slice(0, 4).reverse();               // 4th, 3rd, 2nd, 1st
+    var lbl = ['4th', '3rd Ke', '2nd', '1st'];
+    var yc = cellC + 'background:' + GOLD + ';color:#555;';
+    var row = function (f, style){ return '<tr>' + L4.map(function (Ls, i){ return '<td style="' + (style || cellC) + '">' + f(Ls, i) + '</td>'; }).join('') + '</tr>'; };
+    four = head2('Four Readings') + '<table style="border-collapse:collapse;width:100%;table-layout:fixed;">'
+      + row(function (Ls){ return esc(gShort((Ls.top || {}).general)); }, yc)
+      + row(function (Ls){ return esc(relTxt(Ls.top || {})); })
+      + row(function (Ls){ var b = (Ls.top || {}).branch; return esc(brPy(b)) + (voids.indexOf(b) >= 0 ? ' <span style="color:#c62828;">空</span>' : ''); })
+      // earth row: the 1st reading stands on the DAY STEM (shown as the stem, as in the reference chart)
+      + row(function (Ls, i){ if (i === 3 && dS >= 0) return esc(STPY[dS] + ' ' + ST10[dS]); var b = Ls.bottom || ''; var si = ST10.indexOf(b); return esc(si >= 0 ? (STPY[si] + ' ' + b) : brPy(b)); })
+      + row(function (Ls, i){ return lbl[i]; }, yc)
+      + '<tr><td colspan="4" style="' + cellC + 'background:' + GOLD + ';"><span style="color:#1565c0;text-decoration:underline;">' + esc(mTxt || mRaw) + '</span></td></tr>'
+      + '</table>';
   }
 
-  // ── the twelve palaces: tianpan above, dipan below ──
-  var rows = ((r.generals && r.generals.palaces) || []).map(function (p){
-    return '<td style="border:1px solid ' + G + ';padding:5px 3px;text-align:center;background:#fff;">'
-         +   '<div style="font:10px system-ui;color:#4a148c;">' + esc((p.general && p.general.cn) || '') + '</div>'
-         +   '<div style="font:700 14px serif;color:' + G + ';">' + esc(p.heaven || '') + '</div>'
-         +   '<div style="font:12px serif;color:#7a5a2a;">' + esc(p.earth || '') + '</div>'
-         +   (p.isVoid ? '<div style="font:9px system-ui;color:#c62828;">\u7a7a</div>' : '')
-         + '</td>';
+  // the 12 palaces as a ring (earth branch fixed: 巳午未申 on top)
+  var POS = { '巳':[0,0], '午':[0,1], '未':[0,2], '申':[0,3], '酉':[1,3], '戌':[2,3], '亥':[3,3], '子':[3,2], '丑':[3,1], '寅':[3,0], '卯':[2,0], '辰':[1,0] };
+  var grid = [[null,null,null,null],[null,'C','C',null],[null,'C','C',null],[null,null,null,null]];
+  ((r.generals && r.generals.palaces) || []).forEach(function (p){
+    var q = POS[p.earth]; if (!q) return;
+    var n = (dB >= 0) ? ((BR12.indexOf(p.earth) - dB + 12) % 12) + 1 : '';
+    grid[q[0]][q[1]] = '<td style="border:1px solid #999;background:#fff;text-align:center;padding:6px 2px;font:15px system-ui;color:#222;line-height:1.6;">'
+      + '<div>' + esc(gShort(p.general)) + '</div><div>' + esc(brPy(p.heaven)) + '</div>'
+      + '<div>' + esc(brPy(p.earth)) + ' ' + n + '</div></td>';
   });
-  var tbl = sect('Plate \u5929\u5730\u76e4')
-          + '<table style="border-collapse:collapse;width:100%;"><tr>' + rows.slice(0, 6).join('') + '</tr>'
-          + '<tr>' + rows.slice(6).join('') + '</tr></table>'
-          + '<div style="text-align:center;font:10px system-ui;color:#888;margin-top:4px;">'
-          + 'tianpan above \u00b7 dipan below \u00b7 \u7a7a = void</div>';
+  var cen = '<td colspan="2" rowspan="2" style="border:1px solid #999;padding:0;background:#fff;vertical-align:top;">'
+    + [['Season', r.season || '—'], ['Month General', brPy(r.monthGeneral)], ['Day Void', voids.map(brPy).join(' - ')]].map(function (x){
+        return '<div style="background:' + TEAL + ';color:#fff;text-align:center;font:15px system-ui;padding:5px;">' + x[0] + '</div>'
+             + '<div style="text-align:center;font:15px system-ui;padding:6px;">' + esc(x[1]) + '</div>'; }).join('') + '</td>';
+  var tbl = '<table style="border-collapse:collapse;width:100%;table-layout:fixed;margin-top:12px;">';
+  for (var gi = 0; gi < 4; gi++){
+    tbl += '<tr>';
+    for (var gj = 0; gj < 4; gj++){
+      var cv = grid[gi][gj];
+      if (cv === 'C'){ if (gi === 1 && gj === 1) tbl += cen; continue; }
+      tbl += cv || '<td style="border:1px solid #999;"></td>';
+    }
+    tbl += '</tr>';
+  }
+  tbl += '</table><div style="text-align:center;font:10px system-ui;color:#888;margin-top:4px;">each palace: general · heaven branch · earth branch + number (day branch = 1)</div>';
 
   // ── the twelve Heaven Generals ──
   var byCn = {};
