@@ -4134,7 +4134,7 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
   var mAnchor = MANC[mParts[mParts.length - 1]] || MANC[mParts[0]] || '';
   var mTxt = mRaw.split(/[·・]/).map(function (x){ x = x.trim(); return METH[x] || x; }).filter(Boolean).join(' · ');
   var HB = '#353b45', TEAL = '#17a2b8', GOLD = '#fdc010', LG = '#f5f6f8';
-  var cellC = 'border:2px solid #fff;background:' + LG + ';text-align:center;padding:4px 4px;font:500 16px system-ui;color:#222;line-height:1.35;';
+  var cellC = 'border:2px solid #fff;background:' + LG + ';text-align:center;padding:3px 4px;font:500 16px system-ui;color:#222;line-height:1.25;';
   var dim = 'color:#888;font-weight:400;';
   var bold = 'font-weight:600;color:#111;';
   var head2 = function (txt){ return '<div style="background:' + HB + ';color:#fff;text-align:center;font:600 15px system-ui;padding:7px;margin-top:12px;">' + txt + '</div>'; };
@@ -4176,7 +4176,7 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
   ((r.generals && r.generals.palaces) || []).forEach(function (p){
     var q = POS[p.earth]; if (!q) return;
     var n = (dB >= 0) ? ((BR12.indexOf(p.earth) - dB + 12) % 12) + 1 : '';
-    grid[q[0]][q[1]] = '<td style="border:1px solid #999;background:#fff;text-align:center;padding:5px 2px;font:500 16px system-ui;color:#111;line-height:1.35;">'
+    grid[q[0]][q[1]] = '<td style="border:1px solid #999;background:#fff;text-align:center;padding:4px 2px;font:500 16px system-ui;color:#111;line-height:1.3;">'
       + '<div>' + esc(gShort(p.general)) + '</div><div>' + esc(brPy(p.heaven)) + '</div>'
       + '<div>' + esc(brPy(p.earth)) + ' ' + n + '</div></td>';
   });
