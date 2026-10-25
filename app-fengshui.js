@@ -4158,7 +4158,8 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
     var L4 = r.fourLessons.slice(0, 4).reverse();               // 4th, 3rd, 2nd, 1st
     var lbl = ['4th', '3rd Ke', '2nd', '1st'];
     var yc = cellC + 'background:' + GOLD + ';color:#555;';
-    var row = function (f, style){ return '<tr>' + L4.map(function (Ls, i){ return '<td style="' + (style || cellC) + '">' + f(Ls, i) + '</td>'; }).join('') + '</tr>'; };
+    var cellB = cellC + 'font-weight:600;color:#111;';      // data rows in bold, like the reference
+    var row = function (f, style){ return '<tr>' + L4.map(function (Ls, i){ return '<td style="' + (style || cellB) + '">' + f(Ls, i) + '</td>'; }).join('') + '</tr>'; };
     four = head2('Four Readings') + '<table style="border-collapse:collapse;width:100%;table-layout:fixed;">'
       + row(function (Ls){ return esc(gShort((Ls.top || {}).general)); }, yc)
       + row(function (Ls){ return esc(relTxt(Ls.top || {})); })
@@ -4176,7 +4177,7 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
   ((r.generals && r.generals.palaces) || []).forEach(function (p){
     var q = POS[p.earth]; if (!q) return;
     var n = (dB >= 0) ? ((BR12.indexOf(p.earth) - dB + 12) % 12) + 1 : '';
-    grid[q[0]][q[1]] = '<td style="border:1px solid #999;background:#fff;text-align:center;padding:5px 2px;font:500 16px system-ui;color:#111;line-height:1.35;">'
+    grid[q[0]][q[1]] = '<td style="border:1px solid #999;background:#fff;text-align:center;padding:7px 2px;font:500 16px system-ui;color:#111;line-height:1.75;">'
       + '<div>' + esc(gShort(p.general)) + '</div><div>' + esc(brPy(p.heaven)) + '</div>'
       + '<div>' + esc(brPy(p.earth)) + ' ' + n + '</div></td>';
   });
