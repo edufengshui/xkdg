@@ -1893,7 +1893,8 @@
         general: { type: 'string', description: 'Nobleman (default), Snake, Bird, Harmony, Polaris, Dragon, EmptySky, Tiger, Norm, Warrior, Moon, Queen — or the Chinese name.' },
         match: { type: 'string', enum: ['tien_pan', 'di_pan', 'both'], description: 'Default tien_pan. di_pan or both ONLY when the user says so explicitly.' },
         start_date: { type: 'string' }, days: { type: 'integer', description: 'Days to scan (default 30, max 120).' },
-        include_night: { type: 'boolean', description: 'Keep hours 23:00-05:00 (default false).' } },
+        include_night: { type: 'boolean', description: 'Keep hours 23:00-05:00 (default false).' },
+        spirits: { type: 'string', enum: ['good', 'any'], description: 'DEFAULT good: keep only hours where the sector of the general also has excellent DLR spirits (Gods & Devils: at least one more green - Lu, Proper/Unproper Wealth, Heavenly Doctor, Heaven/Month/Day/Branch Virtue, Dragon - and NO red: Ghost Sha, Tomb Sha, Tiger, EmptySky). any = no spirit filter.' } },
         required: ['house_name'] }
     },
     {
@@ -5588,18 +5589,27 @@
         var g = findGen(ch); if (!g) continue;
         var ok = match === 'tien_pan' ? g.heaven === aP.heaven : match === 'both' ? (g.heaven === aP.heaven && g.earth === aP.earth) : g.earth === aP.earth;
         if (!ok) continue;
+        // Gods & Devils on the sector of the general (Edu: positive dates need excellent DLR spirits there)
+        var sp = null; try { sp = FS.spiritsForChart(ch, pl.month.charAt(1)); } catch (eSp) { sp = null; }
+        var sec = sp ? sp.filter(function (x) { return x.earth === g.earth; })[0] : null;
+        var gEn = g.general && g.general.en;
+        var extra = sec ? sec.greens.filter(function (x) { return x !== gEn; }) : [];
+        var reds = sec ? sec.reds : [];
+        if ((input.spirits || 'good') === 'good' && (!extra.length || reds.length)) continue;
         var s = ST.wallClockFromTST(Y, M, D, hb === 0 ? 23 : tstH, 0, lon, lt.tzOffsetMin), e = ST.wallClockFromTST(Y, M, D, hb === 0 ? 23 : tstH, 0, lon, lt.tzOffsetMin);
         var eMs = Date.UTC(e.y, e.mo - 1, e.d, e.h, e.mi) + 120 * 60000, eD = new Date(eMs);
         var pad = function (n) { return (n < 10 ? '0' : '') + n; };
         out.push({ date: Y + '-' + pad(M) + '-' + pad(D), hour: BR[hb], clock: pad(s.h) + ':' + pad(s.mi) + '–' + pad(eD.getUTCHours()) + ':' + pad(eD.getUTCMinutes()),
-                   day_pillar: pl.day, hour_pillar: pl.hour, tien_pan: g.heaven, di_pan: g.earth + ' (' + _DLR_DIR[g.earth] + ')', day_night: ch.generals.dayNight });
+                   day_pillar: pl.day, hour_pillar: pl.hour, tien_pan: g.heaven, di_pan: g.earth + ' (' + _DLR_DIR[g.earth] + ')', day_night: ch.generals.dayNight,
+                   good_spirits: extra, bad_spirits: reds, other: sec ? sec.context : [] });
         if (out.length >= 60) break;
       }
       if (out.length >= 60) break;
     }
     return { house: R.h.name, year: year, house_facing: R.facing, general: gCn,
              annual_position: { tien_pan: aP.heaven, di_pan: aP.earth + ' (' + _DLR_DIR[aP.earth] + ')' },
-             match: match, from: start, days: days, count: out.length, results: out,
+             match: match, spirits_filter: input.spirits || 'good', from: start, days: days, count: out.length,
+             results: out.sort(function (a, b) { return (b.good_spirits.length - a.good_spirits.length) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0); }),
              note: 'Annual chart = CHARTS → DLR annual chart of this house/year. Hours are true solar double-hours; clock = real local time. ' +
                    (night ? '' : 'Night hours 23:00-05:00 skipped (include_night to keep them). ') +
                    'match tien_pan = the general carries the same Tien Pan branch as in the annual chart (default); di_pan = it stands on the same Di Pan branch. Say Tien Pan / Di Pan, never earth/heaven palace.' };
