@@ -377,11 +377,20 @@
     var btn = document.createElement('button');
     btn.id = 'gds-launch';
     btn.textContent = '☁ Drive Sync';
-    btn.style.cssText = 'display:block;margin:10px auto;background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:bold;cursor:pointer;';
+    btn.style.cssText = 'background:#fff;color:#1565c0;border:1px solid #1565c0;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:bold;cursor:pointer;';
     btn.onclick = openPanel;
+    // 📘 Guides sits next to Drive Sync (session 32, Edu: not in the scanner buttons)
+    var gb = document.createElement('button');
+    gb.id = 'btn-guides';
+    gb.textContent = '📘 Guides';
+    gb.style.cssText = 'background:#fff;color:#00695c;border:1px solid #00695c;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:bold;cursor:pointer;';
+    gb.onclick = function () { window.open('guides/index.html', '_blank'); };
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px auto;';
+    row.appendChild(btn); row.appendChild(gb);
     var anchor = document.getElementById('version-tag');
-    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(btn, anchor);
-    else document.body.appendChild(btn);
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(row, anchor);
+    else document.body.appendChild(row);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectLauncher);
   else injectLauncher();
