@@ -703,12 +703,12 @@
              'find_good_dates','find_qimen_days'],   // session 26: the flight/travel DATE rules live in this area
     fengshui: ['find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
-               'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement',
+               'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement','find_dlr_general_match',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days'],
     dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
-            'find_divination_chart','get_hexagram_info','export_lucky_calendar'],
+            'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
   };
   // Always sent, whatever the area — they are tiny and needed everywhere.
@@ -1877,6 +1877,22 @@
         'to_floorplan = true it saves the drawing as the floor\'s floor plan and opens the floor-plan tool with the rooms ' +
         'and the centre already set, so the 8 palaces / flying stars are drawn.',
       input_schema: { type: 'object', properties: { house_name: { type: 'string' }, to_floorplan: { type: 'boolean' } } }
+    },
+    {
+      name: 'find_dlr_general_match',
+      description: 'Da Liu Ren: read where a Heaven General (default the Nobleman 貴人) stands in the ANNUAL DLR chart of a ' +
+        'house (year + house facing, the same chart as CHARTS → DLR annual chart), then find the DATES and HOURS whose hour ' +
+        'DLR chart has that general in the SAME position. match = earth (same earth palace / direction, default), heaven ' +
+        '(same heaven branch) or both. Hours in local TRUE SOLAR TIME, with the real clock window. Use for questions like ' +
+        '"find a date when the Nobleman is where it is in the annual DLR chart of Vienna". Never ask the user where the ' +
+        'general is: this tool reads it.',
+      input_schema: { type: 'object', properties: {
+        house_name: { type: 'string' }, year: { type: 'integer', description: 'Year of the annual chart (default: this year).' },
+        general: { type: 'string', description: 'Nobleman (default), Snake, Bird, Harmony, Polaris, Dragon, EmptySky, Tiger, Norm, Warrior, Moon, Queen — or the Chinese name.' },
+        match: { type: 'string', enum: ['earth', 'heaven', 'both'] },
+        start_date: { type: 'string' }, days: { type: 'integer', description: 'Days to scan (default 30, max 120).' },
+        include_night: { type: 'boolean', description: 'Keep hours 23:00-05:00 (default false).' } },
+        required: ['house_name'] }
     },
     {
       name: 'house_save_door',
@@ -3229,6 +3245,7 @@
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
       if (name === 'add_calendar_reminder') return toolAddCalendarReminder(input || {});
       if (name === 'house_save_door') return toolHouseSaveDoor(input || {});
+      if (name === 'find_dlr_general_match') return toolFindDlrGeneralMatch(input || {});
       if (name === 'house_save_placement') return toolHouseSavePlacement(input || {});
       if (name === 'explain_purpose') return toolExplainPurpose(input || {});
       if (name === 'open_scan_result') return toolOpenScanResult(input || {});
@@ -5531,6 +5548,60 @@
   // Full setup of one house, resolved by name — everything converges here:
   // facing/period, doors, aquariums (+ the water star at each), and the
   // saved Water/Bed/Desk settings.
+  // ── DLR: a general's annual position → matching dates/hours (session 32) ──
+  var _DLR_GEN_NAMES = { nobleman: '貴人', snake: '螣蛇', 'flying snake': '螣蛇', bird: '朱雀', 'red bird': '朱雀', harmony: '六合',
+    'six harmonies': '六合', polaris: '勾陳', dragon: '青龍', 'green dragon': '青龍', emptysky: '天空', 'empty sky': '天空',
+    tiger: '白虎', 'white tiger': '白虎', norm: '太常', 'supreme norm': '太常', warrior: '玄武', 'black warrior': '玄武',
+    moon: '太陰', queen: '天后', 'heaven queen': '天后', nobile: '貴人' };
+  var _DLR_DIR = { '子': 'N', '丑': 'NNE', '寅': 'ENE', '卯': 'E', '辰': 'ESE', '巳': 'SSE', '午': 'S', '未': 'SSW', '申': 'WSW', '酉': 'W', '戌': 'WNW', '亥': 'NNW' };
+  function toolFindDlrGeneralMatch(input) {
+    var E = window.XKDGDaLiuRen, FS = window.XKDGDaLiuRenFS, ST = window.XKDGSolarTime;
+    if (!E || !FS || !ST) return { error: 'Da Liu Ren engine not loaded.' };
+    var R = _hsRef(input); if (R.error) return R;
+    if (R.facing == null) return { error: 'This house has no facing saved.' };
+    var gIn = String(input.general || 'nobleman').trim(), gCn = _DLR_GEN_NAMES[gIn.toLowerCase()] || gIn;
+    var year = parseInt(input.year, 10) || new Date().getFullYear();
+    var ann = FS.build({ year: year, facingDeg: +R.facing });
+    if (!ann || ann.error || !ann.chart) return { error: 'Annual DLR chart failed: ' + ((ann && ann.error) || '?') };
+    var findGen = function (ch) { var ps = (ch.generals && ch.generals.palaces) || []; for (var i = 0; i < ps.length; i++) if (ps[i].general && ps[i].general.cn === gCn) return ps[i]; return null; };
+    var aP = findGen(ann.chart); if (!aP) return { error: 'General "' + gIn + '" not found (use e.g. Nobleman, Dragon, Tiger…).' };
+    var match = input.match || 'earth', days = Math.min(120, parseInt(input.days, 10) || 30);
+    var start = input.start_date || todayIso(), p = start.split('-').map(Number);
+    var lt = ST.currentLonTz(), lon = isFinite(lt.lonDeg) ? lt.lonDeg : 12.49;
+    var BR = '子丑寅卯辰巳午未申酉戌亥', out = [], night = !!input.include_night;
+    for (var d = 0; d < days; d++) {
+      var base = new Date(Date.UTC(p[0], p[1] - 1, p[2] + d));
+      var Y = base.getUTCFullYear(), M = base.getUTCMonth() + 1, D = base.getUTCDate();
+      for (var hb = 0; hb < 12; hb++) {
+        var tstH = (hb * 2 + 23) % 24;                             // start of the double hour in TST
+        if (!night && (hb === 0 || hb === 1 || hb === 2)) continue;  // 子丑寅 = 23:00-05:00
+        var cH = hb === 0 ? 23 : tstH + 1;                          // centre (23:30 for 子, on this date)
+        var wc = ST.wallClockFromTST(Y, M, D, hb === 0 ? 23 : cH, 30, lon, lt.tzOffsetMin);
+        var pl = ST.pillarsFromCivil(wc.y, wc.mo, wc.d, wc.h, wc.mi, 0, lon, lt.tzOffsetMin);
+        if (!pl) continue;
+        var bj = pl.meta.beijing, mg = FS.monthGeneralFor(new Date(bj.y, bj.mo - 1, bj.d, bj.h, bj.mi), true);
+        if (!mg) continue;
+        var ch = E.buildChartFromPrimitives(pl.day.charAt(0), pl.day.charAt(1), pl.hour.charAt(1), mg, pl.hour.charAt(0));
+        if (!ch || ch.error) continue;
+        var g = findGen(ch); if (!g) continue;
+        var ok = match === 'heaven' ? g.heaven === aP.heaven : match === 'both' ? (g.heaven === aP.heaven && g.earth === aP.earth) : g.earth === aP.earth;
+        if (!ok) continue;
+        var s = ST.wallClockFromTST(Y, M, D, hb === 0 ? 23 : tstH, 0, lon, lt.tzOffsetMin), e = ST.wallClockFromTST(Y, M, D, hb === 0 ? 23 : tstH, 0, lon, lt.tzOffsetMin);
+        var eMs = Date.UTC(e.y, e.mo - 1, e.d, e.h, e.mi) + 120 * 60000, eD = new Date(eMs);
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        out.push({ date: Y + '-' + pad(M) + '-' + pad(D), hour: BR[hb], clock: pad(s.h) + ':' + pad(s.mi) + '–' + pad(eD.getUTCHours()) + ':' + pad(eD.getUTCMinutes()),
+                   day_pillar: pl.day, hour_pillar: pl.hour, heaven: g.heaven, earth: g.earth, day_night: ch.generals.dayNight });
+        if (out.length >= 60) break;
+      }
+      if (out.length >= 60) break;
+    }
+    return { house: R.h.name, year: year, house_facing: R.facing, general: gCn,
+             annual_position: { earth_palace: aP.earth + ' (' + _DLR_DIR[aP.earth] + ')', heaven_branch: aP.heaven },
+             match: match, from: start, days: days, count: out.length, results: out,
+             note: 'Annual chart = CHARTS → DLR annual chart of this house/year. Hours are true solar double-hours; clock = real local time. ' +
+                   (night ? '' : 'Night hours 23:00-05:00 skipped (include_night to keep them). ') +
+                   'match earth = the general stands on the same earth palace (direction) as in the annual chart.' };
+  }
   // ── House writes by the assistant (session 32, Edu: "può farlo da solo senza menù") ──
   function _hsRef(input) {
     if (!window.XKDGHouse) return { error: 'House profiles not available.' };
