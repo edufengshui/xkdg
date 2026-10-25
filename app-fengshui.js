@@ -3904,9 +3904,8 @@ function openDlrChartPanel(){
   if (box){ box.style.display = 'block'; return; }
   box = document.createElement('div');
   box.id = 'dlr-tool-panel';
-  box.style.cssText = 'position:fixed;top:8%;left:50%;transform:translateX(-50%);z-index:10050;' +
-    'width:min(560px,94vw);max-height:84vh;overflow:auto;background:#fffdf7;border:2px solid #5d4037;' +
-    'border-radius:12px;box-shadow:0 6px 26px rgba(0,0,0,.4);padding:12px 14px;';
+  // full screen (Edu, s.32): the chart uses the whole display
+  box.style.cssText = 'position:fixed;inset:0;z-index:10050;overflow:auto;background:#fffdf7;padding:12px 14px;box-sizing:border-box;';
   var today = new Date();
   var iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' +
             String(today.getDate()).padStart(2, '0');
@@ -4129,10 +4128,15 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
                '涉害':'Wading through Harm', '蒿矢':'Remote: Arrow', '彈射':'Remote: Shooting', '昴星':'Pleiades',
                '別責':'Separate Duty', '八專':'Eight Specials', '伏吟':'Hidden Chant (Fu Yin)', '返吟':'Return Chant (Fan Yin)' };
   var mRaw = (r.transmission && r.transmission.method) || '';
+  var MANC = { '元首':'yuanshou','重審':'chongshen','比用':'biyong','涉害':'shehai','蒿矢':'yaoke','彈射':'yaoke','昴星':'maoxing',
+               '別責':'biezhe','八專':'bazhuan','伏吟':'fuyin','返吟':'fanyin' };
+  var mParts = mRaw.split(/[·・]/).map(function (x){ return x.trim(); }).filter(Boolean);
+  var mAnchor = MANC[mParts[mParts.length - 1]] || MANC[mParts[0]] || '';
   var mTxt = mRaw.split(/[·・]/).map(function (x){ x = x.trim(); return METH[x] || x; }).filter(Boolean).join(' · ');
   var HB = '#353b45', TEAL = '#17a2b8', GOLD = '#fdc010', LG = '#f5f6f8';
-  var cellC = 'border:2px solid #fff;background:' + LG + ';text-align:center;padding:6px 4px;font:15px system-ui;color:#222;';
-  var dim = 'color:#888;';
+  var cellC = 'border:2px solid #fff;background:' + LG + ';text-align:center;padding:9px 4px;font:500 16px system-ui;color:#222;line-height:1.7;';
+  var dim = 'color:#888;font-weight:400;';
+  var bold = 'font-weight:600;color:#111;';
   var head2 = function (txt){ return '<div style="background:' + HB + ';color:#fff;text-align:center;font:600 15px system-ui;padding:7px;margin-top:12px;">' + txt + '</div>'; };
 
   var t = (r.transmission && r.transmission.threeDetailed) || null;
@@ -4142,8 +4146,8 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
     [['Initial<br>Message', t.chu], ['Middle<br>Message', t.zhong], ['Final<br>Message', t.mo]].forEach(function (x){
       var v = x[1] || {};
       three += '<tr><td style="' + cellC + 'background:' + TEAL + ';color:#fff;font-style:italic;">' + x[0] + '</td>'
-        + '<td style="' + cellC + '"><div style="' + dim + '">' + esc(gShort(v.general)) + '</div><div>' + esc(relTxt(v)) + '</div></td>'
-        + '<td style="' + cellC + '"><div style="' + dim + '">' + esc(xunStem(v.branch)) + '&nbsp;</div><div>' + esc(brPy(v.branch))
+        + '<td style="' + cellC + '"><div style="' + dim + '">' + esc(gShort(v.general)) + '</div><div style="' + bold + '">' + esc(relTxt(v)) + '</div></td>'
+        + '<td style="' + cellC + '"><div style="' + dim + '">' + esc(xunStem(v.branch)) + '&nbsp;</div><div style="' + bold + '">' + esc(brPy(v.branch))
         + (voids.indexOf(v.branch) >= 0 ? ' <span style="color:#c62828;">空</span>' : '') + '</div></td></tr>';
     });
     three += '</table>';
@@ -4162,7 +4166,7 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
       // earth row: the 1st reading stands on the DAY STEM (shown as the stem, as in the reference chart)
       + row(function (Ls, i){ if (i === 3 && dS >= 0) return esc(STPY[dS] + ' ' + ST10[dS]); var b = Ls.bottom || ''; var si = ST10.indexOf(b); return esc(si >= 0 ? (STPY[si] + ' ' + b) : brPy(b)); })
       + row(function (Ls, i){ return lbl[i]; }, yc)
-      + '<tr><td colspan="4" style="' + cellC + 'background:' + GOLD + ';"><span style="color:#1565c0;text-decoration:underline;">' + esc(mTxt || mRaw) + '</span></td></tr>'
+      + '<tr><td colspan="4" style="' + cellC + 'background:' + GOLD + ';"><a href="guides/dlr-methods.html#' + esc(mAnchor) + '" target="_blank" rel="noopener" style="color:#1565c0;text-decoration:underline;">' + esc(mTxt || mRaw) + '</a></td></tr>'
       + '</table>';
   }
 
@@ -4172,7 +4176,7 @@ function dlrChartHtml(r, dateIso, hourIdx, lon){
   ((r.generals && r.generals.palaces) || []).forEach(function (p){
     var q = POS[p.earth]; if (!q) return;
     var n = (dB >= 0) ? ((BR12.indexOf(p.earth) - dB + 12) % 12) + 1 : '';
-    grid[q[0]][q[1]] = '<td style="border:1px solid #999;background:#fff;text-align:center;padding:6px 2px;font:15px system-ui;color:#222;line-height:1.6;">'
+    grid[q[0]][q[1]] = '<td style="border:1px solid #999;background:#fff;text-align:center;padding:9px 2px;font:500 16px system-ui;color:#111;line-height:1.7;">'
       + '<div>' + esc(gShort(p.general)) + '</div><div>' + esc(brPy(p.heaven)) + '</div>'
       + '<div>' + esc(brPy(p.earth)) + ' ' + n + '</div></td>';
   });
