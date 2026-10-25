@@ -5609,7 +5609,7 @@
     return { house: R.h.name, year: year, house_facing: R.facing, general: gCn,
              annual_position: { tien_pan: aP.heaven, di_pan: aP.earth + ' (' + _DLR_DIR[aP.earth] + ')' },
              match: match, spirits: input.spirits === 'good' ? 'only hours with good spirits' : 'scored (good +1, bad -1)', from: start, days: days, count: out.length,
-             results: out.sort(function (a, b) { return (b.score - a.score) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0); }),
+             results: out.sort(function (a, b) { return (b.score - a.score) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0); }).slice(0, 40),
              note: 'Annual chart = CHARTS → DLR annual chart of this house/year. Hours are true solar double-hours; clock = real local time. ' +
                    (night ? '' : 'Night hours 23:00-05:00 skipped (include_night to keep them). ') +
                    'match tien_pan = the general carries the same Tien Pan branch as in the annual chart (default); di_pan = it stands on the same Di Pan branch. Say Tien Pan / Di Pan, never earth/heaven palace.' };
