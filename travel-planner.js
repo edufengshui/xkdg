@@ -1697,23 +1697,21 @@
    *    丁 over 戊 with Rest: avoid an hour with 癸 or 辛 at N), unless that hour
    *    stem is the Commander's Fu Shou.
    *    Stem clash = same polarity and one controls the other (丁: 癸 and 辛).
-   *    Door clash = their elements control each other (either way).
+   *    Door clash = DIRECT clash only, doors of opposite palaces (Rest-View,
+   *    Birth-Death, Injury-Shocking, Delusion-Open); Birth vs Rest is fine (Edu).
    * 4. The more favourable the same direction in the hour chart, the better
    *    (the hour score itself).
    * ----------------------------------------------------------------------- */
   var TP_STEM_EL = { Jia: 0, Yi: 0, Bing: 1, Ding: 1, Wu: 2, Ji: 2, Geng: 3, Xin: 3, Ren: 4, Gui: 4 };
   var TP_STEM_YANG = { Jia: 1, Bing: 1, Wu: 1, Geng: 1, Ren: 1 };
-  var TP_DOOR_EL = { Xiu: 4, Sheng: 2, Shang: 0, Du: 0, JingS: 1, Si: 2, JingF: 3, Kai: 3 };
   function tpElCtrl(a, b) { return (a + 2) % 5 === b; }          // wood>earth>water>fire>metal>wood
   function tpStemClash(a, b) {
     if (!(a in TP_STEM_EL) || !(b in TP_STEM_EL)) return false;
     if (!!TP_STEM_YANG[a] !== !!TP_STEM_YANG[b]) return false;
     return tpElCtrl(TP_STEM_EL[a], TP_STEM_EL[b]) || tpElCtrl(TP_STEM_EL[b], TP_STEM_EL[a]);
   }
-  function tpDoorClash(a, b) {
-    if (!(a in TP_DOOR_EL) || !(b in TP_DOOR_EL)) return false;
-    return tpElCtrl(TP_DOOR_EL[a], TP_DOOR_EL[b]) || tpElCtrl(TP_DOOR_EL[b], TP_DOOR_EL[a]);
-  }
+  var TP_DOOR_OPP = { Xiu: 'JingS', JingS: 'Xiu', Sheng: 'Si', Si: 'Sheng', Shang: 'JingF', JingF: 'Shang', Du: 'Kai', Kai: 'Du' };
+  function tpDoorClash(a, b) { return !!a && TP_DOOR_OPP[a] === b; }
   var _tpDayCache = {}, _tpHourCache = {};
   // Rotating DAY chart of dateStr at longitude lon (local true solar time).
   function tpDayChart(dateStr, lon) {
