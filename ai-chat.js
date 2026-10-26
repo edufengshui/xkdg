@@ -614,11 +614,19 @@
       'period, so it has no outer palace to activate; or no favourable Door / San Qi reached its palace this date) - do ' +
       'NOT say "rotating chart".\n' +
       // Session 32 (Edu): the assistant claimed search_travel used the DAY chart. It does not.
-      '- HOUR charts vs DAY charts (CRITICAL): EVERY tool except find_qimen_days works on QMDJ HOUR charts ' +
-      '(search_travel, plan_travel and all plan_* trips, analyze_direction, find_purpose_direction, find_water_hours, ' +
-      'find_water_activation*, find_qimen_hours_for_star, find_divination_chart). The QMDJ DAY chart (one Ju per decade of ' +
-      'days, day pillar as the "hour") is used ONLY by find_qimen_days. If the user asks whether you use the day chart, ' +
-      'say plainly that the trip / water tools use HOUR charts and offer find_qimen_days. Call find_qimen_days whenever ' +
+      '- HOUR charts vs DAY charts (CRITICAL): the tools work on QMDJ HOUR charts (search_travel, plan_travel, ' +
+      'analyze_direction, find_purpose_direction, find_water_hours, find_water_activation*, find_qimen_hours_for_star, ' +
+      'find_divination_chart). The QMDJ DAY chart (rotating, one Ju per decade of days, day pillar as the "hour") is used by ' +
+      'find_qimen_days AND, together with the hour charts, by plan_lucky_day_trip and the chain loops (plan_lucky_chain / ' +
+      'the "chains" field) - session 33, Edu\'s rules: (1) the day chart weighs more the longer the trip; (2) when the day ' +
+      'chart is the ONLY chart used (long trips, find_qimen_days) NO release stops are needed except at the END of the trip, ' +
+      'the minimum is departure and arrival in a positive hour; (3) day + hour together: at the DEPARTURE the hour chart ' +
+      'must not have, in the travel palace, a stem or a door that clashes the day chart\'s (unless that stem is the ' +
+      'Commander\'s Fu Shou) - the tools already drop those departures; (4) the more favourable the same direction in the ' +
+      'hour chart, the better. In a lucky-trip answer, open with ONE line on the day chart from its "day_chart" field ' +
+      '(day pillar, Ju, positive_directions - or "no positive direction in today\'s day chart"), and for each option ' +
+      'say whether its direction is positive in the day chart (day_chart.outbound_palace_positive). Never invent ' +
+      'day-chart results. Call find_qimen_days whenever ' +
       'the user mentions the day chart ("carta del giorno", "day chart", "giorno positivo per andare verso X", ' +
       '"quale giorno per cambiare l\'acqua a S") - use="travel" (rotating) for going towards a direction, use="water" ' +
       '(flying) for Feng Shui actions in a sector. Best practice for a trip: first find_qimen_days(use=travel) to pick ' +
@@ -5805,7 +5813,7 @@
                chart: use === 'water' ? 'Flying (Feng Shui)' : 'Rotating (directions / travel)',
                trip: dur ? { duration_hours: Math.round(dur * 100) / 100, origin: O ? O.name : 'app location',
                              destination: D ? D.name : null, found_by: how,
-                             rule: 'day chart positive in the travel palace; departure HOUR positive in the travel palace (origin); arrival HOUR positive in the OPPOSITE palace (destination); local true solar time' } : null,
+                             rule: 'day chart positive in the travel palace; departure HOUR positive in the travel palace (origin); arrival HOUR positive in the OPPOSITE palace (destination); local true solar time; NO release stops on the way - release only at the END (destination)' } : null,
                purpose: input.purpose || null, start: start, count: res.length, results: res,
                note: res.length ? (dur ? 'trip_windows = departure start times (local clock, 15-min steps) and the matching arrival times.'
                                        : 'Each day lists the hours of that same day positive in the same palace.')
