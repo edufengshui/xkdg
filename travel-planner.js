@@ -1695,7 +1695,8 @@
    * 3. Day + hour together: at the DEPARTURE the hour chart must not have, in the
    *    travel palace, a stem or a door that clashes the day chart's (e.g. day N =
    *    丁 over 戊 with Rest: avoid an hour with 癸 or 辛 at N), unless that hour
-   *    stem is the Commander's Fu Shou.
+   *    stem is the Commander's Fu Shou. ONLY for a leg longer than 2 h of driving:
+   *    a short trip (within two hours) is not blocked by the day chart (Edu).
    *    Stem clash = same polarity and one controls the other (丁: 癸 and 辛).
    *    Door clash = DIRECT clash only, doors of opposite palaces (Rest-View,
    *    Birth-Death, Injury-Shocking, Delusion-Open); Birth vs Rest is fine (Edu).
@@ -1755,6 +1756,7 @@
     return { clash: why.length > 0, why: why };
   }
   // Rule 1: weight of the day chart by trip length (one-way km, or loop total).
+  var TP_DAY_CLASH_MIN_H = 2;   // legs up to 2 h of driving ignore rule 3
   function tpDayWeight(km) { return Math.max(0, Math.min(0.5, (km || 0) / 400)); }
 
   /* ---- evaluate one rotating-chart palace ---------------------------------
@@ -5538,7 +5540,7 @@
         var de = tpDirExact(slot, slot.bearingDest);
         if (!de || !de.eval || !de.eval.ok) return;   // unfavourable door in the travel direction -> not allowed
         // Session 33 (Edu): with the DAY chart, the departure hour must not clash it in that palace.
-        if (dayFilter && tpDayClashAt(slot.wallStart.getTime(), O.lon, utc, dstOn, TP_DIR_TO_PALACE[de.dir], dateStr).clash) return;
+        if (dayFilter && _driveH > TP_DAY_CLASH_MIN_H && tpDayClashAt(slot.wallStart.getTime(), O.lon, utc, dstOn, TP_DIR_TO_PALACE[de.dir], dateStr).clash) return;
         var scs = ((de.combined != null) ? de.combined : 0) + arrB;   // arrival cash on top, after the gate
         if (!best || scs > best._sc) { best = slot; best._sc = scs; }
       } else {
@@ -7520,7 +7522,7 @@
         var s0 = (res.slots && res.slots[0]) ? res.slots[0] : null;
         var de = s0 ? tpDirExact(s0, s0.bearingDest) : null;
         var validStart = !!(de && de.eval && de.eval.ok);
-        if (validStart && useDay && tpDayClashAt(depBackMs, Dst.lon, utc, dstOn, TP_DIR_TO_PALACE[de.dir], dateStr).clash) validStart = false;
+        if (validStart && useDay && driveBack.h > TP_DAY_CLASH_MIN_H && tpDayClashAt(depBackMs, Dst.lon, utc, dstOn, TP_DIR_TO_PALACE[de.dir], dateStr).clash) validStart = false;
         return { stayH: stayH, backDir: de ? de.dir : null, res: res, qBack: qBack, depBackMs: depBackMs, combined: Math.min(qOut.q, qBack.q), validStart: validStart };
       }
       // Only round-trips whose RETURN also departs in a favourable exact direction are admissible.
@@ -8285,7 +8287,7 @@
               var to = tpDestPoint(from, dirsDeg[L] + chainDecl, km);
               var depMs = win[L].startMs, arrMs = depMs + durH * 3600000;
               var palL = TP_DIR_TO_PALACE[combo[L].dir];
-              if (dcC && tpDayClashAt(depMs, from.lon, utc, dstOn, palL, dateStr).clash) { ok = false; break; }
+              if (dcC && durH > TP_DAY_CLASH_MIN_H && tpDayClashAt(depMs, from.lon, utc, dstOn, palL, dateStr).clash) { ok = false; break; }
               legs.push({
                 n: L + 1, dir: combo[L].dir, deg: dirsDeg[L], km: Math.round(km),
                 door: combo[L].door, doorLabel: tpDoorLabel(combo[L].door),
