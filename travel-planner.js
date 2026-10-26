@@ -7476,6 +7476,17 @@
     } catch (e) { return null; }
   }
 
+  // Wall-clock end of the double-hour that contains ms at longitude lon (TST
+  // double-hours end at odd hours: Wei 13-15 -> 15:00 TST). Session 33 (Edu):
+  // a departure is valid until the END of its double-hour, not only at its start.
+  function tpDoubleHourEndMs(ms, lon, utc, dstOn) {
+    try {
+      var off = tpOffsetMin(lon, utc, dstOn, ms), sd = new Date(ms + off * 60000);
+      var h = sd.getHours(), m = sd.getMinutes(), endH = (h % 2) ? h + 2 : h + 1;
+      return ms + ((endH * 60) - (h * 60 + m)) * 60000 - sd.getSeconds() * 1000;
+    } catch (e) { return null; }
+  }
+
   function tpPlanRoundTrip(opts) {
     opts = opts || {};
     var O = opts.origin || TP_DEFAULT.origin;
@@ -7569,13 +7580,15 @@
       var cnArrOut = tpChineseHourAt(arriveOutMs, Dst.lon, utc, dstOn);
       var cnDepBack = tpChineseHourAt(best.depBackMs, Dst.lon, utc, dstOn);
       var cnArrBack = tpChineseHourAt(arriveBackMs, O.lon, utc, dstOn);
+      var depOutEnd = tpDoubleHourEndMs(depOutMs, O.lon, utc, dstOn);
+      var depBackEnd = tpDoubleHourEndMs(best.depBackMs, Dst.lon, utc, dstOn);
       return {
         ok: true, date: dateStr, widenedStay: widened, clean: clean,
-        outbound: { depClock: clock(depOutMs), arriveClock: clock(arriveOutMs), departCn: cnDepOut, arriveCn: cnArrOut,
+        outbound: { depClock: clock(depOutMs), depBy: depOutEnd ? clock(depOutEnd) : null, arriveClock: clock(arriveOutMs), departCn: cnDepOut, arriveCn: cnArrOut,
           driveH: Math.round(driveOut.h * 100) / 100,
           km: Math.round(driveOut.km), quality: qOut.q, favHours: qOut.favHours, towardSlots: qOut.towardSlots, cashStops: qOut.cash, realRoute: driveOut.real },
         stayH: best.stayH,
-        back: { depClock: clock(best.depBackMs), arriveClock: clock(arriveBackMs), departCn: cnDepBack, arriveCn: cnArrBack,
+        back: { depClock: clock(best.depBackMs), depBy: depBackEnd ? clock(depBackEnd) : null, arriveClock: clock(arriveBackMs), departCn: cnDepBack, arriveCn: cnArrBack,
           driveH: Math.round(driveBack.h * 100) / 100,
           km: Math.round(driveBack.km), quality: best.qBack.q, favHours: best.qBack.favHours, towardSlots: best.qBack.towardSlots, cashStops: best.qBack.cash, realRoute: driveBack.real },
         combined: combined, hourCombined: hourCombined, dayChart: dayInfo,
@@ -8433,9 +8446,9 @@
           place_feature: poi && poi.feature ? poi.feature : null,
           ev_charging: !!(poi && poi.ev),
           ev_power: (poi && poi.ev && poi.ev.power) ? poi.ev.power : null,
-          depart: r.outbound.depClock, arrive: r.outbound.arriveClock,
+          depart: r.outbound.depClock, depart_by: r.outbound.depBy || null, arrive: r.outbound.arriveClock,
           depart_cn: fmtCn(r.outbound.departCn), arrive_cn: fmtCn(r.outbound.arriveCn),
-          stay_h: r.stayH, return_depart: r.back.depClock, return_arrive: r.back.arriveClock,
+          stay_h: r.stayH, return_depart: r.back.depClock, return_depart_by: r.back.depBy || null, return_arrive: r.back.arriveClock,
           return_depart_cn: fmtCn(r.back.departCn), return_arrive_cn: fmtCn(r.back.arriveCn),
           score: Math.round(r.combined * 5), hour_score: Math.round((r.hourCombined != null ? r.hourCombined : r.combined) * 5),
           day_chart: r.dayChart || null, clean: r.clean, widened_stay: r.widenedStay,

@@ -3982,6 +3982,10 @@
         'depart_cn (departure), arrive_cn (reaching the destination), return_depart_cn (leaving back), return_arrive_cn (home). ' +
         'These are already computed on the compensated true-solar-time (longitude + DST) exactly like the Main — show them ' +
         'verbatim and NEVER recompute or shift them yourself. Format e.g. "Partenza 15:55 (Wei 未 · TST 14:30)". ' +
+        'A departure is valid for its WHOLE double-hour: "depart" is the earliest time and "depart_by" the end of that ' +
+        'double-hour; "return_depart" / "return_depart_by" the same for leaving back. ALWAYS show them as a window, e.g. ' +
+        '"Partenza dalle 10:39 entro le 12:38 (Wu 午)", "Rientro: partire dalle 12:41 entro le 14:38 (Wei 未)" - never present ' +
+        'a return as a single fixed clock time. ' +
         '"score" (0-5) = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
         '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination, ' +
         'and use "place_kind" to tell the user WHAT kind of stop it is so they know where to pull over and start walking: ' +
