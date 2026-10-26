@@ -9973,7 +9973,7 @@
       var guard = 0;
       function step() {
         return callAnthropic().then(function (data) {
-          if (data.error) { addBubble('assistant', '⚠ ' + (data.error.message || data.error)); setStatus('Request failed.', '#b00'); return; }
+          if (data.error) { addBubble('assistant', '⚠ ' + (data.error.message || data.error)); setStatus('Request failed.', '#b00'); _lastRunFailed = true; return; }
           // Record the assistant turn exactly as returned (needed to match tool_use ids).
           history.push({ role: 'assistant', content: data.content });
           var text = extractText(data);
@@ -10081,13 +10081,41 @@
       sending = true; setStatus('Thinking…');
       send.disabled = true; send.style.opacity = '0.6';
 
+      runWithRetry();
+    }
+
+    // Session 33 (Edu): when the request fails, offer a "Try again" button that resends the
+    // SAME conversation (the user turn / tool results are already in the history).
+    function addRetryButton() {
+      try {
+        var b = elc('button', { style: 'align-self:flex-start;margin:2px 0 6px;background:#6a1b9a;color:#fff;border:0;' +
+          'border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;' }, '\u21BB ' +
+          ({ it: 'Riprova', fr: 'R\u00e9essayer' }[chatLang()] || 'Try again'));
+        b.addEventListener('click', function () {
+          if (sending) return;
+          try { b.remove(); } catch (e) { b.style.display = 'none'; }
+          sending = true; setStatus('Thinking…'); send.disabled = true; send.style.opacity = '0.6';
+          runWithRetry();
+        });
+        msgs.appendChild(b);
+        try { msgs.scrollTop = msgs.scrollHeight; } catch (e) {}
+      } catch (e) {}
+    }
+    function runWithRetry() {
+      _lastRunFailed = false;
       runConversation()
         .catch(function (err) {
           addBubble('assistant', '⚠ Could not reach the AI worker. Check the URL (⚙) and your connection.\n(' + err.message + ')');
           setStatus('Request failed.', '#b00');
+          _lastRunFailed = true;
         })
-        .then(function () { sending = false; send.disabled = false; send.style.opacity = '1'; if (status.textContent === 'Thinking…') setStatus(''); });
+        .then(function () {
+          sending = false; send.disabled = false; send.style.opacity = '1';
+          if (status.textContent === 'Thinking…') setStatus('');
+          if (_lastRunFailed) addRetryButton();
+        });
     }
+    var _lastRunFailed = false;
 
     send.addEventListener('click', doSend);
     input.addEventListener('keydown', function (e) {
