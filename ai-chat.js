@@ -614,11 +614,11 @@
       'period, so it has no outer palace to activate; or no favourable Door / San Qi reached its palace this date) - do ' +
       'NOT say "rotating chart".\n' +
       // Session 32 (Edu): the assistant claimed search_travel used the DAY chart. It does not.
-      '- HOUR charts vs DAY charts (CRITICAL): the tools work on QMDJ HOUR charts (search_travel, plan_travel, ' +
-      'analyze_direction, find_purpose_direction, find_water_hours, find_water_activation*, find_qimen_hours_for_star, ' +
-      'find_divination_chart). The QMDJ DAY chart (rotating, one Ju per decade of days, day pillar as the "hour") is used by ' +
-      'find_qimen_days AND, together with the hour charts, by plan_lucky_day_trip and the chain loops (plan_lucky_chain / ' +
-      'the "chains" field) - session 33, Edu\'s rules: (1) the day chart weighs more the longer the trip; (2) when the day ' +
+      '- HOUR charts vs DAY charts (CRITICAL): the water / Feng Shui tools (find_water_hours, find_water_activation*, ' +
+      'find_qimen_hours_for_star, find_purpose_direction, find_divination_chart) work on QMDJ HOUR charts only. The QMDJ ' +
+      'DAY chart (rotating, one Ju per decade of days, day pillar as the "hour") is used by find_qimen_days AND, together ' +
+      'with the hour charts, by EVERY travel / direction tool: plan_lucky_day_trip, the chain loops, plan_travel, ' +
+      'search_travel and analyze_direction (each returns a "day_chart" field) - session 33, Edu\'s rules: (1) the day chart weighs more the longer the trip; (2) when the day ' +
       'chart is the ONLY chart used (long trips, find_qimen_days) NO release stops are needed except at the END of the trip, ' +
       'the minimum is departure and arrival in a positive hour; (3) day + hour together: at the DEPARTURE the hour chart ' +
       'must not have, in the travel palace, a stem or a door that clashes the day chart\'s (unless that stem is the ' +
@@ -4806,6 +4806,11 @@
     + 'leg with a direction, hour or door yourself. If there is more than one alternative, number them and keep '
     + 'each to its five lines.';
 
+  function _hkm(a, b) {
+    var R = 6371, r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lon - a.lon) * r;
+    var x = Math.sin(dLa / 2) * Math.sin(dLa / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
+    return 2 * R * Math.asin(Math.sqrt(x));
+  }
   function toolPlanTravel(input) {
     if (!window.TravelPlanner || typeof window.TravelPlanner.plan !== 'function')
       return { error: 'The Travel Planner is not available on this page.' };
@@ -4876,8 +4881,33 @@
     try { plan = window.TravelPlanner.plan(opts); }
     catch (e) { return { error: 'Travel planning failed: ' + ((e && e.message) || e) }; }
     var windows = [];
+    // Session 33 (Edu): QMDJ DAY chart together with the hour charts.
+    var _TPd = window.TravelPlanner, _oLon = origin ? origin.lon : null;
+    if (_oLon == null) { try { _oLon = XKDGSolarTime.currentLonTz().lonDeg; } catch (e) {} }
+    var _estDriveH = (origin && _TPd.haversineKm) ? _TPd.haversineKm(origin.lat, origin.lon, dest.lat, dest.lon) / 72
+                   : (origin ? _hkm(origin, dest) / 72 : 0);
+    var _dayInfo = null, _dayDropped = 0;
+    try {
+      var _dc = (_TPd.dayChart && _oLon != null) ? _TPd.dayChart(dateStr, _oLon) : null;
+      if (_dc) {
+        var _pos = _TPd.dayPositive(dateStr, _oLon, plan.snapDir);
+        var _w = origin ? _TPd.dayWeight(_hkm(origin, dest)) : 0;
+        _dayInfo = { day: _dc.dayGz, ju: (_dc.dun === 'yang' ? 'Yang ' : 'Yin ') + _dc.ju, travel_direction: plan.snapDir,
+                     travel_palace_positive: _pos, weight: Math.round(_w * 100) / 100,
+                     est_drive_h: Math.round(_estDriveH * 10) / 10,
+                     clash_rule_applies: _estDriveH > 2 };
+      }
+    } catch (eDay) { _dayInfo = null; }
     (plan.slots || []).forEach(function (s) {
       var good = (s.dirs || []).filter(function (d) { return d.towardDest && d.eval && d.eval.ok; });
+      if (good.length && _dayInfo && _dayInfo.clash_rule_applies && _TPd.dayClashAt && s.wallStart) {
+        var _n0 = good.length;
+        good = good.filter(function (d) {
+          var P = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 };
+          return !_TPd.dayClashAt(s.wallStart.getTime(), s.lonUsed != null ? s.lonUsed : _oLon, utc, dstOn, P[d.dir], dateStr).clash;
+        });
+        if (!good.length && _n0) _dayDropped++;
+      }
       if (good.length) {
         windows.push({
           from: hm(s.wallStart), to: hm(s.wallEnd),          // LOCAL LEGAL (DST) clock — the times the user reads
@@ -4955,6 +4985,14 @@
     } catch (eStash) {}
     var baseOut = {
       direction_to_destination: { bearing: Math.round(plan.bearing) + '°', snapped: plan.snapDir },
+      day_chart: _dayInfo ? Object.assign({ windows_dropped_for_day_clash: _dayDropped,
+        note: (_dayInfo.clash_rule_applies
+          ? 'Trip over 2 h: departure hours whose hour chart clashes the day chart in the travel palace were removed. '
+          : 'Short trip (within 2 h): the day chart does not block any departure and weighs little. ')
+          + (_dayInfo.travel_palace_positive ? 'The day chart is POSITIVE in the travel direction today.'
+             : ('The day chart is NOT positive in the travel direction today' + (_dayInfo.clash_rule_applies
+                ? ' - for a long trip offer find_qimen_days (use=travel, destination) to find a day when it is.' : '.')))
+      }, _dayInfo) : null,
       departure_planned: autoDepart ? (dateStr + ' (auto-selected — see the itinerary card for the exact time)') : (dateStr + ' ' + snapStart),
       recommended_departure: autoDepart && recommendedClock ? (dateStr + ' ' + recommendedClock) : null,
       departure_double_hour: depDH,
@@ -5097,13 +5135,14 @@
       var _noLuck = !(res.top || []).some(function (c) { return (c.total_cash || 0) > 0; });
       var _base = {
         search_done: true, days: days, optimize_arrival: optArr,
-        score_method: 'total_cash' + (optArr ? ' + arrival favourability' : ''),
+        score_method: 'total_cash' + (optArr ? ' + arrival favourability' : '') + ' x QMDJ day chart (weight grows with distance; trips over 2 h never leave in an hour clashing the day chart)',
         km: res.km, driving_h: res.driving_h, driving_min: res.driving_min, total_evaluated: res.total_evaluated,
         driving_time_note: 'All itineraries share the same road, so the driving time is the same for each; what differs is the departure/arrival and the cashed luck.',
         top: (res.top || []).map(function (c) {
           return { date: c.date, weekday: c.weekday, depart: c.depart,
             arrive: c.arrive + (c.arrive_next_day ? ' (+1d)' : ''), driving_min: res.driving_min, score: c.score,
-            total_cash: c.total_cash, cash_hours: c.cash_hours, xkdg_hours: c.xkdg_hours, xkdg_bonus: c.xkdg_bonus, of_hours: c.total_hours };
+            total_cash: c.total_cash, cash_hours: c.cash_hours, xkdg_hours: c.xkdg_hours, xkdg_bonus: c.xkdg_bonus, of_hours: c.total_hours,
+            day_chart_positive: c.day_chart_positive };
         }),
         note: 'A SELECTABLE ranked list of the top itineraries has ALREADY been posted into THIS chat as a card; ' +
           'the user taps "Choose" on one to open the full plan. The card has a Best / By date toggle so they can ' +
@@ -5404,8 +5443,24 @@
       }
       var r = window.QimenDirAnalysis.analyzeDirection({ Y: dp[0], M: dp[1], D: dp[2], hGan: hGan, hZhi: hZhi, direction: dir, yearStem: yearStem });
       if (!r) return { error: 'Could not compute the rotating chart for that date/hour.' };
+      // Session 33 (Edu): the DAY chart for that direction, and whether this hour clashes it.
+      var dayChart = null;
+      try {
+        var TPd = window.TravelPlanner, lon = (_lt && isFinite(_lt.lonDeg)) ? _lt.lonDeg : 12.1;
+        var dc = TPd && TPd.dayChart ? TPd.dayChart(date, lon) : null;
+        if (dc) {
+          var PP = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 }, cell = dc.chart.palaces[PP[dir]];
+          var utcA = parseFloat((document.getElementById('utc-offset') || {}).value); if (isNaN(utcA)) utcA = 1;
+          var msA = new Date(date + 'T' + String(tp[0] || 0).padStart(2, '0') + ':' + String(tp[1] || 0).padStart(2, '0') + ':00').getTime();
+          var cl = TPd.dayClashAt(msA, lon, utcA, dstActiveOn(new Date(msA)), PP[dir], date);
+          dayChart = { day: dc.dayGz, ju: (dc.dun === 'yang' ? 'Yang ' : 'Yin ') + dc.ju,
+                       palace: (cell.tiH || '') + '/' + (cell.diH || '') + ' ' + (cell.doorName || cell.door || '') + ' ' + (cell.deity || ''),
+                       positive: TPd.dayPositive(date, lon, dir), hour_clashes_day: cl.clash, clash_detail: cl.why,
+                       rule: 'The day chart weighs more the longer the trip; a trip over 2 h must not leave in an hour that clashes it (stem or door) in this palace.' };
+        }
+      } catch (eD) { dayChart = null; }
       return {
-        ok: true, date: date, time: time, direction: dir,
+        ok: true, date: date, time: time, direction: dir, day_chart: dayChart,
         start_palace: r.startPalace, start_ti: r.startTi, dest_palace: r.destPalace, dest_ti: r.destTi,
         start_palace_flow: r.flowAdvice.map(function (m) { return m.text; }),
         alerts: r.alerts.map(function (a) { return a.text; }),
