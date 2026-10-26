@@ -1688,6 +1688,77 @@
     }
   }
 
+  /* ---- QMDJ DAY chart inside hour-chart trips (session 33, Edu) -----------
+   * 1. The day chart weighs more the longer the trip (tpDayWeight).
+   * 2. Day chart alone (long trips, find_qimen_days): no release stops except at
+   *    the END; departure and arrival in a positive hour (qmdj-daymonth.js).
+   * 3. Day + hour together: at the DEPARTURE the hour chart must not have, in the
+   *    travel palace, a stem or a door that clashes the day chart's (e.g. day N =
+   *    丁 over 戊 with Rest: avoid an hour with 癸 or 辛 at N), unless that hour
+   *    stem is the Commander's Fu Shou.
+   *    Stem clash = same polarity and one controls the other (丁: 癸 and 辛).
+   *    Door clash = their elements control each other (either way).
+   * 4. The more favourable the same direction in the hour chart, the better
+   *    (the hour score itself).
+   * ----------------------------------------------------------------------- */
+  var TP_STEM_EL = { Jia: 0, Yi: 0, Bing: 1, Ding: 1, Wu: 2, Ji: 2, Geng: 3, Xin: 3, Ren: 4, Gui: 4 };
+  var TP_STEM_YANG = { Jia: 1, Bing: 1, Wu: 1, Geng: 1, Ren: 1 };
+  var TP_DOOR_EL = { Xiu: 4, Sheng: 2, Shang: 0, Du: 0, JingS: 1, Si: 2, JingF: 3, Kai: 3 };
+  function tpElCtrl(a, b) { return (a + 2) % 5 === b; }          // wood>earth>water>fire>metal>wood
+  function tpStemClash(a, b) {
+    if (!(a in TP_STEM_EL) || !(b in TP_STEM_EL)) return false;
+    if (!!TP_STEM_YANG[a] !== !!TP_STEM_YANG[b]) return false;
+    return tpElCtrl(TP_STEM_EL[a], TP_STEM_EL[b]) || tpElCtrl(TP_STEM_EL[b], TP_STEM_EL[a]);
+  }
+  function tpDoorClash(a, b) {
+    if (!(a in TP_DOOR_EL) || !(b in TP_DOOR_EL)) return false;
+    return tpElCtrl(TP_DOOR_EL[a], TP_DOOR_EL[b]) || tpElCtrl(TP_DOOR_EL[b], TP_DOOR_EL[a]);
+  }
+  var _tpDayCache = {}, _tpHourCache = {};
+  // Rotating DAY chart of dateStr at longitude lon (local true solar time).
+  function tpDayChart(dateStr, lon) {
+    var k = dateStr + '@' + Math.round(lon * 10);
+    if (k in _tpDayCache) return _tpDayCache[k];
+    var res = null;
+    try {
+      var D = window.XKDGDayMonth, p = dateStr.split('-');
+      var R = D.dayChartJu(+p[0], +p[1], +p[2], lon);
+      var c = R && QMDJWaterScanner.getRotatingHourChart(2000, 1, 1, R.dayGz.charAt(0), R.dayGz.charAt(1), null, { ju: R.ju, dun: R.dun });
+      if (c && c.palaces) res = { chart: c, dayGz: R.dayGz, ju: R.ju, dun: R.dun };
+    } catch (e) { res = null; }
+    _tpDayCache[k] = res;
+    return res;
+  }
+  function tpDayPositive(dc, palace) {
+    try { return !!(dc && window.XKDGDayMonth.positive(dc.chart.palaces[palace], null)); } catch (e) { return false; }
+  }
+  function tpHourChartAt(ms, lon, utc, dstOn) {
+    try {
+      var off = tpOffsetMin(lon, utc, dstOn, ms), sd = new Date(ms + off * 60000);
+      var ec = Solar.fromDate(sd).getLunar().getEightChar(), g = ec.getTimeGan(), z = ec.getTimeZhi();
+      var k = sd.getFullYear() + '-' + (sd.getMonth() + 1) + '-' + sd.getDate() + g + z;
+      if (!(k in _tpHourCache)) _tpHourCache[k] = QMDJWaterScanner.getRotatingHourChart(sd.getFullYear(), sd.getMonth() + 1, sd.getDate(), g, z);
+      return _tpHourCache[k];
+    } catch (e) { return null; }
+  }
+  // Rule 3: does the hour chart at ms clash, in `palace`, with the day chart?
+  function tpDayClashAt(ms, lon, utc, dstOn, palace, dateStr) {
+    var dc = tpDayChart(dateStr || tpLocalISO(new Date(ms)), lon);
+    var hc = tpHourChartAt(ms, lon, utc, dstOn);
+    if (!dc || !hc || !hc.palaces) return { clash: false, why: [] };
+    var d = dc.chart.palaces[palace], h = hc.palaces[palace], why = [];
+    if (!d || !h) return { clash: false, why: [] };
+    var dSt = [d.ti, d.ti2].filter(Boolean);
+    [[h.ti, h.tiH], [h.ti2, h.ti2H]].forEach(function (s) {
+      if (!s[0] || s[0] === h.cmdStem) return;                 // the Commander's Fu Shou never clashes
+      dSt.forEach(function (x) { if (tpStemClash(s[0], x)) why.push('stem ' + (s[1] || s[0]) + ' vs day ' + x); });
+    });
+    if (tpDoorClash(h.doorCode || h.door, d.doorCode || d.door)) why.push('door ' + (h.doorName || h.door) + ' vs day ' + (d.doorName || d.door));
+    return { clash: why.length > 0, why: why };
+  }
+  // Rule 1: weight of the day chart by trip length (one-way km, or loop total).
+  function tpDayWeight(km) { return Math.max(0, Math.min(0.5, (km || 0) / 400)); }
+
   /* ---- evaluate one rotating-chart palace ---------------------------------
    * Returns { ok, score, ... } where:
    *   ok    = meets the FIXED condition (San Qi + favourable door) and is not
@@ -5418,7 +5489,7 @@
     container.appendChild(box);
   }
 
-  function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route, minMs, strict) {
+  function tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, route, minMs, strict, dayFilter) {
     var DAY_START_H = 5, DAY_END_H = 21;   // sensible driving window, local clock
     var probe;
     try {
@@ -5468,6 +5539,8 @@
         // ABSOLUTE RULE: the EXACT travel direction's door must be favourable at departure.
         var de = tpDirExact(slot, slot.bearingDest);
         if (!de || !de.eval || !de.eval.ok) return;   // unfavourable door in the travel direction -> not allowed
+        // Session 33 (Edu): with the DAY chart, the departure hour must not clash it in that palace.
+        if (dayFilter && tpDayClashAt(slot.wallStart.getTime(), O.lon, utc, dstOn, TP_DIR_TO_PALACE[de.dir], dateStr).clash) return;
         var scs = ((de.combined != null) ? de.combined : 0) + arrB;   // arrival cash on top, after the gate
         if (!best || scs > best._sc) { best = slot; best._sc = scs; }
       } else {
@@ -7431,7 +7504,8 @@
       var driveOut = tpRouteDriveH(routeOut, O, Dst);
       var driveBack = tpRouteDriveH(routeBack, Dst, O);
 
-      var bestDep = tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, routeOut, minDepartMs, true);
+      var useDay = !!opts.dayChart;
+      var bestDep = tpPickBestDepartureForDay(O, Dst, dateStr, utc, dstOn, routeOut, minDepartMs, true, useDay);
       if (!bestDep) throw new Error('No favourable departure (exact direction) for ' + dateStr);
       var depOutMs = bestDep.ms;
       var outRes = tpPlan({ depDate: new Date(depOutMs), durationH: Math.max(driveOut.h, 0.5),
@@ -7448,7 +7522,8 @@
         var s0 = (res.slots && res.slots[0]) ? res.slots[0] : null;
         var de = s0 ? tpDirExact(s0, s0.bearingDest) : null;
         var validStart = !!(de && de.eval && de.eval.ok);
-        return { stayH: stayH, res: res, qBack: qBack, depBackMs: depBackMs, combined: Math.min(qOut.q, qBack.q), validStart: validStart };
+        if (validStart && useDay && tpDayClashAt(depBackMs, Dst.lon, utc, dstOn, TP_DIR_TO_PALACE[de.dir], dateStr).clash) validStart = false;
+        return { stayH: stayH, backDir: de ? de.dir : null, res: res, qBack: qBack, depBackMs: depBackMs, combined: Math.min(qOut.q, qBack.q), validStart: validStart };
       }
       // Only round-trips whose RETURN also departs in a favourable exact direction are admissible.
       function bestOf(list) {
@@ -7472,6 +7547,22 @@
       function clock(ms) { var d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
       var arriveBackMs = best.depBackMs + driveBack.h * 3600000;
       var clean = (qOut.q >= GOOD && best.qBack.q >= GOOD);
+      // Session 33 (Edu): DAY chart weight grows with the trip length (rule 1).
+      var hourCombined = best.combined, combined = best.combined, dayInfo = null;
+      if (useDay) {
+        var dcR = tpDayChart(dateStr, O.lon);
+        if (dcR) {
+          var outDir = tpSnapDir(tpBearing(O.lat, O.lon, Dst.lat, Dst.lon));
+          var pOut = TP_DIR_TO_PALACE[outDir], pBack = TP_DIR_TO_PALACE[best.backDir] || TP_DIR_TO_PALACE[tpSnapDir(tpBearing(Dst.lat, Dst.lon, O.lat, O.lon))];
+          var posOut = tpDayPositive(dcR, pOut), posBack = tpDayPositive(dcR, pBack);
+          var w = tpDayWeight(tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon));
+          var dq = (posOut && posBack) ? 1 : ((posOut || posBack) ? 0.5 : 0);
+          combined = hourCombined * (1 - w) + dq * w;
+          dayInfo = { day: dcR.dayGz, ju: (dcR.dun === 'yang' ? 'Yang ' : 'Yin ') + dcR.ju,
+                      outbound_palace_positive: posOut, return_palace_positive: posBack,
+                      weight: Math.round(w * 100) / 100, no_clash_at_departures: true };
+        }
+      }
       // Chinese double-hours on compensated TST: departure & arrival use the longitude
       // of the place they happen at (origin for departure/home-arrival, dest for arrival/return).
       var cnDepOut = tpChineseHourAt(depOutMs, O.lon, utc, dstOn);
@@ -7487,7 +7578,7 @@
         back: { depClock: clock(best.depBackMs), arriveClock: clock(arriveBackMs), departCn: cnDepBack, arriveCn: cnArrBack,
           driveH: Math.round(driveBack.h * 100) / 100,
           km: Math.round(driveBack.km), quality: best.qBack.q, favHours: best.qBack.favHours, towardSlots: best.qBack.towardSlots, cashStops: best.qBack.cash, realRoute: driveBack.real },
-        combined: best.combined,
+        combined: combined, hourCombined: hourCombined, dayChart: dayInfo,
         note: clean ? (widened ? 'Favourable round-trip found by widening the stay.' : 'Favourable round-trip.')
                     : 'No fully favourable round-trip today even after widening — best compromise shown.'
       };
@@ -8144,6 +8235,8 @@
     var maxLegs = Math.min(opts.maxLegs || 5, 5);
     var minKm = opts.minLegKm || 10, maxKm = opts.maxLegKm || 140;
     var speed = opts.speedKmh || 70, count = opts.count || 5, maxDirsPerHour = 4;
+    var useDay = opts.dayChart !== false;         // session 33 (Edu): DAY chart rules 1 + 3
+    var dcC = useDay ? tpDayChart(dateStr, O.lon) : null;
     var wantDir = opts.firstDir || null;          // bias/limit loops by their FIRST leg's direction
     var firstDirOnly = !!opts.firstDirOnly;       // keep ONLY loops whose first leg heads wantDir (±45°)
 
@@ -8193,11 +8286,14 @@
               // before still closes exactly — it is simply turned onto the real compass.
               var to = tpDestPoint(from, dirsDeg[L] + chainDecl, km);
               var depMs = win[L].startMs, arrMs = depMs + durH * 3600000;
+              var palL = TP_DIR_TO_PALACE[combo[L].dir];
+              if (dcC && tpDayClashAt(depMs, from.lon, utc, dstOn, palL, dateStr).clash) { ok = false; break; }
               legs.push({
                 n: L + 1, dir: combo[L].dir, deg: dirsDeg[L], km: Math.round(km),
                 door: combo[L].door, doorLabel: tpDoorLabel(combo[L].door),
                 br: win[L].br, brPy: (BR_PY[win[L].br] || win[L].br),
                 sanqi: combo[L].sanqi, combined: combo[L].combined,
+                dayPositive: dcC ? tpDayPositive(dcC, palL) : null,
                 from: { lat: from.lat, lon: from.lon }, to: { lat: to.lat, lon: to.lon },
                 departCn: tpChineseHourAt(depMs, from.lon, utc, dstOn),
                 arriveCn: tpChineseHourAt(arrMs, to.lon, utc, dstOn)
@@ -8211,10 +8307,17 @@
             var avg = legs.reduce(function (s, l) { return s + l.combined; }, 0) / legs.length;
             var sanqiCount = legs.filter(function (l) { return l.sanqi; }).length;
             var maxClean = TP_SCORE_BASE + TP_BONUS_SANQI + TP_BONUS_GOODDEITY;
-            var score5 = Math.max(1, Math.min(5, Math.round(avg / maxClean * 5)));
+            var qC = avg / maxClean, totKm = legs.reduce(function (s, l) { return s + l.km; }, 0), dayW = 0;
+            if (dcC) {                                       // rule 1: longer loop -> day chart weighs more
+              dayW = tpDayWeight(totKm);
+              var dq = legs.filter(function (l) { return l.dayPositive; }).length / legs.length;
+              qC = qC * (1 - dayW) + dq * dayW;
+            }
+            var score5 = Math.max(1, Math.min(5, Math.round(qC * 5)));
             chains.push({
               legs: legs, n: N, stops: N - 1, startMs: win[0].startMs, score: score5, avg: avg,
               sanqiCount: sanqiCount, resid: Math.round(resid * 10) / 10,
+              day_weight: dcC ? Math.round(dayW * 100) / 100 : undefined,
               sig: combo.map(function (x) { return x.dir; }).join('-')
             });
             break;                                          // one closing base length is enough
@@ -8270,6 +8373,13 @@
     var nowMs = (opts.nowMs != null) ? opts.nowMs : Date.now();
     var minKm = (opts.minOriginKm != null) ? opts.minOriginKm : 15;   // selectable floor (0 = in-city)
     var bearings = [0, 45, 90, 135, 180, 225, 270, 315];
+    var useDayChart = opts.dayChart !== false;   // session 33 (Edu): the DAY chart joins the hour charts
+    function dayOverview() {
+      if (!useDayChart) return null;
+      var dc = tpDayChart(dateStr, O.lon); if (!dc) return null;
+      var pos = TP_DIR_ORDER.filter(function (d) { return tpDayPositive(dc, TP_DIR_TO_PALACE[d]); });
+      return { day: dc.dayGz, ju: (dc.dun === 'yang' ? 'Yang ' : 'Yin ') + dc.ju, positive_directions: pos };
+    }
     // When the floor is small (city scale) probe SHORT distances too, so in-city
     // famous places can win; otherwise keep the excursion spread.
     var dflt = (minKm < 12) ? [Math.max(1, minKm || 2), 4, 8, 15, 30, 60, 120] : [30, 80, 150];
@@ -8282,7 +8392,7 @@
         var Dst = tpDestPoint(O, b, km);
         jobs.push(
           tpPlanRoundTrip({ origin: O, dest: Dst, utc: utc, dstOn: dstOn, dateStr: dateStr,
-            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true, nowMs: nowMs })
+            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true, nowMs: nowMs, dayChart: useDayChart })
             .then(function (r) { if (r) { r.bearing = b; r.snapDir = tpSnapDir(b); r.km = km; r.dest = Dst; } return r; })
             .catch(function () { return null; })
         );
@@ -8327,14 +8437,15 @@
           depart_cn: fmtCn(r.outbound.departCn), arrive_cn: fmtCn(r.outbound.arriveCn),
           stay_h: r.stayH, return_depart: r.back.depClock, return_arrive: r.back.arriveClock,
           return_depart_cn: fmtCn(r.back.departCn), return_arrive_cn: fmtCn(r.back.arriveCn),
-          score: Math.round(r.combined * 5), clean: r.clean, widened_stay: r.widenedStay,
+          score: Math.round(r.combined * 5), hour_score: Math.round((r.hourCombined != null ? r.hourCombined : r.combined) * 5),
+          day_chart: r.dayChart || null, clean: r.clean, widened_stay: r.widenedStay,
           dest_lat: Math.round(dlat * 100000) / 100000, dest_lon: Math.round(dlon * 100000) / 100000
         };
       }
 
       if (!category) {
         return {
-          date: dateStr, origin: O, category: null, anyClean: picked.some(function (r) { return r.clean; }),
+          date: dateStr, origin: O, day_chart: dayOverview(), category: null, anyClean: picked.some(function (r) { return r.clean; }),
           proposals: picked.map(function (r) { return buildProposal(r, null); })
         };
       }
@@ -8395,7 +8506,7 @@
           if (!poi) return Promise.resolve({ r: r, poi: null, dropped: false });
           var realBearing = tpBearing(O.lat, O.lon, poi.lat, poi.lon);
           return tpPlanRoundTrip({ origin: O, dest: { lat: poi.lat, lon: poi.lon }, utc: utc, dstOn: dstOn, dateStr: dateStr,
-            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true, nowMs: nowMs })
+            stayMinH: stayMin, stayMaxH: stayMax, estimateOnly: true, nowMs: nowMs, dayChart: useDayChart })
             .then(function (r2) {
               if (!r2 || !r2.ok) return { r: r, poi: poi, dropped: true };  // not favourable at the REAL direction -> drop
               r2.bearing = realBearing; r2.snapDir = tpSnapDir(realBearing);
@@ -8408,7 +8519,7 @@
           var kept = final.filter(function (x) { return !x.dropped; });
           var droppedForRealDirection = final.length - kept.length;
           return {
-            date: dateStr, origin: O, category: tpPoiCategory(category),
+            date: dateStr, origin: O, day_chart: dayOverview(), category: tpPoiCategory(category),
             anyClean: kept.some(function (x) { return x.r.clean; }),
             some_without_place: kept.some(function (x) { return !x.poi; }),
             poi_service_error: res.some(function (x) { return x.failed; }),
@@ -8946,6 +9057,7 @@
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
     proposeLuckyTrips: tpProposeLuckyTrips,
+    dayClashAt: tpDayClashAt, dayChart: tpDayChart,   // session 33: QMDJ day chart in trips
     proposeChainTrips: tpProposeChainTrips,
     // Score ONE palace of a ROTATING (转盘) chart with the canonical predicate —
     // the same auspiciousness score the Travel Planner uses for directions. Never
