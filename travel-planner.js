@@ -5527,6 +5527,14 @@
       return 0;
     }
     var best = null, bestHourOnly = null, earliest = null;
+    // Session 33 (Edu), rule 3: trips longer than 2 h must not leave in an hour that clashes
+    // the DAY chart in the travel palace. On by default; pass dayFilter=false to skip.
+    var _dayChk = (dayFilter !== false) && _driveH > TP_DAY_CLASH_MIN_H;
+    function _dayClash(slot, dir) {
+      if (!_dayChk) return false;
+      var pal = TP_DIR_TO_PALACE[dir || _overall]; if (!pal) return false;
+      return tpDayClashAt(slot.wallStart.getTime(), O.lon, utc, dstOn, pal, dateStr).clash;
+    }
     probe.slots.forEach(function (slot) {
       var h = slot.wallStart.getHours();
       if (h < DAY_START_H || h > DAY_END_H) return;
@@ -5540,11 +5548,12 @@
         var de = tpDirExact(slot, slot.bearingDest);
         if (!de || !de.eval || !de.eval.ok) return;   // unfavourable door in the travel direction -> not allowed
         // Session 33 (Edu): with the DAY chart, the departure hour must not clash it in that palace.
-        if (dayFilter && _driveH > TP_DAY_CLASH_MIN_H && tpDayClashAt(slot.wallStart.getTime(), O.lon, utc, dstOn, TP_DIR_TO_PALACE[de.dir], dateStr).clash) return;
+        if (_dayClash(slot, de.dir)) return;
         var scs = ((de.combined != null) ? de.combined : 0) + arrB;   // arrival cash on top, after the gate
         if (!best || scs > best._sc) { best = slot; best._sc = scs; }
       } else {
         var bd = tpBestDirToward(slot, slot.bearingDest);
+        if (_dayClash(slot, bd ? bd.dir : null)) return;
         var sc = (bd && bd.combined != null) ? bd.combined : null;
         // A candidate qualifies if the DEPARTURE is favourable OR the ARRIVAL cashes:
         // a short trip that lands inside a favourable window is a valid (often the
@@ -5686,7 +5695,14 @@
                   utc: utc, dstOn: dstOn, snapDepart: false, stepMin: 30, stopMode: 'auto', route: matchRoute });
               } catch (e) {}
               if (!r || !r.slots || !r.slots.length) return;
+              // Session 33 (Edu): DAY chart. Rule 3: a trip over 2 h never leaves in an hour that
+              // clashes the day chart in the travel palace. Rule 1: the day chart weighs more
+              // the longer the trip (score x (1 +/- weight)).
+              var _pal = TP_DIR_TO_PALACE[tpSnapDir(tpBearing(O.lat, O.lon, Dst.lat, Dst.lon))];
+              if (driveH > TP_DAY_CLASH_MIN_H && tpDayClashAt(depMs, O.lon, utc, dstOn, _pal, dateStr).clash) return;
               var sc = tpScoreItinerary(r, optArr);
+              var _dc = tpDayChart(dateStr, O.lon), _dpos = _dc ? tpDayPositive(_dc, _pal) : null;
+              if (_dc) { var _w = tpDayWeight(tpHaversineKm(O.lat, O.lon, Dst.lat, Dst.lon)); sc.score = Math.round(sc.score * (_dpos ? 1 + _w : 1 - _w) * 100) / 100; }
               var depD = r.slots[0].wallStart, arrD = r.slots[r.slots.length - 1].wallEnd;
               candidates.push({
                 date: dateStr, weekday: (typeof WD_IT !== 'undefined' && WD_IT) ? WD_IT[depD.getDay()] : '',
@@ -5694,7 +5710,8 @@
                 arrive: pad(arrD.getHours()) + ':' + pad(arrD.getMinutes()),
                 arrive_next_day: (arrD.getDate() !== depD.getDate()),
                 depart_ms: depMs, score: sc.score, total_cash: sc.total_cash,
-                cash_hours: sc.cash_hours, xkdg_hours: sc.xkdg_hours, xkdg_bonus: sc.xkdg_bonus, total_hours: sc.total_hours, arrival_score: sc.arrival_score
+                cash_hours: sc.cash_hours, xkdg_hours: sc.xkdg_hours, xkdg_bonus: sc.xkdg_bonus, total_hours: sc.total_hours, arrival_score: sc.arrival_score,
+                day_chart_positive: _dpos
               });
             });
           }
@@ -9070,7 +9087,8 @@
     plan: tpPlan,
     planRoundTrip: tpPlanRoundTrip,
     proposeLuckyTrips: tpProposeLuckyTrips,
-    dayClashAt: tpDayClashAt, dayChart: tpDayChart,   // session 33: QMDJ day chart in trips
+    dayClashAt: tpDayClashAt, dayChart: tpDayChart, dayWeight: tpDayWeight,
+    dayPositive: function (dateStr, lon, dir) { var dc = tpDayChart(dateStr, lon); return dc ? tpDayPositive(dc, TP_DIR_TO_PALACE[dir]) : null; },   // session 33: QMDJ day chart in trips
     proposeChainTrips: tpProposeChainTrips,
     // Score ONE palace of a ROTATING (转盘) chart with the canonical predicate —
     // the same auspiciousness score the Travel Planner uses for directions. Never
