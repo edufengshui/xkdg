@@ -4022,11 +4022,12 @@
         if (window.XKDGChat && typeof window.XKDGChat.addDayTrip === 'function' && proposals && proposals.length) {
           window.XKDGChat.addDayTrip({ origin: input.origin_name || undefined,
             origin_lat: origin ? origin.lat : null, origin_lon: origin ? origin.lon : null,
-            date: (r && r.date) || dateStr, proposals: proposals });
+            date: (r && r.date) || dateStr, proposals: proposals, day_chart: (r && r.day_chart) || null });
         }
       } catch (e) {}
       return {
         ok: true, date: (r && r.date) || dateStr, any_fully_favourable: !!(r && r.anyClean),
+        day_chart: (r && r.day_chart) || null,
         chains_included: !!(chains && chains.length),
         requested_direction: wantDir || undefined,
         direction_satisfied: (meta.direction_satisfied !== undefined ? meta.direction_satisfied : undefined),
@@ -9021,8 +9022,8 @@
       (payload.proposals || []).forEach(function (p, i) {
         out.push((i + 1) + '. ' + (p.direction || '') + (p.place ? (' - ' + p.place) : (p.km != null ? (' (~' + p.km + ' km)') : '')));
         var t = [];
-        if (p.depart && p.arrive) t.push('go ' + p.depart + '-' + p.arrive);
-        if (p.return_depart && p.return_arrive) t.push('back ' + p.return_depart + '-' + p.return_arrive);
+        if (p.depart) t.push('leave ' + p.depart + (p.depart_by ? '-' + p.depart_by : ''));
+        if (p.return_depart) t.push('leave back ' + p.return_depart + (p.return_depart_by ? '-' + p.return_depart_by : ''));
         if (p.score != null) t.push('score ' + p.score + '/5');
         if (t.length) out.push('   ' + t.join('  '));
         if (p.dest_lat != null) out.push('   https://www.google.com/maps/search/?api=1&query=' + p.dest_lat + ',' + p.dest_lon);
@@ -9120,6 +9121,12 @@
         'border-radius:12px;border-bottom-left-radius:3px;padding:8px 11px;font-size:13px;line-height:1.5;word-wrap:break-word;' });
       wrap.appendChild(elc('div', { style: 'font-weight:700;margin-bottom:5px;color:#2e7d32;' },
         '\uD83C\uDF40 Lucky trip' + (payload.origin ? (' \u00b7 ' + payload.origin) : '') + (payload.date ? (' \u00b7 ' + payload.date) : '')));
+      if (payload.day_chart) {
+        var _dcp = payload.day_chart.positive_directions || [];
+        wrap.appendChild(elc('div', { style: 'font-size:11.5px;color:#4527a0;margin:-2px 0 4px;' },
+          '\uD83D\uDCC6 Day chart ' + payload.day_chart.day + ' \u00b7 ' + payload.day_chart.ju + ' \u00b7 ' +
+          (_dcp.length ? 'positive: ' + _dcp.join(', ') : 'no positive direction')));
+      }
 
       function medal(i) { return i === 0 ? '\uD83E\uDD47' : i === 1 ? '\uD83E\uDD48' : i === 2 ? '\uD83E\uDD49' : (String(i + 1) + '.'); }
       function openUrl(u, btn) { var w = null; try { w = window.open(u, '_blank'); } catch (e) {} if (!w) { try { window.location.href = u; } catch (e) {} } if (btn) btn.textContent = L.opened; }
@@ -9139,10 +9146,12 @@
 
         var sub = [];
         if (p.km != null && p.place) sub.push('~' + p.km + ' km');
-        if (p.depart && p.arrive) sub.push('go ' + p.depart + '\u2192' + p.arrive);
-        if (p.return_depart && p.return_arrive) sub.push('back ' + p.return_depart + '\u2192' + p.return_arrive);
+        // Session 33 (Edu): a departure is valid for its whole double-hour -> show the window.
+        if (p.depart) sub.push('go ' + p.depart + (p.depart_by ? '\u2013' + p.depart_by : (p.arrive ? '\u2192' + p.arrive : '')));
+        if (p.return_depart) sub.push('back ' + p.return_depart + (p.return_depart_by ? '\u2013' + p.return_depart_by : (p.return_arrive ? '\u2192' + p.return_arrive : '')));
         if (sub.length) box.appendChild(elc('div', { style: 'margin:2px 0 3px 21px;color:#666;font-size:12px;' }, sub.join(' \u00b7 ')));
-        if (p.clean) box.appendChild(elc('div', { style: 'margin:0 0 3px 21px;color:#2e7d32;font-size:11px;' }, '\u2705 both legs favourable'));
+        if (p.clean) box.appendChild(elc('div', { style: 'margin:0 0 3px 21px;color:#2e7d32;font-size:11px;' }, '\u2705 both legs favourable'
+          + (p.day_chart ? (p.day_chart.outbound_palace_positive ? ' \u00b7 day chart \u2713' : ' \u00b7 day chart \u2717') : '')));
 
         if (p.dest_lat != null) {
           var b = elc('button', { style: 'margin-left:21px;background:#2e7d32;color:#fff;border:0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;' }, '\uD83D\uDCCD ' + L.openMaps);
@@ -9869,11 +9878,19 @@
       var _headers = _ownKey
         ? { 'Content-Type': 'application/json', 'x-api-key': _ownKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
         : _aiHeaders();
-      return fetch(_target, {
-        method: 'POST',
-        headers: _headers,
-        body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: staticSystem(), tools: noTools ? undefined : activeTools(), messages: messagesWithMoment() })
-      }).then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); });
+      var _body = JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: staticSystem(), tools: noTools ? undefined : activeTools(), messages: messagesWithMoment() });
+      // Session 33: a "Failed to fetch" (network dropped, phone switching cell) after a long
+      // tool run lost the whole answer. Retry the SAME request twice before giving up.
+      function _go(n) {
+        return fetch(_target, { method: 'POST', headers: _headers, body: _body })
+          .then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); })
+          .catch(function (err) {
+            if (n >= 2) throw err;
+            setStatus('Connection lost, retrying… (' + (n + 1) + '/2)', '#8a6d00');
+            return new Promise(function (res) { setTimeout(res, 2000 * (n + 1)); }).then(function () { return _go(n + 1); });
+          });
+      }
+      return _go(0);
     }
 
     // Most recent assistant message as plain text (skips tool_use blocks).
