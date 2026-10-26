@@ -3986,6 +3986,9 @@
         'double-hour; "return_depart" / "return_depart_by" the same for leaving back. ALWAYS show them as a window, e.g. ' +
         '"Partenza dalle 10:39 entro le 12:38 (Wu 午)", "Rientro: partire dalle 12:41 entro le 14:38 (Wei 未)" - never present ' +
         'a return as a single fixed clock time. ' +
+        'Each proposal has a ready "line" (local clock windows + double-hours): COPY its times EXACTLY, never compute, ' +
+        'shift or round a clock time yourself (TST values are reference only, never convert them). Chain legs carry ' +
+        '"depart", "depart_by" and "arrive" in local clock: use those, not the TST. ' +
         '"score" (0-5) = combined luck (the minimum of the outbound and return legs); higher is luckier. ' +
         '"clean"=true means both legs are fully favourable. If a proposal has a "place", show that real name as the destination, ' +
         'and use "place_kind" to tell the user WHAT kind of stop it is so they know where to pull over and start walking: ' +

@@ -5515,7 +5515,7 @@
       // window is worth MORE than a favourable departure. Arriving is enough.
       try {
         if (!_overall) return 0;
-        var arrMs = depSlot.wallStart.getTime() + _driveH * 3600000;
+        var arrMs = _eff(depSlot) + _driveH * 3600000;
         for (var i = 0; i < probe.slots.length; i++) {
           var s = probe.slots[i];
           var a = s.wallStart ? s.wallStart.getTime() : null, b = s.wallEnd ? s.wallEnd.getTime() : null;
@@ -5527,6 +5527,7 @@
       } catch (e) {}
       return 0;
     }
+    function _eff(slot) { var a = slot.wallStart.getTime(); return (minMs && a < minMs) ? Math.ceil(minMs / 60000) * 60000 : a; }
     var best = null, bestHourOnly = null, earliest = null;
     // Session 33 (Edu), rule 3: trips longer than 2 h must not leave in an hour that clashes
     // the DAY chart in the travel palace. On by default; pass dayFilter=false to skip.
@@ -5534,12 +5535,14 @@
     function _dayClash(slot, dir) {
       if (!_dayChk) return false;
       var pal = TP_DIR_TO_PALACE[dir || _overall]; if (!pal) return false;
-      return tpDayClashAt(slot.wallStart.getTime(), O.lon, utc, dstOn, pal, dateStr).clash;
+      return tpDayClashAt(_eff(slot), O.lon, utc, dstOn, pal, dateStr).clash;
     }
     probe.slots.forEach(function (slot) {
       var h = slot.wallStart.getHours();
       if (h < DAY_START_H || h > DAY_END_H) return;
-      if (minMs && slot.wallStart.getTime() < minMs) return;   // skip departures already past / too soon (today)
+      // Session 33 (Edu): a departure is valid for the WHOLE double-hour. A window that has
+      // already started is still usable from now (+margin) if at least 30 min of it remain.
+      if (minMs && slot.wallStart.getTime() < minMs && (!slot.wallEnd || slot.wallEnd.getTime() - minMs < 30 * 60000)) return;
       if (!earliest) earliest = slot;
       var hs = (slot.hourScore != null) ? slot.hourScore : -Infinity;
       if (!bestHourOnly || hs > bestHourOnly._hs) { bestHourOnly = slot; bestHourOnly._hs = hs; }
@@ -5568,7 +5571,7 @@
     // strict: NO fallback to an unfavourable hour — if nothing qualifies, there is no valid departure.
     var chosen = strict ? best : (best || bestHourOnly || earliest);
     if (!chosen) return null;
-    var d = chosen.wallStart;
+    var d = new Date(_eff(chosen));
     return {
       clock: String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'),
       ms: d.getTime(),
@@ -7497,6 +7500,7 @@
   // Wall-clock end of the double-hour that contains ms at longitude lon (TST
   // double-hours end at odd hours: Wei 13-15 -> 15:00 TST). Session 33 (Edu):
   // a departure is valid until the END of its double-hour, not only at its start.
+  function tpClockHM(ms) { if (ms == null) return null; var d = new Date(ms); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   function tpDoubleHourEndMs(ms, lon, utc, dstOn) {
     try {
       var off = tpOffsetMin(lon, utc, dstOn, ms), sd = new Date(ms + off * 60000);
@@ -8327,7 +8331,9 @@
                 dayPositive: dcC ? tpDayPositive(dcC, palL) : null,
                 from: { lat: from.lat, lon: from.lon }, to: { lat: to.lat, lon: to.lon },
                 departCn: tpChineseHourAt(depMs, from.lon, utc, dstOn),
-                arriveCn: tpChineseHourAt(arrMs, to.lon, utc, dstOn)
+                arriveCn: tpChineseHourAt(arrMs, to.lon, utc, dstOn),
+                // local clock (what the user reads) - session 33
+                depart: tpClockHM(depMs), depart_by: tpClockHM(tpDoubleHourEndMs(depMs, from.lon, utc, dstOn)), arrive: tpClockHM(arrMs)
               });
               pts.push(to);
             }
@@ -8452,6 +8458,7 @@
       picked.sort(function (a, b) { return b.combined - a.combined; });
 
       function fmtCn(h) { return h ? (h.py + ' ' + h.han + ' · TST ' + h.tst) : null; }
+      function fmtBr(h) { return h ? (h.py + ' ' + h.han) : '?'; }
       function buildProposal(r, poi) {
         var dlat = poi ? poi.lat : r.dest.lat;
         var dlon = poi ? poi.lon : r.dest.lon;
@@ -8470,6 +8477,8 @@
           return_depart_cn: fmtCn(r.back.departCn), return_arrive_cn: fmtCn(r.back.arriveCn),
           score: Math.round(r.combined * 5), hour_score: Math.round((r.hourCombined != null ? r.hourCombined : r.combined) * 5),
           day_chart: r.dayChart || null, clean: r.clean, widened_stay: r.widenedStay,
+          line: 'go ' + r.outbound.depClock + (r.outbound.depBy ? '-' + r.outbound.depBy : '') + ' (' + fmtBr(r.outbound.departCn) + '), arrive ~' + r.outbound.arriveClock
+              + ' | back ' + r.back.depClock + (r.back.depBy ? '-' + r.back.depBy : '') + ' (' + fmtBr(r.back.departCn) + '), home ~' + r.back.arriveClock,
           dest_lat: Math.round(dlat * 100000) / 100000, dest_lon: Math.round(dlon * 100000) / 100000
         };
       }
