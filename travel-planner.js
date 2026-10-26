@@ -1747,8 +1747,9 @@
     if (!dc || !hc || !hc.palaces) return { clash: false, why: [] };
     var d = dc.chart.palaces[palace], h = hc.palaces[palace], why = [];
     if (!d || !h) return { clash: false, why: [] };
-    var dSt = [d.ti, d.ti2].filter(Boolean);
-    [[h.ti, h.tiH], [h.ti2, h.ti2H]].forEach(function (s) {
+    // Main Tien Pan stem only, on both charts (Edu: the centre stem travelling with the star does not count).
+    var dSt = [d.ti].filter(Boolean);
+    [[h.ti, h.tiH]].forEach(function (s) {
       if (!s[0] || s[0] === h.cmdStem) return;                 // the Commander's Fu Shou never clashes
       dSt.forEach(function (x) { if (tpStemClash(s[0], x)) why.push('stem ' + (s[1] || s[0]) + ' vs day ' + x); });
     });
