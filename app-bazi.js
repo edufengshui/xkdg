@@ -863,6 +863,40 @@ function xkdgHourFourPillarBond(isoDate, branchChar) {
 }
 if (typeof window !== 'undefined') window.xkdgHourFourPillarBond = xkdgHourFourPillarBond;
 
+// ── BLOOD LINK DATE vs PERSON (session 33, Edu) ─────────────────────────
+// Best: the person (birth YEAR) belongs to the date's Blood Link family. Otherwise the
+// person's birth YEAR or DAY must communicate with the date's YEAR or DAY (Hetu or
+// Adding 5/10/15 on elements or periods, or same family) for the date to be used; if not -> ALERT.
+// persons: [{ label, year:{stem,branch}, day:{stem,branch}|null }]
+// Returns null (no BL date / nothing to say) or [{ label, status:'family'|'bridge'|'alert' }].
+function xkdgBLPersonCheck(analysisItems, pillars, persons) {
+    try {
+        const blFams = (analysisItems || []).filter(i => i.tag === 'family').map(i => i.text.replace(/\s*Family$/, '').trim());
+        if (!blFams.length || !pillars || !pillars.year || !pillars.day) return null;
+        const out = [];
+        (persons || []).forEach(P => {
+            if (!P || !P.year || !P.year.stem) return;
+            const pyFams = getJiaZiFamilies(P.year.stem, P.year.branch);
+            if (pyFams.some(f => blFams.includes(f))) { out.push({ label: P.label, status: 'family' }); return; }
+            const mine = [P.year, P.day].filter(x => x && x.stem).map(x => Object.assign({ stem: x.stem, branch: x.branch }, getXkdgData(x.stem, x.branch) || {}));
+            const dates = [pillars.year, pillars.day].filter(Boolean);
+            const talks = mine.some(a => dates.some(b => {
+                if (a.qi == null || b.qi == null) return false;
+                if (isHetuPair(a.qi, b.qi) || isHetuPair(a.yun, b.yun)) return true;
+                if ([5,10,15].includes(a.qi + b.qi) || [5,10,15].includes(a.yun + b.yun)) return true;
+                return getJiaZiFamilies(a.stem, a.branch).some(f => getJiaZiFamilies(b.stem, b.branch).includes(f));
+            }));
+            out.push({ label: P.label, status: talks ? 'bridge' : 'alert' });
+        });
+        return out.length ? out : null;
+    } catch (e) { return null; }
+}
+function xkdgBLAlertText(res) {
+    if (!res) return '';
+    const bad = res.filter(r => r.status === 'alert').map(r => r.label);
+    return bad.length ? ('⚠ Blood Link: ' + bad.join(' & ') + ' not connected (birth year/day ✗ date year/day)') : '';
+}
+
 // ── FAMILY CONFLICT (session 33, Edu) ───────────────────────────────────
 // Two PARENT hexagrams of two DIFFERENT families in the date, plus at least one CHILD
 // hexagram that belongs to BOTH of those families (son in one, daughter in the other):
@@ -1694,6 +1728,14 @@ function calculateBazi() {
     renderAnalysis(analysis);
 
     _currentDayXkdg     = xkdgData.day;
+    // Session 33 (Edu): Blood Link date — alert when a loaded person is not connected.
+    try {
+        const _blTxt = xkdgBLAlertText(xkdgBLPersonCheck(analysis, { year: Object.assign({}, xkdgData.year, { stem: pillarKeys.year.stem, branch: pillarKeys.year.branch }),
+                                                                   day:  Object.assign({}, xkdgData.day,  { stem: pillarKeys.day.stem,  branch: pillarKeys.day.branch }) }, [
+            _personAYear ? { label: 'Person A', year: { stem: _personAStem, branch: _personABranch }, day: _personADayStem ? { stem: _personADayStem, branch: _personADayBranch } : null } : null,
+            _personBYear ? { label: 'Person B', year: { stem: _personBStem, branch: _personBBranch }, day: _personBDayStem ? { stem: _personBDayStem, branch: _personBDayBranch } : null } : null ]));
+        if (_blTxt) analysis.push({ text: _blTxt, tag: 'bl-alert' });
+    } catch (eBL) {}
     _currentDayAnalysis = { items: analysis, sameFamily,
         pillars: { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year },
         branches: { hour: pillarKeys.hour.branch, day: pillarKeys.day.branch, month: pillarKeys.month.branch, year: pillarKeys.year.branch },
@@ -1871,7 +1913,7 @@ function renderAnalysis(items) {
     }
     section.style.display = 'flex';
     container.innerHTML = items.map(item => {
-        const content = item.tag === 'family-conflict' ? `<span style="background:#ffebee;color:#b71c1c;border:1px solid #e57373;border-radius:10px;padding:2px 8px;font-weight:bold;">⛔ ${item.text}</span>`
+        const content = (item.tag === 'family-conflict' || item.tag === 'bl-alert') ? `<span style="background:#ffebee;color:#b71c1c;border:1px solid #e57373;border-radius:10px;padding:2px 8px;font-weight:bold;">${item.tag === 'bl-alert' ? '' : '⛔ '}${item.text}</span>`
                       : item.tag === 'blue'         ? `<span class="tag-blue">${item.text}</span>`
                       : item.tag === 'powerful'     ? `<span class="tag-powerful">${item.text}</span>`
                       : item.tag === 'energetic'    ? `<span class="tag-energetic">${item.text}</span>`
@@ -3533,7 +3575,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="color:#b71c1c;font-weight:bold;font-size:10px;">${r.blAlert}</span>` : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -6467,6 +6509,9 @@ function buildMonthView() {
             }).map(i => i.text);
             const famNotes = blueItems.filter(i => i.tag === 'family').map(i => i.text);
             const hasFamily = famNotes.length > 0;
+            const _blAlertLV = xkdgBLAlertText(xkdgBLPersonCheck(analysisItems, pillars, [
+                personAYear ? { label: 'Person A', year: { stem: pYStem, branch: pYBranch }, day: _personADayStem ? { stem: _personADayStem, branch: _personADayBranch } : null } : null,
+                personBYear ? { label: 'Person B', year: { stem: pBYStem, branch: pBYBranch }, day: _personBDayStem ? { stem: _personBDayStem, branch: _personBDayBranch } : null } : null ]));
 
             // Check if person shares family with the day
             const personSharesFamily = personAYear && pYStem && pYBranch &&
@@ -6702,6 +6747,7 @@ function buildMonthView() {
                 <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
+                    ${_blAlertLV ? `<div style="color:#b71c1c;font-weight:bold;">${_blAlertLV}</div>` : ''}
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${pqRotHTMLLV} ${fsHTMLLV}
@@ -8358,7 +8404,11 @@ function runScanner() {
                 .filter(i => activeFiltersBS.size === 0 || itemMatchesFilter(i.text, i.tag, activeFiltersBS))
                 .map(i => i.text)
                 .filter(t => t && !t.includes('undefined'));
+            const _blAlertBST = xkdgBLAlertText(xkdgBLPersonCheck(analysisItems, pillars, [
+                personAYear ? { label: 'Person A', year: { stem: pYStem, branch: pYBranch }, day: _personADayStem ? { stem: _personADayStem, branch: _personADayBranch } : null } : null,
+                personBYear ? { label: 'Person B', year: { stem: pBYStem, branch: pBYBranch }, day: _personBDayStem ? { stem: _personBDayStem, branch: _personBDayBranch } : null } : null ]));
             results.push({
+                blAlert: _blAlertBST,
                 score: totalScore,
                 negativeScore: negativeScoreBST,
                 rescuedByNayin: bestRescuedByNayin,
