@@ -7825,8 +7825,13 @@ function setScanNow() {
 }
 
 function setScanDays(n) {
+    // Session 33 (Edu): "+" extends the period FORWARD, "−" extends it BACKWARD in time
+    // (FROM moves back by the same amount and DAYS grows), so one can go into the past.
     const el = document.getElementById('scan-days');
-    el.value = Math.max(1, parseInt(el.value || 30) + n);
+    const days = parseInt(el.value || 30) || 30;
+    if (n >= 0) { el.value = days + n; return; }
+    setScanOffset(n);
+    el.value = days - n;
 }
 
 function setScanOffset(days) {
