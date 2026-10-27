@@ -101,6 +101,13 @@ function build(rec, data, loc) {
     '<h2 style="margin:0 0 4px;color:#4a148c;">' + esc(t.sub) + '</h2>' +
     '<div style="color:#666;font-size:13px;margin-bottom:12px;">' + esc(rec.name || '') + ' · ' + esc(loc.label) + '</div>';
   let X = t.sub + '\n' + (rec.name || '') + ' - ' + loc.label + '\n\n';
+  if (data.aquarium && data.aquarium.list.length) {
+    const aq = data.aquarium;
+    H += '<div style="border:1px solid ' + (aq.anyBad ? '#e57373;background:#ffebee' : '#c8e6c9;background:#f1f8e9') + ';border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;">' +
+      '<b>' + (aq.anyBad ? '⚠ ' : '') + '\uD83D\uDC20 ' + esc(aq.title) + '</b>' +
+      aq.list.map(x => '<div style="margin-top:3px;color:' + (x.bad ? '#b71c1c;font-weight:bold' : '#2e7d32') + ';">' + esc(x.text) + '</div>').join('') + '</div>';
+    X += (aq.anyBad ? '!! ' : '') + aq.title + '\n' + aq.list.map(x => '  ' + x.text).join('\n') + '\n\n';
+  }
   { const qb = qdBlock(data.qmdj_day, t); H += qb.h; X += qb.x; }
   if (best.length) {
     H += '<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 12px;margin-bottom:14px;"><b>⭐ ' + esc(t.best) + '</b><br>' +
@@ -225,7 +232,49 @@ function build(rec, data, loc) {
   H += '<div style="color:#888;font-size:12px;margin-top:16px;">' + esc(t.note) + ' ' + esc(loc.label) + '. ' + esc(t.note2) +
     '<br><a href="https://fsadvisor.org/xkdg/">' + esc(t.open) + '</a></div></div>';
   const first = data.days[0].date, last = data.days[data.days.length - 1].date;
-  return { subject: t.subj + ' · ' + dlabel(first, t) + ' → ' + dlabel(last, t), html: H, text: X };
+  return { subject: (data.aquarium && data.aquarium.anyBad ? '⚠ \uD83D\uDC20 ' : '') + t.subj + ' · ' + dlabel(first, t) + ' → ' + dlabel(last, t), html: H, text: X };
+}
+
+// ── Aquarium light plans (session 33, Edu: "devo essere avvertito nella email") ──
+// The recipient line can carry "shelly": {url, token, devices:[{name, device, tz}]} (built by
+// the app's 📧 Daily email button). For each device the stored plan is read from the Shelly
+// Worker and the email warns when it has ENDED, ends today/tomorrow, is PAUSED or has
+// missed switch-ons. The token never appears in the logs.
+const AQ = {
+  it: { ok: 'piano fino al', ended: 'il piano è FINITO il {d}: la luce non si accende più. Apri l’app e deposita un nuovo piano.', none: 'nessun piano depositato: la luce non si accende. Apri l’app e deposita un piano.',
+        ends: 'il piano finisce il {d}: rinnovalo.', paused: 'automazione IN PAUSA: il piano non scatta.', missed: '{n} accensioni/spegnimenti mancati', unread: 'impossibile leggere il piano', title: 'Acquari' },
+  en: { ok: 'plan until', ended: 'the plan ENDED on {d}: the light no longer switches on. Open the app and deposit a new plan.', none: 'no plan stored: the light will not switch on. Open the app and deposit a plan.',
+        ends: 'the plan ends on {d}: renew it.', paused: 'automation PAUSED: the plan does not fire.', missed: '{n} missed switch-ons/offs', unread: 'could not read the plan', title: 'Aquariums' },
+  fr: { ok: 'plan jusqu’au', ended: 'le plan est TERMINÉ le {d} : la lumière ne s’allume plus. Ouvrez l’app et déposez un nouveau plan.', none: 'aucun plan déposé : la lumière ne s’allume pas. Ouvrez l’app et déposez un plan.',
+        ends: 'le plan se termine le {d} : renouvelez-le.', paused: 'automatisation EN PAUSE : le plan ne se déclenche pas.', missed: '{n} allumages/extinctions manqués', unread: 'impossible de lire le plan', title: 'Aquariums' }
+};
+async function aquariumStatus(rec) {
+  const S = rec.shelly;
+  if (!S || !S.url || !S.token || !Array.isArray(S.devices) || !S.devices.length) return null;
+  const a = AQ[rec.lang] || AQ.en, out = [];
+  for (const dv of S.devices) {
+    const tz = dv.tz || 'Europe/Vienna', name = dv.name || dv.device;
+    const fmt = ms => { const p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: tz, day: '2-digit', month: '2-digit' }).formatToParts(new Date(ms)).forEach(x => { p[x.type] = x.value; }); return p.day + '/' + p.month; };
+    try {
+      const url = String(S.url).replace(/\/+$/, '') + '?get_plan&device=' + encodeURIComponent(dv.device) + '&token=' + encodeURIComponent(S.token);
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 20000);
+      const res = await fetch(url, { method: 'POST', signal: ctl.signal }); clearTimeout(tm);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) { out.push({ bad: true, text: name + ': ' + a.unread }); continue; }
+      const days = (data.plan && Array.isArray(data.plan.days)) ? data.plan.days : [];
+      const now = Date.now(), msgs = []; let bad = false;
+      const lastOff = days.reduce((m, d) => Math.max(m, +d.offTs || 0), 0);
+      if (!days.length) { msgs.push(a.none); bad = true; }
+      else if (lastOff < now) { msgs.push(a.ended.replace('{d}', fmt(lastOff))); bad = true; }
+      else if (lastOff - now < 36 * 3600000) { msgs.push(a.ends.replace('{d}', fmt(lastOff))); bad = true; }
+      if (String(data.automation || '').toUpperCase() === 'PAUSED') { msgs.push(a.paused); bad = true; }
+      const nMiss = data.alerts_total != null ? +data.alerts_total : (Array.isArray(data.alerts) ? data.alerts.length : 0);
+      if (nMiss > 0) { msgs.push(a.missed.replace('{n}', nMiss)); bad = true; }
+      if (!bad) msgs.push(a.ok + ' ' + fmt(lastOff));
+      out.push({ bad: bad, text: name + ': ' + msgs.join(' · ') });
+    } catch (e) { out.push({ bad: true, text: name + ': ' + a.unread }); }
+  }
+  return { title: a.title, list: out, anyBad: out.some(x => x.bad) };
 }
 
 async function main() {
@@ -262,6 +311,7 @@ async function main() {
       const others = {};
       houses.filter(h => !sameTz(h.tz, loc.tz)).forEach(h => { (others[h.tz] = others[h.tz] || []).push(h); });
       Object.keys(others).forEach(z => { const d2 = run(z, { houses: others[z], skip_hours: true }); (d2.fs || []).forEach(r => { r.local_time = true; }); data.fs = (data.fs || []).concat(d2.fs || []); });
+      try { data.aquarium = await aquariumStatus(rec); } catch (eAq) { data.aquarium = null; }
       const msg = build(rec, data, loc);
       const n = data.days.reduce((s, d) => s + d.hours.length, 0);
       if (dry) {
