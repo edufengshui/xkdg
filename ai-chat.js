@@ -5495,14 +5495,18 @@
       var P = B ? (typeof _personBPillars !== 'undefined' ? _personBPillars : null) : (typeof _personAPillars !== 'undefined' ? _personAPillars : null);
       if (!P || !P.year) return { error: 'Person ' + (B ? 'B' : 'A') + ' is not loaded (load the person and press CALCULATE).' };
       if (typeof xkdgPersonGaps !== 'function') return { error: 'Gap analysis not available.' };
-      var g = xkdgPersonGaps(P), R = xkdgGapRemedies(g, +input.days || 30);
+      var g = xkdgPersonGaps(P), R = xkdgGapRemedies(g, +input.days || 30, P);
+      if (g) delete g.pillars;
       var name = ((document.getElementById(B ? 'person-name-b' : 'person-name') || {}).value || '').trim() || null;
       return { person: name || (B ? 'B' : 'A'),
         pillars: ['hour', 'day', 'month', 'year'].map(function (k) { return { pillar: k, hex: P[k] && P[k].hex, qi: P[k] && P[k].qi, yun: P[k] && P[k].yun }; }),
         gaps: g, remedies: R,
         instructions: 'Present in Chinese order Hour, Day, Month, Year. For each dimension say which pillar is isolated and the bridge '
-          + 'values (★ all = talks to every pillar). Then the two remedies: up to 6 DATES (day pillar) and up to 8 HEXAGRAMS with their '
-          + 'luopan degrees (ZS / LS). Never invent values; if gaps.any is false say that every pillar already communicates.' };
+          + 'values. REMEDY RULE (Edu): the remedy does not bridge to the isolated pillar - it communicates (Hetu or Adding; Feng '
+          + 'Shui only sum 10, dates 5/10/15) with the NON-isolated pillars in the gap dimension and with the pillars in the other '
+          + 'dimension. Remedies: up to 6 DATES (favourable dates whose DAY or YEAR pillar is such a hexagram, with their favourable '
+          + 'hours) and the Feng Shui HEXAGRAMS (luopan degrees, ZS and LS); those in the isolated pillar\'s family (field family) '
+          + 'are the alternative Edu prefers - list them first. Never invent values; if gaps.any is false say every pillar communicates.' };
     } catch (e) { return { error: 'Gap analysis failed: ' + ((e && e.message) || e) }; }
   }
 
