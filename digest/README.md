@@ -28,6 +28,10 @@ recipient's city, with daylight saving handled day by day.
   **House Profiles → 📧 Daily email** builds the whole line of a person (birth data + houses: door fountains,
   bed sitting, desk facing) ready to paste. The email then adds, day by day, the dates the app's own Water /
   Bed / Desk scans find for each placement, with the detail at the end.
+- `shelly` (optional): the aquarium light plans to watch. The app's **📧 Daily email** button adds it (tick
+  *warn about the aquarium light plans*) on a device where Shelly is configured. The email then says, at the top,
+  until when each plan runs, and warns in red (subject starting with ⚠ 🐠) when a plan has ended, ends within a
+  day and a half, is paused, or has missed switch-ons. The Worker token stays inside the secret, never in the logs.
 - One object per person, separated by commas.
 
 ## Test now

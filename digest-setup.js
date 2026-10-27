@@ -96,7 +96,7 @@
     });
     return out;
   }
-  function build(name, email, city, lang, noFs) {
+  function build(name, email, city, lang, noFs, withAq) {
     var rec = archiveRec(name);
     if (!rec) return { error: '"' + name + '" is not a saved person.' };
     var o = { name: name, email: email || 'EMAIL', city: city || 'Vienna' };
@@ -119,6 +119,12 @@
     else return { error: 'No birth data for "' + name + '".' };
     if (lang && lang !== 'en') o.lang = lang;
     var hs = noFs ? [] : housesOf(name); if (hs.length) o.houses = hs;   // noFs: hours only (Edu: Feng Shui only for the house's owner)
+    // Session 33 (Edu): warn in the email when an aquarium light plan ends / is paused.
+    if (withAq) {
+      var sc = null; try { sc = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || 'null'); } catch (e) {}
+      if (sc && sc.url && sc.token) o.shelly = { url: sc.url, token: sc.token, devices: [
+        { name: 'Tuoro', device: 'tuoro', tz: 'Europe/Rome' }, { name: 'Vienna', device: 'vienna', tz: 'Europe/Vienna' } ] };
+    }
     return o;
   }
 
@@ -138,6 +144,8 @@
       'City <select id="xdg-city" onchange="document.getElementById(\'xdg-place\').style.display=this.value===\'GPS\'?\'\':\'none\'"><option>Vienna</option><option>Tuoro</option><option value="GPS">My location (GPS)</option></select> ' +
       '<input id="xdg-place" placeholder="place name, e.g. Kuala Lumpur" style="width:170px;display:none;"> ' +
       '<label><input type="checkbox" id="xdg-fs" checked> include Feng Shui dates (houses)</label> ' +
+      (function () { var ok = false; try { var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || 'null'); ok = !!(c && c.url && c.token); } catch (e) {}
+        return ok ? '<label><input type="checkbox" id="xdg-aq" checked> warn about the aquarium light plans (Shelly)</label> ' : ''; })() +
       'Language <select id="xdg-lang"><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option></select> ' +
       '<button onclick="XKDGDigestSetup._go()" style="padding:4px 10px;border-radius:6px;border:none;background:#4a148c;color:#fff;cursor:pointer;">Build</button>' +
       '<textarea id="xdg-out" readonly style="width:100%;height:150px;margin-top:8px;font-family:monospace;font-size:11px;"></textarea>' +
@@ -153,7 +161,7 @@
   window.XKDGDigestSetup = {
     build: build, housesOf: housesOf, open: open, close: close,
     _go: function () {
-      var o = build((el('xdg-name').value || '').trim(), (el('xdg-email').value || '').trim(), el('xdg-city').value, el('xdg-lang').value, !el('xdg-fs').checked);
+      var o = build((el('xdg-name').value || '').trim(), (el('xdg-email').value || '').trim(), el('xdg-city').value, el('xdg-lang').value, !el('xdg-fs').checked, !!(el('xdg-aq') && el('xdg-aq').checked));
       if (o.error) { el('xdg-out').value = ''; el('xdg-info').textContent = o.error; return; }
       el('xdg-out').value = JSON.stringify(o);
       var n = (o.houses || []).reduce(function (s, h) { return s + h.ops.length; }, 0);
