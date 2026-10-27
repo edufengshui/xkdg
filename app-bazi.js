@@ -988,7 +988,7 @@ function xkdgGapsHtml(gaps) {
     // Collapsible (Edu, session 33): closed by default, the summary says what is isolated.
     const _sum = Object.values(gaps.dims).filter(d => d.isolated.length).map(d => d.label + ': ' + d.isolated.map(x => L[x.pillar]).join(', ')).join(' · ');
     let h = '<details style="border:1px solid #ffcc80;background:#fff8e1;border-radius:8px;padding:6px 9px;margin-top:6px;font-size:12px;">'
-          + '<summary style="cursor:pointer;"><b>🔧 Missing communication</b> <span style="color:#8a6d00;">(' + _sum + ')</span></summary>';
+          + '<summary style="cursor:pointer;"><a href="guides/person-remedies.html" target="_blank" onclick="event.stopPropagation();" title="Guide" style="float:right;text-decoration:none;font-size:16px;margin-left:6px;">📖</a><b>🔧 Missing communication</b> <span style="color:#8a6d00;">(' + _sum + ')</span></summary>';
     Object.values(gaps.dims).forEach(d => {
         if (!d.isolated.length) { h += '<div style="color:#2e7d32;">' + d.label + ': all pillars communicate</div>'; return; }
         const net = Object.keys(L).filter(k => gaps.pillars[k] && !d.isolated.some(x => x.pillar === k)).map(k => gaps.pillars[k][d.label === 'Elements' ? 'qi' : 'yun']);
@@ -1020,7 +1020,7 @@ function renderPersonView() {
     people.forEach(pp => {
         const g = xkdgPersonGaps(pp.P);
         h += '<div style="border:1px solid #c5cae9;border-radius:10px;padding:8px 10px;margin:6px 0;background:#fafbff;">'
-           + '<div style="font-weight:bold;color:#283593;font-size:15px;">👤 ' + (pp.name || ('Person ' + pp.who)) + '</div>';
+           + '<div style="font-weight:bold;color:#283593;font-size:15px;"><a href="guides/person-remedies.html" target="_blank" onclick="event.stopPropagation();" title="Guide" style="float:right;text-decoration:none;font-size:16px;margin-left:6px;">📖</a>👤 ' + (pp.name || ('Person ' + pp.who)) + '</div>';
         if (!g || !g.any) { h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate (Elements and Periods): no remedy needed.</div></div>'; return; }
         Object.values(g.dims).forEach(d => {
             if (!d.isolated.length) return;
