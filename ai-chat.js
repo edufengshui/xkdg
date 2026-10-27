@@ -6963,6 +6963,9 @@
       deposited: commit ? !workerErr : false, worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
       note: 'Each row: ON at the best favourable hour of the ' + (F.period === 'day' ? 'day' : 'night') + ', OFF at the end of the period. '
         + 'Periods with no favourable hour stay OFF (Edu: no never-dark rule for the fountains). Show the times as given (local clock). '
+        + 'Until this fountain has its own Shelly, the user switches it BY HAND: offer (and do it when asked) to put every row '
+        + 'in the phone calendar with add_calendar_reminder - one event per row, date = row date, start = ON time, end = OFF time '
+        + '(local clock, as given), title e.g. "\uD83D\uDCA7 ' + F.label + ' ON". '
         + (commit ? '' : 'This is a PREVIEW: ask the user to confirm, then call again with commit:true.')
         + (workerErr ? ' If worker_error mentions an unknown device, the Shelly Worker does not know this device yet: say so plainly.' : '')
     };
