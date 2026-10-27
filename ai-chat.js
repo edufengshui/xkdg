@@ -7147,6 +7147,27 @@
                            alternatives_same_tier: (altByDate[iso] && altByDate[iso].length) ? altByDate[iso] : undefined });
           if (span > 0) coveredUntil = endIso;
         }
+        // NEVER A WHOLE DAY DARK (Edu, session 33): a day with no switch-on of its own and not
+        // covered by a running block keeps the PREVIOUS block lit until 23:00 of that day.
+        (function () {
+          var lastIso = _isoPlus(start, days - 1);
+          var lit = {};
+          scheduled.forEach(function (s) { var d = s.date, e = s.stays_on_until_date || s.date; while (d <= e) { lit[d] = 1; d = _isoPlus(d, 1); } });
+          for (var di = 0; di < days; di++) {
+            var dIso = _isoPlus(start, di);
+            if (lit[dIso] || dIso > lastIso) continue;
+            var prev = null;
+            scheduled.forEach(function (s) { if (s.date < dIso && (!prev || s.date > prev.date)) prev = s; });
+            if (!prev) continue;                         // nothing before it (first day): nothing to extend
+            var from = _isoPlus(prev.stays_on_until_date || prev.date, 1);
+            prev.stays_on_until_date = dIso;
+            prev.offTs = _civilToEpoch(dIso, 23 * 60, rh.cfg.utc);
+            prev.off_local = new Date(prev.offTs).toString();
+            prev.no_dark_day_note = 'Kept ON through ' + dIso + ' (no favourable hour that day): the aquarium is never dark for a whole day.';
+            while (from <= dIso) { lit[from] = 1; from = _isoPlus(from, 1); }
+            skipped = skipped.filter(function (x) { return x.date !== dIso; });
+          }
+        })();
     }
 
     // 4) deposit the scheduled days ONLY on commit; otherwise this is a PREVIEW (await the user's OK).
