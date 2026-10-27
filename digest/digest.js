@@ -101,6 +101,11 @@ function build(rec, data, loc) {
     '<h2 style="margin:0 0 4px;color:#4a148c;">' + esc(t.sub) + '</h2>' +
     '<div style="color:#666;font-size:13px;margin-bottom:12px;">' + esc(rec.name || '') + ' · ' + esc(loc.label) + '</div>';
   let X = t.sub + '\n' + (rec.name || '') + ' - ' + loc.label + '\n\n';
+  { const nm = newMonthLine(rec, loc, t);
+    if (nm) {
+      H += '<div style="background:#ede7f6;border:1px solid #b39ddb;border-radius:8px;padding:6px 12px;margin-bottom:12px;font-size:13px;color:#4527a0;"><b>🌙 ' + esc(nm.text) + '</b></div>';
+      X += nm.text + '\n\n';
+    } }
   if (data.aquarium && data.aquarium.list.length) {
     const aq = data.aquarium;
     H += '<div style="border:1px solid ' + (aq.anyBad ? '#e57373;background:#ffebee' : '#c8e6c9;background:#f1f8e9') + ';border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px;">' +
@@ -248,6 +253,35 @@ const AQ = {
   fr: { ok: 'plan jusqu’au', ended: 'le plan est TERMINÉ le {d} : la lumière ne s’allume plus. Ouvrez l’app et déposez un nouveau plan.', none: 'aucun plan déposé : la lumière ne s’allume pas. Ouvrez l’app et déposez un plan.',
         ends: 'le plan se termine le {d} : renouvelez-le.', paused: 'automatisation EN PAUSE : le plan ne se déclenche pas.', missed: '{n} allumages/extinctions manqués', unread: 'impossible de lire le plan', title: 'Aquariums' }
 };
+// Next solar month (节 Jie): absolute instant (lunar-javascript gives it in Beijing time).
+function nextJie(fromMs) {
+  try {
+    const { Solar } = require('lunar-javascript');
+    let s = Solar.fromDate(new Date(fromMs));
+    for (let i = 0; i < 3; i++) {
+      const j = s.getLunar().getNextJie(), so = j.getSolar();
+      const ms = Date.UTC(so.getYear(), so.getMonth() - 1, so.getDay(), so.getHour() - 8, so.getMinute(), so.getSecond());
+      if (ms > fromMs) return { ms: ms, name: j.getName() };
+      s = Solar.fromDate(new Date(ms + 3600000));
+    }
+  } catch (e) {}
+  return null;
+}
+const NM = {
+  it: { t: 'Nuovo mese', d0: 'oggi', d1: 'domani', dn: 'tra {n} giorni', at: 'alle' },
+  en: { t: 'New month', d0: 'today', d1: 'tomorrow', dn: 'in {n} days', at: 'at' },
+  fr: { t: 'Nouveau mois', d0: 'aujourd’hui', d1: 'demain', dn: 'dans {n} jours', at: 'à' }
+};
+function newMonthLine(rec, loc, t) {
+  const j = nextJie(Date.now()); if (!j) return null;
+  const n = NM[rec.lang] || NM.en;
+  const p = {}; new Intl.DateTimeFormat('en-CA', { timeZone: loc.tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date(j.ms)).forEach(x => { p[x.type] = x.value; });
+  const iso = p.year + '-' + p.month + '-' + p.day;
+  const days = Math.round((Date.parse(iso + 'T12:00:00Z') - Date.parse(todayIn(loc.tz) + 'T12:00:00Z')) / 86400000);
+  const when = days === 0 ? n.d0 : days === 1 ? n.d1 : n.dn.replace('{n}', days);
+  return { days: days, text: n.t + ' (' + j.name + ') ' + when + ': ' + dlabel(iso, t) + ' ' + n.at + ' ' + p.hour + ':' + p.minute };
+}
 async function aquariumStatus(rec) {
   const S = rec.shelly;
   if (!S || !S.url || !S.token || !Array.isArray(S.devices) || !S.devices.length) return null;
