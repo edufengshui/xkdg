@@ -1026,55 +1026,109 @@ function xkdgGapsHtml(gaps) {
 
 // ── 👤 PERSON tab (session 33, Edu): all the positive dates and directions that act as the
 // REMEDY for the loaded person(s)' missing communication, over the FROM / DAYS range.
+// Hexagram drawing (6 lines, top line first) used by the PERSON tab.
+var _XK_HEXBIN = {1:0b111111,2:0b000000,3:0b010001,4:0b100010,5:0b010111,6:0b111010,7:0b000010,8:0b010000,9:0b110111,10:0b111011,11:0b000111,12:0b111000,13:0b111101,14:0b101111,15:0b000100,16:0b001000,17:0b011001,18:0b100110,19:0b000011,20:0b110000,21:0b101001,22:0b100101,23:0b100000,24:0b000001,25:0b111001,26:0b100111,27:0b100001,28:0b011110,29:0b010010,30:0b101101,31:0b011100,32:0b001110,33:0b111100,34:0b001111,35:0b101000,36:0b000101,37:0b110101,38:0b101011,39:0b010100,40:0b001010,41:0b100011,42:0b110001,43:0b011111,44:0b111110,45:0b011000,46:0b000110,47:0b011010,48:0b010110,49:0b011101,50:0b101110,51:0b001001,52:0b100100,53:0b110100,54:0b001011,55:0b001101,56:0b101100,57:0b110110,58:0b011011,59:0b110010,60:0b010011,61:0b110011,62:0b001100,63:0b010101,64:0b101010};
+function xkdgHexSvg(hex) {
+    const b = _XK_HEXBIN[hex] || 0, W = 40, lh = 6, gap = 4, bw = 15;
+    let s = '<svg width="' + W + '" height="' + (6 * lh + 5 * gap) + '" xmlns="http://www.w3.org/2000/svg">';
+    for (let i = 0; i < 6; i++) {
+        const y = i * (lh + gap);
+        if ((b >> (5 - i)) & 1) s += '<rect x="5" y="' + y + '" width="30" height="' + lh + '" fill="#111"/>';
+        else s += '<rect x="5" y="' + y + '" width="13.5" height="' + lh + '" fill="#111"/><rect x="21.5" y="' + y + '" width="13.5" height="' + lh + '" fill="#111"/>';
+    }
+    return s + '</svg>';
+}
+window._pvSel = window._pvSel || {};        // selected remedy hexagram per person
+window._pvWho = window._pvWho || null;       // 'A' | 'B' | 'both'
+function xkdgPVPick(who, hex) { window._pvSel[who] = hex; renderPersonView(); }
+function xkdgPVWho(w) { window._pvWho = w; renderPersonView(); }
+
+// ── 👤 PERSON tab (session 33, Edu): for each chosen person, the four real pillars with the
+// selected REMEDY hexagram as a 5th one on the right, the advice for it (direction + dates),
+// and the list of every useful hexagram (tap one to put it in the picture).
 function renderPersonView() {
     const pv = document.getElementById('person-view'); if (!pv) return;
-    const people = [];
-    if (typeof _personAPillars !== 'undefined' && _personAPillars && _personAPillars.year) people.push({ who: 'A', name: (document.getElementById('person-name') || {}).value || 'Person A', P: _personAPillars });
-    if (typeof _personBPillars !== 'undefined' && _personBPillars && _personBPillars.year) people.push({ who: 'B', name: (document.getElementById('person-name-b') || {}).value || 'Person B', P: _personBPillars });
-    if (!people.length) { pv.innerHTML = '<div style="padding:10px;color:#555;">Load a person (Person A / B) and press CALCULATE: this page shows the dates and directions that remedy the missing communication of the chart.</div>'; return; }
+    const all = [];
+    if (typeof _personAPillars !== 'undefined' && _personAPillars && _personAPillars.year) all.push({ who: 'A', name: (document.getElementById('person-name') || {}).value || 'Person A', P: _personAPillars });
+    if (typeof _personBPillars !== 'undefined' && _personBPillars && _personBPillars.year) all.push({ who: 'B', name: (document.getElementById('person-name-b') || {}).value || 'Person B', P: _personBPillars });
+    if (!all.length) { pv.innerHTML = '<div style="padding:10px;color:#555;">Load a person (Person A / B) and press CALCULATE: this page shows the dates and directions that remedy the missing communication of the chart.</div>'; return; }
+    // ask first: A, B or both (only when two are loaded)
+    let h = '';
+    if (all.length > 1) {
+        const btn = (w, lab) => '<button onclick="xkdgPVWho(\'' + w + '\')" style="margin:0 6px 6px 0;padding:6px 14px;border-radius:16px;font-weight:bold;cursor:pointer;border:2px solid #283593;'
+            + (window._pvWho === w ? 'background:#283593;color:#fff;' : 'background:#fff;color:#283593;') + '">' + lab + '</button>';
+        h += '<div style="margin:4px 0 6px;"><span style="font-weight:bold;color:#283593;margin-right:8px;">Show:</span>'
+           + btn('A', '👤 ' + all[0].name) + btn('B', '👤 ' + all[1].name) + btn('both', 'Both') + '</div>';
+        if (!window._pvWho) { pv.innerHTML = h + '<div style="color:#555;padding:6px;">Choose Person A, Person B or both.</div>'; return; }
+    }
+    const people = all.length > 1 && window._pvWho !== 'both' ? all.filter(x => x.who === window._pvWho) : all;
     const start = (document.getElementById('scan-start') || {}).value || new Date().toISOString().slice(0, 10);
     const days = Math.min(Math.max(parseInt((document.getElementById('scan-days') || {}).value) || 30, 1), 366);
     const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
     const W8 = d => ['N','NE','E','SE','S','SW','W','NW'][Math.round(((d % 360) + 360) % 360 / 45) % 8];
-    let h = '';
+    const fmtD = iso => new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' });
+    const hourBtns = d => d.favourable_hours.map((hz, j) => '<button onclick="loadDateIntoMain(\'' + d.date + '\',' + d.hour_index[j] + ')" style="margin:2px 4px 0 0;padding:2px 8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;border-radius:10px;font-size:12px;cursor:pointer;">' + hz + ' ' + (typeof getTSTHourLabel === 'function' ? String(getTSTHourLabel(d.hour_index[j])).replace(/<[^>]*>/g, ' ').replace(/\(TST[^)]*\)/, '').replace(/✦/g, '').trim() : '') + '</button>').join('');
     people.forEach(pp => {
         const g = xkdgPersonGaps(pp.P);
         h += '<div style="border:1px solid #c5cae9;border-radius:10px;padding:8px 10px;margin:6px 0;background:#fafbff;">'
-           + '<div style="font-weight:bold;color:#283593;font-size:15px;"><a href="guides/person-remedies.html" target="_blank" onclick="event.stopPropagation();" title="Guide" style="float:right;text-decoration:none;font-size:16px;margin-left:6px;">📖</a>👤 ' + (pp.name || ('Person ' + pp.who)) + '</div>';
-        if (!g || !g.any) { h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate (Elements and Periods): no remedy needed.</div></div>'; return; }
+           + '<div style="font-weight:bold;color:#283593;font-size:15px;"><a href="guides/person-remedies.html" target="_blank" title="Guide" style="float:right;text-decoration:none;font-size:16px;margin-left:6px;">📖</a>👤 ' + pp.name + '</div>';
+        const isoSet = {};
+        if (g && g.any) Object.keys(g.dims).forEach(f => g.dims[f].isolated.forEach(x => { isoSet[x.pillar + '.' + f] = 1; }));
+        const R = (g && g.any) ? (xkdgGapRemedies(g, days, pp.P, start) || { dates: [], hexagrams: [] }) : null;
+        const opts = R ? R.hexagrams : [];
+        let sel = window._pvSel[pp.who];
+        if (!opts.some(x => x.hex === sel)) sel = opts.length ? opts[0].hex : null;
+        const cur = opts.filter(x => x.hex === sel)[0] || null;
+        // ── the picture: 4 pillars + the selected remedy on the far right ──
+        const col = (lab, hex, qi, yun, isoQ, isoY, extra) => '<td style="padding:4px 3px;text-align:center;vertical-align:top;border:1px solid #ddd;' + (extra || '') + '">'
+            + '<div style="font-weight:bold;color:#880e4f;font-size:12px;">' + lab + '</div>'
+            + '<div style="color:#c62828;font-weight:bold;font-size:16px;' + (isoQ ? 'background:#ffcdd2;border-radius:6px;' : '') + '">' + qi + '</div>' + xkdgHexSvg(hex)
+            + '<div style="color:#1565c0;font-weight:bold;font-size:16px;' + (isoY ? 'background:#ffcdd2;border-radius:6px;' : '') + '">' + yun + '</div>'
+            + '<div style="font-size:11px;color:#555;">hex ' + hex + '</div></td>';
+        h += '<div style="overflow-x:auto;margin:6px 0;"><table style="border-collapse:collapse;"><tr>'
+           + ['hour', 'day', 'month', 'year'].map(k => col(L[k], pp.P[k].hex, pp.P[k].qi, pp.P[k].yun, isoSet[k + '.qi'], isoSet[k + '.yun'])).join('');
+        if (cur) h += '<td style="border:0;width:14px;padding:0;font-size:18px;color:#7e57c2;text-align:center;vertical-align:middle;">+</td>'
+                   + col(cur.kind === 'family' ? '★ Family' : 'Remedy', cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
+        h += '</tr></table></div>';
+        if (!g || !g.any) {
+            h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
+            return;
+        }
         Object.values(g.dims).forEach(d => {
             if (!d.isolated.length) return;
             const f = d.label === 'Elements' ? 'qi' : 'yun';
-            const net = ['hour','day','month','year'].filter(k => g.pillars[k] && !d.isolated.some(x => x.pillar === k)).map(k => g.pillars[k][f]);
+            const net = ['hour','day','month','year'].filter(k => !d.isolated.some(x => x.pillar === k)).map(k => pp.P[k][f]);
             const lg = _xkdgLang(net), lgTxt = [lg.has('add') ? 'Adding 5/10/15' : '', lg.has('hetu') ? 'Hetu' : ''].filter(Boolean).join(' or ');
-            h += '<div style="margin-top:3px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated → the remedy links ' + d.isolated.map(x => x.value).join(', ') + ' by ' + lgTxt + ' (the language of ' + net.join(' / ') + ')</div>';
+            h += '<div style="font-size:13px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated → the remedy links it by ' + lgTxt + '</div>';
         });
-        const R = xkdgGapRemedies(g, days, pp.P, start) || { dates: [], hexagrams: [] };
-        h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;">📅 Positive dates with the remedy (' + R.dates.length + ')</div>';
-        if (!R.dates.length) h += '<div style="color:#888;">None in this range — extend DAYS.</div>';
-        R.dates.forEach(d => {
-            const dl = new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-            h += '<div style="background:#e8f5e9;border-left:4px solid #2e7d32;border-radius:6px;padding:4px 8px;margin:4px 0;">'
-               + '<b>' + dl + '</b> · day ' + d.day + ' · year ' + d.year + ' <span style="color:#555;">(remedy in the ' + d.via.join(' + ') + ')</span><br>'
-               + d.favourable_hours.map((hz, j) => '<button onclick="loadDateIntoMain(\'' + d.date + '\',' + d.hour_index[j] + ')" style="margin:2px 4px 0 0;padding:2px 8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;border-radius:10px;font-size:12px;cursor:pointer;">' + hz + ' ' + (typeof getTSTHourLabel === 'function' ? String(getTSTHourLabel(d.hour_index[j])).replace(/<[^>]*>/g, ' ').replace(/\(TST[^)]*\)/, '').replace(/✦/g, '').trim() : '') + '</button>').join('')
+        // ── advice for the selected hexagram ──
+        if (cur) {
+            const c = (cur.from + 2.8125) % 360;
+            const myDates = R.dates.filter(d => { const dx = getXkdgData(d.day[0], d.day[1]), yx = getXkdgData(d.year[0], d.year[1]); return (dx && dx.hex === cur.hex) || (yx && yx.hex === cur.hex); });
+            h += '<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#f3e5f5;font-size:13px;">'
+               + '<b>' + (cur.kind === 'family' ? '★ ' : '') + 'Hexagram ' + cur.hex + '</b> (Element ' + cur.qi + ', Period ' + cur.yun + ')'
+               + '<div style="margin-top:3px;">🧭 <b>Earth</b> — activate <b>' + W8(c) + ' · ' + cur.from + '–' + cur.to + '°</b> (' + (cur.zheng_shen ? 'Zheng Shen' : 'Ling Shen') + ')</div>'
+               + '<div style="margin-top:3px;">📅 <b>Heaven</b> — ' + (myDates.length ? 'favourable dates with this hexagram:' : 'no favourable date with this hexagram in the range (FROM / DAYS).') + '</div>'
+               + myDates.map(d => '<div style="margin:2px 0 0 10px;"><b>' + fmtD(d.date) + '</b> · day ' + d.day + ' · year ' + d.year + '<br>' + hourBtns(d) + '</div>').join('')
                + '</div>';
-        });
-        const chip = (x, fam) => { const c = (x.from + 2.8125) % 360;
-            return '<div style="display:inline-block;margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;'
-               + (fam ? 'background:#ede7f6;border:2px solid #7e57c2;' : 'background:#f1f8e9;border:1px solid #9ccc65;') + '">'
-               + W8(c) + ' · ' + x.from + '–' + x.to + '° · hex ' + x.hex + ' (' + x.qi + '/' + x.yun + ') · ' + (x.zheng_shen ? 'ZS' : 'LS') + '</div>'; };
-        const mainH = R.hexagrams.filter(x => x.kind === 'main'), famH = R.hexagrams.filter(x => x.kind === 'family');
-        h += '<div style="margin-top:8px;font-weight:bold;color:#4a148c;">🧭 Directions to activate — remedy (' + mainH.length + ')</div>'
-           + '<div style="color:#666;font-size:11px;">Links the isolated pillar and keeps the connection in the other dimension.</div>'
-           + (mainH.length ? mainH.map(x => chip(x, false)).join('') : '<div style="color:#888;">none</div>');
-        if (R.families && R.families.length) {
-            h += '<div style="margin-top:8px;font-weight:bold;color:#4a148c;">★ Alternative — ' + R.families.join(', ') + ' family (' + famH.length + ')</div>'
-               + '<div style="color:#666;font-size:11px;">The family already links the isolated pillar; these keep the connection in the other dimension.</div>'
-               + (famH.length ? famH.map(x => chip(x, true)).join('') : '<div style="color:#888;">none</div>');
         }
-        h += '</div>';
+        // ── the list of every useful hexagram (tap = into the picture) ──
+        const chip = x => { const c = (x.from + 2.8125) % 360, on = x.hex === sel;
+            return '<button onclick="xkdgPVPick(\'' + pp.who + '\',' + x.hex + ')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
+               + (on ? 'background:#7e57c2;color:#fff;border:2px solid #4a148c;' : (x.kind === 'family' ? 'background:#ede7f6;border:1px solid #7e57c2;color:#311b92;' : 'background:#f1f8e9;border:1px solid #9ccc65;color:#1b5e20;')) + '">'
+               + 'hex ' + x.hex + ' (' + x.qi + '/' + x.yun + ') · ' + W8(c) + ' ' + x.from + '°' + '</button>'; };
+        const mainH = opts.filter(x => x.kind === 'main'), famH = opts.filter(x => x.kind === 'family');
+        h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;font-size:13px;">Remedy hexagrams (' + mainH.length + ') — tap one to see it in the picture</div>'
+           + (mainH.length ? mainH.map(chip).join('') : '<div style="color:#888;">none</div>');
+        if (R.families && R.families.length)
+            h += '<div style="margin-top:6px;font-weight:bold;color:#4a148c;font-size:13px;">★ ' + R.families.join(', ') + ' family alternative (' + famH.length + ')</div>'
+               + (famH.length ? famH.map(chip).join('') : '<div style="color:#888;">none</div>');
+        // ── every favourable remedy date in the range ──
+        h += '<details style="margin-top:8px;font-size:13px;"><summary style="cursor:pointer;font-weight:bold;color:#1b5e20;">📅 All favourable remedy dates (' + R.dates.length + ')</summary>'
+           + R.dates.map(d => '<div style="background:#e8f5e9;border-left:4px solid #2e7d32;border-radius:6px;padding:4px 8px;margin:4px 0;"><b>' + fmtD(d.date) + '</b> · day ' + d.day + ' · year ' + d.year + ' <span style="color:#555;">(' + d.via.join(' + ') + ')</span><br>' + hourBtns(d) + '</div>').join('')
+           + '</details></div>';
     });
-    h += '<div style="color:#888;font-size:11px;margin-top:4px;">Range: FROM ' + start + ', ' + days + ' days (remedy = links the isolated pillar in the language its dimension speaks, Adding 5/10/15 or Hetu, and keeps the connection in the other dimension). Tap an hour to open it in the main chart.</div>';
+    h += '<div style="color:#888;font-size:11px;margin-top:4px;">Range: FROM ' + start + ', ' + days + ' days. Tap an hour to open it in the main chart.</div>';
     pv.innerHTML = h;
 }
 
