@@ -140,7 +140,16 @@
     return convert(utcMs, lonDeg).tst;
   }
 
+  // Session 33 (Edu: "tempo solare dappertutto"): minutes to ADD to a civil clock time to get
+  // TRUE solar time = longitude offset - DST + Equation of Time (of that date).
+  function tstOffsetMin(lon, utc, dstOn, date) {
+    var d = (date instanceof Date) ? date : new Date(date ? (String(date).length === 10 ? date + 'T12:00:00' : date) : Date.now());
+    var e = 0; try { e = equationOfTimeMinutes(d); } catch (x) {}
+    return (lon - utc * 15) * 4 - (dstOn ? 60 : 0) + e;
+  }
+
   var API = {
+    tstOffsetMin: tstOffsetMin,
     equationOfTimeMinutes: equationOfTimeMinutes,
     utcFromCivil: utcFromCivil,
     convert: convert,

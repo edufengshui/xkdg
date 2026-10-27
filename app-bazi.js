@@ -863,6 +863,9 @@ function xkdgHourFourPillarBond(isoDate, branchChar) {
 }
 if (typeof window !== 'undefined') window.xkdgHourFourPillarBond = xkdgHourFourPillarBond;
 
+// Session 33 (Edu: true solar time everywhere): Equation of Time (minutes) of a date,
+// to add to the longitude offset wherever a clock time is turned into solar time.
+function _eotAt(dateLike){ try { const d = (dateLike instanceof Date) ? dateLike : new Date(String(dateLike).length === 10 ? dateLike + 'T12:00:00' : dateLike); return (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.equationOfTimeMinutes(d) : 0; } catch (e) { return 0; } }
 // ── BLOOD LINK DATE vs PERSON (session 33, Edu) ─────────────────────────
 // Best: the person (birth YEAR) belongs to the date's Blood Link family. Otherwise the
 // person's birth YEAR or DAY must communicate with the date's YEAR or DAY (Hetu or
@@ -1700,7 +1703,7 @@ function calculateBazi() {
         const tv = document.getElementById('person-time').value || '12:00';
         if (!dv) return null;
         const off = (parseFloat(document.getElementById('longitude').value) - parseFloat(document.getElementById('utc-offset').value) * 15) * 4 - (_dstOn ? 60 : 0);
-        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + off * 60000));
+        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + (off + _eotAt(dv)) * 60000));
         return s.getLunar().getEightChar().getDayZhi();
     })();
     const isPersonBV = personDayZhiMain ? BRANCH_VIRTUE[personDayZhiMain] === dayZhi : false;
@@ -5271,7 +5274,7 @@ function buildCalView() {
         const _PA = (typeof _tstPillarsFor === 'function') ? _tstPillarsFor(birthDate, birthTime, _pgeoA) : null;
         if (_PA) { pYStem = _PA.year.charAt(0); pYBranch = _PA.year.charAt(1); }
         else {
-            const bEC = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + _pOffMinA * 60000)).getLunar().getEightChar();
+            const bEC = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + (_pOffMinA + _eotAt(birthDate)) * 60000)).getLunar().getEightChar();
             pYStem = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
         }
         const pYData = getXkdgData(pYStem, pYBranch);
@@ -5292,7 +5295,7 @@ function buildCalView() {
         const dv = document.getElementById('person-date').value;
         const tv = document.getElementById('person-time').value || '12:00';
         if (!dv) return null;
-        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + _pOffMinA * 60000));
+        const s = Solar.fromDate(new Date(new Date(`${dv}T${tv}`).getTime() + (_pOffMinA + _eotAt(dv)) * 60000));
         return s.getLunar().getEightChar().getDayZhi();
     })();
 
@@ -5655,7 +5658,7 @@ function buildCalView() {
             const dayBranchIsNoble = personNobles.includes(dZhi);
             const dayBranchIsLu  = personDayStemCAL ? LU_BRANCH[personDayStemCAL] === dZhi : false;
             const dayBranchIsHV  = personMthBranchCAL ? HEAVEN_VIRTUE[personMthBranchCAL] === dZhi : false;
-            const personDayZhiCAL2 = (() => { if (!personDayStemCAL) return null; try { const b = new Date(`${document.getElementById('person-date').value}T${document.getElementById('person-time').value||'12:00'}`); return Solar.fromDate(new Date(b.getTime()+_pOffMinA*60000)).getLunar().getEightChar().getDayZhi(); } catch(e) { return null; } })();
+            const personDayZhiCAL2 = (() => { if (!personDayStemCAL) return null; try { const b = new Date(`${document.getElementById('person-date').value}T${document.getElementById('person-time').value||'12:00'}`); return Solar.fromDate(new Date(b.getTime()+(_pOffMinA+_eotAt(b))*60000)).getLunar().getEightChar().getDayZhi(); } catch(e) { return null; } })();
             const dayBranchIsBV  = personDayZhiCAL2 ? BRANCH_VIRTUE[personDayZhiCAL2] === dZhi : false;
             const dayBranchIsTY  = personDayStemCAL ? TIAN_YI[personDayStemCAL] === dZhi : false;
             const mvCAL = personMthBranchCAL ? (MONTH_VIRTUE[personMthBranchCAL] || null) : null;
@@ -7821,7 +7824,7 @@ function getPersonYearData() {
         const lon = parseFloat(document.getElementById('longitude').value);
         const utc = parseFloat(document.getElementById('utc-offset').value);
         const offsetMin = (lon - utc * 15) * 4 - (_dstOn ? 60 : 0);
-        const ec = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + offsetMin * 60000)).getLunar().getEightChar();
+        const ec = Solar.fromDate(new Date(new Date(`${birthDate}T${birthTime}`).getTime() + (offsetMin + _eotAt(birthDate)) * 60000)).getLunar().getEightChar();
         yStem = ec.getYearGan(); yBranch = ec.getYearZhi();
     }
     const data  = getXkdgData(yStem, yBranch);
@@ -7989,7 +7992,7 @@ function runScanner() {
         }
     } else if (birthDate) {
     const bBase   = new Date(`${birthDate}T${birthTime}`);
-    const bSolar  = Solar.fromDate(new Date(bBase.getTime() + offsetMin * 60000));
+    const bSolar  = Solar.fromDate(new Date(bBase.getTime() + (offsetMin + _eotAt(bBase)) * 60000));
     const bEC     = bSolar.getLunar().getEightChar();
     pYStem  = bEC.getYearGan(); pYBranch = bEC.getYearZhi();
     const pYData  = getXkdgData(pYStem, pYBranch);
@@ -8022,7 +8025,7 @@ function runScanner() {
         }
     } else if (birthDateB) {
         const bBaseB  = new Date(`${birthDateB}T${birthTimeB}`);
-        const bSolarB = Solar.fromDate(new Date(bBaseB.getTime() + offsetMin * 60000));
+        const bSolarB = Solar.fromDate(new Date(bBaseB.getTime() + (offsetMin + _eotAt(bBaseB)) * 60000));
         const bECB    = bSolarB.getLunar().getEightChar();
         pBYStem = bECB.getYearGan(); pBYBranch = bECB.getYearZhi();
         const pBYData = getXkdgData(pBYStem, pBYBranch);

@@ -2648,7 +2648,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
         const _lon = parseFloat(document.getElementById('longitude').value);
         const _utc = parseFloat(document.getElementById('utc-offset').value);
         if (!isNaN(_lon) && !isNaN(_utc)) {
-          const _off = (_lon - _utc * 15) * 4 - (_dstOn ? 60 : 0);          // solar = clock + off
+          const _off = (_lon - _utc * 15) * 4 - (_dstOn ? 60 : 0) + ((typeof _eotAt === 'function') ? _eotAt(m.isoDate) : 0);   // solar = clock + off (true solar: + EoT)
           let _s = (((_BR_SOLAR[m.bestHour.hZhi] * 60 - _off) % 1440) + 1440) % 1440;
           let _e = (_s + 120) % 1440;
           const _f = v => { v = Math.round(((v % 1440) + 1440) % 1440); const H = Math.floor(v / 60), M = v % 60; return (H < 10 ? '0' : '') + H + ':' + (M < 10 ? '0' : '') + M; };
@@ -4861,7 +4861,7 @@ function _fsResolvePersonYear(name){
       var base = new Date(rec.date + 'T' + t);
       var off  = 0;
       if (isFinite(lon) && isFinite(utc)) off = ((lon - utc * 15) * 4) - (dst ? 60 : 0);
-      var solar = Solar.fromDate(new Date(base.getTime() + off * 60000));
+      var solar = Solar.fromDate(new Date(base.getTime() + (off + ((typeof _eotAt === 'function') ? _eotAt(base) : 0)) * 60000));
       var ec = solar.getLunar().getEightChar();
       stem = ec.getYearGan(); branch = ec.getYearZhi();
     } else { return null; }
@@ -8121,7 +8121,7 @@ function fsExitZone(){
 
 // Real local clock window (true solar time, DST-adjusted) for a Chinese hour
 // branch — same convention as BEST/LIST. hourHan may be a full ganzhi.
-function _fsBranchClock(hourHan){
+function _fsBranchClock(hourHan, isoDate){
   try {
     var SOLAR = {'子':23,'丑':1,'寅':3,'卯':5,'辰':7,'巳':9,'午':11,'未':13,'申':15,'酉':17,'戌':19,'亥':21};
     var chars = String(hourHan||'').replace(/[^\u4e00-\u9fff]/g,''), br=null;
@@ -8131,7 +8131,7 @@ function _fsBranchClock(hourHan){
     var utc=parseFloat((document.getElementById('utc-offset')||{}).value);
     if (isNaN(lon)||isNaN(utc)) return null;
     var dstOn=false; try{ dstOn=(typeof _dstOn!=='undefined')?_dstOn:!!window._dstOn; }catch(e){}
-    var off=(lon-utc*15)*4-(dstOn?60:0);
+    var off=(lon-utc*15)*4-(dstOn?60:0)+((typeof _eotAt==='function')?_eotAt(isoDate||new Date()):0);   // true solar (+ EoT)
     var s=(((SOLAR[br]*60-off)%1440)+1440)%1440, e=(s+120)%1440;
     var f=function(m){m=Math.round(((m%1440)+1440)%1440);var h=Math.floor(m/60),mm=m%60;return (h<10?'0':'')+h+':'+(mm<10?'0':'')+mm;};
     return f(s)+'\u2013'+f(e);
@@ -8215,7 +8215,7 @@ function fsWaterActivationScan(){
       var zsHit2 = zsLsOn2 && !!zsLsSet2[r.date];
       var hits2 = (r.hits||[]).map(function(h){return h.label;});
       if (zsHit2) hits2 = hits2.concat(['\ud83e\udded ZS/LS \u2713']);
-      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, hidx:(r.hidx!=null?r.hidx:null), q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+(zsHit2?12:0), hits:hits2, zsls:zsHit2 };
+      return { date:r.date, weekday:r.weekday, hour:(_fsBranchClock(r.hourHan, r.date)||r.hourTime), ganzhi:r.hourHan, hidx:(r.hidx!=null?r.hidx:null), q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+(zsHit2?12:0), hits:hits2, zsls:zsHit2 };
     });
     rows.sort(function(a,b){ return (b.c-a.c)||(b.q-a.q); });
     if (!rows.length){ out.innerHTML='<div style="font-size:12px;color:#e65100;">No favourable Qimen water hours in this range for '+dir+'.</div>'; return; }
@@ -8551,7 +8551,7 @@ function fsPurposeActivationScan(){
       var hitsArr=(r.hits||[]).map(function(h){return h.label;}).concat(fb.labels);
       var zsHit = zsLsOn && !!zsLsSet[r.date];
       if (zsHit) hitsArr = hitsArr.concat(['\ud83e\udded ZS/LS \u2713']);
-      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+fb.n+(zsHit?12:0), dir:(r.dir||''), door:(r.purposeDoor||null), hits:hitsArr, zsls:zsHit };
+      return { date:r.date, hidx:(r.hidx!=null?r.hidx:0), hour:(_fsBranchClock(r.hourHan, r.date)||r.hourTime), ganzhi:r.hourHan, q:(r.score||0), x:xs, c:(r.score||0)+(xs!=null?xs:0)+fb.n+(zsHit?12:0), dir:(r.dir||''), door:(r.purposeDoor||null), hits:hitsArr, zsls:zsHit };
     });
 
     var DOOR_LBL={Kai:'Open 開',Xiu:'Rest 休',Sheng:'Birth 生',JingS:'View 景',JingF:'Shocking 驚',Shang:'Injury 傷',Du:'Delusion 杜',Si:'Death 死'};
