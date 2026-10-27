@@ -3840,8 +3840,39 @@ let _personYearXkdg = null;
 let _personYearStem = null;
 let _personYearBranch = null;
 
-function getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch) {
+// Session 33 (Edu): a person connects with a date through the birth YEAR and, failing that,
+// through the birth DAY pillar (session 31 rule: year first, day second). Same relations as
+// the year: family, Hetu, Adding 5/10/15, Pure Qi when the date carries it, inverse hexagram.
+function xkdgPersonDayTalk(pDayStem, pDayBranch, dGan, dZhi, blueItems) {
+    try {
+        if (!pDayStem || !pDayBranch) return false;
+        const p = getXkdgData(pDayStem, pDayBranch), d = getXkdgData(dGan, dZhi);
+        if (!p || !d) return false;
+        const bi = blueItems || [];
+        return isHetuPair(p.qi, d.qi) || [5,10,15].includes(p.qi + d.qi) || isHetuPair(p.yun, d.yun) || [5,10,15].includes(p.yun + d.yun) ||
+               (bi.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Elements') && p.qi === d.qi) ||
+               (bi.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Periods') && p.yun === d.yun) ||
+               (p.hex && d.hex && getInverseHex(d.hex) === p.hex) ||
+               getJiaZiFamilies(pDayStem, pDayBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+    } catch (e) { return false; }
+}
+// Which loaded person a (year stem, branch) belongs to -> that person's DAY pillar.
+function _xkdgPersonDayFor(pStem, pBranch) {
+    try {
+        if (typeof _personAStem !== 'undefined' && pStem === _personAStem && pBranch === _personABranch && _personADayStem) return [_personADayStem, _personADayBranch];
+        if (typeof _personBStem !== 'undefined' && pStem === _personBStem && pBranch === _personBBranch && _personBDayStem) return [_personBDayStem, _personBDayBranch];
+    } catch (e) {}
+    return null;
+}
+
+function getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, _noDay) {
     if (!personYear || !dayXkdg) return 0;
+    if (!_noDay) {
+        const ys = getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, true);
+        if (ys > 0) return ys;
+        const pd = _xkdgPersonDayFor(pStem, pBranch), px = pd ? getXkdgData(pd[0], pd[1]) : null;
+        return px ? getMatchScore(px, pd[0], pd[1], dayXkdg, dayStem, dayBranch, true) : 0;
+    }
     const pQi = personYear.qi, pYun = personYear.yun;
     const dQi = dayXkdg.qi,   dYun = dayXkdg.yun;
 
@@ -3878,7 +3909,17 @@ function getDateQualityScore(analysisItems) {
     return strength + timely;
 }
 
-function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch) {
+function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch, _isDay) {
+    if (!_isDay) {
+        const ly = getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch, true);
+        if (ly.length) return ly;
+        // Session 33 (Edu): no link through the birth YEAR -> try the birth DAY pillar.
+        const pd = (personDayStem && personDayBranch) ? [personDayStem, personDayBranch] : _xkdgPersonDayFor(pStem, pBranch);
+        const px = pd ? getXkdgData(pd[0], pd[1]) : null;
+        if (!px) return ly;
+        return getMatchLabels(px, pd[0], pd[1], dayXkdg, dayStem, dayBranch, null, null, null, true)
+            .filter(l => !l.startsWith('Partial BL')).map(l => l + ' (birth day)');
+    }
     const labels = [];
     if (!_currentDayAnalysis) return labels;
     if (!personYear) return labels;
@@ -3940,7 +3981,9 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
 
     const hasGroupFamily = items.some(i => i.tag === 'family');
     const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
-    if (hasGroupFamily && sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
+    // Session 33 (Edu): a FAMILY shared with the date's DAY is a link by itself, whatever the
+    // date's own setting (e.g. a Pure Qi date): the person communicates with the day.
+    if (sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
 
     // Inverse Hex: group must have Inverse Hex setting, person's year hex = inverse of day hex
     const hasGroupInverse = items.some(i => i.text.startsWith('Inverse Hex'));
@@ -5263,14 +5306,16 @@ function buildTableView() {
                 const dQi = tvDayXkdg.qi,   dYun = tvDayXkdg.yun;
                 return isHetuPair(pQi,dQi) || [5,10,15].includes(pQi+dQi) ||
                        isHetuPair(pYun,dYun) || [5,10,15].includes(pYun+dYun) ||
-                       getJiaZiFamilies(_personAStem,_personABranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                       getJiaZiFamilies(_personAStem,_personABranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f)) ||
+                       xkdgPersonDayTalk(_personADayStem,_personADayBranch,dGan,dZhi,items);
             })();
             const tvConnectsB = _personBYear && tvDayXkdg && (() => {
                 const pQi = _personBYear.qi, pYun = _personBYear.yun;
                 const dQi = tvDayXkdg.qi,   dYun = tvDayXkdg.yun;
                 return isHetuPair(pQi,dQi) || [5,10,15].includes(pQi+dQi) ||
                        isHetuPair(pYun,dYun) || [5,10,15].includes(pYun+dYun) ||
-                       getJiaZiFamilies(_personBStem,_personBBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                       getJiaZiFamilies(_personBStem,_personBBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f)) ||
+                       xkdgPersonDayTalk(_personBDayStem,_personBDayBranch,dGan,dZhi,items);
             })();
 
             // Score: use best person (A if connects, B if connects, neither if none)
@@ -6633,19 +6678,20 @@ function buildMonthView() {
                            (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Elements') && pQi === dQi) ||
                            (blueItems.some(i=>i.text==='Pure Qi'||i.text==='Pure Qi Periods') && pYun === dYun) ||
                            (activePersonYearLV.hex && dayXkdgLV.hex && getInverseHex(dayXkdgLV.hex) === activePersonYearLV.hex) ||
-                           getJiaZiFamilies(activePYStemLV, activePYBranchLV).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                           getJiaZiFamilies(activePYStemLV, activePYBranchLV).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)) ||
+                           (function () { const pd = _xkdgPersonDayFor(activePYStemLV, activePYBranchLV); return !!pd && xkdgPersonDayTalk(pd[0], pd[1], dGan, dZhi, blueItems); })();
                 })();
                 // If BOTH persons active, require both connect
                 if (personAYear && personBYear) {
                     const connectsA = (() => {
                         const pQi = personAYear.qi, pYun = personAYear.yun;
                         const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
-                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||(personAYear.hex&&dayXkdgLV.hex&&getInverseHex(dayXkdgLV.hex)===personAYear.hex)||getJiaZiFamilies(pYStem,pYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||(personAYear.hex&&dayXkdgLV.hex&&getInverseHex(dayXkdgLV.hex)===personAYear.hex)||getJiaZiFamilies(pYStem,pYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f))||xkdgPersonDayTalk(_personADayStem,_personADayBranch,dGan,dZhi,blueItems);
                     })();
                     const connectsB = (() => {
                         const pQi = personBYear.qi, pYun = personBYear.yun;
                         const dQi = dayXkdgLV.qi, dYun = dayXkdgLV.yun;
-                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||(personBYear.hex&&dayXkdgLV.hex&&getInverseHex(dayXkdgLV.hex)===personBYear.hex)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                        return isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||(personBYear.hex&&dayXkdgLV.hex&&getInverseHex(dayXkdgLV.hex)===personBYear.hex)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f))||xkdgPersonDayTalk(_personBDayStem,_personBDayBranch,dGan,dZhi,blueItems);
                     })();
                     if (!(connectsA && connectsB)) { continue; }
                 } else {
@@ -8412,16 +8458,17 @@ function runScanner() {
             if (!hasNegativesBST) {
                 // If both persons active, require both connect using symmetric broad check
                 if (personAYear && personBYear) {
-                    const connectsA2 = isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(activeYStem,activeYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                    const connectsA2 = isHetuPair(pQi,dQi)||[5,10,15].includes(pQi+dQi)||isHetuPair(pYun,dYun)||[5,10,15].includes(pYun+dYun)||getJiaZiFamilies(activeYStem,activeYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f))||xkdgPersonDayTalk(_personADayStem,_personADayBranch,dGan,dZhi,blueItems);
                     const pQiB = personBYear.qi, pYunB = personBYear.yun;
-                    const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f));
+                    const connectsB2 = isHetuPair(pQiB,dQi)||[5,10,15].includes(pQiB+dQi)||isHetuPair(pYunB,dYun)||[5,10,15].includes(pYunB+dYun)||getJiaZiFamilies(pBYStem,pBYBranch).some(f=>getJiaZiFamilies(dGan,dZhi).includes(f))||xkdgPersonDayTalk(_personBDayStem,_personBDayBranch,dGan,dZhi,blueItems);
                     if (!connectsA2 || !connectsB2) { continue; }
                     _personConnectsBroadly = true;
                 } else if (activeYear && !(personMatchEl || personMatchPer)) {
                     // Dimension-specific check failed — use broad check (like LIST view)
                     const broadConnects = isHetuPair(pQi, dQi) || [5,10,15].includes(pQi + dQi) ||
                         isHetuPair(pYun, dYun) || [5,10,15].includes(pYun + dYun) ||
-                        getJiaZiFamilies(activeYStem, activeYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+                        getJiaZiFamilies(activeYStem, activeYBranch).some(f => getJiaZiFamilies(dGan, dZhi).includes(f)) ||
+                        xkdgPersonDayTalk(activeDayStem, activeDayBranch, dGan, dZhi, blueItems);
                     if (!broadConnects) {
                         if (isNayinPowerBST) { bestRescuedByNayin = true; } else { continue; }
                     } else {
