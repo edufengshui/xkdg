@@ -525,6 +525,7 @@ function calcNegativeScore(opts) {
             nayinLabel, nayinPersonScore } = opts;
     let score = 0;
     // ── Negative factors (push score UP) ──
+    if (analysisItems && analysisItems.some(i => i.tag === 'family-conflict')) score += 5;   // session 33
     const spirit = getSpiritForHour(dZhi, hZhi);
     if (spirit && !spirit.auspicious) score += 3;
     if (dayClashType === 'clash-year')              score += 3;
@@ -862,10 +863,55 @@ function xkdgHourFourPillarBond(isoDate, branchChar) {
 }
 if (typeof window !== 'undefined') window.xkdgHourFourPillarBond = xkdgHourFourPillarBond;
 
+// ── FAMILY CONFLICT (session 33, Edu) ───────────────────────────────────
+// Two PARENT hexagrams of two DIFFERENT families in the date, plus at least one CHILD
+// hexagram that belongs to BOTH of those families (son in one, daughter in the other):
+// the date is NEGATIVE and cannot be used. Dual JiaZi (甲子/甲午/庚申/庚寅) are resolved
+// by the hexagram actually used (primary = parent role, alt = child roles).
+function _xkdgResolvedFamilyEntries(p) {
+    if (!p) return [];
+    const es = JIAZI_FAMILY_DATA[p.stem + p.branch] || [];
+    if (es.length <= 1) return es.slice();
+    const raw = XKDG_TABLE[p.stem + p.branch];
+    if (!raw || !raw.alt || !p.hex) return es.slice();
+    const isPrimary = raw.hex === p.hex;
+    return es.filter(e => (e.role === 'father' || e.role === 'mother') ? isPrimary : !isPrimary);
+}
+function xkdgFamilyConflict(pillars) {
+    try {
+        const keys = ['year','month','day','hour'];
+        const info = keys.map(k => {
+            const es = _xkdgResolvedFamilyEntries(pillars[k]);
+            return { k,
+                parentFams: es.filter(e => e.role === 'father' || e.role === 'mother').map(e => e.family),
+                childFams:  es.filter(e => e.role === 'son' || e.role === 'daughter').map(e => e.family) };
+        });
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+            if (i === j) continue;
+            for (const fa of info[i].parentFams) for (const fb of info[j].parentFams) {
+                if (fa === fb) continue;
+                for (let c = 0; c < 4; c++) {
+                    if (c === i || c === j) continue;
+                    const cf = info[c].childFams;
+                    if (cf.includes(fa) && cf.includes(fb))
+                        return { parents: [info[i].k, info[j].k], families: [fa, fb], child: info[c].k };
+                }
+            }
+        }
+    } catch (e) {}
+    return null;
+}
+
 function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     const items = [];
     const keys = ['year','month','day','hour'];
     if (!keys.every(k => pillars[k])) return { items, sameFamily: false };
+    const _fc = xkdgFamilyConflict(pillars);
+    if (_fc) {
+        const L = { year: 'Year', month: 'Month', day: 'Day', hour: 'Hour' };
+        return { items: [{ text: `Family Conflict: ${_fc.families[0]} + ${_fc.families[1]} parents (${L[_fc.parents[0]]}, ${L[_fc.parents[1]]}), child of both (${L[_fc.child]}) — date not usable`, tag: 'family-conflict' }],
+                 sameFamily: false, familyConflict: _fc };
+    }
 
     const qi     = k => pillars[k].qi;
     const yun    = k => pillars[k].yun;
@@ -1825,7 +1871,8 @@ function renderAnalysis(items) {
     }
     section.style.display = 'flex';
     container.innerHTML = items.map(item => {
-        const content = item.tag === 'blue'         ? `<span class="tag-blue">${item.text}</span>`
+        const content = item.tag === 'family-conflict' ? `<span style="background:#ffebee;color:#b71c1c;border:1px solid #e57373;border-radius:10px;padding:2px 8px;font-weight:bold;">⛔ ${item.text}</span>`
+                      : item.tag === 'blue'         ? `<span class="tag-blue">${item.text}</span>`
                       : item.tag === 'powerful'     ? `<span class="tag-powerful">${item.text}</span>`
                       : item.tag === 'energetic'    ? `<span class="tag-energetic">${item.text}</span>`
                       : item.tag === 'green'        ? `<span class="tag-green">${item.text}</span>`
@@ -3806,6 +3853,8 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
                        personAYear, pYStem, pYBranch,
                        pNobleA, pLuA, pHVA, pBVA, pMVA, pTYA,
                        pillars) {
+    // Session 33 (Edu): a Family Conflict makes the date negative and unusable.
+    if (analysisItems && analysisItems.some(i => i.tag === 'family-conflict')) return -5;
     const blueItems = analysisItems.filter(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
     const hasFullBL  = blueItems.some(i => i.tag === 'family');
     const hasPureQi  = blueItems.some(i => i.text.includes('Pure Qi'));
