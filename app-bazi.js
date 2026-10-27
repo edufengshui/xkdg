@@ -1734,9 +1734,6 @@ function calculateBazi() {
         analysis.push({ text: nayinResult.personLabel, tag });
     }
 
-    renderAnalysis(analysis);
-
-    _currentDayXkdg     = xkdgData.day;
     // Session 33 (Edu): Blood Link date — alert when a loaded person is not connected.
     try {
         const _blTxt = xkdgBLAlertText(xkdgBLPersonCheck(analysis, { year: Object.assign({}, xkdgData.year, { stem: pillarKeys.year.stem, branch: pillarKeys.year.branch }),
@@ -1745,6 +1742,9 @@ function calculateBazi() {
             _personBYear ? { label: 'Person B', year: { stem: _personBStem, branch: _personBBranch }, day: _personBDayStem ? { stem: _personBDayStem, branch: _personBDayBranch } : null } : null ]));
         if (_blTxt) analysis.push({ text: _blTxt, tag: 'bl-alert' });   // status always shown
     } catch (eBL) {}
+    renderAnalysis(analysis);
+
+    _currentDayXkdg     = xkdgData.day;
     _currentDayAnalysis = { items: analysis, sameFamily,
         pillars: { hour: xkdgData.hour, day: xkdgData.day, month: xkdgData.month, year: xkdgData.year },
         branches: { hour: pillarKeys.hour.branch, day: pillarKeys.day.branch, month: pillarKeys.month.branch, year: pillarKeys.year.branch },
