@@ -2206,6 +2206,7 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
     let bestHourScore = -999;
     let bestHGan = '', bestHZhi = '', bestHourIdx = -1;
     let blInfo = null;
+    const hourScores = [];   // session 33: every hour's score (fountain plans by day / night)
 
     for (let h = 0; h < 12; h++) {
       const hs = HOUR_STARTS[h];
@@ -2237,6 +2238,7 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
           }
         }
       } catch (e) { scoreH = 0; }
+      hourScores.push({ idx: h, hGan: hGanH, hZhi: hZhiH, score: scoreH });
 
       if (scoreH > bestHourScore) {
         bestHourScore = scoreH;
@@ -2272,6 +2274,7 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
       pureYYStarInfo,
       score,
       bestHour: bestHourIdx >= 0 ? { idx: bestHourIdx, hGan: bestHGan, hZhi: bestHZhi } : null,
+      hourScores,
       personMatchLvl,
       isBL: !!blInfo,
       blInfo
