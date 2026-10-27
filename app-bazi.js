@@ -3981,9 +3981,7 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
 
     const hasGroupFamily = items.some(i => i.tag === 'family');
     const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
-    // Session 33 (Edu): a FAMILY shared with the date's DAY is a link by itself, whatever the
-    // date's own setting (e.g. a Pure Qi date): the person communicates with the day.
-    if (sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
+    if (hasGroupFamily && sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
 
     // Inverse Hex: group must have Inverse Hex setting, person's year hex = inverse of day hex
     const hasGroupInverse = items.some(i => i.text.startsWith('Inverse Hex'));
