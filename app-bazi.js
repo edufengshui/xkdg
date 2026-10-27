@@ -969,8 +969,10 @@ function xkdgGapsHtml(gaps) {
     if (!gaps) return '';
     const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
     if (!gaps.any) return '<div style="color:#2e7d32;font-size:12px;margin-top:6px;">✓ All pillars communicate (Elements and Periods).</div>';
-    let h = '<div style="border:1px solid #ffcc80;background:#fff8e1;border-radius:8px;padding:6px 9px;margin-top:6px;font-size:12px;">'
-          + '<b>🔧 Missing communication</b>';
+    // Collapsible (Edu, session 33): closed by default, the summary says what is isolated.
+    const _sum = Object.values(gaps.dims).filter(d => d.isolated.length).map(d => d.label + ': ' + d.isolated.map(x => L[x.pillar]).join(', ')).join(' · ');
+    let h = '<details style="border:1px solid #ffcc80;background:#fff8e1;border-radius:8px;padding:6px 9px;margin-top:6px;font-size:12px;">'
+          + '<summary style="cursor:pointer;"><b>🔧 Missing communication</b> <span style="color:#8a6d00;">(' + _sum + ')</span></summary>';
     Object.values(gaps.dims).forEach(d => {
         if (!d.isolated.length) { h += '<div style="color:#2e7d32;">' + d.label + ': all pillars communicate</div>'; return; }
         const net = Object.keys(L).filter(k => gaps.pillars[k] && !d.isolated.some(x => x.pillar === k)).map(k => gaps.pillars[k][d.label === 'Elements' ? 'qi' : 'yun']);
@@ -982,7 +984,7 @@ function xkdgGapsHtml(gaps) {
         if (R.dates.length) h += '<div style="margin-top:4px;">📅 <b>Dates</b> (favourable, remedy in the day or year): ' + R.dates.slice(0, 6).map(d => d.date.slice(8) + '/' + d.date.slice(5, 7) + ' ' + d.day + (d.via.indexOf('day') < 0 ? ' (year)' : '')).join(' · ') + '</div>';
         if (R.hexagrams.length) h += '<div style="margin-top:2px;">🧭 <b>Feng Shui hexagrams</b>: ' + R.hexagrams.slice(0, 10).map(x => (x.family ? '★' : '') + 'hex ' + x.hex + ' ' + x.from + '–' + x.to + '°' + (x.zheng_shen ? ' ZS' : ' LS')).join(' · ') + '</div>';
     }
-    h += '<div style="color:#888;font-size:10px;margin-top:3px;">The remedy joins the pillars that communicate (Hetu or Adding: 10 for Feng Shui, 5/10/15 for dates) in both dimensions. ★ = same family as the isolated pillar' + (R && R.families && R.families.length ? ' (' + R.families.join(', ') + ')' : '') + '.</div></div>';
+    h += '<div style="color:#888;font-size:10px;margin-top:3px;">The remedy joins the pillars that communicate (Hetu or Adding: 10 for Feng Shui, 5/10/15 for dates) in both dimensions. ★ = same family as the isolated pillar' + (R && R.families && R.families.length ? ' (' + R.families.join(', ') + ')' : '') + '.</div></details>';
     return h;
 }
 
