@@ -1570,7 +1570,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug to program.' },
+          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug to program: the aquarium of tuoro / vienna, or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, by DAY only), vienna-porta = Fountain B (bedroom door, by NIGHT only). A fountain plan comes from the Feng Shui WATER scan (facing 266, water 222) and runs to the next solar month.' },
           mode: { type: 'string', enum: ['block', 'windows'], description: 'How the light is scheduled. "block" (DEFAULT, the long-standing behaviour) = ONE hour per day, light stays ON until 23:00, blocks can span several days. "windows" = the light is ON only for the two hours of EACH favourable hour of the day and is switched off in between; several windows a day are normal, and consecutive favourable hours are merged into one longer window. Use "windows" only when the user asks for it for that house.' },
           days: { type: 'integer', description: 'OMIT it (default): the plan runs until the EXACT start of the next solar month (next Jie), Edu\'s rule. Pass a number only if the user asks for a specific number of days.' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
@@ -1681,7 +1681,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug.' },
+          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug: aquarium tuoro / vienna, or fountain vienna-letto (A, bed) / vienna-porta (B, door).' },
           turn: { type: 'string', enum: ['on', 'off', 'status'], description: 'on, off, or status (default status).' }
         },
         required: ['house']
@@ -1703,7 +1703,7 @@
         + 'as returned and never recompute them.',
       input_schema: { type: 'object',
         properties: {
-          house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug.' },
+          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug: aquarium tuoro / vienna, or fountain vienna-letto (A, bed) / vienna-porta (B, door).' },
           action: { type: 'string', enum: ['get', 'cancel', 'pause', 'resume', 'clear_alerts'],
             description: 'get (default) = read the stored plan; cancel = empty it; pause/resume = automation master switch.' }
         },
@@ -6477,8 +6477,17 @@
   var SHELLY_HOUSES = {
     // house name (lower-case) -> { device, lon, utc }.  utc = standard offset (h); DST handled per date.
     'tuoro':  { device: 'tuoro',  lon: 12.1, utc: 1 },
-    'vienna': { device: 'vienna', lon: 16.4, utc: 1 }
+    'vienna': { device: 'vienna', lon: 16.4, utc: 1 },
+    // Session 33 (Edu): two small fountains in the Vienna bedroom, each on its own Shelly.
+    // Water at 222° (Ling Shen) for the bed and the bedroom door, both facing 266° (Zheng Shen).
+    // A (bed) runs only by DAY (Mao..Hai), B (door) only by NIGHT (Hai..Mao). Like the aquarium:
+    // ON at the best favourable hour of its period, stays ON to the end of the period; no
+    // "never dark" rule; the plan ends at the start of the next solar month.
+    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' } },
+    'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' } }
   };
+  var SHELLY_ALIASES = { 'letto': 'vienna-letto', 'bed': 'vienna-letto', 'fontana a': 'vienna-letto', 'fountain a': 'vienna-letto', 'fontana letto': 'vienna-letto',
+                         'porta': 'vienna-porta', 'door': 'vienna-porta', 'fontana b': 'vienna-porta', 'fountain b': 'vienna-porta', 'fontana porta': 'vienna-porta' };
   // Solar minute (from solar midnight) at which the light turns ON for each branch.
   // Zi uses its SECOND half (solar 00:00); the others use their normal solar start.
   // _WINDOW_BRANCHES marks the ALLOWED window: 2nd-half-Zi .. end of SHEN (solar 17:00).
@@ -6571,6 +6580,7 @@
 
   function _resolveShellyHouse(nameOrDevice) {
     var key = String(nameOrDevice || '').trim().toLowerCase();
+    if (SHELLY_ALIASES[key]) key = SHELLY_ALIASES[key];
     if (SHELLY_HOUSES[key]) return { name: key, cfg: SHELLY_HOUSES[key] };
     for (var k in SHELLY_HOUSES) if (SHELLY_HOUSES[k].device === key) return { name: k, cfg: SHELLY_HOUSES[k] };
     return null;
@@ -6893,13 +6903,77 @@
     return null;
   }
 
+  // Fountain plan (session 33). Source: the app's own WATER scan for the placement
+  // (fsFindMatchingDatesForSetup: facing ZS + water LS, with the loaded person), hour by hour.
+  async function _programFountain(rh, cfg, input, jie) {
+    var F = rh.cfg.fountain, lon = rh.cfg.lon, utc = rh.cfg.utc;
+    if (typeof window.fsFindMatchingDatesForSetup !== 'function' || typeof window.fsSlotForDeg !== 'function')
+      return { error: 'The Feng Shui water scan is not available on this page.' };
+    var start = todayIso();
+    var endMs = jie ? jie.ms : (Date.now() + (parseInt(input.days, 10) || 7) * 86400000);
+    var days = Math.max(1, Math.ceil((endMs - new Date(start + 'T00:00:00').getTime()) / 86400000)) + 1;
+    var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days'), lo = document.getElementById('longitude');
+    var keep = { s: ss && ss.value, d: sd && sd.value, l: lo && lo.value, r: window._fsRangeDays };
+    var matches = null;
+    try {
+      if (ss) ss.value = _isoPlus(start, -1); window._fsRangeDays = days + 1; if (lo) lo.value = String(lon);
+      matches = window.fsFindMatchingDatesForSetup(window.fsSlotForDeg(F.facing), window.fsSlotForDeg(F.water)) || [];
+    } finally {
+      if (ss) ss.value = keep.s; if (sd) sd.value = keep.d; if (lo) lo.value = keep.l; window._fsRangeDays = keep.r;
+    }
+    var byDate = {}; matches.forEach(function (m) { byDate[m.isoDate] = m; });
+    function hs(iso, idx) { var m = byDate[iso]; if (!m || !m.hourScores) return null; var x = m.hourScores[idx]; return (x && x.score > 0) ? x : null; }
+    var scheduled = [];
+    for (var i = 0; i < days; i++) {
+      var D = _isoPlus(start, i), N = _isoPlus(D, 1), cands = [];
+      if (F.period === 'day') {
+        [3, 4, 5, 6, 7, 8, 9, 10].forEach(function (k) { var x = hs(D, k); if (x) cands.push({ x: x, on: _solarToEpoch(D, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
+        var off = _solarToEpoch(D, 21 * 60, lon, utc);
+      } else {
+        var x11 = hs(D, 11); if (x11) cands.push({ x: x11, on: _solarToEpoch(D, 21 * 60, lon, utc) });
+        var x0 = hs(N, 0);  if (x0)  cands.push({ x: x0,  on: _solarToEpoch(D, 23 * 60, lon, utc) });
+        [1, 2].forEach(function (k) { var x = hs(N, k); if (x) cands.push({ x: x, on: _solarToEpoch(N, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
+        var off = _solarToEpoch(N, 5 * 60, lon, utc);
+      }
+      cands = cands.filter(function (c) { return c.on > Date.now() && c.on < endMs; });
+      if (!cands.length) continue;
+      cands.sort(function (a, b) { return (b.x.score - a.x.score) || (a.on - b.on); });
+      var c = cands[0], offTs = Math.min(off, endMs);
+      scheduled.push({ date: D, branch: c.x.hGan + c.x.hZhi, score: c.x.score, onTs: c.on, offTs: offTs,
+                       on_local: new Date(c.on).toString(), off_local: new Date(offTs).toString() });
+    }
+    var rows = scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; });
+    var commit = input.commit === true, workerResp = null, workerErr = null;
+    if (commit) {
+      try {
+        var res = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: rows }) });
+        workerResp = await res.json().catch(function () { return null; });
+        if (!res.ok) workerErr = 'HTTP ' + res.status;
+      } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
+    }
+    return {
+      scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: Mao..Hai (solar 05:00-21:00)' : 'night: Hai..Mao (solar 21:00-05:00)',
+      placement: { facing: F.facing, water: F.water }, persons_used: _digestPersonNames().label,
+      mode: commit ? 'committed' : 'preview',
+      plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
+      scheduled_count: scheduled.length, scheduled: scheduled,
+      deposited: commit ? !workerErr : false, worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
+      note: 'Each row: ON at the best favourable hour of the ' + (F.period === 'day' ? 'day' : 'night') + ', OFF at the end of the period. '
+        + 'Periods with no favourable hour stay OFF (Edu: no never-dark rule for the fountains). Show the times as given (local clock). '
+        + (commit ? '' : 'This is a PREVIEW: ask the user to confirm, then call again with commit:true.')
+        + (workerErr ? ' If worker_error mentions an unknown device, the Shelly Worker does not know this device yet: say so plainly.' : '')
+    };
+  }
+
   async function toolProgramAquariumLight(input) {
     input = input || {};
     var _jie = (input.days == null) ? _nextJie(Date.now()) : null;   // default: until the new month
     var cfg = _shellyCfg();
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     var rh = _resolveShellyHouse(input.house);
-    if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
+    if (!rh) return { error: 'Provide house = "tuoro" or "vienna" (or a fountain: "vienna-letto", "vienna-porta").' };
+    if (rh.cfg.fountain) return _programFountain(rh, cfg, input, _jie);
     var days = parseInt(input.days, 10) || 7;
     if (_jie) days = Math.max(1, Math.ceil((_jie.ms - new Date(todayIso() + 'T00:00:00').getTime()) / 86400000));
     var commit = (input.commit === true);
