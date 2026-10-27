@@ -891,6 +891,12 @@ function xkdgPersonGaps(pillars) {
     });
     out.any = Object.values(out.dims).some(d => d.isolated.length);
     out.pillars = pillars;
+    // A full Blood Link (all four pillars in one family) IS communication among all of them:
+    // no pillar is isolated, whatever the numbers say.
+    try {
+        const bl = (analyzeXkdg(pillars).items || []).filter(i => i.tag === 'family').map(i => i.text);
+        if (bl.length) { out.bloodLink = bl; out.any = false; Object.values(out.dims).forEach(d => { d.isolated = []; d.bridges = []; }); }
+    } catch (e) {}
     return out;
 }
 // REMEDIES (Edu, session 33). The remedy hexagram does NOT bridge to the isolated pillar: it
@@ -968,7 +974,7 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
 function xkdgGapsHtml(gaps) {
     if (!gaps) return '';
     const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
-    if (!gaps.any) return '<div style="color:#2e7d32;font-size:12px;margin-top:6px;">✓ All pillars communicate (Elements and Periods).</div>';
+    if (!gaps.any) return '<div style="color:#2e7d32;font-size:12px;margin-top:6px;">✓ All pillars communicate' + (gaps.bloodLink ? ' — Blood Link (' + gaps.bloodLink.join(', ') + ')' : ' (Elements and Periods)') + '.</div>';
     // Collapsible (Edu, session 33): closed by default, the summary says what is isolated.
     const _sum = Object.values(gaps.dims).filter(d => d.isolated.length).map(d => d.label + ': ' + d.isolated.map(x => L[x.pillar]).join(', ')).join(' · ');
     let h = '<details style="border:1px solid #ffcc80;background:#fff8e1;border-radius:8px;padding:6px 9px;margin-top:6px;font-size:12px;">'
