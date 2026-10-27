@@ -5502,11 +5502,12 @@
         pillars: ['hour', 'day', 'month', 'year'].map(function (k) { return { pillar: k, hex: P[k] && P[k].hex, qi: P[k] && P[k].qi, yun: P[k] && P[k].yun }; }),
         gaps: g, remedies: R,
         instructions: 'Present in Chinese order Hour, Day, Month, Year. For each dimension say which pillar is isolated and the bridge '
-          + 'values. REMEDY RULE (Edu): the remedy does not bridge to the isolated pillar - it communicates (Hetu or Adding; Feng '
-          + 'Shui only sum 10, dates 5/10/15) with the NON-isolated pillars in the gap dimension and with the pillars in the other '
-          + 'dimension. Remedies: up to 6 DATES (favourable dates whose DAY or YEAR pillar is such a hexagram, with their favourable '
-          + 'hours) and the Feng Shui HEXAGRAMS (luopan degrees, ZS and LS); those in the isolated pillar\'s family (field family) '
-          + 'are the alternative Edu prefers - list them first. Never invent values; if gaps.any is false say every pillar communicates.' };
+          + 'values. REMEDY RULE (Edu): (A) the MAIN remedy links the isolated pillar in its dimension in the language the other '
+          + 'pillars of that dimension already speak (Adding 5/10/15 or Hetu) AND keeps the connection, in the same language, in the '
+          + 'other dimension (e.g. periods 8 | 6 9 9 and elements 2 8 3 2 -> a hexagram of period 2 and element 2); (B) the FAMILY '
+          + 'alternative: a hexagram of the family the isolated pillar shares with another pillar (kind = family) only has to keep the '
+          + 'connection in the other dimension. Remedies: DATES (favourable dates whose DAY or YEAR pillar is a remedy) and the Feng '
+          + 'Shui HEXAGRAMS (luopan degrees, ZS and LS), main first then the family alternative. Never invent values; if gaps.any is false say every pillar communicates.' };
     } catch (e) { return { error: 'Gap analysis failed: ' + ((e && e.message) || e) }; }
   }
 

@@ -909,27 +909,52 @@ function xkdgPersonGaps(pillars) {
     } catch (e) {}
     return out;
 }
-// REMEDIES (Edu, session 33). The remedy hexagram does NOT bridge to the isolated pillar: it
-// joins the network of the pillars that DO communicate. In a dimension with an isolated pillar
-// it must communicate with a NON-isolated value of that dimension (e.g. periods 6 or 9); in a
-// dimension where all pillars communicate, with any of them (e.g. elements 2, 8, 3, 2). Both
-// dimensions must hold. Communication = Hetu, or Adding: 10 only for Feng Shui, 5/10/15 for dates.
-// Remedies of the isolated pillar's own FAMILY are marked (Edu: "in alternativa").
-// Dates: the DAY or the YEAR pillar carries such a hexagram, always inside a FAVOURABLE date
-// (at least one hour of the day with an XKDG relation among its 4 pillars).
-function _xkdgRemedyFits(gaps, pillars, qi, yun, sums) {
+// REMEDIES (Edu, session 33, final rule).
+//  A) MAIN remedy - two things at once:
+//     - in the dimension with the ISOLATED pillar it links that pillar, in the LANGUAGE the
+//       other pillars of that dimension already speak (Adding 5/10/15 or Hetu);
+//     - in the dimension where all pillars communicate it keeps the connection, speaking
+//       their same language, with at least one of them.
+//     e.g. Periods 8 | 6 9 9 (they speak Adding 15) and Elements 2 8 3 2 (Adding 10 / 5):
+//          a hexagram of Period 2 (8+2 = 10) and Element 2 (2+8 = 10, 2+3 = 5).
+//  B) FAMILY alternative - a hexagram of the family that the isolated pillar SHARES with
+//     another pillar (that family already links them) need not link the isolated dimension,
+//     but must keep the connection in the other dimension (same language).
+function _xkdgLang(vals) {
+    // relation kinds spoken among these values (pairs): 'add' (5/10/15), 'hetu'
+    const L = new Set();
+    for (let i = 0; i < vals.length; i++) for (let j = i + 1; j < vals.length; j++) {
+        if ([5, 10, 15].includes(vals[i] + vals[j])) L.add('add');
+        if (isHetuPair(vals[i], vals[j])) L.add('hetu');
+    }
+    if (!L.size) { L.add('add'); L.add('hetu'); }
+    return L;
+}
+function _xkdgSpeaks(lang, a, b) { return (lang.has('add') && [5, 10, 15].includes(a + b)) || (lang.has('hetu') && isHetuPair(a, b)); }
+// Returns 'main', 'family' or null for a candidate hexagram (qi, yun, families[]).
+function _xkdgRemedyKind(gaps, pillars, qi, yun, fams, isoFams) {
     const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars[k] && pillars[k].qi != null);
-    const talk = (a, b) => a != null && b != null && (isHetuPair(a, b) || sums.includes(a + b));
-    return ['qi', 'yun'].every(f => {
-        const v = f === 'qi' ? qi : yun, iso = gaps.dims[f].isolated.map(x => x.pillar);
-        const net = keys.filter(k => !iso.includes(k)).map(k => pillars[k][f]);
-        return net.some(n => talk(v, n));
+    const R = { qi: qi, yun: yun };
+    let gapOk = true, keepOk = true;
+    ['qi', 'yun'].forEach(f => {
+        const iso = gaps.dims[f].isolated;
+        if (iso.length) {
+            const net = keys.filter(k => !iso.some(x => x.pillar === k)).map(k => pillars[k][f]);
+            const lang = _xkdgLang(net);
+            if (!iso.every(x => _xkdgSpeaks(lang, R[f], x.value))) gapOk = false;
+        } else {
+            const all = keys.map(k => pillars[k][f]), lang = _xkdgLang(all);
+            if (!all.some(v => _xkdgSpeaks(lang, R[f], v))) keepOk = false;
+        }
     });
+    if (gapOk && keepOk) return 'main';
+    if (keepOk && (fams || []).some(f => isoFams.has(f))) return 'family';
+    return null;
 }
 function xkdgGapRemedies(gaps, days, pillars, startIso) {
     if (!gaps || !gaps.any) return null;
     pillars = pillars || gaps.pillars;
-    const res = { hexagrams: [], dates: [], rule: 'communicates with the network (Hetu or Adding) in both dimensions' };
+    const res = { hexagrams: [], dates: [], rule: 'main: links the isolated pillar in its dimension (same language as the others) AND keeps the connection in the other dimension; family: a hexagram of the shared family that keeps the connection in the other dimension' };
     const isoFams = new Set();
     // Only families PRESENT in the birth chart (Edu): shared by the isolated pillar with another pillar.
     Object.values(gaps.dims).forEach(d => d.isolated.forEach(x => {
@@ -943,12 +968,13 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
     const famOf = hex => { try { return (typeof getHexFamilies === 'function') ? (getHexFamilies(hex) || []) : []; } catch (e) { return []; } };
     try {
         if (typeof FS_SLOTS !== 'undefined') FS_SLOTS.forEach(s => {
-            if (!_xkdgRemedyFits(gaps, pillars, s.qi, s.yun, [10])) return;
-            const fam = famOf(s.hexNum).filter(f => isoFams.has(f));
+            const fl = famOf(s.hexNum), kind = _xkdgRemedyKind(gaps, pillars, s.qi, s.yun, fl, isoFams);
+            if (!kind) return;
+            const fam = fl.filter(f => isoFams.has(f));
             res.hexagrams.push({ hex: s.hexNum, qi: s.qi, yun: s.yun, from: Math.round(s.startDeg * 10) / 10, to: Math.round(s.endDeg * 10) / 10,
-                                 family: fam.length ? fam : undefined, zheng_shen: (typeof fsIsZhengShen === 'function') ? !!fsIsZhengShen(s.yun) : null });
+                                 kind: kind, family: fam.length ? fam : undefined, zheng_shen: (typeof fsIsZhengShen === 'function') ? !!fsIsZhengShen(s.yun) : null });
         });
-        res.hexagrams.sort((a, b) => (b.family ? 1 : 0) - (a.family ? 1 : 0) || a.from - b.from);
+        res.hexagrams.sort((a, b) => (a.kind === 'main' ? 0 : 1) - (b.kind === 'main' ? 0 : 1) || a.from - b.from);
     } catch (e) {}
     try {
         const n = days || 30, t0 = startIso ? new Date(startIso + 'T00:00:00') : new Date(); t0.setHours(0, 0, 0, 0);
@@ -960,8 +986,10 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
             const dG = ec0.getDayGan(), dZ = ec0.getDayZhi(), yG = ec0.getYearGan(), yZ = ec0.getYearZhi();
             const dx = getXkdgData(dG, dZ), yx = getXkdgData(yG, yZ);
             const via = [];
-            if (dx && _xkdgRemedyFits(gaps, pillars, dx.qi, dx.yun, [5, 10, 15])) via.push('day');
-            if (yx && _xkdgRemedyFits(gaps, pillars, yx.qi, yx.yun, [5, 10, 15])) via.push('year');
+            const kd = dx ? _xkdgRemedyKind(gaps, pillars, dx.qi, dx.yun, getJiaZiFamilies(dG, dZ), isoFams) : null;
+            const ky = yx ? _xkdgRemedyKind(gaps, pillars, yx.qi, yx.yun, getJiaZiFamilies(yG, yZ), isoFams) : null;
+            if (kd) via.push('day' + (kd === 'family' ? ' (family)' : ''));
+            if (ky) via.push('year' + (ky === 'family' ? ' (family)' : ''));
             if (!via.length) continue;
             // favourable date: hours whose 4 pillars carry an XKDG relation (true solar time)
             const hours = [], hourIdx = [];
@@ -1018,7 +1046,8 @@ function renderPersonView() {
             if (!d.isolated.length) return;
             const f = d.label === 'Elements' ? 'qi' : 'yun';
             const net = ['hour','day','month','year'].filter(k => g.pillars[k] && !d.isolated.some(x => x.pillar === k)).map(k => g.pillars[k][f]);
-            h += '<div style="margin-top:3px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated → remedy talks with ' + net.join(' / ') + '</div>';
+            const lg = _xkdgLang(net), lgTxt = [lg.has('add') ? 'Adding 5/10/15' : '', lg.has('hetu') ? 'Hetu' : ''].filter(Boolean).join(' or ');
+            h += '<div style="margin-top:3px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated → the remedy links ' + d.isolated.map(x => x.value).join(', ') + ' by ' + lgTxt + ' (the language of ' + net.join(' / ') + ')</div>';
         });
         const R = xkdgGapRemedies(g, days, pp.P, start) || { dates: [], hexagrams: [] };
         h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;">📅 Positive dates with the remedy (' + R.dates.length + ')</div>';
@@ -1030,17 +1059,22 @@ function renderPersonView() {
                + d.favourable_hours.map((hz, j) => '<button onclick="loadDateIntoMain(\'' + d.date + '\',' + d.hour_index[j] + ')" style="margin:2px 4px 0 0;padding:2px 8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;border-radius:10px;font-size:12px;cursor:pointer;">' + hz + ' ' + (typeof getTSTHourLabel === 'function' ? String(getTSTHourLabel(d.hour_index[j])).replace(/<[^>]*>/g, ' ').replace(/\(TST[^)]*\)/, '').replace(/✦/g, '').trim() : '') + '</button>').join('')
                + '</div>';
         });
-        h += '<div style="margin-top:8px;font-weight:bold;color:#4a148c;">🧭 Directions to activate (' + R.hexagrams.length + ')</div>';
-        h += '<div style="color:#666;font-size:11px;">★ = family present in the chart' + (R.families && R.families.length ? ' (' + R.families.join(', ') + ')' : '') + ' — the preferred alternative.</div>';
-        R.hexagrams.forEach(x => {
-            const c = (x.from + 2.8125) % 360;
-            h += '<div style="display:inline-block;margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;'
-               + (x.family ? 'background:#ede7f6;border:2px solid #7e57c2;font-weight:bold;' : 'background:#f5f5f5;border:1px solid #ccc;') + '">'
-               + (x.family ? '★ ' : '') + W8(c) + ' · ' + x.from + '–' + x.to + '° · hex ' + x.hex + ' · ' + (x.zheng_shen ? 'ZS' : 'LS') + '</div>';
-        });
+        const chip = (x, fam) => { const c = (x.from + 2.8125) % 360;
+            return '<div style="display:inline-block;margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;'
+               + (fam ? 'background:#ede7f6;border:2px solid #7e57c2;' : 'background:#f1f8e9;border:1px solid #9ccc65;') + '">'
+               + W8(c) + ' · ' + x.from + '–' + x.to + '° · hex ' + x.hex + ' (' + x.qi + '/' + x.yun + ') · ' + (x.zheng_shen ? 'ZS' : 'LS') + '</div>'; };
+        const mainH = R.hexagrams.filter(x => x.kind === 'main'), famH = R.hexagrams.filter(x => x.kind === 'family');
+        h += '<div style="margin-top:8px;font-weight:bold;color:#4a148c;">🧭 Directions to activate — remedy (' + mainH.length + ')</div>'
+           + '<div style="color:#666;font-size:11px;">Links the isolated pillar and keeps the connection in the other dimension.</div>'
+           + (mainH.length ? mainH.map(x => chip(x, false)).join('') : '<div style="color:#888;">none</div>');
+        if (R.families && R.families.length) {
+            h += '<div style="margin-top:8px;font-weight:bold;color:#4a148c;">★ Alternative — ' + R.families.join(', ') + ' family (' + famH.length + ')</div>'
+               + '<div style="color:#666;font-size:11px;">The family already links the isolated pillar; these keep the connection in the other dimension.</div>'
+               + (famH.length ? famH.map(x => chip(x, true)).join('') : '<div style="color:#888;">none</div>');
+        }
         h += '</div>';
     });
-    h += '<div style="color:#888;font-size:11px;margin-top:4px;">Range: FROM ' + start + ', ' + days + ' days. The remedy joins the pillars that communicate (Hetu or Adding — 10 for Feng Shui, 5/10/15 for dates) in both dimensions. Tap an hour to open it in the main chart.</div>';
+    h += '<div style="color:#888;font-size:11px;margin-top:4px;">Range: FROM ' + start + ', ' + days + ' days (remedy = links the isolated pillar in the language its dimension speaks, Adding 5/10/15 or Hetu, and keeps the connection in the other dimension). Tap an hour to open it in the main chart.</div>';
     pv.innerHTML = h;
 }
 
