@@ -1572,7 +1572,7 @@
         properties: {
           house: { type: 'string', enum: ['tuoro', 'vienna'], description: 'Which house/plug to program.' },
           mode: { type: 'string', enum: ['block', 'windows'], description: 'How the light is scheduled. "block" (DEFAULT, the long-standing behaviour) = ONE hour per day, light stays ON until 23:00, blocks can span several days. "windows" = the light is ON only for the two hours of EACH favourable hour of the day and is switched off in between; several windows a day are normal, and consecutive favourable hours are merged into one longer window. Use "windows" only when the user asks for it for that house.' },
-          days: { type: 'integer', description: 'How many days ahead to plan (default 7).' },
+          days: { type: 'integer', description: 'OMIT it (default): the plan runs until the EXACT start of the next solar month (next Jie), Edu\'s rule. Pass a number only if the user asks for a specific number of days.' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
           purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'], description: 'Optional. Plan ONLY on hours that also serve this purpose \u2014 use it for "program only Wealth activations for next week". Water is not a purpose: it is the MEANS by which a purpose is activated. Omit it and every scheduled day is annotated with the purposes it serves (also_good_for).' }
         },
@@ -6878,13 +6878,30 @@
     return dep;
   }
 
+  // Session 33 (Edu): the aquarium plan ends at the EXACT instant the next solar month
+  // begins (the next 节 Jie: absolute instant; lunar-javascript gives it in Beijing time).
+  function _nextJie(fromMs) {
+    try {
+      var s = Solar.fromDate(new Date(fromMs));
+      for (var i = 0; i < 3; i++) {
+        var j = s.getLunar().getNextJie(), so = j.getSolar();
+        var ms = Date.UTC(so.getYear(), so.getMonth() - 1, so.getDay(), so.getHour() - 8, so.getMinute(), so.getSecond());
+        if (ms > fromMs) return { ms: ms, name: j.getName() };
+        s = Solar.fromDate(new Date(ms + 3600000));
+      }
+    } catch (e) {}
+    return null;
+  }
+
   async function toolProgramAquariumLight(input) {
     input = input || {};
+    var _jie = (input.days == null) ? _nextJie(Date.now()) : null;   // default: until the new month
     var cfg = _shellyCfg();
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     var rh = _resolveShellyHouse(input.house);
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
     var days = parseInt(input.days, 10) || 7;
+    if (_jie) days = Math.max(1, Math.ceil((_jie.ms - new Date(todayIso() + 'T00:00:00').getTime()) / 86400000));
     var commit = (input.commit === true);
     // 'block' (default) keeps the historical behaviour; 'windows' lights only the two
     // hours of each favourable hour. Per-house, so one house can move without the other.
@@ -7148,6 +7165,14 @@
         }
       }
     });
+    // Session 33 (Edu): nothing lights after the month changes; the last block switches
+    // OFF at the exact instant of the new month.
+    if (_jie) {
+      _rows = _rows.filter(function (r) { return r.onTs < _jie.ms; })
+                   .map(function (r) { return { date: r.date, onTs: r.onTs, offTs: Math.min(r.offTs, _jie.ms) }; });
+      scheduled = scheduled.filter(function (s) { return s.onTs < _jie.ms; });
+      scheduled.forEach(function (s) { if (s.offTs > _jie.ms) { s.offTs = _jie.ms; s.off_local = new Date(_jie.ms).toString(); s.off_note = 'OFF at the start of the new month (' + _jie.name + ')'; } });
+    }
     var body = { days: _rows };
     var workerResp = null, workerErr = null, digestOut = null;
     if (commit) {
@@ -7184,6 +7209,8 @@
 
     return {
       scanner: 'aquarium_light_plan', house: rh.name, device: rh.cfg.device,
+      plan_ends: _jie ? { at_local: new Date(_jie.ms).toString(), solar_term: _jie.name,
+        note: 'The plan runs until the EXACT start of the next solar month (' + _jie.name + '): say so, with that date and time.' } : undefined,
       mode: commit ? 'committed' : 'preview',
       aquarium: { direction: aq.direction, water_star: aq.water_star },
       purpose_filter: wantPurpose || null,
