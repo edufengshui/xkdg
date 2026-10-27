@@ -8683,10 +8683,10 @@ function applyTierRestrictions(tier, maxDate) {
         // Set FROM date constraints
         const startInput = document.getElementById('scan-start');
         if (startInput) {
-            startInput.min = range.start;
+            // Session 33 (Edu): the past is open to every licence; only the future is capped.
+            startInput.removeAttribute('min');
             startInput.max = range.end;
             // Clamp current value
-            if (startInput.value < range.start) startInput.value = range.start;
             if (startInput.value > range.end)   startInput.value = range.end;
         }
     }
@@ -8694,7 +8694,7 @@ function applyTierRestrictions(tier, maxDate) {
     // Message-on-attempt + main date picker bounds — ONLY for an explicit cap.
     if (maxDate && range) {
         const dateInput = document.getElementById('date');
-        if (dateInput) { dateInput.min = range.start; dateInput.max = range.end; }
+        if (dateInput) { dateInput.removeAttribute('min'); dateInput.max = range.end; }
         _xkdgAttachCapGuards();
     }
 }
@@ -8730,7 +8730,6 @@ function _xkdgAttachCapGuards() {
             const r = window._licenseRange;
             if (!r || !window._licenseMaxDate || !el.value) return;
             if (el.value > r.end) { el.value = r.end; _xkdgCapMessage(); }
-            else if (el.value < r.start) { el.value = r.start; }
         });
     }
     guard(document.getElementById('date'));
@@ -8740,7 +8739,7 @@ function _xkdgAttachCapGuards() {
 function isDateAllowed(isoDate) {
     const range = window._licenseRange;
     if (!range) return true; // unlimited
-    return isoDate >= range.start && isoDate <= range.end;
+    return isoDate <= range.end;   // past always allowed (session 33)
 }
 
 function showLicenseOverlay() {
