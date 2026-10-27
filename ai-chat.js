@@ -3607,7 +3607,7 @@
   function branchStartWall(d, lon, utc, dstOn) {
     try {
       if (lon == null || isNaN(lon)) return null;
-      var off = (lon - utc * 15) * 4 - (dstOn ? 60 : 0);            // minutes
+      var off = (lon - utc * 15) * 4 - (dstOn ? 60 : 0) + _eot(d);   // minutes, TRUE solar (session 33)
       var solar = new Date(d.getTime() + off * 60000);
       var h = solar.getHours();
       var startH = (h < 1) ? 23 : (h - ((h - 1) % 2));              // largest odd hour <= h (Zi wraps at 23)
@@ -3623,8 +3623,10 @@
   // as the BEST/LIST date pages (offsetMin = (lon - utc*15)*4 - dst*60).
   // hourHan may be a full ganzhi ("戊子") — the branch is the last CJK char.
   // Returns 'HH:MM–HH:MM' or null if longitude/UTC are not set.
+  // Equation of Time (minutes) of a date - true solar time everywhere (Edu, session 33).
+  function _eot(d) { try { var x = (d instanceof Date) ? d : new Date(String(d).length === 10 ? d + 'T12:00:00' : d); return (window.XKDGSolarTime && XKDGSolarTime.equationOfTimeMinutes) ? XKDGSolarTime.equationOfTimeMinutes(x) : 0; } catch (e) { return 0; } }
   var _BRANCH_SOLAR_START = { '子':23,'丑':1,'寅':3,'卯':5,'辰':7,'巳':9,'午':11,'未':13,'申':15,'酉':17,'戌':19,'亥':21 };
-  function solarBranchToClock(hourHan) {
+  function solarBranchToClock(hourHan, isoDate) {
     try {
       if (!hourHan) return null;
       var chars = String(hourHan).replace(/[^\u4e00-\u9fff]/g, ''), br = null;
@@ -3636,7 +3638,7 @@
       if (isNaN(lon) || isNaN(utc)) return null;
       var dstOn = false;
       try { dstOn = (typeof _dstOn !== 'undefined') ? _dstOn : !!window._dstOn; } catch (e) {}
-      var offsetMin = (lon - utc * 15) * 4 - (dstOn ? 60 : 0);          // solar = clock + offsetMin
+      var offsetMin = (lon - utc * 15) * 4 - (dstOn ? 60 : 0) + _eot(isoDate || new Date());   // TRUE solar (session 33)
       var startMin = (((_BRANCH_SOLAR_START[br] * 60 - offsetMin) % 1440) + 1440) % 1440;
       var endMin = (startMin + 120) % 1440;
       var fmt = function (m) { m = Math.round(((m % 1440) + 1440) % 1440); var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; };
@@ -5945,7 +5947,7 @@
     return {
       scanner: 'qmdj_water', direction: dir, start: start, days: days, count: results.length,
       results: results.slice(0, 15).map(function (r) {
-        var clk = solarBranchToClock(r.hourHan);
+        var clk = solarBranchToClock(r.hourHan, r.date);
         return {
           date: r.date, weekday: r.weekday,
           hour: clk || r.hourTime, civil_hour: r.hourTime, ganzhi: r.hourHan,
@@ -6000,7 +6002,7 @@
     // (3) Merge by date — every hour gets BOTH scores + combined
     var merged = qres.map(function (r) {
       var xs = (xkdgByDate[r.date] != null) ? xkdgByDate[r.date] : null;
-      var clk = solarBranchToClock(r.hourHan);
+      var clk = solarBranchToClock(r.hourHan, r.date);
       return {
         date: r.date, weekday: r.weekday,
         hour: clk || r.hourTime, ganzhi: r.hourHan,
@@ -6180,7 +6182,7 @@
       if (m.hlabel) _hits = _hits.concat([m.hlabel]);
       return {
         date: m.date, branch: m.branch,
-        hour: solarBranchToClock(m.branch) || m.branch,
+        hour: solarBranchToClock(m.branch, m.date) || m.branch,
         tier: tier,
         person_connected: connected,
         xkdg_score: m.x, xkdg_relation: m.xWhy,
@@ -6354,7 +6356,7 @@
       res.forEach(function (r) {
         var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
         var k = r.date + '|' + br + '|' + (r.dir || dir || '?');
-        if (!map[k]) map[k] = { date: r.date, branch: br, hour: solarBranchToClock(br) || br,
+        if (!map[k]) map[k] = { date: r.date, branch: br, hour: solarBranchToClock(br, r.date) || br,
                                 dir: r.dir || dir || null, purposes: [], score: 0, hits: [] };
         var m = map[k];
         if (m.purposes.map(function (p) { return p.purpose; }).indexOf(pk) < 0)
@@ -6432,7 +6434,7 @@
       res.forEach(function (r) {
         var br = _branchOfHan(r.hourHan); if (!br || !r.date) return;
         var k = r.date + '|' + br + '|' + (r.dir || dir || '?');
-        if (!map[k]) map[k] = { date: r.date, branch: br, hour: solarBranchToClock(br) || br,
+        if (!map[k]) map[k] = { date: r.date, branch: br, hour: solarBranchToClock(br, r.date) || br,
                                 dir: r.dir || dir || null, purposes: [], score: 0, hits: [] };
         var m = map[k];
         if (m.purposes.map(function (p) { return p.purpose; }).indexOf(pk) < 0)
@@ -6521,7 +6523,7 @@
   function _solarToEpoch(iso, solarMin, lon, utc) {
     var p = _dateParts(iso); if (!p) return NaN;
     var dst = false; try { dst = dstActiveOn(new Date(iso + 'T12:00:00')); } catch (e) {}
-    var offsetMin = (lon - utc * 15) * 4 - (dst ? 60 : 0);          // solar = clock + offsetMin
+    var offsetMin = (lon - utc * 15) * 4 - (dst ? 60 : 0) + _eot(iso);   // solar = clock + offsetMin, TRUE solar (session 33)
     var civilClockMin = solarMin - offsetMin;                       // wall-clock minutes past civil midnight
     var base = Date.UTC(p.y, p.mo - 1, p.d, 0, 0, 0) - (utc + (dst ? 1 : 0)) * 3600000;
     return base + Math.round(civilClockMin * 60000);
@@ -7440,7 +7442,7 @@
       scanner: 'qimen_for_flying_stars', star: type + ' ' + num,
       target_palaces: r.palaces, preset: r.preset, count: r.count,
       results: (r.results || []).slice(0, 15).map(function (x) {
-        var clk = solarBranchToClock(x.hourHan);
+        var clk = solarBranchToClock(x.hourHan, x.date);
         return {
           date: x.date, weekday: x.weekday,
           hour: clk || x.hourTime, civil_hour: x.hourTime, ganzhi: x.hourHan,
