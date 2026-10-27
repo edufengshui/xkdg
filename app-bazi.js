@@ -866,6 +866,87 @@ if (typeof window !== 'undefined') window.xkdgHourFourPillarBond = xkdgHourFourP
 // Session 33 (Edu: true solar time everywhere): Equation of Time (minutes) of a date,
 // to add to the longitude offset wherever a clock time is turned into solar time.
 function _eotAt(dateLike){ try { const d = (dateLike instanceof Date) ? dateLike : new Date(String(dateLike).length === 10 ? dateLike + 'T12:00:00' : dateLike); return (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.equationOfTimeMinutes(d) : 0; } catch (e) { return 0; } }
+// ── PERSON COMMUNICATION GAPS + REMEDIES (session 33, Edu) ─────────────────
+// In each dimension (Elements = qi, Periods = yun) a pillar is ISOLATED when it has no
+// Hetu, no Adding (5/10/15) and no equal value with ANY other pillar. Remedy = a BRIDGE
+// value that communicates with the isolated pillar(s) — preferring values that also talk
+// to the others — applied either as a DATE to choose or a Feng Shui HEXAGRAM to activate.
+function _xkdgTalk(a, b) { return a != null && b != null && (isHetuPair(a, b) || [5, 10, 15].includes(a + b) || a === b); }
+function xkdgPersonGaps(pillars) {
+    const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars && pillars[k] && pillars[k].qi != null);
+    if (keys.length < 2) return null;
+    const out = { dims: {} };
+    [['qi', 'Elements'], ['yun', 'Periods']].forEach(([f, label]) => {
+        const iso = keys.filter(k => !keys.some(o => o !== k && _xkdgTalk(pillars[k][f], pillars[o][f])));
+        const dim = { label, isolated: iso.map(k => ({ pillar: k, value: pillars[k][f] })), bridges: [] };
+        if (iso.length) {
+            for (let v = 1; v <= 9; v++) {
+                if (!iso.every(k => _xkdgTalk(v, pillars[k][f]))) continue;
+                const talks = keys.filter(k => _xkdgTalk(v, pillars[k][f]));
+                dim.bridges.push({ value: v, talks_with: talks, all: talks.length === keys.length });
+            }
+            dim.bridges.sort((a, b) => b.talks_with.length - a.talks_with.length || a.value - b.value);
+        }
+        out.dims[f] = dim;
+    });
+    out.any = Object.values(out.dims).some(d => d.isolated.length);
+    return out;
+}
+// Remedies for a gaps result: Feng Shui hexagrams (luopan sectors) and the next dates whose
+// DAY pillar carries a bridge value. days: how far to look for dates (default 30).
+function xkdgGapRemedies(gaps, days) {
+    if (!gaps || !gaps.any) return null;
+    const res = { hexagrams: [], dates: [] };
+    const want = {};   // dim -> Set of bridge values (best ones: those talking to most pillars)
+    Object.keys(gaps.dims).forEach(f => {
+        const b = gaps.dims[f].bridges; if (!b.length) return;
+        const top = b[0].talks_with.length;
+        want[f] = new Set(b.filter(x => x.talks_with.length === top).map(x => x.value));
+    });
+    try {
+        if (typeof FS_SLOTS !== 'undefined') FS_SLOTS.forEach(s => {
+            const hit = Object.keys(want).filter(f => want[f].has(s[f]));
+            if (!hit.length) return;
+            res.hexagrams.push({ hex: s.hexNum, qi: s.qi, yun: s.yun, from: Math.round(s.startDeg * 10) / 10, to: Math.round(s.endDeg * 10) / 10,
+                                 dims: hit, zheng_shen: (typeof fsIsZhengShen === 'function') ? !!fsIsZhengShen(s.yun) : null });
+        });
+        res.hexagrams.sort((a, b) => b.dims.length - a.dims.length || a.from - b.from);
+    } catch (e) {}
+    try {
+        const n = days || 30, t0 = new Date(); t0.setHours(12, 0, 0, 0);
+        for (let i = 0; i < n; i++) {
+            const d = new Date(t0.getTime() + i * 86400000);
+            const gz = Solar.fromYmd(d.getFullYear(), d.getMonth() + 1, d.getDate()).getLunar().getDayInGanZhi();
+            const x = getXkdgData(gz[0], gz[1]); if (!x) continue;
+            const hit = Object.keys(want).filter(f => want[f].has(x[f]));
+            if (!hit.length) continue;
+            res.dates.push({ date: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'),
+                             day: gz, hex: x.hex, qi: x.qi, yun: x.yun, dims: hit });
+        }
+        res.dates.sort((a, b) => b.dims.length - a.dims.length || (a.date < b.date ? -1 : 1));
+    } catch (e) {}
+    return res;
+}
+function xkdgGapsHtml(gaps) {
+    if (!gaps) return '';
+    const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
+    if (!gaps.any) return '<div style="color:#2e7d32;font-size:12px;margin-top:6px;">✓ All pillars communicate (Elements and Periods).</div>';
+    let h = '<div style="border:1px solid #ffcc80;background:#fff8e1;border-radius:8px;padding:6px 9px;margin-top:6px;font-size:12px;">'
+          + '<b>🔧 Missing communication</b>';
+    Object.values(gaps.dims).forEach(d => {
+        if (!d.isolated.length) { h += '<div style="color:#2e7d32;">' + d.label + ': all pillars communicate</div>'; return; }
+        h += '<div style="margin-top:3px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated'
+           + (d.bridges.length ? ' → bridge ' + d.bridges.map(b => '<b>' + b.value + '</b>' + (b.all ? '★' : '')).join(', ') : ' → no single bridge value') + '</div>';
+    });
+    const R = xkdgGapRemedies(gaps, 30);
+    if (R) {
+        if (R.dates.length) h += '<div style="margin-top:4px;">📅 <b>Dates</b> (day pillar): ' + R.dates.slice(0, 6).map(d => d.date.slice(8) + '/' + d.date.slice(5, 7) + ' ' + d.day).join(' · ') + '</div>';
+        if (R.hexagrams.length) h += '<div style="margin-top:2px;">🧭 <b>Feng Shui hexagrams</b>: ' + R.hexagrams.slice(0, 8).map(x => 'hex ' + x.hex + ' ' + x.from + '–' + x.to + '°' + (x.zheng_shen ? ' ZS' : ' LS')).join(' · ') + '</div>';
+    }
+    h += '<div style="color:#888;font-size:10px;margin-top:3px;">★ = the bridge also talks to every other pillar. Communication = Hetu, Adding 5/10/15 or the same number.</div></div>';
+    return h;
+}
+
 // ── BLOOD LINK DATE vs PERSON (session 33, Edu) ─────────────────────────
 // Best: the person (birth YEAR) belongs to the date's Blood Link family. Otherwise the
 // person's birth YEAR or DAY must communicate with the date's YEAR or DAY (Hetu or
@@ -2131,6 +2212,7 @@ function togglePersonStars(person) {
     calculatePerson(person === 'a' ? 'A' : 'B');
 }
 let _currentDayAnalysis = null;
+var _currentDayXkdg = null;   // was an implicit global (ReferenceError before the first calculation)
 let _scanResults = [];
 let _personAYear = null, _personAStem = null, _personABranch = null;
 let _personADay  = null, _personADayStem = null, _personADayBranch = null;
@@ -3006,6 +3088,16 @@ function calculatePerson(person) {
     const analysisItemsId     = isB ? 'person-analysis-items-b' : 'person-analysis-items-a';
     const analysisSection = document.getElementById(analysisContainerId);
     const analysisItems   = document.getElementById(analysisItemsId);
+    // Session 33 (Edu): where the person's pillars do not communicate, and the remedies.
+    try {
+        const gapId = isB ? 'person-gaps-b' : 'person-gaps-a';
+        let gapEl = document.getElementById(gapId);
+        if (!gapEl && analysisSection && analysisSection.parentNode) {
+            gapEl = document.createElement('div'); gapEl.id = gapId;
+            analysisSection.parentNode.insertBefore(gapEl, analysisSection.nextSibling);
+        }
+        if (gapEl) gapEl.innerHTML = xkdgGapsHtml(xkdgPersonGaps(xkdgData));
+    } catch (eGap) {}
     if (personAnalysis && personAnalysis.length > 0) {
         analysisSection.style.display = 'flex';
         analysisItems.innerHTML = personAnalysis.map(item => {

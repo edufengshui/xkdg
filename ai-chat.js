@@ -709,13 +709,13 @@
              'find_lodging','find_lucky_charge_day','scan_flights','open_direction_calculator',
              'find_purpose_direction','plan_directional_detour','find_qimen_hours_for_star','diagnose_maps_export',
              'find_good_dates','find_qimen_days'],   // session 26: the flight/travel DATE rules live in this area
-    fengshui: ['find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
+    fengshui: ['person_xkdg_gaps','find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
                'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement','find_dlr_general_match',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days'],
-    dates: ['find_good_dates','explain_purpose','open_scan_result','show_verify_button',
+    dates: ['person_xkdg_gaps','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
   };
@@ -846,6 +846,17 @@
           include_night: { type: 'boolean', description: 'Keep night hours 23:00-05:00 (Zi/Chou/Yin). Default false: nobody does an activation at 2am, so night hours are dropped unless the user explicitly asks ("include the night hours", "anche di notte").' }
         }
       }
+    },
+    {
+      name: 'person_xkdg_gaps',
+      description: 'XKDG analysis of a PERSON\'s own birth chart (Edu, session 33): where the 4 pillars do NOT communicate ' +
+        '(per dimension: Elements = qi, Periods = yun; a pillar is isolated when it has no Hetu, no Adding 5/10/15 and no equal ' +
+        'value with any other pillar), the BRIDGE values that would connect it, and the two REMEDIES: a DATE to choose (next days ' +
+        'whose day pillar carries a bridge value) or a Feng Shui HEXAGRAM to activate (luopan sectors in degrees, ZS/LS). Use it ' +
+        'when the user asks what is missing in their chart, where communication fails, or for remedies.',
+      input_schema: { type: 'object', properties: {
+        person: { type: 'string', enum: ['A', 'B'], description: 'Loaded person (default A).' },
+        days: { type: 'integer', description: 'How many days ahead to look for remedy dates (default 30).' } } }
     },
     {
       name: 'find_good_dates',
@@ -3252,6 +3263,7 @@
   try { window.XKDGAITools = { exec: function (n, i) { return execTool(n, i); } }; } catch (e) {}
   function execTool(name, input) {
     try {
+      if (name === 'person_xkdg_gaps') return toolPersonGaps(input || {});
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
       if (name === 'add_calendar_reminder') return toolAddCalendarReminder(input || {});
@@ -5475,6 +5487,23 @@
           'EXPANDED-VIEW details: include them when the user wants depth, otherwise keep the main answer light.'
       };
     } catch (e) { return { error: 'Direction analysis failed: ' + ((e && e.message) || e) }; }
+  }
+
+  function toolPersonGaps(input) {
+    try {
+      var B = String(input.person || 'A').toUpperCase() === 'B';
+      var P = B ? (typeof _personBPillars !== 'undefined' ? _personBPillars : null) : (typeof _personAPillars !== 'undefined' ? _personAPillars : null);
+      if (!P || !P.year) return { error: 'Person ' + (B ? 'B' : 'A') + ' is not loaded (load the person and press CALCULATE).' };
+      if (typeof xkdgPersonGaps !== 'function') return { error: 'Gap analysis not available.' };
+      var g = xkdgPersonGaps(P), R = xkdgGapRemedies(g, +input.days || 30);
+      var name = ((document.getElementById(B ? 'person-name-b' : 'person-name') || {}).value || '').trim() || null;
+      return { person: name || (B ? 'B' : 'A'),
+        pillars: ['hour', 'day', 'month', 'year'].map(function (k) { return { pillar: k, hex: P[k] && P[k].hex, qi: P[k] && P[k].qi, yun: P[k] && P[k].yun }; }),
+        gaps: g, remedies: R,
+        instructions: 'Present in Chinese order Hour, Day, Month, Year. For each dimension say which pillar is isolated and the bridge '
+          + 'values (★ all = talks to every pillar). Then the two remedies: up to 6 DATES (day pillar) and up to 8 HEXAGRAMS with their '
+          + 'luopan degrees (ZS / LS). Never invent values; if gaps.any is false say that every pillar already communicates.' };
+    } catch (e) { return { error: 'Gap analysis failed: ' + ((e && e.message) || e) }; }
   }
 
   function toolGetTripItinerary() {
