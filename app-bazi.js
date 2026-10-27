@@ -992,9 +992,7 @@ function xkdgGapsHtml(gaps) {
     let h = '<div style="border:1px solid #ffcc80;background:#fff8e1;border-radius:8px;padding:6px 9px;margin-top:6px;font-size:12px;">'
           + '<a href="guides/person-remedies.html" target="_blank" title="Guide" style="float:right;text-decoration:none;font-size:16px;margin-left:6px;">📖</a>'
           + '<b>🔧 Missing communication</b> — ' + where + ' isolated.'
-          + '<div style="margin-top:4px;">For the remedies of Heaven and Earth (dates and Feng Shui) tap '
-          + '<button onclick="setMode(\'person\');try{document.getElementById(\'mode-person\').scrollIntoView({behavior:\'smooth\',block:\'center\'})}catch(e){}" '
-          + 'style="padding:2px 9px;border-radius:10px;border:1px solid #1565c0;background:#e3f2fd;color:#0d47a1;font-weight:bold;cursor:pointer;">👤 PERSON</button></div></div>';
+          + '<div style="margin-top:4px;">For the remedies of Heaven and Earth (dates and Feng Shui) open the <b>👤 PERSON</b> tab.</div></div>';
     return h;
 }
 
