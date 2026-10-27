@@ -894,7 +894,17 @@ function xkdgPersonGaps(pillars) {
     // A full Blood Link (all four pillars in one family) IS communication among all of them:
     // no pillar is isolated, whatever the numbers say.
     try {
-        const bl = (analyzeXkdg(pillars).items || []).filter(i => i.tag === 'family').map(i => i.text);
+        const its = analyzeXkdg(pillars).items || [];
+        const bl = its.filter(i => i.tag === 'family').map(i => i.text);
+        // Two-Family Bond counts too (Edu), but only when the two families share NO child.
+        its.filter(i => i.tag === 'family2' && i.families && i.families.length === 2).forEach(i => {
+            const [fa, fb] = i.families;
+            const shared = Object.keys(JIAZI_FAMILY_DATA).some(jz => {
+                const es = JIAZI_FAMILY_DATA[jz], kid = r => r === 'son' || r === 'daughter';
+                return es.some(e => e.family === fa && kid(e.role)) && es.some(e => e.family === fb && kid(e.role));
+            });
+            if (!shared) bl.push('Two-Family Bond ' + fa + ' + ' + fb);
+        });
         if (bl.length) { out.bloodLink = bl; out.any = false; Object.values(out.dims).forEach(d => { d.isolated = []; d.bridges = []; }); }
     } catch (e) {}
     return out;
@@ -1448,7 +1458,7 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
     try {
         if (!allSameFamily){
             var _tfb = checkTwoFamilyBond();
-            if (_tfb) items.push({ text: 'Two-Family Bond', tag: 'family2', tfbDouble: !!_tfb.double });
+            if (_tfb) items.push({ text: 'Two-Family Bond', tag: 'family2', tfbDouble: !!_tfb.double, families: [_tfb.f1, _tfb.f2] });
         }
     } catch(e){ /* additive: never break analysis */ }
 
