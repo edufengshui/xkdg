@@ -910,13 +910,18 @@ function _xkdgRemedyFits(gaps, pillars, qi, yun, sums) {
         return net.some(n => talk(v, n));
     });
 }
-function xkdgGapRemedies(gaps, days, pillars) {
+function xkdgGapRemedies(gaps, days, pillars, startIso) {
     if (!gaps || !gaps.any) return null;
     pillars = pillars || gaps.pillars;
     const res = { hexagrams: [], dates: [], rule: 'communicates with the network (Hetu or Adding) in both dimensions' };
     const isoFams = new Set();
+    // Only families PRESENT in the birth chart (Edu): shared by the isolated pillar with another pillar.
     Object.values(gaps.dims).forEach(d => d.isolated.forEach(x => {
-        const p = pillars[x.pillar]; if (p) getJiaZiFamilies(p.stem, p.branch).forEach(f => isoFams.add(f));
+        const p = pillars[x.pillar]; if (!p) return;
+        getJiaZiFamilies(p.stem, p.branch).forEach(f => {
+            const shared = ['hour', 'day', 'month', 'year'].some(k => k !== x.pillar && pillars[k] && getJiaZiFamilies(pillars[k].stem, pillars[k].branch).includes(f));
+            if (shared) isoFams.add(f);
+        });
     }));
     res.families = [...isoFams];
     const famOf = hex => { try { return (typeof getHexFamilies === 'function') ? (getHexFamilies(hex) || []) : []; } catch (e) { return []; } };
@@ -930,7 +935,7 @@ function xkdgGapRemedies(gaps, days, pillars) {
         res.hexagrams.sort((a, b) => (b.family ? 1 : 0) - (a.family ? 1 : 0) || a.from - b.from);
     } catch (e) {}
     try {
-        const n = days || 30, t0 = new Date(); t0.setHours(0, 0, 0, 0);
+        const n = days || 30, t0 = startIso ? new Date(startIso + 'T00:00:00') : new Date(); t0.setHours(0, 0, 0, 0);
         const lon = parseFloat((document.getElementById('longitude') || {}).value), utc = parseFloat((document.getElementById('utc-offset') || {}).value);
         for (let i = 0; i < n; i++) {
             const d = new Date(t0.getTime() + i * 86400000);
@@ -943,7 +948,7 @@ function xkdgGapRemedies(gaps, days, pillars) {
             if (yx && _xkdgRemedyFits(gaps, pillars, yx.qi, yx.yun, [5, 10, 15])) via.push('year');
             if (!via.length) continue;
             // favourable date: hours whose 4 pillars carry an XKDG relation (true solar time)
-            const hours = [];
+            const hours = [], hourIdx = [];
             for (let h = 0; h < 12; h++) {
                 const civ = new Date(d.getTime() + (HOUR_STARTS[h] * 60 + 60) * 60000 - (h === 0 ? 86400000 : 0));
                 let off = 0;
@@ -951,11 +956,11 @@ function xkdgGapRemedies(gaps, days, pillars) {
                 const ec = Solar.fromDate(new Date(civ.getTime() + off * 60000)).getLunar().getEightChar();
                 const P = buildResolvedPillars(ec.getYearGan(), ec.getYearZhi(), ec.getMonthGan(), ec.getMonthZhi(), dG, dZ, ec.getTimeGan(), ec.getTimeZhi());
                 const it = analyzeXkdg(P).items || [];
-                if (it.some(x => x.tag === 'blue' || x.tag === 'family' || x.tag === 'family2')) hours.push(ec.getTimeGan() + ec.getTimeZhi());
+                if (it.some(x => x.tag === 'blue' || x.tag === 'family' || x.tag === 'family2') && !it.some(x => x.tag === 'family-conflict')) { hours.push(ec.getTimeGan() + ec.getTimeZhi()); hourIdx.push(h); }
             }
             if (!hours.length) continue;
             res.dates.push({ date: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'),
-                             day: dG + dZ, year: yG + yZ, via: via, favourable_hours: hours });
+                             day: dG + dZ, year: yG + yZ, via: via, favourable_hours: hours, hour_index: hourIdx });
         }
     } catch (e) {}
     return res;
@@ -979,6 +984,54 @@ function xkdgGapsHtml(gaps) {
     }
     h += '<div style="color:#888;font-size:10px;margin-top:3px;">The remedy joins the pillars that communicate (Hetu or Adding: 10 for Feng Shui, 5/10/15 for dates) in both dimensions. ★ = same family as the isolated pillar' + (R && R.families && R.families.length ? ' (' + R.families.join(', ') + ')' : '') + '.</div></div>';
     return h;
+}
+
+// ── 👤 PERSON tab (session 33, Edu): all the positive dates and directions that act as the
+// REMEDY for the loaded person(s)' missing communication, over the FROM / DAYS range.
+function renderPersonView() {
+    const pv = document.getElementById('person-view'); if (!pv) return;
+    const people = [];
+    if (typeof _personAPillars !== 'undefined' && _personAPillars && _personAPillars.year) people.push({ who: 'A', name: (document.getElementById('person-name') || {}).value || 'Person A', P: _personAPillars });
+    if (typeof _personBPillars !== 'undefined' && _personBPillars && _personBPillars.year) people.push({ who: 'B', name: (document.getElementById('person-name-b') || {}).value || 'Person B', P: _personBPillars });
+    if (!people.length) { pv.innerHTML = '<div style="padding:10px;color:#555;">Load a person (Person A / B) and press CALCULATE: this page shows the dates and directions that remedy the missing communication of the chart.</div>'; return; }
+    const start = (document.getElementById('scan-start') || {}).value || new Date().toISOString().slice(0, 10);
+    const days = Math.min(Math.max(parseInt((document.getElementById('scan-days') || {}).value) || 30, 1), 366);
+    const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
+    const W8 = d => ['N','NE','E','SE','S','SW','W','NW'][Math.round(((d % 360) + 360) % 360 / 45) % 8];
+    let h = '';
+    people.forEach(pp => {
+        const g = xkdgPersonGaps(pp.P);
+        h += '<div style="border:1px solid #c5cae9;border-radius:10px;padding:8px 10px;margin:6px 0;background:#fafbff;">'
+           + '<div style="font-weight:bold;color:#283593;font-size:15px;">👤 ' + (pp.name || ('Person ' + pp.who)) + '</div>';
+        if (!g || !g.any) { h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate (Elements and Periods): no remedy needed.</div></div>'; return; }
+        Object.values(g.dims).forEach(d => {
+            if (!d.isolated.length) return;
+            const f = d.label === 'Elements' ? 'qi' : 'yun';
+            const net = ['hour','day','month','year'].filter(k => g.pillars[k] && !d.isolated.some(x => x.pillar === k)).map(k => g.pillars[k][f]);
+            h += '<div style="margin-top:3px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated → remedy talks with ' + net.join(' / ') + '</div>';
+        });
+        const R = xkdgGapRemedies(g, days, pp.P, start) || { dates: [], hexagrams: [] };
+        h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;">📅 Positive dates with the remedy (' + R.dates.length + ')</div>';
+        if (!R.dates.length) h += '<div style="color:#888;">None in this range — extend DAYS.</div>';
+        R.dates.forEach(d => {
+            const dl = new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+            h += '<div style="background:#e8f5e9;border-left:4px solid #2e7d32;border-radius:6px;padding:4px 8px;margin:4px 0;">'
+               + '<b>' + dl + '</b> · day ' + d.day + ' · year ' + d.year + ' <span style="color:#555;">(remedy in the ' + d.via.join(' + ') + ')</span><br>'
+               + d.favourable_hours.map((hz, j) => '<button onclick="loadDateIntoMain(\'' + d.date + '\',' + d.hour_index[j] + ')" style="margin:2px 4px 0 0;padding:2px 8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;border-radius:10px;font-size:12px;cursor:pointer;">' + hz + ' ' + (typeof getTSTHourLabel === 'function' ? String(getTSTHourLabel(d.hour_index[j])).replace(/<[^>]*>/g, ' ').replace(/\(TST[^)]*\)/, '').replace(/✦/g, '').trim() : '') + '</button>').join('')
+               + '</div>';
+        });
+        h += '<div style="margin-top:8px;font-weight:bold;color:#4a148c;">🧭 Directions to activate (' + R.hexagrams.length + ')</div>';
+        h += '<div style="color:#666;font-size:11px;">★ = family present in the chart' + (R.families && R.families.length ? ' (' + R.families.join(', ') + ')' : '') + ' — the preferred alternative.</div>';
+        R.hexagrams.forEach(x => {
+            const c = (x.from + 2.8125) % 360;
+            h += '<div style="display:inline-block;margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;'
+               + (x.family ? 'background:#ede7f6;border:2px solid #7e57c2;font-weight:bold;' : 'background:#f5f5f5;border:1px solid #ccc;') + '">'
+               + (x.family ? '★ ' : '') + W8(c) + ' · ' + x.from + '–' + x.to + '° · hex ' + x.hex + ' · ' + (x.zheng_shen ? 'ZS' : 'LS') + '</div>';
+        });
+        h += '</div>';
+    });
+    h += '<div style="color:#888;font-size:11px;margin-top:4px;">Range: FROM ' + start + ', ' + days + ' days. The remedy joins the pillars that communicate (Hetu or Adding — 10 for Feng Shui, 5/10/15 for dates) in both dimensions. Tap an hour to open it in the main chart.</div>';
+    pv.innerHTML = h;
 }
 
 // ── BLOOD LINK DATE vs PERSON (session 33, Edu) ─────────────────────────
@@ -4214,6 +4267,11 @@ function setMode(mode) {
     if (mCal)   mCal.style.background   = mode === 'cal'   ? '#1565c0' : '#555';
     if (mTable) mTable.style.background = mode === 'table' ? '#1565c0' : '#555';
     if (mFS)    mFS.style.background    = mode === 'fengshui' ? '#c9a84c' : '#8a6a1f';
+    const mPer = document.getElementById('mode-person');
+    if (mPer)   mPer.style.background   = mode === 'person' ? '#1565c0' : '#555';
+    const pv = document.getElementById('person-view');
+    if (pv) pv.style.display = mode === 'person' ? 'block' : 'none';
+    if (mode === 'person') { try { renderPersonView(); } catch (ePV) { if (pv) pv.innerHTML = '<div style="color:#b71c1c;">' + ePV.message + '</div>'; } }
     const sr = document.getElementById('scan-results');
     const mv = document.getElementById('month-view');
     const cv = document.getElementById('cal-view');
