@@ -455,7 +455,9 @@ function buildFengShuiView(){
         <button id="fs-mode-both" onclick="fsSetLuopanMode('both')" style="background:#aaa;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">⭐🚪 Both</button>
         <span style="width:1px;height:18px;background:#ddd;margin:0 2px;"></span>
         <button id="fs-mode-floorplan" onclick="fsToggleFloorplanView()" title="Show the saved floor plan in place of the luopan" style="background:#5d4037;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🏠 Floorplan</button>
+        <button id="fs-hexfilter-btn" onclick="fsToggleHexFilterPanel()" title="Show on the luopan only the hexagrams you select (multiple choice)" style="background:#fff;color:#6a1b9a;border:1px solid #6a1b9a;border-radius:4px;padding:6px 14px;font-size:11px;font-weight:bold;cursor:pointer;">🔍 Filter</button>
       </div>
+      <div id="fs-hexfilter-panel" style="display:none;background:#faf5ff;border:1px solid #ce93d8;border-radius:8px;padding:8px 10px;margin:-4px auto 10px;max-width:760px;font-size:12px;"></div>
 
       <div id="fs-canvas-wrap" style="position:relative;width:100%;aspect-ratio:1100/1130;max-width:760px;margin:0 auto 10px;">
         <canvas id="fs-canvas" width="1100" height="1130" style="width:100%;height:100%;"></canvas>
@@ -1021,6 +1023,122 @@ function fsSetLuopanMode(mode){
   fsRedraw();
 }
 
+// ── 🔍 Luopan hexagram filter (session 33, Edu) ─────────────────────────────
+// Multiple choice. Zheng Shen and Ling Shen are alternatives (either one); every
+// other chip must ALSO be true. Hexagrams that do not pass are faded on the luopan.
+var FS_HEXFILTERS = [
+  { k: 'zs',   label: '正 Zheng Shen',       tip: 'Zheng Shen hexagrams (facing / door / bed / desk)' },
+  { k: 'ls',   label: '零 Ling Shen',        tip: 'Ling Shen hexagrams (water)' },
+  { k: 'yy',   label: '☯ Pure Yin/Yang',     tip: 'Same Pure Yin / Pure Yang as the Facing set above (or as the Water, if only the Water is set)' },
+  { k: 'cure', label: '🌿 Cure',             tip: 'Remedy hexagrams (A main or B family) for the loaded Person A / B' },
+  { k: 'bl',   label: '🔗 Person family',    tip: 'Hexagrams of the same family (Blood Link) as the year pillar of Person A / B' },
+  { k: 'day',  label: '📅 Good today',       tip: 'Zheng Shen hexagrams that communicate with the day of the date in the main calendar' },
+  { k: 'wat',  label: '💧 Water for facing', tip: 'Ling Shen, within ±70° of the Facing, communicating with it' }
+];
+window._fsHexFilter = window._fsHexFilter || {};
+
+function fsToggleHexFilterPanel(){
+  var p = document.getElementById('fs-hexfilter-panel');
+  if (!p) return;
+  var open = p.style.display === 'none';
+  p.style.display = open ? 'block' : 'none';
+  if (open) _fsRenderHexFilterPanel();
+}
+function fsHexFilterToggle(k){
+  if (k === '_clear') window._fsHexFilter = {};
+  else window._fsHexFilter[k] = !window._fsHexFilter[k];
+  _fsRenderHexFilterPanel();
+  fsRedraw();
+}
+function _fsHexFilterActive(){ return Object.keys(window._fsHexFilter || {}).filter(function(k){ return window._fsHexFilter[k]; }); }
+
+// Remedy hexagrams for the loaded persons → { hexNum: 'A main' ... }
+function _fsCureHexMap(){
+  var out = {};
+  try {
+    if (typeof _xkdgCurePersons !== 'function') return out;
+    _xkdgCurePersons().forEach(function(p){
+      FS_SLOTS.forEach(function(sl){
+        var jz = (typeof _xkdgJzOfHex === 'function' ? _xkdgJzOfHex(sl.hexNum) : null) || {};
+        var kind = _xkdgRemedyKind(p.g, p.P, { qi: sl.qi, yun: sl.yun, hex: sl.hexNum, stem: jz.stem, branch: jz.branch }, p.fams);
+        if (kind) out[sl.hexNum] = (out[sl.hexNum] ? out[sl.hexNum] + ', ' : '') + p.who + (kind === 'main' ? ' ★' : ' family');
+      });
+    });
+  } catch (e) {}
+  return out;
+}
+function _fsPersonFamilies(){
+  var f = [];
+  try {
+    [typeof _personAPillars !== 'undefined' ? _personAPillars : null, typeof _personBPillars !== 'undefined' ? _personBPillars : null].forEach(function(P){
+      if (P && P.year && P.year.stem) getJiaZiFamilies(P.year.stem, P.year.branch).forEach(function(x){ if (f.indexOf(x) < 0) f.push(x); });
+    });
+  } catch (e) {}
+  return f;
+}
+
+// Evaluate the active filter: returns { active, pass:Set(idx), notes:[] }
+function fsHexFilterEval(){
+  var act = _fsHexFilterActive();
+  var res = { active: act.length > 0, pass: new Set(), notes: [] };
+  if (!res.active) return res;
+  var on = function(k){ return act.indexOf(k) >= 0; };
+  var fDeg = parseFloat((document.getElementById('fs-facing') || {}).value);
+  var wDeg = parseFloat((document.getElementById('fs-water') || {}).value);
+  var fSlot = isNaN(fDeg) ? null : fsSlotForDeg(fDeg), wSlot = isNaN(wDeg) ? null : fsSlotForDeg(wDeg);
+  var cure = on('cure') ? _fsCureHexMap() : {};
+  var fams = on('bl') ? _fsPersonFamilies() : [];
+  var valid = (on('day') || on('wat')) ? fsComputeValid() : null;
+  if (on('yy') && !fSlot && !wSlot) res.notes.push('☯ needs a Facing (or a Water) degree above.');
+  if (on('cure') && !Object.keys(cure).length) res.notes.push((typeof _personAYear !== 'undefined' && (_personAYear || _personBYear)) ? '🌿 the loaded person has no gap in communication — no cure needed.' : '🌿 load Person A or B first.');
+  if (on('bl') && !fams.length) res.notes.push('🔗 load Person A or B first.');
+  if (on('wat') && !fSlot) res.notes.push('💧 needs a Facing degree above.');
+  FS_SLOTS.forEach(function(sl){
+    if (on('zs') || on('ls')) {
+      var okZL = (on('zs') && fsIsZhengShen(sl.yun)) || (on('ls') && fsIsLingShen(sl.yun));
+      if (!okZL) return;
+    }
+    if (on('yy')) {
+      var yy = fSlot ? fsYinYangMatch(fSlot.startDeg + 2.8125, sl.centerDeg) : (wSlot ? fsYinYangMatch(sl.centerDeg, wSlot.centerDeg) : false);
+      if (!yy) return;
+    }
+    if (on('cure') && !cure[sl.hexNum]) return;
+    if (on('bl')) { var hf = getHexFamilies(sl.hexNum) || []; if (!hf.some(function(x){ return fams.indexOf(x) >= 0; })) return; }
+    if (on('day') && !(valid && valid.facings.has(sl.idx))) return;
+    if (on('wat') && !(valid && valid.waters.has(sl.idx))) return;
+    res.pass.add(sl.idx);
+  });
+  res.cure = cure;
+  return res;
+}
+
+function _fsRenderHexFilterPanel(){
+  var p = document.getElementById('fs-hexfilter-panel');
+  if (!p || p.style.display === 'none') return;
+  var act = _fsHexFilterActive();
+  var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+        + '<b style="color:#6a1b9a;">🔍 Show on the luopan only…</b>'
+        + '<span><button onclick="fsHexFilterToggle(\'_clear\')" style="background:#fff;color:#666;border:1px solid #ccc;border-radius:10px;padding:2px 9px;font-size:11px;cursor:pointer;">✕ Clear</button> '
+        + '<button onclick="fsToggleHexFilterPanel()" title="Close (the filter stays on)" style="background:#fff;color:#666;border:1px solid #ccc;border-radius:10px;padding:2px 9px;font-size:11px;cursor:pointer;">▲</button></span></div>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  FS_HEXFILTERS.forEach(function(f){
+    var a = act.indexOf(f.k) >= 0;
+    h += '<span onclick="fsHexFilterToggle(\'' + f.k + '\')" title="' + f.tip + '" style="cursor:pointer;user-select:none;padding:4px 10px;border-radius:14px;font-weight:bold;border:1px solid ' + (a ? '#6a1b9a' : '#ce93d8') + ';background:' + (a ? '#6a1b9a' : '#fff') + ';color:' + (a ? '#fff' : '#6a1b9a') + ';">' + f.label + '</span>';
+  });
+  h += '</div>';
+  var ev = fsHexFilterEval();
+  if (ev.active) {
+    var list = [];
+    FS_SLOTS.forEach(function(sl){ if (ev.pass.has(sl.idx)) list.push('<span title="' + sl.centerDeg.toFixed(1) + '°" style="white-space:nowrap;">' + sl.hexNum + ' <span style="color:#888;">' + sl.centerDeg.toFixed(1) + '°</span>' + (ev.cure && ev.cure[sl.hexNum] ? ' 🌿' : '') + '</span>'); });
+    h += '<div style="margin-top:6px;color:#333;"><b>' + ev.pass.size + '</b> hexagram' + (ev.pass.size === 1 ? '' : 's') + (list.length ? ': ' + list.join(' · ') : '') + '</div>';
+    if (ev.notes.length) h += '<div style="margin-top:4px;color:#c0392b;">' + ev.notes.join('<br>') + '</div>';
+    h += '<div style="margin-top:4px;color:#888;font-size:10px;">Zheng Shen + Ling Shen together = either one. Every other chip must also be true.</div>';
+  }
+  p.innerHTML = h;
+  var btn = document.getElementById('fs-hexfilter-btn');
+  if (btn) { btn.style.background = act.length ? '#6a1b9a' : '#fff'; btn.style.color = act.length ? '#fff' : '#6a1b9a'; btn.textContent = '🔍 Filter' + (act.length ? ' (' + act.length + ')' : ''); }
+}
+
 // ── Saved floor plan, shown IN PLACE OF the luopan ──────────────────────────
 // Toggle button (🏠 Floorplan) swaps the luopan canvas for the active floor's
 // saved floor-plan image. Any luopan-mode button or a house switch restores it.
@@ -1462,6 +1580,28 @@ function fsRedraw(){
     paintCell(wInput, ok ? 'rgba(0,255,200,0.85)' : 'rgba(255,30,30,0.85)');
   }
   } // end if (showXKDG)
+
+  // 🔍 Hexagram filter (session 33): fade every hexagram that does not pass, ring the ones that do.
+  try {
+    const _hf = fsHexFilterEval();
+    if (_hf.active) {
+      FS_SLOTS.forEach(s => { if (!_hf.pass.has(s.idx)) paintCell(s, 'rgba(255,255,255,0.82)'); });
+      ctx.save();
+      ctx.strokeStyle = '#6a1b9a'; ctx.lineWidth = 3;
+      FS_SLOTS.forEach(s => {
+        if (!_hf.pass.has(s.idx)) return;
+        const aS = _ang(s.startDeg), aE = _ang(s.endDeg);
+        ctx.beginPath(); ctx.arc(cx, cy, rHexOut, aS, aE); ctx.arc(cx, cy, rHexIn, aE, aS, true); ctx.closePath(); ctx.stroke();
+        if (_hf.cure && _hf.cure[s.hexNum]) {
+          const am = _ang(s.centerDeg), rr = rHexOut + 12;
+          ctx.font = Math.round(16 * _S) + 'px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('🌿', cx + Math.cos(am) * rr, cy + Math.sin(am) * rr);
+        }
+      });
+      ctx.restore();
+    }
+    _fsRenderHexFilterPanel();
+  } catch (eHF) {}
 
   // Cell boundaries
   ctx.save();
