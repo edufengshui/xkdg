@@ -186,8 +186,12 @@
       'missing or ambiguous, and ask only for the missing piece.\n' +
       '- For anything that finds dates/hours or runs a scan: CALL A TOOL. Never invent dates or scores yourself ' +
       '- only report what a tool returns.\n' +
-      '- Scans use whichever person(s) are loaded (A, B, or both); the user loads them by hand. If a tool says ' +
-      'no person is loaded, ask the user to load Person A or B first.\n' +
+      '- Scans use whichever person(s) are loaded (A, B, or both). The user may ask about ANYONE, also people not ' +
+      'saved: call set_person (saved name, or birth date + time if known) to load them yourself, then run the tool. ' +
+      'Ask only for the missing birth data. If no person is loaded and none is named, ask who the question is for.\n' +
+      '- FACINGS do not need a House Profile: when the user gives a degree (a door, a bed, a desk, a shop, any facing), ' +
+      'pass it straight to the tool (find_water_positions facing, find_water_dates door_facing, find_bed_dates sitting, ' +
+      'find_desk_dates facing). Use list_houses / get_house_setup only when the user refers to a SAVED house.\n' +
       '- Keep answers concise: summarise the top few results (date, time/ganzhi, score) and offer to open one. ' +
       'If a tool returns an error, relay it briefly and suggest the fix. Never pad answers with apologies, ' +
       'disclaimers, or filler ("I hope this helps", "Let me know if…"). State the facts, explain clearly, stop.\n' +
@@ -723,7 +727,7 @@
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
   // so from session 26 it travels with EVERY area, not only with 'dates'.
   var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars',
-                     'photo_sectors','photo_sectors_state','add_calendar_reminder'];
+                     'photo_sectors','photo_sectors_state','add_calendar_reminder','set_person'];
 
   var AREA_LABELS = { travel: '\uD83E\uDDED Travel & directions',
                       fengshui: '\uD83C\uDFE0 Feng Shui', dates: '\uD83D\uDCC5 Dates & divination',
@@ -846,6 +850,26 @@
           include_night: { type: 'boolean', description: 'Keep night hours 23:00-05:00 (Zi/Chou/Yin). Default false: nobody does an activation at 2am, so night hours are dropped unless the user explicitly asks ("include the night hours", "anche di notte").' }
         }
       }
+    },
+    {
+      name: 'set_person',
+      description: 'Load a PERSON into slot A or B so every scan / water / bed / desk tool uses them (Edu, session 35). ' +
+        'Works for ANYONE, saved or not: give name only to load a saved person; give birth_date (+ birth_time) for someone ' +
+        'NOT saved (nothing is saved, it only fills the panel and calculates); give year_pillar for a year-only person. ' +
+        'Use it whenever the user asks about a person who is not loaded ("for my friend born 1975-03-12 at 08:30...", ' +
+        '"for Anna") instead of asking them to load the person by hand. clear=true empties slot B. ' +
+        'Returns the calculated pillars (use them, never recompute).',
+      input_schema: { type: 'object', properties: {
+        slot: { type: 'string', enum: ['A', 'B'], description: 'Panel to fill (default A).' },
+        name: { type: 'string', description: 'Person name. Alone = load the saved person with that name.' },
+        birth_date: { type: 'string', description: 'Birth date YYYY-MM-DD (for a person not saved).' },
+        birth_time: { type: 'string', description: 'Birth time HH:MM 24h. Omit if unknown: then only Year/Month/Day are used.' },
+        year_pillar: { type: 'string', description: 'Year pillar gan-zhi in Han characters (e.g. "\u7532\u5b50") for a year-only person.' },
+        birth_utc: { type: 'number', description: 'Optional UTC offset (hours) of the birth place, standard time.' },
+        birth_lon: { type: 'number', description: 'Optional longitude of the birth place (east +), for true solar time.' },
+        birth_dst: { type: 'boolean', description: 'Optional: daylight saving time was in force at birth.' },
+        clear: { type: 'boolean', description: 'true = empty slot B (ignored for A).' }
+      }, additionalProperties: false }
     },
     {
       name: 'person_xkdg_gaps',
@@ -3263,6 +3287,7 @@
   try { window.XKDGAITools = { exec: function (n, i) { return execTool(n, i); } }; } catch (e) {}
   function execTool(name, input) {
     try {
+      if (name === 'set_person') return toolSetPerson(input || {});
       if (name === 'person_xkdg_gaps') return toolPersonGaps(input || {});
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
@@ -5489,6 +5514,60 @@
     } catch (e) { return { error: 'Direction analysis failed: ' + ((e && e.message) || e) }; }
   }
 
+  // Session 35 (Edu): the AI can work on people who are NOT saved / not loaded.
+  function toolSetPerson(input) {
+    try {
+      var B = String(input.slot || 'A').toUpperCase() === 'B', P = B ? 'B' : 'A';
+      if (input.clear) {
+        if (!B) return { error: 'Only slot B can be cleared.' };
+        if (typeof fsClearPersonB === 'function') fsClearPersonB();
+        return { ok: true, slot: 'B', cleared: true };
+      }
+      var $ = function (id) { return document.getElementById(id); };
+      var ids = B ? { name: 'person-name-b', date: 'person-date-b', time: 'person-time-b', depth: 'person-pillars-b', year: 'person-year-b' }
+                  : { name: 'person-name', date: 'person-date', time: 'person-time', depth: 'person-pillars-a', year: 'person-year-a' };
+      var nm = String(input.name || '').trim();
+      var hasData = !!(input.birth_date || input.year_pillar);
+      window._xkdgAdhocGeo = window._xkdgAdhocGeo || {};
+      delete window._xkdgAdhocGeo[P];
+      if (!hasData) {
+        if (!nm) return { error: 'Give a saved name, or the birth date (and time if known).' };
+        var arcs = [B ? 'xkdg_persons_b' : 'xkdg_persons_a', B ? 'xkdg_persons_a' : 'xkdg_persons_b'], found = null;
+        arcs.forEach(function (k) {
+          if (found) return;
+          var a = (typeof loadArchive === 'function') ? (loadArchive(k) || {}) : {};
+          Object.keys(a).forEach(function (n) { if (!found && n.toLowerCase() === nm.toLowerCase()) found = { key: k, name: n }; });
+        });
+        if (!found) return { error: 'No saved person called "' + nm + '". Ask for the birth date (and time) and call again with birth_date.' };
+        if (found.key === (B ? 'xkdg_persons_b' : 'xkdg_persons_a') && typeof loadPerson === 'function') loadPerson(P, found.name);
+        else if (typeof loadPersonFromDB === 'function') loadPersonFromDB(P, found.name);
+        else return { error: 'Cannot load saved persons on this page.' };
+      } else {
+        if (input.birth_date && !/^\d{4}-\d{2}-\d{2}$/.test(input.birth_date)) return { error: 'birth_date must be YYYY-MM-DD.' };
+        var hasTime = !!(input.birth_time && /^\d{1,2}:\d{2}$/.test(input.birth_time));
+        var depth = input.birth_date ? (hasTime ? 4 : 3) : 1;
+        if ($(ids.name)) $(ids.name).value = nm || (B ? 'Person B' : 'Person A');
+        if ($(ids.depth)) { $(ids.depth).value = String(depth); if (B && typeof onPersonBPillarsChange === 'function') onPersonBPillarsChange(); if (!B && typeof onPersonAPillarsChange === 'function') onPersonAPillarsChange(); }
+        if (depth === 1) { if ($(ids.year)) $(ids.year).value = String(input.year_pillar).trim(); }
+        else {
+          if ($(ids.date)) $(ids.date).value = input.birth_date;
+          if ($(ids.time)) $(ids.time).value = hasTime ? (input.birth_time.length === 4 ? '0' + input.birth_time : input.birth_time) : '12:00';
+        }
+        if (isFinite(parseFloat(input.birth_lon)) || isFinite(parseFloat(input.birth_utc))) {
+          window._xkdgAdhocGeo[P] = { name: $(ids.name) ? $(ids.name).value : nm,
+            lon: isFinite(parseFloat(input.birth_lon)) ? parseFloat(input.birth_lon) : null,
+            utc: isFinite(parseFloat(input.birth_utc)) ? parseFloat(input.birth_utc) : null, dst: !!input.birth_dst };
+        }
+        if (typeof calculateBazi === 'function') { try { calculateBazi(); } catch (e) {} }
+        if (typeof calculatePerson !== 'function') return { error: 'Person calculation not available.' };
+        calculatePerson(P);
+      }
+      var pp = _loadedPersonsPillars()[P];
+      if (!pp) return { error: 'The person could not be calculated (check the date / year pillar).' };
+      return { ok: true, slot: P, saved_person: !hasData, name: pp.name, pillars: pp.pillars, year_only: pp.year_only,
+               note: hasData ? 'Not saved: loaded only for this question. Every scan now uses this person.' : 'Saved person loaded.' };
+    } catch (e) { return { error: 'set_person failed: ' + (e && e.message || e) }; }
+  }
   function toolPersonGaps(input) {
     try {
       var B = String(input.person || 'A').toUpperCase() === 'B';
