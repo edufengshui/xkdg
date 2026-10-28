@@ -482,13 +482,12 @@ function buildFengShuiView(){
           style="position:absolute;bottom:8px;right:8px;z-index:31;background:#fff;
                  color:#4527a0;border:1px solid #4527a0;border-radius:6px;padding:8px 6px;font-size:15px;
                  font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:1;">\u2922</button>
-        <select id="fs-luopan-menu" onchange="fsLuopanMenuAct(this.value)" onfocus="fsLuopanMenuSync()"
+        <button type="button" id="fs-luopan-menu" onclick="fsLuopanMenuOpen(event)"
           title="Luopan views and overlays"
           style="position:absolute;top:8px;right:8px;z-index:31;background:#fff;color:#4527a0;
                  border:1px solid #4527a0;border-radius:6px;padding:6px 2px;font-size:16px;
                  font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);width:46px;
-                 min-width:46px;text-align:center;text-align-last:center;appearance:none;-webkit-appearance:none;">
-        </select>
+                 min-width:46px;text-align:center;line-height:1.2;">\u2630</button>
         <img id="fs-floorplan-view" alt="Saved floor plan" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;border-radius:8px;">
         <button id="fs-floorplan-back" onclick="_fsRestoreLuopanView()" title="Back to the luopan" style="display:none;position:absolute;top:8px;right:8px;z-index:6;background:#5d4037;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">↩ Luopan</button>
         <button id="fs-floorplan-del" onclick="fsRemoveActiveFloorplan()" title="Remove this floor plan" style="display:none;position:absolute;top:8px;left:8px;z-index:6;background:#c62828;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:bold;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);">🗑 Remove plan</button>
@@ -862,6 +861,7 @@ function _fsFacingOptionsHTML(){
 function fsPickFacingSource(i){
   try {
     var it = (window._fsFacingList || [])[i]; if (!it) return;
+    window._fsFacingPick = it.label;
     var fi = document.getElementById('fs-facing'), wi = document.getElementById('fs-water');
     if (fi) fi.value = (+it.facing.toFixed(1));
     if (wi) wi.value = (it.water != null ? it.water : '');
@@ -871,26 +871,78 @@ function fsPickFacingSource(i){
   } catch (e) { console.warn('fsPickFacingSource', e); }
 }
 
-// Rebuilds the entries so each one shows the CURRENT state of its button.
+// Session 34 (Edu: "allinea e riduci i caratteri avvicinando le righe"): the native
+// <select> list could not be styled (big font, tall rows, emoji widths misaligned the
+// text). It is now our own compact drop-down: text only, all left-aligned, "ON" on the
+// right, the 🧭 Facing entries under a small grey heading. Entries still act through
+// fsLuopanMenuAct, so nothing else changed.
+function _fsLmText(t){
+  t = String(t || '').replace(/\s*·\s*ON\b.*$/, '').replace(/\s+ON$/, '');
+  return t.replace(/^[^A-Za-z0-9(]+/, '').trim();
+}
+function _fsLmOn(t){ return /·\s*ON\b|\sON$/.test(String(t || '')); }
+function _fsLmRow(v, text, on){
+  var esc = String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  return '<button type="button" onclick="event.stopPropagation();fsLuopanMenuClose();fsLuopanMenuAct(\'' + v + '\')" '
+    + 'style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:none;'
+    + 'border-bottom:1px solid #f0eef7;padding:6px 12px;font-size:13px;line-height:1.25;color:#222;cursor:pointer;">'
+    + '<span style="flex:1;">' + esc + '</span>'
+    + (on ? '<span style="font-size:10px;font-weight:bold;color:#fff;background:#4527a0;border-radius:8px;padding:1px 6px;">ON</span>' : '')
+    + '</button>';
+}
+function fsLuopanMenuBuild(){
+  var h = '';
+  FS_LUOPAN_MENU.forEach(function (it) {
+    if (it.chart) return;                     // session 32: charts live in the CHARTS tab
+    var b = it.btn ? document.getElementById(it.btn) : null;
+    if (it.btn && !b) return;                 // its module has not created it yet
+    var t = it.label(b);
+    h += _fsLmRow(it.v, _fsLmText(t), _fsLmOn(t));
+  });
+  var list = _fsFacingSources();
+  window._fsFacingList = list;
+  if (list.length){
+    var cur = parseFloat((document.getElementById('fs-facing') || {}).value);
+    var pick = window._fsFacingPick;
+    h += '<div style="padding:6px 12px 3px;font-size:10px;font-weight:bold;color:#888;letter-spacing:.5px;background:#faf9fd;border-bottom:1px solid #eee;">FACING</div>';
+    list.forEach(function (it, i) {
+      var same = !isNaN(cur) && Math.abs(cur - it.facing) < 0.05;
+      var on = same && (pick == null || pick === it.label);
+      h += _fsLmRow('fc:' + i, _fsLmText(it.label) + ' — ' + (+it.facing.toFixed(1)) + '°', on);
+    });
+  }
+  return h;
+}
+function fsLuopanMenuClose(){
+  var dd = document.getElementById('fs-luopan-dd'); if (dd) dd.style.display = 'none';
+}
+function fsLuopanMenuOpen(ev){
+  try {
+    if (ev) ev.stopPropagation();
+    var btn = document.getElementById('fs-luopan-menu'); if (!btn) return;
+    var dd = document.getElementById('fs-luopan-dd');
+    if (dd && dd.style.display !== 'none') { fsLuopanMenuClose(); return; }
+    if (!dd){
+      dd = document.createElement('div');
+      dd.id = 'fs-luopan-dd';
+      dd.addEventListener('click', function (e) { e.stopPropagation(); });
+      document.body.appendChild(dd);
+      document.addEventListener('click', fsLuopanMenuClose);
+      window.addEventListener('scroll', fsLuopanMenuClose, true);
+    }
+    var r = btn.getBoundingClientRect();
+    dd.style.cssText = 'position:fixed;z-index:100001;top:' + Math.round(r.bottom + 4) + 'px;right:' + Math.max(8, Math.round(window.innerWidth - r.right)) + 'px;'
+      + 'background:#fff;border:1px solid #b39ddb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);'
+      + 'min-width:210px;max-width:86vw;max-height:' + Math.max(200, Math.round(window.innerHeight - r.bottom - 16)) + 'px;overflow:auto;';
+    dd.innerHTML = fsLuopanMenuBuild();
+  } catch (e) { /* the menu must never break the luopan */ }
+}
+// Kept for the callers that refresh the menu: rebuild only when it is open.
 function fsLuopanMenuSync(){
   try {
-    var sel = document.getElementById('fs-luopan-menu');
-    if (!sel) return;
-    // Just the icon on the closed control: with the labels in it the select sized itself
-    // on the longest one and covered the palace boxes (Edu, session 26). The native list
-    // still shows every entry in full when it opens.
-    var html = '<option value="">\u2630</option>';
-    FS_LUOPAN_MENU.forEach(function (it) {
-      if (it.chart) return;                     // session 32: charts live in the CHARTS tab
-      var b = it.btn ? document.getElementById(it.btn) : null;
-      if (it.btn && !b) return;                 // its module has not created it yet
-      html += '<option value="' + it.v + '" style="text-align:left;font-size:12px;">'
-            + it.label(b) + '</option>';
-    });
-    html += _fsFacingOptionsHTML();
-    if (sel.innerHTML !== html) sel.innerHTML = html;
-    sel.value = '';
-  } catch (e) { /* the menu must never break the luopan */ }
+    var dd = document.getElementById('fs-luopan-dd');
+    if (dd && dd.style.display !== 'none') dd.innerHTML = fsLuopanMenuBuild();
+  } catch (e) {}
 }
 
 // Switches the DLR ring off if it is up, through its own module so its button, its
@@ -1284,7 +1336,7 @@ function fsToggleFloorplanView(){
       var orb0 = document.getElementById('fs-orient-toggle'); if (orb0) orb0.style.display = 'none';
       var smb0 = document.getElementById('fs-sunmoon-toggle'); if (smb0) smb0.style.display = 'none';
       var cvb0 = document.getElementById('fs-cardview-toggle'); if (cvb0) cvb0.style.display = 'none';
-      var mn0 = document.getElementById('fs-luopan-menu'); if (mn0) mn0.style.display = 'none';
+      var mn0 = document.getElementById('fs-luopan-menu'); if (mn0) mn0.style.display = 'none'; fsLuopanMenuClose();
       var dc0 = document.getElementById('fs-qimen-dice'); if (dc0) dc0.style.display = 'none';
       var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'block';
       _fsFloorplanShown = true;
@@ -1328,7 +1380,7 @@ function _fsRestoreLuopanView(){
     var orb1 = document.getElementById('fs-orient-toggle'); if (orb1) orb1.style.display = 'block';
     var smb1 = document.getElementById('fs-sunmoon-toggle'); if (smb1) smb1.style.display = 'block';
     var cvb1 = document.getElementById('fs-cardview-toggle'); if (cvb1) cvb1.style.display = 'block';
-    var mn1 = document.getElementById('fs-luopan-menu'); if (mn1) { mn1.style.display = 'block'; fsLuopanMenuSync(); }
+    var mn1 = document.getElementById('fs-luopan-menu'); if (mn1) { mn1.style.display = 'block'; }
     var dc1 = document.getElementById('fs-qimen-dice'); if (dc1) dc1.style.display = 'block';
     var delB = document.getElementById('fs-floorplan-del'); if (delB) delB.style.display = 'none';
     if (canvas) canvas.style.display = 'block';
