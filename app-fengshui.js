@@ -862,6 +862,7 @@ function fsPickFacingSource(i){
   try {
     var it = (window._fsFacingList || [])[i]; if (!it) return;
     window._fsFacingPick = it.label;
+    window._fsFacingPickDeg = (+it.facing.toFixed(1));
     var fi = document.getElementById('fs-facing'), wi = document.getElementById('fs-water');
     if (fi) fi.value = (+it.facing.toFixed(1));
     if (wi) wi.value = (it.water != null ? it.water : '');
@@ -1825,8 +1826,14 @@ function fsRedraw(){
   }
   // Arrows — mode-aware
   if (showFS && hfd !== null)  drawArrow(hfd, '#8B0000', 'House');
-  if (showXKDG && fd !== null) drawArrow(fd,  _fsLuopanMode === 'both' ? '#cc6600' : '#cc0000', 'Door');
-  if (showXKDG && wd !== null) drawArrow(wd,  '#0a8c2c', 'Water', true);
+  // Session 35 (Edu): a facing picked from the ☰ FACING list (bed, desk, door…) must move
+  // the arrow in EVERY view mode, so the filters can be read against it — also in FS mode,
+  // where the Door/Water arrows were hidden. Label = the picked source's short name.
+  const _pk = window._fsFacingPick, _pkDeg = window._fsFacingPickDeg;
+  const _picked = !!_pk && fd !== null && _pkDeg != null && Math.abs(fd - _pkDeg) < 0.05;
+  const _pkName = _picked ? (_fsLmText(_pk).replace(/\s*\(.*$/, '') || 'Facing') : 'Door';
+  if ((showXKDG || _picked) && fd !== null) drawArrow(fd,  _fsLuopanMode === 'both' || (!showXKDG) ? '#cc6600' : '#cc0000', _pkName);
+  if ((showXKDG || _picked) && wd !== null) drawArrow(wd,  '#0a8c2c', 'Water', true);
 
   // Center pin
   ctx.save();
