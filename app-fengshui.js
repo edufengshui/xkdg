@@ -5630,14 +5630,12 @@ function fsRenderHouseProfiles(){
       // No INTERNAL/EXTERNAL badge (Edu, s.32): "Fountain" (internal) / "Water" (external) already says it.
       _row += '<span style="font-size:11px;flex:1 1 180px;" title="' + (_isInt ? 'Internal door' : 'External door') + '">🚪 <strong>' + escHtml(d.name) + '</strong> — Facing: ' + facingStr + ' · ' + _waterLbl + ': ' + waterStr
         + (d.palace ? ' · in ' + (_FS_DOOR_PAL_NAME[d.palace] || d.palace) : '') + '</span>';
-      _row += '<button onclick="fsEditDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#8a6a1f;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Edit door">✏</button>';
-      _row += '<button onclick="fsRemoveDoor(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#e65100;color:#fff;border:none;border-radius:3px;padding:1px 6px;font-size:10px;cursor:pointer;" title="Remove door">✕</button>';
-      if (d.facing != null) {
-        _row += '<span style="display:inline-flex;align-items:center;white-space:nowrap;">';
-        _row += '<button onclick="fsScanDoorDates(\'' + escJs(person.name) + '\',' + hi + ',' + di + ')" style="background:#1565c0;color:#fff;border:none;border-radius:3px;padding:1px 8px;font-size:10px;font-weight:bold;cursor:pointer;" title="Scan for dates matching this door\'s Zheng Shen facing + Ling Shen water, and this person\'s Bazi">🔎 SCAN</button>';
-        _row += '<button onclick="fsHelp(\'door_scan\',event)" title="Guide" style="background:none;border:none;font-size:14px;cursor:pointer;padding:0 2px;">📖</button>';
-        _row += '</span>';
-      }
+      // ☰ on the right of the door row (s.34, Edu): ✏ edit · 🔎 SCAN · ✕ remove.
+      var _dArgs = '\'' + escJs(person.name) + '\',' + hi + ',' + di;
+      var _dItems = [{ label: '✏ Edit', act: 'fsEditDoor(' + _dArgs + ')' }];
+      if (d.facing != null) _dItems.push({ label: '🔎 SCAN dates', act: 'fsScanDoorDates(' + _dArgs + ')', help: 'door_scan' });
+      _dItems.push({ label: '✕ Remove', act: 'fsRemoveDoor(' + _dArgs + ')', danger: true });
+      _row += (window.XKDGHouseMenus ? window.XKDGHouseMenus.menu('fs-hm-door-' + hi + '-' + di, _dItems) : '');
       _row += '</div>';
       if (d.facing != null) {
         _row += '<div id="fs-doorscan-' + escJs(person.name).replace(/[^a-zA-Z0-9]/g, '_') + '-' + hi + '-' + di + '" style="margin:2px 0 4px;"></div>';
@@ -5689,9 +5687,16 @@ function fsRenderHouseProfiles(){
           + (_isShown ? '\uD83D\uDC41 ' : '\u2699 ') + escHtml(s.name) + (s.palace ? (' (' + escHtml(s.palace) + ')') : '') + '</span>';
         // Inline view/edit panel (hidden until the chip is clicked)
         var ed = '<div id="' + eid + '" style="display:none;margin:4px 0 8px;padding:8px;background:#fff;border:1px solid #c9a84c;border-radius:6px;">';
-        ed += '<div style="font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:5px;">'
+        // ☰ on the right of the title (s.34, Edu): Save · Scan dates · Open to edit · Remove.
+        var _sArgs = '\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx;
+        var _sItems = [{ label: '✓ Save', act: 'fsSaveSavedSetting(' + _sArgs + ')', help: 'saved_setting' },
+                       { label: '🔎 Scan dates', act: 'fsActivateSavedSetting(' + _sArgs + ')', help: 'saved_setting' }];
+        if (!s.palace) _sItems.push({ label: '✏️ Open to edit', act: 'fsOpenSavedForEdit(' + _sArgs + ')', help: 'saved_setting' });
+        _sItems.push({ label: '🗑 Remove', act: 'fsDeleteSavedSetting(' + _sArgs + ')', danger: true });
+        ed += '<div style="display:flex;align-items:flex-start;gap:6px;font-size:11px;font-weight:bold;color:#8a6a1f;margin-bottom:5px;"><div style="flex:1;">'
             + '\u270F\uFE0F Editing the saved ' + _zlbl[z].replace(/^[^ ]+ /, '') + ' \u201C' + escHtml(s.name) + '\u201D'
-            + ' <span style="font-weight:normal;color:#999;">\u2014 shown on the luopan. This does not create a new one.</span></div>';
+            + ' <span style="font-weight:normal;color:#999;">\u2014 shown on the luopan. This does not create a new one.</span></div>'
+            + (window.XKDGHouseMenus ? window.XKDGHouseMenus.menu('fs-hm-set-' + hi + '-' + z + '-' + sidx, _sItems) : '') + '</div>';
         ed += '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">';
         ed += '<label style="font-size:10px;color:#888;">Name</label>';
         ed += '<input id="' + nameId + '" value="' + escHtml(s.name || '') + '" style="flex:1;min-width:110px;padding:4px 6px;border:1px solid #c9a84c;border-radius:4px;font-size:12px;">';
@@ -5715,14 +5720,7 @@ function fsRenderHouseProfiles(){
           if (bits.length) ed += '<span style="font-size:10px;color:#777;">' + bits.join(' · ') + '</span>';
         }
         ed += '</div>';
-        ed += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
-        ed += '<button onclick="fsSaveSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#2e7d32;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✓ Save</button>';
-        ed += '<button onclick="fsActivateSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#5e35b1;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🔎 Scan dates</button>';
-        if (!s.palace){
-          ed += '<button onclick="fsOpenSavedForEdit(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#8a6a1f;border:1px solid #8a6a1f;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">✏️ Open to edit</button>';
-        }
-        ed += '<button onclick="fsDeleteSavedSetting(\'' + escJs(person.name) + '\',' + hi + ',\'' + z + '\',' + sidx + ')" style="background:#fff;color:#c0392b;border:1px solid #e09a9a;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:bold;">🗑 Remove</button>';
-        ed += '</div></div>';
+        ed += '</div>';
         _zonePanels += ed;
       });
     });

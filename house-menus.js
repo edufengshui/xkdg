@@ -48,6 +48,7 @@
     add_water: ['💧 Add Water', 'Opens the Water section: ① a water feature (aquarium / fountain) <b>by palace</b> with the Flying-Star dates, or ② a water for a door facing in degrees (💡 Suggest proposes the best Ling Shen water). Save it in the house with 💾 Save to house / 💾 Save current.', FS],
     hide_house: ['🙈 Hide house', 'Takes the house off this list without deleting it. It stays in <b>🗄 Houses DB</b> (button at the top of House Profiles), where <b>👁 Show</b> brings it back and <b>🗑 Delete</b> removes it for good.', FS],
     houses_db: ['🗄 Houses DB', 'All your saved houses, grouped by person. <b>🙈 Hide</b> takes a house off the House Profiles list but keeps it; <b>👁 Show</b> brings it back; <b>🗑</b> deletes it <b>permanently</b> (asks first). Each house has its own <b>category</b> (Mine, Friends, Clients…): pick it in the 📁 menu under the house, or <b>➕ New category…</b> to add one. Filter by category, by All / Visible / Hidden, or search. Tip: make a <b>⬇ Backup</b> before deleting.', FS],
+    saved_setting: ['⚙ Saved setting', 'A setting saved in this house (water, bed or desk), shown on the luopan. <b>✓ Save</b> keeps the new name (and palace); <b>🔎 Scan dates</b> loads it and searches its dates; <b>✏️ Open to edit</b> loads it in its section to change the degrees; <b>🗑 Remove</b> deletes it from the house.', FS],
     door_scan: ['🔎 SCAN', 'Finds the dates that match this door: Zheng Shen facing, Ling Shen water within ±70°, and the people of the house. Uses FROM / DAYS of the toolbar.', FS]
   };
 
