@@ -1068,7 +1068,7 @@ function xkdgHexSvg(hex) {
 }
 window._pvSel = window._pvSel || {};        // selected remedy hexagram per person
 window._pvWho = window._pvWho || null;       // 'A' | 'B' | 'both'
-function xkdgPVPick(who, hex) { window._pvSel[who] = hex; renderPersonView(); }
+function xkdgPVPick(who, v) { window._pvSel[who] = String(v); renderPersonView(); }
 function xkdgPVWho(w) { window._pvWho = w; renderPersonView(); }
 
 // ── 👤 PERSON tab (session 33, Edu): for each chosen person, the four real pillars with the
@@ -1104,9 +1104,22 @@ function renderPersonView() {
         if (g && g.any) Object.keys(g.dims).forEach(f => g.dims[f].isolated.forEach(x => { isoSet[x.pillar + '.' + f] = 1; }));
         const R = (g && g.any) ? (xkdgGapRemedies(g, days, pp.P, start) || { dates: [], hexagrams: [] }) : null;
         const opts = R ? R.hexagrams : [];
+        const isoFamSet = new Set((R && R.families) || []);
+        // each remedy date carries its remedy hexagram (the DAY, else the YEAR pillar)
+        const dates = R ? R.dates.map(d => {
+            const pick = (gz) => { const x = getXkdgData(gz[0], gz[1]); if (!x) return null;
+                const kind = _xkdgRemedyKind(g, pp.P, { qi: x.qi, yun: x.yun, hex: x.hex, stem: gz[0], branch: gz[1] }, isoFamSet);
+                return kind ? { qi: x.qi, yun: x.yun, hex: x.hex, stem: gz[0], branch: gz[1], kind: kind } : null; };
+            const c = pick(d.day), cy = c ? null : pick(d.year);
+            return Object.assign({}, d, { cand: c || cy, from: c ? 'Day' : 'Year' });
+        }).filter(d => d.cand) : [];
+        // selection: a date first (Edu), else a hexagram
         let sel = window._pvSel[pp.who];
-        if (!opts.some(x => x.hex === sel)) sel = opts.length ? opts[0].hex : null;
-        const cur = opts.filter(x => x.hex === sel)[0] || null;
+        if (!sel || (sel[0] === 'd' && !dates.some(d => 'd' + d.date === sel)) || (sel[0] === 'h' && !opts.some(x => 'h' + x.hex === sel)))
+            sel = dates.length ? 'd' + dates[0].date : (opts.length ? 'h' + opts[0].hex : null);
+        const selDate = sel && sel[0] === 'd' ? dates.filter(d => 'd' + d.date === sel)[0] : null;
+        const selHex = sel && sel[0] === 'h' ? opts.filter(x => 'h' + x.hex === sel)[0] : null;
+        const cur = selDate ? selDate.cand : selHex;
         // ── the picture: 4 pillars + the selected remedy on the far right ──
         const col = (lab, hex, qi, yun, isoQ, isoY, extra) => '<td style="padding:4px 3px;text-align:center;vertical-align:top;border:1px solid #ddd;' + (extra || '') + '">'
             + '<div style="font-weight:bold;color:#880e4f;font-size:12px;">' + lab + '</div>'
@@ -1116,7 +1129,7 @@ function renderPersonView() {
         h += '<div style="overflow-x:auto;margin:6px 0;"><table style="border-collapse:collapse;"><tr>'
            + ['hour', 'day', 'month', 'year'].map(k => col(L[k], pp.P[k].hex, pp.P[k].qi, pp.P[k].yun, isoSet[k + '.qi'], isoSet[k + '.yun'])).join('');
         if (cur) h += '<td style="border:0;width:14px;padding:0;font-size:18px;color:#7e57c2;text-align:center;vertical-align:middle;">+</td>'
-                   + col(cur.kind === 'family' ? '★ Family' : 'Remedy', cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
+                   + col(selDate ? fmtD(selDate.date) : (cur.kind === 'family' ? '★ Family' : 'Remedy'), cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
         h += '</tr></table></div>';
         if (!g || !g.any) {
             h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
@@ -1124,37 +1137,66 @@ function renderPersonView() {
         }
         Object.values(g.dims).forEach(d => {
             if (!d.isolated.length) return;
-            const f = d.label === 'Elements' ? 'qi' : 'yun';
-            const net = ['hour','day','month','year'].filter(k => !d.isolated.some(x => x.pillar === k)).map(k => pp.P[k][f]);
-            const lg = _xkdgLang(net), lgTxt = [lg.has('add') ? 'Adding 5/10/15' : '', lg.has('hetu') ? 'Hetu' : ''].filter(Boolean).join(' or ');
-            h += '<div style="font-size:13px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated → the remedy links it by ' + lgTxt + '</div>';
+            h += '<div style="font-size:13px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated.</div>';
         });
-        // ── advice for the selected hexagram ──
+        // ── what the selected remedy does, and why it improves the natal chart ──
+        const keys4 = ['hour', 'day', 'month', 'year'];
+        const relTxt = (a, b) => [5, 10, 15].includes(a + b) ? a + '+' + b + ' = ' + (a + b) : (isHetuPair(a, b) ? 'Hetu ' + Math.min(a, b) + '-' + Math.max(a, b) : '');
+        const explain = c => {
+            const out = [];
+            ['qi', 'yun'].forEach(f => {
+                const D = g.dims[f], nm = f === 'qi' ? 'Element' : 'Period', nms = f === 'qi' ? 'Elements' : 'Periods';
+                const clash = k => !!(c.branch && BRANCH_CLASHES[c.branch] === pp.P[k].branch);
+                if (D.isolated.length) {
+                    const net = keys4.filter(k => !D.isolated.some(x => x.pillar === k));
+                    const lang = _xkdgLang(net.map(k => pp.P[k][f]));
+                    const netPairs = [];
+                    for (let i = 0; i < net.length; i++) for (let j = i + 1; j < net.length; j++) { const r = relTxt(pp.P[net[i]][f], pp.P[net[j]][f]); if (r) netPairs.push(r); }
+                    if (c.kind === 'family') {
+                        out.push('<b>' + nms + '</b>: it does not need to link the isolated ' + D.isolated.map(x => L[x.pillar]).join(', ') + ' here — it belongs to the <b>' + [...isoFamSet].join(', ') + '</b> family, which the isolated pillar already shares with another pillar of the chart, so the family itself is the bridge.');
+                    } else {
+                        D.isolated.forEach(x => out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' links your isolated ' + L[x.pillar] + ' (' + relTxt(c[f], x.value) + '), in the same language your other ' + nms + ' already speak (' + netPairs.slice(0, 2).join(', ') + ').'));
+                    }
+                } else {
+                    const lang = _xkdgLang(keys4.map(k => pp.P[k][f]));
+                    const with_ = keys4.filter(k => _xkdgSpeaks(lang, c[f], pp.P[k][f]) && !clash(k)).map(k => L[k] + ' (' + relTxt(c[f], pp.P[k][f]) + ')');
+                    out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' keeps them connected — it talks with ' + with_.join(', ') + '.');
+                }
+            });
+            out.push('<b>Why it helps</b>: with this hexagram next to the natal chart, no pillar is left alone — all four communicate in both dimensions.');
+            return out.map(x => '<div style="margin-top:3px;">' + x + '</div>').join('');
+        };
         if (cur) {
-            const c = (cur.from + 2.8125) % 360;
-            const myDates = R.dates.filter(d => { const dx = getXkdgData(d.day[0], d.day[1]), yx = getXkdgData(d.year[0], d.year[1]); return (dx && dx.hex === cur.hex) || (yx && yx.hex === cur.hex); });
             h += '<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#f3e5f5;font-size:13px;">'
-               + '<b>' + (cur.kind === 'family' ? '★ ' : '') + 'Hexagram ' + cur.hex + '</b> (Element ' + cur.qi + ', Period ' + cur.yun + ')'
-               + '<div style="margin-top:3px;">🧭 <b>Earth</b> — activate <b>' + W8(c) + ' · ' + cur.from + '–' + cur.to + '°</b> (' + (cur.zheng_shen ? 'Zheng Shen' : 'Ling Shen') + ')</div>'
-               + '<div style="margin-top:3px;">📅 <b>Heaven</b> — ' + (myDates.length ? 'favourable dates with this hexagram:' : 'no favourable date with this hexagram in the range (FROM / DAYS).') + '</div>'
-               + myDates.map(d => '<div style="margin:2px 0 0 10px;"><b>' + fmtD(d.date) + '</b> · day ' + d.day + ' · year ' + d.year + '<br>' + hourBtns(d) + '</div>').join('')
-               + '</div>';
+               + (selDate ? '<b>📅 ' + fmtD(selDate.date) + '</b> · day ' + selDate.day + ' · year ' + selDate.year + ' — the remedy is the <b>' + selDate.from + '</b>: ' : '')
+               + '<b>' + (cur.kind === 'family' ? '★ ' : '') + 'hexagram ' + cur.hex + '</b> (Element ' + cur.qi + ', Period ' + cur.yun + ')'
+               + explain(cur)
+               + (selDate ? '<div style="margin-top:4px;"><b>Favourable hours</b> (tap to open):<br>' + hourBtns(selDate) + '</div>' : '');
+            const sec = opts.filter(x => x.hex === cur.hex)[0];
+            if (sec) { const c2 = (sec.from + 2.8125) % 360; h += '<div style="margin-top:4px;">🧭 The same hexagram in Feng Shui: <b>' + W8(c2) + ' · ' + sec.from + '–' + sec.to + '°</b> (' + (sec.zheng_shen ? 'Zheng Shen' : 'Ling Shen') + ')</div>'; }
+            h += '</div>';
         }
-        // ── the list of every useful hexagram (tap = into the picture) ──
-        const chip = x => { const c = (x.from + 2.8125) % 360, on = x.hex === sel;
-            return '<button onclick="xkdgPVPick(\'' + pp.who + '\',' + x.hex + ')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
+        // ── 1) DATES first (Heaven) ──
+        h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;font-size:13px;">📅 Remedy dates (' + dates.length + ') — tap one</div>';
+        h += dates.length ? dates.map(d => {
+            const on = 'd' + d.date === sel;
+            return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'d' + d.date + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
+               + (on ? 'background:#2e7d32;color:#fff;border:2px solid #1b5e20;' : 'background:#e8f5e9;border:1px solid #66bb6a;color:#1b5e20;') + '">'
+               + fmtD(d.date) + ' · ' + d.day + (d.cand.kind === 'family' ? ' ★' : '') + '</button>';
+        }).join('') : '<div style="color:#888;font-size:12px;">No favourable remedy date in the range — extend DAYS.</div>';
+        // ── 2) then the hexagrams by type (Earth / Feng Shui) ──
+        const chip = x => { const c = (x.from + 2.8125) % 360, on = 'h' + x.hex === sel;
+            return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'h' + x.hex + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
                + (on ? 'background:#7e57c2;color:#fff;border:2px solid #4a148c;' : (x.kind === 'family' ? 'background:#ede7f6;border:1px solid #7e57c2;color:#311b92;' : 'background:#f1f8e9;border:1px solid #9ccc65;color:#1b5e20;')) + '">'
                + 'hex ' + x.hex + ' (' + x.qi + '/' + x.yun + ') · ' + W8(c) + ' ' + x.from + '°' + '</button>'; };
         const mainH = opts.filter(x => x.kind === 'main'), famH = opts.filter(x => x.kind === 'family');
-        h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;font-size:13px;">Remedy hexagrams (' + mainH.length + ') — tap one to see it in the picture</div>'
+        h += '<details style="margin-top:8px;font-size:13px;"' + (selHex ? ' open' : '') + '><summary style="cursor:pointer;font-weight:bold;color:#4a148c;">🧭 Feng Shui hexagrams by type (' + opts.length + ')</summary>'
+           + '<div style="margin-top:4px;font-weight:bold;color:#1b5e20;">Remedy (' + mainH.length + ')</div>'
            + (mainH.length ? mainH.map(chip).join('') : '<div style="color:#888;">none</div>');
         if (R.families && R.families.length)
-            h += '<div style="margin-top:6px;font-weight:bold;color:#4a148c;font-size:13px;">★ ' + R.families.join(', ') + ' family alternative (' + famH.length + ')</div>'
+            h += '<div style="margin-top:6px;font-weight:bold;color:#4a148c;">★ ' + R.families.join(', ') + ' family alternative (' + famH.length + ')</div>'
                + (famH.length ? famH.map(chip).join('') : '<div style="color:#888;">none</div>');
-        // ── every favourable remedy date in the range ──
-        h += '<details style="margin-top:8px;font-size:13px;"><summary style="cursor:pointer;font-weight:bold;color:#1b5e20;">📅 All favourable remedy dates (' + R.dates.length + ')</summary>'
-           + R.dates.map(d => '<div style="background:#e8f5e9;border-left:4px solid #2e7d32;border-radius:6px;padding:4px 8px;margin:4px 0;"><b>' + fmtD(d.date) + '</b> · day ' + d.day + ' · year ' + d.year + ' <span style="color:#555;">(' + d.via.join(' + ') + ')</span><br>' + hourBtns(d) + '</div>').join('')
-           + '</details></div>';
+        h += '</details></div>';
     });
     h += '<div style="color:#888;font-size:11px;margin-top:4px;">Range: FROM ' + start + ', ' + days + ' days. Tap an hour to open it in the main chart.</div>';
     pv.innerHTML = h;
