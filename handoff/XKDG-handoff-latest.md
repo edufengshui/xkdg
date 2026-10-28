@@ -24,6 +24,8 @@ Next session: read this file first.
 
 - **AI: persons and facings without House Profile** (`ai-chat.js`): new always-on tool `set_person` (slot A/B; saved name, or birth_date + optional birth_time / year_pillar / birth_utc / birth_lon / birth_dst; clear=true empties B). Nothing is saved; `window._xkdgAdhocGeo` gives `_personBirthGeo` (app-bazi.js) the ad-hoc birth place. Prompt rules: load anyone with set_person; pass any facing degree straight to the tools, house tools only for SAVED houses. Tested headless (jsdom).
 
+- **👤 PERSON tab, Both → 🤝 Cure from the other chart** (`renderPersonView`, app-bazi.js): each pillar of the other person that passes `_xkdgRemedyKind` for this person (main or ★ family), as chips; tapping one puts it as the 5th column with the usual explanation (selection key `p<pillar>`). Guide `guides/person-remedies.html` NOT updated (Edu to write the text).
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
