@@ -1042,8 +1042,25 @@ function fsToggleHexFilterPanel(){
   if (!p) return;
   var open = p.style.display === 'none';
   p.style.display = open ? 'block' : 'none';
+  if (!document.getElementById('fs-hf-body')) p.innerHTML = '<div id="fs-hf-body"></div><div id="fs-hf-dates"></div>';
   if (open) _fsRenderHexFilterPanel();
 }
+// Tap a hexagram in the filter list → its matching dates right under the panel.
+function fsHexFilterScan(idx){
+  try {
+    var sl = FS_SLOTS[idx]; if (!sl) return;
+    var box = document.getElementById('fs-hf-dates'); if (!box) return;
+    window._fsHexScanIdx = idx;
+    if (window._fsHexFilter && window._fsHexFilter.cure) window._fsCureActive = true;   // came for the cure → show the cure dates
+    var matches = fsFindMatchingDatesForSetup(sl, null);
+    if (matches === null) return;
+    window._fsLastRescan = function(){ fsHexFilterScan(idx); };
+    fsRenderMatchingDatesTable(sl, null, matches, 'fs-hf-dates');
+    _fsRenderHexFilterPanel();
+    setTimeout(function(){ try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e){} }, 60);
+  } catch (e) { console.warn('fsHexFilterScan', e); }
+}
+
 function fsHexFilterToggle(k){
   if (k === '_clear') window._fsHexFilter = {};
   else window._fsHexFilter[k] = !window._fsHexFilter[k];
@@ -1113,8 +1130,10 @@ function fsHexFilterEval(){
 }
 
 function _fsRenderHexFilterPanel(){
-  var p = document.getElementById('fs-hexfilter-panel');
-  if (!p || p.style.display === 'none') return;
+  var p0 = document.getElementById('fs-hexfilter-panel');
+  if (!p0 || p0.style.display === 'none') return;
+  if (!document.getElementById('fs-hf-body')) p0.innerHTML = '<div id="fs-hf-body"></div><div id="fs-hf-dates"></div>';
+  var p = document.getElementById('fs-hf-body');
   var act = _fsHexFilterActive();
   var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
         + '<b style="color:#6a1b9a;">🔍 Show on the luopan only…</b>'
@@ -1129,10 +1148,10 @@ function _fsRenderHexFilterPanel(){
   var ev = fsHexFilterEval();
   if (ev.active) {
     var list = [];
-    FS_SLOTS.forEach(function(sl){ if (ev.pass.has(sl.idx)) list.push('<span title="' + sl.centerDeg.toFixed(1) + '°" style="white-space:nowrap;">' + sl.hexNum + ' <span style="color:#888;">' + sl.centerDeg.toFixed(1) + '°</span>' + (ev.cure && ev.cure[sl.hexNum] ? ' 🌿' : '') + '</span>'); });
+    FS_SLOTS.forEach(function(sl){ if (ev.pass.has(sl.idx)) list.push('<span onclick="fsHexFilterScan(' + sl.idx + ')" title="Tap: matching dates for this hexagram" style="white-space:nowrap;cursor:pointer;border-bottom:1px dotted #6a1b9a;' + (window._fsHexScanIdx === sl.idx ? 'background:#e1bee7;border-radius:4px;padding:0 3px;' : '') + '">' + sl.hexNum + ' <span style="color:#888;">' + sl.centerDeg.toFixed(1) + '°</span>' + (ev.cure && ev.cure[sl.hexNum] ? ' 🌿' : '') + '</span>'); });
     h += '<div style="margin-top:6px;color:#333;"><b>' + ev.pass.size + '</b> hexagram' + (ev.pass.size === 1 ? '' : 's') + (list.length ? ': ' + list.join(' · ') : '') + '</div>';
     if (ev.notes.length) h += '<div style="margin-top:4px;color:#c0392b;">' + ev.notes.join('<br>') + '</div>';
-    h += '<div style="margin-top:4px;color:#888;font-size:10px;">Zheng Shen + Ling Shen together = either one. Every other chip must also be true.</div>';
+    h += '<div style="margin-top:4px;color:#888;font-size:10px;">Tap a hexagram to see its matching dates below. Zheng Shen + Ling Shen together = either one; every other chip must also be true.</div>';
   }
   p.innerHTML = h;
   var btn = document.getElementById('fs-hexfilter-btn');
@@ -2547,7 +2566,16 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
   const resetBtn = (typeof window._fsRangeDays === 'number')
     ? '<button onclick="fsSetRange(null)" style="background:#fff;color:#666;border:1px solid #ccc;padding:5px 9px;border-radius:6px;font-size:11px;cursor:pointer;">✕ Reset</button>'
     : '';
-  const toolbar = `
+  // Session 33 (Edu): the options sit behind a ☰ button next to the title; the active ones show as small badges.
+  const _optOpen = !!window._fsDatesOptsOpen;
+  const _hfClose = (containerId === 'fs-hf-dates') ? '<div style="text-align:right;"><button onclick="window._fsHexScanIdx=null;document.getElementById(\'fs-hf-dates\').innerHTML=\'\';_fsRenderHexFilterPanel();" style="background:#fff;color:#666;border:1px solid #ccc;border-radius:10px;padding:2px 9px;font-size:11px;cursor:pointer;margin-top:6px;">✕ Close dates</button></div>' : '';
+  const _badge = (t, c) => `<span style="font-size:10px;font-weight:bold;color:#fff;background:${c};border-radius:8px;padding:1px 7px;margin-left:4px;">${t}</span>`;
+  const optBadges = (sortMode === 'list' ? _badge('LIST', '#8a6a1f') : _badge('BEST', '#8a6a1f'))
+                  + (window._fsQimenActive ? _badge('☆ QIMEN', '#00695c') : '')
+                  + (cureActive ? _badge('🌿 CURE', '#2e7d32') : '')
+                  + (typeof window._fsRangeDays === 'number' ? _badge(currentRange + ' d', '#1565c0') : '');
+  const optBtn = `<button onclick="window._fsDatesOptsOpen=!window._fsDatesOptsOpen;fsRenderMatchingDatesTable(window._fsLastFSlot,window._fsLastWSlot,window._fsLastMatches,window._fsLastContainerId)" title="Options: sort, Qimen, cure, range" style="float:right;background:${_optOpen?'#8a6a1f':'#fff'};color:${_optOpen?'#fff':'#8a6a1f'};border:1px solid #8a6a1f;border-radius:6px;padding:2px 10px;font-size:16px;line-height:1.2;cursor:pointer;margin-left:6px;">☰</button>`;
+  const toolbar = !_optOpen ? '' : `
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:8px 0 10px;padding:8px 10px;background:#fafafa;border:1px solid #d4b96f;border-radius:6px;">
       <div style="display:flex;gap:6px;align-items:center;">
         <span style="font-size:11px;color:#666;font-weight:bold;">Sort:</span>
@@ -2584,7 +2612,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
   const wTriSym = wTri_h && FS_TRIGRAM_SYM ? (FS_TRIGRAM_SYM[wTri_h] || '') : '';
   
   let yyStarDisplay = '';
-  if (fTri_h && wTri_h && typeof fsPureYYStarInfo === 'function') {
+  if (wSlot && fTri_h && wTri_h && typeof fsPureYYStarInfo === 'function') {
     const yyInfo = fsPureYYStarInfo(fTri_h, wTri_h);
     if (yyInfo.name) {
       const yyIcon = yyInfo.auspicious === true ? '✓' : yyInfo.auspicious === false ? '✗' : '';
@@ -2592,14 +2620,14 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
     }
   }
   
-  const fSummary = `Facing hex ${fSlot.hexNum} (qi ${fSlot.qi}, yun ${fSlot.yun})${fTriSym ? ` ${fTriSym} ${fTriName}` : ''}`
-                 + (wSlot ? ` · Water hex ${wSlot.hexNum} (qi ${wSlot.qi}, yun ${wSlot.yun})${wTriSym ? ` ${wTriSym} ${wTriName}` : ''}` : ' · no water set')
+  const fSummary = `${(containerId === 'fs-hf-dates') ? 'Hexagram' : 'Facing hex'} ${fSlot.hexNum} (qi ${fSlot.qi}, yun ${fSlot.yun})${fTriSym ? ` ${fTriSym} ${fTriName}` : ''}`
+                 + (wSlot ? ` · Water hex ${wSlot.hexNum} (qi ${wSlot.qi}, yun ${wSlot.yun})${wTriSym ? ` ${wTriSym} ${wTriName}` : ''}` : ((containerId === 'fs-hf-dates') ? '' : ' · no water set'))
                  + yyStarDisplay;
   const blCount = sorted.filter(m => m.isBL).length;
 
   if (!sorted.length){
-    box.innerHTML = `
-      <div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">Matching dates for this setup</div>
+    box.innerHTML = _hfClose + `
+      <div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">${optBtn}Matching dates for this setup${optBadges}</div>
       <div style="font-size:11px;color:#666;margin-bottom:8px;">${fSummary} · range ${currentRange} days</div>
       ${toolbar}
       ${personCTA}
@@ -2611,8 +2639,8 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
   const qimenNote = (qimenActive)
     ? ` · <span style="color:#00695c;">☆ ${qimenCount} with Qimen</span>`
     : '';
-  let html = `<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">
-    Matching dates for this setup: <span style="color:#1b5e20;">${sorted.length} found</span>${blCount ? ` · <span style="color:#b8860b;">🔗 ${blCount} Full BL</span>` : ''}${qimenNote}
+  let html = `<div style="font-weight:bold;font-size:13px;margin:10px 0 4px;color:#1a1008;">${optBtn}
+    Matching dates for this setup: <span style="color:#1b5e20;">${sorted.length} found</span>${blCount ? ` · <span style="color:#b8860b;">🔗 ${blCount} Full BL</span>` : ''}${qimenNote}${optBadges}
   </div>`;
   html += `<div style="font-size:11px;color:#666;margin-bottom:8px;">${fSummary} · range ${currentRange} days</div>`;
   html += toolbar;
@@ -2822,7 +2850,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
   html += '</tbody>';
   html += '</table></div>';
 
-  box.innerHTML = html;
+  box.innerHTML = _hfClose + html;
 }
 
 // Range button handler. Pass a positive integer to override scan-days for the
