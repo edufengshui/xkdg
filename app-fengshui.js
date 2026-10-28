@@ -2277,6 +2277,7 @@ function fsFindMatchingDatesForSetup(fSlot, wSlot){
       hourScores,
       personMatchLvl,
       isBL: !!blInfo,
+      cure: (typeof xkdgCureForDate === 'function') ? xkdgCureLabel(xkdgCureForDate(yGan, yZhi, dGan, dZhi)) : '',   // session 33
       blInfo
     });
   }
@@ -2637,7 +2638,8 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
     const datePrefix = (qimenActive && hasQimen) ? '☆ ' : '';
     
     html += '<tr style="background:' + rowBg + ';' + rowBorder + 'cursor:pointer;" onclick="loadDateIntoMain(\'' + m.isoDate + '\', 6)">';
-    html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + datePrefix + dateLabel + '</td>';
+    html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + datePrefix + dateLabel
+          + (m.cure ? '<div><span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">' + m.cure + '</span></div>' : '') + '</td>';
     // Hour cell: bestHour pillar + time range
     // Hour cell: bestHour pillar + REAL clock window (true solar time, DST-adjusted — as in BEST/LIST)
     const _BR_SOLAR = {'子':23,'丑':1,'寅':3,'卯':5,'辰':7,'巳':9,'午':11,'未':13,'申':15,'酉':17,'戌':19,'亥':21};

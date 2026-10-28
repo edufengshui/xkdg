@@ -2080,6 +2080,10 @@ function calculateBazi() {
             _personAYear ? { label: 'Person A', year: { stem: _personAStem, branch: _personABranch }, day: _personADayStem ? { stem: _personADayStem, branch: _personADayBranch } : null } : null,
             _personBYear ? { label: 'Person B', year: { stem: _personBStem, branch: _personBBranch }, day: _personBDayStem ? { stem: _personBDayStem, branch: _personBDayBranch } : null } : null ]));
         if (_blTxt) analysis.push({ text: _blTxt, tag: 'bl-alert' });   // status always shown
+        if (analysis.some(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2')) {
+            const _cu = xkdgCureLabel(xkdgCureForDate(pillarKeys.year.stem, pillarKeys.year.branch, pillarKeys.day.stem, pillarKeys.day.branch));
+            if (_cu) analysis.push({ text: _cu, tag: 'cure' });
+        }
     } catch (eBL) {}
     renderAnalysis(analysis);
 
@@ -2261,7 +2265,8 @@ function renderAnalysis(items) {
     }
     section.style.display = 'flex';
     container.innerHTML = items.map(item => {
-        const content = item.tag === 'bl-alert' ? `<span style="border:1px solid #ccc;border-radius:10px;padding:2px 8px;">${xkdgBLStatusHtml(item.text)}</span>`
+        const content = item.tag === 'cure' ? `<span style="font-size:13px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${item.text}</span>`
+                      : item.tag === 'bl-alert' ? `<span style="border:1px solid #ccc;border-radius:10px;padding:2px 8px;">${xkdgBLStatusHtml(item.text)}</span>`
                       : item.tag === 'family-conflict' ? `<span style="background:#ffebee;color:#b71c1c;border:1px solid #e57373;border-radius:10px;padding:2px 8px;font-weight:bold;">⛔ ${item.text}</span>`
                       : item.tag === 'blue'         ? `<span class="tag-blue">${item.text}</span>`
                       : item.tag === 'powerful'     ? `<span class="tag-powerful">${item.text}</span>`
@@ -3827,7 +3832,8 @@ function renderScanResults(results, mode) {
             // hour (scoreA is 1 in BOTH cases, so score alone cannot separate them).
             // nayinLabel + blueLabels let the AI say WHY without re-deriving anything.
             return { isoDate: r.isoDate, hourIndex: r.hourIndex, time: _ts, score: r.score, scoreA: r.scoreA, scoreB: r.scoreB,
-                     rescuedByNayin: !!r.rescuedByNayin, nayinLabel: r.nayinLabel || null, blueLabels: r.blueLabels || [] };
+                     rescuedByNayin: !!r.rescuedByNayin, nayinLabel: r.nayinLabel || null, blueLabels: r.blueLabels || [],
+                     cure: r.cure || '' };   // session 33: the date carries the person's remedy
         });
         window._lastScanMode = mode;
         window._lastScanPurpose = (typeof getPurpose === 'function') ? getPurpose() : '';
@@ -3935,7 +3941,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''}${r.cure ? ` <span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${r.cure}</span>` : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -4291,6 +4297,68 @@ function getPersonSameTypeBonus(blueItems, personYear, dayXkdg, pStem, pBranch, 
  * @param {string|null} pTYA          Person A Tian Yi branch
  * @param {object|null} pillars       Resolved pillars object
  */
+// ── THE CURE (session 33, Edu) ─────────────────────────────────────────────
+// A positive date whose DAY or YEAR pillar is a remedy hexagram for a loaded person's missing
+// communication ranks ABOVE an equivalent date without it (+3 main remedy, +2 family remedy),
+// and is flagged wherever it appears. Gaps are cached per person chart, cures per date.
+var _xkCureGapCache = {}, _xkCureDateCache = {};
+function _xkdgCurePersons() {
+    const out = [];
+    try {
+        [['A', typeof _personAPillars !== 'undefined' ? _personAPillars : null], ['B', typeof _personBPillars !== 'undefined' ? _personBPillars : null]].forEach(([who, P]) => {
+            if (!P || !P.year || P.year.hex == null) return;
+            const key = ['hour', 'day', 'month', 'year'].map(k => P[k] ? (P[k].stem || '') + (P[k].branch || '') + P[k].hex : '-').join('|');
+            if (!(key in _xkCureGapCache)) {
+                const g = xkdgPersonGaps(P);
+                let fams = new Set();
+                if (g && g.any) {
+                    Object.values(g.dims).forEach(d => d.isolated.forEach(x => {
+                        const p0 = P[x.pillar]; if (!p0) return;
+                        getJiaZiFamilies(p0.stem, p0.branch).forEach(f => {
+                            if (['hour','day','month','year'].some(k => k !== x.pillar && P[k] && getJiaZiFamilies(P[k].stem, P[k].branch).includes(f))) fams.add(f);
+                        });
+                    }));
+                }
+                _xkCureGapCache[key] = (g && g.any) ? { g: g, fams: fams } : null;
+            }
+            if (_xkCureGapCache[key]) out.push({ who: who, P: P, key: key, g: _xkCureGapCache[key].g, fams: _xkCureGapCache[key].fams });
+        });
+    } catch (e) {}
+    return out;
+}
+function xkdgCureForDate(yGan, yZhi, dGan, dZhi) {
+    const ps = _xkdgCurePersons(); if (!ps.length) return null;
+    const ck = ps.map(p => p.key).join('#') + '@' + yGan + yZhi + dGan + dZhi;
+    if (ck in _xkCureDateCache) return _xkCureDateCache[ck];
+    const res = [];
+    ps.forEach(p => {
+        [['day', dGan, dZhi], ['year', yGan, yZhi]].some(([via, s, b]) => {
+            const x = getXkdgData(s, b); if (!x) return false;
+            const kind = _xkdgRemedyKind(p.g, p.P, { qi: x.qi, yun: x.yun, hex: x.hex, stem: s, branch: b }, p.fams);
+            if (kind) { res.push({ who: p.who, via: via, kind: kind, hex: x.hex }); return true; }
+            return false;
+        });
+    });
+    const out = res.length ? res : null;
+    _xkCureDateCache[ck] = out;
+    return out;
+}
+// bonus only on a POSITIVE date (an XKDG relation among its 4 pillars)
+function rawCureBonus(yGan, yZhi, dGan, dZhi, items) {
+    try {
+        if (!items || !items.some(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2')) return 0;
+        return xkdgCureBonus(xkdgCureForDate(yGan, yZhi, dGan, dZhi));
+    } catch (e) { return 0; }
+}
+function xkdgCureLabel(cure) {
+    if (!cure || !cure.length) return '';
+    return '💊 Cure ' + cure.map(c => c.who + (c.kind === 'family' ? '★' : '') + ' (' + c.via + ')').join(', ');
+}
+function xkdgCureBonus(cure) {
+    if (!cure || !cure.length) return 0;
+    return Math.max(...cure.map(c => c.kind === 'main' ? 3 : 2));
+}
+
 function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
                        analysisItems, hourSpirit, sStrong, sGrowing,
                        personAYear, pYStem, pYBranch,
@@ -4410,7 +4478,8 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
         + fullBLBonus + partialBLBonus
         + blOverrideBonus
         + tfbDoubleBonus
-        + nayinScore;
+        + nayinScore
+        + (rawCureBonus(yGan, yZhi, dGan, dZhi, analysisItems));   // session 33: the cure ranks the date higher
     return Math.max(effectiveFloor, rawScore);
 }
 
@@ -5516,6 +5585,8 @@ function buildTableView() {
             const qualTexts = items.filter(i => ['Powerful','Energetic','Very Weak','Very Timely','Timely','Timely at Birth'].includes(i.text)).map(i => i.text);
             const relHtml = blueTexts.length > 0 ? `<div style="font-size:9px;color:#1a7a1a;font-weight:bold;line-height:1.4;text-align:right;">${blueTexts.join('<br>')}</div>` : '';
             const qualHtml = qualTexts.length > 0 ? `<div style="font-size:9px;color:#555;line-height:1.3;text-align:right;">${qualTexts.join(' · ')}</div>` : '';
+            const _cureTV = blueTexts.length ? xkdgCureLabel(xkdgCureForDate(yGanR, yZhiR, rowDGan, rowDZhi)) : '';
+            const cureHtmlTV = _cureTV ? `<div style="text-align:right;"><span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${_cureTV}</span></div>` : '';
 
             // Hour cell (big)
             const hourBg = rowBg;
@@ -5615,6 +5686,7 @@ function buildTableView() {
                 ${relHtml}
                 ${badgeHtml ? `<div style="margin:2px 0;text-align:right;">${badgeHtml}</div>` : ''}
                 ${qualHtml}
+                ${cureHtmlTV}
                 ${spiritsHtml}
                 ${tombHtml}
                 ${nayinHtmlTV}${nayinPersonHtmlTV}
@@ -7157,6 +7229,7 @@ function buildMonthView() {
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
                     ${_blAlertLV ? `<div>${xkdgBLStatusHtml(_blAlertLV)}</div>` : ''}
+                    ${(isPositive && xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi)) ? `<div><span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${xkdgCureLabel(xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi))}</span></div>` : ''}
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${pqRotHTMLLV} ${fsHTMLLV}
@@ -8819,6 +8892,7 @@ function runScanner() {
                 personBYear ? { label: 'Person B', year: { stem: pBYStem, branch: pBYBranch }, day: _personBDayStem ? { stem: _personBDayStem, branch: _personBDayBranch } : null } : null ]));
             results.push({
                 blAlert: _blAlertBST,
+                cure: blueItems.length ? xkdgCureLabel(xkdgCureForDate(yGan, pillars.year.branch, dGan, dZhi)) : '',
                 score: totalScore,
                 negativeScore: negativeScoreBST,
                 rescuedByNayin: bestRescuedByNayin,
