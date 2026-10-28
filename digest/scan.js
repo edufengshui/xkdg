@@ -78,6 +78,7 @@ for (let i = 0; i < (P.skip_hours ? 0 : P.days); i++) {
       const k = r.hourIndex;
       if (!rows[k]) rows[k] = { hourIndex: k, scores: {} };
       rows[k].scores[pur || 'general'] = r.score;
+      if (r.cure) rows[k].cure = r.cure;   // session 33: remedy for the person's missing communication
       const x = rawBy[k] || {};
       if (!pur) {
         rows[k].nayin = r.rescuedByNayin ? (r.nayinLabel || 'Nayin') : null;

@@ -165,8 +165,9 @@ function build(rec, data, loc) {
       H += '<tr><td style="padding:3px 6px;white-space:nowrap;' + (strong ? 'font-weight:bold;' : '') + '">' + esc(h.from) + '–' + esc(h.to) + '</td>' +
         '<td style="padding:3px 6px;white-space:nowrap;">' + esc(h.branch) + (isNight(h.from) ? ' 🌙' : '') + '</td>' +
         '<td style="padding:3px 6px;text-align:right;' + (strong ? 'color:#2e7d32;font-weight:bold;' : '') + '">' + esc(s) + '</td>' +
-        '<td style="padding:3px 6px;color:#555;">' + esc(pur(h)) + (h.nayin ? ' <span style="color:#8a6d00;">· ' + esc(h.nayin) + '</span>' : '') + '</td></tr>';
-      X += '  ' + line(h, false) + (h.nayin ? ' (' + h.nayin + ')' : '') + '\n';
+        '<td style="padding:3px 6px;color:#555;">' + esc(pur(h)) + (h.nayin ? ' <span style="color:#8a6d00;">· ' + esc(h.nayin) + '</span>' : '')
+        + (h.cure ? ' <span style="color:#ad1457;font-weight:bold;">· ' + esc(h.cure) + '</span>' : '') + '</td></tr>';
+      X += '  ' + line(h, false) + (h.nayin ? ' (' + h.nayin + ')' : '') + (h.cure ? ' [' + h.cure + ']' : '') + '\n';
     });
     H += '</table>' + fsHtml; X += fsText;
   });
