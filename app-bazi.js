@@ -4352,7 +4352,7 @@ function rawCureBonus(yGan, yZhi, dGan, dZhi, items) {
 }
 function xkdgCureLabel(cure) {
     if (!cure || !cure.length) return '';
-    return '💊 Cure ' + cure.map(c => c.who + (c.kind === 'family' ? '★' : '') + ' (' + c.via + ')').join(', ');
+    return '🌿 Cure ' + cure.map(c => c.who + (c.kind === 'family' ? '★' : '') + ' (' + c.via + ')').join(', ');
 }
 function xkdgCureBonus(cure) {
     if (!cure || !cure.length) return 0;
