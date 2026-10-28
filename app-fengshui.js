@@ -2861,7 +2861,7 @@ function fsToggleQimen(){
       fsAnnotateQimenHits(window._fsLastMatches, window._fsLastFSlot, window._fsLastWSlot);
       window._fsQimenAnnotated = true;
     }
-    fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches);
+    fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches, window._fsLastContainerId);
   }
 }
 
