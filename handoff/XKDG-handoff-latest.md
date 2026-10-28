@@ -22,6 +22,8 @@ Next session: read this file first.
 
 - 🚪🛏🪑💧 setting icons removed from the luopan (main + bed/desk section); `fsDrawSettingIcons` left in place, unused.
 
+- **AI: persons and facings without House Profile** (`ai-chat.js`): new always-on tool `set_person` (slot A/B; saved name, or birth_date + optional birth_time / year_pillar / birth_utc / birth_lon / birth_dst; clear=true empties B). Nothing is saved; `window._xkdgAdhocGeo` gives `_personBirthGeo` (app-bazi.js) the ad-hoc birth place. Prompt rules: load anyone with set_person; pass any facing degree straight to the tools, house tools only for SAVED houses. Tested headless (jsdom).
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.

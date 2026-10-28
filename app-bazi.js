@@ -608,6 +608,16 @@ const MONTH_VIRTUE = {
 // user returns to their own location. Returns {lon,utc,dst} or null (→ caller
 // falls back to the current fields, preserving old behaviour for unsaved/legacy).
 function _personBirthGeo(person) {
+    // Session 35: a person loaded by the AI (set_person, not saved) may carry its own birth place.
+    try {
+        const ad = (window._xkdgAdhocGeo || {})[(person === 'B') ? 'B' : 'A'];
+        const el0 = document.getElementById((person === 'B') ? 'person-name-b' : 'person-name');
+        const _n = (x) => typeof x === 'number' && isFinite(x);
+        if (ad && el0 && (el0.value || '').trim() === ad.name && (_n(ad.lon) || _n(ad.utc))) {
+            const utc = _n(ad.utc) ? ad.utc : (parseFloat(document.getElementById('utc-offset').value) || 0);
+            return { lon: _n(ad.lon) ? ad.lon : utc * 15, utc: utc, dst: !!ad.dst };
+        }
+    } catch (e) {}
     try {
         const nameId = (person === 'B') ? 'person-name-b' : 'person-name';
         const el = document.getElementById(nameId);
