@@ -1081,7 +1081,7 @@ function renderPersonView() {
     if (typeof _personBPillars !== 'undefined' && _personBPillars && _personBPillars.year) all.push({ who: 'B', name: (document.getElementById('person-name-b') || {}).value || 'Person B', P: _personBPillars });
     if (!all.length) { pv.innerHTML = '<div style="padding:10px;color:#555;">Load a person (Person A / B) and press CALCULATE: this page shows the dates and directions that remedy the missing communication of the chart.</div>'; return; }
     // ask first: A, B or both (only when two are loaded)
-    let h = '';
+    let h = '<div style="text-align:right;"><button onclick="setMode(\'person\')" title="Close" style="border:none;background:#eee;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;">✕</button></div>';
     if (all.length > 1) {
         const btn = (w, lab) => '<button onclick="xkdgPVWho(\'' + w + '\')" style="margin:0 6px 6px 0;padding:6px 14px;border-radius:16px;font-weight:bold;cursor:pointer;border:2px solid #283593;'
             + (window._pvWho === w ? 'background:#283593;color:#fff;' : 'background:#fff;color:#283593;') + '">' + lab + '</button>';
@@ -4527,6 +4527,9 @@ function buildJieqiMap(startYear, endYear, offsetMin) {
 let _currentMode = 'dates';
 
 function setMode(mode) {
+    // Session 33 (Edu): PERSON is a toggle - tapping it again (or ✕) closes it.
+    if (mode === 'person' && _currentMode === 'person') mode = window._pvPrevMode || 'dates';
+    if (mode === 'person' && _currentMode !== 'person') window._pvPrevMode = _currentMode || 'dates';
     _currentMode = mode;
     window._fsFlightCalMode = false; // reset ✈ flight-hour annotation on any mode change
     if (mode === 'month') window._calBackDate = null; // clear back button when LIST opened manually
