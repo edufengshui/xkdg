@@ -931,24 +931,51 @@ function _xkdgLang(vals) {
     return L;
 }
 function _xkdgSpeaks(lang, a, b) { return (lang.has('add') && [5, 10, 15].includes(a + b)) || (lang.has('hetu') && isHetuPair(a, b)); }
-// Returns 'main', 'family' or null for a candidate hexagram (qi, yun, families[]).
-function _xkdgRemedyKind(gaps, pillars, qi, yun, fams, isoFams) {
+// Hexagram -> its JiaZi (stem, branch): a luopan hexagram carries the branch of its JiaZi.
+var _xkHexJz = null;
+function _xkdgJzOfHex(hex) {
+    if (!_xkHexJz) {
+        _xkHexJz = {};
+        Object.keys(XKDG_TABLE).forEach(jz => {
+            const r = XKDG_TABLE[jz];
+            if (r && r.hex && !_xkHexJz[r.hex]) _xkHexJz[r.hex] = { stem: jz[0], branch: jz[1] };
+            if (r && r.alt && r.alt.hex && !_xkHexJz[r.alt.hex]) _xkHexJz[r.alt.hex] = { stem: jz[0], branch: jz[1] };
+        });
+    }
+    return _xkHexJz[hex] || null;
+}
+// Returns 'main', 'family' or null for a candidate { qi, yun, hex, stem, branch }.
+// Session 33 (Edu) - NOT usable:
+//  A. a hexagram whose BRANCH clashes with the native pillar it combines with - unless the
+//     same link (sum / Hetu) also happens with another native pillar it does not clash with;
+//  B. a hexagram that is a CHILD of two different families when the native chart holds two
+//     PARENTS of those families.
+function _xkdgRemedyKind(gaps, pillars, cand, isoFams) {
     const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars[k] && pillars[k].qi != null);
-    const R = { qi: qi, yun: yun };
+    const clash = k => !!(cand.branch && pillars[k].branch && BRANCH_CLASHES[cand.branch] === pillars[k].branch);
+    // B. two native parents of different families + the candidate is a child of both
+    let ents = [];
+    try { ents = _xkdgResolvedFamilyEntries({ stem: cand.stem, branch: cand.branch, hex: cand.hex }); } catch (e) {}
+    const kidFams = ents.filter(x => x.role === 'son' || x.role === 'daughter').map(x => x.family);
+    const parFams = new Set();
+    keys.forEach(k => { try { _xkdgResolvedFamilyEntries(pillars[k]).forEach(x => { if (x.role === 'father' || x.role === 'mother') parFams.add(x.family); }); } catch (e) {} });
+    if (parFams.size >= 2 && kidFams.filter(f => parFams.has(f)).length >= 2) return null;
     let gapOk = true, keepOk = true;
     ['qi', 'yun'].forEach(f => {
         const iso = gaps.dims[f].isolated;
         if (iso.length) {
             const net = keys.filter(k => !iso.some(x => x.pillar === k)).map(k => pillars[k][f]);
             const lang = _xkdgLang(net);
-            if (!iso.every(x => _xkdgSpeaks(lang, R[f], x.value))) gapOk = false;
+            // the isolated pillar must be linked WITHOUT a branch clash (A)
+            if (!iso.every(x => _xkdgSpeaks(lang, cand[f], x.value) && !clash(x.pillar))) gapOk = false;
         } else {
             const all = keys.map(k => pillars[k][f]), lang = _xkdgLang(all);
-            if (!all.some(v => _xkdgSpeaks(lang, R[f], v))) keepOk = false;
+            // at least one native pillar spoken to without a branch clash (A)
+            if (!keys.some(k => _xkdgSpeaks(lang, cand[f], pillars[k][f]) && !clash(k))) keepOk = false;
         }
     });
     if (gapOk && keepOk) return 'main';
-    if (keepOk && (fams || []).some(f => isoFams.has(f))) return 'family';
+    if (keepOk && ents.some(x => isoFams.has(x.family))) return 'family';
     return null;
 }
 function xkdgGapRemedies(gaps, days, pillars, startIso) {
@@ -968,7 +995,8 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
     const famOf = hex => { try { return (typeof getHexFamilies === 'function') ? (getHexFamilies(hex) || []) : []; } catch (e) { return []; } };
     try {
         if (typeof FS_SLOTS !== 'undefined') FS_SLOTS.forEach(s => {
-            const fl = famOf(s.hexNum), kind = _xkdgRemedyKind(gaps, pillars, s.qi, s.yun, fl, isoFams);
+            const jz = _xkdgJzOfHex(s.hexNum) || {};
+            const fl = famOf(s.hexNum), kind = _xkdgRemedyKind(gaps, pillars, { qi: s.qi, yun: s.yun, hex: s.hexNum, stem: jz.stem, branch: jz.branch }, isoFams);
             if (!kind) return;
             const fam = fl.filter(f => isoFams.has(f));
             res.hexagrams.push({ hex: s.hexNum, qi: s.qi, yun: s.yun, from: Math.round(s.startDeg * 10) / 10, to: Math.round(s.endDeg * 10) / 10,
@@ -986,8 +1014,8 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
             const dG = ec0.getDayGan(), dZ = ec0.getDayZhi(), yG = ec0.getYearGan(), yZ = ec0.getYearZhi();
             const dx = getXkdgData(dG, dZ), yx = getXkdgData(yG, yZ);
             const via = [];
-            const kd = dx ? _xkdgRemedyKind(gaps, pillars, dx.qi, dx.yun, getJiaZiFamilies(dG, dZ), isoFams) : null;
-            const ky = yx ? _xkdgRemedyKind(gaps, pillars, yx.qi, yx.yun, getJiaZiFamilies(yG, yZ), isoFams) : null;
+            const kd = dx ? _xkdgRemedyKind(gaps, pillars, { qi: dx.qi, yun: dx.yun, hex: dx.hex, stem: dG, branch: dZ }, isoFams) : null;
+            const ky = yx ? _xkdgRemedyKind(gaps, pillars, { qi: yx.qi, yun: yx.yun, hex: yx.hex, stem: yG, branch: yZ }, isoFams) : null;
             if (kd) via.push('day' + (kd === 'family' ? ' (family)' : ''));
             if (ky) via.push('year' + (ky === 'family' ? ' (family)' : ''));
             if (!via.length) continue;
