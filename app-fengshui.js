@@ -791,6 +791,9 @@ var FS_LUOPAN_MENU = [
   { v: 'm-filter', btn: 'fs-hexfilter-btn', label: function (b) { return '\ud83d\udd0d Filter hexagrams' + (b && /\(\d+\)/.test(b.textContent) ? ' ' + b.textContent.match(/\(\d+\)/)[0] : ''); } },
   // Session 34 (Edu: "non vedo la cura"): the Cure filter straight from the ☰ (it is also in Filter hexagrams).
   { v: 'm-cure', btn: null, label: function () { return '\ud83c\udf3f Cure' + (window._fsHexFilter && window._fsHexFilter.cure ? ' \u00b7 ON' : ''); } },
+  // Session 35 (Edu: "non vedo water"): the 💧 Water-for-facing filter straight from the ☰ —
+  // shows the valid waters for the active facing (e.g. the Bed picked below in FACING).
+  { v: 'm-wat', btn: null, label: function () { return '\ud83d\udca7 Water for facing' + (window._fsHexFilter && window._fsHexFilter.wat ? ' \u00b7 ON' : ''); } },
   { v: 'm-plan', btn: 'fs-mode-floorplan', label: function () { return '\ud83c\udfe0 Floorplan'; } },
   { v: 'orient',   btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
   { chart: true, v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
@@ -1039,11 +1042,12 @@ function fsLuopanMenuAct(v){
       try { window.QMDJAnnual.toggleRing(); } catch (e) {}
     }
     if (v.indexOf('fc:') === 0){ fsPickFacingSource(parseInt(v.slice(3), 10)); setTimeout(fsLuopanMenuSync, 60); return; }
-    if (v === 'm-cure'){
+    if (v === 'm-cure' || v === 'm-wat'){
+      var fk = v === 'm-cure' ? 'cure' : 'wat';
       if (!window._fsHexFilter) window._fsHexFilter = {};
-      fsHexFilterToggle('cure');                 // redraws the luopan + the panel
+      fsHexFilterToggle(fk);                     // redraws the luopan + the panel
       var hp = document.getElementById('fs-hexfilter-panel');
-      if (window._fsHexFilter.cure && hp && hp.style.display === 'none') fsToggleHexFilterPanel();   // show the cure list / notes
+      if (window._fsHexFilter[fk] && hp && hp.style.display === 'none') fsToggleHexFilterPanel();   // show the cure list / notes
       setTimeout(fsLuopanMenuSync, 60);
       return;
     }

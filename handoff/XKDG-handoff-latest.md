@@ -18,6 +18,8 @@ Next session: read this file first.
 ## Session 35
 - Picking a FACING source in the luopan ☰ now draws its arrow in every view mode (also FS, where Door/Water arrows were hidden); label = source name (Bed, Desk, door name). `_fsFacingPickDeg` remembers the picked degree; typing another facing returns to the normal "Door" behaviour. While a pick is active the House arrow is drawn dashed.
 
+- New luopan ☰ entry **Water for facing** (`m-wat`): toggles `_fsHexFilter.wat` and opens the filter panel (same as Cure).
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
