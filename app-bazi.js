@@ -1079,7 +1079,7 @@ function renderPersonView() {
     const all = [];
     if (typeof _personAPillars !== 'undefined' && _personAPillars && _personAPillars.year) all.push({ who: 'A', name: (document.getElementById('person-name') || {}).value || 'Person A', P: _personAPillars });
     if (typeof _personBPillars !== 'undefined' && _personBPillars && _personBPillars.year) all.push({ who: 'B', name: (document.getElementById('person-name-b') || {}).value || 'Person B', P: _personBPillars });
-    if (!all.length) { pv.innerHTML = '<div style="padding:10px;color:#555;">Load a person (Person A / B) and press CALCULATE: this page shows the dates and directions that remedy the missing communication of the chart.</div>'; return; }
+    if (!all.length) { pv.innerHTML = '<div style="text-align:right;"><button onclick="setMode(\'person\')" title="Close" style="border:none;background:#eee;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;">✕</button></div><div style="padding:10px;color:#555;">Load a person (Person A / B) and press CALCULATE: this page shows the dates and directions that remedy the missing communication of the chart.</div>'; return; }
     // ask first: A, B or both (only when two are loaded)
     let h = '<div style="text-align:right;"><button onclick="setMode(\'person\')" title="Close" style="border:none;background:#eee;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;">✕</button></div>';
     if (all.length > 1) {
