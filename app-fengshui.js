@@ -1871,7 +1871,8 @@ function fsRedraw(){
 
   // ═══ SETTING ICONS (🚪 doors · 🛏 bed · 🪑 desk · 💧 fountains) ═══
   // Drawn last so the icons sit on top of every other ring/overlay.
-  try { fsDrawSettingIcons(ctx, cx, cy, outerR, ROT); } catch (e) { console.warn('fsDrawSettingIcons', e); }
+  // Session 35 (Edu: "non serve l'icona… confonde soltanto"): icons no longer drawn on the luopan.
+  // try { fsDrawSettingIcons(ctx, cx, cy, outerR, ROT); } catch (e) { console.warn('fsDrawSettingIcons', e); }
 
   // Render detail panel
   fsRenderDetail(fInput, wInput, facingSlot, waters, facings, dctx);
@@ -10400,8 +10401,7 @@ function fsDrawSectionLuopan(){
     // setting icons so those stay on top.
     try { if (typeof fsDrawFlyingStars === 'function') fsDrawFlyingStars(ctx, cx, cy, outerR); }
     catch (eFS) { console.warn('FlyingStars overlay (section)', eFS); }
-    try { if (typeof fsDrawSettingIcons === 'function') fsDrawSettingIcons(ctx, cx, cy, outerR, _srot); }
-    catch (eIC) { console.warn('setting icons (section)', eIC); }
+    // Session 35 (Edu): setting icons no longer drawn on the luopan (fsDrawSettingIcons kept, unused).
   } catch(err){ console.warn('fsDrawSectionLuopan', err); }
 }
 
