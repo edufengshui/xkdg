@@ -790,6 +790,8 @@ var FS_LUOPAN_MENU = [
   { v: 'm-xkdg', btn: 'fs-mode-xkdg', label: function () { return '\ud83d\udeaa XKDG only' + (_fsLuopanMode === 'xkdg' ? ' \u00b7 ON' : ''); } },
   { v: 'm-both', btn: 'fs-mode-both', label: function () { return '\u2b50\ud83d\udeaa Both' + (_fsLuopanMode === 'both' ? ' \u00b7 ON' : ''); } },
   { v: 'm-filter', btn: 'fs-hexfilter-btn', label: function (b) { return '\ud83d\udd0d Filter hexagrams' + (b && /\(\d+\)/.test(b.textContent) ? ' ' + b.textContent.match(/\(\d+\)/)[0] : ''); } },
+  // Session 34 (Edu: "non vedo la cura"): the Cure filter straight from the ☰ (it is also in Filter hexagrams).
+  { v: 'm-cure', btn: null, label: function () { return '\ud83c\udf3f Cure' + (window._fsHexFilter && window._fsHexFilter.cure ? ' \u00b7 ON' : ''); } },
   { v: 'm-plan', btn: 'fs-mode-floorplan', label: function () { return '\ud83c\udfe0 Floorplan'; } },
   { v: 'orient',   btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
   { chart: true, v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
@@ -920,6 +922,14 @@ function fsLuopanMenuAct(v){
     if (v === 'dlr' && window.QMDJAnnual && typeof window.QMDJAnnual.isRingOn === 'function'
         && window.QMDJAnnual.isRingOn()) {
       try { window.QMDJAnnual.toggleRing(); } catch (e) {}
+    }
+    if (v === 'm-cure'){
+      if (!window._fsHexFilter) window._fsHexFilter = {};
+      fsHexFilterToggle('cure');                 // redraws the luopan + the panel
+      var hp = document.getElementById('fs-hexfilter-panel');
+      if (window._fsHexFilter.cure && hp && hp.style.display === 'none') fsToggleHexFilterPanel();   // show the cure list / notes
+      setTimeout(fsLuopanMenuSync, 60);
+      return;
     }
     var it = FS_LUOPAN_MENU.filter(function (x) { return x.v === v; })[0];
     if (!it || !it.btn) return;
