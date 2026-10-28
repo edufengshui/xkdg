@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 34, 2026-10-28)
+# XKDG — Handoff (session 34→35, 2026-10-28)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -14,6 +14,9 @@ Next session: read this file first.
    - New entry **Cure** (`m-cure`): toggles `_fsHexFilter.cure` and opens the filter panel.
    - **FACING** section: `_fsFacingSources()` lists the active floor's doors (external / internal / item), saved beds (facing = sitting + 180, as in the Bed section), saved desks, plus the bed/desk being set up now. Picking one (`fsPickFacingSource`) copies facing → `#fs-facing` and its water/fountain/yang source → `#fs-water` (empty if none); remembers `_fsFacingPick` for the ON badge.
 5. **Hexagram filter panel** (`fsToggleHexFilterPanel`): moved right UNDER `#fs-canvas-wrap` (it was above the luopan, off-screen → "non accade nulla") and scrolls into view. Edu approved this inline layout (a bottom-sheet version was tried and reverted).
+
+## Session 35
+- Picking a FACING source in the luopan ☰ now draws its arrow in every view mode (also FS, where Door/Water arrows were hidden); label = source name (Bed, Desk, door name). `_fsFacingPickDeg` remembers the picked degree; typing another facing returns to the normal 'Door' behaviour.
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
