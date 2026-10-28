@@ -1059,20 +1059,16 @@ function fsToggleHexFilterPanel(){
   var p = document.getElementById('fs-hexfilter-panel');
   if (!p) return;
   var open = p.style.display === 'none';
-  // Session 34 (Edu: "premo e non accade nulla"): the panel sat ABOVE the luopan, where the
-  // old button row was — opened from the luopan ☰ it appeared off-screen. Move it right
-  // under the luopan and bring it into view.
-  var wrap = document.getElementById('fs-canvas-wrap');
-  if (wrap && wrap.parentNode && p.previousElementSibling !== wrap) {
-    wrap.parentNode.insertBefore(p, wrap.nextSibling);
-    p.style.margin = '0 auto 10px';
-  }
+  // Session 34 (Edu: "premo e non accade nulla", twice): the panel lived in the page flow,
+  // where on the phone it never came into view. It is now a sheet fixed at the bottom of
+  // the screen, above everything, so it is always visible over the luopan; ✕ closes it
+  // (the filter stays on).
+  if (p.parentNode !== document.body) document.body.appendChild(p);
+  p.style.cssText = 'display:none;position:fixed;left:8px;right:8px;bottom:8px;z-index:100001;max-height:60vh;overflow:auto;'
+    + 'background:#faf5ff;border:2px solid #9c27b0;border-radius:12px;padding:10px 12px;font-size:12px;box-shadow:0 -4px 20px rgba(0,0,0,.3);';
   p.style.display = open ? 'block' : 'none';
   if (!document.getElementById('fs-hf-body')) p.innerHTML = '<div id="fs-hf-body"></div><div id="fs-hf-dates"></div>';
-  if (open) {
-    _fsRenderHexFilterPanel();
-    setTimeout(function(){ try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){} }, 60);
-  }
+  if (open) _fsRenderHexFilterPanel();
 }
 // Tap a hexagram in the filter list → its matching dates right under the panel.
 function fsHexFilterScan(idx){
@@ -1167,7 +1163,7 @@ function _fsRenderHexFilterPanel(){
   var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
         + '<b style="color:#6a1b9a;">🔍 Show on the luopan only…</b>'
         + '<span><button onclick="fsHexFilterToggle(\'_clear\')" style="background:#fff;color:#666;border:1px solid #ccc;border-radius:10px;padding:2px 9px;font-size:11px;cursor:pointer;">✕ Clear</button> '
-        + '<button onclick="fsToggleHexFilterPanel()" title="Close (the filter stays on)" style="background:#fff;color:#666;border:1px solid #ccc;border-radius:10px;padding:2px 9px;font-size:11px;cursor:pointer;">▲</button></span></div>';
+        + '<button onclick="fsToggleHexFilterPanel()" title="Close (the filter stays on)" style="background:#9c27b0;color:#fff;border:none;border-radius:10px;padding:3px 11px;font-size:12px;font-weight:bold;cursor:pointer;">✕</button></span></div>';
   h += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
   FS_HEXFILTERS.forEach(function(f){
     var a = act.indexOf(f.k) >= 0;
@@ -10404,4 +10400,18 @@ window.XKDGHouse = (function () {
 
   return { DIR2GRID: DIR2GRID, chartFor: chartFor, starAt: starAt, normalize: normalize,
            resolveByName: resolveByName, active: active, list: list, availableHouses: availableHouses };
+})();
+
+// Session 34: the hexagram-filter sheet is fixed on screen — close it when leaving FENG SHUI.
+(function(){
+  function hook(){
+    if (typeof window.setMode !== 'function' || window.setMode._hfHooked) return;
+    var orig = window.setMode;
+    window.setMode = function(m){
+      if (m !== 'fengshui') { var p = document.getElementById('fs-hexfilter-panel'); if (p) p.style.display = 'none'; }
+      return orig.apply(this, arguments);
+    };
+    window.setMode._hfHooked = true;
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else hook();
 })();
