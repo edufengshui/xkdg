@@ -20,6 +20,8 @@ Next session: read this file first.
 
 - New luopan ☰ entry **Water for facing** (`m-wat`): toggles `_fsHexFilter.wat` and opens the filter panel (same as Cure).
 
+- 🚪🛏🪑💧 setting icons removed from the luopan (main + bed/desk section); `fsDrawSettingIcons` left in place, unused.
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
