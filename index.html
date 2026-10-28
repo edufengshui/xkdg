@@ -40,6 +40,8 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
+      .filter-chip.cure-chip { color:#2e7d32; border-color:#66bb6a; }
+      .filter-chip.cure-chip.active { background:#2e7d32; color:#fff; border-color:#2e7d32; }
       /* Negatives chip — white by default, red when active */
       .filter-chip.negatives-chip {
         background: #fff !important;
@@ -368,6 +370,7 @@
             <span class="filter-chip green" data-filter="inverse-hex"  onclick="toggleChip(this)">Inverse Hex</span>
             <span class="filter-chip nayin-chip" data-filter="nayin" onclick="toggleChip(this)">NaYin</span>
             <span class="filter-chip ke-chip" data-filter="ke-wealth" onclick="toggleChip(this)">Ke</span>
+            <span class="filter-chip cure-chip" data-filter="cure" onclick="toggleChip(this)" title="Only favourable dates that carry a cure (remedy) for the loaded person">🌿 Cure</span>
             <span class="filter-chip negatives-chip" data-filter="negatives" onclick="toggleChip(this)" title="Show only negative hours, sorted worst-first">⚠ Negatives</span>
         </div>
         <div id="month-view" style="display:none;overflow-x:auto;max-width:600px;margin:0 auto;width:100%;"></div>
