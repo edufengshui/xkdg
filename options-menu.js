@@ -28,6 +28,11 @@
         { label: '🔎 Dates', items: ['[onclick="fsFindDates()"]', '[onclick="fsFindDates()"] ~ .fs-recall-fs-btn'] },
         { label: '📍 Facing & water', items: ['[onclick="fsFacingFromMap(\'fs-facing\')"]', '[onclick="fsSuggestWater()"]'] },
         { label: '⚙ Period & filters', toggles: true, items: ['#fs-period-btn', '#fs-filter-pyy-btn', '#fs-filter-adj-btn'] } ] },
+    // session 34: same ☰ style for the Bed and Desk sections (header = the panel title)
+    { id: 'bed', header: '#fs-bed-panel > div > div:first-child', title: '🛏 Bed', groups: [
+        { label: '🔎 Dates', items: ['[onclick="fsBedScan()"]', '[onclick="fsBedScan()"] ~ .fs-recall-fs-btn'] } ] },
+    { id: 'desk', header: '#fs-desk-panel > div > div:first-child', title: '🪑 Desk', groups: [
+        { label: '🔎 Dates', items: ['[onclick="fsDeskScan()"]', '[onclick="fsDeskScan()"] ~ .fs-recall-fs-btn'] } ] },
     { id: 'zoneset', headerOf: '[onclick="fsSaveZoneSetting()"]', title: '💾 Settings', groups: [
         { label: null, items: ['[onclick="fsSaveZoneSetting()"]'] } ] },
     { id: 'list', headerOf: '[onclick="toggleListAll()"]', title: 'List options', badges: true, groups: [
