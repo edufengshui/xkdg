@@ -5507,7 +5507,9 @@
           + 'other dimension (e.g. periods 8 | 6 9 9 and elements 2 8 3 2 -> a hexagram of period 2 and element 2); (B) the FAMILY '
           + 'alternative: a hexagram of the family the isolated pillar shares with another pillar (kind = family) only has to keep the '
           + 'connection in the other dimension. Remedies: DATES (favourable dates whose DAY or YEAR pillar is a remedy) and the Feng '
-          + 'Shui HEXAGRAMS (luopan degrees, ZS and LS), main first then the family alternative. Never invent values; if gaps.any is false say every pillar communicates.' };
+          + 'Shui HEXAGRAMS (luopan degrees, ZS and LS), main first then the family alternative. Excluded already by the tool: a hexagram whose '
+          + 'branch clashes with the native pillar it links (unless the same link exists with a non-clashing pillar), and a child of '
+          + 'two families when the chart holds two parents of those families. Never invent values; if gaps.any is false say every pillar communicates.' };
     } catch (e) { return { error: 'Gap analysis failed: ' + ((e && e.message) || e) }; }
   }
 
