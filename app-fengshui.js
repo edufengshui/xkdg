@@ -810,6 +810,67 @@ var FS_LUOPAN_MENU = [
   // Session 32 (Edu): 'DLR any date' moved to the main CHARTS button.
 ];
 
+// ── 🧭 Facing sub-menu (session 34, Edu) ─────────────────────────────────
+// "quando parliamo di facing si dovrebbe includere anche door facing (external or
+// internal), bed, desk or item … selezionabili … e poi posso visualizzare il resto sul
+// Luopan". The facings of the ACTIVE floor are listed in the luopan ☰; picking one copies
+// its facing (and its water / fountain / yang source, or nothing) into the Facing / Water
+// inputs, so the luopan and every filter that uses the facing (💧 Water for facing,
+// ☯ Pure Yin/Yang, Good today) follow it. Bed: facing = sitting + 180 (as in the Bed section).
+function _fsFacingSources(){
+  var out = [];
+  try {
+    var ref = (typeof _fsActiveHouseRef === 'function') ? _fsActiveHouseRef() : null;
+    var f = ref && ref.floor;
+    var num = function(x){ var n = parseFloat(x); return isNaN(n) ? null : n; };
+    if (f){
+      (f.doors || []).forEach(function(d){
+        if (d.facing == null) return;
+        var ic = d.kind === 'item' ? '\ud83d\udd36' : '\ud83d\udeaa';
+        var kind = d.kind === 'item' ? 'item' : d.kind === 'internal' ? 'internal' : 'external';
+        out.push({ label: ic + ' ' + d.name + ' (' + kind + ')', facing: num(d.facing), water: num(d.water) });
+      });
+      var st = f.settings || {};
+      (st.bed || []).forEach(function(b){
+        var sit = num(b.bedSitting); if (sit == null) return;
+        out.push({ label: '\ud83d\udecf ' + (b.name || 'Bed'), facing: (sit + 180) % 360, water: num(b.bedWater) });
+      });
+      (st.desk || []).forEach(function(k){
+        var fc = num(k.deskFacing); if (fc == null) return;
+        out.push({ label: '\ud83e\ude91 ' + (k.name || 'Desk'), facing: fc, water: num(k.deskWater) });
+      });
+    }
+    // The Bed / Desk being set up now (not saved yet)
+    var bs = num((document.getElementById('fs-bed-sitting') || {}).value);
+    if (bs != null) out.push({ label: '\ud83d\udecf Bed (current)', facing: (bs + 180) % 360, water: num((document.getElementById('fs-bed-water') || {}).value) });
+    var dk = num((document.getElementById('fs-desk-facing') || {}).value);
+    if (dk != null) out.push({ label: '\ud83e\ude91 Desk (current)', facing: dk, water: num((document.getElementById('fs-desk-water') || {}).value) });
+  } catch (e) {}
+  return out;
+}
+function _fsFacingOptionsHTML(){
+  var list = _fsFacingSources();
+  window._fsFacingList = list;
+  if (!list.length) return '';
+  var cur = parseFloat((document.getElementById('fs-facing') || {}).value);
+  var esc = function(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  return '<optgroup label="\ud83e\udded Facing">' + list.map(function(it, i){
+    var on = !isNaN(cur) && Math.abs(cur - it.facing) < 0.05;
+    return '<option value="fc:' + i + '" style="text-align:left;font-size:12px;">' + esc(it.label) + ' ' + (+it.facing.toFixed(1)) + '\u00b0' + (on ? ' \u00b7 ON' : '') + '</option>';
+  }).join('') + '</optgroup>';
+}
+function fsPickFacingSource(i){
+  try {
+    var it = (window._fsFacingList || [])[i]; if (!it) return;
+    var fi = document.getElementById('fs-facing'), wi = document.getElementById('fs-water');
+    if (fi) fi.value = (+it.facing.toFixed(1));
+    if (wi) wi.value = (it.water != null ? it.water : '');
+    if (typeof fsCheckFacingZS === 'function') { try { fsCheckFacingZS(); } catch (e) {} }
+    if (typeof _fsRenderHexFilterPanel === 'function') _fsRenderHexFilterPanel();
+    if (typeof fsRedraw === 'function') fsRedraw();
+  } catch (e) { console.warn('fsPickFacingSource', e); }
+}
+
 // Rebuilds the entries so each one shows the CURRENT state of its button.
 function fsLuopanMenuSync(){
   try {
@@ -826,6 +887,7 @@ function fsLuopanMenuSync(){
       html += '<option value="' + it.v + '" style="text-align:left;font-size:12px;">'
             + it.label(b) + '</option>';
     });
+    html += _fsFacingOptionsHTML();
     if (sel.innerHTML !== html) sel.innerHTML = html;
     sel.value = '';
   } catch (e) { /* the menu must never break the luopan */ }
@@ -923,6 +985,7 @@ function fsLuopanMenuAct(v){
         && window.QMDJAnnual.isRingOn()) {
       try { window.QMDJAnnual.toggleRing(); } catch (e) {}
     }
+    if (v.indexOf('fc:') === 0){ fsPickFacingSource(parseInt(v.slice(3), 10)); setTimeout(fsLuopanMenuSync, 60); return; }
     if (v === 'm-cure'){
       if (!window._fsHexFilter) window._fsHexFilter = {};
       fsHexFilterToggle('cure');                 // redraws the luopan + the panel
@@ -1059,16 +1122,19 @@ function fsToggleHexFilterPanel(){
   var p = document.getElementById('fs-hexfilter-panel');
   if (!p) return;
   var open = p.style.display === 'none';
-  // Session 34 (Edu: "premo e non accade nulla", twice): the panel lived in the page flow,
-  // where on the phone it never came into view. It is now a sheet fixed at the bottom of
-  // the screen, above everything, so it is always visible over the luopan; ✕ closes it
-  // (the filter stays on).
-  if (p.parentNode !== document.body) document.body.appendChild(p);
-  p.style.cssText = 'display:none;position:fixed;left:8px;right:8px;bottom:8px;z-index:100001;max-height:60vh;overflow:auto;'
-    + 'background:#faf5ff;border:2px solid #9c27b0;border-radius:12px;padding:10px 12px;font-size:12px;box-shadow:0 -4px 20px rgba(0,0,0,.3);';
+  // Session 34 (Edu): the panel opens right UNDER the luopan (it used to sit above it,
+  // off-screen, where the old button row was) and scrolls into view.
+  var wrap = document.getElementById('fs-canvas-wrap');
+  if (wrap && wrap.parentNode && p.previousElementSibling !== wrap) {
+    wrap.parentNode.insertBefore(p, wrap.nextSibling);
+    p.style.cssText = 'display:none;background:#faf5ff;border:1px solid #ce93d8;border-radius:8px;padding:8px 10px;margin:0 auto 10px;max-width:760px;font-size:12px;';
+  }
   p.style.display = open ? 'block' : 'none';
   if (!document.getElementById('fs-hf-body')) p.innerHTML = '<div id="fs-hf-body"></div><div id="fs-hf-dates"></div>';
-  if (open) _fsRenderHexFilterPanel();
+  if (open) {
+    _fsRenderHexFilterPanel();
+    setTimeout(function(){ try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){} }, 60);
+  }
 }
 // Tap a hexagram in the filter list → its matching dates right under the panel.
 function fsHexFilterScan(idx){
@@ -10402,16 +10468,3 @@ window.XKDGHouse = (function () {
            resolveByName: resolveByName, active: active, list: list, availableHouses: availableHouses };
 })();
 
-// Session 34: the hexagram-filter sheet is fixed on screen — close it when leaving FENG SHUI.
-(function(){
-  function hook(){
-    if (typeof window.setMode !== 'function' || window.setMode._hfHooked) return;
-    var orig = window.setMode;
-    window.setMode = function(m){
-      if (m !== 'fengshui') { var p = document.getElementById('fs-hexfilter-panel'); if (p) p.style.display = 'none'; }
-      return orig.apply(this, arguments);
-    };
-    window.setMode._hfHooked = true;
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hook); else hook();
-})();
