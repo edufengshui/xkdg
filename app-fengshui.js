@@ -784,9 +784,11 @@ function fsRenderCardView(){
 // the hamburger.
 var FS_LUOPAN_MENU = [
   // Session 33 (Edu): the view-mode row moved into this ☰ (one menu, at the right).
-  { v: 'm-fs',   btn: 'fs-mode-fs',   label: function () { return (_fsLuopanMode === 'fs'   ? '\u2713 ' : '\u2003 ') + '\u2b50 FS only'; } },
-  { v: 'm-xkdg', btn: 'fs-mode-xkdg', label: function () { return (_fsLuopanMode === 'xkdg' ? '\u2713 ' : '\u2003 ') + '\ud83d\udeaa XKDG only'; } },
-  { v: 'm-both', btn: 'fs-mode-both', label: function () { return (_fsLuopanMode === 'both' ? '\u2713 ' : '\u2003 ') + '\u2b50\ud83d\udeaa Both'; } },
+  // Session 34 (Edu): no ✓ prefix — the native radio on the right already shows the choice,
+  // and the prefix misaligned the first three rows.
+  { v: 'm-fs',   btn: 'fs-mode-fs',   label: function () { return '\u2b50 FS only'; } },
+  { v: 'm-xkdg', btn: 'fs-mode-xkdg', label: function () { return '\ud83d\udeaa XKDG only'; } },
+  { v: 'm-both', btn: 'fs-mode-both', label: function () { return '\u2b50\ud83d\udeaa Both'; } },
   { v: 'm-filter', btn: 'fs-hexfilter-btn', label: function (b) { return '\ud83d\udd0d Filter hexagrams' + (b && /\(\d+\)/.test(b.textContent) ? ' ' + b.textContent.match(/\(\d+\)/)[0] : ''); } },
   { v: 'm-plan', btn: 'fs-mode-floorplan', label: function () { return '\ud83c\udfe0 Floorplan'; } },
   { v: 'orient',   btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
@@ -1047,9 +1049,20 @@ function fsToggleHexFilterPanel(){
   var p = document.getElementById('fs-hexfilter-panel');
   if (!p) return;
   var open = p.style.display === 'none';
+  // Session 34 (Edu: "premo e non accade nulla"): the panel sat ABOVE the luopan, where the
+  // old button row was — opened from the luopan ☰ it appeared off-screen. Move it right
+  // under the luopan and bring it into view.
+  var wrap = document.getElementById('fs-canvas-wrap');
+  if (wrap && wrap.parentNode && p.previousElementSibling !== wrap) {
+    wrap.parentNode.insertBefore(p, wrap.nextSibling);
+    p.style.margin = '0 auto 10px';
+  }
   p.style.display = open ? 'block' : 'none';
   if (!document.getElementById('fs-hf-body')) p.innerHTML = '<div id="fs-hf-body"></div><div id="fs-hf-dates"></div>';
-  if (open) _fsRenderHexFilterPanel();
+  if (open) {
+    _fsRenderHexFilterPanel();
+    setTimeout(function(){ try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(e){} }, 60);
+  }
 }
 // Tap a hexagram in the filter list → its matching dates right under the panel.
 function fsHexFilterScan(idx){
