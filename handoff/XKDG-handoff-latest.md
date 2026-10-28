@@ -16,7 +16,7 @@ Next session: read this file first.
 5. **Hexagram filter panel** (`fsToggleHexFilterPanel`): moved right UNDER `#fs-canvas-wrap` (it was above the luopan, off-screen → "non accade nulla") and scrolls into view. Edu approved this inline layout (a bottom-sheet version was tried and reverted).
 
 ## Session 35
-- Picking a FACING source in the luopan ☰ now draws its arrow in every view mode (also FS, where Door/Water arrows were hidden); label = source name (Bed, Desk, door name). `_fsFacingPickDeg` remembers the picked degree; typing another facing returns to the normal 'Door' behaviour.
+- Picking a FACING source in the luopan ☰ now draws its arrow in every view mode (also FS, where Door/Water arrows were hidden); label = source name (Bed, Desk, door name). `_fsFacingPickDeg` remembers the picked degree; typing another facing returns to the normal "Door" behaviour. While a pick is active the House arrow is drawn dashed.
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).

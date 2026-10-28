@@ -1825,12 +1825,13 @@ function fsRedraw(){
     }
   }
   // Arrows — mode-aware
-  if (showFS && hfd !== null)  drawArrow(hfd, '#8B0000', 'House');
   // Session 35 (Edu): a facing picked from the ☰ FACING list (bed, desk, door…) must move
   // the arrow in EVERY view mode, so the filters can be read against it — also in FS mode,
   // where the Door/Water arrows were hidden. Label = the picked source's short name.
+  // While a pick is active the House arrow stays visible but DASHED (Edu).
   const _pk = window._fsFacingPick, _pkDeg = window._fsFacingPickDeg;
   const _picked = !!_pk && fd !== null && _pkDeg != null && Math.abs(fd - _pkDeg) < 0.05;
+  if (showFS && hfd !== null)  drawArrow(hfd, '#8B0000', 'House', _picked);
   const _pkName = _picked ? (_fsLmText(_pk).replace(/\s*\(.*$/, '') || 'Facing') : 'Door';
   if ((showXKDG || _picked) && fd !== null) drawArrow(fd,  _fsLuopanMode === 'both' || (!showXKDG) ? '#cc6600' : '#cc0000', _pkName);
   if ((showXKDG || _picked) && wd !== null) drawArrow(wd,  '#0a8c2c', 'Water', true);
