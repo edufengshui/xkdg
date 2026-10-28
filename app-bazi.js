@@ -6547,7 +6547,7 @@ function buildMonthView() {
                     const ziRealFilters2 = new Set(ziAF2);
                     ziRealFilters2.delete('negatives');
                     ziRealFilters2.delete('strict');
-                    ziPassF2 = (ziScore2 >= 1) && (ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {}, ziItems2));
+                    ziPassF2 = (ziScore2 >= 1) && (ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {yGan: ziYGan2, yZhi: ziYZhi2, dGan: ziDGan2, dZhi: ziDZhi2}, ziItems2));
                 }
                 // Purpose filter for Zi second half: same gate as regular hours.
                 // Without this, Zi-second rows would bypass the chosen purpose
@@ -6708,7 +6708,7 @@ function buildMonthView() {
                     const _ziRealFilters = new Set(_ziAF);
                     _ziRealFilters.delete('negatives');
                     _ziRealFilters.delete('strict');
-                    if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun}, ziItemsF)) continue;
+                    if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun, yGan: ziYGan, yZhi: ziYZhi, dGan: ziDGan, dZhi: ziDZhi}, ziItemsF)) continue;
                 }
 
                 // ── Purpose filter for Zi first half ──
@@ -6900,7 +6900,7 @@ function buildMonthView() {
             //  applied further down once listScore has been computed.)
 
             // Apply filter chips — but skip when Negatives is on (it has its own logic)
-            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { continue; }
+            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun, yGan, yZhi, dGan, dZhi }, analysisItems)) { continue; }
             const filtersActiveMV = activeFiltersMV.size > 0;
             const dayXkdgLV = dData || pillars.day;
             // Use active person (A if active, else B)
@@ -8360,6 +8360,17 @@ function blueItemsPassFilter(blueItems, filters, dayData, analysisItems) {
     const keOnly    = _baseFilters.size === 1 && _baseFilters.has('ke-wealth');
     // If only negatives/strict remained after stripping nayin/ke, treat as no filter (let other gates handle it)
     if (_baseFilters.size === 0) return true;
+    // Session 33 (Edu): 🌿 Cure chip — only favourable dates whose DAY or YEAR pillar is a remedy for the loaded person.
+    if (filters.has('cure')) {
+        const _rel = (blueItems || []).some(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
+        const _dd = dayData || {};
+        let _cu = null;
+        try { if (_rel && _dd.yGan && _dd.dGan) _cu = xkdgCureForDate(_dd.yGan, _dd.yZhi, _dd.dGan, _dd.dZhi); } catch (e) {}
+        if (!_cu) return false;
+        _baseFilters.delete('cure');
+        if (_baseFilters.size === 0) return true;
+        filters = new Set([...filters].filter(f => f !== 'cure'));
+    }
     const hasNayinFilter = filters.has('nayin');
     const hasKeFilter    = filters.has('ke-wealth');
     const xkdgFilters = new Set([...filters].filter(f => f !== 'nayin' && f !== 'ke-wealth' && f !== 'negatives' && f !== 'strict'));
@@ -8664,7 +8675,7 @@ function runScanner() {
                     else { continue; }
                 }
                 // Apply filter (only when Negatives is OFF)
-                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun }, analysisItems)) { continue; }
+                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun, yGan, yZhi, dGan, dZhi }, analysisItems)) { continue; }
             }
 
             // Detect which dimensions are active in the 4-hexagram relations
