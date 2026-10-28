@@ -2363,6 +2363,9 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
   } else {
     sorted.sort(primaryCmp);
   }
+  // Session 33 (Edu): 🌿 CURE toggle — keep only the dates that carry a remedy for the loaded person.
+  const cureActive = !!window._fsCureActive;
+  if (cureActive) sorted = sorted.filter(m => !!m.cure);
 
   const aLoaded = !!_personAYear;
   const bLoaded = !!_personBYear;
@@ -2418,6 +2421,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
           const sym = active ? '★ ON' : '☆ OFF';
           return '<span style="margin-left:6px;border-left:1px solid #ccc;padding-left:8px;"><button onclick="fsToggleQimen()" style="background:' + bg + ';color:' + fg + ';border:1px solid ' + bd + ';padding:5px 12px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">☆ QIMEN ' + sym + '</button></span>';
         })() : ''}
+        <span style="margin-left:6px;border-left:1px solid #ccc;padding-left:8px;"><button onclick="fsToggleCure()" title="Only dates that carry a cure (remedy) for the loaded person" style="background:${cureActive?'#2e7d32':'#fff'};color:${cureActive?'#fff':'#2e7d32'};border:1px solid ${cureActive?'#2e7d32':'#66bb6a'};padding:5px 12px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;">🌿 CURE ${cureActive?'ON':'OFF'}</button></span>
       </div>
       <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
         <span style="font-size:11px;color:#666;font-weight:bold;">Range:</span>
@@ -2459,7 +2463,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
       <div style="font-size:11px;color:#666;margin-bottom:8px;">${fSummary} · range ${currentRange} days</div>
       ${toolbar}
       ${personCTA}
-      <div style="text-align:center;color:#888;padding:15px;font-size:12px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;">No dates in this range connect to this Facing${wSlot?'+Water':''} setup. Try a wider range above.</div>`;
+      <div style="text-align:center;color:#888;padding:15px;font-size:12px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;">${cureActive ? ((_personAYear || _personBYear) ? 'No date in this range carries a 🌿 cure for this setup. Try a wider range above, or switch 🌿 CURE off.' : 'Load Person A or B to see the dates with a 🌿 cure.') : `No dates in this range connect to this Facing${wSlot?'+Water':''} setup. Try a wider range above.`}</div>`;
     return;
   }
 
@@ -2693,6 +2697,14 @@ function fsSetRange(days){
 // Does NOT affect QIMEN toggle.
 function fsSetSortMode(mode){
   window._fsSortMode = (mode === 'list') ? 'list' : 'best';
+  if (window._fsLastMatches && window._fsLastFSlot) {
+    fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches, window._fsLastContainerId);
+  }
+}
+
+// 🌿 CURE toggle (session 33) — re-renders the last list keeping only dates with a cure.
+function fsToggleCure(){
+  window._fsCureActive = !window._fsCureActive;
   if (window._fsLastMatches && window._fsLastFSlot) {
     fsRenderMatchingDatesTable(window._fsLastFSlot, window._fsLastWSlot, window._fsLastMatches, window._fsLastContainerId);
   }
