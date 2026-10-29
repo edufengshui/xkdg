@@ -32,7 +32,7 @@
     map: ['🗺 Map', 'Opens the saved address in Google Maps.', FS],
     address: ['✏ Address', 'Saves or changes the address of the house. It is used by 📍 Measure facing and by the daily email (city of the house).', FS],
     measure_facing: ['📍 Measure facing', 'Opens a satellite map at the house address: line up the façade to read the <b>magnetic</b> facing. The value goes into <b>House Facing (°)</b> in the ⭐ FLYING STARS box; save it there.', SUN],
-    sun_facing: ['☀️ Sun facing', 'Measures the facing with the sun, no compass: a card flat on the window sill, a vertical object casts a shadow; enter the exact time, the angle α (0–90°) and whether the shadow leans left or right (inside, looking out). Take 2–3 readings at different hours: the app averages them and saves the <b>magnetic</b> facing.', SUN],
+    sun_facing: ['☀️ Sun facing', 'Measures the facing with the sun, no compass: a card flat on the window sill, a vertical object casts a shadow; enter the exact time, the angle α (0–90°) and whether the shadow leans left or right (inside, looking out). Take 2–3 readings at different hours: the app averages them and saves the <b>magnetic</b> facing.', SUN, G + 'videos/sun-facing.mp4'],
 
     floor_facing: ['✎ Facing / period', 'Changes the facing (°) and period of this floor. If all floors share the same facing, the change applies to the whole house. Doors, items, bed and desk on the walls turn with the new facing (±90 / 180).', FS],
     align_walls: ['📐 Align to the walls', 'Every wall follows the house facing (facing, ±90°, 180°). This turns the doors, items, bed sitting and desk facing that are within 10° of a wall onto the exact wall direction of the current facing. It happens by itself whenever you change the facing; use this to fix data saved before. Water / fountain degrees are not touched.', FS],
@@ -98,7 +98,9 @@
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:20px;">📖</span><b style="flex:1;color:#2e7d32;font-size:16px;">' + h[0] + '</b>' +
       '<button onclick="document.getElementById(\'fs-help-ov\').remove()" style="background:#eee;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;">✕</button></div>' +
       '<div>' + h[1] + '</div>' +
-      '<div style="margin-top:12px;text-align:right;"><a href="' + h[2] + '" target="_blank" rel="noopener" style="color:#00695c;font-weight:bold;">📘 Full guide →</a></div></div>';
+      '<div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
+      (h[3] ? '<a href="' + h[3] + '" target="_blank" rel="noopener" style="color:#c62828;font-weight:bold;">▶ Video tutorial</a>' : '<span></span>') +   // session 35: optional 4th item = video
+      '<a href="' + h[2] + '" target="_blank" rel="noopener" style="color:#00695c;font-weight:bold;">📘 Full guide →</a></div></div>';
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
   };

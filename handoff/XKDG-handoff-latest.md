@@ -36,6 +36,8 @@ Next session: read this file first.
 
 - **▶ Video tutorials**: `guides/videos/sun-facing.mp4` (1:46, 16:9, scene 2 in 3D with three.js, English captions, no audio) embedded at the top of guides/sun-facing.html; built from real app screenshots (Playwright, demo person/house, clock fixed 2026-10-29 10:32 Vienna) + animated SVG scenes; sources in tools/video/sun-facing/. Guide fixed: Sun facing is now in 📍 Address & facing ☰.
 
+- 📖 help popups (house-menus.js HELP): optional 4th item = video URL → "▶ Video tutorial" link (sun_facing has it).
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
