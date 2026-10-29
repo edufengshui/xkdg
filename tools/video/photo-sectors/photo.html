@@ -1,0 +1,21 @@
+<!doctype html><html><body style="margin:0;background:#000">
+<script src="node_modules/three/build/three.min.js"></script><script src="room.js"></script>
+<script>
+// camera at the bed head, looking along the bed facing; yaw = camera bearing − 176 (degrees, + = to the right)
+window.renderPhoto = function (W, H, f35, yawDeg, cam) {
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(W, H);
+  R.shadowMap.enabled = true; R.outputEncoding = THREE.sRGBEncoding; document.body.appendChild(R.domElement);
+  const S = new THREE.Scene(); S.background = new THREE.Color('#ddd'); buildRoom(THREE, S, {});
+  const w35 = 43.27 * W / Math.hypot(W, H), fpx = (W / 2) * f35 / (w35 / 2);
+  const vfov = 2 * Math.atan((H / 2) / fpx) * 180 / Math.PI;
+  const C = new THREE.PerspectiveCamera(vfov, W / H, .05, 50);
+  C.position.set(cam[0], cam[1], cam[2]);
+  // three: camera looks toward −z by default; our facing is +z, right of the facing (looking along it) is −x
+  const yaw = yawDeg * Math.PI / 180;
+  C.lookAt(cam[0] - Math.sin(yaw), cam[1], cam[2] + Math.cos(yaw));
+  R.render(S, C);
+  window._cam = C; window._fpx = fpx;
+  return R.domElement.toDataURL('image/jpeg', .92);
+};
+window.project = function (pts) { return pts.map(p => { const v = new THREE.Vector3(p[0], p[1], p[2]).project(window._cam); return [(v.x + 1) / 2 * window._W, (1 - v.y) / 2 * window._H]; }); };
+</script></body></html>
