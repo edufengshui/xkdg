@@ -296,8 +296,7 @@
     el('xps-cal').textContent = 'Photo centre ' + r1(S.cal.centre) + '°. ' + S.cal.note;
   }
   // ── 8 directions / 24 mountains: boundary lines + labels ──
-  var DIR8 = [['N', 'Kan \u574E'], ['NE', 'Gen \u826E'], ['E', 'Zhen \u9707'], ['SE', 'Xun \u5DFD'],
-              ['S', 'Li \u79BB'], ['SW', 'Kun \u5764'], ['W', 'Dui \u5151'], ['NW', 'Qian \u4E7E']];
+  var DIR8 = [['N'], ['NE'], ['E'], ['SE'], ['S'], ['SW'], ['W'], ['NW']];   // directions only (Edu: no trigram names)
   function drawDirections(ctx, u) {
     var yTop = S.H * 0.06;
     if (S.layers.mtn24) {
@@ -323,13 +322,12 @@
         var c = k * 45, xc2 = X(c);
         if (xc2 !== null && xc2 >= -S.W * 0.02 && xc2 <= S.W * 1.02) {
           ctx.font = 'bold ' + 30 * u + 'px sans-serif';
-          var t1 = DIR8[k][0], t2 = DIR8[k][1];
-          var w = Math.max(ctx.measureText(t1).width, (ctx.font = 'bold ' + 16 * u + 'px sans-serif', ctx.measureText(t2).width)) + 20 * u;
+          var t1 = DIR8[k][0];
+          var w = ctx.measureText(t1).width + 20 * u;
           var x0 = Math.max(2, Math.min(S.W - w - 2, xc2 - w / 2));
-          ctx.fillStyle = 'rgba(123,31,162,0.88)'; ctx.fillRect(x0, yTop - 26 * u, w, 58 * u);
+          ctx.fillStyle = 'rgba(123,31,162,0.88)'; ctx.fillRect(x0, yTop - 26 * u, w, 38 * u);
           ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.font = 'bold ' + 30 * u + 'px sans-serif'; ctx.fillText(t1, x0 + w / 2, yTop - 24 * u);
-          ctx.font = 'bold ' + 16 * u + 'px sans-serif'; ctx.fillText(t2, x0 + w / 2, yTop + 10 * u);
+          ctx.fillText(t1, x0 + w / 2, yTop - 22 * u);
         }
       }
     }

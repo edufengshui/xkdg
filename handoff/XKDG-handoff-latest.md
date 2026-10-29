@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 34→35, 2026-10-28)
+# XKDG — Handoff (session 36, 2026-10-29)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -46,6 +46,9 @@ Next session: read this file first.
 
 - ▶ Video 3 `guides/videos/palaces-centre.mp4` (2:12): 8 palaces / 24 mountains on 4 photos from the CENTRE of the house (Edu: only the house centre, never a room — guide Part 2 warning fixed). Demo open-plan flat (tools/video/palaces-centre/house.js, 8×5.5 m, sleeping area behind an arch); the 4 photos (176/266/356/86) are calibrated by the app itself on real walls and tile into a 360° panorama (final scene). Embedded at guide Part 2 (`#part2`); 📖 photo_sectors popup now lists both videos (HELP 4th item may be [[label, url], …]). Trigram labels follow the app overlay (离, 兑 simplified) — asked Edu whether to switch the app to 離 兌.
 - Guide videos: `guides/video-fs.js` (rotate phone → full screen, Android locks landscape); help popups open `guides/video.html?v=<name>` (player page). New videos: add the name to G in video.html and include video-fs.js in the guide.
+
+## Session 36
+- Photo sectors, 8 directions overlay: only N/NE/E… (Edu: trigram names not needed); label box shortened. Videos palaces-centre / photo-sectors still show the old trigram labels (re-render pending, ask Edu).
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
