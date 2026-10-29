@@ -44,6 +44,7 @@ Next session: read this file first.
 - ▶ Video 2 `guides/videos/photo-sectors.mp4` (2:00): water positions on a photo; demo 3D room photo; embedded in photo-sectors guide; 📖 photo_sectors popup links it. Sources tools/video/photo-sectors/.
   - Session 35c: bed scene fixed — arrow + view wedge drawn ON the mattress (y 0.64, `ay` in PTS) so they start visibly from the headboard (before: on the floor, hidden under the bed). Only scene 2 re-rendered and spliced (16–27 s).
 
+- ▶ Video 3 `guides/videos/palaces-centre.mp4` (2:12): 8 palaces / 24 mountains on 4 photos from the CENTRE of the house (Edu: only the house centre, never a room — guide Part 2 warning fixed). Demo open-plan flat (tools/video/palaces-centre/house.js, 8×5.5 m, sleeping area behind an arch); the 4 photos (176/266/356/86) are calibrated by the app itself on real walls and tile into a 360° panorama (final scene). Embedded at guide Part 2 (`#part2`); 📖 photo_sectors popup now lists both videos (HELP 4th item may be [[label, url], …]). Trigram labels follow the app overlay (离, 兑 simplified) — asked Edu whether to switch the app to 離 兌.
 - Guide videos: `guides/video-fs.js` (rotate phone → full screen, Android locks landscape); help popups open `guides/video.html?v=<name>` (player page). New videos: add the name to G in video.html and include video-fs.js in the guide.
 
 ## To check with Edu
