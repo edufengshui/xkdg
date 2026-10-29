@@ -91,7 +91,7 @@ function callout(x, y, w) {
   };
 }
 const META = __META__;
-const DIR8 = [['N', 'Kan 坎'], ['NE', 'Gen 艮'], ['E', 'Zhen 震'], ['SE', 'Xun 巽'], ['S', 'Li 离'], ['SW', 'Kun 坤'], ['W', 'Dui 兑'], ['NW', 'Qian 乾']];
+const DIR8 = [['N'], ['NE'], ['E'], ['SE'], ['S'], ['SW'], ['W'], ['NW']];   // directions only (Edu)
 
 // ── 3D house: top view with the 8 palaces from the centre, then the person and the 4 photo wedges ──
 function houseArt(x, y, w, h) {
@@ -139,7 +139,7 @@ function houseArt(x, y, w, h) {
     m.rotation.x = Math.PI / 2; const g = new THREE.Group(); g.add(m); const d = bearingDir(B); g.rotation.y = Math.atan2(d[0], d[1]); g.position.y = .6; S.add(g); return g; });
   // HTML labels
   const lab = (txt, css) => { const d = el('div', 'transform:translate(-50%,-50%);white-space:nowrap;text-align:center;opacity:0;' + css, txt, host); d.classList.add('abs'); return d; };
-  const P8 = DIR8.map(dd => lab('<div style="font-size:30px;font-weight:800;">' + dd[0] + '</div><div style="font-size:19px;font-weight:700;">' + dd[1] + '</div>', 'background:rgba(123,31,162,.9);color:#fff;border-radius:12px;padding:4px 12px;line-height:1.15;'));
+  const P8 = DIR8.map(dd => lab('<div style="font-size:30px;font-weight:800;">' + dd[0] + '</div>', 'background:rgba(123,31,162,.9);color:#fff;border-radius:12px;padding:4px 12px;line-height:1.15;'));
   const PM = META.mtn.map(c => lab(c, 'font-size:22px;font-weight:800;color:#4a148c;background:rgba(255,255,255,.85);border-radius:8px;padding:0 6px;'));
   const Lc = lab('centre of the house', 'font-size:26px;font-weight:800;color:#e65100;background:rgba(255,255,255,.9);border-radius:10px;padding:2px 12px;');
   const Lf = lab('facing 176°', 'font-size:24px;font-weight:800;color:#c62828;background:rgba(255,255,255,.9);border-radius:10px;padding:2px 12px;');
@@ -194,7 +194,7 @@ const SCENES = [
   { dur: 10, make() {   // what it does
       chrome(1);
       const c = caption(1130, 110, 700, 'What it does', 'The space around you, on the photo', [
-        [0.6, '<b style="color:#7b1fa2;">8 directions</b>: the palaces with their trigrams — boundaries at 22.5° + every 45°.'],
+        [0.6, '<b style="color:#7b1fa2;">8 directions</b>: the 8 palaces N, NE, E … — boundaries at 22.5° + every 45°.'],
         [3.4, '<b>24 mountains</b>: dashed lines and names — boundaries at 7.5° + every 15°.'],
         [6.4, 'Drawn on the real room, so you see where doors, furniture and water fall.']]);
       const img = el('div', 'left:200px;top:80px;width:660px;height:880px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.18);background-size:cover;background-image:url(shots/r1.jpg);'); img.classList.add('abs');
