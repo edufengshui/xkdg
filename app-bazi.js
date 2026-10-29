@@ -1037,6 +1037,8 @@ function _xkdgJzOfHex(hex) {
 //     PARENTS of those families.
 function _xkdgRemedyKind(gaps, pillars, cand, isoFams) {
     const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars[k] && pillars[k].qi != null);
+    // Session 36 (Edu): the same hexagram as an ISOLATED natal pillar is never a cure (it is that pillar again).
+    if (['qi', 'yun'].some(f => gaps.dims[f].isolated.some(x => pillars[x.pillar] && pillars[x.pillar].hex === cand.hex))) return null;
     const clash = k => !!(cand.branch && pillars[k].branch && BRANCH_CLASHES[cand.branch] === pillars[k].branch);
     // B. two native parents of different families + the candidate is a child of both
     let ents = [];
