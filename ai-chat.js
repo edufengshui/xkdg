@@ -5805,7 +5805,7 @@
     try { Object.keys(SHELLY_HOUSES).forEach(function (k) {
       var fc = SHELLY_HOUSES[k].fountain; if (!fc || String(fc.house).toLowerCase() !== hn) return;
       out.push({ name: fc.label, shelly_house: k, facing: fc.facing, water: fc.water,
-                 runs: fc.period === 'night' ? 'NIGHT only (start of Hai to END of Mao, solar 21:00-07:00)' : 'DAY only (start of Mao to start of Hai, solar 05:00-21:00)',
+                 runs: fc.period === 'night' ? 'NIGHT only (start of Hai to END of Mao, solar 21:00-07:00)' : 'DAY only (start of Chen to start of Hai, solar 07:00-21:00)',
                  has_shelly: SHELLY_HOUSES[k].shelly !== false, switched: SHELLY_HOUSES[k].shelly === false ? 'by hand (no Shelly yet)' : 'Shelly plug',
                  source: 'fountain' });
     }); } catch (e) {}
@@ -6685,7 +6685,7 @@
     // Water at 222° (Ling Shen) for the bed and the bedroom door, both facing 266° (Zheng Shen).
     // Session 35 (Edu): NO Shelly on the fountains yet (shelly:false) - switched BY HAND; the plan is
     // computed (preview) and goes to the calendar; set shelly:true when the plug is installed.
-    // A (bed) runs only by DAY (Mao..Hai), B (door) only by NIGHT (Hai..END of Mao, session 36). Like the aquarium:
+    // A (bed) runs only by DAY (Chen..Xu, solar 07-21), B (door) only by NIGHT (Hai..END of Mao, solar 21-07) - session 36. Like the aquarium:
     // ON at the best favourable hour of its period, stays ON to the end of the period; no
     // "never dark" rule; the plan ends at the start of the next solar month.
     'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' }, shelly: false },
@@ -7139,7 +7139,8 @@
     for (var i = 0; i < days; i++) {
       var D = _isoPlus(start, i), N = _isoPlus(D, 1), cands = [];
       if (F.period === 'day') {
-        [3, 4, 5, 6, 7, 8, 9, 10].forEach(function (k) { var x = hs(D, k); if (x) cands.push({ x: x, on: _solarToEpoch(D, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
+        // Session 36 (Edu): the day starts at Chen 辰 (solar 07:00) - Mao belongs to Fountain B.
+        [4, 5, 6, 7, 8, 9, 10].forEach(function (k) { var x = hs(D, k); if (x) cands.push({ x: x, on: _solarToEpoch(D, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
         var off = _solarToEpoch(D, 21 * 60, lon, utc);
       } else {
         var x11 = hs(D, 11); if (x11) cands.push({ x: x11, on: _solarToEpoch(D, 21 * 60, lon, utc) });
@@ -7167,7 +7168,7 @@
       } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
     }
     return {
-      scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: from the start of Mao 卯 to the start of Hai 亥 (solar 05:00-21:00)' : 'night: from the start of Hai 亥 to the END of Mao 卯 (solar 21:00-07:00)',
+      scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: from the start of Chen 辰 to the start of Hai 亥 (solar 07:00-21:00)' : 'night: from the start of Hai 亥 to the END of Mao 卯 (solar 21:00-07:00)',
       placement: { facing: F.facing, water: F.water }, persons_used: _digestPersonNames().label,
       mode: noShelly ? 'by_hand' : (commit ? 'committed' : 'preview'), has_shelly: !noShelly,
       plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
