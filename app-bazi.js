@@ -882,6 +882,56 @@ function _eotAt(dateLike){ try { const d = (dateLike instanceof Date) ? dateLike
 // value that communicates with the isolated pillar(s) — preferring values that also talk
 // to the others — applied either as a DATE to choose or a Feng Shui HEXAGRAM to activate.
 function _xkdgTalk(a, b) { return a != null && b != null && (isHetuPair(a, b) || [5, 10, 15].includes(a + b) || a === b); }
+// Session 35 (Edu): the SETTINGS of a dimension. Pillars that talk form groups; each group
+// has its language (Adding 5/10/15 or Hetu). Two groups with DIFFERENT languages (e.g. Year+Month
+// Adding 15, Day+Hour Hetu 2-7) are two settings: the cure is a value that makes one group speak
+// the other group's language with ALL its pillars (Thao: Element 3 or 8 turns Day 2 / Hour 7 into
+// Adding 5-10-15, like Year 6 + Month 9).
+function _xkdgRel(a, b) {
+    if (a == null || b == null) return null;
+    if ([5, 10, 15].includes(a + b)) return { lang: 'add', txt: a + '+' + b + ' = ' + (a + b) };
+    if (isHetuPair(a, b)) return { lang: 'hetu', txt: 'Hetu ' + Math.min(a, b) + '-' + Math.max(a, b) };
+    if (a === b) return { lang: 'eq', txt: a + ' = ' + b };
+    return null;
+}
+function xkdgDimSettings(pillars, f) {
+    const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars && pillars[k] && pillars[k][f] != null);
+    const par = {}; keys.forEach(k => { par[k] = k; });
+    const find = k => par[k] === k ? k : (par[k] = find(par[k]));
+    const pairs = [];
+    for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+        const r = _xkdgRel(pillars[keys[i]][f], pillars[keys[j]][f]);
+        if (!r) continue;
+        pairs.push({ a: keys[i], b: keys[j], lang: r.lang, txt: r.txt });
+        par[find(keys[i])] = find(keys[j]);
+    }
+    const byRoot = {};
+    keys.forEach(k => { (byRoot[find(k)] = byRoot[find(k)] || []).push(k); });
+    const groups = Object.values(byRoot).filter(g => g.length > 1).map(g => {
+        const gp = pairs.filter(p => g.includes(p.a) && g.includes(p.b));
+        return { pillars: g, pairs: gp, langs: [...new Set(gp.map(p => p.lang).filter(l => l !== 'eq'))] };
+    });
+    const out = { groups: groups, split: false, harmonise: [] };
+    if (groups.length === 2) {
+        const [A, B] = groups;
+        const differ = A.langs.length && B.langs.length && !A.langs.some(l => B.langs.includes(l));
+        if (differ) {
+            out.split = true;
+            [[A, B], [B, A]].forEach(([tgt, src]) => {
+                src.langs.forEach(lang => {
+                    const vals = [];
+                    for (let v = 1; v <= 9; v++) {
+                        const rs = tgt.pillars.map(k => _xkdgRel(v, pillars[k][f]));
+                        if (rs.every(r => r && r.lang === lang)) vals.push({ value: v, links: tgt.pillars.map((k, i) => ({ pillar: k, txt: rs[i].txt })) });
+                    }
+                    if (vals.length) out.harmonise.push({ target: tgt.pillars, lang: lang, like: src.pillars, values: vals });
+                });
+            });
+        }
+    }
+    return out;
+}
+function _xkdgHarmVals(settings) { const s = new Set(); (settings && settings.harmonise || []).forEach(h => h.values.forEach(v => s.add(v.value))); return s; }
 function xkdgPersonGaps(pillars) {
     const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars && pillars[k] && pillars[k].qi != null);
     if (keys.length < 2) return null;
@@ -901,6 +951,7 @@ function xkdgPersonGaps(pillars) {
     });
     out.any = Object.values(out.dims).some(d => d.isolated.length);
     out.pillars = pillars;
+    try { out.settings = { qi: xkdgDimSettings(pillars, 'qi'), yun: xkdgDimSettings(pillars, 'yun') }; } catch (e) {}
     // A full Blood Link (all four pillars in one family) IS communication among all of them:
     // no pillar is isolated, whatever the numbers say.
     try {
@@ -1009,10 +1060,12 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
             const fl = famOf(s.hexNum), kind = _xkdgRemedyKind(gaps, pillars, { qi: s.qi, yun: s.yun, hex: s.hexNum, stem: jz.stem, branch: jz.branch }, isoFams);
             if (!kind) return;
             const fam = fl.filter(f => isoFams.has(f));
+            const harm = ['qi', 'yun'].filter(f => gaps.settings && _xkdgHarmVals(gaps.settings[f]).has(s[f]));
             res.hexagrams.push({ hex: s.hexNum, qi: s.qi, yun: s.yun, from: Math.round(s.startDeg * 10) / 10, to: Math.round(s.endDeg * 10) / 10,
-                                 kind: kind, family: fam.length ? fam : undefined, zheng_shen: (typeof fsIsZhengShen === 'function') ? !!fsIsZhengShen(s.yun) : null });
+                                 kind: kind, family: fam.length ? fam : undefined, harmonises: harm.length ? harm : undefined,
+                                 zheng_shen: (typeof fsIsZhengShen === 'function') ? !!fsIsZhengShen(s.yun) : null });
         });
-        res.hexagrams.sort((a, b) => (a.kind === 'main' ? 0 : 1) - (b.kind === 'main' ? 0 : 1) || a.from - b.from);
+        res.hexagrams.sort((a, b) => (a.kind === 'main' ? 0 : 1) - (b.kind === 'main' ? 0 : 1) || (b.harmonises ? 1 : 0) - (a.harmonises ? 1 : 0) || a.from - b.from);
     } catch (e) {}
     try {
         const n = days || 30, t0 = startIso ? new Date(startIso + 'T00:00:00') : new Date(); t0.setHours(0, 0, 0, 0);
@@ -1151,6 +1204,24 @@ function renderPersonView() {
         if (cur) h += '<td style="border:0;width:14px;padding:0;font-size:18px;color:#7e57c2;text-align:center;vertical-align:middle;">+</td>'
                    + col(selDate ? fmtD(selDate.date) : (cur.kind === 'family' ? '★ Family' : 'Remedy'), cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
         h += '</tr></table></div>';
+        // ── 🔍 XKDG analysis of the natal chart: settings per dimension (session 35, Edu) ──
+        try {
+            const LN = { add: 'Adding', hetu: 'Hetu', eq: 'equal' };
+            const st = g ? g.settings : { qi: xkdgDimSettings(pp.P, 'qi'), yun: xkdgDimSettings(pp.P, 'yun') };
+            let an = '';
+            [['qi', 'Elements', 'Element'], ['yun', 'Periods', 'Period']].forEach(([f, nms, nm]) => {
+                const S = st && st[f]; if (!S) return;
+                const gtxt = S.groups.map(gr => gr.pillars.map(k => L[k]).join(' + ') + ' (' + gr.pairs.map(p => p.txt).join(', ') + ')').join(' · ');
+                an += '<div style="margin-top:2px;"><b>' + nms + '</b>: ' + (gtxt || 'no pillar talks with another')
+                    + (S.split ? ' — <b>two settings</b> (' + S.groups.map(gr => gr.langs.map(l => LN[l]).join('/')).join(' and ') + ').' : '.');
+                if (S.split) S.harmonise.forEach(hm => {
+                    an += '<div style="margin:2px 0 0 10px;color:#4a148c;">✦ Cure: ' + nm + ' ' + hm.values.map(v => v.value).join(' or ') + ' turns ' + hm.target.map(k => L[k]).join(' + ')
+                        + ' into ' + LN[hm.lang] + ' (' + hm.values.map(v => v.links.map(l => l.txt).join(', ')).join(' · ') + '), the same setting as ' + hm.like.map(k => L[k]).join(' + ') + '.</div>';
+                });
+                an += '</div>';
+            });
+            if (an) h += '<div style="margin:4px 0 6px;padding:6px 8px;border-radius:8px;background:#eef2ff;font-size:13px;"><b>🔍 XKDG analysis</b>' + an + '</div>';
+        } catch (eAn) {}
         if (!g || !g.any) {
             h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
             return;
@@ -1173,14 +1244,39 @@ function renderPersonView() {
                     const netPairs = [];
                     for (let i = 0; i < net.length; i++) for (let j = i + 1; j < net.length; j++) { const r = relTxt(pp.P[net[i]][f], pp.P[net[j]][f]); if (r) netPairs.push(r); }
                     if (c.kind === 'family') {
-                        out.push('<b>' + nms + '</b>: it does not need to link the isolated ' + D.isolated.map(x => L[x.pillar]).join(', ') + ' here — it belongs to the <b>' + [...isoFamSet].join(', ') + '</b> family, which the isolated pillar already shares with another pillar of the chart, so the family itself is the bridge.');
+                        // Session 35 (Edu): name WHICH pillars share the family.
+                        let cf = [];
+                        try { cf = [...new Set(_xkdgResolvedFamilyEntries({ stem: c.stem, branch: c.branch, hex: c.hex }).map(x => x.family))].filter(x => isoFamSet.has(x)); } catch (e) {}
+                        const pd = k => L[k] + ' ' + (pp.P[k].stem || '') + (pp.P[k].branch || '') + ' (hex ' + pp.P[k].hex + ')';
+                        const shares = D.isolated.map(x => {
+                            const xf = getJiaZiFamilies(pp.P[x.pillar].stem, pp.P[x.pillar].branch).filter(fm => cf.includes(fm));
+                            return xf.map(fm => {
+                                const mates = keys4.filter(k => k !== x.pillar && getJiaZiFamilies(pp.P[k].stem, pp.P[k].branch).includes(fm));
+                                return '<b>' + fm + '</b>: your isolated ' + pd(x.pillar) + ' and ' + mates.map(pd).join(', ');
+                            }).join('; ');
+                        }).filter(Boolean).join('; ');
+                        out.push('<b>' + nms + '</b>: it does not need to link the isolated ' + D.isolated.map(x => L[x.pillar]).join(', ') + ' here — hexagram ' + c.hex + ' belongs to the family that '
+                            + (shares ? 'already joins ' + shares : 'the isolated pillar shares with another pillar') + ', so the family itself is the bridge.');
                     } else {
                         D.isolated.forEach(x => out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' links your isolated ' + L[x.pillar] + ' (' + relTxt(c[f], x.value) + '), in the same language your other ' + nms + ' already speak (' + netPairs.slice(0, 2).join(', ') + ').'));
                     }
                 } else {
                     const lang = _xkdgLang(keys4.map(k => pp.P[k][f]));
                     const with_ = keys4.filter(k => _xkdgSpeaks(lang, c[f], pp.P[k][f]) && !clash(k)).map(k => L[k] + ' (' + relTxt(c[f], pp.P[k][f]) + ')');
-                    out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' keeps them connected — it talks with ' + with_.join(', ') + '.');
+                    let harmTxt = '';
+                    const st = g.settings && g.settings[f];
+                    if (st && st.split) {
+                        const hv = _xkdgHarmVals(st);
+                        const h0 = st.harmonise.filter(h => h.values.some(v => v.value === c[f]))[0];
+                        const LN = { add: 'Adding', hetu: 'Hetu' };
+                        if (h0) {
+                            const v0 = h0.values.filter(v => v.value === c[f])[0];
+                            harmTxt = ' It also <b>harmonises the two settings</b>: ' + v0.links.map(l => L[l.pillar] + ' ' + l.txt).join(', ') + ' — ' + h0.target.map(k => L[k]).join(' + ') + ' now speak ' + LN[h0.lang] + ' like ' + h0.like.map(k => L[k]).join(' + ') + '.';
+                        } else if (hv.size) {
+                            harmTxt = ' It does not harmonise the two settings (that needs ' + nm + ' ' + [...hv].join(' or ') + ').';
+                        }
+                    }
+                    out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' keeps them connected — it talks with ' + with_.join(', ') + '.' + harmTxt);
                 }
             });
             out.push('<b>Why it helps</b>: with this hexagram next to the natal chart, no pillar is left alone — all four communicate in both dimensions.');
@@ -1234,13 +1330,14 @@ function renderPersonView() {
             const on = 'd' + d.date === sel;
             return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'d' + d.date + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
                + (on ? 'background:#2e7d32;color:#fff;border:2px solid #1b5e20;' : 'background:#e8f5e9;border:1px solid #66bb6a;color:#1b5e20;') + '">'
+               + ((g.settings && ['qi', 'yun'].some(f => _xkdgHarmVals(g.settings[f]).has(d.cand[f]))) ? '✦ ' : '')
                + fmtD(d.date) + ' · ' + d.day + (d.cand.kind === 'family' ? ' ★' : '') + '</button>';
         }).join('') : '<div style="color:#888;font-size:12px;">No favourable remedy date in the range — extend DAYS.</div>';
         // ── 2) then the hexagrams by type (Earth / Feng Shui) ──
         const chip = x => { const c = (x.from + 2.8125) % 360, on = 'h' + x.hex === sel;
             return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'h' + x.hex + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
                + (on ? 'background:#7e57c2;color:#fff;border:2px solid #4a148c;' : (x.kind === 'family' ? 'background:#ede7f6;border:1px solid #7e57c2;color:#311b92;' : 'background:#f1f8e9;border:1px solid #9ccc65;color:#1b5e20;')) + '">'
-               + 'hex ' + x.hex + ' (' + x.qi + '/' + x.yun + ') · ' + W8(c) + ' ' + x.from + '°' + '</button>'; };
+               + (x.harmonises ? '✦ ' : '') + 'hex ' + x.hex + ' (' + x.qi + '/' + x.yun + ') · ' + W8(c) + ' ' + x.from + '°' + '</button>'; };
         const mainH = opts.filter(x => x.kind === 'main'), famH = opts.filter(x => x.kind === 'family');
         h += '<details style="margin-top:8px;font-size:13px;"' + (selHex ? ' open' : '') + '><summary style="cursor:pointer;font-weight:bold;color:#4a148c;">🧭 Feng Shui hexagrams by type (' + opts.length + ')</summary>'
            + '<div style="margin-top:4px;font-weight:bold;color:#1b5e20;">Remedy (' + mainH.length + ')</div>'
