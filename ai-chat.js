@@ -5805,7 +5805,7 @@
     try { Object.keys(SHELLY_HOUSES).forEach(function (k) {
       var fc = SHELLY_HOUSES[k].fountain; if (!fc || String(fc.house).toLowerCase() !== hn) return;
       out.push({ name: fc.label, shelly_house: k, facing: fc.facing, water: fc.water,
-                 runs: fc.period === 'night' ? 'NIGHT only (Hai..Mao)' : 'DAY only (Mao..Hai)',
+                 runs: fc.period === 'night' ? 'NIGHT only (start of Hai to END of Mao, solar 21:00-07:00)' : 'DAY only (start of Mao to start of Hai, solar 05:00-21:00)',
                  has_shelly: SHELLY_HOUSES[k].shelly !== false, switched: SHELLY_HOUSES[k].shelly === false ? 'by hand (no Shelly yet)' : 'Shelly plug',
                  source: 'fountain' });
     }); } catch (e) {}
@@ -6685,7 +6685,7 @@
     // Water at 222° (Ling Shen) for the bed and the bedroom door, both facing 266° (Zheng Shen).
     // Session 35 (Edu): NO Shelly on the fountains yet (shelly:false) - switched BY HAND; the plan is
     // computed (preview) and goes to the calendar; set shelly:true when the plug is installed.
-    // A (bed) runs only by DAY (Mao..Hai), B (door) only by NIGHT (Hai..Mao). Like the aquarium:
+    // A (bed) runs only by DAY (Mao..Hai), B (door) only by NIGHT (Hai..END of Mao, session 36). Like the aquarium:
     // ON at the best favourable hour of its period, stays ON to the end of the period; no
     // "never dark" rule; the plan ends at the start of the next solar month.
     'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' }, shelly: false },
@@ -7144,8 +7144,9 @@
       } else {
         var x11 = hs(D, 11); if (x11) cands.push({ x: x11, on: _solarToEpoch(D, 21 * 60, lon, utc) });
         var x0 = hs(N, 0);  if (x0)  cands.push({ x: x0,  on: _solarToEpoch(D, 23 * 60, lon, utc) });
-        [1, 2].forEach(function (k) { var x = hs(N, k); if (x) cands.push({ x: x, on: _solarToEpoch(N, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
-        var off = _solarToEpoch(N, 5 * 60, lon, utc);
+        // Session 36 (Edu): the night runs to the END of Mao 卯 (solar 07:00), Mao included.
+        [1, 2, 3].forEach(function (k) { var x = hs(N, k); if (x) cands.push({ x: x, on: _solarToEpoch(N, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
+        var off = _solarToEpoch(N, 7 * 60, lon, utc);
       }
       cands = cands.filter(function (c) { return c.on > Date.now() && c.on < endMs; });
       if (!cands.length) continue;
@@ -7166,13 +7167,15 @@
       } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
     }
     return {
-      scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: Mao..Hai (solar 05:00-21:00)' : 'night: Hai..Mao (solar 21:00-05:00)',
+      scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: from the start of Mao 卯 to the start of Hai 亥 (solar 05:00-21:00)' : 'night: from the start of Hai 亥 to the END of Mao 卯 (solar 21:00-07:00)',
       placement: { facing: F.facing, water: F.water }, persons_used: _digestPersonNames().label,
       mode: noShelly ? 'by_hand' : (commit ? 'committed' : 'preview'), has_shelly: !noShelly,
       plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
       scheduled_count: scheduled.length, scheduled: scheduled,
       deposited: commit ? !workerErr : false, worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
-      note: 'Each row: ON at the best favourable hour of the ' + (F.period === 'day' ? 'day' : 'night') + ', OFF at the end of the period. '
+      note: 'Each row: ON at the best favourable hour of the ' + (F.period === 'day' ? 'day' : 'night') + ', OFF at the end of the period'
+        + (F.period === 'day' ? ' (= the start of Hai 亥). ' : ' (= the END of Mao 卯, when Chen 辰 begins). ')
+        + 'Name the hours by the solar times in the period field (each Chinese hour is 2 solar hours: Zi 23-01, Chou 01-03, Yin 03-05, Mao 05-07, Chen 07-09 ... Hai 21-23), never guess. '
         + 'Periods with no favourable hour stay OFF (Edu: no never-dark rule for the fountains). Show the times as given (local clock). '
         + 'Until this fountain has its own Shelly, the user switches it BY HAND: offer (and do it when asked) to put every row '
         + 'in the phone calendar with add_calendar_reminder - one event per row, date = row date, start = ON time, end = OFF time '
