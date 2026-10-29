@@ -34,6 +34,8 @@ Next session: read this file first.
 
 - **📧 Daily email: fountains** — digest-setup.js adds `{kind:"fountain", device}` ops from `window.XKDGFountains(house)` (exported by ai-chat.js); digest/scan.js runs `program_aquarium_light` (by-hand mode) and lists ON→OFF rows on the civil day they switch on; digest.js shows them (⛲) in the day list and in the detail. Edu must regenerate his line (📧 Daily email) and paste it into the secret.
 
+- **▶ Video tutorials**: `guides/videos/sun-facing.mp4` (1:44, 16:9, English captions, no audio) embedded at the top of guides/sun-facing.html; built from real app screenshots (Playwright, demo person/house, clock fixed 2026-10-29 10:32 Vienna) + animated SVG scenes; sources are not in the repo (scratchpad). Guide fixed: Sun facing is now in 📍 Address & facing ☰.
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
