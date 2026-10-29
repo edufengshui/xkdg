@@ -5748,6 +5748,7 @@
     }); } catch (e) {}
     return out;
   }
+  try { window.XKDGFountains = function (houseName) { return _shellyFountainsFor(houseName); }; } catch (e) {}   // read by digest-setup.js
   function toolListHouses() {
     if (!window.XKDGHouse) return { error: 'House profiles not available on this page.' };
     var r = window.XKDGHouse.list();

@@ -28,7 +28,7 @@ const T = {
         P: { health: 'Santé', career: 'Carrière', wealth: 'Richesse', relationship: 'Relation', journey: 'Voyage', speak: 'Parole', legal: 'Juridique' }, open: 'Ouvrir l’app', day: 'jour', fs: 'Feng Shui', fsDetail: 'Détail Feng Shui', aqTier: 'Niveau', local: 'heure locale', allDay: 'toute la journée', aqShort: 'ne communique pas avec vous', aqConn: 'communique avec vous', aqNot: 'ne communique pas avec vous (bonne par Qimen/Nayin)', aqWhy: 'Pourquoi', fsSkip: 'non calculé', fsDoor: 'Porte avec le jour', fsWater: 'Eau avec le jour', fsBL: 'Full Blood Link', fsBest: 'Meilleure heure', fsPl: 'Emplacement avec le jour', fsWith: 'avec l’emplacement', fsDate: 'avec le jour', detail: 'Détail de chaque heure', relH: 'Heure avec vous', relD: 'Jour avec vous', qual: 'Qualité', spirit: 'Esprit de l’heure', nayin: 'Nayin', purposes: 'Objectifs', noble: 'Noble', ty: 'Tian Yi', rescued: 'ne communique pas avec vous : sauvée par le Nayin Power', onlyGeneral: 'général seulement (aucun objectif)', goodSp: 'favorable', badSp: 'défavorable', see: 'Le détail de chaque heure est à la fin.' }
 };
 const ICON = { health: '🩺', career: '🏆', wealth: '💰', relationship: '❤️', journey: '✈️', speak: '🗣️', legal: '⚖️' };
-const FSICON = { aquarium: '\uD83D\uDC20', water: '\uD83D\uDCA7', bed: '\uD83D\uDECF\uFE0F', desk: '\uD83E\uDE91' };
+const FSICON = { fountain: '\u26F2', aquarium: '\uD83D\uDC20', water: '\uD83D\uDCA7', bed: '\uD83D\uDECF\uFE0F', desk: '\uD83E\uDE91' };
 const PORDER = ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'];
 
 // Two zones are interchangeable when their UTC offsets match all year (Vienna = Rome).
@@ -140,6 +140,9 @@ function build(rec, data, loc) {
         aqVisible(r, dd.date).forEach(x => fsRows.push({
           time: x.window || '', branch: x.branch || '', where: where, grade: 'T' + x.tier, strong: x.tier >= 3,
           note: '', house: r.house }));   // T1 = not connected by definition: the detail says why
+      } else if (r.kind === 'fountain') {
+        r.dates.filter(x => x.date === dd.date).forEach(x => fsRows.push({ time: x.window, branch: x.branch || '', where: where + ' \u00b7 ON\u2192OFF',
+          grade: x.score != null ? String(x.score) : '', strong: false, note: '', house: r.house }));
       } else {
         const d = o.d, bh = d.best_hour ? String(d.best_hour).split(' ') : null;
         fsRows.push({ time: bh && bh[1] ? bh[1] : t.allDay, branch: bh ? bh[0].slice(1) : '', where: where,
@@ -213,6 +216,8 @@ function build(rec, data, loc) {
         parts.push([t.aqWhy, d.why || '\u2014']);
         if (d.hits && d.hits.length) parts.push(['Qimen', d.hits.join(' \u00b7 ')]);
         if (d.also_good_for && d.also_good_for.length) parts.push([t.purposes, d.also_good_for.join(' \u00b7 ')]);
+      } else if (r.kind === 'fountain') {
+        parts.push(['ON \u2192 OFF', d.window + ' (' + (r.period === 'night' ? '\uD83C\uDF19' : '\u2600\uFE0F') + ' ' + d.branch + ')']);
       } else if (r.kind === 'water') {
         parts.push([t.fsDoor, (d.facing_links || []).join(' \u00b7 ') || '\u2014']);
         parts.push([t.fsWater, (d.water_links || []).join(' \u00b7 ') || '\u2014']);
@@ -222,7 +227,7 @@ function build(rec, data, loc) {
         parts.push([t.fsPl, (d.date_link || []).join(' \u00b7 ') || '\u2014']);
         (d.people || []).forEach(p => parts.push([p.who, t.fsWith + ': ' + ((p.with_placement || []).join(', ') || '\u2014') + ' \u00b7 ' + t.fsDate + ': ' + ((p.with_date || []).join(', ') || '\u2014')]));
       }
-      const hx = r.kind === 'aquarium' ? ' (' + r.direction + (r.water_star != null ? ', water star ' + r.water_star : '') + ')' + (d.window ? ' \u00b7 ' + d.branch + ' ' + d.window : '') : r.hex ? (r.kind === 'water' ? ' (hex ' + r.hex.facing + ' / ' + r.hex.water + ')' : ' (hex ' + r.hex.placement + ')') : '';
+      const hx = r.kind === 'fountain' ? ' (' + r.facing + '\u00b0 / ' + r.water + '\u00b0)' : r.kind === 'aquarium' ? ' (' + r.direction + (r.water_star != null ? ', water star ' + r.water_star : '') + ')' + (d.window ? ' \u00b7 ' + d.branch + ' ' + d.window : '') : r.hex ? (r.kind === 'water' ? ' (hex ' + r.hex.facing + ' / ' + r.hex.water + ')' : ' (hex ' + r.hex.placement + ')') : '';
       const head = FSICON[r.kind] + ' ' + r.house + ' \u00b7 ' + r.name + hx + (d.score != null ? ' \u00b7 ' + d.score : '');
       H += '<div style="margin:8px 0;padding:6px 10px;border-left:3px solid #81c784;background:#f1f8e9;font-size:12px;">' +
         '<span style="display:inline-block;background:#1b5e20;color:#fff;font-weight:bold;border-radius:5px;padding:1px 7px;margin-right:6px;font-size:12px;">' + esc(dlabel(d.date, t)) + '</span>' +
