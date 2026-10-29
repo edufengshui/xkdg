@@ -372,8 +372,16 @@
     var f = (typeof _fsActiveFloor === 'function') ? _fsActiveFloor(h) : null;
     var facings = [];
     var hf = (typeof _fsFloorFacing === 'function') ? _fsFloorFacing(h, f) : h.houseFacing;
-    if (hf != null) facings.push({ label: 'House facing', deg: +hf });
-    ((f && f.doors) || []).forEach(function (d, i) { if (d && d.facing != null) facings.push({ label: (d.name || ('Door ' + (i + 1))), deg: +d.facing }); });
+    // Session 35 (Edu): grouped list — House · Doors · Beds · Desks · Items (bed facing = sitting + 180)
+    var num = function (x) { var n = parseFloat(x); return isNaN(n) ? null : n; };
+    if (hf != null) facings.push({ group: 'House', label: 'House facing', deg: +hf });
+    ((f && f.doors) || []).forEach(function (d, i) {
+      if (!d || d.facing == null) return;
+      facings.push({ group: d.kind === 'item' ? 'Items' : 'Doors', label: (d.name || ((d.kind === 'item' ? 'Item ' : 'Door ') + (i + 1))), deg: +d.facing });
+    });
+    var st = (f && f.settings) || {};
+    (st.bed || []).forEach(function (b, i) { var sit = num(b.bedSitting); if (sit != null) facings.push({ group: 'Beds', label: b.name || ('Bed ' + (i + 1)), deg: (sit + 180) % 360 }); });
+    (st.desk || []).forEach(function (k, i) { var fc = num(k.deskFacing); if (fc != null) facings.push({ group: 'Desks', label: k.name || ('Desk ' + (i + 1)), deg: fc }); });
     var people = housePeople(h, personKey);
     S = { house: h, people: people, facings: facings, facing: facings.length ? facings[facings.length > 1 ? 1 : 0].deg : 180,
           img: null, W: 0, H: 0, f35: 24, f35Source: '(default)', centre: null, refs: [], mode: 'measure',
@@ -486,7 +494,11 @@
   function build() {
     var old = el('xps-modal'); if (old) old.remove();
     var btn = 'padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;';
-    var opts = S.facings.map(function (f, i) { return '<option value="' + f.deg + '"' + (f.deg === S.facing ? ' selected' : '') + '>' + esc(f.label) + ' ' + r1(f.deg) + '°</option>'; }).join('');
+    var opts = ['House', 'Doors', 'Beds', 'Desks', 'Items'].map(function (g) {
+      var it = S.facings.filter(function (f) { return (f.group || 'House') === g; });
+      if (!it.length) return '';
+      return '<optgroup label="' + g + '">' + it.map(function (f) { return '<option value="' + f.deg + '"' + (f.deg === S.facing ? ' selected' : '') + '>' + esc(f.label) + ' ' + r1(f.deg) + '°</option>'; }).join('') + '</optgroup>';
+    }).join('');
     var m = document.createElement('div');
     m.id = 'xps-modal';
     m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;overflow-y:auto;';

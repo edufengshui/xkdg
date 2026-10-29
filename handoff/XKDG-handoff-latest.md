@@ -38,6 +38,9 @@ Next session: read this file first.
 
 - 📖 help popups (house-menus.js HELP): optional 4th item = video URL → "▶ Video tutorial" link (sun_facing has it).
 
+- Photo sectors (photo-sectors.js): the Facing select is grouped House · Doors · Beds · Desks · Items (bed = sitting + 180); guide updated.
+- Video rules (Edu): signature "Feng Shui Advisor · Master Eduardo Hess"; every video starts by showing WHERE the tool is in the menus.
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
