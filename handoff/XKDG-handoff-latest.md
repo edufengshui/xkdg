@@ -42,6 +42,7 @@ Next session: read this file first.
 - Video rules (Edu): signature "Feng Shui Advisor · Master Eduardo Hess"; every video starts by showing WHERE the tool is in the menus.
 
 - ▶ Video 2 `guides/videos/photo-sectors.mp4` (2:00): water positions on a photo; demo 3D room photo; embedded in photo-sectors guide; 📖 photo_sectors popup links it. Sources tools/video/photo-sectors/.
+  - Session 35c: bed scene fixed — arrow + view wedge drawn ON the mattress (y 0.64, `ay` in PTS) so they start visibly from the headboard (before: on the floor, hidden under the bed). Only scene 2 re-rendered and spliced (16–27 s).
 
 - Guide videos: `guides/video-fs.js` (rotate phone → full screen, Android locks landscape); help popups open `guides/video.html?v=<name>` (player page). New videos: add the name to G in video.html and include video-fs.js in the guide.
 
