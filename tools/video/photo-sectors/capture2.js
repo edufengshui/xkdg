@@ -14,8 +14,8 @@ const PH = JSON.parse(fs.readFileSync(__dirname + '/bed-photo.json', 'utf8'));
     localStorage.setItem('xkdg_persons_a', JSON.stringify({ Demo: { date: '1975-04-12', time: '08:30', depth: 4 } }));
     localStorage.setItem('xkdg_houses', JSON.stringify({ Demo: [{ name: 'Demo house', address: '', houseFacing: 176, period: 9, sameFacing: true,
       floors: [{ label: 'Floor 1', facing: 176, period: 9,
-        doors: [{ name: 'Bedroom door', facing: 266, kind: 'internal' }, { name: 'Entrance', facing: 176, kind: 'external' }, { name: 'Plant', facing: 86, kind: 'item' }],
-        settings: { water: [], bed: [{ name: 'Bed', bedSitting: 356 }], desk: [{ name: 'Desk', deskFacing: 86 }] } }] }] }));
+        doors: [{ name: 'Bedroom door', facing: 86, kind: 'internal' }, { name: 'Entrance', facing: 176, kind: 'external' }, { name: 'Plant', facing: 86, kind: 'item' }],
+        settings: { water: [], bed: [{ name: 'Bed', bedSitting: 356 }], desk: [{ name: 'Desk', deskFacing: 266 }] } }] }] }));
     window.confirm = () => true; window.alert = () => {};
     window.prompt = (msg) => { window.__lastPrompt = msg; const m = String(msg).split('\n').filter(l => /^\d = /.test(l)); const hit = m.find(l => /= 176°/.test(l)); return hit ? hit[0] : '1'; };
   });
