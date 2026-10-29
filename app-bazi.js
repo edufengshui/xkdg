@@ -1156,6 +1156,117 @@ function xkdgHexSvg(hex) {
     }
     return s + '</svg>';
 }
+// ── 📆 Cure years & months (session 36, Edu): solar years (立春 → 立春) whose YEAR pillar is a
+// remedy hexagram for the person (same rule as every remedy: _xkdgRemedyKind), and inside
+// each of them the months (节 → 节) whose MONTH pillar is a remedy too. Past and future.
+var _XK_JIE = ['立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'];
+var _xkYMJieCache = {};
+function _xkdgSolarYearMonths(Y) {
+    if (_xkYMJieCache[Y]) return _xkYMJieCache[Y];
+    const toD = so => new Date(so.getYear(), so.getMonth() - 1, so.getDay(), so.getHour(), so.getMinute(), so.getSecond());
+    const pill = so => { const t = toD(so); t.setMinutes(t.getMinutes() + 5);
+        const ec = Solar.fromYmdHms(t.getFullYear(), t.getMonth() + 1, t.getDate(), t.getHours(), t.getMinutes(), 0).getLunar().getEightChar();
+        return { yG: ec.getYearGan(), yZ: ec.getYearZhi(), mG: ec.getMonthGan(), mZ: ec.getMonthZhi() }; };
+    const t0 = Lunar.fromYmd(Y, 1, 1).getJieQiTable(), t1 = Lunar.fromYmd(Y + 1, 1, 1).getJieQiTable();
+    const starts = _XK_JIE.map(n => t0[n]).concat([t1['小寒']]), end = t0['LI_CHUN'];
+    const p0 = pill(starts[0]);
+    const r = { y: Y, gan: p0.yG, zhi: p0.yZ, start: toD(starts[0]), end: toD(end),
+                months: starts.map((so, i) => { const p = pill(so); return { gan: p.mG, zhi: p.mZ, start: toD(so), end: toD(i < 11 ? starts[i + 1] : end) }; }) };
+    return (_xkYMJieCache[Y] = r);
+}
+function xkdgCureYearsMonths(g, P, isoFamSet, y0, y1) {
+    const harmOf = x => !!(g.settings && ['qi', 'yun'].some(f => _xkdgHarmVals(g.settings[f]).has(x[f])));
+    const cand = (gan, zhi) => { const x = getXkdgData(gan, zhi); if (!x) return null;
+        const kind = _xkdgRemedyKind(g, P, { qi: x.qi, yun: x.yun, hex: x.hex, stem: gan, branch: zhi }, isoFamSet);
+        return kind ? { gz: gan + zhi, hex: x.hex, qi: x.qi, yun: x.yun, kind: kind, harm: harmOf(x) } : null; };
+    const out = [];
+    for (let Y = y0; Y <= y1; Y++) {
+        let sy; try { sy = _xkdgSolarYearMonths(Y); } catch (e) { continue; }
+        const c = cand(sy.gan, sy.zhi); if (!c) continue;
+        out.push(Object.assign(c, { y: Y, start: sy.start, end: sy.end,
+            months: sy.months.map(m => { const cm = cand(m.gan, m.zhi); return cm ? Object.assign(cm, { start: m.start, end: m.end }) : null; }).filter(Boolean) }));
+    }
+    return out;
+}
+function _xkdgUntil(d) {
+    const ms = d - Date.now(); if (ms <= 0) return '';
+    const days = Math.ceil(ms / 86400000);
+    if (days < 62) return 'in ' + days + (days === 1 ? ' day' : ' days');
+    const mo = Math.round(days / 30.44), yy = Math.floor(mo / 12), rm = mo % 12;
+    return 'in ' + (yy ? yy + (yy === 1 ? ' year' : ' years') + (rm ? ' ' : '') : '') + (rm ? rm + (rm === 1 ? ' month' : ' months') : '');
+}
+window._pvYM = window._pvYM || {};
+function xkdgPVYM(who) { window._pvYM[who] = !window._pvYM[who]; renderPersonView(); }
+// a cure month into FROM / DAYS: the remedy dates and hours of that month appear below
+function xkdgPVScanMonth(iso, days) {
+    const a = document.getElementById('scan-start'), b = document.getElementById('scan-days');
+    if (a) a.value = iso; if (b) b.value = days;
+    renderPersonView();
+    try { document.getElementById('person-view').scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
+}
+// 🔔 the future cure years and months as all-day calendar events (alarm the day before, 9:00)
+function xkdgPVYMics(who) {
+    const L0 = (window._pvYMData || {})[who]; if (!L0) return;
+    const pad = n => String(n).padStart(2, '0'), ymd = d => d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+    const now = new Date(), stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+    const esc = t => String(t).replace(/\\/g, '\\\\').replace(/[,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
+    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//XKDG//Cure years and months//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+    let n = 0;
+    const ev = (kind, x, title) => {
+        if (x.end <= now) return;
+        const e = new Date(x.end); e.setDate(e.getDate() + (e.getHours() || e.getMinutes() ? 1 : 0));
+        L.push('BEGIN:VEVENT', 'UID:xkdg-cure-' + who + '-' + kind + '-' + ymd(x.start) + '@fsadvisor.org', 'DTSTAMP:' + stamp,
+               'DTSTART;VALUE=DATE:' + ymd(x.start), 'DTEND;VALUE=DATE:' + ymd(e), 'SUMMARY:' + esc(title),
+               'DESCRIPTION:' + esc('Hexagram ' + x.hex + ' (Element ' + x.qi + ', Period ' + x.yun + ')' + (x.kind === 'family' ? ' - family' : '') + (x.harm ? ' - harmonises the setting' : '') + '. Starts ' + x.start.toLocaleString() + '.'));
+        if (x.start > now) L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc('Tomorrow: ' + title), 'TRIGGER;VALUE=DURATION:-PT15H', 'END:VALARM');
+        L.push('END:VEVENT'); n++;
+    };
+    L0.list.forEach(y => { ev('y', y, '🌿 Cure year ' + y.gz + ' (' + L0.name + ')'); y.months.forEach(m => ev('m', m, '🌿 Cure month ' + m.gz + ' (' + L0.name + ')')); });
+    L.push('END:VCALENDAR');
+    if (!n) { alert('No future cure year or month in the list.'); return; }
+    const blob = new Blob([L.join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' }), url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'xkdg-cure-years-' + (L0.name || who).replace(/[^\w-]+/g, '_') + '.ics';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+}
+function xkdgCureYMHtml(pp, g, isoFamSet) {
+    const Y = new Date().getFullYear(), list = xkdgCureYearsMonths(g, pp.P, isoFamSet, Y - 30, Y + 30);
+    (window._pvYMData = window._pvYMData || {})[pp.who] = { name: pp.name, list: list };
+    const now = new Date();
+    const fd = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+    const fdm = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+    const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const mark = x => (x.harm ? '✦ ' : '') + (x.kind === 'family' ? ' ★' : '');
+    const state = x => x.end <= now ? 'past' : (x.start <= now ? 'now' : 'future');
+    let h = '<div style="margin-top:6px;border:2px solid #43a047;background:#f1f8e9;border-radius:10px;padding:8px 10px;font-size:13px;">'
+          + '<div style="font-weight:bold;color:#1b5e20;font-size:14px;">📆 Cure years & months (' + list.length + ')</div>'
+          + '<div style="color:#555;font-size:12px;">Years (立春 → 立春) whose YEAR pillar is a remedy hexagram, ' + (Y - 30) + '–' + (Y + 30) + '; inside each, the months (节 → 节) whose MONTH pillar is a remedy too.</div>';
+    if (!list.length) return h + '<div style="color:#888;margin-top:4px;">No cure year in this range.</div></div>';
+    // when do they arrive: the current / next cure year and cure month
+    const curY = list.filter(y => state(y) === 'now')[0], nextY = list.filter(y => state(y) === 'future')[0];
+    const allM = [].concat.apply([], list.map(y => y.months));
+    const curM = allM.filter(m => state(m) === 'now')[0], nextM = allM.filter(m => state(m) === 'future')[0];
+    const line = (lab, x, isNow) => x ? '<div style="margin-top:3px;"><b>' + lab + '</b>: ' + x.gz + mark(x) + ' · hex ' + x.hex + ' — ' + (isNow ? '<b style="color:#2e7d32;">NOW</b>, until ' + fd(x.end) : 'from <b>' + fd(x.start) + '</b> (' + _xkdgUntil(x.start) + ')') + '</div>' : '';
+    h += '<div style="margin-top:4px;padding:5px 8px;background:#fff;border-radius:8px;">'
+       + (curY ? line('Cure year', curY, true) : '') + (nextY ? line('Next cure year', nextY, false) : '')
+       + (curM ? line('Cure month', curM, true) : '') + (nextM ? line('Next cure month', nextM, false) : '')
+       + '<button onclick="xkdgPVYMics(\'' + pp.who + '\')" style="margin-top:5px;padding:3px 10px;border-radius:8px;border:1px solid #43a047;background:#fff;color:#1b5e20;font-size:12px;cursor:pointer;">🔔 Add the coming ones to the calendar</button></div>';
+    const yr = y => {
+        const st = state(y), col = st === 'past' ? '#9e9e9e' : (st === 'now' ? '#2e7d32' : '#1b5e20');
+        const months = y.months.length ? y.months.map(m => { const ms = state(m);
+            return '<div style="margin:2px 0 0 12px;' + (ms === 'past' ? 'color:#9e9e9e;' : '') + '">' + (ms === 'now' ? '▶ ' : '· ') + '<b>' + m.gz + '</b>' + mark(m) + ' hex ' + m.hex + ' (' + m.qi + '/' + m.yun + ') · ' + fdm(m.start) + ' – ' + fdm(m.end)
+                 + (ms === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(m.start) + ')</span>' : '') + (ms === 'now' ? ' <b style="color:#2e7d32;">NOW</b>' : '')
+                 + (ms !== 'past' ? ' <button onclick="xkdgPVScanMonth(\'' + iso(m.start < now ? now : m.start) + '\',' + Math.max(1, Math.ceil((m.end - (m.start < now ? now : m.start)) / 86400000)) + ')" title="Show the remedy dates of this month" style="padding:0 6px;border-radius:8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;font-size:11px;cursor:pointer;">📅 dates</button>' : '') + '</div>'; }).join('')
+            : '<div style="margin:2px 0 0 12px;color:#888;">no cure month inside</div>';
+        return '<details style="margin-top:3px;"' + (st === 'now' || y === nextY ? ' open' : '') + '><summary style="cursor:pointer;color:' + col + ';">'
+             + '<b>' + y.y + ' ' + y.gz + '</b>' + mark(y) + ' hex ' + y.hex + ' (' + y.qi + '/' + y.yun + ') · ' + fd(y.start) + ' → ' + fd(y.end)
+             + (st === 'now' ? ' <b>NOW</b>' : (st === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(y.start) + ')</span>' : '')) + ' · ' + y.months.length + (y.months.length === 1 ? ' month' : ' months') + '</summary>' + months + '</details>';
+    };
+    const fut = list.filter(y => state(y) !== 'past'), past = list.filter(y => state(y) === 'past').reverse();
+    h += '<div style="margin-top:6px;font-weight:bold;color:#1b5e20;">Now and future (' + fut.length + ')</div>' + (fut.length ? fut.map(yr).join('') : '<div style="color:#888;">none</div>')
+       + '<details style="margin-top:6px;"><summary style="cursor:pointer;font-weight:bold;color:#757575;">Past (' + past.length + ')</summary>' + past.map(yr).join('') + '</details>';
+    return h + '<div style="color:#888;font-size:11px;margin-top:4px;">✦ harmonises the setting · ★ family alternative · 📅 dates puts the month in FROM / DAYS.</div></div>';
+}
 window._pvSel = window._pvSel || {};        // selected remedy hexagram per person
 window._pvWho = window._pvWho || null;       // 'A' | 'B' | 'both'
 function xkdgPVPick(who, v) { window._pvSel[who] = String(v); renderPersonView(); }
@@ -1260,6 +1371,10 @@ function renderPersonView() {
             if (!d.isolated.length) return;
             h += '<div style="font-size:13px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated.</div>';
         });
+        // 📆 Session 36 (Edu): cure years and months, past and future
+        h += '<button onclick="xkdgPVYM(\'' + pp.who + '\')" style="margin-top:5px;padding:4px 12px;border-radius:14px;font-weight:bold;font-size:12px;cursor:pointer;border:2px solid #43a047;'
+           + (window._pvYM[pp.who] ? 'background:#43a047;color:#fff;' : 'background:#fff;color:#1b5e20;') + '">📆 Cure years & months</button>';
+        if (window._pvYM[pp.who]) { try { h += xkdgCureYMHtml(pp, g, isoFamSet); } catch (eYM) { h += '<div style="color:#b71c1c;font-size:12px;">Cure years: ' + eYM.message + '</div>'; } }
         // ── what the selected remedy does, and why it improves the natal chart ──
         const keys4 = ['hour', 'day', 'month', 'year'];
         const relTxt = (a, b) => [5, 10, 15].includes(a + b) ? a + '+' + b + ' = ' + (a + b) : (isHetuPair(a, b) ? 'Hetu ' + Math.min(a, b) + '-' + Math.max(a, b) : '');
