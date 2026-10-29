@@ -499,7 +499,7 @@
       '- SUN FACING (guided interview, no compass): when the user wants to measure a facing with the sun, lead step by ' +
       'step, ONE instruction at a time: (1) a sunny window - is it on the facade, the back or a side wall? (2) lay a card ' +
       'LEVEL on the sill (check with a level or the phone), one straight edge flush against the wall plane - the frame or ' +
-      'the glass, NOT a splayed reveal; (3) stand a vertical object on it (a book opened in a V, a plumb line) and trace ' +
+      'the glass, NOT a splayed reveal; (3) stand a tube or a bottle on it and trace the shadow EDGE NEAREST the card edge (the side the shadow leans to) - ' +
       'the shadow line; (4) note the time at that exact moment; (5) measure the acute angle between the shadow line and ' +
       'the card edge with a protractor; (6) standing inside looking out, does the shadow lean left or right? Call ' +
       'sun_facing, then ask for 1-2 more readings a few minutes apart and call it with all of them; report the magnetic ' +

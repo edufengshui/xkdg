@@ -154,7 +154,7 @@
       '<div style="padding:10px 12px;font-size:12px;color:#333;line-height:1.5;">' +
       '<ol style="margin:0 0 8px 18px;padding:0;">' +
         '<li>Lay a card <b>level</b> on the sill, one straight edge flush against the <b>wall plane</b> (frame or glass, not the splayed reveal).</li>' +
-        '<li>Stand a vertical object on it (a book opened in a V, or a plumb line). Trace the shadow line.</li>' +
+        '<li>Stand a <b>tube or a bottle</b> on it. Its shadow has two parallel edges: trace the edge <b>nearest the card edge</b> (the side the shadow leans to).</li>' +
         '<li>Note the time <b>at that moment</b> (tap "Now").</li>' +
         '<li>Measure the acute angle α between the shadow line and the card edge, on the side the shadow leans to.</li>' +
         '<li>Standing inside and looking out: does the shadow lean <b>left</b> or <b>right</b>?</li></ol>' +
