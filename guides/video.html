@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XKDG App · Video tutorial</title>
+<style>html,body{margin:0;background:#111;color:#eee;font-family:Arial,Helvetica,sans-serif;}
+.w{max-width:960px;margin:0 auto;padding:12px;} video{width:100%;border-radius:10px;background:#000;} a{color:#80cbc4;} p{font-size:14px;color:#bbb;}</style></head>
+<body><div class="w">
+<video id="v" controls playsinline preload="metadata"></video>
+<p>Turn the phone sideways for full screen. <a id="g" href="index.html">📘 Guide</a></p>
+</div>
+<script>
+var q = new URLSearchParams(location.search), n = (q.get('v') || '').replace(/[^\w-]/g, '');
+var G = { 'sun-facing': 'sun-facing.html', 'photo-sectors': 'photo-sectors-and-floor-plan.html' };
+var v = document.getElementById('v');
+if (n) { v.src = 'videos/' + n + '.mp4'; v.poster = 'videos/' + n + '-poster.jpg'; document.getElementById('g').href = G[n] || 'index.html'; }
+</script>
+<script src="video-fs.js"></script>
+</body></html>
