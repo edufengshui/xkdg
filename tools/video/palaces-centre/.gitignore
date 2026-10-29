@@ -1,8 +1,2 @@
-node_modules/
-shots/
-out/
-*-photo.jpg
-photos.json
-scene_built.html
-still_*.jpg
-scratch/
+node_modules
+render.log
