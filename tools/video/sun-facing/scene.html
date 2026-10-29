@@ -14,6 +14,7 @@
   .mag{color:#e65100;font-weight:800;}
 </style></head>
 <body><div id="root"></div>
+<script src="node_modules/three/build/three.min.js"></script>
 <script>
 const W = 1920, H = 1080;
 const root = document.getElementById('root');
@@ -165,6 +166,95 @@ function windowArt(x, y, scale) {
   };
 }
 
+// ── 3D window (three.js r149): card on the sill, vertical object, real cast shadow ──
+function threeArt(x, y, w, h) {
+  const host = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.15);');
+  host.classList.add('abs');
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  R.setPixelRatio(1); R.setSize(w, h); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+  R.outputEncoding = THREE.sRGBEncoding;
+  host.appendChild(R.domElement);
+  const S = new THREE.Scene(); S.background = new THREE.Color('#cfe8f7');
+  const cam = new THREE.PerspectiveCamera(38, w / h, 1, 2000);
+  const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .85, metalness: 0 }, o || {}));
+  const box = (sx, sy, sz, mat, px, py, pz, cast = true, recv = true) => { const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat); m.position.set(px, py, pz); m.castShadow = cast; m.receiveShadow = recv; S.add(m); return m; };
+  // light: sun outside (−z), altitude 26.5°, shadow on the sill at 72° from the wall line, leaning to +x (right, seen from inside)
+  const alt = 26.5 * Math.PI / 180, az = 72 * Math.PI / 180;
+  const dir = new THREE.Vector3(Math.cos(az) * Math.cos(alt), -Math.sin(alt), Math.sin(az) * Math.cos(alt));
+  S.add(new THREE.HemisphereLight(0xeef4ff, 0xc9b79a, .6));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.5);
+  sun.position.copy(dir.clone().multiplyScalar(-400)); sun.target.position.set(0, 0, 10); S.add(sun.target);
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 10, far: 900 }); sun.shadow.bias = -0.0006; sun.shadow.radius = 3;
+  S.add(sun);
+  // wall (interior face at z = 0), opening x −55..55, y 0..115; glass plane at z = −2
+  const wallM = M('#ece6dc'), frameM = M('#ffffff', { roughness: .5 });
+  box(80, 230, 30, wallM, -95, 55, -15); box(80, 230, 30, wallM, 95, 55, -15);
+  box(110, 60, 30, wallM, 0, 145, -15); box(270, 80, 30, wallM, 0, -42, -15, true, true);
+  box(400, 300, 4, wallM, 0, -152, 0.5);                    // interior wall below the sill
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), M('#efe6d6')); floor.rotation.x = -Math.PI / 2; floor.position.set(0, -110, 300); floor.receiveShadow = true; S.add(floor);
+  // frame + glass
+  box(6, 115, 8, frameM, -52, 57.5, -2); box(6, 115, 8, frameM, 52, 57.5, -2); box(110, 6, 8, frameM, 0, 112, -2);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(104, 110), new THREE.MeshStandardMaterial({ color: 0xbfe7ff, transparent: true, opacity: .18, roughness: .05 }));
+  glass.position.set(0, 57, -2); S.add(glass);
+  // sill (top at y = 0), from the glass inward
+  box(130, 4, 34, M('#d9c19a', { roughness: .7 }), 0, -2, 15, false, true);
+  // outside: a far ground + soft sky
+  const gr = new THREE.Mesh(new THREE.PlaneGeometry(2000, 1200), M('#b9d6a3')); gr.rotation.x = -Math.PI / 2; gr.position.set(0, -60, -650); S.add(gr);
+  // card (34 × 26 cm, edge on the glass line z = 2)
+  const card = new THREE.Group(); S.add(card);
+  const cardM = new THREE.Mesh(new THREE.BoxGeometry(34, .4, 26), M('#ffffff', { roughness: .95 })); cardM.position.set(0, .2, 13); cardM.receiveShadow = true; cardM.castShadow = true; card.add(cardM);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(34, .5, .8), new THREE.MeshBasicMaterial({ color: 0x4a148c })); edge.position.set(0, .45, .4); card.add(edge);
+  // vertical object: a book opened in a V (spine at x = 0, z = 6), 22 cm tall
+  const book = new THREE.Group(); S.add(book);
+  const pageM = M('#8e24aa'), coverM = M('#6a1b9a');
+  [-1, 1].forEach(sg => { const half = new THREE.Mesh(new THREE.BoxGeometry(12, 22, .8), sg < 0 ? pageM : coverM); half.position.set(6, 11, 0); const piv = new THREE.Group(); piv.add(half); piv.rotation.y = sg < 0 ? -1.07 : -2.07; half.castShadow = true; piv.children[0].castShadow = true; book.add(piv); });
+  book.position.set(0, .4, 6);
+  book.children.forEach(pv => pv.children[0].castShadow = true);
+  // traced pencil line along the spine shadow
+  const shDir = new THREE.Vector3(Math.cos(az), 0, Math.sin(az));
+  const Lmax = (26 - 6) / Math.sin(az) - .6;
+  const line = new THREE.Mesh(new THREE.BoxGeometry(1, .2, .55), new THREE.MeshBasicMaterial({ color: 0x1d1b26 }));
+  line.rotation.y = -Math.atan2(shDir.z, shDir.x); S.add(line);
+  // pencil
+  const pen = new THREE.Group(); S.add(pen);
+  const pb = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, 16, 12), M('#ffb300')); pb.position.y = 9; pen.add(pb);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(.55, 2, 12), M('#3e2723')); tip.rotation.x = Math.PI; tip.position.y = 1; pen.add(tip);
+  pen.rotation.z = -.45; pen.rotation.x = .25;
+  pen.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  // labels (HTML, follow 3D points)
+  const lab = (txt, col) => { const d = el('div', 'font-size:26px;font-weight:800;color:' + col + ';background:rgba(255,255,255,.88);border-radius:10px;padding:4px 12px;white-space:nowrap;opacity:0;transform:translate(-50%,-100%);', txt, host); d.classList.add('abs'); return d; };
+  const L1 = lab('card edge flush with the glass', '#4a148c'), L2 = lab('vertical object', '#6a1b9a'), L3 = lab('its shadow', '#37474f'), L4 = lab('☀️ sun from outside', '#e65100');
+  const place = (d, v, a) => { const p = v.clone().project(cam); d.style.left = ((p.x + 1) / 2 * w) + 'px'; d.style.top = ((1 - p.y) / 2 * h) + 'px'; d.style.opacity = a; };
+  const lerp = (a, b, k) => a + (b - a) * k;
+  return {
+    set(o) {
+      // camera: inside, high, to the left → slow orbit → straight above (top view, outside up)
+      const k = o.cam || 0, up = o.top || 0;
+      const ang = lerp(-0.55, -0.25, k);
+      const pos = new THREE.Vector3(Math.sin(ang) * 135, lerp(88, 70, k), Math.cos(ang) * 135 + 8);
+      const topPos = new THREE.Vector3(0.001, 120, 14);
+      cam.position.set(lerp(pos.x, topPos.x, up), lerp(pos.y, topPos.y, up), lerp(pos.z, topPos.z, up));
+      cam.up.set(0, 1, 0).lerp(new THREE.Vector3(0, 0, -1), up).normalize();
+      cam.lookAt(0, 0, lerp(10, 14, up));
+      const c = o.card || 0;
+      card.position.set(0, (1 - c) * 26, (1 - c) * 18); card.visible = c > 0;
+      const b = o.obj || 0;
+      book.position.y = .4 + (1 - b) * 30; book.visible = b > 0;
+      sun.intensity = 1.5 * (o.sunOn == null ? 1 : o.sunOn);
+      const tr = o.trace || 0, Lt = Lmax * tr;
+      line.visible = tr > 0.01; line.scale.x = Math.max(Lt, .01);
+      line.position.set(shDir.x * (Lt / 2), .5, 6 + shDir.z * (Lt / 2));
+      pen.visible = (o.pen || 0) > .01; pen.position.set(shDir.x * Lt, .4, 6 + shDir.z * Lt);
+      R.render(S, cam);
+      place(L1, new THREE.Vector3(-14, 1, 1), o.l1 || 0);
+      place(L2, new THREE.Vector3(0, 24, 6), o.l2 || 0);
+      place(L3, new THREE.Vector3(shDir.x * 16, 1, 6 + shDir.z * 16 + 4), o.l3 || 0);
+      place(L4, new THREE.Vector3(-30, 95, -4), o.l4 || 0);
+    }
+  };
+}
+
 // ════════ SCENES ════════
 const SCENES = [
   { dur: 5, make() {   // title
@@ -185,20 +275,22 @@ const SCENES = [
       const rows = items.map((it, i) => { const r = el('div', 'left:1010px;top:' + (150 + i * 158) + 'px;width:820px;height:130px;border-radius:24px;background:#fff;box-shadow:0 10px 26px rgba(80,50,110,.10);display:flex;align-items:center;gap:26px;padding:0 30px;box-sizing:border-box;font-size:32px;line-height:1.3;opacity:0;', '<span style="font-size:64px;">' + it[0] + '</span><span>' + it[1] + '</span>'); r.classList.add('abs'); return r; });
       return t => { c.update(t); rows.forEach((r, i) => { const a = ap(t, 3.0 + i * .9); r.style.opacity = a; r.style.transform = 'translateX(' + (60 * (1 - a)) + 'px)'; }); fadeIO(t, 10); };
   } },
-  { dur: 15, make() {  // at the window
+  { dur: 17, make() {  // at the window — 3D
       chrome(1);
-      const art = windowArt(60, 120, 1.0);
+      const art = threeArt(60, 120, 1040, 830);
       const c = caption(1130, 110, 700, 'At the window', 'Trace the shadow', [
         [0.6, '<span class="tag">1</span> Lay the card <b>level</b> on the sill, one edge <b>flush against the wall plane</b> (frame or glass).'],
-        [4.6, '<span class="tag">2</span> Stand the <b>vertical object</b> on the card.'],
-        [7.4, '<span class="tag">3</span> Trace the <b>shadow line</b> with the pencil…'],
-        [11.0, '…and tap <b>Now</b> in the app <b>at that moment</b>. The time is everything.']]);
+        [4.6, '<span class="tag">2</span> Stand the <b>vertical object</b> on the card: the sun casts its <b>shadow</b>.'],
+        [8.4, '<span class="tag">3</span> Trace the <b>shadow line</b> with the pencil…'],
+        [11.8, '…and tap <b>Now</b> in the app <b>at that moment</b>. The time is everything.']]);
       const clock = el('div', 'left:1130px;top:860px;font-size:40px;font-weight:800;color:#fff;background:#4a148c;border-radius:18px;padding:12px 26px;opacity:0;', '🕥 10:32:00 → <span style="color:#ffd54f;">Now</span>'); clock.classList.add('abs');
       return t => {
         c.update(t);
-        art.set({ card: ap(t, .8, 1.4), edge: ap(t, 2.4) * (1 - ap(t, 6.5)), obj: ap(t, 4.8), rays: ap(t, 6.0), shadow: ap(t, 6.4, .8), trace: ap(t, 8.0, 2.6), pen: ap(t, 7.6, .4) * (1 - ap(t, 11.2, .5)) });
-        clock.style.opacity = ap(t, 11.2); clock.style.transform = 'scale(' + (.85 + .15 * ap(t, 11.2)) + ')';
-        fadeIO(t, 15);
+        art.set({ cam: cl(t / 13), top: ap(t, 14.2, 2.3), card: ap(t, .8, 1.6), obj: ap(t, 4.8, 1.0),
+                  l1: ap(t, 2.4) * (1 - ap(t, 4.6)), l2: ap(t, 5.8) * (1 - ap(t, 8.0)), l3: ap(t, 6.6) * (1 - ap(t, 8.4)), l4: 0,
+                  trace: ap(t, 8.8, 2.6), pen: ap(t, 8.6, .4) * (1 - ap(t, 12.0, .5)) });
+        clock.style.opacity = ap(t, 12.0); clock.style.transform = 'scale(' + (.85 + .15 * ap(t, 12.0)) + ')';
+        fadeIO(t, 17);
       };
   } },
   { dur: 13, make() {  // measure alpha + left/right
