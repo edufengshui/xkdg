@@ -5,7 +5,7 @@ const meta = fs.readFileSync(DIR + '/shots/meta.json', 'utf8');
 fs.writeFileSync(DIR + '/scene_built.html', fs.readFileSync(DIR + '/scene.html', 'utf8').replace('__META__', meta));
 const mode = process.argv[2] || 'stills';     // stills | scene <i> | all
 (async () => {
-  const b = await chromium.launch();
+  const b = await chromium.launch({ args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 1920, height: 1080 } });
   await p.goto('file://' + DIR + '/scene_built.html');
   const durs = await p.evaluate(() => durations);
