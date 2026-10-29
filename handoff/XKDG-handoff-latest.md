@@ -43,6 +43,8 @@ Next session: read this file first.
 
 - ▶ Video 2 `guides/videos/photo-sectors.mp4` (2:00): water positions on a photo; demo 3D room photo; embedded in photo-sectors guide; 📖 photo_sectors popup links it. Sources tools/video/photo-sectors/.
 
+- Guide videos: `guides/video-fs.js` (rotate phone → full screen, Android locks landscape); help popups open `guides/video.html?v=<name>` (player page). New videos: add the name to G in video.html and include video-fs.js in the guide.
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
