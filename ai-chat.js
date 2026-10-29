@@ -718,13 +718,13 @@
              'find_lodging','find_lucky_charge_day','scan_flights','open_direction_calculator',
              'find_purpose_direction','plan_directional_detour','find_qimen_hours_for_star','diagnose_maps_export',
              'find_good_dates','find_qimen_days'],   // session 26: the flight/travel DATE rules live in this area
-    fengshui: ['person_xkdg_gaps','find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
+    fengshui: ['person_xkdg_gaps','mutual_cures','find_bed_dates','find_desk_dates','find_water_dates','find_water_hours','find_water_activation',
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
                'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement','find_dlr_general_match',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days'],
-    dates: ['person_xkdg_gaps','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
+    dates: ['person_xkdg_gaps','mutual_cures','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
   };
@@ -886,6 +886,15 @@
       input_schema: { type: 'object', properties: {
         person: { type: 'string', enum: ['A', 'B'], description: 'Loaded person (default A).' },
         days: { type: 'integer', description: 'How many days ahead to look for remedy dates (default 30).' } } }
+    },
+    {
+      name: 'mutual_cures',
+      description: 'Session 36 (Edu): between Person A and Person B (both loaded, e.g. with set_person), which pillars of ONE ' +
+        'person\'s birth chart are a REMEDY (cure) for the OTHER person\'s missing communication — same rule as person_xkdg_gaps ' +
+        '(main = links the isolated pillar and keeps the setting; family = hexagram of the shared family). Returns both directions ' +
+        '(B for A, A for B) with the isolated pillars and the links. Use it for "what does this person do for me / I do for them", ' +
+        'reciprocal cures, compatibility of two charts. Do NOT call person_xkdg_gaps twice for this.',
+      input_schema: { type: 'object', properties: {} }
     },
     {
       name: 'find_good_dates',
@@ -3294,6 +3303,7 @@
     try {
       if (name === 'set_person') return toolSetPerson(input || {});
       if (name === 'person_xkdg_gaps') return toolPersonGaps(input || {});
+      if (name === 'mutual_cures') return toolMutualCures();
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
       if (name === 'add_calendar_reminder') return toolAddCalendarReminder(input || {});
@@ -5573,6 +5583,59 @@
                note: hasData ? 'Not saved: loaded only for this question. Every scan now uses this person.' : 'Saved person loaded.' };
     } catch (e) { return { error: 'set_person failed: ' + (e && e.message || e) }; }
   }
+  // Session 36: the remedy dates made the result (and the next request) very large — keep
+  // the first 8 dates and 4 hours each, and say how many there are in total.
+  function _compactRemedies(R) {
+    if (!R || !R.dates) return R;
+    var out = {}; Object.keys(R).forEach(function (k) { out[k] = R[k]; });
+    out.dates_total = R.dates.length;
+    out.dates = R.dates.slice(0, 8).map(function (d) {
+      return { date: d.date, day: d.day, year: d.year, via: d.via, favourable_hours: (d.favourable_hours || []).slice(0, 4) };
+    });
+    if (R.dates.length > 8) out.dates_note = 'Only the first 8 of ' + R.dates.length + ' remedy dates are listed; the PERSON tab shows them all.';
+    return out;
+  }
+  // Session 36 (Edu): cures between two charts — each pillar of one person that passes the
+  // remedy rule (_xkdgRemedyKind) for the other person, both directions.
+  function toolMutualCures() {
+    try {
+      var PA = (typeof _personAPillars !== 'undefined') ? _personAPillars : null, PB = (typeof _personBPillars !== 'undefined') ? _personBPillars : null;
+      if (!PA || !PA.year || !PB || !PB.year) return { error: 'Load both Person A and Person B first (set_person).' };
+      var nA = ((document.getElementById('person-name') || {}).value || '').trim() || 'Person A';
+      var nB = ((document.getElementById('person-name-b') || {}).value || '').trim() || 'Person B';
+      var K = ['hour', 'day', 'month', 'year'];
+      function rel(lang, a, b) { try { return _xkdgRelIn(lang, a, b) || null; } catch (e) { return null; } }
+      function side(P, name, O, oname) {
+        var g = xkdgPersonGaps(P);
+        var res = { person: name, pillars: K.map(function (k) { return k + ' ' + (P[k].stem || '') + (P[k].branch || '') + ' hex ' + P[k].hex + ' (' + P[k].qi + '/' + P[k].yun + ')'; }) };
+        if (!g || !g.any) { res.isolated = []; res.note = 'All four pillars of ' + name + ' communicate: no cure needed.'; res.cures_from_other = []; return res; }
+        var R = xkdgGapRemedies(g, 1, P) || {}, fams = new Set(R.families || []);
+        res.isolated = [];
+        ['qi', 'yun'].forEach(function (f) { g.dims[f].isolated.forEach(function (x) { res.isolated.push((f === 'qi' ? 'Elements' : 'Periods') + ': ' + x.pillar + ' (' + x.value + ')'); }); });
+        res.shared_families = R.families || [];
+        res.cures_from_other = K.map(function (k) {
+          var q = O[k]; if (!q || q.qi == null) return null;
+          var c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
+          var kind = _xkdgRemedyKind(g, P, c, fams); if (!kind) return null;
+          var links = [];
+          ['qi', 'yun'].forEach(function (f) {
+            var D = g.dims[f], nm = f === 'qi' ? 'Element' : 'Period';
+            if (!D.isolated.length) return;
+            var net = K.filter(function (k2) { return !D.isolated.some(function (x) { return x.pillar === k2; }); });
+            var lang = _xkdgSettingLang(net.map(function (k2) { return P[k2][f]; }));
+            D.isolated.forEach(function (x) { var r = rel(lang, c[f], x.value); if (r) links.push(nm + ' ' + c[f] + ' links isolated ' + x.pillar + ' (' + r + ')'); });
+          });
+          return { from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, qi: q.qi, yun: q.yun, kind: kind,
+                   links: links.length ? links : undefined,
+                   harmonises: (g.settings && ['qi', 'yun'].some(function (f) { return _xkdgHarmVals(g.settings[f]).has(c[f]); })) || undefined };
+        }).filter(Boolean);
+        return res;
+      }
+      return { for_A: side(PA, nA, PB, nB), for_B: side(PB, nB, PA, nA),
+        instructions: 'For each person: the isolated pillar(s), then which pillar of the OTHER person is a cure (main first, then ★ family), with the links. ' +
+          'Hour, Day, Month, Year order. Only what is in this result: do not add meanings of families or hexagrams. The PERSON tab (Both → 🤝 Cure from the other chart) shows the same with pictures.' };
+    } catch (e) { return { error: 'Mutual cures failed: ' + ((e && e.message) || e) }; }
+  }
   function toolPersonGaps(input) {
     try {
       var B = String(input.person || 'A').toUpperCase() === 'B';
@@ -5584,7 +5647,7 @@
       var name = ((document.getElementById(B ? 'person-name-b' : 'person-name') || {}).value || '').trim() || null;
       return { person: name || (B ? 'B' : 'A'),
         pillars: ['hour', 'day', 'month', 'year'].map(function (k) { return { pillar: k, hex: P[k] && P[k].hex, qi: P[k] && P[k].qi, yun: P[k] && P[k].yun }; }),
-        gaps: g, remedies: R,
+        gaps: g, remedies: _compactRemedies(R),
         instructions: 'Present in Chinese order Hour, Day, Month, Year. For each dimension say which pillar is isolated and the bridge '
           + 'values. REMEDY RULE (Edu): (A) the MAIN remedy links the isolated pillar in its dimension in the language the other '
           + 'pillars of that dimension already speak (Adding 5/10/15 or Hetu) AND keeps the connection, in the same language, in the '
@@ -10161,8 +10224,12 @@
       var _body = JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, system: staticSystem(), tools: noTools ? undefined : activeTools(), messages: messagesWithMoment() });
       // Session 33: a "Failed to fetch" (network dropped, phone switching cell) after a long
       // tool run lost the whole answer. Retry the SAME request twice before giving up.
+      // Session 36: a request that never answers used to leave the chat stuck — stop it after 150 s.
       function _go(n) {
-        return fetch(_target, { method: 'POST', headers: _headers, body: _body })
+        var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        var tm = ac ? setTimeout(function () { try { ac.abort(); } catch (e) {} }, 150000) : null;
+        return fetch(_target, { method: 'POST', headers: _headers, body: _body, signal: ac ? ac.signal : undefined })
+          .then(function (r) { if (tm) clearTimeout(tm); return r; }, function (e) { if (tm) clearTimeout(tm); throw (e && e.name === 'AbortError') ? new Error('no answer after 150 s') : e; })
           .then(function (r) { return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; }); })
           .catch(function (err) {
             if (n >= 2) throw err;
