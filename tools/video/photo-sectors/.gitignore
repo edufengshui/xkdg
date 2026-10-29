@@ -1,0 +1,8 @@
+node_modules/
+shots/
+out/
+*-photo.jpg
+bed-photo.json
+scene_built.html
+still_*.jpg
+scratch/
