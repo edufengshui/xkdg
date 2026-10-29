@@ -274,7 +274,7 @@ function roomArt(x, y, w, h) {
   const cam = new THREE.PerspectiveCamera(42, w / h, .05, 60);
   const PTS = {
     door: { p: new THREE.Vector3(ROOM.X0 + .07, 0, 3.45), d: new THREE.Vector3(1, 0, 0), col: 0xc62828, eye: 1.5 },
-    bed:  { p: new THREE.Vector3(.4, 0, .25), d: new THREE.Vector3(0, 0, 1), col: 0x6a1b9a, eye: 1.3 },
+    bed:  { p: new THREE.Vector3(.4, 0, .25), d: new THREE.Vector3(0, 0, 1), col: 0x6a1b9a, eye: 1.3, ay: .64 },   // arrow + wedge ON the mattress, from the headboard
     desk: { p: new THREE.Vector3(1.95, 0, 3.2), d: new THREE.Vector3(-1, 0, 0), col: 0x1565c0, eye: 1.2 } };
   const G = {};
   Object.keys(PTS).forEach(n => {
@@ -286,11 +286,11 @@ function roomArt(x, y, w, h) {
     const arrow = new THREE.Group();
     const shaft = new THREE.Mesh(new THREE.BoxGeometry(.06, .03, 1.1), m); shaft.position.z = .55; arrow.add(shaft);
     const tip = new THREE.Mesh(new THREE.ConeGeometry(.14, .32, 20), m); tip.rotation.x = Math.PI / 2; tip.position.z = 1.25; arrow.add(tip);
-    arrow.position.y = .03; g.add(arrow);
+    arrow.position.y = P.ay || .03; g.add(arrow);
     // view wedge of the wide lens (90°), on the floor
     const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(-2.2, 2.2); sh.lineTo(2.2, 2.2); sh.lineTo(0, 0);
     const wedge = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: .35, side: THREE.DoubleSide, depthWrite: false }));
-    wedge.rotation.x = Math.PI / 2; wedge.position.y = .02; g.add(wedge);
+    wedge.rotation.x = Math.PI / 2; wedge.position.y = (P.ay || .03) - .01; g.add(wedge);
     g.position.copy(P.p); g.rotation.y = yaw; g.visible = false; S.add(g);
     G[n] = { g, wedge, arrow, body, head };
   });
