@@ -17,7 +17,7 @@
 (function () {
   'use strict';
 
-  var DBX_APP_KEY = '';                       // ← Edu's Dropbox App key (public, not a secret)
+  var DBX_APP_KEY = 'is4jeokayukx75x';                     // ← Edu's Dropbox App key (public, not a secret)
   var FILE_PATH = '/xkdg-sync.json';
   var P = 'xkdg_dbx_';                        // every key of this module starts with it (never synced)
   var K_KEY = P + 'app_key', K_REFRESH = P + 'refresh', K_LASTSYNC = P + 'lastsync',
