@@ -48,7 +48,7 @@ Next session: read this file first.
 - Guide videos: `guides/video-fs.js` (rotate phone → full screen, Android locks landscape); help popups open `guides/video.html?v=<name>` (player page). New videos: add the name to G in video.html and include video-fs.js in the guide.
 
 ## Session 36
-- Photo sectors, 8 directions overlay: only N/NE/E… (Edu: trigram names not needed); label box shortened. Videos palaces-centre / photo-sectors still show the old trigram labels (re-render pending, ask Edu).
+- Photo sectors, 8 directions overlay: only N/NE/E… (Edu: trigram names not needed); label box shortened. Video palaces-centre re-rendered with direction-only labels (photo-sectors video never showed the 8-direction overlay). Rebuild needs: three@0.149 in tools/video/photo-sectors/node_modules (symlinked from palaces-centre), lunar-javascript in digest/node_modules, NODE_PATH=/opt/npm-tools/node_modules for playwright.
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
