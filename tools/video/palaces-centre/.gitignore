@@ -1,2 +1,8 @@
 node_modules
 render.log
+out/
+shots/
+*-photo.jpg
+photos.json
+scene_built.html
+still_*.jpg
