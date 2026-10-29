@@ -460,11 +460,11 @@
       'the actual trip \u2014 this tool only finds the window.\n'
     ],
     ["fengshui",
-      '- FOUNTAIN A / B (fontana, fontanella; A = bed, by DAY; B = bedroom door, by NIGHT) are the Vienna bedroom fountains on ' +
-      'their own Shelly plugs (shelly_house vienna-letto / vienna-porta, listed as shelly_fountains by get_house_setup). For ' +
-      '"when can I switch on fountain B" call program_aquarium_light(house:"vienna-porta") (preview) or aquarium_plan(get) for ' +
-      'what is already scheduled; load the home tools with load_tools if they are missing. Never say a fountain does not exist ' +
-      'before checking shelly_fountains.\n' +
+      '- FOUNTAIN A / B (fontana, fontanella; A = bed, by DAY; B = bedroom door, by NIGHT) are the Vienna bedroom fountains ' +
+      '(shelly_house vienna-letto / vienna-porta, listed as shelly_fountains by get_house_setup). They have NO Shelly yet: they are ' +
+      'switched BY HAND. For "when can I switch on fountain B" call program_aquarium_light(house:"vienna-porta") and give the ' +
+      'ON/OFF times, then offer calendar reminders; load the home tools with load_tools if they are missing. Never say a fountain ' +
+      'does not exist before checking shelly_fountains.\n' +
       '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
       'whole house in one shot (facing/period, aquariums with their direction + water star, ' +
       'and saved Water/Bed/Desk settings). The aquariums list ALREADY INCLUDES saved Water positions (source = ' +
@@ -5742,7 +5742,9 @@
     try { Object.keys(SHELLY_HOUSES).forEach(function (k) {
       var fc = SHELLY_HOUSES[k].fountain; if (!fc || String(fc.house).toLowerCase() !== hn) return;
       out.push({ name: fc.label, shelly_house: k, facing: fc.facing, water: fc.water,
-                 runs: fc.period === 'night' ? 'NIGHT only (Hai..Mao)' : 'DAY only (Mao..Hai)', source: 'shelly_fountain' });
+                 runs: fc.period === 'night' ? 'NIGHT only (Hai..Mao)' : 'DAY only (Mao..Hai)',
+                 has_shelly: SHELLY_HOUSES[k].shelly !== false, switched: SHELLY_HOUSES[k].shelly === false ? 'by hand (no Shelly yet)' : 'Shelly plug',
+                 source: 'fountain' });
     }); } catch (e) {}
     return out;
   }
@@ -5950,7 +5952,7 @@
       active_floor: n.activeFloor,
       floors: floors,
       shelly_fountains: _shellyFountainsFor(n.name),
-      shelly_fountains_note: 'Fountains on their own Shelly plug (e.g. Fountain A by DAY, Fountain B by NIGHT). WHEN to switch one on: program_aquarium_light(house = its shelly_house) previews its plan (commit:true deposits it); what is ALREADY scheduled: aquarium_plan(house = its shelly_house, action:"get"). Never answer from find_water_activation_full for these.',
+      shelly_fountains_note: 'Fountains with their own day/night rule (Fountain A by DAY, Fountain B by NIGHT). WHEN to switch one on: program_aquarium_light(house = its shelly_house) gives its ON/OFF times. If has_shelly is false it is switched BY HAND: give the times and offer calendar reminders (no commit, no aquarium_light, no aquarium_plan). With a Shelly: commit:true deposits the plan, aquarium_plan(get) reads it. Never answer from find_water_activation_full for these.',
       note: 'Multi-floor house: each floor has its own doors / aquariums / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.manual is true, it is a HAND-COMPOSED chart (overrides facing+period) - report it as a manual chart and use its numbers as-is. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars. TRIP STARTING FROM THIS HOUSE: use the house `address` as the origin \u2014 pass it as origin_name (the planner geocodes it to real coordinates). If `address` is null, fall back to the saved GPS (omit origin_lat/lon so it defaults to the saved position) or from_current_position for a fresh fix. NEVER invent a city-centre proxy for the house.'
     };
   }
@@ -6617,11 +6619,13 @@
     'vienna': { device: 'vienna', lon: 16.4, utc: 1 },
     // Session 33 (Edu): two small fountains in the Vienna bedroom, each on its own Shelly.
     // Water at 222° (Ling Shen) for the bed and the bedroom door, both facing 266° (Zheng Shen).
+    // Session 35 (Edu): NO Shelly on the fountains yet (shelly:false) - switched BY HAND; the plan is
+    // computed (preview) and goes to the calendar; set shelly:true when the plug is installed.
     // A (bed) runs only by DAY (Mao..Hai), B (door) only by NIGHT (Hai..Mao). Like the aquarium:
     // ON at the best favourable hour of its period, stays ON to the end of the period; no
     // "never dark" rule; the plan ends at the start of the next solar month.
-    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' } },
-    'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' } }
+    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' }, shelly: false },
+    'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' }, shelly: false }
   };
   var SHELLY_ALIASES = { 'letto': 'vienna-letto', 'bed': 'vienna-letto', 'fontana a': 'vienna-letto', 'fountain a': 'vienna-letto', 'fontana letto': 'vienna-letto',
                          'porta': 'vienna-porta', 'door': 'vienna-porta', 'fontana b': 'vienna-porta', 'fountain b': 'vienna-porta', 'fontana porta': 'vienna-porta',
@@ -6736,10 +6740,13 @@
 
   async function toolAquariumLight(input) {
     input = input || {};
+    var _rh0 = _resolveShellyHouse(input.house || input.device);
+    if (_rh0 && _rh0.cfg.fountain && _rh0.cfg.shelly === false) return { error: _rh0.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + _rh0.name + '") and offer calendar reminders.' };
     var cfg = _shellyCfg();
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     var rh = _resolveShellyHouse(input.house || input.device);
     if (!rh) return { error: 'Unknown house/device. Use "tuoro" or "vienna".' };
+    if (rh.cfg.fountain && rh.cfg.shelly === false) return { error: rh.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + rh.name + '") and offer calendar reminders.' };
     var turn = String(input.turn || 'status').toLowerCase();
     if (['on', 'off', 'status'].indexOf(turn) < 0) return { error: 'turn must be on, off or status.' };
     try {
@@ -6780,10 +6787,13 @@
 
   async function toolAquariumPlan(input) {
     input = input || {};
+    var _rh0 = _resolveShellyHouse(input.house || input.device);
+    if (_rh0 && _rh0.cfg.fountain && _rh0.cfg.shelly === false) return { error: _rh0.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + _rh0.name + '") and offer calendar reminders.' };
     var cfg = _shellyCfg();
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     var rh = _resolveShellyHouse(input.house || input.device);
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
+    if (rh.cfg.fountain && rh.cfg.shelly === false) return { error: rh.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + rh.name + '") and offer calendar reminders.' };
     var action = String(input.action || 'get').toLowerCase();
     var q = { get: '?get_plan', cancel: '?clear_plan', pause: '?auto=off', resume: '?auto=on',
               clear_alerts: '?clear_alerts' }[action];
@@ -7081,7 +7091,8 @@
                        on_local: new Date(c.on).toString(), off_local: new Date(offTs).toString() });
     }
     var rows = scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; });
-    var commit = input.commit === true, workerResp = null, workerErr = null;
+    var noShelly = rh.cfg.shelly === false;
+    var commit = input.commit === true && !noShelly, workerResp = null, workerErr = null;
     if (commit) {
       try {
         var res = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
@@ -7093,7 +7104,7 @@
     return {
       scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: Mao..Hai (solar 05:00-21:00)' : 'night: Hai..Mao (solar 21:00-05:00)',
       placement: { facing: F.facing, water: F.water }, persons_used: _digestPersonNames().label,
-      mode: commit ? 'committed' : 'preview',
+      mode: noShelly ? 'by_hand' : (commit ? 'committed' : 'preview'), has_shelly: !noShelly,
       plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
       scheduled_count: scheduled.length, scheduled: scheduled,
       deposited: commit ? !workerErr : false, worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
@@ -7102,7 +7113,8 @@
         + 'Until this fountain has its own Shelly, the user switches it BY HAND: offer (and do it when asked) to put every row '
         + 'in the phone calendar with add_calendar_reminder - one event per row, date = row date, start = ON time, end = OFF time '
         + '(local clock, as given), title e.g. "\uD83D\uDCA7 ' + F.label + ' ON". '
-        + (commit ? '' : 'This is a PREVIEW: ask the user to confirm, then call again with commit:true.')
+        + (noShelly ? 'This fountain has NO Shelly yet: nothing can be deposited or switched remotely - give the ON/OFF times to switch by hand and offer the calendar reminders. Never offer commit.'
+                    : (commit ? '' : 'This is a PREVIEW: ask the user to confirm, then call again with commit:true.'))
         + (workerErr ? ' If worker_error mentions an unknown device, the Shelly Worker does not know this device yet: say so plainly.' : '')
     };
   }
@@ -7110,10 +7122,11 @@
   async function toolProgramAquariumLight(input) {
     input = input || {};
     var _jie = (input.days == null) ? _nextJie(Date.now()) : null;   // default: until the new month
-    var cfg = _shellyCfg();
-    if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     var rh = _resolveShellyHouse(input.house);
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna" (or a fountain: "vienna-letto", "vienna-porta").' };
+    var cfg = _shellyCfg();
+    if (rh.cfg.fountain && rh.cfg.shelly === false) return _programFountain(rh, cfg, input, _jie);   // by hand: no Worker needed
+    if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     if (rh.cfg.fountain) return _programFountain(rh, cfg, input, _jie);
     var days = parseInt(input.days, 10) || 7;
     if (_jie) days = Math.max(1, Math.ceil((_jie.ms - new Date(todayIso() + 'T00:00:00').getTime()) / 86400000));
