@@ -1,0 +1,322 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:1920px;height:1080px;overflow:hidden;}
+  body{font-family:Inter,'DejaVu Sans',sans-serif;background:#fbf7ef;color:#2a2233;}
+  #root{position:absolute;inset:0;}
+  .abs{position:absolute;}
+  .step{font-size:26px;letter-spacing:4px;font-weight:700;color:#c48a00;text-transform:uppercase;}
+  .title{font-size:58px;font-weight:800;color:#4a148c;line-height:1.1;margin-top:10px;}
+  .body{font-size:34px;line-height:1.45;color:#3a3045;margin-top:22px;}
+  .body b{color:#4a148c;}
+  .li{opacity:0;transform:translateY(16px);}
+  .tag{display:inline-block;background:#4a148c;color:#fff;border-radius:10px;padding:2px 14px;font-weight:700;}
+  .mag{color:#e65100;font-weight:800;}
+</style></head>
+<body><div id="root"></div>
+<script src="node_modules/three/build/three.min.js"></script>
+<script src="house.js"></script>
+<script>
+const W = 1920, H = 1080;
+const root = document.getElementById('root');
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ez = x => { x = cl(x); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
+const ap = (t, t0, d = .6) => ez((t - t0) / d);                 // 0→1 from t0 over d seconds
+const el = (tag, css, html, parent) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; (parent || root).appendChild(e); return e; };
+const svgNS = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs, parent) => { const e = document.createElementNS(svgNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+const STEPS = 10;
+
+// ── shared chrome: progress bar + small brand ──
+function chrome(idx) {
+  idx = (window._curIdx || 1) - 1;
+  el('div', 'left:60px;top:1030px;width:1800px;height:8px;border-radius:4px;background:#ece3d3;');
+  const bar = el('div', 'left:60px;top:1030px;height:8px;border-radius:4px;background:linear-gradient(90deg,#f9a825,#4a148c);width:' + (1800 * (idx + 1) / STEPS) + 'px;');
+  el('div', 'left:1000px;width:860px;text-align:right;top:986px;font-size:22px;color:#9a8c78;font-weight:600;', '🧭 XKDG App · Palaces and mountains from the centre');
+  [...root.children].forEach(c => c.classList.add('abs'));
+}
+// caption panel: step label, title, list of lines that appear at given times
+function caption(x, y, w, step, title, lines) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;');
+  box.classList.add('abs');
+  if (step) el('div', '', step, box).className = 'step';
+  el('div', '', title, box).className = 'title';
+  const body = el('div', '', '', box); body.className = 'body';
+  const items = lines.map(l => { const d = el('div', 'margin-bottom:14px;', l[1], body); d.className = 'li'; return { d, t0: l[0] }; });
+  return { box, update(t) { box.style.opacity = ap(t, 0, .5); items.forEach(it => { const a = ap(t, it.t0, .5); it.d.style.opacity = a; it.d.style.transform = 'translateY(' + (16 * (1 - a)) + 'px)'; }); } };
+}
+function fadeIO(t, dur) { root.style.opacity = Math.min(ap(t, 0, .45), 1 - ap(t, dur - .45, .45)); }
+
+// ── phone with app screenshots ──
+const IMGW = 824, IMGH = 1760;
+function phone() {
+  const fr = el('div', 'left:150px;top:46px;width:600px;height:960px;border-radius:64px;background:#1d1b26;box-shadow:0 30px 60px rgba(60,30,90,.25);');
+  const scr = el('div', 'left:168px;top:64px;width:564px;height:924px;border-radius:48px;overflow:hidden;background:#fff;');
+  const S = 564 / IMGW;
+  const imgs = {};
+  const ripple = el('div', 'width:70px;height:70px;border-radius:50%;border:6px solid #f9a825;background:rgba(249,168,37,.25);opacity:0;pointer-events:none;', '', scr);
+  const hl = el('div', 'border:5px solid #f9a825;border-radius:14px;box-shadow:0 0 0 9999px rgba(30,10,50,.0);opacity:0;', '', scr);
+  [fr, scr].forEach(c => c.classList.add('abs')); ripple.classList.add('abs'); hl.classList.add('abs');
+  return {
+    S,
+    show(name, opacity, ty) {   // ty = image px scrolled off the top
+      if (!imgs[name]) { const i = el('img', 'left:0;top:0;width:' + (IMGW * S) + 'px;opacity:0;', null, scr); i.src = 'shots/' + name + '.jpg'; i.classList.add('abs'); scr.insertBefore(i, ripple); imgs[name] = i; }
+      const i = imgs[name]; i.style.opacity = opacity; i.style.transform = 'translateY(' + (-(ty || 0) * S) + 'px)';
+    },
+    tap(cx, cy, a, ty) {        // cx, cy in CSS px of the 412-wide page
+      const x = cx * 2 * S, y = (cy * 2 - (ty || 0)) * S;
+      const sc = .4 + .9 * a;
+      ripple.style.opacity = a > 0 && a < 1 ? Math.sin(a * Math.PI) : 0;
+      ripple.style.left = (x - 35) + 'px'; ripple.style.top = (y - 35) + 'px'; ripple.style.transform = 'scale(' + sc + ')';
+    },
+    highlight(x0, y0, x1, y1, a, ty) {   // image px
+      hl.style.opacity = a; hl.style.left = (x0 * S - 6) + 'px'; hl.style.top = ((y0 - (ty || 0)) * S - 6) + 'px';
+      hl.style.width = ((x1 - x0) * S + 2) + 'px'; hl.style.height = ((y1 - y0) * S + 2) + 'px';
+    }
+  };
+}
+// magnified callout of a screenshot region (image px)
+function callout(x, y, w) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;border-radius:22px;overflow:hidden;background:#fff;border:4px solid #f9a825;box-shadow:0 16px 36px rgba(60,30,90,.18);opacity:0;');
+  box.classList.add('abs');
+  return {
+    set(name, x0, y0, x1, y1, a) {
+      const s = w / (x1 - x0);
+      box.style.height = ((y1 - y0) * s) + 'px';
+      box.style.backgroundImage = 'url(shots/' + name + '.jpg)';
+      box.style.backgroundSize = (IMGW * s) + 'px ' + (IMGH * s) + 'px';
+      box.style.backgroundPosition = (-x0 * s) + 'px ' + (-y0 * s) + 'px';
+      box.style.opacity = a; box.style.transform = 'scale(' + (.96 + .04 * a) + ')';
+    }
+  };
+}
+const META = __META__;
+const DIR8 = [['N', 'Kan 坎'], ['NE', 'Gen 艮'], ['E', 'Zhen 震'], ['SE', 'Xun 巽'], ['S', 'Li 离'], ['SW', 'Kun 坤'], ['W', 'Dui 兑'], ['NW', 'Qian 乾']];
+
+// ── 3D house: top view with the 8 palaces from the centre, then the person and the 4 photo wedges ──
+function houseArt(x, y, w, h) {
+  const host = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.15);background:#f3efe8;');
+  host.classList.add('abs');
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(w, h); R.outputEncoding = THREE.sRGBEncoding;
+  host.appendChild(R.domElement);
+  const S = new THREE.Scene(); S.background = new THREE.Color('#f3efe8');
+  buildHouse(THREE, S, { noCeiling: true, lowWalls: true });
+  const cam = new THREE.PerspectiveCamera(36, w / h, .1, 80);
+  const HS = window.HOUSE;
+  // ray from the centre along bearing B, clipped by the outer walls
+  const reach = B => { const d = bearingDir(B); let t = 99; if (d[0]) t = Math.min(t, (d[0] > 0 ? HS.X1 : HS.X0) / d[0]); if (d[1]) t = Math.min(t, (d[1] > 0 ? HS.Z1 : HS.Z0) / d[1]); return { d, t }; };
+  const flat = (len, wid, col, op) => new THREE.Mesh(new THREE.BoxGeometry(wid, .01, len), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op == null ? 1 : op, depthWrite: false }));
+  const ray = (B, col, wid, y, dashed) => {
+    const g = new THREE.Group(), { d, t } = reach(B);
+    if (!dashed) { const m = flat(t, wid, col); m.position.z = t / 2; g.add(m); }
+    else for (let s = .25; s < t; s += .3) { const m = flat(Math.min(.16, t - s), wid, col); m.position.z = s + .08; g.add(m); }
+    g.rotation.y = Math.atan2(d[0], d[1]); g.position.y = y; S.add(g); return g;
+  };
+  const L8 = [], L24 = [];
+  for (let k = 0; k < 8; k++) L8.push(ray(22.5 + k * 45, 0x7b1fa2, .07, .55));
+  for (let m = 0; m < 24; m++) { const b = 7.5 + m * 15; if ((b - 22.5) % 45 !== 0) L24.push(ray(b, 0xffffff, .035, .56, true)); }
+  // centre marker + the two diagonals of the outline
+  const diag = []; [[HS.X0, HS.Z0, HS.X1, HS.Z1], [HS.X0, HS.Z1, HS.X1, HS.Z0]].forEach(([a, b, c, dd]) => {
+    const len = Math.hypot(c - a, dd - b), g = new THREE.Group();
+    for (let s = 0; s < len; s += .3) { const m = flat(.18, .07, 0x616161); m.position.z = s + .075; g.add(m); }
+    g.position.set(a, .57, b); g.rotation.y = Math.atan2(c - a, dd - b); S.add(g); diag.push(g); });
+  const dot = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .03, 32), new THREE.MeshBasicMaterial({ color: 0xe65100 })); dot.position.y = .58; S.add(dot);
+  // facing arrow (house facing, red) from the centre
+  const fa = new THREE.Group(), fm = new THREE.MeshBasicMaterial({ color: 0xc62828 });
+  const fsh = new THREE.Mesh(new THREE.BoxGeometry(.1, .03, 1.6), fm); fsh.position.z = .9; fa.add(fsh);
+  const ftp = new THREE.Mesh(new THREE.ConeGeometry(.22, .45, 20), fm); ftp.rotation.x = Math.PI / 2; ftp.position.z = 1.9; fa.add(ftp);
+  fa.position.y = .6; fa.rotation.y = 0; S.add(fa);
+  // person at the centre + photo wedges (90°)
+  const person = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.18, .22, 1.25, 20), new THREE.MeshStandardMaterial({ color: 0x6a1b9a })); body.position.y = .62; person.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.14, 20, 16), new THREE.MeshStandardMaterial({ color: 0xf1c9a5 })); head.position.y = 1.4; person.add(head);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(.08, .25, 12), new THREE.MeshBasicMaterial({ color: 0x4a148c })); nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.2, .3); person.add(nose);
+  S.add(person);
+  const WC = [0xffd54f, 0x81c784, 0x64b5f6, 0xf48fb1];
+  const wedges = [176, 266, 356, 86].map((B, i) => {
+    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(-2.6, 2.6); sh.lineTo(2.6, 2.6); sh.lineTo(0, 0);
+    const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: WC[i], transparent: true, opacity: .45, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotation.x = Math.PI / 2; const g = new THREE.Group(); g.add(m); const d = bearingDir(B); g.rotation.y = Math.atan2(d[0], d[1]); g.position.y = .6; S.add(g); return g; });
+  // HTML labels
+  const lab = (txt, css) => { const d = el('div', 'transform:translate(-50%,-50%);white-space:nowrap;text-align:center;opacity:0;' + css, txt, host); d.classList.add('abs'); return d; };
+  const P8 = DIR8.map(dd => lab('<div style="font-size:30px;font-weight:800;">' + dd[0] + '</div><div style="font-size:19px;font-weight:700;">' + dd[1] + '</div>', 'background:rgba(123,31,162,.9);color:#fff;border-radius:12px;padding:4px 12px;line-height:1.15;'));
+  const PM = META.mtn.map(c => lab(c, 'font-size:22px;font-weight:800;color:#4a148c;background:rgba(255,255,255,.85);border-radius:8px;padding:0 6px;'));
+  const Lc = lab('centre of the house', 'font-size:26px;font-weight:800;color:#e65100;background:rgba(255,255,255,.9);border-radius:10px;padding:2px 12px;');
+  const Lf = lab('facing 176°', 'font-size:24px;font-weight:800;color:#c62828;background:rgba(255,255,255,.9);border-radius:10px;padding:2px 12px;');
+  const LW = [176, 266, 356, 86].map((B, i) => lab('📷 ' + (i + 1) + ' · ' + B + '°', 'font-size:26px;font-weight:800;color:#3a3045;background:rgba(255,255,255,.92);border-radius:10px;padding:2px 12px;border:3px solid #' + WC[i].toString(16).padStart(6, '0') + ';'));
+  const place = (d, X, Y, Z, a) => { const p = new THREE.Vector3(X, Y, Z).project(cam); d.style.left = ((p.x + 1) / 2 * w) + 'px'; d.style.top = ((1 - p.y) / 2 * h) + 'px'; d.style.opacity = a; };
+  const lerp = (a, b, k) => a + (b - a) * k;
+  return { set(o) {
+    const k = o.tilt || 0;                       // 0 = straight from above, 1 = oblique
+    cam.position.set(lerp(0.001, 3.8, k), lerp(13.5, 8.2, k), lerp(0, 8.8, k));
+    cam.up.set(0, 1, 0).lerp(new THREE.Vector3(0, 0, -1), 1 - k).normalize();
+    cam.lookAt(0, 0, lerp(0, .3, k));
+    L8.forEach(g => g.visible = (o.p8 || 0) > .02); L8.forEach(g => g.children.forEach(m => m.material.opacity = o.p8 || 0));
+    L24.forEach(g => { g.visible = (o.m24 || 0) > .02; g.children.forEach(m => m.material.opacity = o.m24 || 0); });
+    diag.forEach(g => { g.visible = (o.diag || 0) > .02; g.children.forEach(m => m.material.opacity = o.diag || 0); });
+    dot.visible = (o.dot || 0) > .02; dot.scale.setScalar(.3 + .7 * (o.dot || 0));
+    fa.visible = (o.fa || 0) > .02; fa.scale.setScalar(.3 + .7 * (o.fa || 0));
+    person.visible = (o.person || 0) > .02; person.rotation.y = (o.rot || 0) * Math.PI / 180;   // rot = photo bearing − 176
+    wedges.forEach((g, i) => { const a = (o.wedges || [])[i] || 0; g.visible = a > .02; g.children[0].material.opacity = .45 * a; });
+    R.render(S, cam);
+    DIR8.forEach((_, i) => { const d = bearingDir(i * 45); place(P8[i], d[0] * 1.95, .6, d[1] * 1.95, o.p8l || 0); });
+    META.mtn.forEach((_, i) => { const d = bearingDir(i * 15), r = (i % 3 === 0) ? 2.75 : 2.45; const s = reach(i * 15).t; place(PM[i], d[0] * Math.min(s - .3, 3.5), .6, d[1] * Math.min(s - .3, 3.5), (o.m24l || 0)); });
+    place(Lc, 1.25, .6, -.45, o.lc || 0); place(Lf, .72, .6, .78, o.lf || 0);
+    [176, 266, 356, 86].forEach((B, i) => { const d = bearingDir(B); place(LW[i], d[0] * 1.9, .6, d[1] * 1.9, ((o.wedges || [])[i] || 0) * (o.wl == null ? 1 : o.wl)); });
+  } };
+}
+function dialogBox(x, y, w, html) { const d = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;border-radius:22px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.35);padding:24px 28px;box-sizing:border-box;font-size:25px;line-height:1.45;opacity:0;', html); d.classList.add('abs'); return d; }
+const I2 = b => b.map(v => v * 2);    // css px box → image px
+
+const SCENES = [
+  { dur: 5, make() {
+      el('div', 'left:0;top:0;width:1920px;height:1080px;background:radial-gradient(circle at 30% 30%,#ede7f6,#fbf7ef 60%);');
+      const ic = el('div', 'left:860px;top:150px;font-size:170px;', '🧭');
+      const t1 = el('div', 'left:0;width:1920px;top:420px;text-align:center;font-size:80px;font-weight:800;color:#4a148c;', 'The 8 palaces and 24 mountains<br>— on photos from the centre');
+      const t2 = el('div', 'left:0;width:1920px;top:690px;text-align:center;font-size:38px;color:#7b6a55;font-weight:600;', 'XKDG App · 📷 Photo sectors · four photos from the centre of the house');
+      const t3 = el('div', 'left:0;width:1920px;top:780px;text-align:center;font-size:28px;color:#a8977f;', 'Feng Shui Advisor · Master Eduardo Hess');
+      [...root.children].forEach(c => c.classList.add('abs'));
+      return t => { ic.style.transform = 'translateY(' + (30 * (1 - ap(t, 0, 1.2))) + 'px)'; t1.style.opacity = ap(t, .4); t2.style.opacity = ap(t, 1.1); t3.style.opacity = ap(t, 1.6); fadeIO(t, 5); };
+  } },
+  { dur: 12, make() {   // where to find it
+      chrome(0);
+      const ph = phone();
+      const c = caption(860, 110, 960, 'Where to find it', 'Open 📷 Photo sectors', [
+        [0.4, 'Feng Shui → <b>🏠 HOUSE PROFILES</b>: on your house, tap its <b>☰</b>…'],
+        [4.0, '…then <b>📷 Photo sectors</b>.'],
+        [8.0, 'The window opens with the instructions.']]);
+      return t => { c.update(t);
+        const s0 = 1 - ap(t, 3.4, .4), s1 = ap(t, 3.4, .4) * (1 - ap(t, 7.4, .4)), s2 = ap(t, 7.4, .4);
+        ph.show('c0', s0, 0); ph.show('c1', s1, 0); ph.show('c2', s2, 0);
+        if (t < 3.4) ph.tap(META.c0.tap.x, META.c0.tap.y, cl((t - 1.8) / .9)); else if (t < 7.4) ph.tap(META.c1.tap.x, META.c1.tap.y, cl((t - 5.6) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 12); };
+  } },
+  { dur: 10, make() {   // what it does
+      chrome(1);
+      const c = caption(1130, 110, 700, 'What it does', 'The space around you, on the photo', [
+        [0.6, '<b style="color:#7b1fa2;">8 directions</b>: the palaces with their trigrams — boundaries at 22.5° + every 45°.'],
+        [3.4, '<b>24 mountains</b>: dashed lines and names — boundaries at 7.5° + every 15°.'],
+        [6.4, 'Drawn on the real room, so you see where doors, furniture and water fall.']]);
+      const img = el('div', 'left:200px;top:80px;width:660px;height:880px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.18);background-size:cover;background-image:url(shots/r1.jpg);'); img.classList.add('abs');
+      const raw = el('div', 'left:200px;top:80px;width:660px;height:880px;border-radius:24px;overflow:hidden;background-size:cover;background-image:url(p1-photo.jpg);'); raw.classList.add('abs');
+      const arrow = el('div', 'left:900px;top:440px;font-size:80px;color:#f9a825;opacity:0;', '➜'); arrow.classList.add('abs');
+      return t => { c.update(t); raw.style.opacity = 1 - ap(t, 1.6, 1.0); arrow.style.opacity = ap(t, .8) * (1 - ap(t, 2.6)); fadeIO(t, 10); };
+  } },
+  { dur: 14, make() {   // where to stand: the centre of the house
+      chrome(2);
+      const art = houseArt(60, 110, 1040, 840);
+      const c = caption(1150, 110, 680, 'Where to stand', 'At the centre of the house', [
+        [0.5, 'The centre of the <b>whole house</b>: where the diagonals of its outline cross.'],
+        [4.0, 'From there the space divides into the <b>8 palaces</b>…'],
+        [7.6, '…and into the <b>24 mountains</b>.'],
+        [10.4, '<span class="mag">⚠ The lines are correct only from the centre of the house.</span>']]);
+      return t => { c.update(t); art.set({ tilt: 0, diag: ap(t, .8) * (1 - ap(t, 4.2) * .7), dot: ap(t, 2.0), lc: ap(t, 2.4), fa: ap(t, 3.0), lf: ap(t, 3.2), p8: ap(t, 4.4, 1), p8l: ap(t, 5.2), m24: ap(t, 7.8, 1) * .9, m24l: ap(t, 8.6) }); fadeIO(t, 14); };
+  } },
+  { dur: 13, make() {   // four photos
+      chrome(3);
+      const art = houseArt(60, 110, 1040, 840);
+      const c = caption(1150, 110, 680, 'The photos', 'Four photos from the centre', [
+        [0.5, 'Phone <b>upright</b> and <b>level</b>, wide lens <b>0.5×</b>.'],
+        [2.4, 'Photo 1 towards the <b>facing</b>, then turn <b>90°</b> each time: four photos cover the whole circle.'],
+        [9.4, 'Note the direction of each photo, e.g. <b>176° · 266° · 356° · 86°</b>.']]);
+      return t => { c.update(t);
+        const T0 = [2.6, 4.4, 6.2, 8.0];
+        let rot = 0; T0.forEach((t0, i) => { if (t > t0 - .9) rot = i * 90 - (1 - cl((t - (t0 - .9)) / .8)) * (i ? 90 : 0); });
+        art.set({ tilt: ap(t, 0, 1.2), dot: 1, p8: .35, fa: 1, person: ap(t, .6), rot, wedges: T0.map(t0 => ap(t, t0, .5)) }); fadeIO(t, 13); };
+  } },
+  { dur: 13, make() {   // open the photo
+      chrome(4);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Each photo', 'Load it and give its direction', [
+        [0.4, 'Tap <b>📷 Photo</b> and choose photo 1.'],
+        [4.0, 'In <b>Photo centre</b> type the direction of that photo (here <b>176°</b>): the app then proposes the right wall when you calibrate.'],
+        [8.6, '<b>Lens</b>: the one you used (e.g. wide 0.5× · 13 mm).']]);
+      const co = callout(860, 700, 960);
+      const bc = I2(META.c3.boxes['xps-centre']), bl = I2(META.c3.boxes['xps-lens']);
+      return t => { c.update(t);
+        ph.show('c2', 1 - ap(t, 2.6, .4), 0); ph.show('c3', ap(t, 2.6, .4), 0);
+        if (t < 2.6) ph.tap(META.c2.tap.x, META.c2.tap.y, cl((t - 1.2) / .9)); else if (t < 8.6) ph.tap(META.c3.tap.x, META.c3.tap.y, cl((t - 5.0) / .9)); else ph.tap((bl[0] + bl[2]) / 4, (bl[1] + bl[3]) / 4, cl((t - 9.4) / .9));
+        ph.highlight(t < 8.6 ? bc[0] : bl[0], t < 8.6 ? bc[1] : bl[1], t < 8.6 ? bc[2] : bl[2], t < 8.6 ? bc[3] : bl[3], ap(t, 4.6) * (t < 8.4 || t > 8.8 ? 1 : 0));
+        co.set('c3', 0, bc[1] - 40, 824, bl[3] + 30, ap(t, 5.2));
+        fadeIO(t, 13); };
+  } },
+  { dur: 16, make() {   // calibrate on a wall
+      chrome(5);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Calibrate', '🧱 Align to a wall', [
+        [0.4, 'Tap <b>🧱 Align to a wall</b>, on a wall that <b>runs away from you</b>.'],
+        [3.4, 'Tap <b>2 points</b> on the skirting board, then <b>2 points</b> on the ceiling line of the same wall.'],
+        [9.0, 'Confirm the direction of that wall: the app proposes it.'],
+        [12.4, 'The blue line says <b>Aligned to a wall … centre fixed</b>.']]);
+      const dlg = dialogBox(860, 640, 640, String(META.prompt).replace(/\n\n/, '<br>').replace(/\n/g, '<br>').replace('← most likely', '<b style="color:#2e7d32;">← most likely</b>') + '<div style="text-align:right;margin-top:14px;"><span style="color:#888;margin-right:24px;">Cancel</span><span style="background:#4a148c;color:#fff;border-radius:10px;padding:5px 20px;font-weight:700;">OK · 1</span></div>');
+      const co = callout(860, 760, 960);
+      const T = META.wallTaps, bw = META.c3.boxes['xps-m-wall'], cal = I2(META.c6.boxes['xps-cal']);
+      return t => { c.update(t);
+        const k = [1.6, 4.0, 5.2, 6.4, 7.6, 11.8];
+        const shots = ['c3', 'c4', 'c5_0', 'c5_1', 'c5_2', 'c5_2', 'c6'];
+        let idx = 0; k.forEach((kk, i) => { if (t >= kk) idx = i + 1; });
+        shots.forEach((s, i) => ph.show(s, i === idx ? 1 : 0, 0));
+        if (t < 1.6) ph.tap((bw[0] + bw[2]) / 2, (bw[1] + bw[3]) / 2, cl((t - .6) / .9));
+        else if (t >= 4.0 && t < 8.8) { const j = Math.min(3, Math.floor((t - 4.0) / 1.2)); ph.tap(T[j].x, T[j].y, cl(((t - 4.0) - j * 1.2) / .9)); }
+        else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0);
+        dlg.style.opacity = ap(t, 9.0) * (1 - ap(t, 11.6, .3)); dlg.style.transform = 'scale(' + (.92 + .08 * ap(t, 9.0)) + ')';
+        if (t >= 11.8) co.set('c6', 0, cal[1] - 10, 824, cal[3] + 10, ap(t, 12.2)); else co.set('c6', 0, 0, 824, 10, 0);
+        fadeIO(t, 16); };
+  } },
+  { dur: 14, make() {   // show the layers
+      chrome(6);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Show', '8 directions · 24 mountains', [
+        [0.4, 'Under <b>Show</b>, untick <b>water hexagrams</b> to keep the picture clean.'],
+        [3.6, 'Tick <b>8 directions</b>: the purple lines and the palace names.'],
+        [7.6, 'Tick <b>24 mountains</b>: the dashed lines and the mountain names with their degrees.']]);
+      const co = callout(860, 560, 960);
+      const cv = I2(META.c10.boxes['xps-canvas']);
+      return t => { c.update(t);
+        const a7 = 1 - ap(t, 2.0, .3), a8 = ap(t, 2.0, .3) * (1 - ap(t, 5.4, .3)), a9 = ap(t, 5.4, .3) * (1 - ap(t, 9.4, .3)), a10 = ap(t, 9.4, .3);
+        ph.show('c7', a7, 0); ph.show('c8', a8, 0); ph.show('c9', a9, 0); ph.show('c10', a10, 0);
+        if (t < 2.0) ph.tap(META.tw.x, META.tw.y, cl((t - .9) / .9)); else if (t < 5.4) ph.tap(META.t8.x, META.t8.y, cl((t - 4.3) / .9)); else if (t < 9.4) ph.tap(META.t24.x, META.t24.y, cl((t - 8.3) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0);
+        const sh = t < 9.4 ? 'c9' : 'c10';
+        co.set(sh, 0, cv[1], 824, cv[1] + 300, ap(t, 6.0));
+        fadeIO(t, 14); };
+  } },
+  { dur: 10, make() {   // save + repeat
+      chrome(7);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Save and repeat', '⬇ Save / share image', [
+        [0.4, 'Tap <b>⬇ Save / share image</b> to keep the photo with the lines.'],
+        [3.6, 'Repeat for photos <b>2, 3 and 4</b>: load, type the photo centre, calibrate, save.']]);
+      const thumbs = [1, 2, 3, 4].map(i => { const d = el('div', 'left:' + (860 + (i - 1) * 245) + 'px;top:520px;width:225px;height:300px;border-radius:14px;overflow:hidden;background-size:cover;background-image:url(shots/r' + i + '.jpg);box-shadow:0 10px 24px rgba(60,30,90,.18);opacity:0;'); d.classList.add('abs'); const l = el('div', 'left:' + (860 + (i - 1) * 245) + 'px;top:832px;width:225px;text-align:center;font-size:26px;font-weight:800;color:#4a148c;opacity:0;', '📷 ' + i + ' · ' + [176, 266, 356, 86][i - 1] + '°'); l.classList.add('abs'); return [d, l]; });
+      return t => { c.update(t);
+        ph.show('c10', 1, 0); ph.tap(META.save.x, META.save.y, cl((t - 1.4) / .9)); ph.highlight(0, 0, 0, 0, 0);
+        thumbs.forEach(([d, l], i) => { const a = ap(t, 4.6 + i * .9); d.style.opacity = a; l.style.opacity = a; d.style.transform = 'translateY(' + (30 * (1 - a)) + 'px)'; });
+        fadeIO(t, 10); };
+  } },
+  { dur: 14, make() {   // the whole circle
+      chrome(8);
+      const c = caption(120, 70, 1680, 'The result', 'The four images together: the whole circle', [
+        [0.6, 'Side by side they show the whole house divided into the <b>palaces</b> and the <b>mountains</b>.']]);
+      const strip = el('div', 'left:0;top:330px;height:620px;white-space:nowrap;'); strip.classList.add('abs');
+      const PW = 465;
+      [1, 2, 3, 4, 1].forEach((i, n) => { const d = el('div', 'left:' + (n * PW) + 'px;top:0;width:' + PW + 'px;height:620px;background-size:cover;background-image:url(shots/r' + i + '.jpg);', null, strip); d.classList.add('abs'); });
+      const fade = el('div', 'left:0;top:330px;width:1920px;height:620px;pointer-events:none;background:linear-gradient(90deg,#fbf7ef 0,rgba(251,247,239,0) 60px,rgba(251,247,239,0) 1860px,#fbf7ef 1920px);'); fade.classList.add('abs');
+      return t => { c.update(t); strip.style.transform = 'translateX(' + (60 - (PW * 4 + 60 - 1920 + 60) * cl((t - 1.5) / 11.5)) + 'px)'; strip.style.opacity = ap(t, .8); fadeIO(t, 14); };
+  } },
+  { dur: 11, make() {   // tips + end
+      chrome(9);
+      const c = caption(120, 110, 1680, 'Tips', 'For clean lines', [
+        [0.6, '🏠 Always from the <b>centre of the house</b> — the lines are wrong from any other point.'],
+        [1.6, '📱 Phone upright and level; do not crop or edit the photos.'],
+        [2.6, '🧱 Calibrate every photo on a wall; if the lines look wrong: <b>Clear references</b> and trace again with longer edges.'],
+        [3.6, '🧭 Type the <b>Photo centre</b> before calibrating, so the app proposes the right wall.']]);
+      const end = el('div', 'left:120px;top:860px;width:1680px;font-size:30px;color:#7b6a55;opacity:0;', 'Full guide: <b style="color:#4a148c;">fsadvisor.org/xkdg</b> → 📘 Guides → 📷 Photo sectors and floor plan'); end.classList.add('abs');
+      return t => { c.update(t); end.style.opacity = ap(t, 5.4); fadeIO(t, 11); };
+  } }
+];
+let upd = null;
+window.setup = i => { window._curIdx = i; root.innerHTML = ''; root.style.opacity = 1; upd = SCENES[i].make(); return SCENES[i].dur; };
+window.draw = t => upd(t);
+window.durations = SCENES.map(s => s.dur);
+</script></body></html>

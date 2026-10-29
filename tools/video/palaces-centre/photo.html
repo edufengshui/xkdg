@@ -1,0 +1,20 @@
+<!doctype html><html><body style="margin:0;background:#000">
+<script src="node_modules/three/build/three.min.js"></script><script src="house.js"></script>
+<script>
+// camera at the centre of the house; yaw = photo bearing − 176 (degrees)
+window.renderPhoto = function (W, H, f35, B, cam) {
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(W, H);
+  R.shadowMap.enabled = true; R.outputEncoding = THREE.sRGBEncoding; document.body.appendChild(R.domElement);
+  const S = new THREE.Scene(); S.background = new THREE.Color('#ddd'); buildHouse(THREE, S, {});
+  const w35 = 43.27 * W / Math.hypot(W, H), fpx = (W / 2) * f35 / (w35 / 2);
+  const vfov = 2 * Math.atan((H / 2) / fpx) * 180 / Math.PI;
+  const C = new THREE.PerspectiveCamera(vfov, W / H, .05, 50);
+  C.position.set(cam[0], cam[1], cam[2]);
+  const d = bearingDir(B);
+  C.lookAt(cam[0] + d[0], cam[1], cam[2] + d[1]);
+  R.render(S, C);
+  window._cam = C; window._W = W; window._H = H;
+  return R.domElement.toDataURL('image/jpeg', .92);
+};
+window.project = function (pts) { return pts.map(p => { const v = new THREE.Vector3(p[0], p[1], p[2]).project(window._cam); return [(v.x + 1) / 2 * window._W, (1 - v.y) / 2 * window._H, v.z]; }); };
+</script></body></html>
