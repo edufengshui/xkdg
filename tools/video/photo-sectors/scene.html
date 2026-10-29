@@ -1,0 +1,442 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:1920px;height:1080px;overflow:hidden;}
+  body{font-family:Inter,'DejaVu Sans',sans-serif;background:#fbf7ef;color:#2a2233;}
+  #root{position:absolute;inset:0;}
+  .abs{position:absolute;}
+  .step{font-size:26px;letter-spacing:4px;font-weight:700;color:#c48a00;text-transform:uppercase;}
+  .title{font-size:58px;font-weight:800;color:#4a148c;line-height:1.1;margin-top:10px;}
+  .body{font-size:34px;line-height:1.45;color:#3a3045;margin-top:22px;}
+  .body b{color:#4a148c;}
+  .li{opacity:0;transform:translateY(16px);}
+  .tag{display:inline-block;background:#4a148c;color:#fff;border-radius:10px;padding:2px 14px;font-weight:700;}
+  .mag{color:#e65100;font-weight:800;}
+</style></head>
+<body><div id="root"></div>
+<script src="node_modules/three/build/three.min.js"></script>
+<script src="room.js"></script>
+<script>
+const W = 1920, H = 1080;
+const root = document.getElementById('root');
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ez = x => { x = cl(x); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
+const ap = (t, t0, d = .6) => ez((t - t0) / d);                 // 0→1 from t0 over d seconds
+const el = (tag, css, html, parent) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; (parent || root).appendChild(e); return e; };
+const svgNS = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs, parent) => { const e = document.createElementNS(svgNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+const STEPS = 9;
+
+// ── shared chrome: progress bar + small brand ──
+function chrome(idx) {
+  idx = (window._curIdx || 1) - 1;
+  el('div', 'left:60px;top:1030px;width:1800px;height:8px;border-radius:4px;background:#ece3d3;');
+  const bar = el('div', 'left:60px;top:1030px;height:8px;border-radius:4px;background:linear-gradient(90deg,#f9a825,#4a148c);width:' + (1800 * (idx + 1) / STEPS) + 'px;');
+  el('div', 'left:1000px;width:860px;text-align:right;top:986px;font-size:22px;color:#9a8c78;font-weight:600;', '💧 XKDG App · Water positions on a photo');
+  [...root.children].forEach(c => c.classList.add('abs'));
+}
+// caption panel: step label, title, list of lines that appear at given times
+function caption(x, y, w, step, title, lines) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;');
+  box.classList.add('abs');
+  if (step) el('div', '', step, box).className = 'step';
+  el('div', '', title, box).className = 'title';
+  const body = el('div', '', '', box); body.className = 'body';
+  const items = lines.map(l => { const d = el('div', 'margin-bottom:14px;', l[1], body); d.className = 'li'; return { d, t0: l[0] }; });
+  return { box, update(t) { box.style.opacity = ap(t, 0, .5); items.forEach(it => { const a = ap(t, it.t0, .5); it.d.style.opacity = a; it.d.style.transform = 'translateY(' + (16 * (1 - a)) + 'px)'; }); } };
+}
+function fadeIO(t, dur) { root.style.opacity = Math.min(ap(t, 0, .45), 1 - ap(t, dur - .45, .45)); }
+
+// ── phone with app screenshots ──
+const IMGW = 824, IMGH = 1760;
+function phone() {
+  const fr = el('div', 'left:150px;top:46px;width:600px;height:960px;border-radius:64px;background:#1d1b26;box-shadow:0 30px 60px rgba(60,30,90,.25);');
+  const scr = el('div', 'left:168px;top:64px;width:564px;height:924px;border-radius:48px;overflow:hidden;background:#fff;');
+  const S = 564 / IMGW;
+  const imgs = {};
+  const ripple = el('div', 'width:70px;height:70px;border-radius:50%;border:6px solid #f9a825;background:rgba(249,168,37,.25);opacity:0;pointer-events:none;', '', scr);
+  const hl = el('div', 'border:5px solid #f9a825;border-radius:14px;box-shadow:0 0 0 9999px rgba(30,10,50,.0);opacity:0;', '', scr);
+  [fr, scr].forEach(c => c.classList.add('abs')); ripple.classList.add('abs'); hl.classList.add('abs');
+  return {
+    S,
+    show(name, opacity, ty) {   // ty = image px scrolled off the top
+      if (!imgs[name]) { const i = el('img', 'left:0;top:0;width:' + (IMGW * S) + 'px;opacity:0;', null, scr); i.src = 'shots/' + name + '.jpg'; i.classList.add('abs'); scr.insertBefore(i, ripple); imgs[name] = i; }
+      const i = imgs[name]; i.style.opacity = opacity; i.style.transform = 'translateY(' + (-(ty || 0) * S) + 'px)';
+    },
+    tap(cx, cy, a, ty) {        // cx, cy in CSS px of the 412-wide page
+      const x = cx * 2 * S, y = (cy * 2 - (ty || 0)) * S;
+      const sc = .4 + .9 * a;
+      ripple.style.opacity = a > 0 && a < 1 ? Math.sin(a * Math.PI) : 0;
+      ripple.style.left = (x - 35) + 'px'; ripple.style.top = (y - 35) + 'px'; ripple.style.transform = 'scale(' + sc + ')';
+    },
+    highlight(x0, y0, x1, y1, a, ty) {   // image px
+      hl.style.opacity = a; hl.style.left = (x0 * S - 6) + 'px'; hl.style.top = ((y0 - (ty || 0)) * S - 6) + 'px';
+      hl.style.width = ((x1 - x0) * S + 2) + 'px'; hl.style.height = ((y1 - y0) * S + 2) + 'px';
+    }
+  };
+}
+// magnified callout of a screenshot region (image px)
+function callout(x, y, w) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;border-radius:22px;overflow:hidden;background:#fff;border:4px solid #f9a825;box-shadow:0 16px 36px rgba(60,30,90,.18);opacity:0;');
+  box.classList.add('abs');
+  return {
+    set(name, x0, y0, x1, y1, a) {
+      const s = w / (x1 - x0);
+      box.style.height = ((y1 - y0) * s) + 'px';
+      box.style.backgroundImage = 'url(shots/' + name + '.jpg)';
+      box.style.backgroundSize = (IMGW * s) + 'px ' + (IMGH * s) + 'px';
+      box.style.backgroundPosition = (-x0 * s) + 'px ' + (-y0 * s) + 'px';
+      box.style.opacity = a; box.style.transform = 'scale(' + (.96 + .04 * a) + ')';
+    }
+  };
+}
+const META = __META__;
+
+// ── window illustration (top view) ──
+function windowArt(x, y, scale) {
+  const s = sv('svg', { width: 1000 * scale, height: 820 * scale, viewBox: '0 0 1000 820' }, el('div', 'left:' + x + 'px;top:' + y + 'px;'));
+  s.parentNode.classList.add('abs');
+  const g = sv('g', {}, s);
+  sv('rect', { x: 0, y: 0, width: 1000, height: 190, fill: '#dff1fb' }, g);
+  sv('text', { x: 30, y: 50, 'font-size': 30, 'font-weight': 700, fill: '#5d8aa8', 'letter-spacing': 4 }, g).textContent = 'OUTSIDE';
+  sv('rect', { x: 0, y: 190, width: 1000, height: 50, fill: '#6d6372' }, g);
+  sv('rect', { x: 250, y: 200, width: 500, height: 30, fill: '#bfe7f7', stroke: '#5d8aa8', 'stroke-width': 3 }, g);
+  sv('text', { x: 500, y: 222, 'font-size': 20, fill: '#2f5d78', 'text-anchor': 'middle', 'font-weight': 600 }, g).textContent = 'window frame / glass = the wall plane';
+  sv('rect', { x: 0, y: 240, width: 1000, height: 200, fill: '#efe2c8' }, g);
+  sv('text', { x: 970, y: 285, 'font-size': 26, fill: '#a08a63', 'text-anchor': 'end', 'font-weight': 600 }, g).textContent = 'window sill';
+  sv('rect', { x: 0, y: 440, width: 1000, height: 380, fill: '#f7f2ea' }, g);
+  sv('text', { x: 30, y: 800, 'font-size': 30, 'font-weight': 700, fill: '#b9a98e', 'letter-spacing': 4 }, g).textContent = 'INSIDE';
+  // sun + light
+  const sun = sv('g', {}, g);
+  sv('circle', { cx: 330, cy: 70, r: 38, fill: '#ffca28', stroke: '#f9a825', 'stroke-width': 6 }, sun);
+  for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; sv('line', { x1: 330 + Math.cos(a) * 50, y1: 70 + Math.sin(a) * 50, x2: 330 + Math.cos(a) * 66, y2: 70 + Math.sin(a) * 66, stroke: '#f9a825', 'stroke-width': 6, 'stroke-linecap': 'round' }, sun); }
+  const rays = sv('g', { opacity: 0 }, g);
+  [[-60, 0], [0, 0], [60, 0]].forEach(([dx]) => sv('line', { x1: 360 + dx, y1: 110, x2: 440 + dx, y2: 356, stroke: '#ffb300', 'stroke-width': 5, 'stroke-dasharray': '14 10', opacity: .8 }, rays));
+  // card
+  const card = sv('g', {}, g);
+  sv('rect', { x: 330, y: 240, width: 340, height: 290, fill: '#ffffff', stroke: '#9e9e9e', 'stroke-width': 3 }, card);
+  sv('line', { x1: 330, y1: 241, x2: 670, y2: 241, stroke: '#4a148c', 'stroke-width': 6 }, card);
+  const edgeLab = sv('text', { x: 680, y: 262, 'font-size': 22, fill: '#4a148c', 'font-weight': 700, opacity: 0 }, card); edgeLab.textContent = '← card edge flush';
+  // tube / bottle (radius 2.5 cm = 25 px) at O; its shadow is a band; the pencil traces its LEFT EDGE
+  const O = [500, 300], D = [Math.cos(72 * Math.PI / 180), Math.sin(72 * Math.PI / 180)], RT = 25;
+  const N2 = [D[1], -D[0]];                                   // Edu: trace the edge NEAREST the reference (card) edge = the side the shadow leans to
+  const E0 = [O[0] + N2[0] * RT, O[1] + N2[1] * RT], E1 = [O[0] - N2[0] * RT, O[1] - N2[1] * RT];
+  const L = (530 - 6 - E0[1]) / D[1], L1 = (530 - 6 - E1[1]) / D[1];
+  const shadow = sv('polygon', { points: [E0, [E0[0] + D[0] * L, E0[1] + D[1] * L], [E1[0] + D[0] * L1, E1[1] + D[1] * L1], E1].map(p => p.join(',')).join(' '), fill: 'rgba(60,50,70,.32)', opacity: 0 }, g);
+  const traced = sv('line', { x1: E0[0], y1: E0[1], x2: E0[0], y2: E0[1], stroke: '#1d1b26', 'stroke-width': 4 }, g);
+  const tExt = (E0[1] - 240) / D[1];
+  const ext = sv('line', { x1: E0[0] - D[0] * tExt, y1: 240, x2: E0[0], y2: E0[1], stroke: '#1d1b26', 'stroke-width': 3, 'stroke-dasharray': '8 6', opacity: 0 }, g);
+  // object: tube seen from above
+  const obj = sv('g', { opacity: 0 }, g);
+  sv('circle', { cx: O[0], cy: O[1], r: RT, fill: '#90a4ae', stroke: '#455a64', 'stroke-width': 4 }, obj);
+  sv('circle', { cx: O[0], cy: O[1], r: RT - 9, fill: '#cfd8dc' }, obj);
+  // pencil
+  const pen = sv('g', { opacity: 0 }, g);
+  sv('polygon', { points: '0,0 14,-8 70,-60 56,-74 4,-18', fill: '#ffb300', stroke: '#6d4c41', 'stroke-width': 3 }, pen);
+  sv('polygon', { points: '0,0 14,-8 4,-18', fill: '#3e2723' }, pen);
+  // protractor + alpha
+  const prot = sv('g', { opacity: 0 }, g);
+  const P0 = [E0[0] - D[0] * tExt, 240];
+  sv('path', { d: `M${P0[0] - 140} 240 A140 140 0 0 0 ${P0[0] + 140} 240 Z`, fill: 'rgba(144,202,249,.25)', stroke: '#1e88e5', 'stroke-width': 3 }, prot);
+  for (let k = 0; k <= 180; k += 10) { const a = k * Math.PI / 180; const r1 = k % 30 ? 128 : 118; sv('line', { x1: P0[0] + Math.cos(a) * r1, y1: 240 + Math.sin(a) * r1, x2: P0[0] + Math.cos(a) * 140, y2: 240 + Math.sin(a) * 140, stroke: '#1e88e5', 'stroke-width': 2 }, prot); }
+  const arc = sv('path', { d: '', fill: 'none', stroke: '#e65100', 'stroke-width': 8, 'stroke-linecap': 'round' }, g);
+  const alab = sv('text', { x: P0[0] + 120, y: 345, 'font-size': 44, 'font-weight': 800, fill: '#e65100', opacity: 0 }, g); alab.textContent = 'α = 72°';
+  // viewer
+  const viewer = sv('g', { opacity: 0 }, g);
+  sv('ellipse', { cx: 500, cy: 720, rx: 70, ry: 30, fill: '#7e57c2' }, viewer);
+  sv('circle', { cx: 500, cy: 712, r: 26, fill: '#f1c9a5', stroke: '#5d4037', 'stroke-width': 3 }, viewer);
+  sv('line', { x1: 500, y1: 680, x2: 500, y2: 560, stroke: '#7e57c2', 'stroke-width': 4, 'stroke-dasharray': '10 8' }, viewer);
+  sv('polygon', { points: '490,566 510,566 500,546', fill: '#7e57c2' }, viewer);
+  sv('text', { x: 395, y: 730, 'font-size': 34, 'font-weight': 800, fill: '#9e9e9e', 'text-anchor': 'middle' }, viewer).textContent = 'L';
+  const rLab = sv('text', { x: 605, y: 730, 'font-size': 34, 'font-weight': 800, fill: '#2e7d32', 'text-anchor': 'middle' }, viewer); rLab.textContent = 'R';
+  const lean = sv('g', { opacity: 0 }, g);
+  sv('path', { d: 'M640 600 Q 720 600 760 560', fill: 'none', stroke: '#2e7d32', 'stroke-width': 7, 'stroke-linecap': 'round' }, lean);
+  sv('polygon', { points: '750,548 776,546 766,572', fill: '#2e7d32' }, lean);
+  sv('text', { x: 790, y: 560, 'font-size': 36, 'font-weight': 800, fill: '#2e7d32' }, lean).textContent = 'RIGHT';
+  return {
+    g, s,
+    set(o) {
+      if (o.card != null) { card.setAttribute('transform', 'translate(0,' + (260 * (1 - o.card)) + ')'); card.setAttribute('opacity', o.card); edgeLab.setAttribute('opacity', o.edge || 0); }
+      rays.setAttribute('opacity', o.rays || 0);
+      obj.setAttribute('opacity', o.obj || 0); obj.setAttribute('transform', 'translate(0,' + (-40 * (1 - (o.obj || 0))) + ')');
+      shadow.setAttribute('opacity', o.shadow || 0);
+      const tr = o.trace || 0; traced.setAttribute('x2', E0[0] + D[0] * L * tr); traced.setAttribute('y2', E0[1] + D[1] * L * tr);
+      pen.setAttribute('opacity', o.pen || 0); pen.setAttribute('transform', 'translate(' + (E0[0] + D[0] * L * tr) + ',' + (E0[1] + D[1] * L * tr) + ')');
+      ext.setAttribute('opacity', o.ext || 0); prot.setAttribute('opacity', o.prot || 0);
+      const aa = (o.arc || 0) * 72 * Math.PI / 180, R = 95;
+      arc.setAttribute('d', (o.arc || 0) > 0 ? `M${P0[0] + R} 240 A${R} ${R} 0 0 1 ${P0[0] + Math.cos(aa) * R} ${240 + Math.sin(aa) * R}` : '');
+      alab.setAttribute('opacity', o.alab || 0);
+      viewer.setAttribute('opacity', o.viewer || 0); lean.setAttribute('opacity', o.lean || 0);
+      if (o.zoom != null) { const z = 1 + .55 * o.zoom; g.setAttribute('transform', `translate(${500 * (1 - z) + 0},${(330) * (1 - z) + 40 * o.zoom}) scale(${z})`); }
+    }
+  };
+}
+
+// ── 3D window (three.js r149): card on the sill, vertical object, real cast shadow ──
+function threeArt(x, y, w, h) {
+  const host = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.15);');
+  host.classList.add('abs');
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  R.setPixelRatio(1); R.setSize(w, h); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFShadowMap;
+  R.outputEncoding = THREE.sRGBEncoding;
+  host.appendChild(R.domElement);
+  const S = new THREE.Scene(); S.background = new THREE.Color('#cfe8f7');
+  const cam = new THREE.PerspectiveCamera(38, w / h, 1, 2000);
+  const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .85, metalness: 0 }, o || {}));
+  const box = (sx, sy, sz, mat, px, py, pz, cast = true, recv = true) => { const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat); m.position.set(px, py, pz); m.castShadow = cast; m.receiveShadow = recv; S.add(m); return m; };
+  // light: sun outside (−z), altitude 26.5°, shadow on the sill at 72° from the wall line, leaning to +x (right, seen from inside)
+  const alt = 26.5 * Math.PI / 180, az = 72 * Math.PI / 180;
+  const dir = new THREE.Vector3(Math.cos(az) * Math.cos(alt), -Math.sin(alt), Math.sin(az) * Math.cos(alt));
+  S.add(new THREE.HemisphereLight(0xeef4ff, 0xc9b79a, .6));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.5);
+  sun.position.copy(dir.clone().multiplyScalar(-400)); sun.target.position.set(0, 0, 10); S.add(sun.target);
+  sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+  Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 200, far: 650 }); sun.shadow.bias = -0.0006; sun.shadow.radius = 3;
+  S.add(sun);
+  // wall (interior face at z = 0), opening x −55..55, y 0..115; glass plane at z = −2
+  const wallM = M('#ece6dc'), frameM = M('#ffffff', { roughness: .5 });
+  box(80, 230, 30, wallM, -95, 55, -15); box(80, 230, 30, wallM, 95, 55, -15);
+  box(110, 60, 30, wallM, 0, 145, -15); box(270, 80, 30, wallM, 0, -42, -15, true, true);
+  box(400, 300, 4, wallM, 0, -152, 0.5);                    // interior wall below the sill
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), M('#efe6d6')); floor.rotation.x = -Math.PI / 2; floor.position.set(0, -110, 300); floor.receiveShadow = true; S.add(floor);
+  // frame + glass
+  box(6, 115, 8, frameM, -52, 57.5, -2); box(6, 115, 8, frameM, 52, 57.5, -2); box(110, 6, 8, frameM, 0, 112, -2);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(104, 110), new THREE.MeshStandardMaterial({ color: 0xbfe7ff, transparent: true, opacity: .18, roughness: .05 }));
+  glass.position.set(0, 57, -2); S.add(glass);
+  // sill (top at y = 0), from the glass inward
+  box(130, 4, 34, M('#d9c19a', { roughness: .7 }), 0, -2, 15, false, true);
+  // outside: a far ground + soft sky
+  const gr = new THREE.Mesh(new THREE.PlaneGeometry(2000, 1200), M('#b9d6a3')); gr.rotation.x = -Math.PI / 2; gr.position.set(0, -60, -650); S.add(gr);
+  // card (34 × 26 cm, edge on the glass line z = 2)
+  const card = new THREE.Group(); S.add(card);
+  const cardM = new THREE.Mesh(new THREE.BoxGeometry(34, .4, 26), M('#ffffff', { roughness: .95 })); cardM.position.set(0, .2, 13); cardM.receiveShadow = true; cardM.castShadow = true; card.add(cardM);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(34, .5, .8), new THREE.MeshBasicMaterial({ color: 0x4a148c })); edge.position.set(0, .45, .4); card.add(edge);
+  // vertical object: a tube (r 2.5 cm, 30 cm tall) at x = 0, z = 6 — its shadow has two clean parallel edges
+  const book = new THREE.Group(); S.add(book);
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 30, 48), M('#90a4ae', { roughness: .5 })); tube.position.y = 15; tube.castShadow = true; book.add(tube);
+  const rim = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.5, 48), M('#546e7a')); rim.rotation.x = -Math.PI / 2; rim.position.y = 30.05; book.add(rim);
+  book.position.set(0, .4, 6);
+  // traced pencil line = the LEFT EDGE of the shadow: starts at the tangent point of the tube base
+  const shDir = new THREE.Vector3(Math.cos(az), 0, Math.sin(az));
+  const nL = new THREE.Vector3(shDir.z, 0, -shDir.x);          // the edge nearest the card edge (side the shadow leans to)
+  const E0 = new THREE.Vector3(nL.x * 2.5, 0, 6 + nL.z * 2.5);
+  const Lmax = (26 - 0.5 - E0.z) / shDir.z;
+  const line = new THREE.Mesh(new THREE.BoxGeometry(1, .15, .35), new THREE.MeshBasicMaterial({ color: 0x1d1b26 }));
+  line.rotation.y = -Math.atan2(shDir.z, shDir.x); S.add(line);
+  // pencil
+  const pen = new THREE.Group(); S.add(pen);
+  const pb = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, 16, 12), M('#ffb300')); pb.position.y = 9; pen.add(pb);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(.55, 2, 12), M('#3e2723')); tip.rotation.x = Math.PI; tip.position.y = 1; pen.add(tip);
+  pen.rotation.z = -.45; pen.rotation.x = .25;
+  pen.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  // labels (HTML, follow 3D points)
+  const lab = (txt, col) => { const d = el('div', 'font-size:26px;font-weight:800;color:' + col + ';background:rgba(255,255,255,.88);border-radius:10px;padding:4px 12px;white-space:nowrap;opacity:0;transform:translate(-50%,-100%);', txt, host); d.classList.add('abs'); return d; };
+  const L1 = lab('card edge flush with the glass', '#4a148c'), L2 = lab('a tube or a bottle', '#37474f'), L3 = lab('its shadow', '#37474f'), L4 = lab('☀️ sun from outside', '#e65100');
+  const place = (d, v, a) => { const p = v.clone().project(cam); d.style.left = ((p.x + 1) / 2 * w) + 'px'; d.style.top = ((1 - p.y) / 2 * h) + 'px'; d.style.opacity = a; };
+  const lerp = (a, b, k) => a + (b - a) * k;
+  return {
+    set(o) {
+      // camera: inside, high, to the left → slow orbit → straight above (top view, outside up)
+      const k = o.cam || 0, up = o.top || 0;
+      const ang = lerp(-0.55, -0.25, k);
+      const pos = new THREE.Vector3(Math.sin(ang) * 135, lerp(88, 70, k), Math.cos(ang) * 135 + 8);
+      const topPos = new THREE.Vector3(0.001, 120, 14);
+      cam.position.set(lerp(pos.x, topPos.x, up), lerp(pos.y, topPos.y, up), lerp(pos.z, topPos.z, up));
+      cam.up.set(0, 1, 0).lerp(new THREE.Vector3(0, 0, -1), up).normalize();
+      cam.lookAt(0, 0, lerp(10, 14, up));
+      const c = o.card || 0;
+      card.position.set(0, (1 - c) * 26, (1 - c) * 18); card.visible = c > 0;
+      const b = o.obj || 0;
+      book.position.y = .4 + (1 - b) * 30; book.visible = b > 0;
+      sun.intensity = 1.5 * (o.sunOn == null ? 1 : o.sunOn);
+      const tr = o.trace || 0, Lt = Lmax * tr;
+      line.visible = tr > 0.01; line.scale.x = Math.max(Lt, .01);
+      line.position.set(E0.x + shDir.x * (Lt / 2), .48, E0.z + shDir.z * (Lt / 2));
+      pen.visible = (o.pen || 0) > .01; pen.position.set(E0.x + shDir.x * Lt, .4, E0.z + shDir.z * Lt);
+      R.render(S, cam);
+      place(L1, new THREE.Vector3(-14, 1, 1), o.l1 || 0);
+      place(L2, new THREE.Vector3(0, 33, 6), o.l2 || 0);
+      place(L3, new THREE.Vector3(shDir.x * 16 + 6, 1, 6 + shDir.z * 16 + 4), o.l3 || 0);
+      place(L4, new THREE.Vector3(-30, 95, -4), o.l4 || 0);
+    }
+  };
+}
+
+
+// ── 3D room seen from above with the three facing points ──
+function roomArt(x, y, w, h) {
+  const host = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.15);');
+  host.classList.add('abs');
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(w, h); R.outputEncoding = THREE.sRGBEncoding; R.shadowMap.enabled = true;
+  host.appendChild(R.domElement);
+  const S = new THREE.Scene(); S.background = new THREE.Color('#f3efe8');
+  buildRoom(THREE, S, { noCeiling: true });
+  const cam = new THREE.PerspectiveCamera(40, w / h, .05, 60);
+  // facing arrows: door (−x, out of the room), bed (+z), desk (+x)
+  const mk = (col) => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: col });
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(.06, .02, .9), m); shaft.position.z = .45; g.add(shaft);
+    const head = new THREE.Mesh(new THREE.ConeGeometry(.13, .3, 20), m); head.rotation.x = Math.PI / 2; head.position.z = 1.0; g.add(head);
+    const dot = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, .03, 24), m); g.add(dot); g.visible = false; S.add(g); return g; };
+  const A = { door: mk(0xc62828), bed: mk(0x6a1b9a), desk: mk(0x1565c0) };
+  A.door.position.set(ROOM.X0 + .02, 1.02, 3.45); A.door.rotation.y = -Math.PI / 2;
+  A.bed.position.set(.4, .82, .25);
+  A.desk.position.set(ROOM.X1 - .85, .95, 3.2); A.desk.rotation.y = Math.PI / 2;
+  const lab = (txt, col) => { const d = el('div', 'font-size:28px;font-weight:800;color:#fff;background:' + col + ';border-radius:12px;padding:6px 14px;white-space:nowrap;opacity:0;transform:translate(-50%,-120%);', txt, host); d.classList.add('abs'); return d; };
+  const L = { door: lab('🚪 door: centre of the door', '#c62828'), bed: lab('🛏 bed: head of the bed', '#6a1b9a'), desk: lab('🪑 desk: seated at the desk', '#1565c0') };
+  const P = { door: new THREE.Vector3(ROOM.X0 + .9, 1.6, 3.45), bed: new THREE.Vector3(.4, 1.2, .25), desk: new THREE.Vector3(ROOM.X1 - .85, 1.35, 3.2) };
+  const place = (d, v, a) => { const p = v.clone().project(cam); d.style.left = ((p.x + 1) / 2 * w) + 'px'; d.style.top = ((1 - p.y) / 2 * h) + 'px'; d.style.opacity = a; };
+  return { set(o) {
+    const k = o.cam || 0, ang = -2.5 + 0.6 * k;
+    cam.position.set(.4 + Math.sin(ang) * 3.6, 7.4, 2.1 + Math.cos(ang) * 3.6); cam.lookAt(.4, 0, 2.1);
+    ['door', 'bed', 'desk'].forEach(n => { const a = o[n] || 0; A[n].visible = a > .02; A[n].scale.setScalar(.4 + .6 * a); });
+    R.render(S, cam);
+    ['door', 'bed', 'desk'].forEach(n => place(L[n], P[n], o[n] || 0));
+  } };
+}
+function dialogBox(x, y, w, html) { const d = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;border-radius:22px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.35);padding:24px 28px;box-sizing:border-box;font-size:25px;line-height:1.45;opacity:0;', html); d.classList.add('abs'); return d; }
+
+const SCENES = [
+  { dur: 5, make() {
+      el('div', 'left:0;top:0;width:1920px;height:1080px;background:radial-gradient(circle at 30% 30%,#e3f2fd,#fbf7ef 60%);');
+      const ic = el('div', 'left:860px;top:150px;font-size:170px;', '💧');
+      const t1 = el('div', 'left:0;width:1920px;top:420px;text-align:center;font-size:80px;font-weight:800;color:#4a148c;', 'Where to put the water<br>— on a photo');
+      const t2 = el('div', 'left:0;width:1920px;top:690px;text-align:center;font-size:38px;color:#7b6a55;font-weight:600;', 'XKDG App · 📷 Photo sectors · Ling Shen positions for a door, the bed, a desk');
+      const t3 = el('div', 'left:0;width:1920px;top:780px;text-align:center;font-size:28px;color:#a8977f;', 'Feng Shui Advisor · Master Eduardo Hess');
+      [...root.children].forEach(c => c.classList.add('abs'));
+      return t => { ic.style.transform = 'translateY(' + (30 * (1 - ap(t, 0, 1.2))) + 'px)'; t1.style.opacity = ap(t, .4); t2.style.opacity = ap(t, 1.1); t3.style.opacity = ap(t, 1.6); fadeIO(t, 5); };
+  } },
+  { dur: 12, make() {   // where to find it
+      chrome(0);
+      const ph = phone();
+      const c = caption(860, 110, 960, 'Where to find it', 'Open 📷 Photo sectors', [
+        [0.4, 'Feng Shui → <b>🏠 HOUSE PROFILES</b>: on your house, tap its <b>☰</b>…'],
+        [4.0, '…then <b>📷 Photo sectors</b>.'],
+        [8.0, 'The window opens with the instructions and the <b>Facing</b> list.']]);
+      return t => { c.update(t);
+        const s0 = 1 - ap(t, 3.4, .4), s1 = ap(t, 3.4, .4) * (1 - ap(t, 7.4, .4)), s2 = ap(t, 7.4, .4);
+        ph.show('b0', s0, 0); ph.show('b1', s1, 0); ph.show('b2', s2, 0);
+        if (t < 3.4) ph.tap(META.b0.tap.x, META.b0.tap.y, cl((t - 1.8) / .9)); else if (t < 7.4) ph.tap(META.b1.tap.x, META.b1.tap.y, cl((t - 5.6) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 12); };
+  } },
+  { dur: 9, make() {    // what it does
+      chrome(1);
+      const ph = phone();
+      const c = caption(860, 110, 960, 'What it does', 'Red boxes = where the water goes', [
+        [0.5, 'On your photo the app draws the <b>red boxes</b> where the good <b>Ling Shen</b> water hexagrams fall.'],
+        [3.2, 'Each box carries the <b>hexagram</b> and its <b>degree</b>, checked against the facing and the people of the house.'],
+        [6.0, 'It works for a <b>door</b>, the <b>bed</b>, a <b>desk</b> or an <b>item</b>.']]);
+      const co = callout(860, 600, 960);
+      return t => { c.update(t); ph.show('b8', 1, 0); ph.tap(0, 0, 0); ph.highlight(0, 0, 0, 0, 0); co.set('b8', 0, 300, 824, 590, ap(t, 3.4)); fadeIO(t, 9); };
+  } },
+  { dur: 16, make() {   // where to stand (3D)
+      chrome(2);
+      const art = roomArt(60, 120, 1040, 830);
+      const c = caption(1130, 110, 700, 'Where to stand', 'At the facing point', [
+        [0.6, '<span class="tag">🚪</span> <b>Door</b>: at the centre of the door, looking the way the door faces.'],
+        [4.6, '<span class="tag">🛏</span> <b>Bed</b>: at the head of the bed, looking towards its foot.'],
+        [8.6, '<span class="tag">🪑</span> <b>Desk</b>: seated at the desk, looking straight ahead.'],
+        [12.2, 'Then shoot <b>straight ahead</b>.']]);
+      return t => { c.update(t); art.set({ cam: cl(t / 16), door: ap(t, 1.0), bed: ap(t, 5.0), desk: ap(t, 9.0) }); fadeIO(t, 16); };
+  } },
+  { dur: 9, make() {    // the phone
+      chrome(3);
+      const c = caption(120, 110, 820, 'The photo', 'How to hold the phone', [[1.0, 'A good photo makes a precise box: one hexagram is only 5.6° wide.']]);
+      const items = [['📱', 'Phone <b>upright</b> and <b>level</b> — not tilted up or down'], ['🔭', '<b>Wide lens 0.5×</b> if you have it: more of the room'], ['🎯', 'Shoot <b>straight ahead</b> from the facing point'], ['✂️', '<b>Do not crop or edit</b> the photo']];
+      const rows = items.map((it, i) => { const r = el('div', 'left:1010px;top:' + (170 + i * 180) + 'px;width:820px;height:150px;border-radius:24px;background:#fff;box-shadow:0 10px 26px rgba(80,50,110,.10);display:flex;align-items:center;gap:26px;padding:0 30px;box-sizing:border-box;font-size:34px;line-height:1.3;opacity:0;', '<span style="font-size:66px;">' + it[0] + '</span><span>' + it[1] + '</span>'); r.classList.add('abs'); return r; });
+      return t => { c.update(t); rows.forEach((r, i) => { const a = ap(t, 1.6 + i * 1.0); r.style.opacity = a; r.style.transform = 'translateX(' + (60 * (1 - a)) + 'px)'; }); fadeIO(t, 9); };
+  } },
+  { dur: 14, make() {   // facing + photo + lens
+      chrome(4);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Facing, photo, lens', 'Tell the app where you stood', [
+        [0.4, 'In <b>Facing</b> choose the point: the list is grouped by <b>House · Doors · Beds · Desks · Items</b>.'],
+        [5.0, 'Tap <b>📷 Photo</b> and take (or choose) the photo.'],
+        [9.0, '<b>Lens</b>: read from the photo, or choose the one you used (e.g. wide 0.5× · 13 mm).']]);
+      const list = el('div', 'left:860px;top:600px;width:520px;border-radius:20px;background:#fff;border:4px solid #f9a825;box-shadow:0 16px 36px rgba(60,30,90,.18);padding:14px 0;font-size:28px;opacity:0;',
+        META.facings.map(g => '<div style="padding:4px 26px;color:#9a8c78;font-size:20px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">' + g.group + '</div>' + g.items.map(n => '<div style="padding:5px 46px;' + (/^Bed \d/.test(n) ? 'background:#ede7f6;color:#4a148c;font-weight:800;' : '') + '">' + n + '</div>').join('')).join(''));
+      list.classList.add('abs');
+      const co = callout(860, 700, 960);
+      return t => { c.update(t);
+        const s2 = 1 - ap(t, 6.0, .4), s3 = ap(t, 6.0, .4) * (1 - ap(t, 10.6, .4)), s4 = ap(t, 10.6, .4);
+        ph.show('b2', s2, 0); ph.show('b3', s3, 0); ph.show('b4', s4, 0);
+        if (t < 6) ph.tap(t < 4.4 ? META.b2.tap.x : 47, t < 4.4 ? META.b2.tap.y : 157, t < 4.4 ? cl((t - 1.2) / .9) : cl((t - 5.0) / .9)); else ph.tap(META.b3.tap.x, META.b3.tap.y, cl((t - 9.6) / .9));
+        list.style.opacity = ap(t, 1.6) * (1 - ap(t, 4.8, .3));
+        ph.highlight(0, 0, 0, 0, 0);
+        co.set('b4', 0, 520, 824, 580, ap(t, 10.8));
+        fadeIO(t, 14); };
+  } },
+  { dur: 17, make() {   // calibrate on a wall
+      chrome(5);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Calibrate (important)', '🧱 Align to a wall', [
+        [0.4, 'Tap <b>🧱 Align to a wall</b>. Pick a wall that <b>runs away from you</b> (a side wall).'],
+        [3.6, 'Tap <b>2 points</b> on one horizontal edge (skirting board), then <b>2 points</b> on another (ceiling line).'],
+        [9.4, 'Confirm the <b>direction of that wall</b>: the app proposes the most likely one.'],
+        [13.0, 'The blue line says <b>Aligned to a wall … centre fixed</b>: the photo is calibrated.']]);
+      const dlg = dialogBox(860, 640, 640, String(META.prompt).replace(/\n\n/, '<br>').replace(/\n/g, '<br>').replace('← most likely', '<b style="color:#2e7d32;">← most likely</b>') + '<div style="text-align:right;margin-top:14px;"><span style="color:#888;margin-right:24px;">Cancel</span><span style="background:#4a148c;color:#fff;border-radius:10px;padding:5px 20px;font-weight:700;">OK · 1</span></div>');
+      const co = callout(860, 760, 960);
+      const T = META.wallTaps;
+      return t => { c.update(t);
+        const k = [1.6, 4.4, 5.6, 6.8, 8.0, 12.4];   // shot changes
+        const shots = ['b4', 'b5', 'b6_0', 'b6_1', 'b6_2', 'b6_2', 'b7'];
+        let idx = 0; k.forEach((kk, i) => { if (t >= kk) idx = i + 1; });
+        shots.forEach((s, i) => ph.show(s, i === idx ? 1 : 0, 0));
+        if (t < 1.6) ph.tap(321, 310, cl((t - .6) / .9));
+        else if (t >= 4.4 && t < 9.2) { const j = Math.min(3, Math.floor((t - 4.4) / 1.2)); ph.tap(T[j].x, T[j].y, cl(((t - 4.4) - j * 1.2) / .9)); }
+        else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0);
+        dlg.style.opacity = ap(t, 9.4) * (1 - ap(t, 12.2, .3)); dlg.style.transform = 'scale(' + (.92 + .08 * ap(t, 9.4)) + ')';
+        if (t >= 4.4 && t < 9.2) co.set(t < 5.6 ? 'b5' : (t < 6.8 ? 'b6_0' : (t < 8.0 ? 'b6_1' : 'b6_2')), 0, 100, 824, 200, ap(t, 4.6));
+        else if (t >= 12.4) co.set('b7', 0, 85, 824, 165, ap(t, 12.8));
+        else co.set('b4', 0, 0, 824, 10, 0);
+        fadeIO(t, 17); };
+  } },
+  { dur: 15, make() {   // water positions
+      chrome(6);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Read the result', 'Water positions', [
+        [0.4, 'The list shows the <b>Ling Shen</b> hexagrams within ±70° of the facing that communicate with it, and with the people (<b>✓ year</b>, <b>~ day</b>).'],
+        [5.2, 'Tick a position: its <b>red box</b> appears on the photo, with the hexagram and the degree.'],
+        [9.8, 'Move the boxes to the height of your furniture with <b>Boxes top / bottom</b>.']]);
+      const co = callout(860, 660, 960);
+      return t => { c.update(t);
+        const a9 = 1 - ap(t, 6.4, .4), a8 = ap(t, 6.4, .4) * (1 - ap(t, 10.0, .4)), a10 = ap(t, 10.0, .4);
+        ph.show('b9', a9, 0); ph.show('b8', a8, 0); ph.show('b10', a10, 0);
+        if (t < 6.4) ph.tap(META.b9_tick.x, META.b9_tick.y, cl((t - 4.6) / .9)); else if (t > 10) ph.tap(META.sliders[1].x + 30, META.sliders[1].y, cl((t - 11.0) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0);
+        if (t < 6.4) co.set('b9', 0, 1270, 824, 1520, ap(t, 1.2) * (1 - ap(t, 6.2, .3)));
+        else if (t < 10) co.set('b8', 0, 200, 824, 700, ap(t, 6.8) * (1 - ap(t, 9.8, .3)));
+        else co.set('b10', 0, 900, 824, 1080, ap(t, 10.4));
+        fadeIO(t, 15); };
+  } },
+  { dur: 12, make() {   // measure + save
+      chrome(7);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Check the spot', '📍 Measure a point', [
+        [0.4, 'Tap <b>📍 Measure a point</b>, then tap where the water will stand.'],
+        [3.8, 'The <b>yellow line</b> gives its degree and hexagram. The <b>whole object</b> must stand inside the red box — not on its edge.'],
+        [8.4, 'Tap <b>⬇ Save / share image</b> to keep the photo with the boxes.']]);
+      const co = callout(860, 600, 520);
+      return t => { c.update(t);
+        ph.show('b8', 1 - ap(t, 2.4, .4), 0); ph.show('b11', ap(t, 2.4, .4), 0);
+        if (t < 2.4) ph.tap(META.measureTap.x, META.measureTap.y, cl((t - 1.2) / .9)); else if (t > 8.4) ph.tap(META.save.x, META.save.y, cl((t - 9.2) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0);
+        co.set('b11', 0, 560, 470, 840, ap(t, 3.6));
+        fadeIO(t, 12); };
+  } },
+  { dur: 11, make() {   // tips + end
+      chrome(8);
+      const c = caption(120, 110, 1680, 'Tips', 'Choose a box you can really use', [
+        [0.6, '🪟 Pick a box on a free spot: no window, door or furniture in the way.'],
+        [1.6, '📏 Lower or raise the boxes to the height where the fountain or aquarium will stand.'],
+        [2.6, '🧱 If something looks wrong: <b>Clear references</b> and trace the wall again, with longer, straighter edges.'],
+        [3.6, '💬 Or ask the assistant: <b>“Help me place a fountain for the bed”</b> — and attach the photo.']]);
+      const end = el('div', 'left:120px;top:860px;width:1680px;font-size:30px;color:#7b6a55;opacity:0;', 'Full guide: <b style="color:#4a148c;">fsadvisor.org/xkdg</b> → 📘 Guides → 📷 Photo sectors and floor plan'); end.classList.add('abs');
+      return t => { c.update(t); end.style.opacity = ap(t, 5.4); fadeIO(t, 11); };
+  } }
+];
+let upd = null;
+window.setup = i => { window._curIdx = i; root.innerHTML = ''; root.style.opacity = 1; upd = SCENES[i].make(); return SCENES[i].dur; };
+window.draw = t => upd(t);
+window.durations = SCENES.map(s => s.dur);
+</script></body></html>

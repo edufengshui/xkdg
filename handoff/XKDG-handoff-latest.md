@@ -41,6 +41,8 @@ Next session: read this file first.
 - Photo sectors (photo-sectors.js): the Facing select is grouped House · Doors · Beds · Desks · Items (bed = sitting + 180); guide updated.
 - Video rules (Edu): signature "Feng Shui Advisor · Master Eduardo Hess"; every video starts by showing WHERE the tool is in the menus.
 
+- ▶ Video 2 `guides/videos/photo-sectors.mp4` (2:00): water positions on a photo; demo 3D room photo; embedded in photo-sectors guide; 📖 photo_sectors popup links it. Sources tools/video/photo-sectors/.
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
