@@ -28,6 +28,7 @@ const STEPS = 8;
 
 // ── shared chrome: progress bar + small brand ──
 function chrome(idx) {
+  idx = (window._curIdx || 1) - 1;
   el('div', 'left:60px;top:1030px;width:1800px;height:8px;border-radius:4px;background:#ece3d3;');
   const bar = el('div', 'left:60px;top:1030px;height:8px;border-radius:4px;background:linear-gradient(90deg,#f9a825,#4a148c);width:' + (1800 * (idx + 1) / STEPS) + 'px;');
   el('div', 'left:1000px;width:860px;text-align:right;top:986px;font-size:22px;color:#9a8c78;font-weight:600;', '☀️ XKDG App · Finding the house facing with the Sun');
@@ -267,9 +268,29 @@ const SCENES = [
       const sun = el('div', 'left:860px;top:150px;font-size:180px;', '☀️');
       const t1 = el('div', 'left:0;width:1920px;top:420px;text-align:center;font-size:84px;font-weight:800;color:#4a148c;', 'Find your house facing<br>with the Sun');
       const t2 = el('div', 'left:0;width:1920px;top:690px;text-align:center;font-size:38px;color:#7b6a55;font-weight:600;', 'XKDG App · ☀️ Sun facing · a step-by-step tutorial');
-      const t3 = el('div', 'left:0;width:1920px;top:780px;text-align:center;font-size:28px;color:#a8977f;', 'Feng Shui Research Center · Master Eduardo Hess');
+      const t3 = el('div', 'left:0;width:1920px;top:780px;text-align:center;font-size:28px;color:#a8977f;', 'Feng Shui Advisor · Master Eduardo Hess');
       [...root.children].forEach(c => c.classList.add('abs'));
       return t => { sun.style.transform = 'translateY(' + (30 * (1 - ap(t, 0, 1.2))) + 'px) rotate(' + (t * 6) + 'deg)'; t1.style.opacity = ap(t, .4); t2.style.opacity = ap(t, 1.1); t3.style.opacity = ap(t, 1.6); fadeIO(t, 5); };
+  } },
+  { dur: 12, make() {  // open the tool
+      chrome(3);
+      const ph = phone();
+      const c = caption(860, 110, 960, 'Where to find it', 'Open ☀️ Sun facing', [
+        [0.4, 'Feng Shui → <b>🏠 HOUSE PROFILES</b> → <b>▸ Open</b> the house.'],
+        [3.8, 'In <b>📍 Address & facing</b>, tap its <b>☰</b>…'],
+        [7.2, '…then <b>☀️ Sun facing</b>. The window shows your <b>position</b> (GPS).']]);
+      const M = META;
+      return t => {
+        c.update(t);
+        const s1 = 1 - ap(t, 3.4, .4), s2 = ap(t, 3.4, .4) * (1 - ap(t, 6.8, .4)), s3 = ap(t, 6.8, .4) * (1 - ap(t, 9.6, .4)), s4 = ap(t, 9.6, .4);
+        ph.show('a1', s1, 0); ph.show('a2', s2, 0); ph.show('a3', s3, 0); ph.show('a4', s4, 0);
+        if (t < 3.4) ph.tap(M.a1.tap.x, M.a1.tap.y, cl((t - 1.8) / .9));
+        else if (t < 6.8) ph.tap(M.a2.tap.x, M.a2.tap.y, cl((t - 5.4) / .9));
+        else if (t < 9.6) ph.tap(M.a3.tap.x, M.a3.tap.y, cl((t - 8.4) / .9));
+        else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0);
+        fadeIO(t, 12);
+      };
   } },
   { dur: 10, make() {  // what you need
       chrome(0);
@@ -314,26 +335,6 @@ const SCENES = [
         c.update(t);
         art.set({ card: 1, obj: 1, rays: 1 - ap(t, 0, .6), shadow: 1 - ap(t, 0, .6), trace: 1, ext: ap(t, 1.0), prot: ap(t, 1.6) * (1 - ap(t, 6.2)), arc: ap(t, 2.4, 1.8), alab: ap(t, 4.0), viewer: ap(t, 6.8), lean: ap(t, 8.6) });
         fadeIO(t, 13);
-      };
-  } },
-  { dur: 12, make() {  // open the tool
-      chrome(3);
-      const ph = phone();
-      const c = caption(860, 110, 960, 'In the app', 'Open ☀️ Sun facing', [
-        [0.4, 'Feng Shui → <b>🏠 HOUSE PROFILES</b> → <b>▸ Open</b> the house.'],
-        [3.8, 'In <b>📍 Address & facing</b>, tap its <b>☰</b>…'],
-        [7.2, '…then <b>☀️ Sun facing</b>. The window shows your <b>position</b> (GPS).']]);
-      const M = META;
-      return t => {
-        c.update(t);
-        const s1 = 1 - ap(t, 3.4, .4), s2 = ap(t, 3.4, .4) * (1 - ap(t, 6.8, .4)), s3 = ap(t, 6.8, .4) * (1 - ap(t, 9.6, .4)), s4 = ap(t, 9.6, .4);
-        ph.show('a1', s1, 0); ph.show('a2', s2, 0); ph.show('a3', s3, 0); ph.show('a4', s4, 0);
-        if (t < 3.4) ph.tap(M.a1.tap.x, M.a1.tap.y, cl((t - 1.8) / .9));
-        else if (t < 6.8) ph.tap(M.a2.tap.x, M.a2.tap.y, cl((t - 5.4) / .9));
-        else if (t < 9.6) ph.tap(M.a3.tap.x, M.a3.tap.y, cl((t - 8.4) / .9));
-        else ph.tap(0, 0, 0);
-        ph.highlight(0, 0, 0, 0, 0);
-        fadeIO(t, 12);
       };
   } },
   { dur: 13, make() {  // enter a reading
@@ -411,7 +412,7 @@ const SCENES = [
   } }
 ];
 let upd = null;
-window.setup = i => { root.innerHTML = ''; root.style.opacity = 1; upd = SCENES[i].make(); return SCENES[i].dur; };
+window.setup = i => { window._curIdx = i; root.innerHTML = ''; root.style.opacity = 1; upd = SCENES[i].make(); return SCENES[i].dur; };
 window.draw = t => upd(t);
 window.durations = SCENES.map(s => s.dur);
 </script></body></html>
