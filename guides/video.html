@@ -9,7 +9,7 @@
 </div>
 <script>
 var q = new URLSearchParams(location.search), n = (q.get('v') || '').replace(/[^\w-]/g, '');
-var G = { 'sun-facing': 'sun-facing.html', 'photo-sectors': 'photo-sectors-and-floor-plan.html', 'palaces-centre': 'photo-sectors-and-floor-plan.html#part2' };
+var G = { 'sun-facing': 'sun-facing.html', 'photo-sectors': 'photo-sectors-and-floor-plan.html', 'palaces-centre': 'photo-sectors-and-floor-plan.html#part2', 'plan-builder': 'photo-sectors-and-floor-plan.html#part3' };
 var v = document.getElementById('v');
 if (n) { v.src = 'videos/' + n + '.mp4'; v.poster = 'videos/' + n + '-poster.jpg'; document.getElementById('g').href = G[n] || 'index.html'; }
 </script>
