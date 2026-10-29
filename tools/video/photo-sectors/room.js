@@ -39,11 +39,12 @@ window.buildRoom = function (THREE, S, opt) {
   box(1.6, .9, .06, M('#6d4c41'), .4, .65, -.06);
   box(.6, .14, .38, M('#ffffff'), .05, .62, .25); box(.6, .14, .38, M('#ffffff'), .75, .62, .25);
   box(1.6, .06, 1.2, M('#7e57c2'), .4, .58, 1.3);
-  // desk against the right wall (z 2.6..3.8), chair in front
-  box(.6, .04, 1.2, M('#a1887f'), R.X1 - .3, .75, 3.2); [[2.6, 2.65], [2.6, 3.75], [2.0, 2.65], [2.0, 3.75]].forEach(([x, z]) => box(.04, .73, .04, M('#5d4037'), x - .02 + (x > 2.3 ? 0 : 0), .365, z));
-  box(.42, .04, .42, M('#455a64'), R.X1 - .85, .46, 3.2); box(.42, .45, .04, M('#455a64'), R.X1 - .85, .7, 3.0 + .2 - .21 + 0.0001);
-  box(.05, .44, .05, M('#37474f'), R.X1 - .85, .22, 3.2);
-  box(.32, .22, .02, M('#263238'), R.X1 - .4, 1.0, 3.2, Math.PI / 2);   // laptop screen
+  // desk in the room, its chair between the desk and the wall: seated, you face INTO the room (desk facing 266°)
+  box(.6, .04, 1.2, M('#a1887f'), 1.45, .75, 3.2);
+  [[1.18, 2.65], [1.18, 3.75], [1.72, 2.65], [1.72, 3.75]].forEach(([x, z]) => box(.04, .73, .04, M('#5d4037'), x, .365, z));
+  box(.42, .04, .42, M('#455a64'), 1.95, .46, 3.2); box(.04, .45, .42, M('#455a64'), 2.15, .7, 3.2);
+  box(.05, .44, .05, M('#37474f'), 1.95, .22, 3.2);
+  box(.24, .015, .32, M('#90a4ae'), 1.42, .775, 3.2); box(.02, .22, .32, M('#263238'), 1.31, .88, 3.2);   // laptop, screen towards the chair
   // a plant (item) in the front-right corner
   add(new THREE.CylinderGeometry(.16, .12, .35, 24), M('#e0e0e0'), R.X1 - .3, .175, R.Z1 - .35);
   add(new THREE.SphereGeometry(.32, 20, 16), M('#558b2f'), R.X1 - .3, .65, R.Z1 - .35);
