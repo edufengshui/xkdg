@@ -461,7 +461,7 @@
     if (!c) { alert('No house found.'); return { error: 'No house found.' }; }
     var old = document.getElementById('xpb-modal'); if (old) old.remove();
     var m = document.createElement('div'); m.id = 'xpb-modal';
-    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;overflow-y:auto;';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100040;overflow-y:auto;';   // session 36: above the assistant (99999)
     var st = status(houseName);
     var R = c.plan.rooms.length ? render(c, 1000) : null;
     var rows = c.plan.rooms.map(function (r) {

@@ -1,0 +1,293 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:1920px;height:1080px;overflow:hidden;}
+  body{font-family:Inter,'DejaVu Sans',sans-serif;background:#fbf7ef;color:#2a2233;}
+  #root{position:absolute;inset:0;}
+  .abs{position:absolute;}
+  .step{font-size:26px;letter-spacing:4px;font-weight:700;color:#c48a00;text-transform:uppercase;}
+  .title{font-size:58px;font-weight:800;color:#4a148c;line-height:1.1;margin-top:10px;}
+  .body{font-size:34px;line-height:1.45;color:#3a3045;margin-top:22px;}
+  .body b{color:#4a148c;}
+  .li{opacity:0;transform:translateY(16px);}
+  .mag{color:#e65100;font-weight:800;}
+</style></head>
+<body><div id="root"></div>
+<script src="../palaces-centre/node_modules/three/build/three.min.js"></script>
+<script>
+const W = 1920, H = 1080;
+const root = document.getElementById('root');
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ez = x => { x = cl(x); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
+const ap = (t, t0, d = .6) => ez((t - t0) / d);
+const lerp = (a, b, k) => a + (b - a) * k;
+const el = (tag, css, html, parent) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; (parent || root).appendChild(e); return e; };
+const STEPS = 10;
+const META = __META__;
+
+function chrome() {
+  const idx = (window._curIdx || 1) - 1;
+  el('div', 'left:60px;top:1030px;width:1800px;height:8px;border-radius:4px;background:#ece3d3;');
+  el('div', 'left:60px;top:1030px;height:8px;border-radius:4px;background:linear-gradient(90deg,#f9a825,#4a148c);width:' + (1800 * (idx + 1) / STEPS) + 'px;');
+  el('div', 'left:1000px;width:860px;text-align:right;top:986px;font-size:22px;color:#9a8c78;font-weight:600;', '📏 XKDG App · Floor plan from laser measurements');
+  [...root.children].forEach(c => c.classList.add('abs'));
+}
+function caption(x, y, w, step, title, lines) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;'); box.classList.add('abs');
+  if (step) el('div', '', step, box).className = 'step';
+  el('div', '', title, box).className = 'title';
+  const body = el('div', '', '', box); body.className = 'body';
+  const items = lines.map(l => { const d = el('div', 'margin-bottom:14px;', l[1], body); d.className = 'li'; return { d, t0: l[0] }; });
+  return { box, update(t) { box.style.opacity = ap(t, 0, .5); items.forEach(it => { const a = ap(t, it.t0, .5); it.d.style.opacity = a; it.d.style.transform = 'translateY(' + (16 * (1 - a)) + 'px)'; }); } };
+}
+function fadeIO(t, dur) { root.style.opacity = Math.min(ap(t, 0, .45), 1 - ap(t, dur - .45, .45)); }
+
+// ── phone with app screenshots (824 × 1760 px = 412-wide page at 2×) ──
+const IMGW = 824, IMGH = 1760;
+function phone(x0) {
+  x0 = x0 == null ? 150 : x0;
+  const fr = el('div', 'left:' + x0 + 'px;top:46px;width:600px;height:960px;border-radius:64px;background:#1d1b26;box-shadow:0 30px 60px rgba(60,30,90,.25);');
+  const scr = el('div', 'left:' + (x0 + 18) + 'px;top:64px;width:564px;height:924px;border-radius:48px;overflow:hidden;background:#fff;');
+  const S = 564 / IMGW, imgs = {};
+  const ripple = el('div', 'width:70px;height:70px;border-radius:50%;border:6px solid #f9a825;background:rgba(249,168,37,.25);opacity:0;', '', scr);
+  const hl = el('div', 'border:5px solid #f9a825;border-radius:14px;opacity:0;', '', scr);
+  [fr, scr].forEach(c => c.classList.add('abs')); ripple.classList.add('abs'); hl.classList.add('abs');
+  return {
+    show(name, opacity, ty) {
+      if (!imgs[name]) { const i = el('img', 'left:0;top:0;width:' + (IMGW * S) + 'px;opacity:0;', null, scr); i.src = 'shots/' + name + '.jpg'; i.classList.add('abs'); scr.insertBefore(i, ripple); imgs[name] = i; }
+      imgs[name].style.opacity = opacity; imgs[name].style.transform = 'translateY(' + (-(ty || 0) * S) + 'px)';
+    },
+    tap(cx, cy, a) { const x = cx * 2 * S, y = cy * 2 * S; ripple.style.opacity = a > 0 && a < 1 ? Math.sin(a * Math.PI) : 0; ripple.style.left = (x - 35) + 'px'; ripple.style.top = (y - 35) + 'px'; ripple.style.transform = 'scale(' + (.4 + .9 * a) + ')'; },
+    highlight(x0, y0, x1, y1, a) { hl.style.opacity = a; hl.style.left = (x0 * S - 6) + 'px'; hl.style.top = (y0 * S - 6) + 'px'; hl.style.width = ((x1 - x0) * S + 2) + 'px'; hl.style.height = ((y1 - y0) * S + 2) + 'px'; }
+  };
+}
+function callout(x, y, w) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;border-radius:22px;overflow:hidden;background:#fff;border:4px solid #f9a825;box-shadow:0 16px 36px rgba(60,30,90,.18);opacity:0;'); box.classList.add('abs');
+  return { set(name, x0, y0, x1, y1, a) { const s = w / (x1 - x0); box.style.height = ((y1 - y0) * s) + 'px'; box.style.backgroundImage = 'url(shots/' + name + '.jpg)'; box.style.backgroundSize = (IMGW * s) + 'px ' + (IMGH * s) + 'px'; box.style.backgroundPosition = (-x0 * s) + 'px ' + (-y0 * s) + 'px'; box.style.opacity = a; box.style.transform = 'scale(' + (.96 + .04 * a) + ')'; } };
+}
+
+// ── the demo flat (plan metres: x → toward 86° E, y → toward the facing 176°) ──
+const FACING = 176;
+const ROOMS = [
+  { n: 'Entrance', x: 0, y: 0, w: 1.8, d: 2.4, c: 0xffcc80 },
+  { n: 'Kitchen', x: 1.92, y: 0, w: 3.0, d: 2.4, c: 0xa5d6a7 },
+  { n: 'Bathroom', x: -2.32, y: 0, w: 2.2, d: 2.4, c: 0x90caf9 },
+  { n: 'Living room', x: -2.32, y: 2.52, w: 7.24, d: 4.2, c: 0xf48fb1 },
+  { n: 'Bedroom', x: 5.04, y: 0, w: 3.2, d: 3.6, c: 0xb39ddb }
+];
+const bdir = B => { const a = (FACING - B) * Math.PI / 180; return [Math.sin(a), Math.cos(a)]; };   // bearing → (x, z)
+
+function flatArt(x, y, w, h) {
+  const host = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.15);background:#f3efe8;'); host.classList.add('abs');
+  const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(w, h); R.outputEncoding = THREE.sRGBEncoding; host.appendChild(R.domElement);
+  const S = new THREE.Scene(); S.background = new THREE.Color('#f3efe8');
+  S.add(new THREE.HemisphereLight(0xffffff, 0x8d7f6a, .55));
+  const sun = new THREE.DirectionalLight(0xffffff, .45); sun.position.set(-4, 10, 6); S.add(sun);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshLambertMaterial({ color: 0xcfc3ad })); ground.rotation.x = -Math.PI / 2; ground.position.y = -.01; S.add(ground);
+  const WH = 1.0, T = .06;   // low walls; half the 12 cm wall on each side of the gap
+  const groups = {};
+  ROOMS.forEach(r => {
+    const g = new THREE.Group();
+    const fl = new THREE.Mesh(new THREE.BoxGeometry(r.w, .02, r.d), new THREE.MeshLambertMaterial({ color: r.c })); fl.position.set(r.w / 2, .01, r.d / 2); g.add(fl);
+    const wm = new THREE.MeshLambertMaterial({ color: 0xece4d6 });
+    [[r.w / 2, -T / 2, r.w + 2 * T, T], [r.w / 2, r.d + T / 2, r.w + 2 * T, T]].forEach(([cx, cz, lx, lz]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(lx, WH, lz), wm); m.position.set(cx, WH / 2, cz); g.add(m); });
+    [[-T / 2, r.d / 2], [r.w + T / 2, r.d / 2]].forEach(([cx, cz]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(T, WH, r.d), wm); m.position.set(cx, WH / 2, cz); g.add(m); });
+    g.position.set(r.x, 0, r.y); S.add(g); groups[r.n] = g;
+  });
+  // facing arrow (red) in front of the flat
+  const fa = new THREE.Group(), fm = new THREE.MeshBasicMaterial({ color: 0xc62828 });
+  const fsh = new THREE.Mesh(new THREE.BoxGeometry(.14, .03, 1.6), fm); fsh.position.z = .8; fa.add(fsh);
+  const ftp = new THREE.Mesh(new THREE.ConeGeometry(.3, .6, 20), fm); ftp.rotation.x = Math.PI / 2; ftp.position.z = 1.9; fa.add(ftp);
+  fa.position.set(2.96, .05, 7.0); S.add(fa);
+  // laser meter + beams
+  const mkLaser = () => { const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(.09, .05, .16), new THREE.MeshLambertMaterial({ color: 0xf9a825 })); g.add(body);
+    const face = new THREE.Mesh(new THREE.BoxGeometry(.07, .052, .02), new THREE.MeshBasicMaterial({ color: 0x212121 })); face.position.z = .07; g.add(face);
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(.018, .018, 1), new THREE.MeshBasicMaterial({ color: 0xff1744 })); g.add(beam);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(.05, 16, 12), new THREE.MeshBasicMaterial({ color: 0xff1744 })); g.add(dot);
+    S.add(g); return { g, beam, dot }; };
+  const lasers = [mkLaser(), mkLaser()];
+  // dimension line (yellow) for the wall thickness
+  const dim = new THREE.Mesh(new THREE.BoxGeometry(1, .025, .025), new THREE.MeshBasicMaterial({ color: 0xe65100 })); S.add(dim);
+  // corner marker
+  const corner = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .04, 24), new THREE.MeshBasicMaterial({ color: 0x00897b })); S.add(corner);
+  // gap highlight (the 12 cm wall between two rooms)
+  const gap = new THREE.Mesh(new THREE.BoxGeometry(.12, WH + .04, 2.4), new THREE.MeshBasicMaterial({ color: 0xe65100, transparent: true, opacity: .6, depthWrite: false })); S.add(gap);
+  const cam = new THREE.PerspectiveCamera(36, w / h, .05, 120);
+  const lab = (css) => { const d = el('div', 'transform:translate(-50%,-50%);white-space:nowrap;text-align:center;opacity:0;' + css, '', host); d.classList.add('abs'); return d; };
+  const L = {}; ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].forEach(k => L[k] = lab('font-size:26px;font-weight:800;color:#3a3045;background:rgba(255,255,255,.92);border-radius:10px;padding:2px 12px;'));
+  const RL = {}; ROOMS.forEach(r => RL[r.n] = lab('font-size:24px;font-weight:800;color:#4a148c;'));
+  const place = (d, X, Y, Z, a, txt) => { const p = new THREE.Vector3(X, Y, Z).project(cam); d.style.left = ((p.x + 1) / 2 * w) + 'px'; d.style.top = ((1 - p.y) / 2 * h) + 'px'; d.style.opacity = a; if (txt != null && d._t !== txt) { d.innerHTML = txt; d._t = txt; } };
+  return { set(o) {
+    cam.position.set(...o.cam); cam.lookAt(...o.look);
+    ROOMS.forEach(r => { const a = o.rooms ? (o.rooms[r.n] || 0) : 1; const g = groups[r.n]; g.visible = a > .01; g.scale.set(1, Math.max(.01, a), 1); g.position.y = (1 - a) * 1.2; });
+    fa.visible = (o.fa || 0) > .02; fa.scale.setScalar(.3 + .7 * (o.fa || 0));
+    lasers.forEach((Lz, i) => { const b = (o.lasers || [])[i]; Lz.g.visible = !!b && b.a > .02; if (!b || b.a <= .02) return;
+      const [x1, z1] = b.from, [x2, z2] = b.to, yy = b.y || .8, len = Math.hypot(x2 - x1, z2 - z1) * b.k;
+      Lz.g.position.set(x1, yy, z1); Lz.g.rotation.y = Math.atan2(x2 - x1, z2 - z1);
+      Lz.beam.scale.z = Math.max(.001, len); Lz.beam.position.z = len / 2; Lz.dot.position.z = len; Lz.dot.visible = b.k > .02; Lz.beam.visible = b.k > .02; });
+    dim.visible = !!o.dim && o.dim.a > .02; if (dim.visible) { const [x1, z1, x2, z2, yy] = o.dim.p; dim.position.set((x1 + x2) / 2, yy, (z1 + z2) / 2); dim.scale.x = Math.hypot(x2 - x1, z2 - z1); dim.rotation.y = -Math.atan2(z2 - z1, x2 - x1); }
+    corner.visible = !!o.corner && o.corner.a > .02; if (corner.visible) { corner.position.set(o.corner.p[0], 1.04, o.corner.p[1]); corner.scale.setScalar(.4 + .6 * o.corner.a); }
+    gap.visible = !!o.gap && o.gap.a > .02; if (gap.visible) { gap.position.set(o.gap.p[0], (WH + .04) / 2, o.gap.p[1]); gap.material.opacity = .65 * o.gap.a; }
+    R.render(S, cam);
+    Object.keys(L).forEach(k => { const v = (o.labels || {})[k]; if (v) place(L[k], v[0], v[1], v[2], v[3], v[4]); else L[k].style.opacity = 0; });
+    ROOMS.forEach(r => { const a = (o.roomLabels || 0) * (o.rooms ? (o.rooms[r.n] || 0) : 1); place(RL[r.n], r.x + r.w / 2, 1.05, r.y + r.d / 2, a, r.n); });
+  } };
+}
+const ALL = { 'Entrance': 1, 'Kitchen': 1, 'Bathroom': 1, 'Living room': 1, 'Bedroom': 1 };
+const bubble = (sel, a) => sel;
+
+const SCENES = [
+  { dur: 5, make() {   // title
+      el('div', 'left:0;top:0;width:1920px;height:1080px;background:radial-gradient(circle at 30% 30%,#ede7f6,#fbf7ef 60%);');
+      const ic = el('div', 'left:860px;top:150px;font-size:170px;', '📏');
+      const t1 = el('div', 'left:0;width:1920px;top:430px;text-align:center;font-size:84px;font-weight:800;color:#4a148c;', 'The floor plan from laser measurements');
+      const t2 = el('div', 'left:0;width:1920px;top:600px;text-align:center;font-size:38px;color:#7b6a55;font-weight:600;', 'XKDG App · 📏 Plan builder · built with the assistant');
+      const t3 = el('div', 'left:0;width:1920px;top:700px;text-align:center;font-size:28px;color:#a8977f;', 'Feng Shui Advisor · Master Eduardo Hess');
+      [...root.children].forEach(c => c.classList.add('abs'));
+      return t => { ic.style.transform = 'translateY(' + (30 * (1 - ap(t, 0, 1.2))) + 'px)'; t1.style.opacity = ap(t, .4); t2.style.opacity = ap(t, 1.1); t3.style.opacity = ap(t, 1.6); fadeIO(t, 5); };
+  } },
+  { dur: 13, make() {   // where to find it
+      chrome();
+      const ph = phone();
+      const c = caption(860, 110, 960, 'Where to find it', 'Open 📏 Plan builder', [
+        [0.4, 'Feng Shui → <b>🏠 HOUSE PROFILES</b>: on your house, tap its <b>☰</b>…'],
+        [3.6, '…then <b>📏 Plan builder</b>. With no rooms yet it says how to start:'],
+        [7.0, 'the plan is built with the <b>💬 assistant</b> — tap the purple bubble at the bottom right.']]);
+      return t => { c.update(t);
+        const s0 = 1 - ap(t, 3.0, .4), s1 = ap(t, 3.0, .4) * (1 - ap(t, 6.4, .4)), s2 = ap(t, 6.4, .4) * (1 - ap(t, 9.6, .4)), s3 = ap(t, 9.6, .4);
+        ph.show('c0', s0); ph.show('c1', s1); ph.show('c2', s2); ph.show('c3', s3);
+        if (t < 3.0) ph.tap(META.c0.tap.x, META.c0.tap.y, cl((t - 1.6) / .9));
+        else if (t < 6.4) ph.tap(META.c1.tap.x, META.c1.tap.y, cl((t - 5.0) / .9));
+        else if (t > 9.6) ph.tap(META.c3.tap.x, META.c3.tap.y, cl((t - 11.0) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 13); };
+  } },
+  { dur: 13, make() {   // what you need + the principle
+      chrome();
+      const art = flatArt(60, 110, 1040, 840);
+      const c = caption(1150, 110, 690, 'Before you start', 'A laser and the facing', [
+        [0.5, '📐 A <b>laser distance meter</b>.'],
+        [1.8, '🏠 The house saved with its <b>facing</b> (here <b>176°</b>).'],
+        [4.4, 'Every wall follows the facing or its perpendicular: each room is a <b>rectangle already oriented</b>.'],
+        [8.6, 'So <b>two measurements per room</b> are enough — the assistant asks them, the app draws the plan.']]);
+      return t => { c.update(t);
+        const k = ap(t, 0, 3);
+        art.set({ cam: [lerp(2.9, 5.2, k), lerp(19, 12.5, k), lerp(3.4, 17.5, k)], look: [2.96, 0, 3.9], rooms: ALL, fa: ap(t, 1.8), roomLabels: ap(t, 2.4),
+          labels: { a: [3.9, .1, 9.4, ap(t, 2.0), 'facing 176° (S)'], b: [2.96, 1.3, -.8, ap(t, 4.8), '356° (N)'], c: [9.1, 1.3, 2.0, ap(t, 4.8), '86° (E)'], d: [-3.0, 1.3, 4.6, ap(t, 4.8), '266° (W)'] } });
+        fadeIO(t, 13); };
+  } },
+  { dur: 9, make() {   // ask the assistant
+      chrome();
+      const ph = phone();
+      const c = caption(860, 110, 960, 'Ask the assistant', '"Help me build the floor plan of my house"', [
+        [0.4, 'In the assistant (area <b>🏠 Feng Shui</b>) write it and tap <b>Send</b>.'],
+        [3.6, 'It asks <b>one measurement at a time</b>, in a fixed order: wall thickness, the first room, then each next room.']]);
+      return t => { c.update(t);
+        ph.show('t0_typed', 1 - ap(t, 2.4, .4)); ph.show('t1', ap(t, 2.4, .4));
+        ph.tap(META.t0_typed.tap.x, META.t0_typed.tap.y, cl((t - 1.2) / .9)); ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 9); };
+  } },
+  { dur: 12, make() {   // wall thickness
+      chrome();
+      const box = el('div', 'left:60px;top:110px;width:1040px;height:840px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.15);background:#f3efe8;'); box.classList.add('abs');
+      box.innerHTML = '<svg width="1040" height="840" viewBox="0 0 1040 840">'
+        + '<text x="520" y="70" text-anchor="middle" font-size="30" font-weight="800" fill="#7b6a55">Door frame, seen from above</text>'
+        + '<rect x="0" y="340" width="330" height="160" fill="#d7ccb7"/><rect x="710" y="340" width="330" height="160" fill="#d7ccb7"/>'
+        + '<rect x="0" y="340" width="330" height="160" fill="none" stroke="#8d7f6a" stroke-width="4"/><rect x="710" y="340" width="330" height="160" fill="none" stroke="#8d7f6a" stroke-width="4"/>'
+        + '<path d="M330 500 A380 380 0 0 1 710 500" fill="none" stroke="#bcaaa4" stroke-width="3" stroke-dasharray="10 8"/><line x1="330" y1="500" x2="330" y2="140" stroke="#a1887f" stroke-width="10"/>'
+        + '<text x="520" y="250" text-anchor="middle" font-size="28" fill="#8d7f6a">doorway</text>'
+        + '<text x="165" y="300" text-anchor="middle" font-size="28" font-weight="700" fill="#4a148c">Entrance</text><text x="875" y="560" text-anchor="middle" font-size="28" font-weight="700" fill="#4a148c">Kitchen</text>'
+        + '<g id="dm" opacity="0"><line x1="780" y1="340" x2="780" y2="500" stroke="#e65100" stroke-width="6"/><line x1="755" y1="340" x2="805" y2="340" stroke="#e65100" stroke-width="6"/><line x1="755" y1="500" x2="805" y2="500" stroke="#e65100" stroke-width="6"/>'
+        + '<rect x="800" y="392" width="150" height="56" rx="12" fill="#fff"/><text x="875" y="432" text-anchor="middle" font-size="36" font-weight="800" fill="#e65100">12 cm</text></g>'
+        + '<rect id="hl" x="704" y="334" width="20" height="172" fill="none" stroke="#f9a825" stroke-width="6" opacity="0"/>'
+        + '</svg>';
+      const dm = box.querySelector('#dm'), hl = box.querySelector('#hl');
+      const c = caption(1150, 110, 690, 'Step 1', 'Internal wall thickness', [
+        [0.5, 'Measure it <b>once</b>, on a <b>door frame</b>: from one face of the wall to the other.'],
+        [4.0, 'Usually about <b>10–15 cm</b>. The app puts it between every two rooms.']]);
+      const co = callout(1150, 560, 690);
+      return t => { c.update(t);
+        hl.setAttribute('opacity', ap(t, 1.2) * (1 - ap(t, 2.6)));
+        dm.setAttribute('opacity', ap(t, 2.4));
+        co.set('t3', 0, 690, 824, 1180, ap(t, 6.0));
+        fadeIO(t, 12); };
+  } },
+  { dur: 14, make() {   // first room
+      chrome();
+      const art = flatArt(60, 110, 1040, 840);
+      const c = caption(1150, 110, 690, 'Step 2', 'The first room', [
+        [0.5, 'Usually the <b>entrance</b>. Back of the laser on one wall, aim square at the opposite wall.'],
+        [2.6, '1️⃣ From the wall toward <b>176°</b> to the opposite wall: <b>2.40 m</b>.'],
+        [6.6, '2️⃣ From the wall toward <b>86°</b> to the wall toward 266°: <b>1.80 m</b>.']]);
+      const co = callout(1150, 600, 690);
+      return t => { c.update(t);
+        const k = ap(t, 0, 1.5);
+        const b1 = { from: [.9, 2.4], to: [.9, 0], k: ap(t, 3.2, 1.4), a: ap(t, 2.6, .3), y: .85 };
+        const b2 = { from: [1.8, 1.0], to: [0, 1.0], k: ap(t, 7.2, 1.2), a: ap(t, 6.6, .3), y: .85 };
+        art.set({ cam: [lerp(4.0, 3.6, k), lerp(7.0, 4.6, k), lerp(7.0, 5.2, k)], look: [.9, 0, 1.2], rooms: { 'Entrance': 1 },
+          lasers: [b1, b2],
+          labels: { a: [1.25, .9, 1.2, ap(t, 4.6), '2.40 m'], b: [.9, .9, .65, ap(t, 8.4), '1.80 m'], c: [.9, 1.15, 2.95, ap(t, 2.8), '176° (S)'], d: [.9, 1.15, -.5, ap(t, 2.8), '356° (N)'], e: [2.35, 1.15, 1.2, ap(t, 7.0), '86° (E)'], f: [-.6, 1.15, 1.2, ap(t, 7.0), '266° (W)'] } });
+        co.set('t3', 0, 1190, 824, 1620, ap(t, 9.8));
+        fadeIO(t, 14); };
+  } },
+  { dur: 17, make() {   // next rooms
+      chrome();
+      const art = flatArt(60, 110, 1040, 840);
+      const c = caption(1150, 90, 690, 'Step 3', 'Each next room', [
+        [0.5, '<b>Which room</b> it touches, and on <b>which side</b> (176°, 356°, 86° or 266°).'],
+        [3.0, '<b>Where along</b> that wall it starts (from which corner).'],
+        [5.6, 'Then its <b>two sizes</b>. The wall in between is added by itself.']]);
+      const co = callout(1150, 640, 690);
+      const L = el('div', 'left:1150px;top:640px;width:690px;height:300px;border-radius:22px;background:#fff;box-shadow:0 16px 36px rgba(60,30,90,.18);opacity:0;padding:20px 26px;box-sizing:border-box;'); L.classList.add('abs');
+      L.innerHTML = '<div style="font-size:30px;font-weight:800;color:#4a148c;">An L-shaped room?</div><div style="font-size:26px;color:#3a3045;margin-top:6px;">Enter it as <b>two rectangles</b> joined together.</div>'
+        + '<svg width="300" height="150" style="position:absolute;right:26px;bottom:18px;"><rect x="10" y="10" width="120" height="130" fill="#fce4ec" stroke="#ad1457" stroke-width="4"/><rect x="130" y="70" width="150" height="70" fill="#f8bbd0" stroke="#ad1457" stroke-width="4"/><line x1="130" y1="74" x2="130" y2="136" stroke="#fce4ec" stroke-width="6"/><line x1="130" y1="72" x2="130" y2="138" stroke="#ad1457" stroke-width="3" stroke-dasharray="7 6"/><text x="70" y="82" font-size="30" font-weight="800" fill="#ad1457" text-anchor="middle">A</text><text x="205" y="115" font-size="30" font-weight="800" fill="#ad1457" text-anchor="middle">B</text></svg>';
+      return t => { c.update(t);
+        const k = ap(t, 0, 2);
+        const rooms = { 'Entrance': 1, 'Kitchen': ap(t, 1.2, .9), 'Bathroom': ap(t, 7.6, .8), 'Living room': ap(t, 9.4, .8), 'Bedroom': ap(t, 11.2, .8) };
+        const k2 = ap(t, 7.2, 3);
+        art.set({ cam: [lerp(2.6, 4.2, k2), lerp(6.8, 14.5, k2), lerp(5.6, 14.0, k2)], look: [lerp(2.4, 2.96, k2), 0, lerp(1.1, 3.6, k2)], rooms, roomLabels: 1,
+          corner: { p: [1.92, 0], a: ap(t, 3.0) * (1 - ap(t, 7.4)) }, gap: { p: [1.86, 1.2], a: ap(t, 5.6) * (1 - ap(t, 7.4)) },
+          labels: { a: [1.92, 1.35, -.45, ap(t, 3.2) * (1 - ap(t, 7.4)), 'from the 356° corner'], b: [1.86, 1.4, 1.9, ap(t, 5.8) * (1 - ap(t, 7.4)), 'wall 12 cm'], c: [3.4, 1.3, 2.95, ap(t, .8) * (1 - ap(t, 7.4)), 'on the 86° side'] } });
+        co.set('t4', 0, 1210, 824, 1620, ap(t, 1.6) * (1 - ap(t, 12.4, .4)));
+        L.style.opacity = ap(t, 12.8); L.style.transform = 'translateY(' + (20 * (1 - ap(t, 12.8))) + 'px)';
+        fadeIO(t, 17); };
+  } },
+  { dur: 10, make() {   // check every 2-3 rooms
+      chrome();
+      const ph = phone();
+      const c = caption(860, 110, 960, 'Check', 'Every 2–3 rooms: the drawing', [
+        [0.5, 'The assistant shows the plan with the rooms, their sizes and the directions of the sides.'],
+        [4.2, 'Compare it with your house. If something is wrong, <b>tell the assistant</b>: <i>"the kitchen is 3.10 wide"</i>.']]);
+      return t => { c.update(t); ph.show('t5', 1 - ap(t, 1.4, .4)); ph.show('t5_plan', ap(t, 1.4, .4)); ph.tap(0, 0, 0); ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 10); };
+  } },
+  { dur: 17, make() {   // finished plan → floor plan with the 8 palaces
+      chrome();
+      const ph = phone();
+      const c = caption(860, 90, 960, 'The plan', 'All rooms in: the 8 palaces', [
+        [0.5, '📏 <b>Plan builder</b>: the drawing and the rooms, with their sizes <b>along</b> and <b>across</b> the facing. ✕ deletes a room.'],
+        [5.0, '<b>🖼 Use as floor plan (8 palaces)</b>: the palaces and the flying stars are drawn from the <b>centre</b>.'],
+        [10.4, 'Tap <b>💾 Save to house</b> to keep the picture with the stars.'],
+        [13.2, '<span class="mag">⚠ "The centre falls outside the rooms": irregular plan, check the missing sectors.</span>']]);
+      const co = callout(1320, 590, 500);
+      return t => { c.update(t); co.set('f0', 60, 625, 765, 1105, ap(t, 8.0));
+        const a0 = 1 - ap(t, 3.6, .4), a1 = ap(t, 3.6, .4) * (1 - ap(t, 7.2, .4)), a2 = ap(t, 7.2, .4);
+        ph.show('t7_plan', a0); ph.show('t7_plan2', a1); ph.show('f0', a2);
+        if (t > 3.6 && t < 7.2) ph.tap(META.t7_plan2.tap.x, META.t7_plan2.tap.y, cl((t - 5.6) / .9));
+        else if (t > 7.2) ph.tap(META.save.x, META.save.y, cl((t - 11.2) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 17); };
+  } },
+  { dur: 11, make() {   // tips + end
+      chrome();
+      const c = caption(120, 110, 1680, 'Tips', 'For a correct plan', [
+        [0.6, '🎯 Laser <b>square</b> to the walls, back edge flat on the wall.'],
+        [1.6, '📏 Measure to the <b>centimetre</b>: one hexagram is 5.6° — about 30 cm at 3 m.'],
+        [2.6, '🧭 Name the walls by their <b>direction</b> (176°, 86° …), as the assistant asks.'],
+        [3.6, '🛋 Next: doors and furniture with the assistant, and the <b>🧊 3D view</b>.']]);
+      const end = el('div', 'left:120px;top:860px;width:1680px;font-size:30px;color:#7b6a55;opacity:0;', 'Full guide: <b style="color:#4a148c;">fsadvisor.org/xkdg</b> → 📘 Guides → 📷 Photo sectors and floor plan, Part 3'); end.classList.add('abs');
+      return t => { c.update(t); end.style.opacity = ap(t, 5.0); fadeIO(t, 11); };
+  } }
+];
+let upd = null;
+window.setup = i => { window._curIdx = i; root.innerHTML = ''; root.style.opacity = 1; upd = SCENES[i].make(); return SCENES[i].dur; };
+window.draw = t => upd(t);
+window.durations = SCENES.map(s => s.dur);
+</script></body></html>

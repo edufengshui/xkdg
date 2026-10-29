@@ -53,6 +53,8 @@ Next session: read this file first.
 - `_xkdgRemedyKind`: the same hexagram as an ISOLATED natal pillar is never a cure (Edu, e.g. hour 丁巳 hex 9 isolated → hex 9 excluded, also as ★ family).
 - AI chat stuck on "Connection lost, retrying" (Edu, two-person cure question): worker source not in the repo, cause not provable from here. Fixes in ai-chat.js: fetch aborts after 150 s (no more endless wait); person_xkdg_gaps sends only 8 dates × 4 hours (`_compactRemedies`, dates_total); new tool `mutual_cures` (fengshui + dates areas) = cures between A and B both ways, compact (~1 KB) instead of two full gaps results.
 - Fountain B (night) now runs to the END of Mao 卯 (solar 07:00, Mao hour also a candidate ON); period/runs texts name the hours explicitly and the note lists the solar times of the Chinese hours (the AI had called 04:38 "end of Mao"). Fountain A (day) now starts at Chen 辰 (solar 07:00-21:00, Edu) — no overlap with B.
+- ▶ Video 4 `guides/videos/plan-builder.mp4` (~2:00): floor plan from laser measurements with the assistant (Edu approved the storyboard). Demo flat 5 rooms (tools/video/plan-builder/capture.js: the assistant's replies are SCRIPTED via a mocked worker, every plan_* tool runs the real app). Embedded in guide Part 3 (`#part3`), 📖 plan_builder popup links it, video.html G updated. Next video (Edu): 📐 Import a floorplan, separate — storyboard to show Edu first.
+- Bug fixed: 📏 Plan builder dialog opened UNDER the assistant (z 10000 < 99999) → now z 100040, so plan_show is visible while chatting.
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
