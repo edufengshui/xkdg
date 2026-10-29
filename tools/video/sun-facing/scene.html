@@ -115,22 +115,26 @@ function windowArt(x, y, scale) {
   sv('rect', { x: 330, y: 240, width: 340, height: 290, fill: '#ffffff', stroke: '#9e9e9e', 'stroke-width': 3 }, card);
   sv('line', { x1: 330, y1: 241, x2: 670, y2: 241, stroke: '#4a148c', 'stroke-width': 6 }, card);
   const edgeLab = sv('text', { x: 680, y: 262, 'font-size': 22, fill: '#4a148c', 'font-weight': 700, opacity: 0 }, card); edgeLab.textContent = '← card edge flush';
-  // shadow and traced line: base O=(500,300), direction (cos72, sin72)
-  const O = [500, 300], D = [Math.cos(72 * Math.PI / 180), Math.sin(72 * Math.PI / 180)], L = 225;
-  const shadow = sv('line', { x1: O[0], y1: O[1], x2: O[0] + D[0] * L, y2: O[1] + D[1] * L, stroke: 'rgba(60,50,70,.35)', 'stroke-width': 18, 'stroke-linecap': 'round', opacity: 0 }, g);
-  const traced = sv('line', { x1: O[0], y1: O[1], x2: O[0], y2: O[1], stroke: '#1d1b26', 'stroke-width': 4 }, g);
-  const ext = sv('line', { x1: O[0] - D[0] * 63, y1: 240, x2: O[0], y2: O[1], stroke: '#1d1b26', 'stroke-width': 3, 'stroke-dasharray': '8 6', opacity: 0 }, g);
-  // object (book opened in a V)
+  // tube / bottle (radius 2.5 cm = 25 px) at O; its shadow is a band; the pencil traces its LEFT EDGE
+  const O = [500, 300], D = [Math.cos(72 * Math.PI / 180), Math.sin(72 * Math.PI / 180)], RT = 25;
+  const N2 = [-D[1], D[0]];                                   // left normal (seen from inside)
+  const E0 = [O[0] + N2[0] * RT, O[1] + N2[1] * RT], E1 = [O[0] - N2[0] * RT, O[1] - N2[1] * RT];
+  const L = (530 - 6 - E0[1]) / D[1], L1 = (530 - 6 - E1[1]) / D[1];
+  const shadow = sv('polygon', { points: [E0, [E0[0] + D[0] * L, E0[1] + D[1] * L], [E1[0] + D[0] * L1, E1[1] + D[1] * L1], E1].map(p => p.join(',')).join(' '), fill: 'rgba(60,50,70,.32)', opacity: 0 }, g);
+  const traced = sv('line', { x1: E0[0], y1: E0[1], x2: E0[0], y2: E0[1], stroke: '#1d1b26', 'stroke-width': 4 }, g);
+  const tExt = (E0[1] - 240) / D[1];
+  const ext = sv('line', { x1: E0[0] - D[0] * tExt, y1: 240, x2: E0[0], y2: E0[1], stroke: '#1d1b26', 'stroke-width': 3, 'stroke-dasharray': '8 6', opacity: 0 }, g);
+  // object: tube seen from above
   const obj = sv('g', { opacity: 0 }, g);
-  sv('path', { d: 'M470 285 L500 305 L530 285', fill: 'none', stroke: '#8e24aa', 'stroke-width': 10, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, obj);
-  sv('circle', { cx: 500, cy: 303, r: 6, fill: '#4a148c' }, obj);
+  sv('circle', { cx: O[0], cy: O[1], r: RT, fill: '#90a4ae', stroke: '#455a64', 'stroke-width': 4 }, obj);
+  sv('circle', { cx: O[0], cy: O[1], r: RT - 9, fill: '#cfd8dc' }, obj);
   // pencil
   const pen = sv('g', { opacity: 0 }, g);
   sv('polygon', { points: '0,0 14,-8 70,-60 56,-74 4,-18', fill: '#ffb300', stroke: '#6d4c41', 'stroke-width': 3 }, pen);
   sv('polygon', { points: '0,0 14,-8 4,-18', fill: '#3e2723' }, pen);
   // protractor + alpha
   const prot = sv('g', { opacity: 0 }, g);
-  const P0 = [O[0] - D[0] * 63, 240];
+  const P0 = [E0[0] - D[0] * tExt, 240];
   sv('path', { d: `M${P0[0] - 140} 240 A140 140 0 0 0 ${P0[0] + 140} 240 Z`, fill: 'rgba(144,202,249,.25)', stroke: '#1e88e5', 'stroke-width': 3 }, prot);
   for (let k = 0; k <= 180; k += 10) { const a = k * Math.PI / 180; const r1 = k % 30 ? 128 : 118; sv('line', { x1: P0[0] + Math.cos(a) * r1, y1: 240 + Math.sin(a) * r1, x2: P0[0] + Math.cos(a) * 140, y2: 240 + Math.sin(a) * 140, stroke: '#1e88e5', 'stroke-width': 2 }, prot); }
   const arc = sv('path', { d: '', fill: 'none', stroke: '#e65100', 'stroke-width': 8, 'stroke-linecap': 'round' }, g);
@@ -154,8 +158,8 @@ function windowArt(x, y, scale) {
       rays.setAttribute('opacity', o.rays || 0);
       obj.setAttribute('opacity', o.obj || 0); obj.setAttribute('transform', 'translate(0,' + (-40 * (1 - (o.obj || 0))) + ')');
       shadow.setAttribute('opacity', o.shadow || 0);
-      const tr = o.trace || 0; traced.setAttribute('x2', O[0] + D[0] * L * tr); traced.setAttribute('y2', O[1] + D[1] * L * tr);
-      pen.setAttribute('opacity', o.pen || 0); pen.setAttribute('transform', 'translate(' + (O[0] + D[0] * L * tr) + ',' + (O[1] + D[1] * L * tr) + ')');
+      const tr = o.trace || 0; traced.setAttribute('x2', E0[0] + D[0] * L * tr); traced.setAttribute('y2', E0[1] + D[1] * L * tr);
+      pen.setAttribute('opacity', o.pen || 0); pen.setAttribute('transform', 'translate(' + (E0[0] + D[0] * L * tr) + ',' + (E0[1] + D[1] * L * tr) + ')');
       ext.setAttribute('opacity', o.ext || 0); prot.setAttribute('opacity', o.prot || 0);
       const aa = (o.arc || 0) * 72 * Math.PI / 180, R = 95;
       arc.setAttribute('d', (o.arc || 0) > 0 ? `M${P0[0] + R} 240 A${R} ${R} 0 0 1 ${P0[0] + Math.cos(aa) * R} ${240 + Math.sin(aa) * R}` : '');
@@ -171,7 +175,7 @@ function threeArt(x, y, w, h) {
   const host = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:24px;overflow:hidden;box-shadow:0 14px 34px rgba(60,30,90,.15);');
   host.classList.add('abs');
   const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-  R.setPixelRatio(1); R.setSize(w, h); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+  R.setPixelRatio(1); R.setSize(w, h); R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFShadowMap;
   R.outputEncoding = THREE.sRGBEncoding;
   host.appendChild(R.domElement);
   const S = new THREE.Scene(); S.background = new THREE.Color('#cfe8f7');
@@ -184,8 +188,8 @@ function threeArt(x, y, w, h) {
   S.add(new THREE.HemisphereLight(0xeef4ff, 0xc9b79a, .6));
   const sun = new THREE.DirectionalLight(0xfff1d6, 1.5);
   sun.position.copy(dir.clone().multiplyScalar(-400)); sun.target.position.set(0, 0, 10); S.add(sun.target);
-  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 10, far: 900 }); sun.shadow.bias = -0.0006; sun.shadow.radius = 3;
+  sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+  Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 200, far: 650 }); sun.shadow.bias = -0.0006; sun.shadow.radius = 3;
   S.add(sun);
   // wall (interior face at z = 0), opening x −55..55, y 0..115; glass plane at z = −2
   const wallM = M('#ece6dc'), frameM = M('#ffffff', { roughness: .5 });
@@ -205,16 +209,17 @@ function threeArt(x, y, w, h) {
   const card = new THREE.Group(); S.add(card);
   const cardM = new THREE.Mesh(new THREE.BoxGeometry(34, .4, 26), M('#ffffff', { roughness: .95 })); cardM.position.set(0, .2, 13); cardM.receiveShadow = true; cardM.castShadow = true; card.add(cardM);
   const edge = new THREE.Mesh(new THREE.BoxGeometry(34, .5, .8), new THREE.MeshBasicMaterial({ color: 0x4a148c })); edge.position.set(0, .45, .4); card.add(edge);
-  // vertical object: a book opened in a V (spine at x = 0, z = 6), 22 cm tall
+  // vertical object: a tube (r 2.5 cm, 30 cm tall) at x = 0, z = 6 — its shadow has two clean parallel edges
   const book = new THREE.Group(); S.add(book);
-  const pageM = M('#8e24aa'), coverM = M('#6a1b9a');
-  [-1, 1].forEach(sg => { const half = new THREE.Mesh(new THREE.BoxGeometry(12, 22, .8), sg < 0 ? pageM : coverM); half.position.set(6, 11, 0); const piv = new THREE.Group(); piv.add(half); piv.rotation.y = sg < 0 ? -1.07 : -2.07; half.castShadow = true; piv.children[0].castShadow = true; book.add(piv); });
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 30, 48), M('#90a4ae', { roughness: .5 })); tube.position.y = 15; tube.castShadow = true; book.add(tube);
+  const rim = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.5, 48), M('#546e7a')); rim.rotation.x = -Math.PI / 2; rim.position.y = 30.05; book.add(rim);
   book.position.set(0, .4, 6);
-  book.children.forEach(pv => pv.children[0].castShadow = true);
-  // traced pencil line along the spine shadow
+  // traced pencil line = the LEFT EDGE of the shadow: starts at the tangent point of the tube base
   const shDir = new THREE.Vector3(Math.cos(az), 0, Math.sin(az));
-  const Lmax = (26 - 6) / Math.sin(az) - .6;
-  const line = new THREE.Mesh(new THREE.BoxGeometry(1, .2, .55), new THREE.MeshBasicMaterial({ color: 0x1d1b26 }));
+  const nL = new THREE.Vector3(-shDir.z, 0, shDir.x);          // left normal (seen from inside, looking out)
+  const E0 = new THREE.Vector3(nL.x * 2.5, 0, 6 + nL.z * 2.5);
+  const Lmax = (26 - 0.5 - E0.z) / shDir.z;
+  const line = new THREE.Mesh(new THREE.BoxGeometry(1, .15, .35), new THREE.MeshBasicMaterial({ color: 0x1d1b26 }));
   line.rotation.y = -Math.atan2(shDir.z, shDir.x); S.add(line);
   // pencil
   const pen = new THREE.Group(); S.add(pen);
@@ -224,7 +229,7 @@ function threeArt(x, y, w, h) {
   pen.traverse(o => { if (o.isMesh) o.castShadow = true; });
   // labels (HTML, follow 3D points)
   const lab = (txt, col) => { const d = el('div', 'font-size:26px;font-weight:800;color:' + col + ';background:rgba(255,255,255,.88);border-radius:10px;padding:4px 12px;white-space:nowrap;opacity:0;transform:translate(-50%,-100%);', txt, host); d.classList.add('abs'); return d; };
-  const L1 = lab('card edge flush with the glass', '#4a148c'), L2 = lab('vertical object', '#6a1b9a'), L3 = lab('its shadow', '#37474f'), L4 = lab('☀️ sun from outside', '#e65100');
+  const L1 = lab('card edge flush with the glass', '#4a148c'), L2 = lab('a tube or a bottle', '#37474f'), L3 = lab('its shadow', '#37474f'), L4 = lab('☀️ sun from outside', '#e65100');
   const place = (d, v, a) => { const p = v.clone().project(cam); d.style.left = ((p.x + 1) / 2 * w) + 'px'; d.style.top = ((1 - p.y) / 2 * h) + 'px'; d.style.opacity = a; };
   const lerp = (a, b, k) => a + (b - a) * k;
   return {
@@ -244,12 +249,12 @@ function threeArt(x, y, w, h) {
       sun.intensity = 1.5 * (o.sunOn == null ? 1 : o.sunOn);
       const tr = o.trace || 0, Lt = Lmax * tr;
       line.visible = tr > 0.01; line.scale.x = Math.max(Lt, .01);
-      line.position.set(shDir.x * (Lt / 2), .5, 6 + shDir.z * (Lt / 2));
-      pen.visible = (o.pen || 0) > .01; pen.position.set(shDir.x * Lt, .4, 6 + shDir.z * Lt);
+      line.position.set(E0.x + shDir.x * (Lt / 2), .48, E0.z + shDir.z * (Lt / 2));
+      pen.visible = (o.pen || 0) > .01; pen.position.set(E0.x + shDir.x * Lt, .4, E0.z + shDir.z * Lt);
       R.render(S, cam);
       place(L1, new THREE.Vector3(-14, 1, 1), o.l1 || 0);
-      place(L2, new THREE.Vector3(0, 24, 6), o.l2 || 0);
-      place(L3, new THREE.Vector3(shDir.x * 16, 1, 6 + shDir.z * 16 + 4), o.l3 || 0);
+      place(L2, new THREE.Vector3(0, 33, 6), o.l2 || 0);
+      place(L3, new THREE.Vector3(shDir.x * 16 + 6, 1, 6 + shDir.z * 16 + 4), o.l3 || 0);
       place(L4, new THREE.Vector3(-30, 95, -4), o.l4 || 0);
     }
   };
@@ -275,22 +280,28 @@ const SCENES = [
       const rows = items.map((it, i) => { const r = el('div', 'left:1010px;top:' + (150 + i * 158) + 'px;width:820px;height:130px;border-radius:24px;background:#fff;box-shadow:0 10px 26px rgba(80,50,110,.10);display:flex;align-items:center;gap:26px;padding:0 30px;box-sizing:border-box;font-size:32px;line-height:1.3;opacity:0;', '<span style="font-size:64px;">' + it[0] + '</span><span>' + it[1] + '</span>'); r.classList.add('abs'); return r; });
       return t => { c.update(t); rows.forEach((r, i) => { const a = ap(t, 3.0 + i * .9); r.style.opacity = a; r.style.transform = 'translateX(' + (60 * (1 - a)) + 'px)'; }); fadeIO(t, 10); };
   } },
-  { dur: 17, make() {  // at the window — 3D
+  { dur: 19, make() {  // at the window — 3D, 2D for the card, 3D for the shadow
       chrome(1);
       const art = threeArt(60, 120, 1040, 830);
+      const flat = windowArt(80, 125, 1.0); const flatBox = flat.s.parentNode;
+      flatBox.style.background = '#f7f2ea'; flatBox.style.borderRadius = '24px'; flatBox.style.overflow = 'hidden';
       const c = caption(1130, 110, 700, 'At the window', 'Trace the shadow', [
         [0.6, '<span class="tag">1</span> Lay the card <b>level</b> on the sill, one edge <b>flush against the wall plane</b> (frame or glass).'],
-        [4.6, '<span class="tag">2</span> Stand the <b>vertical object</b> on the card: the sun casts its <b>shadow</b>.'],
-        [8.4, '<span class="tag">3</span> Trace the <b>shadow line</b> with the pencil…'],
-        [11.8, '…and tap <b>Now</b> in the app <b>at that moment</b>. The time is everything.']]);
-      const clock = el('div', 'left:1130px;top:860px;font-size:40px;font-weight:800;color:#fff;background:#4a148c;border-radius:18px;padding:12px 26px;opacity:0;', '🕥 10:32:00 → <span style="color:#ffd54f;">Now</span>'); clock.classList.add('abs');
+        [7.6, '<span class="tag">2</span> Stand a <b>tube or a bottle</b> on the card: the sun casts its <b>shadow</b>.'],
+        [10.6, '<span class="tag">3</span> With the pencil, trace <b>exactly the edge</b> of the shadow.']]);
+      const flash = el('div', 'left:1130px;top:800px;font-size:46px;font-weight:900;color:#fff;background:#c62828;border-radius:20px;padding:16px 30px;opacity:0;box-shadow:0 10px 30px rgba(198,40,40,.35);', '⏱ Take the hour now!<div style="font-size:30px;font-weight:700;color:#ffe082;margin-top:4px;">10:32:00 → tap <u>Now</u> in the app</div>'); flash.classList.add('abs');
       return t => {
         c.update(t);
-        art.set({ cam: cl(t / 13), top: ap(t, 14.2, 2.3), card: ap(t, .8, 1.6), obj: ap(t, 4.8, 1.0),
-                  l1: ap(t, 2.4) * (1 - ap(t, 4.6)), l2: ap(t, 5.8) * (1 - ap(t, 8.0)), l3: ap(t, 6.6) * (1 - ap(t, 8.4)), l4: 0,
-                  trace: ap(t, 8.8, 2.6), pen: ap(t, 8.6, .4) * (1 - ap(t, 12.0, .5)) });
-        clock.style.opacity = ap(t, 12.0); clock.style.transform = 'scale(' + (.85 + .15 * ap(t, 12.0)) + ')';
-        fadeIO(t, 17);
+        const f2 = ap(t, 3.4, .6) * (1 - ap(t, 6.8, .6));           // the 2D top view in the middle
+        flatBox.style.opacity = f2;
+        flat.set({ card: 1, edge: ap(t, 4.2) });
+        art.set({ cam: cl(t / 15), top: ap(t, 16.2, 2.3), card: ap(t, .8, 1.6), obj: ap(t, 7.8, 1.0),
+                  l1: ap(t, 2.0) * (1 - ap(t, 3.4)), l2: ap(t, 8.6) * (1 - ap(t, 10.4)), l3: ap(t, 9.2) * (1 - ap(t, 10.6)), l4: 0,
+                  trace: ap(t, 11.0, 2.6), pen: ap(t, 10.8, .4) * (1 - ap(t, 14.0, .5)) });
+        const fa = ap(t, 13.4, .3) * (1 - ap(t, 18.2, .5));
+        flash.style.opacity = t > 13.4 ? fa * (0.35 + 0.65 * (0.5 + 0.5 * Math.cos((t - 13.4) * Math.PI * 2 / 0.8))) : 0;
+        flash.style.transform = 'scale(' + (1 + .04 * Math.sin((t - 13.4) * Math.PI * 2 / 0.8)) + ')';
+        fadeIO(t, 19);
       };
   } },
   { dur: 13, make() {  // measure alpha + left/right

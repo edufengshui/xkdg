@@ -34,7 +34,7 @@ Next session: read this file first.
 
 - **📧 Daily email: fountains** — digest-setup.js adds `{kind:"fountain", device}` ops from `window.XKDGFountains(house)` (exported by ai-chat.js); digest/scan.js runs `program_aquarium_light` (by-hand mode) and lists ON→OFF rows on the civil day they switch on; digest.js shows them (⛲) in the day list and in the detail. Edu must regenerate his line (📧 Daily email) and paste it into the secret.
 
-- **▶ Video tutorials**: `guides/videos/sun-facing.mp4` (1:46, 16:9, scene 2 in 3D with three.js, English captions, no audio) embedded at the top of guides/sun-facing.html; built from real app screenshots (Playwright, demo person/house, clock fixed 2026-10-29 10:32 Vienna) + animated SVG scenes; sources in tools/video/sun-facing/. Guide fixed: Sun facing is now in 📍 Address & facing ☰.
+- **▶ Video tutorials**: `guides/videos/sun-facing.mp4` (1:48, 16:9, scene 2: 3D card → 2D top view → 3D tube + shadow edge traced + flashing "Take the hour now!", English captions, no audio) embedded at the top of guides/sun-facing.html; built from real app screenshots (Playwright, demo person/house, clock fixed 2026-10-29 10:32 Vienna) + animated SVG scenes; sources in tools/video/sun-facing/. Guide fixed: Sun facing is now in 📍 Address & facing ☰.
 
 - 📖 help popups (house-menus.js HELP): optional 4th item = video URL → "▶ Video tutorial" link (sun_facing has it).
 
