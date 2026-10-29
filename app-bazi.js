@@ -991,6 +991,30 @@ function _xkdgLang(vals) {
     if (!L.size) { L.add('add'); L.add('hetu'); }
     return L;
 }
+// Session 35 (Edu): the SETTING of a set of values = the language that ALONE (equal values
+// included) connects all of them. Ed's Elements 2 8 3 2 are all joined by Adding (one Hetu pair
+// 3-8 does not change it): the setting is Adding, and a cure must speak Adding, not Hetu.
+// When no single language connects them all, both languages are returned (mixed).
+function _xkdgSettingLang(vals) {
+    const v = vals.filter(x => x != null);
+    if (v.length < 2) return _xkdgLang(v);
+    const conn = lang => {
+        const seen = new Set([0]), st = [0];
+        while (st.length) { const i = st.pop(); for (let j = 0; j < v.length; j++) {
+            if (seen.has(j)) continue;
+            const ok = v[i] === v[j] || (lang === 'add' ? [5, 10, 15].includes(v[i] + v[j]) : isHetuPair(v[i], v[j]));
+            if (ok) { seen.add(j); st.push(j); } } }
+        return seen.size === v.length;
+    };
+    const L = new Set(['add', 'hetu'].filter(conn));
+    return L.size ? L : _xkdgLang(v);
+}
+function _xkdgRelIn(lang, a, b) {
+    if (lang.has('add') && [5, 10, 15].includes(a + b)) return a + '+' + b + ' = ' + (a + b);
+    if (lang.has('hetu') && isHetuPair(a, b)) return 'Hetu ' + Math.min(a, b) + '-' + Math.max(a, b);
+    return '';
+}
+function _xkdgLangName(lang) { return [...lang].map(l => l === 'add' ? 'Adding' : 'Hetu').join(' / '); }
 function _xkdgSpeaks(lang, a, b) { return (lang.has('add') && [5, 10, 15].includes(a + b)) || (lang.has('hetu') && isHetuPair(a, b)); }
 // Hexagram -> its JiaZi (stem, branch): a luopan hexagram carries the branch of its JiaZi.
 var _xkHexJz = null;
@@ -1026,13 +1050,16 @@ function _xkdgRemedyKind(gaps, pillars, cand, isoFams) {
         const iso = gaps.dims[f].isolated;
         if (iso.length) {
             const net = keys.filter(k => !iso.some(x => x.pillar === k)).map(k => pillars[k][f]);
-            const lang = _xkdgLang(net);
+            const lang = _xkdgSettingLang(net);
             // the isolated pillar must be linked WITHOUT a branch clash (A)
             if (!iso.every(x => _xkdgSpeaks(lang, cand[f], x.value) && !clash(x.pillar))) gapOk = false;
         } else {
-            const all = keys.map(k => pillars[k][f]), lang = _xkdgLang(all);
-            // at least one native pillar spoken to without a branch clash (A)
-            if (!keys.some(k => _xkdgSpeaks(lang, cand[f], pillars[k][f]) && !clash(k))) keepOk = false;
+            const all = keys.map(k => pillars[k][f]), lang = _xkdgSettingLang(all);
+            const st = gaps.settings && gaps.settings[f], hv = _xkdgHarmVals(st);
+            if (st && st.split && hv.size) {
+                // Session 35 (Edu): two different settings are NOT good — the cure must bring them to one.
+                if (!hv.has(cand[f])) keepOk = false;
+            } else if (!keys.some(k => _xkdgSpeaks(lang, cand[f], pillars[k][f]) && !clash(k))) keepOk = false;   // (A)
         }
     });
     if (gapOk && keepOk) return 'main';
@@ -1211,9 +1238,12 @@ function renderPersonView() {
             let an = '';
             [['qi', 'Elements', 'Element'], ['yun', 'Periods', 'Period']].forEach(([f, nms, nm]) => {
                 const S = st && st[f]; if (!S) return;
-                const gtxt = S.groups.map(gr => gr.pillars.map(k => L[k]).join(' + ') + ' (' + gr.pairs.map(p => p.txt).join(', ') + ')').join(' · ');
+                // only the relations of the group's setting (Edu: do not show Hetu when the setting is Adding)
+                const gtxt = S.groups.map(gr => { const sl = _xkdgSettingLang(gr.pillars.map(k => pp.P[k][f]));
+                    return gr.pillars.map(k => L[k]).join(' + ') + ' (' + gr.pairs.filter(p => p.lang === 'eq' || sl.has(p.lang)).map(p => p.txt).join(', ') + ')'; }).join(' · ');
                 an += '<div style="margin-top:2px;"><b>' + nms + '</b>: ' + (gtxt || 'no pillar talks with another')
-                    + (S.split ? ' — <b>two settings</b> (' + S.groups.map(gr => gr.langs.map(l => LN[l]).join('/')).join(' and ') + ').' : '.');
+                    + (S.split ? ' — <b>two different settings</b> (' + S.groups.map(gr => gr.langs.map(l => LN[l]).join('/')).join(' and ') + '): <b>not good</b>, a chart should use one setting.'
+                       : (S.groups.length === 1 && S.groups[0].pillars.length > 2 ? ' — setting: <b>' + _xkdgLangName(_xkdgSettingLang(S.groups[0].pillars.map(k => pp.P[k][f]))) + '</b>.' : '.'));
                 if (S.split) S.harmonise.forEach(hm => {
                     an += '<div style="margin:2px 0 0 10px;color:#4a148c;">✦ Cure: ' + nm + ' ' + hm.values.map(v => v.value).join(' or ') + ' turns ' + hm.target.map(k => L[k]).join(' + ')
                         + ' into ' + LN[hm.lang] + ' (' + hm.values.map(v => v.links.map(l => l.txt).join(', ')).join(' · ') + '), the same setting as ' + hm.like.map(k => L[k]).join(' + ') + '. Dates and hexagrams that do it are marked ✦ below.</div>';
@@ -1240,9 +1270,9 @@ function renderPersonView() {
                 const clash = k => !!(c.branch && BRANCH_CLASHES[c.branch] === pp.P[k].branch);
                 if (D.isolated.length) {
                     const net = keys4.filter(k => !D.isolated.some(x => x.pillar === k));
-                    const lang = _xkdgLang(net.map(k => pp.P[k][f]));
+                    const lang = _xkdgSettingLang(net.map(k => pp.P[k][f]));
                     const netPairs = [];
-                    for (let i = 0; i < net.length; i++) for (let j = i + 1; j < net.length; j++) { const r = relTxt(pp.P[net[i]][f], pp.P[net[j]][f]); if (r) netPairs.push(r); }
+                    for (let i = 0; i < net.length; i++) for (let j = i + 1; j < net.length; j++) { const r = _xkdgRelIn(lang, pp.P[net[i]][f], pp.P[net[j]][f]); if (r) netPairs.push(L[net[i]] + '+' + L[net[j]] + ' ' + r); }
                     if (c.kind === 'family') {
                         // Session 35 (Edu): name WHICH pillars share the family.
                         let cf = [];
@@ -1258,25 +1288,29 @@ function renderPersonView() {
                         out.push('<b>' + nms + '</b>: it does not need to link the isolated ' + D.isolated.map(x => L[x.pillar]).join(', ') + ' here — hexagram ' + c.hex + ' belongs to the family that '
                             + (shares ? 'already joins ' + shares : 'the isolated pillar shares with another pillar') + ', so the family itself is the bridge.');
                     } else {
-                        D.isolated.forEach(x => out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' links your isolated ' + L[x.pillar] + ' (' + relTxt(c[f], x.value) + '), in the same language your other ' + nms + ' already speak (' + netPairs.slice(0, 2).join(', ') + ').'));
+                        D.isolated.forEach(x => out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' links your isolated ' + L[x.pillar] + ' (' + _xkdgRelIn(lang, c[f], x.value) + '), in the same setting (<b>' + _xkdgLangName(lang) + '</b>) your other ' + nms + ' already use (' + netPairs.slice(0, 2).join(', ') + ').'));
                     }
                 } else {
-                    const lang = _xkdgLang(keys4.map(k => pp.P[k][f]));
-                    const with_ = keys4.filter(k => _xkdgSpeaks(lang, c[f], pp.P[k][f]) && !clash(k)).map(k => L[k] + ' (' + relTxt(c[f], pp.P[k][f]) + ')');
-                    let harmTxt = '';
                     const st = g.settings && g.settings[f];
+                    const LN = { add: 'Adding', hetu: 'Hetu' };
                     if (st && st.split) {
-                        const hv = _xkdgHarmVals(st);
+                        // Session 35 (Edu): two different settings are not good.
+                        const two = st.groups.map(gr => gr.pillars.map(k => L[k]).join(' + ') + ' speak ' + gr.langs.map(l => LN[l]).join('/')).join(', ');
                         const h0 = st.harmonise.filter(h => h.values.some(v => v.value === c[f]))[0];
-                        const LN = { add: 'Adding', hetu: 'Hetu' };
+                        const hv = _xkdgHarmVals(st);
+                        let t = '<b>' + nms + '</b>: your ' + nms + ' have <b>two different settings</b> (' + two + ') — this is not good, the chart should use one setting. ';
                         if (h0) {
                             const v0 = h0.values.filter(v => v.value === c[f])[0];
-                            harmTxt = ' It also <b>harmonises the two settings</b>: ' + v0.links.map(l => L[l.pillar] + ' ' + l.txt).join(', ') + ' — ' + h0.target.map(k => L[k]).join(' + ') + ' now speak ' + LN[h0.lang] + ' like ' + h0.like.map(k => L[k]).join(' + ') + '.';
-                        } else if (hv.size) {
-                            harmTxt = ' It does not harmonise the two settings (that needs ' + nm + ' ' + [...hv].join(' or ') + ').';
+                            t += nm + ' ' + c[f] + ' brings ' + h0.target.map(k => L[k]).join(' + ') + ' into ' + LN[h0.lang] + ' (' + v0.links.map(l => L[l.pillar] + ' ' + l.txt).join(', ') + '), like ' + h0.like.map(k => L[k]).join(' + ') + ': <b>one setting</b>.';
+                        } else {
+                            t += nm + ' ' + c[f] + ' does not fix it' + (hv.size ? ' (that needs ' + nm + ' ' + [...hv].join(' or ') + ')' : '') + '.';
                         }
+                        out.push(t);
+                    } else {
+                        const lang = _xkdgSettingLang(keys4.map(k => pp.P[k][f]));
+                        const with_ = keys4.filter(k => _xkdgRelIn(lang, c[f], pp.P[k][f]) && !clash(k)).map(k => L[k] + ' (' + _xkdgRelIn(lang, c[f], pp.P[k][f]) + ')');
+                        out.push('<b>' + nms + '</b>: their setting is <b>' + _xkdgLangName(lang) + '</b>; ' + nm + ' ' + c[f] + ' keeps it — it talks with ' + with_.join(', ') + '.');
                     }
-                    out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' keeps them connected — it talks with ' + with_.join(', ') + '.' + harmTxt);
                 }
             });
             out.push('<b>Why it helps</b>: with this hexagram next to the natal chart, no pillar is left alone — all four communicate in both dimensions.');
