@@ -50,6 +50,7 @@ Next session: read this file first.
 ## Session 36
 - Photo sectors, 8 directions overlay: only N/NE/E… (Edu: trigram names not needed); label box shortened. Video palaces-centre re-rendered with direction-only labels (photo-sectors video never showed the 8-direction overlay). Rebuild needs: three@0.149 in tools/video/photo-sectors/node_modules (symlinked from palaces-centre), lunar-javascript in digest/node_modules, NODE_PATH=/opt/npm-tools/node_modules for playwright.
 - **📆 Cure years & months** (PERSON tab, app-bazi.js): button under the isolated lines (`xkdgPVYM`); `xkdgCureYearsMonths` = solar years 立春→立春 (now ±30) whose YEAR pillar passes `_xkdgRemedyKind`, and the months 节→节 whose MONTH pillar passes in EVERY year (Edu: also normal years; cure years marked 🌿, `cure` flag) (`_xkdgSolarYearMonths`, cached). Box `xkdgCureYMHtml`: current/next cure year and month with countdown, list now+future / past, ✦ ★ marks, 📅 dates per month (sets FROM/DAYS → remedy dates of that month), 🔔 .ics of the coming ones (`xkdgPVYMics`, all-day, alarm the day before). Guide person-remedies.html not updated (Edu's text).
+- `_xkdgRemedyKind`: the same hexagram as an ISOLATED natal pillar is never a cure (Edu, e.g. hour 丁巳 hex 9 isolated → hex 9 excluded, also as ★ family).
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
