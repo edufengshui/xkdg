@@ -32,14 +32,14 @@
   <li><b>Save</b> the person, and load them again later from the <b>Person Database</b>.</li>
   <li>Keep your people in order with <b>folders</b> (and subfolders).</li>
   <li>Add people to a <b>house</b> (guest #2 and extra members).</li>
-  <li><b>Back up</b> everything to your own Google Drive and use it on a second device.</li>
+  <li><b>Back up</b> everything to your own Google Drive or Dropbox and use it on a second device.</li>
 </ol>
 
 <h2>Before you start</h2>
 <ul>
   <li><b>Update the app</b>: close it completely and open it again.</li>
   <li>Have the person's <b>birth date</b>, <b>clock time of birth</b> and <b>birth city</b> ready. If the time is not known, you can still work with fewer pillars (see Part 1).</li>
-  <li>Your saved people are kept <b>on this device</b> (in this browser). To have them on a second device, or as a backup, use <b>☁ Drive Sync</b> (Part 6).</li>
+  <li>Your saved people are kept <b>on this device</b> (in this browser). To have them on a second device, or as a backup, use <b>☁ Drive Sync</b> (Part 6) or <b>📦 Dropbox Sync</b> (Part 7).</li>
 </ul>
 <div class="tip"><b>All times are true solar time.</b> You type the <b>clock time</b> from the birth certificate. The app converts it to the <b>local true solar time</b> of the birth place, using its longitude and time zone. The day pillar changes at <b>true-solar midnight</b>, not at clock midnight. This is why the birth place matters.</div>
 
@@ -204,6 +204,29 @@
 <div class="warn"><b>Last save wins.</b> Always <b>Load</b> on a device before you start working on it, and <b>Save</b> when you finish. If the Drive copy is newer than this device's last sync, the app warns you before overwriting it: choose <b>Cancel</b> and Load first if you want to keep those changes.</div>
 <div class="tip"><b>Auto-sync (this device)</b>: tick it and the app checks Drive for a newer copy when you open it (it asks before loading) and saves your changes a few seconds after you edit. Conflicts are never overwritten automatically. The line <i>"Last sync on this device…"</i> shows when this device last synced.</div>
 
+<h2 id="dropbox">Part 7 — Backup and a second device with Dropbox (📦 Dropbox Sync)</h2>
+<p>Dropbox Sync does the same job as Drive Sync, with <b>your own Dropbox</b>. It saves <b>all your app data</b> (people, folders, houses, settings) as one file, <i>xkdg-sync.json</i>, in the folder <i>Apps › XKDG</i> of your Dropbox. The app only sees that folder, nothing else in your Dropbox. There is no code to paste.</p>
+<h3>Connect (once on each device)</h3>
+<ol>
+  <li>Scroll to the bottom of the app and tap <span class="btn">📦 Dropbox Sync</span> (next to ☁ Drive Sync).</li>
+  <li>Tap <span class="btn">🔗 Connect Dropbox</span>. The Dropbox page opens: sign in and tap <b>Allow</b>.</li>
+  <li>You come back to the app and the panel shows <i>"✓ Dropbox connected"</i> and your Dropbox e-mail.</li>
+</ol>
+<div class="tip">If you tap <span class="btn">⬆ Save</span> or <span class="btn">⬇ Load</span> before connecting, the app connects first and then does what you asked.</div>
+<h3>Save and load</h3>
+<ol>
+  <li>Tap <span class="btn">⬆ Save to Dropbox</span> to save this device's data. The status line shows <i>"✓ Saved to Dropbox"</i> and the time.</li>
+  <li>On the other device, connect Dropbox with the <b>same account</b>, then tap <span class="btn">⬇ Load from Dropbox</span>. Confirm: this <b>replaces</b> that device's data with the Dropbox copy, then the app reloads.</li>
+</ol>
+<div class="warn"><b>Last save wins</b>, as with Drive. Always <b>Load</b> on a device before you start working on it, and <b>Save</b> when you finish. If the Dropbox copy is newer than this device's last sync, the app warns you before overwriting it.</div>
+<div class="tip"><b>Auto-sync (this device)</b>: tick it and the app checks Dropbox for a newer copy when you open it (it asks before loading) and saves your changes a few seconds after you edit. Conflicts are never overwritten automatically.</div>
+<h3>Drive or Dropbox?</h3>
+<ul>
+  <li>Use <b>one of the two</b>. Both work, but if you save on Drive from one device and on Dropbox from another, the two copies drift apart.</li>
+  <li>The file has the same format, so you can move from one to the other: <b>Load</b> from the old one, then <b>Save</b> to the new one.</li>
+  <li><span class="btn">Disconnect</span> (in the panel) removes the link on this device only. The file in your Dropbox stays. You can also remove access from your Dropbox account settings (<i>Connected apps</i>).</li>
+</ul>
+
 <h2>Quick reference</h2>
 <table>
   <tr><th>I want to…</th><th>Where</th></tr>
@@ -215,7 +238,7 @@
   <tr><td>Put a person in a folder</td><td>📋 DB → 📁 menu on the card (or on the house card)</td></tr>
   <tr><td>New / rename / move / delete a folder</td><td>📋 DB → ⚙ Manage folders → ➕ New folder · ➕ Sub · ✏️ Rename · 🗑</td></tr>
   <tr><td>Add people to a house</td><td>House card → 👥 Add a new guest (guest #2) · ▸ Open → ➕ Add member… (year only, max 6)</td></tr>
-  <tr><td>Back up / move data to another device</td><td>Bottom of the app → ☁ Drive Sync → ⬆ Save to Drive / ⬇ Load from Drive</td></tr>
+  <tr><td>Back up / move data to another device</td><td>Bottom of the app → ☁ Drive Sync → ⬆ Save to Drive / ⬇ Load from Drive<br>or 📦 Dropbox Sync → ⬆ Save to Dropbox / ⬇ Load from Dropbox</td></tr>
 </table>
 
 <p style="color:#888;font-size:12px;margin-top:30px;">XKDG App · Feng Shui Research Center · © Eduardo Hess</p>

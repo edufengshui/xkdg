@@ -27,7 +27,7 @@
   // Derived caches: big, device-local, and rebuilt on demand. They must never
   // travel to Drive — a single long road shape is hundreds of KB, and carrying
   // them both ways filled the browser storage and broke the restore.
-  var SKIP_PREFIXES = ['xkdg_gdrive_', 'xkdg_tp_route_'];
+  var SKIP_PREFIXES = ['xkdg_gdrive_', 'xkdg_dbx_', 'xkdg_tp_route_'];   // xkdg_dbx_ = Dropbox Sync config (session 35)
   function skipKey(k){
     if (!k) return true;
     for (var i = 0; i < SKIP_PREFIXES.length; i++) { if (k.indexOf(SKIP_PREFIXES[i]) === 0) return true; }
