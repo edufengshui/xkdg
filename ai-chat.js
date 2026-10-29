@@ -460,6 +460,11 @@
       'the actual trip \u2014 this tool only finds the window.\n'
     ],
     ["fengshui",
+      '- FOUNTAIN A / B (fontana, fontanella; A = bed, by DAY; B = bedroom door, by NIGHT) are the Vienna bedroom fountains on ' +
+      'their own Shelly plugs (shelly_house vienna-letto / vienna-porta, listed as shelly_fountains by get_house_setup). For ' +
+      '"when can I switch on fountain B" call program_aquarium_light(house:"vienna-porta") (preview) or aquarium_plan(get) for ' +
+      'what is already scheduled; load the home tools with load_tools if they are missing. Never say a fountain does not exist ' +
+      'before checking shelly_fountains.\n' +
       '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
       'whole house in one shot (facing/period, aquariums with their direction + water star, ' +
       'and saved Water/Bed/Desk settings). The aquariums list ALREADY INCLUDES saved Water positions (source = ' +
@@ -753,7 +758,7 @@
   // lives in program_aquarium_light's description), fell back to reading the source, and
   // wrongly answered that the app never switches the light off.
   var AREA_HINTS = {
-    home: /acquari|aquarium|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
+    home: /acquari|aquarium|fontan|fountain|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
     travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
     fengshui: /fontan|fountain|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
     dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
@@ -5729,11 +5734,24 @@
     return window.fsGetActivePersonForHouse();
   }
 
+  // Session 35 (Edu: "non vede la fontanella che deve accendersi solo la notte"): the Shelly
+  // FOUNTAINS (SHELLY_HOUSES entries with .fountain) belong to a house; they were invisible to
+  // list_houses / get_house_setup, so the AI said "no fountain B". Now listed with that house.
+  function _shellyFountainsFor(houseName) {
+    var out = [], hn = String(houseName || '').toLowerCase();
+    try { Object.keys(SHELLY_HOUSES).forEach(function (k) {
+      var fc = SHELLY_HOUSES[k].fountain; if (!fc || String(fc.house).toLowerCase() !== hn) return;
+      out.push({ name: fc.label, shelly_house: k, facing: fc.facing, water: fc.water,
+                 runs: fc.period === 'night' ? 'NIGHT only (Hai..Mao)' : 'DAY only (Mao..Hai)', source: 'shelly_fountain' });
+    }); } catch (e) {}
+    return out;
+  }
   function toolListHouses() {
     if (!window.XKDGHouse) return { error: 'House profiles not available on this page.' };
     var r = window.XKDGHouse.list();
     if (!r.person) return { error: 'No person loaded. Ask the user to load Person A or B.' };
-    return r;   // { person, active_index, count, houses:[{index,name,houseFacing,period,doors,aquariums,water_features,active}] }
+    try { (r.houses || []).forEach(function (h) { var sf = _shellyFountainsFor(h.name); if (sf.length) h.shelly_fountains = sf; }); } catch (e) {}
+    return r;   // { person, active_index, count, houses:[{index,name,houseFacing,period,doors,aquariums,water_features,shelly_fountains?,active}] }
   }
 
   // Full setup of one house, resolved by name — everything converges here:
@@ -5931,6 +5949,8 @@
       house_facing: res.house.houseFacing, house_period: res.house.period,
       active_floor: n.activeFloor,
       floors: floors,
+      shelly_fountains: _shellyFountainsFor(n.name),
+      shelly_fountains_note: 'Fountains on their own Shelly plug (e.g. Fountain A by DAY, Fountain B by NIGHT). WHEN to switch one on: program_aquarium_light(house = its shelly_house) previews its plan (commit:true deposits it); what is ALREADY scheduled: aquarium_plan(house = its shelly_house, action:"get"). Never answer from find_water_activation_full for these.',
       note: 'Multi-floor house: each floor has its own doors / aquariums / settings (and its own facing & period when same_facing_period is false). If the user names a floor, use that floor; otherwise use the active floor (active_floor). EACH FLOOR carries flying_stars: an AUTHORITATIVE chart computed from its facing+period (independent of any open page) — palaces{DIR:{water,mountain}}, center, and imprisoned/liberation. ALWAYS read star positions from flying_stars; NEVER guess or compute them yourself. If flying_stars.manual is true, it is a HAND-COMPOSED chart (overrides facing+period) - report it as a manual chart and use its numbers as-is. If flying_stars.imprisoned is true, follow flying_stars.imprisonment_note (free the centre water star at the liberation quadrant). To activate an aquarium: pick the floor, then call find_water_activation_full with direction = its direction, star_type = water, star_num = its water_star, AND pass facing_deg = floor.facing and period = floor.period so the scan uses THIS house\u2019s chart. The loaded person provides the XKDG scan. If flying_stars is null (facing/period not set), say so — do NOT invent stars. TRIP STARTING FROM THIS HOUSE: use the house `address` as the origin \u2014 pass it as origin_name (the planner geocodes it to real coordinates). If `address` is null, fall back to the saved GPS (omit origin_lat/lon so it defaults to the saved position) or from_current_position for a fresh fix. NEVER invent a city-centre proxy for the house.'
     };
   }
@@ -6604,7 +6624,8 @@
     'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' } }
   };
   var SHELLY_ALIASES = { 'letto': 'vienna-letto', 'bed': 'vienna-letto', 'fontana a': 'vienna-letto', 'fountain a': 'vienna-letto', 'fontana letto': 'vienna-letto',
-                         'porta': 'vienna-porta', 'door': 'vienna-porta', 'fontana b': 'vienna-porta', 'fountain b': 'vienna-porta', 'fontana porta': 'vienna-porta' };
+                         'porta': 'vienna-porta', 'door': 'vienna-porta', 'fontana b': 'vienna-porta', 'fountain b': 'vienna-porta', 'fontana porta': 'vienna-porta',
+                         'fontanella a': 'vienna-letto', 'fontanella letto': 'vienna-letto', 'fontanella b': 'vienna-porta', 'fontanella porta': 'vienna-porta' };
   // Solar minute (from solar midnight) at which the light turns ON for each branch.
   // Zi uses its SECOND half (solar 00:00); the others use their normal solar start.
   // _WINDOW_BRANCHES marks the ALLOWED window: 2nd-half-Zi .. end of SHEN (solar 17:00).

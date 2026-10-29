@@ -30,6 +30,8 @@ Next session: read this file first.
 
 - **🔍 XKDG analysis — settings** (app-bazi.js, Edu): `xkdgDimSettings(pillars, f)` groups the pillars that talk (Adding / Hetu / equal); two groups with different languages = "two settings"; harmonise values = a value that makes one group speak the other group's language with ALL its pillars (Thao: Elements H7+D2 Hetu, M9+Y6 Adding 15 → Element 3 or 8). `gaps.settings`; remedy hexagrams get `harmonises` (sorted first, ✦ on chips and dates); `explain()` says whether the cure harmonises; analysis box in the PERSON tab. Family explanation now names WHICH pillars share the family (e.g. "Sun-Xian: your isolated Year 丁卯 (hex 41) and Hour 甲戌 (hex 39)"). Session 35b (Edu: "avere due setting diversi non va bene"): `_xkdgSettingLang` = the language that alone connects the values (Ed Elements 2 8 3 2 → Adding); remedy rule and explanations use the SETTING only (no Hetu links listed when the setting is Adding); in a split dimension the cure MUST harmonise (keepOk requires a harmonise value when one exists); texts say two settings are not good.
 
+- **AI: Shelly fountains visible** (ai-chat.js): `_shellyFountainsFor(house)` adds `shelly_fountains` (Fountain A vienna-letto DAY, Fountain B vienna-porta NIGHT) to list_houses and get_house_setup, with a note to use program_aquarium_light / aquarium_plan; prompt rule in the fengshui section; aliases "fontanella a/b/letto/porta"; home area auto-loads on "fontan|fountain".
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.
