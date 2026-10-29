@@ -1,0 +1,314 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:1920px;height:1080px;overflow:hidden;}
+  body{font-family:Inter,'DejaVu Sans',sans-serif;background:#fbf7ef;color:#2a2233;}
+  #root{position:absolute;inset:0;}
+  .abs{position:absolute;}
+  .step{font-size:26px;letter-spacing:4px;font-weight:700;color:#c48a00;text-transform:uppercase;}
+  .title{font-size:58px;font-weight:800;color:#4a148c;line-height:1.1;margin-top:10px;}
+  .body{font-size:34px;line-height:1.45;color:#3a3045;margin-top:22px;}
+  .body b{color:#4a148c;}
+  .li{opacity:0;transform:translateY(16px);}
+  .tag{display:inline-block;background:#4a148c;color:#fff;border-radius:10px;padding:2px 14px;font-weight:700;}
+  .mag{color:#e65100;font-weight:800;}
+</style></head>
+<body><div id="root"></div>
+<script>
+const W = 1920, H = 1080;
+const root = document.getElementById('root');
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ez = x => { x = cl(x); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
+const ap = (t, t0, d = .6) => ez((t - t0) / d);                 // 0→1 from t0 over d seconds
+const el = (tag, css, html, parent) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; (parent || root).appendChild(e); return e; };
+const svgNS = 'http://www.w3.org/2000/svg';
+const sv = (tag, attrs, parent) => { const e = document.createElementNS(svgNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+const STEPS = 8;
+
+// ── shared chrome: progress bar + small brand ──
+function chrome(idx) {
+  el('div', 'left:60px;top:1030px;width:1800px;height:8px;border-radius:4px;background:#ece3d3;');
+  const bar = el('div', 'left:60px;top:1030px;height:8px;border-radius:4px;background:linear-gradient(90deg,#f9a825,#4a148c);width:' + (1800 * (idx + 1) / STEPS) + 'px;');
+  el('div', 'left:1000px;width:860px;text-align:right;top:986px;font-size:22px;color:#9a8c78;font-weight:600;', '☀️ XKDG App · Finding the house facing with the Sun');
+  [...root.children].forEach(c => c.classList.add('abs'));
+}
+// caption panel: step label, title, list of lines that appear at given times
+function caption(x, y, w, step, title, lines) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;');
+  box.classList.add('abs');
+  if (step) el('div', '', step, box).className = 'step';
+  el('div', '', title, box).className = 'title';
+  const body = el('div', '', '', box); body.className = 'body';
+  const items = lines.map(l => { const d = el('div', 'margin-bottom:14px;', l[1], body); d.className = 'li'; return { d, t0: l[0] }; });
+  return { box, update(t) { box.style.opacity = ap(t, 0, .5); items.forEach(it => { const a = ap(t, it.t0, .5); it.d.style.opacity = a; it.d.style.transform = 'translateY(' + (16 * (1 - a)) + 'px)'; }); } };
+}
+function fadeIO(t, dur) { root.style.opacity = Math.min(ap(t, 0, .45), 1 - ap(t, dur - .45, .45)); }
+
+// ── phone with app screenshots ──
+const IMGW = 824, IMGH = 1760;
+function phone() {
+  const fr = el('div', 'left:150px;top:46px;width:600px;height:960px;border-radius:64px;background:#1d1b26;box-shadow:0 30px 60px rgba(60,30,90,.25);');
+  const scr = el('div', 'left:168px;top:64px;width:564px;height:924px;border-radius:48px;overflow:hidden;background:#fff;');
+  const S = 564 / IMGW;
+  const imgs = {};
+  const ripple = el('div', 'width:70px;height:70px;border-radius:50%;border:6px solid #f9a825;background:rgba(249,168,37,.25);opacity:0;pointer-events:none;', '', scr);
+  const hl = el('div', 'border:5px solid #f9a825;border-radius:14px;box-shadow:0 0 0 9999px rgba(30,10,50,.0);opacity:0;', '', scr);
+  [fr, scr].forEach(c => c.classList.add('abs')); ripple.classList.add('abs'); hl.classList.add('abs');
+  return {
+    S,
+    show(name, opacity, ty) {   // ty = image px scrolled off the top
+      if (!imgs[name]) { const i = el('img', 'left:0;top:0;width:' + (IMGW * S) + 'px;opacity:0;', null, scr); i.src = 'shots/' + name + '.jpg'; i.classList.add('abs'); scr.insertBefore(i, ripple); imgs[name] = i; }
+      const i = imgs[name]; i.style.opacity = opacity; i.style.transform = 'translateY(' + (-(ty || 0) * S) + 'px)';
+    },
+    tap(cx, cy, a, ty) {        // cx, cy in CSS px of the 412-wide page
+      const x = cx * 2 * S, y = (cy * 2 - (ty || 0)) * S;
+      const sc = .4 + .9 * a;
+      ripple.style.opacity = a > 0 && a < 1 ? Math.sin(a * Math.PI) : 0;
+      ripple.style.left = (x - 35) + 'px'; ripple.style.top = (y - 35) + 'px'; ripple.style.transform = 'scale(' + sc + ')';
+    },
+    highlight(x0, y0, x1, y1, a, ty) {   // image px
+      hl.style.opacity = a; hl.style.left = (x0 * S - 6) + 'px'; hl.style.top = ((y0 - (ty || 0)) * S - 6) + 'px';
+      hl.style.width = ((x1 - x0) * S + 2) + 'px'; hl.style.height = ((y1 - y0) * S + 2) + 'px';
+    }
+  };
+}
+// magnified callout of a screenshot region (image px)
+function callout(x, y, w) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;border-radius:22px;overflow:hidden;background:#fff;border:4px solid #f9a825;box-shadow:0 16px 36px rgba(60,30,90,.18);opacity:0;');
+  box.classList.add('abs');
+  return {
+    set(name, x0, y0, x1, y1, a) {
+      const s = w / (x1 - x0);
+      box.style.height = ((y1 - y0) * s) + 'px';
+      box.style.backgroundImage = 'url(shots/' + name + '.jpg)';
+      box.style.backgroundSize = (IMGW * s) + 'px ' + (IMGH * s) + 'px';
+      box.style.backgroundPosition = (-x0 * s) + 'px ' + (-y0 * s) + 'px';
+      box.style.opacity = a; box.style.transform = 'scale(' + (.96 + .04 * a) + ')';
+    }
+  };
+}
+const META = __META__;
+
+// ── window illustration (top view) ──
+function windowArt(x, y, scale) {
+  const s = sv('svg', { width: 1000 * scale, height: 820 * scale, viewBox: '0 0 1000 820' }, el('div', 'left:' + x + 'px;top:' + y + 'px;'));
+  s.parentNode.classList.add('abs');
+  const g = sv('g', {}, s);
+  sv('rect', { x: 0, y: 0, width: 1000, height: 190, fill: '#dff1fb' }, g);
+  sv('text', { x: 30, y: 50, 'font-size': 30, 'font-weight': 700, fill: '#5d8aa8', 'letter-spacing': 4 }, g).textContent = 'OUTSIDE';
+  sv('rect', { x: 0, y: 190, width: 1000, height: 50, fill: '#6d6372' }, g);
+  sv('rect', { x: 250, y: 200, width: 500, height: 30, fill: '#bfe7f7', stroke: '#5d8aa8', 'stroke-width': 3 }, g);
+  sv('text', { x: 500, y: 222, 'font-size': 20, fill: '#2f5d78', 'text-anchor': 'middle', 'font-weight': 600 }, g).textContent = 'window frame / glass = the wall plane';
+  sv('rect', { x: 0, y: 240, width: 1000, height: 200, fill: '#efe2c8' }, g);
+  sv('text', { x: 970, y: 285, 'font-size': 26, fill: '#a08a63', 'text-anchor': 'end', 'font-weight': 600 }, g).textContent = 'window sill';
+  sv('rect', { x: 0, y: 440, width: 1000, height: 380, fill: '#f7f2ea' }, g);
+  sv('text', { x: 30, y: 800, 'font-size': 30, 'font-weight': 700, fill: '#b9a98e', 'letter-spacing': 4 }, g).textContent = 'INSIDE';
+  // sun + light
+  const sun = sv('g', {}, g);
+  sv('circle', { cx: 330, cy: 70, r: 38, fill: '#ffca28', stroke: '#f9a825', 'stroke-width': 6 }, sun);
+  for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; sv('line', { x1: 330 + Math.cos(a) * 50, y1: 70 + Math.sin(a) * 50, x2: 330 + Math.cos(a) * 66, y2: 70 + Math.sin(a) * 66, stroke: '#f9a825', 'stroke-width': 6, 'stroke-linecap': 'round' }, sun); }
+  const rays = sv('g', { opacity: 0 }, g);
+  [[-60, 0], [0, 0], [60, 0]].forEach(([dx]) => sv('line', { x1: 360 + dx, y1: 110, x2: 440 + dx, y2: 356, stroke: '#ffb300', 'stroke-width': 5, 'stroke-dasharray': '14 10', opacity: .8 }, rays));
+  // card
+  const card = sv('g', {}, g);
+  sv('rect', { x: 330, y: 240, width: 340, height: 290, fill: '#ffffff', stroke: '#9e9e9e', 'stroke-width': 3 }, card);
+  sv('line', { x1: 330, y1: 241, x2: 670, y2: 241, stroke: '#4a148c', 'stroke-width': 6 }, card);
+  const edgeLab = sv('text', { x: 680, y: 262, 'font-size': 22, fill: '#4a148c', 'font-weight': 700, opacity: 0 }, card); edgeLab.textContent = '← card edge flush';
+  // shadow and traced line: base O=(500,300), direction (cos72, sin72)
+  const O = [500, 300], D = [Math.cos(72 * Math.PI / 180), Math.sin(72 * Math.PI / 180)], L = 225;
+  const shadow = sv('line', { x1: O[0], y1: O[1], x2: O[0] + D[0] * L, y2: O[1] + D[1] * L, stroke: 'rgba(60,50,70,.35)', 'stroke-width': 18, 'stroke-linecap': 'round', opacity: 0 }, g);
+  const traced = sv('line', { x1: O[0], y1: O[1], x2: O[0], y2: O[1], stroke: '#1d1b26', 'stroke-width': 4 }, g);
+  const ext = sv('line', { x1: O[0] - D[0] * 63, y1: 240, x2: O[0], y2: O[1], stroke: '#1d1b26', 'stroke-width': 3, 'stroke-dasharray': '8 6', opacity: 0 }, g);
+  // object (book opened in a V)
+  const obj = sv('g', { opacity: 0 }, g);
+  sv('path', { d: 'M470 285 L500 305 L530 285', fill: 'none', stroke: '#8e24aa', 'stroke-width': 10, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, obj);
+  sv('circle', { cx: 500, cy: 303, r: 6, fill: '#4a148c' }, obj);
+  // pencil
+  const pen = sv('g', { opacity: 0 }, g);
+  sv('polygon', { points: '0,0 14,-8 70,-60 56,-74 4,-18', fill: '#ffb300', stroke: '#6d4c41', 'stroke-width': 3 }, pen);
+  sv('polygon', { points: '0,0 14,-8 4,-18', fill: '#3e2723' }, pen);
+  // protractor + alpha
+  const prot = sv('g', { opacity: 0 }, g);
+  const P0 = [O[0] - D[0] * 63, 240];
+  sv('path', { d: `M${P0[0] - 140} 240 A140 140 0 0 0 ${P0[0] + 140} 240 Z`, fill: 'rgba(144,202,249,.25)', stroke: '#1e88e5', 'stroke-width': 3 }, prot);
+  for (let k = 0; k <= 180; k += 10) { const a = k * Math.PI / 180; const r1 = k % 30 ? 128 : 118; sv('line', { x1: P0[0] + Math.cos(a) * r1, y1: 240 + Math.sin(a) * r1, x2: P0[0] + Math.cos(a) * 140, y2: 240 + Math.sin(a) * 140, stroke: '#1e88e5', 'stroke-width': 2 }, prot); }
+  const arc = sv('path', { d: '', fill: 'none', stroke: '#e65100', 'stroke-width': 8, 'stroke-linecap': 'round' }, g);
+  const alab = sv('text', { x: P0[0] + 120, y: 345, 'font-size': 44, 'font-weight': 800, fill: '#e65100', opacity: 0 }, g); alab.textContent = 'α = 72°';
+  // viewer
+  const viewer = sv('g', { opacity: 0 }, g);
+  sv('ellipse', { cx: 500, cy: 720, rx: 70, ry: 30, fill: '#7e57c2' }, viewer);
+  sv('circle', { cx: 500, cy: 712, r: 26, fill: '#f1c9a5', stroke: '#5d4037', 'stroke-width': 3 }, viewer);
+  sv('line', { x1: 500, y1: 680, x2: 500, y2: 560, stroke: '#7e57c2', 'stroke-width': 4, 'stroke-dasharray': '10 8' }, viewer);
+  sv('polygon', { points: '490,566 510,566 500,546', fill: '#7e57c2' }, viewer);
+  sv('text', { x: 395, y: 730, 'font-size': 34, 'font-weight': 800, fill: '#9e9e9e', 'text-anchor': 'middle' }, viewer).textContent = 'L';
+  const rLab = sv('text', { x: 605, y: 730, 'font-size': 34, 'font-weight': 800, fill: '#2e7d32', 'text-anchor': 'middle' }, viewer); rLab.textContent = 'R';
+  const lean = sv('g', { opacity: 0 }, g);
+  sv('path', { d: 'M640 600 Q 720 600 760 560', fill: 'none', stroke: '#2e7d32', 'stroke-width': 7, 'stroke-linecap': 'round' }, lean);
+  sv('polygon', { points: '750,548 776,546 766,572', fill: '#2e7d32' }, lean);
+  sv('text', { x: 790, y: 560, 'font-size': 36, 'font-weight': 800, fill: '#2e7d32' }, lean).textContent = 'RIGHT';
+  return {
+    g, s,
+    set(o) {
+      if (o.card != null) { card.setAttribute('transform', 'translate(0,' + (260 * (1 - o.card)) + ')'); card.setAttribute('opacity', o.card); edgeLab.setAttribute('opacity', o.edge || 0); }
+      rays.setAttribute('opacity', o.rays || 0);
+      obj.setAttribute('opacity', o.obj || 0); obj.setAttribute('transform', 'translate(0,' + (-40 * (1 - (o.obj || 0))) + ')');
+      shadow.setAttribute('opacity', o.shadow || 0);
+      const tr = o.trace || 0; traced.setAttribute('x2', O[0] + D[0] * L * tr); traced.setAttribute('y2', O[1] + D[1] * L * tr);
+      pen.setAttribute('opacity', o.pen || 0); pen.setAttribute('transform', 'translate(' + (O[0] + D[0] * L * tr) + ',' + (O[1] + D[1] * L * tr) + ')');
+      ext.setAttribute('opacity', o.ext || 0); prot.setAttribute('opacity', o.prot || 0);
+      const aa = (o.arc || 0) * 72 * Math.PI / 180, R = 95;
+      arc.setAttribute('d', (o.arc || 0) > 0 ? `M${P0[0] + R} 240 A${R} ${R} 0 0 1 ${P0[0] + Math.cos(aa) * R} ${240 + Math.sin(aa) * R}` : '');
+      alab.setAttribute('opacity', o.alab || 0);
+      viewer.setAttribute('opacity', o.viewer || 0); lean.setAttribute('opacity', o.lean || 0);
+      if (o.zoom != null) { const z = 1 + .55 * o.zoom; g.setAttribute('transform', `translate(${500 * (1 - z) + 0},${(330) * (1 - z) + 40 * o.zoom}) scale(${z})`); }
+    }
+  };
+}
+
+// ════════ SCENES ════════
+const SCENES = [
+  { dur: 5, make() {   // title
+      el('div', 'left:0;top:0;width:1920px;height:1080px;background:radial-gradient(circle at 30% 30%,#fff3c4,#fbf7ef 60%);');
+      const sun = el('div', 'left:860px;top:150px;font-size:180px;', '☀️');
+      const t1 = el('div', 'left:0;width:1920px;top:420px;text-align:center;font-size:84px;font-weight:800;color:#4a148c;', 'Find your house facing<br>with the Sun');
+      const t2 = el('div', 'left:0;width:1920px;top:690px;text-align:center;font-size:38px;color:#7b6a55;font-weight:600;', 'XKDG App · ☀️ Sun facing · a step-by-step tutorial');
+      const t3 = el('div', 'left:0;width:1920px;top:780px;text-align:center;font-size:28px;color:#a8977f;', 'Feng Shui Research Center · Master Eduardo Hess');
+      [...root.children].forEach(c => c.classList.add('abs'));
+      return t => { sun.style.transform = 'translateY(' + (30 * (1 - ap(t, 0, 1.2))) + 'px) rotate(' + (t * 6) + 'deg)'; t1.style.opacity = ap(t, .4); t2.style.opacity = ap(t, 1.1); t3.style.opacity = ap(t, 1.6); fadeIO(t, 5); };
+  } },
+  { dur: 10, make() {  // what you need
+      chrome(0);
+      const c = caption(120, 110, 820, 'Before you start', 'When the compass<br>can’t be trusted', [
+        [1.0, 'Metal, beams, radiators and appliances pull the needle.'],
+        [2.2, 'The sun is a reference that never lies — <b>if the time is right</b>.']]);
+      const items = [['☀️', 'A <b>sunny window</b>'], ['📄', 'A <b>card</b> with a straight edge + a pencil'], ['📕', 'A <b>vertical object</b>: a book opened in a V, or a plumb line'], ['📐', 'A <b>protractor</b>'], ['📱', 'The app: house saved in <b>🏠 HOUSE PROFILES</b>, location allowed, correct time']];
+      const rows = items.map((it, i) => { const r = el('div', 'left:1010px;top:' + (150 + i * 158) + 'px;width:820px;height:130px;border-radius:24px;background:#fff;box-shadow:0 10px 26px rgba(80,50,110,.10);display:flex;align-items:center;gap:26px;padding:0 30px;box-sizing:border-box;font-size:32px;line-height:1.3;opacity:0;', '<span style="font-size:64px;">' + it[0] + '</span><span>' + it[1] + '</span>'); r.classList.add('abs'); return r; });
+      return t => { c.update(t); rows.forEach((r, i) => { const a = ap(t, 3.0 + i * .9); r.style.opacity = a; r.style.transform = 'translateX(' + (60 * (1 - a)) + 'px)'; }); fadeIO(t, 10); };
+  } },
+  { dur: 15, make() {  // at the window
+      chrome(1);
+      const art = windowArt(60, 120, 1.0);
+      const c = caption(1130, 110, 700, 'At the window', 'Trace the shadow', [
+        [0.6, '<span class="tag">1</span> Lay the card <b>level</b> on the sill, one edge <b>flush against the wall plane</b> (frame or glass).'],
+        [4.6, '<span class="tag">2</span> Stand the <b>vertical object</b> on the card.'],
+        [7.4, '<span class="tag">3</span> Trace the <b>shadow line</b> with the pencil…'],
+        [11.0, '…and tap <b>Now</b> in the app <b>at that moment</b>. The time is everything.']]);
+      const clock = el('div', 'left:1130px;top:860px;font-size:40px;font-weight:800;color:#fff;background:#4a148c;border-radius:18px;padding:12px 26px;opacity:0;', '🕥 10:32:00 → <span style="color:#ffd54f;">Now</span>'); clock.classList.add('abs');
+      return t => {
+        c.update(t);
+        art.set({ card: ap(t, .8, 1.4), edge: ap(t, 2.4) * (1 - ap(t, 6.5)), obj: ap(t, 4.8), rays: ap(t, 6.0), shadow: ap(t, 6.4, .8), trace: ap(t, 8.0, 2.6), pen: ap(t, 7.6, .4) * (1 - ap(t, 11.2, .5)) });
+        clock.style.opacity = ap(t, 11.2); clock.style.transform = 'scale(' + (.85 + .15 * ap(t, 11.2)) + ')';
+        fadeIO(t, 15);
+      };
+  } },
+  { dur: 13, make() {  // measure alpha + left/right
+      chrome(2);
+      const art = windowArt(60, 120, 1.0);
+      const c = caption(1130, 110, 700, 'Measure', 'The angle α and the side', [
+        [0.6, '<span class="tag">4</span> With the protractor, measure the <b>acute angle α</b> (0–90°) between the shadow line and the card edge.'],
+        [6.6, '<span class="tag">5</span> Stand <b>inside</b>, looking out of the window: does the shadow lean <b>left</b> or <b>right</b>?']]);
+      return t => {
+        c.update(t);
+        art.set({ card: 1, obj: 1, rays: 1 - ap(t, 0, .6), shadow: 1 - ap(t, 0, .6), trace: 1, ext: ap(t, 1.0), prot: ap(t, 1.6) * (1 - ap(t, 6.2)), arc: ap(t, 2.4, 1.8), alab: ap(t, 4.0), viewer: ap(t, 6.8), lean: ap(t, 8.6) });
+        fadeIO(t, 13);
+      };
+  } },
+  { dur: 12, make() {  // open the tool
+      chrome(3);
+      const ph = phone();
+      const c = caption(860, 110, 960, 'In the app', 'Open ☀️ Sun facing', [
+        [0.4, 'Feng Shui → <b>🏠 HOUSE PROFILES</b> → <b>▸ Open</b> the house.'],
+        [3.8, 'In <b>📍 Address & facing</b>, tap its <b>☰</b>…'],
+        [7.2, '…then <b>☀️ Sun facing</b>. The window shows your <b>position</b> (GPS).']]);
+      const M = META;
+      return t => {
+        c.update(t);
+        const s1 = 1 - ap(t, 3.4, .4), s2 = ap(t, 3.4, .4) * (1 - ap(t, 6.8, .4)), s3 = ap(t, 6.8, .4) * (1 - ap(t, 9.6, .4)), s4 = ap(t, 9.6, .4);
+        ph.show('a1', s1, 0); ph.show('a2', s2, 0); ph.show('a3', s3, 0); ph.show('a4', s4, 0);
+        if (t < 3.4) ph.tap(M.a1.tap.x, M.a1.tap.y, cl((t - 1.8) / .9));
+        else if (t < 6.8) ph.tap(M.a2.tap.x, M.a2.tap.y, cl((t - 5.4) / .9));
+        else if (t < 9.6) ph.tap(M.a3.tap.x, M.a3.tap.y, cl((t - 8.4) / .9));
+        else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0);
+        fadeIO(t, 12);
+      };
+  } },
+  { dur: 13, make() {  // enter a reading
+      chrome(4);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Enter the reading', 'Now · α · left / right', [
+        [0.4, 'Tap <b>Now</b> as you trace the shadow (or correct the time by hand).'],
+        [3.6, 'Type the angle in <b>α</b>, choose <b>shadow leans… right</b>.'],
+        [7.0, 'The result appears at once. Use the <span class="mag">magnetic</span> value.']]);
+      const co = callout(860, 640, 960);
+      const M = META;
+      return t => {
+        c.update(t);
+        const s4 = 1 - ap(t, 2.8, .4), s5 = ap(t, 2.8, .4) * (1 - ap(t, 5.6, .4)), s6 = ap(t, 5.6, .4);
+        ph.show('a4', s4, 0); ph.show('a5', s5, 0); ph.show('a6', s6, 0);
+        if (t < 2.8) ph.tap(M.a4.tap.x, M.a4.tap.y, cl((t - 1.4) / .9));
+        else if (t < 5.6) ph.tap(M.a6.tap.x, M.a6.tap.y, cl((t - 4.4) / .9));
+        else ph.tap(0, 0, 0);
+        ph.highlight(0, 690, 824, 790, ap(t, 6.6) , 0);
+        if (t < 5.6) co.set('a5', 0, 530, 824, 700, ap(t, 3.4) * (1 - ap(t, 5.4, .3)));
+        else co.set('a6', 0, 530, 824, 790, ap(t, 6.4));
+        fadeIO(t, 13);
+      };
+  } },
+  { dur: 11, make() {  // more readings
+      chrome(5);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Repeat', '2 or 3 readings', [
+        [0.4, 'Wait a few minutes: the sun moves. Tap <b>➕ Add a measurement</b>, trace and measure again.'],
+        [4.8, 'The yellow box gives the <b>average</b> and the spread. A small spread = a good result.']]);
+      const co = callout(860, 640, 960);
+      const M = META;
+      return t => {
+        c.update(t);
+        ph.show('a7', 1, 410);
+        ph.tap(M.a7_add.x, M.a7_add.y, cl((t - 1.8) / .9), 410);
+        ph.highlight(10, 1395, 814, 1480, ap(t, 5.2), 410);
+        co.set('a7', 10, 1395, 814, 1480, ap(t, 5.6));
+        fadeIO(t, 11);
+      };
+  } },
+  { dur: 13, make() {  // save
+      chrome(6);
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Save', 'Make it the house facing', [
+        [0.4, 'Window on the <b>façade</b> → house facing = window facing. On the <b>back</b> → +180°.'],
+        [4.0, 'On a <b>side wall</b>: ±90° — type it on the house card, or tell the assistant.'],
+        [7.6, 'Tap <b>OK</b>: the house card shows the new <b>Facing</b>. Then <b>📂 Load</b> puts it on the luopan.']]);
+      const dlg = el('div', 'left:200px;top:420px;width:500px;border-radius:22px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.35);padding:28px 30px;box-sizing:border-box;font-size:28px;opacity:0;', 'Save <b>174.5°</b> as the house facing of “Demo house”?<div style="text-align:right;margin-top:22px;"><span style="color:#888;margin-right:30px;">Cancel</span><span style="background:#4a148c;color:#fff;border-radius:10px;padding:6px 22px;font-weight:700;">OK</span></div>'); dlg.classList.add('abs');
+      const co = callout(860, 700, 960);
+      const M = META;
+      return t => {
+        c.update(t);
+        const s7 = 1 - ap(t, 6.6, .4), s8 = ap(t, 6.6, .4);
+        ph.show('a7', s7, 410); ph.show('a8', s8, 0);
+        if (t < 6.6) ph.tap(M.a7.tap.x, M.a7.tap.y, cl((t - 2.0) / .9), 410); else ph.tap(155, 185, cl((t - 8.4) / .9));
+        ph.highlight(20, 1520, 820, 1610, ap(t, 1.0) * (1 - ap(t, 3.2)), 410);
+        dlg.style.opacity = ap(t, 3.0) * (1 - ap(t, 6.2, .3)); dlg.style.transform = 'scale(' + (.9 + .1 * ap(t, 3.0)) + ')';
+        if (t < 6.6) co.set('a7', 10, 1520, 814, 1615, ap(t, 1.2) * (1 - ap(t, 6.2, .3)));
+        else co.set('a8', 60, 335, 780, 410, ap(t, 8.0));
+        ph.highlight(230, 345, 480, 400, t > 6.6 ? ap(t, 8.6) : 0, 0);
+        fadeIO(t, 13);
+      };
+  } },
+  { dur: 12, make() {  // tips + end
+      chrome(7);
+      const c = caption(120, 110, 1680, 'Tips for accuracy', 'Get a reliable facing', [
+        [0.6, '🌤 Morning or afternoon is better than a summer noon: longer, sharper shadow.'],
+        [1.6, '🌅 Avoid a sun very low on the horizon: the shadow is blurred.'],
+        [2.6, '📏 Card level, edge flush with a flat wall plane — not a slanted window reveal.'],
+        [3.6, '⏱ Tap <b>Now</b> when you trace the shadow, not later.'],
+        [4.6, '🔁 2–3 readings a few minutes apart. Check with <b>📍 Measure facing (map)</b> too.']]);
+      const end = el('div', 'left:120px;top:860px;width:1680px;font-size:30px;color:#7b6a55;opacity:0;', 'Full guide: <b style="color:#4a148c;">fsadvisor.org/xkdg</b> → 📘 Guides → ☀️ Finding the facing with the Sun'); end.classList.add('abs');
+      return t => { c.update(t); end.style.opacity = ap(t, 6.0); fadeIO(t, 12); };
+  } }
+];
+let upd = null;
+window.setup = i => { root.innerHTML = ''; root.style.opacity = 1; upd = SCENES[i].make(); return SCENES[i].dur; };
+window.draw = t => upd(t);
+window.durations = SCENES.map(s => s.dur);
+</script></body></html>
