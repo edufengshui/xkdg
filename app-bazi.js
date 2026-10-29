@@ -1216,7 +1216,7 @@ function renderPersonView() {
                     + (S.split ? ' — <b>two settings</b> (' + S.groups.map(gr => gr.langs.map(l => LN[l]).join('/')).join(' and ') + ').' : '.');
                 if (S.split) S.harmonise.forEach(hm => {
                     an += '<div style="margin:2px 0 0 10px;color:#4a148c;">✦ Cure: ' + nm + ' ' + hm.values.map(v => v.value).join(' or ') + ' turns ' + hm.target.map(k => L[k]).join(' + ')
-                        + ' into ' + LN[hm.lang] + ' (' + hm.values.map(v => v.links.map(l => l.txt).join(', ')).join(' · ') + '), the same setting as ' + hm.like.map(k => L[k]).join(' + ') + '.</div>';
+                        + ' into ' + LN[hm.lang] + ' (' + hm.values.map(v => v.links.map(l => l.txt).join(', ')).join(' · ') + '), the same setting as ' + hm.like.map(k => L[k]).join(' + ') + '. Dates and hexagrams that do it are marked ✦ below.</div>';
                 });
                 an += '</div>';
             });
