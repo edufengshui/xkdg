@@ -228,6 +228,26 @@ if (Array.isArray(P.houses) && P.houses.length) {
             if (r && r.imprisonment_note) rec.imprisoned = r.imprisonment_note;
           }
           rec.direction = op.direction; rec.water_star = op.star_num;
+        } else if (op.kind === 'fountain') {
+          // Session 35: the assistant's own fountain plan (day or night rule, ON at the best hour, OFF at the end)
+          const T = w.XKDGAITools;
+          if (!T) rec.note = 'fountain engine not available';
+          else {
+            let r = T.exec('program_aquarium_light', { house: op.device, days: P.days + 1 });
+            if (r && typeof r.then === 'function') r = await r;
+            if (!r || r.error) rec.note = (r && r.error) || 'no result';
+            else {
+              const hm = ts => { const x = new Date(ts); return String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'); };
+              const ymd = ts => { const x = new Date(ts); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+              (r.scheduled || []).forEach(x => {
+                const dOn = ymd(x.onTs);                 // listed on the CIVIL day it switches on (a night row may start after midnight)
+                if (!inRange(dOn)) return;
+                rec.dates.push({ date: dOn, branch: x.branch, score: x.score, on: hm(x.onTs), off: hm(x.offTs), window: hm(x.onTs) + '\u2013' + hm(x.offTs) });
+              });
+              rec.period = /^night/.test(r.period || '') ? 'night' : 'day';
+            }
+          }
+          rec.facing = op.facing; rec.water = op.water;
         } else if (op.kind === 'bed' || op.kind === 'desk') {
           const slot = w.fsSlotForDeg(op.kind === 'bed' ? +op.sitting : +op.facing);
           const persons = [me ? { who: 'you', label: 'you', hex: me.hex, qi: me.qi, yun: me.yun } : null];

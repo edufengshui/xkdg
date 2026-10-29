@@ -32,6 +32,8 @@ Next session: read this file first.
 
 - **AI: Shelly fountains visible** (ai-chat.js): `_shellyFountainsFor(house)` adds `shelly_fountains` (Fountain A vienna-letto DAY, Fountain B vienna-porta NIGHT) to list_houses and get_house_setup, with a note to use program_aquarium_light / aquarium_plan; prompt rule in the fengshui section; aliases "fontanella a/b/letto/porta"; home area auto-loads on "fontan|fountain". Session 35b: fountains have NO Shelly yet (`shelly:false` in SHELLY_HOUSES): program_aquarium_light gives ON/OFF times in mode "by_hand" without needing the Worker config, commit is ignored; aquarium_light / aquarium_plan refuse with a "switched by hand" message. Set `shelly:true` when the plugs are installed.
 
+- **📧 Daily email: fountains** — digest-setup.js adds `{kind:"fountain", device}` ops from `window.XKDGFountains(house)` (exported by ai-chat.js); digest/scan.js runs `program_aquarium_light` (by-hand mode) and lists ON→OFF rows on the civil day they switch on; digest.js shows them (⛲) in the day list and in the detail. Edu must regenerate his line (📧 Daily email) and paste it into the secret.
+
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
 - Door-row ☰ and saved-setting ☰ on the phone.

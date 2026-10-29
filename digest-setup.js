@@ -65,9 +65,15 @@
         });
       });
     } catch (e) {}
+    // Session 35 (Edu): the fountains with their own day / night rule (Fountain A bed by DAY,
+    // Fountain B bedroom door by NIGHT) - the email lists their ON/OFF times like the assistant.
+    try {
+      if (typeof window.XKDGFountains === 'function')
+        window.XKDGFountains(h.name).forEach(function (fc) { ops.push({ kind: 'fountain', name: fc.name, device: fc.shelly_house, facing: fc.facing, water: fc.water }); });
+    } catch (e) {}
     // de-duplicate identical placements
     var seen = {};
-    return ops.filter(function (o) { var k = JSON.stringify([o.kind, o.facing, o.water, o.sitting, o.direction]); if (seen[k]) return false; seen[k] = 1; return true; });
+    return ops.filter(function (o) { var k = JSON.stringify([o.kind, o.facing, o.water, o.sitting, o.direction, o.device]); if (seen[k]) return false; seen[k] = 1; return true; });
   }
   // Where the house is: from its address or name (the email computes each house at its own longitude).
   function cityOf(h) {
