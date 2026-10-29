@@ -1080,6 +1080,7 @@ window._pvSel = window._pvSel || {};        // selected remedy hexagram per pers
 window._pvWho = window._pvWho || null;       // 'A' | 'B' | 'both'
 function xkdgPVPick(who, v) { window._pvSel[who] = String(v); renderPersonView(); }
 function xkdgPVWho(w) { window._pvWho = w; renderPersonView(); }
+function xkdgPVMut(who, k) { (window._pvMut = window._pvMut || {})[who] = k; renderPersonView(); }
 
 // ── 👤 PERSON tab (session 33, Edu): for each chosen person, the four real pillars with the
 // selected REMEDY hexagram as a 5th one on the right, the advice for it (direction + dates),
@@ -1134,13 +1135,11 @@ function renderPersonView() {
         }).filter(Boolean) : [];
         // selection: a date first (Edu), else a hexagram
         let sel = window._pvSel[pp.who];
-        if (!sel || (sel[0] === 'd' && !dates.some(d => 'd' + d.date === sel)) || (sel[0] === 'h' && !opts.some(x => 'h' + x.hex === sel))
-            || (sel[0] === 'p' && !mutual.some(x => 'p' + x.pillar === sel)))
+        if (!sel || (sel[0] === 'd' && !dates.some(d => 'd' + d.date === sel)) || (sel[0] === 'h' && !opts.some(x => 'h' + x.hex === sel)) || sel[0] === 'p')
             sel = dates.length ? 'd' + dates[0].date : (opts.length ? 'h' + opts[0].hex : null);
         const selDate = sel && sel[0] === 'd' ? dates.filter(d => 'd' + d.date === sel)[0] : null;
         const selHex = sel && sel[0] === 'h' ? opts.filter(x => 'h' + x.hex === sel)[0] : null;
-        const selMut = sel && sel[0] === 'p' ? mutual.filter(x => 'p' + x.pillar === sel)[0] : null;
-        const cur = selDate ? selDate.cand : (selMut || selHex);
+        const cur = selDate ? selDate.cand : selHex;
         // ── the picture: 4 pillars + the selected remedy on the far right ──
         const col = (lab, hex, qi, yun, isoQ, isoY, extra) => '<td style="padding:4px 3px;text-align:center;vertical-align:top;border:1px solid #ddd;' + (extra || '') + '">'
             + '<div style="font-weight:bold;color:#880e4f;font-size:12px;">' + lab + '</div>'
@@ -1150,7 +1149,7 @@ function renderPersonView() {
         h += '<div style="overflow-x:auto;margin:6px 0;"><table style="border-collapse:collapse;"><tr>'
            + ['hour', 'day', 'month', 'year'].map(k => col(L[k], pp.P[k].hex, pp.P[k].qi, pp.P[k].yun, isoSet[k + '.qi'], isoSet[k + '.yun'])).join('');
         if (cur) h += '<td style="border:0;width:14px;padding:0;font-size:18px;color:#7e57c2;text-align:center;vertical-align:middle;">+</td>'
-                   + col(selDate ? fmtD(selDate.date) : selMut ? ('🤝 ' + other.name + ' ' + L[selMut.pillar]) : (cur.kind === 'family' ? '★ Family' : 'Remedy'), cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
+                   + col(selDate ? fmtD(selDate.date) : (cur.kind === 'family' ? '★ Family' : 'Remedy'), cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
         h += '</tr></table></div>';
         if (!g || !g.any) {
             h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
@@ -1190,7 +1189,6 @@ function renderPersonView() {
         if (cur) {
             h += '<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#f3e5f5;font-size:13px;">'
                + (selDate ? '<b>📅 ' + fmtD(selDate.date) + '</b> · day ' + selDate.day + ' · year ' + selDate.year + ' — the remedy is the <b>' + selDate.from + '</b>: ' : '')
-               + (selMut ? '<b>🤝 ' + other.name + '\'s ' + L[selMut.pillar] + ' pillar</b> (' + (selMut.stem || '') + (selMut.branch || '') + ') is a cure for ' + pp.name + ': ' : '')
                + '<b>' + (cur.kind === 'family' ? '★ ' : '') + 'hexagram ' + cur.hex + '</b> (Element ' + cur.qi + ', Period ' + cur.yun + ')'
                + explain(cur)
                + (selDate ? '<div style="margin-top:4px;"><b>Favourable hours</b> (tap to open):<br>' + hourBtns(selDate) + '</div>' : '');
@@ -1198,15 +1196,37 @@ function renderPersonView() {
             if (sec) { const c2 = (sec.from + 2.8125) % 360; h += '<div style="margin-top:4px;">🧭 The same hexagram in Feng Shui: <b>' + W8(c2) + ' · ' + sec.from + '–' + sec.to + '°</b> (' + (sec.zheng_shen ? 'Zheng Shen' : 'Ling Shen') + ')</div>'; }
             h += '</div>';
         }
-        // ── 🤝 cure from the other person's chart (Both only) ──
+        // ── 🤝 cure from the other person's chart (Both only) — Session 35 (Edu): a YELLOW box with
+        // its own picture (this person's 4 pillars + the other person's pillar) and the explanation.
         if (other) {
-            h += '<div style="margin-top:8px;font-weight:bold;color:#6a1b9a;font-size:13px;">🤝 Cure from ' + other.name + '\'s chart (' + mutual.length + ')</div>';
-            h += mutual.length ? mutual.map(x => {
-                const on = 'p' + x.pillar === sel;
-                return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'p' + x.pillar + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
-                   + (on ? 'background:#6a1b9a;color:#fff;border:2px solid #4a148c;' : 'background:#f3e5f5;border:1px solid #ab47bc;color:#4a148c;') + '">'
-                   + L[x.pillar] + ' ' + (x.stem || '') + (x.branch || '') + ' · hex ' + x.hex + ' (' + x.qi + '/' + x.yun + ')' + (x.kind === 'family' ? ' ★' : '') + '</button>';
-            }).join('') : '<div style="color:#888;font-size:12px;">No pillar of ' + other.name + ' is a cure for ' + pp.name + '.</div>';
+            h += '<div style="margin-top:10px;border:2px solid #f9a825;background:#fffde7;border-radius:10px;padding:8px 10px;">'
+               + '<div style="font-weight:bold;color:#e65100;font-size:14px;">🤝 Cure from ' + other.name + '\'s chart (' + mutual.length + ')</div>';
+            if (!mutual.length) {
+                h += '<div style="color:#795548;font-size:12px;margin-top:4px;">No pillar of ' + other.name + ' is a cure for ' + pp.name + '.</div>';
+            } else {
+                window._pvMut = window._pvMut || {};
+                let mk = window._pvMut[pp.who];
+                if (!mutual.some(x => x.pillar === mk)) mk = mutual[0].pillar;
+                const m = mutual.filter(x => x.pillar === mk)[0];
+                if (mutual.length > 1) h += '<div style="margin-top:4px;">' + mutual.map(x => {
+                    const on = x.pillar === mk;
+                    return '<button onclick="xkdgPVMut(\'' + pp.who + '\',\'' + x.pillar + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
+                       + (on ? 'background:#f9a825;color:#3e2723;border:2px solid #e65100;font-weight:bold;' : 'background:#fff;border:1px solid #f9a825;color:#5d4037;') + '">'
+                       + L[x.pillar] + ' ' + (x.stem || '') + (x.branch || '') + ' · hex ' + x.hex + (x.kind === 'family' ? ' ★' : '') + '</button>';
+                }).join('') + '</div>';
+                // the picture: this person's 4 pillars + the other person's pillar on the right
+                h += '<div style="overflow-x:auto;margin:6px 0;"><table style="border-collapse:collapse;background:#fff;"><tr>'
+                   + ['hour', 'day', 'month', 'year'].map(k => col(L[k], pp.P[k].hex, pp.P[k].qi, pp.P[k].yun, isoSet[k + '.qi'], isoSet[k + '.yun'])).join('')
+                   + '<td style="border:0;width:14px;padding:0;font-size:18px;color:#e65100;text-align:center;vertical-align:middle;">+</td>'
+                   + col(other.name + ' · ' + L[m.pillar], m.hex, m.qi, m.yun, false, false, 'border:3px solid #f9a825;border-radius:10px;background:#fff8e1;')
+                   + '</tr></table></div>';
+                h += '<div style="font-size:13px;color:#3e2723;">'
+                   + '<b>' + other.name + '\'s ' + L[m.pillar] + ' pillar ' + (m.stem || '') + (m.branch || '') + '</b> = '
+                   + '<b>' + (m.kind === 'family' ? '★ ' : '') + 'hexagram ' + m.hex + '</b> (Element ' + m.qi + ', Period ' + m.yun + '). '
+                   + 'It already lives in ' + other.name + '\'s birth chart and it is a remedy for ' + pp.name + '\'s chart:'
+                   + explain(m) + '</div>';
+            }
+            h += '</div>';
         }
         // ── 1) DATES first (Heaven) ──
         h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;font-size:13px;">📅 Remedy dates (' + dates.length + ') — tap one</div>';
