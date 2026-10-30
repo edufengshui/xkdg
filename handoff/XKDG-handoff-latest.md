@@ -84,3 +84,16 @@ Next session: read this file first.
 ## Rules (unchanged)
 - Edu is the sole authority on metaphysics; flag any addition to descriptions with reasoning, no invented interpretations.
 - Replies in Italian, concise. Tell Edu when a new chat is advisable.
+
+
+## Session 37 — later additions
+- Travel Planner car type (`xkdg_car_type` ev|fuel, asked once; fuel = no range/charging UI, no charging stops; AI reads get_app_state.car_type). No refuel stops for fuel cars (asked Edu, no answer yet).
+- Licence flag `directions` (xkdg-ai Worker LICENCE_CODES `d: 1`, answer `directions`) → `window.xkdgUnlockDirections()` (no preview code). Edu got the full xkdg-ai Worker file with Nicolas, Claire, Edu `d: 1` — he must Deploy it.
+- My charging tariffs: `bands` "22-07 0.39, 07-22 0.64" (price at the charger ETA), station rows (longer operator text wins per card), cost ≈ kWh × price on each charger, cheaper charger among equivalent ones (≤5 km along, ≤1 km more detour). Tesla/Electra publish no price API (checked).
+
+## NEXT (session 38): Shelly for students + guide + video
+Edu chose: students use HIS shared xkdg-shelly Worker. Worker v6 read (Edu pasted it): DEVICES hardcoded (tuoro, vienna), secrets SHELLY_KEY, SHELLY_HOST (shared Shelly Cloud account), SHELLY_ID(_DEC), SHELLY_ID_VIENNA(_DEC), XKDG_TOKEN (one token for all), KV XKDG_KV (state:<dev>), cron * * * * * EVENT-based (fires each onTs/offTs within 90 s, retries 20 min, verifies relay, alerts) — so the Vienna night re-light rows work (ON/OFF events, redundant ONs harmless). KV writes only when an event fires (fine for the free tier); reads 1440 × devices/day (free 100k → ~60 devices).
+Proposed design (to confirm with Edu):
+ 1. Worker v7: devices also in KV (`dev:<id>` = {label, owner, host, key, shellyId, tokenHash}); POST ?register {licence hash, label, host, key, id} verified against xkdg-ai ?licence {hash}; returns a per-device token; per-device token authorises that device only; XKDG_TOKEN keeps working for Edu's devices; cron loops env DEVICES + KV devices.
+ 2. App: user devices in localStorage (`xkdg_shelly_devices` [{device, house, lon, utc, token}]) merged into SHELLY_HOUSES; house card ☰ → 🔌 Aquarium plug (Shelly): register (Shelly app → Settings → Authorization cloud key + server; device → Device information → Device ID), test ON/OFF, then program_aquarium_light works for that house.
+ 3. Guide guides/shelly.html + video: send Edu the step text FIRST (his rule). Video starts by showing where the menu is; signature "Feng Shui Advisor · Master Eduardo Hess".
