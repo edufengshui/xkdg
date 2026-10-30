@@ -1843,6 +1843,7 @@
         '(water candidates of the facing, ranked by the app\'s rules, with their links to the house\'s people and the Pure ' +
         'Yin/Yang part) as red boxes on the photo, and returns the calibration and where each sector falls (x_from/x_to as ' +
         'fractions of the photo width). The photo must be taken FROM the facing point (bed head, door centre), straight ahead. ' +
+        'FINAL CHECK (Edu, session 36): near the edges of a wide photo the boxes can be off by 2-3°; before the user moves the water, always ask for a second photo from the same point turned TOWARD the water spot, main lens 1x, calibrated with Align to a wall. ' +
         'CALIBRATION: the only reliable degree is the HOUSE facing; every wall runs on it or +/-90/180. Look at the photo and, ' +
         'when you can clearly see a wall running away from the camera, pass wall_lines: two horizontal edges of THAT wall ' +
         '(e.g. skirting board and ceiling line), each as [x1,y1,x2,y2] in fractions 0-1 of width/height, with the two points ' +
