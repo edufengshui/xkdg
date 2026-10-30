@@ -250,6 +250,10 @@
     var c = document.createElement('canvas'); c.width = S.img.naturalWidth; c.height = S.img.naturalHeight;
     var gx = c.getContext('2d'); gx.drawImage(S.img, 0, 0, c.width, c.height);
     try { gx.drawImage(S.renderer.domElement, 0, 0, c.width, c.height); } catch (e) {}
+    try { if (window.XKDGDropboxSync && XKDGDropboxSync.autoSave) {   // session 36: also in Dropbox, House profiles/<house>/Rooms/<room>
+      var hn = S.house; try { var gg = window.XKDGPlanBuilder && XKDGPlanBuilder.geom(S.house); if (gg && gg.house) hn = gg.house; } catch (eG) {}
+      c.toBlob(function (bl) { XKDGDropboxSync.autoSave(['House profiles', hn || 'house', 'Rooms', S ? S.room : 'room'], XKDGDropboxSync.stamp() + '.jpg', bl); }, 'image/jpeg', 0.9);
+    } } catch (eD) {}
     var a = document.createElement('a'); a.href = c.toDataURL('image/jpeg', 0.9); a.download = 'xkdg-room-' + S.room.replace(/\W+/g, '_') + '.jpg';
     document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 1000);
   }

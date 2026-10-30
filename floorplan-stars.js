@@ -441,7 +441,9 @@
     }
     if (typeof cv.toBlob === 'function' && typeof URL !== 'undefined' && URL.createObjectURL) {
       try {
-        cv.toBlob(function (b) { if (b) grab(URL.createObjectURL(b), true); else viaDataUrl(); }, 'image/png');
+        cv.toBlob(function (b) { if (b) grab(URL.createObjectURL(b), true); else viaDataUrl();
+          try { if (b && window.XKDGDropboxSync && XKDGDropboxSync.autoSave) XKDGDropboxSync.autoSave(['House profiles', st.houseName || 'house', 'Floor plans'], name, b); } catch (eD) {}   // session 36
+        }, 'image/png');
       } catch (e) { viaDataUrl(); }
     } else viaDataUrl();
   }

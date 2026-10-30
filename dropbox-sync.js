@@ -307,5 +307,23 @@
         body: blob });
     }).then(function (r){ if (!r.ok) throw new Error('Upload failed (' + r.status + ')'); return r.json(); });
   }
-  window.XKDGDropboxSync = { open: openPanel, save: doSave, load: doLoad, connect: connect, connected: connected, uploadFile: uploadFile };
+  // Session 36 (Edu): every picture the app saves also goes to Dropbox (when connected), in a folder
+  // of its section, e.g. House profiles/<house>/<facing> facing. Paths are inside the App folder
+  // (Dropbox/Apps/<app folder name>) of whoever is connected — each student has their own.
+  function cleanName(t){ return String(t == null ? '' : t).replace(/[\\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'untitled'; }
+  function stamp(){ var d = new Date(), p = function (n){ return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + '-' + p(d.getMinutes()); }
+  function toast(msg){ try {
+    var t = document.createElement('div'); t.textContent = msg;
+    t.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);max-width:90vw;background:#0061fe;color:#fff;padding:8px 14px;border-radius:10px;font-size:13px;z-index:100200;box-shadow:0 4px 14px rgba(0,0,0,.3);';
+    document.body.appendChild(t); setTimeout(function (){ t.remove(); }, 4000); } catch (e) {} }
+  // parts: array of folder names (cleaned here), file: file name
+  function autoSave(parts, file, blob){
+    if (!connected() || !blob) return Promise.resolve(null);
+    var path = '/' + parts.map(cleanName).join('/') + '/' + cleanName(file);
+    return uploadFile(path, blob).then(function (r){ toast('📦 Saved in Dropbox: ' + ((r && r.path_display) || path)); return r; },
+                                       function (e){ toast('📦 Dropbox: ' + e.message); return null; });
+  }
+  window.XKDGDropboxSync = { open: openPanel, save: doSave, load: doLoad, connect: connect, connected: connected, uploadFile: uploadFile,
+                             autoSave: autoSave, stamp: stamp, cleanName: cleanName };
 })();
