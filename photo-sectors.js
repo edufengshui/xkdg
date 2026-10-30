@@ -643,11 +643,16 @@
     var est = bearing(vx);
     var dirs = [0, 90, 180, 270].map(function (k) { return norm(base + k); })
       .sort(function (p, q) { return Math.abs(angDiff(p, est)) - Math.abs(angDiff(q, est)); });
-    var ans = prompt('This wall runs toward which direction?\n(walls are the house facing ' + r1(base) + '° or ±90°/180°)\n\n' +
+    var ans = prompt('The wall you traced RUNS AWAY from you toward which direction?\n(where its lines meet — NOT the direction the wall faces; walls are the house facing ' + r1(base) + '° or ±90°/180°)\n\n' +
       dirs.map(function (d, i) { return (i + 1) + ' = ' + r1(d) + '°' + (i === 0 ? '   ← most likely' : ''); }).join('\n'), '1');
     if (ans === null) { hint(); draw(); return; }
     var i = parseInt(ans, 10); var deg = (i >= 1 && i <= 4) ? dirs[i - 1] : parseFloat(ans);
     if (!isFinite(deg)) { hint(); draw(); return; }
+    // Session 36 (Edu): picking the direction the wall FACES (90° off) shifts every box by 90°.
+    if (Math.abs(angDiff(deg, est)) > 45 && !confirm('Your lines meet at about ' + r1(est) + '° in the photo, but you chose ' + r1(deg) + '°.\n' +
+        'Choose the direction the wall RUNS TOWARD (where its lines meet), not the direction it faces.\n\nOK = use ' + r1(dirs[0]) + '° · Cancel = keep ' + r1(deg) + '°')) {
+      // keep the user's choice
+    } else if (Math.abs(angDiff(deg, est)) > 45) deg = dirs[0];
     S.refs.push({ x: vx, y: vy, deg: norm(deg), wall: true, lines: [[P[0], P[1]], [P[2], P[3]]] });
     S.mode = 'measure'; modeButtons(); hint(); draw();
     var c = el('xps-centre'); if (c) c.value = r1(S.cal.centre);
