@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XKDG App · Aquarium Plug (Shelly)</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; color: #222; max-width: 760px; margin: 24px auto; padding: 0 16px; line-height: 1.55; font-size: 15px; background: #fff; }
+  h1 { color: #4a148c; font-size: 26px; margin-bottom: 4px; }
+  h2 { color: #2e7d32; font-size: 21px; margin-top: 34px; border-bottom: 2px solid #c8e6c9; padding-bottom: 4px; }
+  h3 { color: #4a148c; font-size: 17px; margin-top: 22px; }
+  .sub { color: #666; margin-top: 0; }
+  ol li, ul li { margin-bottom: 6px; }
+  .tip { background: #fff8e1; border-left: 4px solid #ffb300; padding: 8px 12px; margin: 12px 0; }
+  .warn { background: #ffebee; border-left: 4px solid #c62828; padding: 8px 12px; margin: 12px 0; }
+  .ai { background: #f3e5f5; border-left: 4px solid #8e24aa; padding: 8px 12px; margin: 12px 0; }
+  .btn { display: inline-block; background: #eee; border: 1px solid #ccc; border-radius: 4px; padding: 0 6px; font-weight: bold; white-space: nowrap; }
+  code { background: #f5f5f5; padding: 0 4px; border-radius: 3px; }
+  table { border-collapse: collapse; margin: 10px 0; }
+  td, th { border: 1px solid #ddd; padding: 5px 9px; text-align: left; vertical-align: top; }
+  th { background: #f1f8e9; }
+</style>
+</head>
+<body>
+<p style="margin:0 0 8px;font-size:13px;"><a href="index.html" style="color:#00695c;">← All guides</a></p>
+
+<h1>XKDG App — The Aquarium Plug (Shelly)</h1>
+<p class="sub">A step-by-step guide · Feng Shui Research Center · Master Eduardo Hess</p>
+
+<p>A <b>Shelly smart plug</b> lets the XKDG app switch the <b>aquarium light</b> on by itself at the favourable hours. You connect the plug to a saved house once; after that the assistant computes the plan and the XKDG server switches the plug at the right times, even when your phone is off. This guide covers:</p>
+<ol>
+  <li><b>What you need.</b></li>
+  <li><b>Three values from the Shelly app</b>: server, key and Device ID.</li>
+  <li><b>Connecting the plug</b> in the XKDG app and testing it.</li>
+  <li><b>Programming the light</b> with the assistant.</li>
+  <li><b>Problems</b>, disconnecting, privacy.</li>
+</ol>
+
+<h2 style="margin-top:20px;">▶ Video tutorial</h2>
+<video controls preload="metadata" playsinline poster="videos/shelly-poster.jpg" style="width:100%;border-radius:10px;background:#000;">
+  <source src="videos/shelly.mp4" type="video/mp4">
+</video>
+<p class="sub" style="margin-top:4px;">About 1 minute 40 seconds, no sound: the captions explain every step.</p>
+
+<!-- ───────────────────────────── PART 1 ───────────────────────────── -->
+<h2>Part 1 — What you need</h2>
+<ul>
+  <li>A <b>Shelly plug</b> (for example Shelly Plus Plug S), added to <b>your own</b> account in the <b>Shelly app</b> and connected to the Shelly <b>cloud</b> (in the app the plug shows as online).</li>
+  <li>The <b>aquarium light</b> on that plug. <b>Only the light</b>: pump, filter and heater stay on a normal socket, always on.</li>
+  <li>The <b>house saved</b> in <b>Feng Shui → 🏠 HOUSE PROFILES</b>, with its aquarium (direction) and its chart, so the water star is known.</li>
+  <li>Your <b>XKDG licence</b> active on this phone.</li>
+</ul>
+
+<!-- ───────────────────────────── PART 2 ───────────────────────────── -->
+<h2>Part 2 — Three values from the Shelly app</h2>
+<h3>1. Server and key</h3>
+<ol>
+  <li>Open the <b>Shelly app</b> and tap the <b>profile</b> icon (User settings).</li>
+  <li>Tap <b>Authorization cloud key</b>, then <b>Get key</b>.</li>
+  <li>Copy the <b>key</b> (a long string of letters and digits).</li>
+  <li>Note the <b>server</b> shown on the same page, for example <code>https://shelly-123-eu.shelly.cloud</code>. In XKDG you can paste it with or without <code>https://</code>.</li>
+</ol>
+<div class="warn"><b>The key opens your Shelly account.</b> Paste it only into the XKDG app, never in a message or an email. If you ever think it is known to others, generate a new one in the Shelly app and connect the plug again.</div>
+
+<h3>2. Device ID</h3>
+<ol>
+  <li>In the Shelly app open the <b>plug</b> of the aquarium light.</li>
+  <li>Tap <b>Settings → Device information</b>.</li>
+  <li>Copy the <b>Device ID</b>: usually 12 letters and digits (6 on older plugs), for example <code>a0b765c3d2e4</code>.</li>
+</ol>
+<div class="tip">The menus of the Shelly app can change slightly between versions. The names to look for are always <b>Authorization cloud key</b> and <b>Device ID</b>.</div>
+
+<!-- ───────────────────────────── PART 3 ───────────────────────────── -->
+<h2>Part 3 — Connect the plug in XKDG</h2>
+<ol>
+  <li>Go to <b>Feng Shui → 🏠 HOUSE PROFILES</b>.</li>
+  <li>On the house card, tap the <span class="btn">☰</span> at the top right, then <span class="btn">🔌 Aquarium plug (Shelly)</span>.</li>
+  <li>A window opens: <b>🔌 Aquarium plug (Shelly) — </b><i>house name</i>.</li>
+  <li><b>Name</b>: leave <i>Aquarium</i> or write your own.</li>
+  <li>Paste the <b>Server</b>, the <b>Authorization cloud key</b> and the <b>Device ID</b>.</li>
+  <li>Check <b>Longitude of the house</b> and <b>UTC (winter)</b>. They give the True Solar Time of the house, on which the hours are computed. The longitude is filled from your GPS: if you are not at the house now, type the longitude of the house (east positive: Rome 12.5, Vienna 16.4; west negative: New York −74.0). UTC is the <b>winter</b> offset (Italy and Austria +1); summer time is added by the app.</li>
+  <li>Tap <span class="btn">🔌 Connect</span>. The XKDG server checks your licence and reads the plug.</li>
+  <li>When it answers <i>✅ Connected</i>, tap <span class="btn">💡 Test ON</span> and <span class="btn">⏻ Test OFF</span>: the light must switch on and off. <span class="btn">Status</span> tells you whether the plug is ON or OFF now.</li>
+</ol>
+<div class="tip">Each house has its own plug. A licence can connect up to <b>5 plugs</b>. Connecting the same house again replaces its old plug.</div>
+<div class="warn"><b>Do not rename the house</b> after connecting: the plug is linked to the house name. If you rename it, open 🔌 Aquarium plug again and connect it again.</div>
+
+<!-- ───────────────────────────── PART 4 ───────────────────────────── -->
+<h2>Part 4 — Program the light with the assistant</h2>
+<ol>
+  <li>Open the <b>💬 assistant</b> and write, for example: <i>"program the aquarium of Casa Roma"</i> (your house name).</li>
+  <li>The assistant computes the plan and shows it first: each day the hour the light switches on, how long it stays on, and why.</li>
+  <li>Nothing reaches the plug yet. Tap <span class="btn">Procedi</span> to send the plan, or <span class="btn">Annulla</span>.</li>
+  <li>The plan runs until the <b>start of the next solar month</b>. Then ask the assistant to program it again.</li>
+</ol>
+<div class="ai">Other questions you can ask:
+  <ul>
+    <li><i>"Is the aquarium of Casa Roma on now?"</i> · <i>"Switch it off."</i></li>
+    <li><i>"What is scheduled for the aquarium of Casa Roma?"</i>: the plan really stored on the server.</li>
+    <li><i>"Pause the aquarium plan"</i> / <i>"Resume it"</i>.</li>
+  </ul>
+</div>
+<p>If a switch-on or switch-off failed (plug offline, Wi-Fi down), the server keeps trying for 20 minutes. If it still fails, the assistant tells you at the start of its next answer, with date and hour.</p>
+
+<!-- ───────────────────────────── PART 5 ───────────────────────────── -->
+<h2>Part 5 — Problems, disconnecting, privacy</h2>
+<table>
+  <tr><th>Message</th><th>What to do</th></tr>
+  <tr><td><i>No valid XKDG licence on this phone</i></td><td>Activate your licence first (📘 Licence guide).</td></tr>
+  <tr><td><i>XKDG licence not accepted…</i></td><td>The licence has expired or is not valid: contact Master Eduardo Hess.</td></tr>
+  <tr><td><i>The server must look like shelly-123-eu.shelly.cloud</i></td><td>Copy the server again from the Authorization cloud key page.</td></tr>
+  <tr><td><i>The Device ID should be 6-16 letters/digits…</i></td><td>Copy it again from Device information (only 0-9 and a-f).</td></tr>
+  <tr><td><i>Shelly Cloud refused…</i></td><td>Server, key or Device ID do not match, or the plug is offline. Check that the plug is online in the Shelly app.</td></tr>
+  <tr><td><i>At most 5 plugs per licence</i> / <i>The XKDG server is full</i></td><td>Disconnect a plug you no longer use, or contact Master Eduardo Hess.</td></tr>
+  <tr><td><i>No connection to the XKDG server</i></td><td>Check the internet connection and try again.</td></tr>
+</table>
+<h3>Disconnect</h3>
+<p>☰ of the house → <span class="btn">🔌 Aquarium plug (Shelly)</span> → <span class="btn">🗑 Disconnect the plug</span>. The plug, its key and its plan are deleted from the XKDG server; the light no longer switches by itself.</p>
+<h3>Privacy</h3>
+<ul>
+  <li>The XKDG server keeps your Shelly server, key and Device ID <b>only to switch your plug</b>.</li>
+  <li>Your phone receives a token that opens <b>only your plug</b>. Nobody else's plug can be reached with it.</li>
+  <li>To withdraw access completely, disconnect the plug and generate a new key in the Shelly app.</li>
+</ul>
+
+<p style="color:#888;font-size:12px;margin-top:30px;">XKDG App · Feng Shui Research Center · © Eduardo Hess</p>
+<script src="video-fs.js"></script>
+</body>
+</html>
