@@ -7583,7 +7583,23 @@
             if (lit[dIso] || dIso > lastIso) continue;
             var prev = null;
             scheduled.forEach(function (s) { if (s.date < dIso && (!prev || s.date > prev.date)) prev = s; });
-            if (!prev) continue;                         // nothing before it (first day): nothing to extend
+            if (!prev) {
+              // Session 37 (Edu, "non va bene": Vienna dark all day on 30 Oct): an empty FIRST day
+              // has no block of this plan before it, but the light of the previous plan ended at
+              // 23:00 of yesterday. That block is carried on: ON from 00:00 (or from now, today)
+              // to 23:00, so the aquarium is never dark for a whole day.
+              var onT = _civilToEpoch(dIso, 0, rh.cfg.utc), offT = _civilToEpoch(dIso, 23 * 60, rh.cfg.utc);
+              onT = Math.max(onT, Math.ceil((Date.now() + 60000) / 60000) * 60000);
+              if (onT >= offT) continue;                 // too late today: nothing left to light
+              scheduled.push({ date: dIso, tier: null, onTs: onT, offTs: offT,
+                               on_local: new Date(onT).toString(), off_local: new Date(offT).toString(),
+                               why: 'No favourable hour on this day: kept ON (continues the previous plan)',
+                               no_dark_day_note: 'Kept ON through ' + dIso + ' (no favourable hour that day): the aquarium is never dark for a whole day.' });
+              scheduled.sort(function (a, b) { return a.onTs - b.onTs; });
+              lit[dIso] = 1;
+              skipped = skipped.filter(function (x) { return x.date !== dIso; });
+              continue;
+            }
             var from = _isoPlus(prev.stays_on_until_date || prev.date, 1);
             prev.stays_on_until_date = dIso;
             prev.offTs = _civilToEpoch(dIso, 23 * 60, rh.cfg.utc);
@@ -7696,7 +7712,7 @@
         : undefined,
       note: commit
         ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local, and for any day with stays_on_until_date say the light does NOT switch off at 23:00 that day).'
-        : 'PREVIEW ONLY \u2014 nothing was deposited. NEVER ask the user to approve individual dates: every day is decided by the rules, there is nothing to confirm day by day. Show the scheduled list (date, hour, tier, on_local/off_local). For every day that carries also_good_for, SAY SO explicitly \u2014 e.g. "questa data e anche buona per Wealth e Career" \u2014 it is the same Purpose Activation calculator as the app\u2019s panel and the user wants to know. If purpose_filter is set, say the plan was restricted to that purpose and that days without it were left out. For a day with stays_on_until_date, say plainly that the light stays on until 23:00 of that later date and why (its tier is high and no stronger day follows). For a day with fallback_from, say the best hour was too late to be useful and the in-window hour was taken instead. For a skipped day, say it stays dark and why. Then ask ONLY for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit until the user confirms; then call again with commit:true.'
+        : 'PREVIEW ONLY \u2014 nothing was deposited. NEVER ask the user to approve individual dates: every day is decided by the rules, there is nothing to confirm day by day. Show the scheduled list (date, hour, tier, on_local/off_local). For every day that carries also_good_for, SAY SO explicitly \u2014 e.g. "questa data e anche buona per Wealth e Career" \u2014 it is the same Purpose Activation calculator as the app\u2019s panel and the user wants to know. If purpose_filter is set, say the plan was restricted to that purpose and that days without it were left out. For a day with stays_on_until_date, say plainly that the light stays on until 23:00 of that later date and why (its tier is high and no stronger day follows). For a day with fallback_from, say the best hour was too late to be useful and the in-window hour was taken instead. For a day with no_dark_day_note (tier null), say there is no favourable hour that day and the light is kept ON anyway, because the aquarium is never dark for a whole day. For a skipped day, say it stays dark and why. Then ask ONLY for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit until the user confirms; then call again with commit:true.'
     };
   }
 
