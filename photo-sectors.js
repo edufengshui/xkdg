@@ -386,6 +386,7 @@
           sel: {}, layers: { water: true, dir8: false, mtn24: false }, boxTop: 0.38, boxBottom: 0.62, measure: null, wallPts: [], compassOffset: 0,
           wallBase: (hf != null ? norm(+hf) : null) };
     S.centre = S.facing;
+    S.facingSrc = facings.length ? facings[facings.length > 1 ? 1 : 0] : null;
     S.personKey = personKey; S.houseIdx = houseIdx;
     build();
     setFacing(S.facing);
@@ -495,7 +496,7 @@
     var opts = ['House', 'Doors', 'Beds', 'Desks', 'Items'].map(function (g) {
       var it = S.facings.filter(function (f) { return (f.group || 'House') === g; });
       if (!it.length) return '';
-      return '<optgroup label="' + g + '">' + it.map(function (f) { return '<option value="' + f.deg + '"' + (f.deg === S.facing ? ' selected' : '') + '>' + esc(f.label) + ' ' + r1(f.deg) + '°</option>'; }).join('') + '</optgroup>';
+      return '<optgroup label="' + g + '">' + it.map(function (f) { return '<option value="#' + S.facings.indexOf(f) + '"' + (f === S.facingSrc ? ' selected' : '') + '>' + esc(f.label) + ' ' + r1(f.deg) + '°</option>'; }).join('') + '</optgroup>';
     }).join('');
     var m = document.createElement('div');
     m.id = 'xps-modal';
@@ -529,6 +530,7 @@
             '<button id="xps-m-wall" onclick="XKDGPhotoSectors._mode(\'wall\')" style="' + btn + '">🧱 Align to a wall</button>' +
             '<button id="xps-m-ref" onclick="XKDGPhotoSectors._mode(\'ref\')" style="' + btn + '">🎯 Point read with the compass</button>' +
             '<button onclick="XKDGPhotoSectors._clearRefs()" style="' + btn + 'border:1px solid #ccc;background:#fff;">Clear references</button>' +
+            '<button onclick="XKDGPhotoSectors._saveOpening()" title="Save the measured point as the centre or an edge of a door / openable window, for 🪟 Yang openings" style="' + btn + 'border:1px solid #0277bd;background:#fff;color:#0277bd;">🪟 Save as opening</button>' +
           '</div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px;">' +
             '<span title="Indoor compasses are off by several degrees. Read the facing (e.g. the door) with your compass from the photo spot: the difference from the real facing corrects every other reading.">Compass correction ' +
@@ -713,8 +715,12 @@
   }
   // Session 36 (Edu): keep the picture in Dropbox, in a folder of the house and of the facing used:
   // /House profiles/<house>/<facing name> facing/<date time> · centre <deg>.jpg
+  function srcNow() {
+    if (S.facingSrc && Math.abs(angDiff(S.facingSrc.deg, S.facing)) < 0.05) return S.facingSrc;
+    return (S.facings || []).filter(function (x) { return Math.abs(angDiff(x.deg, S.facing)) < 0.05; })[0] || null;
+  }
   function dbxParts() {
-    var f = (S.facings || []).filter(function (x) { return Math.abs(angDiff(x.deg, S.facing)) < 0.05; })[0];
+    var f = srcNow();
     return { parts: ['House profiles', S.house.name || 'house', f ? f.label.replace(/\s*facing$/i, '') + ' facing' : 'facing ' + r1(S.facing)],
              file: (window.XKDGDropboxSync ? XKDGDropboxSync.stamp() : '') + ' - centre ' + r1(S.cal.centre) + '.jpg' };
   }
@@ -732,16 +738,57 @@
       }).catch(function (e) { if (b) { b.disabled = false; b.textContent = '📦 Save to Dropbox'; } alert('Dropbox: ' + e.message); });
     }, 'image/jpeg', 0.9);
   }
+  // Session 37 (Edu): 🪟 Yang openings — the 📍 measured point is saved as the centre or an
+  // edge of a door / openable window, seen from the selected facing source.
+  function saveOpening() {
+    var Y = window.XKDGYangOpenings;
+    if (!Y) { alert('The Yang openings tool is not loaded.'); return; }
+    if (!S || !S.img || S.measure == null) { alert('Tap 📍 Measure a point on the CENTRE (or an edge) of the door / window first.'); return; }
+    var f = srcNow();
+    if (!f) { alert('Choose a saved facing source (house, door, bed, desk, item) in the Facing list: a typed facing cannot hold openings.'); return; }
+    var key = (f.group || 'House') + '|' + f.label;
+    var ops = Y.openingsFor(S.personKey, S.houseIdx, key);
+    var ask = 'Which opening is this point on?\n' + ops.map(function (o, i) { return (i + 1) + ' = ' + o.icon + ' ' + o.name; }).join('\n') +
+              (ops.length ? '\n' : '') + (ops.length + 1) + ' = + new openable window';
+    var a = prompt(ask, ops.length ? '1' : String(ops.length + 1)); if (a === null) return;
+    var i = parseInt(a, 10), op;
+    if (i === ops.length + 1) {
+      var n = prompt('Name of the window:'); if (!n || !n.trim()) return;
+      if (!confirm('Can this window be OPENED?\n\nOK = yes · Cancel = fixed glass (not a yang opening, not saved)')) return;
+      var w = Y.addWindow(S.personKey, S.houseIdx, n, true); if (w.error) { alert(w.error); return; }
+      op = { oid: w.oid, name: w.name };
+    } else if (i >= 1 && i <= ops.length) op = ops[i - 1];
+    else return;
+    var part = prompt('The point you measured is the:\n1 = CENTRE of the opening\n2 = LEFT edge\n3 = RIGHT edge', '1'); if (part === null) return;
+    var k = part === '2' ? 'l' : part === '3' ? 'r' : 'c', b = bearing(S.measure), vals = {};
+    vals[k] = r2(b);
+    if (k === 'c') {
+      var d = prompt('Laser distance from the facing point to the CENTRE of "' + op.name + '" (metres, door/window closed — leave empty if not measured):', '');
+      if (d !== null && d.trim()) vals.dist = d;
+    }
+    vals.photo = 'Photo sectors ' + (S.refs.length ? 'calibrated' : 'NOT calibrated') + ', centre ' + r1(S.cal.centre) + '°, ' + r1(S.cal.f35) + ' mm';
+    var r = Y.saveMeasure(S.personKey, S.houseIdx, key, op.oid, vals);
+    if (r.error) { alert(r.error); return; }
+    alert('Saved for ' + f.label + ': ' + op.name + ' ' + (k === 'c' ? 'centre' : k === 'l' ? 'left edge' : 'right edge') + ' ' + r1(b) + '° (hex ' + fsSlotForDeg(b).hexNum + ').' +
+          (S.refs.length ? '' : '\n\n⚠ The photo is NOT calibrated: use 🧱 Align to a wall.') + '\nOpen 🪟 Yang openings in the house ☰ to see the status.');
+  }
   function close() { var m = el('xps-modal'); if (m) m.remove(); loupeHide(); S = null; }
 
   window.XKDGPhotoSectors = {
     open: open, close: close,
     // pure helpers, reusable by the AI assistant (option C)
     candidates: candidates, readExif: readExif, yinYangRange: yinYangRange,
+    people: function (h, key) { return housePeople(h, key); },
+    _saveOpening: saveOpening,
     openWithPhoto: apiOpenWithPhoto, addWall: function (l, d) { var ok = apiWall(l, d, true); if (ok) draw(); return ok; },
     state: apiState, measure: apiMeasure, isOpen: function () { return !!S; },
     _file: loadFile, _save: save, _saveDbx: saveDropbox,
-    _facing: function (v) { if (v === '' || v == null) { var fi = el('xps-facing'); if (fi) fi.focus(); return; } setFacing(v); },
+    _facing: function (v) {
+      if (v === '' || v == null) { var fi = el('xps-facing'); if (fi) fi.focus(); return; }
+      // session 37: the list passes "#index" so two sources with the same degree (door and bed) stay apart
+      if (String(v).charAt(0) === '#') { var f = S.facings[parseInt(String(v).slice(1), 10)]; if (!f) return; S.facingSrc = f; setFacing(f.deg); return; }
+      S.facingSrc = null; setFacing(v);
+    },
     _centre: function (v) { if (!isFinite(parseFloat(v))) return; S.refs = []; S.centre = norm(parseFloat(v)); draw(); },
     _lens: function (v) { if (!v) { el('xps-f35').focus(); return; } S.f35 = +v; S.f35Locked = true; S.f35Source = '(lens setting)'; el('xps-f35').value = v; draw(); },
     _f35: function (v) { if (!(+v > 0)) return; S.f35 = +v; S.f35Locked = true; S.f35Source = '(typed)'; draw(); },

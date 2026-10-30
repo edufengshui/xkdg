@@ -548,6 +548,15 @@
       'from the camera, and always ask the user to confirm or retrace them. Read positions from the tool (x_from/x_to, ' +
       'measured_point), never from your own visual guess; describe them with the objects you see at those x positions. ' +
       'After the user calibrates or taps an object, call photo_sectors_state.\n' +
+      '- YANG OPENINGS (session 37): to check or improve where the EXISTING openings (entrance door, room doors, windows ' +
+      'that can be OPENED - never fixed glass) fall for a facing (bed, desk, door, item, house), use yang_openings. ' +
+      'action status = each opening\'s hexagram (ok / boundary / not on a good Ling Shen hexagram), width vs 5.6 deg, the ' +
+      'good hexagrams still without an opening (fountain candidates). action save_measure stores a bearing (centre / edges) ' +
+      'and the laser distance the user gives you; add_window adds an openable window. action moves = the move calculator: ' +
+      'targets {opening: hex}, how far the piece may move sideways / forward. When the openings disagree there is NO ' +
+      'automatic priority: present every option with the resulting hexagram of EVERY opening and let the user choose ' +
+      '(the choice is made by the user in the 🪟 Yang openings panel). Suggest a fountain only for a good hexagram no ' +
+      'opening reaches.\n' +
       '- WATER PLACEMENT - GUIDED INTERVIEW (fountain / aquarium / water basin for a door, bed, desk or house facing). ' +
       'YOU lead, step by step, ONE short question at a time; run every analysis yourself right after each answer; never ' +
       'ask for data the app already has; the user may say "skip" to any step. ' +
@@ -722,7 +731,7 @@
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
                'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement','find_dlr_general_match',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
-               'find_water_positions','find_good_dates','open_scan_result',
+               'find_water_positions','yang_openings','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days'],
     dates: ['person_xkdg_gaps','mutual_cures','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match'],
@@ -760,7 +769,7 @@
   var AREA_HINTS = {
     home: /acquari|aquarium|fontan|fountain|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
     travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
-    fengshui: /fontan|fountain|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
+    fengshui: /fontan|fountain|finestr|window|fen[eê]tre|aperture|apertur|opening|ouverture|\byang\b|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
     dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
   };
   function autoPullAreas(text) {
@@ -2048,6 +2057,27 @@
         required: ['item', 'opening'] }
     },
     {
+      name: 'yang_openings',
+      description: '🪟 Yang openings of a saved house: do the EXISTING doors and OPENABLE windows fall on the good Ling Shen ' +
+        'water hexagrams of a facing source (House facing, a door, a bed, a desk, an item - bed facing = sitting + 180)? ' +
+        'Bearings are taken from the facing point (centre of the bed head, door centre, desk), distances with the laser to ' +
+        'the centre of each opening. Actions: status (default), save_measure, add_window, moves (move calculator: shifting ' +
+        'the piece s cm to the right / t cm forward along its facing changes every bearing; returns options with the ' +
+        'resulting hexagram of EVERY opening; with no common solution one option per opening - the user chooses).',
+      input_schema: { type: 'object', properties: {
+        house_name: { type: 'string' },
+        action: { type: 'string', enum: ['status', 'save_measure', 'add_window', 'moves'] },
+        source: { type: 'string', description: 'Facing source: its name (e.g. "Bed 1", "Bedroom door", "House facing") or its facing degree. Default: the first door/bed/desk.' },
+        opening: { type: 'string', description: 'save_measure / add_window: name of the door or window.' },
+        centre_deg: { type: 'number' }, left_deg: { type: 'number' }, right_deg: { type: 'number' },
+        distance_m: { type: 'number', description: 'Laser distance from the facing point to the CENTRE of the opening (door / window closed).' },
+        openable: { type: 'boolean', description: 'add_window: false = fixed glass (not saved: only openable windows count).' },
+        targets: { type: 'object', description: 'moves: { "<opening name>": hexagram number }. Default: the good hexagram each opening is on or nearest to.' },
+        side_max_cm: { type: 'number', description: 'moves: max sideways move (0 = not allowed). Default 50.' },
+        forward_max_cm: { type: 'number', description: 'moves: max forward / back move (0 = not allowed). Default 50.' },
+        boundary_deg: { type: 'number', description: 'Boundary warning when a centre is closer than this to a hexagram edge. Default 1.' } } }
+    },
+    {
       name: 'photo_sectors_state',
       description: 'Read the open Photo-sectors view after the user calibrated it (traced a wall, added compass points) or ' +
         'tapped an object: calibration, sectors and their x position in the photo, the measured point (degree + hexagram). ' +
@@ -2654,6 +2684,40 @@
       }
       return st;
     });
+  }
+  function toolYangOpenings(input) {
+    var Y = window.XKDGYangOpenings; if (!Y) return { error: 'The Yang openings tool is not loaded.' };
+    var H = _findHouse(input.house_name); if (!H) return { error: 'House not found' + (input.house_name ? ': ' + input.house_name : '') + '. Use list_houses.' };
+    var a = input.action || 'status', thr = isFinite(+input.boundary_deg) && input.boundary_deg !== '' && input.boundary_deg != null ? +input.boundary_deg : undefined;
+    if (a === 'add_window') {
+      var w = Y.addWindow(H.key, H.idx, input.opening, input.openable !== false);
+      return w.error ? w : Object.assign(w, { status: Y.status(H.key, H.idx, input.source, thr) });
+    }
+    if (a === 'save_measure') {
+      var v = {};
+      if (input.centre_deg != null) v.c = input.centre_deg;
+      if (input.left_deg != null) v.l = input.left_deg;
+      if (input.right_deg != null) v.r = input.right_deg;
+      if (input.distance_m != null) v.dist = input.distance_m;
+      v.photo = 'given to the assistant';
+      var ops = Y.openingsFor(H.key, H.idx, input.source);
+      var op = ops.filter(function (o) { return o.name.toLowerCase() === String(input.opening || '').toLowerCase(); })[0] ||
+               ops.filter(function (o) { return o.name.toLowerCase().indexOf(String(input.opening || '').toLowerCase()) >= 0; })[0];
+      if (!op) return { error: 'Opening not found. Openings for this source: ' + ops.map(function (o) { return o.name; }).join(', ') + ' (add a window with action add_window).' };
+      var r = Y.saveMeasure(H.key, H.idx, input.source, op.oid, v);
+      return r.error ? r : Object.assign(r, { status: Y.status(H.key, H.idx, input.source, thr) });
+    }
+    if (a === 'moves') {
+      var o = { thr: thr, targets: input.targets };
+      if (input.side_max_cm != null) { o.sideMax = +input.side_max_cm; o.sideOn = +input.side_max_cm > 0; }
+      if (input.forward_max_cm != null) { o.fwdMax = +input.forward_max_cm; o.fwdOn = +input.forward_max_cm > 0; }
+      var R = Y.moves(H.key, H.idx, input.source, o);
+      if (R.options) R.options = R.options.map(function (x) { return { label: x.label, move: x.move, right_cm: Math.round(x.s * 100), forward_cm: Math.round(x.t * 100), note: x.note || undefined,
+        openings: x.rows.map(function (q) { return q.name + ' ' + q.deg + ' deg hex ' + q.hex + ' ' + (q.status === 'ok' ? 'ok' : q.status === 'edge' ? 'boundary ' + q.margin + ' deg' : 'NOT good') + (q.target ? (q.onTarget ? ' (target ' + q.target + ')' : ' (target ' + q.target + ' missed)') : ''); }) }; });
+      R.note = 'right/forward as seen from the facing point looking along the facing; negative = left/back. The user chooses the option in the 🪟 Yang openings panel.';
+      return R;
+    }
+    return Y.status(H.key, H.idx, input.source, thr);
   }
   function toolPhotoSectorsState(input) {
     if (!window.XKDGPhotoSectors || !XKDGPhotoSectors.isOpen || !XKDGPhotoSectors.isOpen()) return { error: 'The Photo-sectors view is not open.' };
@@ -3392,6 +3456,7 @@
         return _ps;
       }
       if (name === 'photo_sectors_state') return toolPhotoSectorsState(input || {});
+      if (name === 'yang_openings') return toolYangOpenings(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});
       if (name === 'list_source') return toolListSource();
@@ -7167,6 +7232,22 @@
     return { branch: hG + hZ, day: dG + dZ, hex: H.hex,
              via: 'water hex ' + W.hex + '↔hour ' + hG + hZ + ' (hex ' + H.hex + '): ' + wh.join(', ') + ' · hour↔day ' + dG + dZ + ': ' + (hd.length ? hd.join(', ') : sk) };
   }
+  // Session 37 (🪟 Yang openings): the hours of one civil day that pass the daily fountain rule
+  // (water hex ↔ hour, hour ↔ day or Sheng In / Ke In) for ANY water degree. Solar times only.
+  try {
+    window.XKDGFountainHours = function (waterDeg, iso) {
+      if (typeof window.fsSlotForDeg !== 'function' || typeof Solar === 'undefined') return null;
+      var ws = window.fsSlotForDeg(+waterDeg) || {}, wj = (typeof _xkdgJzOfHex === 'function' ? _xkdgJzOfHex(ws.hexNum) : null) || {};
+      var W = { hex: ws.hexNum, qi: ws.qi, yun: ws.yun, stem: wj.stem, branch: wj.branch }, out = [];
+      var NM = ['Zi', 'Chou', 'Yin', 'Mao', 'Chen', 'Si', 'Wu', 'Wei', 'Shen', 'You', 'Xu', 'Hai'];
+      for (var k = 0; k < 12; k++) {
+        var r = null; try { r = _ftHour(iso, k, W); } catch (e) {}
+        if (r) out.push({ k: k, name: NM[k], branch: r.branch, via: r.via,
+                          solar: String((2 * k + 23) % 24).padStart(2, '0') + '–' + String((2 * k + 1) % 24).padStart(2, '0') });
+      }
+      return out;
+    };
+  } catch (e) {}
   async function _programFountain(rh, cfg, input, jie) {
     var F = rh.cfg.fountain, lon = rh.cfg.lon, utc = rh.cfg.utc;
     if (typeof window.fsSlotForDeg !== 'function' || typeof Solar === 'undefined') return { error: 'The Feng Shui tables are not available on this page.' };
