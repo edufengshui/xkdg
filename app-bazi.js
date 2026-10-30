@@ -1275,6 +1275,9 @@ window._pvSel = window._pvSel || {};        // selected remedy hexagram per pers
 window._pvWho = window._pvWho || null;       // 'A' | 'B' | 'both'
 function xkdgPVPick(who, v) { window._pvSel[who] = String(v); renderPersonView(); }
 function xkdgPVWho(w) { window._pvWho = w; renderPersonView(); }
+function xkdgPVHX(who) { (window._pvHX = window._pvHX || {})[who] = !window._pvHX[who]; renderPersonView(); }
+// tap a cure hexagram: show it as the 5th column at the top (with its explanation) and scroll there
+function xkdgPVPickTop(who, hex) { window._pvSel[who] = 'h' + hex; renderPersonView(); try { document.getElementById('person-view').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
 function xkdgPVMut(who, k) { (window._pvMut = window._pvMut || {})[who] = k; renderPersonView(); }
 
 // ── 👤 PERSON tab (session 33, Edu): for each chosen person, the four real pillars with the
@@ -1346,6 +1349,8 @@ function renderPersonView() {
         if (cur) h += '<td style="border:0;width:14px;padding:0;font-size:18px;color:#7e57c2;text-align:center;vertical-align:middle;">+</td>'
                    + col(selDate ? fmtD(selDate.date) : (cur.kind === 'family' ? '★ Family' : 'Remedy'), cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
         h += '</tr></table></div>';
+        const EXPL = '\u0001EXPL\u0001';   // session 36: the explanation of the 5th column sits right under the picture
+        h += EXPL;
         // ── 🔍 XKDG analysis of the natal chart: settings per dimension (session 35, Edu) ──
         try {
             const LN = { add: 'Adding', hetu: 'Hetu', eq: 'equal' };
@@ -1365,16 +1370,37 @@ function renderPersonView() {
                 });
                 an += '</div>';
             });
+            // Session 36 (Edu): the isolated pillars go INSIDE the analysis box, in red
+            if (g && g.any) Object.values(g.dims).forEach(d => {
+                if (!d.isolated.length) return;
+                an += '<div style="margin-top:4px;color:#c62828;font-weight:bold;">' + d.label + ': ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated.</div>';
+            });
             if (an) h += '<div style="margin:4px 0 6px;padding:6px 8px;border-radius:8px;background:#eef2ff;font-size:13px;"><b>🔍 XKDG analysis</b>' + an + '</div>';
         } catch (eAn) {}
         if (!g || !g.any) {
-            h += '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
+            h = h.replace(EXPL, '') + '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
             return;
         }
-        Object.values(g.dims).forEach(d => {
-            if (!d.isolated.length) return;
-            h += '<div style="font-size:13px;"><b>' + d.label + '</b>: ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated.</div>';
-        });
+        // 🧬 Session 36 (Edu): a tab with ALL the cure hexagrams; tapping one puts it next to the
+        // birth chart at the top (5th column) with the explanation below it.
+        const tabBtn = (on, col, lab, fn) => '<button onclick="' + fn + '" style="margin:5px 6px 0 0;padding:4px 12px;border-radius:14px;font-weight:bold;font-size:12px;cursor:pointer;border:2px solid ' + col + ';'
+            + (on ? 'background:' + col + ';color:#fff;' : 'background:#fff;color:' + col + ';') + '">' + lab + '</button>';
+        window._pvHX = window._pvHX || {};
+        h += tabBtn(window._pvHX[pp.who], '#6a1b9a', '🧬 Cure hexagrams (' + opts.length + ')', 'xkdgPVHX(\'' + pp.who + '\')');
+        if (window._pvHX[pp.who]) {
+            const card = x => { const on = 'h' + x.hex === sel, fam = x.kind === 'family';
+                return '<button onclick="xkdgPVPickTop(\'' + pp.who + '\',' + x.hex + ')" title="Show it next to the birth chart" style="display:inline-block;vertical-align:top;margin:4px 6px 0 0;padding:4px 6px;width:74px;border-radius:10px;cursor:pointer;text-align:center;'
+                    + (on ? 'border:3px solid #6a1b9a;background:#f3e5f5;' : 'border:1px solid ' + (fam ? '#9575cd;background:#ede7f6;' : '#9ccc65;background:#f1f8e9;')) + '">'
+                    + '<div style="font-size:11px;font-weight:bold;color:' + (fam ? '#4a148c' : '#1b5e20') + ';">' + (x.harmonises ? '✦ ' : '') + (fam ? '★ ' : '') + 'hex ' + x.hex + '</div>'
+                    + '<div style="color:#c62828;font-weight:bold;font-size:13px;">' + x.qi + '</div><div style="height:46px;overflow:hidden;"><div style="transform:scale(.8);transform-origin:top center;">' + xkdgHexSvg(x.hex) + '</div></div>'
+                    + '<div style="color:#1565c0;font-weight:bold;font-size:13px;">' + x.yun + '</div></button>'; };
+            const mH = opts.filter(x => x.kind === 'main'), fH = opts.filter(x => x.kind === 'family');
+            h += '<div style="margin-top:6px;border:2px solid #6a1b9a;border-radius:10px;padding:6px 8px;background:#fcf8ff;font-size:12px;">'
+               + '<div style="color:#555;">Tap a hexagram: it appears next to the birth chart, with the explanation.</div>'
+               + '<div style="margin-top:4px;font-weight:bold;color:#1b5e20;">Remedy (' + mH.length + ')</div>' + (mH.length ? mH.map(card).join('') : '<div style="color:#888;">none</div>')
+               + (fH.length ? '<div style="margin-top:6px;font-weight:bold;color:#4a148c;">★ ' + ((R && R.families) || []).join(', ') + ' family alternative (' + fH.length + ')</div>' + fH.map(card).join('') : '')
+               + '</div>';
+        }
         // 📆 Session 36 (Edu): cure years and months, past and future
         h += '<button onclick="xkdgPVYM(\'' + pp.who + '\')" style="margin-top:5px;padding:4px 12px;border-radius:14px;font-weight:bold;font-size:12px;cursor:pointer;border:2px solid #43a047;'
            + (window._pvYM[pp.who] ? 'background:#43a047;color:#fff;' : 'background:#fff;color:#1b5e20;') + '">📆 Cure years & months</button>';
@@ -1435,16 +1461,18 @@ function renderPersonView() {
             out.push('<b>Why it helps</b>: with this hexagram next to the natal chart, no pillar is left alone — all four communicate in both dimensions.');
             return out.map(x => '<div style="margin-top:3px;">' + x + '</div>').join('');
         };
+        let ex = '';
         if (cur) {
-            h += '<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:#f3e5f5;font-size:13px;">'
+            ex += '<div style="margin:2px 0 6px;padding:6px 8px;border-radius:8px;background:#f3e5f5;font-size:13px;">'
                + (selDate ? '<b>📅 ' + fmtD(selDate.date) + '</b> · day ' + selDate.day + ' · year ' + selDate.year + ' — the remedy is the <b>' + selDate.from + '</b>: ' : '')
                + '<b>' + (cur.kind === 'family' ? '★ ' : '') + 'hexagram ' + cur.hex + '</b> (Element ' + cur.qi + ', Period ' + cur.yun + ')'
                + explain(cur)
                + (selDate ? '<div style="margin-top:4px;"><b>Favourable hours</b> (tap to open):<br>' + hourBtns(selDate) + '</div>' : '');
             const sec = opts.filter(x => x.hex === cur.hex)[0];
-            if (sec) { const c2 = (sec.from + 2.8125) % 360; h += '<div style="margin-top:4px;">🧭 The same hexagram in Feng Shui: <b>' + W8(c2) + ' · ' + sec.from + '–' + sec.to + '°</b> (' + (sec.zheng_shen ? 'Zheng Shen' : 'Ling Shen') + ')</div>'; }
-            h += '</div>';
+            if (sec) { const c2 = (sec.from + 2.8125) % 360; ex += '<div style="margin-top:4px;">🧭 The same hexagram in Feng Shui: <b>' + W8(c2) + ' · ' + sec.from + '–' + sec.to + '°</b> (' + (sec.zheng_shen ? 'Zheng Shen' : 'Ling Shen') + ')</div>'; }
+            ex += '</div>';
         }
+        h = h.replace(EXPL, ex);
         // ── 🤝 cure from the other person's chart (Both only) — Session 35 (Edu): a YELLOW box with
         // its own picture (this person's 4 pillars + the other person's pillar) and the explanation.
         if (other) {
