@@ -1,0 +1,197 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;width:1920px;height:1080px;overflow:hidden;}
+  body{font-family:Inter,'DejaVu Sans',sans-serif;background:#fbf7ef;color:#2a2233;}
+  #root{position:absolute;inset:0;}
+  .abs{position:absolute;}
+  .step{font-size:26px;letter-spacing:4px;font-weight:700;color:#c48a00;text-transform:uppercase;}
+  .title{font-size:58px;font-weight:800;color:#4a148c;line-height:1.1;margin-top:10px;}
+  .body{font-size:34px;line-height:1.45;color:#3a3045;margin-top:22px;}
+  .body b{color:#4a148c;}
+  .li{opacity:0;transform:translateY(16px);}
+  .mag{color:#e65100;font-weight:800;}
+</style></head>
+<body><div id="root"></div>
+<script>
+const W = 1920, H = 1080;
+const root = document.getElementById('root');
+const cl = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ez = x => { x = cl(x); return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; };
+const ap = (t, t0, d = .6) => ez((t - t0) / d);
+const lerp = (a, b, k) => a + (b - a) * k;
+const el = (tag, css, html, parent) => { const e = document.createElement(tag); if (css) e.style.cssText = css; if (html != null) e.innerHTML = html; (parent || root).appendChild(e); return e; };
+const STEPS = 8;
+const META = __META__;
+
+function chrome() {
+  const idx = (window._curIdx || 1) - 1;
+  el('div', 'left:60px;top:1030px;width:1800px;height:8px;border-radius:4px;background:#ece3d3;');
+  el('div', 'left:60px;top:1030px;height:8px;border-radius:4px;background:linear-gradient(90deg,#f9a825,#4a148c);width:' + (1800 * (idx + 1) / STEPS) + 'px;');
+  el('div', 'left:1000px;width:860px;text-align:right;top:986px;font-size:22px;color:#9a8c78;font-weight:600;', '🔌 XKDG App · Aquarium plug (Shelly)');
+  [...root.children].forEach(c => c.classList.add('abs'));
+}
+function caption(x, y, w, step, title, lines) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;'); box.classList.add('abs');
+  if (step) el('div', '', step, box).className = 'step';
+  el('div', '', title, box).className = 'title';
+  const body = el('div', '', '', box); body.className = 'body';
+  const items = lines.map(l => { const d = el('div', 'margin-bottom:14px;', l[1], body); d.className = 'li'; return { d, t0: l[0] }; });
+  return { box, update(t) { box.style.opacity = ap(t, 0, .5); items.forEach(it => { const a = ap(t, it.t0, .5); it.d.style.opacity = a; it.d.style.transform = 'translateY(' + (16 * (1 - a)) + 'px)'; }); } };
+}
+function fadeIO(t, dur) { root.style.opacity = Math.min(ap(t, 0, .45), 1 - ap(t, dur - .45, .45)); }
+
+// ── phone with app screenshots (824 × 1760 px = 412-wide page at 2×) ──
+const IMGW = 824, IMGH = 1760;
+function phone(x0) {
+  x0 = x0 == null ? 150 : x0;
+  const fr = el('div', 'left:' + x0 + 'px;top:46px;width:600px;height:960px;border-radius:64px;background:#1d1b26;box-shadow:0 30px 60px rgba(60,30,90,.25);');
+  const scr = el('div', 'left:' + (x0 + 18) + 'px;top:64px;width:564px;height:924px;border-radius:48px;overflow:hidden;background:#fff;');
+  const S = 564 / IMGW, imgs = {};
+  const ripple = el('div', 'width:70px;height:70px;border-radius:50%;border:6px solid #f9a825;background:rgba(249,168,37,.25);opacity:0;', '', scr);
+  const hl = el('div', 'border:5px solid #f9a825;border-radius:14px;opacity:0;', '', scr);
+  [fr, scr].forEach(c => c.classList.add('abs')); ripple.classList.add('abs'); hl.classList.add('abs');
+  return {
+    show(name, opacity, ty) {
+      if (!imgs[name]) { const i = el('img', 'left:0;top:0;width:' + (IMGW * S) + 'px;opacity:0;', null, scr); i.src = 'shots/' + name + '.jpg'; i.classList.add('abs'); scr.insertBefore(i, ripple); imgs[name] = i; }
+      imgs[name].style.opacity = opacity; imgs[name].style.transform = 'translateY(' + (-(ty || 0) * S) + 'px)';
+    },
+    tap(cx, cy, a) { const x = cx * 2 * S, y = cy * 2 * S; ripple.style.opacity = a > 0 && a < 1 ? Math.sin(a * Math.PI) : 0; ripple.style.left = (x - 35) + 'px'; ripple.style.top = (y - 35) + 'px'; ripple.style.transform = 'scale(' + (.4 + .9 * a) + ')'; },
+    highlight(x0, y0, x1, y1, a) { hl.style.opacity = a; hl.style.left = (x0 * S - 6) + 'px'; hl.style.top = (y0 * S - 6) + 'px'; hl.style.width = ((x1 - x0) * S + 2) + 'px'; hl.style.height = ((y1 - y0) * S + 2) + 'px'; }
+  };
+}
+function callout(x, y, w) {
+  const box = el('div', 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;border-radius:22px;overflow:hidden;background:#fff;border:4px solid #f9a825;box-shadow:0 16px 36px rgba(60,30,90,.18);opacity:0;'); box.classList.add('abs');
+  return { set(name, x0, y0, x1, y1, a) { const s = w / (x1 - x0); box.style.height = ((y1 - y0) * s) + 'px'; box.style.backgroundImage = 'url(shots/' + name + '.jpg)'; box.style.backgroundSize = (IMGW * s) + 'px ' + (IMGH * s) + 'px'; box.style.backgroundPosition = (-x0 * s) + 'px ' + (-y0 * s) + 'px'; box.style.opacity = a; box.style.transform = 'scale(' + (.96 + .04 * a) + ')'; } };
+}
+
+
+// ── simplified Shelly-app phone (generic drawing, not the real app) ──
+function shellyPhone(x0, screens) {
+  const fr = el('div', 'left:' + x0 + 'px;top:46px;width:600px;height:960px;border-radius:64px;background:#1d1b26;box-shadow:0 30px 60px rgba(60,30,90,.25);'); fr.classList.add('abs');
+  const scr = el('div', 'left:' + (x0 + 18) + 'px;top:64px;width:564px;height:924px;border-radius:48px;overflow:hidden;background:#f4f6f8;'); scr.classList.add('abs');
+  const tag = el('div', 'left:' + x0 + 'px;top:8px;width:600px;text-align:center;font-size:22px;color:#9a8c78;', 'Shelly app — simplified drawing'); tag.classList.add('abs');
+  const layers = screens.map(h => { const d = el('div', 'left:0;top:0;width:564px;height:924px;opacity:0;font-family:Inter,DejaVu Sans,sans-serif;', h, scr); d.classList.add('abs'); return d; });
+  const hl = el('div', 'border:6px solid #f9a825;border-radius:16px;opacity:0;', '', scr); hl.classList.add('abs');
+  return { show(i, a) { layers[i].style.opacity = a; }, hl(x, y, w, h, a) { Object.assign(hl.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', opacity: a }); } };
+}
+const bar = t => '<div style="height:150px;background:#1e88e5;color:#fff;font-size:34px;font-weight:700;display:flex;align-items:flex-end;padding:0 34px 26px;box-sizing:border-box;">' + t + '</div>';
+const row = (t, sub, extra) => '<div style="background:#fff;margin:0 22px 14px;border-radius:16px;padding:22px 26px;font-size:28px;color:#263238;' + (extra || '') + '">' + t + (sub ? '<div style="font-size:22px;color:#78909c;margin-top:6px;">' + sub + '</div>' : '') + '</div>';
+const SH_PROFILE = bar('👤 User settings') + '<div style="height:24px"></div>' + row('Account') + row('Notifications') + row('Authorization cloud key', '', 'font-weight:700;') + row('Language') + row('About');
+const SH_KEY = bar('← Authorization cloud key') + '<div style="height:24px"></div>' +
+  row('Get key', '', 'background:#1e88e5;color:#fff;text-align:center;font-weight:700;') +
+  row('<b>Key</b>', '<span style="font-family:monospace;font-size:21px;color:#263238;word-break:break-all;">MTIzNGFiY2RlZjU2Nzg5MDEyMzQ1Njc4OWFiY2RlZmdo</span> &nbsp;📋') +
+  row('<b>Server</b>', '<span style="font-family:monospace;font-size:22px;color:#263238;">https://shelly-123-eu.shelly.cloud</span>');
+const SH_DEV = bar('← Aquarium plug') + '<div style="text-align:center;font-size:120px;margin:40px 0 10px;">🔌</div><div style="text-align:center;font-size:30px;color:#263238;margin-bottom:30px;">ON · online</div>' + row('⚙️ Settings', '', 'font-weight:700;');
+const SH_INFO = bar('← Device information') + '<div style="height:24px"></div>' + row('Device name', 'Aquarium plug') + row('<b>Device ID</b>', '<span style="font-family:monospace;font-size:26px;color:#263238;">a0b765c3d2e4</span> &nbsp;📋') + row('Firmware', '1.x') + row('Wi-Fi', 'connected');
+
+const SCENES = [
+  { dur: 5, make() {   // title
+      el('div', 'left:0;top:0;width:1920px;height:1080px;background:radial-gradient(circle at 30% 30%,#e3f2fd,#fbf7ef 60%);');
+      const ic = el('div', 'left:860px;top:150px;font-size:170px;', '🔌');
+      const t1 = el('div', 'left:0;width:1920px;top:430px;text-align:center;font-size:84px;font-weight:800;color:#4a148c;', 'Connect your aquarium plug');
+      const t2 = el('div', 'left:0;width:1920px;top:600px;text-align:center;font-size:38px;color:#7b6a55;font-weight:600;', 'XKDG App · 🔌 Aquarium plug (Shelly) · your own Shelly account');
+      const t3 = el('div', 'left:0;width:1920px;top:700px;text-align:center;font-size:28px;color:#a8977f;', 'Feng Shui Advisor · Master Eduardo Hess');
+      [...root.children].forEach(c => c.classList.add('abs'));
+      return t => { ic.style.transform = 'translateY(' + (30 * (1 - ap(t, 0, 1.2))) + 'px)'; t1.style.opacity = ap(t, .4); t2.style.opacity = ap(t, 1.1); t3.style.opacity = ap(t, 1.6); fadeIO(t, 5); };
+  } },
+  { dur: 13, make() {   // where to find it
+      chrome();
+      const ph = phone();
+      const c = caption(860, 110, 960, 'Where to find it', 'Open 🔌 Aquarium plug', [
+        [0.4, 'Feng Shui → <b>🏠 HOUSE PROFILES</b>: on your house, tap its <b>☰</b>…'],
+        [3.6, '…then <b>🔌 Aquarium plug (Shelly)</b>.'],
+        [7.0, 'The window asks <b>three values from your Shelly app</b>: server, key and Device ID.']]);
+      return t => { c.update(t);
+        const s0 = 1 - ap(t, 3.0, .4), s1 = ap(t, 3.0, .4) * (1 - ap(t, 6.4, .4)), s2 = ap(t, 6.4, .4);
+        ph.show('c0', s0); ph.show('c1', s1); ph.show('c2', s2);
+        if (t < 3.0) ph.tap(META.c0.tap.x, META.c0.tap.y, cl((t - 1.6) / .9));
+        else if (t < 6.4) ph.tap(META.c1.tap.x, META.c1.tap.y, cl((t - 5.0) / .9)); else ph.tap(0, 0, 0);
+        ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 13); };
+  } },
+  { dur: 14, make() {   // Shelly app: key + server
+      chrome();
+      const sp = shellyPhone(150, [SH_PROFILE, SH_KEY]);
+      const c = caption(860, 110, 960, 'In the Shelly app', 'Key and server', [
+        [0.4, 'Tap the <b>profile</b> icon (User settings) → <b>Authorization cloud key</b>.'],
+        [4.2, 'Tap <b>Get key</b> and <b>copy the key</b>.'],
+        [7.4, 'Note the <b>server</b> on the same page: <b>shelly-…-eu.shelly.cloud</b>.'],
+        [10.4, '<span class="mag">🔒 The key opens your Shelly account: paste it only into the XKDG app.</span>']]);
+      return t => { c.update(t);
+        const a = 1 - ap(t, 3.6, .4); sp.show(0, a); sp.show(1, 1 - a);
+        if (t < 3.6) sp.hl(16, 336, 532, 82, ap(t, 1.4) * a);
+        else if (t < 7.2) sp.hl(16, 286, 532, 160, ap(t, 4.6) * (1 - ap(t, 7.0, .3)));
+        else sp.hl(16, 440, 532, 136, ap(t, 7.6));
+        fadeIO(t, 14); };
+  } },
+  { dur: 10, make() {   // Shelly app: Device ID
+      chrome();
+      const sp = shellyPhone(150, [SH_DEV, SH_INFO]);
+      const c = caption(860, 110, 960, 'In the Shelly app', 'The Device ID', [
+        [0.4, 'Open the <b>plug</b> of the aquarium light → <b>Settings</b>…'],
+        [3.6, '…→ <b>Device information</b>: copy the <b>Device ID</b> (usually 12 letters and digits).'],
+        [6.8, 'The menus may look a little different: look for <b>Authorization cloud key</b> and <b>Device ID</b>.']]);
+      return t => { c.update(t);
+        const a = 1 - ap(t, 3.0, .4); sp.show(0, a); sp.show(1, 1 - a);
+        if (t < 3.0) sp.hl(16, 412, 532, 82, ap(t, 1.2) * a); else sp.hl(16, 288, 532, 124, ap(t, 3.8));
+        fadeIO(t, 10); };
+  } },
+  { dur: 15, make() {   // paste into XKDG
+      chrome();
+      const ph = phone();
+      const c = caption(860, 90, 960, 'In XKDG', 'Paste the three values', [
+        [0.4, '<b>Server</b>, <b>Authorization cloud key</b>, <b>Device ID</b>.'],
+        [4.4, 'Check the <b>longitude of the house</b> and <b>UTC (winter)</b>: the hours are computed in the True Solar Time of the house.'],
+        [8.6, 'The longitude comes from your GPS: if you are not at the house, type the house\'s own (Rome 12.5, Vienna 16.4).'],
+        [12.0, 'Tap <b>🔌 Connect</b>: the server checks your <b>licence</b> and reads the plug.']]);
+      const F = k => META['f_' + k];
+      return t => { c.update(t); ph.show('c3', 1);
+        const hb = (f, a) => ph.highlight((f.x - f.w / 2) * 2 - 6, (f.y - f.h / 2) * 2 - 6, (f.x + f.w / 2) * 2 + 6, (f.y + f.h / 2) * 2 + 6, a);
+        if (t < 1.8) hb(F('host'), ap(t, .8)); else if (t < 2.8) hb(F('key'), 1); else if (t < 4.2) hb(F('id'), 1);
+        else if (t < 11.8) { const f0 = F('lon'), f1 = F('utc'); ph.highlight((f0.x - f0.w / 2) * 2 - 6, (f0.y - f0.h / 2) * 2 - 6, (f1.x + f1.w / 2) * 2 + 6, (f1.y + f1.h / 2) * 2 + 6, 1); }
+        else ph.highlight(0, 0, 0, 0, 0);
+        ph.tap(META.c3.tap.x, META.c3.tap.y, cl((t - 13.0) / .9)); fadeIO(t, 15); };
+  } },
+  { dur: 11, make() {   // connected + test
+      chrome();
+      const ph = phone();
+      const bulb = el('div', 'left:1500px;top:640px;font-size:180px;filter:grayscale(1);opacity:.5;', '💡'); bulb.classList.add('abs');
+      const c = caption(860, 110, 960, 'Test it', '✅ Connected', [
+        [0.4, 'The plug is now linked to <b>this house</b>.'],
+        [2.6, 'Tap <b>💡 Test ON</b>: the aquarium light must switch on. Then <b>⏻ Test OFF</b>.'],
+        [7.0, 'Each house has its own plug — up to <b>5 per licence</b>.']]);
+      return t => { c.update(t);
+        const a = ap(t, 4.4, .4); ph.show('c4', 1 - a); ph.show('c5', a);
+        ph.tap(META.c4.tap.x, META.c4.tap.y, cl((t - 3.4) / .9)); ph.highlight(0, 0, 0, 0, 0);
+        bulb.style.filter = 'grayscale(' + (1 - a) + ') drop-shadow(0 0 ' + (40 * a) + 'px #ffd54f)'; bulb.style.opacity = .5 + .5 * a;
+        fadeIO(t, 11); };
+  } },
+  { dur: 15, make() {   // program with the assistant
+      chrome();
+      const ph = phone();
+      const c = caption(860, 90, 960, 'Program the light', 'Ask the 💬 assistant', [
+        [0.4, '<i>"Program the aquarium of Demo flat"</i> — your house name.'],
+        [3.8, 'It shows the <b>plan first</b>: when the light switches on each day, and until when.'],
+        [7.6, '<b>Nothing reaches the plug</b> until you tap <b>Procedi</b>. Then the XKDG server switches it, even with your phone off.'],
+        [11.6, 'The plan runs to the start of the <b>next solar month</b>: then ask again.']]);
+      return t => { c.update(t);
+        const a = ap(t, 2.6, .4); ph.show('t0', 1 - a); ph.show('t1', a);
+        if (t < 2.6) ph.tap(META.t0.tap.x, META.t0.tap.y, cl((t - 1.4) / .9)); else ph.tap(META.t1.tap.x, META.t1.tap.y, cl((t - 9.4) / .9));
+        ph.highlight(0, 0, 0, 0, 0); fadeIO(t, 15); };
+  } },
+  { dur: 11, make() {   // tips + end
+      chrome();
+      const c = caption(120, 110, 1680, 'Good to know', 'Tips', [
+        [0.6, '🐟 Only the <b>light</b> on the plug: pump, filter and heater stay on a normal socket.'],
+        [1.8, '✏️ Do not <b>rename the house</b> after connecting: connect the plug again if you do.'],
+        [3.0, '🗑 <b>Disconnect the plug</b> in the same window deletes it, its key and its plan from the server.'],
+        [4.2, '⚠️ A switch that failed is retried for 20 minutes; the assistant tells you if it never happened.']]);
+      const end = el('div', 'left:120px;top:820px;width:1680px;font-size:30px;color:#7b6a55;opacity:0;', 'Full guide: <b style="color:#4a148c;">fsadvisor.org/xkdg</b> → 📘 Guides → 🔌 Aquarium plug (Shelly)<br><span style="font-size:26px;color:#a8977f;">Feng Shui Advisor · Master Eduardo Hess</span>'); end.classList.add('abs');
+      return t => { c.update(t); end.style.opacity = ap(t, 5.6); fadeIO(t, 11); };
+  } }
+];
+let upd = null;
+window.setup = i => { window._curIdx = i; root.innerHTML = ''; root.style.opacity = 1; upd = SCENES[i].make(); return SCENES[i].dur; };
+window.draw = t => upd(t);
+window.durations = SCENES.map(s => s.dur);
+</script></body></html>
