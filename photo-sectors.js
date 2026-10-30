@@ -506,7 +506,8 @@
         '<b>📷 Photo sectors — ' + esc(S.house.name || '') + '</b>' +
         '<button onclick="XKDGPhotoSectors.close()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button></div>' +
       '<div style="padding:10px 12px;font-size:12px;color:#333;">' +
-        '<div style="margin-bottom:6px;line-height:1.5;">Stand (or sit) at the facing point — bed head, door centre — and take a photo <b>straight ahead</b>, phone upright, not tilted. Use the wide lens (0.5×) to see more.</div>' +
+        '<div style="margin-bottom:6px;line-height:1.5;">Stand (or sit) at the facing point — bed head, door centre — and take a photo <b>straight ahead</b>, phone upright, not tilted. Use the wide lens (0.5×) to see more.' +
+        '<div style="margin-top:4px;padding:5px 8px;border-radius:6px;background:#fff3e0;border:1px solid #ffb74d;"><b>⚠ Final check of the exact spot:</b> near the edges of a wide photo the boxes can be off by 2–3° (half a hexagram). Take a <b>second photo from the same point, turned toward the water spot</b>, with the <b>main lens 1×</b>; type its direction in Photo centre, calibrate with 🧱 Align to a wall and check that the object is inside the box.</div></div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">' +
           '<label style="' + btn + 'background:#2e7d32;color:#fff;">📷 Photo<input type="file" accept="image/*" style="display:none" onchange="XKDGPhotoSectors._file(this.files[0])"></label>' +
           '<span>Facing: <select onchange="XKDGPhotoSectors._facing(this.value)" style="font-size:12px;">' + opts + '<option value="">custom…</option></select> ' +
