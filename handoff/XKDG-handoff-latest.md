@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 36, 2026-10-29)
+# XKDG — Handoff (session 36, 2026-10-29/30)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -60,6 +60,9 @@ Next session: read this file first.
 - Photo sectors: 🔍 MAGNIFIER for 🧱 Align to a wall / 🎯 compass points (Edu could not zoom on the phone): pointerdown shows a 3× loupe above the finger with a red cross, the point is set where the finger is lifted (`loupeDown/Move/Up`); canvas touch-action none only in those modes; hint text explains it.
 - Photo sectors (Edu): wide-photo edges can be off 2–3° (Edu's fountain A looked on 46 in the wide photo, the 1× photo toward the window showed it in hex 6). Rule now written in the dialog intro, the guide (Part 1 step 6 warning) and the 📖 popup: final check = second photo from the same point toward the water, main lens 1×, Photo centre ≈ its direction, Align to a wall.
 - Photo sectors: **📦 Save to Dropbox** (Edu) next to Save/share: uploads the picture to the Dropbox App folder `/House profiles/<house>/<facing name> facing/<YYYY-MM-DD HH-MM> - centre <deg>.jpg` (facing name = the Facing source label: door name, Bed …); dropbox-sync.js exports `connected()`, `uploadFile(path, blob)` (mode add + autorename, non-ASCII escaped), `autoSave(parts, file, blob)` (no-op if not connected, toast), `stamp()`, `cleanName()`. Every image save also goes to Dropbox when connected: Photo sectors (⬇ Save + 📦 button), Floor Plan Flying Stars → House profiles/<house>/Floor plans, DLR floor plan → …/Da Liu Ren, Room photo → …/Rooms/<room>. Paths live in the App folder (Dropbox/Apps/XKDG) — a root like 'FS Advisor/XKDG' needs a Full-Dropbox app (asked Edu).
+
+## NEXT (Edu, session 36): Yang openings optimizer + living-space guide
+See handoff/yang-openings-plan.md — Edu chose guide + app tool; conflicts decided by the user case by case; windows only if openable. Build it in session 37.
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
