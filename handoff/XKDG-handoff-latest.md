@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 36, 2026-10-29/30)
+# XKDG — Handoff (session 37, 2026-10-30)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -61,8 +61,15 @@ Next session: read this file first.
 - Photo sectors (Edu): wide-photo edges can be off 2–3° (Edu's fountain A looked on 46 in the wide photo, the 1× photo toward the window showed it in hex 6). Rule now written in the dialog intro, the guide (Part 1 step 6 warning) and the 📖 popup: final check = second photo from the same point toward the water, main lens 1×, Photo centre ≈ its direction, Align to a wall.
 - Photo sectors: **📦 Save to Dropbox** (Edu) next to Save/share: uploads the picture to the Dropbox App folder `/House profiles/<house>/<facing name> facing/<YYYY-MM-DD HH-MM> - centre <deg>.jpg` (facing name = the Facing source label: door name, Bed …); dropbox-sync.js exports `connected()`, `uploadFile(path, blob)` (mode add + autorename, non-ASCII escaped), `autoSave(parts, file, blob)` (no-op if not connected, toast), `stamp()`, `cleanName()`. Every image save also goes to Dropbox when connected: Photo sectors (⬇ Save + 📦 button), Floor Plan Flying Stars → House profiles/<house>/Floor plans, DLR floor plan → …/Da Liu Ren, Room photo → …/Rooms/<room>. Paths live in the App folder (Dropbox/Apps/XKDG) — a root like 'FS Advisor/XKDG' needs a Full-Dropbox app (asked Edu).
 
-## NEXT (Edu, session 36): Yang openings optimizer + living-space guide
-See handoff/yang-openings-plan.md — Edu chose guide + app tool; conflicts decided by the user case by case; windows only if openable. Build it in session 37.
+## Session 37 — 🪟 Yang openings (plan: handoff/yang-openings-plan.md) — BUILT
+- New `yang-openings.js` (loaded after photo-sectors.js), house card ☰ → **🪟 Yang openings** (📖 `yang_openings` in house-menus.js HELP).
+  Data per floor: `f.windows` [{oid,name,openable:true}] (fixed glass refused), doors get `d.oid` lazily, `f.yangMeas["<group>|<label>"]` = {label, group, deg, op:{oid:{c,l,r,dist,at,photo}}, calc, choice}. Source keys = Photo sectors facing labels (House · Doors · Beds (sitting+180) · Desks · Items).
+  Panel: good LS hexagrams (= XKDGPhotoSectors.candidates valid), per opening centre/distance/edges inputs, ✓ / ⚠ boundary (threshold editable, default 1°) / ✗ (ZS, LS beyond ±70°, LS not linked), width vs 5.625°; 📐 move calculator (targets per opening, sideways / forward max cm, 1 cm grid: smallest move ≥ threshold, best centred, exact centring of 2 openings; no common solution → one option per opening, best centred + smallest move); **Choose** saves `choice`; ⛲ good hexagrams without an opening (after the choice) with 🕐 Daily hours (`window.XKDGFountainHours(deg, iso)` exported from ai-chat.js = `_ftHour` for k 0..11, solar labels) and 🔎 Dates to place it (Water section + luopan facing/water).
+- Photo sectors: **🪟 Save as opening** (📍 point → which opening / + new openable window → centre / left / right edge → laser distance). The Facing select now passes "#index" (`S.facingSrc`) so a door and a bed with the same degree stay apart.
+- AI tool `yang_openings` (fengshui area; actions status / save_measure / add_window / moves); prompt rule: no automatic priority, user chooses in the panel. Area regex: finestr|window|aperture|opening|yang.
+- Guide `guides/yang-openings.html` (index linked): 9 steps, tool, Vienna example (facing 266, window 222.9° 3.98 m, door 282.9° 4.12 m → exact 34 cm left + 43 cm forward; smallest 29 left + 23 fwd; sideways only: B1 door on 62 = 53 cm left (window → 229.0° hex 6) / B2 window stays on 46), photo/laser how-to, fountains, AI. Video later.
+- ⚠ The example BEARINGS (222.9 / 282.9) were reconstructed from the session-36 solution (34 + 43 cm, targets centred) — Edu to confirm his measured values.
+- Tested headless (Playwright): tool numbers match the guide; Save as opening; AI tool via XKDGAITools.exec.
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).

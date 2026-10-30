@@ -5685,6 +5685,7 @@ function fsRenderHouseProfiles(){
         _hasPlan ? { label: '🗑 Remove floor plan', act: 'fsHouseRemoveFloorplan(' + _pq + ')', help: 'floorplan_remove', danger: true } : null,
         !_hasPlan ? { label: '📐 Import a floorplan', act: 'fsHouseImportFloorplan(' + _pq + ')', help: 'floorplan_import' } : null,
         { label: '📷 Photo sectors', act: 'if(window.XKDGPhotoSectors)XKDGPhotoSectors.open(' + _pq + ')', help: 'photo_sectors' },
+        { label: '🪟 Yang openings', act: 'if(window.XKDGYangOpenings)XKDGYangOpenings.open(' + _pq + ')', help: 'yang_openings' },
         { label: '📏 Plan builder', act: 'if(window.XKDGPlanBuilder)XKDGPlanBuilder.openForHouse(' + _pq + ')', help: 'plan_builder' },
         { label: '🧊 3D view', act: 'if(window.XKDGPlan3D)XKDGPlan3D.openForHouse(' + _pq + ')', help: 'plan_3d' },
         { label: '📷 Room photo + furniture', act: 'if(window.XKDGRoomPhoto)XKDGRoomPhoto.openForHouse(' + _pq + ')', help: 'room_photo' },

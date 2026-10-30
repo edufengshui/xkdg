@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XKDG App · Yang Openings</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; color: #222; max-width: 760px; margin: 24px auto; padding: 0 16px; line-height: 1.55; font-size: 15px; background: #fff; }
+  h1 { color: #4a148c; font-size: 26px; margin-bottom: 4px; }
+  h2 { color: #2e7d32; font-size: 21px; margin-top: 34px; border-bottom: 2px solid #c8e6c9; padding-bottom: 4px; }
+  h3 { color: #4a148c; font-size: 17px; margin-top: 22px; }
+  .sub { color: #666; margin-top: 0; }
+  ol li, ul li { margin-bottom: 6px; }
+  .tip { background: #fff8e1; border-left: 4px solid #ffb300; padding: 8px 12px; margin: 12px 0; }
+  .warn { background: #ffebee; border-left: 4px solid #c62828; padding: 8px 12px; margin: 12px 0; }
+  .ai { background: #f3e5f5; border-left: 4px solid #8e24aa; padding: 8px 12px; margin: 12px 0; }
+  .ex { background: #e3f2fd; border-left: 4px solid #0277bd; padding: 8px 12px; margin: 12px 0; }
+  .btn { display: inline-block; background: #eee; border: 1px solid #ccc; border-radius: 4px; padding: 0 6px; font-weight: bold; white-space: nowrap; }
+  .f { font-family: "Courier New", monospace; background: #f5f5f5; padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
+  table { border-collapse: collapse; margin: 10px 0; }
+  td, th { border: 1px solid #ddd; padding: 5px 9px; text-align: left; vertical-align: top; }
+  th { background: #f1f8e9; }
+  .ok { color: #2e7d32; font-weight: bold; } .bad { color: #c62828; font-weight: bold; } .edge { color: #ef6c00; font-weight: bold; }
+</style>
+</head>
+<body>
+<p style="margin:0 0 8px;font-size:13px;"><a href="index.html" style="color:#00695c;">← All guides</a></p>
+
+<h1>Organising the living space with the existing yang openings</h1>
+<p class="sub">A step-by-step guide · Feng Shui Research Center · Master Eduardo Hess</p>
+
+<p>Every room already has <b>yang openings</b>: the <b>entrance door</b> of the house, the <b>doors</b> of the rooms and the <b>windows that can be opened</b>. Seen from a facing point — the head of the bed, the centre of a door, the desk — each opening falls on one hexagram. The aim is to place the bed, the desk, the doors and the items so that these existing openings fall on the <b>good Ling Shen water hexagrams</b> of that facing.</p>
+<p>The order is always the same: <b>first</b> try to reach the good hexagrams with the openings that are already there, moving the furniture; <b>only for what cannot be reached</b> add a fountain.</p>
+<ul>
+  <li>A window counts <b>only if it can be opened</b>. Fixed glass is not a yang opening.</li>
+  <li>When two openings ask for different moves, there is <b>no automatic priority</b>: the app shows the options and <b>you decide case by case</b>.</li>
+</ul>
+<p>This guide covers:</p>
+<ol>
+  <li><a href="#part1">The procedure</a> — the 9 steps.</li>
+  <li><a href="#part2">The 🪟 Yang openings tool</a> in the app.</li>
+  <li><a href="#part3">A worked example</a> — a bedroom in Vienna, with the numbers.</li>
+  <li><a href="#part4">Photo and laser: how to measure</a>.</li>
+  <li><a href="#part5">When to add a fountain</a>.</li>
+  <li><a href="#part6">Asking the AI assistant</a>.</li>
+</ol>
+
+<!-- ───────────────────────────── PART 1 ───────────────────────────── -->
+<h2 id="part1">Part 1 — The procedure</h2>
+<ol>
+  <li><b>Facing point.</b> The centre of the bed head, the centre of the door, or the desk. The facing is the Zheng Shen (ZS) of that piece (for the bed: sitting + 180°).</li>
+  <li><b>Good water positions.</b> They are the candidates of <span class="btn">📷 Photo sectors</span>: Ling Shen hexagrams within ±70° of the facing, linked with the facing and with the people.</li>
+  <li><b>Find.</b> From the facing point take a <b>wide photo straight ahead</b> (0.5×): you see roughly where the openings fall.</li>
+  <li><b>Final check.</b> From the <b>same point</b>, take a <b>1× photo turned toward each opening</b>. Type its direction in <b>Photo centre</b>, then <span class="btn">🧱 Align to a wall</span> on a wall running away from you — the direction is where the wall <b>RUNS</b> (for example 266°), not where it faces. Use the magnifier to place the points. The edges of a wide photo can be off by 2–3°.</li>
+  <li><b>Laser.</b> Measure the <b>horizontal distance</b> from the facing point to the <b>centre</b> of each opening: door closed; window closed, aiming at the central mullion.</li>
+  <li><b>Calculate.</b> With the bearing <span class="f">θ</span> and the distance <span class="f">D</span> of an opening, and the facing <span class="f">φ</span>:
+    <ul>
+      <li>forward <span class="f">F = D·cos(θ − φ)</span>, lateral <span class="f">L = D·sin(θ − φ)</span> (positive = to the right, looking along the facing);</li>
+      <li>moving the piece <span class="f">s</span> to the right and <span class="f">t</span> forward gives the new bearing <span class="f">φ + atan2(L − s, F − t)</span>.</li>
+    </ul>
+    Two openings with sideways <b>and</b> forward moves give two equations: there is an exact solution that centres both. With sideways moves only there is often no common solution: the app shows one option per opening, with a <b>boundary</b> warning where a centre ends up near the edge of a hexagram.</li>
+  <li><b>Width.</b> The angular width of an opening, edge to edge, against the <b>5.625°</b> of a hexagram: it shows whether the whole opening can fit in one hexagram. The closer you are to an opening, the wider it looks.</li>
+  <li><b>Fountain.</b> What no opening reaches → a fountain on the chosen Ling Shen hexagram, nozzle inside the box (checked on a 1× photo), switched <b>daily</b> by the fountain rule (water hexagram ↔ hour ↔ day).</li>
+  <li><b>Save</b> each calibrated picture: <span class="btn">📦 Save to Dropbox</span> → <i>House profiles / &lt;house&gt; / &lt;facing&gt; facing</i>.</li>
+</ol>
+
+<!-- ───────────────────────────── PART 2 ───────────────────────────── -->
+<h2 id="part2">Part 2 — The 🪟 Yang openings tool</h2>
+<p><b>Where it is:</b> Feng Shui → 🏠 HOUSE PROFILES → the house card → <span class="btn">☰</span> → <span class="btn">🪟 Yang openings</span>.</p>
+
+<h3>1. Choose the facing source</h3>
+<p>The list is the same as in Photo sectors: <b>House</b> · <b>Doors</b> · <b>Beds</b> · <b>Desks</b> · <b>Items</b> of the active floor. Under it you see the good Ling Shen water hexagrams of that facing, with their degrees.</p>
+
+<h3>2. The openings</h3>
+<p>The <b>doors</b> come from the house card (external and internal; items are not openings; a door is not listed when it is itself the facing source). Add the windows with <span class="btn">+ 🪟 Window</span>: the app asks whether the window can be opened — fixed glass is not saved.</p>
+<p>For each opening type:</p>
+<ul>
+  <li><b>Centre</b> — the bearing of its centre from the facing point;</li>
+  <li><b>Distance</b> — the laser distance to its centre, in metres;</li>
+  <li><b>Edges</b> (optional) — the bearings of its left and right edge, for the width.</li>
+</ul>
+<p>The fastest way is from <span class="btn">📷 Photo sectors</span>: choose the same facing source, calibrate the photo, tap <span class="btn">📍 Measure a point</span> on the opening, then <span class="btn">🪟 Save as opening</span>. The app asks which opening, whether the point is the centre or an edge, and the laser distance.</p>
+<table>
+  <tr><th>Mark</th><th>Meaning</th></tr>
+  <tr><td class="ok">✓ hex N</td><td>The centre is on a good Ling Shen hexagram of this facing.</td></tr>
+  <tr><td class="edge">⚠ hex N</td><td>Good hexagram, but the centre is closer than the boundary value (default 1°) to its edge. You can change the value at the bottom of the list.</td></tr>
+  <tr><td class="bad">✗ hex N</td><td>Not a good hexagram: Zheng Shen, Ling Shen beyond ±70°, or Ling Shen not linked with the facing.</td></tr>
+</table>
+
+<h3>3. 📐 Move calculator</h3>
+<ol>
+  <li>For each measured opening choose its <b>target hexagram</b> (or "not a target"). The app proposes the good hexagram the opening is on, or the nearest one.</li>
+  <li>Say how the piece may move: <b>sideways</b> (max cm) and/or <b>forward / back</b> (max cm). Left, right and forward are seen from the facing point looking along the facing (for a bed: from the head toward the foot).</li>
+  <li><span class="btn">Calculate</span>. Every option shows the move and where <b>every</b> opening falls after it:
+    <ul>
+      <li><b>Smallest move</b> that puts all the targets on their hexagram, at least the boundary value from the edges;</li>
+      <li><b>Best centred</b> — the largest distance from the edges;</li>
+      <li><b>Exact centring</b> of two openings, when sideways and forward moves are both allowed;</li>
+      <li>when no move satisfies all the targets: <b>one option per opening</b>.</li>
+    </ul></li>
+  <li>Tap <span class="btn">Choose</span> on the option you decide. The choice is saved with the facing source.</li>
+</ol>
+
+<h3>4. ⛲ Good hexagrams still without an opening</h3>
+<p>After the chosen move (or now, if nothing is chosen) the app lists the good hexagrams that no opening reaches. For each one: <span class="btn">🕐 Daily hours</span> (today and the next two days, the hours that pass the fountain rule) and <span class="btn">🔎 Dates to place it</span> (opens the Water section, with this facing and this water degree on the luopan).</p>
+
+<!-- ───────────────────────────── PART 3 ───────────────────────────── -->
+<h2 id="part3">Part 3 — Worked example: a bedroom in Vienna</h2>
+<div class="ex">
+<p><b>Facing source:</b> the bed, facing <b>266°</b> (hexagram 7). Facing point: the centre of the bed head.</p>
+<p><b>Good Ling Shen water hexagrams</b> of 266° (from Photo sectors):</p>
+<table>
+  <tr><th>Hex</th><th>Degrees</th><th>Link with the facing</th></tr>
+  <tr><td>4</td><td>258.8–264.4°</td><td>Hetu yun, Hetu qi, family Kan-Li</td></tr>
+  <tr><td>29</td><td>253.1–258.8°</td><td>family Kan-Li</td></tr>
+  <tr><td>57</td><td>202.5–208.1°</td><td>family Qian-Kun</td></tr>
+  <tr><td>46</td><td>219.4–225.0°</td><td>Hetu yun</td></tr>
+  <tr><td>6</td><td>225.0–230.6°</td><td>adding yun 10, adding qi 10</td></tr>
+  <tr><td>62</td><td>286.9–292.5°</td><td>adding yun 10</td></tr>
+  <tr><td>39</td><td>298.1–303.8°</td><td>Hetu yun</td></tr>
+  <tr><td>35</td><td>326.3–331.9°</td><td>adding yun 10</td></tr>
+</table>
+
+<p><b>Measurements</b> (1× photos from the bed head, laser to the centre):</p>
+<table>
+  <tr><th>Opening</th><th>Bearing</th><th>Distance</th><th>F (forward)</th><th>L (right +)</th><th>Now</th></tr>
+  <tr><td>🪟 Window (opens)</td><td>222.9°</td><td>3.98 m</td><td>2.91 m</td><td>−2.72 m</td><td class="ok">✓ hex 46</td></tr>
+  <tr><td>🚪 Bedroom door</td><td>282.9°</td><td>4.12 m</td><td>3.94 m</td><td>+1.20 m</td><td class="bad">✗ hex 56 (Zheng Shen)</td></tr>
+</table>
+<p>Window: <span class="f">F = 3.98·cos(222.9 − 266) = 2.91</span>, <span class="f">L = 3.98·sin(−43.1) = −2.72</span> (to the left).<br>
+Door: <span class="f">F = 4.12·cos(16.9) = 3.94</span>, <span class="f">L = 4.12·sin(16.9) = +1.20</span> (to the right).</p>
+
+<p><b>Targets:</b> window → hex 46 (centre 222.2°), door → hex 62 (centre 289.7°).</p>
+
+<h3 style="margin-top:12px;">A — sideways and forward allowed</h3>
+<p>Each target gives one equation <span class="f">(L − s)·cos τ = (F − t)·sin τ</span>, with <span class="f">τ</span> = target − facing (window −43.8°, door +23.7°). Two equations, two unknowns:</p>
+<table>
+  <tr><th>Option</th><th>Move of the bed</th><th>Window</th><th>Door</th></tr>
+  <tr><td>Exact centring = best centred</td><td><b>34 cm left + 43 cm forward</b></td><td class="ok">222.2° hex 46</td><td class="ok">289.7° hex 62</td></tr>
+  <tr><td>Smallest move (≥ 1° from the edges)</td><td>29 cm left + 23 cm forward</td><td class="ok">223.8° hex 46</td><td class="ok">287.9° hex 62</td></tr>
+</table>
+
+<h3 style="margin-top:12px;">B — sideways only</h3>
+<p>Without moving forward there is <b>no common solution</b> for 46 and 62. The app shows one option per opening; you choose:</p>
+<table>
+  <tr><th>Option</th><th>Move of the bed</th><th>Window</th><th>Door</th></tr>
+  <tr><td>B1 — door centred on 62</td><td>53 cm left</td><td>229.0° hex 6 (target 46 missed)</td><td class="ok">289.7° hex 62</td></tr>
+  <tr><td>B2 — window stays on 46</td><td>no move</td><td class="ok">222.9° hex 46</td><td class="bad">282.9° hex 56</td></tr>
+</table>
+<p>With B2 hexagram 62 has no opening: a fountain can be placed there (Part 5). With B1 the window leaves 46 and falls on 6 (also in the list of good hexagrams of 266°); choosing 6 as the window's target is your decision.</p>
+</div>
+<div class="tip"><b>Width of an opening.</b> Its angular width is <span class="f">2·atan(width / 2 / D)</span>. For example a door 0.80 m wide seen from 4.12 m is <span class="f">2·atan(0.40 / 4.12) = 11.1°</span> — almost two hexagrams: only its centre can be placed on one. From 2 m the same door is 22.6° wide. Measure the two edges in Photo sectors to see it in the app.</div>
+
+<!-- ───────────────────────────── PART 4 ───────────────────────────── -->
+<h2 id="part4">Part 4 — Photo and laser: how to measure</h2>
+<h3>Bearing (photo)</h3>
+<ol>
+  <li>Open <span class="btn">📷 Photo sectors</span> from the house card and choose the <b>same facing source</b> (e.g. the bed).</li>
+  <li>Stand or sit at the facing point. Phone upright and level.</li>
+  <li><b>Wide photo straight ahead</b> (0.5×) to see where the openings fall.</li>
+  <li>For each opening: a <b>1× photo from the same point, turned toward it</b>, the opening near the middle of the picture. Type the direction of the photo in <b>Photo centre</b>.</li>
+  <li><span class="btn">🧱 Align to a wall</span>: trace two horizontal edges (skirting board, ceiling line) of a wall that runs away from you; answer with the direction where the wall RUNS (the house facing or ±90° / 180°). The magnifier follows your finger; the point is placed where you lift it.</li>
+  <li><span class="btn">📍 Measure a point</span> on the centre of the opening (and, if you want the width, on its two edges) → <span class="btn">🪟 Save as opening</span>.</li>
+</ol>
+<div class="warn">Near the edges of a wide photo the boxes can be off by 2–3° — half a hexagram. The bearings you save must come from the 1× photo turned toward the opening, calibrated on a wall.</div>
+<h3>Distance (laser)</h3>
+<ul>
+  <li>From the facing point (bed head centre, door centre, desk) to the <b>centre</b> of the opening, <b>horizontal</b>.</li>
+  <li><b>Door closed</b>: aim at the middle of the door leaf.</li>
+  <li><b>Window closed</b>: aim at the central mullion.</li>
+</ul>
+<h3>Save the pictures</h3>
+<p><span class="btn">📦 Save to Dropbox</span> stores each calibrated picture in <i>House profiles / &lt;house&gt; / &lt;facing&gt; facing</i>, so the measurements can be checked later.</p>
+
+<!-- ───────────────────────────── PART 5 ───────────────────────────── -->
+<h2 id="part5">Part 5 — When to add a fountain</h2>
+<ul>
+  <li>Only for a good Ling Shen hexagram that <b>no existing opening</b> reaches with the move you chose.</li>
+  <li>Place it with Photo sectors: the <b>nozzle</b> (where the water moves) inside the red box, checked on a 1× photo turned toward it.</li>
+  <li>Switch it on <b>every day</b> by the fountain rule: the water hexagram must communicate with the HOUR, and the hour with the DAY (or be Sheng In / Ke In to it). In the tool, <span class="btn">🕐 Daily hours</span> lists the hours that pass the rule, each with its links.</li>
+  <li><span class="btn">🔎 Dates to place it</span> opens the Water section, with this facing and this water degree on the luopan, to choose the date of placement.</li>
+</ul>
+
+<!-- ───────────────────────────── PART 6 ───────────────────────────── -->
+<h2 id="part6">Part 6 — Asking the AI assistant</h2>
+<div class="ai">
+<p>💬 Examples:</p>
+<ul>
+  <li><i>"Yang openings of the bed in Vienna: where do the door and the window fall?"</i></li>
+  <li><i>"The bedroom window is at 222.9°, 3.98 m from the bed head — save it."</i></li>
+  <li><i>"How much do I move the bed, sideways only, max 60 cm, to put the door on 62 and the window on 46?"</i></li>
+</ul>
+<p>The assistant reads and saves the measurements of the tool and runs the move calculator. When the openings disagree it lists every option with the hexagram of every opening; the choice stays yours (<span class="btn">Choose</span> in the 🪟 Yang openings panel).</p>
+</div>
+
+</body>
+</html>
