@@ -5352,8 +5352,12 @@ function onPurposeChange() {
 
 function getPurpose() {
     var el = document.getElementById('purpose-select');
+    // Session 37 (Edu): "🌿 Cures" in PURPOSE is not a QMDJ purpose (no doors, no purpose rules):
+    // it is the 🌿 Cure filter — only favourable dates whose DAY or YEAR pillar is a remedy.
+    if (el && el.value === 'cure') return '';
     return el ? el.value : '';
 }
+function isCurePurpose() { var el = document.getElementById('purpose-select'); return !!(el && el.value === 'cure'); }
 
 function getDayRole(stem, branch) {
     var entries = JIAZI_FAMILY_DATA[(stem||'') + (branch||'')] || [];
@@ -8586,6 +8590,7 @@ function getActiveFilters() {
     const chips = document.querySelectorAll('.filter-chip');
     const active = new Set();
     chips.forEach(c => { if (c.classList.contains('active')) active.add(c.dataset.filter); });
+    try { if (isCurePurpose()) active.add('cure'); } catch (e) {}   // PURPOSE = 🌿 Cures
     return active;
 }
 
