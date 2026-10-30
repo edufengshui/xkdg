@@ -1619,7 +1619,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug to program: the aquarium of tuoro / vienna, or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, by DAY only), vienna-porta = Fountain B (bedroom door, by NIGHT only). A fountain plan comes from the Feng Shui WATER scan (facing 266, water 222) and runs to the next solar month.' },
+          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug to program: the aquarium of tuoro / vienna, or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, by DAY only), vienna-porta = Fountain B (bedroom door, by NIGHT only). A fountain plan (session 36) gives ONE hour EVERY day: A every morning (the hour closest to Mao), B every evening (Hai or later); the water hexagram at 222° must communicate with the hour and the hour with the day (or be Sheng In / Ke In to it). It runs to the next solar month.' },
           mode: { type: 'string', enum: ['block', 'windows'], description: 'How the light is scheduled. "block" (DEFAULT, the long-standing behaviour) = ONE hour per day, light stays ON until 23:00, blocks can span several days. "windows" = the light is ON only for the two hours of EACH favourable hour of the day and is switched off in between; several windows a day are normal, and consecutive favourable hours are merged into one longer window. Use "windows" only when the user asks for it for that house.' },
           days: { type: 'integer', description: 'OMIT it (default): the plan runs until the EXACT start of the next solar month (next Jie), Edu\'s rule. Pass a number only if the user asks for a specific number of days.' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
@@ -7115,46 +7115,90 @@
     return null;
   }
 
-  // Fountain plan (session 33). Source: the app's own WATER scan for the placement
-  // (fsFindMatchingDatesForSetup: facing ZS + water LS, with the loaded person), hour by hour.
+  // Fountain plan — session 36 (Edu): the fountains must be switched on EVERY day (A every
+  // morning, B every evening), so the rule is a flexible one, independent of the people:
+  //   the water hexagram (222°) communicates with the HOUR — Elements (above) and/or
+  //   Periods (below): Hetu, Adding 5/10/15, Pure Qi (same number) or a shared (BL) family —
+  //   AND the hour does the same with the DAY; if the hour does not communicate with the
+  //   day it must at least be Sheng In or Ke In to the day (XKDG elements 1/6 Water, 2/7 Fire,
+  //   3/8 Wood, 4/9 Metal).
+  //   A (day): the hour closest to Mao 卯 — Mao, then Chen, Yin, Si — OFF at the start of Hai.
+  //   B (night): Hai 亥 or later (never before) — Hai, Zi, Chou, Yin, Mao — OFF at the end of Mao.
+  var _FT_STEMS = '甲乙丙丁戊己庚辛壬癸', _FT_BR = '子丑寅卯辰巳午未申酉戌亥';
+  var _FT_EL = { 1: 'Water', 6: 'Water', 2: 'Fire', 7: 'Fire', 3: 'Wood', 8: 'Wood', 4: 'Metal', 9: 'Metal' };
+  var _FT_SHENG = { Wood: 'Fire', Fire: 'Earth', Earth: 'Metal', Metal: 'Water', Water: 'Wood' };
+  var _FT_KE = { Wood: 'Earth', Earth: 'Water', Water: 'Fire', Fire: 'Metal', Metal: 'Wood' };
+  function _ftPillar(stem, branch) {
+    var x = (typeof getXkdgData === 'function') ? getXkdgData(stem, branch) : null;
+    return x ? { stem: stem, branch: branch, qi: x.qi, yun: x.yun, hex: x.hex } : null;
+  }
+  function _ftFams(p) {
+    try { if (p.stem) return getJiaZiFamilies(p.stem, p.branch) || []; } catch (e) {}
+    try { return (typeof getHexFamilies === 'function' ? getHexFamilies(p.hex) : []) || []; } catch (e) { return []; }
+  }
+  // how two hexagrams communicate: list of reasons ([] = they do not)
+  function _ftLinks(a, b) {
+    var out = [], hetu = function (x, y) { return typeof isHetuPair === 'function' ? isHetuPair(x, y) : false; };
+    [['qi', 'Elements'], ['yun', 'Periods']].forEach(function (f) {
+      var x = a[f[0]], y = b[f[0]]; if (x == null || y == null) return;
+      if (hetu(x, y)) out.push(f[1] + ' Hetu ' + Math.min(x, y) + '-' + Math.max(x, y));
+      else if ([5, 10, 15].indexOf(x + y) >= 0) out.push(f[1] + ' ' + x + '+' + y + '=' + (x + y));
+      else if (x === y) out.push('Pure Qi ' + f[1] + ' ' + x);
+    });
+    var fb = _ftFams(b); _ftFams(a).forEach(function (fm) { if (fb.indexOf(fm) >= 0) out.push(fm + ' family'); });
+    return out;
+  }
+  function _ftShengKeIn(h, d) {
+    var eh = _FT_EL[h.qi], ed = _FT_EL[d.qi]; if (!eh || !ed) return '';
+    if (_FT_SHENG[eh] === ed) return 'Sheng In (' + eh + ' → ' + ed + ')';
+    if (_FT_KE[eh] === ed) return 'Ke In (' + eh + ' → ' + ed + ')';
+    return '';
+  }
+  // the pillars of hour k (0 = Zi … 11 = Hai) of the SOLAR day iso (Zi starts at solar 23:00 of the day before)
+  function _ftHour(iso, k, W) {
+    var p = _dateParts(iso), ec = Solar.fromYmdHms(p.y, p.mo, p.d, 12, 0, 0).getLunar().getEightChar();
+    var dG = ec.getDayGan(), dZ = ec.getDayZhi(), si = _FT_STEMS.indexOf(dG);
+    var hG = _FT_STEMS.charAt(((si % 5) * 2 + k) % 10), hZ = _FT_BR.charAt(k);
+    var D = _ftPillar(dG, dZ), H = _ftPillar(hG, hZ); if (!D || !H) return null;
+    var wh = _ftLinks(W, H); if (!wh.length) return null;
+    var hd = _ftLinks(H, D), sk = hd.length ? '' : _ftShengKeIn(H, D);
+    if (!hd.length && !sk) return null;
+    return { branch: hG + hZ, day: dG + dZ, hex: H.hex,
+             via: 'water hex ' + W.hex + '↔hour ' + hG + hZ + ' (hex ' + H.hex + '): ' + wh.join(', ') + ' · hour↔day ' + dG + dZ + ': ' + (hd.length ? hd.join(', ') : sk) };
+  }
   async function _programFountain(rh, cfg, input, jie) {
     var F = rh.cfg.fountain, lon = rh.cfg.lon, utc = rh.cfg.utc;
-    if (typeof window.fsFindMatchingDatesForSetup !== 'function' || typeof window.fsSlotForDeg !== 'function')
-      return { error: 'The Feng Shui water scan is not available on this page.' };
+    if (typeof window.fsSlotForDeg !== 'function' || typeof Solar === 'undefined') return { error: 'The Feng Shui tables are not available on this page.' };
+    var ws = window.fsSlotForDeg(F.water) || {}, wj = (typeof _xkdgJzOfHex === 'function' ? _xkdgJzOfHex(ws.hexNum) : null) || {};
+    var W = { hex: ws.hexNum, qi: ws.qi, yun: ws.yun, stem: wj.stem, branch: wj.branch };
     var start = todayIso();
     var endMs = jie ? jie.ms : (Date.now() + (parseInt(input.days, 10) || 7) * 86400000);
+    if (input.days && jie) endMs = Math.max(endMs, Date.now() + (parseInt(input.days, 10) || 0) * 86400000);   // the daily email asks for its own range
     var days = Math.max(1, Math.ceil((endMs - new Date(start + 'T00:00:00').getTime()) / 86400000)) + 1;
-    var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days'), lo = document.getElementById('longitude');
-    var keep = { s: ss && ss.value, d: sd && sd.value, l: lo && lo.value, r: window._fsRangeDays };
-    var matches = null;
-    try {
-      if (ss) ss.value = _isoPlus(start, -1); window._fsRangeDays = days + 1; if (lo) lo.value = String(lon);
-      matches = window.fsFindMatchingDatesForSetup(window.fsSlotForDeg(F.facing), window.fsSlotForDeg(F.water)) || [];
-    } finally {
-      if (ss) ss.value = keep.s; if (sd) sd.value = keep.d; if (lo) lo.value = keep.l; window._fsRangeDays = keep.r;
-    }
-    var byDate = {}; matches.forEach(function (m) { byDate[m.isoDate] = m; });
-    function hs(iso, idx) { var m = byDate[iso]; if (!m || !m.hourScores) return null; var x = m.hourScores[idx]; return (x && x.score > 0) ? x : null; }
-    var scheduled = [];
+    var scheduled = [], missing = [];
     for (var i = 0; i < days; i++) {
-      var D = _isoPlus(start, i), N = _isoPlus(D, 1), cands = [];
+      var D = _isoPlus(start, i), N = _isoPlus(D, 1), cands = [], off;
       if (F.period === 'day') {
-        // Session 36 (Edu): the day starts at Chen 辰 (solar 07:00) - Mao belongs to Fountain B.
-        [4, 5, 6, 7, 8, 9, 10].forEach(function (k) { var x = hs(D, k); if (x) cands.push({ x: x, on: _solarToEpoch(D, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
-        var off = _solarToEpoch(D, 21 * 60, lon, utc);
+        // the hour closest to Mao: Mao, Chen, Yin, Si
+        [[D, 3, 300], [D, 4, 420], [D, 2, 180], [D, 5, 540]].forEach(function (c) { cands.push({ iso: c[0], k: c[1], on: _solarToEpoch(c[0], c[2], lon, utc) }); });
+        off = _solarToEpoch(D, 21 * 60, lon, utc);
       } else {
-        var x11 = hs(D, 11); if (x11) cands.push({ x: x11, on: _solarToEpoch(D, 21 * 60, lon, utc) });
-        var x0 = hs(N, 0);  if (x0)  cands.push({ x: x0,  on: _solarToEpoch(D, 23 * 60, lon, utc) });
-        // Session 36 (Edu): the night runs to the END of Mao 卯 (solar 07:00), Mao included.
-        [1, 2, 3].forEach(function (k) { var x = hs(N, k); if (x) cands.push({ x: x, on: _solarToEpoch(N, _BRANCH_SOLAR_MIN[x.hZhi], lon, utc) }); });
-        var off = _solarToEpoch(N, 7 * 60, lon, utc);
+        // Hai or later, never before: Hai (D), then Zi, Chou, Yin, Mao of the next solar day
+        cands.push({ iso: D, k: 11, on: _solarToEpoch(D, 21 * 60, lon, utc) });
+        cands.push({ iso: N, k: 0, on: _solarToEpoch(D, 23 * 60, lon, utc) });
+        [[1, 60], [2, 180], [3, 300]].forEach(function (c) { cands.push({ iso: N, k: c[0], on: _solarToEpoch(N, c[1], lon, utc) }); });
+        off = _solarToEpoch(N, 7 * 60, lon, utc);
       }
-      cands = cands.filter(function (c) { return c.on > Date.now() && c.on < endMs; });
-      if (!cands.length) continue;
-      cands.sort(function (a, b) { return (b.x.score - a.x.score) || (a.on - b.on); });
-      var c = cands[0], offTs = Math.min(off, endMs);
-      scheduled.push({ date: D, branch: c.x.hGan + c.x.hZhi, score: c.x.score, onTs: c.on, offTs: offTs,
-                       on_local: new Date(c.on).toString(), off_local: new Date(offTs).toString() });
+      var pick = null;
+      for (var j = 0; j < cands.length && !pick; j++) {
+        var c = cands[j]; if (c.on <= Date.now() - 2 * 3600000 || c.on >= endMs) continue;
+        var r = null; try { r = _ftHour(c.iso, c.k, W); } catch (e) {}
+        if (r) pick = Object.assign(r, { on: c.on });
+      }
+      if (!pick) { if (off > Date.now() && cands.some(function (c) { return c.on < endMs; })) missing.push(D); continue; }
+      var offTs = Math.min(off, endMs);
+      scheduled.push({ date: D, branch: pick.branch, day: pick.day, via: pick.via, onTs: pick.on, offTs: offTs,
+                       on_local: new Date(pick.on).toString(), off_local: new Date(offTs).toString() });
     }
     var rows = scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; });
     var noShelly = rh.cfg.shelly === false;
@@ -7169,7 +7213,10 @@
     }
     return {
       scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: from the start of Chen 辰 to the start of Hai 亥 (solar 07:00-21:00)' : 'night: from the start of Hai 亥 to the END of Mao 卯 (solar 21:00-07:00)',
-      placement: { facing: F.facing, water: F.water }, persons_used: _digestPersonNames().label,
+      placement: { facing: F.facing, water: F.water, water_hexagram: W.hex }, rule: F.period === 'day'
+        ? 'every morning: the hour closest to Mao (Mao, Chen, Yin, Si) where water hex ' + W.hex + ' communicates with the hour and the hour with the day (or Sheng In / Ke In to it)'
+        : 'every evening: Hai or later (Hai, Zi, Chou, Yin, Mao — never before Hai) where water hex ' + W.hex + ' communicates with the hour and the hour with the day (or Sheng In / Ke In to it)',
+      days_without_hour: missing.length ? missing : undefined,
       mode: noShelly ? 'by_hand' : (commit ? 'committed' : 'preview'), has_shelly: !noShelly,
       plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
       scheduled_count: scheduled.length, scheduled: scheduled,
@@ -7177,7 +7224,7 @@
       note: 'Each row: ON at the best favourable hour of the ' + (F.period === 'day' ? 'day' : 'night') + ', OFF at the end of the period'
         + (F.period === 'day' ? ' (= the start of Hai 亥). ' : ' (= the END of Mao 卯, when Chen 辰 begins). ')
         + 'Name the hours by the solar times in the period field (each Chinese hour is 2 solar hours: Zi 23-01, Chou 01-03, Yin 03-05, Mao 05-07, Chen 07-09 ... Hai 21-23), never guess. '
-        + 'Periods with no favourable hour stay OFF (Edu: no never-dark rule for the fountains). Show the times as given (local clock). '
+        + 'Each row has its "via" (how the water hexagram talks with the hour and the hour with the day): give it briefly. Days in days_without_hour have no valid hour: say so. Show the times as given (local clock). '
         + 'Until this fountain has its own Shelly, the user switches it BY HAND: offer (and do it when asked) to put every row '
         + 'in the phone calendar with add_calendar_reminder - one event per row, date = row date, start = ON time, end = OFF time '
         + '(local clock, as given), title e.g. "\uD83D\uDCA7 ' + F.label + ' ON". '

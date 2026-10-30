@@ -218,6 +218,7 @@ function build(rec, data, loc) {
         if (d.also_good_for && d.also_good_for.length) parts.push([t.purposes, d.also_good_for.join(' \u00b7 ')]);
       } else if (r.kind === 'fountain') {
         parts.push(['ON \u2192 OFF', d.window + ' (' + (r.period === 'night' ? '\uD83C\uDF19' : '\u2600\uFE0F') + ' ' + d.branch + ')']);
+        if (d.via) parts.push(['XKDG', d.via]);
       } else if (r.kind === 'water') {
         parts.push([t.fsDoor, (d.facing_links || []).join(' \u00b7 ') || '\u2014']);
         parts.push([t.fsWater, (d.water_links || []).join(' \u00b7 ') || '\u2014']);

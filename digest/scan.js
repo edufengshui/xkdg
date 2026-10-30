@@ -242,7 +242,7 @@ if (Array.isArray(P.houses) && P.houses.length) {
               (r.scheduled || []).forEach(x => {
                 const dOn = ymd(x.onTs);                 // listed on the CIVIL day it switches on (a night row may start after midnight)
                 if (!inRange(dOn)) return;
-                rec.dates.push({ date: dOn, branch: x.branch, score: x.score, on: hm(x.onTs), off: hm(x.offTs), window: hm(x.onTs) + '\u2013' + hm(x.offTs) });
+                rec.dates.push({ date: dOn, branch: x.branch, score: x.score, via: x.via || '', on: hm(x.onTs), off: hm(x.offTs), window: hm(x.onTs) + '\u2013' + hm(x.offTs) });
               });
               rec.period = /^night/.test(r.period || '') ? 'night' : 'day';
             }
