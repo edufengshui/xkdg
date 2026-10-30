@@ -9389,6 +9389,7 @@ async function _xkdgLicenceRefresh() {
             return;
         }
         if (ans.ok) {
+            _xkdgLicenceDirections(ans);
             lic.tier = ans.tier || 0;
             lic.expiry = ans.expiry || null;
             lic.maxDate = ans.maxDate || null;
@@ -9425,9 +9426,15 @@ async function _xkdgLicenceRevive(lic) {
         'No connection. Your licence needs a quick online check — connect to the internet and reload.';
 }
 
+// Session 37 (Edu): a licence can carry `directions: true` (set in the xkdg-ai Worker,
+// LICENCE_CODES  d: 1) — it opens 🧭 Directions / Travel Planner without the preview code.
+function _xkdgLicenceDirections(ans) {
+    try { if (ans && ans.ok && ans.directions && typeof window.xkdgUnlockDirections === 'function') window.xkdgUnlockDirections(); } catch (e) {}
+}
 // Shared by PIN, revive and transfer code: store a licence the Worker has just confirmed
 // and open the app. Same record submitPin() writes.
 function _xkdgLicenceStore(ans, hashed) {
+    _xkdgLicenceDirections(ans);
     localStorage.setItem('xkdg_license', JSON.stringify({
         tier: ans.tier || 0, expiry: ans.expiry || null, maxDate: ans.maxDate || null,
         codeHash: hashed, checkedAt: new Date().toISOString() }));
@@ -9776,6 +9783,7 @@ async function submitPin() {
         netProblem = true;
     } else if (ans.ok) {
         validated = true;
+        _xkdgLicenceDirections(ans);
         tier = ans.tier || 0;
         expiry = ans.expiry || null;
         maxDate = ans.maxDate || null;
