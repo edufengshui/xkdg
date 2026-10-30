@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 37, 2026-10-30)
+# XKDG — Handoff (session 38, 2026-10-30)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -97,3 +97,11 @@ Proposed design (to confirm with Edu):
  1. Worker v7: devices also in KV (`dev:<id>` = {label, owner, host, key, shellyId, tokenHash}); POST ?register {licence hash, label, host, key, id} verified against xkdg-ai ?licence {hash}; returns a per-device token; per-device token authorises that device only; XKDG_TOKEN keeps working for Edu's devices; cron loops env DEVICES + KV devices.
  2. App: user devices in localStorage (`xkdg_shelly_devices` [{device, house, lon, utc, token}]) merged into SHELLY_HOUSES; house card ☰ → 🔌 Aquarium plug (Shelly): register (Shelly app → Settings → Authorization cloud key + server; device → Device information → Device ID), test ON/OFF, then program_aquarium_light works for that house.
  3. Guide guides/shelly.html + video: send Edu the step text FIRST (his rule). Video starts by showing where the menu is; signature "Feng Shui Advisor · Master Eduardo Hess".
+
+## Session 38 — Shelly for students (BUILT, Worker to deploy)
+- Edu: each student uses HIS OWN Shelly Cloud account; limit 60 plugs ok.
+- Worker source now in the repo: `workers/xkdg-shelly.js` (v7, no secrets). The v6 Edu had was headed "v5" but already had the ?ics feed.
+  v7: POST ?register {licence (app codeHash), house, label, host, key, id} → licence checked with xkdg-ai via SERVICE BINDING `XKDG_AI` (URL fetch fallback; same-account workers.dev fetch is blocked) → plug probed → state:u<10hex> holds conn + tokenHash + owner; returns per-device token. ?unregister. Student token opens only its device, never the digest. Index `devindex` [{id,owner,house,ev,auto}]: cron reads a student state only near one of its switch times. Limits 60 total / 5 per licence, host must be shelly-*.shelly.cloud, same licence+house replaces. Tested with mocked KV/Shelly (node).
+- App: `shelly-devices.js` (index.html after yang-openings.js), house card ☰ → 🔌 Aquarium plug (Shelly) (📖 shelly_plug): connect / Test ON-OFF-Status / disconnect; localStorage `xkdg_shelly_devices`. ai-chat.js merges them into SHELLY_HOUSES (`_shellyUserMerge`, key = house name lower-case, built-ins restored), `_shellyCfg(rh)` per device, tool enums removed, get_app_state.shelly_houses, home prompt rule, plan-ending reminders include student plugs. Default Worker URL https://xkdg-shelly.decumano16.workers.dev (Edu to confirm).
+- Renaming a house disconnects its plug in the app (key = name).
+- TODO: Edu deploys v7 + adds the binding; guide guides/shelly.html (step text sent to Edu, waiting for OK) + video.
