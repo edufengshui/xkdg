@@ -2532,11 +2532,29 @@
     }
     return null;
   }
+  // Shared prices (charging-tariffs.js, updated centrally) + the user's own plan per operator.
+  function tpSharedOps() { try { return (window.XKDG_TARIFFS && Array.isArray(window.XKDG_TARIFFS.operators)) ? window.XKDG_TARIFFS.operators : []; } catch (e) { return []; } }
+  function tpGetPlans() { try { var o = JSON.parse(localStorage.getItem('xkdg_tp_tariff_plans') || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+  function tpSetPlan(network, plan) { var o = tpGetPlans(); o[network] = plan; try { localStorage.setItem('xkdg_tp_tariff_plans', JSON.stringify(o)); } catch (e) {} }
+  function tpPlanOf(op) {
+    var want = tpGetPlans()[op.network], pl = (op.plans || []).filter(function (p) { return p.name === want; })[0];
+    return pl || (op.plans || [])[0] || { name: '', off: 0 };
+  }
   // Cheapest matching card at the time `ms` (optional). Returns {card, eur, network, band}.
   function tpCheapestTariff(name, ms) {
     var hay = String(name || '').toLowerCase();
     if (!hay) return null;
-    var byCard = {};
+    var byCard = {}, ownNets = {};
+    tpGetTariffs().forEach(function (t) { if (isFinite(parseFloat(t.eur)) || String(t.bands || '').trim()) ownNets[String(t.network || '').trim().toLowerCase()] = 1; });
+    tpSharedOps().forEach(function (op) {
+      var net = String(op.network || '').trim().toLowerCase();
+      if (!net || hay.indexOf(net) < 0 || ownNets[net]) return;          // the user's own row wins
+      var band = tpBandAt(tpParseBands(op.bands), ms), base = band ? band.eur : parseFloat(op.standard);
+      if (!isFinite(base)) return;
+      var pl = tpPlanOf(op), eur = Math.max(0, Math.round((base - (pl.off || 0)) * 100) / 100);
+      var key = 'shared:' + net;
+      byCard[key] = { card: op.network + (pl.name ? ' \u00b7 ' + pl.name : ''), eur: eur, network: op.network, band: band ? band.label : null, len: net.length };
+    });
     tpGetTariffs().forEach(function (t) {
       var net = String(t.network || '').trim().toLowerCase();
       if (!net || hay.indexOf(net) < 0) return;
@@ -2559,6 +2577,30 @@
       'Add any operator + the card you use + your \u20AC/kWh. The cheapest matching card is shown on each charger. Operator is matched as text inside the charger name (e.g. \u201CFree To X\u201D, \u201CIonity\u201D, \u201CTesla\u201D).'));
     box.appendChild(el('div', { style: 'color:#777;font-size:11px;margin-bottom:5px;' },
       'Prices that change with the hour (Tesla; Electra in France, Belgium, Spain): fill \u201CTime bands\u201D, e.g. 22-07 0.39, 07-22 0.64 \u2014 the price at the arrival time is used. A different price at one station: add a row with a more precise operator text (e.g. \u201CElectra Lyon\u201D). Copy the prices from the operator\u2019s app: they publish no open price data.'));
+    // Session 37: prices kept up to date centrally (charging-tariffs.js); the user only picks his plan.
+    var shared = tpSharedOps();
+    if (shared.length) {
+      var sb = el('div', { style: 'border:1px solid #cfe3cf;border-radius:6px;padding:6px 8px;margin-bottom:6px;background:#fff;' });
+      sb.appendChild(el('div', { style: 'font-size:11px;font-weight:600;color:#2e5d2e;margin-bottom:3px;' },
+        'Prices kept up to date by Feng Shui Advisor' + (window.XKDG_TARIFFS.updated ? ' (' + window.XKDG_TARIFFS.updated + ')' : '') + ' \u2014 choose your plan'));
+      shared.forEach(function (op) {
+        var line = el('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;margin:3px 0;' });
+        line.appendChild(el('b', null, op.network));
+        var sel = el('select', { style: 'font-size:12px;padding:2px 4px;' });
+        var cur = tpPlanOf(op).name;
+        (op.plans || []).forEach(function (pl) {
+          var o = el('option', { value: pl.name }, pl.name + (pl.off ? ' (\u2212' + pl.off.toFixed(2) + ' \u20AC/kWh)' : ''));
+          if (pl.name === cur) o.selected = true; sel.appendChild(o);
+        });
+        sel.addEventListener('change', function () { tpSetPlan(op.network, sel.value); });
+        line.appendChild(sel);
+        sb.appendChild(line);
+        sb.appendChild(el('div', { style: 'font-size:11px;color:#666;margin:0 0 4px;' },
+          (op.bands ? 'Hours: ' + op.bands + ' \u00b7 ' : '') + 'other hours: ' + (op.standard != null ? op.standard.toFixed(2) + ' \u20AC/kWh' : 'not known yet') +
+          ' (before discount)' + (op.note ? ' \u00b7 ' + op.note : '')));
+      });
+      box.appendChild(sb);
+    }
     var rowsHost = el('div', {});
     box.appendChild(rowsHost);
     function render() {
