@@ -5687,6 +5687,7 @@ function fsRenderHouseProfiles(){
         { label: '📷 Photo sectors', act: 'if(window.XKDGPhotoSectors)XKDGPhotoSectors.open(' + _pq + ')', help: 'photo_sectors' },
         { label: '🪟 Yang openings', act: 'if(window.XKDGYangOpenings)XKDGYangOpenings.open(' + _pq + ')', help: 'yang_openings' },
         { label: '📏 Plan builder', act: 'if(window.XKDGPlanBuilder)XKDGPlanBuilder.openForHouse(' + _pq + ')', help: 'plan_builder' },
+        { label: '🔌 Aquarium plug (Shelly)', act: 'if(window.XKDGShellyDevices)XKDGShellyDevices.open(' + _pq + ')', help: 'shelly_plug' },
         { label: '🧊 3D view', act: 'if(window.XKDGPlan3D)XKDGPlan3D.openForHouse(' + _pq + ')', help: 'plan_3d' },
         { label: '📷 Room photo + furniture', act: 'if(window.XKDGRoomPhoto)XKDGRoomPhoto.openForHouse(' + _pq + ')', help: 'room_photo' },
         h.driveUrl ? { label: '📁 Open archive', act: 'window.open(\'' + escJs(h.driveUrl) + '\',\'_blank\')', help: 'archive_open' } : null,
