@@ -553,14 +553,64 @@
       '</div></div>';
     m.addEventListener('click', function (e) { if (e.target === m) close(); });
     document.body.appendChild(m);
-    el('xps-canvas').addEventListener('click', onTap);
+    var cv0 = el('xps-canvas');
+    // Session 36 (Edu): on the phone the photo could not be zoomed to place the wall points.
+    // In 🧱 wall / 🎯 compass mode a MAGNIFIER follows the finger; the point is set where it is lifted.
+    cv0.addEventListener('click', function (e) { if (S.mode === 'wall' || S.mode === 'ref') return; onTap(e); });
+    cv0.addEventListener('pointerdown', loupeDown);
+    cv0.addEventListener('pointermove', loupeMove);
+    cv0.addEventListener('pointerup', loupeUp);
+    cv0.addEventListener('pointercancel', loupeHide);
     modeButtons();
   }
+  // ── magnifier (session 36) ──
+  var LP = null;   // { cv, ctx, active, x, y, id }
+  function loupeOn() { return S.mode === 'wall' || S.mode === 'ref'; }
+  function loupeEnsure() {
+    if (LP && document.body.contains(LP.cv)) return LP;
+    var c = document.createElement('canvas'), dpr = window.devicePixelRatio || 1, D = 150;
+    c.width = D * dpr; c.height = D * dpr;
+    c.style.cssText = 'position:fixed;width:' + D + 'px;height:' + D + 'px;border-radius:50%;border:3px solid #1565c0;box-shadow:0 6px 18px rgba(0,0,0,.45);z-index:100100;pointer-events:none;display:none;background:#fff;';
+    document.body.appendChild(c);
+    LP = { cv: c, ctx: c.getContext('2d'), D: D, dpr: dpr, active: false };
+    return LP;
+  }
+  function loupeRender(e) {
+    var cv = el('xps-canvas'); if (!cv) return;
+    var L = loupeEnsure(), rc = cv.getBoundingClientRect(), D = L.D, dpr = L.dpr, Z = 3;
+    var px = (e.clientX - rc.left) * (S.W / rc.width), py = (e.clientY - rc.top) * (S.H / rc.height);
+    var srcW = D / Z * (S.W / rc.width);          // canvas px shown in the loupe
+    var g = L.ctx; g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#fff'; g.fillRect(0, 0, D * dpr, D * dpr);
+    g.drawImage(cv, px - srcW / 2, py - srcW / 2, srcW, srcW, 0, 0, D * dpr, D * dpr);
+    g.strokeStyle = '#ff1744'; g.lineWidth = 2 * dpr; g.beginPath();
+    g.moveTo(D * dpr / 2, 0); g.lineTo(D * dpr / 2, D * dpr * .42); g.moveTo(D * dpr / 2, D * dpr * .58); g.lineTo(D * dpr / 2, D * dpr);
+    g.moveTo(0, D * dpr / 2); g.lineTo(D * dpr * .42, D * dpr / 2); g.moveTo(D * dpr * .58, D * dpr / 2); g.lineTo(D * dpr, D * dpr / 2); g.stroke();
+    g.beginPath(); g.arc(D * dpr / 2, D * dpr / 2, 3 * dpr, 0, Math.PI * 2); g.stroke();
+    // above the finger (below it when too close to the top of the screen)
+    var lx = Math.max(4, Math.min(window.innerWidth - D - 4, e.clientX - D / 2)), ly = e.clientY - D - 40;
+    if (ly < 4) ly = e.clientY + 40;
+    L.cv.style.left = lx + 'px'; L.cv.style.top = ly + 'px'; L.cv.style.display = 'block';
+  }
+  function loupeDown(e) {
+    if (!loupeOn()) return;
+    e.preventDefault();
+    var L = loupeEnsure(); L.active = true; L.id = e.pointerId; L.last = e;
+    try { e.target.setPointerCapture(e.pointerId); } catch (x) {}
+    loupeRender(e);
+  }
+  function loupeMove(e) { if (!LP || !LP.active || e.pointerId !== LP.id) return; e.preventDefault(); LP.last = e; loupeRender(e); }
+  function loupeUp(e) {
+    if (!LP || !LP.active || e.pointerId !== LP.id) return;
+    e.preventDefault(); var last = e; loupeHide();
+    onTap({ clientX: last.clientX, clientY: last.clientY });
+  }
+  function loupeHide() { if (LP) { LP.active = false; LP.cv.style.display = 'none'; } }
   function modeButtons() {
     var a = el('xps-m-measure'), b = el('xps-m-ref'), w = el('xps-m-wall'); if (!a) return;
     w.style.background = S.mode === 'wall' ? '#1565c0' : '#fff'; w.style.color = S.mode === 'wall' ? '#fff' : '#1565c0'; w.style.border = '1px solid #1565c0';
     a.style.background = S.mode === 'measure' ? '#ffd600' : '#fff'; a.style.border = '1px solid #c9a800';
     b.style.background = S.mode === 'ref' ? '#1565c0' : '#fff'; b.style.color = S.mode === 'ref' ? '#fff' : '#1565c0'; b.style.border = '1px solid #1565c0';
+    var cv = el('xps-canvas'); if (cv) cv.style.touchAction = (S.mode === 'wall' || S.mode === 'ref') ? 'none' : 'manipulation';   // no scrolling while placing points
   }
   function onTap(e) {
     var cv = el('xps-canvas'), rc = cv.getBoundingClientRect();
@@ -606,11 +656,12 @@
   function hint() {
     var h = el('xps-hint'); if (!h) return;
     var n = S.wallPts.length;
-    if (S.mode === 'wall') h.innerHTML = ['Tap 2 points along a <b>horizontal edge</b> of a wall that runs away from you (e.g. the skirting board).',
+    var tip = ' <span style="color:#1565c0;">Hold your finger on the photo: a 🔍 magnifier appears — slide until the red cross is on the edge, then lift.</span>';
+    if (S.mode === 'wall') h.innerHTML = (['Tap 2 points along a <b>horizontal edge</b> of a wall that runs away from you (e.g. the skirting board).',
       'Now the second point of that edge.',
       'Now 2 points along <b>another horizontal edge of the same wall</b> (e.g. where it meets the ceiling).',
-      'Now the last point.'][n] || '';
-    else if (S.mode === 'ref') h.textContent = 'Tap a point you have read with the compass from the photo spot (set the compass correction first).';
+      'Now the last point.'][n] || '') + tip;
+    else if (S.mode === 'ref') h.innerHTML = 'Tap a point you have read with the compass from the photo spot (set the compass correction first).' + tip;
     else h.textContent = S.refs.length ? '' : 'Calibrate first: 🧱 Align to a wall (the walls follow the house facing).';
   }
   function loadFile(file) {
@@ -652,7 +703,7 @@
       setTimeout(function () { try { window.open(url, '_blank'); } catch (e) {} }, 300);
     }, 'image/jpeg', 0.9);
   }
-  function close() { var m = el('xps-modal'); if (m) m.remove(); S = null; }
+  function close() { var m = el('xps-modal'); if (m) m.remove(); loupeHide(); S = null; }
 
   window.XKDGPhotoSectors = {
     open: open, close: close,
