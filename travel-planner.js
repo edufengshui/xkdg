@@ -4172,6 +4172,8 @@
     tpRequestCode(function () { try { if (onSuccess) onSuccess(); } catch (e) {} }, title);
   }
   try { window.xkdgRequireCode = xkdgRequireCode; } catch (e) {}
+  // Session 37: the licence (Worker flag `directions`) unlocks the Directions area without the code.
+  try { window.xkdgUnlockDirections = function () { tpUnlocked = true; try { localStorage.setItem('xkdg_tp_unlocked', '1'); } catch (e) {} }; } catch (e) {}
 
   // ---- Directions hub -----------------------------------------------------
   // Single entry point for the "Directions" area. Lists its sections:
