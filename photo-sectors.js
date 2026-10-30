@@ -544,6 +544,7 @@
             '<span>bottom <input type="range" min="5" max="100" value="62" oninput="XKDGPhotoSectors._box(\'b\',this.value)"></span>' +
             '<span>Add hexagram <input id="xps-add" type="number" min="1" max="64" style="width:50px;font-size:12px;"> <button onclick="XKDGPhotoSectors._add()" style="' + btn + 'border:1px solid #2e7d32;background:#fff;color:#2e7d32;">+</button></span>' +
             '<button onclick="XKDGPhotoSectors._save()" style="' + btn + 'background:#1565c0;color:#fff;border:none;">⬇ Save / share image</button>' +
+            ' <button id="xps-dbx" onclick="XKDGPhotoSectors._saveDbx()" title="Save in Dropbox: House profiles / house / facing" style="' + btn + 'background:#0061fe;color:#fff;border:none;">📦 Save to Dropbox</button>' +
           '</div>' +
           '<div id="xps-hint" style="font-size:12px;color:#b45309;font-weight:bold;margin-bottom:4px;"></div>' +
           '<div id="xps-cal" style="font-size:11px;color:#1565c0;margin-bottom:6px;"></div>' +
@@ -709,6 +710,26 @@
       setTimeout(function () { try { window.open(url, '_blank'); } catch (e) {} }, 300);
     }, 'image/jpeg', 0.9);
   }
+  // Session 36 (Edu): keep the picture in Dropbox, in a folder of the house and of the facing used:
+  // /House profiles/<house>/<facing name> facing/<date time> · centre <deg>.jpg
+  function saveDropbox() {
+    var D = window.XKDGDropboxSync, cv = el('xps-canvas'); if (!cv || !S) return;
+    if (!D || !D.uploadFile) { alert('Dropbox Sync is not available.'); return; }
+    if (!D.connected()) { alert('Connect Dropbox first (📦 Dropbox Sync), then tap this button again.'); try { D.open(); } catch (e) {} return; }
+    var f = (S.facings || []).filter(function (x) { return Math.abs(angDiff(x.deg, S.facing)) < 0.05; })[0];
+    var clean = function (t) { return String(t).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim(); };
+    var folder = f ? clean(f.label.replace(/\s*facing$/i, '')) + ' facing' : 'facing ' + r1(S.facing);
+    var d = new Date(), p2 = function (n) { return String(n).padStart(2, '0'); };
+    var stamp = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + '-' + p2(d.getMinutes());
+    var path = '/House profiles/' + clean(S.house.name || 'house') + '/' + folder + '/' + stamp + ' - centre ' + r1(S.cal.centre) + '.jpg';
+    var b = el('xps-dbx'); if (b) { b.disabled = true; b.textContent = '⏳ Saving…'; }
+    cv.toBlob(function (blob) {
+      D.uploadFile(path, blob).then(function (r) {
+        if (b) { b.disabled = false; b.textContent = '✓ Saved in Dropbox'; setTimeout(function () { if (b) b.textContent = '📦 Save to Dropbox'; }, 3000); }
+        var h = el('xps-cal'); if (h) h.innerHTML += '<br><span style="color:#2e7d32;">📦 Saved: ' + esc((r && r.path_display) || path) + '</span>';
+      }).catch(function (e) { if (b) { b.disabled = false; b.textContent = '📦 Save to Dropbox'; } alert('Dropbox: ' + e.message); });
+    }, 'image/jpeg', 0.9);
+  }
   function close() { var m = el('xps-modal'); if (m) m.remove(); loupeHide(); S = null; }
 
   window.XKDGPhotoSectors = {
@@ -717,7 +738,7 @@
     candidates: candidates, readExif: readExif, yinYangRange: yinYangRange,
     openWithPhoto: apiOpenWithPhoto, addWall: function (l, d) { var ok = apiWall(l, d, true); if (ok) draw(); return ok; },
     state: apiState, measure: apiMeasure, isOpen: function () { return !!S; },
-    _file: loadFile, _save: save,
+    _file: loadFile, _save: save, _saveDbx: saveDropbox,
     _facing: function (v) { if (v === '' || v == null) { var fi = el('xps-facing'); if (fi) fi.focus(); return; } setFacing(v); },
     _centre: function (v) { if (!isFinite(parseFloat(v))) return; S.refs = []; S.centre = norm(parseFloat(v)); draw(); },
     _lens: function (v) { if (!v) { el('xps-f35').focus(); return; } S.f35 = +v; S.f35Locked = true; S.f35Source = '(lens setting)'; el('xps-f35').value = v; draw(); },
