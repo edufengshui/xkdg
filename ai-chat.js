@@ -6746,7 +6746,12 @@
   var SHELLY_HOUSES = {
     // house name (lower-case) -> { device, lon, utc }.  utc = standard offset (h); DST handled per date.
     'tuoro':  { device: 'tuoro',  lon: 12.1, utc: 1 },
-    'vienna': { device: 'vienna', lon: 16.4, utc: 1 },
+    // Session 37 (Edu): the nozzle of the Vienna aquarium is in Ling Shen hex 57, which acts on the
+    // bedroom-door facing 266° — it works only with that door CLOSED, as at night. So after the
+    // 23:00 OFF the aquarium switches ON again at a night hour that communicates with 57 and/or
+    // the door facing (fountain rule), and stays on until the next scheduled switch-on; when that
+    // switch-on is in the daytime (door open) it goes OFF one hour before it and ON again at it.
+    'vienna': { device: 'vienna', lon: 16.4, utc: 1, nightRelight: { water_hex: 57, facing: 266, label: 'hex 57 / bedroom door 266°' } },
     // Session 33 (Edu): two small fountains in the Vienna bedroom, each on its own Shelly.
     // Water at 222° (Ling Shen) for the bed and the bedroom door, both facing 266° (Zheng Shen).
     // Session 35 (Edu): NO Shelly on the fountains yet (shelly:false) - switched BY HAND; the plan is
@@ -7611,6 +7616,49 @@
         })();
     }
 
+    // NIGHT RE-LIGHT (Edu, session 37) — only for houses with cfg.nightRelight (Vienna). Applies to
+    // the best-hour plan, after the never-dark pass. A block that switches OFF at 23:00 is followed,
+    // that same night, by the FIRST hour (Zi, Chou, Yin, Mao) that communicates with the water hex
+    // and/or the door-facing hex AND with its day (or is Sheng In / Ke In to it) — the fountain rule.
+    // It stays ON until the next scheduled switch-on: if that switch-on is in the daytime (from the
+    // end of Mao, solar 07:00) the light goes OFF one hour before it; at night it simply runs into it.
+    if (!windowsMode && rh.cfg.nightRelight && typeof _ftHour === 'function') (function () {
+      var NR = rh.cfg.nightRelight, lon = rh.cfg.lon, utc = rh.cfg.utc;
+      function W(hex) {
+        var sl = null; try { for (var i = 0; i < FS_SLOTS.length; i++) if (FS_SLOTS[i].hexNum === hex) sl = FS_SLOTS[i]; } catch (e) {}
+        var j = (typeof _xkdgJzOfHex === 'function' ? _xkdgJzOfHex(hex) : null) || {};
+        return sl ? { hex: hex, qi: sl.qi, yun: sl.yun, stem: j.stem, branch: j.branch } : null;
+      }
+      var Wa = W(NR.water_hex), Wf = W(window.fsSlotForDeg(NR.facing).hexNum);
+      if (!Wa || !Wf) return;
+      var NM = ['Zi', 'Chou', 'Yin', 'Mao'];
+      var blocks = scheduled.slice().sort(function (a, b) { return a.onTs - b.onTs; }), add = [];
+      blocks.forEach(function (b, i) {
+        var D = b.stays_on_until_date || b.date;
+        if (Math.abs(b.offTs - _civilToEpoch(D, 23 * 60, utc)) > 60000) return;      // not a 23:00 OFF
+        var next = blocks[i + 1]; if (!next) return;
+        var N = _isoPlus(D, 1);
+        var cands = [[0, _solarToEpoch(D, 23 * 60, lon, utc)], [1, _solarToEpoch(N, 60, lon, utc)], [2, _solarToEpoch(N, 180, lon, utc)], [3, _solarToEpoch(N, 300, lon, utc)]];
+        var pick = null;
+        for (var c = 0; c < cands.length && !pick; c++) {
+          var k = cands[c][0], on = cands[c][1];
+          if (on < b.offTs || on >= next.onTs) continue;
+          var ra = null, rf = null; try { ra = _ftHour(N, k, Wa); } catch (e) {} try { rf = _ftHour(N, k, Wf); } catch (e) {}
+          if (ra || rf) pick = { k: k, on: on, r: ra || rf, via: [ra && ra.via, rf && rf.via.replace('water hex ' + Wf.hex, 'door facing hex ' + Wf.hex)].filter(Boolean).join(' | ') };
+        }
+        if (!pick) return;
+        var day = next.onTs >= _solarToEpoch(next.date, 7 * 60, lon, utc);
+        var off = day ? next.onTs - 3600000 : next.offTs;
+        if (off <= pick.on + 60000) return;
+        add.push({ date: N, branch: pick.r.branch.charAt(1), hour: NM[pick.k] + ' ' + pick.r.branch, tier: null, night_relight: true,
+                   onTs: pick.on, offTs: off, on_local: new Date(pick.on).toString(), off_local: new Date(off).toString(), why: pick.via,
+                   night_relight_note: 'Night re-light (' + NR.label + ', door closed): ON at ' + NM[pick.k] + ' ' + pick.r.branch + ' after the 23:00 OFF, ' +
+                     (day ? 'OFF one hour before the daytime switch-on of ' + next.date + ', then ON again at it.' : 'stays ON into the next switch-on (night).') });
+      });
+      add.forEach(function (a) { scheduled.push(a); });
+      scheduled.sort(function (a, b) { return a.onTs - b.onTs; });
+    })();
+
     // 4) deposit the scheduled days ONLY on commit; otherwise this is a PREVIEW (await the user's OK).
     // A block can outlive its own day (Tier 4 -> +2 days, Tier 3 -> +1), so the body carries ONE
     // ROW PER CALENDAR DAY: the block's own row, plus a row starting at 00:00 for each day it
@@ -7712,7 +7760,7 @@
         : undefined,
       note: commit
         ? 'COMMITTED: the plan above was deposited into the Worker. Tell the user exactly what was activated for this house (dates + on_local/off_local, and for any day with stays_on_until_date say the light does NOT switch off at 23:00 that day).'
-        : 'PREVIEW ONLY \u2014 nothing was deposited. NEVER ask the user to approve individual dates: every day is decided by the rules, there is nothing to confirm day by day. Show the scheduled list (date, hour, tier, on_local/off_local). For every day that carries also_good_for, SAY SO explicitly \u2014 e.g. "questa data e anche buona per Wealth e Career" \u2014 it is the same Purpose Activation calculator as the app\u2019s panel and the user wants to know. If purpose_filter is set, say the plan was restricted to that purpose and that days without it were left out. For a day with stays_on_until_date, say plainly that the light stays on until 23:00 of that later date and why (its tier is high and no stronger day follows). For a day with fallback_from, say the best hour was too late to be useful and the in-window hour was taken instead. For a day with no_dark_day_note (tier null), it IS a switch-on like the others: list it with its on_local/off_local (e.g. "oggi: accesa dalle 14:02 alle 23:00") and in any summary of the lit blocks; add that there is no favourable hour that day and it stays lit only because the aquarium is never dark for a whole day. Never word it as "cannot switch on". For a skipped day, say it stays dark and why. Then ask ONLY for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit until the user confirms; then call again with commit:true.'
+        : 'PREVIEW ONLY \u2014 nothing was deposited. NEVER ask the user to approve individual dates: every day is decided by the rules, there is nothing to confirm day by day. Show the scheduled list (date, hour, tier, on_local/off_local). For every day that carries also_good_for, SAY SO explicitly \u2014 e.g. "questa data e anche buona per Wealth e Career" \u2014 it is the same Purpose Activation calculator as the app\u2019s panel and the user wants to know. If purpose_filter is set, say the plan was restricted to that purpose and that days without it were left out. For a day with stays_on_until_date, say plainly that the light stays on until 23:00 of that later date and why (its tier is high and no stronger day follows). For a day with fallback_from, say the best hour was too late to be useful and the in-window hour was taken instead. For a row with night_relight (Vienna: hex 57 / bedroom door, door closed at night), say the aquarium switches ON again that night at its hour after the 23:00 OFF, why (its links), and that it goes OFF one hour before the next daytime switch-on and back ON at it (night_relight_note). For a day with no_dark_day_note (tier null), it IS a switch-on like the others: list it with its on_local/off_local (e.g. "oggi: accesa dalle 14:02 alle 23:00") and in any summary of the lit blocks; add that there is no favourable hour that day and it stays lit only because the aquarium is never dark for a whole day. Never word it as "cannot switch on". For a skipped day, say it stays dark and why. Then ask ONLY for the final go-ahead with buttons:\n[[BTN]] Procedi=procedi | Annulla=annulla\nDo NOT deposit until the user confirms; then call again with commit:true.'
     };
   }
 
