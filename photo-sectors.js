@@ -701,6 +701,7 @@
     var cv = el('xps-canvas'); if (!cv) return;
     cv.toBlob(function (blob) {
       var name = 'sectors-' + (S.house.name || 'house').replace(/[^\w-]+/g, '_') + '.jpg';
+      try { if (window.XKDGDropboxSync && XKDGDropboxSync.autoSave) { var P = dbxParts(); XKDGDropboxSync.autoSave(P.parts, P.file, blob); } } catch (eD) {}
       try {
         var file = new File([blob], name, { type: 'image/jpeg' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: name }).catch(function () {}); return; }
@@ -712,16 +713,17 @@
   }
   // Session 36 (Edu): keep the picture in Dropbox, in a folder of the house and of the facing used:
   // /House profiles/<house>/<facing name> facing/<date time> · centre <deg>.jpg
+  function dbxParts() {
+    var f = (S.facings || []).filter(function (x) { return Math.abs(angDiff(x.deg, S.facing)) < 0.05; })[0];
+    return { parts: ['House profiles', S.house.name || 'house', f ? f.label.replace(/\s*facing$/i, '') + ' facing' : 'facing ' + r1(S.facing)],
+             file: (window.XKDGDropboxSync ? XKDGDropboxSync.stamp() : '') + ' - centre ' + r1(S.cal.centre) + '.jpg' };
+  }
   function saveDropbox() {
     var D = window.XKDGDropboxSync, cv = el('xps-canvas'); if (!cv || !S) return;
     if (!D || !D.uploadFile) { alert('Dropbox Sync is not available.'); return; }
     if (!D.connected()) { alert('Connect Dropbox first (📦 Dropbox Sync), then tap this button again.'); try { D.open(); } catch (e) {} return; }
-    var f = (S.facings || []).filter(function (x) { return Math.abs(angDiff(x.deg, S.facing)) < 0.05; })[0];
-    var clean = function (t) { return String(t).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim(); };
-    var folder = f ? clean(f.label.replace(/\s*facing$/i, '')) + ' facing' : 'facing ' + r1(S.facing);
-    var d = new Date(), p2 = function (n) { return String(n).padStart(2, '0'); };
-    var stamp = d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + '-' + p2(d.getMinutes());
-    var path = '/House profiles/' + clean(S.house.name || 'house') + '/' + folder + '/' + stamp + ' - centre ' + r1(S.cal.centre) + '.jpg';
+    var P0 = dbxParts();
+    var path = '/' + P0.parts.map(D.cleanName).join('/') + '/' + D.cleanName(P0.file);
     var b = el('xps-dbx'); if (b) { b.disabled = true; b.textContent = '⏳ Saving…'; }
     cv.toBlob(function (blob) {
       D.uploadFile(path, blob).then(function (r) {
