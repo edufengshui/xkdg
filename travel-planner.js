@@ -2508,17 +2508,47 @@
       localStorage.setItem('xkdg_tp_tariffs_seeded', '1');
     } catch (e) {}
   }
-  function tpCheapestTariff(name) {
+  // Session 37 (Edu): tariffs can vary by TIME (Tesla, Electra in FR/BE/ES) and by STATION.
+  //  • t.bands = "22-07 0.39, 07-22 0.64"  (HH or HH:MM, local clock of the stop; wraps midnight)
+  //  • a row whose operator text is MORE specific (e.g. "Electra Lyon") wins over the generic
+  //    "Electra" row for the same card — that is how a station price is entered.
+  // No operator publishes its prices openly: the user types them from the operator's app.
+  function tpParseBands(txt) {
+    var out = [];
+    String(txt || '').split(/[,;]+/).forEach(function (part) {
+      var m = part.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?\s+([0-9]+(?:[.,][0-9]+)?)$/);
+      if (!m) return;
+      var a = (+m[1]) * 60 + (+(m[2] || 0)), b = (+m[3]) * 60 + (+(m[4] || 0)), eur = parseFloat(m[5].replace(',', '.'));
+      if (a <= 1440 && b <= 1440 && isFinite(eur)) out.push({ from: a % 1440, to: b % 1440, eur: eur, label: part.trim().replace(/\s+[0-9.,]+$/, '') });
+    });
+    return out;
+  }
+  function tpBandAt(bands, ms) {
+    if (!bands.length || !isFinite(ms)) return null;
+    var d = new Date(ms), m = d.getHours() * 60 + d.getMinutes();
+    for (var i = 0; i < bands.length; i++) {
+      var b = bands[i], inside = (b.from < b.to) ? (m >= b.from && m < b.to) : (b.from === b.to ? true : (m >= b.from || m < b.to));
+      if (inside) return b;
+    }
+    return null;
+  }
+  // Cheapest matching card at the time `ms` (optional). Returns {card, eur, network, band}.
+  function tpCheapestTariff(name, ms) {
     var hay = String(name || '').toLowerCase();
     if (!hay) return null;
-    var best = null;
+    var byCard = {};
     tpGetTariffs().forEach(function (t) {
       var net = String(t.network || '').trim().toLowerCase();
       if (!net || hay.indexOf(net) < 0) return;
-      var eur = parseFloat(t.eur);
+      var bands = tpParseBands(t.bands), band = tpBandAt(bands, ms);
+      var eur = band ? band.eur : parseFloat(t.eur);
       if (!isFinite(eur)) return;
-      if (!best || eur < best.eur) best = { card: (t.card || t.network), eur: eur, network: t.network };
+      var key = String(t.card || t.network).toLowerCase(), cur = byCard[key];
+      if (!cur || net.length > cur.len || (net.length === cur.len && eur < cur.eur))
+        byCard[key] = { card: (t.card || t.network), eur: eur, network: t.network, band: band ? band.label : null, len: net.length };
     });
+    var best = null;
+    Object.keys(byCard).forEach(function (k) { var c = byCard[k]; if (!best || c.eur < best.eur) best = c; });
     return best;
   }
   function tpBuildTariffTable() {
@@ -2527,6 +2557,8 @@
     box.appendChild(el('div', { style: 'font-weight:600;color:#2e5d2e;font-size:12px;margin-bottom:3px;' }, '\uD83D\uDCB3 My charging tariffs'));
     box.appendChild(el('div', { style: 'color:#777;font-size:11px;margin-bottom:5px;' },
       'Add any operator + the card you use + your \u20AC/kWh. The cheapest matching card is shown on each charger. Operator is matched as text inside the charger name (e.g. \u201CFree To X\u201D, \u201CIonity\u201D, \u201CTesla\u201D).'));
+    box.appendChild(el('div', { style: 'color:#777;font-size:11px;margin-bottom:5px;' },
+      'Prices that change with the hour (Tesla; Electra in France, Belgium, Spain): fill \u201CTime bands\u201D, e.g. 22-07 0.39, 07-22 0.64 \u2014 the price at the arrival time is used. A different price at one station: add a row with a more precise operator text (e.g. \u201CElectra Lyon\u201D). Copy the prices from the operator\u2019s app: they publish no open price data.'));
     var rowsHost = el('div', {});
     box.appendChild(rowsHost);
     function render() {
@@ -2541,13 +2573,16 @@
           style: 'flex:1.4;min-width:0;padding:4px 6px;border:1px solid #cfe3cf;border-radius:5px;font-size:12px;' });
         var eurI = el('input', { type: 'number', step: '0.01', min: '0', placeholder: '\u20AC/kWh', value: (t.eur != null && isFinite(t.eur) ? t.eur : ''),
           style: 'flex:none;width:74px;padding:4px 6px;border:1px solid #cfe3cf;border-radius:5px;font-size:12px;' });
-        function save() { var l = tpGetTariffs(); l[i] = { network: netI.value.trim(), card: cardI.value.trim(), eur: parseFloat(eurI.value) }; tpSaveTariffs(l); }
-        netI.addEventListener('change', save); cardI.addEventListener('change', save); eurI.addEventListener('change', save);
+        var bandI = el('input', { type: 'text', placeholder: 'Time bands (optional): 22-07 0.39, 07-22 0.64', value: (t.bands || ''),
+          style: 'flex:1 1 100%;min-width:0;padding:4px 6px;border:1px solid #cfe3cf;border-radius:5px;font-size:12px;' });
+        function save() { var l = tpGetTariffs(); l[i] = { network: netI.value.trim(), card: cardI.value.trim(), eur: parseFloat(eurI.value), bands: bandI.value.trim() || undefined }; tpSaveTariffs(l); }
+        netI.addEventListener('change', save); cardI.addEventListener('change', save); eurI.addEventListener('change', save); bandI.addEventListener('change', save);
         var del = el('button', { type: 'button', title: 'Remove',
           style: 'flex:none;padding:4px 8px;border:1px solid #e0b0b0;border-radius:5px;background:#fff;color:#b00;font-size:12px;cursor:pointer;' }, '\u2715');
         del.addEventListener('click', function () { var l = tpGetTariffs(); l.splice(i, 1); tpSaveTariffs(l); render(); });
         r.appendChild(netI); r.appendChild(cardI); r.appendChild(eurI); r.appendChild(del);
         rowsHost.appendChild(r);
+        var r2 = el('div', { style: 'display:flex;margin:0 0 6px;' }); r2.appendChild(bandI); rowsHost.appendChild(r2);
       });
     }
     var addBtn = el('button', { type: 'button',
@@ -2983,11 +3018,23 @@
               });
             }
             function closest(list) {
-              return list.slice().sort(function (a, b) {
+              var sorted = list.slice().sort(function (a, b) {
                 if (b.alongKm !== a.alongKm) return b.alongKm - a.alongKm;   // as close to the boundary as possible, but before it
                 if ((a.offKm || 0) !== (b.offKm || 0)) return (a.offKm || 0) - (b.offKm || 0);  // then nearer the route (smaller detour)
                 return (b.s.maxKW || 0) - (a.s.maxKW || 0);                  // then higher power
-              })[0] || null;
+              });
+              var top = sorted[0] || null;
+              // Session 37 (Edu): between EQUIVALENT chargers (within 5 km along the route and
+              // 1 km more detour, same tier) take the cheapest at the arrival time, from My tariffs.
+              if (top) {
+                var price = function (r) { var t = tpCheapestTariff((r.s.title || '') + ' ' + (r.s.operator || ''), r.etaMs); return t ? t.eur : null; };
+                var p0 = price(top);
+                sorted.forEach(function (r) {
+                  if (r === top || (top.alongKm - r.alongKm) > 5 || ((r.offKm || 0) - (top.offKm || 0)) > 1) return;
+                  var pr = price(r); if (pr != null && (p0 == null || pr < p0 - 0.005)) { top = r; p0 = pr; }
+                });
+              }
+              return top;
             }
             function te(list) { return list.filter(function (r) { return r.isPref; }); }
             function keep(list) { return list.filter(preservesScore); }     // score-preserving subset
@@ -3431,9 +3478,10 @@
             info.appendChild(el('div', { style: 'color:#888;' },
               (s.operator ? s.operator + ' \u00b7 ' : '') + (s.maxKW ? Math.round(s.maxKW) + ' kW \u00b7 ' : '') +
               Math.round(r.alongKm) + ' km along \u00b7 ' + r.offKm.toFixed(1) + ' km off route \u00b7 ETA ' + hm));
-            var _tf = tpCheapestTariff((s.title || '') + ' ' + (s.operator || ''));
+            var _tf = tpCheapestTariff((s.title || '') + ' ' + (s.operator || ''), r.etaMs);
             if (_tf) info.appendChild(el('div', { style: 'color:#1b6e2f;font-size:11px;font-weight:600;' },
-              '\uD83D\uDCB3 ' + _tf.card + ' \u00b7 \u20AC' + _tf.eur.toFixed(2) + '/kWh'));
+              '\uD83D\uDCB3 ' + _tf.card + ' \u00b7 \u20AC' + _tf.eur.toFixed(2) + '/kWh' + (_tf.band ? ' at ' + hm + ' (' + _tf.band + ')' : '') +
+              (c.kwh != null && isFinite(c.kwh) ? ' \u00b7 \u2248 \u20AC' + (c.kwh * _tf.eur).toFixed(2) + ' for ' + c.kwh + ' kWh' : '')));
             row.appendChild(info);
             var seeBtn = el('button', { type: 'button', title: 'See this charger in Google Maps',
               style: 'padding:5px 9px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;' }, '\ud83d\udd0d Maps');
@@ -9172,7 +9220,7 @@
       if (!name || !String(name).trim()) return Promise.resolve(null);
       return tpGeocodeArea(String(name).trim()).then(function (a) { return a; }).catch(function () { return null; });
     },
-    cheapestTariff: function (name) { return tpCheapestTariff(name); },
+    cheapestTariff: function (name, ms) { return tpCheapestTariff(name, ms); },
     getWorkerUrl: tpGetWorkerUrl,
     readChargeFromCar: tpReadChargeFromCar,
     getLiveRange: tpGetLiveRange,
