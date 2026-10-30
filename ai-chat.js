@@ -412,6 +412,9 @@
       'window does not change the driving time, so prefer that; avoid choices that add long waits or detours, and ' +
       'when options are close pick the shorter/earlier one. Only lengthen the trip noticeably if the user explicitly ' +
       'says they want maximum luck regardless of time.\n' +
+      '- CAR TYPE (session 37): get_app_state.car_type. If it is petrol/diesel/hybrid NEVER pass range_km / reserve_km / ' +
+      'charges, never ask for autonomy, never plan or mention charging stops or chargers (the planner ignores them anyway); ' +
+      'stops are only the favourable ones. find_lucky_charge_day is for electric cars only.\n' +
       '- For an electric car, if the user stated the autonomy/range, pass it as range_km - do NOT ask again. ' +
       'But if the user wants the trip planned for an EV / with charging and has NOT given the autonomy, ASK for it once ' +
       '(a single short question, e.g. "Quanti km di autonomia ha l\'auto adesso?") BEFORE planning charging — never assume ' +
@@ -2236,6 +2239,7 @@
   // returns the nearest candidates with a per-constraint breakdown, so Edu can
   // see precisely which condition the Luoshu flight makes impossible to combine.
   async function toolFindLuckyChargeDay(input) {
+    try { if (window.xkdgCarType && window.xkdgCarType() === 'fuel') return { error: 'The car on this device is set as petrol / diesel / hybrid: there are no charging stops. Plan the trip with plan_travel (or the lucky-trip tools) without range_km.' }; } catch (e) {}
     input = input || {};
     if (!window.TravelPlanner || typeof window.TravelPlanner.findLuckyDeparture !== 'function')
       return { error: 'Travel Planner not available on this page (needs the session-23 travel-planner.js).' };
@@ -5761,6 +5765,7 @@
     try { sect = window._fsActiveZone || 'main'; } catch (e) {}
     return {
       persons_loaded: (pl.a && pl.b) ? 'A+B' : (pl.a ? 'A' : (pl.b ? 'B' : 'none')),
+      car_type: (function () { try { var c = window.xkdgCarType ? window.xkdgCarType() : null; return c === 'fuel' ? 'petrol/diesel/hybrid (no charging)' : c === 'ev' ? 'electric' : 'not set (the planner asks when it opens)'; } catch (e) { return null; } })(),
       personA: v('person-name'), personB: v('person-name-b'),
       persons: _loadedPersonsPillars(),
       selectedDate: v('date'), scanStart: v('scan-start'), scanDays: v('scan-days'),

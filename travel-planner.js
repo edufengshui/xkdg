@@ -211,7 +211,27 @@
   // --- Live charge from the car (Strada 2) ---------------------------------
   // The last range read from the Polestar, kept so any later plan (even with the
   // panel closed, even one launched by the AI) can use the real remaining range.
+  // ---- Car type (session 37, Edu: students without an electric car) ---------
+  // 'ev' = electric (range, charging stops, SoC, chargers) · 'fuel' = petrol / diesel /
+  // non-plug-in hybrid: no range, no charging stops, no EV fields. Asked once, per device.
+  function tpCarType() { try { var v = localStorage.getItem('xkdg_car_type'); return (v === 'ev' || v === 'fuel') ? v : null; } catch (e) { return null; } }
+  function tpIsEV() { return tpCarType() !== 'fuel'; }
+  function tpSetCarType(v) { try { localStorage.setItem('xkdg_car_type', v === 'fuel' ? 'fuel' : 'ev'); } catch (e) {} }
+  try { window.xkdgCarType = tpCarType; window.xkdgSetCarType = tpSetCarType; } catch (e) {}
+  function tpAskCarType(done) {
+    var ov = el('div', { style: 'position:fixed;inset:0;z-index:100010;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;' });
+    var card = el('div', { style: 'background:#fff;border-radius:12px;max-width:340px;width:100%;padding:16px;font-family:system-ui,Arial,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.35);' });
+    card.appendChild(el('div', { style: 'font-weight:700;font-size:16px;color:#1565c0;margin-bottom:6px;' }, '🚗 What car do you drive?'));
+    card.appendChild(el('div', { style: 'font-size:13px;color:#444;margin-bottom:12px;' }, 'The planner adds charging stops only for an electric car. You can change it later in the planner.'));
+    [['ev', '⚡ Electric'], ['fuel', '⛽ Petrol / Diesel / Hybrid']].forEach(function (o) {
+      var b = el('button', { type: 'button', style: 'display:block;width:100%;margin:6px 0;padding:11px;border:1px solid #1565c0;border-radius:8px;background:#fff;color:#1565c0;font-size:15px;font-weight:600;cursor:pointer;' }, o[1]);
+      b.addEventListener('click', function () { tpSetCarType(o[0]); ov.remove(); if (done) done(); });
+      card.appendChild(b);
+    });
+    ov.appendChild(card); document.body.appendChild(ov);
+  }
   function tpGetLiveRange() {
+    if (!tpIsEV()) return null;
     try { var o = JSON.parse(localStorage.getItem('xkdg_tp_live_range') || 'null'); return (o && isFinite(o.km)) ? o : null; } catch (e) { return null; }
   }
   function tpSetLiveRange(km, soc) {
@@ -284,6 +304,7 @@
   //   afterKm = how far you can go after a fast charge to TP_CHARGE_TARGET
   // Returns null when there is no EV range set (then no charge stops are forced).
   function tpEvRangePlan() {
+    if (!tpIsEV()) return null;
     try {
       var firstKm = 0;
       var lr = tpGetLiveRange();
@@ -1288,7 +1309,7 @@
     // an electric car with a full battery on a 150 km loop needs a walk, not a plug.
     var loopKm = 0;
     for (var lk = 0; lk < legs.length; lk++) loopKm += (legs[lk].km || 0);
-    var rangeKm = (opts.rangeKm > 0) ? opts.rangeKm : 0;              // km left RIGHT NOW
+    var rangeKm = (tpIsEV() && opts.rangeKm > 0) ? opts.rangeKm : 0;  // km left RIGHT NOW (0 for a petrol/diesel car)
     var reservePct = (opts.reservePct >= 0 && opts.reservePct < 90) ? opts.reservePct : 15;
     var usableKm = rangeKm > 0 ? rangeKm * (1 - reservePct / 100) : 0;
     var wantCharge = !opts.noCharging && rangeKm > 0 && loopKm > usableKm;
@@ -2096,7 +2117,7 @@
     var driveH = routeIdx ? routeIdx.durationSec / 3600 : (km / TP_AVG_KMH);
     if (!isFinite(driveH) || driveH <= 0) driveH = 1;
 
-    var usableKm = (opts.rangeKm > 0) ? (opts.rangeKm - (opts.reserveKm || 0)) : 0;
+    var usableKm = (tpIsEV() && opts.rangeKm > 0) ? (opts.rangeKm - (opts.reserveKm || 0)) : 0;
     var minDur = Math.max(driveH, 0.5);
     var solutions = [], seen = {};
     for (var extra = 0; extra <= maxExtraHours + 1e-9; extra += stepMin / 60) {
@@ -3980,7 +4001,7 @@
     tpRenderPlan(result, container);
 
     // ---- Charging stops along the route (Phase F) ----
-    tpRenderChargers(result, container);
+    if (tpIsEV()) tpRenderChargers(result, container);   // session 37: no charging block for a petrol/diesel car
 
     // ---- Google Maps export (Phase D) ----
     tpRenderMapsExport(result, container);
@@ -4562,8 +4583,9 @@
 
   // Gate every entry point: ask for the code (once per session), then open.
   function tpOpen() {
-    if (!TP_LOCK_ENABLED || tpUnlocked) { tpOpenReal(); return; }
-    tpRequestCode(tpOpenReal);
+    var go = function () { if (!tpCarType()) tpAskCarType(function () { tpOpenReal(); }); else tpOpenReal(); };
+    if (!TP_LOCK_ENABLED || tpUnlocked) { go(); return; }
+    tpRequestCode(go);
   }
 
   function tpMakePanelMovable(panel) {
@@ -5023,6 +5045,20 @@
     evWrap.appendChild(evIn);
     rcBlock.appendChild(evWrap);
     form.appendChild(rcBlock);
+    // Car type line (session 37): fuel cars get no range / charging fields at all.
+    var carLine = el('div', { style: 'grid-column:1 / span 2;font-size:12px;color:#555;display:flex;align-items:center;gap:8px;' },
+      'Car: ' + (tpIsEV() ? '\u26A1 Electric' : '\u26FD Petrol / Diesel / Hybrid (no charging stops)'));
+    var carBtn = el('button', { type: 'button', style: 'padding:2px 8px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;font-size:12px;cursor:pointer;' }, 'change');
+    carBtn.addEventListener('click', function () {
+      tpAskCarType(function () { var o = document.getElementById('tp-overlay'); if (o) o.remove(); tpOpenReal(tpReturnFn); });
+    });
+    carLine.appendChild(carBtn);
+    form.appendChild(carLine);
+    if (!tpIsEV()) {
+      rcBlock.style.display = 'none'; chWrap.style.display = 'none';
+      var _rg = rcBlock.querySelector('#tp-range'); if (_rg) _rg.value = '';
+      var _ch = chWrap.querySelector('#tp-charges'); if (_ch) _ch.value = '';
+    }
 
     panel.appendChild(form);
 
@@ -5749,6 +5785,7 @@
     // car's LIVE range sat right there in storage from the xkdg-soc worker. A fresh
     // live reading (same 2h freshness rule runChargerSearch itself applies) is a real
     // figure, not the panel's blind default the original guard was protecting against.
+    if (!tpIsEV()) { params.rangeKm = null; params.reserveKm = null; params.charges = null; }
     var _wcRange = parseFloat(params.rangeKm);
     if (!(_wcRange > 0)) {
       try { var _wcLr = tpGetLiveRange(); if (_wcLr && _wcLr.km > 0 && (Date.now() - _wcLr.ts) < 2 * 3600000) _wcRange = _wcLr.km; } catch (e) {}
