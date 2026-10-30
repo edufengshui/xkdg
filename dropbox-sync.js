@@ -298,5 +298,14 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 
-  window.XKDGDropboxSync = { open: openPanel, save: doSave, load: doLoad, connect: connect };
+  // Session 36 (Edu): store any file (e.g. a Photo sectors picture) in the App folder, next to the sync file.
+  function uploadFile(path, blob){
+    return getToken().then(function (t){
+      return fetch('https://content.dropboxapi.com/2/files/upload', { method: 'POST',
+        headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/octet-stream',
+                   'Dropbox-API-Arg': JSON.stringify({ path: path, mode: 'add', autorename: true, mute: true }).replace(/[\u007f-\uffff]/g, function (c){ return '\\u' + ('000' + c.charCodeAt(0).toString(16)).slice(-4); }) },
+        body: blob });
+    }).then(function (r){ if (!r.ok) throw new Error('Upload failed (' + r.status + ')'); return r.json(); });
+  }
+  window.XKDGDropboxSync = { open: openPanel, save: doSave, load: doLoad, connect: connect, connected: connected, uploadFile: uploadFile };
 })();
