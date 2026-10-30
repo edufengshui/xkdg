@@ -676,6 +676,11 @@
       '(a void hour is weak/empty even if otherwise favourable).\n'
     ],
     ["home",
+      '- STUDENT SHELLY PLUGS (session 38): a student connects HIS OWN Shelly plug to a saved house in the app (house card ' +
+      '\u2630 \u2192 \ud83d\udd0c Aquarium plug (Shelly)); get_app_state.shelly_houses lists them. For those houses pass the house NAME as ' +
+      '`house` to program_aquarium_light / aquarium_light / aquarium_plan \u2014 no configure_shelly needed (the token is per device). ' +
+      'If the user asks to program an aquarium of a house that is not in shelly_houses (and is not tuoro / vienna), tell him to ' +
+      'connect the plug from that menu first (guide guides/shelly.html).\n' +
       '- MISSED SWITCH-ONS: the Shelly Worker retries a scheduled switch until it can verify the plug '
     + 'really changed state, and records the ones it never managed. Whenever a result carries `alerts` or '
     + '`missed_switches`, REPORT THEM FIRST, before anything else, reproducing each line as given: they mean '
@@ -1631,7 +1636,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug to program: the aquarium of tuoro / vienna, or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, by DAY only), vienna-porta = Fountain B (bedroom door, by NIGHT only). A fountain plan (session 36) gives ONE hour EVERY day: A every morning (the hour closest to Mao), B every evening (Hai or later); the water hexagram at 222° must communicate with the hour and the hour with the day (or be Sheng In / Ke In to it). It runs to the next solar month.' },
+          house: { type: 'string', description: 'Which plug to program: the aquarium of tuoro / vienna, or a STUDENT house whose Shelly plug was connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug; use the house name as saved \u2014 get_app_state.shelly_houses lists them), or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, by DAY only), vienna-porta = Fountain B (bedroom door, by NIGHT only). A fountain plan (session 36) gives ONE hour EVERY day: A every morning (the hour closest to Mao), B every evening (Hai or later); the water hexagram at 222° must communicate with the hour and the hour with the day (or be Sheng In / Ke In to it). It runs to the next solar month.' },
           mode: { type: 'string', enum: ['block', 'windows'], description: 'How the light is scheduled. "block" (DEFAULT, the long-standing behaviour) = ONE hour per day, light stays ON until 23:00, blocks can span several days. "windows" = the light is ON only for the two hours of EACH favourable hour of the day and is switched off in between; several windows a day are normal, and consecutive favourable hours are merged into one longer window. Use "windows" only when the user asks for it for that house.' },
           days: { type: 'integer', description: 'OMIT it (default): the plan runs until the EXACT start of the next solar month (next Jie), Edu\'s rule. Pass a number only if the user asks for a specific number of days.' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
@@ -1742,7 +1747,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug: aquarium tuoro / vienna, or fountain vienna-letto (A, bed) / vienna-porta (B, door).' },
+          house: { type: 'string', description: 'Which plug: aquarium tuoro / vienna, a student house with a connected Shelly plug (its saved house name), or fountain vienna-letto (A, bed) / vienna-porta (B, door).' },
           turn: { type: 'string', enum: ['on', 'off', 'status'], description: 'on, off, or status (default status).' }
         },
         required: ['house']
@@ -1764,7 +1769,7 @@
         + 'as returned and never recompute them.',
       input_schema: { type: 'object',
         properties: {
-          house: { type: 'string', enum: ['tuoro', 'vienna', 'vienna-letto', 'vienna-porta'], description: 'Which plug: aquarium tuoro / vienna, or fountain vienna-letto (A, bed) / vienna-porta (B, door).' },
+          house: { type: 'string', description: 'Which plug: aquarium tuoro / vienna, a student house with a connected Shelly plug (its saved house name), or fountain vienna-letto (A, bed) / vienna-porta (B, door).' },
           action: { type: 'string', enum: ['get', 'cancel', 'pause', 'resume', 'clear_alerts'],
             description: 'get (default) = read the stored plan; cancel = empty it; pause/resume = automation master switch.' }
         },
@@ -3275,13 +3280,18 @@
     //     the "regenerate the plan" note (Edu, session 29). Read from the Worker's real
     //     stored plan (?get_plan), not a fresh computation.
     try {
-      var _cfg = (typeof _shellyCfg === 'function') ? _shellyCfg() : null;
-      if (_cfg && _cfg.url && _cfg.token) {
-        var _devs = [{ id: 'tuoro', name: 'Tuoro', utc: 1 }, { id: 'vienna', name: 'Vienna', utc: 1 }];
+      var _cfg0 = (typeof _shellyCfg === 'function') ? _shellyCfg() : null;
+      var _devs = (_cfg0 && _cfg0.url && _cfg0.token)
+        ? [{ id: 'tuoro', name: 'Tuoro', utc: 1, cfg: _cfg0 }, { id: 'vienna', name: 'Vienna', utc: 1, cfg: _cfg0 }] : [];
+      // Session 38: student plugs, each with its own Worker token.
+      try { _shellyUserMerge(); Object.keys(SHELLY_HOUSES).forEach(function (k) { var c = SHELLY_HOUSES[k];
+        if (c.user) _devs = _devs.filter(function (x) { return x.id !== k; }).concat([{ id: c.device, name: c.houseName, utc: c.utc, cfg: { url: c.url, token: c.token } }]); }); } catch (eU) {}
+      if (_devs.length) {
         report.plan_ending = {};
         for (var _di = 0; _di < _devs.length; _di++) {
           var _dv = _devs[_di];
           try {
+            var _cfg = _dv.cfg;
             var _r = await fetch(_cfg.url + '?get_plan&device=' + _dv.id + '&token=' + encodeURIComponent(_cfg.token));
             var _j = _r.ok ? await _r.json() : null;
             var _days = (_j && _j.plan && Array.isArray(_j.plan.days)) ? _j.plan.days : [];
@@ -5765,6 +5775,7 @@
     try { sect = window._fsActiveZone || 'main'; } catch (e) {}
     return {
       persons_loaded: (pl.a && pl.b) ? 'A+B' : (pl.a ? 'A' : (pl.b ? 'B' : 'none')),
+      shelly_houses: (function () { try { return _shellyUserHouses(); } catch (e) { return []; } })(),
       car_type: (function () { try { var c = window.xkdgCarType ? window.xkdgCarType() : null; return c === 'fuel' ? 'petrol/diesel/hybrid (no charging)' : c === 'ev' ? 'electric' : 'not set (the planner asks when it opens)'; } catch (e) { return null; } })(),
       personA: v('person-name'), personB: v('person-name-b'),
       persons: _loadedPersonsPillars(),
@@ -6790,10 +6801,36 @@
   var TIER4_MAX_STRETCH = 5;
   var TIER3_MAX_STRETCH = 3;
 
-  function _shellyCfg() {
+  function _shellyCfg(rh) {
+    // Session 38: a STUDENT plug (shelly-devices.js) carries its own Worker url + per-device token.
+    if (rh && rh.cfg && rh.cfg.user) return (rh.cfg.url && rh.cfg.token) ? { url: rh.cfg.url, token: rh.cfg.token } : null;
     try { var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || '{}'); return (c && c.url && c.token) ? c : null; }
     catch (e) { return null; }
   }
+  // Session 38 (Edu): students connect THEIR OWN Shelly plug to a saved house (house card
+  // \u2630 \u2192 \ud83d\udd0c Aquarium plug). Those devices live in localStorage (xkdg_shelly_devices,
+  // shelly-devices.js) and are merged here, keyed by the house name, so every Shelly tool
+  // works for them exactly as for tuoro / vienna. A user entry with the same name wins.
+  var _SHELLY_BUILTIN = {};
+  Object.keys(SHELLY_HOUSES).forEach(function (k) { _SHELLY_BUILTIN[k] = SHELLY_HOUSES[k]; });
+  function _shellyUserMerge() {
+    try {
+      Object.keys(SHELLY_HOUSES).forEach(function (k) { if (SHELLY_HOUSES[k] && SHELLY_HOUSES[k].user) delete SHELLY_HOUSES[k]; });
+      Object.keys(_SHELLY_BUILTIN).forEach(function (k) { SHELLY_HOUSES[k] = _SHELLY_BUILTIN[k]; });
+      var L = (window.XKDGShellyDevices && window.XKDGShellyDevices.list) ? window.XKDGShellyDevices.list() : [];
+      L.forEach(function (d) {
+        if (!d || !d.house || !d.device || !d.token) return;
+        SHELLY_HOUSES[d.house] = { device: d.device, lon: +d.lon, utc: +d.utc, user: true, url: d.url, token: d.token,
+                                   label: d.label || 'Aquarium', houseName: d.houseName || d.house };
+      });
+    } catch (e) {}
+  }
+  function _shellyUserHouses() {
+    _shellyUserMerge();
+    return Object.keys(SHELLY_HOUSES).filter(function (k) { return SHELLY_HOUSES[k].user; })
+      .map(function (k) { var c = SHELLY_HOUSES[k]; return { house: c.houseName, plug: c.label, device: c.device }; });
+  }
+  try { window.XKDGShellyRefresh = _shellyUserMerge; } catch (e) {}
   function _dateParts(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso); return m ? { y: +m[1], mo: +m[2], d: +m[3] } : null; }
   function _isoPlus(iso, n) {
     var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n);
@@ -6861,6 +6898,7 @@
   }
 
   function _resolveShellyHouse(nameOrDevice) {
+    _shellyUserMerge();
     var key = String(nameOrDevice || '').trim().toLowerCase();
     if (SHELLY_ALIASES[key]) key = SHELLY_ALIASES[key];
     if (SHELLY_HOUSES[key]) return { name: key, cfg: SHELLY_HOUSES[key] };
@@ -6882,10 +6920,10 @@
     input = input || {};
     var _rh0 = _resolveShellyHouse(input.house || input.device);
     if (_rh0 && _rh0.cfg.fountain && _rh0.cfg.shelly === false) return { error: _rh0.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + _rh0.name + '") and offer calendar reminders.' };
-    var cfg = _shellyCfg();
+    var cfg = _shellyCfg(_rh0);
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     var rh = _resolveShellyHouse(input.house || input.device);
-    if (!rh) return { error: 'Unknown house/device. Use "tuoro" or "vienna".' };
+    if (!rh) return { error: 'Unknown house/device. Use "tuoro" or "vienna", or a house whose Shelly plug is connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug). No plug connected: say so and point the user to that menu.' };
     if (rh.cfg.fountain && rh.cfg.shelly === false) return { error: rh.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + rh.name + '") and offer calendar reminders.' };
     var turn = String(input.turn || 'status').toLowerCase();
     if (['on', 'off', 'status'].indexOf(turn) < 0) return { error: 'turn must be on, off or status.' };
@@ -6929,10 +6967,10 @@
     input = input || {};
     var _rh0 = _resolveShellyHouse(input.house || input.device);
     if (_rh0 && _rh0.cfg.fountain && _rh0.cfg.shelly === false) return { error: _rh0.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + _rh0.name + '") and offer calendar reminders.' };
-    var cfg = _shellyCfg();
+    var cfg = _shellyCfg(_rh0);
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     var rh = _resolveShellyHouse(input.house || input.device);
-    if (!rh) return { error: 'Provide house = "tuoro" or "vienna".' };
+    if (!rh) return { error: 'Provide house = "tuoro" or "vienna", or a house whose Shelly plug is connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug). No plug connected: say so and point the user to that menu.' };
     if (rh.cfg.fountain && rh.cfg.shelly === false) return { error: rh.cfg.fountain.label + ' has no Shelly plug yet: it is switched BY HAND. For its ON/OFF times call program_aquarium_light(house:"' + rh.name + '") and offer calendar reminders.' };
     var action = String(input.action || 'get').toLowerCase();
     var q = { get: '?get_plan', cancel: '?clear_plan', pause: '?auto=off', resume: '?auto=on',
@@ -7330,8 +7368,8 @@
     input = input || {};
     var _jie = (input.days == null) ? _nextJie(Date.now()) : null;   // default: until the new month
     var rh = _resolveShellyHouse(input.house);
-    if (!rh) return { error: 'Provide house = "tuoro" or "vienna" (or a fountain: "vienna-letto", "vienna-porta").' };
-    var cfg = _shellyCfg();
+    if (!rh) return { error: 'Provide house = "tuoro" or "vienna" (or a fountain: "vienna-letto", "vienna-porta"), or a house whose Shelly plug is connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug). No plug connected: say so and point the user to that menu.' };
+    var cfg = _shellyCfg(rh);
     if (rh.cfg.fountain && rh.cfg.shelly === false) return _programFountain(rh, cfg, input, _jie);   // by hand: no Worker needed
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     if (rh.cfg.fountain) return _programFountain(rh, cfg, input, _jie);
