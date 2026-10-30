@@ -70,6 +70,7 @@ Next session: read this file first.
 - Guide `guides/yang-openings.html` (index linked): 9 steps, tool, Vienna example (facing 266, window 222.9° 3.98 m, door 282.9° 4.12 m → exact 34 cm left + 43 cm forward; smallest 29 left + 23 fwd; sideways only: B1 door on 62 = 53 cm left (window → 229.0° hex 6) / B2 window stays on 46), photo/laser how-to, fountains, AI. Video later.
 - ⚠ The example BEARINGS (222.9 / 282.9) were reconstructed from the session-36 solution (34 + 43 cm, targets centred) — Edu to confirm his measured values.
 - Tested headless (Playwright): tool numbers match the guide; Save as opening; AI tool via XKDGAITools.exec.
+- **Aquarium plan bug (Edu "non va bene", Vienna dark all 30 Oct)**: the never-dark pass skipped an empty FIRST day (no earlier block in the plan). Now that day gets a kept-ON row (00:00 or now → 23:00, tier null, `no_dark_day_note`); the AI note says so. The Worker plan deposited 27 Oct 12:57 already lacked 30 Oct (rule committed 12:07 — probably an app tab loaded before it). Windows mode unchanged (by design no hole-covering). Edu must re-deposit Vienna.
 
 ## To check with Edu
 - FACING list with the doors of a real saved house (only tested with current bed/desk).
