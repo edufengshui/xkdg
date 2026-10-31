@@ -2784,6 +2784,7 @@ function togglePillarDisplay(person) {
 
 function toggleScanSortMode() {
     window._chipSortMode = !window._chipSortMode;
+    window._dirChrono = false;   // a score/chip sort replaces the date order
     const nayinOrder = { 'Nayin Power': 3, 'Nayin': 2, 'Nayin Weak': 1 };
     const af = getActiveFilters();
     if (window._chipSortMode) {
@@ -4128,7 +4129,14 @@ function loadDateIntoMain(isoDate, hourIndex, isZiSecondHalf) {
 }
 
 // Toggle chronological vs best-first ordering for a DIRECTION (flight) scan.
-function toggleDirChrono() { window._dirChrono = !window._dirChrono; runScanner(); }
+// Session 37 (Edu: "non si può ordinare by date?"): 📅 By date / 🏆 By score in every BEST list,
+// not only with a direction filter. Re-sorts the results already found (no new scan).
+function toggleDirChrono() {
+    window._dirChrono = !window._dirChrono;
+    if (window._dirChrono) _scanResults.sort((a, b) => a.rawDate - b.rawDate);
+    else _scanResults.sort((a, b) => b.score - a.score || a.rawDate - b.rawDate);
+    renderScanResults(_scanResults, _personBYear ? 'both' : 'score');
+}
 
 // Floating "back to results" button: returns to the scan list after a result
 // was opened in Main. The list itself is never destroyed, so this just scrolls
@@ -4193,7 +4201,7 @@ function renderScanResults(results, mode) {
     const hasChipSort = af.size > 0;
     const chipSortLabel = af.has('ke-wealth') ? 'Ke Sort' : af.has('nayin') ? 'NaYin Sort' : 'Chip Sort';
     const sortToggleHTML = `<div style="text-align:right;margin-bottom:6px;display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;">
-            ${(_fsActionPalace && getPurpose()) ? `<button onclick="toggleDirChrono()" id="dir-chrono-btn" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${window._dirChrono?'#6a1b9a':'#fff'};color:${window._dirChrono?'#fff':'#6a1b9a'};cursor:pointer;">${window._dirChrono ? '📅 Date order' : '🏆 Best first'}</button>` : ''}
+            <button onclick="toggleDirChrono()" id="dir-chrono-btn" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${window._dirChrono?'#6a1b9a':'#fff'};color:${window._dirChrono?'#fff':'#6a1b9a'};cursor:pointer;">${window._dirChrono ? '📅 By date' : '🏆 By score'}</button>
             ${hasChipSort ? `<button onclick="toggleScanSortMode()" id="chip-sort-btn" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #1565c0;background:${window._chipSortMode?'#1565c0':'#fff'};color:${window._chipSortMode?'#fff':'#1565c0'};cursor:pointer;">${window._chipSortMode ? '⇅ '+chipSortLabel : '⇅ Score Sort'}</button>` : ''}
             <button onclick="toggleBestOnlyXKDG()" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #6a1b9a;background:${_bestOnlyXKDG?'#6a1b9a':'#fff'};color:${_bestOnlyXKDG?'#fff':'#6a1b9a'};cursor:pointer;">
               ${_bestOnlyXKDG ? '🔒 Only with XKDG' : '🔓 Only with XKDG'}
@@ -9338,10 +9346,8 @@ function runScanner() {
     sortResults_chip(results);
     // With a DIRECTION filter active: best score first by default, or strict
     // chronological order when the user toggles "📅 Date order".
-    if (_fsActionPalace && getPurpose()) {
-        if (window._dirChrono) results.sort((a,b) => a.rawDate - b.rawDate);
-        else results.sort((a,b) => b.score - a.score || a.rawDate - b.rawDate);
-    }
+    if (window._dirChrono) results.sort((a,b) => a.rawDate - b.rawDate);
+    else if (_fsActionPalace && getPurpose()) results.sort((a,b) => b.score - a.score || a.rawDate - b.rawDate);
     _scanResults = results;
 
     const container = document.getElementById('scan-results');
