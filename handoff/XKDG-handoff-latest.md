@@ -107,3 +107,5 @@ Proposed design (to confirm with Edu):
 - Guide `guides/shelly.html` (index + 📖 shelly_plug link it) and ▶ Video 5 `guides/videos/shelly.mp4` (1:34; sources tools/video/shelly: capture.js mocks the Shelly Worker, the assistant reply is built from the REAL program_aquarium_light result; Shelly-app screens are simplified generic drawings, labelled so). Needs lunar-javascript in digest/node_modules (npm install, not committed).
 - TODO: Edu deploys v7 + service binding XKDG_AI (said he will do it later).
 - Open questions to Edu (unanswered): (1) Vienna night re-light: an EVENING next ON (You/Xu/Hai) counts as "daytime" (≥ solar 07:00) → OFF 1 h before; e.g. 4→5 Nov lit 00:38→19:38. Should evening ONs count as night (run straight into the block)? (2) Skip a block shorter than ~1 h cut by the Jie (7 Nov 10:38→10:52)?
+
+- Luck pillars 大运 in Cure years & months (xkdgLuckHtml): gender per person name in localStorage xkdg_person_gender; start = classical 3 days = 1 year (lunar-javascript getYun sect 1) — CONFIRMED by Edu; birth instant Beijing-naive for jieqi (as year/month). Only listed (no score, not in 🔔 ics).
