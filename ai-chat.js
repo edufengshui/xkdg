@@ -5627,14 +5627,15 @@
       delete window._xkdgAdhocGeo[P];
       if (!hasData) {
         if (!nm) return { error: 'Give a saved name, or the birth date (and time if known).' };
-        var arcs = [B ? 'xkdg_persons_b' : 'xkdg_persons_a', B ? 'xkdg_persons_a' : 'xkdg_persons_b'], found = null;
+        try { if (typeof xkdgMergePersonDBs === 'function') xkdgMergePersonDBs(); } catch (e) {}
+        var arcs = ['xkdg_persons_a', 'xkdg_persons_b'], found = null;
         arcs.forEach(function (k) {
           if (found) return;
           var a = (typeof loadArchive === 'function') ? (loadArchive(k) || {}) : {};
           Object.keys(a).forEach(function (n) { if (!found && n.toLowerCase() === nm.toLowerCase()) found = { key: k, name: n }; });
         });
         if (!found) return { error: 'No saved person called "' + nm + '". Ask for the birth date (and time) and call again with birth_date.' };
-        if (found.key === (B ? 'xkdg_persons_b' : 'xkdg_persons_a') && typeof loadPerson === 'function') loadPerson(P, found.name);
+        if (typeof loadPerson === 'function') loadPerson(P, found.name);   // session 37: one database, any name into A or B
         else if (typeof loadPersonFromDB === 'function') loadPersonFromDB(P, found.name);
         else return { error: 'Cannot load saved persons on this page.' };
       } else {

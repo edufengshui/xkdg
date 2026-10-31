@@ -109,3 +109,5 @@ Proposed design (to confirm with Edu):
 - Open questions to Edu (unanswered): (1) Vienna night re-light: an EVENING next ON (You/Xu/Hai) counts as "daytime" (≥ solar 07:00) → OFF 1 h before; e.g. 4→5 Nov lit 00:38→19:38. Should evening ONs count as night (run straight into the block)? (2) Skip a block shorter than ~1 h cut by the Jie (7 Nov 10:38→10:52)?
 
 - Luck pillars 大运 in Cure years & months (xkdgLuckHtml): gender per person name in localStorage xkdg_person_gender; start = classical 3 days = 1 year (lunar-javascript getYun sect 1) — CONFIRMED by Edu; birth instant Beijing-naive for jieqi (as year/month). Only listed (no score, not in 🔔 ics).
+
+- ONE person database (Edu): all persons in xkdg_persons_a (XKDG_PERSONS_KEY); xkdgMergePersonDBs() merges any xkdg_persons_b into it (same birth data → one, most recent wins; different → "name (B)") and empties B — at start and in xkdgPersonsAll(); A and B rows show every name; savePerson always writes the single DB; DB rows have no A/B tag.

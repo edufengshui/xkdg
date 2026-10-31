@@ -2909,6 +2909,34 @@ function loadArchive(key) {
 }
 function saveArchiveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 
+// ── ONE person database (session 37, Edu: "i due database di person A e B devono essere
+// un unico da cui si può estrarre qualsiasi nome salvato"). Every person lives in
+// xkdg_persons_a; whatever is still in xkdg_persons_b (older saves, another device not yet
+// updated, a Drive / Dropbox restore) is MERGED into it and B is emptied. Same name in both:
+// identical birth data → one entry (the most recent save wins); different birth data → both
+// kept, the B one renamed "name (B)". Idempotent: runs at start and before every read.
+const XKDG_PERSONS_KEY = 'xkdg_persons_a';
+function xkdgMergePersonDBs() {
+    try {
+        const raw = localStorage.getItem('xkdg_persons_b');
+        if (!raw || raw === '{}') return false;
+        const A = loadArchive('xkdg_persons_a'), B = loadArchive('xkdg_persons_b');
+        const same = (x, y) => (x.date || '') === (y.date || '') && (x.time || '') === (y.time || '') && (x.jiaZiYear || '') === (y.jiaZiYear || '');
+        Object.keys(B).forEach(n => {
+            const b = B[n]; if (!b) return;
+            if (!A[n]) { A[n] = b; return; }
+            if (same(A[n], b)) { if ((b.savedAt || 0) > (A[n].savedAt || 0)) A[n] = Object.assign({}, A[n], b); return; }
+            let nn = n + ' (B)', i = 2; while (A[nn]) nn = n + ' (B' + (i++) + ')';
+            A[nn] = b;
+        });
+        saveArchiveData('xkdg_persons_a', A);
+        localStorage.setItem('xkdg_persons_b', '{}');
+        return true;
+    } catch (e) { return false; }
+}
+function xkdgPersonsAll() { xkdgMergePersonDBs(); return loadArchive(XKDG_PERSONS_KEY); }
+try { xkdgMergePersonDBs(); } catch (e) {}
+
 // ── Archive folders ──────────────────────────────────────────
 // A person's folder is its `category`, now a PATH with "/" for subfolders
 // ("Clients/Rossi"). Old one-level categories are already valid paths, so no
@@ -3183,9 +3211,8 @@ function _xkdgFolderManagerHtml() {
 }
 
 function renderArchive(person) {
-    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
     const divId   = person === 'B' ? 'person-archive-b' : 'person-archive';
-    const archive = loadArchive(key);
+    const archive = xkdgPersonsAll();      // session 37: one database for A and B
     const hidden  = loadArchive('xkdg_persons_hidden') || {};
     const all     = Object.keys(archive).filter(name => !hidden[name]);
     const div     = document.getElementById(divId);
@@ -3285,7 +3312,6 @@ function renderDB() {
         return `<div style="border:1px solid ${isPinned?'#f9a825':'#e0e0e0'};border-radius:8px;margin:6px 0;padding:10px 12px;background:${isPinned?'#fffde7':isHidden?'#fafafa':'#fff'};">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                 ${pinBtn}
-                <span style="font-size:10px;font-weight:bold;color:${panelColor};background:${panelBg};border-radius:10px;padding:1px 7px;">${panel}</span>
                 <span style="font-weight:bold;font-size:14px;flex:1;${isHidden?'opacity:0.5;':''}">${name}</span>
                 <span style="font-size:11px;color:#888;">${dateStr}</span>
                 ${hiddenTag}
@@ -3316,17 +3342,14 @@ function showPersonInLabels(panel, name) {
     const hidden = loadArchive('xkdg_persons_hidden') || {};
     delete hidden[name];
     localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
-    renderArchive(panel);
+    renderArchive('A'); renderArchive('B');
     renderDB();
 }
 
 function loadPersonFromDB(targetPanel, name) {
     closeDB();
     // Find which archive actually has this person
-    const archiveA = loadArchive('xkdg_persons_a');
-    const archiveB = loadArchive('xkdg_persons_b');
-    const sourceKey = archiveA[name] ? 'xkdg_persons_a' : 'xkdg_persons_b';
-    const p = archiveA[name] || archiveB[name];
+    const p = xkdgPersonsAll()[name];
     if (!p) return;
 
     const panelKey = targetPanel.toLowerCase();
@@ -3379,10 +3402,9 @@ function saveDBNote(name, note) {
 
 function deleteFromDB(panel, name) {
     if (!confirm(`Permanently delete "${name}"?`)) return;
-    const key = panel === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
-    const archive = loadArchive(key);
+    const archive = xkdgPersonsAll();
     delete archive[name];
-    saveArchiveData(key, archive);
+    saveArchiveData(XKDG_PERSONS_KEY, archive);
     // Also remove note, hidden and pin flags
     const notes = loadArchive('xkdg_persons_notes') || {};
     delete notes[name];
@@ -3393,7 +3415,7 @@ function deleteFromDB(panel, name) {
     const pinned2 = loadArchive('xkdg_persons_pinned') || {};
     delete pinned2[name];
     localStorage.setItem('xkdg_persons_pinned', JSON.stringify(pinned2));
-    renderArchive(panel);
+    renderArchive('A'); renderArchive('B');
     renderDB();
 }
 
@@ -3405,8 +3427,8 @@ function savePerson(person) {
     const date   = document.getElementById(dateId).value;
     const time   = document.getElementById(timeId).value || '12:00';
     if (!name) { alert('Please enter a name.'); return; }
-    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
-    const archive = loadArchive(key);
+    const key     = XKDG_PERSONS_KEY;     // session 37: A and B save into the same database
+    const archive = xkdgPersonsAll();
     const isB     = person === 'B';
     const depth = _personDepth(person);
     const jiaZiYear = (depth === 1) ? (document.getElementById(isB ? 'person-year-b' : 'person-year-a')?.value || '') : '';
@@ -3439,14 +3461,12 @@ function savePerson(person) {
         delete hidden[name];
         localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
     }
-    renderArchive(person);
+    renderArchive('A'); renderArchive('B');
     try { _xkdgSetLastPerson(person, name); } catch(e){}
 }
 
 function loadPerson(person, name) {
-    const key     = person === 'B' ? 'xkdg_persons_b' : 'xkdg_persons_a';
-    const archive = loadArchive(key);
-    const p       = archive[name];
+    const p       = xkdgPersonsAll()[name];
     if (!p) return;
     const nameId = person === 'B' ? 'person-name-b' : 'person-name';
     const dateId = person === 'B' ? 'person-date-b' : 'person-date';
@@ -3478,7 +3498,7 @@ function hidePerson(e, person, name) {
     const hidden = loadArchive('xkdg_persons_hidden') || {};
     hidden[name] = true;
     localStorage.setItem('xkdg_persons_hidden', JSON.stringify(hidden));
-    renderArchive(person);
+    renderArchive('A'); renderArchive('B');
 }
 
 function deletePerson(e, person, name) {
@@ -10031,7 +10051,7 @@ function _xkdgReadSnap(person){
   if (typeof snap === 'string') snap = null;
   if (!snap){                                                  // back-compat: old name-only value → archive
     var nm = raw;
-    var arch = (typeof loadArchive === 'function') ? loadArchive(isB ? 'xkdg_persons_b' : 'xkdg_persons_a') : null;
+    var arch = (typeof xkdgPersonsAll === 'function') ? xkdgPersonsAll() : null;
     if (arch && arch[nm]) snap = { name:nm, date:arch[nm].date, time:arch[nm].time, depth:arch[nm].depth, year:arch[nm].jiaZiYear };
     else return null;
   }
