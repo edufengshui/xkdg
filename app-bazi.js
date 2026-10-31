@@ -1233,6 +1233,57 @@ function xkdgPVYMics(who) {
     document.body.appendChild(a); a.click();
     setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) {} }, 4000);
 }
+// ── LUCK PILLARS 大运 (session 37, Edu): the 10-year pillars of the Bazi from the birth, turned
+// into hexagrams and checked with the same remedy rule as years and months. Direction needs the
+// GENDER (yang-year male / yin-year female forward). Start age: classical count, 3 days = 1 year
+// from the birth to the next / previous 节 (lunar-javascript sect 1), at the birth INSTANT
+// (Beijing-naive for its jieqi, as for the year and month pillars).
+function xkdgGenderGet(name) { try { return (JSON.parse(localStorage.getItem('xkdg_person_gender') || '{}') || {})[name] || ''; } catch (e) { return ''; } }
+function xkdgGenderSet(name, v) {
+    try { const o = JSON.parse(localStorage.getItem('xkdg_person_gender') || '{}') || {}; if (v) o[name] = v; else delete o[name]; localStorage.setItem('xkdg_person_gender', JSON.stringify(o)); } catch (e) {}
+    try { renderPersonView(); } catch (e) {}
+}
+function xkdgLuckPillars(who, gender) {
+    const bd = (document.getElementById(who === 'B' ? 'person-date-b' : 'person-date') || {}).value || '';
+    const bt = (document.getElementById(who === 'B' ? 'person-time-b' : 'person-time') || {}).value || '';
+    if (!/^\d{4}-\d{2}-\d{2}/.test(bd) || !bt || (gender !== 'M' && gender !== 'F')) return null;
+    let geo;
+    try { const g0 = _personBirthGeo(who); if (g0) geo = { lon: g0.lon, tz: _personBirthGeoToTz(g0) }; } catch (e) {}
+    const P = _tstPillarsFor(bd, bt, geo); if (!P || !P.meta || !P.meta.beijing) return null;
+    const b = P.meta.beijing;
+    const yun = Solar.fromYmdHms(b.y, b.mo, b.d, b.h, b.mi, b.s || 0).getLunar().getEightChar().getYun(gender === 'M' ? 1 : 0, 1);
+    const st = yun.getStartSolar(), start0 = new Date(st.getYear(), st.getMonth() - 1, st.getDay());
+    const birthY = parseInt(bd.slice(0, 4), 10);
+    return { forward: yun.isForward(), startAge: { y: yun.getStartYear(), m: yun.getStartMonth(), d: yun.getStartDay() },
+             pillars: yun.getDaYun(10).filter(d => d.getIndex() > 0).map(d => {
+                 const s = new Date(start0); s.setFullYear(start0.getFullYear() + 10 * (d.getIndex() - 1));
+                 const e = new Date(s); e.setFullYear(s.getFullYear() + 10);
+                 return { gz: d.getGanZhi(), start: s, end: e, age0: s.getFullYear() - birthY, age1: e.getFullYear() - birthY };
+             }) };
+}
+function xkdgLuckHtml(pp, g, isoFamSet) {
+    const name = pp.name || pp.who, gender = xkdgGenderGet(name), now = new Date();
+    const fd = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+    const sel = '<select onchange="xkdgGenderSet(\'' + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\',this.value)" style="font-size:12px;">'
+              + '<option value=""' + (!gender ? ' selected' : '') + '>gender?</option><option value="M"' + (gender === 'M' ? ' selected' : '') + '>male</option><option value="F"' + (gender === 'F' ? ' selected' : '') + '>female</option></select>';
+    let h = '<div style="margin-top:4px;padding:6px 8px;background:#fff;border-radius:8px;border:1px solid #a5d6a7;">'
+          + '<div style="font-weight:bold;color:#1b5e20;">🧭 Luck pillars 大运 (10 years) ' + sel + '</div>';
+    if (!gender) return h + '<div style="color:#888;font-size:12px;">Choose the gender: the direction of the luck pillars depends on it.</div></div>';
+    let L = null; try { L = xkdgLuckPillars(pp.who, gender); } catch (e) { return h + '<div style="color:#b71c1c;font-size:12px;">' + e.message + '</div></div>'; }
+    if (!L) return h + '<div style="color:#888;font-size:12px;">Needs the birth date AND time of the person.</div></div>';
+    h += '<div style="color:#555;font-size:12px;">' + (L.forward ? 'Forward' : 'Backward') + ' · first pillar at ' + L.startAge.y + ' y ' + L.startAge.m + ' m ' + L.startAge.d + ' d (3 days = 1 year).</div>';
+    L.pillars.forEach(x => {
+        const xd = getXkdgData(x.gz.charAt(0), x.gz.charAt(1));
+        const kind = xd ? _xkdgRemedyKind(g, pp.P, { qi: xd.qi, yun: xd.yun, hex: xd.hex, stem: x.gz.charAt(0), branch: x.gz.charAt(1) }, isoFamSet) : null;
+        const st = x.end <= now ? 'past' : (x.start <= now ? 'now' : 'future');
+        h += '<div style="margin-top:2px;' + (st === 'past' ? 'color:#9e9e9e;' : '') + (kind ? 'font-weight:bold;' : '') + '">'
+           + (kind ? '🌿 ' : '· ') + x.gz + (kind === 'family' ? ' ★' : '') + (xd ? ' hex ' + xd.hex + ' (' + xd.qi + '/' + xd.yun + ')' : '')
+           + ' · age ' + x.age0 + '–' + x.age1 + ' · ' + fd(x.start) + ' → ' + fd(x.end)
+           + (st === 'now' ? ' <b style="color:#2e7d32;">NOW</b>' : (st === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(x.start) + ')</span>' : ''))
+           + (kind ? ' <span style="color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;font-size:11px;">CURE</span>' : '') + '</div>';
+    });
+    return h + '</div>';
+}
 function xkdgCureYMHtml(pp, g, isoFamSet) {
     // Session 37 (Edu): the past goes back to the person's BIRTH, not 30 years.
     const Y = new Date().getFullYear();
@@ -1259,6 +1310,7 @@ function xkdgCureYMHtml(pp, g, isoFamSet) {
     let h = '<div style="margin-top:6px;border:2px solid #43a047;background:#f1f8e9;border-radius:10px;padding:8px 10px;font-size:13px;">'
           + '<div style="font-weight:bold;color:#1b5e20;font-size:14px;">📆 Cure years & months (' + list.filter(y => y.cure).length + ' years · ' + list.reduce((n, y) => n + y.months.length, 0) + ' months)</div>'
           + '<div style="color:#555;font-size:12px;">' + (born ? 'From birth (' + born.getFullYear() + ')' : y0) + '–' + (Y + 30) + ': solar years (立春 → 立春) whose YEAR pillar is a remedy hexagram (🌿), and in every year the months (节 → 节) whose MONTH pillar is a remedy.</div>';
+    try { h += xkdgLuckHtml(pp, g, isoFamSet); } catch (eL) { h += '<div style="color:#b71c1c;font-size:12px;">Luck pillars: ' + eL.message + '</div>'; }
     if (!list.length) return h + '<div style="color:#888;margin-top:4px;">No cure year or month in this range.</div></div>';
     // when do they arrive: the current / next cure year and cure month
     const curY = list.filter(y => y.cure && state(y) === 'now')[0], nextY = list.filter(y => y.cure && state(y) === 'future')[0];
