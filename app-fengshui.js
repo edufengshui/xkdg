@@ -2967,7 +2967,7 @@ function fsRenderMatchingDatesTable(fSlot, wSlot, matches, containerId){
     
     html += '<tr style="background:' + rowBg + ';' + rowBorder + 'cursor:pointer;" onclick="loadDateIntoMain(\'' + m.isoDate + '\', 6)">';
     html += '<td style="padding:6px 4px;text-align:center;color:#1565c0;font-weight:bold;border-bottom:1px solid #eee;">' + datePrefix + dateLabel
-          + (m.cure ? '<div><span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">' + m.cure + '</span></div>' : '') + '</td>';
+          + (m.cure ? '<div>' + (typeof xkdgCureBadge === 'function' ? xkdgCureBadge(m.cure) : m.cure) + '</div>' : '') + '</td>';
     // Hour cell: bestHour pillar + time range
     // Hour cell: bestHour pillar + REAL clock window (true solar time, DST-adjusted — as in BEST/LIST)
     const _BR_SOLAR = {'子':23,'丑':1,'寅':3,'卯':5,'辰':7,'巳':9,'午':11,'未':13,'申':15,'酉':17,'戌':19,'亥':21};
@@ -9892,7 +9892,15 @@ function _fsScanLuckyDates(persons, slot, maxResults){
     if (!dData) continue;
     var ev = _fsEvalDateForPlacement(persons, slot, dData.hex, dData.qi, dData.yun);
     if (ev.pass){
-      out.push({ iso: iso, dGan: dGan, dZhi: dZhi, dData: dData, eval: ev });
+      // Session 37 (Edu): a lucky date carrying a cure for the loaded person is marked and listed first
+      var cure = '';
+      try {
+        if (typeof xkdgCureForDate === 'function') {
+          var _yp = (_Pn3 && _Pn3.year) ? _Pn3.year : (function(){ var e2 = Solar.fromDate(new Date(midDay.getTime() + offsetMin * 60000)).getLunar().getEightChar(); return e2.getYearGan() + e2.getYearZhi(); })();
+          cure = xkdgCureLabel(xkdgCureForDate(_yp.charAt(0), _yp.charAt(1), dGan, dZhi));
+        }
+      } catch (eC) {}
+      out.push({ iso: iso, dGan: dGan, dZhi: dZhi, dData: dData, eval: ev, cure: cure });
       if (out.length >= cap) break;
     }
   }
@@ -9946,7 +9954,8 @@ function _fsLuckyDateRowHTML(m, persons, slot, placeWord){
       + '</span> communicates with the ' + placeWord + ': <b>' + _fsCommText(pp.ps.labels)
       + '</b> &nbsp;·&nbsp; with the date: <b>' + _fsCommText(pp.pd.labels) + '</b></div>';
   }).join('');
-  return '<div onclick="loadDateIntoMain(\''+m.iso+'\',6)" onmouseover="this.style.background=\'#faf5ff\'" onmouseout="this.style.background=\'\'" title="Open this date in Main (XKDG profile)" style="border-top:1px solid #eee;padding:6px 0;font-size:12px;cursor:pointer;">'
+  return '<div onclick="loadDateIntoMain(\''+m.iso+'\',6)" title="Open this date in Main (XKDG profile)" style="border-top:1px solid #eee;padding:6px ' + (m.cure ? '6px' : '0') + ';font-size:12px;cursor:pointer;' + (m.cure ? 'border-left:6px solid #2e7d32;background:#f1f8e9;' : '') + '">'
+    + (m.cure && typeof xkdgCureBadge === 'function' ? xkdgCureBadge(m.cure) + ' ' : '')
     + '<strong>' + _fsFmtDMY(m.iso) + '</strong> · ' + m.dGan + m.dZhi
     + ' <span style="color:#555;">· 運 ' + dYun + ' · 氣 ' + dQi + '</span>'
     + ' <span style="color:#999;">(hex ' + m.dData.hex + ')</span>'
@@ -9960,7 +9969,7 @@ function _fsBedScanHTML(persons, slot, matches){
     return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a different sitting (compatibility may not close the loop here).</div>';
   }
   var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to move the bed — ' + matches.length + ' found</div>';
-  matches.forEach(function(m){ html += _fsLuckyDateRowHTML(m, persons, slot, 'bed sitting'); });
+  matches.slice().sort(function(a, b){ return (b.cure ? 1 : 0) - (a.cure ? 1 : 0); }).forEach(function(m){ html += _fsLuckyDateRowHTML(m, persons, slot, 'bed sitting'); });   // session 37: cure dates first
   return html;
 }
 
@@ -10141,7 +10150,7 @@ function _fsDeskScanHTML(person, slot, matches){
     return '<div style="background:#fff3e0;border:1px solid #ffb74d;border-radius:6px;padding:8px;font-size:12px;color:#e65100;">No lucky dates in this range. Try a wider range, or a facing that better suits the person.</div>';
   }
   var html = '<div style="font-size:12px;font-weight:bold;color:#6a1b9a;margin-bottom:6px;">Lucky dates to set up the desk &amp; place the moving water — ' + matches.length + ' found</div>';
-  matches.forEach(function(m){ html += _fsLuckyDateRowHTML(m, [person], slot, 'desk facing'); });
+  matches.slice().sort(function(a, b){ return (b.cure ? 1 : 0) - (a.cure ? 1 : 0); }).forEach(function(m){ html += _fsLuckyDateRowHTML(m, [person], slot, 'desk facing'); });   // session 37: cure dates first
   return html;
 }
 
