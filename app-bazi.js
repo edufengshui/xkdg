@@ -2609,7 +2609,7 @@ function renderAnalysis(items) {
     }
     section.style.display = 'flex';
     container.innerHTML = items.map(item => {
-        const content = item.tag === 'cure' ? `<span style="font-size:13px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${item.text}</span>`
+        const content = item.tag === 'cure' ? xkdgCureBadge(item.text)
                       : item.tag === 'bl-alert' ? `<span style="border:1px solid #ccc;border-radius:10px;padding:2px 8px;">${xkdgBLStatusHtml(item.text)}</span>`
                       : item.tag === 'family-conflict' ? `<span style="background:#ffebee;color:#b71c1c;border:1px solid #e57373;border-radius:10px;padding:2px 8px;font-weight:bold;">⛔ ${item.text}</span>`
                       : item.tag === 'blue'         ? `<span class="tag-blue">${item.text}</span>`
@@ -4282,10 +4282,10 @@ function renderScanResults(results, mode) {
         const keStr = r.keScore > 0 ? `<span style="font-size:10px;font-weight:bold;color:#b8860b;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Ke')">Ke+${r.keScore}</span>` : '';
         const blueTagsHtml = [...r.blueLabels, ...r.matchLabels, ...r.qualLabels].filter(Boolean)
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
-        return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':''}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
-            <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${displayScore}${aTag}${bTag}</div>
+        return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':(r.cure ? XKDG_CURE_ROW_STYLE : '')}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
+            <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${r.cure && !negBg ? '<span title="Cure date" style="font-size:14px;">🌿</span>' : ''}${displayScore}${aTag}${bTag}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''}${r.cure ? ` <span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${r.cure}</span>` : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''}${r.cure ? ' ' + xkdgCureBadge(r.cure) : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -4698,6 +4698,13 @@ function xkdgCureLabel(cure) {
     if (!cure || !cure.length) return '';
     return '🌿 Cure ' + cure.map(c => c.who + (c.kind === 'family' ? '★' : '') + ' (' + c.via + ')').join(', ');
 }
+// Session 37 (Edu): cure dates are marked the SAME special way everywhere (BEST, LIST, TABLE,
+// CAL, Feng Shui date lists): a solid green 🌿 CURE badge and a green frame on the row.
+function xkdgCureBadge(label) {
+    if (!label) return '';
+    return '<span title="' + String(label).replace(/"/g, '&quot;') + '" style="display:inline-block;font-size:11px;font-weight:bold;color:#fff;background:#2e7d32;border:1px solid #1b5e20;border-radius:10px;padding:1px 8px;margin:1px 2px;box-shadow:0 0 0 2px #c8e6c9;">' + String(label).replace('🌿 Cure', '🌿 CURE') + '</span>';
+}
+const XKDG_CURE_ROW_STYLE = 'border:2px solid #1b5e20 !important;border-left:9px solid #1b5e20 !important;background:#f1f8e9 !important;';
 function xkdgCureBonus(cure) {
     if (!cure || !cure.length) return 0;
     return 6;   // Edu: remedy and family alternative are equally valid, +6 (only on an already positive date)
@@ -5937,7 +5944,7 @@ function buildTableView() {
             const relHtml = blueTexts.length > 0 ? `<div style="font-size:9px;color:#1a7a1a;font-weight:bold;line-height:1.4;text-align:right;">${blueTexts.join('<br>')}</div>` : '';
             const qualHtml = qualTexts.length > 0 ? `<div style="font-size:9px;color:#555;line-height:1.3;text-align:right;">${qualTexts.join(' · ')}</div>` : '';
             const _cureTV = blueTexts.length ? xkdgCureLabel(xkdgCureForDate(yGanR, yZhiR, rowDGan, rowDZhi)) : '';
-            const cureHtmlTV = _cureTV ? `<div style="text-align:right;"><span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${_cureTV}</span></div>` : '';
+            const cureHtmlTV = _cureTV ? `<div style="text-align:right;">${xkdgCureBadge(_cureTV)}</div>` : '';
 
             // Hour cell (big)
             const hourBg = rowBg;
@@ -6497,7 +6504,11 @@ function buildCalView() {
                                : _dayClashType === 'clash-month-stem'   ? 'border:2px solid #ef5350 !important;'
                                : _dayClashType === 'clash-month-branch' ? 'border:1px dashed #ef5350 !important;'
                                : '';
-            const cellStyle = (calGreenBg ? `background:${calGreenBg};border-color:${calBorder};` : '') + _clashBorder;
+            // Session 37: a positive day whose DAY or YEAR pillar is a cure for the loaded person
+            let _cureCAL = '';
+            try { if (dayIsPositive) _cureCAL = xkdgCureLabel(xkdgCureForDate(yGan, yZhi, dGan, dZhi)); } catch (e) {}
+            const cellStyle = (calGreenBg ? `background:${calGreenBg};border-color:${calBorder};` : '') + _clashBorder
+                            + (_cureCAL && !_clashBorder ? 'border:3px solid #2e7d32 !important;box-shadow:inset 0 0 0 2px #c8e6c9;' : '');
             const stemColor = ELEMENTS_EN[dGan] === 'wood' ? 'var(--wood)' : ELEMENTS_EN[dGan] === 'fire' ? 'var(--fire)' : ELEMENTS_EN[dGan] === 'metal' ? 'var(--metal)' : ELEMENTS_EN[dGan] === 'water' ? 'var(--water)' : 'var(--earth)';
 
             // Jieqi markers — 节 (month start, major) shown as blue badge; 气 (mid-month) as orange badge.
@@ -6524,6 +6535,7 @@ function buildCalView() {
                         <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
                     </div>
                     ${_clashIcon}
+                    ${_cureCAL ? `<div title="${_cureCAL}" style="font-size:10px;font-weight:bold;color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;margin-top:2px;display:inline-block;">🌿 CURE</div>` : ''}
                     ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
                     ${_flightHourCell(isoDate)}
                 </div>
@@ -7580,7 +7592,7 @@ function buildMonthView() {
                     ${isPositive ? `<div style="color:#1a7a1a;font-weight:bold;">${elNotes.filter(n => !famNotes.includes(n)).map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>
                     ${hasFamily ? `<div style="color:#b8860b;font-weight:bold;">${famNotes.map(n=>`<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${n}')">${n}</span>`).join(' · ')}</div>` : ''}` : ''}
                     ${_blAlertLV ? `<div>${xkdgBLStatusHtml(_blAlertLV)}</div>` : ''}
-                    ${(isPositive && xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi)) ? `<div><span style="font-size:10px;font-weight:bold;color:#ad1457;background:#fce4ec;border-radius:8px;padding:0 5px;">${xkdgCureLabel(xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi))}</span></div>` : ''}
+                    ${(isPositive && xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi)) ? `<div>${xkdgCureBadge(xkdgCureLabel(xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi)))}</div>` : ''}
                     ${spiritHTML}
                     ${tombShaHTML}${wjdtHTML}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${pqRotHTMLLV} ${fsHTMLLV}
