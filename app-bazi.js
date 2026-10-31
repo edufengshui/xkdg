@@ -1029,6 +1029,19 @@ function _xkdgJzOfHex(hex) {
     }
     return _xkHexJz[hex] || null;
 }
+// All the JiaZi pillars that carry a hexagram (main or alt), e.g. for the cure cards (session 37).
+let _xkHexJzAll = null;
+function _xkdgJzListOfHex(hex) {
+    if (!_xkHexJzAll) {
+        _xkHexJzAll = {};
+        Object.keys(XKDG_TABLE).forEach(jz => {
+            const r = XKDG_TABLE[jz], add = h => { (_xkHexJzAll[h] = _xkHexJzAll[h] || []); if (_xkHexJzAll[h].indexOf(jz) < 0) _xkHexJzAll[h].push(jz); };
+            if (r && r.hex) add(r.hex);
+            if (r && r.alt && r.alt.hex) add(r.alt.hex);
+        });
+    }
+    return _xkHexJzAll[hex] || [];
+}
 // Returns 'main', 'family' or null for a candidate { qi, yun, hex, stem, branch }.
 // Session 33 (Edu) - NOT usable:
 //  A. a hexagram whose BRANCH clashes with the native pillar it combines with - unless the
@@ -1455,11 +1468,17 @@ function renderPersonView() {
         h += tabBtn(window._pvHX[pp.who], '#6a1b9a', '🧬 Cure hexagrams (' + opts.length + ')', 'xkdgPVHX(\'' + pp.who + '\')');
         if (window._pvHX[pp.who]) {
             const card = x => { const on = 'h' + x.hex === sel, fam = x.kind === 'family';
-                return '<button onclick="xkdgPVPickTop(\'' + pp.who + '\',' + x.hex + ')" title="Show it next to the birth chart" style="display:inline-block;vertical-align:top;margin:4px 6px 0 0;padding:4px 6px;width:74px;border-radius:10px;cursor:pointer;text-align:center;'
+                // Session 37 (Edu): the Bazi pillar(s) of the hexagram beside it (stem over branch)
+                const jzs = _xkdgJzListOfHex(x.hex);
+                const elC = c => { const e = (typeof ELEMENTS_EN !== 'undefined') ? ELEMENTS_EN[c] : null; return e === 'wood' ? 'var(--wood)' : e === 'fire' ? 'var(--fire)' : e === 'metal' ? 'var(--metal)' : e === 'water' ? 'var(--water)' : e === 'earth' ? 'var(--earth)' : '#333'; };
+                const pil = jzs.map(jz => '<div style="display:inline-block;margin:0 1px;font-size:17px;font-weight:bold;line-height:1.15;"><div style="color:' + elC(jz[0]) + ';">' + jz[0] + '</div><div style="color:' + elC(jz[1]) + ';">' + jz[1] + '</div></div>').join('');
+                return '<button onclick="xkdgPVPickTop(\'' + pp.who + '\',' + x.hex + ')" title="Show it next to the birth chart" style="display:inline-block;vertical-align:top;margin:4px 6px 0 0;padding:4px 6px;width:' + (jzs.length > 1 ? 128 : 108) + 'px;border-radius:10px;cursor:pointer;text-align:center;'
                     + (on ? 'border:3px solid #6a1b9a;background:#f3e5f5;' : 'border:1px solid ' + (fam ? '#9575cd;background:#ede7f6;' : '#9ccc65;background:#f1f8e9;')) + '">'
                     + '<div style="font-size:11px;font-weight:bold;color:' + (fam ? '#4a148c' : '#1b5e20') + ';">' + (x.harmonises ? '✦ ' : '') + (fam ? '★ ' : '') + 'hex ' + x.hex + '</div>'
+                    + '<div style="display:flex;align-items:center;justify-content:center;gap:4px;"><div>'
                     + '<div style="color:#c62828;font-weight:bold;font-size:13px;">' + x.qi + '</div><div style="height:46px;overflow:hidden;"><div style="transform:scale(.8);transform-origin:top center;">' + xkdgHexSvg(x.hex) + '</div></div>'
-                    + '<div style="color:#1565c0;font-weight:bold;font-size:13px;">' + x.yun + '</div></button>'; };
+                    + '<div style="color:#1565c0;font-weight:bold;font-size:13px;">' + x.yun + '</div></div>'
+                    + (pil ? '<div style="border-left:1px solid #ccc;padding-left:4px;">' + pil + '</div>' : '') + '</div></button>'; };
             const mH = opts.filter(x => x.kind === 'main'), fH = opts.filter(x => x.kind === 'family');
             h += '<div style="margin-top:6px;border:2px solid #6a1b9a;border-radius:10px;padding:6px 8px;background:#fcf8ff;font-size:12px;">'
                + '<div style="color:#555;">Tap a hexagram: it appears next to the birth chart, with the explanation.</div>'
