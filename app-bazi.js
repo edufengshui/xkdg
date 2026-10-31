@@ -4651,7 +4651,7 @@ function getPersonSameTypeBonus(blueItems, personYear, dayXkdg, pStem, pBranch, 
  */
 // ── THE CURE (session 33, Edu) ─────────────────────────────────────────────
 // A positive date whose DAY or YEAR pillar is a remedy hexagram for a loaded person's missing
-// communication ranks ABOVE an equivalent date without it (+6, remedy or family alternative alike),
+// communication ranks ABOVE an equivalent date without it (+10 since session 37, remedy or family alternative alike),
 // and is flagged wherever it appears. Gaps are cached per person chart, cures per date.
 var _xkCureGapCache = {}, _xkCureDateCache = {};
 function _xkdgCurePersons() {
@@ -4715,7 +4715,7 @@ function xkdgCureBadge(label) {
 const XKDG_CURE_ROW_STYLE = 'border:2px solid #1b5e20 !important;border-left:9px solid #1b5e20 !important;background:#f1f8e9 !important;';
 function xkdgCureBonus(cure) {
     if (!cure || !cure.length) return 0;
-    return 6;   // Edu: remedy and family alternative are equally valid, +6 (only on an already positive date)
+    return 10;  // Edu (session 37): +10 (was +6). Remedy and family alternative equally valid, only on an already positive date
 }
 
 function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
