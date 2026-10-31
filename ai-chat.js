@@ -5885,7 +5885,10 @@
   function _shellyFountainsFor(houseName) {
     var out = [], hn = String(houseName || '').toLowerCase();
     try { Object.keys(SHELLY_HOUSES).forEach(function (k) {
-      var fc = SHELLY_HOUSES[k].fountain; if (!fc || String(fc.house).toLowerCase() !== hn) return;
+      // session 37: the saved house may be called "Vienna Stuwerstrasse", "Wien"…: match by name part
+      var fc = SHELLY_HOUSES[k].fountain; if (!fc) return;
+      var fh = String(fc.house).toLowerCase(), alias = fh === 'vienna' ? ['vienna', 'wien'] : [fh];
+      if (!alias.some(function (a) { return hn === a || hn.indexOf(a) >= 0; })) return;
       out.push({ name: fc.label, shelly_house: k, facing: fc.facing, water: fc.water,
                  runs: fc.period === 'night' ? 'NIGHT only (start of Hai to END of Mao, solar 21:00-07:00)' : 'DAY only (start of Chen to start of Hai, solar 07:00-21:00)',
                  has_shelly: SHELLY_HOUSES[k].shelly !== false, switched: SHELLY_HOUSES[k].shelly === false ? 'by hand (no Shelly yet)' : 'Shelly plug',

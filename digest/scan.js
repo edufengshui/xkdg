@@ -183,6 +183,16 @@ if (Array.isArray(P.houses) && P.houses.length) {
   };
   const inRange = iso => iso >= P.start && iso <= addDays(P.start, P.days - 1);
   const yearPerson = (label, jz) => { const x = jz && w.getXkdgData(jz[0], jz[1]); return x ? { who: label, label: label, hex: x.hex, qi: x.qi, yun: x.yun } : null; };
+  // Session 37 (Edu: "the email has no hours for A and B"): the fountains no longer depend on the
+  // recipient line in the secret — any house whose name matches a fountain house (Vienna) gets them.
+  try {
+    for (const h of P.houses) {
+      const fcs = (typeof w.XKDGFountains === 'function') ? (w.XKDGFountains(h.name || '') || []) : [];
+      h.ops = Array.isArray(h.ops) ? h.ops : [];
+      fcs.forEach(fc => { if (!h.ops.some(o => o.kind === 'fountain' && o.device === fc.shelly_house))
+        h.ops.push({ kind: 'fountain', name: fc.name, device: fc.shelly_house, facing: fc.facing, water: fc.water }); });
+    }
+  } catch (e) {}
   for (const h of P.houses) {
     // the house's own place (Tuoro aquarium at Tuoro longitude); same time zone as this process
     const hLon = isFinite(+h.lon) ? +h.lon : P.lon, hLat = isFinite(+h.lat) ? +h.lat : P.lat;
