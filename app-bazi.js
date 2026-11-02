@@ -894,14 +894,36 @@ function _xkdgRel(a, b) {
     if (a === b) return { lang: 'eq', txt: a + ' = ' + b };
     return null;
 }
+// Session 37 (Edu): two pillars whose BRANCHES CLASH do not communicate through a sum (5/10/15)
+// or a Hetu pair — "it is not good at all" (same rule as analyzeXkdg). Exceptions: Pure Qi (equal
+// value) and a Blood Link of the chart (all four pillars in one family, mixed genders).
+function _xkdgPairClash(pillars, a, b) {
+    const A = pillars && pillars[a], B = pillars && pillars[b];
+    if (!A || !B || !A.branch || !B.branch) return false;
+    return BRANCH_CLASHES[A.branch] === B.branch || BRANCH_CLASHES[B.branch] === A.branch;
+}
+function _xkdgPairFamily(pillars, a, b) {
+    try {
+        const fa = getJiaZiFamilies(pillars[a].stem, pillars[a].branch) || [], fb = getJiaZiFamilies(pillars[b].stem, pillars[b].branch) || [];
+        return fa.some(x => fb.indexOf(x) >= 0);
+    } catch (e) { return false; }
+}
+// the relation of two PILLARS in one dimension, with the clash rule; { cancelled } when a clash voids it
+function _xkdgPairRel(pillars, a, b, f) {
+    const r = _xkdgRel(pillars[a][f], pillars[b][f]);
+    if (!r || r.lang === 'eq') return r;
+    if (_xkdgPairClash(pillars, a, b)) return { cancelled: true, lang: r.lang, txt: r.txt };   // Blood Link (all four in one family, mixed genders) is applied later in xkdgPersonGaps
+    return r;
+}
 function xkdgDimSettings(pillars, f) {
     const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars && pillars[k] && pillars[k][f] != null);
     const par = {}; keys.forEach(k => { par[k] = k; });
     const find = k => par[k] === k ? k : (par[k] = find(par[k]));
-    const pairs = [];
+    const pairs = [], cancelled = [];
     for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
-        const r = _xkdgRel(pillars[keys[i]][f], pillars[keys[j]][f]);
+        const r = _xkdgPairRel(pillars, keys[i], keys[j], f);
         if (!r) continue;
+        if (r.cancelled) { cancelled.push({ a: keys[i], b: keys[j], txt: r.txt, clash: pillars[keys[i]].branch + '-' + pillars[keys[j]].branch }); continue; }
         pairs.push({ a: keys[i], b: keys[j], lang: r.lang, txt: r.txt });
         par[find(keys[i])] = find(keys[j]);
     }
@@ -911,7 +933,7 @@ function xkdgDimSettings(pillars, f) {
         const gp = pairs.filter(p => g.includes(p.a) && g.includes(p.b));
         return { pillars: g, pairs: gp, langs: [...new Set(gp.map(p => p.lang).filter(l => l !== 'eq'))] };
     });
-    const out = { groups: groups, split: false, harmonise: [] };
+    const out = { groups: groups, split: false, harmonise: [], cancelled: cancelled };
     if (groups.length === 2) {
         const [A, B] = groups;
         const differ = A.langs.length && B.langs.length && !A.langs.some(l => B.langs.includes(l));
@@ -937,7 +959,7 @@ function xkdgPersonGaps(pillars) {
     if (keys.length < 2) return null;
     const out = { dims: {} };
     [['qi', 'Elements'], ['yun', 'Periods']].forEach(([f, label]) => {
-        const iso = keys.filter(k => !keys.some(o => o !== k && _xkdgTalk(pillars[k][f], pillars[o][f])));
+        const iso = keys.filter(k => !keys.some(o => { if (o === k) return false; const r = _xkdgPairRel(pillars, k, o, f); return !!(r && !r.cancelled); }));
         const dim = { label, isolated: iso.map(k => ({ pillar: k, value: pillars[k][f] })), bridges: [] };
         if (iso.length) {
             for (let v = 1; v <= 9; v++) {
@@ -1440,7 +1462,9 @@ function renderPersonView() {
                 // only the relations of the group's setting (Edu: do not show Hetu when the setting is Adding)
                 const gtxt = S.groups.map(gr => { const sl = _xkdgSettingLang(gr.pillars.map(k => pp.P[k][f]));
                     return gr.pillars.map(k => L[k]).join(' + ') + ' (' + gr.pairs.filter(p => p.lang === 'eq' || sl.has(p.lang)).map(p => p.txt).join(', ') + ')'; }).join(' · ');
+                const ctxt = (S.cancelled || []).map(c => L[c.a] + ' + ' + L[c.b] + ' (' + c.txt + ') cancelled by the clash ' + c.clash).join(' · ');
                 an += '<div style="margin-top:2px;"><b>' + nms + '</b>: ' + (gtxt || 'no pillar talks with another')
+                    + (ctxt ? ' <span style="color:#c62828;">— ⚡ ' + ctxt + '</span>' : '')
                     + (S.split ? ' — <b>two different settings</b> (' + S.groups.map(gr => gr.langs.map(l => LN[l]).join('/')).join(' and ') + '): <b>not good</b>, a chart should use one setting.'
                        : (S.groups.length === 1 && S.groups[0].pillars.length > 2 ? ' — setting: <b>' + _xkdgLangName(_xkdgSettingLang(S.groups[0].pillars.map(k => pp.P[k][f]))) + '</b>.' : '.'));
                 if (S.split) S.harmonise.forEach(hm => {

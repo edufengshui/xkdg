@@ -113,3 +113,5 @@ Proposed design (to confirm with Edu):
 - ONE person database (Edu): all persons in xkdg_persons_a (XKDG_PERSONS_KEY); xkdgMergePersonDBs() merges any xkdg_persons_b into it (same birth data → one, most recent wins; different → "name (B)") and empties B — at start and in xkdgPersonsAll(); A and B rows show every name; savePerson always writes the single DB; DB rows have no A/B tag.
 
 - FAMILIES (Edu, session 37): a PARENT hexagram belongs to ONE family. Removed the Aug-23 lines 壬午 Qian-Kun daughter / 壬子 Qian-Kun son (hex 57/51 are only the Zhen-Xun mother/father). getHexFamilyLabel: main hex of a parent JiaZi → parent family only; alt hex → child families. getHexFamilies (FS): double JiaZi split the same way (main = parent family, alt = child families). Children keep two families.
+
+- Natal analysis (xkdgPersonGaps / xkdgDimSettings): a sum 5/10/15 or Hetu between two pillars whose BRANCHES CLASH is cancelled (_xkdgPairRel) — exceptions Pure Qi (equal) and a chart Blood Link (applied after). Shown in red "⚡ … cancelled by the clash". Edu, session 37 (Thao Le Le chart 庚戌 壬辰 乙丑 戊申).
