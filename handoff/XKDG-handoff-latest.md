@@ -111,3 +111,5 @@ Proposed design (to confirm with Edu):
 - Luck pillars 大运 in Cure years & months (xkdgLuckHtml): gender per person name in localStorage xkdg_person_gender; start = classical 3 days = 1 year (lunar-javascript getYun sect 1) — CONFIRMED by Edu; birth instant Beijing-naive for jieqi (as year/month). Only listed (no score, not in 🔔 ics).
 
 - ONE person database (Edu): all persons in xkdg_persons_a (XKDG_PERSONS_KEY); xkdgMergePersonDBs() merges any xkdg_persons_b into it (same birth data → one, most recent wins; different → "name (B)") and empties B — at start and in xkdgPersonsAll(); A and B rows show every name; savePerson always writes the single DB; DB rows have no A/B tag.
+
+- FAMILIES (Edu, session 37): a PARENT hexagram belongs to ONE family. Removed the Aug-23 lines 壬午 Qian-Kun daughter / 壬子 Qian-Kun son (hex 57/51 are only the Zhen-Xun mother/father). getHexFamilyLabel: main hex of a parent JiaZi → parent family only; alt hex → child families. getHexFamilies (FS): double JiaZi split the same way (main = parent family, alt = child families). Children keep two families.

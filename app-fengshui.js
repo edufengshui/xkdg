@@ -71,14 +71,15 @@ function getHexFamilies(hexNum){
     _FS_HEX_FAMILIES = {};
     for (const jz in XKDG_TABLE){
       const entry = XKDG_TABLE[jz];
-      const fams = (JIAZI_FAMILY_DATA[jz] || []).map(e => e.family);
-      if (fams.length === 0) continue;
-      const targets = [entry.hex];
-      if (entry.alt && entry.alt.hex) targets.push(entry.alt.hex);
-      targets.forEach(h => {
-        if (!_FS_HEX_FAMILIES[h]) _FS_HEX_FAMILIES[h] = new Set();
-        fams.forEach(f => _FS_HEX_FAMILIES[h].add(f));
-      });
+      const ent = JIAZI_FAMILY_DATA[jz] || [];
+      if (ent.length === 0) continue;
+      // Session 37 (Edu): a parent hexagram belongs to ONE family. A double JiaZi (with an alt
+      // hexagram) gives its parent family to the main hex and its child families to the alt hex.
+      const isPar = e => e.role === 'father' || e.role === 'mother';
+      const hasPar = ent.some(isPar), hasAlt = !!(entry.alt && entry.alt.hex);
+      const add = (h, list) => { if (!_FS_HEX_FAMILIES[h]) _FS_HEX_FAMILIES[h] = new Set(); list.forEach(e => _FS_HEX_FAMILIES[h].add(e.family)); };
+      if (hasPar && hasAlt) { add(entry.hex, ent.filter(isPar)); add(entry.alt.hex, ent.filter(e => !isPar(e))); }
+      else { add(entry.hex, hasPar ? ent.filter(isPar) : ent); if (hasAlt) add(entry.alt.hex, ent); }
     }
     // Convert sets to arrays
     Object.keys(_FS_HEX_FAMILIES).forEach(h => {

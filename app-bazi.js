@@ -46,10 +46,10 @@ function _add(jz, family, role) {
 _add('甲午','Qian-Kun','father'); _add('甲子','Qian-Kun','mother');
 _add('壬寅','Qian-Kun','daughter'); _add('戊辰','Qian-Kun','daughter');
 _add('丁巳','Qian-Kun','daughter'); _add('辛巳','Qian-Kun','daughter'); _add('癸巳','Qian-Kun','daughter');
-_add('壬午','Qian-Kun','daughter');   // 巽 Xun (hex 57) — eldest daughter of Qian-Kun (reciprocal of 甲子 in Zhen-Xun)
+// Session 37 (Edu): 壬午 (hex 57) is ONLY the Zhen-Xun mother — a parent hexagram never belongs to two families.
 _add('壬申','Qian-Kun','son'); _add('戊戌','Qian-Kun','son');
 _add('丁亥','Qian-Kun','son'); _add('辛亥','Qian-Kun','son'); _add('癸亥','Qian-Kun','son');
-_add('壬子','Qian-Kun','son');        // 震 Zhen (hex 51) — eldest son of Qian-Kun (reciprocal of 甲午 in Zhen-Xun)
+// Session 37 (Edu): 壬子 (hex 51) is ONLY the Zhen-Xun father — a parent hexagram never belongs to two families.
 // ── Kan-Li ──
 _add('庚申','Kan-Li','father'); _add('庚寅','Kan-Li','mother');
 _add('己卯','Kan-Li','daughter'); _add('辛亥','Kan-Li','daughter'); _add('乙未','Kan-Li','daughter');
@@ -93,19 +93,19 @@ _add('甲辰','Sun-Xian','daughter'); _add('辛卯','Sun-Xian','daughter'); _add
 _add('庚寅','Sun-Xian','son'); _add('丙午','Sun-Xian','son'); _add('壬戌','Sun-Xian','son');
 _add('甲戌','Sun-Xian','son'); _add('辛酉','Sun-Xian','son'); _add('乙酉','Sun-Xian','son');
 
-// Show BOTH families a hexagram belongs to: the PARENT family on top (plain),
-// then the CHILD family/families below with the +/- sign (son = +, daughter = -).
-// Every hexagram has two families; the four double parents used to show only the
-// parent — now the child family is listed underneath it too.
+// Session 37 (Edu: "l'esagramma genitore non può appartenere a due famiglie"): a PARENT
+// hexagram shows only its parent family. The four double JiaZi (甲子 甲午 庚申 庚寅) have two
+// hexagrams: the main one is the parent (parent family only), the alt one is the child
+// (its child families, + son / - daughter).
 function getHexFamilyLabel(stem, branch, hexNum) {
     const entries = JIAZI_FAMILY_DATA[stem + branch] || [];
     if (!entries.length) return '';
+    const raw = XKDG_TABLE[stem + branch];
+    const onAlt = !!(hexNum && raw && raw.alt && raw.hex !== hexNum);
     const parents  = entries.filter(e => e.role === 'father' || e.role === 'mother');
     const children = entries.filter(e => e.role === 'son'    || e.role === 'daughter');
-    const lines = [];
-    parents.forEach(e => lines.push(e.family));
-    children.forEach(e => lines.push(`${e.family} ${e.role === 'son' ? '+' : '-'}`));
-    return lines.join('<br>');
+    if (parents.length && !onAlt) return parents.map(e => e.family).join('<br>');
+    return children.map(e => `${e.family} ${e.role === 'son' ? '+' : '-'}`).join('<br>');
 }
 
 // Role marker: P (parent) when the hexagram is a father/mother in its family and
