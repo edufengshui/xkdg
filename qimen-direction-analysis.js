@@ -120,10 +120,13 @@
     return { state: 'chain', chain: chain, end: br.from, gaps: gaps, absent: absent };
   }
 
+  var GOOD_DOORS = { Open: 1, Rest: 1, Birth: 1, View: 1 };
+
   // Elements still needed to carry the flow from `from` to `to`, on the generating cycle.
-  function pathBetween(from, to) {
-    var out = [], x = GEN[from];
-    while (x !== to && out.length < 5) { out.push(x); x = GEN[x]; }
+  // Only the absent ones: what is already in the palace needs no corrective.
+  function pathBetween(from, to, present) {
+    var out = [], x = GEN[from], n = 0;
+    while (x !== to && n++ < 5) { if (!present[x]) out.push(x); x = GEN[x]; }
     return out;
   }
 
@@ -147,7 +150,7 @@
   }
 
   // Qi flow of one palace. pd = {ti,ti2,di,di2,door,star,star2,deity}. monthBranch (pinyin)
-  // is optional and adds seasonality; role 'start' adds the star support. The spirit is shown, it does not enter the flow.
+  // is optional and adds seasonality; role 'start' or 'dest' adds the correctives. The spirit is shown, it does not enter the flow.
   function analyzePalaceFlow(pd, palaceNum, monthBranch, role) {
     var comps = components(pd, palaceNum);
     var present = {}; comps.forEach(function (c) { present[c.el] = true; });
@@ -171,14 +174,16 @@
     // Corrections: elements missing INSIDE the flow (the bridge between two parts).
     var corrections = [];
     ord.gaps.forEach(function (g) { g.miss.forEach(function (e) { if (corrections.indexOf(e) < 0) corrections.push(e); }); });
-    // Four elements present: the fifth would close the cycle (Activations slide 27). Optional.
-    var closes = (ord.state === 'chain' && ord.absent.length === 1) ? ord.absent[0] : null;
-    // Starting palace only: elements that carry the flow on to the star. The slides show
-    // one or two such elements (Activations 25, 26, 35), so longer paths are not proposed.
-    var toStar = null, stars = comps.filter(function (c) { return c.type === 'star'; });
-    if (role === 'start' && !noEnd && stars.length && !focus.star) {
-      var need = pathBetween(ord.end, stars[0].el);
-      if (need.length >= 1 && need.length <= 2) toStar = { star: stars[0].name, need: need };
+    // Correctives toward the focus. Starting palace: the star is the best focus, the door
+    // comes second. Destination: ends on a stem only, toward a favourable door (slide 27).
+    var stars = comps.filter(function (c) { return c.type === 'star'; });
+    var doors = comps.filter(function (c) { return c.type === 'door'; });
+    var toStar = null, toDoor = null;
+    if (!noEnd && role === 'start') {
+      if (stars.length && !focus.star) toStar = { star: stars.map(function (c) { return c.name; }).join(', '), need: pathBetween(ord.end, stars[0].el, present) };
+      if (doors.length && !focus.star && !focus.door && GOOD_DOORS[doors[0].name]) toDoor = { door: doors[0].name, need: pathBetween(ord.end, doors[0].el, present) };
+    } else if (!noEnd && role === 'dest' && doors.length && !focus.star && !focus.door && !focus.palace && GOOD_DOORS[doors[0].name]) {
+      toDoor = { door: doors[0].name, need: pathBetween(ord.end, doors[0].el, present) };
     }
 
     var clashes = palaceClashes(comps);
@@ -190,7 +195,7 @@
       palace: PALACE_TRIGRAM[palaceNum], palaceNum: palaceNum, spirit: pd.deity || null,
       components: comps, state: ord.state, chain: ord.chain, end: ord.end,
       sinks: ord.end ? [ord.end] : [], terminus: terminus, focus: focus,
-      corrections: corrections, closes: closes, toStar: toStar, clashes: clashes,
+      corrections: corrections, toStar: toStar, toDoor: toDoor, clashes: clashes,
       season: season, timely: timely, vibrantStars: vibrant,
       defects: ord.gaps.map(function (g) { return { from: g.from, to: g.to, bridge: g.miss }; }),
       remedies: corrections.slice()
@@ -214,8 +219,8 @@
       msgs.push({ kind: 'flow', text: 'The qi flow ends at ' + at.join(' and ') + ' (' + elName(flow.end) + ').' });
     }
     if (flow.corrections.length) msgs.push({ kind: 'remedy', remedies: flow.corrections, text: 'Missing element: add ' + elList(flow.corrections) + ' as a bridge in the flow.' });
-    if (flow.toStar && flow.toStar.need.length) msgs.push({ kind: 'star', remedies: flow.toStar.need, text: 'To support the star ' + flow.toStar.star + ', the flow needs ' + elList(flow.toStar.need) + '.' });
-    if (flow.closes) msgs.push({ kind: 'option', remedies: [flow.closes], text: 'Optional: ' + elName(flow.closes) + ' would close the cycle.' });
+    if (flow.toStar && flow.toStar.need.length) msgs.push({ kind: 'star', remedies: flow.toStar.need, text: 'Best focus: to reach the star ' + flow.toStar.star + ', the flow needs ' + elList(flow.toStar.need) + '.' });
+    if (flow.toDoor && flow.toDoor.need.length) msgs.push({ kind: 'door', remedies: flow.toDoor.need, text: (flow.toStar ? 'Second choice: to' : 'To') + ' reach the door ' + flow.toDoor.door + ', the flow needs ' + elList(flow.toDoor.need) + '.' });
     flow.clashes.forEach(function (c) {
       msgs.push({ kind: 'clash', text: 'Stem clash ' + c.a + c.b + (c.bridgedBy ? (': bridged by ' + c.bridgedBy + ' (' + elName(c.bridge) + ').') : (': no bridge, add ' + elName(c.bridge) + '.')) });
     });
@@ -254,7 +259,7 @@
       if (!dest || !start) return null;
 
       var flow = analyzePalaceFlow(start, startPal, params.monthBranch || null, 'start');
-      var destFlow = analyzePalaceFlow(dest, dirPal, params.monthBranch || null);
+      var destFlow = analyzePalaceFlow(dest, dirPal, params.monthBranch || null, 'dest');
       var pair = stemPair(start.ti, dest.ti);
       var taiSui = isTaiSui(dest.ti, params.yearStem || null);
 
