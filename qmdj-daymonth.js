@@ -275,7 +275,7 @@
   // Open the 🎲 hour chart on that date and hour, in the same mode.
   function openHour(isoDate, gan, zhi, rot) {
     try {
-      document.getElementById('dm-overlay').style.display = 'none';
+      var ovD = document.getElementById('dm-overlay'); if (ovD) ovD.style.display = 'none';
       openQmdjChartPanel();
       setTimeout(function () {
         try {
@@ -406,7 +406,8 @@
   }
 
   window.XKDGDayMonth = { dayChartJu: dayChartJu, monthChartJu: monthChartJu, open: open, scanDays: scanDays,
-                         dayHourMatches: dayHourMatches, positive: positive };
+                         dayHourMatches: dayHourMatches, positive: positive,
+                         pillarsAtNoon: pillarsAtNoon, purposeEntry: purposeEntry };
   window.xkdgDMShow = show; window.xkdgDMOpenHour = openHour; window.xkdgDMStep = step; window.xkdgDMKind = setKind;
   window.openQmdjDayChart = function () { open('day'); };
   window.openQmdjMonthChart = function () { open('month'); };

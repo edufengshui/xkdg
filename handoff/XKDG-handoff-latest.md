@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 38, 2026-10-30)
+# XKDG — Handoff (session 39, 2026-11-05)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -120,5 +120,7 @@ Proposed design (to confirm with Edu):
 Plan from Edu. Sources: chapters QMDJ5 04/05/06 (Dropbox "Chee - Edu/11. qmdj activation"; shell cannot reach Dropbox, Drive download works up to about 6 MB; 04 and 05 definitive are text-only, Edu sent slides 24-27 of 05 as images). Slide 7 of ch. 6 is not to be used for rules.
 - Phase 1 done: qi flow (`qimen-direction-analysis.js`), clash bridge with second stems (`formationFlags`, `extractHits`), seasonality. QMDJ-RULES.md §6.
 - Phase 2 done: start/destination comparison, information only (`tripFlows`, `tpQiFlowHtml` under the rotating chart in the leg detail; `analyze_direction` returns accumulation and palace_relation). QMDJ-RULES.md §7.
-- Next, one at a time: 3 multiple charts for Feng Shui (month, day, hour; flying pan), 4 person Life Palace star vs Yong Shen palace, 5 operating card in scans and AI. Extra: next date with the same chart; month chart over 6 months and year chart for moving abroad; Taiji reset reminder.
+- Phase 3 built: `qmdj-multichart.js`, Charts menu → 🧩 QMDJ Multiple charts (scan, flying). QMDJ-RULES.md §8. Tested headless (crossCheck, scans, panel); source read from Drive ch. 06 and 06 B. Year chart not included. No AI tool yet (phase 5).
+- Open with Edu: (a) star control discards ex. 3 (Heart/Hero); (b) §2 discards ex. 2 day 戊子 (己/乙, no San Qi Tian Pan), though 丁巳 hour passes the cross checks; (c) month chart 壬辰 2016: slide 丁/戊 Rest Grass, app Yin 6 丙/乙 Injury Official (Yin 7 gives 丁/戊 Grass but View).
+- Next, one at a time: 4 person Life Palace star vs Yong Shen palace, 5 operating card in scans and AI. Extra: next date with the same chart; month chart over 6 months and year chart for moving abroad; Taiji reset reminder.
 - Rules of work: no invented rules; activation objects and hexagram texts only from tables Edu approves; ask short questions before coding.
