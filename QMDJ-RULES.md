@@ -134,3 +134,18 @@ Lo **spirito** viene mostrato ma **non entra** nel flusso.
 - **Confronto tra i palazzi:** solo il rapporto (genera, controlla, stesso elemento), senza giudizio,
   perché dipende dallo scopo.
 - Tutto questo è **informativo**: non cambia punteggi, classifiche né esclusioni.
+
+## 8. CARTE MULTIPLE (Feng Shui, carta volante — cap. 6, decisioni Edu)
+
+Codice: `qmdj-multichart.js` (Charts → 🧩 QMDJ Multiple charts). Mese + Giorno + Ora o Giorno + Ora, stesso palazzo Yong Shen.
+
+- **Master:** Support the longer effect = la carta più lenta. Boost the shorter effect = l'ora (usare con cautela, per sbloccare situazioni ferme).
+  Le altre carte nutrono e correggono: un elemento mancante nel flusso del master può venire da loro.
+- **Ogni carta** deve superare da sola §1 e §2 nel palazzo. Lo scopo (porta) vale solo sulla carta master.
+- **Scartati:** palazzo vuoto nel giorno; giorno di clash col palazzo, salvo se riempie il palazzo vuoto.
+- **Porte e stelle tra carte:** generazione o stesso elemento ok; controllo = scarto.
+- **Steli tra carte, stesso piatto (Tian con Tian, Di con Di):** clash §1 e coppie 丙庚 戊辛 壬己 庚己 = scarto,
+  salvo ponte (per i clash, da qualsiasi carta) o protezione di una terza carta con uno stelo che combina (esempio 3: 丙 con 辛).
+- **Combinazioni tra carte:** solo segnalate.
+
+**Da confermare (Edu):** stelle in controllo e gate §2 contro gli esempi 2 e 3; carta del mese 壬辰 2016 (slide 丁/戊 Rest Grass, app Yin 6 丙/乙 Injury Official).

@@ -4166,6 +4166,7 @@ function xkdgChartsToggle(){
         + '<button onclick="xkdgChartsPick(\'dlrtool\')" style="' + BTN + 'background:#5d4037;">🀄 Da Liu Ren chart</button>'
         + '<button onclick="xkdgChartsPick(\'qmdjday\')" style="' + BTN + 'background:#283593;">📆 QMDJ Day chart</button>'
         + '<button onclick="xkdgChartsPick(\'qmdjmonth\')" style="' + BTN + 'background:#1a237e;">🗓 QMDJ Month chart</button>'
+        + '<button onclick="xkdgChartsPick(\'qmdjmulti\')" style="' + BTN + 'background:#311b92;">🧩 QMDJ Multiple charts</button>'
         + sect('On the luopan · current house')
         + '<button onclick="xkdgChartsPick(\'liqi\')" style="' + BTN + 'background:#8a6a1f;">\ud83c\udfe0 QMDJ Li Qi \u00b7 Flying Pan</button>';
   try {
@@ -4188,6 +4189,7 @@ function xkdgChartsPick(v){
   if (v === 'dlrtool')  { xkdgOpenDlrChart();  return; }
   if (v === 'qmdjday')   { if (window.openQmdjDayChart) openQmdjDayChart(); return; }
   if (v === 'qmdjmonth') { if (window.openQmdjMonthChart) openQmdjMonthChart(); return; }
+  if (v === 'qmdjmulti') { if (window.openQmdjMultiChart) openQmdjMultiChart(); return; }
   if (v === 'liqi')     { if (window.openLiQiPanel) openLiQiPanel(); return; }
   try {
     var fv = document.getElementById('fengshui-view');
