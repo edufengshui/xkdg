@@ -242,6 +242,36 @@
     return null;
   }
 
+  // ---- Start ↔ destination comparison (information only, no effect on scores) --
+  // Accumulation: a clash with no bridge, or a missing element inside the flow, leaks energy.
+  // Timeliness of the starting palace adds to it. Release: the flow of the destination palace.
+  function palaceRelation(a, b) {
+    var ea = PALACE_EL[a], eb = PALACE_EL[b];
+    if (!ea || !eb) return null;
+    if (ea === eb) return 'same';
+    if (GEN[ea] === eb) return 'generates';
+    if (GEN[eb] === ea) return 'generated';
+    if (KE[ea] === eb) return 'controls';
+    return 'controlled';
+  }
+  function comparePalaces(startFlow, destFlow) {
+    var leaks = [];
+    startFlow.clashes.forEach(function (c) { if (!c.bridgedBy) leaks.push('stem clash ' + c.a + c.b + ' with no bridge'); });
+    if (startFlow.corrections.length) leaks.push('missing ' + elList(startFlow.corrections));
+    var rel = palaceRelation(startFlow.palaceNum, destFlow.palaceNum);
+    var S = startFlow.palace, D = destFlow.palace;
+    var REL = { same: S + ' and ' + D + ' are the same element', generates: S + ' generates ' + D, generated: D + ' generates ' + S, controls: S + ' controls ' + D, controlled: D + ' controls ' + S };
+    return { good: !leaks.length, leaks: leaks, timely: startFlow.timely, relation: rel, relationText: rel ? REL[rel] : '' };
+  }
+  // Both flows and the comparison, from a rotating chart, for a movement INTO destPalace.
+  function tripFlows(chart, destPalace, monthBranch) {
+    var startPal = OPPOSITE_PALACE[destPalace];
+    if (!chart || !chart.palaces || !startPal || !chart.palaces[startPal] || !chart.palaces[destPalace]) return null;
+    var a = analyzePalaceFlow(chart.palaces[startPal], startPal, monthBranch || null, 'start');
+    var b = analyzePalaceFlow(chart.palaces[destPalace], destPalace, monthBranch || null, 'dest');
+    return { start: a, dest: b, startAdvice: flowAdvice(a), destAdvice: flowAdvice(b), compare: comparePalaces(a, b) };
+  }
+
   // ---- Tai Sui (year stem) on destination --------------------------------
   function isTaiSui(destTi, yearStem) { return !!(destTi && yearStem && destTi === yearStem); }
 
@@ -260,6 +290,7 @@
 
       var flow = analyzePalaceFlow(start, startPal, params.monthBranch || null, 'start');
       var destFlow = analyzePalaceFlow(dest, dirPal, params.monthBranch || null, 'dest');
+      var cmp = comparePalaces(flow, destFlow);
       var pair = stemPair(start.ti, dest.ti);
       var taiSui = isTaiSui(dest.ti, params.yearStem || null);
 
@@ -274,7 +305,7 @@
       return {
         direction: params.direction, destPalace: PALACE_TRIGRAM[dirPal], startPalace: PALACE_TRIGRAM[startPal],
         startTi: start.ti, destTi: dest.ti,
-        flow: flow, flowAdvice: flowAdvice(flow), destFlow: destFlow, destFlowAdvice: flowAdvice(destFlow),
+        flow: flow, flowAdvice: flowAdvice(flow), destFlow: destFlow, destFlowAdvice: flowAdvice(destFlow), compare: cmp,
         stemInteraction: pair, taiSui: taiSui, alerts: alerts
       };
     } catch (e) { return null; }
@@ -283,6 +314,7 @@
   var API = {
     analyzeDirection: analyzeDirection,
     analyzePalaceFlow: analyzePalaceFlow,
+    tripFlows: tripFlows, comparePalaces: comparePalaces, palaceRelation: palaceRelation,
     orderFlow: orderFlow, palaceTimely: palaceTimely, starVibrant: starVibrant,
     flowAdvice: flowAdvice,
     stemPair: stemPair,

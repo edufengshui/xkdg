@@ -5604,8 +5604,10 @@
         start_palace: r.startPalace, start_ti: r.startTi, dest_palace: r.destPalace, dest_ti: r.destTi,
         start_palace_flow: r.flowAdvice.map(function (m) { return m.text; }),
         dest_palace_flow: r.destFlowAdvice.map(function (m) { return m.text; }),
+        accumulation: r.compare.good ? 'good' : ('leaking: ' + r.compare.leaks.join('; ')),
+        palace_relation: r.compare.relationText,
         alerts: r.alerts.map(function (a) { return a.text; }),
-        instructions: 'Present concisely: (1) the qi flow of the starting palace (' + r.startPalace + ') and of the destination palace (' + r.destPalace + '), using only these statements; ' +
+        instructions: 'Present concisely: (1) the qi flow of the starting palace (' + r.startPalace + ') and of the destination palace (' + r.destPalace + '), plus accumulation and palace relation (state the relation without judging it), using only these statements; ' +
           '(2) any alerts (stem clash/combination between start and destination; Tai Sui authority at destination). These are ' +
           'EXPANDED-VIEW details: include them when the user wants depth, otherwise keep the main answer light.'
       };
