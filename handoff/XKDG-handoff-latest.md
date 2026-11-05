@@ -121,6 +121,7 @@ Plan from Edu. Sources: chapters QMDJ5 04/05/06 (Dropbox "Chee - Edu/11. qmdj ac
 - Phase 1 done: qi flow (`qimen-direction-analysis.js`), clash bridge with second stems (`formationFlags`, `extractHits`), seasonality. QMDJ-RULES.md §6.
 - Phase 2 done: start/destination comparison, information only (`tripFlows`, `tpQiFlowHtml` under the rotating chart in the leg detail; `analyze_direction` returns accumulation and palace_relation). QMDJ-RULES.md §7.
 - Phase 3 built: `qmdj-multichart.js`, Charts menu → 🧩 QMDJ Multiple charts (scan, flying). QMDJ-RULES.md §8. Tested headless (crossCheck, scans, panel); source read from Drive ch. 06 and 06 B. Year chart not included. No AI tool yet (phase 5).
-- Open with Edu: (a) star control discards ex. 3 (Heart/Hero); (b) §2 discards ex. 2 day 戊子 (己/乙, no San Qi Tian Pan), though 丁巳 hour passes the cross checks; (c) month chart 壬辰 2016: slide 丁/戊 Rest Grass, app Yin 6 丙/乙 Injury Official (Yin 7 gives 丁/戊 Grass but View).
+- Reference settled (Edu): the app's flying doors (checked on 4 charts from his other QMDJ app, all equal) and the month/day charts of session 32 are right. Ch. 6 slides 14-20 differ when the centre is involved and use Yin 7 for 2014-18, so do not fix the app from them.
+- Open with Edu: star control across charts (discard or warning); door control on all charts; a day failing §2 (ex. 2, 戊子).
 - Next, one at a time: 4 person Life Palace star vs Yong Shen palace, 5 operating card in scans and AI. Extra: next date with the same chart; month chart over 6 months and year chart for moving abroad; Taiji reset reminder.
 - Rules of work: no invented rules; activation objects and hexagram texts only from tables Edu approves; ask short questions before coding.
