@@ -115,3 +115,10 @@ Proposed design (to confirm with Edu):
 - FAMILIES (Edu, session 37): a PARENT hexagram belongs to ONE family. Removed the Aug-23 lines 壬午 Qian-Kun daughter / 壬子 Qian-Kun son (hex 57/51 are only the Zhen-Xun mother/father). getHexFamilyLabel: main hex of a parent JiaZi → parent family only; alt hex → child families. getHexFamilies (FS): double JiaZi split the same way (main = parent family, alt = child families). Children keep two families.
 
 - Natal analysis (xkdgPersonGaps / xkdgDimSettings): a sum 5/10/15 or Hetu between two pillars whose BRANCHES CLASH is cancelled (_xkdgPairRel) — exceptions Pure Qi (equal) and a chart Blood Link (applied after). Shown in red "⚡ … cancelled by the clash". Edu, session 37 (example chart 庚戌 壬辰 乙丑 戊申).
+
+## Session 39: QMDJ Activations (2026-11-05)
+Plan from Edu. Sources: chapters QMDJ5 04/05/06 (Dropbox "Chee - Edu/11. qmdj activation"; shell cannot reach Dropbox, Drive download works up to about 6 MB; 04 and 05 definitive are text-only, Edu sent slides 24-27 of 05 as images). Slide 7 of ch. 6 is not to be used for rules.
+- Phase 1 done: qi flow (`qimen-direction-analysis.js`), clash bridge with second stems (`formationFlags`, `extractHits`), seasonality. QMDJ-RULES.md §6.
+- Phase 2 done: start/destination comparison, information only (`tripFlows`, `tpQiFlowHtml` under the rotating chart in the leg detail; `analyze_direction` returns accumulation and palace_relation). QMDJ-RULES.md §7.
+- Next, one at a time: 3 multiple charts for Feng Shui (month, day, hour; flying pan), 4 person Life Palace star vs Yong Shen palace, 5 operating card in scans and AI. Extra: next date with the same chart; month chart over 6 months and year chart for moving abroad; Taiji reset reminder.
+- Rules of work: no invented rules; activation objects and hexagram texts only from tables Edu approves; ask short questions before coding.

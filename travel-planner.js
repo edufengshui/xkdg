@@ -2000,7 +2000,7 @@
           gZhiPy: (STEM_PY[gHan] || gHan) + ' ' + (BR_PY[brHan] || brHan),
           weekday: WD_IT[s.date.getDay()],
           // solar date parts + hour pillar, for reopening the rotating chart / LIST
-          qmY: s.date.getFullYear(), qmM: s.date.getMonth() + 1, qmD: s.date.getDate(),
+          qmY: s.date.getFullYear(), qmM: s.date.getMonth() + 1, qmD: s.date.getDate(), qmH: s.date.getHours(), qmMi: s.date.getMinutes(),
           iso: s.date.getFullYear() + '-' + String(s.date.getMonth() + 1).padStart(2, '0') + '-' + String(s.date.getDate()).padStart(2, '0'),
           hGanHan: gHan, hZhiHan: brHan,
           dirs: tpScanDirs(s.date.getFullYear(), s.date.getMonth() + 1, s.date.getDate(),
@@ -2695,6 +2695,28 @@
   }
 
   /* ---- leg detail: rotating Qimen config + link to full XKDG (LIST) ------- */
+  /* ---- qi flow, starting vs destination palace (information only) ---------- */
+  function tpQiFlowHtml(chart, palace, slot) {
+    try {
+      if (!window.QimenDirAnalysis || !QimenDirAnalysis.tripFlows) return '';
+      var BR = { '\u5b50':'Zi','\u4e11':'Chou','\u5bc5':'Yin','\u536f':'Mao','\u8fb0':'Chen','\u5df3':'Si','\u5348':'Wu','\u672a':'Wei','\u7533':'Shen','\u9149':'You','\u620c':'Xu','\u4ea5':'Hai' };
+      var mb = null, lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
+      if (lt && isFinite(lt.lonDeg)) {
+        try { mb = BR[XKDGSolarTime.pillarsFromCivil(slot.qmY, slot.qmM, slot.qmD, slot.qmH || 12, slot.qmMi || 0, 0, lt.lonDeg, lt.tzOffsetMin).month.charAt(1)] || null; } catch (e1) {}
+      }
+      var t = QimenDirAnalysis.tripFlows(chart, palace, mb);
+      if (!t) return '';
+      function line(a) { return a.map(function (m) { return '<div>' + m.text + '</div>'; }).join(''); }
+      var c = t.compare;
+      return '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #eadfb5;font-size:12px;color:#444;line-height:1.45;">' +
+        '<div style="font-weight:700;color:#0d5e2c;">Qi flow</div>' +
+        '<div style="margin-top:3px;"><b>Start ' + t.start.palace + '</b> \u00b7 ' +
+          (c.good ? '<span style="color:#1b8a3f;">good accumulation</span>' : '<span style="color:#c62828;">energy leaking: ' + c.leaks.join('; ') + '</span>') + '</div>' + line(t.startAdvice) +
+        '<div style="margin-top:3px;"><b>Destination ' + t.dest.palace + '</b></div>' + line(t.destAdvice) +
+        '<div style="margin-top:3px;">' + c.relationText + '.</div></div>';
+    } catch (e) { return ''; }
+  }
+
   /* ---- prominent card for the single chosen palace ----------------------- */
   function tpSinglePalaceHtml(slot, palace) {
     try {
@@ -2723,6 +2745,7 @@
         '<div>Warrior/Tiger: ' + (ev.isWarrior ? '<span style="color:#c62828;">\u7384\u6b66</span>' : (ev.isTiger ? '\u767d\u864e' : 'no')) + '</div>' +
       '</div>' +
       (configs.length ? '<div style="font-size:12px;color:#7b1fa2;margin-top:4px;">Configs: ' + configs.map(function (c) { return c.label; }).join(', ') + '</div>' : '');
+    rows += tpQiFlowHtml(chart, palace, slot);
     return '<div style="border:2px solid #f9a825;border-radius:10px;padding:10px 12px;background:#fffdf5;">' + rows + '</div>';
     } catch (e) { return '<div style="color:#b00;font-size:12px;">Palace error: ' + e.message + '</div>'; }
   }
@@ -2767,6 +2790,11 @@
     if (rotHtml) {
       box.appendChild(el('div', { style: 'font-size:12px;font-weight:700;color:#0d5e2c;margin:6px 0 2px;' }, 'Rotating Qimen chart'));
       box.appendChild(el('div', null, rotHtml));
+      if (highlightPalace) {
+        var _qf = '';
+        try { _qf = tpQiFlowHtml(QMDJWaterScanner.getRotatingHourChart(slot.qmY, slot.qmM, slot.qmD, slot.hGanHan, slot.hZhiHan), highlightPalace, slot); } catch (eQf) {}
+        if (_qf) box.appendChild(el('div', null, _qf));
+      }
     } else if (highlightPalace) {
       // fallback if the chart can't be drawn
       box.appendChild(el('div', null, tpSinglePalaceHtml(slot, highlightPalace)));

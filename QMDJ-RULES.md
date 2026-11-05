@@ -125,3 +125,11 @@ Lo **spirito** viene mostrato ma **non entra** nel flusso.
 - **Human Activation:** è Feng Shui, si fa dentro casa, quindi usa la carta volante.
 - **Clash tra carte (carta volante):** contano anche gli steli del Di Pan. Le regole viaggi sulla carta rotante non cambiano.
 - **Life Palace:** dove sta lo stelo del giorno di nascita nella carta dell'ora di nascita.
+
+## 7. PARTENZA E ARRIVO (Directionology, Activations — decisioni Edu)
+
+- Accumulo nel palazzo di partenza, rilascio in quello di arrivo.
+- **Perdita di energia:** clash senza ponte o elemento mancante nella catena del palazzo di partenza.
+- **Confronto tra i palazzi:** solo il rapporto (genera, controlla, stesso elemento), senza giudizio,
+  perché dipende dallo scopo.
+- Tutto questo è **informativo**: non cambia punteggi, classifiche né esclusioni.
