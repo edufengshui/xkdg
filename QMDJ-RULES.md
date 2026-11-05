@@ -16,7 +16,7 @@ Valgono per **ogni** valutazione di palazzo QMDJ (sia carta volante 飛盤 sia r
 |---|---|---|
 | Warrior 玄武 | **sempre escluso** | nessuna |
 | Tiger 白虎 | **escluso** | tenuto SOLO con San Qi/Wu **+** porta favorevole |
-| Clash di steli 相冲 (甲庚, 乙辛, 丙壬, 丁癸) | **escluso** | salvo se lo stelo che fa clash **nasconde il Commander 值符** |
+| Clash di steli 相冲 (甲庚, 乙辛, 丙壬, 丁癸) | **escluso** | salvo se lo stelo che fa clash **nasconde il Commander 值符**, oppure se **un elemento del palazzo fa da ponte** (stella, porta o palazzo: es. Johanna, Ren-Bing con Delusion) |
 | 丙庚 (Bing+Geng, qualsiasi ordine) | **escluso** | salvo se **Geng nasconde il Commander** (su Tian o Di pan) |
 | 戊辛 (Wu+Xin, qualsiasi ordine) | **escluso** | salvo se **uno dei due stemi nasconde il Commander** |
 | 壬己 (Ren+Ji, qualsiasi ordine) | **escluso** | salvo se **uno dei due stemi nasconde il Commander** |
@@ -101,3 +101,26 @@ Tre definizioni di San Qi, tre gestioni di clash/Geng, tre comportamenti per War
 
 > Verificato headless su carta rotante reale 24/6/2026 ora Wu: Geng↔Commander, Warrior, Tiger,
 > Injury-viaggi e Wu-come-San-Qi tutti corretti.
+
+---
+
+## 6. FLUSSO DEL QI (Activations — decisioni Edu)
+
+Componenti: steli Tian e Di (anche i secondi steli), stella, porta, elemento del palazzo.
+Lo **spirito** viene mostrato ma **non entra** nel flusso.
+
+- Gli elementi presenti si ordinano sul ciclo generativo. Il tratto più lungo di elementi assenti
+  è il punto di partenza; l'ultimo elemento della catena è il **punto finale**.
+- **Tutti e 5 gli elementi:** il flusso va bene; nessun punto finale, focus **porta e stella**.
+- **Elemento mancante dentro la catena:** va aggiunto come **ponte** (Vettel: Metallo → Acqua → Legno).
+- **Due interruzioni uguali:** servono correzioni.
+- **4 elementi presenti:** il quinto chiuderebbe il ciclo; è facoltativo (Activations slide 27).
+- **Porta e stella sullo stesso elemento finale:** focus su **entrambe**.
+- **Sostegno alla stella (solo palazzo di partenza):** se il flusso non finisce sulla stella, si indicano
+  gli elementi che ve lo portano, al massimo due come nelle slide (Activations 25, 26, 35).
+- **Stagionalità del palazzo (regola Bazi):** timely se dello stesso elemento della stagione o generato da essa.
+- **Stella vibrante:** dello stesso elemento della stagione o che la genera.
+- **Palazzo vuoto:** effetto ritardato, ma ancora usabile se c'è azione.
+- **Human Activation:** è Feng Shui, si fa dentro casa, quindi usa la carta volante.
+- **Clash tra carte (carta volante):** contano anche gli steli del Di Pan. Le regole viaggi sulla carta rotante non cambiano.
+- **Life Palace:** dove sta lo stelo del giorno di nascita nella carta dell'ora di nascita.

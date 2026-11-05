@@ -305,10 +305,11 @@
     var commanderPal = chart.zfp;  // Zhi Fu palace = where Commander lives
 
     // FILTER 1 — Tian/Di stem clash 相冲 → exclude.
-    // DEFAULT (automatic): excused ONLY if this palace carries the Commander 值符.
+    // DEFAULT (automatic): excused if this palace carries the Commander 值符 or a bridge element.
     // (Cloud/Tiger Dun excusing a clash is a Glimpse — available via MANUAL selection only.)
     if(STEM_CLASHES[ti] === di){
-      if(targetPalace !== commanderPal) return [];
+      if(targetPalace !== commanderPal &&
+         !_qmClashBridge({ ti: ti, star: STAR_NAME[cell[2]], doorCode: door, palace: targetPalace })) return [];
     }
 
     // FILTER 2 — Geng restrictions (with exceptions that NEUTRALIZE Geng)
@@ -968,13 +969,29 @@
   function _qmHasSanQiWu(cell){ return !!cell && (_QM_SANQI_WU[cell.ti] === 1 || _QM_SANQI_WU[cell.di] === 1); }
   function _qmFavDoor(cell){ return !!cell && _QM_FAV_DOOR[cell.doorCode] === 1; }
 
+  // Bridge of a stem clash: the element the controlling stem generates and that generates
+  // the controlled stem, carried by the star, the door or the palace. Returns its name or null.
+  var _QM_STAR_EL = { Grass:'water', Rice:'earth', Aggressor:'wood', Assistant:'wood', Fowl:'earth', Heart:'metal', Pillar:'metal', Official:'earth', Hero:'fire' };
+  var _QM_DOOR_EL = { Kai:'metal', Xiu:'water', Sheng:'earth', Shang:'wood', Du:'wood', JingS:'fire', Si:'earth', JingF:'metal' };
+  function _qmClashBridge(cell){
+    var pair = (cell.ti === 'Jia' || cell.ti === 'Geng' || cell.ti === 'Yi' || cell.ti === 'Xin') ? 'water' : 'wood';
+    if(_QM_STAR_EL[cell.star] === pair) return cell.star;
+    if(_QM_DOOR_EL[cell.doorCode] === pair) return DOOR_NAME[cell.doorCode] || cell.doorCode;
+    var pn = cell.palace || cell.pn;
+    if(pn && PALACE_ELEMENT[pn] === pair) return 'the palace';
+    return null;
+  }
+
   // §1 — UNIVERSAL EXCLUSIONS. A disqualified palace is out, in every section.
   function formationFlags(cell){
     var reasons = [], disq = false;
     if(cell){
-      // Stem clash 相冲 — excused only if the palace carries the Commander 值符.
+      // Stem clash 相冲 — excused by the Commander 值符, or when an element of the palace
+      // bridges the two stems (Edu: Ren-Bing with the Delusion door, Activations slide 24).
       if(_QM_STEM_CLASH[cell.ti] === cell.di){
+        var _cb = _qmClashBridge(cell);
         if(_qmIsCommander(cell)) reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' excused by Commander \u503c\u7b26');
+        else if(_cb) reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' bridged by ' + _cb);
         else { disq = true; reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' \u76f8\u51b2'); }
       }
       // 丙庚 — excluded unless Geng hides the Commander (on Tian or Di plate).
@@ -1480,6 +1497,7 @@
         door: doorKey,  // use scanner key (Kai/Xiu/Sheng/etc.) for hit detection
         doorCode: doorKey,  // canonical rule gates read doorCode
         doorName: doorName, // English name for display
+        pn: pn,             // palace number (read by the clash-bridge rule)
         cmdStem: xstem,     // 旬首 lead/Commander stem (for Geng↔Commander rules)
         zhiFu: (pn===isZhiFu),
         zhiShi: (pn===zhiShi),

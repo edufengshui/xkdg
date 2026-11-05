@@ -5563,7 +5563,7 @@
       if (dp.length < 3) return { error: 'date must be YYYY-MM-DD' };
       var H2P = { '甲': 'Jia', '乙': 'Yi', '丙': 'Bing', '丁': 'Ding', '戊': 'Wu', '己': 'Ji', '庚': 'Geng', '辛': 'Xin', '壬': 'Ren', '癸': 'Gui' };
       var BR = { '子': 'Zi', '丑': 'Chou', '寅': 'Yin', '卯': 'Mao', '辰': 'Chen', '巳': 'Si', '午': 'Wu', '未': 'Wei', '申': 'Shen', '酉': 'You', '戌': 'Xu', '亥': 'Hai' };
-      var hGan, hZhi, yearStem;
+      var hGan, hZhi, yearStem, monthBr;
       var _lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
       if (_lt && isFinite(_lt.lonDeg)) {
         // TRUE SOLAR TIME (current GPS): hour + year pillars.
@@ -5571,15 +5571,17 @@
         hGan = H2P[_P.hour.charAt(0)] || _P.hour.charAt(0);
         hZhi = BR[_P.hour.charAt(1)] || _P.hour.charAt(1);
         yearStem = H2P[_P.year.charAt(0)] || null;
+        monthBr = BR[_P.month.charAt(1)] || null;
       } else {
         var lunar = S.fromYmdHms(dp[0], dp[1], dp[2], tp[0] || 0, tp[1] || 0, 0).getLunar();
         var ec = lunar.getEightChar();
         hGan = H2P[ec.getTimeGan()] || ec.getTimeGan();
         hZhi = BR[ec.getTimeZhi()] || ec.getTimeZhi();
+        monthBr = BR[ec.getMonthZhi()] || null;
         var yStemCN = (typeof lunar.getYearGanByLiChun === 'function') ? lunar.getYearGanByLiChun() : ec.getYearGan();
         yearStem = H2P[yStemCN] || null;
       }
-      var r = window.QimenDirAnalysis.analyzeDirection({ Y: dp[0], M: dp[1], D: dp[2], hGan: hGan, hZhi: hZhi, direction: dir, yearStem: yearStem });
+      var r = window.QimenDirAnalysis.analyzeDirection({ Y: dp[0], M: dp[1], D: dp[2], hGan: hGan, hZhi: hZhi, direction: dir, yearStem: yearStem, monthBranch: monthBr });
       if (!r) return { error: 'Could not compute the rotating chart for that date/hour.' };
       // Session 33 (Edu): the DAY chart for that direction, and whether this hour clashes it.
       var dayChart = null;
@@ -5601,8 +5603,9 @@
         ok: true, date: date, time: time, direction: dir, day_chart: dayChart,
         start_palace: r.startPalace, start_ti: r.startTi, dest_palace: r.destPalace, dest_ti: r.destTi,
         start_palace_flow: r.flowAdvice.map(function (m) { return m.text; }),
+        dest_palace_flow: r.destFlowAdvice.map(function (m) { return m.text; }),
         alerts: r.alerts.map(function (a) { return a.text; }),
-        instructions: 'Present concisely: (1) the starting palace (' + r.startPalace + ') qi-flow advice — intention/emotion/remedy; ' +
+        instructions: 'Present concisely: (1) the qi flow of the starting palace (' + r.startPalace + ') and of the destination palace (' + r.destPalace + '), using only these statements; ' +
           '(2) any alerts (stem clash/combination between start and destination; Tai Sui authority at destination). These are ' +
           'EXPANDED-VIEW details: include them when the user wants depth, otherwise keep the main answer light.'
       };
