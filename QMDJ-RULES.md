@@ -148,4 +148,7 @@ Codice: `qmdj-multichart.js` (Charts → 🧩 QMDJ Multiple charts). Mese + Gior
   salvo ponte (per i clash, da qualsiasi carta) o protezione di una terza carta con uno stelo che combina (esempio 3: 丙 con 辛).
 - **Combinazioni tra carte:** solo segnalate.
 
-**Da confermare (Edu):** stelle in controllo e gate §2 contro gli esempi 2 e 3; carta del mese 壬辰 2016 (slide 丁/戊 Rest Grass, app Yin 6 丙/乙 Injury Official).
+**Riferimento carte (Edu, sessione 39):** porte delle carte volanti e carte mese/giorno dell'app sono giuste (sistemate nella sessione 32).
+Le slide 14-20 del cap. 6 seguono un'altra convenzione quando il centro è coinvolto e usano Yin 7 per 2014-2018: non servono per verificare l'app.
+
+**Da confermare (Edu):** stelle in controllo tra carte (scarto o avviso); controllo tra porte su tutte le carte; giorno che non supera il §2.
