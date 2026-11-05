@@ -1857,7 +1857,8 @@
     if (pd.zhiFu) score += TP_BONUS_ZHIFU;
     if (pd.zhiShi) score += TP_BONUS_ZHISHI;
     score += configCount * TP_BONUS_CONFIG;
-    if (TP_CLASH_MODE === 'penalty' && clash) score += TP_CLASH_PENALTY;   // mild
+    var _clashBridged = (_ff.reasons || []).some(function (r) { return r.indexOf('bridged by') >= 0; });
+    if (TP_CLASH_MODE === 'penalty' && clash && !_clashBridged) score += TP_CLASH_PENALTY;   // mild
     if (score < TP_SCORE_FLOOR) score = TP_SCORE_FLOOR;          // never below the positive floor
 
     return {
