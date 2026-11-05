@@ -175,13 +175,13 @@
     var corrections = [];
     ord.gaps.forEach(function (g) { g.miss.forEach(function (e) { if (corrections.indexOf(e) < 0) corrections.push(e); }); });
     // Correctives toward the focus. Starting palace: the star is the best focus, the door
-    // comes second. Destination: ends on a stem only, toward a favourable door (slide 27).
+    // comes second, favourable or not: what counts is where the qi ends (Edu). Destination: ends on a stem only, toward a favourable door (slide 27).
     var stars = comps.filter(function (c) { return c.type === 'star'; });
     var doors = comps.filter(function (c) { return c.type === 'door'; });
     var toStar = null, toDoor = null;
     if (!noEnd && role === 'start') {
       if (stars.length && !focus.star) toStar = { star: stars.map(function (c) { return c.name; }).join(', '), need: pathBetween(ord.end, stars[0].el, present) };
-      if (doors.length && !focus.star && !focus.door && GOOD_DOORS[doors[0].name]) toDoor = { door: doors[0].name, need: pathBetween(ord.end, doors[0].el, present) };
+      if (doors.length && !focus.star && !focus.door) toDoor = { door: doors[0].name, need: pathBetween(ord.end, doors[0].el, present) };
     } else if (!noEnd && role === 'dest' && doors.length && !focus.star && !focus.door && !focus.palace && GOOD_DOORS[doors[0].name]) {
       toDoor = { door: doors[0].name, need: pathBetween(ord.end, doors[0].el, present) };
     }

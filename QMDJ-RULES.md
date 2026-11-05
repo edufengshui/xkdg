@@ -117,6 +117,7 @@ Lo **spirito** viene mostrato ma **non entra** nel flusso.
 - **Porta e stella sullo stesso elemento finale:** focus su **entrambe**.
 - **Correttivi nel palazzo di partenza:** il focus migliore è la **stella**, quindi si indicano gli elementi
   assenti per arrivarci; in seconda battuta la **porta**, con i suoi correttivi.
+  Non importa che il palazzo di partenza sia sfavorevole: conta dove finisce il qi.
 - **Correttivi nel palazzo di arrivo:** se il flusso finisce solo su uno stelo, si indicano gli elementi
   assenti per arrivare a una porta favorevole (Activations slide 27).
 - **Stagionalità del palazzo (regola Bazi):** timely se dello stesso elemento della stagione o generato da essa.
