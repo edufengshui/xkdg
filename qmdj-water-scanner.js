@@ -973,12 +973,21 @@
   // the controlled stem, carried by the star, the door or the palace. Returns its name or null.
   var _QM_STAR_EL = { Grass:'water', Rice:'earth', Aggressor:'wood', Assistant:'wood', Fowl:'earth', Heart:'metal', Pillar:'metal', Official:'earth', Hero:'fire' };
   var _QM_DOOR_EL = { Kai:'metal', Xiu:'water', Sheng:'earth', Shang:'wood', Du:'wood', JingS:'fire', Si:'earth', JingF:'metal' };
-  function _qmClashBridge(cell){
-    var pair = (cell.ti === 'Jia' || cell.ti === 'Geng' || cell.ti === 'Yi' || cell.ti === 'Xin') ? 'water' : 'wood';
-    if(_QM_STAR_EL[cell.star] === pair) return cell.star;
+  function _qmClashBridge(cell, stem){
+    var st = stem || cell.ti;
+    var pair = (st === 'Jia' || st === 'Geng' || st === 'Yi' || st === 'Xin') ? 'water' : 'wood';
+    if(_QM_STAR_EL[cell.star] === pair || _QM_STAR_EL[cell.star2] === pair) return cell.star;
     if(_QM_DOOR_EL[cell.doorCode] === pair) return DOOR_NAME[cell.doorCode] || cell.doorCode;
     var pn = cell.palace || cell.pn;
     if(pn && PALACE_ELEMENT[pn] === pair) return 'the palace';
+    return null;
+  }
+  // First stem clash in the palace, second stems (Fowl's central stem) included, even
+  // on the same plate (Johanna: Ren and Bing stacked). Returns [a, b] or null.
+  function _qmFindClash(cell){
+    var st = [cell.ti, cell.ti2, cell.di, cell.di2].filter(Boolean);
+    for(var i = 0; i < st.length; i++) for(var j = i + 1; j < st.length; j++)
+      if(_QM_STEM_CLASH[st[i]] === st[j]) return [st[i], st[j]];
     return null;
   }
 
@@ -988,11 +997,13 @@
     if(cell){
       // Stem clash 相冲 — excused by the Commander 值符, or when an element of the palace
       // bridges the two stems (Edu: Ren-Bing with the Delusion door, Activations slide 24).
-      if(_QM_STEM_CLASH[cell.ti] === cell.di){
-        var _cb = _qmClashBridge(cell);
-        if(_qmIsCommander(cell)) reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' excused by Commander \u503c\u7b26');
-        else if(_cb) reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' bridged by ' + _cb);
-        else { disq = true; reasons.push('clash ' + (cell.tiH||cell.ti) + (cell.diH||cell.di) + ' \u76f8\u51b2'); }
+      var _cl = _qmFindClash(cell);
+      if(_cl){
+        var _cn = (STEM_HAN[_cl[0]]||_cl[0]) + (STEM_HAN[_cl[1]]||_cl[1]);
+        var _cb = _qmClashBridge(cell, _cl[0]);
+        if(_qmIsCommander(cell)) reasons.push('clash ' + _cn + ' excused by Commander \u503c\u7b26');
+        else if(_cb) reasons.push('clash ' + _cn + ' bridged by ' + _cb);
+        else { disq = true; reasons.push('clash ' + _cn + ' \u76f8\u51b2'); }
       }
       // 丙庚 — excluded unless Geng hides the Commander (on Tian or Di plate).
       if(_qmPairIs(cell, 'Bing', 'Geng')){

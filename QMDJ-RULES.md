@@ -16,7 +16,7 @@ Valgono per **ogni** valutazione di palazzo QMDJ (sia carta volante 飛盤 sia r
 |---|---|---|
 | Warrior 玄武 | **sempre escluso** | nessuna |
 | Tiger 白虎 | **escluso** | tenuto SOLO con San Qi/Wu **+** porta favorevole |
-| Clash di steli 相冲 (甲庚, 乙辛, 丙壬, 丁癸) | **escluso** | salvo se lo stelo che fa clash **nasconde il Commander 值符**, oppure se **un elemento del palazzo fa da ponte** (stella, porta o palazzo: es. Johanna, Ren-Bing con Delusion) |
+| Clash di steli 相冲 (甲庚, 乙辛, 丙壬, 丁癸) | **escluso** | salvo se lo stelo che fa clash **nasconde il Commander 值符**, oppure se **un elemento del palazzo fa da ponte** (stella, porta o palazzo: es. Johanna, Ren-Bing con Delusion). Contano anche i secondi steli, pure nello stesso piatto |
 | 丙庚 (Bing+Geng, qualsiasi ordine) | **escluso** | salvo se **Geng nasconde il Commander** (su Tian o Di pan) |
 | 戊辛 (Wu+Xin, qualsiasi ordine) | **escluso** | salvo se **uno dei due stemi nasconde il Commander** |
 | 壬己 (Ren+Ji, qualsiasi ordine) | **escluso** | salvo se **uno dei due stemi nasconde il Commander** |
@@ -114,10 +114,11 @@ Lo **spirito** viene mostrato ma **non entra** nel flusso.
 - **Tutti e 5 gli elementi:** il flusso va bene; nessun punto finale, focus **porta e stella**.
 - **Elemento mancante dentro la catena:** va aggiunto come **ponte** (Vettel: Metallo → Acqua → Legno).
 - **Due interruzioni uguali:** servono correzioni.
-- **4 elementi presenti:** il quinto chiuderebbe il ciclo; è facoltativo (Activations slide 27).
 - **Porta e stella sullo stesso elemento finale:** focus su **entrambe**.
-- **Sostegno alla stella (solo palazzo di partenza):** se il flusso non finisce sulla stella, si indicano
-  gli elementi che ve lo portano, al massimo due come nelle slide (Activations 25, 26, 35).
+- **Correttivi nel palazzo di partenza:** il focus migliore è la **stella**, quindi si indicano gli elementi
+  assenti per arrivarci; in seconda battuta la **porta**, con i suoi correttivi.
+- **Correttivi nel palazzo di arrivo:** se il flusso finisce solo su uno stelo, si indicano gli elementi
+  assenti per arrivare a una porta favorevole (Activations slide 27).
 - **Stagionalità del palazzo (regola Bazi):** timely se dello stesso elemento della stagione o generato da essa.
 - **Stella vibrante:** dello stesso elemento della stagione o che la genera.
 - **Palazzo vuoto:** effetto ritardato, ma ancora usabile se c'è azione.
