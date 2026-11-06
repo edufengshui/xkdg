@@ -1450,8 +1450,7 @@ function renderPersonView() {
         if (cur) h += '<td style="border:0;width:14px;padding:0;font-size:18px;color:#7e57c2;text-align:center;vertical-align:middle;">+</td>'
                    + col(selDate ? fmtD(selDate.date) : (cur.kind === 'family' ? '★ Family' : 'Remedy'), cur.hex, cur.qi, cur.yun, false, false, 'border:3px solid #7e57c2;border-radius:10px;background:#f3e5f5;');
         h += '</tr></table></div>';
-        const EXPL = '\u0001EXPL\u0001';   // session 36: the explanation of the 5th column sits right under the picture
-        h += EXPL;
+        const EXPL = '\u0001EXPL\u0001';   // Edu: the 5th-column explanation comes right AFTER the XKDG analysis
         // ── 🔍 XKDG analysis of the natal chart: settings per dimension (session 35, Edu) ──
         try {
             const LN = { add: 'Adding', hetu: 'Hetu', eq: 'equal' };
@@ -1480,6 +1479,7 @@ function renderPersonView() {
             });
             if (an) h += '<div style="margin:4px 0 6px;padding:6px 8px;border-radius:8px;background:#eef2ff;font-size:13px;"><b>🔍 XKDG analysis</b>' + an + '</div>';
         } catch (eAn) {}
+        h += EXPL;
         if (!g || !g.any) {
             h = h.replace(EXPL, '') + '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
             return;
