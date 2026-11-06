@@ -1530,7 +1530,8 @@
           palaces[rp].ti2 = centerStem; palaces[rp].ti2H = STEM_P2H_R[centerStem] || centerStem;
         }
       }
-      if (palaces[2]) { palaces[2].di2 = centerStem; palaces[2].di2H = STEM_P2H_R[centerStem] || centerStem; }
+      var dHome = withStar === 'Official' ? 8 : 2;   // Official option: the Di Pan lodge moves to Gen (Edu)
+      if (palaces[dHome]) { palaces[dHome].di2 = centerStem; palaces[dHome].di2H = STEM_P2H_R[centerStem] || centerStem; }
     }
     return { palaces: palaces, dun: dun, ju: ju, method: 'rotating' };
   }
