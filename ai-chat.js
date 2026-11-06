@@ -5703,7 +5703,7 @@
         res.cures_from_other = K.map(function (k) {
           var q = O[k]; if (!q || q.qi == null) return null;
           var c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
-          var kind = _xkdgRemedyKind(g, P, c, fams); if (!kind) return null;
+          var kind = _xkdgRemedyKind(g, P, c, _xkdgIsolatedFamilies(g, P)); if (!kind) return null;
           var vw = xkdgCureVoid(g, P, c, O.day, oname);
           if (vw) { res.cures_invalid_by_void.push({ from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, why: vw }); return null; }
           var links = [];
@@ -5716,12 +5716,14 @@
           });
           return { from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, qi: q.qi, yun: q.yun, kind: kind,
                    links: links.length ? links : undefined,
+                   reaches: _xkdgCureCovers(g, P, { kind: kind, stem: c.stem, branch: c.branch, hex: c.hex }),
                    harmonises: (g.settings && ['qi', 'yun'].some(function (f) { return _xkdgHarmVals(g.settings[f]).has(c[f]); })) || undefined };
         }).filter(Boolean);
         return res;
       }
       return { for_A: side(PA, nA, PB, nB), for_B: side(PB, nB, PA, nA),
         instructions: 'For each person: the isolated pillar(s), then which pillar of the OTHER person is a cure (main first, then ★ family), with the links. ' +
+          '"reaches" lists the isolated pillars each cure covers and those it leaves; several cures can work together. ' +
           'Hour, Day, Month, Year order. Only what is in this result: do not add meanings of families or hexagrams. The PERSON tab (Both → 🤝 Cure from the other chart) shows the same with pictures.' };
     } catch (e) { return { error: 'Mutual cures failed: ' + ((e && e.message) || e) }; }
   }
