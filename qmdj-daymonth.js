@@ -144,7 +144,7 @@
       if (!c || !c.palaces) continue;
       var civ = String(wc.h).padStart(2, '0') + ':' + String(wc.mi).padStart(2, '0');
       good.forEach(function (n) {
-        if (positive(c.palaces[n], pur)) (out[n] = out[n] || []).push({ gan: hp.gan, zhi: hp.zhi, civ: civ, cell: c.palaces[n], ju: c.ju, dun: c.dun });
+        if (positive(c.palaces[n], pur)) (out[n] = out[n] || []).push({ gan: hp.gan, zhi: hp.zhi, civ: civ, cell: c.palaces[n], chart: c, ju: c.ju, dun: c.dun });
       });
     }
     return { good: good, hits: out };
