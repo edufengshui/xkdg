@@ -953,6 +953,53 @@ function xkdgDimSettings(pillars, f) {
     }
     return out;
 }
+// The outcome of the natal analysis in plain words (Edu): e.g. "The Elements naturally follow
+// the Adding Up setting, while the Periods require a cure because the Hour 8 is isolated."
+function xkdgAnalysisResult(g, st, P, L) {
+    if (!g) return '';
+    if (g.bloodLink) return 'All the pillars communicate through ' + g.bloodLink.join(', ') + ': no cure is needed.';
+    const list = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+    const setName = S => {
+        const gr = S.groups.slice().sort((a, b) => b.pillars.length - a.pillars.length)[0];
+        if (!gr) return '';
+        const n = _xkdgLangName(_xkdgSettingLang(gr.pillars.map(k => P[k][S.f])));
+        return n.replace('Adding', 'Adding Up').replace(' / ', ' or ');
+    };
+    const dims = [['qi', 'Elements'], ['yun', 'Periods']].map(([f, nm]) => {
+        const S = Object.assign({ f: f, groups: [] }, st && st[f]), iso = (g.dims[f] && g.dims[f].isolated) || [];
+        if (iso.length) {
+            const who = list(iso.map(x => 'the ' + L[x.pillar] + ' ' + x.value));
+            return { f, nm, kind: 'cure', why: '<span style="color:#c62828;font-weight:bold;">because ' + who + (iso.length > 1 ? ' are' : ' is') + ' isolated</span>' };
+        }
+        if (S.split) return { f, nm, kind: 'split' };
+        return { f, nm, kind: 'ok', set: setName(S) };
+    });
+    const [A, B] = dims, follows = d => d.set ? 'naturally follow the ' + d.set + ' setting' : 'all communicate';
+    const cureTxt = d => d.kind === 'split' ? 'use two different settings, which is not good, so they require a cure' : 'require a cure ' + d.why;
+    let out;
+    if (A.kind === 'ok' && B.kind === 'ok')
+        out = (A.set === B.set ? 'Both Elements and Periods ' + follows(A) : 'The Elements ' + follows(A) + ' and the Periods ' + follows(B)) + ': no cure is needed.';
+    else if (A.kind === 'ok') out = 'The Elements ' + follows(A) + ', while the Periods ' + cureTxt(B) + '.';
+    else if (B.kind === 'ok') out = 'The Periods ' + follows(B) + ', while the Elements ' + cureTxt(A) + '.';
+    else out = 'The Elements ' + cureTxt(A) + ', and the Periods ' + cureTxt(B) + '.';
+    // Why a pillar is isolated, when a clash cancelled its link.
+    const seen = {};
+    dims.forEach(d => {
+        const iso = ((g.dims[d.f] || {}).isolated || []).map(x => x.pillar);
+        ((st && st[d.f] && st[d.f].cancelled) || []).forEach(c => {
+            if (!iso.includes(c.a) && !iso.includes(c.b)) return;
+            if (seen[c.a + c.b]) return; seen[c.a + c.b] = 1;
+            out += ' The ' + L[c.a] + ' and the ' + L[c.b] + ' would connect, but the ' + c.clash + ' clash cancels the link.';
+        });
+    });
+    dims.forEach(d => {
+        const hs = d.kind === 'split' ? ((st[d.f] || {}).harmonise || []) : [];
+        if (!hs.length) return;
+        const vals = [...new Set(hs.reduce((r, x) => r.concat(x.values.map(v => v.value)), []))];
+        out += ' ' + (d.f === 'qi' ? 'Element ' : 'Period ') + vals.join(' or ') + ' would bring them to one setting (marked ✦ below).';
+    });
+    return out;
+}
 function _xkdgHarmVals(settings) { const s = new Set(); (settings && settings.harmonise || []).forEach(h => h.values.forEach(v => s.add(v.value))); return s; }
 function xkdgPersonGaps(pillars) {
     const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars && pillars[k] && pillars[k].qi != null);
@@ -1477,7 +1524,11 @@ function renderPersonView() {
                 if (!d.isolated.length) return;
                 an += '<div style="margin-top:4px;color:#c62828;font-weight:bold;">' + d.label + ': ' + d.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated.</div>';
             });
-            if (an) h += '<div style="margin:4px 0 6px;padding:6px 8px;border-radius:8px;background:#eef2ff;font-size:13px;"><b>🔍 XKDG analysis</b>' + an + '</div>';
+            // Edu: first the RESULT in plain words; the numbers stay under Details.
+            let res = '';
+            try { res = xkdgAnalysisResult(g, st, pp.P, L); } catch (eRes) {}
+            if (an) h += '<div style="margin:4px 0 6px;padding:6px 8px;border-radius:8px;background:#eef2ff;font-size:13px;"><b>🔍 XKDG analysis</b>'
+                + (res ? '<div style="margin-top:3px;">' + res + '</div><details style="margin-top:4px;"><summary style="cursor:pointer;color:#555;font-size:12px;">Details</summary>' + an + '</details>' : an) + '</div>';
         } catch (eAn) {}
         h += EXPL;
         if (!g || !g.any) {
