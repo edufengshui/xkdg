@@ -137,6 +137,95 @@
     return (clash ? 'filled' : '');
   }
 
+  // ── Operating card (phase 5, QMDJ-RULES.md §10) ──────────────────────────────
+  // Objects come from "How to activate a palace" (ch. 6 slide 6, marked 'slide') or are deduced
+  // from the Yong Shen Representations chapters 01 and 03 (marked 'meaning'), read for modern living.
+  var REL_TXT;
+  var S_ = 'slide', M_ = 'meaning';
+  var OBJ = {
+    stem: { Jia: ['a tall plant or tall wooden furniture', M_], Yi: ['flowers or a small wooden frame', M_], Bing: ['a stove or another heat source', M_],
+            Ding: ['a candle', S_], Wu: ['stones', S_], Ji: ['a pot of garden soil', M_], Geng: ['a large metal object', M_],
+            Xin: ['a small metal object', M_], Ren: ['running water', M_], Gui: ['a small bowl of still water', M_] },
+    door: { Open: ['a round man made object', S_], Rest: ['a picture of the ocean or a tea set', M_], Birth: ['a model of a house or a bridge', M_], View: ['a bright lamp or books', M_] },
+    star: { Grass: ['a small water feature', M_], Rice: ['a small altar or deity statue', M_], Aggressor: ['a wooden pillar or a big plant', M_],
+            Assistant: ['flowers or an artistic sculpture', M_], Fowl: ['a square object', M_], Heart: ['a folding screen', M_],
+            Pillar: ['a small stone pillar or tower', M_], Official: ['a tall piece of furniture', M_], Hero: ['sunlight, a mirror', S_] },
+    spirit: { Bird: ['a representation of a flying bird', S_], Commander: ['something valuable', M_], Snake: ['a winding shape', M_], Yin: ['a nice ornamental object', M_],
+              Harmonies: ['an umbrella or canopy', M_], Earth: ['a low, flat object', M_], Heaven: ['a dome-shaped object', M_],
+              Polaris: ['a hook-shaped object', M_], Norm: ['a dish of good food', M_] }
+  };
+  // Palace numbers: Later Heaven, then Early Heaven (slide: Zhen 3, 4).
+  var NUMS = { 1: [1, 6], 2: [2, 8], 3: [3, 4], 4: [4, 5], 6: [6, 1], 7: [7, 2], 8: [8, 7], 9: [9, 3] };
+  var DIR = { 1: 'North', 8: 'North East', 3: 'East', 4: 'South East', 9: 'South', 2: 'South West', 7: 'West', 6: 'North West' };
+  function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+
+  function palaceObjects(cell, n, flow) {
+    var f = flow.focus, chain = flow.chain || [], D = A()._tables, out = [];
+    function add(role, table, key, name, el, focus) {
+      if (!key) return;
+      var o = OBJ[table][key];
+      out.push({ role: role, name: name || key, el: el || null, object: o ? o[0] : null, source: o ? o[1] : null, focus: !!focus });
+    }
+    function stem(role, k) { if (k) add(role, 'stem', k, HAN[k] + ' ' + k, EL[k], (f.stems || []).indexOf(HAN[k]) >= 0); }
+    stem('Tian Pan', cell.ti); stem('Tian Pan, second stem', cell.ti2); stem('Di Pan', cell.di); stem('Di Pan, second stem', cell.di2);
+    add('Star', 'star', cell.star, cell.star, D.STAR_EL[cell.star], !!f.star && String(f.star).indexOf(cell.star) >= 0);
+    add('Door', 'door', cell.door, cell.door, D.DOOR_EL[cell.door], f.door === cell.door);
+    out.sort(function (a, b) { return (a.focus ? 1 : 0) - (b.focus ? 1 : 0) || chain.indexOf(a.el) - chain.indexOf(b.el); });
+    add('Spirit', 'spirit', cell.deity, cell.deity, null, false);
+    return out;
+  }
+
+  // One result of scan() + one of its hours → the plain card (panel and assistant).
+  function card(r, x, o) {
+    var n = +o.palace, mf = x.flow.master, short = o.mode === 'short', useM = !!r.month_cell, fixed = {};
+    var master = short ? 'hour' : (useM ? 'month' : 'day'), cell = master === 'hour' ? x.cell : (master === 'month' ? r.month_cell : r.day_cell);
+    x.flow.fixes.forEach(function (t) { fixed[t.split(' ')[0]] = 1; });
+    function row(kind, c, ju) { return { kind: NAME[kind], ju: ju, stems: (c.tiH || '') + '/' + (c.diH || ''), door: c.door, star: c.star, spirit: c.deity }; }
+    var charts = [];
+    if (useM) charts.push(row('month', r.month_cell, 'Yin ' + r.month_ju));
+    charts.push(row('day', r.day_cell, (r.dun === 'yang' ? 'Yang ' : 'Yin ') + r.ju), row('hour', x.cell, ''));
+    var warn = x.person.warnings.slice();
+    if (mf.state === 'split') warn.push('The qi flow is interrupted in two places: corrections are needed.');
+    if (mf.timely === false) warn.push('Palace ' + TRI[n] + ' is not timely this month.');
+    if (r.filled) warn.push('Clash day: it fills the void palace.');
+    var end = mf.focus.door ? ('door ' + mf.focus.door) : (mf.focus.star ? ('star ' + mf.focus.star) : (mf.focus.stems.length ? ('stem ' + mf.focus.stems.join(', ')) : mf.focus.palace));
+    return {
+      date: r.date, pillars: { hour: x.ganzhi, day: r.day, month: r.month, year: r.year }, clock: x.clock,
+      palace: TRI[n], direction: DIR[n], effect: short ? 'shorter' : 'longer', master: NAME[master], charts: charts,
+      flow: x.flow.advice.filter(function (a) { return a.kind === 'flow' || a.kind === 'season'; }).map(function (a) { return a.text; }),
+      flow_end: end || null,
+      add_elements: mf.corrections.filter(function (e) { return !fixed[e]; }),
+      fixed_by_other_charts: x.flow.fixes, protected_clashes: x.check.excused, combinations: x.check.combos,
+      objects: palaceObjects(cell, n, mf), numbers: NUMS[n],
+      simplest: 'a bowl of moving water',
+      steps: ['At the intended hour, prepare the objects and sit with your back toward the ' + DIR[n] + '.',
+              'Call in the spirits and the energies of the palace and feel the qi coming to you.',
+              'Formulate the intention. It must be in harmony with the energies of the palace.',
+              (end ? 'Use the flow and the expertise of the ' + end + ', where the qi arrives.' : 'Use the flow and the expertise of the door and the star.')],
+      people: x.person.rows.map(function (q) { return { name: q.name, star: q.star, chart: NAME[q.kind], palace: TRI[q.palace], relation: REL_TXT[q.relation] || '' }; }),
+      people_fixes: x.person.fixes, warnings: warn
+    };
+  }
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function cardHtml(c) {
+    var sec = function (t) { return '<div style="font-weight:600;color:#4527a0;margin-top:7px;">' + t + '</div>'; }, li = function (t, col) { return '<div style="color:' + (col || '#333') + ';">' + esc(t) + '</div>'; };
+    var h = '<div style="background:#faf7ff;border:1px solid #b39ddb;border-radius:8px;padding:8px 10px;margin-top:6px;">'
+      + '<div style="font-size:13px;font-weight:700;color:#311b92;">Operating card · ' + esc(c.palace) + ' · ' + esc(c.direction) + '</div>'
+      + '<div style="color:#555;">' + esc(c.date) + ' · ' + esc(c.clock) + ' · ' + esc(cap(c.effect)) + ' effect · master chart: ' + esc(c.master) + '</div>'
+      + '<div style="font-family:serif;margin-top:3px;">Hour ' + esc(c.pillars.hour) + ' · Day ' + esc(c.pillars.day) + ' · Month ' + esc(c.pillars.month) + ' · Year ' + esc(c.pillars.year) + '</div>';
+    h += sec('Charts') + c.charts.map(function (r) { return li(r.kind + (r.ju ? ' (' + r.ju + ')' : '') + ': ' + r.stems + ' · ' + r.door + ' · ' + r.star + ' · ' + r.spirit); }).join('');
+    h += sec('Qi flow') + c.flow.map(function (t) { return li(t); }).join('');
+    if (c.add_elements.length) h += li('To add: ' + c.add_elements.map(cap).join(', '), '#b26a00');
+    h += c.fixed_by_other_charts.map(function (t) { return li('✓ fixes ' + t, '#1b5e20'); }).join('');
+    h += sec('Objects') + li('Simplest: ' + c.simplest + '.') + c.objects.map(function (o) {
+      return '<div style="color:#333;' + (o.focus ? 'font-weight:700;' : '') + '">' + esc(o.name) + (o.focus ? ' (focus)' : '') + ': ' + esc(o.object || 'no object') + '</div>';
+    }).join('') + li('Palace ' + c.palace + ': numbers ' + c.numbers.join(', '));
+    h += sec('Activation') + c.steps.map(function (t, i) { return li((i + 1) + '. ' + t); }).join('');
+    if (c.people.length) h += sec('Person') + c.people.map(function (q) { return li(q.name + ' ' + q.star + ', ' + q.chart + ': ' + q.palace + ' ' + q.relation); }).join('') + c.people_fixes.map(function (t) { return li('✓ ' + t, '#1b5e20'); }).join('');
+    if (c.warnings.length || c.protected_clashes.length || c.combinations.length) h += sec('Notes') + c.warnings.map(function (t) { return li('⚠ ' + t, '#b26a00'); }).join('') + c.protected_clashes.map(function (t) { return li(t, '#6a1b9a'); }).join('') + c.combinations.map(function (t) { return li('combination ' + t, '#6a1b9a'); }).join('');
+    return h + '</div>';
+  }
+
   // o: {palace, charts:'mdh'|'dh', mode:'long'|'short', start, days, purpose (entry), max, people:[{name, star}]}
   function scan(o) {
     var D = window.XKDGDayMonth, W = window.QMDJWaterScanner, n = +o.palace, useM = o.charts !== 'dh', short = o.mode === 'short';
@@ -212,6 +301,19 @@
     fillPeople(); ov.style.display = 'flex'; warn();
   }
   // Only people with a full birth date and hour have a Life Palace.
+  // Persons A and B of the main form with a full birth date and hour (the assistant's person).
+  function activePeople() {
+    var out = [], lon0 = parseFloat(($('longitude') || {}).value), utc0 = parseFloat(($('utc-offset') || {}).value);
+    [['A', 'person-name', 'person-date', 'person-time', 'person-pillars-a'], ['B', 'person-name-b', 'person-date-b', 'person-time-b', 'person-pillars-b']].forEach(function (s) {
+      var nm = (($(s[1]) || {}).value || '').trim(), date = ($(s[2]) || {}).value, time = ($(s[3]) || {}).value, depth = parseInt(($(s[4]) || {}).value, 10) || 4;
+      if (!nm) return;
+      if (!date || !time || depth < 4) { out.push({ name: nm, partial: true }); return; }
+      var g = null; try { g = window._personBirthGeo(s[0]); } catch (e) {}
+      var L = lifeStar({ date: date, time: time, lon: g ? g.lon : lon0, utc: g ? g.utc : utc0, dst: !!(g && g.dst) });
+      if (L) out.push({ name: nm, star: L.star, palace: L.palace });
+    });
+    return out;
+  }
   function savedPeople() {
     var all = {}; try { all = window.xkdgPersonsAll() || {}; } catch (e) {}
     return Object.keys(all).filter(function (k) { var p = all[k]; return p && p.date && p.time && (p.depth || 4) >= 4; }).sort().map(function (k) { return { name: k, rec: all[k] }; });
@@ -232,28 +334,31 @@
     });
     return out;
   }
-  var REL_TXT = { same: 'same element as the Yong Shen palace', generates: 'generated by the Yong Shen palace', generated: 'generates the Yong Shen palace', controls: 'controlled by the Yong Shen palace', controlled: 'controls the Yong Shen palace' };
+  REL_TXT = { same: 'same element as the Yong Shen palace', generates: 'generated by the Yong Shen palace', generated: 'generates the Yong Shen palace', controls: 'controlled by the Yong Shen palace', controlled: 'controls the Yong Shen palace' };
   function warn() { $('mc-warn').textContent = $('mc-mode').value === 'short' ? '⚠ Use this method with care. It is mainly to be used to unblock frozen situations.' : ''; }
   function run() {
     var out = $('mc-out'), D = window.XKDGDayMonth, pur = D.purposeEntry(), S, ppl = [];
     var long = $('mc-mode').value === 'long', useM = $('mc-charts').value === 'mdh';
-    try { ppl = pickedPeople(); S = scan({ palace: +$('mc-pal').value, charts: $('mc-charts').value, mode: $('mc-mode').value, start: $('mc-from').value, days: +$('mc-days').value, purpose: pur && pur.entry, people: ppl }); }
+    var opt = { palace: +$('mc-pal').value, charts: $('mc-charts').value, mode: $('mc-mode').value, start: $('mc-from').value, days: +$('mc-days').value, purpose: pur && pur.entry };
+    try { ppl = pickedPeople(); opt.people = ppl; S = scan(opt); }
     catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Scan failed: ' + (e && e.message) + '</div>'; return; }
     var master = long ? (useM ? 'Month' : 'Day') : 'Hour', s = S.stats;
     var h = '<div style="font-size:12px;color:#4527a0;font-weight:600;margin-bottom:6px;">Master chart: ' + master + (pur ? ' · purpose ' + pur.entry.label : '') + ' · ' + S.results.length + ' day(s)</div>'
       + ppl.map(function (q) { return '<div style="font-size:12px;color:#555;margin-bottom:4px;">' + q.name + ': star ' + q.star + ' (Life Palace ' + TRI[q.palace] + ')</div>'; }).join('');
-    S.results.forEach(function (r) {
+    lastRun = { S: S, opt: opt };
+    S.results.forEach(function (r, ri) {
       h += '<div style="border:1px solid #d1c4e9;border-radius:8px;padding:7px 9px;margin-bottom:7px;font-size:12px;"><b>' + r.date + '</b> · day ' + r.day + ' · month ' + r.month + (r.filled ? ' · <span style="color:#1b5e20;">clash day fills the void palace</span>' : '')
         + (r.month_cell ? '<div style="color:#666;">Month (Yin ' + r.month_ju + '): ' + cellLine(r.month_cell) + '</div>' : '')
         + '<div style="color:#666;">Day (' + (r.dun === 'yang' ? 'Yang ' : 'Yin ') + r.ju + '): ' + cellLine(r.day_cell) + '</div>';
-      r.hours.forEach(function (x) {
+      r.hours.forEach(function (x, hi) {
         var notes = x.flow.fixes.map(function (t) { return '✓ fixes ' + t; }).concat(x.check.excused, x.check.combos.map(function (t) { return 'combination ' + t; }));
-        h += '<div style="margin-top:5px;border-top:1px dashed #e0d8f0;padding-top:4px;"><button onclick="xkdgMCHour(\'' + r.date + '\',\'' + x.gan + '\',\'' + x.zhi + '\')" style="padding:3px 9px;border:1px solid #66bb6a;background:#e8f5e9;color:#1b5e20;border-radius:12px;font-size:12px;cursor:pointer;">' + x.ganzhi + ' · ' + x.clock + '</button> <span style="color:#555;">' + cellLine(x.cell) + '</span>'
+        h += '<div style="margin-top:5px;border-top:1px dashed #e0d8f0;padding-top:4px;"><button onclick="xkdgMCHour(\'' + r.date + '\',\'' + x.gan + '\',\'' + x.zhi + '\')" style="padding:3px 9px;border:1px solid #66bb6a;background:#e8f5e9;color:#1b5e20;border-radius:12px;font-size:12px;cursor:pointer;">' + x.ganzhi + ' · ' + x.clock + '</button> <span style="color:#555;">' + cellLine(x.cell) + '</span> <button onclick="xkdgMCCard(' + ri + ',' + hi + ')" style="padding:3px 9px;border:1px solid #7e57c2;background:#ede7f6;color:#4527a0;border-radius:12px;font-size:12px;cursor:pointer;">📋 Card</button>'
           + x.flow.advice.map(function (a) { return '<div style="color:#333;">' + a.text + '</div>'; }).join('')
           + (notes.length ? '<div style="color:#6a1b9a;">' + notes.join(' · ') + '</div>' : '')
           + x.person.rows.map(function (q) { return '<div style="color:#555;">' + q.name + ' ' + q.star + ', ' + NAME[q.kind] + ': ' + TRI[q.palace] + ' ' + (REL_TXT[q.relation] || '') + '</div>'; }).join('')
           + x.person.fixes.map(function (t) { return '<div style="color:#1b5e20;">✓ ' + t + '</div>'; }).join('')
-          + x.person.warnings.map(function (t) { return '<div style="color:#b26a00;">⚠ ' + t + '</div>'; }).join('') + '</div>';
+          + x.person.warnings.map(function (t) { return '<div style="color:#b26a00;">⚠ ' + t + '</div>'; }).join('')
+          + '<div id="mc-card-' + ri + '-' + hi + '"></div></div>';
       });
       h += '</div>';
     });
@@ -261,7 +366,13 @@
     h += '<div style="font-size:11px;color:#888;">Days left out: ' + s.void + ' void · ' + s.clash_day + ' clash day' + (useM ? ' · ' + s.month + ' month chart' : '') + ' · ' + s.day + ' day chart' + (useM ? ' · ' + s.month_day + ' month-day conflict' : '') + ' · ' + s.no_hour + ' no hour' + (ppl.length ? ' · ' + s.person + ' person' : '') + '</div>';
     out.innerHTML = h;
   }
-  window.XKDGMultiChart = { crossCheck: crossCheck, flowInfo: flowInfo, scan: scan, open: open, lifeStar: lifeStar, personCheck: personCheck };
+  var lastRun = null;
+  window.xkdgMCCard = function (ri, hi) {
+    var el = $('mc-card-' + ri + '-' + hi); if (!el || !lastRun) return;
+    if (el.innerHTML) { el.innerHTML = ''; return; }
+    var r = lastRun.S.results[ri]; el.innerHTML = cardHtml(card(r, r.hours[hi], lastRun.opt));
+  };
+  window.XKDGMultiChart = { crossCheck: crossCheck, flowInfo: flowInfo, scan: scan, open: open, lifeStar: lifeStar, personCheck: personCheck, card: card, cardHtml: cardHtml, activePeople: activePeople, palaceObjects: palaceObjects };
   window.openQmdjMultiChart = open; window.xkdgMCScan = run; window.xkdgMCWarn = warn;
   window.xkdgMCHour = function (iso, g, z) { var o = $('mc-overlay'); if (o) o.style.display = 'none'; window.xkdgDMOpenHour(iso, g, z, 0); };
 })();

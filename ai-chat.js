@@ -740,7 +740,7 @@
                'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement','find_dlr_general_match',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
                'find_water_positions','yang_openings','find_good_dates','open_scan_result',
-               'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days'],
+               'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days','find_multichart_activation'],
     dates: ['person_xkdg_gaps','mutual_cures','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
@@ -777,7 +777,7 @@
   var AREA_HINTS = {
     home: /acquari|aquarium|fontan|fountain|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
     travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
-    fengshui: /fontan|fountain|finestr|window|fen[eê]tre|aperture|apertur|opening|ouverture|\byang\b|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
+    fengshui: /attivazion|activation|carte multiple|multiple charts|fontan|fountain|finestr|window|fen[eê]tre|aperture|apertur|opening|ouverture|\byang\b|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
     dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
   };
   function autoPullAreas(text) {
@@ -1519,6 +1519,27 @@
           placement_index: { type: 'integer' }
         },
         required: ['house_index', 'section', 'placement_index']
+      }
+    },
+    {
+      name: 'find_multichart_activation',
+      description: 'QMDJ Feng Shui activation with MULTIPLE flying charts (Month + Day + Hour, or Day + Hour) superimposed on one palace. ' +
+        'Same scan as the panel Charts > QMDJ Multiple charts. Each result carries an operating card: charts, qi flow and focus, elements to add, ' +
+        'objects, steps, person check, warnings. It uses persons A and B loaded in the app: if the result says needs_person, ask who it is for ' +
+        '(set_person loads anyone) and call again. Give the objects exactly as listed in the card, never add others. ' +
+        'Say that objects marked source=meaning are deduced from the meanings and can be adapted.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          direction: { type: 'string', enum: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], description: 'The Yong Shen palace, by direction.' },
+          charts: { type: 'string', enum: ['mdh', 'dh'], description: 'mdh = Month + Day + Hour (default); dh = Day + Hour.' },
+          effect: { type: 'string', enum: ['long', 'short'], description: 'long = support the longer effect (default; slowest chart is master); short = boost the shorter effect (hour is master; use with care, mainly to unblock frozen situations).' },
+          purpose: { type: 'string', enum: ['health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal', 'water'], description: 'Optional purpose: its door is required on the master chart.' },
+          start: { type: 'string', description: 'Start date YYYY-MM-DD (default today).' },
+          days: { type: 'integer', description: 'How many days to scan (default 60, max 180).' },
+          max_results: { type: 'integer', description: 'How many days to return (default 3, max 8).' }
+        },
+        required: ['direction']
       }
     },
     {
@@ -3435,6 +3456,7 @@
       if (name === 'load_house') return toolLoadHouse(input || {});
       if (name === 'load_placement') return toolLoadPlacement(input || {});
       if (name === 'find_qimen_days') return toolFindQimenDays(input || {});
+      if (name === 'find_multichart_activation') return toolFindMultichart(input || {});
       if (name === 'find_water_hours') return toolFindWaterHours(input || {});
       if (name === 'find_qimen_hours_for_star') return toolFindQimenHoursForStar(input || {});
       if (name === 'find_lodging') return toolFindLodging(input || {});
@@ -6148,6 +6170,31 @@
       return { error: 'Provide house_index, section (water/bed/desk) and placement_index (from list_houses).' };
     window.fsLoadPlacement(person.name, hi, zone, pi);
     return { loaded_placement: { house_index: hi, section: zone, placement_index: pi } };
+  }
+
+  // QMDJ multiple charts with the operating card (phase 5, QMDJ-RULES.md §10).
+  function toolFindMultichart(input) {
+    var M = window.XKDGMultiChart, P = { N: 1, NE: 8, E: 3, SE: 4, S: 9, SW: 2, W: 7, NW: 6 };
+    if (!M || !M.scan) return { error: 'The multiple charts module (qmdj-multichart.js) is not loaded.' };
+    var dir = String(input.direction || '').toUpperCase();
+    if (!P[dir]) return { error: 'direction must be one of N, NE, E, SE, S, SW, W, NW.' };
+    var ppl = M.activePeople(), ok = ppl.filter(function (q) { return !q.partial; });
+    if (!ok.length) return { needs_person: true, partial: ppl.map(function (q) { return q.name; }),
+      note: 'No loaded person has a full birth date and hour, so the Life Palace star is unknown. Ask who this is for, load them with set_person, then call again.' };
+    var pur = null;
+    try { var all = window.QMDJWaterScanner.fsPurposeDoors(); if (input.purpose && all[input.purpose]) pur = all[input.purpose]; } catch (e) {}
+    var o = { palace: P[dir], charts: input.charts === 'dh' ? 'dh' : 'mdh', mode: input.effect === 'short' ? 'short' : 'long',
+              start: input.start || todayIso(), days: input.days || 60, purpose: pur,
+              max: Math.min(input.max_results || 3, 8), people: ok };
+    var S;
+    try { S = M.scan(o); } catch (e) { return { error: 'Multiple charts scan failed: ' + ((e && e.message) || e) }; }
+    return { scanner: 'qmdj_multiple_charts', direction: dir, chart: 'Flying (Feng Shui)', purpose: input.purpose || null, start: o.start,
+             people: ok.map(function (q) { return { name: q.name, star: q.star }; }),
+             left_out: ppl.filter(function (q) { return q.partial; }).map(function (q) { return q.name; }),
+             count: S.results.length, stats: S.stats,
+             results: S.results.map(function (r) {
+               return { date: r.date, hours_total: r.hours.length, cards: r.hours.slice(0, 2).map(function (x) { return M.card(r, x, o); }) };
+             }) };
   }
 
   // QMDJ DAY charts: next positive days for a direction, with the matching hours (session 32).
