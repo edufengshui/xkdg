@@ -1346,13 +1346,6 @@ function _xkdgUntil(d) {
 window._pvYM = window._pvYM || {};
 function xkdgPVYM(who) { window._pvYM[who] = !window._pvYM[who]; renderPersonView(); }
 // a cure month into FROM / DAYS: the remedy dates and hours of that month appear below
-function xkdgPVScanMonth(iso, days) {
-    const a = document.getElementById('scan-start'), b = document.getElementById('scan-days');
-    if (a) a.value = iso; if (b) b.value = days;
-    Object.keys(window._pvTab || {}).forEach(w => { if (window._pvTab[w] === 'm') window._pvTab[w] = 'd'; });
-    renderPersonView();
-    try { document.getElementById('person-view').scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
-}
 // 🔔 the future cure years and months as all-day calendar events (alarm the day before, 9:00)
 function xkdgPVYMics(who) {
     const L0 = (window._pvYMData || {})[who]; if (!L0) return;
@@ -1417,11 +1410,31 @@ function xkdgPVOrdHtml(who) {
     const b = (k, t) => '<button onclick="xkdgPVOrd(\'' + who + '\',\'' + k + '\')" style="margin-right:6px;padding:3px 12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;border:1px solid #2e7d32;' + (cur === k ? 'background:#2e7d32;color:#fff;' : 'background:#fff;color:#2e7d32;') + '">' + t + '</button>';
     return '<div style="margin-bottom:4px;">' + b('best', 'BEST') + b('date', 'by DATE') + '</div>';
 }
-// BEST: harmonises the setting, then remedy before family alternative, no void, then the nearest.
-function xkdgCureRank(a, b) {
-    const k = x => (x.voidW ? 4 : 0) + (x.harm ? 0 : 2) + (x.kind === 'main' ? 0 : 1);
-    return k(a) - k(b) || (a.start - b.start);
+// A cure counts only inside a POSITIVE date (Edu, session 41): BEST and by DATE list the dates of
+// the app's own 📅 BEST scan, with its score, run silently on the range; FROM / DAYS stay as they are.
+window._pvScanCache = window._pvScanCache || {};
+function _pvIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _pvScanKey(iso, days) { return [iso, days, (document.getElementById('purpose-select') || {}).value || '', (_xkdgCurePersons()).map(p => p.key).join('#')].join('|'); }
+function xkdgPVScan(iso, days) {
+    const ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days'), box = document.getElementById('scan-results');
+    const ck = _pvScanKey(iso, days);
+    if (window._pvScanCache[ck]) return window._pvScanCache[ck];
+    const s0 = ss && ss.value, d0 = sd && sd.value, disp = box ? box.style.display : '';
+    let rows = [];
+    try {
+        if (ss) ss.value = iso; if (sd) sd.value = String(days);
+        window._scanSilent = true;
+        runScanner();
+        rows = (window._lastScanResults || []).filter(r => r.score > 0);
+    } catch (e) {} finally {
+        window._scanSilent = false;
+        if (ss) ss.value = s0; if (sd) sd.value = d0; if (box) box.style.display = disp;
+    }
+    const by = {};
+    rows.forEach(r => { if (!by[r.isoDate] || r.score > by[r.isoDate].score) by[r.isoDate] = r; });
+    return (window._pvScanCache[ck] = by);
 }
+function xkdgPVOpenHour(iso, h) { try { setMode('dates'); } catch (e) {} loadDateIntoMain(iso, h); }
 function _pvFd(d) { return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }); }
 function _pvState(x) { const n = new Date(); return x.end <= n ? 'past' : (x.start <= n ? 'now' : 'future'); }
 function _pvMark(x) { return (x.harm ? '✦ ' : '') + (x.kind === 'family' ? ' ★' : '') + (x.voidW ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : ''); }
@@ -1449,28 +1462,48 @@ function _pvBox(pp, title, sub, body) {
          + '<div style="margin-top:4px;">' + xkdgPVOrdHtml(pp.who) + '</div>' + body + '</div>';
 }
 function _pvIcsBtn(who) { return '<button onclick="xkdgPVYMics(\'' + who + '\')" style="margin:3px 0;padding:3px 10px;border-radius:8px;border:1px solid #43a047;background:#fff;color:#1b5e20;font-size:12px;cursor:pointer;">🔔 Add the coming ones to the calendar</button>'; }
-function _pvList(pp, items, row, none) {
-    const best = (window._pvOrd[pp.who] || 'best') === 'best';
-    const live = items.filter(x => _pvState(x) !== 'past'), past = items.filter(x => _pvState(x) === 'past').reverse();
-    const shown = best ? live.slice().sort(xkdgCureRank).slice(0, 12) : live;
-    return (shown.length ? shown.map(row).join('') : '<div style="color:#888;">' + none + '</div>')
-         + (best && live.length > shown.length ? '<div style="color:#888;font-size:12px;margin-top:3px;">The 12 best of ' + live.length + '. All of them are in by DATE.</div>' : '')
-         + '<details style="margin-top:6px;"><summary style="cursor:pointer;font-weight:bold;color:#757575;">◀ Past (' + past.length + ')</summary>' + past.map(row).join('') + '</details>';
+function _pvPast(items, row) {
+    const past = items.filter(x => _pvState(x) === 'past').reverse();
+    return '<details style="margin-top:6px;"><summary style="cursor:pointer;font-weight:bold;color:#757575;">◀ Past (' + past.length + ')</summary>' + past.map(row).join('') + '</details>';
 }
+window._pvPeriod = window._pvPeriod || {};
+function xkdgPVPeriod(who, tab, i) { window._pvPeriod[who + tab] = i; renderPersonView(); }
+// Months / Years: pick a coming cure period, see its positive dates (BEST or by DATE).
+function _pvPeriodBody(pp, tab, items, lab) {
+    const live = items.filter(x => _pvState(x) !== 'past');
+    if (!live.length) return '<div style="color:#888;">Nothing to come.</div>';
+    const i = Math.min(window._pvPeriod[pp.who + tab] || 0, live.length - 1), cur = live[i], now = new Date();
+    const chips = live.map((x, n) => '<button onclick="xkdgPVPeriod(\'' + pp.who + '\',\'' + tab + '\',' + n + ')" style="margin:2px 4px 0 0;padding:2px 7px;border-radius:8px;font-size:12px;cursor:pointer;' + (n === i ? 'background:#2e7d32;color:#fff;border:2px solid #1b5e20;' : 'background:#fff;border:1px solid #66bb6a;color:#1b5e20;') + '">' + lab(x) + '</button>').join('');
+    const from = cur.start > now ? cur.start : now;
+    const iso = _pvIso(from);
+    const n = Math.min(366, Math.max(1, Math.ceil((cur.end - from) / 86400000)));
+    const head = '<div style="max-height:120px;overflow-y:auto;">' + chips + '</div>'
+         + '<div style="margin-top:6px;font-weight:bold;color:#1b5e20;">Positive dates in ' + cur.gz + _pvMark(cur) + ' · hex ' + cur.hex + ' · ' + _pvFd(cur.start) + ' → ' + _pvFd(cur.end) + _pvWhen(cur);
+    if (!window._pvScanCache[_pvScanKey(iso, n)]) {                 // a whole year takes seconds: show the panel first
+        setTimeout(() => { xkdgPVScan(iso, n); renderPersonView(); }, 30);
+        return head + '</div><div style="color:#555;margin-top:4px;">⏳ Scanning the dates…</div>';
+    }
+    const by = xkdgPVScan(iso, n), endIso = _pvIso(cur.end);
+    let list = Object.values(by).filter(r => r.isoDate >= iso && r.isoDate <= endIso);
+    list.sort((window._pvOrd[pp.who] || 'best') === 'best' ? ((a, b) => b.score - a.score || (a.isoDate < b.isoDate ? -1 : 1)) : ((a, b) => (a.isoDate < b.isoDate ? -1 : 1)));
+    const btn = r => '<button onclick="xkdgPVOpenHour(\'' + r.isoDate + '\',' + r.hourIndex + ')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;background:#e8f5e9;border:1px solid #66bb6a;color:#1b5e20;">' + r.isoDate + ' · ' + r.score + (r.cure ? ' 🌿' : '') + '</button>';
+    return head + ' (' + list.length + ')</div>'
+         + '<div style="margin-top:4px;">' + xkdgPVOrdHtml(pp.who) + '</div>'
+         + (list.length ? ((window._pvOrd[pp.who] || 'best') === 'best' ? list.slice(0, 20) : list).map(btn).join('') : '<div style="color:#888;font-size:12px;">No positive date in this period for the PURPOSE and filters in use.</div>')
+         + ((window._pvOrd[pp.who] || 'best') === 'best' && list.length > 20 ? '<div style="color:#888;font-size:12px;margin-top:3px;">The 20 best of ' + list.length + '. All of them are in by DATE.</div>' : '');
+}
+function _pvCureBox(title, sub, body) { return '<div style="margin-top:6px;border:2px solid #43a047;background:#f1f8e9;border-radius:10px;padding:8px 10px;font-size:13px;"><div style="font-weight:bold;color:#1b5e20;font-size:14px;">' + title + '</div><div style="color:#555;font-size:12px;">' + sub + '</div>' + body + '</div>'; }
 function xkdgCureMonthsHtml(pp, g, isoFamSet) {
-    const sp = xkdgCureSpan(pp, g, isoFamSet), now = new Date();
-    const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const all = [].concat.apply([], sp.list.map(y => y.months));
-    const row = m => { const ms = _pvState(m), from = ms === 'now' ? now : m.start;
-        return '<div style="margin-top:3px;' + (ms === 'past' ? 'color:#9e9e9e;' : '') + '">' + (ms === 'now' ? '▶ ' : '· ') + '<b>' + m.gz + '</b>' + _pvMark(m) + ' hex ' + m.hex + ' (' + m.qi + '/' + m.yun + ') · ' + _pvFd(m.start) + ' – ' + _pvFd(m.end) + _pvWhen(m)
-             + (ms !== 'past' ? ' <button onclick="xkdgPVScanMonth(\'' + iso(from) + '\',' + Math.max(1, Math.ceil((m.end - from) / 86400000)) + ')" title="Show the remedy dates of this month" style="padding:0 6px;border-radius:8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;font-size:11px;cursor:pointer;">📅 dates</button>' : '') + '</div>'; };
-    return _pvBox(pp, '🗓 Cure months (' + all.length + ')', 'Months (节 → 节) whose MONTH pillar is a remedy, in every year.', _pvIcsBtn(pp.who) + _pvList(pp, all, row, 'No cure month to come.'));
+    const sp = xkdgCureSpan(pp, g, isoFamSet), all = [].concat.apply([], sp.list.map(y => y.months));
+    const row = m => '<div style="margin-top:3px;color:#9e9e9e;">· <b>' + m.gz + '</b>' + _pvMark(m) + ' hex ' + m.hex + ' (' + m.qi + '/' + m.yun + ') · ' + _pvFd(m.start) + ' – ' + _pvFd(m.end) + '</div>';
+    return _pvCureBox('🗓 Cure months', 'Months (节 → 节) whose MONTH pillar is a remedy. Pick one: its positive dates follow.',
+        _pvIcsBtn(pp.who) + _pvPeriodBody(pp, 'm', all, x => x.gz + ' ' + x.start.toLocaleDateString(undefined, { month: 'short', year: '2-digit' })) + _pvPast(all, row));
 }
 function xkdgCureYearsHtml(pp, g, isoFamSet) {
     const sp = xkdgCureSpan(pp, g, isoFamSet), all = sp.list.filter(y => y.cure);
-    const row = y => { const st = _pvState(y);
-        return '<div style="margin-top:3px;' + (st === 'past' ? 'color:#9e9e9e;' : '') + '">' + (st === 'now' ? '▶ ' : '🌿 ') + '<b>' + y.y + ' ' + y.gz + '</b>' + _pvMark(y) + ' hex ' + y.hex + ' (' + y.qi + '/' + y.yun + ') · ' + _pvFd(y.start) + ' → ' + _pvFd(y.end) + _pvWhen(y) + '</div>'; };
-    return _pvBox(pp, '📆 Cure years (' + all.length + ')', 'Solar years (立春 → 立春) whose YEAR pillar is a remedy.', _pvIcsBtn(pp.who) + _pvList(pp, all, row, 'No cure year to come.'));
+    const row = y => '<div style="margin-top:3px;color:#9e9e9e;">🌿 <b>' + y.y + ' ' + y.gz + '</b>' + _pvMark(y) + ' hex ' + y.hex + ' (' + y.qi + '/' + y.yun + ') · ' + _pvFd(y.start) + ' → ' + _pvFd(y.end) + '</div>';
+    return _pvCureBox('📆 Cure years', 'Solar years (立春 → 立春) whose YEAR pillar is a remedy. Pick one: its positive dates follow.',
+        _pvIcsBtn(pp.who) + _pvPeriodBody(pp, 'y', all, x => x.y + ' ' + x.gz) + _pvPast(all, row));
 }
 function xkdgLuckHtml(pp, g, isoFamSet) {
     const name = pp.name || pp.who, gender = xkdgGenderGet(name);
@@ -1490,10 +1523,9 @@ function xkdgLuckHtml(pp, g, isoFamSet) {
         return '<div style="margin-top:3px;' + (st === 'past' ? 'color:#9e9e9e;' : '') + (x.cure ? 'font-weight:bold;' : '') + '">' + (x.cure ? '🌿 ' : '· ') + x.gz + (x.kind === 'family' ? ' ★' : '') + (x.xd ? ' hex ' + x.xd.hex + ' (' + x.xd.qi + '/' + x.xd.yun + ')' : '')
              + ' · age ' + x.age0 + '–' + x.age1 + ' · ' + _pvFd(x.start) + ' → ' + _pvFd(x.end) + _pvWhen(x)
              + (x.cure ? ' <span style="color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;font-size:11px;">CURE</span>' : '') + (x.voidW ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : '') + '</div>'; };
-    const best = (window._pvOrd[pp.who] || 'best') === 'best';
-    const shown = best ? items.filter(x => x.cure) : items;
-    return box('<div style="color:#555;font-size:12px;">' + (L.forward ? 'Forward' : 'Backward') + ' · first pillar at ' + L.startAge.y + ' y ' + L.startAge.m + ' m ' + L.startAge.d + ' d (3 days = 1 year).</div><div style="margin-top:4px;">' + xkdgPVOrdHtml(pp.who) + '</div>'
-             + _pvList(pp, shown, row, best ? 'No cure luck pillar to come.' : 'None.'));
+    const live = items.filter(x => _pvState(x) !== 'past');
+    return box('<div style="color:#555;font-size:12px;">' + (L.forward ? 'Forward' : 'Backward') + ' · first pillar at ' + L.startAge.y + ' y ' + L.startAge.m + ' m ' + L.startAge.d + ' d (3 days = 1 year). For information.</div>'
+             + (live.length ? live.map(row).join('') : '<div style="color:#888;">None to come.</div>') + _pvPast(items, row));
 }
 window._pvSel = window._pvSel || {};        // selected remedy hexagram per person
 window._pvWho = window._pvWho || null;       // 'A' | 'B' | 'both'
@@ -1657,11 +1689,13 @@ function renderPersonView() {
                 return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'d' + d.date + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
                    + (on ? 'background:#2e7d32;color:#fff;border:2px solid #1b5e20;' : 'background:#e8f5e9;border:1px solid #66bb6a;color:#1b5e20;') + '">'
                    + (dHarm(d) ? '✦ ' : '') + fmtD(d.date) + ' · ' + d.day + (d.cand.kind === 'family' ? ' ★' : '') + (d.void_warning ? ' ⚠' : '') + '</button>'; };
-            const k = d => (d.void_warning ? 4 : 0) + (dHarm(d) ? 0 : 2) + (d.cand.kind === 'main' ? 0 : 1);
+            const by = coming.length ? xkdgPVScan(start, days) : {};
+            const pos = coming.filter(d => by[d.date]), sc = d => by[d.date].score;
             const best = (window._pvOrd[pp.who] || 'best') === 'best';
-            const show = best ? coming.slice().sort((a, b) => k(a) - k(b) || (a.date < b.date ? -1 : 1)) : coming;
-            h += _pvBox(pp, '📅 Cure days (' + coming.length + ')', 'From ' + start + ', ' + days + ' days. Tap a day: it appears next to the birth chart.',
-                 (show.length ? show.map(dBtn).join('') : '<div style="color:#888;font-size:12px;">No favourable remedy date in the range — extend DAYS.</div>')
+            const show = best ? pos.slice().sort((a, b) => sc(b) - sc(a) || (a.date < b.date ? -1 : 1)) : pos;
+            const dBtn2 = d => dBtn(d).replace('</button>', ' · ' + sc(d) + '</button>');
+            h += _pvBox(pp, '📅 Cure days (' + pos.length + ')', 'From ' + start + ', ' + days + ' days. Positive dates of 📅 BEST that carry the cure, with their score. Tap a day: it appears next to the birth chart.',
+                 (show.length ? show.map(dBtn2).join('') : '<div style="color:#888;font-size:12px;">No positive cure date in the range for the PURPOSE and filters in use — extend DAYS.</div>')
                  + '<div style="margin-top:8px;font-weight:bold;color:#757575;">◀ Past, before ' + start + ' (' + pastDates.length + ')</div>'
                  + pastDates.map(dBtn).join('')
                  + '<div><button onclick="xkdgPVBackMore(\'' + pp.who + '\')" style="margin-top:5px;padding:3px 10px;border-radius:8px;border:1px solid #757575;background:#fff;color:#555;font-size:12px;cursor:pointer;">◀ 30 days earlier</button></div>');
