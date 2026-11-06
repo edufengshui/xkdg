@@ -1189,6 +1189,27 @@ function _xkdgRemedyKind(gaps, pillars, cand, isoFams) {
     if (keepOk && ents.some(x => isoFams.has(x.family))) return 'family';
     return null;
 }
+// Session 40 (Edu): between two birth charts a pillar of the other person cures an isolated pillar
+// through the family the two pillars share (Ed's Day cures Yu's Hour through Kan-Li), even when no
+// other natal pillar is in that family. These are all the families of the isolated pillars.
+function _xkdgIsolatedFamilies(gaps, pillars) {
+    const out = new Set();
+    Object.values(gaps.dims).forEach(d => d.isolated.forEach(x => _xkdgResolvedFamilyEntries(pillars[x.pillar]).forEach(e => out.add(e.family))));
+    return out;
+}
+// The isolated pillars a cure really reaches: all of them for a main remedy, by shared family for
+// a family cure. Returns { covered:[{f, pillar, family}], left:[{f, pillar}] }.
+function _xkdgCureCovers(gaps, pillars, c) {
+    const out = { covered: [], left: [] };
+    let cf = [];
+    try { cf = _xkdgResolvedFamilyEntries({ stem: c.stem, branch: c.branch, hex: c.hex }).map(e => e.family); } catch (e) {}
+    ['qi', 'yun'].forEach(f => gaps.dims[f].isolated.forEach(x => {
+        const fam = _xkdgResolvedFamilyEntries(pillars[x.pillar]).map(e => e.family).filter(m => cf.includes(m))[0];
+        if (c.kind === 'main' || fam) out.covered.push({ f: f, pillar: x.pillar, family: c.kind === 'main' ? null : fam });
+        else out.left.push({ f: f, pillar: x.pillar });
+    }));
+    return out;
+}
 function xkdgGapRemedies(gaps, days, pillars, startIso) {
     if (!gaps || !gaps.any) return null;
     pillars = pillars || gaps.pillars;
@@ -1518,7 +1539,7 @@ function renderPersonView() {
         const mutual0 = (other && g && g.any) ? ['hour', 'day', 'month', 'year'].map(k => {
             const q = other.P[k]; if (!q || q.qi == null) return null;
             const c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
-            const kind = _xkdgRemedyKind(g, pp.P, c, isoFamSet);
+            const kind = _xkdgRemedyKind(g, pp.P, c, _xkdgIsolatedFamilies(g, pp.P));
             return kind ? Object.assign(c, { kind: kind, pillar: k, voidW: xkdgCureVoid(g, pp.P, c, other.P.day, other.name) }) : null;
         }).filter(Boolean) : [];
         const mutual = mutual0.filter(x => !x.voidW), mutualVoid = mutual0.filter(x => x.voidW);   // birth charts: a void invalidates the cure
@@ -1622,19 +1643,16 @@ function renderPersonView() {
                     const netPairs = [];
                     for (let i = 0; i < net.length; i++) for (let j = i + 1; j < net.length; j++) { const r = _xkdgRelIn(lang, pp.P[net[i]][f], pp.P[net[j]][f]); if (r) netPairs.push(L[net[i]] + '+' + L[net[j]] + ' ' + r); }
                     if (c.kind === 'family') {
-                        // Session 35 (Edu): name WHICH pillars share the family.
-                        let cf = [];
-                        try { cf = [...new Set(_xkdgResolvedFamilyEntries({ stem: c.stem, branch: c.branch, hex: c.hex }).map(x => x.family))].filter(x => isoFamSet.has(x)); } catch (e) {}
+                        // Session 35 (Edu): name WHICH pillars share the family. Session 40: only those it reaches.
                         const pd = k => L[k] + ' ' + (pp.P[k].stem || '') + (pp.P[k].branch || '') + ' (hex ' + pp.P[k].hex + ')';
-                        const shares = D.isolated.map(x => {
-                            const xf = getJiaZiFamilies(pp.P[x.pillar].stem, pp.P[x.pillar].branch).filter(fm => cf.includes(fm));
-                            return xf.map(fm => {
-                                const mates = keys4.filter(k => k !== x.pillar && getJiaZiFamilies(pp.P[k].stem, pp.P[k].branch).includes(fm));
-                                return '<b>' + fm + '</b>: your isolated ' + pd(x.pillar) + ' and ' + mates.map(pd).join(', ');
-                            }).join('; ');
-                        }).filter(Boolean).join('; ');
-                        out.push('<b>' + nms + '</b>: it does not need to link the isolated ' + D.isolated.map(x => L[x.pillar]).join(', ') + ' here — hexagram ' + c.hex + ' belongs to the family that '
-                            + (shares ? 'already joins ' + shares : 'the isolated pillar shares with another pillar') + ', so the family itself is the bridge.');
+                        const cv = _xkdgCureCovers(g, pp.P, c);
+                        const got = cv.covered.filter(x => x.f === f), left = cv.left.filter(x => x.f === f);
+                        const shares = got.map(x => {
+                            const mates = keys4.filter(k => k !== x.pillar && getJiaZiFamilies(pp.P[k].stem, pp.P[k].branch).includes(x.family));
+                            return '<b>' + x.family + '</b>: your isolated ' + pd(x.pillar) + (mates.length ? ' and ' + mates.map(pd).join(', ') : '');
+                        }).join('; ');
+                        out.push('<b>' + nms + '</b>: ' + (got.length ? 'hexagram ' + c.hex + ' belongs to the family of ' + shares + ', so the family itself is the bridge.' : 'it does not reach the isolated pillars here.')
+                            + (got.length && left.length ? ' It does not reach the isolated ' + left.map(x => L[x.pillar]).join(', ') + '.' : ''));
                     } else {
                         D.isolated.forEach(x => out.push('<b>' + nms + '</b>: ' + nm + ' ' + c[f] + ' links your isolated ' + L[x.pillar] + ' (' + _xkdgRelIn(lang, c[f], x.value) + '), in the same setting (<b>' + _xkdgLangName(lang) + '</b>) your other ' + nms + ' already use (' + netPairs.slice(0, 2).join(', ') + ').'));
                     }
@@ -1661,7 +1679,9 @@ function renderPersonView() {
                     }
                 }
             });
-            out.push('<b>Why it helps</b>: with this hexagram next to the natal chart, no pillar is left alone — all four communicate in both dimensions.');
+            const lf = _xkdgCureCovers(g, pp.P, c).left;
+            out.push(lf.length ? '<b>Still isolated</b> with this hexagram alone: ' + ['qi', 'yun'].map(f => { const a = lf.filter(x => x.f === f); return a.length ? (f === 'qi' ? 'Elements ' : 'Periods ') + a.map(x => L[x.pillar]).join(', ') : ''; }).filter(Boolean).join(' · ') + '.'
+                : '<b>Why it helps</b>: with this hexagram next to the natal chart, no pillar is left alone — all four communicate in both dimensions.');
             return out.map(x => '<div style="margin-top:3px;">' + x + '</div>').join('');
         };
         let ex = '';
@@ -1691,27 +1711,25 @@ function renderPersonView() {
             if (!mutual.length) {
                 if (!mutualVoid.length) h += '<div style="color:#795548;font-size:12px;margin-top:4px;">No pillar of ' + other.name + ' is a cure for ' + pp.name + '.</div>';
             } else {
-                window._pvMut = window._pvMut || {};
-                let mk = window._pvMut[pp.who];
-                if (!mutual.some(x => x.pillar === mk)) mk = mutual[0].pillar;
-                const m = mutual.filter(x => x.pillar === mk)[0];
-                if (mutual.length > 1) h += '<div style="margin-top:4px;">' + mutual.map(x => {
-                    const on = x.pillar === mk;
-                    return '<button onclick="xkdgPVMut(\'' + pp.who + '\',\'' + x.pillar + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
-                       + (on ? 'background:#f9a825;color:#3e2723;border:2px solid #e65100;font-weight:bold;' : 'background:#fff;border:1px solid #f9a825;color:#5d4037;') + '">'
-                       + L[x.pillar] + ' ' + (x.stem || '') + (x.branch || '') + ' · hex ' + x.hex + (x.kind === 'family' ? ' ★' : '') + '</button>';
-                }).join('') + '</div>';
-                // the picture: this person's 4 pillars + the other person's pillar on the right
+                // Session 40 (Edu): every cure of the other chart stands next to the birth chart, each one explained.
                 h += '<div style="overflow-x:auto;margin:6px 0;"><table style="border-collapse:collapse;background:#fff;"><tr>'
                    + ['hour', 'day', 'month', 'year'].map(k => col(L[k], pp.P[k].hex, pp.P[k].qi, pp.P[k].yun, isoSet[k + '.qi'], isoSet[k + '.yun'])).join('')
                    + '<td style="border:0;width:14px;padding:0;font-size:18px;color:#e65100;text-align:center;vertical-align:middle;">+</td>'
-                   + col(other.name + ' · ' + L[m.pillar], m.hex, m.qi, m.yun, false, false, 'border:3px solid #f9a825;border-radius:10px;background:#fff8e1;')
+                   + mutual.map(m => col(other.name + ' · ' + L[m.pillar], m.hex, m.qi, m.yun, false, false, 'border:3px solid #f9a825;border-radius:10px;background:#fff8e1;')).join('')
                    + '</tr></table></div>';
-                h += '<div style="font-size:13px;color:#3e2723;">'
-                   + '<b>' + other.name + '\'s ' + L[m.pillar] + ' pillar ' + (m.stem || '') + (m.branch || '') + '</b> = '
-                   + '<b>' + (m.kind === 'family' ? '★ ' : '') + 'hexagram ' + m.hex + '</b> (Element ' + m.qi + ', Period ' + m.yun + '). '
-                   + 'It already lives in ' + other.name + '\'s birth chart and it is a remedy for ' + pp.name + '\'s chart:'
-                   + explain(m) + '</div>';
+                mutual.forEach((m, i) => {
+                    h += '<div style="font-size:13px;color:#3e2723;' + (i ? 'margin-top:8px;padding-top:6px;border-top:1px dashed #f9a825;' : '') + '">'
+                       + '<b>' + other.name + '\'s ' + L[m.pillar] + ' pillar ' + (m.stem || '') + (m.branch || '') + '</b> = '
+                       + '<b>' + (m.kind === 'family' ? '★ ' : '') + 'hexagram ' + m.hex + '</b> (Element ' + m.qi + ', Period ' + m.yun + '). '
+                       + 'It already lives in ' + other.name + '\'s birth chart and it is a remedy for ' + pp.name + '\'s chart:'
+                       + explain(m) + '</div>';
+                });
+                if (mutual.length > 1) {
+                    const still = _xkdgCureCovers(g, pp.P, { kind: 'none' }).left.filter(x => !mutual.some(m => _xkdgCureCovers(g, pp.P, m).covered.some(y => y.f === x.f && y.pillar === x.pillar)));
+                    h += '<div style="font-size:13px;color:#3e2723;margin-top:8px;padding-top:6px;border-top:1px dashed #f9a825;"><b>Together</b>: '
+                       + (still.length ? 'still isolated: ' + ['qi', 'yun'].map(f => { const a = still.filter(x => x.f === f); return a.length ? (f === 'qi' ? 'Elements ' : 'Periods ') + a.map(x => L[x.pillar]).join(', ') : ''; }).filter(Boolean).join(' · ') + '.'
+                          : 'with these ' + mutual.length + ' hexagrams next to the natal chart, no pillar is left alone — all four communicate in both dimensions.') + '</div>';
+                }
             }
             h += '</div>';
         }
