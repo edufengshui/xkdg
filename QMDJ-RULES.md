@@ -155,6 +155,7 @@ Le slide 14-20 del cap. 6 seguono un'altra convenzione quando il centro è coinv
 
 - **Stella della persona:** stella del Life Palace = carta **rotante** dell'ora di nascita, stelo del giorno sul **Tian Pan**.
   Giorno 甲: stelo nascosto del decennio del giorno (甲子 → 戊). Stelo arrivato dal palazzo centrale (secondo stelo con Rice): **Fowl**; altrimenti Rice.
+- **Carte volanti:** la stella si cerca dove sta davvero, Fowl compreso (non segue Rice, che è la regola della rotante). Stella al centro = palazzo Terra.
 - **Controllo su tutte le carte** (mese, giorno, ora): relazione tra palazzo Yong Shen e palazzo dove sta la stella in quella carta.
 - Genera, è generato o stesso elemento: va bene.
 - **La stella controlla il YS:** solo avviso.
