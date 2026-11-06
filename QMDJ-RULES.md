@@ -168,10 +168,11 @@ Le slide 14-20 del cap. 6 seguono un'altra convenzione quando il centro è coinv
 Codice: `card`, `cardHtml`, `palaceObjects` in `qmdj-multichart.js`; assistente: `find_multichart_activation`.
 
 - **Contenuto:** palazzo e carte usate, steli, porta, stella, spirito, dove finisce il qi e focus, elementi da aggiungere, oggetti, passi, persona, avvisi.
-- **Oggetti:** non c'è una tabella di Edu, si deducono dai significati dei componenti del palazzo (Yong Shen Representations 01 e 03), adattati alla vita moderna.
+- **Oggetti:** si deducono dai significati dei componenti del palazzo, in primo luogo dalla riga Object di QMDJ Representations 1a e 2a, poi dalle Yong Shen Representations 01, 02 e 03, adattati alla vita moderna. Esclusi oggetti negativi (armi, bara). Il testo 04 dà la combinazione di steli.
   Dalla slide 6: Bird, Ding, Hero, Open, Wu. I numeri del palazzo sono Later + Early Heaven (slide: Zhen 3, 4). Ogni voce ha `source` slide o meaning.
 - **Sempre:** il modo più semplice è una ciotola di acqua in movimento.
-- **Tiger:** nessun oggetto.
+- **Tiger:** nessun oggetto (le sue voci sono armi).
+- **Open:** il "round object" della slide coincide con Qian, palazzo d'origine della porta.
 - **Assistente:** usa le persone A e B caricate, altrimenti chiede.
 
 **Da confermare (Edu):** la tabella degli oggetti dedotti; oggetti solo dalla carta master; "schiena verso la direzione del palazzo" generalizzato dall'esempio Zhen/Est.

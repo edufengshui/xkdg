@@ -143,17 +143,33 @@
   var REL_TXT;
   var S_ = 'slide', M_ = 'meaning';
   var OBJ = {
-    stem: { Jia: ['a tall plant or tall wooden furniture', M_], Yi: ['flowers or a small wooden frame', M_], Bing: ['a stove or another heat source', M_],
-            Ding: ['a candle', S_], Wu: ['stones', S_], Ji: ['a pot of garden soil', M_], Geng: ['a large metal object', M_],
-            Xin: ['a small metal object', M_], Ren: ['running water', M_], Gui: ['a small bowl of still water', M_] },
-    door: { Open: ['a round man made object', S_], Rest: ['a picture of the ocean or a tea set', M_], Birth: ['a model of a house or a bridge', M_], View: ['a bright lamp or books', M_] },
-    star: { Grass: ['a small water feature', M_], Rice: ['a small altar or deity statue', M_], Aggressor: ['a wooden pillar or a big plant', M_],
-            Assistant: ['flowers or an artistic sculpture', M_], Fowl: ['a square object', M_], Heart: ['a folding screen', M_],
-            Pillar: ['a small stone pillar or tower', M_], Official: ['a tall piece of furniture', M_], Hero: ['sunlight, a mirror', S_] },
-    spirit: { Bird: ['a representation of a flying bird', S_], Commander: ['something valuable', M_], Snake: ['a winding shape', M_], Yin: ['a nice ornamental object', M_],
-              Harmonies: ['an umbrella or canopy', M_], Earth: ['a low, flat object', M_], Heaven: ['a dome-shaped object', M_],
-              Polaris: ['a hook-shaped object', M_], Norm: ['a dish of good food', M_] }
+    stem: { Jia: ['a tall plant or tall furniture, gold, jade, a precious stone, greenish items', M_], Yi: ['flowers, a small wooden frame, silver, household utensils, greenish items', M_],
+            Bing: ['a stove or another heat source, tin or zinc objects, red items', M_], Ding: ['a candle', S_, 'a lamp, red items'], Wu: ['stones', S_, 'books, stationery, yellow items'],
+            Ji: ['a pot of garden soil, cloth, a pillow, bed sheets, orange items', M_], Geng: ['a large metal object', M_], Xin: ['transparent objects, a small metal object', M_],
+            Ren: ['running water, lighting, black items', M_], Gui: ['a small bowl of still water, purple items', M_] },
+    door: { Open: ['a round man made object', S_, 'precious round objects, yellow items'], Rest: ['fluids, white powder, a picture of the ocean, a tea set', M_],
+            Birth: ['red objects, brand new objects, a model of a house, a bridge', M_], View: ['beautiful objects, purple items, books, a bright lamp', M_],
+            Injury: ['jade coloured objects', M_], Delusion: ['soft objects, green objects', M_], Shocking: ['red objects', M_], Death: ['hard objects, black items', M_] },
+    star: { Grass: ['an umbrella, a small water feature', M_], Rice: ['cloth, an empty box, a small altar or deity statue', M_],
+            Aggressor: ['drums, a flute, bells, a wooden pillar, a big plant', M_], Assistant: ['flowers, an artistic sculpture, stationery, sewing needles and threads', M_],
+            Fowl: ['a square object', M_], Heart: ['treasures, a model vehicle, a folding screen', M_], Pillar: ['kitchen utensils, a small stone pillar or tower', M_],
+            Official: ['a partitioning screen, a blanket, a table set, tall furniture', M_], Hero: ['sunlight, a mirror', S_, 'pictures, a chandelier'] },
+    spirit: { Bird: ['a representation of a flying bird', S_, 'headwear, ornaments'], Commander: ['jewelry, a company seal, something valuable', M_], Snake: ['money, a rope, a contract', M_],
+              Yin: ['an engraved item, a nice ornamental object', M_], Harmonies: ['a model vehicle or boat, clothing, an umbrella or canopy', M_], Earth: ['cloth, a box, tables and chairs', M_],
+              Heaven: ['a model vehicle, a dome-shaped object', M_], Polaris: ['headwear, ornaments, a hook-shaped object', M_], Norm: ['a dish of good food', M_] }
   };
+  // Palaces and branches, Object rows of chapter 02.
+  var PAL_OBJ = { 1: 'mobile objects, wine related items, a pillar', 2: 'square objects, cloth, earthenware, cereal', 3: 'a musical instrument, wood handicraft', 4: 'ropes, a pendulum, a fan, a musical instrument, sewing threads',
+                  6: 'gold and jade, precious round objects', 7: 'metallic objects, money, a wine container', 8: 'furniture, heavy objects, yellow items', 9: 'books, lighting, a hollow plant' };
+  var BR_OBJ = { 子: 'melon, carrot', 丑: 'jewelry, shoes', 寅: 'a document, cash', 卯: 'a model boat or vehicle', 辰: 'porcelain, leather', 巳: 'a picture, flowers and fruit',
+                 午: 'electrical appliances', 未: 'clothing, a wine container', 申: 'a model vehicle or train', 酉: 'jewelry', 亥: 'a model yacht' };
+  // Stem Combinations 1, chapter 04. Jia hides behind Wu, so 甲 is read as 戊. Tian Pan stem at Di Pan stem.
+  var STEM_COMBO = { 戊丙: 'Cerulean Dragon turns its head: very fortunate.', 戊己: 'Noble people imprisoned.', 戊庚: 'Commander on Duty flies over the palace: fortune subsides, misfortune worsens.',
+    戊癸: 'Cerulean Dragon beautifully covered: fortune with a fortunate door.', 乙丙: 'Wonder and Emblem smooth sailing: career advancement with a fortunate star.', 乙庚: 'Sun Wonder being tortured.', 乙辛: 'Cerulean Dragon flees.',
+    丙戊: 'Flying Bird falling into cavern: reward comes without effort.', 丙庚: 'Mars entering Venus.', 丙辛: 'Sun meeting Moon: all wishes fulfilled.', 丁壬: 'Deities mutually integrating: blessed by noble people.',
+    丁癸: 'Bird dives into the river: gossip and litigation vanish.', 己戊: 'Dog meeting Cerulean Dragon: gain with a fortunate door.', 庚戊: 'Venus crouching in palace.', 庚乙: 'Venus meeting star: good for retreat, not for action.',
+    庚丙: 'Venus entering Mars.', 庚丁: 'Romantic setting: no problem if the door is fortunate.', 庚己: 'Conviction setting.', 庚辛: 'White Tiger in action.', 庚壬: 'Gold transforms into flowing water.', 庚癸: 'Big Fan Yin setting.',
+    辛乙: 'White Tiger ferocious.', 辛丙: 'Stems combine against military.', 壬丁: 'Stems combining with snake penalizing.', 癸戊: 'Nobles getting together: happy events, noble people helping.', 癸丁: 'Snake swiftly twining.', 癸庚: 'Venus falling into net.', 癸癸: 'Heaven web enclosing.' };
   // Palace numbers: Later Heaven, then Early Heaven (slide: Zhen 3, 4).
   var NUMS = { 1: [1, 6], 2: [2, 8], 3: [3, 4], 4: [4, 5], 6: [6, 1], 7: [7, 2], 8: [8, 7], 9: [9, 3] };
   var DIR = { 1: 'North', 8: 'North East', 3: 'East', 4: 'South East', 9: 'South', 2: 'South West', 7: 'West', 6: 'North West' };
@@ -164,7 +180,7 @@
     function add(role, table, key, name, el, focus) {
       if (!key) return;
       var o = OBJ[table][key];
-      out.push({ role: role, name: name || key, el: el || null, object: o ? o[0] : null, source: o ? o[1] : null, focus: !!focus });
+      out.push({ role: role, name: name || key, el: el || null, object: o ? o[0] + (o[2] ? ', ' + o[2] : '') : null, source: o ? o[1] : null, focus: !!focus });
     }
     function stem(role, k) { if (k) add(role, 'stem', k, HAN[k] + ' ' + k, EL[k], (f.stems || []).indexOf(HAN[k]) >= 0); }
     stem('Tian Pan', cell.ti); stem('Tian Pan, second stem', cell.ti2); stem('Di Pan', cell.di); stem('Di Pan, second stem', cell.di2);
@@ -196,7 +212,9 @@
       flow_end: end || null,
       add_elements: mf.corrections.filter(function (e) { return !fixed[e]; }),
       fixed_by_other_charts: x.flow.fixes, protected_clashes: x.check.excused, combinations: x.check.combos,
-      objects: palaceObjects(cell, n, mf), numbers: NUMS[n],
+      objects: palaceObjects(cell, n, mf), numbers: NUMS[n], palace_objects: PAL_OBJ[n],
+      branch_objects: PAL_BR[n].filter(function (b) { return BR_OBJ[b]; }).map(function (b) { return b + ' ' + BR_PIN[b] + ': ' + BR_OBJ[b]; }),
+      stem_combination: STEM_COMBO[(cell.tiH || '') + (cell.diH || '')] ? (cell.tiH + ' at ' + cell.diH + ': ' + STEM_COMBO[cell.tiH + cell.diH]) : null,
       simplest: 'a bowl of moving water',
       steps: ['At the intended hour, prepare the objects and sit with your back toward the ' + DIR[n] + '.',
               'Call in the spirits and the energies of the palace and feel the qi coming to you.',
@@ -219,7 +237,8 @@
     h += c.fixed_by_other_charts.map(function (t) { return li('✓ fixes ' + t, '#1b5e20'); }).join('');
     h += sec('Objects') + li('Simplest: ' + c.simplest + '.') + c.objects.map(function (o) {
       return '<div style="color:#333;' + (o.focus ? 'font-weight:700;' : '') + '">' + esc(o.name) + (o.focus ? ' (focus)' : '') + ': ' + esc(o.object || 'no object') + '</div>';
-    }).join('') + li('Palace ' + c.palace + ': numbers ' + c.numbers.join(', '));
+    }).join('') + li('Palace ' + c.palace + ': ' + c.palace_objects + '; numbers ' + c.numbers.join(', ')) + c.branch_objects.map(function (t) { return li(t); }).join('')
+      + (c.stem_combination ? sec('Stems') + li(c.stem_combination) : '');
     h += sec('Activation') + c.steps.map(function (t, i) { return li((i + 1) + '. ' + t); }).join('');
     if (c.people.length) h += sec('Person') + c.people.map(function (q) { return li(q.name + ' ' + q.star + ', ' + q.chart + ': ' + q.palace + ' ' + q.relation); }).join('') + c.people_fixes.map(function (t) { return li('✓ ' + t, '#1b5e20'); }).join('');
     if (c.warnings.length || c.protected_clashes.length || c.combinations.length) h += sec('Notes') + c.warnings.map(function (t) { return li('⚠ ' + t, '#b26a00'); }).join('') + c.protected_clashes.map(function (t) { return li(t, '#6a1b9a'); }).join('') + c.combinations.map(function (t) { return li('combination ' + t, '#6a1b9a'); }).join('');
