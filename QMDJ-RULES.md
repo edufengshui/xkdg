@@ -162,3 +162,16 @@ Le slide 14-20 del cap. 6 seguono un'altra convenzione quando il centro è coinv
 - **Il YS controlla la stella:** scarto, salvo se **un'altra carta** porta nel palazzo YS l'**elemento ponte**.
 
 **Da confermare (Edu):** stelle in controllo tra carte (scarto o avviso); controllo tra porte su tutte le carte; giorno che non supera il §2.
+
+## 10. SCHEDA OPERATIVA (Multiple charts e assistente — cap. 6 slide 6-8, decisioni Edu)
+
+Codice: `card`, `cardHtml`, `palaceObjects` in `qmdj-multichart.js`; assistente: `find_multichart_activation`.
+
+- **Contenuto:** palazzo e carte usate, steli, porta, stella, spirito, dove finisce il qi e focus, elementi da aggiungere, oggetti, passi, persona, avvisi.
+- **Oggetti:** non c'è una tabella di Edu, si deducono dai significati dei componenti del palazzo (Yong Shen Representations 01 e 03), adattati alla vita moderna.
+  Dalla slide 6: Bird, Ding, Hero, Open, Wu. I numeri del palazzo sono Later + Early Heaven (slide: Zhen 3, 4). Ogni voce ha `source` slide o meaning.
+- **Sempre:** il modo più semplice è una ciotola di acqua in movimento.
+- **Tiger:** nessun oggetto.
+- **Assistente:** usa le persone A e B caricate, altrimenti chiede.
+
+**Da confermare (Edu):** la tabella degli oggetti dedotti; oggetti solo dalla carta master; "schiena verso la direzione del palazzo" generalizzato dall'esempio Zhen/Est.
