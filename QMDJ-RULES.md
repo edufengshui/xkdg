@@ -151,4 +151,13 @@ Codice: `qmdj-multichart.js` (Charts → 🧩 QMDJ Multiple charts). Mese + Gior
 **Riferimento carte (Edu, sessione 39):** porte delle carte volanti e carte mese/giorno dell'app sono giuste (sistemate nella sessione 32).
 Le slide 14-20 del cap. 6 seguono un'altra convenzione quando il centro è coinvolto e usano Yin 7 per 2014-2018: non servono per verificare l'app.
 
+## 9. LA PERSONA (carte Feng Shui — cap. 6 slide 5 e 10, decisioni Edu)
+
+- **Stella della persona:** stella del Life Palace = carta **rotante** dell'ora di nascita, stelo del giorno sul **Tian Pan**.
+  Giorno 甲: stelo nascosto del decennio del giorno (甲子 → 戊). Stelo arrivato dal palazzo centrale (secondo stelo con Rice): **Fowl**; altrimenti Rice.
+- **Controllo su tutte le carte** (mese, giorno, ora): relazione tra palazzo Yong Shen e palazzo dove sta la stella in quella carta.
+- Genera, è generato o stesso elemento: va bene.
+- **La stella controlla il YS:** solo avviso.
+- **Il YS controlla la stella:** scarto, salvo se **un'altra carta** porta nel palazzo YS l'**elemento ponte**.
+
 **Da confermare (Edu):** stelle in controllo tra carte (scarto o avviso); controllo tra porte su tutte le carte; giorno che non supera il §2.

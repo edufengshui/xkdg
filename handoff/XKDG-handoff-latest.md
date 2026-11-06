@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 39, 2026-11-05)
+# XKDG — Handoff (session 40, 2026-11-06)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -123,7 +123,8 @@ Plan from Edu. Sources: chapters QMDJ5 04/05/06 (Dropbox "Chee - Edu/11. qmdj ac
 - Phase 3 built: `qmdj-multichart.js`, Charts menu → 🧩 QMDJ Multiple charts (scan, flying). QMDJ-RULES.md §8. Tested headless (crossCheck, scans, panel); source read from Drive ch. 06 and 06 B. Year chart not included. No AI tool yet (phase 5).
 - Reference settled (Edu): the app's flying doors (checked on 4 charts from his other QMDJ app, all equal) and the month/day charts of session 32 are right. Ch. 6 slides 14-20 differ when the centre is involved and use Yin 7 for 2014-18, so do not fix the app from them.
 - Open with Edu: star control across charts (discard or warning); door control on all charts; a day failing §2 (ex. 2, 戊子).
-- Next, one at a time: 4 person Life Palace star vs Yong Shen palace, 5 operating card in scans and AI. Extra: next date with the same chart; month chart over 6 months and year chart for moving abroad; Taiji reset reminder.
+- Phase 4 done (session 40): `lifeStar`, `personCheck` in `qmdj-multichart.js`; Person and Person 2 selectors in the panel. QMDJ-RULES.md §9. Life Palaces match the Rockefeller, Diana and Clinton slides. Edu wrote "stelo dell'anno" about the Fowl/Rice choice: read as the day stem searched, to confirm. A star in the flying centre uses the centre as earth (to confirm).
+- Next: 5 operating card in scans and AI. Extra: next date with the same chart; month chart over 6 months and year chart for moving abroad; Taiji reset reminder.
 - PERSON tab: the 🔍 XKDG analysis now comes BEFORE the cure explanation and opens with the result in plain words (`xkdgAnalysisResult`, Edu's wording); the numbers are under Details.
 - Voids on a cure (Edu, app-bazi.js `xkdgCureVoid`): voids from the DAY decade only, a void clashed by that day branch is filled. Cure fails if the giver's voids hit the linked isolated pillar (trigrams or branch), or the person's voids hit the cure (hexagram or branch). Birth chart to birth chart: invalid (⛔, AI `cures_invalid_by_void`). Dates, years/months, luck pillars and Feng Shui: ⚠ warning only, score unchanged (my reading of "more serious on the birth chart", to confirm).
 - Rules of work: no invented rules; activation objects and hexagram texts only from tables Edu approves; ask short questions before coding.
