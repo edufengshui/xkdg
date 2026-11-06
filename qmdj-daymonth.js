@@ -391,7 +391,7 @@
     try {
       var mEl = document.querySelector('input[name="dm-mode"]:checked');
       var rot = !mEl || mEl.value !== 'flying';
-      html = window.showQimenChart('2000-01-01', g, z, null, { mode: rot ? 'rotating' : undefined, returnHtml: true, forceJuDun: { ju: ju, dun: dun } }) || '';
+      html = window.showQimenChart('2000-01-01', g, z, null, { mode: rot ? 'rotating' : undefined, returnHtml: true, forceJuDun: { ju: ju, dun: dun }, voidDay: _kind === 'day' ? g + z : '' }) || '';
       var lbl = (_kind === 'month' ? 'Month' : 'Day');
       html = html.replace(/2000-01-01\s*·\s*/g, '').replace('Hour Rotating Chart', lbl + ' Rotating Chart').replace('Hour Flying Chart', lbl + ' Flying Chart');
     } catch (e) { html = ''; }

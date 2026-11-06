@@ -3675,6 +3675,16 @@ function _showInfoPopup(title, desc){
 // ── Full Qimen Hour Chart display ──
 // Called when user taps a Qimen card. Renders the complete 9-palace
 // flying chart at the bottom of the results area.
+function _ctrOff(){ try { return localStorage.getItem('xkdg_qmdj_ctr_official') === '1'; } catch (e) { return false; } }
+// Toggle the Yang Dun option and redraw THIS chart in place (any caller).
+function xkdgCtrOfficial(cb){
+  try { localStorage.setItem('xkdg_qmdj_ctr_official', cb.checked ? '1' : '0'); } catch (e) {}
+  var box = cb.closest('#qimen-full-chart'), a = box && window._qcArgs && window._qcArgs[(+box.getAttribute('data-qc')) - 1];
+  if (!a) return;
+  var o = Object.assign({}, a[4] || {}, { returnHtml: true });
+  var h = showQimenChart(a[0], a[1], a[2], a[3], o);
+  if (h) box.outerHTML = h;
+}
 function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   if (!isoDate || !hGan || !hZhi) return;
   if (typeof window.QMDJWaterScanner === 'undefined') return;
@@ -3720,6 +3730,25 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   var GREEN = '#0d5e2c';  // dark forest green like the reference
   var gridOrder = [4,9,2, 3,5,7, 8,1,6]; // SE,S,SW, E,C,W, NE,N,NW
 
+  // Voids of the DAY decade (Edu, session 41): those palaces are lightly shaded. A void branch
+  // clashed by the day branch is filled. opts.voidDay = day pillar when the date is not real.
+  var _voidPal = {}, _voidTxt = '';
+  try {
+    var _S = '甲乙丙丁戊己庚辛壬癸', _B = '子丑寅卯辰巳午未申酉戌亥', _dp = opts.voidDay || '';
+    if (!_dp && isoDate !== '2000-01-01' && window.Solar) { var _lu = Solar.fromYmd(Y, M, D).getLunar(); _dp = _lu.getDayGan() + _lu.getDayZhi(); }
+    if (_dp.length === 2) {
+      var _s = _S.indexOf(_dp[0]), _b = _B.indexOf(_dp[1]);
+      if (_s >= 0 && _b >= 0) {
+        var _BP = { '子':1, '丑':8, '寅':8, '卯':3, '辰':4, '巳':4, '午':9, '未':2, '申':2, '酉':7, '戌':6, '亥':6 };
+        var _v1 = ((_b - _s + 10) % 12 + 12) % 12, _vs = [_B[_v1], _B[(_v1 + 1) % 12]];
+        _voidTxt = _vs.join('');
+        _vs.forEach(function (v) { if (_B.indexOf(v) !== (_b + 6) % 12) _voidPal[_BP[v]] = true; });
+      }
+    }
+  } catch (eV) {}
+  // Rotating: the centre Tien Pan stem travels with Rice (or Official, option) and is drawn there.
+  var _ctrMoves = isRot;
+
   function cellHtml(p){
     var d = chart.palaces[p];
     var di = DIR[p];
@@ -3729,7 +3758,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
     var doorTxt = d.doorName || d.door || '';
     var doorColor = FAV.indexOf(doorTxt)!==-1 ? '#1b5e20' : '#c62828';
     var isHighlight = (highlightPalace && p === highlightPalace);
-    var bg = isHighlight ? '#fff3b0' : '#fff';
+    var bg = isHighlight ? '#fff3b0' : (_voidPal[p] ? '#e9e9e9' : '#fff');
     var border = isHighlight ? '3px solid #f9a825' : '1px solid ' + GREEN;
 
     // Mark Zhi Shi only (Zhi Fu is visible via Commander deity already)
@@ -3744,7 +3773,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
         +   '<div style="color:#222;font-size:13px;font-weight:bold;">' + (d.deity||'Center') + '</div>'
         +   _dpDeity(5)
         +   '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;">'
-        +     '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;">' + (d.tiH||'') + '</div>'
+        +     (_ctrMoves ? '' : '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;">' + (d.tiH||'') + '</div>')
         +     '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
         +   '</div>'
         +   '<div style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:18px;">' + (d.diH||'') + '</div>'
@@ -3757,7 +3786,8 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
       +   '<div style="text-align:center;color:#222;font-size:13px;font-weight:bold;line-height:1.2;">' + (d.deity||'') + '</div>'
       +   _dpDeity(d.palace || p)
       +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
-      +     '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'') + '</span>'
+      +     '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'')
+      +       (_ctrMoves && d.ti2H ? '<span style="color:'+stemColor(d.ti2H)+';font-size:14px;margin-left:3px;">' + d.ti2H + '</span>' : '') + '</span>'
       +     '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
       +   '</div>'
       +   '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
@@ -3844,10 +3874,14 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
   html += '<div style="background:#fff;color:#444;padding:6px 12px;text-align:center;font-size:12px;border-top:2px solid '+GREEN+';">'
        + isoDate + ' · ' + hGan + hZhi
        + ' <span style="color:#888;">(' + chart.dun + ' dun, ju ' + chart.ju + ')</span>'
+       + (_voidTxt ? ' <span style="color:#757575;">· voids ' + _voidTxt + '</span>' : '')
+       + (isRot && chart.dun === 'yang' ? '<div style="margin-top:3px;font-size:11px;"><label><input type="checkbox" onchange="xkdgCtrOfficial(this)"' + (_ctrOff() ? ' checked' : '') + '> Centre stem travels with Official (Yang Dun)</label></div>' : '')
        + '</div>';
 
   html += '</div>';
 
+  window._qcLastArgs = [isoDate, hGan, hZhi, highlightPalace, opts];
+  html = html.replace('<div id="qimen-full-chart"', '<div id="qimen-full-chart" data-qc="' + (window._qcArgs = window._qcArgs || []).push([isoDate, hGan, hZhi, highlightPalace, opts]) + '"');
   // Allow callers (e.g. travel planner) to embed the chart wherever they want
   if (opts.returnHtml) return html;
 
