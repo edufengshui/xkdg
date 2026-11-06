@@ -1002,7 +1002,7 @@ function xkdgAnalysisResult(g, st, P, L) {
 }
 // VOIDS ON A CURE (Edu, session 39). Voids come only from the DAY pillar's decade; a void branch
 // clashed by that day branch is filled. A cure fails when the voids of whoever gives it fall on
-// the pillar it links (hexagram trigrams or branch), or the voids of the person fall on where the
+// the pillar it links (LOWER trigram of the hexagram, or branch), or the voids of the person fall on where the
 // cure comes from. Birth charts: the cure is invalid. Dates and Feng Shui: a warning.
 function _xkdgVoidOf(p) {
     const S = '甲乙丙丁戊己庚辛壬癸', B = '子丑寅卯辰巳午未申酉戌亥';
@@ -1019,8 +1019,8 @@ function _xkdgVoidHit(V, hex, branch) {
     if (branch && V.branches.includes(branch)) return 'branch ' + branch;
     const T = { 7: [6, 'Qian'], 0: [2, 'Kun'], 1: [3, 'Zhen'], 6: [4, 'Xun'], 2: [1, 'Kan'], 5: [9, 'Li'], 4: [8, 'Gen'], 3: [7, 'Dui'] };
     const b = _XK_HEXBIN[hex]; if (b == null) return '';
-    const hit = [T[(b >> 3) & 7], T[b & 7]].filter(t => V.palaces.includes(t[0]));
-    return hit.length ? 'trigram ' + hit[0][1] : '';
+    const low = T[b & 7];                                  // only the LOWER trigram counts (Edu, session 41)
+    return V.palaces.includes(low[0]) ? 'lower trigram ' + low[1] : '';
 }
 // gaps/P = the person cured; cand {hex, branch}; src = day pillar of the giver (null for Feng Shui);
 // srcName = 'Yu', 'this date'. Returns the reasons, or null.
