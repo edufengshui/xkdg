@@ -158,6 +158,7 @@
               Yin: ['an engraved item, a nice ornamental object', M_], Harmonies: ['a model vehicle or boat, clothing, an umbrella or canopy', M_], Earth: ['cloth, a box, tables and chairs', M_],
               Heaven: ['a model vehicle, a dome-shaped object', M_], Polaris: ['headwear, ornaments, a hook-shaped object', M_], Norm: ['a dish of good food', M_] }
   };
+  var DOOR_HOME = { Rest: 1, Death: 2, Injury: 3, Delusion: 4, Open: 6, Shocking: 7, Birth: 8, View: 9 };
   // Palaces and branches, Object rows of chapter 02.
   var PAL_OBJ = { 1: 'mobile objects, wine related items, a pillar', 2: 'square objects, cloth, earthenware, cereal', 3: 'a musical instrument, wood handicraft', 4: 'ropes, a pendulum, a fan, a musical instrument, sewing threads',
                   6: 'gold and jade, precious round objects', 7: 'metallic objects, money, a wine container', 8: 'furniture, heavy objects, yellow items', 9: 'books, lighting, a hollow plant' };
@@ -180,7 +181,13 @@
     function add(role, table, key, name, el, focus) {
       if (!key) return;
       var o = OBJ[table][key];
-      out.push({ role: role, name: name || key, el: el || null, object: o ? o[0] + (o[2] ? ', ' + o[2] : '') : null, source: o ? o[1] : null, focus: !!focus });
+      var txt = o ? o[0] + (o[2] ? ', ' + o[2] : '') : null;
+      if (o && table === 'door' && PAL_OBJ[DOOR_HOME[key]]) {          // the door also carries the objects of its home palace (Edu)
+        var seen = txt.split(', ');
+        PAL_OBJ[DOOR_HOME[key]].split(', ').forEach(function (t) { if (seen.indexOf(t) < 0) seen.push(t); });
+        txt = seen.join(', ');
+      }
+      out.push({ role: role, name: name || key, el: el || null, object: txt, source: o ? o[1] : null, focus: !!focus });
     }
     function stem(role, k) { if (k) add(role, 'stem', k, HAN[k] + ' ' + k, EL[k], (f.stems || []).indexOf(HAN[k]) >= 0); }
     stem('Tian Pan', cell.ti); stem('Tian Pan, second stem', cell.ti2); stem('Di Pan', cell.di); stem('Di Pan, second stem', cell.di2);
