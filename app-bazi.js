@@ -1349,6 +1349,7 @@ function xkdgPVYM(who) { window._pvYM[who] = !window._pvYM[who]; renderPersonVie
 function xkdgPVScanMonth(iso, days) {
     const a = document.getElementById('scan-start'), b = document.getElementById('scan-days');
     if (a) a.value = iso; if (b) b.value = days;
+    Object.keys(window._pvTab || {}).forEach(w => { if (window._pvTab[w] === 'm') window._pvTab[w] = 'd'; });
     renderPersonView();
     try { document.getElementById('person-view').scrollIntoView({ behavior: 'smooth' }); } catch (e) {}
 }
@@ -1405,82 +1406,94 @@ function xkdgLuckPillars(who, gender) {
                  return { gz: d.getGanZhi(), start: s, end: e, age0: s.getFullYear() - birthY, age1: e.getFullYear() - birthY };
              }) };
 }
-function xkdgLuckHtml(pp, g, isoFamSet) {
-    const name = pp.name || pp.who, gender = xkdgGenderGet(name), now = new Date();
-    const fd = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-    const sel = '<select onchange="xkdgGenderSet(\'' + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\',this.value)" style="font-size:12px;">'
-              + '<option value=""' + (!gender ? ' selected' : '') + '>gender?</option><option value="M"' + (gender === 'M' ? ' selected' : '') + '>male</option><option value="F"' + (gender === 'F' ? ' selected' : '') + '>female</option></select>';
-    let h = '<div style="margin-top:4px;padding:6px 8px;background:#fff;border-radius:8px;border:1px solid #a5d6a7;">'
-          + '<div style="font-weight:bold;color:#1b5e20;">🧭 Luck pillars 大运 (10 years) ' + sel + '</div>';
-    if (!gender) return h + '<div style="color:#888;font-size:12px;">Choose the gender: the direction of the luck pillars depends on it.</div></div>';
-    let L = null; try { L = xkdgLuckPillars(pp.who, gender); } catch (e) { return h + '<div style="color:#b71c1c;font-size:12px;">' + e.message + '</div></div>'; }
-    if (!L) return h + '<div style="color:#888;font-size:12px;">Needs the birth date AND time of the person.</div></div>';
-    h += '<div style="color:#555;font-size:12px;">' + (L.forward ? 'Forward' : 'Backward') + ' · first pillar at ' + L.startAge.y + ' y ' + L.startAge.m + ' m ' + L.startAge.d + ' d (3 days = 1 year).</div>';
-    L.pillars.forEach(x => {
-        const xd = getXkdgData(x.gz.charAt(0), x.gz.charAt(1));
-        const kind = xd ? _xkdgRemedyKind(g, pp.P, { qi: xd.qi, yun: xd.yun, hex: xd.hex, stem: x.gz.charAt(0), branch: x.gz.charAt(1) }, isoFamSet) : null;
-        const st = x.end <= now ? 'past' : (x.start <= now ? 'now' : 'future');
-        h += '<div style="margin-top:2px;' + (st === 'past' ? 'color:#9e9e9e;' : '') + (kind ? 'font-weight:bold;' : '') + '">'
-           + (kind ? '🌿 ' : '· ') + x.gz + (kind === 'family' ? ' ★' : '') + (xd ? ' hex ' + xd.hex + ' (' + xd.qi + '/' + xd.yun + ')' : '')
-           + ' · age ' + x.age0 + '–' + x.age1 + ' · ' + fd(x.start) + ' → ' + fd(x.end)
-           + (st === 'now' ? ' <b style="color:#2e7d32;">NOW</b>' : (st === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(x.start) + ')</span>' : ''))
-           + (kind ? ' <span style="color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;font-size:11px;">CURE</span>' : '')
-           + (kind && xd && xkdgCureVoid(g, pp.P, { hex: xd.hex, branch: x.gz.charAt(1) }, null) ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : '') + '</div>';
-    });
-    return h + '</div>';
+// ── PERSON tab panels (Edu, session 41): Cure hexagrams · Days · Months · Years · Luck pillars,
+// each its own button after the analysis. Inside: BEST / by DATE, and the past at the end.
+window._pvTab = window._pvTab || {}; window._pvOrd = window._pvOrd || {}; window._pvBack = window._pvBack || {};
+function xkdgPVTab(who, t) { window._pvTab[who] = window._pvTab[who] === t ? null : t; renderPersonView(); }
+function xkdgPVOrd(who, o) { window._pvOrd[who] = o; renderPersonView(); }
+function xkdgPVBackMore(who) { window._pvBack[who] = (window._pvBack[who] || 1) + 1; renderPersonView(); }
+function xkdgPVOrdHtml(who) {
+    const cur = window._pvOrd[who] || 'best';
+    const b = (k, t) => '<button onclick="xkdgPVOrd(\'' + who + '\',\'' + k + '\')" style="margin-right:6px;padding:3px 12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;border:1px solid #2e7d32;' + (cur === k ? 'background:#2e7d32;color:#fff;' : 'background:#fff;color:#2e7d32;') + '">' + t + '</button>';
+    return '<div style="margin-bottom:4px;">' + b('best', 'BEST') + b('date', 'by DATE') + '</div>';
 }
-function xkdgCureYMHtml(pp, g, isoFamSet) {
-    // Session 37 (Edu): the past goes back to the person's BIRTH, not 30 years.
-    const Y = new Date().getFullYear();
-    let y0 = Y - 30;
+// BEST: harmonises the setting, then remedy before family alternative, no void, then the nearest.
+function xkdgCureRank(a, b) {
+    const k = x => (x.voidW ? 4 : 0) + (x.harm ? 0 : 2) + (x.kind === 'main' ? 0 : 1);
+    return k(a) - k(b) || (a.start - b.start);
+}
+function _pvFd(d) { return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }); }
+function _pvState(x) { const n = new Date(); return x.end <= n ? 'past' : (x.start <= n ? 'now' : 'future'); }
+function _pvMark(x) { return (x.harm ? '✦ ' : '') + (x.kind === 'family' ? ' ★' : '') + (x.voidW ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : ''); }
+function _pvWhen(x) { const st = _pvState(x); return st === 'now' ? ' <b style="color:#2e7d32;">NOW</b>' : (st === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(x.start) + ')</span>' : ''); }
+// Years 30 ahead, back to birth; the data of the 🔔 calendar.
+function xkdgCureSpan(pp, g, isoFamSet) {
+    const Y = new Date().getFullYear(); let y0 = Y - 30, born = null;
     try {
         const bd = (document.getElementById(pp.who === 'B' ? 'person-date-b' : 'person-date') || {}).value || '';
         const by = parseInt(bd.slice(0, 4), 10);
-        if (by > 1800 && by <= Y) y0 = by - 1;          // the solar year of the birth starts at 立春 of that year (birth may fall before it)
+        if (by > 1800 && by <= Y) y0 = by - 1;
+        if (/^\d{4}-\d{2}-\d{2}/.test(bd)) born = new Date(bd + 'T00:00:00');
     } catch (e) {}
     const list = xkdgCureYearsMonths(g, pp.P, isoFamSet, y0, Y + 30);
-    let born = null;
-    try { const bd = (document.getElementById(pp.who === 'B' ? 'person-date-b' : 'person-date') || {}).value || ''; if (/^\d{4}-\d{2}-\d{2}/.test(bd)) born = new Date(bd + 'T00:00:00'); } catch (e) {}
     if (born) for (let i = list.length - 1; i >= 0; i--) {
         if (list[i].end <= born) { list.splice(i, 1); continue; }
         list[i].months = list[i].months.filter(m => m.end > born);
     }
     (window._pvYMData = window._pvYMData || {})[pp.who] = { name: pp.name, list: list };
-    const now = new Date();
-    const fd = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-    const fdm = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+    return { list: list, born: born };
+}
+function _pvBox(pp, title, sub, body) {
+    return '<div style="margin-top:6px;border:2px solid #43a047;background:#f1f8e9;border-radius:10px;padding:8px 10px;font-size:13px;">'
+         + '<div style="font-weight:bold;color:#1b5e20;font-size:14px;">' + title + '</div>' + (sub ? '<div style="color:#555;font-size:12px;">' + sub + '</div>' : '')
+         + '<div style="margin-top:4px;">' + xkdgPVOrdHtml(pp.who) + '</div>' + body + '</div>';
+}
+function _pvIcsBtn(who) { return '<button onclick="xkdgPVYMics(\'' + who + '\')" style="margin:3px 0;padding:3px 10px;border-radius:8px;border:1px solid #43a047;background:#fff;color:#1b5e20;font-size:12px;cursor:pointer;">🔔 Add the coming ones to the calendar</button>'; }
+function _pvList(pp, items, row, none) {
+    const best = (window._pvOrd[pp.who] || 'best') === 'best';
+    const live = items.filter(x => _pvState(x) !== 'past'), past = items.filter(x => _pvState(x) === 'past').reverse();
+    const shown = best ? live.slice().sort(xkdgCureRank).slice(0, 12) : live;
+    return (shown.length ? shown.map(row).join('') : '<div style="color:#888;">' + none + '</div>')
+         + (best && live.length > shown.length ? '<div style="color:#888;font-size:12px;margin-top:3px;">The 12 best of ' + live.length + '. All of them are in by DATE.</div>' : '')
+         + '<details style="margin-top:6px;"><summary style="cursor:pointer;font-weight:bold;color:#757575;">◀ Past (' + past.length + ')</summary>' + past.map(row).join('') + '</details>';
+}
+function xkdgCureMonthsHtml(pp, g, isoFamSet) {
+    const sp = xkdgCureSpan(pp, g, isoFamSet), now = new Date();
     const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const mark = x => ((x.harm ? '✦ ' : '') + (x.kind === 'family' ? ' ★' : '')) + (x.voidW ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : '');
-    const state = x => x.end <= now ? 'past' : (x.start <= now ? 'now' : 'future');
-    let h = '<div style="margin-top:6px;border:2px solid #43a047;background:#f1f8e9;border-radius:10px;padding:8px 10px;font-size:13px;">'
-          + '<div style="font-weight:bold;color:#1b5e20;font-size:14px;">📆 Cure years & months (' + list.filter(y => y.cure).length + ' years · ' + list.reduce((n, y) => n + y.months.length, 0) + ' months)</div>'
-          + '<div style="color:#555;font-size:12px;">' + (born ? 'From birth (' + born.getFullYear() + ')' : y0) + '–' + (Y + 30) + ': solar years (立春 → 立春) whose YEAR pillar is a remedy hexagram (🌿), and in every year the months (节 → 节) whose MONTH pillar is a remedy.</div>';
-    try { h += xkdgLuckHtml(pp, g, isoFamSet); } catch (eL) { h += '<div style="color:#b71c1c;font-size:12px;">Luck pillars: ' + eL.message + '</div>'; }
-    if (!list.length) return h + '<div style="color:#888;margin-top:4px;">No cure year or month in this range.</div></div>';
-    // when do they arrive: the current / next cure year and cure month
-    const curY = list.filter(y => y.cure && state(y) === 'now')[0], nextY = list.filter(y => y.cure && state(y) === 'future')[0];
-    const allM = [].concat.apply([], list.map(y => y.months));
-    const curM = allM.filter(m => state(m) === 'now')[0], nextM = allM.filter(m => state(m) === 'future')[0];
-    const line = (lab, x, isNow) => x ? '<div style="margin-top:3px;"><b>' + lab + '</b>: ' + x.gz + mark(x) + ' · hex ' + x.hex + ' — ' + (isNow ? '<b style="color:#2e7d32;">NOW</b>, until ' + fd(x.end) : 'from <b>' + fd(x.start) + '</b> (' + _xkdgUntil(x.start) + ')') + '</div>' : '';
-    h += '<div style="margin-top:4px;padding:5px 8px;background:#fff;border-radius:8px;">'
-       + (curY ? line('Cure year', curY, true) : '') + (nextY ? line('Next cure year', nextY, false) : '')
-       + (curM ? line('Cure month', curM, true) : '') + (nextM ? line('Next cure month', nextM, false) : '')
-       + '<button onclick="xkdgPVYMics(\'' + pp.who + '\')" style="margin-top:5px;padding:3px 10px;border-radius:8px;border:1px solid #43a047;background:#fff;color:#1b5e20;font-size:12px;cursor:pointer;">🔔 Add the coming ones to the calendar</button></div>';
-    const yr = y => {
-        const st = state(y), col = st === 'past' ? '#9e9e9e' : (!y.cure ? '#5d4037' : (st === 'now' ? '#2e7d32' : '#1b5e20'));
-        const months = y.months.length ? y.months.map(m => { const ms = state(m);
-            return '<div style="margin:2px 0 0 12px;' + (ms === 'past' ? 'color:#9e9e9e;' : '') + '">' + (ms === 'now' ? '▶ ' : '· ') + '<b>' + m.gz + '</b>' + mark(m) + ' hex ' + m.hex + ' (' + m.qi + '/' + m.yun + ') · ' + fdm(m.start) + ' – ' + fdm(m.end)
-                 + (ms === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(m.start) + ')</span>' : '') + (ms === 'now' ? ' <b style="color:#2e7d32;">NOW</b>' : '')
-                 + (true ? ' <button onclick="xkdgPVScanMonth(\'' + iso(ms === 'now' ? now : m.start) + '\',' + Math.max(1, Math.ceil((m.end - (ms === 'now' ? now : m.start)) / 86400000)) + ')" title="Show the remedy dates of this month" style="padding:0 6px;border-radius:8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;font-size:11px;cursor:pointer;">📅 dates</button>' : '') + '</div>'; }).join('')
-            : '<div style="margin:2px 0 0 12px;color:#888;">no cure month inside</div>';
-        return '<details style="margin-top:3px;"' + (st === 'now' || y === nextY || (nextM && y.months.indexOf(nextM) >= 0) ? ' open' : '') + '><summary style="cursor:pointer;color:' + col + ';">'
-             + (y.cure ? '🌿 <b>' + y.y + ' ' + y.gz + '</b>' + mark(y) + ' hex ' + y.hex + ' (' + y.qi + '/' + y.yun + ') · ' : y.y + ' ' + y.gz + ' · ') + fd(y.start) + ' → ' + fd(y.end)
-             + (st === 'now' ? ' <b>NOW</b>' : (st === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(y.start) + ')</span>' : '')) + ' · ' + y.months.length + (y.months.length === 1 ? ' month' : ' months') + '</summary>' + months + '</details>';
-    };
-    const fut = list.filter(y => state(y) !== 'past'), past = list.filter(y => state(y) === 'past').reverse();
-    h += '<div style="margin-top:6px;font-weight:bold;color:#1b5e20;">Now and future (' + fut.length + ' years)</div>' + (fut.length ? fut.map(yr).join('') : '<div style="color:#888;">none</div>')
-       + '<details open style="margin-top:6px;"><summary style="cursor:pointer;font-weight:bold;color:#757575;">Past, back to birth (' + past.length + ' years)</summary>' + past.map(yr).join('') + '</details>';
-    return h + '<div style="color:#888;font-size:11px;margin-top:4px;">🌿 cure year · ✦ harmonises the setting · ★ family alternative · 📅 dates puts the month in FROM / DAYS.</div></div>';
+    const all = [].concat.apply([], sp.list.map(y => y.months));
+    const row = m => { const ms = _pvState(m), from = ms === 'now' ? now : m.start;
+        return '<div style="margin-top:3px;' + (ms === 'past' ? 'color:#9e9e9e;' : '') + '">' + (ms === 'now' ? '▶ ' : '· ') + '<b>' + m.gz + '</b>' + _pvMark(m) + ' hex ' + m.hex + ' (' + m.qi + '/' + m.yun + ') · ' + _pvFd(m.start) + ' – ' + _pvFd(m.end) + _pvWhen(m)
+             + (ms !== 'past' ? ' <button onclick="xkdgPVScanMonth(\'' + iso(from) + '\',' + Math.max(1, Math.ceil((m.end - from) / 86400000)) + ')" title="Show the remedy dates of this month" style="padding:0 6px;border-radius:8px;border:1px solid #66bb6a;background:#fff;color:#1b5e20;font-size:11px;cursor:pointer;">📅 dates</button>' : '') + '</div>'; };
+    return _pvBox(pp, '🗓 Cure months (' + all.length + ')', 'Months (节 → 节) whose MONTH pillar is a remedy, in every year.', _pvIcsBtn(pp.who) + _pvList(pp, all, row, 'No cure month to come.'));
+}
+function xkdgCureYearsHtml(pp, g, isoFamSet) {
+    const sp = xkdgCureSpan(pp, g, isoFamSet), all = sp.list.filter(y => y.cure);
+    const row = y => { const st = _pvState(y);
+        return '<div style="margin-top:3px;' + (st === 'past' ? 'color:#9e9e9e;' : '') + '">' + (st === 'now' ? '▶ ' : '🌿 ') + '<b>' + y.y + ' ' + y.gz + '</b>' + _pvMark(y) + ' hex ' + y.hex + ' (' + y.qi + '/' + y.yun + ') · ' + _pvFd(y.start) + ' → ' + _pvFd(y.end) + _pvWhen(y) + '</div>'; };
+    return _pvBox(pp, '📆 Cure years (' + all.length + ')', 'Solar years (立春 → 立春) whose YEAR pillar is a remedy.', _pvIcsBtn(pp.who) + _pvList(pp, all, row, 'No cure year to come.'));
+}
+function xkdgLuckHtml(pp, g, isoFamSet) {
+    const name = pp.name || pp.who, gender = xkdgGenderGet(name);
+    const sel = '<select onchange="xkdgGenderSet(\'' + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\',this.value)" style="font-size:12px;">'
+              + '<option value=""' + (!gender ? ' selected' : '') + '>gender?</option><option value="M"' + (gender === 'M' ? ' selected' : '') + '>male</option><option value="F"' + (gender === 'F' ? ' selected' : '') + '>female</option></select>';
+    const box = t => '<div style="margin-top:6px;border:2px solid #43a047;background:#f1f8e9;border-radius:10px;padding:8px 10px;font-size:13px;"><div style="font-weight:bold;color:#1b5e20;font-size:14px;">🧭 Luck pillars 大运 (10 years) ' + sel + '</div>' + t + '</div>';
+    if (!gender) return box('<div style="color:#888;font-size:12px;">Choose the gender: the direction of the luck pillars depends on it.</div>');
+    let L = null; try { L = xkdgLuckPillars(pp.who, gender); } catch (e) { return box('<div style="color:#b71c1c;font-size:12px;">' + e.message + '</div>'); }
+    if (!L) return box('<div style="color:#888;font-size:12px;">Needs the birth date AND time of the person.</div>');
+    const items = L.pillars.map(x => {
+        const a = x.gz.charAt(0), b = x.gz.charAt(1), xd = getXkdgData(a, b);
+        const kind = xd ? _xkdgRemedyKind(g, pp.P, { qi: xd.qi, yun: xd.yun, hex: xd.hex, stem: a, branch: b }, isoFamSet) : null;
+        return Object.assign({}, x, { xd: xd, kind: kind || 'none', cure: !!kind, harm: !!(kind && g.settings && ['qi', 'yun'].some(f => _xkdgHarmVals(g.settings[f]).has(xd[f]))),
+                                      voidW: kind ? xkdgCureVoid(g, pp.P, { hex: xd.hex, branch: b }, null) : null });
+    });
+    const row = x => { const st = _pvState(x);
+        return '<div style="margin-top:3px;' + (st === 'past' ? 'color:#9e9e9e;' : '') + (x.cure ? 'font-weight:bold;' : '') + '">' + (x.cure ? '🌿 ' : '· ') + x.gz + (x.kind === 'family' ? ' ★' : '') + (x.xd ? ' hex ' + x.xd.hex + ' (' + x.xd.qi + '/' + x.xd.yun + ')' : '')
+             + ' · age ' + x.age0 + '–' + x.age1 + ' · ' + _pvFd(x.start) + ' → ' + _pvFd(x.end) + _pvWhen(x)
+             + (x.cure ? ' <span style="color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;font-size:11px;">CURE</span>' : '') + (x.voidW ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : '') + '</div>'; };
+    const best = (window._pvOrd[pp.who] || 'best') === 'best';
+    const shown = best ? items.filter(x => x.cure) : items;
+    return box('<div style="color:#555;font-size:12px;">' + (L.forward ? 'Forward' : 'Backward') + ' · first pillar at ' + L.startAge.y + ' y ' + L.startAge.m + ' m ' + L.startAge.d + ' d (3 days = 1 year).</div><div style="margin-top:4px;">' + xkdgPVOrdHtml(pp.who) + '</div>'
+             + _pvList(pp, shown, row, best ? 'No cure luck pillar to come.' : 'None.'));
 }
 window._pvSel = window._pvSel || {};        // selected remedy hexagram per person
 window._pvWho = window._pvWho || null;       // 'A' | 'B' | 'both'
@@ -1526,13 +1539,22 @@ function renderPersonView() {
         const opts = R ? R.hexagrams : [];
         const isoFamSet = new Set((R && R.families) || []);
         // each remedy date carries its remedy hexagram (the DAY, else the YEAR pillar)
-        const dates = R ? R.dates.map(d => {
+        const mapDates = list => list.map(d => {
             const pick = (gz) => { const x = getXkdgData(gz[0], gz[1]); if (!x) return null;
                 const kind = _xkdgRemedyKind(g, pp.P, { qi: x.qi, yun: x.yun, hex: x.hex, stem: gz[0], branch: gz[1] }, isoFamSet);
                 return kind ? { qi: x.qi, yun: x.yun, hex: x.hex, stem: gz[0], branch: gz[1], kind: kind } : null; };
             const c = pick(d.day), cy = c ? null : pick(d.year);
             return Object.assign({}, d, { cand: c || cy, from: c ? 'Day' : 'Year' });
-        }).filter(d => d.cand) : [];
+        }).filter(d => d.cand);
+        const coming = R ? mapDates(R.dates) : [];
+        // ◀ the days before FROM, 30 at a time, only while the Days panel is open
+        let pastDates = [];
+        if (R && window._pvTab[pp.who] === 'd') {
+            const n = 30 * (window._pvBack[pp.who] || 1), t0 = new Date(start + 'T12:00:00'); t0.setDate(t0.getDate() - n);
+            const iso0 = t0.getFullYear() + '-' + String(t0.getMonth() + 1).padStart(2, '0') + '-' + String(t0.getDate()).padStart(2, '0');
+            try { pastDates = mapDates((xkdgGapRemedies(g, n, pp.P, iso0) || { dates: [] }).dates).reverse(); } catch (eB) {}
+        }
+        const dates = coming.concat(pastDates);
         // 🤝 Session 35 (Edu): with BOTH shown, each pillar of the OTHER person's chart that is a
         // cure for this person (same rule as any remedy hexagram: _xkdgRemedyKind).
         const other = (window._pvWho === 'both' && all.length > 1) ? all.filter(x => x.who !== pp.who)[0] : null;
@@ -1594,7 +1616,6 @@ function renderPersonView() {
             if (an) h += '<div style="margin:4px 0 6px;padding:6px 8px;border-radius:8px;background:#eef2ff;font-size:13px;"><b>🔍 XKDG analysis</b>'
                 + (res ? '<div style="margin-top:3px;">' + res + '</div><details style="margin-top:4px;"><summary style="cursor:pointer;color:#555;font-size:12px;">Details</summary>' + an + '</details>' : an) + '</div>';
         } catch (eAn) {}
-        h += EXPL;
         if (!g || !g.any) {
             h = h.replace(EXPL, '') + '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
             return;
@@ -1604,8 +1625,13 @@ function renderPersonView() {
         const tabBtn = (on, col, lab, fn) => '<button onclick="' + fn + '" style="margin:5px 6px 0 0;padding:4px 12px;border-radius:14px;font-weight:bold;font-size:12px;cursor:pointer;border:2px solid ' + col + ';'
             + (on ? 'background:' + col + ';color:#fff;' : 'background:#fff;color:' + col + ';') + '">' + lab + '</button>';
         window._pvHX = window._pvHX || {};
-        h += tabBtn(window._pvHX[pp.who], '#6a1b9a', '🧬 Cure hexagrams (' + opts.length + ')', 'xkdgPVHX(\'' + pp.who + '\')');
-        if (window._pvHX[pp.who]) {
+        const tab = window._pvTab[pp.who] || null, tq = t => 'xkdgPVTab(\'' + pp.who + '\',\'' + t + '\')';
+        h += tabBtn(tab === 'hx', '#6a1b9a', '🧬 Cure hexagrams (' + opts.length + ')', tq('hx'))
+           + tabBtn(tab === 'd', '#2e7d32', '📅 Days (' + coming.length + ')', tq('d'))
+           + tabBtn(tab === 'm', '#2e7d32', '🗓 Months', tq('m'))
+           + tabBtn(tab === 'y', '#2e7d32', '📆 Years', tq('y'))
+           + tabBtn(tab === 'l', '#2e7d32', '🧭 Luck pillars', tq('l'));
+        if (tab === 'hx') {
             const card = x => { const on = 'h' + x.hex === sel, fam = x.kind === 'family';
                 // Session 37 (Edu): the Bazi pillar(s) of the hexagram beside it (stem over branch)
                 const jzs = _xkdgJzListOfHex(x.hex);
@@ -1625,10 +1651,27 @@ function renderPersonView() {
                + (fH.length ? '<div style="margin-top:6px;font-weight:bold;color:#4a148c;">★ ' + ((R && R.families) || []).join(', ') + ' family alternative (' + fH.length + ')</div>' + fH.map(card).join('') : '')
                + '</div>';
         }
-        // 📆 Session 36 (Edu): cure years and months, past and future
-        h += '<button onclick="xkdgPVYM(\'' + pp.who + '\')" style="margin-top:5px;padding:4px 12px;border-radius:14px;font-weight:bold;font-size:12px;cursor:pointer;border:2px solid #43a047;'
-           + (window._pvYM[pp.who] ? 'background:#43a047;color:#fff;' : 'background:#fff;color:#1b5e20;') + '">📆 Cure years & months</button>';
-        if (window._pvYM[pp.who]) { try { h += xkdgCureYMHtml(pp, g, isoFamSet); } catch (eYM) { h += '<div style="color:#b71c1c;font-size:12px;">Cure years: ' + eYM.message + '</div>'; } }
+        if (tab === 'd') {
+            const dHarm = d => !!(g.settings && ['qi', 'yun'].some(f => _xkdgHarmVals(g.settings[f]).has(d.cand[f])));
+            const dBtn = d => { const on = 'd' + d.date === sel;
+                return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'d' + d.date + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
+                   + (on ? 'background:#2e7d32;color:#fff;border:2px solid #1b5e20;' : 'background:#e8f5e9;border:1px solid #66bb6a;color:#1b5e20;') + '">'
+                   + (dHarm(d) ? '✦ ' : '') + fmtD(d.date) + ' · ' + d.day + (d.cand.kind === 'family' ? ' ★' : '') + (d.void_warning ? ' ⚠' : '') + '</button>'; };
+            const k = d => (d.void_warning ? 4 : 0) + (dHarm(d) ? 0 : 2) + (d.cand.kind === 'main' ? 0 : 1);
+            const best = (window._pvOrd[pp.who] || 'best') === 'best';
+            const show = best ? coming.slice().sort((a, b) => k(a) - k(b) || (a.date < b.date ? -1 : 1)) : coming;
+            h += _pvBox(pp, '📅 Cure days (' + coming.length + ')', 'From ' + start + ', ' + days + ' days. Tap a day: it appears next to the birth chart.',
+                 (show.length ? show.map(dBtn).join('') : '<div style="color:#888;font-size:12px;">No favourable remedy date in the range — extend DAYS.</div>')
+                 + '<div style="margin-top:8px;font-weight:bold;color:#757575;">◀ Past, before ' + start + ' (' + pastDates.length + ')</div>'
+                 + pastDates.map(dBtn).join('')
+                 + '<div><button onclick="xkdgPVBackMore(\'' + pp.who + '\')" style="margin-top:5px;padding:3px 10px;border-radius:8px;border:1px solid #757575;background:#fff;color:#555;font-size:12px;cursor:pointer;">◀ 30 days earlier</button></div>');
+        }
+        try {
+            if (tab === 'm') h += xkdgCureMonthsHtml(pp, g, isoFamSet);
+            if (tab === 'y') h += xkdgCureYearsHtml(pp, g, isoFamSet);
+            if (tab === 'l') h += xkdgLuckHtml(pp, g, isoFamSet);
+        } catch (eYM) { h += '<div style="color:#b71c1c;font-size:12px;">Cures: ' + eYM.message + '</div>'; }
+        h += EXPL;
         // ── what the selected remedy does, and why it improves the natal chart ──
         const keys4 = ['hour', 'day', 'month', 'year'];
         const relTxt = (a, b) => [5, 10, 15].includes(a + b) ? a + '+' + b + ' = ' + (a + b) : (isHetuPair(a, b) ? 'Hetu ' + Math.min(a, b) + '-' + Math.max(a, b) : '');
@@ -1731,15 +1774,6 @@ function renderPersonView() {
             }
             h += '</div>';
         }
-        // ── 1) DATES first (Heaven) ──
-        h += '<div style="margin-top:8px;font-weight:bold;color:#1b5e20;font-size:13px;">📅 Remedy dates (' + dates.length + ') — tap one</div>';
-        h += dates.length ? dates.map(d => {
-            const on = 'd' + d.date === sel;
-            return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'d' + d.date + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
-               + (on ? 'background:#2e7d32;color:#fff;border:2px solid #1b5e20;' : 'background:#e8f5e9;border:1px solid #66bb6a;color:#1b5e20;') + '">'
-               + ((g.settings && ['qi', 'yun'].some(f => _xkdgHarmVals(g.settings[f]).has(d.cand[f]))) ? '✦ ' : '')
-               + fmtD(d.date) + ' · ' + d.day + (d.cand.kind === 'family' ? ' ★' : '') + '</button>';
-        }).join('') : '<div style="color:#888;font-size:12px;">No favourable remedy date in the range — extend DAYS.</div>';
         // ── 2) then the hexagrams by type (Earth / Feng Shui) ──
         const chip = x => { const c = (x.from + 2.8125) % 360, on = 'h' + x.hex === sel;
             return '<button onclick="xkdgPVPick(\'' + pp.who + '\',\'h' + x.hex + '\')" style="margin:3px 4px 0 0;padding:3px 8px;border-radius:8px;font-size:12px;cursor:pointer;'
