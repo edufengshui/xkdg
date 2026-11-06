@@ -176,3 +176,8 @@ Codice: `card`, `cardHtml`, `palaceObjects` in `qmdj-multichart.js`; assistente:
 - **Assistente:** usa le persone A e B caricate, altrimenti chiede.
 
 **Confermato (Edu):** tabella oggetti; oggetti anche dal palazzo d'origine della porta; niente oggetti negativi, veicoli come modellini; oggetti solo dalla carta master; schiena verso la direzione del palazzo.
+
+## 11. CARTA RUOTANTE — stelo del centro e vuoti (Edu, sessione 41)
+- Lo stelo del palazzo centrale nel Tien Pan viaggia sempre con Rice: non si disegna al centro, compare accanto allo stelo del palazzo di Rice. Al centro resta lo stelo del Di Pan.
+- Opzione (spenta di default, `xkdg_qmdj_ctr_official`): in Yang Dun lo stelo migra con Official (palazzo opposto). Vale per disegno e analisi (`ti2`).
+- I palazzi vuoti della decade del giorno sono ombreggiati leggermente; un vuoto colpito dal ramo del giorno è riempito.
