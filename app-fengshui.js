@@ -5158,7 +5158,10 @@ function _fsActiveFloor(h){
 /** Effective facing/period for a floor (shared house value when sameFacing). */
 function _fsFloorFacing(h, f){ return (h && h.sameFacing) ? h.houseFacing : (f ? f.facing : null); }
 function _fsFloorPeriod(h, f){ return (h && h.sameFacing) ? h.period : (f ? f.period : null); }
-function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(data)); }
+function _fsHousesSave(data){ localStorage.setItem('xkdg_houses', JSON.stringify(typeof xkdgPrivKeep === 'function' ? xkdgPrivKeep(data, 'xkdg_houses') : data)); }
+// Private persons (session 41): their houses stay out of sight while the section is locked.
+var _fsHousesLoadAll = _fsHousesLoad;
+_fsHousesLoad = function(){ var d = _fsHousesLoadAll(); return typeof xkdgPrivStrip === 'function' ? xkdgPrivStrip(d) : d; };
 
 // ── House EXTRA MEMBERS (year-only) ──────────────────────────────────
 // A house always has its OWNER (Person A) and may have ONE guest #2 (Person B,

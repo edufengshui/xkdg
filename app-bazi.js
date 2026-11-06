@@ -3045,10 +3045,88 @@ let _personBPillars = null;
 let _personBRelations = null;
 
 // ── Archive ──────────────────────────────────
-function loadArchive(key) {
-    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) { return {}; }
+// ── PRIVATE persons (Edu, session 41): a person kept out of sight behind a PIN. Nothing moves:
+// the data stay where they are, and while the section is locked every reader of the person
+// lists and of the houses simply does not get those names (savers put them back, so nothing
+// is lost). This hides from view on this app; the data are not encrypted.
+const XKDG_PRIV_KEY = 'xkdg_private_names', XKDG_PRIV_PIN = 'xkdg_private_pin';
+const _XKDG_PRIV_ARCH = ['xkdg_persons_a', 'xkdg_persons_b', 'xkdg_persons_notes'];
+let _xkdgPrivOpen = false;
+function xkdgPrivNames() { try { return JSON.parse(localStorage.getItem(XKDG_PRIV_KEY) || '[]') || []; } catch (e) { return []; } }
+function xkdgIsPrivate(name) { return xkdgPrivNames().indexOf(name) >= 0; }
+function xkdgPrivStrip(obj) { if (!_xkdgPrivOpen) xkdgPrivNames().forEach(n => { delete obj[n]; }); return obj; }
+function xkdgPrivKeep(obj, key) {                // locked save: put the private entries back
+    if (_xkdgPrivOpen) return obj;
+    try { const raw = JSON.parse(localStorage.getItem(key) || '{}') || {}; xkdgPrivNames().forEach(n => { if (raw[n] !== undefined && obj[n] === undefined) obj[n] = raw[n]; }); } catch (e) {}
+    return obj;
 }
-function saveArchiveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+function loadArchive(key) {
+    try {
+        const o = JSON.parse(localStorage.getItem(key) || '{}');
+        return _XKDG_PRIV_ARCH.indexOf(key) >= 0 ? xkdgPrivStrip(o) : o;
+    } catch(e) { return {}; }
+}
+function saveArchiveData(key, data) { localStorage.setItem(key, JSON.stringify(_XKDG_PRIV_ARCH.indexOf(key) >= 0 ? xkdgPrivKeep(data, key) : data)); }
+async function _xkdgPinHash(pin) {
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('xkdg-private|' + pin));
+    return Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function _xkdgPinAsk(title, cb) {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100050;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML = '<div style="background:#fff;border-radius:10px;padding:16px;width:260px;max-width:100%;"><div style="font-size:14px;font-weight:bold;color:#4527a0;margin-bottom:10px;">' + title + '</div>'
+        + '<input type="password" inputmode="numeric" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:18px;padding:8px;border:1px solid #b39ddb;border-radius:6px;text-align:center;">'
+        + '<div class="pv-msg" style="font-size:12px;color:#c62828;min-height:16px;margin-top:6px;"></div>'
+        + '<div style="display:flex;gap:8px;margin-top:6px;"><button class="pv-no" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;background:#fff;">Cancel</button><button class="pv-ok" style="flex:1;padding:8px;border:none;border-radius:6px;background:#4527a0;color:#fff;font-weight:bold;">OK</button></div></div>';
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('input'), msg = ov.querySelector('.pv-msg'), close = () => ov.remove();
+    ov.querySelector('.pv-no').onclick = close;
+    const ok = () => cb(inp.value.trim(), close, t => { msg.textContent = t; inp.value = ''; inp.focus(); });
+    ov.querySelector('.pv-ok').onclick = ok;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    inp.focus();
+}
+// Opens the section; then() runs once it is open. First use: choose the PIN.
+function xkdgPrivUnlock(then) {
+    const done = () => { _xkdgPrivOpen = true; if (then) then(); try { renderArchive('A'); renderArchive('B'); } catch (e) {} renderDB(); };
+    if (_xkdgPrivOpen) return done();
+    const stored = localStorage.getItem(XKDG_PRIV_PIN);
+    if (stored) return _xkdgPinAsk('🔒 Private section: PIN', async (pin, close, err) => {
+        if (await _xkdgPinHash(pin) !== stored) return err('Wrong PIN');
+        close(); done();
+    });
+    _xkdgPinAsk('🔒 Choose a PIN (at least 4 digits)', (pin, close, err) => {
+        if (!/^\d{4,}$/.test(pin)) return err('At least 4 digits');
+        close();
+        _xkdgPinAsk('🔒 Repeat the PIN', async (p2, close2, err2) => {
+            if (p2 !== pin) return err2('The two PINs differ');
+            localStorage.setItem(XKDG_PRIV_PIN, await _xkdgPinHash(pin));
+            close2(); done();
+        });
+    });
+}
+// Locking reloads the app, so a private person loaded in the form leaves the screen too.
+function xkdgPrivLock() { _xkdgPrivOpen = false; location.reload(); }
+function xkdgPrivSet(name, on) {
+    const go = () => {
+        const l = xkdgPrivNames().filter(n => n !== name);
+        if (on) l.push(name);
+        localStorage.setItem(XKDG_PRIV_KEY, JSON.stringify(l));
+    };
+    if (on) xkdgPrivUnlock(go); else { go(); renderDB(); try { renderArchive('A'); renderArchive('B'); } catch (e) {} }
+}
+function _xkdgPrivSectionHtml() {
+    const B = 'font-size:11px;padding:2px 8px;border-radius:8px;cursor:pointer;';
+    if (!_xkdgPrivOpen) return `<div style="text-align:right;padding:2px;"><button onclick="xkdgPrivUnlock()" style="${B}border:1px solid #4527a0;background:#ede7f6;color:#4527a0;font-weight:bold;">🔒 Private</button></div>`;
+    const arch = xkdgPersonsAll(), rows = xkdgPrivNames().filter(n => arch[n]).sort().map(n => {
+        const q = _xkdgEsc(n);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;"><span style="font-weight:bold;font-size:14px;flex:1;">${q}</span><span style="font-size:11px;color:#888;">${_xkdgEsc(arch[n].date || '')}</span>
+            <button data-name="${q}" onclick="loadPersonFromDB('A',this.dataset.name)" style="${B}border:1px solid #1b5e20;background:#e8f5e9;color:#1b5e20;">A</button>
+            <button data-name="${q}" onclick="loadPersonFromDB('B',this.dataset.name)" style="${B}border:1px solid #6a1b9a;background:#f3e5f5;color:#6a1b9a;">B</button>
+            <button data-name="${q}" onclick="xkdgPrivSet(this.dataset.name,false)" style="${B}border:1px solid #888;background:#fff;color:#555;">Make public</button></div>`;
+    }).join('');
+    return `<div style="border:2px solid #4527a0;border-radius:8px;padding:8px 10px;margin:4px 0 8px;background:#f8f5ff;"><div style="display:flex;align-items:center;margin-bottom:4px;"><strong style="flex:1;color:#4527a0;font-size:13px;">🔓 Private section</strong><button onclick="xkdgPrivLock()" style="${B}border:1px solid #4527a0;background:#4527a0;color:#fff;font-weight:bold;">🔒 Lock</button></div>${rows || '<div style="font-size:12px;color:#888;">Nobody yet. Use 🔒 on a person below.</div>'}</div>`;
+}
 
 // ── ONE person database (session 37, Edu: "i due database di person A e B devono essere
 // un unico da cui si può estrarre qualsiasi nome salvato"). Every person lives in
@@ -3355,7 +3433,7 @@ function renderArchive(person) {
     const divId   = person === 'B' ? 'person-archive-b' : 'person-archive';
     const archive = xkdgPersonsAll();      // session 37: one database for A and B
     const hidden  = loadArchive('xkdg_persons_hidden') || {};
-    const all     = Object.keys(archive).filter(name => !hidden[name]);
+    const all     = Object.keys(archive).filter(name => !hidden[name] && !xkdgIsPrivate(name));
     const div     = document.getElementById(divId);
     if (all.length === 0) { div.style.display = 'none'; return; }
     div.style.display = 'flex';
@@ -3404,8 +3482,8 @@ function renderDB() {
     const hidden   = loadArchive('xkdg_persons_hidden') || {};
     const pinned   = loadArchive('xkdg_persons_pinned') || {};
     const entries  = [];
-    Object.entries(archiveA).forEach(([name, data]) => entries.push({ name, data, panel: 'A', savedAt: data.savedAt || 0 }));
-    Object.entries(archiveB).forEach(([name, data]) => entries.push({ name, data, panel: 'B', savedAt: data.savedAt || 0 }));
+    Object.entries(archiveA).forEach(([name, data]) => { if (!xkdgIsPrivate(name)) entries.push({ name, data, panel: 'A', savedAt: data.savedAt || 0 }); });
+    Object.entries(archiveB).forEach(([name, data]) => { if (!xkdgIsPrivate(name)) entries.push({ name, data, panel: 'B', savedAt: data.savedAt || 0 }); });
 
     // Pinned always first, then apply sort
     if (_dbSort === 'alpha') entries.sort((a,b) => {
@@ -3420,7 +3498,7 @@ function renderDB() {
     });
 
     if (entries.length === 0) {
-        document.getElementById('db-list').innerHTML = (_dbFoldersOpen ? _xkdgFolderManagerHtml() : '') +
+        document.getElementById('db-list').innerHTML = _xkdgPrivSectionHtml() + (_dbFoldersOpen ? _xkdgFolderManagerHtml() : '') +
             '<div style="padding:20px;text-align:center;color:#888;">No persons saved yet.</div>';
         return;
     }
@@ -3428,7 +3506,7 @@ function renderDB() {
     // Folder filter for the DB list (independent from rows A / B).
     entries.forEach(e => { e.folder = xkdgPersonFolder(e.name); });
     const _dbView = xkdgFolderViewGet('DB');
-    const _dbBar = `<div style="display:flex;align-items:center;gap:8px;padding:4px 2px 6px;font-size:12px;color:#555;">Folder: ${xkdgFolderFilterHtml('DB', entries.map(e => e.folder), 'font-size:12px;padding:3px 6px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;')}
+    const _dbBar = _xkdgPrivSectionHtml() + `<div style="display:flex;align-items:center;gap:8px;padding:4px 2px 6px;font-size:12px;color:#555;">Folder: ${xkdgFolderFilterHtml('DB', entries.map(e => e.folder), 'font-size:12px;padding:3px 6px;border:1px solid #1565c0;border-radius:6px;background:#fff;color:#1565c0;')}
         <button onclick="toggleDBFolders()" style="margin-left:auto;font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid #c9a84c;background:${_dbFoldersOpen ? '#c9a84c' : '#fffbf0'};color:${_dbFoldersOpen ? '#fff' : '#6d4c00'};cursor:pointer;">⚙ Manage folders</button></div>` +
         (_dbFoldersOpen ? _xkdgFolderManagerHtml() : '');
     const _shown = entries.filter(e => xkdgFolderMatch(e.folder, _dbView));
@@ -3456,6 +3534,7 @@ function renderDB() {
                 <span style="font-weight:bold;font-size:14px;flex:1;${isHidden?'opacity:0.5;':''}">${name}</span>
                 <span style="font-size:11px;color:#888;">${dateStr}</span>
                 ${hiddenTag}
+                <span onclick="xkdgPrivSet(this.dataset.name,true)" data-name="${name.replace(/"/g,'&quot;')}" title="Move to the private section" style="cursor:pointer;font-size:13px;">🔒</span>
                 <button onclick="loadPersonFromDB('A', this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #1b5e20;background:#e8f5e9;color:#1b5e20;cursor:pointer;">→ A</button>
                 <button onclick="loadPersonFromDB('B', this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #6a1b9a;background:#f3e5f5;color:#6a1b9a;cursor:pointer;">→ B</button>
                 <span onclick="deleteFromDB(this.dataset.panel, this.dataset.name)" data-panel="${panel}" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
@@ -10190,6 +10269,7 @@ function _xkdgReadSnap(person){
   var snap = null;
   try { snap = JSON.parse(raw); } catch(e){ snap = null; }
   if (typeof snap === 'string') snap = null;
+  if ((snap ? snap.name : raw) && typeof xkdgIsPrivate === 'function' && !_xkdgPrivOpen && xkdgIsPrivate(snap ? snap.name : raw)) return null;
   if (!snap){                                                  // back-compat: old name-only value → archive
     var nm = raw;
     var arch = (typeof xkdgPersonsAll === 'function') ? xkdgPersonsAll() : null;
