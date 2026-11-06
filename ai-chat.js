@@ -5699,10 +5699,13 @@
         res.isolated = [];
         ['qi', 'yun'].forEach(function (f) { g.dims[f].isolated.forEach(function (x) { res.isolated.push((f === 'qi' ? 'Elements' : 'Periods') + ': ' + x.pillar + ' (' + x.value + ')'); }); });
         res.shared_families = R.families || [];
+        res.cures_invalid_by_void = [];
         res.cures_from_other = K.map(function (k) {
           var q = O[k]; if (!q || q.qi == null) return null;
           var c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
           var kind = _xkdgRemedyKind(g, P, c, fams); if (!kind) return null;
+          var vw = xkdgCureVoid(g, P, c, O.day, oname);
+          if (vw) { res.cures_invalid_by_void.push({ from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, why: vw }); return null; }
           var links = [];
           ['qi', 'yun'].forEach(function (f) {
             var D = g.dims[f], nm = f === 'qi' ? 'Element' : 'Period';

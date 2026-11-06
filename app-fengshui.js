@@ -1227,7 +1227,8 @@ function _fsCureHexMap(){
       FS_SLOTS.forEach(function(sl){
         var jz = (typeof _xkdgJzOfHex === 'function' ? _xkdgJzOfHex(sl.hexNum) : null) || {};
         var kind = _xkdgRemedyKind(p.g, p.P, { qi: sl.qi, yun: sl.yun, hex: sl.hexNum, stem: jz.stem, branch: jz.branch }, p.fams);
-        if (kind) out[sl.hexNum] = (out[sl.hexNum] ? out[sl.hexNum] + ', ' : '') + p.who + (kind === 'main' ? ' ★' : ' family');
+        if (kind) out[sl.hexNum] = (out[sl.hexNum] ? out[sl.hexNum] + ', ' : '') + p.who + (kind === 'main' ? ' ★' : ' family')
+          + (xkdgCureVoid(p.g, p.P, { hex: sl.hexNum, branch: jz.branch }, null) ? ' ⚠ void' : '');
       });
     });
   } catch (e) {}
