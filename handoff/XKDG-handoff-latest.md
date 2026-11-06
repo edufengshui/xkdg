@@ -124,4 +124,5 @@ Plan from Edu. Sources: chapters QMDJ5 04/05/06 (Dropbox "Chee - Edu/11. qmdj ac
 - Reference settled (Edu): the app's flying doors (checked on 4 charts from his other QMDJ app, all equal) and the month/day charts of session 32 are right. Ch. 6 slides 14-20 differ when the centre is involved and use Yin 7 for 2014-18, so do not fix the app from them.
 - Open with Edu: star control across charts (discard or warning); door control on all charts; a day failing §2 (ex. 2, 戊子).
 - Next, one at a time: 4 person Life Palace star vs Yong Shen palace, 5 operating card in scans and AI. Extra: next date with the same chart; month chart over 6 months and year chart for moving abroad; Taiji reset reminder.
+- PERSON tab: the 🔍 XKDG analysis now comes BEFORE the cure explanation (Edu).
 - Rules of work: no invented rules; activation objects and hexagram texts only from tables Edu approves; ask short questions before coding.
