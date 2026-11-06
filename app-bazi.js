@@ -1000,6 +1000,45 @@ function xkdgAnalysisResult(g, st, P, L) {
     });
     return out;
 }
+// VOIDS ON A CURE (Edu, session 39). Voids come only from the DAY pillar's decade; a void branch
+// clashed by that day branch is filled. A cure fails when the voids of whoever gives it fall on
+// the pillar it links (hexagram trigrams or branch), or the voids of the person fall on where the
+// cure comes from. Birth charts: the cure is invalid. Dates and Feng Shui: a warning.
+function _xkdgVoidOf(p) {
+    const S = '甲乙丙丁戊己庚辛壬癸', B = '子丑寅卯辰巳午未申酉戌亥';
+    if (!p || !p.stem || !p.branch) return null;
+    let i = -1;
+    for (let n = 0; n < 60; n++) if (S[n % 10] === p.stem && B[n % 12] === p.branch) { i = n; break; }
+    if (i < 0) return null;
+    const d = Math.floor(i / 10), v = [B[(22 - 2 * d) % 12], B[(23 - 2 * d) % 12]].filter(b => BRANCH_CLASHES[p.branch] !== b);
+    const PAL = { 子: 1, 丑: 8, 寅: 8, 卯: 3, 辰: 4, 巳: 4, 午: 9, 未: 2, 申: 2, 酉: 7, 戌: 6, 亥: 6 };
+    return { branches: v, palaces: v.map(b => PAL[b]) };
+}
+function _xkdgVoidHit(V, hex, branch) {
+    if (!V) return '';
+    if (branch && V.branches.includes(branch)) return 'branch ' + branch;
+    const T = { 7: [6, 'Qian'], 0: [2, 'Kun'], 1: [3, 'Zhen'], 6: [4, 'Xun'], 2: [1, 'Kan'], 5: [9, 'Li'], 4: [8, 'Gen'], 3: [7, 'Dui'] };
+    const b = _XK_HEXBIN[hex]; if (b == null) return '';
+    const hit = [T[(b >> 3) & 7], T[b & 7]].filter(t => V.palaces.includes(t[0]));
+    return hit.length ? 'trigram ' + hit[0][1] : '';
+}
+// gaps/P = the person cured; cand {hex, branch}; src = day pillar of the giver (null for Feng Shui);
+// srcName = 'Yu', 'this date'. Returns the reasons, or null.
+function xkdgCureVoid(gaps, P, cand, src, srcName) {
+    const out = [], L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
+    const VP = _xkdgVoidOf(P.day), hc = _xkdgVoidHit(VP, cand.hex, cand.branch);
+    if (hc) out.push('the voids of the Day pillar (' + VP.branches.join('') + ') fall on the cure (' + hc + ')');
+    const VS = _xkdgVoidOf(src);
+    if (VS) {
+        const seen = {};
+        Object.values(gaps.dims).forEach(d => d.isolated.forEach(x => {
+            if (seen[x.pillar]) return; seen[x.pillar] = 1;
+            const t = P[x.pillar], h = t ? _xkdgVoidHit(VS, t.hex, t.branch) : '';
+            if (h) out.push('the voids of ' + (srcName || 'the source') + ' (' + VS.branches.join('') + ') fall on the isolated ' + L[x.pillar] + ' (' + h + ')');
+        }));
+    }
+    return out.length ? out : null;
+}
 function _xkdgHarmVals(settings) { const s = new Set(); (settings && settings.harmonise || []).forEach(h => h.values.forEach(v => s.add(v.value))); return s; }
 function xkdgPersonGaps(pillars) {
     const keys = ['hour', 'day', 'month', 'year'].filter(k => pillars && pillars[k] && pillars[k].qi != null);
@@ -1174,6 +1213,7 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
             const harm = ['qi', 'yun'].filter(f => gaps.settings && _xkdgHarmVals(gaps.settings[f]).has(s[f]));
             res.hexagrams.push({ hex: s.hexNum, qi: s.qi, yun: s.yun, from: Math.round(s.startDeg * 10) / 10, to: Math.round(s.endDeg * 10) / 10,
                                  kind: kind, family: fam.length ? fam : undefined, harmonises: harm.length ? harm : undefined,
+                                 void_warning: xkdgCureVoid(gaps, pillars, { hex: s.hexNum, branch: jz.branch }, null) || undefined,
                                  zheng_shen: (typeof fsIsZhengShen === 'function') ? !!fsIsZhengShen(s.yun) : null });
         });
         res.hexagrams.sort((a, b) => (a.kind === 'main' ? 0 : 1) - (b.kind === 'main' ? 0 : 1) || (b.harmonises ? 1 : 0) - (a.harmonises ? 1 : 0) || a.from - b.from);
@@ -1206,7 +1246,8 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
             }
             if (!hours.length) continue;
             res.dates.push({ date: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'),
-                             day: dG + dZ, year: yG + yZ, via: via, favourable_hours: hours, hour_index: hourIdx });
+                             day: dG + dZ, year: yG + yZ, via: via, favourable_hours: hours, hour_index: hourIdx,
+                             void_warning: (kd ? xkdgCureVoid(gaps, pillars, { hex: dx.hex, branch: dZ }, { stem: dG, branch: dZ }, 'this date') : xkdgCureVoid(gaps, pillars, { hex: yx.hex, branch: yZ }, { stem: dG, branch: dZ }, 'this date')) || undefined });
         }
     } catch (e) {}
     return res;
@@ -1262,7 +1303,7 @@ function xkdgCureYearsMonths(g, P, isoFamSet, y0, y1) {
     const harmOf = x => !!(g.settings && ['qi', 'yun'].some(f => _xkdgHarmVals(g.settings[f]).has(x[f])));
     const cand = (gan, zhi) => { const x = getXkdgData(gan, zhi); if (!x) return null;
         const kind = _xkdgRemedyKind(g, P, { qi: x.qi, yun: x.yun, hex: x.hex, stem: gan, branch: zhi }, isoFamSet);
-        return kind ? { gz: gan + zhi, hex: x.hex, qi: x.qi, yun: x.yun, kind: kind, harm: harmOf(x) } : null; };
+        return kind ? { gz: gan + zhi, hex: x.hex, qi: x.qi, yun: x.yun, kind: kind, harm: harmOf(x), voidW: xkdgCureVoid(g, P, { hex: x.hex, branch: zhi }, null) } : null; };
     const out = [];
     for (let Y = y0; Y <= y1; Y++) {
         let sy; try { sy = _xkdgSolarYearMonths(Y); } catch (e) { continue; }
@@ -1362,7 +1403,8 @@ function xkdgLuckHtml(pp, g, isoFamSet) {
            + (kind ? '🌿 ' : '· ') + x.gz + (kind === 'family' ? ' ★' : '') + (xd ? ' hex ' + xd.hex + ' (' + xd.qi + '/' + xd.yun + ')' : '')
            + ' · age ' + x.age0 + '–' + x.age1 + ' · ' + fd(x.start) + ' → ' + fd(x.end)
            + (st === 'now' ? ' <b style="color:#2e7d32;">NOW</b>' : (st === 'future' ? ' <span style="color:#6d4c41;">(' + _xkdgUntil(x.start) + ')</span>' : ''))
-           + (kind ? ' <span style="color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;font-size:11px;">CURE</span>' : '') + '</div>';
+           + (kind ? ' <span style="color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;font-size:11px;">CURE</span>' : '')
+           + (kind && xd && xkdgCureVoid(g, pp.P, { hex: xd.hex, branch: x.gz.charAt(1) }, null) ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : '') + '</div>';
     });
     return h + '</div>';
 }
@@ -1387,7 +1429,7 @@ function xkdgCureYMHtml(pp, g, isoFamSet) {
     const fd = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
     const fdm = d => d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
     const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const mark = x => (x.harm ? '✦ ' : '') + (x.kind === 'family' ? ' ★' : '');
+    const mark = x => ((x.harm ? '✦ ' : '') + (x.kind === 'family' ? ' ★' : '')) + (x.voidW ? ' <span title="Void on the cure" style="color:#e65100;">⚠ void</span>' : '');
     const state = x => x.end <= now ? 'past' : (x.start <= now ? 'now' : 'future');
     let h = '<div style="margin-top:6px;border:2px solid #43a047;background:#f1f8e9;border-radius:10px;padding:8px 10px;font-size:13px;">'
           + '<div style="font-weight:bold;color:#1b5e20;font-size:14px;">📆 Cure years & months (' + list.filter(y => y.cure).length + ' years · ' + list.reduce((n, y) => n + y.months.length, 0) + ' months)</div>'
@@ -1473,12 +1515,13 @@ function renderPersonView() {
         // 🤝 Session 35 (Edu): with BOTH shown, each pillar of the OTHER person's chart that is a
         // cure for this person (same rule as any remedy hexagram: _xkdgRemedyKind).
         const other = (window._pvWho === 'both' && all.length > 1) ? all.filter(x => x.who !== pp.who)[0] : null;
-        const mutual = (other && g && g.any) ? ['hour', 'day', 'month', 'year'].map(k => {
+        const mutual0 = (other && g && g.any) ? ['hour', 'day', 'month', 'year'].map(k => {
             const q = other.P[k]; if (!q || q.qi == null) return null;
             const c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
             const kind = _xkdgRemedyKind(g, pp.P, c, isoFamSet);
-            return kind ? Object.assign(c, { kind: kind, pillar: k }) : null;
+            return kind ? Object.assign(c, { kind: kind, pillar: k, voidW: xkdgCureVoid(g, pp.P, c, other.P.day, other.name) }) : null;
         }).filter(Boolean) : [];
+        const mutual = mutual0.filter(x => !x.voidW), mutualVoid = mutual0.filter(x => x.voidW);   // birth charts: a void invalidates the cure
         // selection: a date first (Edu), else a hexagram
         let sel = window._pvSel[pp.who];
         if (!sel || (sel[0] === 'd' && !dates.some(d => 'd' + d.date === sel)) || (sel[0] === 'h' && !opts.some(x => 'h' + x.hex === sel)) || sel[0] === 'p')
@@ -1630,6 +1673,10 @@ function renderPersonView() {
                + (selDate ? '<div style="margin-top:4px;"><b>Favourable hours</b> (tap to open):<br>' + hourBtns(selDate) + '</div>' : '');
             const sec = opts.filter(x => x.hex === cur.hex)[0];
             if (sec) { const c2 = (sec.from + 2.8125) % 360; ex += '<div style="margin-top:4px;">🧭 The same hexagram in Feng Shui: <b>' + W8(c2) + ' · ' + sec.from + '–' + sec.to + '°</b> (' + (sec.zheng_shen ? 'Zheng Shen' : 'Ling Shen') + ')</div>'; }
+            try {
+                const vw = selDate ? selDate.void_warning : xkdgCureVoid(g, pp.P, { hex: cur.hex, branch: (_xkdgJzOfHex(cur.hex) || {}).branch }, null);
+                if (vw) ex += '<div style="margin-top:4px;color:#e65100;">⚠ <b>Void</b>: ' + vw.join('; ') + '.</div>';
+            } catch (eV) {}
             ex += '</div>';
         }
         h = h.replace(EXPL, ex);
@@ -1638,8 +1685,11 @@ function renderPersonView() {
         if (other) {
             h += '<div style="margin-top:10px;border:2px solid #f9a825;background:#fffde7;border-radius:10px;padding:8px 10px;">'
                + '<div style="font-weight:bold;color:#e65100;font-size:14px;">🤝 Cure from ' + other.name + '\'s chart (' + mutual.length + ')</div>';
+            mutualVoid.forEach(x => {
+                h += '<div style="color:#c62828;font-size:13px;margin-top:4px;">⛔ ' + L[x.pillar] + ' ' + (x.stem || '') + (x.branch || '') + ' (hex ' + x.hex + ') would be a cure, but it is not valid: ' + x.voidW.join('; ') + '.</div>';
+            });
             if (!mutual.length) {
-                h += '<div style="color:#795548;font-size:12px;margin-top:4px;">No pillar of ' + other.name + ' is a cure for ' + pp.name + '.</div>';
+                if (!mutualVoid.length) h += '<div style="color:#795548;font-size:12px;margin-top:4px;">No pillar of ' + other.name + ' is a cure for ' + pp.name + '.</div>';
             } else {
                 window._pvMut = window._pvMut || {};
                 let mk = window._pvMut[pp.who];
@@ -4853,7 +4903,7 @@ function xkdgCureForDate(yGan, yZhi, dGan, dZhi) {
         [['day', dGan, dZhi], ['year', yGan, yZhi]].some(([via, s, b]) => {
             const x = getXkdgData(s, b); if (!x) return false;
             const kind = _xkdgRemedyKind(p.g, p.P, { qi: x.qi, yun: x.yun, hex: x.hex, stem: s, branch: b }, p.fams);
-            if (kind) { res.push({ who: p.who, via: via, kind: kind, hex: x.hex }); return true; }
+            if (kind) { res.push({ who: p.who, via: via, kind: kind, hex: x.hex, voidW: !!xkdgCureVoid(p.g, p.P, { hex: x.hex, branch: b }, { stem: dGan, branch: dZhi }, 'this date') }); return true; }
             return false;
         });
     });
@@ -4870,7 +4920,7 @@ function rawCureBonus(yGan, yZhi, dGan, dZhi, items) {
 }
 function xkdgCureLabel(cure) {
     if (!cure || !cure.length) return '';
-    return '🌿 Cure ' + cure.map(c => c.who + (c.kind === 'family' ? '★' : '') + ' (' + c.via + ')').join(', ');
+    return '🌿 Cure ' + cure.map(c => c.who + (c.kind === 'family' ? '★' : '') + ' (' + c.via + ')' + (c.voidW ? ' ⚠ void' : '')).join(', ');
 }
 // Session 37 (Edu): cure dates are marked the SAME special way everywhere (BEST, LIST, TABLE,
 // CAL, Feng Shui date lists): a solid green 🌿 CURE badge and a green frame on the row.
