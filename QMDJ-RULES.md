@@ -175,4 +175,4 @@ Codice: `card`, `cardHtml`, `palaceObjects` in `qmdj-multichart.js`; assistente:
 - **Open:** il "round object" della slide coincide con Qian, palazzo d'origine della porta.
 - **Assistente:** usa le persone A e B caricate, altrimenti chiede.
 
-**Da confermare (Edu):** la tabella degli oggetti dedotti; oggetti solo dalla carta master; "schiena verso la direzione del palazzo" generalizzato dall'esempio Zhen/Est.
+**Confermato (Edu):** tabella oggetti; oggetti anche dal palazzo d'origine della porta; niente oggetti negativi, veicoli come modellini; oggetti solo dalla carta master; schiena verso la direzione del palazzo.
