@@ -3185,7 +3185,7 @@ function xkdgPrivSet(name, on) {
 }
 function _xkdgPrivSectionHtml() {
     const B = 'font-size:11px;padding:2px 8px;border-radius:8px;cursor:pointer;';
-    if (!_xkdgPrivOpen) return `<div style="text-align:right;padding:2px;"><button onclick="xkdgPrivUnlock()" style="${B}border:1px solid #4527a0;background:#ede7f6;color:#4527a0;font-weight:bold;">🔒 Private</button></div>`;
+    if (!_xkdgPrivOpen) return '';
     const arch = xkdgPersonsAll(), rows = xkdgPrivNames().filter(n => arch[n]).sort().map(n => {
         const q = _xkdgEsc(n);
         return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap;"><span style="font-weight:bold;font-size:14px;flex:1;">${q}</span><span style="font-size:11px;color:#888;">${_xkdgEsc(arch[n].date || '')}</span>
@@ -3480,6 +3480,7 @@ function _xkdgFolderManagerHtml() {
     let h = `<div style="border:1px solid #c9a84c;border-radius:8px;background:#fffbf0;padding:8px 10px;margin:0 0 8px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
             <strong style="font-size:13px;color:#6d4c00;flex:1;">📁 Folders</strong>
+            <span onclick="xkdgPrivUnlock()" style="cursor:pointer;font-size:11px;opacity:.55;margin-right:6px;">🔒</span>
             <button onclick="xkdgNewFolderPrompt('')" style="${btn}border:1px solid #2e7d32;background:#e8f5e9;color:#1b5e20;">➕ New folder</button>
         </div>`;
     if (!folders.length) h += '<div style="font-size:12px;color:#888;font-style:italic;">No folders yet.</div>';
@@ -3602,7 +3603,7 @@ function renderDB() {
                 <span style="font-weight:bold;font-size:14px;flex:1;${isHidden?'opacity:0.5;':''}">${name}</span>
                 <span style="font-size:11px;color:#888;">${dateStr}</span>
                 ${hiddenTag}
-                <span onclick="xkdgPrivSet(this.dataset.name,true)" data-name="${name.replace(/"/g,'&quot;')}" title="Move to the private section" style="cursor:pointer;font-size:13px;">🔒</span>
+                ${_xkdgPrivOpen ? `<span onclick="xkdgPrivSet(this.dataset.name,true)" data-name="${name.replace(/"/g,'&quot;')}" style="cursor:pointer;font-size:13px;">🔒</span>` : ''}
                 <button onclick="loadPersonFromDB('A', this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #1b5e20;background:#e8f5e9;color:#1b5e20;cursor:pointer;">→ A</button>
                 <button onclick="loadPersonFromDB('B', this.dataset.name)" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #6a1b9a;background:#f3e5f5;color:#6a1b9a;cursor:pointer;">→ B</button>
                 <span onclick="deleteFromDB(this.dataset.panel, this.dataset.name)" data-panel="${panel}" data-name="${name.replace(/"/g,'&quot;')}" style="font-size:13px;padding:1px 6px;border-radius:6px;background:#fff0f0;border:1px solid #ffcdd2;color:#c62828;font-weight:bold;cursor:pointer;">×</span>
