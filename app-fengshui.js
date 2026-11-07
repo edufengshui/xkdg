@@ -3746,7 +3746,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
       }
     }
   } catch (eV) {}
-  // Rotating: the centre Tien Pan stem travels with Rice (or Official, option) and is drawn there.
+  // Rotating: Fowl and the centre Tien Pan stem travel with Rice (or Official, option) and are drawn there.
   var _ctrMoves = isRot;
 
   function cellHtml(p){
@@ -3774,7 +3774,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
         +   _dpDeity(5)
         +   '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;">'
         +     (_ctrMoves ? '' : '<div style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:18px;">' + (d.tiH||'') + '</div>')
-        +     '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>'
+        +     (_ctrMoves ? '' : '<div style="color:#444;font-size:12px;">' + (d.star||'') + '</div>')
         +   '</div>'
         +   '<div style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:18px;">' + (d.diH||'') + '</div>'
         + '</div>'
@@ -3788,7 +3788,8 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
       +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">'
       +     '<span style="color:'+stemColor(d.tiH)+';font-weight:bold;font-size:17px;">' + (d.tiH||'')
       +       (_ctrMoves && d.ti2H ? '<span style="color:'+stemColor(d.ti2H)+';font-size:14px;margin-left:3px;">' + d.ti2H + '</span>' : '') + '</span>'
-      +     '<span style="color:#444;font-size:12px;">' + (d.star||'') + '</span>'
+      +     '<span style="color:#444;font-size:12px;text-align:right;line-height:1.15;">' + (d.star||'')
+      +       (_ctrMoves && d.star2 ? '<br><span style="font-size:11px;color:#666;">' + d.star2 + '</span>' : '') + '</span>'
       +   '</div>'
       +   '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
       +   '<div style="margin-top:auto;display:flex;align-items:flex-end;gap:6px;">'
@@ -3876,7 +3877,7 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
        + isoDate + ' · ' + hGan + hZhi
        + ' <span style="color:#888;">(' + chart.dun + ' dun, ju ' + chart.ju + ')</span>'
        + (_voidTxt ? ' <span style="color:#757575;">· voids ' + _voidTxt + '</span>' : '')
-       + (isRot && chart.dun === 'yang' ? '<div style="margin-top:3px;font-size:11px;"><label><input type="checkbox" onchange="xkdgCtrOfficial(this)"' + (_ctrOff() ? ' checked' : '') + '> Centre stem travels with Official (Yang Dun)</label></div>' : '')
+       + (isRot && chart.dun === 'yang' ? '<div style="margin-top:3px;font-size:11px;"><label><input type="checkbox" onchange="xkdgCtrOfficial(this)"' + (_ctrOff() ? ' checked' : '') + '> Fowl and centre stem travel with Official (Yang Dun)</label></div>' : '')
        + '</div>';
 
   html += '</div>';
