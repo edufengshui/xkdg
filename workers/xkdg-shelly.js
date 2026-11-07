@@ -12,6 +12,13 @@
  *   student device with its own token. XKDG_TOKEN keeps working for everything.
  *   Limits: MAX_USER_DEVICES in all, MAX_PER_LICENCE per licence. Host must be
  *   shelly-*.shelly.cloud. The digest stays Edu's only (XKDG_TOKEN).
+ *
+ * DAILY EMAIL SUBSCRIPTIONS (v7, session 41) — students subscribe from their own app:
+ *   POST ?digest_subscribe    JSON { licence, line }   line = the app's daily-email line
+ *   POST ?digest_unsubscribe  JSON { licence, email }
+ *   ?digest_subscribers&token=XKDG_TOKEN   → [line, …]   (read by digest/digest.js)
+ *   KV: `dsub:<sha256(email)>` = { owner, line, at }, index `dsubindex`.
+ *   Limits: MAX_SUBS in all, MAX_SUBS_PER_LICENCE per licence.
  *   KV: an index `devindex` = [{ id, owner, ev:[ts…], auto }] keeps the switch times
  *   of each student plan, so the cron reads a student's state ONLY around one of his
  *   switch times (free KV tier: 100k reads/day).
@@ -107,6 +114,8 @@ const MAX_USER_DEVICES = 60;
 const MAX_PER_LICENCE  = 5;
 const HOST_RE          = /^shelly-[a-z0-9-]+\.shelly\.cloud$/;
 const AI_URL_DEFAULT   = 'https://xkdg-ai.decumano16.workers.dev';
+const SUB_INDEX = 'dsubindex', MAX_SUBS = 200, MAX_SUBS_PER_LICENCE = 3;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function hex(buf) { return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join(''); }
 async function sha256(t) { return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(t)))); }
@@ -313,6 +322,57 @@ async function status(env, dev, s) {
   return r;
 }
 
+// ── v7: daily email subscriptions ────────────────────────────────────────────
+async function subIndex(env) { try { return JSON.parse(await env.XKDG_KV.get(SUB_INDEX) || '[]'); } catch (e) { return []; } }
+function cleanLine(l) {
+  const o = {};
+  ['name', 'email', 'city', 'lat', 'lon', 'tz', 'city_label', 'birth_date', 'birth_time', 'jiazi', 'lang', 'houses'].forEach(k => { if (l[k] !== undefined) o[k] = l[k]; });
+  o.email = String(o.email || '').trim();
+  return o;   // never a Shelly token or anything else
+}
+async function subscribe(env, b) {
+  b = b || {};
+  const lic = String(b.licence || '').trim().toLowerCase(), line = cleanLine(b.line || {});
+  if (!/^[0-9a-f]{64}$/.test(lic)) return json({ ok: false, error: 'No valid XKDG licence on this phone.' }, 400);
+  if (!EMAIL_RE.test(line.email)) return json({ ok: false, error: 'The email address is not valid.' }, 400);
+  if (!(line.birth_date || line.jiazi)) return json({ ok: false, error: 'Birth data missing.' }, 400);
+  const placed = (isFinite(+line.lat) && isFinite(+line.lon) && line.tz) || /^(vienna|tuoro)$/i.test(String(line.city || ''));
+  if (!placed) return json({ ok: false, error: 'City missing.' }, 400);
+  if (JSON.stringify(line).length > 20000) return json({ ok: false, error: 'Too much data (houses).' }, 400);
+  if (!env.XKDG_KV) return json({ ok: false, error: 'Server not ready (KV missing).' }, 500);
+  const L = await licenceOk(env, lic);
+  if (!L.ok) return json({ ok: false, error: 'XKDG licence not accepted: ' + L.reason }, 403);
+  const owner = (await sha256('lic|' + lic)).slice(0, 16), key = 'dsub:' + await sha256(line.email.toLowerCase());
+  const old = JSON.parse(await env.XKDG_KV.get(key) || 'null');
+  if (old && old.owner !== owner) return json({ ok: false, error: 'This email is already subscribed from another licence.' }, 409);
+  let idx = await subIndex(env);
+  if (!old) {
+    if (idx.length >= MAX_SUBS) return json({ ok: false, error: 'The daily email list is full. Ask Edu.' }, 429);
+    if (idx.filter(x => x.owner === owner).length >= MAX_SUBS_PER_LICENCE) return json({ ok: false, error: 'At most ' + MAX_SUBS_PER_LICENCE + ' emails per licence.' }, 429);
+    idx.push({ key, owner });
+    await env.XKDG_KV.put(SUB_INDEX, JSON.stringify(idx));
+  }
+  await env.XKDG_KV.put(key, JSON.stringify({ owner, line, at: Date.now() }));
+  return json({ ok: true, action: old ? 'updated' : 'subscribed' });
+}
+async function unsubscribe(env, b) {
+  b = b || {};
+  const lic = String(b.licence || '').trim().toLowerCase(), email = String(b.email || '').trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(lic) || !EMAIL_RE.test(email)) return json({ ok: false, error: 'Licence or email missing.' }, 400);
+  const owner = (await sha256('lic|' + lic)).slice(0, 16), key = 'dsub:' + await sha256(email);
+  const old = JSON.parse(await env.XKDG_KV.get(key) || 'null');
+  if (!old) return json({ ok: true, action: 'not subscribed' });
+  if (old.owner !== owner) return json({ ok: false, error: 'This email was subscribed from another licence.' }, 403);
+  await env.XKDG_KV.delete(key);
+  await env.XKDG_KV.put(SUB_INDEX, JSON.stringify((await subIndex(env)).filter(x => x.key !== key)));
+  return json({ ok: true, action: 'unsubscribed' });
+}
+async function subscribers(env) {
+  const out = [];
+  for (const x of await subIndex(env)) { const r = JSON.parse(await env.XKDG_KV.get(x.key) || 'null'); if (r && r.line) out.push(r.line); }
+  return json({ ok: true, subscribers: out });
+}
+
 // ── v7: register / unregister a student plug ────────────────────────────────
 async function register(env, b) {
   b = b || {};
@@ -375,6 +435,8 @@ export default {
 
     const p = await readParams(request);
     if (p.register !== undefined) return register(env, p._body);
+    if (p.digest_subscribe !== undefined) return subscribe(env, p._body);
+    if (p.digest_unsubscribe !== undefined) return unsubscribe(env, p._body);
 
     // Edu's token opens everything; a student token opens only its own device.
     const admin = !!p.token && p.token === env.XKDG_TOKEN;
@@ -386,6 +448,10 @@ export default {
       if (!userState.tokenHash || userState.tokenHash !== await sha256(p.token)) return json({ error: 'Unauthorized (bad or missing token).' }, 401);
       if (p.set_digest !== undefined || p.clear_digest !== undefined || p.get_digest !== undefined)
         return json({ error: 'The digest is not available for this device.' }, 403);
+    }
+    if (p.digest_subscribers !== undefined) {
+      if (!admin) return json({ error: 'Unauthorized.' }, 401);
+      return subscribers(env);
     }
     if (p.unregister !== undefined) {
       const d = String(p.device || '').toLowerCase();

@@ -322,6 +322,22 @@ async function main() {
   let recs;
   try { recs = JSON.parse(process.env.XKDG_DIGEST_RECIPIENTS || '[]'); } catch (e) { console.log('XKDG_DIGEST_RECIPIENTS is not valid JSON'); process.exit(1); }
   if (!Array.isArray(recs)) recs = [recs];
+  // Students who subscribed from their own app (session 41): read from the xkdg-shelly Worker with
+  // the URL + token already in Edu's line (shelly), or XKDG_SUBS_URL / XKDG_SUBS_TOKEN. Same email:
+  // the secret wins. The log shows only the count.
+  try {
+    const src = recs.find(r => r && r.shelly && r.shelly.url && r.shelly.token);
+    const u = process.env.XKDG_SUBS_URL || (src && src.shelly.url), t = process.env.XKDG_SUBS_TOKEN || (src && src.shelly.token);
+    if (u && t) {
+      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 20000);
+      const res = await fetch(String(u).replace(/\/+$/, '') + '?digest_subscribers&token=' + encodeURIComponent(t), { method: 'POST', signal: ctl.signal }); clearTimeout(tm);
+      const j = await res.json().catch(() => null);
+      const have = new Set(recs.map(r => String(r.email || '').toLowerCase()));
+      const add = (j && Array.isArray(j.subscribers) ? j.subscribers : []).filter(l => l && l.email && !have.has(String(l.email).toLowerCase()));
+      recs = recs.concat(add);
+      console.log('subscribers from the app: ' + add.length + (res.ok ? '' : ' (HTTP ' + res.status + ')'));
+    }
+  } catch (e) { console.log('subscribers from the app: not readable'); }
   if (!recs.length) { console.log('No recipients configured.'); process.exit(1); }
   const dry = !!process.env.DRY_RUN;
   let mailer = null;
