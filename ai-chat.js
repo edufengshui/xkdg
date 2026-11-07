@@ -464,9 +464,9 @@
     ],
     ["fengshui",
       '- FOUNTAIN A / B (fontana, fontanella; A = bed, by DAY; B = bedroom door, by NIGHT) are the Vienna bedroom fountains ' +
-      '(shelly_house vienna-letto / vienna-porta, listed as shelly_fountains by get_house_setup). They have NO Shelly yet: they are ' +
-      'switched BY HAND. For "when can I switch on fountain B" call program_aquarium_light(house:"vienna-porta") and give the ' +
-      'ON/OFF times, then offer calendar reminders; load the home tools with load_tools if they are missing. Never say a fountain ' +
+      '(shelly_house vienna-letto / vienna-porta, listed as shelly_fountains by get_house_setup). Each has its own Shelly plug: ' +
+      'program_aquarium_light(house:"vienna-letto" / "vienna-porta") gives the ON/OFF plan (preview), commit:true deposits it, ' +
+      'aquarium_light / aquarium_plan switch and read them; load the home tools with load_tools if they are missing. Never say a fountain ' +
       'does not exist before checking shelly_fountains.\n' +
       '- "... in the [NAME] house" (e.g. "the Vienna house"): call get_house_setup(house_name) FIRST - it returns the ' +
       'whole house in one shot (facing/period, aquariums with their direction + water star, ' +
@@ -6831,13 +6831,13 @@
     'vienna': { device: 'vienna', lon: 16.4, utc: 1, nightRelight: { water_hex: 57, facing: 266, label: 'hex 57 / bedroom door 266°' } },
     // Session 33 (Edu): two small fountains in the Vienna bedroom, each on its own Shelly.
     // Water at 222° (Ling Shen) for the bed and the bedroom door, both facing 266° (Zheng Shen).
-    // Session 35 (Edu): NO Shelly on the fountains yet (shelly:false) - switched BY HAND; the plan is
+    // Session 35 (Edu): fountains switched BY HAND until session 41, now each has a Shelly (shelly:true); the plan is
     // computed (preview) and goes to the calendar; set shelly:true when the plug is installed.
     // A (bed) runs only by DAY (Chen..Xu, solar 07-21), B (door) only by NIGHT (Hai..END of Mao, solar 21-07) - session 36. Like the aquarium:
     // ON at the best favourable hour of its period, stays ON to the end of the period; no
     // "never dark" rule; the plan ends at the start of the next solar month.
-    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' }, shelly: false },
-    'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' }, shelly: false }
+    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' }, shelly: true },
+    'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' }, shelly: true }
   };
   var SHELLY_ALIASES = { 'letto': 'vienna-letto', 'bed': 'vienna-letto', 'fontana a': 'vienna-letto', 'fountain a': 'vienna-letto', 'fontana letto': 'vienna-letto',
                          'porta': 'vienna-porta', 'door': 'vienna-porta', 'fontana b': 'vienna-porta', 'fountain b': 'vienna-porta', 'fontana porta': 'vienna-porta',
@@ -7393,7 +7393,7 @@
     }
     var rows = scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; });
     var noShelly = rh.cfg.shelly === false;
-    var commit = input.commit === true && !noShelly, workerResp = null, workerErr = null;
+    var commit = input.commit === true && !noShelly && !!cfg, workerResp = null, workerErr = null;
     if (commit) {
       try {
         var res = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
@@ -7416,9 +7416,10 @@
         + (F.period === 'day' ? ' (= the start of Hai 亥). ' : ' (= the END of Mao 卯, when Chen 辰 begins). ')
         + 'Name the hours by the solar times in the period field (each Chinese hour is 2 solar hours: Zi 23-01, Chou 01-03, Yin 03-05, Mao 05-07, Chen 07-09 ... Hai 21-23), never guess. '
         + 'Each row has its "via" (how the water hexagram talks with the hour and the hour with the day): give it briefly. Days in days_without_hour have no valid hour: say so. Show the times as given (local clock). '
-        + 'Until this fountain has its own Shelly, the user switches it BY HAND: offer (and do it when asked) to put every row '
+        + (noShelly ? 'Until this fountain has its own Shelly, the user switches it BY HAND: offer (and do it when asked) to put every row '
         + 'in the phone calendar with add_calendar_reminder - one event per row, date = row date, start = ON time, end = OFF time '
-        + '(local clock, as given), title e.g. "\uD83D\uDCA7 ' + F.label + ' ON". '
+        + '(local clock, as given), title e.g. "\uD83D\uDCA7 ' + F.label + ' ON". ' : '')
+        + (!noShelly && !cfg ? 'Shelly is not configured on this device (configure_shelly): only the times can be given. ' : '')
         + (noShelly ? 'This fountain has NO Shelly yet: nothing can be deposited or switched remotely - give the ON/OFF times to switch by hand and offer the calendar reminders. Never offer commit.'
                     : (commit ? '' : 'This is a PREVIEW: ask the user to confirm, then call again with commit:true.'))
         + (workerErr ? ' If worker_error mentions an unknown device, the Shelly Worker does not know this device yet: say so plainly.' : '')
@@ -7431,7 +7432,7 @@
     var rh = _resolveShellyHouse(input.house);
     if (!rh) return { error: 'Provide house = "tuoro" or "vienna" (or a fountain: "vienna-letto", "vienna-porta"), or a house whose Shelly plug is connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug). No plug connected: say so and point the user to that menu.' };
     var cfg = _shellyCfg(rh);
-    if (rh.cfg.fountain && rh.cfg.shelly === false) return _programFountain(rh, cfg, input, _jie);   // by hand: no Worker needed
+    if (rh.cfg.fountain && (rh.cfg.shelly === false || !cfg)) return _programFountain(rh, cfg, input, _jie);   // by hand / no Worker config: times only
     if (!cfg) return { error: 'Shelly not configured. Call configure_shelly with the Worker url + token first.' };
     if (rh.cfg.fountain) return _programFountain(rh, cfg, input, _jie);
     var days = parseInt(input.days, 10) || 7;

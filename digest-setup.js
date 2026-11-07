@@ -140,7 +140,8 @@
     if (withAq) {
       var sc = null; try { sc = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || 'null'); } catch (e) {}
       if (sc && sc.url && sc.token) o.shelly = { url: sc.url, token: sc.token, devices: [
-        { name: 'Tuoro', device: 'tuoro', tz: 'Europe/Rome' }, { name: 'Vienna', device: 'vienna', tz: 'Europe/Vienna' } ] };
+        { name: 'Tuoro', device: 'tuoro', tz: 'Europe/Rome' }, { name: 'Vienna', device: 'vienna', tz: 'Europe/Vienna' },
+        { name: 'Fountain A', device: 'vienna-letto', tz: 'Europe/Vienna' }, { name: 'Fountain B', device: 'vienna-porta', tz: 'Europe/Vienna' } ] };
     }
     return o;
   }
