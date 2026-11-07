@@ -322,6 +322,8 @@ async function main() {
   let recs;
   try { recs = JSON.parse(process.env.XKDG_DIGEST_RECIPIENTS || '[]'); } catch (e) { console.log('XKDG_DIGEST_RECIPIENTS is not valid JSON'); process.exit(1); }
   if (!Array.isArray(recs)) recs = [recs];
+  // One line may carry several addresses, "a@x.com, b@y.com" (Edu, session 42: Thao gets Edu's own email).
+  function _mails(v) { return String(v || '').split(/[;,]/).map(x => x.trim()).filter(Boolean); }
   // Students who subscribed from their own app (session 41): read from the xkdg-shelly Worker with
   // the URL + token already in Edu's line (shelly), or XKDG_SUBS_URL / XKDG_SUBS_TOKEN. Same email:
   // the secret wins. The log shows only the count.
@@ -332,7 +334,7 @@ async function main() {
       const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 20000);
       const res = await fetch(String(u).replace(/\/+$/, '') + '?digest_subscribers&token=' + encodeURIComponent(t), { method: 'POST', signal: ctl.signal }); clearTimeout(tm);
       const j = await res.json().catch(() => null);
-      const have = new Set(recs.map(r => String(r.email || '').toLowerCase()));
+      const have = new Set([].concat.apply([], recs.map(r => _mails(r.email).map(x => x.toLowerCase()))));
       const add = (j && Array.isArray(j.subscribers) ? j.subscribers : []).filter(l => l && l.email && !have.has(String(l.email).toLowerCase()));
       recs = recs.concat(add);
       console.log('subscribers from the app: ' + add.length + (res.ok ? '' : ' (HTTP ' + res.status + ')'));
@@ -377,7 +379,7 @@ async function main() {
         fs.writeFileSync(path.join(dir, 'digest-' + (i + 1) + '.txt'), msg.subject + '\n\n' + msg.text);
         console.log(tag + ': ' + n + ' hours (dry run, not sent)');
       } else {
-        await mailer.sendMail({ from: '"XKDG" <' + process.env.GMAIL_USER + '>', to: rec.email, subject: msg.subject, html: msg.html, text: msg.text });
+        await mailer.sendMail({ from: '"XKDG" <' + process.env.GMAIL_USER + '>', to: _mails(rec.email), subject: msg.subject, html: msg.html, text: msg.text });
         console.log(tag + ': ' + n + ' hours, sent');
       }
     } catch (e) { failed++; console.log(tag + ': FAILED - ' + String(e.message || e).replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '<email>').slice(0, 200)); }

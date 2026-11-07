@@ -141,3 +141,4 @@ Plan from Edu. Sources: chapters QMDJ5 04/05/06 (Dropbox "Chee - Edu/11. qmdj ac
 
 ## Session 42 (2026-11-07)
 - Rotating chart: Fowl travels with its stem — drawn small under the star of the palace that gets the centre stem (Rice, or Official with the option), no longer in the centre. Option stays Yang Dun only (Edu confirmed). Label: "Fowl and centre stem travel with Official (Yang Dun)". QMDJ-RULES §11.
+- Daily email: one line may carry two addresses "a@x.com, b@y.com" (digest.js `_mails`; builder hint). Thao gets Edu's own email this way.
