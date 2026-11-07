@@ -62,6 +62,7 @@
  *   SHELLY_KEY, SHELLY_HOST            shared (same Shelly cloud account)
  *   SHELLY_ID, SHELLY_ID_DEC          Tuoro plug id (hex, and optional decimal)
  *   SHELLY_ID_VIENNA, SHELLY_ID_VIENNA_DEC   Vienna plug id
+ *   SHELLY_ID_LETTO, SHELLY_ID_PORTA          Vienna fountains A (bed) and B (door), ?device=vienna-letto / vienna-porta
  *   XKDG_TOKEN                        required — every request needs ?token=.. matching it
  *
  * ── KV BINDING ─── bind a KV namespace to the variable name:  XKDG_KV
@@ -155,6 +156,9 @@ const DIGEST_MAX_CHARS = 64 * 1024;
 const DEVICES = {
   tuoro:  { label: 'Acquario Tuoro',  idKey: 'SHELLY_ID',        decKey: 'SHELLY_ID_DEC',        stateKey: 'state:tuoro',  legacyKey: 'state' },
   vienna: { label: 'Acquario Vienna', idKey: 'SHELLY_ID_VIENNA', decKey: 'SHELLY_ID_VIENNA_DEC', stateKey: 'state:vienna', legacyKey: null },
+  // Vienna bedroom fountains (session 41): A = bed, by day; B = bedroom door, by night.
+  'vienna-letto': { label: 'Fontana A (letto)', idKey: 'SHELLY_ID_LETTO', decKey: 'SHELLY_ID_LETTO_DEC', stateKey: 'state:vienna-letto', legacyKey: null },
+  'vienna-porta': { label: 'Fontana B (porta)', idKey: 'SHELLY_ID_PORTA', decKey: 'SHELLY_ID_PORTA_DEC', stateKey: 'state:vienna-porta', legacyKey: null },
 };
 const DEVICE_NAMES = Object.keys(DEVICES);
 function resolveDevice(p) {
