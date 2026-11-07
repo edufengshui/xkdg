@@ -37,6 +37,13 @@ recipient's city, with daylight saving handled day by day.
   day and a half, is paused, or has missed switch-ons. The Worker token stays inside the secret, never in the logs.
 - One object per person, separated by commas.
 
+## Students subscribe by themselves (session 41)
+
+In the app: House Profiles → ☰ → 📧 Daily email → ✉ Subscribe. The line goes to the xkdg-shelly Worker (v7,
+`?digest_subscribe`, licence checked with xkdg-ai). Every morning digest.js reads them with `?digest_subscribers`,
+using the Worker URL + token already in Edu's line (`shelly`) (env `XKDG_SUBS_URL` / `XKDG_SUBS_TOKEN` also accepted if added to the workflow).
+The same email in the secret wins. Guide for students: `guides/daily-email.html`.
+
 ## Test now
 
 GitHub → **Actions** → *Daily XKDG digest* → **Run workflow**.
