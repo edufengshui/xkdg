@@ -179,5 +179,6 @@ Codice: `card`, `cardHtml`, `palaceObjects` in `qmdj-multichart.js`; assistente:
 
 ## 11. CARTA RUOTANTE — stelo del centro e vuoti (Edu, sessione 41)
 - Lo stelo del palazzo centrale nel Tien Pan viaggia sempre con Rice: non si disegna al centro, compare accanto allo stelo del palazzo di Rice. Al centro resta lo stelo del Di Pan.
-- Opzione (spenta di default, `xkdg_qmdj_ctr_official`): in Yang Dun lo stelo migra con Official (palazzo opposto). Lo stelo del Di Pan del centro si copia anche in Kun (SW), disegnato accanto al suo stelo; con l'opzione la copia va in Gen (NE). Vale per disegno e analisi (`ti2`, `di2`).
+- Fowl viaggia sempre col suo stelo (Edu, sessione 42): nella carta ruotante Fowl non si disegna al centro ma accanto alla stella del palazzo dove va lo stelo.
+- Opzione (spenta di default, `xkdg_qmdj_ctr_official`): in Yang Dun Fowl e lo stelo migrano con Official (palazzo opposto). Lo stelo del Di Pan del centro si copia anche in Kun (SW), disegnato accanto al suo stelo; con l'opzione la copia va in Gen (NE). Vale per disegno e analisi (`ti2`, `di2`).
 - I palazzi vuoti della decade del giorno sono ombreggiati leggermente; un vuoto colpito dal ramo del giorno è riempito.
