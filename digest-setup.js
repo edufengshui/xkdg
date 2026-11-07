@@ -162,7 +162,7 @@
       '<div id="xdg-sub-msg" style="margin-top:4px;color:#4a148c;"></div>' +
       '<div style="color:#777;">Subscribe again after you change city, birth data or a house: your line is updated.</div></div>' +
       'Person <input id="xdg-name" value="' + nm.replace(/"/g, '&quot;') + '" style="width:120px;"> ' +
-      'Email <input id="xdg-email" type="email" placeholder="name@example.com" style="width:180px;"> ' +
+      'Email <input id="xdg-email" type="email" multiple placeholder="name@example.com" style="width:180px;"> <span style="font-size:11px;color:#666;">(two people, same email: a@x.com, b@y.com)</span> ' +
       'City <select id="xdg-city" onchange="document.getElementById(\'xdg-place\').style.display=this.value===\'GPS\'?\'\':\'none\';document.getElementById(\'xdg-other\').style.display=this.value===\'OTHER\'?\'\':\'none\'"><option>Vienna</option><option>Tuoro</option><option value="OTHER">Other city…</option><option value="GPS">My location (GPS)</option></select> ' +
       '<input id="xdg-other" list="xdg-cities" placeholder="city, e.g. Sydney" style="width:170px;display:none;"><datalist id="xdg-cities">' +
       allCities().filter(function (c) { return c && c.name && c.tz; }).map(function (c) { return '<option value="' + c.name.replace(/"/g, '&quot;') + '">'; }).join('') + '</datalist> ' +
