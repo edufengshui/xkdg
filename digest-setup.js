@@ -11,6 +11,7 @@
 (function () {
   'use strict';
   function el(id) { return document.getElementById(id); }
+  function allCities() { var out = []; (window.CITY_LIST || []).forEach(function (g) { (g && g.cities ? g.cities : [g]).forEach(function (c) { if (c && c.name && c.tz) out.push(c); }); }); return out; }
   function num(v) { var n = parseFloat(v); return isFinite(n) ? Math.round(n * 100) / 100 : null; }
 
   function archiveRec(name) {
@@ -120,6 +121,16 @@
       o.lat = Math.round(lat * 10000) / 10000; o.lon = Math.round(lon * 10000) / 10000;
       o.tz = tz || 'UTC'; o.city_label = label || 'My location';
     }
+    // Session 41: any city of the app's list (cities.js: longitude + IANA zone). The hour scan does
+    // not use the latitude, so 0 stands in for it.
+    if (city === 'OTHER') {
+      var cn = ((el('xdg-other') || {}).value || '').trim().toLowerCase();
+      var hit = allCities().filter(function (c) { return c && c.name && c.name.toLowerCase() === cn; })[0]
+             || allCities().filter(function (c) { return c && c.name && c.tz && c.name.toLowerCase().indexOf(cn) === 0; })[0];
+      if (!cn || !hit || !hit.tz) return { error: 'Pick a city from the list (type the first letters).' };
+      delete o.city;
+      o.lat = 0; o.lon = hit.lng; o.tz = hit.tz; o.city_label = hit.name.split(',')[0];
+    }
     if (rec.date && rec.depth !== 1) { o.birth_date = rec.date; o.birth_time = rec.time || '12:00'; }
     else if (rec.jiaZiYear) o.jiazi = rec.jiaZiYear.slice(0, 2);
     else return { error: 'No birth data for "' + name + '".' };
@@ -147,7 +158,9 @@
       'so the daily email can add the Feng Shui dates.<br>' +
       'Person <input id="xdg-name" value="' + nm.replace(/"/g, '&quot;') + '" style="width:120px;"> ' +
       'Email <input id="xdg-email" type="email" placeholder="name@example.com" style="width:180px;"> ' +
-      'City <select id="xdg-city" onchange="document.getElementById(\'xdg-place\').style.display=this.value===\'GPS\'?\'\':\'none\'"><option>Vienna</option><option>Tuoro</option><option value="GPS">My location (GPS)</option></select> ' +
+      'City <select id="xdg-city" onchange="document.getElementById(\'xdg-place\').style.display=this.value===\'GPS\'?\'\':\'none\';document.getElementById(\'xdg-other\').style.display=this.value===\'OTHER\'?\'\':\'none\'"><option>Vienna</option><option>Tuoro</option><option value="OTHER">Other city…</option><option value="GPS">My location (GPS)</option></select> ' +
+      '<input id="xdg-other" list="xdg-cities" placeholder="city, e.g. Sydney" style="width:170px;display:none;"><datalist id="xdg-cities">' +
+      allCities().filter(function (c) { return c && c.name && c.tz; }).map(function (c) { return '<option value="' + c.name.replace(/"/g, '&quot;') + '">'; }).join('') + '</datalist> ' +
       '<input id="xdg-place" placeholder="place name, e.g. Kuala Lumpur" style="width:170px;display:none;"> ' +
       '<label><input type="checkbox" id="xdg-fs" checked> include Feng Shui dates (houses)</label> ' +
       (function () { var ok = false; try { var c = JSON.parse(localStorage.getItem('xkdg_shelly_cfg') || 'null'); ok = !!(c && c.url && c.token); } catch (e) {}
@@ -157,10 +170,27 @@
       '<textarea id="xdg-out" readonly style="width:100%;height:150px;margin-top:8px;font-family:monospace;font-size:11px;"></textarea>' +
       '<div id="xdg-info" style="color:#555;"></div>' +
       '<button onclick="XKDGDigestSetup._copy()" style="margin-top:6px;padding:5px 12px;border-radius:6px;border:none;background:#2e7d32;color:#fff;cursor:pointer;">📋 Copy</button>' +
-      '<div style="color:#777;margin-top:8px;">Paste it inside the [ … ] of the secret (GitHub → Settings → Secrets and variables → Actions), ' +
-      'one line per person, separated by commas. Build it again after changing a house.</div></div></div>';
+      '<div style="margin-top:10px;border-top:1px solid #ddd;padding-top:8px;"><b>All the people of the email</b> (every Build is kept here, by email):' +
+      '<div id="xdg-list"></div>' +
+      '<button onclick="XKDGDigestSetup._copyAll()" style="margin-top:6px;padding:6px 12px;border-radius:6px;border:none;background:#4a148c;color:#fff;font-weight:bold;cursor:pointer;">📋 Copy the WHOLE secret</button>' +
+      '<div style="color:#777;margin-top:6px;">Paste it as the whole value of the secret <b>XKDG_DIGEST_RECIPIENTS</b> (GitHub → Settings → Secrets and variables → Actions), replacing what is there. ' +
+      'Build a person again after changing a house: their line is updated, the others stay.</div></div></div></div>';
     m.addEventListener('click', function (e) { if (e.target === m) close(); });
     document.body.appendChild(m);
+    renderList();
+  }
+  var LKEY = 'xkdg_digest_lines';
+  function lines() { try { return JSON.parse(localStorage.getItem(LKEY) || '{}') || {}; } catch (e) { return {}; } }
+  function saveLines(l) { localStorage.setItem(LKEY, JSON.stringify(l)); renderList(); }
+  function renderList() {
+    var b = el('xdg-list'); if (!b) return;
+    var l = lines(), k = Object.keys(l);
+    b.innerHTML = k.length ? k.map(function (e) {
+      var o = l[e];
+      return '<div style="display:flex;gap:6px;align-items:center;padding:2px 0;"><span style="flex:1;">' + (o.active === false ? '⏸ ' : '') + '<b>' + String(o.name).replace(/</g, '&lt;') + '</b> · ' + e.replace(/</g, '&lt;')
+           + ' · ' + (o.city || o.city_label || '') + ((o.houses || []).length ? ' · ' + o.houses.length + ' house(s)' : '') + '</span>'
+           + '<button data-e="' + e.replace(/"/g, '&quot;') + '" onclick="XKDGDigestSetup._del(this.dataset.e)" style="border:1px solid #e57373;background:#fff;color:#c62828;border-radius:6px;cursor:pointer;">✕</button></div>';
+    }).join('') : '<div style="color:#888;">Nobody yet: Build each person once.</div>';
   }
   function close() { var m = el('xdg-modal'); if (m) m.remove(); }
 
@@ -170,10 +200,19 @@
       var o = build((el('xdg-name').value || '').trim(), (el('xdg-email').value || '').trim(), el('xdg-city').value, el('xdg-lang').value, !el('xdg-fs').checked, !!(el('xdg-aq') && el('xdg-aq').checked));
       if (o.error) { el('xdg-out').value = ''; el('xdg-info').textContent = o.error; return; }
       el('xdg-out').value = JSON.stringify(o);
+      if (o.email && o.email !== 'EMAIL') { var l = lines(); l[o.email] = o; saveLines(l); }
       var n = (o.houses || []).reduce(function (s, h) { return s + h.ops.length; }, 0);
       el('xdg-info').textContent = (o.houses || []).length + ' house(s), ' + n + ' placement(s): ' +
         (o.houses || []).map(function (h) { return h.name + ' (' + h.ops.map(function (x) { return x.kind; }).join(', ') + ')'; }).join('; ') +
         (n ? '' : ' — no door fountain / bed / desk saved yet: the email will have only the hours.');
+    },
+    _del: function (e) { var l = lines(); delete l[e]; saveLines(l); },
+    _copyAll: function () {
+      var l = lines(), arr = Object.keys(l).map(function (k) { return l[k]; });
+      if (!arr.length) { el('xdg-info').textContent = 'Build each person first.'; return; }
+      var t = JSON.stringify(arr), done = function () { el('xdg-info').textContent = 'Copied: ' + arr.length + ' people. Paste it as the whole secret.'; };
+      try { navigator.clipboard.writeText(t).then(done); }
+      catch (e) { var x = el('xdg-out'); x.value = t; x.select(); document.execCommand('copy'); done(); }
     },
     _copy: function () {
       var t = el('xdg-out'); if (!t.value) return;
