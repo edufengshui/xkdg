@@ -245,7 +245,7 @@ if (Array.isArray(P.houses) && P.houses.length) {
           else {
             let r = T.exec('program_aquarium_light', { house: op.device, days: P.days + 1 });
             if (r && typeof r.then === 'function') r = await r;
-            if (!r || r.error) rec.note = (r && r.error) || 'no result';
+            if (!r || r.error) rec.note = (r && /both persons/.test(r.error || '')) ? 'hours set in the app (they depend on both persons of the house)' : ((r && r.error) || 'no result');
             else {
               const hm = ts => { const x = new Date(ts); return String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'); };
               const ymd = ts => { const x = new Date(ts); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
