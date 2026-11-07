@@ -3792,7 +3792,8 @@ function showQimenChart(isoDate, hGan, hZhi, highlightPalace, opts){
       +   '</div>'
       +   '<div style="text-align:center;font-weight:bold;color:'+doorColor+';font-size:16px;margin:4px 0;">' + doorTxt + '</div>'
       +   '<div style="margin-top:auto;display:flex;align-items:flex-end;gap:6px;">'
-      +     '<span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'') + '</span>' + jia + zMark
+      +     '<span style="color:'+stemColor(d.diH)+';font-weight:bold;font-size:17px;">' + (d.diH||'')
+      +       (_ctrMoves && d.di2H ? '<span style="color:'+stemColor(d.di2H)+';font-size:14px;margin-left:3px;">' + d.di2H + '</span>' : '') + '</span>' + jia + zMark
       +   '</div>'
       + '</div>'
       + '</td>';
