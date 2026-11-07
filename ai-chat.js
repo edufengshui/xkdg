@@ -6836,7 +6836,7 @@
     // A (bed) runs only by DAY (Chen..Xu, solar 07-21), B (door) only by NIGHT (Hai..END of Mao, solar 21-07) - session 36. Like the aquarium:
     // ON at the best favourable hour of its period, stays ON to the end of the period; no
     // "never dark" rule; the plan ends at the start of the next solar month.
-    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' }, shelly: true },
+    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna', nightPositive: true }, shelly: true },
     'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' }, shelly: true }
   };
   var SHELLY_ALIASES = { 'letto': 'vienna-letto', 'bed': 'vienna-letto', 'fontana a': 'vienna-letto', 'fountain a': 'vienna-letto', 'fontana letto': 'vienna-letto',
@@ -7357,6 +7357,84 @@
       return out;
     };
   } catch (e) {}
+  // ── Fountain A NIGHT ON (Edu, session 42) ───────────────────────────────────
+  // A night hour (Hai of D … Mao of D+1) also switches the fountain ON when:
+  //  1. the water hexagram communicates with the DAY pillar (_ftLinks);
+  //  2. the DAY pillar reaches each person of the house (A and B): it communicates with his
+  //     BIRTH YEAR or BIRTH DAY, or it is one of his CURE hexagrams;
+  //  3. the hour is POSITIVE for both persons in the app's BEST scan (score, scoreA, scoreB > 0)
+  //     with a score of at least _FT_NIGHT_MIN; only ONE hour per night, the best score.
+  // Hours follow the date scanner: Zi starts at solar 23:00 and keeps the day of that date.
+  var _FT_NIGHT_MIN = 20;   // minimum BEST score of the night hour (Edu, session 42)
+  var _FT_NM = ['Zi', 'Chou', 'Yin', 'Mao', 'Chen', 'Si', 'Wu', 'Wei', 'Shen', 'You', 'Xu', 'Hai'];
+  function _ftDatePillars(iso, k) {
+    var p = _dateParts(iso), h = (2 * k + 23) % 24;
+    var ec = Solar.fromYmdHms(p.y, p.mo, p.d, h, 30, 0).getLunar().getEightChar();
+    var dc = Solar.fromYmdHms(p.y, p.mo, p.d, 12, 0, 0).getLunar().getEightChar();
+    return { year: _ftPillar(ec.getYearGan(), ec.getYearZhi()), month: _ftPillar(ec.getMonthGan(), ec.getMonthZhi()),
+             day: _ftPillar(dc.getDayGan(), dc.getDayZhi()), hour: _ftPillar(ec.getTimeGan(), ec.getTimeZhi()) };
+  }
+  function _ftPersonReach(X, pers) {      // [{pillar, how, cure}] : how the date reaches one person
+    var out = [];
+    ['day'].forEach(function (k) {   // Edu, session 42: only the DAY pillar reaches the persons
+      var x = X[k]; if (!x) return;
+      [['year', 'birth year'], ['day', 'birth day']].forEach(function (b) {
+        var n = pers.P[b[0]]; if (!n || n.qi == null) return;
+        var l = _ftLinks(x, n); if (l.length) out.push({ pillar: k, cure: false, how: k + ' ' + x.stem + x.branch + '↔' + b[1] + ' ' + (n.stem || '') + (n.branch || '') + ': ' + l.join(', ') });
+      });
+      if (pers.g) {
+        var kind = null; try { kind = _xkdgRemedyKind(pers.g, pers.P, { qi: x.qi, yun: x.yun, hex: x.hex, stem: x.stem, branch: x.branch }, pers.fams); } catch (e) {}
+        if (kind) out.push({ pillar: k, cure: true, how: k + ' ' + x.stem + x.branch + ' (hex ' + x.hex + ') is a cure' + (kind === 'family' ? ' (family)' : '') });
+      }
+    });
+    return out;
+  }
+  function _ftNightPositive(F, W, start, days, endMs, lon, utc, houseName) {
+    var info = { rows: [] };
+    try {
+      if (typeof personLoaded === 'function' && !personLoaded().any && window.XKDGHouse && typeof window.XKDGHouse.resolveByName === 'function') {
+        var rb = window.XKDGHouse.resolveByName(houseName);
+        if (rb && rb.person && typeof window.fsSetActiveHouse === 'function') window.fsSetActiveHouse(rb.person, rb.index);
+      }
+    } catch (e) {}
+    var PA = (typeof _personAPillars !== 'undefined') ? _personAPillars : null, PB = (typeof _personBPillars !== 'undefined') ? _personBPillars : null;
+    if (!PA || !PA.year || !PB || !PB.year) { info.skipped = 'night rule needs BOTH persons of the house loaded as A and B'; return info; }
+    if (typeof window.runScanner !== 'function') { info.skipped = 'the date scanner is not available here'; return info; }
+    var nmA = ((document.getElementById('person-name') || {}).value || 'Person A'), nmB = ((document.getElementById('person-name-b') || {}).value || 'Person B');
+    var cp = {}; try { (_xkdgCurePersons() || []).forEach(function (q) { cp[q.who] = q; }); } catch (e) {}
+    var persA = { P: PA, g: cp.A && cp.A.g, fams: cp.A && cp.A.fams }, persB = { P: PB, g: cp.B && cp.B.g, fams: cp.B && cp.B.fams };
+    // BEST scan over the range (silent, panel inputs restored) — same as 📅 Days in the PERSON tab
+    var ss = document.getElementById('scan-start'), sd = document.getElementById('scan-days'), box = document.getElementById('scan-results');
+    var s0 = ss && ss.value, d0 = sd && sd.value, disp = box ? box.style.display : '', pos = {};
+    try {
+      if (ss) ss.value = start; if (sd) sd.value = String(days + 1);
+      window._scanSilent = true; window.runScanner();
+      (window._lastScanResults || []).forEach(function (r) { if (r.score > 0 && r.scoreA > 0 && r.scoreB > 0) pos[r.isoDate + '|' + r.hourIndex] = r; });
+    } catch (e) { info.skipped = 'date scan failed'; return info; }
+    finally { window._scanSilent = false; if (ss) ss.value = s0; if (sd) sd.value = d0; if (box) box.style.display = disp; }
+    for (var i = 0; i < days; i++) {
+      var D = _isoPlus(start, i), N = _isoPlus(D, 1), best = null;   // ONE night ON: the highest BEST score
+      // night of D: Hai (D 21:00), Zi (D 23:00, day D as in the scanner), Chou, Yin, Mao (D+1)
+      [[D, 11, 21 * 60], [D, 0, 23 * 60], [N, 1, 60], [N, 2, 180], [N, 3, 300]].forEach(function (c) {
+        var on = _solarToEpoch(c[0], c[2], lon, utc);
+        if (on <= Date.now() - 2 * 3600000 || on >= endMs) return;
+        var r = pos[c[0] + '|' + c[1]]; if (!r) return;
+        var X = _ftDatePillars(c[0], c[1]); if (!X.day || !X.hour) return;
+        var wd = _ftLinks(W, X.day); if (!wd.length) return;
+        var ra = _ftPersonReach(X, persA), rb = _ftPersonReach(X, persB), pair = null;
+        ra.some(function (a) { return rb.some(function (b) { pair = [a, b]; return true; }); });
+        if (!pair || r.score < _FT_NIGHT_MIN) return;
+        if (best && best.score >= r.score) return;
+        best = { score: r.score, row: { date: D, branch: X.hour.stem + X.hour.branch, day: X.day.stem + X.day.branch, night_positive: true, onTs: on,
+          naturalOff: Math.min(_solarToEpoch(N, 21 * 60, lon, utc), endMs),
+          via: 'night ' + _FT_NM[c[1]] + ': water hex ' + W.hex + '↔day ' + X.day.stem + X.day.branch + ': ' + wd.join(', ')
+             + ' · ' + nmA + ': ' + pair[0].how + ' · ' + nmB + ': ' + pair[1].how + ' · BEST score ' + r.score + ' (A ' + r.scoreA + ', B ' + r.scoreB + ')' } };
+      });
+      if (best) info.rows.push(best.row);
+    }
+    info.persons = [nmA, nmB];
+    return info;
+  }
   async function _programFountain(rh, cfg, input, jie) {
     var F = rh.cfg.fountain, lon = rh.cfg.lon, utc = rh.cfg.utc;
     if (typeof window.fsSlotForDeg !== 'function' || typeof Solar === 'undefined') return { error: 'The Feng Shui tables are not available on this page.' };
@@ -7391,6 +7469,23 @@
       scheduled.push({ date: D, branch: pick.branch, day: pick.day, via: pick.via, onTs: pick.on, offTs: offTs,
                        on_local: new Date(pick.on).toString(), off_local: new Date(offTs).toString() });
     }
+    // Fountain A (session 42): extra ON at a positive NIGHT hour; every block runs to its natural OFF,
+    // or stops 1 h before the next ON and switches on again there.
+    var night = null;
+    if (F.nightPositive) {
+      night = _ftNightPositive(F, W, start, days, endMs, lon, utc, F.house || rh.name);
+      if (night.rows.length) {
+        scheduled.forEach(function (s) { s.naturalOff = s.offTs; });
+        var have = {}; scheduled.forEach(function (s) { have[s.onTs] = 1; });
+        night.rows.forEach(function (n) { if (!have[n.onTs]) { scheduled.push(n); have[n.onTs] = 1; } });
+        scheduled.sort(function (a, b) { return a.onTs - b.onTs; });
+        scheduled.forEach(function (s, i) {
+          var nx = scheduled[i + 1], off = s.naturalOff;
+          if (nx && nx.onTs - 3600000 < off) off = Math.max(s.onTs + 3600000, nx.onTs - 3600000);
+          s.offTs = off; s.on_local = new Date(s.onTs).toString(); s.off_local = new Date(off).toString(); delete s.naturalOff;
+        });
+      }
+    }
     var rows = scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; });
     var noShelly = rh.cfg.shelly === false;
     var commit = input.commit === true && !noShelly && !!cfg, workerResp = null, workerErr = null;
@@ -7408,6 +7503,8 @@
         ? 'every morning: the hour closest to Mao (Mao, Chen, Yin, Si) where water hex ' + W.hex + ' communicates with the hour and the hour with the day (or Sheng In / Ke In to it)'
         : 'every evening: Hai or later (Hai, Zi, Chou, Yin, Mao — never before Hai) where water hex ' + W.hex + ' communicates with the hour and the hour with the day (or Sheng In / Ke In to it)',
       days_without_hour: missing.length ? missing : undefined,
+      night_rule: F.nightPositive ? (night && night.skipped ? 'not applied: ' + night.skipped
+        : 'a NIGHT hour (Hai … Mao) also switches ON when the water hex communicates with the day pillar, the day pillar reaches each person (' + ((night && night.persons) || []).join(' and ') + ') through the birth year, the birth day or a cure, and the hour is positive for both in the BEST scan with a score of at least ' + _FT_NIGHT_MIN + '. Only ONE night hour, the best score. It stays ON until the start of Hai (solar 21:00), or goes OFF 1 h before the next ON. Rows with night_positive:true. Found: ' + ((night && night.rows.length) || 0)) : undefined,
       mode: noShelly ? 'by_hand' : (commit ? 'committed' : 'preview'), has_shelly: !noShelly,
       plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
       scheduled_count: scheduled.length, scheduled: scheduled,
