@@ -4,8 +4,9 @@ const fs = require('fs'), path = require('path');
 const { natal, predict, pillars } = require('./heluo_cmp.js');
 const DIR = path.join(__dirname, '..');
 const people = [];
-for (const f of ['famous_politics.json', 'famous_arts.json']) {
-  const p = path.join(DIR, f); if (fs.existsSync(p)) JSON.parse(fs.readFileSync(p)).people.forEach(x => { if (!people.some(y => y.birth.date === x.birth.date && y.birth.time === x.birth.time)) people.push(x); });
+const f0 = pe => pe._file || '';
+for (const f of ['famous_politics.json', 'famous_arts.json', 'famous_violent.json']) {
+  const p = path.join(DIR, f); if (fs.existsSync(p)) JSON.parse(fs.readFileSync(p)).people.forEach(x => { x._file = f; if (!people.some(y => y.birth.date === x.birth.date && y.birth.time === x.birth.time)) people.push(x); });
 }
 // birth clock conventions (Astro-Databank): local mean time before standard zones; Atlanta 1929 on Central time
 const TZ_FIX = { 'Adolf Hitler': 'LMT', 'Charles de Gaulle': 'LMT', 'Martin Luther King Jr.': 'UTC-6',
@@ -22,7 +23,7 @@ for (const pe of people) {
   for (const ev of pe.events) {
     if (ev.date <= b.date) continue;
     const Pe = pillars(ev.date, ev.time, b.lon, b.tz);
-    const r = { name: pe.name, date: ev.date, pol: ev.polarity, what: ev.what };
+    const r = { name: pe.name, date: ev.date, pol: ev.polarity, what: ev.what, violent: !!ev.violent, src: f0(pe) };
     M.forEach(m => { r[m] = predict(N[m], Pe, b.lon); });
     rows.push(r);
   }
