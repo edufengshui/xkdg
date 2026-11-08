@@ -320,7 +320,7 @@
         + '<div><label style="' + L + '">Person</label><select id="hl-p" onchange="xkdgHLPerson()" style="' + F + 'max-width:170px;"></select></div>'
         + '<div><label style="' + L + '">Gender</label><select id="hl-g" onchange="xkdgHLGender()" style="' + F + '"><option value="">—</option><option value="M">Man</option><option value="F">Woman</option></select></div>'
         + '</div><div id="hl-out"></div>'
-        + '<div style="font-size:10px;color:#999;margin-top:10px;line-height:1.5;">Year pillar from the Winter Solstice; month, day and hour in true solar time at the birth place. Calculations only, no interpretations.</div></div>';
+        + '<div style="font-size:10px;color:#999;margin-top:10px;line-height:1.5;">Year pillar from the Winter Solstice; month, day and hour in true solar time at the birth place. Texts: He Luo Li Shu translations by Edu (64 hexagrams and 384 lines).</div></div>';
       document.body.appendChild(ov);
     }
     var list = savedPeople(), sel = $('hl-p'), cur = sel.value;
@@ -329,6 +329,7 @@
       + list.map(function (x) { return '<option value="' + esc(x.name) + '">' + esc(x.name) + '</option>'; }).join('');
     if (cur) { sel.value = cur; if (sel.selectedIndex < 0) sel.selectedIndex = 0; }
     ov.style.display = 'flex';
+    loadTexts();
     xkdgHLPerson();
   }
   function current() {
@@ -374,6 +375,39 @@
     var el = $(id); if (!el) return;
     el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
   };
+  // ── Texts (session 43): Edu's "He Luo Li Shu - The 64 Hexagrams and Age Readings" (heluo-texts.js,
+  // loaded on first open, ~300 KB) ───────────────────────────────────────
+  var _txtLoading = false;
+  function TX() { return root.XKDG_HELUO_TEXTS || null; }
+  function loadTexts() {
+    if (TX() || _txtLoading) return; _txtLoading = true;
+    var sc = document.createElement('script'); sc.src = 'heluo-texts.js';
+    sc.onload = function () { try { if ($('hl-overlay') && $('hl-overlay').style.display !== 'none') render(); } catch (e) {} };
+    sc.onerror = function () { _txtLoading = false; };
+    document.head.appendChild(sc);
+  }
+  var P_ = 'font-size:12px;color:#333;line-height:1.55;margin:4px 0;';
+  function hexText(n, label) {
+    var t = TX() && TX()[n];
+    if (!t) return TX() ? '' : '<div style="font-size:11px;color:#999;margin-top:5px;">Loading texts…</div>';
+    return '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">📖 ' + (label || (n + ' ' + esc(t.title))) + '</summary>'
+      + '<div style="' + P_ + '"><b>' + n + ' ' + esc(t.title) + '</b></div>'
+      + '<div style="' + P_ + '"><b>Judgment:</b> <i>' + esc(t.judgment) + '</i></div>'
+      + '<div style="' + P_ + '"><b>He Luo poem:</b> ' + esc(t.poem) + '</div>'
+      + '<div style="' + P_ + '"><b>Meaning in destiny:</b> ' + esc(t.destiny) + '</div></details>';
+  }
+  function lineBody(n, l, noReading) {
+    var t = TX() && TX()[n], L = t && t.lines && t.lines[l];
+    if (!L) return TX() ? '' : '<div style="font-size:11px;color:#999;">Loading texts…</div>';
+    return '<div style="' + P_ + '"><b>' + n + ' · line ' + l + ' · ' + esc(L.label) + '</b></div>'
+      + '<div style="' + P_ + '"><i>' + esc(L.statement) + '</i></div>'
+      + (L.poem ? '<div style="' + P_ + '">' + esc(L.poem) + '</div>' : '')
+      + (!noReading && L.reading ? '<div style="' + P_ + '"><b>Reading for this age:</b> ' + esc(L.reading) + '</div>' : '');
+  }
+  function lineText(n, l, label, noReading) {
+    var b = lineBody(n, l, noReading); if (!b) return '';
+    return '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">📖 ' + label + '</summary>' + b + '</details>';
+  }
   function cycleTable(title, cy, y0, nowAge, hx) {
     var TD = 'padding:4px 6px;';
     var h = '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">' + title + '</div><table style="border-collapse:collapse;font-size:12px;width:100%;">'
@@ -383,7 +417,7 @@
       h += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + 'border-top:2px solid #b39ddb;"><td style="' + TD + '">' + c.line + '</td><td style="' + TD + '">' + (c.yang ? 'yang · 9' : 'yin · 6') + '</td>'
         + '<td style="' + TD + '">' + c.from + '–' + c.to + '</td><td style="' + TD + '">Dec ' + (y0 + c.from - 2) + ' → Dec ' + (y0 + c.to - 1) + (on ? ' ◀ now' : '') + '</td></tr>'
         + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + cycleHexSvg(hx.lines, c.line, c.from, c.to)
-        + '<div style="text-align:center;font-size:11px;color:#555;">' + hx.n + ' ' + esc(hexName(hx.n)) + ' · line ' + c.line + ' · age ' + c.from + '–' + c.to + '</div></td></tr>';
+        + '<div style="text-align:center;font-size:11px;color:#555;">' + hx.n + ' ' + esc(hexName(hx.n)) + ' · line ' + c.line + ' · age ' + c.from + '–' + c.to + '</div>' + lineBody(hx.n, c.line) + '</td></tr>';
     });
     return h + '</table>';
   }
@@ -403,18 +437,41 @@
       + ' line ' + per.line + ' (' + (per.yang ? 'yang · 9' : 'yin · 6') + ', age ' + per.from + '–' + per.to + ') · year <b>' + a.k + '</b> of ' + a.len
       + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + hexCard('Annual hexagram ' + Y, a.hex, a.moved,
-          '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>', 'Moved this year:') + '</div>';
+          '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
+          + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)'), 'Moved this year:') + '</div>';
     var ms; try { ms = monthStarts(Y); } catch (e) { ms = null; }
     var now = new Date(Date.now() + 8 * 3600000), TD = 'padding:3px 6px;';
-    h += '<table style="border-collapse:collapse;font-size:12px;width:100%;margin-top:8px;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Month</th><th style="' + TD + '">From</th><th style="' + TD + '"></th><th style="' + TD + '">Hexagram</th></tr>';
+    var tb = '<table style="border-collapse:collapse;font-size:12px;width:100%;margin-top:8px;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Month</th><th style="' + TD + '">From</th><th style="' + TD + '"></th><th style="' + TD + '">Hexagram</th></tr>';
+    var today = '';
     for (var i = 0; i < 13; i++) {
       var br = ms ? ms[i].br : (i === 12 ? 0 : i), mo = a.months[br];
       var from = ms ? ms[i].start : null, to = ms ? (ms[i + 1].start || ms[i + 1].end) : null, on = from && now >= from && now < to;
-      h += '<tr style="border-top:1px solid #eee;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + '">' + BRANCHES[br] + ' ' + BR_PY[br] + '</td>'
+      var id = 'hl-mo-' + (++_cycN), blocks = '';
+      if (from) {
+        // Daily lines (Edu's guide, session 43): from the first day of the SOLAR month, 5 days per line of the
+        // monthly hexagram (days 1-5 line 1 … 26-30 line 6), day 31 starts again at line 1.
+        // The Zi row from the Winter Solstice counts its days from Daxue of the previous year.
+        var mStart = from; if (i === 0) { try { mStart = monthStarts(Y - 1)[12].start; } catch (e) {} }
+        var d0 = Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth(), mStart.getUTCDate()), D = 86400000;
+        var endDay = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()); // the Jie day belongs to the new month
+        var nowDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+        var startDay = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
+        for (var k = 0; d0 + k * 5 * D < endDay; k++) {
+          var bS = d0 + k * 5 * D, bE = Math.min(bS + 5 * D, endDay); if (bE <= startDay) continue;
+          var ln = k % 6 + 1, onB = nowDay >= Math.max(bS, startDay) && nowDay < bE;
+          blocks += '<tr style="' + (onB ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="padding:2px 6px;white-space:nowrap;">' + fmtD(new Date(Math.max(bS, startDay))) + ' – ' + fmtD(new Date(bE - D)) + '</td><td style="padding:2px 6px;">line ' + ln + (onB ? ' ◀ today' : '') + '</td></tr>';
+          if (onB) today = '<div style="font-size:12px;margin:8px 0 2px;padding:6px 8px;background:#fff3e0;border-radius:6px;"><b>Today</b>: month ' + BRANCHES[br] + ' · hexagram <b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + ' · day ' + ((nowDay - d0) / D + 1) + ' of the solar month → <b>line ' + ln + '</b>'
+            + lineText(mo.hex.n, ln, 'Line ' + ln + ' of ' + mo.hex.n, true) + '</div>';
+        }
+      }
+      tb += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + '">' + BRANCHES[br] + ' ' + BR_PY[br] + '</td>'
         + '<td style="' + TD + '">' + (from ? fmtD(from) + (i === 0 ? ' (WS)' : '') : '') + (on ? ' ◀ now' : '') + '</td>'
-        + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + '</td></tr>';
+        + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + '</td></tr>'
+        + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">'
+        + (blocks ? '<div style="font-size:11px;color:#777;margin:2px 0;">Daily lines (5 days per line)</div><table style="border-collapse:collapse;font-size:12px;">' + blocks + '</table>' : '')
+        + hexText(mo.hex.n) + '</td></tr>';
     }
-    return h + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie (Beijing dates). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
+    return h + today + tb + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie (Beijing dates). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
   }
   function render() {
     var out = $('hl-out'), c = current();
@@ -440,9 +497,9 @@
       + 'Heaven trigram ' + (R.heavenUp ? 'on top' : 'below') + ' · ' + (I.o.yangDun ? 'Yang Dun' : 'Yin Dun') + ' · ' + SEASON[I.o.season] + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + hexCard('Xian Tian 先天 (Pre-Heaven)', R.xianTian, R.moving.line,
-          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionXT) + ' · proper support ' + yn(R.supportXT) + (R.prevailingXT ? '<br>Prevailing: ' + R.prevailingXT : '') + '</div>')
+          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionXT) + ' · proper support ' + yn(R.supportXT) + (R.prevailingXT ? '<br>Prevailing: ' + R.prevailingXT : '') + '</div>' + hexText(R.xianTian.n))
       + (R.houTian ? hexCard('Hou Tian 後天 (Post-Heaven)' + (R.houTian.rule === 'special' ? ' · special 29/3/39' : ''), R.houTian.hex, R.houTian.line,
-          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionHT) + ' · proper support ' + yn(R.supportHT) + (R.prevailingHT ? '<br>Prevailing: ' + R.prevailingHT : '') + '</div>') : '')
+          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionHT) + ' · proper support ' + yn(R.supportHT) + (R.prevailingHT ? '<br>Prevailing: ' + R.prevailingHT : '') + '</div>' + hexText(R.houTian.hex.n)) : '')
       + '</div>'
       + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;">'
       + small('Hu Gua XT', R.huXT) + (R.huHT ? small('Hu Gua HT', R.huHT) : '')
