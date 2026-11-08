@@ -2,7 +2,7 @@
 //  XKDG DATA (from xkdg_hex.js)
 // ─────────────────────────────────────────────
 const XKDG_TABLE = {
-    '甲子': { hex: 2,  qi: 1, yun: 8, alt: { hex: 24, qi: 1, yun: 1 } }, '乙丑': { hex: 21, qi: 3, yun: 6 },
+    '甲子': { hex: 2,  qi: 1, yun: 1, alt: { hex: 24, qi: 1, yun: 8 } }, '乙丑': { hex: 21, qi: 3, yun: 6 },
     '丙寅': { hex: 37, qi: 2, yun: 4 }, '丁卯': { hex: 41, qi: 6, yun: 9 },
     '戊辰': { hex: 10, qi: 9, yun: 6 }, '己巳': { hex: 34, qi: 8, yun: 2 },
     '庚午': { hex: 32, qi: 8, yun: 9 }, '辛未': { hex: 6,  qi: 9, yun: 3 },
@@ -2477,7 +2477,7 @@ function calculateBazi() {
     const _bzD = dVal.split('-').map(Number);
     const _bzT = (tVal || '00:00').split(':').map(Number);
     const _bzTz = -(utc * 60 + (_dstOn ? 60 : 0));   // (UTC - local) minutes, incl. DST
-    let pillarKeys, solarDate, _tstShow, dayGan, dayZhi;
+    let pillarKeys, solarDate, _tstShow, dayGan, dayZhi, _bjDate = null;
     if (typeof XKDGSolarTime !== 'undefined' && isFinite(lon)) {
         const P = XKDGSolarTime.pillarsFromCivil(_bzD[0], _bzD[1], _bzD[2], _bzT[0] || 0, _bzT[1] || 0, 0, lon, _bzTz);
         pillarKeys = {
@@ -2488,6 +2488,7 @@ function calculateBazi() {
         };
         const t = P.meta.tst;
         solarDate = new Date(t.y, t.mo - 1, t.d, t.h, t.mi, t.s || 0);
+        try { const bj = P.meta.beijing; _bjDate = new Date(bj.y, bj.mo - 1, bj.d, bj.h, bj.mi, bj.s || 0); } catch (e) {}
         _tstShow = String(t.h).padStart(2, '0') + ':' + String(t.mi).padStart(2, '0');
     } else {
         // Fallback (TST engine or longitude unavailable): legacy longitude+DST, 23:00 day edge.
@@ -2554,6 +2555,14 @@ function calculateBazi() {
     updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, nayinOf(pillarKeys.month));
     updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   nayinOf(pillarKeys.day));
     updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  nayinOf(pillarKeys.hour));
+    // Session 43 (Edu): Tai Sui / Sui Po / Five Yellow / San Sha / Wu Ji of this date (time-afflictions.js).
+    try {
+        if (window.XKDGAfflictions) XKDGAfflictions.update({
+            pillars: { hour: pillarKeys.hour.stem + pillarKeys.hour.branch, day: pillarKeys.day.stem + pillarKeys.day.branch,
+                       month: pillarKeys.month.stem + pillarKeys.month.branch, year: pillarKeys.year.stem + pillarKeys.year.branch },
+            beijing: _bjDate || solarDate, tst: solarDate, label: dVal + ' ' + (tVal || '') + ' (TST ' + _tstShow + ')'
+        });
+    } catch (eAff) { console.warn('afflictions', eAff); }
 
     const { strong: seasonStrong, growing: seasonGrowing } = getJieqiSeason(solarDate);
 
