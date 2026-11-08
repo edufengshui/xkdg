@@ -234,7 +234,8 @@
     }
 
     // Great Sun formula (house renovation), session 43 (Edu), as the reference calculator
-    // (bazi-calculator.com, Date Selection) gives it: active for the house FACING the Sun's
+    // (bazi-calculator.com, Date Selection) gives it — CONFIRMED by Edu: for renovation works only;
+    // Edu's own Sun/Moon formula is for events, happenings and meetings: active for the house FACING the Sun's
     // mountain, and for the houses SITTING on the Sun's mountain or on its two trine partners
     // (facing = the opposite mountain). Example 小暑 (Sun on 丁): S3 丁, N3 癸, SE2 巽, W1 庚.
     var g = trineGroup(sunMtn), opp = function (m) { return MTN_CHAR[(mtnIdx(m) + 12) % 24]; };
@@ -261,6 +262,7 @@
 
     var lines = [];
     if (houseInfo) {
+      lines.push('Events, happenings, meetings:');
       lines.push('\u2600\uFE0F Sun (facing \u5411): ' + trioLine(houseInfo.sun.trio));
       lines.push('\uD83C\uDF19 Moon (sitting \u5C71): ' + trioLine(houseInfo.moon.trio));
     } else {
@@ -274,7 +276,7 @@
       if (currentInfo.renovation) {
         var hf = houseInfo ? houseInfo.facingMountain : null;
         lines.push('\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
-        lines.push('\uD83C\uDFD7\uFE0F Great Sun formula (renovation, ' + currentInfo.sun.range + '): houses facing ' +
+        lines.push('\uD83C\uDFD7\uFE0F Great Sun formula \u2014 renovation works only (' + currentInfo.sun.range + '): houses facing ' +
           currentInfo.renovation.map(function (r) { return r.label + (r.mountain === hf ? ' \u2190 this house' : ''); }).join(', '));
         if (hf) lines.push(currentInfo.renovation.some(function (r) { return r.mountain === hf; })
           ? '\u2705 This house (' + mtnLabel(hf) + ') is active now.' : 'This house (' + mtnLabel(hf) + ') is not active now.');
