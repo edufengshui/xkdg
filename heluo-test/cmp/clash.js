@@ -9,7 +9,8 @@ const BR = '子丑寅卯辰巳午未申酉戌亥';
 const NJ = { Qian: ['子寅辰', '午申戌'], Kun: ['未巳卯', '丑亥酉'], Zhen: ['子寅辰', '午申戌'], Xun: ['丑亥酉', '未巳卯'],
   Kan: ['寅辰午', '申戌子'], Li: ['卯丑亥', '酉未巳'], Gen: ['辰午申', '戌子寅'], Dui: ['巳卯丑', '亥酉未'] };
 const HEX = {}; for (let i = 0; i < 64; i++) { const l = [...Array(6)].map((_, j) => (i >> j) & 1), h = H.hexOf(l); HEX[h.n] = h; }
-const lineBr = (n, line) => { const h = HEX[n]; return line <= 3 ? NJ[h.lower][0][line - 1] : NJ[h.upper][1][line - 4]; };
+const NAJIA = require('../../heluo-najia.js');
+const lineBr = (n, line) => NAJIA[n].lines[line - 1].branch;
 const monthBr = d => { const [y, m, dd] = d.split('-').map(Number); return Solar.fromYmdHms(y, m, dd, 12, 0, 0).getLunar().getMonthZhiExact(); };
 const clash = (a, b) => (BR.indexOf(a) - BR.indexOf(b) + 12) % 12 === 6;
 // controllo con Diana

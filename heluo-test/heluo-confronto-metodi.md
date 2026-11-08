@@ -31,3 +31,9 @@ heluo_cmp.js trova solar-time.js e heluo-lishu.js nella cartella sopra (o in $XK
 - Conclusione: il segnale del primo test era un caso del campione piccolo.
 
 Risultati completi: HeLuo_violenti_allargato.xlsx (Riepilogo, Dettaglio violenti, Personaggi nuovi, Eventi nuovi con fonte, Esclusi).
+
+### Regola clash (Edu, su Diana)
+Linea annuale mossa (ramo Na Jia) in clash col ramo del mese → lettura negativa. Test (cmp/clash.js, Diana esclusa): clash nel 5% dei violenti contro il 9% dei successi in A e B, 10% contro 9% in C → la regola non distingue.
+
+### Na Jia dei 64 esagrammi
+heluo-najia.js (radice del repo): palazzo, Shi/Ying, ramo, elemento, sei relazioni e spirito nascosto per ogni linea, generato da liuyao.js del repo trading. Non è ancora collegato all'app.
