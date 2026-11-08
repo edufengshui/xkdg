@@ -1,0 +1,497 @@
+[
+ {
+  "name": "Gerald Ford",
+  "sex": "M",
+  "birth": {
+   "date": "1913-07-14",
+   "time": "00:43",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Omaha, USA",
+   "lat": 41.2586,
+   "lon": -95.9378,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Gerald_Ford",
+   "note": "Fonte: birth certificate (Lois Rodden). Fuso dedotto: ASC/MC astrotheme (13°11' Tau / 24°26' Cap) coincidono con CST -6."
+  },
+  "events": [
+   {
+    "date": "1975-09-05",
+    "pol": "-",
+    "violent": true,
+    "what": "Attentato fallito a Sacramento (Lynette 'Squeaky' Fromme)",
+    "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Gerald_Ford_in_San_Francisco"
+   },
+   {
+    "date": "1975-09-22",
+    "pol": "-",
+    "violent": true,
+    "what": "Attentato fallito a San Francisco (Sara Jane Moore spara)",
+    "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Gerald_Ford_in_San_Francisco"
+   },
+   {
+    "date": "1973-12-06",
+    "pol": "+",
+    "violent": false,
+    "what": "Giura come Vicepresidente degli USA",
+    "source": "https://www.presidency.ucsb.edu/documents/gerald-r-ford-event-timeline"
+   },
+   {
+    "date": "1974-08-09",
+    "pol": "+",
+    "violent": false,
+    "what": "Giura come 38º Presidente degli USA",
+    "source": "https://www.presidency.ucsb.edu/documents/gerald-r-ford-event-timeline"
+   },
+   {
+    "date": "1975-08-01",
+    "pol": "+",
+    "violent": false,
+    "what": "Firma dell'Atto finale di Helsinki",
+    "source": "https://en.wikipedia.org/wiki/Helsinki_Accords"
+   }
+  ]
+ },
+ {
+  "name": "George Wallace",
+  "sex": "M",
+  "birth": {
+   "date": "1919-08-25",
+   "time": "03:30",
+   "utcOffset": -5,
+   "lmt": false,
+   "place": "Clio, Alabama, USA",
+   "lat": 31.7088,
+   "lon": -85.6105,
+   "rodden": "A",
+   "sourceBirth": "https://www.astrotheme.com/astrology/George_Wallace",
+   "note": "Fonte: from memory or autobiography (Lois Rodden). Fuso dedotto da MC astrotheme 15°40' Ari = CDT -5."
+  },
+  "events": [
+   {
+    "date": "1972-05-15",
+    "pol": "-",
+    "violent": true,
+    "what": "Colpito da 4-5 proiettili a Laurel (Maryland) da Arthur Bremer, resta paralizzato",
+    "source": "https://en.wikipedia.org/wiki/George_Wallace"
+   },
+   {
+    "date": "1963-01-14",
+    "pol": "+",
+    "violent": false,
+    "what": "Primo insediamento come Governatore dell'Alabama",
+    "source": "https://en.wikipedia.org/wiki/George_Wallace"
+   },
+   {
+    "date": "1971-01-18",
+    "pol": "+",
+    "violent": false,
+    "what": "Secondo insediamento come Governatore",
+    "source": "https://en.wikipedia.org/wiki/George_Wallace"
+   },
+   {
+    "date": "1972-05-16",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince le primarie democratiche di Michigan e Maryland",
+    "source": "https://www.newsfromthestates.com/article/day-1972-segregationist-george-wallace-wins-mich-democratic-presidential-primary%C2%A0"
+   },
+   {
+    "date": "1983-01-17",
+    "pol": "+",
+    "violent": false,
+    "what": "Insediamento per il quarto mandato da Governatore",
+    "source": "https://en.wikipedia.org/wiki/George_Wallace"
+   }
+  ]
+ },
+ {
+  "name": "Papa Giovanni Paolo II (Karol Wojtyla)",
+  "sex": "M",
+  "birth": {
+   "date": "1920-05-18",
+   "time": "17:30",
+   "utcOffset": 2,
+   "lmt": false,
+   "place": "Wadowice, Polonia",
+   "lat": 49.8833,
+   "lon": 19.4931,
+   "rodden": "A",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Pope_John_Paul_II",
+   "note": "Fonte: from memory or autobiography (Grazia Bordoni). Ora dichiarata dal Papa stesso (tra 17 e 18 circa): dato debole. Fuso dedotto da MC astrotheme 5°38' Leo = +2."
+  },
+  "events": [
+   {
+    "date": "1944-02-29",
+    "pol": "-",
+    "violent": true,
+    "what": "Investito da un camion tedesco, ricoverato con commozione cerebrale",
+    "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II"
+   },
+   {
+    "date": "1981-05-13",
+    "pol": "-",
+    "violent": true,
+    "what": "Colpito da Ali Agca in Piazza San Pietro",
+    "source": "https://www.cbc.ca/news/world/pope-john-paul-injured-in-1982-knife-attack-says-aide-1.694776"
+   },
+   {
+    "date": "1982-05-12",
+    "pol": "-",
+    "violent": true,
+    "what": "Accoltellato (ferita lieve, tenuta segreta) a Fatima da un prete integralista",
+    "source": "https://www.cbc.ca/news/world/pope-john-paul-injured-in-1982-knife-attack-says-aide-1.694776"
+   },
+   {
+    "date": "1958-09-28",
+    "pol": "+",
+    "violent": false,
+    "what": "Consacrazione episcopale nella cattedrale del Wawel",
+    "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II"
+   },
+   {
+    "date": "1967-06-26",
+    "pol": "+",
+    "violent": false,
+    "what": "Creato cardinale da Paolo VI",
+    "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II"
+   },
+   {
+    "date": "1978-10-16",
+    "pol": "+",
+    "violent": false,
+    "what": "Eletto Papa",
+    "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II"
+   },
+   {
+    "date": "1978-10-22",
+    "pol": "+",
+    "violent": false,
+    "what": "Messa di inizio pontificato",
+    "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II"
+   },
+   {
+    "date": "1979-06-02",
+    "pol": "+",
+    "violent": false,
+    "what": "Messa in Piazza della Vittoria a Varsavia (primo viaggio in Polonia)",
+    "source": "https://www.ewtn.com/catholicism/library/holy-mass-victory-square-2-june-1979-24879"
+   }
+  ]
+ },
+ {
+  "name": "Papa Paolo VI (Giovanni Battista Montini)",
+  "sex": "M",
+  "birth": {
+   "date": "1897-09-26",
+   "time": "22:30",
+   "utcOffset": 1,
+   "lmt": false,
+   "place": "Concesio, Italia",
+   "lat": 45.6036,
+   "lon": 10.2172,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Pope_Paul_VI",
+   "note": "Fonte: birth certificate (Lois Rodden). Offset +1 = CET legale in Italia dal 1893. DUBBIO: astrotheme non mostra l'offset e il suo tema (ASC 7°07' Can, MC 10°10' Pis) torna solo con ~+0:48; con CET +1 MC = 6°56' Pis. Da decidere."
+  },
+  "events": [
+   {
+    "date": "1970-11-27",
+    "pol": "-",
+    "violent": true,
+    "what": "Aggredito con un coltello all'aeroporto di Manila",
+    "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI"
+   },
+   {
+    "date": "1958-12-15",
+    "pol": "+",
+    "violent": false,
+    "what": "Creato cardinale",
+    "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI"
+   },
+   {
+    "date": "1963-06-21",
+    "pol": "+",
+    "violent": false,
+    "what": "Eletto Papa",
+    "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI"
+   },
+   {
+    "date": "1963-06-30",
+    "pol": "+",
+    "violent": false,
+    "what": "Incoronazione",
+    "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI"
+   },
+   {
+    "date": "1965-12-08",
+    "pol": "+",
+    "violent": false,
+    "what": "Chiusura del Concilio Vaticano II",
+    "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI"
+   }
+  ]
+ },
+ {
+  "name": "Nicolae Ceausescu",
+  "sex": "M",
+  "birth": {
+   "date": "1918-02-05",
+   "time": "12:00",
+   "utcOffset": 1.74,
+   "lmt": false,
+   "place": "Scornicesti, Romania",
+   "lat": 44.5667,
+   "lon": 24.55,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Nicolae_Ceausescu",
+   "note": "Fonte: birth record (Lois Rodden). Data gregoriana = 23 gen 1918 calendario giuliano; ora 12 (mezzogiorno) scritta nell'atto di nascita (newsweek.ro). Ora tonda ma documentata. Fuso: ora media di Bucarest +1:44:24 (ufficiale fino al 1931), confermata da ASC 8°06' Gem."
+  },
+  "events": [
+   {
+    "date": "1989-12-25",
+    "pol": "-",
+    "violent": true,
+    "what": "Processato e fucilato con la moglie a Targoviste",
+    "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu"
+   },
+   {
+    "date": "1965-03-22",
+    "pol": "+",
+    "violent": false,
+    "what": "Eletto Segretario generale del Partito comunista romeno",
+    "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu"
+   },
+   {
+    "date": "1968-08-21",
+    "pol": "+",
+    "violent": false,
+    "what": "Discorso di condanna dell'invasione della Cecoslovacchia, apice di popolarità",
+    "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu"
+   },
+   {
+    "date": "1974-03-28",
+    "pol": "+",
+    "violent": false,
+    "what": "Diventa Presidente della Romania",
+    "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu"
+   }
+  ]
+ },
+ {
+  "name": "Malcolm X",
+  "sex": "M",
+  "birth": {
+   "date": "1925-05-19",
+   "time": "22:25",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Omaha, USA",
+   "lat": 41.2586,
+   "lon": -95.9378,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Malcolm_X",
+   "note": "Fonte: birth certificate (Sy Scholfield). Fuso dedotto da MC 29°43' Lib = CST -6."
+  },
+  "events": [
+   {
+    "date": "1965-02-14",
+    "pol": "-",
+    "violent": true,
+    "what": "Casa di East Elmhurst (Queens) incendiata con molotov mentre la famiglia dormiva",
+    "source": "https://en.wikipedia.org/wiki/Assassination_of_Malcolm_X"
+   },
+   {
+    "date": "1965-02-21",
+    "pol": "-",
+    "violent": true,
+    "what": "Assassinato all'Audubon Ballroom (Manhattan)",
+    "source": "https://en.wikipedia.org/wiki/Assassination_of_Malcolm_X"
+   },
+   {
+    "date": "1964-04-03",
+    "pol": "+",
+    "violent": false,
+    "what": "Discorso 'The Ballot or the Bullet' a Cleveland",
+    "source": "https://teachingamericanhistory.org/document/the-ballot-or-the-bullet-2/"
+   },
+   {
+    "date": "1964-06-28",
+    "pol": "+",
+    "violent": false,
+    "what": "Fonda l'Organization of Afro-American Unity",
+    "source": "https://www.alkalimat.org/brothermalcolm/omaha_chrono.htm"
+   },
+   {
+    "date": "1964-12-03",
+    "pol": "+",
+    "violent": false,
+    "what": "Dibattito alla Oxford Union",
+    "source": "https://www.history.ox.ac.uk/node/20466"
+   }
+  ]
+ },
+ {
+  "name": "Harvey Milk",
+  "sex": "M",
+  "birth": {
+   "date": "1930-05-22",
+   "time": "01:30",
+   "utcOffset": -4,
+   "lmt": false,
+   "place": "Woodmere, New York, USA",
+   "lat": 40.632,
+   "lon": -73.7126,
+   "rodden": "A",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Harvey_Milk",
+   "note": "Fonte: from memory or autobiography (Lois Rodden). Fuso dedotto da MC 9°35' Sag = EDT -4."
+  },
+  "events": [
+   {
+    "date": "1978-11-27",
+    "pol": "-",
+    "violent": true,
+    "what": "Assassinato da Dan White nel municipio di San Francisco",
+    "source": "https://en.wikipedia.org/wiki/Harvey_Milk"
+   },
+   {
+    "date": "1977-11-08",
+    "pol": "+",
+    "violent": false,
+    "what": "Eletto al Board of Supervisors di San Francisco",
+    "source": "https://en.wikipedia.org/wiki/Harvey_Milk"
+   },
+   {
+    "date": "1978-01-08",
+    "pol": "+",
+    "violent": false,
+    "what": "Insediamento come Supervisor",
+    "source": "https://en.wikipedia.org/wiki/Harvey_Milk"
+   },
+   {
+    "date": "1978-11-07",
+    "pol": "+",
+    "violent": false,
+    "what": "Sconfitta della Briggs Initiative (Proposition 6)",
+    "source": "https://en.wikipedia.org/wiki/Harvey_Milk"
+   }
+  ]
+ },
+ {
+  "name": "Jair Bolsonaro",
+  "sex": "M",
+  "birth": {
+   "date": "1955-03-21",
+   "time": "14:45",
+   "utcOffset": -3,
+   "lmt": false,
+   "place": "Glicério, São Paulo, Brasile",
+   "lat": -21.3811,
+   "lon": -50.2125,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Jair_Bolsonaro",
+   "note": "Fonte: birth certificate (Frank C. Clifford). Fuso dedotto da MC 6°51' Tau = -3."
+  },
+  "events": [
+   {
+    "date": "2018-09-06",
+    "pol": "-",
+    "violent": true,
+    "what": "Accoltellato all'addome durante un comizio a Juiz de Fora",
+    "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Jair_Bolsonaro"
+   },
+   {
+    "date": "2018-10-07",
+    "pol": "+",
+    "violent": false,
+    "what": "Primo al primo turno delle presidenziali",
+    "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Jair_Bolsonaro"
+   },
+   {
+    "date": "2018-10-28",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince il ballottaggio, eletto Presidente",
+    "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Jair_Bolsonaro"
+   },
+   {
+    "date": "2019-01-01",
+    "pol": "+",
+    "violent": false,
+    "what": "Insediamento come Presidente del Brasile",
+    "source": "https://wikiwand.com/simple/Jair_Bolsonaro"
+   }
+  ]
+ },
+ {
+  "name": "Huey Long",
+  "sex": "M",
+  "birth": {
+   "date": "1893-08-30",
+   "time": "04:15",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Winnfield, Louisiana, USA",
+   "lat": 31.9257,
+   "lon": -92.6413,
+   "rodden": "A",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Huey_P._Long",
+   "note": "Fonte: from memory or autobiography (Lois Rodden). Fuso dedotto da MC 12°24' Tau = CST -6. Solo 2 trionfi: data insediamento governatore discordante (21/5/1928 Wikipedia vs 28/5 New World Encyclopedia), scartata."
+  },
+  "events": [
+   {
+    "date": "1935-09-08",
+    "pol": "-",
+    "violent": true,
+    "what": "Colpito da Carl Weiss nel Campidoglio di Baton Rouge, muore il 10/9",
+    "source": "https://en.wikipedia.org/wiki/Huey_Long"
+   },
+   {
+    "date": "1930-09-09",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince le primarie democratiche per il Senato contro Ransdell",
+    "source": "https://newworldencyclopedia.org/entry/Huey_Long"
+   },
+   {
+    "date": "1932-01-25",
+    "pol": "+",
+    "violent": false,
+    "what": "Prende il seggio al Senato degli USA",
+    "source": "https://en.wikipedia.org/wiki/Huey_Long"
+   }
+  ]
+ },
+ {
+  "name": "Arciduca Francesco Ferdinando d'Austria",
+  "sex": "M",
+  "birth": {
+   "date": "1863-12-18",
+   "time": "07:15",
+   "utcOffset": null,
+   "lmt": true,
+   "place": "Graz, Austria",
+   "lat": 47.0707,
+   "lon": 15.4395,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Archduke_Franz_Ferdinand_of_Austria",
+   "note": "Fonte: birth record (Arno Müller, Sy Scholfield). Ora media locale di Graz (MC 16°21' Lib torna con LMT +1:01:45). Solo 1 trionfo con data certa al giorno (nomina a Ispettore generale 1913 e successione 1896 senza giorno verificato)."
+  },
+  "events": [
+   {
+    "date": "1914-06-28",
+    "pol": "-",
+    "violent": true,
+    "what": "Bomba di Cabrinovic schivata e poi ucciso a colpi di pistola da Gavrilo Princip a Sarajevo",
+    "source": "https://cavac.at/cavacopedia/Archduke_Franz_Ferdinand_of_Austria"
+   },
+   {
+    "date": "1900-07-01",
+    "pol": "+",
+    "violent": false,
+    "what": "Matrimonio con Sophie Chotek a Reichstadt, dopo anni di opposizione dell'imperatore",
+    "source": "https://cavac.at/cavacopedia/Archduke_Franz_Ferdinand_of_Austria"
+   }
+  ]
+ }
+]

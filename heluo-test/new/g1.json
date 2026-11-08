@@ -1,0 +1,65 @@
+[
+{"name":"Indira Gandhi","sex":"F",
+ "birth":{"date":"1917-11-19","time":"23:11","utcOffset":5.5,"lmt":false,"place":"Allahabad, India","lat":25.4358,"lon":81.8463,"rodden":"A","sourceBirth":"https://www.astrotheme.com/astrology/Indira_Gandhi","note":"Fonte: memoria/autobiografia (Jansky). Offset non mostrato in chiaro: +5.5 ricavato verificando ASC 20°05' Leo / MC 17°44' Tau di astrotheme."},
+ "events":[
+  {"date":"1984-10-31","pol":"-","violent":true,"what":"Assassinata a colpi d'arma da fuoco dalle sue guardie del corpo sikh a Nuova Delhi","source":"https://en.wikipedia.org/wiki/Indira_Gandhi"},
+  {"date":"1966-01-24","pol":"+","violent":false,"what":"Diventa Primo ministro dell'India (primo mandato)","source":"https://en.wikipedia.org/wiki/Indira_Gandhi"},
+  {"date":"1971-12-16","pol":"+","violent":false,"what":"Resa del Pakistan: vittoria nella guerra del 1971 (nascita del Bangladesh)","source":"https://en.wikipedia.org/wiki/Indira_Gandhi"},
+  {"date":"1974-05-18","pol":"+","violent":false,"what":"Primo test nucleare indiano (Smiling Buddha, Pokhran) da lei autorizzato","source":"https://en.wikipedia.org/wiki/Smiling_Buddha"},
+  {"date":"1980-01-14","pol":"+","violent":false,"what":"Torna Primo ministro dopo la vittoria elettorale","source":"https://en.wikipedia.org/wiki/Indira_Gandhi"}
+ ]},
+{"name":"Rajiv Gandhi","sex":"M",
+ "birth":{"date":"1944-08-20","time":"06:34","utcOffset":4.85,"lmt":false,"place":"Mumbai, India","lat":18.975,"lon":72.826,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Rajiv_Gandhi","note":"Fonte: atto di nascita (Clifford). Offset non mostrato in chiaro: astrotheme (ASC 8°09' Vir, MC 8°36' Gem) calcola con Bombay Time +4:51; con l'ora di guerra IST+1 (+6.5) l'ASC sarebbe 15° Leo. DUBBIO sul fuso."},
+ "events":[
+  {"date":"1986-10-02","pol":"-","violent":true,"what":"Attentato fallito a Raj Ghat (Delhi): un sikh gli spara con arma artigianale","source":"https://en.wikipedia.org/wiki/List_of_assassination_attempts_on_prime_ministers_of_India"},
+  {"date":"1987-07-30","pol":"-","violent":true,"what":"Colpito col calcio del fucile da un marinaio della guardia d'onore a Colombo","source":"https://en.wikipedia.org/wiki/Rajiv_Gandhi"},
+  {"date":"1991-05-21","pol":"-","violent":true,"what":"Assassinato da un'attentatrice suicida a Sriperumbudur","source":"https://en.wikipedia.org/wiki/Rajiv_Gandhi"},
+  {"date":"1984-10-31","pol":"+","violent":false,"what":"Nominato Primo ministro (stesso giorno dell'assassinio della madre)","source":"https://en.wikipedia.org/wiki/Rajiv_Gandhi"},
+  {"date":"1984-12-31","pol":"+","violent":false,"what":"Giura come Primo ministro dopo la storica vittoria elettorale (414 seggi)","source":"https://en.wikipedia.org/wiki/Rajiv_Gandhi"},
+  {"date":"1985-07-24","pol":"+","violent":false,"what":"Firma l'accordo Rajiv-Longowal sul Punjab","source":"https://en.wikipedia.org/wiki/Rajiv%E2%80%93Longowal_Accord"},
+  {"date":"1987-07-29","pol":"+","violent":false,"what":"Firma l'accordo indo-srilankese a Colombo","source":"https://en.wikipedia.org/wiki/Indo-Lanka_Accord"}
+ ]},
+{"name":"Aldo Moro","sex":"M",
+ "birth":{"date":"1916-09-23","time":"09:00","utcOffset":2,"lmt":false,"place":"Maglie, Italia","lat":40.1186,"lon":18.2972,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Aldo_Moro","note":"Fonte: atto di nascita. Ora tonda ma AA da registro. +2 = ora legale italiana 1916 (verificato: ASC 27°55' Lib, MC 2°49' Leo)."},
+ "events":[
+  {"date":"1978-03-16","pol":"-","violent":true,"what":"Rapito dalle Brigate Rosse in via Fani (scorta uccisa); ucciso il 9 maggio 1978","source":"https://en.wikipedia.org/wiki/Kidnapping_and_murder_of_Aldo_Moro"},
+  {"date":"1959-03-14","pol":"+","violent":false,"what":"Eletto segretario della Democrazia Cristiana","source":"https://it.wikipedia.org/wiki/Segretari_della_Democrazia_Cristiana"},
+  {"date":"1963-12-05","pol":"+","violent":false,"what":"Giura come Presidente del Consiglio (governo Moro I, primo centro-sinistra organico)","source":"https://it.wikipedia.org/wiki/Governo_Moro_I"},
+  {"date":"1974-11-23","pol":"+","violent":false,"what":"Giura di nuovo come Presidente del Consiglio (governo Moro IV)","source":"https://en.wikipedia.org/wiki/Aldo_Moro"}
+ ]},
+{"name":"Olof Palme","sex":"M",
+ "birth":{"date":"1927-01-30","time":"05:15","utcOffset":1,"lmt":false,"place":"Stoccolma, Svezia","lat":59.3326,"lon":18.0649,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Olof_Palme","note":"Fonte: atto di nascita. Offset +1 verificato (ASC 16°23' Sag, MC 2°24' Sco)."},
+ "events":[
+  {"date":"1986-02-28","pol":"-","violent":true,"what":"Assassinato a colpi di pistola in una via di Stoccolma (23:21)","source":"https://en.wikipedia.org/wiki/Assassination_of_Olof_Palme"},
+  {"date":"1969-10-14","pol":"+","violent":false,"what":"Eletto leader socialdemocratico e diventa Primo ministro","source":"https://en.wikipedia.org/wiki/Olof_Palme"},
+  {"date":"1982-09-19","pol":"+","violent":false,"what":"Vince le elezioni politiche, ritorno al potere dopo 6 anni","source":"https://en.wikipedia.org/wiki/1982_Swedish_general_election"},
+  {"date":"1982-10-08","pol":"+","violent":false,"what":"Torna Primo ministro (secondo mandato)","source":"https://en.wikipedia.org/wiki/Olof_Palme"}
+ ]},
+{"name":"Anna Lindh","sex":"F",
+ "birth":{"date":"1957-06-19","time":"22:25","utcOffset":1,"lmt":false,"place":"Ludvika, Svezia","lat":60.1496,"lon":15.1878,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Anna_Lindh","note":"Fonte: atto di nascita. Offset +1 verificato (ASC 17°03' Cap, MC 6°09' Sag)."},
+ "events":[
+  {"date":"2003-09-10","pol":"-","violent":true,"what":"Accoltellata nel grande magazzino NK di Stoccolma; muore l'11 settembre","source":"https://en.wikipedia.org/wiki/Anna_Lindh"},
+  {"date":"1982-09-19","pol":"+","violent":false,"what":"Eletta deputata al Riksdag","source":"https://en.wikipedia.org/wiki/Anna_Lindh"},
+  {"date":"1994-10-07","pol":"+","violent":false,"what":"Nominata Ministra dell'Ambiente","source":"https://en.wikipedia.org/wiki/Anna_Lindh"},
+  {"date":"1998-10-07","pol":"+","violent":false,"what":"Nominata Ministra degli Esteri","source":"https://en.wikipedia.org/wiki/Anna_Lindh"}
+ ]},
+{"name":"Benigno Aquino Jr.","sex":"M",
+ "birth":{"date":"1932-11-27","time":"00:01","utcOffset":8,"lmt":false,"place":"Concepcion, Tarlac, Filippine","lat":15.3245,"lon":120.6556,"rodden":"A","sourceBirth":"https://www.astrotheme.com/astrology/Benigno_Aquino_Jr.","note":"Fonte: news report (Rodden). Offset +8 verificato (ASC 7°01' Vir, MC 8°02' Gem). Ora 00:01 sospetta (convenzione 'mezzanotte'?)."},
+ "events":[
+  {"date":"1983-08-21","pol":"-","violent":true,"what":"Assassinato con un colpo alla testa all'aeroporto di Manila al rientro dall'esilio","source":"https://en.wikipedia.org/wiki/Ninoy_Aquino"},
+  {"date":"1954-10-14","pol":"+","violent":false,"what":"Insignito della Legion d'Onore filippina (grado di Commander)","source":"https://en.wikipedia.org/wiki/Ninoy_Aquino"},
+  {"date":"1955-12-30","pol":"+","violent":false,"what":"Entra in carica come sindaco di Concepcion (22 anni)","source":"https://en.wikipedia.org/wiki/Ninoy_Aquino"},
+  {"date":"1961-02-16","pol":"+","violent":false,"what":"Assume la carica di governatore di Tarlac","source":"https://en.wikipedia.org/wiki/Ninoy_Aquino"},
+  {"date":"1967-11-14","pol":"+","violent":false,"what":"Eletto senatore (secondo più votato)","source":"https://en.wikipedia.org/wiki/1967_Philippine_Senate_election"}
+ ]},
+{"name":"Hendrik Verwoerd","sex":"M",
+ "birth":{"date":"1901-09-08","time":"16:00","utcOffset":null,"lmt":true,"place":"Amsterdam, Paesi Bassi","lat":52.374,"lon":4.8897,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Hendrik_Verwoerd","note":"Fonte: atto di nascita; ora tonda ma da registro. Ora media di Amsterdam (+0:19:32); verificato ASC 12°41' Cap, MC 19°21' Sco."},
+ "events":[
+  {"date":"1960-04-09","pol":"-","violent":true,"what":"Attentato di David Pratt a Johannesburg: due colpi alla testa (guancia e orecchio), sopravvive","source":"https://en.wikipedia.org/wiki/Hendrik_Verwoerd"},
+  {"date":"1966-09-06","pol":"-","violent":true,"what":"Pugnalato a morte in Parlamento a Città del Capo da Tsafendas","source":"https://en.wikipedia.org/wiki/Hendrik_Verwoerd"},
+  {"date":"1958-09-02","pol":"+","violent":false,"what":"Giura come Primo ministro del Sudafrica","source":"https://en.wikipedia.org/wiki/Hendrik_Verwoerd"},
+  {"date":"1960-10-05","pol":"+","violent":false,"what":"Vince il referendum sulla repubblica","source":"https://en.wikipedia.org/wiki/Hendrik_Verwoerd"},
+  {"date":"1961-05-31","pol":"+","violent":false,"what":"Proclamazione della Repubblica del Sudafrica","source":"https://en.wikipedia.org/wiki/Hendrik_Verwoerd"},
+  {"date":"1966-03-30","pol":"+","violent":false,"what":"Vittoria elettorale schiacciante del National Party (126 seggi)","source":"https://en.wikipedia.org/wiki/1966_South_African_general_election"}
+ ]}
+]

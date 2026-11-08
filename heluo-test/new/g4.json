@@ -1,0 +1,55 @@
+[
+{"name":"James Dean","sex":"M",
+ "birth":{"date":"1931-02-08","time":"09:00","utcOffset":-6,"lmt":false,"place":"Marion, Indiana, USA","lat":40.5584,"lon":-85.6592,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/James_Dean","note":"Ora tonda ma AA da certificato di nascita (contrib. Stephen Przybylowski). Offset CST −6 (astro-seek: UT 15:00)."},
+ "events":[
+  {"date":"1955-09-30","pol":"-","violent":true,"what":"Incidente stradale mortale con la Porsche 550 Spyder presso Cholame (California)","source":"https://en.wikipedia.org/wiki/James_Dean"},
+  {"date":"1952-12-03","pol":"+","violent":false,"what":"Debutto a Broadway in 'See the Jaguar' (Cort Theatre)","source":"https://playbill.com/production/see-the-jaguar-cort-theatre-vault-0000003554"},
+  {"date":"1954-02-08","pol":"+","violent":false,"what":"Prima a Broadway di 'The Immoralist' (ruolo di Bachir) al Royale Theatre","source":"https://en.wikipedia.org/wiki/The_Immoralist_(play)"},
+  {"date":"1954-04-08","pol":"+","violent":false,"what":"Scritturato da Kazan per 'East of Eden', parte da New York per Hollywood","source":"https://en.wikipedia.org/wiki/James_Dean"},
+  {"date":"1955-03-09","pol":"+","violent":false,"what":"Prima di 'East of Eden' all'Astor Theatre di New York","source":"https://en.wikipedia.org/wiki/East_of_Eden_(film)"}
+ ]},
+{"name":"John F. Kennedy Jr.","sex":"M",
+ "birth":{"date":"1960-11-25","time":"00:22","utcOffset":-5,"lmt":false,"place":"Washington, DC, USA","lat":38.8951,"lon":-77.0364,"rodden":"A","sourceBirth":"https://www.astrotheme.com/astrology/John_F._Kennedy,_Jr.","note":"Rating A, fonte 'News report' (contrib. Lois Rodden). Offset EST −5."},
+ "events":[
+  {"date":"1999-07-16","pol":"-","violent":true,"what":"Precipita col Piper Saratoga da lui pilotato al largo di Martha's Vineyard; muore con la moglie e la cognata","source":"https://en.wikipedia.org/wiki/John_F._Kennedy_Jr."},
+  {"date":"1985-08-04","pol":"+","violent":false,"what":"Debutto teatrale a New York (Irish Theater, Manhattan)","source":"https://en.wikipedia.org/wiki/John_F._Kennedy_Jr."},
+  {"date":"1991-08-29","pol":"+","violent":false,"what":"Vince la prima causa come procuratore distrettuale aggiunto a Manhattan","source":"https://en.wikipedia.org/wiki/John_F._Kennedy_Jr."},
+  {"date":"1995-09-08","pol":"+","violent":false,"what":"Lancio ufficiale della rivista George in conferenza stampa a Manhattan","source":"https://en.wikipedia.org/wiki/John_F._Kennedy_Jr."},
+  {"date":"1996-09-21","pol":"+","violent":false,"what":"Matrimonio con Carolyn Bessette a Cumberland Island (Georgia)","source":"https://en.wikipedia.org/wiki/John_F._Kennedy_Jr."}
+ ]},
+{"name":"Paul Walker","sex":"M",
+ "birth":{"date":"1973-09-12","time":"05:59","utcOffset":-7,"lmt":false,"place":"Glendale, California, USA","lat":34.1425,"lon":-118.2551,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Paul_Walker","note":"AA, certificato di nascita (contrib. Viktor E.). Offset PDT −7 (ora legale)."},
+ "events":[
+  {"date":"2013-11-30","pol":"-","violent":true,"what":"Muore come passeggero nello schianto della Porsche Carrera GT a Valencia (Santa Clarita, CA)","source":"https://en.wikipedia.org/wiki/Paul_Walker"},
+  {"date":"2001-06-22","pol":"+","violent":false,"what":"Uscita USA di 'The Fast and the Furious', n.1 al botteghino","source":"https://en.wikipedia.org/wiki/The_Fast_and_the_Furious_(2001_film)"},
+  {"date":"2011-04-29","pol":"+","violent":false,"what":"Uscita USA di 'Fast Five', record d'apertura per la serie e per Universal","source":"https://en.wikipedia.org/wiki/Fast_Five"},
+  {"date":"2013-05-24","pol":"+","violent":false,"what":"Uscita USA di 'Fast & Furious 6'","source":"https://en.wikipedia.org/wiki/Fast_%26_Furious_6"}
+ ]},
+{"name":"Robin Williams","sex":"M",
+ "birth":{"date":"1951-07-21","time":"13:34","utcOffset":-5,"lmt":false,"place":"Chicago, Illinois, USA","lat":41.8781,"lon":-87.6298,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Robin_Williams","note":"AA, certificato di nascita (contrib. The Wilsons). Offset CDT −5 (conferma astro-charts.com)."},
+ "events":[
+  {"date":"2014-08-11","pol":"-","violent":true,"what":"Suicidio per impiccagione a Paradise Cay (California)","source":"https://en.wikipedia.org/wiki/Robin_Williams"},
+  {"date":"1978-09-14","pol":"+","violent":false,"what":"Prima puntata di 'Mork & Mindy' su ABC","source":"https://en.wikipedia.org/wiki/Mork_%26_Mindy"},
+  {"date":"1988-01-23","pol":"+","violent":false,"what":"Golden Globe miglior attore (commedia) per 'Good Morning, Vietnam'","source":"https://en.wikipedia.org/wiki/45th_Golden_Globe_Awards"},
+  {"date":"1998-03-23","pol":"+","violent":false,"what":"Oscar al miglior attore non protagonista per 'Good Will Hunting'","source":"https://en.wikipedia.org/wiki/70th_Academy_Awards"}
+ ]},
+{"name":"Jim Clark","sex":"M",
+ "birth":{"date":"1936-03-04","time":"15:25","utcOffset":0,"lmt":false,"place":"Kilmany / Balmerino, Fife, Scozia, Regno Unito","lat":56.385,"lon":-3.025,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Jim_Clark","note":"AA, certificato di nascita (contrib. Paul Wright). Astrotheme indica Balmerino, Wikipedia Kilmany House Farm (Fife): località a ~3 km, coordinate approssimate fra le due. GMT 0."},
+ "events":[
+  {"date":"1961-09-10","pol":"-","violent":true,"what":"Collisione con la Ferrari di von Trips al GP d'Italia a Monza: von Trips e 15 spettatori muoiono, Clark illeso ma accusato di omicidio colposo (poi archiviato)","source":"https://en.wikipedia.org/wiki/Jim_Clark"},
+  {"date":"1968-04-07","pol":"-","violent":true,"what":"Incidente mortale in gara di Formula 2 a Hockenheim","source":"https://en.wikipedia.org/wiki/Jim_Clark"},
+  {"date":"1962-06-17","pol":"+","violent":false,"what":"Prima vittoria in un Gran Premio di F1 (Belgio, Spa)","source":"https://en.wikipedia.org/wiki/1962_Belgian_Grand_Prix"},
+  {"date":"1963-09-08","pol":"+","violent":false,"what":"Vince il GP d'Italia a Monza e si laurea Campione del Mondo 1963","source":"https://en.wikipedia.org/wiki/1963_Italian_Grand_Prix"},
+  {"date":"1965-05-31","pol":"+","violent":false,"what":"Vince la 500 Miglia di Indianapolis","source":"https://en.wikipedia.org/wiki/1965_Indianapolis_500"},
+  {"date":"1965-08-01","pol":"+","violent":false,"what":"Vince il GP di Germania al Nürburgring e il titolo mondiale 1965","source":"https://en.wikipedia.org/wiki/1965_German_Grand_Prix"}
+ ]},
+{"name":"Dale Earnhardt","sex":"M",
+ "birth":{"date":"1951-04-29","time":"13:07","utcOffset":-5,"lmt":false,"place":"Concord, North Carolina, USA","lat":35.4088,"lon":-80.5795,"rodden":"AA","sourceBirth":"https://www.astrotheme.com/astrology/Dale_Earnhardt","note":"AA, certificato di nascita (contrib. Sue Kay). Luogo: astrotheme dice Concord (ospedale), Wikipedia Kannapolis (città natale, ~10 km). Offset EST −5 (astro-seek: UT 18:07)."},
+ "events":[
+  {"date":"1996-07-28","pol":"-","violent":true,"what":"Grave incidente nella DieHard 500 a Talladega: frattura di clavicola, sterno e scapola","source":"https://en.wikipedia.org/wiki/Dale_Earnhardt"},
+  {"date":"2001-02-18","pol":"-","violent":true,"what":"Incidente mortale all'ultimo giro della Daytona 500","source":"https://en.wikipedia.org/wiki/Dale_Earnhardt"},
+  {"date":"1979-04-01","pol":"+","violent":false,"what":"Prima vittoria in carriera nella Cup Series (Southeastern 500, Bristol)","source":"https://en.wikipedia.org/wiki/1979_Southeastern_500"},
+  {"date":"1994-10-23","pol":"+","violent":false,"what":"Vince a Rockingham e si assicura il 7° titolo, eguagliando il record di Petty","source":"https://en.wikipedia.org/wiki/1994_AC_Delco_500"},
+  {"date":"1998-02-15","pol":"+","violent":false,"what":"Vince finalmente la Daytona 500 al 20° tentativo","source":"https://en.wikipedia.org/wiki/Dale_Earnhardt"}
+ ]}
+]

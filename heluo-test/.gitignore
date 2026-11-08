@@ -5,4 +5,4 @@ cmp/natal.csv
 cmp/summary.json
 cmp/violent2_dettaglio.csv
 cmp/violent2_summary.json
-new/
+cmp/violent2_*_largo.*

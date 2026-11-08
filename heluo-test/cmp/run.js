@@ -23,7 +23,7 @@ for (const pe of people) {
   for (const ev of pe.events) {
     if (ev.date <= b.date) continue;
     const Pe = pillars(ev.date, ev.time, b.lon, b.tz);
-    const r = { name: pe.name, date: ev.date, pol: ev.polarity, what: ev.what, violent: !!ev.violent, src: f0(pe) };
+    const r = { name: pe.name, date: ev.date, pol: ev.polarity, what: ev.what, violent: !!ev.violent, weak: !!pe.weakTime, src: f0(pe) };
     M.forEach(m => { r[m] = predict(N[m], Pe, b.lon); });
     rows.push(r);
   }

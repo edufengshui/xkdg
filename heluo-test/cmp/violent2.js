@@ -13,9 +13,12 @@ let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648
 
 const oldV = V1.map(i => rows[i]);
 oldV.forEach(r => { if (r.src === 'famous_violent.json') throw new Error('indici V1 spostati'); });
-const newV = rows.filter(r => r.src === 'famous_violent.json' && r.violent);
+const LOOSE = process.env.LOOSE === '1'; // LOOSE=1 include anche le ore deboli (A da memoria, minuti tondi)
+const okNew = r => r.src === 'famous_violent.json' && (LOOSE || !r.weak);
+const newV = rows.filter(r => okNew(r) && r.violent);
+console.log(LOOSE ? 'MODO LARGO: incluse ore deboli' : 'MODO STRETTO: escluse ore deboli');
 const posOld = rows.filter(r => r.pol === '+' && r.src !== 'famous_violent.json');
-const posNew = rows.filter(r => r.pol === '+' && r.src === 'famous_violent.json');
+const posNew = rows.filter(r => r.pol === '+' && okNew(r));
 const posAll = posOld.concat(posNew);
 
 function perm(v, p) { // one-sided: D = media pos − media viol > 0 (testo più favorevole sui positivi)
@@ -64,5 +67,5 @@ const q = s => '"' + String(s).replace(/"/g, '""') + '"';
 const det = [['gruppo', 'persona', 'data', 'evento'].concat(...M.map(m => LV.map(l => m + '.' + l)))];
 for (const [g, V] of [['vecchio', oldV], ['nuovo', newV]]) for (const r of V)
   det.push([g, r.name, r.date, r.what].concat(...M.map(m => LV.map(l => r[m].none ? '' : r[m].s[l]))));
-fs.writeFileSync(path.join(__dirname, 'violent2_dettaglio.csv'), det.map(r => r.map(q).join(',')).join('\n'));
-fs.writeFileSync(path.join(__dirname, 'violent2_summary.json'), JSON.stringify(result, null, 1));
+fs.writeFileSync(path.join(__dirname, LOOSE ? 'violent2_dettaglio_largo.csv' : 'violent2_dettaglio.csv'), det.map(r => r.map(q).join(',')).join('\n'));
+fs.writeFileSync(path.join(__dirname, LOOSE ? 'violent2_summary_largo.json' : 'violent2_summary.json'), JSON.stringify(result, null, 1));

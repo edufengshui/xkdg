@@ -1,0 +1,1316 @@
+{
+ "meta": {
+  "created": "2026-11-08",
+  "note": "Campione allargato eventi violenti (sessione 45). Ore Rodden AA/A da astrotheme. tz: UTC±h fisso come da fonte, LMT prima dei fusi standard.",
+  "dropped": [
+   [
+    "Jim Clark",
+    "1961-09-10",
+    "Clark illeso a Monza 1961: nessun danno alla persona"
+   ]
+  ]
+ },
+ "people": [
+  {
+   "name": "Indira Gandhi",
+   "sex": "F",
+   "group": "g1",
+   "weakTime": false,
+   "birth": {
+    "date": "1917-11-19",
+    "time": "23:11",
+    "place": "Allahabad, India",
+    "lat": 25.4358,
+    "lon": 81.8463,
+    "tz": "UTC+5.5",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Indira_Gandhi",
+    "notes": "Fonte: memoria/autobiografia (Jansky). Offset non mostrato in chiaro: +5.5 ricavato verificando ASC 20°05' Leo / MC 17°44' Tau di astrotheme."
+   },
+   "events": [
+    {
+     "date": "1984-10-31",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinata a colpi d'arma da fuoco dalle sue guardie del corpo sikh a Nuova Delhi",
+     "source": "https://en.wikipedia.org/wiki/Indira_Gandhi",
+     "violent": true
+    },
+    {
+     "date": "1966-01-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Primo ministro dell'India (primo mandato)",
+     "source": "https://en.wikipedia.org/wiki/Indira_Gandhi",
+     "violent": false
+    },
+    {
+     "date": "1971-12-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Resa del Pakistan: vittoria nella guerra del 1971 (nascita del Bangladesh)",
+     "source": "https://en.wikipedia.org/wiki/Indira_Gandhi",
+     "violent": false
+    },
+    {
+     "date": "1974-05-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Primo test nucleare indiano (Smiling Buddha, Pokhran) da lei autorizzato",
+     "source": "https://en.wikipedia.org/wiki/Smiling_Buddha",
+     "violent": false
+    },
+    {
+     "date": "1980-01-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Torna Primo ministro dopo la vittoria elettorale",
+     "source": "https://en.wikipedia.org/wiki/Indira_Gandhi",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Rajiv Gandhi",
+   "sex": "M",
+   "group": "g1",
+   "weakTime": false,
+   "birth": {
+    "date": "1944-08-20",
+    "time": "06:34",
+    "place": "Mumbai, India",
+    "lat": 18.975,
+    "lon": 72.826,
+    "tz": "UTC+4.85",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Rajiv_Gandhi",
+    "notes": "Fonte: atto di nascita (Clifford). Offset non mostrato in chiaro: astrotheme (ASC 8°09' Vir, MC 8°36' Gem) calcola con Bombay Time +4:51; con l'ora di guerra IST+1 (+6.5) l'ASC sarebbe 15° Leo. DUBBIO sul fuso."
+   },
+   "events": [
+    {
+     "date": "1986-10-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato fallito a Raj Ghat (Delhi): un sikh gli spara con arma artigianale",
+     "source": "https://en.wikipedia.org/wiki/List_of_assassination_attempts_on_prime_ministers_of_India",
+     "violent": true
+    },
+    {
+     "date": "1987-07-30",
+     "time": null,
+     "polarity": "-",
+     "what": "Colpito col calcio del fucile da un marinaio della guardia d'onore a Colombo",
+     "source": "https://en.wikipedia.org/wiki/Rajiv_Gandhi",
+     "violent": true
+    },
+    {
+     "date": "1991-05-21",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato da un'attentatrice suicida a Sriperumbudur",
+     "source": "https://en.wikipedia.org/wiki/Rajiv_Gandhi",
+     "violent": true
+    },
+    {
+     "date": "1984-10-31",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominato Primo ministro (stesso giorno dell'assassinio della madre)",
+     "source": "https://en.wikipedia.org/wiki/Rajiv_Gandhi",
+     "violent": false
+    },
+    {
+     "date": "1984-12-31",
+     "time": null,
+     "polarity": "+",
+     "what": "Giura come Primo ministro dopo la storica vittoria elettorale (414 seggi)",
+     "source": "https://en.wikipedia.org/wiki/Rajiv_Gandhi",
+     "violent": false
+    },
+    {
+     "date": "1985-07-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Firma l'accordo Rajiv-Longowal sul Punjab",
+     "source": "https://en.wikipedia.org/wiki/Rajiv%E2%80%93Longowal_Accord",
+     "violent": false
+    },
+    {
+     "date": "1987-07-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Firma l'accordo indo-srilankese a Colombo",
+     "source": "https://en.wikipedia.org/wiki/Indo-Lanka_Accord",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Aldo Moro",
+   "sex": "M",
+   "group": "g1",
+   "weakTime": false,
+   "birth": {
+    "date": "1916-09-23",
+    "time": "09:00",
+    "place": "Maglie, Italia",
+    "lat": 40.1186,
+    "lon": 18.2972,
+    "tz": "UTC+2",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Aldo_Moro",
+    "notes": "Fonte: atto di nascita. Ora tonda ma AA da registro. +2 = ora legale italiana 1916 (verificato: ASC 27°55' Lib, MC 2°49' Leo)."
+   },
+   "events": [
+    {
+     "date": "1978-03-16",
+     "time": null,
+     "polarity": "-",
+     "what": "Rapito dalle Brigate Rosse in via Fani (scorta uccisa); ucciso il 9 maggio 1978",
+     "source": "https://en.wikipedia.org/wiki/Kidnapping_and_murder_of_Aldo_Moro",
+     "violent": true
+    },
+    {
+     "date": "1959-03-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto segretario della Democrazia Cristiana",
+     "source": "https://it.wikipedia.org/wiki/Segretari_della_Democrazia_Cristiana",
+     "violent": false
+    },
+    {
+     "date": "1963-12-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Giura come Presidente del Consiglio (governo Moro I, primo centro-sinistra organico)",
+     "source": "https://it.wikipedia.org/wiki/Governo_Moro_I",
+     "violent": false
+    },
+    {
+     "date": "1974-11-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Giura di nuovo come Presidente del Consiglio (governo Moro IV)",
+     "source": "https://en.wikipedia.org/wiki/Aldo_Moro",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Olof Palme",
+   "sex": "M",
+   "group": "g1",
+   "weakTime": false,
+   "birth": {
+    "date": "1927-01-30",
+    "time": "05:15",
+    "place": "Stoccolma, Svezia",
+    "lat": 59.3326,
+    "lon": 18.0649,
+    "tz": "UTC+1",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Olof_Palme",
+    "notes": "Fonte: atto di nascita. Offset +1 verificato (ASC 16°23' Sag, MC 2°24' Sco)."
+   },
+   "events": [
+    {
+     "date": "1986-02-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato a colpi di pistola in una via di Stoccolma (23:21)",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_Olof_Palme",
+     "violent": true
+    },
+    {
+     "date": "1969-10-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto leader socialdemocratico e diventa Primo ministro",
+     "source": "https://en.wikipedia.org/wiki/Olof_Palme",
+     "violent": false
+    },
+    {
+     "date": "1982-09-19",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince le elezioni politiche, ritorno al potere dopo 6 anni",
+     "source": "https://en.wikipedia.org/wiki/1982_Swedish_general_election",
+     "violent": false
+    },
+    {
+     "date": "1982-10-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Torna Primo ministro (secondo mandato)",
+     "source": "https://en.wikipedia.org/wiki/Olof_Palme",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Anna Lindh",
+   "sex": "F",
+   "group": "g1",
+   "weakTime": false,
+   "birth": {
+    "date": "1957-06-19",
+    "time": "22:25",
+    "place": "Ludvika, Svezia",
+    "lat": 60.1496,
+    "lon": 15.1878,
+    "tz": "UTC+1",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Anna_Lindh",
+    "notes": "Fonte: atto di nascita. Offset +1 verificato (ASC 17°03' Cap, MC 6°09' Sag)."
+   },
+   "events": [
+    {
+     "date": "2003-09-10",
+     "time": null,
+     "polarity": "-",
+     "what": "Accoltellata nel grande magazzino NK di Stoccolma; muore l'11 settembre",
+     "source": "https://en.wikipedia.org/wiki/Anna_Lindh",
+     "violent": true
+    },
+    {
+     "date": "1982-09-19",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletta deputata al Riksdag",
+     "source": "https://en.wikipedia.org/wiki/Anna_Lindh",
+     "violent": false
+    },
+    {
+     "date": "1994-10-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominata Ministra dell'Ambiente",
+     "source": "https://en.wikipedia.org/wiki/Anna_Lindh",
+     "violent": false
+    },
+    {
+     "date": "1998-10-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominata Ministra degli Esteri",
+     "source": "https://en.wikipedia.org/wiki/Anna_Lindh",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Benigno Aquino Jr.",
+   "sex": "M",
+   "group": "g1",
+   "weakTime": true,
+   "birth": {
+    "date": "1932-11-27",
+    "time": "00:01",
+    "place": "Concepcion, Tarlac, Filippine",
+    "lat": 15.3245,
+    "lon": 120.6556,
+    "tz": "UTC+8",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Benigno_Aquino_Jr.",
+    "notes": "Fonte: news report (Rodden). Offset +8 verificato (ASC 7°01' Vir, MC 8°02' Gem). Ora 00:01 sospetta (convenzione 'mezzanotte'?)."
+   },
+   "events": [
+    {
+     "date": "1983-08-21",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato con un colpo alla testa all'aeroporto di Manila al rientro dall'esilio",
+     "source": "https://en.wikipedia.org/wiki/Ninoy_Aquino",
+     "violent": true
+    },
+    {
+     "date": "1954-10-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Insignito della Legion d'Onore filippina (grado di Commander)",
+     "source": "https://en.wikipedia.org/wiki/Ninoy_Aquino",
+     "violent": false
+    },
+    {
+     "date": "1955-12-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Entra in carica come sindaco di Concepcion (22 anni)",
+     "source": "https://en.wikipedia.org/wiki/Ninoy_Aquino",
+     "violent": false
+    },
+    {
+     "date": "1961-02-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Assume la carica di governatore di Tarlac",
+     "source": "https://en.wikipedia.org/wiki/Ninoy_Aquino",
+     "violent": false
+    },
+    {
+     "date": "1967-11-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto senatore (secondo più votato)",
+     "source": "https://en.wikipedia.org/wiki/1967_Philippine_Senate_election",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Hendrik Verwoerd",
+   "sex": "M",
+   "group": "g1",
+   "weakTime": false,
+   "birth": {
+    "date": "1901-09-08",
+    "time": "16:00",
+    "place": "Amsterdam, Paesi Bassi",
+    "lat": 52.374,
+    "lon": 4.8897,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Hendrik_Verwoerd",
+    "notes": "Fonte: atto di nascita; ora tonda ma da registro. Ora media di Amsterdam (+0:19:32); verificato ASC 12°41' Cap, MC 19°21' Sco."
+   },
+   "events": [
+    {
+     "date": "1960-04-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato di David Pratt a Johannesburg: due colpi alla testa (guancia e orecchio), sopravvive",
+     "source": "https://en.wikipedia.org/wiki/Hendrik_Verwoerd",
+     "violent": true
+    },
+    {
+     "date": "1966-09-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Pugnalato a morte in Parlamento a Città del Capo da Tsafendas",
+     "source": "https://en.wikipedia.org/wiki/Hendrik_Verwoerd",
+     "violent": true
+    },
+    {
+     "date": "1958-09-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Giura come Primo ministro del Sudafrica",
+     "source": "https://en.wikipedia.org/wiki/Hendrik_Verwoerd",
+     "violent": false
+    },
+    {
+     "date": "1960-10-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince il referendum sulla repubblica",
+     "source": "https://en.wikipedia.org/wiki/Hendrik_Verwoerd",
+     "violent": false
+    },
+    {
+     "date": "1961-05-31",
+     "time": null,
+     "polarity": "+",
+     "what": "Proclamazione della Repubblica del Sudafrica",
+     "source": "https://en.wikipedia.org/wiki/Hendrik_Verwoerd",
+     "violent": false
+    },
+    {
+     "date": "1966-03-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Vittoria elettorale schiacciante del National Party (126 seggi)",
+     "source": "https://en.wikipedia.org/wiki/1966_South_African_general_election",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Gerald Ford",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": false,
+   "birth": {
+    "date": "1913-07-14",
+    "time": "00:43",
+    "place": "Omaha, USA",
+    "lat": 41.2586,
+    "lon": -95.9378,
+    "tz": "UTC-6",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Gerald_Ford",
+    "notes": "Fonte: birth certificate (Lois Rodden). Fuso dedotto: ASC/MC astrotheme (13°11' Tau / 24°26' Cap) coincidono con CST -6."
+   },
+   "events": [
+    {
+     "date": "1975-09-05",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato fallito a Sacramento (Lynette 'Squeaky' Fromme)",
+     "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Gerald_Ford_in_San_Francisco",
+     "violent": true
+    },
+    {
+     "date": "1975-09-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato fallito a San Francisco (Sara Jane Moore spara)",
+     "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Gerald_Ford_in_San_Francisco",
+     "violent": true
+    },
+    {
+     "date": "1973-12-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Giura come Vicepresidente degli USA",
+     "source": "https://www.presidency.ucsb.edu/documents/gerald-r-ford-event-timeline",
+     "violent": false
+    },
+    {
+     "date": "1974-08-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Giura come 38º Presidente degli USA",
+     "source": "https://www.presidency.ucsb.edu/documents/gerald-r-ford-event-timeline",
+     "violent": false
+    },
+    {
+     "date": "1975-08-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Firma dell'Atto finale di Helsinki",
+     "source": "https://en.wikipedia.org/wiki/Helsinki_Accords",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "George Wallace",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": true,
+   "birth": {
+    "date": "1919-08-25",
+    "time": "03:30",
+    "place": "Clio, Alabama, USA",
+    "lat": 31.7088,
+    "lon": -85.6105,
+    "tz": "UTC-5",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/George_Wallace",
+    "notes": "Fonte: from memory or autobiography (Lois Rodden). Fuso dedotto da MC astrotheme 15°40' Ari = CDT -5."
+   },
+   "events": [
+    {
+     "date": "1972-05-15",
+     "time": null,
+     "polarity": "-",
+     "what": "Colpito da 4-5 proiettili a Laurel (Maryland) da Arthur Bremer, resta paralizzato",
+     "source": "https://en.wikipedia.org/wiki/George_Wallace",
+     "violent": true
+    },
+    {
+     "date": "1963-01-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Primo insediamento come Governatore dell'Alabama",
+     "source": "https://en.wikipedia.org/wiki/George_Wallace",
+     "violent": false
+    },
+    {
+     "date": "1971-01-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Secondo insediamento come Governatore",
+     "source": "https://en.wikipedia.org/wiki/George_Wallace",
+     "violent": false
+    },
+    {
+     "date": "1972-05-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince le primarie democratiche di Michigan e Maryland",
+     "source": "https://www.newsfromthestates.com/article/day-1972-segregationist-george-wallace-wins-mich-democratic-presidential-primary%C2%A0",
+     "violent": false
+    },
+    {
+     "date": "1983-01-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Insediamento per il quarto mandato da Governatore",
+     "source": "https://en.wikipedia.org/wiki/George_Wallace",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Papa Giovanni Paolo II (Karol Wojtyla)",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": true,
+   "birth": {
+    "date": "1920-05-18",
+    "time": "17:30",
+    "place": "Wadowice, Polonia",
+    "lat": 49.8833,
+    "lon": 19.4931,
+    "tz": "UTC+2",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Pope_John_Paul_II",
+    "notes": "Fonte: from memory or autobiography (Grazia Bordoni). Ora dichiarata dal Papa stesso (tra 17 e 18 circa): dato debole. Fuso dedotto da MC astrotheme 5°38' Leo = +2."
+   },
+   "events": [
+    {
+     "date": "1944-02-29",
+     "time": null,
+     "polarity": "-",
+     "what": "Investito da un camion tedesco, ricoverato con commozione cerebrale",
+     "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II",
+     "violent": true
+    },
+    {
+     "date": "1981-05-13",
+     "time": null,
+     "polarity": "-",
+     "what": "Colpito da Ali Agca in Piazza San Pietro",
+     "source": "https://www.cbc.ca/news/world/pope-john-paul-injured-in-1982-knife-attack-says-aide-1.694776",
+     "violent": true
+    },
+    {
+     "date": "1982-05-12",
+     "time": null,
+     "polarity": "-",
+     "what": "Accoltellato (ferita lieve, tenuta segreta) a Fatima da un prete integralista",
+     "source": "https://www.cbc.ca/news/world/pope-john-paul-injured-in-1982-knife-attack-says-aide-1.694776",
+     "violent": true
+    },
+    {
+     "date": "1958-09-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Consacrazione episcopale nella cattedrale del Wawel",
+     "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II",
+     "violent": false
+    },
+    {
+     "date": "1967-06-26",
+     "time": null,
+     "polarity": "+",
+     "what": "Creato cardinale da Paolo VI",
+     "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II",
+     "violent": false
+    },
+    {
+     "date": "1978-10-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto Papa",
+     "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II",
+     "violent": false
+    },
+    {
+     "date": "1978-10-22",
+     "time": null,
+     "polarity": "+",
+     "what": "Messa di inizio pontificato",
+     "source": "https://en.wikipedia.org/wiki/Pope_John_Paul_II",
+     "violent": false
+    },
+    {
+     "date": "1979-06-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Messa in Piazza della Vittoria a Varsavia (primo viaggio in Polonia)",
+     "source": "https://www.ewtn.com/catholicism/library/holy-mass-victory-square-2-june-1979-24879",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Papa Paolo VI (Giovanni Battista Montini)",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": false,
+   "birth": {
+    "date": "1897-09-26",
+    "time": "22:30",
+    "place": "Concesio, Italia",
+    "lat": 45.6036,
+    "lon": 10.2172,
+    "tz": "UTC+1",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Pope_Paul_VI",
+    "notes": "Fonte: birth certificate (Lois Rodden). Offset +1 = CET legale in Italia dal 1893. DUBBIO: astrotheme non mostra l'offset e il suo tema (ASC 7°07' Can, MC 10°10' Pis) torna solo con ~+0:48; con CET +1 MC = 6°56' Pis. Da decidere."
+   },
+   "events": [
+    {
+     "date": "1970-11-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Aggredito con un coltello all'aeroporto di Manila",
+     "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI",
+     "violent": true
+    },
+    {
+     "date": "1958-12-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Creato cardinale",
+     "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI",
+     "violent": false
+    },
+    {
+     "date": "1963-06-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto Papa",
+     "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI",
+     "violent": false
+    },
+    {
+     "date": "1963-06-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Incoronazione",
+     "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI",
+     "violent": false
+    },
+    {
+     "date": "1965-12-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Chiusura del Concilio Vaticano II",
+     "source": "https://en.wikipedia.org/wiki/Pope_Paul_VI",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Nicolae Ceausescu",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": false,
+   "birth": {
+    "date": "1918-02-05",
+    "time": "12:00",
+    "place": "Scornicesti, Romania",
+    "lat": 44.5667,
+    "lon": 24.55,
+    "tz": "UTC+1.74",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Nicolae_Ceausescu",
+    "notes": "Fonte: birth record (Lois Rodden). Data gregoriana = 23 gen 1918 calendario giuliano; ora 12 (mezzogiorno) scritta nell'atto di nascita (newsweek.ro). Ora tonda ma documentata. Fuso: ora media di Bucarest +1:44:24 (ufficiale fino al 1931), confermata da ASC 8°06' Gem."
+   },
+   "events": [
+    {
+     "date": "1989-12-25",
+     "time": null,
+     "polarity": "-",
+     "what": "Processato e fucilato con la moglie a Targoviste",
+     "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu",
+     "violent": true
+    },
+    {
+     "date": "1965-03-22",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto Segretario generale del Partito comunista romeno",
+     "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu",
+     "violent": false
+    },
+    {
+     "date": "1968-08-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Discorso di condanna dell'invasione della Cecoslovacchia, apice di popolarità",
+     "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu",
+     "violent": false
+    },
+    {
+     "date": "1974-03-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Presidente della Romania",
+     "source": "https://en.wikipedia.org/wiki/Nicolae_Ceau%C8%99escu",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Malcolm X",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": false,
+   "birth": {
+    "date": "1925-05-19",
+    "time": "22:25",
+    "place": "Omaha, USA",
+    "lat": 41.2586,
+    "lon": -95.9378,
+    "tz": "UTC-6",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Malcolm_X",
+    "notes": "Fonte: birth certificate (Sy Scholfield). Fuso dedotto da MC 29°43' Lib = CST -6."
+   },
+   "events": [
+    {
+     "date": "1965-02-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Casa di East Elmhurst (Queens) incendiata con molotov mentre la famiglia dormiva",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_Malcolm_X",
+     "violent": true
+    },
+    {
+     "date": "1965-02-21",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato all'Audubon Ballroom (Manhattan)",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_Malcolm_X",
+     "violent": true
+    },
+    {
+     "date": "1964-04-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Discorso 'The Ballot or the Bullet' a Cleveland",
+     "source": "https://teachingamericanhistory.org/document/the-ballot-or-the-bullet-2/",
+     "violent": false
+    },
+    {
+     "date": "1964-06-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Fonda l'Organization of Afro-American Unity",
+     "source": "https://www.alkalimat.org/brothermalcolm/omaha_chrono.htm",
+     "violent": false
+    },
+    {
+     "date": "1964-12-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Dibattito alla Oxford Union",
+     "source": "https://www.history.ox.ac.uk/node/20466",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Harvey Milk",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": true,
+   "birth": {
+    "date": "1930-05-22",
+    "time": "01:30",
+    "place": "Woodmere, New York, USA",
+    "lat": 40.632,
+    "lon": -73.7126,
+    "tz": "UTC-4",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Harvey_Milk",
+    "notes": "Fonte: from memory or autobiography (Lois Rodden). Fuso dedotto da MC 9°35' Sag = EDT -4."
+   },
+   "events": [
+    {
+     "date": "1978-11-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato da Dan White nel municipio di San Francisco",
+     "source": "https://en.wikipedia.org/wiki/Harvey_Milk",
+     "violent": true
+    },
+    {
+     "date": "1977-11-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto al Board of Supervisors di San Francisco",
+     "source": "https://en.wikipedia.org/wiki/Harvey_Milk",
+     "violent": false
+    },
+    {
+     "date": "1978-01-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Insediamento come Supervisor",
+     "source": "https://en.wikipedia.org/wiki/Harvey_Milk",
+     "violent": false
+    },
+    {
+     "date": "1978-11-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Sconfitta della Briggs Initiative (Proposition 6)",
+     "source": "https://en.wikipedia.org/wiki/Harvey_Milk",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Jair Bolsonaro",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": false,
+   "birth": {
+    "date": "1955-03-21",
+    "time": "14:45",
+    "place": "Glicério, São Paulo, Brasile",
+    "lat": -21.3811,
+    "lon": -50.2125,
+    "tz": "UTC-3",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jair_Bolsonaro",
+    "notes": "Fonte: birth certificate (Frank C. Clifford). Fuso dedotto da MC 6°51' Tau = -3."
+   },
+   "events": [
+    {
+     "date": "2018-09-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Accoltellato all'addome durante un comizio a Juiz de Fora",
+     "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Jair_Bolsonaro",
+     "violent": true
+    },
+    {
+     "date": "2018-10-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Primo al primo turno delle presidenziali",
+     "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Jair_Bolsonaro",
+     "violent": false
+    },
+    {
+     "date": "2018-10-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince il ballottaggio, eletto Presidente",
+     "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Jair_Bolsonaro",
+     "violent": false
+    },
+    {
+     "date": "2019-01-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Insediamento come Presidente del Brasile",
+     "source": "https://wikiwand.com/simple/Jair_Bolsonaro",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Huey Long",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": true,
+   "birth": {
+    "date": "1893-08-30",
+    "time": "04:15",
+    "place": "Winnfield, Louisiana, USA",
+    "lat": 31.9257,
+    "lon": -92.6413,
+    "tz": "UTC-6",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Huey_P._Long",
+    "notes": "Fonte: from memory or autobiography (Lois Rodden). Fuso dedotto da MC 12°24' Tau = CST -6. Solo 2 trionfi: data insediamento governatore discordante (21/5/1928 Wikipedia vs 28/5 New World Encyclopedia), scartata."
+   },
+   "events": [
+    {
+     "date": "1935-09-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Colpito da Carl Weiss nel Campidoglio di Baton Rouge, muore il 10/9",
+     "source": "https://en.wikipedia.org/wiki/Huey_Long",
+     "violent": true
+    },
+    {
+     "date": "1930-09-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince le primarie democratiche per il Senato contro Ransdell",
+     "source": "https://newworldencyclopedia.org/entry/Huey_Long",
+     "violent": false
+    },
+    {
+     "date": "1932-01-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Prende il seggio al Senato degli USA",
+     "source": "https://en.wikipedia.org/wiki/Huey_Long",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Arciduca Francesco Ferdinando d'Austria",
+   "sex": "M",
+   "group": "g2",
+   "weakTime": false,
+   "birth": {
+    "date": "1863-12-18",
+    "time": "07:15",
+    "place": "Graz, Austria",
+    "lat": 47.0707,
+    "lon": 15.4395,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Archduke_Franz_Ferdinand_of_Austria",
+    "notes": "Fonte: birth record (Arno Müller, Sy Scholfield). Ora media locale di Graz (MC 16°21' Lib torna con LMT +1:01:45). Solo 1 trionfo con data certa al giorno (nomina a Ispettore generale 1913 e successione 1896 senza giorno verificato)."
+   },
+   "events": [
+    {
+     "date": "1914-06-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Bomba di Cabrinovic schivata e poi ucciso a colpi di pistola da Gavrilo Princip a Sarajevo",
+     "source": "https://cavac.at/cavacopedia/Archduke_Franz_Ferdinand_of_Austria",
+     "violent": true
+    },
+    {
+     "date": "1900-07-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Matrimonio con Sophie Chotek a Reichstadt, dopo anni di opposizione dell'imperatore",
+     "source": "https://cavac.at/cavacopedia/Archduke_Franz_Ferdinand_of_Austria",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "James Dean",
+   "sex": "M",
+   "group": "g4",
+   "weakTime": false,
+   "birth": {
+    "date": "1931-02-08",
+    "time": "09:00",
+    "place": "Marion, Indiana, USA",
+    "lat": 40.5584,
+    "lon": -85.6592,
+    "tz": "UTC-6",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/James_Dean",
+    "notes": "Ora tonda ma AA da certificato di nascita (contrib. Stephen Przybylowski). Offset CST −6 (astro-seek: UT 15:00)."
+   },
+   "events": [
+    {
+     "date": "1955-09-30",
+     "time": null,
+     "polarity": "-",
+     "what": "Incidente stradale mortale con la Porsche 550 Spyder presso Cholame (California)",
+     "source": "https://en.wikipedia.org/wiki/James_Dean",
+     "violent": true
+    },
+    {
+     "date": "1952-12-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Debutto a Broadway in 'See the Jaguar' (Cort Theatre)",
+     "source": "https://playbill.com/production/see-the-jaguar-cort-theatre-vault-0000003554",
+     "violent": false
+    },
+    {
+     "date": "1954-02-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima a Broadway di 'The Immoralist' (ruolo di Bachir) al Royale Theatre",
+     "source": "https://en.wikipedia.org/wiki/The_Immoralist_(play)",
+     "violent": false
+    },
+    {
+     "date": "1954-04-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Scritturato da Kazan per 'East of Eden', parte da New York per Hollywood",
+     "source": "https://en.wikipedia.org/wiki/James_Dean",
+     "violent": false
+    },
+    {
+     "date": "1955-03-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima di 'East of Eden' all'Astor Theatre di New York",
+     "source": "https://en.wikipedia.org/wiki/East_of_Eden_(film)",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "John F. Kennedy Jr.",
+   "sex": "M",
+   "group": "g4",
+   "weakTime": false,
+   "birth": {
+    "date": "1960-11-25",
+    "time": "00:22",
+    "place": "Washington, DC, USA",
+    "lat": 38.8951,
+    "lon": -77.0364,
+    "tz": "UTC-5",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/John_F._Kennedy,_Jr.",
+    "notes": "Rating A, fonte 'News report' (contrib. Lois Rodden). Offset EST −5."
+   },
+   "events": [
+    {
+     "date": "1999-07-16",
+     "time": null,
+     "polarity": "-",
+     "what": "Precipita col Piper Saratoga da lui pilotato al largo di Martha's Vineyard; muore con la moglie e la cognata",
+     "source": "https://en.wikipedia.org/wiki/John_F._Kennedy_Jr.",
+     "violent": true
+    },
+    {
+     "date": "1985-08-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Debutto teatrale a New York (Irish Theater, Manhattan)",
+     "source": "https://en.wikipedia.org/wiki/John_F._Kennedy_Jr.",
+     "violent": false
+    },
+    {
+     "date": "1991-08-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince la prima causa come procuratore distrettuale aggiunto a Manhattan",
+     "source": "https://en.wikipedia.org/wiki/John_F._Kennedy_Jr.",
+     "violent": false
+    },
+    {
+     "date": "1995-09-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Lancio ufficiale della rivista George in conferenza stampa a Manhattan",
+     "source": "https://en.wikipedia.org/wiki/John_F._Kennedy_Jr.",
+     "violent": false
+    },
+    {
+     "date": "1996-09-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Matrimonio con Carolyn Bessette a Cumberland Island (Georgia)",
+     "source": "https://en.wikipedia.org/wiki/John_F._Kennedy_Jr.",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Paul Walker",
+   "sex": "M",
+   "group": "g4",
+   "weakTime": false,
+   "birth": {
+    "date": "1973-09-12",
+    "time": "05:59",
+    "place": "Glendale, California, USA",
+    "lat": 34.1425,
+    "lon": -118.2551,
+    "tz": "UTC-7",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Paul_Walker",
+    "notes": "AA, certificato di nascita (contrib. Viktor E.). Offset PDT −7 (ora legale)."
+   },
+   "events": [
+    {
+     "date": "2013-11-30",
+     "time": null,
+     "polarity": "-",
+     "what": "Muore come passeggero nello schianto della Porsche Carrera GT a Valencia (Santa Clarita, CA)",
+     "source": "https://en.wikipedia.org/wiki/Paul_Walker",
+     "violent": true
+    },
+    {
+     "date": "2001-06-22",
+     "time": null,
+     "polarity": "+",
+     "what": "Uscita USA di 'The Fast and the Furious', n.1 al botteghino",
+     "source": "https://en.wikipedia.org/wiki/The_Fast_and_the_Furious_(2001_film)",
+     "violent": false
+    },
+    {
+     "date": "2011-04-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Uscita USA di 'Fast Five', record d'apertura per la serie e per Universal",
+     "source": "https://en.wikipedia.org/wiki/Fast_Five",
+     "violent": false
+    },
+    {
+     "date": "2013-05-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Uscita USA di 'Fast & Furious 6'",
+     "source": "https://en.wikipedia.org/wiki/Fast_%26_Furious_6",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Robin Williams",
+   "sex": "M",
+   "group": "g4",
+   "weakTime": false,
+   "birth": {
+    "date": "1951-07-21",
+    "time": "13:34",
+    "place": "Chicago, Illinois, USA",
+    "lat": 41.8781,
+    "lon": -87.6298,
+    "tz": "UTC-5",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Robin_Williams",
+    "notes": "AA, certificato di nascita (contrib. The Wilsons). Offset CDT −5 (conferma astro-charts.com)."
+   },
+   "events": [
+    {
+     "date": "2014-08-11",
+     "time": null,
+     "polarity": "-",
+     "what": "Suicidio per impiccagione a Paradise Cay (California)",
+     "source": "https://en.wikipedia.org/wiki/Robin_Williams",
+     "violent": true
+    },
+    {
+     "date": "1978-09-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima puntata di 'Mork & Mindy' su ABC",
+     "source": "https://en.wikipedia.org/wiki/Mork_%26_Mindy",
+     "violent": false
+    },
+    {
+     "date": "1988-01-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Golden Globe miglior attore (commedia) per 'Good Morning, Vietnam'",
+     "source": "https://en.wikipedia.org/wiki/45th_Golden_Globe_Awards",
+     "violent": false
+    },
+    {
+     "date": "1998-03-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Oscar al miglior attore non protagonista per 'Good Will Hunting'",
+     "source": "https://en.wikipedia.org/wiki/70th_Academy_Awards",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Jim Clark",
+   "sex": "M",
+   "group": "g4",
+   "weakTime": false,
+   "birth": {
+    "date": "1936-03-04",
+    "time": "15:25",
+    "place": "Kilmany / Balmerino, Fife, Scozia, Regno Unito",
+    "lat": 56.385,
+    "lon": -3.025,
+    "tz": "UTC+0",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jim_Clark",
+    "notes": "AA, certificato di nascita (contrib. Paul Wright). Astrotheme indica Balmerino, Wikipedia Kilmany House Farm (Fife): località a ~3 km, coordinate approssimate fra le due. GMT 0."
+   },
+   "events": [
+    {
+     "date": "1968-04-07",
+     "time": null,
+     "polarity": "-",
+     "what": "Incidente mortale in gara di Formula 2 a Hockenheim",
+     "source": "https://en.wikipedia.org/wiki/Jim_Clark",
+     "violent": true
+    },
+    {
+     "date": "1962-06-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima vittoria in un Gran Premio di F1 (Belgio, Spa)",
+     "source": "https://en.wikipedia.org/wiki/1962_Belgian_Grand_Prix",
+     "violent": false
+    },
+    {
+     "date": "1963-09-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince il GP d'Italia a Monza e si laurea Campione del Mondo 1963",
+     "source": "https://en.wikipedia.org/wiki/1963_Italian_Grand_Prix",
+     "violent": false
+    },
+    {
+     "date": "1965-05-31",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince la 500 Miglia di Indianapolis",
+     "source": "https://en.wikipedia.org/wiki/1965_Indianapolis_500",
+     "violent": false
+    },
+    {
+     "date": "1965-08-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince il GP di Germania al Nürburgring e il titolo mondiale 1965",
+     "source": "https://en.wikipedia.org/wiki/1965_German_Grand_Prix",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Dale Earnhardt",
+   "sex": "M",
+   "group": "g4",
+   "weakTime": false,
+   "birth": {
+    "date": "1951-04-29",
+    "time": "13:07",
+    "place": "Concord, North Carolina, USA",
+    "lat": 35.4088,
+    "lon": -80.5795,
+    "tz": "UTC-5",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Dale_Earnhardt",
+    "notes": "AA, certificato di nascita (contrib. Sue Kay). Luogo: astrotheme dice Concord (ospedale), Wikipedia Kannapolis (città natale, ~10 km). Offset EST −5 (astro-seek: UT 18:07)."
+   },
+   "events": [
+    {
+     "date": "1996-07-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Grave incidente nella DieHard 500 a Talladega: frattura di clavicola, sterno e scapola",
+     "source": "https://en.wikipedia.org/wiki/Dale_Earnhardt",
+     "violent": true
+    },
+    {
+     "date": "2001-02-18",
+     "time": null,
+     "polarity": "-",
+     "what": "Incidente mortale all'ultimo giro della Daytona 500",
+     "source": "https://en.wikipedia.org/wiki/Dale_Earnhardt",
+     "violent": true
+    },
+    {
+     "date": "1979-04-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima vittoria in carriera nella Cup Series (Southeastern 500, Bristol)",
+     "source": "https://en.wikipedia.org/wiki/1979_Southeastern_500",
+     "violent": false
+    },
+    {
+     "date": "1994-10-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince a Rockingham e si assicura il 7° titolo, eguagliando il record di Petty",
+     "source": "https://en.wikipedia.org/wiki/1994_AC_Delco_500",
+     "violent": false
+    },
+    {
+     "date": "1998-02-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince finalmente la Daytona 500 al 20° tentativo",
+     "source": "https://en.wikipedia.org/wiki/Dale_Earnhardt",
+     "violent": false
+    }
+   ]
+  }
+ ]
+}
