@@ -37,3 +37,11 @@ Linea annuale mossa (ramo Na Jia) in clash col ramo del mese → lettura negativ
 
 ### Na Jia dei 64 esagrammi
 heluo-najia.js (radice del repo): palazzo, Shi/Ying, ramo, elemento, sei relazioni e spirito nascosto per ogni linea, generato da liuyao.js del repo trading. Non è ancora collegato all'app.
+
+### Lettura di Edu su Diana (cmp/lettura.js)
+Tre coincidenze Liu Yao in A/B: ciclo (29 l5 = Ufficiale 戌, punito dall'anno 丑), annuale (23 l6 = 寅, clash col mese 申), mensile (14 l6 = Ufficiale 巳, giorno 巳 — ma in ora solare vera l'incidente è ancora giorno 甲辰). Contate su tutti gli altri eventi: frequenza uguale in tragedie e successi (A: 5/5/10% vs 3/9/9%).
+
+## Prossimo passo (Edu, 8/11): DAL GENERALE AL PARTICOLARE
+Il test finora ha guardato solo i cicli. Prima serve l'analisi natale completa (PowerPoint): esagramma di vita e linea mutante, eccesso/difetto Yin-Yang, proporzione, timeliness, Gua nativo, proper position, proper support, Hu Gua, Gua di cielo e di terra, renown Gua, opposto e inverso → grado di fortuna/sfortuna della persona in un dato momento. SOLO DOPO si guarda l'effetto dei cicli. Es. Diana: nativo Kan → periodo di terra complicato e pericoloso.
+Piano: schede natali complete per 10–15 personaggi → giudizio di Edu senza vedere gli eventi → regole in codice → test sui 473 eventi.
+heluo-lishu.js calcola già: heavenTrigram, earthTrigram, huGua, properPosition, properSupport, houTian, cycles. Da aggiungere come giudizio: Yin-Yang, proporzione, timeliness, renown, opposto/inverso, combinazione finale.
