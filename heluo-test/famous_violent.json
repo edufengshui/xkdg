@@ -1909,6 +1909,816 @@
      "violent": false
     }
    ]
+  },
+  {
+   "name": "Bob Dole",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1923-07-22",
+    "time": "00:10",
+    "place": "Russell, Kansas, USA",
+    "lat": 38.895,
+    "lon": -98.86,
+    "tz": "UTC-6",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Bob_Dole",
+    "notes": "Fonte: memoria/autobiografia (Rodden). Offset CST −6 (Kansas senza ora legale nel 1923), verificato ricalcolando ASC 6°10' Tau / MC 20°55' Cap."
+   },
+   "events": [
+    {
+     "date": "1945-04-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Gravemente ferito in combattimento (Hill 913, Castel d'Aiano, Appennino bolognese)",
+     "source": "https://www.veterans.senate.gov/2005/4/veterans-committee-chairman-praises-bob-dole-wounded-60-years-ago-today",
+     "violent": true
+    },
+    {
+     "date": "1969-01-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Entra in carica come senatore del Kansas",
+     "source": "https://en.wikipedia.org/wiki/Bob_Dole",
+     "violent": false
+    },
+    {
+     "date": "1985-01-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Leader della maggioranza al Senato",
+     "source": "https://en.wikipedia.org/wiki/Bob_Dole",
+     "violent": false
+    },
+    {
+     "date": "1997-01-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Riceve la Presidential Medal of Freedom da Clinton",
+     "source": "https://en.wikipedia.org/wiki/Bob_Dole",
+     "violent": false
+    },
+    {
+     "date": "2018-01-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Riceve la Congressional Gold Medal",
+     "source": "https://en.wikipedia.org/wiki/Bob_Dole",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Daniel Inouye",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1924-09-07",
+    "time": "11:00",
+    "place": "Honolulu, Hawaii, USA",
+    "lat": 21.307,
+    "lon": -157.858,
+    "tz": "UTC-10.5",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Daniel_Inouye",
+    "notes": "Certificato di nascita (Gauquelin). Ora tonda ma AA da documento. Offset Hawaii standard −10:30 (in uso 1896-1947), verificato con ASC 25°50' Sco / MC 29°11' Leo."
+   },
+   "events": [
+    {
+     "date": "1945-04-21",
+     "time": null,
+     "polarity": "-",
+     "what": "Gravemente ferito guidando un assalto in Italia (San Terenzo/Colle Musatello): perde il braccio destro",
+     "source": "https://en.wikipedia.org/wiki/Daniel_Inouye",
+     "violent": true
+    },
+    {
+     "date": "1959-08-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Entra alla Camera come primo deputato delle Hawaii, nel giorno in cui diventano Stato",
+     "source": "https://en.wikipedia.org/wiki/Daniel_Inouye",
+     "violent": false
+    },
+    {
+     "date": "1963-01-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Entra in carica come senatore",
+     "source": "https://en.wikipedia.org/wiki/Daniel_Inouye",
+     "violent": false
+    },
+    {
+     "date": "2000-06-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Riceve la Medal of Honor da Clinton",
+     "source": "https://en.wikipedia.org/wiki/Daniel_Inouye",
+     "violent": false
+    },
+    {
+     "date": "2010-06-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto Presidente pro tempore del Senato",
+     "source": "https://en.wikipedia.org/wiki/Daniel_Inouye",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "John McCain",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1936-08-29",
+    "time": "18:25",
+    "place": "Coco Solo / Colón, Panama",
+    "lat": 9.36,
+    "lon": -79.9,
+    "tz": "UTC-5",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/John_McCain",
+    "notes": "Certificato di nascita (Rodden). Offset −5 (Panama/Canal Zone EST), verificato con ASC 6°00' Pis / MC 10°54' Sag."
+   },
+   "events": [
+    {
+     "date": "1967-07-29",
+     "time": null,
+     "polarity": "-",
+     "what": "Coinvolto nell'incendio della portaerei USS Forrestal (ferito da schegge)",
+     "source": "https://en.wikipedia.org/wiki/John_McCain",
+     "violent": true
+    },
+    {
+     "date": "1967-10-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Abbattuto su Hanoi, gravemente ferito e fatto prigioniero",
+     "source": "https://en.wikipedia.org/wiki/John_McCain",
+     "violent": true
+    },
+    {
+     "date": "1973-03-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Liberato dopo 5 anni e mezzo di prigionia in Nord Vietnam",
+     "source": "https://en.wikipedia.org/wiki/John_McCain",
+     "violent": false
+    },
+    {
+     "date": "1987-01-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Entra in carica come senatore dell'Arizona",
+     "source": "https://en.wikipedia.org/wiki/John_McCain",
+     "violent": false
+    },
+    {
+     "date": "2000-02-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince le primarie del New Hampshire (49% contro 30% di Bush)",
+     "source": "https://en.wikipedia.org/wiki/John_McCain",
+     "violent": false
+    },
+    {
+     "date": "2008-09-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominato candidato presidenziale repubblicano alla Convention",
+     "source": "https://en.wikipedia.org/wiki/John_McCain",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Audie Murphy",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1925-06-20",
+    "time": "20:00",
+    "place": "Kingston, Texas, USA",
+    "lat": 33.06,
+    "lon": -96.06,
+    "tz": "UTC-6",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Audie_Murphy",
+    "notes": "Certificato di nascita (Gary Noel). Ora tonda ma AA da documento. Offset CST −6, verificato con ASC 5°39' Cap / MC 24°23' Lib."
+   },
+   "events": [
+    {
+     "date": "1944-09-15",
+     "time": null,
+     "polarity": "-",
+     "what": "Ferito al tallone da scoppio di mortaio (Francia nord-orientale)",
+     "source": "https://en.wikipedia.org/wiki/Military_career_of_Audie_Murphy",
+     "violent": true
+    },
+    {
+     "date": "1944-10-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Colpito all'anca da un cecchino verso Brouvelieures (cancrena)",
+     "source": "https://en.wikipedia.org/wiki/Military_career_of_Audie_Murphy",
+     "violent": true
+    },
+    {
+     "date": "1971-05-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Muore nello schianto del piccolo aereo privato contro una montagna (Virginia)",
+     "source": "https://en.wikipedia.org/wiki/Audie_Murphy",
+     "violent": true
+    },
+    {
+     "date": "1945-06-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Riceve Medal of Honor e Legion of Merit dal gen. Patch presso Salisburgo",
+     "source": "https://en.wikipedia.org/wiki/Military_career_of_Audie_Murphy",
+     "violent": false
+    },
+    {
+     "date": "1955-08-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima mondiale di 'To Hell and Back' (Majestic Theatre, San Antonio), maggior successo Universal",
+     "source": "https://en.wikipedia.org/wiki/To_Hell_and_Back_(film)",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Lech Kaczyński",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": true,
+   "birth": {
+    "date": "1949-06-18",
+    "time": "02:45",
+    "place": "Varsavia, Polonia",
+    "lat": 52.23,
+    "lon": 21.01,
+    "tz": "UTC+2",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Lech_Kaczynski",
+    "notes": "Fonte: memoria/autobiografia (Pat Taglilatelo). Offset +2 = ora legale polacca 1949 (CEST), verificato con ASC 28°02' Tau / MC 26°11' Cap."
+   },
+   "events": [
+    {
+     "date": "2010-04-10",
+     "time": null,
+     "polarity": "-",
+     "what": "Muore nel disastro aereo di Smolensk con la moglie",
+     "source": "https://en.wikipedia.org/wiki/Lech_Kaczy%C5%84ski",
+     "violent": true
+    },
+    {
+     "date": "2000-06-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Ministro della Giustizia",
+     "source": "https://en.wikipedia.org/wiki/Lech_Kaczy%C5%84ski",
+     "violent": false
+    },
+    {
+     "date": "2002-11-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Entra in carica come sindaco di Varsavia",
+     "source": "https://en.wikipedia.org/wiki/Lech_Kaczy%C5%84ski",
+     "violent": false
+    },
+    {
+     "date": "2005-10-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince il ballottaggio delle presidenziali polacche",
+     "source": "https://en.wikipedia.org/wiki/2005_Polish_presidential_election",
+     "violent": false
+    },
+    {
+     "date": "2005-12-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Giura come Presidente della Polonia",
+     "source": "https://en.wikipedia.org/wiki/Lech_Kaczy%C5%84ski",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Pierre Bérégovoy",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1925-12-23",
+    "time": "10:00",
+    "place": "Déville-lès-Rouen, Francia",
+    "lat": 49.468,
+    "lon": 1.05,
+    "tz": "UTC+0",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Pierre_B%C3%A9r%C3%A9govoy",
+    "notes": "Atto di nascita (Didier Geslain). Ora tonda ma AA da documento. Offset 0 (Francia su GMT d'inverno nel 1925), verificato con ASC 6°59' Aqu / MC 4°26' Sag."
+   },
+   "events": [
+    {
+     "date": "1993-05-01",
+     "time": null,
+     "polarity": "-",
+     "what": "Si spara alla testa lungo il canale presso Nevers (suicidio)",
+     "source": "https://en.wikipedia.org/wiki/Pierre_B%C3%A9r%C3%A9govoy",
+     "violent": true
+    },
+    {
+     "date": "1984-07-19",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominato Ministro dell'Economia e Finanze (governo Fabius)",
+     "source": "https://fr.wikipedia.org/wiki/Gouvernement_Fabius",
+     "violent": false
+    },
+    {
+     "date": "1988-05-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Torna Ministro delle Finanze (governo Rocard I)",
+     "source": "https://fr.wikipedia.org/wiki/Gouvernement_Michel_Rocard_(1)",
+     "violent": false
+    },
+    {
+     "date": "1992-04-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominato Primo ministro",
+     "source": "https://fr.wikipedia.org/wiki/Gouvernement_Pierre_B%C3%A9r%C3%A9govoy",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Jean Jaurès",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1859-09-03",
+    "time": "12:00",
+    "place": "Castres, Francia",
+    "lat": 43.606,
+    "lon": 2.24,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jean_Jaur%C3%A8s",
+    "notes": "Atto di nascita (Didier Geslain). Ora tonda (mezzogiorno) ma AA da documento. Ora media locale: MC 10°34' Vir torna con LMT Castres."
+   },
+   "events": [
+    {
+     "date": "1914-07-31",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato a colpi di pistola da Raoul Villain al Café du Croissant, Parigi",
+     "source": "https://en.wikipedia.org/wiki/Jean_Jaur%C3%A8s",
+     "violent": true
+    },
+    {
+     "date": "1885-11-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Inizia il mandato di deputato del Tarn",
+     "source": "https://en.wikipedia.org/wiki/Jean_Jaur%C3%A8s",
+     "violent": false
+    },
+    {
+     "date": "1893-01-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Rieletto deputato del Tarn (Carmaux)",
+     "source": "https://en.wikipedia.org/wiki/Jean_Jaur%C3%A8s",
+     "violent": false
+    },
+    {
+     "date": "1904-04-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Primo numero de L'Humanité, da lui fondato e diretto",
+     "source": "https://en.wikipedia.org/wiki/Jean_Jaur%C3%A8s",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Ernst Jünger",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1895-03-29",
+    "time": "12:00",
+    "place": "Heidelberg, Germania",
+    "lat": 49.41,
+    "lon": 8.69,
+    "tz": "UTC+1",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Ernst_J%C3%BCnger",
+    "notes": "Certificato di nascita (Ed Steinbrecher). Ora tonda ma AA da documento. Offset +1 (CET, in Germania dal 1893), verificato con ASC 25°09' Can / MC 0°20' Ari."
+   },
+   "events": [
+    {
+     "date": "1918-08-25",
+     "time": null,
+     "polarity": "-",
+     "what": "Ferito per la settima e ultima volta (polmone trapassato) presso Favreuil",
+     "source": "https://en.wikipedia.org/wiki/Storm_of_Steel",
+     "violent": true
+    },
+    {
+     "date": "1917-12-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Croce di cavaliere dell'Ordine di Casa Hohenzollern",
+     "source": "https://www.zobodat.at/biografien/Juenger_Ernst_Wikipedia.pdf",
+     "violent": false
+    },
+    {
+     "date": "1918-09-22",
+     "time": null,
+     "polarity": "+",
+     "what": "Insignito del Pour le Mérite",
+     "source": "https://www.zobodat.at/biografien/Juenger_Ernst_Wikipedia.pdf",
+     "violent": false
+    },
+    {
+     "date": "1982-08-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Riceve il Premio Goethe nella Paulskirche di Francoforte",
+     "source": "https://www.zobodat.at/biografien/Juenger_Ernst_Wikipedia.pdf",
+     "violent": false
+    },
+    {
+     "date": "1993-07-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Visita di omaggio di Kohl e Mitterrand a Wilflingen",
+     "source": "https://www.zobodat.at/biografien/Juenger_Ernst_Wikipedia.pdf",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Walther Rathenau",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1867-09-29",
+    "time": "08:00",
+    "place": "Berlino, Germania",
+    "lat": 52.52,
+    "lon": 13.4,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Walther_Rathenau",
+    "notes": "Certificato di nascita (Arno Müller). Ora tonda ma AA da documento. Ora media locale di Berlino (ASC 26°09' Lib / MC 5°19' Leo tornano con LMT)."
+   },
+   "events": [
+    {
+     "date": "1922-06-24",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato in auto a Berlino-Grunewald dall'Organisation Consul",
+     "source": "https://en.wikipedia.org/wiki/Walther_Rathenau",
+     "violent": true
+    },
+    {
+     "date": "1921-10-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Firma con Loucheur l'Accordo di Wiesbaden sulle riparazioni",
+     "source": "https://de.wikipedia.org/wiki/Wiesbadener_Abkommen_(1921)",
+     "violent": false
+    },
+    {
+     "date": "1922-02-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Ministro degli Esteri del Reich",
+     "source": "https://en.wikipedia.org/wiki/Walther_Rathenau",
+     "violent": false
+    },
+    {
+     "date": "1922-04-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Firma il Trattato di Rapallo con la Russia sovietica",
+     "source": "https://en.wikipedia.org/wiki/Walther_Rathenau",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Umberto I di Savoia",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1844-03-14",
+    "time": "10:30",
+    "place": "Torino, Italia",
+    "lat": 45.07,
+    "lon": 7.686,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Umberto_I_of_Italy",
+    "notes": "Atto di nascita (Jacques de Lescaut). Ora media locale di Torino (ASC 25°36' Gem / MC 27°20' Aqu tornano con LMT)."
+   },
+   "events": [
+    {
+     "date": "1878-11-17",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato di Passannante (coltello) durante la parata a Napoli",
+     "source": "https://en.wikipedia.org/wiki/Umberto_I_of_Italy",
+     "violent": true
+    },
+    {
+     "date": "1897-04-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato di Acciarito (pugnale) presso Roma",
+     "source": "https://en.wikipedia.org/wiki/Umberto_I_of_Italy",
+     "violent": true
+    },
+    {
+     "date": "1900-07-29",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato a colpi di pistola da Gaetano Bresci a Monza",
+     "source": "https://en.wikipedia.org/wiki/Umberto_I_of_Italy",
+     "violent": true
+    },
+    {
+     "date": "1868-04-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Sposa Margherita di Savoia",
+     "source": "https://en.wikipedia.org/wiki/Umberto_I_of_Italy",
+     "violent": false
+    },
+    {
+     "date": "1878-01-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Re d'Italia",
+     "source": "https://en.wikipedia.org/wiki/Umberto_I_of_Italy",
+     "violent": false
+    },
+    {
+     "date": "1882-05-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Firma della Triplice Alleanza",
+     "source": "https://en.wikipedia.org/wiki/Triple_Alliance_(1882)",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Carlo I del Portogallo",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1863-09-28",
+    "time": "13:35",
+    "place": "Lisbona, Portogallo",
+    "lat": 38.72,
+    "lon": -9.139,
+    "tz": "LMT",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Carlos_I_of_Portugal",
+    "notes": "Fonte: cronaca giornalistica (Sy Scholfield), rating A. Ora media locale di Lisbona (ASC 9°52' Cap / MC 2°56' Sco tornano con LMT)."
+   },
+   "events": [
+    {
+     "date": "1908-02-01",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato con il principe ereditario nel Regicidio di Lisbona (Terreiro do Paço)",
+     "source": "https://en.wikipedia.org/wiki/Carlos_I_of_Portugal",
+     "violent": true
+    },
+    {
+     "date": "1886-05-22",
+     "time": null,
+     "polarity": "+",
+     "what": "Sposa Amelia d'Orléans",
+     "source": "https://en.wikipedia.org/wiki/Carlos_I_of_Portugal",
+     "violent": false
+    },
+    {
+     "date": "1889-10-19",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Re del Portogallo",
+     "source": "https://en.wikipedia.org/wiki/Carlos_I_of_Portugal",
+     "violent": false
+    },
+    {
+     "date": "1889-12-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Acclamazione ufficiale come re",
+     "source": "https://en.wikipedia.org/wiki/Carlos_I_of_Portugal",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Alessandro II di Russia",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1818-04-29",
+    "time": "10:00",
+    "place": "Mosca, Russia",
+    "lat": 55.755,
+    "lon": 37.617,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Alexander_II_of_Russia",
+    "notes": "Registro di nascita (Rodden). Ora tonda ma AA da documento. Data gregoriana (giuliana 17/4). Ora media locale di Mosca (ASC 4°53' Leo / MC 7°21' Ari tornano con LMT). TUTTE le date eventi sono convertite al calendario gregoriano (N.S.)."
+   },
+   "events": [
+    {
+     "date": "1866-04-16",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato di Karakozov (colpo di pistola) a San Pietroburgo (4/4 O.S.)",
+     "source": "https://en.wikipedia.org/wiki/Dmitry_Karakozov",
+     "violent": true
+    },
+    {
+     "date": "1867-06-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato di Berezowski (colpo di pistola) a Longchamp, Parigi",
+     "source": "https://en.wikipedia.org/wiki/Antoni_Berezowski",
+     "violent": true
+    },
+    {
+     "date": "1880-02-17",
+     "time": null,
+     "polarity": "-",
+     "what": "Esplosione di Khalturin al Palazzo d'Inverno sotto la sala da pranzo (5/2 O.S.)",
+     "source": "https://en.wikipedia.org/wiki/Stepan_Khalturin",
+     "violent": true
+    },
+    {
+     "date": "1881-03-13",
+     "time": null,
+     "polarity": "-",
+     "what": "Ucciso dalle bombe di Narodnaja Volja a San Pietroburgo (1/3 O.S.)",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_Alexander_II_of_Russia",
+     "violent": true
+    },
+    {
+     "date": "1855-03-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Sale al trono",
+     "source": "https://en.wikipedia.org/wiki/Alexander_II_of_Russia",
+     "violent": false
+    },
+    {
+     "date": "1856-09-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Incoronazione a Mosca",
+     "source": "https://en.wikipedia.org/wiki/Alexander_II_of_Russia",
+     "violent": false
+    },
+    {
+     "date": "1861-03-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Firma il manifesto di emancipazione dei servi della gleba",
+     "source": "https://en.wikipedia.org/wiki/Alexander_II_of_Russia",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Elisabetta d'Austria (Sissi)",
+   "sex": "F",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1837-12-24",
+    "time": "22:43",
+    "place": "Monaco di Baviera, Germania",
+    "lat": 48.137,
+    "lon": 11.575,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Elisabeth_of_Bavaria",
+    "notes": "Registro di nascita (Rodden). Ora media locale di Monaco (ASC 18°17' Vir / MC 15°18' Gem tornano con LMT)."
+   },
+   "events": [
+    {
+     "date": "1898-09-10",
+     "time": null,
+     "polarity": "-",
+     "what": "Pugnalata al cuore dall'anarchico Lucheni sul lungolago di Ginevra",
+     "source": "https://en.wikipedia.org/wiki/Empress_Elisabeth_of_Austria",
+     "violent": true
+    },
+    {
+     "date": "1854-04-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Sposa Francesco Giuseppe (Augustinerkirche, Vienna), diventa imperatrice",
+     "source": "https://en.wikipedia.org/wiki/Empress_Elisabeth_of_Austria",
+     "violent": false
+    },
+    {
+     "date": "1858-08-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Nasce l'erede al trono, Rodolfo",
+     "source": "https://en.wikipedia.org/wiki/Empress_Elisabeth_of_Austria",
+     "violent": false
+    },
+    {
+     "date": "1867-06-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Incoronata Regina d'Ungheria a Budapest",
+     "source": "https://en.wikipedia.org/wiki/Empress_Elisabeth_of_Austria",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Paul Doumer",
+   "sex": "M",
+   "group": "g6",
+   "weakTime": false,
+   "birth": {
+    "date": "1857-03-22",
+    "time": "03:00",
+    "place": "Aurillac, Francia",
+    "lat": 44.926,
+    "lon": 2.444,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Paul_Doumer",
+    "notes": "Atto di nascita (Didier Geslain). Ora tonda ma AA da documento. Ora media locale di Aurillac (ASC 19°02' Cap / MC 16°58' Sco tornano con LMT)."
+   },
+   "events": [
+    {
+     "date": "1932-05-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Colpito a pistolettate da Gorguloff a Parigi (muore il 7/5)",
+     "source": "https://en.wikipedia.org/wiki/Paul_Doumer",
+     "violent": true
+    },
+    {
+     "date": "1897-02-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Diventa Governatore generale dell'Indocina francese",
+     "source": "https://en.wikipedia.org/wiki/Paul_Doumer",
+     "violent": false
+    },
+    {
+     "date": "1927-01-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto Presidente del Senato",
+     "source": "https://en.wikipedia.org/wiki/Paul_Doumer",
+     "violent": false
+    },
+    {
+     "date": "1931-05-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Eletto Presidente della Repubblica francese",
+     "source": "https://en.wikipedia.org/wiki/Paul_Doumer",
+     "violent": false
+    }
+   ]
   }
  ]
 }
