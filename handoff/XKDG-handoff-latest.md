@@ -1,4 +1,4 @@
-# XKDG — Handoff (session 41, 2026-11-06)
+# XKDG — Handoff (session 43, 2026-11-08)
 
 Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
@@ -150,4 +150,11 @@ Plan from Edu. Sources: chapters QMDJ5 04/05/06 (Dropbox "Chee - Edu/11. qmdj ac
 - Heluo year from the Winter Solstice (Beijing-naive instant vs lunar-javascript DONG_ZHI); season/Yang Dun from SE/SS/AE/WS; month/day/hour TST.
 - Panel: pillars Hour·Day·Month·Year, Heaven/Earth numbers and trigrams (5 → cycle), XT + HT drawn (moving line red), position/support/prevailing, Hu Gua, opposite/inverse, cycles with ages and Dec→Dec years (current marked), Luck/Fame trigrams + opposites, yin/yang balance and month average. No texts.
 - Tested: Diana 29 l.6 (HT 48 l.3, month Wu → normal), Gates 1 l.6 → 10 l.3 from 55, Trump 31 l.5 → 27 l.2 from 46, Putin 18 l.3 → 39 l.6 from 46, Edu 1 l.3 → 43 l.6 from 55.
-- Phase 2 (annual / monthly) still to define with Edu.
+- Phase 2 BUILT in session 43 (see below and handoff/heluo-lishu-phase2.md in the Project).
+
+## Session 43 (2026-11-08)
+- ☯ He Luo Li Shu phase 2 (commit 42b5aa5): annual and monthly hexagrams, rules reverse-engineered from bazi-calculator.com/calcHLLS.php (266 years, 0 mismatches), approved by Edu; Heluo year from the Winter Solstice; Zi month: Daxue→WS old year, WS→Chou new year; month number by branch (寅 1 … 丑 12). 29/3/39: option a CONFIRMED (Diana HT 48, the calculator gives 59). heluo-lishu.js `annual`, `annualHex`, `monthlyHex`, `monthStarts`; panel section "Annual and monthly hexagrams" (◀ ▶ years, 13 month rows). Open: ages after the HT cycles.
+- Compared with bazi-calculator.com XKDG (Date Selection — GOLD premium, only its fixed demo 15-07-1952 / 15-07-2022 + 13 hours readable): 16/17 pillars equal (hex, Element/Period, families).
+- FIX 甲子 (Edu): XKDG_TABLE 甲子 = hex 2 Kun Element 1 PERIOD 1, alt 24 Fu Period 8 (they were swapped; the site shows 2 → 11).
+- NEW `time-afflictions.js` (index.html after sun-moon.js): Tai Sui, Sui Po, Five Yellow (forward flight, stars from lunar-javascript Year/Month/Day/TimeNineStar), San Sha, Wu Ji (year only, WJDT_BRANCHES) for Hour/Day/Month/Year of the main calendar date. Table = collapsible box `#xkdg-afflictions` under XKDG RELATIONS (app-bazi.js calculateBazi → XKDGAfflictions.update); luopan ☰ → 🧭 Tai Sui · Sha (calendar date) = coloured rings outside the wheel + legend (Y M D H). Checked on the site's demo: all values equal.
+- Great Sun formula (renovation) in the ☀️🌙 Sun & Moon popup (sun-moon.js computeCurrent.renovation): houses FACING the Sun's mountain + houses SITTING on it or on its 2 trine partners (facing = opposite). Rule read from the site's one example (小暑: S3, N3, SE2, W1) — matches. Says whether this house is active.
