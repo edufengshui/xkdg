@@ -7,6 +7,16 @@
     "Jim Clark",
     "1961-09-10",
     "Clark illeso a Monza 1961: nessun danno alla persona"
+   ],
+   [
+    "Federico García Lorca",
+    "1936-08-19",
+    "data della fucilazione solo presunta"
+   ],
+   [
+    "Theo van Gogh",
+    "2004-08-29",
+    "Submission: causa dell'omicidio, non un trionfo"
    ]
   ]
  },
@@ -971,6 +981,594 @@
      "what": "Matrimonio con Sophie Chotek a Reichstadt, dopo anni di opposizione dell'imperatore",
      "source": "https://cavac.at/cavacopedia/Archduke_Franz_Ferdinand_of_Austria",
      "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Giovanni Falcone",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1939-05-18",
+    "time": "16:35",
+    "place": "Palermo, Italia",
+    "lat": 38.1157,
+    "lon": 13.3613,
+    "tz": "UTC+1",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Giovanni_Falcone",
+    "notes": "Fonte ora: from memory or autobiography (Lois Rodden). Fuso non mostrato in testo da astrotheme: +1 confermato ricalcolando ASC 26°21' Bilancia / MC 0°20' Leone."
+   },
+   "events": [
+    {
+     "date": "1985-11-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Depositata l'ordinanza di rinvio a giudizio del Maxiprocesso (lavoro del pool antimafia)",
+     "source": "https://en.wikipedia.org/wiki/Maxi_Trial",
+     "violent": false
+    },
+    {
+     "date": "1986-02-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Inizio del Maxiprocesso di Palermo",
+     "source": "https://en.wikipedia.org/wiki/Maxi_Trial",
+     "violent": false
+    },
+    {
+     "date": "1987-12-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Sentenza di primo grado del Maxiprocesso: centinaia di condanne",
+     "source": "https://en.wikipedia.org/wiki/Maxi_Trial",
+     "violent": false
+    },
+    {
+     "date": "1989-06-20",
+     "time": null,
+     "polarity": "-",
+     "what": "Attentato fallito dell'Addaura: dinamite trovata presso la villa al mare",
+     "source": "https://en.wikipedia.org/wiki/Giovanni_Falcone",
+     "violent": true
+    },
+    {
+     "date": "1992-01-30",
+     "time": null,
+     "polarity": "+",
+     "what": "La Cassazione conferma le condanne del Maxiprocesso",
+     "source": "https://en.wikipedia.org/wiki/Maxi_Trial",
+     "violent": false
+    },
+    {
+     "date": "1992-05-23",
+     "time": null,
+     "polarity": "-",
+     "what": "Strage di Capaci: ucciso con un'autobomba",
+     "source": "https://en.wikipedia.org/wiki/Giovanni_Falcone",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Pier Paolo Pasolini",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1922-03-05",
+    "time": "06:30",
+    "place": "Bologna, Italia",
+    "lat": 44.4949,
+    "lon": 11.3426,
+    "tz": "UTC+1",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Pier_Paolo_Pasolini",
+    "notes": "Fonte: birth certificate or birth record (Ed Steinbrecher). +1 confermato da ASC 4°11' Pesci."
+   },
+   "events": [
+    {
+     "date": "1961-08-31",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima di 'Accattone' alla Mostra di Venezia (esordio da regista)",
+     "source": "https://en.wikipedia.org/wiki/Accattone",
+     "violent": false
+    },
+    {
+     "date": "1962-08-31",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima di 'Mamma Roma' alla Mostra di Venezia",
+     "source": "https://en.wikipedia.org/wiki/Mamma_Roma",
+     "violent": false
+    },
+    {
+     "date": "1964-09-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima de 'Il Vangelo secondo Matteo' a Venezia (premiato dalla giuria)",
+     "source": "https://en.wikipedia.org/wiki/The_Gospel_According_to_St._Matthew_(film)",
+     "violent": false
+    },
+    {
+     "date": "1975-11-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassinato all'Idroscalo di Ostia (notte tra 1 e 2 novembre)",
+     "source": "https://en.wikipedia.org/wiki/Pier_Paolo_Pasolini",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Gianni Versace",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1946-12-02",
+    "time": "06:00",
+    "place": "Reggio Calabria, Italia",
+    "lat": 38.1113,
+    "lon": 15.6473,
+    "tz": "UTC+1",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Gianni_Versace",
+    "notes": "Ora tonda ma da atto di nascita (birth certificate or birth record, Grazia Bordoni). +1 confermato da ASC 27°13' Scorpione."
+   },
+   "events": [
+    {
+     "date": "1986-01-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominato Commendatore della Repubblica Italiana da Cossiga",
+     "source": "https://en.wikipedia.org/wiki/Gianni_Versace",
+     "violent": false
+    },
+    {
+     "date": "1993-02-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Riceve l'American Fashion Oscar (CFDA)",
+     "source": "https://en.wikipedia.org/wiki/Gianni_Versace",
+     "violent": false
+    },
+    {
+     "date": "1997-07-15",
+     "time": null,
+     "polarity": "-",
+     "what": "Ucciso a colpi di pistola davanti a Casa Casuarina, Miami Beach",
+     "source": "https://en.wikipedia.org/wiki/Gianni_Versace",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Albert Camus",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1913-11-07",
+    "time": "02:00",
+    "place": "Mondovi (Dréan), Algeria",
+    "lat": 36.6833,
+    "lon": 7.75,
+    "tz": "UTC+0",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Albert_Camus",
+    "notes": "Ora tonda ma da atto di nascita (Didier Geslain). Offset 0 (Algeria su GMT dal 1911) confermato da ASC 24°36' Vergine."
+   },
+   "events": [
+    {
+     "date": "1949-12-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima de 'Les Justes' a Parigi",
+     "source": "https://www.universalis.fr/encyclopedie/camus-reperes-chronologiques/",
+     "violent": false
+    },
+    {
+     "date": "1957-10-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Annuncio del Premio Nobel per la Letteratura",
+     "source": "https://en.wikipedia.org/wiki/1957_Nobel_Prize_in_Literature",
+     "violent": false
+    },
+    {
+     "date": "1957-12-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Cerimonia del Nobel a Stoccolma",
+     "source": "https://en.wikipedia.org/wiki/1957_Nobel_Prize_in_Literature",
+     "violent": false
+    },
+    {
+     "date": "1960-01-04",
+     "time": null,
+     "polarity": "-",
+     "what": "Muore sul colpo in incidente d'auto presso Villeblevin (Yonne)",
+     "source": "https://en.wikipedia.org/wiki/Albert_Camus",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Salman Rushdie",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": true,
+   "birth": {
+    "date": "1947-06-19",
+    "time": "02:30",
+    "place": "Mumbai, India",
+    "lat": 18.975,
+    "lon": 72.8258,
+    "tz": "UTC+5.5",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Salman_Rushdie",
+    "notes": "Fonte: from memory or autobiography (Lois Rodden). +5.5 confermato da ASC 0°13' Toro."
+   },
+   "events": [
+    {
+     "date": "1988-09-26",
+     "time": null,
+     "polarity": "+",
+     "what": "Pubblicazione dei 'Versi satanici' nel Regno Unito",
+     "source": "https://wilsoncenter.org/article/part-2-timeline-irans-fatwa-rushdie",
+     "violent": false
+    },
+    {
+     "date": "2007-06-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Nominato cavaliere (Knight Bachelor) nei Birthday Honours",
+     "source": "https://en.wikipedia.org/wiki/Salman_Rushdie",
+     "violent": false
+    },
+    {
+     "date": "2008-07-10",
+     "time": null,
+     "polarity": "+",
+     "what": "'I figli della mezzanotte' vince il Best of the Booker",
+     "source": "https://www.irishtimes.com/news/public-vote-makes-it-a-hat-trick-of-bookers-for-rushdie-epic-1.944165",
+     "violent": false
+    },
+    {
+     "date": "2022-08-12",
+     "time": null,
+     "polarity": "-",
+     "what": "Accoltellato sul palco alla Chautauqua Institution (perde un occhio)",
+     "source": "https://en.wikipedia.org/wiki/Salman_Rushdie",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Theo van Gogh",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1957-07-23",
+    "time": "12:12",
+    "place": "L'Aia, Paesi Bassi",
+    "lat": 52.0705,
+    "lon": 4.3007,
+    "tz": "UTC+1",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Theo_van_Gogh_(film_director)",
+    "notes": "Regista. Fonte: from memory or autobiography (Sarah van Sanden). +1 confermato da ASC 16°14' Bilancia."
+   },
+   "events": [
+    {
+     "date": "1996-08-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Uscita di 'Blind Date' (tre Vitelli d'oro al Festival olandese 1996)",
+     "source": "https://en.wikipedia.org/wiki/Blind_Date_(1996_film)",
+     "violent": false
+    },
+    {
+     "date": "2004-11-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Ucciso a colpi di pistola e sgozzato ad Amsterdam da Mohammed Bouyeri",
+     "source": "https://en.wikipedia.org/wiki/Theo_van_Gogh_(film_director)",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Sharon Tate",
+   "sex": "F",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1943-01-24",
+    "time": "17:47",
+    "place": "Dallas, Texas, USA",
+    "lat": 32.7767,
+    "lon": -96.797,
+    "tz": "UTC-5",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Sharon_Tate",
+    "notes": "Fonte: birth certificate (Lois Rodden). −5 (CWT, War Time) confermato da ASC 21°28' Cancro."
+   },
+   "events": [
+    {
+     "date": "1967-12-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Uscita de 'La valle delle bambole' (20th Century Fox)",
+     "source": "https://wikiwand.com/en/Valley_of_the_Dolls_(film)",
+     "violent": false
+    },
+    {
+     "date": "1968-01-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Matrimonio con Roman Polanski a Chelsea, Londra",
+     "source": "https://en.wikipedia.org/wiki/Sharon_Tate",
+     "violent": false
+    },
+    {
+     "date": "1968-02-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Cerimonia dei Golden Globe: candidata New Star of the Year",
+     "source": "https://en.wikipedia.org/wiki/25th_Golden_Globes",
+     "violent": false
+    },
+    {
+     "date": "1969-08-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Uccisa dalla Manson Family a Cielo Drive, Los Angeles",
+     "source": "https://en.wikipedia.org/wiki/Sharon_Tate",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Jayne Mansfield",
+   "sex": "F",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1933-04-19",
+    "time": "09:11",
+    "place": "Bryn Mawr (Lower Merion), Pennsylvania, USA",
+    "lat": 40.0229,
+    "lon": -75.3163,
+    "tz": "UTC-5",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jayne_Mansfield",
+    "notes": "Fonte: birth certificate (Lois Rodden). −5 (EST) confermato da ASC 5°26' Cancro. ATTENZIONE: accuracyproject.org riporta 17:40 all'ospedale di Bryn Mawr."
+   },
+   "events": [
+    {
+     "date": "1955-10-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Debutto a Broadway in 'Will Success Spoil Rock Hunter?' (Belasco Theatre)",
+     "source": "https://en.wikipedia.org/wiki/Will_Success_Spoil_Rock_Hunter%3F_(play)",
+     "violent": false
+    },
+    {
+     "date": "1956-05-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Contratto di sei anni con la Twentieth Century Fox",
+     "source": "https://en.wikipedia.org/wiki/Jayne_Mansfield",
+     "violent": false
+    },
+    {
+     "date": "1957-02-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Vince il Golden Globe New Star of the Year",
+     "source": "https://en.wikipedia.org/wiki/Golden_Globe_Award_for_New_Star_of_the_Year_%E2%80%93_Actress",
+     "violent": false
+    },
+    {
+     "date": "1967-06-29",
+     "time": null,
+     "polarity": "-",
+     "what": "Muore in incidente stradale sulla US Highway 90 presso New Orleans",
+     "source": "https://en.wikipedia.org/wiki/Jayne_Mansfield",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Isadora Duncan",
+   "sex": "F",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1877-05-26",
+    "time": "02:20",
+    "place": "San Francisco, California, USA",
+    "lat": 37.7749,
+    "lon": -122.4194,
+    "tz": "LMT",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Isadora_Duncan",
+    "notes": "Fonte: from memory or autobiography (Lois Rodden). Prima dei fusi USA (1883): LMT, confermato da ASC ~14°58' Ariete."
+   },
+   "events": [
+    {
+     "date": "1908-07-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Spettacolo 'Iphigénie en Aulide' al Duke of York's Theatre, Londra",
+     "source": "https://www.isadoraduncanarchive.org/collection/39",
+     "violent": false
+    },
+    {
+     "date": "1908-11-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Spettacolo a New York con Walter Damrosch ('A Revival of the Greek Art')",
+     "source": "https://isadoraduncanarchive.org/dancer/1",
+     "violent": false
+    },
+    {
+     "date": "1922-05-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Matrimonio con il poeta Sergej Esenin",
+     "source": "https://en.wikipedia.org/wiki/Isadora_Duncan",
+     "violent": false
+    },
+    {
+     "date": "1927-09-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Muore strangolata dalla sciarpa impigliata nella ruota dell'auto a Nizza",
+     "source": "https://en.wikipedia.org/wiki/Isadora_Duncan",
+     "violent": true
+    }
+   ]
+  },
+  {
+   "name": "Christopher Reeve",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1952-09-25",
+    "time": "03:12",
+    "place": "Manhattan, New York, USA",
+    "lat": 40.7831,
+    "lon": -73.9712,
+    "tz": "UTC-4",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Christopher_Reeve",
+    "notes": "Fonte: from memory or autobiography (Lois Rodden). −4 (EDT) confermato da ASC 19°06' Leone."
+   },
+   "events": [
+    {
+     "date": "1978-12-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima mondiale di 'Superman' al Kennedy Center, Washington",
+     "source": "https://washingtonian.com/2016/03/25/superman-american-premiere-kennedy-center-1978",
+     "violent": false
+    },
+    {
+     "date": "1992-04-11",
+     "time": null,
+     "polarity": "+",
+     "what": "Matrimonio con Dana Morosini a Williamstown",
+     "source": "https://en.wikipedia.org/wiki/Dana_Reeve",
+     "violent": false
+    },
+    {
+     "date": "1995-05-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Caduta da cavallo in gara a Culpeper (Virginia): tetraplegia",
+     "source": "https://en.wikipedia.org/wiki/Christopher_Reeve",
+     "violent": true
+    },
+    {
+     "date": "1998-04-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Pubblicazione dell'autobiografia 'Still Me' (poi Grammy)",
+     "source": "https://en.wikipedia.org/wiki/Christopher_Reeve",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Federico García Lorca",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1898-06-05",
+    "time": "23:59",
+    "place": "Fuente Vaqueros (Granada), Spagna",
+    "lat": 37.1773,
+    "lon": -3.5986,
+    "tz": "LMT",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Federico_Garc%C3%ADa_Lorca",
+    "notes": "Fonte: birth record (Lois Rodden). Spagna su GMT solo dal 1901: LMT. Astrotheme indica 'Granada' (coordinate usate = Granada); ASC 4°34' Pesci."
+   },
+   "events": [
+    {
+     "date": "1927-06-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima di 'Mariana Pineda' al Teatro Goya di Barcellona (Margarita Xirgu)",
+     "source": "https://www.universolorca.com/en/wp-json/wp/v2/estreno_obra_literar/7287",
+     "violent": false
+    },
+    {
+     "date": "1933-03-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima di 'Bodas de sangre' al Teatro Beatriz di Madrid",
+     "source": "https://www.universolorca.com/en/?p=7855",
+     "violent": false
+    },
+    {
+     "date": "1934-12-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Prima di 'Yerma' al Teatro Español di Madrid",
+     "source": "https://www.universolorca.com/en/?p=7246",
+     "violent": false
+    }
+   ]
+  },
+  {
+   "name": "Luigi Calabresi",
+   "sex": "M",
+   "group": "g3",
+   "weakTime": false,
+   "birth": {
+    "date": "1937-11-14",
+    "time": "00:30",
+    "place": "Roma, Italia",
+    "lat": 41.8919,
+    "lon": 12.5113,
+    "tz": "UTC+1",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Luigi_Calabresi",
+    "notes": "Fonte: birth certificate (Grazia Bordoni). +1 confermato da ASC 4°41' Vergine."
+   },
+   "events": [
+    {
+     "date": "1966-03-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Vinto il concorso, inizia la carriera da vicecommissario di P.S.",
+     "source": "https://iris.uniroma1.it/retrieve/e383531f-0d15-15e8-e053-a505fe0a3de9/Betta_Calabresi-Luigi_2019.pdf",
+     "violent": false
+    },
+    {
+     "date": "1969-05-31",
+     "time": null,
+     "polarity": "+",
+     "what": "Matrimonio con Gemma Capra",
+     "source": "https://iris.uniroma1.it/retrieve/e383531f-0d15-15e8-e053-a505fe0a3de9/Betta_Calabresi-Luigi_2019.pdf",
+     "violent": false
+    },
+    {
+     "date": "1972-05-17",
+     "time": null,
+     "polarity": "-",
+     "what": "Ucciso a colpi di pistola sotto casa in via Cherubini, Milano",
+     "source": "https://en.wikipedia.org/wiki/Luigi_Calabresi",
+     "violent": true
     }
    ]
   },
