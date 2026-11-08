@@ -292,13 +292,37 @@
     var P = root.XKDGSolarTime.pillarsFromCivil(d[0], d[1], d[2], t[0] || 0, t[1] || 0, 0, c.lon, -((c.utc || 0) * 60 + (c.dst ? 60 : 0)));
     return P ? fromPillars(P, male) : null;
   }
-  function cycleTable(title, cy, y0, nowAge) {
+  // Hexagram with ONE line in red: start age on the left, end age on the right of that line.
+  function cycleHexSvg(lines, ln, from, to) {
+    var W = 220, bx = 60, bw = 100, lh = 9, gap = 7, top = 6, H = top * 2 + 6 * lh + 5 * gap;
+    var s = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin:6px auto;">';
+    for (var i = 0; i < 6; i++) {
+      var y = top + (5 - i) * (lh + gap), red = (i + 1 === ln), col = red ? '#c62828' : '#222';
+      if (lines[i]) s += '<rect x="' + bx + '" y="' + y + '" width="' + bw + '" height="' + lh + '" fill="' + col + '"/>';
+      else s += '<rect x="' + bx + '" y="' + y + '" width="' + (bw * 0.43) + '" height="' + lh + '" fill="' + col + '"/><rect x="' + (bx + bw * 0.57) + '" y="' + y + '" width="' + (bw * 0.43) + '" height="' + lh + '" fill="' + col + '"/>';
+      if (red) {
+        var ty = y + lh - 0.5;
+        s += '<text x="' + (bx - 8) + '" y="' + ty + '" text-anchor="end" font-size="14" font-weight="700" fill="#c62828" font-family="system-ui">' + from + '</text>'
+           + '<text x="' + (bx + bw + 8) + '" y="' + ty + '" font-size="14" font-weight="700" fill="#c62828" font-family="system-ui">' + to + '</text>';
+      }
+    }
+    return s + '</svg>';
+  }
+  var _cyc = {}, _cycN = 0;
+  root.xkdgHLCycle = function (id) {
+    var el = $(id); if (!el) return;
+    el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+  };
+  function cycleTable(title, cy, y0, nowAge, hx) {
+    var TD = 'padding:4px 6px;';
     var h = '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">' + title + '</div><table style="border-collapse:collapse;font-size:12px;width:100%;">'
-      + '<tr style="color:#777;text-align:left;"><th style="padding:2px 6px;">Line</th><th style="padding:2px 6px;"></th><th style="padding:2px 6px;">Age</th><th style="padding:2px 6px;">Years (Winter Solstice → Winter Solstice)</th></tr>';
+      + '<tr style="color:#777;text-align:left;"><th style="' + TD + '">Line</th><th style="' + TD + '"></th><th style="' + TD + '">Age</th><th style="' + TD + '">Years (Winter Solstice → Winter Solstice)</th></tr>';
     cy.forEach(function (c) {
-      var on = nowAge >= c.from && nowAge <= c.to;
-      h += '<tr style="' + (on ? 'background:#fff3e0;font-weight:600;' : '') + 'border-top:1px solid #eee;"><td style="padding:2px 6px;">' + c.line + '</td><td style="padding:2px 6px;">' + (c.yang ? 'yang · 9' : 'yin · 6') + '</td>'
-        + '<td style="padding:2px 6px;">' + c.from + '–' + c.to + '</td><td style="padding:2px 6px;">Dec ' + (y0 + c.from - 2) + ' → Dec ' + (y0 + c.to - 1) + (on ? ' ◀ now' : '') + '</td></tr>';
+      var on = nowAge >= c.from && nowAge <= c.to, id = 'hl-cy-' + (++_cycN);
+      h += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + 'border-top:2px solid #b39ddb;"><td style="' + TD + '">' + c.line + '</td><td style="' + TD + '">' + (c.yang ? 'yang · 9' : 'yin · 6') + '</td>'
+        + '<td style="' + TD + '">' + c.from + '–' + c.to + '</td><td style="' + TD + '">Dec ' + (y0 + c.from - 2) + ' → Dec ' + (y0 + c.to - 1) + (on ? ' ◀ now' : '') + '</td></tr>'
+        + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + cycleHexSvg(hx.lines, c.line, c.from, c.to)
+        + '<div style="text-align:center;font-size:11px;color:#555;">' + hx.n + ' ' + esc(hexName(hx.n)) + ' · line ' + c.line + ' · age ' + c.from + '–' + c.to + '</div></td></tr>';
     });
     return h + '</table>';
   }
@@ -334,7 +358,7 @@
       + small('Hu Gua XT', R.huXT) + (R.huHT ? small('Hu Gua HT', R.huHT) : '')
       + small('Opposite XT', R.oppositeXT) + small('Inverse XT', R.inverseXT)
       + (R.oppositeHT ? small('Opposite HT', R.oppositeHT) + small('Inverse HT', R.inverseHT) : '') + '</div>'
-      + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now', R.cyclesXT, y0, nowAge) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
+      + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
       + [['Heaven (year stem)', 'heaven'], ['Earth (year branch)', 'earth'], ['Fame (season)', 'fame']].map(function (r) {
