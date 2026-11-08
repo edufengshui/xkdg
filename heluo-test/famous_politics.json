@@ -1,0 +1,1820 @@
+{
+ "meta": {
+  "rodden_ratings_via": "astrotheme.com (mirrors Astro-Databank ratings/contributors); astro.com itself blocked by bot-check/allowlist in this session",
+  "bazi_calc_check": "bazi-calculator.com famous index chart URLs (h= parameter); null = not visible or not checked",
+  "built": "2026-11-08"
+ },
+ "people": [
+  {
+   "name": "Margaret Thatcher",
+   "sex": "F",
+   "birth": {
+    "date": "1925-10-13",
+    "time": "09:00",
+    "place": "Grantham, England, UK",
+    "lat": 52.91,
+    "lon": -0.64,
+    "tz": "Europe/London",
+    "dst": "no (GMT; BST 1925 ended 4 Oct)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Margaret_Thatcher",
+    "bazi_calc_time": "09:00",
+    "notes": "Time from memory/autobiography (Harvey, Rodden). Bazi-calculator rr=A."
+   },
+   "events": [
+    {
+     "date": "1951-12-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Denis Thatcher",
+     "source": "https://en.wikipedia.org/wiki/Denis_Thatcher"
+    },
+    {
+     "date": "1953-08-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of twins Mark and Carol",
+     "source": "https://en.wikipedia.org/wiki/Margaret_Thatcher"
+    },
+    {
+     "date": "1975-02-11",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected leader of the Conservative Party",
+     "source": "https://en.wikipedia.org/wiki/1975_Conservative_Party_leadership_election"
+    },
+    {
+     "date": "1979-05-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Becomes Prime Minister after general election win",
+     "source": "https://en.wikipedia.org/wiki/1979_United_Kingdom_general_election"
+    },
+    {
+     "date": "1983-06-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Landslide re-election",
+     "source": "https://en.wikipedia.org/wiki/1983_United_Kingdom_general_election"
+    },
+    {
+     "date": "1984-10-12",
+     "time": "02:54",
+     "polarity": "-",
+     "what": "IRA Brighton hotel bomb targets her (survives)",
+     "source": "https://en.wikipedia.org/wiki/Brighton_hotel_bombing"
+    },
+    {
+     "date": "1987-06-11",
+     "time": null,
+     "polarity": "+",
+     "what": "Third consecutive election win",
+     "source": "https://en.wikipedia.org/wiki/1987_United_Kingdom_general_election"
+    },
+    {
+     "date": "1990-11-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Announces resignation after leadership challenge",
+     "source": "https://en.wikipedia.org/wiki/1990_Conservative_Party_leadership_election"
+    },
+    {
+     "date": "2003-06-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of husband Denis",
+     "source": "https://en.wikipedia.org/wiki/Denis_Thatcher"
+    },
+    {
+     "date": "2013-04-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (stroke, London)",
+     "source": "https://en.wikipedia.org/wiki/Death_and_funeral_of_Margaret_Thatcher"
+    }
+   ]
+  },
+  {
+   "name": "Barack Obama",
+   "sex": "M",
+   "birth": {
+    "date": "1961-08-04",
+    "time": "19:24",
+    "place": "Honolulu, Hawaii, USA",
+    "lat": 21.31,
+    "lon": -157.86,
+    "tz": "Pacific/Honolulu",
+    "dst": "no (HST UTC-10)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Barack_Obama",
+    "bazi_calc_time": null,
+    "notes": "Birth certificate. Listed on bazi-calculator (Ji Si day) but chart URL/time not readable."
+   },
+   "events": [
+    {
+     "date": "1992-10-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Michelle Robinson",
+     "source": "https://en.wikipedia.org/wiki/Michelle_Obama"
+    },
+    {
+     "date": "1995-11-07",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of mother Ann Dunham",
+     "source": "https://en.wikipedia.org/wiki/Ann_Dunham"
+    },
+    {
+     "date": "1998-07-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Malia",
+     "source": "https://en.wikipedia.org/wiki/Malia_Obama"
+    },
+    {
+     "date": "2000-03-21",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses Democratic primary for IL-1 to Bobby Rush",
+     "source": "https://en.wikipedia.org/wiki/2000_United_States_House_of_Representatives_elections_in_Illinois"
+    },
+    {
+     "date": "2001-06-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Sasha",
+     "source": "https://en.wikipedia.org/wiki/Sasha_Obama"
+    },
+    {
+     "date": "2004-11-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected US Senator for Illinois",
+     "source": "https://en.wikipedia.org/wiki/2004_United_States_Senate_election_in_Illinois"
+    },
+    {
+     "date": "2008-11-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of grandmother Madelyn Dunham",
+     "source": "https://en.wikipedia.org/wiki/Madelyn_Dunham"
+    },
+    {
+     "date": "2008-11-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President of the United States",
+     "source": "https://en.wikipedia.org/wiki/2008_United_States_presidential_election"
+    },
+    {
+     "date": "2009-10-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Awarded Nobel Peace Prize (announcement)",
+     "source": "https://en.wikipedia.org/wiki/2009_Nobel_Peace_Prize"
+    },
+    {
+     "date": "2012-11-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Re-elected President",
+     "source": "https://en.wikipedia.org/wiki/2012_United_States_presidential_election"
+    }
+   ]
+  },
+  {
+   "name": "Donald Trump",
+   "sex": "M",
+   "birth": {
+    "date": "1946-06-14",
+    "time": "10:54",
+    "place": "Jamaica, Queens, New York, USA",
+    "lat": 40.7,
+    "lon": -73.8,
+    "tz": "America/New_York",
+    "dst": "yes (EDT UTC-4)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Donald_Trump",
+    "bazi_calc_time": "10:54",
+    "notes": "Birth certificate (Rodden)."
+   },
+   "events": [
+    {
+     "date": "1977-04-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Ivana Zelnickova",
+     "source": "https://en.wikipedia.org/wiki/Ivana_Trump"
+    },
+    {
+     "date": "1981-09-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of brother Fred Trump Jr.",
+     "source": "https://en.wikipedia.org/wiki/Fred_Trump_Jr."
+    },
+    {
+     "date": "1999-06-25",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of father Fred Trump",
+     "source": "https://en.wikipedia.org/wiki/Fred_Trump"
+    },
+    {
+     "date": "2005-01-22",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Melania Knauss",
+     "source": "https://en.wikipedia.org/wiki/Melania_Trump"
+    },
+    {
+     "date": "2016-11-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins presidential election",
+     "source": "https://en.wikipedia.org/wiki/2016_United_States_presidential_election"
+    },
+    {
+     "date": "2019-12-18",
+     "time": null,
+     "polarity": "-",
+     "what": "Impeached by House of Representatives (first impeachment)",
+     "source": "https://en.wikipedia.org/wiki/First_impeachment_of_Donald_Trump"
+    },
+    {
+     "date": "2020-11-07",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses 2020 election (race called for Biden)",
+     "source": "https://en.wikipedia.org/wiki/2020_United_States_presidential_election"
+    },
+    {
+     "date": "2023-04-04",
+     "time": null,
+     "polarity": "-",
+     "what": "Arrested and arraigned in Manhattan",
+     "source": "https://en.wikipedia.org/wiki/Prosecution_of_Donald_Trump_in_New_York"
+    },
+    {
+     "date": "2024-05-30",
+     "time": null,
+     "polarity": "-",
+     "what": "Convicted on 34 felony counts",
+     "source": "https://en.wikipedia.org/wiki/Prosecution_of_Donald_Trump_in_New_York"
+    },
+    {
+     "date": "2024-07-13",
+     "time": "18:11",
+     "polarity": "-",
+     "what": "Shot and wounded in assassination attempt, Butler PA",
+     "source": "https://en.wikipedia.org/wiki/Attempted_assassination_of_Donald_Trump_in_Pennsylvania"
+    },
+    {
+     "date": "2024-11-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins 2024 presidential election (called early 6 Nov)",
+     "source": "https://en.wikipedia.org/wiki/2024_United_States_presidential_election"
+    }
+   ]
+  },
+  {
+   "name": "Diana, Princess of Wales",
+   "sex": "F",
+   "birth": {
+    "date": "1961-07-01",
+    "time": "19:45",
+    "place": "Sandringham, Norfolk, England, UK",
+    "lat": 52.83,
+    "lon": 0.51,
+    "tz": "Europe/London",
+    "dst": "yes (BST UTC+1)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Diana,_Princess_of_Wales",
+    "bazi_calc_time": "19:45",
+    "notes": "From memory/autobiography (Rodden). Note: some sources give 14:00; 19:45 is the A-rated time."
+   },
+   "events": [
+    {
+     "date": "1981-02-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Engagement to Prince Charles announced",
+     "source": "https://en.wikipedia.org/wiki/Wedding_of_Prince_Charles_and_Lady_Diana_Spencer"
+    },
+    {
+     "date": "1981-07-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Prince Charles",
+     "source": "https://en.wikipedia.org/wiki/Wedding_of_Prince_Charles_and_Lady_Diana_Spencer"
+    },
+    {
+     "date": "1982-06-21",
+     "time": "21:03",
+     "polarity": "+",
+     "what": "Birth of Prince William",
+     "source": "https://en.wikipedia.org/wiki/William,_Prince_of_Wales"
+    },
+    {
+     "date": "1984-09-15",
+     "time": "16:20",
+     "polarity": "+",
+     "what": "Birth of Prince Harry",
+     "source": "https://en.wikipedia.org/wiki/Prince_Harry,_Duke_of_Sussex"
+    },
+    {
+     "date": "1992-03-29",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of father, 8th Earl Spencer",
+     "source": "https://en.wikipedia.org/wiki/John_Spencer,_8th_Earl_Spencer"
+    },
+    {
+     "date": "1992-12-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Separation from Charles announced in Parliament",
+     "source": "https://en.wikipedia.org/wiki/Diana,_Princess_of_Wales"
+    },
+    {
+     "date": "1996-08-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Divorce finalised",
+     "source": "https://en.wikipedia.org/wiki/Diana,_Princess_of_Wales"
+    },
+    {
+     "date": "1997-08-31",
+     "time": "04:00",
+     "polarity": "-",
+     "what": "Death after car crash in Paris (crash 00:23, declared dead ~04:00)",
+     "source": "https://en.wikipedia.org/wiki/Death_of_Diana,_Princess_of_Wales"
+    }
+   ]
+  },
+  {
+   "name": "Elizabeth II",
+   "sex": "F",
+   "birth": {
+    "date": "1926-04-21",
+    "time": "02:40",
+    "place": "Mayfair (17 Bruton St), London, England, UK",
+    "lat": 51.51,
+    "lon": -0.15,
+    "tz": "Europe/London",
+    "dst": "yes (BST UTC+1; BST began 18 Apr 1926)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Elizabeth_II",
+    "bazi_calc_time": "02:40",
+    "notes": "Birth record."
+   },
+   "events": [
+    {
+     "date": "1947-11-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Philip Mountbatten",
+     "source": "https://en.wikipedia.org/wiki/Wedding_of_Princess_Elizabeth_and_Philip_Mountbatten"
+    },
+    {
+     "date": "1948-11-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Charles",
+     "source": "https://en.wikipedia.org/wiki/Charles_III"
+    },
+    {
+     "date": "1950-08-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Anne",
+     "source": "https://en.wikipedia.org/wiki/Anne,_Princess_Royal"
+    },
+    {
+     "date": "1953-06-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Coronation",
+     "source": "https://en.wikipedia.org/wiki/Coronation_of_Elizabeth_II"
+    },
+    {
+     "date": "1960-02-19",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Andrew",
+     "source": "https://en.wikipedia.org/wiki/Prince_Andrew"
+    },
+    {
+     "date": "1964-03-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Edward",
+     "source": "https://en.wikipedia.org/wiki/Prince_Edward,_Duke_of_Edinburgh"
+    },
+    {
+     "date": "1992-11-20",
+     "time": null,
+     "polarity": "-",
+     "what": "Windsor Castle fire ('annus horribilis')",
+     "source": "https://en.wikipedia.org/wiki/1992_Windsor_Castle_fire"
+    },
+    {
+     "date": "2002-02-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of sister Princess Margaret",
+     "source": "https://en.wikipedia.org/wiki/Princess_Margaret,_Countess_of_Snowdon"
+    },
+    {
+     "date": "2002-03-30",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of mother, Queen Elizabeth The Queen Mother",
+     "source": "https://en.wikipedia.org/wiki/Queen_Elizabeth_The_Queen_Mother"
+    },
+    {
+     "date": "2021-04-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of husband Prince Philip",
+     "source": "https://en.wikipedia.org/wiki/Death_and_funeral_of_Prince_Philip,_Duke_of_Edinburgh"
+    },
+    {
+     "date": "2022-09-08",
+     "time": "15:10",
+     "polarity": "-",
+     "what": "Death at Balmoral",
+     "source": "https://en.wikipedia.org/wiki/Death_and_state_funeral_of_Elizabeth_II"
+    }
+   ]
+  },
+  {
+   "name": "Charles III",
+   "sex": "M",
+   "birth": {
+    "date": "1948-11-14",
+    "time": "21:14",
+    "place": "Buckingham Palace, London, England, UK",
+    "lat": 51.5,
+    "lon": -0.14,
+    "tz": "Europe/London",
+    "dst": "no (GMT; BST 1948 ended 31 Oct)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Charles,_Prince_of_Wales",
+    "bazi_calc_time": "21:14",
+    "notes": "News report (Rodden)."
+   },
+   "events": [
+    {
+     "date": "1969-07-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Investiture as Prince of Wales",
+     "source": "https://en.wikipedia.org/wiki/Investiture_of_Charles,_Prince_of_Wales"
+    },
+    {
+     "date": "1979-08-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassination of great-uncle/mentor Lord Mountbatten by IRA",
+     "source": "https://en.wikipedia.org/wiki/Louis_Mountbatten,_1st_Earl_Mountbatten_of_Burma"
+    },
+    {
+     "date": "1981-07-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Lady Diana Spencer",
+     "source": "https://en.wikipedia.org/wiki/Wedding_of_Prince_Charles_and_Lady_Diana_Spencer"
+    },
+    {
+     "date": "1982-06-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son William",
+     "source": "https://en.wikipedia.org/wiki/William,_Prince_of_Wales"
+    },
+    {
+     "date": "1984-09-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Harry",
+     "source": "https://en.wikipedia.org/wiki/Prince_Harry,_Duke_of_Sussex"
+    },
+    {
+     "date": "1992-12-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Separation from Diana announced",
+     "source": "https://en.wikipedia.org/wiki/Diana,_Princess_of_Wales"
+    },
+    {
+     "date": "1996-08-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Divorce from Diana finalised",
+     "source": "https://en.wikipedia.org/wiki/Diana,_Princess_of_Wales"
+    },
+    {
+     "date": "2005-04-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Camilla Parker Bowles",
+     "source": "https://en.wikipedia.org/wiki/Wedding_of_Charles,_Prince_of_Wales,_and_Camilla_Parker_Bowles"
+    },
+    {
+     "date": "2023-05-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Coronation",
+     "source": "https://en.wikipedia.org/wiki/Coronation_of_Charles_III_and_Camilla"
+    },
+    {
+     "date": "2024-02-05",
+     "time": null,
+     "polarity": "-",
+     "what": "Cancer diagnosis announced",
+     "source": "https://en.wikipedia.org/wiki/Charles_III"
+    }
+   ]
+  },
+  {
+   "name": "John F. Kennedy",
+   "sex": "M",
+   "birth": {
+    "date": "1917-05-29",
+    "time": "15:00",
+    "place": "Brookline, Massachusetts, USA",
+    "lat": 42.33,
+    "lon": -71.12,
+    "tz": "America/New_York",
+    "dst": "no (EST UTC-5; US DST began 1918)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/John_Fitzgerald_Kennedy",
+    "bazi_calc_time": "15:00",
+    "notes": "From memory/autobiography (mother's account, Rodden)."
+   },
+   "events": [
+    {
+     "date": "1944-08-12",
+     "time": null,
+     "polarity": "-",
+     "what": "Brother Joseph Jr. killed in WWII air mission",
+     "source": "https://en.wikipedia.org/wiki/Joseph_P._Kennedy_Jr."
+    },
+    {
+     "date": "1946-11-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected to US House of Representatives",
+     "source": "https://en.wikipedia.org/wiki/1946_United_States_House_of_Representatives_elections"
+    },
+    {
+     "date": "1952-11-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected US Senator, defeating Henry Cabot Lodge Jr.",
+     "source": "https://en.wikipedia.org/wiki/1952_United_States_Senate_election_in_Massachusetts"
+    },
+    {
+     "date": "1953-09-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Jacqueline Bouvier",
+     "source": "https://en.wikipedia.org/wiki/Jacqueline_Kennedy_Onassis"
+    },
+    {
+     "date": "1957-05-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins Pulitzer Prize for Profiles in Courage",
+     "source": "https://en.wikipedia.org/wiki/Profiles_in_Courage"
+    },
+    {
+     "date": "1957-11-27",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Caroline",
+     "source": "https://en.wikipedia.org/wiki/Caroline_Kennedy"
+    },
+    {
+     "date": "1960-11-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President",
+     "source": "https://en.wikipedia.org/wiki/1960_United_States_presidential_election"
+    },
+    {
+     "date": "1960-11-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son John Jr.",
+     "source": "https://en.wikipedia.org/wiki/John_F._Kennedy_Jr."
+    },
+    {
+     "date": "1961-04-17",
+     "time": null,
+     "polarity": "-",
+     "what": "Bay of Pigs invasion begins (fiasco)",
+     "source": "https://en.wikipedia.org/wiki/Bay_of_Pigs_Invasion"
+    },
+    {
+     "date": "1963-08-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of infant son Patrick",
+     "source": "https://en.wikipedia.org/wiki/Patrick_Bouvier_Kennedy"
+    },
+    {
+     "date": "1963-11-22",
+     "time": "12:30",
+     "polarity": "-",
+     "what": "Assassinated in Dallas",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_John_F._Kennedy"
+    }
+   ]
+  },
+  {
+   "name": "Richard Nixon",
+   "sex": "M",
+   "birth": {
+    "date": "1913-01-09",
+    "time": "21:35",
+    "place": "Yorba Linda, California, USA",
+    "lat": 33.89,
+    "lon": -117.81,
+    "tz": "America/Los_Angeles",
+    "dst": "no (PST UTC-8)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Richard_Nixon",
+    "bazi_calc_time": "21:35",
+    "notes": "Birth record (Rodden)."
+   },
+   "events": [
+    {
+     "date": "1940-06-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Pat Ryan",
+     "source": "https://en.wikipedia.org/wiki/Pat_Nixon"
+    },
+    {
+     "date": "1946-11-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected to US House",
+     "source": "https://en.wikipedia.org/wiki/1946_United_States_House_of_Representatives_elections_in_California"
+    },
+    {
+     "date": "1950-11-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected US Senator",
+     "source": "https://en.wikipedia.org/wiki/1950_United_States_Senate_election_in_California"
+    },
+    {
+     "date": "1952-11-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected Vice President",
+     "source": "https://en.wikipedia.org/wiki/1952_United_States_presidential_election"
+    },
+    {
+     "date": "1960-11-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses presidential election to Kennedy",
+     "source": "https://en.wikipedia.org/wiki/1960_United_States_presidential_election"
+    },
+    {
+     "date": "1962-11-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses California governor race",
+     "source": "https://en.wikipedia.org/wiki/1962_California_gubernatorial_election"
+    },
+    {
+     "date": "1968-11-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President",
+     "source": "https://en.wikipedia.org/wiki/1968_United_States_presidential_election"
+    },
+    {
+     "date": "1972-11-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Re-elected in landslide",
+     "source": "https://en.wikipedia.org/wiki/1972_United_States_presidential_election"
+    },
+    {
+     "date": "1974-08-08",
+     "time": "21:00",
+     "polarity": "-",
+     "what": "Announces resignation over Watergate (effective 9 Aug)",
+     "source": "https://en.wikipedia.org/wiki/Resignation_of_Richard_Nixon"
+    },
+    {
+     "date": "1993-06-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of wife Pat",
+     "source": "https://en.wikipedia.org/wiki/Pat_Nixon"
+    },
+    {
+     "date": "1994-04-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (New York)",
+     "source": "https://en.wikipedia.org/wiki/Death_and_state_funeral_of_Richard_Nixon"
+    }
+   ]
+  },
+  {
+   "name": "Bill Clinton",
+   "sex": "M",
+   "birth": {
+    "date": "1946-08-19",
+    "time": "08:51",
+    "place": "Hope, Arkansas, USA",
+    "lat": 33.67,
+    "lon": -93.59,
+    "tz": "America/Chicago",
+    "dst": "no (CST UTC-6)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Bill_Clinton",
+    "bazi_calc_time": "08:51",
+    "notes": "From memory/autobiography (Shelley Ackerman via mother). A-rated."
+   },
+   "events": [
+    {
+     "date": "1975-10-11",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Hillary Rodham",
+     "source": "https://en.wikipedia.org/wiki/Hillary_Clinton"
+    },
+    {
+     "date": "1978-11-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected Governor of Arkansas",
+     "source": "https://en.wikipedia.org/wiki/1978_Arkansas_gubernatorial_election"
+    },
+    {
+     "date": "1980-02-27",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Chelsea",
+     "source": "https://en.wikipedia.org/wiki/Chelsea_Clinton"
+    },
+    {
+     "date": "1980-11-04",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses re-election as governor",
+     "source": "https://en.wikipedia.org/wiki/1980_Arkansas_gubernatorial_election"
+    },
+    {
+     "date": "1992-11-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President",
+     "source": "https://en.wikipedia.org/wiki/1992_United_States_presidential_election"
+    },
+    {
+     "date": "1994-01-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of mother Virginia Kelley",
+     "source": "https://en.wikipedia.org/wiki/Virginia_Clinton_Kelley"
+    },
+    {
+     "date": "1996-11-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Re-elected President",
+     "source": "https://en.wikipedia.org/wiki/1996_United_States_presidential_election"
+    },
+    {
+     "date": "1998-12-19",
+     "time": null,
+     "polarity": "-",
+     "what": "Impeached by House of Representatives",
+     "source": "https://en.wikipedia.org/wiki/Impeachment_of_Bill_Clinton"
+    },
+    {
+     "date": "2004-09-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Quadruple bypass heart surgery",
+     "source": "https://en.wikipedia.org/wiki/Bill_Clinton"
+    }
+   ]
+  },
+  {
+   "name": "Winston Churchill",
+   "sex": "M",
+   "birth": {
+    "date": "1874-11-30",
+    "time": "01:30",
+    "place": "Blenheim Palace, Woodstock, England, UK",
+    "lat": 51.84,
+    "lon": -1.36,
+    "tz": "Europe/London",
+    "dst": "no (pre-1880: local mean time likely used by ADB, ~UTC-0:05; bazi-calculator uses GMT)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Winston_Churchill",
+    "bazi_calc_time": "01:30",
+    "notes": "From memory/autobiography (Rodden)."
+   },
+   "events": [
+    {
+     "date": "1899-11-15",
+     "time": null,
+     "polarity": "-",
+     "what": "Captured by Boers (armoured train ambush)",
+     "source": "https://en.wikipedia.org/wiki/Winston_Churchill"
+    },
+    {
+     "date": "1908-09-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Clementine Hozier",
+     "source": "https://en.wikipedia.org/wiki/Clementine_Churchill"
+    },
+    {
+     "date": "1921-08-23",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of daughter Marigold",
+     "source": "https://en.wikipedia.org/wiki/Winston_Churchill"
+    },
+    {
+     "date": "1940-05-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Becomes Prime Minister",
+     "source": "https://en.wikipedia.org/wiki/Winston_Churchill"
+    },
+    {
+     "date": "1945-05-08",
+     "time": null,
+     "polarity": "+",
+     "what": "VE Day: victory in Europe",
+     "source": "https://en.wikipedia.org/wiki/Victory_in_Europe_Day"
+    },
+    {
+     "date": "1945-07-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Election defeat announced; resigns as PM",
+     "source": "https://en.wikipedia.org/wiki/1945_United_Kingdom_general_election"
+    },
+    {
+     "date": "1951-10-26",
+     "time": null,
+     "polarity": "+",
+     "what": "Returns as Prime Minister",
+     "source": "https://en.wikipedia.org/wiki/1951_United_Kingdom_general_election"
+    },
+    {
+     "date": "1953-06-23",
+     "time": null,
+     "polarity": "-",
+     "what": "Suffers serious stroke",
+     "source": "https://en.wikipedia.org/wiki/Winston_Churchill"
+    },
+    {
+     "date": "1953-10-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Awarded Nobel Prize in Literature (announcement)",
+     "source": "https://en.wikipedia.org/wiki/1953_Nobel_Prize_in_Literature"
+    },
+    {
+     "date": "1965-01-24",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (London)",
+     "source": "https://en.wikipedia.org/wiki/Death_and_state_funeral_of_Winston_Churchill"
+    }
+   ]
+  },
+  {
+   "name": "Adolf Hitler",
+   "sex": "M",
+   "birth": {
+    "date": "1889-04-20",
+    "time": "18:30",
+    "place": "Braunau am Inn, Austria",
+    "lat": 48.26,
+    "lon": 13.03,
+    "tz": "Europe/Vienna",
+    "dst": "no (pre-1893 Austria: local mean time ~UTC+0:52; bazi-calculator uses g=+1)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Adolf_Hitler",
+    "bazi_calc_time": "18:30",
+    "notes": "Birth record (baptismal register)."
+   },
+   "events": [
+    {
+     "date": "1907-12-21",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of mother Klara",
+     "source": "https://en.wikipedia.org/wiki/Klara_Hitler"
+    },
+    {
+     "date": "1923-11-11",
+     "time": null,
+     "polarity": "-",
+     "what": "Arrested after failed Beer Hall Putsch",
+     "source": "https://en.wikipedia.org/wiki/Beer_Hall_Putsch"
+    },
+    {
+     "date": "1924-04-01",
+     "time": null,
+     "polarity": "-",
+     "what": "Sentenced to five years' imprisonment",
+     "source": "https://en.wikipedia.org/wiki/Beer_Hall_Putsch"
+    },
+    {
+     "date": "1924-12-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Released from Landsberg prison",
+     "source": "https://en.wikipedia.org/wiki/Landsberg_Prison"
+    },
+    {
+     "date": "1933-01-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Appointed Chancellor of Germany",
+     "source": "https://en.wikipedia.org/wiki/Adolf_Hitler's_rise_to_power"
+    },
+    {
+     "date": "1940-06-22",
+     "time": null,
+     "polarity": "+",
+     "what": "France signs armistice (peak military triumph)",
+     "source": "https://en.wikipedia.org/wiki/Armistice_of_22_June_1940"
+    },
+    {
+     "date": "1944-07-20",
+     "time": "12:42",
+     "polarity": "-",
+     "what": "Injured in 20 July bomb plot",
+     "source": "https://en.wikipedia.org/wiki/20_July_plot"
+    },
+    {
+     "date": "1945-04-30",
+     "time": "15:30",
+     "polarity": "-",
+     "what": "Suicide in Berlin bunker",
+     "source": "https://en.wikipedia.org/wiki/Death_of_Adolf_Hitler"
+    }
+   ]
+  },
+  {
+   "name": "Benito Mussolini",
+   "sex": "M",
+   "birth": {
+    "date": "1883-07-29",
+    "time": "14:00",
+    "place": "Dovia di Predappio, Italy",
+    "lat": 44.1,
+    "lon": 12.03,
+    "tz": "Europe/Rome",
+    "dst": "no (1883 Italy: Rome mean time UTC+0:49:56 likely; bazi-calculator uses g=+1)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Benito_Mussolini",
+    "bazi_calc_time": "14:00",
+    "notes": "Birth record (Gauquelin)."
+   },
+   "events": [
+    {
+     "date": "1915-12-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Civil marriage to Rachele Guidi",
+     "source": "https://en.wikipedia.org/wiki/Rachele_Mussolini"
+    },
+    {
+     "date": "1922-10-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Appointed Prime Minister after March on Rome",
+     "source": "https://en.wikipedia.org/wiki/March_on_Rome"
+    },
+    {
+     "date": "1926-04-07",
+     "time": null,
+     "polarity": "-",
+     "what": "Shot in the nose by Violet Gibson",
+     "source": "https://en.wikipedia.org/wiki/Violet_Gibson"
+    },
+    {
+     "date": "1931-12-21",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of brother Arnaldo",
+     "source": "https://en.wikipedia.org/wiki/Arnaldo_Mussolini"
+    },
+    {
+     "date": "1936-05-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Proclaims the Italian Empire after conquest of Ethiopia",
+     "source": "https://en.wikipedia.org/wiki/Italian_Empire"
+    },
+    {
+     "date": "1941-08-07",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of son Bruno in air crash",
+     "source": "https://en.wikipedia.org/wiki/Bruno_Mussolini"
+    },
+    {
+     "date": "1943-07-25",
+     "time": null,
+     "polarity": "-",
+     "what": "Deposed by Grand Council and arrested",
+     "source": "https://en.wikipedia.org/wiki/Fall_of_the_Fascist_regime_in_Italy"
+    },
+    {
+     "date": "1943-09-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Rescued from Gran Sasso by German commandos",
+     "source": "https://en.wikipedia.org/wiki/Gran_Sasso_raid"
+    },
+    {
+     "date": "1945-04-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Executed by partisans at Giulino di Mezzegra",
+     "source": "https://en.wikipedia.org/wiki/Death_of_Benito_Mussolini"
+    }
+   ]
+  },
+  {
+   "name": "Silvio Berlusconi",
+   "sex": "M",
+   "birth": {
+    "date": "1936-09-29",
+    "time": "06:30",
+    "place": "Milan, Italy",
+    "lat": 45.46,
+    "lon": 9.19,
+    "tz": "Europe/Rome",
+    "dst": "no (CET UTC+1; no Italian DST 1921-1939)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Silvio_Berlusconi",
+    "bazi_calc_time": null,
+    "notes": "Birth record (Grazia Bordoni). Not in visible bazi-calculator popular list."
+   },
+   "events": [
+    {
+     "date": "1994-03-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins general election (first time)",
+     "source": "https://en.wikipedia.org/wiki/1994_Italian_general_election"
+    },
+    {
+     "date": "1994-11-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Notified of corruption investigation (avviso di garanzia) during Naples summit",
+     "source": "https://en.wikipedia.org/wiki/Silvio_Berlusconi"
+    },
+    {
+     "date": "1994-12-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Resigns as PM after Lega withdraws support",
+     "source": "https://en.wikipedia.org/wiki/Berlusconi_I_Cabinet"
+    },
+    {
+     "date": "2001-05-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins general election",
+     "source": "https://en.wikipedia.org/wiki/2001_Italian_general_election"
+    },
+    {
+     "date": "2008-04-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins general election (third term)",
+     "source": "https://en.wikipedia.org/wiki/2008_Italian_general_election"
+    },
+    {
+     "date": "2009-05-03",
+     "time": null,
+     "polarity": "-",
+     "what": "Wife Veronica Lario announces divorce",
+     "source": "https://en.wikipedia.org/wiki/Veronica_Lario"
+    },
+    {
+     "date": "2009-12-13",
+     "time": null,
+     "polarity": "-",
+     "what": "Assaulted in Milan with a statuette, facial injuries",
+     "source": "https://en.wikipedia.org/wiki/Silvio_Berlusconi"
+    },
+    {
+     "date": "2011-11-12",
+     "time": null,
+     "polarity": "-",
+     "what": "Resigns as Prime Minister amid debt crisis",
+     "source": "https://en.wikipedia.org/wiki/Berlusconi_IV_Cabinet"
+    },
+    {
+     "date": "2013-08-01",
+     "time": null,
+     "polarity": "-",
+     "what": "Definitive conviction for tax fraud by Court of Cassation",
+     "source": "https://en.wikipedia.org/wiki/Silvio_Berlusconi"
+    },
+    {
+     "date": "2023-06-12",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Milan)",
+     "source": "https://en.wikipedia.org/wiki/Death_and_state_funeral_of_Silvio_Berlusconi"
+    }
+   ]
+  },
+  {
+   "name": "Charles de Gaulle",
+   "sex": "M",
+   "birth": {
+    "date": "1890-11-22",
+    "time": "04:00",
+    "place": "Lille, France",
+    "lat": 50.63,
+    "lon": 3.06,
+    "tz": "Europe/Paris",
+    "dst": "no (1890: local/Paris mean time; France adopted PMT legally 1891)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Charles_de_Gaulle",
+    "bazi_calc_time": null,
+    "notes": "Birth record."
+   },
+   "events": [
+    {
+     "date": "1921-04-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Yvonne Vendroux",
+     "source": "https://en.wikipedia.org/wiki/Yvonne_de_Gaulle"
+    },
+    {
+     "date": "1940-08-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Sentenced to death in absentia by Vichy court",
+     "source": "https://en.wikipedia.org/wiki/Charles_de_Gaulle"
+    },
+    {
+     "date": "1944-08-26",
+     "time": null,
+     "polarity": "+",
+     "what": "Triumphal procession down the Champs-Elysees after Liberation of Paris",
+     "source": "https://en.wikipedia.org/wiki/Liberation_of_Paris"
+    },
+    {
+     "date": "1948-02-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of daughter Anne",
+     "source": "https://en.wikipedia.org/wiki/Charles_de_Gaulle"
+    },
+    {
+     "date": "1958-06-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Invested as Prime Minister by National Assembly",
+     "source": "https://en.wikipedia.org/wiki/May_1958_crisis_in_France"
+    },
+    {
+     "date": "1958-12-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President of France",
+     "source": "https://en.wikipedia.org/wiki/1958_French_presidential_election"
+    },
+    {
+     "date": "1962-08-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Petit-Clamart assassination attempt",
+     "source": "https://en.wikipedia.org/wiki/Petit-Clamart_attack"
+    },
+    {
+     "date": "1969-04-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses referendum; resigns next day",
+     "source": "https://en.wikipedia.org/wiki/1969_French_constitutional_referendum"
+    },
+    {
+     "date": "1970-11-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Death at Colombey-les-Deux-Eglises",
+     "source": "https://en.wikipedia.org/wiki/Charles_de_Gaulle"
+    }
+   ]
+  },
+  {
+   "name": "Francois Mitterrand",
+   "sex": "M",
+   "birth": {
+    "date": "1916-10-26",
+    "time": "04:00",
+    "place": "Jarnac, Charente, France",
+    "lat": 45.68,
+    "lon": -0.17,
+    "tz": "Europe/Paris",
+    "dst": "no (WET/GMT; 1916 summer time ended 1 Oct)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Fran%C3%A7ois_Mitterrand",
+    "bazi_calc_time": null,
+    "notes": "Birth record (Gauquelin)."
+   },
+   "events": [
+    {
+     "date": "1944-10-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Danielle Gouze",
+     "source": "https://en.wikipedia.org/wiki/Danielle_Mitterrand"
+    },
+    {
+     "date": "1965-12-19",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses presidential runoff to de Gaulle",
+     "source": "https://en.wikipedia.org/wiki/1965_French_presidential_election"
+    },
+    {
+     "date": "1974-05-19",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses presidential runoff to Giscard d'Estaing",
+     "source": "https://en.wikipedia.org/wiki/1974_French_presidential_election"
+    },
+    {
+     "date": "1974-12-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Mazarine Pingeot",
+     "source": "https://en.wikipedia.org/wiki/Mazarine_Pingeot"
+    },
+    {
+     "date": "1981-05-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President",
+     "source": "https://en.wikipedia.org/wiki/1981_French_presidential_election"
+    },
+    {
+     "date": "1988-05-08",
+     "time": null,
+     "polarity": "+",
+     "what": "Re-elected President",
+     "source": "https://en.wikipedia.org/wiki/1988_French_presidential_election"
+    },
+    {
+     "date": "1996-01-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Paris, prostate cancer)",
+     "source": "https://en.wikipedia.org/wiki/Fran%C3%A7ois_Mitterrand"
+    }
+   ]
+  },
+  {
+   "name": "Emmanuel Macron",
+   "sex": "M",
+   "birth": {
+    "date": "1977-12-21",
+    "time": "10:40",
+    "place": "Amiens, France",
+    "lat": 49.89,
+    "lon": 2.3,
+    "tz": "Europe/Paris",
+    "dst": "no (CET UTC+1)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Emmanuel_Macron",
+    "bazi_calc_time": "10:40",
+    "notes": "Birth record."
+   },
+   "events": [
+    {
+     "date": "2007-10-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Brigitte Trogneux",
+     "source": "https://en.wikipedia.org/wiki/Brigitte_Macron"
+    },
+    {
+     "date": "2014-08-26",
+     "time": null,
+     "polarity": "+",
+     "what": "Appointed Minister of the Economy",
+     "source": "https://en.wikipedia.org/wiki/Emmanuel_Macron"
+    },
+    {
+     "date": "2017-05-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President",
+     "source": "https://en.wikipedia.org/wiki/2017_French_presidential_election"
+    },
+    {
+     "date": "2021-06-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Slapped by a man during walkabout in Tain-l'Hermitage",
+     "source": "https://en.wikipedia.org/wiki/Emmanuel_Macron"
+    },
+    {
+     "date": "2022-04-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Re-elected President",
+     "source": "https://en.wikipedia.org/wiki/2022_French_presidential_election"
+    },
+    {
+     "date": "2022-06-19",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses absolute majority in legislative elections",
+     "source": "https://en.wikipedia.org/wiki/2022_French_legislative_election"
+    },
+    {
+     "date": "2024-06-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Heavy defeat in European elections; dissolves Assembly",
+     "source": "https://en.wikipedia.org/wiki/2024_European_Parliament_election_in_France"
+    }
+   ]
+  },
+  {
+   "name": "Martin Luther King Jr.",
+   "sex": "M",
+   "birth": {
+    "date": "1929-01-15",
+    "time": "12:00",
+    "place": "Atlanta, Georgia, USA",
+    "lat": 33.75,
+    "lon": -84.39,
+    "tz": "America/New_York",
+    "dst": "no; CHECK zone: Atlanta in 1929 likely on Central Standard Time (UTC-6) per ADB convention, not Eastern",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Martin_Luther_King",
+    "bazi_calc_time": null,
+    "notes": "From memory/autobiography ('noon'). Round time - treat with care."
+   },
+   "events": [
+    {
+     "date": "1953-06-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Coretta Scott",
+     "source": "https://en.wikipedia.org/wiki/Coretta_Scott_King"
+    },
+    {
+     "date": "1955-11-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Yolanda",
+     "source": "https://en.wikipedia.org/wiki/Yolanda_King"
+    },
+    {
+     "date": "1956-01-30",
+     "time": null,
+     "polarity": "-",
+     "what": "Home bombed during Montgomery bus boycott",
+     "source": "https://en.wikipedia.org/wiki/Montgomery_bus_boycott"
+    },
+    {
+     "date": "1956-12-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Montgomery buses desegregated: boycott victory",
+     "source": "https://en.wikipedia.org/wiki/Montgomery_bus_boycott"
+    },
+    {
+     "date": "1958-09-20",
+     "time": null,
+     "polarity": "-",
+     "what": "Stabbed in Harlem book signing",
+     "source": "https://en.wikipedia.org/wiki/Martin_Luther_King_Jr."
+    },
+    {
+     "date": "1963-04-12",
+     "time": null,
+     "polarity": "-",
+     "what": "Arrested in Birmingham",
+     "source": "https://en.wikipedia.org/wiki/Letter_from_Birmingham_Jail"
+    },
+    {
+     "date": "1963-08-28",
+     "time": null,
+     "polarity": "+",
+     "what": "'I Have a Dream' speech, March on Washington",
+     "source": "https://en.wikipedia.org/wiki/I_Have_a_Dream"
+    },
+    {
+     "date": "1964-10-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Awarded Nobel Peace Prize (announcement)",
+     "source": "https://en.wikipedia.org/wiki/1964_Nobel_Peace_Prize"
+    },
+    {
+     "date": "1968-04-04",
+     "time": "18:01",
+     "polarity": "-",
+     "what": "Assassinated in Memphis",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_Martin_Luther_King_Jr."
+    }
+   ]
+  },
+  {
+   "name": "Grace Kelly (Princess Grace of Monaco)",
+   "sex": "F",
+   "birth": {
+    "date": "1929-11-12",
+    "time": "05:31",
+    "place": "Philadelphia, Pennsylvania, USA",
+    "lat": 39.95,
+    "lon": -75.17,
+    "tz": "America/New_York",
+    "dst": "no (EST UTC-5)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Grace_Kelly",
+    "bazi_calc_time": "05:31",
+    "notes": "Birth record (Steinbrecher)."
+   },
+   "events": [
+    {
+     "date": "1955-03-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins Academy Award for Best Actress",
+     "source": "https://en.wikipedia.org/wiki/27th_Academy_Awards"
+    },
+    {
+     "date": "1956-04-19",
+     "time": null,
+     "polarity": "+",
+     "what": "Religious wedding to Prince Rainier III",
+     "source": "https://en.wikipedia.org/wiki/Wedding_of_Rainier_III,_Prince_of_Monaco,_and_Grace_Kelly"
+    },
+    {
+     "date": "1957-01-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Caroline",
+     "source": "https://en.wikipedia.org/wiki/Caroline,_Princess_of_Hanover"
+    },
+    {
+     "date": "1958-03-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Albert",
+     "source": "https://en.wikipedia.org/wiki/Albert_II,_Prince_of_Monaco"
+    },
+    {
+     "date": "1960-06-20",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of father John B. Kelly Sr.",
+     "source": "https://en.wikipedia.org/wiki/John_B._Kelly_Sr."
+    },
+    {
+     "date": "1965-02-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Stephanie",
+     "source": "https://en.wikipedia.org/wiki/Princess_St%C3%A9phanie_of_Monaco"
+    },
+    {
+     "date": "1982-09-13",
+     "time": null,
+     "polarity": "-",
+     "what": "Stroke at the wheel and car crash near Monaco",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    },
+    {
+     "date": "1982-09-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Death in Monaco",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    }
+   ]
+  },
+  {
+   "name": "Jacqueline Kennedy Onassis",
+   "sex": "F",
+   "birth": {
+    "date": "1929-07-28",
+    "time": "14:30",
+    "place": "Southampton, New York, USA",
+    "lat": 40.88,
+    "lon": -72.39,
+    "tz": "America/New_York",
+    "dst": "probably yes (EDT UTC-4; NY observed DST in 1929) - verify",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Jacqueline_Kennedy_Onassis",
+    "bazi_calc_time": null,
+    "notes": "From memory/autobiography. Listed on bazi-calculator (Jia Xu day) but time not readable."
+   },
+   "events": [
+    {
+     "date": "1953-09-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries John F. Kennedy",
+     "source": "https://en.wikipedia.org/wiki/Jacqueline_Kennedy_Onassis"
+    },
+    {
+     "date": "1956-08-23",
+     "time": null,
+     "polarity": "-",
+     "what": "Stillbirth of daughter Arabella",
+     "source": "https://en.wikipedia.org/wiki/Jacqueline_Kennedy_Onassis"
+    },
+    {
+     "date": "1957-11-27",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Caroline",
+     "source": "https://en.wikipedia.org/wiki/Caroline_Kennedy"
+    },
+    {
+     "date": "1960-11-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son John Jr.",
+     "source": "https://en.wikipedia.org/wiki/John_F._Kennedy_Jr."
+    },
+    {
+     "date": "1963-08-09",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of infant son Patrick",
+     "source": "https://en.wikipedia.org/wiki/Patrick_Bouvier_Kennedy"
+    },
+    {
+     "date": "1963-11-22",
+     "time": "12:30",
+     "polarity": "-",
+     "what": "Husband assassinated beside her in Dallas",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_John_F._Kennedy"
+    },
+    {
+     "date": "1968-10-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Aristotle Onassis",
+     "source": "https://en.wikipedia.org/wiki/Aristotle_Onassis"
+    },
+    {
+     "date": "1975-03-15",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of husband Aristotle Onassis",
+     "source": "https://en.wikipedia.org/wiki/Aristotle_Onassis"
+    },
+    {
+     "date": "1994-05-19",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (New York, lymphoma)",
+     "source": "https://en.wikipedia.org/wiki/Jacqueline_Kennedy_Onassis"
+    }
+   ]
+  },
+  {
+   "name": "Robert F. Kennedy",
+   "sex": "M",
+   "birth": {
+    "date": "1925-11-20",
+    "time": "15:11",
+    "place": "Brookline, Massachusetts, USA",
+    "lat": 42.33,
+    "lon": -71.12,
+    "tz": "America/New_York",
+    "dst": "no (EST UTC-5)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Robert_F._Kennedy",
+    "bazi_calc_time": null,
+    "notes": "Kennedy's office via T. Pat Davis (MH 7/1981). Alt time 14:19 (Cahiers Astrologiques) noted on ADB."
+   },
+   "events": [
+    {
+     "date": "1944-08-12",
+     "time": null,
+     "polarity": "-",
+     "what": "Brother Joseph Jr. killed in WWII",
+     "source": "https://en.wikipedia.org/wiki/Joseph_P._Kennedy_Jr."
+    },
+    {
+     "date": "1948-05-13",
+     "time": null,
+     "polarity": "-",
+     "what": "Sister Kathleen killed in plane crash",
+     "source": "https://en.wikipedia.org/wiki/Kathleen_Cavendish,_Marchioness_of_Hartington"
+    },
+    {
+     "date": "1950-06-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Ethel Skakel",
+     "source": "https://en.wikipedia.org/wiki/Ethel_Kennedy"
+    },
+    {
+     "date": "1961-01-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Sworn in as US Attorney General",
+     "source": "https://en.wikipedia.org/wiki/Robert_F._Kennedy"
+    },
+    {
+     "date": "1963-11-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Brother John assassinated",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_John_F._Kennedy"
+    },
+    {
+     "date": "1964-11-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected US Senator for New York",
+     "source": "https://en.wikipedia.org/wiki/1964_United_States_Senate_election_in_New_York"
+    },
+    {
+     "date": "1968-06-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins California Democratic primary",
+     "source": "https://en.wikipedia.org/wiki/1968_Democratic_Party_presidential_primaries"
+    },
+    {
+     "date": "1968-06-05",
+     "time": "00:15",
+     "polarity": "-",
+     "what": "Shot at Ambassador Hotel, Los Angeles",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_Robert_F._Kennedy"
+    },
+    {
+     "date": "1968-06-06",
+     "time": "01:44",
+     "polarity": "-",
+     "what": "Dies of wounds",
+     "source": "https://en.wikipedia.org/wiki/Assassination_of_Robert_F._Kennedy"
+    }
+   ]
+  },
+  {
+   "name": "Jacques Chirac",
+   "sex": "M",
+   "birth": {
+    "date": "1932-11-29",
+    "time": "12:00",
+    "place": "Paris 5e, France",
+    "lat": 48.84,
+    "lon": 2.35,
+    "tz": "Europe/Paris",
+    "dst": "no (WET/GMT; 1932 summer time ended 2 Oct)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jacques_Chirac",
+    "bazi_calc_time": null,
+    "notes": "Birth record, but round 12:00 - treat with care."
+   },
+   "events": [
+    {
+     "date": "1956-03-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Bernadette Chodron de Courcel",
+     "source": "https://en.wikipedia.org/wiki/Bernadette_Chirac"
+    },
+    {
+     "date": "1974-05-27",
+     "time": null,
+     "polarity": "+",
+     "what": "Appointed Prime Minister",
+     "source": "https://en.wikipedia.org/wiki/Jacques_Chirac"
+    },
+    {
+     "date": "1977-03-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected Mayor of Paris",
+     "source": "https://en.wikipedia.org/wiki/Jacques_Chirac"
+    },
+    {
+     "date": "1981-04-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Eliminated in first round of presidential election",
+     "source": "https://en.wikipedia.org/wiki/1981_French_presidential_election"
+    },
+    {
+     "date": "1988-05-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses presidential runoff to Mitterrand",
+     "source": "https://en.wikipedia.org/wiki/1988_French_presidential_election"
+    },
+    {
+     "date": "1995-05-07",
+     "time": null,
+     "polarity": "+",
+     "what": "Elected President",
+     "source": "https://en.wikipedia.org/wiki/1995_French_presidential_election"
+    },
+    {
+     "date": "1997-06-01",
+     "time": null,
+     "polarity": "-",
+     "what": "Loses legislative elections after his own dissolution",
+     "source": "https://en.wikipedia.org/wiki/1997_French_legislative_election"
+    },
+    {
+     "date": "2002-05-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Re-elected President with 82%",
+     "source": "https://en.wikipedia.org/wiki/2002_French_presidential_election"
+    },
+    {
+     "date": "2002-07-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Assassination attempt by Maxime Brunerie on Bastille Day",
+     "source": "https://en.wikipedia.org/wiki/Maxime_Brunerie"
+    },
+    {
+     "date": "2005-09-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Suffers a stroke",
+     "source": "https://en.wikipedia.org/wiki/Jacques_Chirac"
+    },
+    {
+     "date": "2011-12-15",
+     "time": null,
+     "polarity": "-",
+     "what": "Convicted of embezzlement (suspended sentence)",
+     "source": "https://en.wikipedia.org/wiki/Jacques_Chirac"
+    },
+    {
+     "date": "2019-09-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Paris)",
+     "source": "https://en.wikipedia.org/wiki/Jacques_Chirac"
+    }
+   ]
+  }
+ ],
+ "dropped": [
+  {
+   "name": "Ronald Reagan",
+   "reason": "Rodden DD (conflicting/unverified; 04:16 vs other times)"
+  },
+  {
+   "name": "Mikhail Gorbachev",
+   "reason": "Rodden DD (conflicting/unverified)"
+  },
+  {
+   "name": "Boris Yeltsin",
+   "reason": "Rodden DD (conflicting/unverified)"
+  },
+  {
+   "name": "Vladimir Putin",
+   "reason": "Rodden DD (conflicting/unverified)"
+  },
+  {
+   "name": "Nelson Mandela",
+   "reason": "Rodden DD (conflicting/unverified)"
+  },
+  {
+   "name": "Mahatma Gandhi",
+   "reason": "Rodden C (rectified from approximate time)"
+  }
+ ]
+}

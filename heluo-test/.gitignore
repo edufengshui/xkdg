@@ -1,0 +1,4 @@
+node_modules/
+cmp/rows.json
+cmp/events.csv
+cmp/natal.csv

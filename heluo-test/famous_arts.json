@@ -1,0 +1,1458 @@
+{
+ "people": [
+  {
+   "name": "Albert Einstein",
+   "sex": "M",
+   "birth": {
+    "date": "1879-03-14",
+    "time": "11:30",
+    "place": "Ulm, Germany",
+    "lat": 48.4011,
+    "lon": 9.9876,
+    "tz": "Europe/Berlin",
+    "dst": "no (pre-1893: local mean time)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Albert_Einstein",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "11:30",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1905-03-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Photoelectric-effect paper received by Annalen der Physik",
+     "source": "https://en.wikipedia.org/wiki/Annus_mirabilis_papers"
+    },
+    {
+     "date": "1905-06-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Special relativity paper received by Annalen der Physik",
+     "source": "https://en.wikipedia.org/wiki/Annus_mirabilis_papers"
+    },
+    {
+     "date": "1905-09-26",
+     "time": null,
+     "polarity": "+",
+     "what": "Special relativity paper published",
+     "source": "https://en.wikipedia.org/wiki/Annus_mirabilis_papers"
+    },
+    {
+     "date": "1906-01-15",
+     "time": null,
+     "polarity": "+",
+     "what": "PhD formally awarded (Univ. of Zurich)",
+     "source": "https://en.wikipedia.org/wiki/Albert_Einstein"
+    },
+    {
+     "date": "1919-02-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Divorce from Mileva Maric granted",
+     "source": "https://en.wikipedia.org/wiki/Albert_Einstein"
+    },
+    {
+     "date": "1919-06-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Elsa Lowenthal",
+     "source": "https://en.wikipedia.org/wiki/Elsa_Einstein"
+    },
+    {
+     "date": "1922-11-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Nobel Prize in Physics (1921) announced",
+     "source": "https://www.nobelprize.org/prizes/physics/1921/einstein/questions-and-answers/"
+    },
+    {
+     "date": "1936-12-20",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of wife Elsa in Princeton",
+     "source": "https://en.wikipedia.org/wiki/Elsa_Einstein"
+    },
+    {
+     "date": "1955-04-18",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Princeton)",
+     "source": "https://en.wikipedia.org/wiki/Albert_Einstein"
+    }
+   ]
+  },
+  {
+   "name": "Marie Curie",
+   "sex": "F",
+   "birth": {
+    "date": "1867-11-07",
+    "time": "12:00",
+    "place": "Warsaw, Poland",
+    "lat": 52.2297,
+    "lon": 21.0122,
+    "tz": "Europe/Warsaw",
+    "dst": "no (local mean time)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Marie_Curie",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "12:00",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1895-07-26",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Pierre Curie at Sceaux",
+     "source": "https://en.wikipedia.org/wiki/Marie_Curie"
+    },
+    {
+     "date": "1897-09-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Irene",
+     "source": "https://en.wikipedia.org/wiki/Ir%C3%A8ne_Joliot-Curie"
+    },
+    {
+     "date": "1904-12-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Eve",
+     "source": "https://en.wikipedia.org/wiki/%C3%88ve_Curie"
+    },
+    {
+     "date": "1906-04-19",
+     "time": null,
+     "polarity": "-",
+     "what": "Husband Pierre killed in street accident in Paris",
+     "source": "https://en.wikipedia.org/wiki/Marie_Curie"
+    },
+    {
+     "date": "1934-07-04",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Sancellemoz sanatorium, Passy, France)",
+     "source": "https://en.wikipedia.org/wiki/Marie_Curie"
+    }
+   ]
+  },
+  {
+   "name": "Sigmund Freud",
+   "sex": "M",
+   "birth": {
+    "date": "1856-05-06",
+    "time": "18:30",
+    "place": "Pribor (Freiberg in Mahren), Czech Republic",
+    "lat": 49.641,
+    "lon": 18.145,
+    "tz": "Europe/Prague",
+    "dst": "no (local mean time)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Sigmund_Freud",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "18:30",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1886-09-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Religious wedding to Martha Bernays (civil ceremony 1886-09-13)",
+     "source": "https://en.wikipedia.org/wiki/Sigmund_Freud"
+    },
+    {
+     "date": "1899-11-04",
+     "time": null,
+     "polarity": "+",
+     "what": "The Interpretation of Dreams published",
+     "source": "https://freudfile.org/chronology_3.html"
+    },
+    {
+     "date": "1902-03-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Emperor signs his appointment as professor extraordinarius",
+     "source": "https://freudfile.org/chronology_3.html"
+    },
+    {
+     "date": "1920-01-25",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of daughter Sophie (Hamburg, influenza)",
+     "source": "https://encyclopedia.com/psychology/dictionaries-thesauruses-pictures-and-press-releases/halberstadt-freud-sophie-1893-1920"
+    },
+    {
+     "date": "1923-04-20",
+     "time": null,
+     "polarity": "-",
+     "what": "First operation for oral cancer (Hajek)",
+     "source": "https://hekint.org/2022/10/28/my-dear-neoplasm-sigmund-freuds-oral-cancer/"
+    },
+    {
+     "date": "1938-03-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Daughter Anna arrested and interrogated by Gestapo",
+     "source": "https://en.wikipedia.org/wiki/Sigmund_Freud"
+    },
+    {
+     "date": "1938-06-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Arrives safely in London after escaping Nazi Vienna",
+     "source": "https://en.wikipedia.org/wiki/Sigmund_Freud"
+    },
+    {
+     "date": "1939-09-23",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (London, assisted morphine overdose)",
+     "source": "https://en.wikipedia.org/wiki/Sigmund_Freud"
+    }
+   ]
+  },
+  {
+   "name": "Steve Jobs",
+   "sex": "M",
+   "birth": {
+    "date": "1955-02-24",
+    "time": "19:15",
+    "place": "San Francisco, CA, USA",
+    "lat": 37.7749,
+    "lon": -122.4194,
+    "tz": "America/Los_Angeles",
+    "dst": "no (PST)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Steve_Jobs",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "19:15",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1976-04-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Founds Apple Computer",
+     "source": "https://en.wikipedia.org/wiki/Steve_Jobs"
+    },
+    {
+     "date": "1980-12-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Apple IPO on NASDAQ",
+     "source": "https://en.wikipedia.org/wiki/History_of_Apple_Inc."
+    },
+    {
+     "date": "1984-01-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Macintosh launched",
+     "source": "https://en.wikipedia.org/wiki/Steve_Jobs"
+    },
+    {
+     "date": "1985-09-17",
+     "time": null,
+     "polarity": "-",
+     "what": "Resigns from Apple after being stripped of duties",
+     "source": "https://en.wikipedia.org/wiki/Steve_Jobs"
+    },
+    {
+     "date": "1997-09-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Named interim CEO of Apple (comeback)",
+     "source": "https://en.wikipedia.org/wiki/Steve_Jobs"
+    },
+    {
+     "date": "2007-06-29",
+     "time": null,
+     "polarity": "+",
+     "what": "iPhone released",
+     "source": "https://en.wikipedia.org/wiki/Steve_Jobs"
+    },
+    {
+     "date": "2011-08-24",
+     "time": null,
+     "polarity": "-",
+     "what": "Resigns as Apple CEO due to illness",
+     "source": "https://en.wikipedia.org/wiki/Steve_Jobs"
+    },
+    {
+     "date": "2011-10-05",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Palo Alto, pancreatic cancer)",
+     "source": "https://en.wikipedia.org/wiki/Steve_Jobs"
+    }
+   ]
+  },
+  {
+   "name": "Bill Gates",
+   "sex": "M",
+   "birth": {
+    "date": "1955-10-28",
+    "time": "22:00",
+    "place": "Seattle, WA, USA",
+    "lat": 47.6062,
+    "lon": -122.3321,
+    "tz": "America/Los_Angeles",
+    "dst": "no (PST; bazi-calculator also no DST)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Bill_Gates",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "22:00",
+    "notes": "Rating A (time from memory/autobiography)."
+   },
+   "events": [
+    {
+     "date": "1975-04-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Microsoft founded with Paul Allen",
+     "source": "https://timelines.issarice.com/wiki/Timeline_of_Microsoft"
+    },
+    {
+     "date": "1985-11-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Windows 1.0 first retail release",
+     "source": "https://en.wikipedia.org/wiki/Bill_Gates"
+    },
+    {
+     "date": "1986-03-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Microsoft IPO",
+     "source": "https://timelines.issarice.com/wiki/Timeline_of_Microsoft"
+    },
+    {
+     "date": "1994-01-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Melinda French",
+     "source": "https://en.wikipedia.org/wiki/Bill_Gates"
+    },
+    {
+     "date": "2021-05-03",
+     "time": null,
+     "polarity": "-",
+     "what": "Divorce from Melinda announced",
+     "source": "https://en.wikipedia.org/wiki/Bill_Gates"
+    },
+    {
+     "date": "2021-08-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Divorce finalized",
+     "source": "https://en.wikipedia.org/wiki/Bill_Gates"
+    }
+   ]
+  },
+  {
+   "name": "Elvis Presley",
+   "sex": "M",
+   "birth": {
+    "date": "1935-01-08",
+    "time": "04:35",
+    "place": "Tupelo, MS, USA",
+    "lat": 34.2576,
+    "lon": -88.7034,
+    "tz": "America/Chicago",
+    "dst": "no (CST)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Elvis_Presley",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "04:35",
+    "notes": "Stillborn twin Jesse born 04:00 (per bazi-calculator)."
+   },
+   "events": [
+    {
+     "date": "1954-07-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Sun Records session producing 'That's All Right'",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    },
+    {
+     "date": "1955-11-21",
+     "time": null,
+     "polarity": "+",
+     "what": "Signs with RCA Victor",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    },
+    {
+     "date": "1956-09-09",
+     "time": null,
+     "polarity": "+",
+     "what": "First Ed Sullivan Show appearance",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    },
+    {
+     "date": "1958-03-24",
+     "time": null,
+     "polarity": "-",
+     "what": "Inducted into US Army (career interrupted)",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    },
+    {
+     "date": "1958-08-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of mother Gladys",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    },
+    {
+     "date": "1967-05-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Priscilla Beaulieu",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    },
+    {
+     "date": "1968-02-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Lisa Marie",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    },
+    {
+     "date": "1977-08-16",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Graceland, Memphis)",
+     "source": "https://en.wikipedia.org/wiki/Elvis_Presley"
+    }
+   ]
+  },
+  {
+   "name": "Michael Jackson",
+   "sex": "M",
+   "birth": {
+    "date": "1958-08-29",
+    "time": "19:33",
+    "place": "Gary, IN, USA",
+    "lat": 41.5934,
+    "lon": -87.3464,
+    "tz": "America/Chicago",
+    "dst": "yes (CDT, UTC-5; bazi-calculator ds=on)",
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Michael_Jackson",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "19:33",
+    "notes": "Rating A (time from memory/autobiography)."
+   },
+   "events": [
+    {
+     "date": "1982-11-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Thriller released",
+     "source": "https://en.wikipedia.org/wiki/Michael_Jackson"
+    },
+    {
+     "date": "1984-01-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Hair set on fire filming Pepsi commercial (burns)",
+     "source": "https://en.wikipedia.org/wiki/Michael_Jackson"
+    },
+    {
+     "date": "1984-02-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins record 8 Grammys",
+     "source": "https://en.wikipedia.org/wiki/26th_Annual_Grammy_Awards"
+    },
+    {
+     "date": "1997-02-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Prince",
+     "source": "https://en.wikipedia.org/wiki/Michael_Jackson"
+    },
+    {
+     "date": "1998-04-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Paris",
+     "source": "https://en.wikipedia.org/wiki/Michael_Jackson"
+    },
+    {
+     "date": "2003-12-18",
+     "time": null,
+     "polarity": "-",
+     "what": "Charged with child molestation",
+     "source": "https://en.wikipedia.org/wiki/Michael_Jackson"
+    },
+    {
+     "date": "2005-06-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Acquitted on all counts",
+     "source": "https://en.wikipedia.org/wiki/Michael_Jackson"
+    },
+    {
+     "date": "2009-06-25",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Los Angeles, propofol overdose)",
+     "source": "https://en.wikipedia.org/wiki/Michael_Jackson"
+    }
+   ]
+  },
+  {
+   "name": "Marilyn Monroe",
+   "sex": "F",
+   "birth": {
+    "date": "1926-06-01",
+    "time": "09:30",
+    "place": "Los Angeles, CA, USA",
+    "lat": 34.0522,
+    "lon": -118.2437,
+    "tz": "America/Los_Angeles",
+    "dst": "no (PST)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Marilyn_Monroe",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "09:30",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1954-01-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Joe DiMaggio",
+     "source": "https://en.wikipedia.org/wiki/Marilyn_Monroe"
+    },
+    {
+     "date": "1954-10-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Divorce from DiMaggio granted (mental cruelty)",
+     "source": "https://thisdayinbaseball.com/former-yankees-superstar-joe-dimaggios-and-actress-marilyn-monroes-well-publicized-stormy-marriage-ends-in-divorce-after-the-famous-movie-star-files-on-the-grounds-of-mental-cruelty-just-274-days-a/"
+    },
+    {
+     "date": "1956-06-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Arthur Miller",
+     "source": "https://en.wikipedia.org/wiki/Marilyn_Monroe"
+    },
+    {
+     "date": "1962-06-07",
+     "time": null,
+     "polarity": "-",
+     "what": "Fired from 'Something's Got to Give'",
+     "source": "https://en.wikipedia.org/wiki/Marilyn_Monroe"
+    },
+    {
+     "date": "1962-08-04",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Brentwood, barbiturate overdose; found early 5 Aug)",
+     "source": "https://en.wikipedia.org/wiki/Marilyn_Monroe"
+    }
+   ]
+  },
+  {
+   "name": "Elizabeth Taylor",
+   "sex": "F",
+   "birth": {
+    "date": "1932-02-27",
+    "time": "02:30",
+    "place": "London, UK",
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "tz": "Europe/London",
+    "dst": "no (GMT)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Elizabeth_Taylor",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "02:30",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1951-01-29",
+     "time": null,
+     "polarity": "-",
+     "what": "Divorce from Conrad Hilton Jr.",
+     "source": "https://en.wikipedia.org/wiki/Elizabeth_Taylor"
+    },
+    {
+     "date": "1957-02-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Mike Todd",
+     "source": "https://en.wikipedia.org/wiki/Elizabeth_Taylor"
+    },
+    {
+     "date": "1958-03-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Husband Mike Todd killed in plane crash",
+     "source": "https://en.wikipedia.org/wiki/Elizabeth_Taylor"
+    },
+    {
+     "date": "1961-04-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins Best Actress Oscar (BUtterfield 8)",
+     "source": "https://en.wikipedia.org/wiki/List_of_Academy_Awards_ceremonies"
+    },
+    {
+     "date": "1964-03-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Richard Burton (10 days after Fisher divorce)",
+     "source": "https://en.wikipedia.org/wiki/Elizabeth_Taylor"
+    },
+    {
+     "date": "1967-04-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins 2nd Best Actress Oscar (Virginia Woolf)",
+     "source": "https://en.wikipedia.org/wiki/List_of_Academy_Awards_ceremonies"
+    },
+    {
+     "date": "2011-03-23",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Los Angeles)",
+     "source": "https://en.wikipedia.org/wiki/Elizabeth_Taylor"
+    }
+   ]
+  },
+  {
+   "name": "Grace Kelly",
+   "sex": "F",
+   "birth": {
+    "date": "1929-11-12",
+    "time": "05:31",
+    "place": "Philadelphia, PA, USA",
+    "lat": 39.9526,
+    "lon": -75.1652,
+    "tz": "America/New_York",
+    "dst": "no (EST)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Grace_Kelly",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "05:31",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1955-03-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins Best Actress Oscar (The Country Girl)",
+     "source": "https://en.wikipedia.org/wiki/List_of_Academy_Awards_ceremonies"
+    },
+    {
+     "date": "1956-04-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Civil wedding to Prince Rainier III (religious 1956-04-19)",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    },
+    {
+     "date": "1957-01-23",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of Princess Caroline",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    },
+    {
+     "date": "1958-03-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of Prince Albert",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    },
+    {
+     "date": "1965-02-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of Princess Stephanie",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    },
+    {
+     "date": "1982-09-13",
+     "time": null,
+     "polarity": "-",
+     "what": "Car crash on road near Cap-d'Ail after stroke",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    },
+    {
+     "date": "1982-09-14",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Monaco)",
+     "source": "https://en.wikipedia.org/wiki/Grace_Kelly"
+    }
+   ]
+  },
+  {
+   "name": "Pablo Picasso",
+   "sex": "M",
+   "birth": {
+    "date": "1881-10-25",
+    "time": "23:15",
+    "place": "Malaga, Spain",
+    "lat": 36.7213,
+    "lon": -4.4214,
+    "tz": "Europe/Madrid",
+    "dst": "no (local mean time)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Pablo_Picasso",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "23:15",
+    "notes": "bazi-calculator uses l=0, g=0 (approx. longitude) for Picasso."
+   },
+   "events": [
+    {
+     "date": "1901-02-17",
+     "time": null,
+     "polarity": "-",
+     "what": "Suicide of close friend Carles Casagemas",
+     "source": "https://www.sparknotes.com/biography/picasso/timeline/"
+    },
+    {
+     "date": "1918-07-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Olga Khokhlova",
+     "source": "https://www.sparknotes.com/biography/picasso/timeline/"
+    },
+    {
+     "date": "1921-02-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Paulo",
+     "source": "https://en.wikipedia.org/wiki/Pablo_Picasso"
+    },
+    {
+     "date": "1935-09-05",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Maya",
+     "source": "https://en.wikipedia.org/wiki/Pablo_Picasso"
+    },
+    {
+     "date": "1947-05-15",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Claude",
+     "source": "https://en.wikipedia.org/wiki/Pablo_Picasso"
+    },
+    {
+     "date": "1949-04-19",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Paloma",
+     "source": "https://en.wikipedia.org/wiki/Pablo_Picasso"
+    },
+    {
+     "date": "1961-03-02",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Jacqueline Roque",
+     "source": "https://www.sparknotes.com/biography/picasso/timeline/"
+    },
+    {
+     "date": "1973-04-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Mougins, France)",
+     "source": "https://en.wikipedia.org/wiki/Pablo_Picasso"
+    }
+   ]
+  },
+  {
+   "name": "Ernest Hemingway",
+   "sex": "M",
+   "birth": {
+    "date": "1899-07-21",
+    "time": "08:00",
+    "place": "Oak Park, IL, USA",
+    "lat": 41.885,
+    "lon": -87.7845,
+    "tz": "America/Chicago",
+    "dst": "no (CST)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Ernest_Hemingway",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "08:00",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1918-07-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Seriously wounded by mortar fire in Italy",
+     "source": "https://en.wikipedia.org/wiki/Ernest_Hemingway"
+    },
+    {
+     "date": "1921-09-03",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Hadley Richardson",
+     "source": "https://en.wikipedia.org/wiki/Ernest_Hemingway"
+    },
+    {
+     "date": "1923-10-10",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Jack",
+     "source": "https://en.wikipedia.org/wiki/Ernest_Hemingway"
+    },
+    {
+     "date": "1928-06-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Patrick",
+     "source": "https://en.wikipedia.org/wiki/Ernest_Hemingway"
+    },
+    {
+     "date": "1928-12-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Learns of father's suicide",
+     "source": "https://en.wikipedia.org/wiki/Ernest_Hemingway"
+    },
+    {
+     "date": "1940-11-20",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Martha Gellhorn",
+     "source": "https://en.wikipedia.org/wiki/Ernest_Hemingway"
+    },
+    {
+     "date": "1953-05-04",
+     "time": null,
+     "polarity": "+",
+     "what": "Pulitzer Prize (The Old Man and the Sea) announced",
+     "source": "https://www.poynter.org/reporting-editing/2015/today-in-media-history-1953-pulitzer-winners-included-ernest-hemingway/"
+    },
+    {
+     "date": "1954-10-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Nobel Prize in Literature announced",
+     "source": "https://en.wikipedia.org/wiki/1954_Nobel_Prize_in_Literature"
+    },
+    {
+     "date": "1961-07-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Death by suicide (Ketchum, Idaho), early morning",
+     "source": "https://en.wikipedia.org/wiki/Ernest_Hemingway"
+    }
+   ]
+  },
+  {
+   "name": "Muhammad Ali",
+   "sex": "M",
+   "birth": {
+    "date": "1942-01-17",
+    "time": "18:35",
+    "place": "Louisville, KY, USA",
+    "lat": 38.2527,
+    "lon": -85.7585,
+    "tz": "America/Kentucky/Louisville",
+    "dst": "no (CST; War Time started 1942-02-09)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Muhammad_Ali",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "18:35",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1964-02-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins world heavyweight title vs Sonny Liston",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "1967-04-28",
+     "time": null,
+     "polarity": "-",
+     "what": "Refuses draft induction; stripped of title",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "1967-06-20",
+     "time": null,
+     "polarity": "-",
+     "what": "Convicted of draft evasion",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "1971-03-08",
+     "time": null,
+     "polarity": "-",
+     "what": "First professional loss (Frazier, Fight of the Century)",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "1971-06-28",
+     "time": null,
+     "polarity": "+",
+     "what": "Supreme Court overturns conviction",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "1974-10-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Regains title vs Foreman (Rumble in the Jungle, Kinshasa)",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "1975-10-01",
+     "time": null,
+     "polarity": "+",
+     "what": "Beats Frazier (Thrilla in Manila)",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "1980-10-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Heavy defeat by Larry Holmes",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    },
+    {
+     "date": "2016-06-03",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Scottsdale, Arizona)",
+     "source": "https://en.wikipedia.org/wiki/Muhammad_Ali"
+    }
+   ]
+  },
+  {
+   "name": "Ayrton Senna",
+   "sex": "M",
+   "birth": {
+    "date": "1960-03-21",
+    "time": "02:35",
+    "place": "Sao Paulo, Brazil",
+    "lat": -23.5505,
+    "lon": -46.6333,
+    "tz": "America/Sao_Paulo",
+    "dst": "no",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Ayrton_Senna",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "02:35",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1985-04-21",
+     "time": null,
+     "polarity": "+",
+     "what": "First F1 win (Portuguese GP, Estoril)",
+     "source": "https://en.wikipedia.org/wiki/1985_Portuguese_Grand_Prix"
+    },
+    {
+     "date": "1988-10-30",
+     "time": null,
+     "polarity": "+",
+     "what": "Clinches first world title (Japanese GP win)",
+     "source": "https://en.wikipedia.org/wiki/1988_Japanese_Grand_Prix"
+    },
+    {
+     "date": "1989-10-22",
+     "time": null,
+     "polarity": "-",
+     "what": "Disqualified at Japanese GP; loses title to Prost",
+     "source": "https://en.wikipedia.org/wiki/1989_Japanese_Grand_Prix"
+    },
+    {
+     "date": "1991-03-24",
+     "time": null,
+     "polarity": "+",
+     "what": "First home win (Brazilian GP, Interlagos)",
+     "source": "https://en.wikipedia.org/wiki/1991_Brazilian_Grand_Prix"
+    },
+    {
+     "date": "1994-05-01",
+     "time": "14:17",
+     "polarity": "-",
+     "what": "Fatal crash at Imola (San Marino GP)",
+     "source": "https://en.wikipedia.org/wiki/Ayrton_Senna"
+    }
+   ]
+  },
+  {
+   "name": "Luciano Pavarotti",
+   "sex": "M",
+   "birth": {
+    "date": "1935-10-12",
+    "time": "01:40",
+    "place": "Modena, Italy",
+    "lat": 44.6471,
+    "lon": 10.9252,
+    "tz": "Europe/Rome",
+    "dst": "no (CET)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Luciano_Pavarotti",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": null,
+    "notes": "bazi-calculator page lists him but chart URL not retrievable."
+   },
+   "events": [
+    {
+     "date": "1965-04-28",
+     "time": null,
+     "polarity": "+",
+     "what": "La Scala debut (La boheme)",
+     "source": "https://en.wikipedia.org/wiki/Luciano_Pavarotti"
+    },
+    {
+     "date": "1972-02-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Met triumph: nine high Cs in La fille du regiment",
+     "source": "https://en.wikipedia.org/wiki/Luciano_Pavarotti"
+    },
+    {
+     "date": "1990-07-07",
+     "time": null,
+     "polarity": "+",
+     "what": "First Three Tenors concert, Baths of Caracalla",
+     "source": "https://en.wikipedia.org/wiki/The_Three_Tenors"
+    },
+    {
+     "date": "2003-12-13",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Nicoletta Mantovani",
+     "source": "https://en.wikipedia.org/wiki/Luciano_Pavarotti"
+    },
+    {
+     "date": "2007-09-06",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Modena, pancreatic cancer)",
+     "source": "https://en.wikipedia.org/wiki/Luciano_Pavarotti"
+    }
+   ]
+  },
+  {
+   "name": "Sophia Loren",
+   "sex": "F",
+   "birth": {
+    "date": "1934-09-20",
+    "time": "14:10",
+    "place": "Rome, Italy",
+    "lat": 41.9028,
+    "lon": 12.4964,
+    "tz": "Europe/Rome",
+    "dst": "no (CET)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Sophia_Loren",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "14:10",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1957-09-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Carlo Ponti by proxy in Mexico",
+     "source": "https://en.wikipedia.org/wiki/Sophia_Loren"
+    },
+    {
+     "date": "1962-04-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins Best Actress Oscar (Two Women)",
+     "source": "https://en.wikipedia.org/wiki/List_of_Academy_Awards_ceremonies"
+    },
+    {
+     "date": "1966-04-09",
+     "time": null,
+     "polarity": "+",
+     "what": "Legal marriage to Carlo Ponti",
+     "source": "https://en.wikipedia.org/wiki/Sophia_Loren"
+    },
+    {
+     "date": "1968-12-29",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Carlo Jr.",
+     "source": "https://en.wikipedia.org/wiki/Sophia_Loren"
+    },
+    {
+     "date": "1973-01-06",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Edoardo",
+     "source": "https://en.wikipedia.org/wiki/Sophia_Loren"
+    },
+    {
+     "date": "2007-01-10",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of husband Carlo Ponti",
+     "source": "https://en.wikipedia.org/wiki/Sophia_Loren"
+    }
+   ]
+  },
+  {
+   "name": "Madonna",
+   "sex": "F",
+   "birth": {
+    "date": "1958-08-16",
+    "time": "07:05",
+    "place": "Bay City, MI, USA",
+    "lat": 43.5945,
+    "lon": -83.8889,
+    "tz": "America/Detroit",
+    "dst": "no (EST used; bazi-calculator g=-5, no DST) - Michigan 1958 time practice messy, verify",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Madonna",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "07:05",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1963-12-01",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of mother",
+     "source": "https://en.wikipedia.org/wiki/Madonna"
+    },
+    {
+     "date": "1983-07-27",
+     "time": null,
+     "polarity": "+",
+     "what": "Debut album 'Madonna' released",
+     "source": "https://en.wikipedia.org/wiki/Madonna"
+    },
+    {
+     "date": "1985-08-16",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Sean Penn",
+     "source": "https://en.wikipedia.org/wiki/Madonna"
+    },
+    {
+     "date": "1989-01-05",
+     "time": null,
+     "polarity": "-",
+     "what": "Files for divorce from Sean Penn",
+     "source": "https://en.wikipedia.org/wiki/Madonna"
+    },
+    {
+     "date": "1996-10-14",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Lourdes",
+     "source": "https://en.wikipedia.org/wiki/Madonna"
+    },
+    {
+     "date": "2000-08-11",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Rocco",
+     "source": "https://en.wikipedia.org/wiki/Madonna"
+    },
+    {
+     "date": "2000-12-22",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Guy Ritchie",
+     "source": "https://en.wikipedia.org/wiki/Madonna"
+    },
+    {
+     "date": "2005-08-16",
+     "time": null,
+     "polarity": "-",
+     "what": "Horse-riding accident (broken collarbone, ribs, hand)",
+     "source": "https://news.pollstar.com/2005/08/16/madonna-injured-in-horseback-riding-accident/"
+    }
+   ]
+  },
+  {
+   "name": "Vincent van Gogh",
+   "sex": "M",
+   "birth": {
+    "date": "1853-03-30",
+    "time": "11:00",
+    "place": "Zundert, Netherlands",
+    "lat": 51.4706,
+    "lon": 4.6556,
+    "tz": "Europe/Amsterdam",
+    "dst": "no (local mean time)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Vincent_van_Gogh",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "11:00",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1885-03-26",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of father",
+     "source": "https://en.wikipedia.org/wiki/Vincent_van_Gogh"
+    },
+    {
+     "date": "1888-12-23",
+     "time": null,
+     "polarity": "-",
+     "what": "Cuts off his ear after breakdown (Arles)",
+     "source": "https://en.wikipedia.org/wiki/Vincent_van_Gogh"
+    },
+    {
+     "date": "1889-05-08",
+     "time": null,
+     "polarity": "-",
+     "what": "Enters Saint-Remy asylum",
+     "source": "https://en.wikipedia.org/wiki/Vincent_van_Gogh"
+    },
+    {
+     "date": "1890-07-27",
+     "time": null,
+     "polarity": "-",
+     "what": "Shoots himself in the chest",
+     "source": "https://en.wikipedia.org/wiki/Vincent_van_Gogh"
+    },
+    {
+     "date": "1890-07-29",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Auvers-sur-Oise), early hours",
+     "source": "https://en.wikipedia.org/wiki/Vincent_van_Gogh"
+    }
+   ]
+  },
+  {
+   "name": "Kurt Cobain",
+   "sex": "M",
+   "birth": {
+    "date": "1967-02-20",
+    "time": "19:38",
+    "place": "Aberdeen, WA, USA",
+    "lat": 46.9754,
+    "lon": -123.8157,
+    "tz": "America/Los_Angeles",
+    "dst": "no (PST)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Kurt_Cobain",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": null,
+    "notes": "Not found on bazi-calculator via search."
+   },
+   "events": [
+    {
+     "date": "1991-09-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Nevermind released",
+     "source": "https://en.wikipedia.org/wiki/Nevermind"
+    },
+    {
+     "date": "1992-01-11",
+     "time": null,
+     "polarity": "+",
+     "what": "Nevermind reaches #1 on Billboard 200",
+     "source": "https://en.wikipedia.org/wiki/Nevermind"
+    },
+    {
+     "date": "1992-02-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Courtney Love (Waikiki)",
+     "source": "https://en.wikipedia.org/wiki/Kurt_Cobain"
+    },
+    {
+     "date": "1992-08-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of daughter Frances Bean",
+     "source": "https://en.wikipedia.org/wiki/Kurt_Cobain"
+    },
+    {
+     "date": "1994-03-04",
+     "time": null,
+     "polarity": "-",
+     "what": "Overdose/coma in Rome",
+     "source": "https://en.wikipedia.org/wiki/Kurt_Cobain"
+    },
+    {
+     "date": "1994-04-05",
+     "time": null,
+     "polarity": "-",
+     "what": "Death by suicide (coroner's estimated date; body found 1994-04-08)",
+     "source": "https://en.wikipedia.org/wiki/Kurt_Cobain"
+    }
+   ]
+  },
+  {
+   "name": "Jimi Hendrix",
+   "sex": "M",
+   "birth": {
+    "date": "1942-11-27",
+    "time": "10:15",
+    "place": "Seattle, WA, USA",
+    "lat": 47.6062,
+    "lon": -122.3321,
+    "tz": "America/Los_Angeles",
+    "dst": "yes (Pacific War Time, UTC-7; bazi-calculator g=-7)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jimi_Hendrix",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "10:15",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1958-02-02",
+     "time": null,
+     "polarity": "-",
+     "what": "Death of mother Lucille",
+     "source": "https://en.wikipedia.org/wiki/Jimi_Hendrix"
+    },
+    {
+     "date": "1966-09-24",
+     "time": null,
+     "polarity": "+",
+     "what": "Arrives in London (career launch)",
+     "source": "https://en.wikipedia.org/wiki/Jimi_Hendrix"
+    },
+    {
+     "date": "1967-05-12",
+     "time": null,
+     "polarity": "+",
+     "what": "Are You Experienced released (UK)",
+     "source": "https://en.wikipedia.org/wiki/Jimi_Hendrix"
+    },
+    {
+     "date": "1967-06-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Breakthrough at Monterey Pop Festival",
+     "source": "https://en.wikipedia.org/wiki/Jimi_Hendrix"
+    },
+    {
+     "date": "1969-05-03",
+     "time": null,
+     "polarity": "-",
+     "what": "Arrested for drug possession at Toronto airport",
+     "source": "https://en.wikipedia.org/wiki/Canadian_drug_charges_and_trial_of_Jimi_Hendrix"
+    },
+    {
+     "date": "1969-08-18",
+     "time": "09:00",
+     "polarity": "+",
+     "what": "Headlines/closes Woodstock",
+     "source": "https://en.wikipedia.org/wiki/Live_at_Woodstock_(Jimi_Hendrix_album)"
+    },
+    {
+     "date": "1970-09-18",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (London)",
+     "source": "https://en.wikipedia.org/wiki/Jimi_Hendrix"
+    }
+   ]
+  },
+  {
+   "name": "Audrey Hepburn",
+   "sex": "F",
+   "birth": {
+    "date": "1929-05-04",
+    "time": "03:00",
+    "place": "Ixelles (Brussels), Belgium",
+    "lat": 50.8333,
+    "lon": 4.3667,
+    "tz": "Europe/Brussels",
+    "dst": "yes (Belgian summer time, UTC+1; bazi-calculator ds=on)",
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Audrey_Hepburn",
+    "rodden_source_note": "Rodden rating as reproduced on Astrotheme (astro.com ADB pages not fetchable from this session)",
+    "bazi_calc_time": "03:00",
+    "notes": ""
+   },
+   "events": [
+    {
+     "date": "1954-03-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Wins Best Actress Oscar (Roman Holiday)",
+     "source": "https://en.wikipedia.org/wiki/List_of_Academy_Awards_ceremonies"
+    },
+    {
+     "date": "1954-09-25",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Mel Ferrer",
+     "source": "https://en.wikipedia.org/wiki/Audrey_Hepburn"
+    },
+    {
+     "date": "1960-07-17",
+     "time": null,
+     "polarity": "+",
+     "what": "Birth of son Sean",
+     "source": "https://en.wikipedia.org/wiki/Sean_Hepburn_Ferrer"
+    },
+    {
+     "date": "1969-01-18",
+     "time": null,
+     "polarity": "+",
+     "what": "Marries Andrea Dotti",
+     "source": "https://en.wikipedia.org/wiki/Audrey_Hepburn"
+    },
+    {
+     "date": "1993-01-20",
+     "time": null,
+     "polarity": "-",
+     "what": "Death (Tolochenaz, Switzerland, cancer)",
+     "source": "https://en.wikipedia.org/wiki/Audrey_Hepburn"
+    }
+   ]
+  }
+ ],
+ "dropped": [
+  {
+   "name": "John Lennon",
+   "reason": "Rodden DD (conflicting/unverified birth time, 18:30 commonly quoted)"
+  },
+  {
+   "name": "Federico Fellini",
+   "reason": "Rodden DD (conflicting/unverified)"
+  },
+  {
+   "name": "Michael Schumacher",
+   "reason": "Rodden C (original source not known)"
+  },
+  {
+   "name": "Freddie Mercury",
+   "reason": "No birth time known (date only, noon chart)"
+  },
+  {
+   "name": "Paul McCartney",
+   "reason": "Astrotheme shows no rating; source 'from memory or autobiography' (14:00) - could not confirm A on Astro-Databank"
+  },
+  {
+   "name": "Roger Federer",
+   "reason": "Astrotheme shows no rating; source 'from memory or autobiography' (08:40) - could not confirm A on Astro-Databank"
+  }
+ ]
+}
