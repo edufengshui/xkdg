@@ -1,0 +1,140 @@
+{
+ "A": {
+  "nV": 77,
+  "nT": 365,
+  "cyc": {
+   "viol": 0.15,
+   "succ": 0.18,
+   "p": 0.46015,
+   "meglioSucc": 26,
+   "peggio": 26
+  },
+  "anno": {
+   "viol": 0.17,
+   "succ": 0.37,
+   "p": 0.20825,
+   "meglioSucc": 27,
+   "peggio": 27
+  },
+  "mese": {
+   "viol": 0.66,
+   "succ": 0.33,
+   "p": 0.91775,
+   "meglioSucc": 21,
+   "peggio": 35
+  },
+  "corsa": {
+   "viol": 0.97,
+   "succ": 0.87,
+   "p": 0.5922,
+   "meglioSucc": 23,
+   "peggio": 32
+  },
+  "tot": {
+   "viol": 2.09,
+   "succ": 1.93,
+   "p": 0.6098,
+   "meglioSucc": 23,
+   "peggio": 32
+  },
+  "txt": {
+   "viol": 2.53,
+   "succ": 2.12,
+   "p": 0.9085,
+   "meglioSucc": 20,
+   "peggio": 35
+  }
+ },
+ "B": {
+  "nV": 77,
+  "nT": 365,
+  "cyc": {
+   "viol": 0.14,
+   "succ": 0.26,
+   "p": 0.32995,
+   "meglioSucc": 27,
+   "peggio": 24
+  },
+  "anno": {
+   "viol": 0.35,
+   "succ": 0.45,
+   "p": 0.3431,
+   "meglioSucc": 29,
+   "peggio": 26
+  },
+  "mese": {
+   "viol": 0.73,
+   "succ": 0.28,
+   "p": 0.96755,
+   "meglioSucc": 19,
+   "peggio": 38
+  },
+  "corsa": {
+   "viol": 1.23,
+   "succ": 1,
+   "p": 0.6987,
+   "meglioSucc": 24,
+   "peggio": 32
+  },
+  "tot": {
+   "viol": 2.34,
+   "succ": 2.05,
+   "p": 0.68175,
+   "meglioSucc": 24,
+   "peggio": 32
+  },
+  "txt": {
+   "viol": 2.56,
+   "succ": 2.1,
+   "p": 0.92745,
+   "meglioSucc": 19,
+   "peggio": 35
+  }
+ },
+ "C": {
+  "nV": 77,
+  "nT": 362,
+  "cyc": {
+   "viol": 0.29,
+   "succ": 0.42,
+   "p": 0.32095,
+   "meglioSucc": 32,
+   "peggio": 19
+  },
+  "anno": {
+   "viol": 0.62,
+   "succ": 0.44,
+   "p": 0.77815,
+   "meglioSucc": 24,
+   "peggio": 31
+  },
+  "mese": {
+   "viol": 0.32,
+   "succ": 0.19,
+   "p": 0.7012,
+   "meglioSucc": 30,
+   "peggio": 26
+  },
+  "corsa": {
+   "viol": 1.23,
+   "succ": 1.06,
+   "p": 0.64295,
+   "meglioSucc": 32,
+   "peggio": 24
+  },
+  "tot": {
+   "viol": 2.35,
+   "succ": 2.11,
+   "p": 0.66215,
+   "meglioSucc": 32,
+   "peggio": 25
+  },
+  "txt": {
+   "viol": 1.9,
+   "succ": 2.24,
+   "p": 0.13165,
+   "meglioSucc": 27,
+   "peggio": 26
+  }
+ }
+}

@@ -54,3 +54,10 @@ heluo-lishu.js calcola già: heavenTrigram, earthTrigram, huGua, properPosition,
 - Risultato: 62 violenti (ora forte) media 1,21 contro 41 altri 0,86 → nessuna separazione (p 0,75). Nessuna voce singola distingue.
 - Edu: il natale è solo la partenza della corsa, poi contano i cicli. schede/corsa.js: momento = punteggio natale + linea del ciclo (posizione, supporto, linea 5/2/3/6, qi per linea vs media del mese, trigramma della linea = fortuna/opposto, ramo dell'anno = fortuna/opposto).
 - 77 morti violente contro 365 successi: momento 1,26 contro 1,23 (p 0,54). Stessa persona: ciclo migliore nei successi 26 volte, peggiore 26. Partenza debole + ciclo cattivo: 31% dei violenti, 28% dei successi. Nessun segnale.
+
+## Sessione 47 (2026-11-08): corsa con anno e mese, metodi A/B/C
+- schede/corsa2.js → schede/corsa2.json. Momento = natale + linea del ciclo + linea annuale mossa + linea mese/giorno (esagramma mensile, linea dei 5 giorni), stesse regole strutturali di corsa.js; ramo dell'anno per ciclo e anno, ramo del mese per il mese. Più il punteggio dei testi (txt) per confronto.
+- 77 violenti contro ~365 successi, soglia Bonferroni 0,0028 (3 metodi × 6 misure). Nessuna misura significativa: p minimo 0,13 (C, testi).
+- Ciclo e anno vanno nel verso giusto ma deboli (A anno 0,17 vs 0,37, p 0,21). Il livello mese/giorno in A e B va al contrario (violenti più alti; B p ~0,06 a due code), come già nel test dei testi.
+- Stessa persona: nessuna tendenza stabile (C ciclo 32 meglio / 19 peggio, ma A e B pari).
+- Conclusione: con queste regole né la partenza natale né la corsa (ciclo, anno, mese) separano le morti violente dai successi, in nessun metodo.
