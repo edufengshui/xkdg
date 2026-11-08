@@ -50,3 +50,5 @@ heluo-lishu.js calcola già: heavenTrigram, earthTrigram, huGua, properPosition,
 - schede/build.js → schede/schede.json (metodo A) + schede/chiave-NON-APRIRE.json (codice → nome); schede/page.py + template.html → schede-natali.html (artifact).
 - 12 persone, 6 con morte violenta/tragica e 6 con vita lunga e riuscita, mescolate (S01–S12). Edu dà fortuna di vita −2…+2 con nota, senza vedere nomi ed eventi.
 - Prossimo: confronto giudizi ↔ chiave, poi trasformare i criteri di Edu in regole e testarle sui 473 eventi.
+- Edu vuole che i giudizi li dia Claude. Regole tradotte dalle slide in schede/score.js (direzione Yin-Yang, totale ~55, numero dominante giusto per la stagione, linee yang/yin per sesso, proper position e support XT/HT, linea 5/2/3/6, prevalenza, trigrammi di fortuna e opposti, forza stagionale e flusso dei trigrammi XT) → schede/punteggi.json.
+- Risultato: 62 violenti (ora forte) media 1,21 contro 41 altri 0,86 → nessuna separazione (p 0,75). Nessuna voce singola distingue.
