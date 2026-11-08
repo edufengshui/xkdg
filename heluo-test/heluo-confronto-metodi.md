@@ -45,3 +45,8 @@ Tre coincidenze Liu Yao in A/B: ciclo (29 l5 = Ufficiale 戌, punito dall'anno �
 Il test finora ha guardato solo i cicli. Prima serve l'analisi natale completa (PowerPoint): esagramma di vita e linea mutante, eccesso/difetto Yin-Yang, proporzione, timeliness, Gua nativo, proper position, proper support, Hu Gua, Gua di cielo e di terra, renown Gua, opposto e inverso → grado di fortuna/sfortuna della persona in un dato momento. SOLO DOPO si guarda l'effetto dei cicli. Es. Diana: nativo Kan → periodo di terra complicato e pericoloso.
 Piano: schede natali complete per 10–15 personaggi → giudizio di Edu senza vedere gli eventi → regole in codice → test sui 473 eventi.
 heluo-lishu.js calcola già: heavenTrigram, earthTrigram, huGua, properPosition, properSupport, houTian, cycles. Da aggiungere come giudizio: Yin-Yang, proporzione, timeliness, renown, opposto/inverso, combinazione finale.
+
+## Sessione 46 (2026-11-08): schede natali, giudizio cieco
+- schede/build.js → schede/schede.json (metodo A) + schede/chiave-NON-APRIRE.json (codice → nome); schede/page.py + template.html → schede-natali.html (artifact).
+- 12 persone, 6 con morte violenta/tragica e 6 con vita lunga e riuscita, mescolate (S01–S12). Edu dà fortuna di vita −2…+2 con nota, senza vedere nomi ed eventi.
+- Prossimo: confronto giudizi ↔ chiave, poi trasformare i criteri di Edu in regole e testarle sui 473 eventi.

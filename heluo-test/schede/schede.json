@@ -1,0 +1,2366 @@
+[
+ {
+  "code": "S01",
+  "sex": "M",
+  "bazi": {
+   "ora": "己丑",
+   "giorno": "辛酉",
+   "mese": "丙戌",
+   "anno": "乙亥"
+  },
+  "heluoYear": 1935,
+  "solarYearPillar": "乙亥",
+  "dun": "Yin Dun",
+  "season": "AE→WS",
+  "numbers": {
+   "heaven": 29,
+   "earth": 44,
+   "odd": [
+    1,
+    5,
+    9,
+    9,
+    5
+   ],
+   "even": [
+    2,
+    6,
+    8,
+    10,
+    4,
+    4,
+    10
+   ],
+   "total": 73,
+   "devHeaven": 4,
+   "devEarth": 14,
+   "monthAvg": {
+    "month": "October",
+    "yang": 12,
+    "yin": 50
+   }
+  },
+  "heaven": "Xun",
+  "earth": "Xun",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 57,
+   "name": "Xun – The Gentle / Wind (Wind over Wind)",
+   "upper": "Xun",
+   "lower": "Xun",
+   "lines": "011011"
+  },
+  "mv": 3,
+  "ht": {
+   "n": 48,
+   "name": "Jing – The Well (Water over Wind)",
+   "upper": "Kan",
+   "lower": "Xun",
+   "lines": "011010",
+   "line": 6,
+   "rule": "normal"
+  },
+  "posXT": true,
+  "supXT": false,
+  "posHT": true,
+  "supHT": true,
+  "prevXT": null,
+  "prevHT": null,
+  "huXT": {
+   "n": 38,
+   "name": "Kui – Opposition / Divergence (Fire over Lake)",
+   "upper": "Li",
+   "lower": "Dui",
+   "lines": "110101"
+  },
+  "huHT": {
+   "n": 38,
+   "name": "Kui – Opposition / Divergence (Fire over Lake)",
+   "upper": "Li",
+   "lower": "Dui",
+   "lines": "110101"
+  },
+  "oppXT": {
+   "n": 51,
+   "name": "Zhen – The Arousing / Thunder (Thunder over Thunder)",
+   "upper": "Zhen",
+   "lower": "Zhen",
+   "lines": "100100"
+  },
+  "invXT": {
+   "n": 58,
+   "name": "Dui – The Joyous / Lake (Lake over Lake)",
+   "upper": "Dui",
+   "lower": "Dui",
+   "lines": "110110"
+  },
+  "oppHT": {
+   "n": 21,
+   "name": "Shi He – Biting Through (Fire over Thunder)",
+   "upper": "Li",
+   "lower": "Zhen",
+   "lines": "100101"
+  },
+  "invHT": {
+   "n": 47,
+   "name": "Kun – Oppression / Exhaustion (Lake over Water)",
+   "upper": "Dui",
+   "lower": "Kan",
+   "lines": "010110"
+  },
+  "luck": {
+   "heaven": "Kun",
+   "earth": "Qian",
+   "fame": "Dui",
+   "opposite": {
+    "heaven": "Qian",
+    "earth": "Kun",
+    "fame": "Gen"
+   }
+  },
+  "cXT": [
+   {
+    "line": 3,
+    "yang": true,
+    "from": 1,
+    "to": 9
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 10,
+    "to": 15
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 16,
+    "to": 24
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 25,
+    "to": 33
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 34,
+    "to": 39
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 40,
+    "to": 48
+   }
+  ],
+  "cHT": [
+   {
+    "line": 6,
+    "yang": false,
+    "from": 49,
+    "to": 54
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 55,
+    "to": 60
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 61,
+    "to": 69
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 70,
+    "to": 78
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 79,
+    "to": 84
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 85,
+    "to": 93
+   }
+  ]
+ },
+ {
+  "code": "S02",
+  "sex": "M",
+  "bazi": {
+   "ora": "丁卯",
+   "giorno": "甲子",
+   "mese": "辛丑",
+   "anno": "丁卯"
+  },
+  "heluoYear": 1927,
+  "solarYearPillar": "丙寅",
+  "dun": "Yang Dun",
+  "season": "WS→SE",
+  "numbers": {
+   "heaven": 26,
+   "earth": 42,
+   "odd": [
+    7,
+    3,
+    5,
+    1,
+    7,
+    3
+   ],
+   "even": [
+    8,
+    4,
+    10,
+    6,
+    6,
+    8
+   ],
+   "total": 68,
+   "devHeaven": 1,
+   "devEarth": 12,
+   "monthAvg": {
+    "month": "January",
+    "yang": 16,
+    "yin": 40
+   }
+  },
+  "heaven": "Kan",
+  "earth": "Kun",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 7,
+   "name": "Shi – The Army / The Multitude (Earth over Water)",
+   "upper": "Kun",
+   "lower": "Kan",
+   "lines": "010000"
+  },
+  "mv": 3,
+  "ht": {
+   "n": 20,
+   "name": "Guan – Contemplation / View (Wind over Earth)",
+   "upper": "Xun",
+   "lower": "Kun",
+   "lines": "000011",
+   "line": 6,
+   "rule": "normal"
+  },
+  "posXT": false,
+  "supXT": false,
+  "posHT": false,
+  "supHT": true,
+  "prevXT": "single yang line",
+  "prevHT": null,
+  "huXT": {
+   "n": 24,
+   "name": "Fu – Return / The Turning Point (Earth over Thunder)",
+   "upper": "Kun",
+   "lower": "Zhen",
+   "lines": "100000"
+  },
+  "huHT": {
+   "n": 23,
+   "name": "Bo – Splitting Apart / Stripping (Mountain over Earth)",
+   "upper": "Gen",
+   "lower": "Kun",
+   "lines": "000001"
+  },
+  "oppXT": {
+   "n": 13,
+   "name": "Tong Ren – Fellowship with People (Heaven over Fire)",
+   "upper": "Qian",
+   "lower": "Li",
+   "lines": "101111"
+  },
+  "invXT": {
+   "n": 8,
+   "name": "Bi – Holding Together / Union (Water over Earth)",
+   "upper": "Kan",
+   "lower": "Kun",
+   "lines": "000010"
+  },
+  "oppHT": {
+   "n": 34,
+   "name": "Da Zhuang – The Power of the Great (Thunder over Heaven)",
+   "upper": "Zhen",
+   "lower": "Qian",
+   "lines": "111100"
+  },
+  "invHT": {
+   "n": 19,
+   "name": "Lin – Approach / Overseeing (Earth over Lake)",
+   "upper": "Kun",
+   "lower": "Dui",
+   "lines": "110000"
+  },
+  "luck": {
+   "heaven": "Dui",
+   "earth": "Zhen",
+   "fame": "Kan",
+   "opposite": {
+    "heaven": "Gen",
+    "earth": "Xun",
+    "fame": "Li"
+   }
+  },
+  "cXT": [
+   {
+    "line": 3,
+    "yang": false,
+    "from": 1,
+    "to": 6
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 7,
+    "to": 12
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 13,
+    "to": 18
+   },
+   {
+    "line": 6,
+    "yang": false,
+    "from": 19,
+    "to": 24
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 25,
+    "to": 30
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 31,
+    "to": 39
+   }
+  ],
+  "cHT": [
+   {
+    "line": 6,
+    "yang": true,
+    "from": 40,
+    "to": 48
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 49,
+    "to": 54
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 55,
+    "to": 60
+   },
+   {
+    "line": 3,
+    "yang": false,
+    "from": 61,
+    "to": 66
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 67,
+    "to": 72
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 73,
+    "to": 81
+   }
+  ]
+ },
+ {
+  "code": "S03",
+  "sex": "M",
+  "bazi": {
+   "ora": "壬子",
+   "giorno": "壬辰",
+   "mese": "戊戌",
+   "anno": "辛巳"
+  },
+  "heluoYear": 1881,
+  "solarYearPillar": "辛巳",
+  "dun": "Yin Dun",
+  "season": "AE→WS",
+  "numbers": {
+   "heaven": 19,
+   "earth": 44,
+   "odd": [
+    7,
+    1,
+    5,
+    5,
+    1
+   ],
+   "even": [
+    4,
+    2,
+    10,
+    6,
+    10,
+    6,
+    6
+   ],
+   "total": 63,
+   "devHeaven": -6,
+   "devEarth": 14,
+   "monthAvg": {
+    "month": "October",
+    "yang": 12,
+    "yin": 50
+   }
+  },
+  "heaven": "Li",
+  "earth": "Xun",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 37,
+   "name": "Jia Ren – The Family / The Clan (Wind over Fire)",
+   "upper": "Xun",
+   "lower": "Li",
+   "lines": "101011"
+  },
+  "mv": 1,
+  "ht": {
+   "n": 18,
+   "name": "Gu – Work on What Has Been Spoiled / Decay (Mountain over Wind)",
+   "upper": "Gen",
+   "lower": "Xun",
+   "lines": "011001",
+   "line": 4,
+   "rule": "normal"
+  },
+  "posXT": true,
+  "supXT": true,
+  "posHT": true,
+  "supHT": false,
+  "prevXT": null,
+  "prevHT": null,
+  "huXT": {
+   "n": 64,
+   "name": "Wei Ji – Before Completion / Not Yet Across (Fire over Water)",
+   "upper": "Li",
+   "lower": "Kan",
+   "lines": "010101"
+  },
+  "huHT": {
+   "n": 54,
+   "name": "Gui Mei – The Marrying Maiden (Thunder over Lake)",
+   "upper": "Zhen",
+   "lower": "Dui",
+   "lines": "110100"
+  },
+  "oppXT": {
+   "n": 40,
+   "name": "Xie – Deliverance / Release (Thunder over Water)",
+   "upper": "Zhen",
+   "lower": "Kan",
+   "lines": "010100"
+  },
+  "invXT": {
+   "n": 38,
+   "name": "Kui – Opposition / Divergence (Fire over Lake)",
+   "upper": "Li",
+   "lower": "Dui",
+   "lines": "110101"
+  },
+  "oppHT": {
+   "n": 17,
+   "name": "Sui – Following / Adapting (Lake over Thunder)",
+   "upper": "Dui",
+   "lower": "Zhen",
+   "lines": "100110"
+  },
+  "invHT": {
+   "n": 17,
+   "name": "Sui – Following / Adapting (Lake over Thunder)",
+   "upper": "Dui",
+   "lower": "Zhen",
+   "lines": "100110"
+  },
+  "luck": {
+   "heaven": "Xun",
+   "earth": "Xun",
+   "fame": "Dui",
+   "opposite": {
+    "heaven": "Zhen",
+    "earth": "Zhen",
+    "fame": "Gen"
+   }
+  },
+  "cXT": [
+   {
+    "line": 1,
+    "yang": true,
+    "from": 1,
+    "to": 9
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 10,
+    "to": 15
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 16,
+    "to": 24
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 25,
+    "to": 30
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 31,
+    "to": 39
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 40,
+    "to": 48
+   }
+  ],
+  "cHT": [
+   {
+    "line": 4,
+    "yang": false,
+    "from": 49,
+    "to": 54
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 55,
+    "to": 60
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 61,
+    "to": 69
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 70,
+    "to": 75
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 76,
+    "to": 84
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 85,
+    "to": 93
+   }
+  ]
+ },
+ {
+  "code": "S04",
+  "sex": "M",
+  "bazi": {
+   "ora": "己巳",
+   "giorno": "甲午",
+   "mese": "庚寅",
+   "anno": "辛未"
+  },
+  "heluoYear": 1931,
+  "solarYearPillar": "辛未",
+  "dun": "Yang Dun",
+  "season": "WS→SE",
+  "numbers": {
+   "heaven": 34,
+   "earth": 32,
+   "odd": [
+    5,
+    3,
+    3,
+    7,
+    9,
+    7
+   ],
+   "even": [
+    4,
+    10,
+    8,
+    6,
+    2,
+    2
+   ],
+   "total": 66,
+   "devHeaven": 9,
+   "devEarth": 2,
+   "monthAvg": {
+    "month": "February",
+    "yang": 24,
+    "yin": 30
+   }
+  },
+  "heaven": "Li",
+  "earth": "Kun",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 36,
+   "name": "Ming Yi – Darkening of the Light (Earth over Fire)",
+   "upper": "Kun",
+   "lower": "Li",
+   "lines": "101000"
+  },
+  "mv": 4,
+  "ht": {
+   "n": 21,
+   "name": "Shi He – Biting Through (Fire over Thunder)",
+   "upper": "Li",
+   "lower": "Zhen",
+   "lines": "100101",
+   "line": 1,
+   "rule": "normal"
+  },
+  "posXT": true,
+  "supXT": true,
+  "posHT": true,
+  "supHT": false,
+  "prevXT": null,
+  "prevHT": null,
+  "huXT": {
+   "n": 40,
+   "name": "Xie – Deliverance / Release (Thunder over Water)",
+   "upper": "Zhen",
+   "lower": "Kan",
+   "lines": "010100"
+  },
+  "huHT": {
+   "n": 39,
+   "name": "Jian – Obstruction / Limping (Water over Mountain)",
+   "upper": "Kan",
+   "lower": "Gen",
+   "lines": "001010"
+  },
+  "oppXT": {
+   "n": 6,
+   "name": "Song – Conflict / Litigation (Heaven over Water)",
+   "upper": "Qian",
+   "lower": "Kan",
+   "lines": "010111"
+  },
+  "invXT": {
+   "n": 35,
+   "name": "Jin – Progress / Advancement (Fire over Earth)",
+   "upper": "Li",
+   "lower": "Kun",
+   "lines": "000101"
+  },
+  "oppHT": {
+   "n": 48,
+   "name": "Jing – The Well (Water over Wind)",
+   "upper": "Kan",
+   "lower": "Xun",
+   "lines": "011010"
+  },
+  "invHT": {
+   "n": 22,
+   "name": "Bi – Grace / Adornment (Mountain over Fire)",
+   "upper": "Gen",
+   "lower": "Li",
+   "lines": "101001"
+  },
+  "luck": {
+   "heaven": "Xun",
+   "earth": "Kun",
+   "fame": "Kan",
+   "opposite": {
+    "heaven": "Zhen",
+    "earth": "Qian",
+    "fame": "Li"
+   }
+  },
+  "cXT": [
+   {
+    "line": 4,
+    "yang": false,
+    "from": 1,
+    "to": 6
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 7,
+    "to": 12
+   },
+   {
+    "line": 6,
+    "yang": false,
+    "from": 13,
+    "to": 18
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 19,
+    "to": 27
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 28,
+    "to": 33
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 34,
+    "to": 42
+   }
+  ],
+  "cHT": [
+   {
+    "line": 1,
+    "yang": true,
+    "from": 43,
+    "to": 51
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 52,
+    "to": 57
+   },
+   {
+    "line": 3,
+    "yang": false,
+    "from": 58,
+    "to": 63
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 64,
+    "to": 72
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 73,
+    "to": 78
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 79,
+    "to": 87
+   }
+  ]
+ },
+ {
+  "code": "S05",
+  "sex": "F",
+  "bazi": {
+   "ora": "辛未",
+   "giorno": "甲午",
+   "mese": "癸酉",
+   "anno": "甲戌"
+  },
+  "heluoYear": 1934,
+  "solarYearPillar": "甲戌",
+  "dun": "Yin Dun",
+  "season": "SS→AE",
+  "numbers": {
+   "heaven": 26,
+   "earth": 44,
+   "odd": [
+    5,
+    9,
+    7,
+    5
+   ],
+   "even": [
+    6,
+    10,
+    2,
+    4,
+    6,
+    2,
+    4,
+    10
+   ],
+   "total": 70,
+   "devHeaven": 1,
+   "devEarth": 14,
+   "monthAvg": {
+    "month": "September",
+    "yang": 16,
+    "yin": 40
+   }
+  },
+  "heaven": "Kan",
+  "earth": "Xun",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 59,
+   "name": "Huan – Dispersion / Dissolution (Wind over Water)",
+   "upper": "Xun",
+   "lower": "Kan",
+   "lines": "010011"
+  },
+  "mv": 3,
+  "ht": {
+   "n": 57,
+   "name": "Xun – The Gentle / Wind (Wind over Wind)",
+   "upper": "Xun",
+   "lower": "Xun",
+   "lines": "011011",
+   "line": 6,
+   "rule": "normal"
+  },
+  "posXT": false,
+  "supXT": true,
+  "posHT": false,
+  "supHT": false,
+  "prevXT": null,
+  "prevHT": null,
+  "huXT": {
+   "n": 27,
+   "name": "Yi – The Corners of the Mouth / Nourishment (Mountain over Thunder)",
+   "upper": "Gen",
+   "lower": "Zhen",
+   "lines": "100001"
+  },
+  "huHT": {
+   "n": 38,
+   "name": "Kui – Opposition / Divergence (Fire over Lake)",
+   "upper": "Li",
+   "lower": "Dui",
+   "lines": "110101"
+  },
+  "oppXT": {
+   "n": 55,
+   "name": "Feng – Abundance / Fullness (Thunder over Fire)",
+   "upper": "Zhen",
+   "lower": "Li",
+   "lines": "101100"
+  },
+  "invXT": {
+   "n": 60,
+   "name": "Jie – Limitation / Moderation (Water over Lake)",
+   "upper": "Kan",
+   "lower": "Dui",
+   "lines": "110010"
+  },
+  "oppHT": {
+   "n": 51,
+   "name": "Zhen – The Arousing / Thunder (Thunder over Thunder)",
+   "upper": "Zhen",
+   "lower": "Zhen",
+   "lines": "100100"
+  },
+  "invHT": {
+   "n": 58,
+   "name": "Dui – The Joyous / Lake (Lake over Lake)",
+   "upper": "Dui",
+   "lower": "Dui",
+   "lines": "110110"
+  },
+  "luck": {
+   "heaven": "Qian",
+   "earth": "Qian",
+   "fame": "Li",
+   "opposite": {
+    "heaven": "Kun",
+    "earth": "Kun",
+    "fame": "Kan"
+   }
+  },
+  "cXT": [
+   {
+    "line": 3,
+    "yang": false,
+    "from": 1,
+    "to": 6
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 7,
+    "to": 12
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 13,
+    "to": 21
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 22,
+    "to": 30
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 31,
+    "to": 36
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 37,
+    "to": 45
+   }
+  ],
+  "cHT": [
+   {
+    "line": 6,
+    "yang": true,
+    "from": 46,
+    "to": 54
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 55,
+    "to": 60
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 61,
+    "to": 69
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 70,
+    "to": 78
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 79,
+    "to": 84
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 85,
+    "to": 93
+   }
+  ]
+ },
+ {
+  "code": "S06",
+  "sex": "F",
+  "bazi": {
+   "ora": "辛亥",
+   "giorno": "壬戌",
+   "mese": "丙午",
+   "anno": "丁酉"
+  },
+  "heluoYear": 1957,
+  "solarYearPillar": "丁酉",
+  "dun": "Yang Dun",
+  "season": "SE→SS",
+  "numbers": {
+   "heaven": 29,
+   "earth": 40,
+   "odd": [
+    7,
+    9,
+    7,
+    5,
+    1
+   ],
+   "even": [
+    4,
+    8,
+    2,
+    6,
+    10,
+    4,
+    6
+   ],
+   "total": 69,
+   "devHeaven": 4,
+   "devEarth": 10,
+   "monthAvg": {
+    "month": "June",
+    "yang": 40,
+    "yin": 15
+   }
+  },
+  "heaven": "Xun",
+  "earth": "Kan",
+  "five": null,
+  "heavenUp": true,
+  "xt": {
+   "n": 59,
+   "name": "Huan – Dispersion / Dissolution (Wind over Water)",
+   "upper": "Xun",
+   "lower": "Kan",
+   "lines": "010011"
+  },
+  "mv": 4,
+  "ht": {
+   "n": 5,
+   "name": "Xu – Waiting / Nourishment (Water over Heaven)",
+   "upper": "Kan",
+   "lower": "Qian",
+   "lines": "111010",
+   "line": 1,
+   "rule": "normal"
+  },
+  "posXT": true,
+  "supXT": false,
+  "posHT": true,
+  "supHT": true,
+  "prevXT": null,
+  "prevHT": null,
+  "huXT": {
+   "n": 27,
+   "name": "Yi – The Corners of the Mouth / Nourishment (Mountain over Thunder)",
+   "upper": "Gen",
+   "lower": "Zhen",
+   "lines": "100001"
+  },
+  "huHT": {
+   "n": 38,
+   "name": "Kui – Opposition / Divergence (Fire over Lake)",
+   "upper": "Li",
+   "lower": "Dui",
+   "lines": "110101"
+  },
+  "oppXT": {
+   "n": 55,
+   "name": "Feng – Abundance / Fullness (Thunder over Fire)",
+   "upper": "Zhen",
+   "lower": "Li",
+   "lines": "101100"
+  },
+  "invXT": {
+   "n": 60,
+   "name": "Jie – Limitation / Moderation (Water over Lake)",
+   "upper": "Kan",
+   "lower": "Dui",
+   "lines": "110010"
+  },
+  "oppHT": {
+   "n": 35,
+   "name": "Jin – Progress / Advancement (Fire over Earth)",
+   "upper": "Li",
+   "lower": "Kun",
+   "lines": "000101"
+  },
+  "invHT": {
+   "n": 6,
+   "name": "Song – Conflict / Litigation (Heaven over Water)",
+   "upper": "Qian",
+   "lower": "Kan",
+   "lines": "010111"
+  },
+  "luck": {
+   "heaven": "Dui",
+   "earth": "Dui",
+   "fame": "Zhen",
+   "opposite": {
+    "heaven": "Gen",
+    "earth": "Gen",
+    "fame": "Xun"
+   }
+  },
+  "cXT": [
+   {
+    "line": 4,
+    "yang": false,
+    "from": 1,
+    "to": 6
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 7,
+    "to": 15
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 16,
+    "to": 24
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 25,
+    "to": 30
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 31,
+    "to": 39
+   },
+   {
+    "line": 3,
+    "yang": false,
+    "from": 40,
+    "to": 45
+   }
+  ],
+  "cHT": [
+   {
+    "line": 1,
+    "yang": true,
+    "from": 46,
+    "to": 54
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 55,
+    "to": 63
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 64,
+    "to": 72
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 73,
+    "to": 78
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 79,
+    "to": 87
+   },
+   {
+    "line": 6,
+    "yang": false,
+    "from": 88,
+    "to": 93
+   }
+  ]
+ },
+ {
+  "code": "S07",
+  "sex": "M",
+  "bazi": {
+   "ora": "辛亥",
+   "giorno": "壬戌",
+   "mese": "丙戌",
+   "anno": "乙未"
+  },
+  "heluoYear": 1955,
+  "solarYearPillar": "乙未",
+  "dun": "Yin Dun",
+  "season": "AE→WS",
+  "numbers": {
+   "heaven": 16,
+   "earth": 56,
+   "odd": [
+    5,
+    5,
+    5,
+    1
+   ],
+   "even": [
+    2,
+    10,
+    8,
+    10,
+    6,
+    10,
+    4,
+    6
+   ],
+   "total": 72,
+   "devHeaven": -9,
+   "devEarth": 26,
+   "monthAvg": {
+    "month": "October",
+    "yang": 12,
+    "yin": 50
+   }
+  },
+  "heaven": "Qian",
+  "earth": "Qian",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "mv": 6,
+  "ht": {
+   "n": 10,
+   "name": "Lv – Treading / Conduct (Heaven over Lake)",
+   "upper": "Qian",
+   "lower": "Dui",
+   "lines": "110111",
+   "line": 3,
+   "rule": "normal"
+  },
+  "posXT": false,
+  "supXT": false,
+  "posHT": false,
+  "supHT": true,
+  "prevXT": "pure yang",
+  "prevHT": "single yin line",
+  "huXT": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "huHT": {
+   "n": 37,
+   "name": "Jia Ren – The Family / The Clan (Wind over Fire)",
+   "upper": "Xun",
+   "lower": "Li",
+   "lines": "101011"
+  },
+  "oppXT": {
+   "n": 2,
+   "name": "Kun – The Receptive (Earth over Earth)",
+   "upper": "Kun",
+   "lower": "Kun",
+   "lines": "000000"
+  },
+  "invXT": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "oppHT": {
+   "n": 15,
+   "name": "Qian – Modesty / Humility (Earth over Mountain)",
+   "upper": "Kun",
+   "lower": "Gen",
+   "lines": "001000"
+  },
+  "invHT": {
+   "n": 9,
+   "name": "Xiao Chu – The Taming Power of the Small (Wind over Heaven)",
+   "upper": "Xun",
+   "lower": "Qian",
+   "lines": "111011"
+  },
+  "luck": {
+   "heaven": "Kun",
+   "earth": "Kun",
+   "fame": "Dui",
+   "opposite": {
+    "heaven": "Qian",
+    "earth": "Qian",
+    "fame": "Gen"
+   }
+  },
+  "cXT": [
+   {
+    "line": 6,
+    "yang": true,
+    "from": 1,
+    "to": 9
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 10,
+    "to": 18
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 19,
+    "to": 27
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 28,
+    "to": 36
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 37,
+    "to": 45
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 46,
+    "to": 54
+   }
+  ],
+  "cHT": [
+   {
+    "line": 3,
+    "yang": false,
+    "from": 55,
+    "to": 60
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 61,
+    "to": 69
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 70,
+    "to": 78
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 79,
+    "to": 87
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 88,
+    "to": 96
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 97,
+    "to": 105
+   }
+  ]
+ },
+ {
+  "code": "S08",
+  "sex": "M",
+  "bazi": {
+   "ora": "癸亥",
+   "giorno": "癸卯",
+   "mese": "辛巳",
+   "anno": "乙丑"
+  },
+  "heluoYear": 1925,
+  "solarYearPillar": "乙丑",
+  "dun": "Yang Dun",
+  "season": "SE→SS",
+  "numbers": {
+   "heaven": 16,
+   "earth": 36,
+   "odd": [
+    5,
+    7,
+    3,
+    1
+   ],
+   "even": [
+    2,
+    10,
+    4,
+    2,
+    2,
+    8,
+    2,
+    6
+   ],
+   "total": 52,
+   "devHeaven": -9,
+   "devEarth": 6,
+   "monthAvg": {
+    "month": "May",
+    "yang": 48,
+    "yin": 10
+   }
+  },
+  "heaven": "Qian",
+  "earth": "Qian",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "mv": 6,
+  "ht": {
+   "n": 10,
+   "name": "Lv – Treading / Conduct (Heaven over Lake)",
+   "upper": "Qian",
+   "lower": "Dui",
+   "lines": "110111",
+   "line": 3,
+   "rule": "normal"
+  },
+  "posXT": false,
+  "supXT": false,
+  "posHT": false,
+  "supHT": true,
+  "prevXT": "pure yang",
+  "prevHT": "single yin line",
+  "huXT": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "huHT": {
+   "n": 37,
+   "name": "Jia Ren – The Family / The Clan (Wind over Fire)",
+   "upper": "Xun",
+   "lower": "Li",
+   "lines": "101011"
+  },
+  "oppXT": {
+   "n": 2,
+   "name": "Kun – The Receptive (Earth over Earth)",
+   "upper": "Kun",
+   "lower": "Kun",
+   "lines": "000000"
+  },
+  "invXT": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "oppHT": {
+   "n": 15,
+   "name": "Qian – Modesty / Humility (Earth over Mountain)",
+   "upper": "Kun",
+   "lower": "Gen",
+   "lines": "001000"
+  },
+  "invHT": {
+   "n": 9,
+   "name": "Xiao Chu – The Taming Power of the Small (Wind over Heaven)",
+   "upper": "Xun",
+   "lower": "Qian",
+   "lines": "111011"
+  },
+  "luck": {
+   "heaven": "Kun",
+   "earth": "Gen",
+   "fame": "Zhen",
+   "opposite": {
+    "heaven": "Qian",
+    "earth": "Dui",
+    "fame": "Xun"
+   }
+  },
+  "cXT": [
+   {
+    "line": 6,
+    "yang": true,
+    "from": 1,
+    "to": 9
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 10,
+    "to": 18
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 19,
+    "to": 27
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 28,
+    "to": 36
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 37,
+    "to": 45
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 46,
+    "to": 54
+   }
+  ],
+  "cHT": [
+   {
+    "line": 3,
+    "yang": false,
+    "from": 55,
+    "to": 60
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 61,
+    "to": 69
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 70,
+    "to": 78
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 79,
+    "to": 87
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 88,
+    "to": 96
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 97,
+    "to": 105
+   }
+  ]
+ },
+ {
+  "code": "S09",
+  "sex": "F",
+  "bazi": {
+   "ora": "丁丑",
+   "giorno": "庚辰",
+   "mese": "壬辰",
+   "anno": "丙寅"
+  },
+  "heluoYear": 1926,
+  "solarYearPillar": "丙寅",
+  "dun": "Yang Dun",
+  "season": "SE→SS",
+  "numbers": {
+   "heaven": 28,
+   "earth": 52,
+   "odd": [
+    3,
+    5,
+    3,
+    5,
+    7,
+    5
+   ],
+   "even": [
+    8,
+    8,
+    6,
+    10,
+    10,
+    10
+   ],
+   "total": 80,
+   "devHeaven": 3,
+   "devEarth": 22,
+   "monthAvg": {
+    "month": "April",
+    "yang": 40,
+    "yin": 15
+   }
+  },
+  "heaven": "Zhen",
+  "earth": "Kun",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 24,
+   "name": "Fu – Return / The Turning Point (Earth over Thunder)",
+   "upper": "Kun",
+   "lower": "Zhen",
+   "lines": "100000"
+  },
+  "mv": 1,
+  "ht": {
+   "n": 2,
+   "name": "Kun – The Receptive (Earth over Earth)",
+   "upper": "Kun",
+   "lower": "Kun",
+   "lines": "000000",
+   "line": 4,
+   "rule": "normal"
+  },
+  "posXT": true,
+  "supXT": true,
+  "posHT": true,
+  "supHT": false,
+  "prevXT": "single yang line",
+  "prevHT": "pure yin",
+  "huXT": {
+   "n": 2,
+   "name": "Kun – The Receptive (Earth over Earth)",
+   "upper": "Kun",
+   "lower": "Kun",
+   "lines": "000000"
+  },
+  "huHT": {
+   "n": 2,
+   "name": "Kun – The Receptive (Earth over Earth)",
+   "upper": "Kun",
+   "lower": "Kun",
+   "lines": "000000"
+  },
+  "oppXT": {
+   "n": 44,
+   "name": "Gou – Coming to Meet / Encounter (Heaven over Wind)",
+   "upper": "Qian",
+   "lower": "Xun",
+   "lines": "011111"
+  },
+  "invXT": {
+   "n": 23,
+   "name": "Bo – Splitting Apart / Stripping (Mountain over Earth)",
+   "upper": "Gen",
+   "lower": "Kun",
+   "lines": "000001"
+  },
+  "oppHT": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "invHT": {
+   "n": 2,
+   "name": "Kun – The Receptive (Earth over Earth)",
+   "upper": "Kun",
+   "lower": "Kun",
+   "lines": "000000"
+  },
+  "luck": {
+   "heaven": "Gen",
+   "earth": "Gen",
+   "fame": "Zhen",
+   "opposite": {
+    "heaven": "Dui",
+    "earth": "Dui",
+    "fame": "Xun"
+   }
+  },
+  "cXT": [
+   {
+    "line": 1,
+    "yang": true,
+    "from": 1,
+    "to": 9
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 10,
+    "to": 15
+   },
+   {
+    "line": 3,
+    "yang": false,
+    "from": 16,
+    "to": 21
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 22,
+    "to": 27
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 28,
+    "to": 33
+   },
+   {
+    "line": 6,
+    "yang": false,
+    "from": 34,
+    "to": 39
+   }
+  ],
+  "cHT": [
+   {
+    "line": 4,
+    "yang": false,
+    "from": 40,
+    "to": 45
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 46,
+    "to": 51
+   },
+   {
+    "line": 6,
+    "yang": false,
+    "from": 52,
+    "to": 57
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 58,
+    "to": 63
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 64,
+    "to": 69
+   },
+   {
+    "line": 3,
+    "yang": false,
+    "from": 70,
+    "to": 75
+   }
+  ]
+ },
+ {
+  "code": "S10",
+  "sex": "F",
+  "bazi": {
+   "ora": "戊申",
+   "giorno": "壬午",
+   "mese": "癸丑",
+   "anno": "癸未"
+  },
+  "heluoYear": 1943,
+  "solarYearPillar": "壬午",
+  "dun": "Yang Dun",
+  "season": "WS→SE",
+  "numbers": {
+   "heaven": 27,
+   "earth": 36,
+   "odd": [
+    5,
+    5,
+    7,
+    1,
+    9
+   ],
+   "even": [
+    2,
+    10,
+    2,
+    10,
+    6,
+    2,
+    4
+   ],
+   "total": 63,
+   "devHeaven": 2,
+   "devEarth": 6,
+   "monthAvg": {
+    "month": "January",
+    "yang": 16,
+    "yin": 40
+   }
+  },
+  "heaven": "Kun",
+  "earth": "Qian",
+  "five": null,
+  "heavenUp": true,
+  "xt": {
+   "n": 11,
+   "name": "Tai – Peace / Prosperity (Earth over Heaven)",
+   "upper": "Kun",
+   "lower": "Qian",
+   "lines": "111000"
+  },
+  "mv": 6,
+  "ht": {
+   "n": 33,
+   "name": "Dun – Retreat / Withdrawal (Heaven over Mountain)",
+   "upper": "Qian",
+   "lower": "Gen",
+   "lines": "001111",
+   "line": 3,
+   "rule": "normal"
+  },
+  "posXT": true,
+  "supXT": true,
+  "posHT": true,
+  "supHT": false,
+  "prevXT": null,
+  "prevHT": null,
+  "huXT": {
+   "n": 54,
+   "name": "Gui Mei – The Marrying Maiden (Thunder over Lake)",
+   "upper": "Zhen",
+   "lower": "Dui",
+   "lines": "110100"
+  },
+  "huHT": {
+   "n": 44,
+   "name": "Gou – Coming to Meet / Encounter (Heaven over Wind)",
+   "upper": "Qian",
+   "lower": "Xun",
+   "lines": "011111"
+  },
+  "oppXT": {
+   "n": 12,
+   "name": "Pi – Standstill / Stagnation (Heaven over Earth)",
+   "upper": "Qian",
+   "lower": "Kun",
+   "lines": "000111"
+  },
+  "invXT": {
+   "n": 12,
+   "name": "Pi – Standstill / Stagnation (Heaven over Earth)",
+   "upper": "Qian",
+   "lower": "Kun",
+   "lines": "000111"
+  },
+  "oppHT": {
+   "n": 19,
+   "name": "Lin – Approach / Overseeing (Earth over Lake)",
+   "upper": "Kun",
+   "lower": "Dui",
+   "lines": "110000"
+  },
+  "invHT": {
+   "n": 34,
+   "name": "Da Zhuang – The Power of the Great (Thunder over Heaven)",
+   "upper": "Zhen",
+   "lower": "Qian",
+   "lines": "111100"
+  },
+  "luck": {
+   "heaven": "Kun",
+   "earth": "Kun",
+   "fame": "Kan",
+   "opposite": {
+    "heaven": "Qian",
+    "earth": "Qian",
+    "fame": "Li"
+   }
+  },
+  "cXT": [
+   {
+    "line": 6,
+    "yang": false,
+    "from": 1,
+    "to": 6
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 7,
+    "to": 15
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 16,
+    "to": 24
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 25,
+    "to": 33
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 34,
+    "to": 39
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 40,
+    "to": 45
+   }
+  ],
+  "cHT": [
+   {
+    "line": 3,
+    "yang": true,
+    "from": 46,
+    "to": 54
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 55,
+    "to": 63
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 64,
+    "to": 72
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 73,
+    "to": 81
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 82,
+    "to": 87
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 88,
+    "to": 93
+   }
+  ]
+ },
+ {
+  "code": "S11",
+  "sex": "M",
+  "bazi": {
+   "ora": "甲午",
+   "giorno": "丙申",
+   "mese": "丁卯",
+   "anno": "己卯"
+  },
+  "heluoYear": 1879,
+  "solarYearPillar": "己卯",
+  "dun": "Yang Dun",
+  "season": "WS→SE",
+  "numbers": {
+   "heaven": 38,
+   "earth": 36,
+   "odd": [
+    9,
+    3,
+    7,
+    3,
+    9,
+    7
+   ],
+   "even": [
+    8,
+    8,
+    8,
+    4,
+    6,
+    2
+   ],
+   "total": 74,
+   "devHeaven": 13,
+   "devEarth": 6,
+   "monthAvg": {
+    "month": "March",
+    "yang": 32,
+    "yin": 20
+   }
+  },
+  "heaven": "Zhen",
+  "earth": "Qian",
+  "five": null,
+  "heavenUp": false,
+  "xt": {
+   "n": 25,
+   "name": "Wu Wang – Innocence / The Unexpected (Heaven over Thunder)",
+   "upper": "Qian",
+   "lower": "Zhen",
+   "lines": "100111"
+  },
+  "mv": 2,
+  "ht": {
+   "n": 43,
+   "name": "Guai – Breakthrough / Resoluteness (Lake over Heaven)",
+   "upper": "Dui",
+   "lower": "Qian",
+   "lines": "111110",
+   "line": 5,
+   "rule": "normal"
+  },
+  "posXT": true,
+  "supXT": true,
+  "posHT": true,
+  "supHT": false,
+  "prevXT": null,
+  "prevHT": "single yin line",
+  "huXT": {
+   "n": 53,
+   "name": "Jian – Development / Gradual Progress (Wind over Mountain)",
+   "upper": "Xun",
+   "lower": "Gen",
+   "lines": "001011"
+  },
+  "huHT": {
+   "n": 1,
+   "name": "Qian – The Creative (Heaven over Heaven)",
+   "upper": "Qian",
+   "lower": "Qian",
+   "lines": "111111"
+  },
+  "oppXT": {
+   "n": 46,
+   "name": "Sheng – Pushing Upward / Ascending (Earth over Wind)",
+   "upper": "Kun",
+   "lower": "Xun",
+   "lines": "011000"
+  },
+  "invXT": {
+   "n": 26,
+   "name": "Da Chu – The Taming Power of the Great (Mountain over Heaven)",
+   "upper": "Gen",
+   "lower": "Qian",
+   "lines": "111001"
+  },
+  "oppHT": {
+   "n": 23,
+   "name": "Bo – Splitting Apart / Stripping (Mountain over Earth)",
+   "upper": "Gen",
+   "lower": "Kun",
+   "lines": "000001"
+  },
+  "invHT": {
+   "n": 44,
+   "name": "Gou – Coming to Meet / Encounter (Heaven over Wind)",
+   "upper": "Qian",
+   "lower": "Xun",
+   "lines": "011111"
+  },
+  "luck": {
+   "heaven": "Li",
+   "earth": "Zhen",
+   "fame": "Kan",
+   "opposite": {
+    "heaven": "Kan",
+    "earth": "Xun",
+    "fame": "Li"
+   }
+  },
+  "cXT": [
+   {
+    "line": 2,
+    "yang": false,
+    "from": 1,
+    "to": 6
+   },
+   {
+    "line": 3,
+    "yang": false,
+    "from": 7,
+    "to": 12
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 13,
+    "to": 21
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 22,
+    "to": 30
+   },
+   {
+    "line": 6,
+    "yang": true,
+    "from": 31,
+    "to": 39
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 40,
+    "to": 48
+   }
+  ],
+  "cHT": [
+   {
+    "line": 5,
+    "yang": true,
+    "from": 49,
+    "to": 57
+   },
+   {
+    "line": 6,
+    "yang": false,
+    "from": 58,
+    "to": 63
+   },
+   {
+    "line": 1,
+    "yang": true,
+    "from": 64,
+    "to": 72
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 73,
+    "to": 81
+   },
+   {
+    "line": 3,
+    "yang": true,
+    "from": 82,
+    "to": 90
+   },
+   {
+    "line": 4,
+    "yang": true,
+    "from": 91,
+    "to": 99
+   }
+  ]
+ },
+ {
+  "code": "S12",
+  "sex": "M",
+  "bazi": {
+   "ora": "癸卯",
+   "giorno": "壬申",
+   "mese": "壬寅",
+   "anno": "壬戌"
+  },
+  "heluoYear": 1922,
+  "solarYearPillar": "壬戌",
+  "dun": "Yang Dun",
+  "season": "WS→SE",
+  "numbers": {
+   "heaven": 20,
+   "earth": 50,
+   "odd": [
+    5,
+    3,
+    9,
+    3
+   ],
+   "even": [
+    6,
+    10,
+    6,
+    8,
+    6,
+    4,
+    2,
+    8
+   ],
+   "total": 70,
+   "devHeaven": -5,
+   "devEarth": 20,
+   "monthAvg": {
+    "month": "February",
+    "yang": 24,
+    "yin": 30
+   }
+  },
+  "heaven": "Kun",
+  "earth": "Kan",
+  "five": null,
+  "heavenUp": true,
+  "xt": {
+   "n": 7,
+   "name": "Shi – The Army / The Multitude (Earth over Water)",
+   "upper": "Kun",
+   "lower": "Kan",
+   "lines": "010000"
+  },
+  "mv": 3,
+  "ht": {
+   "n": 20,
+   "name": "Guan – Contemplation / View (Wind over Earth)",
+   "upper": "Xun",
+   "lower": "Kun",
+   "lines": "000011",
+   "line": 6,
+   "rule": "normal"
+  },
+  "posXT": false,
+  "supXT": false,
+  "posHT": false,
+  "supHT": true,
+  "prevXT": "single yang line",
+  "prevHT": null,
+  "huXT": {
+   "n": 24,
+   "name": "Fu – Return / The Turning Point (Earth over Thunder)",
+   "upper": "Kun",
+   "lower": "Zhen",
+   "lines": "100000"
+  },
+  "huHT": {
+   "n": 23,
+   "name": "Bo – Splitting Apart / Stripping (Mountain over Earth)",
+   "upper": "Gen",
+   "lower": "Kun",
+   "lines": "000001"
+  },
+  "oppXT": {
+   "n": 13,
+   "name": "Tong Ren – Fellowship with People (Heaven over Fire)",
+   "upper": "Qian",
+   "lower": "Li",
+   "lines": "101111"
+  },
+  "invXT": {
+   "n": 8,
+   "name": "Bi – Holding Together / Union (Water over Earth)",
+   "upper": "Kan",
+   "lower": "Kun",
+   "lines": "000010"
+  },
+  "oppHT": {
+   "n": 34,
+   "name": "Da Zhuang – The Power of the Great (Thunder over Heaven)",
+   "upper": "Zhen",
+   "lower": "Qian",
+   "lines": "111100"
+  },
+  "invHT": {
+   "n": 19,
+   "name": "Lin – Approach / Overseeing (Earth over Lake)",
+   "upper": "Kun",
+   "lower": "Dui",
+   "lines": "110000"
+  },
+  "luck": {
+   "heaven": "Qian",
+   "earth": "Qian",
+   "fame": "Kan",
+   "opposite": {
+    "heaven": "Kun",
+    "earth": "Kun",
+    "fame": "Li"
+   }
+  },
+  "cXT": [
+   {
+    "line": 3,
+    "yang": false,
+    "from": 1,
+    "to": 6
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 7,
+    "to": 12
+   },
+   {
+    "line": 5,
+    "yang": false,
+    "from": 13,
+    "to": 18
+   },
+   {
+    "line": 6,
+    "yang": false,
+    "from": 19,
+    "to": 24
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 25,
+    "to": 30
+   },
+   {
+    "line": 2,
+    "yang": true,
+    "from": 31,
+    "to": 39
+   }
+  ],
+  "cHT": [
+   {
+    "line": 6,
+    "yang": true,
+    "from": 40,
+    "to": 48
+   },
+   {
+    "line": 1,
+    "yang": false,
+    "from": 49,
+    "to": 54
+   },
+   {
+    "line": 2,
+    "yang": false,
+    "from": 55,
+    "to": 60
+   },
+   {
+    "line": 3,
+    "yang": false,
+    "from": 61,
+    "to": 66
+   },
+   {
+    "line": 4,
+    "yang": false,
+    "from": 67,
+    "to": 72
+   },
+   {
+    "line": 5,
+    "yang": true,
+    "from": 73,
+    "to": 81
+   }
+  ]
+ }
+]
