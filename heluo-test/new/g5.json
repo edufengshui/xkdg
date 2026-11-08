@@ -1,0 +1,926 @@
+[
+ {
+  "name": "Buddy Holly",
+  "sex": "M",
+  "birth": {
+   "date": "1936-09-07",
+   "time": "15:30",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Lubbock, Texas, USA",
+   "lat": 33.5779,
+   "lon": -101.8552,
+   "rodden": "A",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Buddy_Holly",
+   "note": "Rating A, fonte 'From memory or autobiography' (Rodden). Ora alla mezz'ora, da memoria: dato più debole del gruppo. CST −6 (MC 29°29' Lib coincide)."
+  },
+  "events": [
+   {
+    "date": "1959-02-03",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore nello schianto aereo presso Clear Lake, Iowa ('The Day the Music Died')",
+    "source": "https://en.wikipedia.org/wiki/Buddy_Holly"
+   },
+   {
+    "date": "1957-09-23",
+    "pol": "+",
+    "violent": false,
+    "what": "'That'll Be the Day' n.1 nella classifica USA Best Sellers in Stores",
+    "source": "https://en.wikipedia.org/wiki/Buddy_Holly"
+   },
+   {
+    "date": "1957-12-01",
+    "pol": "+",
+    "violent": false,
+    "what": "Prima apparizione all'Ed Sullivan Show",
+    "source": "https://en.wikipedia.org/wiki/Buddy_Holly"
+   },
+   {
+    "date": "1958-01-26",
+    "pol": "+",
+    "violent": false,
+    "what": "Seconda apparizione all'Ed Sullivan Show",
+    "source": "https://en.wikipedia.org/wiki/Buddy_Holly"
+   }
+  ]
+ },
+ {
+  "name": "Patsy Cline",
+  "sex": "F",
+  "birth": {
+   "date": "1932-09-08",
+   "time": "23:05",
+   "utcOffset": -5,
+   "lmt": false,
+   "place": "Winchester, Virginia, USA",
+   "lat": 39.1857,
+   "lon": -78.1633,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Patsy_Cline",
+   "note": "AA, certificato di nascita (Przybylowski). EST −5 (Offset non mostrato da astrotheme: dedotto ricalcolando il MC di astrotheme 28°56' Aqu)."
+  },
+  "events": [
+   {
+    "date": "1961-06-14",
+    "pol": "-",
+    "violent": true,
+    "what": "Grave incidente stradale frontale a Madison (Tennessee), ferite al volto e al corpo",
+    "source": "https://patsified.com/chronology.html"
+   },
+   {
+    "date": "1963-03-05",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore nello schianto aereo presso Camden, Tennessee",
+    "source": "https://en.wikipedia.org/wiki/Patsy_Cline"
+   },
+   {
+    "date": "1957-01-21",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince all'Arthur Godfrey's Talent Scouts con 'Walkin' After Midnight'",
+    "source": "https://en.wikipedia.org/wiki/Patsy_Cline"
+   },
+   {
+    "date": "1960-01-09",
+    "pol": "+",
+    "violent": false,
+    "what": "Diventa membro del Grand Ole Opry",
+    "source": "https://patsified.com/chronology.html"
+   },
+   {
+    "date": "1961-11-29",
+    "pol": "+",
+    "violent": false,
+    "what": "Concerto alla Carnegie Hall di New York",
+    "source": "https://carnegiehall.org/Explore/Articles/2020/08/10/Remembering-Patsy-Cline-Carnegie-Hall-Debut"
+   },
+   {
+    "date": "1962-06-15",
+    "pol": "+",
+    "violent": false,
+    "what": "Concerto all'Hollywood Bowl (tour Johnny Cash Show)",
+    "source": "https://patsified.com/chronology.html"
+   }
+  ]
+ },
+ {
+  "name": "Stevie Ray Vaughan",
+  "sex": "M",
+  "birth": {
+   "date": "1954-10-03",
+   "time": "03:40",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Dallas, Texas, USA",
+   "lat": 32.7767,
+   "lon": -96.797,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Stevie_Ray_Vaughan",
+   "note": "AA, certificato di nascita (Rodden). CST −6, Texas senza ora legale nel 1954 (MC 1°51' Gem coincide)."
+  },
+  "events": [
+   {
+    "date": "1990-08-27",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore nello schianto dell'elicottero dopo il decollo da Alpine Valley, East Troy (Wisconsin), ~1:00",
+    "source": "https://en.wikipedia.org/wiki/Death_of_Stevie_Ray_Vaughan"
+   },
+   {
+    "date": "1982-07-17",
+    "pol": "+",
+    "violent": false,
+    "what": "Esibizione al Montreux Jazz Festival che lo lancia (incontro con Bowie e Browne)",
+    "source": "https://en.wikipedia.org/wiki/Stevie_Ray_Vaughan"
+   },
+   {
+    "date": "1983-06-13",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce l'album d'esordio 'Texas Flood'",
+    "source": "https://en.wikipedia.org/wiki/Stevie_Ray_Vaughan"
+   },
+   {
+    "date": "1984-10-04",
+    "pol": "+",
+    "violent": false,
+    "what": "Concerto alla Carnegie Hall",
+    "source": "https://en.wikipedia.org/wiki/Stevie_Ray_Vaughan"
+   },
+   {
+    "date": "1990-02-21",
+    "pol": "+",
+    "violent": false,
+    "what": "Grammy (32a edizione) per 'In Step', Best Contemporary Blues",
+    "source": "https://en.wikipedia.org/wiki/List_of_awards_and_nominations_received_by_Stevie_Ray_Vaughan"
+   }
+  ]
+ },
+ {
+  "name": "Thurman Munson",
+  "sex": "M",
+  "birth": {
+   "date": "1947-06-07",
+   "time": "13:50",
+   "utcOffset": -5,
+   "lmt": false,
+   "place": "Akron, Ohio, USA",
+   "lat": 41.0814,
+   "lon": -81.519,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Thurman_Munson",
+   "note": "AA, certificato (Gauquelin). EST −5, senza ora legale (MC 5°48' Can coincide)."
+  },
+  "events": [
+   {
+    "date": "1979-08-02",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore pilotando il suo Cessna Citation, schiantato all'aeroporto Akron–Canton",
+    "source": "https://en.wikipedia.org/wiki/Thurman_Munson"
+   },
+   {
+    "date": "1976-04-17",
+    "pol": "+",
+    "violent": false,
+    "what": "Nominato capitano dei New York Yankees",
+    "source": "https://en.wikipedia.org/wiki/Thurman_Munson"
+   },
+   {
+    "date": "1976-11-16",
+    "pol": "+",
+    "violent": false,
+    "what": "Proclamato MVP dell'American League",
+    "source": "https://thisdayinbaseball.com/thurman-munson-wins-the-1976-al-mvp/"
+   },
+   {
+    "date": "1977-10-18",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince le World Series (gara 6 contro i Dodgers)",
+    "source": "https://en.wikipedia.org/wiki/1977_World_Series"
+   },
+   {
+    "date": "1978-10-17",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince le World Series per il secondo anno (gara 6)",
+    "source": "https://en.wikipedia.org/wiki/1978_World_Series"
+   }
+  ]
+ },
+ {
+  "name": "Harry Chapin",
+  "sex": "M",
+  "birth": {
+   "date": "1942-12-07",
+   "time": "11:22",
+   "utcOffset": -4,
+   "lmt": false,
+   "place": "Manhattan, New York, USA",
+   "lat": 40.7831,
+   "lon": -73.9712,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Harry_Chapin",
+   "note": "AA, certificato (Rodden). EWT −4, ora di guerra 1942 (MC 24°39' Sco coincide solo con −4)."
+  },
+  "events": [
+   {
+    "date": "1981-07-16",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore in un incidente stradale sulla Long Island Expressway (Jericho, NY)",
+    "source": "https://en.wikipedia.org/wiki/Harry_Chapin"
+   },
+   {
+    "date": "1974-12-21",
+    "pol": "+",
+    "violent": false,
+    "what": "'Cat's in the Cradle' n.1 della Billboard Hot 100",
+    "source": "https://en.wikipedia.org/wiki/List_of_Billboard_Hot_100_number_ones_of_1974"
+   },
+   {
+    "date": "1975-02-26",
+    "pol": "+",
+    "violent": false,
+    "what": "Debutto a Broadway del suo musical 'The Night That Made America Famous'",
+    "source": "https://en.wikipedia.org/wiki/The_Night_That_Made_America_Famous"
+   }
+  ]
+ },
+ {
+  "name": "Ricky Nelson",
+  "sex": "M",
+  "birth": {
+   "date": "1940-05-08",
+   "time": "13:25",
+   "utcOffset": -4,
+   "lmt": false,
+   "place": "Teaneck, New Jersey, USA",
+   "lat": 40.8976,
+   "lon": -74.016,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Rick_Nelson",
+   "note": "AA, certificato (Bob Garner). EDT −4, ora legale locale (MC 25°57' Tau coincide)."
+  },
+  "events": [
+   {
+    "date": "1985-12-31",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore nell'incendio e schianto del DC-3 presso De Kalb, Texas",
+    "source": "https://en.wikipedia.org/wiki/Death_of_Ricky_Nelson"
+   },
+   {
+    "date": "1958-08-04",
+    "pol": "+",
+    "violent": false,
+    "what": "'Poor Little Fool' primo n.1 della neonata Billboard Hot 100",
+    "source": "https://en.wikipedia.org/wiki/Ricky_Nelson"
+   },
+   {
+    "date": "1961-05-29",
+    "pol": "+",
+    "violent": false,
+    "what": "'Travelin' Man' n.1 della Billboard Hot 100",
+    "source": "https://en.wikipedia.org/wiki/List_of_Billboard_Hot_100_number_ones_of_1961"
+   }
+  ]
+ },
+ {
+  "name": "John Denver",
+  "sex": "M",
+  "birth": {
+   "date": "1943-12-31",
+   "time": "15:55",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Roswell, New Mexico, USA",
+   "lat": 33.3943,
+   "lon": -104.523,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/John_Denver",
+   "note": "AA, certificato (Contemporary American Horoscopes). MWT −6, ora di guerra (MC 21°18' Aqu coincide solo con −6)."
+  },
+  "events": [
+   {
+    "date": "1997-10-12",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore pilotando il suo Long-EZ, precipitato nella baia di Monterey",
+    "source": "https://en.wikipedia.org/wiki/John_Denver"
+   },
+   {
+    "date": "1974-03-30",
+    "pol": "+",
+    "violent": false,
+    "what": "'Sunshine on My Shoulders' n.1 Billboard Hot 100",
+    "source": "https://en.wikipedia.org/wiki/List_of_Billboard_Hot_100_number_ones_of_1974"
+   },
+   {
+    "date": "1974-07-27",
+    "pol": "+",
+    "violent": false,
+    "what": "'Annie's Song' n.1 Billboard Hot 100",
+    "source": "https://en.wikipedia.org/wiki/List_of_Billboard_Hot_100_number_ones_of_1974"
+   },
+   {
+    "date": "1975-10-13",
+    "pol": "+",
+    "violent": false,
+    "what": "CMA Entertainer of the Year",
+    "source": "https://en.wikipedia.org/wiki/1975_Country_Music_Association_Awards"
+   }
+  ]
+ },
+ {
+  "name": "Payne Stewart",
+  "sex": "M",
+  "birth": {
+   "date": "1957-01-30",
+   "time": "03:52",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Springfield, Missouri, USA",
+   "lat": 37.209,
+   "lon": -93.2923,
+   "rodden": "A",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Payne_Stewart",
+   "note": "A, fonte 'News report' (Sy Scholfield). CST −6 (MC 4°26' Lib coincide)."
+  },
+  "events": [
+   {
+    "date": "1999-10-25",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore nel Learjet 35 depressurizzato e precipitato in South Dakota",
+    "source": "https://en.wikipedia.org/wiki/Payne_Stewart"
+   },
+   {
+    "date": "1989-08-13",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince il PGA Championship",
+    "source": "https://en.wikipedia.org/wiki/Payne_Stewart"
+   },
+   {
+    "date": "1991-06-17",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince lo U.S. Open al playoff",
+    "source": "https://en.wikipedia.org/wiki/Payne_Stewart"
+   },
+   {
+    "date": "1999-06-20",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince il secondo U.S. Open (Pinehurst)",
+    "source": "https://en.wikipedia.org/wiki/Payne_Stewart"
+   }
+  ]
+ },
+ {
+  "name": "Carole Lombard",
+  "sex": "F",
+  "birth": {
+   "date": "1908-10-06",
+   "time": "19:30",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Fort Wayne, Indiana, USA",
+   "lat": 41.0793,
+   "lon": -85.1394,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Carole_Lombard",
+   "note": "AA, certificato (Rodden). CST −6 nel 1908 (MC 10°13' Aqu coincide)."
+  },
+  "events": [
+   {
+    "date": "1927-09-09",
+    "pol": "-",
+    "violent": true,
+    "what": "Incidente d'auto a Santa Monica Boulevard: volto tagliato dal parabrezza, chirurgia ricostruttiva",
+    "source": "https://en.wikipedia.org/wiki/Carole_Lombard"
+   },
+   {
+    "date": "1942-01-16",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore nello schianto del volo TWA 3 (Potosi Mountain, Nevada)",
+    "source": "https://en.wikipedia.org/wiki/Carole_Lombard"
+   },
+   {
+    "date": "1936-09-06",
+    "pol": "+",
+    "violent": false,
+    "what": "Prima di 'My Man Godfrey' (nomination all'Oscar) al Pantages",
+    "source": "https://en.wikipedia.org/wiki/My_Man_Godfrey"
+   },
+   {
+    "date": "1939-03-29",
+    "pol": "+",
+    "violent": false,
+    "what": "Sposa Clark Gable a Kingman, Arizona",
+    "source": "https://en.wikipedia.org/wiki/Carole_Lombard"
+   },
+   {
+    "date": "1942-01-15",
+    "pol": "+",
+    "violent": false,
+    "what": "Raccoglie oltre 2 milioni di dollari in war bond a Indianapolis",
+    "source": "https://en.wikipedia.org/wiki/Carole_Lombard"
+   }
+  ]
+ },
+ {
+  "name": "Natalie Wood",
+  "sex": "F",
+  "birth": {
+   "date": "1938-07-20",
+   "time": "11:16",
+   "utcOffset": -8,
+   "lmt": false,
+   "place": "San Francisco, California, USA",
+   "lat": 37.7749,
+   "lon": -122.4194,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Natalie_Wood",
+   "note": "AA, certificato (Rodden). PST −8, California senza ora legale nel 1938 (MC 13°20' Can coincide)."
+  },
+  "events": [
+   {
+    "date": "1981-11-29",
+    "pol": "-",
+    "violent": true,
+    "what": "Annega in mare presso l'isola di Santa Catalina (scomparsa nella notte 28-29, corpo ritrovato alle 8 del 29)",
+    "source": "https://en.wikipedia.org/wiki/Natalie_Wood"
+   },
+   {
+    "date": "1955-10-27",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Rebel Without a Cause' (prima nomination all'Oscar)",
+    "source": "https://en.wikipedia.org/wiki/Rebel_Without_a_Cause"
+   },
+   {
+    "date": "1961-10-10",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Splendor in the Grass' (nomination all'Oscar come protagonista)",
+    "source": "https://en.wikipedia.org/wiki/Splendor_in_the_Grass"
+   },
+   {
+    "date": "1961-10-18",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'West Side Story'",
+    "source": "https://en.wikipedia.org/wiki/West_Side_Story_(1961_film)"
+   }
+  ]
+ },
+ {
+  "name": "Montgomery Clift",
+  "sex": "M",
+  "birth": {
+   "date": "1920-10-17",
+   "time": "02:30",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Omaha, Nebraska, USA",
+   "lat": 41.2565,
+   "lon": -95.9345,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Montgomery_Clift",
+   "note": "AA, certificato (Rodden). CST −6 (MC 29°19' Tau coincide)."
+  },
+  "events": [
+   {
+    "date": "1956-05-12",
+    "pol": "-",
+    "violent": true,
+    "what": "Grave incidente d'auto a Beverly Hills dopo una cena da Elizabeth Taylor: volto sfigurato",
+    "source": "https://en.wikipedia.org/wiki/Montgomery_Clift"
+   },
+   {
+    "date": "1951-08-14",
+    "pol": "+",
+    "violent": false,
+    "what": "Prima di gala di 'A Place in the Sun' a Beverly Hills",
+    "source": "https://en.wikipedia.org/wiki/A_Place_in_the_Sun_(1951_film)"
+   },
+   {
+    "date": "1953-08-05",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'From Here to Eternity'",
+    "source": "https://en.wikipedia.org/wiki/From_Here_to_Eternity"
+   }
+  ]
+ },
+ {
+  "name": "Françoise Dorléac",
+  "sex": "F",
+  "birth": {
+   "date": "1942-03-21",
+   "time": "18:10",
+   "utcOffset": 2,
+   "lmt": false,
+   "place": "Parigi 17e, Francia",
+   "lat": 48.8835,
+   "lon": 2.3219,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Fran%C3%A7oise_Dorl%C3%A9ac",
+   "note": "AA, atto di nascita (Geslain). +2: ora tedesca di guerra a Parigi occupata (MC 5°17' Gem coincide solo con +2)."
+  },
+  "events": [
+   {
+    "date": "1967-06-26",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore carbonizzata nell'incidente d'auto presso Villeneuve-Loubet (Nizza)",
+    "source": "https://en.wikipedia.org/wiki/Fran%C3%A7oise_Dorl%C3%A9ac"
+   },
+   {
+    "date": "1964-04-20",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce in Francia 'La Peau douce' di Truffaut (in concorso a Cannes)",
+    "source": "https://en.wikipedia.org/wiki/The_Soft_Skin"
+   },
+   {
+    "date": "1967-03-08",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Les Demoiselles de Rochefort'",
+    "source": "https://en.wikipedia.org/wiki/The_Young_Girls_of_Rochefort"
+   }
+  ]
+ },
+ {
+  "name": "Sam Cooke",
+  "sex": "M",
+  "birth": {
+   "date": "1931-01-22",
+   "time": "14:10",
+   "utcOffset": -6,
+   "lmt": false,
+   "place": "Clarksdale, Mississippi, USA",
+   "lat": 34.2001,
+   "lon": -90.5709,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Sam_Cooke",
+   "note": "AA, certificato (Frank C. Clifford). CST −6 (MC 1°06' Pis coincide)."
+  },
+  "events": [
+   {
+    "date": "1964-12-11",
+    "pol": "-",
+    "violent": true,
+    "what": "Ucciso a colpi di pistola all'Hacienda Motel di Los Angeles",
+    "source": "https://en.wikipedia.org/wiki/Sam_Cooke"
+   },
+   {
+    "date": "1957-11-03",
+    "pol": "+",
+    "violent": false,
+    "what": "Prima apparizione all'Ed Sullivan Show",
+    "source": "https://en.wikipedia.org/wiki/Sam_Cooke"
+   },
+   {
+    "date": "1957-12-07",
+    "pol": "+",
+    "violent": false,
+    "what": "'You Send Me' n.1 Billboard Top 100",
+    "source": "https://en.wikipedia.org/wiki/Sam_Cooke"
+   },
+   {
+    "date": "1964-07-07",
+    "pol": "+",
+    "violent": false,
+    "what": "Registra dal vivo al Copacabana l'album 'Sam Cooke at the Copa'",
+    "source": "https://en.wikipedia.org/wiki/Sam_Cooke_at_the_Copa"
+   }
+  ]
+ },
+ {
+  "name": "Sal Mineo",
+  "sex": "M",
+  "birth": {
+   "date": "1939-01-10",
+   "time": "06:45",
+   "utcOffset": -5,
+   "lmt": false,
+   "place": "Manhattan, New York, USA",
+   "lat": 40.7831,
+   "lon": -73.9712,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Sal_Mineo",
+   "note": "AA, certificato (Rodden). EST −5 (MC 3°36' Sco coincide)."
+  },
+  "events": [
+   {
+    "date": "1976-02-12",
+    "pol": "-",
+    "violent": true,
+    "what": "Accoltellato al cuore nel garage di casa a West Hollywood",
+    "source": "https://en.wikipedia.org/wiki/Sal_Mineo"
+   },
+   {
+    "date": "1955-10-27",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Rebel Without a Cause' (nomination all'Oscar)",
+    "source": "https://en.wikipedia.org/wiki/Rebel_Without_a_Cause"
+   },
+   {
+    "date": "1960-12-15",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Exodus' (seconda nomination all'Oscar)",
+    "source": "https://en.wikipedia.org/wiki/Exodus_(1960_film)"
+   },
+   {
+    "date": "1961-03-16",
+    "pol": "+",
+    "violent": false,
+    "what": "Golden Globe miglior attore non protagonista per 'Exodus'",
+    "source": "https://en.wikipedia.org/wiki/18th_Golden_Globe_Awards"
+   }
+  ]
+ },
+ {
+  "name": "Ramon Novarro",
+  "sex": "M",
+  "birth": {
+   "date": "1899-02-06",
+   "time": "08:00",
+   "utcOffset": null,
+   "lmt": true,
+   "place": "Durango, Messico",
+   "lat": 24.0277,
+   "lon": -104.6532,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Ramon_Novarro",
+   "note": "AA, atto di nascita (Sy Scholfield); ora tonda ma documentata. Messico senza fusi standard prima del 1922: LMT (≈ −6h59m). MC di astrotheme 17°41' Sag compatibile con LMT."
+  },
+  "events": [
+   {
+    "date": "1968-10-30",
+    "pol": "-",
+    "violent": true,
+    "what": "Picchiato a morte nella sua casa di Los Angeles da due fratelli",
+    "source": "https://en.wikipedia.org/wiki/Ramon_Novarro"
+   },
+   {
+    "date": "1923-09-30",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Scaramouche', primo grande successo",
+    "source": "https://en.wikipedia.org/wiki/Scaramouche_(1923_film)"
+   },
+   {
+    "date": "1925-12-30",
+    "pol": "+",
+    "violent": false,
+    "what": "Prima a New York di 'Ben-Hur', il suo trionfo",
+    "source": "https://en.wikipedia.org/wiki/Ben-Hur:_A_Tale_of_the_Christ_(1925_film)"
+   },
+   {
+    "date": "1927-09-21",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'The Student Prince in Old Heidelberg' di Lubitsch",
+    "source": "https://en.wikipedia.org/wiki/The_Student_Prince_in_Old_Heidelberg"
+   }
+  ]
+ },
+ {
+  "name": "Dorothy Stratten",
+  "sex": "F",
+  "birth": {
+   "date": "1960-02-28",
+   "time": "22:58",
+   "utcOffset": -8,
+   "lmt": false,
+   "place": "Vancouver, British Columbia, Canada",
+   "lat": 49.2827,
+   "lon": -123.1207,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Dorothy_Stratten",
+   "note": "AA, certificato (Steinbrecher). PST −8 (MC 17°02' Leo coincide)."
+  },
+  "events": [
+   {
+    "date": "1980-08-14",
+    "pol": "-",
+    "violent": true,
+    "what": "Uccisa con un fucile dal marito separato Paul Snider a Los Angeles",
+    "source": "https://en.wikipedia.org/wiki/Dorothy_Stratten"
+   },
+   {
+    "date": "1980-04-30",
+    "pol": "+",
+    "violent": false,
+    "what": "Proclamata Playmate of the Year alla Playboy Mansion",
+    "source": "https://en.wikipedia.org/wiki/Dorothy_Stratten"
+   },
+   {
+    "date": "1980-06-06",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Galaxina', suo primo ruolo da protagonista",
+    "source": "https://en.wikipedia.org/wiki/Galaxina"
+   }
+  ]
+ },
+ {
+  "name": "Larry Flynt",
+  "sex": "M",
+  "birth": {
+   "date": "1942-11-01",
+   "time": "21:10",
+   "utcOffset": -4,
+   "lmt": false,
+   "place": "Salyersville, Kentucky, USA",
+   "lat": 37.7526,
+   "lon": -83.0688,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Larry_Flynt",
+   "note": "AA, certificato (Rodden). −4: Eastern War Time 1942 (MC 3°11' Pis coincide solo con −4; con −5 il MC sarebbe 19° Pis)."
+  },
+  "events": [
+   {
+    "date": "1978-03-06",
+    "pol": "-",
+    "violent": true,
+    "what": "Colpito da colpi d'arma da fuoco a Lawrenceville (Georgia) da J. P. Franklin: resta paralizzato",
+    "source": "https://en.wikipedia.org/wiki/Larry_Flynt"
+   },
+   {
+    "date": "1988-02-24",
+    "pol": "+",
+    "violent": false,
+    "what": "Vittoria alla Corte Suprema in Hustler Magazine v. Falwell",
+    "source": "https://en.wikipedia.org/wiki/Hustler_Magazine_v._Falwell"
+   },
+   {
+    "date": "1996-12-25",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce il film biografico 'The People vs. Larry Flynt'",
+    "source": "https://en.wikipedia.org/wiki/The_People_vs._Larry_Flynt"
+   }
+  ]
+ },
+ {
+  "name": "Anthony Bourdain",
+  "sex": "M",
+  "birth": {
+   "date": "1956-06-25",
+   "time": "08:35",
+   "utcOffset": -4,
+   "lmt": false,
+   "place": "New York, USA",
+   "lat": 40.7128,
+   "lon": -74.006,
+   "rodden": "A",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Anthony_Bourdain",
+   "note": "A, fonte 'From memory or autobiography' (Rodden). EDT −4 (MC 0°29' Tau coincide)."
+  },
+  "events": [
+   {
+    "date": "2018-06-08",
+    "pol": "-",
+    "violent": true,
+    "what": "Suicidio per impiccagione all'hotel Le Chambard di Kaysersberg (Francia)",
+    "source": "https://en.wikipedia.org/wiki/Anthony_Bourdain"
+   },
+   {
+    "date": "1999-04-19",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce sul New Yorker 'Don't Eat Before Reading This', che lo rende famoso",
+    "source": "https://en.wikipedia.org/wiki/Anthony_Bourdain"
+   },
+   {
+    "date": "2013-04-14",
+    "pol": "+",
+    "violent": false,
+    "what": "Debutto di 'Parts Unknown' sulla CNN",
+    "source": "https://en.wikipedia.org/wiki/Anthony_Bourdain"
+   },
+   {
+    "date": "2013-09-15",
+    "pol": "+",
+    "violent": false,
+    "what": "Primo Emmy (Outstanding Informational Series) per 'Parts Unknown'",
+    "source": "https://en.wikipedia.org/wiki/65th_Primetime_Creative_Arts_Emmy_Awards"
+   }
+  ]
+ },
+ {
+  "name": "Primo Levi",
+  "sex": "M",
+  "birth": {
+   "date": "1919-07-31",
+   "time": "04:00",
+   "utcOffset": 2,
+   "lmt": false,
+   "place": "Torino, Italia",
+   "lat": 45.0703,
+   "lon": 7.6869,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Primo_Levi",
+   "note": "AA, atto di nascita (Grazia Bordoni); ora tonda ma documentata. +2: ora legale italiana 1919 (MC 14°03' Pis coincide solo con +2)."
+  },
+  "events": [
+   {
+    "date": "1987-04-11",
+    "pol": "-",
+    "violent": true,
+    "what": "Muore precipitando nella tromba delle scale di casa a Torino (suicidio secondo il coroner)",
+    "source": "https://en.wikipedia.org/wiki/Primo_Levi"
+   },
+   {
+    "date": "1943-12-13",
+    "pol": "-",
+    "violent": true,
+    "what": "Arrestato dalla milizia fascista: inizio dell'episodio che porta alla deportazione ad Auschwitz",
+    "source": "https://en.wikipedia.org/wiki/Primo_Levi"
+   },
+   {
+    "date": "1945-01-27",
+    "pol": "+",
+    "violent": false,
+    "what": "Liberato dall'Armata Rossa ad Auschwitz",
+    "source": "https://en.wikipedia.org/wiki/Primo_Levi"
+   },
+   {
+    "date": "1947-10-11",
+    "pol": "+",
+    "violent": false,
+    "what": "Esce 'Se questo è un uomo'",
+    "source": "https://en.wikipedia.org/wiki/Primo_Levi"
+   },
+   {
+    "date": "1979-07-05",
+    "pol": "+",
+    "violent": false,
+    "what": "Vince il Premio Strega con 'La chiave a stella' (data dedotta: 'giovedì scorso' in articolo JTA del 9/7/1979)",
+    "source": "https://www.jta.org/archive/jewish-writer-wins-top-italian-literary-prize"
+   }
+  ]
+ },
+ {
+  "name": "Gilles Deleuze",
+  "sex": "M",
+  "birth": {
+   "date": "1925-01-18",
+   "time": "02:45",
+   "utcOffset": 0,
+   "lmt": false,
+   "place": "Parigi 17e, Francia",
+   "lat": 48.8835,
+   "lon": 2.3219,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Gilles_Deleuze",
+   "note": "AA, atto di nascita (Geslain). Francia GMT 0 nel 1925 (MC 8°58' Vir coincide). Nessun trionfo datato al giorno trovato."
+  },
+  "events": [
+   {
+    "date": "1995-11-04",
+    "pol": "-",
+    "violent": true,
+    "what": "Si getta dalla finestra del suo appartamento a Parigi",
+    "source": "https://en.wikipedia.org/wiki/Gilles_Deleuze"
+   }
+  ]
+ },
+ {
+  "name": "Luigi Tenco",
+  "sex": "M",
+  "birth": {
+   "date": "1938-03-21",
+   "time": "14:00",
+   "utcOffset": 1,
+   "lmt": false,
+   "place": "Cassine (Alessandria), Italia",
+   "lat": 44.7514,
+   "lon": 8.5281,
+   "rodden": "AA",
+   "sourceBirth": "https://www.astrotheme.com/astrology/Luigi_Tenco",
+   "note": "AA, atto di nascita (Grazia Bordoni); ora tonda ma documentata. +1 (MC 23°40' Ari coincide). Nessun trionfo datato al giorno trovato (date dei singoli solo mese/anno)."
+  },
+  "events": [
+   {
+    "date": "1967-01-27",
+    "pol": "-",
+    "violent": true,
+    "what": "Trovato morto con un colpo di pistola alla testa all'Hotel Savoy di Sanremo (ritrovamento ~2:10; morte nella notte 26-27)",
+    "source": "https://it.wikipedia.org/wiki/Caso_Tenco"
+   }
+  ]
+ }
+]

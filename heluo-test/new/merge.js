@@ -4,6 +4,8 @@ const fs = require('fs'), path = require('path');
 const DROP = [ // eventi tolti in revisione: [nome, data, motivo]
   ['Jim Clark', '1961-09-10', 'Clark illeso a Monza 1961: nessun danno alla persona'],
   ['Federico García Lorca', '1936-08-19', 'data della fucilazione solo presunta'],
+  ['Primo Levi', '1943-12-13', 'arresto: non è violenza fisica subita quel giorno'],
+  ['Natalie Wood', '1981-11-29', 'morte nella notte 28-29: giorno incerto'],
   ['Theo van Gogh', '2004-08-29', 'Submission: causa dell\'omicidio, non un trionfo'],
 ];
 const people = [], log = [];
