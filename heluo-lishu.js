@@ -478,7 +478,8 @@
       + ' line ' + per.line + ' (' + (per.yang ? 'yang · 9' : 'yin · 6') + ', age ' + per.from + '–' + per.to + ') · year <b>' + a.k + '</b> of ' + a.len
       + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + hexCard('Annual hexagram ' + Y, a.hex, a.moved,
-          '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
+          (oppInvTag(R, a.hex).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex).join(', ') + '</div>' : '')
+          + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
           + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)') + linesTable(a.hex, a.moved), 'Moved this year:') + '</div>';
     var ms; try { ms = monthStarts(Y); } catch (e) { ms = null; }
     var now = new Date(Date.now() + 8 * 3600000), TD = 'padding:3px 6px;';
@@ -514,6 +515,140 @@
     }
     return h + today + tb + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie (Beijing dates). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
   }
+  // ── Natal reading (session 47): Edu's slides "Heluo Lishu", from the general to the particular ──
+  var EL_BR = ['Water','Earth','Wood','Wood','Earth','Fire','Fire','Earth','Metal','Metal','Earth','Water'];
+  var GEN_ = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
+  var CTL_ = { Wood:'Earth', Earth:'Water', Water:'Fire', Fire:'Metal', Metal:'Wood' };
+  var YANG_TRI = { Qian:1, Zhen:1, Kan:1, Gen:1 };
+  var LINE_CHAR = {
+    1: 'line of new beginnings',
+    2: 'protected line, in support position with the 5th',
+    3: 'at the edge of the lower trigram, ready to enter the upper one: the risk-taker line, it needs support to succeed',
+    4: 'line of the minister: close to the king but subject to his whims',
+    5: 'line of the Emperor: yang, protected, watching everything from above, the best line',
+    6: 'topmost line: very visible, easily isolated and exposed to attacks'
+  };
+  function relOf(me, other) { // what `other` element is for `me`
+    if (me === other) return 'Companion'; if (GEN_[me] === other) return 'Output'; if (CTL_[me] === other) return 'Wealth';
+    if (CTL_[other] === me) return 'Officer / Ghost'; return 'Resource';
+  }
+  function timeliness(tri, monthBr) { // 旺相休囚死 of the trigram element in the birth month
+    var se = EL_BR[monthBr], e = TRI_EL[tri];
+    if (e === se) return { k: 2, t: 'very timely (旺)' };
+    if (GEN_[se] === e) return { k: 1, t: 'timely (相)' };
+    if (GEN_[e] === se) return { k: 0, t: 'resting (休)' };
+    if (CTL_[e] === se) return { k: -1, t: 'untimely, trapped (囚)' };
+    return { k: -2, t: 'untimely, weak (死)' };
+  }
+  function flowTxt(lo, up) {
+    var a = TRI_EL[lo], b = TRI_EL[up];
+    if (a === b) return [1, 'one single element (' + a + '): unique qi'];
+    if (GEN_[a] === b) return [1, 'lower ' + a + ' generates upper ' + b + ': good qi flow, the lower trigram nourishes the upper'];
+    if (GEN_[b] === a) return [0, 'upper ' + b + ' generates lower ' + a + ': qi flows downward'];
+    return [-1, (CTL_[a] === b ? 'lower ' + a + ' controls upper ' + b : 'upper ' + b + ' controls lower ' + a) + ': conflicting energy'];
+  }
+  function natalReading(R, male) {
+    var N = R.numbers, p = R.input.p, mb = p.branches[1], avg = N.monthAvg, xt = R.xianTian, ht = R.houTian ? R.houTian.hex : null;
+    var good = 0, bad = 0, out = [];
+    function it(v, txt) { if (v > 0) good++; else if (v < 0) bad++;
+      out.push('<li style="margin:3px 0;list-style:none;"><span style="display:inline-block;width:16px;color:' + (v > 0 ? '#1b5e20' : v < 0 ? '#b71c1c' : '#777') + ';">' + (v > 0 ? '✓' : v < 0 ? '✗' : '•') + '</span>' + txt + '</li>'); }
+    function hd(t) { out.push('<li style="list-style:none;font-weight:600;color:#4527a0;margin:8px 0 2px;">' + t + '</li>'); }
+    var pct = function (x) { return (x >= 0 ? '+' : '') + Math.round(x * 100) + '%'; };
+    var yangMonth = mb >= 2 && mb <= 7;
+
+    hd('1 · Yin / Yang proportion');
+    var dH = N.devHeaven, dE = N.devEarth;
+    it(0, 'Yang (Heaven) number <b>' + N.heaven + '</b>, balance 25 (' + (dH >= 0 ? '+' : '') + dH + ') · Yin (Earth) number <b>' + N.earth + '</b>, balance 30 (' + (dE >= 0 ? '+' : '') + dE + ').');
+    if (Math.abs(dH - dE) <= 2) it(-1, 'Both numbers deviate almost equally from their balance: no yin-yang lead, confusion and lack of direction.');
+    else it(1, 'Clear ' + (dH > dE ? 'yang' : 'yin') + ' lead over the balance numbers: a clear direction in life.');
+    if (N.total > 78) it(-1, 'Total ' + N.total + ': too high compared with the balance 55.');
+    else if (N.total >= 55) it(1, 'Total ' + N.total + ': similar to or above the balance 55, favourable.');
+    else it(-1, 'Total ' + N.total + ': below the balance 55, low level of energy.');
+    var leadOk = yangMonth ? N.heaven > N.earth : N.earth > N.heaven;
+    it(leadOk ? 1 : -1, 'Born in a ' + (yangMonth ? 'yang' : 'yin') + ' month (' + BRANCHES[mb] + ' ' + BR_PY[mb] + '): the ' + (yangMonth ? 'yang' : 'yin') + ' number should be higher. '
+      + (leadOk ? 'It is: auspicious.' : 'It is not: the dominant qi goes against the season.'));
+    var rY = N.heaven / avg.yang - 1, rE = N.earth / avg.yin - 1;
+    var lvl = function (r) { return Math.abs(r) <= 0.25 ? 0 : -1; };
+    it(lvl(rY), 'Yang qi vs the ' + avg.month + ' average ' + avg.yang + ': ' + pct(rY) + (rY < -0.25 ? ' (underperforms)' : rY > 0.25 ? ' (overperforms, excess)' : ' (in line)') + '.');
+    it(lvl(rE), 'Yin qi vs the ' + avg.month + ' average ' + avg.yin + ': ' + pct(rE) + (rE < -0.25 ? ' (underperforms)' : rE > 0.25 ? ' (overperforms, excess)' : ' (in line)') + '.');
+    [['Xian Tian', xt], ['Hou Tian', ht]].forEach(function (g) {
+      if (!g[1]) return; var ny = g[1].lines.reduce(function (a, b) { return a + b; }, 0), ni = 6 - ny, t = [];
+      if (ny) t.push('each of the ' + ny + ' yang lines receives ' + (Math.round(N.heaven / ny * 10) / 10) + ' instead of ' + (Math.round(avg.yang / ny * 10) / 10));
+      if (ni) t.push('each of the ' + ni + ' yin lines receives ' + (Math.round(N.earth / ni * 10) / 10) + ' instead of ' + (Math.round(avg.yin / ni * 10) / 10));
+      it(0, g[0] + ' ' + g[1].n + ': ' + t.join('; ') + '. The effect shows when going through those lines.');
+    });
+    var tris = [xt.upper, xt.lower], hasY = tris.some(function (t) { return YANG_TRI[t]; }), hasI = tris.some(function (t) { return !YANG_TRI[t]; });
+    if (rE > 0.25 && !hasI) it(-1, 'Yin qi is excessive but the Xian Tian has no yin trigram (Kun, Xun, Li, Dui): it cannot be expressed well; an annual or monthly hexagram can fill the gap.');
+    if (rY > 0.25 && !hasY) it(-1, 'Yang qi is excessive but the Xian Tian has no yang trigram (Qian, Zhen, Kan, Gen): it cannot be expressed well; an annual or monthly hexagram can fill the gap.');
+    if (rY < -0.25 && hasY) it(-1, 'Yang qi is too low: the yang trigram' + (tris.filter(function (t) { return YANG_TRI[t]; }).length > 1 ? 's' : '') + ' of the Xian Tian (' + tris.filter(function (t) { return YANG_TRI[t]; }).join(', ') + ') cannot function well and need to be generated.');
+    if (rE < -0.25 && hasI) it(-1, 'Yin qi is too low: the yin trigram' + (tris.filter(function (t) { return !YANG_TRI[t]; }).length > 1 ? 's' : '') + ' of the Xian Tian (' + tris.filter(function (t) { return !YANG_TRI[t]; }).join(', ') + ') cannot function well and need to be generated.');
+    var nyX = xt.lines.reduce(function (a, b) { return a + b; }, 0);
+    if (nyX === 3) it(0, 'Xian Tian with 3 yang and 3 yin lines.');
+    else it((male ? nyX > 3 : nyX < 3) ? 1 : -1, 'Xian Tian with ' + nyX + ' yang and ' + (6 - nyX) + ' yin lines: for a ' + (male ? 'man more yang' : 'woman more yin') + ' lines are best.');
+
+    hd('2 · Moving line');
+    [['Xian Tian', xt, R.moving.line, R.positionXT, R.supportXT, R.prevailingXT], ['Hou Tian', ht, ht && R.houTian.line, R.positionHT, R.supportHT, R.prevailingHT]].forEach(function (g) {
+      if (!g[1] || !g[2]) return; var l = g[2], y = g[1].lines[l - 1], o = l <= 3 ? l + 3 : l - 3;
+      it(g[3] ? 1 : -1, g[0] + ' line ' + l + ' (' + (y ? 'yang' : 'yin') + ') in a ' + (l % 2 ? 'yang' : 'yin') + ' position: ' + (g[3] ? 'proper position, auspicious.' : 'improper position.'));
+      it(g[4] ? 1 : -1, 'Line ' + o + ' is ' + (g[1].lines[o - 1] ? 'yang' : 'yin') + ': ' + (g[4] ? 'proper support.' : 'no support (same polarity).'));
+      it(l === 5 ? 1 : l === 2 ? 1 : l === 3 || l === 6 ? -1 : 0, 'Line ' + l + ': ' + LINE_CHAR[l] + '.');
+      if (g[5]) { var yp = /pure yang|single yang/.test(g[5]), fit = yp === !!male;
+        it(fit ? (g[3] ? 1 : 0) : -1, 'Prevailing hexagram (' + g[5] + '): ' + (fit ? 'favourable for a ' + (male ? 'man' : 'woman') + (g[3] ? ', moving line in proper position.' : ', but the moving line is not in proper position.') : 'it suits a ' + (male ? 'woman' : 'man') + ' more.')); }
+    });
+
+    hd('3 · Strength and relation of the trigrams');
+    [['Xian Tian', xt], ['Hou Tian', ht]].forEach(function (g) {
+      if (!g[1]) return; var u = timeliness(g[1].upper, mb), lo = timeliness(g[1].lower, mb), f = flowTxt(g[1].lower, g[1].upper);
+      it(u.k > 0 ? 1 : u.k < 0 ? -1 : 0, g[0] + ' upper (external) ' + triLbl(g[1].upper) + ' ' + TRI_EL[g[1].upper] + ': ' + u.t + ' in ' + BRANCHES[mb] + ' month.');
+      it(lo.k > 0 ? 1 : lo.k < 0 ? -1 : 0, g[0] + ' lower (internal) ' + triLbl(g[1].lower) + ' ' + TRI_EL[g[1].lower] + ': ' + lo.t + '.');
+      it(f[0], g[0] + ': ' + f[1] + '.');
+    });
+    if (ht) it(0, 'From Xian Tian to Hou Tian what was external becomes internal and vice versa: it often marks a drastic change in life (age ' + R.cyclesHT[0].from + ').');
+
+    hd('4 · Wu Xing: the person in the hexagram');
+    if (TRI_EL[xt.upper] === TRI_EL[xt.lower]) {
+      var me = TRI_EL[xt.upper], rel = ['Wood','Fire','Earth','Metal','Water'].filter(function (e) { return e !== me; }).map(function (e) { return e + ' = ' + relOf(me, e); });
+      it(0, 'The Xian Tian has one element: the person is ' + me + '. ' + rel.join(', ') + '. Year branches will have an impact.');
+    } else {
+      var mt = R.moving.line <= 3 ? xt.lower : xt.upper, ot = R.moving.line <= 3 ? xt.upper : xt.lower, me2 = TRI_EL[mt];
+      it(0, 'Two elements: the moving line represents the person. At birth (line ' + R.moving.line + ') the person is ' + me2 + ' (' + triLbl(mt) + '); the ' + (R.moving.line <= 3 ? 'upper' : 'lower') + ' trigram ' + triLbl(ot) + ' (' + TRI_EL[ot] + ') is the ' + relOf(me2, TRI_EL[ot]) + '. The focus moves with the cycles from one trigram to the other.');
+    }
+
+    hd('5 · The three Luck trigrams');
+    var L = R.luck, natT = [xt.upper, xt.lower].concat(ht ? [ht.upper, ht.lower] : []), huT = [R.huXT.upper, R.huXT.lower].concat(R.huHT ? [R.huHT.upper, R.huHT.lower] : []);
+    [['Heaven Luck (year stem)', 'heaven'], ['Earth Luck (year branch)', 'earth'], ['Fame Luck (season)', 'fame']].forEach(function (k) {
+      var t = L[k[1]], tm = timeliness(t, mb), inN = natT.indexOf(t) >= 0, inH = huT.indexOf(t) >= 0, op = L.opposite[k[1]], opN = natT.indexOf(op) >= 0;
+      it(inN || inH ? 1 : 0, k[0] + ' ' + triLbl(t) + ' (' + TRI_EL[t] + ', ' + tm.t + '): ' + (inN ? 'present in the native hexagrams, blessed' : inH ? 'present in the Hu Gua, blessed' : 'not in the native hexagrams or Hu Gua; it comes with the years, months and days that carry it') + '.');
+      if (opN) it(-1, 'Its opposite ' + triLbl(op) + ' is part of the native hexagrams: like a clash, it can challenge or remove this luck; risk of inconsistency and contradiction.');
+    });
+    // Lines whose Na Jia branch carries a Luck trigram or its opposite (WWG, slides on Diana and Edu)
+    if (NJ()) [['Xian Tian', xt], ['Hou Tian', ht]].forEach(function (g) {
+      var d = g[1] && NJ()[g[1].n]; if (!d) return; var hits = [];
+      d.lines.forEach(function (ln, i) { var t = BR_TRI[BRANCHES.indexOf(ln.branch)], v = 0, w = [];
+        ['heaven','earth','fame'].forEach(function (k) { var K = k[0].toUpperCase() + k.slice(1);
+          if (t === L[k]) { v++; w.push(K + ' Luck'); }
+          if (t === L.opposite[k]) { v--; w.push('opposite of the ' + K + ' Luck'); } });
+        if (w.length) hits.push([v, 'line ' + (i + 1) + ' ' + ln.branch + ' carries ' + triLbl(t) + ' = ' + w.join(' and ')]); });
+      hits.forEach(function (h) { it(h[0], g[0] + ' ' + g[1].n + ': ' + h[1] + ' — ' + (h[0] > 0 ? 'its cycle years are favoured.' : h[0] < 0 ? 'its cycle years are challenged.' : 'mixed effect in its cycle years.')); });
+    });
+    it(0, 'Heaven Luck is yang, Earth Luck is yin: their effect depends on the yin/yang balance above (yang ' + pct(rY) + ', yin ' + pct(rE) + ') and on their timeliness.');
+
+    hd('6 · Hu Gua, opposite and inverse');
+    it(0, 'Hu Gua Xian Tian ' + R.huXT.n + ' ' + esc(hexName(R.huXT.n)) + (R.huHT ? ', Hou Tian ' + R.huHT.n + ' ' + esc(hexName(R.huHT.n)) : '') + ': inner aspects of the person and unexpected events.');
+    var oi = function (o, v, h) { return 'opposite ' + o.n + ' ' + esc(hexName(o.n)) + (v.n !== h.n ? ', inverse ' + v.n + ' ' + esc(hexName(v.n)) : ' (no inverse: symmetric)'); };
+    it(0, 'Xian Tian ' + oi(R.oppositeXT, R.inverseXT, xt) + (R.oppositeHT ? ' · Hou Tian ' + oi(R.oppositeHT, R.inverseHT, ht) : '') + ': obstacles on the path of life; the opposite is more evident, the inverse more deceptive. A year or month with these hexagrams is unauspicious.');
+
+    return '<details open style="margin-top:12px;border:1px solid #d1c4e9;border-radius:8px;padding:8px;"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:#4527a0;">Natal reading · ' + good + ' favourable, ' + bad + ' unfavourable</summary>'
+      + '<ul style="padding:0;margin:4px 0;font-size:12px;color:#333;line-height:1.5;">' + out.join('') + '</ul>'
+      + '<div style="font-size:10px;color:#999;margin-top:4px;">Rules from the slides “Heluo Lishu”: first the natal chart, then the effect of the cycles.</div></details>';
+  }
+  // which native hexagram (if any) the given one is opposite / inverse of
+  function oppInvTag(R, hx) {
+    var t = [];
+    if (hx.n === R.oppositeXT.n) t.push('opposite of the Xian Tian'); if (hx.n === R.inverseXT.n && R.inverseXT.n !== R.xianTian.n) t.push('inverse of the Xian Tian');
+    if (R.oppositeHT && hx.n === R.oppositeHT.n) t.push('opposite of the Hou Tian'); if (R.inverseHT && hx.n === R.inverseHT.n && R.inverseHT.n !== R.houTian.hex.n) t.push('inverse of the Hou Tian');
+    return t;
+  }
   function render() {
     var out = $('hl-out'), c = current();
     if (!c) { out.innerHTML = '<div style="font-size:12px;color:#888;">Load a person with birth date and hour (Person A or a saved person).</div>'; return; }
@@ -546,6 +681,7 @@
       + small('Hu Gua XT', R.huXT) + (R.huHT ? small('Hu Gua HT', R.huHT) : '')
       + small('Opposite XT', R.oppositeXT) + small('Inverse XT', R.inverseXT)
       + (R.oppositeHT ? small('Opposite HT', R.oppositeHT) + small('Inverse HT', R.inverseHT) : '') + '</div>'
+      + natalReading(R, g === 'M')
       + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
