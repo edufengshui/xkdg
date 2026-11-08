@@ -1,4 +1,4 @@
-// He Luo Li Shu 河洛理數 — phase 1: natal chart, calculations only (no interpretive texts).
+// He Luo Li Shu 河洛理數 — natal chart (phase 1) + annual / monthly hexagrams (phase 2), calculations only.
 // Rules from Edu's "Heluo Lishu" slides, decided with Edu in session 42 (handoff/heluo-lishu-plan.md).
 // Year pillar from the WINTER SOLSTICE; month / day / hour in TRUE SOLAR TIME (XKDGSolarTime).
 // Charts menu → ☯ He Luo Li Shu (app-fengshui.js xkdgChartsPick 'heluo').
@@ -127,6 +127,61 @@
     if (y === 1) return 'single yang line'; if (y === 5) return 'single yin line'; return null;
   }
 
+  // ── Phase 2: annual and monthly hexagrams ────────────────────────────────
+  // Rules read from the reference calculator (bazi-calculator.com/calcHLLS.php, session 43,
+  // handoff/heluo-lishu-phase2.md, approved by Edu); year from the WINTER SOLSTICE (Edu).
+  function wrap6(x) { return ((x - 1) % 6 + 6) % 6 + 1; }
+  function partner(l) { return l <= 3 ? l + 3 : l - 3; }
+  function flip(lines, set) { var b = lines.slice(); set.forEach(function (x) { b[x - 1] = 1 - b[x - 1]; }); return b; }
+  // H = period hexagram (lines), L = ruling line, k = year of the period (1..), yangYear = the
+  // period's FIRST year has a yang stem. Returns { hex, moved, changed:[lines vs H] }.
+  // Yin line: year k changes L..L+k-1. Yang line: y1 L (none if the period starts in a yang year),
+  // y2 + partner, y3 L again, y4.. L+1, L+2 … cumulative.
+  function annualHex(H, L, k, yangYear) {
+    var S = [], m;
+    function t(x) { var i = S.indexOf(x); if (i >= 0) S.splice(i, 1); else S.push(x); }
+    if (!H[L - 1]) { for (var i = 0; i < k; i++) t(wrap6(L + i)); m = wrap6(L + k - 1); }
+    else {
+      if (!yangYear) t(L); m = L;
+      if (k >= 2) { t(partner(L)); m = partner(L); }
+      if (k >= 3) { t(L); m = L; }
+      for (var j = 4; j <= k; j++) { t(wrap6(L + j - 3)); m = wrap6(L + j - 3); }
+    }
+    return { hex: hexOf(flip(H, S)), moved: m, changed: S.slice().sort() };
+  }
+  // A = annual hexagram (lines), moved = line moved this year, monthBr 0..11 (Zi..Hai).
+  // Month i: Yin 寅 = 1 … Chou 丑 = 12; lines s = moved+1, s+1 …; odd month: change the first
+  // ceil(i/2) of them; even month: the same + the partner of the last one.
+  function monthlyHex(A, moved, monthBr) {
+    var i = (monthBr - 2 + 12) % 12 + 1, s = wrap6(moved + 1), j = Math.ceil(i / 2), S = [];
+    for (var t = 0; t < j; t++) S.push(wrap6(s + t));
+    var last = wrap6(s + j - 1);
+    if (i % 2 === 0) { var p = partner(last), q = S.indexOf(p); if (q >= 0) S.splice(q, 1); else S.push(p); }
+    return { hex: hexOf(flip(A, S)), changed: S.slice().sort(), index: i };
+  }
+  // R = natal result, Y = Heluo year (Gregorian number; from the Winter Solstice of Y-1)
+  function annual(R, Y) {
+    var y0 = R.input ? R.input.o.year : R.year0, age = Y - y0 + 1, per = null, hx = null;
+    (R.cyclesXT || []).forEach(function (c) { if (age >= c.from && age <= c.to) { per = c; hx = R.xianTian; } });
+    if (!per) (R.cyclesHT || []).forEach(function (c) { if (age >= c.from && age <= c.to) { per = c; hx = R.houTian.hex; } });
+    if (!per) return { year: Y, age: age, none: true };
+    var k = age - per.from + 1, startYear = y0 + per.from - 1, yangYear = startYear % 2 === 0;
+    var a = annualHex(hx.lines, per.line, k, yangYear);
+    return { year: Y, age: age, period: per, periodHex: hx, k: k, len: per.to - per.from + 1, yangStart: yangYear,
+      hex: a.hex, moved: a.moved, changed: a.changed,
+      months: [0,1,2,3,4,5,6,7,8,9,10,11].map(function (b) { var mo = monthlyHex(a.hex.lines, a.moved, b); return { br: b, index: mo.index, hex: mo.hex, changed: mo.changed }; }) };
+  }
+  // Month starts inside Heluo year Y (Beijing-naive Dates): Zi from the Winter Solstice of Y-1,
+  // Chou 小寒 … Hai 立冬, Zi again from 大雪 to the Winter Solstice of Y.
+  function monthStarts(Y) {
+    var t = root.Lunar.fromYmd(Y, 1, 1).getJieQiTable();
+    function d(so) { return new Date(Date.UTC(so.getYear(), so.getMonth() - 1, so.getDay(), so.getHour(), so.getMinute(), so.getSecond())); }
+    var k = ['冬至','小寒','立春','惊蛰','清明','立夏','芒种','小暑','立秋','白露','寒露','立冬','大雪'], br = [0,1,2,3,4,5,6,7,8,9,10,11,0];
+    var out = k.map(function (n, i) { return { br: br[i], start: d(t[n]) }; });
+    out.push({ end: d(t['DONG_ZHI']) });
+    return out;
+  }
+
   // p = { stems:[y,m,d,h], branches:[y,m,d,h] } (0-based, Heluo year pillar)
   // o = { male, year (Gregorian year of the Heluo year pillar), yangDun, season 0..3 }
   function natal(p, o) {
@@ -222,17 +277,23 @@
     }
     return s + '</svg>';
   }
-  function hexCard(title, hx, mv, extra) {
+  function hexCard(title, hx, mv, extra, mvLbl) {
     return '<div style="border:1px solid #d1c4e9;border-radius:8px;padding:8px;min-width:130px;flex:1;">'
       + '<div style="font-size:11px;color:#777;margin-bottom:4px;">' + title + '</div>'
       + '<div style="display:flex;gap:10px;align-items:center;">' + hexSvg(hx.lines, mv)
       + '<div style="font-size:12px;line-height:1.5;"><b style="font-size:15px;">' + hx.n + '</b> ' + esc(hexName(hx.n))
-      + '<br>' + triLbl(hx.upper) + '<br>' + triLbl(hx.lower) + (mv ? '<br><span style="color:#c62828;">Moving line ' + mv + '</span>' : '') + '</div></div>'
+      + '<br>' + triLbl(hx.upper) + '<br>' + triLbl(hx.lower) + (mv ? '<br><span style="color:#c62828;">' + (mvLbl || 'Moving line') + ' ' + mv + '</span>' : '') + '</div></div>'
       + (extra || '') + '</div>';
   }
   function small(title, hx) {
     return '<div style="display:flex;gap:6px;align-items:center;font-size:12px;">' + hexSvg(hx.lines, 0, 34)
       + '<div><span style="color:#777;">' + title + '</span><br><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + '</div></div>';
+  }
+  function miniHex(lines) {
+    var s = '<svg width="26" height="25" viewBox="0 0 26 25" style="display:block;">';
+    for (var i = 0; i < 6; i++) { var y = (5 - i) * 4.4;
+      s += lines[i] ? '<rect x="1" y="' + y + '" width="24" height="3" fill="#222"/>' : '<rect x="1" y="' + y + '" width="10.5" height="3" fill="#222"/><rect x="14.5" y="' + y + '" width="10.5" height="3" fill="#222"/>'; }
+    return s + '</svg>';
   }
   function yn(b) { return b ? '<span style="color:#1b5e20;">yes</span>' : '<span style="color:#b71c1c;">no</span>'; }
 
@@ -259,7 +320,7 @@
         + '<div><label style="' + L + '">Person</label><select id="hl-p" onchange="xkdgHLPerson()" style="' + F + 'max-width:170px;"></select></div>'
         + '<div><label style="' + L + '">Gender</label><select id="hl-g" onchange="xkdgHLGender()" style="' + F + '"><option value="">—</option><option value="M">Man</option><option value="F">Woman</option></select></div>'
         + '</div><div id="hl-out"></div>'
-        + '<div style="font-size:10px;color:#999;margin-top:10px;line-height:1.5;">Year pillar from the Winter Solstice; month, day and hour in true solar time at the birth place. Natal chart only: calculations, no interpretations.</div></div>';
+        + '<div style="font-size:10px;color:#999;margin-top:10px;line-height:1.5;">Year pillar from the Winter Solstice; month, day and hour in true solar time at the birth place. Calculations only, no interpretations.</div></div>';
       document.body.appendChild(ov);
     }
     var list = savedPeople(), sel = $('hl-p'), cur = sel.value;
@@ -326,6 +387,35 @@
     });
     return h + '</table>';
   }
+  // Annual + monthly section (phase 2). _hlY = Heluo year shown (null = the current one).
+  var _hlY = null;
+  root.xkdgHLYear = function (d) { _hlY = d === 0 ? null : (_hlY || heluoYearOf()) + d; render(); };
+  function fmtD(dt) { return dt.getUTCDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getUTCMonth()]; }
+  function annualSection(R) {
+    var Y = _hlY || heluoYearOf(), a = annual(R, Y), B = 'padding:3px 9px;border:1px solid #b39ddb;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;';
+    var h = '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:12px 0 4px;">Annual and monthly hexagrams</div>'
+      + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:12px;"><button style="' + B + '" onclick="xkdgHLYear(-1)">◀</button>'
+      + '<b>Heluo year ' + Y + '</b> <span style="color:#777;">(Winter Solstice ' + (Y - 1) + ' → ' + Y + ')</span>'
+      + '<button style="' + B + '" onclick="xkdgHLYear(1)">▶</button>' + (_hlY ? '<button style="' + B + '" onclick="xkdgHLYear(0)">now</button>' : '') + '</div>';
+    if (a.none) return h + '<div style="font-size:12px;color:#888;">Age ' + a.age + ': outside the Xian Tian / Hou Tian cycles.</div>';
+    var per = a.period, isXT = a.periodHex === R.xianTian;
+    h += '<div style="font-size:12px;color:#333;line-height:1.6;margin-bottom:6px;">Age <b>' + a.age + '</b> · ' + (isXT ? 'Xian Tian' : 'Hou Tian') + ' ' + a.periodHex.n
+      + ' line ' + per.line + ' (' + (per.yang ? 'yang · 9' : 'yin · 6') + ', age ' + per.from + '–' + per.to + ') · year <b>' + a.k + '</b> of ' + a.len
+      + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + hexCard('Annual hexagram ' + Y, a.hex, a.moved,
+          '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>', 'Moved this year:') + '</div>';
+    var ms; try { ms = monthStarts(Y); } catch (e) { ms = null; }
+    var now = new Date(Date.now() + 8 * 3600000), TD = 'padding:3px 6px;';
+    h += '<table style="border-collapse:collapse;font-size:12px;width:100%;margin-top:8px;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Month</th><th style="' + TD + '">From</th><th style="' + TD + '"></th><th style="' + TD + '">Hexagram</th></tr>';
+    for (var i = 0; i < 13; i++) {
+      var br = ms ? ms[i].br : (i === 12 ? 0 : i), mo = a.months[br];
+      var from = ms ? ms[i].start : null, to = ms ? (ms[i + 1].start || ms[i + 1].end) : null, on = from && now >= from && now < to;
+      h += '<tr style="border-top:1px solid #eee;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + '">' + BRANCHES[br] + ' ' + BR_PY[br] + '</td>'
+        + '<td style="' + TD + '">' + (from ? fmtD(from) + (i === 0 ? ' (WS)' : '') : '') + (on ? ' ◀ now' : '') + '</td>'
+        + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + '</td></tr>';
+    }
+    return h + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie (Beijing dates). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
+  }
   function render() {
     var out = $('hl-out'), c = current();
     if (!c) { out.innerHTML = '<div style="font-size:12px;color:#888;">Load a person with birth date and hour (Person A or a saved person).</div>'; return; }
@@ -358,7 +448,7 @@
       + small('Hu Gua XT', R.huXT) + (R.huHT ? small('Hu Gua HT', R.huHT) : '')
       + small('Opposite XT', R.oppositeXT) + small('Inverse XT', R.inverseXT)
       + (R.oppositeHT ? small('Opposite HT', R.oppositeHT) + small('Inverse HT', R.inverseHT) : '') + '</div>'
-      + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
+      + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
       + [['Heaven (year stem)', 'heaven'], ['Earth (year branch)', 'earth'], ['Fame (season)', 'fame']].map(function (r) {
@@ -375,6 +465,7 @@
   root.XKDGHeluo = { natal: natal, fromPillars: fromPillars, heluoYearOf: heluoYearOf, seasonTerms: seasonTerms, hexOf: hexOf, hexFrom: hexFrom,
     TRI: TRI, TRI_CN: TRI_CN, TRI_EL: TRI_EL, STEMS: STEMS, BRANCHES: BRANCHES, STEM_PY: STEM_PY, BR_PY: BR_PY,
     heavenTrigram: heavenTrigram, earthTrigram: earthTrigram, lineBranches: lineBranches, houTian: houTian,
-    properPosition: properPosition, properSupport: properSupport, huGua: huGua, open: open };
+    properPosition: properPosition, properSupport: properSupport, huGua: huGua, cycles: cycles,
+    annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, monthStarts: monthStarts, open: open };
   root.openHeluoLishu = open;
 })(typeof window !== 'undefined' ? window : globalThis);
