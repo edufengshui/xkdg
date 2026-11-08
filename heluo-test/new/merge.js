@@ -3,6 +3,7 @@
 const fs = require('fs'), path = require('path');
 const DROP = [ // eventi tolti in revisione: [nome, data, motivo]
   ['Jim Clark', '1961-09-10', 'Clark illeso a Monza 1961: nessun danno alla persona'],
+  ['Federico García Lorca', '1936-08-19', 'data della fucilazione solo presunta'],
 ];
 const people = [], log = [];
 for (const f of fs.readdirSync(__dirname).filter(f => /^g\d+\.json$/.test(f)).sort()) {
