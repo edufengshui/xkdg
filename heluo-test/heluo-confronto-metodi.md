@@ -52,3 +52,5 @@ heluo-lishu.js calcola già: heavenTrigram, earthTrigram, huGua, properPosition,
 - Prossimo: confronto giudizi ↔ chiave, poi trasformare i criteri di Edu in regole e testarle sui 473 eventi.
 - Edu vuole che i giudizi li dia Claude. Regole tradotte dalle slide in schede/score.js (direzione Yin-Yang, totale ~55, numero dominante giusto per la stagione, linee yang/yin per sesso, proper position e support XT/HT, linea 5/2/3/6, prevalenza, trigrammi di fortuna e opposti, forza stagionale e flusso dei trigrammi XT) → schede/punteggi.json.
 - Risultato: 62 violenti (ora forte) media 1,21 contro 41 altri 0,86 → nessuna separazione (p 0,75). Nessuna voce singola distingue.
+- Edu: il natale è solo la partenza della corsa, poi contano i cicli. schede/corsa.js: momento = punteggio natale + linea del ciclo (posizione, supporto, linea 5/2/3/6, qi per linea vs media del mese, trigramma della linea = fortuna/opposto, ramo dell'anno = fortuna/opposto).
+- 77 morti violente contro 365 successi: momento 1,26 contro 1,23 (p 0,54). Stessa persona: ciclo migliore nei successi 26 volte, peggiore 26. Partenza debole + ciclo cattivo: 31% dei violenti, 28% dei successi. Nessun segnale.
