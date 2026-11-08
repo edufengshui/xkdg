@@ -798,6 +798,9 @@ var FS_LUOPAN_MENU = [
   { v: 'm-plan', btn: 'fs-mode-floorplan', label: function () { return '\ud83c\udfe0 Floorplan'; } },
   { v: 'orient',   btn: 'fs-orient-toggle',   label: function (b) { return b ? b.textContent.trim() : '\u2934 Facing up'; } },
   { chart: true, v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
+  // Session 43 (Edu): Tai Sui / Sui Po / Five Yellow / San Sha / Wu Ji of the main calendar date (time-afflictions.js).
+  { chart: true, v: 'sha', btn: null, label: function () {
+      return '\ud83e\udded Tai Sui \u00b7 Sha (calendar date)' + (window.XKDGAfflictions && XKDGAfflictions.isOn() ? ' \u00b7 ON' : ''); } },
   { chart: true, v: 'card',     btn: 'fs-cardview-toggle', label: function (b) {
       var on = b && b.textContent.indexOf('Luopan') >= 0;
       return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
@@ -984,7 +987,12 @@ function fsLuopanMenuAct(v){
     if (sel) sel.value = '';                    // snap back to the "Views" label
     if (!v || v === '_sep') return;
     // Anything that lives on the canvas needs the canvas visible.
-    if (v === 'time' || v === 'orient' || v === 'dlr' || v === 'qmdjring') _fsCloseAnyCard();
+    if (v === 'time' || v === 'orient' || v === 'dlr' || v === 'qmdjring' || v === 'sha') _fsCloseAnyCard();
+    if (v === 'sha'){
+      if (window.XKDGAfflictions) XKDGAfflictions.toggle(); else alert('time-afflictions.js is not loaded.');
+      setTimeout(fsLuopanMenuSync, 60);
+      return;
+    }
     if (v === 'qmdjtool'){
       try {
         openQmdjChartPanel();
@@ -1857,6 +1865,7 @@ function fsRedraw(){
       window.SunMoonMountain.drawIfOn(ctx, cx, cy, outerR, ROT);
     }
   } catch (e) { console.warn('SunMoonMountain overlay', e); }
+  try { if (window.XKDGAfflictions) window.XKDGAfflictions.drawIfOn(ctx, cx, cy, outerR, ROT); } catch (e) {}
 
   // ═══ DA LIU REN annual ring overlay (additive, isolated module) ═══
   try {
@@ -10443,6 +10452,7 @@ function fsDrawSectionLuopan(){
         window.SunMoonMountain.drawIfOn(ctx, cx, cy, outerR, _srot);
       }
     } catch (eSM) { console.warn('SunMoonMountain overlay (section)', eSM); }
+    try { if (window.XKDGAfflictions) window.XKDGAfflictions.drawIfOn(ctx, cx, cy, outerR, _srot); } catch (eAf) {}
     try {
       if (window.FloorPlanDLR && typeof window.FloorPlanDLR.drawIfOn === 'function') {
         window.FloorPlanDLR.drawIfOn(ctx, cx, cy, outerR, _srot);
