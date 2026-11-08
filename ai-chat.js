@@ -7502,7 +7502,7 @@
     }
     var rows = scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; });
     var noShelly = rh.cfg.shelly === false;
-    var commit = input.commit === true && !noShelly && !!cfg, workerResp = null, workerErr = null;
+    var commit = (input.commit === true || input.commit === 'true' || input.commit === 1) && !noShelly && !!cfg, workerResp = null, workerErr = null;
     if (commit) {
       try {
         var res = await fetch(cfg.url + '?set_plan&device=' + rh.cfg.device + '&token=' + encodeURIComponent(cfg.token),
@@ -7548,7 +7548,8 @@
     if (rh.cfg.fountain) return _programFountain(rh, cfg, input, _jie);
     var days = parseInt(input.days, 10) || 7;
     if (_jie) days = Math.max(1, Math.ceil((_jie.ms - new Date(todayIso() + 'T00:00:00').getTime()) / 86400000));
-    var commit = (input.commit === true);
+    // the model sometimes sends commit as the STRING "true": accept it, or the plan is never deposited
+    var commit = (input.commit === true || input.commit === 'true' || input.commit === 1);
     // 'block' (default) keeps the historical behaviour; 'windows' lights only the two
     // hours of each favourable hour. Per-house, so one house can move without the other.
     var windowsMode = (String(input.mode || 'block').toLowerCase() === 'windows');
