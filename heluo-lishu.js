@@ -355,18 +355,35 @@
     return P ? fromPillars(P, male) : null;
   }
   // Hexagram with ONE line in red: start age on the left, end age on the right of that line.
-  function cycleHexSvg(lines, ln, from, to) {
-    var W = 220, bx = 60, bw = 100, lh = 9, gap = 7, top = 6, H = top * 2 + 6 * lh + 5 * gap;
-    var s = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin:6px auto;">';
+  // Cycle drawing (Edu, 9/11/2026): hexagram with the active line in red; left the Na Jia branch (and the hidden
+  // spirit, if any), right the relation initial calculated on the PERSON (not the palace) and the age span of each line;
+  // below: branch, element and relation of the active line.
+  function personEl(hx, line) { // HLLS rule: one-element hexagram = that element; two elements = trigram of the line
+    var u = TRI_EL[hx.upper], l = TRI_EL[hx.lower];
+    return u === l ? u : (line <= 3 ? l : u);
+  }
+  function relL(me, el) { // B C W G P of element `el` for the person `me`
+    return me === el ? 'B' : GEN_[me] === el ? 'C' : CTL_[me] === el ? 'W' : GEN_[el] === me ? 'P' : 'G';
+  }
+  function cycleHexSvg(hx, ln, cy) {
+    var d = NJ() && NJ()[hx.n], me = personEl(hx, ln), lines = hx.lines;
+    var W = 280, bx = 92, bw = 96, lh = 9, gap = 9, top = 8, H = top + 6 * lh + 5 * gap + (d ? 30 : 8);
+    var F = ' font-family="system-ui"', s = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin:6px auto;max-width:100%;">';
+    var span = {}; (cy || []).forEach(function (c) { span[c.line] = c.from + '–' + c.to; });
     for (var i = 0; i < 6; i++) {
-      var y = top + (5 - i) * (lh + gap), red = (i + 1 === ln), col = red ? '#c62828' : '#222';
+      var y = top + (5 - i) * (lh + gap), red = (i + 1 === ln), col = red ? '#c62828' : '#222', ty = y + lh - 0.5;
       if (lines[i]) s += '<rect x="' + bx + '" y="' + y + '" width="' + bw + '" height="' + lh + '" fill="' + col + '"/>';
       else s += '<rect x="' + bx + '" y="' + y + '" width="' + (bw * 0.43) + '" height="' + lh + '" fill="' + col + '"/><rect x="' + (bx + bw * 0.57) + '" y="' + y + '" width="' + (bw * 0.43) + '" height="' + lh + '" fill="' + col + '"/>';
-      if (red) {
-        var ty = y + lh - 0.5;
-        s += '<text x="' + (bx - 8) + '" y="' + ty + '" text-anchor="end" font-size="14" font-weight="700" fill="#c62828" font-family="system-ui">' + from + '</text>'
-           + '<text x="' + (bx + bw + 8) + '" y="' + ty + '" font-size="14" font-weight="700" fill="#c62828" font-family="system-ui">' + to + '</text>';
+      if (d) {
+        var L = d.lines[i], fs = L.fushen ? '<tspan font-size="10" fill="#777">' + relL(me, L.fushen.el) + ' ' + L.fushen.branch + '</tspan> ' : '';
+        s += '<text x="' + (bx - 8) + '" y="' + ty + '" text-anchor="end" font-size="13"' + F + ' fill="' + col + '">' + fs + L.branch + '</text>'
+           + '<text x="' + (bx + bw + 8) + '" y="' + ty + '" font-size="13" font-weight="700"' + F + ' fill="' + col + '">' + relL(me, L.el)
+           + (span[i + 1] ? ' <tspan font-size="10" font-weight="400">' + span[i + 1] + '</tspan>' : '') + '</text>';
       }
+    }
+    if (d) {
+      var A = d.lines[ln - 1];
+      s += '<text x="' + (W / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11"' + F + ' fill="#555">Person ' + me + ' · line ' + ln + ': ' + A.branch + ' ' + A.el + ' · ' + REL[relL(me, A.el)] + '</text>';
     }
     return s + '</svg>';
   }
@@ -400,28 +417,32 @@
   var REL_CN = { B: '兄弟', C: '子孫', W: '妻財', G: '官鬼', P: '父母' };
   var EL_CN = { Wood: '木', Fire: '火', Earth: '土', Metal: '金', Water: '水' };
   // Six lines of a hexagram (top to bottom): Na Jia branch, relation, Shi/Ying; tap a line for its text.
-  function linesTable(hx, mv, label) {
+  // Relations are calculated on the person's element (Edu, 9/11/2026); the palace relation stays in small grey when it differs.
+  function linesTable(hx, mv, label, me) {
     var d = NJ() && NJ()[hx.n];
     if (!d) return NJ() ? '' : '<div style="font-size:11px;color:#999;margin-top:5px;">Loading lines…</div>';
     var TD = 'padding:3px 5px;', h = '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">☰ ' + (label || 'Six lines · branch and relations') + '</summary>'
-      + '<div style="font-size:11px;color:#555;margin:4px 0;">Palace ' + d.palaceCn + ' ' + d.palace + ' (' + EL_CN[d.palaceEl] + ' ' + d.palaceEl + ') · Shi line ' + d.shi + ' · Ying line ' + d.ying + ' · tap a line for its text</div>'
+      + '<div style="font-size:11px;color:#555;margin:4px 0;">' + (me ? 'Relations on the person: <b>' + EL_CN[me] + ' ' + me + '</b> · ' : '') + 'Palace ' + d.palaceCn + ' ' + d.palace + ' (' + EL_CN[d.palaceEl] + ' ' + d.palaceEl + ') · Shi line ' + d.shi + ' · Ying line ' + d.ying + ' · tap a line for its text</div>'
       + '<table style="border-collapse:collapse;font-size:12px;width:100%;">';
     for (var i = 5; i >= 0; i--) {
       var L = d.lines[i], l = i + 1, id = 'hl-ln-' + (++_cycN), sy = l === d.shi ? 'Shi 世' : l === d.ying ? 'Ying 應' : '';
+      var r = me ? relL(me, L.el) : L.rel, fr = L.fushen ? (me ? relL(me, L.fushen.el) : L.fushen.rel) : null;
       h += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (l === mv ? 'background:#ffebee;' : '') + '">'
         + '<td style="' + TD + 'white-space:nowrap;">' + l + (l === mv ? ' <span style="color:#c62828;">●</span>' : '') + '</td>'
         + '<td style="' + TD + '">' + miniLine(L.yang) + '</td>'
         + '<td style="' + TD + 'white-space:nowrap;"><b>' + L.branch + '</b> ' + EL_CN[L.el] + ' ' + L.el + '</td>'
-        + '<td style="' + TD + '">' + L.relCn + ' ' + REL[L.rel] + (L.fushen ? '<div style="font-size:10px;color:#777;">hidden ' + L.fushen.branch + ' ' + EL_CN[L.fushen.el] + ' ' + REL_CN[L.fushen.rel] + ' ' + REL[L.fushen.rel] + '</div>' : '') + '</td>'
+        + '<td style="' + TD + '">' + REL_CN[r] + ' ' + REL[r] + (me && r !== L.rel ? '<div style="font-size:10px;color:#999;">palace: ' + L.relCn + ' ' + REL[L.rel] + '</div>' : '')
+        + (L.fushen ? '<div style="font-size:10px;color:#777;">hidden ' + L.fushen.branch + ' ' + EL_CN[L.fushen.el] + ' ' + REL_CN[fr] + ' ' + REL[fr] + '</div>' : '') + '</td>'
         + '<td style="' + TD + 'color:#6a1b9a;white-space:nowrap;">' + sy + '</td></tr>'
         + '<tr id="' + id + '" style="display:none;"><td colspan="5" style="padding:2px 6px 8px;">' + (lineBody(hx.n, l, true) || '') + '</td></tr>';
     }
     return h + '</table></details>';
   }
-  function najiaLine(n, l) { // one-line Na Jia summary of line l of hexagram n
+  function najiaLine(n, l, me) { // one-line Na Jia summary of line l of hexagram n (relations on the person when given)
     var d = NJ() && NJ()[n], L = d && d.lines[l - 1]; if (!L) return '';
-    return '<div style="font-size:11px;color:#6a1b9a;margin:3px 0;">Line ' + l + ': <b>' + L.branch + '</b> ' + EL_CN[L.el] + ' ' + L.el + ' · ' + L.relCn + ' ' + REL[L.rel]
-      + (l === d.shi ? ' · Shi 世' : l === d.ying ? ' · Ying 應' : '') + (L.fushen ? ' · hidden ' + L.fushen.branch + ' ' + REL_CN[L.fushen.rel] + ' ' + REL[L.fushen.rel] : '') + '</div>';
+    var r = me ? relL(me, L.el) : L.rel, fr = L.fushen ? (me ? relL(me, L.fushen.el) : L.fushen.rel) : null;
+    return '<div style="font-size:11px;color:#6a1b9a;margin:3px 0;">Line ' + l + ': <b>' + L.branch + '</b> ' + EL_CN[L.el] + ' ' + L.el + ' · ' + REL_CN[r] + ' ' + REL[r] + (me ? ' (person ' + me + ')' : '')
+      + (l === d.shi ? ' · Shi 世' : l === d.ying ? ' · Ying 應' : '') + (L.fushen ? ' · hidden ' + L.fushen.branch + ' ' + REL_CN[fr] + ' ' + REL[fr] : '') + '</div>';
   }
   function miniLine(yang) {
     return '<svg width="26" height="6" viewBox="0 0 26 6" style="display:block;">' + (yang ? '<rect x="1" y="1" width="24" height="4" fill="#222"/>'
@@ -457,8 +478,8 @@
       var on = nowAge >= c.from && nowAge <= c.to, id = 'hl-cy-' + (++_cycN);
       h += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + 'border-top:2px solid #b39ddb;"><td style="' + TD + '">' + c.line + '</td><td style="' + TD + '">' + (c.yang ? 'yang · 9' : 'yin · 6') + '</td>'
         + '<td style="' + TD + '">' + c.from + '–' + c.to + '</td><td style="' + TD + '">Dec ' + (y0 + c.from - 2) + ' → Dec ' + (y0 + c.to - 1) + (on ? ' ◀ now' : '') + '</td></tr>'
-        + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + cycleHexSvg(hx.lines, c.line, c.from, c.to)
-        + '<div style="text-align:center;font-size:11px;color:#555;">' + hx.n + ' ' + esc(hexName(hx.n)) + ' · line ' + c.line + ' · age ' + c.from + '–' + c.to + '</div>' + najiaLine(hx.n, c.line) + lineBody(hx.n, c.line) + '</td></tr>';
+        + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + cycleHexSvg(hx, c.line, cy)
+        + '<div style="text-align:center;font-size:11px;color:#555;">' + hx.n + ' ' + esc(hexName(hx.n)) + ' · line ' + c.line + ' · age ' + c.from + '–' + c.to + '</div>' + najiaLine(hx.n, c.line, personEl(hx, c.line)) + lineBody(hx.n, c.line) + '</td></tr>';
     });
     return h + '</table>';
   }
@@ -473,14 +494,14 @@
       + '<b>Heluo year ' + Y + '</b> <span style="color:#777;">(Winter Solstice ' + (Y - 1) + ' → ' + Y + ')</span>'
       + '<button style="' + B + '" onclick="xkdgHLYear(1)">▶</button>' + (_hlY ? '<button style="' + B + '" onclick="xkdgHLYear(0)">now</button>' : '') + '</div>';
     if (a.none) return h + '<div style="font-size:12px;color:#888;">Age ' + a.age + ': outside the Xian Tian / Hou Tian cycles.</div>';
-    var per = a.period, isXT = a.periodHex === R.xianTian;
+    var per = a.period, isXT = a.periodHex === R.xianTian, me = personEl(a.periodHex, per.line);
     h += '<div style="font-size:12px;color:#333;line-height:1.6;margin-bottom:6px;">Age <b>' + a.age + '</b> · ' + (isXT ? 'Xian Tian' : 'Hou Tian') + ' ' + a.periodHex.n
       + ' line ' + per.line + ' (' + (per.yang ? 'yang · 9' : 'yin · 6') + ', age ' + per.from + '–' + per.to + ') · year <b>' + a.k + '</b> of ' + a.len
-      + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
+      + ' · person <b>' + me + '</b>' + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + hexCard('Annual hexagram ' + Y, a.hex, a.moved,
           (oppInvTag(R, a.hex).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex).join(', ') + '</div>' : '')
           + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
-          + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)') + linesTable(a.hex, a.moved), 'Moved this year:') + '</div>';
+          + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)') + linesTable(a.hex, a.moved, null, me), 'Moved this year:') + '</div>';
     var ms; try { ms = monthStarts(Y); } catch (e) { ms = null; }
     var now = new Date(Date.now() + 8 * 3600000), TD = 'padding:3px 6px;';
     var tb = '<table style="border-collapse:collapse;font-size:12px;width:100%;margin-top:8px;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Month</th><th style="' + TD + '">From</th><th style="' + TD + '"></th><th style="' + TD + '">Hexagram</th></tr>';
@@ -503,7 +524,7 @@
           var ln = k % 6 + 1, onB = nowDay >= Math.max(bS, startDay) && nowDay < bE;
           blocks += '<tr style="' + (onB ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="padding:2px 6px;white-space:nowrap;">' + fmtD(new Date(Math.max(bS, startDay))) + ' – ' + fmtD(new Date(bE - D)) + '</td><td style="padding:2px 6px;">line ' + ln + (onB ? ' ◀ today' : '') + '</td></tr>';
           if (onB) today = '<div style="font-size:12px;margin:8px 0 2px;padding:6px 8px;background:#fff3e0;border-radius:6px;"><b>Today</b>: month ' + BRANCHES[br] + ' · hexagram <b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + ' · day ' + ((nowDay - d0) / D + 1) + ' of the solar month → <b>line ' + ln + '</b>'
-            + najiaLine(mo.hex.n, ln) + lineText(mo.hex.n, ln, 'Line ' + ln + ' of ' + mo.hex.n, true) + '</div>';
+            + najiaLine(mo.hex.n, ln, me) + lineText(mo.hex.n, ln, 'Line ' + ln + ' of ' + mo.hex.n, true) + '</div>';
         }
       }
       tb += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + '">' + BRANCHES[br] + ' ' + BR_PY[br] + '</td>'
@@ -511,7 +532,7 @@
         + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + '</td></tr>'
         + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">'
         + (blocks ? '<div style="font-size:11px;color:#777;margin:2px 0;">Daily lines (5 days per line)</div><table style="border-collapse:collapse;font-size:12px;">' + blocks + '</table>' : '')
-        + hexText(mo.hex.n) + linesTable(mo.hex, 0) + '</td></tr>';
+        + hexText(mo.hex.n) + linesTable(mo.hex, 0, null, me) + '</td></tr>';
     }
     return h + today + tb + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie (Beijing dates). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
   }
@@ -658,6 +679,7 @@
     var R; try { R = compute(c, g === 'M'); } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; return; }
     if (!R) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">No birth longitude: set the GPS or the person\'s birth place.</div>'; return; }
     var I = R.input, p = I.p, N = R.numbers, y0 = I.o.year, nowAge = heluoYearOf() - y0 + 1;
+    var lineNow = function (cy, mv) { var l = mv; (cy || []).forEach(function (c) { if (nowAge >= c.from && nowAge <= c.to) l = c.line; }); return l; };
     var col = function (lbl, i) {
       return '<div style="text-align:center;min-width:52px;"><div style="font-size:10px;color:#777;">' + lbl + '</div><div style="font-size:20px;line-height:1.2;">' + STEMS[p.stems[i]] + '<br>' + BRANCHES[p.branches[i]] + '</div>'
         + '<div style="font-size:10px;color:#777;">' + STEM_PY[p.stems[i]] + ' ' + BR_PY[p.branches[i]] + '</div></div>';
@@ -673,9 +695,9 @@
       + 'Heaven trigram ' + (R.heavenUp ? 'on top' : 'below') + ' · ' + (I.o.yangDun ? 'Yang Dun' : 'Yin Dun') + ' · ' + SEASON[I.o.season] + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + hexCard('Xian Tian 先天 (Pre-Heaven)', R.xianTian, R.moving.line,
-          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionXT) + ' · proper support ' + yn(R.supportXT) + (R.prevailingXT ? '<br>Prevailing: ' + R.prevailingXT : '') + '</div>' + hexText(R.xianTian.n) + linesTable(R.xianTian, R.moving.line))
+          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionXT) + ' · proper support ' + yn(R.supportXT) + (R.prevailingXT ? '<br>Prevailing: ' + R.prevailingXT : '') + '</div>' + hexText(R.xianTian.n) + linesTable(R.xianTian, R.moving.line, null, personEl(R.xianTian, lineNow(R.cyclesXT, R.moving.line))))
       + (R.houTian ? hexCard('Hou Tian 後天 (Post-Heaven)' + (R.houTian.rule === 'special' ? ' · special 29/3/39' : ''), R.houTian.hex, R.houTian.line,
-          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionHT) + ' · proper support ' + yn(R.supportHT) + (R.prevailingHT ? '<br>Prevailing: ' + R.prevailingHT : '') + '</div>' + hexText(R.houTian.hex.n) + linesTable(R.houTian.hex, R.houTian.line)) : '')
+          '<div style="font-size:11px;color:#555;margin-top:5px;">Proper position ' + yn(R.positionHT) + ' · proper support ' + yn(R.supportHT) + (R.prevailingHT ? '<br>Prevailing: ' + R.prevailingHT : '') + '</div>' + hexText(R.houTian.hex.n) + linesTable(R.houTian.hex, R.houTian.line, null, personEl(R.houTian.hex, lineNow(R.cyclesHT, R.houTian.line)))) : '')
       + '</div>'
       + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;">'
       + small('Hu Gua XT', R.huXT) + (R.huHT ? small('Hu Gua HT', R.huHT) : '')
