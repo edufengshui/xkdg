@@ -215,9 +215,7 @@
     var endXT = cyXT.length ? cyXT[5].to : 0;
     var cyHT = ht ? cycles(ht.hex.lines, ht.line, endXT + 1) : [];
     var yearTri = { heaven: NAJIA[p.stems[0]], earth: BR_TRI[p.branches[0]] };
-    // Fame Luck = season of birth. Edu (10/11/2026): the seasons start at the JieQi — spring at Li Chun (month Yin),
-    // summer at month Si, autumn at month Shen, winter at month Hai — so they follow the month branch (true solar time).
-    var mb = p.branches[1], fame = mb >= 2 && mb <= 4 ? 'Zhen' : mb >= 5 && mb <= 7 ? 'Li' : mb >= 8 && mb <= 10 ? 'Dui' : 'Kan';
+    var fame = ['Kan','Zhen','Li','Dui'][o.season];
     var avg = MONTH_AVG[monthBr];
     return {
       numbers: { heaven: H, earth: E, odd: odd, even: even, total: H + E,
@@ -668,7 +666,7 @@
 
     hd('5 · The three Luck trigrams');
     var L = R.luck, natT = [xt.upper, xt.lower].concat(ht ? [ht.upper, ht.lower] : []), huT = [R.huXT.upper, R.huXT.lower].concat(R.huHT ? [R.huHT.upper, R.huHT.lower] : []);
-    [['Heaven Luck (year stem)', 'heaven'], ['Earth Luck (year branch)', 'earth'], ['Fame Luck (season from the JieQi)', 'fame']].forEach(function (k) {
+    [['Heaven Luck (year stem)', 'heaven'], ['Earth Luck (year branch)', 'earth'], ['Fame Luck (season)', 'fame']].forEach(function (k) {
       var t = L[k[1]], tm = timeliness(t, mb), inN = natT.indexOf(t) >= 0, inH = huT.indexOf(t) >= 0, op = L.opposite[k[1]], opN = natT.indexOf(op) >= 0;
       it(inN || inH ? 1 : 0, k[0] + ' ' + triLbl(t) + ' (' + TRI_EL[t] + ', ' + tm.t + '): ' + (inN ? 'present in the native hexagrams, blessed' : inH ? 'present in the Hu Gua, blessed' : 'not in the native hexagrams or Hu Gua; it comes with the years, months and days that carry it') + '.');
       if (opN) it(-1, 'Its opposite ' + triLbl(op) + ' is part of the native hexagrams: like a clash, it can challenge or remove this luck; risk of inconsistency and contradiction.');
