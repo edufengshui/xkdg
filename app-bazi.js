@@ -1047,25 +1047,33 @@ function xkdgCureVoid(gaps, P, cand, src, srcName, months) {
     let allTimely = true, allFilled = true;
     // fillP / fillName = the OTHER chart than the one that owns the void: if it already holds the void branch
     // or the branch that clashes it, the right pillar has arrived — a timely void is already out (Edu, session 48).
-    const tail = (h, mb, fillP, fillName) => {
+    // ownP / ownName = the chart that owns the void: there the clash counts only when the clashing branch
+    // stands in the pillar NEXT TO the pillar that carries the void branch (Edu, session 48).
+    const tail = (h, mb, fillP, fillName, ownP, ownName, hitP) => {   // hitP = the pillar the void falls on: it cannot fill itself with its own (void) branch
         if (!months) return '';
         const t = _xkdgVoidTimely(h.el, mb);
         if (!t) { allTimely = false; allFilled = false; return ' — untimely void (' + h.el + ' in a ' + (mb || '?') + ' month): not recoverable'; }
         const cl = BRANCH_CLASHES[h.vb] || '';
-        const k = fillP ? ['hour', 'day', 'month', 'year'].filter(kk => fillP[kk] && (fillP[kk].branch === h.vb || fillP[kk].branch === cl))[0] : null;
+        const k = fillP ? ['hour', 'day', 'month', 'year'].filter(kk => fillP[kk] && ((fillP[kk].branch === h.vb && !(hitP && fillP[kk].hex === hitP.hex && fillP[kk].branch === hitP.branch)) || fillP[kk].branch === cl))[0] : null;
         if (k) return ' — timely void (' + h.el + ' in a ' + mb + ' month), <b>already out of the void</b>: ' + fillName + ' ' + L[k] + ' ' + fillP[k].branch + (fillP[k].branch === h.vb ? ' is the same branch' : ' clashes ' + h.vb);
+        const K4 = ['hour', 'day', 'month', 'year'];
+        for (let i = 0; ownP && i < 4; i++) {
+            if (!ownP[K4[i]] || ownP[K4[i]].branch !== h.vb) continue;
+            const j = [i - 1, i + 1].filter(n => n >= 0 && n < 4 && ownP[K4[n]] && ownP[K4[n]].branch === cl)[0];
+            if (j != null) return ' — timely void (' + h.el + ' in a ' + mb + ' month), <b>already out of the void</b>: in ' + ownName + ' chart the ' + L[K4[j]] + ' ' + cl + ' stands next to the ' + L[K4[i]] + ' ' + h.vb + ' and clashes it';
+        }
         allFilled = false;
         return ' — timely void (' + h.el + ' in a ' + mb + ' month): it comes out of the void when ' + h.vb + ' or ' + cl + ' arrives';
     };
     const VP = _xkdgVoidOf(P.day), hc = _xkdgVoidHitX(VP, cand.hex, cand.branch);
-    if (hc) out.push('the voids of the Day pillar (' + VP.branches.join('') + ') fall on the cure (' + hc.txt + ')' + tail(hc, months && months.own, months && months.other, (srcName || 'the other') + '\'s'));
+    if (hc) out.push('the voids of the Day pillar (' + VP.branches.join('') + ') fall on the cure (' + hc.txt + ')' + tail(hc, months && months.own, months && months.other, (srcName || 'the other') + '\'s', P, 'your', cand));
     const VS = _xkdgVoidOf(src);
     if (VS) {
         const seen = {};
         Object.values(gaps.dims).forEach(d => d.isolated.forEach(x => {
             if (seen[x.pillar]) return; seen[x.pillar] = 1;
             const t = P[x.pillar], h = t ? _xkdgVoidHitX(VS, t.hex, t.branch) : null;
-            if (h) out.push('the voids of ' + (srcName || 'the source') + ' (' + VS.branches.join('') + ') fall on the isolated ' + L[x.pillar] + ' (' + h.txt + ')' + tail(h, months && months.src, P, 'your'));
+            if (h) out.push('the voids of ' + (srcName || 'the source') + ' (' + VS.branches.join('') + ') fall on the isolated ' + L[x.pillar] + ' (' + h.txt + ')' + tail(h, months && months.src, P, 'your', months && months.other, (srcName || 'the other') + '\'s', t));
         }));
     }
     if (!out.length) return null;
