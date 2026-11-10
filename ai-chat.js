@@ -186,6 +186,13 @@
       'missing or ambiguous, and ask only for the missing piece.\n' +
       '- For anything that finds dates/hours or runs a scan: CALL A TOOL. Never invent dates or scores yourself ' +
       '- only report what a tool returns.\n' +
+      '- CHARTS, CURES, COMPATIBILITY (Edu, session 48): the FACTS — isolated pillars, cures, helps, voids, remedy hexagrams and ' +
+      'dates — come ONLY from the tools (person_xkdg_gaps, mutual_cures); never work them out with your own arithmetic. On those ' +
+      'facts you are welcome to reason widely and with imagination (what it means in life, for the relationship, practical ideas), ' +
+      'on three conditions: (1) every deduction starts from a rule or value a tool returned, and you name it; (2) keep the two apart: ' +
+      'first what the chart shows, then your own reading, introduced as such; (3) never describe how the app or its "engine" works ' +
+      'and never explain a missing result with a rule you made up (e.g. "the system needs a Qi gap"): if you lack a result, call the ' +
+      'tool that gives it, or say you do not know.\n' +
       '- Scans use whichever person(s) are loaded (A, B, or both). The user may ask about ANYONE, also people not ' +
       'saved: call set_person (saved name, or birth date + time if known) to load them yourself, then run the tool. ' +
       'Ask only for the missing birth data. If no person is loaded and none is named, ask who the question is for.\n' +
@@ -5760,7 +5767,7 @@
           '"reaches" lists the isolated pillars each cure covers and those it leaves; several cures can work together. ' +
           'Then "helps_from_other": pillars that are NOT a complete cure but help (they fix the two settings of the Elements, link one isolated pillar, or have the SAME Period as an isolated pillar = communication) — present them as helps, never as complete cures. ' +
           'Voids: "void_timely" = the void is timely, the cure/help stays: either it is "already out of the void" (the other chart holds the same branch or the clashing one) or it wakes up when the named branch arrives; "*_invalid_by_void" = untimely void, not recoverable. ' +
-          'Do not count "channels", give stars or call the match perfect: report only these lists. ' +
+          'These lists are the facts. Your own reading may follow, introduced as such, each point resting on one of these facts; no invented counts of "channels" and no star ratings. ' +
           'Hour, Day, Month, Year order. Only what is in this result: do not add meanings of families or hexagrams. The PERSON tab (Both → 🤝 Cure from the other chart) shows the same with pictures.' };
     } catch (e) { return { error: 'Mutual cures failed: ' + ((e && e.message) || e) }; }
   }
