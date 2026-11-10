@@ -13,19 +13,25 @@
         .btn-arrow:active { background: #ccc; }
         .arrow-mobile { display: none; }
         .arrow-step { flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
-        .arrow-desktop.arrow-step { display: inline-flex; }
-        .arrow-step small { font-size: 9px; font-weight: 700; color: #888; line-height: 1; }
+        .arrow-desktop.arrow-step { display: inline-flex; min-width: 30px; min-height: 30px; }
+        .arrow-step svg { display: block; }
 
         @media (max-width: 600px) {
             .arrow-desktop { display: none; }
             .arrow-mobile { display: inline-flex; font-size: 20px; padding: 8px 12px; border-radius: 8px; }
             .arrow-desktop.arrow-step { display: none; }
-            .arrow-mobile.arrow-step { font-size: 14px; padding: 4px 0 !important; width: 25px; min-height: 40px; border-radius: 7px; flex: 0 0 auto; }
-            .geo-row-top { gap: 2px !important; }
-            .geo-row-top .geo-item { gap: 1px; }
+            .arrow-mobile.arrow-step { padding: 0 !important; flex: 1 1 0; min-width: 28px; max-width: 46px; min-height: 40px; border-radius: 8px; }
+            .geo-row-top { gap: 4px !important; }
+            .geo-row-top .geo-item { gap: 2px; }
             .geo-row-top .geo-item label { font-size: 10px; margin-right: 0; }
-            .geo-row-top .geo-utc { width: 30px !important; padding: 5px 2px !important; text-align: center; }
-            .geo-row-top .geo-long { width: 54px !important; padding: 5px 2px !important; text-align: center; }
+            .geo-row-top .geo-utc { width: 38px !important; padding: 5px 2px !important; text-align: center; }
+            .geo-row-top .geo-long { width: 66px !important; padding: 5px 2px !important; text-align: center; }
+        }
+        @media (max-width: 400px) {
+            .arrow-mobile.arrow-step { min-width: 26px; }
+            .geo-row-top { gap: 2px !important; }
+            .geo-row-top .geo-utc { width: 32px !important; }
+            .geo-row-top .geo-long { width: 56px !important; }
             .inputs-row {
                 display: grid;
                 grid-template-columns: auto auto 1fr 1fr;
