@@ -44,6 +44,7 @@ const CTL = { Wood: 'Earth', Earth: 'Water', Water: 'Fire', Fire: 'Metal', Metal
 const brTri = b => BR_TRI[BR.indexOf(b)];
 function timeK(tri, mb) { const se = EL_BR[mb], e = TRI_EL[tri];
   return e === se ? 2 : GEN[se] === e ? 1 : GEN[e] === se ? 0 : CTL[e] === se ? -1 : -2; }
+const CLASH_TRI = { Kan: 'Li', Li: 'Kan', Gen: 'Kun', Kun: 'Gen', Zhen: 'Dui', Dui: 'Zhen', Xun: 'Qian', Qian: 'Xun' };
 const TRI_OF = {};
 for (const u of Object.keys(TRI_EL)) for (const l of Object.keys(TRI_EL)) { const h = H.hexFrom(u, l); TRI_OF[h.n] = [h.upper, h.lower]; }
 
@@ -81,7 +82,7 @@ function profilo(Pn, male) {
     if (V === 'earthpos' && k === 'earth' && yy < 0) yy = 0.5;
     const m = V === 'piatto' ? 1 : V === 'soloyy' ? yy : V === 'solotm' ? TM[tk] : yy * TM[tk];
     const vu = process.env.LK_VUOTI !== 'no' && triVuoto(t, Pn.day, R.input && R.input.p ? BR[R.input.p.branches[0]] : Pn.year[1], Pn.month[1]);
-    K[k] = { t, op, inNat: nat.includes(t), opNat: nat.includes(op), tk, yy, yt, m: vu ? 0 : m, vuoto: vu };
+    K[k] = { t, op, inNat: nat.includes(t), opNat: nat.includes(op), tk, yy, yt, m: vu ? 0 : m, mPieno: m, vuoto: vu };
   }
   return { K, rY, rE, heaven: N.heaven, earth: N.earth, avg: N.monthAvg };
 }
@@ -89,7 +90,18 @@ function profilo(Pn, male) {
 // punteggio Luck di un giorno. p = predict(...), T = { y, m, d } rami del tempo
 function giorno(P, p, T) {
   let tot = 0; const w = [];
-  const add = (k, v, src) => { if (!v) return; const x = v * P.K[k].m; tot += x; w.push(`${src} ${v > 0 ? '+' : '−'}${k[0].toUpperCase()}`); };
+  // Luck vuota che esce dal vuoto (Edu, 10/11): arriva il trigramma di scontro (rami Time 1 opposti: Kan↔Li, Gen↔Kun,
+  // Zhen↔Dui, Xun↔Qian) con il ramo di anno, mese o giorno, o nei trigrammi di annuale, mensile, blocco, esagramma del giorno.
+  // LK_RIEMPI=rami: solo i rami del tempo; LK_RIEMPI=no: la Luck vuota resta vuota.
+  const RI = process.env.LK_RIEMPI || 'tutto', mUsa = {}, uscita = {};
+  for (const k of ['heaven', 'earth', 'fame']) {
+    const L = P.K[k]; mUsa[k] = L.m;
+    if (!L.vuoto || RI === 'no') continue;
+    const sc = CLASH_TRI[L.t], daRami = [T.y, T.m, T.d].some(b => brTri(b) === sc);
+    const daEsa = RI === 'tutto' && [p.id.year[0], p.id.month[0], p.id.lord[0], p.id.dayHex[0]].some(n => TRI_OF[n].includes(sc));
+    if (daRami || daEsa) { mUsa[k] = L.mPieno; uscita[k] = sc; w.push(`${k[0].toUpperCase()} esce dal vuoto (${sc})`); }
+  }
+  const add = (k, v, src) => { if (!v) return; const x = v * mUsa[k]; tot += x; if (mUsa[k]) w.push(`${src} ${v > 0 ? '+' : '−'}${k[0].toUpperCase()}`); };
   for (const k of ['heaven', 'earth', 'fame']) {
     const L = P.K[k];
     // A. Luck del nativo attivata dai rami del tempo
