@@ -181,7 +181,7 @@
       hex: a.hex, moved: a.moved, changed: a.changed,
       months: [0,1,2,3,4,5,6,7,8,9,10,11].map(function (b) { var mo = monthlyHex(a.hex.lines, a.moved, b); return { br: b, index: mo.index, hex: mo.hex, changed: mo.changed }; }) };
   }
-  // Month starts inside Heluo year Y (Beijing-naive Dates): Zi from the Winter Solstice of Y-1,
+  // Month starts inside Heluo year Y (Beijing-naive Dates = instants; the UI converts them to true solar time): Zi from the Winter Solstice of Y-1,
   // Chou 小寒 … Hai 立冬, Zi again from 大雪 to the Winter Solstice of Y.
   function monthStarts(Y) {
     var t = root.Lunar.fromYmd(Y, 1, 1).getJieQiTable();
@@ -494,7 +494,7 @@
     return h + '</table>';
   }
   // Annual + monthly section (phase 2). _hlY = Heluo year shown (null = the current one).
-  var _hlY = null;
+  var _hlY = null, _hlLon = NaN; // _hlLon: longitude of the person shown (fallback when there is no GPS)
   root.xkdgHLYear = function (d) { _hlY = d === 0 ? null : (_hlY || heluoYearOf()) + d; render(); };
   function fmtD(dt) { return dt.getUTCDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getUTCMonth()]; }
   function annualSection(R) {
@@ -512,8 +512,14 @@
           (oppInvTag(R, a.hex).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex).join(', ') + '</div>' : '')
           + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
           + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)') + linesTable(a.hex, a.moved, null, me), 'Moved this year:') + '</div>';
-    var ms; try { ms = monthStarts(Y); } catch (e) { ms = null; }
-    var now = new Date(Date.now() + 8 * 3600000), TD = 'padding:3px 6px;';
+    // Edu: ALWAYS true solar time. Month starts and the days of the month are counted in the TRUE SOLAR TIME of the
+    // current place (GPS longitude; the person's birth place if no GPS), never in Beijing dates.
+    var ST_ = root.XKDGSolarTime, lonT = NaN; try { lonT = ST_.currentLonTz().lonDeg; } catch (e) {}
+    if (!isFinite(lonT)) lonT = _hlLon;
+    function tstOf(utcMs) { var t = ST_.convert(utcMs, lonT).tst; return new Date(Date.UTC(t.y, t.mo - 1, t.d, t.h, t.mi, t.s)); }
+    function bj2tst(dt) { return dt ? tstOf(dt.getTime() - 8 * 3600000) : dt; }
+    var ms; try { ms = monthStarts(Y).map(function (m) { return { br: m.br, start: bj2tst(m.start), end: bj2tst(m.end) }; }); } catch (e) { ms = null; }
+    var now = tstOf(Date.now()), TD = 'padding:3px 6px;';
     var tb = '<table style="border-collapse:collapse;font-size:12px;width:100%;margin-top:8px;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Month</th><th style="' + TD + '">From</th><th style="' + TD + '"></th><th style="' + TD + '">Hexagram</th></tr>';
     var today = '';
     for (var i = 0; i < 13; i++) {
@@ -525,7 +531,7 @@
         // line of the monthly hexagram (days 1-5 line 1 … 26-30 line 6, day 31 line 1 again); that line changes on
         // the monthly -> block hexagram; each day changes one of the other lines on it (dailyHex).
         // The Zi row from the Winter Solstice counts its days from Daxue of the previous year.
-        var mStart = from; if (i === 0) { try { mStart = monthStarts(Y - 1)[12].start; } catch (e) {} }
+        var mStart = from; if (i === 0) { try { mStart = bj2tst(monthStarts(Y - 1)[12].start); } catch (e) {} }
         var d0 = Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth(), mStart.getUTCDate()), D = 86400000;
         var endDay = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()); // the Jie day belongs to the new month
         var nowDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -557,7 +563,7 @@
         + (blocks ? '<div style="font-size:11px;color:#777;margin:2px 0;">Daily hexagrams: 5-day blocks (Lord of the Block → block hexagram), one line per day changes on it</div><table style="border-collapse:collapse;font-size:12px;">' + blocks + '</table>' : '')
         + hexText(mo.hex.n) + linesTable(mo.hex, 0, null, me) + '</td></tr>';
     }
-    return h + today + tb + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie (Beijing dates). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
+    return h + today + tb + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie; dates and days of the month in true solar time (longitude ' + (Math.round(lonT * 100) / 100) + '°). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
   }
   // ── Natal reading (session 47): Edu's slides "Heluo Lishu", from the general to the particular ──
   var EL_BR = ['Water','Earth','Wood','Wood','Earth','Fire','Fire','Earth','Metal','Metal','Earth','Water'];
@@ -701,6 +707,7 @@
     if (g !== 'M' && g !== 'F') { out.innerHTML = '<div style="font-size:12px;color:#b26a00;">Choose the gender: it decides the trigram on top and the moving line.</div>'; return; }
     var R; try { R = compute(c, g === 'M'); } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; return; }
     if (!R) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">No birth longitude: set the GPS or the person\'s birth place.</div>'; return; }
+    _hlLon = c.lon;
     var I = R.input, p = I.p, N = R.numbers, y0 = I.o.year, nowAge = heluoYearOf() - y0 + 1;
     var lineNow = function (cy, mv) { var l = mv; (cy || []).forEach(function (c) { if (nowAge >= c.from && nowAge <= c.to) l = c.line; }); return l; };
     var col = function (lbl, i) {

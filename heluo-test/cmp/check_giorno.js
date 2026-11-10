@@ -2,6 +2,7 @@
 // Per ogni evento: ciclo, annuale, mensile; linea del giorno vecchia (sul mensile) e nuova
 // (Signore del Blocco → esagramma del blocco → linea del giorno → esagramma del giorno),
 // con ramo Na Jia, relazione sulla persona e giudizio sul tempo (anno, mese, giorno).
+// Giorno del mese contato SEMPRE in ora solare vera del luogo dell'evento (Edu), mai con le date di Pechino.
 // Uso: node check_giorno.js
 'use strict';
 const path = require('path');
@@ -75,19 +76,3 @@ if (require.main === module) for (const e of EVENTI) {
   console.log(riga('esag. giorno', p.id.dayHex[0], p.id.dayHex[1], pers, T, nv));
 }
 
-// Variante: giorno del mese contato con le date di Pechino (come l'app) invece della data solare vera del luogo.
-if (require.main === module && process.argv.includes('pechino')) {
-  const Lunar = require('lunar-javascript');
-  console.log('\n# Variante con le date di Pechino');
-  for (const e of EVENTI) {
-    const [d0, t0, lon0, tz0, male] = e.nasc, N = natal('A', pillars(d0, t0, lon0, tz0), male);
-    const Pe = pillars(e.d, e.ora, e.luogo[0], e.luogo[1]), p = predict(N, Pe, e.luogo[0]), b = Pe.meta.beijing;
-    const jie = Lunar.Solar.fromYmdHms(b.y, b.mo, b.d, b.h, b.mi, b.s || 0).getLunar().getPrevJie(false).getSolar();
-    const day = Math.round((Date.UTC(b.y, b.mo - 1, b.d) - Date.UTC(jie.getYear(), jie.getMonth() - 1, jie.getDay())) / 864e5) + 1;
-    const dh = H.dailyHex(flipFree(p.id.month[0]), day), dT = +p.day.match(/\(d(\d+)\)/)[1];
-    console.log(`${e.chi} ${e.d}: giorno ${day} (TST ${dT}) → blocco ${dh.block.n} (L${dh.lord}), linea ${dh.line} → ${dh.hex.n}   [TST: ${p.day}]`);
-  }
-}
-function flipFree(n) { // righe dell'esagramma n (KW) dal modulo
-  for (const u of ['Qian','Dui','Li','Zhen','Xun','Kan','Gen','Kun']) for (const l of ['Qian','Dui','Li','Zhen','Xun','Kan','Gen','Kun']) { const h = H.hexFrom(u, l); if (h.n === n) return h.lines; }
-}
