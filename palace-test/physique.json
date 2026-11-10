@@ -1,0 +1,559 @@
+{
+ "people": [
+  {
+   "name": "Arnold Schwarzenegger",
+   "sex": "M",
+   "birth": {
+    "date": "1947-07-30",
+    "time": "04:10",
+    "place": "Graz, Austria",
+    "lat": 47.0667,
+    "lon": 15.4333,
+    "tz": 2,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Arnold_Schwarzenegger"
+   },
+   "list": "Bodybuilders: Mr. Olympia / Mr. Universe / Mr. America winners"
+  },
+  {
+   "name": "Lou Ferrigno",
+   "sex": "M",
+   "birth": {
+    "date": "1951-11-09",
+    "time": "01:30",
+    "place": "Brooklyn, New York, USA",
+    "lat": 40.65,
+    "lon": -73.95,
+    "tz": -5,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Lou_Ferrigno"
+   },
+   "list": "Bodybuilders: Mr. Olympia / Mr. Universe / Mr. America winners"
+  },
+  {
+   "name": "Steve Reeves",
+   "sex": "M",
+   "birth": {
+    "date": "1926-01-21",
+    "time": "08:00",
+    "place": "Glasgow, Montana, USA",
+    "lat": 48.1969,
+    "lon": -106.6367,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Steve_Reeves"
+   },
+   "list": "Bodybuilders: Mr. Olympia / Mr. Universe / Mr. America winners"
+  },
+  {
+   "name": "Charles Atlas",
+   "sex": "M",
+   "birth": {
+    "date": "1892-10-30",
+    "time": "03:00",
+    "place": "Acri, Italy",
+    "lat": 39.4914,
+    "lon": 16.3828,
+    "tz": 0.8322,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Charles_Atlas"
+   },
+   "list": "Bodybuilders: Mr. Olympia / Mr. Universe / Mr. America winners"
+  },
+  {
+   "name": "Frank Zane",
+   "sex": "M",
+   "birth": {
+    "date": "1942-06-28",
+    "time": "20:00",
+    "place": "Kingston, Luzerne County, Pennsylvania, USA",
+    "lat": 41.2617,
+    "lon": -75.8969,
+    "tz": -4,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Frank_Zane"
+   },
+   "list": "Bodybuilders: Mr. Olympia / Mr. Universe / Mr. America winners"
+  },
+  {
+   "name": "Phil Heath",
+   "sex": "M",
+   "birth": {
+    "date": "1979-12-18",
+    "time": "10:28",
+    "place": "Seattle, Washington, USA",
+    "lat": 47.6062,
+    "lon": -122.3321,
+    "tz": -8,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Phil_Heath"
+   },
+   "list": "Bodybuilders: Mr. Olympia / Mr. Universe / Mr. America winners"
+  },
+  {
+   "name": "Apollon (Louis Uni)",
+   "sex": "M",
+   "birth": {
+    "date": "1862-02-21",
+    "time": "08:00",
+    "place": "Marsillargues, France",
+    "lat": 43.6644,
+    "lon": 4.1786,
+    "tz": 0.2786,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Apollon_(strongman)"
+   },
+   "list": "Historic strongmen"
+  },
+  {
+   "name": "Sylvester Stallone",
+   "sex": "M",
+   "birth": {
+    "date": "1946-07-06",
+    "time": "19:20",
+    "place": "New York, New York, USA",
+    "lat": 40.7128,
+    "lon": -74.006,
+    "tz": -4,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Sylvester_Stallone"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Jean-Claude Van Damme",
+   "sex": "M",
+   "birth": {
+    "date": "1960-10-18",
+    "time": "06:45",
+    "place": "Berchem-Sainte-Agathe, Belgium",
+    "lat": 50.8647,
+    "lon": 4.2936,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jean-Claude_Van_Damme"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Bruce Lee",
+   "sex": "M",
+   "birth": {
+    "date": "1940-11-27",
+    "time": "07:12",
+    "place": "San Francisco, California, USA",
+    "lat": 37.7749,
+    "lon": -122.4194,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Bruce_Lee"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Dwayne Johnson",
+   "sex": "M",
+   "birth": {
+    "date": "1972-05-02",
+    "time": "18:02",
+    "place": "San Leandro, California, USA",
+    "lat": 37.7249,
+    "lon": -122.1561,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Dwayne_Johnson"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Vin Diesel",
+   "sex": "M",
+   "birth": {
+    "date": "1967-07-18",
+    "time": "15:35",
+    "place": "Alameda, Alameda County, California, USA",
+    "lat": 37.7652,
+    "lon": -122.2416,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Vin_Diesel"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Steven Seagal",
+   "sex": "M",
+   "birth": {
+    "date": "1952-04-10",
+    "time": "13:54",
+    "place": "Lansing, Michigan, USA",
+    "lat": 42.7325,
+    "lon": -84.5555,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Steven_Seagal"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Mark Wahlberg",
+   "sex": "M",
+   "birth": {
+    "date": "1971-06-05",
+    "time": "07:15",
+    "place": "Boston, Massachusetts, USA",
+    "lat": 42.3601,
+    "lon": -71.0589,
+    "tz": -4,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Mark_Wahlberg"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Brigitte Nielsen",
+   "sex": "F",
+   "birth": {
+    "date": "1963-07-15",
+    "time": "06:20",
+    "place": "Copenhagen, Denmark",
+    "lat": 55.6761,
+    "lon": 12.5683,
+    "tz": 1,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Brigitte_Nielsen"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Victor Mature",
+   "sex": "M",
+   "birth": {
+    "date": "1913-01-29",
+    "time": "18:00",
+    "place": "Louisville, Kentucky, USA",
+    "lat": 38.2527,
+    "lon": -85.7585,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Victor_Mature"
+   },
+   "list": "Action stars known for their physique"
+  },
+  {
+   "name": "Johnny Weissmuller",
+   "sex": "M",
+   "birth": {
+    "date": "1904-06-02",
+    "time": "18:00",
+    "place": "Timisoara (Freidorf), Romania (then Hungary)",
+    "lat": 45.7489,
+    "lon": 21.2087,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Johnny_Weissmuller"
+   },
+   "list": "Tarzan / Hercules screen actors (roles cast on physique)"
+  },
+  {
+   "name": "Buster Crabbe",
+   "sex": "M",
+   "birth": {
+    "date": "1908-02-07",
+    "time": "01:10",
+    "place": "Oakland, California, USA",
+    "lat": 37.8044,
+    "lon": -122.2712,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Buster_Crabbe"
+   },
+   "list": "Tarzan / Hercules screen actors (roles cast on physique)"
+  },
+  {
+   "name": "Ron Ely",
+   "sex": "M",
+   "birth": {
+    "date": "1938-06-21",
+    "time": "08:10",
+    "place": "Hereford, Texas, USA",
+    "lat": 34.8151,
+    "lon": -102.3977,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Ron_Ely"
+   },
+   "list": "Tarzan / Hercules screen actors (roles cast on physique)"
+  },
+  {
+   "name": "Christopher Lambert",
+   "sex": "M",
+   "birth": {
+    "date": "1957-03-29",
+    "time": "11:43",
+    "place": "Manhasset, New York, USA",
+    "lat": 40.7979,
+    "lon": -73.6996,
+    "tz": -5,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Christophe_Lambert"
+   },
+   "list": "Tarzan / Hercules screen actors (roles cast on physique)"
+  },
+  {
+   "name": "Kevin Sorbo",
+   "sex": "M",
+   "birth": {
+    "date": "1958-09-24",
+    "time": "07:48",
+    "place": "Minneapolis, Minnesota, USA",
+    "lat": 44.9778,
+    "lon": -93.265,
+    "tz": -5,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Kevin_Sorbo"
+   },
+   "list": "Tarzan / Hercules screen actors (roles cast on physique)"
+  },
+  {
+   "name": "Jesse Ventura",
+   "sex": "M",
+   "birth": {
+    "date": "1951-07-15",
+    "time": "03:00",
+    "place": "Minneapolis, Minnesota, USA",
+    "lat": 44.9778,
+    "lon": -93.265,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jesse_Ventura"
+   },
+   "list": "Pro wrestlers / bodybuilder-wrestlers famed for physique"
+  },
+  {
+   "name": "John Cena",
+   "sex": "M",
+   "birth": {
+    "date": "1977-04-23",
+    "time": "08:57",
+    "place": "West Newbury, Massachusetts, USA",
+    "lat": 42.8015,
+    "lon": -70.9898,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/John_Cena"
+   },
+   "list": "Pro wrestlers / bodybuilder-wrestlers famed for physique"
+  },
+  {
+   "name": "Andre the Giant",
+   "sex": "M",
+   "birth": {
+    "date": "1946-05-19",
+    "time": "15:10",
+    "place": "Coulommiers, France",
+    "lat": 48.8156,
+    "lon": 3.0844,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Andr%C3%A9_the_Giant"
+   },
+   "list": "Pro wrestlers / bodybuilder-wrestlers famed for physique"
+  },
+  {
+   "name": "Chyna",
+   "sex": "F",
+   "birth": {
+    "date": "1969-12-27",
+    "time": "16:15",
+    "place": "Rochester, New York, USA",
+    "lat": 43.1566,
+    "lon": -77.6088,
+    "tz": -5,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Chyna"
+   },
+   "list": "Pro wrestlers / bodybuilder-wrestlers famed for physique"
+  },
+  {
+   "name": "Muhammad Ali",
+   "sex": "M",
+   "birth": {
+    "date": "1942-01-17",
+    "time": "18:35",
+    "place": "Louisville, Kentucky, USA",
+    "lat": 38.2527,
+    "lon": -85.7585,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Muhammad_Ali"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Cristiano Ronaldo",
+   "sex": "M",
+   "birth": {
+    "date": "1985-02-05",
+    "time": "05:25",
+    "place": "Funchal, Madeira, Portugal",
+    "lat": 32.6669,
+    "lon": -16.9241,
+    "tz": 0,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Cristiano_Ronaldo"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Serena Williams",
+   "sex": "F",
+   "birth": {
+    "date": "1981-09-26",
+    "time": "20:28",
+    "place": "Saginaw, Michigan, USA",
+    "lat": 43.4195,
+    "lon": -83.9508,
+    "tz": -4,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Serena_Williams"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "LeBron James",
+   "sex": "M",
+   "birth": {
+    "date": "1984-12-30",
+    "time": "16:04",
+    "place": "Akron, Ohio, USA",
+    "lat": 41.0814,
+    "lon": -81.519,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/LeBron_James"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "George Foreman",
+   "sex": "M",
+   "birth": {
+    "date": "1949-01-10",
+    "time": "21:15",
+    "place": "Marshall, Texas, USA",
+    "lat": 32.5449,
+    "lon": -94.3674,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/George_Foreman"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Primo Carnera",
+   "sex": "M",
+   "birth": {
+    "date": "1906-10-26",
+    "time": "14:00",
+    "place": "Sequals, Italy",
+    "lat": 46.1653,
+    "lon": 12.83,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Primo_Carnera"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Shaquille O'Neal",
+   "sex": "M",
+   "birth": {
+    "date": "1972-03-06",
+    "time": "08:00",
+    "place": "Newark, New Jersey, USA",
+    "lat": 40.7357,
+    "lon": -74.1724,
+    "tz": -5,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Shaquille_O'Neal"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Florence Griffith Joyner",
+   "sex": "F",
+   "birth": {
+    "date": "1959-12-21",
+    "time": "00:11",
+    "place": "Los Angeles, California, USA",
+    "lat": 34.0522,
+    "lon": -118.2437,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Florence_Griffith_Joyner"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Carl Lewis",
+   "sex": "M",
+   "birth": {
+    "date": "1961-07-01",
+    "time": "07:49",
+    "place": "Birmingham, Alabama, USA",
+    "lat": 33.5186,
+    "lon": -86.8104,
+    "tz": -6,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Carl_Lewis"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Jim Thorpe",
+   "sex": "M",
+   "birth": {
+    "date": "1887-05-22",
+    "time": "06:30",
+    "place": "Prague, Oklahoma, USA",
+    "lat": 35.4868,
+    "lon": -96.685,
+    "tz": -6,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Jim_Thorpe"
+   },
+   "list": "Athletes repeatedly cited as physical specimens"
+  },
+  {
+   "name": "Gabrielle Reece",
+   "sex": "F",
+   "birth": {
+    "date": "1970-01-06",
+    "time": "13:59",
+    "place": "La Jolla, California, USA",
+    "lat": 32.8328,
+    "lon": -117.2713,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Gabrielle_Reece"
+   },
+   "list": "Models / fitness icons famed for physique"
+  },
+  {
+   "name": "Fabio Lanzoni",
+   "sex": "M",
+   "birth": {
+    "date": "1959-03-15",
+    "time": "23:00",
+    "place": "Milan, Italy",
+    "lat": 45.4642,
+    "lon": 9.19,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Fabio_Lanzoni"
+   },
+   "list": "Models / fitness icons famed for physique"
+  }
+ ]
+}
