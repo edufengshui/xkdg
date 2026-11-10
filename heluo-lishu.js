@@ -260,7 +260,7 @@
     };
     var o = { male: !!male, year: year, yangDun: season <= 1, season: season };
     var r = natal(p, o);
-    r.input = { p: p, o: o, solarYearPillar: P.year, heluoYearPillar: STEMS[ys] + BRANCHES[yb], tst: P.meta.tst };
+    r.input = { p: p, o: o, solarYearPillar: P.year, heluoYearPillar: STEMS[ys] + BRANCHES[yb], tst: P.meta.tst, Pn: P };
     return r;
   }
   // Heluo year (= its Gregorian year number) of a given moment (now by default)
@@ -323,13 +323,17 @@
       ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(20,8,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;';
       ov.addEventListener('click', function (e) { if (e.target === ov) ov.style.display = 'none'; });
       var F = 'padding:6px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;', L = 'font-size:11px;color:#666;display:block;margin-bottom:2px;';
+      var TB = 'padding:6px 12px;border:none;border-radius:6px 6px 0 0;font-size:13px;cursor:pointer;background:#f3eefc;color:#4527a0;';
       ov.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:720px;width:100%;padding:16px;box-shadow:0 12px 44px rgba(0,0,0,.32);">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div style="font-size:16px;font-weight:bold;color:#5e35b1;">☯ He Luo Li Shu 河洛理數</div>'
         + '<button onclick="document.getElementById(\'hl-overlay\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;">✕</button></div>'
         + '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;">'
         + '<div><label style="' + L + '">Person</label><select id="hl-p" onchange="xkdgHLPerson()" style="' + F + 'max-width:170px;"></select></div>'
         + '<div><label style="' + L + '">Gender</label><select id="hl-g" onchange="xkdgHLGender()" style="' + F + '"><option value="">—</option><option value="M">Man</option><option value="F">Woman</option></select></div>'
-        + '</div><div id="hl-out"></div>'
+        + '</div><div style="display:flex;gap:4px;border-bottom:2px solid #d1c4e9;margin:4px 0 8px;">'
+        + '<button id="hl-tab-chart" onclick="xkdgHLTab(\'chart\')" style="' + TB + '">Chart &amp; reading</button>'
+        + '<button id="hl-tab-ds" onclick="xkdgHLTab(\'ds\')" style="' + TB + '">Date Selection</button></div>'
+        + '<div id="hl-out"></div><div id="hl-ds" style="display:none;"></div>'
         + '<div style="font-size:10px;color:#999;margin-top:10px;line-height:1.5;">Year pillar from the Winter Solstice; month, day and hour in true solar time at the birth place. Texts: He Luo Li Shu translations by Edu (64 hexagrams and 384 lines).</div></div>';
       document.body.appendChild(ov);
     }
@@ -339,7 +343,8 @@
       + list.map(function (x) { return '<option value="' + esc(x.name) + '">' + esc(x.name) + '</option>'; }).join('');
     if (cur) { sel.value = cur; if (sel.selectedIndex < 0) sel.selectedIndex = 0; }
     ov.style.display = 'flex';
-    loadTexts(); loadNajia();
+    loadTexts(); loadNajia(); loadDS();
+    tabStyle();
     xkdgHLPerson();
   }
   function current() {
@@ -375,8 +380,8 @@
   function relL(me, el) { // B C W G P of element `el` for the person `me`
     return me === el ? 'B' : GEN_[me] === el ? 'C' : CTL_[me] === el ? 'W' : GEN_[el] === me ? 'P' : 'G';
   }
-  function cycleHexSvg(hx, ln, cy) {
-    var d = NJ() && NJ()[hx.n], me = personEl(hx, ln), lines = hx.lines;
+  function cycleHexSvg(hx, ln, cy, meOv) { // meOv: person of the period (annual, monthly, block, day hexagrams)
+    var d = NJ() && NJ()[hx.n], me = meOv || personEl(hx, ln), lines = hx.lines;
     var W = 280, bx = 92, bw = 96, lh = 9, gap = 9, top = 8, H = top + 6 * lh + 5 * gap + (d ? 30 : 8);
     var F = ' font-family="system-ui"', s = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin:6px auto;max-width:100%;">';
     var span = {}; (cy || []).forEach(function (c) { span[c.line] = c.from + '–' + c.to; });
@@ -422,6 +427,26 @@
     sc.onload = function () { try { if ($('hl-overlay') && $('hl-overlay').style.display !== 'none') render(); } catch (e) {} };
     sc.onerror = function () { _njLoading = false; };
     document.head.appendChild(sc);
+  }
+  // Date Selection + cycle reading (heluo-ds.js with its text scores heluo-scores.js, 10/11/2026)
+  var _dsLoading = false, _tab = 'chart', _chart = null;
+  function loadDS() {
+    if ((root.XKDGHeluoDS && root.XKDG_HELUO_SCORES) || _dsLoading) return; _dsLoading = true;
+    var n = 0, done = function () { if (++n < 2) return; try { if ($('hl-overlay') && $('hl-overlay').style.display !== 'none') render(); } catch (e) {} };
+    ['heluo-scores.js', 'heluo-ds.js'].forEach(function (f) {
+      var sc = document.createElement('script'); sc.src = f; sc.onload = done; sc.onerror = function () { _dsLoading = false; }; document.head.appendChild(sc);
+    });
+  }
+  function tabStyle() {
+    ['chart', 'ds'].forEach(function (t) { var b = $('hl-tab-' + t); if (b) { b.style.background = t === _tab ? '#5e35b1' : '#f3eefc'; b.style.color = t === _tab ? '#fff' : '#4527a0'; } });
+    if ($('hl-out')) $('hl-out').style.display = _tab === 'chart' ? '' : 'none';
+    if ($('hl-ds')) $('hl-ds').style.display = _tab === 'ds' ? '' : 'none';
+  }
+  root.xkdgHLTab = function (t) { _tab = t; tabStyle(); render(); };
+  function renderDS() {
+    var box = $('hl-ds'); if (!box || _tab !== 'ds') return;
+    if (!root.XKDGHeluoDS || !root.XKDG_HELUO_SCORES || !NJ()) { box.innerHTML = '<div style="font-size:12px;color:#999;">Loading…</div>'; return; }
+    root.XKDGHeluoDS.render(box, _chart);
   }
   var REL = { B: 'Brothers', C: 'Offspring', W: 'Wealth', G: 'Officer / Ghost', P: 'Parents' };
   var REL_CN = { B: '兄弟', C: '子孫', W: '妻財', G: '官鬼', P: '父母' };
@@ -701,13 +726,15 @@
   }
   function render() {
     var out = $('hl-out'), c = current();
-    if (!c) { out.innerHTML = '<div style="font-size:12px;color:#888;">Load a person with birth date and hour (Person A or a saved person).</div>'; return; }
-    if (!c.date || !c.time) { out.innerHTML = '<div style="font-size:12px;color:#c0392b;">This person needs the birth date and the birth hour.</div>'; return; }
+    _chart = null;
+    if (!c) { out.innerHTML = '<div style="font-size:12px;color:#888;">Load a person with birth date and hour (Person A or a saved person).</div>'; renderDS(); return; }
+    if (!c.date || !c.time) { out.innerHTML = '<div style="font-size:12px;color:#c0392b;">This person needs the birth date and the birth hour.</div>'; renderDS(); return; }
     var g = $('hl-g').value;
-    if (g !== 'M' && g !== 'F') { out.innerHTML = '<div style="font-size:12px;color:#b26a00;">Choose the gender: it decides the trigram on top and the moving line.</div>'; return; }
+    if (g !== 'M' && g !== 'F') { out.innerHTML = '<div style="font-size:12px;color:#b26a00;">Choose the gender: it decides the trigram on top and the moving line.</div>'; renderDS(); return; }
     var R; try { R = compute(c, g === 'M'); } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; return; }
-    if (!R) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">No birth longitude: set the GPS or the person\'s birth place.</div>'; return; }
-    _hlLon = c.lon;
+    if (!R) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">No birth longitude: set the GPS or the person\'s birth place.</div>'; renderDS(); return; }
+    _hlLon = c.lon; _chart = { c: c, R: R, male: g === 'M', Pn: R.input.Pn };
+    if (_tab === 'ds') { renderDS(); return; }
     var I = R.input, p = I.p, N = R.numbers, y0 = I.o.year, nowAge = heluoYearOf() - y0 + 1;
     var lineNow = function (cy, mv) { var l = mv; (cy || []).forEach(function (c) { if (nowAge >= c.from && nowAge <= c.to) l = c.line; }); return l; };
     var col = function (lbl, i) {
@@ -734,6 +761,7 @@
       + small('Opposite XT', R.oppositeXT) + small('Inverse XT', R.inverseXT)
       + (R.oppositeHT ? small('Opposite HT', R.oppositeHT) + small('Inverse HT', R.inverseHT) : '') + '</div>'
       + natalReading(R, g === 'M')
+      + (root.XKDGHeluoDS && NJ() ? root.XKDGHeluoDS.readingHtml(R, g === 'M') : '')
       + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
@@ -752,6 +780,8 @@
     TRI: TRI, TRI_CN: TRI_CN, TRI_EL: TRI_EL, STEMS: STEMS, BRANCHES: BRANCHES, STEM_PY: STEM_PY, BR_PY: BR_PY,
     heavenTrigram: heavenTrigram, earthTrigram: earthTrigram, lineBranches: lineBranches, houTian: houTian,
     properPosition: properPosition, properSupport: properSupport, huGua: huGua, cycles: cycles,
-    annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, dailyHex: dailyHex, monthStarts: monthStarts, open: open };
+    annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, dailyHex: dailyHex, monthStarts: monthStarts, open: open,
+    currentChart: function () { return _chart; },
+    ui: { cycleHexSvg: cycleHexSvg, lineBody: lineBody, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
 })(typeof window !== 'undefined' ? window : globalThis);
