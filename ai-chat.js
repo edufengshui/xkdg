@@ -749,7 +749,8 @@
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
   // so from session 26 it travels with EVERY area, not only with 'dates'.
   var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars',
-                     'photo_sectors','photo_sectors_state','add_calendar_reminder','set_person'];
+                     'photo_sectors','photo_sectors_state','add_calendar_reminder','set_person',
+                     'person_xkdg_gaps','mutual_cures'];   // session 48: without an area the AI invented its own cure rules
 
   var AREA_LABELS = { travel: '\uD83E\uDDED Travel & directions',
                       fengshui: '\uD83C\uDFE0 Feng Shui', dates: '\uD83D\uDCC5 Dates & divination',
@@ -910,7 +911,9 @@
         'person\'s birth chart are a REMEDY (cure) for the OTHER person\'s missing communication — same rule as person_xkdg_gaps ' +
         '(main = links the isolated pillar and keeps the setting; family = hexagram of the shared family). Returns both directions ' +
         '(B for A, A for B) with the isolated pillars and the links. Use it for "what does this person do for me / I do for them", ' +
-        'reciprocal cures, compatibility of two charts. Do NOT call person_xkdg_gaps twice for this.',
+        'reciprocal cures, compatibility of two charts. Do NOT call person_xkdg_gaps twice for this. ' +
+        'NEVER work out cures or compatibility between two charts with your own arithmetic on Elements/Periods: always call this tool. ' +
+        'It also returns the partial HELPS and whether a void is timely (recoverable) or untimely (invalid).',
       input_schema: { type: 'object', properties: {} }
     },
     {
@@ -5726,8 +5729,8 @@
           var q = O[k]; if (!q || q.qi == null) return null;
           var c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
           var kind = _xkdgRemedyKind(g, P, c, _xkdgIsolatedFamilies(g, P)); if (!kind) return null;
-          var vw = xkdgCureVoid(g, P, c, O.day, oname);
-          if (vw) { res.cures_invalid_by_void.push({ from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, why: vw }); return null; }
+          var vw = xkdgCureVoid(g, P, c, O.day, oname, { own: P.month && P.month.branch, src: O.month && O.month.branch });
+          if (vw && !vw.timely) { res.cures_invalid_by_void.push({ from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, why: vw.slice() }); return null; }
           var links = [];
           ['qi', 'yun'].forEach(function (f) {
             var D = g.dims[f], nm = f === 'qi' ? 'Element' : 'Period';
@@ -5738,14 +5741,26 @@
           });
           return { from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, qi: q.qi, yun: q.yun, kind: kind,
                    links: links.length ? links : undefined,
+                   void_timely: vw ? vw.slice() : undefined,
                    reaches: _xkdgCureCovers(g, P, { kind: kind, stem: c.stem, branch: c.branch, hex: c.hex }),
                    harmonises: (g.settings && ['qi', 'yun'].some(function (f) { return _xkdgHarmVals(g.settings[f]).has(c[f]); })) || undefined };
         }).filter(Boolean);
+        // Session 48 (Edu): pillars that are not a complete cure but help (Element setting, one link, same Period).
+        var strip = function (t) { return String(t).replace(/<[^>]*>/g, ''); };
+        res.helps_from_other = []; res.helps_invalid_by_void = [];
+        xkdgMutualHelps(g, P, O, oname).forEach(function (m) {
+          var e = { from: oname + ' ' + m.pillar, ganzhi: (m.stem || '') + (m.branch || ''), hex: m.hex, qi: m.qi, yun: m.yun, helps: m.notes.map(function (n) { return strip(n.txt); }) };
+          if (m.voidW && !m.voidW.timely) { e.why = m.voidW.slice(); res.helps_invalid_by_void.push(e); }
+          else { if (m.voidW) e.void_timely = m.voidW.slice(); res.helps_from_other.push(e); }
+        });
         return res;
       }
       return { for_A: side(PA, nA, PB, nB), for_B: side(PB, nB, PA, nA),
         instructions: 'For each person: the isolated pillar(s), then which pillar of the OTHER person is a cure (main first, then ★ family), with the links. ' +
           '"reaches" lists the isolated pillars each cure covers and those it leaves; several cures can work together. ' +
+          'Then "helps_from_other": pillars that are NOT a complete cure but help (they fix the two settings of the Elements, link one isolated pillar, or have the SAME Period as an isolated pillar = communication) — present them as helps, never as complete cures. ' +
+          'Voids: "void_timely" = the void is timely, the cure/help stays and wakes up when the named branch arrives; "*_invalid_by_void" = untimely void, not recoverable. ' +
+          'Do not count "channels", give stars or call the match perfect: report only these lists. ' +
           'Hour, Day, Month, Year order. Only what is in this result: do not add meanings of families or hexagrams. The PERSON tab (Both → 🤝 Cure from the other chart) shows the same with pictures.' };
     } catch (e) { return { error: 'Mutual cures failed: ' + ((e && e.message) || e) }; }
   }
