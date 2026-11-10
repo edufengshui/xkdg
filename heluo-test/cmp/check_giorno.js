@@ -78,5 +78,13 @@ if (require.main === module) for (const e of EVENTI) {
   const PR = LK2.profilo(Pn, male), K = PR.K, g = LK2.giorno(PR, p, T);
   console.log(`  Luck: ` + ['heaven', 'earth', 'fame'].map(k => `${k} ${K[k].t} (opp. ${K[k].op}${K[k].inNat ? ', nel nativo' : ''}${K[k].vuoto ? ', VUOTA' : ''}, ×${K[k].m})`).join(' · '));
   console.log(`  Luck del giorno ${g.tot >= 0 ? '+' : ''}${g.tot}  [${g.w.join(' · ')}]`);
+  // Cavallo Postale (驛馬) dal ramo dell'anno e del giorno di nascita, cercato su ora, giorno, mese, anno e linee attive (Edu, 10/11)
+  const yiMa = b => ({ 申: '寅', 子: '寅', 辰: '寅', 寅: '申', 午: '申', 戌: '申', 巳: '亥', 酉: '亥', 丑: '亥', 亥: '巳', 卯: '巳', 未: '巳' })[b];
+  const YM = [...new Set([yiMa(Pn.year[1]), yiMa(Pn.day[1])])], CLY = YM.map(b => BR[(BR.indexOf(b) + 6) % 12]);
+  const dove = [['ora', Pe.hour[1]], ['giorno', T.d], ['mese', T.m], ['anno', T.y],
+    ['linea del ciclo', NJ[p.id.cycle[0]].lines[p.id.cycle[1] - 1].branch], ['linea mossa', NJ[p.id.year[0]].lines[p.id.year[1] - 1].branch],
+    ['linea del giorno (blocco)', NJ[p.id.day[0]].lines[p.id.day[1] - 1].branch], ['linea del giorno (esag. giorno)', NJ[p.id.dayHex[0]].lines[p.id.dayHex[1] - 1].branch]];
+  const cav = dove.filter(([, b]) => YM.includes(b)).map(([k, b]) => k + ' ' + b), sco = dove.filter(([, b]) => CLY.includes(b) && !YM.includes(b)).map(([k, b]) => k + ' ' + b);
+  console.log(`  Cavallo Postale ${YM.join(' ')}: ${cav.length ? cav.join(', ') : 'assente'}${sco.length ? ' · scontrato da: ' + sco.join(', ') : ''}`);
 }
 
