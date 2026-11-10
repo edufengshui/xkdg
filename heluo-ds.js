@@ -292,10 +292,14 @@
       h += '<tr onclick="xkdgHLCycle(\'' + id2 + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (Y === nowY ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + 'white-space:nowrap;">' + Y + ' · ' + a.age + '</td>'
         + '<td style="' + TD + '">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '</td><td style="' + TD + 'white-space:nowrap;">l' + a.moved + ' ' + L.branch + ' ' + relTag(r) + '</td>'
         + '<td style="' + TD + 'font-size:11px;">' + a.hex.upper + ' ' + relTag(rel(me, TRI_EL[a.hex.upper])) + ' / ' + a.hex.lower + ' ' + relTag(rel(me, TRI_EL[a.hex.lower])) + (lk.length ? '<br>' + lk.join(' ') : '') + '</td></tr>'
-        + '<tr id="' + id2 + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, null, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, true) : '') + '</td></tr>';
+        + '<tr id="' + id2 + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, yPer(a), me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, true) : '') + '</td></tr>';
     }
     h += '</table>' + luckProfileHtml(R, context(R, R.input.Pn || null, male)) + '</details>';
     return h;
+  }
+  function yPer(a) { // months of each line of an annual hexagram (true solar time: GPS, else birth place)
+    try { var lon = NaN; try { lon = STm().currentLonTz().lonDeg; } catch (e) {} if (!isFinite(lon)) lon = H().currentChart().c.lon;
+      return H().periods.annual(a.moved, H().periods.months(a.year, lon)); } catch (e) { return null; }
   }
   function luckProfileHtml(R, ctx) {
     if (!ctx || !ctx.prof) return '';
@@ -383,17 +387,26 @@
       + (U().lineBody ? U().lineBody(x.hexN, x.line, true) : '') + '</div>';
   }
   function detail(chart, g) {
-    var p = g.p, R = chart.R, me = g.pers, dh = p.daily, HX = H();
+    var p = g.p, R = chart.R, me = g.pers, dh = p.daily, HX = H(), PD = HX.periods, D = 86400000, lon = _st.res.lon;
+    // period of every line (true solar time at the place): months of the annual, blocks of the monthly, days of the block
+    var aP = null, mP = null, bP = null, dP = null;
+    try {
+      var ms = PD.months(p.year, lon), i = 0;
+      for (var j = 0; j < 13; j++) if (PD.dayMs(ms[j].start) <= g.date) i = j;
+      var startDay = PD.dayMs(ms[i].start), endDay = PD.dayMs(ms[i + 1].start || ms[i + 1].end), d0 = g.date - (p.dayOfMonth - 1) * D;
+      var bS = d0 + Math.floor((p.dayOfMonth - 1) / 5) * 5 * D;
+      aP = PD.annual(p.annual.moved, ms); mP = PD.month(d0, startDay, endDay); bP = PD.block(dh.lord, bS, startDay, endDay); dP = PD.day(dh.line, g.date);
+    } catch (e) {}
     var h = '<div style="' + S_ + '"><b>' + fmtDate(g.date) + '</b> · age ' + p.age + ' · Heluo year ' + p.year + ' · ' + p.phase + ' ' + p.hx.n + ' line ' + p.per.line + ' (age ' + p.per.from + '–' + p.per.to + ') · person <b>' + me + '</b>'
       + '<br>Pillars (Day · Month · Year, true-solar noon): ' + g.Pe.day + ' · ' + g.Pe.month + ' · ' + g.Pe.year + ' · day ' + p.dayOfMonth + ' of the solar month · rank ' + g.rank + ' of ' + g.n + '</div>';
     if (g.warn.length) h += '<div style="font-size:12px;color:#c62828;margin:4px 0;">⚠ ' + esc(g.warn.join(' · ')) + '</div>';
     h += lvlHtml('1 · Cycle', g.c, p.hx, p.phase === 'XT' ? R.cyclesXT : R.cyclesHT, me)
-      + lvlHtml('2 · Annual (moved line)', g.a, p.annual.hex, null, me)
+      + lvlHtml('2 · Annual (moved line)', g.a, p.annual.hex, aP, me)
       + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">3 · Monthly ' + p.month.hex.n + ' ' + esc(U().hexName ? U().hexName(p.month.hex.n) : '') + ' → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + '</div>'
-      + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, null, me) + U().cycleHexSvg(dh.block, dh.lord, null, me) : '') + '</div>'
-      + lvlHtml('4 · Day line in the block hexagram', g.d, dh.block, null, me)
+      + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + '</div>'
+      + lvlHtml('4 · Day line in the block hexagram', g.d, dh.block, bP, me)
       + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · Day hexagram ' + dh.hex.n + ' ' + esc(U().hexName ? U().hexName(dh.hex.n) : '') + ' line ' + dh.line + ' (course of the day)</div>'
-      + (U().cycleHexSvg ? U().cycleHexSvg(dh.hex, dh.line, null, me) : '') + (U().lineBody ? U().lineBody(dh.hex.n, dh.line, true) : '') + '</div>'
+      + (U().cycleHexSvg ? U().cycleHexSvg(dh.hex, dh.line, dP, me) : '') + (U().lineBody ? U().lineBody(dh.hex.n, dh.line, true) : '') + '</div>'
       + '<div style="' + S_ + '"><b>Luck ' + sgn(g.L.tot) + '</b>: ' + (esc(g.L.w.join(' · ')) || 'none') + '</div>';
     return h;
   }
