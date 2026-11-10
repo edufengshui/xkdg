@@ -2349,6 +2349,23 @@ function shiftHour(delta) {
     }
 }
 
+function _xkdgShiftDate(days, months) {
+    try {
+        const dateEl = document.getElementById('date');
+        if (!dateEl.value) return;
+        let [y, m, d] = dateEl.value.split('-').map(Number);
+        if (months) {
+            const t = (m - 1) + months; y += Math.floor(t / 12); m = ((t % 12) + 12) % 12 + 1;
+            d = Math.min(d, new Date(y, m, 0).getDate());   // 31 Jan + 1 month -> 28/29 Feb
+        }
+        const dt = new Date(y, m - 1, d + (days || 0), 12);
+        dateEl.value = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+        calculateBazi();
+    } catch(e) { console.error('shiftDate error:', e); }
+}
+function shiftDay(delta) { _xkdgShiftDate(delta, 0); }
+function shiftMonth(delta) { _xkdgShiftDate(0, delta); }
+
 // ── Smart UTC offset lookup by GPS coordinates ──────────────────────
 // Many countries use a UTC offset that does NOT match their geographic longitude.
 // This function maps (lat, lon) → real UTC offset for the most common "anomalies".
