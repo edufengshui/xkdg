@@ -6,6 +6,9 @@
 //      node ds_cascata.js dettaglio  → anche la scheda della cascata per ogni evento
 //      node ds_cascata.js luck       → aggiunge le tre Luck (Edu, 10/11): per annuale, mensile, blocco ed esagramma del
 //                                      giorno, +0,5 per ogni Luck (Heaven, Earth, Fame) il cui trigramma c'è, −0,5 per ogni opposto
+//      node ds_cascata.js luck2      → tre Luck complete (luck.js, punto 4c): Luck del nativo attivate dai rami del tempo,
+//                                      rami delle linee attive, trigrammi degli esagrammi del tempo; pesi per livello
+//                                      (giorno al primo posto) × bilancio yin/yang × timeliness nel mese di nascita
 //      node ds_cascata.js esagiorno  → livello del giorno sulla linea dell'esagramma del giorno invece che del blocco
 // Linea del giorno (10/11/2026): regola di Edu del Signore del Blocco (predict in heluo_cmp.js, dailyHex nell'app);
 // di default il livello del giorno è la linea del giorno nell'esagramma del blocco.
@@ -14,6 +17,7 @@ const path = require('path');
 const { natal, predict, pillars } = require('./heluo_cmp.js');
 const NJ = require(path.join(__dirname, '..', '..', 'heluo-najia.js'));
 const SC = require('./scores.json');
+const LK2 = require('./luck.js');
 
 const BR = '子丑寅卯辰巳午未申酉戌亥', ST = '甲乙丙丁戊己庚辛壬癸';
 const TRI_EL = { Qian: 'Metal', Dui: 'Metal', Li: 'Fire', Zhen: 'Wood', Xun: 'Wood', Kan: 'Water', Gen: 'Earth', Kun: 'Earth' };
@@ -107,7 +111,8 @@ function giorno(N, nat, date, lon, tz, scopo) {
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
   const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
   const L = nat.luck ? luckTot(p, nat.luck) : null, useL = process.argv.includes('luck') && L;
-  return { date, Pe, p, pers, c, a, d, L, tot: c.tot + a.tot + d.tot + (useL ? L.tot : 0) };
+  const L2 = nat.prof ? LK2.giorno(nat.prof, p, T) : null, useL2 = process.argv.includes('luck2') && L2;
+  return { date, Pe, p, pers, c, a, d, L, L2, tot: c.tot + a.tot + d.tot + (useL ? L.tot : 0) + (useL2 ? L2.tot : 0) };
 }
 
 const NASCITE = {
@@ -143,7 +148,7 @@ module.exports = { giorno, anno, rango, NASCITE, EVENTI, SCOPI, natal, pillars }
 if (require.main === module) {
   const det = process.argv.includes('dettaglio'), riep = [];
   for (const e of EVENTI) {
-    const b = NASCITE[e.chi], Pn = pillars(...b), N = natal('A', Pn, true), nat = { day: Pn.day, year: N.pillars[3], luck: H_.fromPillars(Pn, true).luck };
+    const b = NASCITE[e.chi], Pn = pillars(...b), N = natal('A', Pn, true), nat = { day: Pn.day, year: N.pillars[3], luck: H_.fromPillars(Pn, true).luck, prof: LK2.profilo(Pn, true) };
     const Y = +e.d.slice(0, 4), righe = {};
     for (const sc of Object.keys(SCOPI)) { const r = rango(anno(N, nat, Y, e.luogo[0], e.luogo[1], sc), e.d); righe[sc] = r; }
     const r = righe[e.scopo], g = r.me;
@@ -152,7 +157,8 @@ if (require.main === module) {
     console.log('   altri scopi: ' + Object.keys(SCOPI).map(k => `${k} ${righe[k].rank}`).join(' · '));
     if (det) { console.log('   ' + fmt(g.c, 'ciclo  ')); console.log('   ' + fmt(g.a, 'annuale')); console.log('   ' + fmt(g.d, 'giorno '));
       const f = (x, n) => `${n} ${x.v >= 0 ? '+' : ''}${x.v} [${x.w.join(' ')}]`;
-      console.log(`   luck    ${f(g.L.a, 'annuale ' + g.p.id.year[0])} · ${f(g.L.m, 'mensile ' + g.p.id.month[0])} · ${f(g.L.b, 'blocco ' + g.p.id.lord[0])} · ${f(g.L.g, 'giorno ' + g.p.id.dayHex[0])} = ${g.L.tot}`); }
+      console.log(`   luck    ${f(g.L.a, 'annuale ' + g.p.id.year[0])} · ${f(g.L.m, 'mensile ' + g.p.id.month[0])} · ${f(g.L.b, 'blocco ' + g.p.id.lord[0])} · ${f(g.L.g, 'giorno ' + g.p.id.dayHex[0])} = ${g.L.tot}`);
+      console.log(`   luck2   ${g.L2.tot} [${g.L2.w.join(' · ')}]`); }
     riep.push({ e, pct: r.rank / r.n, righe });
   }
   const m = riep.reduce((s, x) => s + x.pct, 0) / riep.length;
