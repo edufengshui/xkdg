@@ -1968,6 +1968,8 @@ function renderPersonView() {
                + (famH.length ? famH.map(chip).join('') : '<div style="color:#888;">none</div>');
         h += '</details></div>';
     });
+    // ⌂ Session 49 (Edu): same palace number between the two persons — only when it appears.
+    if (window._pvWho === 'both' && all.length > 1 && typeof xkdgSamePalaceHtml === 'function') { try { h += xkdgSamePalaceHtml(all[0].P, all[1].P, all[0].name, all[1].name); } catch (eSP) {} }
     h += '<div style="color:#888;font-size:11px;margin-top:4px;">Range: FROM ' + start + ', ' + days + ' days. Tap an hour to open it in the main chart.</div>';
     pv.innerHTML = h;
 }
@@ -4515,7 +4517,7 @@ function checkCompatibility() {
     div.style.display = 'block';
     if (unique.length === 0) {
         div.innerHTML = `<div style="color:#880e4f;font-weight:bold;font-size:13px;">♡ COMPATIBILITY</div>
-            <div style="color:#555;font-size:12px;margin-top:6px;">No direct XKDG connection found between A and B.</div>`;
+            <div style="color:#555;font-size:12px;margin-top:6px;">No direct XKDG connection found between A and B.</div>` + _xkdgCompatSamePalace();
         return;
     }
 
@@ -4533,7 +4535,14 @@ function checkCompatibility() {
         (integrationNotes.length ? `<div style="margin-top:8px;border-top:1px solid #e0a0b0;padding-top:6px;">` +
             integrationNotes.map(n => `<div style="font-size:11px;color:#b71c1c;font-style:italic;">⚠ ${n}</div>`).join('') +
             `</div>` : '') +
-        `<div style="font-size:10px;color:#888;margin-top:6px;">● Same-type (stronger) &nbsp; ○ Cross-type (valid)</div>`;
+        `<div style="font-size:10px;color:#888;margin-top:6px;">● Same-type (stronger) &nbsp; ○ Cross-type (valid)</div>` + _xkdgCompatSamePalace();
+}
+// ⌂ Session 49 (Edu): same palace number between Person A and B — only when it appears.
+function _xkdgCompatSamePalace() {
+    try {
+        if (typeof xkdgSamePalaceHtml !== 'function' || !_personAPillars || !_personBPillars) return '';
+        return xkdgSamePalaceHtml(_personAPillars, _personBPillars, (document.getElementById('person-name') || {}).value || 'A', (document.getElementById('person-name-b') || {}).value || 'B');
+    } catch (e) { return ''; }
 }
 
 const BADGE_INFO = {

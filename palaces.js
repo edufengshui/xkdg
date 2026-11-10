@@ -168,6 +168,23 @@
     return h + '</div>';
   }
 
+  // ── Between TWO persons (Edu, session 49): the same palace number in a pillar of each
+  // may point to a visible physical relation. Shown only when it appears; nothing otherwise.
+  function samePalaceHtml(PA, PB, nA, nB) {
+    var out = [];
+    K4.forEach(function (a) {
+      var pa = PA && PA[a] && PA[a].hex ? palOfHex(PA[a].hex) : null; if (pa == null) return;
+      K4.forEach(function (b) {
+        var pb = PB && PB[b] && PB[b].hex ? palOfHex(PB[b].hex) : null;
+        if (pb === pa) out.push(nA + '\'s ' + L[a] + ' and ' + nB + '\'s ' + L[b] + ': palace ' + pa + ' ' + TRI[pa]);
+      });
+    });
+    if (!out.length) return '';
+    return '<div style="margin:6px 0;padding:6px 8px;border-radius:8px;border:1px solid #bcaaa4;background:#efebe9;font-size:12px;">'
+      + '<b style="color:#4e342e;">⌂ Same palace between the two persons</b> — may point to a visible physical relation'
+      + '<div style="margin-top:2px;">' + out.join('<br>') + '</div></div>';
+  }
+
   // ── The switch ──────────────────────────────────────────────────
   function btnHtml(id) {
     var on = isOn();
@@ -209,6 +226,7 @@
   window.xkdgPalaceCures = cures;
   window.xkdgPalaceRelHtml = relHtml;
   window.xkdgPalaceCureHtml = cureHtml;
+  window.xkdgSamePalaceHtml = samePalaceHtml;
   window.xkdgRenderDatePalaces = renderDatePalaces;
   window.xkdgPalaceButtons = placeButtons;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', placeButtons); else placeButtons();
