@@ -76,7 +76,7 @@ if (require.main === module) for (const e of EVENTI) {
   console.log(riga('NUOVA giorno', p.id.day[0], p.id.day[1], pers, T, nv));
   console.log(riga('esag. giorno', p.id.dayHex[0], p.id.dayHex[1], pers, T, nv));
   const PR = LK2.profilo(Pn, male), K = PR.K, g = LK2.giorno(PR, p, T);
-  console.log(`  Luck: ` + ['heaven', 'earth', 'fame'].map(k => `${k} ${K[k].t} (opp. ${K[k].op}${K[k].inNat ? ', nel nativo' : ''}, ×${K[k].m})`).join(' · '));
+  console.log(`  Luck: ` + ['heaven', 'earth', 'fame'].map(k => `${k} ${K[k].t} (opp. ${K[k].op}${K[k].inNat ? ', nel nativo' : ''}${K[k].vuoto ? ', VUOTA' : ''}, ×${K[k].m})`).join(' · '));
   console.log(`  Luck del giorno ${g.tot >= 0 ? '+' : ''}${g.tot}  [${g.w.join(' · ')}]`);
 }
 

@@ -48,6 +48,22 @@ const TRI_OF = {};
 for (const u of Object.keys(TRI_EL)) for (const l of Object.keys(TRI_EL)) { const h = H.hexFrom(u, l); TRI_OF[h.n] = [h.upper, h.lower]; }
 
 // profilo natale delle Luck: trigrammi, presenza nel nativo, moltiplicatori
+// vuoti (旬空) dal pilastro del giorno di nascita (Edu, 10/11): una Luck è vuota se tutti i rami del suo trigramma
+// (Time 1) sono vuoti veri. Non è vero il vuoto timely nel mese di nascita (regola di Edu del 9/11), né quello
+// riempito dallo scontro con il ramo dell'anno di nascita (es. Diana, anno 丑: 未 vuoto ma riempito).
+const ST = '甲乙丙丁戊己庚辛壬癸', TRI_BR = {};
+BR_TRI.forEach((t, i) => { (TRI_BR[t] = TRI_BR[t] || []).push(BR[i]); });
+const BR_EL = { 子: 'Water', 丑: 'Earth', 寅: 'Wood', 卯: 'Wood', 辰: 'Earth', 巳: 'Fire', 午: 'Fire', 未: 'Earth', 申: 'Metal', 酉: 'Metal', 戌: 'Earth', 亥: 'Water' };
+const SEAS = { 寅: 'Wood', 卯: 'Wood', 辰: 'Wood', 巳: 'Fire', 午: 'Fire', 未: 'Fire', 申: 'Metal', 酉: 'Metal', 戌: 'Metal', 亥: 'Water', 子: 'Water', 丑: 'Water' };
+function timelyEl(el, mb) { const eM = '辰未戌丑'.includes(mb); if (el === 'Earth') return eM || SEAS[mb] === 'Fire';
+  const g = Object.keys(GEN).find(k => GEN[k] === el); return SEAS[mb] === el || SEAS[mb] === g || (g === 'Earth' && eM); }
+function vuotiGiorno(dp) { const x = ((BR.indexOf(dp[1]) - ST.indexOf(dp[0])) % 12 + 12) % 12; return [BR[(x + 10) % 12], BR[(x + 11) % 12]]; }
+function triVuoto(t, dp, yb, mb) {
+  const v = vuotiGiorno(dp), cl = b => BR[(BR.indexOf(b) + 6) % 12];
+  // LK_VT: 'trigramma' = timely sull'elemento del trigramma (default), 'ramo' = sull'elemento di ogni ramo, 'no' = senza timeliness
+  const VT = process.env.LK_VT || 'trigramma', tm = b => VT === 'no' ? false : timelyEl(VT === 'trigramma' ? TRI_EL[t] : BR_EL[b], mb);
+  return TRI_BR[t].every(b => v.includes(b) && !tm(b) && cl(b) !== yb);
+}
 function profilo(Pn, male) {
   const R = H.fromPillars(Pn, male), N = R.numbers, mb = H.BRANCHES.indexOf(Pn.month[1]);
   const rY = N.heaven / N.monthAvg.yang - 1, rE = N.earth / N.monthAvg.yin - 1;
@@ -64,7 +80,8 @@ function profilo(Pn, male) {
     const V = process.env.LK_VAR || '';
     if (V === 'earthpos' && k === 'earth' && yy < 0) yy = 0.5;
     const m = V === 'piatto' ? 1 : V === 'soloyy' ? yy : V === 'solotm' ? TM[tk] : yy * TM[tk];
-    K[k] = { t, op, inNat: nat.includes(t), opNat: nat.includes(op), tk, yy, yt, m };
+    const vu = process.env.LK_VUOTI !== 'no' && triVuoto(t, Pn.day, R.input && R.input.p ? BR[R.input.p.branches[0]] : Pn.year[1], Pn.month[1]);
+    K[k] = { t, op, inNat: nat.includes(t), opNat: nat.includes(op), tk, yy, yt, m: vu ? 0 : m, vuoto: vu };
   }
   return { K, rY, rE, heaven: N.heaven, earth: N.earth, avg: N.monthAvg };
 }
