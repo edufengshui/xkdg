@@ -1356,10 +1356,44 @@ function xkdgGapRemedies(gaps, days, pillars, startIso) {
     } catch (e) {}
     return res;
 }
+// Session 48 (Edu): PALACES, a third and MINOR dimension of a birth chart (it matters in Feng Shui). The palace
+// number of a pillar is the Early Heaven number of the LOWER trigram of its hexagram (Qian 9, Dui 4, Li 3,
+// Zhen 8, Xun 2, Kan 7, Gen 6, Kun 1) = where the hexagram sits on the luopan. Same relations as Elements and
+// Periods (5/10/15, Hetu, same number); a pillar left alone still communicates when it shares a family with
+// another pillar (Yu: 3 6 2 2 — Day 6 is alone, but Day and Hour are both Gen-Dui). Display only: it never
+// enters the remedy rules.
+function xkdgPalaceComm(pillars) {
+    try {
+        const K = ['hour', 'day', 'month', 'year'].filter(k => pillars && pillars[k] && pillars[k].hex && _XK_HEXBIN[pillars[k].hex] != null);
+        if (K.length < 2) return null;
+        const XT = { 7: 9, 3: 4, 5: 3, 1: 8, 6: 2, 2: 7, 4: 6, 0: 1 }, Q = {};
+        K.forEach(k => { Q[k] = Object.assign({}, pillars[k], { pal: XT[_XK_HEXBIN[pillars[k].hex] & 7] }); });
+        const fams = k => { try { return _xkdgResolvedFamilyEntries(pillars[k]).map(e => e.family); } catch (e) { return []; } };
+        const out = { values: K.map(k => ({ pillar: k, value: Q[k].pal })), isolated: [], by_family: [] };
+        K.forEach(k => {
+            if (K.some(o => { if (o === k) return false; const r = _xkdgPairRel(Q, k, o, 'pal'); return !!(r && !r.cancelled); })) return;
+            const fk = fams(k); let hit = null;
+            K.forEach(o => { if (o === k || hit) return; const f = fams(o).filter(x => fk.includes(x))[0]; if (f) hit = { pillar: k, value: Q[k].pal, with: o, family: f }; });
+            if (hit) out.by_family.push(hit); else out.isolated.push({ pillar: k, value: Q[k].pal });
+        });
+        out.good = !out.isolated.length;
+        return out;
+    } catch (e) { return null; }
+}
+function xkdgPalaceHtml(pillars) {
+    const pc = xkdgPalaceComm(pillars); if (!pc) return '';
+    const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
+    return '<div style="font-size:12px;margin-top:4px;color:' + (pc.good ? '#2e7d32' : '#8d6e63') + ';">' + (pc.good ? '✓' : '○') + ' <b>Palaces</b> (minor — Feng Shui): '
+        + pc.values.map(v => L[v.pillar] + ' ' + v.value).join(' · ') + ' — '
+        + (pc.good ? 'they communicate' : pc.isolated.map(x => L[x.pillar] + ' (' + x.value + ')').join(', ') + ' isolated')
+        + (pc.by_family.length ? '; ' + pc.by_family.map(x => L[x.pillar] + ' ' + x.value + ' has no number link but communicates with the ' + L[x.with] + ' through the ' + x.family + ' family').join('; ') : '')
+        + '.</div>';
+}
 function xkdgGapsHtml(gaps) {
     if (!gaps) return '';
     const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
-    if (!gaps.any) return '<div style="color:#2e7d32;font-size:12px;margin-top:6px;">✓ All pillars communicate' + (gaps.bloodLink ? ' — Blood Link (' + gaps.bloodLink.join(', ') + ')' : ' (Elements and Periods)') + '.</div>';
+    const PAL = xkdgPalaceHtml(gaps.pillars);
+    if (!gaps.any) return '<div style="color:#2e7d32;font-size:12px;margin-top:6px;">✓ All pillars communicate' + (gaps.bloodLink ? ' — Blood Link (' + gaps.bloodLink.join(', ') + ')' : ' (Elements and Periods)') + '.</div>' + PAL;
     // Compact (Edu, session 33): only WHERE the communication is missing; the remedies of
     // Heaven and Earth (dates and Feng Shui) live in the 👤 PERSON tab.
     const where = Object.values(gaps.dims).filter(d => d.isolated.length)
@@ -1367,7 +1401,7 @@ function xkdgGapsHtml(gaps) {
     let h = '<div style="border:1px solid #ffcc80;background:#fff8e1;border-radius:8px;padding:6px 9px;margin-top:6px;font-size:12px;">'
           + '<a href="guides/person-remedies.html" target="_blank" title="Guide" style="float:right;text-decoration:none;font-size:16px;margin-left:6px;">📖</a>'
           + '<b>🔧 Missing communication</b> — ' + where + ' isolated.'
-          + '<div style="margin-top:4px;">For the remedies of Heaven and Earth (dates and Feng Shui) open the <b>👤 PERSON</b> tab.</div></div>';
+          + '<div style="margin-top:4px;">For the remedies of Heaven and Earth (dates and Feng Shui) open the <b>👤 PERSON</b> tab.</div>' + PAL + '</div>';
     return h;
 }
 
