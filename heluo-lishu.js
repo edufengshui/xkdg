@@ -150,10 +150,14 @@
     return { hex: hexOf(flip(H, S)), moved: m, changed: S.slice().sort() };
   }
   // A = annual hexagram (lines), moved = line moved this year, monthBr 0..11 (Zi..Hai).
-  // Month i: Yin 寅 = 1 … Chou 丑 = 12; lines s = moved+1, s+1 …; odd month: change the first
-  // ceil(i/2) of them; even month: the same + the partner of the last one.
+  // Month i (Edu, 10/11/2026): Zi 子 = 1, Chou 丑 = 2, Yin 寅 = 3 … Hai 亥 = 12. The Heluo year starts at the Winter
+  // Solstice, in the middle of the Zi month: like the Zi hour, half in the old day and half in the new one, the Zi
+  // month is ONE month (index 1) split between two years - from Daxue to the Solstice on the old annual, from the
+  // Solstice to Xiaohan on the new one. There is no 13th month. (Before: Yin 寅 = 1 … Chou 丑 = 12, as in the
+  // reference calculator, whose year starts at Lichun.)
+  // Lines s = moved+1, s+1 …; odd month: change the first ceil(i/2) of them; even month: the same + the partner of the last one.
   function monthlyHex(A, moved, monthBr) {
-    var i = (monthBr - 2 + 12) % 12 + 1, s = wrap6(moved + 1), j = Math.ceil(i / 2), S = [];
+    var i = monthBr + 1, s = wrap6(moved + 1), j = Math.ceil(i / 2), S = [];
     for (var t = 0; t < j; t++) S.push(wrap6(s + t));
     var last = wrap6(s + j - 1);
     if (i % 2 === 0) { var p = partner(last), q = S.indexOf(p); if (q >= 0) S.splice(q, 1); else S.push(p); }
@@ -297,7 +301,7 @@
   }
   // ── Period of each line (Edu, 10/11/2026): ages in the natives; months in the annual; 5-day blocks in the monthly;
   // in the block hexagram the Lord of the Block (5 days) and one day per other line; the changed line in the day hexagram.
-  // Annual: month i (寅 = 1 … 丑 = 12) changes the lines from the one above the moved line up to wrap6(moved + ceil(i/2)):
+  // Annual: month i (子 = 1 … 亥 = 12) changes the lines from the one above the moved line up to wrap6(moved + ceil(i/2)):
   // each line of the annual is the last one reached by two months (monthlyHex). All dates in TRUE SOLAR TIME.
   var DAY = 86400000;
   function dayMs(dt) { return Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()); }
@@ -312,7 +316,7 @@
   function annualPeriods(moved, ms) {
     var span = {}, rg = {}, cap = {};
     for (var i = 0; i < 13; i++) {
-      var br = ms[i].br, idx = (br - 2 + 12) % 12 + 1, L = wrap6(moved + Math.ceil(idx / 2));
+      var br = ms[i].br, idx = br + 1, L = wrap6(moved + Math.ceil(idx / 2));
       var s = dayMs(ms[i].start), e = dayMs(ms[i + 1].start || ms[i + 1].end) - DAY;
       if ((span[L] || '').indexOf(BRANCHES[br]) < 0) span[L] = (span[L] || '') + BRANCHES[br];
       addRange(rg[L] = rg[L] || [], s, e);
