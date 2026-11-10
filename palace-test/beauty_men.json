@@ -1,0 +1,619 @@
+{
+ "people": [
+  {
+   "name": "Mark Harmon",
+   "sex": "M",
+   "birth": {
+    "date": "1951-09-02",
+    "time": "10:40",
+    "place": "Burbank, California, USA",
+    "lat": 34.1808,
+    "lon": -118.309,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Mark_Harmon"
+   },
+   "list": "People Sexiest Man Alive 1986"
+  },
+  {
+   "name": "Harry Hamlin",
+   "sex": "M",
+   "birth": {
+    "date": "1951-10-30",
+    "time": "01:48",
+    "place": "Pasadena, California, USA",
+    "lat": 34.1478,
+    "lon": -118.1445,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Harry_Hamlin"
+   },
+   "list": "People Sexiest Man Alive 1987"
+  },
+  {
+   "name": "John F. Kennedy Jr.",
+   "sex": "M",
+   "birth": {
+    "date": "1960-11-25",
+    "time": "00:22",
+    "place": "Washington, D.C., USA",
+    "lat": 38.9072,
+    "lon": -77.0369,
+    "tz": -5,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/John_F._Kennedy,_Jr."
+   },
+   "list": "People Sexiest Man Alive 1988"
+  },
+  {
+   "name": "Sean Connery",
+   "sex": "M",
+   "birth": {
+    "date": "1930-08-25",
+    "time": "18:05",
+    "place": "Edinburgh, Scotland, UK",
+    "lat": 55.9533,
+    "lon": -3.1883,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Sean_Connery"
+   },
+   "list": "People Sexiest Man Alive 1989; Silver Petticoat Review 'Most Handsome Classic Film Actors' #17"
+  },
+  {
+   "name": "Patrick Swayze",
+   "sex": "M",
+   "birth": {
+    "date": "1952-08-18",
+    "time": "08:10",
+    "place": "Houston, Texas, USA",
+    "lat": 29.7604,
+    "lon": -95.3698,
+    "tz": -6,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Patrick_Swayze"
+   },
+   "list": "People Sexiest Man Alive 1991"
+  },
+  {
+   "name": "Nick Nolte",
+   "sex": "M",
+   "birth": {
+    "date": "1941-02-08",
+    "time": "10:40",
+    "place": "Omaha, Nebraska, USA",
+    "lat": 41.2586,
+    "lon": -95.9378,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Nick_Nolte"
+   },
+   "list": "People Sexiest Man Alive 1992"
+  },
+  {
+   "name": "Brad Pitt",
+   "sex": "M",
+   "birth": {
+    "date": "1963-12-18",
+    "time": "06:31",
+    "place": "Shawnee, Oklahoma, USA",
+    "lat": 35.3273,
+    "lon": -96.9253,
+    "tz": -6,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Brad_Pitt"
+   },
+   "list": "People Sexiest Man Alive 1995 and 2000"
+  },
+  {
+   "name": "Denzel Washington",
+   "sex": "M",
+   "birth": {
+    "date": "1954-12-28",
+    "time": "00:09",
+    "place": "Mount Vernon, New York, USA",
+    "lat": 40.9126,
+    "lon": -73.8371,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Denzel_Washington"
+   },
+   "list": "People Sexiest Man Alive 1996"
+  },
+  {
+   "name": "George Clooney",
+   "sex": "M",
+   "birth": {
+    "date": "1961-05-06",
+    "time": "02:58",
+    "place": "Lexington, Kentucky, USA",
+    "lat": 38.0406,
+    "lon": -84.5037,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/George_Clooney"
+   },
+   "list": "People Sexiest Man Alive 1997 and 2006"
+  },
+  {
+   "name": "Harrison Ford",
+   "sex": "M",
+   "birth": {
+    "date": "1942-07-13",
+    "time": "11:41",
+    "place": "Chicago, Illinois, USA",
+    "lat": 41.8781,
+    "lon": -87.6298,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Harrison_Ford"
+   },
+   "list": "People Sexiest Man Alive 1998"
+  },
+  {
+   "name": "Ben Affleck",
+   "sex": "M",
+   "birth": {
+    "date": "1972-08-15",
+    "time": "02:53",
+    "place": "Berkeley, California, USA",
+    "lat": 37.8715,
+    "lon": -122.273,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Ben_Affleck"
+   },
+   "list": "People Sexiest Man Alive 2002"
+  },
+  {
+   "name": "Johnny Depp",
+   "sex": "M",
+   "birth": {
+    "date": "1963-06-09",
+    "time": "08:44",
+    "place": "Owensboro, Kentucky, USA",
+    "lat": 37.7719,
+    "lon": -87.1112,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Johnny_Depp"
+   },
+   "list": "People Sexiest Man Alive 2003 and 2009"
+  },
+  {
+   "name": "Matthew McConaughey",
+   "sex": "M",
+   "birth": {
+    "date": "1969-11-04",
+    "time": "19:34",
+    "place": "Uvalde, Texas, USA",
+    "lat": 29.2097,
+    "lon": -99.7862,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Matthew_McConaughey"
+   },
+   "list": "People Sexiest Man Alive 2005"
+  },
+  {
+   "name": "Matt Damon",
+   "sex": "M",
+   "birth": {
+    "date": "1970-10-08",
+    "time": "15:22",
+    "place": "Boston, Massachusetts, USA",
+    "lat": 42.3601,
+    "lon": -71.0589,
+    "tz": -4,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Matt_Damon"
+   },
+   "list": "People Sexiest Man Alive 2007"
+  },
+  {
+   "name": "Adam Levine",
+   "sex": "M",
+   "birth": {
+    "date": "1979-03-18",
+    "time": "15:24",
+    "place": "Los Angeles, California, USA",
+    "lat": 34.0522,
+    "lon": -118.2437,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Adam_Levine"
+   },
+   "list": "People Sexiest Man Alive 2013"
+  },
+  {
+   "name": "Dwayne Johnson",
+   "sex": "M",
+   "birth": {
+    "date": "1972-05-02",
+    "time": "18:02",
+    "place": "San Leandro, California, USA",
+    "lat": 37.7249,
+    "lon": -122.1561,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Dwayne_Johnson"
+   },
+   "list": "People Sexiest Man Alive 2016"
+  },
+  {
+   "name": "John Legend",
+   "sex": "M",
+   "birth": {
+    "date": "1978-12-28",
+    "time": "08:25",
+    "place": "Springfield, Ohio, USA",
+    "lat": 39.9242,
+    "lon": -83.8088,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/John_Legend"
+   },
+   "list": "People Sexiest Man Alive 2019"
+  },
+  {
+   "name": "Michael B. Jordan",
+   "sex": "M",
+   "birth": {
+    "date": "1987-02-09",
+    "time": "20:14",
+    "place": "Orange, California, USA",
+    "lat": 33.7879,
+    "lon": -117.8531,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Michael_B._Jordan"
+   },
+   "list": "People Sexiest Man Alive 2020"
+  },
+  {
+   "name": "Paul Rudd",
+   "sex": "M",
+   "birth": {
+    "date": "1969-04-06",
+    "time": "11:40",
+    "place": "Passaic, New Jersey, USA",
+    "lat": 40.8568,
+    "lon": -74.1285,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Paul_Rudd"
+   },
+   "list": "People Sexiest Man Alive 2021"
+  },
+  {
+   "name": "Chris Evans",
+   "sex": "M",
+   "birth": {
+    "date": "1981-06-13",
+    "time": "18:16",
+    "place": "Boston, Massachusetts, USA",
+    "lat": 42.3601,
+    "lon": -71.0589,
+    "tz": -4,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Chris_Evans_(actor)"
+   },
+   "list": "People Sexiest Man Alive 2022"
+  },
+  {
+   "name": "Patrick Dempsey",
+   "sex": "M",
+   "birth": {
+    "date": "1966-01-13",
+    "time": "11:45",
+    "place": "Lewiston, Maine, USA",
+    "lat": 44.1004,
+    "lon": -70.2148,
+    "tz": -5,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Patrick_Dempsey"
+   },
+   "list": "People Sexiest Man Alive 2023"
+  },
+  {
+   "name": "John Krasinski",
+   "sex": "M",
+   "birth": {
+    "date": "1979-10-20",
+    "time": "20:44",
+    "place": "Brighton (Boston), Massachusetts, USA",
+    "lat": 42.35,
+    "lon": -71.156,
+    "tz": -4,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/John_Krasinski"
+   },
+   "list": "People Sexiest Man Alive 2024"
+  },
+  {
+   "name": "Robert Redford",
+   "sex": "M",
+   "birth": {
+    "date": "1936-08-18",
+    "time": "20:02",
+    "place": "Santa Monica, California, USA",
+    "lat": 34.0195,
+    "lon": -118.4912,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Robert_Redford"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #2; classic leading-man/sex-symbol lists"
+  },
+  {
+   "name": "Paul Newman",
+   "sex": "M",
+   "birth": {
+    "date": "1925-01-26",
+    "time": "06:30",
+    "place": "Cleveland, Ohio, USA",
+    "lat": 41.4995,
+    "lon": -81.6954,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Paul_Newman"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #3; classic leading-man/sex-symbol lists"
+  },
+  {
+   "name": "William Holden",
+   "sex": "M",
+   "birth": {
+    "date": "1918-04-17",
+    "time": "17:00",
+    "place": "O'Fallon, Illinois, USA",
+    "lat": 38.5923,
+    "lon": -89.9112,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/William_Holden"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #4"
+  },
+  {
+   "name": "Clark Gable",
+   "sex": "M",
+   "birth": {
+    "date": "1901-02-01",
+    "time": "05:30",
+    "place": "Cadiz, Ohio, USA",
+    "lat": 40.2728,
+    "lon": -80.9968,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Clark_Gable"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #5"
+  },
+  {
+   "name": "Joel McCrea",
+   "sex": "M",
+   "birth": {
+    "date": "1905-11-05",
+    "time": "07:00",
+    "place": "Hollywood, California, USA",
+    "lat": 34.0928,
+    "lon": -118.3287,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Joel_McCrea"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #6"
+  },
+  {
+   "name": "Rock Hudson",
+   "sex": "M",
+   "birth": {
+    "date": "1925-11-17",
+    "time": "02:15",
+    "place": "Winnetka, Illinois, USA",
+    "lat": 42.1081,
+    "lon": -87.7359,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Rock_Hudson"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #9; classic leading-man/sex-symbol lists"
+  },
+  {
+   "name": "James Garner",
+   "sex": "M",
+   "birth": {
+    "date": "1928-04-07",
+    "time": "18:00",
+    "place": "Norman, Oklahoma, USA",
+    "lat": 35.2226,
+    "lon": -97.4395,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/James_Garner"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #10"
+  },
+  {
+   "name": "Gene Kelly",
+   "sex": "M",
+   "birth": {
+    "date": "1912-08-23",
+    "time": "07:00",
+    "place": "Pittsburgh, Pennsylvania, USA",
+    "lat": 40.4406,
+    "lon": -79.9959,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Gene_Kelly"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #12"
+  },
+  {
+   "name": "Gregory Peck",
+   "sex": "M",
+   "birth": {
+    "date": "1916-04-05",
+    "time": "08:00",
+    "place": "La Jolla, California, USA",
+    "lat": 32.8328,
+    "lon": -117.2713,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Gregory_Peck"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #13"
+  },
+  {
+   "name": "Steve McQueen",
+   "sex": "M",
+   "birth": {
+    "date": "1930-03-24",
+    "time": "12:15",
+    "place": "Indianapolis, Indiana, USA",
+    "lat": 39.7684,
+    "lon": -86.1581,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Steve_McQueen"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #14"
+  },
+  {
+   "name": "Errol Flynn",
+   "sex": "M",
+   "birth": {
+    "date": "1909-06-20",
+    "time": "02:25",
+    "place": "Hobart, Tasmania, Australia",
+    "lat": -42.8821,
+    "lon": 147.3272,
+    "tz": 10,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Errol_Flynn"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #15"
+  },
+  {
+   "name": "Charlton Heston",
+   "sex": "M",
+   "birth": {
+    "date": "1923-10-04",
+    "time": "07:55",
+    "place": "Evanston, Illinois, USA",
+    "lat": 42.0451,
+    "lon": -87.6877,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Charlton_Heston"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #21"
+  },
+  {
+   "name": "Laurence Olivier",
+   "sex": "M",
+   "birth": {
+    "date": "1907-05-22",
+    "time": "05:00",
+    "place": "Dorking, Surrey, England, UK",
+    "lat": 51.2325,
+    "lon": -0.3306,
+    "tz": 0,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Laurence_Olivier"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #22"
+  },
+  {
+   "name": "James Dean",
+   "sex": "M",
+   "birth": {
+    "date": "1931-02-08",
+    "time": "09:00",
+    "place": "Marion, Indiana, USA",
+    "lat": 40.5584,
+    "lon": -85.6591,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/James_Dean"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #25; classic leading-man/sex-symbol lists"
+  },
+  {
+   "name": "Montgomery Clift",
+   "sex": "M",
+   "birth": {
+    "date": "1920-10-17",
+    "time": "02:30",
+    "place": "Omaha, Nebraska, USA",
+    "lat": 41.2586,
+    "lon": -95.9378,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Montgomery_Clift"
+   },
+   "list": "Silver Petticoat Review 'Most Handsome Classic Film Actors' #26"
+  },
+  {
+   "name": "Alain Delon",
+   "sex": "M",
+   "birth": {
+    "date": "1935-11-08",
+    "time": "03:25",
+    "place": "Sceaux, Hauts-de-Seine, France",
+    "lat": 48.7786,
+    "lon": 2.2906,
+    "tz": 0,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Alain_Delon"
+   },
+   "list": "Classic cinema most-handsome leading men / male sex symbol lists (named in task brief)"
+  },
+  {
+   "name": "Marlon Brando",
+   "sex": "M",
+   "birth": {
+    "date": "1924-04-03",
+    "time": "23:00",
+    "place": "Omaha, Nebraska, USA",
+    "lat": 41.2586,
+    "lon": -95.9378,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Marlon_Brando"
+   },
+   "list": "Classic cinema most-handsome leading men / male sex symbol lists (named in task brief)"
+  },
+  {
+   "name": "Rudolph Valentino",
+   "sex": "M",
+   "birth": {
+    "date": "1895-05-06",
+    "time": "15:00",
+    "place": "Castellaneta, Puglia, Italy",
+    "lat": 40.6333,
+    "lon": 16.9333,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Rudolph_Valentino"
+   },
+   "list": "Classic cinema most-handsome leading men / male sex symbol lists (named in task brief)"
+  },
+  {
+   "name": "Elvis Presley",
+   "sex": "M",
+   "birth": {
+    "date": "1935-01-08",
+    "time": "04:35",
+    "place": "Tupelo, Mississippi, USA",
+    "lat": 34.2576,
+    "lon": -88.7034,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Elvis_Presley"
+   },
+   "list": "Classic male sex symbol lists (named in task brief)"
+  }
+ ]
+}
