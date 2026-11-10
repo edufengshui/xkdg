@@ -1,0 +1,2204 @@
+{
+ "computed": [
+  {
+   "name": "Steve Jobs",
+   "gz": [
+    "丁酉",
+    "丙辰",
+    "戊寅",
+    "乙未"
+   ],
+   "born": "24 February 1955 7:15pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 4 3 2",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Bill Gates",
+   "gz": [
+    "辛亥",
+    "壬戌",
+    "丙戌",
+    "乙未"
+   ],
+   "born": "28 October 1955 10:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 1 6 2",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Mark Zuckerberg",
+   "gz": [
+    "己未",
+    "戊申",
+    "己巳",
+    "甲子"
+   ],
+   "born": "14 May 1984 2:39pm DST",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 7 9 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Warren Buffett",
+   "gz": [
+    "乙巳",
+    "壬子",
+    "甲申",
+    "庚午"
+   ],
+   "born": "30 August 1930 11:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 8 7 2",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "John D. Rockefeller",
+   "gz": [
+    "壬子",
+    "壬戌",
+    "辛未",
+    "己亥"
+   ],
+   "born": "8 July 1839 11:50pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 1 7 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Carlos Slim",
+   "gz": [
+    "丁亥",
+    "庚午",
+    "丁丑",
+    "己卯"
+   ],
+   "born": "28 January 1940 11:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 2 8 4",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Bill Clinton",
+   "gz": [
+    "庚辰",
+    "乙丑",
+    "丙申",
+    "丙戌"
+   ],
+   "born": "19 August 1946 8:51am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 8 7 6",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Hillary Clinton",
+   "gz": [
+    "癸丑",
+    "戊寅",
+    "庚戌",
+    "丁亥"
+   ],
+   "born": "26 October 1947 0:50am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 3 1 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Mikhail Gorbachev",
+   "gz": [
+    "壬辰",
+    "丙辰",
+    "庚寅",
+    "辛未"
+   ],
+   "born": "2 March 1931 8:11pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 4 3 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Winston Churchill",
+   "gz": [
+    "己丑",
+    "辛卯",
+    "乙亥",
+    "甲戌"
+   ],
+   "born": "30 November 1874 1:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 4 1 6",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Angela Merkel",
+   "gz": [
+    "癸酉",
+    "甲戌",
+    "辛未",
+    "甲午"
+   ],
+   "born": "17 July 1954 6.00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 6 7 9",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Fidel Castro",
+   "gz": [
+    "丙寅",
+    "甲戌",
+    "丙申",
+    "丙寅"
+   ],
+   "born": "13 August 1926 3:15am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 6 7 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Vladimir Putin",
+   "gz": [
+    "壬辰",
+    "丙戌",
+    "己酉",
+    "壬辰"
+   ],
+   "born": "7 October 1952 9:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 6 6 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Adolf Hitler",
+   "gz": [
+    "丁酉",
+    "丙寅",
+    "戊辰",
+    "己丑"
+   ],
+   "born": "20 April 1889 6:30pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 3 4 8",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Karl Marx",
+   "gz": [
+    "癸丑",
+    "戊辰",
+    "丙辰",
+    "戊寅"
+   ],
+   "born": "5 May 1818 2:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 4 4 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Deepak Chopra",
+   "gz": [
+    "癸酉",
+    "己巳",
+    "戊戌",
+    "丙戌"
+   ],
+   "born": "22 October 1946 5:15pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 9 6 6",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Mahatma Gandhi",
+   "gz": [
+    "壬辰",
+    "丙寅",
+    "癸酉",
+    "己巳"
+   ],
+   "born": "2 October 1869 7:42am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 3 6 9",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Osama Bin Laden",
+   "gz": [
+    "戊午",
+    "癸卯",
+    "丁未",
+    "丁酉"
+   ],
+   "born": "30 July 1957 11:59am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 4 2 6",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Georgy Žukov",
+   "gz": [
+    "丙辰",
+    "戊子",
+    "己亥",
+    "丙申"
+   ],
+   "born": "1 December 1896 8:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 8 1 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Chester W. Nimitz",
+   "gz": [
+    "癸未",
+    "庚戌",
+    "戊寅",
+    "乙酉"
+   ],
+   "born": "24 February 1885 2:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "7 1 3 6",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Emiliano Zapata",
+   "gz": [
+    "甲寅",
+    "癸亥",
+    "壬申",
+    "己卯"
+   ],
+   "born": "8 August 1879 4:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 1 7 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Yamamoto",
+   "gz": [
+    "乙亥",
+    "甲申",
+    "丁卯",
+    "甲申"
+   ],
+   "born": "4 April 1884 22:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 7 4 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "George Patton",
+   "gz": [
+    "乙酉",
+    "庚午",
+    "丁亥",
+    "乙酉"
+   ],
+   "born": "11 November 1885 6:20pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 2 1 6",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Erwin Rommel",
+   "gz": [
+    "辛巳",
+    "乙巳",
+    "己亥",
+    "辛卯"
+   ],
+   "born": "15 November 1891 10:50am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 9 1 4",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Simon Wiesenthal",
+   "gz": [
+    "戊子",
+    "辛酉",
+    "甲子",
+    "戊申"
+   ],
+   "born": "1 January 1909 00:25 am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 6 1 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Mata Hari",
+   "gz": [
+    "丙午",
+    "丁未",
+    "丙申",
+    "丙子"
+   ],
+   "born": "7 August 1876 1:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 2 7 8",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "George Adamski",
+   "gz": [
+    "甲寅",
+    "癸酉",
+    "壬辰",
+    "辛卯"
+   ],
+   "born": "17 April 1891 3:00 am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 6 9 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Monica Lewinski",
+   "gz": [
+    "壬午",
+    "庚申",
+    "己未",
+    "癸丑"
+   ],
+   "born": "23 July 1973 1:21pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 7 2 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Natascha Kampusch",
+   "gz": [
+    "癸卯",
+    "壬寅",
+    "甲寅",
+    "戊辰"
+   ],
+   "born": "17 February 1988 6:45am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 3 3 4",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Cristiano Ronaldo",
+   "gz": [
+    "庚辰",
+    "乙亥",
+    "戊寅",
+    "乙丑"
+   ],
+   "born": "5 February 1985 10:15am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 1 3 8",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Michael Phelps",
+   "gz": [
+    "己卯",
+    "庚子",
+    "壬午",
+    "乙丑"
+   ],
+   "born": "30 June 1985 5:55am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 8 2 8",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Michael Jordan",
+   "gz": [
+    "癸巳",
+    "辛卯",
+    "甲寅",
+    "癸卯"
+   ],
+   "born": "17 February 1963 10:20am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 4 3 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Bruce Lee",
+   "gz": [
+    "戊辰",
+    "甲戌",
+    "丁亥",
+    "庚辰"
+   ],
+   "born": "27 November 1940 7:12pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 6 1 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Michael Schumacher",
+   "gz": [
+    "戊午",
+    "戊寅",
+    "甲子",
+    "戊申"
+   ],
+   "born": "3 January 1969 1:43pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 3 1 7",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Muhammad Ali",
+   "gz": [
+    "乙酉",
+    "庚午",
+    "辛丑",
+    "辛巳"
+   ],
+   "born": "17 January 1942 6:35pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 2 3 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Nadia Comaneci",
+   "gz": [
+    "己巳",
+    "己酉",
+    "己亥",
+    "辛丑"
+   ],
+   "born": "10 November 1961 10:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 6 1 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Mike Tyson",
+   "gz": [
+    "癸未",
+    "庚申",
+    "甲午",
+    "丙午"
+   ],
+   "born": "30 June 1966 3:30pm DST",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "7 7 9 2",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Sean Connery",
+   "gz": [
+    "己酉",
+    "丁未",
+    "甲申",
+    "庚午"
+   ],
+   "born": "25 August 1930 18:05pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 2 7 2",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Charlie Chaplin",
+   "gz": [
+    "庚戌",
+    "壬戌",
+    "戊辰",
+    "己丑"
+   ],
+   "born": "16 April 1889 8:40pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 1 4 8",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Brad Pitt",
+   "gz": [
+    "己卯",
+    "乙未",
+    "甲子",
+    "癸卯"
+   ],
+   "born": "18 December 1963 6:31am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 2 1 4",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Angelina Jolie",
+   "gz": [
+    "壬辰",
+    "辛巳",
+    "辛巳",
+    "乙卯"
+   ],
+   "born": "4 June 1975 9:09am DST",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 9 9 4",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Jackie Chan",
+   "gz": [
+    "丙辰",
+    "癸巳",
+    "戊辰",
+    "甲午"
+   ],
+   "born": "7 April 1954 9:45am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 9 4 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Tom Cruise",
+   "gz": [
+    "丁未",
+    "壬寅",
+    "丙午",
+    "壬寅"
+   ],
+   "born": "3 July 1962 3:06pm DST",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 3 2 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Marilyn Monroe",
+   "gz": [
+    "癸巳",
+    "辛酉",
+    "癸巳",
+    "丙寅"
+   ],
+   "born": "1 June 1926 9:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 6 9 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Paris Hilton",
+   "gz": [
+    "己丑",
+    "丙寅",
+    "庚寅",
+    "辛酉"
+   ],
+   "born": "17 February 198 2:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 3 3 6",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Gianni Versace",
+   "gz": [
+    "己卯",
+    "庚戌",
+    "己亥",
+    "丙戌"
+   ],
+   "born": "2 December 1946 6:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 1 1 6",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Naomi Campbell",
+   "gz": [
+    "己亥",
+    "辛丑",
+    "辛巳",
+    "庚戌"
+   ],
+   "born": "21 May 1970 10:45pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 3 9 1",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Coco Chanel",
+   "gz": [
+    "甲申",
+    "乙未",
+    "庚申",
+    "癸未"
+   ],
+   "born": "19 August 1883 4:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "7 2 7 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Aishwarya Rai",
+   "gz": [
+    "庚寅",
+    "辛丑",
+    "壬戌",
+    "癸丑"
+   ],
+   "born": "1 November 1973 5:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 3 1 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "William Shakespeare",
+   "gz": [
+    "庚辰",
+    "乙卯",
+    "戊辰",
+    "甲子"
+   ],
+   "born": "23 April 1564 8:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 4 4 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Oscar Wilde",
+   "gz": [
+    "己丑",
+    "辛酉",
+    "甲戌",
+    "甲寅"
+   ],
+   "born": "16 October 1854 3:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 6 6 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Steven Spielberg",
+   "gz": [
+    "丁酉",
+    "丙寅",
+    "庚子",
+    "丁戌"
+   ],
+   "born": "18 December 1946 6:16pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "err": "TypeError: Cannot read properties of null (reading 'qi')"
+  },
+  {
+   "name": "Woody Allen",
+   "gz": [
+    "己亥",
+    "辛亥",
+    "丁亥",
+    "乙亥"
+   ],
+   "born": "1 December 1935 10:40pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 1 1 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Akira Kurosawa",
+   "gz": [
+    "辛亥",
+    "丁亥",
+    "己卯",
+    "庚戌"
+   ],
+   "born": "23 March 1910 9:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 1 4 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Rabindranath Tagore",
+   "gz": [
+    "壬辰",
+    "丙辰",
+    "癸巳",
+    "辛酉"
+   ],
+   "born": "7 May 1861 4:02am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 4 9 6",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Richard Bach",
+   "gz": [
+    "甲午",
+    "丙子",
+    "甲午",
+    "丙子"
+   ],
+   "born": "23 June 1936 12:36pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 8 9 8",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Isaac Asimov",
+   "gz": [
+    "辛未",
+    "己未",
+    "丙子",
+    "己未"
+   ],
+   "born": "2 February 1920 2:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "7 2 8 2",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Arthur Rimbaud",
+   "gz": [
+    "己卯",
+    "乙丑",
+    "甲戌",
+    "甲寅"
+   ],
+   "born": "20 October 1854 6:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 8 6 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Lev Tolstoj",
+   "gz": [
+    "癸亥",
+    "戊辰",
+    "辛酉",
+    "戊子"
+   ],
+   "born": "9 September 1828 10:52pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 4 6 8",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Walt Disney",
+   "gz": [
+    "庚子",
+    "丁巳",
+    "己亥",
+    "辛丑"
+   ],
+   "born": "5 December 1901 0:35am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 9 1 3",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Michael Jackson",
+   "gz": [
+    "辛酉",
+    "戊寅",
+    "庚申",
+    "戊戌"
+   ],
+   "born": "29 August 1958 7:33pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 3 7 6",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "John Lennon",
+   "gz": [
+    "乙酉",
+    "乙酉",
+    "丙戌",
+    "庚辰"
+   ],
+   "born": "9 October 1940 6:30pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 6 6 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Jim Morrison",
+   "gz": [
+    "壬午",
+    "庚子",
+    "甲子",
+    "癸未"
+   ],
+   "born": "8 December 1943 11:55am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 8 1 7",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Louis Armstrong",
+   "gz": [
+    "乙亥",
+    "甲寅",
+    "乙未",
+    "辛丑"
+   ],
+   "born": "4 August 1901 10:00pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 3 2 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Mariah Carey",
+   "gz": [
+    "壬辰",
+    "丙午",
+    "己卯",
+    "庚戌"
+   ],
+   "born": "27 March 1970 7:27pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 2 4 1",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Celine Dion",
+   "gz": [
+    "庚午",
+    "己亥",
+    "乙卯",
+    "戊申"
+   ],
+   "born": "30 March 1968 12:15pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 1 4 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Martha Graham",
+   "gz": [
+    "乙卯",
+    "癸丑",
+    "己巳",
+    "甲午"
+   ],
+   "born": "11 May 1894 6:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 3 9 9",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Igor Stravinsky",
+   "gz": [
+    "乙巳",
+    "丁亥",
+    "丙午",
+    "壬午"
+   ],
+   "born": "17 June 1882 10.38 am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 1 2 2",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Paramahansa Yogananda",
+   "gz": [
+    "庚戌",
+    "壬寅",
+    "癸丑",
+    "壬辰"
+   ],
+   "born": "5 January 1893 20.38 pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 3 3 9",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Pope John Paul II",
+   "gz": [
+    "丁酉",
+    "丙子",
+    "辛巳",
+    "庚申"
+   ],
+   "born": "18 May 1920 5:30pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 8 9 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Mother Teresa",
+   "gz": [
+    "己未",
+    "癸亥",
+    "甲申",
+    "庚戌"
+   ],
+   "born": "26 August 1910 2:25pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 1 7 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Jiddu Krishnamurti",
+   "gz": [
+    "丙寅",
+    "己未",
+    "辛巳",
+    "乙未"
+   ],
+   "born": "12 May 1895 4:53am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 2 9 2",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Dalai Lama",
+   "gz": [
+    "甲寅",
+    "癸未",
+    "壬午",
+    "乙亥"
+   ],
+   "born": "6 July 1935 4:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 7 2 1",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Helena Blavatsky",
+   "gz": [
+    "丁丑",
+    "乙卯",
+    "丙申",
+    "辛卯"
+   ],
+   "born": "12 August 1831 2:17am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 4 7 4",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Garry Kasparov",
+   "gz": [
+    "甲午",
+    "丙戌",
+    "丙辰",
+    "癸卯"
+   ],
+   "born": "13 April 1963 11:45am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 6 4 4",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "S. Ramanujian",
+   "gz": [
+    "丁酉",
+    "辛酉",
+    "壬子",
+    "丁亥"
+   ],
+   "born": "22 December 1887 6:20pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 6 8 1",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Charles Darwin",
+   "gz": [
+    "乙丑",
+    "己未",
+    "丙寅",
+    "己巳"
+   ],
+   "born": "12 February 1809 3:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 2 3 9",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Galileo Galilei",
+   "gz": [
+    "甲辰",
+    "丁未",
+    "丙寅",
+    "甲子"
+   ],
+   "born": "15 February 1564 8:00 am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 2 3 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Albert Einstein",
+   "gz": [
+    "甲午",
+    "丙申",
+    "丁卯",
+    "己卯"
+   ],
+   "born": "14 March 1879 11:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 7 4 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Madame Curie",
+   "gz": [
+    "乙未",
+    "辛卯",
+    "庚戌",
+    "丁卯"
+   ],
+   "born": "7 November 1867 1:30pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 4 1 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Nikolas Tesla",
+   "gz": [
+    "己巳",
+    "甲午",
+    "乙未",
+    "丙辰"
+   ],
+   "born": "10 July 1856 11:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 9 2 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Louis Pasteur",
+   "gz": [
+    "丁丑",
+    "乙酉",
+    "壬子",
+    "壬午"
+   ],
+   "born": "27 December 1822 2:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 6 8 2",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Thomas Edison",
+   "gz": [
+    "辛丑",
+    "丁丑",
+    "壬寅",
+    "丁未"
+   ],
+   "born": "11 February 1847 3:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 8 3 2",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Wernher von Braun",
+   "gz": [
+    "丁巳",
+    "戊戌",
+    "癸卯",
+    "壬子"
+   ],
+   "born": "23 March 1912 9:15am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 6 4 8",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Jurij Gagarin",
+   "gz": [
+    "丁卯",
+    "己卯",
+    "丁卯",
+    "甲戌"
+   ],
+   "born": "9 March 1934 6:30am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 4 4 6",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Neil Amstrong",
+   "gz": [
+    "庚子",
+    "丁亥",
+    "癸未",
+    "庚午"
+   ],
+   "born": "5 August 1930 0:45am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "8 1 7 2",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Alain Robert",
+   "gz": [
+    "癸卯",
+    "丁丑",
+    "丁未",
+    "壬寅"
+   ],
+   "born": "7 August 1962 6:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "4 8 2 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Roald Amundsen",
+   "gz": [
+    "丙寅",
+    "甲子",
+    "丁未",
+    "壬申"
+   ],
+   "born": "16 July 1872 5:00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "3 1 2 7",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Umberto Pelizzari",
+   "gz": [
+    "己巳",
+    "甲寅",
+    "甲申",
+    "乙巳"
+   ],
+   "born": "28 August 1965 10:45 am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "9 3 7 9",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Reinhold Messner",
+   "gz": [
+    "甲子",
+    "甲申",
+    "癸酉",
+    "甲申"
+   ],
+   "born": "17 September 1944 1.00am",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 7 6 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Nicholas II of Russia",
+   "gz": [
+    "庚午",
+    "甲辰",
+    "丁巳",
+    "戊辰"
+   ],
+   "born": "18 May 1868 12:15pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 4 9 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Pu Yi",
+   "gz": [
+    "丙午",
+    "壬午",
+    "庚寅",
+    "丙午"
+   ],
+   "born": "7 February 1906 12:15pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 2 3 2",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Prince William",
+   "gz": [
+    "丙戌",
+    "乙亥",
+    "丙午",
+    "壬戌"
+   ],
+   "born": "21 June 1982 Xu hour",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "6 1 2 1",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Prince Charles",
+   "gz": [
+    "癸亥",
+    "癸卯",
+    "癸亥",
+    "戊子"
+   ],
+   "born": "14 November 1948 9:14pm",
+   "file": "DLR Life Reading - 100 Charts.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "1 4 1 8",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Fyodor Dostoyevsky",
+   "gz": [
+    "戊辰",
+    "甲午",
+    "己亥",
+    "辛巳"
+   ],
+   "born": "Born on 11 November 1821 9:00am",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "4 9 1 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Whitney Houston",
+   "gz": [
+    "癸酉",
+    "甲申",
+    "庚申",
+    "癸卯"
+   ],
+   "born": "Born on 9 August 1963 6:55pm DST",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "6 7 7 4",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Luciano Pavarotti",
+   "gz": [
+    "己丑",
+    "辛酉",
+    "丙戌",
+    "乙亥"
+   ],
+   "born": "Born on 12 October 1935 1:40am",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "8 6 6 1",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Rudolf Nureyev",
+   "gz": [
+    "戊午",
+    "戊申",
+    "乙卯",
+    "戊寅"
+   ],
+   "born": "Born on 17 March 1938 1:00pm",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "2 7 4 3",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Pablo Picasso",
+   "gz": [
+    "壬子",
+    "壬辰",
+    "戊戌",
+    "辛巳"
+   ],
+   "born": "Born on 25 October 1881 11:15pm",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "8 9 6 9",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Michelangelo",
+   "gz": [
+    "乙丑",
+    "己卯",
+    "己卯",
+    "乙未"
+   ],
+   "born": "Born on 6 March 1475 1:45am",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "8 4 4 2",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Vincent Van Gogh",
+   "gz": [
+    "癸巳",
+    "丙申",
+    "乙卯",
+    "癸丑"
+   ],
+   "born": "Born on 30 March 1853 11:00am",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "9 7 4 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Niccolo Paganini",
+   "gz": [
+    "壬午",
+    "丙申",
+    "乙卯",
+    "癸丑"
+   ],
+   "born": "Born on 27 October 1782 11:15am",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "2 7 4 3",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Wolfang Amadeus Mozart",
+   "gz": [
+    "丙戌",
+    "乙丑",
+    "己丑",
+    "乙亥"
+   ],
+   "born": "Born on 27 January 1756 8:00pm",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "6 8 8 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Ludwig van Beethoven",
+   "gz": [
+    "壬寅",
+    "壬寅",
+    "戊子",
+    "庚寅"
+   ],
+   "born": "Born on 16 December 1770 3:40am",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "3 3 8 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Kublai Kahn",
+   "gz": [
+    "乙酉",
+    "乙巳",
+    "乙酉",
+    "乙亥"
+   ],
+   "born": "Born on 13 September 121 Yi You hour",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "6 9 6 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Princess Diana",
+   "gz": [
+    "乙酉",
+    "乙未",
+    "甲午",
+    "辛丑"
+   ],
+   "born": "Born on 1 July 1961 7.00 pm",
+   "file": "03b QMDJ Life Reading - 100 Charts.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "6 2 9 3",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Vladymyr Zelensky",
+   "gz": [
+    "丁未",
+    "丁亥",
+    "癸丑",
+    "丁巳"
+   ],
+   "born": "",
+   "file": "02 DLR Life Reading - Guidelines.pptx",
+   "src": "life_dlr.jsonl",
+   "rect": false,
+   "pal": "2 1 3 9",
+   "numOnly": false,
+   "good": true,
+   "groups": 0,
+   "langs": ""
+  },
+  {
+   "name": "Leonardo da Vinci",
+   "gz": [
+    "乙亥",
+    "己未",
+    "甲辰",
+    "壬申"
+   ],
+   "born": "Born on 15 April 1452 Yi Hai hour",
+   "file": "02 QMDJ Life Reading - Guidelines.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "1 2 4 7",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Nicholas II",
+   "gz": [
+    "庚午",
+    "甲辰",
+    "丁巳",
+    "戊辰"
+   ],
+   "born": "",
+   "file": "04 QMDJ Life Reading - Timing.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "2 4 9 4",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "John F. Kennedy",
+   "gz": [
+    "乙未",
+    "辛未",
+    "乙巳",
+    "丁巳"
+   ],
+   "born": "Born on 29 May 1917 Wei hour",
+   "file": "04 QMDJ Life Reading - Timing.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "2 7 9 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Barack Obama",
+   "gz": [
+    "甲戌",
+    "己巳",
+    "乙未",
+    "辛丑"
+   ],
+   "born": "Born 4 August 1961 \"Birth hour close to hour change between 癸酉 and 甲戌\"; material concludes \"The Jia Xu hour chart is the most convincing\"",
+   "file": "05 QMDJ LIfe Reading - Determining birth hour.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": true,
+   "pal": "6 9 2 3",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Usain Bolt",
+   "gz": [
+    "己酉",
+    "丁酉",
+    "丙申",
+    "丙寅"
+   ],
+   "born": "Born 21 August 1986 \"Birth hour totally unknown\"; material concludes \"The Ji You hour chart is the most convincing\"",
+   "file": "05 QMDJ LIfe Reading - Determining birth hour.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": true,
+   "pal": "6 6 7 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Felix Baumgartner",
+   "gz": [
+    "癸未",
+    "乙丑",
+    "戊辰",
+    "己酉"
+   ],
+   "born": "Born 20 April 1969 \"unknown hour\"; material concludes \"The Gui Wei hour chart is the most convincing\"",
+   "file": "05 QMDJ LIfe Reading - Determining birth hour.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": true,
+   "pal": "7 8 4 6",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Marilyn vos Savant",
+   "gz": [
+    "辛亥",
+    "丁巳",
+    "丙申",
+    "丙戌"
+   ],
+   "born": "Born 11 August 1946 \"unknown hour\"; material concludes \"The Xin Hai hour chart is the most convincing\"",
+   "file": "05 QMDJ LIfe Reading - Determining birth hour.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": true,
+   "pal": "1 9 7 6",
+   "numOnly": false,
+   "good": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Evelyn",
+   "gz": [
+    "戊辰",
+    "己巳",
+    "丙辰",
+    "癸酉"
+   ],
+   "born": "born on May 3, 1933 \"she doesn't know her birth hour. However, she has been told that it was in the morning\"; material concludes \"The Wu Chen hour chart matches all the information\"",
+   "file": "05 QMDJ LIfe Reading - Determining birth hour.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": true,
+   "pal": "4 9 4 6",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Elizabeth",
+   "gz": [
+    "壬子",
+    "癸丑",
+    "辛酉",
+    "癸亥"
+   ],
+   "born": "born on September 22, 1983 2:08 am DST (\"at the cusp of the change from the Zi hour to the Chou hour\"); material concludes \"The Ren Zi chart matches\"",
+   "file": "05 QMDJ LIfe Reading - Determining birth hour.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": true,
+   "pal": "8 3 6 1",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Karen",
+   "gz": [
+    "庚寅",
+    "丙子",
+    "庚子",
+    "辛丑"
+   ],
+   "born": "born on December 9, 1961 \"around 5am\" (\"Was she born in the Yin or in the Mao hour?\")",
+   "file": "05 QMDJ LIfe Reading - Determining birth hour.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "3 8 8 3",
+   "numOnly": true,
+   "good": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Steven Hawking",
+   "gz": [
+    "丙申",
+    "辛酉",
+    "辛丑",
+    "辛巳"
+   ],
+   "born": "Born on 8 January, 1942 10:08am",
+   "file": "06 QMDJ Life Reading - Areas of Life.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "7 6 3 9",
+   "numOnly": true,
+   "good": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Rose Kennedy",
+   "gz": [
+    "甲戌",
+    "甲辰",
+    "癸未",
+    "庚寅"
+   ],
+   "born": "Born on 22 July, 1890 10:00pm",
+   "file": "06 QMDJ Life Reading - Areas of Life.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "6 4 7 3",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Xi Jinping",
+   "gz": [
+    "丁未",
+    "壬子",
+    "戊午",
+    "癸巳"
+   ],
+   "born": "",
+   "file": "06 QMDJ Life Reading - Areas of Life.pptx",
+   "src": "life_qmdj.jsonl",
+   "rect": false,
+   "pal": "2 8 2 9",
+   "numOnly": false,
+   "good": true,
+   "groups": 1,
+   "langs": "add+eq"
+  }
+ ],
+ "no_pillars": [
+  "Sofia Loren",
+  "Elon Musk",
+  "Donald Trump",
+  "Mao Zedong",
+  "Joan Pujol García",
+  "Jeff Bezos (12 gennaio 1964)",
+  "Mia (Day 27, month 6, year 1 6 (hour))",
+  "Michael"
+ ],
+ "conflicts": [
+  [
+   "Fyodor Dostoyevsky",
+   [
+    "戊辰",
+    "甲午",
+    "己亥",
+    "辛巳"
+   ],
+   [
+    "己巳",
+    "甲午",
+    "己亥",
+    "辛巳"
+   ],
+   "02 QMDJ Life Reading - Guidelines.pptx"
+  ],
+  [
+   "Jiddu Krishnamurti",
+   [
+    "丙寅",
+    "己未",
+    "辛巳",
+    "乙未"
+   ],
+   [
+    "乙丑",
+    "己未",
+    "辛巳",
+    "乙未"
+   ],
+   "03a QMDJ Life Reading - Charts Discussions.pptx"
+  ]
+ ]
+}
