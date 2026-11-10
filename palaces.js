@@ -9,9 +9,9 @@
 //  branch clash; a pillar with no number link still communicates if it shares a
 //  family with another pillar (xkdgPalaceComm in app-bazi.js).
 //
-//  1. Option "⌂ Palaces" (one switch, remembered on the device) beside
-//     "⬡ XKDG RELATIONS" of the DATE and of PERSON A / B: shows the palace
-//     numbers and which relations they make.
+//  1. Option "⌂ Palaces" (one switch, ON by default, remembered on the device): a compact
+//     full-width strip under the XKDG RELATIONS of the DATE and of PERSON A / B with the
+//     palace numbers and their relations; the ON/OFF chip is in the strip itself.
 //  2. Palaces are Earth energy, close to Feng Shui: when a pillar is isolated the
 //     app says which luopan hexagram to use — Zheng Shen (facing / door / bed /
 //     desk) or Ling Shen (water). Shown in the 👤 PERSON tab and in the luopan
@@ -103,31 +103,42 @@
   // ── HTML ────────────────────────────────────────────────────────
   function relText(pc) {
     var bits = [];
-    var ok = pc.pairs.filter(function (p) { return !p.cancelled; }), ko = pc.pairs.filter(function (p) { return p.cancelled; });
-    if (ok.length) bits.push(ok.map(function (p) { return L[p.a] + ' + ' + L[p.b] + ' (' + (p.lang === 'eq' ? 'same number ' + p.txt.split(' ')[0] : p.txt) + ')'; }).join(' · '));
-    if (ko.length) bits.push('<span style="color:#c62828;">⚡ ' + ko.map(function (p) { return L[p.a] + ' + ' + L[p.b] + ' (' + p.txt + ') cancelled by the clash ' + p.clash; }).join(' · ') + '</span>');
-    pc.by_family.forEach(function (x) { bits.push(L[x.pillar] + ' ' + x.value + ' has no number link but communicates with the ' + L[x.with] + ' through the ' + x.family + ' family'); });
-    if (!ok.length && !pc.by_family.length && !ko.length) bits.push('no pillar talks with another');
-    return bits.join('; ');
+    pc.pairs.forEach(function (p) {
+      bits.push(p.cancelled ? '<span style="color:#c62828;">⚡ ' + L[p.a] + '+' + L[p.b] + ' ' + p.txt + ' cancelled (' + p.clash + ')</span>'
+                            : L[p.a] + '+' + L[p.b] + ' ' + p.txt);
+    });
+    var seen = {};
+    pc.by_family.forEach(function (x) {
+      var k = [x.pillar, x.with].sort().join('|'); if (seen[k]) return; seen[k] = 1;
+      bits.push(L[x.pillar] + '+' + L[x.with] + ' ' + x.family + ' family');
+    });
+    return bits.length ? bits.join(' · ') : 'no link';
+  }
+  // Compact full-width strip (session 49, Edu: "fatto malissimo"): the ON/OFF chip lives in it, so the
+  // XKDG RELATIONS header is untouched; OFF leaves a single slim line.
+  function chip() {
+    var on = isOn();
+    return '<span onclick="xkdgTogglePalaces()" title="Palace numbers and their relations (Feng Shui)" style="float:right;cursor:pointer;user-select:none;font-size:10px;font-weight:bold;padding:1px 8px;border-radius:9px;margin-left:6px;border:1px solid '
+      + (on ? '#8d6e63;background:#8d6e63;color:#fff;' : '#bbb;background:#fff;color:#777;') + '">' + (on ? 'ON' : 'OFF') + '</span>';
   }
   function relHtml(P, opts) {
     opts = opts || {};
     var pc = relations(P); if (!pc) return '';
-    var nums = pc.values.map(function (v) { return '<b>' + L[v.pillar] + ' ' + v.value + '</b> <span style="color:#888;">' + TRI[v.value] + '</span>'; }).join(' · ');
-    var h = '<div class="xk-pal" style="font-size:12px;margin-top:6px;padding:5px 8px;border-radius:8px;border:1px solid ' + (pc.good ? '#a5d6a7;background:#f1f8e9' : '#d7ccc8;background:#efebe9') + ';">'
-      + '<div><b>⌂ Palaces</b> <span style="color:#888;">(minor — Earth, Feng Shui)</span>: ' + nums + '</div>'
-      + '<div style="margin-top:2px;">' + relText(pc) + '.</div>'
-      + '<div style="margin-top:2px;font-weight:bold;color:' + (pc.good ? '#2e7d32' : '#c62828') + ';">'
-      + (pc.good ? '✓ All palaces communicate.' : pc.isolated.map(function (x) { return L[x.pillar] + ' (' + x.value + ')'; }).join(', ') + ' isolated.') + '</div>';
+    var box = 'font-size:12px;line-height:1.45;margin-top:6px;padding:4px 8px;border-radius:6px;border:1px solid ';
+    if (!isOn()) return '<div class="xk-pal" style="' + box + '#e0d6cf;background:#faf8f6;color:#888;">' + chip() + '⌂ Palaces</div>';
+    var nums = pc.values.map(function (v) { return L[v.pillar] + ' <b>' + v.value + '</b>'; }).join(' · ');
+    var h = '<div class="xk-pal" style="' + box + (pc.good ? '#c5e1a5;background:#f7fbf2' : '#d7ccc8;background:#f6f1ee') + ';">'
+      + chip() + '<b style="color:#5d4037;">⌂ Palaces</b> ' + nums
+      + '<div style="color:#555;">' + relText(pc) + '</div>'
+      + '<div style="font-weight:bold;color:' + (pc.good ? '#2e7d32' : '#c62828') + ';">'
+      + (pc.good ? '✓ all communicate' : '✕ ' + pc.isolated.map(function (x) { return L[x.pillar] + ' ' + x.value; }).join(', ') + ' isolated') + '</div>';
     if (!pc.good && opts.cure) {
-      // short line here: which palace numbers cure; the ZS / LS hexagrams are in the 👤 PERSON tab
       var c = cures(P), short = [];
       if (c) c.groups.forEach(function (g) {
-        var nums = g.byNum.map(function (r) { return r.pal + ' ' + r.tri; });
-        if (g.family.length) nums.push('★ shared family');
-        if (nums.length) short.push((c.groups.length > 1 ? g.pillars.map(function (x) { return L[x.pillar]; }).join('+') + ': ' : '') + nums.join(', '));
+        var ns = g.byNum.map(function (r) { return r.pal; });
+        if (ns.length) short.push((c.groups.length > 1 ? g.pillars.map(function (x) { return L[x.pillar]; }).join('+') + ' ' : '') + ns.join('/'));
       });
-      if (short.length) h += '<div style="margin-top:2px;color:#4e342e;">🧭 Feng Shui cure — a hexagram in palace ' + short.join(' · ') + '. Which <b>正 Zheng Shen</b> / <b>零 Ling Shen</b> hexagram: <b>👤 PERSON</b> tab or luopan ☰ → 🌿 Cure.</div>';
+      if (short.length) h += '<div style="color:#5d4037;">🧭 cure: a hexagram in palace ' + short.join(' · ') + ' — ZS / LS in 👤 PERSON</div>';
     }
     return h + '</div>';
   }
@@ -212,21 +223,8 @@
   }
 
   // ── The switch ──────────────────────────────────────────────────
-  function btnHtml(id) {
-    var on = isOn();
-    return '<button type="button" id="' + id + '" onclick="xkdgTogglePalaces()" title="Show the palace numbers and their relations (Feng Shui)" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;margin-left:auto;margin-right:4px;border:1px solid '
-      + (on ? '#8d6e63;background:#efebe9;color:#4e342e;' : '#bbb;background:#f5f5f5;color:#555;') + '">⌂ Palaces ' + (on ? 'ON' : 'OFF') + '</button>';
-  }
   function placeButtons() {
-    [['#analysis-section h3', 'xk-pal-btn-date', null], ['#person-analysis-a h3', 'xk-pal-btn-a', '#toggle-stars-a'], ['#person-analysis-b h3', 'xk-pal-btn-b', '#toggle-stars-b']].forEach(function (s) {
-      var h3 = document.querySelector(s[0]); if (!h3) return;
-      var old = document.getElementById(s[1]);
-      var tmp = document.createElement('span'); tmp.innerHTML = btnHtml(s[1]); var b = tmp.firstChild;
-      if (old) { old.replaceWith(b); return; }
-      h3.style.display = 'flex'; h3.style.alignItems = 'center'; h3.style.justifyContent = 'flex-start';
-      var st = s[2] ? document.querySelector(s[2]) : null;
-      if (st && st.parentNode === h3) h3.insertBefore(b, st); else { b.style.marginRight = '0'; h3.appendChild(b); }
-    });
+    ['xk-pal-btn-date', 'xk-pal-btn-a', 'xk-pal-btn-b'].forEach(function (id) { var o = document.getElementById(id); if (o) o.remove(); });
   }
   function refresh() {
     placeButtons();
@@ -237,10 +235,13 @@
     } catch (e) {}
   }
   function renderDatePalaces() {
-    var col = document.querySelector('#analysis-section .analysis-items-col'); if (!col) return;
+    // full width, right under the date's XKDG RELATIONS box (not inside its narrow column)
+    var sec = document.getElementById('analysis-section'); if (!sec || !sec.parentNode) return;
     var box = document.getElementById('date-palaces');
-    if (!box) { box = document.createElement('div'); box.id = 'date-palaces'; col.appendChild(box); }
-    box.innerHTML = (isOn() && window._xkdgDateP) ? relHtml(window._xkdgDateP) : '';
+    if (!box) { box = document.createElement('div'); box.id = 'date-palaces'; }
+    if (box.previousElementSibling !== sec) sec.parentNode.insertBefore(box, sec.nextSibling);
+    var shown = window._xkdgDateP && getComputedStyle(sec).display !== 'none';
+    box.innerHTML = shown ? relHtml(window._xkdgDateP) : '';
   }
 
   window.xkdgTogglePalaces = function () {
