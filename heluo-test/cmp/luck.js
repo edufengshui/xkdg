@@ -88,6 +88,10 @@ function profilo(Pn, male) {
 }
 
 // punteggio Luck di un giorno. p = predict(...), T = { y, m, d } rami del tempo
+// Opposti portati dai rami (A e B): tolti di default (Edu, 10/11). Un ramo agisce con il suo elemento sulla persona
+// (es. 寅 = Wealth per Gates Metallo): non può insieme togliere la Luck perché in Time 1 porta l'opposto (Gen).
+// Restano gli opposti come trigrammi negli esagrammi del tempo (C). LK_OPPRAMI=si per rimetterli.
+const OPR = process.env.LK_OPPRAMI === 'si';
 function giorno(P, p, T) {
   let tot = 0; const w = [];
   // Luck vuota che esce dal vuoto (Edu, 10/11): arriva il trigramma di scontro (rami Time 1 opposti: Kan↔Li, Gen↔Kun,
@@ -108,13 +112,13 @@ function giorno(P, p, T) {
     // A. Luck del nativo attivata dai rami del tempo
     for (const [lv, b] of [['a', T.y], ['m', T.m], ['g', T.d]]) {
       if (L.inNat && brTri(b) === L.t) add(k, W.A[lv], 'A' + lv + b);
-      if (L.inNat && brTri(b) === L.op) add(k, -W.A[lv], 'A' + lv + b);
+      if (OPR && L.inNat && brTri(b) === L.op) add(k, -W.A[lv], 'A' + lv + b);
     }
     // B. rami delle linee attive
     for (const [lv, id] of [['c', p.id.cycle], ['a', p.id.year], ['g', p.id.day]]) {
       const b = NJ[id[0]].lines[id[1] - 1].branch, t = brTri(b);
       if (t === L.t) add(k, W.B[lv], 'B' + lv + b);
-      if (t === L.op) add(k, -W.B[lv], 'B' + lv + b);
+      if (OPR && t === L.op) add(k, -W.B[lv], 'B' + lv + b);
     }
     // C. trigrammi degli esagrammi del tempo
     for (const [lv, n] of [['a', p.id.year[0]], ['m', p.id.month[0]], ['b', p.id.lord[0]], ['g', p.id.dayHex[0]]]) {
