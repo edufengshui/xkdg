@@ -108,6 +108,17 @@ function jieStartTstDay(Pe, lon) { // TST calendar day (ms at 00:00) of the Jie 
 // Default (HL_MENSILE unset): months from the Jie, lines from the one above the moved line, cumulative; month index
 // 子 = 1 … 亥 = 12 (Edu, 10/11/2026: the Zi month is one month split between two years, like the Zi hour).
 // HL_MENSILE=yin1: the same with the old numbering of the reference calculator (寅 = 1 … 丑 = 12), for comparisons.
+// HL_MENSILE=coppie (Edu, 10/11/2026, sera): Edu's rule on the twelve branches. Month 1 = the 15 days of Zi after the
+// Winter Solstice, month 2 = Chou (from Xiaohan), month 3 = Yin … month 12 = Hai; months start at the Jie. Line k of
+// the annual rules the pair of branches 2k-1, 2k (子丑, 寅卯, 辰巳, 午未, 申酉, 戌亥): odd month = annual with line k
+// changed; even month = the previous month with the correlate changed too (two lines against the annual). No
+// accumulation; the moved line of the annual is not used. The 15 days of Zi from Daxue to the Solstice are month 1
+// again (line 1) on the annual of the year that is ending, like the Zi hour. Blocks of 5 days from the Jie.
+function monthCoppie(A, monthBr) {
+  const i = monthBr + 1, k = Math.ceil(i / 2), S = [k];
+  if (i % 2 === 0) S.push(partner(k));
+  return { hex: H.hexOf(flip(A, S)), changed: S.slice().sort(), index: i, line: k };
+}
 function monthYin1(A, moved, monthBr) {
   const i = (monthBr - 2 + 12) % 12 + 1, s = wrap6(moved + 1), j = Math.ceil(i / 2), S = [];
   for (let t = 0; t < j; t++) S.push(wrap6(s + t));
@@ -140,6 +151,7 @@ function predict(N, Pe, lon) {
   let mo;
   if (N.method === 'C') { const i = (br - 2 + 12) % 12 + 1, L = Math.ceil(i / 2), S = [L]; if (i % 2 === 0) S.push(partner(L)); mo = { hex: H.hexOf(flip(a.hex.lines, S)) }; }
   else if (EDU) mo = monthEdu(a.hex.lines, Pe);
+  else if (process.env.HL_MENSILE === 'coppie') mo = monthCoppie(a.hex.lines, br);
   else if (process.env.HL_MENSILE === 'yin1') mo = monthYin1(a.hex.lines, a.moved, br);
   else mo = H.monthlyHex(a.hex.lines, a.moved, br);
   const t = Pe.meta.tst, tday = Date.UTC(t.y, t.mo - 1, t.d);

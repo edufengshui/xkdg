@@ -78,7 +78,7 @@ const base = g => Math.round((g.c.tot - g.c.rs + g.a.tot - g.a.rs + g.d.tot - g.
 const giornoSolo = g => Math.round((g.d.tot - g.d.rs) * 100) / 100; // tempo + testo della sola linea del giorno
 
 function unEvento(e, regola) {
-  if (regola === 'edu' || regola === 'yin1') process.env.HL_MENSILE = regola; else delete process.env.HL_MENSILE;
+  if (regola !== 'calc') process.env.HL_MENSILE = regola; else delete process.env.HL_MENSILE;
   const [d0, t0, lon0, tz0, male] = NASC[e.chi], Pn = pillars(d0, t0, lon0, tz0), N = natal('A', Pn, male);
   const Pe = pillars(e.d, e.ora, e.luogo[0], e.luogo[1]), p = predict(N, Pe, e.luogo[0]);
   if (p.none) return { fuori: true, eta: p.age };
@@ -97,7 +97,8 @@ function unEvento(e, regola) {
   };
 }
 
-const tutti = EVENTI.map(e => ({ ...e, calc: unEvento(e, 'calc'), edu: unEvento(e, 'edu') }));
+// calc = in uso nell'app (子 = 1, cumulativo); yin1 = numerazione di prima (寅 = 1); edu = 中氣; coppie = regola di Edu sui rami
+const tutti = EVENTI.map(e => ({ ...e, calc: unEvento(e, 'calc'), yin1: unEvento(e, 'yin1'), edu: unEvento(e, 'edu'), coppie: unEvento(e, 'coppie') }));
 const fuori = tutti.filter(e => e.calc.fuori), out = tutti.filter(e => !e.calc.fuori);
 delete process.env.HL_MENSILE;
 module.exports = { out, EVENTI, NASC };
