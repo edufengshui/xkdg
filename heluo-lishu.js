@@ -295,6 +295,46 @@
       + '<br>' + triLbl(hx.upper) + '<br>' + triLbl(hx.lower) + (mv ? '<br><span style="color:#c62828;">' + (mvLbl || 'Moving line') + ' ' + mv + '</span>' : '') + '</div></div>'
       + (extra || '') + '</div>';
   }
+  // ── Period of each line (Edu, 10/11/2026): ages in the natives; months in the annual; 5-day blocks in the monthly;
+  // in the block hexagram the Lord of the Block (5 days) and one day per other line; the changed line in the day hexagram.
+  // Annual: month i (寅 = 1 … 丑 = 12) changes the lines from the one above the moved line up to wrap6(moved + ceil(i/2)):
+  // each line of the annual is the last one reached by two months (monthlyHex). All dates in TRUE SOLAR TIME.
+  var DAY = 86400000;
+  function dayMs(dt) { return Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()); }
+  function fmtR(a, b) { var A = new Date(a), B = new Date(b); if (a === b) return fmtD(A);
+    return A.getUTCMonth() === B.getUTCMonth() ? A.getUTCDate() + '–' + fmtD(B) : fmtD(A) + '–' + fmtD(B); }
+  function msTST(Y, lon) {
+    var ST_ = root.XKDGSolarTime;
+    function bj2tst(dt) { if (!dt) return dt; var t = ST_.convert(dt.getTime() - 8 * 3600000, lon).tst; return new Date(Date.UTC(t.y, t.mo - 1, t.d, t.h, t.mi, t.s)); }
+    return monthStarts(Y).map(function (m) { return { br: m.br, start: bj2tst(m.start), end: bj2tst(m.end) }; });
+  }
+  function addRange(arr, s, e) { var l = arr[arr.length - 1]; if (l && s === l[1] + DAY) l[1] = e; else arr.push([s, e]); }
+  function annualPeriods(moved, ms) {
+    var span = {}, rg = {}, cap = {};
+    for (var i = 0; i < 13; i++) {
+      var br = ms[i].br, idx = (br - 2 + 12) % 12 + 1, L = wrap6(moved + Math.ceil(idx / 2));
+      var s = dayMs(ms[i].start), e = dayMs(ms[i + 1].start || ms[i + 1].end) - DAY;
+      if ((span[L] || '').indexOf(BRANCHES[br]) < 0) span[L] = (span[L] || '') + BRANCHES[br];
+      addRange(rg[L] = rg[L] || [], s, e);
+    }
+    Object.keys(rg).forEach(function (L) { cap[L] = 'months ' + span[L] + ' · ' + rg[L].map(function (r) { return fmtR(r[0], r[1]); }).join(', '); });
+    return { span: span, cap: cap };
+  }
+  function monthPeriods(d0, startDay, endDay) { // 5 days per line from the Jie day
+    var span = {}, cap = {};
+    for (var k = 0; d0 + k * 5 * DAY < endDay; k++) {
+      var L = k % 6 + 1, s = Math.max(d0 + k * 5 * DAY, startDay), e = Math.min(d0 + (k + 1) * 5 * DAY, endDay) - DAY; if (e < s) continue;
+      span[L] = span[L] ? span[L] + ', ' + fmtD(new Date(s)) : fmtR(s, e); cap[L] = (cap[L] ? cap[L] + ', ' : 'days ') + fmtR(s, e);
+    }
+    return { span: span, cap: cap };
+  }
+  function blockPeriods(lord, bS, startDay, endDay) {
+    var s = Math.max(bS, startDay), e = Math.min(bS + 5 * DAY, endDay) - DAY, span = {}, cap = {};
+    span[lord] = fmtR(s, e); cap[lord] = 'Lord of the Block · ' + fmtR(s, e);
+    for (var j = 0; j < 5; j++) { var q = bS + j * DAY; if (q >= startDay && q < endDay) { var L = wrap6(lord + 1 + j); span[L] = fmtD(new Date(q)); cap[L] = 'day ' + fmtD(new Date(q)); } }
+    return { span: span, cap: cap };
+  }
+  function dayPeriods(line, q) { var o = { span: {}, cap: {} }; o.span[line] = fmtD(new Date(q)); o.cap[line] = 'day ' + fmtD(new Date(q)); return o; }
   // Card in Edu's format (9/11/2026): title on top, branches left (hidden spirit too), relation initial and ages right,
   // active line in red, below person, branch, element and relation of the active line.
   function fmtCard(title, hx, ln, cy, me, extra) {
@@ -389,9 +429,12 @@
   }
   function cycleHexSvg(hx, ln, cy, meOv) { // meOv: person of the period (annual, monthly, block, day hexagrams)
     var d = NJ() && NJ()[hx.n], me = meOv || personEl(hx, ln), lines = hx.lines;
-    var W = 280, bx = 92, bw = 96, lh = 9, gap = 9, top = 8, H = top + 6 * lh + 5 * gap + (d ? 30 : 8);
+    var W = 300, bx = 92, bw = 96, lh = 9, gap = 9, top = 8, H = top + 6 * lh + 5 * gap + (d ? (ln ? 44 : 10) : 8);
     var F = ' font-family="system-ui"', s = '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin:6px auto;max-width:' + W + 'px;">';
-    var span = {}; (cy || []).forEach(function (c) { span[c.line] = c.from + '–' + c.to; });
+    // cy: the cycles (ages of each line) or { span: {line: label}, cap: {line: period} } for annual, monthly, block, day
+    var span = {}, cap = '';
+    if (Array.isArray(cy)) cy.forEach(function (c) { span[c.line] = c.from + '–' + c.to; if (c.line === ln) cap = 'age ' + c.from + '–' + c.to; });
+    else if (cy) { span = cy.span || {}; cap = (cy.cap && cy.cap[ln]) || ''; }
     for (var i = 0; i < 6; i++) {
       var y = top + (5 - i) * (lh + gap), red = (i + 1 === ln), col = red ? '#c62828' : '#222', ty = y + lh - 0.5;
       if (lines[i]) s += '<rect x="' + bx + '" y="' + y + '" width="' + bw + '" height="' + lh + '" fill="' + col + '"/>';
@@ -405,7 +448,8 @@
     }
     if (d && ln) {
       var A = d.lines[ln - 1];
-      s += '<text x="' + (W / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11"' + F + ' fill="#555">Person ' + me + ' · line ' + ln + ': ' + A.branch + ' ' + A.el + ' · ' + REL[relL(me, A.el)] + '</text>';
+      s += '<text x="' + (W / 2) + '" y="' + (H - 24) + '" text-anchor="middle" font-size="12" font-weight="600"' + F + ' fill="#c62828">Line ' + ln + ': ' + A.branch + ' ' + A.el + ' · person ' + me + '</text>'
+         + '<text x="' + (W / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11"' + F + ' fill="#555">' + REL[relL(me, A.el)] + (cap ? ' · ' + esc(cap) : '') + '</text>';
     }
     return s + '</svg>';
   }
@@ -537,10 +581,12 @@
       + '<button style="' + B + '" onclick="xkdgHLYear(1)">▶</button>' + (_hlY ? '<button style="' + B + '" onclick="xkdgHLYear(0)">now</button>' : '') + '</div>';
     if (a.none) return h + '<div style="font-size:12px;color:#888;">Age ' + a.age + ': outside the Xian Tian / Hou Tian cycles.</div>';
     var per = a.period, isXT = a.periodHex === R.xianTian, me = personEl(a.periodHex, per.line);
+    var lonA = NaN; try { lonA = root.XKDGSolarTime.currentLonTz().lonDeg; } catch (e) {} if (!isFinite(lonA)) lonA = _hlLon;
+    var aPer = null; try { aPer = annualPeriods(a.moved, msTST(Y, lonA)); } catch (e) {}
     h += '<div style="font-size:12px;color:#333;line-height:1.6;margin-bottom:6px;">Age <b>' + a.age + '</b> · ' + (isXT ? 'Xian Tian' : 'Hou Tian') + ' ' + a.periodHex.n
       + ' line ' + per.line + ' (' + (per.yang ? 'yang · 9' : 'yin · 6') + ', age ' + per.from + '–' + per.to + ') · year <b>' + a.k + '</b> of ' + a.len
       + ' · person <b>' + me + '</b>' + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + fmtCard('Annual ' + Y + ' · ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · age ' + a.age + ' · moved line ' + a.moved, a.hex, a.moved, null, me,
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + fmtCard('Annual ' + Y + ' · ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · age ' + a.age + ' · moved line ' + a.moved, a.hex, a.moved, aPer, me,
           (oppInvTag(R, a.hex).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex).join(', ') + '</div>' : '')
           + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
           + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)')) + '</div>';
@@ -581,7 +627,8 @@
             today = '<div style="font-size:12px;margin:8px 0 2px;padding:6px 8px;background:#fff3e0;border-radius:6px;"><b>Today</b>: month ' + BRANCHES[br] + ' · monthly <b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + ' · day ' + ((nowDay - d0) / D + 1) + ' of the solar month'
               + '<br>Block: Lord of the Block <b>line ' + dd.lord + '</b> → <b>' + dd.block.n + '</b> ' + esc(hexName(dd.block.n)) + ' (day ' + dd.dayInBlock + ' of 5)'
               + '<br>Day: <b>line ' + dd.line + '</b> → <b>' + dd.hex.n + '</b> ' + esc(hexName(dd.hex.n))
-              + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' + fmtCard('Block ' + dd.block.n + ' · day line ' + dd.line, dd.block, dd.line, null, me) + fmtCard('Day ' + dd.hex.n + ' · line ' + dd.line, dd.hex, dd.line, null, me) + '</div>'
+              + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' + fmtCard('Monthly ' + mo.hex.n + ' · Lord line ' + dd.lord, mo.hex, dd.lord, monthPeriods(d0, startDay, endDay), me)
+              + fmtCard('Block ' + dd.block.n + ' · day line ' + dd.line, dd.block, dd.line, blockPeriods(dd.lord, bS, startDay, endDay), me) + fmtCard('Day ' + dd.hex.n + ' · line ' + dd.line, dd.hex, dd.line, dayPeriods(dd.line, nowDay), me) + '</div>'
               + lineText(dd.block.n, dd.line, 'Line ' + dd.line + ' of ' + dd.block.n + ' (block)', true)
               + lineText(dd.hex.n, dd.line, 'Line ' + dd.line + ' of ' + dd.hex.n + ' (day)', true)
               + lineText(dd.block.n, dd.lord, 'Line ' + dd.lord + ' of ' + dd.block.n + ' (Lord of the Block)', true) + '</div>';
@@ -593,7 +640,7 @@
         + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + '</td></tr>'
         + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">'
         + (blocks ? '<div style="font-size:11px;color:#777;margin:2px 0;">Daily hexagrams: 5-day blocks (Lord of the Block → block hexagram), one line per day changes on it</div><table style="border-collapse:collapse;font-size:12px;">' + blocks + '</table>' : '')
-        + cycleHexSvg(mo.hex, 0, null, me) + hexText(mo.hex.n) + '</td></tr>';
+        + (from ? cycleHexSvg(mo.hex, 0, monthPeriods(d0, startDay, endDay), me) : cycleHexSvg(mo.hex, 0, null, me)) + hexText(mo.hex.n) + '</td></tr>';
     }
     return h + today + tb + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie; dates and days of the month in true solar time (longitude ' + (Math.round(lonT * 100) / 100) + '°). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
   }
@@ -789,6 +836,7 @@
     properPosition: properPosition, properSupport: properSupport, huGua: huGua, cycles: cycles,
     annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, dailyHex: dailyHex, monthStarts: monthStarts, open: open,
     currentChart: function () { return _chart; },
+    periods: { months: msTST, annual: annualPeriods, month: monthPeriods, block: blockPeriods, day: dayPeriods, dayMs: dayMs },
     ui: { cycleHexSvg: cycleHexSvg, lineBody: lineBody, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
 })(typeof window !== 'undefined' ? window : globalThis);
