@@ -229,6 +229,7 @@
         ['heaven', 'earth', 'fame'].forEach(function (k) {
           if (brTri(L.branch) === R.luck[k]) lk.push('+' + cap(k));
         });
+        src.forEach(function (o) { o.t = o.t.replace(/= (Parent|Wealth|Ghost|Children|Brothers)/, function (m, w) { return '= ' + w.charAt(0); }).replace(' is Wealth', ' = W'); });
         rows.push({ phase: g[0], hx: hx, c: c, me: me, L: L, r: r, src: src, luck: lk, y1: y0 + c.from - 1, y2: y0 + c.to - 1 });
       });
     });
@@ -265,8 +266,8 @@
       var on = nowAge >= x.c.from && nowAge <= x.c.to, id = 'hl-rd-' + i, w = x.r === 'W' || x.src.some(function (s) { return s.k === 'W'; });
       h += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (on ? 'background:#fff3e0;font-weight:600;' : w ? 'background:#f1f8e9;' : '') + '">'
         + '<td style="' + TD + 'white-space:nowrap;"><b>' + x.c.from + '–' + x.c.to + '</b>' + (on ? ' ◀' : '') + '<div style="font-size:10px;color:#888;">' + x.y1 + '–' + x.y2 + '</div></td>'
-        + '<td style="' + TD + 'white-space:nowrap;">' + x.phase + ' ' + x.hx.n + ' l' + x.c.line + '</td><td style="' + TD + 'white-space:nowrap;">' + EL_CN[x.me] + ' ' + x.me + '</td>'
-        + '<td style="' + TD + 'white-space:nowrap;">' + x.L.branch + ' ' + relTag(x.r) + ' ' + REL[x.r] + (x.luck.length ? ' <span style="color:#e65100;">' + x.luck.join(' ') + '</span>' : '') + '</td>'
+        + '<td style="' + TD + 'white-space:nowrap;">' + x.phase + ' ' + x.hx.n + ' l' + x.c.line + '</td><td style="' + TD + 'white-space:nowrap;">' + x.me + '</td>'
+        + '<td style="' + TD + 'white-space:nowrap;">' + x.L.branch + ' ' + relTag(x.r) + (x.luck.length ? ' <span style="color:#e65100;">' + x.luck.join(' ') + '</span>' : '') + '</td>'
         + '</tr>' + (x.src.length ? '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;' + (on ? 'background:#fff3e0;' : w ? 'background:#f1f8e9;' : '') + '"><td></td><td colspan="3" style="padding:0 5px 4px;font-size:11px;">' + x.src.map(function (s) { return '<span style="color:' + RC[s.k] + ';">' + esc(s.t) + '</span>'; }).join(' · ') + '</td></tr>' : '')
         + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(x.hx, x.c.line, x.phase === 'XT' ? R.cyclesXT : R.cyclesHT) : '')
         + (U().lineBody ? U().lineBody(x.hx.n, x.c.line) : '') + '</td></tr>';
@@ -289,7 +290,7 @@
       var tr = [a.hex.upper, a.hex.lower], lk = [];
       ['heaven', 'earth', 'fame'].forEach(function (k) { if (tr.indexOf(R.luck[k]) >= 0) lk.push('<span style="color:#2e7d32;">+' + cap(k) + '</span>'); if (tr.indexOf(R.luck.opposite[k]) >= 0) lk.push('<span style="color:#c62828;">−' + cap(k) + '</span>'); });
       h += '<tr onclick="xkdgHLCycle(\'' + id2 + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (Y === nowY ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + 'white-space:nowrap;">' + Y + ' · ' + a.age + '</td>'
-        + '<td style="' + TD + '">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '</td><td style="' + TD + 'white-space:nowrap;">l' + a.moved + ' ' + L.branch + ' ' + relTag(r) + ' ' + REL[r] + '</td>'
+        + '<td style="' + TD + '">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '</td><td style="' + TD + 'white-space:nowrap;">l' + a.moved + ' ' + L.branch + ' ' + relTag(r) + '</td>'
         + '<td style="' + TD + 'font-size:11px;">' + a.hex.upper + ' ' + relTag(rel(me, TRI_EL[a.hex.upper])) + ' / ' + a.hex.lower + ' ' + relTag(rel(me, TRI_EL[a.hex.lower])) + (lk.length ? '<br>' + lk.join(' ') : '') + '</td></tr>'
         + '<tr id="' + id2 + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, null, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, true) : '') + '</td></tr>';
     }
@@ -378,7 +379,7 @@
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;">'
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + x.hexN + ' ' + esc(U().hexName ? U().hexName(x.hexN) : '') + ' line ' + x.line + ' · ' + sgn(x.tot) + '</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(hx, x.line, cy, me) : '')
-      + '<div style="' + S_ + '">' + x.b + ' ' + EL_CN[x.el] + ' ' + x.el + ' = ' + REL[x.r] + ' for the person ' + me + ' (' + sgn(x.rs) + ') · time ' + sgn(x.tm.t) + ' [' + (x.tm.note.join(', ') || '—') + '] · text ' + x.s + ' → ' + x.txt + ' (' + tl + ')</div>'
+      + '<div style="' + S_ + '">' + x.b + ' ' + x.el + ' = ' + x.r + ' for the person ' + me + ' (' + sgn(x.rs) + ') · time ' + sgn(x.tm.t) + ' [' + (x.tm.note.join(', ') || '—') + '] · text ' + x.s + ' → ' + x.txt + ' (' + tl + ')</div>'
       + (U().lineBody ? U().lineBody(x.hexN, x.line, true) : '') + '</div>';
   }
   function detail(chart, g) {
