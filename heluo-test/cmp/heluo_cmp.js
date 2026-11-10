@@ -3,7 +3,9 @@
 // B = reference calculator: Lichun year, Na Jia, 29/3/39 always special on lines 5/6 (Diana 29 l6 -> 59), calculator annual+monthly.
 // C = "Calculation Guide and Sources": Lichun year, He Tu stems 1..10, -25/-30 reductions, 5 by sex x year polarity,
 //     29/3/39 normal, calculator annual, guide monthly (odd month = line (i+1)/2, even = + partner).
-// Daily line for all: 5 days per line of the monthly hexagram from the Jie day (TST date), day 31 -> line 1.
+// Daily hexagram for all (Edu, 10/11/2026, Lord of the Block): 5-day blocks from the Jie day (TST date); block k:
+// line k%6+1 of the monthly changes -> block hexagram; each day one of the other lines (rising from the line above the
+// Lord, after 6 back to 1) changes on the block hexagram -> day hexagram. Day level = that line in the block hexagram.
 // True solar time everywhere (birth place longitude).
 'use strict';
 const path = require('path'), fs = require('fs');
@@ -111,13 +113,13 @@ function predict(N, Pe, lon) {
   if (N.method === 'C') { const i = (br - 2 + 12) % 12 + 1, L = Math.ceil(i / 2), S = [L]; if (i % 2 === 0) S.push(partner(L)); mo = { hex: H.hexOf(flip(a.hex.lines, S)) }; }
   else mo = H.monthlyHex(a.hex.lines, a.moved, br);
   const t = Pe.meta.tst, tday = Date.UTC(t.y, t.mo - 1, t.d);
-  const dayIdx = Math.round((tday - jieStartTstDay(Pe, lon)) / 86400000), dLine = Math.floor(dayIdx / 5) % 6 + 1;
+  const dayIdx = Math.round((tday - jieStartTstDay(Pe, lon)) / 86400000), dh = H.dailyHex(mo.hex.lines, dayIdx + 1), dLine = dh.line;
   const ls = (n, l) => { if (!SC[n] || !SC[n].lines[l]) throw new Error("score " + n + " l" + l + " dayIdx " + dayIdx + " " + JSON.stringify(Pe.meta.tst)); return SC[n].lines[l].s; }, hs = n => SC[n].hex;
   return {
     age, phase, period: hx.n + ' l' + per.line + ' (' + per.from + '-' + per.to + ')', annual: a.hex.n + ' l' + a.moved,
-    month: mo.hex.n, day: mo.hex.n + ' l' + dLine + ' (d' + (dayIdx + 1) + ')',
-    id: { cycle: [hx.n, per.line], year: [a.hex.n, a.moved], yearHex: [a.hex.n, 0], month: [mo.hex.n, 0], day: [mo.hex.n, dLine] },
-    s: { cycle: ls(hx.n, per.line), year: ls(a.hex.n, a.moved), yearHex: hs(a.hex.n), month: hs(mo.hex.n), day: ls(mo.hex.n, dLine) }
+    month: mo.hex.n, block: mo.hex.n + ' L' + dh.lord + ' > ' + dh.block.n, day: dh.block.n + ' l' + dLine + ' > ' + dh.hex.n + ' (d' + (dayIdx + 1) + ')',
+    id: { cycle: [hx.n, per.line], year: [a.hex.n, a.moved], yearHex: [a.hex.n, 0], month: [mo.hex.n, 0], lord: [dh.block.n, dh.lord], day: [dh.block.n, dLine], dayHex: [dh.hex.n, dLine] },
+    s: { cycle: ls(hx.n, per.line), year: ls(a.hex.n, a.moved), yearHex: hs(a.hex.n), month: hs(mo.hex.n), lord: ls(dh.block.n, dh.lord), day: ls(dh.block.n, dLine), dayHex: ls(dh.hex.n, dLine) }
   };
 }
 

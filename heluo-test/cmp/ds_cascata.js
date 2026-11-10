@@ -4,6 +4,9 @@
 // + testo (scores.json, −2…+2) spostato di ±1 verso la versione scelta dal tempo.
 // Uso: node ds_cascata.js            → prova sugli eventi noti
 //      node ds_cascata.js dettaglio  → anche la scheda della cascata per ogni evento
+//      node ds_cascata.js esagiorno  → livello del giorno sulla linea dell'esagramma del giorno invece che del blocco
+// Linea del giorno (10/11/2026): regola di Edu del Signore del Blocco (predict in heluo_cmp.js, dailyHex nell'app);
+// di default il livello del giorno è la linea del giorno nell'esagramma del blocco.
 'use strict';
 const path = require('path');
 const { natal, predict, pillars } = require('./heluo_cmp.js');
@@ -84,7 +87,7 @@ function giorno(N, nat, date, lon, tz, scopo) {
   const nv = voids(nat.day).concat(voids(nat.year));
   const c = livello(p.id.cycle[0], p.id.cycle[1], pers, scopo, T, nv);
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
-  const d = livello(p.id.day[0], p.id.day[1], pers, scopo, T, nv);
+  const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
   return { date, Pe, p, pers, c, a, d, tot: c.tot + a.tot + d.tot };
 }
 

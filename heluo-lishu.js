@@ -159,6 +159,16 @@
     if (i % 2 === 0) { var p = partner(last), q = S.indexOf(p); if (q >= 0) S.splice(q, 1); else S.push(p); }
     return { hex: hexOf(flip(A, S)), changed: S.slice().sort(), index: i };
   }
+  // Daily hexagram (Edu, 10/11/2026: "Signore del Blocco"). M = monthly hexagram (lines), day = day of the
+  // solar month (1 = Jie day). Block k (5 days) = line k%6+1 of M: it changes on M -> block hexagram; that line
+  // is the Lord of the Block and stays fixed. The other 5 lines cover the 5 days one each, rising from the line
+  // above the Lord (after 6 back to 1); each day changes ONE line on the block hexagram (no accumulation).
+  // Read the text of that line in the block hexagram and in the day hexagram.
+  function dailyHex(M, day) {
+    var i = day - 1, lord = Math.floor(i / 5) % 6 + 1, j = i % 5, line = wrap6(lord + 1 + j);
+    var block = hexOf(flip(M, [lord]));
+    return { lord: lord, block: block, line: line, hex: hexOf(flip(block.lines, [line])), dayInBlock: j + 1 };
+  }
   // R = natal result, Y = Heluo year (Gregorian number; from the Winter Solstice of Y-1)
   function annual(R, Y) {
     var y0 = R.input ? R.input.o.year : R.year0, age = Y - y0 + 1, per = null, hx = null;
@@ -511,8 +521,9 @@
       var from = ms ? ms[i].start : null, to = ms ? (ms[i + 1].start || ms[i + 1].end) : null, on = from && now >= from && now < to;
       var id = 'hl-mo-' + (++_cycN), blocks = '';
       if (from) {
-        // Daily lines (Edu's guide, session 43): from the first day of the SOLAR month, 5 days per line of the
-        // monthly hexagram (days 1-5 line 1 … 26-30 line 6), day 31 starts again at line 1.
+        // Daily hexagrams (Edu, 10/11/2026, Lord of the Block): from the first day of the SOLAR month, 5 days per
+        // line of the monthly hexagram (days 1-5 line 1 … 26-30 line 6, day 31 line 1 again); that line changes on
+        // the monthly -> block hexagram; each day changes one of the other lines on it (dailyHex).
         // The Zi row from the Winter Solstice counts its days from Daxue of the previous year.
         var mStart = from; if (i === 0) { try { mStart = monthStarts(Y - 1)[12].start; } catch (e) {} }
         var d0 = Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth(), mStart.getUTCDate()), D = 86400000;
@@ -521,17 +532,29 @@
         var startDay = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate());
         for (var k = 0; d0 + k * 5 * D < endDay; k++) {
           var bS = d0 + k * 5 * D, bE = Math.min(bS + 5 * D, endDay); if (bE <= startDay) continue;
-          var ln = k % 6 + 1, onB = nowDay >= Math.max(bS, startDay) && nowDay < bE;
-          blocks += '<tr style="' + (onB ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="padding:2px 6px;white-space:nowrap;">' + fmtD(new Date(Math.max(bS, startDay))) + ' – ' + fmtD(new Date(bE - D)) + '</td><td style="padding:2px 6px;">line ' + ln + (onB ? ' ◀ today' : '') + '</td></tr>';
-          if (onB) today = '<div style="font-size:12px;margin:8px 0 2px;padding:6px 8px;background:#fff3e0;border-radius:6px;"><b>Today</b>: month ' + BRANCHES[br] + ' · hexagram <b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + ' · day ' + ((nowDay - d0) / D + 1) + ' of the solar month → <b>line ' + ln + '</b>'
-            + najiaLine(mo.hex.n, ln, me) + lineText(mo.hex.n, ln, 'Line ' + ln + ' of ' + mo.hex.n, true) + '</div>';
+          var ln = k % 6 + 1, onB = nowDay >= Math.max(bS, startDay) && nowDay < bE, bk = dailyHex(mo.hex.lines, k * 5 + 1), seq = [];
+          for (var q = Math.max(bS, startDay); q < bE; q += D) {
+            var dq = dailyHex(mo.hex.lines, (q - d0) / D + 1), isT = q === nowDay;
+            seq.push('<span title="' + fmtD(new Date(q)) + ': line ' + dq.line + '"' + (isT ? ' style="color:#e65100;text-decoration:underline;"' : '') + '>' + dq.hex.n + '</span>');
+          }
+          blocks += '<tr style="' + (onB ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="padding:2px 6px;white-space:nowrap;">' + fmtD(new Date(Math.max(bS, startDay))) + ' – ' + fmtD(new Date(bE - D)) + '</td><td style="padding:2px 6px;white-space:nowrap;">Lord l' + ln + ' → <b>' + bk.block.n + '</b>' + (onB ? ' ◀ today' : '') + '</td><td style="padding:2px 6px;">days: ' + seq.join(' · ') + '</td></tr>';
+          if (onB) {
+            var dd = dailyHex(mo.hex.lines, (nowDay - d0) / D + 1);
+            today = '<div style="font-size:12px;margin:8px 0 2px;padding:6px 8px;background:#fff3e0;border-radius:6px;"><b>Today</b>: month ' + BRANCHES[br] + ' · monthly <b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + ' · day ' + ((nowDay - d0) / D + 1) + ' of the solar month'
+              + '<br>Block: Lord of the Block <b>line ' + dd.lord + '</b> → <b>' + dd.block.n + '</b> ' + esc(hexName(dd.block.n)) + ' (day ' + dd.dayInBlock + ' of 5)'
+              + '<br>Day: <b>line ' + dd.line + '</b> → <b>' + dd.hex.n + '</b> ' + esc(hexName(dd.hex.n))
+              + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' + hexCard('Block ' + dd.block.n, dd.block, dd.line, '', 'Day line:') + hexCard('Day ' + dd.hex.n, dd.hex, dd.line, '', 'Changed:') + '</div>'
+              + najiaLine(dd.block.n, dd.line, me) + lineText(dd.block.n, dd.line, 'Line ' + dd.line + ' of ' + dd.block.n + ' (block)', true)
+              + lineText(dd.hex.n, dd.line, 'Line ' + dd.line + ' of ' + dd.hex.n + ' (day)', true)
+              + lineText(dd.block.n, dd.lord, 'Line ' + dd.lord + ' of ' + dd.block.n + ' (Lord of the Block)', true) + '</div>';
+          }
         }
       }
       tb += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + '">' + BRANCHES[br] + ' ' + BR_PY[br] + '</td>'
         + '<td style="' + TD + '">' + (from ? fmtD(from) + (i === 0 ? ' (WS)' : '') : '') + (on ? ' ◀ now' : '') + '</td>'
         + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + '</td></tr>'
         + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">'
-        + (blocks ? '<div style="font-size:11px;color:#777;margin:2px 0;">Daily lines (5 days per line)</div><table style="border-collapse:collapse;font-size:12px;">' + blocks + '</table>' : '')
+        + (blocks ? '<div style="font-size:11px;color:#777;margin:2px 0;">Daily hexagrams: 5-day blocks (Lord of the Block → block hexagram), one line per day changes on it</div><table style="border-collapse:collapse;font-size:12px;">' + blocks + '</table>' : '')
         + hexText(mo.hex.n) + linesTable(mo.hex, 0, null, me) + '</td></tr>';
     }
     return h + today + tb + '</table><div style="font-size:10px;color:#999;margin-top:4px;">Months change at the Jie (Beijing dates). Zi from Daxue to the Winter Solstice still uses this year; from the Winter Solstice the next Heluo year.</div>';
@@ -722,6 +745,6 @@
     TRI: TRI, TRI_CN: TRI_CN, TRI_EL: TRI_EL, STEMS: STEMS, BRANCHES: BRANCHES, STEM_PY: STEM_PY, BR_PY: BR_PY,
     heavenTrigram: heavenTrigram, earthTrigram: earthTrigram, lineBranches: lineBranches, houTian: houTian,
     properPosition: properPosition, properSupport: properSupport, huGua: huGua, cycles: cycles,
-    annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, monthStarts: monthStarts, open: open };
+    annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, dailyHex: dailyHex, monthStarts: monthStarts, open: open };
   root.openHeluoLishu = open;
 })(typeof window !== 'undefined' ? window : globalThis);
