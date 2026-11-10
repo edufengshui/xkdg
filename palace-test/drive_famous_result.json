@@ -1,0 +1,2849 @@
+{
+ "computed": [
+  {
+   "name": "McEnroe, John",
+   "folder": "Famous",
+   "date": "1959-02-16 22:30",
+   "gz": "乙亥 己巳 丙寅 己亥",
+   "pal": "1 9 3 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Paul Newman",
+   "folder": "Famous",
+   "date": "1925-01-26 06:30",
+   "gz": "己卯 庚戌 丁丑 甲子",
+   "pal": "4 1 8 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Donald Sutherland",
+   "folder": "Famous",
+   "date": "1935-07-17 11:30",
+   "gz": "己巳 甲午 癸未 乙亥",
+   "pal": "9 9 7 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Jean-Pierre Rampal",
+   "folder": "Famous",
+   "date": "1922-01-07 09:00",
+   "gz": "辛未 甲戌 辛丑 辛酉",
+   "pal": "7 6 3 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Victor Hugo",
+   "folder": "Famous",
+   "date": "1802-02-26 22:43",
+   "gz": "己亥 丙申 壬寅 壬戌",
+   "pal": "1 7 3 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Pierre Auguste Renoir",
+   "folder": "Famous",
+   "date": "1841-02-25 06:00",
+   "gz": "己巳 己未 庚寅 辛丑",
+   "pal": "9 2 3 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Mother Teresa",
+   "folder": "Famous",
+   "date": "1910-08-26 14:25",
+   "gz": "己未 癸亥 甲申 庚戌",
+   "pal": "2 1 7 1",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Clinton, Bill",
+   "folder": "Famous",
+   "date": "1946-08-19 08:51",
+   "gz": "庚辰 乙丑 丙申 丙戌",
+   "pal": "9 8 7 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Evita Peron",
+   "folder": "Famous",
+   "date": "1919-05-07 05:00",
+   "gz": "丙寅 己未 己巳 己未",
+   "pal": "3 2 9 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Brad Pitt",
+   "folder": "Famous",
+   "date": "1963-12-18 06:31",
+   "gz": "己卯 乙未 甲子 癸卯",
+   "pal": "4 2 1 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Candice Bergen",
+   "folder": "Famous",
+   "date": "1946-05-08 21:52",
+   "gz": "辛亥 壬午 癸巳 丙戌",
+   "pal": "1 2 9 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Catherine Deneuve",
+   "folder": "Famous",
+   "date": "1943-10-22 13:35",
+   "gz": "戊午 癸丑 壬戌 癸未",
+   "pal": "2 3 1 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "John Edgar Hoover",
+   "folder": "Famous",
+   "date": "1895-01-01 07:30",
+   "gz": "丙辰 戊申 丙子 甲午",
+   "pal": "4 7 8 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Dole, Mary Elisabeth",
+   "folder": "Famous",
+   "date": "1936-07-29 16:12",
+   "gz": "戊申 壬子 乙未 丙子",
+   "pal": "7 8 2 8",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Bruce Springsteen",
+   "folder": "Famous",
+   "date": "1949-09-23 22:50",
+   "gz": "己亥 丙辰 癸酉 己丑",
+   "pal": "1 4 6 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "John Bon Jovi",
+   "folder": "Famous",
+   "date": "1962-03-02 20:54",
+   "gz": "甲戌 己亥 壬寅 壬寅",
+   "pal": "6 1 3 3",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Bette Davis",
+   "folder": "Famous",
+   "date": "1908-04-05 21:00",
+   "gz": "丁亥 庚寅 丙辰 戊申",
+   "pal": "1 3 4 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Jeorg Haider",
+   "folder": "Famous",
+   "date": "1950-01-26 14:25",
+   "gz": "乙未 辛酉 丁丑 己丑",
+   "pal": "2 6 8 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Napoleon Bonaparte",
+   "folder": "Famous",
+   "date": "1769-08-15 11:34",
+   "gz": "庚午 甲午 壬申 己丑",
+   "pal": "2 9 7 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Salvador Dali",
+   "folder": "Famous",
+   "date": "1904-05-11 08:45",
+   "gz": "庚辰 乙巳 己巳 甲辰",
+   "pal": "9 9 9 4",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Dalai Lama",
+   "folder": "Famous",
+   "date": "1935-07-06 06:00",
+   "gz": "甲寅 癸未 壬午 乙亥",
+   "pal": "3 7 2 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Nelson Rockefeller",
+   "folder": "Famous",
+   "date": "1908-07-08 12:10",
+   "gz": "庚午 甲子 己未 戊申",
+   "pal": "2 1 2 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Dustin Hoffman",
+   "folder": "Famous",
+   "date": "1937-08-08 17:07",
+   "gz": "己酉 丁卯 戊申 丁丑",
+   "pal": "6 4 7 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Sam Peckinpah",
+   "folder": "Famous",
+   "date": "1925-02-21 14:15",
+   "gz": "乙未 丙子 戊寅 乙丑",
+   "pal": "2 8 3 8",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Errol Flynn",
+   "folder": "Famous",
+   "date": "1909-06-20 21:25",
+   "gz": "丙申 辛亥 庚午 己酉",
+   "pal": "7 1 2 6",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Robert Dole",
+   "folder": "Famous",
+   "date": "1923-07-22 00:10",
+   "gz": "戊子 乙未 己未 癸亥",
+   "pal": "8 2 2 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Charles Bronson",
+   "folder": "Famous",
+   "date": "1922-11-03 20:55",
+   "gz": "丙戌 乙亥 庚戌 壬戌",
+   "pal": "6 1 1 1",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "John Adams",
+   "folder": "Famous",
+   "date": "1735-10-30 02:57",
+   "gz": "戊寅 庚戌 丙戌 乙卯",
+   "pal": "3 1 6 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Steffi Graf",
+   "folder": "Famous",
+   "date": "1969-06-14 04:40",
+   "gz": "戊寅 庚申 庚午 己酉",
+   "pal": "3 7 2 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Frank Sinatra",
+   "folder": "Famous",
+   "date": "1915-12-12 03:00",
+   "gz": "壬寅 丁丑 戊子 乙卯",
+   "pal": "3 8 8 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Bill Bradley",
+   "folder": "Famous",
+   "date": "1943-07-28 10:37",
+   "gz": "乙巳 丁亥 己未 癸未",
+   "pal": "9 1 2 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Benito Mussolini",
+   "folder": "Famous",
+   "date": "1883-07-29 14:00",
+   "gz": "辛未 甲戌 己未 癸未",
+   "pal": "7 6 2 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Arnold Schwarzenegger",
+   "folder": "Famous",
+   "date": "1947-07-30 04:10",
+   "gz": "戊寅 庚戌 丁未 丁亥",
+   "pal": "3 1 2 1",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Jimi Hendrix",
+   "folder": "Famous",
+   "date": "1942-11-27 10:15",
+   "gz": "己巳 甲申 辛亥 壬午",
+   "pal": "9 7 1 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Barbara Streisand",
+   "folder": "Famous",
+   "date": "1942-04-24 05:08",
+   "gz": "癸卯 丁未 甲辰 壬午",
+   "pal": "4 2 4 2",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Stephen King",
+   "folder": "Famous",
+   "date": "1947-09-21 04:40",
+   "gz": "甲寅 癸卯 己酉 丁亥",
+   "pal": "3 4 6 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Rod Stewart",
+   "folder": "Famous",
+   "date": "1945-01-10 01:17",
+   "gz": "乙丑 己卯 丁丑 甲申",
+   "pal": "8 4 8 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Alexander Fleming",
+   "folder": "Famous",
+   "date": "1881-08-06 02:00",
+   "gz": "辛卯 辛未 乙未 辛巳",
+   "pal": "4 7 2 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Stephen Wozniak",
+   "folder": "Famous",
+   "date": "1950-08-11 09:45",
+   "gz": "丙辰 戊寅 甲申 庚寅",
+   "pal": "4 3 7 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Bob Dylan",
+   "folder": "Famous",
+   "date": "1941-05-24 21:05",
+   "gz": "辛亥 壬申 癸巳 辛巳",
+   "pal": "1 7 9 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Ferdinand Marcos",
+   "folder": "Famous",
+   "date": "1917-09-11 07:00",
+   "gz": "丙戌 乙卯 己酉 丁巳",
+   "pal": "6 4 6 9",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Queen Beatrix (Holland)",
+   "folder": "Famous",
+   "date": "1938-01-31 09:37",
+   "gz": "丁巳 癸亥 癸丑 丁丑",
+   "pal": "9 1 3 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Alice Bailey",
+   "folder": "Famous",
+   "date": "1880-06-16 07:32",
+   "gz": "壬辰 丙子 壬午 庚辰",
+   "pal": "9 8 2 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Peter O'Toole",
+   "folder": "Famous",
+   "date": "1932-08-02 00:15",
+   "gz": "乙亥 甲午 丁未 壬申",
+   "pal": "1 9 2 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Jack Nicholson",
+   "folder": "Famous",
+   "date": "1937-04-22 11:00",
+   "gz": "己巳 己卯 甲辰 丁丑",
+   "pal": "9 4 4 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Henri De Toulouse-Lautrec",
+   "folder": "Famous",
+   "date": "1864-11-24 06:00",
+   "gz": "丙午 壬辰 乙亥 甲子",
+   "pal": "2 9 1 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Jimmy Hoffa",
+   "folder": "Famous",
+   "date": "1913-02-14 06:52",
+   "gz": "辛卯 丙寅 甲寅 癸丑",
+   "pal": "4 3 3 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "George Lucas",
+   "folder": "Famous",
+   "date": "1944-05-14 05:40",
+   "gz": "甲寅 戊寅 己巳 甲申",
+   "pal": "3 3 9 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Isaac Newton",
+   "folder": "Famous",
+   "date": "1642-12-25 01:00",
+   "gz": "丁卯 己亥 壬子 壬午",
+   "pal": "4 1 8 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Rasputin",
+   "folder": "Famous",
+   "date": "1869-01-10 08:08",
+   "gz": "壬辰 辛丑 乙丑 戊辰",
+   "pal": "9 3 8 4",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Steven Jobs",
+   "folder": "Famous",
+   "date": "1955-02-24 07:00",
+   "gz": "辛卯 丙辰 戊寅 乙未",
+   "pal": "4 4 3 2",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Werner Von Braun",
+   "folder": "Famous",
+   "date": "1912-03-23 09:15",
+   "gz": "丁未 丁酉 癸卯 壬子",
+   "pal": "2 6 4 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Salman Rushdie",
+   "folder": "Famous",
+   "date": "1947-06-19 02:25",
+   "gz": "甲子 己巳 丙午 丁亥",
+   "pal": "1 9 2 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "hitler",
+   "folder": "Famous",
+   "date": "1889-04-20 18:30",
+   "gz": "丁酉 丙寅 戊辰 己丑",
+   "pal": "6 3 4 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Kim Novak",
+   "folder": "Famous",
+   "date": "1933-02-13 06:13",
+   "gz": "己卯 庚戌 甲寅 癸酉",
+   "pal": "4 1 3 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Albert Jr Gore",
+   "folder": "Famous",
+   "date": "1948-03-31 12:53",
+   "gz": "壬午 乙卯 乙卯 戊子",
+   "pal": "2 4 4 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Borg, Bjorn",
+   "folder": "Famous",
+   "date": "1956-06-06 23:55",
+   "gz": "丙子 乙巳 甲午 丙申",
+   "pal": "8 9 9 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Marie Curie",
+   "folder": "Famous",
+   "date": "1867-11-07 13:30",
+   "gz": "乙未 辛卯 庚戌 丁卯",
+   "pal": "2 4 1 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "berlusconi",
+   "folder": "Famous",
+   "date": "1936-09-29 06:00",
+   "gz": "丁卯 甲寅 丁酉 丙子",
+   "pal": "4 3 6 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Steven Spielberg",
+   "folder": "Famous",
+   "date": "1946-12-18 18:16",
+   "gz": "丁酉 丙寅 庚子 丙戌",
+   "pal": "6 3 8 6",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Rudolf Hess",
+   "folder": "Famous",
+   "date": "1894-04-26 10:00",
+   "gz": "己酉 丁酉 戊辰 甲午",
+   "pal": "6 6 4 9",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Fidel Castro",
+   "folder": "Famous",
+   "date": "1926-08-13 02:00",
+   "gz": "乙丑 甲戌 丙申 丙寅",
+   "pal": "8 6 7 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Linda Ronstadt",
+   "folder": "Famous",
+   "date": "1946-07-15 17:39",
+   "gz": "乙酉 庚寅 乙未 丙戌",
+   "pal": "6 3 2 6",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Debbie Reynolds",
+   "folder": "Famous",
+   "date": "1932-04-01 17:49",
+   "gz": "己酉 壬辰 癸卯 壬申",
+   "pal": "6 9 4 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Queen Elizabeth II",
+   "folder": "Famous",
+   "date": "1926-04-21 02:40",
+   "gz": "丁丑 庚辰 壬辰 丙寅",
+   "pal": "8 9 9 3",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "John F Kennedy",
+   "folder": "Famous",
+   "date": "1917-05-29 15:00",
+   "gz": "丙申 辛未 乙巳 丁巳",
+   "pal": "7 7 9 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Guglielmo Marconi",
+   "folder": "Famous",
+   "date": "1874-04-25 09:15",
+   "gz": "丙申 辛亥 戊辰 甲戌",
+   "pal": "7 1 4 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Meryl Streep",
+   "folder": "Famous",
+   "date": "1949-06-22 08:10",
+   "gz": "丙辰 癸未 庚午 己丑",
+   "pal": "4 7 2 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Richard Burton",
+   "folder": "Famous",
+   "date": "1925-11-10 14:30",
+   "gz": "己未 戊戌 丁亥 乙丑",
+   "pal": "2 6 1 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Carl Sagan",
+   "folder": "Famous",
+   "date": "1934-11-09 17:05",
+   "gz": "癸酉 甲申 乙亥 甲戌",
+   "pal": "6 7 1 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Carl Gustav Jung",
+   "folder": "Famous",
+   "date": "1875-07-26 19:32",
+   "gz": "甲戌 己丑 癸未 乙亥",
+   "pal": "6 8 7 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Hirohito",
+   "folder": "Famous",
+   "date": "1901-04-29 22:10",
+   "gz": "己酉 丁丑 壬辰 辛丑",
+   "pal": "6 8 9 3",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Norman Schwarzkopf",
+   "folder": "Famous",
+   "date": "1934-08-22 04:45",
+   "gz": "戊寅 乙丑 壬申 甲戌",
+   "pal": "3 8 7 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Henry Miller",
+   "folder": "Famous",
+   "date": "1891-12-26 12:30",
+   "gz": "甲午 丙戌 庚子 辛卯",
+   "pal": "9 6 8 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Enrico Fermi",
+   "folder": "Famous",
+   "date": "1901-09-29 19:00",
+   "gz": "乙酉 庚戌 丁酉 辛丑",
+   "pal": "6 1 6 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "gianpaolo",
+   "folder": "Famous",
+   "date": "1968-03-04 06:00",
+   "gz": "乙卯 癸酉 甲寅 戊申",
+   "pal": "4 6 3 7",
+   "numOnly": false,
+   "groups": 0,
+   "langs": ""
+  },
+  {
+   "name": "Louis Pasteur",
+   "folder": "Famous",
+   "date": "1822-12-27 02:00",
+   "gz": "戊辰 甲申 壬子 壬午",
+   "pal": "4 7 8 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Dolly Parton",
+   "folder": "Famous",
+   "date": "1946-01-19 00:05",
+   "gz": "壬子 癸巳 己丑 乙酉",
+   "pal": "8 9 8 6",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Ren Ti Qiao",
+   "folder": "Famous",
+   "date": "1773-06-07 08:00",
+   "gz": "庚寅 丙午 戊午 癸巳",
+   "pal": "3 2 2 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Jane Fonda",
+   "folder": "Famous",
+   "date": "1937-12-21 19:57",
+   "gz": "庚戌 壬午 壬子 丁丑",
+   "pal": "1 2 8 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Pearl Buck",
+   "folder": "Famous",
+   "date": "1892-06-26 12:30",
+   "gz": "庚午 己丑 丙午 壬辰",
+   "pal": "2 8 2 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Neil Armstrong",
+   "folder": "Famous",
+   "date": "1930-08-05 00:10",
+   "gz": "庚子 丁亥 癸未 庚午",
+   "pal": "8 1 7 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "John Paul I",
+   "folder": "Famous",
+   "date": "1912-10-17 11:30",
+   "gz": "甲午 丙寅 庚戌 壬子",
+   "pal": "9 3 1 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Yul Brynner",
+   "folder": "Famous",
+   "date": "1920-07-11 06:15",
+   "gz": "甲戌 己巳 癸未 庚申",
+   "pal": "6 9 7 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Carl Lewis",
+   "folder": "Famous",
+   "date": "1961-07-01 07:49",
+   "gz": "庚辰 乙未 甲午 辛丑",
+   "pal": "9 2 9 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Jodie Foster",
+   "folder": "Famous",
+   "date": "1962-11-19 08:14",
+   "gz": "壬辰 辛酉 辛亥 壬寅",
+   "pal": "9 6 1 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Ronald Reagan",
+   "folder": "Famous",
+   "date": "1911-02-06 01:20",
+   "gz": "辛丑 丁未 庚寅 辛亥",
+   "pal": "3 2 3 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Jacques-Yves Cousteau",
+   "folder": "Famous",
+   "date": "1910-06-11 13:15",
+   "gz": "丁酉 丙午 壬午 庚戌",
+   "pal": "6 2 2 1",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Wolfgang Amadeus Mozart",
+   "folder": "Famous",
+   "date": "1756-01-27 20:00",
+   "gz": "丙戌 乙丑 己丑 乙亥",
+   "pal": "6 8 8 1",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Igor Stravinsky",
+   "folder": "Famous",
+   "date": "1882-06-17 10:38",
+   "gz": "丁酉 丙戌 丙午 壬午",
+   "pal": "6 6 2 2",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Ross Perot",
+   "folder": "Famous",
+   "date": "1930-06-27 05:34",
+   "gz": "乙卯 戊申 壬午 庚午",
+   "pal": "4 7 2 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Hugh Hefner",
+   "folder": "Famous",
+   "date": "1926-04-09 16:20",
+   "gz": "庚申 戊辰 壬辰 丙寅",
+   "pal": "7 4 9 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Erwin Rommel",
+   "folder": "Famous",
+   "date": "1891-11-15 12:00",
+   "gz": "壬午 乙巳 己亥 辛卯",
+   "pal": "2 9 1 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "John Lennon",
+   "folder": "Famous",
+   "date": "1940-10-09 18:30",
+   "gz": "乙酉 乙酉 丙戌 庚辰",
+   "pal": "6 6 6 9",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Sigmund Freud",
+   "folder": "Famous",
+   "date": "1856-03-06 18:30",
+   "gz": "壬子 丁亥 辛卯 丙辰",
+   "pal": "8 1 4 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Nikola Tesla",
+   "folder": "Famous",
+   "date": "1856-07-10 12:00",
+   "gz": "辛酉 癸巳 乙未 丙辰",
+   "pal": "6 9 2 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Tony Blair",
+   "folder": "Famous",
+   "date": "1953-05-06 06:10",
+   "gz": "癸卯 丁巳 丁巳 癸巳",
+   "pal": "4 9 9 9",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Sidney Poitier",
+   "folder": "Famous",
+   "date": "1927-02-20 21:00",
+   "gz": "丙戌 乙酉 壬寅 丁卯",
+   "pal": "6 6 3 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "David Carradine",
+   "folder": "Famous",
+   "date": "1936-12-08 12:00",
+   "gz": "庚午 甲子 庚子 丙子",
+   "pal": "2 1 8 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Fred Astaire",
+   "folder": "Famous",
+   "date": "1899-05-10 04:00",
+   "gz": "甲寅 戊寅 己巳 己亥",
+   "pal": "3 3 9 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Lech Walesa",
+   "folder": "Famous",
+   "date": "1943-09-29 03:30",
+   "gz": "戊寅 庚寅 辛酉 癸未",
+   "pal": "3 3 6 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Linus Pauling",
+   "folder": "Famous",
+   "date": "1901-02-28 07:26",
+   "gz": "甲辰 丁丑 庚寅 辛丑",
+   "pal": "4 8 3 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Mikhail Gorbachev",
+   "folder": "Famous",
+   "date": "1931-03-02 12:00",
+   "gz": "甲午 丙辰 庚寅 辛未",
+   "pal": "9 4 3 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Clinton, Hillary Rodham",
+   "folder": "Famous",
+   "date": "1947-10-26 20:00",
+   "gz": "壬戌 戊寅 庚戌 丁亥",
+   "pal": "1 3 1 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Benjamin Netanyahu",
+   "folder": "Famous",
+   "date": "1949-10-21 09:30",
+   "gz": "己巳 甲申 甲戌 己丑",
+   "pal": "9 7 6 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Krishnamurti, Jeddu",
+   "folder": "Famous",
+   "date": "1895-05-12 00:12",
+   "gz": "癸亥 戊午 辛巳 乙未",
+   "pal": "1 2 9 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Osama Bin Laden",
+   "folder": "Famous",
+   "date": "1957-03-10 05:55",
+   "gz": "辛卯 辛巳 癸卯 丁酉",
+   "pal": "4 9 4 6",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Fulgencio Batista",
+   "folder": "Famous",
+   "date": "1901-01-16 20:15",
+   "gz": "甲戌 甲午 己丑 庚子",
+   "pal": "6 9 8 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Neil Diamond",
+   "folder": "Famous",
+   "date": "1941-01-24 23:04",
+   "gz": "辛亥 壬申 己丑 庚辰",
+   "pal": "1 7 8 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Uri Geller",
+   "folder": "Famous",
+   "date": "1946-12-20 02:00",
+   "gz": "癸丑 戊辰 庚子 丙戌",
+   "pal": "3 4 8 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Antoine De St Exupery",
+   "folder": "Famous",
+   "date": "1900-06-29 09:00",
+   "gz": "丙辰 癸酉 壬午 庚子",
+   "pal": "4 6 2 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Clinton, Chelsea",
+   "folder": "Famous",
+   "date": "1980-02-27 23:45",
+   "gz": "戊子 庚午 戊寅 庚申",
+   "pal": "8 2 3 7",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Ernest Hemingway",
+   "folder": "Famous",
+   "date": "1899-07-21 08:00",
+   "gz": "庚辰 庚寅 辛未 己亥",
+   "pal": "9 3 7 1",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Tony Curtis",
+   "folder": "Famous",
+   "date": "1925-06-03 09:00",
+   "gz": "丙辰 戊午 辛巳 乙丑",
+   "pal": "4 2 9 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "George Washington",
+   "folder": "Famous",
+   "date": "1732-02-22 10:05",
+   "gz": "己巳 甲申 壬寅 壬子",
+   "pal": "9 7 3 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Ray Bradbury",
+   "folder": "Famous",
+   "date": "1920-08-22 16:50",
+   "gz": "戊申 壬子 甲申 庚申",
+   "pal": "7 8 7 7",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Sean Connery",
+   "folder": "Famous",
+   "date": "1930-08-25 18:05",
+   "gz": "戊申 丁未 甲申 庚午",
+   "pal": "7 2 7 2",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Thomas Jefferson",
+   "folder": "Famous",
+   "date": "1743-04-13 01:54",
+   "gz": "辛丑 壬申 丙辰 癸亥",
+   "pal": "3 7 4 1",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Ilie Nastase",
+   "folder": "Famous",
+   "date": "1946-07-19 07:00",
+   "gz": "丁卯 甲午 乙未 丙戌",
+   "pal": "4 9 2 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Henri Ford II",
+   "folder": "Famous",
+   "date": "1917-09-04 21:00",
+   "gz": "甲戌 己酉 戊申 丁巳",
+   "pal": "6 6 7 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Yasser Arafat",
+   "folder": "Famous",
+   "date": "1929-08-27 02:00",
+   "gz": "乙丑 甲辰 壬申 己巳",
+   "pal": "8 4 7 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "John Travolta",
+   "folder": "Famous",
+   "date": "1954-02-18 14:53",
+   "gz": "癸未 乙巳 丙寅 甲午",
+   "pal": "7 9 3 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Jules Verne",
+   "folder": "Famous",
+   "date": "1828-02-08 12:20",
+   "gz": "辛酉 癸巳 甲寅 戊子",
+   "pal": "6 9 3 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Albert Einstein",
+   "folder": "Famous",
+   "date": "1879-03-14 11:30",
+   "gz": "甲午 丙申 丁卯 己卯",
+   "pal": "9 7 4 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Pierre Teilhard De Chardin",
+   "folder": "Famous",
+   "date": "1881-05-01 07:00",
+   "gz": "庚辰 乙未 壬辰 辛巳",
+   "pal": "9 2 9 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Pancho Villa",
+   "folder": "Famous",
+   "date": "1877-10-04 04:19",
+   "gz": "戊寅 庚戌 己酉 丁丑",
+   "pal": "3 1 6 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Francois Mitterand",
+   "folder": "Famous",
+   "date": "1916-10-26 04:00",
+   "gz": "庚寅 丙申 戊戌 丙辰",
+   "pal": "3 7 6 4",
+   "numOnly": false,
+   "groups": 0,
+   "langs": ""
+  },
+  {
+   "name": "George Bush Jr",
+   "folder": "Famous",
+   "date": "1946-07-06 06:26",
+   "gz": "辛卯 辛巳 甲午 丙戌",
+   "pal": "4 9 9 6",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Greta Garbo",
+   "folder": "Famous",
+   "date": "1905-09-18 21:00",
+   "gz": "丁亥 庚申 乙酉 乙巳",
+   "pal": "1 7 6 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Ringo Starr",
+   "folder": "Famous",
+   "date": "1940-07-07 00:05",
+   "gz": "丁亥 庚戌 壬午 庚辰",
+   "pal": "1 1 2 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "George Bush",
+   "folder": "Famous",
+   "date": "1924-06-12 11:40",
+   "gz": "乙巳 壬戌 庚午 甲子",
+   "pal": "9 1 2 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Whoopi Goldberg",
+   "folder": "Famous",
+   "date": "1955-11-13 12:48",
+   "gz": "己未 戊寅 丁亥 乙未",
+   "pal": "2 3 1 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Princes Diana Spencer",
+   "folder": "Famous",
+   "date": "1961-07-01 19:45",
+   "gz": "丙戌 乙未 甲午 辛丑",
+   "pal": "6 2 9 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "James Madison",
+   "folder": "Famous",
+   "date": "1751-03-16 23:59",
+   "gz": "庚子 丙戌 辛卯 辛未",
+   "pal": "8 6 4 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Farrah Fawcett",
+   "folder": "Famous",
+   "date": "1947-02-02 15:10",
+   "gz": "丁未 壬子 辛丑 丙戌",
+   "pal": "2 8 3 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Sampras, Pete (Ho & Pl unknown)",
+   "folder": "Famous",
+   "date": "1971-08-12 12:00",
+   "gz": "庚午 己巳 丙申 辛亥",
+   "pal": "2 9 7 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Edwin Eugene Aldrin",
+   "folder": "Famous",
+   "date": "1930-01-20 14:17",
+   "gz": "癸未 庚午 丁丑 己巳",
+   "pal": "7 2 8 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Bobby Fisher",
+   "folder": "Famous",
+   "date": "1943-03-09 14:39",
+   "gz": "乙未 丙寅 乙卯 癸未",
+   "pal": "2 3 4 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Laurence Olivier",
+   "folder": "Famous",
+   "date": "1907-05-22 05:00",
+   "gz": "辛卯 辛未 乙巳 丁未",
+   "pal": "4 7 9 2",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Robert Oppenheimer",
+   "folder": "Famous",
+   "date": "1904-04-22 08:15",
+   "gz": "壬辰 丙戌 戊辰 甲辰",
+   "pal": "9 6 4 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "James Monroe",
+   "folder": "Famous",
+   "date": "1758-04-28 01:52",
+   "gz": "己丑 丙午 丙辰 戊寅",
+   "pal": "8 2 4 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Michael Caine",
+   "folder": "Famous",
+   "date": "1933-03-14 10:00",
+   "gz": "己巳 己卯 乙卯 癸酉",
+   "pal": "9 4 4 6",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Joan Collins",
+   "folder": "Famous",
+   "date": "1933-05-23 07:00",
+   "gz": "戊辰 己丑 丁巳 癸酉",
+   "pal": "4 8 9 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Raquel Welch",
+   "folder": "Famous",
+   "date": "1940-09-05 14:04",
+   "gz": "乙未 辛亥 甲申 庚辰",
+   "pal": "2 1 7 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Julie Andrews",
+   "folder": "Famous",
+   "date": "1935-10-01 06:00",
+   "gz": "己卯 庚戌 乙酉 乙亥",
+   "pal": "4 1 6 1",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Paul Cezanne",
+   "folder": "Famous",
+   "date": "1839-01-19 01:00",
+   "gz": "辛卯 辛未 乙丑 戊戌",
+   "pal": "4 7 8 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Piet Mondriaan",
+   "folder": "Famous",
+   "date": "1872-03-07 06:00",
+   "gz": "丙午 壬子 癸卯 壬申",
+   "pal": "2 8 4 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Elizabeth Taylor",
+   "folder": "Famous",
+   "date": "1932-02-27 02:00",
+   "gz": "癸丑 戊午 壬寅 壬申",
+   "pal": "3 2 3 7",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Friedrich Nietzsche",
+   "folder": "Famous",
+   "date": "1844-10-15 10:00",
+   "gz": "丁巳 戊辰 甲戌 甲辰",
+   "pal": "9 4 6 4",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Britney Spears",
+   "folder": "Famous",
+   "date": "1981-12-02 01:30",
+   "gz": "乙丑 甲寅 己亥 辛酉",
+   "pal": "8 3 1 6",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Saddam Hussein",
+   "folder": "Famous",
+   "date": "1937-04-28 08:55",
+   "gz": "庚辰 乙酉 甲辰 丁丑",
+   "pal": "9 6 4 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Dwight Eisenhower",
+   "folder": "Famous",
+   "date": "1890-10-14 18:30",
+   "gz": "辛酉 戊辰 丙戌 庚寅",
+   "pal": "6 4 6 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Connors, Jimmy",
+   "folder": "Famous",
+   "date": "1952-09-02 10:30",
+   "gz": "癸巳 辛亥 戊申 壬辰",
+   "pal": "9 1 7 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Pamela Anderson",
+   "folder": "Famous",
+   "date": "1967-07-01 04:08",
+   "gz": "己丑 丙寅 丙午 丁未",
+   "pal": "8 3 2 2",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Jesse Jackson",
+   "folder": "Famous",
+   "date": "1940-10-08 09:00",
+   "gz": "己巳 甲申 丙戌 庚辰",
+   "pal": "9 7 6 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Osho",
+   "folder": "Famous",
+   "date": "1931-12-11 17:13",
+   "gz": "甲申 庚子 庚子 辛未",
+   "pal": "7 8 8 7",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Ramakrishna",
+   "folder": "Famous",
+   "date": "1836-02-18 05:44",
+   "gz": "庚寅 丙戌 庚寅 丙申",
+   "pal": "3 6 3 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Humphrey Bogart",
+   "folder": "Famous",
+   "date": "1899-01-23 13:40",
+   "gz": "乙未 辛卯 乙丑 戊戌",
+   "pal": "2 4 8 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Grace Kelly",
+   "folder": "Famous",
+   "date": "1929-11-12 05:30",
+   "gz": "辛卯 辛酉 乙亥 己巳",
+   "pal": "4 6 1 9",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Margaret Tatcher",
+   "folder": "Famous",
+   "date": "1925-10-13 09:00",
+   "gz": "辛巳 庚午 丙戌 乙丑",
+   "pal": "9 2 6 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Richard Nixon",
+   "folder": "Famous",
+   "date": "1913-01-09 21:30",
+   "gz": "丁亥 庚寅 癸丑 壬子",
+   "pal": "1 3 3 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Adolf Hitler",
+   "folder": "Famous",
+   "date": "1889-04-20 18:30",
+   "gz": "戊子 丙寅 戊辰 己丑",
+   "pal": "8 3 4 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Ingrid Bergman",
+   "folder": "Famous",
+   "date": "1915-08-29 03:30",
+   "gz": "壬寅 壬辰 甲申 乙卯",
+   "pal": "3 9 7 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Milosevic, Slobodan  (uncertain)",
+   "folder": "Famous",
+   "date": "1941-08-20 22:00",
+   "gz": "丁亥 庚子 丙申 辛巳",
+   "pal": "1 8 7 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Johan Sebastian Bach",
+   "folder": "Famous",
+   "date": "1685-03-21 12:30",
+   "gz": "丁酉 丙午 己卯 乙丑",
+   "pal": "6 2 4 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Anne Frank",
+   "folder": "Famous",
+   "date": "1929-06-12 07:30",
+   "gz": "丙辰 戊子 庚午 己巳",
+   "pal": "4 8 2 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Al Pacino",
+   "folder": "Famous",
+   "date": "1940-04-25 23:02",
+   "gz": "甲子 戊戌 庚辰 庚辰",
+   "pal": "1 6 9 9",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Theodorus Van Gogh",
+   "folder": "Famous",
+   "date": "1857-05-01 03:30",
+   "gz": "丙辰 戊子 甲辰 丁巳",
+   "pal": "4 8 4 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Mr Yuan",
+   "folder": "Famous",
+   "date": "1881-09-08 04:00",
+   "gz": "丙子 甲辰 丁酉 辛巳",
+   "pal": "8 4 6 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Ludwig Van Beethoven",
+   "folder": "Famous",
+   "date": "1770-12-16 13:26",
+   "gz": "丁未 壬寅 戊子 庚寅",
+   "pal": "2 3 8 3",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "John McCain",
+   "folder": "Famous",
+   "date": "1936-08-29 09:00",
+   "gz": "丙辰 癸未 丙申 丙子",
+   "pal": "4 7 7 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Michelle Pfeiffer",
+   "folder": "Famous",
+   "date": "1958-04-29 08:11",
+   "gz": "壬辰 丙子 丙辰 戊戌",
+   "pal": "9 8 4 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Robert De Niro",
+   "folder": "Famous",
+   "date": "1943-08-17 03:00",
+   "gz": "辛丑 丁未 庚申 癸未",
+   "pal": "3 2 7 7",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Kevin Costner",
+   "folder": "Famous",
+   "date": "1955-01-18 21:40",
+   "gz": "乙亥 己卯 丁丑 甲午",
+   "pal": "1 4 8 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Elvis Presley",
+   "folder": "Famous",
+   "date": "1935-01-08 04:35",
+   "gz": "丙寅 甲申 丁丑 甲戌",
+   "pal": "3 7 8 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Shirley Maclaine",
+   "folder": "Famous",
+   "date": "1934-04-24 15:57",
+   "gz": "甲申 乙丑 戊辰 甲戌",
+   "pal": "7 8 4 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Audrey Hepburn",
+   "folder": "Famous",
+   "date": "1929-05-04 03:00",
+   "gz": "乙丑 己酉 戊辰 己巳",
+   "pal": "8 6 4 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Thomas Edison",
+   "folder": "Famous",
+   "date": "1847-02-11 23:38",
+   "gz": "己亥 丙子 壬寅 丁未",
+   "pal": "1 8 3 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "James Earl Carter",
+   "folder": "Famous",
+   "date": "1924-10-01 07:00",
+   "gz": "丙辰 癸丑 癸酉 甲子",
+   "pal": "4 3 6 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Karl Marx",
+   "folder": "Famous",
+   "date": "1818-05-05 02:00",
+   "gz": "甲辰 丁卯 丙辰 戊寅",
+   "pal": "4 4 4 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Bo Derek",
+   "folder": "Famous",
+   "date": "1956-11-20 14:13",
+   "gz": "乙未 辛卯 己亥 丙申",
+   "pal": "2 4 1 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Lauren Bacall",
+   "folder": "Famous",
+   "date": "1924-09-16 02:00",
+   "gz": "癸丑 戊戌 癸酉 甲子",
+   "pal": "3 6 6 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Richard Cromwell",
+   "folder": "Famous",
+   "date": "1626-10-14 01:36",
+   "gz": "乙丑 甲子 戊戌 丙寅",
+   "pal": "8 1 6 3",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Alan Watts",
+   "folder": "Famous",
+   "date": "1915-01-06 06:20",
+   "gz": "癸卯 丁酉 丙子 甲寅",
+   "pal": "4 6 8 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Bill Gates",
+   "folder": "Famous",
+   "date": "1955-10-28 22:00",
+   "gz": "辛亥 壬戌 丙戌 乙未",
+   "pal": "1 1 6 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Vanessa Redgrave",
+   "folder": "Famous",
+   "date": "1937-01-30 18:00",
+   "gz": "己酉 丁巳 辛丑 丙子",
+   "pal": "6 9 3 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "John Quincy Adams",
+   "folder": "Famous",
+   "date": "1767-07-11 11:00",
+   "gz": "丙午 丁未 丁未 丁亥",
+   "pal": "2 2 2 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Francis Ford Coppola",
+   "folder": "Famous",
+   "date": "1939-04-07 01:38",
+   "gz": "乙丑 甲戌 戊辰 己卯",
+   "pal": "8 6 4 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Charles Manson",
+   "folder": "Famous",
+   "date": "1934-11-12 16:40",
+   "gz": "戊申 丁亥 乙亥 甲戌",
+   "pal": "7 1 1 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Vladimir Putin",
+   "folder": "Famous",
+   "date": "1952-10-07 18:00",
+   "gz": "己丑 丙戌 己酉 壬辰",
+   "pal": "8 6 6 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Henry Mancini",
+   "folder": "Famous",
+   "date": "1924-04-16 00:10",
+   "gz": "丙子 甲子 戊辰 甲子",
+   "pal": "8 1 4 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Marlon Brando",
+   "folder": "Famous",
+   "date": "1924-04-03 23:00",
+   "gz": "辛亥 壬子 丁卯 甲子",
+   "pal": "1 8 4 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Herman Hesse",
+   "folder": "Famous",
+   "date": "1877-07-02 18:35",
+   "gz": "戊子 丙子 丙午 丁丑",
+   "pal": "8 8 2 8",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Gerald Ford",
+   "folder": "Famous",
+   "date": "1913-07-14 00:43",
+   "gz": "戊子 丙申 己未 癸丑",
+   "pal": "8 7 2 3",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Juan Peron",
+   "folder": "Famous",
+   "date": "1895-10-08 06:30",
+   "gz": "甲辰 丁亥 乙酉 乙未",
+   "pal": "4 1 6 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Otto Van Bismark",
+   "folder": "Famous",
+   "date": "1815-04-01 13:30",
+   "gz": "己未 戊寅 己卯 乙亥",
+   "pal": "2 3 4 1",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add"
+  },
+  {
+   "name": "Bruce Lee",
+   "folder": "Famous",
+   "date": "1940-11-27 07:12",
+   "gz": "戊辰 甲戌 丁亥 庚辰",
+   "pal": "4 6 1 9",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Rex Harrison",
+   "folder": "Famous",
+   "date": "1908-03-05 05:00",
+   "gz": "丙寅 己未 甲寅 戊申",
+   "pal": "3 2 3 7",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Prince Charles",
+   "folder": "Famous",
+   "date": "1948-11-14 21:14",
+   "gz": "癸亥 癸卯 癸亥 戊子",
+   "pal": "1 4 1 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Robert Redford",
+   "folder": "Famous",
+   "date": "1936-08-18 20:02",
+   "gz": "庚戌 壬申 丙申 丙子",
+   "pal": "1 7 7 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Paul Gaugin",
+   "folder": "Famous",
+   "date": "1848-06-07 10:00",
+   "gz": "己巳 己卯 戊午 戊申",
+   "pal": "9 4 2 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "William Blake",
+   "folder": "Famous",
+   "date": "1757-11-28 18:45",
+   "gz": "戊子 乙亥 辛亥 丁丑",
+   "pal": "8 1 1 8",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "eq"
+  },
+  {
+   "name": "Tiger Woods",
+   "folder": "Famous",
+   "date": "1975-12-30 22:50",
+   "gz": "丁亥 庚戌 戊子 乙卯",
+   "pal": "1 1 8 4",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Julio Iglesias",
+   "folder": "Famous",
+   "date": "1943-09-23 11:00",
+   "gz": "戊辰 甲申 辛酉 癸未",
+   "pal": "4 7 6 7",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Pablo Picasso",
+   "folder": "Famous",
+   "date": "1881-10-25 23:15",
+   "gz": "壬子 壬辰 戊戌 辛巳",
+   "pal": "8 9 6 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Paramahansa Yogananda",
+   "folder": "Famous",
+   "date": "1893-01-05 18:38",
+   "gz": "癸卯 壬寅 壬子 壬辰",
+   "pal": "4 3 8 9",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "hetu"
+  },
+  {
+   "name": "Salvatore Riina",
+   "folder": "Famous",
+   "date": "1930-11-16 15:29",
+   "gz": "甲申 庚午 丁亥 庚午",
+   "pal": "7 2 1 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Sylvester Stallone",
+   "folder": "Famous",
+   "date": "1946-07-06 19:20",
+   "gz": "丁酉 辛巳 甲午 丙戌",
+   "pal": "6 9 9 6",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Eric Clapton",
+   "folder": "Famous",
+   "date": "1945-03-30 19:00",
+   "gz": "辛酉 戊戌 己卯 乙酉",
+   "pal": "6 6 4 6",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Oliver North",
+   "folder": "Famous",
+   "date": "1943-10-07 10:14",
+   "gz": "丙辰 戊戌 辛酉 癸未",
+   "pal": "4 6 6 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Barbara Stanwyck",
+   "folder": "Famous",
+   "date": "1907-07-16 08:55",
+   "gz": "壬辰 丙寅 丁未 丁未",
+   "pal": "9 3 2 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Clint Eastwood",
+   "folder": "Famous",
+   "date": "1930-05-31 17:35",
+   "gz": "丁酉 辛巳 辛巳 庚午",
+   "pal": "6 9 9 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Franklin D Roosevelt",
+   "folder": "Famous",
+   "date": "1882-01-30 20:45",
+   "gz": "壬戌 戊辰 辛丑 辛巳",
+   "pal": "1 4 3 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "William Butler Yeats",
+   "folder": "Famous",
+   "date": "1865-06-13 22:40",
+   "gz": "丙寅 甲寅 壬午 乙丑",
+   "pal": "3 3 2 8",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Andrew Jackson",
+   "folder": "Famous",
+   "date": "1767-03-15 07:36",
+   "gz": "戊辰 己酉 癸卯 丁亥",
+   "pal": "4 6 4 1",
+   "numOnly": true,
+   "groups": 1,
+   "langs": "add+eq+hetu"
+  },
+  {
+   "name": "Elton John",
+   "folder": "Famous",
+   "date": "1947-03-25 16:00",
+   "gz": "庚申 癸卯 癸卯 丁亥",
+   "pal": "7 4 4 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Alfred Hitchcock",
+   "folder": "Famous",
+   "date": "1899-08-13 03:15",
+   "gz": "甲寅 癸丑 壬申 己亥",
+   "pal": "3 3 7 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Harrison Ford",
+   "folder": "Famous",
+   "date": "1942-07-13 21:00",
+   "gz": "庚戌 丁卯 丁未 壬午",
+   "pal": "1 4 2 2",
+   "numOnly": true,
+   "groups": 2,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Georges Gurdjieff",
+   "folder": "Famous",
+   "date": "1872-01-13 00:01",
+   "gz": "丙辰 戊午 辛丑 辛未",
+   "pal": "4 2 3 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Henri Kissinger",
+   "folder": "Famous",
+   "date": "1923-05-27 05:30",
+   "gz": "己卯 庚子 丁巳 癸亥",
+   "pal": "4 8 9 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+hetu"
+  },
+  {
+   "name": "Olivia Newton John",
+   "folder": "Famous",
+   "date": "1948-09-26 06:00",
+   "gz": "丁卯 甲寅 辛酉 戊子",
+   "pal": "4 3 6 8",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Woody Allen",
+   "folder": "Famous",
+   "date": "1935-12-01 22:55",
+   "gz": "庚子 辛亥 丁亥 乙亥",
+   "pal": "8 1 1 1",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Abraham Lincoln",
+   "folder": "Famous",
+   "date": "1809-02-11 21:10",
+   "gz": "庚戌 丁巳 丙寅 己巳",
+   "pal": "1 9 3 9",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "Marilyn Monroe",
+   "folder": "Famous",
+   "date": "1926-06-01 09:30",
+   "gz": "癸巳 辛酉 癸巳 丙寅",
+   "pal": "9 6 9 3",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add+eq"
+  },
+  {
+   "name": "George Patton",
+   "folder": "Famous",
+   "date": "1885-11-11 18:38",
+   "gz": "丙戌 庚午 丁亥 乙酉",
+   "pal": "6 2 1 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Michael Jackson",
+   "folder": "Famous",
+   "date": "1958-08-29 23:45",
+   "gz": "癸亥 戊寅 庚申 戊戌",
+   "pal": "1 3 7 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "hetu"
+  },
+  {
+   "name": "Alexander Graham Bell",
+   "folder": "Famous",
+   "date": "1847-03-03 07:00",
+   "gz": "癸卯 丁酉 壬寅 丁未",
+   "pal": "4 6 3 2",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "add"
+  },
+  {
+   "name": "Peter Sellers",
+   "folder": "Famous",
+   "date": "1925-09-08 06:00",
+   "gz": "己卯 乙未 乙酉 乙丑",
+   "pal": "4 2 6 8",
+   "numOnly": false,
+   "groups": 0,
+   "langs": ""
+  },
+  {
+   "name": "David Ben-Gurion",
+   "folder": "Famous",
+   "date": "1886-10-16 12:00",
+   "gz": "庚午 己酉 戊戌 丙戌",
+   "pal": "2 6 6 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq"
+  },
+  {
+   "name": "Serena Williams",
+   "folder": "TennisWoman",
+   "date": "1981-09-26 20:28",
+   "gz": "庚戌 丁未 丁酉 辛酉",
+   "pal": "1 2 6 6",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  },
+  {
+   "name": "Venus Williams",
+   "folder": "TennisWoman",
+   "date": "1980-06-17 14:12",
+   "gz": "乙未 辛酉 壬午 庚申",
+   "pal": "2 6 2 7",
+   "numOnly": false,
+   "groups": 1,
+   "langs": "eq+hetu"
+  }
+ ],
+ "errors": [],
+ "skipped": [
+  [
+   "Lao Tzu",
+   "too old for the calendar library"
+  ],
+  [
+   "Sendai earthquake 2011.fpd",
+   "not a person"
+  ],
+  [
+   "Leonardo Da Vinci",
+   "too old for the calendar library"
+  ],
+  [
+   "Earthquake_Indonesia26_12_04.fpd",
+   "not a person"
+  ],
+  [
+   "Nicholas Copernicus",
+   "too old for the calendar library"
+  ],
+  [
+   "caso msg 15432.fpd",
+   "not a person"
+  ],
+  [
+   "Naomi Campbell (place/hour?)",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Michel De Nostradamus",
+   "too old for the calendar library"
+  ],
+  [
+   "Michelangelo",
+   "too old for the calendar library"
+  ],
+  [
+   "Charles V",
+   "too old for the calendar library"
+  ],
+  [
+   "Duc de Richelieu",
+   "too old for the calendar library"
+  ],
+  [
+   "Julius Gaius Caesar",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Shao Yung",
+   "too old for the calendar library"
+  ],
+  [
+   "Oliver Cromwell",
+   "too old for the calendar library"
+  ],
+  [
+   "Gautam Buddha",
+   "too old for the calendar library"
+  ],
+  [
+   "Nicolo Machiavelli",
+   "too old for the calendar library"
+  ],
+  [
+   "Joan of Arc",
+   "too old for the calendar library"
+  ],
+  [
+   "Jalal al-Din Rumi  (hour unknown)",
+   "too old for the calendar library"
+  ],
+  [
+   "Jelena Dokic",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Ai Sugiyama",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Dementieva",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Lina Krasnoroutskaya",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Monica Seles",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Nathaly_Tauziat",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Martina Navratilova",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Amelie Mauresmo",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Anna_Kournikova",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Conchita Martinez",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Martina_Hingis",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Justine Henin",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jennifer Capriati",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Kim Clijsters",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Daniela Hantuchova",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Lindsay Davenport",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Thomas Enqvist",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Franco Squillari",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Fernando Vicente",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Fernando Meligeni",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Michael Russell",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Vladimir Voltchkov",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Chris Woodruff",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Mariano Zabaleta",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Mikhail Youzhny",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Andreas Vinciguerra",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Bodan Ulihrach",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jan Vacek",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Rainer Schuttler",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Marat_Safin",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "David Sanchez",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Andrei Stoliarov",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jan Siemerink",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Michal Tabara",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Greg Rusedski",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Davide Sanguinetti",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Sargis Sargsian",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Marc Rosset",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Sjeng Schalken",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Fabrice_Santoro",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Andy Roddick",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Marcelo Rios",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Christophe Rochus",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Carlos Moya",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Cedric Pioline",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Tommy Robredo",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Mark Philippoussis",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Olivier Rochus",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Kristian Pless",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Albert Portas",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Patrick Rafter",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jiri Novak",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "David Nalbandian",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Andrei Pavel",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "David Prinosil",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Magnus_Norman",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Xavier Malisse",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Albert Montanes",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Harel Levy",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Alberto Martin",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Todd Martin",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Hyung-Taik Lee",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Nicolas Lapentti",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Max Mirnyi",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Nicolas_Massu",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Cecil Mamiit",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Ivan Ljubicic",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Felix Mantilla",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Magnus Larsson",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Goran Ivanisevic",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Stefan Koubek",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Nicolas Kiefer",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Gustavo Kuerten",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Andrew Ilie",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Michel Kratochvil",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Carol_Kucera",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Dominik Hrbaty",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Sebastian Grosjean",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Thomas Johansson",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Tommy Haas",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Yevgeny Kafelnikov",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Tim Henman",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Lleyton Hewitt",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Magnus Gustafsson",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Markus Hipfl",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Roger Federer",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jerome Golmard",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Juan Carlos Ferrero",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Alex Corretja",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Nicolas Escude",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jan-Michael Gambill",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Anthony Dupuis",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Gaston Gaudio",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Wayne Ferreira",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jacobo Diaz",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Younes El Aynaoui",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Andrea Gaudenzi",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Guillermo Coria",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Albert Costa",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Galo Blanco",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Arnaud Clement",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "James_Blake",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Wayne Arthurs",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Sergi Bruguera",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Juan Carlos Balcells",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Lars Burgsmuller",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Francisco Clavet",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Hicham Arazi",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Julien Boutter",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Guilermo Canas",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Jonas Bjorkman",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Alex Calatrava",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Andre Agassi",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Agustin Calleri",
+   "hour unknown (12:00 placeholder)"
+  ],
+  [
+   "Michael Chang",
+   "hour unknown (12:00 placeholder)"
+  ]
+ ]
+}
