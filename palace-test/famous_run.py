@@ -1,6 +1,6 @@
 # Edu's own verified charts (Drive folder "Famous", .fpd files): who has PERFECT palace numbers,
 # numbers only (5/10/15, Hetu, same number) — no family rescue. Data used exactly as in the files:
-# "name","HH:MM",dst,"day",month0,"year",male,tzIndex(=12+UTC offset),longitude in minutes of time.
+# "name","HH:MM",dst,"day",month0,"year",male,tzIndex(=12+UTC offset; 31 = local mean time),longitude in minutes of time.
 import json, csv, io, os, re, sys
 from playwright.sync_api import sync_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,7 +11,11 @@ for l in open(os.path.join(ROOT, 'palace-test', src)):
     try:
         f = next(csv.reader(io.StringIO(raw.replace('\r\n', ' '))))
         name = f[0].strip() or r['title'].replace('.fpd', '')
-        hh, mm = re.split('[:.]', f[1])[:2]; dst = int(f[2] or 0); d = int(f[3]); mo = int(f[4]) + 1; y = int(f[5]); tz = int(f[7]) - 12 + dst; lon = float(f[8]) / 4.0
+        hh, mm = re.split('[:.]', f[1])[:2]; dst = int(f[2] or 0); d = int(f[3]); mo = int(f[4]) + 1; y = int(f[5]); lon = float(f[8]) / 4.0
+        zi = int(f[7])
+        if zi == 31: tz = lon / 15.0            # code 31 = local mean time of the place
+        elif 0 <= zi <= 24: tz = zi - 12 + dst
+        else: skipped.append((name, 'unknown time-zone code %d' % zi)); continue
     except Exception as e:
         skipped.append((r['title'], 'unreadable')); continue
     key = (y, mo, d, hh, mm, f[7], f[8])

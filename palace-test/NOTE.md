@@ -18,3 +18,9 @@ Primary measure (palaces good): beauty 72.5% vs control 77.2% (p 0.82) and vs ra
 Numbers only: 45.8% vs 38.9% random (p 0.07, one-sided), vs control p 0.43: not significant. Women alone 51% (n 43): a hint at most, one of several sub-comparisons.
 Without the 28 people with an uncertain offset: 70.7% good (n 92).
 Conclusion: good palaces are the norm (3 charts in 4); beauty/physique does not raise the rate.
+
+## Edu's own charts (Drive "Famous" = "Famous People", 365 distinct .fpd files)
+famous_run.py -> drive_famous_result.json. Format: "name","HH:MM",dst,"day",month0,"year",male,tzCode,lonMinutes; tzCode = 12 + UTC offset, 31 = local mean time. Used as written (some files carry no DST flag, e.g. Diana 19:45 code 12).
+228 charts computed; skipped: 117 with hour unknown (12:00, tennis players), 13 before 1600, 3 not people, 3 unknown tz codes.
+Perfect palaces, numbers only: 80 files (79 people) = 35% (chance 39%); 33 with all four in one group, 46 in two separate pairs.
+Other Drive folders: QMDJ birth charts / famous people charts hold only images (37, no date in the title); Da Liu Ren holds only teaching material.
