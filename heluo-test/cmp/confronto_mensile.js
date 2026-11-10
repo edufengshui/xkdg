@@ -78,7 +78,7 @@ const base = g => Math.round((g.c.tot - g.c.rs + g.a.tot - g.a.rs + g.d.tot - g.
 const giornoSolo = g => Math.round((g.d.tot - g.d.rs) * 100) / 100; // tempo + testo della sola linea del giorno
 
 function unEvento(e, regola) {
-  if (regola === 'edu') process.env.HL_MENSILE = 'edu'; else delete process.env.HL_MENSILE;
+  if (regola === 'edu' || regola === 'yin1') process.env.HL_MENSILE = regola; else delete process.env.HL_MENSILE;
   const [d0, t0, lon0, tz0, male] = NASC[e.chi], Pn = pillars(d0, t0, lon0, tz0), N = natal('A', Pn, male);
   const Pe = pillars(e.d, e.ora, e.luogo[0], e.luogo[1]), p = predict(N, Pe, e.luogo[0]);
   if (p.none) return { fuori: true, eta: p.age };

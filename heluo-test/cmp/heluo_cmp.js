@@ -105,7 +105,15 @@ function jieStartTstDay(Pe, lon) { // TST calendar day (ms at 00:00) of the Jie 
 // 大寒 2, 雨水 3 … 小雪 12). Line k of the annual rules months 2k-1 and 2k: odd month = annual with line k changed;
 // even month = the previous month with the correlate of k changed too. No accumulation; the moved line of the
 // annual is not used. The 5-day blocks of the Lord of the Block are counted from the day of the 中氣 (TST date).
-// Default (HL_MENSILE unset): reference calculator, months from the Jie, lines from the one above the moved line.
+// Default (HL_MENSILE unset): months from the Jie, lines from the one above the moved line, cumulative; month index
+// 子 = 1 … 亥 = 12 (Edu, 10/11/2026: the Zi month is one month split between two years, like the Zi hour).
+// HL_MENSILE=yin1: the same with the old numbering of the reference calculator (寅 = 1 … 丑 = 12), for comparisons.
+function monthYin1(A, moved, monthBr) {
+  const i = (monthBr - 2 + 12) % 12 + 1, s = wrap6(moved + 1), j = Math.ceil(i / 2), S = [];
+  for (let t = 0; t < j; t++) S.push(wrap6(s + t));
+  if (i % 2 === 0) { const p = partner(wrap6(s + j - 1)), q = S.indexOf(p); if (q >= 0) S.splice(q, 1); else S.push(p); }
+  return { hex: H.hexOf(flip(A, S)), changed: S.slice().sort(), index: i };
+}
 const QI = ['冬至', '大寒', '雨水', '春分', '谷雨', '小满', '夏至', '大暑', '处暑', '秋分', '霜降', '小雪'];
 function prevQi(Pe) { const b = Pe.meta.beijing; return Lunar.Solar.fromYmdHms(b.y, b.mo, b.d, b.h, b.mi, b.s || 0).getLunar().getPrevQi(false); }
 function monthEdu(annualLines, Pe) {
@@ -132,6 +140,7 @@ function predict(N, Pe, lon) {
   let mo;
   if (N.method === 'C') { const i = (br - 2 + 12) % 12 + 1, L = Math.ceil(i / 2), S = [L]; if (i % 2 === 0) S.push(partner(L)); mo = { hex: H.hexOf(flip(a.hex.lines, S)) }; }
   else if (EDU) mo = monthEdu(a.hex.lines, Pe);
+  else if (process.env.HL_MENSILE === 'yin1') mo = monthYin1(a.hex.lines, a.moved, br);
   else mo = H.monthlyHex(a.hex.lines, a.moved, br);
   const t = Pe.meta.tst, tday = Date.UTC(t.y, t.mo - 1, t.d);
   const start = EDU ? qiStartTstDay(Pe, lon) : jieStartTstDay(Pe, lon);
