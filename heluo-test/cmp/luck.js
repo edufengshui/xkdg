@@ -92,6 +92,18 @@ function profilo(Pn, male) {
 // (es. 寅 = Wealth per Gates Metallo): non può insieme togliere la Luck perché in Time 1 porta l'opposto (Gen).
 // Restano gli opposti come trigrammi negli esagrammi del tempo (C). LK_OPPRAMI=si per rimetterli.
 const OPR = process.env.LK_OPPRAMI === 'si';
+// Ponte (Edu, 10/11): se la Luck e il suo opposto sono in controllo (solo Kan/Li: l'Acqua controlla il Fuoco), un elemento
+// che fa da ponte (Legno: Acqua → Legno → Fuoco, 通關) li fa convivere: l'opposto non toglie la Luck.
+// LK_PONTE: 'esa' = Zhen o Xun nello stesso esagramma (default); 'hu' = anche nel suo Hu; 'persona' = anche se la persona è Legno; 'no'.
+function ponte(L, tr, n, P) {
+  const V = process.env.LK_PONTE || 'esa';
+  if (V === 'no' || ![L.t, L.op].every(t => t === 'Kan' || t === 'Li')) return false;
+  const legno = t => t === 'Zhen' || t === 'Xun';
+  if (tr.some(legno)) return true;
+  if (V === 'hu' || V === 'persona') { const h = H.huGua(H.hexFrom(tr[0], tr[1]).lines); if (legno(h.upper) || legno(h.lower)) return true; }
+  if (V === 'persona' && P.persona === 'Wood') return true;
+  return false;
+}
 function giorno(P, p, T) {
   let tot = 0; const w = [];
   // Luck vuota che esce dal vuoto (Edu, 10/11): arriva il trigramma di scontro (rami Time 1 opposti: Kan↔Li, Gen↔Kun,
@@ -124,10 +136,10 @@ function giorno(P, p, T) {
     for (const [lv, n] of [['a', p.id.year[0]], ['m', p.id.month[0]], ['b', p.id.lord[0]], ['g', p.id.dayHex[0]]]) {
       const tr = TRI_OF[n];
       if (tr.includes(L.t)) add(k, W.C[lv], 'C' + lv + n);
-      if (tr.includes(L.op)) add(k, -W.C[lv], 'C' + lv + n);
+      if (tr.includes(L.op) && !ponte(L, tr, n, P)) add(k, -W.C[lv], 'C' + lv + n);
     }
   }
   return { tot: Math.round(tot * 100) / 100, w };
 }
 
-module.exports = { profilo, giorno, W, YY, TM, brTri };
+module.exports = { profilo, giorno, ponte, W, YY, TM, brTri };
