@@ -92,8 +92,9 @@ function giorno(P, p, T) {
   let tot = 0; const w = [];
   // Luck vuota che esce dal vuoto (Edu, 10/11): arriva il trigramma di scontro (rami Time 1 opposti: Kan↔Li, Gen↔Kun,
   // Zhen↔Dui, Xun↔Qian) con il ramo di anno, mese o giorno, o nei trigrammi di annuale, mensile, blocco, esagramma del giorno.
-  // LK_RIEMPI=rami: solo i rami del tempo; LK_RIEMPI=no: la Luck vuota resta vuota.
-  const RI = process.env.LK_RIEMPI || 'tutto', mUsa = {}, uscita = {};
+  // Default (Edu, 10/11): solo i rami di anno, mese, giorno che scontrano i rami della Luck. LK_RIEMPI=tutto: anche i trigrammi
+  // degli esagrammi del tempo; LK_RIEMPI=no: la Luck vuota resta vuota.
+  const RI = process.env.LK_RIEMPI || 'rami', mUsa = {}, uscita = {};
   for (const k of ['heaven', 'earth', 'fame']) {
     const L = P.K[k]; mUsa[k] = L.m;
     if (!L.vuoto || RI === 'no') continue;
