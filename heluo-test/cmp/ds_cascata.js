@@ -18,6 +18,7 @@ const { natal, predict, pillars } = require('./heluo_cmp.js');
 const NJ = require(path.join(__dirname, '..', '..', 'heluo-najia.js'));
 const SC = require('./scores.json');
 const LK2 = require('./luck.js');
+const FORZA = process.argv.includes('forza');
 
 const BR = '子丑寅卯辰巳午未申酉戌亥', ST = '甲乙丙丁戊己庚辛壬癸';
 const TRI_EL = { Qian: 'Metal', Dui: 'Metal', Li: 'Fire', Zhen: 'Wood', Xun: 'Wood', Kan: 'Water', Gen: 'Earth', Kun: 'Earth' };
@@ -66,9 +67,12 @@ function tempo(b, T, natVoids) {
   for (const [k, x] of [['a', T.y], ['m', T.m], ['g', T.d]]) {
     if (x === b) { t += 1; note.push('=' + k); }
     else if (LIUHE[b] === x) { t += 1; note.push('六合' + k); }
-    else if (clash(b) === x) { t -= 2; note.push('冲' + k); }
+    else if (clash(b) === x) {
+      // opzione forza (Edu, 10/11): nello scontro conta chi è più forte; linea timely contro un ramo non timely non si rompe
+      if (FORZA && timely(el, T.m) && !timely(BR_EL[x], T.m)) note.push('冲' + k + '(regge)');
+      else { t -= 2; note.push('冲' + k); } }
     else if (SANHE.some(s => s.includes(b) && s.includes(x))) { t += 0.5; note.push('三合' + k); }
-    if (x !== b && CTRL[BR_EL[x]] === el) { t -= 0.5; note.push('剋' + k); }
+    if (x !== b && CTRL[BR_EL[x]] === el && !(FORZA && timely(el, T.m) && !timely(BR_EL[x], T.m))) { t -= 0.5; note.push('剋' + k); }
   }
   if (natVoids.includes(b) && !timely(el, T.m)) { t -= 1; note.push('空'); }
   return { t, note };
