@@ -1771,6 +1771,8 @@ function renderPersonView() {
         } catch (eAn) {}
         // ⌂ Session 49 (Edu): isolated PALACE → which Zheng Shen / Ling Shen hexagram to use (Feng Shui).
         try { if (typeof xkdgPalaceCureHtml === 'function') h += xkdgPalaceCureHtml(pp.P, null, false); } catch (ePal) {}
+        // ⌂ with Both: a pillar of the other person with the same palace number (or a 5/10/15 / Hetu link) cures it — only when it appears
+        try { if (other && typeof xkdgMutualPalaceCureHtml === 'function') h += xkdgMutualPalaceCureHtml(pp.P, other.P, pp.name, other.name); } catch (ePalM) {}
         if (!g || !g.any) {
             h = h.replace(EXPL, '') + '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
             return;
@@ -4541,7 +4543,9 @@ function checkCompatibility() {
 function _xkdgCompatSamePalace() {
     try {
         if (typeof xkdgSamePalaceHtml !== 'function' || !_personAPillars || !_personBPillars) return '';
-        return xkdgSamePalaceHtml(_personAPillars, _personBPillars, (document.getElementById('person-name') || {}).value || 'A', (document.getElementById('person-name-b') || {}).value || 'B');
+        const nA = (document.getElementById('person-name') || {}).value || 'A', nB = (document.getElementById('person-name-b') || {}).value || 'B';
+        return xkdgSamePalaceHtml(_personAPillars, _personBPillars, nA, nB)
+             + xkdgMutualPalaceCureHtml(_personAPillars, _personBPillars, nA, nB) + xkdgMutualPalaceCureHtml(_personBPillars, _personAPillars, nB, nA);
     } catch (e) { return ''; }
 }
 

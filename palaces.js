@@ -185,6 +185,32 @@
       + '<div style="margin-top:2px;">' + out.join('<br>') + '</div></div>';
   }
 
+  // Between two persons the same palace number is also a CURE (Edu, session 49): a pillar of the other
+  // person cures an isolated palace of this person when it has the SAME number, or links it with
+  // 5/10/15 or Hetu in this person's setting (no branch clash). Only when it appears.
+  function mutualCures(P, O) {
+    var c = cures(P); if (!c || !c.pc || c.pc.good || !O) return [];
+    var isoK = c.pc.isolated.map(function (x) { return x.pillar; });
+    var lang = _xkdgSettingLang(c.pc.values.filter(function (v) { return isoK.indexOf(v.pillar) < 0; }).map(function (v) { return v.value; }));
+    var out = [];
+    K4.forEach(function (k) {
+      var q = O[k]; if (!q || !q.hex) return; var v = palOfHex(q.hex); if (v == null) return;
+      c.pc.isolated.forEach(function (x) {
+        var how = v === x.value ? 'same number ' + v : _xkdgRelIn(lang, v, x.value);
+        if (!how) return;
+        if (v !== x.value && clashes(q.branch, P[x.pillar] && P[x.pillar].branch)) return;
+        out.push({ src: k, pal: v, pillar: x.pillar, value: x.value, how: how });
+      });
+    });
+    return out;
+  }
+  function mutualCureHtml(P, O, nP, nO) {
+    var m = mutualCures(P, O); if (!m.length) return '';
+    return '<div style="margin:6px 0;padding:6px 8px;border-radius:8px;border:1px solid #bcaaa4;background:#efebe9;font-size:12px;">'
+      + '<b style="color:#4e342e;">⌂ Palace cure from ' + nO + '\'s chart</b> (for ' + nP + ')'
+      + '<div style="margin-top:2px;">' + m.map(function (x) { return nO + '\'s ' + L[x.src] + ' (palace ' + x.pal + ' ' + TRI[x.pal] + ') takes ' + nP + '\'s isolated ' + L[x.pillar] + ' (' + x.value + ') out of isolation — ' + x.how; }).join('<br>') + '</div></div>';
+  }
+
   // ── The switch ──────────────────────────────────────────────────
   function btnHtml(id) {
     var on = isOn();
@@ -227,6 +253,8 @@
   window.xkdgPalaceRelHtml = relHtml;
   window.xkdgPalaceCureHtml = cureHtml;
   window.xkdgSamePalaceHtml = samePalaceHtml;
+  window.xkdgMutualPalaceCures = mutualCures;
+  window.xkdgMutualPalaceCureHtml = mutualCureHtml;
   window.xkdgRenderDatePalaces = renderDatePalaces;
   window.xkdgPalaceButtons = placeButtons;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', placeButtons); else placeButtons();
