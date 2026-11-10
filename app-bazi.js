@@ -1371,7 +1371,7 @@ function xkdgPalaceComm(pillars) {
         const fams = k => { try { return _xkdgResolvedFamilyEntries(pillars[k]).map(e => e.family); } catch (e) { return []; } };
         const out = { values: K.map(k => ({ pillar: k, value: Q[k].pal })), isolated: [], by_family: [] };
         K.forEach(k => {
-            if (K.some(o => { if (o === k) return false; const r = _xkdgPairRel(Q, k, o, 'pal'); return !!(r && !r.cancelled); })) return;
+            if (K.some(o => { if (o === k) return false; const r = _xkdgPairRel(Q, k, o, 'pal'); return !!(r && !r.cancelled && r.lang !== 'eq'); })) return;   // session 49 (Edu): the same number is NOT a link inside one chart (only between two persons)
             const fk = fams(k); let hit = null;
             K.forEach(o => { if (o === k || hit) return; const f = fams(o).filter(x => fk.includes(x))[0]; if (f) hit = { pillar: k, value: Q[k].pal, with: o, family: f }; });
             if (hit) out.by_family.push(hit); else out.isolated.push({ pillar: k, value: Q[k].pal });

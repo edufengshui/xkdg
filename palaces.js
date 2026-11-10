@@ -4,7 +4,8 @@
 //  Palace number of a pillar = Early Heaven number of the LOWER trigram of its
 //  hexagram (Qian 9, Dui 4, Li 3, Zhen 8, Xun 2, Kan 7, Gen 6, Kun 1) = the
 //  sector of the luopan where that hexagram sits. Relations as for Elements and
-//  Periods: 5/10/15, Hetu, same number; a sum or Hetu pair is cancelled by a
+//  Periods: 5/10/15, Hetu (the same number counts only between two persons, not
+//  inside one chart - Edu, session 49); a sum or Hetu pair is cancelled by a
 //  branch clash; a pillar with no number link still communicates if it shares a
 //  family with another pillar (xkdgPalaceComm in app-bazi.js).
 //
@@ -37,7 +38,7 @@
     var Q = {}; pc.values.forEach(function (v) { Q[v.pillar] = Object.assign({}, P[v.pillar], { pal: v.value }); });
     var keys = pc.values.map(function (v) { return v.pillar; }), pairs = [];
     for (var i = 0; i < keys.length; i++) for (var j = i + 1; j < keys.length; j++) {
-      var r = _xkdgPairRel(Q, keys[i], keys[j], 'pal'); if (!r) continue;
+      var r = _xkdgPairRel(Q, keys[i], keys[j], 'pal'); if (!r || r.lang === 'eq') continue;   // same number: only between two persons (Edu)
       pairs.push({ a: keys[i], b: keys[j], lang: r.lang, txt: r.txt, cancelled: !!r.cancelled,
                    clash: r.cancelled ? (P[keys[i]].branch + '-' + P[keys[j]].branch) : null });
     }
@@ -61,7 +62,8 @@
     // targets: one group for all isolated pillars when one number does it, else one per pillar
     var all = NUM.filter(function (v) { return iso.every(function (x) { return link(v, x.value); }); });
     var targets = all.length ? [{ pillars: iso, nums: all }]
-                 : iso.map(function (x) { return { pillars: [x], nums: NUM.filter(function (v) { return link(v, x.value); }) }; });
+                 : Object.values(iso.reduce(function (m, x) { (m[x.value] = m[x.value] || []).push(x); return m; }, {}))   // one group per isolated value
+                     .map(function (ps) { return { pillars: ps, nums: NUM.filter(function (v) { return link(v, ps[0].value); }) }; });
     var used = {};
     var slotOf = function (s, extra) {
       var jz = (typeof _xkdgJzOfHex === 'function') ? _xkdgJzOfHex(s.hexNum) : null;
@@ -71,7 +73,7 @@
     var groups = targets.map(function (t) {
       var g = { pillars: t.pillars, byNum: [], family: [] };
       t.nums.forEach(function (v) {
-        var talks = pc.values.filter(function (w) { return isoK.indexOf(w.pillar) < 0 && _xkdgTalk(v, w.value); }).map(function (w) { return w.pillar; });
+        var talks = pc.values.filter(function (w) { var r = _xkdgRel(v, w.value); return isoK.indexOf(w.pillar) < 0 && r && r.lang !== 'eq'; }).map(function (w) { return w.pillar; });
         var row = { pal: v, tri: TRI[v], rel: t.pillars.map(function (x) { var r = link(v, x.value); return L[x.pillar] + ' ' + x.value + ': ' + r; }), talks: talks, hexes: [] };
         FS_SLOTS.forEach(function (s) {
           if (palOfHex(s.hexNum) !== v) return;
@@ -123,7 +125,7 @@
       if (c) c.groups.forEach(function (g) {
         var nums = g.byNum.map(function (r) { return r.pal + ' ' + r.tri; });
         if (g.family.length) nums.push('★ shared family');
-        if (nums.length) short.push((c.groups.length > 1 ? L[g.pillars[0].pillar] + ': ' : '') + nums.join(', '));
+        if (nums.length) short.push((c.groups.length > 1 ? g.pillars.map(function (x) { return L[x.pillar]; }).join('+') + ': ' : '') + nums.join(', '));
       });
       if (short.length) h += '<div style="margin-top:2px;color:#4e342e;">🧭 Feng Shui cure — a hexagram in palace ' + short.join(' · ') + '. Which <b>正 Zheng Shen</b> / <b>零 Ling Shen</b> hexagram: <b>👤 PERSON</b> tab or luopan ☰ → 🌿 Cure.</div>';
     }
@@ -144,7 +146,7 @@
       + '<b style="color:#c62828;">正 Zheng Shen</b> (facing, door, bed, desk) or <b style="color:#1565c0;">零 Ling Shen</b> (water).</div>';
     var any = false;
     c.groups.forEach(function (g) {
-      if (c.groups.length > 1) h += '<div style="margin-top:5px;font-weight:bold;">For the ' + L[g.pillars[0].pillar] + ' (' + g.pillars[0].value + '):</div>';
+      if (c.groups.length > 1) h += '<div style="margin-top:5px;font-weight:bold;">For the ' + g.pillars.map(function (x) { return L[x.pillar]; }).join(', ') + ' (' + g.pillars[0].value + '):</div>';
       g.byNum.forEach(function (r) {
         any = true;
         var zs = r.hexes.filter(function (e) { return e.zs; }), ls = r.hexes.filter(function (e) { return e.ls; });
