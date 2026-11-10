@@ -5778,11 +5778,13 @@
       if (!P || !P.year) return { error: 'Person ' + (B ? 'B' : 'A') + ' is not loaded (load the person and press CALCULATE).' };
       if (typeof xkdgPersonGaps !== 'function') return { error: 'Gap analysis not available.' };
       var g = xkdgPersonGaps(P), R = xkdgGapRemedies(g, +input.days || 30, P);
+      var palaces = (typeof xkdgPalaceComm === 'function') ? xkdgPalaceComm(P) : null;
       if (g) delete g.pillars;
       var name = ((document.getElementById(B ? 'person-name-b' : 'person-name') || {}).value || '').trim() || null;
       return { person: name || (B ? 'B' : 'A'),
         pillars: ['hour', 'day', 'month', 'year'].map(function (k) { return { pillar: k, hex: P[k] && P[k].hex, qi: P[k] && P[k].qi, yun: P[k] && P[k].yun }; }),
-        gaps: g, remedies: _compactRemedies(R),
+        gaps: g, remedies: _compactRemedies(R), palaces: palaces || undefined,
+        palaces_note: palaces ? 'PALACES (Edu, session 48) = a third, MINOR dimension: the palace number of each pillar (Early Heaven number of the lower trigram of its hexagram = its place on the luopan). Not on the same level as Elements and Periods, but it has a certain importance in Feng Shui. "good" = the four palace numbers communicate (5/10/15, Hetu, same number, or "by_family": a pillar with no number link that shares a family with another pillar). It never changes the remedies. Edu\'s own observation, from one chart, not a rule: a chart weak in Elements and Periods but good in the Palaces belonged to a physically very beautiful person — you may mention it only as his observation.' : undefined,
         instructions: 'Present in Chinese order Hour, Day, Month, Year. For each dimension say which pillar is isolated and the bridge '
           + 'values. REMEDY RULE (Edu): (A) the MAIN remedy links the isolated pillar in its dimension in the language the other '
           + 'pillars of that dimension already speak (Adding 5/10/15 or Hetu) AND keeps the connection, in the same language, in the '
