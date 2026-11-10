@@ -4,6 +4,8 @@
 // + testo (scores.json, −2…+2) spostato di ±1 verso la versione scelta dal tempo.
 // Uso: node ds_cascata.js            → prova sugli eventi noti
 //      node ds_cascata.js dettaglio  → anche la scheda della cascata per ogni evento
+//      node ds_cascata.js luck       → aggiunge le tre Luck (Edu, 10/11): per annuale, mensile, blocco ed esagramma del
+//                                      giorno, +0,5 per ogni Luck (Heaven, Earth, Fame) il cui trigramma c'è, −0,5 per ogni opposto
 //      node ds_cascata.js esagiorno  → livello del giorno sulla linea dell'esagramma del giorno invece che del blocco
 // Linea del giorno (10/11/2026): regola di Edu del Signore del Blocco (predict in heluo_cmp.js, dailyHex nell'app);
 // di default il livello del giorno è la linea del giorno nell'esagramma del blocco.
@@ -79,6 +81,22 @@ function persona(hx, line) {
   return u === l ? u : (line <= 3 ? l : u);
 }
 
+// Tre Luck (Heaven = stelo dell'anno, Earth = ramo dell'anno, Fame = stagione): dall'app (fromPillars).luck
+const H_ = global.XKDGHeluo, TRI_OF = {};
+for (const u of Object.keys(TRI_EL)) for (const l of Object.keys(TRI_EL)) { const h = H_.hexFrom(u, l); TRI_OF[h.n] = [h.upper, h.lower]; }
+function luckHex(n, LK) {
+  const t = TRI_OF[n]; let v = 0; const w = [];
+  for (const k of ['heaven', 'earth', 'fame']) {
+    if (t.includes(LK[k])) { v += 0.5; w.push('+' + k[0].toUpperCase()); }
+    if (t.includes(LK.opposite[k])) { v -= 0.5; w.push('−' + k[0].toUpperCase()); }
+  }
+  return { v, w };
+}
+function luckTot(p, LK) {
+  const L = { a: luckHex(p.id.year[0], LK), m: luckHex(p.id.month[0], LK), b: luckHex(p.id.lord[0], LK), g: luckHex(p.id.dayHex[0], LK) };
+  L.tot = L.a.v + L.m.v + L.b.v + L.g.v; return L;
+}
+
 function giorno(N, nat, date, lon, tz, scopo) {
   const Pe = pillars(date, '12:00', lon, tz), p = predict(N, Pe, lon);
   if (p.none) return null;
@@ -88,7 +106,8 @@ function giorno(N, nat, date, lon, tz, scopo) {
   const c = livello(p.id.cycle[0], p.id.cycle[1], pers, scopo, T, nv);
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
   const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
-  return { date, Pe, p, pers, c, a, d, tot: c.tot + a.tot + d.tot };
+  const L = nat.luck ? luckTot(p, nat.luck) : null, useL = process.argv.includes('luck') && L;
+  return { date, Pe, p, pers, c, a, d, L, tot: c.tot + a.tot + d.tot + (useL ? L.tot : 0) };
 }
 
 const NASCITE = {
@@ -124,14 +143,16 @@ module.exports = { giorno, anno, rango, NASCITE, EVENTI, SCOPI, natal, pillars }
 if (require.main === module) {
   const det = process.argv.includes('dettaglio'), riep = [];
   for (const e of EVENTI) {
-    const b = NASCITE[e.chi], Pn = pillars(...b), N = natal('A', Pn, true), nat = { day: Pn.day, year: N.pillars[3] };
+    const b = NASCITE[e.chi], Pn = pillars(...b), N = natal('A', Pn, true), nat = { day: Pn.day, year: N.pillars[3], luck: H_.fromPillars(Pn, true).luck };
     const Y = +e.d.slice(0, 4), righe = {};
     for (const sc of Object.keys(SCOPI)) { const r = rango(anno(N, nat, Y, e.luogo[0], e.luogo[1], sc), e.d); righe[sc] = r; }
     const r = righe[e.scopo], g = r.me;
     console.log(`\n## ${e.chi} ${e.d} ${e.cosa} — età ${g.p.age}, persona ${g.pers}, scopo ${e.scopo}`);
     console.log(`   pilastri ${g.Pe.day} ${g.Pe.month} ${g.Pe.year}; rango ${r.rank}/${r.n} (percentile ${(100 * r.rank / r.n).toFixed(0)}), totale ${g.tot}`);
     console.log('   altri scopi: ' + Object.keys(SCOPI).map(k => `${k} ${righe[k].rank}`).join(' · '));
-    if (det) { console.log('   ' + fmt(g.c, 'ciclo  ')); console.log('   ' + fmt(g.a, 'annuale')); console.log('   ' + fmt(g.d, 'giorno ')); }
+    if (det) { console.log('   ' + fmt(g.c, 'ciclo  ')); console.log('   ' + fmt(g.a, 'annuale')); console.log('   ' + fmt(g.d, 'giorno '));
+      const f = (x, n) => `${n} ${x.v >= 0 ? '+' : ''}${x.v} [${x.w.join(' ')}]`;
+      console.log(`   luck    ${f(g.L.a, 'annuale ' + g.p.id.year[0])} · ${f(g.L.m, 'mensile ' + g.p.id.month[0])} · ${f(g.L.b, 'blocco ' + g.p.id.lord[0])} · ${f(g.L.g, 'giorno ' + g.p.id.dayHex[0])} = ${g.L.tot}`); }
     riep.push({ e, pct: r.rank / r.n, righe });
   }
   const m = riep.reduce((s, x) => s + x.pct, 0) / riep.length;
