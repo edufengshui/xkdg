@@ -24,7 +24,7 @@
   var L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
   var K4 = ['hour', 'day', 'month', 'year'];
 
-  function isOn() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+  function isOn() { try { return localStorage.getItem(KEY) !== '0'; } catch (e) { return true; } }   // ON unless switched off (Edu)
   function palOfHex(h) { var b = (typeof _XK_HEXBIN !== 'undefined') ? _XK_HEXBIN[h] : null; return b == null ? null : XT[b & 7]; }
   function famsOfPillar(p) { try { return _xkdgResolvedFamilyEntries(p).map(function (e) { return e.family; }); } catch (e) { return []; } }
   function famsOfHex(h) { try { return (typeof getHexFamilies === 'function') ? (getHexFamilies(h) || []) : []; } catch (e) { return []; } }
@@ -47,7 +47,7 @@
 
   // The luopan hexagrams that take an isolated pillar out of isolation.
   //  - number link: its palace links the isolated pillar in the language the other pillars speak
-  //    (Adding 5/10/15 or Hetu) or with the same number; no branch clash for a sum / Hetu;
+  //    (Adding 5/10/15 or Hetu) — not the same number (Edu); no branch clash;
   //  - ★ family: it shares a family with the isolated pillar.
   // Each hexagram is marked Zheng Shen and/or Ling Shen (period of the luopan).
   function cures(P) {
@@ -56,7 +56,7 @@
     var iso = pc.isolated, isoK = iso.map(function (x) { return x.pillar; });
     var net = pc.values.filter(function (v) { return isoK.indexOf(v.pillar) < 0; }).map(function (v) { return v.value; });
     var lang = _xkdgSettingLang(net);
-    var link = function (v, x) { return v === x ? 'same number' : _xkdgRelIn(lang, v, x); };
+    var link = function (v, x) { return _xkdgRelIn(lang, v, x); };   // Edu: the same number is NOT a cure, only 5/10/15 or Hetu
     var NUM = [1, 2, 3, 4, 6, 7, 8, 9];
     // targets: one group for all isolated pillars when one number does it, else one per pillar
     var all = NUM.filter(function (v) { return iso.every(function (x) { return link(v, x.value); }); });
@@ -72,12 +72,12 @@
       var g = { pillars: t.pillars, byNum: [], family: [] };
       t.nums.forEach(function (v) {
         var talks = pc.values.filter(function (w) { return isoK.indexOf(w.pillar) < 0 && _xkdgTalk(v, w.value); }).map(function (w) { return w.pillar; });
-        var row = { pal: v, tri: TRI[v], rel: t.pillars.map(function (x) { var r = link(v, x.value); return L[x.pillar] + ' ' + x.value + ': ' + (r === 'same number' ? 'same number ' + v : r); }), talks: talks, hexes: [] };
+        var row = { pal: v, tri: TRI[v], rel: t.pillars.map(function (x) { var r = link(v, x.value); return L[x.pillar] + ' ' + x.value + ': ' + r; }), talks: talks, hexes: [] };
         FS_SLOTS.forEach(function (s) {
           if (palOfHex(s.hexNum) !== v) return;
           if (t.pillars.some(function (x) { return P[x.pillar] && P[x.pillar].hex === s.hexNum; })) return;     // the same hexagram is that pillar again
           var e = slotOf(s);
-          if (t.pillars.some(function (x) { return v !== x.value && clashes(e.branch, P[x.pillar].branch); })) return;   // clash cancels the link
+          if (t.pillars.some(function (x) { return clashes(e.branch, P[x.pillar].branch); })) return;   // clash cancels the link
           if (!e.zs && !e.ls) return;
           row.hexes.push(e); used[s.hexNum + '|' + t.pillars.map(function (x) { return x.pillar; }).join()] = 1;
         });
