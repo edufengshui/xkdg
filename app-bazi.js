@@ -1381,6 +1381,8 @@ function xkdgPalaceComm(pillars) {
     } catch (e) { return null; }
 }
 function xkdgPalaceHtml(pillars) {
+    // Session 49 (Edu): shown only with the ⌂ Palaces option ON (palaces.js), with the relations and the Feng Shui cure.
+    if (typeof xkdgPalacesOn === 'function') return xkdgPalacesOn() ? xkdgPalaceRelHtml(pillars, { cure: true }) : '';
     const pc = xkdgPalaceComm(pillars); if (!pc) return '';
     const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
     return '<div style="font-size:12px;margin-top:4px;color:' + (pc.good ? '#2e7d32' : '#8d6e63') + ';">' + (pc.good ? '✓' : '○') + ' <b>Palaces</b> (minor — Feng Shui): '
@@ -1767,6 +1769,8 @@ function renderPersonView() {
             if (an) h += '<div style="margin:4px 0 6px;padding:6px 8px;border-radius:8px;background:#eef2ff;font-size:13px;"><b>🔍 XKDG analysis</b>'
                 + (res ? '<div style="margin-top:3px;">' + res + '</div><details style="margin-top:4px;"><summary style="cursor:pointer;color:#555;font-size:12px;">Details</summary>' + an + '</details>' : an) + '</div>';
         } catch (eAn) {}
+        // ⌂ Session 49 (Edu): isolated PALACE → which Zheng Shen / Ling Shen hexagram to use (Feng Shui).
+        try { if (typeof xkdgPalaceCureHtml === 'function') h += xkdgPalaceCureHtml(pp.P, null, false); } catch (ePal) {}
         if (!g || !g.any) {
             h = h.replace(EXPL, '') + '<div style="color:#2e7d32;margin-top:4px;">✓ All four pillars communicate' + (g && g.bloodLink ? ' — ' + g.bloodLink.join(', ') : '') + ': no remedy needed.</div></div>';
             return;
@@ -2877,6 +2881,7 @@ function calculateBazi() {
             if (_cu) analysis.push({ text: _cu, tag: 'cure' });
         }
     } catch (eBL) {}
+    window._xkdgDateP = xkdgData;   // session 49: palaces of the date (palaces.js)
     renderAnalysis(analysis);
 
     _currentDayXkdg     = xkdgData.day;
@@ -3102,6 +3107,7 @@ function renderAnalysis(items) {
         var tipAttr = tipKey ? ' onclick="showAnalysisTip(this,\'' + tipKey.replace(/'/g,"\\'") + '\')" style="cursor:pointer;"' : '';
         return '<div class="analysis-item"' + tipAttr + '>⬡ ' + content + '</div>';
     }).join('');
+    try { if (typeof xkdgRenderDatePalaces === 'function') xkdgRenderDatePalaces(); } catch (eP) {}
 }
 
 // ─────────────────────────────────────────────
