@@ -1,0 +1,649 @@
+{
+ "people": [
+  {
+   "name": "Brigitte Bardot",
+   "sex": "F",
+   "birth": {
+    "date": "1934-09-28",
+    "time": "13:15",
+    "place": "Paris, France",
+    "lat": 48.8566,
+    "lon": 2.3522,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Brigitte_Bardot"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Marilyn Monroe",
+   "sex": "F",
+   "birth": {
+    "date": "1926-06-01",
+    "time": "09:30",
+    "place": "Los Angeles, California, USA",
+    "lat": 34.0522,
+    "lon": -118.2437,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Marilyn_Monroe"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Sophia Loren",
+   "sex": "F",
+   "birth": {
+    "date": "1934-09-20",
+    "time": "14:10",
+    "place": "Rome, Italy",
+    "lat": 41.9028,
+    "lon": 12.4964,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Sophia_Loren"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Elizabeth Taylor",
+   "sex": "F",
+   "birth": {
+    "date": "1932-02-27",
+    "time": "02:30",
+    "place": "London, United Kingdom",
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "tz": 0,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Elizabeth_Taylor"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Grace Kelly",
+   "sex": "F",
+   "birth": {
+    "date": "1929-11-12",
+    "time": "05:31",
+    "place": "Philadelphia, Pennsylvania, USA",
+    "lat": 39.9526,
+    "lon": -75.1652,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Grace_Kelly"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Ava Gardner",
+   "sex": "F",
+   "birth": {
+    "date": "1922-12-24",
+    "time": "19:10",
+    "place": "Boon Hill, Johnston County, North Carolina, USA",
+    "lat": 35.466,
+    "lon": -78.16,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Ava_Gardner"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Claudia Cardinale",
+   "sex": "F",
+   "birth": {
+    "date": "1938-04-15",
+    "time": "06:30",
+    "place": "Tunis, Tunisia",
+    "lat": 36.8065,
+    "lon": 10.1815,
+    "tz": 1,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Claudia_Cardinale"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Monica Bellucci",
+   "sex": "F",
+   "birth": {
+    "date": "1964-09-30",
+    "time": "14:30",
+    "place": "Città di Castello, Italy",
+    "lat": 43.4574,
+    "lon": 12.2403,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Monica_Bellucci"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Cindy Crawford",
+   "sex": "F",
+   "birth": {
+    "date": "1966-02-20",
+    "time": "14:08",
+    "place": "DeKalb, Illinois, USA",
+    "lat": 41.9295,
+    "lon": -88.7504,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Cindy_Crawford"
+   },
+   "list": "classic supermodel lists"
+  },
+  {
+   "name": "Claudia Schiffer",
+   "sex": "F",
+   "birth": {
+    "date": "1970-08-25",
+    "time": "12:10",
+    "place": "Rheinberg, Germany",
+    "lat": 51.5467,
+    "lon": 6.5986,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Claudia_Schiffer"
+   },
+   "list": "classic supermodel lists"
+  },
+  {
+   "name": "Naomi Campbell",
+   "sex": "F",
+   "birth": {
+    "date": "1970-05-22",
+    "time": "01:00",
+    "place": "Westminster, London, United Kingdom",
+    "lat": 51.4975,
+    "lon": -0.1357,
+    "tz": 1,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Naomi_Campbell"
+   },
+   "list": "classic supermodel lists"
+  },
+  {
+   "name": "Gisele Bündchen",
+   "sex": "F",
+   "birth": {
+    "date": "1980-07-20",
+    "time": "17:00",
+    "place": "Três de Maio, Rio Grande do Sul, Brazil",
+    "lat": -27.7733,
+    "lon": -54.24,
+    "tz": -3,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Gisele_B%C3%BCndchen"
+   },
+   "list": "Victoria's Secret Angels list"
+  },
+  {
+   "name": "Gina Lollobrigida",
+   "sex": "F",
+   "birth": {
+    "date": "1927-07-04",
+    "time": "03:00",
+    "place": "Subiaco, Italy",
+    "lat": 41.9253,
+    "lon": 13.0933,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Gina_Lollobrigida"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Raquel Welch",
+   "sex": "F",
+   "birth": {
+    "date": "1940-09-05",
+    "time": "14:04",
+    "place": "Chicago, Illinois, USA",
+    "lat": 41.8781,
+    "lon": -87.6298,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Raquel_Welch"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Hedy Lamarr",
+   "sex": "F",
+   "birth": {
+    "date": "1914-11-09",
+    "time": "19:30",
+    "place": "Vienna, Austria",
+    "lat": 48.2082,
+    "lon": 16.3738,
+    "tz": 1,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Hedy_Lamarr"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Audrey Hepburn",
+   "sex": "F",
+   "birth": {
+    "date": "1929-05-04",
+    "time": "03:00",
+    "place": "Ixelles, Belgium",
+    "lat": 50.8333,
+    "lon": 4.3667,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Audrey_Hepburn"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Catherine Deneuve",
+   "sex": "F",
+   "birth": {
+    "date": "1943-10-22",
+    "time": "13:35",
+    "place": "Paris, France",
+    "lat": 48.8566,
+    "lon": 2.3522,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Catherine_Deneuve"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Jayne Mansfield",
+   "sex": "F",
+   "birth": {
+    "date": "1933-04-19",
+    "time": "09:11",
+    "place": "Lower Merion (Bryn Mawr), Pennsylvania, USA",
+    "lat": 40.023,
+    "lon": -75.3152,
+    "tz": -5,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jayne_Mansfield"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Farrah Fawcett",
+   "sex": "F",
+   "birth": {
+    "date": "1947-02-02",
+    "time": "15:10",
+    "place": "Corpus Christi, Texas, USA",
+    "lat": 27.8006,
+    "lon": -97.3964,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Farrah_Fawcett"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Michelle Pfeiffer",
+   "sex": "F",
+   "birth": {
+    "date": "1958-04-29",
+    "time": "08:11",
+    "place": "Santa Ana, California, USA",
+    "lat": 33.7455,
+    "lon": -117.8677,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Michelle_Pfeiffer"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists; Miss Orange County 1978"
+  },
+  {
+   "name": "Angelina Jolie",
+   "sex": "F",
+   "birth": {
+    "date": "1975-06-04",
+    "time": "09:09",
+    "place": "Los Angeles, California, USA",
+    "lat": 34.0522,
+    "lon": -118.2437,
+    "tz": -7,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Angelina_Jolie"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Pamela Anderson",
+   "sex": "F",
+   "birth": {
+    "date": "1967-07-01",
+    "time": "04:08",
+    "place": "Ladysmith, British Columbia, Canada",
+    "lat": 48.9975,
+    "lon": -123.8203,
+    "tz": -7,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Pamela_Anderson"
+   },
+   "list": "sex symbol lists (Playboy Playmate / Baywatch)"
+  },
+  {
+   "name": "Halle Berry",
+   "sex": "F",
+   "birth": {
+    "date": "1966-08-14",
+    "time": "23:59",
+    "place": "Cleveland, Ohio, USA",
+    "lat": 41.4993,
+    "lon": -81.6944,
+    "tz": -4,
+    "rodden": "A",
+    "source": "https://www.astrotheme.com/astrology/Halle_Berry"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists; Miss USA 1986 first runner-up / Miss World 1986 finalist"
+  },
+  {
+   "name": "Bo Derek",
+   "sex": "F",
+   "birth": {
+    "date": "1956-11-20",
+    "time": "14:13",
+    "place": "Long Beach, California, USA",
+    "lat": 33.7701,
+    "lon": -118.1937,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Bo_Derek"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Christy Turlington",
+   "sex": "F",
+   "birth": {
+    "date": "1969-01-02",
+    "time": "06:32",
+    "place": "Walnut Creek, California, USA",
+    "lat": 37.9101,
+    "lon": -122.0652,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Christy_Turlington"
+   },
+   "list": "classic supermodel lists"
+  },
+  {
+   "name": "Laetitia Casta",
+   "sex": "F",
+   "birth": {
+    "date": "1978-05-11",
+    "time": "17:30",
+    "place": "Pont-Audemer, France",
+    "lat": 49.355,
+    "lon": 0.514,
+    "tz": 2,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Laetitia_Casta"
+   },
+   "list": "Victoria's Secret Angels list"
+  },
+  {
+   "name": "Carla Bruni",
+   "sex": "F",
+   "birth": {
+    "date": "1967-12-23",
+    "time": "18:10",
+    "place": "Turin, Italy",
+    "lat": 45.0703,
+    "lon": 7.6869,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Carla_Bruni_Sarkozy"
+   },
+   "list": "classic supermodel lists"
+  },
+  {
+   "name": "Tyra Banks",
+   "sex": "F",
+   "birth": {
+    "date": "1973-12-04",
+    "time": "19:13",
+    "place": "Inglewood, California, USA",
+    "lat": 33.9617,
+    "lon": -118.3531,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Tyra_Banks"
+   },
+   "list": "Victoria's Secret Angels list"
+  },
+  {
+   "name": "Lana Turner",
+   "sex": "F",
+   "birth": {
+    "date": "1921-02-08",
+    "time": "12:30",
+    "place": "Wallace, Idaho, USA",
+    "lat": 47.4741,
+    "lon": -115.9279,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Lana_Turner"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Greta Garbo",
+   "sex": "F",
+   "birth": {
+    "date": "1905-09-18",
+    "time": "19:30",
+    "place": "Stockholm, Sweden",
+    "lat": 59.3293,
+    "lon": 18.0686,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Greta_Garbo"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Jane Russell",
+   "sex": "F",
+   "birth": {
+    "date": "1921-06-21",
+    "time": "06:15",
+    "place": "Bemidji, Minnesota, USA",
+    "lat": 47.4736,
+    "lon": -94.8803,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jane_Russell"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Isabelle Adjani",
+   "sex": "F",
+   "birth": {
+    "date": "1955-06-27",
+    "time": "01:00",
+    "place": "Paris, France",
+    "lat": 48.8566,
+    "lon": 2.3522,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Isabelle_Adjani"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Sophie Marceau",
+   "sex": "F",
+   "birth": {
+    "date": "1966-11-17",
+    "time": "02:30",
+    "place": "Paris, France",
+    "lat": 48.8566,
+    "lon": 2.3522,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Sophie_Marceau"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Ornella Muti",
+   "sex": "F",
+   "birth": {
+    "date": "1955-03-09",
+    "time": "18:40",
+    "place": "Rome, Italy",
+    "lat": 41.9028,
+    "lon": 12.4964,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Ornella_Muti"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Kim Novak",
+   "sex": "F",
+   "birth": {
+    "date": "1933-02-13",
+    "time": "06:13",
+    "place": "Chicago, Illinois, USA",
+    "lat": 41.8781,
+    "lon": -87.6298,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Kim_Novak"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Romy Schneider",
+   "sex": "F",
+   "birth": {
+    "date": "1938-09-23",
+    "time": "22:05",
+    "place": "Vienna, Austria",
+    "lat": 48.2082,
+    "lon": 16.3738,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Romy_Schneider"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Silvana Mangano",
+   "sex": "F",
+   "birth": {
+    "date": "1930-04-23",
+    "time": "20:10",
+    "place": "Rome, Italy",
+    "lat": 41.9028,
+    "lon": 12.4964,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Silvana_Mangano"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists; Miss Rome 1946"
+  },
+  {
+   "name": "Jean Harlow",
+   "sex": "F",
+   "birth": {
+    "date": "1911-03-03",
+    "time": "19:40",
+    "place": "Kansas City, Missouri, USA",
+    "lat": 39.0997,
+    "lon": -94.5786,
+    "tz": -6,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Jean_Harlow"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Natalie Wood",
+   "sex": "F",
+   "birth": {
+    "date": "1938-07-20",
+    "time": "11:16",
+    "place": "San Francisco, California, USA",
+    "lat": 37.7749,
+    "lon": -122.4194,
+    "tz": -8,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Natalie_Wood"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Lucia Bosè",
+   "sex": "F",
+   "birth": {
+    "date": "1931-01-28",
+    "time": "10:00",
+    "place": "Milan, Italy",
+    "lat": 45.4642,
+    "lon": 9.19,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Lucia_Bos%C3%A8"
+   },
+   "list": "Miss Italia winners (1947)"
+  },
+  {
+   "name": "Virna Lisi",
+   "sex": "F",
+   "birth": {
+    "date": "1936-11-08",
+    "time": "02:00",
+    "place": "Ancona, Italy",
+    "lat": 43.6158,
+    "lon": 13.5189,
+    "tz": 1,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Virna_Lisi"
+   },
+   "list": "widely cited 'most beautiful women / sex symbols of cinema' lists"
+  },
+  {
+   "name": "Megan Fox",
+   "sex": "F",
+   "birth": {
+    "date": "1986-05-16",
+    "time": "00:35",
+    "place": "Oak Ridge, Tennessee, USA",
+    "lat": 36.0104,
+    "lon": -84.2696,
+    "tz": -4,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Megan_Fox"
+   },
+   "list": "magazine 'sexiest women' lists (FHM Sexiest Woman 2008)"
+  },
+  {
+   "name": "Adriana Lima",
+   "sex": "F",
+   "birth": {
+    "date": "1981-06-12",
+    "time": "16:50",
+    "place": "Salvador, Bahia, Brazil",
+    "lat": -12.9777,
+    "lon": -38.5016,
+    "tz": -3,
+    "rodden": "AA",
+    "source": "https://www.astrotheme.com/astrology/Adriana_Lima"
+   },
+   "list": "Victoria's Secret Angels list"
+  }
+ ]
+}
