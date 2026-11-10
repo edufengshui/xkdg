@@ -1265,7 +1265,7 @@ function fsHexFilterEval(){
   var fams = on('bl') ? _fsPersonFamilies() : [];
   var valid = (on('day') || on('wat')) ? fsComputeValid() : null;
   if (on('yy') && !fSlot && !wSlot) res.notes.push('☯ needs a Facing (or a Water) degree above.');
-  if (on('cure') && !Object.keys(cure).length) res.notes.push((typeof _personAYear !== 'undefined' && (_personAYear || _personBYear)) ? '🌿 Elements and Periods: the loaded person has no gap in communication — no cure needed.' : '🌿 load Person A or B first.');
+  if (on('cure') && !Object.keys(cure).length) res.notes.push((typeof _personAYear !== 'undefined' && (_personAYear || _personBYear)) ? '🌿 the loaded person has no gap in communication — no cure needed.' : '🌿 load Person A or B first.');
   if (on('bl') && !fams.length) res.notes.push('🔗 load Person A or B first.');
   if (on('wat') && !fSlot) res.notes.push('💧 needs a Facing degree above.');
   FS_SLOTS.forEach(function(sl){
@@ -1309,16 +1309,6 @@ function _fsRenderHexFilterPanel(){
     FS_SLOTS.forEach(function(sl){ if (ev.pass.has(sl.idx)) list.push('<span onclick="fsHexFilterScan(' + sl.idx + ')" title="Tap: matching dates for this hexagram" style="white-space:nowrap;cursor:pointer;border-bottom:1px dotted #6a1b9a;' + (window._fsHexScanIdx === sl.idx ? 'background:#e1bee7;border-radius:4px;padding:0 3px;' : '') + '">' + sl.hexNum + ' <span style="color:#888;">' + sl.centerDeg.toFixed(1) + '°</span>' + (ev.cure && ev.cure[sl.hexNum] ? ' 🌿' : '') + '</span>'); });
     h += '<div style="margin-top:6px;color:#333;"><b>' + ev.pass.size + '</b> hexagram' + (ev.pass.size === 1 ? '' : 's') + (list.length ? ': ' + list.join(' · ') : '') + '</div>';
     if (ev.notes.length) h += '<div style="margin-top:4px;color:#c0392b;">' + ev.notes.join('<br>') + '</div>';
-    // ⌂ Session 49 (Edu): with 🌿 Cure, the PALACE cure of each loaded person (Zheng Shen / Ling Shen hexagrams).
-    if (act.indexOf('cure') >= 0 && typeof xkdgPalaceCureHtml === 'function') {
-      try {
-        [['person-name', 'Person A', typeof _personAPillars !== 'undefined' ? _personAPillars : null],
-         ['person-name-b', 'Person B', typeof _personBPillars !== 'undefined' ? _personBPillars : null]].forEach(function(x){
-          if (!x[2] || !x[2].year) return;
-          h += xkdgPalaceCureHtml(x[2], (document.getElementById(x[0]) || {}).value || x[1], true);
-        });
-      } catch (ePal) {}
-    }
     h += '<div style="margin-top:4px;color:#888;font-size:10px;">Tap a hexagram to see its matching dates below. Zheng Shen + Ling Shen together = either one; every other chip must also be true.</div>';
   }
   p.innerHTML = h;
