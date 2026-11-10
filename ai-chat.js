@@ -5729,7 +5729,7 @@
           var q = O[k]; if (!q || q.qi == null) return null;
           var c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
           var kind = _xkdgRemedyKind(g, P, c, _xkdgIsolatedFamilies(g, P)); if (!kind) return null;
-          var vw = xkdgCureVoid(g, P, c, O.day, oname, { own: P.month && P.month.branch, src: O.month && O.month.branch });
+          var vw = xkdgCureVoid(g, P, c, O.day, oname, { own: P.month && P.month.branch, src: O.month && O.month.branch, other: O });
           if (vw && !vw.timely) { res.cures_invalid_by_void.push({ from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, why: vw.slice() }); return null; }
           var links = [];
           ['qi', 'yun'].forEach(function (f) {
@@ -5741,7 +5741,7 @@
           });
           return { from: oname + ' ' + k, ganzhi: (q.stem || '') + (q.branch || ''), hex: q.hex, qi: q.qi, yun: q.yun, kind: kind,
                    links: links.length ? links : undefined,
-                   void_timely: vw ? vw.slice() : undefined,
+                   void_timely: vw ? vw.map(function (t) { return String(t).replace(/<[^>]*>/g, ''); }) : undefined,
                    reaches: _xkdgCureCovers(g, P, { kind: kind, stem: c.stem, branch: c.branch, hex: c.hex }),
                    harmonises: (g.settings && ['qi', 'yun'].some(function (f) { return _xkdgHarmVals(g.settings[f]).has(c[f]); })) || undefined };
         }).filter(Boolean);
@@ -5751,7 +5751,7 @@
         xkdgMutualHelps(g, P, O, oname).forEach(function (m) {
           var e = { from: oname + ' ' + m.pillar, ganzhi: (m.stem || '') + (m.branch || ''), hex: m.hex, qi: m.qi, yun: m.yun, helps: m.notes.map(function (n) { return strip(n.txt); }) };
           if (m.voidW && !m.voidW.timely) { e.why = m.voidW.slice(); res.helps_invalid_by_void.push(e); }
-          else { if (m.voidW) e.void_timely = m.voidW.slice(); res.helps_from_other.push(e); }
+          else { if (m.voidW) e.void_timely = m.voidW.map(strip); res.helps_from_other.push(e); }
         });
         return res;
       }
@@ -5759,7 +5759,7 @@
         instructions: 'For each person: the isolated pillar(s), then which pillar of the OTHER person is a cure (main first, then ★ family), with the links. ' +
           '"reaches" lists the isolated pillars each cure covers and those it leaves; several cures can work together. ' +
           'Then "helps_from_other": pillars that are NOT a complete cure but help (they fix the two settings of the Elements, link one isolated pillar, or have the SAME Period as an isolated pillar = communication) — present them as helps, never as complete cures. ' +
-          'Voids: "void_timely" = the void is timely, the cure/help stays and wakes up when the named branch arrives; "*_invalid_by_void" = untimely void, not recoverable. ' +
+          'Voids: "void_timely" = the void is timely, the cure/help stays: either it is "already out of the void" (the other chart holds the same branch or the clashing one) or it wakes up when the named branch arrives; "*_invalid_by_void" = untimely void, not recoverable. ' +
           'Do not count "channels", give stars or call the match perfect: report only these lists. ' +
           'Hour, Day, Month, Year order. Only what is in this result: do not add meanings of families or hexagrams. The PERSON tab (Both → 🤝 Cure from the other chart) shows the same with pictures.' };
     } catch (e) { return { error: 'Mutual cures failed: ' + ((e && e.message) || e) }; }

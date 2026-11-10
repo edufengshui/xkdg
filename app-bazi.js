@@ -1044,26 +1044,32 @@ function _xkdgVoidTimely(el, monthBranch) {
 }
 function xkdgCureVoid(gaps, P, cand, src, srcName, months) {
     const out = [], L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
-    let allTimely = true;
-    const tail = (h, mb) => {
+    let allTimely = true, allFilled = true;
+    // fillP / fillName = the OTHER chart than the one that owns the void: if it already holds the void branch
+    // or the branch that clashes it, the right pillar has arrived — a timely void is already out (Edu, session 48).
+    const tail = (h, mb, fillP, fillName) => {
         if (!months) return '';
         const t = _xkdgVoidTimely(h.el, mb);
-        if (!t) { allTimely = false; return ' — untimely void (' + h.el + ' in a ' + (mb || '?') + ' month): not recoverable'; }
-        return ' — timely void (' + h.el + ' in a ' + mb + ' month): it comes out of the void when ' + h.vb + ' or ' + (BRANCH_CLASHES[h.vb] || '') + ' arrives';
+        if (!t) { allTimely = false; allFilled = false; return ' — untimely void (' + h.el + ' in a ' + (mb || '?') + ' month): not recoverable'; }
+        const cl = BRANCH_CLASHES[h.vb] || '';
+        const k = fillP ? ['hour', 'day', 'month', 'year'].filter(kk => fillP[kk] && (fillP[kk].branch === h.vb || fillP[kk].branch === cl))[0] : null;
+        if (k) return ' — timely void (' + h.el + ' in a ' + mb + ' month), <b>already out of the void</b>: ' + fillName + ' ' + L[k] + ' ' + fillP[k].branch + (fillP[k].branch === h.vb ? ' is the same branch' : ' clashes ' + h.vb);
+        allFilled = false;
+        return ' — timely void (' + h.el + ' in a ' + mb + ' month): it comes out of the void when ' + h.vb + ' or ' + cl + ' arrives';
     };
     const VP = _xkdgVoidOf(P.day), hc = _xkdgVoidHitX(VP, cand.hex, cand.branch);
-    if (hc) out.push('the voids of the Day pillar (' + VP.branches.join('') + ') fall on the cure (' + hc.txt + ')' + tail(hc, months && months.own));
+    if (hc) out.push('the voids of the Day pillar (' + VP.branches.join('') + ') fall on the cure (' + hc.txt + ')' + tail(hc, months && months.own, months && months.other, (srcName || 'the other') + '\'s'));
     const VS = _xkdgVoidOf(src);
     if (VS) {
         const seen = {};
         Object.values(gaps.dims).forEach(d => d.isolated.forEach(x => {
             if (seen[x.pillar]) return; seen[x.pillar] = 1;
             const t = P[x.pillar], h = t ? _xkdgVoidHitX(VS, t.hex, t.branch) : null;
-            if (h) out.push('the voids of ' + (srcName || 'the source') + ' (' + VS.branches.join('') + ') fall on the isolated ' + L[x.pillar] + ' (' + h.txt + ')' + tail(h, months && months.src));
+            if (h) out.push('the voids of ' + (srcName || 'the source') + ' (' + VS.branches.join('') + ') fall on the isolated ' + L[x.pillar] + ' (' + h.txt + ')' + tail(h, months && months.src, P, 'your'));
         }));
     }
     if (!out.length) return null;
-    if (months) out.timely = allTimely;
+    if (months) { out.timely = allTimely; out.filled = allTimely && allFilled; }
     return out;
 }
 // Session 48 (Edu): between two birth charts a pillar of the other person that is NOT a complete cure can
@@ -1104,7 +1110,7 @@ function xkdgMutualHelps(g, P, O, oname) {
             }
         });
         if (notes.length) out.push(Object.assign(c, { pillar: k, notes: notes,
-            voidW: xkdgCureVoid(g, P, c, O.day, oname, { own: P.month && P.month.branch, src: O.month && O.month.branch }) }));
+            voidW: xkdgCureVoid(g, P, c, O.day, oname, { own: P.month && P.month.branch, src: O.month && O.month.branch, other: O }) }));
     });
     return out;
 }
@@ -1663,7 +1669,7 @@ function renderPersonView() {
             const q = other.P[k]; if (!q || q.qi == null) return null;
             const c = { qi: q.qi, yun: q.yun, hex: q.hex, stem: q.stem, branch: q.branch };
             const kind = _xkdgRemedyKind(g, pp.P, c, _xkdgIsolatedFamilies(g, pp.P));
-            return kind ? Object.assign(c, { kind: kind, pillar: k, voidW: xkdgCureVoid(g, pp.P, c, other.P.day, other.name, { own: pp.P.month && pp.P.month.branch, src: other.P.month && other.P.month.branch }) }) : null;
+            return kind ? Object.assign(c, { kind: kind, pillar: k, voidW: xkdgCureVoid(g, pp.P, c, other.P.day, other.name, { own: pp.P.month && pp.P.month.branch, src: other.P.month && other.P.month.branch, other: other.P }) }) : null;
         }).filter(Boolean) : [];
         const mutual = mutual0.filter(x => !x.voidW || x.voidW.timely), mutualVoid = mutual0.filter(x => x.voidW && !x.voidW.timely);   // birth charts: only an UNTIMELY void invalidates the cure (session 48)
         const helps0 = (other && g && g.any) ? xkdgMutualHelps(g, pp.P, other.P, other.name) : [];
@@ -1870,7 +1876,7 @@ function renderPersonView() {
                        + '<b>' + other.name + '\'s ' + L[m.pillar] + ' pillar ' + (m.stem || '') + (m.branch || '') + '</b> = '
                        + '<b>' + (m.kind === 'family' ? '★ ' : '') + 'hexagram ' + m.hex + '</b> (Element ' + m.qi + ', Period ' + m.yun + ')'
                        + explain(m, true)
-                       + (m.voidW ? '<div style="margin-top:3px;color:#e65100;">⚠ <b>Void</b>: ' + m.voidW.join('; ') + '.</div>' : '') + '</div>';
+                       + (m.voidW ? '<div style="margin-top:3px;color:' + (m.voidW.filled ? '#2e7d32;">✓' : '#e65100;">⚠') + ' <b>Void</b>: ' + m.voidW.join('; ') + '.</div>' : '') + '</div>';
                 });
                 const still = _xkdgCureCovers(g, pp.P, { kind: 'none' }).left.filter(x => !mutual.some(m => _xkdgCureCovers(g, pp.P, m).covered.some(y => y.f === x.f && y.pillar === x.pillar)));
                 if (still.length || mutual.length > 1)
@@ -1896,9 +1902,9 @@ function renderPersonView() {
                     h += '<div style="font-size:13px;color:#3e2723;' + (i ? 'margin-top:8px;padding-top:6px;border-top:1px dashed #f9a825;' : '') + '">'
                        + '<b>' + other.name + '\'s ' + L[m.pillar] + ' pillar ' + (m.stem || '') + (m.branch || '') + '</b> = <b>hexagram ' + m.hex + '</b> (Element ' + m.qi + ', Period ' + m.yun + ')'
                        + m.notes.map(n => '<div style="margin-top:3px;">' + n.txt + '</div>').join('')
-                       + (m.voidW && !vAll ? '<div style="margin-top:3px;color:#e65100;">⚠ <b>Void</b>: ' + vTxt(m) + '.</div>' : '') + '</div>';
+                       + (m.voidW && !vAll ? '<div style="margin-top:3px;color:' + (m.voidW.filled ? '#2e7d32;">✓' : '#e65100;">⚠') + ' <b>Void</b>: ' + vTxt(m) + '.</div>' : '') + '</div>';
                 });
-                if (vAll) h += '<div style="font-size:13px;margin-top:8px;padding-top:6px;border-top:1px dashed #f9a825;color:#e65100;">⚠ <b>Void</b> (all of them): ' + vAll + '.</div>';
+                if (vAll) h += '<div style="font-size:13px;margin-top:8px;padding-top:6px;border-top:1px dashed #f9a825;color:' + (helps[0].voidW.filled ? '#2e7d32;">✓' : '#e65100;">⚠') + ' <b>Void</b> (all of them): ' + vAll + '.</div>';
             }
             h += '</div>';
         }
