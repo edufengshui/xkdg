@@ -18,7 +18,9 @@ const { natal, predict, pillars } = require('./heluo_cmp.js');
 const NJ = require(path.join(__dirname, '..', '..', 'heluo-najia.js'));
 const SC = require('./scores.json');
 const LK2 = require('./luck.js');
-const FORZA = process.argv.includes('forza');
+const FORZA = process.argv.includes('forza'), NOWANG = process.argv.includes('nowang');
+// massimo della forza (旺): l'elemento nella sua stagione; la Terra nei mesi 辰未戌丑
+const wang = (el, mb) => el === 'Earth' ? '辰未戌丑'.includes(mb) : ({ 寅: 'Wood', 卯: 'Wood', 巳: 'Fire', 午: 'Fire', 申: 'Metal', 酉: 'Metal', 亥: 'Water', 子: 'Water' })[mb] === el;
 
 const BR = '子丑寅卯辰巳午未申酉戌亥', ST = '甲乙丙丁戊己庚辛壬癸';
 const TRI_EL = { Qian: 'Metal', Dui: 'Metal', Li: 'Fire', Zhen: 'Wood', Xun: 'Wood', Kan: 'Water', Gen: 'Earth', Kun: 'Earth' };
@@ -69,10 +71,14 @@ function tempo(b, T, natVoids) {
     else if (LIUHE[b] === x) { t += 1; note.push('六合' + k); }
     else if (clash(b) === x) {
       // opzione forza (Edu, 10/11): nello scontro conta chi è più forte; linea timely contro un ramo non timely non si rompe
-      if (FORZA && timely(el, T.m) && !timely(BR_EL[x], T.m)) note.push('冲' + k + '(regge)');
+      // regola di Edu (10/11): un elemento al massimo della forza (旺, nella sua stagione) scontrato da un ramo non timely
+      // non si rompe: lo scontro lo eccita ancora di più (+1). Opzione 'forza' (vecchia prova): solo niente penalità se timely.
+      if (!NOWANG && wang(el, T.m) && !timely(BR_EL[x], T.m)) { t += 1; note.push('冲' + k + '(eccita)'); }
+      else if (FORZA && timely(el, T.m) && !timely(BR_EL[x], T.m)) note.push('冲' + k + '(regge)');
       else { t -= 2; note.push('冲' + k); } }
     else if (SANHE.some(s => s.includes(b) && s.includes(x))) { t += 0.5; note.push('三合' + k); }
-    if (x !== b && CTRL[BR_EL[x]] === el && !(FORZA && timely(el, T.m) && !timely(BR_EL[x], T.m))) { t -= 0.5; note.push('剋' + k); }
+    const forte = (!NOWANG && wang(el, T.m)) || (FORZA && timely(el, T.m));
+    if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) { t -= 0.5; note.push('剋' + k); }
   }
   if (natVoids.includes(b) && !timely(el, T.m)) { t -= 1; note.push('空'); }
   return { t, note };
