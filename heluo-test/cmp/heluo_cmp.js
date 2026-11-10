@@ -100,7 +100,27 @@ function jieStartTstDay(Pe, lon) { // TST calendar day (ms at 00:00) of the Jie 
   const tst = new Date(utc + (lon * 4 + ST.equationOfTimeMinutes(new Date(utc))) * 60000);
   return Date.UTC(tst.getUTCFullYear(), tst.getUTCMonth(), tst.getUTCDate());
 }
+// ---- monthly hexagram, rule of Edu (10/11/2026) --------------------------------------------------
+// HL_MENSILE=edu: the HLLS year starts at the Winter Solstice and its 12 months start at the 中氣 (冬至 = month 1,
+// 大寒 2, 雨水 3 … 小雪 12). Line k of the annual rules months 2k-1 and 2k: odd month = annual with line k changed;
+// even month = the previous month with the correlate of k changed too. No accumulation; the moved line of the
+// annual is not used. The 5-day blocks of the Lord of the Block are counted from the day of the 中氣 (TST date).
+// Default (HL_MENSILE unset): reference calculator, months from the Jie, lines from the one above the moved line.
+const QI = ['冬至', '大寒', '雨水', '春分', '谷雨', '小满', '夏至', '大暑', '处暑', '秋分', '霜降', '小雪'];
+function prevQi(Pe) { const b = Pe.meta.beijing; return Lunar.Solar.fromYmdHms(b.y, b.mo, b.d, b.h, b.mi, b.s || 0).getLunar().getPrevQi(false); }
+function monthEdu(annualLines, Pe) {
+  const i = QI.indexOf(prevQi(Pe).getName()) + 1, k = Math.ceil(i / 2), S = [k];
+  if (i % 2 === 0) S.push(partner(k));
+  return { hex: H.hexOf(flip(annualLines, S)), index: i, line: k, changed: S };
+}
+function qiStartTstDay(Pe, lon) {
+  const q = prevQi(Pe).getSolar();
+  const utc = Date.UTC(q.getYear(), q.getMonth() - 1, q.getDay(), q.getHour(), q.getMinute(), q.getSecond()) - 8 * 3600000;
+  const tst = new Date(utc + (lon * 4 + ST.equationOfTimeMinutes(new Date(utc))) * 60000);
+  return Date.UTC(tst.getUTCFullYear(), tst.getUTCMonth(), tst.getUTCDate());
+}
 function predict(N, Pe, lon) {
+  const EDU = process.env.HL_MENSILE === 'edu';
   const Y = N.method === 'A' ? wsYear(Pe) : lichunYear(Pe), age = Y - N.year0 + 1;
   let per = null, hx = null, phase = null;
   N.cXT.forEach(c => { if (age >= c.from && age <= c.to) { per = c; hx = N.xt; phase = 'XT'; } });
@@ -111,12 +131,15 @@ function predict(N, Pe, lon) {
   const br = BR.indexOf(Pe.month[1]);
   let mo;
   if (N.method === 'C') { const i = (br - 2 + 12) % 12 + 1, L = Math.ceil(i / 2), S = [L]; if (i % 2 === 0) S.push(partner(L)); mo = { hex: H.hexOf(flip(a.hex.lines, S)) }; }
+  else if (EDU) mo = monthEdu(a.hex.lines, Pe);
   else mo = H.monthlyHex(a.hex.lines, a.moved, br);
   const t = Pe.meta.tst, tday = Date.UTC(t.y, t.mo - 1, t.d);
-  const dayIdx = Math.round((tday - jieStartTstDay(Pe, lon)) / 86400000), dh = H.dailyHex(mo.hex.lines, dayIdx + 1), dLine = dh.line;
+  const start = EDU ? qiStartTstDay(Pe, lon) : jieStartTstDay(Pe, lon);
+  const dayIdx = Math.max(0, Math.round((tday - start) / 86400000)), dh = H.dailyHex(mo.hex.lines, dayIdx + 1), dLine = dh.line;
   const ls = (n, l) => { if (!SC[n] || !SC[n].lines[l]) throw new Error("score " + n + " l" + l + " dayIdx " + dayIdx + " " + JSON.stringify(Pe.meta.tst)); return SC[n].lines[l].s; }, hs = n => SC[n].hex;
   return {
-    age, phase, period: hx.n + ' l' + per.line + ' (' + per.from + '-' + per.to + ')', annual: a.hex.n + ' l' + a.moved,
+    age, phase, mIndex: mo.index, mChanged: mo.changed, mStart: start, moved: a.moved, lord: dh.lord, dLine, annLines: a.hex.lines, moLines: mo.hex.lines, blockLines: dh.block.lines, dayLines: dh.hex.lines,
+    period: hx.n + ' l' + per.line + ' (' + per.from + '-' + per.to + ')', annual: a.hex.n + ' l' + a.moved,
     month: mo.hex.n, block: mo.hex.n + ' L' + dh.lord + ' > ' + dh.block.n, day: dh.block.n + ' l' + dLine + ' > ' + dh.hex.n + ' (d' + (dayIdx + 1) + ')',
     id: { cycle: [hx.n, per.line], year: [a.hex.n, a.moved], yearHex: [a.hex.n, 0], month: [mo.hex.n, 0], lord: [dh.block.n, dh.lord], day: [dh.block.n, dLine], dayHex: [dh.hex.n, dLine] },
     s: { cycle: ls(hx.n, per.line), year: ls(a.hex.n, a.moved), yearHex: hs(a.hex.n), month: hs(mo.hex.n), lord: ls(dh.block.n, dh.lord), day: ls(dh.block.n, dLine), dayHex: ls(dh.hex.n, dLine) }
