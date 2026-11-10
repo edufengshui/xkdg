@@ -1,5 +1,5 @@
 // HLLS — confronto tra le due regole dell'esagramma mensile (Edu, 10/11/2026).
-//   calc = calcolatore di riferimento (in uso): mesi dai Jie (寅 = 1), linee dalla linea sopra la mossa, mutazioni cumulative.
+//   calc = calcolatore di riferimento (in uso fino al 10/11/2026, ora HL_MENSILE=cumul): mesi dai Jie (子 = 1), linee dalla linea sopra la mossa, mutazioni cumulative.
 //   edu  = regola scritta da Edu il 10/11: mesi dal Solstizio d'Inverno ai 中氣; la linea k dell'annuale governa i mesi
 //          2k−1 e 2k (dispari: annuale con la linea k mutata; pari: anche la correlata); blocchi di 5 giorni dal giorno del 中氣.
 // Ciclo e annuale sono uguali nelle due regole: cambiano mensile, blocco, linea del giorno, esagramma del giorno.
@@ -78,7 +78,7 @@ const base = g => Math.round((g.c.tot - g.c.rs + g.a.tot - g.a.rs + g.d.tot - g.
 const giornoSolo = g => Math.round((g.d.tot - g.d.rs) * 100) / 100; // tempo + testo della sola linea del giorno
 
 function unEvento(e, regola) {
-  if (regola !== 'calc') process.env.HL_MENSILE = regola; else delete process.env.HL_MENSILE;
+  process.env.HL_MENSILE = regola === 'calc' ? 'cumul' : regola;
   const [d0, t0, lon0, tz0, male] = NASC[e.chi], Pn = pillars(d0, t0, lon0, tz0), N = natal('A', Pn, male);
   const Pe = pillars(e.d, e.ora, e.luogo[0], e.luogo[1]), p = predict(N, Pe, e.luogo[0]);
   if (p.none) return { fuori: true, eta: p.age };
@@ -97,7 +97,7 @@ function unEvento(e, regola) {
   };
 }
 
-// calc = in uso nell'app (子 = 1, cumulativo); yin1 = numerazione di prima (寅 = 1); edu = 中氣; coppie = regola di Edu sui rami
+// calc = cumulativo (子 = 1), in uso nell'app fino al 10/11/2026; edu = regola adottata (default); yin1 = numerazione di prima (寅 = 1); edu = 中氣; coppie = regola di Edu sui rami
 const tutti = EVENTI.map(e => ({ ...e, calc: unEvento(e, 'calc'), yin1: unEvento(e, 'yin1'), edu: unEvento(e, 'edu'), coppie: unEvento(e, 'coppie') }));
 const fuori = tutti.filter(e => e.calc.fuori), out = tutti.filter(e => !e.calc.fuori);
 delete process.env.HL_MENSILE;

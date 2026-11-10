@@ -3,7 +3,8 @@
 // B = reference calculator: Lichun year, Na Jia, 29/3/39 always special on lines 5/6 (Diana 29 l6 -> 59), calculator annual+monthly.
 // C = "Calculation Guide and Sources": Lichun year, He Tu stems 1..10, -25/-30 reductions, 5 by sex x year polarity,
 //     29/3/39 normal, calculator annual, guide monthly (odd month = line (i+1)/2, even = + partner).
-// Daily hexagram for all (Edu, 10/11/2026, Lord of the Block): 5-day blocks from the Jie day (TST date); block k:
+// Monthly: Edu's rule (10/11/2026), months from the 中氣 — see below (HL_MENSILE for the rejected variants).
+// Daily hexagram for all (Edu, 10/11/2026, Lord of the Block): 5-day blocks from the day of the 中氣 (TST date); block k:
 // line k%6+1 of the monthly changes -> block hexagram; each day one of the other lines (rising from the line above the
 // Lord, after 6 back to 1) changes on the block hexagram -> day hexagram. Day level = that line in the block hexagram.
 // True solar time everywhere (birth place longitude).
@@ -101,12 +102,15 @@ function jieStartTstDay(Pe, lon) { // TST calendar day (ms at 00:00) of the Jie 
   return Date.UTC(tst.getUTCFullYear(), tst.getUTCMonth(), tst.getUTCDate());
 }
 // ---- monthly hexagram, rule of Edu (10/11/2026) --------------------------------------------------
-// HL_MENSILE=edu: the HLLS year starts at the Winter Solstice and its 12 months start at the 中氣 (冬至 = month 1,
+// DEFAULT (HL_MENSILE unset or 'edu') — the rule Edu adopted on 10/11/2026 (claude/hlls-mensile-decisione.md), the
+// same as the app (heluo-lishu.js monthlyHex/qiMonth, heluo-ds.js predict; ds_app_check.js must give 0 differences):
+// the HLLS year starts at the Winter Solstice and its 12 months start at the 中氣 (冬至 = month 1,
 // 大寒 2, 雨水 3 … 小雪 12). Line k of the annual rules months 2k-1 and 2k: odd month = annual with line k changed;
 // even month = the previous month with the correlate of k changed too. No accumulation; the moved line of the
 // annual is not used. The 5-day blocks of the Lord of the Block are counted from the day of the 中氣 (TST date).
-// Default (HL_MENSILE unset): months from the Jie, lines from the one above the moved line, cumulative; month index
-// 子 = 1 … 亥 = 12 (Edu, 10/11/2026: the Zi month is one month split between two years, like the Zi hour).
+// Rejected variants, kept only for comparisons:
+// HL_MENSILE=cumul: months from the Jie, lines from the one above the moved line, cumulative; month index
+// 子 = 1 … 亥 = 12 (in the app from commit 99d6079 until 10/11/2026).
 // HL_MENSILE=yin1: the same with the old numbering of the reference calculator (寅 = 1 … 丑 = 12), for comparisons.
 // HL_MENSILE=coppie (Edu, 10/11/2026, sera): Edu's rule on the twelve branches. Month 1 = the 15 days of Zi after the
 // Winter Solstice, month 2 = Chou (from Xiaohan), month 3 = Yin … month 12 = Hai; months start at the Jie. Line k of
@@ -118,6 +122,12 @@ function monthCoppie(A, monthBr) {
   const i = monthBr + 1, k = Math.ceil(i / 2), S = [k];
   if (i % 2 === 0) S.push(partner(k));
   return { hex: H.hexOf(flip(A, S)), changed: S.slice().sort(), index: i, line: k };
+}
+function monthCumul(A, moved, monthBr) { // the app's monthlyHex before 10/11/2026 (子 = 1, cumulative)
+  const i = monthBr + 1, s = wrap6(moved + 1), j = Math.ceil(i / 2), S = [];
+  for (let t = 0; t < j; t++) S.push(wrap6(s + t));
+  if (i % 2 === 0) { const p = partner(wrap6(s + j - 1)), q = S.indexOf(p); if (q >= 0) S.splice(q, 1); else S.push(p); }
+  return { hex: H.hexOf(flip(A, S)), changed: S.slice().sort(), index: i };
 }
 function monthYin1(A, moved, monthBr) {
   const i = (monthBr - 2 + 12) % 12 + 1, s = wrap6(moved + 1), j = Math.ceil(i / 2), S = [];
@@ -139,7 +149,7 @@ function qiStartTstDay(Pe, lon) {
   return Date.UTC(tst.getUTCFullYear(), tst.getUTCMonth(), tst.getUTCDate());
 }
 function predict(N, Pe, lon) {
-  const EDU = process.env.HL_MENSILE === 'edu';
+  const RULE = process.env.HL_MENSILE || 'edu', EDU = RULE === 'edu';
   const Y = N.method === 'A' ? wsYear(Pe) : lichunYear(Pe), age = Y - N.year0 + 1;
   let per = null, hx = null, phase = null;
   N.cXT.forEach(c => { if (age >= c.from && age <= c.to) { per = c; hx = N.xt; phase = 'XT'; } });
@@ -151,9 +161,10 @@ function predict(N, Pe, lon) {
   let mo;
   if (N.method === 'C') { const i = (br - 2 + 12) % 12 + 1, L = Math.ceil(i / 2), S = [L]; if (i % 2 === 0) S.push(partner(L)); mo = { hex: H.hexOf(flip(a.hex.lines, S)) }; }
   else if (EDU) mo = monthEdu(a.hex.lines, Pe);
-  else if (process.env.HL_MENSILE === 'coppie') mo = monthCoppie(a.hex.lines, br);
-  else if (process.env.HL_MENSILE === 'yin1') mo = monthYin1(a.hex.lines, a.moved, br);
-  else mo = H.monthlyHex(a.hex.lines, a.moved, br);
+  else if (RULE === 'coppie') mo = monthCoppie(a.hex.lines, br);
+  else if (RULE === 'yin1') mo = monthYin1(a.hex.lines, a.moved, br);
+  else if (RULE === 'cumul') mo = monthCumul(a.hex.lines, a.moved, br);
+  else throw new Error('HL_MENSILE: unknown rule ' + RULE);
   const t = Pe.meta.tst, tday = Date.UTC(t.y, t.mo - 1, t.d);
   const start = EDU ? qiStartTstDay(Pe, lon) : jieStartTstDay(Pe, lon);
   const dayIdx = Math.max(0, Math.round((tday - start) / 86400000)), dh = H.dailyHex(mo.hex.lines, dayIdx + 1), dLine = dh.line;
