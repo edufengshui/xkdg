@@ -1055,25 +1055,25 @@ function xkdgCureVoid(gaps, P, cand, src, srcName, months) {
         if (!t) { allTimely = false; allFilled = false; return ' — untimely void (' + h.el + ' in a ' + (mb || '?') + ' month): not recoverable'; }
         const cl = BRANCH_CLASHES[h.vb] || '';
         const k = fillP ? ['hour', 'day', 'month', 'year'].filter(kk => fillP[kk] && ((fillP[kk].branch === h.vb && !(hitP && fillP[kk].hex === hitP.hex && fillP[kk].branch === hitP.branch)) || fillP[kk].branch === cl))[0] : null;
-        if (k) return ' — timely void (' + h.el + ' in a ' + mb + ' month), <b>already out of the void</b>: ' + fillName + ' ' + L[k] + ' ' + fillP[k].branch + (fillP[k].branch === h.vb ? ' is the same branch' : ' clashes ' + h.vb);
+        if (k) return null;   // already out of the void: no effect, not mentioned (Edu)
         const K4 = ['hour', 'day', 'month', 'year'];
         for (let i = 0; ownP && i < 4; i++) {
             if (!ownP[K4[i]] || ownP[K4[i]].branch !== h.vb) continue;
             const j = [i - 1, i + 1].filter(n => n >= 0 && n < 4 && ownP[K4[n]] && ownP[K4[n]].branch === cl)[0];
-            if (j != null) return ' — timely void (' + h.el + ' in a ' + mb + ' month), <b>already out of the void</b>: in ' + ownName + ' chart the ' + L[K4[j]] + ' ' + cl + ' stands next to the ' + L[K4[i]] + ' ' + h.vb + ' and clashes it';
+            if (j != null) return null;
         }
         allFilled = false;
         return ' — timely void (' + h.el + ' in a ' + mb + ' month): it comes out of the void when ' + h.vb + ' or ' + cl + ' arrives';
     };
     const VP = _xkdgVoidOf(P.day), hc = _xkdgVoidHitX(VP, cand.hex, cand.branch);
-    if (hc) out.push('the voids of the Day pillar (' + VP.branches.join('') + ') fall on the cure (' + hc.txt + ')' + tail(hc, months && months.own, months && months.other, (srcName || 'the other') + '\'s', P, 'your', cand));
+    if (hc) { const tl = tail(hc, months && months.own, months && months.other, (srcName || 'the other') + '\'s', P, 'your', cand); if (tl != null) out.push('the voids of the Day pillar (' + VP.branches.join('') + ') fall on the cure (' + hc.txt + ')' + tl); }
     const VS = _xkdgVoidOf(src);
     if (VS) {
         const seen = {};
         Object.values(gaps.dims).forEach(d => d.isolated.forEach(x => {
             if (seen[x.pillar]) return; seen[x.pillar] = 1;
             const t = P[x.pillar], h = t ? _xkdgVoidHitX(VS, t.hex, t.branch) : null;
-            if (h) out.push('the voids of ' + (srcName || 'the source') + ' (' + VS.branches.join('') + ') fall on the isolated ' + L[x.pillar] + ' (' + h.txt + ')' + tail(h, months && months.src, P, 'your', months && months.other, (srcName || 'the other') + '\'s', t));
+            if (h) { const tl = tail(h, months && months.src, P, 'your', months && months.other, (srcName || 'the other') + '\'s', t); if (tl != null) out.push('the voids of ' + (srcName || 'the source') + ' (' + VS.branches.join('') + ') fall on the isolated ' + L[x.pillar] + ' (' + h.txt + ')' + tl); }
         }));
     }
     if (!out.length) return null;
