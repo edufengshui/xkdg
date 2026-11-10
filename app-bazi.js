@@ -1382,7 +1382,7 @@ function xkdgPalaceComm(pillars) {
 }
 function xkdgPalaceHtml(pillars) {
     // Session 49 (Edu): shown only with the ⌂ Palaces option ON (palaces.js), with the relations and the Feng Shui cure.
-    if (typeof xkdgPalacesOn === 'function') return xkdgPalacesOn() ? xkdgPalaceRelHtml(pillars, { cure: true }) : '';
+    if (typeof xkdgPalaceRelHtml === 'function') return xkdgPalaceRelHtml(pillars, { cure: true });   // ON: compact strip; OFF: one slim line with the switch
     const pc = xkdgPalaceComm(pillars); if (!pc) return '';
     const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
     return '<div style="font-size:12px;margin-top:4px;color:' + (pc.good ? '#2e7d32' : '#8d6e63') + ';">' + (pc.good ? '✓' : '○') + ' <b>Palaces</b> (minor — Feng Shui): '
