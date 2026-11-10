@@ -85,14 +85,12 @@
     return { hexN: hexN, line: line, b: L.branch, el: L.el, r: r, rs: rs, tm: tm, s: s, V: V, txt: txt, fushen: L.fushen, tot: rs + tm.t + txt };
   }
 
-  // ── Moment → cascade (heluo_cmp.js predict, method A) ─────────────────────
+  // ── Moment → cascade (heluo_cmp.js predict, method A, monthly rule 'edu') ─────────────────────
   function bjMs(P) { var b = P.meta.beijing; return Date.UTC(b.y, b.mo - 1, b.d, b.h, b.mi, b.s || 0); }
   function wsYear(P) { var y = P.meta.beijing.y; return bjMs(P) >= H().seasonTerms(y).WS.getTime() ? y + 1 : y; }
-  function jieStartTstDay(Pe, lon) { // TST calendar day (ms at 00:00) of the Jie that opened the solar month
-    var b = Pe.meta.beijing, ST_ = STm();
-    var jie = SOL().fromYmdHms(b.y, b.mo, b.d, b.h, b.mi, b.s || 0).getLunar().getPrevJie(false).getSolar();
-    var utc = Date.UTC(jie.getYear(), jie.getMonth() - 1, jie.getDay(), jie.getHour(), jie.getMinute(), jie.getSecond()) - 8 * 3600000;
-    var tst = new Date(utc + (lon * 4 + ST_.equationOfTimeMinutes(new Date(utc))) * 60000);
+  // TST calendar day (ms at 00:00) of a Beijing-naive instant (the 中氣 that opened the month)
+  function tstDay(bjDate, lon) {
+    var utc = bjDate.getTime() - 8 * 3600000, tst = new Date(utc + (lon * 4 + STm().equationOfTimeMinutes(new Date(utc))) * 60000);
     return Date.UTC(tst.getUTCFullYear(), tst.getUTCMonth(), tst.getUTCDate());
   }
   function predict(R, Pe, lon) {
@@ -102,9 +100,10 @@
     if (!per) return { age: age, none: true };
     var k = age - per.from + 1, startYear = y0 + per.from - 1;
     var a = H().annualHex(hx.lines, per.line, k, startYear % 2 === 0);
-    var mo = H().monthlyHex(a.hex.lines, a.moved, BR.indexOf(Pe.month[1]));
+    // monthly (Edu, 10/11/2026): month index from the 中氣, line k of the annual for months 2k-1 and 2k
+    var qm = H().qiMonth(Pe), mo = H().monthlyHex(a.hex.lines, qm.index);
     var t = Pe.meta.tst, tday = Date.UTC(t.y, t.mo - 1, t.d);
-    var dayIdx = Math.round((tday - jieStartTstDay(Pe, lon)) / 86400000), dh = H().dailyHex(mo.hex.lines, dayIdx + 1);
+    var dayIdx = Math.max(0, Math.round((tday - tstDay(qm.qi, lon)) / 86400000)), dh = H().dailyHex(mo.hex.lines, dayIdx + 1);
     return { age: age, year: Y, phase: phase, hx: hx, per: per, k: k, annual: a, month: mo, daily: dh, dayOfMonth: dayIdx + 1,
       id: { cycle: [hx.n, per.line], year: [a.hex.n, a.moved], month: [mo.hex.n, 0], lord: [dh.block.n, dh.lord], day: [dh.block.n, dh.line], dayHex: [dh.hex.n, dh.line] } };
   }
@@ -299,7 +298,7 @@
   }
   function yPer(a) { // months of each line of an annual hexagram (true solar time: GPS, else birth place)
     try { var lon = NaN; try { lon = STm().currentLonTz().lonDeg; } catch (e) {} if (!isFinite(lon)) lon = H().currentChart().c.lon;
-      return H().periods.annual(a.moved, H().periods.months(a.year, lon)); } catch (e) { return null; }
+      return H().periods.annual(H().periods.months(a.year, lon)); } catch (e) { return null; }
   }
   function luckProfileHtml(R, ctx) {
     if (!ctx || !ctx.prof) return '';
@@ -391,18 +390,17 @@
     // period of every line (true solar time at the place): months of the annual, blocks of the monthly, days of the block
     var aP = null, mP = null, bP = null, dP = null;
     try {
-      var ms = PD.months(p.year, lon), i = 0;
-      for (var j = 0; j < 13; j++) if (PD.dayMs(ms[j].start) <= g.date) i = j;
-      var startDay = PD.dayMs(ms[i].start), endDay = PD.dayMs(ms[i + 1].start || ms[i + 1].end), d0 = g.date - (p.dayOfMonth - 1) * D;
+      var ms = PD.months(p.year, lon), i = p.month.index - 1;
+      var d0 = g.date - (p.dayOfMonth - 1) * D, endDay = PD.dayMs(ms[i + 1].start || ms[i + 1].end), startDay = d0;
       var bS = d0 + Math.floor((p.dayOfMonth - 1) / 5) * 5 * D;
-      aP = PD.annual(p.annual.moved, ms); mP = PD.month(d0, startDay, endDay); bP = PD.block(dh.lord, bS, startDay, endDay); dP = PD.day(dh.line, g.date);
+      aP = PD.annual(ms); mP = PD.month(d0, startDay, endDay); bP = PD.block(dh.lord, bS, startDay, endDay); dP = PD.day(dh.line, g.date);
     } catch (e) {}
     var h = '<div style="' + S_ + '"><b>' + fmtDate(g.date) + '</b> · age ' + p.age + ' · Heluo year ' + p.year + ' · ' + p.phase + ' ' + p.hx.n + ' line ' + p.per.line + ' (age ' + p.per.from + '–' + p.per.to + ') · person <b>' + me + '</b>'
-      + '<br>Pillars (Day · Month · Year, true-solar noon): ' + g.Pe.day + ' · ' + g.Pe.month + ' · ' + g.Pe.year + ' · day ' + p.dayOfMonth + ' of the solar month · rank ' + g.rank + ' of ' + g.n + '</div>';
+      + '<br>Pillars (Day · Month · Year, true-solar noon): ' + g.Pe.day + ' · ' + g.Pe.month + ' · ' + g.Pe.year + ' · day ' + p.dayOfMonth + ' of month ' + p.month.index + ' (' + H().QI_EN[p.month.index - 1] + ') · rank ' + g.rank + ' of ' + g.n + '</div>';
     if (g.warn.length) h += '<div style="font-size:12px;color:#c62828;margin:4px 0;">⚠ ' + esc(g.warn.join(' · ')) + '</div>';
     h += lvlHtml('1 · Cycle', g.c, p.hx, p.phase === 'XT' ? R.cyclesXT : R.cyclesHT, me)
       + lvlHtml('2 · Annual (moved line)', g.a, p.annual.hex, aP, me)
-      + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">3 · Monthly ' + p.month.hex.n + ' ' + esc(U().hexName ? U().hexName(p.month.hex.n) : '') + ' → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + '</div>'
+      + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">3 · Monthly ' + p.month.hex.n + ' ' + esc(U().hexName ? U().hexName(p.month.hex.n) : '') + ' (month ' + p.month.index + ', line ' + p.month.line + ' of the annual) → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + '</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + '</div>'
       + lvlHtml('4 · Day line in the block hexagram', g.d, dh.block, bP, me)
       + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · Day hexagram ' + dh.hex.n + ' ' + esc(U().hexName ? U().hexName(dh.hex.n) : '') + ' line ' + dh.line + ' (course of the day)</div>'
