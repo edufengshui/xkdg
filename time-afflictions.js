@@ -8,7 +8,7 @@
 //                 calculator's example 15-07-2022: 7 4 6 5)
 //   San Sha   = 申子辰 → S (巳午未), 寅午戌 → N (亥子丑), 亥卯未 → W (申酉戌), 巳酉丑 → E (寅卯辰), ≈75°
 //   Wu Ji     = YEAR only: the Wu Ji Du Tian branches of the year stem (WJDT_BRANCHES, app-bazi.js)
-// Shown: a table under XKDG RELATIONS (app-bazi.js render) + luopan ☰ → 🧭 Tai Sui · Sha overlay.
+// Shown: a table under the LUOPAN (session 49; before: under XKDG RELATIONS) + luopan ☰ → 🧭 Tai Sui · Sha overlay.
 (function () {
   'use strict';
   var BR = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
@@ -85,21 +85,33 @@
     return h + '</table>';
   }
 
+  // The table lives UNDER THE LUOPAN (Edu, session 49: it is Feng Shui matter), not under XKDG RELATIONS.
+  // The luopan view is built later and can be rebuilt, so place() is also run when #fengshui-view changes.
+  function place() {
+    var box = document.getElementById('xkdg-afflictions');
+    var wrap = document.getElementById('fs-canvas-wrap');
+    if (!wrap || !wrap.parentNode || !_last) { if (box && !wrap) box.remove(); return; }
+    if (!box) {
+      box = document.createElement('details'); box.id = 'xkdg-afflictions';
+      box.style.cssText = 'margin:8px auto;max-width:760px;border:1px solid #d1c4e9;border-radius:8px;padding:6px 10px;background:#fff;';
+    }
+    if (box.previousElementSibling !== wrap) wrap.parentNode.insertBefore(box, wrap.nextSibling);
+    var html = '<summary style="cursor:pointer;font-size:13px;font-weight:bold;color:#4527a0;">🧭 Tai Sui · Sui Po · Five Yellow · San Sha · Wu Ji</summary>'
+      + '<div style="font-size:11px;color:#777;margin:4px 0;">' + (_last.label || '') + ' · directions in degrees · also on the luopan: ☰ → 🧭 Tai Sui · Sha</div>' + tableHtml(_last);
+    if (box._html !== html) { var open = box.open; box.innerHTML = html; box._html = html; box.open = open; }
+  }
+  function watch() {
+    var fv = document.getElementById('fengshui-view'); if (!fv || fv._afflWatch) return;
+    fv._afflWatch = true;
+    new MutationObserver(function () { try { place(); } catch (e) {} }).observe(fv, { childList: true, subtree: true });
+    place();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
+
   // Called by app-bazi.js after the main chart is drawn.
   function update(o) {
     try { _last = compute(o); } catch (e) { _last = null; console.warn('XKDGAfflictions', e); return; }
-    var box = document.getElementById('xkdg-afflictions');
-    if (!box) {
-      var after = document.getElementById('analysis-section');
-      if (!after || !after.parentNode) return;
-      box = document.createElement('details'); box.id = 'xkdg-afflictions';
-      box.style.cssText = 'margin:8px 0;border:1px solid #d1c4e9;border-radius:8px;padding:6px 10px;background:#fff;';
-      after.parentNode.insertBefore(box, after.nextSibling);
-    }
-    var open = box.open;
-    box.innerHTML = '<summary style="cursor:pointer;font-size:13px;font-weight:bold;color:#4527a0;">🧭 Tai Sui · Sui Po · Five Yellow · San Sha · Wu Ji</summary>'
-      + '<div style="font-size:11px;color:#777;margin:4px 0;">' + (_last.label || '') + ' · directions in degrees · also on the luopan: ☰ → 🧭 Tai Sui · Sha</div>' + tableHtml(_last);
-    box.open = open;
+    place();
     if (_on && typeof fsRedraw === 'function') try { fsRedraw(); } catch (e) {}
   }
 
