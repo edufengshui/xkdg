@@ -145,7 +145,9 @@
       return N.one ? when + ' ' + he + ' is ' + N.persons[0].me
         : when + ' ' + he + ' changes with the line: ' + N.persons.map(function (p) { return p.me + ' at age ' + p.ages.map(ageStr).join(', '); }).join('; ');
     });
-    S.push(['Who', who.join('. ') + '.']);
+    // no repetition (Edu, 11/11/2026): same single element in both charts → one sentence
+    var same = A.natives.length > 1 && A.natives.every(function (N) { return N.one && N.persons[0].me === A.natives[0].persons[0].me; });
+    S.push(['Who', same ? He + ' is ' + A.natives[0].persons[0].me + ' for the whole life, in both charts.' : who.join('. ') + '.']);
     var p0 = A.natives[0].persons;
     S.push(['Strength', p0.map(function (p) { return p.me + (p.wang ? ' is at its strongest in ' + his + ' birth month' : p.timely ? ' is in good shape in ' + his + ' birth month' : ' is weak in ' + his + ' birth month'); }).join('; ') + '. '
       + (p0.some(function (p) { return !p.timely; }) ? He + ' needs support and allies first, then money: too much money too early wears ' + (A.male ? 'him' : 'her') + ' out.' : He + ' is solid and can carry money and responsibility.')]);
@@ -298,9 +300,7 @@
   function html(A, nowBox) {
     var R = A.R, P = A.Pn, h = '', his = A.male ? 'his' : 'her';
     h += hd('1 · Who this person is');
-    var col = function (lbl, x) { return '<div style="text-align:center;min-width:46px;"><div style="font-size:10px;color:#777;">' + lbl + '</div><div style="font-size:19px;line-height:1.2;">' + x[0] + '<br>' + x[1] + '</div></div>'; };
-    h += '<div style="display:flex;gap:6px;margin:4px 0 6px;">' + col('Hour', P.hour) + col('Day', P.day) + col('Month', P.month) + col('Year', P.year) + '</div>';
-    h += p((A.male ? 'Man' : 'Woman') + ', born ' + R.input.o.year + '. Heaven number ' + R.numbers.heaven + ' (' + R.heavenTrigram + '), Earth number ' + R.numbers.earth + ' (' + R.earthTrigram + ').');
+    // pillars and Heaven/Earth numbers are already at the top of the chart: not repeated here (Edu, 11/11/2026)
     A.synth.slice(0, 2).forEach(function (s) { h += p(esc(s[1])); });
 
     // 2 and 3 · one chart at a time (Edu 11/11): first chart complete, then the second
