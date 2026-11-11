@@ -491,9 +491,11 @@
   // Date Selection + cycle reading (heluo-ds.js with its text scores heluo-scores.js, 10/11/2026)
   var _dsLoading = false, _tab = 'chart', _chart = null;
   function loadDS() {
-    if ((root.XKDGHeluoDS && root.XKDG_HELUO_SCORES) || _dsLoading) return; _dsLoading = true;
-    var n = 0, done = function () { if (++n < 2) return; try { if ($('hl-overlay') && $('hl-overlay').style.display !== 'none') render(); } catch (e) {} };
-    ['heluo-scores.js', 'heluo-ds.js'].forEach(function (f) {
+    if ((root.XKDGHeluoDS && root.XKDG_HELUO_SCORES && root.XKDGHeluoNatal && root.XKDG_HELUO_READINGS) || _dsLoading) return; _dsLoading = true;
+    // + natal reading with analysis (heluo-natal.js) and its strong/weak line readings (heluo-readings.js), 11/11/2026
+    var F = ['heluo-scores.js', 'heluo-ds.js', 'heluo-readings.js', 'heluo-natal.js'];
+    var n = 0, done = function () { if (++n < F.length) return; try { if ($('hl-overlay') && $('hl-overlay').style.display !== 'none') render(); } catch (e) {} };
+    F.forEach(function (f) {
       var sc = document.createElement('script'); sc.src = f; sc.onload = done; sc.onerror = function () { _dsLoading = false; }; document.head.appendChild(sc);
     });
   }
@@ -780,6 +782,17 @@
       + '<ul style="padding:0;margin:4px 0;font-size:12px;color:#333;line-height:1.5;">' + out.join('') + '</ul>'
       + '<div style="font-size:10px;color:#999;margin-top:4px;">Rules from the slides “Heluo Lishu”: first the natal chart, then the effect of the cycles.</div></details>';
   }
+  // Natal reading with analysis (part A, Edu 11/11/2026): replaces the old ✓/✗ "Natal reading" and the "Cycle reading".
+  function newNatalReading(R, male, lon) {
+    var NA = root.XKDGHeluoNatal, DC = root.XKDGHeluoDSCore;
+    if (!NA || !DC || !NJ() || !root.XKDG_HELUO_SCORES || !root.XKDG_HELUO_READINGS) return '<div style="font-size:12px;color:#999;margin-top:10px;">Loading the natal reading…</div>';
+    try {
+      var A = NA.analyze(R, R.input.Pn, male), d = new Date(), nb = '';
+      try { nb = NA.nowHtml(A, DC.pillarsTstNoon(d.getFullYear(), d.getMonth() + 1, d.getDate(), lon), lon); } catch (e) { nb = ''; }
+      return '<details open style="margin-top:12px;border:1px solid #d1c4e9;border-radius:8px;padding:8px;"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:#4527a0;">Natal reading</summary>'
+        + NA.html(A, nb) + '</details>';
+    } catch (e) { return '<div style="font-size:12px;color:#c0392b;margin-top:10px;">Natal reading failed: ' + esc(e && e.message) + '</div>'; }
+  }
   // which native hexagram (if any) the given one is opposite / inverse of
   function oppInvTag(R, hx) {
     var t = [];
@@ -823,8 +836,7 @@
       + small('Hu Gua XT', R.huXT) + (R.huHT ? small('Hu Gua HT', R.huHT) : '')
       + small('Opposite XT', R.oppositeXT) + small('Inverse XT', R.inverseXT)
       + (R.oppositeHT ? small('Opposite HT', R.oppositeHT) + small('Inverse HT', R.inverseHT) : '') + '</div>'
-      + natalReading(R, g === 'M')
-      + (root.XKDGHeluoDS && NJ() ? root.XKDGHeluoDS.readingHtml(R, g === 'M') : '')
+      + newNatalReading(R, g === 'M', c.lon)
       + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
