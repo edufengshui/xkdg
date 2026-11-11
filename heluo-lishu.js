@@ -411,10 +411,21 @@
     var per = a.period, isXT = a.periodHex === R.xianTian, me = personEl(a.periodHex, per.line), aPer = null;
     try { aPer = annualPeriods(msTST(Y, _hlLon)); } catch (e) {}
     var oi = oppInvTag(R, a.hex), P = 'font-size:13px;line-height:1.6;color:#333;margin:6px 0;';
+    // Edu 11/11 (1972: 50 l5 Parent = "exceptional encounters"): one line on what the moved line brings to the person
+    var ML = NJ() && NJ()[a.hex.n] && NJ()[a.hex.n].lines[a.moved - 1], rk = ML ? relOf(me, ML.el) : '';
+    var BRINGS = { Resource: 'a Parent year: support, studies, documents and people who help you',
+      Output: 'a Children year: creating, expressing yourself, teaching and giving',
+      Wealth: 'a Wealth year: money and the things you own (for a man, also the partner)',
+      'Officer / Ghost': 'a Ghost year: pressure, duties and challenges, to handle with care',
+      Companion: 'a Brothers year: friends, partners and competition; money goes out easily' };
+    var PL = R.input && NJ() && NJ()[a.periodHex.n] && NJ()[a.periodHex.n].lines[per.line - 1], yb = BRANCHES[((Y - 4) % 12 + 12) % 12];
+    var shock = PL && BRANCHES[(BRANCHES.indexOf(PL.branch) + 6) % 12] === yb;
+    var brings = rk ? '<div style="font-size:13px;line-height:1.5;margin:6px 0;padding:6px 8px;background:#f3eefc;border-radius:6px;"><b>' + BRINGS[rk].charAt(0).toUpperCase() + BRINGS[rk].slice(1) + '.</b>'
+      + (shock ? ' The year (' + yb + ') clashes the line of the period (' + PL.branch + '): a year of sudden turns, and the moved line tells which way it goes.' : '') + '</div>' : '';
     hlPop('Year ' + Y + ' · age ' + a.age,
       '<div style="' + P + '">' + (isXT ? 'Xian Tian' : 'Hou Tian') + ' ' + a.periodHex.n + ' ' + esc(hexName(a.periodHex.n)) + ', line ' + per.line + ' (age ' + per.from + '–' + per.to + '), year ' + a.k + ' of ' + a.len + ' · person ' + me + '</div>'
       + '<div style="font-size:14px;font-weight:600;color:#4527a0;margin-top:6px;">Annual ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · moved line ' + a.moved + '</div>'
-      + cycleHexSvg(a.hex, a.moved, aPer, me)
+      + brings + cycleHexSvg(a.hex, a.moved, aPer, me)
       + (oi.length ? '<div style="font-size:12px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oi.join(', ') + '</div>' : '')
       + '<div style="font-size:12px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
       + lineBody(a.hex.n, a.moved, true) + hexText(a.hex.n));
