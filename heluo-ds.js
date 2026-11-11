@@ -338,6 +338,12 @@
 
   // ── Date Selection tab ─────────────────────────────────────────────────────
   var _st = { purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null };
+  // pre-fill from the XKDG Date Selection (heluo-lishu.js openHeluoLishuFor) and run at the next render
+  root.xkdgHLDSPreset = function (o) {
+    if (o.purpose && PURPOSES[o.purpose]) _st.purpose = o.purpose;
+    if (o.from) { _st.from = o.from; _st.to = o.to || o.from; }
+    _st.res = null; _st.open = null; _st.autorun = true;
+  };
   function placeLon(c) {
     if (_st.place === 'birth' && c && isFinite(c.lon)) return { lon: c.lon, lbl: 'birth place' };
     var lon = NaN; try { lon = STm().currentLonTz().lonDeg; } catch (e) {}
@@ -358,6 +364,7 @@
       + '<div id="hlds-info" style="font-size:11px;color:#666;margin-bottom:6px;">' + esc(chart.c.name) + ' · ' + (chart.male ? 'man' : 'woman') + (pl ? ' · days in true solar time at ' + pl.lbl + ' (longitude ' + Math.round(pl.lon * 100) / 100 + '°)' : ' · <span style="color:#c0392b;">no longitude: set the GPS</span>') + '</div>'
       + '<div id="hlds-res"></div>';
     box.innerHTML = h;
+    if (_st.autorun && pl) { _st.autorun = false; setTimeout(function () { root.xkdgHLDSRun(); }, 0); return; }
     if (_st.res && _st.res.key === key(chart)) results(chart);
   }
   function key(chart) { return chart.c.name + '|' + chart.c.date + '|' + chart.c.time + '|' + chart.male + '|' + _st.purpose + '|' + _st.from + '|' + _st.to + '|' + _st.place; }
@@ -397,7 +404,7 @@
       if (on) h += '<tr><td colspan="3" style="padding:4px 4px 10px;">' + detail(chart, g) + '</td></tr>';
     });
     out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (primary) + half of the same line in the day hexagram (secondary) (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
-      + 'Relations: ' + Object.keys(REL).map(function (k) { return k + ' ' + REL[k]; }).join(', ') + '. Fixed weights (Edu, 10/11/2026), tested on 6 events only: an indication, not yet a proof.</div>';
+      + 'Relations: ' + Object.keys(REL).map(function (k) { return k + ' ' + REL[k]; }).join(', ') + '. Fixed weights (Edu, 10/11/2026). Test on 30 new events (11/11/2026): the event day ranks like a random day, so read the texts, not only the score.</div>';
   }
   function lvlHtml(title, x, hx, cy, me) {
     var tl = x.V > 0 ? 'favourable version' : x.V < 0 ? 'unfavourable version' : 'neutral';

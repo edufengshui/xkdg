@@ -4741,6 +4741,26 @@ function _showBackToResults() {
     b.style.display = 'block';
 }
 
+// He Luo Li Shu inside the XKDG Date Selection (Edu, 11/11/2026): A = natal reading, B = He Luo Date Selection for the
+// same days and purpose as this scan, for Person A (needs birth date and hour). Opens the He Luo window (heluo-lishu.js).
+var HL_PURPOSE = { wealth: 'wealth', career: 'officer', speak: 'output', legal: 'parent' };
+function _hlXkdgButtons(purpose) {
+    var pa = document.getElementById('person-panel-a');
+    if (!window.openHeluoLishuFor || !(pa && pa.style.display !== 'none') || !(document.getElementById('person-date') || {}).value || !(document.getElementById('person-time') || {}).value) return '';
+    var B = 'font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #5e35b1;background:#fff;color:#5e35b1;cursor:pointer;';
+    return '<button onclick="xkdgHLFromScan(\'chart\')" style="' + B + '" title="He Luo Li Shu natal reading of Person A">☯ He Luo reading</button>'
+        + '<button onclick="xkdgHLFromScan(\'ds\')" style="' + B + '" title="He Luo Li Shu Date Selection for the same days' + (HL_PURPOSE[purpose] ? '' : ' (purpose: Wealth)') + '">☯ He Luo days</button>';
+}
+function xkdgHLFromScan(tab) {
+    if (!window.openHeluoLishuFor) return;
+    var st = (document.getElementById('scan-start') || {}).value, n = parseInt((document.getElementById('scan-days') || {}).value) || 30, ds = null;
+    if (tab === 'ds' && st) {
+        var a = Date.parse(st + 'T00:00:00Z'), b = a + (Math.min(n, 366) - 1) * 86400000;
+        ds = { purpose: HL_PURPOSE[getPurpose()] || 'wealth', from: st, to: new Date(b).toISOString().slice(0, 10) };
+    }
+    openHeluoLishuFor({ tab: tab, ds: ds });
+}
+
 function renderScanResults(results, mode) {
     const container = document.getElementById('scan-results');
     if (!container) return;
@@ -4792,6 +4812,7 @@ function renderScanResults(results, mode) {
             <button onclick="toggleFsHouse();runScanner();" style="font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid #2e7d32;background:${_fsHouseActive?'#2e7d32':'#fff'};color:${_fsHouseActive?'#fff':'#2e7d32'};cursor:pointer;">
               ${_fsHouseActive ? '🏠 Hide Houses' : '🏠 Show Houses'}
             </button>
+            ${_hlXkdgButtons(activePurpose)}
            </div>`;
     if (results.length === 0) {
         container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">No matching dates found.</div>';
