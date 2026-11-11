@@ -188,7 +188,8 @@
   // ── Context and day score ──────────────────────────────────────────────────
   // R = XKDGHeluo.fromPillars(Pn, male); Pn = birth pillars (XKDGSolarTime)
   function context(R, Pn, male) {
-    return { R: R, Pn: Pn, male: !!male, natVoids: voids(Pn.day).concat(voids(R.input.heluoYearPillar)), prof: profile(R, Pn, male) };
+    return { R: R, Pn: Pn, male: !!male, natVoids: voids(Pn.day),   // Edu, 11/11/2026: voids from the DAY pillar only (before: day + year)
+       prof: profile(R, Pn, male) };
   }
   function scoreDay(ctx, Pe, lon, purpose) {
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
@@ -261,16 +262,16 @@
   // day system only (cycle and annual belong to the chart analysis). Thread of the purpose: the relation of the purpose
   // on the line of the month (1), the Lord of the Block (2), the primary line of the day (3) and its outcome (3); a
   // hidden line under the line read counts half; the relation that attacks the purpose (the price) takes the same away.
-  // A void line (true voids from the birth year) is not a penalty: "fruits later". Adjustment = thread / 3, from −3 to +3.
+  // A void line (true voids from the birth DAY pillar, not timely in the birth month) is not a penalty: "fruits later". Adjustment = thread / 3, from −3 to +3.
   var XK_REL = { wealth: 'W', career: 'G', speak: 'C', legal: 'P', health: 'C', journey: 'C', support: 'P' }; // relationship: W man, G woman
   var XK_ATT = { W: 'B', P: 'W', C: 'P', G: 'C', B: 'G' }, XK_W = { m: 1, lord: 2, d: 3, s2: 3 };
   var XK_LBL = { m: 'month line', lord: 'Lord of the Block', d: 'day line (primary)', s2: 'day line (outcome)' };
   function xkRel(key, male) { return key === 'relationship' ? (male ? 'W' : 'G') : (XK_REL[key] || null); }
   function thread(ctx, Pe, lon, key) {
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
-    var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = voids(ctx.R.input.heluoYearPillar);
+    var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = voids(ctx.Pn.day), mb0 = ctx.Pn.month[1];
     var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
-    function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0;
+    function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0 && !timely(L.el, mb0);   // a timely void is not a real void
       return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null, voidL: v, filled: v && T.indexOf(L.branch) >= 0 }; }
     var Ls = [li('m', p.month.hex.n, p.month.line), li('lord', p.id.lord[0], p.id.lord[1]), li('d', p.id.day[0], p.id.day[1]), li('s2', p.id.dayHex[0], p.id.dayHex[1])];
     var t = 0, on = [], price = [], later = [];
@@ -571,11 +572,11 @@
   var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function plMark(ch, ctx, key, me, hx, line, yearBranch) {
     var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
-    var yv = voids(ch.R.input.heluoYearPillar), G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
+    var yv = voids(ch.Pn.day), G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
     if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + '</span>'); sc += 2; }
     else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
     if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + '</span>'); sc -= 2; }
-    if (yv.indexOf(L.branch) >= 0) m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + (yearBranch === L.branch ? ', filled this year' : ': later') + '</span>');
+    if (yv.indexOf(L.branch) >= 0 && !timely(L.el, ch.Pn.month[1])) m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + (yearBranch === L.branch ? ', filled this year' : ': later') + '</span>');
     var tr = [hx.upper, hx.lower], lk = [], op = [];
     ['heaven', 'earth', 'fame'].forEach(function (k) { if (tr.indexOf(ch.R.luck[k]) >= 0) lk.push(cap(k)); if (tr.indexOf(ch.R.luck.opposite[k]) >= 0) op.push(cap(k)); });
     if (lk.length) m.push('<span style="' + (key === 'luck' ? G : 'color:#2e7d32;') + '">' + (key === 'luck' ? '▲ ' : '+') + lk.join(', ') + ' Luck</span>');

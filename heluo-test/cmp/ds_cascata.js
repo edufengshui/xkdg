@@ -138,7 +138,7 @@ function giorno(N, nat, date, lon, tz, scopo) {
   if (p.none) return null;
   const hx = p.phase === 'XT' ? N.xt : N.ht.hex, pers = persona(hx, p.id.cycle[1]);
   const T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] };
-  const nv = voids(nat.day).concat(voids(nat.year));
+  const nv = voids(nat.day); // Edu, 11/11/2026: voids from the day pillar only
   const c = livello(p.id.cycle[0], p.id.cycle[1], pers, scopo, T, nv);
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
   const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
