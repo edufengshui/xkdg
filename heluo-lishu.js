@@ -793,6 +793,23 @@
       + '<div style="font-size:10px;color:#999;margin-top:4px;">Rules from the slides “Heluo Lishu”: first the natal chart, then the effect of the cycles.</div></details>';
   }
   // Natal reading with analysis (part A, Edu 11/11/2026): replaces the old ✓/✗ "Natal reading" and the "Cycle reading".
+  // Yin/Yang balance at the top of the chart (Edu, 11/11/2026: "it does not tell me if I am balanced or not").
+  // Same measure as the reading below and as the Cures: each number against the average of the birth month, in line within ±25%.
+  function yyBalance(N) {
+    var av = N.monthAvg, rY = N.heaven / av.yang - 1, rE = N.earth / av.yin - 1;
+    function st(r) { return r > 0.25 ? 'in excess' : r < -0.25 ? 'deficient' : 'in line'; }
+    function pc(r) { return (r >= 0 ? '+' : '−') + Math.abs(Math.round(r * 100)) + '%'; }
+    function col(r) { return Math.abs(r) <= 0.25 ? '#2e7d32' : '#c62828'; }
+    var needYang = rY < -0.25 || rE > 0.25, needYin = rE < -0.25 || rY > 0.25, v, ok = !needYang && !needYin;
+    if (ok) v = 'Balanced: yin and yang are both in line. No cure needed.';
+    else if (needYang && !needYin) v = 'Not balanced: ' + (rY < -0.25 ? 'yang is deficient' : 'yin is in excess') + (rY < -0.25 && rE > 0.25 ? ' and yin is in excess' : '') + '. The chart needs <b>yang</b>.';
+    else if (needYin && !needYang) v = 'Not balanced: ' + (rE < -0.25 ? 'yin is deficient' : 'yang is in excess') + (rE < -0.25 && rY > 0.25 ? ' and yang is in excess' : '') + '. The chart needs <b>yin</b>.';
+    else v = 'Not balanced: yang is ' + st(rY) + ' and yin is ' + st(rE) + '. No single cure: both need care.';
+    return '<div style="border:1px solid ' + (ok ? '#a5d6a7' : '#ef9a9a') + ';background:' + (ok ? '#f1f8e9' : '#fdecea') + ';border-radius:8px;padding:6px 8px;margin:0 0 8px;font-size:12px;line-height:1.55;">'
+      + '<b style="color:' + (ok ? '#2e7d32' : '#c62828') + ';">Yin/Yang · ' + v + '</b><br>'
+      + 'Yang ' + N.heaven + ' · average for ' + av.month + ' ' + av.yang + ' · <span style="color:' + col(rY) + ';">' + pc(rY) + ', ' + st(rY) + '</span><br>'
+      + 'Yin ' + N.earth + ' · average for ' + av.month + ' ' + av.yin + ' · <span style="color:' + col(rE) + ';">' + pc(rE) + ', ' + st(rE) + '</span></div>';
+  }
   function newNatalReading(R, male, lon) {
     var NA = root.XKDGHeluoNatal, DC = root.XKDGHeluoDSCore;
     if (!NA || !DC || !NJ() || !root.XKDG_HELUO_SCORES || !root.XKDG_HELUO_READINGS) return '<div style="font-size:12px;color:#999;margin-top:10px;">Loading the natal reading…</div>';
@@ -836,6 +853,7 @@
       + 'Heaven number <b>' + N.heaven + '</b> (' + N.odd.join('+') + ') → <b>' + triLbl(R.heavenTrigram) + '</b>' + (R.five ? ' (5 · ' + R.fiveCycle + ' cycle)' : '') + '<br>'
       + 'Earth number <b>' + N.earth + '</b> (' + N.even.join('+') + ') → <b>' + triLbl(R.earthTrigram) + '</b><br>'
       + 'Heaven trigram ' + (R.heavenUp ? 'on top' : 'below') + ' · ' + (I.o.yangDun ? 'Yang Dun' : 'Yin Dun') + ' · ' + SEASON[I.o.season] + '</div>'
+      + yyBalance(N)
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
       + fmtCard('Xian Tian ' + R.xianTian.n + ' ' + esc(hexName(R.xianTian.n)) + ' · moving line ' + R.moving.line, R.xianTian, lineNow(R.cyclesXT, R.moving.line), R.cyclesXT, null,
           '<div style="font-size:11px;color:#555;">Proper position ' + yn(R.positionXT) + ' · proper support ' + yn(R.supportXT) + (R.prevailingXT ? '<br>Prevailing: ' + R.prevailingXT : '') + '</div>' + hexText(R.xianTian.n))
