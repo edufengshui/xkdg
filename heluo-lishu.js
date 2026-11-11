@@ -351,10 +351,56 @@
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;text-align:center;">' + title + '</div>'
       + cycleHexSvg(hx, ln, cy, me) + (extra || '') + '</div>';
   }
-  function small(title, hx) {
-    return '<div style="display:flex;gap:6px;align-items:center;font-size:12px;">' + hexSvg(hx.lines, 0, 34)
-      + '<div><span style="color:#777;">' + title + '</span><br><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + '</div></div>';
+  // `which` = 'XT' or 'HT', `kind` = 'mother' | 'hu' | 'opp' | 'inv': tap opens a popup explaining what it represents (Edu 11/11/2026)
+  function small(title, hx, which, kind) {
+    return '<div' + (which ? ' onclick="xkdgHLDerived(\'' + which + '\',\'' + kind + '\')" title="Tap: what this hexagram means"' : '') + ' style="display:flex;gap:6px;align-items:center;font-size:12px;' + (which ? 'cursor:pointer;' : '') + '">' + hexSvg(hx.lines, 0, 34)
+      + '<div><span style="color:#777;">' + title + (which ? ' ⓘ' : '') + '</span><br><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + '</div></div>';
   }
+  function derivedPopup(which, kind) {
+    var ch = _chart; if (!ch || !ch.R) return;
+    var R = ch.R, XT = which === 'XT', mother = XT ? R.xianTian : R.houTian.hex, cy = (XT ? R.cyclesXT : R.cyclesHT) || [];
+    var hx = kind === 'mother' ? mother : kind === 'hu' ? (XT ? R.huXT : R.huHT) : kind === 'opp' ? (XT ? R.oppositeXT : R.oppositeHT) : (XT ? R.inverseXT : R.inverseHT);
+    if (!hx) return;
+    var y0 = R.input.o.year, from = cy.length ? cy[0].from : null, to = cy.length ? cy[cy.length - 1].to : null;
+    var span = from ? ' (age ' + Math.min.apply(null, cy.map(function (c) { return c.from; })) + '–' + Math.max.apply(null, cy.map(function (c) { return c.to; })) + ', ' + (y0 + Math.min.apply(null, cy.map(function (c) { return c.from; })) - 1) + '–' + (y0 + Math.max.apply(null, cy.map(function (c) { return c.to; })) - 1) + ')' : '';
+    var chartName = XT ? 'first chart (Xian Tian)' : 'second chart (Hou Tian)';
+    var P = 'font-size:13px;line-height:1.6;color:#333;margin:6px 0;', t = '', title = '';
+    function tri(tn) { return tn + ' (' + TRI_EL[tn] + ')'; }
+    function ages(lines) { return cy.filter(function (c) { return lines.indexOf(c.line) >= 0; }).map(function (c) { return 'line ' + c.line + ': age ' + c.from + '–' + c.to + ' (' + (y0 + c.from - 1) + '–' + (y0 + c.to - 1) + ')'; }); }
+    if (kind === 'mother' && XT) { title = 'Xian Tian · the first chart';
+      t = '<div style="' + P + '">The hexagram you are born with: your nature, your talents and the way you start out in life.</div>'
+        + '<div style="' + P + '">It rules the first part of life' + span + ', one line at a time. The moving line at birth (line ' + R.moving.line + ') colours the whole chart, and is strongest in its own cycle, the first one, which marks the person deeply.</div>'
+        + '<div style="' + P + '">Trigrams: ' + tri(hx.upper) + ' above, ' + tri(hx.lower) + ' below.</div>'; }
+    else if (kind === 'mother') { title = 'Hou Tian · the second chart';
+      t = '<div style="' + P + '">What life builds on top of the first chart: the acquired side, what you become with experience.</div>'
+        + '<div style="' + P + '">It rules the second part of life' + span + '. It comes from the Xian Tian: the moving line changes and the two trigrams swap places.</div>'
+        + '<div style="' + P + '">Trigrams: ' + tri(hx.upper) + ' above, ' + tri(hx.lower) + ' below.</div>'; }
+    else if (kind === 'hu') { title = 'Hu Gua · the hidden hexagram of the ' + chartName;
+      var lo = ages([2, 3, 4]), up = ages([3, 4, 5]), all = ages([2, 3, 4, 5]);
+      t = '<div style="' + P + '">The hexagram hidden inside ' + mother.n + ' ' + esc(hexName(mother.n)) + ': lines 2-3-4 make the lower trigram, lines 3-4-5 the upper one. It shows the inner side of the person and the unexpected events.</div>'
+        + '<div style="' + P + '">Here: ' + tri(hx.lower) + ' inside below (lines 2-3-4), ' + tri(hx.upper) + ' inside above (lines 3-4-5).</div>'
+        + '<div style="' + P + '">When the life line goes through lines 2 to 5 the person stays who he or she is, but gets what the Hu Gua brings (for example money, if its element is Wealth).</div>'
+        + (all.length ? '<div style="' + P + '"><b>When it works:</b><br>' + all.join('<br>') + '</div>' : ''); }
+    else { var opp = kind === 'opp', same = !opp && hx.n === mother.n;
+      title = (opp ? 'Opposite' : 'Inverse') + ' of ' + mother.n + ' ' + esc(hexName(mother.n));
+      t = opp ? '<div style="' + P + '">Every line flipped: yin becomes yang and yang becomes yin. It is the obstacle you meet face to face: clear, visible problems on the path of life.</div>'
+        : '<div style="' + P + '">The hexagram turned upside down: line 1 becomes line 6. It is the hidden obstacle: problems that look harmless or come from where you do not expect them.</div>'
+          + (same ? '<div style="' + P + '"><b>Here it is the same as the mother:</b> ' + mother.n + ' does not change when turned over, so there is no separate hidden obstacle.</div>' : '');
+      if (!same) {
+        var nowY = heluoYearOf(), yrs = [];
+        for (var Y = nowY; Y < nowY + 30; Y++) { var a = annual(R, Y); if (!a.none && a.hex.n === hx.n) yrs.push(Y + ' (age ' + a.age + ')'); }
+        t += '<div style="' + P + '">A year or a month with this hexagram is unfavourable: be careful then.</div>'
+          + '<div style="' + P + '"><b>Next years with ' + hx.n + ' as annual hexagram:</b> ' + (yrs.length ? yrs.join(', ') : 'none in the next 30 years') + '.</div>';
+      } }
+    var ov = document.getElementById('hl-derived-ov');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'hl-derived-ov'; ov.style.cssText = 'position:fixed;inset:0;z-index:100010;background:rgba(20,8,30,.5);display:flex;align-items:center;justify-content:center;padding:16px;';
+      ov.onclick = function (e) { if (e.target === ov) ov.remove(); }; document.body.appendChild(ov); }
+    ov.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:440px;width:100%;max-height:85vh;overflow:auto;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;"><b style="color:#4527a0;font-size:15px;">' + title + '</b><span onclick="document.getElementById(\'hl-derived-ov\').remove()" style="cursor:pointer;font-size:22px;color:#777;padding:0 4px;">×</span></div>'
+      + '<div style="display:flex;gap:10px;align-items:center;margin:8px 0;">' + hexSvg(hx.lines, 0, 48) + '<div style="font-size:14px;"><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + '<br><span style="color:#777;font-size:12px;">' + hx.upper + ' over ' + hx.lower + '</span></div></div>'
+      + t + hexText(hx.n) + '</div>';
+  }
+  root.xkdgHLDerived = derivedPopup;
   function miniHex(lines) {
     var s = '<svg width="26" height="25" viewBox="0 0 26 25" style="display:block;">';
     for (var i = 0; i < 6; i++) { var y = (5 - i) * 4.4;
@@ -866,10 +912,10 @@
       // Edu, 11/11/2026: each derived hexagram next to its mother — one row for the Xian Tian, one for the Hou Tian
       + '<div style="font-size:11px;font-weight:600;color:#4527a0;margin-top:10px;">From the Xian Tian</div>'
       + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:3px;">'
-      + small('Xian Tian', R.xianTian) + small('Hu Gua', R.huXT) + small('Opposite', R.oppositeXT) + small('Inverse', R.inverseXT) + '</div>'
+      + small('Xian Tian', R.xianTian, 'XT', 'mother') + small('Hu Gua', R.huXT, 'XT', 'hu') + small('Opposite', R.oppositeXT, 'XT', 'opp') + small('Inverse', R.inverseXT, 'XT', 'inv') + '</div>'
       + (R.houTian ? '<div style="font-size:11px;font-weight:600;color:#4527a0;margin-top:10px;">From the Hou Tian</div>'
         + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:3px;">'
-        + small('Hou Tian', R.houTian.hex) + (R.huHT ? small('Hu Gua', R.huHT) : '') + (R.oppositeHT ? small('Opposite', R.oppositeHT) + small('Inverse', R.inverseHT) : '') + '</div>' : '')
+        + small('Hou Tian', R.houTian.hex, 'HT', 'mother') + (R.huHT ? small('Hu Gua', R.huHT, 'HT', 'hu') : '') + (R.oppositeHT ? small('Opposite', R.oppositeHT, 'HT', 'opp') + small('Inverse', R.inverseHT, 'HT', 'inv') : '') + '</div>' : '')
       + newNatalReading(R, g === 'M', c.lon)
       + (root.XKDGHeluoDS && root.XKDGHeluoDS.plannerHtml ? root.XKDGHeluoDS.plannerHtml(_chart) : '')
       + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
