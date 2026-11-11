@@ -61,13 +61,28 @@ function voids(p) {
   return [BR[(x + 10) % 12], BR[(x + 11) % 12]];
 }
 
+// Regole di Edu (11/11/2026, discutendo la quotazione Microsoft), attive di default; HL_TEMPO=vecchio le spegne:
+// 1) trigono direzionale (HL_TEMPO=sanhui) (三會: 寅卯辰 Legno, 巳午未 Fuoco, 申酉戌 Metallo, 亥子丑 Acqua): se il ramo della linea
+//    completa il trigono con i rami di anno, mese, giorno, la linea si trasforma nell'elemento del trigono (relazione
+//    sulla persona compresa) ed è molto forte (+1); i rami del trigono non la controllano più.
+// 2) vuoto riempito (HL_TEMPO=pieno): un ramo vuoto nel natale esce dal vuoto nel giorno con lo stesso ramo (填實).
+const SANHUI = { Wood: '寅卯辰', Fire: '巳午未', Metal: '申酉戌', Water: '亥子丑' };
+const nuove = k => { const v = process.env.HL_TEMPO; return !v || v.split(',').includes(k); }; // HL_TEMPO=sanhui / pieno: una sola
+function sanhui(b, T) {
+  if (!nuove('sanhui')) return null;
+  const have = b + T.y + T.m + T.d;
+  for (const el of Object.keys(SANHUI)) if (SANHUI[el].includes(b) && [...SANHUI[el]].every(x => have.includes(x))) return el;
+  return null;
+}
 // giudizio sul tempo del ramo b: anno, mese, giorno
 function tempo(b, T, natVoids) {
-  const el = BR_EL[b], note = [];
+  const sh = sanhui(b, T), el = sh || BR_EL[b], note = [];
   let t = 0;
+  if (sh) { t += 1; note.push('三會 ' + sh); }
   if (timely(el, T.m)) { t += 1; note.push('timely'); }
   for (const [k, x] of [['a', T.y], ['m', T.m], ['g', T.d]]) {
     if (x === b) { t += 1; note.push('=' + k); }
+    else if (sh && SANHUI[sh].includes(x)) { /* stesso trigono: alleato */ }
     else if (LIUHE[b] === x) { t += 1; note.push('六合' + k); }
     else if (clash(b) === x) {
       // opzione forza (Edu, 10/11): nello scontro conta chi è più forte; linea timely contro un ramo non timely non si rompe
@@ -80,12 +95,13 @@ function tempo(b, T, natVoids) {
     const forte = (!NOWANG && wang(el, T.m)) || (FORZA && timely(el, T.m));
     if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) { t -= 0.5; note.push('剋' + k); }
   }
-  if (natVoids.includes(b) && !timely(el, T.m)) { t -= 1; note.push('空'); }
+  if (natVoids.includes(b) && !timely(el, T.m)) {
+    if (nuove('pieno') && b === T.d) note.push('空 riempito'); else { t -= 1; note.push('空'); } }
   return { t, note };
 }
 
 function livello(hexN, line, pers, scopo, T, natVoids) {
-  const L = NJ[hexN].lines[line - 1], r = rel(pers, L.el), tm = tempo(L.branch, T, natVoids);
+  const L = NJ[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids);
   const s = SC[hexN].lines[line].s, V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V));
   return { hexN, line, b: L.branch, el: L.el, r, rs: SCOPI[scopo][r], tm, s, V, txt, tot: SCOPI[scopo][r] + tm.t + txt };
 }
