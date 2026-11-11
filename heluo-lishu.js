@@ -870,4 +870,26 @@
     periods: { months: msTST, annual: annualPeriods, month: monthPeriods, block: blockPeriods, day: dayPeriods, dayMs: dayMs },
     ui: { cycleHexSvg: cycleHexSvg, lineBody: lineBody, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
+  // ── He Luo inside the XKDG Date Selection (Edu, 11/11/2026): Person A's chart without opening the window ──
+  // chartA() → { c, R, male, Pn } or { err } ; ensure(cb) loads Na Jia, texts and the Date Selection files, then calls cb.
+  root.XKDGHeluo.chartA = function () {
+    var date = ($('person-date') || {}).value, time = ($('person-time') || {}).value; if (!date || !time) return { err: 'birth' };
+    var nm = (($('person-name') || {}).value || '').trim() || 'Person A', g = genderGet(nm); if (g !== 'M' && g !== 'F') return { err: 'gender' };
+    var geo = null; try { geo = root._personBirthGeo('A'); } catch (e) {}
+    var lon0 = parseFloat(($('longitude') || {}).value), utc0 = parseFloat(($('utc-offset') || {}).value) || 0;
+    var c = { name: nm, date: date, time: time, lon: geo ? geo.lon : lon0, utc: geo ? geo.utc : utc0, dst: !!(geo && geo.dst) }, R = null;
+    try { R = compute(c, g === 'M'); } catch (e) {}
+    return R ? { c: c, R: R, male: g === 'M', Pn: R.input.Pn } : { err: 'longitude' };
+  };
+  var _ensQ = null;
+  root.XKDGHeluo.ready = function () { return !!(NJ() && TX() && root.XKDGHeluoDS && root.XKDG_HELUO_SCORES); };
+  root.XKDGHeluo.ensure = function (cb) {
+    if (root.XKDGHeluo.ready()) { cb(); return; }
+    if (_ensQ) { _ensQ.push(cb); return; }
+    _ensQ = [cb]; loadNajia(); loadTexts(); loadDS();
+    var n = 0, iv = setInterval(function () {
+      if (!root.XKDGHeluo.ready() && ++n < 150) return;
+      clearInterval(iv); var q = _ensQ; _ensQ = null; if (root.XKDGHeluo.ready()) q.forEach(function (f) { try { f(); } catch (e) {} });
+    }, 100);
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

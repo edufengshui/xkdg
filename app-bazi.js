@@ -4743,7 +4743,7 @@ function _showBackToResults() {
 
 // He Luo Li Shu inside the XKDG Date Selection (Edu, 11/11/2026): A = natal reading, B = He Luo Date Selection for the
 // same days and purpose as this scan, for Person A (needs birth date and hour). Opens the He Luo window (heluo-lishu.js).
-var HL_PURPOSE = { wealth: 'wealth', career: 'officer', speak: 'output', legal: 'parent' };
+var HL_PURPOSE = { wealth: 'wealth', career: 'officer', speak: 'output', legal: 'parent', health: 'output', journey: 'output', support: 'parent' };
 function _hlXkdgButtons(purpose) {
     var pa = document.getElementById('person-panel-a');
     if (!window.openHeluoLishuFor || !(pa && pa.style.display !== 'none') || !(document.getElementById('person-date') || {}).value || !(document.getElementById('person-time') || {}).value) return '';
@@ -4761,9 +4761,35 @@ function xkdgHLFromScan(tab) {
     openHeluoLishuFor({ tab: tab, ds: ds });
 }
 
+// He Luo Li Shu inside the XKDG Date Selection (Edu, 11/11/2026): on the days ALREADY favourable for XKDG, He Luo
+// raises or lowers the score (−3…+3) with its month, block and day lines for the chosen purpose, and gives the reading
+// of the day (tap ☯). Person A only; needs birth date, hour and gender. Purposes: wealth W, career G, relationship
+// W (man) / G (woman), speak C, legal P, health C, journey C, support P, luck = the three Luck, cure = yin/yang balance.
+var _hlScanNote = '';
+function _hlPurposeKey() { return (document.getElementById('purpose-select') || {}).value || ''; }
+function _hlApply(results, rerender) {
+    _hlScanNote = '';
+    results.forEach(function (r) { r._hl = null; r._hlAdj = 0; });
+    try {
+        var pa = document.getElementById('person-panel-a');
+        if (!window.XKDGHeluo || !XKDGHeluo.ensure || !(pa && pa.style.display !== 'none') || !(document.getElementById('person-date') || {}).value || !(document.getElementById('person-time') || {}).value) return results;
+        if (!XKDGHeluo.ready()) { XKDGHeluo.ensure(rerender); return results; }
+        var key = _hlPurposeKey(), iso = [], seen = {};
+        results.forEach(function (r) { if (!seen[r.isoDate]) { seen[r.isoDate] = 1; iso.push(r.isoDate); } });
+        var sc = XKDGHeluoDS.xkScan(iso, key);
+        if (sc.status !== 'ok') { _hlScanNote = sc.status === 'gender' ? '☯ He Luo: set the gender of Person A (☯ He Luo reading) to add He Luo to these dates.' : sc.status === 'longitude' ? '☯ He Luo: no birth longitude for Person A.' : ''; return results; }
+        var byScore = results.every(function (r, i) { return i === 0 || results[i - 1].score >= r.score; });
+        results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { r._hl = th; r._hlAdj = th.adj; } });
+        if (key === 'luck') results = results.filter(function (r) { return r._hl && r._hl.luck.length; });
+        if (byScore) results = results.map(function (r, i) { return [r, i]; }).sort(function (a, b) { return (b[0].score + b[0]._hlAdj) - (a[0].score + a[0]._hlAdj) || a[1] - b[1]; }).map(function (x) { return x[0]; });
+    } catch (e) {}
+    return results;
+}
+
 function renderScanResults(results, mode) {
     const container = document.getElementById('scan-results');
     if (!container) return;
+    const _hlAll = results, _hlMode = mode;
     // --- AI bridge: expose the rendered list as structured data (Phase E2) ---
     try {
         var _lt = (typeof XKDGSolarTime !== 'undefined') ? XKDGSolarTime.currentLonTz() : null;
@@ -4836,11 +4862,20 @@ function renderScanResults(results, mode) {
         container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">' + emptyMsg + '</div>';
         return;
     }
+    // He Luo (Edu, 11/11/2026): only on the favourable dates, after the XKDG filter — it never adds or removes a date by score
+    if (!hasNegSort) {
+        results = _hlApply(results, function () { try { renderScanResults(_hlAll, _hlMode); } catch (e) {} });
+        if (results.length === 0) { container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">No favourable date with one of the three He Luo Luck in this range.</div>'; return; }
+    } else results.forEach(r => { r._hl = null; r._hlAdj = 0; });
+    const _hlNoteHtml = _hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '';
     const maxScore = hasNegSort
         ? Math.max(...results.map(r => r.negativeScore || 0))
-        : Math.max(...results.map(r => r.score));
-    container.innerHTML = purposeHeader + sortToggleHTML + results.map(r => {
-        const s = hasNegSort ? (r.negativeScore || 0) : r.score;
+        : Math.max(...results.map(r => r.score + (r._hlAdj || 0)));
+    container.innerHTML = purposeHeader + sortToggleHTML + _hlNoteHtml + results.map(r => {
+        const s = hasNegSort ? (r.negativeScore || 0) : r.score + (r._hlAdj || 0);
+        const hlChip = r._hl ? ` <span onclick="event.stopPropagation();xkdgHLDay('${r.isoDate}')" title="He Luo Li Shu: XKDG ${r.score}${r._hlAdj ? (r._hlAdj > 0 ? ' +' : ' −') + Math.abs(r._hlAdj) + ' He Luo' : ''} — tap for the reading of the day" style="cursor:pointer;font-size:11px;font-weight:bold;padding:1px 5px;border-radius:8px;border:1px solid #5e35b1;background:#fff;color:${r._hlAdj > 0 ? '#2e7d32' : r._hlAdj < 0 ? '#c62828' : '#5e35b1'};white-space:nowrap;">☯${r._hlAdj > 0 ? '+' + r._hlAdj : r._hlAdj < 0 ? '−' + Math.abs(r._hlAdj) : ''}</span>` : '';
+        const hlSum = r._hl ? XKDGHeluoDS.xkSummary(r._hl) : '';
+        const hlTag = hlSum ? `<span style="font-size:10px;font-weight:bold;color:#5e35b1;cursor:pointer;" onclick="event.stopPropagation();xkdgHLDay('${r.isoDate}')">☯ ${hlSum}</span>` : '';
         const rankClass = s >= maxScore * 0.9 ? 'rank-1'
                         : s >= maxScore * 0.75 ? 'rank-2'
                         : s >= maxScore * 0.55 ? 'rank-3'
@@ -4880,6 +4915,7 @@ function renderScanResults(results, mode) {
             if (purpose === 'relationship') return '<span style="color:#2e7d32;font-weight:bold;">Child+Parent/Adding</span>';
             if (purpose === 'journey')      return '<span style="color:#2e7d32;font-weight:bold;">Journey</span>';
             if (purpose === 'speak')        return '<span style="color:#2e7d32;font-weight:bold;">🎤 Speak</span>';
+            if (purpose === 'support')      return '<span style="color:#2e7d32;font-weight:bold;">Parent+Noble</span>';
             return '';
         })() : '';
         const nayinStr = r.nayinLabel === 'Nayin Power' ? `<span style="font-size:10px;font-weight:bold;color:#1b5e20;cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'Nayin Power')">☯ Nayin Power</span>`
@@ -4895,9 +4931,9 @@ function renderScanResults(results, mode) {
         const blueTagsHtml = [...r.blueLabels, ...r.matchLabels, ...r.qualLabels].filter(Boolean)
             .map(t => `<span style="cursor:pointer;" onclick="event.stopPropagation();showBadgeTip(this,'${t.replace(/'/g,"\\'")}')">${t}</span>`).join(' · ');
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':(r.cure ? XKDG_CURE_ROW_STYLE : '')}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
-            <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${r.cure && !negBg ? '<span title="Cure date" style="font-size:14px;">🌿</span>' : ''}${displayScore}${aTag}${bTag}</div>
+            <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${r.cure && !negBg ? '<span title="Cure date" style="font-size:14px;">🌿</span>' : ''}${displayScore}${aTag}${bTag}${hlChip}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''}${r.cure ? ' ' + xkdgCureBadge(r.cure) : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml, hlTag].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''}${r.cure ? ' ' + xkdgCureBadge(r.cure) : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -5588,8 +5624,8 @@ const DING_SPIRIT_MAP = {
 };
 
 // ── Purpose Filter ────────────────────────────────────────────
-var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤', legal:'⚖️' };
-var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak', legal:'Legal' };
+var PURPOSE_ICONS = { health:'🏥', career:'💼', wealth:'💰', relationship:'❤️', journey:'✈️', speak:'🎤', legal:'⚖️', support:'🤝' };
+var PURPOSE_NAMES = { health:'Health', career:'Career', wealth:'Wealth', relationship:'Relationship', journey:'Journey', speak:'Speak', legal:'Legal', support:'Support' };
 
 // ── PURPOSE ↔ QIMEN CONFIG MAP ──────────────────────────────────
 // Maps each Purpose to the Qimen configurations (Dun/Pretense/Borrow) that amplify it.
@@ -5987,7 +6023,7 @@ function getPurpose() {
     var el = document.getElementById('purpose-select');
     // Session 37 (Edu): "🌿 Cures" in PURPOSE is not a QMDJ purpose (no doors, no purpose rules):
     // it is the 🌿 Cure filter — only favourable dates whose DAY or YEAR pillar is a remedy.
-    if (el && el.value === 'cure') return '';
+    if (el && (el.value === 'cure' || el.value === 'luck')) return '';   // Luck (He Luo, 11/11/2026): plain favourable dates, He Luo keeps those with a Luck
     return el ? el.value : '';
 }
 function isCurePurpose() { var el = document.getElementById('purpose-select'); return !!(el && el.value === 'cure'); }
@@ -6248,6 +6284,12 @@ function checkPurpose(purpose, dGan, dZhi, blueItems, totalScore, pillarsObj, al
         var dateDayBranchSp = dZhi || (pillarsObj && pillarsObj.day && pillarsObj.day.branch) || '';
         if (wcPerson && dateDayBranchSp === wcPerson) spiritBonus += 2;
         return true;
+    }
+    if (purpose === 'support') {   // Edu, 11/11/2026: at least one Parent hexagram in a good date that connects with the person, plus the Noble
+        var hasAnyParentS = pillarsObj && hasParentInScanPillars(pillarsObj, fullBLFamily);
+        if (!hasAnyParentS) return false;
+        if (dayRole === 'parent') spiritBonus += 2;
+        return hasNoble;
     }
     if (purpose === 'legal') {
         if (hasBadSpirit('Heaven Penalty') || hasBadSpirit('Red Bird') || hasBadSpirit('Gou Chen') || hasBadSpirit('Black Tortoise')) return false;

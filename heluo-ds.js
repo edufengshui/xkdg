@@ -256,9 +256,48 @@
     return rows;
   }
 
-  root.XKDGHeluoDSCore = { tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui };
+  // ── He Luo thread inside the XKDG Date Selection (Edu, 11/11/2026) ───────────────────────────────
+  // He Luo does not choose days alone: it raises or lowers days ALREADY favourable for XKDG, with its month, block and
+  // day system only (cycle and annual belong to the chart analysis). Thread of the purpose: the relation of the purpose
+  // on the line of the month (1), the Lord of the Block (2), the primary line of the day (3) and its outcome (3); a
+  // hidden line under the line read counts half; the relation that attacks the purpose (the price) takes the same away.
+  // A void line (true voids from the birth year) is not a penalty: "fruits later". Adjustment = thread / 3, from −3 to +3.
+  var XK_REL = { wealth: 'W', career: 'G', speak: 'C', legal: 'P', health: 'C', journey: 'C', support: 'P' }; // relationship: W man, G woman
+  var XK_ATT = { W: 'B', P: 'W', C: 'P', G: 'C', B: 'G' }, XK_W = { m: 1, lord: 2, d: 3, s2: 3 };
+  var XK_LBL = { m: 'month line', lord: 'Lord of the Block', d: 'day line (primary)', s2: 'day line (outcome)' };
+  function xkRel(key, male) { return key === 'relationship' ? (male ? 'W' : 'G') : (XK_REL[key] || null); }
+  function thread(ctx, Pe, lon, key) {
+    var p = predict(ctx.R, Pe, lon); if (p.none) return null;
+    var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = voids(ctx.R.input.heluoYearPillar);
+    var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
+    function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0;
+      return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null, voidL: v, filled: v && T.indexOf(L.branch) >= 0 }; }
+    var Ls = [li('m', p.month.hex.n, p.month.line), li('lord', p.id.lord[0], p.id.lord[1]), li('d', p.id.day[0], p.id.day[1]), li('s2', p.id.dayHex[0], p.id.dayHex[1])];
+    var t = 0, on = [], price = [], later = [];
+    Ls.forEach(function (L) {
+      if (X && L.r === X) { t += XK_W[L.k]; on.push(L); if (L.voidL && !L.filled) later.push(L); }
+      else if (X && L.hid && L.hid.r === X) { t += XK_W[L.k] / 2; on.push({ k: L.k, b: L.hid.b, r: X, hidden: true }); }
+      if (A && L.r === A) { t -= XK_W[L.k]; price.push(L); }
+    });
+    // the three Luck (Heaven, Earth, Fame) and their opposites in the monthly, block and day hexagram
+    var hx = [['monthly', p.month.hex], ['block', p.daily.block], ['day', p.daily.hex]], lk = [], opp = [];
+    ['heaven', 'earth', 'fame'].forEach(function (k) { hx.forEach(function (h) {
+      if ([h[1].upper, h[1].lower].indexOf(ctx.R.luck[k]) >= 0) lk.push(cap(k) + ' Luck (' + ctx.R.luck[k] + ') in the ' + h[0] + ' hexagram');
+      if ([h[1].upper, h[1].lower].indexOf(ctx.R.luck.opposite[k]) >= 0) opp.push('opposite of ' + cap(k) + ' Luck (' + ctx.R.luck.opposite[k] + ') in the ' + h[0] + ' hexagram');
+    }); });
+    // Cures: what the natal chart needs to come back into balance (yang or yin), from the block and day hexagram
+    var pr = ctx.prof, need = (pr.rY < -0.25 || pr.rE > 0.25) && !(pr.rE < -0.25 || pr.rY > 0.25) ? 'yang' : (pr.rE < -0.25 || pr.rY > 0.25) && !(pr.rY < -0.25 || pr.rE > 0.25) ? 'yin' : null, cure = [];
+    function yy(h) { var n = h.lines.reduce(function (a, b) { return a + (b ? 1 : 0); }, 0); return n >= 4 ? 'yang' : n <= 2 ? 'yin' : null; }
+    var adj = 0;
+    if (key === 'luck') adj = lk.length - opp.length;
+    else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram mostly ' + q + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
+    else adj = Math.round(t / 3);
+    adj = Math.max(-3, Math.min(3, adj));
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, luck: lk, opp: opp, need: need, cure: cure, yv: yv };
+  }
+  root.XKDGHeluoDSCore = { thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, tempo: tempo, timely: timely, wang: wang };
   }
   if (typeof document === 'undefined') return;
@@ -438,5 +477,91 @@
     return h;
   }
 
-  root.XKDGHeluoDS = { render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  // ── He Luo in the XKDG Date Selection: adjustment per day and reading of the day (Edu, 11/11/2026) ──────────
+  var XK_PL = { wealth: 'Wealth', career: 'Career', relationship: 'Relationship', speak: 'Speak', legal: 'Legal', health: 'Health', journey: 'Journey', support: 'Support', luck: 'Luck', cure: 'Cures' };
+  var BR_MON = { 子: 'December', 丑: 'January', 寅: 'February', 卯: 'March', 辰: 'April', 巳: 'May', 午: 'June', 未: 'July', 申: 'August', 酉: 'September', 戌: 'October', 亥: 'November' };
+  var _xk = { key: null, by: {}, chart: null, lon: NaN };
+  function xkLon(c) { var lon = NaN; try { lon = STm().currentLonTz().lonDeg; } catch (e) {} return isFinite(lon) ? lon : (c && c.lon); }
+  // isoDates: days of the XKDG scan; key: XKDG purpose ('' = reading only). → { status, by: { iso: thread } }
+  function xkScan(isoDates, key) {
+    var ch = H().chartA ? H().chartA() : { err: 'birth' }; if (ch.err) return { status: ch.err, by: {} };
+    var lon = xkLon(ch.c); if (!isFinite(lon)) return { status: 'longitude', by: {} };
+    var k = [ch.c.name, ch.c.date, ch.c.time, ch.male, key, Math.round(lon * 100)].join('|');
+    if (_xk.key !== k) _xk = { key: k, by: {}, chart: ch, lon: lon, ctx: context(ch.R, ch.Pn, ch.male), purpose: key };
+    isoDates.forEach(function (iso) {
+      if (iso in _xk.by) return;
+      var d = iso.split('-').map(Number), th = null;
+      try { var Pe = pillarsTstNoon(d[0], d[1], d[2], lon); th = Pe && thread(_xk.ctx, Pe, lon, key); } catch (e) { th = null; }
+      _xk.by[iso] = th;
+    });
+    return { status: 'ok', by: _xk.by };
+  }
+  function xkSummary(th) { // one line for the row of the scan
+    var a = [];
+    if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite'); }
+    else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
+    else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.price.length) a.push('price: ' + REL[th.A]); if (th.later.length) a.push('fruits later'); }
+    return a.join(' · ');
+  }
+  function xkDayHtml(th, iso) {
+    var ch = _xk.chart, p = th.p, me = th.pers, dh = p.daily, PD = H().periods, D = 86400000, lon = _xk.lon, date = Date.parse(iso + 'T00:00:00Z');
+    var aP = null, mP = null, bP = null, dP = null;
+    try {
+      var ms = PD.months(p.year, lon), i = p.month.index - 1, d0 = date - (p.dayOfMonth - 1) * D, endDay = PD.dayMs(ms[i + 1].start || ms[i + 1].end);
+      var bS = d0 + Math.floor((p.dayOfMonth - 1) / 5) * 5 * D;
+      mP = PD.month(d0, d0, endDay); bP = PD.block(dh.lord, bS, d0, endDay); dP = PD.day(dh.line, date);
+    } catch (e) {}
+    var y0 = ch.R.input.o.year, G = 'color:#2e7d32;', Rd = 'color:#c62828;', O = 'color:#e65100;';
+    var h = '<div style="' + S_ + '"><b>' + fmtDate(date) + '</b> · ' + esc(ch.c.name) + ' · age ' + p.age + ' · person <b>' + me + '</b>'
+      + '<div style="margin:4px 0;font-size:12px;">Day ' + th.Pe.day + '<br>Month ' + th.Pe.month + '<br>Year ' + th.Pe.year + '</div></div>';
+    // what He Luo says for the purpose
+    var box = '';
+    if (th.key === 'luck') {
+      box += th.luck.length ? '<div style="' + G + '">▲ ' + esc(th.luck.join(' · ')) + '</div>' : '<div>None of the three Luck in the hexagrams of this day.</div>';
+      if (th.opp.length) box += '<div style="' + Rd + '">▼ ' + esc(th.opp.join(' · ')) + '</div>';
+    } else if (th.key === 'cure') {
+      box += th.need ? '<div>The natal chart needs <b>' + th.need + '</b> to come back into balance.</div>' + (th.cure.length ? '<div>' + esc(th.cure.join(' · ')) + '</div>' : '<div>Block and day hexagram are balanced: no help, no harm.</div>')
+        : '<div>Yin and yang of the natal chart are in line: no cure needed from the day.</div>';
+    } else if (th.X) {
+      box += th.on.length ? '<div style="' + G + '">▲ ' + REL[th.X] + ' (' + XK_PL[th.key] + ') on: ' + th.on.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.hidden ? ' hidden' : ''); }).join(' · ') + '</div>'
+        : '<div>' + REL[th.X] + ' (' + XK_PL[th.key] + ') is not on the lines of this day.</div>';
+      if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
+      th.later.forEach(function (L) {
+        var Y = +iso.slice(0, 4) + 1; while (BR[((Y - 4) % 12 + 12) % 12] !== L.b) Y++;
+        box += '<div style="' + O + '">⏳ ' + XK_LBL[L.k] + ' ' + L.b + ' is void: not a no, the fruits come later, when ' + L.b + ' is filled — the ' + L.b + ' month (' + BR_MON[L.b] + '), the year ' + Y + ' (age ' + (Y - y0 + 1) + ').</div>';
+      });
+      var cl = th.lines.filter(function (L) { return (L.k === 'd' || L.k === 's2') && th.Pe.day[1] === clash(L.b); });
+      if (cl.length) box += '<div style="' + Rd + '">The day branch ' + th.Pe.day[1] + ' clashes ' + cl.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
+    } else box += '<div>No purpose chosen: reading only.</div>';
+    if (th.key !== 'luck' && (th.luck.length || th.opp.length)) box += '<div style="font-size:11px;color:#555;margin-top:3px;">' + (th.luck.length ? '<span style="' + G + '">' + esc(th.luck.join(' · ')) + '</span>' : '') + (th.luck.length && th.opp.length ? ' · ' : '') + (th.opp.length ? '<span style="' + Rd + '">' + esc(th.opp.join(' · ')) + '</span>' : '') + '</div>';
+    var pos = dh.line === 1 ? 'Line 1: a beginning — good for what starts (launch, wedding, first step).' : dh.line === 6 ? 'Line 6: an end or a completion — good for what closes (sale, closing, conclusion).' : '';
+    if (pos) box += '<div style="font-size:11px;color:#555;margin-top:3px;">' + pos + '</div>';
+    h += '<div style="border:1px solid #b39ddb;background:#f7f3fd;border-radius:8px;padding:8px;margin:6px 0;font-size:12px;line-height:1.55;">'
+      + '<div style="font-weight:700;color:#4527a0;">He Luo for ' + (XK_PL[th.key] || 'this day') + (th.adj ? ' · ' + sgn(th.adj) + ' on the XKDG score' : ' · no change to the XKDG score') + '</div>' + box + '</div>';
+    function lv(title, L, hx, cy) {
+      return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + L.n + ' ' + esc(U().hexName ? U().hexName(L.n) : '') + ' line ' + L.l + '</div>'
+        + (U().cycleHexSvg ? U().cycleHexSvg(hx, L.l, cy, me) : '')
+        + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.voidL ? (L.filled ? ' · void, filled today' : ' · <span style="' + O + '">void: later</span>') : '') + '</div>'
+        + (U().lineBody ? U().lineBody(L.n, L.l, true) : '') + '</div>';
+    }
+    var Ls = th.lines;
+    h += lv('1 · Month ' + p.month.index + ' — the line of the month', Ls[0], p.month.hex, mP)
+      + lv('2 · Lord of the Block (5 days) — the background of these days', Ls[1], dh.block, bP)
+      + lv('3 · Day line in the block hexagram — primary text: cause, action', Ls[2], dh.block, bP)
+      + lv('4 · Same line in the day hexagram — outcome', Ls[3], dh.hex, dP)
+      + '<div style="font-size:10px;color:#999;line-height:1.5;">He Luo raises or lowers days already favourable for XKDG (month, block, day only; from −3 to +3). The texts show the shape of the day — also the price of a success — not a plus or a minus. Years and months: see the He Luo chart reading.</div>';
+    return h;
+  }
+  root.xkdgHLDay = function (iso) {
+    var th = _xk.by[iso]; if (!th) return;
+    var ov = $('hlxk-ov');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'hlxk-ov'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10050;overflow:auto;padding:10px;';
+      ov.onclick = function (e) { if (e.target === ov) ov.style.display = 'none'; }; document.body.appendChild(ov); }
+    ov.innerHTML = '<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;padding:10px 12px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><b style="color:#4527a0;font-size:14px;">☯ He Luo · the day</b>'
+      + '<button onclick="document.getElementById(\'hlxk-ov\').style.display=\'none\'" style="border:none;background:#eee;border-radius:6px;padding:4px 10px;font-size:13px;cursor:pointer;">Close</button></div>'
+      + xkDayHtml(th, iso) + '</div>';
+    ov.style.display = 'block'; ov.scrollTop = 0;
+  };
+  root.XKDGHeluoDS = { xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);
