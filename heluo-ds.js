@@ -62,6 +62,9 @@
   // 巳午未 Fire, 申酉戌 Metal or 亥子丑 Water with the year, month and day branches, the line takes the element of the
   // combination (relation on the person included) and is very strong (+1); the branches of the combination do not
   // control it. 2) a branch void in the natal chart comes out of the void on the day with the same branch (填實).
+  // 3) a control by a time branch whose element is the relation of the purpose (Wealth for a Wealth event) is no penalty.
+  // 4) the line of the annual that rules the month (line k for months 2k-1 and 2k) is scored as its own level, read in
+  //    the monthly hexagram.
   var SANHUI = { Wood: '寅卯辰', Fire: '巳午未', Metal: '申酉戌', Water: '亥子丑' };
   function sanhui(b, T) {
     var have = b + T.y + T.m + T.d;
@@ -69,7 +72,7 @@
     return null;
   }
   // time judgement of branch b against year, month, day branches (T = { y, m, d })
-  function tempo(b, T, natVoids) {
+  function tempo(b, T, natVoids, favEl) {
     var sh = sanhui(b, T), el = sh || BR_EL[b], note = [], t = 0;
     if (sh) { t += 1; note.push('三會 ' + sh + ' combination'); }
     if (timely(el, T.m)) { t += 1; note.push('timely'); }
@@ -85,14 +88,16 @@
       }
       else if (SANHE.some(function (s) { return s.indexOf(b) >= 0 && s.indexOf(x) >= 0; })) { t += 0.5; note.push('三合 ' + k); }
       var forte = wang(el, T.m);
-      if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) { t -= 0.5; note.push('剋 ' + k); }
+      if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) {
+        if (favEl && BR_EL[x] === favEl) note.push('剋 ' + k + ' by the purpose relation (no penalty)'); else { t -= 0.5; note.push('剋 ' + k); } }
     });
     if (natVoids.indexOf(b) >= 0 && !timely(el, T.m)) { if (b === T.d) note.push('void filled by the day'); else { t -= 1; note.push('空 void'); } }
     return { t: t, note: note };
   }
   // one level of the cascade: line `line` of hexagram hexN; text score moved ±1 towards the version chosen by time
   function level(hexN, line, pers, purpose, T, natVoids) {
-    var L = NJ()[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids);
+    var favEl = Object.keys(GEN).filter(function (e) { return PURPOSES[purpose].w[rel(pers, e)] === 2; })[0];
+    var L = NJ()[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids, favEl);
     var s = SC()[hexN].l[line], V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V)), rs = PURPOSES[purpose].w[r];
     return { hexN: hexN, line: line, b: L.branch, el: sh || L.el, r: r, rs: rs, tm: tm, s: s, V: V, txt: txt, fushen: L.fushen, tot: rs + tm.t + txt };
   }
@@ -190,17 +195,18 @@
     var pers = persona(p.hx, p.per.line), T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] };
     var c = level(p.id.cycle[0], p.id.cycle[1], pers, purpose, T, ctx.natVoids);
     var a = level(p.id.year[0], p.id.year[1], pers, purpose, T, ctx.natVoids);
+    var m = level(p.month.hex.n, p.month.line, pers, purpose, T, ctx.natVoids);
     var d = level(p.id.day[0], p.id.day[1], pers, purpose, T, ctx.natVoids);
     var L = luckDay(ctx.prof, p, T);
-    var tot = Math.round((c.tot + a.tot + d.tot + L.tot) * 100) / 100;
+    var tot = Math.round((c.tot + a.tot + m.tot + d.tot + L.tot) * 100) / 100;
     var warn = [];
     if (d.r === 'G') warn.push('Ghost on the day line');
-    [['cycle', c], ['annual', a], ['day', d]].forEach(function (x) {
+    [['cycle', c], ['annual', a], ['month', m], ['day', d]].forEach(function (x) {
       x[1].tm.note.forEach(function (n) { if (/^冲/.test(n) && !/excites/.test(n)) warn.push(x[0] + ' line ' + x[1].b + ' ' + n); });
       if (x[1].tm.note.indexOf('空 void') >= 0) { var sm = x[1].tm.note.filter(function (n) { return /^same /.test(n); }).map(function (n) { return n.slice(5); });
         warn.push(x[0] + ' line ' + x[1].b + ' in true void' + (sm.length ? ' (same branch as ' + sm.join(', ') + ')' : '')); }
     });
-    return { Pe: Pe, p: p, pers: pers, T: T, c: c, a: a, d: d, L: L, tot: tot, warn: warn };
+    return { Pe: Pe, p: p, pers: pers, T: T, c: c, a: a, m: m, d: d, L: L, tot: tot, warn: warn };
   }
   // pillars at true-solar noon of a TST calendar date (no time zone needed)
   function pillarsTstNoon(y, mo, d, lon) {
@@ -375,18 +381,18 @@
     var list = _st.all ? r.days : r.sorted.slice(0, 15), TD = 'padding:4px 5px;', n = r.days.length;
     var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best 15 of ' + n + ' days') + ' · purpose <b>' + _st.purpose + '</b> · '
       + '<a href="javascript:void 0" onclick="xkdgHLDSAll()" style="color:#5e35b1;">' + (_st.all ? 'show the best' : 'show all days') + '</a></div>'
-      + '<table style="border-collapse:collapse;font-size:12px;width:100%;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Day</th><th style="' + TD + '">Score</th><th style="' + TD + '">Day · annual · cycle line</th></tr>';
+      + '<table style="border-collapse:collapse;font-size:12px;width:100%;"><tr style="color:#777;text-align:left;"><th style="' + TD + '">Day</th><th style="' + TD + '">Score</th><th style="' + TD + '">Day · month · annual · cycle line</th></tr>';
     list.forEach(function (g) {
       var on = _st.open === g.date, pct = Math.max(1, Math.round(100 * g.rank / g.n));
       h += '<tr onclick="xkdgHLDSOpen(' + g.date + ')" style="cursor:pointer;border-top:1px solid #eee;' + (on ? 'background:#ede7f6;' : '') + '">'
         + '<td style="' + TD + 'white-space:nowrap;">' + fmtDate(g.date) + '<div style="font-size:10px;color:#999;">' + g.Pe.day + ' day · ' + g.Pe.month + ' month · age ' + g.p.age + '</div></td>'
         + '<td style="' + TD + '"><b>' + sgn(g.tot) + '</b><div style="font-size:10px;color:#999;">top ' + pct + '%</div></td>'
         + '<td style="' + TD + 'font-size:11px;line-height:1.5;">' + g.d.hexN + ' l' + g.d.line + ' ' + g.d.b + ' ' + relTag(g.d.r) + ' ' + sgn(g.d.tot)
-        + ' · ' + g.a.b + ' ' + relTag(g.a.r) + ' ' + sgn(g.a.tot) + ' · ' + g.c.b + ' ' + relTag(g.c.r) + ' ' + sgn(g.c.tot)
+        + ' · ' + g.m.b + ' ' + relTag(g.m.r) + ' ' + sgn(g.m.tot) + ' · ' + g.a.b + ' ' + relTag(g.a.r) + ' ' + sgn(g.a.tot) + ' · ' + g.c.b + ' ' + relTag(g.c.r) + ' ' + sgn(g.c.tot)
         + '<br>Luck ' + sgn(g.L.tot) + (g.warn.length ? ' <span style="color:#c62828;">⚠ ' + esc(g.warn.join('; ')) + '</span>' : '') + '</td></tr>';
       if (on) h += '<tr><td colspan="3" style="padding:4px 4px 10px;">' + detail(chart, g) + '</td></tr>';
     });
-    out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + day line in the block hexagram (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
+    out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
       + 'Relations: ' + Object.keys(REL).map(function (k) { return k + ' ' + REL[k]; }).join(', ') + '. Fixed weights (Edu, 10/11/2026), tested on 6 events only: an indication, not yet a proof.</div>';
   }
   function lvlHtml(title, x, hx, cy, me) {
@@ -412,8 +418,9 @@
     if (g.warn.length) h += '<div style="font-size:12px;color:#c62828;margin:4px 0;">⚠ ' + esc(g.warn.join(' · ')) + '</div>';
     h += lvlHtml('1 · Cycle', g.c, p.hx, p.phase === 'XT' ? R.cyclesXT : R.cyclesHT, me)
       + lvlHtml('2 · Annual (moved line)', g.a, p.annual.hex, aP, me)
-      + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">3 · Monthly ' + p.month.hex.n + ' ' + esc(U().hexName ? U().hexName(p.month.hex.n) : '') + ' (month ' + p.month.index + ', line ' + p.month.line + ' of the annual) → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + '</div>'
-      + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + '</div>'
+      + lvlHtml('3 · Month ' + p.month.index + ' (line ' + p.month.line + ' of the annual rules months ' + (2 * p.month.line - 1) + '–' + (2 * p.month.line) + ')', g.m, p.month.hex, mP, me)
+      + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">Block: monthly ' + p.month.hex.n + ' → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + ' ' + esc(U().hexName ? U().hexName(dh.block.n) : '') + '</div>'
+      + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + (U().lineBody ? U().lineBody(dh.block.n, dh.lord, true) : '') + '</div>'
       + lvlHtml('4 · Day line in the block hexagram', g.d, dh.block, bP, me)
       + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · Day hexagram ' + dh.hex.n + ' ' + esc(U().hexName ? U().hexName(dh.hex.n) : '') + ' line ' + dh.line + ' (course of the day)</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(dh.hex, dh.line, dP, me) : '') + (U().lineBody ? U().lineBody(dh.hex.n, dh.line, true) : '') + '</div>'
