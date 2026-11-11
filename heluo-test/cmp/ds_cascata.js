@@ -65,6 +65,10 @@ function voids(p) {
 // 1) trigono direzionale (HL_TEMPO=sanhui) (三會: 寅卯辰 Legno, 巳午未 Fuoco, 申酉戌 Metallo, 亥子丑 Acqua): se il ramo della linea
 //    completa il trigono con i rami di anno, mese, giorno, la linea si trasforma nell'elemento del trigono (relazione
 //    sulla persona compresa) ed è molto forte (+1); i rami del trigono non la controllano più.
+// 3) controllo dal ramo che è la relazione dello scopo (HL_TEMPO=scopo): in un evento di Wealth la Wealth dell'anno, del
+//    mese o del giorno che controlla la linea non è una penalità (es. Legno = Wealth che controlla 辰 Parent).
+// 4) linea del mese (HL_TEMPO=mese): la linea k dell'annuale che governa il mese entra nel punteggio come livello a sé,
+//    letta nell'esagramma mensile (mesi 2k−1 e 2k).
 // 2) vuoto riempito (HL_TEMPO=pieno): un ramo vuoto nel natale esce dal vuoto nel giorno con lo stesso ramo (填實).
 const SANHUI = { Wood: '寅卯辰', Fire: '巳午未', Metal: '申酉戌', Water: '亥子丑' };
 const nuove = k => { const v = process.env.HL_TEMPO; return !v || v.split(',').includes(k); }; // HL_TEMPO=sanhui / pieno: una sola
@@ -75,7 +79,7 @@ function sanhui(b, T) {
   return null;
 }
 // giudizio sul tempo del ramo b: anno, mese, giorno
-function tempo(b, T, natVoids) {
+function tempo(b, T, natVoids, favEl) {
   const sh = sanhui(b, T), el = sh || BR_EL[b], note = [];
   let t = 0;
   if (sh) { t += 1; note.push('三會 ' + sh); }
@@ -93,7 +97,8 @@ function tempo(b, T, natVoids) {
       else { t -= 2; note.push('冲' + k); } }
     else if (SANHE.some(s => s.includes(b) && s.includes(x))) { t += 0.5; note.push('三合' + k); }
     const forte = (!NOWANG && wang(el, T.m)) || (FORZA && timely(el, T.m));
-    if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) { t -= 0.5; note.push('剋' + k); }
+    if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) {
+      if (favEl && nuove('scopo') && BR_EL[x] === favEl) note.push('剋' + k + '(scopo)'); else { t -= 0.5; note.push('剋' + k); } }
   }
   if (natVoids.includes(b) && !timely(el, T.m)) {
     if (nuove('pieno') && b === T.d) note.push('空 riempito'); else { t -= 1; note.push('空'); } }
@@ -101,7 +106,8 @@ function tempo(b, T, natVoids) {
 }
 
 function livello(hexN, line, pers, scopo, T, natVoids) {
-  const L = NJ[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids);
+  const favEl = Object.keys(GEN).find(e => SCOPI[scopo][rel(pers, e)] === 2);
+  const L = NJ[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids, favEl);
   const s = SC[hexN].lines[line].s, V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V));
   return { hexN, line, b: L.branch, el: L.el, r, rs: SCOPI[scopo][r], tm, s, V, txt, tot: SCOPI[scopo][r] + tm.t + txt };
 }
@@ -136,9 +142,10 @@ function giorno(N, nat, date, lon, tz, scopo) {
   const c = livello(p.id.cycle[0], p.id.cycle[1], pers, scopo, T, nv);
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
   const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
+  const m = nuove('mese') ? livello(p.id.month[0], Math.ceil(p.mIndex / 2), pers, scopo, T, nv) : null;
   const L = nat.luck ? luckTot(p, nat.luck) : null, useL = process.argv.includes('luck') && L;
   const L2 = nat.prof ? LK2.giorno(nat.prof, p, T) : null, useL2 = process.argv.includes('luck2') && L2;
-  return { date, Pe, p, pers, c, a, d, L, L2, tot: c.tot + a.tot + d.tot + (useL ? L.tot : 0) + (useL2 ? L2.tot : 0) };
+  return { date, Pe, p, pers, c, a, m, d, L, L2, tot: c.tot + a.tot + (m ? m.tot : 0) + d.tot + (useL ? L.tot : 0) + (useL2 ? L2.tot : 0) };
 }
 
 const NASCITE = {
