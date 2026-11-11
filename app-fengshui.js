@@ -800,7 +800,7 @@ var FS_LUOPAN_MENU = [
   { chart: true, v: 'time',     btn: 'fs-sunmoon-toggle',  label: function () { return '\u2600\ufe0f\ud83c\udf19 Sun & Moon formula'; } },
   // Session 43 (Edu): Tai Sui / Sui Po / Five Yellow / San Sha / Wu Ji of the main calendar date (time-afflictions.js).
   { chart: true, v: 'sha', btn: null, label: function () {
-      return '\ud83e\udded Tai Sui \u00b7 Sha (calendar date)' + (window.XKDGAfflictions && XKDGAfflictions.isOn() ? ' \u00b7 ON' : ''); } },
+      return '\ud83e\udded Tai Sui \u00b7 Sha (year)' + (window.XKDGAfflictions && XKDGAfflictions.isOn() ? ' \u00b7 ON' : ''); } },
   { chart: true, v: 'card',     btn: 'fs-cardview-toggle', label: function (b) {
       var on = b && b.textContent.indexOf('Luopan') >= 0;
       return on ? '\ud83e\udded Back to Luopan' : '\u25a6 Flying star chart'; } },
@@ -829,6 +829,9 @@ function _fsFacingSources(){
     var ref = (typeof _fsActiveHouseRef === 'function') ? _fsActiveHouseRef() : null;
     var f = ref && ref.floor;
     var num = function(x){ var n = parseFloat(x); return isNaN(n) ? null : n; };
+    // Session 49 (Edu): the House facing first - it is the default
+    var hfv = num((document.getElementById('fs-house-facing') || {}).value);
+    if (hfv != null) out.push({ label: '\ud83c\udfe0 House', facing: hfv, water: null, house: true });
     if (f){
       (f.doors || []).forEach(function(d){
         if (d.facing == null) return;
@@ -854,6 +857,71 @@ function _fsFacingSources(){
   } catch (e) {}
   return out;
 }
+// Session 49 (Edu: "come lo vedo che è stata selezionata la facciata della porta"): the saved
+// facing in use = the one picked from the ☰ FACING list; with no pick, every saved facing whose
+// degrees equal the Facing input. Used for the caption on the luopan and to lighten the colours.
+function _fsFacingInUse(){
+  var cur = parseFloat((document.getElementById('fs-facing') || {}).value);
+  if (isNaN(cur)) return null;
+  var list = [], names = [];
+  try { list = _fsFacingSources(); } catch (e) {}
+  var same = list.filter(function(it){ return it.facing != null && Math.abs(cur - it.facing) < 0.05; });
+  var pk = window._fsFacingPick, pd = window._fsFacingPickDeg;
+  if (pk && pd != null && Math.abs(cur - pd) < 0.05) names = [pk];
+  else names = same.map(function(it){ return it.label; });
+  // houseOnly: the facing in use is just the House facing (the default) - the luopan keeps all its colours
+  var houseOnly = names.length > 0 && names.every(function(n){ return list.some(function(it){ return it.house && it.label === n; }); });
+  return { deg: cur, names: names.map(function(n){ return _fsLmText(n); }), picked: names.length > 0, houseOnly: houseOnly };
+}
+function _fsFacingCaption(){
+  var wrap = document.getElementById('fs-canvas-wrap'); if (!wrap) return;
+  var el = document.getElementById('fs-facing-caption'), u = _fsFacingInUse();
+  if (!u || !u.picked) { if (el) el.remove(); _fsFacingChooser(false); return; }
+  if (!el) {
+    el = document.createElement('div'); el.id = 'fs-facing-caption';
+    // top-left of the luopan area (the bottom-left is used by the Tai Sui legend)
+    el.style.cssText = 'position:absolute;left:2px;top:0;max-width:80%;font-size:11px;line-height:1.25;color:#7a4a00;background:rgba(255,248,225,0.94);border:1px solid #e0c080;border-radius:6px;padding:2px 7px;z-index:3;';
+    wrap.appendChild(el);
+  }
+  var slot = (typeof fsSlotForDeg === 'function') ? fsSlotForDeg(u.deg) : null;
+  var txt = '\ud83e\udded Facing in use: ' + u.names.join(' \u00b7 ') + ' \u2014 ' + (+u.deg.toFixed(1)) + '\u00b0' + (slot ? ' \u00b7 Hex ' + slot.hexNum : '');
+  if (el._txt !== txt) {
+    el._txt = txt;
+    el.innerHTML = '';
+    el.appendChild(document.createTextNode(txt + ' '));
+    var a = document.createElement('span');
+    a.textContent = 'change';
+    a.style.cssText = 'color:#1565c0;text-decoration:underline;cursor:pointer;font-weight:bold;white-space:nowrap;';
+    a.onclick = function(ev){ ev.stopPropagation(); _fsFacingChooser(!document.getElementById('fs-facing-chooser')); };
+    el.appendChild(a);
+  }
+}
+// "change": the saved facings of the active floor (doors, beds, desks) - tap one to use it.
+function _fsFacingChooser(show){
+  var old = document.getElementById('fs-facing-chooser'); if (old) old.remove();
+  if (!show) return;
+  var wrap = document.getElementById('fs-canvas-wrap'), cap = document.getElementById('fs-facing-caption');
+  if (!wrap || !cap) return;
+  var list = _fsFacingSources(); window._fsFacingList = list;
+  var u = _fsFacingInUse(), box = document.createElement('div');
+  box.id = 'fs-facing-chooser';
+  box.style.cssText = 'position:absolute;left:2px;top:' + (cap.offsetHeight + 3) + 'px;min-width:210px;max-width:92%;background:#fff;border:1px solid #c9a84c;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:6;font-size:12px;overflow:hidden;';
+  list.forEach(function(it, i){
+    if (it.facing == null) return;
+    var name = _fsLmText(it.label), on = !!(u && u.names.indexOf(name) >= 0 && Math.abs(u.deg - it.facing) < 0.05);
+    var row = document.createElement('div');
+    row.style.cssText = 'padding:6px 10px;border-bottom:1px solid #f0e6cc;cursor:pointer;display:flex;justify-content:space-between;gap:10px;' + (on ? 'background:#fff8e1;font-weight:bold;' : '');
+    var l = document.createElement('span'); l.textContent = name;
+    var r = document.createElement('span'); r.textContent = (+it.facing.toFixed(1)) + '\u00b0'; r.style.color = '#888';
+    row.appendChild(l); row.appendChild(r);
+    row.onclick = function(ev){ ev.stopPropagation(); _fsFacingChooser(false); fsPickFacingSource(i); };
+    box.appendChild(row);
+  });
+  wrap.appendChild(box);
+  setTimeout(function(){
+    document.addEventListener('click', function once(){ document.removeEventListener('click', once); _fsFacingChooser(false); });
+  }, 0);
+}
 function _fsFacingOptionsHTML(){
   var list = _fsFacingSources();
   window._fsFacingList = list;
@@ -862,6 +930,7 @@ function _fsFacingOptionsHTML(){
   var esc = function(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
   return '<optgroup label="\ud83e\udded Facing">' + list.map(function(it, i){
     var on = !isNaN(cur) && Math.abs(cur - it.facing) < 0.05;
+    if (on && window._fsFacingPick && window._fsFacingPickDeg != null && Math.abs(cur - window._fsFacingPickDeg) < 0.05) on = (it.label === window._fsFacingPick);   // session 49: only the picked one
     return '<option value="fc:' + i + '" style="text-align:left;font-size:12px;">' + esc(it.label) + ' ' + (+it.facing.toFixed(1)) + '\u00b0' + (on ? ' \u00b7 ON' : '') + '</option>';
   }).join('') + '</optgroup>';
 }
@@ -1729,9 +1798,14 @@ function fsRedraw(){
   }
 
   // Pass 1: Zheng/Ling tint (only in XKDG or Both mode)
+  // Session 49 (Edu: "troppi esagrammi"): while a saved facing (door / bed / desk) is in use, the
+  // Zheng/Ling tint is fainter and the green "facings for the date" are not painted - only the
+  // gold facing and its waters stand out.
+  let _inUse = null; try { _inUse = _fsFacingInUse(); } catch (e) {}
+  const _quiet = !!(_inUse && _inUse.picked && !_inUse.houseOnly);
   if (showXKDG) {
   FS_SLOTS.forEach(s => {
-    paintCell(s, fsIsZhengShenStrict(s.yun) ? 'rgba(180,40,40,0.18)' : 'rgba(40,80,180,0.18)');
+    paintCell(s, fsIsZhengShenStrict(s.yun) ? 'rgba(180,40,40,' + (_quiet ? '0.07' : '0.18') + ')' : 'rgba(40,80,180,' + (_quiet ? '0.07' : '0.18') + ')');
   });
 
   // Pass 1b: when a facing is set, draw subtle ±70° water-zone band just outside hex ring
@@ -1755,7 +1829,7 @@ function fsRedraw(){
   }
 
   // Pass 2: valid facings for current date — green tint
-  facings.forEach(i => paintCell(FS_SLOTS[i], 'rgba(0,220,80,0.55)'));
+  if (!_quiet) facings.forEach(i => paintCell(FS_SLOTS[i], 'rgba(0,220,80,0.55)'));
 
   // Pass 3: valid waters for current facing — cyan tint (only when facing input given)
   waters.forEach(i => paintCell(FS_SLOTS[i], 'rgba(0,200,255,0.55)'));
@@ -1856,7 +1930,8 @@ function fsRedraw(){
   const _pk = window._fsFacingPick, _pkDeg = window._fsFacingPickDeg;
   const _picked = !!_pk && fd !== null && _pkDeg != null && Math.abs(fd - _pkDeg) < 0.05;
   if (showFS && hfd !== null)  drawArrow(hfd, '#8B0000', 'House', _picked);
-  const _pkName = _picked ? (_fsLmText(_pk).replace(/\s*\(.*$/, '') || 'Facing') : 'Door';
+  let _pkName = _picked ? (_fsLmText(_pk).replace(/\s*\(.*$/, '') || 'Facing') : 'Door';
+  try { if (!_picked && _inUse && _inUse.picked) _pkName = _inUse.names[0].replace(/\s*\(.*$/, '') || 'Facing'; _fsFacingCaption(); } catch (e) {}
   if ((showXKDG || _picked) && fd !== null) drawArrow(fd,  _fsLuopanMode === 'both' || (!showXKDG) ? '#cc6600' : '#cc0000', _pkName);
   if ((showXKDG || _picked) && wd !== null) drawArrow(wd,  '#0a8c2c', 'Water', true);
 
@@ -6480,6 +6555,16 @@ function fsLoadHouse(personName, houseIdx){
     var d0 = doors[0];
     if (d0.facing != null){ const el = document.getElementById('fs-facing'); if (el){ el.value = d0.facing; } }
     if (d0.water != null){ const el = document.getElementById('fs-water'); if (el){ el.value = d0.water; } }
+  }
+  // Session 49 (Edu): the DEFAULT facing is always the HOUSE facing. Whatever facing was being viewed
+  // (a door, the bed, a desk), when the app / the house is opened again the luopan is back on the
+  // House Facing; the others are one tap away ("change" on the luopan, or ☰ → FACING).
+  if (effFacing != null){
+    const fe = document.getElementById('fs-facing'), we = document.getElementById('fs-water');
+    const same = doors.length > 0 && doors[0].facing != null && Math.abs(parseFloat(doors[0].facing) - parseFloat(effFacing)) < 0.05;
+    if (fe) fe.value = effFacing;
+    if (we && !same) we.value = '';
+    window._fsFacingPick = null; window._fsFacingPickDeg = null;
   }
   // Restore this house/floor's hand-composed manual chart (or clear if none).
   _fsRestoreManualChartForHouse(f);
