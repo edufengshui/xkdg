@@ -256,9 +256,10 @@
     return rows;
   }
 
+  root.XKDGHeluoDSCore = { tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui };
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
-      cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids };
+      cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, tempo: tempo, timely: timely, wang: wang };
   }
   if (typeof document === 'undefined') return;
 
