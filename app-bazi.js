@@ -1382,7 +1382,7 @@ function xkdgPalaceComm(pillars) {
 }
 function xkdgPalaceHtml(pillars) {
     // Session 49 (Edu): shown only with the ⌂ Palaces option ON (palaces.js), with the relations and the Feng Shui cure.
-    if (typeof xkdgRenderPalaces === 'function') return '';   // session 49b (Edu): palaces only as discreet numbers on the pillars (palaces.js, left toggle)
+    if (typeof xkdgPalaceGapLine === 'function') return xkdgPalaceGapLine(pillars);   // session 49d: only when a palace is isolated; the setting is the last row of the relations list (palaces.js)
     const pc = xkdgPalaceComm(pillars); if (!pc) return '';
     const L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
     return '<div style="font-size:12px;margin-top:4px;color:' + (pc.good ? '#2e7d32' : '#8d6e63') + ';">' + (pc.good ? '✓' : '○') + ' <b>Palaces</b> (minor — Feng Shui): '
@@ -3057,14 +3057,29 @@ function showAnalysisTip(el, text) {
     tip.style.left = Math.max(10, Math.min(r.left, window.innerWidth - 240)) + 'px';
     tip.style.top  = (r.bottom + 8) + 'px';
 }
+// Session 49d (Edu): Show/Hide for the date's XKDG RELATIONS box, like the persons' pillars. Remembered on the device.
+function _xkdgRelHidden() { try { return localStorage.getItem('xkdgRelHidden') === '1'; } catch (e) { return false; } }
+function _xkdgRelToggleSync(has) {
+    const w = document.getElementById('rel-toggle-wrap'), b = document.getElementById('rel-toggle');
+    if (w) w.style.display = has ? 'block' : 'none';
+    if (b) b.textContent = _xkdgRelHidden() ? '▼ Show XKDG Relations' : '▲ Hide XKDG Relations';
+}
+function toggleRelations() {
+    try { localStorage.setItem('xkdgRelHidden', _xkdgRelHidden() ? '0' : '1'); } catch (e) {}
+    const s = document.getElementById('analysis-section');
+    if (s) s.style.display = _xkdgRelHidden() ? 'none' : 'flex';
+    _xkdgRelToggleSync(true);
+}
 function renderAnalysis(items) {
     const section   = document.getElementById('analysis-section');
     const container = document.getElementById('analysis-items');
     if (!items || items.length === 0) {
         section.style.display = 'none';
+        _xkdgRelToggleSync(false);
         return;
     }
-    section.style.display = 'flex';
+    section.style.display = _xkdgRelHidden() ? 'none' : 'flex';
+    _xkdgRelToggleSync(true);
     container.innerHTML = items.map(item => {
         const content = item.tag === 'cure' ? xkdgCureBadge(item.text)
                       : item.tag === 'bl-alert' ? `<span style="border:1px solid #ccc;border-radius:10px;padding:2px 8px;">${xkdgBLStatusHtml(item.text)}</span>`

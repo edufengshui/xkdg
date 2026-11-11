@@ -25,7 +25,7 @@
   var L = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
   var K4 = ['hour', 'day', 'month', 'year'];
 
-  function isOn() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }   // OFF until the left toggle turns it on (Edu, session 49b)
+  function isOn() { return true; }   // session 49d (Edu): the toggle is gone, palaces are always shown (discreetly)
   function palOfHex(h) { var b = (typeof _XK_HEXBIN !== 'undefined') ? _XK_HEXBIN[h] : null; return b == null ? null : XT[b & 7]; }
   function famsOfPillar(p) { try { return _xkdgResolvedFamilyEntries(p).map(function (e) { return e.family; }); } catch (e) { return []; } }
   function famsOfHex(h) { try { return (typeof getHexFamilies === 'function') ? (getHexFamilies(h) || []) : []; } catch (e) { return []; } }
@@ -118,7 +118,7 @@
     var pc = relations(P); if (!pc) return '';
     var end = pc.good ? '<span style="color:#7cb342;">✓</span>'
       : '<span style="color:#c98b8b;">✕ ' + pc.isolated.map(function (x) { return L[x.pillar]; }).join(', ') + '</span>';
-    if (!pc.good && person) {
+    if (false && person) {   // the cure is in the person's missing-link block (gapLine)
       var c = cures(P), parts = [];
       if (c) c.groups.forEach(function (g) {
         var ns = g.byNum.map(function (r) { return r.pal; }); if (!ns.length) return;
@@ -244,19 +244,29 @@
     try { renderChart('pp', typeof _personAPillars !== 'undefined' ? _personAPillars : null, true); } catch (e) {}
     try { renderChart('pb', typeof _personBPillars !== 'undefined' ? _personBPillars : null, true); } catch (e) {}
   }
-  // The toggle: one small tab on the right edge of the page.
+  // No toggle any more (Edu, session 49d): remove the old tab if a cached page left it.
   function placeToggle() {
-    var t = document.getElementById('xk-pal-toggle');
-    if (!t) {
-      t = document.createElement('div'); t.id = 'xk-pal-toggle';
-      t.title = 'Palaces'; t.textContent = '⌂';
-      t.onclick = function () { window.xkdgTogglePalaces(); };
-      document.body.appendChild(t);
-    }
-    var on = isOn();
-    t.style.cssText = 'position:fixed;right:0;top:42%;z-index:900;width:18px;height:34px;display:flex;align-items:center;justify-content:center;'
-      + 'font-size:12px;cursor:pointer;user-select:none;border-radius:8px 0 0 8px;border:1px solid #bcaaa4;border-right:none;'
-      + (on ? 'background:#8d6e63;color:#fff;opacity:.9;' : 'background:#fff;color:#a1887f;opacity:.6;');
+    var t = document.getElementById('xk-pal-toggle'); if (t) t.remove();
+    // keep the palace row as the last line of each relations list, whatever code path rewrites the list
+    ['analysis-items', 'person-analysis-items-a', 'person-analysis-items-b'].forEach(function (id) {
+      var el = document.getElementById(id); if (!el || el._palWatch) return;
+      el._palWatch = true;
+      new MutationObserver(function () {
+        var last = el.lastElementChild;
+        if (!last || !/-palline$/.test(last.id || '')) setTimeout(renderAll, 0);
+      }).observe(el, { childList: true });
+    });
+  }
+  // Person "missing link" block: the isolated palaces and which palace cures them.
+  function gapLine(P) {
+    var pc = relations(P); if (!pc || pc.good) return '';
+    var c = cures(P), parts = [];
+    if (c) c.groups.forEach(function (g) {
+      var ns = g.byNum.map(function (r) { return r.pal; }); if (!ns.length) return;
+      parts.push((c.groups.length > 1 ? g.pillars.map(function (x) { return L[x.pillar]; }).join('+') + ': ' : '') + 'palace ' + ns.join('/'));
+    });
+    return '<div style="font-size:12px;margin-top:4px;color:#6d4c41;">⌂ <b>Palaces</b>: ' + pc.isolated.map(function (x) { return L[x.pillar] + ' (' + x.value + ')'; }).join(', ') + ' isolated'
+      + (parts.length ? ' — Feng Shui cure: a hexagram in ' + parts.join(', ') + '. Which 正 Zheng Shen / 零 Ling Shen hexagram: 👤 PERSON tab.' : '.') + '</div>';
   }
   function refresh() {
     placeToggle(); renderAll();
@@ -273,6 +283,7 @@
   window.xkdgPalaceRelations = relations;
   window.xkdgPalaceCures = cures;
   window.xkdgRenderPalaces = renderAll;
+  window.xkdgPalaceGapLine = gapLine;
   window.xkdgPalaceCureHtml = cureHtml;
   window.xkdgSamePalaceHtml = samePalaceHtml;
   window.xkdgMutualPalaceCures = mutualCures;

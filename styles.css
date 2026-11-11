@@ -131,6 +131,7 @@
         .favourable-stack { display: flex; flex-direction: column; gap: 6px; align-items: center; float: right; margin: 0 0 4px 10px; }
         /* ★ boxes float at the top right; the list flows beside them and then takes the full width (no empty area) */
         #analysis-section[style*="flex"] { display: flow-root !important; }
+        #rel-toggle-wrap + .analysis-section { margin-top: 4px; }
         #analysis-section .analysis-item { overflow: hidden; }
         .analysis-item:last-child { border-bottom: none; }
         .favourable-col { display: flex; flex-direction: column; align-items: center; min-width: 110px; }
