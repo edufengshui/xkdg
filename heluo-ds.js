@@ -25,6 +25,10 @@
   var EL_BR = ['Water', 'Earth', 'Wood', 'Wood', 'Earth', 'Fire', 'Fire', 'Earth', 'Metal', 'Metal', 'Earth', 'Water'];
   var REL = { P: 'Parent', W: 'Wealth', G: 'Ghost', C: 'Children', B: 'Brothers' };
   function clash(b) { return BR[(BR.indexOf(b) + 6) % 12]; }
+  // Cures (Edu, 11/11/2026): yin/yang of a hexagram from its trigrams, as in the natal reading — Qian, Zhen, Kan, Gen are
+  // yang, Kun, Xun, Li, Dui yin. Two yang trigrams = yang, two yin = yin, one and one = neutral.
+  var YANG_T = { Qian: 1, Zhen: 1, Kan: 1, Gen: 1 };
+  function yyTri(h) { var n = (YANG_T[h.upper] ? 1 : 0) + (YANG_T[h.lower] ? 1 : 0); return n === 2 ? 'yang' : n === 0 ? 'yin' : null; }
   // Natal voids (Edu, 11/11/2026): counted from the DAY pillar. A void branch that stands in the bazi NEXT to the branch
   // that clashes it (hour–day, day–month, month–year) comes out of the void; far apart (e.g. month and hour) it does not.
   // → { all: the two void branches, out: those released by the adjacent clash, list: the ones still void }
@@ -270,7 +274,7 @@
   // day system only (cycle and annual belong to the chart analysis). Thread of the purpose: the relation of the purpose
   // on the line of the month (1), the Lord of the Block (2), the primary line of the day (3) and its outcome (3); a
   // hidden line under the line read counts half; the relation that attacks the purpose (the price) takes the same away.
-  // A void line (true voids from the birth DAY pillar, not timely in the birth month) is not a penalty: "fruits later". Adjustment = thread / 3, from −3 to +3.
+  // A void line (true voids from the birth DAY pillar, not timely in the birth month) is not a penalty: "fruits later". Thread / 3 = ☯ points, from −3 to +3; in the scan each point is 5% of the XKDG score (app-bazi.js _hlApply).
   var XK_REL = { wealth: 'W', career: 'G', speak: 'C', legal: 'P', health: 'C', journey: 'C', support: 'P' }; // relationship: W man, G woman
   var XK_ATT = { W: 'B', P: 'W', C: 'P', G: 'C', B: 'G' }, XK_W = { m: 1, lord: 2, d: 3, s2: 3 };
   var XK_LBL = { m: 'month line', lord: 'Lord of the Block', d: 'day line (primary)', s2: 'day line (outcome)' };
@@ -279,8 +283,11 @@
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
     var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = natalVoids(ctx.Pn).list, mb0 = ctx.Pn.month[1];
     var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
+    // Edu, 11/11/2026: a void comes out with the same branch in the year, month or day (填實), or when the time clashes
+    // it AND the branch is timely in the season of the date (the month); a clash on an untimely void leaves it void.
     function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0 && !timely(L.el, mb0);   // a timely void is not a real void
-      return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null, voidL: v, filled: v && T.indexOf(L.branch) >= 0 }; }
+      var same = T.indexOf(L.branch) >= 0, byCl = !same && T.indexOf(clash(L.branch)) >= 0 && timely(L.el, Pe.month[1]);
+      return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null, voidL: v, filled: v && (same || byCl), byClash: v && byCl }; }
     var Ls = [li('m', p.month.hex.n, p.month.line), li('lord', p.id.lord[0], p.id.lord[1]), li('d', p.id.day[0], p.id.day[1]), li('s2', p.id.dayHex[0], p.id.dayHex[1])];
     var t = 0, on = [], price = [], later = [];
     Ls.forEach(function (L) {
@@ -296,10 +303,10 @@
     }); });
     // Cures: what the natal chart needs to come back into balance (yang or yin), from the block and day hexagram
     var pr = ctx.prof, need = (pr.rY < -0.25 || pr.rE > 0.25) && !(pr.rE < -0.25 || pr.rY > 0.25) ? 'yang' : (pr.rE < -0.25 || pr.rY > 0.25) && !(pr.rY < -0.25 || pr.rE > 0.25) ? 'yin' : null, cure = [];
-    function yy(h) { var n = h.lines.reduce(function (a, b) { return a + (b ? 1 : 0); }, 0); return n >= 4 ? 'yang' : n <= 2 ? 'yin' : null; }
+    function yy(h) { return yyTri(h); }
     var adj = 0;
     if (key === 'luck') adj = lk.length - opp.length;
-    else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram mostly ' + q + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
+    else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
     return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, luck: lk, opp: opp, need: need, cure: cure, yv: yv };
@@ -546,11 +553,11 @@
     var pos = dh.line === 1 ? 'Line 1: a beginning — good for what starts (launch, wedding, first step).' : dh.line === 6 ? 'Line 6: an end or a completion — good for what closes (sale, closing, conclusion).' : '';
     if (pos) box += '<div style="font-size:11px;color:#555;margin-top:3px;">' + pos + '</div>';
     h += '<div style="border:1px solid #b39ddb;background:#f7f3fd;border-radius:8px;padding:8px;margin:6px 0;font-size:12px;line-height:1.55;">'
-      + '<div style="font-weight:700;color:#4527a0;">He Luo for ' + (XK_PL[th.key] || 'this day') + (th.adj ? ' · ' + sgn(th.adj) + ' on the XKDG score' : ' · no change to the XKDG score') + '</div>' + box + '</div>';
+      + '<div style="font-weight:700;color:#4527a0;">He Luo for ' + (XK_PL[th.key] || 'this day') + (th.adj ? ' · ' + sgn(th.adj * 5) + '% on the XKDG score' : ' · no change to the XKDG score') + '</div>' + box + '</div>';
     function lv(title, L, hx, cy) {
       return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + L.n + ' ' + esc(U().hexName ? U().hexName(L.n) : '') + ' line ' + L.l + '</div>'
         + (U().cycleHexSvg ? U().cycleHexSvg(hx, L.l, cy, me) : '')
-        + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.voidL ? (L.filled ? ' · void, filled today' : ' · <span style="' + O + '">void: later</span>') : '') + '</div>'
+        + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.voidL ? (L.filled ? (L.byClash ? ' · void, out today (clashed by the time, timely)' : ' · void, filled today') : ' · <span style="' + O + '">void: later</span>') : '') + '</div>'
         + (U().lineBody ? U().lineBody(L.n, L.l, true) : '') + '</div>';
     }
     var Ls = th.lines;
@@ -578,13 +585,15 @@
   // the line (or hidden under it), ▼ the relation that attacks it (the price), ⏳ void line (fruits later), the three Luck.
   var _pl = { key: null, y0: null, openY: null, openM: null, openC: null };
   var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  function plMark(ch, ctx, key, me, hx, line, yearBranch) {
+  function plMark(ch, ctx, key, me, hx, line, yearBranch, monthBranch) {
     var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
     var yv = natalVoids(ch.Pn).list, G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
     if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + '</span>'); sc += 2; }
     else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
     if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + '</span>'); sc -= 2; }
-    if (yv.indexOf(L.branch) >= 0 && !timely(L.el, ch.Pn.month[1])) m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + (yearBranch === L.branch ? ', filled this year' : ': later') + '</span>');
+    if (yv.indexOf(L.branch) >= 0 && !timely(L.el, ch.Pn.month[1])) m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + (yearBranch === L.branch ? ', filled this year'
+      : monthBranch === L.branch ? ', filled this month'
+      : monthBranch && (monthBranch === clash(L.branch) || yearBranch === clash(L.branch)) && timely(L.el, monthBranch) ? ', out this month (clashed, timely)' : ': later') + '</span>');
     var tr = [hx.upper, hx.lower], lk = [], op = [];
     ['heaven', 'earth', 'fame'].forEach(function (k) { if (tr.indexOf(ch.R.luck[k]) >= 0) lk.push(cap(k)); if (tr.indexOf(ch.R.luck.opposite[k]) >= 0) op.push(cap(k)); });
     if (lk.length) m.push('<span style="' + (key === 'luck' ? G : 'color:#2e7d32;') + '">' + (key === 'luck' ? '▲ ' : '+') + lk.join(', ') + ' Luck</span>');
@@ -592,8 +601,8 @@
     if (key === 'luck') sc = lk.length - op.length;
     if (key === 'cure') {
       var pr = ctx.prof, need = (pr.rY < -0.25 || pr.rE > 0.25) && !(pr.rE < -0.25 || pr.rY > 0.25) ? 'yang' : (pr.rE < -0.25 || pr.rY > 0.25) && !(pr.rY < -0.25 || pr.rE > 0.25) ? 'yin' : null;
-      var n = hx.lines.reduce(function (a, b) { return a + (b ? 1 : 0); }, 0), q = n >= 4 ? 'yang' : n <= 2 ? 'yin' : null;
-      if (need && q) { m.unshift(q === need ? '<span style="' + G + '">▲ mostly ' + q + ': what the chart needs</span>' : '<span style="' + Rd + '">▼ mostly ' + q + ': the chart has too much</span>'); sc = q === need ? 2 : -2; }
+      var q = yyTri(hx);
+      if (need && q) { m.unshift(q === need ? '<span style="' + G + '">▲ two ' + q + ' trigrams: what the chart needs</span>' : '<span style="' + Rd + '">▼ two ' + q + ' trigrams: the chart has too much</span>'); sc = q === need ? 2 : -2; }
       else if (!need) m.unshift('<span style="color:#777;">chart in balance</span>');
     }
     return { L: L, r: r, html: m.join(' · '), sc: sc };
@@ -630,7 +639,7 @@
       h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, true) : '')
         + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">3 · The months of ' + Y + ' (age ' + a.age + ')</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
       a.months.forEach(function (mo, i) {
-        var mm = plMark(ch, ctx, key, me, mo.hex, mo.line, yb), opM = _pl.openM === mo.index, per = '';
+        var mm = plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12]), opM = _pl.openM === mo.index, per = '';
         try { var s = ms[i].start, e = new Date((ms[i + 1].start || ms[i + 1].end).getTime() - 86400000); per = s.getUTCDate() + ' ' + MON3[s.getUTCMonth()] + '–' + e.getUTCDate() + ' ' + MON3[e.getUTCMonth()]; } catch (e2) {}
         h += '<tr onclick="event.stopPropagation();xkdgHLPlan(\'m\',' + mo.index + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mm.sc, false) + '"><td style="' + TD + 'white-space:nowrap;"><b>' + per + '</b></td>'
           + '<td style="' + TD + 'white-space:nowrap;">' + mo.hex.n + ' l' + mo.line + ' ' + mm.L.branch + ' ' + relTag(mm.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mm.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';

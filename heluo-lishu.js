@@ -795,6 +795,7 @@
   // Natal reading with analysis (part A, Edu 11/11/2026): replaces the old ✓/✗ "Natal reading" and the "Cycle reading".
   // Yin/Yang balance at the top of the chart (Edu, 11/11/2026: "it does not tell me if I am balanced or not").
   // Same measure as the reading below and as the Cures: each number against the average of the birth month, in line within ±25%.
+  // Edu, 11/11/2026: the month average decides (not the fixed 25 and 30, shown for reference only).
   function yyBalance(N) {
     var av = N.monthAvg, rY = N.heaven / av.yang - 1, rE = N.earth / av.yin - 1;
     function st(r) { return r > 0.25 ? 'in excess' : r < -0.25 ? 'deficient' : 'in line'; }
@@ -808,9 +809,9 @@
     else v = 'Not balanced: yang is ' + st(rY) + ' and yin is ' + st(rE) + '. No single cure: both need care.';
     return '<div style="border:1px solid ' + (ok ? '#a5d6a7' : '#ef9a9a') + ';background:' + (ok ? '#f1f8e9' : '#fdecea') + ';border-radius:8px;padding:6px 8px;margin:0 0 8px;font-size:12px;line-height:1.55;">'
       + '<b style="color:' + (ok ? '#2e7d32' : '#c62828') + ';">Yin/Yang · ' + v + '</b><br>'
-      + 'Yang ' + N.heaven + ' · balance 25 (' + sg(N.devHeaven) + ') · average for ' + av.month + ' ' + av.yang + ' · <span style="color:' + col(rY) + ';">' + pc(rY) + ', ' + st(rY) + '</span><br>'
-      + 'Yin ' + N.earth + ' · balance 30 (' + sg(N.devEarth) + ') · average for ' + av.month + ' ' + av.yin + ' · <span style="color:' + col(rE) + ';">' + pc(rE) + ', ' + st(rE) + '</span><br>'
-      + 'Total ' + N.total + ' · balance 55 (' + sg(N.total - 55) + ')</div>';
+      + 'Yang ' + N.heaven + ' · average for ' + av.month + ' ' + av.yang + ' · <span style="color:' + col(rY) + ';">' + pc(rY) + ', ' + st(rY) + '</span><br>'
+      + 'Yin ' + N.earth + ' · average for ' + av.month + ' ' + av.yin + ' · <span style="color:' + col(rE) + ';">' + pc(rE) + ', ' + st(rE) + '</span><br>'
+      + '<span style="color:#888;font-size:11px;">The average of the birth month decides. Fixed balance for reference only: yang 25 (' + sg(N.devHeaven) + '), yin 30 (' + sg(N.devEarth) + '), total 55 (' + sg(N.total - 55) + ').</span></div>';
   }
   function newNatalReading(R, male, lon) {
     var NA = root.XKDGHeluoNatal, DC = root.XKDGHeluoDSCore;
