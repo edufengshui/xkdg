@@ -269,11 +269,19 @@
     if (t > 0) return 'is not strong alone, but gets help from around ' + (A.male ? 'him' : 'her');
     return 'struggles and needs care';
   }
+  // Edu 11/11: the birth gives the verdict of the period; the years of the cycle that touch the line are its peaks and dips.
+  function yl(a) { return a.map(function (x) { return x.replace(/ \((\d+)\)/, ' (age $1)'); }).join(', '); }
+  function years(c) {
+    var up = c.act.concat(c.com).sort(), out = '';
+    if (up.length) out += 'The years when this shows most: ' + yl(up) + '. ';
+    if (c.hit.length) out += 'Years of sudden turns, for better or worse: ' + yl(c.hit) + '.';
+    return out ? p('<span style="color:#555;">' + esc(out.trim()) + '</span>') : '';
+  }
   function period(A, c) {
     var N = c.N, sub = pron(SUBJ[c.r], A.male);
     var tech = 'Line ' + c.L.branch + ' ' + c.L.el + ', person ' + c.me + '. At birth: ' + (plain(c.tm.note, 'birth', A.T) || 'no link with the birth branches') + '.'
       + (around(c).length ? ' Around it: ' + around(c).join(', ') + '.' : '') + (c.luck.length ? ' Carries the ' + c.luck.map(function (x) { return x.slice(1); }).join(' and ') + ' Luck.' : '')
-      + (c.act.length ? ' Switched on in ' + c.act.join(', ') + '.' : '') + (c.com.length ? ' Helped in ' + c.com.join(', ') + '.' : '') + (c.hit.length ? ' Hit in ' + c.hit.join(', ') + '.' : '');
+      + (c.act.length ? ' Same branch in ' + c.act.join(', ') + '.' : '') + (c.com.length ? ' Combined (六合) in ' + c.com.join(', ') + '.' : '') + (c.hit.length ? ' Clashed in ' + c.hit.join(', ') + '.' : '');
     return '<div style="border-left:4px solid ' + RC[c.r] + ';padding:4px 8px;background:#fcfbff;border-radius:4px;">'
       + '<div style="font-size:13px;font-weight:600;">Age ' + c.c.from + '–' + c.c.to + ' <span style="color:#888;font-weight:400;">(' + c.y1 + '–' + c.y2 + ', ' + (c.c.to - c.c.from + 1) + ' years)</span> · line ' + c.line + ' ' + c.L.branch + ' ' + relFull(c.r) + '</div>'
       + draw(c.hx, c.line, N.cycles, c.me)
@@ -281,6 +289,7 @@
       + p('<b>' + esc(sub.charAt(0).toUpperCase() + sub.slice(1)) + ' ' + (c.r === 'C' || c.r === 'W' ? state(A, c) : state(A, c).replace(/^is /, 'are ').replace(/ shows /, ' show ').replace(/ gets /, ' get ').replace(/ grows /, ' grow ').replace(/^struggles/, 'struggle').replace(/ needs /, ' need ')) + '.</b>')
       + lineTxt(c.hx.n, c.line, false)
       + meaning(A, c)
+      + years(c)
       + (c.flags.length ? p('<span style="color:#c62828;">⚠ ' + esc(c.flags.map(flagPlain).join('; ')) + '</span>') : '')
       + '<details style="margin-top:3px;"><summary style="font-size:11px;color:#999;cursor:pointer;">details</summary><div style="font-size:11px;color:#777;line-height:1.5;">' + esc(tech) + '</div></details>'
       + '</div>';
