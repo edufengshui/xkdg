@@ -505,9 +505,19 @@
     if ($('hl-ds')) $('hl-ds').style.display = _tab === 'ds' ? '' : 'none';
   }
   root.xkdgHLTab = function (t) { _tab = t; tabStyle(); render(); };
+  // Opened from the XKDG Date Selection (Edu, 11/11/2026: A and B inside XKDG). o.tab = 'chart' (natal reading) or 'ds';
+  // o.ds = { purpose, from, to } (ISO dates) pre-fills the He Luo Date Selection and runs it, for the same days as the XKDG scan.
+  var _dsPreset = null;
+  root.openHeluoLishuFor = function (o) {
+    o = o || {}; _dsPreset = o.ds || null; _tab = o.tab === 'ds' ? 'ds' : 'chart';
+    open();
+    var sel = $('hl-p'); if (sel && sel.querySelector('option[value="__A"]') && sel.value !== '__A') { sel.value = '__A'; root.xkdgHLPerson(); }
+    tabStyle(); render();
+  };
   function renderDS() {
     var box = $('hl-ds'); if (!box || _tab !== 'ds') return;
     if (!root.XKDGHeluoDS || !root.XKDG_HELUO_SCORES || !NJ()) { box.innerHTML = '<div style="font-size:12px;color:#999;">Loading…</div>'; return; }
+    if (_dsPreset && root.xkdgHLDSPreset) { root.xkdgHLDSPreset(_dsPreset); _dsPreset = null; }
     root.XKDGHeluoDS.render(box, _chart);
   }
   var REL = { B: 'Brothers', C: 'Children', W: 'Wealth', G: 'Ghost', P: 'Parent' };
