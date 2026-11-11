@@ -69,8 +69,14 @@
         ss: { txt: ss.dir + ' (' + ss.br.map(function (i) { return BR[i]; }).join('') + ')', r: ss.r }
       };
     });
-    var wj = wuJi((o.pillars.year || '').charAt(0));
-    if (out.units.year && wj) out.units.year.wj = { txt: wj.br.map(function (i) { return BR[i] + ' ' + BR_PY[i]; }).join(', '), r: wj.r };
+    // Wu Ji Sha (Edu, session 49): active ONLY on its own days in its own sector (wuJiShaDays, app-bazi.js)
+    var wjd = (typeof wuJiShaDays === 'function') ? wuJiShaDays((o.pillars.year || '').charAt(0)) : [];
+    if (out.units.year && wjd.length) {
+      var today = o.pillars.day || '', act = wjd.filter(function (x) { return x.day === today; })[0] || null;
+      out.units.year.wj = {
+        txt: wjd.map(function (x) { return x.day + ' day → ' + x.branch + ' ' + x.py + ' (' + x.quadrant + ')'; }).join(' · '),
+        r: rng(wjd[0].from, wjd[wjd.length - 1].to), parts: wjd, active: act, today: today };
+    }
     return out;
   }
 
@@ -83,7 +89,10 @@
       h += '<tr' + (x.r ? ' onclick="XKDGAfflictions.pick(\'' + key + '\')"' : '') + ' style="' + (x.r ? 'cursor:pointer;' : '') + (on ? 'background:#fff3cd;' : '') + '">'
         + '<td style="' + TD + 'color:' + COL[key] + ';font-weight:600;white-space:nowrap;">' + NAMES[key] + '</td>'
         + '<td style="' + TD + '">' + x.txt + (key === 'y5' && x.star ? ' <span style="color:#888;font-size:11px;">(year star ' + x.star + ')</span>' : '') + '</td>'
-        + '<td style="' + TD + 'color:#888;white-space:nowrap;text-align:right;">' + fmt(x.r) + '</td></tr>';
+        + '<td style="' + TD + 'color:#888;white-space:nowrap;text-align:right;">' + (x.parts ? x.parts.map(function (q) { return q.from + '–' + q.to + '°'; }).join('<br>') : fmt(x.r)) + '</td></tr>';
+      if (key === 'wj') h += '<tr><td colspan="3" style="padding:2px 6px 5px;font-size:11px;' + (x.active ? 'color:#b71c1c;font-weight:bold;' : 'color:#888;') + '">'
+        + (x.active ? '⚠ ACTIVE TODAY (' + x.active.day + '): no works or activities in the ' + x.active.quadrant + ' — ' + x.active.branch + ' ' + x.active.py + ' sector.'
+                    : 'Active only on those days, in that sector (strong Sha: no works or activities there). Today ' + (x.today || '') + ': not active.') + '</td></tr>';
     });
     return h + '</table>';
   }
@@ -128,8 +137,35 @@
     if (typeof fsRedraw === 'function') try { fsRedraw(); } catch (e) {}
     if (_sel) { var w = document.getElementById('fs-canvas-wrap'); if (w && w.scrollIntoView) try { w.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
   }
+  // Wu Ji Sha: one 15° sector per day (戊戌 → 戌, 己亥 → 亥), full colour only for the one active today.
+  function drawWuJi(ctx, cx, cy, outerR, ang) {
+    var x = _last.units.year && _last.units.year.wj; if (!x || !x.parts) return;
+    x.parts.forEach(function (q) {
+      var on = x.active && x.active.day === q.day, span = norm(q.to - q.from), a0 = ang(q.from), a1 = ang(q.from + span);
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, outerR, a0, a1); ctx.closePath();
+      ctx.fillStyle = on ? '#b71c1c' : COL.wj; ctx.globalAlpha = on ? 0.35 : 0.12; ctx.fill();
+      ctx.globalAlpha = on ? 1 : 0.6; ctx.lineWidth = 2; ctx.strokeStyle = on ? '#b71c1c' : COL.wj;
+      if (!on) ctx.setLineDash([8, 6]);
+      ctx.stroke();
+      ctx.beginPath(); ctx.lineWidth = 14; ctx.arc(cx, cy, outerR + 14, a0, a1); ctx.stroke();
+      ctx.setLineDash([]);
+      var mid = ang(q.from + span / 2), tx = cx + Math.cos(mid) * (outerR + 44), ty = cy + Math.sin(mid) * (outerR + 44);
+      ctx.globalAlpha = 1; ctx.font = 'bold 26px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = on ? '#b71c1c' : COL.wj;
+      ctx.fillText(q.day, tx, ty);
+      ctx.restore();
+    });
+    var H = ctx.canvas.height, y = H - 20 - 2 * 34;
+    ctx.save(); ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    ctx.font = 'bold 32px system-ui'; ctx.fillStyle = x.active ? '#b71c1c' : COL.wj;
+    ctx.fillText(NAMES.wj + ' ' + ((_last.units.year && _last.units.year.gz) || ''), 10, y - 14);
+    ctx.font = '28px system-ui'; ctx.fillStyle = x.active ? '#b71c1c' : '#333';
+    ctx.fillText(x.active ? '⚠ ACTIVE TODAY (' + x.active.day + '): no works in the ' + x.active.quadrant : 'only on ' + x.parts.map(function (q) { return q.day; }).join(' / ') + ' days — today not active', 10, y + 22);
+    ctx.restore();
+  }
   // The picked one: a translucent wedge over the wheel + a bold arc outside it + a caption.
   function drawPicked(ctx, cx, cy, outerR, ang) {
+    if (_sel.key === 'wj') { drawWuJi(ctx, cx, cy, outerR, ang); return; }
     var ab = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' }, arcs = {}, key = _sel.key;
     UNITS.forEach(function (u) {
       if (_sel.unit && _sel.unit !== u[0]) return;
@@ -179,6 +215,7 @@
         UNITS.forEach(function (u) {
           var x = _last.units[u[0]] && _last.units[u[0]][key];
           if (!x || !x.r) return;
+          if (key === 'wj') { if (!x.active) return; x = { r: rng(x.active.from, x.active.to) }; }   // only on its day, its sector
           var id = x.r.from + '_' + x.r.to;
           (arcs[id] = arcs[id] || { r: x.r, who: [] }).who.push(ab[u[0]]);
         });
