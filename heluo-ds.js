@@ -563,5 +563,87 @@
       + xkDayHtml(th, iso) + '</div>';
     ov.style.display = 'block'; ov.scrollTop = 0;
   };
-  root.XKDGHeluoDS = { xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  // ── Purpose planner in the chart reading (Edu, 11/11/2026): the wide Date Selection — periods of years, the single
+  // year, the month — lives here, not in the XKDG day scan. Same purposes as XKDG. For each period (cycle line), year
+  // (moved line of the annual) and month (line of the month in the monthly hexagram): ▲ the relation of the purpose on
+  // the line (or hidden under it), ▼ the relation that attacks it (the price), ⏳ void line (fruits later), the three Luck.
+  var _pl = { key: null, y0: null, openY: null, openM: null, openC: null };
+  var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function plMark(ch, ctx, key, me, hx, line, yearBranch) {
+    var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
+    var yv = voids(ch.R.input.heluoYearPillar), G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
+    if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + '</span>'); sc += 2; }
+    else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
+    if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + '</span>'); sc -= 2; }
+    if (yv.indexOf(L.branch) >= 0) m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + (yearBranch === L.branch ? ', filled this year' : ': later') + '</span>');
+    var tr = [hx.upper, hx.lower], lk = [], op = [];
+    ['heaven', 'earth', 'fame'].forEach(function (k) { if (tr.indexOf(ch.R.luck[k]) >= 0) lk.push(cap(k)); if (tr.indexOf(ch.R.luck.opposite[k]) >= 0) op.push(cap(k)); });
+    if (lk.length) m.push('<span style="' + (key === 'luck' ? G : 'color:#2e7d32;') + '">' + (key === 'luck' ? '▲ ' : '+') + lk.join(', ') + ' Luck</span>');
+    if (op.length) m.push('<span style="' + (key === 'luck' ? Rd : 'color:#c62828;') + '">' + (key === 'luck' ? '▼ ' : '−') + 'opposite of ' + op.join(', ') + ' Luck</span>');
+    if (key === 'luck') sc = lk.length - op.length;
+    if (key === 'cure') {
+      var pr = ctx.prof, need = (pr.rY < -0.25 || pr.rE > 0.25) && !(pr.rE < -0.25 || pr.rY > 0.25) ? 'yang' : (pr.rE < -0.25 || pr.rY > 0.25) && !(pr.rY < -0.25 || pr.rE > 0.25) ? 'yin' : null;
+      var n = hx.lines.reduce(function (a, b) { return a + (b ? 1 : 0); }, 0), q = n >= 4 ? 'yang' : n <= 2 ? 'yin' : null;
+      if (need && q) { m.unshift(q === need ? '<span style="' + G + '">▲ mostly ' + q + ': what the chart needs</span>' : '<span style="' + Rd + '">▼ mostly ' + q + ': the chart has too much</span>'); sc = q === need ? 2 : -2; }
+      else if (!need) m.unshift('<span style="color:#777;">chart in balance</span>');
+    }
+    return { L: L, r: r, html: m.join(' · '), sc: sc };
+  }
+  function plBg(sc, on) { return on ? 'background:#fff3e0;' : sc > 0 ? 'background:#f1f8e9;' : sc < 0 ? 'background:#fdecea;' : ''; }
+  function plBody(ch) {
+    var R = ch.R, ctx = context(R, ch.Pn, ch.male), key = _pl.key, y0b = R.input.o.year, nowY = H().heluoYearOf(), nowAge = nowY - y0b + 1;
+    var TD = 'padding:4px 5px;vertical-align:top;', X = xkRel(key, ch.male), lon = xkLon(ch.c);
+    var F = 'padding:5px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;';
+    var h = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:6px 0;"><div><label style="font-size:11px;color:#666;display:block;">Purpose</label><select onchange="xkdgHLPlan(\'key\',this.value)" style="' + F + '">'
+      + Object.keys(XK_PL).map(function (k) { return '<option value="' + k + '"' + (k === key ? ' selected' : '') + '>' + XK_PL[k] + '</option>'; }).join('') + '</select></div>'
+      + '<div style="font-size:11px;color:#555;line-height:1.5;max-width:330px;">' + (X ? XK_PL[key] + ' = <b>' + REL[X] + '</b>' + (key === 'relationship' ? ' (' + (ch.male ? 'man' : 'woman') + ')' : '') + '; the price is ' + REL[XK_ATT[X]] + '.' : key === 'luck' ? 'Where the Heaven, Earth and Fame Luck trigrams appear.' : 'What brings the natal chart back into balance (yin and yang).') + ' ▲ helps · ▼ price · ⏳ void: later.</div></div>';
+    // 1 · periods of years
+    h += '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">1 · Periods of years</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
+    cycleRows(R).forEach(function (x, i) {
+      var on = nowAge >= x.c.from && nowAge <= x.c.to, mk = plMark(ch, ctx, key, x.me, x.hx, x.c.line, null), id = 'c' + i, op = _pl.openC === id;
+      h += '<tr onclick="xkdgHLPlan(\'c\',\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mk.sc, on) + '"><td style="' + TD + 'white-space:nowrap;"><b>age ' + x.c.from + '–' + x.c.to + '</b>' + (on ? ' ◀' : '') + '<div style="font-size:10px;color:#888;">' + x.y1 + '–' + x.y2 + '</div></td>'
+        + '<td style="' + TD + 'white-space:nowrap;">' + x.phase + ' ' + x.hx.n + ' l' + x.c.line + '<br>' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
+      if (op) h += '<tr><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(x.hx, x.c.line, x.phase === 'XT' ? R.cyclesXT : R.cyclesHT) : '') + (U().lineBody ? U().lineBody(x.hx.n, x.c.line) : '') + '</td></tr>';
+    });
+    h += '</table>';
+    // 2 · the years, 3 · the months of the open year
+    var Y0 = _pl.y0 || nowY, B = 'border:1px solid #b39ddb;background:#fff;color:#5e35b1;border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin:12px 0 3px;"><span style="font-size:12px;font-weight:600;color:#4527a0;">2 · The years · tap a year for its months</span>'
+      + '<button onclick="xkdgHLPlan(\'y0\',' + (Y0 - 12) + ')" style="' + B + '">◀ 12</button><button onclick="xkdgHLPlan(\'y0\',' + nowY + ')" style="' + B + '">now</button><button onclick="xkdgHLPlan(\'y0\',' + (Y0 + 12) + ')" style="' + B + '">12 ▶</button></div>'
+      + '<table style="border-collapse:collapse;font-size:12px;width:100%;">';
+    for (var Y = Y0; Y < Y0 + 12; Y++) {
+      var a = H().annual(R, Y); if (a.none) continue;
+      var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], mk = plMark(ch, ctx, key, me, a.hex, a.moved, yb), op = _pl.openY === Y;
+      h += '<tr onclick="xkdgHLPlan(\'y\',' + Y + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mk.sc, Y === nowY) + (op ? 'outline:2px solid #5e35b1;' : '') + '"><td style="' + TD + 'white-space:nowrap;"><b>' + Y + '</b> · age ' + a.age + (Y === nowY ? ' ◀' : '') + '<div style="font-size:10px;color:#888;">' + yb + ' year</div></td>'
+        + '<td style="' + TD + 'white-space:nowrap;">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '<br>l' + a.moved + ' ' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
+      if (!op) continue;
+      var ms = null, aP = null; try { ms = H().periods.months(Y, lon); aP = H().periods.annual(ms); } catch (e) {}
+      h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, true) : '')
+        + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">3 · The months of ' + Y + ' (age ' + a.age + ')</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
+      a.months.forEach(function (mo, i) {
+        var mm = plMark(ch, ctx, key, me, mo.hex, mo.line, yb), opM = _pl.openM === mo.index, per = '';
+        try { var s = ms[i].start, e = new Date((ms[i + 1].start || ms[i + 1].end).getTime() - 86400000); per = s.getUTCDate() + ' ' + MON3[s.getUTCMonth()] + '–' + e.getUTCDate() + ' ' + MON3[e.getUTCMonth()]; } catch (e2) {}
+        h += '<tr onclick="event.stopPropagation();xkdgHLPlan(\'m\',' + mo.index + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mm.sc, false) + '"><td style="' + TD + 'white-space:nowrap;"><b>' + per + '</b></td>'
+          + '<td style="' + TD + 'white-space:nowrap;">' + mo.hex.n + ' l' + mo.line + ' ' + mm.L.branch + ' ' + relTag(mm.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mm.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
+        if (opM) { var mP = null; try { var d0 = H().periods.dayMs(ms[i].start); mP = H().periods.month(d0, d0, H().periods.dayMs(ms[i + 1].start || ms[i + 1].end)); } catch (e3) {}
+          h += '<tr onclick="event.stopPropagation()"><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(mo.hex, mo.line, mP, me) : '') + (U().lineBody ? U().lineBody(mo.hex.n, mo.line, true) : '') + '</td></tr>'; }
+      });
+      h += '</table></td></tr>';
+    }
+    return h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Periods: the cycle line. Years: the moved line of the annual hexagram (the year runs from the Winter Solstice). Months: the line of the month in the monthly hexagram. Green rows help the purpose, red rows carry its price. For the single days use the XKDG Date Selection (☯ on the favourable dates).</div>';
+  }
+  function plannerHtml(ch) {
+    if (!ch || !ch.R || !NJ()) return '';
+    if (!_pl.key) { var pk = ''; try { pk = document.getElementById('purpose-select').value; } catch (e) {} _pl.key = XK_PL[pk] ? pk : 'wealth'; }
+    var body = ''; try { body = plBody(ch); } catch (e) { body = '<div style="font-size:12px;color:#c0392b;">Planner failed: ' + esc(e && e.message) + '</div>'; }
+    return '<details id="hl-plan-d"' + (_pl.opened ? ' open' : '') + ' ontoggle="xkdgHLPlan(\'tog\',this.open)" style="margin-top:12px;border:1px solid #d1c4e9;border-radius:8px;padding:8px;"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:#4527a0;">Purpose planner · periods, years, months</summary><div id="hl-plan">' + body + '</div></details>';
+  }
+  root.xkdgHLPlan = function (what, v) {
+    if (what === 'tog') { _pl.opened = !!v; return; }
+    if (what === 'key') { _pl.key = v; } else if (what === 'y0') { _pl.y0 = v; _pl.openY = null; _pl.openM = null; }
+    else if (what === 'y') { _pl.openY = _pl.openY === v ? null : v; _pl.openM = null; } else if (what === 'm') { _pl.openM = _pl.openM === v ? null : v; }
+    else if (what === 'c') { _pl.openC = _pl.openC === v ? null : v; }
+    var box = $('hl-plan'), ch = H().currentChart && H().currentChart(); if (box && ch) { try { box.innerHTML = plBody(ch); } catch (e) {} }
+  };
+  root.XKDGHeluoDS = { plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);
