@@ -392,15 +392,35 @@
         t += '<div style="' + P + '">A year or a month with this hexagram is unfavourable: be careful then.</div>'
           + '<div style="' + P + '"><b>Next years with ' + hx.n + ' as annual hexagram:</b> ' + (yrs.length ? yrs.join(', ') : 'none in the next 30 years') + '.</div>';
       } }
+    hlPop(title, '<div style="display:flex;gap:10px;align-items:center;margin:8px 0;">' + hexSvg(hx.lines, 0, 48) + '<div style="font-size:14px;"><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + '<br><span style="color:#777;font-size:12px;">' + hx.upper + ' over ' + hx.lower + '</span></div></div>'
+      + t + hexText(hx.n));
+  }
+  function hlPop(title, body) {
     var ov = document.getElementById('hl-derived-ov');
     if (!ov) { ov = document.createElement('div'); ov.id = 'hl-derived-ov'; ov.style.cssText = 'position:fixed;inset:0;z-index:100010;background:rgba(20,8,30,.5);display:flex;align-items:center;justify-content:center;padding:16px;';
       ov.onclick = function (e) { if (e.target === ov) ov.remove(); }; document.body.appendChild(ov); }
     ov.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:440px;width:100%;max-height:85vh;overflow:auto;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3);">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;"><b style="color:#4527a0;font-size:15px;">' + title + '</b><span onclick="document.getElementById(\'hl-derived-ov\').remove()" style="cursor:pointer;font-size:22px;color:#777;padding:0 4px;">×</span></div>'
-      + '<div style="display:flex;gap:10px;align-items:center;margin:8px 0;">' + hexSvg(hx.lines, 0, 48) + '<div style="font-size:14px;"><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + '<br><span style="color:#777;font-size:12px;">' + hx.upper + ' over ' + hx.lower + '</span></div></div>'
-      + t + hexText(hx.n) + '</div>';
+      + body + '</div>';
+  }
+  // A year tapped in the natal reading (Edu 11/11): its annual hexagram drawn, the moved line and its text
+  function yearPopup(Y) {
+    var ch = _chart; if (!ch || !ch.R) return;
+    var R = ch.R, a = annual(R, Y);
+    if (a.none) { hlPop('Year ' + Y, '<div style="font-size:13px;">Age ' + a.age + ': outside the cycles.</div>'); return; }
+    var per = a.period, isXT = a.periodHex === R.xianTian, me = personEl(a.periodHex, per.line), aPer = null;
+    try { aPer = annualPeriods(msTST(Y, _hlLon)); } catch (e) {}
+    var oi = oppInvTag(R, a.hex), P = 'font-size:13px;line-height:1.6;color:#333;margin:6px 0;';
+    hlPop('Year ' + Y + ' · age ' + a.age,
+      '<div style="' + P + '">' + (isXT ? 'Xian Tian' : 'Hou Tian') + ' ' + a.periodHex.n + ' ' + esc(hexName(a.periodHex.n)) + ', line ' + per.line + ' (age ' + per.from + '–' + per.to + '), year ' + a.k + ' of ' + a.len + ' · person ' + me + '</div>'
+      + '<div style="font-size:14px;font-weight:600;color:#4527a0;margin-top:6px;">Annual ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · moved line ' + a.moved + '</div>'
+      + cycleHexSvg(a.hex, a.moved, aPer, me)
+      + (oi.length ? '<div style="font-size:12px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oi.join(', ') + '</div>' : '')
+      + '<div style="font-size:12px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
+      + lineBody(a.hex.n, a.moved, true) + hexText(a.hex.n));
   }
   root.xkdgHLDerived = derivedPopup;
+  root.xkdgHLYearPop = yearPopup;
   function miniHex(lines) {
     var s = '<svg width="26" height="25" viewBox="0 0 26 25" style="display:block;">';
     for (var i = 0; i < 6; i++) { var y = (5 - i) * 4.4;
