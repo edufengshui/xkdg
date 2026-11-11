@@ -800,6 +800,7 @@
     function st(r) { return r > 0.25 ? 'in excess' : r < -0.25 ? 'deficient' : 'in line'; }
     function pc(r) { return (r >= 0 ? '+' : '−') + Math.abs(Math.round(r * 100)) + '%'; }
     function col(r) { return Math.abs(r) <= 0.25 ? '#2e7d32' : '#c62828'; }
+    function sg(n) { return (n >= 0 ? '+' : '−') + Math.abs(n); }
     var needYang = rY < -0.25 || rE > 0.25, needYin = rE < -0.25 || rY > 0.25, v, ok = !needYang && !needYin;
     if (ok) v = 'Balanced: yin and yang are both in line. No cure needed.';
     else if (needYang && !needYin) v = 'Not balanced: ' + (rY < -0.25 ? 'yang is deficient' : 'yin is in excess') + (rY < -0.25 && rE > 0.25 ? ' and yin is in excess' : '') + '. The chart needs <b>yang</b>.';
@@ -807,8 +808,9 @@
     else v = 'Not balanced: yang is ' + st(rY) + ' and yin is ' + st(rE) + '. No single cure: both need care.';
     return '<div style="border:1px solid ' + (ok ? '#a5d6a7' : '#ef9a9a') + ';background:' + (ok ? '#f1f8e9' : '#fdecea') + ';border-radius:8px;padding:6px 8px;margin:0 0 8px;font-size:12px;line-height:1.55;">'
       + '<b style="color:' + (ok ? '#2e7d32' : '#c62828') + ';">Yin/Yang · ' + v + '</b><br>'
-      + 'Yang ' + N.heaven + ' · average for ' + av.month + ' ' + av.yang + ' · <span style="color:' + col(rY) + ';">' + pc(rY) + ', ' + st(rY) + '</span><br>'
-      + 'Yin ' + N.earth + ' · average for ' + av.month + ' ' + av.yin + ' · <span style="color:' + col(rE) + ';">' + pc(rE) + ', ' + st(rE) + '</span></div>';
+      + 'Yang ' + N.heaven + ' · balance 25 (' + sg(N.devHeaven) + ') · average for ' + av.month + ' ' + av.yang + ' · <span style="color:' + col(rY) + ';">' + pc(rY) + ', ' + st(rY) + '</span><br>'
+      + 'Yin ' + N.earth + ' · balance 30 (' + sg(N.devEarth) + ') · average for ' + av.month + ' ' + av.yin + ' · <span style="color:' + col(rE) + ';">' + pc(rE) + ', ' + st(rE) + '</span><br>'
+      + 'Total ' + N.total + ' · balance 55 (' + sg(N.total - 55) + ')</div>';
   }
   function newNatalReading(R, male, lon) {
     var NA = root.XKDGHeluoNatal, DC = root.XKDGHeluoDSCore;
@@ -874,12 +876,7 @@
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
       + [['Heaven (year stem)', 'heaven'], ['Earth (year branch)', 'earth'], ['Fame (season)', 'fame']].map(function (r) {
           return '<tr style="border-top:1px solid #eee;"><td style="padding:2px 8px;">' + r[0] + '</td><td style="padding:2px 8px;">' + triLbl(R.luck[r[1]]) + ' · ' + TRI_EL[R.luck[r[1]]] + '</td><td style="padding:2px 8px;">' + triLbl(R.luck.opposite[r[1]]) + '</td></tr>';
-        }).join('') + '</table>'
-      + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Yin / Yang</div>'
-      + '<div style="font-size:12px;color:#333;line-height:1.6;">Heaven (yang) ' + N.heaven + ' · balance 25 · ' + (N.devHeaven >= 0 ? '+' : '') + N.devHeaven
-      + '<br>Earth (yin) ' + N.earth + ' · balance 30 · ' + (N.devEarth >= 0 ? '+' : '') + N.devEarth
-      + '<br>Total ' + N.total + ' · balance 55 · ' + (N.total - 55 >= 0 ? '+' : '') + (N.total - 55)
-      + '<br>Average for ' + N.monthAvg.month + ' (month ' + BR_PY[p.branches[1]] + '): yang ' + N.monthAvg.yang + ' · yin ' + N.monthAvg.yin + '</div>';
+        }).join('') + '</table>';
     out.innerHTML = h;
   }
 
