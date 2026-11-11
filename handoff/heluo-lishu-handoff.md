@@ -37,3 +37,13 @@ Diana 1/7/1961 19:00 Sandringham (XT 29 l6 → HT 48), Bill Gates 28/10/1955 22:
 
 ## Preferenze di Edu
 Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. Bazi in colonna Ora-Giorno-Mese-Anno. Testi dell'app in inglese. Opzioni di ogni sezione in un bottone ☰ a destra dell'intestazione. Non usare la sua data di nascita in materiali pubblici. Claude gli dice quando conviene aprire una nuova chat.
+
+## 11/11/2026 (pomeriggio) — He Luo dentro la Date Selection XKDG, planner, vuoti
+
+- **Scansione XKDG**: sulle date già favorevoli (score ≥ 6) He Luo alza o abbassa il punteggio da −3 a +3 (`_hlApply` in `renderScanResults`, app-bazi.js; `thread`, `xkScan`, `xkSummary` in heluo-ds.js). Solo mese, blocco, giorno: relazione dello scopo su linea del mese (1), Signore del blocco (2), primario (3), esito (3); nascosta = metà; il prezzo (relazione che attacca lo scopo) toglie; linea vuota = "fruits later", nessuna penalità. Chip ☯ sulla riga → `xkdgHLDay(iso)`: lettura del giorno con i quattro esagrammi disegnati e i testi. Solo Person A, serve il genere.
+- **Scopi**: wealth W · career G · relationship W (uomo) / G (donna) · speak C · legal P · health C · journey C · **support** P (nuovo: Parent nella data + Nobile in `checkPurpose`) · **luck** (nuovo: restano le date con almeno una delle tre Luck; come Cures non è uno scopo QMDJ) · cure = yin/yang che serve alla carta (regola proposta da Claude, da confermare con Edu).
+- **Purpose planner** nella scheda Chart (`plannerHtml`, `plBody`, `plMark`, `xkdgHLPlan`): periodi di anni, anni (12 alla volta), mesi dell'anno aperto, con ▲ scopo, ▼ prezzo, ⏳ vuoto, Luck.
+- **Carta**: riquadro Yin/Yang in cima (`yyBalance`: equilibrato o cosa serve; media del mese ±25%); derivati raggruppati con la madre (riga Xian Tian, riga Hou Tian); niente ripetizioni di bazi e numeri nella lettura natale.
+- **Vuoti** (`natalVoids` in heluo-ds.js): solo dal pilastro del GIORNO; un ramo vuoto accanto, nel bazi, al ramo che lo scontra esce dal vuoto (solo pilastri vicini); vuoto timely = non vero vuoto. Prototipo ds_cascata.js allineato.
+- Verifiche: `node ds_app_check.js` (0 differenze), `node mensile_app_check.js`. Prototipo e prova a percentili del filo: heluo-test/cmp/ds_filo.js (Edu non la usa come criterio).
+- Aperti: regola dei Cures HLLS; quale misura yin/yang comanda (media del mese o 25/30); ampiezza ±3.

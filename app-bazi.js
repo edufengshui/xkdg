@@ -498,9 +498,34 @@ function getWJDTBranches(yearStem) {
 }
 
 function isWJDT(yearStem, dayBranch, hourBranch) {
-    const branches = WJDT_BRANCHES[yearStem];
-    if (!branches) return false;
-    return branches.includes(dayBranch) && branches.includes(hourBranch);
+    // Session 49 (Edu): REPLACED. The old rule (day branch + hour branch both among the year's Wu Ji
+    // branches -> badge on the hour and -3) is no longer used. The Wu Ji Sha is now by DAY and SECTOR:
+    // see wuJiShaForDay() - 戊/己 day of the year's branches, no works in that sector. It is a warning
+    // about a sector, so it does not change the score of the hours.
+    return false;
+}
+
+// ── Wu Ji Sha by DAY 戊己煞 (Edu, session 49) ─────────────────────────────
+// The Wu Ji Sha of the year is ACTIVE only on its own days, in its own sector: the WJDT branches of
+// the year stem, on the day whose stem is 戊 (yang branch) or 己 (yin branch) with that branch.
+// E.g. 丙午 year (戌, 亥): on a 戊戌 day the 戌 Xu sector, on a 己亥 day the 亥 Hai sector - both NW.
+// It is a strong Sha: on those days NO works or activities in that sector / quadrant.
+const _WJ_BR = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const _WJ_PY = ['Zi','Chou','Yin','Mao','Chen','Si','Wu','Wei','Shen','You','Xu','Hai'];
+const _WJ_QUAD = ['N','NE','NE','E','SE','SE','S','SW','SW','W','NW','NW'];
+function wuJiShaDays(yearStem) {
+    return (WJDT_BRANCHES[yearStem] || []).map(b => {
+        const i = _WJ_BR.indexOf(b);
+        return { day: (i % 2 === 0 ? '戊' : '己') + b, branch: b, py: _WJ_PY[i], quadrant: _WJ_QUAD[i],
+                 from: ((i * 30 - 7.5) + 360) % 360, to: (i * 30 + 7.5) % 360 };
+    }).sort((a, b) => _WJ_BR.indexOf(a.branch) - _WJ_BR.indexOf(b.branch));
+}
+function wuJiShaForDay(yearStem, dGan, dZhi) {
+    return wuJiShaDays(yearStem).find(x => x.day === dGan + dZhi) || null;
+}
+function wuJiShaText(w) { return 'Wu Ji Sha 戊己煞 — ' + w.day + ' day: NO works or activities in the ' + w.quadrant + ' (' + w.branch + ' ' + w.py + ' ' + w.from + '–' + w.to + '°)'; }
+function wuJiShaBadge(w, small) {
+    return w ? `<div title="${wuJiShaText(w)}" style="font-size:${small ? 9 : 10}px;font-weight:bold;color:#fff;background:#b71c1c;border-radius:4px;padding:0 4px;margin-top:2px;display:inline-block;line-height:1.5;">⚠ 戊己煞 no ${w.quadrant}</div>` : '';
 }
 
 function isTombSha(hourBranch, dayStem, seasonStrong, seasonGrowing) {
@@ -2734,6 +2759,8 @@ function calculateBazi() {
     const { strong: seasonStrong, growing: seasonGrowing } = getJieqiSeason(solarDate);
 
     const { items: analysis, sameFamily } = analyzeXkdg(xkdgData, seasonStrong, seasonGrowing);
+    // Session 49 (Edu): Wu Ji Sha of the day - strong Sha, flagged first.
+    try { const _wj = wuJiShaForDay(pillarKeys.year.stem, pillarKeys.day.stem, pillarKeys.day.branch); if (_wj) analysis.unshift({ text: wuJiShaText(_wj), tag: 'wuji-sha' }); } catch (eWJ) {}
 
     // Hour branch by slot for reliable Noble/Lu (not library-dependent)
     const HOUR_BRANCHES_MAP = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
@@ -3104,6 +3131,7 @@ function renderAnalysis(items) {
                       : item.tag === 'mv-both'      ? `<span class="tag-mv-both">月德 ${item.text}</span>`
                       : item.tag === 'mv'           ? `<span class="tag-mv">月德 ${item.text}</span>`
                       : item.tag === 'spirit-good'       ? `<span class="tag-spirit-good">★ ${item.text}</span>`
+                      : item.tag === 'wuji-sha'          ? `<span style="color:#b71c1c;font-weight:bold;">⚠ ${item.text}</span>`
                       : item.tag === 'spirit-bad'        ? `<span class="tag-spirit-bad">✕ ${item.text}</span>`
                       : item.tag === 'clash-year'        ? `<span class="tag-clash-year"><span style="font-size:20px;">⚡</span> <strong>${item.text}</strong></span>`
                       : item.tag === 'clash-month-stem'  ? `<span class="tag-clash-month-stem"><span style="font-size:20px;">⚡</span> <strong>${item.text}</strong></span>`
@@ -4933,7 +4961,7 @@ function renderScanResults(results, mode) {
         return `<div class="scan-item ${rankClass}" style="cursor:pointer;${negBg?'background:'+negBg+' !important;border-left:4px solid #c62828 !important;':(r.cure ? XKDG_CURE_ROW_STYLE : '')}" onclick="loadDateIntoMain('${r.isoDate}', ${r.hourIndex})" title="Click to load this date">
             <div class="scan-score"${negBg?' style="color:'+negTextColor+';font-weight:bold;"':''}>${r.cure && !negBg ? '<span title="Cure date" style="font-size:14px;">🌿</span>' : ''}${displayScore}${aTag}${bTag}${hlChip}</div>
             <div class="scan-date">📅 ${r.date}<br><small>${HOUR_ROMAN_NAMES[r.hourIndex]||''} ${getTSTHourLabel(r.hourIndex)}</small></div>
-            <div class="scan-tags">${[purposeCondLabel, blueTagsHtml, hlTag].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''}${r.cure ? ' ' + xkdgCureBadge(r.cure) : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
+            <div class="scan-tags">${r.wuJiSha ? wuJiShaBadge(r.wuJiSha) + ' ' : ''}${[purposeCondLabel, blueTagsHtml, hlTag].filter(Boolean).join(' · ')}${r.blAlert ? ` <span style="font-size:10px;">${xkdgBLStatusHtml(r.blAlert)}</span>` : ''}${r.cure ? ' ' + xkdgCureBadge(r.cure) : ''} ${spiritStr} ${nayinStr} ${nayinPersonStr} ${keStr} ${(r.purposeQimen||[]).map(pq=>_pqBadge(pq,false)).join(' ')} ${(r.purposeQimenR||[]).map(pq=>_pqBadge(pq,true)).join(' ')} ${fsBuildHouseBadgeHtml(r.fsBadge, r.isoDate+'-'+r.hourIndex)}</div>
         </div>`;
     }).join('');
 }
@@ -6958,7 +6986,7 @@ function buildCalView() {
                     <div style="display:flex;justify-content:space-between;">
                         <span class="cal-day-num">${dd}${personTagsCAL}</span>
                         <span class="cal-stem" style="color:${stemColor2};font-size:9px;">${dGan}<br>${dZhi}</span>
-                    </div>${jqHtmlSimple}${_flightHourCell(isoDate)}</div>`;
+                    </div>${wuJiShaBadge(wuJiShaForDay(eightChar.getYearGan(), dGan, dZhi), true)}${jqHtmlSimple}${_flightHourCell(isoDate)}</div>`;
                 continue;
             }
 
@@ -7189,6 +7217,7 @@ function buildCalView() {
                         <span class="cal-stem" style="color:${stemColor};">${dGan}<br>${dZhi}</span>
                     </div>
                     ${_clashIcon}
+                    ${wuJiShaBadge(wuJiShaForDay(eightChar.getYearGan(), dGan, dZhi), true)}
                     ${_cureCAL ? `<div title="${_cureCAL}" style="font-size:10px;font-weight:bold;color:#fff;background:#2e7d32;border-radius:8px;padding:0 5px;margin-top:2px;display:inline-block;">🌿 CURE</div>` : ''}
                     ${nobleIndicator}${luIndicator}${hvIndicator}${bvIndicator}${mvIndicator}${tyIndicator}
                     ${_flightHourCell(isoDate)}
@@ -7792,7 +7821,7 @@ function buildMonthView() {
                     </div>
                     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;font-size:10px;gap:1px;text-align:right;">
                         ${ziElNF.length?`<div style="color:#1a7a1a;font-weight:bold;">${ziElNF.join(' · ')}</div>`:''}
-                        ${ziSpHF}${ziNyFH}${ziWjdtH}
+                        ${ziSpHF}${ziNyFH}${ziWjdtH}${wuJiShaBadge(wuJiShaForDay(ziYGan, ziDGan, ziDZhi), true)}
                     </div>
                 </div>` });
                 continue;
@@ -8248,7 +8277,7 @@ function buildMonthView() {
                     ${_blAlertLV ? `<div>${xkdgBLStatusHtml(_blAlertLV)}</div>` : ''}
                     ${(isPositive && xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi)) ? `<div>${xkdgCureBadge(xkdgCureLabel(xkdgCureForDate(yGan, eightChar.getYearZhi(), dGan, dZhi)))}</div>` : ''}
                     ${spiritHTML}
-                    ${tombShaHTML}${wjdtHTML}
+                    ${tombShaHTML}${wjdtHTML}${wuJiShaBadge(wuJiShaForDay(yGan, dGan, dZhi))}
                     ${nayinHTMLLV}${nayinPersonHTMLLV}${keHTMLLV}${pqHTMLLV} ${pqRotHTMLLV} ${fsHTMLLV}
                     ${_flightBtnLV}
                 </div>
@@ -9920,6 +9949,7 @@ function runScanner() {
                 personAYear ? { label: 'Person A', year: { stem: pYStem, branch: pYBranch }, day: _personADayStem ? { stem: _personADayStem, branch: _personADayBranch } : null } : null,
                 personBYear ? { label: 'Person B', year: { stem: pBYStem, branch: pBYBranch }, day: _personBDayStem ? { stem: _personBDayStem, branch: _personBDayBranch } : null } : null ]));
             results.push({
+                wuJiSha: wuJiShaForDay(yGan, dGan, dZhi),   // session 49: strong Sha of the day (sector warning)
                 blAlert: _blAlertBST,
                 cure: blueItems.length ? xkdgCureLabel(xkdgCureForDate(yGan, pillars.year.branch, dGan, dZhi)) : '',
                 score: totalScore,
