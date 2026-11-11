@@ -213,7 +213,7 @@
   }
   function flagPlain(f) {
     if (/財生殺/.test(f)) return 'money and pressure come together: money can bring stress and health problems';
-    if (/食神制殺/.test(f)) return 'pressure with nothing to hold it back';
+    if (/食神制殺/.test(f)) return 'nothing around this line softens the pressure (no Children/Output to tame the Ghost): it is felt in full';
     if (/void/.test(f)) { var m = f.match(/\((.*)\)$/); return 'this line is empty at birth: it works only in the years with its own branch' + (m ? ' (' + m[1] + ')' : ''); }
     return f;
   }
@@ -238,14 +238,15 @@
     return tone + ' and the time neither helps nor hurts: read it as it is.';
   }
   // Life stage of a period (Edu 11/11: adapt the reading to the age) and how each relation plays out in it
-  function stage(c) { var m = (c.c.from + c.c.to) / 2; return m <= 12 ? 'child' : m <= 30 ? 'young' : m <= 60 ? 'adult' : 'old'; }
-  var STAGE_NAME = { child: 'childhood', young: 'youth', adult: 'adult life', old: 'later life' };
+  // Edu 11/11 (age 10–18: "talking of authority at 10 is too much"): a separate stage for the teens
+  function stage(c) { var m = (c.c.from + c.c.to) / 2; return m <= 12 ? 'child' : m <= 18 ? 'teen' : m <= 30 ? 'young' : m <= 60 ? 'adult' : 'old'; }
+  var STAGE_NAME = { child: 'childhood', teen: 'school years', young: 'youth', adult: 'adult life', old: 'later life' };
   var STAGE_REL = {
-    P: { child: 'family, school and books: it shapes how {he} learns', young: 'studies, teachers, diplomas and the first important papers', adult: 'contracts, documents, property and the people who back {him}', old: 'home, care and passing on what {he} knows' },
-    C: { child: 'play, curiosity and creativity', young: 'first creations, projects and the wish to express {himself}', adult: 'products, ideas, teaching and what {he} gives to others', old: 'children, students and what {he} leaves behind' },
-    W: { child: 'what the family has and how {he} learns the value of things', young: 'first earnings and first partner', adult: 'money, business and the partner', old: 'savings, inheritance and comfort' },
-    G: { child: 'strict rules, discipline and health', young: 'exams, bosses, pressure and duties', adult: 'authority, rivals, legal matters and stress, but also rank and power', old: 'health and the weight of responsibilities' },
-    B: { child: 'brothers, sisters and friends', young: 'friends, classmates and first partners in projects', adult: 'partners, associates and competitors', old: 'old friends and sharing what {he} has' }
+    P: { child: 'family, school and books: it shapes how {he} learns', teen: 'school, teachers and the books that shape {him}', young: 'studies, teachers, diplomas and the first important papers', adult: 'contracts, documents, property and the people who back {him}', old: 'home, care and passing on what {he} knows' },
+    C: { child: 'play, curiosity and creativity', teen: 'hobbies, talents and the first things {he} makes', young: 'first creations, projects and the wish to express {himself}', adult: 'products, ideas, teaching and what {he} gives to others', old: 'children, students and what {he} leaves behind' },
+    W: { child: 'what the family has and how {he} learns the value of things', teen: 'the family\'s situation, pocket money and first small jobs', young: 'first earnings and first partner', adult: 'money, business and the partner', old: 'savings, inheritance and comfort' },
+    G: { child: 'difficulties at home, strict rules and health', teen: 'big changes at home and at school, being moved from one place to another, and growing up fast', young: 'exams, bosses, pressure and duties', adult: 'authority, rivals, legal matters and stress, but also rank and power', old: 'health and the weight of responsibilities' },
+    B: { child: 'brothers, sisters and friends', teen: 'friends, classmates, brothers and sisters', young: 'friends, classmates and first partners in projects', adult: 'partners, associates and competitors', old: 'old friends and sharing what {he} has' }
   };
   function pron(t, male) {
     var m = male ? { he: 'he', He: 'He', his: 'his', His: 'His', him: 'him', himself: 'himself' } : { he: 'she', He: 'She', his: 'her', His: 'Her', him: 'her', himself: 'herself' };
@@ -265,7 +266,7 @@
   // the state comes from season (vitality) and from what the birth branches do to the line.
   var SUBJ = { P: '{his} studies and the support around {him} (Parent)', C: '{his} creativity (Children)', W: '{his} money (Wealth)', G: 'pressure and authority in {his} life (Ghost)', B: '{his} friends and partners (Brothers)' };
   function state(A, c) {
-    var alive = DS().timely(c.L.el, A.T.m), t = c.tm.t, early = stage(c) === 'child' || stage(c) === 'young';
+    var alive = DS().timely(c.L.el, A.T.m), t = c.tm.t, early = stage(c) === 'child' || stage(c) === 'teen' || stage(c) === 'young';
     if (c.isVoid) return 'is there, but empty: it wakes up only in some years';
     if (alive && t > 0) return 'is strong and shows clearly';
     if (alive) return early ? 'is full of life but is only taking its first steps' : 'is full of life but grows slowly, held in by others';
@@ -273,12 +274,23 @@
     return 'struggles and needs care';
   }
   // Edu 11/11: the birth gives the verdict of the period; the years of the cycle that touch the line are its peaks and dips.
-  function yl(a) { return a.map(function (x) { return x.replace(/ \((\d+)\)/, ' (age $1)'); }).join(', '); }
+  // Edu 11/11: every year is a link that opens its annual hexagram and moved line (xkdgHLYearPop in heluo-lishu.js)
+  function yl(a) { return a.map(function (x) { var m = x.match(/^(\d+) \((\d+)\)/); return m ? '<a onclick="xkdgHLYearPop(' + m[1] + ')" style="color:#4527a0;text-decoration:underline;cursor:pointer;">' + m[1] + '</a> (age ' + m[2] + ')' : esc(x); }).join(', '); }
   function years(c) {
     var up = c.act.concat(c.com).sort(), out = '';
     if (up.length) out += 'The years when this shows most: ' + yl(up) + '. ';
     if (c.hit.length) out += 'Years of sudden turns, for better or worse: ' + yl(c.hit) + '.';
-    return out ? p('<span style="color:#555;">' + esc(out.trim()) + '</span>') : '';
+    return out ? p('<span style="color:#555;">' + out.trim() + ' <span style="color:#999;font-size:11px;">(tap a year)</span></span>') : '';
+  }
+  // Ghost in childhood and school years (Edu 11/11): difficulties and big changes, but also personal growth — no authority talk
+  function headline(A, c, sub) {
+    var st = stage(c), sv = state(A, c);
+    if (c.r === 'G' && (st === 'child' || st === 'teen')) {
+      if (c.isVoid) return 'Difficulties (Ghost) are there but quiet: they wake up only in some years.';
+      if (/^is strong/.test(sv)) return pron('A time of big challenges and changes (Ghost) that make {him} grow up fast.', A.male);
+      return 'A time of difficulties and big changes (Ghost), but also of personal growth.';
+    }
+    return sub.charAt(0).toUpperCase() + sub.slice(1) + ' ' + (c.r === 'C' || c.r === 'W' ? sv : sv.replace(/^is /, 'are ').replace(/ shows /, ' show ').replace(/ gets /, ' get ').replace(/ grows /, ' grow ').replace(/^struggles/, 'struggle').replace(/ needs /, ' need ')) + '.';
   }
   function period(A, c) {
     var N = c.N, sub = pron(SUBJ[c.r], A.male);
@@ -289,7 +301,7 @@
       + '<div style="font-size:13px;font-weight:600;">Age ' + c.c.from + '–' + c.c.to + ' <span style="color:#888;font-weight:400;">(' + c.y1 + '–' + c.y2 + ', ' + (c.c.to - c.c.from + 1) + ' years)</span> · line ' + c.line + ' ' + c.L.branch + ' ' + relFull(c.r) + '</div>'
       + draw(c.hx, c.line, N.cycles, c.me)
       + (c.isStart ? p('<span style="color:#e65100;">★</span> This line colors the whole chart (age ' + N.from + '–' + N.to + '), and these first years shape ' + (A.male ? 'him' : 'her') + ' deeply.') : '')
-      + p('<b>' + esc(sub.charAt(0).toUpperCase() + sub.slice(1)) + ' ' + (c.r === 'C' || c.r === 'W' ? state(A, c) : state(A, c).replace(/^is /, 'are ').replace(/ shows /, ' show ').replace(/ gets /, ' get ').replace(/ grows /, ' grow ').replace(/^struggles/, 'struggle').replace(/ needs /, ' need ')) + '.</b>')
+      + p('<b>' + esc(headline(A, c, sub)) + '</b>')
       + lineTxt(c.hx.n, c.line, false)
       + meaning(A, c)
       + years(c)
