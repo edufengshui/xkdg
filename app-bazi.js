@@ -4797,7 +4797,7 @@ var _hlScanNote = '';
 function _hlPurposeKey() { return (document.getElementById('purpose-select') || {}).value || ''; }
 function _hlApply(results, rerender) {
     _hlScanNote = '';
-    results.forEach(function (r) { r._hl = null; r._hlAdj = 0; });
+    results.forEach(function (r) { r._hl = null; r._hlAdj = 0; r._hlPts = 0; });
     try {
         var pa = document.getElementById('person-panel-a');
         if (!window.XKDGHeluo || !XKDGHeluo.ensure || !(pa && pa.style.display !== 'none') || !(document.getElementById('person-date') || {}).value || !(document.getElementById('person-time') || {}).value) return results;
@@ -4807,7 +4807,9 @@ function _hlApply(results, rerender) {
         var sc = XKDGHeluoDS.xkScan(iso, key);
         if (sc.status !== 'ok') { _hlScanNote = sc.status === 'gender' ? '☯ He Luo: set the gender of Person A (☯ He Luo reading) to add He Luo to these dates.' : sc.status === 'longitude' ? '☯ He Luo: no birth longitude for Person A.' : ''; return results; }
         var byScore = results.every(function (r, i) { return i === 0 || results[i - 1].score >= r.score; });
-        results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { r._hl = th; r._hlAdj = th.adj; } });
+        // Edu, 11/11/2026: each ☯ point (−3…+3) is worth 5% of the XKDG score of that day (max ±15%), so He Luo weighs the
+        // same on weak and strong days and XKDG stays in command.
+        results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { r._hl = th; r._hlPts = th.adj; r._hlAdj = Math.round(r.score * 0.05 * th.adj * 10) / 10; } });
         if (key === 'luck') results = results.filter(function (r) { return r._hl && r._hl.luck.length; });
         if (byScore) results = results.map(function (r, i) { return [r, i]; }).sort(function (a, b) { return (b[0].score + b[0]._hlAdj) - (a[0].score + a[0]._hlAdj) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     } catch (e) {}
@@ -4900,8 +4902,8 @@ function renderScanResults(results, mode) {
         ? Math.max(...results.map(r => r.negativeScore || 0))
         : Math.max(...results.map(r => r.score + (r._hlAdj || 0)));
     container.innerHTML = purposeHeader + sortToggleHTML + _hlNoteHtml + results.map(r => {
-        const s = hasNegSort ? (r.negativeScore || 0) : r.score + (r._hlAdj || 0);
-        const hlChip = r._hl ? ` <span onclick="event.stopPropagation();xkdgHLDay('${r.isoDate}')" title="He Luo Li Shu: XKDG ${r.score}${r._hlAdj ? (r._hlAdj > 0 ? ' +' : ' −') + Math.abs(r._hlAdj) + ' He Luo' : ''} — tap for the reading of the day" style="cursor:pointer;font-size:11px;font-weight:bold;padding:1px 5px;border-radius:8px;border:1px solid #5e35b1;background:#fff;color:${r._hlAdj > 0 ? '#2e7d32' : r._hlAdj < 0 ? '#c62828' : '#5e35b1'};white-space:nowrap;">☯${r._hlAdj > 0 ? '+' + r._hlAdj : r._hlAdj < 0 ? '−' + Math.abs(r._hlAdj) : ''}</span>` : '';
+        const s = hasNegSort ? (r.negativeScore || 0) : Math.round((r.score + (r._hlAdj || 0)) * 10) / 10;
+        const hlChip = r._hl ? ` <span onclick="event.stopPropagation();xkdgHLDay('${r.isoDate}')" title="He Luo Li Shu: XKDG ${r.score}${r._hlPts ? (r._hlPts > 0 ? ' +' : ' −') + Math.abs(r._hlPts * 5) + '% = ' + (r._hlAdj > 0 ? '+' : '−') + Math.abs(r._hlAdj) + ' He Luo' : ''} — tap for the reading of the day" style="cursor:pointer;font-size:11px;font-weight:bold;padding:1px 5px;border-radius:8px;border:1px solid #5e35b1;background:#fff;color:${r._hlPts > 0 ? '#2e7d32' : r._hlPts < 0 ? '#c62828' : '#5e35b1'};white-space:nowrap;">☯${r._hlPts > 0 ? '+' + (r._hlPts * 5) + '%' : r._hlPts < 0 ? '−' + Math.abs(r._hlPts * 5) + '%' : ''}</span>` : '';
         const hlSum = r._hl ? XKDGHeluoDS.xkSummary(r._hl) : '';
         const hlTag = hlSum ? `<span style="font-size:10px;font-weight:bold;color:#5e35b1;cursor:pointer;" onclick="event.stopPropagation();xkdgHLDay('${r.isoDate}')">☯ ${hlSum}</span>` : '';
         const rankClass = s >= maxScore * 0.9 ? 'rank-1'

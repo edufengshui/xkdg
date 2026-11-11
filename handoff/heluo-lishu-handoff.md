@@ -47,3 +47,11 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - **Vuoti** (`natalVoids` in heluo-ds.js): solo dal pilastro del GIORNO; un ramo vuoto accanto, nel bazi, al ramo che lo scontra esce dal vuoto (solo pilastri vicini); vuoto timely = non vero vuoto. Prototipo ds_cascata.js allineato.
 - Verifiche: `node ds_app_check.js` (0 differenze), `node mensile_app_check.js`. Prototipo e prova a percentili del filo: heluo-test/cmp/ds_filo.js (Edu non la usa come criterio).
 - Aperti: regola dei Cures HLLS; quale misura yin/yang comanda (media del mese o 25/30); ampiezza ±3.
+
+## 11/11/2026 (sera) — decisioni di Edu sui quattro punti aperti
+
+1. **Cures con i trigrammi** (come la lettura natale): Qian, Zhen, Kan, Gen = yang; Kun, Xun, Li, Dui = yin. Due trigrammi yang = esagramma yang, due yin = yin, uno e uno = neutro (`yyTri` in heluo-ds.js; usata da `thread` e da `plMark`). Pesi invariati: giorno ±2, blocco ±1.
+2. **Comanda la media del mese di nascita** (±25%), non i numeri fissi 25/30, che restano nel riquadro Yin/Yang solo come riferimento. Esempio di Edu: yang 31 (+29% sulla media di agosto 24) → la carta ha bisogno di yin.
+3. **Correzione in proporzione**: il filo dà ☯ punti da −3 a +3; nella scansione ogni punto vale il 5% del punteggio XKDG del giorno (max ±15%) (`_hlApply` in app-bazi.js: `_hlPts` = punti, `_hlAdj` = valore aggiunto, un decimale). Il chip mostra ☯±n%.
+4. **Vuoti**: se nel bazi c'è solo il ramo che scontra il vuoto (e non il vuoto), il vuoto **resta**. Dal tempo: esce con lo stesso ramo (填實) oppure con uno **scontro dal tempo (anno, mese o giorno) se il ramo è timely nella stagione** (mese della data) (`li()` in `thread`: `byClash`; planner: mesi con `monthBranch`). Edu: la timeliness può dipendere anche "dal periodo che si sta attraversando" — da precisare (ora conta solo la stagione).
+- Non toccati: `scoreDay`/`tempo` (vecchia DS da sola, allineata al prototipo ds_cascata.js) tolgono ancora il vuoto se timely nel mese della data, senza chiedere lo scontro. Verifiche: `ds_app_check.js` 0 differenze, `mensile_app_check.js` ok.
