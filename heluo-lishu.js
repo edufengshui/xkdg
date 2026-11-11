@@ -636,8 +636,8 @@
               + '<br>Day: <b>line ' + dd.line + '</b> → <b>' + dd.hex.n + '</b> ' + esc(hexName(dd.hex.n))
               + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' + fmtCard('Monthly ' + mo.hex.n + ' · Lord line ' + dd.lord, mo.hex, dd.lord, mPer, me)
               + fmtCard('Block ' + dd.block.n + ' · day line ' + dd.line, dd.block, dd.line, blockPeriods(dd.lord, bS, startDay, endDay), me) + fmtCard('Day ' + dd.hex.n + ' · line ' + dd.line, dd.hex, dd.line, dayPeriods(dd.line, nowDay), me) + '</div>'
-              + lineText(dd.block.n, dd.line, 'Line ' + dd.line + ' of ' + dd.block.n + ' (block)', true)
-              + lineText(dd.hex.n, dd.line, 'Line ' + dd.line + ' of ' + dd.hex.n + ' (day)', true)
+              + lineText(dd.block.n, dd.line, 'Primary (cause, action): line ' + dd.line + ' of ' + dd.block.n + ' (block)', true)
+              + lineText(dd.hex.n, dd.line, 'Secondary (effect, outcome): line ' + dd.line + ' of ' + dd.hex.n + ' (day)', true)
               + lineText(dd.block.n, dd.lord, 'Line ' + dd.lord + ' of ' + dd.block.n + ' (Lord of the Block)', true) + '</div>';
           }
         }
