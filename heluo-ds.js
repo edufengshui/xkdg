@@ -421,8 +421,8 @@
       + lvlHtml('3 · Month ' + p.month.index + ' (line ' + p.month.line + ' of the annual rules months ' + (2 * p.month.line - 1) + '–' + (2 * p.month.line) + ')', g.m, p.month.hex, mP, me)
       + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">Block: monthly ' + p.month.hex.n + ' → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + ' ' + esc(U().hexName ? U().hexName(dh.block.n) : '') + '</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + (U().lineBody ? U().lineBody(dh.block.n, dh.lord, true) : '') + '</div>'
-      + lvlHtml('4 · Day line in the block hexagram', g.d, dh.block, bP, me)
-      + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · Day hexagram ' + dh.hex.n + ' ' + esc(U().hexName ? U().hexName(dh.hex.n) : '') + ' line ' + dh.line + ' (course of the day)</div>'
+      + lvlHtml('4 · Day line in the block hexagram — primary text: cause, action', g.d, dh.block, bP, me)
+      + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · Same line in the changed (day) hexagram — secondary text: effect, outcome · ' + dh.hex.n + ' ' + esc(U().hexName ? U().hexName(dh.hex.n) : '') + ' line ' + dh.line + ' (course of the day)</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(dh.hex, dh.line, dP, me) : '') + (U().lineBody ? U().lineBody(dh.hex.n, dh.line, true) : '') + '</div>'
       + '<div style="' + S_ + '"><b>Luck ' + sgn(g.L.tot) + '</b>: ' + (esc(g.L.w.join(' · ')) || 'none') + '</div>';
     return h;
