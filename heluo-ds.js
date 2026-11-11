@@ -58,13 +58,25 @@
   function wang(el, mb) { return el === 'Earth' ? '辰未戌丑'.indexOf(mb) >= 0 : ({ 寅: 'Wood', 卯: 'Wood', 巳: 'Fire', 午: 'Fire', 申: 'Metal', 酉: 'Metal', 亥: 'Water', 子: 'Water' })[mb] === el; }
   function voids(p) { var x = ((BR.indexOf(p[1]) - ST.indexOf(p[0])) % 12 + 12) % 12; return [BR[(x + 10) % 12], BR[(x + 11) % 12]]; }
 
+  // Edu, 11/11/2026 (Microsoft listing): 1) directional combination (三會): if the line branch completes 寅卯辰 Wood,
+  // 巳午未 Fire, 申酉戌 Metal or 亥子丑 Water with the year, month and day branches, the line takes the element of the
+  // combination (relation on the person included) and is very strong (+1); the branches of the combination do not
+  // control it. 2) a branch void in the natal chart comes out of the void on the day with the same branch (填實).
+  var SANHUI = { Wood: '寅卯辰', Fire: '巳午未', Metal: '申酉戌', Water: '亥子丑' };
+  function sanhui(b, T) {
+    var have = b + T.y + T.m + T.d;
+    for (var el in SANHUI) if (SANHUI[el].indexOf(b) >= 0 && SANHUI[el].split('').every(function (x) { return have.indexOf(x) >= 0; })) return el;
+    return null;
+  }
   // time judgement of branch b against year, month, day branches (T = { y, m, d })
   function tempo(b, T, natVoids) {
-    var el = BR_EL[b], note = [], t = 0;
+    var sh = sanhui(b, T), el = sh || BR_EL[b], note = [], t = 0;
+    if (sh) { t += 1; note.push('三會 ' + sh + ' combination'); }
     if (timely(el, T.m)) { t += 1; note.push('timely'); }
     [['Y', T.y], ['M', T.m], ['D', T.d]].forEach(function (kx) {
       var k = kx[0], x = kx[1];
       if (x === b) { t += 1; note.push('same ' + k); }
+      else if (sh && SANHUI[sh].indexOf(x) >= 0) { /* same combination: ally */ }
       else if (LIUHE[b] === x) { t += 1; note.push('六合 ' + k); }
       else if (clash(b) === x) {
         // an element at full strength (旺) clashed by an untimely branch is not broken: it is excited (Edu, 10/11)
@@ -75,14 +87,14 @@
       var forte = wang(el, T.m);
       if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) { t -= 0.5; note.push('剋 ' + k); }
     });
-    if (natVoids.indexOf(b) >= 0 && !timely(el, T.m)) { t -= 1; note.push('空 void'); }
+    if (natVoids.indexOf(b) >= 0 && !timely(el, T.m)) { if (b === T.d) note.push('void filled by the day'); else { t -= 1; note.push('空 void'); } }
     return { t: t, note: note };
   }
   // one level of the cascade: line `line` of hexagram hexN; text score moved ±1 towards the version chosen by time
   function level(hexN, line, pers, purpose, T, natVoids) {
-    var L = NJ()[hexN].lines[line - 1], r = rel(pers, L.el), tm = tempo(L.branch, T, natVoids);
+    var L = NJ()[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids);
     var s = SC()[hexN].l[line], V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V)), rs = PURPOSES[purpose].w[r];
-    return { hexN: hexN, line: line, b: L.branch, el: L.el, r: r, rs: rs, tm: tm, s: s, V: V, txt: txt, fushen: L.fushen, tot: rs + tm.t + txt };
+    return { hexN: hexN, line: line, b: L.branch, el: sh || L.el, r: r, rs: rs, tm: tm, s: s, V: V, txt: txt, fushen: L.fushen, tot: rs + tm.t + txt };
   }
 
   // ── Moment → cascade (heluo_cmp.js predict, method A, monthly rule 'edu') ─────────────────────
