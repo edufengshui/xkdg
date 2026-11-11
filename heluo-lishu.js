@@ -860,10 +860,13 @@
       + (R.houTian ? fmtCard('Hou Tian ' + R.houTian.hex.n + ' ' + esc(hexName(R.houTian.hex.n)) + ' · moving line ' + R.houTian.line + (R.houTian.rule === 'special' ? ' · special 29/3/39' : ''), R.houTian.hex, lineNow(R.cyclesHT, R.houTian.line), R.cyclesHT, null,
           '<div style="font-size:11px;color:#555;">Proper position ' + yn(R.positionHT) + ' · proper support ' + yn(R.supportHT) + (R.prevailingHT ? '<br>Prevailing: ' + R.prevailingHT : '') + '</div>' + hexText(R.houTian.hex.n)) : '')
       + '</div>'
-      + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;">'
-      + small('Hu Gua XT', R.huXT) + (R.huHT ? small('Hu Gua HT', R.huHT) : '')
-      + small('Opposite XT', R.oppositeXT) + small('Inverse XT', R.inverseXT)
-      + (R.oppositeHT ? small('Opposite HT', R.oppositeHT) + small('Inverse HT', R.inverseHT) : '') + '</div>'
+      // Edu, 11/11/2026: each derived hexagram next to its mother — one row for the Xian Tian, one for the Hou Tian
+      + '<div style="font-size:11px;font-weight:600;color:#4527a0;margin-top:10px;">From the Xian Tian</div>'
+      + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:3px;">'
+      + small('Xian Tian', R.xianTian) + small('Hu Gua', R.huXT) + small('Opposite', R.oppositeXT) + small('Inverse', R.inverseXT) + '</div>'
+      + (R.houTian ? '<div style="font-size:11px;font-weight:600;color:#4527a0;margin-top:10px;">From the Hou Tian</div>'
+        + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:3px;">'
+        + small('Hou Tian', R.houTian.hex) + (R.huHT ? small('Hu Gua', R.huHT) : '') + (R.oppositeHT ? small('Opposite', R.oppositeHT) + small('Inverse', R.inverseHT) : '') + '</div>' : '')
       + newNatalReading(R, g === 'M', c.lon)
       + (root.XKDGHeluoDS && root.XKDGHeluoDS.plannerHtml ? root.XKDGHeluoDS.plannerHtml(_chart) : '')
       + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
