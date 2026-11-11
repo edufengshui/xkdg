@@ -55,7 +55,7 @@
   function analyze(R, Pn, male) {
     var ds = DS(), xt = R.xianTian, ht = R.houTian && R.houTian.hex, y0 = R.input.o.year;
     var mb = Pn.month[1], T = { y: R.input.heluoYearPillar ? R.input.heluoYearPillar[1] : Pn.year[1], m: mb, d: Pn.day[1] };
-    var dayV = ds.voids(Pn.day), yearV = ds.voids(R.input.heluoYearPillar || Pn.year), natVoids = dayV.concat(yearV);
+    var dayV = ds.voids(Pn.day), yearV = [], natVoids = dayV;   // Edu, 11/11/2026: the voids are counted from the DAY pillar only
     var A = { R: R, Pn: Pn, male: !!male, y0: y0, T: T, natives: [], voids: null, luck: [], cycles: [], synth: [], warn: [] };
 
     // 1 · Profile and 3 · relations per native (one person per element of the native)
@@ -169,7 +169,7 @@
         + (L.opNat ? '; its opposite ' + L.op + ' is in ' + his + ' charts and can spoil it' : '');
     }).join('. ') + '.']);
     var vv = A.voids.day.concat(A.voids.year).filter(function (v) { return v.true_; }).map(function (v) { return v.b; });
-    S.push(['Empty branches', 'At birth ' + A.voids.day.map(function (v) { return v.b; }).join('') + ' (from the day) and ' + A.voids.year.map(function (v) { return v.b; }).join('') + ' (from the year) are empty. '
+    S.push(['Empty branches', 'At birth ' + A.voids.day.map(function (v) { return v.b; }).join('') + ' (from the day pillar) are empty. '
       + (vv.length ? 'Really empty, because out of season: ' + vv.join('') + '.' : 'None is really empty: they are all in season.')
       + (A.voidLines.length ? ' Lines touched: ' + A.voidLines.join(', ') + '. They wake up only when a year, month or day brings the same branch.' : '')]);
   }
