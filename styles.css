@@ -114,7 +114,7 @@
         /* Analysis section */
         .analysis-section {
             margin-top: 20px;
-            padding: 15px;
+            padding: 10px 15px;
             background: #fffbf0;
             border: 1px solid #ffe0a0;
             border-radius: 6px;
@@ -124,9 +124,14 @@
             align-items: center;
             gap: 15px;
         }
-        .analysis-section h3 { margin: 0 0 10px; color: #8b5a2b; font-size: 14px; letter-spacing: 1px; }
-        .analysis-items-col { flex: 1; }
-        .analysis-item { padding: 4px 0; color: #333; border-bottom: 1px solid #f0e0c0; }
+        .analysis-section h3 { margin: 0 0 6px; color: #8b5a2b; font-size: 14px; letter-spacing: 1px; }
+        .analysis-items-col { flex: 1; min-width: 0; }
+        .analysis-item { padding: 2px 0; line-height: 1.25; color: #333; border-bottom: 1px solid #f0e0c0; }
+        /* Session 49c (Edu): ★ A ★ / ★ B ★ one above the other, so the relations list is wider and shorter */
+        .favourable-stack { display: flex; flex-direction: column; gap: 6px; align-items: center; float: right; margin: 0 0 4px 10px; }
+        /* ★ boxes float at the top right; the list flows beside them and then takes the full width (no empty area) */
+        #analysis-section[style*="flex"] { display: flow-root !important; }
+        #analysis-section .analysis-item { overflow: hidden; }
         .analysis-item:last-child { border-bottom: none; }
         .favourable-col { display: flex; flex-direction: column; align-items: center; min-width: 110px; }
         .favourable-bar { background: #2e7d32; color: white; font-weight: bold; font-size: 14px; text-align: center; padding: 10px 8px; border-radius: 6px; letter-spacing: 2px; writing-mode: horizontal-tb; }

@@ -113,7 +113,7 @@
     });
     return bits.length ? bits.join(' · ') : 'no link';
   }
-  // One thin grey line under the pillars (only with the toggle ON).
+  // The palace setting, one small row (only with the toggle ON).
   function lineHtml(P, person) {
     var pc = relations(P); if (!pc) return '';
     var end = pc.good ? '<span style="color:#7cb342;">✓</span>'
@@ -126,7 +126,7 @@
       });
       if (parts.length) end += ' · cure ' + parts.join(', ') + ' (ZS/LS in 👤)';
     }
-    return '⌂ ' + relText(pc) + ' — ' + end;
+    return '⌂ Palaces: ' + relText(pc) + ' — ' + end;
   }
   function hexChip(e, scan, role) {
     var t = 'hex ' + e.hex + ' <span style="color:#888;">' + e.deg.toFixed(1) + '°</span>' + (e.family ? ' <span style="color:#6a1b9a;">★' + e.family + '</span>' : '');
@@ -230,12 +230,14 @@
       b.style.cssText = 'position:absolute;left:100%;bottom:3px;margin-left:4px;font-size:12px;font-weight:normal;line-height:1;color:' + (iso.indexOf(k) >= 0 ? '#c62828' : '#8d6e63') + ';';
       b.textContent = '(' + v + ')'; yun.appendChild(b);
     });
-    var lid = pre + '-palline', line = document.getElementById(lid);
-    if (!on || !pc || getComputedStyle(chart).display === 'none') { if (line) line.remove(); return; }
-    if (!line) { line = document.createElement('div'); line.id = lid; }
-    if (line.previousElementSibling !== chart) chart.parentNode.insertBefore(line, chart.nextSibling);
-    line.style.cssText = 'font-size:10px;line-height:1.4;color:#a1887f;padding:2px 4px 0;';
-    line.innerHTML = lineHtml(P, person);
+    // the palace setting: last row of the XKDG RELATIONS list (Edu, session 49c) — no line under the pillars
+    var old = document.getElementById(pre + '-palline'); if (old) old.remove();
+    var items = document.getElementById({ p: 'analysis-items', pp: 'person-analysis-items-a', pb: 'person-analysis-items-b' }[pre]);
+    if (!on || !pc || !items) return;
+    var row = document.createElement('div'); row.id = pre + '-palline'; row.className = 'analysis-item';
+    row.style.cssText = 'font-size:11px;color:#8d6e63;';
+    row.innerHTML = lineHtml(P, person);
+    items.appendChild(row);
   }
   function renderAll() {
     try { renderChart('p', window._xkdgDateP, false); } catch (e) {}
