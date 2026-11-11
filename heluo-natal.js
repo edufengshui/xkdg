@@ -55,7 +55,7 @@
   function analyze(R, Pn, male) {
     var ds = DS(), xt = R.xianTian, ht = R.houTian && R.houTian.hex, y0 = R.input.o.year;
     var mb = Pn.month[1], T = { y: R.input.heluoYearPillar ? R.input.heluoYearPillar[1] : Pn.year[1], m: mb, d: Pn.day[1] };
-    var dayV = ds.voids(Pn.day), yearV = [], natVoids = dayV;   // Edu, 11/11/2026: the voids are counted from the DAY pillar only
+    var NV = ds.natalVoids(Pn), dayV = NV.all, yearV = [], natVoids = NV.list;   // Edu, 11/11/2026: from the DAY pillar only; an adjacent clash in the bazi releases the void
     var A = { R: R, Pn: Pn, male: !!male, y0: y0, T: T, natives: [], voids: null, luck: [], cycles: [], synth: [], warn: [] };
 
     // 1 · Profile and 3 · relations per native (one person per element of the native)
@@ -77,7 +77,7 @@
     });
 
     // 4 · voids (true = not timely in the birth month)
-    function vInfo(b) { return { b: b, el: BR_EL[b], true_: !ds.timely(BR_EL[b], mb) }; }
+    function vInfo(b) { var out = NV.out.indexOf(b) >= 0; return { b: b, el: BR_EL[b], out: out, true_: !out && !ds.timely(BR_EL[b], mb) }; }
     A.voids = { day: dayV.map(vInfo), year: yearV.map(vInfo), all: natVoids };
     A.voidLines = [];
     A.natives.forEach(function (N) { NJ()[N.hx.n].lines.forEach(function (L, i) {
@@ -170,7 +170,8 @@
     }).join('. ') + '.']);
     var vv = A.voids.day.concat(A.voids.year).filter(function (v) { return v.true_; }).map(function (v) { return v.b; });
     S.push(['Empty branches', 'At birth ' + A.voids.day.map(function (v) { return v.b; }).join('') + ' (from the day pillar) are empty. '
-      + (vv.length ? 'Really empty, because out of season: ' + vv.join('') + '.' : 'None is really empty: they are all in season.')
+      + (A.voids.day.some(function (v) { return v.out; }) ? A.voids.day.filter(function (v) { return v.out; }).map(function (v) { return v.b; }).join('') + ' comes out of the void: in the bazi it stands next to the branch that clashes it. ' : '')
+      + (vv.length ? 'Really empty, because out of season: ' + vv.join('') + '.' : 'None is really empty.')
       + (A.voidLines.length ? ' Lines touched: ' + A.voidLines.join(', ') + '. They wake up only when a year, month or day brings the same branch.' : '')]);
   }
 

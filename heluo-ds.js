@@ -25,6 +25,14 @@
   var EL_BR = ['Water', 'Earth', 'Wood', 'Wood', 'Earth', 'Fire', 'Fire', 'Earth', 'Metal', 'Metal', 'Earth', 'Water'];
   var REL = { P: 'Parent', W: 'Wealth', G: 'Ghost', C: 'Children', B: 'Brothers' };
   function clash(b) { return BR[(BR.indexOf(b) + 6) % 12]; }
+  // Natal voids (Edu, 11/11/2026): counted from the DAY pillar. A void branch that stands in the bazi NEXT to the branch
+  // that clashes it (hour–day, day–month, month–year) comes out of the void; far apart (e.g. month and hour) it does not.
+  // → { all: the two void branches, out: those released by the adjacent clash, list: the ones still void }
+  function natalVoids(Pn) {
+    var v = voids(Pn.day), br = [Pn.hour[1], Pn.day[1], Pn.month[1], Pn.year[1]], out = [];
+    v.forEach(function (b) { for (var i = 0; i < 3; i++) if ((br[i] === b && br[i + 1] === clash(b)) || (br[i + 1] === b && br[i] === clash(b))) { if (out.indexOf(b) < 0) out.push(b); } });
+    return { all: v, out: out, list: v.filter(function (b) { return out.indexOf(b) < 0; }) };
+  }
   function brTri(b) { return BR_TRI[BR.indexOf(b)]; }
 
   // relation of element `el` for the person `pers`
@@ -188,7 +196,7 @@
   // ── Context and day score ──────────────────────────────────────────────────
   // R = XKDGHeluo.fromPillars(Pn, male); Pn = birth pillars (XKDGSolarTime)
   function context(R, Pn, male) {
-    return { R: R, Pn: Pn, male: !!male, natVoids: voids(Pn.day),   // Edu, 11/11/2026: voids from the DAY pillar only (before: day + year)
+    return { R: R, Pn: Pn, male: !!male, natVoids: natalVoids(Pn).list,   // Edu, 11/11/2026: from the DAY pillar only, minus those released by an adjacent clash in the bazi
        prof: profile(R, Pn, male) };
   }
   function scoreDay(ctx, Pe, lon, purpose) {
@@ -269,7 +277,7 @@
   function xkRel(key, male) { return key === 'relationship' ? (male ? 'W' : 'G') : (XK_REL[key] || null); }
   function thread(ctx, Pe, lon, key) {
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
-    var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = voids(ctx.Pn.day), mb0 = ctx.Pn.month[1];
+    var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = natalVoids(ctx.Pn).list, mb0 = ctx.Pn.month[1];
     var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
     function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0 && !timely(L.el, mb0);   // a timely void is not a real void
       return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null, voidL: v, filled: v && T.indexOf(L.branch) >= 0 }; }
@@ -296,10 +304,10 @@
     adj = Math.max(-3, Math.min(3, adj));
     return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, luck: lk, opp: opp, need: need, cure: cure, yv: yv };
   }
-  root.XKDGHeluoDSCore = { thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui };
+  root.XKDGHeluoDSCore = { thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui };
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
-      cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, tempo: tempo, timely: timely, wang: wang };
+      cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang };
   }
   if (typeof document === 'undefined') return;
 
@@ -572,7 +580,7 @@
   var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function plMark(ch, ctx, key, me, hx, line, yearBranch) {
     var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
-    var yv = voids(ch.Pn.day), G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
+    var yv = natalVoids(ch.Pn).list, G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
     if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + '</span>'); sc += 2; }
     else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
     if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + '</span>'); sc -= 2; }

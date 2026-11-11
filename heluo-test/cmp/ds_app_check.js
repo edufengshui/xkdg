@@ -16,7 +16,7 @@ let diff = 0, tot = 0;
 const pctA = [], pctB = [];
 for (const e of PR.EVENTI) {
   const b = PR.NASCITE[e.chi], Pn = pillars(...b), R = H.fromPillars(Pn, true), ctx = DS.context(R, Pn, true);
-  const N = natal('A', Pn, true), nat = { day: Pn.day, year: N.pillars[3], prof: LK2.profilo(Pn, true) };
+  const N = natal('A', Pn, true), nat = { day: Pn.day, hour: Pn.hour, month: Pn.month, yearP: Pn.year, year: N.pillars[3], prof: LK2.profilo(Pn, true) };
   const Y = +e.d.slice(0, 4), lon = e.luogo[0], tz = e.luogo[1];
   const app = [], proto = [];
   for (let t = Date.UTC(Y, 0, 1); t < Date.UTC(Y + 1, 0, 1); t += 86400000) {

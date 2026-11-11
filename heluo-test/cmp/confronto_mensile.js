@@ -83,7 +83,7 @@ function unEvento(e, regola) {
   const Pe = pillars(e.d, e.ora, e.luogo[0], e.luogo[1]), p = predict(N, Pe, e.luogo[0]);
   if (p.none) return { fuori: true, eta: p.age };
   const hx = p.phase === 'XT' ? N.xt : N.ht.hex, pers = persona(hx, p.id.cycle[1]);
-  const nat = { day: Pn.day, year: N.pillars[3], luck: H.fromPillars(Pn, male).luck, prof: LK2.profilo(Pn, male) };
+  const nat = { day: Pn.day, hour: Pn.hour, month: Pn.month, yearP: Pn.year, year: N.pillars[3], luck: H.fromPillars(Pn, male).luck, prof: LK2.profilo(Pn, male) };
   const Y = +e.d.slice(0, 4), scopo = ['neg', 'neu'].includes(e.tipo) ? 'wealth' : e.tipo;
   const all = DS.anno(N, nat, Y, e.luogo[0], e.luogo[1], scopo), me = all.find(x => x.date === e.d);
   const li = (n, l) => { const L = NJ[n].lines[l - 1]; return { n, l, b: L.branch, el: L.el, r: rel(pers, L.el), testo: st(n, l), fushen: L.fushen ? rel(pers, L.fushen.el) + ' ' + L.fushen.branch : null }; };

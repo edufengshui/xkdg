@@ -138,7 +138,9 @@ function giorno(N, nat, date, lon, tz, scopo) {
   if (p.none) return null;
   const hx = p.phase === 'XT' ? N.xt : N.ht.hex, pers = persona(hx, p.id.cycle[1]);
   const T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] };
-  const nv = voids(nat.day); // Edu, 11/11/2026: voids from the day pillar only
+  // Edu, 11/11/2026: voids from the day pillar only; a void branch next to its clash in the bazi comes out of the void
+  const br4 = nat.hour ? [nat.hour[1], nat.day[1], nat.month[1], nat.yearP[1]] : [], cl = b => BR[(BR.indexOf(b) + 6) % 12];
+  const nv = voids(nat.day).filter(b => ![0, 1, 2].some(i => (br4[i] === b && br4[i + 1] === cl(b)) || (br4[i + 1] === b && br4[i] === cl(b))));
   const c = livello(p.id.cycle[0], p.id.cycle[1], pers, scopo, T, nv);
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
   const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
@@ -185,7 +187,7 @@ module.exports = { giorno, anno, rango, NASCITE, EVENTI, SCOPI, natal, pillars }
 if (require.main === module) {
   const det = process.argv.includes('dettaglio'), riep = [];
   for (const e of EVENTI) {
-    const b = NASCITE[e.chi], Pn = pillars(...b), N = natal('A', Pn, true), nat = { day: Pn.day, year: N.pillars[3], luck: H_.fromPillars(Pn, true).luck, prof: LK2.profilo(Pn, true) };
+    const b = NASCITE[e.chi], Pn = pillars(...b), N = natal('A', Pn, true), nat = { day: Pn.day, hour: Pn.hour, month: Pn.month, yearP: Pn.year, year: N.pillars[3], luck: H_.fromPillars(Pn, true).luck, prof: LK2.profilo(Pn, true) };
     const Y = +e.d.slice(0, 4), righe = {};
     for (const sc of Object.keys(SCOPI)) { const r = rango(anno(N, nat, Y, e.luogo[0], e.luogo[1], sc), e.d); righe[sc] = r; }
     const r = righe[e.scopo], g = r.me;
