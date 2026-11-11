@@ -1,0 +1,8254 @@
+[
+ {
+  "e": {
+   "chi": "Margaret Thatcher",
+   "d": "1979-05-04",
+   "luogo": [
+    -0.13,
+    "Europe/London"
+   ],
+   "scopo": "officer",
+   "cosa": "becomes Prime Minister"
+  },
+  "pct": {
+   "app now": 0.3780821917808219,
+   "no Luck": 0.26986301369863014,
+   "no cycle line": 0.22876712328767124,
+   "no annual line": 0.5287671232876713,
+   "no month line": 0.43561643835616437,
+   "no secondary": 0.4465753424657534,
+   "secondary ×1": 0.336986301369863,
+   "day ×2": 0.26575342465753427,
+   "day only (prim.+sec.)": 0.13150684931506848,
+   "no relation": 0.3178082191780822,
+   "no time": 0.6972602739726027,
+   "no text": 0.4917808219178082,
+   "relation ×2": 0.46301369863013697,
+   "time ×2": 0.3013698630136986,
+   "text ×2": 0.36575342465753424
+  },
+  "n": 365,
+  "tot": 6.63,
+  "age": 55,
+  "pers": "Earth",
+  "pil": [
+   "甲午",
+   "辛未",
+   "戊辰",
+   "己未"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 4,
+    "line": 4,
+    "b": "戌",
+    "r": "B",
+    "rs": 0,
+    "t": -1,
+    "note": [
+     "timely",
+     "冲 M"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -3
+   },
+   "a": {
+    "hexN": 64,
+    "line": 4,
+    "b": "酉",
+    "r": "C",
+    "rs": -1,
+    "t": 2,
+    "note": [
+     "timely",
+     "六合 M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 3
+   },
+   "m": {
+    "hexN": 50,
+    "line": 3,
+    "b": "酉",
+    "r": "C",
+    "rs": -1,
+    "t": 2,
+    "note": [
+     "timely",
+     "六合 M"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 2
+   },
+   "d": {
+    "hexN": 64,
+    "line": 2,
+    "b": "辰",
+    "r": "B",
+    "rs": 0,
+    "t": 2,
+    "note": [
+     "timely",
+     "same M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4
+   },
+   "s2": {
+    "hexN": 35,
+    "line": 2,
+    "b": "巳",
+    "r": "P",
+    "rs": 0,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3
+   }
+  },
+  "luck": -0.87,
+  "x": {
+   "eta": 55,
+   "pers": "Earth",
+   "pil": [
+    "甲午",
+    "辛未",
+    "戊辰",
+    "己未"
+   ],
+   "fase": "HT",
+   "giornoMese": 15,
+   "mIndex": 5,
+   "mChanged": [
+    3
+   ],
+   "mStart": 293414400000,
+   "ciclo": {
+    "n": 4,
+    "l": 4,
+    "b": "戌",
+    "el": "Earth",
+    "r": "B",
+    "testo": "Entangled folly brings humiliation."
+   },
+   "annuale": {
+    "n": 64,
+    "l": 4,
+    "b": "酉",
+    "el": "Metal",
+    "r": "C",
+    "testo": "Perseverance brings good fortune. Remorse disappears. Shock, thus to discipline the Devil's Country. For three years, great realms are awarded."
+   },
+   "mensile": 50,
+   "signore": {
+    "n": 64,
+    "l": 3,
+    "b": "午",
+    "el": "Fire",
+    "r": "P",
+    "testo": "Before completion, attack brings misfortune. It furthers one to cross the great water."
+   },
+   "giorno": {
+    "n": 64,
+    "l": 2,
+    "b": "辰",
+    "el": "Earth",
+    "r": "B",
+    "testo": "They brake their wheels. Perseverance brings good fortune."
+   },
+   "esaGiorno": {
+    "n": 35,
+    "l": 2,
+    "b": "巳",
+    "el": "Fire",
+    "r": "P",
+    "testo": "Progressing, but in sorrow. Perseverance brings good fortune. Then one obtains great happiness from one's ancestress."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "annuale": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     1
+    ],
+    "mensile": [
+     0,
+     1,
+     1,
+     1,
+     0,
+     1
+    ],
+    "blocco": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     1
+    ],
+    "giorno": [
+     0,
+     0,
+     0,
+     1,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     2,
+     40,
+     48
+    ],
+    [
+     3,
+     49,
+     54
+    ],
+    [
+     4,
+     55,
+     60
+    ],
+    [
+     5,
+     61,
+     66
+    ],
+    [
+     6,
+     67,
+     75
+    ],
+    [
+     1,
+     76,
+     81
+    ]
+   ],
+   "ds": {
+    "tot": 6.63,
+    "pct": 0.3780821917808219,
+    "pctBase": 0.3780821917808219,
+    "d": {
+     "r": "B",
+     "rs": 0,
+     "t": 2,
+     "note": [
+      "timely",
+      "same M"
+     ],
+     "s": 2,
+     "txt": 2,
+     "tot": 4
+    },
+    "s2": {
+     "t": 1,
+     "note": [
+      "timely"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Barack Obama",
+   "d": "2008-11-04",
+   "luogo": [
+    -87.63,
+    "America/Chicago"
+   ],
+   "scopo": "officer",
+   "cosa": "elected President"
+  },
+  "pct": {
+   "app now": 0.1325136612021858,
+   "no Luck": 0.2896174863387978,
+   "no cycle line": 0.1680327868852459,
+   "no annual line": 0.21174863387978143,
+   "no month line": 0.2226775956284153,
+   "no secondary": 0.0778688524590164,
+   "secondary ×1": 0.22814207650273224,
+   "day ×2": 0.31830601092896177,
+   "day only (prim.+sec.)": 0.7008196721311475,
+   "no relation": 0.39207650273224043,
+   "no time": 0.01092896174863388,
+   "no text": 0.09562841530054644,
+   "relation ×2": 0.03961748633879782,
+   "time ×2": 0.3510928961748634,
+   "text ×2": 0.1871584699453552
+  },
+  "n": 366,
+  "tot": 10.69,
+  "age": 48,
+  "pers": "Metal",
+  "pil": [
+   "戊午",
+   "戊申",
+   "壬戌",
+   "戊子"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 28,
+    "line": 4,
+    "b": "亥",
+    "r": "C",
+    "rs": -1,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "剋 M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 1.5
+   },
+   "a": {
+    "hexN": 5,
+    "line": 4,
+    "b": "申",
+    "r": "B",
+    "rs": 0,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 2.5
+   },
+   "m": {
+    "hexN": 9,
+    "line": 6,
+    "b": "卯",
+    "r": "W",
+    "rs": 1,
+    "t": 0.5,
+    "note": [
+     "六合 M",
+     "剋 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3.5
+   },
+   "d": {
+    "hexN": 61,
+    "line": 1,
+    "b": "巳",
+    "r": "G",
+    "rs": 2,
+    "t": -0.5,
+    "note": [
+     "剋 Y",
+     "六合 D",
+     "空 void"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": 1.5
+   },
+   "s2": {
+    "hexN": 59,
+    "line": 1,
+    "b": "寅",
+    "r": "W",
+    "rs": 1,
+    "t": -2,
+    "note": [
+     "三合 M",
+     "冲 D",
+     "剋 D"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -1
+   }
+  },
+  "luck": 2.19,
+  "x": {
+   "eta": 48,
+   "pers": "Metal",
+   "pil": [
+    "戊午",
+    "戊申",
+    "壬戌",
+    "戊子"
+   ],
+   "fase": "HT",
+   "giornoMese": 14,
+   "mIndex": 11,
+   "mChanged": [
+    6
+   ],
+   "mStart": 1224633600000,
+   "ciclo": {
+    "n": 28,
+    "l": 4,
+    "b": "亥",
+    "el": "Water",
+    "r": "C",
+    "testo": "The ridgepole is braced. Good fortune. If there are ulterior motives, it is humiliating."
+   },
+   "annuale": {
+    "n": 5,
+    "l": 4,
+    "b": "申",
+    "el": "Metal",
+    "r": "B",
+    "testo": "Waiting in blood. Get out of the pit."
+   },
+   "mensile": 9,
+   "signore": {
+    "n": 61,
+    "l": 3,
+    "b": "丑",
+    "el": "Earth",
+    "r": "P",
+    "testo": "They find a comrade. Now they beat the drum, now they stop. Now they sob, now they sing."
+   },
+   "giorno": {
+    "n": 61,
+    "l": 1,
+    "b": "巳",
+    "el": "Fire",
+    "r": "G",
+    "testo": "Being prepared brings good fortune. If there are secret designs, it is disquieting."
+   },
+   "esaGiorno": {
+    "n": 59,
+    "l": 1,
+    "b": "寅",
+    "el": "Wood",
+    "r": "W",
+    "testo": "They bring help with the strength of a horse. Good fortune."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     0
+    ],
+    "annuale": [
+     1,
+     1,
+     1,
+     0,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "blocco": [
+     1,
+     1,
+     0,
+     0,
+     1,
+     1
+    ],
+    "giorno": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     4,
+     46,
+     54
+    ],
+    [
+     5,
+     55,
+     63
+    ],
+    [
+     6,
+     64,
+     69
+    ],
+    [
+     1,
+     70,
+     75
+    ],
+    [
+     2,
+     76,
+     84
+    ],
+    [
+     3,
+     85,
+     93
+    ]
+   ],
+   "ds": {
+    "tot": 10.69,
+    "pct": 0.1325136612021858,
+    "pctBase": 0.1325136612021858,
+    "d": {
+     "r": "G",
+     "rs": 2,
+     "t": -0.5,
+     "note": [
+      "剋 Y",
+      "六合 D",
+      "空 void"
+     ],
+     "s": 1,
+     "txt": 0,
+     "tot": 1.5
+    },
+    "s2": {
+     "t": -2,
+     "note": [
+      "三合 M",
+      "冲 D",
+      "剋 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "John F. Kennedy",
+   "d": "1960-11-08",
+   "luogo": [
+    -70.3,
+    "America/New_York"
+   ],
+   "scopo": "officer",
+   "cosa": "elected President"
+  },
+  "pct": {
+   "app now": 0.6516393442622951,
+   "no Luck": 0.5887978142076503,
+   "no cycle line": 0.8142076502732241,
+   "no annual line": 0.6256830601092896,
+   "no month line": 0.4808743169398907,
+   "no secondary": 0.7486338797814208,
+   "secondary ×1": 0.5642076502732241,
+   "day ×2": 0.6270491803278688,
+   "day only (prim.+sec.)": 0.4931693989071038,
+   "no relation": 0.6639344262295082,
+   "no time": 0.930327868852459,
+   "no text": 0.4931693989071038,
+   "relation ×2": 0.6229508196721312,
+   "time ×2": 0.5519125683060109,
+   "text ×2": 0.7226775956284153
+  },
+  "n": 366,
+  "tot": 3.56,
+  "age": 44,
+  "pers": "Wood",
+  "pil": [
+   "壬午",
+   "庚子",
+   "丁亥",
+   "庚子"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 3,
+    "line": 1,
+    "b": "子",
+    "r": "P",
+    "rs": 0,
+    "t": 3,
+    "note": [
+     "timely",
+     "same Y",
+     "same D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 4
+   },
+   "a": {
+    "hexN": 28,
+    "line": 3,
+    "b": "酉",
+    "r": "G",
+    "rs": 2,
+    "t": 0,
+    "note": [],
+    "s": -2,
+    "txt": -2,
+    "tot": 0
+   },
+   "m": {
+    "hexN": 44,
+    "line": 6,
+    "b": "戌",
+    "r": "W",
+    "rs": 1,
+    "t": -1,
+    "note": [
+     "空 void"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -2
+   },
+   "d": {
+    "hexN": 57,
+    "line": 6,
+    "b": "卯",
+    "r": "B",
+    "rs": 0,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "三合 M"
+    ],
+    "s": -2,
+    "txt": -1,
+    "tot": 0.5
+   },
+   "s2": {
+    "hexN": 48,
+    "line": 6,
+    "b": "子",
+    "r": "P",
+    "rs": 0,
+    "t": 3,
+    "note": [
+     "timely",
+     "same Y",
+     "same D"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 5
+   }
+  },
+  "luck": -1.44,
+  "x": {
+   "eta": 44,
+   "pers": "Wood",
+   "pil": [
+    "壬午",
+    "庚子",
+    "丁亥",
+    "庚子"
+   ],
+   "fase": "HT",
+   "giornoMese": 17,
+   "mIndex": 11,
+   "mChanged": [
+    6
+   ],
+   "mStart": -290044800000,
+   "ciclo": {
+    "n": 3,
+    "l": 1,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "Hesitation and hindrance. It furthers one to remain persevering in correctness. It furthers one to appoint helpers."
+   },
+   "annuale": {
+    "n": 28,
+    "l": 3,
+    "b": "酉",
+    "el": "Metal",
+    "r": "G",
+    "testo": "The ridgepole sags to the breaking point. Misfortune."
+   },
+   "mensile": 44,
+   "signore": {
+    "n": 57,
+    "l": 4,
+    "b": "未",
+    "el": "Earth",
+    "r": "W",
+    "testo": "Remorse disappears. During the hunt three kinds of game are caught."
+   },
+   "giorno": {
+    "n": 57,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Penetration under the bed. They lose their property and their ax. Perseverance brings misfortune."
+   },
+   "esaGiorno": {
+    "n": 48,
+    "l": 6,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "One draws from the well without hindrance. It is dependable. Supreme good fortune."
+   },
+   "linee": {
+    "ciclo": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "annuale": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     0
+    ],
+    "mensile": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "blocco": [
+     0,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "giorno": [
+     0,
+     1,
+     1,
+     0,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     1,
+     40,
+     48
+    ],
+    [
+     2,
+     49,
+     54
+    ],
+    [
+     3,
+     55,
+     60
+    ],
+    [
+     4,
+     61,
+     66
+    ],
+    [
+     5,
+     67,
+     75
+    ],
+    [
+     6,
+     76,
+     81
+    ]
+   ],
+   "ds": {
+    "tot": 3.56,
+    "pct": 0.6516393442622951,
+    "pctBase": 0.6516393442622951,
+    "d": {
+     "r": "B",
+     "rs": 0,
+     "t": 1.5,
+     "note": [
+      "timely",
+      "三合 M"
+     ],
+     "s": -2,
+     "txt": -1,
+     "tot": 0.5
+    },
+    "s2": {
+     "t": 3,
+     "note": [
+      "timely",
+      "same Y",
+      "same D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Winston Churchill",
+   "d": "1940-05-10",
+   "luogo": [
+    -0.13,
+    "Europe/London"
+   ],
+   "scopo": "officer",
+   "cosa": "becomes Prime Minister"
+  },
+  "pct": {
+   "app now": 0.3469945355191257,
+   "no Luck": 0.4822404371584699,
+   "no cycle line": 0.40027322404371585,
+   "no annual line": 0.20355191256830601,
+   "no month line": 0.4931693989071038,
+   "no secondary": 0.3866120218579235,
+   "secondary ×1": 0.3128415300546448,
+   "day ×2": 0.41939890710382516,
+   "day only (prim.+sec.)": 0.5614754098360656,
+   "no relation": 0.30191256830601093,
+   "no time": 0.15846994535519127,
+   "no text": 0.4781420765027322,
+   "relation ×2": 0.3756830601092896,
+   "time ×2": 0.47540983606557374,
+   "text ×2": 0.2568306010928962
+  },
+  "n": 366,
+  "tot": 11.88,
+  "age": 67,
+  "pers": "Wood",
+  "pil": [
+   "戊午",
+   "癸丑",
+   "辛巳",
+   "庚辰"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 21,
+    "line": 1,
+    "b": "子",
+    "r": "P",
+    "rs": 0,
+    "t": 0.5,
+    "note": [
+     "三合 Y",
+     "剋 Y",
+     "六合 D",
+     "剋 D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 1.5
+   },
+   "a": {
+    "hexN": 41,
+    "line": 2,
+    "b": "卯",
+    "r": "B",
+    "rs": 0,
+    "t": 0,
+    "note": [],
+    "s": 1,
+    "txt": 1,
+    "tot": 1
+   },
+   "m": {
+    "hexN": 26,
+    "line": 3,
+    "b": "辰",
+    "r": "W",
+    "rs": 1,
+    "t": 2,
+    "note": [
+     "timely",
+     "same Y"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 5
+   },
+   "d": {
+    "hexN": 9,
+    "line": 6,
+    "b": "卯",
+    "r": "B",
+    "rs": 0,
+    "t": 0,
+    "note": [],
+    "s": 1,
+    "txt": 1,
+    "tot": 1
+   },
+   "s2": {
+    "hexN": 5,
+    "line": 6,
+    "b": "子",
+    "r": "P",
+    "rs": 0,
+    "t": 0.5,
+    "note": [
+     "三合 Y",
+     "剋 Y",
+     "六合 D",
+     "剋 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2.5
+   }
+  },
+  "luck": 2.13,
+  "x": {
+   "eta": 67,
+   "pers": "Wood",
+   "pil": [
+    "戊午",
+    "癸丑",
+    "辛巳",
+    "庚辰"
+   ],
+   "fase": "HT",
+   "giornoMese": 21,
+   "mIndex": 5,
+   "mChanged": [
+    3
+   ],
+   "mStart": -937267200000,
+   "ciclo": {
+    "n": 21,
+    "l": 1,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "Their feet are restrained at the start, halting further missteps. No blame."
+   },
+   "annuale": {
+    "n": 41,
+    "l": 2,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Perseverance furthers. To undertake something brings misfortune. Without decreasing oneself, one is able to bring increase to others."
+   },
+   "mensile": 26,
+   "signore": {
+    "n": 9,
+    "l": 5,
+    "b": "巳",
+    "el": "Fire",
+    "r": "C",
+    "testo": "If you are sincere and loyally attached, you are rich in your neighbor."
+   },
+   "giorno": {
+    "n": 9,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "The rain comes, there is rest. This is due to the lasting effect of character. Perseverance brings the woman into danger. The moon is nearly full. If the superior person persists, misfortune comes."
+   },
+   "esaGiorno": {
+    "n": 5,
+    "l": 6,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "One falls into the pit. Three uninvited guests arrive. Honor them, and in the end there will be good fortune."
+   },
+   "linee": {
+    "ciclo": [
+     1,
+     0,
+     0,
+     1,
+     0,
+     1
+    ],
+    "annuale": [
+     1,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "mensile": [
+     1,
+     1,
+     1,
+     0,
+     0,
+     1
+    ],
+    "blocco": [
+     1,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "giorno": [
+     1,
+     1,
+     1,
+     0,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     5,
+     49,
+     54
+    ],
+    [
+     6,
+     55,
+     63
+    ],
+    [
+     1,
+     64,
+     72
+    ],
+    [
+     2,
+     73,
+     78
+    ],
+    [
+     3,
+     79,
+     84
+    ],
+    [
+     4,
+     85,
+     93
+    ]
+   ],
+   "ds": {
+    "tot": 11.88,
+    "pct": 0.3469945355191257,
+    "pctBase": 0.3469945355191257,
+    "d": {
+     "r": "B",
+     "rs": 0,
+     "t": 0,
+     "note": [],
+     "s": 1,
+     "txt": 1,
+     "tot": 1
+    },
+    "s2": {
+     "t": 0.5,
+     "note": [
+      "三合 Y",
+      "剋 Y",
+      "六合 D",
+      "剋 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Adolf Hitler",
+   "d": "1933-01-30",
+   "luogo": [
+    13.4,
+    "Europe/Berlin"
+   ],
+   "scopo": "officer",
+   "cosa": "appointed Chancellor"
+  },
+  "pct": {
+   "app now": 0.4684931506849315,
+   "no Luck": 0.3356164383561644,
+   "no cycle line": 0.6575342465753424,
+   "no annual line": 0.336986301369863,
+   "no month line": 0.29863013698630136,
+   "no secondary": 0.4876712328767123,
+   "secondary ×1": 0.4657534246575342,
+   "day ×2": 0.33424657534246577,
+   "day only (prim.+sec.)": 0.13972602739726028,
+   "no relation": 0.6602739726027397,
+   "no time": 0.5575342465753425,
+   "no text": 0.3082191780821918,
+   "relation ×2": 0.3,
+   "time ×2": 0.436986301369863,
+   "text ×2": 0.5397260273972603
+  },
+  "n": 365,
+  "tot": 11.13,
+  "age": 45,
+  "pers": "Water",
+  "pil": [
+   "甲午",
+   "丙申",
+   "癸丑",
+   "壬申"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 48,
+    "line": 6,
+    "b": "子",
+    "r": "B",
+    "rs": 0,
+    "t": 3,
+    "note": [
+     "timely",
+     "三合 Y",
+     "六合 M",
+     "剋 M by the purpose relation (no penalty)",
+     "三合 D"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 5
+   },
+   "a": {
+    "hexN": 21,
+    "line": 5,
+    "b": "未",
+    "r": "G",
+    "rs": 2,
+    "t": -1,
+    "note": [
+     "timely",
+     "冲 M"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": 1
+   },
+   "m": {
+    "hexN": 23,
+    "line": 1,
+    "b": "未",
+    "r": "G",
+    "rs": 2,
+    "t": -1,
+    "note": [
+     "timely",
+     "冲 M"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -1
+   },
+   "d": {
+    "hexN": 52,
+    "line": 4,
+    "b": "戌",
+    "r": "G",
+    "rs": 2,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 5
+   },
+   "s2": {
+    "hexN": 56,
+    "line": 4,
+    "b": "酉",
+    "r": "P",
+    "rs": 0,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "三合 M"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 2.5
+   }
+  },
+  "luck": -0.12,
+  "x": {
+   "eta": 45,
+   "pers": "Water",
+   "pil": [
+    "甲午",
+    "丙申",
+    "癸丑",
+    "壬申"
+   ],
+   "fase": "XT",
+   "giornoMese": 11,
+   "mIndex": 2,
+   "mChanged": [
+    1,
+    4
+   ],
+   "mStart": -1165968000000,
+   "ciclo": {
+    "n": 48,
+    "l": 6,
+    "b": "子",
+    "el": "Water",
+    "r": "B",
+    "testo": "One draws from the well without hindrance. It is dependable. Supreme good fortune."
+   },
+   "annuale": {
+    "n": 21,
+    "l": 5,
+    "b": "未",
+    "el": "Earth",
+    "r": "G",
+    "testo": "Bites on dried lean meat. Receives yellow gold. Perseveringly aware of danger. No blame."
+   },
+   "mensile": 23,
+   "signore": {
+    "n": 52,
+    "l": 3,
+    "b": "申",
+    "el": "Metal",
+    "r": "P",
+    "testo": "Keeping their hips still. Making their sacrum stiff. Dangerous. The heart suffocates."
+   },
+   "giorno": {
+    "n": 52,
+    "l": 4,
+    "b": "戌",
+    "el": "Earth",
+    "r": "G",
+    "testo": "Keeping their trunk still. No blame."
+   },
+   "esaGiorno": {
+    "n": 56,
+    "l": 4,
+    "b": "酉",
+    "el": "Metal",
+    "r": "P",
+    "testo": "The wanderer rests in a shelter. They obtain their property and an ax. My heart is not glad."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     1,
+     0,
+     1,
+     0
+    ],
+    "annuale": [
+     1,
+     0,
+     0,
+     1,
+     0,
+     1
+    ],
+    "mensile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     1
+    ],
+    "blocco": [
+     0,
+     0,
+     1,
+     0,
+     0,
+     1
+    ],
+    "giorno": [
+     0,
+     0,
+     1,
+     1,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     1,
+     1,
+     6
+    ],
+    [
+     2,
+     7,
+     15
+    ],
+    [
+     3,
+     16,
+     24
+    ],
+    [
+     4,
+     25,
+     30
+    ],
+    [
+     5,
+     31,
+     39
+    ],
+    [
+     6,
+     40,
+     45
+    ]
+   ],
+   "ds": {
+    "tot": 11.13,
+    "pct": 0.4684931506849315,
+    "pctBase": 0.4684931506849315,
+    "d": {
+     "r": "G",
+     "rs": 2,
+     "t": 1,
+     "note": [
+      "timely"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 5
+    },
+    "s2": {
+     "t": 1.5,
+     "note": [
+      "timely",
+      "三合 M"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Benito Mussolini",
+   "d": "1922-10-30",
+   "luogo": [
+    12.48,
+    "Europe/Rome"
+   ],
+   "scopo": "officer",
+   "cosa": "appointed Prime Minister"
+  },
+  "pct": {
+   "app now": 0.12054794520547946,
+   "no Luck": 0.1547945205479452,
+   "no cycle line": 0.10136986301369863,
+   "no annual line": 0.06301369863013699,
+   "no month line": 0.2191780821917808,
+   "no secondary": 0.19041095890410958,
+   "secondary ×1": 0.0958904109589041,
+   "day ×2": 0.10821917808219178,
+   "day only (prim.+sec.)": 0.17945205479452056,
+   "no relation": 0.06301369863013699,
+   "no time": 0.16986301369863013,
+   "no text": 0.19863013698630136,
+   "relation ×2": 0.2,
+   "time ×2": 0.11643835616438356,
+   "text ×2": 0.10136986301369863
+  },
+  "n": 365,
+  "tot": 17.5,
+  "age": 40,
+  "pers": "Wood",
+  "pil": [
+   "甲午",
+   "辛未",
+   "庚戌",
+   "壬戌"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 46,
+    "line": 3,
+    "b": "酉",
+    "r": "G",
+    "rs": 2,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 5
+   },
+   "a": {
+    "hexN": 58,
+    "line": 1,
+    "b": "巳",
+    "r": "C",
+    "rs": -1,
+    "t": 0,
+    "note": [],
+    "s": 1,
+    "txt": 1,
+    "tot": 0
+   },
+   "m": {
+    "hexN": 10,
+    "line": 6,
+    "b": "戌",
+    "r": "W",
+    "rs": 1,
+    "t": 3,
+    "note": [
+     "timely",
+     "same Y",
+     "same M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 6
+   },
+   "d": {
+    "hexN": 25,
+    "line": 4,
+    "b": "午",
+    "r": "C",
+    "rs": -1,
+    "t": 2,
+    "note": [
+     "三合 Y",
+     "三合 M",
+     "六合 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3
+   },
+   "s2": {
+    "hexN": 42,
+    "line": 4,
+    "b": "未",
+    "r": "W",
+    "rs": 1,
+    "t": 2,
+    "note": [
+     "timely",
+     "same D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 5
+   }
+  },
+  "luck": 1,
+  "x": {
+   "eta": 40,
+   "pers": "Wood",
+   "pil": [
+    "甲午",
+    "辛未",
+    "庚戌",
+    "壬戌"
+   ],
+   "fase": "XT",
+   "giornoMese": 7,
+   "mIndex": 11,
+   "mChanged": [
+    6
+   ],
+   "mStart": -1489190400000,
+   "ciclo": {
+    "n": 46,
+    "l": 3,
+    "b": "酉",
+    "el": "Metal",
+    "r": "G",
+    "testo": "One pushes upward into an empty city."
+   },
+   "annuale": {
+    "n": 58,
+    "l": 1,
+    "b": "巳",
+    "el": "Fire",
+    "r": "C",
+    "testo": "Contented joyousness. Good fortune."
+   },
+   "mensile": 10,
+   "signore": {
+    "n": 25,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "B",
+    "testo": "If one does not count on the harvest while plowing, nor on the use of the ground while clearing it, it furthers one to undertake something."
+   },
+   "giorno": {
+    "n": 25,
+    "l": 4,
+    "b": "午",
+    "el": "Fire",
+    "r": "C",
+    "testo": "Those who are able to remain persevering remain without blame."
+   },
+   "esaGiorno": {
+    "n": 42,
+    "l": 4,
+    "b": "未",
+    "el": "Earth",
+    "r": "W",
+    "testo": "If you walk in the middle and report to the prince, they will follow. It furthers one to be used in the removal of the capital."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     1,
+     0,
+     0,
+     0
+    ],
+    "annuale": [
+     1,
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     1,
+     0,
+     1,
+     1,
+     1
+    ],
+    "blocco": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     1
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     4,
+     1,
+     6
+    ],
+    [
+     5,
+     7,
+     12
+    ],
+    [
+     6,
+     13,
+     18
+    ],
+    [
+     1,
+     19,
+     24
+    ],
+    [
+     2,
+     25,
+     33
+    ],
+    [
+     3,
+     34,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": 17.5,
+    "pct": 0.12054794520547946,
+    "pctBase": 0.12054794520547946,
+    "d": {
+     "r": "C",
+     "rs": -1,
+     "t": 2,
+     "note": [
+      "三合 Y",
+      "三合 M",
+      "六合 D"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 3
+    },
+    "s2": {
+     "t": 2,
+     "note": [
+      "timely",
+      "same D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Papa Giovanni Paolo II (Karol Wojtyla)",
+   "d": "1978-10-16",
+   "luogo": [
+    12.48,
+    "Europe/Rome"
+   ],
+   "scopo": "officer",
+   "cosa": "elected Pope"
+  },
+  "pct": {
+   "app now": 0.910958904109589,
+   "no Luck": 0.873972602739726,
+   "no cycle line": 0.8,
+   "no annual line": 0.9260273972602739,
+   "no month line": 0.7958904109589041,
+   "no secondary": 0.8821917808219178,
+   "secondary ×1": 0.9205479452054794,
+   "day ×2": 0.7876712328767124,
+   "day only (prim.+sec.)": 0.25068493150684934,
+   "no relation": 0.8821917808219178,
+   "no time": 0.7123287671232876,
+   "no text": 0.9726027397260274,
+   "relation ×2": 0.9219178082191781,
+   "time ×2": 0.9246575342465754,
+   "text ×2": 0.826027397260274
+  },
+  "n": 365,
+  "tot": -3,
+  "age": 59,
+  "pers": "Wood",
+  "pil": [
+   "甲午",
+   "辛亥",
+   "壬戌",
+   "戊午"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 57,
+    "line": 5,
+    "b": "巳",
+    "r": "C",
+    "rs": -1,
+    "t": -2.5,
+    "note": [
+     "冲 D",
+     "剋 D"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": -2.5
+   },
+   "a": {
+    "hexN": 52,
+    "line": 2,
+    "b": "午",
+    "r": "C",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "same Y",
+     "三合 M",
+     "剋 D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 0
+   },
+   "m": {
+    "hexN": 57,
+    "line": 5,
+    "b": "巳",
+    "r": "C",
+    "rs": -1,
+    "t": -2.5,
+    "note": [
+     "冲 D",
+     "剋 D"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": -2.5
+   },
+   "d": {
+    "hexN": 18,
+    "line": 3,
+    "b": "酉",
+    "r": "G",
+    "rs": 2,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "剋 Y"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 4.5
+   },
+   "s2": {
+    "hexN": 4,
+    "line": 3,
+    "b": "午",
+    "r": "C",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "same Y",
+     "三合 M",
+     "剋 D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 0
+   }
+  },
+  "luck": -2.5,
+  "x": {
+   "eta": 59,
+   "pers": "Wood",
+   "pil": [
+    "甲午",
+    "辛亥",
+    "壬戌",
+    "戊午"
+   ],
+   "fase": "HT",
+   "giornoMese": 24,
+   "mIndex": 10,
+   "mChanged": [
+    2,
+    5
+   ],
+   "mStart": 275356800000,
+   "ciclo": {
+    "n": 57,
+    "l": 5,
+    "b": "巳",
+    "el": "Fire",
+    "r": "C",
+    "testo": "Perseverance brings good fortune. Remorse disappears. Nothing that does not further. No beginning, but an end. Before the change, three days. After the change, three days. Good fortune."
+   },
+   "annuale": {
+    "n": 52,
+    "l": 2,
+    "b": "午",
+    "el": "Fire",
+    "r": "C",
+    "testo": "Keeping their calves still. They cannot rescue those whom they follow. Their heart is not glad."
+   },
+   "mensile": 57,
+   "signore": {
+    "n": 18,
+    "l": 5,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "Setting right what has been spoiled by the father. One meets with praise."
+   },
+   "giorno": {
+    "n": 18,
+    "l": 3,
+    "b": "酉",
+    "el": "Metal",
+    "r": "G",
+    "testo": "Setting right what has been spoiled by the father. There will be a little remorse. No great blame."
+   },
+   "esaGiorno": {
+    "n": 4,
+    "l": 3,
+    "b": "午",
+    "el": "Fire",
+    "r": "C",
+    "testo": "Take not a maiden who, when she sees a man of bronze, loses possession of herself. Nothing furthers."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "annuale": [
+     0,
+     0,
+     1,
+     0,
+     0,
+     1
+    ],
+    "mensile": [
+     0,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "blocco": [
+     0,
+     1,
+     1,
+     0,
+     0,
+     1
+    ],
+    "giorno": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     4,
+     52,
+     57
+    ],
+    [
+     5,
+     58,
+     66
+    ],
+    [
+     6,
+     67,
+     75
+    ],
+    [
+     1,
+     76,
+     81
+    ],
+    [
+     2,
+     82,
+     90
+    ],
+    [
+     3,
+     91,
+     99
+    ]
+   ],
+   "ds": {
+    "tot": -3,
+    "pct": 0.910958904109589,
+    "pctBase": 0.910958904109589,
+    "d": {
+     "r": "G",
+     "rs": 2,
+     "t": 0.5,
+     "note": [
+      "timely",
+      "剋 Y"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 4.5
+    },
+    "s2": {
+     "t": 1,
+     "note": [
+      "same Y",
+      "三合 M",
+      "剋 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Papa Paolo VI (Giovanni Battista Montini)",
+   "d": "1963-06-21",
+   "luogo": [
+    12.48,
+    "Europe/Rome"
+   ],
+   "scopo": "officer",
+   "cosa": "elected Pope"
+  },
+  "pct": {
+   "app now": 0.28356164383561644,
+   "no Luck": 0.3219178082191781,
+   "no cycle line": 0.27808219178082194,
+   "no annual line": 0.4438356164383562,
+   "no month line": 0.2684931506849315,
+   "no secondary": 0.3726027397260274,
+   "secondary ×1": 0.16027397260273973,
+   "day ×2": 0.39315068493150684,
+   "day only (prim.+sec.)": 0.6917808219178082,
+   "no relation": 0.25068493150684934,
+   "no time": 0.22602739726027396,
+   "no text": 0.3356164383561644,
+   "relation ×2": 0.2671232876712329,
+   "time ×2": 0.30273972602739724,
+   "text ×2": 0.236986301369863
+  },
+  "n": 365,
+  "tot": 17.63,
+  "age": 67,
+  "pers": "Metal",
+  "pil": [
+   "壬午",
+   "乙未",
+   "戊午",
+   "癸卯"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 26,
+    "line": 3,
+    "b": "辰",
+    "r": "P",
+    "rs": 0,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "剋 Y"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2.5
+   },
+   "a": {
+    "hexN": 54,
+    "line": 4,
+    "b": "午",
+    "r": "G",
+    "rs": 2,
+    "t": 3,
+    "note": [
+     "timely",
+     "same M",
+     "六合 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 7
+   },
+   "m": {
+    "hexN": 14,
+    "line": 3,
+    "b": "辰",
+    "r": "P",
+    "rs": 0,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "剋 Y"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2.5
+   },
+   "d": {
+    "hexN": 50,
+    "line": 3,
+    "b": "酉",
+    "r": "B",
+    "rs": 0,
+    "t": -2,
+    "note": [
+     "冲 Y",
+     "剋 M by the purpose relation (no penalty)"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": -3
+   },
+   "s2": {
+    "hexN": 64,
+    "line": 3,
+    "b": "午",
+    "r": "G",
+    "rs": 2,
+    "t": 3,
+    "note": [
+     "timely",
+     "same M",
+     "六合 D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 6
+   }
+  },
+  "luck": 5.63,
+  "x": {
+   "eta": 67,
+   "pers": "Metal",
+   "pil": [
+    "壬午",
+    "乙未",
+    "戊午",
+    "癸卯"
+   ],
+   "fase": "HT",
+   "giornoMese": 32,
+   "mIndex": 6,
+   "mChanged": [
+    3,
+    6
+   ],
+   "mStart": -208828800000,
+   "ciclo": {
+    "n": 26,
+    "l": 3,
+    "b": "辰",
+    "el": "Earth",
+    "r": "P",
+    "testo": "A good horse that follows others. Awareness of difficulty and perseverance further. Daily practice of chariot driving and armed defense. It furthers one to have somewhere to go."
+   },
+   "annuale": {
+    "n": 54,
+    "l": 4,
+    "b": "午",
+    "el": "Fire",
+    "r": "G",
+    "testo": "The marrying maiden draws out the allotted time. A late marriage comes in due course."
+   },
+   "mensile": 14,
+   "signore": {
+    "n": 50,
+    "l": 1,
+    "b": "丑",
+    "el": "Earth",
+    "r": "P",
+    "testo": "A cauldron with legs upturned. Furthers removal of stagnating stuff. One takes a concubine for the sake of her child. No blame."
+   },
+   "giorno": {
+    "n": 50,
+    "l": 3,
+    "b": "酉",
+    "el": "Metal",
+    "r": "B",
+    "testo": "The handle of the cauldron is altered. One is impeded in one's way of life. The fat of the pheasant is not eaten. Once rain falls, remorse is spent. Good fortune comes in the end."
+   },
+   "esaGiorno": {
+    "n": 64,
+    "l": 3,
+    "b": "午",
+    "el": "Fire",
+    "r": "G",
+    "testo": "Before completion, attack brings misfortune. It furthers one to cross the great water."
+   },
+   "linee": {
+    "ciclo": [
+     1,
+     1,
+     1,
+     0,
+     0,
+     1
+    ],
+    "annuale": [
+     1,
+     1,
+     0,
+     1,
+     0,
+     0
+    ],
+    "mensile": [
+     1,
+     1,
+     1,
+     1,
+     0,
+     1
+    ],
+    "blocco": [
+     0,
+     1,
+     1,
+     1,
+     0,
+     1
+    ],
+    "giorno": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     1,
+     46,
+     54
+    ],
+    [
+     2,
+     55,
+     63
+    ],
+    [
+     3,
+     64,
+     72
+    ],
+    [
+     4,
+     73,
+     78
+    ],
+    [
+     5,
+     79,
+     84
+    ],
+    [
+     6,
+     85,
+     93
+    ]
+   ],
+   "ds": {
+    "tot": 17.63,
+    "pct": 0.28356164383561644,
+    "pctBase": 0.28356164383561644,
+    "d": {
+     "r": "B",
+     "rs": 0,
+     "t": -2,
+     "note": [
+      "冲 Y",
+      "剋 M by the purpose relation (no penalty)"
+     ],
+     "s": 0,
+     "txt": -1,
+     "tot": -3
+    },
+    "s2": {
+     "t": 3,
+     "note": [
+      "timely",
+      "same M",
+      "六合 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Indira Gandhi",
+   "d": "1966-01-24",
+   "luogo": [
+    77.21,
+    "Asia/Kolkata"
+   ],
+   "scopo": "officer",
+   "cosa": "becomes Prime Minister"
+  },
+  "pct": {
+   "app now": 0.136986301369863,
+   "no Luck": 0.10684931506849316,
+   "no cycle line": 0.11506849315068493,
+   "no annual line": 0.11506849315068493,
+   "no month line": 0.13150684931506848,
+   "no secondary": 0.09863013698630137,
+   "secondary ×1": 0.16575342465753426,
+   "day ×2": 0.0958904109589041,
+   "day only (prim.+sec.)": 0.18082191780821918,
+   "no relation": 0.19726027397260273,
+   "no time": 0.057534246575342465,
+   "no text": 0.18082191780821918,
+   "relation ×2": 0.07123287671232877,
+   "time ×2": 0.18493150684931506,
+   "text ×2": 0.1178082191780822
+  },
+  "n": 365,
+  "tot": 11.56,
+  "age": 50,
+  "pers": "Earth",
+  "pil": [
+   "戊午",
+   "癸未",
+   "己丑",
+   "乙巳"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 2,
+    "line": 6,
+    "b": "酉",
+    "r": "C",
+    "rs": -1,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "剋 Y",
+     "三合 M"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 0.5
+   },
+   "a": {
+    "hexN": 14,
+    "line": 4,
+    "b": "酉",
+    "r": "C",
+    "rs": -1,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "剋 Y",
+     "三合 M"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2.5
+   },
+   "m": {
+    "hexN": 18,
+    "line": 1,
+    "b": "丑",
+    "r": "B",
+    "rs": 0,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same M",
+     "冲 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2.5
+   },
+   "d": {
+    "hexN": 26,
+    "line": 6,
+    "b": "寅",
+    "r": "G",
+    "rs": 2,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 5
+   },
+   "s2": {
+    "hexN": 11,
+    "line": 6,
+    "b": "酉",
+    "r": "C",
+    "rs": -1,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "剋 Y",
+     "三合 M"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 0.5
+   }
+  },
+  "luck": 0.81,
+  "x": {
+   "eta": 50,
+   "pers": "Earth",
+   "pil": [
+    "戊午",
+    "癸未",
+    "己丑",
+    "乙巳"
+   ],
+   "fase": "HT",
+   "giornoMese": 5,
+   "mIndex": 2,
+   "mChanged": [
+    1,
+    4
+   ],
+   "mStart": -124588800000,
+   "ciclo": {
+    "n": 2,
+    "l": 6,
+    "b": "酉",
+    "el": "Metal",
+    "r": "C",
+    "testo": "Dragons fight in the meadow. Their blood is black and yellow."
+   },
+   "annuale": {
+    "n": 14,
+    "l": 4,
+    "b": "酉",
+    "el": "Metal",
+    "r": "C",
+    "testo": "They make a difference between themselves and their neighbor. No blame."
+   },
+   "mensile": 18,
+   "signore": {
+    "n": 26,
+    "l": 1,
+    "b": "子",
+    "el": "Water",
+    "r": "W",
+    "testo": "Danger is at hand. It furthers one to desist."
+   },
+   "giorno": {
+    "n": 26,
+    "l": 6,
+    "b": "寅",
+    "el": "Wood",
+    "r": "G",
+    "testo": "One attains the way of heaven. Success."
+   },
+   "esaGiorno": {
+    "n": 11,
+    "l": 6,
+    "b": "酉",
+    "el": "Metal",
+    "r": "C",
+    "testo": "The wall falls back into the moat. Use no army now. Make your commands known within your own town. Perseverance brings humiliation."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "annuale": [
+     1,
+     1,
+     1,
+     1,
+     0,
+     1
+    ],
+    "mensile": [
+     0,
+     1,
+     1,
+     0,
+     0,
+     1
+    ],
+    "blocco": [
+     1,
+     1,
+     1,
+     0,
+     0,
+     1
+    ],
+    "giorno": [
+     1,
+     1,
+     1,
+     0,
+     0,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     5,
+     40,
+     45
+    ],
+    [
+     6,
+     46,
+     51
+    ],
+    [
+     1,
+     52,
+     57
+    ],
+    [
+     2,
+     58,
+     63
+    ],
+    [
+     3,
+     64,
+     69
+    ],
+    [
+     4,
+     70,
+     75
+    ]
+   ],
+   "ds": {
+    "tot": 11.56,
+    "pct": 0.136986301369863,
+    "pctBase": 0.136986301369863,
+    "d": {
+     "r": "G",
+     "rs": 2,
+     "t": 1,
+     "note": [
+      "timely"
+     ],
+     "s": 2,
+     "txt": 2,
+     "tot": 5
+    },
+    "s2": {
+     "t": 1.5,
+     "note": [
+      "timely",
+      "三合 Y",
+      "剋 Y",
+      "三合 M"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Emmanuel Macron",
+   "d": "2017-05-07",
+   "luogo": [
+    2.35,
+    "Europe/Paris"
+   ],
+   "scopo": "officer",
+   "cosa": "elected President"
+  },
+  "pct": {
+   "app now": 0.9643835616438357,
+   "no Luck": 0.9301369863013699,
+   "no cycle line": 0.9191780821917809,
+   "no annual line": 0.989041095890411,
+   "no month line": 0.9808219178082191,
+   "no secondary": 0.936986301369863,
+   "secondary ×1": 0.9753424657534246,
+   "day ×2": 0.9835616438356164,
+   "day only (prim.+sec.)": 0.9863013698630136,
+   "no relation": 0.9616438356164384,
+   "no time": 0.9753424657534246,
+   "no text": 0.947945205479452,
+   "relation ×2": 0.9753424657534246,
+   "time ×2": 0.9452054794520548,
+   "text ×2": 0.9575342465753425
+  },
+  "n": 365,
+  "tot": -0.09,
+  "age": 41,
+  "pers": "Wood",
+  "pil": [
+   "庚午",
+   "甲午",
+   "乙巳",
+   "丁酉"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 3,
+    "line": 2,
+    "b": "寅",
+    "r": "B",
+    "rs": 0,
+    "t": -0.5,
+    "note": [
+     "剋 Y by the purpose relation (no penalty)",
+     "三合 D",
+     "空 void"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -2.5
+   },
+   "a": {
+    "hexN": 14,
+    "line": 6,
+    "b": "巳",
+    "r": "C",
+    "rs": -1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 3.5
+   },
+   "m": {
+    "hexN": 38,
+    "line": 3,
+    "b": "丑",
+    "r": "W",
+    "rs": 1,
+    "t": 2,
+    "note": [
+     "timely",
+     "三合 Y",
+     "三合 M"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 4
+   },
+   "d": {
+    "hexN": 41,
+    "line": 2,
+    "b": "卯",
+    "r": "B",
+    "rs": 0,
+    "t": -3,
+    "note": [
+     "冲 Y",
+     "剋 Y by the purpose relation (no penalty)",
+     "空 void"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -3
+   },
+   "s2": {
+    "hexN": 27,
+    "line": 2,
+    "b": "寅",
+    "r": "B",
+    "rs": 0,
+    "t": -0.5,
+    "note": [
+     "剋 Y by the purpose relation (no penalty)",
+     "三合 D",
+     "空 void"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -2.5
+   }
+  },
+  "luck": -0.84,
+  "x": {
+   "eta": 41,
+   "pers": "Wood",
+   "pil": [
+    "庚午",
+    "甲午",
+    "乙巳",
+    "丁酉"
+   ],
+   "fase": "XT",
+   "giornoMese": 19,
+   "mIndex": 5,
+   "mChanged": [
+    3
+   ],
+   "mStart": 1492560000000,
+   "ciclo": {
+    "n": 3,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Difficulties pile up. Horse and wagon part. They are not a robber; they want to woo when the time comes. The maiden is chaste, she does not pledge herself. Ten years—then she pledges herself."
+   },
+   "annuale": {
+    "n": 14,
+    "l": 6,
+    "b": "巳",
+    "el": "Fire",
+    "r": "C",
+    "testo": "They are blessed by heaven. Good fortune. Nothing that does not further."
+   },
+   "mensile": 38,
+   "signore": {
+    "n": 41,
+    "l": 4,
+    "b": "戌",
+    "el": "Earth",
+    "r": "W",
+    "testo": "If a person decreases their faults, it makes the other hasten to come and rejoice. No blame."
+   },
+   "giorno": {
+    "n": 41,
+    "l": 2,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Perseverance furthers. To undertake something brings misfortune. Without decreasing oneself, one is able to bring increase to others."
+   },
+   "esaGiorno": {
+    "n": 27,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Turning to the summit for nourishment, deviating from the path to seek nourishment from the hill. Continuing to do this brings misfortune."
+   },
+   "linee": {
+    "ciclo": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "annuale": [
+     1,
+     1,
+     1,
+     1,
+     0,
+     1
+    ],
+    "mensile": [
+     1,
+     1,
+     0,
+     1,
+     0,
+     1
+    ],
+    "blocco": [
+     1,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     3,
+     1,
+     6
+    ],
+    [
+     4,
+     7,
+     12
+    ],
+    [
+     5,
+     13,
+     21
+    ],
+    [
+     6,
+     22,
+     27
+    ],
+    [
+     1,
+     28,
+     36
+    ],
+    [
+     2,
+     37,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": -0.09,
+    "pct": 0.9643835616438357,
+    "pctBase": 0.9643835616438357,
+    "d": {
+     "r": "B",
+     "rs": 0,
+     "t": -3,
+     "note": [
+      "冲 Y",
+      "剋 Y by the purpose relation (no penalty)",
+      "空 void"
+     ],
+     "s": 1,
+     "txt": 0,
+     "tot": -3
+    },
+    "s2": {
+     "t": -0.5,
+     "note": [
+      "剋 Y by the purpose relation (no penalty)",
+      "三合 D",
+      "空 void"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Charles de Gaulle",
+   "d": "1958-06-01",
+   "luogo": [
+    2.35,
+    "Europe/Paris"
+   ],
+   "scopo": "officer",
+   "cosa": "invested Prime Minister"
+  },
+  "pct": {
+   "app now": 0.8534246575342466,
+   "no Luck": 0.8547945205479452,
+   "no cycle line": 0.7753424657534247,
+   "no annual line": 0.958904109589041,
+   "no month line": 0.7479452054794521,
+   "no secondary": 0.8904109589041096,
+   "secondary ×1": 0.7986301369863014,
+   "day ×2": 0.8383561643835616,
+   "day only (prim.+sec.)": 0.7698630136986301,
+   "no relation": 0.9164383561643835,
+   "no time": 0.5657534246575342,
+   "no text": 0.8726027397260274,
+   "relation ×2": 0.7561643835616438,
+   "time ×2": 0.9123287671232877,
+   "text ×2": 0.8246575342465754
+  },
+  "n": 365,
+  "tot": -1.25,
+  "age": 69,
+  "pers": "Earth",
+  "pil": [
+   "庚午",
+   "己酉",
+   "丁巳",
+   "戊戌"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 4,
+    "line": 6,
+    "b": "寅",
+    "r": "G",
+    "rs": 2,
+    "t": -1,
+    "note": [
+     "三合 Y",
+     "剋 D",
+     "空 void"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": 0
+   },
+   "a": {
+    "hexN": 27,
+    "line": 3,
+    "b": "辰",
+    "r": "B",
+    "rs": 0,
+    "t": 0,
+    "note": [
+     "timely",
+     "冲 Y",
+     "六合 D"
+    ],
+    "s": -1,
+    "txt": -1,
+    "tot": -1
+   },
+   "m": {
+    "hexN": 36,
+    "line": 3,
+    "b": "亥",
+    "r": "W",
+    "rs": 1,
+    "t": -2.5,
+    "note": [
+     "剋 Y",
+     "冲 M"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -1.5
+   },
+   "d": {
+    "hexN": 24,
+    "line": 5,
+    "b": "亥",
+    "r": "W",
+    "rs": 1,
+    "t": -2.5,
+    "note": [
+     "剋 Y",
+     "冲 M"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -1.5
+   },
+   "s2": {
+    "hexN": 3,
+    "line": 5,
+    "b": "戌",
+    "r": "B",
+    "rs": 0,
+    "t": 2,
+    "note": [
+     "timely",
+     "same Y"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 3
+   }
+  },
+  "luck": 1.25,
+  "x": {
+   "eta": 69,
+   "pers": "Earth",
+   "pil": [
+    "庚午",
+    "己酉",
+    "丁巳",
+    "戊戌"
+   ],
+   "fase": "HT",
+   "giornoMese": 12,
+   "mIndex": 6,
+   "mChanged": [
+    3,
+    6
+   ],
+   "mStart": -366595200000,
+   "ciclo": {
+    "n": 4,
+    "l": 6,
+    "b": "寅",
+    "el": "Wood",
+    "r": "G",
+    "testo": "In punishing folly, it does not further one to commit transgressions. The only thing that furthers is to prevent transgressions."
+   },
+   "annuale": {
+    "n": 27,
+    "l": 3,
+    "b": "辰",
+    "el": "Earth",
+    "r": "B",
+    "testo": "Turning away from nourishment. Perseverance brings misfortune. Do not act thus for ten years. Nothing serves to further."
+   },
+   "mensile": 36,
+   "signore": {
+    "n": 24,
+    "l": 3,
+    "b": "辰",
+    "el": "Earth",
+    "r": "B",
+    "testo": "Repeated return. Danger. No blame."
+   },
+   "giorno": {
+    "n": 24,
+    "l": 5,
+    "b": "亥",
+    "el": "Water",
+    "r": "W",
+    "testo": "Noblehearted return. No remorse."
+   },
+   "esaGiorno": {
+    "n": 3,
+    "l": 5,
+    "b": "戌",
+    "el": "Earth",
+    "r": "B",
+    "testo": "Difficulties in blessing. A little perseverance brings good fortune. Great perseverance brings misfortune."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "annuale": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     1
+    ],
+    "mensile": [
+     1,
+     0,
+     1,
+     0,
+     0,
+     0
+    ],
+    "blocco": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     3,
+     46,
+     51
+    ],
+    [
+     4,
+     52,
+     57
+    ],
+    [
+     5,
+     58,
+     63
+    ],
+    [
+     6,
+     64,
+     72
+    ],
+    [
+     1,
+     73,
+     78
+    ],
+    [
+     2,
+     79,
+     87
+    ]
+   ],
+   "ds": {
+    "tot": -1.25,
+    "pct": 0.8534246575342466,
+    "pctBase": 0.8534246575342466,
+    "d": {
+     "r": "W",
+     "rs": 1,
+     "t": -2.5,
+     "note": [
+      "剋 Y",
+      "冲 M"
+     ],
+     "s": 1,
+     "txt": 0,
+     "tot": -1.5
+    },
+    "s2": {
+     "t": 2,
+     "note": [
+      "timely",
+      "same Y"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Elizabeth II",
+   "d": "1953-06-02",
+   "luogo": [
+    -0.13,
+    "Europe/London"
+   ],
+   "scopo": "officer",
+   "cosa": "coronation"
+  },
+  "pct": {
+   "app now": 0.9164383561643835,
+   "no Luck": 0.963013698630137,
+   "no cycle line": 0.8356164383561644,
+   "no annual line": 0.9506849315068493,
+   "no month line": 0.7479452054794521,
+   "no secondary": 0.9136986301369863,
+   "secondary ×1": 0.9041095890410958,
+   "day ×2": 0.9068493150684932,
+   "day only (prim.+sec.)": 0.8054794520547945,
+   "no relation": 0.9452054794520548,
+   "no time": 0.6671232876712329,
+   "no text": 0.8,
+   "relation ×2": 0.863013698630137,
+   "time ×2": 0.9301369863013699,
+   "text ×2": 0.9452054794520548
+  },
+  "n": 365,
+  "tot": -6.12,
+  "age": 28,
+  "pers": "Earth",
+  "pil": [
+   "庚午",
+   "甲申",
+   "丁巳",
+   "癸巳"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 24,
+    "line": 5,
+    "b": "亥",
+    "r": "W",
+    "rs": 1,
+    "t": -5,
+    "note": [
+     "冲 Y",
+     "冲 M",
+     "空 void"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -4
+   },
+   "a": {
+    "hexN": 3,
+    "line": 5,
+    "b": "戌",
+    "r": "B",
+    "rs": 0,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 2
+   },
+   "m": {
+    "hexN": 37,
+    "line": 3,
+    "b": "亥",
+    "r": "W",
+    "rs": 1,
+    "t": -5,
+    "note": [
+     "冲 Y",
+     "冲 M",
+     "空 void"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": -5
+   },
+   "d": {
+    "hexN": 42,
+    "line": 6,
+    "b": "卯",
+    "r": "G",
+    "rs": 2,
+    "t": -0.5,
+    "note": [
+     "剋 D"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -0.5
+   },
+   "s2": {
+    "hexN": 3,
+    "line": 6,
+    "b": "子",
+    "r": "W",
+    "rs": 1,
+    "t": 0.5,
+    "note": [
+     "三合 D"
+    ],
+    "s": -2,
+    "txt": -1,
+    "tot": 0.5
+   }
+  },
+  "luck": 1.13,
+  "x": {
+   "eta": 28,
+   "pers": "Earth",
+   "pil": [
+    "庚午",
+    "甲申",
+    "丁巳",
+    "癸巳"
+   ],
+   "fase": "XT",
+   "giornoMese": 13,
+   "mIndex": 6,
+   "mChanged": [
+    3,
+    6
+   ],
+   "mStart": -524361600000,
+   "ciclo": {
+    "n": 24,
+    "l": 5,
+    "b": "亥",
+    "el": "Water",
+    "r": "W",
+    "testo": "Noblehearted return. No remorse."
+   },
+   "annuale": {
+    "n": 3,
+    "l": 5,
+    "b": "戌",
+    "el": "Earth",
+    "r": "B",
+    "testo": "Difficulties in blessing. A little perseverance brings good fortune. Great perseverance brings misfortune."
+   },
+   "mensile": 37,
+   "signore": {
+    "n": 42,
+    "l": 3,
+    "b": "辰",
+    "el": "Earth",
+    "r": "B",
+    "testo": "One is enriched through unfortunate events. No blame, if you are sincere and walk in the middle, and report with a seal to the prince."
+   },
+   "giorno": {
+    "n": 42,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "G",
+    "testo": "They bring increase to no one. Indeed, someone even strikes them. They do not keep their heart constantly steady. Misfortune."
+   },
+   "esaGiorno": {
+    "n": 3,
+    "l": 6,
+    "b": "子",
+    "el": "Water",
+    "r": "W",
+    "testo": "Horse and wagon part. Bloody tears flow."
+   },
+   "linee": {
+    "ciclo": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "annuale": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     0,
+     1,
+     0,
+     1,
+     1
+    ],
+    "blocco": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     1
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     1,
+     1,
+     9
+    ],
+    [
+     2,
+     10,
+     15
+    ],
+    [
+     3,
+     16,
+     21
+    ],
+    [
+     4,
+     22,
+     27
+    ],
+    [
+     5,
+     28,
+     33
+    ],
+    [
+     6,
+     34,
+     39
+    ]
+   ],
+   "ds": {
+    "tot": -6.12,
+    "pct": 0.9164383561643835,
+    "pctBase": 0.9164383561643835,
+    "d": {
+     "r": "G",
+     "rs": 2,
+     "t": -0.5,
+     "note": [
+      "剋 D"
+     ],
+     "s": -1,
+     "txt": -2,
+     "tot": -0.5
+    },
+    "s2": {
+     "t": 0.5,
+     "note": [
+      "三合 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Sigmund Freud",
+   "d": "1899-11-04",
+   "luogo": [
+    16.37,
+    "Europe/Vienna"
+   ],
+   "scopo": "output",
+   "cosa": "The Interpretation of Dreams published"
+  },
+  "pct": {
+   "app now": 0.34383561643835614,
+   "no Luck": 0.35753424657534244,
+   "no cycle line": 0.3178082191780822,
+   "no annual line": 0.3232876712328767,
+   "no month line": 0.22602739726027396,
+   "no secondary": 0.4410958904109589,
+   "secondary ×1": 0.2547945205479452,
+   "day ×2": 0.273972602739726,
+   "day only (prim.+sec.)": 0.1958904109589041,
+   "no relation": 0.2273972602739726,
+   "no time": 0.5136986301369864,
+   "no text": 0.3917808219178082,
+   "relation ×2": 0.4438356164383562,
+   "time ×2": 0.28904109589041094,
+   "text ×2": 0.336986301369863
+  },
+  "n": 365,
+  "tot": 14.84,
+  "age": 44,
+  "pers": "Wood",
+  "pil": [
+   "甲午",
+   "丙子",
+   "甲戌",
+   "己亥"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 53,
+    "line": 6,
+    "b": "卯",
+    "r": "B",
+    "rs": 1,
+    "t": 1.5,
+    "note": [
+     "三合 Y",
+     "六合 M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4.5
+   },
+   "a": {
+    "hexN": 20,
+    "line": 3,
+    "b": "卯",
+    "r": "B",
+    "rs": 1,
+    "t": 1.5,
+    "note": [
+     "三合 Y",
+     "六合 M"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 3.5
+   },
+   "m": {
+    "hexN": 8,
+    "line": 6,
+    "b": "子",
+    "r": "P",
+    "rs": -1,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "剋 M",
+     "same D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 0.5
+   },
+   "d": {
+    "hexN": 39,
+    "line": 6,
+    "b": "子",
+    "r": "P",
+    "rs": -1,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "剋 M",
+     "same D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2.5
+   },
+   "s2": {
+    "hexN": 53,
+    "line": 6,
+    "b": "卯",
+    "r": "B",
+    "rs": 1,
+    "t": 1.5,
+    "note": [
+     "三合 Y",
+     "六合 M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4.5
+   }
+  },
+  "luck": 1.59,
+  "x": {
+   "eta": 44,
+   "pers": "Wood",
+   "pil": [
+    "甲午",
+    "丙子",
+    "甲戌",
+    "己亥"
+   ],
+   "fase": "HT",
+   "giornoMese": 13,
+   "mIndex": 11,
+   "mChanged": [
+    6
+   ],
+   "mStart": -2215036800000,
+   "ciclo": {
+    "n": 53,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "The wild goose gradually draws near the cloud heights. Its feathers can be used for the sacred dance. Good fortune."
+   },
+   "annuale": {
+    "n": 20,
+    "l": 3,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Contemplation of my life decides the choice between advance and retreat."
+   },
+   "mensile": 8,
+   "signore": {
+    "n": 39,
+    "l": 3,
+    "b": "申",
+    "el": "Metal",
+    "r": "G",
+    "testo": "Going leads to obstructions; hence they come back."
+   },
+   "giorno": {
+    "n": 39,
+    "l": 6,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "Going leads to obstructions, coming leads to great merit. Good fortune. It furthers one to see the great person."
+   },
+   "esaGiorno": {
+    "n": 53,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "The wild goose gradually draws near the cloud heights. Its feathers can be used for the sacred dance. Good fortune."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     0,
+     1,
+     0,
+     1,
+     1
+    ],
+    "annuale": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     1
+    ],
+    "mensile": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "blocco": [
+     0,
+     0,
+     1,
+     0,
+     1,
+     0
+    ],
+    "giorno": [
+     0,
+     0,
+     1,
+     0,
+     1,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     6,
+     43,
+     51
+    ],
+    [
+     1,
+     52,
+     57
+    ],
+    [
+     2,
+     58,
+     63
+    ],
+    [
+     3,
+     64,
+     72
+    ],
+    [
+     4,
+     73,
+     78
+    ],
+    [
+     5,
+     79,
+     87
+    ]
+   ],
+   "ds": {
+    "tot": 14.84,
+    "pct": 0.34383561643835614,
+    "pctBase": 0.34383561643835614,
+    "d": {
+     "r": "P",
+     "rs": -1,
+     "t": 1.5,
+     "note": [
+      "timely",
+      "剋 M",
+      "same D"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 2.5
+    },
+    "s2": {
+     "t": 1.5,
+     "note": [
+      "三合 Y",
+      "六合 M"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Michael Jackson",
+   "d": "1982-11-29",
+   "luogo": [
+    -118.25,
+    "America/Los_Angeles"
+   ],
+   "scopo": "output",
+   "cosa": "Thriller released"
+  },
+  "pct": {
+   "app now": 0.9808219178082191,
+   "no Luck": 0.9863013698630136,
+   "no cycle line": 0.9287671232876712,
+   "no annual line": 0.9287671232876712,
+   "no month line": 0.9726027397260274,
+   "no secondary": 0.989041095890411,
+   "secondary ×1": 0.9780821917808219,
+   "day ×2": 0.9095890410958904,
+   "day only (prim.+sec.)": 0.536986301369863,
+   "no relation": 0.9945205479452055,
+   "no time": 0.9808219178082191,
+   "no text": 0.9452054794520548,
+   "relation ×2": 0.9671232876712329,
+   "time ×2": 0.9808219178082191,
+   "text ×2": 0.9945205479452055
+  },
+  "n": 365,
+  "tot": -5.16,
+  "age": 25,
+  "pers": "Metal",
+  "pil": [
+   "甲午",
+   "丙辰",
+   "辛亥",
+   "壬戌"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 6,
+    "line": 6,
+    "b": "戌",
+    "r": "P",
+    "rs": -1,
+    "t": -1,
+    "note": [
+     "same Y",
+     "冲 D"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -4
+   },
+   "a": {
+    "hexN": 6,
+    "line": 6,
+    "b": "戌",
+    "r": "P",
+    "rs": -1,
+    "t": -1,
+    "note": [
+     "same Y",
+     "冲 D"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -4
+   },
+   "m": {
+    "hexN": 28,
+    "line": 6,
+    "b": "未",
+    "r": "P",
+    "rs": -1,
+    "t": 0.5,
+    "note": [
+     "三合 M"
+    ],
+    "s": -2,
+    "txt": -1,
+    "tot": -1.5
+   },
+   "d": {
+    "hexN": 31,
+    "line": 5,
+    "b": "酉",
+    "r": "B",
+    "rs": 1,
+    "t": 0,
+    "note": [
+     "六合 D",
+     "空 void"
+    ],
+    "s": 1,
+    "txt": 1,
+    "tot": 2
+   },
+   "s2": {
+    "hexN": 62,
+    "line": 5,
+    "b": "申",
+    "r": "B",
+    "rs": 1,
+    "t": -0.5,
+    "note": [
+     "三合 D",
+     "空 void"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": -0.5
+   }
+  },
+  "luck": 2.59,
+  "x": {
+   "eta": 25,
+   "pers": "Metal",
+   "pil": [
+    "甲午",
+    "丙辰",
+    "辛亥",
+    "壬戌"
+   ],
+   "fase": "XT",
+   "giornoMese": 8,
+   "mIndex": 12,
+   "mChanged": [
+    3,
+    6
+   ],
+   "mStart": 406771200000,
+   "ciclo": {
+    "n": 6,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "P",
+    "testo": "Even if by chance a leather belt is bestowed on one, by the end of a morning it will have been snatched away three times."
+   },
+   "annuale": {
+    "n": 6,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "P",
+    "testo": "Even if by chance a leather belt is bestowed on one, by the end of a morning it will have been snatched away three times."
+   },
+   "mensile": 28,
+   "signore": {
+    "n": 31,
+    "l": 2,
+    "b": "午",
+    "el": "Fire",
+    "r": "G",
+    "testo": "The influence shows itself in the calves of the legs. Misfortune. Tarrying brings good fortune."
+   },
+   "giorno": {
+    "n": 31,
+    "l": 5,
+    "b": "酉",
+    "el": "Metal",
+    "r": "B",
+    "testo": "The influence shows itself in the back of the neck. No remorse."
+   },
+   "esaGiorno": {
+    "n": 62,
+    "l": 5,
+    "b": "申",
+    "el": "Metal",
+    "r": "B",
+    "testo": "Dense clouds, no rain from our western region. The prince shoots and hits that which is in the cave."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     1,
+     1,
+     1
+    ],
+    "annuale": [
+     0,
+     1,
+     0,
+     1,
+     1,
+     1
+    ],
+    "mensile": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     0
+    ],
+    "blocco": [
+     0,
+     0,
+     1,
+     1,
+     1,
+     0
+    ],
+    "giorno": [
+     0,
+     0,
+     1,
+     1,
+     0,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     3,
+     1,
+     6
+    ],
+    [
+     4,
+     7,
+     15
+    ],
+    [
+     5,
+     16,
+     24
+    ],
+    [
+     6,
+     25,
+     33
+    ],
+    [
+     1,
+     34,
+     39
+    ],
+    [
+     2,
+     40,
+     48
+    ]
+   ],
+   "ds": {
+    "tot": -5.16,
+    "pct": 0.9808219178082191,
+    "pctBase": 0.9808219178082191,
+    "d": {
+     "r": "B",
+     "rs": 1,
+     "t": 0,
+     "note": [
+      "六合 D",
+      "空 void"
+     ],
+     "s": 1,
+     "txt": 1,
+     "tot": 2
+    },
+    "s2": {
+     "t": -0.5,
+     "note": [
+      "三合 D",
+      "空 void"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Madonna",
+   "d": "1983-07-27",
+   "luogo": [
+    -74,
+    "America/New_York"
+   ],
+   "scopo": "output",
+   "cosa": "debut album released"
+  },
+  "pct": {
+   "app now": 0.7136986301369863,
+   "no Luck": 0.8068493150684931,
+   "no cycle line": 0.689041095890411,
+   "no annual line": 0.4904109589041096,
+   "no month line": 0.4780821917808219,
+   "no secondary": 0.5082191780821917,
+   "secondary ×1": 0.8328767123287671,
+   "day ×2": 0.5616438356164384,
+   "day only (prim.+sec.)": 0.3589041095890411,
+   "no relation": 0.6068493150684932,
+   "no time": 0.7013698630136986,
+   "no text": 0.636986301369863,
+   "relation ×2": 0.7794520547945205,
+   "time ×2": 0.7,
+   "text ×2": 0.7342465753424657
+  },
+  "n": 365,
+  "tot": 1.41,
+  "age": 26,
+  "pers": "Wood",
+  "pil": [
+   "甲午",
+   "丙辰",
+   "己未",
+   "癸亥"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 59,
+    "line": 5,
+    "b": "巳",
+    "r": "C",
+    "rs": 2,
+    "t": -1.5,
+    "note": [
+     "timely",
+     "冲 Y",
+     "剋 Y"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": 1.5
+   },
+   "a": {
+    "hexN": 3,
+    "line": 1,
+    "b": "子",
+    "r": "P",
+    "rs": -1,
+    "t": -0.5,
+    "note": [
+     "剋 M",
+     "三合 D",
+     "剋 D"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": -2.5
+   },
+   "m": {
+    "hexN": 45,
+    "line": 4,
+    "b": "亥",
+    "r": "P",
+    "rs": -1,
+    "t": -0.5,
+    "note": [
+     "same Y",
+     "三合 M",
+     "剋 M",
+     "剋 D",
+     "空 void"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": -0.5
+   },
+   "d": {
+    "hexN": 17,
+    "line": 6,
+    "b": "未",
+    "r": "W",
+    "rs": 0,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same M"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4.5
+   },
+   "s2": {
+    "hexN": 25,
+    "line": 6,
+    "b": "戌",
+    "r": "W",
+    "rs": 0,
+    "t": -1,
+    "note": [
+     "timely",
+     "冲 D"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -3
+   }
+  },
+  "luck": -0.09,
+  "x": {
+   "eta": 26,
+   "pers": "Wood",
+   "pil": [
+    "甲午",
+    "丙辰",
+    "己未",
+    "癸亥"
+   ],
+   "fase": "XT",
+   "giornoMese": 5,
+   "mIndex": 8,
+   "mChanged": [
+    1,
+    4
+   ],
+   "mStart": 427766400000,
+   "ciclo": {
+    "n": 59,
+    "l": 5,
+    "b": "巳",
+    "el": "Fire",
+    "r": "C",
+    "testo": "Their loud cries are as dissolving as sweat. Dissolution! A king abides without blame."
+   },
+   "annuale": {
+    "n": 3,
+    "l": 1,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "Hesitation and hindrance. It furthers one to remain persevering in correctness. It furthers one to appoint helpers."
+   },
+   "mensile": 45,
+   "signore": {
+    "n": 17,
+    "l": 1,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "The standard is changing. Perseverance brings good fortune. To go out of the door in company produces deeds."
+   },
+   "giorno": {
+    "n": 17,
+    "l": 6,
+    "b": "未",
+    "el": "Earth",
+    "r": "W",
+    "testo": "They meet with firm allegiance and are still further bound. The king introduces them to the Western Mountain."
+   },
+   "esaGiorno": {
+    "n": 25,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "W",
+    "testo": "Innocent action brings misfortune. Nothing furthers."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     1
+    ],
+    "annuale": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "mensile": [
+     0,
+     0,
+     0,
+     1,
+     1,
+     0
+    ],
+    "blocco": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     0
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     2,
+     1,
+     9
+    ],
+    [
+     3,
+     10,
+     15
+    ],
+    [
+     4,
+     16,
+     21
+    ],
+    [
+     5,
+     22,
+     30
+    ],
+    [
+     6,
+     31,
+     39
+    ],
+    [
+     1,
+     40,
+     45
+    ]
+   ],
+   "ds": {
+    "tot": 1.41,
+    "pct": 0.7136986301369863,
+    "pctBase": 0.7136986301369863,
+    "d": {
+     "r": "W",
+     "rs": 0,
+     "t": 2.5,
+     "note": [
+      "timely",
+      "三合 Y",
+      "same M"
+     ],
+     "s": 2,
+     "txt": 2,
+     "tot": 4.5
+    },
+    "s2": {
+     "t": -1,
+     "note": [
+      "timely",
+      "冲 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Kurt Cobain",
+   "d": "1991-09-24",
+   "luogo": [
+    -122.33,
+    "America/Los_Angeles"
+   ],
+   "scopo": "output",
+   "cosa": "Nevermind released"
+  },
+  "pct": {
+   "app now": 0.06438356164383562,
+   "no Luck": 0.1410958904109589,
+   "no cycle line": 0.13561643835616438,
+   "no annual line": 0.031506849315068496,
+   "no month line": 0.04246575342465753,
+   "no secondary": 0.0958904109589041,
+   "secondary ×1": 0.05342465753424658,
+   "day ×2": 0.0684931506849315,
+   "day only (prim.+sec.)": 0.1,
+   "no relation": 0.057534246575342465,
+   "no time": 0.07123287671232877,
+   "no text": 0.050684931506849315,
+   "relation ×2": 0.08082191780821918,
+   "time ×2": 0.0684931506849315,
+   "text ×2": 0.10410958904109589
+  },
+  "n": 365,
+  "tot": 14,
+  "age": 25,
+  "pers": "Wood",
+  "pil": [
+   "丙午",
+   "丁酉",
+   "丁酉",
+   "辛未"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 24,
+    "line": 3,
+    "b": "辰",
+    "r": "W",
+    "rs": 0,
+    "t": 2,
+    "note": [
+     "六合 M",
+     "六合 D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 2
+   },
+   "a": {
+    "hexN": 13,
+    "line": 6,
+    "b": "戌",
+    "r": "W",
+    "rs": 0,
+    "t": 0,
+    "note": [],
+    "s": 1,
+    "txt": 1,
+    "tot": 1
+   },
+   "m": {
+    "hexN": 14,
+    "line": 5,
+    "b": "未",
+    "r": "W",
+    "rs": 0,
+    "t": 1,
+    "note": [
+     "same Y"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 3
+   },
+   "d": {
+    "hexN": 50,
+    "line": 3,
+    "b": "酉",
+    "r": "G",
+    "rs": 0,
+    "t": 3,
+    "note": [
+     "timely",
+     "same M",
+     "same D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 4
+   },
+   "s2": {
+    "hexN": 64,
+    "line": 3,
+    "b": "午",
+    "r": "C",
+    "rs": 2,
+    "t": 1,
+    "note": [
+     "六合 Y"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 4
+   }
+  },
+  "luck": 2,
+  "x": {
+   "eta": 25,
+   "pers": "Wood",
+   "pil": [
+    "丙午",
+    "丁酉",
+    "丁酉",
+    "辛未"
+   ],
+   "fase": "XT",
+   "giornoMese": 2,
+   "mIndex": 10,
+   "mChanged": [
+    2,
+    5
+   ],
+   "mStart": 685584000000,
+   "ciclo": {
+    "n": 24,
+    "l": 3,
+    "b": "辰",
+    "el": "Earth",
+    "r": "W",
+    "testo": "Repeated return. Danger. No blame."
+   },
+   "annuale": {
+    "n": 13,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "W",
+    "testo": "Fellowship with people in the meadow. No remorse."
+   },
+   "mensile": 14,
+   "signore": {
+    "n": 50,
+    "l": 1,
+    "b": "丑",
+    "el": "Earth",
+    "r": "W",
+    "testo": "A cauldron with legs upturned. Furthers removal of stagnating stuff. One takes a concubine for the sake of her child. No blame."
+   },
+   "giorno": {
+    "n": 50,
+    "l": 3,
+    "b": "酉",
+    "el": "Metal",
+    "r": "G",
+    "testo": "The handle of the cauldron is altered. One is impeded in one's way of life. The fat of the pheasant is not eaten. Once rain falls, remorse is spent. Good fortune comes in the end."
+   },
+   "esaGiorno": {
+    "n": 64,
+    "l": 3,
+    "b": "午",
+    "el": "Fire",
+    "r": "C",
+    "testo": "Before completion, attack brings misfortune. It furthers one to cross the great water."
+   },
+   "linee": {
+    "ciclo": [
+     1,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "annuale": [
+     1,
+     0,
+     1,
+     1,
+     1,
+     1
+    ],
+    "mensile": [
+     1,
+     1,
+     1,
+     1,
+     0,
+     1
+    ],
+    "blocco": [
+     0,
+     1,
+     1,
+     1,
+     0,
+     1
+    ],
+    "giorno": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     6,
+     1,
+     6
+    ],
+    [
+     1,
+     7,
+     15
+    ],
+    [
+     2,
+     16,
+     21
+    ],
+    [
+     3,
+     22,
+     27
+    ],
+    [
+     4,
+     28,
+     33
+    ],
+    [
+     5,
+     34,
+     39
+    ]
+   ],
+   "ds": {
+    "tot": 14,
+    "pct": 0.06438356164383562,
+    "pctBase": 0.06438356164383562,
+    "d": {
+     "r": "G",
+     "rs": 0,
+     "t": 3,
+     "note": [
+      "timely",
+      "same M",
+      "same D"
+     ],
+     "s": 0,
+     "txt": 1,
+     "tot": 4
+    },
+    "s2": {
+     "t": 1,
+     "note": [
+      "六合 Y"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Jimi Hendrix",
+   "d": "1967-05-12",
+   "luogo": [
+    -0.13,
+    "Europe/London"
+   ],
+   "scopo": "output",
+   "cosa": "Are You Experienced released"
+  },
+  "pct": {
+   "app now": 0.8794520547945206,
+   "no Luck": 0.8958904109589041,
+   "no cycle line": 0.7890410958904109,
+   "no annual line": 0.8561643835616438,
+   "no month line": 0.5589041095890411,
+   "no secondary": 0.8821917808219178,
+   "secondary ×1": 0.8438356164383561,
+   "day ×2": 0.7547945205479452,
+   "day only (prim.+sec.)": 0.3904109589041096,
+   "no relation": 0.8657534246575342,
+   "no time": 0.6808219178082192,
+   "no text": 0.8958904109589041,
+   "relation ×2": 0.8726027397260274,
+   "time ×2": 0.8931506849315068,
+   "text ×2": 0.8547945205479452
+  },
+  "n": 365,
+  "tot": 4.88,
+  "age": 26,
+  "pers": "Earth",
+  "pil": [
+   "甲午",
+   "丙子",
+   "乙巳",
+   "丁未"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 4,
+    "line": 6,
+    "b": "寅",
+    "r": "G",
+    "rs": 0,
+    "t": 0,
+    "note": [],
+    "s": 0,
+    "txt": 0,
+    "tot": 0
+   },
+   "a": {
+    "hexN": 17,
+    "line": 5,
+    "b": "酉",
+    "r": "C",
+    "rs": 2,
+    "t": -1,
+    "note": [
+     "三合 M",
+     "剋 M",
+     "空 void"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": 2
+   },
+   "m": {
+    "hexN": 49,
+    "line": 3,
+    "b": "亥",
+    "r": "W",
+    "rs": 0,
+    "t": -2,
+    "note": [
+     "三合 Y",
+     "剋 Y",
+     "冲 M"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": -3
+   },
+   "d": {
+    "hexN": 55,
+    "line": 2,
+    "b": "丑",
+    "r": "B",
+    "rs": 1,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "冲 Y",
+     "三合 M",
+     "六合 D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 2.5
+   },
+   "s2": {
+    "hexN": 34,
+    "line": 2,
+    "b": "寅",
+    "r": "G",
+    "rs": 0,
+    "t": 0,
+    "note": [],
+    "s": 2,
+    "txt": 2,
+    "tot": 2
+   }
+  },
+  "luck": 2.38,
+  "x": {
+   "eta": 26,
+   "pers": "Earth",
+   "pil": [
+    "甲午",
+    "丙子",
+    "乙巳",
+    "丁未"
+   ],
+   "fase": "XT",
+   "giornoMese": 23,
+   "mIndex": 5,
+   "mChanged": [
+    3
+   ],
+   "mStart": -85276800000,
+   "ciclo": {
+    "n": 4,
+    "l": 6,
+    "b": "寅",
+    "el": "Wood",
+    "r": "G",
+    "testo": "In punishing folly, it does not further one to commit transgressions. The only thing that furthers is to prevent transgressions."
+   },
+   "annuale": {
+    "n": 17,
+    "l": 5,
+    "b": "酉",
+    "el": "Metal",
+    "r": "C",
+    "testo": "Sincere in the good. Good fortune."
+   },
+   "mensile": 49,
+   "signore": {
+    "n": 55,
+    "l": 5,
+    "b": "申",
+    "el": "Metal",
+    "r": "C",
+    "testo": "Lines are coming, blessing and fame draw near. Good fortune."
+   },
+   "giorno": {
+    "n": 55,
+    "l": 2,
+    "b": "丑",
+    "el": "Earth",
+    "r": "B",
+    "testo": "The curtain is of such fullness that the polestars can be seen at noon. Through going one meets with mistrust and hate. If one rouses them through truth, good fortune comes."
+   },
+   "esaGiorno": {
+    "n": 34,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "G",
+    "testo": "Perseverance brings good fortune."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "annuale": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     0,
+     1,
+     1,
+     1,
+     0
+    ],
+    "blocco": [
+     1,
+     0,
+     1,
+     1,
+     0,
+     0
+    ],
+    "giorno": [
+     1,
+     1,
+     1,
+     1,
+     0,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     3,
+     1,
+     6
+    ],
+    [
+     4,
+     7,
+     12
+    ],
+    [
+     5,
+     13,
+     18
+    ],
+    [
+     6,
+     19,
+     27
+    ],
+    [
+     1,
+     28,
+     33
+    ],
+    [
+     2,
+     34,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": 4.88,
+    "pct": 0.8794520547945206,
+    "pctBase": 0.8794520547945206,
+    "d": {
+     "r": "B",
+     "rs": 1,
+     "t": 0.5,
+     "note": [
+      "timely",
+      "冲 Y",
+      "三合 M",
+      "六合 D"
+     ],
+     "s": 0,
+     "txt": 1,
+     "tot": 2.5
+    },
+    "s2": {
+     "t": 0,
+     "note": []
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Pier Paolo Pasolini",
+   "d": "1961-08-31",
+   "luogo": [
+    12.33,
+    "Europe/Rome"
+   ],
+   "scopo": "output",
+   "cosa": "Accattone premiere in Venice"
+  },
+  "pct": {
+   "app now": 0.4986301369863014,
+   "no Luck": 0.5191780821917809,
+   "no cycle line": 0.32054794520547947,
+   "no annual line": 0.7178082191780822,
+   "no month line": 0.5191780821917809,
+   "no secondary": 0.30273972602739724,
+   "secondary ×1": 0.6794520547945205,
+   "day ×2": 0.547945205479452,
+   "day only (prim.+sec.)": 0.6191780821917808,
+   "no relation": 0.4534246575342466,
+   "no time": 0.3561643835616438,
+   "no text": 0.6136986301369863,
+   "relation ×2": 0.5397260273972603,
+   "time ×2": 0.5356164383561643,
+   "text ×2": 0.4534246575342466
+  },
+  "n": 365,
+  "tot": 6,
+  "age": 40,
+  "pers": "Wood",
+  "pil": [
+   "甲午",
+   "丙申",
+   "丙申",
+   "辛丑"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 20,
+    "line": 6,
+    "b": "卯",
+    "r": "B",
+    "rs": 1,
+    "t": -1,
+    "note": [
+     "剋 M",
+     "剋 D"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": 0
+   },
+   "a": {
+    "hexN": 8,
+    "line": 6,
+    "b": "子",
+    "r": "P",
+    "rs": -1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "六合 Y",
+     "剋 Y",
+     "三合 M",
+     "三合 D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 1.5
+   },
+   "m": {
+    "hexN": 2,
+    "line": 5,
+    "b": "亥",
+    "r": "P",
+    "rs": -1,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "剋 Y"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 1.5
+   },
+   "d": {
+    "hexN": 7,
+    "line": 6,
+    "b": "酉",
+    "r": "G",
+    "rs": 0,
+    "t": 1.5,
+    "note": [
+     "timely",
+     "三合 Y"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3.5
+   },
+   "s2": {
+    "hexN": 4,
+    "line": 6,
+    "b": "寅",
+    "r": "B",
+    "rs": 1,
+    "t": -5,
+    "note": [
+     "冲 M",
+     "剋 M",
+     "冲 D",
+     "剋 D"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": -5
+   }
+  },
+  "luck": 2,
+  "x": {
+   "eta": 40,
+   "pers": "Wood",
+   "pil": [
+    "甲午",
+    "丙申",
+    "丙申",
+    "辛丑"
+   ],
+   "fase": "HT",
+   "giornoMese": 9,
+   "mIndex": 9,
+   "mChanged": [
+    5
+   ],
+   "mStart": -263779200000,
+   "ciclo": {
+    "n": 20,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Contemplation of their life. The superior person is without blame."
+   },
+   "annuale": {
+    "n": 8,
+    "l": 6,
+    "b": "子",
+    "el": "Water",
+    "r": "P",
+    "testo": "They find no head for holding together. Misfortune."
+   },
+   "mensile": 2,
+   "signore": {
+    "n": 7,
+    "l": 2,
+    "b": "辰",
+    "el": "Earth",
+    "r": "W",
+    "testo": "In the midst of the army. Good fortune. No blame. The king bestows a triple decoration."
+   },
+   "giorno": {
+    "n": 7,
+    "l": 6,
+    "b": "酉",
+    "el": "Metal",
+    "r": "G",
+    "testo": "The great prince issues commands, founds states, vests families with fiefs. Inferior people should not be employed."
+   },
+   "esaGiorno": {
+    "n": 4,
+    "l": 6,
+    "b": "寅",
+    "el": "Wood",
+    "r": "B",
+    "testo": "In punishing folly, it does not further one to commit transgressions. The only thing that furthers is to prevent transgressions."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     1
+    ],
+    "annuale": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "mensile": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "blocco": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    "giorno": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     6,
+     40,
+     48
+    ],
+    [
+     1,
+     49,
+     54
+    ],
+    [
+     2,
+     55,
+     60
+    ],
+    [
+     3,
+     61,
+     66
+    ],
+    [
+     4,
+     67,
+     72
+    ],
+    [
+     5,
+     73,
+     81
+    ]
+   ],
+   "ds": {
+    "tot": 6,
+    "pct": 0.4986301369863014,
+    "pctBase": 0.4986301369863014,
+    "d": {
+     "r": "G",
+     "rs": 0,
+     "t": 1.5,
+     "note": [
+      "timely",
+      "三合 Y"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 3.5
+    },
+    "s2": {
+     "t": -5,
+     "note": [
+      "冲 M",
+      "剋 M",
+      "冲 D",
+      "剋 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Salman Rushdie",
+   "d": "1988-09-26",
+   "luogo": [
+    -0.13,
+    "Europe/London"
+   ],
+   "scopo": "output",
+   "cosa": "The Satanic Verses published"
+  },
+  "pct": {
+   "app now": 0.2814207650273224,
+   "no Luck": 0.17486338797814208,
+   "no cycle line": 0.4453551912568306,
+   "no annual line": 0.4685792349726776,
+   "no month line": 0.48360655737704916,
+   "no secondary": 0.13114754098360656,
+   "secondary ×1": 0.4713114754098361,
+   "day ×2": 0.4453551912568306,
+   "day only (prim.+sec.)": 0.7049180327868853,
+   "no relation": 0.11885245901639344,
+   "no time": 0.8852459016393442,
+   "no text": 0.3073770491803279,
+   "relation ×2": 0.5273224043715847,
+   "time ×2": 0.1284153005464481,
+   "text ×2": 0.29508196721311475
+  },
+  "n": 366,
+  "tot": 7.5,
+  "age": 42,
+  "pers": "Water",
+  "pil": [
+   "庚午",
+   "甲申",
+   "辛酉",
+   "戊辰"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 29,
+    "line": 4,
+    "b": "申",
+    "r": "P",
+    "rs": -1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3.5
+   },
+   "a": {
+    "hexN": 30,
+    "line": 3,
+    "b": "亥",
+    "r": "B",
+    "rs": 1,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "剋 Y"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 1.5
+   },
+   "m": {
+    "hexN": 1,
+    "line": 5,
+    "b": "申",
+    "r": "P",
+    "rs": -1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same D"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 3.5
+   },
+   "d": {
+    "hexN": 44,
+    "line": 6,
+    "b": "戌",
+    "r": "P",
+    "rs": -1,
+    "t": 3,
+    "note": [
+     "三會 Metal combination",
+     "timely",
+     "冲 Y (excites)"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 2
+   },
+   "s2": {
+    "hexN": 28,
+    "line": 6,
+    "b": "未",
+    "r": "G",
+    "rs": 0,
+    "t": -1,
+    "note": [
+     "空 void"
+    ],
+    "s": -2,
+    "txt": -2,
+    "tot": -3
+   }
+  },
+  "luck": -1.5,
+  "x": {
+   "eta": 42,
+   "pers": "Water",
+   "pil": [
+    "庚午",
+    "甲申",
+    "辛酉",
+    "戊辰"
+   ],
+   "fase": "XT",
+   "giornoMese": 5,
+   "mIndex": 10,
+   "mChanged": [
+    2,
+    5
+   ],
+   "mStart": 590889600000,
+   "ciclo": {
+    "n": 29,
+    "l": 4,
+    "b": "申",
+    "el": "Metal",
+    "r": "P",
+    "testo": "A jug of wine, a bowl of rice with it; earthen vessels simply handed in through the window. There is certainly no blame in this."
+   },
+   "annuale": {
+    "n": 30,
+    "l": 3,
+    "b": "亥",
+    "el": "Water",
+    "r": "B",
+    "testo": "In the light of the setting sun, people either beat the pot and sing or loudly bewail the approach of old age. Misfortune."
+   },
+   "mensile": 1,
+   "signore": {
+    "n": 44,
+    "l": 1,
+    "b": "丑",
+    "el": "Earth",
+    "r": "G",
+    "testo": "It must be checked with a brake of bronze. Perseverance brings good fortune. If one lets it take its course, one experiences misfortune. Even a lean pig has it in it to rage around."
+   },
+   "giorno": {
+    "n": 44,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "G",
+    "testo": "They come to meet with their horns. Humiliation. No blame."
+   },
+   "esaGiorno": {
+    "n": 28,
+    "l": 6,
+    "b": "未",
+    "el": "Earth",
+    "r": "G",
+    "testo": "One must go through the water. It goes over one's head. Misfortune. No blame."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     0
+    ],
+    "annuale": [
+     1,
+     0,
+     1,
+     1,
+     0,
+     1
+    ],
+    "mensile": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "blocco": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "giorno": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     5,
+     1,
+     9
+    ],
+    [
+     6,
+     10,
+     15
+    ],
+    [
+     1,
+     16,
+     21
+    ],
+    [
+     2,
+     22,
+     30
+    ],
+    [
+     3,
+     31,
+     36
+    ],
+    [
+     4,
+     37,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": 7.5,
+    "pct": 0.2814207650273224,
+    "pctBase": 0.2814207650273224,
+    "d": {
+     "r": "P",
+     "rs": -1,
+     "t": 3,
+     "note": [
+      "三會 Metal combination",
+      "timely",
+      "冲 Y (excites)"
+     ],
+     "s": -1,
+     "txt": 0,
+     "tot": 2
+    },
+    "s2": {
+     "t": -1,
+     "note": [
+      "空 void"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "James Dean",
+   "d": "1955-03-09",
+   "luogo": [
+    -74,
+    "America/New_York"
+   ],
+   "scopo": "output",
+   "cosa": "East of Eden premiere"
+  },
+  "pct": {
+   "app now": 0.7547945205479452,
+   "no Luck": 0.6616438356164384,
+   "no cycle line": 0.9,
+   "no annual line": 0.689041095890411,
+   "no month line": 0.626027397260274,
+   "no secondary": 0.821917808219178,
+   "secondary ×1": 0.6616438356164384,
+   "day ×2": 0.7164383561643836,
+   "day only (prim.+sec.)": 0.6068493150684932,
+   "no relation": 0.4945205479452055,
+   "no time": 0.9712328767123287,
+   "no text": 0.7616438356164383,
+   "relation ×2": 0.8972602739726028,
+   "time ×2": 0.5767123287671233,
+   "text ×2": 0.7178082191780822
+  },
+  "n": 365,
+  "tot": 5.88,
+  "age": 25,
+  "pers": "Fire",
+  "pil": [
+   "庚午",
+   "己巳",
+   "己卯",
+   "乙未"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 36,
+    "line": 1,
+    "b": "卯",
+    "r": "P",
+    "rs": -1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same M"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 1.5
+   },
+   "a": {
+    "hexN": 60,
+    "line": 5,
+    "b": "戌",
+    "r": "C",
+    "rs": 2,
+    "t": -0.5,
+    "note": [
+     "六合 M",
+     "剋 M",
+     "空 void"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": 2.5
+   },
+   "m": {
+    "hexN": 3,
+    "line": 2,
+    "b": "寅",
+    "r": "P",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 0
+   },
+   "d": {
+    "hexN": 17,
+    "line": 2,
+    "b": "寅",
+    "r": "P",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 0
+   },
+   "s2": {
+    "hexN": 58,
+    "line": 2,
+    "b": "卯",
+    "r": "P",
+    "rs": -1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same M"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3.5
+   }
+  },
+  "luck": 0.13,
+  "x": {
+   "eta": 25,
+   "pers": "Fire",
+   "pil": [
+    "庚午",
+    "己巳",
+    "己卯",
+    "乙未"
+   ],
+   "fase": "XT",
+   "giornoMese": 19,
+   "mIndex": 3,
+   "mChanged": [
+    2
+   ],
+   "mStart": -469152000000,
+   "ciclo": {
+    "n": 36,
+    "l": 1,
+    "b": "卯",
+    "el": "Wood",
+    "r": "P",
+    "testo": "Darkening of the light during flight. They lower their wings. The superior person does not eat for three days on their wanderings. But they have somewhere to go. The host has occasion to gossip about them."
+   },
+   "annuale": {
+    "n": 60,
+    "l": 5,
+    "b": "戌",
+    "el": "Earth",
+    "r": "C",
+    "testo": "Sweet limitation brings good fortune. Going brings esteem."
+   },
+   "mensile": 3,
+   "signore": {
+    "n": 17,
+    "l": 4,
+    "b": "亥",
+    "el": "Water",
+    "r": "G",
+    "testo": "Following creates success. Perseverance brings misfortune. To go one's way with sincerity brings clarity. How could there be blame in this?"
+   },
+   "giorno": {
+    "n": 17,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "P",
+    "testo": "If one clings to the little boy, one loses the strong person."
+   },
+   "esaGiorno": {
+    "n": 58,
+    "l": 2,
+    "b": "卯",
+    "el": "Wood",
+    "r": "P",
+    "testo": "Sincere joyousness. Good fortune. Remorse disappears."
+   },
+   "linee": {
+    "ciclo": [
+     1,
+     0,
+     1,
+     0,
+     0,
+     0
+    ],
+    "annuale": [
+     1,
+     1,
+     0,
+     0,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "blocco": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     0
+    ],
+    "giorno": [
+     1,
+     1,
+     0,
+     1,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     4,
+     1,
+     6
+    ],
+    [
+     5,
+     7,
+     12
+    ],
+    [
+     6,
+     13,
+     18
+    ],
+    [
+     1,
+     19,
+     27
+    ],
+    [
+     2,
+     28,
+     33
+    ],
+    [
+     3,
+     34,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": 5.88,
+    "pct": 0.7547945205479452,
+    "pctBase": 0.7547945205479452,
+    "d": {
+     "r": "P",
+     "rs": -1,
+     "t": 1,
+     "note": [
+      "timely"
+     ],
+     "s": -1,
+     "txt": 0,
+     "tot": 0
+    },
+    "s2": {
+     "t": 2.5,
+     "note": [
+      "timely",
+      "三合 Y",
+      "same M"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Christopher Reeve",
+   "d": "1978-12-10",
+   "luogo": [
+    -77.04,
+    "America/New_York"
+   ],
+   "scopo": "output",
+   "cosa": "Superman world premiere"
+  },
+  "pct": {
+   "app now": 0.8273972602739726,
+   "no Luck": 0.8205479452054795,
+   "no cycle line": 0.7575342465753425,
+   "no annual line": 0.8356164383561644,
+   "no month line": 0.8506849315068493,
+   "no secondary": 0.8643835616438356,
+   "secondary ×1": 0.7698630136986301,
+   "day ×2": 0.8410958904109589,
+   "day only (prim.+sec.)": 0.8301369863013699,
+   "no relation": 0.7863013698630137,
+   "no time": 0.8205479452054795,
+   "no text": 0.7684931506849315,
+   "relation ×2": 0.8479452054794521,
+   "time ×2": 0.7917808219178082,
+   "text ×2": 0.8287671232876712
+  },
+  "n": 365,
+  "tot": 4.94,
+  "age": 27,
+  "pers": "Earth",
+  "pil": [
+   "甲午",
+   "丙午",
+   "甲子",
+   "戊午"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 52,
+    "line": 3,
+    "b": "申",
+    "r": "C",
+    "rs": 2,
+    "t": -1.5,
+    "note": [
+     "剋 Y",
+     "三合 M",
+     "剋 D",
+     "空 void"
+    ],
+    "s": -2,
+    "txt": -2,
+    "tot": -1.5
+   },
+   "a": {
+    "hexN": 33,
+    "line": 6,
+    "b": "戌",
+    "r": "B",
+    "rs": 1,
+    "t": 1,
+    "note": [
+     "三合 Y",
+     "三合 D"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4
+   },
+   "m": {
+    "hexN": 45,
+    "line": 6,
+    "b": "未",
+    "r": "B",
+    "rs": 1,
+    "t": 1,
+    "note": [
+     "六合 Y",
+     "六合 D",
+     "空 void"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 2
+   },
+   "d": {
+    "hexN": 8,
+    "line": 2,
+    "b": "巳",
+    "r": "P",
+    "rs": -1,
+    "t": -0.5,
+    "note": [
+     "剋 M"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -1.5
+   },
+   "s2": {
+    "hexN": 29,
+    "line": 2,
+    "b": "辰",
+    "r": "B",
+    "rs": 1,
+    "t": 0.5,
+    "note": [
+     "三合 M"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 2.5
+   }
+  },
+  "luck": 0.69,
+  "x": {
+   "eta": 27,
+   "pers": "Earth",
+   "pil": [
+    "甲午",
+    "丙午",
+    "甲子",
+    "戊午"
+   ],
+   "fase": "XT",
+   "giornoMese": 19,
+   "mIndex": 12,
+   "mChanged": [
+    3,
+    6
+   ],
+   "mStart": 280540800000,
+   "ciclo": {
+    "n": 52,
+    "l": 3,
+    "b": "申",
+    "el": "Metal",
+    "r": "C",
+    "testo": "Keeping their hips still. Making their sacrum stiff. Dangerous. The heart suffocates."
+   },
+   "annuale": {
+    "n": 33,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "B",
+    "testo": "Cheerful retreat. Everything serves to further."
+   },
+   "mensile": 45,
+   "signore": {
+    "n": 8,
+    "l": 4,
+    "b": "申",
+    "el": "Metal",
+    "r": "C",
+    "testo": "Hold to them outwardly also. Perseverance brings good fortune."
+   },
+   "giorno": {
+    "n": 8,
+    "l": 2,
+    "b": "巳",
+    "el": "Fire",
+    "r": "P",
+    "testo": "Hold to them inwardly. Perseverance brings good fortune."
+   },
+   "esaGiorno": {
+    "n": 29,
+    "l": 2,
+    "b": "辰",
+    "el": "Earth",
+    "r": "B",
+    "testo": "The abyss is dangerous. One should strive to attain small things only."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     0,
+     1,
+     0,
+     0,
+     1
+    ],
+    "annuale": [
+     0,
+     0,
+     1,
+     1,
+     1,
+     1
+    ],
+    "mensile": [
+     0,
+     0,
+     0,
+     1,
+     1,
+     0
+    ],
+    "blocco": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "giorno": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     6,
+     1,
+     9
+    ],
+    [
+     1,
+     10,
+     15
+    ],
+    [
+     2,
+     16,
+     21
+    ],
+    [
+     3,
+     22,
+     30
+    ],
+    [
+     4,
+     31,
+     36
+    ],
+    [
+     5,
+     37,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": 4.94,
+    "pct": 0.8273972602739726,
+    "pctBase": 0.8273972602739726,
+    "d": {
+     "r": "P",
+     "rs": -1,
+     "t": -0.5,
+     "note": [
+      "剋 M"
+     ],
+     "s": 1,
+     "txt": 0,
+     "tot": -1.5
+    },
+    "s2": {
+     "t": 0.5,
+     "note": [
+      "三合 M"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Jean Jaurès",
+   "d": "1904-04-18",
+   "luogo": [
+    2.35,
+    "Europe/Paris"
+   ],
+   "scopo": "output",
+   "cosa": "first issue of L'Humanité"
+  },
+  "pct": {
+   "app now": 0.1366120218579235,
+   "no Luck": 0.1953551912568306,
+   "no cycle line": 0.20218579234972678,
+   "no annual line": 0.031420765027322405,
+   "no month line": 0.2459016393442623,
+   "no secondary": 0.13797814207650272,
+   "secondary ×1": 0.14207650273224043,
+   "day ×2": 0.16393442622950818,
+   "day only (prim.+sec.)": 0.26229508196721313,
+   "no relation": 0.09289617486338798,
+   "no time": 0.1912568306010929,
+   "no text": 0.18442622950819673,
+   "relation ×2": 0.1885245901639344,
+   "time ×2": 0.1489071038251366,
+   "text ×2": 0.13114754098360656
+  },
+  "n": 366,
+  "tot": 9.44,
+  "age": 46,
+  "pers": "Metal",
+  "pil": [
+   "丙午",
+   "壬午",
+   "戊辰",
+   "甲辰"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 31,
+    "line": 5,
+    "b": "酉",
+    "r": "B",
+    "rs": 1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "六合 Y",
+     "六合 M",
+     "剋 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 5.5
+   },
+   "a": {
+    "hexN": 44,
+    "line": 6,
+    "b": "戌",
+    "r": "P",
+    "rs": -1,
+    "t": -2.5,
+    "note": [
+     "timely",
+     "冲 Y",
+     "冲 M",
+     "三合 D"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -5.5
+   },
+   "m": {
+    "hexN": 56,
+    "line": 2,
+    "b": "午",
+    "r": "G",
+    "rs": 0,
+    "t": 2,
+    "note": [
+     "timely",
+     "same D"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4
+   },
+   "d": {
+    "hexN": 62,
+    "line": 4,
+    "b": "午",
+    "r": "G",
+    "rs": 0,
+    "t": 2,
+    "note": [
+     "timely",
+     "same D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 3
+   },
+   "s2": {
+    "hexN": 15,
+    "line": 4,
+    "b": "丑",
+    "r": "P",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2
+   }
+  },
+  "luck": 1.44,
+  "x": {
+   "eta": 46,
+   "pers": "Metal",
+   "pil": [
+    "丙午",
+    "壬午",
+    "戊辰",
+    "甲辰"
+   ],
+   "fase": "HT",
+   "giornoMese": 29,
+   "mIndex": 4,
+   "mChanged": [
+    2,
+    5
+   ],
+   "mStart": -2075932800000,
+   "ciclo": {
+    "n": 31,
+    "l": 5,
+    "b": "酉",
+    "el": "Metal",
+    "r": "B",
+    "testo": "The influence shows itself in the back of the neck. No remorse."
+   },
+   "annuale": {
+    "n": 44,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "P",
+    "testo": "They come to meet with their horns. Humiliation. No blame."
+   },
+   "mensile": 56,
+   "signore": {
+    "n": 62,
+    "l": 6,
+    "b": "戌",
+    "el": "Earth",
+    "r": "P",
+    "testo": "They pass them by, not meeting them. The flying bird leaves them. Misfortune. This means bad luck and injury."
+   },
+   "giorno": {
+    "n": 62,
+    "l": 4,
+    "b": "午",
+    "el": "Fire",
+    "r": "G",
+    "testo": "No blame. They meet them without passing by. Going brings danger. One must be on guard. Do not act. Be constantly persevering."
+   },
+   "esaGiorno": {
+    "n": 15,
+    "l": 4,
+    "b": "丑",
+    "el": "Earth",
+    "r": "P",
+    "testo": "Nothing that would not further modesty in movement."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     0,
+     1,
+     1,
+     1,
+     0
+    ],
+    "annuale": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "mensile": [
+     0,
+     0,
+     1,
+     1,
+     0,
+     1
+    ],
+    "blocco": [
+     0,
+     0,
+     1,
+     1,
+     0,
+     0
+    ],
+    "giorno": [
+     0,
+     0,
+     1,
+     0,
+     0,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     5,
+     43,
+     51
+    ],
+    [
+     6,
+     52,
+     57
+    ],
+    [
+     1,
+     58,
+     63
+    ],
+    [
+     2,
+     64,
+     69
+    ],
+    [
+     3,
+     70,
+     78
+    ],
+    [
+     4,
+     79,
+     87
+    ]
+   ],
+   "ds": {
+    "tot": 9.44,
+    "pct": 0.1366120218579235,
+    "pctBase": 0.1366120218579235,
+    "d": {
+     "r": "G",
+     "rs": 0,
+     "t": 2,
+     "note": [
+      "timely",
+      "same D"
+     ],
+     "s": 0,
+     "txt": 1,
+     "tot": 3
+    },
+    "s2": {
+     "t": 1,
+     "note": [
+      "timely"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Robin Williams",
+   "d": "1978-09-14",
+   "luogo": [
+    -118.25,
+    "America/Los_Angeles"
+   ],
+   "scopo": "output",
+   "cosa": "first episode of Mork & Mindy"
+  },
+  "pct": {
+   "app now": 0.5821917808219178,
+   "no Luck": 0.6835616438356165,
+   "no cycle line": 0.6424657534246575,
+   "no annual line": 0.30273972602739724,
+   "no month line": 0.5356164383561643,
+   "no secondary": 0.6013698630136987,
+   "secondary ×1": 0.5465753424657535,
+   "day ×2": 0.4726027397260274,
+   "day only (prim.+sec.)": 0.31917808219178084,
+   "no relation": 0.6109589041095891,
+   "no time": 0.2452054794520548,
+   "no text": 0.6438356164383562,
+   "relation ×2": 0.5602739726027397,
+   "time ×2": 0.6835616438356165,
+   "text ×2": 0.563013698630137
+  },
+  "n": 365,
+  "tot": 10.31,
+  "age": 28,
+  "pers": "Water",
+  "pil": [
+   "庚午",
+   "己卯",
+   "辛酉",
+   "戊午"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 8,
+    "line": 5,
+    "b": "戌",
+    "r": "G",
+    "rs": 0,
+    "t": 1.5,
+    "note": [
+     "三合 Y",
+     "六合 D",
+     "剋 D by the purpose relation (no penalty)"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 3.5
+   },
+   "a": {
+    "hexN": 59,
+    "line": 6,
+    "b": "卯",
+    "r": "C",
+    "rs": 2,
+    "t": -1.5,
+    "note": [
+     "冲 M",
+     "剋 M",
+     "same D"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": -0.5
+   },
+   "m": {
+    "hexN": 4,
+    "line": 5,
+    "b": "子",
+    "r": "B",
+    "rs": 1,
+    "t": -1,
+    "note": [
+     "timely",
+     "冲 Y"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": 1
+   },
+   "d": {
+    "hexN": 59,
+    "line": 2,
+    "b": "辰",
+    "r": "G",
+    "rs": 0,
+    "t": 1,
+    "note": [
+     "六合 M",
+     "剋 D by the purpose relation (no penalty)"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3
+   },
+   "s2": {
+    "hexN": 20,
+    "line": 2,
+    "b": "巳",
+    "r": "W",
+    "rs": 0,
+    "t": 0.5,
+    "note": [
+     "三合 M"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 1.5
+   }
+  },
+  "luck": 2.56,
+  "x": {
+   "eta": 28,
+   "pers": "Water",
+   "pil": [
+    "庚午",
+    "己卯",
+    "辛酉",
+    "戊午"
+   ],
+   "fase": "XT",
+   "giornoMese": 23,
+   "mIndex": 9,
+   "mChanged": [
+    5
+   ],
+   "mStart": 272678400000,
+   "ciclo": {
+    "n": 8,
+    "l": 5,
+    "b": "戌",
+    "el": "Earth",
+    "r": "G",
+    "testo": "Manifestation of holding together. In the hunt the king uses beaters on three sides only and foregoes game that runs off in front. The citizens need no warning. Good fortune."
+   },
+   "annuale": {
+    "n": 59,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "C",
+    "testo": "They dissolve their blood. Departing, keeping at a distance, going out, is without blame."
+   },
+   "mensile": 4,
+   "signore": {
+    "n": 59,
+    "l": 5,
+    "b": "巳",
+    "el": "Fire",
+    "r": "W",
+    "testo": "Their loud cries are as dissolving as sweat. Dissolution! A king abides without blame."
+   },
+   "giorno": {
+    "n": 59,
+    "l": 2,
+    "b": "辰",
+    "el": "Earth",
+    "r": "G",
+    "testo": "At the dissolution they hurry to that which supports them. Remorse disappears."
+   },
+   "esaGiorno": {
+    "n": 20,
+    "l": 2,
+    "b": "巳",
+    "el": "Fire",
+    "r": "W",
+    "testo": "Contemplation through the crack of the door. Furthering for the perseverance of a woman."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "annuale": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     1
+    ],
+    "mensile": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "blocco": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     1
+    ],
+    "giorno": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     1,
+     1,
+     6
+    ],
+    [
+     2,
+     7,
+     12
+    ],
+    [
+     3,
+     13,
+     18
+    ],
+    [
+     4,
+     19,
+     24
+    ],
+    [
+     5,
+     25,
+     33
+    ],
+    [
+     6,
+     34,
+     39
+    ]
+   ],
+   "ds": {
+    "tot": 10.31,
+    "pct": 0.5821917808219178,
+    "pctBase": 0.5821917808219178,
+    "d": {
+     "r": "G",
+     "rs": 0,
+     "t": 1,
+     "note": [
+      "六合 M",
+      "剋 D by the purpose relation (no penalty)"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 3
+    },
+    "s2": {
+     "t": 0.5,
+     "note": [
+      "三合 M"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Stevie Ray Vaughan",
+   "d": "1983-06-13",
+   "luogo": [
+    -97.74,
+    "America/Chicago"
+   ],
+   "scopo": "output",
+   "cosa": "Texas Flood released"
+  },
+  "pct": {
+   "app now": 0.7684931506849315,
+   "no Luck": 0.647945205479452,
+   "no cycle line": 0.7561643835616438,
+   "no annual line": 0.7835616438356164,
+   "no month line": 0.7821917808219178,
+   "no secondary": 0.7246575342465753,
+   "secondary ×1": 0.7821917808219178,
+   "day ×2": 0.7643835616438356,
+   "day only (prim.+sec.)": 0.7178082191780822,
+   "no relation": 0.7712328767123288,
+   "no time": 0.9397260273972603,
+   "no text": 0.6493150684931507,
+   "relation ×2": 0.773972602739726,
+   "time ×2": 0.6328767123287671,
+   "text ×2": 0.8041095890410959
+  },
+  "n": 365,
+  "tot": 4.88,
+  "age": 30,
+  "pers": "Wood",
+  "pil": [
+   "丙午",
+   "壬申",
+   "戊午",
+   "癸亥"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 57,
+    "line": 2,
+    "b": "亥",
+    "r": "P",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "same Y"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2
+   },
+   "a": {
+    "hexN": 12,
+    "line": 5,
+    "b": "申",
+    "r": "G",
+    "rs": 0,
+    "t": 1,
+    "note": [
+     "剋 M by the purpose relation (no penalty)",
+     "same D"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 3
+   },
+   "m": {
+    "hexN": 31,
+    "line": 3,
+    "b": "申",
+    "r": "G",
+    "rs": 0,
+    "t": 1,
+    "note": [
+     "剋 M by the purpose relation (no penalty)",
+     "same D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 1
+   },
+   "d": {
+    "hexN": 62,
+    "line": 3,
+    "b": "申",
+    "r": "G",
+    "rs": 0,
+    "t": 1,
+    "note": [
+     "剋 M by the purpose relation (no penalty)",
+     "same D"
+    ],
+    "s": -2,
+    "txt": -1,
+    "tot": 0
+   },
+   "s2": {
+    "hexN": 16,
+    "line": 3,
+    "b": "卯",
+    "r": "B",
+    "rs": 1,
+    "t": 0,
+    "note": [
+     "三合 Y",
+     "剋 D"
+    ],
+    "s": -1,
+    "txt": -1,
+    "tot": 0
+   }
+  },
+  "luck": -1.12,
+  "x": {
+   "eta": 30,
+   "pers": "Wood",
+   "pil": [
+    "丙午",
+    "壬申",
+    "戊午",
+    "癸亥"
+   ],
+   "fase": "XT",
+   "giornoMese": 24,
+   "mIndex": 6,
+   "mChanged": [
+    3,
+    6
+   ],
+   "mStart": 422323200000,
+   "ciclo": {
+    "n": 57,
+    "l": 2,
+    "b": "亥",
+    "el": "Water",
+    "r": "P",
+    "testo": "Penetration under the bed. Priests and magicians are used in great number. Good fortune. No blame."
+   },
+   "annuale": {
+    "n": 12,
+    "l": 5,
+    "b": "申",
+    "el": "Metal",
+    "r": "G",
+    "testo": "Standstill is giving way. Good fortune for the great person. 'What if it should fail, what if it should fail?' In this way they tie it to a cluster of mulberry shoots."
+   },
+   "mensile": 31,
+   "signore": {
+    "n": 62,
+    "l": 5,
+    "b": "申",
+    "el": "Metal",
+    "r": "G",
+    "testo": "Dense clouds, no rain from our western region. The prince shoots and hits that which is in the cave."
+   },
+   "giorno": {
+    "n": 62,
+    "l": 3,
+    "b": "申",
+    "el": "Metal",
+    "r": "G",
+    "testo": "If one is not extremely careful, somebody may come up from behind and strike them. Misfortune."
+   },
+   "esaGiorno": {
+    "n": 16,
+    "l": 3,
+    "b": "卯",
+    "el": "Wood",
+    "r": "B",
+    "testo": "Enthusiasm that looks upward creates remorse. Hesitation brings remorse."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "annuale": [
+     0,
+     0,
+     0,
+     1,
+     1,
+     1
+    ],
+    "mensile": [
+     0,
+     0,
+     1,
+     1,
+     1,
+     0
+    ],
+    "blocco": [
+     0,
+     0,
+     1,
+     1,
+     0,
+     0
+    ],
+    "giorno": [
+     0,
+     0,
+     0,
+     1,
+     0,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     5,
+     1,
+     9
+    ],
+    [
+     6,
+     10,
+     18
+    ],
+    [
+     1,
+     19,
+     24
+    ],
+    [
+     2,
+     25,
+     33
+    ],
+    [
+     3,
+     34,
+     42
+    ],
+    [
+     4,
+     43,
+     48
+    ]
+   ],
+   "ds": {
+    "tot": 4.88,
+    "pct": 0.7684931506849315,
+    "pctBase": 0.7684931506849315,
+    "d": {
+     "r": "G",
+     "rs": 0,
+     "t": 1,
+     "note": [
+      "剋 M by the purpose relation (no penalty)",
+      "same D"
+     ],
+     "s": -2,
+     "txt": -1,
+     "tot": 0
+    },
+    "s2": {
+     "t": 0,
+     "note": [
+      "三合 Y",
+      "剋 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Elvis Presley",
+   "d": "1955-11-21",
+   "luogo": [
+    -90.05,
+    "America/Chicago"
+   ],
+   "scopo": "parent",
+   "cosa": "signs with RCA Victor"
+  },
+  "pct": {
+   "app now": 0.7095890410958904,
+   "no Luck": 0.7164383561643836,
+   "no cycle line": 0.6986301369863014,
+   "no annual line": 0.4,
+   "no month line": 0.8191780821917808,
+   "no secondary": 0.7287671232876712,
+   "secondary ×1": 0.663013698630137,
+   "day ×2": 0.6684931506849315,
+   "day only (prim.+sec.)": 0.6082191780821918,
+   "no relation": 0.7191780821917808,
+   "no time": 0.23150684931506849,
+   "no text": 0.8671232876712329,
+   "relation ×2": 0.6657534246575343,
+   "time ×2": 0.7972602739726027,
+   "text ×2": 0.5575342465753425
+  },
+  "n": 365,
+  "tot": 2.63,
+  "age": 21,
+  "pers": "Earth",
+  "pil": [
+   "甲午",
+   "丙戌",
+   "丁亥",
+   "乙未"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 20,
+    "line": 1,
+    "b": "未",
+    "r": "B",
+    "rs": 0,
+    "t": 0.5,
+    "note": [
+     "same Y",
+     "三合 M",
+     "空 void"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 1.5
+   },
+   "a": {
+    "hexN": 9,
+    "line": 3,
+    "b": "辰",
+    "r": "B",
+    "rs": 0,
+    "t": -2,
+    "note": [
+     "冲 D"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -4
+   },
+   "m": {
+    "hexN": 5,
+    "line": 6,
+    "b": "子",
+    "r": "W",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2
+   },
+   "d": {
+    "hexN": 9,
+    "line": 5,
+    "b": "巳",
+    "r": "P",
+    "rs": 2,
+    "t": -2.5,
+    "note": [
+     "冲 M",
+     "剋 M"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": 0.5
+   },
+   "s2": {
+    "hexN": 26,
+    "line": 5,
+    "b": "子",
+    "r": "W",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 2
+   }
+  },
+  "luck": 1.63,
+  "x": {
+   "eta": 21,
+   "pers": "Earth",
+   "pil": [
+    "甲午",
+    "丙戌",
+    "丁亥",
+    "乙未"
+   ],
+   "fase": "XT",
+   "giornoMese": 30,
+   "mIndex": 11,
+   "mChanged": [
+    6
+   ],
+   "mStart": -447897600000,
+   "ciclo": {
+    "n": 20,
+    "l": 1,
+    "b": "未",
+    "el": "Earth",
+    "r": "B",
+    "testo": "Boylike contemplation. For an inferior person, no blame. For a superior person, humiliation."
+   },
+   "annuale": {
+    "n": 9,
+    "l": 3,
+    "b": "辰",
+    "el": "Earth",
+    "r": "B",
+    "testo": "The spokes burst out of the wagon wheels. Man and wife roll their eyes."
+   },
+   "mensile": 5,
+   "signore": {
+    "n": 9,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "G",
+    "testo": "The rain comes, there is rest. This is due to the lasting effect of character. Perseverance brings the woman into danger. The moon is nearly full. If the superior person persists, misfortune comes."
+   },
+   "giorno": {
+    "n": 9,
+    "l": 5,
+    "b": "巳",
+    "el": "Fire",
+    "r": "P",
+    "testo": "If you are sincere and loyally attached, you are rich in your neighbor."
+   },
+   "esaGiorno": {
+    "n": 26,
+    "l": 5,
+    "b": "子",
+    "el": "Water",
+    "r": "W",
+    "testo": "The tusk of a gelded boar. Good fortune."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     1
+    ],
+    "annuale": [
+     1,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "mensile": [
+     1,
+     1,
+     1,
+     0,
+     1,
+     0
+    ],
+    "blocco": [
+     1,
+     1,
+     1,
+     0,
+     1,
+     1
+    ],
+    "giorno": [
+     1,
+     1,
+     1,
+     0,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     5,
+     1,
+     9
+    ],
+    [
+     6,
+     10,
+     18
+    ],
+    [
+     1,
+     19,
+     24
+    ],
+    [
+     2,
+     25,
+     30
+    ],
+    [
+     3,
+     31,
+     36
+    ],
+    [
+     4,
+     37,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": 2.63,
+    "pct": 0.7095890410958904,
+    "pctBase": 0.7095890410958904,
+    "d": {
+     "r": "P",
+     "rs": 2,
+     "t": -2.5,
+     "note": [
+      "冲 M",
+      "剋 M"
+     ],
+     "s": 2,
+     "txt": 1,
+     "tot": 0.5
+    },
+    "s2": {
+     "t": 1,
+     "note": [
+      "timely"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Jayne Mansfield",
+   "d": "1956-05-03",
+   "luogo": [
+    -118.25,
+    "America/Los_Angeles"
+   ],
+   "scopo": "parent",
+   "cosa": "six-year contract with 20th Century Fox"
+  },
+  "pct": {
+   "app now": 0.4576502732240437,
+   "no Luck": 0.47540983606557374,
+   "no cycle line": 0.6338797814207651,
+   "no annual line": 0.42349726775956287,
+   "no month line": 0.4275956284153005,
+   "no secondary": 0.5860655737704918,
+   "secondary ×1": 0.36475409836065575,
+   "day ×2": 0.5505464480874317,
+   "day only (prim.+sec.)": 0.6215846994535519,
+   "no relation": 0.39207650273224043,
+   "no time": 0.5642076502732241,
+   "no text": 0.4180327868852459,
+   "relation ×2": 0.5122950819672131,
+   "time ×2": 0.3989071038251366,
+   "text ×2": 0.49863387978142076
+  },
+  "n": 366,
+  "tot": 8.06,
+  "age": 24,
+  "pers": "Water",
+  "pil": [
+   "壬午",
+   "庚午",
+   "壬辰",
+   "丙申"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 59,
+    "line": 2,
+    "b": "辰",
+    "r": "G",
+    "rs": 1,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same M"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 5.5
+   },
+   "a": {
+    "hexN": 43,
+    "line": 2,
+    "b": "寅",
+    "r": "C",
+    "rs": 0,
+    "t": -0.5,
+    "note": [
+     "timely",
+     "冲 Y",
+     "剋 Y by the purpose relation (no penalty)",
+     "三合 D"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -0.5
+   },
+   "m": {
+    "hexN": 58,
+    "line": 3,
+    "b": "丑",
+    "r": "G",
+    "rs": 1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 2
+   },
+   "d": {
+    "hexN": 43,
+    "line": 2,
+    "b": "寅",
+    "r": "C",
+    "rs": 0,
+    "t": -0.5,
+    "note": [
+     "timely",
+     "冲 Y",
+     "剋 Y by the purpose relation (no penalty)",
+     "三合 D"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -0.5
+   },
+   "s2": {
+    "hexN": 49,
+    "line": 2,
+    "b": "丑",
+    "r": "G",
+    "rs": 1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4
+   }
+  },
+  "luck": -0.44,
+  "x": {
+   "eta": 24,
+   "pers": "Water",
+   "pil": [
+    "壬午",
+    "庚午",
+    "壬辰",
+    "丙申"
+   ],
+   "fase": "XT",
+   "giornoMese": 15,
+   "mIndex": 5,
+   "mChanged": [
+    3
+   ],
+   "mStart": -432432000000,
+   "ciclo": {
+    "n": 59,
+    "l": 2,
+    "b": "辰",
+    "el": "Earth",
+    "r": "G",
+    "testo": "At the dissolution they hurry to that which supports them. Remorse disappears."
+   },
+   "annuale": {
+    "n": 43,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "C",
+    "testo": "A cry of alarm. Arms at evening and at night. Fear nothing."
+   },
+   "mensile": 58,
+   "signore": {
+    "n": 43,
+    "l": 3,
+    "b": "辰",
+    "el": "Earth",
+    "r": "G",
+    "testo": "To be powerful in the cheekbones brings misfortune. The superior person is firmly resolved. They walk alone and are caught in the rain. They are bespattered, and people murmur against them. No blame."
+   },
+   "giorno": {
+    "n": 43,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "C",
+    "testo": "A cry of alarm. Arms at evening and at night. Fear nothing."
+   },
+   "esaGiorno": {
+    "n": 49,
+    "l": 2,
+    "b": "丑",
+    "el": "Earth",
+    "r": "G",
+    "testo": "When one's own day comes, one may create revolution. Starting brings good fortune. No blame."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     1
+    ],
+    "annuale": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "blocco": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     0
+    ],
+    "giorno": [
+     1,
+     0,
+     1,
+     1,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     6,
+     1,
+     9
+    ],
+    [
+     1,
+     10,
+     15
+    ],
+    [
+     2,
+     16,
+     24
+    ],
+    [
+     3,
+     25,
+     30
+    ],
+    [
+     4,
+     31,
+     36
+    ],
+    [
+     5,
+     37,
+     45
+    ]
+   ],
+   "ds": {
+    "tot": 8.06,
+    "pct": 0.4576502732240437,
+    "pctBase": 0.4576502732240437,
+    "d": {
+     "r": "C",
+     "rs": 0,
+     "t": -0.5,
+     "note": [
+      "timely",
+      "冲 Y",
+      "剋 Y by the purpose relation (no penalty)",
+      "三合 D"
+     ],
+     "s": 1,
+     "txt": 0,
+     "tot": -0.5
+    },
+    "s2": {
+     "t": 1,
+     "note": [
+      "timely"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Rajiv Gandhi",
+   "d": "1987-07-29",
+   "luogo": [
+    79.86,
+    "Asia/Colombo"
+   ],
+   "scopo": "parent",
+   "cosa": "signs the Indo-Sri Lanka accord"
+  },
+  "pct": {
+   "app now": 0.005479452054794521,
+   "no Luck": 0.00821917808219178,
+   "no cycle line": 0.005479452054794521,
+   "no annual line": 0.005479452054794521,
+   "no month line": 0.009589041095890411,
+   "no secondary": 0.005479452054794521,
+   "secondary ×1": 0.005479452054794521,
+   "day ×2": 0.005479452054794521,
+   "day only (prim.+sec.)": 0.0136986301369863,
+   "no relation": 0.010958904109589041,
+   "no time": 0.00821917808219178,
+   "no text": 0.005479452054794521,
+   "relation ×2": 0.005479452054794521,
+   "time ×2": 0.00821917808219178,
+   "text ×2": 0.005479452054794521
+  },
+  "n": 365,
+  "tot": 22.88,
+  "age": 44,
+  "pers": "Earth",
+  "pil": [
+   "庚午",
+   "己卯",
+   "丁未",
+   "丁卯"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 7,
+    "line": 5,
+    "b": "亥",
+    "r": "W",
+    "rs": -1,
+    "t": 1,
+    "note": [
+     "三合 Y",
+     "三合 M",
+     "剋 M",
+     "三合 D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 1
+   },
+   "a": {
+    "hexN": 59,
+    "line": 6,
+    "b": "卯",
+    "r": "G",
+    "rs": 1,
+    "t": 2.5,
+    "note": [
+     "same Y",
+     "三合 M",
+     "same D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 4.5
+   },
+   "m": {
+    "hexN": 10,
+    "line": 4,
+    "b": "午",
+    "r": "P",
+    "rs": 2,
+    "t": 2,
+    "note": [
+     "timely",
+     "六合 M"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 6
+   },
+   "d": {
+    "hexN": 25,
+    "line": 4,
+    "b": "午",
+    "r": "P",
+    "rs": 2,
+    "t": 2,
+    "note": [
+     "timely",
+     "六合 M"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 6
+   },
+   "s2": {
+    "hexN": 42,
+    "line": 4,
+    "b": "未",
+    "r": "B",
+    "rs": 0,
+    "t": 3,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same M",
+     "三合 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 5
+   }
+  },
+  "luck": 2.88,
+  "x": {
+   "eta": 44,
+   "pers": "Earth",
+   "pil": [
+    "庚午",
+    "己卯",
+    "丁未",
+    "丁卯"
+   ],
+   "fase": "HT",
+   "giornoMese": 7,
+   "mIndex": 8,
+   "mChanged": [
+    1,
+    4
+   ],
+   "mStart": 553996800000,
+   "ciclo": {
+    "n": 7,
+    "l": 5,
+    "b": "亥",
+    "el": "Water",
+    "r": "W",
+    "testo": "There is game in the field. It furthers one to catch it. Without blame. Let the eldest lead the army. The younger transports corpses; then perseverance brings misfortune."
+   },
+   "annuale": {
+    "n": 59,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "G",
+    "testo": "They dissolve their blood. Departing, keeping at a distance, going out, is without blame."
+   },
+   "mensile": 10,
+   "signore": {
+    "n": 25,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "G",
+    "testo": "If one does not count on the harvest while plowing, nor on the use of the ground while clearing it, it furthers one to undertake something."
+   },
+   "giorno": {
+    "n": 25,
+    "l": 4,
+    "b": "午",
+    "el": "Fire",
+    "r": "P",
+    "testo": "Those who are able to remain persevering remain without blame."
+   },
+   "esaGiorno": {
+    "n": 42,
+    "l": 4,
+    "b": "未",
+    "el": "Earth",
+    "r": "B",
+    "testo": "If you walk in the middle and report to the prince, they will follow. It furthers one to be used in the removal of the capital."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    "annuale": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     1
+    ],
+    "mensile": [
+     1,
+     1,
+     0,
+     1,
+     1,
+     1
+    ],
+    "blocco": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     1
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     5,
+     43,
+     48
+    ],
+    [
+     6,
+     49,
+     54
+    ],
+    [
+     1,
+     55,
+     60
+    ],
+    [
+     2,
+     61,
+     69
+    ],
+    [
+     3,
+     70,
+     75
+    ],
+    [
+     4,
+     76,
+     81
+    ]
+   ],
+   "ds": {
+    "tot": 22.88,
+    "pct": 0.005479452054794521,
+    "pctBase": 0.005479452054794521,
+    "d": {
+     "r": "P",
+     "rs": 2,
+     "t": 2,
+     "note": [
+      "timely",
+      "六合 M"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 6
+    },
+    "s2": {
+     "t": 3,
+     "note": [
+      "timely",
+      "三合 Y",
+      "same M",
+      "三合 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Walther Rathenau",
+   "d": "1922-04-16",
+   "luogo": [
+    9.23,
+    "Europe/Rome"
+   ],
+   "scopo": "parent",
+   "cosa": "signs the Treaty of Rapallo"
+  },
+  "pct": {
+   "app now": 0.18082191780821918,
+   "no Luck": 0.04657534246575343,
+   "no cycle line": 0.27123287671232876,
+   "no annual line": 0.11232876712328767,
+   "no month line": 0.31095890410958904,
+   "no secondary": 0.21232876712328766,
+   "secondary ×1": 0.15753424657534246,
+   "day ×2": 0.10821917808219178,
+   "day only (prim.+sec.)": 0.07123287671232877,
+   "no relation": 0.1506849315068493,
+   "no time": 0.4575342465753425,
+   "no text": 0.37534246575342467,
+   "relation ×2": 0.2191780821917808,
+   "time ×2": 0.1178082191780822,
+   "text ×2": 0.12054794520547946
+  },
+  "n": 365,
+  "tot": 14.44,
+  "age": 56,
+  "pers": "Water",
+  "pil": [
+   "庚午",
+   "甲寅",
+   "甲辰",
+   "壬戌"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 40,
+    "line": 1,
+    "b": "寅",
+    "r": "C",
+    "rs": 0,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 4.5
+   },
+   "a": {
+    "hexN": 63,
+    "line": 5,
+    "b": "戌",
+    "r": "G",
+    "rs": 1,
+    "t": 0,
+    "note": [
+     "timely",
+     "same Y",
+     "冲 M",
+     "三合 D",
+     "剋 D"
+    ],
+    "s": 1,
+    "txt": 1,
+    "tot": 2
+   },
+   "m": {
+    "hexN": 11,
+    "line": 2,
+    "b": "寅",
+    "r": "C",
+    "rs": 0,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same D"
+    ],
+    "s": 2,
+    "txt": 2,
+    "tot": 4.5
+   },
+   "d": {
+    "hexN": 26,
+    "line": 2,
+    "b": "寅",
+    "r": "C",
+    "rs": 0,
+    "t": 2.5,
+    "note": [
+     "timely",
+     "三合 Y",
+     "same D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 4.5
+   },
+   "s2": {
+    "hexN": 22,
+    "line": 2,
+    "b": "丑",
+    "r": "G",
+    "rs": 1,
+    "t": 0.5,
+    "note": [
+     "timely",
+     "剋 D"
+    ],
+    "s": 1,
+    "txt": 2,
+    "tot": 3.5
+   }
+  },
+  "luck": -2.81,
+  "x": {
+   "eta": 56,
+   "pers": "Water",
+   "pil": [
+    "庚午",
+    "甲寅",
+    "甲辰",
+    "壬戌"
+   ],
+   "fase": "HT",
+   "giornoMese": 27,
+   "mIndex": 4,
+   "mChanged": [
+    2,
+    5
+   ],
+   "mStart": -1507939200000,
+   "ciclo": {
+    "n": 40,
+    "l": 1,
+    "b": "寅",
+    "el": "Wood",
+    "r": "C",
+    "testo": "Without blame."
+   },
+   "annuale": {
+    "n": 63,
+    "l": 5,
+    "b": "戌",
+    "el": "Earth",
+    "r": "G",
+    "testo": "The neighbor in the east who slaughters an ox does not attain as much real happiness as the neighbor in the west with their small offering."
+   },
+   "mensile": 11,
+   "signore": {
+    "n": 26,
+    "l": 6,
+    "b": "寅",
+    "el": "Wood",
+    "r": "C",
+    "testo": "One attains the way of heaven. Success."
+   },
+   "giorno": {
+    "n": 26,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "C",
+    "testo": "The axle-trees are taken from the wagon."
+   },
+   "esaGiorno": {
+    "n": 22,
+    "l": 2,
+    "b": "丑",
+    "el": "Earth",
+    "r": "G",
+    "testo": "Lends grace to the beard on their chin."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     1,
+     0,
+     0
+    ],
+    "annuale": [
+     1,
+     0,
+     1,
+     0,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     1,
+     1,
+     0,
+     0,
+     0
+    ],
+    "blocco": [
+     1,
+     1,
+     1,
+     0,
+     0,
+     1
+    ],
+    "giorno": [
+     1,
+     0,
+     1,
+     0,
+     0,
+     1
+    ]
+   },
+   "cicli": [
+    [
+     6,
+     46,
+     51
+    ],
+    [
+     1,
+     52,
+     57
+    ],
+    [
+     2,
+     58,
+     66
+    ],
+    [
+     3,
+     67,
+     72
+    ],
+    [
+     4,
+     73,
+     81
+    ],
+    [
+     5,
+     82,
+     87
+    ]
+   ],
+   "ds": {
+    "tot": 14.44,
+    "pct": 0.18082191780821918,
+    "pctBase": 0.18082191780821918,
+    "d": {
+     "r": "C",
+     "rs": 0,
+     "t": 2.5,
+     "note": [
+      "timely",
+      "三合 Y",
+      "same D"
+     ],
+     "s": 1,
+     "txt": 2,
+     "tot": 4.5
+    },
+    "s2": {
+     "t": 0.5,
+     "note": [
+      "timely",
+      "剋 D"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Umberto I di Savoia",
+   "d": "1882-05-20",
+   "luogo": [
+    16.37,
+    "Europe/Vienna"
+   ],
+   "scopo": "parent",
+   "cosa": "Triple Alliance signed"
+  },
+  "pct": {
+   "app now": 0.8438356164383561,
+   "no Luck": 0.8506849315068493,
+   "no cycle line": 0.9246575342465754,
+   "no annual line": 0.8328767123287671,
+   "no month line": 0.810958904109589,
+   "no secondary": 0.7876712328767124,
+   "secondary ×1": 0.8876712328767123,
+   "day ×2": 0.8794520547945206,
+   "day only (prim.+sec.)": 0.8945205479452055,
+   "no relation": 0.7849315068493151,
+   "no time": 0.9712328767123287,
+   "no text": 0.7246575342465753,
+   "relation ×2": 0.8890410958904109,
+   "time ×2": 0.7780821917808219,
+   "text ×2": 0.8684931506849315
+  },
+  "n": 365,
+  "tot": 3.06,
+  "age": 39,
+  "pers": "Water",
+  "pil": [
+   "庚午",
+   "己未",
+   "乙巳",
+   "壬午"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 29,
+    "line": 2,
+    "b": "辰",
+    "r": "G",
+    "rs": 1,
+    "t": 1,
+    "note": [
+     "timely"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 3
+   },
+   "a": {
+    "hexN": 28,
+    "line": 5,
+    "b": "酉",
+    "r": "P",
+    "rs": 2,
+    "t": -0.5,
+    "note": [
+     "剋 Y",
+     "三合 M",
+     "剋 M"
+    ],
+    "s": 0,
+    "txt": -1,
+    "tot": 0.5
+   },
+   "m": {
+    "hexN": 47,
+    "line": 3,
+    "b": "午",
+    "r": "W",
+    "rs": -1,
+    "t": 3,
+    "note": [
+     "三會 Fire combination",
+     "timely",
+     "same Y"
+    ],
+    "s": -2,
+    "txt": -1,
+    "tot": 1
+   },
+   "d": {
+    "hexN": 58,
+    "line": 2,
+    "b": "卯",
+    "r": "C",
+    "rs": 0,
+    "t": -0.5,
+    "note": [
+     "三合 D",
+     "空 void"
+    ],
+    "s": 1,
+    "txt": 0,
+    "tot": -0.5
+   },
+   "s2": {
+    "hexN": 17,
+    "line": 2,
+    "b": "寅",
+    "r": "C",
+    "rs": 0,
+    "t": -0.5,
+    "note": [
+     "三合 Y",
+     "空 void"
+    ],
+    "s": -1,
+    "txt": -2,
+    "tot": -2.5
+   }
+  },
+  "luck": 0.31,
+  "x": {
+   "eta": 39,
+   "pers": "Water",
+   "pil": [
+    "庚午",
+    "己未",
+    "乙巳",
+    "壬午"
+   ],
+   "fase": "XT",
+   "giornoMese": 31,
+   "mIndex": 5,
+   "mChanged": [
+    3
+   ],
+   "mStart": -2767564800000,
+   "ciclo": {
+    "n": 29,
+    "l": 2,
+    "b": "辰",
+    "el": "Earth",
+    "r": "G",
+    "testo": "The abyss is dangerous. One should strive to attain small things only."
+   },
+   "annuale": {
+    "n": 28,
+    "l": 5,
+    "b": "酉",
+    "el": "Metal",
+    "r": "P",
+    "testo": "A withered poplar puts forth flowers. An older woman takes a husband. No blame. No praise."
+   },
+   "mensile": 47,
+   "signore": {
+    "n": 58,
+    "l": 1,
+    "b": "巳",
+    "el": "Fire",
+    "r": "W",
+    "testo": "Contented joyousness. Good fortune."
+   },
+   "giorno": {
+    "n": 58,
+    "l": 2,
+    "b": "卯",
+    "el": "Wood",
+    "r": "C",
+    "testo": "Sincere joyousness. Good fortune. Remorse disappears."
+   },
+   "esaGiorno": {
+    "n": 17,
+    "l": 2,
+    "b": "寅",
+    "el": "Wood",
+    "r": "C",
+    "testo": "If one clings to the little boy, one loses the strong person."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     1,
+     0
+    ],
+    "annuale": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     0
+    ],
+    "mensile": [
+     0,
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "blocco": [
+     1,
+     1,
+     0,
+     1,
+     1,
+     0
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     3,
+     1,
+     6
+    ],
+    [
+     4,
+     7,
+     12
+    ],
+    [
+     5,
+     13,
+     21
+    ],
+    [
+     6,
+     22,
+     27
+    ],
+    [
+     1,
+     28,
+     33
+    ],
+    [
+     2,
+     34,
+     42
+    ]
+   ],
+   "ds": {
+    "tot": 3.06,
+    "pct": 0.8438356164383561,
+    "pctBase": 0.8438356164383561,
+    "d": {
+     "r": "C",
+     "rs": 0,
+     "t": -0.5,
+     "note": [
+      "三合 D",
+      "空 void"
+     ],
+     "s": 1,
+     "txt": 0,
+     "tot": -0.5
+    },
+    "s2": {
+     "t": -0.5,
+     "note": [
+      "三合 Y",
+      "空 void"
+     ]
+    }
+   }
+  }
+ },
+ {
+  "e": {
+   "chi": "Giovanni Falcone",
+   "d": "1985-11-08",
+   "luogo": [
+    13.36,
+    "Europe/Rome"
+   ],
+   "scopo": "parent",
+   "cosa": "files the Maxiprocesso indictment"
+  },
+  "pct": {
+   "app now": 0.4808219178082192,
+   "no Luck": 0.5068493150684932,
+   "no cycle line": 0.6575342465753424,
+   "no annual line": 0.28356164383561644,
+   "no month line": 0.27945205479452057,
+   "no secondary": 0.4397260273972603,
+   "secondary ×1": 0.5054794520547945,
+   "day ×2": 0.4191780821917808,
+   "day only (prim.+sec.)": 0.4041095890410959,
+   "no relation": 0.4726027397260274,
+   "no time": 0.7986301369863014,
+   "no text": 0.13972602739726028,
+   "relation ×2": 0.46986301369863015,
+   "time ×2": 0.3315068493150685,
+   "text ×2": 0.6561643835616439
+  },
+  "n": 365,
+  "tot": 8.75,
+  "age": 47,
+  "pers": "Earth",
+  "pil": [
+   "甲午",
+   "辛亥",
+   "丁亥",
+   "乙丑"
+  ],
+  "lv": {
+   "c": {
+    "hexN": 4,
+    "line": 6,
+    "b": "寅",
+    "r": "G",
+    "rs": 1,
+    "t": 3,
+    "note": [
+     "timely",
+     "六合 M",
+     "六合 D"
+    ],
+    "s": 0,
+    "txt": 1,
+    "tot": 5
+   },
+   "a": {
+    "hexN": 17,
+    "line": 5,
+    "b": "酉",
+    "r": "C",
+    "rs": 0,
+    "t": -0.5,
+    "note": [
+     "三合 Y",
+     "空 void"
+    ],
+    "s": 2,
+    "txt": 1,
+    "tot": 0.5
+   },
+   "m": {
+    "hexN": 25,
+    "line": 6,
+    "b": "戌",
+    "r": "B",
+    "rs": 0,
+    "t": 0,
+    "note": [],
+    "s": -1,
+    "txt": -1,
+    "tot": -1
+   },
+   "d": {
+    "hexN": 42,
+    "line": 6,
+    "b": "卯",
+    "r": "G",
+    "rs": 1,
+    "t": 2,
+    "note": [
+     "timely",
+     "三合 M",
+     "三合 D"
+    ],
+    "s": -1,
+    "txt": 0,
+    "tot": 3
+   },
+   "s2": {
+    "hexN": 3,
+    "line": 6,
+    "b": "子",
+    "r": "W",
+    "rs": -1,
+    "t": 2,
+    "note": [
+     "三會 Water combination",
+     "timely"
+    ],
+    "s": -2,
+    "txt": -1,
+    "tot": 0
+   }
+  },
+  "luck": 1.25,
+  "x": {
+   "eta": 47,
+   "pers": "Earth",
+   "pil": [
+    "甲午",
+    "辛亥",
+    "丁亥",
+    "乙丑"
+   ],
+   "fase": "HT",
+   "giornoMese": 17,
+   "mIndex": 11,
+   "mChanged": [
+    6
+   ],
+   "mStart": 498873600000,
+   "ciclo": {
+    "n": 4,
+    "l": 6,
+    "b": "寅",
+    "el": "Wood",
+    "r": "G",
+    "testo": "In punishing folly, it does not further one to commit transgressions. The only thing that furthers is to prevent transgressions."
+   },
+   "annuale": {
+    "n": 17,
+    "l": 5,
+    "b": "酉",
+    "el": "Metal",
+    "r": "C",
+    "testo": "Sincere in the good. Good fortune."
+   },
+   "mensile": 25,
+   "signore": {
+    "n": 42,
+    "l": 4,
+    "b": "未",
+    "el": "Earth",
+    "r": "B",
+    "testo": "If you walk in the middle and report to the prince, they will follow. It furthers one to be used in the removal of the capital."
+   },
+   "giorno": {
+    "n": 42,
+    "l": 6,
+    "b": "卯",
+    "el": "Wood",
+    "r": "G",
+    "testo": "They bring increase to no one. Indeed, someone even strikes them. They do not keep their heart constantly steady. Misfortune."
+   },
+   "esaGiorno": {
+    "n": 3,
+    "l": 6,
+    "b": "子",
+    "el": "Water",
+    "r": "W",
+    "testo": "Horse and wagon part. Bloody tears flow."
+   },
+   "linee": {
+    "ciclo": [
+     0,
+     1,
+     0,
+     0,
+     0,
+     1
+    ],
+    "annuale": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     0
+    ],
+    "mensile": [
+     1,
+     0,
+     0,
+     1,
+     1,
+     1
+    ],
+    "blocco": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     1
+    ],
+    "giorno": [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   },
+   "cicli": [
+    [
+     6,
+     40,
+     48
+    ],
+    [
+     1,
+     49,
+     54
+    ],
+    [
+     2,
+     55,
+     63
+    ],
+    [
+     3,
+     64,
+     69
+    ],
+    [
+     4,
+     70,
+     75
+    ],
+    [
+     5,
+     76,
+     81
+    ]
+   ],
+   "ds": {
+    "tot": 8.75,
+    "pct": 0.4808219178082192,
+    "pctBase": 0.4808219178082192,
+    "d": {
+     "r": "G",
+     "rs": 1,
+     "t": 2,
+     "note": [
+      "timely",
+      "三合 M",
+      "三合 D"
+     ],
+     "s": -1,
+     "txt": 0,
+     "tot": 3
+    },
+    "s2": {
+     "t": 2,
+     "note": [
+      "三會 Water combination",
+      "timely"
+     ]
+    }
+   }
+  }
+ }
+]
