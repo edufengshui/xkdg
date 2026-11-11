@@ -143,9 +143,13 @@ function giorno(N, nat, date, lon, tz, scopo) {
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
   const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
   const m = nuove('mese') ? livello(p.id.month[0], Math.ceil(p.mIndex / 2), pers, scopo, T, nv) : null;
+  // 5) testo secondario (Edu, 11/11/2026): la stessa linea nell'esagramma del giorno (esito) entra nel punteggio
+  //    con peso SEC (HL_SEC, default 0.5); il testo primario è la linea nell'esagramma del blocco (causa, azione).
+  const SEC = process.env.HL_SEC !== undefined ? +process.env.HL_SEC : 0.5;
+  const sd = SEC ? livello(p.id.dayHex[0], p.id.dayHex[1], pers, scopo, T, nv) : null;
   const L = nat.luck ? luckTot(p, nat.luck) : null, useL = process.argv.includes('luck') && L;
   const L2 = nat.prof ? LK2.giorno(nat.prof, p, T) : null, useL2 = process.argv.includes('luck2') && L2;
-  return { date, Pe, p, pers, c, a, m, d, L, L2, tot: c.tot + a.tot + (m ? m.tot : 0) + d.tot + (useL ? L.tot : 0) + (useL2 ? L2.tot : 0) };
+  return { date, Pe, p, pers, c, a, m, d, L, L2, sd, tot: c.tot + a.tot + (m ? m.tot : 0) + d.tot + (sd ? SEC * sd.tot : 0) + (useL ? L.tot : 0) + (useL2 ? L2.tot : 0) };
 }
 
 const NASCITE = {

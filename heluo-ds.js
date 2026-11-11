@@ -196,9 +196,12 @@
     var c = level(p.id.cycle[0], p.id.cycle[1], pers, purpose, T, ctx.natVoids);
     var a = level(p.id.year[0], p.id.year[1], pers, purpose, T, ctx.natVoids);
     var m = level(p.month.hex.n, p.month.line, pers, purpose, T, ctx.natVoids);
+    // secondary text (Edu, 11/11/2026): the same line in the changed (day) hexagram, the outcome, at half weight;
+    // the primary text is the day line in the block hexagram (cause, action)
+    var s2 = level(p.id.dayHex[0], p.id.dayHex[1], pers, purpose, T, ctx.natVoids);
     var d = level(p.id.day[0], p.id.day[1], pers, purpose, T, ctx.natVoids);
     var L = luckDay(ctx.prof, p, T);
-    var tot = Math.round((c.tot + a.tot + m.tot + d.tot + L.tot) * 100) / 100;
+    var tot = Math.round((c.tot + a.tot + m.tot + d.tot + 0.5 * s2.tot + L.tot) * 100) / 100;
     var warn = [];
     if (d.r === 'G') warn.push('Ghost on the day line');
     [['cycle', c], ['annual', a], ['month', m], ['day', d]].forEach(function (x) {
@@ -206,7 +209,7 @@
       if (x[1].tm.note.indexOf('空 void') >= 0) { var sm = x[1].tm.note.filter(function (n) { return /^same /.test(n); }).map(function (n) { return n.slice(5); });
         warn.push(x[0] + ' line ' + x[1].b + ' in true void' + (sm.length ? ' (same branch as ' + sm.join(', ') + ')' : '')); }
     });
-    return { Pe: Pe, p: p, pers: pers, T: T, c: c, a: a, m: m, d: d, L: L, tot: tot, warn: warn };
+    return { Pe: Pe, p: p, pers: pers, T: T, c: c, a: a, m: m, d: d, s2: s2, L: L, tot: tot, warn: warn };
   }
   // pillars at true-solar noon of a TST calendar date (no time zone needed)
   function pillarsTstNoon(y, mo, d, lon) {
@@ -392,7 +395,7 @@
         + '<br>Luck ' + sgn(g.L.tot) + (g.warn.length ? ' <span style="color:#c62828;">⚠ ' + esc(g.warn.join('; ')) + '</span>' : '') + '</td></tr>';
       if (on) h += '<tr><td colspan="3" style="padding:4px 4px 10px;">' + detail(chart, g) + '</td></tr>';
     });
-    out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
+    out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (primary) + half of the same line in the day hexagram (secondary) (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
       + 'Relations: ' + Object.keys(REL).map(function (k) { return k + ' ' + REL[k]; }).join(', ') + '. Fixed weights (Edu, 10/11/2026), tested on 6 events only: an indication, not yet a proof.</div>';
   }
   function lvlHtml(title, x, hx, cy, me) {
@@ -422,8 +425,7 @@
       + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">Block: monthly ' + p.month.hex.n + ' → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + ' ' + esc(U().hexName ? U().hexName(dh.block.n) : '') + '</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + (U().lineBody ? U().lineBody(dh.block.n, dh.lord, true) : '') + '</div>'
       + lvlHtml('4 · Day line in the block hexagram — primary text: cause, action', g.d, dh.block, bP, me)
-      + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · Same line in the changed (day) hexagram — secondary text: effect, outcome · ' + dh.hex.n + ' ' + esc(U().hexName ? U().hexName(dh.hex.n) : '') + ' line ' + dh.line + ' (course of the day)</div>'
-      + (U().cycleHexSvg ? U().cycleHexSvg(dh.hex, dh.line, dP, me) : '') + (U().lineBody ? U().lineBody(dh.hex.n, dh.line, true) : '') + '</div>'
+      + lvlHtml('5 · Same line in the changed (day) hexagram — secondary text: effect, outcome (half weight)', g.s2, dh.hex, dP, me)
       + '<div style="' + S_ + '"><b>Luck ' + sgn(g.L.tot) + '</b>: ' + (esc(g.L.w.join(' · ')) || 'none') + '</div>';
     return h;
   }
