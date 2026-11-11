@@ -847,6 +847,7 @@
       + small('Opposite XT', R.oppositeXT) + small('Inverse XT', R.inverseXT)
       + (R.oppositeHT ? small('Opposite HT', R.oppositeHT) + small('Inverse HT', R.inverseHT) : '') + '</div>'
       + newNatalReading(R, g === 'M', c.lon)
+      + (root.XKDGHeluoDS && root.XKDGHeluoDS.plannerHtml ? root.XKDGHeluoDS.plannerHtml(_chart) : '')
       + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
