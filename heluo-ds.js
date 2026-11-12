@@ -161,7 +161,7 @@
   }
 
   // ── The three Luck (luck.js, defaults: vuoti on, exit only by clashing branches, no opposites from branches, bridge 'esa') ──
-  var LW = { A: { a: 0.25, m: 0.5, g: 1 }, B: { c: 0.25, a: 0.5, g: 1 }, C: { a: 0.25, m: 0.5, b: 0.5, g: 0.75 } };
+  var LW = { A: { a: 0.25, m: 0.5, g: 1 }, B: { c: 0.25, a: 0.5, g: 1 }, C: { c: 0.25, h: 0.25, a: 0.25, m: 0.5, b: 0.5, g: 0.75 } };
   var YY = { low: 1.5, high: { M: { heaven: 0.5, earth: -0.5 }, F: { heaven: -0.5, earth: 0.5 } } };
   var TM = { 2: 1.5, 1: 1.25, 0: 1, '-1': 0.75, '-2': 0.5 };
   var TMK = { 2: '旺', 1: '相', 0: '休', '-1': '囚', '-2': '死' };
@@ -196,24 +196,53 @@
     if (!(['Kan', 'Li'].indexOf(L.t) >= 0 && ['Kan', 'Li'].indexOf(L.op) >= 0)) return false;
     return tr.some(function (t) { return t === 'Zhen' || t === 'Xun'; });
   }
-  function luckDay(P, p, T) {
-    var tot = 0, w = [], mUsa = {};
+  // Qi flow (Edu, 12/11/2026): hexagrams in a row, left to right (cycle → annual → monthly → block → day; the Hu of the
+  // cycle is a side branch cycle → Hu). Lower with lower, upper with upper. The trigram on the right is strengthened (×1.5)
+  // if the one on the left generates it or is the same element, weakened (×0.5) otherwise. First of the row ×1.
+  function flowMul(prev, cur) {
+    if (!prev) return [1, 1];
+    return [0, 1].map(function (i) { var a = TRI_EL[prev[i]], b = TRI_EL[cur[i]]; return a === b || GEN[a] === b ? 1.5 : 0.5; });
+  }
+  // row of a day: [level, hexagram number, [upper, lower], flow multipliers]; Hu of the cycle only on lines 2–5
+  function luckRow(p, levels) {
+    var out = [], prev = null, cy = p.id.cycle[0];
+    [['c', cy], ['a', p.id.year[0]], ['m', p.id.month[0]], ['b', p.id.lord[0]], ['g', p.id.dayHex[0]]].forEach(function (x) {
+      var tr = TRI_OF(x[1]); if (!levels || levels.indexOf(x[0]) >= 0) out.push([x[0], x[1], tr, flowMul(prev, tr)]); prev = tr; });
+    if ((!levels || levels.indexOf('h') >= 0) && p.id.cycle[1] >= 2 && p.id.cycle[1] <= 5) {
+      var hu = H().huGua(H().hexFrom(TRI_OF(cy)[0], TRI_OF(cy)[1]).lines), tr = [hu.upper, hu.lower];
+      out.splice(levels ? 0 : 1, 0, ['h', hu.n, tr, flowMul(TRI_OF(cy), tr)]);
+    }
+    return out;
+  }
+  // multipliers of a Luck for what adds (pos) and what takes away (neg). Void Luck (Edu, 12/11): adds nothing, but its
+  // opposite still takes away (it lowers the natural Luck everyone has). Out of the void with a clashing branch of the time.
+  function luckMuls(P, T, w) {
+    var M = {};
     ['heaven', 'earth', 'fame'].forEach(function (k) {
-      var L = P.K[k]; mUsa[k] = L.m;
-      if (!L.vuoto) return;
+      var L = P.K[k]; M[k] = { pos: L.m, neg: L.mPieno };
+      if (!L.vuoto || !T) return;
       var sc = CLASH_TRI[L.t];
-      if ([T.y, T.m, T.d].some(function (b) { return brTri(b) === sc; })) { mUsa[k] = L.mPieno; w.push(cap(k) + ' Luck out of the void (' + sc + ')'); }
+      if ([T.y, T.m, T.d].some(function (b) { return b && brTri(b) === sc; })) { M[k].pos = L.mPieno; if (w) w.push(cap(k) + ' Luck out of the void (' + sc + ')'); }
     });
-    function add(k, v, src) { if (!v) return; tot += v * mUsa[k]; if (mUsa[k]) w.push(src + ' ' + (v > 0 ? '+' : '−') + cap(k)); }
+    return M;
+  }
+  var LV_NAME = { c: 'cycle', h: 'Hu of the cycle', a: 'annual', m: 'monthly', b: 'block', g: 'day hex' };
+  function luckDay(P, p, T) {
+    var tot = 0, w = [], M = luckMuls(P, T, w);
+    function add(k, v, src) { if (!v) return; var m = v > 0 ? M[k].pos : M[k].neg; tot += v * m; if (m) w.push(src + ' ' + (v > 0 ? '+' : '−') + cap(k)); }
+    var row = luckRow(p);
     ['heaven', 'earth', 'fame'].forEach(function (k) {
       var L = P.K[k];
       [['year', T.y, LW.A.a], ['month', T.m, LW.A.m], ['day', T.d, LW.A.g]].forEach(function (x) { if (L.inNat && brTri(x[1]) === L.t) add(k, x[2], x[0] + ' ' + x[1]); });
       [['cycle line', p.id.cycle, LW.B.c], ['annual line', p.id.year, LW.B.a], ['day line', p.id.day, LW.B.g]].forEach(function (x) {
         var b = NJ()[x[1][0]].lines[x[1][1] - 1].branch; if (brTri(b) === L.t) add(k, x[2], x[0] + ' ' + b); });
-      [['annual', p.id.year[0], LW.C.a], ['monthly', p.id.month[0], LW.C.m], ['block', p.id.lord[0], LW.C.b], ['day hex', p.id.dayHex[0], LW.C.g]].forEach(function (x) {
-        var tr = TRI_OF(x[1]);
-        if (tr.indexOf(L.t) >= 0) add(k, x[2], x[0] + ' ' + x[1]);
-        if (tr.indexOf(L.op) >= 0 && !bridge(L, tr)) add(k, -x[2], x[0] + ' ' + x[1]);
+      row.forEach(function (x) {
+        var br = bridge(L, x[2]);
+        x[2].forEach(function (t, i) {
+          var f = x[3][i], tag = LV_NAME[x[0]] + ' ' + x[1] + (f > 1 ? '↑' : f < 1 ? '↓' : '');
+          if (t === L.t) add(k, LW.C[x[0]] * f, tag);
+          if (t === L.op && !br) add(k, -LW.C[x[0]] * f, tag);
+        });
       });
     });
     return { tot: Math.round(tot * 100) / 100, w: w };
@@ -319,17 +348,24 @@
       else if (X && L.hid && L.hid.r === X) { t += XK_W[L.k] / 2; on.push({ k: L.k, b: L.hid.b, r: X, hidden: true }); }
       if (A && L.r === A) { t -= XK_W[L.k]; price.push(L); }
     });
-    // the three Luck (Heaven, Earth, Fame) and their opposites in the monthly, block and day hexagram
-    var hx = [['monthly', p.month.hex], ['block', p.daily.block], ['day', p.daily.hex]], lk = [], opp = [];
-    ['heaven', 'earth', 'fame'].forEach(function (k) { hx.forEach(function (h) {
-      if ([h[1].upper, h[1].lower].indexOf(ctx.R.luck[k]) >= 0) lk.push(cap(k) + ' Luck (' + ctx.R.luck[k] + ') in the ' + h[0] + ' hexagram');
-      if ([h[1].upper, h[1].lower].indexOf(ctx.R.luck.opposite[k]) >= 0) opp.push('opposite of ' + cap(k) + ' Luck (' + ctx.R.luck.opposite[k] + ') in the ' + h[0] + ' hexagram');
+    // the three Luck (Heaven, Earth, Fame) and their opposites in the monthly, block and day hexagram, each trigram with the
+    // Qi flow from the hexagram on its left (cycle → annual → monthly → block → day; Edu 12/11): ×1.5 strengthened, ×0.5 weakened.
+    // A void Luck adds nothing (unless a clashing branch of the time brings it out), its opposite still takes away (Edu 12/11).
+    var HN = { m: 'monthly', b: 'block', g: 'day' }, lk = [], opp = [], lkS = 0, opS = 0, LM = luckMuls(ctx.prof, TT);
+    luckRow(p, ['m', 'b', 'g']).forEach(function (x) { ['heaven', 'earth', 'fame'].forEach(function (k) {
+      var L = ctx.prof.K[k], br = bridge(L, x[2]);
+      x[2].forEach(function (tr, i) {
+        var f = x[3][i], fl = f > 1 ? ', strengthened' : f < 1 ? ', weakened' : '', pos = i ? 'lower' : 'upper';
+        if (tr === L.t) { if (LM[k].pos) { lkS += f; lk.push(cap(k) + ' Luck (' + tr + ') ' + pos + ' in the ' + HN[x[0]] + ' hexagram' + fl); }
+          else lk.push(cap(k) + ' Luck (' + tr + ') in the ' + HN[x[0]] + ' hexagram: void, does not count'); }
+        if (tr === L.op && !br) { opS += f; opp.push('opposite of ' + cap(k) + ' Luck (' + tr + ') ' + pos + ' in the ' + HN[x[0]] + ' hexagram' + fl); }
+      });
     }); });
     // Cures: what the natal chart needs to come back into balance (yang or yin), from the block and day hexagram
     var pr = ctx.prof, need = (pr.rY < -0.25 || pr.rE > 0.25) && !(pr.rE < -0.25 || pr.rY > 0.25) ? 'yang' : (pr.rE < -0.25 || pr.rY > 0.25) && !(pr.rY < -0.25 || pr.rE > 0.25) ? 'yin' : null, cure = [];
     function yy(h) { return yyTri(h); }
     var adj = 0;
-    if (key === 'luck') adj = lk.length - opp.length;
+    if (key === 'luck') adj = Math.round(lkS - opS);
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
@@ -611,7 +647,7 @@
   // the line (or hidden under it), ▼ the relation that attacks it (the price), ⏳ void line (fruits later), the three Luck.
   var _pl = { key: null, y0: null, openY: null, openM: null, openC: null };
   var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  function plMark(ch, ctx, key, me, hx, line, yearBranch, monthBranch) {
+  function plMark(ch, ctx, key, me, hx, line, yearBranch, monthBranch, prev) {
     var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
     var yv = natalVoids(ch.Pn).list, G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
     if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + '</span>'); sc += 2; }
@@ -626,11 +662,23 @@
         vt = vx.out ? ', out this month (' + VOID_HOW[vx.how] + ')' : ': stays void (year and month not both in its season)'; }
       m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + vt + '</span>');
     }
-    var tr = [hx.upper, hx.lower], lk = [], op = [];
-    ['heaven', 'earth', 'fame'].forEach(function (k) { if (tr.indexOf(ch.R.luck[k]) >= 0) lk.push(cap(k)); if (tr.indexOf(ch.R.luck.opposite[k]) >= 0) op.push(cap(k)); });
-    if (lk.length) m.push('<span style="' + (key === 'luck' ? G : 'color:#2e7d32;') + '">' + (key === 'luck' ? '▲ ' : '+') + lk.join(', ') + ' Luck</span>');
-    if (op.length) m.push('<span style="' + (key === 'luck' ? Rd : 'color:#c62828;') + '">' + (key === 'luck' ? '▼ ' : '−') + 'opposite of ' + op.join(', ') + ' Luck</span>');
-    if (key === 'luck') sc = lk.length - op.length;
+    // Luck (Edu 12/11): each trigram with the Qi flow from the hexagram on its left (period → year → month; Hu of the
+    // period on lines 2–5); a void Luck adds nothing unless a clashing branch of the time brings it out; opposites always count
+    var LM = luckMuls(ctx.prof, { y: yearBranch, m: monthBranch, d: null }), lk = [], op = [], lkS = 0, opS = 0;
+    var rows = [[hx, prev ? flowMul([prev.upper, prev.lower], [hx.upper, hx.lower]) : [1, 1], '']];
+    if (!yearBranch && line >= 2 && line <= 5) { var hu = H().huGua(hx.lines); rows[0][2] = ' (' + hx.n + ')'; rows.push([hu, flowMul([hx.upper, hx.lower], [hu.upper, hu.lower]), ' (Hu ' + hu.n + ')']); }
+    rows.forEach(function (x) { ['heaven', 'earth', 'fame'].forEach(function (k) {
+      var Lk = ctx.prof.K[k], br = bridge(Lk, [x[0].upper, x[0].lower]);
+      [x[0].upper, x[0].lower].forEach(function (t, i) {
+        var f = x[1][i], fl = f > 1 ? ' ↑' : f < 1 ? ' ↓' : '';
+        if (t === Lk.t) { if (LM[k].pos) { lkS += f; lk.push(cap(k) + x[2] + fl); } else lk.push(cap(k) + x[2] + ' (void)'); }
+        if (t === Lk.op && !br) { opS += f; op.push(cap(k) + x[2] + fl); }
+      });
+    }); });
+    function cnt(a) { var o = [], n = {}; a.forEach(function (x) { if (!n[x]) o.push(x); n[x] = (n[x] || 0) + 1; }); return o.map(function (x) { return x + (n[x] > 1 ? ' ×' + n[x] : ''); }).join(', '); }
+    if (lk.length) m.push('<span style="' + (key === 'luck' ? G : 'color:#2e7d32;') + '">' + (key === 'luck' ? '▲ ' : '+') + 'Luck: ' + cnt(lk) + '</span>');
+    if (op.length) m.push('<span style="' + (key === 'luck' ? Rd : 'color:#c62828;') + '">' + (key === 'luck' ? '▼ ' : '−') + 'opposite of: ' + cnt(op) + '</span>');
+    if (key === 'luck') sc = Math.round(lkS - opS);
     if (key === 'cure') {
       var pr = ctx.prof, need = (pr.rY < -0.25 || pr.rE > 0.25) && !(pr.rE < -0.25 || pr.rY > 0.25) ? 'yang' : (pr.rE < -0.25 || pr.rY > 0.25) && !(pr.rY < -0.25 || pr.rE > 0.25) ? 'yin' : null;
       var q = yyTri(hx);
@@ -663,7 +711,7 @@
       + '<table style="border-collapse:collapse;font-size:12px;width:100%;">';
     for (var Y = Y0; Y < Y0 + 12; Y++) {
       var a = H().annual(R, Y); if (a.none) continue;
-      var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], mk = plMark(ch, ctx, key, me, a.hex, a.moved, yb), op = _pl.openY === Y;
+      var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], mk = plMark(ch, ctx, key, me, a.hex, a.moved, yb, null, a.periodHex), op = _pl.openY === Y;
       h += '<tr onclick="xkdgHLPlan(\'y\',' + Y + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mk.sc, Y === nowY) + (op ? 'outline:2px solid #5e35b1;' : '') + '"><td style="' + TD + 'white-space:nowrap;"><b>' + Y + '</b> · age ' + a.age + (Y === nowY ? ' ◀' : '') + '<div style="font-size:10px;color:#888;">' + yb + ' year</div></td>'
         + '<td style="' + TD + 'white-space:nowrap;">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '<br>l' + a.moved + ' ' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
       if (!op) continue;
@@ -671,7 +719,7 @@
       h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year', true) : '')
         + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">3 · The months of ' + Y + ' (age ' + a.age + ')</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
       a.months.forEach(function (mo, i) {
-        var mm = plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12]), opM = _pl.openM === mo.index, per = '';
+        var mm = plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12], a.hex), opM = _pl.openM === mo.index, per = '';
         try { var s = ms[i].start, e = new Date((ms[i + 1].start || ms[i + 1].end).getTime() - 86400000); per = s.getUTCDate() + ' ' + MON3[s.getUTCMonth()] + '–' + e.getUTCDate() + ' ' + MON3[e.getUTCMonth()]; } catch (e2) {}
         h += '<tr onclick="event.stopPropagation();xkdgHLPlan(\'m\',' + mo.index + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mm.sc, false) + '"><td style="' + TD + 'white-space:nowrap;"><b>' + per + '</b></td>'
           + '<td style="' + TD + 'white-space:nowrap;">' + mo.hex.n + ' l' + mo.line + ' ' + mm.L.branch + ' ' + relTag(mm.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mm.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';

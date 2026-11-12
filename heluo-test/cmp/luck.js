@@ -28,7 +28,7 @@ const H = global.XKDGHeluo;
 const W = {                         // pesi per livello
   A: { a: 0.25, m: 0.5, g: 1 },     // ramo di anno, mese, giorno che attiva una Luck del nativo
   B: { c: 0.25, a: 0.5, g: 1 },     // ramo della linea del ciclo, della linea mossa, della linea del giorno
-  C: { a: 0.25, m: 0.5, b: 0.5, g: 0.75 }, // trigrammi di annuale, mensile, blocco, esagramma del giorno
+  C: { c: 0.25, h: 0.25, a: 0.25, m: 0.5, b: 0.5, g: 0.75 }, // trigrammi di ciclo, suo Hu, annuale, mensile, blocco, esagramma del giorno
 };
 // eccesso: per un uomo lo yang alto è naturale (Heaven in eccesso ×0,5) e lo yin in eccesso rende la Earth controproducente;
 // per una donna al contrario (Edu, 10/11): yin alto naturale (Earth ×0,5), yang in eccesso rende la Heaven controproducente
@@ -111,21 +111,45 @@ function ponte(L, tr, n, P) {
   if (V === 'persona' && P.persona === 'Wood') return true;
   return false;
 }
+// Flusso del Qi (Edu, 12/11/2026): gli esagrammi in fila da sinistra a destra (ciclo → annuale → mensile → blocco →
+// giorno; l'Hu del ciclo è un ramo laterale ciclo → Hu). Trigramma inferiore con inferiore, superiore con superiore.
+// Il trigramma di destra è rafforzato (×1,5) se quello di sinistra lo genera o è dello stesso elemento, indebolito (×0,5)
+// negli altri casi (lo controlla, ne è controllato, lo drena). Il primo della fila ×1. LK_FLUSSO=no per toglierlo.
+const GEN_ = { Wood: 'Fire', Fire: 'Earth', Earth: 'Metal', Metal: 'Water', Water: 'Wood' };
+function flusso(prev, cur) {
+  if (!prev || process.env.LK_FLUSSO === 'no') return [1, 1];
+  return [0, 1].map(i => { const a = TRI_EL[prev[i]], b = TRI_EL[cur[i]]; return a === b || GEN_[a] === b ? 1.5 : 0.5; });
+}
+// fila degli esagrammi del giorno: [livello, numero, trigrammi [sup, inf], moltiplicatori del flusso]
+function fila(p) {
+  const out = [], cy = p.id.cycle[0];
+  const seq = [['c', cy], ['a', p.id.year[0]], ['m', p.id.month[0]], ['b', p.id.lord[0]], ['g', p.id.dayHex[0]]];
+  let prev = null;
+  for (const [lv, n] of seq) { const tr = TRI_OF[n]; if (!(lv === 'c' && process.env.LK_CICLO === 'no')) out.push([lv, n, tr, flusso(prev, tr)]); prev = tr; }
+  // Hu del ciclo, solo sulle linee 2–5 del ciclo (Edu: l'Hu conta nei cicli delle linee 2–5)
+  if (process.env.LK_CICLO !== 'no' && p.id.cycle[1] >= 2 && p.id.cycle[1] <= 5) {
+    const hu = H.huGua(H.hexFrom(TRI_OF[cy][0], TRI_OF[cy][1]).lines), tr = [hu.upper, hu.lower];
+    out.splice(1, 0, ['h', hu.n, tr, flusso(TRI_OF[cy], tr)]);
+  }
+  return out;
+}
 function giorno(P, p, T) {
   let tot = 0; const w = [];
   // Luck vuota che esce dal vuoto (Edu, 10/11): arriva il trigramma di scontro (rami Time 1 opposti: Kan↔Li, Gen↔Kun,
-  // Zhen↔Dui, Xun↔Qian) con il ramo di anno, mese o giorno, o nei trigrammi di annuale, mensile, blocco, esagramma del giorno.
-  // Default (Edu, 10/11): solo i rami di anno, mese, giorno che scontrano i rami della Luck. LK_RIEMPI=tutto: anche i trigrammi
-  // degli esagrammi del tempo; LK_RIEMPI=no: la Luck vuota resta vuota.
-  const RI = process.env.LK_RIEMPI || 'rami', mUsa = {}, uscita = {};
+  // Zhen↔Dui, Xun↔Qian) con il ramo di anno, mese o giorno. LK_RIEMPI=tutto: anche i trigrammi degli esagrammi del tempo;
+  // LK_RIEMPI=no: la Luck vuota resta vuota.
+  // Luck vuota (Edu, 12/11): non aggiunge niente, ma il suo opposto toglie lo stesso (abbassa la Luck naturale che tutti
+  // hanno). LK_VUOTOOPP=no: come prima (né la Luck né l'opposto).
+  const RI = process.env.LK_RIEMPI || 'rami', mPos = {}, mNeg = {};
   for (const k of ['heaven', 'earth', 'fame']) {
-    const L = P.K[k]; mUsa[k] = L.m;
+    const L = P.K[k]; mPos[k] = L.m; mNeg[k] = process.env.LK_VUOTOOPP === 'no' ? L.m : L.mPieno;
     if (!L.vuoto || RI === 'no') continue;
     const sc = CLASH_TRI[L.t], daRami = [T.y, T.m, T.d].some(b => brTri(b) === sc);
     const daEsa = RI === 'tutto' && [p.id.year[0], p.id.month[0], p.id.lord[0], p.id.dayHex[0]].some(n => TRI_OF[n].includes(sc));
-    if (daRami || daEsa) { mUsa[k] = L.mPieno; uscita[k] = sc; w.push(`${k[0].toUpperCase()} esce dal vuoto (${sc})`); }
+    if (daRami || daEsa) { mPos[k] = mNeg[k] = L.mPieno; w.push(`${k[0].toUpperCase()} esce dal vuoto (${sc})`); }
   }
-  const add = (k, v, src) => { if (!v) return; const x = v * mUsa[k]; tot += x; if (mUsa[k]) w.push(`${src} ${v > 0 ? '+' : '−'}${k[0].toUpperCase()}`); };
+  const add = (k, v, src) => { if (!v) return; const m = v > 0 ? mPos[k] : mNeg[k]; tot += v * m; if (m) w.push(`${src} ${v > 0 ? '+' : '−'}${k[0].toUpperCase()}`); };
+  const F = fila(p);
   for (const k of ['heaven', 'earth', 'fame']) {
     const L = P.K[k];
     // A. Luck del nativo attivata dai rami del tempo
@@ -139,14 +163,16 @@ function giorno(P, p, T) {
       if (t === L.t) add(k, W.B[lv], 'B' + lv + b);
       if (OPR && t === L.op) add(k, -W.B[lv], 'B' + lv + b);
     }
-    // C. trigrammi degli esagrammi del tempo
-    for (const [lv, n] of [['a', p.id.year[0]], ['m', p.id.month[0]], ['b', p.id.lord[0]], ['g', p.id.dayHex[0]]]) {
-      const tr = TRI_OF[n];
-      if (tr.includes(L.t)) add(k, W.C[lv], 'C' + lv + n);
-      if (tr.includes(L.op) && !ponte(L, tr, n, P)) add(k, -W.C[lv], 'C' + lv + n);
+    // C. trigrammi degli esagrammi del tempo (ciclo e suo Hu compresi, Edu 12/11), ogni posizione per sé, col flusso del Qi
+    for (const [lv, n, tr, fm] of F) {
+      const pt = ponte(L, tr, n, P);
+      tr.forEach((t, i) => {
+        if (t === L.t) add(k, W.C[lv] * fm[i], 'C' + lv + n + (fm[i] > 1 ? '↑' : fm[i] < 1 ? '↓' : ''));
+        if (t === L.op && !pt) add(k, -W.C[lv] * fm[i], 'C' + lv + n + (fm[i] > 1 ? '↑' : fm[i] < 1 ? '↓' : ''));
+      });
     }
   }
   return { tot: Math.round(tot * 100) / 100, w };
 }
 
-module.exports = { profilo, giorno, ponte, W, YY, TM, brTri };
+module.exports = { profilo, giorno, ponte, flusso, fila, W, YY, TM, brTri };
