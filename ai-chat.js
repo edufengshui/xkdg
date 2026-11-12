@@ -8201,6 +8201,7 @@
     try {
       for (var i = 0; i < h.length; i++) {
         if (h[i] && h[i].role === 'user' && (typeof h[i].content === 'string' || hasImage(h[i]))) {
+          if (/^\[SUMMARY OF A PREVIOUS CONVERSATION/.test(msgText(h[i]))) continue;   // continued chat: title from the first real question
           var t = msgText(h[i]).replace(/\n?\[photo #\d+[^\]]*\]/g, '').trim().replace(/\s+/g, ' ') || '\uD83D\uDCF7 Photo';
           if (t) return t.length > 48 ? t.slice(0, 48) + '…' : t;
         }
@@ -8731,7 +8732,7 @@
     try { gear.parentNode && gear.parentNode.insertBefore(areaBtn, gear); } catch(e){}
 
     gear.addEventListener('click', openSettings);
-    clearBtn.addEventListener('click', function () { history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); });
+    clearBtn.addEventListener('click', function () { setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); });
     saveBtn.addEventListener('click', function () { saveCurrentConversation(false); });
     archBtn.addEventListener('click', openArchive);
     shareBtn.addEventListener('click', shareItinerary);
@@ -8875,6 +8876,10 @@
       };
       var idx = -1, i;
       for (i = 0; i < arr.length; i++) { if (arr[i] && arr[i].id === rec.id) { idx = i; break; } }
+      // keep an already-written summary if the conversation has not grown since
+      if (idx >= 0 && arr[idx] && arr[idx].summary && arr[idx].summaryLen === rec.history.length) {
+        rec.summary = arr[idx].summary; rec.summaryLen = arr[idx].summaryLen;
+      }
       if (idx >= 0) arr[idx] = rec; else arr.unshift(rec);
       if (arr.length > ARCHIVE_MAX) arr = arr.slice(0, ARCHIVE_MAX);
       currentConvId = rec.id;
@@ -8883,8 +8888,42 @@
         if (ok) { saveBtn.textContent = '✓'; setTimeout(function () { saveBtn.textContent = '💾'; }, 1200);
           setStatus(idx >= 0 ? 'Conversation updated in archive.' : 'Conversation saved to archive.'); }
         else setStatus('Could not save — storage full. Export the archive (📚) and delete some.', '#b00');
+        // Session 50 (Edu): write the summary NOW, while saving, so "Continue" is instant later.
+        if (ok && !rec.summary) { makeConvSummary(rec).catch(function () {}); }
       }
       return ok;
+    }
+
+    // ── Summary of a saved conversation (session 50, Edu) ──
+    // Re-reading a saved chat is free. To go on with it, the new chat starts from a
+    // short summary instead of re-sending the whole old conversation every turn.
+    var SUMMARY_SYS = 'You summarise a conversation between a student and the XKDG Assistant (a Chinese metaphysics ' +
+      'app: XKDG date selection, Bazi, Qi Men Dun Jia, Feng Shui, lucky travel). Write a compact summary (max ~250 words) ' +
+      'that lets the assistant pick up the thread: the person / chart / house / place involved, the question asked, and the ' +
+      'CONCLUSIONS reached - keep every concrete date, hour, direction, hexagram, palace and score exactly as written. Do not ' +
+      'add advice or interpretations that are not in the conversation. Write in the language the student used.';
+    function convTranscript(h) {
+      var out = [];
+      (h || []).forEach(function (m) {
+        if (!m) return;
+        var t = msgText(m).replace(/\n?\[photo[^\]]*\]/g, '').trim();
+        if (!t || /^\[CONTEXT FROM THE APP/.test(t)) return;
+        out.push((m.role === 'user' ? 'STUDENT: ' : 'ASSISTANT: ') + t);
+      });
+      var all = out.join('\n\n');
+      return all.length > 40000 ? all.slice(all.length - 40000) : all;   // the end of a chat holds the conclusions
+    }
+    function makeConvSummary(rec) {
+      if (!window.XKDGAIOneShot) return Promise.reject(new Error('AI not available'));
+      var len = (rec.history || []).length;
+      return window.XKDGAIOneShot(SUMMARY_SYS, convTranscript(rec.history), 700).then(function (sum) {
+        var arr = archiveLoad();
+        for (var i = 0; i < arr.length; i++) {
+          if (arr[i] && arr[i].id === rec.id) { arr[i].summary = sum; arr[i].summaryLen = len; archiveStore(arr); break; }
+        }
+        rec.summary = sum; rec.summaryLen = len;
+        return sum;
+      });
     }
 
     // Redraw the visible bubbles from `history` (text only; tool blocks are skipped, nothing read aloud).
@@ -8904,13 +8943,66 @@
     }
 
     // Reopen a saved conversation so it can be reviewed and continued.
+    // Session 50 (Edu): a saved conversation opens READ-ONLY (re-reading costs nothing).
+    // "Continue" starts a NEW chat seeded with the summary, not the whole old history.
+    var readOnlyConv = null, _roBar = null;
+    function roLang() { try { return chatLang(); } catch (e) { return 'en'; } }
+    var RO_TXT = {
+      it: { bar: '📖 Stai rileggendo una conversazione salvata (gratis).', btn: '▶ Continua', wait: 'Preparo la sintesi…',
+            blocked: 'Sola lettura: premi ▶ Continua per fare altre domande su questa conversazione.',
+            ok: 'Puoi continuare: la nuova chat parte dalla sintesi di quella salvata.', fail: 'Non riesco a preparare la sintesi. Riprova.',
+            div: '— continua da qui (dalla sintesi) —' },
+      fr: { bar: '📖 Vous relisez une conversation enregistrée (gratuit).', btn: '▶ Continuer', wait: 'Préparation du résumé…',
+            blocked: 'Lecture seule : appuyez sur ▶ Continuer pour poser d\'autres questions.',
+            ok: 'Vous pouvez continuer : la nouvelle discussion part du résumé.', fail: 'Impossible de préparer le résumé. Réessayez.',
+            div: '— suite (à partir du résumé) —' },
+      en: { bar: '📖 You are re-reading a saved conversation (free).', btn: '▶ Continue', wait: 'Preparing the summary…',
+            blocked: 'Read-only: tap ▶ Continue to ask more about this conversation.',
+            ok: 'You can continue: the new chat starts from the summary of the saved one.', fail: 'Could not prepare the summary. Try again.',
+            div: '— continued from here (from the summary) —' }
+    };
+    var _roLang = 'en';
+    function roT(k) { var l = RO_TXT[_roLang] || RO_TXT.en; return l[k]; }
+    function setReadOnly(on) {
+      try { input.disabled = !!on; input.style.opacity = on ? '0.5' : ''; } catch (e) {}
+      if (!on) { readOnlyConv = null; if (_roBar && _roBar.parentNode) _roBar.parentNode.removeChild(_roBar); _roBar = null; }
+    }
     function loadConversation(conv) {
       if (!conv || !Array.isArray(conv.history)) return;
+      // show the old chat, but keep the LIVE history empty: nothing old is sent by mistake
       history = JSON.parse(JSON.stringify(conv.history));
-      currentConvId = conv.id;
       renderHistoryBubbles();
+      var lang = roLang(); _roLang = lang;
+      history = [];
+      currentConvId = null;
+      setReadOnly(true); readOnlyConv = conv;
+      var L = RO_TXT[lang] || RO_TXT.en;
+      _roBar = elc('div', { style: 'margin:8px 4px;padding:10px;border:1px solid #f0d58a;background:#fff8e1;border-radius:8px;font-size:13px;color:#5d4500;text-align:center;' });
+      _roBar.appendChild(elc('div', { style: 'margin-bottom:8px;' }, L.bar));
+      var cont = elc('button', { style: 'border:0;border-radius:8px;background:#6a1b9a;color:#fff;font-size:14px;font-weight:600;padding:8px 16px;cursor:pointer;' }, L.btn);
+      cont.addEventListener('click', function () { continueFromSummary(conv, L, cont); });
+      _roBar.appendChild(cont);
+      msgs.appendChild(_roBar);
+      try { msgs.scrollTop = msgs.scrollHeight; } catch (e) {}
       openPanel();
-      setStatus('Conversation loaded — you can continue it.');
+      setStatus(L.bar);
+    }
+    function continueFromSummary(conv, L, btn) {
+      var ready = conv.summary && conv.summaryLen === (conv.history || []).length;
+      function go(sum) {
+        setReadOnly(false);
+        history = [
+          { role: 'user', content: '[SUMMARY OF A PREVIOUS CONVERSATION the student saved and wants to continue - written by the app, not typed by the student]\n\n' + sum },
+          { role: 'assistant', content: 'OK - I have the summary of our previous conversation and will continue from it.' }
+        ];
+        currentConvId = null;   // the continued chat is saved as a NEW entry; the original stays intact
+        msgs.appendChild(elc('div', { style: 'margin:10px 0;text-align:center;font-size:12px;color:#888;' }, L.div));
+        try { msgs.scrollTop = msgs.scrollHeight; input.focus(); } catch (e) {}
+        setStatus(L.ok);
+      }
+      if (ready) { go(conv.summary); return; }
+      btn.disabled = true; setStatus(L.wait);
+      makeConvSummary(conv).then(go, function () { btn.disabled = false; setStatus(L.fail, '#b00'); });
     }
 
     // ── Archive browser (📚): list, reopen, delete, clear all, export/import ──
@@ -10822,6 +10914,7 @@
 
     function doSend(overrideToSend, overrideBubble) {
       if (sending) return;
+      if (readOnlyConv) { setStatus(roT('blocked'), '#b06000'); return; }
       stopSpeaking();
       var hasOverride = (typeof overrideToSend === 'string' && overrideToSend.length > 0);
       var text = (input.value || '').trim();
