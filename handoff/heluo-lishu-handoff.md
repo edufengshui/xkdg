@@ -96,7 +96,7 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 ## 12/11/2026 (pomeriggio) — flusso del Qi generale, peso del ciclo, lettura natale allineata
 - **Confermato da Edu**: peso 0,25 per i trigrammi del ciclo e del suo Hu nella vecchia DS (`LW.C.c`, `LW.C.h`).
 - **Flusso del Qi, regola generale (Edu)**: se un trigramma dell'esagramma A genera (o è dello stesso elemento di) quello nella stessa posizione di B, B è più forte (×1,5); se lo controlla, B è più debole (×0,5); **negli altri casi niente** (Edu: «per il momento mi fermerei qui»). Vale anche **fra linee nella stessa posizione**: la 3ª linea del ciclo che genera la 3ª dell'annuale la rafforza. Fila: ciclo → annuale → mensile → blocco → giorno; l'Hu del ciclo è ramo laterale.
-  - Le Luck tengono la loro regola (`flowMul`: ×0,5 anche quando drena o è controllato): da far confermare a Edu.
+  - Le Luck tengono la loro regola (`flowMul`: ×0,5 anche quando drena o è controllato): **Edu: per il momento lascia così**.
 - Codice: `flowEl(a, b)` e `lineFlow(prevN, n, l)` in heluo-ds.js (esportate in `XKDGHeluoDSCore`).
   - Vecchia DS: `level(..., prevN)` → peso della relazione × `fl` (annuale ← ciclo, mensile ← annuale, linea del giorno nel blocco ← mensile, esagramma del giorno ← blocco). Dettaglio: «×1.5 ↑ strengthened by the same line on the left».
   - Filo XKDG (`thread`): linea del mese ← annuale, Lord ← mensile, linea del giorno ← mensile, esito ← blocco; pesi `XK_W × fl` per scopo e prezzo; frecce ↑↓ e nota nella finestra del giorno.
