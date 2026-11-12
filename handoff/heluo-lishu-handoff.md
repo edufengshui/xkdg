@@ -76,3 +76,10 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - **Confermato**: vuoto untimely alla nascita = senza un anno **e** un mese timely non esce, nemmeno con lo stesso ramo (effetto: esce solo nella stagione del suo elemento).
 - **Confermato (salvo modifiche future)**: nella vecchia DS un vuoto che non esce toglie 1, facile o difficile.
 - **Commenti chiusi sul telefono**: `lineBody(n, l, unit, fold)` in heluo-lishu.js; con `fold` titolo e frase della linea restano visibili, poesia e commento stanno in un `<details>` «📖 Reading for this year/month/day/age» che si apre con un tocco (`stopPropagation`, così non chiude la riga). Usato nel Purpose planner (periodi, anni, mesi) e nella finestra del giorno XKDG (`xkDayHtml` → `lv`). Dettaglio della vecchia DS, popup dell'anno e carta annuale restano aperti. Provato in Chrome headless a 390 px.
+
+## 12/11/2026 — Luck dall'anno o dal giorno? (domanda di Edu)
+- Script `heluo-test/cmp/luck_pilastro.js` (metodo A): Heaven (stelo con il Na Jia) ed Earth (ramo, Time 1) presi dal pilastro di anno, mese, giorno o ora; Fame fuori (non dipende dal pilastro). 111 persone (famous_* + new/g1–g6), 393 eventi positivi, 230 negativi, 2752 date a caso.
+- Prova 1, Luck nei nativi (XT, HT, Hu) contro Luck prese da un'altra persona a caso: nessun pilastro sopra il caso (anno p 0,63; giorno 0,65; mese 0,54; ora 0,25).
+- Prova 2, anno dell'evento (ramo della linea del ciclo, della linea mossa e dell'anno che porta la Luck +1; Luck nei trigrammi dell'annuale +1, opposto −1): **anno** positivi 0,86 · negativi 0,72 · caso 0,75 (pos−neg p 0,11; pos−caso p 0,06); **giorno** 0,89 · 1,00 · 0,84 (i negativi più alti: al contrario). Mese e ora intorno a zero.
+- Separate: la piccola tendenza dell'anno viene dalla Earth (ramo dell'anno: pos−caso +0,10, p 0,02); la Heaven dall'anno è piatta. Con 8 confronti è al limite: indizio, non prova.
+- Conclusione: il giorno non migliora le Luck; se c'è un pilastro giusto è l'anno, come nelle slide.
