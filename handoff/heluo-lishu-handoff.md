@@ -138,3 +138,9 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
   4. **Speak: Brothers = critiche dei colleghi** solo se il testo della linea è sfavorevole o la linea esce dal vuoto (con testo buono Brothers = buoni colleghi: 15 l3 di giugno 2019); peso `XK_CRIT` 0,5 × peso del livello × flusso. **Dui (la bocca)** nei trigrammi (non negli Hu) di mensile, blocco, giorno −0,5 × peso, se non vuoto. Planner: righe anno e mese.
 - Prova sulla carta di Edu (Speak, Atene): giugno 8–20 da +1 a −3; dal 22/6 al 26/7 tra −1 e −3, con ⚡ 酉 e critiche ogni giorno; il «turn» compare dall'8/6 (mese 6 +1,5 → mese 7 −3) e nel planner sulla riga 21 Jun–22 Jul.
 - Verifiche: `mensile_app_check.js` ok; `ds_app_check.js` ora diverso dal prototipo su quasi tutti i giorni (livello `am` nella vecchia DS, percentile medio 45 invariato); planner provato in Chrome headless.
+
+## 12/11/2026 (sera) — 8/12/2015, giorno critico, esagramma dell'ora (solo prove, app non toccata)
+- Dettagli: progetto HLLS 1, claude/hlls-handoff-ora.md.
+- `heluo-test/cmp/edu_prova_abc.js`: correzioni (a) testo del giorno nel filo (primario ×1, esito ×0,5), (b) 兄弟劫財 ×1,5, (c) scopo su testo negativo = avviso; con `XUN=si` (d) Wealth in un opposto di Luck non conta, `ESITO=si` (e) scopo sull'esito dopo primario negativo = avviso. 8/12/2015 da ☯+2 a −1.
+- Giorno critico (5 segnali per Wealth): solo l'8/12/2015 ha 5/5 in 2011, 2015, 2016, 2019.
+- `heluo-test/cmp/ore_test.js`: esagramma dell'ora (regola di Edu: linea k del giorno = due ore; ora dispari mutata k, pari anche la correlata). Versioni A (ore sui rami) e B (da mezzanotte, come il mese dai 中氣). `node ore_test.js` (eventi del dataset), `node ore_test.js nuovi` (17 eventi aggiunti con ora verificata). Esito: B un po' avanti, decide Edu.
