@@ -67,6 +67,13 @@ function triVuoto(t, dp, yb, mb) {
 }
 function profilo(Pn, male) {
   const R = H.fromPillars(Pn, male), N = R.numbers, mb = H.BRANCHES.indexOf(Pn.month[1]);
+  // LK_PIL=giorno|mese|ora: Heaven ed Earth da quel pilastro invece che dall'anno (prova di Edu, 12/11/2026)
+  if (process.env.LK_PIL && process.env.LK_PIL !== 'anno') {
+    const pp = Pn[{ giorno: 'day', mese: 'month', ora: 'hour' }[process.env.LK_PIL]], NA = ['Qian', 'Kun', 'Gen', 'Dui', 'Kan', 'Li', 'Zhen', 'Xun', 'Qian', 'Kun'];
+    const OP = { Qian: 'Kun', Kun: 'Qian', Zhen: 'Xun', Xun: 'Zhen', Kan: 'Li', Li: 'Kan', Gen: 'Dui', Dui: 'Gen' };
+    R.luck = Object.assign({}, R.luck, { heaven: NA[ST.indexOf(pp[0])], earth: BR_TRI[BR.indexOf(pp[1])] });
+    R.luck.opposite = Object.assign({}, R.luck.opposite, { heaven: OP[R.luck.heaven], earth: OP[R.luck.earth] });
+  }
   const rY = N.heaven / N.monthAvg.yang - 1, rE = N.earth / N.monthAvg.yin - 1;
   const xt = R.xianTian, ht = R.houTian && R.houTian.hex;
   const nat = [xt.upper, xt.lower, R.huXT.upper, R.huXT.lower].concat(ht ? [ht.upper, ht.lower, R.huHT.upper, R.huHT.lower] : []);
