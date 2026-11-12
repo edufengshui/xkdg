@@ -78,7 +78,16 @@ function sanhui(b, T) {
   for (const el of Object.keys(SANHUI)) if (SANHUI[el].includes(b) && [...SANHUI[el]].every(x => have.includes(x))) return el;
   return null;
 }
-// giudizio sul tempo del ramo b: anno, mese, giorno
+// Vuoti (Edu, 12/11/2026): timely nel mese di nascita = vuoto, ma ne esce facilmente: stesso ramo in anno, mese o giorno,
+// scontro dal tempo con un ramo timely (stagione della data), oppure linea mobile con quel ramo (ciò che si muove non è vuoto).
+// Untimely = esce solo se anno E mese lo rendono timely, poi negli stessi tre modi. Come voidExit in heluo-ds.js.
+function voidExit(b, mbN, T, moved) {
+  const el = BR_EL[b], cl = clash(b), Ts = [T.y, T.m, T.d], easy = timely(el, mbN);
+  const gate = easy || (timely(el, T.y) && timely(el, T.m));
+  const how = !gate ? null : Ts.includes(b) ? 'same' : (Ts.includes(cl) && timely(BR_EL[cl], T.m)) ? 'clash' : moved.includes(b) ? 'moved' : null;
+  return { easy, out: !!how, how };
+}
+// giudizio sul tempo del ramo b: anno, mese, giorno; natVoids = { list, mb, moved }
 function tempo(b, T, natVoids, favEl) {
   const sh = sanhui(b, T), el = sh || BR_EL[b], note = [];
   let t = 0;
@@ -100,8 +109,9 @@ function tempo(b, T, natVoids, favEl) {
     if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) {
       if (favEl && nuove('scopo') && BR_EL[x] === favEl) note.push('剋' + k + '(scopo)'); else { t -= 0.5; note.push('剋' + k); } }
   }
-  if (natVoids.includes(b) && !timely(el, T.m)) {
-    if (nuove('pieno') && b === T.d) note.push('空 riempito'); else { t -= 1; note.push('空'); } }
+  if (natVoids.list.includes(b)) {
+    const vx = voidExit(b, natVoids.mb, T, natVoids.moved);
+    if (vx.out) note.push('空 esce (' + vx.how + ')'); else { t -= 1; note.push(vx.easy ? '空 (facile)' : '空 (difficile)'); } }
   return { t, note };
 }
 
@@ -140,7 +150,9 @@ function giorno(N, nat, date, lon, tz, scopo) {
   const T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] };
   // Edu, 11/11/2026: voids from the day pillar only; a void branch next to its clash in the bazi comes out of the void
   const br4 = nat.hour ? [nat.hour[1], nat.day[1], nat.month[1], nat.yearP[1]] : [], cl = b => BR[(BR.indexOf(b) + 6) % 12];
-  const nv = voids(nat.day).filter(b => ![0, 1, 2].some(i => (br4[i] === b && br4[i + 1] === cl(b)) || (br4[i + 1] === b && br4[i] === cl(b))));
+  const nv0 = voids(nat.day).filter(b => ![0, 1, 2].some(i => (br4[i] === b && br4[i + 1] === cl(b)) || (br4[i + 1] === b && br4[i] === cl(b))));
+  const lb = (n, l) => NJ[n].lines[l - 1].branch;
+  const nv = { list: nv0, mb: nat.month[1], moved: [lb(p.id.year[0], p.id.year[1]), lb(p.id.month[0], Math.ceil(p.mIndex / 2)), lb(p.id.day[0], p.id.day[1])] };
   const c = livello(p.id.cycle[0], p.id.cycle[1], pers, scopo, T, nv);
   const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
   const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
