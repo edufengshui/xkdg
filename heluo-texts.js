@@ -1644,7 +1644,7 @@ window.XKDG_HELUO_TEXTS = {
         "label": "Nine in the Second Place",
         "statement": "One meets one's lord in a narrow street. No blame.",
         "poem": "When formal channels are blocked by misunderstanding, an informal encounter in a side alley clears the air completely; setting aside rigid protocol to communicate sincerely brings no blame.",
-        "reading": "A favorable 9-year period where informal networking, casual meetings, or back-channel diplomacy (\"meeting in a narrow street\") resolves a stalemate and connects you with key decision-makers or mentors."
+        "reading": "A favorable 9-year period in which you meet your \"lord\" — a teacher, a master, a guide or a decisive patron — not through the main road but in a \"narrow street\": away from public places, far from home, where no one knows you. It can also mean quiet preparations, made in secret, for a big change of life: you move away from family and usual surroundings and do not reveal the true purpose of your steps. When the open way is blocked by misunderstanding or by others' expectations, this hidden meeting is the right one: no blame, and it opens the path you were looking for."
       },
       "3": {
         "label": "Six in the Third Place",
