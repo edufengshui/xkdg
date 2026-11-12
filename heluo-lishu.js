@@ -239,6 +239,10 @@
       huXT: huGua(xt.lines), huHT: ht ? huGua(ht.hex.lines) : null,
       luck: { heaven: yearTri.heaven, earth: yearTri.earth, fame: fame,
         opposite: { heaven: oppTri(yearTri.heaven), earth: oppTri(yearTri.earth), fame: oppTri(fame) } },
+      // Edu 12/11/2026: a second set of Luck from the DAY pillar (stem with the Na Jia, branch Time 1; Fame the same).
+      // Year Luck = what one obtains (money, clients); day Luck = what one is (study, writing, teaching): Speak, Support.
+      luckDay: { heaven: NAJIA[p.stems[2]], earth: BR_TRI[p.branches[2]], fame: fame,
+        opposite: { heaven: oppTri(NAJIA[p.stems[2]]), earth: oppTri(BR_TRI[p.branches[2]]), fame: oppTri(fame) } },
       oppositeXT: opposite(xt.lines), inverseXT: inverse(xt.lines),
       oppositeHT: ht ? opposite(ht.hex.lines) : null, inverseHT: ht ? inverse(ht.hex.lines) : null,
       positionXT: mv.line ? properPosition(xt.lines, mv.line) : null,
@@ -980,9 +984,10 @@
       + (R.cyclesXT.length ? cycleTable('Xian Tian cycles · age ' + nowAge + ' now · tap a line', R.cyclesXT, y0, nowAge, R.xianTian) + cycleTable('Hou Tian cycles', R.cyclesHT, y0, nowAge, R.houTian.hex) + annualSection(R) : '<div style="color:#c0392b;font-size:12px;">No moving line found.</div>')
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:10px 0 3px;">Luck trigrams</div>'
       + '<table style="border-collapse:collapse;font-size:12px;"><tr style="color:#777;text-align:left;"><th style="padding:2px 8px;"></th><th style="padding:2px 8px;">Trigram</th><th style="padding:2px 8px;">Opposite</th></tr>'
-      + [['Heaven (year stem)', 'heaven'], ['Earth (year branch)', 'earth'], ['Fame (season)', 'fame']].map(function (r) {
-          return '<tr style="border-top:1px solid #eee;"><td style="padding:2px 8px;">' + r[0] + '</td><td style="padding:2px 8px;">' + triLbl(R.luck[r[1]]) + ' · ' + TRI_EL[R.luck[r[1]]] + '</td><td style="padding:2px 8px;">' + triLbl(R.luck.opposite[r[1]]) + '</td></tr>';
-        }).join('') + '</table>';
+      + [['Heaven (year stem)', 'heaven', 'luck'], ['Earth (year branch)', 'earth', 'luck'], ['Fame (season)', 'fame', 'luck'], ['Heaven (day stem)', 'heaven', 'luckDay'], ['Earth (day branch)', 'earth', 'luckDay']].map(function (r) {
+          var S = R[r[2]]; if (!S) return '';
+          return '<tr style="border-top:1px solid #eee;"><td style="padding:2px 8px;">' + r[0] + '</td><td style="padding:2px 8px;">' + triLbl(S[r[1]]) + ' · ' + TRI_EL[S[r[1]]] + '</td><td style="padding:2px 8px;">' + triLbl(S.opposite[r[1]]) + '</td></tr>';
+        }).join('') + '</table><div style="font-size:10px;color:#999;margin-top:3px;">Year Luck: what you obtain (money, clients), used for every purpose. Day Luck: what you are (study, writing, teaching), used for Speak and Support (Edu, 12/11/2026).</div>';
     out.innerHTML = h;
   }
 
