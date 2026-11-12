@@ -667,14 +667,16 @@
       .replace(new RegExp('^(?:Over|During|In|On) this ' + u + ','), 'This ' + u + ',');
   }
   // noReading: true = no reading; 'year' | 'month' | 'day' = reading of a time hexagram, worded for that span
-  function lineBody(n, l, noReading) {
+  // fold: poem and reading closed, open with a tap (planner and day window on the phone — Edu 12/11/2026)
+  function lineBody(n, l, noReading, fold) {
     var unit = typeof noReading === 'string' ? noReading : null; if (unit) noReading = false;
     var t = TX() && TX()[n], L = t && t.lines && t.lines[l];
     if (!L) return TX() ? '' : '<div style="font-size:11px;color:#999;">Loading texts…</div>';
-    return '<div style="' + P_ + '"><b>' + n + ' · line ' + l + ' · ' + esc(L.label) + '</b></div>'
-      + '<div style="' + P_ + '"><i>' + esc(L.statement) + '</i></div>'
-      + (L.poem ? '<div style="' + P_ + '">' + esc(L.poem) + '</div>' : '')
+    var more = (L.poem ? '<div style="' + P_ + '">' + esc(L.poem) + '</div>' : '')
       + (!noReading && L.reading ? '<div style="' + P_ + '"><b>Reading for this ' + (unit || 'age') + ':</b> ' + esc(timeReading(L.reading, unit)) + '</div>' : '');
+    if (fold && more) more = '<details onclick="event.stopPropagation()" style="margin:2px 0 4px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">📖 ' + (!noReading && L.reading ? 'Reading for this ' + (unit || 'age') : 'Poem') + '</summary>' + more + '</details>';
+    return '<div style="' + P_ + '"><b>' + n + ' · line ' + l + ' · ' + esc(L.label) + '</b></div>'
+      + '<div style="' + P_ + '"><i>' + esc(L.statement) + '</i></div>' + more;
   }
   function lineText(n, l, label, noReading) {
     var b = lineBody(n, l, noReading); if (!b) return '';
