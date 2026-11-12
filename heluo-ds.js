@@ -135,6 +135,42 @@
   // of the annual). Row: cycle → annual → monthly → block → day. (The Luck keep their own flowMul: ×0.5 in all other cases.)
   function flowEl(a, b) { return !a || !b ? 1 : a === b || GEN[a] === b ? 1.5 : CTRL[a] === b ? 0.5 : 1; }
   function lineFlow(prevN, curN, pos) { return prevN ? flowEl(NJ()[prevN].lines[pos - 1].el, NJ()[curN].lines[pos - 1].el) : 1; }
+  // ── The purpose in the trigrams (Edu 12/11/2026, on his Wealth years 2009–13) ──
+  // Not only the line: the relation of the purpose also lives in the trigrams and in the Hu of the hexagrams of the time,
+  // each one strengthened or weakened by the trigram in the same place of the hexagram on its left (flowEl; the Hu flows
+  // from its own hexagram). Relation of the purpose +, the price (XK_ATT) −. Wealth feeds the Ghost (財生殺): for a Wealth
+  // purpose, Ghost trigrams take away when Wealth is there (on a line or in a trigram) — his 2005–08: Wealth on the cycle
+  // line, Fire in every annual, no peak. Weights chosen by Claude (to be confirmed).
+  // seq = [[label, hexN, prevN|null, weight, which]] — which: 'both' (default), 'other:upper'/'other:lower' for a native
+  // (only the half where the person is not), huLines = [lo, up] booleans for the Hu trigrams counted (null = both)
+  function triRows(seq) {
+    var out = [];
+    seq.forEach(function (x) {
+      var tr = TRI_OF(x[1]), pv = x[2] ? TRI_OF(x[2]) : null, w = x[3], which = x[4] || 'both';
+      [0, 1].forEach(function (i) {
+        if (which !== 'both' && which !== (i ? 'lower' : 'upper')) return;
+        out.push({ n: x[1], lbl: (i ? 'lower ' : 'upper ') + tr[i] + ' of ' + x[0] + ' ' + x[1], t: tr[i], f: pv ? flowEl(TRI_EL[pv[i]], TRI_EL[tr[i]]) : 1, w: w });
+      });
+      var hu = H().huGua(H().hexFrom(tr[0], tr[1]).lines), hl = x[5] || [true, true];
+      [[hu.upper, tr[0], hl[1], 'upper'], [hu.lower, tr[1], hl[0], 'lower']].forEach(function (h) {
+        if (h[2]) out.push({ n: x[1], lbl: h[3] + ' Hu ' + h[0] + ' of ' + x[0] + ' ' + x[1], t: h[0], f: flowEl(TRI_EL[h[1]], TRI_EL[h[0]]), w: w / 2 });
+      });
+    });
+    return out;
+  }
+  // wHex = hexagrams with Wealth on the line read; the Ghost takes away only inside a hexagram that also holds Wealth
+  function triScore(pers, X, A, rows, wHex) {
+    var o = { plus: [], minus: [], ghost: [], s: 0, gOn: false };
+    if (!X) return o;
+    rows.forEach(function (x) { var r = rel(pers, TRI_EL[x.t]), v = x.w * x.f;
+      if (r === X) o.plus.push(x); if (A && r === A) o.minus.push(x); if (X === 'W' && r === 'G') o.ghost.push(x); });
+    function sum(a) { return a.reduce(function (z, x) { return z + x.w * x.f; }, 0); }
+    var wh = (wHex || []).concat(o.plus.map(function (x) { return x.n; }));
+    o.ghost = o.ghost.filter(function (x) { return wh.indexOf(x.n) >= 0; }); o.gOn = o.ghost.length > 0;
+    o.s = Math.round((sum(o.plus) - sum(o.minus) - (o.gOn ? sum(o.ghost) : 0)) * 100) / 100;
+    return o;
+  }
+  function fArr(f) { return f > 1 ? ' ↑' : f < 1 ? ' ↓' : ''; }
   // one level of the cascade: line `line` of hexagram hexN; text score moved ±1 towards the version chosen by time;
   // prevN = hexagram on its left in the row: the relation of the line counts ×fl (lineFlow)
   function level(hexN, line, pers, purpose, T, natVoids, prevN) {
@@ -358,6 +394,10 @@
       else if (X && L.hid && L.hid.r === X) { t += XK_W[L.k] / 2; on.push({ k: L.k, b: L.hid.b, r: X, hidden: true }); }
       if (A && L.r === A) { t -= XK_W[L.k] * L.fl; price.push(L); }
     });
+    // the purpose in the trigrams and Hu of monthly (0.5), block (1) and day hexagram (1), with the Qi flow (Edu 12/11)
+    var tri = triScore(pers, X, A, triRows([['monthly', p.month.hex.n, p.id.year[0], 0.5], ['block', p.id.lord[0], p.month.hex.n, 1], ['day', p.id.dayHex[0], p.id.lord[0], 1]]),
+      X === 'W' ? on.filter(function (L) { return !L.hidden; }).map(function (L) { return L.n; }) : []);
+    t += tri.s;
     // the three Luck (Heaven, Earth, Fame) and their opposites in the monthly, block and day hexagram, each trigram with the
     // Qi flow from the hexagram on its left (cycle → annual → monthly → block → day; Edu 12/11): ×1.5 strengthened, ×0.5 weakened.
     // A void Luck adds nothing (unless a clashing branch of the time brings it out), its opposite still takes away (Edu 12/11).
@@ -379,11 +419,11 @@
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
-    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, luck: lk, opp: opp, need: need, cure: cure, yv: yv };
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, need: need, cure: cure, yv: yv };
   }
   root.XKDGHeluoDSCore = { flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
@@ -586,7 +626,7 @@
     var a = [];
     if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite'); }
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
-    else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.price.length) a.push('price: ' + REL[th.A]); if (th.later.length) a.push('fruits later'); }
+    else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.tri && th.tri.plus.length) a.push(REL[th.X] + ' in ' + th.tri.plus.length + ' trigram' + (th.tri.plus.length > 1 ? 's' : '')); if (th.price.length || (th.tri && th.tri.minus.length)) a.push('price: ' + REL[th.A]); if (th.tri && th.tri.gOn) a.push('Wealth feeds the Ghost'); if (th.later.length) a.push('fruits later'); }
     return a.join(' · ');
   }
   function xkDayHtml(th, iso) {
@@ -612,6 +652,11 @@
       box += th.on.length ? '<div style="' + G + '">▲ ' + REL[th.X] + ' (' + XK_PL[th.key] + ') on: ' + th.on.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.hidden ? ' hidden' : '') + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>'
         : '<div>' + REL[th.X] + ' (' + XK_PL[th.key] + ') is not on the lines of this day.</div>';
       if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>';
+      var TR = th.tri, tl = function (a) { return a.map(function (x) { return x.lbl + fArr(x.f); }).join(' · '); };
+      if (TR && TR.plus.length) box += '<div style="' + G + '">▲ ' + REL[th.X] + ' also in the trigrams: ' + esc(tl(TR.plus)) + '</div>';
+      if (TR && TR.minus.length) box += '<div style="' + Rd + '">▼ The price (' + REL[th.A] + ') in the trigrams: ' + esc(tl(TR.minus)) + '</div>';
+      if (TR && TR.gOn) box += '<div style="' + Rd + '">▼ Wealth feeds the Ghost (財生殺): money can turn into pressure — ' + esc(tl(TR.ghost)) + '</div>';
+      if (TR && (TR.plus.length || TR.minus.length || TR.gOn)) box += '<div style="font-size:10px;color:#999;">↑ strengthened, ↓ weakened by the trigram in the same place of the hexagram on the left.</div>';
       th.later.forEach(function (L) {
         var Y = +iso.slice(0, 4) + 1; while (BR[((Y - 4) % 12 + 12) % 12] !== L.b) Y++;
         box += '<div style="' + O + '">⏳ ' + XK_LBL[L.k] + ' ' + L.b + ' is void: not a no, the fruits come later, when ' + L.b + ' comes out — '
@@ -666,6 +711,20 @@
     if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + fa + '</span>'); sc += 2 * fl; }
     else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
     if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + fa + '</span>'); sc -= 2 * fl; }
+    // the purpose in the trigrams and Hu (Edu 12/11): period = the other half of the native and the Hu that holds the line;
+    // year = annual (flow from the period), month = monthly (flow from the annual); trigram 1, Hu 0.5
+    if (X) {
+      var seq;
+      if (!yearBranch) { var two = TRI_EL[hx.upper] !== TRI_EL[hx.lower];
+        seq = [['period', hx.n, null, 1, two ? (line <= 3 ? 'upper' : 'lower') : 'none', [line >= 2 && line <= 4, line >= 3 && line <= 5]]]; }
+      else seq = [[monthBranch ? 'month' : 'year', hx.n, prev ? prev.n : null, 1]];
+      var tq = triScore(me, X, A, triRows(seq), X === 'W' && r === 'W' ? [hx.n] : []);
+      function tl(a) { var o = [], n = {}; a.forEach(function (x) { var k = x.t + (x.lbl.indexOf('Hu') >= 0 ? ' (Hu)' : '') + fArr(x.f); if (!n[k]) o.push(k); n[k] = (n[k] || 0) + 1; }); return o.map(function (k) { return k + (n[k] > 1 ? ' ×' + n[k] : ''); }).join(', '); }
+      if (tq.plus.length) m.push('<span style="color:#2e7d32;">+' + REL[X] + ' in ' + tl(tq.plus) + '</span>');
+      if (tq.minus.length) m.push('<span style="color:#c62828;">−' + REL[A] + ' in ' + tl(tq.minus) + '</span>');
+      if (tq.gOn) m.push('<span style="color:#c62828;">−Ghost fed by the Wealth: ' + tl(tq.ghost) + '</span>');
+      sc += tq.s;
+    }
     // voids (Edu, 12/11): the year and month rows read a MOVING line (what moves cannot be void); the period line does not move
     if (yv.indexOf(L.branch) >= 0) {
       var easy = timely(L.el, ch.Pn.month[1]), vt = '';
