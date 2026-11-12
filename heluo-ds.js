@@ -83,7 +83,25 @@
     for (var el in SANHUI) if (SANHUI[el].indexOf(b) >= 0 && SANHUI[el].split('').every(function (x) { return have.indexOf(x) >= 0; })) return el;
     return null;
   }
-  // time judgement of branch b against year, month, day branches (T = { y, m, d })
+  // ── Voids in time (Edu, 12/11/2026) ──
+  // A void timely in the birth month is STILL void, but comes out easily: with the same branch in the year, month or day
+  // (填實), with a clash from the time by a branch that is timely (in the season of the date), or when a moving line of the
+  // time carries the branch (what moves cannot be void). An untimely void hardly comes out: it needs a year AND a month
+  // that make it timely; then the same three ways. At birth (V.birth) nothing releases it (only the adjacent clash, natalVoids).
+  // V = { list: natal voids, mb: birth month branch, moved: branches of the moving lines, birth: true|false }
+  function voidExit(b, mbBirth, T, moved) {
+    var el = BR_EL[b], cl = clash(b), Ts = [T.y, T.m, T.d], easy = timely(el, mbBirth);
+    var gate = easy || (!!T.y && !!T.m && timely(el, T.y) && timely(el, T.m));
+    var how = !gate ? null : Ts.indexOf(b) >= 0 ? 'same' : (Ts.indexOf(cl) >= 0 && T.m && timely(BR_EL[cl], T.m)) ? 'clash' : (moved && moved.indexOf(b) >= 0) ? 'moved' : null;
+    return { easy: easy, gate: gate, out: !!how, how: how };
+  }
+  // branches of the moving lines of the time: annual moved line, line of the month, line of the day (block hexagram)
+  function movedBranches(p) {
+    var br = function (n, l) { return n && l ? NJ()[n].lines[l - 1].branch : null; };
+    return [br(p.id.year[0], p.id.year[1]), br(p.month.hex.n, p.month.line), br(p.id.day[0], p.id.day[1])].filter(Boolean);
+  }
+  var VOID_HOW = { same: 'filled by the same branch', clash: 'clashed by a timely branch', moved: 'it moves' };
+  // time judgement of branch b against year, month, day branches (T = { y, m, d }); natVoids = list or V (see voidExit)
   function tempo(b, T, natVoids, favEl) {
     var sh = sanhui(b, T), el = sh || BR_EL[b], note = [], t = 0;
     if (sh) { t += 1; note.push('三會 ' + sh + ' combination'); }
@@ -103,7 +121,12 @@
       if (x !== b && CTRL[BR_EL[x]] === el && !(forte && !timely(BR_EL[x], T.m))) {
         if (favEl && BR_EL[x] === favEl) note.push('剋 ' + k + ' by the purpose relation (no penalty)'); else { t -= 0.5; note.push('剋 ' + k); } }
     });
-    if (natVoids.indexOf(b) >= 0 && !timely(el, T.m)) { if (b === T.d) note.push('void filled by the day'); else { t -= 1; note.push('空 void'); } }
+    var V = natVoids && natVoids.list ? natVoids : { list: natVoids || [], birth: true };
+    if (V.list.indexOf(b) >= 0) {
+      var vx = V.birth ? { easy: V.mb ? timely(BR_EL[b], V.mb) : false, out: false } : voidExit(b, V.mb, T, V.moved);
+      if (vx.out) note.push('void out (' + VOID_HOW[vx.how] + ')');
+      else { t -= 1; note.push('空 void'); note.push(vx.easy ? 'void easy to leave (timely at birth)' : 'void hard to leave (untimely at birth)'); }
+    }
     return { t: t, note: note };
   }
   // one level of the cascade: line `line` of hexagram hexN; text score moved ±1 towards the version chosen by time
@@ -206,13 +229,14 @@
   function scoreDay(ctx, Pe, lon, purpose) {
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
     var pers = persona(p.hx, p.per.line), T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] };
-    var c = level(p.id.cycle[0], p.id.cycle[1], pers, purpose, T, ctx.natVoids);
-    var a = level(p.id.year[0], p.id.year[1], pers, purpose, T, ctx.natVoids);
-    var m = level(p.month.hex.n, p.month.line, pers, purpose, T, ctx.natVoids);
+    var V = { list: ctx.natVoids, mb: ctx.Pn.month[1], moved: movedBranches(p) };
+    var c = level(p.id.cycle[0], p.id.cycle[1], pers, purpose, T, V);
+    var a = level(p.id.year[0], p.id.year[1], pers, purpose, T, V);
+    var m = level(p.month.hex.n, p.month.line, pers, purpose, T, V);
     // secondary text (Edu, 11/11/2026): the same line in the changed (day) hexagram, the outcome, at half weight;
     // the primary text is the day line in the block hexagram (cause, action)
-    var s2 = level(p.id.dayHex[0], p.id.dayHex[1], pers, purpose, T, ctx.natVoids);
-    var d = level(p.id.day[0], p.id.day[1], pers, purpose, T, ctx.natVoids);
+    var s2 = level(p.id.dayHex[0], p.id.dayHex[1], pers, purpose, T, V);
+    var d = level(p.id.day[0], p.id.day[1], pers, purpose, T, V);
     var L = luckDay(ctx.prof, p, T);
     var tot = Math.round((c.tot + a.tot + m.tot + d.tot + 0.5 * s2.tot + L.tot) * 100) / 100;
     var warn = [];
@@ -274,7 +298,7 @@
   // day system only (cycle and annual belong to the chart analysis). Thread of the purpose: the relation of the purpose
   // on the line of the month (1), the Lord of the Block (2), the primary line of the day (3) and its outcome (3); a
   // hidden line under the line read counts half; the relation that attacks the purpose (the price) takes the same away.
-  // A void line (true voids from the birth DAY pillar, not timely in the birth month) is not a penalty: "fruits later". Thread / 3 = ☯ points, from −3 to +3; in the scan each point is 5% of the XKDG score (app-bazi.js _hlApply).
+  // A void line (voids from the birth DAY pillar, see voidExit) is not a penalty: "fruits later". Thread / 3 = ☯ points, from −3 to +3; in the scan each point is 5% of the XKDG score (app-bazi.js _hlApply).
   var XK_REL = { wealth: 'W', career: 'G', speak: 'C', legal: 'P', health: 'C', journey: 'C', support: 'P' }; // relationship: W man, G woman
   var XK_ATT = { W: 'B', P: 'W', C: 'P', G: 'C', B: 'G' }, XK_W = { m: 1, lord: 2, d: 3, s2: 3 };
   var XK_LBL = { m: 'month line', lord: 'Lord of the Block', d: 'day line (primary)', s2: 'day line (outcome)' };
@@ -283,11 +307,11 @@
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
     var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = natalVoids(ctx.Pn).list, mb0 = ctx.Pn.month[1];
     var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
-    // Edu, 11/11/2026: a void comes out with the same branch in the year, month or day (填實), or when the time clashes
-    // it AND the branch is timely in the season of the date (the month); a clash on an untimely void leaves it void.
-    function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0 && !timely(L.el, mb0);   // a timely void is not a real void
-      var same = T.indexOf(L.branch) >= 0, byCl = !same && T.indexOf(clash(L.branch)) >= 0 && timely(L.el, Pe.month[1]);
-      return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null, voidL: v, filled: v && (same || byCl), byClash: v && byCl }; }
+    // Edu, 12/11/2026: voids, see voidExit (timely at birth = still void, but easy to leave; untimely = needs year and month in season)
+    var TT = { y: T[0], m: T[1], d: T[2] }, mv = movedBranches(p);
+    function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0, vx = v ? voidExit(L.branch, mb0, TT, mv) : null;
+      return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null,
+        voidL: v, easy: v && vx.easy, filled: v && vx.out, how: vx && vx.how, byClash: v && vx.how === 'clash' }; }
     var Ls = [li('m', p.month.hex.n, p.month.line), li('lord', p.id.lord[0], p.id.lord[1]), li('d', p.id.day[0], p.id.day[1]), li('s2', p.id.dayHex[0], p.id.dayHex[1])];
     var t = 0, on = [], price = [], later = [];
     Ls.forEach(function (L) {
@@ -311,10 +335,10 @@
     adj = Math.max(-3, Math.min(3, adj));
     return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, luck: lk, opp: opp, need: need, cure: cure, yv: yv };
   }
-  root.XKDGHeluoDSCore = { thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui };
+  root.XKDGHeluoDSCore = { thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
-      cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang };
+      cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
 
@@ -544,7 +568,9 @@
       if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
       th.later.forEach(function (L) {
         var Y = +iso.slice(0, 4) + 1; while (BR[((Y - 4) % 12 + 12) % 12] !== L.b) Y++;
-        box += '<div style="' + O + '">⏳ ' + XK_LBL[L.k] + ' ' + L.b + ' is void: not a no, the fruits come later, when ' + L.b + ' is filled — the ' + L.b + ' month (' + BR_MON[L.b] + '), the year ' + Y + ' (age ' + (Y - y0 + 1) + ').</div>';
+        box += '<div style="' + O + '">⏳ ' + XK_LBL[L.k] + ' ' + L.b + ' is void: not a no, the fruits come later, when ' + L.b + ' comes out — '
+          + (L.easy ? 'easy (in season at birth): the ' + L.b + ' month (' + BR_MON[L.b] + '), the year ' + Y + ' (age ' + (Y - y0 + 1) + '), a timely clash (' + clash(L.b) + ') or when it moves.'
+            : 'hard (out of season at birth): only in a year and a month that put ' + L.el + ' in season, then with ' + L.b + ', a clash or when it moves.') + '</div>';
       });
       var cl = th.lines.filter(function (L) { return (L.k === 'd' || L.k === 's2') && th.Pe.day[1] === clash(L.b); });
       if (cl.length) box += '<div style="' + Rd + '">The day branch ' + th.Pe.day[1] + ' clashes ' + cl.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
@@ -557,7 +583,7 @@
     function lv(title, L, hx, cy) {
       return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + L.n + ' ' + esc(U().hexName ? U().hexName(L.n) : '') + ' line ' + L.l + '</div>'
         + (U().cycleHexSvg ? U().cycleHexSvg(hx, L.l, cy, me) : '')
-        + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.voidL ? (L.filled ? (L.byClash ? ' · void, out today (clashed by the time, timely)' : ' · void, filled today') : ' · <span style="' + O + '">void: later</span>') : '') + '</div>'
+        + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.voidL ? (L.filled ? ' · void, out today (' + VOID_HOW[L.how] + ')' : ' · <span style="' + O + '">void: later' + (L.easy ? ' (easy to leave)' : ' (hard to leave)') + '</span>') : '') + '</div>'
         + (U().lineBody ? U().lineBody(L.n, L.l, true) : '') + '</div>';
     }
     var Ls = th.lines;
@@ -591,9 +617,15 @@
     if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + '</span>'); sc += 2; }
     else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
     if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + '</span>'); sc -= 2; }
-    if (yv.indexOf(L.branch) >= 0 && !timely(L.el, ch.Pn.month[1])) m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + (yearBranch === L.branch ? ', filled this year'
-      : monthBranch === L.branch ? ', filled this month'
-      : monthBranch && (monthBranch === clash(L.branch) || yearBranch === clash(L.branch)) && timely(L.el, monthBranch) ? ', out this month (clashed, timely)' : ': later') + '</span>');
+    // voids (Edu, 12/11): the year and month rows read a MOVING line (what moves cannot be void); the period line does not move
+    if (yv.indexOf(L.branch) >= 0) {
+      var easy = timely(L.el, ch.Pn.month[1]), vt = '';
+      if (!yearBranch) vt = easy ? ': easy to leave (same branch, a timely clash or a moving line)' : ': hard to leave (needs a year and a month in its season)';
+      else if (!monthBranch) vt = easy ? ', out this year (it moves)' : timely(L.el, yearBranch) ? ': this year can bring it out, in the months of its season' : ': stays void this year (out of season)';
+      else { var vx = voidExit(L.branch, ch.Pn.month[1], { y: yearBranch, m: monthBranch, d: null }, [L.branch]);
+        vt = vx.out ? ', out this month (' + VOID_HOW[vx.how] + ')' : ': stays void (year and month not both in its season)'; }
+      m.push('<span style="' + O + '">⏳ ' + L.branch + ' void' + vt + '</span>');
+    }
     var tr = [hx.upper, hx.lower], lk = [], op = [];
     ['heaven', 'earth', 'fame'].forEach(function (k) { if (tr.indexOf(ch.R.luck[k]) >= 0) lk.push(cap(k)); if (tr.indexOf(ch.R.luck.opposite[k]) >= 0) op.push(cap(k)); });
     if (lk.length) m.push('<span style="' + (key === 'luck' ? G : 'color:#2e7d32;') + '">' + (key === 'luck' ? '▲ ' : '+') + lk.join(', ') + ' Luck</span>');

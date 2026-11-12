@@ -76,13 +76,13 @@
       A.natives.push(N);
     });
 
-    // 4 · voids (true = not timely in the birth month)
-    function vInfo(b) { var out = NV.out.indexOf(b) >= 0; return { b: b, el: BR_EL[b], out: out, true_: !out && !ds.timely(BR_EL[b], mb) }; }
+    // 4 · voids (Edu, 12/11): every void not released by the adjacent clash is void; easy = timely in the birth month (easy to leave)
+    function vInfo(b) { var out = NV.out.indexOf(b) >= 0; return { b: b, el: BR_EL[b], out: out, true_: !out, easy: !out && ds.timely(BR_EL[b], mb) }; }
     A.voids = { day: dayV.map(vInfo), year: yearV.map(vInfo), all: natVoids };
     A.voidLines = [];
     A.natives.forEach(function (N) { NJ()[N.hx.n].lines.forEach(function (L, i) {
-      if (natVoids.indexOf(L.branch) >= 0 && !ds.timely(L.el, mb)) A.voidLines.push(N.key + ' ' + N.hx.n + ' line ' + (i + 1) + ' ' + L.branch);
-      if (L.fushen && natVoids.indexOf(L.fushen.branch) >= 0 && !ds.timely(L.fushen.el, mb)) A.voidLines.push(N.key + ' ' + N.hx.n + ' hidden ' + L.fushen.branch + ' under line ' + (i + 1));
+      if (natVoids.indexOf(L.branch) >= 0) A.voidLines.push(N.key + ' ' + N.hx.n + ' line ' + (i + 1) + ' ' + L.branch);
+      if (L.fushen && natVoids.indexOf(L.fushen.branch) >= 0) A.voidLines.push(N.key + ' ' + N.hx.n + ' hidden ' + L.fushen.branch + ' under line ' + (i + 1));
     }); });
 
     // 4 · the three Luck
@@ -100,8 +100,8 @@
     // 5 · life cycles
     ds.cycleRows(R).forEach(function (x) {
       var hx = x.hx, line = x.c.line, L = x.L, me = x.me, N = A.natives.filter(function (n) { return n.key === x.phase; })[0];
-      var tm = ds.tempo(L.branch, T, natVoids, null);
-      var isVoid = tm.note.indexOf('空 void') >= 0;
+      var tm = ds.tempo(L.branch, T, { list: natVoids, mb: mb, birth: true }, null);
+      var isVoid = tm.note.indexOf('空 void') >= 0, voidEasy = isVoid && ds.timely(L.el, mb);
       var s = SC() && SC()[hx.n] ? SC()[hx.n].l[line] : 0, V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V));
       // years of the cycle that activate (same branch, 六合) or clash the line
       var act = [], com = [], hit = [];
@@ -123,10 +123,11 @@
       var flags = [];
       if (has.W && has.G >= 2) flags.push('Wealth and Ghost together: Wealth feeds the Ghost (財生殺), watch health and pressure');
       if (x.r === 'G' && !has.C) flags.push('Ghost on the line with no Output to control it (食神制殺 missing)');
-      if (isVoid) flags.push('line in true void at birth: it works only when the same branch fills it' + (act.length ? ' (' + act.join(', ') + ')' : ''));
+      if (isVoid) flags.push(voidEasy ? 'line void at birth, but in season: easy to leave — with the same branch, a timely clash or when it moves' + (act.concat(hit).length ? ' (' + act.concat(hit).sort().join(', ') + ')' : '')
+        : 'line void at birth and out of season: hard to leave — it needs a year and a month that put ' + L.el + ' in season, then the same branch, a clash or a moving line');
       var rs = { W: has.W, C: has.C, P: has.P, G: has.G, B: has.B }; rs[x.r] += tv;
       A.cycles.push({ phase: x.phase, N: N, hx: hx, c: x.c, line: line, L: L, me: me, r: x.r, src: x.src, luck: x.luck, y1: x.y1, y2: x.y2,
-        tm: tm, isVoid: isVoid, s: s, V: V, txt: txt, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags,
+        tm: tm, isVoid: isVoid, voidEasy: voidEasy, s: s, V: V, txt: txt, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags,
         crossTri: !N.one && (line === 3 || line === 4), isStart: line === N.movingLine && x.c.from === N.from });
     });
 
@@ -171,8 +172,8 @@
     var vv = A.voids.day.concat(A.voids.year).filter(function (v) { return v.true_; }).map(function (v) { return v.b; });
     S.push(['Empty branches', 'At birth ' + A.voids.day.map(function (v) { return v.b; }).join('') + ' (from the day pillar) are empty. '
       + (A.voids.day.some(function (v) { return v.out; }) ? A.voids.day.filter(function (v) { return v.out; }).map(function (v) { return v.b; }).join('') + ' comes out of the void: in the bazi it stands next to the branch that clashes it. ' : '')
-      + (vv.length ? 'Really empty, because out of season: ' + vv.join('') + '.' : 'None is really empty.')
-      + (A.voidLines.length ? ' Lines touched: ' + A.voidLines.join(', ') + '. They wake up only when a year, month or day brings the same branch.' : '')]);
+      + (vv.length ? 'Still empty: ' + A.voids.day.filter(function (v) { return v.true_; }).map(function (v) { return v.b + (v.easy ? ' (in season at birth: easy to leave, with the same branch, a timely clash or a moving line)' : ' (out of season at birth: hard to leave, it needs a year and a month in its season)'); }).join('; ') + '.' : 'None is still empty.')
+      + (A.voidLines.length ? ' Lines touched: ' + A.voidLines.join(', ') + '.' : '')]);
   }
 
   // ── HTML ─────────────────────────────────────────────────────────────────
@@ -206,7 +207,9 @@
       if ((m = n.match(/^剋 (\w) by the purpose/))) return 'kept in check by the ' + ref + ' ' + WHO_[m[1]] + ' (no harm for this purpose)';
       if ((m = n.match(/^剋 (\w)/))) return 'kept in check by the ' + (TB[m[1]] ? BR_EL[TB[m[1]]] + ' of the ' : '') + ref + ' ' + WHO_[m[1]] + (TB[m[1]] ? ' (' + TB[m[1]] + ')' : '');
       if (n === '空 void') return 'empty (void)';
-      if (n === 'void filled by the day') return 'empty, but filled by the day';
+      if ((m = n.match(/^void out \((.*)\)$/))) return 'empty, but out of the void now (' + m[1] + ')';
+      if (n === 'void easy to leave (timely at birth)') return 'easy to leave (in season at birth)';
+      if (n === 'void hard to leave (untimely at birth)') return 'hard to leave (out of season at birth)';
       if ((m = n.match(/^三會 (\w+)/))) return 'joins a full ' + m[1] + ' season group: very strong';
       return n;
     }).join(', ');
@@ -214,7 +217,7 @@
   function flagPlain(f) {
     if (/財生殺/.test(f)) return 'money and pressure come together: money can bring stress and health problems';
     if (/食神制殺/.test(f)) return 'nothing around this line softens the pressure (no Children/Output to tame the Ghost): it is felt in full';
-    if (/void/.test(f)) { var m = f.match(/\((.*)\)$/); return 'this line is empty at birth: it works only in the years with its own branch' + (m ? ' (' + m[1] + ')' : ''); }
+    if (/void/.test(f)) return 'this ' + f.replace(/^line void at birth/, 'line is empty at birth');
     return f;
   }
   // what surrounds the line of a cycle, in plain words
@@ -267,7 +270,7 @@
   var SUBJ = { P: '{his} studies and the support around {him} (Parent)', C: '{his} creativity (Children)', W: '{his} money (Wealth)', G: 'pressure and authority in {his} life (Ghost)', B: '{his} friends and partners (Brothers)' };
   function state(A, c) {
     var alive = DS().timely(c.L.el, A.T.m), t = c.tm.t, early = stage(c) === 'child' || stage(c) === 'teen' || stage(c) === 'young';
-    if (c.isVoid) return 'is there, but empty: it wakes up only in some years';
+    if (c.isVoid) return c.voidEasy ? 'is there, but empty for now: it wakes up easily' : 'is there, but empty: it wakes up only in some years';
     if (alive && t > 0) return 'is strong and shows clearly';
     if (alive) return early ? 'is full of life but is only taking its first steps' : 'is full of life but grows slowly, held in by others';
     if (t > 0) return 'is not strong alone, but gets help from around ' + (A.male ? 'him' : 'her');
@@ -374,8 +377,8 @@
   // Pe = pillars of today at true-solar noon of the place (lon); same cascade as the Date Selection.
   function nowHtml(A, Pe, lon) {
     var ds = DS(), pr = ds.predict(A.R, Pe, lon); if (pr.none) return '';
-    var me = ds.persona(pr.hx, pr.per.line), T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] };
-    function lv(n, l) { var L = NJ()[n].lines[l - 1], sh = ds.sanhui(L.branch, T), tm = ds.tempo(L.branch, T, A.voids.all, null), s = SC()[n].l[l], txt = 0;
+    var me = ds.persona(pr.hx, pr.per.line), T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] }, V = { list: A.voids.all, mb: A.Pn.month[1], moved: ds.movedBranches(pr) };
+    function lv(n, l) { var L = NJ()[n].lines[l - 1], sh = ds.sanhui(L.branch, T), tm = ds.tempo(L.branch, T, V, null), s = SC()[n].l[l], txt = 0;
       return { L: L, r: rel(me, sh || L.el), tm: tm, txt: txt }; }
     function row(title, n, l, withR) { var x = lv(n, l);
       return '<div style="margin:6px 0;">' + p('<b>' + title + '</b>: ' + n + ' ' + esc(hexName(n)) + ' line ' + l + ' ' + x.L.branch + ' = ' + relFull(x.r) + ' · ' + esc(plain(x.tm.note, 'current', T) || 'not touched by the time') + '. ' + side(SC()[n].l[l], x.tm.t)) + lineTxt(n, l, withR) + '</div>'; }
