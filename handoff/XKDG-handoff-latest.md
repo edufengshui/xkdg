@@ -4,6 +4,10 @@ Repo: `edufengshui/xkdg` (branch `main`, GitHub Pages, continuous deploy).
 Versioning: automatic — `version.js` shows the last commit date; `sw.js` is network-first. No version bump needed.
 Next session: read this file first.
 
+## Done 2026-11-12 (API cost check)
+- API spend: all on edu-api-key, Sonnet 4.6, via the xkdg-ai Worker (cache hit 98%, Claude Code 0). Volume rose from 5 Nov, 15M tokens on 10 Nov. Console limit $70/month. Open: per-licence daily cap + finding the per-student usage page in the Worker (code not in the repo; app sends `X-Student-Id`).
+- **Archive (📚) read-only + Continue** (ai-chat.js): 💾 saves and writes a short summary (`makeConvSummary`, XKDGAIOneShot, stored as `summary`/`summaryLen` on the archive entry). Opening a saved chat shows it read-only (input disabled, live history empty). ▶ Continua starts a NEW chat seeded with the summary (generated on the spot if missing/outdated); the original entry stays intact; convTitle skips the summary message. Edu approved.
+
 ## Done in session 34
 1. **☰ section menus** (`options-menu.js`, SECTIONS): added `bed` and `desk` (header = panel title; group 🔎 Dates = SCAN + ⭐ Recall Flying Stars).
 2. **Door / item row** on the house card (`app-fengshui.js`, doors list): ✏ / ✕ / 🔎 SCAN replaced by a ☰ (`XKDGHouseMenus.menu`, id `fs-hm-door-<hi>-<di>`).
