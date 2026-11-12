@@ -115,11 +115,16 @@ function tempo(b, T, natVoids, favEl) {
   return { t, note };
 }
 
-function livello(hexN, line, pers, scopo, T, natVoids) {
+// Flusso del Qi sulle linee (Edu, 12/11/2026 pomeriggio): la linea nella stessa posizione dell'esagramma a sinistra
+// (ciclo → annuale → mensile → blocco → giorno) la rafforza ×1,5 se la genera o è dello stesso elemento, la indebolisce
+// ×0,5 se la controlla; negli altri casi ×1. Moltiplica il peso della relazione. HL_FLUSSOLINEE=no per toglierlo.
+const flowEl = (a, b) => a === b || GEN[a] === b ? 1.5 : CTRL[a] === b ? 0.5 : 1;
+const lineFlow = (prevN, n, l) => prevN && process.env.HL_FLUSSOLINEE !== 'no' ? flowEl(NJ[prevN].lines[l - 1].el, NJ[n].lines[l - 1].el) : 1;
+function livello(hexN, line, pers, scopo, T, natVoids, prevN) {
   const favEl = Object.keys(GEN).find(e => SCOPI[scopo][rel(pers, e)] === 2);
   const L = NJ[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids, favEl);
-  const s = SC[hexN].lines[line].s, V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V));
-  return { hexN, line, b: L.branch, el: L.el, r, rs: SCOPI[scopo][r], tm, s, V, txt, tot: SCOPI[scopo][r] + tm.t + txt };
+  const s = SC[hexN].lines[line].s, V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V)), fl = lineFlow(prevN, hexN, line);
+  return { hexN, line, b: L.branch, el: L.el, r, rs: SCOPI[scopo][r], fl, tm, s, V, txt, tot: SCOPI[scopo][r] * fl + tm.t + txt };
 }
 
 function persona(hx, line) {
@@ -154,13 +159,13 @@ function giorno(N, nat, date, lon, tz, scopo) {
   const lb = (n, l) => NJ[n].lines[l - 1].branch;
   const nv = { list: nv0, mb: nat.month[1], moved: [lb(p.id.year[0], p.id.year[1]), lb(p.id.month[0], Math.ceil(p.mIndex / 2)), lb(p.id.day[0], p.id.day[1])] };
   const c = livello(p.id.cycle[0], p.id.cycle[1], pers, scopo, T, nv);
-  const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv);
-  const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv);
-  const m = nuove('mese') ? livello(p.id.month[0], Math.ceil(p.mIndex / 2), pers, scopo, T, nv) : null;
+  const a = livello(p.id.year[0], p.id.year[1], pers, scopo, T, nv, p.id.cycle[0]);
+  const dd = process.argv.includes('esagiorno') ? p.id.dayHex : p.id.day, d = livello(dd[0], dd[1], pers, scopo, T, nv, process.argv.includes('esagiorno') ? p.id.lord[0] : p.id.month[0]);
+  const m = nuove('mese') ? livello(p.id.month[0], Math.ceil(p.mIndex / 2), pers, scopo, T, nv, p.id.year[0]) : null;
   // 5) testo secondario (Edu, 11/11/2026): la stessa linea nell'esagramma del giorno (esito) entra nel punteggio
   //    con peso SEC (HL_SEC, default 0.5); il testo primario è la linea nell'esagramma del blocco (causa, azione).
   const SEC = process.env.HL_SEC !== undefined ? +process.env.HL_SEC : 0.5;
-  const sd = SEC ? livello(p.id.dayHex[0], p.id.dayHex[1], pers, scopo, T, nv) : null;
+  const sd = SEC ? livello(p.id.dayHex[0], p.id.dayHex[1], pers, scopo, T, nv, p.id.lord[0]) : null;
   const L = nat.luck ? luckTot(p, nat.luck) : null, useL = process.argv.includes('luck') && L;
   const L2 = nat.prof ? LK2.giorno(nat.prof, p, T) : null, useL2 = process.argv.includes('luck2') && L2;
   return { date, Pe, p, pers, c, a, m, d, L, L2, sd, tot: c.tot + a.tot + (m ? m.tot : 0) + d.tot + (sd ? SEC * sd.tot : 0) + (useL ? L.tot : 0) + (useL2 ? L2.tot : 0) };

@@ -129,12 +129,19 @@
     }
     return { t: t, note: note };
   }
-  // one level of the cascade: line `line` of hexagram hexN; text score moved ±1 towards the version chosen by time
-  function level(hexN, line, pers, purpose, T, natVoids) {
+  // Qi flow between hexagrams in a row, general rule (Edu, 12/11/2026, afternoon): what is on the left strengthens what is
+  // on its right in the same place if it generates it or is the same element (×1.5), weakens it if it controls it (×0.5);
+  // every other case ×1. Trigrams: lower with lower, upper with upper. Lines: same position (line 3 of the cycle → line 3
+  // of the annual). Row: cycle → annual → monthly → block → day. (The Luck keep their own flowMul: ×0.5 in all other cases.)
+  function flowEl(a, b) { return !a || !b ? 1 : a === b || GEN[a] === b ? 1.5 : CTRL[a] === b ? 0.5 : 1; }
+  function lineFlow(prevN, curN, pos) { return prevN ? flowEl(NJ()[prevN].lines[pos - 1].el, NJ()[curN].lines[pos - 1].el) : 1; }
+  // one level of the cascade: line `line` of hexagram hexN; text score moved ±1 towards the version chosen by time;
+  // prevN = hexagram on its left in the row: the relation of the line counts ×fl (lineFlow)
+  function level(hexN, line, pers, purpose, T, natVoids, prevN) {
     var favEl = Object.keys(GEN).filter(function (e) { return PURPOSES[purpose].w[rel(pers, e)] === 2; })[0];
     var L = NJ()[hexN].lines[line - 1], sh = sanhui(L.branch, T), r = rel(pers, sh || L.el), tm = tempo(L.branch, T, natVoids, favEl);
-    var s = SC()[hexN].l[line], V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V)), rs = PURPOSES[purpose].w[r];
-    return { hexN: hexN, line: line, b: L.branch, el: sh || L.el, r: r, rs: rs, tm: tm, s: s, V: V, txt: txt, fushen: L.fushen, tot: rs + tm.t + txt };
+    var s = SC()[hexN].l[line], V = Math.sign(tm.t), txt = Math.max(-2, Math.min(2, s + V)), rs = PURPOSES[purpose].w[r], fl = lineFlow(prevN, hexN, line);
+    return { hexN: hexN, line: line, b: L.branch, el: sh || L.el, r: r, rs: rs, fl: fl, tm: tm, s: s, V: V, txt: txt, fushen: L.fushen, tot: rs * fl + tm.t + txt };
   }
 
   // ── Moment → cascade (heluo_cmp.js predict, method A, monthly rule 'edu') ─────────────────────
@@ -259,13 +266,14 @@
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
     var pers = persona(p.hx, p.per.line), T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] };
     var V = { list: ctx.natVoids, mb: ctx.Pn.month[1], moved: movedBranches(p) };
+    // Qi flow on the lines (Edu 12/11): each line from the line in the same place of the hexagram on its left
     var c = level(p.id.cycle[0], p.id.cycle[1], pers, purpose, T, V);
-    var a = level(p.id.year[0], p.id.year[1], pers, purpose, T, V);
-    var m = level(p.month.hex.n, p.month.line, pers, purpose, T, V);
+    var a = level(p.id.year[0], p.id.year[1], pers, purpose, T, V, p.id.cycle[0]);
+    var m = level(p.month.hex.n, p.month.line, pers, purpose, T, V, p.id.year[0]);
     // secondary text (Edu, 11/11/2026): the same line in the changed (day) hexagram, the outcome, at half weight;
     // the primary text is the day line in the block hexagram (cause, action)
-    var s2 = level(p.id.dayHex[0], p.id.dayHex[1], pers, purpose, T, V);
-    var d = level(p.id.day[0], p.id.day[1], pers, purpose, T, V);
+    var s2 = level(p.id.dayHex[0], p.id.dayHex[1], pers, purpose, T, V, p.id.lord[0]);
+    var d = level(p.id.day[0], p.id.day[1], pers, purpose, T, V, p.month.hex.n);
     var L = luckDay(ctx.prof, p, T);
     var tot = Math.round((c.tot + a.tot + m.tot + d.tot + 0.5 * s2.tot + L.tot) * 100) / 100;
     var warn = [];
@@ -338,15 +346,17 @@
     var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
     // Edu, 12/11/2026: voids, see voidExit (timely at birth = still void, but easy to leave; untimely = needs year and month in season)
     var TT = { y: T[0], m: T[1], d: T[2] }, mv = movedBranches(p);
-    function li(k, n, l) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0, vx = v ? voidExit(L.branch, mb0, TT, mv) : null;
+    // fl = Qi flow from the line in the same place of the hexagram on the left (Edu 12/11): annual → monthly → block → day
+    function li(k, n, l, prevN) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0, vx = v ? voidExit(L.branch, mb0, TT, mv) : null;
       return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null,
-        voidL: v, easy: v && vx.easy, filled: v && vx.out, how: vx && vx.how, byClash: v && vx.how === 'clash' }; }
-    var Ls = [li('m', p.month.hex.n, p.month.line), li('lord', p.id.lord[0], p.id.lord[1]), li('d', p.id.day[0], p.id.day[1]), li('s2', p.id.dayHex[0], p.id.dayHex[1])];
+        voidL: v, easy: v && vx.easy, filled: v && vx.out, how: vx && vx.how, byClash: v && vx.how === 'clash',
+        fl: lineFlow(prevN, n, l), from: prevN ? NJ()[prevN].lines[l - 1] : null }; }
+    var Ls = [li('m', p.month.hex.n, p.month.line, p.id.year[0]), li('lord', p.id.lord[0], p.id.lord[1], p.month.hex.n), li('d', p.id.day[0], p.id.day[1], p.month.hex.n), li('s2', p.id.dayHex[0], p.id.dayHex[1], p.id.lord[0])];
     var t = 0, on = [], price = [], later = [];
     Ls.forEach(function (L) {
-      if (X && L.r === X) { t += XK_W[L.k]; on.push(L); if (L.voidL && !L.filled) later.push(L); }
+      if (X && L.r === X) { t += XK_W[L.k] * L.fl; on.push(L); if (L.voidL && !L.filled) later.push(L); }
       else if (X && L.hid && L.hid.r === X) { t += XK_W[L.k] / 2; on.push({ k: L.k, b: L.hid.b, r: X, hidden: true }); }
-      if (A && L.r === A) { t -= XK_W[L.k]; price.push(L); }
+      if (A && L.r === A) { t -= XK_W[L.k] * L.fl; price.push(L); }
     });
     // the three Luck (Heaven, Earth, Fame) and their opposites in the monthly, block and day hexagram, each trigram with the
     // Qi flow from the hexagram on its left (cycle → annual → monthly → block → day; Edu 12/11): ×1.5 strengthened, ×0.5 weakened.
@@ -371,9 +381,9 @@
     adj = Math.max(-3, Math.min(3, adj));
     return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, luck: lk, opp: opp, need: need, cure: cure, yv: yv };
   }
-  root.XKDGHeluoDSCore = { thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
+  root.XKDGHeluoDSCore = { flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
@@ -526,7 +536,7 @@
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;">'
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + x.hexN + ' ' + esc(U().hexName ? U().hexName(x.hexN) : '') + ' line ' + x.line + ' · ' + sgn(x.tot) + '</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(hx, x.line, cy, me) : '')
-      + '<div style="' + S_ + '">' + x.b + ' ' + x.el + ' = ' + x.r + ' for the person ' + me + ' (' + sgn(x.rs) + ') · time ' + sgn(x.tm.t) + ' [' + (x.tm.note.join(', ') || '—') + '] · text ' + x.s + ' → ' + x.txt + ' (' + tl + ')</div>'
+      + '<div style="' + S_ + '">' + x.b + ' ' + x.el + ' = ' + x.r + ' for the person ' + me + ' (' + sgn(x.rs) + (x.fl && x.fl !== 1 ? (x.fl > 1 ? ' ×1.5 ↑ strengthened' : ' ×0.5 ↓ weakened') + ' by the same line on the left' : '') + ') · time ' + sgn(x.tm.t) + ' [' + (x.tm.note.join(', ') || '—') + '] · text ' + x.s + ' → ' + x.txt + ' (' + tl + ')</div>'
       + (U().lineBody ? U().lineBody(x.hexN, x.line, unit || true) : '') + '</div>';
   }
   function detail(chart, g) {
@@ -599,9 +609,9 @@
       box += th.need ? '<div>The natal chart needs <b>' + th.need + '</b> to come back into balance.</div>' + (th.cure.length ? '<div>' + esc(th.cure.join(' · ')) + '</div>' : '<div>Block and day hexagram are balanced: no help, no harm.</div>')
         : '<div>Yin and yang of the natal chart are in line: no cure needed from the day.</div>';
     } else if (th.X) {
-      box += th.on.length ? '<div style="' + G + '">▲ ' + REL[th.X] + ' (' + XK_PL[th.key] + ') on: ' + th.on.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.hidden ? ' hidden' : ''); }).join(' · ') + '</div>'
+      box += th.on.length ? '<div style="' + G + '">▲ ' + REL[th.X] + ' (' + XK_PL[th.key] + ') on: ' + th.on.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.hidden ? ' hidden' : '') + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>'
         : '<div>' + REL[th.X] + ' (' + XK_PL[th.key] + ') is not on the lines of this day.</div>';
-      if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
+      if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>';
       th.later.forEach(function (L) {
         var Y = +iso.slice(0, 4) + 1; while (BR[((Y - 4) % 12 + 12) % 12] !== L.b) Y++;
         box += '<div style="' + O + '">⏳ ' + XK_LBL[L.k] + ' ' + L.b + ' is void: not a no, the fruits come later, when ' + L.b + ' comes out — '
@@ -619,7 +629,8 @@
     function lv(title, L, hx, cy) {
       return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + L.n + ' ' + esc(U().hexName ? U().hexName(L.n) : '') + ' line ' + L.l + '</div>'
         + (U().cycleHexSvg ? U().cycleHexSvg(hx, L.l, cy, me) : '')
-        + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.voidL ? (L.filled ? ' · void, out today (' + VOID_HOW[L.how] + ')' : ' · <span style="' + O + '">void: later' + (L.easy ? ' (easy to leave)' : ' (hard to leave)') + '</span>') : '') + '</div>'
+        + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.fl && L.fl !== 1 && L.from ? ' · <span style="' + (L.fl > 1 ? G : Rd) + '">' + (L.fl > 1 ? '↑ strengthened' : '↓ weakened') + ' by ' + L.from.branch + ' ' + L.from.el + ' (same line on the left)</span>' : '')
+        + (L.voidL ? (L.filled ? ' · void, out today (' + VOID_HOW[L.how] + ')' : ' · <span style="' + O + '">void: later' + (L.easy ? ' (easy to leave)' : ' (hard to leave)') + '</span>') : '') + '</div>'
         + (U().lineBody ? U().lineBody(L.n, L.l, L.k === 'm' ? 'month' : 'day', true) : '') + '</div>';
     }
     var Ls = th.lines;
@@ -650,9 +661,11 @@
   function plMark(ch, ctx, key, me, hx, line, yearBranch, monthBranch, prev) {
     var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
     var yv = natalVoids(ch.Pn).list, G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
-    if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + '</span>'); sc += 2; }
+    // Qi flow on the line (Edu 12/11): from the line in the same place of the hexagram on the left (period → year → month)
+    var fl = prev ? lineFlow(prev.n, hx.n, line) : 1, fa = fl > 1 ? ' ↑' : fl < 1 ? ' ↓' : '';
+    if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + fa + '</span>'); sc += 2 * fl; }
     else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
-    if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + '</span>'); sc -= 2; }
+    if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + fa + '</span>'); sc -= 2 * fl; }
     // voids (Edu, 12/11): the year and month rows read a MOVING line (what moves cannot be void); the period line does not move
     if (yv.indexOf(L.branch) >= 0) {
       var easy = timely(L.el, ch.Pn.month[1]), vt = '';

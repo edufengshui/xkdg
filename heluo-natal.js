@@ -3,7 +3,7 @@
 // time judgement, score) → Synthesis → Now (annual, monthly, today with primary and secondary text).
 // Rules: claude/hlls-regole-lettura-wealth.md (person = element of the trigram of the line; relations on the person;
 // Wealth searched in cycle line, other trigram, Hu, hidden, year branches, Output 食傷生財), claude/hlls-luck-cascata.md,
-// time rules of 11/11 (三會, void filled by the same branch). Needs XKDGHeluo, HeluoNaJia, XKDGHeluoDSCore, XKDG_HELUO_SCORES.
+// time rules of 11/11 (三會, void filled by the same branch), Luck and Qi flow of 12/11 (hlls-luck-flusso.md). Needs XKDGHeluo, HeluoNaJia, XKDGHeluoDSCore, XKDG_HELUO_SCORES.
 // Interface in English (Edu 10/11). Cycle-line time is judged on the birth pillars (year, month, day) — the "natal
 // time" — and the years of the cycle that activate or clash the line are listed.
 (function (root) {
@@ -89,9 +89,9 @@
     var prof = ds.profile(R, Pn, male), natT = [xt.upper, xt.lower, R.huXT.upper, R.huXT.lower].concat(ht ? [ht.upper, ht.lower, R.huHT.upper, R.huHT.lower] : []);
     ['heaven', 'earth', 'fame'].forEach(function (k) {
       var K = prof.K[k], t = R.luck[k];
+      // Edu 10/11: no opposites carried by branches (a branch acts with its own element on the person)
       var lines = []; A.natives.forEach(function (N) { NJ()[N.hx.n].lines.forEach(function (L, i) {
         if (brTri(L.branch) === t) lines.push(N.key + ' l' + (i + 1) + ' ' + L.branch);
-        if (brTri(L.branch) === R.luck.opposite[k]) lines.push('−' + N.key + ' l' + (i + 1) + ' ' + L.branch);
       }); });
       A.luck.push({ k: k, t: t, el: TRI_EL[t], op: R.luck.opposite[k], inNat: K.inNat, opNat: K.opNat, tkCn: K.tkCn, tk: K.tk, yt: K.yt, vuoto: K.vuoto, m: K.m, lines: lines,
         branches: BR.split('').filter(function (b) { return brTri(b) === t; }) });
@@ -108,18 +108,34 @@
       for (var y = x.y1; y <= x.y2; y++) { var yb = yearBranch(y), age = y - y0 + 1;
         if (yb === L.branch) act.push(y + ' (' + age + ')'); else if (LIUHE[L.branch] === yb) com.push(y + ' (' + age + ')'); else if (clash(L.branch) === yb) hit.push(y + ' (' + age + ')'); }
       // relations present in the cycle (line, other trigram, Hu that holds the line, hidden)
+      // Qi flow (Edu 12/11): the Hu is a side branch of the cycle hexagram; a Hu trigram is strengthened (×1.5) if the
+      // trigram in the same place of the hexagram generates it or is the same element, weakened (×0.5) if it controls it
+      var huN = N.hu, huF = { lower: ds.flowEl(TRI_EL[hx.lower], TRI_EL[huN.lower]), upper: ds.flowEl(TRI_EL[hx.upper], TRI_EL[huN.upper]) };
+      function wt(t) { return /^hidden/.test(t) ? 0.5 : /Hu/.test(t) ? huF[/^lower/.test(t) ? 'lower' : 'upper'] : 2; }
       var has = { W: 0, C: 0, P: 0, G: 0, B: 0 }, srcRel = x.src.map(function (o) { return o.k; });
-      has[x.r] += 2; srcRel.forEach(function (k, i) { var t = x.src[i].t; has[k] += /^hidden/.test(t) ? 0.5 : /Hu/.test(t) ? 1 : 2; });
+      has[x.r] += 2; srcRel.forEach(function (k, i) { has[k] += wt(x.src[i].t); });
       // Wealth score of the cycle (weights of this prototype, to be tested)
       var w = 0, why = [];
-      x.src.forEach(function (o) { if (o.k !== 'W') return; var v = /^hidden/.test(o.t) ? 0.5 : /Hu/.test(o.t) ? 1 : 2; w += v; why.push(o.t.split(' = ')[0].replace(' is Wealth (rule 3.0)', '') + ' W +' + v); });
+      x.src.forEach(function (o) { if (o.k !== 'W') return; var v = wt(o.t); w += v; why.push(o.t.split(' = ')[0].replace(' is Wealth (rule 3.0)', '') + ' W +' + v + (/Hu/.test(o.t) && v !== 1 ? (v > 1 ? ' (strengthened by the hexagram)' : ' (weakened by the hexagram)') : '')); });
       if (!has.W && has.C && x.r !== 'G') { w += 0.5; why.push('Output that generates Wealth +0.5'); }
       if (x.r === 'G') { w -= 1.5; why.push('line Ghost −1.5'); }
       else if (has.G) { w -= 0.5; why.push('Ghost in the cycle −0.5'); }
       if (x.r === 'B' && has.W) { w -= 0.5; why.push('Brothers on the line take the Wealth −0.5'); }
       var tv = tm.t > 0 ? 0.5 : tm.t < 0 ? -0.5 : 0; if (tv) { w += tv; why.push('natal time ' + (tv > 0 ? '+' : '−') + Math.abs(tv)); }
-      x.luck.forEach(function () { w += 0.5; why.push('Luck on the line +0.5'); });
-      A.luck.forEach(function (Lk) { if (brTri(L.branch) === Lk.op) { w -= 0.5; why.push('opposite of the ' + cap(Lk.k) + ' Luck −0.5'); } });
+      // Luck (Edu 10/11 and 12/11): the line branch can carry a Luck (+), never its opposite; a void Luck adds nothing
+      // (at birth nothing brings it out), but its opposite still takes away; the trigrams of the period hexagram and of its
+      // Hu (lines 2–5 only, with the Qi flow of the Luck from the hexagram) count 0.25 each: Luck +, opposite −
+      var lkT = [];
+      A.luck.forEach(function (Lk) {
+        if (brTri(L.branch) === Lk.t) { if (Lk.vuoto) why.push(cap(Lk.k) + ' Luck on the line, but void: 0'); else { w += 0.5; why.push(cap(Lk.k) + ' Luck on the line +0.5'); } }
+        var rowT = [[hx, [1, 1], 'period ' + hx.n]];
+        if (line >= 2 && line <= 5) rowT.push([huN, ds.flowMul([hx.upper, hx.lower], [huN.upper, huN.lower]), 'Hu ' + huN.n]);
+        rowT.forEach(function (r) { [r[0].upper, r[0].lower].forEach(function (t, i) {
+          var f = r[1][i], v = 0.25 * f, fa = f > 1 ? ' ↑' : f < 1 ? ' ↓' : '';
+          if (t === Lk.t) { if (Lk.vuoto) why.push(cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + ', void: 0'); else { w += v; lkT.push('+' + cap(Lk.k) + ' (' + r[2] + ')'); why.push(cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + fa + ' +' + v); } }
+          if (t === Lk.op) { w -= v; lkT.push('−' + cap(Lk.k) + ' (' + r[2] + ')'); why.push('opposite of the ' + cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + fa + ' −' + v); }
+        }); });
+      });
       var flags = [];
       if (has.W && has.G >= 2) flags.push('Wealth and Ghost together: Wealth feeds the Ghost (財生殺), watch health and pressure');
       if (x.r === 'G' && !has.C) flags.push('Ghost on the line with no Output to control it (食神制殺 missing)');
@@ -127,7 +143,7 @@
         : 'line void at birth and out of season: hard to leave — it needs a year and a month that put ' + L.el + ' in season, then the same branch, a clash or a moving line');
       var rs = { W: has.W, C: has.C, P: has.P, G: has.G, B: has.B }; rs[x.r] += tv;
       A.cycles.push({ phase: x.phase, N: N, hx: hx, c: x.c, line: line, L: L, me: me, r: x.r, src: x.src, luck: x.luck, y1: x.y1, y2: x.y2,
-        tm: tm, isVoid: isVoid, voidEasy: voidEasy, s: s, V: V, txt: txt, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags,
+        tm: tm, isVoid: isVoid, voidEasy: voidEasy, s: s, V: V, txt: txt, lkT: lkT, huF: huF, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags,
         crossTri: !N.one && (line === 3 || line === 4), isStart: line === N.movingLine && x.c.from === N.from });
     });
 
@@ -166,6 +182,8 @@
     var risk = A.cycles.filter(function (c) { return c.flags.length; }).map(function (c) { return per(c) + ': ' + c.flags.join('; '); });
     if (risk.length) S.push(['Be careful', risk.join('. ') + '.']);
     S.push(['Luck', A.luck.map(function (L) {
+      if (L.vuoto) return cap(L.k) + ' Luck is ' + L.t + ' (' + L.el + '), but it is empty at birth: it adds nothing until a year, a month or a day with ' + BR.split('').filter(function (b) { return brTri(b) === ({ Kan: 'Li', Li: 'Kan', Gen: 'Kun', Kun: 'Gen', Zhen: 'Dui', Dui: 'Zhen', Xun: 'Qian', Qian: 'Xun' })[L.t]; }).join('') + ' wakes it up'
+        + ', while its opposite ' + L.op + ' still takes away' + (L.opNat ? ' — and ' + L.op + ' is in ' + his + ' charts' : '');
       return cap(L.k) + ' Luck is ' + L.t + ' (' + L.el + '): ' + (L.inNat ? 'it is in ' + his + ' charts, so the periods that touch it are blessed' : 'not in ' + his + ' charts, it comes from outside, in the years, months and days ' + L.branches.join(''))
         + (L.opNat ? '; its opposite ' + L.op + ' is in ' + his + ' charts and can spoil it' : '');
     }).join('. ') + '.']);
@@ -299,6 +317,8 @@
     var N = c.N, sub = pron(SUBJ[c.r], A.male);
     var tech = 'Line ' + c.L.branch + ' ' + c.L.el + ', person ' + c.me + '. At birth: ' + (plain(c.tm.note, 'birth', A.T) || 'no link with the birth branches') + '.'
       + (around(c).length ? ' Around it: ' + around(c).join(', ') + '.' : '') + (c.luck.length ? ' Carries the ' + c.luck.map(function (x) { return x.slice(1); }).join(' and ') + ' Luck.' : '')
+      + (c.lkT.length ? ' Luck in the trigrams: ' + c.lkT.join(', ') + '.' : '')
+      + (['lower', 'upper'].some(function (k) { return c.huF[k] !== 1 && (k === 'lower' ? c.line >= 2 && c.line <= 4 : c.line >= 3 && c.line <= 5); }) ? ' Inner trigrams: ' + ['lower', 'upper'].filter(function (k) { return c.huF[k] !== 1 && (k === 'lower' ? c.line >= 2 && c.line <= 4 : c.line >= 3 && c.line <= 5); }).map(function (k) { return k + ' ' + c.N.hu[k] + (c.huF[k] > 1 ? ' strengthened' : ' weakened') + ' by ' + c.hx[k]; }).join(', ') + '.' : '')
       + (c.act.length ? ' Same branch in ' + c.act.join(', ') + '.' : '') + (c.com.length ? ' Combined (六合) in ' + c.com.join(', ') + '.' : '') + (c.hit.length ? ' Clashed in ' + c.hit.join(', ') + '.' : '');
     return '<div style="border-left:4px solid ' + RC[c.r] + ';padding:4px 8px;background:#fcfbff;border-radius:4px;">'
       + '<div style="font-size:13px;font-weight:600;">Age ' + c.c.from + '–' + c.c.to + ' <span style="color:#888;font-weight:400;">(' + c.y1 + '–' + c.y2 + ', ' + (c.c.to - c.c.from + 1) + ' years)</span> · line ' + c.line + ' ' + c.L.branch + ' ' + relFull(c.r) + '</div>'
@@ -380,8 +400,11 @@
     var me = ds.persona(pr.hx, pr.per.line), T = { y: Pe.year[1], m: Pe.month[1], d: Pe.day[1] }, V = { list: A.voids.all, mb: A.Pn.month[1], moved: ds.movedBranches(pr) };
     function lv(n, l) { var L = NJ()[n].lines[l - 1], sh = ds.sanhui(L.branch, T), tm = ds.tempo(L.branch, T, V, null), s = SC()[n].l[l], txt = 0;
       return { L: L, r: rel(me, sh || L.el), tm: tm, txt: txt }; }
-    function row(title, n, l, withR) { var x = lv(n, l);
-      return '<div style="margin:6px 0;">' + p('<b>' + title + '</b>: ' + n + ' ' + esc(hexName(n)) + ' line ' + l + ' ' + x.L.branch + ' = ' + relFull(x.r) + ' · ' + esc(plain(x.tm.note, 'current', T) || 'not touched by the time') + '. ' + side(SC()[n].l[l], x.tm.t)) + lineTxt(n, l, withR) + '</div>'; }
+    // Qi flow (Edu 12/11): the line in the same place of the hexagram on the left strengthens or weakens it
+    function flw(prevN, n, l) { if (!prevN) return ''; var f = ds.lineFlow(prevN, n, l), P0 = NJ()[prevN].lines[l - 1];
+      return f > 1 ? ' Strengthened by ' + P0.branch + ' ' + P0.el + ', the same line of hexagram ' + prevN + '.' : f < 1 ? ' Weakened by ' + P0.branch + ' ' + P0.el + ', the same line of hexagram ' + prevN + ', which controls it.' : ''; }
+    function row(title, n, l, withR, prevN) { var x = lv(n, l);
+      return '<div style="margin:6px 0;">' + p('<b>' + title + '</b>: ' + n + ' ' + esc(hexName(n)) + ' line ' + l + ' ' + x.L.branch + ' = ' + relFull(x.r) + ' · ' + esc(plain(x.tm.note, 'current', T) || 'not touched by the time') + '.' + esc(flw(prevN, n, l)) + ' ' + side(SC()[n].l[l], x.tm.t)) + lineTxt(n, l, withR) + '</div>'; }
     var a = pr.annual, mo = pr.month, d = pr.daily, age = pr.age;
     var h = hd('6 · Now · age ' + age)
       + p('Year ' + Pe.year + ', month ' + Pe.month + ', day ' + Pe.day + '. ' + (A.male ? 'He' : 'She') + ' is ' + me + ', in the period of line ' + pr.per.line + ' (age ' + pr.per.from + '–' + pr.per.to + ').')
@@ -390,10 +413,10 @@
       + card('Monthly ' + mo.hex.n + ' · month ' + mo.index + ' · line ' + mo.line + ' of the annual', draw(mo.hex, mo.line, null, me))
       + card('Block ' + d.block.n + ' · Lord l' + d.lord + ' · day line ' + d.line, draw(d.block, d.line, null, me))
       + card('Day ' + d.hex.n + ' · line ' + d.line, draw(d.hex, d.line, null, me)) + '</div>'
-      + row('This year', a.hex.n, a.moved, false)
-      + row('This month', mo.hex.n, mo.line, false)
-      + row('Today, what happens (primary)', d.block.n, d.line, false)
-      + row('Today, how it ends (secondary)', d.hex.n, d.line, false)
+      + row('This year', a.hex.n, a.moved, false, pr.id.cycle[0])
+      + row('This month', mo.hex.n, mo.line, false, a.hex.n)
+      + row('Today, what happens (primary)', d.block.n, d.line, false, mo.hex.n)
+      + row('Today, how it ends (secondary)', d.hex.n, d.line, false, d.block.n)
       + '<div style="font-size:10px;color:#999;">Months: 12 whole months from the 中氣, month 1 from the Winter Solstice; line k of the annual rules months 2k−1 and 2k (odd = line k changed, even = also its correlate). Day: 5-day blocks from the day of the 中氣 (Lord of the Block). True solar time.</div>';
     return h;
   }

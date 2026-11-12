@@ -92,3 +92,16 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - Diana 31/8/1997: Luck della vecchia DS da −0,03 a **−2,14** (Kan/Kan del periodo 29 = due volte l'opposto della Fame; Zhen nell'Hu 27, rafforzato dal Kan, toglie la Heaven vuota; Kan del giorno 4 rafforzato dal Kan del blocco 59).
 - Verifiche: `ds_app_check.js` 0 differenze (percentile medio 45 → 46), `mensile_app_check.js` ok; planner provato in Chrome headless sulla carta di Diana.
 - Non toccato: lettura natale (heluo-natal.js, che conta ancora gli opposti portati dai rami delle linee del ciclo).
+
+## 12/11/2026 (pomeriggio) — flusso del Qi generale, peso del ciclo, lettura natale allineata
+- **Confermato da Edu**: peso 0,25 per i trigrammi del ciclo e del suo Hu nella vecchia DS (`LW.C.c`, `LW.C.h`).
+- **Flusso del Qi, regola generale (Edu)**: se un trigramma dell'esagramma A genera (o è dello stesso elemento di) quello nella stessa posizione di B, B è più forte (×1,5); se lo controlla, B è più debole (×0,5); **negli altri casi niente** (Edu: «per il momento mi fermerei qui»). Vale anche **fra linee nella stessa posizione**: la 3ª linea del ciclo che genera la 3ª dell'annuale la rafforza. Fila: ciclo → annuale → mensile → blocco → giorno; l'Hu del ciclo è ramo laterale.
+  - Le Luck tengono la loro regola (`flowMul`: ×0,5 anche quando drena o è controllato): da far confermare a Edu.
+- Codice: `flowEl(a, b)` e `lineFlow(prevN, n, l)` in heluo-ds.js (esportate in `XKDGHeluoDSCore`).
+  - Vecchia DS: `level(..., prevN)` → peso della relazione × `fl` (annuale ← ciclo, mensile ← annuale, linea del giorno nel blocco ← mensile, esagramma del giorno ← blocco). Dettaglio: «×1.5 ↑ strengthened by the same line on the left».
+  - Filo XKDG (`thread`): linea del mese ← annuale, Lord ← mensile, linea del giorno ← mensile, esito ← blocco; pesi `XK_W × fl` per scopo e prezzo; frecce ↑↓ e nota nella finestra del giorno.
+  - Planner (`plMark`): anni ← periodo, mesi ← annuale; ▲/▼ con ↑↓, punteggio ±2 × fl.
+  - Prototipo ds_cascata.js allineato (`HL_FLUSSOLINEE=no` per toglierlo). `ds_app_check.js` 0 differenze (percentile medio 46 → 44); `mensile_app_check.js` ok.
+- **Lettura natale allineata** (heluo-natal.js): niente opposti portati dai rami (10/11); Luck vuota = 0 sulla linea e nei trigrammi, il suo opposto toglie; trigrammi del periodo e dell'Hu (linee 2–5) 0,25 ciascuno con il flusso delle Luck; Hu che tiene la linea pesato col flusso generale (Wealth nell'Hu ×1,5/×0,5); sintesi della Luck vuota («adds nothing until … wakes it up, while its opposite still takes away»); sezione «Now» con «Strengthened/Weakened by … the same line of hexagram N». Diana età 34–42 (29 l5 戌 Ghost): −1,75. Prova: `node natal_proto.js diana txt` (aggiunta Diana).
+- **Da ricordare a Edu**: regola di lettura di Opposite e Inverse (da decidere).
+- **Stile dei commenti delle linee (Edu)**: le correzioni fatte vanno bene; adottare di più quello stile nella parte interpretativa di ogni linea.

@@ -10,6 +10,7 @@ const P={
  jobs:['Steve Jobs','1955-02-24','19:15',-122.42,'America/Los_Angeles',true],
  buffett:['Warren Buffett','1930-08-30','11:00',-95.94,'America/Chicago',true],
  rockefeller:['John D. Rockefeller','1839-07-08','23:50',-76.06,'America/New_York',true],
+ diana:['Diana Spencer','1961-07-01','19:45',0.50,'Europe/London',false],
 };
 const who=process.argv[2]||'gates',[name,d,t,lon,tz,male]=P[who];
 const Pn=pillars(d,t,lon,tz),R=H.fromPillars(Pn,male),A=NA.analyze(R,Pn,male);
