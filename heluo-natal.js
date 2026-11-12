@@ -189,7 +189,7 @@
   function card(title, svg) { return '<div style="border:1px solid #d1c4e9;border-radius:8px;padding:6px;flex:1 1 220px;min-width:0;max-width:340px;"><div style="font-size:12px;font-weight:600;color:#4527a0;text-align:center;">' + title + '</div>' + svg + '</div>'; }
   function lineTxt(n, l, withReading) {
     var t = TX() && TX()[n], L = t && t.lines && t.lines[l]; if (!L) return '';
-    return '<div style="' + S_ + 'margin:3px 0;"><i>“' + esc(L.statement) + '”</i></div>' + (withReading && L.reading ? '<div style="' + S_ + 'color:#555;">' + esc(L.reading) + '</div>' : '');
+    return '<div style="' + S_ + 'margin:3px 0;"><i>“' + esc(L.statement) + '”</i></div>' + (withReading && L.reading ? '<div style="' + S_ + 'color:#555;">' + esc(typeof withReading === 'string' && H().ui && H().ui.timeReading ? H().ui.timeReading(L.reading, withReading) : L.reading) + '</div>' : '');
   }
   var TIMEW = { '-2': 'read the text on its dark side', '-1': 'read the text more on its difficult side', '0': 'the text can go either way', '1': 'read the text more on its bright side', '2': 'read the text on its bright side' };
   var WHO_ = { Y: 'year', M: 'month', D: 'day' };
