@@ -133,7 +133,9 @@
         rowT.forEach(function (r) { [r[0].upper, r[0].lower].forEach(function (t, i) {
           var f = r[1][i], v = 0.25 * f, fa = f > 1 ? ' ↑' : f < 1 ? ' ↓' : '';
           if (t === Lk.t) { if (Lk.vuoto) why.push(cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + ', void: 0'); else { w += v; lkT.push('+' + cap(Lk.k) + ' (' + r[2] + ')'); why.push(cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + fa + ' +' + v); } }
-          if (t === Lk.op) { w -= v; lkT.push('−' + cap(Lk.k) + ' (' + r[2] + ')'); why.push('opposite of the ' + cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + fa + ' −' + v); }
+          // Edu 12/11 evening (his Dui = 酉): an opposite whose branches are natal voids takes nothing away (at birth it stays void)
+          if (t === Lk.op) { if (ds.triVoid && ds.triVoid(t, { list: natVoids, birth: true })) why.push('opposite of the ' + cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + ', void: 0');
+            else { w -= v; lkT.push('−' + cap(Lk.k) + ' (' + r[2] + ')'); why.push('opposite of the ' + cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + fa + ' −' + v); } }
         }); });
       });
       var flags = [];

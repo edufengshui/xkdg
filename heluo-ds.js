@@ -278,7 +278,8 @@
     return M;
   }
   var LV_NAME = { c: 'cycle', h: 'Hu of the cycle', a: 'annual', m: 'monthly', b: 'block', g: 'day hex' };
-  function luckDay(P, p, T) {
+  // V (Edu 12/11 evening, his Dui = 酉): an opposite whose branches are natal voids takes nothing away until it comes out
+  function luckDay(P, p, T, V) {
     var tot = 0, w = [], M = luckMuls(P, T, w);
     function add(k, v, src) { if (!v) return; var m = v > 0 ? M[k].pos : M[k].neg; tot += v * m; if (m) w.push(src + ' ' + (v > 0 ? '+' : '−') + cap(k)); }
     var row = luckRow(p);
@@ -292,7 +293,7 @@
         x[2].forEach(function (t, i) {
           var f = x[3][i], tag = LV_NAME[x[0]] + ' ' + x[1] + (f > 1 ? '↑' : f < 1 ? '↓' : '');
           if (t === L.t) add(k, LW.C[x[0]] * f, tag);
-          if (t === L.op && !br) add(k, -LW.C[x[0]] * f, tag);
+          if (t === L.op && !br && !triVoid(t, V)) add(k, -LW.C[x[0]] * f, tag);
         });
       });
     });
@@ -324,7 +325,7 @@
     var d = level(p.id.day[0], p.id.day[1], pers, purpose, T, V, p.month.hex.n);
     // Edu 12/11 (Greece 2019): the line of the annual that rules the month, read in the annual, at half weight
     var am = level(p.id.year[0], p.month.line, pers, purpose, T, V, p.id.cycle[0]);
-    var L = luckDay(profFor(ctx, purpose), p, T);
+    var L = luckDay(profFor(ctx, purpose), p, T, { list: V.list, mb: V.mb, T: T, moved: V.moved });
     var tot = Math.round((c.tot + a.tot + 0.5 * am.tot + m.tot + d.tot + 0.5 * s2.tot + L.tot) * 100) / 100;
     var warn = [];
     if (d.r === 'G') warn.push('Ghost on the day line');
@@ -395,6 +396,9 @@
   // 4) Speak: Brothers on a line of the time (colleagues, rivals: criticism) and Dui trigrams (the mouth) take away.
   var REL_MEAN = { B: 'colleagues, rivals, people like you (criticism, competition)', G: 'pressure, authority, accusations', W: 'money, the partner', C: 'students, projects, what you create', P: 'documents, contracts, protection, reputation' };
   var XK_AM = { rel: 1, txt: 0.5 }, XK_CRIT = 0.5;
+  // Edu 12/11 evening (after 8/12/2015): texts of the day line (primary, outcome) and 兄弟劫財 on Lord / day line
+  var XK_TXT = { d: 1, s2: 0.5 }, XK_STEAL = 1.5;
+  var ST_EL = ['Wood', 'Wood', 'Fire', 'Fire', 'Earth', 'Earth', 'Metal', 'Metal', 'Water', 'Water'];
   var XK_LBL = { am: 'annual line of the month', m: 'month line', lord: 'Lord of the Block', d: 'day line (primary)', s2: 'day line (outcome)' };
   function xkRel(key, male) { return key === 'relationship' ? (male ? 'W' : 'G') : (XK_REL[key] || null); }
   function thread(ctx, Pe, lon, key) {
@@ -423,6 +427,22 @@
     // rule 1 (Edu 12/11): the text of the annual line that rules the month
     var amS = SC() && SC()[p.id.year[0]] ? SC()[p.id.year[0]].l[p.month.line] : 0;
     if (X) t += amS * XK_AM.txt;
+    // Corrections after 8/12/2015 (Edu 12/11 evening, weights proposed by Claude and approved):
+    // (a) the texts of the day line enter the score: primary ×1 per point, outcome ×0.5;
+    // (b) 兄弟劫財: for Wealth and Relationship (man) Brothers on the Lord or on the day line steal the Wealth: price ×1.5;
+    // (c) the relation of the purpose on a line with an unfavourable text = "in play, but at a loss": no plus, a warning;
+    // (e) the purpose on the outcome after an unfavourable primary = the same warning, no plus.
+    var sc = function (L) { return SC() && SC()[L.n] ? SC()[L.n].l[L.l] : 0; };
+    var Ld = Ls[3], Lo = Ls[4], sd = sc(Ld), so = sc(Lo), loss = [], steal = [];
+    var furto = key === 'wealth' || (key === 'relationship' && ctx.male);
+    if (X) {
+      t += sd * XK_TXT.d + so * XK_TXT.s2;
+      Ls.forEach(function (L) {
+        if (furto && L.r === 'B' && (L.k === 'lord' || L.k === 'd')) { t -= XK_W[L.k] * L.fl * (XK_STEAL - 1); steal.push(L); }
+        if (L.r === X && sc(L) < 0) { t -= XK_W[L.k] * L.fl; loss.push(L); }
+      });
+      if (sd < 0 && Lo.r === X && so >= 0) { t -= XK_W.s2 * Lo.fl; loss.push(Lo); }
+    }
     // rule 4: Dui trigrams (the mouth) in monthly, block and day hexagram, for Speak (a void Dui does not count)
     if (key === 'speak') triRows([['monthly', p.month.hex.n, p.id.year[0], 0.5], ['block', p.id.lord[0], p.month.hex.n, 1], ['day', p.id.dayHex[0], p.id.lord[0], 1]])
       .forEach(function (x) { if (x.t === 'Dui' && x.lbl.indexOf('Hu') < 0 && !triVoid('Dui', { list: yv, mb: mb0, T: TT, moved: mv })) { t -= x.w * x.f * XK_CRIT; crit.push({ k: 'tri', lbl: x.lbl, f: x.f }); } });
@@ -441,18 +461,25 @@
     var tri = triScore(pers, X, A, triRows([['monthly', p.month.hex.n, p.id.year[0], 0.5], ['block', p.id.lord[0], p.month.hex.n, 1], ['day', p.id.dayHex[0], p.id.lord[0], 1]]),
       X === 'W' ? on.filter(function (L) { return !L.hidden; }).map(function (L) { return L.n; }) : [], { list: yv, mb: mb0, T: TT, moved: mv });
     t += tri.s;
+    // (d) Edu 12/11 evening: for the Wealth purpose, Wealth in a trigram that is the opposite of a Luck from the year
+    // (for Edu Xun: 1997–2000, 2010 not good) does not count
+    var oppL = ['heaven', 'earth', 'fame'].map(function (k) { return ctx.prof.K[k].op; });
+    tri.oppW = key === 'wealth' ? tri.plus.filter(function (x) { return oppL.indexOf(x.t) >= 0; }) : [];
+    tri.oppW.forEach(function (x) { t -= x.w * x.f; });
+    if (tri.oppW.length) tri.plus = tri.plus.filter(function (x) { return tri.oppW.indexOf(x) < 0; });
     // the three Luck (Heaven, Earth, Fame) and their opposites in the monthly, block and day hexagram, each trigram with the
     // Qi flow from the hexagram on its left (cycle → annual → monthly → block → day; Edu 12/11): ×1.5 strengthened, ×0.5 weakened.
     // A void Luck adds nothing (unless a clashing branch of the time brings it out), its opposite still takes away (Edu 12/11).
     function luckTri(P) {
-    var HN = { m: 'monthly', b: 'block', g: 'day' }, lk = [], opp = [], lkS = 0, opS = 0, LM = luckMuls(P, TT);
+    var HN = { m: 'monthly', b: 'block', g: 'day' }, lk = [], opp = [], lkS = 0, opS = 0, LM = luckMuls(P, TT), VV = { list: yv, mb: mb0, T: TT, moved: mv };
     luckRow(p, ['m', 'b', 'g']).forEach(function (x) { ['heaven', 'earth', 'fame'].forEach(function (k) {
       var L = P.K[k], br = bridge(L, x[2]);
       x[2].forEach(function (tr, i) {
         var f = x[3][i], fl = f > 1 ? ', strengthened' : f < 1 ? ', weakened' : '', pos = i ? 'lower' : 'upper';
         if (tr === L.t) { if (LM[k].pos) { lkS += f; lk.push(cap(k) + ' Luck (' + tr + ') ' + pos + ' in the ' + HN[x[0]] + ' hexagram' + fl); }
           else lk.push(cap(k) + ' Luck (' + tr + ') in the ' + HN[x[0]] + ' hexagram: void, does not count'); }
-        if (tr === L.op && !br) { opS += f; opp.push('opposite of ' + cap(k) + ' Luck (' + tr + ') ' + pos + ' in the ' + HN[x[0]] + ' hexagram' + fl); }
+        if (tr === L.op && !br) { if (triVoid(tr, VV)) opp.push('opposite of ' + cap(k) + ' Luck (' + tr + ') in the ' + HN[x[0]] + ' hexagram: void, does not take away');
+          else { opS += f; opp.push('opposite of ' + cap(k) + ' Luck (' + tr + ') ' + pos + ' in the ' + HN[x[0]] + ' hexagram' + fl); } }
       });
     }); });
     return { lk: lk, opp: opp, s: Math.round(lkS - opS) };
@@ -461,16 +488,52 @@
     // Cures: what the natal chart needs to come back into balance (yang or yin), from the block and day hexagram
     var pr = ctx.prof, need = (pr.rY < -0.25 || pr.rE > 0.25) && !(pr.rE < -0.25 || pr.rY > 0.25) ? 'yang' : (pr.rE < -0.25 || pr.rY > 0.25) && !(pr.rY < -0.25 || pr.rE > 0.25) ? 'yin' : null, cure = [];
     function yy(h) { return yyTri(h); }
+    // Critical day (Edu 12/11 evening, from 8/12/2015 — Ying's letter to all clients): five signals for Wealth
+    // (and Relationship for a man). 5 = severe; 4 = light warning, critical with a sixth signal: a natal void that
+    // comes out on the day (or in an hour, see hoursOfDay), or the palace of the spouse (natal day branch) hit by the day.
+    var alarm = null;
+    if (X === 'W' && furto) {
+      var Pn = ctx.Pn, nb = [['hour', Pn.hour[1]], ['day', Pn.day[1]], ['month', Pn.month[1]], ['year', Pn.year[1]]];
+      var wEl = CTRL[ST_EL[ST.indexOf(Pn.day[0])]], dB = Pe.day[1], sig = [];
+      var hit = nb.filter(function (x) { return BR_EL[x[1]] === wEl && clash(x[1]) === dB; });
+      if (hit.length) sig.push('the day ' + dB + ' clashes the natal ' + wEl + ' (' + hit.map(function (x) { return x[0] + ' ' + x[1]; }).join(', ') + '): money and partner');
+      if (steal.length) sig.push('Brothers steal the Wealth (兄弟劫財) on ' + steal.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(', '));
+      if (sd <= -2) sig.push('very unfavourable primary text (' + Ld.n + ' l' + Ld.l + ')');
+      if (amS < 0) sig.push('unfavourable annual line of the month (' + p.id.year[0] + ' l' + p.month.line + ')');
+      if (sd < 0 && Lo.r === X) sig.push('Wealth on the outcome after an unfavourable primary');
+      var six = [];
+      yv.forEach(function (b) { if ((dB === b || dB === clash(b)) && voidExit(b, mb0, TT, mv).out) six.push('the natal void ' + b + ' comes out on the day'); });
+      if (dB === Pn.day[1] || dB === clash(Pn.day[1])) six.push('the palace of the spouse (' + Pn.day[1] + ') is ' + (dB === Pn.day[1] ? 'present' : 'clashed') + ' on the day');
+      var lvl = sig.length >= 5 ? 'severe' : sig.length === 4 ? (six.length ? 'critical' : 'light') : null;
+      if (lvl) alarm = { level: lvl, n: sig.length, sig: sig, six: six };
+    }
     var adj = 0;
     if (key === 'luck') adj = LT.s;
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
-    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv };
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, alarm: alarm, sd: sd, so: so };
   }
-  root.XKDGHeluoDSCore = { flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
+  // Hexagram of the hour (Edu 12/11 evening, version A, provisional): line k of the day hexagram rules two hours on the
+  // branches (line 1 = 子丑 … line 6 = 戌亥; the 子 hour from 23:00 belongs to the next day). Odd hour = the day hexagram
+  // with line k changed; even hour = also the correlated line (as the month from the annual). Base = the day hexagram (outcome).
+  // Not in the score: text and warnings only (a natal void that comes out in the hour = sixth signal of the critical day).
+  var HOUR_TST = ['23–01', '01–03', '03–05', '05–07', '07–09', '09–11', '11–13', '13–15', '15–17', '17–19', '19–21', '21–23'];
+  function hoursOfDay(ctx, th) {
+    if (!th) return [];
+    var p = th.p, dh = p.daily.hex, pers = th.pers, mb0 = ctx.Pn.month[1], yv = th.yv || natalVoids(ctx.Pn).list, mv = movedBranches(p);
+    var ds = ST.indexOf(th.Pe.day[0]), out = [];
+    for (var i = 0; i < 12; i++) {
+      var hb = BR[i], hs = ST[(ds % 5 * 2 + i) % 10], mo = H().monthlyHex(dh.lines, i + 1), L = NJ()[mo.hex.n].lines[mo.line - 1];
+      var vo = yv.filter(function (b) { return (hb === b || hb === clash(b)) && voidExit(b, mb0, { y: th.Pe.year[1], m: th.Pe.month[1], d: hb }, mv).out; });
+      out.push({ i: i, b: hb, pillar: hs + hb, tst: HOUR_TST[i], n: mo.hex.n, hex: mo.hex, l: mo.line, lb: L.branch, el: L.el, r: rel(pers, L.el),
+        s: SC() && SC()[mo.hex.n] ? SC()[mo.hex.n].l[mo.line] : 0, voidOut: vo });
+    }
+    return out;
+  }
+  root.XKDGHeluoDSCore = { triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
@@ -682,7 +745,10 @@
       if (th.luckD) a.push('day Luck ' + (th.luckD.s > 0 ? '+' : th.luckD.s < 0 ? '−' : '±') + Math.abs(th.luckD.s)); }
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
     else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.tri && th.tri.plus.length) a.push(REL[th.X] + ' in ' + th.tri.plus.length + ' trigram' + (th.tri.plus.length > 1 ? 's' : '')); if (th.price.length || (th.tri && th.tri.minus.length)) a.push('price: ' + REL[th.A]); if (th.tri && th.tri.gOn) a.push('Wealth feeds the Ghost'); if (th.later.length) a.push('fruits later');
-      if (th.crit && th.crit.length) a.push('criticism'); if (th.surprise && th.surprise.length) a.push('⚡ hidden ' + th.surprise.map(function (L) { return L.b; }).join('')); if (th.turn) a.push('⚠ turn of the month'); }
+      if (th.crit && th.crit.length) a.push('criticism'); if (th.surprise && th.surprise.length) a.push('⚡ hidden ' + th.surprise.map(function (L) { return L.b; }).join('')); if (th.turn) a.push('⚠ turn of the month');
+      if (th.loss && th.loss.length) a.push('in play, but at a loss'); }
+    if (th.alarm && th.alarm.level !== 'light') a.unshift(th.alarm.level === 'severe' ? '⚠⚠ SEVERE DAY' : '⚠ CRITICAL DAY');
+    else if (th.alarm) a.push('⚠ 4 danger signals');
     return a.join(' · ');
   }
   function xkDayHtml(th, iso) {
@@ -734,7 +800,17 @@
       if (th.turn) box += '<div style="' + Rd + '">⚠ Turn of the month: this month is good for ' + XK_PL[th.key] + ', the next one is against it' + (th.turn.from ? ' (from ' + th.turn.from.getUTCDate() + ' ' + MON[th.turn.from.getUTCMonth()] + ')' : '') + '. What you obtain now can be reversed: close and secure it before the change.</div>';
       var cl = th.lines.filter(function (L) { return (L.k === 'd' || L.k === 's2') && th.Pe.day[1] === clash(L.b); });
       if (cl.length) box += '<div style="' + Rd + '">The day branch ' + th.Pe.day[1] + ' clashes ' + cl.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
+      // Edu 12/11 evening (8/12/2015): texts of the day line, Wealth stolen, purpose at a loss
+      if (th.steal && th.steal.length) box += '<div style="' + Rd + '">▼ Brothers steal the Wealth (兄弟劫財) on ' + th.steal.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + ': a partner, a rival or a third person takes what is yours.</div>';
+      if (th.loss && th.loss.length) box += '<div style="' + Rd + '">▼ ' + REL[th.X] + ' is in play, but at a loss: ' + th.loss.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + ' (unfavourable text' + (th.sd < 0 ? ', after an unfavourable primary text' : '') + ').</div>';
+      if (th.sd || th.so) box += '<div style="' + (th.sd + th.so / 2 > 0 ? G : th.sd + th.so / 2 < 0 ? Rd : '') + '">' + (th.sd + th.so / 2 > 0 ? '▲' : th.sd + th.so / 2 < 0 ? '▼' : '·') + ' Texts of the day: primary ' + sgn(th.sd) + ', outcome ' + sgn(th.so) + '.</div>';
     } else box += '<div>No purpose chosen: reading only.</div>';
+    // Critical day (Edu 12/11 evening): 5 signals = severe; 4 = critical with a sixth signal, otherwise a light warning
+    if (th.alarm) { var AL = th.alarm, sev = AL.level === 'severe', crt = AL.level === 'critical';
+      box = '<div style="border:2px solid ' + (sev ? '#b71c1c' : crt ? '#c62828' : '#e65100') + ';background:' + (sev ? '#ffebee' : crt ? '#fff3f0' : '#fff8e1') + ';border-radius:6px;padding:6px;margin-bottom:6px;">'
+        + '<b style="color:' + (sev ? '#b71c1c' : crt ? '#c62828' : '#e65100') + ';">' + (sev ? '⚠⚠ SEVERE DAY' : crt ? '⚠ CRITICAL DAY' : '⚠ Four danger signals') + '</b> — ' + (sev ? 'all five signals: break with the partner, money and clients lost. Do not choose this day; protect what you have.' : crt ? 'four signals and a sixth one: serious risk for money and partner. Avoid it.' : 'four of the five signals: be careful with money and partner.')
+        + '<div style="font-size:11px;margin-top:3px;">' + AL.sig.map(function (x) { return '• ' + esc(x); }).join('<br>') + (AL.six.length ? '<br>' + AL.six.map(function (x) { return '• ' + esc(x); }).join('<br>') : '') + '</div>'
+        + '</div>' + box; }
     if (th.key !== 'luck' && (th.luck.length || th.opp.length)) box += '<div style="font-size:11px;color:#555;margin-top:3px;">' + (th.dayLuck ? '<b>Luck from the day pillar</b> (study, teaching): ' : '') + (th.luck.length ? '<span style="' + G + '">' + esc(th.luck.join(' · ')) + '</span>' : '') + (th.luck.length && th.opp.length ? ' · ' : '') + (th.opp.length ? '<span style="' + Rd + '">' + esc(th.opp.join(' · ')) + '</span>' : '') + '</div>';
     var pos = dh.line === 1 ? 'Line 1: a beginning — good for what starts (launch, wedding, first step).' : dh.line === 6 ? 'Line 6: an end or a completion — good for what closes (sale, closing, conclusion).' : '';
     if (pos) box += '<div style="font-size:11px;color:#555;margin-top:3px;">' + pos + '</div>';
@@ -752,8 +828,33 @@
       + lv('2 · Lord of the Block (5 days) — the background of these days', Ls[1], dh.block, bP)
       + lv('3 · Day line in the block hexagram — primary text: cause, action', Ls[2], dh.block, bP)
       + lv('4 · Same line in the day hexagram — outcome', Ls[3], dh.hex, dP)
+      + hoursHtml(th, me)
       + '<div style="font-size:10px;color:#999;line-height:1.5;">He Luo raises or lowers days already favourable for XKDG (month, block, day only; from −3 to +3). The texts show the shape of the day — also the price of a success — not a plus or a minus. Years and months: see the He Luo chart reading.</div>';
     return h;
+  }
+  // 5 · the hours (Edu 12/11 evening, version A: hours on the branches, true solar time). Text and warnings, no score.
+  function hoursHtml(th, me) {
+    var hs = []; try { hs = hoursOfDay(_xk.ctx, th); } catch (e) { hs = []; }
+    if (!hs.length) return '';
+    var G = 'color:#2e7d32;', Rd = 'color:#c62828;', O = 'color:#e65100;', AL = th.alarm, out = '';
+    var span = {}; for (var j = 1; j <= 6; j++) span[j] = HOUR_TST[2 * j - 2].split('–')[0] + '–' + HOUR_TST[2 * j - 1].split('–')[1];
+    hs.forEach(function (h) {
+      var col = h.s > 0 ? G : h.s < 0 ? Rd : '', mk = [];
+      if (th.X && h.r === th.X) mk.push('<span style="' + G + '">' + REL[h.r] + '</span>');
+      if (th.A && h.r === th.A) mk.push('<span style="' + Rd + '">' + REL[h.r] + ' (the price)</span>');
+      if (h.voidOut.length) mk.push('<span style="' + O + '">⚡ void ' + h.voidOut.join('') + ' comes out</span>');
+      if (h.voidOut.length && AL && AL.level === 'light') mk.push('<span style="' + Rd + ';font-weight:700;">⚠ critical in this hour</span>');
+      if (h.voidOut.length && AL && AL.level !== 'light') mk.push('<span style="' + Rd + ';font-weight:700;">⚠ the worst hour</span>');
+      out += '<details style="border-top:1px solid #eee;padding:3px 0;"><summary style="cursor:pointer;font-size:12px;">'
+        + '<b>' + h.pillar + '</b> ' + h.tst + (h.i === 0 ? ' (from the evening before)' : '') + ' · ' + h.n + ' ' + esc(U().hexName ? U().hexName(h.n) : '') + ' l' + h.l + ' ' + h.lb + ' ' + relTag(h.r)
+        + ' <span style="' + col + '">' + (h.s > 0 ? '▲' : h.s < 0 ? '▼' : '·') + '</span>' + (mk.length ? ' · ' + mk.join(' · ') : '') + '</summary>'
+        + (U().cycleHexSvg ? U().cycleHexSvg(h.hex, h.l, { span: span, cap: (function () { var c = {}; c[h.l] = h.tst; return c; })() }, me) : '')
+        + '<div style="' + S_ + '">Hour ' + h.pillar + ' · ' + h.lb + ' ' + h.el + ' = ' + relTag(h.r) + ' ' + REL[h.r] + '</div>'
+        + (U().lineBody ? U().lineBody(h.n, h.l, 'hour', true) : '') + '</details>';
+    });
+    return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · The hours (true solar time) — line k of the day hexagram rules two hours</div>'
+      + '<div style="font-size:11px;color:#555;line-height:1.5;margin:2px 0 4px;">Odd hour: the day hexagram with line k changed; even hour: also the correlated line. The 子 hour starts the day at 23:00 of the evening before. Tap an hour for its hexagram and text. Not in the score.</div>'
+      + out + '</div>';
   }
   root.xkdgHLDay = function (iso) {
     var th = _xk.by[iso]; if (!th) return;
@@ -831,12 +932,14 @@
     // two sets of Luck (Edu 12/11): year (default), day (Speak, Support); the Luck purpose shows both, the score from the year
     function luckPl(P, lbl) {
       var LM = luckMuls(P, { y: yearBranch, m: monthBranch, d: null }), lk = [], op = [], lkS = 0, opS = 0;
+      // Edu 12/11 evening: a void opposite (his Dui = 酉) takes nothing away; periods stay void, years and months use voidExit
+      var VP = { list: yv, mb: ch.Pn.month[1], T: { y: yearBranch, m: monthBranch, d: null }, moved: [L.branch], birth: !yearBranch };
       rows.forEach(function (x) { ['heaven', 'earth', 'fame'].forEach(function (k) {
         var Lk = P.K[k], br = bridge(Lk, [x[0].upper, x[0].lower]);
         [x[0].upper, x[0].lower].forEach(function (t, i) {
           var f = x[1][i], fl = f > 1 ? ' ↑' : f < 1 ? ' ↓' : '';
           if (t === Lk.t) { if (LM[k].pos) { lkS += f; lk.push(cap(k) + x[2] + fl); } else lk.push(cap(k) + x[2] + ' (void)'); }
-          if (t === Lk.op && !br) { opS += f; op.push(cap(k) + x[2] + fl); }
+          if (t === Lk.op && !br) { if (triVoid(t, VP)) op.push(cap(k) + x[2] + ' (void, 0)'); else { opS += f; op.push(cap(k) + x[2] + fl); } }
         });
       }); });
       if (lk.length) m.push('<span style="' + (key === 'luck' ? G : 'color:#2e7d32;') + '">' + (key === 'luck' ? '▲ ' : '+') + lbl + 'Luck: ' + cnt(lk) + '</span>');
