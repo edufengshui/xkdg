@@ -66,3 +66,8 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - Alla nascita nulla lo libera, salvo lo scontro vicino nel bazi (`natalVoids`, invariato).
 - Codice: `voidExit(b, mbNascita, T, moved)` e `movedBranches(p)` (linea mossa dell'annuale, linea del mese, linea del giorno nel blocco) in heluo-ds.js; usati da `tempo` (che ora accetta `{ list, mb, moved, birth }`), `scoreDay`, `thread` (`easy`, `how`), `plMark` (righe anni e mesi = linee mobili; riga periodi = facile/difficile) e dalla lettura natale (`vInfo.easy`, `voidEasy`, frasi). Una linea vuota non uscita toglie ancora 1 nel punteggio della vecchia DS, facile o difficile.
 - **Vecchia DS allineata**: `tempo` in heluo-ds.js e ds_cascata.js con la stessa regola; `ds_app_check.js` 0 differenze (percentili: lancio Facebook 57→67, gli altri ±2).
+
+## 12/11/2026 — testi delle linee negli esagrammi del tempo
+- Testo 14 l3 riscritto (Edu: il Nobile dedica le proprie risorse a uno scopo più alto; caso della donna che si fa monaca nel 2010).
+- `timeReading(testo, 'year'|'month'|'day')` in heluo-lishu.js (esportata in `XKDGHeluo.ui`): i commenti sono scritti per i 6/9 anni del ciclo; negli esagrammi del tempo diventano «This year / this month / this day» (anche «the final N years», «N-year period», accordo dei verbi). `lineBody(n, l, unit)` con unit stringa mostra il commento convertito ("Reading for this year/month/day"); `true` lo nasconde ancora.
+- Ora i commenti compaiono convertiti in: carta annuale e popup dell'anno (year), planner anni/mesi, dettaglio della Date Selection (annuale, mese, giorno), finestra del giorno XKDG (mese/giorno), linee del giorno nella scheda annuale (day). Controllo: 384 testi × 3 unità senza resti «6/9 years».

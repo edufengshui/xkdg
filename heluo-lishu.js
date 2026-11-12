@@ -428,7 +428,7 @@
       + brings + cycleHexSvg(a.hex, a.moved, aPer, me)
       + (oi.length ? '<div style="font-size:12px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oi.join(', ') + '</div>' : '')
       + '<div style="font-size:12px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
-      + lineBody(a.hex.n, a.moved, true) + hexText(a.hex.n));
+      + lineBody(a.hex.n, a.moved, 'year') + hexText(a.hex.n));
   }
   root.xkdgHLDerived = derivedPopup;
   root.xkdgHLYearPop = yearPopup;
@@ -642,13 +642,39 @@
       + '<div style="' + P_ + '"><b>He Luo poem:</b> ' + esc(t.poem) + '</div>'
       + '<div style="' + P_ + '"><b>Meaning in destiny:</b> ' + esc(t.destiny) + '</div></details>';
   }
+  // Edu 12/11: the readings are written for the 6/9 years of a cycle; for a time hexagram they speak of this year, month or day
+  function timeReading(s, u) {
+    if (!s || !u) return s;
+    var N = '(?:6|9|six|nine)', cap = function (m, r) { return /^[A-Z]/.test(m) ? r.charAt(0).toUpperCase() + r.slice(1) : r; };
+    return s
+      .replace(new RegExp('\\bGoverning the final ' + N + ' years of the cycle,\\s*', 'g'), (u === 'day' ? 'On' : 'In') + ' this ' + u + ', at the close of the cycle, ')
+      .replace(new RegExp('\\bthe final ' + N + ' years of (the (?:\\w+ )?cycle) (warn|mark|highlight|bring|place|advise)\\b', 'gi'), function (m, c, v) { return cap(m, 'this ' + u + ', at the close of ' + c + ', ' + v + 's'); })
+      .replace(new RegExp('\\bthe final ' + N + ' years (warn|mark|highlight|bring|place|advise)\\b', 'gi'), function (m, v) { return cap(m, 'this ' + u + ' ' + v + 's'); })
+      .replace(new RegExp('\\b(?:these|the) final ' + N + ' years of\\b', 'gi'), function (m) { return cap(m, 'this ' + u + ', at the close of'); })
+      .replace(new RegExp('\\b(?:these|the) final ' + N + ' years\\b', 'gi'), function (m) { return cap(m, 'this ' + u); })
+      .replace(new RegExp('\\b(?:these|the|those) ' + N + ' years (bring|are)\\b', 'gi'), function (m, v) { return cap(m, 'this ' + u + ' ' + (v === 'are' ? 'is' : 'brings')); })
+    .replace(new RegExp('\\b(?:these|the|those) ' + N + ' years\\b', 'gi'), function (m) { return cap(m, 'this ' + u); })
+      .replace(/\bthese years bring\b/gi, function (m) { return cap(m, 'this ' + u + ' brings'); })
+      .replace(/\bthese years\b/gi, function (m) { return cap(m, 'this ' + u); })
+      .replace(/\ban ideal decade\b/gi, 'an ideal ' + u)
+      .replace(new RegExp('\\bGoverning this ' + u + ',', 'g'), (u === 'day' ? 'On' : 'In') + ' this ' + u + ',')
+      .replace(new RegExp('\\b(Over|In) this day\\b', 'g'), function (m, w) { return w === 'In' ? 'On this day' : 'During this day'; })
+      .replace(/\bover this day\b/g, 'during this day')
+      .replace(new RegExp('\\b' + N + '-year periods\\b', 'gi'), u + 's')
+      .replace(new RegExp('\\b' + N + '-year period\\b', 'gi'), u)
+      .replace(new RegExp('\\b' + N + '-year\\s+', 'gi'), '')
+      .replace(new RegExp('\\b' + N + ' years\\b', 'gi'), 'this ' + u)
+      .replace(new RegExp('^(?:Over|During|In|On) this ' + u + ','), 'This ' + u + ',');
+  }
+  // noReading: true = no reading; 'year' | 'month' | 'day' = reading of a time hexagram, worded for that span
   function lineBody(n, l, noReading) {
+    var unit = typeof noReading === 'string' ? noReading : null; if (unit) noReading = false;
     var t = TX() && TX()[n], L = t && t.lines && t.lines[l];
     if (!L) return TX() ? '' : '<div style="font-size:11px;color:#999;">Loading texts…</div>';
     return '<div style="' + P_ + '"><b>' + n + ' · line ' + l + ' · ' + esc(L.label) + '</b></div>'
       + '<div style="' + P_ + '"><i>' + esc(L.statement) + '</i></div>'
       + (L.poem ? '<div style="' + P_ + '">' + esc(L.poem) + '</div>' : '')
-      + (!noReading && L.reading ? '<div style="' + P_ + '"><b>Reading for this age:</b> ' + esc(L.reading) + '</div>' : '');
+      + (!noReading && L.reading ? '<div style="' + P_ + '"><b>Reading for this ' + (unit || 'age') + ':</b> ' + esc(timeReading(L.reading, unit)) + '</div>' : '');
   }
   function lineText(n, l, label, noReading) {
     var b = lineBody(n, l, noReading); if (!b) return '';
@@ -687,7 +713,7 @@
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + fmtCard('Annual ' + Y + ' · ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · age ' + a.age + ' · moved line ' + a.moved, a.hex, a.moved, aPer, me,
           (oppInvTag(R, a.hex).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex).join(', ') + '</div>' : '')
           + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
-          + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)')) + '</div>';
+          + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)', 'year')) + '</div>';
     // Edu: ALWAYS true solar time. Month starts and the days of the month are counted in the TRUE SOLAR TIME of the
     // current place (GPS longitude; the person's birth place if no GPS), never in Beijing dates.
     var ST_ = root.XKDGSolarTime, lonT = NaN; try { lonT = ST_.currentLonTz().lonDeg; } catch (e) {}
@@ -725,9 +751,9 @@
               + '<br>Day: <b>line ' + dd.line + '</b> → <b>' + dd.hex.n + '</b> ' + esc(hexName(dd.hex.n))
               + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' + fmtCard('Monthly ' + mo.hex.n + ' · Lord line ' + dd.lord, mo.hex, dd.lord, mPer, me)
               + fmtCard('Block ' + dd.block.n + ' · day line ' + dd.line, dd.block, dd.line, blockPeriods(dd.lord, bS, startDay, endDay), me) + fmtCard('Day ' + dd.hex.n + ' · line ' + dd.line, dd.hex, dd.line, dayPeriods(dd.line, nowDay), me) + '</div>'
-              + lineText(dd.block.n, dd.line, 'Primary (cause, action): line ' + dd.line + ' of ' + dd.block.n + ' (block)', true)
-              + lineText(dd.hex.n, dd.line, 'Secondary (effect, outcome): line ' + dd.line + ' of ' + dd.hex.n + ' (day)', true)
-              + lineText(dd.block.n, dd.lord, 'Line ' + dd.lord + ' of ' + dd.block.n + ' (Lord of the Block)', true) + '</div>';
+              + lineText(dd.block.n, dd.line, 'Primary (cause, action): line ' + dd.line + ' of ' + dd.block.n + ' (block)', 'day')
+              + lineText(dd.hex.n, dd.line, 'Secondary (effect, outcome): line ' + dd.line + ' of ' + dd.hex.n + ' (day)', 'day')
+              + lineText(dd.block.n, dd.lord, 'Line ' + dd.lord + ' of ' + dd.block.n + ' (Lord of the Block)', 'day') + '</div>';
           }
         }
       }
@@ -965,7 +991,7 @@
     annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, qiMonth: qiMonth, QI_EN: QI_EN, dailyHex: dailyHex, monthStarts: monthStarts, open: open,
     currentChart: function () { return _chart; },
     periods: { months: msTST, annual: annualPeriods, month: monthPeriods, block: blockPeriods, day: dayPeriods, dayMs: dayMs },
-    ui: { cycleHexSvg: cycleHexSvg, lineBody: lineBody, hexName: hexName, najiaLine: najiaLine } };
+    ui: { cycleHexSvg: cycleHexSvg, lineBody: lineBody, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
   // ── He Luo inside the XKDG Date Selection (Edu, 11/11/2026): Person A's chart without opening the window ──
   // chartA() → { c, R, male, Pn } or { err } ; ensure(cb) loads Na Jia, texts and the Date Selection files, then calls cb.

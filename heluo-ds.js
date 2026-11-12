@@ -392,7 +392,7 @@
       h += '<tr onclick="xkdgHLCycle(\'' + id2 + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (Y === nowY ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + 'white-space:nowrap;">' + Y + ' · ' + a.age + '</td>'
         + '<td style="' + TD + '">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '</td><td style="' + TD + 'white-space:nowrap;">l' + a.moved + ' ' + L.branch + ' ' + relTag(r) + '</td>'
         + '<td style="' + TD + 'font-size:11px;">' + a.hex.upper + ' ' + relTag(rel(me, TRI_EL[a.hex.upper])) + ' / ' + a.hex.lower + ' ' + relTag(rel(me, TRI_EL[a.hex.lower])) + (lk.length ? '<br>' + lk.join(' ') : '') + '</td></tr>'
-        + '<tr id="' + id2 + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, yPer(a), me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, true) : '') + '</td></tr>';
+        + '<tr id="' + id2 + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, yPer(a), me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year') : '') + '</td></tr>';
     }
     h += '</table>' + luckProfileHtml(R, context(R, R.input.Pn || null, male)) + '</details>';
     return h;
@@ -485,13 +485,13 @@
     out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (primary) + half of the same line in the day hexagram (secondary) (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
       + 'Relations: ' + Object.keys(REL).map(function (k) { return k + ' ' + REL[k]; }).join(', ') + '. Fixed weights (Edu, 10/11/2026). Test on 30 new events (11/11/2026): the event day ranks like a random day, so read the texts, not only the score.</div>';
   }
-  function lvlHtml(title, x, hx, cy, me) {
+  function lvlHtml(title, x, hx, cy, me, unit) {
     var tl = x.V > 0 ? 'favourable version' : x.V < 0 ? 'unfavourable version' : 'neutral';
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;">'
       + '<div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + x.hexN + ' ' + esc(U().hexName ? U().hexName(x.hexN) : '') + ' line ' + x.line + ' · ' + sgn(x.tot) + '</div>'
       + (U().cycleHexSvg ? U().cycleHexSvg(hx, x.line, cy, me) : '')
       + '<div style="' + S_ + '">' + x.b + ' ' + x.el + ' = ' + x.r + ' for the person ' + me + ' (' + sgn(x.rs) + ') · time ' + sgn(x.tm.t) + ' [' + (x.tm.note.join(', ') || '—') + '] · text ' + x.s + ' → ' + x.txt + ' (' + tl + ')</div>'
-      + (U().lineBody ? U().lineBody(x.hexN, x.line, true) : '') + '</div>';
+      + (U().lineBody ? U().lineBody(x.hexN, x.line, unit || true) : '') + '</div>';
   }
   function detail(chart, g) {
     var p = g.p, R = chart.R, me = g.pers, dh = p.daily, HX = H(), PD = HX.periods, D = 86400000, lon = _st.res.lon;
@@ -507,12 +507,12 @@
       + '<br>Pillars (Day · Month · Year, true-solar noon): ' + g.Pe.day + ' · ' + g.Pe.month + ' · ' + g.Pe.year + ' · day ' + p.dayOfMonth + ' of month ' + p.month.index + ' (' + H().QI_EN[p.month.index - 1] + ') · rank ' + g.rank + ' of ' + g.n + '</div>';
     if (g.warn.length) h += '<div style="font-size:12px;color:#c62828;margin:4px 0;">⚠ ' + esc(g.warn.join(' · ')) + '</div>';
     h += lvlHtml('1 · Cycle', g.c, p.hx, p.phase === 'XT' ? R.cyclesXT : R.cyclesHT, me)
-      + lvlHtml('2 · Annual (moved line)', g.a, p.annual.hex, aP, me)
-      + lvlHtml('3 · Month ' + p.month.index + ' (line ' + p.month.line + ' of the annual rules months ' + (2 * p.month.line - 1) + '–' + (2 * p.month.line) + ')', g.m, p.month.hex, mP, me)
+      + lvlHtml('2 · Annual (moved line)', g.a, p.annual.hex, aP, me, 'year')
+      + lvlHtml('3 · Month ' + p.month.index + ' (line ' + p.month.line + ' of the annual rules months ' + (2 * p.month.line - 1) + '–' + (2 * p.month.line) + ')', g.m, p.month.hex, mP, me, 'month')
       + '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">Block: monthly ' + p.month.hex.n + ' → Lord of the Block line ' + dh.lord + ' → block ' + dh.block.n + ' ' + esc(U().hexName ? U().hexName(dh.block.n) : '') + '</div>'
-      + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + (U().lineBody ? U().lineBody(dh.block.n, dh.lord, true) : '') + '</div>'
-      + lvlHtml('4 · Day line in the block hexagram — primary text: cause, action', g.d, dh.block, bP, me)
-      + lvlHtml('5 · Same line in the changed (day) hexagram — secondary text: effect, outcome (half weight)', g.s2, dh.hex, dP, me)
+      + (U().cycleHexSvg ? U().cycleHexSvg(p.month.hex, dh.lord, mP, me) + U().cycleHexSvg(dh.block, dh.lord, bP, me) : '') + (U().lineBody ? U().lineBody(dh.block.n, dh.lord, 'day') : '') + '</div>'
+      + lvlHtml('4 · Day line in the block hexagram — primary text: cause, action', g.d, dh.block, bP, me, 'day')
+      + lvlHtml('5 · Same line in the changed (day) hexagram — secondary text: effect, outcome (half weight)', g.s2, dh.hex, dP, me, 'day')
       + '<div style="' + S_ + '"><b>Luck ' + sgn(g.L.tot) + '</b>: ' + (esc(g.L.w.join(' · ')) || 'none') + '</div>';
     return h;
   }
@@ -584,7 +584,7 @@
       return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + L.n + ' ' + esc(U().hexName ? U().hexName(L.n) : '') + ' line ' + L.l + '</div>'
         + (U().cycleHexSvg ? U().cycleHexSvg(hx, L.l, cy, me) : '')
         + '<div style="' + S_ + '">' + L.b + ' ' + L.el + ' = ' + relTag(L.r) + ' ' + REL[L.r] + (L.hid ? ' · hidden ' + L.hid.b + ' ' + relTag(L.hid.r) : '') + (L.voidL ? (L.filled ? ' · void, out today (' + VOID_HOW[L.how] + ')' : ' · <span style="' + O + '">void: later' + (L.easy ? ' (easy to leave)' : ' (hard to leave)') + '</span>') : '') + '</div>'
-        + (U().lineBody ? U().lineBody(L.n, L.l, true) : '') + '</div>';
+        + (U().lineBody ? U().lineBody(L.n, L.l, L.k === 'm' ? 'month' : 'day') : '') + '</div>';
     }
     var Ls = th.lines;
     h += lv('1 · Month ' + p.month.index + ' — the line of the month', Ls[0], p.month.hex, mP)
@@ -668,7 +668,7 @@
         + '<td style="' + TD + 'white-space:nowrap;">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '<br>l' + a.moved + ' ' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
       if (!op) continue;
       var ms = null, aP = null; try { ms = H().periods.months(Y, lon); aP = H().periods.annual(ms); } catch (e) {}
-      h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, true) : '')
+      h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year') : '')
         + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">3 · The months of ' + Y + ' (age ' + a.age + ')</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
       a.months.forEach(function (mo, i) {
         var mm = plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12]), opM = _pl.openM === mo.index, per = '';
@@ -676,7 +676,7 @@
         h += '<tr onclick="event.stopPropagation();xkdgHLPlan(\'m\',' + mo.index + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mm.sc, false) + '"><td style="' + TD + 'white-space:nowrap;"><b>' + per + '</b></td>'
           + '<td style="' + TD + 'white-space:nowrap;">' + mo.hex.n + ' l' + mo.line + ' ' + mm.L.branch + ' ' + relTag(mm.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mm.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
         if (opM) { var mP = null; try { var d0 = H().periods.dayMs(ms[i].start); mP = H().periods.month(d0, d0, H().periods.dayMs(ms[i + 1].start || ms[i + 1].end)); } catch (e3) {}
-          h += '<tr onclick="event.stopPropagation()"><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(mo.hex, mo.line, mP, me) : '') + (U().lineBody ? U().lineBody(mo.hex.n, mo.line, true) : '') + '</td></tr>'; }
+          h += '<tr onclick="event.stopPropagation()"><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(mo.hex, mo.line, mP, me) : '') + (U().lineBody ? U().lineBody(mo.hex.n, mo.line, 'month') : '') + '</td></tr>'; }
       });
       h += '</table></td></tr>';
     }
