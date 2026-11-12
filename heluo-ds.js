@@ -159,10 +159,17 @@
     return out;
   }
   // wHex = hexagrams with Wealth on the line read; the Ghost takes away only inside a hexagram that also holds Wealth
-  function triScore(pers, X, A, rows, wHex) {
-    var o = { plus: [], minus: [], ghost: [], s: 0, gOn: false };
+  // Void trigram (Edu 12/11, on his Dui = 酉): a trigram whose branches (Time 1) are all natal voids counts nothing, neither
+  // help nor price, until one of them comes out (voidExit: same branch, timely clash, moving line). V = { list, mb, T, moved, birth }
+  function triVoid(t, V) {
+    if (!V || !V.list || !TRI_BR[t].every(function (b) { return V.list.indexOf(b) >= 0; })) return false;
+    return V.birth || !TRI_BR[t].some(function (b) { return voidExit(b, V.mb, V.T, V.moved).out; });
+  }
+  function triScore(pers, X, A, rows, wHex, V) {
+    var o = { plus: [], minus: [], ghost: [], voidT: [], s: 0, gOn: false };
     if (!X) return o;
     rows.forEach(function (x) { var r = rel(pers, TRI_EL[x.t]), v = x.w * x.f;
+      if ((r === X || r === A || (X === 'W' && r === 'G')) && triVoid(x.t, V)) { o.voidT.push(x); return; }
       if (r === X) o.plus.push(x); if (A && r === A) o.minus.push(x); if (X === 'W' && r === 'G') o.ghost.push(x); });
     function sum(a) { return a.reduce(function (z, x) { return z + x.w * x.f; }, 0); }
     var wh = (wHex || []).concat(o.plus.map(function (x) { return x.n; }));
@@ -396,7 +403,7 @@
     });
     // the purpose in the trigrams and Hu of monthly (0.5), block (1) and day hexagram (1), with the Qi flow (Edu 12/11)
     var tri = triScore(pers, X, A, triRows([['monthly', p.month.hex.n, p.id.year[0], 0.5], ['block', p.id.lord[0], p.month.hex.n, 1], ['day', p.id.dayHex[0], p.id.lord[0], 1]]),
-      X === 'W' ? on.filter(function (L) { return !L.hidden; }).map(function (L) { return L.n; }) : []);
+      X === 'W' ? on.filter(function (L) { return !L.hidden; }).map(function (L) { return L.n; }) : [], { list: yv, mb: mb0, T: TT, moved: mv });
     t += tri.s;
     // the three Luck (Heaven, Earth, Fame) and their opposites in the monthly, block and day hexagram, each trigram with the
     // Qi flow from the hexagram on its left (cycle → annual → monthly → block → day; Edu 12/11): ×1.5 strengthened, ×0.5 weakened.
@@ -655,6 +662,7 @@
       var TR = th.tri, tl = function (a) { return a.map(function (x) { return x.lbl + fArr(x.f); }).join(' · '); };
       if (TR && TR.plus.length) box += '<div style="' + G + '">▲ ' + REL[th.X] + ' also in the trigrams: ' + esc(tl(TR.plus)) + '</div>';
       if (TR && TR.minus.length) box += '<div style="' + Rd + '">▼ The price (' + REL[th.A] + ') in the trigrams: ' + esc(tl(TR.minus)) + '</div>';
+      if (TR && TR.voidT.length) box += '<div style="' + O + '">⏳ Void trigrams, not counted (all their branches are empty): ' + esc(tl(TR.voidT)) + '</div>';
       if (TR && TR.gOn) box += '<div style="' + Rd + '">▼ Wealth feeds the Ghost (財生殺): money can turn into pressure — ' + esc(tl(TR.ghost)) + '</div>';
       if (TR && (TR.plus.length || TR.minus.length || TR.gOn)) box += '<div style="font-size:10px;color:#999;">↑ strengthened, ↓ weakened by the trigram in the same place of the hexagram on the left.</div>';
       th.later.forEach(function (L) {
@@ -718,11 +726,13 @@
       if (!yearBranch) { var two = TRI_EL[hx.upper] !== TRI_EL[hx.lower];
         seq = [['period', hx.n, null, 1, two ? (line <= 3 ? 'upper' : 'lower') : 'none', [line >= 2 && line <= 4, line >= 3 && line <= 5]]]; }
       else seq = [[monthBranch ? 'month' : 'year', hx.n, prev ? prev.n : null, 1]];
-      var tq = triScore(me, X, A, triRows(seq), X === 'W' && r === 'W' ? [hx.n] : []);
+      var tq = triScore(me, X, A, triRows(seq), X === 'W' && r === 'W' ? [hx.n] : [],
+        !yearBranch ? { list: yv, birth: true } : { list: yv, mb: ch.Pn.month[1], T: { y: yearBranch, m: monthBranch, d: null }, moved: [L.branch] });
       function tl(a) { var o = [], n = {}; a.forEach(function (x) { var k = x.t + (x.lbl.indexOf('Hu') >= 0 ? ' (Hu)' : '') + fArr(x.f); if (!n[k]) o.push(k); n[k] = (n[k] || 0) + 1; }); return o.map(function (k) { return k + (n[k] > 1 ? ' ×' + n[k] : ''); }).join(', '); }
       if (tq.plus.length) m.push('<span style="color:#2e7d32;">+' + REL[X] + ' in ' + tl(tq.plus) + '</span>');
       if (tq.minus.length) m.push('<span style="color:#c62828;">−' + REL[A] + ' in ' + tl(tq.minus) + '</span>');
       if (tq.gOn) m.push('<span style="color:#c62828;">−Ghost fed by the Wealth: ' + tl(tq.ghost) + '</span>');
+      if (tq.voidT.length) m.push('<span style="' + O + '">⏳ void, not counted: ' + tl(tq.voidT) + '</span>');
       sc += tq.s;
     }
     // voids (Edu, 12/11): the year and month rows read a MOVING line (what moves cannot be void); the period line does not move
