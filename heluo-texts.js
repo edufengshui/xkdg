@@ -594,7 +594,7 @@ window.XKDG_HELUO_TEXTS = {
         "label": "Nine in the Third Place",
         "statement": "A prince offers it to the Son of Heaven. A petty person cannot do this.",
         "poem": "A noble duke dedicates his abundant wealth to the public good and the sovereign above; a narrow-minded person hoards it selfishly and invites ruin. Generosity elevates your rank and honor.",
-        "reading": "Over these 9 years, you command substantial resources or influence. By channeling your wealth and achievements toward organizational goals, philanthropy, or supporting top leadership—rather than hoarding selfishly—you gain high prestige."
+        "reading": "Over these 9 years, you hold real resources: money, talents, influence, your very life. Like the noble one, you dedicate them to a higher purpose — a faith, a vocation, a cause greater than yourself, the common good. Giving them away is not a loss: it is what raises you and gives your life its meaning and honour. Keeping them only for yourself, like the petty person, closes the way."
       },
       "4": {
         "label": "Nine in the Fourth Place",
