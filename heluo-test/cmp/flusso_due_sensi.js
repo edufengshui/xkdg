@@ -1,3 +1,4 @@
+// NB 13/11/2026: dal commit successivo il flusso nei due sensi e 財生殺 V5 sono NEL CODICE (heluo-ds.js): questo prototipo va letto sul commit 17cfe31 (applicato al motore nuovo conterebbe due volte).
 // Prototipo (13/11/2026): flusso tra esagrammi nei due sensi (punto 5, deciso da Edu) + controllo dei Brothers
 // tra esagrammi diversi + conteggio 財生殺 per anno (oggi / V2 / V4 / V5). App non toccata.
 //  - Flusso all'indietro: l'esagramma più piccolo (B, a destra nella fila ciclo → annuale → mensile → blocco → giorno)
