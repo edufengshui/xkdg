@@ -1,0 +1,2395 @@
+{
+ "edu": [
+  {
+   "ds": "2015-12-08",
+   "lon": 12.07,
+   "txt": "rottura con Ying, lettera ai clienti",
+   "eta": 56,
+   "pil": [
+    "戊午",
+    "戊午",
+    "戊子",
+    "乙未"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": -1,
+     "a": 0,
+     "b": 0,
+     "t0": -4,
+     "t2": -4,
+     "adj0": -1,
+     "adjA": -1,
+     "adj2": -1,
+     "b2": -1,
+     "t3": -5,
+     "adj3": -2,
+     "prev": {
+      "r": "P",
+      "eff": "accentua"
+     },
+     "p3": 67,
+     "p0": 65,
+     "pA": 63,
+     "p2": 62,
+     "alarm": "severe"
+    },
+    "relationship": {
+     "dir": -1,
+     "a": 0,
+     "b": 0,
+     "t0": -2.37,
+     "t2": -2.37,
+     "adj0": -1,
+     "adjA": -1,
+     "adj2": -1,
+     "b2": -1,
+     "t3": -3.37,
+     "adj3": -1,
+     "prev": {
+      "r": "P",
+      "eff": "accentua"
+     },
+     "p3": 65,
+     "p0": 59,
+     "pA": 59,
+     "p2": 59,
+     "alarm": "severe"
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 17,
+    "mIndex": 12,
+    "ms": 1449532800000,
+    "testi": {
+     "m": "They are oppressed by creeping vines. They move uncertainly and say, 'Movement brings remorse.' If one feels remorse over this and makes a start, good fortune comes.",
+     "lord": "A jug of wine, a bowl of rice with it; earthen vessels simply handed in through the window. There is certainly no blame in this.",
+     "d": "Bound with cords and ropes, shut in between thorn-hedged prison walls: for three years one does not find the way. Misfortune.",
+     "s2": "They dissolve their blood. Departing, keeping at a distance, going out, is without blame."
+    },
+    "mese": [
+     47,
+     6,
+     [
+      0,
+      1,
+      0,
+      1,
+      1,
+      0
+     ]
+    ],
+    "blocco": [
+     29,
+     4,
+     [
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+     ]
+    ],
+    "giorno": [
+     29,
+     6
+    ],
+    "esito": [
+     59,
+     6,
+     [
+      0,
+      1,
+      0,
+      0,
+      1,
+      1
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "block",
+      "n": 29,
+      "l": 6,
+      "b": "子",
+      "el": "Water",
+      "r": "C",
+      "s": -2,
+      "how": "冲",
+      "testo": "Bound with cords and ropes, shut in between thorn-hedged prison walls: for three years one does not find the way. Misfortune.",
+      "read": true,
+      "dup": false,
+      "v": 0,
+      "nota": "già letta (d), ×1,5",
+      "v2": -1
+     }
+    ],
+    "dB": "午",
+    "rA": "G"
+   }
+  },
+  {
+   "ds": "2016-01-21",
+   "lon": 12.07,
+   "txt": "giorno critico (conti, casa, clienti)",
+   "eta": 57,
+   "pil": [
+    "丙午",
+    "壬寅",
+    "己丑",
+    "乙未"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": -1,
+     "a": 1,
+     "b": 0,
+     "t0": -6,
+     "t2": -5,
+     "adj0": -2,
+     "adjA": -2,
+     "adj2": -2,
+     "b2": -3.25,
+     "t3": -8.25,
+     "adj3": -3,
+     "prev": {
+      "r": "P",
+      "eff": "allevia"
+     },
+     "p3": 89,
+     "p0": 80,
+     "pA": 75,
+     "p2": 75,
+     "alarm": "critical"
+    },
+    "relationship": {
+     "dir": -1,
+     "a": 1,
+     "b": 0,
+     "t0": -2.75,
+     "t2": -1.75,
+     "adj0": -1,
+     "adjA": -1,
+     "adj2": -1,
+     "b2": -3.25,
+     "t3": -5,
+     "adj3": -2,
+     "prev": {
+      "r": "P",
+      "eff": "allevia"
+     },
+     "p3": 81,
+     "p0": 70,
+     "pA": 61,
+     "p2": 62,
+     "alarm": "critical"
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 2,
+    "mIndex": 2,
+    "ms": 1453334400000,
+    "testi": {
+     "m": "Firm seclusion within the family. Remorse disappears.",
+     "lord": "The wild goose gradually draws near the shore. The young son is in danger. There is talk. No blame.",
+     "d": "The wild goose gradually draws near the plateau. The man goes forth and does not return. The woman carries a child, but does not bring it forth. Misfortune. It furthers one to fight off robbers.",
+     "s2": "Contemplation of my life decides the choice between advance and retreat."
+    },
+    "mese": [
+     37,
+     1,
+     [
+      1,
+      0,
+      1,
+      0,
+      1,
+      1
+     ]
+    ],
+    "blocco": [
+     53,
+     1,
+     [
+      0,
+      0,
+      1,
+      0,
+      1,
+      1
+     ]
+    ],
+    "giorno": [
+     53,
+     3
+    ],
+    "esito": [
+     20,
+     3,
+     [
+      0,
+      0,
+      0,
+      0,
+      1,
+      1
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "block",
+      "n": 53,
+      "l": 3,
+      "b": "申",
+      "el": "Metal",
+      "r": "B",
+      "s": -2,
+      "how": "冲",
+      "testo": "The wild goose gradually draws near the plateau. The man goes forth and does not return. The woman carries a child, but does not bring it forth. Misfortune. It furthers one to fight off robbers.",
+      "read": true,
+      "dup": false,
+      "v": 0,
+      "nota": "già letta (d), ×1,5",
+      "v2": -3.25
+     }
+    ],
+    "dB": "寅",
+    "rA": "W"
+   }
+  },
+  {
+   "ds": "2011-09-06",
+   "lon": 12.07,
+   "txt": "invio al Maestro Yu",
+   "eta": 52,
+   "pil": [
+    "庚午",
+    "甲子",
+    "丙申",
+    "辛卯"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": 1,
+     "a": 0,
+     "b": 0,
+     "t0": 7.63,
+     "t2": 7.63,
+     "adj0": 3,
+     "adjA": 3,
+     "adj2": 3,
+     "b2": 0,
+     "t3": 7.63,
+     "adj3": 3,
+     "prev": null,
+     "p3": 4,
+     "p0": 4,
+     "pA": 4,
+     "p2": 4,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 15,
+    "mIndex": 9,
+    "ms": 1315267200000,
+    "testi": {
+     "m": "Wise approach. This is right for a great prince. Good fortune.",
+     "lord": "No plain not followed by a slope. No going not followed by a return. Whoever remains persevering in danger is without blame. Do not complain about this truth; enjoy the good fortune you still possess.",
+     "d": "Bearing with the uncultured in gentleness, fording the river with resolution, not neglecting what is distant, not regarding one's companions: thus one may manage to walk in the middle.",
+     "s2": "Darkening of the light injures them in the left thigh. They give aid with the strength of a horse. Good fortune."
+    },
+    "mese": [
+     19,
+     5,
+     [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "blocco": [
+     11,
+     3,
+     [
+      1,
+      1,
+      1,
+      0,
+      0,
+      0
+     ]
+    ],
+    "giorno": [
+     11,
+     2
+    ],
+    "esito": [
+     36,
+     2,
+     [
+      1,
+      0,
+      1,
+      0,
+      0,
+      0
+     ]
+    ],
+    "hit": [],
+    "dB": "子",
+    "rA": "C"
+   }
+  },
+  {
+   "ds": "2011-09-07",
+   "lon": 12.07,
+   "txt": "clienti: ricezione",
+   "eta": 52,
+   "pil": [
+    "壬午",
+    "乙丑",
+    "丙申",
+    "辛卯"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": 1,
+     "a": 0,
+     "b": 0,
+     "t0": -5.37,
+     "t2": -5.37,
+     "adj0": -2,
+     "adjA": -2,
+     "adj2": -2,
+     "b2": 0,
+     "t3": -5.37,
+     "adj3": -2,
+     "prev": null,
+     "p3": 85,
+     "p0": 84,
+     "pA": 84,
+     "p2": 85,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 16,
+    "mIndex": 9,
+    "ms": 1315353600000,
+    "testi": {
+     "m": "Wise approach. This is right for a great prince. Good fortune.",
+     "lord": "The marrying maiden draws out the allotted time. A late marriage comes in due course.",
+     "d": "The sovereign I gave his daughter in marriage. The embroidered garments of the princess were not as gorgeous as those of the serving maid. The moon that is nearly full brings good fortune.",
+     "s2": "Sincerity toward disintegrating influences is dangerous."
+    },
+    "mese": [
+     19,
+     5,
+     [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "blocco": [
+     54,
+     4,
+     [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    ],
+    "giorno": [
+     54,
+     5
+    ],
+    "esito": [
+     58,
+     5,
+     [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0
+     ]
+    ],
+    "hit": [],
+    "dB": "丑",
+    "rA": "P"
+   }
+  },
+  {
+   "ds": "2011-09-29",
+   "lon": 12.07,
+   "txt": "clienti: conferma",
+   "eta": 52,
+   "pil": [
+    "丙午",
+    "丁亥",
+    "丁酉",
+    "辛卯"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": 1,
+     "a": 0,
+     "b": 0.5,
+     "t0": 4.5,
+     "t2": 5,
+     "adj0": 2,
+     "adjA": 2,
+     "adj2": 2,
+     "b2": 0,
+     "t3": 5,
+     "adj3": 2,
+     "prev": null,
+     "p3": 15,
+     "p0": 15,
+     "pA": 15,
+     "p2": 13,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 7,
+    "mIndex": 10,
+    "ms": 1317254400000,
+    "testi": {
+     "m": "Noblehearted return. No remorse.",
+     "lord": "Joint approach. Good fortune. Everything furthers.",
+     "d": "Complete approach. No blame.",
+     "s2": "The marrying maiden draws out the allotted time. A late marriage comes in due course."
+    },
+    "mese": [
+     24,
+     5,
+     [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "blocco": [
+     19,
+     2,
+     [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "giorno": [
+     19,
+     4
+    ],
+    "esito": [
+     54,
+     4,
+     [
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "block",
+      "n": 19,
+      "l": 1,
+      "b": "巳",
+      "el": "Fire",
+      "r": "G",
+      "s": 1,
+      "how": "冲",
+      "testo": "Joint approach. Perseverance brings good fortune.",
+      "read": false,
+      "dup": false,
+      "v": 0.5
+     }
+    ],
+    "dB": "亥",
+    "rA": "C"
+   }
+  },
+  {
+   "ds": "2011-10-08",
+   "lon": 20.46,
+   "txt": "Belgrado",
+   "eta": 52,
+   "pil": [
+    "甲午",
+    "丙申",
+    "丁酉",
+    "辛卯"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": 1,
+     "a": -1.5,
+     "b": 0.5,
+     "t0": -3.75,
+     "t2": -4.75,
+     "adj0": -1,
+     "adjA": -2,
+     "adj2": -2,
+     "b2": 0,
+     "t3": -4.75,
+     "adj3": -2,
+     "prev": null,
+     "p3": 82,
+     "p0": 78,
+     "pA": 84,
+     "p2": 82,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 16,
+    "mIndex": 10,
+    "ms": 1318032000000,
+    "testi": {
+     "m": "Noblehearted return. No remorse.",
+     "lord": "Shock is mired.",
+     "d": "Shock goes hither and thither. Danger. However, nothing at all is lost. Yet there are things to be done.",
+     "s2": "Sincere in the good. Good fortune."
+    },
+    "mese": [
+     24,
+     5,
+     [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "blocco": [
+     51,
+     4,
+     [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    ],
+    "giorno": [
+     51,
+     5
+    ],
+    "esito": [
+     17,
+     5,
+     [
+      1,
+      0,
+      0,
+      1,
+      1,
+      0
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "block",
+      "n": 51,
+      "l": 2,
+      "b": "寅",
+      "el": "Wood",
+      "r": "W",
+      "s": -1,
+      "how": "冲",
+      "testo": "Shock comes bringing danger. A hundred thousand times you lose your treasures and must climb the nine hills. Do not go in pursuit of them. After seven days you will get them back.",
+      "read": false,
+      "dup": false,
+      "v": 0.5
+     },
+     {
+      "lv": "month",
+      "n": 24,
+      "l": 2,
+      "b": "寅",
+      "el": "Wood",
+      "r": "W",
+      "s": 1,
+      "how": "冲",
+      "testo": "Quiet return. Good fortune.",
+      "read": false,
+      "dup": true,
+      "v": 0
+     }
+    ],
+    "dB": "申",
+    "rA": "B"
+   }
+  },
+  {
+   "ds": "2011-10-16",
+   "lon": 12.07,
+   "txt": "Dejan",
+   "eta": 52,
+   "pil": [
+    "庚午",
+    "甲辰",
+    "戊戌",
+    "辛卯"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": 1,
+     "a": 0,
+     "b": 0,
+     "t0": 2.25,
+     "t2": 2.25,
+     "adj0": 1,
+     "adjA": 1,
+     "adj2": 1,
+     "b2": 0,
+     "t3": 2.25,
+     "adj3": 1,
+     "prev": {
+      "r": "P",
+      "eff": "accentua"
+     },
+     "p3": 31,
+     "p0": 33,
+     "pA": 32,
+     "p2": 30,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 24,
+    "mIndex": 10,
+    "ms": 1318723200000,
+    "testi": {
+     "m": "Noblehearted return. No remorse.",
+     "lord": "Difficulties in blessing. A little perseverance brings good fortune. Great perseverance brings misfortune.",
+     "d": "Whoever hunts deer without the forester only loses their way in the forest. The superior person understands the signs of the time and prefers to desist. To go on brings humiliation.",
+     "s2": "The Illustrious Ancestor disciplines the Devil's Country. After three years they conquer it. Inferior people must not be employed."
+    },
+    "mese": [
+     24,
+     5,
+     [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    "blocco": [
+     3,
+     5,
+     [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0
+     ]
+    ],
+    "giorno": [
+     3,
+     3
+    ],
+    "esito": [
+     63,
+     3,
+     [
+      1,
+      0,
+      1,
+      0,
+      1,
+      0
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "block",
+      "n": 3,
+      "l": 5,
+      "b": "戌",
+      "el": "Earth",
+      "r": "P",
+      "s": 0,
+      "how": "冲",
+      "testo": "Difficulties in blessing. A little perseverance brings good fortune. Great perseverance brings misfortune.",
+      "read": true,
+      "dup": false,
+      "v": 0,
+      "nota": "già letta (lord), ×1,5",
+      "v2": 0
+     }
+    ],
+    "dB": "辰",
+    "rA": "P"
+   }
+  },
+  {
+   "ds": "2011-11-15",
+   "lon": 12.07,
+   "txt": "report",
+   "eta": 52,
+   "pil": [
+    "庚午",
+    "甲戌",
+    "己亥",
+    "辛卯"
+   ],
+   "keys": {
+    "wealth": {
+     "dir": 1,
+     "a": 0,
+     "b": 0,
+     "t0": -3.62,
+     "t2": -3.62,
+     "adj0": -1,
+     "adjA": -1,
+     "adj2": -1,
+     "b2": 0,
+     "t3": -3.62,
+     "adj3": -1,
+     "prev": null,
+     "p3": 76,
+     "p0": 77,
+     "pA": 76,
+     "p2": 76,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 24,
+    "mIndex": 11,
+    "ms": 1321315200000,
+    "testi": {
+     "m": "Cockcrow penetrating to heaven. Perseverance brings misfortune.",
+     "lord": "Someone does indeed increase them. Ten pairs of tortoises cannot oppose it. Supreme good fortune.",
+     "d": "When three people journey together, their number decreases by one. When one person journeys alone, they find their companion.",
+     "s2": "A good horse that follows others. Awareness of difficulty and perseverance further. Daily practice of chariot driving and armed defense. It furthers one to have somewhere to go."
+    },
+    "mese": [
+     61,
+     6,
+     [
+      1,
+      1,
+      0,
+      0,
+      1,
+      1
+     ]
+    ],
+    "blocco": [
+     41,
+     5,
+     [
+      1,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    ],
+    "giorno": [
+     41,
+     3
+    ],
+    "esito": [
+     26,
+     3,
+     [
+      1,
+      1,
+      1,
+      0,
+      0,
+      1
+     ]
+    ],
+    "hit": [],
+    "dB": "戌",
+    "rA": "P"
+   }
+  },
+  {
+   "ds": "2019-06-15",
+   "lon": 23.73,
+   "txt": "Grecia, seminario",
+   "eta": 60,
+   "pil": [
+    "戊午",
+    "癸未",
+    "庚午",
+    "己亥"
+   ],
+   "keys": {
+    "speak": {
+     "dir": 1,
+     "a": -1,
+     "b": -0.25,
+     "t0": 2.63,
+     "t2": 1.38,
+     "adj0": 1,
+     "adjA": 1,
+     "adj2": 0,
+     "b2": 0,
+     "t3": 1.38,
+     "adj3": 0,
+     "prev": null,
+     "p3": 27,
+     "p0": 20,
+     "pA": 26,
+     "p2": 27,
+     "alarm": null
+    },
+    "wealth": {
+     "dir": 1,
+     "a": 0,
+     "b": 0.25,
+     "t0": 6.25,
+     "t2": 6.5,
+     "adj0": 2,
+     "adjA": 2,
+     "adj2": 2,
+     "b2": 0,
+     "t3": 6.5,
+     "adj3": 2,
+     "prev": null,
+     "p3": 8,
+     "p0": 8,
+     "pA": 8,
+     "p2": 7,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 26,
+    "mIndex": 6,
+    "ms": 1560556800000,
+    "testi": {
+     "m": "A superior person of modesty and merit carries things to conclusion. Good fortune.",
+     "lord": "Noblehearted keeping still. Good fortune.",
+     "d": "Keeping their toes still. No blame. Continued perseverance furthers.",
+     "s2": "They lend grace to their steps, leave the carriage, and walk."
+    },
+    "mese": [
+     15,
+     3,
+     [
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+     ]
+    ],
+    "blocco": [
+     52,
+     6,
+     [
+      0,
+      0,
+      1,
+      0,
+      0,
+      1
+     ]
+    ],
+    "giorno": [
+     52,
+     1
+    ],
+    "esito": [
+     22,
+     1,
+     [
+      1,
+      0,
+      1,
+      0,
+      0,
+      1
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "month",
+      "n": 15,
+      "l": 4,
+      "b": "丑",
+      "el": "Earth",
+      "r": "P",
+      "s": 1,
+      "how": "冲",
+      "testo": "Nothing that would not further modesty in movement.",
+      "read": false,
+      "dup": false,
+      "v": -0.25
+     }
+    ],
+    "dB": "未",
+    "rA": "P"
+   }
+  },
+  {
+   "ds": "2019-06-25",
+   "lon": 23.73,
+   "txt": "Grecia, critiche",
+   "eta": 60,
+   "pil": [
+    "戊午",
+    "癸巳",
+    "庚午",
+    "己亥"
+   ],
+   "keys": {
+    "speak": {
+     "dir": -1,
+     "a": 0,
+     "b": 0,
+     "t0": -7.37,
+     "t2": -7.37,
+     "adj0": -2,
+     "adjA": -2,
+     "adj2": -2,
+     "b2": 0,
+     "t3": -7.37,
+     "adj3": -2,
+     "prev": {
+      "r": "P",
+      "eff": "accentua"
+     },
+     "p3": 81,
+     "p0": 83,
+     "pA": 82,
+     "p2": 81,
+     "alarm": null
+    },
+    "wealth": {
+     "dir": 0,
+     "a": 0,
+     "b": 0,
+     "t0": -1.5,
+     "t2": -1.5,
+     "adj0": 0,
+     "adjA": 0,
+     "adj2": 0,
+     "b2": 0,
+     "t3": -1.5,
+     "adj3": 0,
+     "prev": {
+      "r": "P",
+      "eff": "accentua"
+     },
+     "p3": 67,
+     "p0": 66,
+     "pA": 66,
+     "p2": 68,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 5,
+    "mIndex": 7,
+    "ms": 1561420800000,
+    "testi": {
+     "m": "Progress like a hamster. Perseverance brings danger.",
+     "lord": "Their feet are restrained at the start, halting further missteps. No blame.",
+     "d": "Their collar is restrained at the top, because counsel was ignored. Misfortune.",
+     "s2": "Shock brings ruin and terrified gazing around. Going ahead brings misfortune. If it has not yet touched one's own body, parts of one's neighbor's first feel it, then there is no blame. One's comrades have something to talk about."
+    },
+    "mese": [
+     35,
+     4,
+     [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    ],
+    "blocco": [
+     21,
+     1,
+     [
+      1,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    ],
+    "giorno": [
+     21,
+     6
+    ],
+    "esito": [
+     51,
+     6,
+     [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    ],
+    "hit": [],
+    "dB": "巳",
+    "rA": "G"
+   }
+  },
+  {
+   "ds": "2019-07-03",
+   "lon": 23.73,
+   "txt": "Grecia, accuse",
+   "eta": 60,
+   "pil": [
+    "甲午",
+    "辛丑",
+    "庚午",
+    "己亥"
+   ],
+   "keys": {
+    "speak": {
+     "dir": -1,
+     "a": -1,
+     "b": -0.25,
+     "t0": -7.37,
+     "t2": -8.620000000000001,
+     "adj0": -2,
+     "adjA": -3,
+     "adj2": -3,
+     "b2": 0,
+     "t3": -8.620000000000001,
+     "adj3": -3,
+     "prev": null,
+     "p3": 88,
+     "p0": 83,
+     "pA": 87,
+     "p2": 88,
+     "alarm": null
+    },
+    "wealth": {
+     "dir": 0,
+     "a": 0,
+     "b": 1.25,
+     "t0": -8.25,
+     "t2": -7,
+     "adj0": -3,
+     "adjA": -3,
+     "adj2": -2,
+     "b2": 0,
+     "t3": -7,
+     "adj3": -2,
+     "prev": null,
+     "p3": 91,
+     "p0": 94,
+     "pA": 95,
+     "p2": 92,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 13,
+    "mIndex": 7,
+    "ms": 1562112000000,
+    "testi": {
+     "m": "Progress like a hamster. Perseverance brings danger.",
+     "lord": "The wanderer's inn burns down. They lose the steadfastness of their young servant. Danger.",
+     "d": "The bird's nest burns up. The wanderer laughs at first, then must needs lament and weep. Through carelessness they lose their cow. Misfortune.",
+     "s2": "They pass them by, not meeting them. The flying bird leaves them. Misfortune. This means bad luck and injury."
+    },
+    "mese": [
+     35,
+     4,
+     [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    ],
+    "blocco": [
+     56,
+     3,
+     [
+      0,
+      0,
+      1,
+      1,
+      0,
+      1
+     ]
+    ],
+    "giorno": [
+     56,
+     6
+    ],
+    "esito": [
+     62,
+     6,
+     [
+      0,
+      0,
+      1,
+      1,
+      0,
+      0
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "block",
+      "n": 56,
+      "l": 5,
+      "b": "未",
+      "el": "Earth",
+      "r": "P",
+      "s": 2,
+      "how": "冲",
+      "testo": "They shoot a pheasant. It drops with the first arrow. In the end this brings both praise and office.",
+      "read": false,
+      "dup": false,
+      "v": 0
+     },
+     {
+      "lv": "month",
+      "n": 35,
+      "l": 1,
+      "b": "未",
+      "el": "Earth",
+      "r": "P",
+      "s": 1,
+      "how": "冲",
+      "testo": "Progressing, but turned back. Perseverance brings good fortune. If one meets with no confidence, one should remain calm. No blame.",
+      "read": false,
+      "dup": false,
+      "v": -0.25
+     },
+     {
+      "lv": "month",
+      "n": 35,
+      "l": 5,
+      "b": "未",
+      "el": "Earth",
+      "r": "P",
+      "s": 2,
+      "how": "冲",
+      "testo": "Remorse disappears. Take not gain and loss to heart. Undertakings bring good fortune. Everything serves to further.",
+      "read": false,
+      "dup": true,
+      "v": 0
+     }
+    ],
+    "dB": "丑",
+    "rA": "P"
+   }
+  },
+  {
+   "ds": "2026-11-13",
+   "lon": 16.37,
+   "txt": "oggi, 辛卯 (Vienna)",
+   "eta": 67,
+   "pil": [
+    "甲午",
+    "辛卯",
+    "己亥",
+    "丙午"
+   ],
+   "keys": {
+    "support": {
+     "dir": 0,
+     "a": -1,
+     "b": -0.25,
+     "t0": 9.379999999999999,
+     "t2": 8.129999999999999,
+     "adj0": 3,
+     "adjA": 3,
+     "adj2": 3,
+     "b2": 0,
+     "t3": 8.129999999999999,
+     "adj3": 3,
+     "prev": {
+      "r": "P",
+      "eff": "allevia"
+     },
+     "p3": 28,
+     "p0": 18,
+     "pA": 26,
+     "p2": 28,
+     "alarm": null
+    },
+    "legal": {
+     "dir": 0,
+     "a": -1,
+     "b": -0.25,
+     "t0": 9.379999999999999,
+     "t2": 8.129999999999999,
+     "adj0": 3,
+     "adjA": 3,
+     "adj2": 3,
+     "b2": 0,
+     "t3": 8.129999999999999,
+     "adj3": 3,
+     "prev": {
+      "r": "P",
+      "eff": "allevia"
+     },
+     "p3": 28,
+     "p0": 18,
+     "pA": 26,
+     "p2": 28,
+     "alarm": null
+    },
+    "wealth": {
+     "dir": 0,
+     "a": 1,
+     "b": -1,
+     "t0": -6.5,
+     "t2": -6.5,
+     "adj0": -2,
+     "adjA": -2,
+     "adj2": -2,
+     "b2": 0,
+     "t3": -6.5,
+     "adj3": -2,
+     "prev": {
+      "r": "P",
+      "eff": "allevia"
+     },
+     "p3": 78,
+     "p0": 78,
+     "pA": 73,
+     "p2": 78,
+     "alarm": null
+    },
+    "speak": {
+     "dir": 0,
+     "a": 0,
+     "b": -0.5,
+     "t0": -3.87,
+     "t2": -4.37,
+     "adj0": -1,
+     "adjA": -1,
+     "adj2": -1,
+     "b2": 0,
+     "t3": -4.37,
+     "adj3": -1,
+     "prev": {
+      "r": "P",
+      "eff": "allevia"
+     },
+     "p3": 57,
+     "p0": 53,
+     "pA": 52,
+     "p2": 58,
+     "alarm": null
+    }
+   },
+   "esa": {
+    "pers": "Metal",
+    "dom": 22,
+    "mIndex": 11,
+    "ms": 1794528000000,
+    "testi": {
+     "m": "Making progress with the horns is permissible only for the purpose of chastising one's own city. To be conscious of danger brings good fortune. No blame. Perseverance brings humiliation.",
+     "lord": "Standstill is giving way. Good fortune for the great person. 'What if it should fail, what if it should fail?' In this way they tie it to a cluster of mulberry shoots.",
+     "d": "When ribbon grass is pulled up, the sod comes with it. Each according to their kind. Perseverance brings good fortune and success.",
+     "s2": "Innocent behavior brings good fortune."
+    },
+    "mese": [
+     35,
+     6,
+     [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    ],
+    "blocco": [
+     12,
+     5,
+     [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1
+     ]
+    ],
+    "giorno": [
+     12,
+     1
+    ],
+    "esito": [
+     25,
+     1,
+     [
+      1,
+      0,
+      0,
+      1,
+      1,
+      1
+     ]
+    ],
+    "hit": [
+     {
+      "lv": "month",
+      "n": 35,
+      "l": 4,
+      "b": "酉",
+      "el": "Metal",
+      "r": "B",
+      "s": -1,
+      "how": "冲",
+      "testo": "Progress like a hamster. Perseverance brings danger.",
+      "read": false,
+      "dup": false,
+      "v": -0.25,
+      "nota": "esce dal vuoto"
+     }
+    ],
+    "dB": "卯",
+    "rA": "W"
+   }
+  }
+ ],
+ "fam": [
+  {
+   "chi": "gates",
+   "d": "1986-03-13",
+   "cosa": "quotazione Microsoft",
+   "key": "wealth",
+   "dB": "辰",
+   "rA": "P",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 20,
+   "pA": 20,
+   "p2": 21,
+   "p3": 22,
+   "prev": {
+    "r": "P",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 3,
+     "l": 5,
+     "b": "戌",
+     "r": "P",
+     "s": 0,
+     "v": 0,
+     "nota": "già letta (lord), ×1,5"
+    }
+   ]
+  },
+  {
+   "chi": "zuckerberg",
+   "d": "2004-02-04",
+   "cosa": "lancio di Facebook",
+   "key": "speak",
+   "dB": "丑",
+   "rA": "P",
+   "a": -1,
+   "b": 0,
+   "b2": 0,
+   "p0": 23,
+   "pA": 27,
+   "p2": 28,
+   "p3": 28,
+   "prev": {
+    "r": "G",
+    "eff": "scarica"
+   },
+   "hit": []
+  },
+  {
+   "chi": "zuckerberg",
+   "d": "2012-05-18",
+   "cosa": "quotazione Facebook",
+   "key": "wealth",
+   "dB": "卯",
+   "rA": "W",
+   "a": 1,
+   "b": -1,
+   "b2": 0,
+   "p0": 73,
+   "pA": 66,
+   "p2": 71,
+   "p3": 71,
+   "prev": {
+    "r": "P",
+    "eff": "allevia"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 38,
+     "l": 4,
+     "b": "酉",
+     "r": "B",
+     "s": 1,
+     "v": -1,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "jobs",
+   "d": "2007-01-09",
+   "cosa": "presentazione iPhone",
+   "key": "speak",
+   "dB": "卯",
+   "rA": "B",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 41,
+   "pA": 40,
+   "p2": 41,
+   "p3": 42,
+   "prev": {
+    "r": "W",
+    "eff": "allevia"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 15,
+     "l": 6,
+     "b": "酉",
+     "r": "G",
+     "s": 0,
+     "v": 0,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "musk",
+   "d": "2002-07-08",
+   "cosa": "eBay compra PayPal (annuncio)",
+   "key": "wealth",
+   "dB": "丑",
+   "rA": "B",
+   "a": -1.5,
+   "b": -0.25,
+   "b2": 0,
+   "p0": 37,
+   "pA": 45,
+   "p2": 48,
+   "p3": 48,
+   "prev": {
+    "r": "B",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "month",
+     "n": 14,
+     "l": 5,
+     "b": "未",
+     "r": "B",
+     "s": 2,
+     "v": -0.25,
+     "nota": "esce dal vuoto"
+    }
+   ]
+  },
+  {
+   "chi": "musk",
+   "d": "2002-10-03",
+   "cosa": "eBay compra PayPal (chiusura)",
+   "key": "wealth",
+   "dB": "辰",
+   "rA": "B",
+   "a": -1.5,
+   "b": 0,
+   "b2": 0,
+   "p0": 17,
+   "pA": 24,
+   "p2": 25,
+   "p3": 25,
+   "prev": null,
+   "hit": []
+  },
+  {
+   "chi": "Margaret Thatcher",
+   "d": "1979-05-04",
+   "cosa": "becomes Prime Minister",
+   "key": "career",
+   "dB": "未",
+   "rA": "B",
+   "a": 0,
+   "b": 0.25,
+   "b2": 0,
+   "p0": 28,
+   "pA": 28,
+   "p2": 26,
+   "p3": 27,
+   "prev": null,
+   "hit": [
+    {
+     "lv": "month",
+     "n": 50,
+     "l": 1,
+     "b": "丑",
+     "r": "B",
+     "s": 1,
+     "v": 0.25,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Barack Obama",
+   "d": "2008-11-04",
+   "cosa": "elected President",
+   "key": "career",
+   "dB": "申",
+   "rA": "B",
+   "a": 0,
+   "b": 0.25,
+   "b2": 0,
+   "p0": 24,
+   "pA": 24,
+   "p2": 23,
+   "p3": 24,
+   "prev": {
+    "r": "C",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "month",
+     "n": 9,
+     "l": 2,
+     "b": "寅",
+     "r": "W",
+     "s": 1,
+     "v": 0.25,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "John F. Kennedy",
+   "d": "1960-11-08",
+   "cosa": "elected President",
+   "key": "career",
+   "dB": "子",
+   "rA": "P",
+   "a": 0,
+   "b": -0.75,
+   "b2": 0,
+   "p0": 70,
+   "pA": 70,
+   "p2": 78,
+   "p3": 77,
+   "prev": {
+    "r": "W",
+    "eff": "controllato"
+   },
+   "hit": [
+    {
+     "lv": "month",
+     "n": 44,
+     "l": 4,
+     "b": "午",
+     "r": "C",
+     "s": -1,
+     "v": -0.75,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Winston Churchill",
+   "d": "1940-05-10",
+   "cosa": "becomes Prime Minister",
+   "key": "career",
+   "dB": "丑",
+   "rA": "W",
+   "a": 0,
+   "b": 0.5,
+   "b2": 0,
+   "p0": 23,
+   "pA": 23,
+   "p2": 21,
+   "p3": 21,
+   "prev": {
+    "r": "W",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 9,
+     "l": 4,
+     "b": "未",
+     "r": "W",
+     "s": 1,
+     "v": 0.5,
+     "nota": "esce dal vuoto"
+    }
+   ]
+  },
+  {
+   "chi": "Adolf Hitler",
+   "d": "1933-01-30",
+   "cosa": "appointed Chancellor",
+   "key": "career",
+   "dB": "申",
+   "rA": "P",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 7,
+   "pA": 8,
+   "p2": 8,
+   "p3": 8,
+   "prev": null,
+   "hit": [
+    {
+     "lv": "block",
+     "n": 52,
+     "l": 6,
+     "b": "寅",
+     "r": "C",
+     "s": 2,
+     "v": 0,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Benito Mussolini",
+   "d": "1922-10-30",
+   "cosa": "appointed Prime Minister",
+   "key": "career",
+   "dB": "未",
+   "rA": "W",
+   "a": 0,
+   "b": -0.5,
+   "b2": 0,
+   "p0": 76,
+   "pA": 77,
+   "p2": 80,
+   "p3": 80,
+   "prev": {
+    "r": "W",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "month",
+     "n": 10,
+     "l": 3,
+     "b": "丑",
+     "r": "W",
+     "s": -2,
+     "v": -0.5,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Papa Giovanni Paolo II (Karol Wojtyla)",
+   "d": "1978-10-16",
+   "cosa": "elected Pope",
+   "key": "career",
+   "dB": "亥",
+   "rA": "P",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 40,
+   "pA": 40,
+   "p2": 41,
+   "p3": 41,
+   "prev": null,
+   "hit": [
+    {
+     "lv": "month",
+     "n": 57,
+     "l": 5,
+     "b": "巳",
+     "r": "C",
+     "s": 2,
+     "v": 0,
+     "nota": "già letta (m), ×1,5"
+    }
+   ]
+  },
+  {
+   "chi": "Papa Paolo VI (Giovanni Battista Montini)",
+   "d": "1963-06-21",
+   "cosa": "elected Pope",
+   "key": "career",
+   "dB": "未",
+   "rA": "P",
+   "a": 0,
+   "b": 0,
+   "b2": 0.25,
+   "p0": 15,
+   "pA": 14,
+   "p2": 15,
+   "p3": 15,
+   "prev": {
+    "r": "P",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 50,
+     "l": 1,
+     "b": "丑",
+     "r": "P",
+     "s": 1,
+     "v": 0,
+     "nota": "già letta (lord), ×1,5"
+    }
+   ]
+  },
+  {
+   "chi": "Indira Gandhi",
+   "d": "1966-01-24",
+   "cosa": "becomes Prime Minister",
+   "key": "career",
+   "dB": "未",
+   "rA": "B",
+   "a": 0,
+   "b": 0,
+   "b2": 0.25,
+   "p0": 43,
+   "pA": 42,
+   "p2": 43,
+   "p3": 42,
+   "prev": {
+    "r": "W",
+    "eff": "allevia"
+   },
+   "hit": [
+    {
+     "lv": "month",
+     "n": 18,
+     "l": 1,
+     "b": "丑",
+     "r": "B",
+     "s": 1,
+     "v": 0,
+     "nota": "già letta (m), ×1,5"
+    }
+   ]
+  },
+  {
+   "chi": "Emmanuel Macron",
+   "d": "2017-05-07",
+   "cosa": "elected President",
+   "key": "career",
+   "dB": "午",
+   "rA": "C",
+   "a": -1,
+   "b": 1,
+   "b2": 0,
+   "p0": 61,
+   "pA": 68,
+   "p2": 63,
+   "p3": 62,
+   "prev": {
+    "r": "W",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 41,
+     "l": 5,
+     "b": "子",
+     "r": "P",
+     "s": 2,
+     "v": 1,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Charles de Gaulle",
+   "d": "1958-06-01",
+   "cosa": "invested Prime Minister",
+   "key": "career",
+   "dB": "酉",
+   "rA": "C",
+   "a": -1,
+   "b": 0,
+   "b2": 0,
+   "p0": 52,
+   "pA": 59,
+   "p2": 60,
+   "p3": 60,
+   "prev": null,
+   "hit": [
+    {
+     "lv": "month",
+     "n": 36,
+     "l": 1,
+     "b": "卯",
+     "r": "G",
+     "s": -1,
+     "v": 0,
+     "nota": "vuota, frutti dopo"
+    }
+   ]
+  },
+  {
+   "chi": "Elizabeth II",
+   "d": "1953-06-02",
+   "cosa": "coronation",
+   "key": "career",
+   "dB": "申",
+   "rA": "C",
+   "a": -1,
+   "b": 2,
+   "b2": 0,
+   "p0": 38,
+   "pA": 45,
+   "p2": 32,
+   "p3": 32,
+   "prev": null,
+   "hit": [
+    {
+     "lv": "block",
+     "n": 42,
+     "l": 2,
+     "b": "寅",
+     "r": "G",
+     "s": 2,
+     "v": 2,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Sigmund Freud",
+   "d": "1899-11-04",
+   "cosa": "The Interpretation of Dreams published",
+   "key": "speak",
+   "dB": "子",
+   "rA": "P",
+   "a": -1,
+   "b": 0.5,
+   "b2": 0,
+   "p0": 80,
+   "pA": 86,
+   "p2": 84,
+   "p3": 84,
+   "prev": null,
+   "hit": [
+    {
+     "lv": "block",
+     "n": 39,
+     "l": 2,
+     "b": "午",
+     "r": "C",
+     "s": -1,
+     "v": 0.5,
+     "nota": "esce dal vuoto"
+    }
+   ]
+  },
+  {
+   "chi": "Michael Jackson",
+   "d": "1982-11-29",
+   "cosa": "Thriller released",
+   "key": "speak",
+   "dB": "辰",
+   "rA": "P",
+   "a": -1,
+   "b": 0,
+   "b2": 0,
+   "p0": 63,
+   "pA": 69,
+   "p2": 68,
+   "p3": 69,
+   "prev": {
+    "r": "P",
+    "eff": "accentua"
+   },
+   "hit": []
+  },
+  {
+   "chi": "Madonna",
+   "d": "1983-07-27",
+   "cosa": "debut album released",
+   "key": "speak",
+   "dB": "辰",
+   "rA": "W",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 44,
+   "pA": 42,
+   "p2": 43,
+   "p3": 43,
+   "prev": {
+    "r": "P",
+    "eff": "allevia"
+   },
+   "hit": []
+  },
+  {
+   "chi": "Kurt Cobain",
+   "d": "1991-09-24",
+   "cosa": "Nevermind released",
+   "key": "speak",
+   "dB": "酉",
+   "rA": "G",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 8,
+   "pA": 8,
+   "p2": 9,
+   "p3": 10,
+   "prev": {
+    "r": "W",
+    "eff": "scarica"
+   },
+   "hit": []
+  },
+  {
+   "chi": "Jimi Hendrix",
+   "d": "1967-05-12",
+   "cosa": "Are You Experienced released",
+   "key": "speak",
+   "dB": "子",
+   "rA": "W",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 10,
+   "pA": 11,
+   "p2": 11,
+   "p3": 12,
+   "prev": {
+    "r": "B",
+    "eff": "controllato"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 55,
+     "l": 4,
+     "b": "午",
+     "r": "P",
+     "s": 1,
+     "v": 0,
+     "nota": "vuota, frutti dopo"
+    }
+   ]
+  },
+  {
+   "chi": "Pier Paolo Pasolini",
+   "d": "1961-08-31",
+   "cosa": "Accattone premiere in Venice",
+   "key": "speak",
+   "dB": "申",
+   "rA": "G",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 36,
+   "pA": 37,
+   "p2": 37,
+   "p3": 37,
+   "prev": {
+    "r": "W",
+    "eff": "scarica"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 7,
+     "l": 1,
+     "b": "寅",
+     "r": "B",
+     "s": 0,
+     "v": 0,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Salman Rushdie",
+   "d": "1988-09-26",
+   "cosa": "The Satanic Verses published",
+   "key": "speak",
+   "dB": "申",
+   "rA": "P",
+   "a": -1,
+   "b": 1,
+   "b2": 0,
+   "p0": 96,
+   "pA": 97,
+   "p2": 95,
+   "p3": 95,
+   "prev": {
+    "r": "G",
+    "eff": "scarica"
+   },
+   "hit": [
+    {
+     "lv": "month",
+     "n": 1,
+     "l": 2,
+     "b": "寅",
+     "r": "C",
+     "s": 2,
+     "v": 1,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "James Dean",
+   "d": "1955-03-09",
+   "cosa": "East of Eden premiere",
+   "key": "speak",
+   "dB": "巳",
+   "rA": "B",
+   "a": 0,
+   "b": 0,
+   "b2": 0.25,
+   "p0": 99,
+   "pA": 99,
+   "p2": 99,
+   "p3": 99,
+   "prev": {
+    "r": "P",
+    "eff": "scarica"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 17,
+     "l": 4,
+     "b": "亥",
+     "r": "G",
+     "s": 1,
+     "v": 0,
+     "nota": "già letta (lord), ×1,5"
+    }
+   ]
+  },
+  {
+   "chi": "Christopher Reeve",
+   "d": "1978-12-10",
+   "cosa": "Superman world premiere",
+   "key": "speak",
+   "dB": "午",
+   "rA": "P",
+   "a": -1,
+   "b": -0.5,
+   "b2": 0,
+   "p0": 62,
+   "pA": 71,
+   "p2": 76,
+   "p3": 76,
+   "prev": null,
+   "hit": [
+    {
+     "lv": "block",
+     "n": 8,
+     "l": 6,
+     "b": "子",
+     "r": "W",
+     "s": -1,
+     "v": -0.5,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Jean Jaurès",
+   "d": "1904-04-18",
+   "cosa": "first issue of L'Humanité",
+   "key": "speak",
+   "dB": "午",
+   "rA": "G",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 79,
+   "pA": 79,
+   "p2": 79,
+   "p3": 78,
+   "prev": {
+    "r": "G",
+    "eff": "accentua"
+   },
+   "hit": []
+  },
+  {
+   "chi": "Robin Williams",
+   "d": "1978-09-14",
+   "cosa": "first episode of Mork & Mindy",
+   "key": "speak",
+   "dB": "卯",
+   "rA": "C",
+   "a": 1,
+   "b": 0,
+   "b2": 0,
+   "p0": 31,
+   "pA": 24,
+   "p2": 25,
+   "p3": 25,
+   "prev": null,
+   "hit": []
+  },
+  {
+   "chi": "Stevie Ray Vaughan",
+   "d": "1983-06-13",
+   "cosa": "Texas Flood released",
+   "key": "speak",
+   "dB": "申",
+   "rA": "G",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 84,
+   "pA": 83,
+   "p2": 83,
+   "p3": 84,
+   "prev": {
+    "r": "G",
+    "eff": "accentua"
+   },
+   "hit": []
+  },
+  {
+   "chi": "Elvis Presley",
+   "d": "1955-11-21",
+   "cosa": "signs with RCA Victor",
+   "key": "legal",
+   "dB": "戌",
+   "rA": "B",
+   "a": 0,
+   "b": -0.5,
+   "b2": 0,
+   "p0": 40,
+   "pA": 39,
+   "p2": 45,
+   "p3": 45,
+   "prev": {
+    "r": "G",
+    "eff": "controllato"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 9,
+     "l": 3,
+     "b": "辰",
+     "r": "B",
+     "s": -1,
+     "v": -0.5,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Jayne Mansfield",
+   "d": "1956-05-03",
+   "cosa": "six-year contract with 20th Century Fox",
+   "key": "legal",
+   "dB": "午",
+   "rA": "W",
+   "a": -1,
+   "b": 0,
+   "b2": 0,
+   "p0": 13,
+   "pA": 17,
+   "p2": 18,
+   "p3": 19,
+   "prev": {
+    "r": "G",
+    "eff": "accentua"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 43,
+     "l": 1,
+     "b": "子",
+     "r": "B",
+     "s": -1,
+     "v": 0,
+     "nota": "vuota, frutti dopo"
+    }
+   ]
+  },
+  {
+   "chi": "Rajiv Gandhi",
+   "d": "1987-07-29",
+   "cosa": "signs the Indo-Sri Lanka accord",
+   "key": "legal",
+   "dB": "卯",
+   "rA": "G",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 6,
+   "pA": 6,
+   "p2": 7,
+   "p3": 7,
+   "prev": {
+    "r": "P",
+    "eff": "accentua"
+   },
+   "hit": []
+  },
+  {
+   "chi": "Walther Rathenau",
+   "d": "1922-04-16",
+   "cosa": "signs the Treaty of Rapallo",
+   "key": "legal",
+   "dB": "寅",
+   "rA": "C",
+   "a": 0,
+   "b": 0,
+   "b2": 0,
+   "p0": 38,
+   "pA": 38,
+   "p2": 39,
+   "p3": 39,
+   "prev": {
+    "r": "C",
+    "eff": "accentua"
+   },
+   "hit": []
+  },
+  {
+   "chi": "Umberto I di Savoia",
+   "d": "1882-05-20",
+   "cosa": "Triple Alliance signed",
+   "key": "legal",
+   "dB": "未",
+   "rA": "G",
+   "a": 0,
+   "b": -0.5,
+   "b2": 0,
+   "p0": 85,
+   "pA": 83,
+   "p2": 89,
+   "p3": 88,
+   "prev": {
+    "r": "W",
+    "eff": "scarica"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 58,
+     "l": 3,
+     "b": "丑",
+     "r": "G",
+     "s": -1,
+     "v": -0.5,
+     "nota": ""
+    }
+   ]
+  },
+  {
+   "chi": "Giovanni Falcone",
+   "d": "1985-11-08",
+   "cosa": "files the Maxiprocesso indictment",
+   "key": "legal",
+   "dB": "亥",
+   "rA": "W",
+   "a": -1,
+   "b": 2,
+   "b2": 0,
+   "p0": 93,
+   "pA": 96,
+   "p2": 90,
+   "p3": 89,
+   "prev": {
+    "r": "B",
+    "eff": "controllato"
+   },
+   "hit": [
+    {
+     "lv": "block",
+     "n": 42,
+     "l": 5,
+     "b": "巳",
+     "r": "P",
+     "s": 2,
+     "v": 2,
+     "nota": ""
+    }
+   ]
+  }
+ ]
+}
