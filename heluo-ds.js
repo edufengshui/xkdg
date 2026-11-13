@@ -563,6 +563,47 @@
   // with line k changed; even hour = also the correlated line (as the month from the annual). Base = the day hexagram (outcome).
   // Not in the score: text and warnings only (a natal void that comes out in the hour = sixth signal of the critical day).
   var HOUR_TST = ['23–01', '01–03', '03–05', '05–07', '07–09', '09–11', '11–13', '13–15', '15–17', '17–19', '19–21', '21–23'];
+  // ── Active lines of the day and relations between levels (Edu 13/11/2026) ──
+  // Five active lines: cycle line, annual line of the month, month line, Lord of the Block, day line (primary). Prevalence = the
+  // relation that comes most often. Relations only between NEIGHBOURING levels (cycle ← annual ← month ← block ← day): who
+  // generates whom and who controls whom. Bigger controls smaller → relieved if the next smaller level generates the
+  // controlled one (month G controls block B, day P feeds B). Smaller controls bigger → it lasts as long as the smaller; the
+  // bridge element (controller generates it, it generates the controlled) is the advice (annual P controls cycle C: use
+  // collaborators and friends, the Brothers, to create new projects).
+  var CTL = { Wood: 'Earth', Earth: 'Water', Water: 'Fire', Fire: 'Metal', Metal: 'Wood' };
+  var REL_WHO = { B: 'collaborators, colleagues and friends', C: 'creating, teaching, students and new projects', W: 'money, clients and the partner (man)', G: 'authority, bosses and discipline', P: 'mentors, study, documents and support' };
+  var PREV_PURP = { P: ['support', 'legal'], C: ['speak', 'health', 'journey'], W: ['wealth'], G: ['career'], B: [] };
+  function levelsOfDay(th) {
+    if (!th || !th.p) return null;
+    var p = th.p, pers = th.pers, cy = NJ()[p.hx.n].lines[p.per.line - 1];
+    var lv = [{ k: 'cycle', lbl: 'cycle ' + p.phase + ' ' + p.hx.n + ' l' + p.per.line, b: cy.branch, el: cy.el }];
+    ['am', 'm', 'lord', 'd'].forEach(function (k) { var L = th.lines.filter(function (x) { return x.k === k; })[0];
+      if (L) lv.push({ k: k, lbl: (k === 'am' ? 'annual ' : k === 'm' ? 'month ' : k === 'lord' ? 'block (Lord) ' : 'day ') + L.n + ' l' + L.l, b: L.b, el: L.el }); });
+    lv.forEach(function (x) { x.r = rel(pers, x.el); });
+    var cnt = {}; lv.forEach(function (x) { cnt[x.r] = (cnt[x.r] || 0) + 1; });
+    var mx = Math.max.apply(null, Object.keys(cnt).map(function (k) { return cnt[k]; }));
+    var prev = mx > 1 ? Object.keys(cnt).filter(function (k) { return cnt[k] === mx; }) : [];
+    var pairs = [];
+    for (var i = 0; i + 1 < lv.length; i++) {
+      var A = lv[i], B = lv[i + 1], C = lv[i + 2], o = { big: A, small: B };
+      if (A.el === B.el) o.type = 'same';
+      else if (GEN[A.el] === B.el) o.type = 'big feeds small';
+      else if (GEN[B.el] === A.el) o.type = 'small feeds big';
+      else if (CTL[A.el] === B.el) { o.type = 'big controls small'; if (C && GEN[C.el] === B.el) o.relief = C; }
+      else if (CTL[B.el] === A.el) { o.type = 'small controls big'; var br = GEN[B.el]; o.bridge = rel(pers, br); o.advice = REL_WHO[o.bridge]; o.long = i === 0; }
+      pairs.push(o);
+    }
+    return { lines: lv, count: cnt, prevalence: prev, pairs: pairs };
+  }
+  function levelsText(LV) {
+    return LV.pairs.filter(function (o) { return o.type !== 'same'; }).map(function (o) {
+      var a = o.big, b = o.small, A = a.lbl.split(' ')[0], B = b.lbl.split(' ')[0];
+      if (o.type === 'big feeds small') return A + ' ' + a.b + ' ' + REL[a.r] + ' feeds ' + B + ' ' + b.b + ' ' + REL[b.r];
+      if (o.type === 'small feeds big') return B + ' ' + b.b + ' ' + REL[b.r] + ' feeds ' + A + ' ' + a.b + ' ' + REL[a.r] + ' (backward, good)';
+      if (o.type === 'big controls small') return A + ' ' + a.b + ' ' + REL[a.r] + ' controls ' + B + ' ' + b.b + ' ' + REL[b.r] + (o.relief ? ', relieved by the ' + o.relief.lbl.split(' ')[0] + ' ' + o.relief.b + ' ' + REL[o.relief.r] + ' that feeds it' : '');
+      return B + ' ' + b.b + ' ' + REL[b.r] + ' controls ' + A + ' ' + a.b + ' ' + REL[a.r] + (o.long ? ' — for the whole year: nothing to do but ' : ' — while it lasts: ') + 'rely on ' + o.advice + ' (' + REL[o.bridge] + ')';
+    });
+  }
   function hoursOfDay(ctx, th) {
     if (!th) return [];
     var p = th.p, dh = p.daily.hex, pers = th.pers, mb0 = ctx.Pn.month[1], yv = th.yv || natalVoids(ctx.Pn).list, mv = movedBranches(p);
@@ -577,9 +618,9 @@
     }
     return out;
   }
-  root.XKDGHeluoDSCore = { triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
+  root.XKDGHeluoDSCore = { levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
@@ -808,6 +849,12 @@
     var y0 = ch.R.input.o.year, G = 'color:#2e7d32;', Rd = 'color:#c62828;', O = 'color:#e65100;';
     var h = '<div style="' + S_ + '"><b>' + fmtDate(date) + '</b> · ' + esc(ch.c.name) + ' · age ' + p.age + ' · person <b>' + me + '</b>'
       + '<div style="margin:4px 0;font-size:12px;">Day ' + th.Pe.day + '<br>Month ' + th.Pe.month + '<br>Year ' + th.Pe.year + '</div></div>';
+    // Edu 13/11: active lines, prevalence and relations between neighbouring levels
+    try { var LV = levelsOfDay(th);
+      if (LV) h += '<div style="' + S_ + 'font-size:12px;line-height:1.6;"><b>Active lines</b>: ' + LV.lines.map(function (x) { return esc(x.lbl) + ' ' + x.b + ' ' + REL[x.r]; }).join(' · ')
+        + '<br><b>Prevalence</b>: ' + (LV.prevalence.length ? LV.prevalence.map(function (r) { return REL[r] + ' ×' + LV.count[r] + (REL_WHO[r] ? ' (' + REL_WHO[r] + ')' : ''); }).join(', ') : 'none')
+        + levelsText(LV).map(function (t) { return '<br>' + (t.indexOf('controls') >= 0 ? '<span style="' + O + '">⚖ ' : '<span style="' + G + '">↺ ') + esc(t) + '</span>'; }).join('') + '</div>';
+    } catch (e) {}
     // what He Luo says for the purpose
     var box = '';
     if (th.key === 'luck') {
@@ -1132,6 +1179,8 @@
     var Y = m ? +m[1] : t.getFullYear(), Mo = m ? +m[2] : t.getMonth() + 1, D = m ? +m[3] : t.getDate();
     var ctx = context(ch.R, ch.Pn, ch.male), Pe = pillarsTstNoon(Y, Mo, D, lon);
     keys = (keys && keys.length ? keys : (ch.male ? ['wealth', 'relationship', 'speak'] : ['wealth', 'relationship', 'speak'])).filter(function (k) { return XK_PL[k] && k !== 'cure'; });
+    var LV0 = null; try { LV0 = levelsOfDay(thread(ctx, Pe, lon, 'wealth')); } catch (e) {}
+    if (LV0) LV0.prevalence.forEach(function (r) { (PREV_PURP[r] || []).forEach(function (k) { if (keys.indexOf(k) < 0) keys.unshift(k); }); });
     var TXT = window.XKDG_HELUO_TEXTS || {};
     function stmt(n, l) { try { return ((TXT[n] || {}).lines || {})[l].statement || ''; } catch (e) { return ''; } }
     function lineOut(L) { return { level: XK_LBL[L.k], hexagram: L.n, line: L.l, branch: L.b, element: L.el, relation: REL[L.r], text_score: SC() && SC()[L.n] ? SC()[L.n].l[L.l] : null,
@@ -1141,6 +1190,10 @@
       bazi_of_the_day_column_order: [['Day', Pe.day], ['Month', Pe.month], ['Year', Pe.year]].map(function (x) { return x[0] + ' ' + x[1]; }),
       natal_bazi: ['Hour ' + ch.Pn.hour, 'Day ' + ch.Pn.day, 'Month ' + ch.Pn.month, 'Year ' + ch.Pn.year],
       natal_voids: natalVoids(ch.Pn).list, purposes: {} }, first = null;
+    if (LV0) { out.active_lines = LV0.lines.map(function (x) { return x.lbl + ' ' + x.b + ' ' + x.el + ' ' + REL[x.r]; });
+      out.prevalence = LV0.prevalence.length ? LV0.prevalence.map(function (r) { return REL[r] + ' x' + LV0.count[r] + (REL_WHO[r] ? ': ' + REL_WHO[r] : ''); }) : ['none'];
+      out.prevalence_purposes_added = LV0.prevalence.reduce(function (a, r) { return a.concat((PREV_PURP[r] || []).map(function (k) { return XK_PL[k]; })); }, []);
+      out.relations_between_levels = levelsText(LV0); }
     keys.forEach(function (key) {
       var th = null; try { th = thread(ctx, Pe, lon, key); } catch (e) { th = null; }
       if (!th) { out.purposes[XK_PL[key]] = { note: 'no reading for this day' }; return; }
@@ -1171,7 +1224,7 @@
     if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s,
       void_comes_out: h.voidOut.length ? h.voidOut : undefined, spouse_palace: h.spouse || undefined }; });
     try { out.alarms_next_30_days = alarmsAhead(ch, 30).map(function (g) { return { date: new Date(g.ms).toISOString().slice(0, 10), in_days: g.inDays, level: g.level, purposes: g.keys, day_pillar: g.pillar }; }); } catch (e) {}
-    out.reading_rules = 'Edu (the user) is the authority on He Luo Li Shu. Read the line texts and relations given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). Write a bazi in a column: Hour, Day, Month, Year. Draw hexagrams with their lines. Age is the Heluo age.';
+    out.reading_rules = 'START with the prevalence of the active lines (what kind of day it is, and the purposes it favours), then the relations between neighbouring levels (only those given here: no other chains), then the scores. Edu (the user) is the authority on He Luo Li Shu. Read the line texts and relations given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). Write a bazi in a column: Hour, Day, Month, Year. Draw hexagrams with their lines. Age is the Heluo age.';
     return out;
   }
   root.XKDGHeluoDS = { aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
