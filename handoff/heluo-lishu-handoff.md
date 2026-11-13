@@ -184,3 +184,8 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - **Relazioni solo tra livelli vicini** (ciclo ← annuale ← mese ← blocco ← giorno), niente catene lunghe (Edu: «la catena non c'è»). Il più grande controlla il più piccolo → alleviato se il livello successivo genera il controllato (mese G controlla blocco B, il giorno P lo nutre). Il più piccolo controlla il più grande → dura quanto il più piccolo; il consiglio è l'elemento ponte (annuale P controlla ciclo C, tutto l'anno: avvalersi di collaboratori e amici = Brothers, per creare nuovi progetti).
 - `levelsOfDay(th)`, `levelsText(LV)` in heluo-ds.js; in testa alla finestra del giorno («Active lines», «Prevalence», ⚖/↺) e in `aiDay` (`active_lines`, `prevalence`, `relations_between_levels`). Non entra nel punteggio.
 - 13/11/2026 (67): prevalenza Parent; Support +3, Legal +3, Wealth −2.
+
+## 13/11/2026 — ore che alleviano la prevalenza (Edu: «vai»)
+- Edu: le ore mancano nell'equazione; un'ora che porta l'elemento che controlla la relazione prevalente allevia l'eccesso (Parent → ora Wealth), ma l'ora 卯 è troppo presto.
+- `hoursOfDay` → `h.relief` { grade 3 = linea dell'ora, 2 = entrambi i trigrammi, 1 = un trigramma; of, by, how; best (grado più alto, poi testo migliore); practical = migliore tra 07 e 23 (ore 辰…亥) se diversa }. Finestra del giorno: «✚ relieves the Parent (…) · best hour / best practical hour (07–23)». `aiDay`: `hours_that_relieve_the_prevalence`, sempre (anche senza `hours`).
+- 13/11/2026: best 庚寅 03–05 (10 l2 卯 W); pratica 甲午 11–13 (42 益, Xun/Zhen).
