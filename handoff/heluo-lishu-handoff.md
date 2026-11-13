@@ -228,3 +228,8 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - Riga ☯ (`xkSummary`): «★★ best / ★ best / strong / good for <scopo>»; per Correct «✚ day to correct … · Do: … · ora». Finestra del giorno (`xkDayHtml`): riquadri «Favour <scopo>» (livello, motivi, ore) e «Correct a problem» (problema, cura, cosa fare, ora o motivo dello scarto); intestazione con il totale He Luo (scopo + Favour).
 - Da notare: il ☯ dello scopo conta ancora i Brothers come prezzo anche quando Favour li legge come collaboratori (20/9/2011: scopo −10%, Favour ★★ +15%, totale +5%).
 - Verifiche: Chrome headless 390 px sull'app completa (index.html, Person A Edu): Wealth set 2011 (righe ☯ con i livelli, finestra 20/9 ★★), Correct nov–dic 2015 (problema Parent in testa, solo giorni di cura, finestra 27/11), nessun errore. `mensile_app_check.js` ok; `ds_app_check.js` invariato (2158/2192); `ds_fav_lv_app_check.js` invariato.
+
+## 13/11/2026 — ☯ Wealth: Brothers con testo buono sull'azione = collaboratori (Edu: «sì»)
+- `thread` (heluo-ds.js), solo scopo wealth: Brothers sulla linea del giorno o sull'esito con testo > 0 (o neutri sulla linea del giorno con esito Brothers > 0) → `L.collab`, `th.collab`: niente prezzo né 劫財. Solo sull'azione: i Brothers sul Lord restano prezzo/劫財 (8/12/2015 Lord 申 con testo buono resta severe, adj −1).
+- Riga ☯ «collaborators 酉», finestra del giorno «▲ Brothers with a favourable text = collaborators». Il prezzo Brothers nei trigrammi (senza testo) resta.
+- Effetti: 20/9/2011 ☯ −2 → 0; 8/10/2011 −1 → +2; 7/9/2011 resta 0 (esito 酉 negativo = prezzo). `ds_app_check.js` invariato (2158/2192), `mensile_app_check.js` ok, Correct invariato; Chrome headless DS XKDG Wealth set 2011 senza errori.

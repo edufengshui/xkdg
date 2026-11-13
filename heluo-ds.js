@@ -455,11 +455,15 @@
       Lb.fb = !off && GEN[Lsm.el] === Lb.el ? 1.5 : 1; if (Lb.fb > 1) Lb.bk = Lsm;
       if (!off && X === 'W' && Lsm.r === 'B' && Lb.r === 'C') Lsm.chain = Lb; });
     Ls[4].fb = 1;
-    var t = 0, on = [], price = [], later = [], crit = [], critE = [], surprise = [], chain = [];
+    var t = 0, on = [], price = [], later = [], crit = [], critE = [], surprise = [], chain = [], collab = [];
+    // Edu 13/11/2026: for Wealth, Brothers with a favourable text ON THE ACTION (day line, outcome) are collaborators, not a price nor 劫財; neutral Brothers on
+    // the day line too when the outcome is Brothers with a favourable text (Belgrade 8/10/2011) — the same rule as Favour.
+    var scL = function (L) { return SC() && SC()[L.n] ? SC()[L.n].l[L.l] : 0; };
+    Ls.forEach(function (L) { if (key === 'wealth' && L.r === 'B' && (L.k === 'd' || L.k === 's2') && (scL(L) > 0 || (L.k === 'd' && scL(L) === 0 && Ls[4].r === 'B' && scL(Ls[4]) > 0))) { L.collab = true; collab.push(L); } });
     Ls.forEach(function (L) {
       if (X && L.r === X) { t += XK_W[L.k] * L.fl * L.fb; on.push(L); if (L.voidL && !L.filled) later.push(L); }
       else if (X && L.hid && L.hid.r === X) { t += XK_W[L.k] / 2; on.push({ k: L.k, b: L.hid.b, r: X, hidden: true }); }
-      if (A && L.r === A) { if (L.chain) chain.push(L); else { t -= XK_W[L.k] * L.fl * L.fb; price.push(L); } }
+      if (A && L.r === A && !L.collab) { if (L.chain) chain.push(L); else { t -= XK_W[L.k] * L.fl * L.fb; price.push(L); } }
       // rule 4 (Edu 12/11): for Speak, Brothers on a line of the time = criticism from colleagues and rivals
       //   — only when its text is unfavourable or it comes out of the void (a good Brothers text = good colleagues: 15 l3, June 2019)
       if (key === 'speak' && L.r === 'B' && ((SC() && SC()[L.n] && SC()[L.n].l[L.l] < 0) || (L.voidL && L.filled))) {
@@ -481,7 +485,7 @@
     if (X) {
       t += sd * XK_TXT.d + so * XK_TXT.s2;
       Ls.forEach(function (L) {
-        if (furto && L.r === 'B' && !L.chain && (L.k === 'lord' || L.k === 'd')) { t -= XK_W[L.k] * L.fl * (XK_STEAL - 1); steal.push(L); }
+        if (furto && L.r === 'B' && !L.chain && !L.collab && (L.k === 'lord' || L.k === 'd')) { t -= XK_W[L.k] * L.fl * (XK_STEAL - 1); steal.push(L); }
         if (L.r === X && sc(L) < 0) { t -= XK_W[L.k] * L.fl * L.fb; loss.push(L); }
       });
       if (sd < 0 && Lo.r === X && so >= 0) { t -= XK_W.s2 * Lo.fl; loss.push(Lo); }
@@ -556,7 +560,7 @@
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
-    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, collab: collab, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
   }
   // Hexagram of the hour (Edu 12/11 evening, version A, provisional): line k of the day hexagram rules two hours on the
   // branches (line 1 = 子丑 … line 6 = 戌亥; the 子 hour from 23:00 belongs to the next day). Odd hour = the day hexagram
@@ -1057,7 +1061,7 @@
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
     else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.tri && th.tri.plus.length) a.push(REL[th.X] + ' in ' + th.tri.plus.length + ' trigram' + (th.tri.plus.length > 1 ? 's' : '')); if (th.price.length || (th.tri && th.tri.minus.length)) a.push('price: ' + REL[th.A]); if (th.tri && th.tri.gOn) a.push('Wealth feeds the Ghost'); if (th.later.length) a.push('fruits later');
       if (th.crit && th.crit.length) a.push('criticism'); if (th.surprise && th.surprise.length) a.push('⚡ hidden ' + th.surprise.map(function (L) { return L.b; }).join('')); if (th.turn) a.push('⚠ turn of the month');
-      if (th.loss && th.loss.length) a.push('in play, but at a loss'); }
+      if (th.loss && th.loss.length) a.push('in play, but at a loss'); if (th.collab && th.collab.length) a.push('collaborators ' + th.collab.map(function (L) { return L.b; }).join('')); }
     if (th.alarm && th.alarm.level !== 'light') a.unshift(th.alarm.level === 'severe' ? '⚠⚠ SEVERE DAY' : '⚠ CRITICAL DAY');
     else if (th.alarm) a.push('⚠ 4 danger signals');
     return a.join(' · ');
@@ -1105,6 +1109,7 @@
     } else if (th.X && th.key !== 'correct') {
       box += th.on.length ? '<div style="' + G + '">▲ ' + REL[th.X] + ' (' + XK_PL[th.key] + ') on: ' + th.on.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.hidden ? ' hidden' : '') + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>'
         : '<div>' + REL[th.X] + ' (' + XK_PL[th.key] + ') is not on the lines of this day.</div>';
+      if (th.collab && th.collab.length) box += '<div style="' + G + '">▲ Brothers with a favourable text = collaborators, not a price: ' + th.collab.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
       if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>';
       var TR = th.tri, tl = function (a) { return a.map(function (x) { return x.lbl + (x.dl ? ' (day Luck: not a price)' : '') + fArr(x.f, x.fb); }).join(' · '); };
       if (TR && TR.plus.length) box += '<div style="' + G + '">▲ ' + REL[th.X] + ' also in the trigrams: ' + esc(tl(TR.plus)) + '</div>';
