@@ -134,7 +134,17 @@
   // every other case ×1. Trigrams: lower with lower, upper with upper. Lines: same position (line 3 of the cycle → line 3
   // of the annual). Row: cycle → annual → monthly → block → day. (The Luck keep their own flowMul: ×0.5 in all other cases.)
   function flowEl(a, b) { return !a || !b ? 1 : a === b || GEN[a] === b ? 1.5 : CTRL[a] === b ? 0.5 : 1; }
-  function lineFlow(prevN, curN, pos) { return prevN ? flowEl(NJ()[prevN].lines[pos - 1].el, NJ()[curN].lines[pos - 1].el) : 1; }
+  // isVoid(branch) → true while the branch is void and has not come out: a void line feeds nobody (Edu 13/11, 43 l5 酉)
+  function lineFlow(prevN, curN, pos, isVoid) { if (!prevN) return 1; var P = NJ()[prevN].lines[pos - 1];
+    return isVoid && isVoid(P.branch) ? 1 : flowEl(P.el, NJ()[curN].lines[pos - 1].el); }
+  // Speak (Edu 13/11, his 2026: 16 l5 申 B in Zhen = Heaven Luck, matching HT 43 l5 酉 B void): criticism of the Brothers
+  // that falls in a Luck trigram, on a line whose twin in the cycle hexagram is a void Brothers, has no substance — warning only
+  function critEmpty(ctx, pers, n, l, perN, isVoid) {
+    if (!perN) return false;
+    var t = TRI_OF(n)[l > 3 ? 0 : 1], P = NJ()[perN].lines[l - 1];
+    var lk = ['heaven', 'earth', 'fame'].map(function (k) { return ctx.prof.K[k].t; }).concat(ctx.profD ? ['heaven', 'earth', 'fame'].map(function (k) { return ctx.profD.K[k].t; }) : []);
+    return lk.indexOf(t) >= 0 && rel(pers, P.el) === 'B' && isVoid(P.branch);
+  }
   // ── The purpose in the trigrams (Edu 12/11/2026, on his Wealth years 2009–13) ──
   // Not only the line: the relation of the purpose also lives in the trigrams and in the Hu of the hexagrams of the time,
   // each one strengthened or weakened by the trigram in the same place of the hexagram on its left (flowEl; the Hu flows
@@ -430,27 +440,30 @@
     var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
     // Edu, 12/11/2026: voids, see voidExit (timely at birth = still void, but easy to leave; untimely = needs year and month in season)
     var TT = { y: T[0], m: T[1], d: T[2] }, mv = movedBranches(p);
+    var vNow = function (b) { return yv.indexOf(b) >= 0 && !voidExit(b, mb0, TT, mv).out; };
     // fl = Qi flow from the line in the same place of the hexagram on the left (Edu 12/11): annual → monthly → block → day
     function li(k, n, l, prevN) { var L = NJ()[n].lines[l - 1], v = yv.indexOf(L.branch) >= 0, vx = v ? voidExit(L.branch, mb0, TT, mv) : null;
       return { k: k, n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), hid: L.fushen ? { b: L.fushen.branch, r: rel(pers, L.fushen.el) } : null,
         voidL: v, easy: v && vx.easy, filled: v && vx.out, how: vx && vx.how, byClash: v && vx.how === 'clash',
-        fl: lineFlow(prevN, n, l), from: prevN ? NJ()[prevN].lines[l - 1] : null }; }
+        fl: lineFlow(prevN, n, l, vNow), from: prevN ? NJ()[prevN].lines[l - 1] : null }; }
     var Ls = [li('am', p.id.year[0], p.month.line, p.id.cycle[0]), li('m', p.month.hex.n, p.month.line, p.id.year[0]), li('lord', p.id.lord[0], p.id.lord[1], p.month.hex.n), li('d', p.id.day[0], p.id.day[1], p.month.hex.n), li('s2', p.id.dayHex[0], p.id.dayHex[1], p.id.lord[0])];
     // Backward flow (Edu 13/11): the master line of the smaller hexagram (the line read: month, Lord, day) that generates
     // the line crossed in the bigger one strengthens it ×1.5, only while the smaller lasts. Row: am ← m ← lord ← d ← s2.
     // Wealth: Brothers on the smaller that feed Children on the bigger are not a price (Brothers → Children → Wealth).
     [[0, 1], [1, 2], [2, 3], [3, 4]].forEach(function (q) { var Lb = Ls[q[0]], Lsm = Ls[q[1]];
-      Lb.fb = GEN[Lsm.el] === Lb.el ? 1.5 : 1; if (Lb.fb > 1) Lb.bk = Lsm;
-      if (X === 'W' && Lsm.r === 'B' && Lb.r === 'C') Lsm.chain = Lb; });
+      var off = Lsm.voidL && !Lsm.filled; // a void line feeds nobody until it comes out
+      Lb.fb = !off && GEN[Lsm.el] === Lb.el ? 1.5 : 1; if (Lb.fb > 1) Lb.bk = Lsm;
+      if (!off && X === 'W' && Lsm.r === 'B' && Lb.r === 'C') Lsm.chain = Lb; });
     Ls[4].fb = 1;
-    var t = 0, on = [], price = [], later = [], crit = [], surprise = [], chain = [];
+    var t = 0, on = [], price = [], later = [], crit = [], critE = [], surprise = [], chain = [];
     Ls.forEach(function (L) {
       if (X && L.r === X) { t += XK_W[L.k] * L.fl * L.fb; on.push(L); if (L.voidL && !L.filled) later.push(L); }
       else if (X && L.hid && L.hid.r === X) { t += XK_W[L.k] / 2; on.push({ k: L.k, b: L.hid.b, r: X, hidden: true }); }
       if (A && L.r === A) { if (L.chain) chain.push(L); else { t -= XK_W[L.k] * L.fl * L.fb; price.push(L); } }
       // rule 4 (Edu 12/11): for Speak, Brothers on a line of the time = criticism from colleagues and rivals
       //   — only when its text is unfavourable or it comes out of the void (a good Brothers text = good colleagues: 15 l3, June 2019)
-      if (key === 'speak' && L.r === 'B' && ((SC() && SC()[L.n] && SC()[L.n].l[L.l] < 0) || (L.voidL && L.filled))) { t -= XK_W[L.k] * XK_CRIT * L.fl; crit.push(L); }
+      if (key === 'speak' && L.r === 'B' && ((SC() && SC()[L.n] && SC()[L.n].l[L.l] < 0) || (L.voidL && L.filled))) {
+        if (critEmpty(ctx, pers, L.n, L.l, p.hx.n, vNow)) { L.critEmpty = true; critE.push(L); } else { t -= XK_W[L.k] * XK_CRIT * L.fl; crit.push(L); } }
       // rule 2 (Edu 12/11): a natal void that comes out now = something hidden surfaces suddenly
       if (L.voidL && L.filled) surprise.push(L);
     });
@@ -543,7 +556,7 @@
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
-    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, alarm: alarm, sd: sd, so: so, chain: chain };
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
   }
   // Hexagram of the hour (Edu 12/11 evening, version A, provisional): line k of the day hexagram rules two hours on the
   // branches (line 1 = 子丑 … line 6 = 戌亥; the 子 hour from 23:00 belongs to the next day). Odd hour = the day hexagram
@@ -833,6 +846,7 @@
       if (th.am) { var amL = NJ()[th.am.n].lines[th.am.l - 1], amR = rel(me, amL.el), amT = '';
         try { amT = (window.XKDG_HELUO_TEXTS[th.am.n].lines[th.am.l] || {}).statement || ''; } catch (e) {}
         box += '<div style="' + (th.am.s > 0 ? G : th.am.s < 0 ? Rd : '') + '">' + (th.am.s > 0 ? '▲' : th.am.s < 0 ? '▼' : '·') + ' Annual line of the month: ' + th.am.n + ' l' + th.am.l + ' ' + amL.branch + ' ' + REL[amR] + (amT ? ' — «' + esc(amT) + '»' : '') + '</div>'; }
+      if (th.critE && th.critE.length) box += '<div style="' + O + '">⚠ Criticism without substance: ' + th.critE.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + ' (Brothers in a Luck trigram, void Brothers in the cycle) — it does not take away.</div>';
       if (th.crit && th.crit.length) box += '<div style="' + Rd + '">▼ Criticism from colleagues and rivals (Brothers' + (th.crit.some(function (c) { return c.k === 'tri'; }) ? ', Dui = the mouth' : '') + '): ' + th.crit.map(function (c) { return c.k === 'tri' ? c.lbl + fArr(c.f) : XK_LBL[c.k] + ' ' + c.b + (c.fl > 1 ? ' ↑' : c.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>';
       (th.surprise || []).forEach(function (L) { box += '<div style="' + O + '">⚡ ' + XK_LBL[L.k] + ' ' + L.b + ' comes out of the void (' + VOID_HOW[L.how] + '): something hidden surfaces suddenly — ' + REL[L.r] + ': ' + REL_MEAN[L.r] + '.</div>'; });
       if (th.turn) box += '<div style="' + Rd + '">⚠ Turn of the month: this month is good for ' + XK_PL[th.key] + ', the next one is against it' + (th.turn.from ? ' (from ' + th.turn.from.getUTCDate() + ' ' + MON[th.turn.from.getUTCMonth()] + ')' : '') + '. What you obtain now can be reversed: close and secure it before the change.</div>';
@@ -915,30 +929,33 @@
   // the line (or hidden under it), ▼ the relation that attacks it (the price), ⏳ void line (fruits later), the three Luck.
   var _pl = { key: null, y0: null, openY: null, openM: null, openC: null };
   var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  function plMark(ch, ctx, key, me, hx, line, yearBranch, monthBranch, prev, prevLine) {
+  function plMark(ch, ctx, key, me, hx, line, yearBranch, monthBranch, prev, prevLine, perHex) {
     var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
     var yv = natalVoids(ch.Pn).list, G = 'color:#2e7d32;font-weight:bold;', Rd = 'color:#c62828;font-weight:bold;', O = 'color:#e65100;';
     // Qi flow on the line (Edu 12/11): from the line in the same place of the hexagram on the left (period → year → month)
-    var fl = prev ? lineFlow(prev.n, hx.n, line) : 1, fa = fl > 1 ? ' ↑' : fl < 1 ? ' ↓' : '';
+    var vNow = function (b) { return yv.indexOf(b) >= 0 && (!yearBranch || !voidExit(b, ch.Pn.month[1], { y: yearBranch, m: monthBranch, d: null }, [L.branch]).out); };
+    var fl = prev ? lineFlow(prev.n, hx.n, line, vNow) : 1, fa = fl > 1 ? ' ↑' : fl < 1 ? ' ↓' : '';
     // backward flow (Edu 13/11): the master line of this year (its moved line) or month that generates the line crossed in
     // the bigger one (the period line; for a month the annual line that rules it) strengthens it for this year / month only.
     // Wealth: Brothers here that feed Children there are not a price (Brothers → Children → Wealth). His 2026 (67):
     // annual 16 l5 申 Brothers feeds the 子 Children of HT 43 l1 — productive with the help of collaborators.
     var LB = prev && prevLine ? NJ()[prev.n].lines[prevLine - 1] : null, rB = LB ? rel(me, LB.el) : null, chainL = false;
-    if (LB && GEN[L.el] === LB.el) {
+    if (LB && GEN[L.el] === LB.el && !vNow(L.branch)) {
       var bw = monthBranch ? XK_AM.rel * 2 * 0.5 : 2 * 0.5, wh = monthBranch ? 'the annual line ' + LB.branch : 'the period line ' + LB.branch;
       if (X && rB === X) { sc += bw; m.push('<span style="color:#2e7d32;">↩ ' + L.branch + ' ' + REL[r] + ' feeds ' + wh + ' ' + REL[rB] + ' (+' + REL[X] + ' while it lasts)</span>'); }
       else if (A && rB === A) { sc -= bw; m.push('<span style="color:#c62828;">↩ ' + L.branch + ' ' + REL[r] + ' feeds ' + wh + ' ' + REL[rB] + ' (the price grows)</span>'); }
       else if (rB) m.push('<span style="color:#555;">↩ ' + L.branch + ' ' + REL[r] + ' feeds ' + wh + ' ' + REL[rB] + '</span>');
     }
-    if (X === 'W' && r === 'B' && rB === 'C') chainL = true;
+    if (X === 'W' && r === 'B' && rB === 'C' && !vNow(L.branch)) chainL = true;
     if (X && r === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + fa + '</span>'); sc += 2 * fl; }
     else if (X && L.fushen && rel(me, L.fushen.el) === X) { m.push('<span style="' + G + '">▲ ' + REL[X] + ' hidden (' + L.fushen.branch + ')</span>'); sc += 1; }
     if (A && r === A && chainL) m.push('<span style="color:#2e7d32;">Brothers feed the Children (' + LB.branch + '): not a price</span>');
     else if (A && r === A) { m.push('<span style="' + Rd + '">▼ price: ' + REL[A] + fa + '</span>'); sc -= 2 * fl; }
     // Edu 12/11 (Greece 2019), rule 4: Speak — Brothers on the line = criticism from colleagues; Dui trigrams = the mouth
     var sL = SC() && SC()[hx.n] ? SC()[hx.n].l[line] : 0, outV = yv.indexOf(L.branch) >= 0 && !!yearBranch && (!monthBranch ? timely(L.el, ch.Pn.month[1]) : voidExit(L.branch, ch.Pn.month[1], { y: yearBranch, m: monthBranch, d: null }, [L.branch]).out);
-    if (key === 'speak' && r === 'B' && (sL < 0 || outV)) { m.push('<span style="' + Rd + '">▼ Brothers: criticism from colleagues' + fa + '</span>'); sc -= 2 * XK_CRIT * fl; }
+    if (key === 'speak' && r === 'B' && (sL < 0 || outV)) {
+      if (yearBranch && critEmpty(ctx, me, hx.n, line, perHex ? perHex.n : null, vNow)) m.push('<span style="' + O + '">⚠ Brothers: criticism without substance (in a Luck trigram, void Brothers in the cycle)</span>');
+      else { m.push('<span style="' + Rd + '">▼ Brothers: criticism from colleagues' + fa + '</span>'); sc -= 2 * XK_CRIT * fl; } }
     if (key === 'speak' && yearBranch) { var nD = [hx.upper, hx.lower].filter(function (t) { return t === 'Dui'; }).length;
       if (nD && !triVoid('Dui', { list: yv, mb: ch.Pn.month[1], T: { y: yearBranch, m: monthBranch, d: null }, moved: [L.branch] })) { m.push('<span style="color:#c62828;">−Dui (the mouth: criticism)' + (nD > 1 ? ' ×2' : '') + '</span>'); sc -= nD * XK_CRIT; } }
     // rule 1: in a month row, the line of the annual that rules this month (prev = annual): relation and text
@@ -1072,14 +1089,14 @@
       + '<table style="border-collapse:collapse;font-size:12px;width:100%;">';
     for (var Y = Y0; Y < Y0 + 12; Y++) {
       var a = H().annual(R, Y); if (a.none) continue;
-      var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], mk = plMark(ch, ctx, key, me, a.hex, a.moved, yb, null, a.periodHex, a.period.line), op = _pl.openY === Y;
+      var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], mk = plMark(ch, ctx, key, me, a.hex, a.moved, yb, null, a.periodHex, a.period.line, a.periodHex), op = _pl.openY === Y;
       h += '<tr onclick="xkdgHLPlan(\'y\',' + Y + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mk.sc, Y === nowY) + (op ? 'outline:2px solid #5e35b1;' : '') + '"><td style="' + TD + 'white-space:nowrap;"><b>' + Y + '</b> · age ' + a.age + (Y === nowY ? ' ◀' : '') + '<div style="font-size:10px;color:#888;">' + yb + ' year</div></td>'
         + '<td style="' + TD + 'white-space:nowrap;">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '<br>l' + a.moved + ' ' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
       if (!op) continue;
       var ms = null, aP = null; try { ms = H().periods.months(Y, lon); aP = H().periods.annual(ms); } catch (e) {}
       h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year', true) : '')
         + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">3 · The months of ' + Y + ' (age ' + a.age + ')</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
-      var MK = a.months.map(function (mo) { return plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12], a.hex, mo.line); });
+      var MK = a.months.map(function (mo) { return plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12], a.hex, mo.line, a.periodHex); });
       a.months.forEach(function (mo, i) {
         var mm = MK[i], opM = _pl.openM === mo.index, per = '';
         try { var s = ms[i].start, e = new Date((ms[i + 1].start || ms[i + 1].end).getTime() - 86400000); per = s.getUTCDate() + ' ' + MON3[s.getUTCMonth()] + '–' + e.getUTCDate() + ' ' + MON3[e.getUTCMonth()]; } catch (e2) {}
