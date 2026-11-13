@@ -4809,8 +4809,11 @@ function _hlApply(results, rerender) {
         var byScore = results.every(function (r, i) { return i === 0 || results[i - 1].score >= r.score; });
         // Edu, 11/11/2026: each ☯ point (−3…+3) is worth 5% of the XKDG score of that day (max ±15%), so He Luo weighs the
         // same on weak and strong days and XKDG stays in command.
-        results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { r._hl = th; r._hlPts = th.adj; r._hlAdj = Math.round(r.score * 0.05 * th.adj * 10) / 10; } });
+        // Edu 13/11/2026: the Favour level of the purpose adds to the ☯ (strong +5%, ★ +10%, ★★ +15%; total He Luo ±20%)
+        results.forEach(function (r) { var th = sc.by[r.isoDate]; if (th) { var pts = XKDGHeluoDS.xkPts ? XKDGHeluoDS.xkPts(th) : th.adj; r._hl = th; r._hlPts = pts; r._hlAdj = Math.round(r.score * 0.05 * pts * 10) / 10; } });
         if (key === 'luck') results = results.filter(function (r) { return r._hl && r._hl.luck.length; });
+        // Correct (Edu 13/11/2026): the problem of the period on top, then only the XKDG days that are also days to correct it
+        if (key === 'correct') { _hlScanNote = '✚ ' + XKDGHeluoDS.xkCorrectHead(sc.by, iso); results = results.filter(function (r) { return r._hl && r._hl.cf && r._hl.cf.ok; }); }
         if (byScore) results = results.map(function (r, i) { return [r, i]; }).sort(function (a, b) { return (b[0].score + b[0]._hlAdj) - (a[0].score + a[0]._hlAdj) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     } catch (e) {}
     return results;
@@ -4895,7 +4898,7 @@ function renderScanResults(results, mode) {
     // He Luo (Edu, 11/11/2026): only on the favourable dates, after the XKDG filter — it never adds or removes a date by score
     if (!hasNegSort) {
         results = _hlApply(results, function () { try { renderScanResults(_hlAll, _hlMode); } catch (e) {} });
-        if (results.length === 0) { container.innerHTML = purposeHeader + sortToggleHTML + '<div class="scan-empty">No favourable date with one of the three He Luo Luck in this range.</div>'; return; }
+        if (results.length === 0) { container.innerHTML = purposeHeader + sortToggleHTML + (_hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '') + '<div class="scan-empty">' + (_hlPurposeKey() === 'correct' ? 'No favourable XKDG date is also a He Luo day to correct the problem in this range.' : 'No favourable date with one of the three He Luo Luck in this range.') + '</div>'; return; }
     } else results.forEach(r => { r._hl = null; r._hlAdj = 0; });
     const _hlNoteHtml = _hlScanNote ? '<div style="font-size:11px;color:#5e35b1;margin-bottom:6px;">' + _hlScanNote + '</div>' : '';
     const maxScore = hasNegSort
@@ -6053,7 +6056,7 @@ function getPurpose() {
     var el = document.getElementById('purpose-select');
     // Session 37 (Edu): "🌿 Cures" in PURPOSE is not a QMDJ purpose (no doors, no purpose rules):
     // it is the 🌿 Cure filter — only favourable dates whose DAY or YEAR pillar is a remedy.
-    if (el && (el.value === 'cure' || el.value === 'luck')) return '';   // Luck (He Luo, 11/11/2026): plain favourable dates, He Luo keeps those with a Luck
+    if (el && (el.value === 'cure' || el.value === 'luck' || el.value === 'correct')) return '';   // Correct (He Luo, Edu 13/11/2026): plain favourable dates, He Luo keeps the days to correct   // Luck (He Luo, 11/11/2026): plain favourable dates, He Luo keeps those with a Luck
     return el ? el.value : '';
 }
 function isCurePurpose() { var el = document.getElementById('purpose-select'); return !!(el && el.value === 'cure'); }
