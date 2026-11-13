@@ -635,7 +635,37 @@
     } catch (e) {}
     return out;
   }
-  root.XKDGHeluoDSCore = { levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
+  // ── A branch of the time that clashes a QUIET line (Edu 13/11/2026, rule of the Yi Jing) ──
+  // The year branch hits a quiet line of the annual and of the life hexagram (XT/HT); the day branch hits a quiet line of
+  // the monthly and of the block hexagram. The MONTH decides: line timely in the month = activated, it becomes a moving line
+  // (read its text and what it turns into: hexagram, branch and relation of the changed line, and whether it feeds or attacks
+  // the line it comes from); not timely = eliminated (e.g. untimely Brothers in a deal: the competitors are removed).
+  // Reading only, no score (Edu: the score after seeing it at work). Edu's years: 1994 OLIS, 1998, 2000, 2010, 2014, 2016, 2019.
+  var REL_GONE = { B: 'rivals and competitors removed', W: 'money or clients lost', C: 'what you produce stops (students, projects)', P: 'support, documents or protection fail', G: 'pressure and authority removed' };
+  function clashQuiet(pers, hexes, br, mb) { // hexes: [[label, hx, movingLines[]]], br: clashing branch, mb: month branch
+    var out = [], seen = {};
+    hexes.forEach(function (g) { var hx = g[1]; if (!hx || !NJ()[hx.n]) return;
+      NJ()[hx.n].lines.forEach(function (L, i) {
+        var l = i + 1; if (L.branch !== clash(br) || g[2].indexOf(l) >= 0) return;
+        var tri = (i < 3 ? hx.lines.slice(0, 3) : hx.lines.slice(3)).join('') + (i < 3 ? 'lo' : 'up'), k = l + L.branch + tri;
+        if (seen[k]) { seen[k].also.push(g[0]); return; }
+        var o = { lv: g[0], also: [], hx: hx, n: hx.n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), on: timely(L.el, mb), s: SC() && SC()[hx.n] ? SC()[hx.n].l[l] : 0 };
+        if (o.on) { var nl = hx.lines.slice(); nl[i] = nl[i] ? 0 : 1; var nh = H().hexOf(nl), N = NJ()[nh.n].lines[i];
+          o.to = { hx: nh, n: nh.n, b: N.branch, el: N.el, r: rel(pers, N.el), s: SC() && SC()[nh.n] ? SC()[nh.n].l[l] : 0,
+            back: GEN[N.el] === L.el ? 'turns back and feeds it' : CTL[N.el] === L.el ? 'turns back and attacks it' : N.el === L.el ? 'same element' : GEN[L.el] === N.el ? 'drains it' : 'controlled by it' }; }
+        seen[k] = o; out.push(o);
+      }); });
+    return out;
+  }
+  function yearClash(R, Y, pers, a, mb) { // a = H().annual(R, Y)
+    if (!a || a.none) return [];
+    return clashQuiet(pers, [['annual', a.hex, [a.moved]], [(a.periodHex === R.xianTian ? 'XT' : 'HT') + ' ' + a.periodHex.n, a.periodHex, [a.period.line]]], BR[((Y - 4) % 12 + 12) % 12], mb);
+  }
+  function dayClash(th) {
+    if (!th || !th.p) return [];
+    var p = th.p; return clashQuiet(th.pers, [['block', p.daily.block, [p.id.lord[1], p.id.day[1]]], ['month', p.month.hex, [p.month.line]]], th.Pe.day[1], th.Pe.month[1]);
+  }
+  root.XKDGHeluoDSCore = { clashQuiet: clashQuiet, dayClash: dayClash, yearClash: yearClash, levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
@@ -941,11 +971,15 @@
         + (L.voidL ? (L.filled ? ' · void, out today (' + VOID_HOW[L.how] + ')' : ' · <span style="' + O + '">void: later' + (L.easy ? ' (easy to leave)' : ' (hard to leave)') + '</span>') : '') + '</div>'
         + (U().lineBody ? U().lineBody(L.n, L.l, L.k === 'm' ? 'month' : 'day', true) : '') + '</div>';
     }
-    var Ls = th.lines;
-    h += lv('1 · Month ' + p.month.index + ' — the line of the month', Ls[0], p.month.hex, mP)
-      + lv('2 · Lord of the Block (5 days) — the background of these days', Ls[1], dh.block, bP)
-      + lv('3 · Day line in the block hexagram — primary text: cause, action', Ls[2], dh.block, bP)
-      + lv('4 · Same line in the day hexagram — outcome', Ls[3], dh.hex, dP)
+    var LK = {}; th.lines.forEach(function (L) { LK[L.k] = L; });
+    var DC = dayClash(th), dcH = '';
+    if (DC.length) dcH = '<div style="border:1px solid #ce93d8;background:#fbf5fd;border-radius:8px;padding:6px 8px;margin:6px 0;font-size:12px;line-height:1.6;"><b style="color:#6a1b9a;">The day ' + th.Pe.day[1] + ' hits a quiet line</b> (timely in the month ' + th.Pe.month[1] + ' = activated, otherwise eliminated)<br>'
+      + DC.map(function (o) { return clashSpan(o, th.X, th.A); }).join('<br>') + clashDetail(DC, me, 'day') + '</div>';
+    h += lv('1 · Month ' + p.month.index + ' — the line of the month', LK.m, p.month.hex, mP)
+      + lv('2 · Lord of the Block (5 days) — the background of these days', LK.lord, dh.block, bP)
+      + lv('3 · Day line in the block hexagram — primary text: cause, action', LK.d, dh.block, bP)
+      + lv('4 · Same line in the day hexagram — outcome', LK.s2, dh.hex, dP)
+      + dcH
       + hoursHtml(th, me)
       + '<div style="font-size:10px;color:#999;line-height:1.5;">He Luo raises or lowers days already favourable for XKDG (month, block, day only; from −3 to +3). The texts show the shape of the day — also the price of a success — not a plus or a minus. Years and months: see the He Luo chart reading.</div>';
     return h;
@@ -993,6 +1027,20 @@
   // (moved line of the annual) and month (line of the month in the monthly hexagram): ▲ the relation of the purpose on
   // the line (or hidden under it), ▼ the relation that attacks it (the price), ⏳ void line (fruits later), the three Luck.
   var _pl = { key: null, y0: null, openY: null, openM: null, openC: null };
+  // lines hit by the year / day branch (Edu 13/11): ⚡ activated (timely in the month), ✕ eliminated (not timely)
+  function clashSpan(o, X, A) {
+    var w = o.lv + (o.also.length ? ' + ' + o.also.join(' + ') : '') + ' l' + o.l + ' ' + o.b + ' ' + REL[o.r];
+    if (o.on) return '<span style="color:' + (o.s > 0 ? '#2e7d32' : o.s < 0 ? '#c62828' : '#555') + ';">⚡ ' + w + ' activated → ' + o.to.n + ' l' + o.l + ' ' + o.to.b + ' ' + REL[o.to.r] + ' (' + o.to.back + ')</span>';
+    return '<span style="color:' + (X && o.r === X ? '#c62828' : A && o.r === A ? '#2e7d32' : '#777') + ';">✕ ' + w + ' eliminated: ' + REL_GONE[o.r] + '</span>';
+  }
+  function clashDetail(list, me, unit) {
+    return list.filter(function (o) { return o.on; }).map(function (o) {
+      return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">⚡ Activated: ' + (/\d/.test(o.lv) ? o.lv : o.lv + ' ' + o.n) + ' ' + esc(U().hexName ? U().hexName(o.n) : '') + ' line ' + o.l + ' ' + o.b + ' ' + REL[o.r] + '</div>'
+        + (U().cycleHexSvg ? U().cycleHexSvg(o.hx, o.l, null, me) : '') + (U().lineBody ? U().lineBody(o.n, o.l, unit, true) : '')
+        + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin-top:6px;">→ turns into ' + o.to.n + ' ' + esc(U().hexName ? U().hexName(o.to.n) : '') + ' line ' + o.l + ' ' + o.to.b + ' ' + REL[o.to.r] + ' (' + o.to.back + ')</div>'
+        + (U().cycleHexSvg ? U().cycleHexSvg(o.to.hx, o.l, null, me) : '') + (U().lineBody ? U().lineBody(o.to.n, o.l, unit, true) : '') + '</div>';
+    }).join('');
+  }
   var MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   function plMark(ch, ctx, key, me, hx, line, yearBranch, monthBranch, prev, prevLine, perHex) {
     var L = NJ()[hx.n].lines[line - 1], X = xkRel(key, ch.male), A = X ? XK_ATT[X] : null, r = rel(me, L.el), m = [], sc = 0;
@@ -1155,6 +1203,8 @@
     for (var Y = Y0; Y < Y0 + 12; Y++) {
       var a = H().annual(R, Y); if (a.none) continue;
       var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], mk = plMark(ch, ctx, key, me, a.hex, a.moved, yb, null, a.periodHex, a.period.line, a.periodHex), op = _pl.openY === Y;
+      var XY = xkRel(key, ch.male), AY = XY ? XK_ATT[XY] : null, yc = yearClash(R, Y, me, a, 'x');
+      if (yc.length) mk.html += (mk.html ? ' · ' : '') + '<span style="color:#6a1b9a;">⚡ the year ' + yb + ' hits ' + yc.map(function (o) { return o.lv + (o.also.length ? ' + ' + o.also.join(' + ') : '') + ' l' + o.l + ' ' + o.b + ' ' + REL[o.r]; }).join(', ') + ': activated in the months of its season, eliminated in the others</span>';
       h += '<tr onclick="xkdgHLPlan(\'y\',' + Y + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mk.sc, Y === nowY) + (op ? 'outline:2px solid #5e35b1;' : '') + '"><td style="' + TD + 'white-space:nowrap;"><b>' + Y + '</b> · age ' + a.age + (Y === nowY ? ' ◀' : '') + '<div style="font-size:10px;color:#888;">' + yb + ' year</div></td>'
         + '<td style="' + TD + 'white-space:nowrap;">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '<br>l' + a.moved + ' ' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
       if (!op) continue;
@@ -1162,13 +1212,15 @@
       h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year', true) : '')
         + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">3 · The months of ' + Y + ' (age ' + a.age + ')</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
       var MK = a.months.map(function (mo) { return plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12], a.hex, mo.line, a.periodHex); });
+      var YC = a.months.map(function (mo) { return yearClash(R, Y, me, a, BR[(mo.index - 1) % 12]); });
+      MK.forEach(function (mm, i) { if (YC[i].length) mm.html += (mm.html ? ' · ' : '') + YC[i].map(function (o) { return clashSpan(o, XY, AY); }).join(' · '); });
       a.months.forEach(function (mo, i) {
         var mm = MK[i], opM = _pl.openM === mo.index, per = '';
         try { var s = ms[i].start, e = new Date((ms[i + 1].start || ms[i + 1].end).getTime() - 86400000); per = s.getUTCDate() + ' ' + MON3[s.getUTCMonth()] + '–' + e.getUTCDate() + ' ' + MON3[e.getUTCMonth()]; } catch (e2) {}
         h += '<tr onclick="event.stopPropagation();xkdgHLPlan(\'m\',' + mo.index + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mm.sc, false) + '"><td style="' + TD + 'white-space:nowrap;"><b>' + per + '</b></td>'
           + '<td style="' + TD + 'white-space:nowrap;">' + mo.hex.n + ' l' + mo.line + ' ' + mm.L.branch + ' ' + relTag(mm.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (i > 0 && MK[i - 1].lv > 0 && mm.lv < 0 && key !== 'luck' && key !== 'cure' ? '<span style="color:#c62828;font-weight:bold;">⚠ turn: after a good month, this one can reverse what was obtained</span> · ' : '') + (mm.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
         if (opM) { var mP = null; try { var d0 = H().periods.dayMs(ms[i].start); mP = H().periods.month(d0, d0, H().periods.dayMs(ms[i + 1].start || ms[i + 1].end)); } catch (e3) {}
-          h += '<tr onclick="event.stopPropagation()"><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(mo.hex, mo.line, mP, me) : '') + (U().lineBody ? U().lineBody(mo.hex.n, mo.line, 'month', true) : '') + '</td></tr>'; }
+          h += '<tr onclick="event.stopPropagation()"><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(mo.hex, mo.line, mP, me) : '') + (U().lineBody ? U().lineBody(mo.hex.n, mo.line, 'month', true) : '') + clashDetail(YC[i], me, 'month') + '</td></tr>'; }
       });
       h += '</table></td></tr>';
     }
@@ -1237,6 +1289,8 @@
       if (th.surprise && th.surprise.length) o.hidden_surfaces = th.surprise.map(function (L) { return L.b; });
       if (th.turn) o.turn_of_the_month = th.turn;
       if (th.later && th.later.length) o.fruits_later_void = th.later.map(function (L) { return L.b; });
+      try { var dcx = dayClash(th); if (dcx.length && !out.day_branch_hits_quiet_lines) out.day_branch_hits_quiet_lines = dcx.map(function (c) {
+        return c.lv + ' ' + c.n + ' l' + c.l + ' ' + c.b + ' ' + REL[c.r] + (c.on ? ' ACTIVATED (timely in the month): text ' + c.s + ' «' + stmt(c.n, c.l) + '» → turns into ' + c.to.n + ' l' + c.l + ' ' + c.to.b + ' ' + REL[c.to.r] + ' (' + c.to.back + ') «' + stmt(c.to.n, c.l) + '»' : ' ELIMINATED (not timely in the month): ' + REL_GONE[c.r]); }); } catch (e) {}
       out.purposes[XK_PL[key]] = o;
     });
     if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s,
