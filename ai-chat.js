@@ -1893,7 +1893,8 @@
         'warnings (Brothers stealing Wealth, criticism, void that comes out, Fire controlling the Brothers...), alarms in the next ' +
         '30 days and, on request, the 12 hours. Use it for ANY question about HLLS, He Luo, "my chart"/"la mia carta HLLS", how a ' +
         'day goes for Person A in He Luo — never answer those with get_pillars and Hetu/qi/yun sums (that is XKDG, a different system). ' +
-        'Write bazi in a column (Hour, Day, Month, Year).',
+        'Answer as the reading_rules in the result say: the essence of the day, a short analysis and advice, in plain colloquial ' +
+        'language — no numbers, no scores, no tables unless the user asks for them. Write bazi in a column (Hour, Day, Month, Year).',
       input_schema: {
         type: 'object',
         properties: {
