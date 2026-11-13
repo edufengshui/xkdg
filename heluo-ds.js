@@ -619,13 +619,14 @@
     // Edu 13/11: an hour that brings the element that controls the prevailing relation relieves an excess (his 13/11/2026:
     // Parent prevails → a Wealth hour; the 卯 hour is too early, so also the Wood trigrams of the hour hexagram).
     // grade 3 = the line of the hour, 2 = both trigrams, 1 = one trigram; best = highest grade, then the best text.
+    // Edu 13/11/2026 (Correct/Favour): an hour relieves ONLY with a favourable text (8/12/2015 gave 丙辰 57 l3, unfavourable).
     try {
       var LV = levelsOfDay(th), ELS = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'];
       LV.prevalence.forEach(function (pr) {
         var prEl = ELS.filter(function (e) { return rel(pers, e) === pr; })[0], ce = ELS.filter(function (e) { return CTL[e] === prEl; })[0], cr = rel(pers, ce);
         out.forEach(function (h) {
           var nt = TRI_OF(h.n).filter(function (t) { return TRI_EL[t] === ce; }).length, g = h.el === ce ? 3 : nt === 2 ? 2 : nt;
-          if (g && (!h.relief || h.relief.grade < g)) h.relief = { grade: g, of: pr, by: cr, how: g === 3 ? 'line ' + h.lb + ' ' + REL[cr] : (nt === 2 ? 'both trigrams' : 'one trigram') + ' ' + ce };
+          if (g && h.s > 0 && (!h.relief || h.relief.grade < g)) h.relief = { grade: g, of: pr, by: cr, how: g === 3 ? 'line ' + h.lb + ' ' + REL[cr] : (nt === 2 ? 'both trigrams' : 'one trigram') + ' ' + ce };
         });
       });
       var rk = out.filter(function (h) { return h.relief; }).sort(function (a, b) { return b.relief.grade - a.relief.grade || b.s - a.s; });
@@ -685,9 +686,92 @@
     th.lines.forEach(function (L) { var o = line(L.n, L.l); by[L.k] = o; var h = hit(o, db, 'day'); if (h) { h.lv = LBL[L.k]; dh.push(h); } });
     return { yb: yb, mb: mb, db: db, cycle: cyc, annual: ann, yearHits: yh, yearQuiet: yq, dayHits: dh, dayQuiet: dayClash(th), lines: by, lord: by.lord };
   }
-  root.XKDGHeluoDSCore = { filmOfDay: filmOfDay, clashQuiet: clashQuiet, dayClash: dayClash, yearClash: yearClash, levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
+  // ── Date Selection «Correct» and «Favour» (Edu 13/11/2026, tried on his dates: claude/hlls-ds-cf-prova.md) ──
+  // Text of a line: positive (score > 0) = the cure / the purpose counts; 0 = neutral, read it in the film; negative = it does not count.
+  // CORRECT: the app finds the problem = the relation that prevails among the active lines (cycle, annual of the month, month,
+  //   Lord, day) when at least half of its texts are unfavourable (Parent with bad texts = disputes over agreements already
+  //   made: 8/12/2015). Out of season → control it (the element that controls it, or the day branch that clashes one of its
+  //   lines: quiet = eliminated, active = gives way); in season → drain it forward (B→C, G→P, W→G, C→W, P→B). The cure must sit on
+  //   the Lord, the day line or the outcome with a POSITIVE text. Discarded: critical days, day line with a negative text that
+  //   is not the cure, a Lord with a very unfavourable text (≤ −2: 3/12/2015 «the ridgepole sags»). Hour: only an hour (07–23)
+  //   whose line has the cure element and a positive text — otherwise «no particular hour».
+  // FAVOUR (W, C, P, G, B): the purpose (or what feeds it) on the Lord with a positive text, or the purpose on the day line or
+  //   the outcome with a positive text; the price on the action blocks — but for Wealth Brothers with a positive text are
+  //   collaborators, not a price (Edu: 7/9 and 8/10/2011). Hour: when the actor enters (Lord's branch), if its text is not
+  //   negative; the answer = the hour where a natal void comes out.
+  var CF_KEY = { W: 'wealth', C: 'speak', P: 'legal', G: 'career', B: 'wealth' };
+  var CF_PROB = { P: 'disputes over agreements already made: someone overturns the table and imposes new conditions', B: 'rivals and competition, money drained by others', G: 'pressure, accusations, legal trouble', C: 'much output and few results; trouble with authority', W: 'money pressure that attacks support, documents and agreements' };
+  var CF_DO = { W: 'contact the clients, redefine the agreements with concrete terms, settle money matters', G: 'set firm rules, involve an authority or a lawyer, put things in writing', C: 'write, explain, teach, launch something new', P: 'sign, document, study, ask a mentor or protector for support', B: 'rely on collaborators, colleagues and friends, team up' };
+  var CF_LBL = { lord: 'actor (Lord of the block)', d: 'day line', s2: 'outcome' };
+  function cfElOf(pers, r) { return ['Wood', 'Fire', 'Earth', 'Metal', 'Water'].filter(function (e) { return rel(pers, e) === r; })[0]; }
+  function cfBase(ctx, Pe, lon, key) {
+    var th = thread(ctx, Pe, lon, key); if (!th) return null;
+    var F = filmOfDay(th); return { th: th, F: F, L: F.lines, pers: th.pers, hours: hoursOfDay(ctx, th) };
+  }
+  function correctDay(ctx, Pe, lon) {
+    var B = cfBase(ctx, Pe, lon, 'wealth'); if (!B) return null;
+    var th = B.th, L = B.L, LV = levelsOfDay(th), mb = Pe.month[1], out = { Pe: Pe, th: th, F: B.F, problems: [], ok: false, why: [], no: [] };
+    LV.prevalence.forEach(function (r) {
+      var ls = LV.lines.filter(function (x) { return x.r === r; }).map(function (x) { var m = x.lbl.match(/(\d+) l(\d)/); return SC() && SC()[+m[1]] ? SC()[+m[1]].l[+m[2]] : 0; });
+      var neg = ls.filter(function (s) { return s < 0; }).length; if (neg * 2 >= ls.length) out.problems.push({ r: r, n: ls.length, neg: neg });
+    });
+    if (!out.problems.length) { out.no.push('no problem to correct (no prevailing relation with unfavourable texts)'); return out; }
+    var P = out.problems[0].r, eP = cfElOf(B.pers, P), season = timely(eP, mb);
+    var eC = season ? GEN[eP] : Object.keys(CTRL).filter(function (e) { return CTRL[e] === eP; })[0], rC = rel(B.pers, eC);
+    out.problem = P; out.season = season; out.cure = rC; out.how = season ? 'in season: drain it towards ' + REL[rC] : 'out of season: control it with ' + REL[rC];
+    if (th.alarm) out.no.push('critical day');
+    var cur = ['d', 's2', 'lord'].filter(function (k) { return L[k].el === eC; }), pos = cur.filter(function (k) { return L[k].s > 0; }), neu = cur.filter(function (k) { return L[k].s === 0; });
+    var clash = [];
+    if (!season) {
+      B.F.dayHits.forEach(function (h) { if (h.r === P && !h.alive) clash.push({ t: 'gives way', n: h.n, l: h.l, b: h.b }); });
+      B.F.dayQuiet.forEach(function (c) { if (c.r === P && !c.on) clash.push({ t: 'eliminated', n: c.n, l: c.l, b: c.b }); });
+    }
+    if (!pos.length && !neu.length && !clash.length) out.no.push(cur.length ? 'the cure is there but with an unfavourable text' : 'no cure on the day');
+    if (L.d.s < 0 && pos.indexOf('d') < 0) out.no.push('unfavourable day line');
+    if (L.lord.s <= -2) out.no.push('the actor has a very unfavourable text');
+    if (out.no.length) return out;
+    out.ok = true; out.neutral = !pos.length && !clash.length;
+    pos.forEach(function (k) { out.why.push(REL[rC] + ' on the ' + CF_LBL[k] + ' with a favourable text'); });
+    neu.forEach(function (k) { out.why.push(REL[rC] + ' on the ' + CF_LBL[k] + ' (neutral text: read the film)'); });
+    clash.forEach(function (c) { out.why.push('the day ' + Pe.day[1] + ' clashes ' + REL[P] + ' ' + c.n + ' l' + c.l + ' ' + c.b + ': ' + c.t); });
+    out.v = pos.reduce(function (s, k) { return s + (k === 'd' ? 3 : k === 's2' ? 2 : 1); }, 0) + clash.length * 2;
+    out.todo = CF_DO[rC];
+    out.hours = B.hours.filter(function (h) { return h.i >= 4 && h.el === eC && h.s > 0; });
+    return out;
+  }
+  function favourDay(ctx, Pe, lon, X) {
+    var B = cfBase(ctx, Pe, lon, CF_KEY[X]); if (!B) return null;
+    var th = B.th, L = B.L, A = XK_ATT[X], eX = cfElOf(B.pers, X), out = { Pe: Pe, th: th, F: B.F, X: X, ok: false, why: [], no: [] };
+    var feeds = function (o) { return o.r === X || GEN[o.el] === eX; }, collab = function (o) { return X === 'W' && o.r === 'B' && o.s > 0; };
+    if (th.alarm) out.no.push('critical day');
+    if (L.d.s < 0) out.no.push('unfavourable day line');
+    [['d', L.d], ['s2', L.s2]].forEach(function (x) { if (x[1].r === A && !collab(x[1])) out.no.push('the price (' + REL[A] + ') on the ' + CF_LBL[x[0]]); });
+    var actor = feeds(L.lord) && L.lord.s > 0, act = ['d', 's2'].filter(function (k) { return L[k].r === X && L[k].s > 0; });
+    if (!actor && !act.length) out.no.push('the purpose is neither on the actor nor on the action');
+    if (out.no.length) return out;
+    out.ok = true;
+    if (actor) out.why.push('the actor ' + (L.lord.r === X ? 'brings ' + REL[X] : 'feeds ' + REL[X]) + ' with a favourable text');
+    act.forEach(function (k) { out.why.push(REL[X] + ' on the ' + CF_LBL[k] + ' with a favourable text'); });
+    if ([L.lord, L.d, L.s2].some(collab)) out.why.push('Brothers with a favourable text: collaborators');
+    if ([L.lord, L.d, L.s2].some(function (o) { return o.r === X && o.on; })) out.why.push(REL[X] + ' in season');
+    if (['lord', 'd', 's2'].some(function (k) { return L[k].r === X && B.F.dayHits.some(function (h) { return h.n === L[k].n && h.l === L[k].l && h.alive; }); })) out.why.push('the day branch lights it up');
+    if (L.am && L.am.s >= 0 && L.m.r !== A) out.why.push('favourable backdrop (annual and month)');
+    out.v = out.why.length; out.best = out.v >= 3;
+    var a = B.hours.filter(function (h) { return h.b === L.lord.b && h.i >= 4 && h.s >= 0; })[0], r = B.hours.filter(function (h) { return h.voidOut.length && h.i >= 4; })[0];
+    out.hours = { actor: a || null, answer: r || null };
+    return out;
+  }
+  function cfScan(ctx, fromMs, toMs, lon, mode) {
+    var out = [], D = 86400000;
+    for (var t = fromMs, n = 0; t <= toMs && n < 366; t += D, n++) {
+      var dt = new Date(t), Pe = pillarsTstNoon(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate(), lon);
+      var g = Pe && (mode === 'correct' ? correctDay(ctx, Pe, lon) : favourDay(ctx, Pe, lon, mode.slice(4))); if (g) { g.date = t; out.push(g); }
+    }
+    return out;
+  }
+  root.XKDGHeluoDSCore = { correctDay: correctDay, favourDay: favourDay, cfScan: cfScan, filmOfDay: filmOfDay, clashQuiet: clashQuiet, dayClash: dayClash, yearClash: yearClash, levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { filmOfDay: filmOfDay, levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { correctDay: correctDay, favourDay: favourDay, cfScan: cfScan, filmOfDay: filmOfDay, levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
@@ -772,7 +856,7 @@
   }
 
   // ── Date Selection tab ─────────────────────────────────────────────────────
-  var _st = { purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null };
+  var _st = { mode: 'score', purpose: 'wealth', from: null, to: null, place: 'gps', res: null, open: null };
   // pre-fill from the XKDG Date Selection (heluo-lishu.js openHeluoLishuFor) and run at the next render
   root.xkdgHLDSPreset = function (o) {
     if (o.purpose && PURPOSES[o.purpose]) _st.purpose = o.purpose;
@@ -791,7 +875,8 @@
     var F = 'padding:5px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;', Lb = 'font-size:11px;color:#666;display:block;margin-bottom:2px;';
     var pl = placeLon(chart.c);
     var h = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px;">'
-      + '<div><label style="' + Lb + '">Purpose</label><select id="hlds-pu" style="' + F + '">' + Object.keys(PURPOSES).map(function (k) { return '<option value="' + k + '"' + (k === _st.purpose ? ' selected' : '') + '>' + PURPOSES[k].label + '</option>'; }).join('') + '</select></div>'
+      + '<div><label style="' + Lb + '">Mode</label><select id="hlds-mo" style="' + F + 'max-width:100%;">' + CF_MODES.map(function (m) { return '<option value="' + m[0] + '"' + (m[0] === _st.mode ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></div>'
+      + '<div><label style="' + Lb + '">Purpose (score mode)</label><select id="hlds-pu" style="' + F + '">' + Object.keys(PURPOSES).map(function (k) { return '<option value="' + k + '"' + (k === _st.purpose ? ' selected' : '') + '>' + PURPOSES[k].label + '</option>'; }).join('') + '</select></div>'
       + '<div><label style="' + Lb + '">From</label><input id="hlds-from" type="date" value="' + _st.from + '" style="' + F + '"></div>'
       + '<div><label style="' + Lb + '">To (max 1 year)</label><input id="hlds-to" type="date" value="' + _st.to + '" style="' + F + '"></div>'
       + '<div><label style="' + Lb + '">Place</label><select id="hlds-pl" style="' + F + '"><option value="gps"' + (_st.place === 'gps' ? ' selected' : '') + '>Current GPS</option><option value="birth"' + (_st.place === 'birth' ? ' selected' : '') + '>Birth place</option></select></div>'
@@ -802,10 +887,10 @@
     if (_st.autorun && pl) { _st.autorun = false; setTimeout(function () { root.xkdgHLDSRun(); }, 0); return; }
     if (_st.res && _st.res.key === key(chart)) results(chart);
   }
-  function key(chart) { return chart.c.name + '|' + chart.c.date + '|' + chart.c.time + '|' + chart.male + '|' + _st.purpose + '|' + _st.from + '|' + _st.to + '|' + _st.place; }
+  function key(chart) { return chart.c.name + '|' + chart.c.date + '|' + chart.c.time + '|' + chart.male + '|' + _st.mode + '|' + _st.purpose + '|' + _st.from + '|' + _st.to + '|' + _st.place; }
   root.xkdgHLDSRun = function () {
     var chart = H().currentChart && H().currentChart(); if (!chart || !chart.R) return;
-    _st.purpose = $('hlds-pu').value; _st.from = $('hlds-from').value; _st.to = $('hlds-to').value; _st.place = $('hlds-pl').value; _st.open = null;
+    _st.mode = $('hlds-mo') ? $('hlds-mo').value : 'score'; _st.purpose = $('hlds-pu').value; _st.from = $('hlds-from').value; _st.to = $('hlds-to').value; _st.place = $('hlds-pl').value; _st.open = null;
     var a = Date.parse(_st.from + 'T00:00:00Z'), b = Date.parse(_st.to + 'T00:00:00Z'), out = $('hlds-res');
     if (!isFinite(a) || !isFinite(b) || b < a) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Check the dates.</div>'; return; }
     if (b - a > 365 * 86400000) { b = a + 365 * 86400000; _st.to = isoDay(b); $('hlds-to').value = _st.to; }
@@ -814,7 +899,7 @@
     out.innerHTML = '<div style="font-size:12px;color:#888;">Calculating…</div>';
     setTimeout(function () {
       try {
-        var ctx = context(chart.R, chart.Pn, chart.male), r = scan(ctx, a, b, pl.lon, _st.purpose);
+        var ctx = context(chart.R, chart.Pn, chart.male), r = _st.mode === 'score' ? scan(ctx, a, b, pl.lon, _st.purpose) : { cf: cfScan(ctx, a, b, pl.lon, _st.mode) };
         _st.res = { key: key(chart), r: r, lon: pl.lon }; results(chart);
       } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; }
     }, 20);
@@ -823,6 +908,7 @@
   root.xkdgHLDSAll = function () { _st.all = !_st.all; var chart = H().currentChart(); if (chart) results(chart); };
   function results(chart) {
     var out = $('hlds-res'), r = _st.res.r; if (!out) return;
+    if (r.cf) { out.innerHTML = cfResults(chart, r.cf); return; }
     if (!r.days.length) { out.innerHTML = '<div style="font-size:12px;color:#888;">No day inside the Xian Tian / Hou Tian cycles.</div>'; return; }
     var list = _st.all ? r.days : r.sorted.slice(0, 15), TD = 'padding:4px 5px;', n = r.days.length;
     var h = '<div style="font-size:12px;color:#333;margin:4px 0;">' + (_st.all ? 'All ' + n + ' days in date order' : 'Best 15 of ' + n + ' days') + ' · purpose <b>' + _st.purpose + '</b> · '
@@ -840,6 +926,41 @@
     });
     out.innerHTML = h + '</table><div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Score = cycle line + moved line of the annual + line of the month in the monthly hexagram + day line in the block hexagram (primary) + half of the same line in the day hexagram (secondary) (relation for the purpose, time of the branch against year, month and day, line text) + the three Luck. '
       + 'Relations: ' + Object.keys(REL).map(function (k) { return k + ' ' + REL[k]; }).join(', ') + '. Fixed weights (Edu, 10/11/2026). Test on 30 new events (11/11/2026): the event day ranks like a random day, so read the texts, not only the score.</div>';
+  }
+  // ── «Correct» and «Favour» (Edu 13/11/2026): the days, what to do, the film in a few lines, the hour ──
+  var CF_MODES = [['score', 'Score (purpose →)'], ['correct', 'Correct a problem'], ['fav-W', 'Favour Wealth (money)'], ['fav-C', 'Favour Children (projects, journeys)'], ['fav-P', 'Favour Parent (contracts, support)'], ['fav-G', 'Favour Ghost (job, status)'], ['fav-B', 'Favour Brothers (friends)']];
+  function cfStmt(n, l) { try { return (((root.XKDG_HELUO_TEXTS || {})[n] || {}).lines || {})[l].statement || ''; } catch (e) { return ''; } }
+  function cfBazi(h, Pe) { // bazi in columns, Chinese order: Hour, Day, Month, Year
+    var cols = [['Hour', h ? h.pillar : null], ['Day', Pe.day], ['Month', Pe.month], ['Year', Pe.year]];
+    return '<div style="display:flex;gap:12px;margin:4px 0;">' + cols.map(function (c) { return '<div style="text-align:center;font-size:11px;color:#777;">' + c[0] + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (c[1] ? c[1].charAt(0) + '<br>' + c[1].charAt(1) : '·<br>·') + '</div></div>'; }).join('') + '</div>';
+  }
+  function cfFilm(chart, g) {
+    var p = g.th.p, dh = p.daily, me = g.th.pers, L = g.F.lines, ln = function (k, lbl) { var o = L[k]; return '<div style="' + S_ + '"><b>' + lbl + '</b> · ' + o.n + ' ' + esc(U().hexName ? U().hexName(o.n) : '') + ' line ' + o.l + ' ' + o.b + ' ' + relTag(o.r) + (o.s > 0 ? ' · favourable' : o.s < 0 ? ' · unfavourable' : ' · neutral') + '<br><i>«' + esc(cfStmt(o.n, o.l)) + '»</i></div>'; };
+    var hr = g.hours && g.hours.length ? g.hours[0] : g.hours && g.hours.actor ? g.hours.actor : null;
+    return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:4px 0;">' + cfBazi(hr, g.Pe)
+      + '<div style="display:flex;flex-wrap:wrap;">' + (U().cycleHexSvg ? '<div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.block, dh.line, null, me) + '</div><div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.hex, dh.line, null, me) + '</div>' : '') + '</div>'
+      + '<div style="font-size:10px;color:#999;">Left: block hexagram with the day line (action; the actor is its line ' + dh.lord + '). Right: day hexagram (outcome).</div>'
+      + ln('lord', 'Actor') + ln('d', 'Action') + ln('s2', 'Outcome') + '</div>';
+  }
+  function cfResults(chart, days) {
+    var ok = days.filter(function (g) { return g.ok; }), h = '';
+    if (_st.mode === 'correct') {
+      var cnt = {}, any = 0; days.forEach(function (g) { if (g.problems && g.problems.length) { any++; g.problems.forEach(function (q) { cnt[q.r] = (cnt[q.r] || 0) + 1; }); } });
+      var top = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; });
+      h += '<div style="' + S_ + 'margin:4px 0;">' + (top.length ? top.map(function (r) { return '<b>Too much ' + REL[r] + '</b> with unfavourable texts on ' + cnt[r] + ' of ' + days.length + ' days: ' + CF_PROB[r]; }).join('<br>') : 'No problem to correct in this period: no prevailing relation with unfavourable texts.') + '</div>';
+    }
+    h += '<div style="font-size:12px;color:#333;margin:6px 0;">' + ok.length + ' good day' + (ok.length === 1 ? '' : 's') + ' of ' + days.length + (_st.mode === 'correct' ? '' : ' · ★ = three or more good signs') + ' · tap a day for its film</div>';
+    ok.forEach(function (g) {
+      var on = _st.open === g.date, hrs = '';
+      if (_st.mode === 'correct') hrs = g.hours.length ? 'Hour: ' + g.hours.slice(0, 2).map(function (x) { return x.pillar + ' ' + x.tst; }).join(', ') : 'No particular hour';
+      else hrs = [g.hours.actor ? 'the actor enters ' + g.hours.actor.pillar + ' ' + g.hours.actor.tst : '', g.hours.answer ? 'the answer ' + g.hours.answer.pillar + ' ' + g.hours.answer.tst : ''].filter(Boolean).join(' · ') || 'No particular hour';
+      h += '<div onclick="xkdgHLDSOpen(' + g.date + ')" style="cursor:pointer;border-top:1px solid #eee;padding:5px 4px;' + (on ? 'background:#ede7f6;' : '') + '">'
+        + '<div style="font-size:13px;"><b>' + fmtDate(g.date) + '</b>' + (g.best ? ' ★' : '') + ' <span style="font-size:11px;color:#999;">' + g.Pe.day + ' day · age ' + g.th.p.age + '</span></div>'
+        + (g.todo ? '<div style="font-size:12px;color:#2e7d32;">Do: ' + esc(g.todo) + ' (' + esc(g.how) + ')</div>' : '')
+        + '<div style="font-size:11px;color:#555;">' + esc(g.why.join(' · ')) + '</div><div style="font-size:11px;color:#5e35b1;">' + esc(hrs) + '</div></div>';
+      if (on) h += cfFilm(chart, g);
+    });
+    return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Rules of Edu (13/11/2026). Correct: the app finds the problem (the relation that prevails among the active lines with unfavourable texts); out of season it is controlled, in season it is drained forward; the cure counts only with a favourable text. Favour: the purpose (or what feeds it) on the actor, or the purpose on the action, with a favourable text; the price on the action excludes the day (for Wealth, Brothers with a favourable text are collaborators). Critical days are always excluded. Reading only, the score of the other modes is unchanged.</div>';
   }
   function lvlHtml(title, x, hx, cy, me, unit) {
     var tl = x.V > 0 ? 'favourable version' : x.V < 0 ? 'unfavourable version' : 'neutral';
@@ -1343,8 +1464,12 @@
     if (first) try { var rh = hoursOfDay(ctx, first).filter(function (h) { return h.relief; }).sort(function (a, b) { return b.relief.grade - a.relief.grade || b.s - a.s; });
       if (rh.length) out.hours_that_relieve_the_prevalence = rh.map(function (h) { return h.pillar + ' ' + h.tst + ' · ' + h.n + ' l' + h.l + ' · ' + h.relief.how + ' · text ' + h.s + (h.relief.best ? ' · BEST' : h.relief.practical ? ' · BEST PRACTICAL (07-23)' : ''); });
     } catch (e) {}
+    // Date Selection «Correct» (Edu 13/11/2026): is this a day to correct the problem of the moment, and what to do
+    try { var cd = correctDay(ctx, Pe, lon); if (cd) out.correct = cd.problem ? { problem: REL[cd.problem] + ' with unfavourable texts: ' + CF_PROB[cd.problem], how: cd.how,
+      good_day_to_correct: cd.ok, what_to_do: cd.ok ? cd.todo : undefined, why: cd.ok ? cd.why : cd.no,
+      hour: cd.ok ? (cd.hours.length ? cd.hours.map(function (h) { return h.pillar + ' ' + h.tst; }) : 'no particular hour') : undefined } : { problem: 'none (no prevailing relation with unfavourable texts)' }; } catch (e) {}
     try { out.alarms_next_30_days = alarmsAhead(ch, 30).map(function (g) { return { date: new Date(g.ms).toISOString().slice(0, 10), in_days: g.inDays, level: g.level, purposes: g.keys, day_pillar: g.pillar }; }); } catch (e) {}
-    out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) TELL THE DAY AS A FILM (Edu 13/11/2026), one short paragraph each, using the field film: SCENARIO = the cycle (the period of life) and the annual (its name, judgment and moved line) with their strength in the month, and the year branch that clashes them (comes alive or gives way); BACKDROP = the annual line of the month and the month line (the climate of these weeks); ACTOR = the Lord of the block: its relation says WHO acts (Brothers = colleagues, rivals, a partner who takes; Wealth = money, clients, the partner of a man; Ghost = authority, pressure; Parent = documents, mentors, study; Children = students, projects, creations), its text says HOW; ACTION = the day line and the outcome, and the day branch that clashes them (timely = it explodes, it happens now; not timely = it breaks) or a quiet line (activated = comes into play, eliminated = removed); HOURS = film_hours: when the actor enters the scene (hour with the branch of the Lord) and when the answer comes (hour where a natal void comes out), with their texts; give the hours also in civil time if you know the place. Keep the story COHERENT with the flow of the Qi between neighbouring levels (relations_between_levels: who feeds whom, who controls whom, what relieves it) down to the outcome, and close with the flow in a few words (e.g. documents → rival → work → money that leaves). Read every text in the concrete context of the day and of the person, not as a literal translation, and never contradict what is timely or not; 3) the alarms and warnings, briefly; 4) advice: what to do, what to avoid, for whom; if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its six lines (top line first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read). Write the Heluo age next to every year (age = year − birth year + 1).';
+    out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) TELL THE DAY AS A FILM (Edu 13/11/2026), one short paragraph each, using the field film: SCENARIO = the cycle (the period of life) and the annual (its name, judgment and moved line) with their strength in the month, and the year branch that clashes them (comes alive or gives way); BACKDROP = the annual line of the month and the month line (the climate of these weeks); ACTOR = the Lord of the block: its relation says WHO acts (Brothers = colleagues, rivals, a partner who takes; Wealth = money, clients, the partner of a man; Ghost = authority, pressure; Parent = documents, mentors, study; Children = students, projects, creations), its text says HOW; ACTION = the day line and the outcome, and the day branch that clashes them (timely = it explodes, it happens now; not timely = it breaks) or a quiet line (activated = comes into play, eliminated = removed); HOURS = film_hours: when the actor enters the scene (hour with the branch of the Lord) and when the answer comes (hour where a natal void comes out), with their texts; give the hours also in civil time if you know the place. Keep the story COHERENT with the flow of the Qi between neighbouring levels (relations_between_levels: who feeds whom, who controls whom, what relieves it) down to the outcome, and close with the flow in a few words (e.g. documents → rival → work → money that leaves). Read every text in the concrete context of the day and of the person, not as a literal translation, and never contradict what is timely or not; 3) the alarms and warnings, briefly; 4) advice: what to do, what to avoid, for whom (use the field correct: if good_day_to_correct, say plainly that today is a day to correct the problem and what to do; if not, say it is better to wait); if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its six lines (top line first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read). Write the Heluo age next to every year (age = year − birth year + 1).';
     return out;
   }
   root.XKDGHeluoDS = { aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
