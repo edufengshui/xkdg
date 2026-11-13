@@ -956,7 +956,9 @@
       return '<div style="text-align:center;min-width:52px;"><div style="font-size:10px;color:#777;">' + lbl + '</div><div style="font-size:20px;line-height:1.2;">' + STEMS[p.stems[i]] + '<br>' + BRANCHES[p.branches[i]] + '</div>'
         + '<div style="font-size:10px;color:#777;">' + STEM_PY[p.stems[i]] + ' ' + BR_PY[p.branches[i]] + '</div></div>';
     };
-    var h = '<div style="font-size:12px;color:#555;margin-bottom:6px;"><b>' + esc(c.name) + '</b> · ' + esc(c.date) + ' ' + esc(c.time)
+    // Edu 13/11: advance notice of severe and critical days (next 30 days) at the opening of the chart
+    var alarmTop = ''; try { alarmTop = root.XKDGHeluoDS && root.XKDGHeluoDS.alarmAheadHtml ? root.XKDGHeluoDS.alarmAheadHtml(_chart) : ''; } catch (e) { alarmTop = ''; }
+    var h = alarmTop + '<div style="font-size:12px;color:#555;margin-bottom:6px;"><b>' + esc(c.name) + '</b> · ' + esc(c.date) + ' ' + esc(c.time)
       + ' · TST ' + String(I.tst.h).padStart(2, '0') + ':' + String(I.tst.mi).padStart(2, '0') + ' · ' + (g === 'M' ? 'man' : 'woman')
       + (c.noGeo ? ' · <span style="color:#b26a00;">birth place not saved: current GPS used</span>' : '') + '</div>'
       + '<div style="display:flex;gap:6px;margin-bottom:6px;">' + col('Hour', 3) + col('Day', 2) + col('Month', 1) + col('Year', 0) + '</div>'
