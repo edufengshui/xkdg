@@ -616,6 +616,23 @@
       out.push({ i: i, b: hb, pillar: hs + hb, spouse: sp, tst: HOUR_TST[i], n: mo.hex.n, hex: mo.hex, l: mo.line, lb: L.branch, el: L.el, r: rel(pers, L.el),
         s: SC() && SC()[mo.hex.n] ? SC()[mo.hex.n].l[mo.line] : 0, voidOut: vo });
     }
+    // Edu 13/11: an hour that brings the element that controls the prevailing relation relieves an excess (his 13/11/2026:
+    // Parent prevails → a Wealth hour; the 卯 hour is too early, so also the Wood trigrams of the hour hexagram).
+    // grade 3 = the line of the hour, 2 = both trigrams, 1 = one trigram; best = highest grade, then the best text.
+    try {
+      var LV = levelsOfDay(th), ELS = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'];
+      LV.prevalence.forEach(function (pr) {
+        var prEl = ELS.filter(function (e) { return rel(pers, e) === pr; })[0], ce = ELS.filter(function (e) { return CTL[e] === prEl; })[0], cr = rel(pers, ce);
+        out.forEach(function (h) {
+          var nt = TRI_OF(h.n).filter(function (t) { return TRI_EL[t] === ce; }).length, g = h.el === ce ? 3 : nt === 2 ? 2 : nt;
+          if (g && (!h.relief || h.relief.grade < g)) h.relief = { grade: g, of: pr, by: cr, how: g === 3 ? 'line ' + h.lb + ' ' + REL[cr] : (nt === 2 ? 'both trigrams' : 'one trigram') + ' ' + ce };
+        });
+      });
+      var rk = out.filter(function (h) { return h.relief; }).sort(function (a, b) { return b.relief.grade - a.relief.grade || b.s - a.s; });
+      if (rk.length) rk[0].relief.best = true;
+      var rp = rk.filter(function (h) { return h.i >= 4; }); // practical: from the 辰 hour (07:00) to 23:00
+      if (rp.length && !rp[0].relief.best) rp[0].relief.practical = true;
+    } catch (e) {}
     return out;
   }
   root.XKDGHeluoDSCore = { levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
@@ -944,6 +961,7 @@
       if (th.X && h.r === th.X) mk.push('<span style="' + G + '">' + REL[h.r] + '</span>');
       if (th.A && h.r === th.A) mk.push('<span style="' + Rd + '">' + REL[h.r] + ' (the price)</span>');
       if (h.voidOut.length) mk.push('<span style="' + O + '">⚡ void ' + h.voidOut.join('') + ' comes out</span>');
+      if (h.relief) mk.push('<span style="' + G + (h.relief.best ? 'font-weight:700;' : '') + '">✚ relieves the ' + REL[h.relief.of] + ' (' + esc(h.relief.how) + ')' + (h.relief.best ? ' · best hour for it' : h.relief.practical ? ' · best practical hour (07–23)' : '') + '</span>');
       if (h.spouse) mk.push('<span style="' + O + '">palace of the spouse ' + (h.b === _xk.ctx.Pn.day[1] ? 'present' : 'clashed') + '</span>');
       var six = h.voidOut.length || h.spouse;
       if (six && AL && AL.level === 'light') mk.push('<span style="' + Rd + ';font-weight:700;">⚠ critical in this hour</span>');
@@ -1222,9 +1240,13 @@
       out.purposes[XK_PL[key]] = o;
     });
     if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s,
-      void_comes_out: h.voidOut.length ? h.voidOut : undefined, spouse_palace: h.spouse || undefined }; });
+      void_comes_out: h.voidOut.length ? h.voidOut : undefined, spouse_palace: h.spouse || undefined,
+      relieves_prevalence: h.relief ? REL[h.relief.of] + ' relieved by ' + h.relief.how + (h.relief.best ? ' (best)' : h.relief.practical ? ' (best practical, 07-23)' : '') : undefined }; });
+    if (first) try { var rh = hoursOfDay(ctx, first).filter(function (h) { return h.relief; }).sort(function (a, b) { return b.relief.grade - a.relief.grade || b.s - a.s; });
+      if (rh.length) out.hours_that_relieve_the_prevalence = rh.map(function (h) { return h.pillar + ' ' + h.tst + ' · ' + h.n + ' l' + h.l + ' · ' + h.relief.how + ' · text ' + h.s + (h.relief.best ? ' · BEST' : h.relief.practical ? ' · BEST PRACTICAL (07-23)' : ''); });
+    } catch (e) {}
     try { out.alarms_next_30_days = alarmsAhead(ch, 30).map(function (g) { return { date: new Date(g.ms).toISOString().slice(0, 10), in_days: g.inDays, level: g.level, purposes: g.keys, day_pillar: g.pillar }; }); } catch (e) {}
-    out.reading_rules = 'START with the prevalence of the active lines (what kind of day it is, and the purposes it favours), then the relations between neighbouring levels (only those given here: no other chains), then the scores. Edu (the user) is the authority on He Luo Li Shu. Read the line texts and relations given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). Write a bazi in a column: Hour, Day, Month, Year. Draw hexagrams with their lines. Age is the Heluo age.';
+    out.reading_rules = 'START with the prevalence of the active lines (what kind of day it is, and the purposes it favours), then the relations between neighbouring levels (only those given here: no other chains), then the scores. If hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL one when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read the line texts and relations given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). Write a bazi in a column: Hour, Day, Month, Year. Draw hexagrams with their lines. Age is the Heluo age.';
     return out;
   }
   root.XKDGHeluoDS = { aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
