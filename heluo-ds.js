@@ -739,24 +739,41 @@
     out.hours = B.hours.filter(function (h) { return h.i >= 4 && h.el === eC && h.s > 0; });
     return out;
   }
+  // Levels (Edu 13/11/2026, claude/hlls-ds-favorire-fino.md): GOOD = the rule above; STRONG = the line that carries the
+  //   purpose has a full text (+2) and no negative text among actor, action and outcome; BEST ★ = strong + a sign of the day
+  //   itself (actor and action together, purpose in season, lit by the day branch); ★★ = best + the backdrop helps (annual line
+  //   of the month and month line with favourable texts, no price). The backdrop only helps, never penalises, and alone it is
+  //   not enough (it is the same for the whole month). Wealth: Brothers neutral on the day line are collaborators too when the
+  //   other line of the action is Brothers with a favourable text (Belgrade 8/10/2011 with Ying); collaborators on the action
+  //   with a favourable text are enough to let the day in.
+  var CF_LV = ['', 'good', 'strong', 'best'];
   function favourDay(ctx, Pe, lon, X) {
     var B = cfBase(ctx, Pe, lon, CF_KEY[X]); if (!B) return null;
-    var th = B.th, L = B.L, A = XK_ATT[X], eX = cfElOf(B.pers, X), out = { Pe: Pe, th: th, F: B.F, X: X, ok: false, why: [], no: [] };
-    var feeds = function (o) { return o.r === X || GEN[o.el] === eX; }, collab = function (o) { return X === 'W' && o.r === 'B' && o.s > 0; };
+    var th = B.th, L = B.L, A = XK_ATT[X], eX = cfElOf(B.pers, X), out = { Pe: Pe, th: th, F: B.F, X: X, ok: false, why: [], no: [], lv: 0 };
+    var acts = [L.d, L.s2], bGood = function (o) { return o.r === 'B' && o.s > 0; };
+    var collab = function (o) { return X === 'W' && o.r === 'B' && (o.s > 0 || (o.s === 0 && acts.some(function (z) { return z !== o && bGood(z); }))); };
     if (th.alarm) out.no.push('critical day');
     if (L.d.s < 0) out.no.push('unfavourable day line');
     [['d', L.d], ['s2', L.s2]].forEach(function (x) { if (x[1].r === A && !collab(x[1])) out.no.push('the price (' + REL[A] + ') on the ' + CF_LBL[x[0]]); });
-    var actor = feeds(L.lord) && L.lord.s > 0, act = ['d', 's2'].filter(function (k) { return L[k].r === X && L[k].s > 0; });
-    if (!actor && !act.length) out.no.push('the purpose is neither on the actor nor on the action');
+    var actor = (L.lord.r === X || GEN[L.lord.el] === eX) && L.lord.s > 0, act = ['d', 's2'].filter(function (k) { return L[k].r === X && L[k].s > 0; });
+    var col = ['d', 's2'].filter(function (k) { return collab(L[k]) && L[k].s > 0; });
+    if (!actor && !act.length && !col.length) out.no.push('the purpose is neither on the actor nor on the action');
     if (out.no.length) return out;
-    out.ok = true;
+    out.ok = true; out.lv = 1;
     if (actor) out.why.push('the actor ' + (L.lord.r === X ? 'brings ' + REL[X] : 'feeds ' + REL[X]) + ' with a favourable text');
     act.forEach(function (k) { out.why.push(REL[X] + ' on the ' + CF_LBL[k] + ' with a favourable text'); });
-    if ([L.lord, L.d, L.s2].some(collab)) out.why.push('Brothers with a favourable text: collaborators');
-    if ([L.lord, L.d, L.s2].some(function (o) { return o.r === X && o.on; })) out.why.push(REL[X] + ' in season');
-    if (['lord', 'd', 's2'].some(function (k) { return L[k].r === X && B.F.dayHits.some(function (h) { return h.n === L[k].n && h.l === L[k].l && h.alive; }); })) out.why.push('the day branch lights it up');
-    if (L.am && L.am.s >= 0 && L.m.r !== A) out.why.push('favourable backdrop (annual and month)');
-    out.v = out.why.length; out.best = out.v >= 3;
+    if (['d', 's2'].some(function (k) { return collab(L[k]); })) out.why.push('Brothers on the action: collaborators');
+    var carry = (actor ? [L.lord] : []).concat(act.concat(col).map(function (k) { return L[k]; }));
+    if (carry.some(function (o) { return o.s >= 2; }) && [L.lord, L.d, L.s2].every(function (o) { return o.s >= 0; })) {
+      out.lv = 2; out.why.push('full text on the purpose and no unfavourable text in the film');
+      var own = [];
+      if (actor && carry.length > 1) own.push('actor and action together');
+      if (carry.some(function (o) { return o.on; })) own.push(REL[X] + ' in season');
+      if (B.F.dayHits.some(function (h) { return h.r === X && h.alive; })) own.push('the day branch lights it up');
+      if (own.length) { out.lv = 3; out.why = out.why.concat(own); }
+    }
+    if (L.am && L.am.s > 0 && L.m && L.m.s > 0 && L.m.r !== A) { out.why.push('the backdrop helps (annual and month)'); out.bg = true; }
+    out.best = out.lv === 3; out.stars = out.lv === 3 ? (out.bg ? 2 : 1) : 0; out.level = CF_LV[out.lv]; out.v = out.lv * 2 + (out.bg ? 1 : 0);
     var a = B.hours.filter(function (h) { return h.b === L.lord.b && h.i >= 4 && h.s >= 0; })[0], r = B.hours.filter(function (h) { return h.voidOut.length && h.i >= 4; })[0];
     out.hours = { actor: a || null, answer: r || null };
     return out;
@@ -949,18 +966,18 @@
       var top = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; });
       h += '<div style="' + S_ + 'margin:4px 0;">' + (top.length ? top.map(function (r) { return '<b>Too much ' + REL[r] + '</b> with unfavourable texts on ' + cnt[r] + ' of ' + days.length + ' days: ' + CF_PROB[r]; }).join('<br>') : 'No problem to correct in this period: no prevailing relation with unfavourable texts.') + '</div>';
     }
-    h += '<div style="font-size:12px;color:#333;margin:6px 0;">' + ok.length + ' good day' + (ok.length === 1 ? '' : 's') + ' of ' + days.length + (_st.mode === 'correct' ? '' : ' · ★ = three or more good signs') + ' · tap a day for its film</div>';
+    h += '<div style="font-size:12px;color:#333;margin:6px 0;">' + ok.length + ' good day' + (ok.length === 1 ? '' : 's') + ' of ' + days.length + (_st.mode === 'correct' ? '' : ' · levels: good, strong, ★ best, ★★ best with the backdrop that helps') + ' · tap a day for its film</div>';
     ok.forEach(function (g) {
       var on = _st.open === g.date, hrs = '';
       if (_st.mode === 'correct') hrs = g.hours.length ? 'Hour: ' + g.hours.slice(0, 2).map(function (x) { return x.pillar + ' ' + x.tst; }).join(', ') : 'No particular hour';
       else hrs = [g.hours.actor ? 'the actor enters ' + g.hours.actor.pillar + ' ' + g.hours.actor.tst : '', g.hours.answer ? 'the answer ' + g.hours.answer.pillar + ' ' + g.hours.answer.tst : ''].filter(Boolean).join(' · ') || 'No particular hour';
       h += '<div onclick="xkdgHLDSOpen(' + g.date + ')" style="cursor:pointer;border-top:1px solid #eee;padding:5px 4px;' + (on ? 'background:#ede7f6;' : '') + '">'
-        + '<div style="font-size:13px;"><b>' + fmtDate(g.date) + '</b>' + (g.best ? ' ★' : '') + ' <span style="font-size:11px;color:#999;">' + g.Pe.day + ' day · age ' + g.th.p.age + '</span></div>'
+        + '<div style="font-size:13px;"><b>' + fmtDate(g.date) + '</b>' + (g.lv ? ' <span style="font-size:11px;font-weight:600;color:' + (g.lv === 3 ? '#c77700' : g.lv === 2 ? '#2e7d32' : '#777') + ';">' + (g.stars ? (g.stars === 2 ? '★★ ' : '★ ') : '') + g.level + '</span>' : '') + ' <span style="font-size:11px;color:#999;">' + g.Pe.day + ' day · age ' + g.th.p.age + '</span></div>'
         + (g.todo ? '<div style="font-size:12px;color:#2e7d32;">Do: ' + esc(g.todo) + ' (' + esc(g.how) + ')</div>' : '')
         + '<div style="font-size:11px;color:#555;">' + esc(g.why.join(' · ')) + '</div><div style="font-size:11px;color:#5e35b1;">' + esc(hrs) + '</div></div>';
       if (on) h += cfFilm(chart, g);
     });
-    return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Rules of Edu (13/11/2026). Correct: the app finds the problem (the relation that prevails among the active lines with unfavourable texts); out of season it is controlled, in season it is drained forward; the cure counts only with a favourable text. Favour: the purpose (or what feeds it) on the actor, or the purpose on the action, with a favourable text; the price on the action excludes the day (for Wealth, Brothers with a favourable text are collaborators). Critical days are always excluded. Reading only, the score of the other modes is unchanged.</div>';
+    return h + '<div style="font-size:10px;color:#999;margin-top:6px;line-height:1.5;">Rules of Edu (13/11/2026). Correct: the app finds the problem (the relation that prevails among the active lines with unfavourable texts); out of season it is controlled, in season it is drained forward; the cure counts only with a favourable text. Favour: the purpose (or what feeds it) on the actor, or the purpose on the action, with a favourable text; the price on the action excludes the day (for Wealth, Brothers with a favourable text are collaborators, and neutral Brothers on the day line too when the outcome is Brothers with a favourable text). Strong = full text on the purpose and no unfavourable text among actor, action and outcome; best ★ = strong + actor and action together, or in season, or lit by the day branch; ★★ = best + the backdrop helps (it never penalises). Critical days are always excluded. Reading only, the score of the other modes is unchanged.</div>';
   }
   function lvlHtml(title, x, hx, cy, me, unit) {
     var tl = x.V > 0 ? 'favourable version' : x.V < 0 ? 'unfavourable version' : 'neutral';
