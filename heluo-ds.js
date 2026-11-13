@@ -665,9 +665,29 @@
     if (!th || !th.p) return [];
     var p = th.p; return clashQuiet(th.pers, [['block', p.daily.block, [p.id.lord[1], p.id.day[1]]], ['month', p.month.hex, [p.month.line]]], th.Pe.day[1], th.Pe.month[1]);
   }
-  root.XKDGHeluoDSCore = { clashQuiet: clashQuiet, dayClash: dayClash, yearClash: yearClash, levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
+  // ── The «film» of the day (Edu 13/11/2026, tried on 8/12/2015 and 13/11/2026) ──
+  // scenario = cycle + annual (moved line), and the year branch that clashes them; backdrop = annual line of the month +
+  // month line; actor = Lord of the block; action = day line + outcome, and the day branch that clashes them; hours = when
+  // the actor enters (hour with the Lord's branch) and the answer (hour where the natal void comes out).
+  // A clash on an ACTIVE line: timely in the month = it comes alive (its text acts strongly now: in 2015 the day 午 made
+  // 29 l6 子 explode); not timely = it gives way (in 2015 the year 未 broke the «brake of bronze» 44 l1 丑, weak in winter).
+  // Quiet lines keep clashQuiet (activated / eliminated). Reading only, no score.
+  function filmOfDay(th) {
+    if (!th || !th.p) return null;
+    var p = th.p, pers = th.pers, mb = th.Pe.month[1], yb = BR[((p.year - 4) % 12 + 12) % 12], db = th.Pe.day[1];
+    function line(n, l) { var L = NJ()[n].lines[l - 1]; return { n: n, l: l, b: L.branch, el: L.el, r: rel(pers, L.el), on: timely(L.el, mb), s: SC() && SC()[n] ? SC()[n].l[l] : 0 }; }
+    function hit(o, br, who) { if (o.b !== clash(br)) return null; return { by: who + ' ' + br, n: o.n, l: o.l, b: o.b, r: o.r, alive: o.on }; }
+    var cyc = line(p.hx.n, p.per.line), ann = line(p.annual.hex.n, p.annual.moved), yh = [], dh = [];
+    [['cycle', cyc], ['annual moved line', ann]].forEach(function (x) { var h = hit(x[1], yb, 'year'); if (h) { h.lv = x[0]; yh.push(h); } });
+    var A = { hex: p.annual.hex, moved: p.annual.moved, periodHex: p.hx, period: p.per };
+    var yq = clashQuiet(pers, [['annual', A.hex, [A.moved]], [p.phase + ' ' + p.hx.n, p.hx, [p.per.line]]], yb, mb);
+    var LBL = { am: 'annual line of the month', m: 'month line', lord: 'Lord of the block', d: 'day line', s2: 'outcome' }, by = {};
+    th.lines.forEach(function (L) { var o = line(L.n, L.l); by[L.k] = o; var h = hit(o, db, 'day'); if (h) { h.lv = LBL[L.k]; dh.push(h); } });
+    return { yb: yb, mb: mb, db: db, cycle: cyc, annual: ann, yearHits: yh, yearQuiet: yq, dayHits: dh, dayQuiet: dayClash(th), lines: by, lord: by.lord };
+  }
+  root.XKDGHeluoDSCore = { filmOfDay: filmOfDay, clashQuiet: clashQuiet, dayClash: dayClash, yearClash: yearClash, levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { filmOfDay: filmOfDay, levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
@@ -1256,6 +1276,22 @@
     function lineOut(L) { return { level: XK_LBL[L.k], hexagram: L.n, line: L.l, branch: L.b, element: L.el, relation: REL[L.r], text_score: SC() && SC()[L.n] ? SC()[L.n].l[L.l] : null,
       text: stmt(L.n, L.l), void: L.voidL ? (L.filled ? 'void, comes out today' : 'void (later)') : undefined, backward_flow: L.fb > 1 ? 'strengthened by ' + L.bk.b : undefined }; }
     function triL(a) { return (a || []).map(function (x) { return x.lbl; }); }
+    // the «film» of the day (Edu 13/11/2026): scenario, backdrop, actor, action, clashes on active lines, hours
+    function hexT(n) { var t = TXT[n] || {}; return { hexagram: n, name: t.title || '', judgment: t.judgment || '' }; }
+    function filmL(o, extra) { var r = { hexagram: o.n, line: o.l, branch: o.b, element: o.el, relation: REL[o.r], who: REL_WHO[o.r], text: stmt(o.n, o.l), text_score: o.s,
+      season: o.on ? 'strong in this month (timely)' : 'weak in this month (not timely)' }; if (extra) Object.keys(extra).forEach(function (k) { r[k] = extra[k]; }); return r; }
+    function hitT(h) { return h.by + ' clashes the ' + h.lv + ' ' + h.n + ' l' + h.l + ' ' + h.b + ' ' + REL[h.r] + (h.alive ? ' — timely in the month: it COMES ALIVE, its text acts strongly now' : ' — not timely in the month: it GIVES WAY, its text breaks (a brake fails, a protection collapses)') + ' «' + stmt(h.n, h.l) + '»'; }
+    function quietT(c, who) { return who + ' clashes the quiet line ' + c.lv + ' ' + c.n + ' l' + c.l + ' ' + c.b + ' ' + REL[c.r] + (c.on ? ' — ACTIVATED (timely): «' + stmt(c.n, c.l) + '» → turns into ' + c.to.n + ' l' + c.l + ' ' + c.to.b + ' ' + REL[c.to.r] + ' «' + stmt(c.to.n, c.l) + '»' : ' — ELIMINATED (not timely): ' + REL_GONE[c.r]); }
+    function filmOut(F) {
+      if (!F) return undefined; var L = F.lines, p = { };
+      p.scenario = { cycle: filmL(F.cycle, hexT(F.cycle.n)), annual: filmL(F.annual, hexT(F.annual.n)), year_branch: F.yb,
+        year_clash: F.yearHits.map(hitT).concat(F.yearQuiet.map(function (c) { return quietT(c, 'the year ' + F.yb); })) };
+      p.backdrop = { annual_line_of_the_month: L.am ? filmL(L.am) : undefined, month_line: L.m ? filmL(L.m, hexT(L.m.n)) : undefined, month_branch: F.mb };
+      p.actor = L.lord ? filmL(L.lord, hexT(L.lord.n)) : undefined;
+      p.action = { day_line: L.d ? filmL(L.d) : undefined, outcome: L.s2 ? filmL(L.s2, hexT(L.s2.n)) : undefined, day_branch: F.db,
+        day_clash: F.dayHits.map(hitT).concat(F.dayQuiet.map(function (c) { return quietT(c, 'the day ' + F.db); })) };
+      return p;
+    }
     var out = { person: ch.c.name, date: Y + '-' + String(Mo).padStart(2, '0') + '-' + String(D).padStart(2, '0'),
       bazi_of_the_day_column_order: [['Day', Pe.day], ['Month', Pe.month], ['Year', Pe.year]].map(function (x) { return x[0] + ' ' + x[1]; }),
       natal_bazi: ['Hour ' + ch.Pn.hour, 'Day ' + ch.Pn.day, 'Month ' + ch.Pn.month, 'Year ' + ch.Pn.year],
@@ -1272,7 +1308,8 @@
         out.cycle = { phase: p.phase, hexagram: p.hx.n, line: p.per.line, branch: NJ()[p.hx.n].lines[p.per.line - 1].branch, person_element: th.pers };
         out.annual = { hexagram: p.id.year[0], moved_line: p.id.year[1], text: stmt(p.id.year[0], p.id.year[1]) };
         out.month = { hexagram: p.month.hex.n, line: p.month.line }; out.block = { hexagram: p.id.lord[0], lord_line: p.id.lord[1] };
-        out.day = { hexagram: p.id.day[0], line: p.id.day[1], outcome_hexagram: p.id.dayHex[0] }; }
+        out.day = { hexagram: p.id.day[0], line: p.id.day[1], outcome_hexagram: p.id.dayHex[0] };
+        try { out.film = filmOut(filmOfDay(th)); } catch (e) {} }
       var o = { score: th.adj, score_note: 'He Luo score of the day from −3 to +3 (raises or lowers XKDG days)', raw: Math.round(th.t * 100) / 100,
         lines_read: th.lines.map(lineOut) };
       if (th.alarm) o.alarm = { level: th.alarm.level, signals: th.alarm.sig, sixth: th.alarm.six };
@@ -1293,14 +1330,21 @@
         return c.lv + ' ' + c.n + ' l' + c.l + ' ' + c.b + ' ' + REL[c.r] + (c.on ? ' ACTIVATED (timely in the month): text ' + c.s + ' «' + stmt(c.n, c.l) + '» → turns into ' + c.to.n + ' l' + c.l + ' ' + c.to.b + ' ' + REL[c.to.r] + ' (' + c.to.back + ') «' + stmt(c.to.n, c.l) + '»' : ' ELIMINATED (not timely in the month): ' + REL_GONE[c.r]); }); } catch (e) {}
       out.purposes[XK_PL[key]] = o;
     });
-    if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s,
+    // hours of the film: the actor enters in the hour with the Lord's branch, the answer comes in the hour where a natal void comes out
+    var lordB = null; try { lordB = NJ()[first.p.id.lord[0]].lines[first.p.id.lord[1] - 1].branch; } catch (e) {}
+    function role(h) { var r = []; if (lordB && h.b === lordB) r.push('the ACTOR ENTERS THE SCENE (same branch as the Lord ' + lordB + ')'); else if (lordB && h.b === clash(lordB)) r.push('someone confronts the actor (clashes the Lord ' + lordB + ')');
+      if (h.voidOut.length) r.push('the natal void ' + h.voidOut.join(' ') + ' comes out: the ANSWER, what was missing arrives'); return r.length ? r.join('; ') : undefined; }
+    if (first) try { var HS = hoursOfDay(ctx, first);
+      out.film_hours = HS.filter(function (h) { return role(h); }).map(function (h) { return { pillar: h.pillar, tst: h.tst, role: role(h), hexagram: h.n, name: (TXT[h.n] || {}).title || '', line: h.l, branch: h.lb, relation: REL[h.r], text: stmt(h.n, h.l) }; });
+    } catch (e) {}
+    if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s, text: stmt(h.n, h.l), role: role(h),
       void_comes_out: h.voidOut.length ? h.voidOut : undefined, spouse_palace: h.spouse || undefined,
       relieves_prevalence: h.relief ? REL[h.relief.of] + ' relieved by ' + h.relief.how + (h.relief.best ? ' (best)' : h.relief.practical ? ' (best practical, 07-23)' : '') : undefined }; });
     if (first) try { var rh = hoursOfDay(ctx, first).filter(function (h) { return h.relief; }).sort(function (a, b) { return b.relief.grade - a.relief.grade || b.s - a.s; });
       if (rh.length) out.hours_that_relieve_the_prevalence = rh.map(function (h) { return h.pillar + ' ' + h.tst + ' · ' + h.n + ' l' + h.l + ' · ' + h.relief.how + ' · text ' + h.s + (h.relief.best ? ' · BEST' : h.relief.practical ? ' · BEST PRACTICAL (07-23)' : ''); });
     } catch (e) {}
     try { out.alarms_next_30_days = alarmsAhead(ch, 30).map(function (g) { return { date: new Date(g.ms).toISOString().slice(0, 10), in_days: g.inDays, level: g.level, purposes: g.keys, day_pillar: g.pillar }; }); } catch (e) {}
-    out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) analysis: the relations between neighbouring levels given here (no other chains), the lines hit by the day branch (activated = comes into play, eliminated = removed: say what that means in practice), alarms and warnings, the texts of the lines read in the concrete context of the day, not as a literal translation; 3) advice: what to do, what to avoid, for whom; if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its lines. Age is the Heluo age.';
+    out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) TELL THE DAY AS A FILM (Edu 13/11/2026), one short paragraph each, using the field film: SCENARIO = the cycle (the period of life) and the annual (its name, judgment and moved line) with their strength in the month, and the year branch that clashes them (comes alive or gives way); BACKDROP = the annual line of the month and the month line (the climate of these weeks); ACTOR = the Lord of the block: its relation says WHO acts (Brothers = colleagues, rivals, a partner who takes; Wealth = money, clients, the partner of a man; Ghost = authority, pressure; Parent = documents, mentors, study; Children = students, projects, creations), its text says HOW; ACTION = the day line and the outcome, and the day branch that clashes them (timely = it explodes, it happens now; not timely = it breaks) or a quiet line (activated = comes into play, eliminated = removed); HOURS = film_hours: when the actor enters the scene (hour with the branch of the Lord) and when the answer comes (hour where a natal void comes out), with their texts; give the hours also in civil time if you know the place. Keep the story COHERENT with the flow of the Qi between neighbouring levels (relations_between_levels: who feeds whom, who controls whom, what relieves it) down to the outcome, and close with the flow in a few words (e.g. documents → rival → work → money that leaves). Read every text in the concrete context of the day and of the person, not as a literal translation, and never contradict what is timely or not; 3) the alarms and warnings, briefly; 4) advice: what to do, what to avoid, for whom; if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its six lines (top line first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read). Write the Heluo age next to every year (age = year − birth year + 1).';
     return out;
   }
   root.XKDGHeluoDS = { aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };

@@ -1893,15 +1893,18 @@
         'warnings (Brothers stealing Wealth, criticism, void that comes out, Fire controlling the Brothers...), alarms in the next ' +
         '30 days and, on request, the 12 hours. Use it for ANY question about HLLS, He Luo, "my chart"/"la mia carta HLLS", how a ' +
         'day goes for Person A in He Luo — never answer those with get_pillars and Hetu/qi/yun sums (that is XKDG, a different system). ' +
-        'Answer as the reading_rules in the result say: the essence of the day, a short analysis and advice, in plain colloquial ' +
-        'language — no numbers, no scores, no tables unless the user asks for them. Write bazi in a column (Hour, Day, Month, Year).',
+        'It also returns the "film" of the day (scenario = cycle and annual, backdrop = annual line of the month and month line, ' +
+        'actor = Lord of the block, action = day line and outcome, clashes of the year and day branches, film_hours = when the actor ' +
+        'enters and when the answer comes). Answer as the reading_rules in the result say: the essence, the day told as a film ' +
+        'coherent with the flow of the Qi, and advice, in plain colloquial language — no numbers, no scores, no tables unless the ' +
+        'user asks for them. Draw the hexagrams you cite, write the Heluo age next to the years and bazi in a column (Hour, Day, Month, Year).',
       input_schema: {
         type: 'object',
         properties: {
           date: { type: 'string', description: 'YYYY-MM-DD. Default today.' },
           purposes: { type: 'array', items: { type: 'string', enum: ['wealth', 'relationship', 'speak', 'support', 'career', 'legal', 'health', 'journey', 'luck'] },
             description: 'Purposes to read. Default wealth, relationship, speak.' },
-          hours: { type: 'boolean', description: 'Also return the 12 double hours of the day (hexagram, line, text score, void that comes out, spouse palace).' }
+          hours: { type: 'boolean', description: 'Also return the 12 double hours of the day (hexagram, line, text, text score, role in the film, void that comes out, spouse palace). The film hours are always returned.' }
         }
       }
     },
