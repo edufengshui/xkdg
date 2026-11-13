@@ -1026,13 +1026,32 @@
     isoDates.forEach(function (iso) {
       if (iso in _xk.by) return;
       var d = iso.split('-').map(Number), th = null;
-      try { var Pe = pillarsTstNoon(d[0], d[1], d[2], lon); th = Pe && thread(_xk.ctx, Pe, lon, key); } catch (e) { th = null; }
+      try { var Pe = pillarsTstNoon(d[0], d[1], d[2], lon); th = Pe && thread(_xk.ctx, Pe, lon, key === 'correct' ? 'wealth' : key); } catch (e) { th = null; }
+      // Edu 13/11/2026: Favour (levels) and Correct inside the XKDG Date Selection
+      if (th) try {
+        if (key === 'correct') { th.key = 'correct'; th.cf = correctDay(_xk.ctx, Pe, lon); th.adj = 0; }
+        else { var X = xkRel(key, _xk.ctx.male); if (X && X !== 'B') { th.fav = favourDay(_xk.ctx, Pe, lon, X); th.fvPts = th.fav && th.fav.ok ? XK_FV[th.fav.lv] + (th.fav.stars === 2 ? 1 : 0) : 0; } }
+      } catch (e) {}
       _xk.by[iso] = th;
     });
     return { status: 'ok', by: _xk.by };
   }
+  // Favour level inside the XKDG Date Selection (Edu 13/11/2026, «label + score»): strong +1 ☯ point (5%), ★ best +2, ★★ +3,
+  // added to the He Luo ☯ of the purpose; the total He Luo stays within ±4 points (±20%), so XKDG keeps the lead.
+  var XK_FV = [0, 0, 1, 2];
+  function xkPts(th) { return Math.max(-4, Math.min(4, (th.adj || 0) + (th.fvPts || 0))); }
+  // Correct inside the XKDG Date Selection: the problem of the period (prevailing relation with unfavourable texts)
+  function xkCorrectHead(by, isos) {
+    var cnt = {}, n = 0; isos.forEach(function (i) { var th = by[i]; if (!th || !th.cf) return; n++; (th.cf.problems || []).forEach(function (q) { cnt[q.r] = (cnt[q.r] || 0) + 1; }); });
+    var top = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; });
+    return top.length ? top.map(function (r) { return 'Too much ' + REL[r] + ' with unfavourable texts (' + cnt[r] + ' of ' + n + ' days): ' + CF_PROB[r]; }).join(' · ') : 'No problem to correct in this period: no prevailing relation with unfavourable texts.';
+  }
   function xkSummary(th) { // one line for the row of the scan
     var a = [];
+    if (th.key === 'correct' && th.cf) { var c = th.cf;
+      if (c.ok) { a.push('✚ day to correct ' + REL[c.problem] + ' (' + c.how + ')'); a.push('Do: ' + c.todo); a.push(c.hours && c.hours.length ? 'hour ' + c.hours.slice(0, 2).map(function (x) { return x.pillar + ' ' + x.tst; }).join(', ') : 'no particular hour'); }
+      return a.join(' · '); }
+    if (th.fav && th.fav.ok) a.push((th.fav.stars ? (th.fav.stars === 2 ? '★★ ' : '★ ') : '') + th.fav.level + ' for ' + REL[th.fav.X]);
     if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite');
       if (th.luckD) a.push('day Luck ' + (th.luckD.s > 0 ? '+' : th.luckD.s < 0 ? '−' : '±') + Math.abs(th.luckD.s)); }
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
@@ -1062,6 +1081,16 @@
     } catch (e) {}
     // what He Luo says for the purpose
     var box = '';
+    // Edu 13/11/2026: Correct and Favour inside the XKDG Date Selection
+    if (th.key === 'correct' && th.cf) { var c = th.cf;
+      box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>Correct a problem</b>' + (c.problem ? ' · too much <b>' + REL[c.problem] + '</b> with unfavourable texts: ' + esc(CF_PROB[c.problem]) + ' · ' + esc(c.how) : '') + '<br>'
+        + (c.ok ? '<span style="' + G + '">✚ A day to correct it.</span> <b>Do:</b> ' + esc(c.todo) + '<br>' + esc(c.why.join(' · ')) + '<br>' + (c.hours && c.hours.length ? 'Hour: ' + c.hours.slice(0, 2).map(function (x) { return x.pillar + ' ' + x.tst; }).join(', ') : 'No particular hour')
+          : '<span style="' + Rd + '">Not a day to correct it: ' + esc(c.no.join('; ')) + '</span>') + '</div>'; }
+    if (th.fav) { var f = th.fav;
+      box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>Favour ' + REL[f.X] + '</b> · '
+        + (f.ok ? '<span style="' + (f.lv >= 2 ? G : '') + 'font-weight:600;">' + (f.stars ? (f.stars === 2 ? '★★ ' : '★ ') : '') + f.level + '</span>' + (th.fvPts ? ' (+' + th.fvPts * 5 + '% to the score)' : '') + '<br>' + esc(f.why.join(' · '))
+          + '<br>' + ([f.hours.actor ? 'the actor enters ' + f.hours.actor.pillar + ' ' + f.hours.actor.tst : '', f.hours.answer ? 'the answer ' + f.hours.answer.pillar + ' ' + f.hours.answer.tst : ''].filter(Boolean).join(' · ') || 'No particular hour')
+          : '<span style="color:#777;">not favoured: ' + esc(f.no.join('; ')) + '</span>') + '</div>'; }
     if (th.key === 'luck') {
       box += th.luck.length ? '<div style="' + G + '">▲ ' + esc(th.luck.join(' · ')) + '</div>' : '<div>None of the three Luck in the hexagrams of this day.</div>';
       if (th.opp.length) box += '<div style="' + Rd + '">▼ ' + esc(th.opp.join(' · ')) + '</div>';
@@ -1073,7 +1102,7 @@
     } else if (th.key === 'cure') {
       box += th.need ? '<div>The natal chart needs <b>' + th.need + '</b> to come back into balance.</div>' + (th.cure.length ? '<div>' + esc(th.cure.join(' · ')) + '</div>' : '<div>Block and day hexagram are balanced: no help, no harm.</div>')
         : '<div>Yin and yang of the natal chart are in line: no cure needed from the day.</div>';
-    } else if (th.X) {
+    } else if (th.X && th.key !== 'correct') {
       box += th.on.length ? '<div style="' + G + '">▲ ' + REL[th.X] + ' (' + XK_PL[th.key] + ') on: ' + th.on.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.hidden ? ' hidden' : '') + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>'
         : '<div>' + REL[th.X] + ' (' + XK_PL[th.key] + ') is not on the lines of this day.</div>';
       if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>';
@@ -1108,7 +1137,7 @@
       if (th.steal && th.steal.length) box += '<div style="' + Rd + '">▼ Brothers steal the Wealth (兄弟劫財) on ' + th.steal.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + ': a partner, a rival or a third person takes what is yours.</div>';
       if (th.loss && th.loss.length) box += '<div style="' + Rd + '">▼ ' + REL[th.X] + ' is in play, but at a loss: ' + th.loss.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + ' (unfavourable text' + (th.sd < 0 ? ', after an unfavourable primary text' : '') + ').</div>';
       if (th.sd || th.so) box += '<div style="' + (th.sd + th.so / 2 > 0 ? G : th.sd + th.so / 2 < 0 ? Rd : '') + '">' + (th.sd + th.so / 2 > 0 ? '▲' : th.sd + th.so / 2 < 0 ? '▼' : '·') + ' Texts of the day: primary ' + sgn(th.sd) + ', outcome ' + sgn(th.so) + '.</div>';
-    } else box += '<div>No purpose chosen: reading only.</div>';
+    } else if (th.key !== 'correct') box += '<div>No purpose chosen: reading only.</div>';
     // Critical day (Edu 12/11 evening): 5 signals = severe; 4 = critical with a sixth signal, otherwise a light warning
     if (th.alarm) { var AL = th.alarm, sev = AL.level === 'severe', crt = AL.level === 'critical';
       box = '<div style="border:2px solid ' + (sev ? '#b71c1c' : crt ? '#c62828' : '#e65100') + ';background:' + (sev ? '#ffebee' : crt ? '#fff3f0' : '#fff8e1') + ';border-radius:6px;padding:6px;margin-bottom:6px;">'
@@ -1119,7 +1148,7 @@
     var pos = dh.line === 1 ? 'Line 1: a beginning — good for what starts (launch, wedding, first step).' : dh.line === 6 ? 'Line 6: an end or a completion — good for what closes (sale, closing, conclusion).' : '';
     if (pos) box += '<div style="font-size:11px;color:#555;margin-top:3px;">' + pos + '</div>';
     h += '<div style="border:1px solid #b39ddb;background:#f7f3fd;border-radius:8px;padding:8px;margin:6px 0;font-size:12px;line-height:1.55;">'
-      + '<div style="font-weight:700;color:#4527a0;">He Luo for ' + (XK_PL[th.key] || 'this day') + (th.adj ? ' · ' + sgn(th.adj * 5) + '% on the XKDG score' : ' · no change to the XKDG score') + '</div>' + box + '</div>';
+      + '<div style="font-weight:700;color:#4527a0;">He Luo for ' + (XK_PL[th.key] || (th.key === 'correct' ? 'correcting a problem' : 'this day')) + (xkPts(th) ? ' · ' + sgn(xkPts(th) * 5) + '% on the XKDG score' + (th.fvPts ? ' (purpose ' + sgn(th.adj * 5) + '%, Favour +' + th.fvPts * 5 + '%' + (xkPts(th) !== th.adj + th.fvPts ? ', capped at ±20%' : '') + ')' : '') : ' · no change to the XKDG score') + '</div>' + box + '</div>';
     function lv(title, L, hx, cy) {
       return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + L.n + ' ' + esc(U().hexName ? U().hexName(L.n) : '') + ' line ' + L.l + '</div>'
         + (U().cycleHexSvg ? U().cycleHexSvg(hx, L.l, cy, me) : '')
@@ -1489,5 +1518,5 @@
     out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) TELL THE DAY AS A FILM (Edu 13/11/2026), one short paragraph each, using the field film: SCENARIO = the cycle (the period of life) and the annual (its name, judgment and moved line) with their strength in the month, and the year branch that clashes them (comes alive or gives way); BACKDROP = the annual line of the month and the month line (the climate of these weeks); ACTOR = the Lord of the block: its relation says WHO acts (Brothers = colleagues, rivals, a partner who takes; Wealth = money, clients, the partner of a man; Ghost = authority, pressure; Parent = documents, mentors, study; Children = students, projects, creations), its text says HOW; ACTION = the day line and the outcome, and the day branch that clashes them (timely = it explodes, it happens now; not timely = it breaks) or a quiet line (activated = comes into play, eliminated = removed); HOURS = film_hours: when the actor enters the scene (hour with the branch of the Lord) and when the answer comes (hour where a natal void comes out), with their texts; give the hours also in civil time if you know the place. Keep the story COHERENT with the flow of the Qi between neighbouring levels (relations_between_levels: who feeds whom, who controls whom, what relieves it) down to the outcome, and close with the flow in a few words (e.g. documents → rival → work → money that leaves). Read every text in the concrete context of the day and of the person, not as a literal translation, and never contradict what is timely or not; 3) the alarms and warnings, briefly; 4) advice: what to do, what to avoid, for whom (use the field correct: if good_day_to_correct, say plainly that today is a day to correct the problem and what to do; if not, say it is better to wait); if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its six lines (top line first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read). Write the Heluo age next to every year (age = year − birth year + 1).';
     return out;
   }
-  root.XKDGHeluoDS = { aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  root.XKDGHeluoDS = { xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);
