@@ -755,7 +755,7 @@
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
   // so from session 26 it travels with EVERY area, not only with 'dates'.
-  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars',
+  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars','get_heluo_day',
                      'photo_sectors','photo_sectors_state','add_calendar_reminder','set_person',
                      'person_xkdg_gaps','mutual_cures'];   // session 48: without an area the AI invented its own cure rules
 
@@ -1883,6 +1883,25 @@
           time: { type: 'string', description: 'Optional civil (wall-clock) time HH:MM. Default 12:00.' }
         },
         required: ['date']
+      }
+    },
+    {
+      name: 'get_heluo_day',
+      description: 'He Luo Li Shu (HLLS, 河洛理數) reading of a DAY for Person A, from the app\'s own He Luo engine (the same as ' +
+        'the XKDG day window and the He Luo planner): age, cycle hexagram and line, annual, month, block (Lord) and day lines with ' +
+        'their branch, relation (Wealth, Brothers...) and line text, a score from -3 to +3 per purpose, severe/critical day alarms, ' +
+        'warnings (Brothers stealing Wealth, criticism, void that comes out, Fire controlling the Brothers...), alarms in the next ' +
+        '30 days and, on request, the 12 hours. Use it for ANY question about HLLS, He Luo, "my chart"/"la mia carta HLLS", how a ' +
+        'day goes for Person A in He Luo — never answer those with get_pillars and Hetu/qi/yun sums (that is XKDG, a different system). ' +
+        'Write bazi in a column (Hour, Day, Month, Year).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'YYYY-MM-DD. Default today.' },
+          purposes: { type: 'array', items: { type: 'string', enum: ['wealth', 'relationship', 'speak', 'support', 'career', 'legal', 'health', 'journey', 'luck'] },
+            description: 'Purposes to read. Default wealth, relationship, speak.' },
+          hours: { type: 'boolean', description: 'Also return the 12 double hours of the day (hexagram, line, text score, void that comes out, spouse palace).' }
+        }
       }
     },
     {
@@ -3479,6 +3498,15 @@
       if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'get_pillars') return toolGetPillars(input || {});
+      if (name === 'get_heluo_day') return new Promise(function (resolve) {
+        var H = window.XKDGHeluo;
+        if (!H || !H.ensure) { resolve({ error: 'The He Luo module is not loaded.' }); return; }
+        H.ensure(function () {
+          try { resolve(window.XKDGHeluoDS && window.XKDGHeluoDS.aiDay ? window.XKDGHeluoDS.aiDay((input || {}).date, (input || {}).purposes, !!(input || {}).hours) : { error: 'The He Luo Date Selection is not loaded.' }); }
+          catch (e) { resolve({ error: String((e && e.message) || e) }); }
+        });
+        setTimeout(function () { resolve({ error: 'The He Luo files did not load in time.' }); }, 20000);
+      });
       if (name === 'find_water_positions') return toolFindWaterPositions(input || {});
       if (name === 'photo_sectors') return toolPhotoSectors(input || {});
       if (name === 'sun_facing') {

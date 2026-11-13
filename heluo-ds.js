@@ -1122,5 +1122,57 @@
     else if (what === 'c') { _pl.openC = _pl.openC === v ? null : v; }
     var box = $('hl-plan'), ch = H().currentChart && H().currentChart(); if (box && ch) { try { box.innerHTML = plBody(ch); } catch (e) {} }
   };
-  root.XKDGHeluoDS = { alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  // ── For the XKDG Assistant (Edu 13/11/2026): Person A's He Luo Li Shu day as plain data ──
+  // aiDay('2026-11-13', ['wealth','speak'], true) → the same engine as the XKDG day window (thread), one block per purpose.
+  function aiDay(iso, keys, withHours) {
+    var ch = H().chartA ? H().chartA() : { err: 'birth' };
+    if (ch.err) return { error: ch.err === 'gender' ? 'Person A needs the gender (M/F) for the He Luo chart.' : ch.err === 'birth' ? 'Person A needs birth date and birth hour.' : 'No birth longitude for Person A.' };
+    var lon = xkLon(ch.c); if (!isFinite(lon)) return { error: 'No longitude available.' };
+    var t = new Date(), m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    var Y = m ? +m[1] : t.getFullYear(), Mo = m ? +m[2] : t.getMonth() + 1, D = m ? +m[3] : t.getDate();
+    var ctx = context(ch.R, ch.Pn, ch.male), Pe = pillarsTstNoon(Y, Mo, D, lon);
+    keys = (keys && keys.length ? keys : (ch.male ? ['wealth', 'relationship', 'speak'] : ['wealth', 'relationship', 'speak'])).filter(function (k) { return XK_PL[k] && k !== 'cure'; });
+    var TXT = window.XKDG_HELUO_TEXTS || {};
+    function stmt(n, l) { try { return ((TXT[n] || {}).lines || {})[l].statement || ''; } catch (e) { return ''; } }
+    function lineOut(L) { return { level: XK_LBL[L.k], hexagram: L.n, line: L.l, branch: L.b, element: L.el, relation: REL[L.r], text_score: SC() && SC()[L.n] ? SC()[L.n].l[L.l] : null,
+      text: stmt(L.n, L.l), void: L.voidL ? (L.filled ? 'void, comes out today' : 'void (later)') : undefined, backward_flow: L.fb > 1 ? 'strengthened by ' + L.bk.b : undefined }; }
+    function triL(a) { return (a || []).map(function (x) { return x.lbl; }); }
+    var out = { person: ch.c.name, date: Y + '-' + String(Mo).padStart(2, '0') + '-' + String(D).padStart(2, '0'),
+      bazi_of_the_day_column_order: [['Day', Pe.day], ['Month', Pe.month], ['Year', Pe.year]].map(function (x) { return x[0] + ' ' + x[1]; }),
+      natal_bazi: ['Hour ' + ch.Pn.hour, 'Day ' + ch.Pn.day, 'Month ' + ch.Pn.month, 'Year ' + ch.Pn.year],
+      natal_voids: natalVoids(ch.Pn).list, purposes: {} }, first = null;
+    keys.forEach(function (key) {
+      var th = null; try { th = thread(ctx, Pe, lon, key); } catch (e) { th = null; }
+      if (!th) { out.purposes[XK_PL[key]] = { note: 'no reading for this day' }; return; }
+      if (!first) first = th;
+      if (!out.age_heluo) { var p = th.p; out.age_heluo = p.age;
+        out.cycle = { phase: p.phase, hexagram: p.hx.n, line: p.per.line, branch: NJ()[p.hx.n].lines[p.per.line - 1].branch, person_element: th.pers };
+        out.annual = { hexagram: p.id.year[0], moved_line: p.id.year[1], text: stmt(p.id.year[0], p.id.year[1]) };
+        out.month = { hexagram: p.month.hex.n, line: p.month.line }; out.block = { hexagram: p.id.lord[0], lord_line: p.id.lord[1] };
+        out.day = { hexagram: p.id.day[0], line: p.id.day[1], outcome_hexagram: p.id.dayHex[0] }; }
+      var o = { score: th.adj, score_note: 'He Luo score of the day from −3 to +3 (raises or lowers XKDG days)', raw: Math.round(th.t * 100) / 100,
+        lines_read: th.lines.map(lineOut) };
+      if (th.alarm) o.alarm = { level: th.alarm.level, signals: th.alarm.sig, sixth: th.alarm.six };
+      if (th.X) { o.purpose_relation = REL[th.X]; o.price_relation = th.A ? REL[th.A] : null;
+        o.purpose_on = th.on.map(function (L) { return L.b + (L.hidden ? ' hidden' : ''); }); o.price_on = th.price.map(function (L) { return L.b; });
+        o.purpose_in_trigrams = triL(th.tri.plus); o.price_in_trigrams = triL(th.tri.minus); }
+      if (th.steal && th.steal.length) o.brothers_steal_wealth = th.steal.map(function (L) { return L.b; });
+      if (th.loss && th.loss.length) o.in_play_but_at_a_loss = th.loss.map(function (L) { return L.b; });
+      if (th.tri && th.tri.gOn) o.wealth_feeds_ghost = triL(th.tri.ghost);
+      if (th.tri && th.tri.ctl && th.tri.ctl.length) o.fire_controls_brothers = triL(th.tri.ctl);
+      if (th.chain && th.chain.length) o.brothers_feed_children = th.chain.map(function (L) { return L.b; });
+      if (th.crit && th.crit.length) o.criticism = th.crit.map(function (L) { return L.b || L.lbl; });
+      if (th.critE && th.critE.length) o.criticism_without_substance = th.critE.map(function (L) { return L.b; });
+      if (th.surprise && th.surprise.length) o.hidden_surfaces = th.surprise.map(function (L) { return L.b; });
+      if (th.turn) o.turn_of_the_month = th.turn;
+      if (th.later && th.later.length) o.fruits_later_void = th.later.map(function (L) { return L.b; });
+      out.purposes[XK_PL[key]] = o;
+    });
+    if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s,
+      void_comes_out: h.voidOut.length ? h.voidOut : undefined, spouse_palace: h.spouse || undefined }; });
+    try { out.alarms_next_30_days = alarmsAhead(ch, 30).map(function (g) { return { date: new Date(g.ms).toISOString().slice(0, 10), in_days: g.inDays, level: g.level, purposes: g.keys, day_pillar: g.pillar }; }); } catch (e) {}
+    out.reading_rules = 'Edu (the user) is the authority on He Luo Li Shu. Read the line texts and relations given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). Write a bazi in a column: Hour, Day, Month, Year. Draw hexagrams with their lines. Age is the Heluo age.';
+    return out;
+  }
+  root.XKDGHeluoDS = { aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);
