@@ -690,6 +690,41 @@
     th.lines.forEach(function (L) { var o = line(L.n, L.l); by[L.k] = o; var h = hit(o, db, 'day'); if (h) { h.lv = LBL[L.k]; dh.push(h); } });
     return { yb: yb, mb: mb, db: db, cycle: cyc, annual: ann, yearHits: yh, yearQuiet: yq, dayHits: dh, dayQuiet: dayClash(th), lines: by, lord: by.lord };
   }
+  // ── Legacy / will (Edu 13/11/2026, case of Thao: a will signed in her favour before the lawyer on 22/9/2026; famous cases in
+  //    the HLLS 1 project, claude/hlls-eredita.md: Marx 1863–64, King 1967, Churchill 1921, Hitler 1911, Diana 1979) ──
+  // A Ghost on a bigger level (annual line of the month, month line, Lord) feeds a Parent on a smaller one (Lord, day line,
+  // outcome, or hidden under one of them): authority or the end of a cycle produces a DOCUMENT (will, deed, donation, contract).
+  // Wealth must be there too (a read line, a hidden line, or a quiet Parent clashed by the year or the day that turns into
+  // Wealth: the document becomes assets). Brothers hidden under the Parent, or Brothers with a favourable text on the backdrop
+  // or on the actor = from a person close as a peer, not a relative (Thao: 32 l2 亥 Parent with 寅 Brothers hidden, the month
+  // 34 l5 申 Ghost «loses the goat with ease»; Marx/Wolff, King/Parker); otherwise from an elder or a relative. A Wealth line
+  // with an unfavourable text = the assets come, but must not be rushed (Thao: Lord 32 l1 «seeking duration too hastily»).
+  // Reading only: no score.
+  var LG_ORD = ['am', 'm', 'lord', 'd', 's2'], LG_LBL = { am: 'annual line of the month', m: 'month line', lord: 'actor (Lord)', d: 'day line', s2: 'outcome' };
+  function legacyOfDay(F, th) {
+    if (!F || !th) return null;
+    var L = F.lines, pers = th.pers, ks = LG_ORD.filter(function (k) { return L[k]; });
+    function hid(o) { var f = NJ()[o.n].lines[o.l - 1].fushen; return f ? { b: f.branch, el: f.el, r: rel(pers, f.el) } : null; }
+    var gs = [], ps = [];
+    ks.forEach(function (k, i) { var o = L[k], h = hid(o);
+      if (o.r === 'G' && o.s > -2 && i < 3) gs.push({ k: k, i: i, o: o });
+      if (o.r === 'P' && o.s >= 0 && i >= 2) ps.push({ k: k, i: i, o: o, b: o.b, hid: h, hidden: false });
+      else if (h && h.r === 'P' && i >= 2 && o.s >= 0) ps.push({ k: k, i: i, o: o, b: h.b, hid: null, hidden: true }); });
+    var pair = null; gs.forEach(function (g) { ps.forEach(function (q) { if (!pair && g.i < q.i) pair = { g: g, p: q }; }); });
+    if (!pair) return null;
+    var wl = ks.filter(function (k) { return L[k].r === 'W'; }).map(function (k) { return { k: k, o: L[k] }; });
+    var wh = ks.filter(function (k) { var h = hid(L[k]); return h && h.r === 'W'; });
+    var turn = (F.yearQuiet || []).concat(F.dayQuiet || []).filter(function (c) { return c.r === 'P' && c.on && c.to && c.to.r === 'W'; });
+    if (!wl.length && !wh.length && !turn.length) return null;
+    var affine = (pair.p.hid && pair.p.hid.r === 'B') || ['am', 'm', 'lord'].some(function (k) { return L[k] && L[k].r === 'B' && L[k].s > 0; });
+    var rush = wl.filter(function (x) { return x.o.s < 0; });
+    var t = 'Legacy / document: the Ghost ' + pair.g.o.b + ' of the ' + LG_LBL[pair.g.k] + ' feeds the Parent ' + pair.p.b + (pair.p.hidden ? ' hidden under the ' : ' of the ') + LG_LBL[pair.p.k]
+      + ' — someone with authority, or at the end of a cycle, puts something in writing for this person (will, deed, donation, contract).';
+    t += affine ? ' Brothers ' + (pair.p.hid && pair.p.hid.r === 'B' ? 'hidden under the Parent (' + pair.p.hid.b + ')' : 'on the backdrop or the actor') + ': from a person close as a peer, not a relative.' : ' From an elder or a relative.';
+    t += ' Wealth: ' + [wl.map(function (x) { return x.o.b + ' on the ' + LG_LBL[x.k]; }).join(', '), wh.length ? 'hidden under the ' + wh.map(function (k) { return LG_LBL[k]; }).join(', ') : '', turn.map(function (c) { return 'the Parent ' + c.b + ' (' + c.lv + ') clashed and activated turns into Wealth ' + c.to.b + ': the document becomes assets'; }).join('; ')].filter(Boolean).join('; ') + '.';
+    if (rush.length) t += ' The Wealth ' + rush.map(function (x) { return x.o.b; }).join('') + ' has an unfavourable text: the assets come, but do not rush or press for them.';
+    return { ghost: pair.g, parent: pair.p, affine: !!affine, wealth: wl.length + wh.length + turn.length, turn: turn.length > 0, rush: rush.length > 0, text: t };
+  }
   // ── Date Selection «Correct» and «Favour» (Edu 13/11/2026, tried on his dates: claude/hlls-ds-cf-prova.md) ──
   // Text of a line: positive (score > 0) = the cure / the purpose counts; 0 = neutral, read it in the film; negative = it does not count.
   // CORRECT: the app finds the problem = the relation that prevails among the active lines (cycle, annual of the month, month,
@@ -790,9 +825,9 @@
     }
     return out;
   }
-  root.XKDGHeluoDSCore = { correctDay: correctDay, favourDay: favourDay, cfScan: cfScan, filmOfDay: filmOfDay, clashQuiet: clashQuiet, dayClash: dayClash, yearClash: yearClash, levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
+  root.XKDGHeluoDSCore = { legacyOfDay: legacyOfDay, correctDay: correctDay, favourDay: favourDay, cfScan: cfScan, filmOfDay: filmOfDay, clashQuiet: clashQuiet, dayClash: dayClash, yearClash: yearClash, levelsOfDay: levelsOfDay, levelsText: levelsText, triVoid: triVoid, hoursOfDay: hoursOfDay, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, xkRel: xkRel, tempo: tempo, timely: timely, wang: wang, predict: predict, profile: profile, cycleRows: cycleRows, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, pillarsTstNoon: pillarsTstNoon, sanhui: sanhui, voidExit: voidExit, movedBranches: movedBranches, VOID_HOW: VOID_HOW };
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { correctDay: correctDay, favourDay: favourDay, cfScan: cfScan, filmOfDay: filmOfDay, levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
+    module.exports = { legacyOfDay: legacyOfDay, correctDay: correctDay, favourDay: favourDay, cfScan: cfScan, filmOfDay: filmOfDay, levelsOfDay: levelsOfDay, levelsText: levelsText, PREV_PURP: PREV_PURP, triVoid: triVoid, hoursOfDay: hoursOfDay, triRows: triRows, triScore: triScore, flowEl: flowEl, lineFlow: lineFlow, flowMul: flowMul, thread: thread, context: context, scoreDay: scoreDay, scan: scan, predict: predict, profile: profile, luckDay: luckDay, pillarsTstNoon: pillarsTstNoon,
       cycleRows: cycleRows, PURPOSES: PURPOSES, rel: rel, persona: persona, voids: voids, natalVoids: natalVoids, tempo: tempo, timely: timely, wang: wang, voidExit: voidExit, movedBranches: movedBranches };
   }
   if (typeof document === 'undefined') return;
@@ -961,7 +996,7 @@
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:4px 0;">' + cfBazi(hr, g.Pe)
       + '<div style="display:flex;flex-wrap:wrap;">' + (U().cycleHexSvg ? '<div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.block, dh.line, null, me) + '</div><div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.hex, dh.line, null, me) + '</div>' : '') + '</div>'
       + '<div style="font-size:10px;color:#999;">Left: block hexagram with the day line (action; the actor is its line ' + dh.lord + '). Right: day hexagram (outcome).</div>'
-      + ln('lord', 'Actor') + ln('d', 'Action') + ln('s2', 'Outcome') + '</div>';
+      + ln('lord', 'Actor') + ln('d', 'Action') + ln('s2', 'Outcome') + (function () { var lg = legacyOfDay(g.F, g.th); return lg ? '<div style="' + S_ + 'color:#5e35b1;margin-top:3px;">📜 ' + esc(lg.text) + '</div>' : ''; })() + '</div>';
   }
   function cfResults(chart, days) {
     var ok = days.filter(function (g) { return g.ok; }), h = '';
@@ -1085,6 +1120,7 @@
     } catch (e) {}
     // what He Luo says for the purpose
     var box = '';
+    try { var lgX = legacyOfDay(filmOfDay(th), th); if (lgX) box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;color:#5e35b1;">📜 ' + esc(lgX.text) + '</div>'; } catch (e) {}
     // Edu 13/11/2026: Correct and Favour inside the XKDG Date Selection
     if (th.key === 'correct' && th.cf) { var c = th.cf;
       box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;"><b>Correct a problem</b>' + (c.problem ? ' · too much <b>' + REL[c.problem] + '</b> with unfavourable texts: ' + esc(CF_PROB[c.problem]) + ' · ' + esc(c.how) : '') + '<br>'
@@ -1481,7 +1517,7 @@
         out.annual = { hexagram: p.id.year[0], moved_line: p.id.year[1], text: stmt(p.id.year[0], p.id.year[1]) };
         out.month = { hexagram: p.month.hex.n, line: p.month.line }; out.block = { hexagram: p.id.lord[0], lord_line: p.id.lord[1] };
         out.day = { hexagram: p.id.day[0], line: p.id.day[1], outcome_hexagram: p.id.dayHex[0] };
-        try { out.film = filmOut(filmOfDay(th)); } catch (e) {} }
+        try { var F0 = filmOfDay(th); out.film = filmOut(F0); var lg0 = legacyOfDay(F0, th); if (lg0) out.legacy_or_document = lg0.text; } catch (e) {} }
       var o = { score: th.adj, score_note: 'He Luo score of the day from −3 to +3 (raises or lowers XKDG days)', raw: Math.round(th.t * 100) / 100,
         lines_read: th.lines.map(lineOut) };
       if (th.alarm) o.alarm = { level: th.alarm.level, signals: th.alarm.sig, sixth: th.alarm.six };

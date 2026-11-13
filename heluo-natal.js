@@ -149,6 +149,23 @@
         crossTri: !N.one && (line === 3 || line === 4), isStart: line === N.movingLine && x.c.from === N.from });
     });
 
+    // Legacy from a peer (Edu 13/11/2026, case of Thao: XT 32 l2 亥 Parent with 寅 Brothers hidden, HT 61 l3 丑 Parent with 申
+    // Brothers hidden; a will in her favour signed on 22/9/2026 by an elderly client): a Parent line with Brothers hidden under it
+    // (or Brothers with Parent hidden), in a native that also has a Ghost line (the Ghost feeds the Parent = the document).
+    // Rare: only 26, 28, 32, 41, 44, 46, 48 and 61 have it. Reading only.
+    A.legacy = [];
+    A.natives.forEach(function (N) {
+      var x = NJ()[N.hx.n]; if (!x) return;
+      var pr = function (i) { return TRI_EL[i < 3 ? N.hx.lower : N.hx.upper]; };
+      var hasG = x.lines.some(function (M, j) { return rel(pr(j), M.el) === 'G'; });
+      x.lines.forEach(function (L, i) {
+        if (!L.fushen || !hasG) return; var a = rel(pr(i), L.el), b = rel(pr(i), L.fushen.el);
+        if ((a === 'P' && b === 'B') || (a === 'B' && b === 'P')) {
+          var c = (N.cycles || []).filter(function (cc) { return cc.line === i + 1; })[0];
+          A.legacy.push({ key: N.key, n: N.hx.n, line: i + 1, b: L.branch, r: a, hb: L.fushen.branch, hr: b, ages: c ? [c.from, c.to] : null, y: c ? [A.y0 + c.from - 1, A.y0 + c.to - 1] : null });
+        }
+      });
+    });
     synthesis(A);
     return A;
   }
@@ -175,6 +192,10 @@
       var pl = p.places.W; wl.push((N.key === 'XT' ? 'first chart' : 'second chart') + (N.one ? '' : ' (as ' + p.me + ')') + ': ' + (pl.length ? pl.join(', ') : 'nowhere') + ' — money is ' + CTRL[p.me] + ' for ' + (A.male ? 'him' : 'her'));
     }); });
     S.push(['Where the money is', wl.join('; ') + '.']);
+    if (A.legacy && A.legacy.length) S.push(['Legacy from a peer', A.legacy.map(function (g) {
+      return (g.key === 'XT' ? 'first chart' : 'second chart') + ' ' + g.n + ' line ' + g.line + ': ' + g.b + ' ' + REL[g.r] + ' with ' + g.hb + ' ' + REL[g.hr] + ' hidden'
+        + (g.ages ? ' (its cycle: age ' + g.ages[0] + '–' + g.ages[1] + ', ' + g.y[0] + '–' + g.y[1] + ')' : ''); }).join('; ')
+      + '. An elder and a peer in the same place, with a Ghost that feeds the Parent: ' + he + ' can receive a legacy, a donation or a document in ' + his + ' favour from a person close to ' + (A.male ? 'him' : 'her') + ' but not a relative (a client, a friend, a teacher). It shows in the days when a Ghost of the month feeds a Parent of the day.']);
     var srt = A.cycles.slice().sort(function (a, b) { return b.score - a.score; });
     var top = srt.filter(function (c) { return c.has.W >= 1 && c.score > 0; }).slice(0, 3);
     S.push(['Best years for money', top.length ? top.map(function (c) { return per(c) + ', line ' + c.L.branch + ' ' + REL[c.r]; }).join('; ') + '.'

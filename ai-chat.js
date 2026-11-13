@@ -1895,7 +1895,7 @@
         'day goes for Person A in He Luo — never answer those with get_pillars and Hetu/qi/yun sums (that is XKDG, a different system). ' +
         'It also returns the "film" of the day (scenario = cycle and annual, backdrop = annual line of the month and month line, ' +
         'actor = Lord of the block, action = day line and outcome, clashes of the year and day branches, film_hours = when the actor ' +
-        'enters and when the answer comes). Answer as the reading_rules in the result say: the essence, the day told as a film ' +
+        'enters and when the answer comes) and, when present, legacy_or_document (a Ghost of a bigger level feeds a Parent of a smaller one, with Wealth: a will, deed, donation or contract in the person\'s favour; from a peer if Brothers sit under the Parent). Answer as the reading_rules in the result say: the essence, the day told as a film ' +
         'coherent with the flow of the Qi, and advice, in plain colloquial language — no numbers, no scores, no tables unless the ' +
         'user asks for them. Draw the hexagrams you cite, write the Heluo age next to the years and bazi in a column (Hour, Day, Month, Year).',
       input_schema: {
