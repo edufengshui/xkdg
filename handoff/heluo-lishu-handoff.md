@@ -252,3 +252,13 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - `aiYears(year, to_year, months)` (heluo-ds.js, esportata): per ogni anno linea del ciclo e linea mossa dell'annuale (ramo, relazione, testo, rapporto con il ramo dell'anno, vuoti natali, flusso ciclo→annuale, scontro dell'anno sulle linee quiete, note Six Clashes / Opposite / Inverse) e, solo su richiesta, i 12 mesi. `reading_rules`: dal grande al piccolo, risposta alla domanda, niente giorni.
 - ai-chat.js: nuovo strumento `get_heluo_years` (aree dates e birth); `get_heluo_day` solo per un giorno preciso; prompt di sistema «GENERAL QUESTIONS ARE NOT DATE SELECTIONS»; AREA_HINTS.birth riconosce anche un anno (2027, anno prossimo, next year…).
 - Controllo in node: Edu 2027 (68) ciclo 43 l1 子 Children, annuale 35 l6 巳 Ghost; `mensile_app_check.js` ok. Non provato dentro l'app con l'Assistant vero.
+
+## 14/11/2026 — Note del giorno: trigono, interferenza, Six Clashes, Inverse/Opposite («vai» di Edu, 15:22) — solo lettura
+- `notesOfDay(F, th)` in heluo-ds.js (esportata), nessun punteggio:
+  - △ trigono (三合) chiuso dal ramo del giorno con due linee attive = favorevole;
+  - ∞ combinazione d'interferenza (六合) fra linee attive di livelli vicini (ciclo–annuale, annuale–mese, mese–Lord, Lord–giorno) con chi comanda (grande controlla / grande genera / piccolo genera / piccolo controlla + elemento ponte);
+  - ⚡ esagramma Six Clashes (8 puri + 25 + 34) su annuale, mese, blocco o giorno (non sul ciclo: il nativo c'è sempre);
+  - ⇅ annuale, mese, blocco o giorno che è l'Inverse («rotture improvvise») o l'Opposite («svolta») del nativo attivo.
+- Dove: film dei giorni di Correggere/Favorire, finestra del giorno della Date Selection XKDG, Assistant (`notes_of_the_day` + reading_rules).
+- Controllo in node sui casi di Edu: 8/12/2015 blocco 29 Six Clashes + annuale 44 Inverse di 43; 23/7/2026 blocco 2; 2022 子+丑 ciclo–annuale con ponte Metallo (Brothers). Nel 2026 di Edu: Six Clashes circa 4 giorni su 10, interferenza 1 su 3, trigono 1 su 9.
+- Non ancora nel codice: Blood Link che annulla gli scontri fra pilastri nella finestra XKDG; ore He Luo «per agire» / «della risposta» accanto alle ore XKDG; Six Clashes sull'esagramma dell'ora; ricerca per Qi e Yun.
