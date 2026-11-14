@@ -1,7 +1,7 @@
 // =====================================================================
 //  Cloudflare Worker:  xkdg-ai
 //  Proxies the XKDG chat to the Anthropic Messages API.
-//   • Forces the MODEL (one place to change it: the MODEL constant below).
+//   • Forces the MODEL: default MODEL for students, per-licence "m" override (session 51).
 //   • Adds PROMPT CACHING on the big, static system prompt + tools, so the
 //     repeated calls in one conversation are much cheaper.
 //   • Keeps the Anthropic key server-side (Worker secret) — never in the app.
@@ -17,7 +17,7 @@
 //
 //  Deploy: Workers dashboard → xkdg-ai → Edit code → replace ALL the code
 //  with this → Deploy.  No change needed in the app.
-//  To switch model later, edit MODEL and redeploy.
+//  To switch the students' model, edit MODEL and redeploy; per person use "m" in LICENCES.
 //
 //  v-session49: secrets moved to env (STATS_TOKEN, LICENCES) — see SECRETS below —
 //  and a DAILY LIMIT per licence (DAILY_CAP_USD).
@@ -40,6 +40,8 @@
 //                  d    = 1 → also opens 🧭 Directions / Travel Planner (session 37)
 //                  ai   = daily AI budget in USD for this licence (absent → DAILY_CAP_USD,
 //                         0 → no limit)
+//                  m    = optional model for this licence: "opus", "sonnet" or a full id
+//                         (session 51; absent → MODEL)
 //                  old  = 1 → a retired code: kept ONLY so past months show a name; it
 //                         does NOT unlock the app
 //                To revoke somebody: delete their object from LICENCES and save. Nothing to
@@ -94,22 +96,43 @@ const LICENCE_RATE = { TRIES: 5, WINDOW_MIN: 10 };
 // Prompt-cache lifetime: '1h' (extended) or '5m' (standard).
 const CACHE_TTL = '1h';
 
-const MODEL = 'claude-sonnet-4-6';          // <-- change the model here
+// ── MODEL PER LICENCE (session 51) ───────────────────────────────────
+// Students get MODEL (the default). A licence can ask for another model with the field
+// "m" in LICENCES: "m":"opus" → Opus 5.5 (Edu), "m":"sonnet" → Sonnet 5.5, or a full
+// model id such as "m":"claude-sonnet-4-6". Without "m" the licence uses MODEL.
+const MODEL = 'claude-sonnet-5-5';          // <-- default model (students)
+const MODEL_ALIASES = {
+  opus:   'claude-opus-5-5',
+  sonnet: 'claude-sonnet-5-5'
+};
 const MAX_TOKENS_FALLBACK = 1024;           // used only if the app omits it
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 
-// Rough cost estimate, USD per single token (Anthropic bills in USD).
-// Standard Sonnet rates: $3 / $15 per 1M in/out; cache read ~10% of input,
-// cache write ~1.25x input. Edit these two lines if the model/rates change.
+function modelFor(env, sid) {
+  const hit = sid ? licences(env).find(c => c.h === sid && !c.old) : null;
+  const m = hit && typeof hit.m === 'string' ? hit.m.trim() : '';
+  if (!m) return MODEL;
+  return MODEL_ALIASES[m.toLowerCase()] || m;
+}
+
+// Rough cost estimate, USD per single token (Anthropic bills in USD), ONE TABLE PER MODEL.
+// Per 1M tokens: in = uncached input, out = output, cr = cache read,
+// cw = cache write with the 1-hour TTL used here (2x input).
 // The raw token counts stored in KV are the source of truth; `cost` is only
-// a convenience number so Edu can eyeball euros/dollars per student.
-const RATE = {
-  in:  3.00 / 1e6,   // uncached input tokens
-  out: 15.00 / 1e6,  // output tokens
-  cr:  0.30 / 1e6,   // cache_read_input_tokens  (10% of input)
-  cw:  3.75 / 1e6    // cache_creation_input_tokens (1.25x input)
+// a convenience number so Edu can eyeball dollars per student. Check the rates on
+// Anthropic's pricing page when a model changes.
+const RATES = {
+  'claude-opus-5-5':   { in: 4.00, out: 20.00, cr: 0.20, cw: 8.00 },
+  'claude-sonnet-5-5': { in: 2.00, out: 10.00, cr: 0.20, cw: 4.00 },
+  'claude-sonnet-4-6': { in: 3.00, out: 15.00, cr: 0.30, cw: 6.00 }
 };
+function rateFor(model) {
+  const m = String(model || '');
+  const key = Object.keys(RATES).find(k => m === k || m.indexOf(k) === 0) || MODEL;
+  const r = RATES[key] || RATES['claude-sonnet-5-5'];
+  return { in: r.in / 1e6, out: r.out / 1e6, cr: r.cr / 1e6, cw: r.cw / 1e6 };
+}
 
 function corsHeaders(origin) {
   return {
@@ -134,7 +157,8 @@ function json(obj, status, origin) {
 // Note: KV is last-write-wins, so two calls landing in the very same instant
 // could lose one increment. That is fine for cost visibility (this is not a
 // billing ledger). We run this in ctx.waitUntil so it never delays the reply.
-async function bumpUsage(env, sid, u) {
+async function bumpUsage(env, sid, u, model) {
+  const RATE = rateFor(model);
   if (!env || !env.XKDG_KV) return;                 // no KV bound yet → no-op
   if (!sid) sid = 'anon';                            // header absent → bucket it
   const now = new Date();
@@ -468,7 +492,7 @@ export default {
     catch (e) { return json({ error: 'Invalid JSON body.' }, 400, origin); }
 
     // ---- Force the model + ensure max_tokens ---------------------------
-    body.model = MODEL;
+    body.model = modelFor(env, sid);
     if (!body.max_tokens) body.max_tokens = MAX_TOKENS_FALLBACK;
 
     // ---- Prompt caching: cache the static system prompt + tools --------
@@ -544,8 +568,8 @@ export default {
       // Only count when Anthropic actually returned a usage block (a real,
       // successful completion). Runs in the background — never delays the reply.
       if (p.usage) {
-        if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(bumpUsage(env, sid, u));
-        else await bumpUsage(env, sid, u);
+        if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(bumpUsage(env, sid, u, p.model || body.model));
+        else await bumpUsage(env, sid, u, p.model || body.model);
       }
     } catch (e) { /* response was not JSON — nothing to count */ }
 
