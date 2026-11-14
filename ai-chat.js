@@ -186,15 +186,30 @@
       'missing or ambiguous, and ask only for the missing piece.\n' +
       '- For anything that finds dates/hours or runs a scan: CALL A TOOL. Never invent dates or scores yourself ' +
       '- only report what a tool returns.\n' +
+      ''
+    ],
+    // Session 50 (Edu): chart / cure rules travel with the areas that have the person tools, not with every question
+    ["birth,dates,fengshui",
       '- CHARTS, CURES, COMPATIBILITY (Edu, session 48): the FACTS — isolated pillars, cures, helps, voids, remedy hexagrams and ' +
       'dates — come ONLY from the tools (person_xkdg_gaps, mutual_cures); never work them out with your own arithmetic. On those ' +
       'facts you are welcome to reason widely and with imagination (what it means in life, for the relationship, practical ideas), ' +
       'on three conditions: (1) every deduction starts from a rule or value a tool returned, and you name it; (2) keep the two apart: ' +
       'first what the chart shows, then your own reading, introduced as such; (3) never describe how the app or its "engine" works ' +
       'and never explain a missing result with a rule you made up (e.g. "the system needs a Qi gap"): if you lack a result, call the ' +
-      'tool that gives it, or say you do not know.\n' +
-      '- Scans use whichever person(s) are loaded (A, B, or both). The user may ask about ANYONE, also people not ' +
-      'saved: call set_person (saved name, or birth date + time if known) to load them yourself, then run the tool. ' +
+      'tool that gives it, or say you do not know.\n'
+    ],
+    ["birth",
+      '- BIRTH CHARTS (Edu, session 50): the user may ask about ANY person saved in the database, not only the ones in ' +
+      'Person A / B — NEVER answer that only Person A or B can be analysed. When a name is given, call list_persons if you ' +
+      'are not sure who it is, then pass the name straight to the tool: person_xkdg_gaps (name), mutual_cures (name_a, ' +
+      'name_b), get_heluo_day (name) — they load the person into the panel themselves. A person not saved: set_person with ' +
+      'the birth data. XKDG (Elements, Periods, Palaces, families, cures) and He Luo Li Shu are DIFFERENT systems: XKDG facts ' +
+      'come from person_xkdg_gaps / mutual_cures, He Luo facts from get_heluo_day — never mix them. Bazi always in a column, ' +
+      'Chinese order Hour, Day, Month, Year.\n'
+    ],
+    ["core",
+      '- Scans use whichever person(s) are loaded (A, B, or both). The user may ask about ANYONE saved in the database ' +
+      '(list_persons) or not saved: call set_person (saved name, or birth date + time if known) to load them yourself, then run the tool. ' +
       'Ask only for the missing birth data. If no person is loaded and none is named, ask who the question is for.\n' +
       '- FACINGS do not need a House Profile: when the user gives a degree (a door, a bed, a desk, a shop, any facing), ' +
       'pass it straight to the tool (find_water_positions facing, find_water_dates door_facing, find_bed_dates sitting, ' +
@@ -749,20 +764,24 @@
                'find_water_positions','yang_openings','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days','find_multichart_activation'],
     dates: ['person_xkdg_gaps','mutual_cures','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
-            'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match'],
-    home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest']
+            'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match','get_heluo_day'],
+    home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest'],
+    // session 50 (Edu): birth charts of ANY saved person — XKDG natal analysis, two charts compared, He Luo Li Shu
+    birth: ['list_persons','set_person','person_xkdg_gaps','mutual_cures','get_heluo_day','get_pillars','get_hexagram_info']
   };
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
   // so from session 26 it travels with EVERY area, not only with 'dates'.
-  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars','get_heluo_day',
-                     'photo_sectors','photo_sectors_state','add_calendar_reminder','set_person',
-                     'person_xkdg_gaps','mutual_cures'];   // session 48: without an area the AI invented its own cure rules
+  // Session 50 (Edu): person_xkdg_gaps, mutual_cures and get_heluo_day left the always-on list for the new
+  // Birth charts area (they still travel with Feng Shui / Dates); a question about a chart pulls that area in
+  // by itself (AREA_HINTS.birth, also when it names a saved person), so the AI is never left without them.
+  var TOOL_ALWAYS = ['get_app_state','list_source','read_source','show_verify_button','get_hexagram_info','get_pillars',
+                     'photo_sectors','photo_sectors_state','add_calendar_reminder','set_person','list_persons'];
 
   var AREA_LABELS = { travel: '\uD83E\uDDED Travel & directions',
                       fengshui: '\uD83C\uDFE0 Feng Shui', dates: '\uD83D\uDCC5 Dates & divination',
-                      home: '\uD83D\uDD0C Home devices' };
-  var AREA_ORDER = ['travel','fengshui','dates','home'];
+                      home: '\uD83D\uDD0C Home devices', birth: '\uD83D\uDC64 Birth charts' };
+  var AREA_ORDER = ['travel','fengshui','dates','birth','home'];
 
   // '' = no area picked yet. There is no "all" any more (session 26): carrying all 53
   // tools AND the whole prompt with every single question was the bulk of the running cost.
@@ -786,15 +805,35 @@
     home: /acquari|aquarium|fontan|fountain|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
     travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
     fengshui: /attivazion|activation|carte multiple|multiple charts|fontan|fountain|finestr|window|fen[eê]tre|aperture|apertur|opening|ouverture|\byang\b|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
+    birth: /carta\s+(di\s+)?nascita|carte\s+(di\s+)?nascita|carta\s+natal|tema\s+natal|birth\s*chart|natal|th[e\u00e8]me\s+natal|he\s*luo|heluo|\bhlls\b|\u6cb3\u6d1b|compatib|isolat|\bcur[ae]\b|\bcures\b|rimedi|remed|comunicazion|communication|luck\s+pillar|\u5927\u8fd0|pilastri\s+della\s+fortuna|\bpalazz/i,
     dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
   };
+  // Session 50: a question that names a person saved in the database is a birth-chart question.
+  function _namesSavedPerson(text) {
+    try {
+      var low = String(text).toLowerCase();
+      return _savedPersonNames().some(function (n) {
+        var w = n.toLowerCase().trim(); if (w.length < 3) return false;
+        var i = low.indexOf(w); if (i < 0) return false;
+        var bef = i ? low.charAt(i - 1) : ' ', aft = low.charAt(i + w.length) || ' ';
+        return !/[a-z\u00c0-\u024f0-9]/.test(bef) && !/[a-z\u00c0-\u024f0-9]/.test(aft);
+      });
+    } catch (e) { return false; }
+  }
+  function _savedPersonNames() {
+    var out = {};
+    ['xkdg_persons_a', 'xkdg_persons_b'].forEach(function (k) {
+      try { Object.keys((typeof loadArchive === 'function' ? loadArchive(k) : JSON.parse(localStorage.getItem(k) || '{}')) || {}).forEach(function (n) { out[n] = 1; }); } catch (e) {}
+    });
+    return Object.keys(out);
+  }
   function autoPullAreas(text) {
     try {
       if (!text) return [];
       var cur = getToolArea(), added = [];
       AREA_ORDER.forEach(function (a) {
         if (a === cur || _extraAreas.indexOf(a) >= 0) return;
-        if (AREA_HINTS[a] && AREA_HINTS[a].test(text)) { _extraAreas.push(a); added.push(a); }
+        if ((AREA_HINTS[a] && AREA_HINTS[a].test(text)) || (a === 'birth' && _namesSavedPerson(text))) { _extraAreas.push(a); added.push(a); }
       });
       return added;
     } catch (e) { return []; }
@@ -822,10 +861,10 @@
         name: 'load_tools',
         description: 'Load the tools of another area when the question falls outside the current one. '
           + 'Areas: travel (trips, directions, compass, lodging), fengshui (houses, water, bed/desk, flying stars), '
-          + 'dates (date selection, divination, hexagrams), home (aquarium light, Shelly). '
+          + 'dates (date selection, divination, hexagrams), birth (birth charts of any saved person: XKDG analysis, cures between two charts, He Luo Li Shu), home (aquarium light, Shelly). '
           + 'Call this, then answer using the newly available tools.',
         input_schema: { type: 'object',
-          properties: { area: { type: 'string', enum: ['travel','fengshui','dates','home'] } },
+          properties: { area: { type: 'string', enum: ['travel','fengshui','dates','birth','home'] } },
           required: ['area'] }
       });
       return out;
@@ -902,6 +941,14 @@
       }, additionalProperties: false }
     },
     {
+      name: 'list_persons',
+      description: 'Session 50 (Edu): every person saved in the database (not only Person A / B): name, birth date, whether the ' +
+        'hour is known or the person is year-only, gender if set, folder. Use it to find who the user means, then pass the name to ' +
+        'person_xkdg_gaps, mutual_cures or get_heluo_day (they load the person by themselves) or to set_person.',
+      input_schema: { type: 'object', properties: {
+        query: { type: 'string', description: 'Optional part of a name to filter by (case-insensitive).' } } }
+    },
+    {
       name: 'person_xkdg_gaps',
       description: 'XKDG analysis of a PERSON\'s own birth chart (Edu, session 33): where the 4 pillars do NOT communicate ' +
         '(per dimension: Elements = qi, Periods = yun; a pillar is isolated when it has no Hetu, no Adding 5/10/15 and no equal ' +
@@ -910,6 +957,7 @@
         'when the user asks what is missing in their chart, where communication fails, or for remedies.',
       input_schema: { type: 'object', properties: {
         person: { type: 'string', enum: ['A', 'B'], description: 'Loaded person (default A).' },
+        name: { type: 'string', description: 'Any person SAVED in the database (see list_persons): the tool loads them into the slot of "person" first.' },
         days: { type: 'integer', description: 'How many days ahead to look for remedy dates (default 30).' } } }
     },
     {
@@ -920,8 +968,11 @@
         '(B for A, A for B) with the isolated pillars and the links. Use it for "what does this person do for me / I do for them", ' +
         'reciprocal cures, compatibility of two charts. Do NOT call person_xkdg_gaps twice for this. ' +
         'NEVER work out cures or compatibility between two charts with your own arithmetic on Elements/Periods: always call this tool. ' +
-        'It also returns the partial HELPS and whether a void is timely (recoverable) or untimely (invalid).',
-      input_schema: { type: 'object', properties: {} }
+        'It also returns the partial HELPS and whether a void is timely (recoverable) or untimely (invalid). ' +
+        'Any two persons SAVED in the database can be compared: pass name_a and/or name_b and they are loaded first.',
+      input_schema: { type: 'object', properties: {
+        name_a: { type: 'string', description: 'Optional saved person to load as Person A first.' },
+        name_b: { type: 'string', description: 'Optional saved person to load as Person B first.' } } }
     },
     {
       name: 'find_good_dates',
@@ -1902,6 +1953,7 @@
         type: 'object',
         properties: {
           date: { type: 'string', description: 'YYYY-MM-DD. Default today.' },
+          name: { type: 'string', description: 'Optional: any person SAVED in the database (list_persons); loaded as Person A first.' },
           purposes: { type: 'array', items: { type: 'string', enum: ['wealth', 'relationship', 'speak', 'support', 'career', 'legal', 'health', 'journey', 'luck'] },
             description: 'Purposes to read. Default wealth, relationship, speak.' },
           hours: { type: 'boolean', description: 'Also return the 12 double hours of the day (hexagram, line, text, text score, role in the film, void that comes out, spouse palace). The film hours are always returned.' }
@@ -3435,8 +3487,9 @@
   function execTool(name, input) {
     try {
       if (name === 'set_person') return toolSetPerson(input || {});
-      if (name === 'person_xkdg_gaps') return toolPersonGaps(input || {});
-      if (name === 'mutual_cures') return toolMutualCures();
+      if (name === 'list_persons') return toolListPersons(input || {});
+      if (name === 'person_xkdg_gaps') { var e1 = _ensurePerson(String((input || {}).person || 'A').toUpperCase() === 'B' ? 'B' : 'A', (input || {}).name); return e1 ? e1 : toolPersonGaps(input || {}); }
+      if (name === 'mutual_cures') { var e2 = _ensurePerson('A', (input || {}).name_a) || _ensurePerson('B', (input || {}).name_b); return e2 ? e2 : toolMutualCures(); }
       if (name === 'find_good_dates') return toolFindGoodDates(input || {});
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
       if (name === 'add_calendar_reminder') return toolAddCalendarReminder(input || {});
@@ -3502,6 +3555,7 @@
       if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'get_pillars') return toolGetPillars(input || {});
+      if (name === 'get_heluo_day' && (input || {}).name) { var e3 = _ensurePerson('A', input.name); if (e3) return e3; }
       if (name === 'get_heluo_day') return new Promise(function (resolve) {
         var H = window.XKDGHeluo;
         if (!H || !H.ensure) { resolve({ error: 'The He Luo module is not loaded.' }); return; }
@@ -5679,6 +5733,35 @@
   }
 
   // Session 35 (Edu): the AI can work on people who are NOT saved / not loaded.
+  // Session 50 (Edu): the person tools accept ANY saved person, not only the ones in Person A / B.
+  // Loads the saved name into the slot unless it is already there; returns an error object or null.
+  function _ensurePerson(slot, name) {
+    name = String(name || '').trim(); if (!name) return null;
+    var cur = ((document.getElementById(slot === 'B' ? 'person-name-b' : 'person-name') || {}).value || '').trim();
+    var P = slot === 'B' ? ((typeof _personBPillars !== 'undefined') ? _personBPillars : null) : ((typeof _personAPillars !== 'undefined') ? _personAPillars : null);
+    if (cur.toLowerCase() === name.toLowerCase() && P && P.year) return null;
+    var r = toolSetPerson({ slot: slot, name: name });
+    return (r && r.error) ? r : null;
+  }
+  function toolListPersons(input) {
+    try {
+      try { if (typeof xkdgMergePersonDBs === 'function') xkdgMergePersonDBs(); } catch (e) {}
+      var all = {};
+      ['xkdg_persons_b', 'xkdg_persons_a'].forEach(function (k) { var a = (typeof loadArchive === 'function') ? (loadArchive(k) || {}) : {}; Object.keys(a).forEach(function (n) { all[n] = a[n]; }); });
+      var q = String(input.query || '').trim().toLowerCase();
+      var names = Object.keys(all).filter(function (n) { return !q || n.toLowerCase().indexOf(q) >= 0; }).sort(function (a, b) { return a.localeCompare(b); });
+      var rows = names.map(function (n) {
+        var r = all[n] || {}, yo = r.depth === 1 || (!r.date && r.jiaZiYear);
+        var g = ''; try { g = (typeof xkdgGenderGet === 'function') ? xkdgGenderGet(n) : ''; } catch (e) {}
+        var f = ''; try { f = (typeof xkdgPersonFolder === 'function') ? (xkdgPersonFolder(n) || '') : ''; } catch (e) {}
+        return { name: n, birth_date: yo ? null : (r.date || null), year_pillar: yo ? (r.jiaZiYear || null) : undefined,
+                 hour_known: !yo && r.depth !== 3 && !!r.time, gender: g || undefined, folder: f || undefined };
+      });
+      var A = ((document.getElementById('person-name') || {}).value || '').trim(), B = ((document.getElementById('person-name-b') || {}).value || '').trim();
+      return { total: rows.length, persons: rows.slice(0, 200), loaded: { A: A || null, B: B || null },
+               note: 'Any of these can be analysed: pass the name to person_xkdg_gaps (name), mutual_cures (name_a, name_b), get_heluo_day (name) or set_person.' };
+    } catch (e) { return { error: 'list_persons failed: ' + ((e && e.message) || e) }; }
+  }
   function toolSetPerson(input) {
     try {
       var B = String(input.slot || 'A').toUpperCase() === 'B', P = B ? 'B' : 'A';

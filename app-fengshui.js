@@ -5864,6 +5864,8 @@ function fsRenderHouseProfiles(){
           +   '<option value="1"' + (h.ownerAway ? ' selected' : '') + '>Guest as #1 (owner away)</option>'
           + '</select></div>';
       }
+      // 命卦 Session 50 (Edu): Ming Gua of the people of the house — Feng Shui only, folded (ming-gua.js)
+      try { if (typeof xkdgMingGuaHouseHtml === 'function') _memBody += xkdgMingGuaHouseHtml([person.name, g2].concat(guests)); } catch (eMG) {}
       // Picker (available = saved persons minus owner, guest#2, current members) — lives in the ☰ menu.
       var availAll = (typeof _fsAllSavedPersonNames === 'function' ? _fsAllSavedPersonNames() : [])
                     .filter(function(n){ return n !== person.name && n !== g2 && guests.indexOf(n) === -1; })
