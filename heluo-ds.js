@@ -1469,6 +1469,55 @@
   };
   // ── For the XKDG Assistant (Edu 13/11/2026): Person A's He Luo Li Shu day as plain data ──
   // aiDay('2026-11-13', ['wealth','speak'], true) → the same engine as the XKDG day window (thread), one block per purpose.
+  // ── He Luo reading of YEARS for the Assistant (Edu, 14/11/2026: «the AI answers as if we asked for a date selection. To know
+  // if I will buy a house in 2027 it is enough to read the biggest hexagram and then the year; the month only if we want to
+  // know which month is more favourable»). Biggest first: cycle line → annual moved line → (on request) the 12 months. No days.
+  var SIX_CLASH = { 1: 1, 2: 1, 29: 1, 30: 1, 51: 1, 52: 1, 57: 1, 58: 1, 25: 1, 34: 1 };
+  var LIUHE = { 子: '丑', 丑: '子', 寅: '亥', 亥: '寅', 卯: '戌', 戌: '卯', 辰: '酉', 酉: '辰', 巳: '申', 申: '巳', 午: '未', 未: '午' };
+  function aiYears(yFrom, yTo, withMonths) {
+    var ch = H().chartA ? H().chartA() : { err: 'birth' };
+    if (ch.err) return { error: ch.err === 'gender' ? 'Person A needs the gender (M/F) for the He Luo chart.' : ch.err === 'birth' ? 'Person A needs birth date and birth hour.' : 'No birth longitude for Person A.' };
+    var R = ch.R, ctx = context(R, ch.Pn, ch.male), lon = xkLon(ch.c), nowY = H().heluoYearOf();
+    yFrom = parseInt(yFrom, 10) || nowY; yTo = parseInt(yTo, 10) || yFrom; if (yTo < yFrom) yTo = yFrom; if (yTo > yFrom + 11) yTo = yFrom + 11;
+    var TXT = window.XKDG_HELUO_TEXTS || {}, VV = ctx.natVoids || [];
+    function stmt(n, l) { try { return ((TXT[n] || {}).lines || {})[l].statement || ''; } catch (e) { return ''; } }
+    function tags(hx) { var t = [];
+      if (SIX_CLASH[hx.n]) t.push('Six Clashes hexagram (六冲卦): always to be pointed out — things and relationships can come apart, sudden moves');
+      if (R.oppositeXT && hx.n === R.oppositeXT.n) t.push('Opposite of the Xian Tian'); if (R.inverseXT && hx.n === R.inverseXT.n && hx.n !== R.xianTian.n) t.push('Inverse of the Xian Tian');
+      if (R.oppositeHT && hx.n === R.oppositeHT.n) t.push('Opposite of the Hou Tian'); if (R.inverseHT && R.houTian && hx.n === R.inverseHT.n && hx.n !== R.houTian.hex.n) t.push('Inverse of the Hou Tian (Edu: sudden breaks)');
+      return t.length ? t : undefined; }
+    function ln(hx, l, me, yb, mb) {
+      var L = NJ()[hx.n].lines[l - 1], r = rel(me, L.el), t = TXT[hx.n] || {}, tm = [];
+      if (yb) { if (L.branch === yb) tm.push('same branch as the year: active, favourable side of the text'); if (L.branch === clash(yb)) tm.push('clashed by the year ' + yb + ': unfavourable side of the text'); if (LIUHE[L.branch] === yb) tm.push('combined with the year ' + yb); }
+      if (mb) tm.push(timely(L.el, mb) ? 'timely in this month (strong)' : 'not timely in this month (weak)');
+      if (VV.indexOf(L.branch) >= 0) tm.push(yb === L.branch || mb === L.branch ? 'natal void that comes out now' : 'natal void: delayed, empty until it comes out');
+      var o = { hexagram: hx.n, name: t.title || '', judgment: mb ? undefined : (t.judgment || ''), line: l, branch: L.branch, element: L.el, relation: REL[r], who: REL_WHO[r],
+        text: stmt(hx.n, l), text_score: SC() && SC()[hx.n] ? SC()[hx.n].l[l] : null, time: tm.length ? tm : undefined, notes: tags(hx) };
+      if (L.fushen) o.hidden_line = REL[rel(me, L.fushen.el)] + ' ' + L.fushen.branch;
+      return o; }
+    var years = [];
+    for (var Y = yFrom; Y <= yTo; Y++) {
+      var a = H().annual(R, Y); if (a.none) { years.push({ year: Y, age: a.age, note: 'outside the cycles of the chart' }); continue; }
+      var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], y0 = R.input.o.year;
+      var o = { year: Y, age: a.age, year_branch: yb, person_element: me,
+        cycle: ln(a.periodHex, a.period.line, me, yb), annual: ln(a.hex, a.moved, me, yb) };
+      o.cycle.chart = a.periodHex === R.xianTian ? 'Xian Tian (first chart)' : 'Hou Tian (second chart)';
+      o.cycle.ages = a.period.from + '–' + a.period.to; o.cycle.years = (y0 + a.period.from - 1) + '–' + (y0 + a.period.to - 1);
+      var La = NJ()[a.periodHex.n].lines[a.period.line - 1], Lb = NJ()[a.hex.n].lines[a.moved - 1], fl = [];
+      if (GEN[La.el] === Lb.el) fl.push('the cycle line generates the annual line: the year is supported by the period'); if (GEN[Lb.el] === La.el) fl.push('the annual line generates the cycle line: the year feeds the period');
+      if (CTRL[La.el] === Lb.el) fl.push('the cycle line controls the annual line: the period commands, the year is weaker'); if (CTRL[Lb.el] === La.el) fl.push('the annual line controls the cycle line: the year presses on the period');
+      if (La.branch === clash(Lb.branch)) fl.push('cycle and annual lines clash (' + La.branch + ' / ' + Lb.branch + ')'); if (LIUHE[La.branch] === Lb.branch) fl.push('cycle and annual lines combine (' + La.branch + ' + ' + Lb.branch + '): interference — see who controls or generates whom');
+      if (fl.length) o.flow_cycle_annual = fl;
+      try { var yc = yearClash(R, Y, me, a, 'x'); if (yc.length) o.year_clash_on_quiet_lines = yc.map(function (c) { return 'the year ' + yb + ' clashes the quiet line ' + c.lv + ' l' + c.l + ' ' + c.b + ' ' + REL[c.r] + ': activated in the months of its season, eliminated in the others'; }); } catch (e) {}
+      if (withMonths) { var ms = null; try { ms = H().periods.months(Y, lon); } catch (e) {}
+        o.months = a.months.map(function (mo, i) { var mb = BR[(mo.index - 1) % 12], m = ln(mo.hex, mo.line, me, yb, mb), per = '';
+          try { var s0 = ms[i].start, e0 = new Date((ms[i + 1].start || ms[i + 1].end).getTime() - 86400000); per = s0.getUTCDate() + ' ' + MON3[s0.getUTCMonth()] + (i === 0 ? ' ' + (Y - 1) : '') + ' – ' + e0.getUTCDate() + ' ' + MON3[e0.getUTCMonth()]; } catch (e2) {}
+          m.period = per; m.month_branch = mb; m.annual_line_that_rules_it = mo.line; delete m.who; return m; }); }
+      years.push(o);
+    }
+    return { person: ch.c.name, sex: ch.male ? 'man' : 'woman', heluo_year_now: nowY, natal_voids: VV, years: years,
+      reading_rules: 'HOW TO ANSWER (Edu, 14/11/2026): this is NOT a date selection. Never propose days, hours or lists of dates, and do not call get_heluo_day, unless the user explicitly asks for a day. For a question about a year or a period («will I buy a house in 2027?», «how is 2028 for work?») read from the BIGGEST to the smaller: 1) the CYCLE line (the period of years the person is living: its relation says the theme, its text the climate); 2) the ANNUAL hexagram and its moved line (what the year brings: name, judgment, relation, text), and how cycle and annual stand together (flow_cycle_annual) and with the year branch (time). From these two give a clear answer to the question: likely / possible with effort / unlikely, and why, in two or three short paragraphs. 3) The MONTHS only if the user asks when, or to say in one sentence which month (or two) is the most favourable for the thing asked — never a calendar. Read every text in the concrete context of the question (a purchase, a job, a move, a relationship), not as a literal translation; the side of the text follows the time (same branch, combined, timely = favourable side; clashed, void = unfavourable side or delay). Relations: Wealth = money, goods, what one acquires, clients (the partner for a man); Parent = documents, contracts, deeds, houses and what protects, mentors; Ghost = authority, pressure, duties (the partner for a woman); Children = what one creates, students, projects, ease; Brothers = peers, partners, rivals, expenses. Always point out a Six Clashes hexagram and an Opposite or Inverse of the natal hexagrams (notes). Plain colloquial language in the language of the user, NO numbers, NO scores, NO tables (text_score is only for you). Draw each hexagram you cite (six lines, top first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read, branch on the left, initial of the relation on the right) and write the Heluo age next to every year. Edu is the authority on He Luo Li Shu: read only what is given here, do not invent rules, never mix with XKDG.' };
+  }
   function aiDay(iso, keys, withHours) {
     var ch = H().chartA ? H().chartA() : { err: 'birth' };
     if (ch.err) return { error: ch.err === 'gender' ? 'Person A needs the gender (M/F) for the He Luo chart.' : ch.err === 'birth' ? 'Person A needs birth date and birth hour.' : 'No birth longitude for Person A.' };
@@ -1559,5 +1608,5 @@
     out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) TELL THE DAY AS A FILM (Edu 13/11/2026), one short paragraph each, using the field film: SCENARIO = the cycle (the period of life) and the annual (its name, judgment and moved line) with their strength in the month, and the year branch that clashes them (comes alive or gives way); BACKDROP = the annual line of the month and the month line (the climate of these weeks); ACTOR = the Lord of the block: its relation says WHO acts (Brothers = colleagues, rivals, a partner who takes; Wealth = money, clients, the partner of a man; Ghost = authority, pressure; Parent = documents, mentors, study; Children = students, projects, creations), its text says HOW; ACTION = the day line and the outcome, and the day branch that clashes them (timely = it explodes, it happens now; not timely = it breaks) or a quiet line (activated = comes into play, eliminated = removed); HOURS = film_hours: when the actor enters the scene (hour with the branch of the Lord) and when the answer comes (hour where a natal void comes out), with their texts; give the hours also in civil time if you know the place. Keep the story COHERENT with the flow of the Qi between neighbouring levels (relations_between_levels: who feeds whom, who controls whom, what relieves it) down to the outcome, and close with the flow in a few words (e.g. documents → rival → work → money that leaves). Read every text in the concrete context of the day and of the person, not as a literal translation, and never contradict what is timely or not; 3) the alarms and warnings, briefly; 4) advice: what to do, what to avoid, for whom (use the field correct: if good_day_to_correct, say plainly that today is a day to correct the problem and what to do; if not, say it is better to wait); if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its six lines (top line first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read). Write the Heluo age next to every year (age = year − birth year + 1).';
     return out;
   }
-  root.XKDGHeluoDS = { xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  root.XKDGHeluoDS = { xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);

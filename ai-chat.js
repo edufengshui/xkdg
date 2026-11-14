@@ -203,8 +203,9 @@
       'Person A / B — NEVER answer that only Person A or B can be analysed. When a name is given, call list_persons if you ' +
       'are not sure who it is, then pass the name straight to the tool: person_xkdg_gaps (name), mutual_cures (name_a, ' +
       'name_b), get_heluo_day (name) — they load the person into the panel themselves. A person not saved: set_person with ' +
-      'the birth data. XKDG (Elements, Periods, Palaces, families, cures) and He Luo Li Shu are DIFFERENT systems: XKDG facts ' +
-      'come from person_xkdg_gaps / mutual_cures, He Luo facts from get_heluo_day — never mix them. Bazi always in a column, ' +
+      'the birth data. XKDG (Elements, Periods, Palaces, families, cures) and He Luo Li Shu are DIFFERENT systems. ' +
+      'GENERAL QUESTIONS ARE NOT DATE SELECTIONS (Edu, 14/11/2026): when the user asks whether or how something will go in a year or a period ("will I buy a house in 2027?", "how is next year for work?") answer the question itself from get_heluo_years — cycle first, then the year — and do NOT go looking for favourable days, hours or dates, and do not run a date selection, unless the user explicitly asks for a date. XKDG facts '+
+      'come from person_xkdg_gaps / mutual_cures, He Luo facts from get_heluo_years (a year, a period, "will X happen in 2027": read the cycle, then the year, the month only if asked when — this is NOT a date selection, propose no days) and get_heluo_day (one specific day only) — never mix them. Bazi always in a column, ' +
       'Chinese order Hour, Day, Month, Year.\n'
     ],
     ["core",
@@ -764,10 +765,10 @@
                'find_water_positions','yang_openings','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days','find_multichart_activation'],
     dates: ['person_xkdg_gaps','mutual_cures','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
-            'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match','get_heluo_day'],
+            'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match','get_heluo_day','get_heluo_years'],
     home:  ['configure_shelly','program_aquarium_light','aquarium_light','aquarium_plan','refresh_alexa_digest'],
     // session 50 (Edu): birth charts of ANY saved person — XKDG natal analysis, two charts compared, He Luo Li Shu
-    birth: ['list_persons','set_person','person_xkdg_gaps','mutual_cures','get_heluo_day','get_pillars','get_hexagram_info']
+    birth: ['list_persons','set_person','person_xkdg_gaps','mutual_cures','get_heluo_day','get_heluo_years','get_pillars','get_hexagram_info']
   };
   // Always sent, whatever the area — they are tiny and needed everywhere.
   // show_verify_button is required by a CORE rule ("always offer the verify button"),
@@ -805,7 +806,7 @@
     home: /acquari|aquarium|fontan|fountain|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
     travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
     fengshui: /attivazion|activation|carte multiple|multiple charts|fontan|fountain|finestr|window|fen[eê]tre|aperture|apertur|opening|ouverture|\byang\b|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
-    birth: /carta\s+(di\s+)?nascita|carte\s+(di\s+)?nascita|carta\s+natal|tema\s+natal|birth\s*chart|natal|th[e\u00e8]me\s+natal|he\s*luo|heluo|\bhlls\b|\u6cb3\u6d1b|compatib|isolat|\bcur[ae]\b|\bcures\b|rimedi|remed|comunicazion|communication|luck\s+pillar|\u5927\u8fd0|pilastri\s+della\s+fortuna|\bpalazz/i,
+    birth: /carta\s+(di\s+)?nascita|carte\s+(di\s+)?nascita|carta\s+natal|tema\s+natal|birth\s*chart|natal|th[e\u00e8]me\s+natal|he\s*luo|heluo|\bhlls\b|\u6cb3\u6d1b|compatib|isolat|\bcur[ae]\b|\bcures\b|rimedi|remed|comunicazion|communication|luck\s+pillar|\u5927\u8fd0|pilastri\s+della\s+fortuna|\bpalazz|\b(19|20)\d\d\b|anno\s+prossimo|prossimo\s+anno|quest.anno|next\s+year|this\s+year|ann[eé]e\s+prochaine|cette\s+ann[eé]e/i,
     dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
   };
   // Session 50: a question that names a person saved in the database is a birth-chart question.
@@ -1937,8 +1938,27 @@
       }
     },
     {
+      name: 'get_heluo_years',
+      description: 'He Luo Li Shu (HLLS, 河洛理數) reading of a YEAR or of several years for Person A: the cycle line (the period of ' +
+        'years being lived) and the annual hexagram with its moved line — branch, relation, text, how they stand with the year — and, ' +
+        'only on request, the 12 months of the year. THIS is the tool for every He Luo question about a year, a period of life or ' +
+        '"will X happen in <year>" (buying a house, a job, a move, a relationship, money in 2027...): the answer comes from the ' +
+        'biggest hexagram first, then the year; the month only to say when or which month is more favourable (months: true). ' +
+        'Such questions are NOT a date selection: do not use get_heluo_day or any date-selection tool for them and do not propose ' +
+        'days, unless the user explicitly asks for a day. Answer as the reading_rules in the result say.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          year: { type: 'integer', description: 'Heluo year to read (it runs from the Winter Solstice before). Default the current one.' },
+          to_year: { type: 'integer', description: 'Optional last year, to read a span (max 12 years).' },
+          name: { type: 'string', description: 'Optional: any person SAVED in the database (list_persons); loaded as Person A first.' },
+          months: { type: 'boolean', description: 'Also return the 12 months of each year (monthly hexagram, line, relation, text, dates). Only when the user asks when / which month.' }
+        }
+      }
+    },
+    {
       name: 'get_heluo_day',
-      description: 'He Luo Li Shu (HLLS, 河洛理數) reading of a DAY for Person A, from the app\'s own He Luo engine (the same as ' +
+      description: 'ONLY for a specific DAY (today, a given date, "how is my day"): never for questions about a year, a period or whether something will happen in a year — those go to get_heluo_years. He Luo Li Shu (HLLS, 河洛理數) reading of a DAY for Person A, from the app\'s own He Luo engine (the same as ' +
         'the XKDG day window and the He Luo planner): age, cycle hexagram and line, annual, month, block (Lord) and day lines with ' +
         'their branch, relation (Wealth, Brothers...) and line text, a score from -3 to +3 per purpose, severe/critical day alarms, ' +
         'warnings (Brothers stealing Wealth, criticism, void that comes out, Fire controlling the Brothers...), alarms in the next ' +
@@ -3555,6 +3575,16 @@
       if (name === 'refresh_alexa_digest') return toolRefreshAlexaDigest(input || {});
       if (name === 'get_hexagram_info') return toolHexagramInfo(input || {});
       if (name === 'get_pillars') return toolGetPillars(input || {});
+      if (name === 'get_heluo_years' && (input || {}).name) { var e4 = _ensurePerson('A', input.name); if (e4) return e4; }
+      if (name === 'get_heluo_years') return new Promise(function (resolve) {
+        var H2 = window.XKDGHeluo;
+        if (!H2 || !H2.ensure) { resolve({ error: 'The He Luo module is not loaded.' }); return; }
+        H2.ensure(function () {
+          try { resolve(window.XKDGHeluoDS && window.XKDGHeluoDS.aiYears ? window.XKDGHeluoDS.aiYears((input || {}).year, (input || {}).to_year, !!(input || {}).months) : { error: 'The He Luo Date Selection is not loaded.' }); }
+          catch (e) { resolve({ error: String((e && e.message) || e) }); }
+        });
+        setTimeout(function () { resolve({ error: 'The He Luo files did not load in time.' }); }, 20000);
+      });
       if (name === 'get_heluo_day' && (input || {}).name) { var e3 = _ensurePerson('A', input.name); if (e3) return e3; }
       if (name === 'get_heluo_day') return new Promise(function (resolve) {
         var H = window.XKDGHeluo;
