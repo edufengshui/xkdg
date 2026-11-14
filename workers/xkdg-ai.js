@@ -109,9 +109,15 @@ const MAX_TOKENS_FALLBACK = 1024;           // used only if the app omits it
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 
+// Simpler alternative that does NOT require rewriting LICENCES: a plain Worker variable
+// OPUS_FOR = names (the "n" of the licence, comma-separated, case ignored), e.g. "Edu".
 function modelFor(env, sid) {
   const hit = sid ? licences(env).find(c => c.h === sid && !c.old) : null;
-  const m = hit && typeof hit.m === 'string' ? hit.m.trim() : '';
+  let m = hit && typeof hit.m === 'string' ? hit.m.trim() : '';
+  if (!m && hit && hit.n && env && env.OPUS_FOR) {
+    const names = String(env.OPUS_FOR).split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+    if (names.indexOf(String(hit.n).trim().toLowerCase()) >= 0) m = 'opus';
+  }
   if (!m) return MODEL;
   return MODEL_ALIASES[m.toLowerCase()] || m;
 }
