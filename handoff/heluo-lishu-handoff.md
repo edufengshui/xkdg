@@ -246,3 +246,9 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - `heluo-lishu.js`: `qiYun(n)` (da `XKDG_TABLE` di app-bazi.js, 64 esagrammi con gli alt), `qyOn()` (localStorage `xkdg_hl_qiyun`), casella «Qi · Yun» accanto a Gender (`xkdgHLQiYun`); con lo switch acceso `cycleHexSvg` scrive «Qi n · Yun n» sopra ogni esagramma (nativi, cicli, annuali, mensili, blocchi, giorni, ore, film, finestra del giorno XKDG) e `small()` sotto i derivati. `ui.qiYun` esportato. Nessun effetto su calcoli e punteggi.
 - Prove del 14/11 (solo studio, script in heluo-test/cmp): `six_clashes.js`, `six_div.js` (Six Clashes: Edu «va comunque segnalato», non ancora nel codice), `punizione.js` (triplice punizione: nessun segnale).
 - Regola di Edu: con il Blood Link (anche Partial BL) gli scontri fra pilastri non contano — non ancora nel codice.
+
+## 14/11/2026 — Assistant: domande generali su un anno ≠ date selection (Edu: «Sistema»)
+- Problema: alla domanda «comprerò casa nel 2027?» l'Assistant cercava giorni propizi. Regola di Edu: basta leggere l'esagramma più grande (ciclo) e poi l'anno; il mese solo per capire quale mese è più favorevole.
+- `aiYears(year, to_year, months)` (heluo-ds.js, esportata): per ogni anno linea del ciclo e linea mossa dell'annuale (ramo, relazione, testo, rapporto con il ramo dell'anno, vuoti natali, flusso ciclo→annuale, scontro dell'anno sulle linee quiete, note Six Clashes / Opposite / Inverse) e, solo su richiesta, i 12 mesi. `reading_rules`: dal grande al piccolo, risposta alla domanda, niente giorni.
+- ai-chat.js: nuovo strumento `get_heluo_years` (aree dates e birth); `get_heluo_day` solo per un giorno preciso; prompt di sistema «GENERAL QUESTIONS ARE NOT DATE SELECTIONS»; AREA_HINTS.birth riconosce anche un anno (2027, anno prossimo, next year…).
+- Controllo in node: Edu 2027 (68) ciclo 43 l1 子 Children, annuale 35 l6 巳 Ghost; `mensile_app_check.js` ok. Non provato dentro l'app con l'Assistant vero.
