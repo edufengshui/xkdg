@@ -292,6 +292,17 @@
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
   function hexName(n) { try { if (n === 1) return 'Qian'; return (typeof HEX_NAMES !== 'undefined' && HEX_NAMES[n]) || ''; } catch (e) { return ''; } }
   function triLbl(t) { return t; }
+  // ── XKDG numbers of a He Luo hexagram (Edu, 14/11/2026): Qi (element number) and Yun (period number) from XKDG_TABLE
+  // (app-bazi.js), shown on every hexagram when the switch «Qi · Yun» is on — first step to make HLLS and XKDG work together
+  // (e.g. water on a Ling Shen hexagram Qi 1 Yun 2 → look for a personal He Luo day that is Qi 9 Yun 8).
+  var _qy = null;
+  function qiYun(n) {
+    if (!_qy) { try { var m = {}; Object.keys(XKDG_TABLE).forEach(function (k) { var e = XKDG_TABLE[k]; m[e.hex] = [e.qi, e.yun]; if (e.alt) m[e.alt.hex] = [e.alt.qi, e.alt.yun]; }); _qy = m; } catch (e) { return null; } }
+    return _qy[n] || null;
+  }
+  function qyOn() { try { return localStorage.getItem('xkdg_hl_qiyun') === '1'; } catch (e) { return false; } }
+  function qyTxt(n) { var q = qyOn() && qiYun(n); return q ? 'Qi <b style="color:#c62828;">' + q[0] + '</b> · Yun <b style="color:#1565c0;">' + q[1] + '</b>' : ''; }
+  root.xkdgHLQiYun = function (on) { try { localStorage.setItem('xkdg_hl_qiyun', on ? '1' : '0'); } catch (e) {} try { render(); } catch (e) {} };
   // 6 lines, bottom-up; mv = moving line (red dot)
   function hexSvg(lines, mv, w) {
     w = w || 54; var lh = 6, gap = 5, h = 6 * lh + 5 * gap, s = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="display:block;">';
@@ -358,7 +369,7 @@
   // `which` = 'XT' or 'HT', `kind` = 'mother' | 'hu' | 'opp' | 'inv': tap opens a popup explaining what it represents (Edu 11/11/2026)
   function small(title, hx, which, kind) {
     return '<div' + (which ? ' onclick="xkdgHLDerived(\'' + which + '\',\'' + kind + '\')" title="Tap: what this hexagram means"' : '') + ' style="display:flex;gap:6px;align-items:center;font-size:12px;' + (which ? 'cursor:pointer;' : '') + '">' + hexSvg(hx.lines, 0, 34)
-      + '<div><span style="color:#777;">' + title + (which ? ' ⓘ' : '') + '</span><br><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + '</div></div>';
+      + '<div><span style="color:#777;">' + title + (which ? ' ⓘ' : '') + '</span><br><b>' + hx.n + '</b> ' + esc(hexName(hx.n)) + (qyTxt(hx.n) ? '<br><span style="font-size:11px;">' + qyTxt(hx.n) + '</span>' : '') + '</div></div>';
   }
   function derivedPopup(which, kind) {
     var ch = _chart; if (!ch || !ch.R) return;
@@ -467,6 +478,7 @@
         + '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px;">'
         + '<div><label style="' + L + '">Person</label><select id="hl-p" onchange="xkdgHLPerson()" style="' + F + 'max-width:170px;"></select></div>'
         + '<div><label style="' + L + '">Gender</label><select id="hl-g" onchange="xkdgHLGender()" style="' + F + '"><option value="">—</option><option value="M">Man</option><option value="F">Woman</option></select></div>'
+        + '<label title="Show the XKDG numbers of every hexagram: Qi (element) and Yun (period)" style="font-size:12px;color:#4527a0;display:flex;align-items:center;gap:5px;padding:6px 0;cursor:pointer;"><input type="checkbox" id="hl-qy" onchange="xkdgHLQiYun(this.checked)"' + (qyOn() ? ' checked' : '') + '> Qi · Yun</label>'
         + '</div><div style="display:flex;gap:4px;border-bottom:2px solid #d1c4e9;margin:4px 0 8px;">'
         + '<button id="hl-tab-chart" onclick="xkdgHLTab(\'chart\')" style="' + TB + '">Chart &amp; reading</button>'
         + '<button id="hl-tab-ds" onclick="xkdgHLTab(\'ds\')" style="' + TB + '">Date Selection</button></div>'
@@ -519,10 +531,11 @@
   }
   function cycleHexSvg(hx, ln, cy, meOv) { // meOv: person of the period (annual, monthly, block, day hexagrams)
     var d = NJ() && NJ()[hx.n], me = meOv || personEl(hx, ln), lines = hx.lines;
-    var W = 300, bx = 92, bw = 96, lh = 9, gap = 9, top = 8, H = top + 6 * lh + 5 * gap + (d ? (ln ? 44 : 10) : 8);
+    var qy = qyOn() && qiYun(hx.n), W = 300, bx = 92, bw = 96, lh = 9, gap = 9, top = qy ? 26 : 8, H = top + 6 * lh + 5 * gap + (d ? (ln ? 44 : 10) : 8);
     var F = ' font-family="system-ui"', s = '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" style="display:block;margin:6px auto;max-width:' + W + 'px;">';
     // cy: the cycles (ages of each line) or { span: {line: label}, cap: {line: period} } for annual, monthly, block, day
     var span = {}, cap = '';
+    if (qy) s += '<text x="' + (W / 2) + '" y="15" text-anchor="middle" font-size="12"' + F + ' fill="#555">Qi <tspan font-weight="700" fill="#c62828">' + qy[0] + '</tspan> · Yun <tspan font-weight="700" fill="#1565c0">' + qy[1] + '</tspan></text>';
     if (Array.isArray(cy)) cy.forEach(function (c) { span[c.line] = c.from + '–' + c.to; if (c.line === ln) cap = 'age ' + c.from + '–' + c.to; });
     else if (cy) { span = cy.span || {}; cap = (cy.cap && cy.cap[ln]) || ''; }
     for (var i = 0; i < 6; i++) {
@@ -1000,7 +1013,7 @@
     annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, qiMonth: qiMonth, QI_EN: QI_EN, dailyHex: dailyHex, monthStarts: monthStarts, open: open,
     currentChart: function () { return _chart; },
     periods: { months: msTST, annual: annualPeriods, month: monthPeriods, block: blockPeriods, day: dayPeriods, dayMs: dayMs },
-    ui: { cycleHexSvg: cycleHexSvg, lineBody: lineBody, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
+    ui: { qiYun: qiYun, cycleHexSvg: cycleHexSvg, lineBody: lineBody, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
   // ── He Luo inside the XKDG Date Selection (Edu, 11/11/2026): Person A's chart without opening the window ──
   // chartA() → { c, R, male, Pn } or { err } ; ensure(cb) loads Na Jia, texts and the Date Selection files, then calls cb.

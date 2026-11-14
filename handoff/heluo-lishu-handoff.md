@@ -240,3 +240,9 @@ Risposte in italiano, sintetiche; non è programmatore: istruzioni passo passo. 
 - Dove si vede: Assistant (`legacy_or_document` in get_heluo_day, descrizione dello strumento aggiornata in ai-chat.js), film dei giorni di Correct/Favour (📜), finestra del giorno della DS XKDG (📜).
 - `heluo-natal.js`: `A.legacy` e riga di sintesi «Legacy from a peer» quando un nativo ha Parent con Brothers nascosto (o il contrario) e una linea Ghost: solo 26, 28, 32, 41, 44, 46, 48, 61. Thao li ha in entrambi i nativi (32 l2, 61 l3). `synthesis(A)` spostata in fondo ad `analyze`.
 - Controllo: `heluo-test/cmp/ds_legacy_check.js`. `mensile_app_check.js` ok, `ds_app_check.js` invariato, Favour e Correct invariati.
+
+## 14/11/2026 — Switch «Qi · Yun» sugli esagrammi He Luo (Edu: HLLS e XKDG insieme)
+- Idea di Edu: tradurre gli esagrammi personali He Luo (HT, annuale, mensile, blocco, giorno, ora) in Qi (numero dell'elemento) e Yun (numero del periodo) XKDG, per metterli in relazione con l'operazione Feng Shui (es. acqua su un esagramma Ling Shen Qi 1 Yun 2 → cercare un giorno personale Qi 9 Yun 8). Progetto HLLS 1: claude/hlls-xkdg-insieme.md.
+- `heluo-lishu.js`: `qiYun(n)` (da `XKDG_TABLE` di app-bazi.js, 64 esagrammi con gli alt), `qyOn()` (localStorage `xkdg_hl_qiyun`), casella «Qi · Yun» accanto a Gender (`xkdgHLQiYun`); con lo switch acceso `cycleHexSvg` scrive «Qi n · Yun n» sopra ogni esagramma (nativi, cicli, annuali, mensili, blocchi, giorni, ore, film, finestra del giorno XKDG) e `small()` sotto i derivati. `ui.qiYun` esportato. Nessun effetto su calcoli e punteggi.
+- Prove del 14/11 (solo studio, script in heluo-test/cmp): `six_clashes.js`, `six_div.js` (Six Clashes: Edu «va comunque segnalato», non ancora nel codice), `punizione.js` (triplice punizione: nessun segnale).
+- Regola di Edu: con il Blood Link (anche Partial BL) gli scontri fra pilastri non contano — non ancora nel codice.
