@@ -700,6 +700,53 @@
   // 34 l5 申 Ghost «loses the goat with ease»; Marx/Wolff, King/Parker); otherwise from an elder or a relative. A Wealth line
   // with an unfavourable text = the assets come, but must not be rushed (Thao: Lord 32 l1 «seeking duration too hastily»).
   // Reading only: no score.
+  // ── Notes of the day (Edu 14/11/2026, «vai» of 15:22; HLLS 1 project: claude/hlls-giorno-completa.md, hlls-inverse-opposite.md,
+  //    hlls-six-clashes.md). Reading only, no score:
+  // △ TRINE (三合): two branches of the trine sit on the active lines and the day branch brings the third = positive.
+  // ∞ INTERFERENCE (六合) between active lines of neighbouring levels (cycle–annual, annual–month, month–Lord, Lord–day):
+  //   the two lines are tied; who commands depends on the elements: big controls small = the text of the big commands; big
+  //   generates small = harmony, both count; small generates big = the small empties itself, its text commands, attention;
+  //   small controls big = lasts as long as the small, the advice is the bridge element.
+  // ⚡ SIX CLASHES hexagram (六冲卦: the 8 pure ones + 25 + 34) on any level: «always to be pointed out» (Edu) — what is tied can come apart.
+  // ⇅ INVERSE / OPPOSITE of the active natal hexagram on annual, month, block or day: Inverse = sudden breaks; Opposite = turning point.
+  var SANHE = [['申子辰', 'Water'], ['亥卯未', 'Wood'], ['寅午戌', 'Fire'], ['巳酉丑', 'Metal']];
+  var HE6 = { 子: '丑', 丑: '子', 寅: '亥', 亥: '寅', 卯: '戌', 戌: '卯', 辰: '酉', 酉: '辰', 巳: '申', 申: '巳', 午: '未', 未: '午' };
+  var BR_EL = { 子: 'Water', 亥: 'Water', 寅: 'Wood', 卯: 'Wood', 巳: 'Fire', 午: 'Fire', 申: 'Metal', 酉: 'Metal', 辰: 'Earth', 戌: 'Earth', 丑: 'Earth', 未: 'Earth' };
+  var SIX6 = { 1: 1, 2: 1, 29: 1, 30: 1, 51: 1, 52: 1, 57: 1, 58: 1, 25: 1, 34: 1 };
+  function notesOfDay(F, th) {
+    if (!F || !th || !th.p) return [];
+    var p = th.p, pers = th.pers, L = F.lines, out = [];
+    var act = [['cycle', F.cycle], ['annual', F.annual], ['annual line of the month', L.am], ['month', L.m], ['actor', L.lord], ['day line', L.d], ['outcome', L.s2]].filter(function (x) { return x[1]; });
+    // trine closed by the day branch
+    SANHE.forEach(function (g) {
+      if (g[0].indexOf(F.db) < 0 || act.some(function (x) { return x[1].b === F.db; })) return;
+      var oth = g[0].split('').filter(function (b) { return b !== F.db; }), has = oth.map(function (b) { return act.filter(function (x) { return x[1].b === b; })[0]; });
+      if (!has[0] || !has[1]) return;
+      out.push({ k: 'trine', icon: '△', good: true, text: 'Trine ' + g[0] + ' (' + g[1] + ' = ' + REL[rel(pers, g[1])] + ') closed by the day ' + F.db + ' with the ' + has[0][0] + ' ' + has[0][1].b + ' and the ' + has[1][0] + ' ' + has[1][1].b + ': the lines work together — favourable.' });
+    });
+    // interference between neighbouring levels
+    [['cycle', F.cycle, 'annual', F.annual], ['annual', F.annual, 'month', L.m], ['month', L.m, 'actor', L.lord], ['actor', L.lord, 'day line', L.d]].forEach(function (x) {
+      var A = x[1], B = x[3]; if (!A || !B || HE6[A.b] !== B.b) return;
+      var ea = BR_EL[A.b], eb = BR_EL[B.b], t;
+      if (CTRL[ea] === eb) t = 'the ' + x[0] + ' controls the ' + x[2] + ': the text of the ' + x[0] + ' commands, the ' + x[2] + ' has no voice';
+      else if (GEN[ea] === eb) t = 'the ' + x[0] + ' generates the ' + x[2] + ': harmony, both texts count (the ' + x[0] + ' more)';
+      else if (GEN[eb] === ea) t = 'the ' + x[2] + ' generates the ' + x[0] + ' and empties itself: the text of the ' + x[2] + ' commands — attention';
+      else if (CTRL[eb] === ea) { var br = GEN[eb]; t = 'the ' + x[2] + ' controls the ' + x[0] + ': neither text stands out, it lasts as long as the ' + x[2] + '; the bridge is ' + br + ' (' + REL[rel(pers, br)] + ')'; }
+      else t = 'the two lines are tied';
+      out.push({ k: 'interference', icon: '∞', text: 'Combination ' + A.b + '+' + B.b + ' between the ' + x[0] + ' (' + REL[A.r] + ') and the ' + x[2] + ' (' + REL[B.r] + '): they interfere with each other — ' + t + '.' });
+    });
+    // Six Clashes hexagrams and Inverse / Opposite of the active natal hexagram
+    var HX = [['cycle', p.hx], ['annual', p.annual.hex], ['month', p.month.hex], ['block', p.daily && p.daily.block], ['day', p.daily && p.daily.hex]].filter(function (x) { return x[1]; });
+    var six = HX.slice(1).filter(function (x) { return SIX6[x[1].n]; }); // not the cycle: the natal hexagram is always there
+    if (six.length) out.push({ k: 'six', icon: '⚡', text: 'Six Clashes hexagram on the ' + six.map(function (x) { return x[0] + ' (' + x[1].n + ')'; }).join(', ') + ': what is tied can come apart — relationships, agreements; sudden moves.' });
+    var nat = p.hx.lines; if (nat) HX.slice(1).forEach(function (x) { var l = x[1].lines; if (!l) return;
+      var op = l.every(function (v, i) { return !!v !== !!nat[i]; }), inv = l.every(function (v, i) { return !!v === !!nat[5 - i]; }) && x[1].n !== p.hx.n;
+      if (inv) out.push({ k: 'inverse', icon: '⇅', text: 'The ' + x[0] + ' hexagram ' + x[1].n + ' is the Inverse of the natal ' + p.hx.n + ': the chart turned upside down — sudden meetings and breaks.' });
+      else if (op) out.push({ k: 'opposite', icon: '⇅', text: 'The ' + x[0] + ' hexagram ' + x[1].n + ' is the Opposite of the natal ' + p.hx.n + ': a turning point — watch for losses.' }); });
+    return out;
+  }
+  function notesHtml(F, th, st) { var N = []; try { N = notesOfDay(F, th); } catch (e) {}
+    return N.map(function (n) { return '<div style="' + (st || '') + 'color:' + (n.good ? '#2e7d32' : n.k === 'interference' ? '#00695c' : '#6a1b9a') + ';">' + n.icon + ' ' + esc(n.text) + '</div>'; }).join(''); }
   var LG_ORD = ['am', 'm', 'lord', 'd', 's2'], LG_LBL = { am: 'annual line of the month', m: 'month line', lord: 'actor (Lord)', d: 'day line', s2: 'outcome' };
   function legacyOfDay(F, th) {
     if (!F || !th) return null;
@@ -996,7 +1043,7 @@
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:4px 0;">' + cfBazi(hr, g.Pe)
       + '<div style="display:flex;flex-wrap:wrap;">' + (U().cycleHexSvg ? '<div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.block, dh.line, null, me) + '</div><div style="flex:1;min-width:130px;">' + U().cycleHexSvg(dh.hex, dh.line, null, me) + '</div>' : '') + '</div>'
       + '<div style="font-size:10px;color:#999;">Left: block hexagram with the day line (action; the actor is its line ' + dh.lord + '). Right: day hexagram (outcome).</div>'
-      + ln('lord', 'Actor') + ln('d', 'Action') + ln('s2', 'Outcome') + (function () { var lg = legacyOfDay(g.F, g.th); return lg ? '<div style="' + S_ + 'color:#5e35b1;margin-top:3px;">📜 ' + esc(lg.text) + '</div>' : ''; })() + '</div>';
+      + ln('lord', 'Actor') + ln('d', 'Action') + ln('s2', 'Outcome') + (function () { var lg = legacyOfDay(g.F, g.th); return lg ? '<div style="' + S_ + 'color:#5e35b1;margin-top:3px;">📜 ' + esc(lg.text) + '</div>' : ''; })() + notesHtml(g.F, g.th, S_ + 'margin-top:3px;') + '</div>';
   }
   function cfResults(chart, days) {
     var ok = days.filter(function (g) { return g.ok; }), h = '';
@@ -1120,6 +1167,7 @@
     } catch (e) {}
     // what He Luo says for the purpose
     var box = '';
+    try { var nX = notesHtml(filmOfDay(th), th, 'margin-bottom:3px;'); if (nX) box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;">' + nX + '</div>'; } catch (e) {}
     try { var lgX = legacyOfDay(filmOfDay(th), th); if (lgX) box += '<div style="margin-bottom:5px;padding-bottom:4px;border-bottom:1px dashed #ccc;color:#5e35b1;">📜 ' + esc(lgX.text) + '</div>'; } catch (e) {}
     // Edu 13/11/2026: Correct and Favour inside the XKDG Date Selection
     if (th.key === 'correct' && th.cf) { var c = th.cf;
@@ -1566,7 +1614,7 @@
         out.annual = { hexagram: p.id.year[0], moved_line: p.id.year[1], text: stmt(p.id.year[0], p.id.year[1]) };
         out.month = { hexagram: p.month.hex.n, line: p.month.line }; out.block = { hexagram: p.id.lord[0], lord_line: p.id.lord[1] };
         out.day = { hexagram: p.id.day[0], line: p.id.day[1], outcome_hexagram: p.id.dayHex[0] };
-        try { var F0 = filmOfDay(th); out.film = filmOut(F0); var lg0 = legacyOfDay(F0, th); if (lg0) out.legacy_or_document = lg0.text; } catch (e) {} }
+        try { var F0 = filmOfDay(th); out.film = filmOut(F0); var lg0 = legacyOfDay(F0, th); if (lg0) out.legacy_or_document = lg0.text; var n0 = notesOfDay(F0, th).map(function (n) { return n.text; }); if (n0.length) out.notes_of_the_day = n0; } catch (e) {} }
       var o = { score: th.adj, score_note: 'He Luo score of the day from −3 to +3 (raises or lowers XKDG days)', raw: Math.round(th.t * 100) / 100,
         lines_read: th.lines.map(lineOut) };
       if (th.alarm) o.alarm = { level: th.alarm.level, signals: th.alarm.sig, sixth: th.alarm.six };
@@ -1605,8 +1653,8 @@
       good_day_to_correct: cd.ok, what_to_do: cd.ok ? cd.todo : undefined, why: cd.ok ? cd.why : cd.no,
       hour: cd.ok ? (cd.hours.length ? cd.hours.map(function (h) { return h.pillar + ' ' + h.tst; }) : 'no particular hour') : undefined } : { problem: 'none (no prevailing relation with unfavourable texts)' }; } catch (e) {}
     try { out.alarms_next_30_days = alarmsAhead(ch, 30).map(function (g) { return { date: new Date(g.ms).toISOString().slice(0, 10), in_days: g.inDays, level: g.level, purposes: g.keys, day_pillar: g.pillar }; }); } catch (e) {}
-    out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) TELL THE DAY AS A FILM (Edu 13/11/2026), one short paragraph each, using the field film: SCENARIO = the cycle (the period of life) and the annual (its name, judgment and moved line) with their strength in the month, and the year branch that clashes them (comes alive or gives way); BACKDROP = the annual line of the month and the month line (the climate of these weeks); ACTOR = the Lord of the block: its relation says WHO acts (Brothers = colleagues, rivals, a partner who takes; Wealth = money, clients, the partner of a man; Ghost = authority, pressure; Parent = documents, mentors, study; Children = students, projects, creations), its text says HOW; ACTION = the day line and the outcome, and the day branch that clashes them (timely = it explodes, it happens now; not timely = it breaks) or a quiet line (activated = comes into play, eliminated = removed); HOURS = film_hours: when the actor enters the scene (hour with the branch of the Lord) and when the answer comes (hour where a natal void comes out), with their texts; give the hours also in civil time if you know the place. Keep the story COHERENT with the flow of the Qi between neighbouring levels (relations_between_levels: who feeds whom, who controls whom, what relieves it) down to the outcome, and close with the flow in a few words (e.g. documents → rival → work → money that leaves). Read every text in the concrete context of the day and of the person, not as a literal translation, and never contradict what is timely or not; 3) the alarms and warnings, briefly; 4) advice: what to do, what to avoid, for whom (use the field correct: if good_day_to_correct, say plainly that today is a day to correct the problem and what to do; if not, say it is better to wait); if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its six lines (top line first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read). Write the Heluo age next to every year (age = year − birth year + 1).';
+    out.reading_rules = 'HOW TO ANSWER (Edu, 13/11/2026): go to the ESSENCE of what kind of day it is for the person, then a short analysis and concrete advice. Plain, colloquial language, in the language of the user (Italian for Edu), a few short paragraphs. NO numbers, NO scores (never write +3, -2, percentages or raw values), NO tables, NO long technical lists: the scores here are only for you, to judge; mention them only if the user explicitly asks about scores. Never use a technical term without explaining it in a few words. Order: 1) the essence in one or two sentences (the prevalence of the active lines tells what kind of day it is and what it favours); 2) TELL THE DAY AS A FILM (Edu 13/11/2026), one short paragraph each, using the field film: SCENARIO = the cycle (the period of life) and the annual (its name, judgment and moved line) with their strength in the month, and the year branch that clashes them (comes alive or gives way); BACKDROP = the annual line of the month and the month line (the climate of these weeks); ACTOR = the Lord of the block: its relation says WHO acts (Brothers = colleagues, rivals, a partner who takes; Wealth = money, clients, the partner of a man; Ghost = authority, pressure; Parent = documents, mentors, study; Children = students, projects, creations), its text says HOW; ACTION = the day line and the outcome, and the day branch that clashes them (timely = it explodes, it happens now; not timely = it breaks) or a quiet line (activated = comes into play, eliminated = removed); HOURS = film_hours: when the actor enters the scene (hour with the branch of the Lord) and when the answer comes (hour where a natal void comes out), with their texts; give the hours also in civil time if you know the place. Keep the story COHERENT with the flow of the Qi between neighbouring levels (relations_between_levels: who feeds whom, who controls whom, what relieves it) down to the outcome, and close with the flow in a few words (e.g. documents → rival → work → money that leaves). Read every text in the concrete context of the day and of the person, not as a literal translation, and never contradict what is timely or not; 3) the alarms and warnings, briefly, and ALWAYS the notes_of_the_day when present, each in one plain sentence inside the story (a trine closed by the day = favourable, the lines work together; a combination between two levels = interference, say which text commands as the note says; a Six Clashes hexagram = always point it out: what is tied can come apart; Inverse / Opposite of the natal hexagram = sudden breaks / turning point); 4) advice: what to do, what to avoid, for whom (use the field correct: if good_day_to_correct, say plainly that today is a day to correct the problem and what to do; if not, say it is better to wait); if hours_that_relieve_the_prevalence is given, suggest the BEST PRACTICAL hour when the BEST is before 07:00 (the user does not like very early hours), and mention the BEST. Edu (the user) is the authority on He Luo Li Shu. Read only what is given here; do not invent other systems (no Hetu/qi/yun sums: that is XKDG, not He Luo). If you write a bazi, write it in a column: Hour, Day, Month, Year. If you cite a hexagram, draw it with its six lines (top line first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read). Write the Heluo age next to every year (age = year − birth year + 1).';
     return out;
   }
-  root.XKDGHeluoDS = { xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  root.XKDGHeluoDS = { xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);
