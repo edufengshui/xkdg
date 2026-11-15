@@ -7595,7 +7595,7 @@ function buildMonthView() {
                     const ziRealFilters2 = new Set(ziAF2);
                     ziRealFilters2.delete('negatives');
                     ziRealFilters2.delete('strict');
-                    ziPassF2 = (ziScore2 >= 1) && (ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {yGan: ziYGan2, yZhi: ziYZhi2, dGan: ziDGan2, dZhi: ziDZhi2}, ziItems2));
+                    ziPassF2 = (ziScore2 >= 1) && (ziRealFilters2.size === 0 || blueItemsPassFilter(ziBlue2, ziRealFilters2, {yGan: ziYGan2, yZhi: ziYZhi2, dGan: ziDGan2, dZhi: ziDZhi2, P: ziP2}, ziItems2));
                 }
                 // Purpose filter for Zi second half: same gate as regular hours.
                 // Without this, Zi-second rows would bypass the chosen purpose
@@ -7756,7 +7756,7 @@ function buildMonthView() {
                     const _ziRealFilters = new Set(_ziAF);
                     _ziRealFilters.delete('negatives');
                     _ziRealFilters.delete('strict');
-                    if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun, yGan: ziYGan, yZhi: ziYZhi, dGan: ziDGan, dZhi: ziDZhi}, ziItemsF)) continue;
+                    if (_ziRealFilters.size > 0 && !blueItemsPassFilter(ziBlueF, _ziRealFilters, {qi: ziPillars.day.qi, yun: ziPillars.day.yun, yGan: ziYGan, yZhi: ziYZhi, dGan: ziDGan, dZhi: ziDZhi, P: ziPillars}, ziItemsF)) continue;
                 }
 
                 // ── Purpose filter for Zi first half ──
@@ -7948,7 +7948,7 @@ function buildMonthView() {
             //  applied further down once listScore has been computed.)
 
             // Apply filter chips — but skip when Negatives is on (it has its own logic)
-            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun, yGan, yZhi, dGan, dZhi }, analysisItems)) { continue; }
+            if (!hasNegativesFilterMV && !isZiFirst && activeFiltersMV.size > 0 && !blueItemsPassFilter(blueItems, activeFiltersMV, { qi: pillars.day.qi, yun: pillars.day.yun, yGan, yZhi, dGan, dZhi, P: pillars }, analysisItems)) { continue; }
             const filtersActiveMV = activeFiltersMV.size > 0;
             const dayXkdgLV = dData || pillars.day;
             // Use active person (A if active, else B)
@@ -9409,6 +9409,24 @@ function blueItemsPassFilter(blueItems, filters, dayData, analysisItems) {
     const keOnly    = _baseFilters.size === 1 && _baseFilters.has('ke-wealth');
     // If only negatives/strict remained after stripping nayin/ke, treat as no filter (let other gates handle it)
     if (_baseFilters.size === 0) return true;
+    // Edu 15/11/2026: ◎ HLLS Mother chip — only hours whose four pillars close into a whole XKDG bond AND Person A's active
+    // He Luo mother hexagram (Xian Tian before the change, Hou Tian after, as Qi/Yun) joins that network (heluo-ds.js).
+    if (filters.has('hlls-mother')) {
+        let _ok = false;
+        try {
+            const DSm = window.XKDGHeluoDS, P = (dayData || {}).P;
+            if (DSm && DSm.motherOf && P && P.year && P.month && P.day && P.hour) {
+                const ss = document.getElementById('scan-start'), iso = (ss && /^\d{4}-\d{2}-\d{2}$/.test(ss.value)) ? ss.value : new Date().toISOString().slice(0, 10);
+                const M = DSm.motherOf(iso);
+                const b = M ? DSm.xkMotherBond(['year', 'month', 'day', 'hour'].map(k => P[k].stem + P[k].branch), M) : null;
+                _ok = !!(b && b.mom);
+            }
+        } catch (e) { _ok = false; }
+        if (!_ok) return false;
+        _baseFilters.delete('hlls-mother');
+        filters = new Set([...filters].filter(f => f !== 'hlls-mother'));
+        if (_baseFilters.size === 0) return true;
+    }
     // Session 33 (Edu): 🌿 Cure chip — only favourable dates whose DAY or YEAR pillar is a remedy for the loaded person.
     if (filters.has('cure')) {
         const _rel = (blueItems || []).some(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2');
@@ -9724,7 +9742,7 @@ function runScanner() {
                     else { continue; }
                 }
                 // Apply filter (only when Negatives is OFF)
-                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun, yGan, yZhi, dGan, dZhi }, analysisItems)) { continue; }
+                if (!blueItemsPassFilter(blueItems, activeFilters, { qi: pillars.day.qi, yun: pillars.day.yun, yGan, yZhi, dGan, dZhi, P: pillars }, analysisItems)) { continue; }
             }
 
             // Detect which dimensions are active in the 4-hexagram relations
