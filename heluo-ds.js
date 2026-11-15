@@ -1770,7 +1770,7 @@
       if (!ch.err && m) { var lon = xkLon(ch.c); if (isFinite(lon)) { var th = thread(context(ch.R, ch.Pn, ch.male), pillarsTstNoon(+m[1], +m[2], +m[3], lon), lon, 'wealth');
         var M = th && th.p && th.p.hx ? xkMother(th.p.hx.n) : null; if (M) { M.phase = th.p.phase === 'HT' ? 'Hou Tian' : 'Xian Tian'; out = M; } } }
     } catch (e) { out = null; }
-    _momCache[iso] = out; return out;
+    if (out) _momCache[iso] = out; return out;
   }
   root.XKDGHeluoDS = { motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);

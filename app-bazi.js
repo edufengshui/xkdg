@@ -6349,6 +6349,20 @@ function updatePurposeIcon(person) {
 }
 
 function runAll() {
+    // Edu 15/11/2026: ◎ HLLS Mother needs the He Luo engine (loaded on demand) and Person A's He Luo chart.
+    try {
+        if (getActiveFilters().has('hlls-mother')) {
+            const HL = window.XKDGHeluo;
+            if (HL && HL.ready && !HL.ready() && HL.ensure) { HL.ensure(function () { runAll(); }); return; }
+            const DSm = window.XKDGHeluoDS, ss = document.getElementById('scan-start');
+            const iso = (ss && /^\d{4}-\d{2}-\d{2}$/.test(ss.value)) ? ss.value : new Date().toISOString().slice(0, 10);
+            if (!DSm || !DSm.motherOf || !DSm.motherOf(iso)) {
+                const ch = HL && HL.chartA ? HL.chartA() : { err: 'birth' };
+                alert('◎ HLLS Mother: ' + (ch.err === 'gender' ? 'set the gender (M/F) of Person A in the He Luo window first.' : ch.err === 'birth' ? 'Person A needs birth date and birth hour.' : 'the He Luo chart of Person A is not available (birth place / longitude).'));
+                return;
+            }
+        }
+    } catch (e) {}
     const testModeEl = document.getElementById('purpose-no-person');
     const testModeOn = testModeEl && testModeEl.checked;
     if (getPurpose() && !_personAYear && !_personBYear && !testModeOn) {

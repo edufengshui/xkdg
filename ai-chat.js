@@ -3513,7 +3513,12 @@
       if (name === 'list_persons') return toolListPersons(input || {});
       if (name === 'person_xkdg_gaps') { var e1 = _ensurePerson(String((input || {}).person || 'A').toUpperCase() === 'B' ? 'B' : 'A', (input || {}).name); return e1 ? e1 : toolPersonGaps(input || {}); }
       if (name === 'mutual_cures') { var e2 = _ensurePerson('A', (input || {}).name_a) || _ensurePerson('B', (input || {}).name_b); return e2 ? e2 : toolMutualCures(); }
-      if (name === 'find_good_dates') return toolFindGoodDates(input || {});
+      if (name === 'find_good_dates') {
+        // Edu 15/11/2026: the He Luo engine (mother hexagram) is loaded on demand — load it first, then scan.
+        var _HL = window.XKDGHeluo;
+        if (_HL && _HL.ready && !_HL.ready() && _HL.ensure) return new Promise(function (res) { var _d = false, go = function () { if (_d) return; _d = true; res(toolFindGoodDates(input || {})); }; _HL.ensure(go); setTimeout(go, 16000); });
+        return toolFindGoodDates(input || {});
+      }
       if (name === 'export_lucky_calendar') return toolExportLuckyCalendar(input || {});
       if (name === 'add_calendar_reminder') return toolAddCalendarReminder(input || {});
       if (name === 'house_save_door') return toolHouseSaveDoor(input || {});
