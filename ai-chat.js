@@ -8877,7 +8877,7 @@
     try { gear.parentNode && gear.parentNode.insertBefore(areaBtn, gear); } catch(e){}
 
     gear.addEventListener('click', openSettings);
-    clearBtn.addEventListener('click', function () { setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); });
+    clearBtn.addEventListener('click', function () { setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); try { _longNagAt = 0; } catch (e) {} });
     saveBtn.addEventListener('click', function () { saveCurrentConversation(false); });
     archBtn.addEventListener('click', openArchive);
     shareBtn.addEventListener('click', shareItinerary);
@@ -11136,9 +11136,71 @@
           sending = false; send.disabled = false; send.style.opacity = '1';
           if (status.textContent === 'Thinking…') setStatus('');
           if (_lastRunFailed) addRetryButton();
+          else { try { maybeSuggestNewChat(); } catch (e) {} }
         });
     }
     var _lastRunFailed = false;
+
+    // ── Long chat → suggest "save & start a new one" (session 51, Edu) ──
+    // Every question re-sends the whole conversation, so a long chat costs more and gets
+    // slower. After LONG_Q questions (or a very heavy history) a pop-up suggests saving the
+    // chat to the archive (📚, it can be continued later from its summary) and starting a
+    // new one. "Keep going" asks again only after LONG_AGAIN more questions.
+    var LONG_Q = 8, LONG_CHARS = 100000, LONG_AGAIN = 5;
+    var _longNagAt = 0;   // number of questions when the pop-up was last shown (0 = never)
+    function _userQuestions() {
+      var n = 0;
+      for (var i = 0; i < history.length; i++) {
+        var m = history[i];
+        if (!m || m.role !== 'user') continue;
+        if (typeof m.content === 'string') { n++; continue; }
+        if (Array.isArray(m.content) && m.content.some(function (b) { return b && b.type === 'text'; })
+            && !m.content.some(function (b) { return b && b.type === 'tool_result'; })) n++;
+      }
+      return n;
+    }
+    var LONG_TXT = {
+      en: { t: 'This chat is getting long', b: 'Every question re-sends the whole conversation, so a long chat is slower and uses more of your daily Assistant budget. Save it to the archive (\ud83d\udcda \u2014 you can continue it later from its summary) and start a new chat?', ok: '\ud83d\udcbe Save & start a new chat', no: 'Keep going' },
+      it: { t: 'Questa chat sta diventando lunga', b: 'Ogni domanda rimanda tutta la conversazione: una chat lunga \u00e8 pi\u00f9 lenta e consuma di pi\u00f9 il budget giornaliero dell\u2019Assistant. Salvarla nell\u2019archivio (\ud83d\udcda \u2014 potrai riprenderla dal riassunto) e aprirne una nuova?', ok: '\ud83d\udcbe Salva e apri una nuova chat', no: 'Continua qui' },
+      fr: { t: 'Cette conversation devient longue', b: 'Chaque question renvoie toute la conversation\u00a0: une longue conversation est plus lente et consomme davantage le budget quotidien de l\u2019Assistant. L\u2019enregistrer dans l\u2019archive (\ud83d\udcda \u2014 vous pourrez la reprendre depuis son r\u00e9sum\u00e9) et en ouvrir une nouvelle\u00a0?', ok: '\ud83d\udcbe Enregistrer et nouvelle conversation', no: 'Continuer ici' }
+    };
+    function maybeSuggestNewChat() {
+      if (readOnlyConv || !history.length) return;
+      var q = _userQuestions();
+      if (q < _longNagAt) _longNagAt = 0;                       // the chat was cleared meanwhile
+      var heavy = false;
+      try { heavy = JSON.stringify(history.map(stripImages)).length > LONG_CHARS; } catch (e) {}
+      if (!(q >= LONG_Q || (heavy && q >= 3))) return;
+      if (_longNagAt && q < _longNagAt + LONG_AGAIN) return;
+      _longNagAt = q;
+      var L = LONG_TXT[chatLang()] || LONG_TXT.en;
+      var old = document.getElementById('xkdg-ai-long'); if (old) old.remove();
+      var ov = elc('div', { id: 'xkdg-ai-long', style: 'position:fixed;inset:0;z-index:2147483000;background:rgba(20,8,30,.45);' +
+        'display:flex;align-items:center;justify-content:center;padding:18px;' });
+      var card = elc('div', { style: 'background:#fff;border-radius:12px;max-width:360px;width:100%;padding:16px;' +
+        'box-shadow:0 12px 44px rgba(0,0,0,.32);font-family:system-ui,sans-serif;' });
+      card.appendChild(elc('div', { style: 'font-size:16px;font-weight:700;color:#6a1b9a;margin-bottom:8px;' }, '\u23F3 ' + L.t));
+      card.appendChild(elc('div', { style: 'font-size:14px;color:#333;line-height:1.45;margin-bottom:14px;' }, L.b));
+      var okB = elc('button', { style: 'display:block;width:100%;background:#6a1b9a;color:#fff;border:0;border-radius:8px;' +
+        'padding:11px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;' }, L.ok);
+      var noB = elc('button', { style: 'display:block;width:100%;background:#f3e5f5;color:#6a1b9a;border:0;border-radius:8px;' +
+        'padding:10px;font-size:14px;cursor:pointer;' }, L.no);
+      okB.addEventListener('click', function () {
+        try { ov.remove(); } catch (e) {}
+        var ok = false;
+        try { ok = saveCurrentConversation(false); } catch (e) {}
+        if (ok) {
+          setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; _longNagAt = 0;
+          setStatus({ it: 'Chat salvata in \ud83d\udcda. Nuova chat aperta.', fr: 'Conversation enregistr\u00e9e dans \ud83d\udcda. Nouvelle conversation ouverte.' }[_lastLongLang] ||
+                    'Chat saved in \ud83d\udcda. New chat started.');
+        }
+      });
+      noB.addEventListener('click', function () { try { ov.remove(); } catch (e) {} });
+      ov.addEventListener('click', function (e) { if (e.target === ov) { try { ov.remove(); } catch (er) {} } });
+      _lastLongLang = chatLang();
+      card.appendChild(okB); card.appendChild(noB); ov.appendChild(card); document.body.appendChild(ov);
+    }
+    var _lastLongLang = 'en';
 
     send.addEventListener('click', doSend);
     input.addEventListener('keydown', function (e) {
