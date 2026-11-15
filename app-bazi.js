@@ -2747,6 +2747,7 @@ function calculateBazi() {
     updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, nayinOf(pillarKeys.month));
     updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   nayinOf(pillarKeys.day));
     updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  nayinOf(pillarKeys.hour));
+    try { xkdgMotherCol(dVal, ['year', 'month', 'day', 'hour'].map(k => pillarKeys[k].stem + pillarKeys[k].branch)); } catch (eM) {}
     // Session 43 (Edu): Tai Sui / Sui Po / Five Yellow / San Sha / Wu Ji of this date (time-afflictions.js).
     try {
         if (window.XKDGAfflictions) XKDGAfflictions.update({
@@ -2935,6 +2936,39 @@ function calculateBazi() {
             hexSection.style.boxShadow  = sameFamily ? '0 0 12px 3px #fffb00' : '';
         }
     });
+}
+
+// Edu 15/11/2026: ◎ MOTHER column at the left of the four pillars — Person A's active He Luo mother hexagram (Xian Tian
+// before the change, Hou Tian after) as XKDG Qi / Yun, and whether it joins the whole XKDG bond of this hour (heluo-ds.js).
+// Hidden when Person A has no He Luo chart (birth date + hour + gender M/F). The He Luo engine is loaded on demand.
+function xkdgMotherCol(iso, gz) {
+    const col = document.getElementById('p-mother'), chart = document.getElementById('main-chart');
+    const hide = () => { if (col) col.style.display = 'none'; if (chart) chart.style.gridTemplateColumns = ''; };
+    if (!col || !iso) return hide();
+    const HL = window.XKDGHeluo;
+    if (!HL || !HL.chartA || HL.chartA().err) return hide();
+    if (HL.ready && !HL.ready()) { if (HL.ensure) HL.ensure(() => xkdgMotherCol(iso, gz)); return hide(); }
+    const DSm = window.XKDGHeluoDS, M = DSm && DSm.motherOf ? DSm.motherOf(iso) : null;
+    if (!M) return hide();
+    const b = DSm.xkMotherBond ? DSm.xkMotherBond(gz, M) : null;
+    const nm = HEX_NAMES[M.n] || '', fam = (M.fam || []).join('<br>');
+    col.style.display = '';
+    if (chart) chart.style.gridTemplateColumns = '0.9fr repeat(4, 1fr)';
+    col.querySelector('.stem').innerHTML = '<div style="font-size:11px;font-weight:bold;color:#33691e;padding:8px 1px;word-break:break-word;">HLLS<br>' + (M.phase || '') + '</div>';
+    col.querySelector('.branch').innerHTML = '<div style="font-size:11px;color:#555;padding:4px 2px;">active now<br>(Person A)</div>';
+    const st = b && b.mom ? '<div style="color:#2e7d32;font-weight:bold;font-size:12px;">✓ joins the bond<br><span style="font-weight:normal;">' + b.mode + '</span></div>'
+        : b && b.pos ? '<div style="color:#999;font-size:12px;">✗ outside the bond<br><span style="font-size:11px;">(' + b.mode + ')</span></div>'
+        : '<div style="color:#999;font-size:12px;">✗ no whole bond in this hour</div>';
+    col.querySelector('.nayin').innerHTML = '<div class="nayin-label" style="padding:2px;">' + st + '</div>';
+    col.querySelector('.hex-section').innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;width:100%;">' +
+            '<div style="color:#d40000;font-weight:bold;font-size:16px;">' + M.qi + '</div>' +
+            '<div class="hex-icon" style="line-height:1;padding-top:4px;font-size:64px;">' + getHexIcon(M.n) + '</div>' +
+            '<div style="color:#0044cc;font-weight:bold;font-size:16px;margin-top:-6px;">' + M.yun + '</div>' +
+        '</div>' +
+        '<div class="hex-info" style="font-size:12px;">' + M.n + ' ' + nm + '</div>' +
+        '<div class="hex-family-label" style="font-size:11px;">' + fam + '</div>';
+    col.querySelector('.hex-section').style.background = b && b.mom ? '#c5e1a5' : '';
 }
 
 function updatePillar(id, stem, branch, xkdg, nayin) {
