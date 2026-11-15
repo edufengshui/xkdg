@@ -4090,6 +4090,10 @@
         if (_DSm && _DSm.motherOf && _pr && _pr.year && _pr.hour) {
           var _M = _DSm.motherOf(r.isoDate);
           if (_M) { var _mb = _DSm.xkMotherBond([_pr.year.ganzhi, _pr.month.ganzhi, _pr.day.ganzhi, _pr.hour.ganzhi], _M);
+            try { var _ml = _DSm.motherLines ? _DSm.motherLines(_M, [_pr.year.ganzhi, _pr.month.ganzhi, _pr.day.ganzhi, _pr.hour.ganzhi]) : [];
+              var _a = _ml.filter(function (L) { return L.day; }).map(function (L) { return L.name + ' (line ' + L.pos + ' ' + L.branch + ')'; }),
+                  _x = _ml.filter(function (L) { return L.hourClash; }).map(function (L) { return L.name + ' (line ' + L.pos + ' ' + L.branch + ')'; });
+              if (_a.length) o.mother_lines_activated_by_day = _a; if (_x.length) o.mother_lines_clashed_by_hour = _x; } catch (e) {}
             if (_mb) o.mother_hexagram_joins = _mb.mom ? 'yes (' + _mb.mode + ')' : (_mb.pos ? 'no (the hour has its own bond, ' + _mb.mode + ', but the mother does not join it)' : 'no (no whole bond in this hour)');
             if (!motherInfo) motherInfo = { hexagram: _M.n, qi: _M.qi, yun: _M.yun, chart: _M.phase }; }
         }
@@ -4111,7 +4115,7 @@
         if (motherInfo) out.hours_with_mother_hexagram = yes.length ? yes : 'none in this scan window (the year and month may not let the mother join: try a later window)';
       } catch (e) {}
       if (motherInfo) out.mother_hexagram = { hexagram: motherInfo.hexagram, qi: motherInfo.qi, yun: motherInfo.yun, chart: motherInfo.chart + ' (active now for Person A)',
-        rule: 'Edu: the person in the XKDG = the active natal He Luo hexagram as Qi and Yun. A row is good for the person when mother_hexagram_joins is "yes": the four pillars of the hour close into a whole XKDG bond AND the mother joins that same network (same dimension and language, or same family). A link of the DAY pillar alone with the mother does NOT count. Test on the famous: lucky events about twice as often as chance; it does not protect from accidents.' };
+        rule: 'Edu: the person in the XKDG = the active natal He Luo hexagram as Qi and Yun. A row is good for the person when mother_hexagram_joins is "yes": the four pillars of the hour close into a whole XKDG bond AND the mother joins that same network (same dimension and language, or same family). A link of the DAY pillar alone with the mother does NOT count. LINES: a line of the mother is activated when the DAY carries its Na Jia branch (mother_lines_activated_by_day; relation to the person: Wealth, Children…) — to favour a relation choose a row whose day activates it; avoid a row where the hour clashes that line (mother_lines_clashed_by_hour). Tendencies from a small test. Test on the famous: lucky events about twice as often as chance; it does not protect from accidents.' };
       return out;
     }
 

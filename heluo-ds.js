@@ -1768,9 +1768,19 @@
     try {
       var ch = H().chartA ? H().chartA() : { err: 1 }, m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!ch.err && m) { var lon = xkLon(ch.c); if (isFinite(lon)) { var th = thread(context(ch.R, ch.Pn, ch.male), pillarsTstNoon(+m[1], +m[2], +m[3], lon), lon, 'wealth');
-        var M = th && th.p && th.p.hx ? xkMother(th.p.hx.n) : null; if (M) { M.phase = th.p.phase === 'HT' ? 'Hou Tian' : 'Xian Tian'; out = M; } } }
+        var M = th && th.p && th.p.hx ? xkMother(th.p.hx.n) : null; if (M) { M.phase = th.p.phase === 'HT' ? 'Hou Tian' : 'Xian Tian'; M.lines = NJ()[M.n].lines.map(function (L) { return { pos: L.pos, branch: L.branch, el: L.el, rel: rel(th.pers, L.el) }; }); out = M; } } }
     } catch (e) { out = null; }
     if (out) _momCache[iso] = out; return out;
   }
-  root.XKDGHeluoDS = { motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  // Lines of the mother hexagram taken by a date (Edu 15/11/2026; HLLS project: claude/hlls-madre-linee.md): a line is ACTIVATED
+  // when the DAY carries its Na Jia branch (lucky events about twice as often as chance for Wealth); the HOUR that clashes the
+  // line is to avoid (unlucky events more than twice as often for Wealth). Small samples: tendencies. Relations are to the person.
+  var REL_NAME = { P: 'Parent', W: 'Wealth', G: 'Ghost', C: 'Children', B: 'Brothers' };
+  function motherLines(M, gz) {
+    if (!M || !M.lines || !gz) return [];
+    var db = gz[2] && gz[2][1], hb = gz[3] && gz[3][1];
+    return M.lines.map(function (L) { return { pos: L.pos, branch: L.branch, rel: L.rel, name: REL_NAME[L.rel] || L.rel,
+      day: db === L.branch, hour: hb === L.branch, dayClash: !!db && clash(L.branch) === db, hourClash: !!hb && clash(L.branch) === hb }; });
+  }
+  root.XKDGHeluoDS = { motherLines: motherLines, motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);

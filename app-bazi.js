@@ -2955,7 +2955,19 @@ function xkdgMotherCol(iso, gz) {
     col.style.display = '';
     if (chart) chart.style.gridTemplateColumns = '0.9fr repeat(4, 1fr)';
     col.querySelector('.stem').innerHTML = '<div style="font-size:11px;font-weight:bold;color:#33691e;padding:8px 1px;word-break:break-word;">HLLS<br>' + (M.phase || '') + '</div>';
-    col.querySelector('.branch').innerHTML = '<div style="font-size:11px;color:#555;padding:4px 2px;">active now<br>(Person A)</div>';
+    // the six lines (top = line 6): relation initial + Na Jia branch; ● = the DAY carries the branch (line activated),
+    // ○ = the hour carries it, ✕ = the HOUR clashes it (to avoid), ⚡ = the day clashes it.
+    const ML = DSm.motherLines ? DSm.motherLines(M, gz) : [];
+    const rows = ML.slice().reverse().map(L => {
+        const mk = (L.day ? '●' : '') + (L.hour ? '○' : '') + (L.hourClash ? '✕' : '') + (L.dayClash ? '⚡' : '');
+        const c = L.hourClash ? '#c62828' : L.day ? '#2e7d32' : L.dayClash ? '#e65100' : '#555';
+        return '<div style="color:' + c + ';font-weight:' + (mk ? 'bold' : 'normal') + ';white-space:nowrap;" title="line ' + L.pos + ' · ' + L.name + ' ' + L.branch + '">' + L.rel + ' ' + L.branch + (mk ? ' ' + mk : '') + '</div>';
+    }).join('');
+    const act = ML.filter(L => L.day).map(L => L.name), bad = ML.filter(L => L.hourClash).map(L => L.name);
+    const uniq = a => a.filter((x, i) => a.indexOf(x) === i).join(', ');
+    col.querySelector('.branch').innerHTML = '<div style="font-size:11px;line-height:1.35;padding:4px 1px;" title="● the day carries the branch of the line: line activated · ○ the hour carries it · ✕ the hour clashes the line: avoid · ⚡ the day clashes it">' + rows
+        + (act.length ? '<div style="color:#2e7d32;font-weight:bold;margin-top:3px;word-break:break-word;">● ' + uniq(act) + '</div>' : '')
+        + (bad.length ? '<div style="color:#c62828;font-weight:bold;margin-top:3px;word-break:break-word;">✕ hour hits ' + uniq(bad) + '</div>' : '') + '</div>';
     const st = b && b.mom ? '<div style="color:#2e7d32;font-weight:bold;font-size:12px;">✓ joins the bond<br><span style="font-weight:normal;">' + b.mode + '</span></div>'
         : b && b.pos ? '<div style="color:#999;font-size:12px;">✗ outside the bond<br><span style="font-size:11px;">(' + b.mode + ')</span></div>'
         : '<div style="color:#999;font-size:12px;">✗ no whole bond in this hour</div>';
@@ -9468,6 +9480,13 @@ function blueItemsPassFilter(blueItems, filters, dayData, analysisItems) {
                 const M = DSm.motherOf(iso);
                 const b = M ? DSm.xkMotherBond(['year', 'month', 'day', 'hour'].map(k => P[k].stem + P[k].branch), M) : null;
                 _ok = !!(b && b.mom);
+                // line to activate (Wealth, Children…): the DAY must carry the branch of a mother line with that relation,
+                // and the hour must not clash it.
+                const selL = document.getElementById('hlls-line'), want = selL ? selL.value : '';
+                if (_ok && want && DSm.motherLines) {
+                    const ML = DSm.motherLines(M, ['year', 'month', 'day', 'hour'].map(k => P[k].stem + P[k].branch)).filter(L => L.rel === want);
+                    _ok = ML.some(L => L.day) && !ML.some(L => L.day && L.hourClash);
+                }
             }
         } catch (e) { _ok = false; }
         if (!_ok) return false;
