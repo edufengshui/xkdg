@@ -576,7 +576,9 @@
         38: { 3: { strong: 'Heavy work with snags and things in the way: not a good start, but a good end.', weak: 'Everything gets in the way and pulls back: strain and irritation at home.' } },
         41: { 4: { strong: 'Throwing away what is too much: the house gets lighter and others are glad.', weak: 'Something has to go, and it is hard to give it up.' } },
         4: { 4: { strong: 'A moment of confusion in the work: a pause, and it clears.', weak: 'Tangled up and irritable: better to stop than to insist.' } },
-        54: { 6: { strong: 'The basket is empty: nothing more to do, time to rest.', weak: 'Effort without result: stop for today.' } }
+        54: { 6: { strong: 'The basket is empty: nothing more to do, time to rest.', weak: 'Effort without result: stop for today.' } },
+        43: { 1: { strong: 'Energy to move things in the house — but measured: pushing a little less, nothing breaks.', weak: '{He} pushes too hard against the things of the house, sure it will hold: something breaks.' } },
+        35: { 6: { strong: 'Putting {his} own house in order with a firm hand, aware of the danger: it goes well.', weak: 'Going at the housework head down: bumps and small accidents.' } }
       },
       study: {
         12: { 4: { strong: 'A teacher or a school gives a direction, and {he} follows it.', weak: 'Study restarts, but {he} depends on others to go on.' } },

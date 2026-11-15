@@ -735,6 +735,28 @@
       else t = 'the two lines are tied';
       out.push({ k: 'interference', icon: '∞', text: 'Combination ' + A.b + '+' + B.b + ' between the ' + x[0] + ' (' + REL[A.r] + ') and the ' + x[2] + ' (' + REL[B.r] + '): they interfere with each other — ' + t + '.' });
     });
+    // «Do not disturb the opposite branch» (Edu 15/11/2026, 15:34 — IN TEST: one known case, his own 15/11/2026; the famous neither
+    // confirm nor deny). A) the Ghost with the branch of the day on the same line of 3+ levels (annual, month, block, day) → go gently
+    // with the branch the day clashes (sector of the house + things of its element). B) the day clashes / harms the line of the cycle,
+    // whose branch is repeated (also hidden) in the same position on 3+ levels → the cycle text can come true to the letter.
+    try {
+      var lv4 = [p.annual.hex, p.month.hex, p.daily && p.daily.block, p.daily && p.daily.hex].filter(Boolean), gdb = F.db;
+      if (lv4.length === 4 && gdb) {
+        var SECT = { 子: 'North', 丑: 'North-East (towards North)', 寅: 'North-East (towards East)', 卯: 'East', 辰: 'South-East (towards East)', 巳: 'South-East (towards South)', 午: 'South', 未: 'South-West (towards South)', 申: 'South-West (towards West)', 酉: 'West', 戌: 'North-West (towards West)', 亥: 'North-West (towards North)' };
+        var THG = { Water: 'water, liquids and their containers', Fire: 'fire, heat and electrical things', Wood: 'plants, wood and paper', Metal: 'metal objects, blades and tools', Earth: 'ceramics, stone and walls' };
+        var HARM = { 子: '未', 未: '子', 丑: '午', 午: '丑', 寅: '巳', 巳: '寅', 卯: '辰', 辰: '卯', 申: '亥', 亥: '申', 酉: '戌', 戌: '酉' };
+        var ELB = function (b) { return BR_EL[b] || 'Earth'; }, gl = 0;
+        for (var gi = 0; gi < 6; gi++) { var gk = lv4.filter(function (hx) { var l = NJ()[hx.n].lines[gi]; return l.branch === gdb && rel(pers, l.el) === 'G'; }).length; if (gk >= 3) gl = gi + 1; }
+        var ci = p.per.line - 1, cb = NJ()[p.hx.n].lines[ci].branch;
+        var cc = lv4.filter(function (hx) { var l = NJ()[hx.n].lines[ci]; return l.branch === cb || (l.fushen && l.fushen.branch === cb); }).length;
+        var hrs = ' Most delicate hours: ' + clash(cb) + ' and ' + HARM[cb] + '.';
+        if (gl) { var ob = clash(gdb), oe = ELB(ob), same = cc >= 3 && oe === ELB(cb);
+          out.push({ k: 'gentle', icon: '🫧', text: 'In test — do not disturb the opposite branch: the Ghost ' + gdb + ' repeats on line ' + gl + ' of three or more levels and today is a ' + gdb + ' day. Go gently with ' + ob + ': sector ' + SECT[ob] + ' of the house, ' + THG[oe] + ' — no force, something can break.'
+            + (same ? ' Stronger today: ' + oe + ' is the element of the line of the cycle (' + cb + '), repeated in the same position on ' + cc + ' levels.' + hrs : '') }); }
+        var hitC = gdb === clash(cb) ? 'clashes' : HARM[gdb] === cb ? 'harms (六害)' : '';
+        if (hitC && cc >= 3) out.push({ k: 'gentle', icon: '🫧', text: 'In test — the day ' + gdb + ' ' + hitC + ' the line of the cycle ' + cb + ', repeated (also hidden) in the same position on ' + cc + ' levels: the text of the cycle line can come true to the letter today. Go gently in the sector ' + SECT[cb] + ' and with ' + THG[ELB(cb)] + '.' + hrs });
+      }
+    } catch (e) {}
     // Six Clashes hexagrams and Inverse / Opposite of the active natal hexagram
     var HX = [['cycle', p.hx], ['annual', p.annual.hex], ['month', p.month.hex], ['block', p.daily && p.daily.block], ['day', p.daily && p.daily.hex]].filter(function (x) { return x[1]; });
     var six = HX.slice(1).filter(function (x) { return SIX6[x[1].n]; }); // not the cycle: the natal hexagram is always there
@@ -1289,6 +1311,7 @@
       if (h.voidOut.length) mk.push('<span style="' + O + '">⚡ void ' + h.voidOut.join('') + ' comes out</span>');
       if (h.relief) mk.push('<span style="' + G + (h.relief.best ? 'font-weight:700;' : '') + '">✚ relieves the ' + REL[h.relief.of] + ' (' + esc(h.relief.how) + ')' + (h.relief.best ? ' · best hour for it' : h.relief.practical ? ' · best practical hour (07–23)' : '') + '</span>');
       if (h.spouse) mk.push('<span style="' + O + '">palace of the spouse ' + (h.b === _xk.ctx.Pn.day[1] ? 'present' : 'clashed') + '</span>');
+      if (SIX6[h.n]) mk.push('<span style="' + Rd + '" title="Six Clashes hexagram (六冲卦): what is tied can come apart; sudden moves">⚡ Six Clashes</span>');
       var six = h.voidOut.length || h.spouse;
       if (six && AL && AL.level === 'light') mk.push('<span style="' + Rd + ';font-weight:700;">⚠ critical in this hour</span>');
       if (six && AL && AL.level !== 'light') mk.push('<span style="' + Rd + ';font-weight:700;">⚠ the worst hour</span>');
@@ -1546,18 +1569,18 @@
     yFrom = parseInt(yFrom, 10) || nowY; yTo = parseInt(yTo, 10) || yFrom; if (yTo < yFrom) yTo = yFrom; if (yTo > yFrom + 11) yTo = yFrom + 11;
     var TXT = window.XKDG_HELUO_TEXTS || {}, VV = ctx.natVoids || [];
     function stmt(n, l) { try { return ((TXT[n] || {}).lines || {})[l].statement || ''; } catch (e) { return ''; } }
-    function tags(hx, isAnn) { var t = [];
-      if (SIX_CLASH[hx.n]) t.push('Six Clashes hexagram (六冲卦): always to be pointed out — things and relationships can come apart, sudden moves' + (isAnn ? '. On the ANNUAL it marks a year of separations: say plainly to watch the couple and close ties (Edu 15/11/2026: half of the separations of famous people fall in a Six Clashes annual)' : ''));
+    function tags(hx, isAnn, isCyc) { var t = [];
+      if (SIX_CLASH[hx.n] && !isCyc) t.push('Six Clashes hexagram (六冲卦): always to be pointed out — things and relationships can come apart, sudden moves' + (isAnn ? '. On the ANNUAL it marks a year of separations: say plainly to watch the couple and close ties (Edu 15/11/2026: half of the separations of famous people fall in a Six Clashes annual)' : ''));
       if (R.oppositeXT && hx.n === R.oppositeXT.n) t.push('Opposite of the Xian Tian'); if (R.inverseXT && hx.n === R.inverseXT.n && hx.n !== R.xianTian.n) t.push('Inverse of the Xian Tian');
       if (R.oppositeHT && hx.n === R.oppositeHT.n) t.push('Opposite of the Hou Tian'); if (R.inverseHT && R.houTian && hx.n === R.inverseHT.n && hx.n !== R.houTian.hex.n) t.push('Inverse of the Hou Tian (Edu: sudden breaks)');
       return t.length ? t : undefined; }
-    function ln(hx, l, me, yb, mb) {
+    function ln(hx, l, me, yb, mb, isCyc) { // isCyc: no Six Clashes note on the cycle — the natal hexagram is always there (as in notesOfDay)
       var L = NJ()[hx.n].lines[l - 1], r = rel(me, L.el), t = TXT[hx.n] || {}, tm = [];
       if (yb) { if (L.branch === yb) tm.push('same branch as the year: active, favourable side of the text'); if (L.branch === clash(yb)) tm.push('clashed by the year ' + yb + ': unfavourable side of the text'); if (LIUHE[L.branch] === yb) tm.push('combined with the year ' + yb); }
       if (mb) tm.push(timely(L.el, mb) ? 'timely in this month (strong)' : 'not timely in this month (weak)');
       if (VV.indexOf(L.branch) >= 0) tm.push(yb === L.branch || mb === L.branch ? 'natal void that comes out now' : 'natal void: delayed, empty until it comes out');
       var o = { hexagram: hx.n, name: t.title || '', judgment: mb ? undefined : (t.judgment || ''), line: l, branch: L.branch, element: L.el, relation: REL[r], who: REL_WHO[r],
-        text: stmt(hx.n, l), text_score: SC() && SC()[hx.n] ? SC()[hx.n].l[l] : null, time: tm.length ? tm : undefined, notes: tags(hx) };
+        text: stmt(hx.n, l), text_score: SC() && SC()[hx.n] ? SC()[hx.n].l[l] : null, time: tm.length ? tm : undefined, notes: tags(hx, false, isCyc) };
       if (L.fushen) o.hidden_line = REL[rel(me, L.fushen.el)] + ' ' + L.fushen.branch;
       return o; }
     var years = [];
@@ -1565,7 +1588,7 @@
       var a = H().annual(R, Y); if (a.none) { years.push({ year: Y, age: a.age, note: 'outside the cycles of the chart' }); continue; }
       var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], y0 = R.input.o.year;
       var o = { year: Y, age: a.age, year_branch: yb, person_element: me,
-        cycle: ln(a.periodHex, a.period.line, me, yb), annual: ln(a.hex, a.moved, me, yb) };
+        cycle: ln(a.periodHex, a.period.line, me, yb, null, true), annual: ln(a.hex, a.moved, me, yb) };
       if (SIX_CLASH[a.hex.n]) o.annual.notes = tags(a.hex, true);
       o.cycle.chart = a.periodHex === R.xianTian ? 'Xian Tian (first chart)' : 'Hou Tian (second chart)';
       o.cycle.ages = a.period.from + '–' + a.period.to; o.cycle.years = (y0 + a.period.from - 1) + '–' + (y0 + a.period.to - 1);
@@ -1658,9 +1681,9 @@
     function role(h) { var r = []; if (lordB && h.b === lordB) r.push('the ACTOR ENTERS THE SCENE (same branch as the Lord ' + lordB + ')'); else if (lordB && h.b === clash(lordB)) r.push('someone confronts the actor (clashes the Lord ' + lordB + ')');
       if (h.voidOut.length) r.push('the natal void ' + h.voidOut.join(' ') + ' comes out: the ANSWER, what was missing arrives'); return r.length ? r.join('; ') : undefined; }
     if (first) try { var HS = hoursOfDay(ctx, first);
-      out.film_hours = HS.filter(function (h) { return role(h); }).map(function (h) { return { pillar: h.pillar, tst: h.tst, role: role(h), hexagram: h.n, name: (TXT[h.n] || {}).title || '', line: h.l, branch: h.lb, relation: REL[h.r], text: stmt(h.n, h.l) }; });
+      out.film_hours = HS.filter(function (h) { return role(h); }).map(function (h) { return { pillar: h.pillar, tst: h.tst, role: role(h), hexagram: h.n, name: (TXT[h.n] || {}).title || '', line: h.l, branch: h.lb, relation: REL[h.r], text: stmt(h.n, h.l), six_clashes_hexagram: SIX6[h.n] ? 'yes: sudden moves, what is tied can come apart in this hour' : undefined }; });
     } catch (e) {}
-    if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s, text: stmt(h.n, h.l), role: role(h),
+    if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s, text: stmt(h.n, h.l), role: role(h), six_clashes_hexagram: SIX6[h.n] ? 'yes: sudden moves, what is tied can come apart in this hour' : undefined,
       void_comes_out: h.voidOut.length ? h.voidOut : undefined, spouse_palace: h.spouse || undefined,
       relieves_prevalence: h.relief ? REL[h.relief.of] + ' relieved by ' + h.relief.how + (h.relief.best ? ' (best)' : h.relief.practical ? ' (best practical, 07-23)' : '') : undefined }; });
     if (first) try { var rh = hoursOfDay(ctx, first).filter(function (h) { return h.relief; }).sort(function (a, b) { return b.relief.grade - a.relief.grade || b.s - a.s; });

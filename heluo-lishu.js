@@ -810,14 +810,14 @@
           var onB = nowDay >= bS && nowDay < bE, bk = dailyHex(mo.hex.lines, k * 5 + 1), seq = [];
           for (var q = bS; q < bE; q += D) {
             var dq = dailyHex(mo.hex.lines, (q - d0) / D + 1), isT = q === nowDay;
-            seq.push('<span title="' + fmtD(new Date(q)) + ': line ' + dq.line + '"' + (isT ? ' style="color:#e65100;text-decoration:underline;"' : '') + '>' + dq.hex.n + '</span>');
+            seq.push('<span title="' + fmtD(new Date(q)) + ': line ' + dq.line + '"' + (isT ? ' style="color:#e65100;text-decoration:underline;"' : '') + '>' + dq.hex.n + (SIX_ANN[dq.hex.n] ? '<span style="color:#b71c1c;" title="Six Clashes">⚡</span>' : '') + '</span>');
           }
-          blocks += '<tr style="' + (onB ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="padding:2px 6px;white-space:nowrap;">' + fmtR(bS, bE - D) + '</td><td style="padding:2px 6px;white-space:nowrap;">Lord l' + bk.lord + ' → <b>' + bk.block.n + '</b>' + (onB ? ' ◀ today' : '') + '</td><td style="padding:2px 6px;">days: ' + seq.join(' · ') + '</td></tr>';
+          blocks += '<tr style="' + (onB ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="padding:2px 6px;white-space:nowrap;">' + fmtR(bS, bE - D) + '</td><td style="padding:2px 6px;white-space:nowrap;">Lord l' + bk.lord + ' → <b>' + bk.block.n + '</b>' + (SIX_ANN[bk.block.n] ? ' <span style="color:#b71c1c;" title="Six Clashes">⚡</span>' : '') + (onB ? ' ◀ today' : '') + '</td><td style="padding:2px 6px;">days: ' + seq.join(' · ') + '</td></tr>';
           if (onB) {
             var dd = dailyHex(mo.hex.lines, (nowDay - d0) / D + 1);
-            today = '<div style="font-size:12px;margin:8px 0 2px;padding:6px 8px;background:#fff3e0;border-radius:6px;"><b>Today</b>: month <b>' + mo.index + '</b> (' + QI_EN[i] + ', line ' + mo.line + ' of the annual) · monthly <b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + ' · day ' + ((nowDay - d0) / D + 1) + ' of the month'
-              + '<br>Block: Lord of the Block <b>line ' + dd.lord + '</b> → <b>' + dd.block.n + '</b> ' + esc(hexName(dd.block.n)) + ' (day ' + dd.dayInBlock + ' of 5)'
-              + '<br>Day: <b>line ' + dd.line + '</b> → <b>' + dd.hex.n + '</b> ' + esc(hexName(dd.hex.n))
+            today = '<div style="font-size:12px;margin:8px 0 2px;padding:6px 8px;background:#fff3e0;border-radius:6px;"><b>Today</b>: month <b>' + mo.index + '</b> (' + QI_EN[i] + ', line ' + mo.line + ' of the annual) · monthly <b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + sixTag(mo.hex.n) + ' · day ' + ((nowDay - d0) / D + 1) + ' of the month'
+              + '<br>Block: Lord of the Block <b>line ' + dd.lord + '</b> → <b>' + dd.block.n + '</b> ' + esc(hexName(dd.block.n)) + sixTag(dd.block.n) + ' (day ' + dd.dayInBlock + ' of 5)'
+              + '<br>Day: <b>line ' + dd.line + '</b> → <b>' + dd.hex.n + '</b> ' + esc(hexName(dd.hex.n)) + sixTag(dd.hex.n)
               + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' + fmtCard('Monthly ' + mo.hex.n + ' · Lord line ' + dd.lord, mo.hex, dd.lord, mPer, me)
               + fmtCard('Block ' + dd.block.n + ' · day line ' + dd.line, dd.block, dd.line, blockPeriods(dd.lord, bS, startDay, endDay), me) + fmtCard('Day ' + dd.hex.n + ' · line ' + dd.line, dd.hex, dd.line, dayPeriods(dd.line, nowDay), me) + '</div>'
               + lineText(dd.block.n, dd.line, 'Primary (cause, action): line ' + dd.line + ' of ' + dd.block.n + ' (block)', 'day')
@@ -829,9 +829,10 @@
       tb += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + '">' + mo.index + ' · ' + QI_EN[i] + '</td>'
         + '<td style="' + TD + 'white-space:nowrap;">' + (from ? fmtD(from) : '') + (on ? ' ◀ now' : '') + '</td>'
         + '<td style="' + TD + 'white-space:nowrap;">l' + mo.line + (mo.changed.length > 1 ? ' + l' + mo.changed[1] : '') + '</td>'
-        + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + '</td></tr>'
+        + '<td style="' + TD + '">' + miniHex(mo.hex.lines) + '</td><td style="' + TD + '"><b>' + mo.hex.n + '</b> ' + esc(hexName(mo.hex.n)) + sixTag(mo.hex.n) + '</td></tr>'
         + '<tr id="' + id + '" style="display:none;"><td colspan="5" style="padding:2px 6px 8px;">'
         + fmtCard('Monthly ' + mo.hex.n + ' ' + esc(hexName(mo.hex.n)) + ' · month ' + mo.index + ' · line ' + mo.line + ' of the annual', mo.hex, 0, mPer, me)
+        + (SIX_ANN[mo.hex.n] ? '<div style="font-size:11px;margin:3px 0;">' + sixTag(mo.hex.n) + ' month: what is tied can come apart; sudden moves.</div>' : '')
         + (blocks ? '<div style="font-size:11px;color:#777;margin:6px 0 2px;">Daily hexagrams: 5-day blocks (Lord of the Block → block hexagram), one line per day changes on it</div><table style="border-collapse:collapse;font-size:12px;">' + blocks + '</table>' : '')
         + hexText(mo.hex.n) + '</td></tr>';
     }
@@ -998,6 +999,10 @@
   // which native hexagram (if any) the given one is opposite / inverse of
   // Edu 15/11/2026: annual Six Clashes (六冲卦) = year of separations (famous: 5 of 11 separations, ~18% of all years)
   var SIX_ANN = { 1: 1, 2: 1, 29: 1, 30: 1, 51: 1, 52: 1, 57: 1, 58: 1, 25: 1, 34: 1 };
+  // Edu 15/11/2026 («vai», 15:38): Six Clashes marked wherever a hexagram appears — month, block, day (hours in heluo-ds.js)
+  function sixTag(n) { return SIX_ANN[n] ? ' <span style="color:#b71c1c;font-weight:600;white-space:nowrap;" title="Six Clashes hexagram (六冲卦): what is tied can come apart — relationships, agreements; sudden moves. With a favourable line text: a shake-up that moves things on.">⚡ Six Clashes</span>' : ''; }
+  function sixNat(R) { var a = []; if (SIX_ANN[R.xianTian.n]) a.push('Xian Tian ' + R.xianTian.n + ' ' + hexName(R.xianTian.n)); if (R.houTian && SIX_ANN[R.houTian.hex.n]) a.push('Hou Tian ' + R.houTian.hex.n + ' ' + hexName(R.houTian.hex.n));
+    return a.length ? '<div style="font-size:11px;color:#b71c1c;margin-top:6px;">⚡ Six Clashes (六冲卦) in the birth chart: ' + esc(a.join(' and ')) + ' — a nature of sudden moves, quick starts and clean cuts; ties hold only if they are chosen again and again. It colours the whole half of life of that chart.</div>' : ''; }
   function sixAnnTag(n, fs) { return SIX_ANN[n] ? '<div style="font-size:' + (fs || 11) + 'px;color:#b71c1c;margin-top:5px;">⚡ Six Clashes annual: a year of separations — watch the couple and close ties (what is tied can come apart).</div>' : ''; }
   function oppInvTag(R, hx) {
     var t = [];
@@ -1040,7 +1045,7 @@
           '<div style="font-size:11px;color:#555;">Proper position ' + yn(R.positionXT) + ' · proper support ' + yn(R.supportXT) + (R.prevailingXT ? '<br>Prevailing: ' + R.prevailingXT : '') + '</div>' + hexText(R.xianTian.n))
       + (R.houTian ? fmtCard('Hou Tian ' + R.houTian.hex.n + ' ' + esc(hexName(R.houTian.hex.n)) + ' · moving line ' + R.houTian.line + (R.houTian.rule === 'special' ? ' · special 29/3/39' : ''), R.houTian.hex, lineNow(R.cyclesHT, R.houTian.line), R.cyclesHT, null,
           '<div style="font-size:11px;color:#555;">Proper position ' + yn(R.positionHT) + ' · proper support ' + yn(R.supportHT) + (R.prevailingHT ? '<br>Prevailing: ' + R.prevailingHT : '') + '</div>' + hexText(R.houTian.hex.n)) : '')
-      + '</div>'
+      + '</div>' + sixNat(R)
       // Edu, 11/11/2026: each derived hexagram next to its mother — one row for the Xian Tian, one for the Hou Tian
       + '<div style="font-size:11px;font-weight:600;color:#4527a0;margin-top:10px;">From the Xian Tian</div>'
       + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:3px;">'
