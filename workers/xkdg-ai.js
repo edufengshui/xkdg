@@ -538,11 +538,24 @@ export default {
           if (typeof mm.content === 'string' && mm.content.length) {
             mm.content = [{ type: 'text', text: mm.content, cache_control: cc }];
           } else if (Array.isArray(mm.content) && mm.content.length) {
-            mm.content[mm.content.length - 1].cache_control = cc;
+            // Session 51 (Sonnet/Opus 5.5 return THINKING blocks): a thinking block must
+            // never carry cache_control ("thinking.cache_control: Extra inputs are not
+            // permitted"), so the breakpoint goes on the last block that is not thinking.
+            for (let k = mm.content.length - 1; k >= 0; k--) {
+              const blk = mm.content[k];
+              if (blk && blk.type !== 'thinking' && blk.type !== 'redacted_thinking') { blk.cache_control = cc; break; }
+            }
           }
         }
       }
     } catch (e) { /* if anything is unexpected, just send the body uncached */ }
+    try {
+      (body.messages || []).forEach(m => {
+        if (m && Array.isArray(m.content)) m.content.forEach(blk => {
+          if (blk && (blk.type === 'thinking' || blk.type === 'redacted_thinking') && blk.cache_control) delete blk.cache_control;
+        });
+      });
+    } catch (e) {}
 
     // ---- Forward to Anthropic ------------------------------------------
     let resp;
