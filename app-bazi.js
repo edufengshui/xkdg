@@ -9530,6 +9530,13 @@ function setScanNow() {
     document.getElementById('scan-start').value = localDate;
 }
 
+// Edu 15/11/2026: − / + around DAYS change the number of days to scan by n (60 = about two months); minimum 1.
+function stepScanDays(n) {
+    const el = document.getElementById('scan-days'); if (!el) return;
+    const v = parseInt(el.value, 10) || 0;
+    el.value = String(Math.max(1, Math.min(9999, v + n)));
+    el.dispatchEvent(new Event('change'));
+}
 function setScanDays(n) {
     // Session 33 (Edu): − / + move the FROM date back / forward by 1, 3 or 6 calendar
     // months (n = ±30 / ±90 / ±180); DAYS is not touched.

@@ -244,3 +244,4 @@
             .geo-row-top .geo-utc { width: 32px !important; }
             .geo-row-top .geo-long { width: 56px !important; }
         }
+#scan-days::-webkit-outer-spin-button, #scan-days::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

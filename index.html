@@ -350,7 +350,11 @@
               <div style="display:flex;flex-direction:column;gap:6px;">
                 <div style="display:flex;align-items:center;gap:4px;">
                   <label style="flex-shrink:0;">DAYS:</label>
-                  <input type="number" id="scan-days" value="30" min="1" max="9999" style="width:55px;flex-shrink:0;">
+                  <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;flex-shrink:0;" title="− / + change the number of days by 60 (about two months)">
+                    <button onclick="stepScanDays(-60)" style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
+                    <input type="number" id="scan-days" value="30" min="1" max="9999" style="width:50px;flex-shrink:0;border:none;border-left:1px solid #ddd;border-right:1px solid #ddd;border-radius:0;text-align:center;padding:4px 2px;-moz-appearance:textfield;appearance:textfield;">
+                    <button onclick="stepScanDays(60)" style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">+</button>
+                  </span>
                   <span style="display:inline-flex;align-items:center;border:1px solid #bbb;border-radius:6px;overflow:hidden;">
                     <button onclick="setScanDays(-30)"  style="padding:6px 7px;font-size:12px;border:none;background:transparent;cursor:pointer;">−</button>
                     <span style="padding:0 5px;font-size:11px;font-weight:bold;color:#333;">1m</span>
