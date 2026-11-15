@@ -521,7 +521,7 @@
   // `lines` = readings written by hand where there are real cases (first ones: love, from cases told by Edu, no names or dates).
   // Shown by sphereHtml() in heluo-lishu.js under every hexagram with an active line. Reading only, no score.
   spheres: {
-    list: [['money', 'Money', '💰'], ['career', 'Career', '🏛'], ['love', 'Love', '♥'], ['health', 'Health', '✚'], ['luck', 'Luck', '☘'], ['study', 'Study & teaching', '📚']],
+    list: [['money', 'Money', '💰'], ['career', 'Career', '🏛'], ['love', 'Love', '♥'], ['health', 'Health', '✚'], ['luck', 'Luck', '☘'], ['study', 'Study & teaching', '📚'], ['home', 'Home & family', '🏠']],
     rel: {
       money: { W: 'the money itself: clients, deals, direct gain', C: 'the source of money: ideas, products and projects that bring it', B: 'partners and competitors: money shared, or going out',
         G: 'obligations and pressure from above: taxes, debts — or money that comes through an assignment', P: 'the base: house, contracts, tools, what {he} invests in to be supported' },
@@ -533,7 +533,9 @@
         W: 'appetite, food and pleasures: in excess they feed the illness', B: 'energy and stamina — or overexertion' },
       luck: { P: 'protection: help that comes from above', C: 'good fortune from what {he} creates and enjoys', W: 'luck with money and with chances taken', G: 'a test of fate: pressure that can lift {him} or weigh on {him}', B: 'luck through friends and allies — or shared with rivals' },
       study: { P: 'study itself: teachers, schools, books, diplomas', C: 'teaching and writing: students, and expressing what {he} knows', G: 'exams, discipline and the rules of a school',
-        W: 'practical matters: study that pays — or money and pleasures that distract from it', B: 'fellow students and colleagues' }
+        W: 'practical matters: study that pays — or money and pleasures that distract from it', B: 'fellow students and colleagues' },
+      home: { P: 'the house itself: walls, roof, papers — and parents and elders', W: 'the things in the house: objects, possessions, the household money', C: 'children, joy and the pleasure of being at home',
+        G: 'problems and duties in the house: repairs, rules, pressure', B: 'those who share the house and the work: the helper at {his} side, brothers and sisters' }
     },
     lines: {
       love: {
@@ -561,6 +563,20 @@
         12: { 4: { strong: 'Stress and heat on the body, but no harm if {he} follows those who know more (the doctor).', weak: 'Recovery is slow and depends on others.' } },
         35: { 5: { strong: 'Recovery: the cures work and the worries go.', weak: 'Better and worse days: worrying does not help.' } },
         16: { 6: { strong: 'Too many pleasures and wrong rhythms send the bill: changing habits is enough.', weak: 'Excess wears {him} out: change before it is late.' } }
+      },
+      // Home (Edu 15/11/2026: a day of big house cleaning for two people, read from their day hexagrams and hours — «ottima interpretazione»)
+      home: {
+        12: { 5: { strong: 'What was stuck in the house is cleared away: a big clean-up, done together with someone.', weak: 'The standstill at home starts to give way, but everything still hangs by a thread.' },
+              3: { strong: 'Hidden dirt and things put aside come out: the unpleasant part of the work, and it gets done.', weak: 'Things hidden at home come to light and embarrass.' } },
+        33: { 3: { strong: 'Tiring household work that holds {him} back: done well with help in the house.', weak: 'Held back by the house and its chores: nerve-wracking.' } },
+        37: { 4: { strong: 'The woman of the house is its treasure: the home is cared for and prospers.', weak: 'The house leans on one person only.' } },
+        50: { 5: { strong: 'The kitchen and the table in good order: the result of the work shows.', weak: 'A fine kitchen, but it takes constant care.' } },
+        14: { 5: { strong: 'A full house run with sincerity and dignity.', weak: 'Much to look after: {he} must keep some distance from the things.' },
+              3: { strong: 'Sorting the things: the best are given away or put in the place of honour.', weak: 'Unable to let go of what {he} owns.' } },
+        38: { 3: { strong: 'Heavy work with snags and things in the way: not a good start, but a good end.', weak: 'Everything gets in the way and pulls back: strain and irritation at home.' } },
+        41: { 4: { strong: 'Throwing away what is too much: the house gets lighter and others are glad.', weak: 'Something has to go, and it is hard to give it up.' } },
+        4: { 4: { strong: 'A moment of confusion in the work: a pause, and it clears.', weak: 'Tangled up and irritable: better to stop than to insist.' } },
+        54: { 6: { strong: 'The basket is empty: nothing more to do, time to rest.', weak: 'Effort without result: stop for today.' } }
       },
       study: {
         12: { 4: { strong: 'A teacher or a school gives a direction, and {he} follows it.', weak: 'Study restarts, but {he} depends on others to go on.' } },

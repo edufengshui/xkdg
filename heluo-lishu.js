@@ -304,7 +304,7 @@
   // ── Sphere of life (Edu 15/11/2026): one sphere chosen → every hexagram with an active line gets the reading of that sphere.
   // Data in heluo-readings.js (`spheres`): relation × sphere meaning + the image of the line (hand-written where there are real
   // cases, otherwise the general strong / weak reading). Side: the score of the text (> 0 favourable, < 0 unfavourable, 0 both).
-  var SPH_FALL = [['money', 'Money'], ['career', 'Career'], ['love', 'Love'], ['health', 'Health'], ['luck', 'Luck'], ['study', 'Study & teaching']];
+  var SPH_FALL = [['money', 'Money'], ['career', 'Career'], ['love', 'Love'], ['health', 'Health'], ['luck', 'Luck'], ['study', 'Study & teaching'], ['home', 'Home & family']];
   function sphGet() { try { return localStorage.getItem('xkdg_hl_sphere') || ''; } catch (e) { return ''; } }
   function sphOpts() { var S = root.XKDG_HELUO_READINGS && root.XKDG_HELUO_READINGS.spheres, cur = sphGet();
     return '<option value="">General</option>' + (S ? S.list : SPH_FALL).map(function (x) { return '<option value="' + x[0] + '"' + (cur === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join(''); }
