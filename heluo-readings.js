@@ -514,5 +514,59 @@
     4: { strong: 'Years of determined work beat every obstacle: great rewards.', weak: 'A long fight: years of hard effort before the reward.' },
     5: { strong: 'A true, clear light: everything {he} does comes to completion, great luck.', weak: '{He} shines, but needs others to complete the work.' },
     6: { strong: 'The journey is done: {he} celebrates with friends, in trust and with measure.', weak: 'Too much celebrating: {he} loses {his} head.' }
+  },
+  // ── Spheres of life (Edu 15/11/2026: «a selector of human sphere — money, career, love, health, luck… — otherwise everything
+  // stays very general»). Rule: the IMAGE of the line text stays the same; the RELATION of the line (P C W G B for the person)
+  // says who or what carries it in the chosen sphere. `rel` = what each relation means in a sphere (love: M / F differ);
+  // `lines` = readings written by hand where there are real cases (first ones: love, from cases told by Edu, no names or dates).
+  // Shown by sphereHtml() in heluo-lishu.js under every hexagram with an active line. Reading only, no score.
+  spheres: {
+    list: [['money', 'Money', '💰'], ['career', 'Career', '🏛'], ['love', 'Love', '♥'], ['health', 'Health', '✚'], ['luck', 'Luck', '☘'], ['study', 'Study & teaching', '📚']],
+    rel: {
+      money: { W: 'the money itself: clients, deals, direct gain', C: 'the source of money: ideas, products and projects that bring it', B: 'partners and competitors: money shared, or going out',
+        G: 'obligations and pressure from above: taxes, debts — or money that comes through an assignment', P: 'the base: house, contracts, tools, what {he} invests in to be supported' },
+      career: { G: 'authority and position: the boss, a mandate, rank — or pressure from above', P: 'backing: titles, documents, mentors and those who stand behind {him}', W: 'results and resources that feed the position',
+        C: '{his} own initiative and freedom: it creates, but pushes against bosses and rules', B: 'colleagues and rivals' },
+      love: { M: { W: 'the partner, the woman in {his} life', G: 'a passion that takes {him} over, pressure, or a rival', C: 'desire, pleasure and joy — and the children', B: 'friends and rivals: someone competes for the partner', P: 'home and family: the base of the couple, the papers that tie it' },
+        F: { G: 'the partner, the man in {his} life', W: 'what {he} gives and manages in the couple, the material side', C: 'desire, pleasure and joy, the children — it pushes the man away if too strong', B: 'friends and rivals: someone competes for the partner', P: 'home and family: the base of the couple, the papers that tie it' } },
+      health: { G: 'the illness: stress, pressure on the body', C: 'the cure: recovery, good spirits, what keeps the illness away', P: 'care and protection: rest, doctors, treatments',
+        W: 'appetite, food and pleasures: in excess they feed the illness', B: 'energy and stamina — or overexertion' },
+      luck: { P: 'protection: help that comes from above', C: 'good fortune from what {he} creates and enjoys', W: 'luck with money and with chances taken', G: 'a test of fate: pressure that can lift {him} or weigh on {him}', B: 'luck through friends and allies — or shared with rivals' },
+      study: { P: 'study itself: teachers, schools, books, diplomas', C: 'teaching and writing: students, and expressing what {he} knows', G: 'exams, discipline and the rules of a school',
+        W: 'practical matters: study that pays — or money and pleasures that distract from it', B: 'fellow students and colleagues' }
+    },
+    lines: {
+      love: {
+        1: { 1: { strong: 'Desires stay under the surface: the heart waits, ready to wake up.', weak: 'Feelings held back too long: a life on hold.' },
+             6: { strong: '{He} keeps apart: few ties, but chosen ones.', weak: 'Pride isolates: friends and close ties leave in silence.' } },
+        12: { 4: { strong: 'A passion breaks a long standstill: {he} lives it as something bigger than {himself}, without guilt.', weak: 'The stuck couple starts to move, but for now it depends on others.' } },
+        35: { 5: { strong: 'The bond grows and shows: {he} stops counting gains and losses, and it becomes a base.', weak: 'Ups and downs in the relationship: {he} has to stop counting every loss.' } },
+        16: { 6: { strong: 'An enthusiasm that was an illusion ends: {he} changes road in time — separations that set free.', weak: 'Lost in the illusion of a love: {he} has to wake up before it is too late.' } },
+        51: { 1: { strong: 'A fright that turns into laughter: a new, sudden love — moving in together.', weak: 'Shocks and fears in the couple from the start.' } },
+        30: { 5: { strong: 'Tears, then good luck: a painful goodbye (a home, a place, a story) that ends well.', weak: 'Sadness and tears for the loved one.' } },
+        14: { 2: { strong: 'A big wagon: {he} meets the person to build and work with.', weak: 'Much to carry together: the wagon is heavy.' } },
+        29: { 1: { strong: 'First troubles in the couple, but {he} learns to move through them.', weak: 'A pit within a pit: crises and jealousy pile up.' } }
+      },
+      money: {
+        12: { 4: { strong: 'The standstill ends through an assignment from someone higher up, not by {his} own move: those who work with {him} gain too.', weak: 'Money starts to move again, but it depends on others.' } },
+        35: { 5: { strong: 'A year to invest in the base (house, contracts, tools) without counting every cent: the return comes.', weak: 'Gains and losses alternate: no use keeping score.' } },
+        16: { 6: { strong: 'A project or deal {he} believed in proves an illusion: closing in time, nothing is lost.', weak: 'Money put into an illusion: stop before it costs more.' } }
+      },
+      career: {
+        12: { 4: { strong: 'A call or a mandate from an authority: it works if {he} acts under that cover, not alone.', weak: 'Things turn, but {he} still waits for orders from others.' } },
+        35: { 5: { strong: '{He} advances and is seen: those above recognise {him}.', weak: 'Progress with ups and downs: do not weigh every setback.' } },
+        16: { 6: { strong: 'A phase or a collaboration ends: {he} changes direction without damage.', weak: 'Carried away by a role that is not real: time to change.' } }
+      },
+      health: {
+        12: { 4: { strong: 'Stress and heat on the body, but no harm if {he} follows those who know more (the doctor).', weak: 'Recovery is slow and depends on others.' } },
+        35: { 5: { strong: 'Recovery: the cures work and the worries go.', weak: 'Better and worse days: worrying does not help.' } },
+        16: { 6: { strong: 'Too many pleasures and wrong rhythms send the bill: changing habits is enough.', weak: 'Excess wears {him} out: change before it is late.' } }
+      },
+      study: {
+        12: { 4: { strong: 'A teacher or a school gives a direction, and {he} follows it.', weak: 'Study restarts, but {he} depends on others to go on.' } },
+        35: { 5: { strong: 'What {he} studies becomes solid and can be shown.', weak: 'Study advances unevenly: no counting of results.' } },
+        16: { 6: { strong: 'The enthusiasm for a method or a teacher fades: {he} moves on to something else.', weak: 'Infatuated with a teaching that does not hold: time to change.' } }
+      }
+    }
   }
 }));

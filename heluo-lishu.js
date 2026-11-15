@@ -301,6 +301,35 @@
     return _qy[n] || null;
   }
   function qyOn() { try { return localStorage.getItem('xkdg_hl_qiyun') === '1'; } catch (e) { return false; } }
+  // ── Sphere of life (Edu 15/11/2026): one sphere chosen → every hexagram with an active line gets the reading of that sphere.
+  // Data in heluo-readings.js (`spheres`): relation × sphere meaning + the image of the line (hand-written where there are real
+  // cases, otherwise the general strong / weak reading). Side: the score of the text (> 0 favourable, < 0 unfavourable, 0 both).
+  var SPH_FALL = [['money', 'Money'], ['career', 'Career'], ['love', 'Love'], ['health', 'Health'], ['luck', 'Luck'], ['study', 'Study & teaching']];
+  function sphGet() { try { return localStorage.getItem('xkdg_hl_sphere') || ''; } catch (e) { return ''; } }
+  function sphOpts() { var S = root.XKDG_HELUO_READINGS && root.XKDG_HELUO_READINGS.spheres, cur = sphGet();
+    return '<option value="">General</option>' + (S ? S.list : SPH_FALL).map(function (x) { return '<option value="' + x[0] + '"' + (cur === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join(''); }
+  root.xkdgHLSphere = function (v) { try { localStorage.setItem('xkdg_hl_sphere', v || ''); } catch (e) {} try { render(); } catch (e) {} };
+  function sphPron(t, male) {
+    var m = male ? { he: 'he', He: 'He', his: 'his', His: 'His', him: 'him', himself: 'himself' } : { he: 'she', He: 'She', his: 'her', His: 'Her', him: 'her', himself: 'herself' };
+    return String(t).replace(/\{(\w+)\}/g, function (x, k) { return m[k] || x; });
+  }
+  function sphereHtml(hx, ln, me) {
+    try {
+      var sp = sphGet(), RD = root.XKDG_HELUO_READINGS, S = RD && RD.spheres, d = NJ() && NJ()[hx.n];
+      if (!sp || !S || !d || !ln || !S.rel[sp]) return '';
+      var male = !_chart || _chart.male !== false, r = relL(me, d.lines[ln - 1].el), R_ = S.rel[sp]; if (sp === 'love') R_ = R_[male ? 'M' : 'F'];
+      var hand = S.lines[sp] && S.lines[sp][hx.n] && S.lines[sp][hx.n][ln], t = hand || (RD[hx.n] && RD[hx.n][ln]);
+      var sc = root.XKDG_HELUO_SCORES && root.XKDG_HELUO_SCORES[hx.n] ? root.XKDG_HELUO_SCORES[hx.n].l[ln] : 0, lab = S.list.filter(function (x) { return x[0] === sp; })[0];
+      var body = !t ? '' : sc > 0 ? esc(sphPron(t.strong, male)) : sc < 0 ? esc(sphPron(t.weak, male))
+        : '<span style="color:#2e7d32;">▲ with the time in favour:</span> ' + esc(sphPron(t.strong, male)) + ' <span style="color:#c62828;">▼ against:</span> ' + esc(sphPron(t.weak, male));
+      var lk = '';
+      if (sp === 'luck' && _chart && _chart.R && _chart.R.luck) { var tr = ln <= 3 ? hx.lower : hx.upper, K = _chart.R.luck, nm = { heaven: 'Heaven', earth: 'Earth', fame: 'Fame' }, a = [];
+        ['heaven', 'earth', 'fame'].forEach(function (k) { if (K[k] === tr) a.push('the line sits in ' + tr + ', the ' + nm[k] + ' Luck'); if (K.opposite && K.opposite[k] === tr) a.push('the line sits in ' + tr + ', the opposite of the ' + nm[k] + ' Luck'); });
+        lk = a.length ? ' <b>' + esc(a.join('; ')) + '.</b>' : ' The line sits in ' + esc(tr) + ': none of the three Luck.'; }
+      return '<div style="font-size:12px;line-height:1.5;margin:2px 0 6px;padding:5px 8px;background:#fff8e1;border-left:3px solid #f9a825;border-radius:4px;color:#333;">'
+        + '<b>' + lab[2] + ' ' + esc(lab[1]) + '</b> · ' + REL[r] + ' = ' + esc(sphPron(R_[r], male)) + '.' + (body ? '<br>' + body : '') + (hand ? '' : ' <span style="color:#999;font-size:10px;">(general image)</span>') + lk + '</div>';
+    } catch (e) { return ''; }
+  }
   function qyTxt(n) { var q = qyOn() && qiYun(n); return q ? 'Qi <b style="color:#c62828;">' + q[0] + '</b> · Yun <b style="color:#1565c0;">' + q[1] + '</b>' : ''; }
   root.xkdgHLQiYun = function (on) { try { localStorage.setItem('xkdg_hl_qiyun', on ? '1' : '0'); } catch (e) {} try { render(); } catch (e) {} };
   // 6 lines, bottom-up; mv = moving line (red dot)
@@ -480,6 +509,7 @@
         + '<div><label style="' + L + '">Person</label><select id="hl-p" onchange="xkdgHLPerson()" style="' + F + 'max-width:170px;"></select></div>'
         + '<div><label style="' + L + '">Gender</label><select id="hl-g" onchange="xkdgHLGender()" style="' + F + '"><option value="">—</option><option value="M">Man</option><option value="F">Woman</option></select></div>'
         + '<label title="Show the XKDG numbers of every hexagram: Qi (element) and Yun (period)" style="font-size:12px;color:#4527a0;display:flex;align-items:center;gap:5px;padding:6px 0;cursor:pointer;"><input type="checkbox" id="hl-qy" onchange="xkdgHLQiYun(this.checked)"' + (qyOn() ? ' checked' : '') + '> Qi · Yun</label>'
+        + '<div><label style="' + L + '">Sphere</label><select id="hl-sph" title="Read every active line for one sphere of life" onchange="xkdgHLSphere(this.value)" style="' + F + '">' + sphOpts() + '</select></div>'
         + '</div><div style="display:flex;gap:4px;border-bottom:2px solid #d1c4e9;margin:4px 0 8px;">'
         + '<button id="hl-tab-chart" onclick="xkdgHLTab(\'chart\')" style="' + TB + '">Chart &amp; reading</button>'
         + '<button id="hl-tab-ds" onclick="xkdgHLTab(\'ds\')" style="' + TB + '">Date Selection</button></div>'
@@ -555,7 +585,7 @@
       s += '<text x="' + (W / 2) + '" y="' + (H - 24) + '" text-anchor="middle" font-size="12" font-weight="600"' + F + ' fill="#c62828">Line ' + ln + ': ' + A.branch + ' ' + A.el + ' · person ' + me + '</text>'
          + '<text x="' + (W / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11"' + F + ' fill="#555">' + REL[relL(me, A.el)] + (cap ? ' · ' + esc(cap) : '') + '</text>';
     }
-    return s + '</svg>';
+    return s + '</svg>' + (ln ? sphereHtml(hx, ln, me) : '');
   }
   var _cyc = {}, _cycN = 0;
   root.xkdgHLCycle = function (id) {
