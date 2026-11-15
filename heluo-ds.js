@@ -1762,15 +1762,16 @@
   }
   // Person A's active mother hexagram on a date (for the Assistant's date scan; Edu 15/11/2026). Cached by day.
   var _momCache = {};
-  function motherOf(iso) {
-    if (_momCache[iso] !== undefined) return _momCache[iso];
-    var out = null;
+  function motherOf(iso, who) {
+    var out = null, ck = null;
     try {
-      var ch = H().chartA ? H().chartA() : { err: 1 }, m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      var ch = H().chartOf ? H().chartOf(who === 'B' ? 'B' : 'A') : H().chartA ? H().chartA() : { err: 1 }, m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      ck = (ch.key || (ch.c ? [ch.c.date, ch.c.time, ch.male].join('|') : '')) + '@' + iso;   // session 52: per person (A or B) and birth data
+      if (!ch.err && _momCache[ck] !== undefined) return _momCache[ck];
       if (!ch.err && m) { var lon = xkLon(ch.c); if (isFinite(lon)) { var th = thread(context(ch.R, ch.Pn, ch.male), pillarsTstNoon(+m[1], +m[2], +m[3], lon), lon, 'wealth');
         var M = th && th.p && th.p.hx ? xkMother(th.p.hx.n) : null; if (M) { M.phase = th.p.phase === 'HT' ? 'Hou Tian' : 'Xian Tian'; M.lines = NJ()[M.n].lines.map(function (L) { return { pos: L.pos, branch: L.branch, el: L.el, rel: rel(th.pers, L.el) }; }); out = M; } } }
     } catch (e) { out = null; }
-    if (out) _momCache[iso] = out; return out;
+    if (out && ck) _momCache[ck] = out; return out;
   }
   // Lines of the mother hexagram taken by a date (Edu 15/11/2026; HLLS project: claude/hlls-madre-linee.md): a line is ACTIVATED
   // when the DAY carries its Na Jia branch (lucky events about twice as often as chance for Wealth); the HOUR that clashes the

@@ -988,7 +988,10 @@
         'user\'s clock will show. Each row also has mother_hexagram_joins (Person A): "yes" when the four pillars of the hour close ' +
         'into a whole XKDG bond AND Person A\'s active He Luo mother hexagram (Xian Tian or Hou Tian, as Qi/Yun; see mother_hexagram) ' +
         'joins that network. When the user asks for dates that communicate with his mother / XT / HT hexagram, use THIS field, ' +
-        'not check_hexagrams (that only links the day pillar). Scan up to ~3 months if no row says yes.',
+        'not check_hexagrams (that only links the day pillar). Scan up to ~3 months if no row says yes. ' +
+        'Session 52 (Edu): in the Date Selection a person is represented by the hexagram of the birth YEAR and ALSO by the active ' +
+        'mother hexagram (Xian Tian before the change of life phase, Hou Tian after): either one connecting with the date is enough, ' +
+        'and the scores already include it. A person label ending in "(◎ mother)" means that link comes from the mother hexagram - say so.',
       input_schema: {
         type: 'object',
         properties: {

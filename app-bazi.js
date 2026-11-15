@@ -2016,15 +2016,19 @@ function xkdgBLPersonCheck(analysisItems, pillars, persons) {
             if (!P || !P.year || !P.year.stem) return;
             const pyFams = getJiaZiFamilies(P.year.stem, P.year.branch);
             if (pyFams.some(f => blFams.includes(f))) { out.push({ label: P.label, status: 'family' }); return; }
+            // session 52: the active mother hexagram represents the person too (flagged ◎ when she makes the link)
+            const mo = _xkdgMomFor(P.year.stem, P.year.branch);
+            if (mo && mo._fams.some(f => blFams.includes(f))) { out.push({ label: P.label, status: 'family', mom: true }); return; }
             const mine = [P.year, P.day].filter(x => x && x.stem).map(x => Object.assign({ stem: x.stem, branch: x.branch }, getXkdgData(x.stem, x.branch) || {}));
             const dates = [pillars.year, pillars.day].filter(Boolean);
-            const talks = mine.some(a => dates.some(b => {
+            const talk1 = a => dates.some(b => {
                 if (a.qi == null || b.qi == null) return false;
                 if (isHetuPair(a.qi, b.qi) || isHetuPair(a.yun, b.yun)) return true;
                 if ([5,10,15].includes(a.qi + b.qi) || [5,10,15].includes(a.yun + b.yun)) return true;
-                return getJiaZiFamilies(a.stem, a.branch).some(f => getJiaZiFamilies(b.stem, b.branch).includes(f));
-            }));
-            out.push({ label: P.label, status: talks ? 'bridge' : 'alert' });
+                return (a._fams || getJiaZiFamilies(a.stem, a.branch)).some(f => getJiaZiFamilies(b.stem, b.branch).includes(f));
+            });
+            const talks = mine.some(talk1), momTalks = !talks && !!mo && talk1(mo);
+            out.push({ label: P.label, status: (talks || momTalks) ? 'bridge' : 'alert', mom: momTalks });
         });
         return out.length ? out : null;
     } catch (e) { return null; }
@@ -2032,8 +2036,8 @@ function xkdgBLPersonCheck(analysisItems, pillars, persons) {
 // Session 33 (Edu): the status is ALWAYS written on a Blood Link date, one line per person.
 function xkdgBLAlertText(res) {
     if (!res) return '';
-    return res.map(r => r.status === 'family' ? ('✓ BL: ' + r.label + ' same family')
-                      : r.status === 'bridge' ? ('BL: ' + r.label + ' connected (birth year/day ↔ date year/day)')
+    return res.map(r => r.status === 'family' ? ('✓ BL: ' + r.label + ' same family' + (r.mom ? ' (◎ mother)' : ''))
+                      : r.status === 'bridge' ? ('BL: ' + r.label + (r.mom ? ' connected (◎ mother ↔ date year/day)' : ' connected (birth year/day ↔ date year/day)'))
                       : ('⚠ BL: ' + r.label + ' not connected')).join(' · ');
 }
 function xkdgBLStatusHtml(txt) {
@@ -2747,6 +2751,10 @@ function calculateBazi() {
     updatePillar('p-month', pillarKeys.month.stem, pillarKeys.month.branch, xkdgData.month, nayinOf(pillarKeys.month));
     updatePillar('p-day',   pillarKeys.day.stem,   pillarKeys.day.branch,   xkdgData.day,   nayinOf(pillarKeys.day));
     updatePillar('p-hour',  pillarKeys.hour.stem,  pillarKeys.hour.branch,  xkdgData.hour,  nayinOf(pillarKeys.hour));
+    try {                                             // session 52: date for the persons' active mother hexagram
+        xkdgMomDate(dVal);
+        if (!window._xkMomWarm && xkdgMomPending()) { window._xkMomWarm = 1; window.XKDGHeluo.ensure(function () { try { calculateBazi(); } catch (e) {} }); }
+    } catch (eM) {}
     try { xkdgMotherCol(dVal, ['year', 'month', 'day', 'hour'].map(k => pillarKeys[k].stem + pillarKeys[k].branch)); } catch (eM) {}
     // Session 43 (Edu): Tai Sui / Sui Po / Five Yellow / San Sha / Wu Ji of this date (time-afflictions.js).
     try {
@@ -5089,8 +5097,59 @@ let _personYearBranch = null;
 // Session 33 (Edu): a person connects with a date through the birth YEAR and, failing that,
 // through the birth DAY pillar (session 31 rule: year first, day second). Same relations as
 // the year: family, Hetu, Adding 5/10/15, Pure Qi when the date carries it, inverse hexagram.
+// ── ◎ MOTHER HEXAGRAM as the person's second representative (Edu, 15/11/2026, session 52) ──
+// In the Date Selection a person is represented by the hexagram of the birth YEAR and ALSO by the active He Luo mother
+// hexagram: Xian Tian before the change of life phase, Hou Tian after (heluo-ds.js motherOf, by the date being examined).
+// Either one connecting is enough; wherever the link comes from the mother it is flagged with ◎. The mother is a hexagram
+// only (Qi, Yun, family): it has no branch, so no clash checks. Needs birth date + hour + gender (M/F in the He Luo window).
+var _xkMomIso = '';                                  // the date being examined (set by the chart and by every scan loop)
+function xkdgMomDate(iso) { if (iso) _xkMomIso = iso; }
+function _xkdgMomWho(pStem, pBranch) {
+    try {
+        if (!pStem || !pBranch) return null;
+        if (typeof _personAStem !== 'undefined' && pStem === _personAStem && pBranch === _personABranch) return 'A';
+        if (typeof _personBStem !== 'undefined' && pStem === _personBStem && pBranch === _personBBranch) return 'B';
+    } catch (e) {}
+    return null;
+}
+function xkdgMomOf(who) {
+    try {
+        if (who !== 'A' && who !== 'B') return null;
+        if (_personDepth(who) < 4) return null;       // the He Luo chart needs the birth hour
+        const HL = window.XKDGHeluo, DSm = window.XKDGHeluoDS;
+        if (!HL || !HL.chartOf || !HL.ready || !HL.ready() || !DSm || !DSm.motherOf) return null;
+        const M = DSm.motherOf(_xkMomIso || localISODate(new Date()), who);
+        return M ? { qi: M.qi, yun: M.yun, hex: M.n, families: M.fam || [], _fams: M.fam || [], _mom: true, phase: M.phase } : null;
+    } catch (e) { return null; }
+}
+function _xkdgMomFor(pStem, pBranch) { const w = _xkdgMomWho(pStem, pBranch); return w ? xkdgMomOf(w) : null; }
+// true = a loaded person has a He Luo chart but the He Luo engine is not loaded yet (it is loaded on demand).
+function xkdgMomPending() {
+    try {
+        const HL = window.XKDGHeluo; if (!HL || !HL.chartOf || !HL.ready || HL.ready()) return false;
+        return ['A', 'B'].some(w => (w === 'A' ? _personAYear : _personBYear) && _personDepth(w) >= 4 && !HL.chartOf(w).err);
+    } catch (e) { return false; }
+}
+// Broad link of the mother with the DAY of the date (same relations as the birth year / birth day).
+function xkdgMomTalk(mo, dGan, dZhi, blueItems) {
+    try {
+        const d = getXkdgData(dGan, dZhi); if (!mo || !d) return false;
+        const bi = blueItems || [];
+        return isHetuPair(mo.qi, d.qi) || [5,10,15].includes(mo.qi + d.qi) || isHetuPair(mo.yun, d.yun) || [5,10,15].includes(mo.yun + d.yun) ||
+               (bi.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Elements') && mo.qi === d.qi) ||
+               (bi.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Periods') && mo.yun === d.yun) ||
+               (mo.hex && d.hex && getInverseHex(d.hex) === mo.hex) ||
+               mo._fams.some(f => getJiaZiFamilies(dGan, dZhi).includes(f));
+    } catch (e) { return false; }
+}
 function xkdgPersonDayTalk(pDayStem, pDayBranch, dGan, dZhi, blueItems) {
     try {
+        // session 52: every broad «does the person talk with the day» check falls back here → the mother counts too
+        try {
+            const w = (pDayStem && typeof _personADayStem !== 'undefined' && pDayStem === _personADayStem && pDayBranch === _personADayBranch) ? 'A'
+                    : (pDayStem && typeof _personBDayStem !== 'undefined' && pDayStem === _personBDayStem && pDayBranch === _personBDayBranch) ? 'B' : null;
+            if (w && xkdgMomTalk(xkdgMomOf(w), dGan, dZhi, blueItems)) return true;
+        } catch (e) {}
         if (!pDayStem || !pDayBranch) return false;
         const p = getXkdgData(pDayStem, pDayBranch), d = getXkdgData(dGan, dZhi);
         if (!p || !d) return false;
@@ -5115,15 +5174,18 @@ function getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, 
     if (!personYear || !dayXkdg) return 0;
     if (!_noDay) {
         const ys = getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, true);
-        if (ys > 0) return ys;
+        // session 52: birth year OR active mother hexagram — the better of the two
+        const mo = personYear._mom ? null : _xkdgMomFor(pStem, pBranch);
+        const ms = mo ? getMatchScore(mo, null, null, dayXkdg, dayStem, dayBranch, true) : 0;
+        if (ys > 0) return Math.max(ys, ms);
         const pd = _xkdgPersonDayFor(pStem, pBranch), px = pd ? getXkdgData(pd[0], pd[1]) : null;
-        return px ? getMatchScore(px, pd[0], pd[1], dayXkdg, dayStem, dayBranch, true) : 0;
+        return Math.max(ms, px ? getMatchScore(px, pd[0], pd[1], dayXkdg, dayStem, dayBranch, true) : 0);
     }
     const pQi = personYear.qi, pYun = personYear.yun;
     const dQi = dayXkdg.qi,   dYun = dayXkdg.yun;
 
     // Family (highest = 4)
-    const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
+    const sharedFams = (personYear._fams || getJiaZiFamilies(pStem, pBranch)).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
     if (sharedFams.length > 0) return 4;
 
     // Pure Qi (= 3): exact same qi OR same yun
@@ -5157,7 +5219,16 @@ function getDateQualityScore(analysisItems) {
 
 function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch, _isDay) {
     if (!_isDay) {
-        const ly = getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch, true);
+        let ly = getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch, true);
+        // session 52: the active mother hexagram is a second representative; what only SHE brings is flagged ◎
+        try {
+            const mo = (personYear && !personYear._mom) ? _xkdgMomFor(pStem, pBranch) : null;
+            if (mo) {
+                const lm = getMatchLabels(mo, null, null, dayXkdg, dayStem, dayBranch, null, null, null, true)
+                    .filter(l => !l.startsWith('Partial BL') && !ly.includes(l)).map(l => l + ' (◎ mother)');
+                if (lm.length) ly = ly.concat(lm);
+            }
+        } catch (e) {}
         if (ly.length) return ly;
         // Session 33 (Edu): no link through the birth YEAR -> try the birth DAY pillar.
         const pd = (personDayStem && personDayBranch) ? [personDayStem, personDayBranch] : _xkdgPersonDayFor(pStem, pBranch);
@@ -5226,7 +5297,7 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
     if (hasGroupPureQi && (pQi === dayXkdg.qi || pYun === dayXkdg.yun)) labels.push('Pure Qi');
 
     const hasGroupFamily = items.some(i => i.tag === 'family');
-    const sharedFams = getJiaZiFamilies(pStem, pBranch).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
+    const sharedFams = (personYear._fams || getJiaZiFamilies(pStem, pBranch)).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
     if (hasGroupFamily && sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
 
     // Inverse Hex: group must have Inverse Hex setting, person's year hex = inverse of day hex
@@ -5309,6 +5380,10 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
 // Condition B: connects in a different way → no extra bonus (score unchanged).
 function getPersonSameTypeBonus(blueItems, personYear, dayXkdg, pStem, pBranch, dayStem, dayBranch) {
     if (!personYear || !dayXkdg) return 0;
+    if (!personYear._mom) {                           // session 52: birth year OR active mother hexagram
+        const mo = _xkdgMomFor(pStem, pBranch);
+        if (mo && getPersonSameTypeBonus(blueItems, mo, dayXkdg, null, null, dayStem, dayBranch) > 0) return 4;
+    }
 
     const pQi  = personYear.qi,  pYun = personYear.yun;
     const dQi  = dayXkdg.qi,     dYun = dayXkdg.yun;
@@ -5322,7 +5397,7 @@ function getPersonSameTypeBonus(blueItems, personYear, dayXkdg, pStem, pBranch, 
     const hasDateHetu      = blueItems.some(i => i.text === 'Hetu Elements'   || i.text === 'Hetu Periods'   || i.text === 'Hetu');
 
     // Person connection types with the day
-    const personIsFamily    = getJiaZiFamilies(pStem, pBranch).some(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
+    const personIsFamily    = (personYear._fams || getJiaZiFamilies(pStem, pBranch)).some(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
     const personIsPureQiEl  = pQi  === dQi;
     const personIsPureQiPer = pYun === dYun;
     const personIsAddingEl  = [5,10,15].includes(pQi  + dQi);
@@ -6412,6 +6487,16 @@ function runAll() {
             }
         }
     } catch (e) {}
+    // session 52: a loaded person with a He Luo chart is represented by the mother hexagram too → load the engine first
+    // (once per session; if the engine cannot be loaded — offline — the scan runs anyway after 15 s, on the birth year alone)
+    try {
+        if (!window._xkMomTried && xkdgMomPending()) {
+            window._xkMomTried = 1;
+            let _done = false; const _go = function () { if (_done) return; _done = true; runAll(); };
+            window.XKDGHeluo.ensure(_go); setTimeout(_go, 15000);
+            return;
+        }
+    } catch (e) {}
     const testModeEl = document.getElementById('purpose-no-person');
     const testModeOn = testModeEl && testModeEl.checked;
     if (getPurpose() && !_personAYear && !_personBYear && !testModeOn) {
@@ -6488,6 +6573,7 @@ function buildTableView() {
 
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(base.getTime() + d * 86400000);
+        try { xkdgMomDate(localISODate(dayDate)); } catch (eMo) {}
         const isoDate = localISODate(dayDate);
         const isToday = isoDate === localISODate(new Date());
 
@@ -6978,6 +7064,7 @@ function buildCalView() {
     const totalDays = Math.round((calMonthEnd - calMonthStart) / 86400000) + 1;
     for (let d = 0; d < totalDays; d++) {
         const dayDate  = new Date(calMonthStart.getTime() + d * 86400000);
+        try { xkdgMomDate(localISODate(dayDate)); } catch (eMo) {}
         const monthKey = dayDate.getFullYear() + '-' + String(dayDate.getMonth()+1).padStart(2,'0');
         if (!months[monthKey]) months[monthKey] = [];
         months[monthKey].push(dayDate);
@@ -7030,6 +7117,7 @@ function buildCalView() {
         // Iterate ALL days of the month
         for (let dd = 1; dd <= monthEnd.getDate(); dd++) {
             const dayDate = new Date(yr, mo-1, dd);
+            try { xkdgMomDate(localISODate(dayDate)); } catch (eMo) {}
             const isoDate = localISODate(dayDate);
             const isToday = isoDate === today;
             const isInRange = dayDate >= calMonthStart && dayDate <= calMonthEnd;
@@ -7499,6 +7587,7 @@ function buildMonthView() {
 
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
+        try { xkdgMomDate(localISODate(dayDate)); } catch (eMo) {}
             const _isoDay = localISODate(dayDate);
             if (!isDateAllowed(_isoDay)) continue;
         // Show-all bypass: when the user clicks a day in CAL, drill-down should
@@ -9419,6 +9508,10 @@ function getPersonYearData() {
 
 function personConnects(dayData, personYear, filters, blueItems) {
     if (!personYear || !dayData) return true;
+    if (!personYear._mom) {                           // session 52: birth year OR active mother hexagram
+        const mo = _xkdgMomFor(personYear.stem, personYear.branch);
+        if (mo && personConnects(dayData, mo, filters, blueItems)) return true;
+    }
     const dQi  = dayData.qi,  dYun = dayData.yun;
     const pQi  = personYear.qi, pYun = personYear.yun;
 
@@ -9690,6 +9783,7 @@ function runScanner() {
     try {
     for (let d = 0; d < days; d++) {
         const dayDate = new Date(start.getTime() + d * 86400000);
+        try { xkdgMomDate(localISODate(dayDate)); } catch (eMo) {}
             const _isoDay = localISODate(dayDate);
             if (!isDateAllowed(_isoDay)) continue;
 

@@ -1085,6 +1085,20 @@
     try { R = compute(c, g === 'M'); } catch (e) {}
     return R ? { c: c, R: R, male: g === 'M', Pn: R.input.Pn } : { err: 'longitude' };
   };
+  // chartOf('A'|'B') (Edu 15/11/2026, session 52): the same for Person B; memoised on the birth data, for the date scans.
+  var _chMemo = {};
+  root.XKDGHeluo.chartOf = function (who) {
+    var B = who === 'B', date = ($(B ? 'person-date-b' : 'person-date') || {}).value, time = ($(B ? 'person-time-b' : 'person-time') || {}).value; if (!date || !time) return { err: 'birth' };
+    var nm = (($(B ? 'person-name-b' : 'person-name') || {}).value || '').trim() || (B ? 'Person B' : 'Person A'), g = genderGet(nm); if (g !== 'M' && g !== 'F') return { err: 'gender' };
+    var geo = null; try { geo = root._personBirthGeo(B ? 'B' : 'A'); } catch (e) {}
+    var lon0 = parseFloat(($('longitude') || {}).value), utc0 = parseFloat(($('utc-offset') || {}).value) || 0;
+    var c = { name: nm, date: date, time: time, lon: geo ? geo.lon : lon0, utc: geo ? geo.utc : utc0, dst: !!(geo && geo.dst) };
+    var key = [B ? 'B' : 'A', date, time, g, c.lon, c.utc, c.dst].join('|'), hit = _chMemo[B ? 'B' : 'A']; if (hit && hit.key === key) return hit;
+    var R = null; try { R = compute(c, g === 'M'); } catch (e) {}
+    var out = R ? { c: c, R: R, male: g === 'M', Pn: R.input.Pn, key: key } : { err: 'longitude' };
+    if (R) _chMemo[B ? 'B' : 'A'] = out;
+    return out;
+  };
   var _ensQ = null;
   root.XKDGHeluo.ready = function () { return !!(NJ() && TX() && root.XKDGHeluoDS && root.XKDG_HELUO_SCORES); };
   root.XKDGHeluo.ensure = function (cb) {
