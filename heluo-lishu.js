@@ -442,6 +442,7 @@
       + '<div style="font-size:14px;font-weight:600;color:#4527a0;margin-top:6px;">Annual ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · moved line ' + a.moved + '</div>'
       + brings + cycleHexSvg(a.hex, a.moved, aPer, me)
       + (oi.length ? '<div style="font-size:12px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oi.join(', ') + '</div>' : '')
+      + sixAnnTag(a.hex.n, 12)
       + '<div style="font-size:12px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
       + lineBody(a.hex.n, a.moved, 'year') + hexText(a.hex.n));
   }
@@ -731,6 +732,7 @@
       + ' · person <b>' + me + '</b>' + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + fmtCard('Annual ' + Y + ' · ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · age ' + a.age + ' · moved line ' + a.moved, a.hex, a.moved, aPer, me,
           (oppInvTag(R, a.hex).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex).join(', ') + '</div>' : '')
+          + sixAnnTag(a.hex.n)
           + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
           + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)', 'year')) + '</div>';
     // Edu: ALWAYS true solar time. Month starts and the days of the month are counted in the TRUE SOLAR TIME of the
@@ -946,6 +948,9 @@
     } catch (e) { return '<div style="font-size:12px;color:#c0392b;margin-top:10px;">Natal reading failed: ' + esc(e && e.message) + '</div>'; }
   }
   // which native hexagram (if any) the given one is opposite / inverse of
+  // Edu 15/11/2026: annual Six Clashes (六冲卦) = year of separations (famous: 5 of 11 separations, ~18% of all years)
+  var SIX_ANN = { 1: 1, 2: 1, 29: 1, 30: 1, 51: 1, 52: 1, 57: 1, 58: 1, 25: 1, 34: 1 };
+  function sixAnnTag(n, fs) { return SIX_ANN[n] ? '<div style="font-size:' + (fs || 11) + 'px;color:#b71c1c;margin-top:5px;">⚡ Six Clashes annual: a year of separations — watch the couple and close ties (what is tied can come apart).</div>' : ''; }
   function oppInvTag(R, hx) {
     var t = [];
     if (hx.n === R.oppositeXT.n) t.push('opposite of the Xian Tian'); if (hx.n === R.inverseXT.n && R.inverseXT.n !== R.xianTian.n) t.push('inverse of the Xian Tian');

@@ -738,7 +738,8 @@
     // Six Clashes hexagrams and Inverse / Opposite of the active natal hexagram
     var HX = [['cycle', p.hx], ['annual', p.annual.hex], ['month', p.month.hex], ['block', p.daily && p.daily.block], ['day', p.daily && p.daily.hex]].filter(function (x) { return x[1]; });
     var six = HX.slice(1).filter(function (x) { return SIX6[x[1].n]; }); // not the cycle: the natal hexagram is always there
-    if (six.length) out.push({ k: 'six', icon: '⚡', text: 'Six Clashes hexagram on the ' + six.map(function (x) { return x[0] + ' (' + x[1].n + ')'; }).join(', ') + ': what is tied can come apart — relationships, agreements; sudden moves.' });
+    if (six.length) out.push({ k: 'six', icon: '⚡', text: 'Six Clashes hexagram on the ' + six.map(function (x) { return x[0] + ' (' + x[1].n + ')'; }).join(', ') + ': what is tied can come apart — relationships, agreements; sudden moves.' 
+      + (six.some(function (x) { return x[0] === 'annual'; }) ? ' On the annual: a year of separations — watch the couple and close ties (Edu 15/11/2026).' : '') });
     var nat = p.hx.lines; if (nat) HX.slice(1).forEach(function (x) { var l = x[1].lines; if (!l) return;
       var op = l.every(function (v, i) { return !!v !== !!nat[i]; }), inv = l.every(function (v, i) { return !!v === !!nat[5 - i]; }) && x[1].n !== p.hx.n;
       if (inv) out.push({ k: 'inverse', icon: '⇅', text: 'The ' + x[0] + ' hexagram ' + x[1].n + ' is the Inverse of the natal ' + p.hx.n + ': the chart turned upside down — sudden meetings and breaks.' });
@@ -1529,8 +1530,8 @@
     yFrom = parseInt(yFrom, 10) || nowY; yTo = parseInt(yTo, 10) || yFrom; if (yTo < yFrom) yTo = yFrom; if (yTo > yFrom + 11) yTo = yFrom + 11;
     var TXT = window.XKDG_HELUO_TEXTS || {}, VV = ctx.natVoids || [];
     function stmt(n, l) { try { return ((TXT[n] || {}).lines || {})[l].statement || ''; } catch (e) { return ''; } }
-    function tags(hx) { var t = [];
-      if (SIX_CLASH[hx.n]) t.push('Six Clashes hexagram (六冲卦): always to be pointed out — things and relationships can come apart, sudden moves');
+    function tags(hx, isAnn) { var t = [];
+      if (SIX_CLASH[hx.n]) t.push('Six Clashes hexagram (六冲卦): always to be pointed out — things and relationships can come apart, sudden moves' + (isAnn ? '. On the ANNUAL it marks a year of separations: say plainly to watch the couple and close ties (Edu 15/11/2026: half of the separations of famous people fall in a Six Clashes annual)' : ''));
       if (R.oppositeXT && hx.n === R.oppositeXT.n) t.push('Opposite of the Xian Tian'); if (R.inverseXT && hx.n === R.inverseXT.n && hx.n !== R.xianTian.n) t.push('Inverse of the Xian Tian');
       if (R.oppositeHT && hx.n === R.oppositeHT.n) t.push('Opposite of the Hou Tian'); if (R.inverseHT && R.houTian && hx.n === R.inverseHT.n && hx.n !== R.houTian.hex.n) t.push('Inverse of the Hou Tian (Edu: sudden breaks)');
       return t.length ? t : undefined; }
@@ -1549,6 +1550,7 @@
       var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], y0 = R.input.o.year;
       var o = { year: Y, age: a.age, year_branch: yb, person_element: me,
         cycle: ln(a.periodHex, a.period.line, me, yb), annual: ln(a.hex, a.moved, me, yb) };
+      if (SIX_CLASH[a.hex.n]) o.annual.notes = tags(a.hex, true);
       o.cycle.chart = a.periodHex === R.xianTian ? 'Xian Tian (first chart)' : 'Hou Tian (second chart)';
       o.cycle.ages = a.period.from + '–' + a.period.to; o.cycle.years = (y0 + a.period.from - 1) + '–' + (y0 + a.period.to - 1);
       var La = NJ()[a.periodHex.n].lines[a.period.line - 1], Lb = NJ()[a.hex.n].lines[a.moved - 1], fl = [];
