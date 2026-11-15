@@ -2941,9 +2941,12 @@ function calculateBazi() {
 // Edu 15/11/2026: ◎ MOTHER column at the left of the four pillars — Person A's active He Luo mother hexagram (Xian Tian
 // before the change, Hou Tian after) as XKDG Qi / Yun, and whether it joins the whole XKDG bond of this hour (heluo-ds.js).
 // Hidden when Person A has no He Luo chart (birth date + hour + gender M/F). The He Luo engine is loaded on demand.
+// Edu 15/11/2026 (evening): column switched OFF until another solution is found — set to true to bring it back.
+const XKDG_MOTHER_COL_ON = false;
 function xkdgMotherCol(iso, gz) {
     const col = document.getElementById('p-mother'), chart = document.getElementById('main-chart');
     const hide = () => { if (col) col.style.display = 'none'; if (chart) chart.style.gridTemplateColumns = ''; };
+    if (!XKDG_MOTHER_COL_ON) return hide();
     if (!col || !iso) return hide();
     const HL = window.XKDGHeluo;
     if (!HL || !HL.chartA || HL.chartA().err) return hide();
