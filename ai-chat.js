@@ -8877,7 +8877,7 @@
     try { gear.parentNode && gear.parentNode.insertBefore(areaBtn, gear); } catch(e){}
 
     gear.addEventListener('click', openSettings);
-    clearBtn.addEventListener('click', function () { setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); try { _longNagAt = 0; } catch (e) {} });
+    clearBtn.addEventListener('click', function () { setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; setStatus(''); try { _longNagAt = 0; _lastAnswerAt = 0; } catch (e) {} });
     saveBtn.addEventListener('click', function () { saveCurrentConversation(false); });
     archBtn.addEventListener('click', openArchive);
     shareBtn.addEventListener('click', shareItinerary);
@@ -11064,6 +11064,8 @@
       var hasOverride = (typeof overrideToSend === 'string' && overrideToSend.length > 0);
       var text = (input.value || '').trim();
       if (!hasOverride && !text && !pendingPhoto) return;
+      // session 52: back after more than an hour → the cache has expired; offer a new chat first
+      try { if (maybeIdlePop(overrideToSend, overrideBubble)) return; } catch (e) {}
       if (!text && pendingPhoto) text = 'What do you see? If it is a room, where can water be placed?';
       var url = getUrl();
       if (!url) { promptUrl(); if (!getUrl()) return; }
@@ -11136,7 +11138,7 @@
           sending = false; send.disabled = false; send.style.opacity = '1';
           if (status.textContent === 'Thinking…') setStatus('');
           if (_lastRunFailed) addRetryButton();
-          else { try { maybeSuggestNewChat(); } catch (e) {} }
+          else { _lastAnswerAt = Date.now(); try { maybeSuggestNewChat(); } catch (e) {} }
         });
     }
     var _lastRunFailed = false;
@@ -11190,7 +11192,7 @@
         var ok = false;
         try { ok = saveCurrentConversation(false); } catch (e) {}
         if (ok) {
-          setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; _longNagAt = 0;
+          setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; _longNagAt = 0; _lastAnswerAt = 0;
           setStatus({ it: 'Chat salvata in \ud83d\udcda. Nuova chat aperta.', fr: 'Conversation enregistr\u00e9e dans \ud83d\udcda. Nouvelle conversation ouverte.' }[_lastLongLang] ||
                     'Chat saved in \ud83d\udcda. New chat started.');
         }
@@ -11201,6 +11203,81 @@
       card.appendChild(okB); card.appendChild(noB); ov.appendChild(card); document.body.appendChild(ov);
     }
     var _lastLongLang = 'en';
+
+    // ── Back after a long pause → suggest a new chat (session 52, Edu) ──
+    // The Worker keeps the conversation in Anthropic's prompt cache for 1 hour (CACHE_TTL),
+    // renewed on every question. After IDLE_MIN minutes without questions the cache is gone
+    // and the NEXT question re-writes the whole history at 2x the input price — the most
+    // expensive moment of a chat. So, before sending, if the chat already has IDLE_MIN_Q
+    // questions and the last answer is older than IDLE_MIN, the pop-up offers to save the
+    // chat in 📚 and ask the new question in a fresh chat. "Continue here" (Edu, session 52) ALWAYS goes on
+    // from a SUMMARY: the chat is saved in 📚, the live history is replaced by its summary (the
+    // bubbles stay on screen) and then the question is sent — never the whole old history.
+    var IDLE_MIN = 60, IDLE_MIN_Q = 2;
+    var _lastAnswerAt = 0;   // time of the last successful answer (0 = none in this chat)
+    var IDLE_TXT = {
+      en: { t: 'Welcome back', b: 'More than an hour has passed since the last answer, so the Assistant has to re-read this whole conversation at full price. Save it to the archive (📚) and ask your question in a new chat, or continue here from a short summary?', ok: '💾 Save & ask in a new chat', no: '▶ Continue here from a summary', wait: 'Preparing the summary…', fail: 'Could not prepare the summary. Try again, or start a new chat.', div: '— continued from here (from the summary) —' },
+      it: { t: 'Bentornato', b: 'È passata più di un’ora dall’ultima risposta: rileggere tutta la conversazione costerebbe il prezzo pieno. Salvarla nell’archivio (📚) e fare la domanda in una nuova chat, oppure continuare qui partendo da un breve riassunto?', ok: '💾 Salva e chiedi in una nuova chat', no: '▶ Continua qui dal riassunto', wait: 'Preparo il riassunto…', fail: 'Non riesco a preparare il riassunto. Riprova o apri una nuova chat.', div: '— continua da qui (dal riassunto) —' },
+      fr: { t: 'Bon retour', b: 'Plus d’une heure s’est écoulée depuis la dernière réponse : relire toute la conversation coûterait le prix fort. L’enregistrer dans l’archive (📚) et poser la question dans une nouvelle conversation, ou continuer ici à partir d’un court résumé ?', ok: '💾 Enregistrer et demander dans une nouvelle', no: '▶ Continuer ici à partir du résumé', wait: 'Préparation du résumé…', fail: 'Impossible de préparer le résumé. Réessayez ou ouvrez une nouvelle conversation.', div: '— suite (à partir du résumé) —' }
+    };
+    // true = the pop-up is shown and the question is on hold (it is sent from the buttons)
+    function maybeIdlePop(ovText, ovBubble) {
+      if (!_lastAnswerAt || !history.length) return false;
+      if (Date.now() - _lastAnswerAt < IDLE_MIN * 60000) return false;
+      if (_userQuestions() < IDLE_MIN_Q) return false;
+      var L = IDLE_TXT[chatLang()] || IDLE_TXT.en, lang = chatLang();
+      var old = document.getElementById('xkdg-ai-idle'); if (old) old.remove();
+      var ov = elc('div', { id: 'xkdg-ai-idle', style: 'position:fixed;inset:0;z-index:2147483000;background:rgba(20,8,30,.45);' +
+        'display:flex;align-items:center;justify-content:center;padding:18px;' });
+      var card = elc('div', { style: 'background:#fff;border-radius:12px;max-width:360px;width:100%;padding:16px;' +
+        'box-shadow:0 12px 44px rgba(0,0,0,.32);font-family:system-ui,sans-serif;' });
+      card.appendChild(elc('div', { style: 'font-size:16px;font-weight:700;color:#6a1b9a;margin-bottom:8px;' }, '⏰ ' + L.t));
+      card.appendChild(elc('div', { style: 'font-size:14px;color:#333;line-height:1.45;margin-bottom:14px;' }, L.b));
+      var okB = elc('button', { style: 'display:block;width:100%;background:#6a1b9a;color:#fff;border:0;border-radius:8px;' +
+        'padding:11px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;' }, L.ok);
+      var noB = elc('button', { style: 'display:block;width:100%;background:#f3e5f5;color:#6a1b9a;border:0;border-radius:8px;' +
+        'padding:10px;font-size:14px;cursor:pointer;' }, L.no);
+      function close() { try { ov.remove(); } catch (e) {} }
+      okB.addEventListener('click', function () {
+        close();
+        var ok = false;
+        try { ok = saveCurrentConversation(false); } catch (e) {}
+        if (ok) {
+          setReadOnly(false); history = []; currentConvId = null; msgs.innerHTML = ''; _longNagAt = 0;
+          setStatus({ it: 'Chat salvata in 📚. Nuova chat aperta.', fr: 'Conversation enregistrée dans 📚. Nouvelle conversation ouverte.' }[lang] ||
+                    'Chat saved in 📚. New chat started.');
+        }
+        _lastAnswerAt = 0;
+        doSend(ovText, ovBubble);
+      });
+      noB.addEventListener('click', function () {
+        close();
+        var rec = null;
+        try { if (saveCurrentConversation(true)) rec = archiveLoad().filter(function (c) { return c && c.id === currentConvId; })[0]; } catch (e) {}
+        if (!rec) rec = { id: 'tmp', history: JSON.parse(JSON.stringify(history.map(stripImages))) };
+        var ready = rec.summary && rec.summaryLen === (rec.history || []).length;
+        sending = true; send.disabled = true; send.style.opacity = '0.6'; setStatus(L.wait);
+        (ready ? Promise.resolve(rec.summary) : makeConvSummary(rec)).then(function (sum) {
+          sending = false; send.disabled = false; send.style.opacity = '1';
+          history = [
+            { role: 'user', content: '[SUMMARY OF THE EARLIER PART OF THIS CONVERSATION - written by the app, not typed by the student]\n\n' + sum },
+            { role: 'assistant', content: 'OK - I have the summary of our earlier conversation and will continue from it.' }
+          ];
+          currentConvId = null;   // the continued chat is saved as a NEW entry; the full one stays in the archive
+          _longNagAt = 0; _lastAnswerAt = 0;
+          msgs.appendChild(elc('div', { style: 'margin:10px 0;text-align:center;font-size:12px;color:#888;' }, L.div));
+          setStatus('');
+          doSend(ovText, ovBubble);
+        }, function () {
+          sending = false; send.disabled = false; send.style.opacity = '1';
+          setStatus(L.fail, '#b00');   // nothing sent; the question stays in the box
+        });
+      });
+      // tapping outside = nothing sent; the question stays in the box
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      card.appendChild(okB); card.appendChild(noB); ov.appendChild(card); document.body.appendChild(ov);
+      return true;
+    }
 
     send.addEventListener('click', doSend);
     input.addEventListener('keydown', function (e) {
