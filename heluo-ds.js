@@ -1038,7 +1038,19 @@
     var cols = [['Hour', h ? h.pillar : null], ['Day', Pe.day], ['Month', Pe.month], ['Year', Pe.year]];
     return '<div style="display:flex;gap:12px;margin:4px 0;">' + cols.map(function (c) { return '<div style="text-align:center;font-size:11px;color:#777;">' + c[0] + '<div style="font-size:16px;color:#222;line-height:1.25;">' + (c[1] ? c[1].charAt(0) + '<br>' + c[1].charAt(1) : '·<br>·') + '</div></div>'; }).join('') + '</div>';
   }
-  function cfFilm(chart, g) {
+  // Sphere of life (heluo-lishu.js sphereHtml): the time of the day decides the side of the sphere reading
+  function sphW(Pe, f) { var u = U(), pv, on = u && u.sphTime; try { if (on) pv = u.sphTime(Pe ? { y: String(Pe.year).charAt(1), m: String(Pe.month).charAt(1), d: String(Pe.day).charAt(1) } : null); return f(); } finally { if (on) u.sphTime(pv); } }
+  // the sphere chosen in the He Luo window, for the Assistant
+  function sphAI(male) {
+    try { var sp = localStorage.getItem('xkdg_hl_sphere'), S = (root.XKDG_HELUO_READINGS || {}).spheres; if (!sp || !S || !S.rel[sp]) return undefined;
+      var R_ = S.rel[sp], lab = S.list.filter(function (x) { return x[0] === sp; })[0], m = {}; if (sp === 'love') R_ = R_[male ? 'M' : 'F'];
+      Object.keys(R_).forEach(function (k) { m[REL[k]] = R_[k].replace(/\{he\}/g, male ? 'he' : 'she').replace(/\{his\}|\{him\}/g, male ? 'his' : 'her'); });
+      return { chosen: lab[1], what_each_relation_means_in_this_sphere: m, written_readings_by_hexagram_and_line: S.lines[sp] || undefined,
+        instruction: 'The user chose this SPHERE OF LIFE in the He Luo window (Edu 15/11/2026): read every line for THIS sphere. The image of the line text stays the same; the relation of the line says who or what carries it in this sphere. Use the written reading of a line when there is one (strong = the time helps the line, weak = the time hurts it). If the question is plainly about another sphere, follow the question.' };
+    } catch (e) { return undefined; }
+  }
+  function cfFilm(chart, g) { return sphW(g.Pe, function () { return cfFilm_(chart, g); }); }
+  function cfFilm_(chart, g) {
     var p = g.th.p, dh = p.daily, me = g.th.pers, L = g.F.lines, ln = function (k, lbl) { var o = L[k]; return '<div style="' + S_ + '"><b>' + lbl + '</b> · ' + o.n + ' ' + esc(U().hexName ? U().hexName(o.n) : '') + ' line ' + o.l + ' ' + o.b + ' ' + relTag(o.r) + (o.s > 0 ? ' · favourable' : o.s < 0 ? ' · unfavourable' : ' · neutral') + '<br><i>«' + esc(cfStmt(o.n, o.l)) + '»</i></div>'; };
     var hr = g.hours && g.hours.length ? g.hours[0] : g.hours && g.hours.actor ? g.hours.actor : null;
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:4px 0;">' + cfBazi(hr, g.Pe)
@@ -1149,7 +1161,8 @@
     else if (th.alarm) a.push('⚠ 4 danger signals');
     return a.join(' · ');
   }
-  function xkDayHtml(th, iso) {
+  function xkDayHtml(th, iso) { return sphW(th.Pe, function () { return xkDayHtml_(th, iso); }); }
+  function xkDayHtml_(th, iso) {
     var ch = _xk.chart, p = th.p, me = th.pers, dh = p.daily, PD = H().periods, D = 86400000, lon = _xk.lon, date = Date.parse(iso + 'T00:00:00Z');
     var aP = null, mP = null, bP = null, dP = null;
     try {
@@ -1267,7 +1280,9 @@
     if (!hs.length) return '';
     var G = 'color:#2e7d32;', Rd = 'color:#c62828;', O = 'color:#e65100;', AL = th.alarm, out = '';
     var span = {}; for (var j = 1; j <= 6; j++) span[j] = HOUR_TST[2 * j - 2].split('–')[0] + '–' + HOUR_TST[2 * j - 1].split('–')[1];
+    var uT = U(), dT = uT.sphTime ? uT.sphTime() : null;
     hs.forEach(function (h) {
+      if (uT.sphTime && dT) uT.sphTime({ y: dT.y, m: dT.m, d: dT.d, h: h.b });
       var col = h.s > 0 ? G : h.s < 0 ? Rd : '', mk = [];
       if (th.X && h.r === th.X) mk.push('<span style="' + G + '">' + REL[h.r] + '</span>');
       if (th.A && h.r === th.A) mk.push('<span style="' + Rd + '">' + REL[h.r] + ' (the price)</span>');
@@ -1284,6 +1299,7 @@
         + '<div style="' + S_ + '">Hour ' + h.pillar + ' · ' + h.lb + ' ' + h.el + ' = ' + relTag(h.r) + ' ' + REL[h.r] + '</div>'
         + (U().lineBody ? U().lineBody(h.n, h.l, 'hour', true) : '') + '</details>';
     });
+    if (uT.sphTime) uT.sphTime(dT);
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · The hours (true solar time) — line k of the day hexagram rules two hours</div>'
       + '<div style="font-size:11px;color:#555;line-height:1.5;margin:2px 0 4px;">Odd hour: the day hexagram with line k changed; even hour: also the correlated line. The 子 hour starts the day at 23:00 of the evening before. Tap an hour for its hexagram and text. Not in the score.</div>'
       + out + '</div>';
@@ -1565,7 +1581,7 @@
           m.period = per; m.month_branch = mb; m.annual_line_that_rules_it = mo.line; delete m.who; return m; }); }
       years.push(o);
     }
-    return { person: ch.c.name, sex: ch.male ? 'man' : 'woman', heluo_year_now: nowY, natal_voids: VV, years: years,
+    return { person: ch.c.name, sex: ch.male ? 'man' : 'woman', sphere_of_life: sphAI(ch.male), heluo_year_now: nowY, natal_voids: VV, years: years,
       reading_rules: 'HOW TO ANSWER (Edu, 14/11/2026): this is NOT a date selection. Never propose days, hours or lists of dates, and do not call get_heluo_day, unless the user explicitly asks for a day. For a question about a year or a period («will I buy a house in 2027?», «how is 2028 for work?») read from the BIGGEST to the smaller: 1) the CYCLE line (the period of years the person is living: its relation says the theme, its text the climate); 2) the ANNUAL hexagram and its moved line (what the year brings: name, judgment, relation, text), and how cycle and annual stand together (flow_cycle_annual) and with the year branch (time). From these two give a clear answer to the question: likely / possible with effort / unlikely, and why, in two or three short paragraphs. 3) The MONTHS only if the user asks when, or to say in one sentence which month (or two) is the most favourable for the thing asked — never a calendar. Read every text in the concrete context of the question (a purchase, a job, a move, a relationship), not as a literal translation; the side of the text follows the time (same branch, combined, timely = favourable side; clashed, void = unfavourable side or delay). Relations: Wealth = money, goods, what one acquires, clients (the partner for a man); Parent = documents, contracts, deeds, houses and what protects, mentors; Ghost = authority, pressure, duties (the partner for a woman); Children = what one creates, students, projects, ease; Brothers = peers, partners, rivals, expenses. Always point out a Six Clashes hexagram and an Opposite or Inverse of the natal hexagrams (notes). Plain colloquial language in the language of the user, NO numbers, NO scores, NO tables (text_score is only for you). Draw each hexagram you cite (six lines, top first, ━━━━━ yang, ━━ ━━ yin, ◀ on the line read, branch on the left, initial of the relation on the right) and write the Heluo age next to every year. Edu is the authority on He Luo Li Shu: read only what is given here, do not invent rules, never mix with XKDG.' };
   }
   function aiDay(iso, keys, withHours) {
@@ -1599,7 +1615,7 @@
         day_clash: F.dayHits.map(hitT).concat(F.dayQuiet.map(function (c) { return quietT(c, 'the day ' + F.db); })) };
       return p;
     }
-    var out = { person: ch.c.name, date: Y + '-' + String(Mo).padStart(2, '0') + '-' + String(D).padStart(2, '0'),
+    var out = { person: ch.c.name, sphere_of_life: sphAI(ch.male), date: Y + '-' + String(Mo).padStart(2, '0') + '-' + String(D).padStart(2, '0'),
       bazi_of_the_day_column_order: [['Day', Pe.day], ['Month', Pe.month], ['Year', Pe.year]].map(function (x) { return x[0] + ' ' + x[1]; }),
       natal_bazi: ['Hour ' + ch.Pn.hour, 'Day ' + ch.Pn.day, 'Month ' + ch.Pn.month, 'Year ' + ch.Pn.year],
       natal_voids: natalVoids(ch.Pn).list, purposes: {} }, first = null;

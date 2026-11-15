@@ -313,6 +313,18 @@
     var m = male ? { he: 'he', He: 'He', his: 'his', His: 'His', him: 'him', himself: 'himself' } : { he: 'she', He: 'She', his: 'her', His: 'Her', him: 'her', himself: 'herself' };
     return String(t).replace(/\{(\w+)\}/g, function (x, k) { return m[k] || x; });
   }
+  // Side of the text chosen by the TIME (Edu's cascade rule: same branch as year / month / day / hour or timely in the month =
+  // favourable; clashed or not timely = unfavourable) moves the score of the text by one step; the sign of the sum decides.
+  var _sphT = null;
+  function sphTime(t) { var pv = _sphT; if (arguments.length) _sphT = t || null; return pv; }
+  function sphSide(L, sc) {
+    var t = _sphT, v = 0, DC = root.XKDGHeluoDSCore, why = [];
+    if (t) { ['y', 'm', 'd', 'h'].forEach(function (k) { var b = t[k], nm = { y: 'year', m: 'month', d: 'day', h: 'hour' }[k]; if (!b) return;
+        if (b === L.branch) { v += 1; why.push('same branch as the ' + nm); } else if (BRANCHES[(BRANCHES.indexOf(b) + 6) % 12] === L.branch) { v -= 1; why.push('clashed by the ' + nm + ' ' + b); } });
+      if (t.m && DC && DC.timely) { if (DC.timely(L.el, t.m)) { v += 1; why.push('timely in the month ' + t.m); } else { v -= 1; why.push('not timely in the month ' + t.m); } } }
+    var tot = (sc || 0) + Math.max(-1, Math.min(1, v)); // as in the Date Selection: the text score moved one step by the time
+    return { v: tot, why: tot ? (sc ? 'text ' + (sc > 0 ? 'favourable' : 'unfavourable') : 'text neutral') + (why.length ? '; ' + why.join(', ') : '') : '' };
+  }
   function sphereHtml(hx, ln, me) {
     try {
       var sp = sphGet(), RD = root.XKDG_HELUO_READINGS, S = RD && RD.spheres, d = NJ() && NJ()[hx.n];
@@ -320,7 +332,8 @@
       var male = !_chart || _chart.male !== false, r = relL(me, d.lines[ln - 1].el), R_ = S.rel[sp]; if (sp === 'love') R_ = R_[male ? 'M' : 'F'];
       var hand = S.lines[sp] && S.lines[sp][hx.n] && S.lines[sp][hx.n][ln], t = hand || (RD[hx.n] && RD[hx.n][ln]);
       var sc = root.XKDG_HELUO_SCORES && root.XKDG_HELUO_SCORES[hx.n] ? root.XKDG_HELUO_SCORES[hx.n].l[ln] : 0, lab = S.list.filter(function (x) { return x[0] === sp; })[0];
-      var body = !t ? '' : sc > 0 ? esc(sphPron(t.strong, male)) : sc < 0 ? esc(sphPron(t.weak, male))
+      var sd = sphSide(d.lines[ln - 1], sc), why = sd.why ? ' <span style="color:#999;font-size:10px;">(' + (sd.v > 0 ? '▲ ' : '▼ ') + esc(sd.why) + ')</span>' : ''; sc = sd.v;
+      var body = !t ? '' : sc > 0 ? esc(sphPron(t.strong, male)) + why : sc < 0 ? esc(sphPron(t.weak, male)) + why
         : '<span style="color:#2e7d32;">▲ with the time in favour:</span> ' + esc(sphPron(t.strong, male)) + ' <span style="color:#c62828;">▼ against:</span> ' + esc(sphPron(t.weak, male));
       var lk = '';
       if (sp === 'luck' && _chart && _chart.R && _chart.R.luck) { var tr = ln <= 3 ? hx.lower : hx.upper, K = _chart.R.luck, nm = { heaven: 'Heaven', earth: 'Earth', fame: 'Fame' }, a = [];
@@ -464,6 +477,7 @@
       Companion: 'a Brothers year: friends, partners and competition; money goes out easily' };
     var PL = R.input && NJ() && NJ()[a.periodHex.n] && NJ()[a.periodHex.n].lines[per.line - 1], yb = BRANCHES[((Y - 4) % 12 + 12) % 12];
     var shock = PL && BRANCHES[(BRANCHES.indexOf(PL.branch) + 6) % 12] === yb;
+    var pvT = _sphT; _sphT = { y: yb };
     var brings = rk ? '<div style="font-size:13px;line-height:1.5;margin:6px 0;padding:6px 8px;background:#f3eefc;border-radius:6px;"><b>' + BRINGS[rk].charAt(0).toUpperCase() + BRINGS[rk].slice(1) + '.</b>'
       + (shock ? ' The year (' + yb + ') clashes the line of the period (' + PL.branch + '): a year of sudden turns, and the moved line tells which way it goes.' : '') + '</div>' : '';
     hlPop('Year ' + Y + ' · age ' + a.age,
@@ -474,6 +488,7 @@
       + sixAnnTag(a.hex.n, 12)
       + '<div style="font-size:12px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
       + lineBody(a.hex.n, a.moved, 'year') + hexText(a.hex.n));
+    _sphT = pvT;
   }
   root.xkdgHLDerived = derivedPopup;
   root.xkdgHLYearPop = yearPopup;
@@ -747,13 +762,15 @@
   var _hlY = null, _hlLon = NaN; // _hlLon: longitude of the person shown (fallback when there is no GPS)
   root.xkdgHLYear = function (d) { _hlY = d === 0 ? null : (_hlY || heluoYearOf()) + d; render(); };
   function fmtD(dt) { return dt.getUTCDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getUTCMonth()]; }
-  function annualSection(R) {
+  function annualSection(R) { var pv = _sphT; try { return annualSection_(R); } finally { _sphT = pv; } }
+  function annualSection_(R) {
     var Y = _hlY || heluoYearOf(), a = annual(R, Y), B = 'padding:3px 9px;border:1px solid #b39ddb;border-radius:5px;background:#fff;cursor:pointer;font-size:12px;';
     var h = '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:12px 0 4px;">Annual and monthly hexagrams</div>'
       + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:12px;"><button style="' + B + '" onclick="xkdgHLYear(-1)">◀</button>'
       + '<b>Heluo year ' + Y + '</b> <span style="color:#777;">(Winter Solstice ' + (Y - 1) + ' → ' + Y + ')</span>'
       + '<button style="' + B + '" onclick="xkdgHLYear(1)">▶</button>' + (_hlY ? '<button style="' + B + '" onclick="xkdgHLYear(0)">now</button>' : '') + '</div>';
     if (a.none) return h + '<div style="font-size:12px;color:#888;">Age ' + a.age + ': outside the Xian Tian / Hou Tian cycles.</div>';
+    var ybS = BRANCHES[((Y - 4) % 12 + 12) % 12]; _sphT = { y: ybS };
     var per = a.period, isXT = a.periodHex === R.xianTian, me = personEl(a.periodHex, per.line);
     var lonA = NaN; try { lonA = root.XKDGSolarTime.currentLonTz().lonDeg; } catch (e) {} if (!isFinite(lonA)) lonA = _hlLon;
     var aPer = null; try { aPer = annualPeriods(msTST(Y, lonA)); } catch (e) {}
@@ -777,6 +794,7 @@
     var today = '';
     // Months of the Heluo year (Edu, 10/11/2026): 12 whole months from the 中氣, month 1 from the Winter Solstice.
     for (var i = 0; i < 12; i++) {
+      _sphT = { y: ybS, m: BRANCHES[(a.months[i].index - 1) % 12] };
       var mo = a.months[i], from = ms ? ms[i].start : null, to = ms ? (ms[i + 1].start || ms[i + 1].end) : null, on = from && now >= from && now < to;
       var id = 'hl-mo-' + (++_cycN), blocks = '', mPer = null;
       if (from) {
@@ -997,6 +1015,7 @@
     var R; try { R = compute(c, g === 'M'); } catch (e) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">Calculation failed: ' + esc(e && e.message) + '</div>'; return; }
     if (!R) { out.innerHTML = '<div style="color:#c0392b;font-size:12px;">No birth longitude: set the GPS or the person\'s birth place.</div>'; renderDS(); return; }
     _hlLon = c.lon; _chart = { c: c, R: R, male: g === 'M', Pn: R.input.Pn };
+    try { var Pb = R.input.Pn; _sphT = { y: String(Pb.year).charAt(1), m: String(Pb.month).charAt(1), d: String(Pb.day).charAt(1) }; } catch (e) { _sphT = null; }
     if (_tab === 'ds') { renderDS(); return; }
     var I = R.input, p = I.p, N = R.numbers, y0 = I.o.year, nowAge = heluoYearOf() - y0 + 1;
     var lineNow = function (cy, mv) { var l = mv; (cy || []).forEach(function (c) { if (nowAge >= c.from && nowAge <= c.to) l = c.line; }); return l; };
@@ -1048,7 +1067,7 @@
     annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, qiMonth: qiMonth, QI_EN: QI_EN, dailyHex: dailyHex, monthStarts: monthStarts, open: open,
     currentChart: function () { return _chart; },
     periods: { months: msTST, annual: annualPeriods, month: monthPeriods, block: blockPeriods, day: dayPeriods, dayMs: dayMs },
-    ui: { qiYun: qiYun, cycleHexSvg: cycleHexSvg, lineBody: lineBody, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
+    ui: { sphTime: sphTime, qiYun: qiYun, cycleHexSvg: cycleHexSvg, lineBody: lineBody, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
   // ── He Luo inside the XKDG Date Selection (Edu, 11/11/2026): Person A's chart without opening the window ──
   // chartA() → { c, R, male, Pn } or { err } ; ensure(cb) loads Na Jia, texts and the Date Selection files, then calls cb.
