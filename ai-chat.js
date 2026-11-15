@@ -985,7 +985,10 @@
         'partly fit the purpose - use it only after the user accepts a softer search. Each row carries its four pillars ' +
         '(year/month/day/hour gan-zhi with hexagram numbers, true solar time) - use them, never recompute. "date" is the ' +
         'solar day; when the hour falls after civil midnight (Zi hour) the row also has civil_date, the calendar day the ' +
-        'user\'s clock will show.',
+        'user\'s clock will show. Each row also has mother_hexagram_joins (Person A): "yes" when the four pillars of the hour close ' +
+        'into a whole XKDG bond AND Person A\'s active He Luo mother hexagram (Xian Tian or Hou Tian, as Qi/Yun; see mother_hexagram) ' +
+        'joins that network. When the user asks for dates that communicate with his mother / XT / HT hexagram, use THIS field, ' +
+        'not check_hexagrams (that only links the day pillar). Scan up to ~3 months if no row says yes.',
       input_schema: {
         type: 'object',
         properties: {
@@ -4075,7 +4078,36 @@
         _checkHex.forEach(function (h) { var l = _hexLinks(_pr.day.hex, h); o.day_links['hex ' + h] = l.length ? l : 'none'; });
       }
       if (both) { o.forA = r.scoreA > 0; o.forB = r.scoreB > 0; }
+      // Edu 15/11/2026: does Person A's active He Luo mother hexagram (Xian Tian before the change, Hou Tian after, as XKDG
+      // Qi/Yun) JOIN this hour's whole XKDG bond? (four pillars + mother in the same network; not the day pillar alone)
+      try {
+        var _DSm = window.XKDGHeluoDS;
+        if (_DSm && _DSm.motherOf && _pr && _pr.year && _pr.hour) {
+          var _M = _DSm.motherOf(r.isoDate);
+          if (_M) { var _mb = _DSm.xkMotherBond([_pr.year.ganzhi, _pr.month.ganzhi, _pr.day.ganzhi, _pr.hour.ganzhi], _M);
+            if (_mb) o.mother_hexagram_joins = _mb.mom ? 'yes (' + _mb.mode + ')' : (_mb.pos ? 'no (the hour has its own bond, ' + _mb.mode + ', but the mother does not join it)' : 'no (no whole bond in this hour)');
+            if (!motherInfo) motherInfo = { hexagram: _M.n, qi: _M.qi, yun: _M.yun, chart: _M.phase }; }
+        }
+      } catch (e) {}
       return o;
+    }
+    var motherInfo = null;
+    function withMother(out, all) {
+      // all positive rows of the scan (not only the top ones shown): which hours have the mother joining?
+      try {
+        var _DSm = window.XKDGHeluoDS, yes = [];
+        if (_DSm && _DSm.motherOf && all) all.forEach(function (r) {
+          if (yes.length >= 12) return;
+          var _pr = _pillarsForScanRow(r.isoDate, r.hourIndex), _M = _pr && _pr.hour ? _DSm.motherOf(r.isoDate) : null; if (!_M) return;
+          if (!motherInfo) motherInfo = { hexagram: _M.n, qi: _M.qi, yun: _M.yun, chart: _M.phase };
+          var _mb = _DSm.xkMotherBond([_pr.year.ganzhi, _pr.month.ganzhi, _pr.day.ganzhi, _pr.hour.ganzhi], _M);
+          if (_mb && _mb.mom) yes.push({ date: r.isoDate, time: r.time, score: r.score, bond: _mb.mode, pillars: _pillarsCompact(_pr), civil_date: _pr.civil_date !== r.isoDate ? _pr.civil_date : undefined });
+        });
+        if (motherInfo) out.hours_with_mother_hexagram = yes.length ? yes : 'none in this scan window (the year and month may not let the mother join: try a later window)';
+      } catch (e) {}
+      if (motherInfo) out.mother_hexagram = { hexagram: motherInfo.hexagram, qi: motherInfo.qi, yun: motherInfo.yun, chart: motherInfo.chart + ' (active now for Person A)',
+        rule: 'Edu: the person in the XKDG = the active natal He Luo hexagram as Qi and Yun. A row is good for the person when mother_hexagram_joins is "yes": the four pillars of the hour close into a whole XKDG bond AND the mother joins that same network (same dimension and language, or same family). A link of the DAY pillar alone with the mother does NOT count. Test on the famous: lucky events about twice as often as chance; it does not protect from accidents.' };
+      return out;
     }
 
     if (!soft) {
@@ -4090,7 +4122,7 @@
         results: res.slice(0, 15).map(function (r, i) { return row(r, i); })
       };
       if (_emptyS) for (var _kS in _emptyS) if (Object.prototype.hasOwnProperty.call(_emptyS, _kS)) _outS[_kS] = _emptyS[_kS];
-      return _outS;
+      return withMother(_outS, res);
     }
 
     // SOFT scan: keep the strict purpose matches on top (their own score), then add the nearer
@@ -4111,7 +4143,7 @@
       if (b.score !== a.score) return b.score - a.score;                         // then higher score
       return a.isoDate < b.isoDate ? -1 : (a.isoDate > b.isoDate ? 1 : 0);       // then sooner
     });
-    return {
+    return withMother({
       strictness: 'soft', purpose: purpose, days: days, from: start,
       weekday_filtered: !!wkSet,
       persons_loaded: both ? 'A+B' : (pl.a ? 'A' : 'B'),
@@ -4121,7 +4153,7 @@
         'partly fit the purpose (meets_purpose=false). All are auspicious - the softer ones are simply less ' +
         'specialised for ' + purpose + '.',
       results: merged.slice(0, 20).map(function (r, i) { return row(r, i, r.score, r.meets_purpose); })
-    };
+    }, merged);
   }
 
   function toolOpenScanResult(input) {
