@@ -618,7 +618,8 @@
       // Edu 13/11: the hour that clashes (or is) the palace of the spouse = sixth signal, Relationship only (no 己/劫財 of the hour)
       var sp = th.key === 'relationship' && (hb === ctx.Pn.day[1] || hb === clash(ctx.Pn.day[1]));
       out.push({ i: i, b: hb, pillar: hs + hb, spouse: sp, tst: HOUR_TST[i], n: mo.hex.n, hex: mo.hex, l: mo.line, lb: L.branch, el: L.el, r: rel(pers, L.el),
-        s: SC() && SC()[mo.hex.n] ? SC()[mo.hex.n].l[mo.line] : 0, voidOut: vo });
+        s: SC() && SC()[mo.hex.n] ? SC()[mo.hex.n].l[mo.line] : 0, voidOut: vo,
+        xk: xkMotherBond([th.Pe.year, th.Pe.month, th.Pe.day, hs + hb], xkMother(p.hx && p.hx.n)) });
     }
     // Edu 13/11: an hour that brings the element that controls the prevailing relation relieves an excess (his 13/11/2026:
     // Parent prevails → a Wealth hour; the 卯 hour is too early, so also the Wood trigrams of the hour hexagram).
@@ -713,6 +714,57 @@
   var HE6 = { 子: '丑', 丑: '子', 寅: '亥', 亥: '寅', 卯: '戌', 戌: '卯', 辰: '酉', 酉: '辰', 巳: '申', 申: '巳', 午: '未', 未: '午' };
   var BR_EL = { 子: 'Water', 亥: 'Water', 寅: 'Wood', 卯: 'Wood', 巳: 'Fire', 午: 'Fire', 申: 'Metal', 酉: 'Metal', 辰: 'Earth', 戌: 'Earth', 丑: 'Earth', 未: 'Earth' };
   var SIX6 = { 1: 1, 2: 1, 29: 1, 30: 1, 51: 1, 52: 1, 57: 1, 58: 1, 25: 1, 34: 1 };
+  // ◎ XKDG HOUR + MOTHER HEXAGRAM (Edu, 15/11/2026; HLLS project: claude/hlls-madre-xkdg.md). The person in the XKDG is the
+  // active natal He Luo hexagram (Xian Tian before the change, Hou Tian after), read as its XKDG Qi and Yun. A good hour =
+  // the four pillars (year, month, day, hour) close into a whole XKDG bond (Blood Link, Partial BL, Two-Family, Pure / Hetu /
+  // Adding on Elements or Periods, via the app's analyzeXkdg) AND the mother hexagram joins that same network (same dimension
+  // and language, or the same family). Test on the famous with known hours: lucky events about twice as often as chance;
+  // unlucky events as chance (it does not protect). Read only, no score.
+  var XK_FULL = { 'Two-Family Bond': 1, 'Pure Qi': 1, 'Pure Qi Elements': 1, 'Pure Qi Periods': 1, 'Pure Hetu': 1, 'Hetu Elements': 1, 'Hetu Periods': 1,
+    'Pure Adding': 1, 'Adding Elements': 1, 'Adding Periods': 1, 'Pure Adding Elements': 1, 'Pure Adding Periods': 1, 'Pure Hetu Elements': 1, 'Pure Hetu Periods': 1 };
+  var XK_FAMS = ['Qian-Kun', 'Kan-Li', 'Zhen-Xun', 'Gen-Dui', 'Pi-Tai', 'JiJi-WeiJi', 'Heng-Yi', 'Sun-Xian'];
+  function xkEng() {
+    try {
+      var T = typeof XKDG_TABLE !== 'undefined' ? XKDG_TABLE : root.XKDG_TABLE, A = typeof analyzeXkdg === 'function' ? analyzeXkdg : root.analyzeXkdg,
+        F = typeof getJiaZiFamilies === 'function' ? getJiaZiFamilies : root.getJiaZiFamilies, FH = typeof getJiaZiFamiliesByHex === 'function' ? getJiaZiFamiliesByHex : root.getJiaZiFamiliesByHex;
+      return T && A && F ? { T: T, A: A, F: F, FH: FH || function (s, b) { return F(s, b); } } : null;
+    } catch (e) { return null; }
+  }
+  var _xkQY = null;
+  function xkMother(n) {
+    var E = xkEng(); if (!E || !n) return null;
+    if (!_xkQY) { _xkQY = {}; Object.keys(E.T).forEach(function (jz) { var r = E.T[jz]; if (r.hex && !_xkQY[r.hex]) _xkQY[r.hex] = { qi: r.qi, yun: r.yun, jz: jz }; if (r.alt && r.alt.hex && !_xkQY[r.alt.hex]) _xkQY[r.alt.hex] = { qi: r.alt.qi, yun: r.alt.yun, jz: jz }; }); }
+    var q = _xkQY[n]; if (!q) return null;
+    return { n: n, qi: q.qi, yun: q.yun, fam: E.FH(q.jz[0], q.jz[1], n) || [] };
+  }
+  function xkHet(a, b) { var x = Math.min(a, b), y = Math.max(a, b); return y - x === 5 && x >= 1 && x <= 4; }
+  var XK_REL = { add: function (a, b) { return a + b === 5 || a + b === 10 || a + b === 15; }, hetu: xkHet, eq: function (a, b) { return a === b; } };
+  function xkWhole(N, d, lg) {
+    var seen = [0], i = 0;
+    while (i < seen.length) { var a = N[seen[i++]]; for (var b = 0; b < N.length; b++) { if (seen.indexOf(b) >= 0) continue; var B = N[b];
+      if (lg !== 'eq' && a.branch && B.branch && clash(a.branch) === B.branch) continue; if (XK_REL[lg](a[d], B[d])) seen.push(b); } }
+    return seen.length === N.length;
+  }
+  // gz = [year, month, day, hour] pillars ('丙午'…), M = xkMother(n). Returns null (no engine) or { pos, mom, mode }.
+  function xkMotherBond(gz, M) {
+    var E = xkEng(); if (!E || !M) return null;
+    try {
+      var P = gz.map(function (g) { var r = E.T[g] || {}; return { stem: g[0], branch: g[1], qi: r.qi, yun: r.yun, hex: r.hex, fam: E.F(g[0], g[1]) || [] }; });
+      if (P.some(function (x) { return x.qi == null || x.yun == null; })) return null;
+      var r = E.A({ year: P[0], month: P[1], day: P[2], hour: P[3] }) || {}, pos = false, mom = false, mode = '';
+      if (r.sameFamily) { pos = true; mode = 'Blood Link'; if (XK_FAMS.some(function (f) { return P.every(function (x) { return x.fam.indexOf(f) >= 0; }) && M.fam.indexOf(f) >= 0; })) mom = true; }
+      (r.items || []).forEach(function (it) { if (it && XK_FULL[it.text]) { pos = true; mode = mode || it.text; } });
+      XK_FAMS.forEach(function (f) {
+        var inF = [0, 1, 2, 3].filter(function (k) { return P[k].fam.indexOf(f) >= 0; }); if (inF.length !== 3) return;
+        var lp = P[[0, 1, 2, 3].filter(function (k) { return inF.indexOf(k) < 0; })[0]];
+        var con = inF.some(function (k) { var fp = P[k]; return xkHet(lp.qi, fp.qi) || xkHet(lp.yun, fp.yun) || XK_REL.add(lp.qi, fp.qi) || XK_REL.add(lp.yun, fp.yun) || lp.qi === fp.qi || lp.yun === fp.yun; });
+        var nc = inF.every(function (k) { return clash(lp.branch) !== P[k].branch; });
+        if (con && nc) { pos = true; mode = mode || 'Partial BL (' + f + ')'; if (M.fam.indexOf(f) >= 0) mom = true; }
+      });
+      if (pos) ['qi', 'yun'].forEach(function (d) { ['add', 'hetu', 'eq'].forEach(function (lg) { if (xkWhole(P, d, lg) && xkWhole(P.concat([M]), d, lg)) mom = true; }); });
+      return { pos: pos, mom: pos && mom, mode: mode };
+    } catch (e) { return null; }
+  }
   function notesOfDay(F, th) {
     if (!F || !th || !th.p) return [];
     var p = th.p, pers = th.pers, L = F.lines, out = [];
@@ -1312,6 +1364,7 @@
       if (h.relief) mk.push('<span style="' + G + (h.relief.best ? 'font-weight:700;' : '') + '">✚ relieves the ' + REL[h.relief.of] + ' (' + esc(h.relief.how) + ')' + (h.relief.best ? ' · best hour for it' : h.relief.practical ? ' · best practical hour (07–23)' : '') + '</span>');
       if (h.spouse) mk.push('<span style="' + O + '">palace of the spouse ' + (h.b === _xk.ctx.Pn.day[1] ? 'present' : 'clashed') + '</span>');
       if (SIX6[h.n]) mk.push('<span style="' + Rd + '" title="Six Clashes hexagram (六冲卦): what is tied can come apart; sudden moves">⚡ Six Clashes</span>');
+      if (h.xk && h.xk.mom) mk.push('<span style="' + G + 'font-weight:700;" title="The four pillars of this hour close into an XKDG bond (' + esc(h.xk.mode) + ') and the mother hexagram of the person joins it">◎ XKDG + mother</span>');
       var six = h.voidOut.length || h.spouse;
       if (six && AL && AL.level === 'light') mk.push('<span style="' + Rd + ';font-weight:700;">⚠ critical in this hour</span>');
       if (six && AL && AL.level !== 'light') mk.push('<span style="' + Rd + ';font-weight:700;">⚠ the worst hour</span>');
@@ -1325,7 +1378,16 @@
     if (uT.sphTime) uT.sphTime(dT);
     return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">5 · The hours (true solar time) — line k of the day hexagram rules two hours</div>'
       + '<div style="font-size:11px;color:#555;line-height:1.5;margin:2px 0 4px;">Odd hour: the day hexagram with line k changed; even hour: also the correlated line. The 子 hour starts the day at 23:00 of the evening before. Tap an hour for its hexagram and text. Not in the score.</div>'
+      + motherNote(th, hs)
       + out + '</div>';
+  }
+  // ◎ line under the hours: the mother hexagram and how many hours carry it (Edu 15/11/2026).
+  function motherNote(th, hs) {
+    var M = xkMother(th.p.hx && th.p.hx.n); if (!M) return '';
+    var ok = hs.filter(function (h) { return h.xk && h.xk.mom; }).map(function (h) { return h.pillar; });
+    var nm = U().hexName ? U().hexName(M.n) : '', ph = /HT|hou/i.test(String(th.p.phase || '')) ? 'Hou Tian' : 'Xian Tian';
+    return '<div style="font-size:11px;color:#2e7d32;line-height:1.5;margin:2px 0 4px;">◎ Mother hexagram (' + ph + ', active now): ' + M.n + ' ' + esc(nm) + ' = Qi ' + M.qi + ' · Yun ' + M.yun + '. '
+      + (ok.length ? 'XKDG hours that include it: <b>' + ok.join(' ') + '</b> — best for acting (lucky events about twice as often as chance in the test on the famous; it does not protect from accidents).' : 'No XKDG hour of this day includes it.') + '</div>';
   }
   root.xkdgHLDay = function (iso) {
     var th = _xk.by[iso]; if (!th) return;
@@ -1683,9 +1745,10 @@
     if (first) try { var HS = hoursOfDay(ctx, first);
       out.film_hours = HS.filter(function (h) { return role(h); }).map(function (h) { return { pillar: h.pillar, tst: h.tst, role: role(h), hexagram: h.n, name: (TXT[h.n] || {}).title || '', line: h.l, branch: h.lb, relation: REL[h.r], text: stmt(h.n, h.l), six_clashes_hexagram: SIX6[h.n] ? 'yes: sudden moves, what is tied can come apart in this hour' : undefined }; });
     } catch (e) {}
-    if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s, text: stmt(h.n, h.l), role: role(h), six_clashes_hexagram: SIX6[h.n] ? 'yes: sudden moves, what is tied can come apart in this hour' : undefined,
+    if (withHours && first) out.hours = hoursOfDay(ctx, first).map(function (h) { return { pillar: h.pillar, tst: h.tst, hexagram: h.n, line: h.l, branch: h.lb, relation: REL[h.r], text_score: h.s, text: stmt(h.n, h.l), role: role(h), six_clashes_hexagram: SIX6[h.n] ? 'yes: sudden moves, what is tied can come apart in this hour' : undefined, xkdg_with_mother_hexagram: h.xk && h.xk.mom ? 'yes: the four pillars of this hour close into an XKDG bond (' + h.xk.mode + ') and the person\'s mother hexagram (active natal, as Qi and Yun) joins it: good hour to act (lucky events about twice as often as chance; it does not protect from accidents)' : undefined,
       void_comes_out: h.voidOut.length ? h.voidOut : undefined, spouse_palace: h.spouse || undefined,
       relieves_prevalence: h.relief ? REL[h.relief.of] + ' relieved by ' + h.relief.how + (h.relief.best ? ' (best)' : h.relief.practical ? ' (best practical, 07-23)' : '') : undefined }; });
+    if (withHours && first) { var _M = xkMother(first.p.hx && first.p.hx.n); if (_M) out.mother_hexagram = { hexagram: _M.n, qi: _M.qi, yun: _M.yun, note: 'The person in the XKDG = the active natal He Luo hexagram (Xian Tian before the change, Hou Tian after) as Qi and Yun (Edu). Hours marked xkdg_with_mother_hexagram are the best XKDG hours for this person.' }; }
     if (first) try { var rh = hoursOfDay(ctx, first).filter(function (h) { return h.relief; }).sort(function (a, b) { return b.relief.grade - a.relief.grade || b.s - a.s; });
       if (rh.length) out.hours_that_relieve_the_prevalence = rh.map(function (h) { return h.pillar + ' ' + h.tst + ' · ' + h.n + ' l' + h.l + ' · ' + h.relief.how + ' · text ' + h.s + (h.relief.best ? ' · BEST' : h.relief.practical ? ' · BEST PRACTICAL (07-23)' : ''); });
     } catch (e) {}
