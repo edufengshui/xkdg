@@ -856,6 +856,8 @@
       activeAreas().forEach(function(a){
         (TOOL_AREAS[a] || []).forEach(function(n){ wanted[n] = 1; });
       });
+      // session 53 (Edu): He Luo closed to the students for now — its tools are not sent without the He Luo module
+      if (!window.XKDGHeluo) { delete wanted.get_heluo_day; delete wanted.get_heluo_years; }
       var out = TOOLS.filter(function(t){ return wanted[t.name]; });
       // escape hatch: let the model ask for another group instead of failing
       out.push({
@@ -4038,6 +4040,8 @@
     var pl = personLoaded();
     if (!pl.any) return { error: 'No person is loaded. Ask the user to load Person A or B first.' };
     var purpose = input.purpose || '';
+    // session 53 (Edu): Luck and Correct are He Luo purposes — closed to the students for now
+    if ((purpose === 'luck' || purpose === 'correct') && !window.XKDGHeluo) return { error: 'This purpose is not available in this version of the app.' };
     var days = parseInt(input.days, 10) || 7;
     var today = todayIso();
     var start = today;

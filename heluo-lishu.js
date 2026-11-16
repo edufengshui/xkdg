@@ -1110,4 +1110,21 @@
       clearInterval(iv); var q = _ensQ; _ensQ = null; if (root.XKDGHeluo.ready()) q.forEach(function (f) { try { f(); } catch (e) {} });
     }, 100);
   };
+  // ── Session 53 (Edu 16/11/2026): He Luo is not finished — closed to the students (app-bazi.js xkdgHeluoAllowed).
+  // Without these entry points every He Luo use in the app (Charts menu, ☯ buttons and chips of the scan, the mother
+  // hexagram of the persons, ◎ HLLS Mother, Luck / Correct purposes, the Assistant's He Luo tools) stays off.
+  try {
+    var _allowed = typeof root.xkdgHeluoAllowed === 'function' ? root.xkdgHeluoAllowed() : true;
+    if (!_allowed) {
+      root.XKDGHeluo = undefined; root.openHeluoLishu = undefined; root.openHeluoLishuFor = undefined;
+      var _hideHL = function () {
+        try {
+          ['[data-filter="hlls-mother"]', '#hlls-line', '#p-mother'].forEach(function (q) { var el = document.querySelector(q); if (el) el.style.display = 'none'; });
+          var ps = document.querySelectorAll('option[value="luck"], option[value="correct"]');
+          Array.prototype.forEach.call(ps, function (o) { var sel = o.parentNode; var was = o.selected; o.remove(); if (was && sel) { sel.selectedIndex = 0; } });
+        } catch (e) {}
+      };
+      if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _hideHL); else _hideHL(); }
+    }
+  } catch (e) {}
 })(typeof window !== 'undefined' ? window : globalThis);

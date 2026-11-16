@@ -10284,7 +10284,8 @@ async function _xkdgLicenceRefresh() {
         if (!raw) return;
         const lic = JSON.parse(raw);
         if (!lic || !lic.codeHash) return;
-        if (_xkdgLicenceAge(lic) * 24 < LICENCE_RECHECK_H) return;
+        // session 53: a licence stored before the name was kept is re-checked at once (He Luo access)
+        if (('name' in lic) && _xkdgLicenceAge(lic) * 24 < LICENCE_RECHECK_H) return;
         const ans = await _xkdgLicenceAsk({ hash: lic.codeHash });
         if (!ans) return;                                   // offline: keep going
         if (ans.ok === false && ans.reason === 'unknown code') {
@@ -10300,8 +10301,11 @@ async function _xkdgLicenceRefresh() {
             lic.tier = ans.tier || 0;
             lic.expiry = ans.expiry || null;
             lic.maxDate = ans.maxDate || null;
+            const _hlBefore = xkdgHeluoAllowed();
+            lic.name = ans.name || null;
             lic.checkedAt = new Date().toISOString();
             localStorage.setItem('xkdg_license', JSON.stringify(lic));
+            _xkdgHeluoReloadIf(_hlBefore);
         }
     } catch (e) { /* never block the app on the licence refresh */ }
 }
@@ -10333,6 +10337,22 @@ async function _xkdgLicenceRevive(lic) {
         'No connection. Your licence needs a quick online check — connect to the internet and reload.';
 }
 
+// Session 53 (Edu 16/11/2026): He Luo Li Shu is not finished yet — the whole He Luo section AND the use of the
+// He Luo mother hexagram in the Date Selection are closed to the students for now; only Edu's licence opens them.
+// The Worker already answers with the licence name ("n" in LICENCES); it is kept in the stored licence.
+// To open He Luo to everybody later: return true here.
+const XKDG_HELUO_OWNERS = ['edu'];
+function xkdgHeluoAllowed() {
+    try {
+        const lic = JSON.parse(localStorage.getItem('xkdg_license') || 'null');
+        return !!(lic && lic.name && XKDG_HELUO_OWNERS.indexOf(String(lic.name).trim().toLowerCase()) >= 0);
+    } catch (e) { return false; }
+}
+try { window.xkdgHeluoAllowed = xkdgHeluoAllowed; } catch (e) {}
+// heluo-lishu.js decides once, at start: when a licence check changes the answer, reload once.
+function _xkdgHeluoReloadIf(before) {
+    try { if (xkdgHeluoAllowed() !== before) setTimeout(function () { location.reload(); }, 300); } catch (e) {}
+}
 // Session 37 (Edu): a licence can carry `directions: true` (set in the xkdg-ai Worker,
 // LICENCE_CODES  d: 1) — it opens 🧭 Directions / Travel Planner without the preview code.
 function _xkdgLicenceDirections(ans) {
@@ -10342,9 +10362,11 @@ function _xkdgLicenceDirections(ans) {
 // and open the app. Same record submitPin() writes.
 function _xkdgLicenceStore(ans, hashed) {
     _xkdgLicenceDirections(ans);
+    const _hlBefore = xkdgHeluoAllowed();
     localStorage.setItem('xkdg_license', JSON.stringify({
-        tier: ans.tier || 0, expiry: ans.expiry || null, maxDate: ans.maxDate || null,
+        tier: ans.tier || 0, expiry: ans.expiry || null, maxDate: ans.maxDate || null, name: ans.name || null,
         codeHash: hashed, checkedAt: new Date().toISOString() }));
+    _xkdgHeluoReloadIf(_hlBefore);
     localStorage.setItem('xkdg_student_id', hashed);
     try { document.getElementById('pin-error').textContent = ''; } catch (e) {}
     document.getElementById('license-overlay').style.display = 'none';
@@ -10695,6 +10717,7 @@ async function submitPin() {
         expiry = ans.expiry || null;
         maxDate = ans.maxDate || null;
         hashed = ans.codeHash || await hashPin(pin);
+        var licName = ans.name || null;
     } else if (ans.reason === 'too many attempts') {
         throttled = true;
     }
@@ -10705,8 +10728,10 @@ async function submitPin() {
         // Before this, withdrawing a code only blocked NEW activations: anyone already
         // unlocked kept working forever on the old one. `checkedAt` is the last time the
         // Worker confirmed this licence — the offline grace is counted from there.
-        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate, codeHash: hashed,
+        const _hlBefore = xkdgHeluoAllowed();
+        localStorage.setItem('xkdg_license', JSON.stringify({ tier, expiry, maxDate, codeHash: hashed, name: licName || null,
                                                               checkedAt: new Date().toISOString() }));
+        _xkdgHeluoReloadIf(_hlBefore);
         // Per-student identifier (Edu, session 23: "si può sapere quale studente fa
         // più domande?"). Reuses the SAME hash already computed to check the PIN —
         // no new student-management system, no new data collected beyond what the
