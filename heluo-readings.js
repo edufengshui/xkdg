@@ -515,37 +515,122 @@
     5: { strong: 'A true, clear light: everything {he} does comes to completion, great luck.', weak: '{He} shines, but needs others to complete the work.' },
     6: { strong: 'The journey is done: {he} celebrates with friends, in trust and with measure.', weak: 'Too much celebrating: {he} loses {his} head.' }
   },
-  // ── Spheres of life (Edu 15/11/2026: «a selector of human sphere — money, career, love, health, luck… — otherwise everything
-  // stays very general»). Rule: the IMAGE of the line text stays the same; the RELATION of the line (P C W G B for the person)
-  // says who or what carries it in the chosen sphere. `rel` = what each relation means in a sphere (love: M / F differ);
-  // `lines` = readings written by hand where there are real cases (first ones: love, from cases told by Edu, no names or dates).
-  // Shown by sphereHtml() in heluo-lishu.js under every hexagram with an active line. Reading only, no score.
+  // ── ONE TABLE for the spheres of reading AND the Purposes of the Date Selection (Edu 16/11/2026, «upload generale») ──
+  // Eleven entries agreed with Edu voice by voice (project HLLS 1: claude/hlls-sfere-purposes-armonizzati.md and parts -2…-5).
+  // Each entry: `score` = the relations a date looks for (with weight; read by heluo-ds.js for the He Luo ☯ of the XKDG
+  // Date Selection), `heart` = what the heart of the sphere is, `rel` = what each relation means, `dyn` = how that
+  // relation moves among the others in this sphere (who feeds, drains, attacks), `absent` = what an absence says.
+  // Speak and Legal have `variants` (chosen next to PURPOSE and in the He Luo window: localStorage xkdg_xk_variant_<key>).
+  // Study and Home are reading only (no Purpose); Correct and Cures are Purposes only (no sphere). Weights of the second
+  // relations (Parent 0.5 in Relationship, Wealth 0.5 in Legal · act) chosen by Claude.
+  // The relation of the line is the SUBJECT, the sphere only the field (Edu 16/11/2026, 09:14).
   spheres: {
-    list: [['money', 'Money', '💰'], ['career', 'Career', '🏛'], ['love', 'Love', '♥'], ['health', 'Health', '✚'], ['luck', 'Luck', '☘'], ['study', 'Study & teaching', '📚'], ['home', 'Home & family', '🏠']],
-    // Edu 16/11/2026: the RELATION of the line is the subject of the reading, the sphere is only the field. `core` = the relations that
-    // carry the heart of a sphere (love: the partner = W for a man, G for a woman; the relationship itself = P); a line with another
-    // relation never speaks of the heart of the sphere (a Brothers line in Love is a friend or a rival, never a love affection).
-    // `handFor` = element of the person the hand-written `lines` were written for: shown only when the line has the same relation.
-    core: { money: ['W'], career: ['G'], love: { M: ['W', 'P'], F: ['G', 'P'] }, health: ['G'], study: ['P'], home: ['P'] },
-    coreName: { money: 'the money itself', career: 'the position itself', love: 'the partner or the relationship', health: 'the illness itself', study: 'the study itself', home: 'the house itself' },
+    list: [['wealth', 'Wealth', '💰'], ['career', 'Career', '🏛'], ['relationship', 'Relationship', '♥'], ['health', 'Health', '✚'], ['journey', 'Journey', '✈'], ['speak', 'Speak', '🎤'],
+      ['legal', 'Legal', '⚖'], ['support', 'Support', '🤝'], ['luck', 'Luck', '☘'], ['study', 'Study', '📚'], ['home', 'Home & family', '🏠']],
+    old: { money: 'wealth', love: 'relationship' }, // names before 16/11/2026
+    // one entry resolved for a person (male true/false) and a variant (Speak, Legal): { key, label, icon, variant, variants,
+    // score: [[rel, weight]], core: [rel], heart, rel, dyn, absent, round, note, luck3, reading }
+    resolve: function (key, male, variant) {
+      key = this.old[key] || key; var e = this.table[key]; if (!e) return null;
+      var sx = male === false ? 'F' : 'M', pick = function (v) { return v && !Array.isArray(v) && (v.M || v.F) ? v[sx] : v; };
+      var vk = e.variants ? (e.variants[variant] ? variant : e.def) : null, V = vk ? e.variants[vk] : {};
+      var score = pick(V.score || e.score) || null, lab = this.list.filter(function (x) { return x[0] === key; })[0] || [key, key, ''];
+      return { key: key, label: lab[1], icon: lab[2], variant: vk, variantLabel: vk ? V.label : null, variants: e.variants ? Object.keys(e.variants).map(function (k) { return [k, e.variants[k].label]; }) : null,
+        score: score, core: score ? score.map(function (x) { return x[0]; }) : null, heart: V.heart || e.heart, rel: pick(V.rel || e.rel), dyn: pick(e.dyn) || {},
+        absent: e.absent || [], round: e.round || null, note: V.note || null, luck3: e.luck3 || null, reading: !!e.reading };
+    },
     handFor: 'Metal',
-    rel: {
-      money: { W: 'the money itself: clients, deals, direct gain', C: 'the source of money: ideas, products and projects that bring it', B: 'partners and competitors: money shared, or going out',
-        G: 'obligations and pressure from above: taxes, debts — or money that comes through an assignment', P: 'the base: house, contracts, tools, what {he} invests in to be supported' },
-      career: { G: 'authority and position: the boss, a mandate, rank — or pressure from above', P: 'backing: titles, documents, mentors and those who stand behind {him}', W: 'results and resources that feed the position',
-        C: '{his} own initiative and freedom: it creates, but pushes against bosses and rules', B: 'colleagues and rivals' },
-      love: { M: { W: 'the partner, the woman in {his} life', G: 'a passion that takes {him} over, pressure, or a rival', C: 'desire, pleasure and joy — and the children', B: 'friends and rivals: someone competes for the partner', P: 'the relationship itself: the bond, an engagement, a marriage — the agreement between the two' },
-        F: { G: 'the partner, the man in {his} life', W: 'what {he} gives and manages in the couple, the material side', C: 'desire, pleasure and joy, the children — it pushes the man away if too strong', B: 'friends and rivals: someone competes for the partner', P: 'the relationship itself: the bond, an engagement, a marriage — the agreement between the two' } },
-      health: { G: 'the illness: stress, pressure on the body', C: 'the cure: recovery, good spirits, what keeps the illness away', P: 'care and protection: rest, doctors, treatments',
-        W: 'appetite, food and pleasures: in excess they feed the illness', B: 'energy and stamina — or overexertion' },
-      luck: { P: 'protection: help that comes from above', C: 'good fortune from what {he} creates and enjoys', W: 'luck with money and with chances taken', G: 'a test of fate: pressure that can lift {him} or weigh on {him}', B: 'luck through friends and allies — or shared with rivals' },
-      study: { P: 'study itself: teachers, schools, books, diplomas', C: 'teaching and writing: students, and expressing what {he} knows', G: 'exams, discipline and the rules of a school',
-        W: 'practical matters: study that pays — or money and pleasures that distract from it', B: 'fellow students and colleagues' },
-      home: { P: 'the house itself: walls, roof, papers — and parents and elders', W: 'the things in the house: objects, possessions, the household money', C: 'children, joy and the pleasure of being at home',
-        G: 'problems and duties in the house: repairs, rules, pressure', B: 'those who share the house and the work: the helper at {his} side, brothers and sisters' }
+    // the five principles of Edu (16/11/2026)
+    principles: [
+      'The cycle among the relations (Edu 09:35): the five meanings are not enough, what counts is how the relations move. Generate: Ghost → Parent → Brothers → Children → Wealth → Ghost. Control: Wealth ✕ Parent, Parent ✕ Children, Children ✕ Ghost, Ghost ✕ Brothers, Brothers ✕ Wealth. Read who feeds, who drains, who attacks — and the ABSENCE of a relation.',
+      'The point of view of another relation (Edu 09:58): what a relation controls is ITS Wealth. Brothers are the Wealth of the Ghost; Parent is the Wealth of the Wealth; Children are the Wealth of the Parent.',
+      'Draining is not automatic (Edu 12:06): it depends on what arrives upstream. Parent drains the Ghost only if the Wealth does not generate enough Ghost. In love «generate» = «love».',
+      'Children = moving, acting (Edu 11:32): Brothers standing still are potential; when they move they become Children.',
+      'Who generates SUPPORTS the receiver if it is strong and SMOTHERS it if it is weak (Edu 12:42): before judging who generates, look at the strength of the receiver (timely, not void, not clashed).'
+    ],
+    table: {
+      wealth: { score: [['W', 1]], heart: 'the money itself',
+        rel: { W: 'the money itself: takings and gain — not the clients', C: 'what makes money move: expectation and desire, marketing and advertising; for one who creates, ideas and projects',
+          B: 'the clients, always — potential while they stand still; also partners and competitors', P: 'the finished product; a contract or an agreement that secures steady gains',
+          G: 'the company that takes the money in; for the person, taxes, debts and obligations' },
+        dyn: { W: 'Comes from Children (the expectation that moves the clients) and goes back to the company (Wealth feeds the Ghost).', C: 'The clients (Brothers) move when an expectation touches them; for the product (Parent) made by the company, Children is its Wealth.',
+          B: 'Standing still they are potential; touched by an expectation (Children) they move to spend.', P: 'The Wealth of the Wealth: a stable agreement. Made by the company (Ghost generates Parent).', G: 'Fed by the money; it makes the product.' },
+        absent: ['Brothers without Children: the market is there, nobody moves.', 'Children without Brothers: advertising with no one to sell to.', 'Wealth without Parent: one-off takings, nothing stable.'],
+        round: 'The company (G) makes the product (P); the clients (B), touched by an expectation (C), spend money (W); the money goes back to the company (W feeds G).' },
+      career: { score: [['G', 1]], heart: 'the position itself',
+        rel: { G: 'authority and position: the boss, the mandate, the company, the management — or pressure from above', P: 'the work contract, titles and documents; knowledge, expertise, CV, referrals; the reviews of clients; the finished products of the company',
+          B: 'the workers themselves, colleagues and the collaborators a project needs; for the company, the market and the clients', C: 'the project, the initiative, freedom — and the unions and protests that push the management',
+          W: 'results and resources: they come from the project and feed the position' },
+        dyn: { P: 'Drains the Ghost and shields the Brothers: it limits the power of the boss. When Parent is removed from the chart, layoffs start.', B: 'The Ghost presses them, the Parent shelters them. Question about the person who works → colleagues and collaborators; about the company or one\'s own business → the clients (Brothers = the Wealth of the Ghost).',
+          C: 'Born from the collaborators, it attacks the Ghost.', W: 'Comes from the project, feeds the Ghost, attacks the Parent.', G: 'Generates Parent: the products that are sold to the Brothers.' } },
+      relationship: { score: { M: [['W', 1], ['P', 0.5]], F: [['G', 1], ['P', 0.5]] }, heart: 'the partner or the relationship',
+        rel: { M: { B: 'the man himself, the basic, instinctive element — and others like him, friends and rivals; never a love affection', C: 'courtship, offering himself to her, usually with grace; also desire, pleasure, children and space for his own things',
+            W: 'the partner, the woman in his life', P: 'first his qualities (intelligence, experience, support, solidity); then the relationship itself — bond, engagement, marriage, an agreement between the two — and the plans for the couple\'s future',
+            G: 'self-discipline: the man learning to control himself' },
+          F: { B: 'she herself', G: 'the partner, the man who controls her — not enough unless he offers a commitment', P: 'the commitment, the guarantee the partner gives her; also responsibility and family',
+            C: 'her freedom, pleasure, her own space, travels, the children — the valve that relieves the weight', W: 'what she gives in the couple: she feeds the partner and holds the agreement' } },
+        dyn: { M: { B: 'Controls the Wealth (he sees her as his own, the sexual act included); it is the Brothers that move and take the first step. Without Parent he can no longer hold her.',
+            C: 'Generates the Wealth: she is won by courtship. Parent slows it; it loosens discipline (attacks the Ghost).', W: 'Before accepting she looks at his qualities (Parent), then wants a «contract» (Parent) that guarantees her. She generates — loves — the Ghost.',
+            P: 'The Wealth of the partner: she holds the agreement and often wants the engagement or the marriage. Supports the Brothers. Drains the Ghost only if the Wealth does not love the Ghost enough.',
+            G: 'The Wealth will love the Ghost if the man learns to control himself and the Ghost strengthens the marriage contract (Ghost generates Parent).' },
+          F: { G: 'Ghost and Parent are a bit heavy by nature (responsibility, family): she can feel their weight. A Ghost that only controls her is not enough: it must generate Parent.', P: 'Generated by the partner, it supports her.',
+            C: 'The valve: present and timely = it relieves the weight (a healthy sign); absent or hit = the weight has no outlet; very strong with weak Parent = the real escape, it controls the Ghost and the man is pushed away.',
+            W: 'Generates the Ghost (she feeds the partner) and controls the Parent (she holds the agreement).', B: 'Supported by the Parent; without it she escapes on Children.' } },
+        absent: ['Partner without Parent: a story without a bond.', 'Parent without partner: the bond stays on paper.', 'Strong Parent without Children: a stable couple with no air (Edu, 16/11/2026).',
+          'Man — Brothers without Children: instinct that does not offer itself, or takes without grace; Children without Parent: courtship with nothing behind, she does not accept; Parent without Ghost: qualities and promises without the discipline to keep them.'],
+        round: 'Man: he moves (B) and offers himself with grace (C); she looks at his qualities (P) and accepts (W); he learns to control himself (G) and strengthens the bond (P); she loves him (W feeds G).' },
+      health: { score: [['C', 1]], heart: 'the cure itself',
+        rel: { C: 'the cure: recovery, good spirits — what drives the illness away', G: 'the illness, stress: pressure on the body', B: 'the body itself, energy and stamina', P: 'doctors, treatments, rest', W: 'food, appetite and pleasures' },
+        dyn: { C: 'Controls the Ghost: it drives the illness away.', G: 'Presses on the Brothers, the body.', B: 'A strong body generates Children: it heals by itself.',
+          P: 'Supports the body and drains the illness, but slows Children: too many treatments and too much bed take away one\'s own reaction.', W: 'Feeds the Ghost (excess feeds the illness) and attacks the Parent (the therapy is skipped).' } },
+      journey: { score: [['C', 1]], heart: 'the journey itself',
+        rel: { C: 'the journey itself: moving, freedom, pleasure', B: 'the traveller and the travel companions', W: 'the destination and what the journey brings: gain, purchases, experiences',
+          G: 'obstacles, delays, checks, dangers — and the duties that call back', P: 'documents, tickets, transport, lodging, the programme of the journey, the home one leaves' },
+        dyn: { B: 'Generates Children: moving needs one\'s own energy.', G: 'Children controls it: leaving dissolves the pressure.',
+          P: 'With strong Brothers it is the support of a good journey; with weak Brothers (no motivation, no energy, tied to comforts and habits, or a programme {he} dislikes) it becomes an obstacle.' },
+        absent: ['Children without Parent: a free but uncovered journey.', 'Strong Ghost: delays and blocks — with timely Children one passes anyway.', 'No Wealth: a journey without a clear destination, or that brings nothing.'] },
+      speak: { def: 'show', heart: 'the speech itself',
+        variants: {
+          convince: { label: 'Convince (teacher, politician)', score: [['G', 1], ['P', 1]], heart: 'authority resting on proof', note: 'Ghost + Parent at the centre, Children as salt.' },
+          show: { label: 'Show / new product', score: [['C', 1]], heart: 'the show itself', note: 'Children at the centre: a show mocks power (Ghost) and gives voice to the common man (Brothers); a new product that solves a problem (Children controls Ghost).' },
+          reassure: { label: 'Reassure (insurance, real estate)', score: [['P', 1]], heart: 'the guarantee itself', note: 'Parent, which generates the Brothers, with the prospect of a serene future (Children).' } },
+        rel: { G: 'the authority of the speaker', P: 'solid proof, real competence', C: 'improvisation, the joke; the students', B: 'the others present, the audience', W: 'the titles the speaker can boast of' },
+        dyn: { G: 'With a strong Parent it gives authority: to convince, words rest on solid proof. It must not weigh too much on the audience (Ghost controls Brothers).',
+          C: 'Too much improvisation loses credibility (Children attacks Ghost); a joke here and there lightens the air and relaxes the audience. Do not control the students too much with Parent.',
+          W: 'The titles must not exceed the real competence (Parent): otherwise the speaker looks like a windbag.', B: 'Without freedom of criticism there is dictatorship (Ghost controls Brothers), which one day brings revolt (Children suppresses Ghost).' } },
+      legal: { def: 'defend', heart: 'the case itself',
+        variants: {
+          defend: { label: 'Defend (we are attacked)', score: [['P', 1]], heart: 'the documents that protect',
+            note: 'We are the Brothers, who generate Children to control the Ghost. Who defends needs documents (Parent) more than who attacks.',
+            rel: { B: 'we, who are attacked', G: 'who attacks us: the counterpart, the judge, the prosecution', P: 'documents and proof: the shield of who defends', C: 'the defence, the counter-move, the lawyer who takes the accusation apart',
+              W: 'what is at stake; the resources of who attacks' } },
+          act: { label: 'Act (we start the case)', score: [['G', 1], ['W', 0.5]], heart: 'the action and what is at stake',
+            note: 'We are the Ghost that attacks the Brothers, who keep the Wealth from reaching us.',
+            rel: { G: 'we, who start the action', B: 'the counterpart that holds back what is due to us', W: 'what is at stake, money and goods — and our own resources', P: 'documents and proof', C: 'the counterpart\'s defence, the counter-move that hits us' } } },
+        dyn: { P: 'Supports the Brothers and drains the Ghost.', C: 'Controls the Ghost.', W: 'A rich attacker can «buy» the proof: Wealth feeds the Ghost and commands the Parent.' } },
+      support: { score: [['P', 1]], heart: 'the support itself',
+        rel: { B: 'we, who need backing', P: 'who supports us: mentors, guarantors, institutions, the family', G: 'the authority the support comes from', W: 'interest, money', C: 'what we do with the help received: results and autonomy' },
+        dyn: { P: 'With us strong it is a push; with us weak it becomes dependence.', G: 'Presses on us, but it is the door the help comes through (Ghost generates Parent).',
+          W: 'Attacks the Parent: asking out of interest, or with money in between, the support withdraws.', C: 'Parent slows it: who helps often wants to direct too.' } },
+      luck: { score: null, heart: null,
+        rel: { B: 'we; luck from friends and allies — luck to be shared (Brothers divide Wealth)', P: 'protection, help from above, the noble who opens a door', C: 'the luck one makes: talent, good spirits, the right move',
+          W: 'luck in things: money and chances taken', G: 'the test of fate: pressure that crushes or recognition that lifts' },
+        dyn: { P: 'With us strong it is a push; with us weak it is luck awaited sitting down.', C: 'Dissolves troubles (controls Ghost) and brings the chance (generates Wealth).', W: 'Feeds the Ghost: the more one takes, the more responsibilities and envy.' },
+        luck3: { heaven: 'Heaven Luck = Parent: what comes from above, protection and help', earth: 'Earth Luck = Wealth: what is gathered, money and chances taken',
+          fame: { C: 'famous for performances and projects', W: 'famous for the ability to create wealth', G: 'famous for authority and credibility — or because feared', P: 'famous for competence and the help given to others', B: 'famous for being among people, understanding them and working with them' } } },
+      study: { score: [['P', 1]], reading: true, heart: 'the study itself',
+        rel: { B: 'who studies, and fellow students', P: 'study itself: teachers, books, school, the knowledge received', G: 'exams, discipline, the school as authority',
+          C: 'what one does with knowledge: expressing, writing, practising, thinking with one\'s own head', W: 'study that pays — or money and pleasures that distract' },
+        dyn: { P: 'With a strong student it nourishes; with a weak one it crushes (rote learning, dependence on the teacher).', G: 'Presses on who studies, but generates Parent: the rule that forces learning, and from which the title comes.',
+          C: 'Parent slows it (too much theory blocks practice); it controls the Ghost (who knows how to do passes the exam).', W: 'Attacks the Parent: study is left to earn at once.' } },
+      home: { score: [['P', 1]], reading: true, heart: 'the house itself',
+        rel: { B: 'we and who shares the house — brothers and sisters, who lives and works at our side', P: 'the house itself (walls, roof, papers) and the parents, the elders', G: 'duties and problems: repairs, rules, neighbours, authorities',
+          C: 'the children, joy, the life lived inside the house', W: 'the things and the money of the house' },
+        dyn: { P: 'Protects who lives there; for the weak it becomes the nest one never leaves.', G: 'Presses on who lives there, but keeps the house in order (Ghost generates Parent).',
+          C: 'Dissolves duties and tensions (controls Ghost); the house contains and sometimes squeezes it (Parent controls Children).', W: 'Attacks the Parent: for money one sells, mortgages, or quarrels in the family (inheritances).' } }
     },
     lines: {
-      love: {
+      relationship: {
         1: { 1: { strong: 'Desires stay under the surface: the heart waits, ready to wake up.', weak: 'Feelings held back too long: a life on hold.' },
              6: { strong: '{He} keeps apart: few ties, but chosen ones.', weak: 'Pride isolates: friends and close ties leave in silence.' } },
         12: { 4: { strong: 'A passion breaks a long standstill: {he} lives it as something bigger than {himself}, without guilt.', weak: 'The stuck couple starts to move, but for now it depends on others.' } },
@@ -556,7 +641,7 @@
         14: { 2: { strong: 'A big wagon: {he} meets the person to build and work with.', weak: 'Much to carry together: the wagon is heavy.' } },
         29: { 1: { strong: 'First troubles in the couple, but {he} learns to move through them.', weak: 'A pit within a pit: crises and jealousy pile up.' } }
       },
-      money: {
+      wealth: {
         12: { 4: { strong: 'The standstill ends through an assignment from someone higher up, not by {his} own move: those who work with {him} gain too.', weak: 'Money starts to move again, but it depends on others.' } },
         35: { 5: { strong: 'A year to invest in the base (house, contracts, tools) without counting every cent: the return comes.', weak: 'Gains and losses alternate: no use keeping score.' } },
         16: { 6: { strong: 'A project or deal {he} believed in proves an illusion: closing in time, nothing is lost.', weak: 'Money put into an illusion: stop before it costs more.' } }

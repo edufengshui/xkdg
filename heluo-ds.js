@@ -420,7 +420,19 @@
   // on the line of the month (1), the Lord of the Block (2), the primary line of the day (3) and its outcome (3); a
   // hidden line under the line read counts half; the relation that attacks the purpose (the price) takes the same away.
   // A void line (voids from the birth DAY pillar, see voidExit) is not a penalty: "fruits later". Thread / 3 = ☯ points, from −3 to +3; in the scan each point is 5% of the XKDG score (app-bazi.js _hlApply).
+  // Edu 16/11/2026 («upload generale»): the relations a date looks for come from the ONE table of spheres and Purposes
+  // (heluo-readings.js spheres.table); the fallback below is the same table, for when heluo-readings.js is not loaded.
+  // Relationship = partner (W man, G woman) + Parent (the bond) 0.5; Speak and Legal by variant (localStorage xkdg_xk_variant_<key>).
   var XK_REL = { wealth: 'W', career: 'G', speak: 'C', legal: 'P', health: 'C', journey: 'C', support: 'P' }; // relationship: W man, G woman
+  var XK_FALL = { relationship: { M: [['W', 1], ['P', 0.5]], F: [['G', 1], ['P', 0.5]] }, speak: { convince: [['G', 1], ['P', 1]], show: [['C', 1]], reassure: [['P', 1]] }, legal: { defend: [['P', 1]], act: [['G', 1], ['W', 0.5]] } };
+  var XK_VDEF = { speak: 'show', legal: 'defend' };
+  function xkVar(key) { var v = ''; try { v = localStorage.getItem('xkdg_xk_variant_' + key) || ''; } catch (e) {} return v; }
+  function xkRels(key, male) {
+    var S = (root.XKDG_HELUO_READINGS || {}).spheres, E = S && S.resolve && S.table[key] && !S.table[key].reading ? S.resolve(key, male, xkVar(key)) : null;
+    if (E) return E.score;
+    if (XK_FALL[key]) { var f = XK_FALL[key]; if (key === 'relationship') return f[male ? 'M' : 'F']; var v = xkVar(key); return f[f[v] ? v : XK_VDEF[key]]; }
+    return XK_REL[key] ? [[XK_REL[key], 1]] : null;
+  }
   var XK_ATT = { W: 'B', P: 'W', C: 'P', G: 'C', B: 'G' }, XK_W = { am: 1, m: 1, lord: 2, d: 3, s2: 3 };
   // Edu 12/11/2026, from the Greece seminar 2019 (good month, then a sudden turn): four rules, weights chosen by Claude.
   // 1) the line of the annual that rules the month (line k for months 2k−1, 2k) is read too: relation and text;
@@ -433,11 +445,17 @@
   var XK_TXT = { d: 1, s2: 0.5 }, XK_STEAL = 1.5;
   var ST_EL = ['Wood', 'Wood', 'Fire', 'Fire', 'Earth', 'Earth', 'Metal', 'Metal', 'Water', 'Water'];
   var XK_LBL = { am: 'annual line of the month', m: 'month line', lord: 'Lord of the Block', d: 'day line (primary)', s2: 'day line (outcome)' };
-  function xkRel(key, male) { return key === 'relationship' ? (male ? 'W' : 'G') : (XK_REL[key] || null); }
+  function xkRel(key, male) { var r = xkRels(key, male); return r ? r[0][0] : null; } // the main relation (★)
+  function xkRel2(key, male) { var r = xkRels(key, male); return r && r[1] ? r[1] : null; } // the second relation [rel, weight]
   function thread(ctx, Pe, lon, key) {
     var p = predict(ctx.R, Pe, lon); if (p.none) return null;
     var pers = persona(p.hx, p.per.line), T = [Pe.year[1], Pe.month[1], Pe.day[1]], yv = natalVoids(ctx.Pn).list, mb0 = ctx.Pn.month[1];
     var X = xkRel(key, ctx.male), A = X ? XK_ATT[X] : null;
+    // Edu 16/11/2026: a second relation of the purpose (Relationship: Parent, the bond; Speak · convince: Parent; Legal · act:
+    // Wealth) counts with its weight; its price only when the price is not itself wanted (man: Wealth controls Parent = she
+    // holds the agreement, not a price).
+    var X2r = xkRel2(key, ctx.male), X2 = X2r ? X2r[0] : null, w2 = X2r ? X2r[1] : 0, A2 = X2 && XK_ATT[X2] !== X ? XK_ATT[X2] : null;
+    if (A === X2) A = null;
     // Edu, 12/11/2026: voids, see voidExit (timely at birth = still void, but easy to leave; untimely = needs year and month in season)
     var TT = { y: T[0], m: T[1], d: T[2] }, mv = movedBranches(p);
     var vNow = function (b) { return yv.indexOf(b) >= 0 && !voidExit(b, mb0, TT, mv).out; };
@@ -455,7 +473,7 @@
       Lb.fb = !off && GEN[Lsm.el] === Lb.el ? 1.5 : 1; if (Lb.fb > 1) Lb.bk = Lsm;
       if (!off && X === 'W' && Lsm.r === 'B' && Lb.r === 'C') Lsm.chain = Lb; });
     Ls[4].fb = 1;
-    var t = 0, on = [], price = [], later = [], crit = [], critE = [], surprise = [], chain = [], collab = [];
+    var t = 0, on2 = [], price2 = [], on = [], price = [], later = [], crit = [], critE = [], surprise = [], chain = [], collab = [];
     // Edu 13/11/2026: for Wealth, Brothers with a favourable text ON THE ACTION (day line, outcome) are collaborators, not a price nor 劫財; neutral Brothers on
     // the day line too when the outcome is Brothers with a favourable text (Belgrade 8/10/2011) — the same rule as Favour.
     var scL = function (L) { return SC() && SC()[L.n] ? SC()[L.n].l[L.l] : 0; };
@@ -463,7 +481,9 @@
     Ls.forEach(function (L) {
       if (X && L.r === X) { t += XK_W[L.k] * L.fl * L.fb; on.push(L); if (L.voidL && !L.filled) later.push(L); }
       else if (X && L.hid && L.hid.r === X) { t += XK_W[L.k] / 2; on.push({ k: L.k, b: L.hid.b, r: X, hidden: true }); }
+      else if (X2 && L.r === X2) { t += XK_W[L.k] * w2 * L.fl * L.fb; on2.push(L); if (L.voidL && !L.filled) later.push(L); }
       if (A && L.r === A && !L.collab) { if (L.chain) chain.push(L); else { t -= XK_W[L.k] * L.fl * L.fb; price.push(L); } }
+      else if (A2 && L.r === A2 && !L.collab && L.r !== X) { t -= XK_W[L.k] * w2 * L.fl * L.fb; price2.push(L); }
       // rule 4 (Edu 12/11): for Speak, Brothers on a line of the time = criticism from colleagues and rivals
       //   — only when its text is unfavourable or it comes out of the void (a good Brothers text = good colleagues: 15 l3, June 2019)
       if (key === 'speak' && L.r === 'B' && ((SC() && SC()[L.n] && SC()[L.n].l[L.l] < 0) || (L.voidL && L.filled))) {
@@ -487,6 +507,7 @@
       Ls.forEach(function (L) {
         if (furto && L.r === 'B' && !L.chain && !L.collab && (L.k === 'lord' || L.k === 'd')) { t -= XK_W[L.k] * L.fl * (XK_STEAL - 1); steal.push(L); }
         if (L.r === X && sc(L) < 0) { t -= XK_W[L.k] * L.fl * L.fb; loss.push(L); }
+        else if (X2 && L.r === X2 && sc(L) < 0) { t -= XK_W[L.k] * w2 * L.fl * L.fb; loss.push(L); }
       });
       if (sd < 0 && Lo.r === X && so >= 0) { t -= XK_W.s2 * Lo.fl; loss.push(Lo); }
     }
@@ -497,7 +518,7 @@
     var turn = null;
     function moVal(i) {
       var mo = H().monthlyHex(p.annual.hex.lines, i), Lm = NJ()[mo.hex.n].lines[mo.line - 1], La = NJ()[p.id.year[0]].lines[mo.line - 1], v = 0;
-      [[Lm, mo.hex.n], [La, p.id.year[0]]].forEach(function (z) { var r = rel(pers, z[0].el); if (r === X) v += 1; if (r === A) v -= 1; if (key === 'speak' && r === 'B' && (SC() && SC()[z[1]] ? SC()[z[1]].l[mo.line] : 0) < 0) v -= XK_CRIT; v += (SC() && SC()[z[1]] ? SC()[z[1]].l[mo.line] : 0) * 0.5; });
+      [[Lm, mo.hex.n], [La, p.id.year[0]]].forEach(function (z) { var r = rel(pers, z[0].el); if (r === X) v += 1; if (r === A) v -= 1; if (X2 && r === X2) v += w2; if (A2 && r === A2) v -= w2; if (key === 'speak' && r === 'B' && (SC() && SC()[z[1]] ? SC()[z[1]].l[mo.line] : 0) < 0) v -= XK_CRIT; v += (SC() && SC()[z[1]] ? SC()[z[1]].l[mo.line] : 0) * 0.5; });
       return v;
     }
     if (X && p.month.index < 12) {
@@ -560,7 +581,7 @@
     else if (key === 'cure') { if (need) [[p.daily.hex, 2, 'day'], [p.daily.block, 1, 'block']].forEach(function (x) { var q = yy(x[0]); if (q) { adj += q === need ? x[1] : -x[1]; cure.push(x[2] + ' hexagram: two ' + q + ' trigrams' + (q === need ? ' (what the chart needs)' : ' (the chart has too much of it)')); } }); }
     else adj = Math.round(t / 3);
     adj = Math.max(-3, Math.min(3, adj));
-    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, collab: collab, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
+    return { p: p, pers: pers, Pe: Pe, key: key, X: X, A: A, X2: X2, w2: w2, A2: A2, on2: on2, price2: price2, variant: XK_FALL[key] && key !== 'relationship' ? (xkVar(key) || XK_VDEF[key]) : null, lines: Ls, t: t, adj: adj, on: on, price: price, later: later, tri: tri, luck: lk, opp: opp, luckD: LD, am: { n: p.id.year[0], l: p.month.line, s: amS }, crit: crit, surprise: surprise, turn: turn, dayLuck: !!(DAY_LUCK[key] && ctx.profD), need: need, cure: cure, yv: yv, loss: loss, steal: steal, collab: collab, alarm: alarm, sd: sd, so: so, chain: chain, critE: critE };
   }
   // Hexagram of the hour (Edu 12/11 evening, version A, provisional): line k of the day hexagram rules two hours on the
   // branches (line 1 = 子丑 … line 6 = 戌亥; the 子 hour from 23:00 belongs to the next day). Odd hour = the day hexagram
@@ -738,11 +759,12 @@
     return { n: n, qi: q.qi, yun: q.yun, fam: E.FH(q.jz[0], q.jz[1], n) || [] };
   }
   function xkHet(a, b) { var x = Math.min(a, b), y = Math.max(a, b); return y - x === 5 && x >= 1 && x <= 4; }
-  var XK_REL = { add: function (a, b) { return a + b === 5 || a + b === 10 || a + b === 15; }, hetu: xkHet, eq: function (a, b) { return a === b; } };
+  // renamed 16/11/2026: as XK_REL it overwrote the relations of the purposes (same scope, var hoisting)
+  var XK_BREL = { add: function (a, b) { return a + b === 5 || a + b === 10 || a + b === 15; }, hetu: xkHet, eq: function (a, b) { return a === b; } };
   function xkWhole(N, d, lg) {
     var seen = [0], i = 0;
     while (i < seen.length) { var a = N[seen[i++]]; for (var b = 0; b < N.length; b++) { if (seen.indexOf(b) >= 0) continue; var B = N[b];
-      if (lg !== 'eq' && a.branch && B.branch && clash(a.branch) === B.branch) continue; if (XK_REL[lg](a[d], B[d])) seen.push(b); } }
+      if (lg !== 'eq' && a.branch && B.branch && clash(a.branch) === B.branch) continue; if (XK_BREL[lg](a[d], B[d])) seen.push(b); } }
     return seen.length === N.length;
   }
   // gz = [year, month, day, hour] pillars ('丙午'…), M = xkMother(n). Returns null (no engine) or { pos, mom, mode }.
@@ -757,7 +779,7 @@
       XK_FAMS.forEach(function (f) {
         var inF = [0, 1, 2, 3].filter(function (k) { return P[k].fam.indexOf(f) >= 0; }); if (inF.length !== 3) return;
         var lp = P[[0, 1, 2, 3].filter(function (k) { return inF.indexOf(k) < 0; })[0]];
-        var con = inF.some(function (k) { var fp = P[k]; return xkHet(lp.qi, fp.qi) || xkHet(lp.yun, fp.yun) || XK_REL.add(lp.qi, fp.qi) || XK_REL.add(lp.yun, fp.yun) || lp.qi === fp.qi || lp.yun === fp.yun; });
+        var con = inF.some(function (k) { var fp = P[k]; return xkHet(lp.qi, fp.qi) || xkHet(lp.yun, fp.yun) || XK_BREL.add(lp.qi, fp.qi) || XK_BREL.add(lp.yun, fp.yun) || lp.qi === fp.qi || lp.yun === fp.yun; });
         var nc = inF.every(function (k) { return clash(lp.branch) !== P[k].branch; });
         if (con && nc) { pos = true; mode = mode || 'Partial BL (' + f + ')'; if (M.fam.indexOf(f) >= 0) mom = true; }
       });
@@ -1116,17 +1138,19 @@
   function sphW(Pe, f) { var u = U(), pv, on = u && u.sphTime; try { if (on) pv = u.sphTime(Pe ? { y: String(Pe.year).charAt(1), m: String(Pe.month).charAt(1), d: String(Pe.day).charAt(1) } : null); return f(); } finally { if (on) u.sphTime(pv); } }
   // the sphere chosen in the He Luo window, for the Assistant
   function sphAI(male) {
-    try { var sp = localStorage.getItem('xkdg_hl_sphere'), S = (root.XKDG_HELUO_READINGS || {}).spheres; if (!sp || !S || !S.rel[sp]) return undefined;
-      var R_ = S.rel[sp], lab = S.list.filter(function (x) { return x[0] === sp; })[0], m = {}; if (sp === 'love') R_ = R_[male ? 'M' : 'F'];
-      Object.keys(R_).forEach(function (k) { m[REL[k]] = R_[k].replace(/\{he\}/g, male ? 'he' : 'she').replace(/\{his\}|\{him\}/g, male ? 'his' : 'her'); });
+    try { var sp = localStorage.getItem('xkdg_hl_sphere'), S = (root.XKDG_HELUO_READINGS || {}).spheres; if (!sp || !S || !S.resolve) return undefined;
+      var E = S.resolve(sp, male, xkVar(S.old[sp] || sp)); if (!E) return undefined; sp = E.key;
+      var pr = function (t) { return String(t).replace(/\{he\}/g, male ? 'he' : 'she').replace(/\{He\}/g, male ? 'He' : 'She').replace(/\{his\}|\{him\}/g, male ? 'his' : 'her'); };
+      var m = {}, dy = {}; Object.keys(E.rel).forEach(function (k) { m[REL[k]] = pr(E.rel[k]); }); Object.keys(E.dyn).forEach(function (k) { dy[REL[k]] = pr(E.dyn[k]); });
       // Edu 16/11/2026: the relation of the line is the subject; a written reading holds only for the relation it was written for
-      var core = S.core && S.core[sp], NJ_ = root.HeluoNaJia, wr; if (core && !Array.isArray(core)) core = core[male ? 'M' : 'F'];
+      var NJ_ = root.HeluoNaJia, wr;
       if (S.lines[sp]) { wr = {}; Object.keys(S.lines[sp]).forEach(function (n) { wr[n] = {}; Object.keys(S.lines[sp][n]).forEach(function (l) { var t = S.lines[sp][n][l], d = NJ_ && NJ_[n], o = { strong: t.strong, weak: t.weak };
         if (d && S.handFor) o.only_when_the_line_is = REL[rel(S.handFor, d.lines[l - 1].el)]; wr[n][l] = o; }); }); }
-      return { chosen: lab[1], what_each_relation_means_in_this_sphere: m,
-        relations_that_carry_the_heart_of_this_sphere: core ? core.map(function (k) { return REL[k]; }) : undefined, heart_of_this_sphere: S.coreName && S.coreName[sp] || undefined,
-        written_readings_by_hexagram_and_line: wr,
-        instruction: 'The user chose this SPHERE OF LIFE in the He Luo window: read every line inside THIS sphere, but the RELATION of the active line (Parent, Children, Wealth, Ghost, Brothers for this person) is the SUBJECT of the reading and the sphere is only the field (Edu 16/11/2026). First take the relation of the line, then what_each_relation_means_in_this_sphere, then apply the image of the line text to THAT subject. NEVER read the heart of the sphere on a line whose relation is not in relations_that_carry_the_heart_of_this_sphere: e.g. in Love a Brothers line speaks of friends and rivals around the couple, never of a love affection, a past love or the partner; the partner is only the Wealth line (man) or the Ghost line (woman), and the relationship itself (bond, engagement, marriage: an agreement between two people) is the Parent line. Use a written reading only when the line has, for this person, the relation named in its only_when_the_line_is (strong = the time helps the line, weak = the time hurts it); otherwise build the reading from the relation and the general image. If the question is plainly about another sphere, follow the question.' };
+      return { chosen: E.label + (E.variantLabel ? ' · ' + E.variantLabel : ''), variant_note: E.note || undefined, what_each_relation_means_in_this_sphere: m,
+        how_each_relation_moves_in_this_sphere: dy, what_an_absence_says: E.absent.length ? E.absent : undefined, the_round: E.round || undefined,
+        relations_that_carry_the_heart_of_this_sphere: E.core ? E.core.map(function (k) { return REL[k]; }) : undefined, heart_of_this_sphere: E.heart || undefined,
+        the_three_luck: E.luck3 || undefined, written_readings_by_hexagram_and_line: wr, five_principles_of_edu: S.principles,
+        instruction: 'The user chose this SPHERE OF LIFE in the He Luo window: read every line inside THIS sphere, but the RELATION of the active line (Parent, Children, Wealth, Ghost, Brothers for this person) is the SUBJECT of the reading and the sphere is only the field (Edu 16/11/2026). First take the relation of the line, then what_each_relation_means_in_this_sphere, then apply the image of the line text to THAT subject. NEVER read the heart of the sphere on a line whose relation is not in relations_that_carry_the_heart_of_this_sphere (e.g. in Relationship a Brothers line is the man himself or friends and rivals, never a love affection). Then read the MOVEMENT among the active relations with five_principles_of_edu and how_each_relation_moves_in_this_sphere: who feeds whom, who drains, who attacks, and what is ABSENT (what_an_absence_says); judge who generates only after checking the strength of the receiver (timely, not void, not clashed). Use a written reading only when the line has, for this person, the relation named in its only_when_the_line_is (strong = the time helps the line, weak = the time hurts it). If the question is plainly about another sphere, follow the question.' };
     } catch (e) { return undefined; }
   }
   function cfFilm(chart, g) { return sphW(g.Pe, function () { return cfFilm_(chart, g); }); }
@@ -1200,7 +1224,7 @@
   function xkScan(isoDates, key) {
     var ch = H().chartA ? H().chartA() : { err: 'birth' }; if (ch.err) return { status: ch.err, by: {} };
     var lon = xkLon(ch.c); if (!isFinite(lon)) return { status: 'longitude', by: {} };
-    var k = [ch.c.name, ch.c.date, ch.c.time, ch.male, key, Math.round(lon * 100)].join('|');
+    var k = [ch.c.name, ch.c.date, ch.c.time, ch.male, key, xkVar(key), Math.round(lon * 100)].join('|');
     if (_xk.key !== k) _xk = { key: k, by: {}, chart: ch, lon: lon, ctx: context(ch.R, ch.Pn, ch.male), purpose: key };
     isoDates.forEach(function (iso) {
       if (iso in _xk.by) return;
@@ -1234,7 +1258,7 @@
     if (th.key === 'luck') { if (th.luck.length) a.push(th.luck.length + ' Luck'); if (th.opp.length) a.push(th.opp.length + ' opposite');
       if (th.luckD) a.push('day Luck ' + (th.luckD.s > 0 ? '+' : th.luckD.s < 0 ? '−' : '±') + Math.abs(th.luckD.s)); }
     else if (th.key === 'cure') { if (th.adj) a.push(th.adj > 0 ? 'brings the ' + th.need + ' the chart needs' : 'against the balance (chart needs ' + th.need + ')'); }
-    else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.tri && th.tri.plus.length) a.push(REL[th.X] + ' in ' + th.tri.plus.length + ' trigram' + (th.tri.plus.length > 1 ? 's' : '')); if (th.price.length || (th.tri && th.tri.minus.length)) a.push('price: ' + REL[th.A]); if (th.tri && th.tri.gOn) a.push('Wealth feeds the Ghost'); if (th.later.length) a.push('fruits later');
+    else if (th.X) { if (th.on.length) a.push(REL[th.X] + ' on ' + th.on.map(function (L) { return L.b + (L.hidden ? ' (hidden)' : ''); }).join(' ')); if (th.X2 && th.on2.length) a.push(REL[th.X2] + ' on ' + th.on2.map(function (L) { return L.b; }).join(' ')); if (th.tri && th.tri.plus.length) a.push(REL[th.X] + ' in ' + th.tri.plus.length + ' trigram' + (th.tri.plus.length > 1 ? 's' : '')); if (th.price.length || (th.tri && th.tri.minus.length)) a.push('price: ' + REL[th.A]); if (th.tri && th.tri.gOn) a.push('Wealth feeds the Ghost'); if (th.later.length) a.push('fruits later');
       if (th.crit && th.crit.length) a.push('criticism'); if (th.surprise && th.surprise.length) a.push('⚡ hidden ' + th.surprise.map(function (L) { return L.b; }).join('')); if (th.turn) a.push('⚠ turn of the month');
       if (th.loss && th.loss.length) a.push('in play, but at a loss'); if (th.collab && th.collab.length) a.push('collaborators ' + th.collab.map(function (L) { return L.b; }).join('')); }
     if (th.alarm && th.alarm.level !== 'light') a.unshift(th.alarm.level === 'severe' ? '⚠⚠ SEVERE DAY' : '⚠ CRITICAL DAY');
@@ -1289,6 +1313,9 @@
         : '<div>' + REL[th.X] + ' (' + XK_PL[th.key] + ') is not on the lines of this day.</div>';
       if (th.collab && th.collab.length) box += '<div style="' + G + '">▲ Brothers with a favourable text = collaborators, not a price: ' + th.collab.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>';
       if (th.price.length) box += '<div style="' + Rd + '">▼ The price: ' + REL[th.A] + ', which attacks ' + REL[th.X] + ', on ' + th.price.map(function (L) { return XK_LBL[L.k] + ' ' + L.b + (L.fl > 1 ? ' ↑' : L.fl < 1 ? ' ↓' : ''); }).join(' · ') + '</div>';
+      // Edu 16/11/2026: the second relation of the purpose (Relationship: Parent; Speak · convince: Parent; Legal · act: Wealth)
+      if (th.X2) box += (th.on2.length ? '<div style="' + G + '">▲ ' + REL[th.X2] + ' (×' + th.w2 + ') on: ' + th.on2.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>' : '<div>' + REL[th.X2] + ' (second relation of the purpose) is not on the lines of this day.</div>')
+        + (th.price2.length ? '<div style="' + Rd + '">▼ ' + REL[th.A2] + ', which attacks ' + REL[th.X2] + ' (×' + th.w2 + '), on ' + th.price2.map(function (L) { return XK_LBL[L.k] + ' ' + L.b; }).join(' · ') + '</div>' : '');
       var TR = th.tri, tl = function (a) { return a.map(function (x) { return x.lbl + (x.dl ? ' (day Luck: not a price)' : '') + fArr(x.f, x.fb); }).join(' · '); };
       if (TR && TR.plus.length) box += '<div style="' + G + '">▲ ' + REL[th.X] + ' also in the trigrams: ' + esc(tl(TR.plus)) + '</div>';
       if (TR && TR.minus.length) box += '<div style="' + Rd + '">▼ The price (' + REL[th.A] + ') in the trigrams: ' + esc(tl(TR.minus)) + '</div>';
@@ -1331,7 +1358,7 @@
     var pos = dh.line === 1 ? 'Line 1: a beginning — good for what starts (launch, wedding, first step).' : dh.line === 6 ? 'Line 6: an end or a completion — good for what closes (sale, closing, conclusion).' : '';
     if (pos) box += '<div style="font-size:11px;color:#555;margin-top:3px;">' + pos + '</div>';
     h += '<div style="border:1px solid #b39ddb;background:#f7f3fd;border-radius:8px;padding:8px;margin:6px 0;font-size:12px;line-height:1.55;">'
-      + '<div style="font-weight:700;color:#4527a0;">He Luo for ' + (XK_PL[th.key] || (th.key === 'correct' ? 'correcting a problem' : 'this day')) + (xkPts(th) ? ' · ' + sgn(xkPts(th) * 5) + '% on the XKDG score' + (th.fvPts ? ' (purpose ' + sgn(th.adj * 5) + '%, Favour +' + th.fvPts * 5 + '%' + (xkPts(th) !== th.adj + th.fvPts ? ', capped at ±20%' : '') + ')' : '') : ' · no change to the XKDG score') + '</div>' + box + '</div>';
+      + '<div style="font-weight:700;color:#4527a0;">He Luo for ' + (XK_PL[th.key] ? XK_PL[th.key] + (th.variant ? ' · ' + th.variant : '') : (th.key === 'correct' ? 'correcting a problem' : 'this day')) + (xkPts(th) ? ' · ' + sgn(xkPts(th) * 5) + '% on the XKDG score' + (th.fvPts ? ' (purpose ' + sgn(th.adj * 5) + '%, Favour +' + th.fvPts * 5 + '%' + (xkPts(th) !== th.adj + th.fvPts ? ', capped at ±20%' : '') + ')' : '') : ' · no change to the XKDG score') + '</div>' + box + '</div>';
     function lv(title, L, hx, cy) {
       return '<div style="border:1px solid #e0d7f0;border-radius:8px;padding:6px;margin:6px 0;"><div style="font-size:12px;font-weight:600;color:#4527a0;">' + title + ' · ' + L.n + ' ' + esc(U().hexName ? U().hexName(L.n) : '') + ' line ' + L.l + '</div>'
         + (U().cycleHexSvg ? U().cycleHexSvg(hx, L.l, cy, me) : '')
@@ -1569,7 +1596,7 @@
     var F = 'padding:5px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;';
     var h = alarmAheadHtml(ch) + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:6px 0;"><div><label style="font-size:11px;color:#666;display:block;">Purpose</label><select onchange="xkdgHLPlan(\'key\',this.value)" style="' + F + '">'
       + Object.keys(XK_PL).map(function (k) { return '<option value="' + k + '"' + (k === key ? ' selected' : '') + '>' + XK_PL[k] + '</option>'; }).join('') + '</select></div>'
-      + '<div style="font-size:11px;color:#555;line-height:1.5;max-width:330px;">' + (X ? XK_PL[key] + ' = <b>' + REL[X] + '</b>' + (key === 'relationship' ? ' (' + (ch.male ? 'man' : 'woman') + ')' : '') + '; the price is ' + REL[XK_ATT[X]] + '.' : key === 'luck' ? 'Where the Heaven, Earth and Fame Luck trigrams appear.' : 'What brings the natal chart back into balance (yin and yang).') + ' ▲ helps · ▼ price · ⏳ void: later.</div></div>';
+      + '<div style="font-size:11px;color:#555;line-height:1.5;max-width:330px;">' + (X ? XK_PL[key] + ' = <b>' + REL[X] + '</b>' + (xkRel2(key, ch.male) ? ' + ' + REL[xkRel2(key, ch.male)[0]] + ' ×' + xkRel2(key, ch.male)[1] + ' (in the Date Selection)' : '') + (key === 'relationship' ? ' (' + (ch.male ? 'man' : 'woman') + ')' : '') + '; the price is ' + REL[XK_ATT[X]] + '.' : key === 'luck' ? 'Where the Heaven, Earth and Fame Luck trigrams appear.' : 'What brings the natal chart back into balance (yin and yang).') + ' ▲ helps · ▼ price · ⏳ void: later.</div></div>';
     // 1 · periods of years
     h += '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">1 · Periods of years</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
     cycleRows(R).forEach(function (x, i) {
@@ -1730,6 +1757,8 @@
       if (th.X) { o.purpose_relation = REL[th.X]; o.price_relation = th.A ? REL[th.A] : null;
         o.purpose_on = th.on.map(function (L) { return L.b + (L.hidden ? ' hidden' : ''); }); o.price_on = th.price.map(function (L) { return L.b; });
         o.purpose_in_trigrams = triL(th.tri.plus); o.price_in_trigrams = triL(th.tri.minus); }
+      if (th.X2) { o.second_purpose_relation = REL[th.X2] + ' (weight ' + th.w2 + ')'; o.second_on = th.on2.map(function (L) { return L.b; }); if (th.A2) { o.second_price_relation = REL[th.A2]; o.second_price_on = th.price2.map(function (L) { return L.b; }); } }
+      if (th.variant) o.purpose_variant = th.variant;
       if (th.steal && th.steal.length) o.brothers_steal_wealth = th.steal.map(function (L) { return L.b; });
       if (th.loss && th.loss.length) o.in_play_but_at_a_loss = th.loss.map(function (L) { return L.b; });
       if (th.tri && th.tri.gOn) o.wealth_feeds_ghost = triL(th.tri.ghost);
@@ -1789,5 +1818,5 @@
     return M.lines.map(function (L) { return { pos: L.pos, branch: L.branch, rel: L.rel, name: REL_NAME[L.rel] || L.rel,
       day: db === L.branch, hour: hb === L.branch, dayClash: !!db && clash(L.branch) === db, hourClash: !!hb && clash(L.branch) === hb }; });
   }
-  root.XKDGHeluoDS = { motherLines: motherLines, motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  root.XKDGHeluoDS = { xkVar: xkVar, xkRels: xkRels, motherLines: motherLines, motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);

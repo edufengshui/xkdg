@@ -999,6 +999,8 @@
         properties: {
           purpose: { type: 'string', enum: ['', 'health', 'career', 'wealth', 'relationship', 'journey', 'speak', 'legal'],
             description: 'Optional purpose; empty string for a general scan.' },
+          purpose_variant: { type: 'string', enum: ['show', 'convince', 'reassure', 'defend', 'act'],
+            description: 'Only for Speak and Legal (He Luo, Edu 16/11/2026): which relation the He Luo part of the score looks for. Speak: show = a show or a new product (Children, default), convince = teaching, politics, persuading (Ghost + Parent), reassure = insurance, real estate, guarantees (Parent). Legal: defend = we are attacked (Parent, default), act = we start the case (Ghost + Wealth). Ask or infer it from the request; omit to keep the choice already set in the app.' },
           days: { type: 'integer', description: 'How many days to scan from the start (default 7; use ~31 for a month, ~62 for two).' },
           start_date: { type: 'string', description: 'Optional first day to scan, YYYY-MM-DD (default today; cannot be past). e.g. 2026-07-01 with days 62 covers July+August.' },
           strictness: { type: 'string', enum: ['strict', 'soft'],
@@ -4072,6 +4074,7 @@
     var both = pl.a && pl.b;
     var _checkHex = (Array.isArray(input.check_hexagrams) ? input.check_hexagrams : [])
       .map(function (h) { return parseInt(h, 10); }).filter(function (h) { return h >= 1 && h <= 64; });
+    if (input.purpose_variant && (input.purpose === 'speak' || input.purpose === 'legal')) { try { localStorage.setItem('xkdg_xk_variant_' + input.purpose, input.purpose_variant); } catch (e) {} }
     function runWith(pv) {
       if (ps) { ps.value = pv; if (typeof window.onPurposeChange === 'function') try { window.onPurposeChange(); } catch (e) {} }
       runScannerQuiet();

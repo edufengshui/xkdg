@@ -6174,7 +6174,25 @@ function onPurposeChange() {
     }
     // Sync the FS-view clone Purpose selector
     if(typeof fsUpdatePurposeClone === 'function') fsUpdatePurposeClone();
+    xkdgSyncPurposeVariant();
 }
+// Speak and Legal variants (Edu 16/11/2026, one table of spheres and Purposes): what the He Luo ☯ of the date looks for.
+// Same choice as in the He Luo window (localStorage xkdg_xk_variant_<purpose>). XKDG rules of the purpose are unchanged.
+var XK_VARIANTS = { speak: [['show', 'Show / new product · Children'], ['convince', 'Convince (teacher, politician) · Ghost + Parent'], ['reassure', 'Reassure (insurance, real estate) · Parent']],
+    legal: [['defend', 'Defend (we are attacked) · Parent'], ['act', 'Act (we start the case) · Ghost + Wealth']] };
+function xkdgSyncPurposeVariant() {
+    var el = document.getElementById('purpose-variant'), p = (document.getElementById('purpose-select') || {}).value || '';
+    if (!el) return;
+    var V = XK_VARIANTS[p]; if (!V) { el.style.display = 'none'; return; }
+    var cur = ''; try { cur = localStorage.getItem('xkdg_xk_variant_' + p) || ''; } catch (e) {}
+    el.innerHTML = V.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === cur ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('');
+    el.style.display = '';
+}
+function xkdgSetPurposeVariant(v) {
+    var p = (document.getElementById('purpose-select') || {}).value || '';
+    try { localStorage.setItem('xkdg_xk_variant_' + p, v || ''); } catch (e) {}
+}
+try { document.addEventListener('DOMContentLoaded', function () { setTimeout(xkdgSyncPurposeVariant, 500); }); } catch (e) {}
 
 function getPurpose() {
     var el = document.getElementById('purpose-select');
