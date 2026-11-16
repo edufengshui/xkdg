@@ -2415,6 +2415,7 @@ function analyzeXkdg(pillars, seasonStrong, seasonGrowing) {
         }
     } catch(e){ /* additive: never break analysis */ }
 
+    try { _xkMomCtx = { P: pillars, items: items }; } catch (eCtx) {}   // session 53: the date the ◎ mother is checked against
     return { items, sameFamily: allSameFamily };
 }
 // ─────────────────────────────────────────────
@@ -5156,10 +5157,67 @@ function xkdgMomPending() {
         return ['A', 'B'].some(w => (w === 'A' ? _personAYear : _personBYear) && _personDepth(w) >= 4 && !HL.chartOf(w).err);
     } catch (e) { return false; }
 }
+// ── Session 53 (Edu 16/11/2026) — how the ◎ MOTHER enters a date. Only for the mother: birth year / birth day keep
+// the old rule (they talk with the DAY).
+//  1. the date must have a COMPLETE network on at least one level, Qi (Elements) or Yun (Periods);
+//  2. the mother must enter THAT network, same level and same language (5/10/15 on an Adding date, Hetu on a Hetu
+//     date, same number on a Pure Qi date) — with any pillar of the date;
+//  3. the family counts only with yin/yang balance: among the mother and the date pillars of that family there
+//     must be at least one male (son/father) and one female (daughter/mother);
+//  4. nothing of the above → the mother does not represent the person on that date.
+var _xkMomCtx = null;                                  // { P: four pillars, items } of the last date analysed
+function _xkMomJz(hex) {
+    try { const T = XKDG_TABLE; return Object.keys(T).find(k => T[k].hex === hex) || Object.keys(T).find(k => T[k].alt && T[k].alt.hex === hex) || ''; } catch (e) { return ''; }
+}
+function _xkFamGender(jz, fam) {
+    const e = (JIAZI_FAMILY_DATA[jz] || []).find(x => x.family === fam);
+    return e ? ((e.role === 'son' || e.role === 'father') ? 'M' : 'F') : '';
+}
+function xkdgMomFits(mo, P, items) {
+    const out = [];
+    try {
+        if (!mo || !P || !items || !['hour', 'day', 'month', 'year'].every(k => P[k])) return out;
+        const N = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
+        // the complete networks of the date: level (qi / yun) → languages spoken on it
+        const nets = { qi: [], yun: [] };
+        items.forEach(it => {
+            const m = /^(Pure )?(Qi|Adding|Hetu)( Elements| Periods)?$/.exec(String((it && it.text) || '')); if (!m) return;
+            (m[3] === ' Elements' ? ['qi'] : m[3] === ' Periods' ? ['yun'] : ['qi', 'yun']).forEach(lv => { if (nets[lv].indexOf(m[2]) < 0) nets[lv].push(m[2]); });
+        });
+        const whole = nets.qi.length + nets.yun.length > 0;
+        ['qi', 'yun'].forEach(lv => {
+            for (const k of ['day', 'year', 'month', 'hour']) {          // the link with the day is shown first
+                const v = P[k][lv], a = mo[lv]; if (v == null || a == null) continue;
+                const lang = nets[lv].find(L => L === 'Adding' ? [5, 10, 15].includes(a + v) : L === 'Hetu' ? isHetuPair(a, v) : a === v);
+                if (!lang) continue;
+                out.push((lang === 'Adding' ? 'Adding(' + (a + v) + ')' : lang === 'Hetu' ? 'Hetu' : 'Pure Qi') + (k === 'day' ? '' : ' ' + N[k]));
+                break;
+            }
+        });
+        if ((whole || items.some(i => i && i.tag === 'family')) && P.day.stem) {
+            const jz = _xkMomJz(mo.hex), dayF = getJiaZiFamilies(P.day.stem, P.day.branch);
+            (mo._fams || []).filter(f => dayF.includes(f)).forEach(f => {
+                const g = {}; g[_xkFamGender(jz, f)] = 1;
+                ['hour', 'day', 'month', 'year'].forEach(k => { const x = _xkFamGender(P[k].stem + P[k].branch, f); if (x) g[x] = 1; });
+                if (g.M && g.F) out.push('Family: ' + f);
+            });
+        }
+        if (items.some(i => i && String(i.text || '').startsWith('Inverse Hex')) && P.day.hex && mo.hex && getInverseHex(P.day.hex) === mo.hex) out.push('Inverse Hex');
+    } catch (e) {}
+    return out;
+}
+// The mother's fit with the date last analysed, when it is the day being asked about; null = unknown date.
+function _xkMomFitsDay(mo, dGan, dZhi) {
+    try {
+        const c = _xkMomCtx; if (!mo || !c || !c.P || !c.P.day || c.P.day.stem !== dGan || c.P.day.branch !== dZhi) return null;
+        return xkdgMomFits(mo, c.P, c.items);
+    } catch (e) { return null; }
+}
 // Broad link of the mother with the DAY of the date (same relations as the birth year / birth day).
 function xkdgMomTalk(mo, dGan, dZhi, blueItems) {
     try {
         const d = getXkdgData(dGan, dZhi); if (!mo || !d) return false;
+        const _fit = _xkMomFitsDay(mo, dGan, dZhi); return !!(_fit && _fit.length);   // session 53: complete-network rule
         const bi = blueItems || [];
         return isHetuPair(mo.qi, d.qi) || [5,10,15].includes(mo.qi + d.qi) || isHetuPair(mo.yun, d.yun) || [5,10,15].includes(mo.yun + d.yun) ||
                (bi.some(i => i.text === 'Pure Qi' || i.text === 'Pure Qi Elements') && mo.qi === d.qi) ||
@@ -5202,7 +5260,9 @@ function getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, 
         const ys = getMatchScore(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, true);
         // session 52: birth year OR active mother hexagram — the better of the two
         const mo = personYear._mom ? null : _xkdgMomFor(pStem, pBranch);
-        const ms = mo ? getMatchScore(mo, null, null, dayXkdg, dayStem, dayBranch, true) : 0;
+        // session 53: the mother counts only when she enters the date's complete network (xkdgMomFits)
+        const _mf = mo ? _xkMomFitsDay(mo, dayStem, dayBranch) : null;
+        const ms = (_mf && _mf.length) ? (_mf.some(l => l.startsWith('Family')) ? 4 : _mf.length > 1 ? 2 : 1) : 0;
         if (ys > 0) return Math.max(ys, ms);
         const pd = _xkdgPersonDayFor(pStem, pBranch), px = pd ? getXkdgData(pd[0], pd[1]) : null;
         return Math.max(ms, px ? getMatchScore(px, pd[0], pd[1], dayXkdg, dayStem, dayBranch, true) : 0);
@@ -5252,8 +5312,10 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
         try {
             const mo = (personYear && !personYear._mom) ? _xkdgMomFor(pStem, pBranch) : null;
             if (mo) {
-                const lm = getMatchLabels(mo, null, null, dayXkdg, dayStem, dayBranch, null, null, null, true)
-                    .filter(l => !l.startsWith('Partial BL') && !ly.includes(l)).map(l => l + ' (◎ mother)');
+                // session 53: complete-network rule, on the date shown (the four pillars of _currentDayAnalysis)
+                const _a = _currentDayAnalysis, _P = {};
+                ['hour', 'day', 'month', 'year'].forEach(k => { _P[k] = Object.assign({}, _a.pillars[k], { stem: _a.stems[k], branch: _a.branches[k] }); });
+                const lm = xkdgMomFits(mo, _P, _a.items).filter(l => !ly.includes(l)).map(l => l + ' (◎ mother)');
                 if (lm.length) ly = ly.concat(lm);
             }
         } catch (e) {}
