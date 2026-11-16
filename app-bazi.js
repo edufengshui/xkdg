@@ -5243,6 +5243,8 @@ function getDateQualityScore(analysisItems) {
     return strength + timely;
 }
 
+// Whole-date settings of the «other systems»: one relation closes all four pillars (same list as xkdgHourFourPillarBond).
+var XKDG_WHOLE_SETTINGS = /^(Pure )?(Qi|Adding|Hetu)( Elements| Periods)?$/;   // Pure Qi, Adding Periods, Pure Hetu Elements …
 function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch, _isDay) {
     if (!_isDay) {
         let ly = getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch, personPillars, personDayStem, personDayBranch, true);
@@ -5324,7 +5326,10 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
 
     const hasGroupFamily = items.some(i => i.tag === 'family');
     const sharedFams = (personYear._fams || getJiaZiFamilies(pStem, pBranch)).filter(f => getJiaZiFamilies(dayStem, dayBranch).includes(f));
-    if (hasGroupFamily && sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
+    // Session 53 (Edu 16/11/2026): the person's hexagram talking with the DAY through the family (Blood Link) is good
+    // also when the date itself is closed, as a whole, by another system (Adding, Hetu, Pure Qi …) — not only on BL dates.
+    const hasGroupWhole = items.some(i => i && XKDG_WHOLE_SETTINGS.test(String(i.text || '')));
+    if ((hasGroupFamily || hasGroupWhole) && sharedFams.length > 0) labels.push('Family: ' + sharedFams.join(','));
 
     // Inverse Hex: group must have Inverse Hex setting, person's year hex = inverse of day hex
     const hasGroupInverse = items.some(i => i.text.startsWith('Inverse Hex'));
