@@ -1829,7 +1829,13 @@
   //  E. wood strong in the Bazi: at least one of the branches 寅 卯 辰 in the date.
   // P = { hour, day, month, year } each { stem, branch, qi, yun, hex }. Returns the conditions met, e.g. ['A 寅 Day', 'E 寅'].
   var XK_TRI_QI = { Kun: 1, Xun: 2, Li: 3, Dui: 4, Gen: 6, Kan: 7, Zhen: 8, Qian: 9 };
+  // The HOUR is not strong (Edu 16/11/2026): A or E met only through the hour pillar count only when another
+  // condition is active too (B, C, D, or A / E through the day, month or year); alone they activate nothing.
   function motherLineDate(M, P, want) {
+    var o = _motherLineDate(M, P, want);
+    return o.some(function (t) { return !((t[0] === 'A' || t[0] === 'E') && / Hour$/.test(t)); }) ? o : [];
+  }
+  function _motherLineDate(M, P, want) {
     var out = [];
     try {
       var K = ['hour', 'day', 'month', 'year'], N = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
@@ -1856,7 +1862,7 @@
       });
       if (zhen >= 3) out.push('D Zhen×' + zhen);
       var wb = K.filter(function (k) { return P[k].branch && '寅卯辰'.indexOf(P[k].branch) >= 0; });
-      if (wb.length) out.push('E ' + wb.map(function (k) { return P[k].branch; }).join(''));
+      if (wb.length) out.push('E ' + wb.map(function (k) { return P[k].branch; }).join('') + (wb.length === 1 && wb[0] === 'hour' ? ' Hour' : ''));
     } catch (e) {}
     return out;
   }
