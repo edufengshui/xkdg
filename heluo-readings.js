@@ -522,13 +522,20 @@
   // Shown by sphereHtml() in heluo-lishu.js under every hexagram with an active line. Reading only, no score.
   spheres: {
     list: [['money', 'Money', '💰'], ['career', 'Career', '🏛'], ['love', 'Love', '♥'], ['health', 'Health', '✚'], ['luck', 'Luck', '☘'], ['study', 'Study & teaching', '📚'], ['home', 'Home & family', '🏠']],
+    // Edu 16/11/2026: the RELATION of the line is the subject of the reading, the sphere is only the field. `core` = the relations that
+    // carry the heart of a sphere (love: the partner = W for a man, G for a woman; the relationship itself = P); a line with another
+    // relation never speaks of the heart of the sphere (a Brothers line in Love is a friend or a rival, never a love affection).
+    // `handFor` = element of the person the hand-written `lines` were written for: shown only when the line has the same relation.
+    core: { money: ['W'], career: ['G'], love: { M: ['W', 'P'], F: ['G', 'P'] }, health: ['G'], study: ['P'], home: ['P'] },
+    coreName: { money: 'the money itself', career: 'the position itself', love: 'the partner or the relationship', health: 'the illness itself', study: 'the study itself', home: 'the house itself' },
+    handFor: 'Metal',
     rel: {
       money: { W: 'the money itself: clients, deals, direct gain', C: 'the source of money: ideas, products and projects that bring it', B: 'partners and competitors: money shared, or going out',
         G: 'obligations and pressure from above: taxes, debts — or money that comes through an assignment', P: 'the base: house, contracts, tools, what {he} invests in to be supported' },
       career: { G: 'authority and position: the boss, a mandate, rank — or pressure from above', P: 'backing: titles, documents, mentors and those who stand behind {him}', W: 'results and resources that feed the position',
         C: '{his} own initiative and freedom: it creates, but pushes against bosses and rules', B: 'colleagues and rivals' },
-      love: { M: { W: 'the partner, the woman in {his} life', G: 'a passion that takes {him} over, pressure, or a rival', C: 'desire, pleasure and joy — and the children', B: 'friends and rivals: someone competes for the partner', P: 'home and family: the base of the couple, the papers that tie it' },
-        F: { G: 'the partner, the man in {his} life', W: 'what {he} gives and manages in the couple, the material side', C: 'desire, pleasure and joy, the children — it pushes the man away if too strong', B: 'friends and rivals: someone competes for the partner', P: 'home and family: the base of the couple, the papers that tie it' } },
+      love: { M: { W: 'the partner, the woman in {his} life', G: 'a passion that takes {him} over, pressure, or a rival', C: 'desire, pleasure and joy — and the children', B: 'friends and rivals: someone competes for the partner', P: 'the relationship itself: the bond, an engagement, a marriage — the agreement between the two' },
+        F: { G: 'the partner, the man in {his} life', W: 'what {he} gives and manages in the couple, the material side', C: 'desire, pleasure and joy, the children — it pushes the man away if too strong', B: 'friends and rivals: someone competes for the partner', P: 'the relationship itself: the bond, an engagement, a marriage — the agreement between the two' } },
       health: { G: 'the illness: stress, pressure on the body', C: 'the cure: recovery, good spirits, what keeps the illness away', P: 'care and protection: rest, doctors, treatments',
         W: 'appetite, food and pleasures: in excess they feed the illness', B: 'energy and stamina — or overexertion' },
       luck: { P: 'protection: help that comes from above', C: 'good fortune from what {he} creates and enjoys', W: 'luck with money and with chances taken', G: 'a test of fate: pressure that can lift {him} or weigh on {him}', B: 'luck through friends and allies — or shared with rivals' },

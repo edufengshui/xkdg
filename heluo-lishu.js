@@ -330,7 +330,11 @@
       var sp = sphGet(), RD = root.XKDG_HELUO_READINGS, S = RD && RD.spheres, d = NJ() && NJ()[hx.n];
       if (!sp || !S || !d || !ln || !S.rel[sp]) return '';
       var male = !_chart || _chart.male !== false, r = relL(me, d.lines[ln - 1].el), R_ = S.rel[sp]; if (sp === 'love') R_ = R_[male ? 'M' : 'F'];
-      var hand = S.lines[sp] && S.lines[sp][hx.n] && S.lines[sp][hx.n][ln], t = hand || (RD[hx.n] && RD[hx.n][ln]);
+      var hand = S.lines[sp] && S.lines[sp][hx.n] && S.lines[sp][hx.n][ln];
+      if (hand && S.handFor && relL(S.handFor, d.lines[ln - 1].el) !== r) hand = null; // Edu 16/11/2026: a hand-written text holds only for the relation it was written for
+      var t = hand || (RD[hx.n] && RD[hx.n][ln]);
+      var core = S.core && S.core[sp]; if (core && !Array.isArray(core)) core = core[male ? 'M' : 'F'];
+      var off = core && core.indexOf(r) < 0 && S.coreName && S.coreName[sp] ? ' <span style="color:#b26a00;">Read the line about this, not about ' + esc(S.coreName[sp]) + '.</span>' : '';
       var sc = root.XKDG_HELUO_SCORES && root.XKDG_HELUO_SCORES[hx.n] ? root.XKDG_HELUO_SCORES[hx.n].l[ln] : 0, lab = S.list.filter(function (x) { return x[0] === sp; })[0];
       var sd = sphSide(d.lines[ln - 1], sc), why = sd.why ? ' <span style="color:#999;font-size:10px;">(' + (sd.v > 0 ? '▲ ' : '▼ ') + esc(sd.why) + ')</span>' : ''; sc = sd.v;
       var body = !t ? '' : sc > 0 ? esc(sphPron(t.strong, male)) + why : sc < 0 ? esc(sphPron(t.weak, male)) + why
@@ -340,7 +344,7 @@
         ['heaven', 'earth', 'fame'].forEach(function (k) { if (K[k] === tr) a.push('the line sits in ' + tr + ', the ' + nm[k] + ' Luck'); if (K.opposite && K.opposite[k] === tr) a.push('the line sits in ' + tr + ', the opposite of the ' + nm[k] + ' Luck'); });
         lk = a.length ? ' <b>' + esc(a.join('; ')) + '.</b>' : ' The line sits in ' + esc(tr) + ': none of the three Luck.'; }
       return '<div style="font-size:12px;line-height:1.5;margin:2px 0 6px;padding:5px 8px;background:#fff8e1;border-left:3px solid #f9a825;border-radius:4px;color:#333;">'
-        + '<b>' + lab[2] + ' ' + esc(lab[1]) + '</b> · ' + REL[r] + ' = ' + esc(sphPron(R_[r], male)) + '.' + (body ? '<br>' + body : '') + (hand ? '' : ' <span style="color:#999;font-size:10px;">(general image)</span>') + lk + '</div>';
+        + '<b>' + lab[2] + ' ' + esc(lab[1]) + '</b> · ' + REL[r] + ' = ' + esc(sphPron(R_[r], male)) + '.' + off + (body ? '<br>' + body : '') + (hand ? '' : ' <span style="color:#999;font-size:10px;">(general image)</span>') + lk + '</div>';
     } catch (e) { return ''; }
   }
   function qyTxt(n) { var q = qyOn() && qiYun(n); return q ? 'Qi <b style="color:#c62828;">' + q[0] + '</b> · Yun <b style="color:#1565c0;">' + q[1] + '</b>' : ''; }

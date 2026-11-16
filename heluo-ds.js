@@ -1119,8 +1119,14 @@
     try { var sp = localStorage.getItem('xkdg_hl_sphere'), S = (root.XKDG_HELUO_READINGS || {}).spheres; if (!sp || !S || !S.rel[sp]) return undefined;
       var R_ = S.rel[sp], lab = S.list.filter(function (x) { return x[0] === sp; })[0], m = {}; if (sp === 'love') R_ = R_[male ? 'M' : 'F'];
       Object.keys(R_).forEach(function (k) { m[REL[k]] = R_[k].replace(/\{he\}/g, male ? 'he' : 'she').replace(/\{his\}|\{him\}/g, male ? 'his' : 'her'); });
-      return { chosen: lab[1], what_each_relation_means_in_this_sphere: m, written_readings_by_hexagram_and_line: S.lines[sp] || undefined,
-        instruction: 'The user chose this SPHERE OF LIFE in the He Luo window (Edu 15/11/2026): read every line for THIS sphere. The image of the line text stays the same; the relation of the line says who or what carries it in this sphere. Use the written reading of a line when there is one (strong = the time helps the line, weak = the time hurts it). If the question is plainly about another sphere, follow the question.' };
+      // Edu 16/11/2026: the relation of the line is the subject; a written reading holds only for the relation it was written for
+      var core = S.core && S.core[sp], NJ_ = root.HeluoNaJia, wr; if (core && !Array.isArray(core)) core = core[male ? 'M' : 'F'];
+      if (S.lines[sp]) { wr = {}; Object.keys(S.lines[sp]).forEach(function (n) { wr[n] = {}; Object.keys(S.lines[sp][n]).forEach(function (l) { var t = S.lines[sp][n][l], d = NJ_ && NJ_[n], o = { strong: t.strong, weak: t.weak };
+        if (d && S.handFor) o.only_when_the_line_is = REL[rel(S.handFor, d.lines[l - 1].el)]; wr[n][l] = o; }); }); }
+      return { chosen: lab[1], what_each_relation_means_in_this_sphere: m,
+        relations_that_carry_the_heart_of_this_sphere: core ? core.map(function (k) { return REL[k]; }) : undefined, heart_of_this_sphere: S.coreName && S.coreName[sp] || undefined,
+        written_readings_by_hexagram_and_line: wr,
+        instruction: 'The user chose this SPHERE OF LIFE in the He Luo window: read every line inside THIS sphere, but the RELATION of the active line (Parent, Children, Wealth, Ghost, Brothers for this person) is the SUBJECT of the reading and the sphere is only the field (Edu 16/11/2026). First take the relation of the line, then what_each_relation_means_in_this_sphere, then apply the image of the line text to THAT subject. NEVER read the heart of the sphere on a line whose relation is not in relations_that_carry_the_heart_of_this_sphere: e.g. in Love a Brothers line speaks of friends and rivals around the couple, never of a love affection, a past love or the partner; the partner is only the Wealth line (man) or the Ghost line (woman), and the relationship itself (bond, engagement, marriage: an agreement between two people) is the Parent line. Use a written reading only when the line has, for this person, the relation named in its only_when_the_line_is (strong = the time helps the line, weak = the time hurts it); otherwise build the reading from the relation and the general image. If the question is plainly about another sphere, follow the question.' };
     } catch (e) { return undefined; }
   }
   function cfFilm(chart, g) { return sphW(g.Pe, function () { return cfFilm_(chart, g); }); }
