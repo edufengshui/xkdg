@@ -4732,6 +4732,32 @@ function checkFavourable(personYear, pStem, pBranch, person) {
     col.style.display = 'flex';
     detail.textContent = matches.join(' · ');
     updatePurposeIcon(person);
+    xkdgMomChip(col, person, matches);
+}
+// Session 53 (Edu 16/11/2026): when the link comes from the ◎ mother hexagram, draw her small beside «★ A ★»:
+// Qi (red) above, the six lines, Yun (blue) below — same colours as the four columns.
+function xkdgMomChip(col, person, matches) {
+    try {
+        const bar = col.querySelector('.favourable-bar'); if (!bar) return;
+        const old = bar.querySelector('.xk-mom-chip'); if (old) old.remove();
+        if (!(matches || []).some(m => String(m).indexOf('◎ mother') >= 0)) return;
+        const mo = xkdgMomOf(person); if (!mo || !mo.hex) return;
+        const b = _XK_HEXBIN[mo.hex] || 0, W = 20, lh = 2.4, gap = 1.6, H = 6 * lh + 5 * gap;
+        let g = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:1px auto;">';
+        for (let i = 0; i < 6; i++) {
+            const y = (i * (lh + gap)).toFixed(1);
+            g += ((b >> (5 - i)) & 1) ? '<rect x="0" y="' + y + '" width="' + W + '" height="' + lh + '" fill="#111"/>'
+               : '<rect x="0" y="' + y + '" width="8.5" height="' + lh + '" fill="#111"/><rect x="11.5" y="' + y + '" width="8.5" height="' + lh + '" fill="#111"/>';
+        }
+        g += '</svg>';
+        const chip = document.createElement('span');
+        chip.className = 'xk-mom-chip';
+        chip.title = '◎ Mother hexagram ' + mo.hex + (mo.phase ? ' (' + mo.phase + ')' : '') + ' · Qi ' + mo.qi + ' · Yun ' + mo.yun;
+        chip.style.cssText = 'display:inline-block;vertical-align:middle;margin-left:8px;padding:1px 4px;background:#fff;border-radius:4px;letter-spacing:0;line-height:1;text-align:center;';
+        chip.innerHTML = '<span style="display:block;font-size:9px;font-weight:bold;color:#c00;">' + mo.qi + '</span>' + g +
+                         '<span style="display:block;font-size:9px;font-weight:bold;color:#1565c0;">' + mo.yun + '</span>';
+        bar.appendChild(chip);
+    } catch (e) {}
 }
 
 function showMatchTip(el, person) {
