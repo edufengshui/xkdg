@@ -1818,5 +1818,47 @@
     return M.lines.map(function (L) { return { pos: L.pos, branch: L.branch, rel: L.rel, name: REL_NAME[L.rel] || L.rel,
       day: db === L.branch, hour: hb === L.branch, dayClash: !!db && clash(L.branch) === db, hourClash: !!hb && clash(L.branch) === hb }; });
   }
-  root.XKDGHeluoDS = { xkVar: xkVar, xkRels: xkRels, motherLines: motherLines, motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
+  // ── Session 54 (Edu 16/11/2026) — ACTIVATING a line of the mother through the Date Selection. On top of the rules of
+  // the mother (she must enter the date), the date must do at least ONE of these for a line with the wanted relation
+  // (relations are to the person = element of the trigram of the mother where the cycle line sits):
+  //  A. one of the four pillars carries the branch of the line (for 寅: the six XKDG pillars of 寅, 庚寅 being double);
+  //  — only written for WOOD lines so far (Edu's case: mother 43, Wealth = line 2 寅 wood); deliberately wide, to be refined —
+  //  B. a Hetu 3-8 (wood) that involves the DAY, on Qi and/or Yun; the other two pillars make a Hetu 3-8, 1-6 or 4-9;
+  //  C. a hexagram of the date whose upper and lower trigram are 3 and 8 (Li with Zhen: 21, 55);
+  //  D. at least three Zhen trigrams (not Xun) among the eight trigrams of the date;
+  //  E. wood strong in the Bazi: at least one of the branches 寅 卯 辰 in the date.
+  // P = { hour, day, month, year } each { stem, branch, qi, yun, hex }. Returns the conditions met, e.g. ['A 寅 Day', 'E 寅'].
+  var XK_TRI_QI = { Kun: 1, Xun: 2, Li: 3, Dui: 4, Gen: 6, Kan: 7, Zhen: 8, Qian: 9 };
+  function motherLineDate(M, P, want) {
+    var out = [];
+    try {
+      var K = ['hour', 'day', 'month', 'year'], N = { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' };
+      if (!M || !M.lines || !want || !P || !K.every(function (k) { return P[k]; })) return out;
+      var LL = M.lines.filter(function (L) { return L.rel === want; }), seen = {};
+      LL.forEach(function (L) { K.forEach(function (k) { var t = 'A ' + L.branch + ' ' + N[k]; if (P[k].branch === L.branch && !seen[t]) { seen[t] = 1; out.push(t); } }); });
+      if (!LL.some(function (L) { return L.el === 'Wood'; })) return out;
+      ['qi', 'yun'].forEach(function (lv) {
+        var d = P.day[lv], R = ['hour', 'month', 'year'];
+        if (d !== 3 && d !== 8) return;
+        R.some(function (k) {
+          if (P[k][lv] !== 11 - d) return false;
+          var o = R.filter(function (x) { return x !== k; }).map(function (x) { return P[x][lv]; }), lo = Math.min(o[0], o[1]), hi = Math.max(o[0], o[1]);
+          if (hi - lo !== 5 || (lo !== 1 && lo !== 3 && lo !== 4)) return false;
+          out.push('B Hetu 3-8 ' + (lv === 'qi' ? 'Qi' : 'Yun')); return true;
+        });
+      });
+      var nj = NJ(), zhen = 0;
+      K.forEach(function (k) {
+        var h = nj[P[k].hex]; if (!h) return;
+        if (h.upper === 'Zhen') zhen++; if (h.lower === 'Zhen') zhen++;
+        var a = XK_TRI_QI[h.upper], b = XK_TRI_QI[h.lower];
+        if ((a === 3 && b === 8) || (a === 8 && b === 3)) out.push('C ' + P[k].hex + ' ' + N[k]);
+      });
+      if (zhen >= 3) out.push('D Zhen×' + zhen);
+      var wb = K.filter(function (k) { return P[k].branch && '寅卯辰'.indexOf(P[k].branch) >= 0; });
+      if (wb.length) out.push('E ' + wb.map(function (k) { return P[k].branch; }).join(''));
+    } catch (e) {}
+    return out;
+  }
+  root.XKDGHeluoDS = { xkVar: xkVar, xkRels: xkRels, motherLines: motherLines, motherLineDate: motherLineDate, REL_NAME: REL_NAME, motherOf: motherOf, xkMother: xkMother, xkMotherBond: xkMotherBond, xkPts: xkPts, xkCorrectHead: xkCorrectHead, aiDay: aiDay, aiYears: aiYears, notesOfDay: notesOfDay, alarmAheadHtml: alarmAheadHtml, alarmsAhead: alarmsAhead, plannerHtml: plannerHtml, xkScan: xkScan, xkSummary: xkSummary, render: render, readingHtml: readingHtml, context: context, scoreDay: scoreDay, scan: scan, PURPOSES: PURPOSES };
 })(typeof window !== 'undefined' ? window : globalThis);

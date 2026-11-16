@@ -5315,8 +5315,17 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
                 // session 53: complete-network rule, on the date shown (the four pillars of _currentDayAnalysis)
                 const _a = _currentDayAnalysis, _P = {};
                 ['hour', 'day', 'month', 'year'].forEach(k => { _P[k] = Object.assign({}, _a.pillars[k], { stem: _a.stems[k], branch: _a.branches[k] }); });
-                const lm = xkdgMomFits(mo, _P, _a.items).filter(l => !ly.includes(l)).map(l => l + ' (◎ mother)');
+                const _full = xkdgMomFits(mo, _P, _a.items);
+                const lm = _full.filter(l => !ly.includes(l)).map(l => l + ' (◎ mother)');
                 if (lm.length) ly = ly.concat(lm);
+                // session 54: line of the mother to activate (menu «◎ line», Person A) — which conditions A–E the date meets
+                try {
+                    const _sel = document.getElementById('hlls-line'), _want = _sel ? _sel.value : '', DSl = window.XKDGHeluoDS;
+                    if (_want && _full.length && DSl && DSl.motherLineDate && _xkdgMomWho(pStem, pBranch) === 'A') {
+                        const _act = DSl.motherLineDate(DSl.motherOf(_xkMomIso || localISODate(new Date()), 'A'), _P, _want);
+                        if (_act.length) ly = ly.concat(['◎ ' + ((DSl.REL_NAME || {})[_want] || _want) + ' line: ' + _act.map(a => a.split(' ')[0]).join('·')]);
+                    }
+                } catch (eLine) {}
             }
         } catch (e) {}
         if (ly.length) return ly;
@@ -5603,6 +5612,24 @@ function xkdgCureBadge(label) {
     return '<span title="' + String(label).replace(/"/g, '&quot;') + '" style="display:inline-block;font-size:11px;font-weight:bold;color:#fff;background:#2e7d32;border:1px solid #1b5e20;border-radius:10px;padding:1px 8px;margin:1px 2px;box-shadow:0 0 0 2px #c8e6c9;">' + String(label).replace('🌿 Cure', '🌿 CURE') + '</span>';
 }
 const XKDG_CURE_ROW_STYLE = 'border:2px solid #1b5e20 !important;border-left:9px solid #1b5e20 !important;background:#f1f8e9 !important;';
+// Session 54 (Edu 16/11/2026): line of the mother to activate (menu «◎ line», Person A) — the more of the conditions
+// A–E (heluo-ds.js motherLineDate) the date meets, the higher the score: +2 each. What does NOT change: the date must be
+// positive by the XKDG rules and the mother must communicate with it (xkdgMomFits) — otherwise no bonus at all.
+var XKDG_MOMLINE_PTS = 2;
+function xkdgMomLineBonus(pillars, items, gz) {
+    try {
+        const sel = document.getElementById('hlls-line'), want = sel ? sel.value : '';
+        if (!want || !pillars || !items || !xkdgHeluoAllowed()) return 0;
+        if (!items.some(i => i.tag === 'blue' || i.tag === 'family' || i.tag === 'family2')) return 0;
+        const DSl = window.XKDGHeluoDS, mo = xkdgMomOf('A');
+        if (!mo || !DSl || !DSl.motherLineDate) return 0;
+        const P = {};
+        for (const k of ['hour', 'day', 'month', 'year']) { if (!pillars[k] || !gz[k][0]) return 0; P[k] = Object.assign({}, pillars[k], { stem: gz[k][0], branch: gz[k][1] }); }
+        if (!xkdgMomFits(mo, P, items).length) return 0;
+        const act = DSl.motherLineDate(DSl.motherOf(_xkMomIso || localISODate(new Date()), 'A'), P, want);
+        return XKDG_MOMLINE_PTS * act.map(a => a[0]).filter((x, i, a) => a.indexOf(x) === i).length;
+    } catch (e) { return 0; }
+}
 function xkdgCureBonus(cure) {
     if (!cure || !cure.length) return 0;
     return 10;  // Edu (session 37): +10 (was +6). Remedy and family alternative equally valid, only on an already positive date
@@ -5728,7 +5755,8 @@ function calcHourScore(dGan, dZhi, hGan, hZhi, mGan, mZhi, yGan, yZhi,
         + blOverrideBonus
         + tfbDoubleBonus
         + nayinScore
-        + (rawCureBonus(yGan, yZhi, dGan, dZhi, analysisItems));   // session 33: the cure ranks the date higher
+        + (rawCureBonus(yGan, yZhi, dGan, dZhi, analysisItems))   // session 33: the cure ranks the date higher
+        + xkdgMomLineBonus(pillars, analysisItems, { hour: [hGan, hZhi], day: [dGan, dZhi], month: [mGan, mZhi], year: [yGan, yZhi] });   // session 54
     return Math.max(effectiveFloor, rawScore);
 }
 
@@ -9687,13 +9715,16 @@ function blueItemsPassFilter(blueItems, filters, dayData, analysisItems) {
                 const M = DSm.motherOf(iso);
                 const b = M ? DSm.xkMotherBond(['year', 'month', 'day', 'hour'].map(k => P[k].stem + P[k].branch), M) : null;
                 _ok = !!(b && b.mom);
-                // line to activate (Wealth, Children…): the DAY must carry the branch of a mother line with that relation,
-                // and the hour must not clash it.
+                // session 54: the chip follows the rules written here (session 53, xkdgMomFits: complete network of the
+                // date + yin/yang balance in the family) instead of the bond of the other chat, whenever they can be read.
+                try {
+                    const _mo = xkdgMomOf('A');
+                    if (_mo && analysisItems) _ok = xkdgMomFits(_mo, P, analysisItems).length > 0;
+                } catch (eFit) {}
+                // line to activate (Wealth, Children…), session 54 (Edu 16/11/2026): on top of the above the date must meet
+                // at least one of the conditions A–E of heluo-ds.js motherLineDate.
                 const selL = document.getElementById('hlls-line'), want = selL ? selL.value : '';
-                if (_ok && want && DSm.motherLines) {
-                    const ML = DSm.motherLines(M, ['year', 'month', 'day', 'hour'].map(k => P[k].stem + P[k].branch)).filter(L => L.rel === want);
-                    _ok = ML.some(L => L.day) && !ML.some(L => L.day && L.hourClash);
-                }
+                if (_ok && want) _ok = !!(DSm.motherLineDate && DSm.motherLineDate(M, P, want).length);
             }
         } catch (e) { _ok = false; }
         if (!_ok) return false;
