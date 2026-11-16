@@ -4738,9 +4738,9 @@ function checkFavourable(personYear, pStem, pBranch, person) {
 }
 // Session 54 (Edu 16/11/2026): how the date activates the line of the mother — tap «◎ Wealth line 2× ⓘ» in the box of
 // Person A to read which elements make it (branch of the line, Hetu 3-8, 3-8 hexagram, Zhen trigrams, wood branches).
-var XKDG_MOMLINE_TXT = { A: 'Pillar with the branch of the line', B: 'Wood Hetu 3-8 with the day', C: 'Hexagram with trigrams 3-8 (Li with Zhen)', D: 'Three or more Zhen trigrams', E: 'Wood branches (寅 卯 辰) in the Bazi' };
+var XKDG_MOMLINE_TXT = { A: 'Pillar with the branch of the line', B: 'Hetu of the four pillars', C: 'Hexagram with trigrams 3-8', D: 'Zhen trigrams', E: 'Wood branches, extra' };
 function xkdgMomLineInfo(detail, matches) {
-    const lab = (matches || []).find(m => /^◎ .* line \d+× ⓘ$/.test(String(m))), info = window._xkMomLineAct;
+    const lab = (matches || []).find(m => /^◎ .* line \+\d+ ⓘ$/.test(String(m))), info = window._xkMomLineAct;
     if (!lab || !info || !info.act) return;
     detail.textContent = matches.filter(m => m !== lab).join(' · ');
     const sp = document.createElement('span');
@@ -4751,7 +4751,7 @@ function xkdgMomLineInfo(detail, matches) {
         const tip = document.getElementById('badge-tip'); if (!tip) return;
         const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
         tip.innerHTML = '<strong>◎ ' + esc(info.rel) + ' line of the mother — activated by</strong><br><span style="font-size:11px;opacity:0.9;">' +
-            info.act.map(a => '<b>' + a[0] + '</b> ' + (XKDG_MOMLINE_TXT[a[0]] || '') + ': ' + esc(a.slice(2))).join('<br>') + '<br>+' + (XKDG_MOMLINE_PTS * info.act.map(a => a[0]).filter((x, i, r) => r.indexOf(x) === i).length) + ' points</span>';
+            info.act.map(a => '<b>' + a[0] + '</b> ' + (XKDG_MOMLINE_TXT[a[0]] || '') + ': ' + esc(a.slice(2))).join('<br>') + '<br>+' + (info.act.pts || 0) + ' points</span>';
         tip.style.display = 'block';
         const r = sp.getBoundingClientRect();
         tip.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 230)) + 'px';
@@ -5347,7 +5347,7 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
                     const _sel = document.getElementById('hlls-line'), _want = _sel ? _sel.value : '', DSl = window.XKDGHeluoDS;
                     if (_want && _full.length && DSl && DSl.motherLineDate && _xkdgMomWho(pStem, pBranch) === 'A') {
                         const _act = DSl.motherLineDate(DSl.motherOf(_xkMomIso || localISODate(new Date()), 'A'), _P, _want);
-                        if (_act.length) { window._xkMomLineAct = { rel: (DSl.REL_NAME || {})[_want] || _want, act: _act }; ly = ly.concat(['◎ ' + window._xkMomLineAct.rel + ' line ' + _act.length + '× ⓘ']); }
+                        if (_act.length) { window._xkMomLineAct = { rel: (DSl.REL_NAME || {})[_want] || _want, act: _act }; ly = ly.concat(['◎ ' + window._xkMomLineAct.rel + ' line +' + (_act.pts || 0) + ' ⓘ']); }
                     }
                 } catch (eLine) {}
             }
@@ -5637,7 +5637,7 @@ function xkdgCureBadge(label) {
 }
 const XKDG_CURE_ROW_STYLE = 'border:2px solid #1b5e20 !important;border-left:9px solid #1b5e20 !important;background:#f1f8e9 !important;';
 // Session 54 (Edu 16/11/2026): line of the mother to activate (menu «◎ line», Person A) — the more of the conditions
-// A–E (heluo-ds.js motherLineDate) the date meets, the higher the score: +2 each. What does NOT change: the date must be
+// (heluo-ds.js motherLineDate) the date meets, the higher the score: Hetu +3 per level, 3-8 hexagram +2, each Zhen +2, wood branches +1. What does NOT change: the date must be
 // positive by the XKDG rules and the mother must communicate with it (xkdgMomFits) — otherwise no bonus at all.
 var XKDG_MOMLINE_PTS = 2;
 function xkdgMomLineBonus(pillars, items, gz) {
@@ -5651,7 +5651,7 @@ function xkdgMomLineBonus(pillars, items, gz) {
         for (const k of ['hour', 'day', 'month', 'year']) { if (!pillars[k] || !gz[k][0]) return 0; P[k] = Object.assign({}, pillars[k], { stem: gz[k][0], branch: gz[k][1] }); }
         if (!xkdgMomFits(mo, P, items).length) return 0;
         const act = DSl.motherLineDate(DSl.motherOf(_xkMomIso || localISODate(new Date()), 'A'), P, want);
-        return XKDG_MOMLINE_PTS * act.map(a => a[0]).filter((x, i, a) => a.indexOf(x) === i).length;
+        return act.pts || 0;
     } catch (e) { return 0; }
 }
 function xkdgCureBonus(cure) {
