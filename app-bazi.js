@@ -4732,8 +4732,32 @@ function checkFavourable(personYear, pStem, pBranch, person) {
     if (matches.length === 0) return;
     col.style.display = 'flex';
     detail.textContent = matches.join(' · ');
+    try { xkdgMomLineInfo(detail, matches); } catch (eInfo) {}
     updatePurposeIcon(person);
     xkdgMomChip(col, person, matches);
+}
+// Session 54 (Edu 16/11/2026): how the date activates the line of the mother — tap «◎ Wealth line 2× ⓘ» in the box of
+// Person A to read which elements make it (branch of the line, Hetu 3-8, 3-8 hexagram, Zhen trigrams, wood branches).
+var XKDG_MOMLINE_TXT = { A: 'Pillar with the branch of the line', B: 'Wood Hetu 3-8 with the day', C: 'Hexagram with trigrams 3-8 (Li with Zhen)', D: 'Three or more Zhen trigrams', E: 'Wood branches (寅 卯 辰) in the Bazi' };
+function xkdgMomLineInfo(detail, matches) {
+    const lab = (matches || []).find(m => /^◎ .* line \d+× ⓘ$/.test(String(m))), info = window._xkMomLineAct;
+    if (!lab || !info || !info.act) return;
+    detail.textContent = matches.filter(m => m !== lab).join(' · ');
+    const sp = document.createElement('span');
+    sp.textContent = (detail.textContent ? ' · ' : '') + lab;
+    sp.style.cssText = 'cursor:pointer;text-decoration:underline dotted;';
+    sp.onclick = function (ev) {
+        ev.stopPropagation();
+        const tip = document.getElementById('badge-tip'); if (!tip) return;
+        const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        tip.innerHTML = '<strong>◎ ' + esc(info.rel) + ' line of the mother — activated by</strong><br><span style="font-size:11px;opacity:0.9;">' +
+            info.act.map(a => '<b>' + a[0] + '</b> ' + (XKDG_MOMLINE_TXT[a[0]] || '') + ': ' + esc(a.slice(2))).join('<br>') + '<br>+' + (XKDG_MOMLINE_PTS * info.act.map(a => a[0]).filter((x, i, r) => r.indexOf(x) === i).length) + ' points</span>';
+        tip.style.display = 'block';
+        const r = sp.getBoundingClientRect();
+        tip.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 230)) + 'px';
+        tip.style.top = (r.bottom + 6) + 'px';
+    };
+    detail.appendChild(sp);
 }
 // Session 53 (Edu 16/11/2026): when the link comes from the ◎ mother hexagram, draw her small beside «★ A ★»:
 // Qi (red) above, the six lines, Yun (blue) below — same colours as the four columns.
@@ -5323,7 +5347,7 @@ function getMatchLabels(personYear, pStem, pBranch, dayXkdg, dayStem, dayBranch,
                     const _sel = document.getElementById('hlls-line'), _want = _sel ? _sel.value : '', DSl = window.XKDGHeluoDS;
                     if (_want && _full.length && DSl && DSl.motherLineDate && _xkdgMomWho(pStem, pBranch) === 'A') {
                         const _act = DSl.motherLineDate(DSl.motherOf(_xkMomIso || localISODate(new Date()), 'A'), _P, _want);
-                        if (_act.length) ly = ly.concat(['◎ ' + ((DSl.REL_NAME || {})[_want] || _want) + ' line: ' + _act.map(a => a.split(' ')[0]).join('·')]);
+                        if (_act.length) { window._xkMomLineAct = { rel: (DSl.REL_NAME || {})[_want] || _want, act: _act }; ly = ly.concat(['◎ ' + window._xkMomLineAct.rel + ' line ' + _act.length + '× ⓘ']); }
                     }
                 } catch (eLine) {}
             }

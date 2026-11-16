@@ -1850,19 +1850,19 @@
           if (P[k][lv] !== 11 - d) return false;
           var o = R.filter(function (x) { return x !== k; }).map(function (x) { return P[x][lv]; }), lo = Math.min(o[0], o[1]), hi = Math.max(o[0], o[1]);
           if (hi - lo !== 5 || (lo !== 1 && lo !== 3 && lo !== 4)) return false;
-          out.push('B Hetu 3-8 ' + (lv === 'qi' ? 'Qi' : 'Yun')); return true;
+          out.push('B Hetu 3-8 ' + (lv === 'qi' ? 'Qi' : 'Yun') + ' Day+' + N[k] + ' (others ' + lo + '-' + hi + ')'); return true;
         });
       });
-      var nj = NJ(), zhen = 0;
+      var nj = NJ(), zhen = 0, zw = [];
       K.forEach(function (k) {
         var h = nj[P[k].hex]; if (!h) return;
-        if (h.upper === 'Zhen') zhen++; if (h.lower === 'Zhen') zhen++;
+        if (h.upper === 'Zhen') { zhen++; zw.push(N[k] + ' upper'); } if (h.lower === 'Zhen') { zhen++; zw.push(N[k] + ' lower'); }
         var a = XK_TRI_QI[h.upper], b = XK_TRI_QI[h.lower];
-        if ((a === 3 && b === 8) || (a === 8 && b === 3)) out.push('C ' + P[k].hex + ' ' + N[k]);
+        if ((a === 3 && b === 8) || (a === 8 && b === 3)) out.push('C hex ' + P[k].hex + ' ' + h.upper + '/' + h.lower + ' ' + N[k]);
       });
-      if (zhen >= 3) out.push('D Zhen×' + zhen);
+      if (zhen >= 3) out.push('D Zhen×' + zhen + ' (' + zw.join(', ') + ')');
       var wb = K.filter(function (k) { return P[k].branch && '寅卯辰'.indexOf(P[k].branch) >= 0; });
-      if (wb.length) out.push('E ' + wb.map(function (k) { return P[k].branch; }).join('') + (wb.length === 1 && wb[0] === 'hour' ? ' Hour' : ''));
+      if (wb.length) out.push('E ' + wb.map(function (k) { return P[k].branch + ' ' + N[k]; }).join(' '));
     } catch (e) {}
     return out;
   }
