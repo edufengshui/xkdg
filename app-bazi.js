@@ -6183,7 +6183,7 @@ var XK_VARIANTS = { speak: [['show', 'Show / new product · Children'], ['convin
 function xkdgSyncPurposeVariant() {
     var el = document.getElementById('purpose-variant'), p = (document.getElementById('purpose-select') || {}).value || '';
     if (!el) return;
-    var V = XK_VARIANTS[p]; if (!V) { el.style.display = 'none'; return; }
+    var V = XK_VARIANTS[p]; if (!V || !xkdgHeluoAllowed()) { el.style.display = 'none'; return; }   // session 53: He Luo only, Edu only for now
     var cur = ''; try { cur = localStorage.getItem('xkdg_xk_variant_' + p) || ''; } catch (e) {}
     el.innerHTML = V.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === cur ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('');
     el.style.display = '';
