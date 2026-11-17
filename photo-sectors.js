@@ -171,7 +171,11 @@
              (byYear(y) - byYear(x)) || (byDay(y) - byDay(x)) ||
              (y.yunLink - x.yunLink) || (y.score - x.score) || (x.angle - y.angle);
     });
-    return { facingHex: fs.hexNum, rows: rows };
+    // Edu 17/11/2026: a water hexagram that is a CURE (remedy) of a loaded person is shown by itself even when it has
+    // no link with the facing, and it is marked 🌿 (same remedies as the 🌿 Cure of the Luopan: Person A / B).
+    var cure = {}; try { if (typeof _fsCureHexMap === 'function') cure = _fsCureHexMap() || {}; } catch (e) {}
+    rows.forEach(function (r) { r.cure = cure[r.hex] || ''; });
+    return { facingHex: fs.hexNum, rows: rows, cure: cure };
   }
   function sectorOf(hex) {
     for (var i = 0; i < FS_SLOTS.length; i++) if (FS_SLOTS[i].hexNum === hex) {
@@ -245,7 +249,7 @@
       if (r.yy) { var ya = X(r.yy.from), yb = X(r.yy.to); ctx.fillStyle = 'rgba(255,0,0,0.30)'; ctx.fillRect(ya, y0, yb - ya, y1 - y0); }
       ctx.lineWidth = 2 * u; ctx.strokeStyle = '#fff'; ctx.strokeRect(xa, y0, xb - xa, y1 - y0);
       ctx.lineWidth = (best ? 6 : 3.5) * u; ctx.strokeStyle = '#d00000'; ctx.strokeRect(xa + 1.5 * u, y0 + 1.5 * u, xb - xa - 3 * u, y1 - y0 - 3 * u);
-      var lines = ['Hex ' + r.hex, r1(r.centre) + '°'];
+      var lines = ['Hex ' + r.hex + ((S.cand.cure || {})[r.hex] ? ' 🌿' : ''), r1(r.centre) + '°'];
       if (r.yy) lines.push(r.yy.kind + (r.yy.full ? '' : ' ' + r1(r.yy.from) + '–' + r1(r.yy.to) + '°'));
       labels.push({ cx: (xa + xb) / 2, lines: lines });
     });
@@ -352,12 +356,13 @@
       else if (r.famFacing.length) tags.push('family with facing');
       if (r.yunLink) tags.push('yun link');
       if (r.yy) tags.push(r.yy.kind + (r.yy.full ? '' : ' (part)'));
+      if (r.cure) tags.push('<b style="color:#2e7d32;">🌿 cure ' + esc(r.cure) + '</b>');
       if (!r.valid) tags.push('<span style="color:#999;">no facing link</span>');
       var ppl = r.people.map(function (p) {
         var ok = p.year.length ? '✓ year' : (p.day.length ? '~ day' : '✗');
         return esc(p.name) + ' ' + ok;
       }).join(' · ');
-      html += '<label style="display:flex;gap:6px;align-items:flex-start;padding:4px 2px;border-bottom:1px solid #eee;font-size:12px;' + (r.valid ? '' : 'opacity:.6;') + '">' +
+      html += '<label style="display:flex;gap:6px;align-items:flex-start;padding:4px 2px;border-bottom:1px solid #eee;font-size:12px;' + (r.valid || r.cure ? '' : 'opacity:.6;') + '">' +
         '<input type="checkbox" data-hex="' + r.hex + '"' + (S.sel[r.hex] ? ' checked' : '') + ' onchange="XKDGPhotoSectors._toggle(' + r.hex + ',this.checked)">' +
         '<span><b>Hex ' + r.hex + '</b> ' + r1(r.from) + '°–' + r1(r.to) + '° <span style="color:#777;">(' + r1(r.angle) + '° from facing)</span><br>' +
         '<span style="color:#555;">' + tags.join(' · ') + '</span>' + (ppl ? '<br><span style="color:#2e7d32;">' + ppl + '</span>' : '') + '</span></label>';
@@ -486,7 +491,7 @@
   function setFacing(deg) {
     S.facing = norm(+deg); if (!S.refs.length) { S.centre = S.facing; var c = el('xps-centre'); if (c) c.value = r1(S.centre); }
     S.cand = candidates(S.facing, S.people); S.sel = {};
-    S.cand.rows.forEach(function (r) { if (r.valid) S.sel[r.hex] = true; });
+    S.cand.rows.forEach(function (r) { if (r.valid || r.cure) S.sel[r.hex] = true; });
     var fi = el('xps-facing'); if (fi) fi.value = r1(S.facing);
     el('xps-facing-hex').textContent = 'Facing hexagram ' + S.cand.facingHex + ' · ' + S.people.length + ' people: ' +
       (S.people.map(function (p) { return p.name; }).join(', ') || 'none saved — links to people not checked') +
