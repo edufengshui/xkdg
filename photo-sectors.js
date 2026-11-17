@@ -228,10 +228,13 @@
     ctx.drawImage(S.img, 0, 0, S.W, S.H);
     var u = Math.max(S.W, S.H) / 1000;                     // drawing unit
     var y0 = S.H * S.boxTop, y1 = S.H * S.boxBottom;
-    drawDirections(ctx, u);
-    var list = !S.layers.water ? [] : S.cand.rows.filter(function (r) { return S.sel[r.hex]; });
+    // Edu 17/11/2026: while aligning (🧱 wall / reference point) the photo stays CLEAN — no hexagram boxes, no 8
+    // directions, no 24 mountains: they overlap the edges to tap. They come back as soon as the alignment is done.
+    var placing = S.mode === 'wall' || S.mode === 'ref';
+    if (!placing) drawDirections(ctx, u);
+    var list = (placing || !S.layers.water) ? [] : S.cand.rows.filter(function (r) { return S.sel[r.hex]; });
     Object.keys(S.sel).forEach(function (h) {               // manually added hexagrams
-      h = +h; if (S.layers.water && S.sel[h] && !list.some(function (r) { return r.hex === h; })) { var s = sectorOf(h); if (s) list.push(s); }
+      h = +h; if (!placing && S.layers.water && S.sel[h] && !list.some(function (r) { return r.hex === h; })) { var s = sectorOf(h); if (s) list.push(s); }
     });
     var labels = [];
     list.forEach(function (r) {
@@ -265,7 +268,7 @@
     });
     // facing line
     var xf = X(S.facing);
-    if (xf !== null && xf >= 0 && xf <= S.W) {
+    if (!placing && xf !== null && xf >= 0 && xf <= S.W) {
       ctx.setLineDash([10 * u, 8 * u]); ctx.lineWidth = 2.5 * u; ctx.strokeStyle = 'rgba(255,255,255,0.95)';
       ctx.beginPath(); ctx.moveTo(xf, y1 + 6 * u); ctx.lineTo(xf, S.H); ctx.stroke(); ctx.setLineDash([]);
       tag(ctx, u, xf, y1 + 14 * u, 'Facing ' + r1(S.facing) + '°', 'rgba(0,0,0,0.65)', '#fff');
