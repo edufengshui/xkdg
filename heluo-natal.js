@@ -98,7 +98,8 @@
     });
 
     // 5 · life cycles
-    ds.cycleRows(R).forEach(function (x) {
+    var _rows = ds.cycleRows(R);
+    _rows.forEach(function (x, xi) {
       var hx = x.hx, line = x.c.line, L = x.L, me = x.me, N = A.natives.filter(function (n) { return n.key === x.phase; })[0];
       var tm = ds.tempo(L.branch, T, { list: natVoids, mb: mb, birth: true }, null);
       var isVoid = tm.note.indexOf('空 void') >= 0, voidEasy = isVoid && ds.timely(L.el, mb);
@@ -138,14 +139,30 @@
             else { w -= v; lkT.push('−' + cap(Lk.k) + ' (' + r[2] + ')'); why.push('opposite of the ' + cap(Lk.k) + ' Luck ' + t + ' in ' + r[2] + fa + ' −' + v); } }
         }); });
       });
+      // Edu 18/11/2026: the lines next to the line of the cycle count (a Parent next to a Ghost drains it), and so does the
+      // line the person comes from, above all if adjacent; the real jump is the passage XT → HT, more so into a different trigram
+      var adj = [], prev = null, soft = '';
+      try {
+        [line - 1, line + 1].forEach(function (n) { if (n < 1 || n > 6) return;
+          var La = NJ()[hx.n].lines[n - 1], cc = N.cycles.filter(function (q) { return q.line === n; })[0];
+          adj.push({ line: n, branch: La.branch, r: rel(me, La.el), from: cc && cc.from, to: cc && cc.to, lived: !!cc && cc.to < x.c.from }); });
+        var pv = xi > 0 ? _rows[xi - 1] : null;
+        if (pv) { var triOf = function (q) { return q.c.line <= 3 ? q.hx.lower : q.hx.upper; };
+          prev = { phase: pv.phase, hexN: pv.hx.n, line: pv.c.line, branch: pv.L.branch, el: pv.L.el, r: rel(me, pv.L.el), from: pv.c.from, to: pv.c.to,
+            adjacent: pv.phase === x.phase && Math.abs(pv.c.line - line) === 1, flow: rel(L.el, pv.L.el),
+            jump: pv.phase !== x.phase, triFrom: triOf(pv), triTo: triOf(x), meFrom: pv.me }; }
+        if (x.r === 'G') { var sf = adj.filter(function (a) { return a.r === 'P' || a.r === 'C'; });
+          if (sf.length) soft = sf.map(function (a) { return 'the ' + REL[a.r] + ' line next to it (line ' + a.line + ' ' + a.branch + (a.from ? ', age ' + a.from + '–' + a.to + (a.lived ? ', already lived' : '') : '') + ') '
+            + (a.r === 'P' ? 'drains the Ghost' : 'keeps the Ghost in check'); }).join('; ') + ': the pressure is softened'; }
+      } catch (e) {}
       var flags = [];
       if (has.W && has.G >= 2) flags.push('Wealth and Ghost together: Wealth feeds the Ghost (財生殺), watch health and pressure');
-      if (x.r === 'G' && !has.C) flags.push('Ghost on the line with no Output to control it (食神制殺 missing)');
+      if (x.r === 'G' && !has.C && !soft) flags.push('Ghost on the line with no Output to control it (食神制殺 missing)');
       if (isVoid) flags.push(voidEasy ? 'line void at birth, but in season: easy to leave — with the same branch, a timely clash or when it moves' + (act.concat(hit).length ? ' (' + act.concat(hit).sort().join(', ') + ')' : '')
         : 'line void at birth and out of season: hard to leave — it needs a year and a month that put ' + L.el + ' in season, then the same branch, a clash or a moving line');
       var rs = { W: has.W, C: has.C, P: has.P, G: has.G, B: has.B }; rs[x.r] += tv;
       A.cycles.push({ phase: x.phase, N: N, hx: hx, c: x.c, line: line, L: L, me: me, r: x.r, src: x.src, luck: x.luck, y1: x.y1, y2: x.y2,
-        tm: tm, isVoid: isVoid, voidEasy: voidEasy, s: s, V: V, txt: txt, lkT: lkT, huF: huF, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags,
+        tm: tm, isVoid: isVoid, voidEasy: voidEasy, s: s, V: V, txt: txt, lkT: lkT, huF: huF, act: act, com: com, hit: hit, has: has, score: Math.round(w * 100) / 100, rs: rs, why: why, flags: flags, adj: adj, prev: prev, soft: soft,
         crossTri: !N.one && (line === 3 || line === 4), isStart: line === N.movingLine && x.c.from === N.from });
     });
 
@@ -340,6 +357,22 @@
     }
     return sub.charAt(0).toUpperCase() + sub.slice(1) + ' ' + (c.r === 'C' || c.r === 'W' ? sv : sv.replace(/^is /, 'are ').replace(/ shows /, ' show ').replace(/ gets /, ' get ').replace(/ grows /, ' grow ').replace(/^struggles/, 'struggle').replace(/ needs /, ' need ')) + '.';
   }
+  // the line the person comes from (Edu 18/11/2026), in plain words
+  function fromLine(A, c) {
+    var v = c.prev, out = ''; if (!v) return '';
+    var a = REL[v.r], b = REL[c.r], when = 'line ' + v.line + ' ' + v.branch + ' ' + a + ' (age ' + v.from + '–' + v.to + ')';
+    var FL = { C: 'this line feeds it: the ' + b + ' of now is drained and softened by the ' + a + ' of those years',
+      P: 'it feeds this line: the ' + a + ' of those years strengthens the ' + b + ' of now',
+      G: 'it keeps this line in check: the ' + a + ' of those years holds back the ' + b + ' of now',
+      W: 'this line controls it: the ' + b + ' of now presses on the ' + a + ' of those years',
+      B: 'same element: the ' + a + ' of those years goes on' };
+    if (v.jump) { var same = v.triFrom === v.triTo, elc = v.meFrom !== c.me;
+      out += p('<b style="color:#4527a0;">⇪ From the Xian Tian to the Hou Tian: the real jump of life.</b> ' + esc((A.male ? 'He' : 'She') + ' leaves ' + v.triFrom + ' (' + TRI_EL[v.triFrom] + ') and '
+        + (same ? 'is again in ' + v.triTo + ': the same trigram, a softer passage.' : 'enters ' + v.triTo + ' (' + TRI_EL[v.triTo] + '), a different trigram: a strong change of life'
+          + (elc ? ', and the person changes element, ' + v.meFrom + ' → ' + c.me + '.' : '.')))); }
+    out += p('<span style="color:#555;">↩ ' + esc('Coming from ' + (v.jump ? 'Xian Tian ' + v.hexN + ' ' : '') + when + (v.adjacent ? ', the line next to it' : '') + ': ' + FL[v.flow] + '.') + '</span>');
+    return out;
+  }
   function period(A, c) {
     var N = c.N, sub = pron(SUBJ[c.r], A.male);
     var tech = 'Line ' + c.L.branch + ' ' + c.L.el + ', person ' + c.me + '. At birth: ' + (plain(c.tm.note, 'birth', A.T) || 'no link with the birth branches') + '.'
@@ -355,6 +388,8 @@
       + lineTxt(c.hx.n, c.line, false)
       + meaning(A, c)
       + years(c)
+      + fromLine(A, c)
+      + (c.soft && !(c.prev && c.prev.adjacent && (c.prev.r === 'P' || c.prev.r === 'C')) ? p('<span style="color:#2e7d32;">' + esc(c.soft.charAt(0).toUpperCase() + c.soft.slice(1)) + '.</span>') : '')
       + (c.flags.length ? p('<span style="color:#c62828;">⚠ ' + esc(c.flags.map(flagPlain).join('; ')) + '</span>') : '')
       + '<details style="margin-top:3px;"><summary style="font-size:11px;color:#999;cursor:pointer;">details</summary><div style="font-size:11px;color:#777;line-height:1.5;">' + esc(tech) + '</div></details>'
       + '</div>';
