@@ -148,7 +148,7 @@
           adj.push({ line: n, branch: La.branch, r: rel(me, La.el), from: cc && cc.from, to: cc && cc.to, lived: !!cc && cc.to < x.c.from }); });
         var pv = xi > 0 ? _rows[xi - 1] : null;
         if (pv) { var triOf = function (q) { return q.c.line <= 3 ? q.hx.lower : q.hx.upper; };
-          prev = { phase: pv.phase, hexN: pv.hx.n, line: pv.c.line, branch: pv.L.branch, el: pv.L.el, r: rel(me, pv.L.el), from: pv.c.from, to: pv.c.to,
+          prev = { phase: pv.phase, hexN: pv.hx.n, line: pv.c.line, branch: pv.L.branch, el: pv.L.el, r: pv.r, from: pv.c.from, to: pv.c.to,
             adjacent: pv.phase === x.phase && Math.abs(pv.c.line - line) === 1, flow: rel(L.el, pv.L.el),
             jump: pv.phase !== x.phase, triFrom: triOf(pv), triTo: triOf(x), meFrom: pv.me }; }
         if (x.r === 'G') { var sf = adj.filter(function (a) { return a.r === 'P' || a.r === 'C'; });
@@ -361,16 +361,18 @@
   function fromLine(A, c) {
     var v = c.prev, out = ''; if (!v) return '';
     var a = REL[v.r], b = REL[c.r], when = 'line ' + v.line + ' ' + v.branch + ' ' + a + ' (age ' + v.from + '–' + v.to + ')';
-    var FL = { C: 'this line feeds it: the ' + b + ' of now is drained and softened by the ' + a + ' of those years',
-      P: 'it feeds this line: the ' + a + ' of those years strengthens the ' + b + ' of now',
-      G: 'it keeps this line in check: the ' + a + ' of those years holds back the ' + b + ' of now',
-      W: 'this line controls it: the ' + b + ' of now presses on the ' + a + ' of those years',
-      B: 'same element: the ' + a + ' of those years goes on' };
+    // Edu 18/11/2026: the line the person comes from is the experience gathered in those years, carried into the new period
+    var he = A.male ? 'he' : 'she', him = A.male ? 'him' : 'her', self = A.male ? 'himself' : 'herself';
+    var FL = { P: 'It generates this line: ' + he + ' feels entitled to move forward and is free in facing the new',
+      C: 'This line generates it: ' + he + ' will always go back to that earlier experience to face what awaits ' + him + ' — a limit or an advantage, depending on the quality of the two lines',
+      W: 'This line controls it: ' + he + ' is inclined to a clean cut with the past and with what that line stood for (' + a + ')',
+      G: 'It controls this line: ' + he + ' can be too tied to the past and struggles to reinvent ' + self + ' for the challenges of today',
+      B: 'Same element: that experience simply goes on' };
     if (v.jump) { var same = v.triFrom === v.triTo, elc = v.meFrom !== c.me;
       out += p('<b style="color:#4527a0;">⇪ From the Xian Tian to the Hou Tian: the real jump of life.</b> ' + esc((A.male ? 'He' : 'She') + ' leaves ' + v.triFrom + ' (' + TRI_EL[v.triFrom] + ') and '
         + (same ? 'is again in ' + v.triTo + ': the same trigram, a softer passage.' : 'enters ' + v.triTo + ' (' + TRI_EL[v.triTo] + '), a different trigram: a strong change of life'
           + (elc ? ', and the person changes element, ' + v.meFrom + ' → ' + c.me + '.' : '.')))); }
-    out += p('<span style="color:#555;">↩ ' + esc('Coming from ' + (v.jump ? 'Xian Tian ' + v.hexN + ' ' : '') + when + (v.adjacent ? ', the line next to it' : '') + ': ' + FL[v.flow] + '.') + '</span>');
+    out += p('<span style="color:#555;">↩ ' + esc('Coming from ' + (v.jump ? 'Xian Tian ' + v.hexN + ' ' : '') + when + (v.adjacent ? ', the line next to it' : '') + ' — the experience ' + he + ' brings along. ' + FL[v.flow] + '.') + '</span>');
     return out;
   }
   function period(A, c) {
@@ -389,7 +391,7 @@
       + meaning(A, c)
       + years(c)
       + fromLine(A, c)
-      + (c.soft && !(c.prev && c.prev.adjacent && (c.prev.r === 'P' || c.prev.r === 'C')) ? p('<span style="color:#2e7d32;">' + esc(c.soft.charAt(0).toUpperCase() + c.soft.slice(1)) + '.</span>') : '')
+      + (c.soft ? p('<span style="color:#2e7d32;">' + esc(c.soft.charAt(0).toUpperCase() + c.soft.slice(1)) + '.</span>') : '')
       + (c.flags.length ? p('<span style="color:#c62828;">⚠ ' + esc(c.flags.map(flagPlain).join('; ')) + '</span>') : '')
       + '<details style="margin-top:3px;"><summary style="font-size:11px;color:#999;cursor:pointer;">details</summary><div style="font-size:11px;color:#777;line-height:1.5;">' + esc(tech) + '</div></details>'
       + '</div>';
