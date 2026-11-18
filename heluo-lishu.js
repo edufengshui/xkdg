@@ -751,13 +751,16 @@
   }
   // noReading: true = no reading; 'year' | 'month' | 'day' = reading of a time hexagram, worded for that span
   // fold: poem and reading closed, open with a tap (planner and day window on the phone — Edu 12/11/2026)
-  // age (Edu 18/11/2026): the reading follows the age of life — childhood (to 12) and youth (13–19) from heluo-texts-age.js;
+  // age (Edu 18/11/2026): the reading follows the age of life — childhood (to 12), youth (13–19), later life (72+) from heluo-texts-age.js;
   // under 20 the adult reading is never shown (if the age text is missing: no reading). No age given: last age set by readAge().
   var _rdAge = null;
   function readAge(a) { _rdAge = isFinite(a) ? +a : null; }
   function ageReading(n, l, L, age) {
-    if (age == null) age = _rdAge; if (age == null || !isFinite(age) || age >= 20) return L.reading;
-    var A = root.XKDG_HELUO_TEXTS_AGE, v = A && A[n] && A[n][l]; return (v && (age <= 12 ? v.c : v.t)) || '';
+    var A = root.XKDG_HELUO_TEXTS_AGE, v = A && A[n] && A[n][l];
+    if (age == null) age = _rdAge; if (age == null || !isFinite(age)) return L.reading;
+    if (age >= 72) return (v && v.s) || L.reading; // later life (Edu: from 72, moderate); missing → adult reading
+    if (age >= 20) return L.reading;
+    return (v && (age <= 12 ? v.c : v.t)) || '';
   }
   function lineBody(n, l, noReading, fold, age) {
     var unit = typeof noReading === 'string' ? noReading : null; if (unit) noReading = false;

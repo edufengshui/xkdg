@@ -102,3 +102,64 @@ window.XKDG_HELUO_TEXTS_AGE = {
            t: "The final 6 years warn against ignoring the warning signs or hiding your problems (\"no cry\"). Speak up and ask for help early, before a small thing becomes serious." }
   }
 };
+// s = later life (from 72). Edu 18/11/2026: moderate — many people at that age still lead an active life. Same line,
+// read for work that continues at its own pace, health, family, what one has built and what one passes on.
+// Hexagrams missing here keep the adult reading from 72 on.
+(function (S) { var A = window.XKDG_HELUO_TEXTS_AGE; for (var n in S) for (var l in S[n]) { A[n] = A[n] || {}; A[n][l] = A[n][l] || {}; A[n][l].s = S[n][l]; } })({
+  "1": {
+    "1": "During these 9 years your strength is real but works best out of sight (\"hidden dragon\"). Not the time for new ventures, risky investments or big changes of home; study, reflection and quiet preparation keep your energy intact and still bear fruit.",
+    "2": "One of the most auspicious 9-year periods in Qian. Your experience is noticed and sought after: people of value come to you, and you may find a new field for what you know — teaching, advising, a project of your own.",
+    "3": "A 9-year phase of much activity and many responsibilities for your age. You are still fully engaged, and the worries follow you home in the evening. Overdoing it can cost you in health or in disputes; measure, rest and vigilance keep you safe and productive.",
+    "4": "A 9-year period of transition: leaving a role, changing home, or starting something different. After an initial phase of hesitation (\"wavering over the depths\"), choosing your moment well gives this stage of life a fresh, successful start.",
+    "5": "The pinnacle of the hexagram. These 9 years bring full authority and recognition: your word carries weight, what you have built flourishes, and you can still realise an important aim, with people of standing beside you.",
+    "6": "Yang has reached its limit. Insisting during these 9 years on more power, profit or control leads to losses, isolation, disputes or health issues. The classic advises stepping back in good time: delegate, hand over, and preserve what has already been earned."
+  },
+  "44": {
+    "1": "During these 6 years keep a firm hand on small things (\"brake of bronze\"): a bad habit, a careless expense, a new acquaintance who is not clear. Stopped at the start, they do no harm and your days stay steady.",
+    "2": "A prosperous 9-year period: what you need is well in hand (\"fish in the tank\"). Keep your affairs, your assets and your family matters within the trusted circle; outsiders do not need to be involved.",
+    "3": "Over these 9 years things may move slowly and awkwardly (\"walking comes hard\"), in the body or in your dealings. Do not hurry into decisions out of impatience; staying aware of the risk, you make no great mistake.",
+    "4": "A cautionary 9-year period: do not let your ties thin out (\"no fish in the tank\"). Distance from family, friends and the people who rely on you leaves you alone when difficulties come. Keep in touch, be generous, stay present.",
+    "5": "The most auspicious 9-year period in Hexagram 44! With quiet wisdom and generous protection of those around you (\"hidden lines\"), you receive unexpected gifts and satisfactions (\"drops down from heaven\").",
+    "6": "During these 9 years avoid meeting others with your horns: prickly, rigid, quick to argue. It brings some unpleasant moments and distance. A softer manner removes the friction and leaves your independence untouched."
+  },
+  "13": {
+    "1": "A great 9-year period for opening your door beyond the family (\"at the gate\"): groups, associations, new acquaintances, even new collaborations. Fresh contacts bring energy and opportunities.",
+    "2": "During these 6 years beware of closing yourself in the family circle or among the same few old friends (\"in the clan\"). It narrows your life and attracts some criticism. Keep other doors open.",
+    "3": "A 9-year phase where mistrust and hidden rivalries can weigh on you (\"weapons in the thicket\"): family tensions, inheritance questions, old grudges. Avoid manoeuvres in the dark; speaking openly gives far more.",
+    "4": "Over these 9 years a dispute reaches its peak, and you wisely choose not to attack. Giving up the fight and seeking reconciliation spares your strength and ends well.",
+    "5": "A dynamic 9-year period: a reunion, a reconciliation or a shared goal is reached only after strong opposition at the start (\"first weep, afterward laugh\"). Persevere through the first obstacles: it ends in joy.",
+    "6": "During these 9 years you stand back from competition and enjoy easy, congenial company (\"in the meadow\"), keeping the activity you like at your own pace. A peaceful period, without regrets."
+  },
+  "10": {
+    "1": "During these 9 years simplicity and independence are your best assets. A plain life, the work or craft you love done in your own way, and distance from other people's intrigues: steady, honourable progress.",
+    "2": "A smooth, peaceful 9-year period. Life runs on level ground if you keep a low profile and stay out of struggles for power or money. Quiet perseverance brings good fortune.",
+    "3": "A hazardous 6-year period if you overreach. Doing more than the body or the means allow, acting on impulse or confronting those who are stronger ends in a painful setback (\"the tiger bites\").",
+    "4": "Over these 9 years you deal with demanding people or delicate matters — authorities, doctors, heavy commitments (\"the tail of the tiger\"). Preparation, respect and caution carry you through to a good outcome.",
+    "5": "A powerful 9-year period: you still decide and lead, in the family or in your work. Your resolve is an asset, provided you stay aware of the dangers and do not grow careless.",
+    "6": "A rewarding 9-year culmination. You look back on your conduct and gather its fruit: if the record is sound, this period brings honours, security and complete fulfilment."
+  },
+  "9": {
+    "1": "During these 9 years an attempt to expand meets resistance. Going back to what you know — your usual activity, a prudent line with money — avoids losses and gives steady, trouble-free progress.",
+    "2": "A favourable 9-year period: sensible family members, friends or partners keep you on a balanced course. Rather than risky ventures, moving with them within known limits gives stability.",
+    "3": "A tense 9-year phase of things breaking down (\"burst spokes\") — also in the body or in practical matters — and of friction with the spouse or a partner. Pushing against the limits brings arguments. Slow down and put harmony first.",
+    "4": "Over these 6 years you hold a delicate place among strong personalities, often as the one who advises or mediates. Honesty, openness and tact avert conflict and earn you great trust.",
+    "5": "The most prosperous 9-year period in Xiao Chu. What you have grows through loyal ties (\"rich in your neighbour\"): family, partners, community. Sharing merit and resources brings wellbeing and high standing.",
+    "6": "During these 9 years long-awaited results finally arrive (\"the rain comes\"), and it is time to rest. Once the goal is reached, consolidate. Pushing for more, or dominating those close to you at the peak (\"moon nearly full\"), brings sudden losses."
+  },
+  "14": {
+    "1": "During these 9 years what you have keeps steady and grows a little. Stay away from what is harmful — doubtful offers, shortcuts, bad advice about your money — and remain conscious of the difficulties: no blame.",
+    "2": "A highly productive 9-year period. Like a \"big wagon\" you still have the capacity, the means and reliable people to carry something big: a project, an investment, a move.",
+    "3": "Over these 9 years you hold real resources: money, talents, influence, your very life. Like the noble one, you dedicate them to a higher purpose — a faith, a vocation, a cause greater than yourself, the common good, those who come after you. Giving them away is not a loss: it is what raises you and gives your life its meaning and honour. Keeping them only for yourself, like the petty person, closes the way.",
+    "4": "A prosperous 9-year period where discretion and modesty are vital. You have a great deal and people of weight around you; with no display and the ego kept in check, you remain completely secure.",
+    "5": "The golden 6-year peak of Da You. Approachable and sincere, yet with natural authority, you are surrounded by respect and trust; means and social standing are at their best.",
+    "6": "Unusually for a sixth line, supremely auspicious! Because you have been trustworthy and humble along the way, these 9 years bring \"blessings from Heaven\": ease, honour and a legacy that lasts."
+  },
+  "43": {
+    "1": "During these 9 years avoid rushing into a confrontation, a lawsuit or a big undertaking before your strength and means are really up to it (\"not equal to the task\"). Prepare thoroughly first.",
+    "2": "A 9-year period where prudence and good precautions (\"arms at evening and at night\") — affairs in order, documents, health checks — make you safe from shocks. Fear nothing.",
+    "3": "Over these 9 years do not show open hostility or stubborn anger (\"powerful in the cheekbones\") towards a difficult person. Go your own way with tact, even if others murmur for a while; it comes to a clean resolution.",
+    "4": "A frustrating 9-year phase if you insist on having your own way (\"walking comes hard\"). The remedy is simple: listen to those who are competent — doctors, advisers, your family — instead of being stubborn.",
+    "5": "A decisive 9-year period. You still have the authority to clear away an old problem or harmful people around you (\"dealing with weeds\"). Stay balanced and objective (\"walk in the middle\") for complete success.",
+    "6": "The final 6 years warn against ignoring warning signs or keeping problems to yourself (\"no cry\") — about health, money or the family. Speaking up and acting early keeps you safe."
+  }
+});
