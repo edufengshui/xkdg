@@ -377,9 +377,9 @@
   }
   function fromLine(A, c) {
     var v = c.prev, out = '';
-    // Edu 18/11/2026 (2): line 1 = new beginnings, line 6 = an exit from the scene approaches
+    // Edu 18/11/2026 (2): line 1 = new beginnings; line 6 = the culmination of a kind of experience, after which that phase ends (Edu, session 56)
     if (c.line === 1) out += p('<span style="color:#555;">◦ Line 1: a time of new beginnings.</span>');
-    if (c.line === 6) out += p('<span style="color:#555;">◦ Line 6: a certain kind of experience is coming to its end — an exit from the scene is approaching.</span>');
+    if (c.line === 6) out += p('<span style="color:#555;">◦ Line 6: a certain kind of experience reaches its culmination — and after it that phase ends.</span>');
     if (!v) return out;
     if (c.triJump) out += p('<b style="color:#4527a0;">⇪ ' + esc(c.triJump === 'soft' ? 'From line 3 to line 4, from the lower trigram ' + c.hx.lower + ' to the upper ' + c.hx.upper + ': a gradual jump.'
       : 'From line 6 back to line 1, from the upper trigram ' + c.hx.upper + ' to the lower ' + c.hx.lower + ': a very marked jump.') + '</b>');
