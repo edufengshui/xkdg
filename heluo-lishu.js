@@ -506,7 +506,7 @@
       + (oi.length ? '<div style="font-size:12px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oi.join(', ') + '</div>' : '')
       + sixAnnTag(a.hex.n, 12)
       + '<div style="font-size:12px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
-      + lineBody(a.hex.n, a.moved, 'year') + hexText(a.hex.n));
+      + lineBody(a.hex.n, a.moved, 'year', false, a.age) + hexText(a.hex.n));
     _sphT = pvT;
   }
   root.xkdgHLDerived = derivedPopup;
@@ -632,6 +632,7 @@
   function TX() { return root.XKDG_HELUO_TEXTS || null; }
   function loadTexts() {
     if (TX() || _txtLoading) return; _txtLoading = true;
+    try { var sa = document.createElement('script'); sa.src = 'heluo-texts-age.js'; document.head.appendChild(sa); } catch (e) {}
     var sc = document.createElement('script'); sc.src = 'heluo-texts.js';
     sc.onload = function () { try { if ($('hl-overlay') && $('hl-overlay').style.display !== 'none') render(); } catch (e) {} };
     sc.onerror = function () { _txtLoading = false; };
@@ -750,18 +751,27 @@
   }
   // noReading: true = no reading; 'year' | 'month' | 'day' = reading of a time hexagram, worded for that span
   // fold: poem and reading closed, open with a tap (planner and day window on the phone — Edu 12/11/2026)
-  function lineBody(n, l, noReading, fold) {
+  // age (Edu 18/11/2026): the reading follows the age of life — childhood (to 12) and youth (13–19) from heluo-texts-age.js;
+  // under 20 the adult reading is never shown (if the age text is missing: no reading). No age given: last age set by readAge().
+  var _rdAge = null;
+  function readAge(a) { _rdAge = isFinite(a) ? +a : null; }
+  function ageReading(n, l, L, age) {
+    if (age == null) age = _rdAge; if (age == null || !isFinite(age) || age >= 20) return L.reading;
+    var A = root.XKDG_HELUO_TEXTS_AGE, v = A && A[n] && A[n][l]; return (v && (age <= 12 ? v.c : v.t)) || '';
+  }
+  function lineBody(n, l, noReading, fold, age) {
     var unit = typeof noReading === 'string' ? noReading : null; if (unit) noReading = false;
     var t = TX() && TX()[n], L = t && t.lines && t.lines[l];
     if (!L) return TX() ? '' : '<div style="font-size:11px;color:#999;">Loading texts…</div>';
+    var rd = noReading ? '' : ageReading(n, l, L, age);
     var more = (L.poem ? '<div style="' + P_ + '">' + esc(L.poem) + '</div>' : '')
-      + (!noReading && L.reading ? '<div style="' + P_ + '"><b>Reading for this ' + (unit || 'age') + ':</b> ' + esc(timeReading(L.reading, unit)) + '</div>' : '');
-    if (fold && more) more = '<details onclick="event.stopPropagation()" style="margin:2px 0 4px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">📖 ' + (!noReading && L.reading ? 'Reading for this ' + (unit || 'age') : 'Poem') + '</summary>' + more + '</details>';
+      + (rd ? '<div style="' + P_ + '"><b>Reading for this ' + (unit || 'age') + ':</b> ' + esc(timeReading(rd, unit)) + '</div>' : '');
+    if (fold && more) more = '<details onclick="event.stopPropagation()" style="margin:2px 0 4px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">📖 ' + (rd ? 'Reading for this ' + (unit || 'age') : 'Poem') + '</summary>' + more + '</details>';
     return '<div style="' + P_ + '"><b>' + n + ' · line ' + l + ' · ' + esc(L.label) + '</b></div>'
       + '<div style="' + P_ + '"><i>' + esc(L.statement) + '</i></div>' + more;
   }
-  function lineText(n, l, label, noReading) {
-    var b = lineBody(n, l, noReading); if (!b) return '';
+  function lineText(n, l, label, noReading, age) {
+    var b = lineBody(n, l, noReading, false, age); if (!b) return '';
     return '<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12px;color:#4527a0;font-weight:600;">📖 ' + label + '</summary>' + b + '</details>';
   }
   function cycleTable(title, cy, y0, nowAge, hx) {
@@ -773,7 +783,7 @@
       h += '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;' + (on ? 'background:#fff3e0;font-weight:600;' : '') + 'border-top:2px solid #b39ddb;"><td style="' + TD + '">' + c.line + '</td><td style="' + TD + '">' + (c.yang ? 'yang · 9' : 'yin · 6') + '</td>'
         + '<td style="' + TD + '">' + c.from + '–' + c.to + '</td><td style="' + TD + '">Dec ' + (y0 + c.from - 2) + ' → Dec ' + (y0 + c.to - 1) + (on ? ' ◀ now' : '') + '</td></tr>'
         + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + cycleHexSvg(hx, c.line, cy)
-        + '<div style="text-align:center;font-size:11px;color:#555;">' + hx.n + ' ' + esc(hexName(hx.n)) + ' · line ' + c.line + ' · age ' + c.from + '–' + c.to + '</div>' + lineBody(hx.n, c.line) + '</td></tr>';
+        + '<div style="text-align:center;font-size:11px;color:#555;">' + hx.n + ' ' + esc(hexName(hx.n)) + ' · line ' + c.line + ' · age ' + c.from + '–' + c.to + '</div>' + lineBody(hx.n, c.line, false, false, (c.from + c.to) / 2) + '</td></tr>';
     });
     return h + '</table>';
   }
@@ -800,7 +810,7 @@
           (oppInvTag(R, a.hex, isXT).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex, isXT).join(', ') + '</div>' : '')
           + sixAnnTag(a.hex.n)
           + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
-          + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)', 'year')) + '</div>';
+          + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)', 'year', a.age)) + '</div>';
     // Edu: ALWAYS true solar time. Month starts and the days of the month are counted in the TRUE SOLAR TIME of the
     // current place (GPS longitude; the person's birth place if no GPS), never in Beijing dates.
     var ST_ = root.XKDGSolarTime, lonT = NaN; try { lonT = ST_.currentLonTz().lonDeg; } catch (e) {}
@@ -839,9 +849,9 @@
               + '<br>Day: <b>line ' + dd.line + '</b> → <b>' + dd.hex.n + '</b> ' + esc(hexName(dd.hex.n)) + sixTag(dd.hex.n)
               + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' + fmtCard('Monthly ' + mo.hex.n + ' · Lord line ' + dd.lord, mo.hex, dd.lord, mPer, me)
               + fmtCard('Block ' + dd.block.n + ' · day line ' + dd.line, dd.block, dd.line, blockPeriods(dd.lord, bS, startDay, endDay), me) + fmtCard('Day ' + dd.hex.n + ' · line ' + dd.line, dd.hex, dd.line, dayPeriods(dd.line, nowDay), me) + '</div>'
-              + lineText(dd.block.n, dd.line, 'Primary (cause, action): line ' + dd.line + ' of ' + dd.block.n + ' (block)', 'day')
-              + lineText(dd.hex.n, dd.line, 'Secondary (effect, outcome): line ' + dd.line + ' of ' + dd.hex.n + ' (day)', 'day')
-              + lineText(dd.block.n, dd.lord, 'Line ' + dd.lord + ' of ' + dd.block.n + ' (Lord of the Block)', 'day') + '</div>';
+              + lineText(dd.block.n, dd.line, 'Primary (cause, action): line ' + dd.line + ' of ' + dd.block.n + ' (block)', 'day', a.age)
+              + lineText(dd.hex.n, dd.line, 'Secondary (effect, outcome): line ' + dd.line + ' of ' + dd.hex.n + ' (day)', 'day', a.age)
+              + lineText(dd.block.n, dd.lord, 'Line ' + dd.lord + ' of ' + dd.block.n + ' (Lord of the Block)', 'day', a.age) + '</div>';
           }
         }
       }
@@ -1092,7 +1102,7 @@
     annual: annual, annualHex: annualHex, monthlyHex: monthlyHex, qiMonth: qiMonth, QI_EN: QI_EN, dailyHex: dailyHex, monthStarts: monthStarts, open: open,
     currentChart: function () { return _chart; },
     periods: { months: msTST, annual: annualPeriods, month: monthPeriods, block: blockPeriods, day: dayPeriods, dayMs: dayMs },
-    ui: { sphTime: sphTime, qiYun: qiYun, cycleHexSvg: cycleHexSvg, lineBody: lineBody, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
+    ui: { sphTime: sphTime, qiYun: qiYun, cycleHexSvg: cycleHexSvg, lineBody: lineBody, readAge: readAge, timeReading: timeReading, hexName: hexName, najiaLine: najiaLine } };
   root.openHeluoLishu = open;
   // ── He Luo inside the XKDG Date Selection (Edu, 11/11/2026): Person A's chart without opening the window ──
   // chartA() → { c, R, male, Pn } or { err } ; ensure(cb) loads Na Jia, texts and the Date Selection files, then calls cb.

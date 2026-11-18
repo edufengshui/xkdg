@@ -232,6 +232,7 @@
     var Y = wsYear(Pe), y0 = R.input.o.year, age = Y - y0 + 1, per = null, hx = null, phase = null;
     R.cyclesXT.forEach(function (c) { if (age >= c.from && age <= c.to) { per = c; hx = R.xianTian; phase = 'XT'; } });
     if (!per && R.houTian) R.cyclesHT.forEach(function (c) { if (age >= c.from && age <= c.to) { per = c; hx = R.houTian.hex; phase = 'HT'; } });
+    try { if (U().readAge) U().readAge(age); } catch (e) {} // readings by age of life (heluo-texts-age.js)
     if (!per) return { age: age, none: true };
     var k = age - per.from + 1, startYear = y0 + per.from - 1;
     var a = H().annualHex(hx.lines, per.line, k, startYear % 2 === 0);
@@ -1004,7 +1005,7 @@
         + '<td style="' + TD + 'white-space:nowrap;">' + x.L.branch + ' ' + relTag(x.r) + (x.luck.length ? ' <span style="color:#e65100;">' + x.luck.join(' ') + '</span>' : '') + '</td>'
         + '</tr>' + (x.src.length ? '<tr onclick="xkdgHLCycle(\'' + id + '\')" style="cursor:pointer;' + (on ? 'background:#fff3e0;' : w ? 'background:#f1f8e9;' : '') + '"><td></td><td colspan="3" style="padding:0 5px 4px;font-size:11px;">' + x.src.map(function (s) { return '<span style="color:' + RC[s.k] + ';">' + esc(s.t) + '</span>'; }).join(' · ') + '</td></tr>' : '')
         + '<tr id="' + id + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(x.hx, x.c.line, x.phase === 'XT' ? R.cyclesXT : R.cyclesHT) : '')
-        + (U().lineBody ? U().lineBody(x.hx.n, x.c.line) : '') + '</td></tr>';
+        + (U().lineBody ? U().lineBody(x.hx.n, x.c.line, false, false, (x.c.from + x.c.to) / 2) : '') + '</td></tr>';
     });
     h += '</table>';
     // single-element natives: Wealth from the year branches (rule 3.3) and Output that generates Wealth (rule 3.6)
@@ -1026,7 +1027,7 @@
       h += '<tr onclick="xkdgHLCycle(\'' + id2 + '\')" style="cursor:pointer;border-top:1px solid #eee;' + (Y === nowY ? 'background:#fff3e0;font-weight:600;' : '') + '"><td style="' + TD + 'white-space:nowrap;">' + Y + ' · ' + a.age + '</td>'
         + '<td style="' + TD + '">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '</td><td style="' + TD + 'white-space:nowrap;">l' + a.moved + ' ' + L.branch + ' ' + relTag(r) + '</td>'
         + '<td style="' + TD + 'font-size:11px;">' + a.hex.upper + ' ' + relTag(rel(me, TRI_EL[a.hex.upper])) + ' / ' + a.hex.lower + ' ' + relTag(rel(me, TRI_EL[a.hex.lower])) + (lk.length ? '<br>' + lk.join(' ') : '') + '</td></tr>'
-        + '<tr id="' + id2 + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, yPer(a), me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year') : '') + '</td></tr>';
+        + '<tr id="' + id2 + '" style="display:none;"><td colspan="4" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, yPer(a), me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year', false, a.age) : '') + '</td></tr>';
     }
     h += '</table>' + luckProfileHtml(R, context(R, R.input.Pn || null, male)) + '</details>';
     return h;
@@ -1603,7 +1604,7 @@
       var on = nowAge >= x.c.from && nowAge <= x.c.to, mk = plMark(ch, ctx, key, x.me, x.hx, x.c.line, null), id = 'c' + i, op = _pl.openC === id;
       h += '<tr onclick="xkdgHLPlan(\'c\',\'' + id + '\')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mk.sc, on) + '"><td style="' + TD + 'white-space:nowrap;"><b>age ' + x.c.from + '–' + x.c.to + '</b>' + (on ? ' ◀' : '') + '<div style="font-size:10px;color:#888;">' + x.y1 + '–' + x.y2 + '</div></td>'
         + '<td style="' + TD + 'white-space:nowrap;">' + x.phase + ' ' + x.hx.n + ' l' + x.c.line + '<br>' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
-      if (op) h += '<tr><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(x.hx, x.c.line, x.phase === 'XT' ? R.cyclesXT : R.cyclesHT) : '') + (U().lineBody ? U().lineBody(x.hx.n, x.c.line, false, true) : '') + '</td></tr>';
+      if (op) h += '<tr><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(x.hx, x.c.line, x.phase === 'XT' ? R.cyclesXT : R.cyclesHT) : '') + (U().lineBody ? U().lineBody(x.hx.n, x.c.line, false, true, (x.c.from + x.c.to) / 2) : '') + '</td></tr>';
     });
     h += '</table>';
     // 2 · the years, 3 · the months of the open year
@@ -1620,7 +1621,7 @@
         + '<td style="' + TD + 'white-space:nowrap;">' + a.hex.n + ' ' + esc(U().hexName ? U().hexName(a.hex.n) : '') + '<br>l' + a.moved + ' ' + mk.L.branch + ' ' + relTag(mk.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (mk.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
       if (!op) continue;
       var ms = null, aP = null; try { ms = H().periods.months(Y, lon); aP = H().periods.annual(ms); } catch (e) {}
-      h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year', true) : '')
+      h += '<tr><td colspan="3" style="padding:4px 4px 10px;background:#faf8ff;">' + (U().cycleHexSvg ? U().cycleHexSvg(a.hex, a.moved, aP, me) : '') + (U().lineBody ? U().lineBody(a.hex.n, a.moved, 'year', true, a.age) : '')
         + '<div style="font-size:12px;font-weight:600;color:#4527a0;margin:8px 0 3px;">3 · The months of ' + Y + ' (age ' + a.age + ')</div><table style="border-collapse:collapse;font-size:12px;width:100%;">';
       var MK = a.months.map(function (mo) { return plMark(ch, ctx, key, me, mo.hex, mo.line, yb, BR[(mo.index - 1) % 12], a.hex, mo.line, a.periodHex); });
       var YC = a.months.map(function (mo) { return yearClash(R, Y, me, a, BR[(mo.index - 1) % 12]); });
@@ -1631,7 +1632,7 @@
         h += '<tr onclick="event.stopPropagation();xkdgHLPlan(\'m\',' + mo.index + ')" style="cursor:pointer;border-top:1px solid #eee;' + plBg(mm.sc, false) + '"><td style="' + TD + 'white-space:nowrap;"><b>' + per + '</b></td>'
           + '<td style="' + TD + 'white-space:nowrap;">' + mo.hex.n + ' l' + mo.line + ' ' + mm.L.branch + ' ' + relTag(mm.r) + '</td><td style="' + TD + 'font-size:11px;line-height:1.5;">' + (i > 0 && MK[i - 1].lv > 0 && mm.lv < 0 && key !== 'luck' && key !== 'cure' ? '<span style="color:#c62828;font-weight:bold;">⚠ turn: after a good month, this one can reverse what was obtained</span> · ' : '') + (mm.html || '<span style="color:#aaa;">—</span>') + '</td></tr>';
         if (opM) { var mP = null; try { var d0 = H().periods.dayMs(ms[i].start); mP = H().periods.month(d0, d0, H().periods.dayMs(ms[i + 1].start || ms[i + 1].end)); } catch (e3) {}
-          h += '<tr onclick="event.stopPropagation()"><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(mo.hex, mo.line, mP, me) : '') + (U().lineBody ? U().lineBody(mo.hex.n, mo.line, 'month', true) : '') + clashDetail(YC[i], me, 'month') + '</td></tr>'; }
+          h += '<tr onclick="event.stopPropagation()"><td colspan="3" style="padding:2px 6px 8px;">' + (U().cycleHexSvg ? U().cycleHexSvg(mo.hex, mo.line, mP, me) : '') + (U().lineBody ? U().lineBody(mo.hex.n, mo.line, 'month', true, a.age) : '') + clashDetail(YC[i], me, 'month') + '</td></tr>'; }
       });
       h += '</table></td></tr>';
     }
