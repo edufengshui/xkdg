@@ -159,7 +159,7 @@
           var dl = Math.abs(q.c.line - line), fl = rel(L.el, q.L.el), kind = dl === 1 ? 'adj' : dl === 3 ? (!!q.c.yang !== !!x.c.yang ? 'yy' : 'pair') : (fl === 'P' || fl === 'C') ? 'gen' : '';
           if (kind) infl.push({ line: q.c.line, branch: q.L.branch, r: q.r, from: q.c.from, to: q.c.to, kind: kind, flow: fl }); }
         var ORD = { adj: 0, yy: 1, pair: 2, gen: 3 }; infl.sort(function (a, b) { return ORD[a.kind] - ORD[b.kind]; });
-        if (x.r === 'G') { var sf = adj.filter(function (a) { return a.r === 'P' || a.r === 'C'; });
+        if (x.r === 'G') { var sf = adj.filter(function (a) { return a.lived && (a.r === 'P' || a.r === 'C'); }); // only lines already lived: Edu has given no rule yet for lines of the future
           if (sf.length) soft = sf.map(function (a) { return 'the ' + REL[a.r] + ' line next to it (line ' + a.line + ' ' + a.branch + (a.from ? ', age ' + a.from + '–' + a.to + (a.lived ? ', already lived' : '') : '') + ') '
             + (a.r === 'P' ? 'drains the Ghost' : 'keeps the Ghost in check'); }).join('; ') + ': the pressure is softened'; }
       } catch (e) {}
