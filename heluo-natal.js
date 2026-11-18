@@ -320,12 +320,16 @@
   // Edu 11/11: the birth gives the verdict of the period; the years of the cycle that touch the line are its peaks and dips.
   // Edu 11/11: every year is a link that opens its annual hexagram and moved line (xkdgHLYearPop in heluo-lishu.js)
   function yl(a) { return a.map(function (x) { var m = x.match(/^(\d+) \((\d+)\)/); return m ? '<a onclick="xkdgHLYearPop(' + m[1] + ')" style="color:#4527a0;text-decoration:underline;cursor:pointer;">' + m[1] + '</a> (age ' + m[2] + ')' : esc(x); }).join(', '); }
+  // Edu 18/11/2026: just «Years» and the list of ALL the years of the period, each one a link to its annual hexagram;
+  // no comments ("shows most", "sudden turns, for better or worse"). The years that touch the line stay in bold.
   function years(c) {
-    var up = c.act.concat(c.com).sort(), out = '';
-    if (up.length) out += 'The years when this shows most: ' + yl(up) + '. ';
-    if (c.hit.length) out += 'Years of sudden turns, for better or worse: ' + yl(c.hit) + '.';
-    return out ? p('<span style="color:#555;">' + out.trim() + ' <span style="color:#999;font-size:11px;">(tap a year)</span></span>') : '';
+    if (!(c.y1 > 0) || !(c.y2 >= c.y1) || c.y2 - c.y1 > 20) return '';
+    var mark = {}; c.act.concat(c.com, c.hit).forEach(function (x) { var m = String(x).match(/^(\d+)/); if (m) mark[m[1]] = 1; });
+    var out = [];
+    for (var y = c.y1; y <= c.y2; y++) out.push('<a onclick="xkdgHLYearPop(' + y + ')" style="color:#4527a0;text-decoration:underline;cursor:pointer;' + (mark[y] ? 'font-weight:bold;' : '') + '">' + y + '</a>');
+    return p('<span style="color:#555;">Years: ' + out.join(' · ') + '</span>');
   }
+
   // Ghost in childhood and school years (Edu 11/11): difficulties and big changes, but also personal growth — no authority talk
   function headline(A, c, sub) {
     var st = stage(c), sv = state(A, c);
