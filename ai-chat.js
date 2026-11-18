@@ -7048,7 +7048,11 @@
     // 23:00 OFF the aquarium switches ON again at a night hour that communicates with 57 and/or
     // the door facing (fountain rule), and stays on until the next scheduled switch-on; when that
     // switch-on is in the daytime (door open) it goes OFF one hour before it and ON again at it.
-    'vienna': { device: 'vienna', lon: 16.4, utc: 1, nightRelight: { water_hex: 57, facing: 266, label: 'hex 57 / bedroom door 266°' } },
+    // Session 56 (Edu, 18/11/2026): the Vienna aquarium goes back to a DAY-ONLY light. Never on at night:
+    // ON at a positive hour of the day from Mao 卯 on, at Mao itself when the day has no positive hour,
+    // OFF always at 21:00 (start of Hai, true solar time). No night re-light, no block over several days.
+    // (The night re-light of session 37 was: nightRelight: { water_hex: 57, facing: 266, label: 'hex 57 / bedroom door 266°' }.)
+    'vienna': { device: 'vienna', lon: 16.4, utc: 1, dayOnly: { off_solar_min: 1260 } },
     // Session 33 (Edu): two small fountains in the Vienna bedroom, each on its own Shelly.
     // Water at 222° (Ling Shen) for the bed and the bedroom door, both facing 266° (Zheng Shen).
     // Session 35 (Edu): fountains switched BY HAND until session 41, now each has a Shelly (shelly:true); the plan is
@@ -7075,6 +7079,8 @@
   // Hai 亥 stay "late": they are taken only when the block outlives 23:00 anyway.
   var _WINDOW_BRANCHES = { '\u5b50': 1, '\u4e11': 1, '\u5bc5': 1, '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1, '\u7533': 1, '\u9149': 1 };
   var _LATE_BRANCHES   = { '\u620c': 1, '\u4ea5': 1 };
+  // Day-only houses (cfg.dayOnly, session 56): the hours of the day, Mao 卯 .. Xu 戌 (solar 05:00-21:00).
+  var _DAY_ONLY_BRANCHES = { '\u536f': 1, '\u8fb0': 1, '\u5df3': 1, '\u5348': 1, '\u672a': 1, '\u7533': 1, '\u9149': 1, '\u620c': 1 };
   // How far a strong block may stretch over consecutive empty days (extra days after its
   // own). Edu, session 25: a really strong structure is switched on and left on while the
   // following days have nothing. These are CEILINGS, not defaults — the block only runs as
@@ -7837,6 +7843,7 @@
       var _wins = [];
       rows.forEach(function (r) {
         if (!r || !r.date || !r.branch) return;
+        if (rh.cfg.dayOnly && !_DAY_ONLY_BRANCHES[r.branch]) return;   // day-only house: no night windows
         var w = _branchWindow(r.date, r.branch, rh.cfg.lon, rh.cfg.utc);
         if (!w || !isFinite(w.onTs)) { skipped.push({ date: r.date, reason: 'unknown branch ' + r.branch }); return; }
         _wins.push({ date: r.date, onTs: w.onTs, offTs: w.offTs, parts: [r] });
@@ -7868,6 +7875,37 @@
         });
       });
       scheduled.sort(function (a, b) { return a.onTs - b.onTs; });
+    } else if (rh.cfg.dayOnly) {
+      // DAY-ONLY LIGHT (Edu, session 56 — Vienna aquarium). One switch-on per day, never at night:
+      // the best positive hour of the day from Mao 卯 to Xu 戌 (rows that passed the QMDJ water veto);
+      // a day with no positive hour switches ON at the start of Mao all the same. OFF always at the
+      // start of Hai (solar 21:00) of the same day. No stretch over the following days, no tier 0
+      // reserve, no never-dark pass, no night re-light.
+      (function () {
+        var lon = rh.cfg.lon, utc = rh.cfg.utc, offMin = rh.cfg.dayOnly.off_solar_min || 1260, ORD = '\u536f\u8fb0\u5df3\u5348\u672a\u7533\u9149\u620c';
+        var byD = {};
+        rows.forEach(function (r) { if (r && r.date && _DAY_ONLY_BRANCHES[r.branch]) (byD[r.date] = byD[r.date] || []).push(r); });
+        var nowT = Math.ceil((Date.now() + 60000) / 60000) * 60000;
+        for (var di = 0; di < days; di++) {
+          var dIso = _isoPlus(start, di);
+          var offT = _solarToEpoch(dIso, offMin, lon, utc);
+          var c = (byD[dIso] || []).slice().sort(function (a, b) {
+            return (b.blood_link_grade || 0) - (a.blood_link_grade || 0) || (b.tier || 0) - (a.tier || 0)
+                || (b.xkdg_score || 0) - (a.xkdg_score || 0) || (b.qimen_score || 0) - (a.qimen_score || 0)
+                || ORD.indexOf(a.branch) - ORD.indexOf(b.branch);
+          })[0] || null;
+          var onT = _solarToEpoch(dIso, c ? _BRANCH_SOLAR_MIN[c.branch] : _BRANCH_SOLAR_MIN['\u536f'], lon, utc), passed = false;
+          if (onT < nowT) { onT = nowT; passed = true; }       // its hour has already begun today: ON from now
+          if (!(onT < offT)) { skipped.push({ date: dIso, reason: 'already past the 21:00 (solar) switch-off' }); continue; }
+          scheduled.push({ date: dIso, branch: c ? c.branch : '\u536f', hour: c ? c.hour : 'Mao \u536f (no positive hour this day)', tier: c ? c.tier : null,
+                           blood_link: (c && c.blood_link) || undefined, blood_link_grade: (c && c.blood_link) ? c.blood_link_grade : undefined,
+                           person_connected: c ? c.person_connected : undefined, xkdg_score: c ? c.xkdg_score : undefined, qimen_score: c ? c.qimen_score : undefined,
+                           why: c ? c.why : 'No positive hour this day: switched ON at the Mao hour all the same.',
+                           also_good_for: (c && c.also_good_for) || undefined,
+                           mao_default: c ? undefined : true, on_from_now: passed || undefined,
+                           onTs: onT, offTs: offT, on_local: new Date(onT).toString(), off_local: new Date(offT).toString() });
+        }
+      })();
     } else {
         // 3) best hour per date. First choice = the MAX-tier hour (ties by XKDG score, then
         // Qimen). We also keep the best IN-WINDOW hour separately: a late first choice falls
@@ -8167,7 +8205,9 @@
         ? 'Nobody was loaded, so the occupants of this house were loaded for the scan. SAY SO in one line.'
         : 'The scan used the person(s) already loaded by hand - a manual load always wins over the house. '
           + 'If persons_used is null, NO person was loaded and only tier 1 hours (Qimen alone) could appear: say that too.',
-      window: '2nd half of Zi (solar 00:00) .. end of You (solar 19:00); OFF at 23:00 civil. A late hour (Xu/Hai) is taken only when its block runs past 23:00 of the same day.',
+      window: rh.cfg.dayOnly
+        ? 'DAY-ONLY house: never on at night. ON at the best positive hour of the day from Mao (solar 05:00) to Xu; a day with no positive hour (mao_default) is switched ON at the Mao hour all the same. OFF ALWAYS at the start of Hai (21:00 true solar time) of the same day — never 23:00, never over the night. Say these rules, not the general ones.'
+        : '2nd half of Zi (solar 00:00) .. end of You (solar 19:00); OFF at 23:00 civil. A late hour (Xu/Hai) is taken only when its block runs past 23:00 of the same day.',
       scheduled_days: scheduled.length, scheduled: scheduled, deposit_rows: _rows.length,
       skipped: skipped,
       deposited: commit ? !workerErr : false,
