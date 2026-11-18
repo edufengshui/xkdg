@@ -1664,10 +1664,12 @@
     yFrom = parseInt(yFrom, 10) || nowY; yTo = parseInt(yTo, 10) || yFrom; if (yTo < yFrom) yTo = yFrom; if (yTo > yFrom + 11) yTo = yFrom + 11;
     var TXT = window.XKDG_HELUO_TEXTS || {}, VV = ctx.natVoids || [];
     function stmt(n, l) { try { return ((TXT[n] || {}).lines || {})[l].statement || ''; } catch (e) { return ''; } }
+    var _tagXT = true;
     function tags(hx, isAnn, isCyc) { var t = [];
       if (SIX_CLASH[hx.n] && !isCyc) t.push('Six Clashes hexagram (六冲卦): always to be pointed out — things and relationships can come apart, sudden moves' + (isAnn ? '. On the ANNUAL it marks a year of separations: say plainly to watch the couple and close ties (Edu 15/11/2026: half of the separations of famous people fall in a Six Clashes annual)' : ''));
-      if (R.oppositeXT && hx.n === R.oppositeXT.n) t.push('Opposite of the Xian Tian'); if (R.inverseXT && hx.n === R.inverseXT.n && hx.n !== R.xianTian.n) t.push('Inverse of the Xian Tian');
-      if (R.oppositeHT && hx.n === R.oppositeHT.n) t.push('Opposite of the Hou Tian'); if (R.inverseHT && R.houTian && hx.n === R.inverseHT.n && hx.n !== R.houTian.hex.n) t.push('Inverse of the Hou Tian (Edu: sudden breaks)');
+      // Edu 18/11/2026: only against the chart the person is living in (_tagXT set per year below)
+      if (_tagXT) { if (R.oppositeXT && hx.n === R.oppositeXT.n) t.push('Opposite of the Xian Tian'); if (R.inverseXT && hx.n === R.inverseXT.n && hx.n !== R.xianTian.n) t.push('Inverse of the Xian Tian'); }
+      else { if (R.oppositeHT && hx.n === R.oppositeHT.n) t.push('Opposite of the Hou Tian'); if (R.inverseHT && R.houTian && hx.n === R.inverseHT.n && hx.n !== R.houTian.hex.n) t.push('Inverse of the Hou Tian (Edu: sudden breaks)'); }
       return t.length ? t : undefined; }
     function ln(hx, l, me, yb, mb, isCyc) { // isCyc: no Six Clashes note on the cycle — the natal hexagram is always there (as in notesOfDay)
       var L = NJ()[hx.n].lines[l - 1], r = rel(me, L.el), t = TXT[hx.n] || {}, tm = [];
@@ -1681,6 +1683,7 @@
     var years = [];
     for (var Y = yFrom; Y <= yTo; Y++) {
       var a = H().annual(R, Y); if (a.none) { years.push({ year: Y, age: a.age, note: 'outside the cycles of the chart' }); continue; }
+      _tagXT = a.periodHex === R.xianTian;
       var me = persona(a.periodHex, a.period.line), yb = BR[((Y - 4) % 12 + 12) % 12], y0 = R.input.o.year;
       var o = { year: Y, age: a.age, year_branch: yb, person_element: me,
         cycle: ln(a.periodHex, a.period.line, me, yb, null, true), annual: ln(a.hex, a.moved, me, yb) };

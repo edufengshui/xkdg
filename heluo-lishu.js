@@ -486,7 +486,7 @@
     if (a.none) { hlPop('Year ' + Y, '<div style="font-size:13px;">Age ' + a.age + ': outside the cycles.</div>'); return; }
     var per = a.period, isXT = a.periodHex === R.xianTian, me = personEl(a.periodHex, per.line), aPer = null;
     try { aPer = annualPeriods(msTST(Y, _hlLon)); } catch (e) {}
-    var oi = oppInvTag(R, a.hex), P = 'font-size:13px;line-height:1.6;color:#333;margin:6px 0;';
+    var oi = oppInvTag(R, a.hex, isXT), P = 'font-size:13px;line-height:1.6;color:#333;margin:6px 0;';
     // Edu 11/11 (1972: 50 l5 Parent = "exceptional encounters"): one line on what the moved line brings to the person
     var ML = NJ() && NJ()[a.hex.n] && NJ()[a.hex.n].lines[a.moved - 1], rk = ML ? relOf(me, ML.el) : '';
     var BRINGS = { Resource: 'a Parent year: support, studies, documents and people who help you',
@@ -797,7 +797,7 @@
       + ' line ' + per.line + ' (' + (per.yang ? 'yang · 9' : 'yin · 6') + ', age ' + per.from + '–' + per.to + ') · year <b>' + a.k + '</b> of ' + a.len
       + ' · person <b>' + me + '</b>' + (per.yang && a.k === 1 && a.yangStart ? '<br><span style="color:#6a1b9a;">Period starting in a yang year: the first year keeps the hexagram unchanged.</span>' : '') + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + fmtCard('Annual ' + Y + ' · ' + a.hex.n + ' ' + esc(hexName(a.hex.n)) + ' · age ' + a.age + ' · moved line ' + a.moved, a.hex, a.moved, aPer, me,
-          (oppInvTag(R, a.hex).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex).join(', ') + '</div>' : '')
+          (oppInvTag(R, a.hex, isXT).length ? '<div style="font-size:11px;color:#b71c1c;margin-top:5px;">✗ Unauspicious: ' + oppInvTag(R, a.hex, isXT).join(', ') + '</div>' : '')
           + sixAnnTag(a.hex.n)
           + '<div style="font-size:11px;color:#555;margin-top:5px;">Changed from ' + a.periodHex.n + ': ' + (a.changed.length ? 'lines ' + a.changed.join(', ') : 'none') + '</div>'
           + hexText(a.hex.n) + lineText(a.hex.n, a.moved, 'Line ' + a.moved + ' (moved this year)', 'year')) + '</div>';
@@ -978,7 +978,7 @@
     hd('6 · Hu Gua, opposite and inverse');
     it(0, 'Hu Gua Xian Tian ' + R.huXT.n + ' ' + esc(hexName(R.huXT.n)) + (R.huHT ? ', Hou Tian ' + R.huHT.n + ' ' + esc(hexName(R.huHT.n)) : '') + ': inner aspects of the person and unexpected events.');
     var oi = function (o, v, h) { return 'opposite ' + o.n + ' ' + esc(hexName(o.n)) + (v.n !== h.n ? ', inverse ' + v.n + ' ' + esc(hexName(v.n)) : ' (no inverse: symmetric)'); };
-    it(0, 'Xian Tian ' + oi(R.oppositeXT, R.inverseXT, xt) + (R.oppositeHT ? ' · Hou Tian ' + oi(R.oppositeHT, R.inverseHT, ht) : '') + ': obstacles on the path of life; the opposite is more evident, the inverse more deceptive. A year or month with these hexagrams is unauspicious.');
+    it(0, 'Xian Tian ' + oi(R.oppositeXT, R.inverseXT, xt) + (R.oppositeHT ? ' · Hou Tian ' + oi(R.oppositeHT, R.inverseHT, ht) : '') + ': obstacles on the path of life; the opposite is more evident, the inverse more deceptive. A year or month with these hexagrams is unauspicious, each only in its own half of life (Xian Tian or Hou Tian).');
 
     return '<details open style="margin-top:12px;border:1px solid #d1c4e9;border-radius:8px;padding:8px;"><summary style="cursor:pointer;font-size:13px;font-weight:700;color:#4527a0;">Natal reading · ' + good + ' favourable, ' + bad + ' unfavourable</summary>'
       + '<ul style="padding:0;margin:4px 0;font-size:12px;color:#333;line-height:1.5;">' + out.join('') + '</ul>'
@@ -1023,9 +1023,10 @@
   function sixNat(R) { var a = []; if (SIX_ANN[R.xianTian.n]) a.push('Xian Tian ' + R.xianTian.n + ' ' + hexName(R.xianTian.n)); if (R.houTian && SIX_ANN[R.houTian.hex.n]) a.push('Hou Tian ' + R.houTian.hex.n + ' ' + hexName(R.houTian.hex.n));
     return a.length ? '<div style="font-size:11px;color:#b71c1c;margin-top:6px;">⚡ Six Clashes (六冲卦) in the birth chart: ' + esc(a.join(' and ')) + ' — a nature of sudden moves, quick starts and clean cuts; ties hold only if they are chosen again and again. It colours the whole half of life of that chart.</div>' : ''; }
   function sixAnnTag(n, fs) { return SIX_ANN[n] ? '<div style="font-size:' + (fs || 11) + 'px;color:#b71c1c;margin-top:5px;">⚡ Six Clashes annual: a year of separations — watch the couple and close ties (what is tied can come apart).</div>' : ''; }
-  function oppInvTag(R, hx) {
+  // Edu 18/11/2026: only against the chart the person is living in — no Hou Tian opposite/inverse while life is still in the Xian Tian (and vice versa)
+  function oppInvTag(R, hx, isXT) {
     var t = [];
-    if (hx.n === R.oppositeXT.n) t.push('opposite of the Xian Tian'); if (hx.n === R.inverseXT.n && R.inverseXT.n !== R.xianTian.n) t.push('inverse of the Xian Tian');
+    if (isXT) { if (hx.n === R.oppositeXT.n) t.push('opposite of the Xian Tian'); if (hx.n === R.inverseXT.n && R.inverseXT.n !== R.xianTian.n) t.push('inverse of the Xian Tian'); return t; }
     if (R.oppositeHT && hx.n === R.oppositeHT.n) t.push('opposite of the Hou Tian'); if (R.inverseHT && hx.n === R.inverseHT.n && R.inverseHT.n !== R.houTian.hex.n) t.push('inverse of the Hou Tian');
     return t;
   }
