@@ -8384,20 +8384,29 @@
       var headers = own
         ? { 'Content-Type': 'application/json', 'x-api-key': own, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }
         : _aiHeaders();
-      return fetch(target, {
-        method: 'POST', headers: headers,
-        body: JSON.stringify({ model: MODEL, max_tokens: maxTokens || 3000, system: system, tools: [],
-                               messages: [{ role: 'user', content: text }] })
-      }).then(function (r) {
-        return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; });
-      }).then(function (d) {
-        if (!d) throw new Error('No response');
-        if (d.error) throw new Error(d.error.message || d.error);
-        var t = Array.isArray(d.content)
-          ? d.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n') : '';
-        if (!t) throw new Error('Empty reply');
-        return t;
-      });
+      // Session 57: the 5.5 models THINK before they write, and the thinking counts inside
+      // max_tokens. A small ceiling (3500 for the Li Qi reading, 700 for a summary) could be
+      // used up by the thinking alone -> no text block -> "Empty reply". So the ceiling sent
+      // is the text budget plus room for the thinking, and an empty reply cut by max_tokens
+      // is asked once more with a larger one. (A ceiling costs nothing unless it is used.)
+      var ask = function (mt, again) {
+        return fetch(target, {
+          method: 'POST', headers: headers,
+          body: JSON.stringify({ model: MODEL, max_tokens: mt, system: system,
+                                 messages: [{ role: 'user', content: text }] })
+        }).then(function (r) {
+          return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; });
+        }).then(function (d) {
+          if (!d) throw new Error('No response');
+          if (d.error) throw new Error(d.error.message || d.error);
+          var t = Array.isArray(d.content)
+            ? d.content.map(function (c) { return c && c.type === 'text' ? c.text : ''; }).filter(Boolean).join('\n') : '';
+          if (!t && again && d.stop_reason === 'max_tokens') return ask(mt * 2, false);
+          if (!t) throw new Error('Empty reply' + (d.stop_reason ? ' (' + d.stop_reason + ')' : ''));
+          return t;
+        });
+      };
+      return ask(Math.max((maxTokens || 3000) + 8000, 12000), true);
     };
   } catch (e) {}
 
