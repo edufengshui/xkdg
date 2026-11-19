@@ -28,7 +28,7 @@ recipient's city, with daylight saving handled day by day.
   **House Profiles → 📧 Daily email** builds the whole line of a person (birth data + houses: door fountains,
   bed sitting, desk facing) ready to paste. The email then adds, day by day, the dates the app's own Water /
   Bed / Desk scans find for each placement, with the detail at the end.
-  The Vienna bedroom fountains (Fountain A, bed, by DAY; Fountain B, bedroom door, by NIGHT; both 266° / 222°) travel
+  The Vienna bedroom fountains (Fountain A, bed, 222°, by DAY; Fountain B, bedroom door, 227°, by NIGHT; both for the 266° facing) travel
   as `{"kind":"fountain","device":"vienna-letto"|"vienna-porta"}`: the email lists their ON → OFF times, computed
   with the assistant's own fountain plan.
 - `shelly` (optional): the aquarium light plans to watch. The app's **📧 Daily email** button adds it (tick

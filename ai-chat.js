@@ -1729,7 +1729,7 @@
       input_schema: {
         type: 'object',
         properties: {
-          house: { type: 'string', description: 'Which plug to program: the aquarium of tuoro / vienna, or a STUDENT house whose Shelly plug was connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug; use the house name as saved \u2014 get_app_state.shelly_houses lists them), or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, by DAY only), vienna-porta = Fountain B (bedroom door, by NIGHT only). A fountain plan (session 36) gives ONE hour EVERY day: A every morning (the hour closest to Mao), B every evening (Hai or later); the water hexagram at 222° must communicate with the hour and the hour with the day (or be Sheng In / Ke In to it). It runs to the next solar month.' },
+          house: { type: 'string', description: 'Which plug to program: the aquarium of tuoro / vienna, or a STUDENT house whose Shelly plug was connected in the app (house card \u2630 \u2192 \ud83d\udd0c Aquarium plug; use the house name as saved \u2014 get_app_state.shelly_houses lists them), or a Vienna bedroom FOUNTAIN on its own Shelly: vienna-letto = Fountain A (bed, 222°, by DAY only), vienna-porta = Fountain B (bedroom door, 227°, by NIGHT only). A fountain plan (session 57) gives ONE switch-on EVERY day: A like the Vienna aquarium (best positive hour Mao..Xu, Mao when none, OFF at the start of Hai), B the opposite (best positive hour Hai..Mao, Hai when none, OFF at the start of Chen); positive = the fountain hexagram communicates with the hour and/or the day. It runs to the next solar month.' },
           mode: { type: 'string', enum: ['block', 'windows'], description: 'How the light is scheduled. "block" (DEFAULT, the long-standing behaviour) = ONE hour per day, light stays ON until 23:00, blocks can span several days. "windows" = the light is ON only for the two hours of EACH favourable hour of the day and is switched off in between; several windows a day are normal, and consecutive favourable hours are merged into one longer window. Use "windows" only when the user asks for it for that house.' },
           days: { type: 'integer', description: 'OMIT it (default): the plan runs until the EXACT start of the next solar month (next Jie), Edu\'s rule. Pass a number only if the user asks for a specific number of days.' },
           commit: { type: 'boolean', description: 'false (default) = PREVIEW: compute and return the plan WITHOUT depositing anything. true = deposit the plan into the Worker. Only set true AFTER the user has seen the preview and said OK.' },
@@ -7060,8 +7060,13 @@
     // A (bed) runs only by DAY (Chen..Xu, solar 07-21), B (door) only by NIGHT (Hai..END of Mao, solar 21-07) - session 36. Like the aquarium:
     // ON at the best favourable hour of its period, stays ON to the end of the period; no
     // "never dark" rule; the plan ends at the start of the next solar month.
-    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna', positive: true }, shelly: true },
-    'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' }, shelly: true }
+    // Session 57 (Edu, 19/11/2026): A at 222°, B at 227°, both talk with the door facing 266°.
+    // A = exactly like the Vienna aquarium (day only: ON at the best positive hour Mao..Xu, at Mao when
+    // the day has none, OFF at the start of Hai). B = the opposite (night only: ON at the best positive
+    // hour Hai..Mao, at Hai when the night has none, OFF at the start of Chen). Positive hour = the
+    // fountain's hexagram communicates with the date (hour and/or day pillar); the rest only ranks.
+    'vienna-letto': { device: 'vienna-letto', lon: 16.4, utc: 1, fountain: { facing: 266, water: 222, period: 'day',   label: 'Fountain A (bed)', house: 'vienna' }, shelly: true },
+    'vienna-porta': { device: 'vienna-porta', lon: 16.4, utc: 1, fountain: { facing: 266, water: 227, period: 'night', label: 'Fountain B (bedroom door)', house: 'vienna' }, shelly: true }
   };
   var SHELLY_ALIASES = { 'letto': 'vienna-letto', 'bed': 'vienna-letto', 'fontana a': 'vienna-letto', 'fountain a': 'vienna-letto', 'fontana letto': 'vienna-letto',
                          'porta': 'vienna-porta', 'door': 'vienna-porta', 'fontana b': 'vienna-porta', 'fountain b': 'vienna-porta', 'fontana porta': 'vienna-porta',
@@ -7668,63 +7673,57 @@
     var endMs = jie ? jie.ms : (Date.now() + (parseInt(input.days, 10) || 7) * 86400000);
     if (input.days && jie) endMs = Math.max(endMs, Date.now() + (parseInt(input.days, 10) || 0) * 86400000);   // the daily email asks for its own range
     var days = Math.max(1, Math.ceil((endMs - new Date(start + 'T00:00:00').getTime()) / 86400000)) + 1;
-    var scheduled = [], missing = [], night = null;
-    if (F.positive) {
-      // Fountain A (Edu, session 42) — like the Vienna aquarium, but the criterion is the HEXAGRAM:
-      // ON at the best hour of the day that passes the rule (_ftPositiveDays); OFF at the start of
-      // Hai (solar 21:00); a strong hour stretches the block over the next days (30-39: +1 day
-      // unless the next day has an hour, over up to 3 empty days; 40+: +2 days unless the next
-      // day scores 30+, over up to 5 empty days; any block covers ONE following empty day).
-      // A stronger day is never swallowed; when the next ON comes inside a block, the block stops
-      // 1 h before it and the fountain switches on again there.
-      night = _ftPositiveDays(F, W, start, days, endMs, lon, utc, F.house || rh.name);
-      if (night.skipped) return { error: 'Fountain A: ' + night.skipped + '. Load the two persons of the house (A and B) and ask again.' };
-      var BD = night.byDay, last = _isoPlus(start, days - 1), runTo = null, runScore = 0;
-      var sc = function (iso) { return BD[iso] ? BD[iso].score : 0; };
-      for (var i = 0; i < days; i++) {
-        var D = _isoPlus(start, i), b = BD[D];
-        if (runTo && D <= runTo && !(b && b.score > runScore)) continue;
-        if (!b) { missing.push(D); continue; }
-        var t = b.score, nx = sc(_isoPlus(D, 1)), span = 0;
-        if (t >= 40 && nx < 30) span = 2; else if (t >= 30 && nx < 20) span = 1;
-        // then the empty days that follow the block, up to 5 days in all (40+), 3 (30-39) or 1 (hole cover)
-        var cap = t >= 40 ? 5 : (t >= 30 ? 3 : 1);
-        while (span < cap) { var ni = _isoPlus(D, span + 1); if (ni > last || BD[ni]) break; span++; }
-        var endDay = _isoPlus(D, span + (b.lateStart ? 1 : 0));
-        b.naturalOff = Math.min(_solarToEpoch(endDay, 21 * 60, lon, utc), endMs);
-        b.stays_on_until = endDay + ' (solar 21:00)' + (span ? ' — ' + span + ' extra day' + (span > 1 ? 's' : '') : '');
-        runTo = endDay; runScore = t; scheduled.push(b);
-      }
-      scheduled.forEach(function (s, i) {
-        var nx2 = scheduled[i + 1], off = s.naturalOff;
-        if (nx2 && nx2.onTs - 3600000 < off) { off = Math.max(s.onTs + 3600000, nx2.onTs - 3600000); s.cut_before_next_on = true; }
-        s.offTs = off; s.on_local = new Date(s.onTs).toString(); s.off_local = new Date(off).toString();
-        delete s.naturalOff; delete s.lateStart;
-      });
-    }
-    for (var i = 0; i < days && !F.positive; i++) {
+    var scheduled = [], missing = [], skipped = [];
+    // Session 57 (Edu): one switch-on per period, every day. A hour is POSITIVE when the fountain's
+    // hexagram communicates with the date: with the HOUR pillar and/or the DAY pillar. The best one
+    // wins (water↔hour, water↔day, then hour↔day / Sheng In / Ke In; ties: the earliest). A period
+    // with no positive hour switches ON at its first hour all the same (Mao for A, Hai for B).
+    var _ftRank = function (iso, k) {
+      var p = _dateParts(iso), ec = Solar.fromYmdHms(p.y, p.mo, p.d, 12, 0, 0).getLunar().getEightChar();
+      var dG = ec.getDayGan(), dZ = ec.getDayZhi(), si = _FT_STEMS.indexOf(dG);
+      var hG = _FT_STEMS.charAt(((si % 5) * 2 + k) % 10), hZ = _FT_BR.charAt(k);
+      var D = _ftPillar(dG, dZ), H = _ftPillar(hG, hZ); if (!D || !H) return null;
+      var wh = _ftLinks(W, H), wd = _ftLinks(W, D), hd = _ftLinks(H, D), sk = hd.length ? '' : _ftShengKeIn(H, D);
+      var parts = [];
+      if (wh.length) parts.push('water hex ' + W.hex + '↔hour ' + hG + hZ + ': ' + wh.join(', '));
+      if (wd.length) parts.push('water hex ' + W.hex + '↔day ' + dG + dZ + ': ' + wd.join(', '));
+      if (hd.length || sk) parts.push('hour↔day: ' + (hd.length ? hd.join(', ') : sk));
+      return { branch: hG + hZ, day: dG + dZ, positive: !!(wh.length || wd.length),
+               score: wh.length * 4 + wd.length * 4 + hd.length * 2 + (sk ? 1 : 0), via: parts.join(' · ') };
+    };
+    var nowT = Math.ceil((Date.now() + 60000) / 60000) * 60000;
+    for (var i = 0; i < days; i++) {
       var D = _isoPlus(start, i), N = _isoPlus(D, 1), cands = [], off;
       if (F.period === 'day') {
-        // the hour closest to Mao: Mao, Chen, Yin, Si
-        [[D, 3, 300], [D, 4, 420], [D, 2, 180], [D, 5, 540]].forEach(function (c) { cands.push({ iso: c[0], k: c[1], on: _solarToEpoch(c[0], c[2], lon, utc) }); });
+        // Mao .. Xu of the day; OFF at the start of Hai (solar 21:00)
+        for (var k = 3; k <= 10; k++) cands.push({ iso: D, k: k, on: _solarToEpoch(D, (2 * k - 1) * 60, lon, utc) });
         off = _solarToEpoch(D, 21 * 60, lon, utc);
       } else {
-        // Hai or later, never before: Hai (D), then Zi, Chou, Yin, Mao of the next solar day
+        // Hai (D), then Zi, Chou, Yin, Mao of the next solar day; OFF at the start of Chen (solar 07:00)
         cands.push({ iso: D, k: 11, on: _solarToEpoch(D, 21 * 60, lon, utc) });
         cands.push({ iso: N, k: 0, on: _solarToEpoch(D, 23 * 60, lon, utc) });
         [[1, 60], [2, 180], [3, 300]].forEach(function (c) { cands.push({ iso: N, k: c[0], on: _solarToEpoch(N, c[1], lon, utc) }); });
         off = _solarToEpoch(N, 7 * 60, lon, utc);
       }
-      var pick = null;
-      for (var j = 0; j < cands.length && !pick; j++) {
-        var c = cands[j]; if (c.on <= Date.now() - 2 * 3600000 || c.on >= endMs) continue;
-        var r = null; try { r = _ftHour(c.iso, c.k, W); } catch (e) {}
-        if (r) pick = Object.assign(r, { on: c.on });
-      }
-      if (!pick) { if (off > Date.now() && cands.some(function (c) { return c.on < endMs; })) missing.push(D); continue; }
+      if (cands[0].on >= endMs) continue;                       // the period begins after the plan ends
       var offTs = Math.min(off, endMs);
-      scheduled.push({ date: D, branch: pick.branch, day: pick.day, via: pick.via, onTs: pick.on, offTs: offTs,
-                       on_local: new Date(pick.on).toString(), off_local: new Date(offTs).toString() });
+      if (!(nowT < offTs)) continue;                            // period already over
+      var pick = null;
+      cands.forEach(function (c) {
+        if (c.on >= endMs) return;
+        var r = null; try { r = _ftRank(c.iso, c.k); } catch (e) {}
+        if (!r) return; c.r = r;
+        if (r.positive && (!pick || r.score > pick.r.score)) pick = c;
+      });
+      var def = !pick; if (def) { pick = cands[0]; missing.push(D); }
+      var onTs = pick.on, passed = false;
+      if (onTs < nowT) { onTs = nowT; passed = true; }          // its hour has already begun: ON from now
+      if (!(onTs < offTs)) { skipped.push(D); continue; }
+      var pr = pick.r || {};
+      scheduled.push({ date: D, branch: pr.branch || (F.period === 'day' ? '卯' : '亥'), day: pr.day, positive: !def, score: def ? undefined : pr.score,
+                       via: def ? ('No positive hour this ' + (F.period === 'day' ? 'day: switched ON at the Mao hour' : 'night: switched ON at the Hai hour') + ' all the same.' + (pr.via ? ' (' + pr.via + ')' : '')) : pr.via,
+                       default_hour: def || undefined, on_from_now: passed || undefined, onTs: onTs, offTs: offTs,
+                       on_local: new Date(onTs).toString(), off_local: new Date(offTs).toString() });
     }
     var rows = scheduled.map(function (s) { return { date: s.date, onTs: s.onTs, offTs: s.offTs }; });
     var noShelly = rh.cfg.shelly === false;
@@ -7738,21 +7737,21 @@
       } catch (e) { workerErr = 'Shelly request failed: ' + ((e && e.message) || e); }
     }
     return {
-      scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.positive ? 'any hour of the day or night (positive hours only)' : F.period === 'day' ? 'day: from the start of Chen 辰 to the start of Hai 亥 (solar 07:00-21:00)' : 'night: from the start of Hai 亥 to the END of Mao 卯 (solar 21:00-07:00)',
-      placement: { facing: F.facing, water: F.water, water_hexagram: W.hex }, rule: F.positive ? 'see positive_rule' : F.period === 'day'
-        ? 'every morning: the hour closest to Mao (Mao, Chen, Yin, Si) where water hex ' + W.hex + ' communicates with the hour and the hour with the day (or Sheng In / Ke In to it)'
-        : 'every evening: Hai or later (Hai, Zi, Chou, Yin, Mao — never before Hai) where water hex ' + W.hex + ' communicates with the hour and the hour with the day (or Sheng In / Ke In to it)',
-      days_without_hour: missing.length ? missing : undefined,
-      positive_rule: F.positive ? 'ON at the best hour of the day where the water hex communicates with the DAY pillar, the day reaches each person (' + ((night && night.persons) || []).join(' and ') + ') through the birth year, the birth day or a cure, and the hour is positive for both in the BEST scan with a score of at least ' + _FT_MIN + '. OFF at the start of Hai (solar 21:00); score 30-39 / 40+ stretch the block over the next days (see stays_on_until); when another ON comes the block stops 1 h before it. No hour at all on a day: the day stays dark (days_without_hour).' : undefined,
+      scanner: 'fountain_plan', fountain: F.label, device: rh.cfg.device, period: F.period === 'day' ? 'day: from the start of Mao 卯 to the start of Hai 亥 (solar 05:00-21:00), never at night' : 'night: from the start of Hai 亥 to the start of Chen 辰 (solar 21:00-07:00), never by day',
+      placement: { facing: F.facing, water: F.water, water_hexagram: W.hex },
+      rule: (F.period === 'day'
+        ? 'like the Vienna aquarium - every day ONE switch-on at the best positive hour from Mao to Xu, at the start of Mao when the day has no positive hour; OFF always at the start of Hai (solar 21:00). '
+        : 'the opposite of Fountain A - every night ONE switch-on at the best positive hour from Hai to Mao, at the start of Hai when the night has no positive hour; OFF always at the start of Chen (solar 07:00). ')
+        + 'Positive hour = water hex ' + W.hex + ' communicates with the date (hour pillar and/or day pillar: Hetu, Adding 5/10/15, Pure Qi, shared family); hour↔day (or Sheng In / Ke In) only makes it better.',
+      periods_without_positive_hour: missing.length ? missing : undefined,
       mode: noShelly ? 'by_hand' : (commit ? 'committed' : 'preview'), has_shelly: !noShelly,
       plan_ends: jie ? { at_local: new Date(jie.ms).toString(), solar_term: jie.name } : undefined,
       scheduled_count: scheduled.length, scheduled: scheduled,
       deposited: commit ? !workerErr : false, worker_error: workerErr || undefined, worker: commit ? workerResp : undefined,
-      note: (F.positive ? 'Each row: ON at the best positive hour of its day, OFF as in stays_on_until (cut 1 h before the next ON when cut_before_next_on). '
-        : 'Each row: ON at the best favourable hour of the ' + (F.period === 'day' ? 'day' : 'night') + ', OFF at the end of the period'
-        + (F.period === 'day' ? ' (= the start of Hai 亥). ' : ' (= the END of Mao 卯, when Chen 辰 begins). '))
+      note: 'Each row: ON at the best positive hour of the ' + (F.period === 'day' ? 'day' : 'night') + ' (default_hour:true = no positive hour, switched on at ' + (F.period === 'day' ? 'Mao' : 'Hai') + ' all the same; on_from_now = the hour had already begun), OFF at the '
+        + (F.period === 'day' ? 'start of Hai 亥. ' : 'start of Chen 辰. ')
         + 'Name the hours by the solar times in the period field (each Chinese hour is 2 solar hours: Zi 23-01, Chou 01-03, Yin 03-05, Mao 05-07, Chen 07-09 ... Hai 21-23), never guess. '
-        + 'Each row has its "via" (how the water hexagram talks with the hour and the hour with the day): give it briefly. Days in days_without_hour have no valid hour: say so. Show the times as given (local clock). '
+        + 'Each row has its "via" (how the water hexagram talks with the hour / the day): give it briefly. Show the times as given (local clock). '
         + (noShelly ? 'Until this fountain has its own Shelly, the user switches it BY HAND: offer (and do it when asked) to put every row '
         + 'in the phone calendar with add_calendar_reminder - one event per row, date = row date, start = ON time, end = OFF time '
         + '(local clock, as given), title e.g. "\uD83D\uDCA7 ' + F.label + ' ON". ' : '')

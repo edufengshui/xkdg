@@ -142,7 +142,7 @@ function build(rec, data, loc) {
           note: '', house: r.house }));   // T1 = not connected by definition: the detail says why
       } else if (r.kind === 'fountain') {
         r.dates.filter(x => x.date === dd.date).forEach(x => fsRows.push({ time: x.window, branch: x.branch || '', where: where + ' \u00b7 ON\u2192OFF',
-          grade: x.score != null ? String(x.score) : '', strong: false, note: '', house: r.house }));
+          grade: '', strong: !x.def, note: x.def ? 'no positive hour' : '', house: r.house }));
       } else {
         const d = o.d, bh = d.best_hour ? String(d.best_hour).split(' ') : null;
         fsRows.push({ time: bh && bh[1] ? bh[1] : t.allDay, branch: bh ? bh[0].slice(1) : '', where: where,
