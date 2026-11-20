@@ -8419,6 +8419,17 @@ function fsUpdateManualBadge(){
 //  without a house profile. It is restored on house load / FS open so the
 //  student never has to recompose it.
 function _fsActiveHouseFloorCtx(){
+  // Session 58 (Edu: "the manual chart gets lost"): the chart on screen belongs to the house
+  // that is LOADED (window._fsLoadedHouse), which is not always the active house of Person A
+  // (Person A changes with every client). Saving went to Person A's house -> the loaded house
+  // kept no manual chart and the next load put back the traditional one. Loaded house first.
+  try {
+    var LH = window._fsLoadedHouse;
+    if (LH && LH.personName != null){
+      var all0 = _fsHousesLoad(), h0 = (all0[LH.personName] || [])[LH.houseIdx];
+      if (h0) return { all: all0, house: h0, floor: _fsActiveFloor(h0) };
+    }
+  } catch(e){}
   try {
     var person = (typeof fsGetActivePersonForHouse === 'function') ? fsGetActivePersonForHouse() : null;
     if (!person) return null;
@@ -9584,7 +9595,11 @@ function fsLoadZoneSetting(idx){
     _fsSetVal('fs-period', s.period);
     _fsSetVal('fs-facing', s.doorFacing);
     _fsSetVal('fs-water', s.water);
-    window._fsManualChart = s.manualChart ? JSON.parse(JSON.stringify(s.manualChart)) : null;
+    // Session 58: the flying-stars chart belongs to the HOUSE (floor), not to the setting. A
+    // setting saved before the manual chart existed used to put the traditional chart back.
+    // The floor's saved manual chart always wins; the setting's copy is used only without one.
+    var _fmc = (ref.floor && ref.floor.manualChart && ref.floor.manualChart.facingStars) ? ref.floor.manualChart : null;
+    window._fsManualChart = _fmc ? _fmc : (s.manualChart ? JSON.parse(JSON.stringify(s.manualChart)) : null);
     if (typeof fsUpdateManualBadge === 'function') fsUpdateManualBadge();
     // Restore the zone-specific direction so the Bed / Desk scan has everything it needs.
     if (zone === 'bed'){

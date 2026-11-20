@@ -442,13 +442,24 @@
     var FSX = null;
     try {
       if (typeof FlyingStars !== 'undefined' && typeof fsMountainCharFromDeg === 'function' && isFinite(parseFloat(H.facing))) {
-        var fc = FlyingStars.calculate(parseInt(H.period, 10), fsMountainCharFromDeg(parseFloat(H.facing)),
+        var fc = null;
+        // The house's saved MANUAL chart wins (Edu's Vienna chart is hand-composed), unless
+        // facing / period were typed by hand in this panel.
+        try {
+          var Lh = cur();
+          if (Lh && _ovFacing == null && _ovPeriod == null) {
+            var hh = (_fsHousesLoad()[Lh.personName] || [])[Lh.houseIdx], ff = hh ? _fsActiveFloor(hh) : null;
+            if (ff && ff.manualChart && ff.manualChart.facingStars && ff.manualChart.sittingStars && ff.manualChart.baseStars) fc = ff.manualChart;
+          }
+        } catch (e) {}
+        var manual = !!fc;
+        if (!fc) fc = FlyingStars.calculate(parseInt(H.period, 10), fsMountainCharFromDeg(parseFloat(H.facing)),
                                        typeof _fsReplacementOn !== 'undefined' ? !!_fsReplacementOn : false);
         FSX = {};
         [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n, i) {     // FlyingStars arrays: South-on-top grid order
           FSX[n] = { b: fc.baseStars[i], m: fc.sittingStars[i], w: fc.facingStars[i] };
         });
-        lines.push('FLYING STARS (natal chart, period ' + H.period + ', house facing ' + H.facing + ' deg' + (fc.replacement ? ', replacement' : '') + '): the BASE of the reading.');
+        lines.push('FLYING STARS (natal chart, period ' + H.period + ', house facing ' + H.facing + ' deg' + (fc.replacement ? ', replacement' : '') + (manual ? ', MANUAL chart composed by the consultant: use it exactly as given' : '') + '): the BASE of the reading.');
       }
     } catch (e) { FSX = null; }
     lines.push('');
