@@ -236,7 +236,7 @@
     '- Combine with the forms: a feature in the area (stairs, roads, water, a pergola, a statue) often mirrors the chart; read with flexibility, some qi is represented, some is not. Suggest cures: colour schemes by element, objects, lighting, better use of the area, moving desks or functions.',
     '',
     'OUTPUT:',
-    '- Start with 2-3 sentences on the overall quality of the space and the qi entering at the Qi mouth.',
+    '- Start with 2-3 sentences on the overall quality of the space and the qi entering at the Qi mouth. If the data gives a CHART CHARACTER, open with it: it is the distinctive character of the whole house (Edu). E.g. the Three Wonders all at stage 1 Birth = the energy of the house favours new beginnings, new ventures and the development of new ideas — provided the corresponding areas are cared for and lived in the appropriate way.',
     '- Then one short paragraph per palace (in the order Qi mouth palace, facing palace, sitting palace, then the others), naming the palace and direction, the QI FLOW (where the qi ends up and who the actors are), the other key factors you read, what the area is good or not good for, and a practical suggestion.',
     '- Then a short paragraph on each occupant whose birth year stem is given.',
     '- Be concrete and concise, like the case studies. Do not invent forms you were not told about: when the use of a room would matter, say what use suits the palace.',
@@ -389,6 +389,27 @@
       + '</div></div>';
   }
 
+  // Session 58 (Edu): growth stages of the Three Wonders 乙丙丁 on the heaven plate, and the
+  // chart's distinctive character when all three stand at the same stage (e.g. all at Birth).
+  var BRS = '子丑寅卯辰巳午未申酉戌亥';
+  var PAL_BR = { 1:'子', 8:'丑寅', 3:'卯', 4:'辰巳', 9:'午', 2:'未申', 7:'酉', 6:'戌亥' };
+  var STAGES = ['Birth','Bath','Crown','Lu','Emperor','Decline','Sick','Death','Tomb','Vanishing','Conceived','Nourish'];
+  var BIRTH_AT = { '乙':'午', '丙':'寅', '丁':'酉' }, YANG = { '丙':1 };
+  function stageOf(stem, br) {
+    var b0 = BRS.indexOf(BIRTH_AT[stem]), b = BRS.indexOf(br);
+    var k = YANG[stem] ? (b - b0 + 12) % 12 : (b0 - b + 12) % 12;
+    return STAGES[k];
+  }
+  function wonders(c) {
+    var out = [];
+    Object.keys(c.palaces).forEach(function (n) {
+      var p = c.palaces[n], st = p && p.tiH;
+      if (!BIRTH_AT[st] || !PAL_BR[n]) return;
+      out.push({ stem: st, pal: +n, stages: PAL_BR[n].split('').map(function (br) { return { br: br, st: stageOf(st, br) }; }) });
+    });
+    return out;
+  }
+
   function describe(L) {
     L = L || _last;
     var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, L.r.hGan, L.r.hZhi, null,
@@ -403,6 +424,18 @@
     lines.push('Period ' + r.ju + ' -> Yang Ju ' + r.ju + '. Facing ' + r.facing + ' deg (palace ' + facePal + '), sitting ' + r.sitting + ' deg (palace ' + sitPal + ').');
     lines.push('Fu Shou ' + r.xunHead + ' ' + r.yi + ' (' + r.mountain + '). Zhi Fu palace = ' + r.zhiFu + (kind === 'house' ? ' (Qi mouth / door)' : ' (facing palace)') + '. Chart hour ' + r.hGan + r.hZhi + '.');
     // Session 58 (Edu): voids do not count in a QMDJ Feng Shui (Li Qi) chart -> not given to the model.
+    try {
+      var W = wonders(c);
+      if (W.length) {
+        lines.push('THREE WONDERS (heaven plate) growth stages: ' + W.map(function (w) {
+          return w.stem + ' in ' + String(PAL_INFO[w.pal]).split(' · ')[0] + ' ' + w.stages.map(function (x) { return x.br + ' ' + x.st; }).join(' / ');
+        }).join('; ') + '.');
+        if (W.length === 3) {
+          var common = STAGES.filter(function (S) { return W.every(function (w) { return w.stages.some(function (x) { return x.st === S; }); }); });
+          if (common.length) lines.push('CHART CHARACTER: all three Wonders 乙丙丁 stand at the same growth stage: ' + common.join(' / ') + '.');
+        }
+      }
+    } catch (e) {}
     lines.push('');
     lines.push('PALACES (heaven stem / earth stem, star, door, spirit, Di Pan spirit):');
     [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n) {
