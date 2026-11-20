@@ -64,9 +64,31 @@
 
   // The house loaded in House Profiles (like every other Feng Shui chart): facing and period
   // of its active floor, and the palace of its first EXTERNAL door that has one (the Qi mouth).
-  function houseData() {
+  // Session 57 (Edu: "it does not let me choose the house"): the panel has its own house menu.
+  // Picking a house here does NOT change the house loaded in the rest of the app. Facing and
+  // period can also be typed by hand (not saved): for a client's place that has no profile yet.
+  var _pick = null;                         // { personName, houseIdx } chosen in the panel
+  var _ovFacing = null, _ovPeriod = null;   // typed by hand in the panel
+  function cur() { return _pick || window._fsLoadedHouse || null; }
+  function allHouses() {
+    var out = [];
     try {
-      var L = window._fsLoadedHouse;
+      var all = _fsHousesLoad();
+      Object.keys(all).forEach(function (pn) {
+        (all[pn] || []).forEach(function (h, i) { out.push({ personName: pn, houseIdx: i, name: h.name || '' }); });
+      });
+    } catch (e) {}
+    return out;
+  }
+  function houseData() {
+    var H = houseDataRaw();
+    if (!H && (_ovFacing != null || _ovPeriod != null)) H = { name: '', person: '', facing: null, period: null, doorPalace: null, doorName: '' };
+    if (H) { if (_ovFacing != null) H.facing = _ovFacing; if (_ovPeriod != null) H.period = _ovPeriod; }
+    return H;
+  }
+  function houseDataRaw() {
+    try {
+      var L = cur();
       if (!L || typeof _fsHousesLoad !== 'function') return null;
       var all = _fsHousesLoad(), h = (all[L.personName] || [])[L.houseIdx];
       if (!h) return null;
@@ -118,9 +140,48 @@
       document.body.appendChild(ov);
     }
     _qiManual = null;          // every opening starts again from the saved door
-    back();
+    _pick = null; _ovFacing = null; _ovPeriod = null;   // ...and from the house loaded in the app
+    back(); head();
     ov.style.display = 'flex';
     try { document.getElementById('liqi-btn-house').focus(); } catch (e) {}
+  }
+
+  // House menu + facing / period boxes (always visible, on both steps).
+  function head() {
+    var hEl = document.getElementById('liqi-house'); if (!hEl) return;
+    var IN = 'padding:5px;border:1px solid #b39ddb;border-radius:5px;font-size:13px;';
+    var list = allHouses(), L = cur(), H = houseData();
+    var opts = list.length ? '' : '<option value="">— no saved house —</option>';
+    var found = false;
+    list.forEach(function (x, i) {
+      var on = L && L.personName === x.personName && L.houseIdx === x.houseIdx; if (on) found = true;
+      var lbl = (x.name || 'House') + (x.personName && x.personName !== x.name ? ' · ' + x.personName : '');
+      opts += '<option value="' + i + '"' + (on ? ' selected' : '') + '>' + lbl.replace(/</g, '&lt;') + '</option>';
+    });
+    if (list.length && !found) opts = '<option value="" selected>— choose a house —</option>' + opts;
+    var per = '<option value="">—</option>';
+    for (var n = 1; n <= 9; n++) per += '<option value="' + n + '"' + (H && String(H.period) === String(n) ? ' selected' : '') + '>' + n + '</option>';
+    hEl.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+      + '<select onchange="liqiPickHouse(this.value)" style="' + IN + 'max-width:100%;flex:1 1 180px;">' + opts + '</select>'
+      + '<span>Facing <input type="number" step="0.1" min="0" max="360" value="' + (H && H.facing != null && isFinite(parseFloat(H.facing)) ? H.facing : '')
+      + '" onchange="liqiSet(\'facing\',this.value)" style="' + IN + 'width:68px;">°</span>'
+      + '<span>Period <select onchange="liqiSet(\'period\',this.value)" style="' + IN + '">' + per + '</select></span>'
+      + '</div>';
+  }
+  function refresh() {
+    var b = document.getElementById('liqi-step2');
+    if (b && b.style.display !== 'none') show(); else head();
+  }
+  function pickHouse(v) {
+    var list = allHouses(), x = list[parseInt(v, 10)];
+    _pick = x ? { personName: x.personName, houseIdx: x.houseIdx } : null;
+    _ovFacing = null; _ovPeriod = null; _qiManual = null;
+    refresh();
+  }
+  function setVal(what, v) {
+    if (what === 'facing') { var f = parseFloat(v); _ovFacing = isFinite(f) ? norm(f) : null; }
+    else { var p = parseInt(v, 10); _ovPeriod = (p >= 1 && p <= 9) ? p : null; }
+    refresh();
   }
 
   var _kind = 'house';
@@ -174,7 +235,7 @@
   function occupants() {
     var out = [];
     try {
-      var L = window._fsLoadedHouse, all = _fsHousesLoad(), h = (all[L.personName] || [])[L.houseIdx];
+      var L = cur(), all = _fsHousesLoad(), h = (all[L.personName] || [])[L.houseIdx];
       var list = [];
       if (h && !h.ownerAway) list.push({ who: h.personName || L.personName || 'Owner', date: h.birthDate || '' });
       if (h && h.guest && h.guest.birthDate) list.push({ who: h.guest.name || 'Occupant 2', date: h.guest.birthDate });
@@ -283,13 +344,16 @@
     var hEl = document.getElementById('liqi-house'), sel = document.getElementById('liqi-qi');
     if (!info || !box) return;
     var H = houseData();
+    head();
     if (!H) {
-      hEl.innerHTML = '';
-      info.innerHTML = '<span style="color:#c0392b;">Load a house in House Profiles first.</span>';
+      info.innerHTML = '<span style="color:#c0392b;">Choose a house above, or type the facing and the period.</span>';
       box.innerHTML = ''; return;
     }
-    hEl.innerHTML = '<b>' + (H.name || 'House') + '</b> · Facing ' + (H.facing != null ? H.facing + '°' : '—')
-      + ' · Period ' + (H.period != null ? H.period : '—');
+    if (H.facing == null || H.facing === '' || !isFinite(parseFloat(H.facing)) || H.period == null || H.period === '') {
+      info.innerHTML = '<span style="color:#c0392b;">This house has no ' + ((H.facing == null || H.facing === '' || !isFinite(parseFloat(H.facing))) ? 'facing' : 'period')
+        + ' saved: type it above (it is used for this chart only), or choose another house.</span>';
+      box.innerHTML = ''; return;
+    }
     var kind = _kind;
     document.getElementById('liqi-qi-wrap').style.display = (kind === 'business') ? 'none' : '';
     // Qi mouth menu: the saved door first (when there is one), then every palace by hand.
@@ -365,6 +429,8 @@
   window.openLiQiPanel = open;
   window.liqiShow = show;
   window.liqiPickQi = pickQi;
+  window.liqiPickHouse = pickHouse;
+  window.liqiSet = setVal;
   window.liqiKind = setKind;
   window.liqiBack = back;
   window.liqiInterpret = interpret;
