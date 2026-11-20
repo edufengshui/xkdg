@@ -762,7 +762,7 @@
                'find_water_activation_full','find_purpose_activation','find_water_star_charts','seed_manual_chart',
                'list_houses','get_house_setup','set_active_house','load_house','load_placement','house_save_door','house_save_placement','find_dlr_general_match',
                'recall_flying_stars','open_chart_finder','open_qimen_for_flying_stars','open_section',
-               'find_water_positions','yang_openings','find_good_dates','open_scan_result',
+               'find_water_positions','yang_openings','get_liqi_chart','find_good_dates','open_scan_result',
                'plan_status','plan_room','plan_settings','plan_show','plan_opening','plan_item','plan_optimize','plan_3d','room_photo','sun_facing','find_qimen_days','find_multichart_activation'],
     dates: ['person_xkdg_gaps','mutual_cures','find_good_dates','explain_purpose','open_scan_result','show_verify_button',
             'find_divination_chart','get_hexagram_info','export_lucky_calendar','find_dlr_general_match','get_heluo_day','get_heluo_years'],
@@ -805,7 +805,7 @@
   var AREA_HINTS = {
     home: /acquari|aquarium|fontan|fountain|shelly|smart\s*plug|\bpresa\b|\bprise\b|\bluce\b|\bluci\b|lumi[e\u00e8]re|\blight\b|spegn|accend|allum|(switch|turn)\s+(it\s+)?(on|off)|alexa|riassunt|r[e\u00e9]sum[e\u00e9]|digest|\bsummary\b/i,
     travel: /\bportami\b|\bportarmi\b|take me to|drive me|come ci arrivo|how do i get|\bandiamo a\b|viagg|\btrip\b|journey|partenz|partire|guidar|\bdrive\b|driving|percors|itinerar|bussol|compass|albergo|\bhotel\b|lodging|\bvolo\b|\bvoli\b|flight|ricaric|\bcharg|autonomia|destinazion|destination/i,
-    fengshui: /attivazion|activation|carte multiple|multiple charts|fontan|fountain|finestr|window|fen[eê]tre|aperture|apertur|opening|ouverture|\byang\b|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
+    fengshui: /li\s*qi\b|liqi|flying\s*pan|attivazion|activation|carte multiple|multiple charts|fontan|fountain|finestr|window|fen[eê]tre|aperture|apertur|opening|ouverture|\byang\b|stelle volanti|flying star|water star|mountain star|luopan|\bletto\b|\bbed\b|scrivan|\bdesk\b|facing|sitting|\bacqua\b|\bwater\b/i,
     birth: /carta\s+(di\s+)?nascita|carte\s+(di\s+)?nascita|carta\s+natal|tema\s+natal|birth\s*chart|natal|th[e\u00e8]me\s+natal|he\s*luo|heluo|\bhlls\b|\u6cb3\u6d1b|compatib|isolat|\bcur[ae]\b|\bcures\b|rimedi|remed|comunicazion|communication|luck\s+pillar|\u5927\u8fd0|pilastri\s+della\s+fortuna|\bpalazz|\b(19|20)\d\d\b|anno\s+prossimo|prossimo\s+anno|quest.anno|next\s+year|this\s+year|ann[eé]e\s+prochaine|cette\s+ann[eé]e/i,
     dates: /divinaz|divination|esagramm|hexagram|calendario|\bcalendar\b|\.ics\b|data buona|good date|selezione data|date selection/i
   };
@@ -2199,6 +2199,22 @@
         house_name: { type: 'string' }, item: { type: 'string' }, opening: { type: 'string' },
         reference_m: { type: 'number', description: 'Distance of the reference point from the back wall, along the centre line. Default 0 = centre of the headboard.' } },
         required: ['item', 'opening'] }
+    },
+    {
+      name: 'get_liqi_chart',
+      description: '🏠 QMDJ Li Qi PERMANENT chart of a house or business (Qi Men Dun Jia Feng Shui, Flying Pan method, Edu\'s chapter "Li Qi 2"; menu Charts → QMDJ Li Qi). ' +
+        'Use it for ANY question about the Li Qi / Qi Men chart of a house: what a palace or room is good for, the quality of the qi at the door, where an occupant is affected, cures. ' +
+        'Yang Dun only, Jú = period of construction / move-in. HOUSE: Fu Shou from the SITTING double mountain, Zhi Fu in the palace of the Qi mouth (main door). ' +
+        'BUSINESS: Fu Shou from the FACING double mountain, Zhi Fu in the facing palace. Defaults: the house loaded in House Profiles (facing, period, saved external door, occupants). ' +
+        'Returns the nine palaces (heaven stem over earth stem, star, door, spirit, Di Pan spirit, tags Qi mouth / facing / sitting / Zhi Fu / Zhi Shi), the void branches, the birth-year pillars of the occupants and "how_to_read": ' +
+        'the reading method of the chapter - follow it, do not replace it with generic Qi Men. It does not know which ROOM lies in each palace: take that from the user or from plan_status / get_house_setup. ' +
+        'This is a PERMANENT Feng Shui chart: never use it for dates, hours or travel directions. If the Qi mouth palace is missing, ask the user where the main door is.',
+      input_schema: { type: 'object', properties: {
+        kind: { type: 'string', enum: ['house', 'business'], description: 'Default house. Ask when it is not clear.' },
+        qi_palace: { type: 'integer', description: 'House only: Luo Shu number of the palace of the Qi mouth (1 Kan N, 8 Gen NE, 3 Zhen E, 4 Xun SE, 9 Li S, 2 Kun SW, 7 Dui W, 6 Qian NW). Default: the saved external door.' },
+        facing: { type: 'number', description: 'Facing in degrees. Default: the loaded house.' },
+        period: { type: 'integer', description: 'Period 1-9 of construction / move-in. Default: the loaded house.' },
+        show: { type: 'boolean', description: 'true = also open the chart on screen.' } } }
     },
     {
       name: 'yang_openings',
@@ -3633,6 +3649,10 @@
         return _ps;
       }
       if (name === 'photo_sectors_state') return toolPhotoSectorsState(input || {});
+      if (name === 'get_liqi_chart') {
+        if (typeof window.qmdjLiQiForAI !== 'function') return { ok: false, error: 'QMDJ Li Qi module not loaded.' };
+        return window.qmdjLiQiForAI(input || {});
+      }
       if (name === 'yang_openings') return toolYangOpenings(input || {});
       if (name === 'find_water_star_charts') return toolFindWaterStarCharts(input || {});
       if (name === 'seed_manual_chart') return toolSeedManualChart(input || {});

@@ -194,11 +194,12 @@
 
   var _last = null;          // { r, kind, H } of the chart on screen
 
-  function describe() {
-    var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, _last.r.hGan, _last.r.hZhi, null,
-                                                 { ju: _last.r.ju, dun: 'yang' });
+  function describe(L) {
+    L = L || _last;
+    var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, L.r.hGan, L.r.hZhi, null,
+                                                 { ju: L.r.ju, dun: 'yang' });
     if (!c || !c.palaces) return null;
-    var r = _last.r, H = _last.H, kind = _last.kind;
+    var r = L.r, H = L.H, kind = L.kind;
     var facePal = PAL.filter(function (x) { return x[0] === palaceOf(r.facing)[0]; })[0][0];
     var sitPal = palaceOf(r.sitting)[0];
     var dp = dipanDeities(r);
@@ -331,6 +332,35 @@
           + '</div><div id="liqi-ai-out" style="margin-top:10px;font-size:13px;line-height:1.55;color:#333;"></div>' : '');
   }
 
+  // Session 57 (Edu: "the Assistant should know this chart"): the same chart text and reading
+  // method the Interpretation button uses, for the in-app Assistant (tool get_liqi_chart).
+  // o: { kind 'house'|'business', qi_palace 1-9 (house only), facing, period, show }.
+  // Facing / period / Qi mouth default to the house loaded in House Profiles.
+  function forAI(o) {
+    o = o || {};
+    var H = houseData() || { name: '', facing: null, period: null, doorPalace: null, doorName: '' };
+    var kind = (o.kind === 'business') ? 'business' : 'house';
+    var facing = (o.facing != null && isFinite(o.facing)) ? +o.facing : parseFloat(H.facing);
+    var period = (o.period != null) ? o.period : H.period;
+    var qi = o.qi_palace || H.doorPalace || null;
+    if (!isFinite(facing) || period == null) return { ok: false, error: 'No house loaded and no facing / period given: load a house (load_house) or pass facing and period.' };
+    var r = compute(kind, facing, period, qi);
+    if (r.error) return { ok: false, error: /Qi mouth/.test(r.error)
+      ? 'House chart: the palace of the Qi mouth (main door) is needed. No external door with a palace is saved for this house: ask the user in which palace the door is (or pass qi_palace), or use kind "business" when it is a business.'
+      : r.error };
+    var HH = { name: H.name, facing: facing, period: period, doorPalace: H.doorPalace, doorName: H.doorName };
+    var text = null; try { text = describe({ r: r, kind: kind, H: HH }); } catch (e) {}
+    if (!text) return { ok: false, error: 'Chart data not available.' };
+    var shown = false;
+    if (o.show && houseData()) { try { shown = true; open(); _qiManual = (kind === 'house' && o.qi_palace) ? parseInt(o.qi_palace, 10) : null; setKind(kind); } catch (e) {} }
+    var cut = READ_GUIDE.indexOf('\nOUTPUT:');
+    return { ok: true, scanner: 'qmdj_liqi', house: H.name || undefined, kind: kind,
+             qi_mouth_from: kind === 'business' ? 'facing palace' : (o.qi_palace ? 'given by hand' : ('saved door' + (H.doorName ? ' "' + H.doorName + '"' : ''))),
+             near_double_mountain_edge: r.nearEdge || undefined,
+             chart: text, how_to_read: cut > 0 ? READ_GUIDE.slice(0, cut) : READ_GUIDE,
+             shown_on_screen: shown };
+  }
+  window.qmdjLiQiForAI = forAI;
   window.qmdjLiQiCompute = compute;
   window.openLiQiPanel = open;
   window.liqiShow = show;
