@@ -8409,12 +8409,22 @@
       // used up by the thinking alone -> no text block -> "Empty reply". So the ceiling sent
       // is the text budget plus room for the thinking, and an empty reply cut by max_tokens
       // is asked once more with a larger one. (A ceiling costs nothing unless it is used.)
+      // Session 58: a "Failed to fetch" (connection dropped) was shown at once, with no
+      // retry. Now, like the chat, the same request is sent again twice, and the error
+      // says how many seconds passed (tells a timeout from an immediate network failure).
+      var t0 = Date.now();
+      var post = function (body, n) {
+        return fetch(target, { method: 'POST', headers: headers, body: body }).catch(function (err) {
+          if (n >= 2) {
+            var sec = Math.round((Date.now() - t0) / 1000);
+            throw new Error(String(err && err.message || err) + ' (after ' + sec + ' s, 3 tries)');
+          }
+          return new Promise(function (res) { setTimeout(res, 2000 * (n + 1)); }).then(function () { return post(body, n + 1); });
+        });
+      };
       var ask = function (mt, again) {
-        return fetch(target, {
-          method: 'POST', headers: headers,
-          body: JSON.stringify({ model: MODEL, max_tokens: mt, system: system,
-                                 messages: [{ role: 'user', content: text }] })
-        }).then(function (r) {
+        return post(JSON.stringify({ model: MODEL, max_tokens: mt, system: system,
+                                     messages: [{ role: 'user', content: text }] }), 0).then(function (r) {
           return r.json().catch(function () { return { error: 'Bad response (HTTP ' + r.status + ')' }; });
         }).then(function (d) {
           if (!d) throw new Error('No response');
