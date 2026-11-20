@@ -225,6 +225,7 @@
     '- Once the bridge is added and the flow runs right, the stars and doors at the arrival work for that use (Edu): e.g. Kun, active use with Metal added — Aggressor does NOT bring tension, it is the drive of the active area. Never warn that a cure "risks" tension or conflict because of a star\'s name: the cure settles it.',
     '- ROOMS: when a palace carries "ROOM: <name>", that is the real use of the area (Edu). Read the palace FOR THAT ROOM: say whether its qi suits it, and give the cure for that use (a bedroom or study is a yin use, a kitchen, living room or office an active one). Do not propose another function for it; if the qi really does not suit the room, say so and give the remedy. Palaces with no room: read as usual.',
     '- FLYING STARS ARE ALWAYS THE BASE (Edu): the other systems lean on them and, read correctly, improve them greatly. When the data gives the flying stars, start each cure from them (what the mountain and water stars of that palace need) and use the Li Qi to choose where and how it works best; never let the Li Qi contradict the flying stars.',
+    '- PREVAILING WATER STAR IN THE CENTRE (Edu, always): when the data carries a PRIORITY line, the prevailing water star of the current period is locked in the centre and the advice is ALWAYS to free it, towards the facing, exchanging it with the facing\'s water star. Say it in the opening overview as the most important intervention of the house, before every other cure.',
     '- WATER and MOUNTAIN cures (Edu, only when the Li Qi is read TOGETHER with the flying stars): a Water intervention (to support the water star, or a Ling Shen hexagram: aquarium, fountain, water feature) is MOST effective in a palace where a Wonder (乙丙丁, tag WONDER) stands at a good growth stage AND the qi flow goes toward yang (climbs to the heaven stem / star). The opposite for an intervention aimed at the MOUNTAIN star: most effective where the flow goes toward yin (comes back to the palace). Point out these palaces when you give such advice.',
     '- FACING PALACE (Edu): the facing must always emphasise YANG. There recommend only the ACTIVE cure — the bridge that makes the qi climb (on the "Controls" line marked active use) — stated plainly as THE advice to activate the facing (what to add, where, shape and colour), with no hedging ("without overdoing it") and no yin / quiet option.',
     '- THE FIVE ELEMENTS AS CURES are added to the space as SHAPES and COLOURS (form and colour count more than the material - Edu\'s Feng Shui course, lesson on the Five Elements): WOOD = tall, narrow, columnar shapes; green (a tall plant, a green fabric). FIRE = pointed, triangular shapes; red, orange, purple (a lamp, a red cushion). EARTH = square, flat shapes; yellow, ochre, brown (a square rug, ceramics, stone). METAL = round, domed shapes; white, grey, gold, silver (a round bowl, white). WATER = wavy, irregular shapes; dark blue, black (a wavy form, blue; a fountain or aquarium is moving Water, Yang). The cure must be in proportion to what it has to balance.',
@@ -462,6 +463,15 @@
         lines.push('FLYING STARS (natal chart, period ' + H.period + ', house facing ' + H.facing + ' deg' + (fc.replacement ? ', replacement' : '') + (manual ? ', MANUAL chart composed by the consultant: use it exactly as given' : '') + '): the BASE of the reading.');
       }
     } catch (e) { FSX = null; }
+    // Session 58 (Edu): the prevailing water star of the current period locked in the centre
+    // must ALWAYS be freed (towards the facing, exchanged with the facing's water star).
+    try {
+      var yNow = new Date().getFullYear(), curP = yNow >= 2044 ? 1 : (yNow >= 2024 ? 9 : 8);
+      if (FSX && FSX[5] && FSX[5].w === curP) {
+        lines.push('PRIORITY: the prevailing water star ' + curP + ' of the current period is locked in the CENTRE. It must be freed towards the facing (palace '
+          + facePal + '), exchanging it with the facing\'s water star ' + (FSX[facePal] ? FSX[facePal].w : '?') + '.');
+      }
+    } catch (e) {}
     lines.push('');
     lines.push('PALACES (heaven stem / earth stem, star, door, spirit, Di Pan spirit):');
     [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n) {
