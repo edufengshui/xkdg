@@ -223,6 +223,7 @@
     '  CONTROL inside a palace is not a verdict, it is a choice of USE, settled by the element you ADD to the space (Edu, 20/11/2026). Example, Zhen with 庚 over 己, door Death, star Assistant: 己 and Death are Earth and generate 庚 (Metal); Zhen and Assistant are Wood and control the Earth. To live this area in an ACTIVE way add FIRE (Wood -> Fire -> Earth -> Metal: the qi runs from the palace up to the heaven stem, yin to yang). To live it in a YIN way - rest, study - add WATER (Metal -> Water -> Wood: the qi runs from the heaven stem back to the palace, yang to yin).',
     '  So for every control the cure is the BRIDGE element between the two (the one the controller generates and that generates the controlled): the data gives it on the "Controls" line. A bridge that makes the qi leave the palace and climb to the heaven stem / star serves activity; a bridge that brings the qi back down to the palace serves rest and quiet. Always offer the occupant both options when both exist, and say which use each one serves.',
     '- Once the bridge is added and the flow runs right, the stars and doors at the arrival work for that use (Edu): e.g. Kun, active use with Metal added — Aggressor does NOT bring tension, it is the drive of the active area. Never warn that a cure "risks" tension or conflict because of a star\'s name: the cure settles it.',
+    '- ROOMS: when a palace carries "ROOM: <name>", that is the real use of the area (Edu). Read the palace FOR THAT ROOM: say whether its qi suits it, and give the cure for that use (a bedroom or study is a yin use, a kitchen, living room or office an active one). Do not propose another function for it; if the qi really does not suit the room, say so and give the remedy. Palaces with no room: read as usual.',
     '- FACING PALACE (Edu): the facing must always emphasise YANG. There recommend only the ACTIVE cure — the bridge that makes the qi climb (on the "Controls" line marked active use) — stated plainly as THE advice to activate the facing (what to add, where, shape and colour), with no hedging ("without overdoing it") and no yin / quiet option.',
     '- THE FIVE ELEMENTS AS CURES are added to the space as SHAPES and COLOURS (form and colour count more than the material - Edu\'s Feng Shui course, lesson on the Five Elements): WOOD = tall, narrow, columnar shapes; green (a tall plant, a green fabric). FIRE = pointed, triangular shapes; red, orange, purple (a lamp, a red cushion). EARTH = square, flat shapes; yellow, ochre, brown (a square rug, ceramics, stone). METAL = round, domed shapes; white, grey, gold, silver (a round bowl, white). WATER = wavy, irregular shapes; dark blue, black (a wavy form, blue; a fountain or aquarium is moving Water, Yang). The cure must be in proportion to what it has to balance.',
     '- Birth YEAR stem of the occupants: find the palace where that stem sits on the HEAVEN plate; that area affects the person most (positively or negatively). A stem clashed or penalised there warns of trouble for that person.',
@@ -334,6 +335,60 @@
 
   var _last = null;          // { r, kind, H } of the chart on screen
 
+  // Session 58 (Edu): the room in each palace, saved with the house (h.liqiRooms = { palace: name }).
+  // Without a saved house (facing typed by hand) the names live only until the panel closes.
+  var _roomsTmp = {};
+  function roomsOf() {
+    try {
+      var L = cur();
+      if (L && typeof _fsHousesLoad === 'function') {
+        var h = (_fsHousesLoad()[L.personName] || [])[L.houseIdx];
+        if (h) return h.liqiRooms || {};
+      }
+    } catch (e) {}
+    return _roomsTmp;
+  }
+  function roomSet(n, v) {
+    v = String(v || '').trim().slice(0, 40);
+    try {
+      var L = cur();
+      if (L && typeof _fsHousesLoad === 'function' && typeof _fsHousesSave === 'function') {
+        var all = _fsHousesLoad(), h = (all[L.personName] || [])[L.houseIdx];
+        if (h) {
+          var m = h.liqiRooms || {};
+          if (v) m[n] = v; else delete m[n];
+          h.liqiRooms = m; _fsHousesSave(all); roomsCount(); return;
+        }
+      }
+    } catch (e) {}
+    if (v) _roomsTmp[n] = v; else delete _roomsTmp[n];
+    roomsCount();
+  }
+  function roomsCount() {
+    var el = document.getElementById('liqi-rooms-n'); if (!el) return;
+    var k = Object.keys(roomsOf()).length; el.textContent = k ? ' (' + k + ')' : '';
+  }
+  function roomsToggle() {
+    var g = document.getElementById('liqi-rooms'); if (!g) return;
+    g.style.display = (g.style.display === 'none') ? '' : 'none';
+  }
+  function roomsHtml() {
+    var R = roomsOf(), esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var cells = [4, 9, 2, 3, 5, 7, 8, 1, 6].map(function (n) {      // South on top
+      var nm = n === 5 ? 'Centre' : String(PAL_INFO[n] || n).split(' · ').slice(0, 2).join(' ');
+      return '<input value="' + esc(R[n] || '') + '" placeholder="' + esc(nm) + '" maxlength="40" '
+        + 'onchange="liqiRoom(' + n + ',this.value)" style="width:100%;box-sizing:border-box;font-size:12px;padding:5px;'
+        + 'border:1px solid #ccc;border-radius:4px;">';
+    }).join('');
+    var k = Object.keys(R).length;
+    return '<div style="margin-top:8px;font-size:12px;"><a href="#" onclick="liqiRoomsToggle();return false;" style="color:#5e35b1;">'
+      + '🏷 Rooms<span id="liqi-rooms-n">' + (k ? ' (' + k + ')' : '') + '</span></a>'
+      + '<div id="liqi-rooms" style="display:none;margin-top:6px;">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">' + cells + '</div>'
+      + '<div style="font-size:10px;color:#999;margin-top:3px;">South on top. The room in each palace: the Interpretation reads it for that use.</div>'
+      + '</div></div>';
+  }
+
   function describe(L) {
     L = L || _last;
     var c = window.QMDJWaterScanner.getHourChart(2000, 1, 1, L.r.hGan, L.r.hZhi, null,
@@ -358,6 +413,8 @@
       if (n === sitPal) tags.push('SITTING PALACE');
       if (p.zhiFu) tags.push('Zhi Fu');
       if (p.zhiShi) tags.push('Zhi Shi');
+      var room = (roomsOf() || {})[n];
+      if (room) tags.push('ROOM: ' + room);
       lines.push(n + ' ' + PAL_INFO[n] + ': ' + p.tiH + ' over ' + p.diH + ', star ' + p.star
         + (p.door ? ', door ' + p.door : '') + ', spirit ' + p.deity
         + (dp && dp[n] ? ', Di Pan spirit ' + dp[n] : '') + (tags.length ? '  [' + tags.join(', ') + ']' : ''));
@@ -469,6 +526,7 @@
     } catch (e) { html = ''; }
     _last = html ? { r: r, kind: kind, H: H } : null;
     box.innerHTML = (html || '<div style="color:#c0392b;font-size:12px;">Chart renderer not available.</div>')
+      + (html ? roomsHtml() : '')
       + (html ? '<div style="margin-top:12px;text-align:center;">'
           + '<button id="liqi-ai-btn" onclick="liqiInterpret()" style="background:#5e35b1;color:#fff;border:none;border-radius:6px;'
           + 'padding:9px 20px;font-size:14px;font-weight:bold;cursor:pointer;">✨ Interpretation</button>'
@@ -514,4 +572,6 @@
   window.liqiKind = setKind;
   window.liqiBack = back;
   window.liqiInterpret = interpret;
+  window.liqiRoom = roomSet;
+  window.liqiRoomsToggle = roomsToggle;
 })();
