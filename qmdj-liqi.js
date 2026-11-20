@@ -210,6 +210,7 @@
     'HOW TO READ (from the chapter guidelines):',
     '- Read each palace like the QMDJ Annual chart: heaven stem over earth stem (formations, combinations, clashes, penalties), the door, the star, the spirit, and the palace element (whether door / star / stem suit the palace, 12 growth stages of the wonders 乙丙丁).',
     '- The Qi mouth / door palace and the facing palace matter most: they show the quality of the qi entering the space. The sitting palace shows the support behind.',
+    '- Terminology (Edu): in Italian the sitting is "seduta" (palazzo della seduta) — NEVER "schiena"; the facing is "facciata". In French: "assise" and "façade".',
     '- Zhi Fu (Commander) and Zhi Shi (the door of the Commander) are key points.',
     '- QI FLOW of a palace (Edu, 20/11/2026) - ALWAYS trace where the qi of a palace ends up, along the chain: palace element (earth, yin, the START) -> earth-plate stem -> door -> heaven stem and star (heaven, yang, the ARRIVAL). The chart data gives this chain ready for every palace on its "Qi flow" line: use it, do not work the elements out again.',
     '  Example, Kan with 戊 over 乙, door View, star Rice: the Water of the palace generates 乙 (Wood), which generates View (Fire), which generates 戊 and Rice (both Earth). Because the qi moves from yin to yang - from the palace as the start up to the heaven stem and the star as the arrival - the area favours MOVEMENT and ACTIVITY: having the entrance door there is appropriate.',
