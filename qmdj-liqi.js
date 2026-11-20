@@ -216,7 +216,10 @@
     '  The heaven stem and the star at the end of the flow are the ACTORS: read them together for what the area brings (in the example 戊 can be money and Rice gradual accumulation, or a tendency to save).',
     '  Do NOT call a door or a star weak or unfavourable just because its element clashes with the element of the palace (wrong: "View is Fire, controlled by the Water of Kan, so it struggles"): read the whole chain. ',
     '  When the flow TURNS BACK - yang generates yin, the upper level generates the lower one, e.g. the star generates the door - the area suits REST and QUIET (Edu, 20/11/2026).',
-    '  For a step where one level CONTROLS the other, or where two levels have the SAME element, Edu has not given the rule yet: say plainly what happens at that step and do not invent a verdict for it.',
+    '  SAME ELEMENT: the factors of a palace that share an element act TOGETHER as one group (the data lists them on the "Elements" line). Read the relations between the GROUPS, not level by level.',
+    '  CONTROL inside a palace is not a verdict, it is a choice of USE, settled by the element you ADD to the space (Edu, 20/11/2026). Example, Zhen with 庚 over 己, door Death, star Assistant: 己 and Death are Earth and generate 庚 (Metal); Zhen and Assistant are Wood and control the Earth. To live this area in an ACTIVE way add FIRE (Wood -> Fire -> Earth -> Metal: the qi runs from the palace up to the heaven stem, yin to yang). To live it in a YIN way - rest, study - add WATER (Metal -> Water -> Wood: the qi runs from the heaven stem back to the palace, yang to yin).',
+    '  So for every control the cure is the BRIDGE element between the two (the one the controller generates and that generates the controlled): the data gives it on the "Controls" line. A bridge that makes the qi leave the palace and climb to the heaven stem / star serves activity; a bridge that brings the qi back down to the palace serves rest and quiet. Always offer the occupant both options when both exist, and say which use each one serves.',
+    '- THE FIVE ELEMENTS AS CURES are added to the space as SHAPES and COLOURS (form and colour count more than the material - Edu\'s Feng Shui course, lesson on the Five Elements): WOOD = tall, narrow, columnar shapes; green (a tall plant, a green fabric). FIRE = pointed, triangular shapes; red, orange, purple (a lamp, a red cushion). EARTH = square, flat shapes; yellow, ochre, brown (a square rug, ceramics, stone). METAL = round, domed shapes; white, grey, gold, silver (a round bowl, white). WATER = wavy, irregular shapes; dark blue, black (a wavy form, blue; a fountain or aquarium is moving Water, Yang). The cure must be in proportion to what it has to balance.',
     '- Birth YEAR stem of the occupants: find the palace where that stem sits on the HEAVEN plate; that area affects the person most (positively or negatively). A stem clashed or penalised there warns of trouble for that person.',
     '- Match the qi to the USE of each area: doors and stars suit some functions and not others. E.g. Open door is unsuitable for storage, archives or a closed area; Rest door suits relaxation, bedrooms, lifts after a long day; View door suits trading, scenic views, display; Shocking door suits signs, restaurants and talk; Death door suits storage, fabrics, stable/conservative work; Birth door is money-making; Delusion door gives confusion or hides things (but can help creative ideas); Injury brings fighting energy.',
     '- Stars: Pillar = eating, restaurants, speech, also destructive/renovation force; Rice = penny saver, sickness star, cheap furniture; Official = traditional, health; Hero = fire, status, display; Grass = planner, talkative, water collecting; Heart = medicine, interviews, selection; Assistant = creativity, art, sales; Fowl = importance, dignity, golden colours; Aggressor = action, conflict.',
@@ -263,6 +266,35 @@
     if (p.star && STAR_EL[p.star]) { var r2 = elRel(last, STAR_EL[p.star]); if (r2 !== 'GENERATES') up = false; ends.push(r2 + ' star ' + p.star + ' ' + STAR_EL[p.star]); }
     if (ends.length) out += ', which ' + ends.join(' and ');
     return out + (up ? '  => unbroken generating flow from yin to yang (movement, activity)' : '  => not a fully generating flow');
+  }
+
+  // Element groups of a palace and the controls between them, each with its bridge element
+  // (session 57, Edu: read by groups; a control is settled by the element added to the space).
+  function elGroups(n, p) {
+    var items = [{ t: 'palace', e: PAL_EL[n], lv: 0 }];
+    if (p.diH && STEM_EL[p.diH]) items.push({ t: 'earth stem ' + p.diH, e: STEM_EL[p.diH], lv: 1 });
+    if (p.door && DOOR_EL[p.door]) items.push({ t: 'door ' + p.door, e: DOOR_EL[p.door], lv: 2 });
+    if (p.tiH && STEM_EL[p.tiH]) items.push({ t: 'heaven stem ' + p.tiH, e: STEM_EL[p.tiH], lv: 3 });
+    if (p.star && STAR_EL[p.star]) items.push({ t: 'star ' + p.star, e: STAR_EL[p.star], lv: 3 });
+    var order = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'], g = {};
+    items.forEach(function (x) { (g[x.e] = g[x.e] || []).push(x); });
+    var names = function (e) { return e + ' (' + g[e].map(function (x) { return x.t; }).join(' + ') + ')'; };
+    var has = order.filter(function (e) { return g[e]; });
+    var out = ['   Elements: ' + has.map(names).join('; ')];
+    var gens = [], ctls = [];
+    has.forEach(function (a) {
+      if (g[GEN[a]]) gens.push(a + ' generates ' + GEN[a]);
+      if (g[CTL[a]]) {
+        var b = CTL[a], bridge = GEN[a], use = '';
+        var aPal = g[a].some(function (x) { return x.lv === 0; }), bPal = g[b].some(function (x) { return x.lv === 0; });
+        if (aPal) use = ': the qi then LEAVES the palace and climbs (active use)';
+        else if (bPal) use = ': the qi then comes BACK to the palace (yin use: rest, study)';
+        ctls.push(a + ' controls ' + b + ' - bridge ' + bridge + (g[bridge] ? ' (already present)' : ' (to add)') + use);
+      }
+    });
+    if (gens.length) out.push('   Generating: ' + gens.join('; '));
+    if (ctls.length) out.push('   Controls: ' + ctls.join(' | '));
+    return out;
   }
 
   var PAL_INFO = { 1:'Kan · N · Water', 8:'Gen · NE · Earth', 3:'Zhen · E · Wood', 4:'Xun · SE · Wood',
@@ -319,7 +351,7 @@
       lines.push(n + ' ' + PAL_INFO[n] + ': ' + p.tiH + ' over ' + p.diH + ', star ' + p.star
         + (p.door ? ', door ' + p.door : '') + ', spirit ' + p.deity
         + (dp && dp[n] ? ', Di Pan spirit ' + dp[n] : '') + (tags.length ? '  [' + tags.join(', ') + ']' : ''));
-      try { lines.push('   Qi flow: ' + qiFlow(n, p)); } catch (e) {}
+      try { lines.push('   Qi flow: ' + qiFlow(n, p)); elGroups(n, p).forEach(function (x) { lines.push(x); }); } catch (e) {}
     });
     var occ = occupants();
     if (occ.length) {
