@@ -211,6 +211,10 @@
     '- Read each palace like the QMDJ Annual chart: heaven stem over earth stem (formations, combinations, clashes, penalties), the door, the star, the spirit, and the palace element (whether door / star / stem suit the palace, 12 growth stages of the wonders 乙丙丁).',
     '- The Qi mouth / door palace and the facing palace matter most: they show the quality of the qi entering the space. The sitting palace shows the support behind.',
     '- Zhi Fu (Commander) and Zhi Shi (the door of the Commander) are key points.',
+    '- QI FLOW of a palace (Edu, 20/11/2026) - ALWAYS trace where the qi of a palace ends up, along the chain: palace element (earth, yin, the START) -> earth-plate stem -> door -> heaven stem and star (heaven, yang, the ARRIVAL). The chart data gives this chain ready for every palace on its "Qi flow" line: use it, do not work the elements out again.',
+    '  Example, Kan with 戊 over 乙, door View, star Rice: the Water of the palace generates 乙 (Wood), which generates View (Fire), which generates 戊 and Rice (both Earth). Because the qi moves from yin to yang - from the palace as the start up to the heaven stem and the star as the arrival - the area favours MOVEMENT and ACTIVITY: having the entrance door there is appropriate.',
+    '  The heaven stem and the star at the end of the flow are the ACTORS: read them together for what the area brings (in the example 戊 can be money and Rice gradual accumulation, or a tendency to save).',
+    '  Do NOT call a door or a star weak or unfavourable just because its element clashes with the element of the palace (wrong: "View is Fire, controlled by the Water of Kan, so it struggles"): read the whole chain. Where the chain is not generating all the way up, say plainly at which step the qi stops or turns back; do not invent a verdict for that case.',
     '- Birth YEAR stem of the occupants: find the palace where that stem sits on the HEAVEN plate; that area affects the person most (positively or negatively). A stem clashed or penalised there warns of trouble for that person.',
     '- Match the qi to the USE of each area: doors and stars suit some functions and not others. E.g. Open door is unsuitable for storage, archives or a closed area; Rest door suits relaxation, bedrooms, lifts after a long day; View door suits trading, scenic views, display; Shocking door suits signs, restaurants and talk; Death door suits storage, fabrics, stable/conservative work; Birth door is money-making; Delusion door gives confusion or hides things (but can help creative ideas); Injury brings fighting energy.',
     '- Stars: Pillar = eating, restaurants, speech, also destructive/renovation force; Rice = penny saver, sickness star, cheap furniture; Official = traditional, health; Hero = fire, status, display; Grass = planner, talkative, water collecting; Heart = medicine, interviews, selection; Assistant = creativity, art, sales; Fowl = importance, dignity, golden colours; Aggressor = action, conflict.',
@@ -222,11 +226,42 @@
     '',
     'OUTPUT:',
     '- Start with 2-3 sentences on the overall quality of the space and the qi entering at the Qi mouth.',
-    '- Then one short paragraph per palace (in the order Qi mouth palace, facing palace, sitting palace, then the others), naming the palace and direction, the key factors you read, what the area is good or not good for, and a practical suggestion.',
+    '- Then one short paragraph per palace (in the order Qi mouth palace, facing palace, sitting palace, then the others), naming the palace and direction, the QI FLOW (where the qi ends up and who the actors are), the other key factors you read, what the area is good or not good for, and a practical suggestion.',
     '- Then a short paragraph on each occupant whose birth year stem is given.',
     '- Be concrete and concise, like the case studies. Do not invent forms you were not told about: when the use of a room would matter, say what use suits the palace.',
     '- Plain text with **bold** palace names; no tables.'
   ].join('\n');
+
+  // Qi flow of a palace (session 57, Edu): palace -> earth stem -> door -> heaven stem + star.
+  var STEM_EL = { '甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water' };
+  var STAR_EL = { Grass:'Water', Rice:'Earth', Aggressor:'Wood', Assistant:'Wood', Fowl:'Earth', Heart:'Metal', Pillar:'Metal', Official:'Earth', Hero:'Fire' };
+  var DOOR_EL = { Open:'Metal', Rest:'Water', Birth:'Earth', Injury:'Wood', Delusion:'Wood', View:'Fire', Death:'Earth', Shocking:'Metal' };
+  var PAL_EL = { 1:'Water', 8:'Earth', 3:'Wood', 4:'Wood', 9:'Fire', 2:'Earth', 7:'Metal', 6:'Metal', 5:'Earth' };
+  var GEN = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
+  var CTL = { Wood:'Earth', Earth:'Water', Water:'Fire', Fire:'Metal', Metal:'Wood' };
+  function elRel(a, b) {             // how the qi passes from a (below) to b (above)
+    if (!a || !b) return '';
+    if (a === b) return 'same element as';
+    if (GEN[a] === b) return 'GENERATES';
+    if (GEN[b] === a) return 'is generated by (the flow turns back from)';
+    if (CTL[a] === b) return 'controls';
+    return 'is controlled by';
+  }
+  function qiFlow(n, p) {
+    var steps = [{ t: 'palace ' + PAL_EL[n], e: PAL_EL[n] }];
+    if (p.diH && STEM_EL[p.diH]) steps.push({ t: 'earth stem ' + p.diH + ' ' + STEM_EL[p.diH], e: STEM_EL[p.diH] });
+    if (p.door && DOOR_EL[p.door]) steps.push({ t: 'door ' + p.door + ' ' + DOOR_EL[p.door], e: DOOR_EL[p.door] });
+    var out = steps[0].t, up = true;
+    for (var i = 1; i < steps.length; i++) {
+      var r = elRel(steps[i - 1].e, steps[i].e); if (r !== 'GENERATES') up = false;
+      out += ' ' + r + ' ' + steps[i].t;
+    }
+    var last = steps[steps.length - 1].e, ends = [];
+    if (p.tiH && STEM_EL[p.tiH]) { var r1 = elRel(last, STEM_EL[p.tiH]); if (r1 !== 'GENERATES') up = false; ends.push(r1 + ' heaven stem ' + p.tiH + ' ' + STEM_EL[p.tiH]); }
+    if (p.star && STAR_EL[p.star]) { var r2 = elRel(last, STAR_EL[p.star]); if (r2 !== 'GENERATES') up = false; ends.push(r2 + ' star ' + p.star + ' ' + STAR_EL[p.star]); }
+    if (ends.length) out += ', which ' + ends.join(' and ');
+    return out + (up ? '  => unbroken generating flow from yin to yang (movement, activity)' : '  => not a fully generating flow');
+  }
 
   var PAL_INFO = { 1:'Kan · N · Water', 8:'Gen · NE · Earth', 3:'Zhen · E · Wood', 4:'Xun · SE · Wood',
                    9:'Li · S · Fire', 2:'Kun · SW · Earth', 7:'Dui · W · Metal', 6:'Qian · NW · Metal', 5:'Centre · Earth' };
@@ -282,6 +317,7 @@
       lines.push(n + ' ' + PAL_INFO[n] + ': ' + p.tiH + ' over ' + p.diH + ', star ' + p.star
         + (p.door ? ', door ' + p.door : '') + ', spirit ' + p.deity
         + (dp && dp[n] ? ', Di Pan spirit ' + dp[n] : '') + (tags.length ? '  [' + tags.join(', ') + ']' : ''));
+      try { lines.push('   Qi flow: ' + qiFlow(n, p)); } catch (e) {}
     });
     var occ = occupants();
     if (occ.length) {
