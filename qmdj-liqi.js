@@ -224,7 +224,8 @@
     '  So for every control the cure is the BRIDGE element between the two (the one the controller generates and that generates the controlled): the data gives it on the "Controls" line. A bridge that makes the qi leave the palace and climb to the heaven stem / star serves activity; a bridge that brings the qi back down to the palace serves rest and quiet. Always offer the occupant both options when both exist, and say which use each one serves.',
     '- Once the bridge is added and the flow runs right, the stars and doors at the arrival work for that use (Edu): e.g. Kun, active use with Metal added — Aggressor does NOT bring tension, it is the drive of the active area. Never warn that a cure "risks" tension or conflict because of a star\'s name: the cure settles it.',
     '- ROOMS: when a palace carries "ROOM: <name>", that is the real use of the area (Edu). Read the palace FOR THAT ROOM: say whether its qi suits it, and give the cure for that use (a bedroom or study is a yin use, a kitchen, living room or office an active one). Do not propose another function for it; if the qi really does not suit the room, say so and give the remedy. Palaces with no room: read as usual.',
-    '- WATER and MOUNTAIN cures (Edu): a Water intervention (to support the water star, or a Ling Shen hexagram: aquarium, fountain, water feature) is MOST effective in a palace where a Wonder (乙丙丁, tag WONDER) stands at a good growth stage AND the qi flow goes toward yang (climbs to the heaven stem / star). The opposite for an intervention aimed at the MOUNTAIN star: most effective where the flow goes toward yin (comes back to the palace). Point out these palaces when you give such advice.',
+    '- FLYING STARS ARE ALWAYS THE BASE (Edu): the other systems lean on them and, read correctly, improve them greatly. When the data gives the flying stars, start each cure from them (what the mountain and water stars of that palace need) and use the Li Qi to choose where and how it works best; never let the Li Qi contradict the flying stars.',
+    '- WATER and MOUNTAIN cures (Edu, only when the Li Qi is read TOGETHER with the flying stars): a Water intervention (to support the water star, or a Ling Shen hexagram: aquarium, fountain, water feature) is MOST effective in a palace where a Wonder (乙丙丁, tag WONDER) stands at a good growth stage AND the qi flow goes toward yang (climbs to the heaven stem / star). The opposite for an intervention aimed at the MOUNTAIN star: most effective where the flow goes toward yin (comes back to the palace). Point out these palaces when you give such advice.',
     '- FACING PALACE (Edu): the facing must always emphasise YANG. There recommend only the ACTIVE cure — the bridge that makes the qi climb (on the "Controls" line marked active use) — stated plainly as THE advice to activate the facing (what to add, where, shape and colour), with no hedging ("without overdoing it") and no yin / quiet option.',
     '- THE FIVE ELEMENTS AS CURES are added to the space as SHAPES and COLOURS (form and colour count more than the material - Edu\'s Feng Shui course, lesson on the Five Elements): WOOD = tall, narrow, columnar shapes; green (a tall plant, a green fabric). FIRE = pointed, triangular shapes; red, orange, purple (a lamp, a red cushion). EARTH = square, flat shapes; yellow, ochre, brown (a square rug, ceramics, stone). METAL = round, domed shapes; white, grey, gold, silver (a round bowl, white). WATER = wavy, irregular shapes; dark blue, black (a wavy form, blue; a fountain or aquarium is moving Water, Yang). The cure must be in proportion to what it has to balance.',
     '- Birth YEAR stem of the occupants: find the palace where that stem sits on the HEAVEN plate; that area affects the person most (positively or negatively). A stem clashed or penalised there warns of trouble for that person.',
@@ -437,6 +438,19 @@
         }
       }
     } catch (e) {}
+    // Session 58 (Edu): the flying stars are always the BASE; the Li Qi leans on them.
+    var FSX = null;
+    try {
+      if (typeof FlyingStars !== 'undefined' && typeof fsMountainCharFromDeg === 'function' && isFinite(parseFloat(H.facing))) {
+        var fc = FlyingStars.calculate(parseInt(H.period, 10), fsMountainCharFromDeg(parseFloat(H.facing)),
+                                       typeof _fsReplacementOn !== 'undefined' ? !!_fsReplacementOn : false);
+        FSX = {};
+        [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n, i) {     // FlyingStars arrays: South-on-top grid order
+          FSX[n] = { b: fc.baseStars[i], m: fc.sittingStars[i], w: fc.facingStars[i] };
+        });
+        lines.push('FLYING STARS (natal chart, period ' + H.period + ', house facing ' + H.facing + ' deg' + (fc.replacement ? ', replacement' : '') + '): the BASE of the reading.');
+      }
+    } catch (e) { FSX = null; }
     lines.push('');
     lines.push('PALACES (heaven stem / earth stem, star, door, spirit, Di Pan spirit):');
     [4, 9, 2, 3, 5, 7, 8, 1, 6].forEach(function (n) {
@@ -453,6 +467,7 @@
       lines.push(n + ' ' + PAL_INFO[n] + ': ' + p.tiH + ' over ' + p.diH + ', star ' + p.star
         + (p.door ? ', door ' + p.door : '') + ', spirit ' + p.deity
         + (dp && dp[n] ? ', Di Pan spirit ' + dp[n] : '') + (tags.length ? '  [' + tags.join(', ') + ']' : ''));
+      if (FSX && FSX[n]) lines.push('   Flying stars: mountain ' + FSX[n].m + ', water ' + FSX[n].w + ' (base ' + FSX[n].b + ')');
       try { lines.push('   Qi flow: ' + qiFlow(n, p)); elGroups(n, p).forEach(function (x) { lines.push(x); }); } catch (e) {}
     });
     var occ = occupants();
